@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatSight 时值节拍器 · 产品需求文档 v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fafafa;
+  --ink:#0a0a0a;
+  --ink2:#2b2b2b;
+  --ink3:#6e6e6e;
+  --line:#e5e5e5;
+  --line2:#d4d4d4;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --sans:'Inter',-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--ink);color:var(--paper)}
+
+/* ---------- progress bar ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--ink);width:0%;z-index:200}
+
+/* ---------- cover ---------- */
+.cover{
+  background:var(--ink);color:var(--paper);
+  min-height:88vh;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:48px 5vw 0;
+}
+.cover .kicker{
+  font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:#9a9a9a;margin-bottom:24px;
+}
+.cover h1{
+  font-size:clamp(46px,8.5vw,110px);
+  font-weight:800;letter-spacing:-.03em;line-height:1.02;
+}
+.cover .sub{
+  font-size:clamp(17px,2vw,22px);color:#bdbdbd;margin-top:20px;max-width:640px;font-weight:400;
+}
+.cover .sub b{color:var(--paper);font-weight:600}
+.meta-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid #2e2e2e;margin-top:56px;
+}
+.meta-grid>div{
+  padding:22px 24px 26px;border-right:1px solid #2e2e2e;
+}
+.meta-grid>div:last-child{border-right:none}
+.meta-grid .lab{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8a8a8a;margin-bottom:8px}
+.meta-grid .val{font-size:17px;font-weight:600}
+@media(max-width:720px){.meta-grid{grid-template-columns:repeat(2,1fr)}.meta-grid>div{border-bottom:1px solid #2e2e2e}}
+
+/* ---------- sticky nav ---------- */
+nav.toc{
+  position:sticky;top:0;z-index:100;
+  background:rgba(250,250,250,.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;white-space:nowrap;
+  scrollbar-width:none;
+}
+nav.toc::-webkit-scrollbar{display:none}
+nav.toc .inner{display:flex;max-width:1060px;margin:0 auto;padding:0 5vw}
+nav.toc a{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+  color:var(--ink3);text-decoration:none;
+  padding:16px 18px 13px;border-bottom:2px solid transparent;
+  transition:color .25s,border-color .25s;
+}
+nav.toc a:hover{color:var(--ink)}
+nav.toc a.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
+nav.toc a .num{color:var(--line2);margin-right:6px}
+nav.toc a.active .num{color:var(--ink3)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1060px;margin:0 auto;padding:0 5vw}
+section{padding:88px 0 24px;scroll-margin-top:64px}
+.sec-head{display:flex;align-items:baseline;gap:20px;margin-bottom:14px}
+.sec-num{font-family:var(--mono);font-size:13px;color:var(--ink3);letter-spacing:.1em}
+h2{font-size:clamp(28px,4vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.sec-lede{color:var(--ink3);max-width:680px;font-size:16.5px;margin-bottom:40px}
+h3{font-size:19px;font-weight:700;margin:44px 0 16px;letter-spacing:-.01em}
+h3 .h3-num{font-family:var(--mono);font-size:12px;color:var(--ink3);font-weight:400;margin-right:10px;vertical-align:2px}
+p.body{max-width:720px;margin-bottom:16px}
+strong{font-weight:650}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;filter:blur(8px);transform:translateY(14px);transition:opacity .7s var(--ease),filter .7s var(--ease),transform .7s var(--ease)}
+.reveal.in{opacity:1;filter:blur(0);transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;filter:none;transform:none;transition:none}}
+
+/* ---------- tables ---------- */
+.tbl-scroll{overflow-x:auto;margin:8px 0 28px;border-top:2px solid var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:640px}
+th{
+  text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);font-weight:500;padding:14px 16px 12px;border-bottom:1px solid var(--ink);
+}
+td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:1px solid var(--line)}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:#f2f2f2}
+td.id,td .id{font-family:var(--mono);font-size:12.5px;color:var(--ink2);white-space:nowrap}
+td .fname{font-weight:600}
+
+/* ---------- badges ---------- */
+.badge{
+  display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  padding:3px 10px;border-radius:99px;white-space:nowrap;
+}
+.badge.must{background:var(--ink);color:var(--paper)}
+.badge.should{border:1px solid var(--ink);color:var(--ink)}
+.badge.could{border:1px solid var(--line2);color:var(--ink3)}
+.badge.wont{color:#b0b0b0;text-decoration:line-through;border:1px dashed var(--line2)}
+
+/* ---------- MoSCoW filter ---------- */
+.filter-bar{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 20px}
+.chip{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.05em;
+  padding:8px 18px;border-radius:99px;border:1px solid var(--line2);
+  background:transparent;color:var(--ink3);cursor:pointer;
+  transition:all .25s var(--ease);
+}
+.chip:hover{border-color:var(--ink);color:var(--ink)}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip .cnt{opacity:.55;margin-left:6px;font-size:11px}
+tr.hide{display:none}
+#moscow-count{font-family:var(--mono);font-size:12px;color:var(--ink3);margin:0 0 12px}
+
+/* ---------- personas ---------- */
+.persona{
+  display:grid;grid-template-columns:56px 1fr;gap:24px;
+  padding:30px 0;border-top:1px solid var(--line);
+}
+.persona:last-of-type{border-bottom:1px solid var(--line)}
+.persona .pnum{font-family:var(--mono);font-size:13px;color:var(--ink3);padding-top:4px}
+.persona h4{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+.persona .role{font-size:13.5px;color:var(--ink3);margin-bottom:12px}
+.persona .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 32px;max-width:720px}
+.persona .cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.persona .cell .v{font-size:14.5px}
+@media(max-width:640px){.persona .grid{grid-template-columns:1fr}}
+
+/* ---------- demo (时值可视化原理) ---------- */
+.demo{
+  border:1px solid var(--line);margin:28px 0 36px;background:#fff;
+}
+.demo .demo-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 20px;border-bottom:1px solid var(--line);
+}
+.demo .demo-title{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.demo button{
+  font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+  padding:8px 22px;border-radius:99px;border:1px solid var(--ink);
+  background:var(--ink);color:var(--paper);cursor:pointer;transition:all .25s var(--ease);
+}
+.demo button:hover{background:transparent;color:var(--ink)}
+.demo canvas{display:block;width:100%;height:190px}
+.demo .demo-note{padding:12px 20px;font-size:13px;color:var(--ink3);border-top:1px solid var(--line)}
+
+/* ---------- callout / assumptions ---------- */
+.callout{
+  border-left:2px solid var(--ink);padding:6px 0 6px 22px;margin:20px 0;max-width:720px;
+}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+ul.tight{padding-left:20px;max-width:720px}
+ul.tight li{margin-bottom:8px}
+ul.tight li::marker{color:var(--ink3)}
+
+/* ---------- AC blocks ---------- */
+details.ac{
+  border-top:1px solid var(--line);
+}
+details.ac:last-of-type{border-bottom:1px solid var(--line)}
+details.ac summary{
+  cursor:pointer;list-style:none;display:flex;align-items:center;gap:16px;
+  padding:18px 4px;transition:background .2s;
+}
+details.ac summary::-webkit-details-marker{display:none}
+details.ac summary:hover{background:#f3f3f3}
+details.ac summary .fid{font-family:var(--mono);font-size:12.5px;color:var(--ink3);min-width:64px}
+details.ac summary .ftitle{font-weight:600;font-size:15.5px;flex:1}
+details.ac summary .arrow{
+  font-family:var(--mono);color:var(--ink3);transition:transform .3s var(--ease);font-size:14px;
+}
+details.ac[open] summary .arrow{transform:rotate(90deg)}
+.ac-body{padding:4px 4px 26px 80px}
+@media(max-width:640px){.ac-body{padding-left:4px}}
+.ac-item{
+  border:1px solid var(--line);background:#fff;margin-bottom:12px;max-width:780px;
+}
+.ac-item .ac-id{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink3);
+  padding:10px 16px;border-bottom:1px solid var(--line);
+}
+.ac-item .gwt{padding:12px 16px;font-size:14px}
+.ac-item .gwt div{margin-bottom:6px}
+.ac-item .gwt div:last-child{margin-bottom:0}
+.ac-item .gwt .kw{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;
+  display:inline-block;min-width:52px;color:var(--paper);background:var(--ink);
+  padding:1px 8px;border-radius:3px;margin-right:10px;
+}
+.ac-item .gwt .kw.w{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.ac-item .gwt .kw.t{background:#fff;color:var(--ink);border:1px dashed var(--ink)}
+
+/* ---------- version plan ---------- */
+.plan{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:8px}
+.plan>div{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px}
+.plan .v{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--ink3);margin-bottom:8px}
+.plan h5{font-size:17px;font-weight:700;margin-bottom:8px}
+.plan p{font-size:13.5px;color:var(--ink2)}
+@media(max-width:720px){.plan{grid-template-columns:1fr}}
+
+/* ---------- open questions ---------- */
+.oq{max-width:760px}
+.oq label{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:16px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:15px;
+}
+.oq input{appearance:none;width:18px;height:18px;border:1.5px solid var(--ink);border-radius:4px;margin-top:4px;flex:none;cursor:pointer;position:relative;transition:background .2s}
+.oq input:checked{background:var(--ink)}
+.oq input:checked::after{content:'';position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid var(--paper);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.oq label.done span{color:var(--ink3);text-decoration:line-through}
+
+/* ---------- footer ---------- */
+footer{background:var(--ink);color:#8a8a8a;margin-top:110px;padding:64px 5vw}
+footer .inner{max-width:1060px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px}
+footer .brand{color:var(--paper);font-weight:700;letter-spacing:-.01em;font-size:18px}
+footer .mono{font-family:var(--mono);font-size:12px;letter-spacing:.1em}
+
+#totop{
+  position:fixed;right:28px;bottom:28px;width:46px;height:46px;border-radius:99px;
+  border:1px solid var(--line2);background:rgba(250,250,250,.9);backdrop-filter:blur(8px);
+  color:var(--ink);font-size:17px;cursor:pointer;opacity:0;pointer-events:none;
+  transition:opacity .3s,transform .3s var(--ease);transform:translateY(8px);z-index:150;
+}
+#totop.show{opacity:1;pointer-events:auto;transform:none}
+#totop:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ================= COVER ================= -->
+<header class="cover">
+  <div class="kicker">Product Requirements Document · PRD</div>
+  <h1>BeatSight<br>时值节拍器</h1>
+  <p class="sub">吉他用的节奏可视化节拍器 —— 普通节拍器只告诉你<b>什么时候响</b>，BeatSight 让你看见<b>每个音有多长</b>。</p>
+  <div class="meta-grid">
+    <div><div class="lab">版本</div><div class="val">v1.0 · 草稿</div></div>
+    <div><div class="lab">日期</div><div class="val">2026-09-03</div></div>
+    <div><div class="lab">规模</div><div class="val">3 角色 · 16 功能 · 30 验收</div></div>
+    <div><div class="lab">生成模式</div><div class="val">快速模式（含 3 项假设）</div></div>
+  </div>
+</header>
+
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <div class="inner">
+    <a href="#s1" data-sec="s1"><span class="num">01</span>概述</a>
+    <a href="#s2" data-sec="s2"><span class="num">02</span>用户画像</a>
+    <a href="#s3" data-sec="s3"><span class="num">03</span>用户故事</a>
+    <a href="#s4" data-sec="s4"><span class="num">04</span>功能需求</a>
+    <a href="#s5" data-sec="s5"><span class="num">05</span>优先级</a>
+    <a href="#s6" data-sec="s6"><span class="num">06</span>验收标准</a>
+    <a href="#s7" data-sec="s7"><span class="num">07</span>假设与约束</a>
+    <a href="#s8" data-sec="s8"><span class="num">08</span>开放问题</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= 01 概述 ================= -->
+<section id="s1">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">01</span><h2>概述</h2></div>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">1.1</span>背景与动机</h3>
+  <div class="reveal">
+    <p class="body">吉他学习者最常见的挫败不是「不知道弹什么」，而是「弹不准」——抢拍、拖拍、附点弹成八分、切分弹成均匀的十六分。市面上的节拍器（实体或 App）本质都是一个发声闹钟：它用 click 告诉你拍点在哪里，却对拍点之间发生的事保持沉默。而节奏的难点恰恰在拍点之间——<strong>时值的比例关系</strong>。</p>
+    <p class="body">BeatSight 的核心主张：把节奏<strong>画</strong>出来。每个音符被渲染为一个图形，其<strong>长度与时值成正比</strong>；播放头扫过图形的过程就是演奏过程。四分音符是一格，八分是半格，附点是一格半——差异肉眼可见，而不是停留在乐理书的抽象描述里。</p>
+  </div>
+
+  <!-- 时值可视化原理 demo -->
+  <div class="demo reveal">
+    <div class="demo-head">
+      <span class="demo-title">核心概念演示 · 时值可视化（4/4 拍，一小节）</span>
+      <button id="demo-btn">▶ 播放</button>
+    </div>
+    <canvas id="demo-canvas"></canvas>
+    <div class="demo-note">节奏型：四分 → 两个八分 → 附点八分+十六分 → 四分。注意第二条只有第一条一半长，附点组合精确占满一拍 —— 这就是「时值 = 长度」。</div>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">1.2</span>目标</h3>
+  <div class="reveal">
+    <ul class="tight">
+      <li><strong>业务目标：</strong>切入吉他自学工具赛道，以「时值可视化」建立差异化认知，成为吉他练习场景的默认节拍器。</li>
+      <li><strong>用户目标：</strong>让初中级吉他手把「知道节奏型」变成「弹得出节奏型」，缩短从看谱到上手的距离。</li>
+      <li><strong>北极星指标：</strong>周人均有效练习次数（播放 ≥3 分钟计一次）。</li>
+      <li><strong>关键 KPI：</strong>次日留存 ≥ 40%；7 日留存 ≥ 30%；单次练习时长中位数 ≥ 8 分钟；变速训练完成率 ≥ 50%。</li>
+    </ul>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">1.3</span>范围</h3>
+  <div class="reveal">
+    <ul class="tight">
+      <li><strong>本期包含：</strong>节拍器核心引擎（音频调度 / BPM / 拍号重音）、时值可视化与播放头、吉他节奏型预设库、播放控制（Must），以及 Tap Tempo、变速训练器、自定义节奏型编辑（Should）。</li>
+      <li><strong>本期不包含：</strong>账号体系与云同步、MIDI/DAW 导出、社区节奏型分享（见 Won't Have，避免范围蔓延）。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= 02 用户画像 ================= -->
+<section id="s2">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">02</span><h2>用户画像</h2></div>
+    <p class="sec-lede">三个核心角色：一个踩不准拍的新手，一个要提速爬坡的进阶者，一个需要课堂演示工具的老师。</p>
+  </div>
+
+  <div class="persona reveal">
+    <div class="pnum">P1</div>
+    <div>
+      <h4>阿澈 · 吉他初学者</h4>
+      <div class="role">自学 3 个月的大学生，跟着视频教程学弹唱</div>
+      <div class="grid">
+        <div class="cell"><div class="k">核心目标</div><div class="v">把谱面上的节奏型弹准，唱和弹合上拍</div></div>
+        <div class="cell"><div class="k">主要痛点</div><div class="v">看得懂「八分音符」四个字，手却弹不出来；不知道附点到底「多」多少</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="persona reveal">
+    <div class="pnum">P2</div>
+    <div>
+      <h4>老周 · 进阶玩家</h4>
+      <div class="role">琴龄 5 年，主攻指弹与 Funk 扫弦</div>
+      <div class="grid">
+        <div class="cell"><div class="k">核心目标</div><div class="v">攻克切分与十六分音符节奏，稳步提升速度上限</div></div>
+        <div class="cell"><div class="k">主要痛点</div><div class="v">普通节拍器只有均匀 click，练切分时没有参照；手动调 BPM 爬坡麻烦</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="persona reveal">
+    <div class="pnum">P3</div>
+    <div>
+      <h4>林老师 · 吉他教师</h4>
+      <div class="role">工作室教师，同时带 6–8 个学生</div>
+      <div class="grid">
+        <div class="cell"><div class="k">核心目标</div><div class="v">课上演示节奏型、课后布置可执行的练习配置</div></div>
+        <div class="cell"><div class="k">主要痛点</div><div class="v">口头讲解时值抽象低效；学生回家就忘了课上讲的节奏感觉</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 用户故事 ================= -->
+<section id="s3">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">03</span><h2>用户故事</h2></div>
+    <p class="sec-lede">格式：作为 [角色]，我想要 [功能]，以便 [价值]。编号映射到第 04 节功能清单。</p>
+  </div>
+
+  <h3 class="reveal">P1 · 阿澈（初学者）</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>编号</th><th>用户故事</th><th>映射功能</th></tr></thead>
+    <tbody>
+      <tr><td class="id">US-101</td><td>作为初学者，我想看到每个音的时值长度，以便真正理解四分、八分、附点的差别</td><td class="id">F-004</td></tr>
+      <tr><td class="id">US-102</td><td>作为初学者，我想跟着高亮的播放头弹，以便清楚自己该在哪一刻拨弦</td><td class="id">F-001, F-005</td></tr>
+      <tr><td class="id">US-103</td><td>作为初学者，我想直接选常用扫弦节奏型，以便不用研究复杂参数就能开始练</td><td class="id">F-006</td></tr>
+      <tr><td class="id">US-104</td><td>作为初学者，我想自由调慢速度，以便把节奏型拆解到我能跟上的速度</td><td class="id">F-002, F-007</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="reveal">P2 · 老周（进阶玩家）</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>编号</th><th>用户故事</th><th>映射功能</th></tr></thead>
+    <tbody>
+      <tr><td class="id">US-201</td><td>作为进阶玩家，我想设置「从 60 到 120、每 4 小节 +5」的爬坡训练，以便稳步提速不用手动调</td><td class="id">F-009</td></tr>
+      <tr><td class="id">US-202</td><td>作为进阶玩家，我想敲几下屏幕测出歌曲速度，以便快速对齐练习 BPM</td><td class="id">F-008</td></tr>
+      <tr><td class="id">US-203</td><td>作为进阶玩家，我想编辑每一拍的细分（十六分、切分、附点），以便练任何我遇到的节奏型</td><td class="id">F-010</td></tr>
+      <tr><td class="id">US-204</td><td>作为进阶玩家，我想让 click 定期消失一小节，以便训练内心节拍</td><td class="id">F-011</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="reveal">P3 · 林老师（教师）</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>编号</th><th>用户故事</th><th>映射功能</th></tr></thead>
+    <tbody>
+      <tr><td class="id">US-301</td><td>作为教师，我想把时值动画投到大屏上演示，以便学生直观看到节奏结构</td><td class="id">F-004, F-005</td></tr>
+      <tr><td class="id">US-302</td><td>作为教师，我想保存几套常用练习配置，以便上课随取随用</td><td class="id">F-012</td></tr>
+      <tr><td class="id">US-303</td><td>作为教师，我想切换拍号与重音位置（如 6/8），以便覆盖不同风格的曲目</td><td class="id">F-003</td></tr>
+      <tr><td class="id">US-304</td><td>作为教师，我想开启人声数拍，以便低年级学生跟得上</td><td class="id">F-013</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<!-- ================= 04 功能需求 ================= -->
+<section id="s4">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">04</span><h2>功能需求</h2></div>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">4.1</span>功能清单</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>编号</th><th>功能名称</th><th>来源故事</th><th>描述</th><th>输入 / 输出</th></tr></thead>
+    <tbody>
+      <tr><td class="id">F-001</td><td><span class="fname">音频调度引擎</span></td><td class="id">US-102</td><td>基于 Web Audio 前瞻调度（lookahead scheduling）的无漂移 click 引擎，后台标签页持续发声</td><td>输入：BPM、拍号；输出：精准节拍音频流</td></tr>
+      <tr><td class="id">F-002</td><td><span class="fname">BPM 设置</span></td><td class="id">US-104</td><td>滑块 + 数字输入 + ±1 步进，范围 30–240，播放中实时生效</td><td>输入：数值/拖动；输出：当前 BPM</td></tr>
+      <tr><td class="id">F-003</td><td><span class="fname">拍号与重音</span></td><td class="id">US-303</td><td>常用拍号（2/4、3/4、4/4、6/8 等），自定义每拍重音强弱，强拍与弱拍不同音色</td><td>输入：拍号、重音位；输出：分拍音频 + 小节结构</td></tr>
+      <tr><td class="id">F-004</td><td><span class="fname">时值可视化引擎</span></td><td class="id">US-101, US-301</td><td>核心差异化：音符渲染为长度与时值成正比的图形（条形/弧线），支持休止符占位、附点、连音线</td><td>输入：节奏型数据；输出：小节时值图</td></tr>
+      <tr><td class="id">F-005</td><td><span class="fname">播放头与当前拍高亮</span></td><td class="id">US-102, US-301</td><td>播放头以音频时钟为基准扫过时值图，当前音符高亮，小节循环无缝衔接</td><td>输入：音频时钟；输出：同步动画</td></tr>
+      <tr><td class="id">F-006</td><td><span class="fname">吉他节奏型预设库</span></td><td class="id">US-103</td><td>内置 ≥8 个常用型：下-下上-上下上、民谣分解 53231323、切分型、Funk 十六分型等，附名称与时值图</td><td>输入：选择；输出：载入节奏型</td></tr>
+      <tr><td class="id">F-007</td><td><span class="fname">播放控制</span></td><td class="id">US-104</td><td>开始/停止（大按钮 + 空格键）、总音量、重拍音量分层控制</td><td>输入：点击/键盘；输出：播放状态</td></tr>
+      <tr><td class="id">F-008</td><td><span class="fname">Tap Tempo</span></td><td class="id">US-202</td><td>连续敲击测速，取平均间隔计算 BPM，异常间隔自动重置采样</td><td>输入：连续点击；输出：估算 BPM</td></tr>
+      <tr><td class="id">F-009</td><td><span class="fname">变速训练器</span></td><td class="id">US-201</td><td>设置起始/目标 BPM、步长、每步小节数，自动爬坡，完成提示</td><td>输入：训练参数；输出：自动变速播放</td></tr>
+      <tr><td class="id">F-010</td><td><span class="fname">自定义节奏型编辑</span></td><td class="id">US-203</td><td>逐拍编辑细分（四分/二八/十六分/附点/休止），时值超限实时校验</td><td>输入：逐拍编辑；输出：自定义节奏型</td></tr>
+      <tr><td class="id">F-011</td><td><span class="fname">静音拍训练</span></td><td class="id">US-204</td><td>周期性静音指定小节（如每 4 小节静音第 4 小节），仅可视化运行，练内心节拍</td><td>输入：静音规则；输出：间歇音频</td></tr>
+      <tr><td class="id">F-012</td><td><span class="fname">本地预设保存</span></td><td class="id">US-302</td><td>配置命名保存至浏览器本地，可加载、重命名、删除</td><td>输入：配置+名称；输出：预设列表</td></tr>
+      <tr><td class="id">F-013</td><td><span class="fname">人声数拍</span></td><td class="id">US-304</td><td>每拍叠加中文数拍人声（「一、二、三、四」），与 click 严格同步</td><td>输入：开关；输出：数拍音轨</td></tr>
+      <tr><td class="id">F-014</td><td><span class="fname">账号与云同步</span></td><td class="id">—</td><td>跨设备同步预设与练习记录</td><td>本期不做</td></tr>
+      <tr><td class="id">F-015</td><td><span class="fname">MIDI / DAW 导出</span></td><td class="id">—</td><td>将节奏型导出为 MIDI 文件</td><td>本期不做</td></tr>
+      <tr><td class="id">F-016</td><td><span class="fname">社区节奏型分享</span></td><td class="id">—</td><td>用户上传/下载节奏型，点赞排行</td><td>本期不做</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="reveal"><span class="h3-num">4.2</span>非功能需求</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>维度</th><th>要求</th></tr></thead>
+    <tbody>
+      <tr><td><span class="fname">性能</span></td><td>音频调度误差 &lt; 5ms（lookahead 25ms，定时器 50–100Hz）；动画 60fps，播放头与音频偏差 &lt; 16ms；低端机掉帧时优先保音频</td></tr>
+      <tr><td><span class="fname">兼容性</span></td><td>移动优先；iOS Safari 14+ / Android Chrome 90+ / 桌面主流浏览器；处理首次交互解锁 AudioContext</td></tr>
+      <tr><td><span class="fname">可用性</span></td><td>PWA 支持离线使用与「添加到主屏幕」；锁屏/切后台音频不中断（依赖系统策略，尽力而为）</td></tr>
+      <tr><td><span class="fname">易用性</span></td><td>首次进入 30 秒内可开始练习；大字距高对比演奏界面（暗色练习模式）；横屏适配课堂投影</td></tr>
+      <tr><td><span class="fname">安全 / 隐私</span></td><td>无账号、无服务端，全部数据存本地；不上报任何练习数据</td></tr>
+      <tr><td><span class="fname">可扩展性</span></td><td>节奏型与音色为数据驱动（JSON schema），新增节奏型/音色包不改引擎代码</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="reveal"><span class="h3-num">4.3</span>功能依赖关系</h3>
+  <div class="reveal">
+    <ul class="tight">
+      <li><strong>地基链：</strong>F-001 音频引擎 → F-004 时值可视化 → F-005 播放头（动画必须由音频时钟驱动，反向则必然漂移）。</li>
+      <li>F-002 / F-003 是 F-001 的输入参数，三者同属 MVP 最小闭环；F-006 依赖 F-004 的渲染能力。</li>
+      <li>F-008 输出写入 F-002；F-009 驱动 F-002；F-010 产出物进入 F-004；F-012 序列化以上全部配置。</li>
+      <li>F-011 / F-013 是 F-001 的音轨扩展，相互独立，可并行开发。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= 05 优先级 ================= -->
+<section id="s5">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">05</span><h2>优先级 · MoSCoW 矩阵</h2></div>
+    <p class="sec-lede">点击标签筛选。Must 占 7/16（44%，≤60% 健康线）；Won't 显式排除 3 项，防止范围蔓延。</p>
+  </div>
+
+  <div class="filter-bar reveal">
+    <button class="chip on" data-f="all">全部<span class="cnt">16</span></button>
+    <button class="chip" data-f="must">Must<span class="cnt">7</span></button>
+    <button class="chip" data-f="should">Should<span class="cnt">3</span></button>
+    <button class="chip" data-f="could">Could<span class="cnt">3</span></button>
+    <button class="chip" data-f="wont">Won't<span class="cnt">3</span></button>
+  </div>
+  <div id="moscow-count" class="reveal"></div>
+  <div class="tbl-scroll reveal"><table id="moscow-tbl">
+    <thead><tr><th>编号</th><th>功能名称</th><th>优先级</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr data-p="must"><td class="id">F-001</td><td>音频调度引擎</td><td><span class="badge must">Must</span></td><td>节拍器的地基，精度不达标则产品不成立</td></tr>
+      <tr data-p="must"><td class="id">F-002</td><td>BPM 设置</td><td><span class="badge must">Must</span></td><td>核心流程必经，无替代方案</td></tr>
+      <tr data-p="must"><td class="id">F-003</td><td>拍号与重音</td><td><span class="badge must">Must</span></td><td>覆盖基本曲库，缺失则无法练 3/4、6/8</td></tr>
+      <tr data-p="must"><td class="id">F-004</td><td>时值可视化引擎</td><td><span class="badge must">Must</span></td><td>产品差异化核心，没有它就是又一个普通节拍器</td></tr>
+      <tr data-p="must"><td class="id">F-005</td><td>播放头与高亮</td><td><span class="badge must">Must</span></td><td>可视化的另一半：时值图没有播放头等于静态图片</td></tr>
+      <tr data-p="must"><td class="id">F-006</td><td>吉他节奏型预设库</td><td><span class="badge must">Must</span></td><td>「吉他专用」承诺的兑现点，新手开箱即用</td></tr>
+      <tr data-p="must"><td class="id">F-007</td><td>播放控制</td><td><span class="badge must">Must</span></td><td>开始/停止/音量，核心流程闭环</td></tr>
+      <tr data-p="should"><td class="id">F-008</td><td>Tap Tempo</td><td><span class="badge should">Should</span></td><td>高频便利功能，缺失可手动输入 BPM 替代</td></tr>
+      <tr data-p="should"><td class="id">F-009</td><td>变速训练器</td><td><span class="badge should">Should</span></td><td>进阶用户核心诉求，MVP 可先手动调速</td></tr>
+      <tr data-p="should"><td class="id">F-010</td><td>自定义节奏型编辑</td><td><span class="badge should">Should</span></td><td>重要但复杂度高，MVP 用预设库覆盖 80% 场景</td></tr>
+      <tr data-p="could"><td class="id">F-011</td><td>静音拍训练</td><td><span class="badge could">Could</span></td><td>锦上添花的高阶练法，实现成本低</td></tr>
+      <tr data-p="could"><td class="id">F-012</td><td>本地预设保存</td><td><span class="badge could">Could</span></td><td>提升复访体验，无它也能用</td></tr>
+      <tr data-p="could"><td class="id">F-013</td><td>人声数拍</td><td><span class="badge could">Could</span></td><td>教学场景加分项，需录音资产</td></tr>
+      <tr data-p="wont"><td class="id">F-014</td><td>账号与云同步</td><td><span class="badge wont">Won't</span></td><td>引入后端与隐私成本，v2 再评估</td></tr>
+      <tr data-p="wont"><td class="id">F-015</td><td>MIDI / DAW 导出</td><td><span class="badge wont">Won't</span></td><td>受众是吉他练习者而非制作人，本期不做</td></tr>
+      <tr data-p="wont"><td class="id">F-016</td><td>社区节奏型分享</td><td><span class="badge wont">Won't</span></td><td>冷启动无社区基础，避免空壳功能</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="reveal"><span class="h3-num">5.2</span>版本规划建议</h3>
+  <div class="plan reveal">
+    <div>
+      <div class="v">MVP · v1.0</div>
+      <h5>7 项 Must</h5>
+      <p>「能响、能看、能选节奏型」的最小闭环。验证时值可视化是否真能帮新手弹准。</p>
+    </div>
+    <div>
+      <div class="v">v1.1</div>
+      <h5>3 项 Should</h5>
+      <p>Tap Tempo、变速训练、自定义编辑 —— 从「能用」到「好用」，锁住进阶用户。</p>
+    </div>
+    <div>
+      <div class="v">v2.0</div>
+      <h5>评估 Could</h5>
+      <p>静音拍、预设保存、人声数拍按用户反馈排期；Won't 项届时重新评审。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 06 验收标准 ================= -->
+<section id="s6">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">06</span><h2>验收标准</h2></div>
+    <p class="sec-lede">Given-When-Then 格式。Must 每项 ≥3 条（正常+异常+边界），Should ≥2 条，Could ≥1 条。点击展开。</p>
+  </div>
+
+  <details class="ac reveal" open>
+    <summary><span class="fid">F-001</span><span class="ftitle">音频调度引擎</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F001-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>设置 BPM=120、4/4 拍</div>
+        <div><span class="kw w">When</span>点击开始</div>
+        <div><span class="kw t">Then</span>每 500ms 精确发声一次，第 1 拍为重音音色，连续播放 60 小节累积漂移 &lt; 5ms</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F001-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>正在播放</div>
+        <div><span class="kw w">When</span>用户切换到其他标签页</div>
+        <div><span class="kw t">Then</span>音频持续播放不中断、不卡顿</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F001-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>BPM=30（最小值）</div>
+        <div><span class="kw w">When</span>播放</div>
+        <div><span class="kw t">Then</span>间隔 2000ms 准确发声，动画同步无跳帧</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-002</span><span class="ftitle">BPM 设置</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F002-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>任意状态</div>
+        <div><span class="kw w">When</span>拖动滑块或输入 30–240 之间的数值</div>
+        <div><span class="kw t">Then</span>BPM 实时更新，播放中立即生效且不打断节拍</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F002-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>BPM 输入框</div>
+        <div><span class="kw w">When</span>输入 500</div>
+        <div><span class="kw t">Then</span>数值被钳制到 240，并提示有效范围 30–240</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F002-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>BPM 输入框</div>
+        <div><span class="kw w">When</span>输入非数字或留空并失焦</div>
+        <div><span class="kw t">Then</span>恢复原值，不产生任何播放异常</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-003</span><span class="ftitle">拍号与重音</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F003-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>停止状态</div>
+        <div><span class="kw w">When</span>选择 3/4 拍</div>
+        <div><span class="kw t">Then</span>每小节 3 拍、第 1 拍重音，时值图按 3 拍重新布局</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F003-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>正在播放 4/4</div>
+        <div><span class="kw w">When</span>切换到 6/8</div>
+        <div><span class="kw t">Then</span>当前小节完整播完后切换，音频不中断、不抢拍</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F003-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>选择 6/8</div>
+        <div><span class="kw w">When</span>播放</div>
+        <div><span class="kw t">Then</span>每小节呈两组重音（第 1、4 拍），可视化按两组分组显示</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-004</span><span class="ftitle">时值可视化引擎</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F004-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>4/4 节奏型含四分、八分、附点音符</div>
+        <div><span class="kw w">When</span>渲染时值图</div>
+        <div><span class="kw t">Then</span>图形长度与时值严格成正比：八分 = 四分的一半，附点四分 = 1.5 倍，像素误差 ≤ 1px</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F004-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>节奏型含休止符</div>
+        <div><span class="kw w">When</span>渲染</div>
+        <div><span class="kw t">Then</span>休止位置显示等长的空白占位标记，播放头扫过时不发声、无高亮</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F004-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>时值图已渲染</div>
+        <div><span class="kw w">When</span>修改节奏型</div>
+        <div><span class="kw t">Then</span>300ms 内完成重渲染，无闪烁、无残影</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-005</span><span class="ftitle">播放头与当前拍高亮</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F005-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>正在播放</div>
+        <div><span class="kw w">When</span>观察任意时刻</div>
+        <div><span class="kw t">Then</span>播放头位置与音频 click 的视觉偏差 &lt; 16ms（1 帧内）</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F005-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>低端设备掉帧</div>
+        <div><span class="kw w">When</span>帧率低于 30fps</div>
+        <div><span class="kw t">Then</span>动画降级为整拍闪烁模式，音频精度不受影响</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F005-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>播放至小节末尾</div>
+        <div><span class="kw w">When</span>进入下一小节</div>
+        <div><span class="kw t">Then</span>播放头无缝回到起点，无视觉跳跃或停顿</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-006</span><span class="ftitle">吉他节奏型预设库</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F006-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>首次打开</div>
+        <div><span class="kw w">When</span>展开预设列表</div>
+        <div><span class="kw t">Then</span>至少展示 8 个吉他常用节奏型，每个附名称、适用场景与时值缩略图</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F006-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>某预设数据损坏</div>
+        <div><span class="kw w">When</span>选择该预设</div>
+        <div><span class="kw t">Then</span>回退为默认四分音符节奏型并提示，不崩溃</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F006-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>正在播放</div>
+        <div><span class="kw w">When</span>切换预设</div>
+        <div><span class="kw t">Then</span>下一小节边界生效，时值图与音频同时切换</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-007</span><span class="ftitle">播放控制</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F007-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>页面已加载且用户已交互过</div>
+        <div><span class="kw w">When</span>点击开始按钮或按空格键</div>
+        <div><span class="kw t">Then</span>100ms 内开始播放，按钮状态同步切换</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F007-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>浏览器拦截自动播放（未交互）</div>
+        <div><span class="kw w">When</span>尝试播放</div>
+        <div><span class="kw t">Then</span>引导用户点击以解锁音频，不出现无声假播放状态</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F007-03 · 边界</div><div class="gwt">
+        <div><span class="kw">Given</span>音量滑块</div>
+        <div><span class="kw w">When</span>调至 0</div>
+        <div><span class="kw t">Then</span>完全静音，但播放头与时值动画继续正常运行</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-008</span><span class="ftitle">Tap Tempo（Should）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F008-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>任意状态</div>
+        <div><span class="kw w">When</span>以稳定节奏连续点击 Tap 按钮 ≥ 3 次</div>
+        <div><span class="kw t">Then</span>按平均间隔计算 BPM 并应用，与真实速度误差 ≤ ±2</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F008-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>正在 Tap 测速</div>
+        <div><span class="kw w">When</span>相邻两次点击间隔 &gt; 2 秒</div>
+        <div><span class="kw t">Then</span>采样自动重置，重新开始计数</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-009</span><span class="ftitle">变速训练器（Should）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F009-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>设置 60 → 120、每 4 小节 +5</div>
+        <div><span class="kw w">When</span>开始训练</div>
+        <div><span class="kw t">Then</span>每播满 4 个小节自动 +5 BPM，到达 120 后停止并提示「训练完成」</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F009-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>训练参数设置</div>
+        <div><span class="kw w">When</span>目标 BPM &lt; 起始 BPM</div>
+        <div><span class="kw t">Then</span>校验提示且无法开始训练</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-010</span><span class="ftitle">自定义节奏型编辑（Should）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F010-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>编辑模式</div>
+        <div><span class="kw w">When</span>点击某拍并选择细分（四分/二八/十六分/附点）</div>
+        <div><span class="kw t">Then</span>该拍时值图即时更新，播放内容随之改变</div>
+      </div></div>
+      <div class="ac-item"><div class="ac-id">AC-F010-02 · 异常</div><div class="gwt">
+        <div><span class="kw">Given</span>编辑过程中</div>
+        <div><span class="kw w">When</span>音符时值总和超出小节总时值</div>
+        <div><span class="kw t">Then</span>该拍标红提示，阻止保存并说明超限原因</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-011</span><span class="ftitle">静音拍训练（Could）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F011-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>开启「每 4 小节静音第 4 小节」</div>
+        <div><span class="kw w">When</span>播放至第 4 小节</div>
+        <div><span class="kw t">Then</span>该小节无 click，仅播放头与时值动画继续运行</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-012</span><span class="ftitle">本地预设保存（Could）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F012-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>已保存一套命名配置</div>
+        <div><span class="kw w">When</span>刷新页面后打开预设列表</div>
+        <div><span class="kw t">Then</span>该配置仍在列表中，可一键完整还原（BPM/拍号/节奏型/音量）</div>
+      </div></div>
+    </div>
+  </details>
+
+  <details class="ac reveal">
+    <summary><span class="fid">F-013</span><span class="ftitle">人声数拍（Could）</span><span class="arrow">›</span></summary>
+    <div class="ac-body">
+      <div class="ac-item"><div class="ac-id">AC-F013-01 · 正常</div><div class="gwt">
+        <div><span class="kw">Given</span>开启人声数拍</div>
+        <div><span class="kw w">When</span>播放</div>
+        <div><span class="kw t">Then</span>每拍叠加中文数拍（「一、二、三、四」），与 click 同步偏差 &lt; 20ms</div>
+      </div></div>
+    </div>
+  </details>
+</section>
+
+<!-- ================= 07 假设与约束 ================= -->
+<section id="s7">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">07</span><h2>假设与约束</h2></div>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">7.1</span>假设（快速模式下未澄清的决策点）</h3>
+  <div class="reveal">
+    <div class="callout"><div class="k">假设 A</div>「节奏可视化」= <strong>时值可视化</strong>：音符图形长度与时值成正比。若你指的是别的（如力度波形、频谱动画），核心功能 F-004/F-005 需重写。</div>
+    <div class="callout"><div class="k">假设 B</div>目标用户 = <strong>自学吉他的初中级练习者</strong>，兼顾教师演示场景。</div>
+    <div class="callout"><div class="k">假设 C</div>形态 = <strong>单页 Web App（PWA）</strong>，移动浏览器优先，无后端、数据全本地。</div>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">7.2</span>约束</h3>
+  <div class="reveal">
+    <ul class="tight">
+      <li><strong>技术约束：</strong>纯前端（Web Audio API + Canvas/SVG）；音频精度受浏览器调度机制约束，必须用音频时钟驱动动画。</li>
+      <li><strong>业务约束：</strong>暂无商业化要求；无内容合规风险（无 UGC）。</li>
+      <li><strong>时间约束：</strong>假设 MVP 开发周期 4–6 周（1 人全栈）。</li>
+    </ul>
+  </div>
+
+  <h3 class="reveal"><span class="h3-num">7.3</span>风险</h3>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>风险</th><th>影响</th><th>概率</th><th>缓解措施</th></tr></thead>
+    <tbody>
+      <tr><td>移动端浏览器音频自动播放限制</td><td>高</td><td>高</td><td>首次交互解锁 AudioContext；明确的「点击开始」引导，不做无声假状态</td></tr>
+      <tr><td>视觉与音频同步漂移</td><td>高</td><td>中</td><td>动画一律由音频时钟驱动，禁止用 requestAnimationFrame 计时推音频</td></tr>
+      <tr><td>时值可视化理解成本超预期</td><td>中</td><td>中</td><td>首启 3 屏引导 + 默认载入「四分音符」最简节奏型，先建立「长度=时值」心智</td></tr>
+      <tr><td>与成熟节拍器 App 功能同质化</td><td>中</td><td>低</td><td>守住吉他场景：预设库、扫弦术语、教师演示，不做通用工具军备竞赛</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ================= 08 开放问题 ================= -->
+<section id="s8">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">08</span><h2>开放问题</h2></div>
+    <p class="sec-lede">以下问题影响后续版本规划，勾选标记已确认项。</p>
+  </div>
+  <div class="oq reveal">
+    <label><input type="checkbox"><span>商业化模式是什么？免费工具引流、一次性买断，还是订阅制？（影响 v2 的账号体系决策）</span></label>
+    <label><input type="checkbox"><span>是否需要横屏大屏模式（课堂投影 / 排练室平板）？若是，P3 教师场景权重上调。</span></label>
+    <label><input type="checkbox"><span>音色方案：合成 click（零资产、体积小）还是真鼓/木鱼采样（质感好、需资产）？</span></label>
+    <label><input type="checkbox"><span>节奏型数据 schema 是否对第三方开放？（为 v2 之后的社区分享预留接口）</span></label>
+    <label><input type="checkbox"><span>「时值可视化」的最终形态：横向条形（本文假设）、环形小节盘，还是两者可切换？</span></label>
+  </div>
+</section>
+
+<!-- ================= 附录 ================= -->
+<section id="s9">
+  <div class="reveal">
+    <div class="sec-head"><span class="sec-num">附</span><h2>附录 · 术语表</h2></div>
+  </div>
+  <div class="tbl-scroll reveal"><table>
+    <thead><tr><th>术语</th><th>释义</th></tr></thead>
+    <tbody>
+      <tr><td><span class="fname">时值</span></td><td>一个音持续的时长。四分音符 = 1 拍，八分 = 半拍，附点音符 = 原时值 × 1.5</td></tr>
+      <tr><td><span class="fname">拍号</span></td><td>如 4/4：以四分音符为一拍，每小节四拍</td></tr>
+      <tr><td><span class="fname">重音</span></td><td>小节内被强调的拍，通常第 1 拍最强；6/8 为第 1、4 拍两组</td></tr>
+      <tr><td><span class="fname">切分</span></td><td>重音落在弱拍或拍点之间的节奏型，吉他扫弦/Funk 的核心难点</td></tr>
+      <tr><td><span class="fname">Lookahead Scheduling</span></td><td>Web Audio 的前瞻调度技术：提前把音符排入音频时钟队列，规避 JS 定时器抖动，保证节拍无漂移</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+
+<footer>
+  <div class="inner">
+    <div>
+      <div class="brand">BeatSight 时值节拍器</div>
+      <div class="mono" style="margin-top:8px">PRD v1.0 · 2026-09-03 · DRAFT</div>
+    </div>
+    <div class="mono">GENERATED VIA IDEA-TO-PRD · 快速模式</div>
+  </div>
+</footer>
+
+<button id="totop" aria-label="回到顶部">↑</button>
+
+<script>
+/* ---------- progress bar ---------- */
+const prog = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement;
+  prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+}, {passive:true});
+
+/* ---------- scrollspy ---------- */
+const links = [...document.querySelectorAll('nav.toc a')];
+const secs = links.map(a => document.getElementById(a.dataset.sec));
+const spy = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(a => a.classList.toggle('active', a.dataset.sec === e.target.id));
+    }
+  });
+}, {rootMargin:'-20% 0px -70% 0px'});
+secs.forEach(s => s && spy.observe(s));
+
+/* ---------- reveal ---------- */
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+}, {threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ---------- MoSCoW filter ---------- */
+const chips = [...document.querySelectorAll('.chip')];
+const rows = [...document.querySelectorAll('#moscow-tbl tbody tr')];
+const cntEl = document.getElementById('moscow-count');
+chips.forEach(c => c.addEventListener('click', () => {
+  chips.forEach(x => x.classList.remove('on'));
+  c.classList.add('on');
+  const f = c.dataset.f;
+  let n = 0;
+  rows.forEach(r => {
+    const show = f === 'all' || r.dataset.p === f;
+    r.classList.toggle('hide', !show);
+    if (show) n++;
+  });
+  cntEl.textContent = '显示 ' + n + ' / 16 项功能';
+}));
+cntEl.textContent = '显示 16 / 16 项功能';
+
+/* ---------- open questions ---------- */
+document.querySelectorAll('.oq input').forEach(cb => {
+  cb.addEventListener('change', () => cb.closest('label').classList.toggle('done', cb.checked));
+});
+
+/* ---------- back to top ---------- */
+const totop = document.getElementById('totop');
+addEventListener('scroll', () => totop.classList.toggle('show', scrollY > 700), {passive:true});
+totop.addEventListener('click', () => scrollTo({top:0, behavior:'smooth'}));
+
+/* ---------- 时值可视化 demo ---------- */
+(function(){
+  const cv = document.getElementById('demo-canvas');
+  const ctx = cv.getContext('2d');
+  const btn = document.getElementById('demo-btn');
+  // pattern in 16th-note units within one 4/4 bar (total 16):
+  // quarter(4), two eighths(2+2), dotted-8th+sixteenth(3+1), quarter(4)
+  const notes = [
+    {len:4, label:'四分'},
+    {len:2, label:'八分'},
+    {len:2, label:'八分'},
+    {len:3, label:'附点八'},
+    {len:1, label:'十六'},
+    {len:4, label:'四分'},
+  ];
+  const TOTAL = 16;
+  const BPM = 96;
+  const barMs = 60000 / BPM * 4;
+  let playing = false, t0 = 0, raf;
+
+  function resize(){
+    const dpr = devicePixelRatio || 1;
+    cv.width = cv.clientWidth * dpr;
+    cv.height = cv.clientHeight * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw(playing ? (performance.now() - t0) % barMs : -1);
+  }
+  addEventListener('resize', resize);
+
+  function draw(ms){
+    const W = cv.clientWidth, H = cv.clientHeight;
+    const pad = 36, top = 44, bh = 56;
+    const uw = (W - pad*2) / TOTAL;
+    ctx.clearRect(0,0,W,H);
+
+    // beat grid lines (4 beats)
+    ctx.strokeStyle = '#e5e5e5'; ctx.lineWidth = 1;
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillStyle = '#6e6e6e';
+    for (let b = 0; b <= 4; b++){
+      const x = pad + b * 4 * uw;
+      ctx.beginPath(); ctx.moveTo(x, top - 18); ctx.lineTo(x, top + bh + 14); ctx.stroke();
+      if (b < 4) ctx.fillText(String(b+1), x + 4, top - 24);
+    }
+
+    // note bars
+    let x = pad;
+    const tUnits = ms >= 0 ? (ms / barMs) * TOTAL : -1;
+    notes.forEach((n, i) => {
+      const w = n.len * uw - 3;
+      const start = notes.slice(0,i).reduce((s,m)=>s+m.len,0);
+      const active = tUnits >= start && tUnits < start + n.len;
+      const passed = tUnits >= start + n.len;
+      ctx.fillStyle = active ? '#0a0a0a' : (passed ? '#0a0a0a' : 'rgba(10,10,10,.16)');
+      if (active || passed || ms < 0) {
+        ctx.fillRect(x, top, w, bh);
+      } else {
+        ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = 1.2;
+        ctx.strokeRect(x + .5, top + .5, w, bh);
+      }
+      ctx.fillStyle = active ? '#0a0a0a' : '#6e6e6e';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillText(n.label, x + 2, top + bh + 28);
+      // duration annotation
+      ctx.fillStyle = '#9a9a9a';
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText((n.len/4).toFixed(n.len%4?2:0).replace(/0+$/,'').replace(/\.$/,'') + '拍', x + 2, top + bh + 44);
+      x += n.len * uw;
+    });
+
+    // playhead
+    if (ms >= 0){
+      const px = pad + tUnits * uw;
+      ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, top - 18); ctx.lineTo(px, top + bh + 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px - 5, top - 18); ctx.lineTo(px + 5, top - 18); ctx.lineTo(px, top - 9); ctx.closePath();
+      ctx.fillStyle = '#0a0a0a'; ctx.fill();
+    }
+  }
+
+  function loop(){
+    if (!playing) return;
+    draw((performance.now() - t0) % barMs);
+    raf = requestAnimationFrame(loop);
+  }
+  btn.addEventListener('click', () => {
+    playing = !playing;
+    if (playing){ t0 = performance.now(); btn.textContent = '■ 停止'; loop(); }
+    else { cancelAnimationFrame(raf); btn.textContent = '▶ 播放'; draw(-1); }
+  });
+  resize();
+})();
+</script>
+</body>
+</html>

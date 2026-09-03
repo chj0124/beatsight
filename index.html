@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BeatSight 时值节拍器 · M2</title>
+<style>
+:root{
+  --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
+  --line:#2A2A2A; --border:#4D4D4D;
+  --green:#1ED760; --red:#F3727F;
+  --t1:#FFFFFF; --t2:#B3B3B3; --t3:#737373; --on-green:#0A0A0A;
+  --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:"Inter",ui-monospace,"SF Mono",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:disabled{cursor:not-allowed}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
+.dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
+.dot.live{box-shadow:0 0 8px rgba(30,215,96,.6);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+/* ---------- 主布局 ---------- */
+.main{display:grid;grid-template-columns:1fr 360px;gap:24px;max-width:1440px;margin:0 auto;padding:24px}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--card);border-radius:12px;padding:24px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--green)}
+.status .dot{width:8px;height:8px}
+.caption{font-size:12px;color:var(--t3);margin-top:14px}
+
+/* ---------- 当前节奏型头部 ---------- */
+.pattern-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pattern-head .name{font-size:20px;font-weight:700}
+.pattern-head .meta{font-size:13px;color:var(--t2);margin-top:4px}
+
+/* ---------- 时值可视化 ---------- */
+.viz{position:relative}
+.bar-row{position:relative;height:64px;margin-bottom:20px}
+.bar-row:last-child{margin-bottom:0}
+.cell{position:absolute;top:0;height:100%;border-radius:8px;background:rgba(255,255,255,.14);display:flex;align-items:center;padding:0 12px;overflow:hidden}
+.cell span{font-size:12px;font-weight:600;color:var(--on-green);white-space:nowrap;pointer-events:none;position:relative;z-index:2}
+.cell .fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:transparent;pointer-events:none;z-index:0}
+.cell.upcoming span{color:var(--t3);font-weight:500}
+.cell.played .fill{background:#FFFFFF}
+.cell.played span{color:#121212}
+.cell.active{background:rgba(30,215,96,.15);box-shadow:0 0 24px rgba(30,215,96,.45)}
+.cell.active .fill{background:var(--green)}
+.cell.active span{color:var(--on-green);font-weight:700}
+.cell.rest{background:transparent;border:1px dashed var(--border)}
+.cell.rest.played .fill{background:#4D4D4D}
+.cell.rest.active .fill{background:rgba(30,215,96,.45)}
+.cell .subs{position:absolute;inset:5px;display:flex;gap:3px;z-index:1;pointer-events:none}
+.cell .sub{flex:1;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.cell.played .sub,.cell.active .sub{box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none}
+.playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
+
+/* ---------- 走带控制 ---------- */
+.transport{display:flex;align-items:center;gap:32px;flex-wrap:wrap}
+.play-btn{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(30,215,96,.35);flex:none}
+.play-btn:active{transform:scale(.96)}
+.group{display:flex;flex-direction:column;gap:10px}
+.group-label{font-size:11px;color:var(--t3)}
+.bpm-row{display:flex;align-items:center;gap:12px}
+.step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono)}
+.bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);min-width:92px;text-align:center}
+.slider-row{display:flex;align-items:center;gap:14px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
+input[type=range].vol{width:120px}
+.pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2)}
+.pill.active{background:var(--green);color:var(--on-green);font-weight:700}
+.pill.outline{background:transparent;border:1px solid var(--border);color:var(--t1)}
+.pill.flash{background:var(--green);color:var(--on-green)}
+.pill:disabled{background:var(--card2);color:var(--t3)}
+.vdivider{width:1px;height:90px;background:var(--line);flex:none}
+.vol-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}
+.vol-row .pct{font-family:var(--mono);min-width:38px;text-align:right}
+
+/* ---------- 配置开关 ---------- */
+.config{display:flex;gap:12px;flex-wrap:wrap}
+.toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:9999px;padding:10px 14px 10px 16px;font-size:13px}
+.toggle-pill.on{color:var(--t1)}
+.toggle-pill.off{color:var(--t2)}
+.switch{width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;transition:background .15s;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle-pill.on .switch{background:var(--green)}
+.toggle-pill.on .switch::after{left:18px}
+.hint{font-size:12px;color:var(--t3)}
+
+/* ---------- 侧栏 ---------- */
+.preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px}
+.preset-section:first-child{margin-top:0}
+.preset-item{padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.preset-item:hover{background:var(--card2)}
+.preset-item.active{background:var(--card2)}
+.preset-item .name{font-size:13px;font-weight:500}
+.preset-item .meta{font-size:11px;color:var(--t3);margin-top:3px}
+.preset-item.active .meta{color:var(--green)}
+.preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
+.preset-item .del:hover{color:var(--red);background:rgba(243,114,127,.1)}
+.sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
+
+/* ---------- 编辑器 ---------- */
+.editor{position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;display:none}
+.editor.open{display:block}
+.editor-inner{max-width:1080px;margin:0 auto;padding:0 24px 48px}
+.editor-topbar{height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:24px}
+.editor-topbar .left{display:flex;align-items:center;gap:16px}
+.back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
+.editor-title{font-size:16px;font-weight:700}
+.editor-actions{display:flex;gap:10px}
+.edbar{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.edbar-label{width:64px;flex:none}
+.edbar-label .n{font-size:12px;font-weight:500;color:var(--t2)}
+.edbar-label .s{font-size:10px;font-family:var(--mono);color:var(--t3);margin-top:2px}
+.edbar-label.bad .n,.edbar-label.bad .s{color:var(--red)}
+.edtrack{position:relative;flex:1;height:64px;border-radius:8px}
+.edtrack.bad{box-shadow:0 0 0 1.5px var(--red)}
+.edcell{position:absolute;top:0;height:100%;border-radius:6px;background:var(--cell);display:flex;align-items:center;padding:0 10px;overflow:hidden;cursor:pointer}
+.edcell span{font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;pointer-events:none}
+.edcell.rest{background:transparent;border:1px dashed var(--border)}
+.edcell.rest span{color:var(--t3)}
+.edcell.sel{background:rgba(30,215,96,.15);box-shadow:0 0 0 1.5px var(--green)}
+.edcell.sel span{color:var(--green)}
+.ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
+.pal-item:hover{outline:1px solid var(--border)}
+.pal-item .bar{height:14px;border-radius:4px;background:var(--t2);flex:none}
+.pal-item .bar.rest{background:transparent;border:1px solid var(--t3)}
+.pal-item .nm{font-size:12px;font-weight:500}
+.pal-item .du{font-size:11px;color:var(--t3)}
+.check-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);padding:3px 0}
+.check-row.bad{color:var(--red)}
+.check-dot{width:6px;height:6px;border-radius:99px;background:var(--green);flex:none}
+.check-row.bad .check-dot{background:var(--red)}
+.name-input{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;padding:10px 14px;width:280px;font-family:inherit;outline:none}
+.name-input:focus{border-color:var(--border)}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:960px){
+  body{overflow-x:hidden}
+  .topbar{padding:0 16px}
+  .brand{font-size:15px}
+  .topbar .chip{display:none}
+  .main{grid-template-columns:1fr;padding:16px}
+  .card{padding:16px}
+  .transport{gap:20px}
+  .vdivider{display:none}
+  .bpm-num{font-size:38px;min-width:76px}
+  .bar-row{height:48px;margin-bottom:12px}
+  .edtrack{height:56px}
+  input[type=range]{width:100%;flex:1}
+  .slider-row{width:100%}
+  .editor-inner{padding:0 16px 40px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
+    BeatSight 时值节拍器
+  </div>
+  <div class="chip"><span class="dot"></span>M2 · 预设 + 自定义编辑器</div>
+</header>
+
+<div class="main">
+  <div class="col">
+    <!-- 当前节奏型 -->
+    <div class="pattern-head">
+      <div>
+        <div class="name" id="patternName">民谣扫弦 · 下-下上-上下上</div>
+        <div class="meta" id="patternMeta">4/4 拍 · 96 BPM</div>
+      </div>
+      <button class="pill outline" id="editBtn">编辑节奏型</button>
+    </div>
+
+    <!-- 时值可视化 -->
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
+        <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+      </div>
+      <div class="viz" id="viz"></div>
+      <div class="caption">时值 = 长度 —— 同屏滚动 4 小节，提前看清下一段节奏；休止符显示为等长空白占位</div>
+    </section>
+
+    <!-- 走带控制 -->
+    <section class="card transport">
+      <button class="play-btn" id="playBtn" aria-label="播放/停止">
+        <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
+      </button>
+      <div class="group">
+        <div class="group-label">速度 BPM · 范围 30–240</div>
+        <div class="bpm-row">
+          <button class="step-btn" id="bpmMinus">-1</button>
+          <div class="bpm-num" id="bpmNum">96</div>
+          <button class="step-btn" id="bpmPlus">+1</button>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="bpmSlider" min="30" max="240" value="96">
+          <button class="pill outline" id="tapBtn">TAP 测速</button>
+        </div>
+      </div>
+      <div class="vdivider"></div>
+      <div class="group">
+        <div class="group-label">拍号 · 重音在第 1 拍</div>
+        <div class="bpm-row" id="sigRow">
+          <button class="pill" data-sig="2">2/4</button>
+          <button class="pill" data-sig="3">3/4</button>
+          <button class="pill active" data-sig="4">4/4</button>
+          <button class="pill" data-sig="6">6/8</button>
+        </div>
+      </div>
+      <div class="vdivider"></div>
+      <div class="group">
+        <div class="group-label">音量 · 总音量 / 重拍</div>
+        <div class="vol-row"><span>总音量</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80"><span class="pct" id="volMasterPct">80%</span></div>
+        <div class="vol-row"><span>重拍</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100"><span class="pct" id="volAccentPct">100%</span></div>
+      </div>
+    </section>
+
+    <!-- 配置 -->
+    <div class="config">
+      <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
+    </div>
+    <div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
+  </div>
+
+  <!-- 侧栏：预设库 -->
+  <aside class="col">
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">节奏型预设库</div>
+        <div class="chip" id="presetCount">8 内置</div>
+      </div>
+      <div id="presetList"></div>
+      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器（自动爬坡）将在 M3 上线。</div>
+    </section>
+  </aside>
+</div>
+
+<!-- ================= 自定义节奏型编辑器 ================= -->
+<div class="editor" id="editor">
+  <div class="editor-inner">
+    <div class="editor-topbar">
+      <div class="left">
+        <button class="back-btn" id="editorBack">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回练习
+        </button>
+        <div class="editor-title" id="editorTitle">自定义节奏型</div>
+      </div>
+      <div class="editor-actions">
+        <button class="pill outline" id="auditionBtn">试听</button>
+        <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title" id="editorCardTitle">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</div>
+        <div class="status" style="color:var(--red)"><span class="dot" id="editorDot" style="background:var(--green)"></span><span id="editorStatus">校验通过</span></div>
+      </div>
+      <div id="editorBars"></div>
+      <div class="ed-actions">
+        <button class="pill" id="delStepBtn">删除选中音符</button>
+        <button class="pill" id="copyBarBtn">复制小节到全部</button>
+        <button class="pill outline" id="clearBarBtn">清空当前小节</button>
+        <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存</span>
+      </div>
+      <div class="card-title" style="margin-bottom:10px">音符块库</div>
+      <div class="palette" id="palette"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--t2)">预设名称</span>
+        <input class="name-input" id="presetNameInput" value="我的节奏型">
+        <span class="hint">保存后可在主界面「我的预设」中找到</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= 数据 ================= */
+const D = (d, rest) => ({d, rest: !!rest});
+const rep4 = steps => [0,1,2,3].map(() => steps.map(s => ({...s})));
+const BUILTINS = [
+  {name:"民谣扫弦 · 下-下上-上下上", desc:"4/4 · 扫弦 · 弹唱", meter:4,
+   bars:rep4([D(1),D(0.5),D(0.5),D(0.75),D(0.25),D(1)])},
+  {name:"四分基础", desc:"4/4 · 新手入门 · 最简节奏型", meter:4,
+   bars:rep4([D(1),D(1),D(1),D(1)])},
+  {name:"八分摇滚", desc:"4/4 · 八分均分 · 驱动感", meter:4,
+   bars:rep4(Array.from({length:8},()=>D(0.5)))},
+  {name:"附点布鲁斯", desc:"4/4 · 附点 · Shuffle 律动", meter:4,
+   bars:rep4(Array.from({length:4},()=>[D(0.75),D(0.25)]).flat())},
+  {name:"切分节奏型", desc:"4/4 · 切分 · 进阶", meter:4,
+   bars:rep4([D(0.5),D(0.5),D(1),D(0.5),D(0.5),D(1)])},
+  {name:"Funk 十六分", desc:"4/4 · 十六分细分 · 制音", meter:4,
+   bars:rep4([D(0.25),D(0.25),D(0.25),D(0.25,true),D(0.25),D(0.25),D(0.25,true),D(0.25),D(0.25),D(0.25),D(0.25),D(0.25,true),D(0.25),D(0.25),D(0.25)])},
+  {name:"华尔兹分解", desc:"3/4 · 强弱弱 · 慢速抒情", meter:3,
+   bars:rep4([D(1),D(1),D(1)])},
+  {name:"摇曳 6/8", desc:"6/8 · 两大拍 · 摇摆律动", meter:6,
+   bars:rep4([D(1.5),D(1.5),D(1.5),D(1.5)])},
+];
+const PALETTE = [
+  {d:4,   nm:"全音符",   du:"4 拍",    w:48},
+  {d:2,   nm:"二分音符", du:"2 拍",    w:36},
+  {d:1,   nm:"四分音符", du:"1 拍",    w:24},
+  {d:0.75,nm:"附点八分", du:"0.75 拍", w:20},
+  {d:0.5, nm:"八分音符", du:"0.5 拍",  w:14},
+  {d:0.25,nm:"十六分",   du:"0.25 拍", w:8},
+  {d:1,   nm:"休止符",   du:"占时不发声", w:24, rest:true},
+];
+const DUR_NAME = {4:"全",2:"二分",1:"四分",0.75:"附点八",0.5:"八分",0.25:"十六",1.5:"附点四"};
+const LOOP_BARS = 4;
+
+/* ================= 状态 ================= */
+const saved = JSON.parse(localStorage.getItem("beatsight.m2") || "{}");
+const S = {
+  bpm: saved.bpm || 96,
+  vol: saved.vol ?? 0.8,
+  accentVol: saved.accentVol ?? 1,
+  mute: !!saved.mute,
+  sig: saved.sig || 4,
+  sel: saved.sel || {type:"builtin", idx:0},
+  playing: false,
+  preview: false,
+};
+let customs = saved.customs || [];
+let ctx = null, masterGain = null;
+let loopStart = 0;
+let nextNoteTime = 0, schedBar = 0, schedStep = 0;
+let timer = null, rafId = null;
+let lastBar = -1, lastStep = -1;
+/* 编辑器草稿 */
+let draft = null, edSel = null, editBar = 0;
+
+const $ = id => document.getElementById(id);
+const spb = () => 60 / S.bpm;
+const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
+  bars:rep4(Array.from({length:meter},()=>D(1)))});
+const curPattern = () => {
+  if (S.preview && draft) return draft;
+  if (S.sel.type === "custom"){
+    const c = customs[S.sel.idx];
+    if (c && c.meter === S.sig) return c;
+  } else {
+    const p = BUILTINS[S.sel.idx];
+    if (p && p.meter === S.sig) return p;
+  }
+  return basicPattern(S.sig);
+};
+const loopBeats = () => S.sig * LOOP_BARS;
+
+/* ================= 音频引擎 ================= */
+function ensureCtx(){
+  if (!ctx){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.connect(ctx.destination);
+  }
+  if (ctx.state === "suspended") ctx.resume();
+}
+function playClick(t, stepStartBeat, isBarStart){
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
+  osc.type = isBarStart ? "triangle" : "sine";
+  osc.frequency.value = isBarStart ? 1568 : (isBeat ? 1046.5 : 784);
+  const peak = S.vol * (isBarStart ? S.accentVol : (isBeat ? 0.8 : 0.5));
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+  osc.connect(g); g.connect(masterGain);
+  osc.start(t); osc.stop(t + 0.1);
+}
+function scheduler(){
+  const bars = curPattern().bars;
+  while (nextNoteTime < ctx.currentTime + 0.15){
+    const steps = bars[schedBar];
+    if (!steps || steps.length === 0){                  // 空小节：安全跳过
+      nextNoteTime += S.sig * spb();
+      schedBar = (schedBar + 1) % LOOP_BARS;
+      continue;
+    }
+    let cum = 0;
+    for (let i = 0; i < schedStep; i++) cum += steps[i].d;
+    const muted = S.mute && schedBar === LOOP_BARS - 1;
+    if (!muted && !steps[schedStep].rest) playClick(nextNoteTime, cum, schedStep === 0);
+    nextNoteTime += steps[schedStep].d * spb();
+    schedStep++;
+    if (schedStep >= steps.length){ schedStep = 0; schedBar = (schedBar + 1) % LOOP_BARS; }
+  }
+}
+
+/* ================= 可视化 ================= */
+let rowEls = [], cellEls = [], playheadEl = null;
+let subEls = [], fillEls = [], lastT16 = -1;
+function stepLabel(s){
+  return (s.rest ? "休止 " : "") + (DUR_NAME[s.d] || (s.d + "拍"));
+}
+function buildViz(){
+  const viz = $("viz");
+  viz.innerHTML = "";
+  rowEls = []; cellEls = []; subEls = []; fillEls = [];
+  const p = curPattern();
+  for (let b = 0; b < LOOP_BARS; b++){
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    const cells = [];
+    const fills = [];
+    subEls.push({});
+    let acc = 0;
+    p.bars[b].forEach((s, i) => {
+      const startBeat = acc;
+      const c = document.createElement("div");
+      c.className = "cell upcoming" + (s.rest ? " rest" : "");
+      c.style.left = (acc / S.sig * 100) + "%";
+      c.style.width = `calc(${s.d / S.sig * 100}% - 4px)`;
+      acc += s.d;
+      const fill = document.createElement("div");
+      fill.className = "fill";
+      c.appendChild(fill);
+      fills.push(fill);
+      const subs = document.createElement("div");   // 块内按十六分切成小格
+      subs.className = "subs";
+      const nSub = Math.round(s.d * 4);
+      for (let u = 0; u < nSub; u++){
+        const sub = document.createElement("div");
+        sub.className = "sub";
+        subs.appendChild(sub);
+        subEls[b][startBeat * 4 + u] = sub;         // 以十六分位置为键，供经过动效查找
+      }
+      c.appendChild(subs);
+      if (s.d >= 0.5){
+        const sp = document.createElement("span");
+        sp.textContent = stepLabel(s);
+        c.appendChild(sp);
+      }
+      row.appendChild(c); cells.push(c);
+    });
+    viz.appendChild(row);
+    rowEls.push(row); cellEls.push(cells); fillEls.push(fills);
+  }
+  for (let i = 1; i < S.sig; i++){
+    const gl = document.createElement("div");
+    gl.className = "grid-line";
+    gl.style.left = (i / S.sig * 100) + "%";
+    viz.appendChild(gl);
+  }
+  playheadEl = document.createElement("div");
+  playheadEl.className = "playhead";
+  playheadEl.style.left = "0%";
+  viz.appendChild(playheadEl);
+  $("vizTitle").textContent = `时值可视化 · ${S.sig === 6 ? "6/8" : S.sig + "/4"} · 同屏 4 小节`;
+  lastBar = -1; lastStep = -1;
+}
+function paintFrame(){
+  if (!S.playing) return;
+  const pos = Math.max(0, ((ctx.currentTime - loopStart) / spb()) % loopBeats());
+  const bar = Math.floor(pos / S.sig);
+  const bib = pos - bar * S.sig;
+  playheadEl.style.left = (bib / S.sig * 100) + "%";
+  const steps = curPattern().bars[bar];
+  const cum = []; let acc = 0;
+  steps.forEach(s => { cum.push(acc); acc += s.d; });
+  let active = 0;
+  for (let i = 0; i < steps.length; i++){ if (bib >= cum[i]) active = i; }
+  // 进度条式填充：当前音符随进度从左到右填满（每帧更新）
+  const d = steps[active].d || 1;
+  fillEls[bar][active].style.width = Math.min(1, (bib - cum[active]) / d) * 100 + "%";
+  // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
+  const t16 = Math.floor((bib + 1e-6) / 0.25);
+  if (bar !== lastBar || t16 !== lastT16){
+    let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
+    if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = S.sig * 4 - 1; }  // 跨小节：闪上一小节最后一格
+    const sub = subEls[fb] && subEls[fb][fk];
+    if (sub){
+      // 配色随底色反转：绿块上闪白光，白块/暗块上闪绿光（规范：绿为功能强调色，最高强调用近白）
+      const cellCls = sub.closest(".cell").classList;
+      const onGreen = cellCls.contains("active");
+      const onWhite = cellCls.contains("played");
+      const edge = onGreen ? "#FFFFFF" : "#1ED760";
+      const glow = onGreen ? "rgba(255,255,255,.9)" : "rgba(30,215,96,.85)";
+      const fillFlash = onGreen ? "rgba(255,255,255,.4)" : (onWhite ? "rgba(30,215,96,.4)" : "rgba(30,215,96,.28)");
+      const base = (onGreen || onWhite) ? "inset 0 0 0 1px rgba(0,0,0,.2)" : "inset 0 0 0 1px rgba(255,255,255,.16)";
+      sub.animate([
+        {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
+        {boxShadow: base, backgroundColor: "transparent"}
+      ], {duration: 260, easing: "ease-out"});
+    }
+  }
+  lastT16 = t16;
+  if (bar === lastBar && active === lastStep){ rafId = requestAnimationFrame(paintFrame); return; }
+  lastBar = bar; lastStep = active;
+  rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
+  const mutedBar = S.mute && bar === LOOP_BARS - 1;
+  for (let b = 0; b < LOOP_BARS; b++){
+    for (let i = 0; i < cellEls[b].length; i++){
+      const el = cellEls[b][i];
+      let cls = "cell ";
+      if (b < bar) cls += "played";
+      else if (b > bar) cls += "upcoming";
+      else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
+      if (curPattern().bars[b][i].rest) cls += " rest";
+      el.className = cls;
+      fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+    }
+  }
+  $("statusText").textContent = mutedBar ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节`;
+  rafId = requestAnimationFrame(paintFrame);
+}
+
+/* ================= 播放控制 ================= */
+const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
+const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
+function start(){
+  ensureCtx();
+  S.playing = true;
+  schedBar = 0; schedStep = 0;
+  loopStart = ctx.currentTime + 0.08;
+  nextNoteTime = loopStart;
+  timer = setInterval(scheduler, 25);
+  $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
+  $("statusDot").classList.add("live");
+  lastBar = -1; lastT16 = -1;
+  rafId = requestAnimationFrame(paintFrame);
+  persist();
+}
+function stop(){
+  S.playing = false;
+  clearInterval(timer);
+  cancelAnimationFrame(rafId);
+  $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
+  $("statusDot").classList.remove("live");
+  $("statusText").textContent = "已停止";
+  playheadEl.style.left = "0%";
+  rowEls.forEach(r => r.classList.remove("current"));
+  cellEls.forEach((cells, b) => cells.forEach((el, i) => {
+    el.className = "cell upcoming" + (curPattern().bars[b][i].rest ? " rest" : "");
+    fillEls[b][i].style.width = "0%";
+  }));
+  persist();
+}
+$("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
+window.addEventListener("keydown", e => {
+  if ($("editor").classList.contains("open")) return;
+  if (e.code === "Space" && !["INPUT","BUTTON"].includes(document.activeElement.tagName)){
+    e.preventDefault(); S.playing ? stop() : start();
+  }
+});
+window.addEventListener("pointerdown", ensureCtx, {once:true});
+
+/* ================= BPM / 拍号 / 音量 ================= */
+function setBpm(v){
+  v = Math.min(240, Math.max(30, Math.round(v)));
+  if (S.playing){
+    const posBeats = (ctx.currentTime - loopStart) / spb();
+    S.bpm = v;
+    loopStart = ctx.currentTime - posBeats * spb();
+  } else S.bpm = v;
+  $("bpmNum").textContent = v;
+  $("bpmSlider").value = v;
+  persist();
+}
+$("bpmMinus").addEventListener("click", e => { e.currentTarget.blur(); setBpm(S.bpm - 1); });
+$("bpmPlus").addEventListener("click", e => { e.currentTarget.blur(); setBpm(S.bpm + 1); });
+$("bpmSlider").addEventListener("input", e => setBpm(+e.target.value));
+
+let taps = [];
+$("tapBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  const now = performance.now();
+  if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
+  taps.push(now); if (taps.length > 5) taps.shift();
+  if (taps.length >= 2){
+    let sum = 0;
+    for (let i = 1; i < taps.length; i++) sum += taps[i] - taps[i - 1];
+    setBpm(60000 / (sum / (taps.length - 1)));
+  }
+  const btn = $("tapBtn");
+  btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
+});
+
+$("sigRow").addEventListener("click", e => {
+  const btn = e.target.closest("[data-sig]");
+  if (!btn) return;
+  btn.blur();
+  S.sig = +btn.dataset.sig;
+  document.querySelectorAll("#sigRow .pill").forEach(p => p.classList.toggle("active", p === btn));
+  refreshAfterPatternChange();
+  persist();
+});
+
+$("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; persist(); });
+$("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; persist(); });
+
+$("muteToggle").addEventListener("click", e => {
+  e.currentTarget.blur();
+  S.mute = !S.mute;
+  $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+  persist();
+});
+
+/* ================= 预设库 ================= */
+function buildPresetList(){
+  const list = $("presetList");
+  list.innerHTML = "";
+  const sec1 = document.createElement("div");
+  sec1.className = "preset-section";
+  sec1.textContent = `内置预设 · ${BUILTINS.length} 个`;
+  list.appendChild(sec1);
+  BUILTINS.forEach((p, i) => {
+    const item = document.createElement("div");
+    const isActive = S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
+    item.className = "preset-item" + (isActive ? " active" : "");
+    item.innerHTML = `<div><div class="name">${p.name}</div><div class="meta">${p.desc}${p.meter !== S.sig ? "（点击切到 " + (p.meter === 6 ? "6/8" : p.meter + "/4") + "）" : ""}</div></div>`;
+    item.addEventListener("click", () => {
+      S.sel = {type:"builtin", idx:i};
+      if (p.meter !== S.sig){
+        S.sig = p.meter;
+        document.querySelectorAll("#sigRow .pill").forEach(pl => pl.classList.toggle("active", +pl.dataset.sig === S.sig));
+      }
+      refreshAfterPatternChange();
+      persist();
+    });
+    list.appendChild(item);
+  });
+  if (customs.length){
+    const sec2 = document.createElement("div");
+    sec2.className = "preset-section";
+    sec2.textContent = `我的预设 · ${customs.length} 个`;
+    list.appendChild(sec2);
+    customs.forEach((c, i) => {
+      const item = document.createElement("div");
+      const isActive = S.sel.type === "custom" && S.sel.idx === i && c.meter === S.sig;
+      item.className = "preset-item" + (isActive ? " active" : "");
+      item.innerHTML = `<div><div class="name">${c.name}</div><div class="meta">${c.meter === 6 ? "6/8" : c.meter + "/4"} · 自定义</div></div><button class="del" title="删除">×</button>`;
+      item.querySelector(".del").addEventListener("click", e => {
+        e.stopPropagation();
+        customs.splice(i, 1);
+        if (S.sel.type === "custom" && S.sel.idx === i) S.sel = {type:"builtin", idx:0};
+        else if (S.sel.type === "custom" && S.sel.idx > i) S.sel.idx--;
+        refreshAfterPatternChange();
+        persist();
+      });
+      item.addEventListener("click", () => {
+        S.sel = {type:"custom", idx:i};
+        if (c.meter !== S.sig){
+          S.sig = c.meter;
+          document.querySelectorAll("#sigRow .pill").forEach(pl => pl.classList.toggle("active", +pl.dataset.sig === S.sig));
+        }
+        refreshAfterPatternChange();
+        persist();
+      });
+      list.appendChild(item);
+    });
+  }
+  const total = BUILTINS.length + customs.length;
+  $("presetCount").textContent = `${BUILTINS.length} 内置${customs.length ? " + " + customs.length + " 自定义" : ""}`;
+}
+function refreshAfterPatternChange(){
+  const p = curPattern();
+  $("patternName").textContent = p.name;
+  $("patternMeta").textContent = `${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍 · ${S.bpm} BPM`;
+  buildPresetList();
+  buildViz();
+  if (S.playing){
+    schedBar = 0; schedStep = 0;
+    loopStart = ctx.currentTime + 0.08;
+    nextNoteTime = loopStart;
+    lastBar = -1;
+  }
+}
+
+/* ================= 编辑器 ================= */
+function openEditor(){
+  if (S.playing) stop();
+  const src = curPattern();
+  draft = { name: src.name + "-副本", meter: src.meter, bars: src.bars.map(bar => bar.map(s => ({...s}))) };
+  edSel = null; editBar = 0;
+  $("presetNameInput").value = draft.name;
+  $("editorMeter").textContent = draft.meter;
+  $("editorTitle").textContent = "自定义节奏型 · " + (draft.meter === 6 ? "6/8" : draft.meter + "/4") + " 拍";
+  renderEditor();
+  $("editor").classList.add("open");
+}
+function closeEditor(){
+  if (S.preview){ S.preview = false; }
+  if (S.playing) stop();
+  buildViz();                       // 试听可能改过视图，恢复
+  $("auditionBtn").textContent = "试听";
+  $("editor").classList.remove("open");
+}
+function barSum(bar){ return draft.bars[bar].reduce((a, s) => a + s.d, 0); }
+function barValid(bar){ return Math.abs(barSum(bar) - draft.meter) < 1e-9; }
+function renderEditor(){
+  const wrap = $("editorBars");
+  wrap.innerHTML = "";
+  let allValid = true;
+  for (let b = 0; b < LOOP_BARS; b++){
+    const ok = barValid(b);
+    if (!ok) allValid = false;
+    const row = document.createElement("div");
+    row.className = "edbar";
+    const label = document.createElement("div");
+    label.className = "edbar-label" + (ok ? "" : " bad");
+    label.innerHTML = `<div class="n">小节 ${b + 1}</div><div class="s">${barSum(b)} / ${draft.meter} 拍</div>`;
+    const track = document.createElement("div");
+    track.className = "edtrack" + (ok ? "" : " bad");
+    let acc = 0;
+    draft.bars[b].forEach((s, i) => {
+      const c = document.createElement("div");
+      const isSel = edSel && edSel.bar === b && edSel.idx === i;
+      c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
+      c.style.left = (acc / draft.meter * 100) + "%";
+      c.style.width = `calc(${s.d / draft.meter * 100}% - 4px)`;
+      acc += s.d;
+      if (s.d >= 0.5){
+        const sp = document.createElement("span");
+        sp.textContent = stepLabel(s);
+        c.appendChild(sp);
+      }
+      c.addEventListener("click", () => { edSel = {bar:b, idx:i}; editBar = b; renderEditor(); });
+      track.appendChild(c);
+    });
+    track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; } });
+    row.appendChild(label); row.appendChild(track);
+    wrap.appendChild(row);
+  }
+  $("editorStatus").textContent = allValid ? "校验通过 · 可以保存" : "存在时值不完整的小节";
+  $("editorStatus").style.color = allValid ? "var(--green)" : "var(--red)";
+  $("editorDot").style.background = allValid ? "var(--green)" : "var(--red)";
+  $("savePresetBtn").disabled = !allValid;
+  $("savePresetBtn").className = "pill" + (allValid ? " active" : "");
+  if (S.preview) buildViz();        // 试听中实时反映编辑
+}
+PALETTE.forEach(p => {
+  const el = document.createElement("button");
+  el.className = "pal-item";
+  el.innerHTML = `<span class="bar${p.rest ? " rest" : ""}" style="width:${p.w}px"></span><span><div class="nm">${p.nm}</div><div class="du">${p.du}</div></span>`;
+  el.addEventListener("click", () => {
+    const step = D(p.d, p.rest);
+    if (edSel){ draft.bars[edSel.bar].splice(edSel.idx, 1, step); }
+    else { draft.bars[editBar].push(step); }
+    renderEditor();
+  });
+  $("palette").appendChild(el);
+});
+$("delStepBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  if (!edSel) return;
+  draft.bars[edSel.bar].splice(edSel.idx, 1);
+  edSel = null;
+  renderEditor();
+});
+$("copyBarBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  const src = draft.bars[editBar].map(s => ({...s}));
+  draft.bars = draft.bars.map(() => src.map(s => ({...s})));
+  edSel = null;
+  renderEditor();
+});
+$("clearBarBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  draft.bars[editBar] = [];
+  edSel = null;
+  renderEditor();
+});
+$("auditionBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  if (S.preview){                   // 停止试听
+    stop();
+    S.preview = false;
+    buildViz();
+    $("auditionBtn").textContent = "试听";
+  } else {
+    S.sig = draft.meter;            // 试听草稿的拍号（不改动主界面选择，仅试听）
+    S.preview = true;
+    buildViz();
+    start();
+    $("auditionBtn").textContent = "停止试听";
+  }
+});
+$("savePresetBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  if ($("savePresetBtn").disabled) return;
+  const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
+  customs.push({ name, meter: draft.meter, bars: draft.bars.map(bar => bar.map(s => ({...s}))) });
+  S.sel = {type:"custom", idx: customs.length - 1};
+  S.sig = draft.meter;
+  if (S.preview){ stop(); S.preview = false; $("auditionBtn").textContent = "试听"; }
+  document.querySelectorAll("#sigRow .pill").forEach(pl => pl.classList.toggle("active", +pl.dataset.sig === S.sig));
+  persist();
+  closeEditor();
+  refreshAfterPatternChange();
+});
+$("editBtn").addEventListener("click", e => { e.currentTarget.blur(); openEditor(); });
+$("editorBack").addEventListener("click", e => { e.currentTarget.blur(); closeEditor(); });
+
+/* ================= 持久化 & 初始化 ================= */
+function persist(){
+  localStorage.setItem("beatsight.m2", JSON.stringify({
+    bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs
+  }));
+}
+$("bpmNum").textContent = S.bpm;
+$("bpmSlider").value = S.bpm;
+$("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
+$("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
+$("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+document.querySelectorAll("#sigRow .pill").forEach(pl => pl.classList.toggle("active", +pl.dataset.sig === S.sig));
+refreshAfterPatternChange();
+</script>
+</body>
+</html>
