@@ -43,8 +43,17 @@ button:disabled{cursor:not-allowed}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative}
-.bar-row{position:relative;height:68px;margin-bottom:14px}
+.bar-row{position:relative;height:86px;margin-bottom:14px}
 .bar-row:last-child{margin-bottom:0}
+/* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
+.beat-zone{position:absolute;top:-3px;height:50px;border-radius:10px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+/* 拍内座次尺：1 e & a */
+.ruler-lab{position:absolute;top:67px;font-size:9px;font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
+.ruler-lab.down{color:var(--t2);font-weight:600}
+.ruler-lab.on{color:var(--green);font-weight:700}
+/* 下一颗音符预亮 */
+.cell.next{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.45);animation:nextGlow .7s ease-in-out infinite}
+@keyframes nextGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.15)}}
 .cell{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.14);overflow:hidden}
 .cell-label{position:absolute;top:48px;font-size:12px;font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
@@ -55,9 +64,11 @@ button:disabled{cursor:not-allowed}
 .cell.rest{background:transparent;border:1px dashed var(--border)}
 .cell.rest.played .fill{background:#4D4D4D}
 .cell.rest.active .fill{background:rgba(30,215,96,.45)}
-.cell .subs{position:absolute;inset:5px;display:flex;gap:3px;z-index:1;pointer-events:none}
-.cell .sub{flex:1;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
-.cell.played .sub,.cell.active .sub{box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+/* 十六分小格统一为细分刻度线：任何时值的音符表面质感一致 */
+.cell .subs{position:absolute;inset:6px 4px;display:flex;z-index:1;pointer-events:none}
+.cell .sub{flex:1;border-left:1px solid rgba(255,255,255,.10)}
+.cell .sub:first-child{border-left:none}
+.cell.played .sub,.cell.active .sub{border-left-color:rgba(0,0,0,.18)}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none;z-index:6}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -159,8 +170,10 @@ input[type=range].vol{width:120px}
   .transport{gap:20px}
   .vdivider{display:none}
   .bpm-num{font-size:38px;min-width:76px}
-  .bar-row{height:52px;margin-bottom:10px}
+  .bar-row{height:66px;margin-bottom:10px}
   .cell{height:34px}
+  .beat-zone{height:40px}
+  .ruler-lab{top:52px;font-size:8px}
   .cell-label{top:38px;font-size:10px}
   .cell .subs{inset:4px;gap:2px}
   .edtrack{height:56px}
@@ -198,7 +211,7 @@ input[type=range].vol{width:120px}
         <div class="status" data-page-node-id="oZdqQ0DHt15NOWWmZQhvwR"><span class="dot" id="statusDot" data-page-node-id="Rk0c3BZXO5AMY1uB2UBP5g"></span><span id="statusText" data-page-node-id="74PR3ik53nelI6fDZyHp7b">已停止</span></div>
       </div>
       <div class="viz" id="viz" data-page-node-id="jnNAeoWrK4ottWYyUQMH1k"></div>
-      <div class="caption" data-page-node-id="mV6vhTRrHoYGPizMQlsgQr">时值 = 长度 —— 同屏滚动 4 小节，提前看清下一段节奏；休止符显示为等长空白占位</div>
+      <div class="caption" data-page-node-id="mV6vhTRrHoYGPizMQlsgQr">时值 = 长度 —— 底部 1 e & a 为拍内座次，跑道亮边 = 换拍，绿框呼吸 = 下一颗预告；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
@@ -329,6 +342,7 @@ const PALETTE = [
   {d:1,   nm:"休止符",   du:"占时不发声", w:24, rest:true},
 ];
 const DUR_NAME = {4:"全",2:"二分",1:"四分",0.75:"附点八",0.5:"八分",0.25:"十六",1.5:"附点四"};
+const SUB_NAMES = ["e","&","a"];      // 拍内十六分座次名
 const LOOP_BARS = 4;
 
 /* ================= 状态 ================= */
@@ -413,6 +427,7 @@ function scheduler(){
 /* ================= 可视化 ================= */
 let rowEls = [], cellEls = [], playheadEl = null, trailGlowEl = null;
 let subEls = [], fillEls = [], labelEls = [], lastT16 = -1;
+let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
 function stepLabel(s){
   return (s.rest ? "休止 " : "") + (DUR_NAME[s.d] || (s.d + "拍"));
 }
@@ -420,10 +435,36 @@ function buildViz(){
   const viz = $("viz");
   viz.innerHTML = "";
   rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = [];
+  zoneEls = []; rulerEls = [];
   const p = curPattern();
   for (let b = 0; b < LOOP_BARS; b++){
     const row = document.createElement("div");
     row.className = "bar-row";
+    // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
+    const zones = [];
+    for (let k = 0; k < S.sig; k++){
+      const z = document.createElement("div");
+      z.className = "beat-zone";
+      z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
+      z.style.width = `calc(${100 / S.sig}% - 6px)`;
+      row.appendChild(z);
+      zones.push(z);
+    }
+    zoneEls.push(zones);
+    // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
+    const rl = {};
+    const markN = S.sig === 6 ? 2 : 4;
+    for (let k = 0; k < S.sig; k++){
+      for (let s = 0; s < markN; s++){
+        const lb = document.createElement("div");
+        lb.className = "ruler-lab" + (s === 0 ? " down" : "");
+        lb.textContent = s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]);
+        lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
+        row.appendChild(lb);
+        rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
+      }
+    }
+    rulerEls.push(rl);
     const cells = [];
     const fills = [];
     const labels = [];
@@ -440,7 +481,7 @@ function buildViz(){
       fill.className = "fill";
       c.appendChild(fill);
       fills.push(fill);
-      const subs = document.createElement("div");   // 块内按十六分切成小格
+      const subs = document.createElement("div");   // 块内按十六分切成刻度线
       subs.className = "subs";
       const nSub = Math.round(s.d * 4);
       for (let u = 0; u < nSub; u++){
@@ -477,7 +518,8 @@ function buildViz(){
   viz.appendChild(trailGlowEl);
   viz.appendChild(playheadEl);
   $("vizTitle").textContent = `时值可视化 · ${S.sig === 6 ? "6/8" : S.sig + "/4"} · 同屏 4 小节`;
-  lastBar = -1; lastStep = -1;
+  lastBar = -1; lastStep = -1; lastBeat = -1;
+  if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
   fitCellLabels();
 }
 /* 格子标签自适应：标签比格子宽时隐藏 */
@@ -496,8 +538,11 @@ function paintFrame(){
   const pos = Math.max(0, ((ctx.currentTime - loopStart) / spb()) % loopBeats());
   const bar = Math.floor(pos / S.sig);
   const bib = pos - bar * S.sig;
-  playheadEl.style.left = (bib / S.sig * 100) + "%";
-  trailGlowEl.style.width = (bib / S.sig * 100) + "%";          // 光晕跟随播放头左侧
+  const pw = bib / S.sig * 100;
+  playheadEl.style.left = pw + "%";
+  const tail = Math.min(pw, 10);                                // 短尾迹：只跟在播放头身后，不污染已弹白块
+  trailGlowEl.style.left = (pw - tail) + "%";
+  trailGlowEl.style.width = tail + "%";
   if (bar !== lastBar){                                          // 换小节时光晕换行
     trailGlowEl.style.top = rowEls[bar].offsetTop + "px";
     trailGlowEl.style.height = cellEls[bar][0].offsetHeight + "px";
@@ -507,6 +552,16 @@ function paintFrame(){
   steps.forEach(s => { cum.push(acc); acc += s.d; });
   let active = 0;
   for (let i = 0; i < steps.length; i++){ if (bib >= cum[i]) active = i; }
+  // 换拍瞬间：拍点容器（跑道）脉冲
+  const beat = Math.floor(bib);
+  if (bar !== lastBar || beat !== lastBeat){
+    const z = zoneEls[bar] && zoneEls[bar][beat];
+    if (z) z.animate([
+      {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
+      {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
+    ], {duration:320, easing:"ease-out"});
+    lastBeat = beat;
+  }
   // 进度条式填充：当前音符随进度从左到右填满（每帧更新）
   const d = steps[active].d || 1;
   fillEls[bar][active].style.width = Math.min(1, (bib - cum[active]) / d) * 100 + "%";
@@ -524,18 +579,29 @@ function paintFrame(){
       const edge = onGreen ? "#FFFFFF" : "#1ED760";
       const glow = onGreen ? "rgba(255,255,255,.9)" : "rgba(30,215,96,.85)";
       const fillFlash = onGreen ? "rgba(255,255,255,.4)" : (onWhite ? "rgba(30,215,96,.4)" : "rgba(30,215,96,.28)");
-      const base = (onGreen || onWhite) ? "inset 0 0 0 1px rgba(0,0,0,.2)" : "inset 0 0 0 1px rgba(255,255,255,.16)";
+      const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
       sub.animate([
         {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
         {boxShadow: base, backgroundColor: "transparent"}
       ], {duration: 260, easing: "ease-out"});
     }
+    // 座次尺：当前十六分位置高亮
+    if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
+    const rkey = S.sig === 6 ? Math.floor(t16 / 2) * 2 : t16;
+    const rl = rulerEls[bar] && rulerEls[bar][rkey];
+    if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
+    // 状态栏读数：第几小节 · 第几拍 + 拍内座次
+    const sfx = (S.sig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
+    const mutedNow = S.mute && bar === LOOP_BARS - 1;
+    $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
   }
   lastT16 = t16;
   if (bar === lastBar && active === lastStep){ rafId = requestAnimationFrame(paintFrame); return; }
   lastBar = bar; lastStep = active;
   rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
-  const mutedBar = S.mute && bar === LOOP_BARS - 1;
+  // 下一颗音符预告（跨小节时指向下一行第一颗）
+  let nb = bar, ni = active + 1;
+  if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
   for (let b = 0; b < LOOP_BARS; b++){
     for (let i = 0; i < cellEls[b].length; i++){
       const el = cellEls[b][i];
@@ -544,13 +610,13 @@ function paintFrame(){
       else if (b > bar) cls += "upcoming";
       else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
       if (curPattern().bars[b][i].rest) cls += " rest";
+      if (b === nb && i === ni) cls += " next";
       el.className = cls;
       fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
     }
   }
-  $("statusText").textContent = mutedBar ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节`;
   rafId = requestAnimationFrame(paintFrame);
 }
 
@@ -566,7 +632,7 @@ function start(){
   timer = setInterval(scheduler, 25);
   $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
   $("statusDot").classList.add("live");
-  lastBar = -1; lastT16 = -1;
+  lastBar = -1; lastT16 = -1; lastBeat = -1;
   rafId = requestAnimationFrame(paintFrame);
   persist();
 }
@@ -578,6 +644,7 @@ function stop(){
   $("statusDot").classList.remove("live");
   $("statusText").textContent = "已停止";
   playheadEl.style.left = "0%";
+  trailGlowEl.style.left = "0%";
   trailGlowEl.style.width = "0%";
   rowEls.forEach(r => r.classList.remove("current"));
   cellEls.forEach((cells, b) => cells.forEach((el, i) => {
@@ -586,6 +653,8 @@ function stop(){
     const lb = labelEls[b][i];
     if (lb) lb.className = "cell-label";
   }));
+  if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
+  lastBeat = -1;
   persist();
 }
 $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
