@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<html lang="zh-CN" data-page-node-id="gRM3GeiZHpd4K2pIOuVdGb">
+<head data-page-node-id="uOb1mm8IXUc8NhkhbMe3zJ">
+<meta charset="UTF-8" data-page-node-id="XyQMRTv1MBWbxSvyuM2uKG">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" data-page-node-id="ZXIluD2ZolEylMaECviMyH">
 <title>BeatSight 时值节拍器 · M2</title>
 <style>
 :root{
@@ -190,137 +190,137 @@ input[type=range].vol{width:120px}
 }
 </style>
 </head>
-<body>
+<body data-page-node-id="hNX571VJ4Glz4ciEEDt2vn">
 
-<header class="topbar">
-  <div class="brand">
-    <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
+<header class="topbar" data-page-node-id="U4hoO2ApF3dCGX2OfIAHIt">
+  <div class="brand" data-page-node-id="zdrLTfIqOQjAA5LtisM1KH">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" data-page-node-id="CBBXnwzb7owt8djd6IgkiG"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760" data-page-node-id="cLD4d1CxZa0azSdRurbSUs"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round" data-page-node-id="LJNubwcIPnNGOIDKliC89D"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A" data-page-node-id="aH3NNNAQ1U1dfAeCY36VEP"/></svg>
     BeatSight 时值节拍器
   </div>
-  <div class="chip"><span class="dot"></span>M2 · 预设 + 自定义编辑器</div>
+  <div class="chip" data-page-node-id="jzlLX5RmR7WvuwET0V2OoD"><span class="dot" data-page-node-id="p4FFHYuXk2fILPqL9dbaS7"></span>M2 · 预设 + 自定义编辑器</div>
 </header>
 
-<div class="main">
-  <div class="col">
+<div class="main" data-page-node-id="FdiiA2Upv6aiNcYlvBr4s8">
+  <div class="col" data-page-node-id="SuEYkOm5V7bMEUFUt4j77b">
     <!-- 当前节奏型 -->
-    <div class="pattern-head">
-      <div>
-        <div class="name" id="patternName">民谣扫弦 · 下-下上-上下上</div>
-        <div class="meta" id="patternMeta">4/4 拍 · 96 BPM</div>
+    <div class="pattern-head" data-page-node-id="1hJwUTfL5S9anzehDBYVil">
+      <div data-page-node-id="DZFNFyZvHQAJ1uAEWKAj5j">
+        <div class="name" id="patternName" data-page-node-id="Nx1mt1I7xI4ptP3TNwQufa">民谣扫弦 · 下-下上-上下上</div>
+        <div class="meta" id="patternMeta" data-page-node-id="lYWBGnlYMyYPqCnSFICdS8">4/4 拍 · 96 BPM</div>
       </div>
-      <button class="pill outline" id="editBtn">编辑节奏型</button>
+      <button class="pill outline" id="editBtn" data-page-node-id="XrNp2mHga9A47uOAREvuyk">编辑节奏型</button>
     </div>
 
     <!-- 拍号回退提示：选中节奏型与当前拍号不匹配时显示 -->
-    <div class="fallback-note" id="fallbackNote" hidden>
-      <span id="fallbackText"></span>
-      <button class="pill outline" id="fallbackBtn">切回</button>
+    <div class="fallback-note" id="fallbackNote" hidden data-page-node-id="deEH24174f7CSVnjIcFbOt">
+      <span id="fallbackText" data-page-node-id="tJYqq3fFxBFTuXgU6fmgIE"></span>
+      <button class="pill outline" id="fallbackBtn" data-page-node-id="15RX5gy6y1aNfcuqk8PV5M">切回</button>
     </div>
 
     <!-- 时值可视化 -->
-    <section class="card">
-      <div class="card-head">
-        <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
-        <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+    <section class="card" data-page-node-id="4DDyn2dwE2jG8v0m7bIeGk">
+      <div class="card-head" data-page-node-id="vwhLNw2DUL0wSGa6PxWU3d">
+        <div class="card-title" id="vizTitle" data-page-node-id="C6FHEbHXCvLmFDtFFU783X">时值可视化 · 4/4 · 同屏 4 小节</div>
+        <div class="status" data-page-node-id="XPlrkFIroFWksWxOXphoFm"><span class="dot" id="statusDot" data-page-node-id="odkcy9LZkebRaZyTsAKQWu"></span><span id="statusText" data-page-node-id="dveaZSOnBYbxZBE3oXr3Il">已停止</span></div>
       </div>
-      <div class="viz" id="viz"></div>
-      <div class="caption">时值 = 长度 —— 底部 1 e & a 为拍内座次，跑道亮边 = 换拍，绿框呼吸 = 下一颗预告；休止符显示为等长空白占位</div>
+      <div class="viz" id="viz" data-page-node-id="qNRkRU3J57U2A4M2AyRYvq"></div>
+      <div class="caption" data-page-node-id="UkZPsdNnDoM5E6S9KwVGiQ">时值 = 长度 —— 底部 1 e & a 为拍内座次，跑道亮边 = 换拍，绿框呼吸 = 下一颗预告；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
-    <section class="card transport">
-      <button class="play-btn" id="playBtn" aria-label="播放/停止">
-        <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
+    <section class="card transport" data-page-node-id="apXFW9FowNqq9WIRxR3ROY">
+      <button class="play-btn" id="playBtn" aria-label="播放/停止" data-page-node-id="vHfYGkfKfSCg1UOBCXjNMb">
+        <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none" data-page-node-id="6xCu7XF4UwdVQnRBx3J2ms"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A" data-page-node-id="3E35XClX50T16XM0NVBGFu"/></svg>
       </button>
-      <div class="group">
-        <div class="group-label">速度 BPM · 范围 30–240</div>
-        <div class="bpm-row">
-          <button class="step-btn" id="bpmMinus">-1</button>
-          <div class="bpm-num" id="bpmNum" title="点击直接输入 BPM">96</div>
-          <button class="step-btn" id="bpmPlus">+1</button>
+      <div class="group" data-page-node-id="cPgfM6Z7itnF8tsK85XNg9">
+        <div class="group-label" data-page-node-id="blSNDiMF2gF8G6wAnDBxlg">速度 BPM · 范围 30–240</div>
+        <div class="bpm-row" data-page-node-id="Es9XhOT0EXxCAm4vQ08QcD">
+          <button class="step-btn" id="bpmMinus" data-page-node-id="jaHJDDs6NwKcBpChoQsR2d">-1</button>
+          <div class="bpm-num" id="bpmNum" title="点击直接输入 BPM" data-page-node-id="agzvI07iNMaDbem7YB04kC">96</div>
+          <button class="step-btn" id="bpmPlus" data-page-node-id="We6VXqjhNVxWTY8Fs8YjVH">+1</button>
         </div>
-        <div class="slider-row">
-          <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
-          <button class="pill outline" id="tapBtn">TAP 测速</button>
-        </div>
-      </div>
-      <div class="vdivider"></div>
-      <div class="group">
-        <div class="group-label">拍号 · 重音在第 1 拍</div>
-        <div class="bpm-row" id="sigRow">
-          <button class="pill" data-sig="2">2/4</button>
-          <button class="pill" data-sig="3">3/4</button>
-          <button class="pill active" data-sig="4">4/4</button>
-          <button class="pill" data-sig="6">6/8</button>
+        <div class="slider-row" data-page-node-id="d4CBQ1t9NkjaQY4rXM87sj">
+          <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM" data-page-node-id="o4KPzEl6PfAConWtN4rE3X">
+          <button class="pill outline" id="tapBtn" data-page-node-id="ADIovM3faFBLNBMDscJgX7">TAP 测速</button>
         </div>
       </div>
-      <div class="vdivider"></div>
-      <div class="group">
-        <div class="group-label">音量 · 总音量 / 重拍</div>
-        <div class="vol-row"><span>总音量</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="总音量"><span class="pct" id="volMasterPct">80%</span></div>
-        <div class="vol-row"><span>重拍</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍音量"><span class="pct" id="volAccentPct">100%</span></div>
+      <div class="vdivider" data-page-node-id="DT17hMCHFIeD7NZD7BtmnU"></div>
+      <div class="group" data-page-node-id="NhIiqP8xz5KwtcjWbhQ6mb">
+        <div class="group-label" data-page-node-id="URSO4z3DRbKTWE7qJvyHbv">拍号 · 重音在第 1 拍</div>
+        <div class="bpm-row" id="sigRow" data-page-node-id="70vNeB5qvXjQaoHKnW1ekN">
+          <button class="pill" data-sig="2" data-page-node-id="KiVcFxlcT4Eqx4F0Y9RiBH">2/4</button>
+          <button class="pill" data-sig="3" data-page-node-id="rCNlq1Ayesc4dIUxQ458Vz">3/4</button>
+          <button class="pill active" data-sig="4" data-page-node-id="a4nH4bVLSB6M50MDrvqA7S">4/4</button>
+          <button class="pill" data-sig="6" data-page-node-id="5HF5CiT1HKWl0Mmr4AyCDR">6/8</button>
+        </div>
+      </div>
+      <div class="vdivider" data-page-node-id="C9EYxgLWomvv2ckJBnAuSs"></div>
+      <div class="group" data-page-node-id="bXukBEqdYmOe3YKDREjmbF">
+        <div class="group-label" data-page-node-id="wbuyvwuj7Z6khKwQgQEIMO">音量 · 总音量 / 重拍</div>
+        <div class="vol-row" data-page-node-id="n9hROAi6cCOmEZlj4ZVQBz"><span data-page-node-id="I0XArsIuksHOk6V6rsA2yQ">总音量</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="总音量" data-page-node-id="CpTl8WMBFNf6Bl5fAXqCWL"><span class="pct" id="volMasterPct" data-page-node-id="wY4O5ROpjvrXYHOdphcqHB">80%</span></div>
+        <div class="vol-row" data-page-node-id="lDX1wbOpQeFM6ObHmzoTkj"><span data-page-node-id="3zsFYXBWt5cq8zdam5mXsX">重拍</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍音量" data-page-node-id="PdnuOwclXhsdJfxYM8KJah"><span class="pct" id="volAccentPct" data-page-node-id="BCJqOrCFt3ldxER0CHQXsa">100%</span></div>
       </div>
     </section>
 
     <!-- 训练模式：M3 变速训练器将落位到此区 -->
-    <div class="group">
-      <div class="group-label">训练模式</div>
-      <div class="config">
-        <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
+    <div class="group" data-page-node-id="8khsx3wWjRbamOei54wV6J">
+      <div class="group-label" data-page-node-id="8SrEL088sYlKQWZtt1kpCl">训练模式</div>
+      <div class="config" data-page-node-id="geXJzeMucPsA7f2sbr2TxC">
+        <button class="toggle-pill off" id="muteToggle" data-page-node-id="etME29Aqj29gPwFrAc2jBH">静音拍 · 每 4 小节<span class="switch" data-page-node-id="2EDWrQQ2C4ny4xdTAwthzi"></span></button>
       </div>
     </div>
-    <div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
+    <div class="hint" data-page-node-id="ZWvHXi3fu90ciOppNiQHhG">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
   </div>
 
   <!-- 侧栏：预设库 -->
-  <aside class="col">
-    <section class="card">
-      <div class="card-head">
-        <div class="card-title">节奏型预设库</div>
-        <div class="chip" id="presetCount">8 内置</div>
+  <aside class="col" data-page-node-id="Hu9oVnan41SMGDgSWkbwcG">
+    <section class="card" data-page-node-id="JfI27YGWEu1kEjdz7tnfRi">
+      <div class="card-head" data-page-node-id="RaRywt6ZqS8qUYjskQwzN9">
+        <div class="card-title" data-page-node-id="4SXe50fqQvYb39uyK12W7I">节奏型预设库</div>
+        <div class="chip" id="presetCount" data-page-node-id="204IRBN6vLnCSiA2npPVpa">8 内置</div>
       </div>
-      <div id="presetList"></div>
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器（自动爬坡）将在 M3 上线。</div>
+      <div id="presetList" data-page-node-id="h5yjFodZZSgRcjwpmF2ToK"></div>
+      <div class="sidebar-note" data-page-node-id="tESm7fCawI7eV8wZ11DkFt">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器（自动爬坡）将在 M3 上线。</div>
     </section>
   </aside>
 </div>
 
 <!-- ================= 自定义节奏型编辑器 ================= -->
-<div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器">
-  <div class="editor-inner">
-    <div class="editor-topbar">
-      <div class="left">
-        <button class="back-btn" id="editorBack">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器" data-page-node-id="kGC2IY0WqxfIITCt5yN5hF">
+  <div class="editor-inner" data-page-node-id="3wP5qgtdO2oHigHAhDCZED">
+    <div class="editor-topbar" data-page-node-id="zIy0wrvsGC1SFlT3b2sPAX">
+      <div class="left" data-page-node-id="K85x0Lwxw5EEE1VamRmPtG">
+        <button class="back-btn" id="editorBack" data-page-node-id="DEF2d9wgYxJWX7FrSV4tNt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" data-page-node-id="iCPUBVH3D3XTtJCKwdaGSI"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="kLrNBcXTK4mvulScUiQEAm"/></svg>
           返回练习
         </button>
-        <div class="editor-title" id="editorTitle">自定义节奏型</div>
+        <div class="editor-title" id="editorTitle" data-page-node-id="v3HvzvZVwbZ3yVQqfhP1Tl">自定义节奏型</div>
       </div>
-      <div class="editor-actions">
-        <button class="pill outline" id="auditionBtn">试听</button>
-        <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
+      <div class="editor-actions" data-page-node-id="k6PKMIkwLkDHBftoVedvsE">
+        <button class="pill outline" id="auditionBtn" data-page-node-id="cU3bGZI7zxLTkPhO1816SD">试听</button>
+        <button class="pill" id="savePresetBtn" disabled data-page-node-id="CTcXiqeSmEWM4sH1IiJ5fF">保存为预设</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title" id="editorCardTitle">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</div>
-        <div class="status ok" id="editorStatusWrap"><span class="dot" id="editorDot"></span><span id="editorStatus">校验通过</span></div>
+    <div class="card" data-page-node-id="IkbOiEwGFyPh4WNfTzDMO6">
+      <div class="card-head" data-page-node-id="On0lYskXEH0LWG0GTkCADo">
+        <div class="card-title" id="editorCardTitle" data-page-node-id="hDeDlupaQeErBkXR2qIALN">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</div>
+        <div class="status ok" id="editorStatusWrap" data-page-node-id="4D3AGd8WjQwIitdkOHQWpK"><span class="dot" id="editorDot" data-page-node-id="Djah1GFMFzaGmDLe4bL3Md"></span><span id="editorStatus" data-page-node-id="EtDAlq6564FDkyN1IPqBQf">校验通过</span></div>
       </div>
-      <div id="editorBars"></div>
-      <div class="ed-actions">
-        <button class="pill" id="delStepBtn">删除选中音符</button>
-        <button class="pill outline" id="undoBtn" disabled>撤销</button>
-        <button class="pill" id="copyBarBtn">复制小节到全部</button>
-        <button class="pill outline" id="clearBarBtn">清空当前小节</button>
-        <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · Ctrl+Z 撤销</span>
+      <div id="editorBars" data-page-node-id="vSN1OfAlAwUEGIdQwml97g"></div>
+      <div class="ed-actions" data-page-node-id="TEEBA9Uecyo5JTuzVA3rxz">
+        <button class="pill" id="delStepBtn" data-page-node-id="U5RW2S0y3Bz1mff5YmIbZz">删除选中音符</button>
+        <button class="pill outline" id="undoBtn" disabled data-page-node-id="DMhHr5gxiR0G4JYKO46oPu">撤销</button>
+        <button class="pill" id="copyBarBtn" data-page-node-id="BEtIoTBpuI2Cjo8U0RxDgB">复制小节到全部</button>
+        <button class="pill outline" id="clearBarBtn" data-page-node-id="AnZTVcMEOM5eauifJNlmuD">清空当前小节</button>
+        <span class="hint" data-page-node-id="ZEnvmqC5WI61AbLOyTbw4U">规则：每小节须恰好占满 <span id="editorMeter" data-page-node-id="oDXdziGjenBNKEYIcxS7zU">4</span> 拍，超限或不足都无法保存 · Ctrl+Z 撤销</span>
       </div>
-      <div class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</div>
-      <div class="palette" id="palette"></div>
-      <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--t2)">预设名称</span>
-        <input class="name-input" id="presetNameInput" value="我的节奏型">
-        <span class="hint">保存后可在主界面「我的预设」中找到</span>
+      <div class="card-title" id="paletteTitle" style="margin-bottom:10px" data-page-node-id="wMDkaFKJ2KvxmrokaqfS58">音符块库</div>
+      <div class="palette" id="palette" data-page-node-id="bYxX4QpDV3wMnkbHQIzxHi"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap" data-page-node-id="ekA5dD67c3CYSlqDTIceOR">
+        <span style="font-size:12px;color:var(--t2)" data-page-node-id="sbBtlmQWw384wzbAeN5D3L">预设名称</span>
+        <input class="name-input" id="presetNameInput" value="我的节奏型" data-page-node-id="qom5YhiDwlaaVqZHClbE2g">
+        <span class="hint" data-page-node-id="SrN1QizUcKfaLPbqJGFG0f">保存后可在主界面「我的预设」中找到</span>
       </div>
     </div>
   </div>
@@ -633,9 +633,6 @@ function paintFrame(){
     ], {duration:320, easing:"ease-out"});
     lastBeat = beat;
   }
-  // 进度条式填充：当前音符随进度从左到右填满（每帧更新）
-  const d = steps[active].d || 1;
-  fillEls[bar][active].style.width = Math.min(1, (bib - cum[active]) / d) * 100 + "%";
   // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
   const t16 = Math.floor((bib + 1e-6) / 0.25);
   if (bar !== lastBar || t16 !== lastT16){
@@ -683,7 +680,7 @@ function paintFrame(){
       if (curPattern().bars[b][i].rest) cls += " rest";
       if (b === nb && i === ni) cls += " next";
       el.className = cls;
-      fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+      fillEls[b][i].style.width = (b < bar || (b === bar && i <= active)) ? "100%" : "0%";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
     }
