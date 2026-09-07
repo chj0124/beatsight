@@ -34,6 +34,7 @@ pattern = { name, desc, meter, bars: [[{d, rest}...], ×4] }
 ```
 
 - 内置预设在 `BUILTINS`（8 个）；用户预设在 `customs[]`，存 localStorage key `beatsight.m2`
+- **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`（v0.5.0 起）**：与 mute/bpm 一并持久化在 beatsight.m2；会话状态 `trStepIdx`（当前级）/`trBarCnt`（本级已练小节数）不持久化，`start()` 时重置
 - **自定义预设以 `id` 引用（v0.4.0 起）**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`；旧数据的 idx 选择在加载时自动迁移为 id。新增/删除预设时不要再用数组下标引用
 - 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`，同时 `updateFallbackNote()` 显示琥珀色提示条（含一键切回）
 - **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`
@@ -50,6 +51,7 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 - **播放中变速不中断**：`setBpm` 重映射 `loopStart = now - posBeats × 新spb`
 - **播放中切换节奏型不跳针（v0.4.0 起）**：`refreshAfterPatternChange()` 在播放中只挂起（`pendingPattern`），由 `scheduler()` 在小节边界调用 `applyPatternChange()` 并重映射 loopStart；拍号变化则等到循环起点
 - **静音拍**：`S.mute && schedBar === 3` 时跳过发声（视觉照常）
+- **变速训练（v0.5.0）**：小节边界调 `trainerOnBarBoundary()`——每练满 `everyN` 小节经 `setBpm(v,false)` 升一级（时钟重映射不打断播放），到目标并练满一级自动 `stop()` 并提示；返回 true 时 scheduler 立即退出本次调度。爬坡会覆盖播放中的手动调速（下一级边界生效）
 - 空小节（编辑器草稿）安全跳过
 - 拍号/音量的 UI 入口统一走 `setSig()` / `setBpm()`，不要新写并行的 pill 高亮逻辑
 
@@ -118,7 +120,7 @@ node --check _check.js && rm _check.js
 ## 6. M3 任务拆解（下一个里程碑）
 
 1. **PWA 离线**：内联 manifest（Blob URL）+ Service Worker（`index.html` 单资源缓存即可）；iOS 需 apple-touch-icon（可用 SVG data URI）
-2. **变速训练器**：参数 `{startBpm, targetBpm, step, everyNBars}`；在 `scheduler()` 的小节边界计数，到达即调 `setBpm`（内部静音切换，不打断播放）；进度显示「当前 85 BPM · 第 6/13 步」；完成自动停止 + 提示。**UI 落位到主界面「训练模式」区（v0.4.0 已立好分区）**
+2. ~~**变速训练器**~~ ✅ **v0.5.0 已完成**：`S.trainer {on, start, target, step, everyN}`；scheduler 小节边界计数爬坡；UI 在主界面「训练模式」区（开关 + 参数面板 + 进度行）；完成自动停止 + 提示。自动化测试方法：临时副本伪造 AudioContext（currentTime 手动推进）+ requestAnimationFrame 置空，逐 tick 调 scheduler() 断言 BPM 序列
 3. **后台持续发声**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
 
 ## 7. 用户协作偏好

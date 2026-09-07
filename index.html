@@ -121,6 +121,15 @@ input[type=range].vol{width:120px}
 .toggle-pill.on .switch::after{left:18px}
 .hint{font-size:12px;color:var(--t3)}
 
+/* ---------- 训练模式 · 变速训练器 ---------- */
+.tr-panel{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:12px}
+.tr-panel[hidden]{display:none}
+.tr-panel .lab{font-size:12px;color:var(--t2)}
+.tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
+.tr-inp:focus{border-color:var(--border)}
+.tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
+.tr-prog.live{color:var(--green)}
+
 /* ---------- 侧栏 ---------- */
 .preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px}
 .preset-section:first-child{margin-top:0}
@@ -289,11 +298,19 @@ input[type=range].vol{width:120px}
       </div>
     </section>
 
-    <!-- 训练模式：M3 变速训练器将落位到此区 -->
+    <!-- 训练模式 -->
     <div class="group">
       <div class="group-label">训练模式</div>
       <div class="config">
         <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
+        <button class="toggle-pill off" id="trainerToggle">变速训练 · 自动爬坡<span class="switch"></span></button>
+      </div>
+      <div class="tr-panel" id="trainerPanel" hidden>
+        <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
+        <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" value="120" aria-label="目标 BPM">
+        <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
+        <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
+        <div class="tr-prog" id="trainerProg"></div>
       </div>
     </div>
     <div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
@@ -307,7 +324,7 @@ input[type=range].vol{width:120px}
         <div class="chip" id="presetCount">8 内置</div>
       </div>
       <div id="presetList"></div>
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器（自动爬坡）将在 M3 上线。</div>
+      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
     </section>
   </aside>
 </div>
@@ -411,6 +428,10 @@ const CONFIG = {
 /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
 function loadSaved(){ try{ return JSON.parse(localStorage.getItem("beatsight.m2") || "{}"); }catch(e){ return {}; } }
 const saved = loadSaved();
+/* 变速训练器配置：saved.trainer 缺项/脏项回退默认值 */
+const trDefaults = {on:false, start:70, target:120, step:4, everyN:4};
+const trSaved = Object.assign({}, saved.trainer || {});
+["start","target","step","everyN"].forEach(k => { if (!isFinite(+trSaved[k])) delete trSaved[k]; });
 const S = {
   bpm: saved.bpm || 96,
   vol: saved.vol ?? 0.8,
@@ -420,6 +441,7 @@ const S = {
   sel: saved.sel || {type:"builtin", idx:0},
   playing: false,
   preview: false,
+  trainer: Object.assign({}, trDefaults, trSaved),
 };
 let customs = saved.customs || [];
 customs.forEach((c, i) => { if (!c.id) c.id = "c" + Date.now() + "-" + i; });
@@ -438,6 +460,8 @@ let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
 let draft = null, edSel = null, editBar = 0;
 let undoStack = [], dirty = false;
 let prevSigBeforeAudition = null;
+/* 变速训练器会话状态：trStepIdx 当前第几级（0 基）、trBarCnt 本级已练小节数；start() 时重置 */
+let trStepIdx = 0, trBarCnt = 0;
 
 const $ = id => document.getElementById(id);
 const spb = () => 60 / S.bpm;
@@ -495,6 +519,8 @@ function scheduler(){
     schedStep++;
     if (schedStep >= steps.length){
       schedStep = 0; schedBar = (schedBar + 1) % LOOP_BARS;
+      /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
+      if (S.trainer.on && trainerOnBarBoundary()) return;
       /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
       if (pendingPattern && (!sigChgPending || schedBar === 0)){
         if (sigChgPending) schedBar = 0;
@@ -742,6 +768,10 @@ const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><p
 const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
 function start(){
   ensureCtx();
+  if (S.trainer.on){
+    trStepIdx = 0; trBarCnt = 0;
+    setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
+  }
   S.playing = true;
   schedBar = 0; schedStep = 0;
   loopStart = ctx.currentTime + 0.08;
@@ -773,6 +803,7 @@ function stop(){
   glEls.forEach(list => list.forEach(g => g.el.className = "cell-label group"));
   if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
   lastBeat = -1;
+  updateTrainerProg();
   persist();
 }
 $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
@@ -803,6 +834,7 @@ function setBpm(v, save){
   $("bpmNum").textContent = v;
   $("bpmSlider").value = v;
   updateMeta();
+  updateTrainerProg();
   if (save !== false) persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
 }
 /* ±1 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
@@ -875,6 +907,67 @@ $("muteToggle").addEventListener("click", e => {
   rowEls.forEach((r, b) => r.classList.toggle("muted-bar", S.mute && b === LOOP_BARS - 1));
   persist();
 });
+
+/* ================= 训练模式 · 变速训练器（M3-2） ================= */
+/* 规格（DEVELOPMENT.md §6）：参数 {start, target, step, everyN}；scheduler() 在小节边界计数，
+   每练满 everyN 小节经 setBpm() 升一级（音频时钟重映射，不打断播放）；
+   到目标速度并练满一级后自动停止 + 提示。进度显示「当前 85 BPM · 第 6/13 步」。 */
+const trainerTotal = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
+const trainerBpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
+function updateTrainerProg(){
+  const el = $("trainerProg");
+  el.classList.toggle("live", S.playing && S.trainer.on);
+  if (!S.trainer.on){ el.textContent = ""; return; }
+  const total = trainerTotal();
+  el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total)}/${total} 步`;
+}
+/* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除） */
+function trainerOnBarBoundary(){
+  const t = S.trainer;
+  trBarCnt++;
+  if (trBarCnt < t.everyN){ updateTrainerProg(); return false; }
+  trBarCnt = 0;
+  if (trainerBpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
+    stop();
+    $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
+    updateTrainerProg();
+    return true;
+  }
+  trStepIdx = Math.min(trStepIdx + 1, trainerTotal() - 1);
+  setBpm(trainerBpmFor(trStepIdx), false);
+  updateTrainerProg();
+  return false;
+}
+$("trainerToggle").addEventListener("click", e => {
+  e.currentTarget.blur();
+  S.trainer.on = !S.trainer.on;
+  $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
+  $("trainerPanel").hidden = !S.trainer.on;
+  if (S.trainer.on){ trStepIdx = 0; trBarCnt = 0; setBpm(S.trainer.start, false); }   // 开启即定位到起始速度
+  updateTrainerProg();
+  persist();
+});
+/* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
+function bindTrParam(id, key, min, max){
+  $(id).addEventListener("change", e => {
+    let v = Math.round(+e.target.value);
+    if (!isFinite(v)) v = S.trainer[key];
+    v = Math.min(max, Math.max(min, v));
+    S.trainer[key] = v;
+    e.target.value = v;
+    if (S.trainer.target <= S.trainer.start){          // 目标被改到不高于起始 → 抬回起始 +1
+      S.trainer.target = Math.min(240, S.trainer.start + 1);
+      $("trTarget").value = S.trainer.target;
+    }
+    if (key === "start" && S.trainer.on && !S.playing){ trStepIdx = 0; setBpm(S.trainer.start, false); }
+    updateTrainerProg();
+    persist();
+  });
+}
+bindTrParam("trStart", "start", 30, 236);
+bindTrParam("trTarget", "target", 31, 240);
+bindTrParam("trStepInp", "step", 1, 20);
+bindTrParam("trEvery", "everyN", 1, 8);
 
 /* ================= 预设库 ================= */
 /* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
@@ -1178,15 +1271,21 @@ window.addEventListener("keydown", e => {
 /* ================= 持久化 & 初始化 ================= */
 function persist(){
   localStorage.setItem("beatsight.m2", JSON.stringify({
-    bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs
+    bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs, trainer:S.trainer
   }));
 }
 setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
 $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+/* 变速训练器：恢复开关/参数 UI（trStart 等输入框值以钳制后的配置为准） */
+$("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
+$("trainerPanel").hidden = !S.trainer.on;
+$("trStart").value = S.trainer.start; $("trTarget").value = S.trainer.target;
+$("trStepInp").value = S.trainer.step; $("trEvery").value = S.trainer.everyN;
 setSig(S.sig);
 refreshAfterPatternChange();
+updateTrainerProg();
 </script>
 </body>
 </html>
