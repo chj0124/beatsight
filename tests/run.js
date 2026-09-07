@@ -54,18 +54,25 @@ function makeEl(id){
 
 class FakeParam {
   constructor(v){ this.value = v; }
-  setValueAtTime(){} exponentialRampToValueAtTime(){} linearRampToValueAtTime(){}
+  setValueAtTime(){} linearRampToValueAtTime(){}
+  exponentialRampToValueAtTime(v){ this._rampTo = v; }   // v0.8.0：记录扫频目标（鼓组底鼓断言用）
 }
 class FakeNode {
-  constructor(ctx){ this.frequency = new FakeParam(0); this.gain = new FakeParam(1); this.type = ""; this._ctx = ctx; }
-  connect(){}
-  start(t){ this._ctx.hits.push({ t, freq: this.frequency.value, type: this.type }); }   // v0.7.0：记录发声时刻与音色
+  constructor(ctx, kind){ this.frequency = new FakeParam(0); this.gain = new FakeParam(1); this.Q = new FakeParam(0); this.type = ""; this._ctx = ctx; this._kind = kind; this._dest = null; }
+  connect(d){ if (d && d._kind) this._dest = d; }
+  start(t){
+    if (this._kind === "osc") this._ctx.hits.push({ t, kind: "osc", freq: this.frequency.value, type: this.type, sweepTo: this.frequency._rampTo });
+    if (this._kind === "noise") this._ctx.hits.push({ t, kind: "noise", filterType: this._dest && this._dest.type, filterFreq: this._dest && this._dest.frequency.value });
+  }
   stop(){}
 }
 class FakeAudioContext {
-  constructor(){ this.currentTime = 0; this.state = "running"; this.destination = {}; this.hits = []; FakeAudioContext.last = this; }
-  createOscillator(){ return new FakeNode(this); }
-  createGain(){ return new FakeNode(this); }
+  constructor(){ this.currentTime = 0; this.state = "running"; this.destination = {}; this.hits = []; this.sampleRate = 48000; FakeAudioContext.last = this; }
+  createOscillator(){ return new FakeNode(this, "osc"); }
+  createGain(){ return new FakeNode(this, "gain"); }
+  createBiquadFilter(){ return new FakeNode(this, "filter"); }
+  createBuffer(ch, len, rate){ return { getChannelData: () => new Float32Array(len) }; }
+  createBufferSource(){ return new FakeNode(this, "noise"); }
   resume(){}
 }
 
@@ -363,6 +370,43 @@ section("T12 播放中切换 · 小节边界无缝应用（tick 制回归）");
   drive(ac, beat, 8);
   eq(beat.Store.S.playing, true, "切换后播放未中断");
   ok(ac.hits.length > 8, "切换后持续发声");
+}
+
+/* ================= 场景 T13：音色扩展（v0.8.0） ================= */
+section("T13 音色 · 三套合成音色与持久化");
+{
+  /* 默认与脏值 */
+  const { beat } = loadApp();
+  eq(beat.Store.S.timbre, "click", "默认音色 click（电子）");
+  const { beat: bBad } = loadApp({ "beatsight.m2": JSON.stringify({ timbre: "dubstep" }) });
+  eq(bBad.Store.S.timbre, "click", "非法音色值回退 click");
+  const { beat: bWood, storage: stWood } = loadApp({ "beatsight.m2": JSON.stringify({ timbre: "wood" }) });
+  eq(bWood.Store.S.timbre, "wood", "持久化音色 wood 正确恢复");
+  bWood.Store.persist();
+  eq(JSON.parse(stWood.get("beatsight.m2")).timbre, "wood", "persist 写入 timbre 字段");
+
+  /* 木鱼：全部层级走带通滤波噪声 */
+  bWood.Controls.start();
+  drive(FakeAudioContext.last, bWood, 1.5);
+  const hw = FakeAudioContext.last.hits;
+  ok(hw.length > 0 && hw.every(h => h.kind === "noise" && h.filterType === "bandpass"), "wood：全部发声为带通噪声");
+  eq(hw[0].filterFreq, 2000, "wood：小节首拍（重拍）中心 2000Hz");
+
+  /* 鼓组：重拍=底鼓扫频 150→50；正拍=军鼓带通 1800；细分=踩镲高通 8000 */
+  const { beat: bDrum } = loadApp({ "beatsight.m2": JSON.stringify({ timbre: "drum", sel: { type: "builtin", idx: 2 } }) });
+  bDrum.Controls.start();
+  drive(FakeAudioContext.last, bDrum, 2);
+  const hd = FakeAudioContext.last.hits.slice(0, 4);   // 八分摇滚：重拍,细分,正拍,细分
+  ok(hd[0].kind === "osc" && hd[0].sweepTo === 50, "drum：重拍=底鼓扫频终点 50Hz");
+  ok(hd[1].kind === "noise" && hd[1].filterType === "highpass" && hd[1].filterFreq === 8000, "drum：细分=踩镲高通 8000Hz");
+  ok(hd[2].kind === "noise" && hd[2].filterType === "bandpass" && hd[2].filterFreq === 1800, "drum：正拍=军鼓带通 1800Hz");
+
+  /* 播放中切换音色即时生效（下一发音符即新音色） */
+  bDrum.Controls.setTimbre("click");
+  drive(FakeAudioContext.last, bDrum, 1);
+  const lastHit = FakeAudioContext.last.hits[FakeAudioContext.last.hits.length - 1];
+  ok(lastHit.kind === "osc" && lastHit.sweepTo === undefined, "播放中切 click：下一颗即振荡器发声，不打断播放");
+  ok(bDrum.Store.S.playing, "切音色后播放未中断");
 }
 
 /* ---------------- 汇总 ---------------- */

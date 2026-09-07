@@ -8,7 +8,7 @@
 - **零依赖、离线优先**：必须能双击 file:// 直接运行（PWA 化是 M3，不能破坏单文件性质——manifest/sw 用 Blob 内联注册）
 - **移动优先**：布局以 390px 宽度为基准，桌面端 `max-width:1440px` 居中
 - **界面语言**：中文
-- **音色约束**：正拍 1046.5Hz / 重拍 1568Hz(triangle) / 细分 784Hz，短促包络（4ms 起音，90ms 衰减）——代码中集中在 `CONFIG` 常量区，勿散落硬编码
+- **音色约束**（v0.8.0 起三音色）：click = 正拍 1046.5Hz / 重拍 1568Hz(triangle) / 细分 784Hz，短促包络（4ms 起音，90ms 衰减）；wood = 带通噪声（重拍 2000 / 正拍 1500 / 细分 1100Hz，Q=8，30ms）；drum = 底鼓扫频 150→50 / 军鼓带通 1800 / 踩镲高通 8000（音量 ×0.7）。全部集中在 `CONFIG` / `CONFIG.timbres` 常量区，勿散落硬编码；噪声一律程序生成 buffer，**禁止引入采样文件**
 
 ## 2. 文件结构
 
@@ -148,15 +148,14 @@ node --check _check.js && rm _check.js
 
 ## 6. 路线图（2026-09-07 重排）
 
-已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~
 
 按优先级排队：
 
-1. **v0.8 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
-2. **v0.9 音色扩展**：纯 Web Audio 合成三音色（电子 Click 现状 / 木鱼=带通噪声 30ms 包络 / 鼓组=扫频底鼓+带通军鼓+高通踩镲），噪声 buffer 程序生成，不引采样文件；`S.timbre` 持久化
-3. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
-4. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
-5. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.8 统计数据使用情况再定
+1. **v0.9 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
+2. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
+3. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
+4. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.9 统计数据使用情况再定
 
 ## 7. 用户协作偏好
 

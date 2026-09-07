@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v0.7.0</title>
+<title>BeatSight 时值节拍器 v0.8.0</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -235,9 +235,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v0.7.0</span>
+    <span class="ver">v0.8.0</span>
   </div>
-  <div class="chip"><span class="dot"></span>M5 · 节奏模型升级</div>
+  <div class="chip"><span class="dot"></span>M6 · 多音色</div>
 </header>
 
 <div class="main">
@@ -304,6 +304,15 @@ input[type=range].vol{width:120px}
           <button class="pill active" data-swing="50">直</button>
           <button class="pill" data-swing="67">Swing</button>
           <button class="pill" data-swing="75">重 Swing</button>
+        </div>
+      </div>
+      <div class="vdivider"></div>
+      <div class="group">
+        <div class="group-label">音色 · 程序合成（零采样文件）</div>
+        <div class="bpm-row" id="timbreRow">
+          <button class="pill active" data-timbre="click">电子</button>
+          <button class="pill" data-timbre="wood">木鱼</button>
+          <button class="pill" data-timbre="drum">鼓组</button>
         </div>
       </div>
       <div class="vdivider"></div>
@@ -406,7 +415,7 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v0.7.0 · 单文件模块化结构 + tick 制节奏模型
+   BeatSight v0.8.0 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色
    模块（IIFE，按依赖方向排序，禁止反向引用）：
      Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
      Modal    应用内弹窗
@@ -481,9 +490,16 @@ const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 const SWINGS = [50, 67, 75];
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
-  freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)
+  freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
   attack:0.004, decay:0.09,                          // 包络：4ms 起音、90ms 衰减
   schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、150ms 窗口
+  /* v0.8.0 三套程序合成音色（零采样文件，噪声 buffer 程序生成） */
+  timbres: {
+    wood: { decay:0.03, q:8, freqSub:1100, freqBeat:1500, freqAccent:2000 },   // 木鱼：带通噪声短促敲击
+    drum: { kickFrom:150, kickTo:50, kickSweep:0.1, kickDecay:0.12,            // 重拍=底鼓（正弦扫频）
+            snareFreq:1800, snareQ:1.2, snareDecay:0.08,                       // 正拍=军鼓（带通噪声）
+            hatFreq:8000, hatDecay:0.02, hatGain:0.7 },                        // 细分=踩镲（高通噪声，降音量防刺耳）
+  },
 };
 
 /* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
@@ -542,6 +558,7 @@ const Store = (() => {
     sel: saved.sel || {type:"builtin", idx:0},
     swing: SWINGS.includes(saved.swing) ? saved.swing : 50,          // v0.7.0
     accentGrp: (saved.accentGrp && typeof saved.accentGrp === "object") ? saved.accentGrp : {},  // v0.7.0
+    timbre: ["click","wood","drum"].includes(saved.timbre) ? saved.timbre : "click",  // v0.8.0
     playing: false,
     preview: false,
     trainer: Object.assign({}, trDefaults, trSaved),
@@ -557,7 +574,7 @@ const Store = (() => {
   function persist(){
     localStorage.setItem("beatsight.m2", JSON.stringify({
       v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
-      swing:S.swing, accentGrp:S.accentGrp, customs, trainer:S.trainer
+      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, customs, trainer:S.trainer
     }));
   }
 
@@ -972,13 +989,65 @@ const Audio = (() => {
     }
     if (ctx.state === "suspended") ctx.resume();
   }
-  function playClick(t, stepStartBeat, isAccent){
+  /* 噪声 buffer：程序生成的 0.5s 白噪声，wood/drum 音色共用（零采样文件硬约束） */
+  let noiseBuf = null;
+  function getNoiseBuf(){
+    if (!noiseBuf){
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    return noiseBuf;
+  }
+  /* 滤波噪声一击：木鱼（带通）/军鼓（带通）/踩镲（高通）共用发声路径 */
+  function noiseHit(t, filterType, freq, q, peak, decay){
+    const src = ctx.createBufferSource();
+    src.buffer = getNoiseBuf();
+    const f = ctx.createBiquadFilter();
+    f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    src.connect(f); f.connect(g); g.connect(masterGain);
+    src.start(t); src.stop(t + decay + 0.01);
+  }
+  /* 鼓组底鼓：正弦扫频 kickFrom→kickTo */
+  function kickHit(t, peak){
+    const D = CONFIG.timbres.drum;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(D.kickFrom, t);
+    osc.frequency.exponentialRampToValueAtTime(D.kickTo, t + D.kickSweep);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + D.kickDecay);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t); osc.stop(t + D.kickDecay + 0.01);
+  }
+  function playClick(t, stepStartBeat, isAccent){
     const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
+    const level = isAccent ? 2 : (isBeat ? 1 : 0);
+    const peak = S.vol * (isAccent ? S.accentVol : (isBeat ? 0.8 : 0.5));
+    const TM = CONFIG.timbres;
+    if (S.timbre === "wood"){                      // 木鱼：带通噪声，层级差体现在中心频率
+      const W = TM.wood;
+      noiseHit(t, "bandpass", [W.freqSub, W.freqBeat, W.freqAccent][level], W.q, peak, W.decay);
+      return;
+    }
+    if (S.timbre === "drum"){                      // 鼓组：重拍底鼓 / 正拍军鼓 / 细分踩镲
+      const D = TM.drum;
+      if (level === 2) kickHit(t, peak);
+      else if (level === 1) noiseHit(t, "bandpass", D.snareFreq, D.snareQ, peak, D.snareDecay);
+      else noiseHit(t, "highpass", D.hatFreq, 1, peak * D.hatGain, D.hatDecay);
+      return;
+    }
+    /* click（默认）：振荡器短促敲击 */
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
     osc.type = isAccent ? "triangle" : "sine";
     osc.frequency.value = isAccent ? CONFIG.freqAccent : (isBeat ? CONFIG.freqBeat : CONFIG.freqSub);
-    const peak = S.vol * (isAccent ? S.accentVol : (isBeat ? 0.8 : 0.5));
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + CONFIG.decay);
@@ -1257,6 +1326,19 @@ const Controls = (() => {
     });
   }
 
+  /* 音色（v0.8.0）：整体三选一，变更即时生效（下一发音符即新音色，不打断播放） */
+  function setTimbre(v, save){
+    S.timbre = v;
+    document.querySelectorAll("#timbreRow .pill").forEach(p => p.classList.toggle("active", p.dataset.timbre === v));
+    if (save !== false) Store.persist();
+  }
+  $("timbreRow").addEventListener("click", e => {
+    const btn = e.target.closest("[data-timbre]");
+    if (!btn) return;
+    btn.blur();
+    setTimbre(btn.dataset.timbre);
+  });
+
   $("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; });
   $("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; });
   $("volMaster").addEventListener("change", Store.persist);
@@ -1270,7 +1352,7 @@ const Controls = (() => {
     Store.persist();
   });
 
-  return { start, stop, setBpm, setSig, setSwing, updateMeta };
+  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta };
 })();
 
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
@@ -1615,6 +1697,7 @@ $("trStart").value = S.trainer.start; $("trTarget").value = S.trainer.target;
 $("trStepInp").value = S.trainer.step; $("trEvery").value = S.trainer.everyN;
 Controls.setSig(S.sig);
 Controls.setSwing(S.swing, false);
+Controls.setTimbre(S.timbre, false);
 Presets.refreshAfterPatternChange();
 Trainer.updateProg();
 
