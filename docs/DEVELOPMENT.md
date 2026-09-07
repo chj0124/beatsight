@@ -42,18 +42,25 @@ Store（持久化/状态创建/迁移/导入导出）→ Modal（应用内弹窗
 - `window.__beat` 暴露全部模块接口，是 tests/run.js 的断言入口，也是控制台调试入口
 - 完整的函数归属清单见 index.html 顶部注释；下列 3.1–3.5 的机制描述不变，只是函数现在有模块归属
 
-### 3.1 数据模型
+### 3.1 数据模型（v0.7.0 起 tick 制）
 
 ```js
-// 节奏型：4 小节 × 音符数组，d 单位是"拍"（十六分=0.25）
-pattern = { name, desc, meter, bars: [[{d, rest}...], ×4] }
-// meter = 每小节拍数（2/3/4/6）；内置预设 4 小节相同（rep4），自定义可逐小节不同
+// 时值单位为 tick：TPB=48 ticks/拍（48=2⁴×3，整除 2/3/4/6/8/12/16/24，
+// 覆盖到三十二分三连音）。四分=48t、八分=24t、八三连=16t、十六分=12t、十六三连=8t、三十二分=6t
+pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×4] }
+// meter = 每小节拍数（2/3/4/5/6/7）；内置预设 4 小节相同（rep4），自定义可逐小节不同
+// accents = 重拍落点（拍序号，支持跨拍如 1.5），省略默认 [0]；重拍音在 accents 落点触发
 // rest: true = 休止符（占时不发声，虚线框渲染）
+// 小节校验：barSum === meter × 48，整数严格相等——没有浮点容差
 ```
 
-- 内置预设在 `BUILTINS`（8 个）；用户预设在 `customs[]`，存 localStorage key `beatsight.m2`
-- **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`（v0.5.0 起）**：与 mute/bpm 一并持久化在 beatsight.m2；会话状态 `trStepIdx`（当前级）/`trBarCnt`（本级已练小节数）不持久化，`start()` 时重置
-- **自定义预设以 `id` 引用（v0.4.0 起）**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`；旧数据的 idx 选择在加载时自动迁移为 id。新增/删除预设时不要再用数组下标引用
+- 内置预设在 `BUILTINS`（12 个）；用户预设在 `customs[]`，存 localStorage key `beatsight.m2`（`v:3`）
+- **v0.7.0 迁移**：加载时 `v!==3` → 整包备份 `beatsight.m2.bak`，customs 的浮点 `d ×48 → t`
+- **Swing 是演奏参数不是时值**：`S.swing ∈ {50,67,75}` 存 S 不入 pattern；只偏移拍内后半八分的发声时刻（(swing-50)/50×24t），时间轴与块宽均不动；6/8 不套用
+- **奇数拍重拍分组**：`ACC_GROUPS = {5:[[0,2],[0,3]], 7:[[0,3,5],[0,2,4]]}`；`S.accentGrp[sig]` 记录选择，作用于 basicPattern 与新建自定义；内置/已存预设自带 accents 不受影响
+- **播放中发声读 `Presets.activePattern()` 快照**（v0.7.0）：S.sel/S.sig 切换即变，直读 curPattern() 会在小节中途换节奏型导致 schedStep 越界（v0.4.0 起潜伏 bug）；快照仅在小节边界 applyPatternChange 时更新
+- **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`**：与 mute/bpm/swing 一并持久化在 beatsight.m2；会话状态 `trStepIdx`/`trBarCnt` 不持久化，`start()` 时重置
+- **自定义预设以 `id` 引用**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`
 - 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`，同时 `updateFallbackNote()` 显示琥珀色提示条（含一键切回）
 - **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`
 - **用户可控字符串（预设名等）一律 textContent 赋值，禁止 innerHTML 拼接**
@@ -141,16 +148,15 @@ node --check _check.js && rm _check.js
 
 ## 6. 路线图（2026-09-07 重排）
 
-已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~
 
 按优先级排队：
 
-1. **v0.7 tick 制重构 + 节奏模型升级**：时值从浮点拍数改 PPQN=48 ticks（每拍 48，整除 2/3/4/6/8/12/16/24），消灭 1e-9 容差；解锁三连音（16t）/swing（演奏参数，只影响发声时机与播放头，块宽不变）/5·7 奇数拍（重拍分组 2+3、3+2+2 可选）。**迁移前先在 tests/ 补「旧浮点数据 → tick」断言**；localStorage 迁移前备份到 `beatsight.m2.bak`
-2. **v0.8 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
-3. **v0.9 音色扩展**：纯 Web Audio 合成三音色（电子 Click 现状 / 木鱼=带通噪声 30ms 包络 / 鼓组=扫频底鼓+带通军鼓+高通踩镲），噪声 buffer 程序生成，不引采样文件；`S.timbre` 持久化
-4. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
-5. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
-6. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.8 统计数据使用情况再定
+1. **v0.8 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
+2. **v0.9 音色扩展**：纯 Web Audio 合成三音色（电子 Click 现状 / 木鱼=带通噪声 30ms 包络 / 鼓组=扫频底鼓+带通军鼓+高通踩镲），噪声 buffer 程序生成，不引采样文件；`S.timbre` 持久化
+3. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
+4. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
+5. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.8 统计数据使用情况再定
 
 ## 7. 用户协作偏好
 

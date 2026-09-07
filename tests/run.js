@@ -4,7 +4,8 @@
    原理：从 index.html 提取内联脚本，在 Node vm 沙箱中运行——
      · localStorage：Map 实现，可按场景预置数据（容错 / 迁移 / 脏项回退）
      · DOM：按 id 缓存的元素 stub，addEventListener 存 handler 供测试触发
-     · AudioContext：伪造实现，currentTime 手动推进，逐 tick 驱动 scheduler()
+     · AudioContext：伪造实现，currentTime 手动推进，逐 tick 驱动 scheduler()；
+       osc.start(t) 记录 {t, freq, type} 供 swing/重拍断言
      · rAF 置空：paintFrame 不运行，测试只断言引擎与状态层
    断言对象的获取：脚本末尾的 window.__beat 调试句柄暴露全部模块接口。
    ================================================================================ */
@@ -56,17 +57,19 @@ class FakeParam {
   setValueAtTime(){} exponentialRampToValueAtTime(){} linearRampToValueAtTime(){}
 }
 class FakeNode {
-  constructor(){ this.frequency = new FakeParam(0); this.gain = new FakeParam(1); this.type = ""; }
-  connect(){} start(){} stop(){}
+  constructor(ctx){ this.frequency = new FakeParam(0); this.gain = new FakeParam(1); this.type = ""; this._ctx = ctx; }
+  connect(){}
+  start(t){ this._ctx.hits.push({ t, freq: this.frequency.value, type: this.type }); }   // v0.7.0：记录发声时刻与音色
+  stop(){}
 }
 class FakeAudioContext {
-  constructor(){ this.currentTime = 0; this.state = "running"; this.destination = {}; FakeAudioContext.last = this; }
-  createOscillator(){ return new FakeNode(); }
-  createGain(){ return new FakeNode(); }
+  constructor(){ this.currentTime = 0; this.state = "running"; this.destination = {}; this.hits = []; FakeAudioContext.last = this; }
+  createOscillator(){ return new FakeNode(this); }
+  createGain(){ return new FakeNode(this); }
   resume(){}
 }
 
-/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, ac, storage} */
+/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage} */
 function loadApp(seed){
   const store = new Map(Object.entries(seed || {}));
   const els = {};
@@ -117,6 +120,7 @@ function ok(cond, name){
   else { fail++; failNames.push(name); console.log("  ✗ " + name); }
 }
 function eq(actual, expect, name){ ok(actual === expect, `${name}（期望 ${JSON.stringify(expect)}，实际 ${JSON.stringify(actual)}）`); }
+function near(actual, expect, eps, name){ ok(Math.abs(actual - expect) < eps, `${name}（期望 ≈${expect}，实际 ${actual}）`); }
 function section(t){ console.log("\n■ " + t); }
 
 /* 驱动播放：每次推进音频时钟 dt 秒并手动调度，直到停止或超步 */
@@ -196,34 +200,49 @@ section("T4 Trainer · 参数钳制与目标>起始约束");
   eq(S.trainer.everyN, 1, "每级小节数下限钳到 1");
 }
 
-/* ================= 场景 T5：预设导入导出 ================= */
-section("T5 Store · 预设导入导出校验");
+/* ================= 场景 T5：预设导入导出（v0.7.0：tick 制 + v1 旧格式兼容） ================= */
+section("T5 Store · 预设导入导出校验（tick 制）");
 {
   const { beat } = loadApp();
   const Store = beat.Store;
   ok(Store.importPresets("not json").ok === false, "非 JSON 拒绝");
   ok(Store.importPresets('{"foo":1}').ok === false, "无 presets 字段拒绝");
   ok(Store.importPresets('{"presets":[]}').ok === false, "空数组拒绝");
-  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 4, bars: [[{ d: 0.3 }], [], [], []] }] })).ok === false,
-     "非法时值 d=0.3 拒绝");
-  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 4, bars: [[{ d: 1 }, { d: 1 }, { d: 1 }], [], [], []] }] })).ok === false,
+  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 4, bars: [[{ t: 14 }], [], [], []] }] })).ok === false,
+     "非法时值 t=14（不在合法 tick 集合）拒绝");
+  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 4, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }], [], [], []] }] })).ok === false,
      "小节时值不足 4 拍拒绝");
-  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 5, bars: [[{ d: 1 }], [], [], []] }] })).ok === false,
-     "拍号 5（v0.7 才支持）拒绝");
+  ok(Store.importPresets(JSON.stringify({ presets: [{ name: "x", meter: 8, bars: [[{ t: 48 }], [], [], []] }] })).ok === false,
+     "拍号 8（未开放）拒绝");
 
-  const good = { app: "beatsight", kind: "presets", v: 1, presets: [
-    { name: "测试 · 摇滚", meter: 4, bars: [0,1,2,3].map(() => Array.from({ length: 8 }, () => ({ d: 0.5, rest: false }))) },
-    { name: "测试 · 6/8", meter: 6, bars: [0,1,2,3].map(() => Array.from({ length: 4 }, () => ({ d: 1.5, rest: false }))) },
+  const good = { app: "beatsight", kind: "presets", v: 2, presets: [
+    { name: "测试 · 摇滚", meter: 4, bars: [0,1,2,3].map(() => Array.from({ length: 8 }, () => ({ t: 24, rest: false }))) },
+    { name: "测试 · 6/8", meter: 6, bars: [0,1,2,3].map(() => Array.from({ length: 4 }, () => ({ t: 72, rest: false }))) },
   ]};
   const r1 = Store.importPresets(JSON.stringify(good));
-  ok(r1.ok && r1.count === 2, "合法文件导入 2 个预设");
+  ok(r1.ok && r1.count === 2, "合法 v2（tick）文件导入 2 个预设");
   eq(Store.customs.length, 2, "customs 增至 2");
   ok(Store.customs.every(c => typeof c.id === "string" && c.id.startsWith("c")), "导入后 id 重新生成");
-  ok(Store.customs[0].id !== Store.customs[1].id, "id 互不相同");
 
-  const round = Store.importPresets(Store.serializePresets());
-  ok(round.ok && round.count === 2, "导出→再导入 往返成功");
-  eq(Store.customs.length, 4, "往返后 customs 增至 4");
+  /* v0.7.0：拍号 5/7 开放 */
+  const odd = { presets: [{ name: "测试 · 5/4", meter: 5, accents: [0, 2],
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }]};
+  const r2 = Store.importPresets(JSON.stringify(odd));
+  ok(r2.ok && r2.count === 1, "拍号 5（v0.7 开放）接受");
+  eq(JSON.stringify(Store.customs[2].accents), JSON.stringify([0, 2]), "重拍分组随导入保留");
+
+  /* v1 旧格式（浮点拍数 d）向后兼容：自动 ×48 转 tick */
+  const legacy = { presets: [{ name: "旧格式 · 附点", meter: 4,
+    bars: [0,1,2,3].map(() => [{ d: 0.75 }, { d: 0.25 }, { d: 1 }, { d: 1 }, { d: 1 }]) }]};
+  const r3 = Store.importPresets(JSON.stringify(legacy));
+  ok(r3.ok && r3.count === 1, "v1 旧格式（d 浮点）导入成功");
+  eq(Store.customs[3].bars[0][0].t, 36, "d=0.75 → t=36");
+  eq(Store.customs[3].bars[0][0].d, undefined, "旧字段 d 已清除");
+
+  const ser = Store.serializePresets();
+  ok(JSON.parse(ser).v === 2, "导出格式 v:2（tick 制）");
+  const round = Store.importPresets(ser);
+  ok(round.ok && round.count === 4, "导出→再导入 往返成功");
   const ids = Store.customs.map(c => c.id);
   ok(new Set(ids).size === ids.length, "往返后全部 id 仍唯一");
 }
@@ -245,9 +264,105 @@ section("T7 模块化 · 接口与装配完整性");
     ok(!!beat[k], `__beat.${k} 已暴露`));
   ["start", "stop", "setBpm", "setSig"].forEach(k => ok(typeof beat.Controls[k] === "function", `Controls.${k}()`));
   ["serializePresets", "exportPresets", "importPresets", "persist"].forEach(k => ok(typeof beat.Store[k] === "function", `Store.${k}()`));
-  ok(typeof beat.Modal.uiAlert === "function", "Modal.uiAlert()（v0.6.0 新增）");
+  ok(typeof beat.Modal.uiAlert === "function", "Modal.uiAlert()");
   ok(typeof beat.Presets.consumePending === "function", "Presets.consumePending()");
   ok(typeof beat.Editor.draft === "function", "Editor.draft() 访问器");
+  ok(typeof beat.Controls.setSwing === "function", "Controls.setSwing()（v0.7.0 新增）");
+}
+
+/* ================= 场景 T8：v0.7.0 localStorage 浮点 → tick 迁移 ================= */
+section("T8 Store · 旧浮点数据迁移 tick + 备份");
+{
+  const oldData = { bpm: 100, sig: 4, sel: { type: "custom", id: "cold1" },
+    customs: [{ id: "cold1", name: "旧预设", meter: 4,
+      bars: [0,1,2,3].map(() => [{ d: 1 }, { d: 0.5 }, { d: 0.5 }, { d: 0.75 }, { d: 0.25 }, { d: 1 }]) }] };
+  const { beat, storage } = loadApp({ "beatsight.m2": JSON.stringify(oldData) });
+  const c = beat.Store.customs[0];
+  eq(c.bars[0][0].t, 48, "迁移：d=1 → t=48");
+  eq(c.bars[0][3].t, 36, "迁移：d=0.75 → t=36");
+  ok(c.bars[0].every(s => s.d === undefined), "迁移后无残留 d 字段");
+  ok(storage.has("beatsight.m2.bak"), "迁移前已备份 beatsight.m2.bak");
+  eq(JSON.parse(storage.get("beatsight.m2.bak")).customs[0].bars[0][0].d, 1, "备份保留原始浮点数据");
+  beat.Store.persist();
+  eq(JSON.parse(storage.get("beatsight.m2")).v, 3, "persist 写入 v:3");
+  eq(beat.curPattern().name, "旧预设", "迁移后 id 引用仍命中原预设");
+}
+
+/* ================= 场景 T9：三连音数据模型 ================= */
+section("T9 节奏模型 · 三连音 tick 校验");
+{
+  const { beat } = loadApp();
+  const Store = beat.Store;
+  const triplet = { presets: [{ name: "三连音测试", meter: 4,
+    bars: [0,1,2,3].map(() => Array.from({ length: 12 }, () => ({ t: 16 }))) }]};
+  ok(Store.importPresets(JSON.stringify(triplet)).ok, "八分三连音 ×12 = 4 拍 整数校验通过");
+  const badTriplet = { presets: [{ name: "残缺三连音", meter: 4,
+    bars: [[{ t: 16 }, { t: 16 }, { t: 48 }, { t: 48 }, { t: 48 }], [], [], []] }]};
+  ok(Store.importPresets(JSON.stringify(badTriplet)).ok === false, "残缺三连音组（2/3 组）时值不足拒绝");
+  const c = Store.customs[0];
+  eq(c.bars[0].reduce((a, s) => a + s.t, 0), 192, "三连音小节和 = 4×48 = 192t（整数严格相等，无浮点容差）");
+}
+
+/* ================= 场景 T10：Swing 发声时机偏移 ================= */
+section("T10 Swing · 后半拍八分发声延后，时间轴不动");
+{
+  /* 八分摇滚（idx 2，24t×8），BPM 96 → spb=0.625s；swing 67 → 后半拍延后 (67-50)/50×24t=8.16t≈0.10625s */
+  const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ sel: { type: "builtin", idx: 2 }, swing: 67 }) });
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 3);
+  const hits = ac.hits.slice(0, 4);
+  eq(hits.length, 4, "一小节内 4 次发声已记录");
+  const spb = 60 / 96;
+  near(hits[1].t - hits[0].t, (24 + 8.16) / 48 * spb, 1e-6, "第 1→2 颗间隔 = 24t + 8.16t（swing 延后）");
+  near(hits[2].t - hits[1].t, (24 - 8.16) / 48 * spb, 1e-6, "第 2→3 颗间隔 = 24t - 8.16t（下一颗按时进入）");
+  near(hits[0].t, 0.08, 1e-6, "第 1 颗（正拍）不受 swing 影响");
+
+  const { beat: b2 } = loadApp({ "beatsight.m2": JSON.stringify({ sel: { type: "builtin", idx: 2 }, swing: 50 }) });
+  b2.Controls.start();
+  const ac2 = FakeAudioContext.last;
+  drive(ac2, b2, 1.5);
+  const h2 = ac2.hits;
+  near(h2[1].t - h2[0].t, 0.5 * spb, 1e-6, "swing=50（直）时八分间隔均匀");
+}
+
+/* ================= 场景 T11：奇数拍重拍分组 ================= */
+section("T11 奇数拍 · 重拍分组发音");
+{
+  /* Take Five 律动（idx 9）：meter 5，accents [0,3]，[48,48,48,24,24] */
+  const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ sig: 5, sel: { type: "builtin", idx: 9 } }) });
+  eq(beat.curPattern().name, "Take Five 律动 · 5/4", "5/4 下选中 Take Five 预设");
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 4);
+  const hits = ac.hits.slice(0, 5);
+  eq(hits[0].freq, 1568, "第 1 拍重拍音（1568Hz）");
+  eq(hits[1].freq, 1046.5, "第 2 拍普通正拍音");
+  eq(hits[3].freq, 1568, "第 4 颗（第 4 拍 = 3+2 分组点）重拍音");
+  eq(hits[4].freq, 784, "第 5 颗（后半拍八分 = 细分位）细分音 784Hz");
+
+  /* 基本回退节奏 5/4 默认 2+3 分组（D4 决策） */
+  const { beat: b2 } = loadApp({ "beatsight.m2": JSON.stringify({ sig: 5 }) });
+  eq(JSON.stringify(b2.curPattern().accents), JSON.stringify([0, 2]), "5/4 回退节奏默认重拍分组 2+3");
+  const { beat: b3 } = loadApp({ "beatsight.m2": JSON.stringify({ sig: 7 }) });
+  eq(JSON.stringify(b3.curPattern().accents), JSON.stringify([0, 3, 5]), "7/4 回退节奏默认重拍分组 3+2+2");
+}
+
+/* ================= 场景 T12：播放中切拍号无缝生效（v0.4.0 机制 tick 制回归） ================= */
+section("T12 播放中切换 · 小节边界无缝应用（tick 制回归）");
+{
+  const { beat, els } = loadApp();
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  /* 播放 1 秒后切到 3/4（华尔兹 idx 6，meter 3）：挂起到循环起点 */
+  drive(ac, beat, 1);
+  beat.Store.S.sel = { type: "builtin", idx: 6 };
+  beat.Controls.setSig(3);
+  beat.Presets.refreshAfterPatternChange();
+  eq(beat.Store.S.sig, 3, "拍号状态立即切换");
+  drive(ac, beat, 8);
+  eq(beat.Store.S.playing, true, "切换后播放未中断");
+  ok(ac.hits.length > 8, "切换后持续发声");
 }
 
 /* ---------------- 汇总 ---------------- */
