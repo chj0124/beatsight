@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器</title>
+<title>BeatSight 时值节拍器 v0.5.1</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -22,6 +22,7 @@ button:disabled{cursor:not-allowed}
 /* ---------- 顶栏 ---------- */
 .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.brand .ver{font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
 .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(30,215,96,.6);animation:pulse 1s infinite}
@@ -232,8 +233,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
+    <span class="ver">v0.5.1</span>
   </div>
-  <div class="chip"><span class="dot"></span>M2 · 预设 + 自定义编辑器</div>
+  <div class="chip"><span class="dot"></span>M3 · 变速训练器</div>
 </header>
 
 <div class="main">
