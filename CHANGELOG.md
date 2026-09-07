@@ -1,5 +1,37 @@
 # 变更记录
 
+## v0.6.0 · 单文件模块化重构 + 预设导入导出 + 持久化测试（2026-09-07）
+
+### 架构：IIFE 模块化（行为零变化重构，v0.7 tick 制的前置）
+
+- `<script>` 重组为 8 个 IIFE 逻辑模块，按依赖方向排序、禁止反向引用：**Store**（持久化/状态创建/迁移/导入导出）→ **Modal**（应用内弹窗）→ **Viz**（时值可视化）→ **Audio**（Web Audio 前瞻调度）→ **Trainer**（变速训练器）→ **Controls**（播放控制/BPM/拍号/音量/静音拍）→ **Presets**（预设库/回退提示/播放中切换挂起）→ **Editor**（自定义编辑器）
+- 边界规则：模块间只通过暴露接口通信（如 `Trainer.updateProg()`、`Presets.consumePending()`），禁止直读内部变量；跨模块共享的可变状态（S、customs、音频时钟变量）集中在「共享状态」区声明——v0.6 收敛的是函数归属与调用接口，状态容器化留待后续
+- 关键接口变化：scheduler 内的 pendingPattern 判定收敛为 `Presets.consumePending(schedBar)`；stop() 的视觉复位收敛为 `Viz.resetForStop()`；追踪变量复位收敛为 `Viz.resetTracking()`；编辑器草稿经 `Editor.draft()` 访问器供 curPattern 使用
+- 新增 `window.__beat` 调试/测试句柄，暴露 8 个模块接口（tests/run.js 的断言入口）
+- HTML/CSS 不动布局，仅新增预设导入导出按钮与 `.preset-io` 样式
+
+### 功能：预设导入导出
+
+- 预设库新增「导出预设 / 导入预设」：导出为 JSON 文件（`{app:"beatsight", kind:"presets", v:1, presets:[…]}`，文件名带日期）；导入经隐藏 file input + FileReader
+- 导入校验：拍号 ∈ {2,3,4,6}（5/7 属 v0.7）、恰好 4 小节、时值 ∈ {4,2,1.5,1,0.75,0.5,0.25}、每小节时值和严格等于拍数；任一预设不合格整包拒绝，错误文案经 `Modal.uiAlert`（新增纯通知弹窗，hideCancel）展示
+- 导入 id 一律重新生成（`c<时间戳>-i<n>`），杜绝跨设备 id 冲突；无自定义预设时导出按钮禁用
+- 侧栏说明文案补充备份引导
+
+### 附带修复（tests 固化后捕获的存量 bug）
+
+- **trainer 脏值清洗绕过**：`isFinite(+null)`、`isFinite(+true)` 均为 true——`null`/布尔脏值穿过清洗覆盖默认值（如 `everyN:null`）。修复：清洗条件排除 null 与布尔（tests T2 断言锁定）
+
+### 测试：tests/ 持久化
+
+- 新增 `tests/run.js`（零依赖，Node ≥18，`node tests/run.js`）：vm 沙箱提取内联脚本运行，Map 版 localStorage 按场景预置、伪造 AudioContext 手动推进时钟逐 tick 驱动 scheduler、rAF 置空只测引擎与状态层
+- 7 场景 56 断言：坏 JSON 容错 / trainer 脏项回退 / 爬坡序列 70→80→90→95+自动停止+文案（v0.5.0 核心回归）/ 参数钳制 / 导入导出全分支+往返 / curPattern 回退 / 模块装配完整性
+- v0.5.0 的"临时副本伪造 AudioContext"测试方法自此固化，不再依赖 CHANGELOG 文字传承
+
+### 自验
+
+- JS 语法校验通过；`node tests/run.js` 56/56 PASS；无头 Chrome 桌面 1440 / 窄屏 800 截图确认布局与新增按钮渲染正常、导出按钮禁用态正确；控制台零报错
+- 环境备忘：本机（macOS）无头 Chrome 在 Bash 沙箱内因 `sandbox initialization failed` 起不来，需 `--no-sandbox`；`--virtual-time-budget`/`--timeout` 组合会挂起不退，需后台跑 + 到时 pkill
+
 ## v0.5.1 · 标题显示版本号（2026-09-07）
 
 - 顶栏品牌标题与 `<title>` 增加 v0.5.1 版本号；顶栏过时的「M2 · 预设 + 自定义编辑器」里程碑标签同步更新为「M3 · 变速训练器」（v0.4.3 清理标题里程碑字样先例的延续，避免与版本号并排矛盾）

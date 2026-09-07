@@ -17,12 +17,30 @@ beatsight/
 ├── index.html            # 全部代码（样式 <style> + 逻辑 <script>）
 ├── README.md             # 项目门面
 ├── CHANGELOG.md          # 版本记录
+├── tests/
+│   ├── run.js            # 持久化自动化测试（node tests/run.js，零依赖）
+│   └── README.md         # 测试原理与补断言规则
 └── docs/
     ├── prd.html          # 原始产品需求文档 v1.0
     └── DEVELOPMENT.md    # 本文档
 ```
 
 ## 3. 核心架构
+
+### 3.0 模块地图（v0.6.0 起）
+
+`<script>` 为 8 个 IIFE 逻辑模块，按依赖方向排序，**禁止反向引用**：
+
+```
+Store（持久化/状态创建/迁移/导入导出）→ Modal（应用内弹窗）→ Viz（时值可视化）
+→ Audio（Web Audio 前瞻调度）→ Trainer（变速训练器）→ Controls（播放控制/BPM/拍号/音量/静音拍）
+→ Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）→ init（装配）
+```
+
+- 模块间只通过暴露接口通信（`Trainer.updateProg()`、`Presets.consumePending()`、`Viz.resetForStop()` 等），禁止直读内部变量
+- 跨模块共享的可变状态（S、customs、`ctx`/`loopStart`/`nextNoteTime`/`schedBar`/`schedStep`/`rafId`）集中在「共享状态」区声明；S 的创建/迁移/落盘归 Store
+- `window.__beat` 暴露全部模块接口，是 tests/run.js 的断言入口，也是控制台调试入口
+- 完整的函数归属清单见 index.html 顶部注释；下列 3.1–3.5 的机制描述不变，只是函数现在有模块归属
 
 ### 3.1 数据模型
 
@@ -98,6 +116,9 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 ## 5. 自验流程（改完代码必须做）
 
 ```bash
+# 0) 自动化测试（v0.6.0 起，最快反馈，先跑这个）
+node tests/run.js    # 56 断言全 PASS 才继续
+
 # 1) JS 语法校验（提取内联脚本）
 python -c "import re,io;html=io.open('index.html',encoding='utf-8').read();io.open('_check.js','w',encoding='utf-8').write(re.search(r'<script>(.*?)</script>',html,re.S).group(1))"
 node --check _check.js && rm _check.js
@@ -111,17 +132,25 @@ node --check _check.js && rm _check.js
 ```
 
 **坑（都踩过）**：
+- macOS 无头 Chrome 在 WorkBuddy 沙箱 shell 内报 `sandbox initialization failed`：加 `--no-sandbox`；`--virtual-time-budget` / `--timeout` 组合可能挂起不退出——后台跑 + 到时 pkill 兜底（v0.6.0 踩）
 - `--user-data-dir` 每次必须换新目录，否则静默失败无截图
 - headless=new 有 ~500px 最小窗口宽度：`--window-size=390` 实际 innerWidth=500，截图按 390 裁会"假性溢出"。诊断响应式先 dump-dom 验证真实 innerWidth，或用 `--force-device-scale-factor=2` + 双倍窗口尺寸折算
 - 含持续 rAF/AudioContext 的页面用 `--virtual-time-budget` 截不到播放态，用 `--timeout=9000`（也只能抓加载态）
 - 播放/发声验证必须真人点击（浏览器音频手势策略）
 - 想截图特定预设/编辑器：临时复制一份文件，改 `sel` 默认值或末尾追加 `openEditor()`，截完删除临时文件
 
-## 6. M3 任务拆解（下一个里程碑）
+## 6. 路线图（2026-09-07 重排）
 
-1. **PWA 离线**：内联 manifest（Blob URL）+ Service Worker（`index.html` 单资源缓存即可）；iOS 需 apple-touch-icon（可用 SVG data URI）
-2. ~~**变速训练器**~~ ✅ **v0.5.0 已完成**：`S.trainer {on, start, target, step, everyN}`；scheduler 小节边界计数爬坡；UI 在主界面「训练模式」区（开关 + 参数面板 + 进度行）；完成自动停止 + 提示。自动化测试方法：临时副本伪造 AudioContext（currentTime 手动推进）+ requestAnimationFrame 置空，逐 tick 调 scheduler() 断言 BPM 序列
-3. **后台持续发声**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~
+
+按优先级排队：
+
+1. **v0.7 tick 制重构 + 节奏模型升级**：时值从浮点拍数改 PPQN=48 ticks（每拍 48，整除 2/3/4/6/8/12/16/24），消灭 1e-9 容差；解锁三连音（16t）/swing（演奏参数，只影响发声时机与播放头，块宽不变）/5·7 奇数拍（重拍分组 2+3、3+2+2 可选）。**迁移前先在 tests/ 补「旧浮点数据 → tick」断言**；localStorage 迁移前备份到 `beatsight.m2.bak`
+2. **v0.8 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
+3. **v0.9 音色扩展**：纯 Web Audio 合成三音色（电子 Click 现状 / 木鱼=带通噪声 30ms 包络 / 鼓组=扫频底鼓+带通军鼓+高通踩镲），噪声 buffer 程序生成，不引采样文件；`S.timbre` 持久化
+4. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
+5. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
+6. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.8 统计数据使用情况再定
 
 ## 7. 用户协作偏好
 

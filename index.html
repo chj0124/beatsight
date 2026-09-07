@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v0.5.1</title>
+<title>BeatSight 时值节拍器 v0.6.0</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -143,6 +143,8 @@ input[type=range].vol{width:120px}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
 .preset-item .del:hover{color:var(--red);background:rgba(243,114,127,.1)}
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
+.preset-io{display:flex;gap:10px;margin-top:12px}
+.preset-io .pill:disabled{opacity:.4}
 
 /* ---------- 编辑器 ---------- */
 .editor{position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;display:none}
@@ -233,9 +235,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v0.5.1</span>
+    <span class="ver">v0.6.0</span>
   </div>
-  <div class="chip"><span class="dot"></span>M3 · 变速训练器</div>
+  <div class="chip"><span class="dot"></span>M4 · 模块化 + 导入导出</div>
 </header>
 
 <div class="main">
@@ -326,7 +328,12 @@ input[type=range].vol{width:120px}
         <div class="chip" id="presetCount">8 内置</div>
       </div>
       <div id="presetList"></div>
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
+      <div class="preset-io">
+        <button class="pill outline" id="exportBtn" disabled>导出预设</button>
+        <button class="pill outline" id="importBtn">导入预设</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请用「导出预设」备份 JSON，换设备后用「导入预设」恢复。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
     </section>
   </aside>
 </div>
@@ -386,6 +393,24 @@ input[type=range].vol{width:120px}
 
 <script>
 "use strict";
+/* ================================================================================
+   BeatSight v0.6.0 · 单文件模块化结构
+   模块（IIFE，按依赖方向排序，禁止反向引用）：
+     Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     Modal    应用内弹窗
+     Viz      时值可视化渲染与每帧动画
+     Audio    Web Audio 引擎与前瞻调度
+     Trainer  变速训练器
+     Controls 播放控制 / BPM / 拍号 / 音量 / 静音拍
+     Presets  预设库 / 拍号回退提示 / 播放中切换挂起
+     Editor   自定义节奏型编辑器
+   边界规则：
+     1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
+     2. 跨模块共享的可变状态（S、customs、音频时钟变量）集中在「共享状态」区声明，
+        模块只做函数归属与接口收敛；S 的创建/迁移/落盘归 Store
+     3. 用户可控字符串一律 textContent 赋值，禁止 innerHTML 拼接
+   ================================================================================ */
+
 /* ================= 数据 ================= */
 const D = (d, rest) => ({d, rest: !!rest});
 const rep4 = steps => [0,1,2,3].map(() => steps.map(s => ({...s})));
@@ -426,51 +451,17 @@ const CONFIG = {
   schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、150ms 窗口
 };
 
-/* ================= 状态 ================= */
-/* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
-function loadSaved(){ try{ return JSON.parse(localStorage.getItem("beatsight.m2") || "{}"); }catch(e){ return {}; } }
-const saved = loadSaved();
-/* 变速训练器配置：saved.trainer 缺项/脏项回退默认值 */
-const trDefaults = {on:false, start:70, target:120, step:4, everyN:4};
-const trSaved = Object.assign({}, saved.trainer || {});
-["start","target","step","everyN"].forEach(k => { if (!isFinite(+trSaved[k])) delete trSaved[k]; });
-const S = {
-  bpm: saved.bpm || 96,
-  vol: saved.vol ?? 0.8,
-  accentVol: saved.accentVol ?? 1,
-  mute: !!saved.mute,
-  sig: saved.sig || 4,
-  sel: saved.sel || {type:"builtin", idx:0},
-  playing: false,
-  preview: false,
-  trainer: Object.assign({}, trDefaults, trSaved),
-};
-let customs = saved.customs || [];
-customs.forEach((c, i) => { if (!c.id) c.id = "c" + Date.now() + "-" + i; });
-if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
-  const c0 = customs[S.sel.idx];
-  S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:0};
-}
+/* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
+const $ = id => document.getElementById(id);
+const spb = () => 60 / S.bpm;
 let ctx = null, masterGain = null;
 let loopStart = 0;
 let nextNoteTime = 0, schedBar = 0, schedStep = 0;
-let timer = null, rafId = null;
-let lastBar = -1, lastStep = -1;
-/* 播放中切换节奏型：挂起到小节边界无缝生效 */
-let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
-/* 编辑器草稿 + 撤销栈 */
-let draft = null, edSel = null, editBar = 0;
-let undoStack = [], dirty = false;
-let prevSigBeforeAudition = null;
-/* 变速训练器会话状态：trStepIdx 当前第几级（0 基）、trBarCnt 本级已练小节数；start() 时重置 */
-let trStepIdx = 0, trBarCnt = 0;
-
-const $ = id => document.getElementById(id);
-const spb = () => 60 / S.bpm;
+let rafId = null;
 const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
   bars:rep4(Array.from({length:meter},()=>D(1)))});
 const curPattern = () => {
-  if (S.preview && draft) return draft;
+  if (S.preview && Editor.draft()) return Editor.draft();
   if (S.sel.type === "custom"){
     const c = customs.find(x => x.id === S.sel.id);
     if (c && c.meter === S.sig) return c;
@@ -482,801 +473,1005 @@ const curPattern = () => {
 };
 const loopBeats = () => S.sig * LOOP_BARS;
 
-/* ================= 音频引擎 ================= */
-function ensureCtx(){
-  if (!ctx){
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = ctx.createGain();
-    masterGain.connect(ctx.destination);
+/* ================= Store · 持久化 / 状态 / 导入导出 ================= */
+const Store = (() => {
+  /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
+  function loadSaved(){ try{ return JSON.parse(localStorage.getItem("beatsight.m2") || "{}"); }catch(e){ return {}; } }
+  const saved = loadSaved();
+  /* 变速训练器配置：saved.trainer 缺项/脏项回退默认值 */
+  const trDefaults = {on:false, start:70, target:120, step:4, everyN:4};
+  const trSaved = Object.assign({}, saved.trainer || {});
+  /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获） */
+  ["start","target","step","everyN"].forEach(k => {
+    const v = trSaved[k];
+    if (v === null || typeof v === "boolean" || !isFinite(+v)) delete trSaved[k];
+  });
+  const S = {
+    bpm: saved.bpm || 96,
+    vol: saved.vol ?? 0.8,
+    accentVol: saved.accentVol ?? 1,
+    mute: !!saved.mute,
+    sig: saved.sig || 4,
+    sel: saved.sel || {type:"builtin", idx:0},
+    playing: false,
+    preview: false,
+    trainer: Object.assign({}, trDefaults, trSaved),
+  };
+  const customs = saved.customs || [];
+  customs.forEach((c, i) => { if (!c.id) c.id = "c" + Date.now() + "-" + i; });
+  /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用 */
+  if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
+    const c0 = customs[S.sel.idx];
+    S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:0};
   }
-  if (ctx.state === "suspended") ctx.resume();
-}
-function playClick(t, stepStartBeat, isBarStart){
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
-  osc.type = isBarStart ? "triangle" : "sine";
-  osc.frequency.value = isBarStart ? CONFIG.freqAccent : (isBeat ? CONFIG.freqBeat : CONFIG.freqSub);
-  const peak = S.vol * (isBarStart ? S.accentVol : (isBeat ? 0.8 : 0.5));
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + CONFIG.decay);
-  osc.connect(g); g.connect(masterGain);
-  osc.start(t); osc.stop(t + CONFIG.decay + 0.01);
-}
-function scheduler(){
-  const bars = curPattern().bars;
-  while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
-    const steps = bars[schedBar];
-    if (!steps || steps.length === 0){                  // 空小节：安全跳过
-      nextNoteTime += S.sig * spb();
-      schedBar = (schedBar + 1) % LOOP_BARS;
-      continue;
-    }
-    let cum = 0;
-    for (let i = 0; i < schedStep; i++) cum += steps[i].d;
-    const muted = S.mute && schedBar === LOOP_BARS - 1;
-    if (!muted && !steps[schedStep].rest) playClick(nextNoteTime, cum, schedStep === 0);
-    nextNoteTime += steps[schedStep].d * spb();
-    schedStep++;
-    if (schedStep >= steps.length){
-      schedStep = 0; schedBar = (schedBar + 1) % LOOP_BARS;
-      /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
-      if (S.trainer.on && trainerOnBarBoundary()) return;
-      /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
-      if (pendingPattern && (!sigChgPending || schedBar === 0)){
-        if (sigChgPending) schedBar = 0;
-        applyPatternChange();
-        loopStart = nextNoteTime - schedBar * S.sig * spb();
-        lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1;
-        return;                                          // bars 引用已过期，下个调度周期继续
-      }
-    }
-  }
-}
 
-/* ================= 可视化 ================= */
-let rowEls = [], cellEls = [], playheadEl = null, trailGlowEl = null;
-let subEls = [], fillEls = [], labelEls = [], lastT16 = -1;
-let glEls = [];                                            // 短音符合并标注（组标签）
-let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
-function stepLabel(s){
-  return (s.rest ? "休止 " : "") + (DUR_NAME[s.d] || (s.d + "拍"));
-}
-function buildViz(){
-  const viz = $("viz");
-  viz.innerHTML = "";
-  rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = [];
-  zoneEls = []; rulerEls = []; glEls = [];
-  const p = curPattern();
-  for (let b = 0; b < LOOP_BARS; b++){
-    const row = document.createElement("div");
-    row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
-    // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
-    const zones = [];
-    for (let k = 0; k < S.sig; k++){
-      const z = document.createElement("div");
-      z.className = "beat-zone";
-      z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
-      z.style.width = `calc(${100 / S.sig}% - 6px)`;
-      row.appendChild(z);
-      zones.push(z);
-    }
-    zoneEls.push(zones);
-    // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
-    const rl = {};
-    const markN = S.sig === 6 ? 2 : 4;
-    for (let k = 0; k < S.sig; k++){
-      for (let s = 0; s < markN; s++){
-        const lb = document.createElement("div");
-        lb.className = "ruler-lab" + (s === 0 ? " down" : "");
-        lb.textContent = s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]);
-        lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
-        row.appendChild(lb);
-        rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
+  function persist(){
+    localStorage.setItem("beatsight.m2", JSON.stringify({
+      bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs, trainer:S.trainer
+    }));
+  }
+
+  /* ---- 预设导入导出（v0.6.0）----
+     导出格式：{app:"beatsight", kind:"presets", v:1, exportedAt, presets:[{name, meter, bars}]}
+     导入校验：拍号 ∈ {2,3,4,6}（5/7 为 v0.7 路线）、4 小节、时值 ∈ 合法集合、每小节恰好占满；
+     id 一律重新生成，杜绝跨设备 id 冲突 */
+  const VALID_D = [4, 2, 1.5, 1, 0.75, 0.5, 0.25];
+  const VALID_METER = [2, 3, 4, 6];
+
+  function serializePresets(){
+    return JSON.stringify({
+      app:"beatsight", kind:"presets", v:1, exportedAt:new Date().toISOString(),
+      presets: customs.map(c => ({name:c.name, meter:c.meter, bars:c.bars}))
+    }, null, 2);
+  }
+
+  function exportPresets(){
+    if (!customs.length) return false;
+    const blob = new Blob([serializePresets()], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
+    a.download = `beatsight-presets-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return true;
+  }
+
+  function validatePreset(p){
+    if (!p || typeof p.name !== "string" || !p.name.trim()) return null;
+    const meter = +p.meter;
+    if (!VALID_METER.includes(meter)) return null;
+    if (!Array.isArray(p.bars) || p.bars.length !== LOOP_BARS) return null;
+    const bars = [];
+    for (const bar of p.bars){
+      if (!Array.isArray(bar)) return null;
+      const steps = [];
+      let sum = 0;
+      for (const s of bar){
+        if (!s || typeof s !== "object") return null;
+        const d = +s.d;
+        if (!VALID_D.includes(d)) return null;
+        sum += d;
+        steps.push({d, rest: !!s.rest});
       }
+      if (Math.abs(sum - meter) > 1e-9) return null;
+      bars.push(steps);
     }
-    rulerEls.push(rl);
-    const cells = [];
-    const fills = [];
-    const labels = [];
-    subEls.push({});
-    let acc = 0;
-    p.bars[b].forEach((s, i) => {
-      const startBeat = acc;
-      const c = document.createElement("div");
-      c.className = "cell upcoming" + (s.rest ? " rest" : "");
-      c.style.left = (acc / S.sig * 100) + "%";
-      c.style.width = `calc(${s.d / S.sig * 100}% - 4px)`;
-      acc += s.d;
-      const fill = document.createElement("div");
-      fill.className = "fill";
-      c.appendChild(fill);
-      fills.push(fill);
-      const subs = document.createElement("div");   // 块内按十六分切成刻度线
-      subs.className = "subs";
-      const nSub = Math.round(s.d * 4);
-      for (let u = 0; u < nSub; u++){
-        const sub = document.createElement("div");
-        sub.className = "sub";
-        subs.appendChild(sub);
-        subEls[b][startBeat * 4 + u] = sub;         // 以十六分位置为键，供经过动效查找
+    return {name: p.name.trim().slice(0, 40), meter, bars};
+  }
+
+  /* 返回 {ok:true, count} 或 {ok:false, error}；错误文案供弹窗展示（一律 textContent） */
+  function importPresets(text){
+    let data;
+    try { data = JSON.parse(text); } catch(e){ return {ok:false, error:"文件不是有效的 JSON"}; }
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.presets) ? data.presets : null);
+    if (!list || !list.length) return {ok:false, error:"文件中没有预设数据"};
+    const out = [];
+    for (const p of list){
+      const v = validatePreset(p);
+      if (!v) return {ok:false, error:"预设「" + (p && p.name ? String(p.name).slice(0, 40) : "?") + "」格式不正确（拍号 / 时值 / 小节完整性校验失败）"};
+      out.push(v);
+    }
+    const base = Date.now();
+    out.forEach((v, i) => customs.push({ id: "c" + base + "-i" + i, ...v }));
+    persist();
+    return {ok:true, count: out.length};
+  }
+
+  return { S, customs, persist, serializePresets, exportPresets, importPresets };
+})();
+const S = Store.S;
+const customs = Store.customs;
+
+/* ================= Modal · 应用内弹窗 ================= */
+/* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
+   导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
+const Modal = (() => {
+  let modalOpen = false, modalOkCb = null;
+  function uiModal(msg, opts){
+    opts = opts || {};
+    modalOpen = true; modalOkCb = opts.onOk || null;
+    $("modalMsg").textContent = msg;
+    const inp = $("modalInput");
+    inp.hidden = !opts.input;
+    if (opts.input) inp.value = opts.input;
+    $("modalOk").textContent = opts.okText || "确定";
+    $("modalOk").className = "pill " + (opts.danger ? "danger" : "active");
+    $("modalCancel").style.display = opts.hideCancel ? "none" : "";
+    $("modalMask").hidden = false;
+    (opts.input ? inp : $("modalOk")).focus();
+  }
+  function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
+  function uiPrompt(msg, initial, onOk){ uiModal(msg, {input:String(initial), onOk:onOk}); }
+  function uiAlert(msg){ uiModal(msg, {okText:"知道了", hideCancel:true}); }   // v0.6.0：纯通知
+  function closeModal(ok){
+    if (!modalOpen) return;
+    modalOpen = false;
+    $("modalMask").hidden = true;
+    const cb = modalOkCb; modalOkCb = null;
+    if (ok && cb) cb($("modalInput").hidden ? undefined : $("modalInput").value);
+  }
+  $("modalOk").addEventListener("click", () => closeModal(true));
+  $("modalCancel").addEventListener("click", () => closeModal(false));
+  $("modalMask").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(false); });
+  $("modalInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); closeModal(true); } });
+  window.addEventListener("keydown", e => {
+    if (!modalOpen) return;
+    if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
+    if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
+  }, true);
+  return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen };
+})();
+
+/* ================= Viz · 时值可视化 ================= */
+const Viz = (() => {
+  /* 时值可视化三层结构（z-index）：
+     .cell（音符块，基座 14% 白）
+       ├── .fill (z0)  填充：played=白 100%、active=白填充+绿描边光晕、rest=灰/浅白
+       ├── .subs (z1)  十六分刻度线：满格高、只画内部十六分分界线（末格不画）
+       └── span  (z2)  时值名称标签（d≥0.5 才有独立标签） */
+  let rowEls = [], cellEls = [], playheadEl = null, trailGlowEl = null;
+  let subEls = [], fillEls = [], labelEls = [], lastT16 = -1;
+  let glEls = [];                                            // 短音符合并标注（组标签）
+  let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
+  let lastBar = -1, lastStep = -1;
+
+  function stepLabel(s){
+    return (s.rest ? "休止 " : "") + (DUR_NAME[s.d] || (s.d + "拍"));
+  }
+
+  function buildViz(){
+    const viz = $("viz");
+    viz.innerHTML = "";
+    rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = [];
+    zoneEls = []; rulerEls = []; glEls = [];
+    const p = curPattern();
+    for (let b = 0; b < LOOP_BARS; b++){
+      const row = document.createElement("div");
+      row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
+      // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
+      const zones = [];
+      for (let k = 0; k < S.sig; k++){
+        const z = document.createElement("div");
+        z.className = "beat-zone";
+        z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
+        z.style.width = `calc(${100 / S.sig}% - 6px)`;
+        row.appendChild(z);
+        zones.push(z);
       }
-      c.appendChild(subs);
-      if (s.d >= 0.5){                    // 时值标签移到格子下方，与小格零冲突
+      zoneEls.push(zones);
+      // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
+      const rl = {};
+      const markN = S.sig === 6 ? 2 : 4;
+      for (let k = 0; k < S.sig; k++){
+        for (let s = 0; s < markN; s++){
+          const lb = document.createElement("div");
+          lb.className = "ruler-lab" + (s === 0 ? " down" : "");
+          lb.textContent = s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]);
+          lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
+          row.appendChild(lb);
+          rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
+        }
+      }
+      rulerEls.push(rl);
+      const cells = [];
+      const fills = [];
+      const labels = [];
+      subEls.push({});
+      let acc = 0;
+      p.bars[b].forEach((s, i) => {
+        const startBeat = acc;
+        const c = document.createElement("div");
+        c.className = "cell upcoming" + (s.rest ? " rest" : "");
+        c.style.left = (acc / S.sig * 100) + "%";
+        c.style.width = `calc(${s.d / S.sig * 100}% - 4px)`;
+        acc += s.d;
+        const fill = document.createElement("div");
+        fill.className = "fill";
+        c.appendChild(fill);
+        fills.push(fill);
+        const subs = document.createElement("div");   // 块内按十六分切成刻度线
+        subs.className = "subs";
+        const nSub = Math.round(s.d * 4);
+        for (let u = 0; u < nSub; u++){
+          const sub = document.createElement("div");
+          sub.className = "sub";
+          subs.appendChild(sub);
+          subEls[b][startBeat * 4 + u] = sub;         // 以十六分位置为键，供经过动效查找
+        }
+        c.appendChild(subs);
+        if (s.d >= 0.5){                    // 时值标签移到格子下方，与小格零冲突
+          const lb = document.createElement("div");
+          lb.className = "cell-label";
+          lb.textContent = stepLabel(s);
+          lb.style.left = `calc(${startBeat / S.sig * 100}% + 2px)`;
+          row.appendChild(lb);
+          labels.push(lb);
+        } else labels.push(null);
+        row.appendChild(c); cells.push(c);
+      });
+      /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（d<0.5 且非休止）共享一个组标签，
+         保证最难辨认的十六分也有名称可读 */
+      const groups = [];
+      let run = null, acc2 = 0;
+      p.bars[b].forEach((s, i) => {
+        const startBeat2 = acc2; acc2 += s.d;
+        const shorty = s.d < 0.5 && !s.rest;
+        if (shorty && !run) run = {i0:i, i1:i+1, beat:startBeat2, nm:DUR_NAME[s.d] || (s.d + "拍")};
+        else if (shorty && run) run.i1 = i + 1;
+        else if (run){ groups.push(run); run = null; }
+      });
+      if (run) groups.push(run);
+      groups.forEach(g => {
+        if (g.i1 - g.i0 < 2) return;                    // 单个短音符不标注，避免拥挤
         const lb = document.createElement("div");
-        lb.className = "cell-label";
-        lb.textContent = stepLabel(s);
-        lb.style.left = `calc(${startBeat / S.sig * 100}% + 2px)`;
+        lb.className = "cell-label group";
+        lb.textContent = g.nm + " ×" + (g.i1 - g.i0);
+        lb.style.left = `calc(${g.beat / S.sig * 100}% + 2px)`;
         row.appendChild(lb);
-        labels.push(lb);
-      } else labels.push(null);
-      row.appendChild(c); cells.push(c);
-    });
-    /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（d<0.5 且非休止）共享一个组标签，
-       保证最难辨认的十六分也有名称可读 */
-    const groups = [];
-    let run = null, acc2 = 0;
-    p.bars[b].forEach((s, i) => {
-      const startBeat2 = acc2; acc2 += s.d;
-      const shorty = s.d < 0.5 && !s.rest;
-      if (shorty && !run) run = {i0:i, i1:i+1, beat:startBeat2, nm:DUR_NAME[s.d] || (s.d + "拍")};
-      else if (shorty && run) run.i1 = i + 1;
-      else if (run){ groups.push(run); run = null; }
-    });
-    if (run) groups.push(run);
-    groups.forEach(g => {
-      if (g.i1 - g.i0 < 2) return;                    // 单个短音符不标注，避免拥挤
-      const lb = document.createElement("div");
-      lb.className = "cell-label group";
-      lb.textContent = g.nm + " ×" + (g.i1 - g.i0);
-      lb.style.left = `calc(${g.beat / S.sig * 100}% + 2px)`;
-      row.appendChild(lb);
-      g.el = lb;
-    });
-    glEls.push(groups.filter(g => g.el));
-    viz.appendChild(row);
-    rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels);
-  }
-  for (let i = 1; i < S.sig; i++){
-    const gl = document.createElement("div");
-    gl.className = "grid-line";
-    /* 拍边界 = 下一颗格子的左边缘（格子右缩 4px 留缝），网格线需左移 2px 落在缝隙中央，
-       否则会压住格子左边 1px——白格顶部 12px 无覆盖段会读作"突出一小块"（v0.4.4 修复） */
-    gl.style.left = `calc(${i / S.sig * 100}% - 2px)`;
-    viz.appendChild(gl);
-  }
-  playheadEl = document.createElement("div");
-  playheadEl.className = "playhead";
-  playheadEl.style.left = "0%";
-  trailGlowEl = document.createElement("div");      // 播放头尾迹光晕
-  trailGlowEl.className = "trail-glow";
-  viz.appendChild(trailGlowEl);
-  viz.appendChild(playheadEl);
-  $("vizTitle").textContent = `时值可视化 · ${S.sig === 6 ? "6/8" : S.sig + "/4"} · 同屏 4 小节`;
-  lastBar = -1; lastStep = -1; lastBeat = -1;
-  if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-  fitCellLabels();
-}
-/* 格子标签自适应：标签比格子宽时隐藏 */
-function fitCellLabels(){
-  labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
-    if (lb) lb.style.display = (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : "";
-  }));
-  glEls.forEach((groups, b) => groups.forEach(g => {
-    const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
-    if (!first || !last) return;
-    const w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
-    g.el.style.display = (w < g.el.scrollWidth + 8) ? "none" : "";
-  }));
-}
-let resizeTimer = null;
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (!S.playing) buildViz(); }, 200);
-});
-function paintFrame(){
-  if (!S.playing) return;
-  const pos = Math.max(0, ((ctx.currentTime - loopStart) / spb()) % loopBeats());
-  const bar = Math.floor(pos / S.sig);
-  const bib = pos - bar * S.sig;
-  const pw = bib / S.sig * 100;
-  playheadEl.style.left = pw + "%";
-  const tail = Math.min(pw, 10);                                // 短尾迹：只跟在播放头身后，不污染已弹白块
-  trailGlowEl.style.left = (pw - tail) + "%";
-  trailGlowEl.style.width = tail + "%";
-  if (bar !== lastBar){                                          // 换小节时光晕换行
-    trailGlowEl.style.top = rowEls[bar].offsetTop + "px";
-    trailGlowEl.style.height = cellEls[bar][0].offsetHeight + "px";
-  }
-  const steps = curPattern().bars[bar];
-  const cum = []; let acc = 0;
-  steps.forEach(s => { cum.push(acc); acc += s.d; });
-  let active = 0;
-  for (let i = 0; i < steps.length; i++){ if (bib >= cum[i]) active = i; }
-  // 换拍瞬间：拍点容器（跑道）脉冲
-  const beat = Math.floor(bib);
-  if (bar !== lastBar || beat !== lastBeat){
-    const z = zoneEls[bar] && zoneEls[bar][beat];
-    if (z) z.animate([
-      {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
-      {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
-    ], {duration:320, easing:"ease-out"});
-    lastBeat = beat;
-  }
-  // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
-  // 不足半拍的窄格子（十六分等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
-  const d = steps[active].d || 1;
-  fillEls[bar][active].style.width = d < 0.5 ? "100%" : Math.min(1, (bib - cum[active]) / d) * 100 + "%";
-  // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
-  const t16 = Math.floor((bib + 1e-6) / 0.25);
-  if (bar !== lastBar || t16 !== lastT16){
-    let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
-    if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = S.sig * 4 - 1; }  // 跨小节：闪上一小节最后一格
-    const sub = subEls[fb] && subEls[fb][fk];
-    if (sub){
-      // 配色随底色反转：白块（已弹/正在弹）上闪绿光，暗块上闪绿光（规范：绿为功能强调色，最高强调用近白）
-      const cellCls = sub.closest(".cell").classList;
-      const onWhite = cellCls.contains("played") || cellCls.contains("active");   // 正在弹的块也是白填充
-      const edge = "#1ED760";
-      const glow = "rgba(30,215,96,.85)";
-      const fillFlash = onWhite ? "rgba(30,215,96,.4)" : "rgba(30,215,96,.28)";
-      const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
-      sub.animate([
-        {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
-        {boxShadow: base, backgroundColor: "transparent"}
-      ], {duration: 260, easing: "ease-out"});
+        g.el = lb;
+      });
+      glEls.push(groups.filter(g => g.el));
+      viz.appendChild(row);
+      rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels);
     }
-    // 座次尺：当前十六分位置高亮
+    for (let i = 1; i < S.sig; i++){
+      const gl = document.createElement("div");
+      gl.className = "grid-line";
+      /* 拍边界 = 下一颗格子的左边缘（格子右缩 4px 留缝），网格线需左移 2px 落在缝隙中央，
+         否则会压住格子左边 1px——白格顶部 12px 无覆盖段会读作"突出一小块"（v0.4.4 修复） */
+      gl.style.left = `calc(${i / S.sig * 100}% - 2px)`;
+      viz.appendChild(gl);
+    }
+    playheadEl = document.createElement("div");
+    playheadEl.className = "playhead";
+    playheadEl.style.left = "0%";
+    trailGlowEl = document.createElement("div");      // 播放头尾迹光晕
+    trailGlowEl.className = "trail-glow";
+    viz.appendChild(trailGlowEl);
+    viz.appendChild(playheadEl);
+    $("vizTitle").textContent = `时值可视化 · ${S.sig === 6 ? "6/8" : S.sig + "/4"} · 同屏 4 小节`;
+    resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-    const rkey = S.sig === 6 ? Math.floor(t16 / 2) * 2 : t16;
-    const rl = rulerEls[bar] && rulerEls[bar][rkey];
-    if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
-    // 状态栏读数：第几小节 · 第几拍 + 拍内座次
-    const sfx = (S.sig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
-    const mutedNow = S.mute && bar === LOOP_BARS - 1;
-    $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
+    fitCellLabels();
   }
-  lastT16 = t16;
-  if (bar === lastBar && active === lastStep){ rafId = requestAnimationFrame(paintFrame); return; }
-  lastBar = bar; lastStep = active;
-  rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
-  // 下一颗音符预告（跨小节时指向下一行第一颗）
-  let nb = bar, ni = active + 1;
-  if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
-  for (let b = 0; b < LOOP_BARS; b++){
-    for (let i = 0; i < cellEls[b].length; i++){
-      const el = cellEls[b][i];
-      let cls = "cell ";
-      if (b < bar) cls += "played";
-      else if (b > bar) cls += "upcoming";
-      else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
-      if (curPattern().bars[b][i].rest) cls += " rest";
-      if (b === nb && i === ni) cls += " next";
-      el.className = cls;
-      fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+  /* 格子标签自适应：标签比格子宽时隐藏 */
+  function fitCellLabels(){
+    labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
+      if (lb) lb.style.display = (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : "";
+    }));
+    glEls.forEach((groups, b) => groups.forEach(g => {
+      const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
+      if (!first || !last) return;
+      const w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
+      g.el.style.display = (w < g.el.scrollWidth + 8) ? "none" : "";
+    }));
+  }
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (!S.playing) buildViz(); }, 200);
+  });
+
+  /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用 */
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; }
+
+  /* 停止时的视觉复位（Controls.stop 调用） */
+  function resetForStop(){
+    playheadEl.style.left = "0%";
+    trailGlowEl.style.left = "0%";
+    trailGlowEl.style.width = "0%";
+    rowEls.forEach(r => r.classList.remove("current"));
+    cellEls.forEach((cells, b) => cells.forEach((el, i) => {
+      el.className = "cell upcoming" + (curPattern().bars[b][i].rest ? " rest" : "");
+      fillEls[b][i].style.width = "0%";
       const lb = labelEls[b][i];
-      if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
+      if (lb) lb.className = "cell-label";
+    }));
+    glEls.forEach(list => list.forEach(g => g.el.className = "cell-label group"));
+    if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
+    lastBeat = -1;
+  }
+
+  /* 静音拍开关视觉同步：第 4 小节预标识（Controls 静音开关调用） */
+  function syncMuteBars(){
+    rowEls.forEach((r, b) => r.classList.toggle("muted-bar", S.mute && b === LOOP_BARS - 1));
+  }
+
+  function paintFrame(){
+    if (!S.playing) return;
+    const pos = Math.max(0, ((ctx.currentTime - loopStart) / spb()) % loopBeats());
+    const bar = Math.floor(pos / S.sig);
+    const bib = pos - bar * S.sig;
+    const pw = bib / S.sig * 100;
+    playheadEl.style.left = pw + "%";
+    const tail = Math.min(pw, 10);                                // 短尾迹：只跟在播放头身后，不污染已弹白块
+    trailGlowEl.style.left = (pw - tail) + "%";
+    trailGlowEl.style.width = tail + "%";
+    if (bar !== lastBar){                                          // 换小节时光晕换行
+      trailGlowEl.style.top = rowEls[bar].offsetTop + "px";
+      trailGlowEl.style.height = cellEls[bar][0].offsetHeight + "px";
     }
-    glEls[b].forEach(g => {
-      g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
-    });
+    const steps = curPattern().bars[bar];
+    const cum = []; let acc = 0;
+    steps.forEach(s => { cum.push(acc); acc += s.d; });
+    let active = 0;
+    for (let i = 0; i < steps.length; i++){ if (bib >= cum[i]) active = i; }
+    // 换拍瞬间：拍点容器（跑道）脉冲
+    const beat = Math.floor(bib);
+    if (bar !== lastBar || beat !== lastBeat){
+      const z = zoneEls[bar] && zoneEls[bar][beat];
+      if (z) z.animate([
+        {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
+        {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
+      ], {duration:320, easing:"ease-out"});
+      lastBeat = beat;
+    }
+    // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
+    // 不足半拍的窄格子（十六分等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
+    const d = steps[active].d || 1;
+    fillEls[bar][active].style.width = d < 0.5 ? "100%" : Math.min(1, (bib - cum[active]) / d) * 100 + "%";
+    // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
+    const t16 = Math.floor((bib + 1e-6) / 0.25);
+    if (bar !== lastBar || t16 !== lastT16){
+      let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
+      if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = S.sig * 4 - 1; }  // 跨小节：闪上一小节最后一格
+      const sub = subEls[fb] && subEls[fb][fk];
+      if (sub){
+        // 配色随底色反转：白块（已弹/正在弹）上闪绿光，暗块上闪绿光（规范：绿为功能强调色，最高强调用近白）
+        const cellCls = sub.closest(".cell").classList;
+        const onWhite = cellCls.contains("played") || cellCls.contains("active");   // 正在弹的块也是白填充
+        const edge = "#1ED760";
+        const glow = "rgba(30,215,96,.85)";
+        const fillFlash = onWhite ? "rgba(30,215,96,.4)" : "rgba(30,215,96,.28)";
+        const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
+        sub.animate([
+          {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
+          {boxShadow: base, backgroundColor: "transparent"}
+        ], {duration: 260, easing: "ease-out"});
+      }
+      // 座次尺：当前十六分位置高亮
+      if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
+      const rkey = S.sig === 6 ? Math.floor(t16 / 2) * 2 : t16;
+      const rl = rulerEls[bar] && rulerEls[bar][rkey];
+      if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
+      // 状态栏读数：第几小节 · 第几拍 + 拍内座次
+      const sfx = (S.sig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
+      const mutedNow = S.mute && bar === LOOP_BARS - 1;
+      $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
+    }
+    lastT16 = t16;
+    if (bar === lastBar && active === lastStep){ rafId = requestAnimationFrame(paintFrame); return; }
+    lastBar = bar; lastStep = active;
+    rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
+    // 下一颗音符预告（跨小节时指向下一行第一颗）
+    let nb = bar, ni = active + 1;
+    if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
+    for (let b = 0; b < LOOP_BARS; b++){
+      for (let i = 0; i < cellEls[b].length; i++){
+        const el = cellEls[b][i];
+        let cls = "cell ";
+        if (b < bar) cls += "played";
+        else if (b > bar) cls += "upcoming";
+        else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
+        if (curPattern().bars[b][i].rest) cls += " rest";
+        if (b === nb && i === ni) cls += " next";
+        el.className = cls;
+        fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+        const lb = labelEls[b][i];
+        if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
+      }
+      glEls[b].forEach(g => {
+        g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
+      });
+    }
+    rafId = requestAnimationFrame(paintFrame);
   }
-  rafId = requestAnimationFrame(paintFrame);
-}
 
-/* ================= 播放控制 ================= */
-const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
-const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
-function start(){
-  ensureCtx();
-  if (S.trainer.on){
-    trStepIdx = 0; trBarCnt = 0;
-    setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
+  return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars };
+})();
+
+/* ================= Audio · Web Audio 前瞻调度 ================= */
+const Audio = (() => {
+  function ensureCtx(){
+    if (!ctx){
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = ctx.createGain();
+      masterGain.connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") ctx.resume();
   }
-  S.playing = true;
-  schedBar = 0; schedStep = 0;
-  loopStart = ctx.currentTime + 0.08;
-  nextNoteTime = loopStart;
-  timer = setInterval(scheduler, CONFIG.schedInterval);
-  $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
-  $("statusDot").classList.add("live");
-  lastBar = -1; lastT16 = -1; lastBeat = -1;
-  rafId = requestAnimationFrame(paintFrame);
-  persist();
-}
-function stop(){
-  S.playing = false;
-  clearInterval(timer);
-  cancelAnimationFrame(rafId);
-  $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
-  $("statusDot").classList.remove("live");
-  $("statusText").textContent = "已停止";
-  playheadEl.style.left = "0%";
-  trailGlowEl.style.left = "0%";
-  trailGlowEl.style.width = "0%";
-  rowEls.forEach(r => r.classList.remove("current"));
-  cellEls.forEach((cells, b) => cells.forEach((el, i) => {
-    el.className = "cell upcoming" + (curPattern().bars[b][i].rest ? " rest" : "");
-    fillEls[b][i].style.width = "0%";
-    const lb = labelEls[b][i];
-    if (lb) lb.className = "cell-label";
-  }));
-  glEls.forEach(list => list.forEach(g => g.el.className = "cell-label group"));
-  if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-  lastBeat = -1;
-  updateTrainerProg();
-  persist();
-}
-$("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
-window.addEventListener("keydown", e => {
-  if (modalOpen) return;                       // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
-  if ($("editor").classList.contains("open")){
-    if (e.key === "Escape") tryCloseEditor();
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undoEdit(); }
-    return;
+  function playClick(t, stepStartBeat, isBarStart){
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
+    osc.type = isBarStart ? "triangle" : "sine";
+    osc.frequency.value = isBarStart ? CONFIG.freqAccent : (isBeat ? CONFIG.freqBeat : CONFIG.freqSub);
+    const peak = S.vol * (isBarStart ? S.accentVol : (isBeat ? 0.8 : 0.5));
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + CONFIG.decay);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t); osc.stop(t + CONFIG.decay + 0.01);
   }
-  if (e.code === "Space" && !["INPUT","BUTTON"].includes(document.activeElement.tagName)){
-    e.preventDefault(); S.playing ? stop() : start();
+  /* setInterval(25ms) 轮询：把未来 150ms 窗口内的音符注册到 audio clock；
+     位置换算：pos(拍) = (ctx.currentTime - loopStart) / spb */
+  function scheduler(){
+    const bars = curPattern().bars;
+    while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
+      const steps = bars[schedBar];
+      if (!steps || steps.length === 0){                  // 空小节：安全跳过
+        nextNoteTime += S.sig * spb();
+        schedBar = (schedBar + 1) % LOOP_BARS;
+        continue;
+      }
+      let cum = 0;
+      for (let i = 0; i < schedStep; i++) cum += steps[i].d;
+      const muted = S.mute && schedBar === LOOP_BARS - 1;
+      if (!muted && !steps[schedStep].rest) playClick(nextNoteTime, cum, schedStep === 0);
+      nextNoteTime += steps[schedStep].d * spb();
+      schedStep++;
+      if (schedStep >= steps.length){
+        schedStep = 0; schedBar = (schedBar + 1) % LOOP_BARS;
+        /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
+        if (S.trainer.on && Trainer.onBarBoundary()) return;
+        /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
+        const pend = Presets.consumePending(schedBar);
+        if (pend.applied){
+          schedBar = pend.resetBar;
+          loopStart = nextNoteTime - schedBar * S.sig * spb();
+          Viz.resetTracking();
+          return;                                          // bars 引用已过期，下个调度周期继续
+        }
+      }
+    }
   }
-});
-window.addEventListener("pointerdown", ensureCtx, {once:true});
+  return { ensureCtx, scheduler };
+})();
 
-/* ================= BPM / 拍号 / 音量 ================= */
-function updateMeta(){
-  $("patternMeta").textContent = `${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍 · ${S.bpm} BPM`;
-}
-function setBpm(v, save){
-  v = Math.min(240, Math.max(30, Math.round(v)));
-  if (S.playing){
-    const posBeats = (ctx.currentTime - loopStart) / spb();
-    S.bpm = v;
-    loopStart = ctx.currentTime - posBeats * spb();
-  } else S.bpm = v;
-  $("bpmNum").textContent = v;
-  $("bpmSlider").value = v;
-  updateMeta();
-  updateTrainerProg();
-  if (save !== false) persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
-}
-/* ±1 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
-function bindStep(btn, delta){
-  let t1 = null, t2 = null;
-  const step = () => setBpm(S.bpm + delta);
-  btn.addEventListener("pointerdown", e => {
-    e.preventDefault();
-    step();
-    t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 400);
-  });
-  const end = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; btn.blur(); };
-  btn.addEventListener("pointerup", end);
-  btn.addEventListener("pointerleave", end);
-  btn.addEventListener("pointercancel", end);
-}
-bindStep($("bpmMinus"), -1);
-bindStep($("bpmPlus"), 1);
-$("bpmNum").addEventListener("click", () => {
-  uiPrompt("输入 BPM（30–240）", S.bpm, v => {
-    if (v && v.trim() !== "") setBpm(+v || S.bpm);
-  });
-});
-$("bpmSlider").addEventListener("input", e => setBpm(+e.target.value, false));
-$("bpmSlider").addEventListener("change", persist);
-
-let taps = [], tapResetT = null;
-$("tapBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  const now = performance.now();
-  if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
-  taps.push(now); if (taps.length > 5) taps.shift();
-  const btn = $("tapBtn");
-  if (taps.length >= 2){
-    let sum = 0;
-    for (let i = 1; i < taps.length; i++) sum += taps[i] - taps[i - 1];
-    setBpm(60000 / (sum / (taps.length - 1)));
-    btn.textContent = `TAP · ${S.bpm} BPM`;
-  } else {
-    btn.textContent = "TAP · 再点一次";
-  }
-  clearTimeout(tapResetT);
-  tapResetT = setTimeout(() => { btn.textContent = "TAP 测速"; }, 2600);
-  btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
-});
-
-/* 拍号切换统一入口：状态 + pill 高亮一处维护 */
-function setSig(n){
-  S.sig = n;
-  document.querySelectorAll("#sigRow .pill").forEach(p => p.classList.toggle("active", +p.dataset.sig === n));
-}
-$("sigRow").addEventListener("click", e => {
-  const btn = e.target.closest("[data-sig]");
-  if (!btn) return;
-  btn.blur();
-  setSig(+btn.dataset.sig);
-  refreshAfterPatternChange();
-  persist();
-});
-
-$("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; });
-$("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; });
-$("volMaster").addEventListener("change", persist);
-$("volAccent").addEventListener("change", persist);   // 拖动过程只更新 UI，松手才写 localStorage
-
-$("muteToggle").addEventListener("click", e => {
-  e.currentTarget.blur();
-  S.mute = !S.mute;
-  $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
-  rowEls.forEach((r, b) => r.classList.toggle("muted-bar", S.mute && b === LOOP_BARS - 1));
-  persist();
-});
-
-/* ================= 训练模式 · 变速训练器（M3-2） ================= */
+/* ================= Trainer · 变速训练器 ================= */
 /* 规格（DEVELOPMENT.md §6）：参数 {start, target, step, everyN}；scheduler() 在小节边界计数，
    每练满 everyN 小节经 setBpm() 升一级（音频时钟重映射，不打断播放）；
    到目标速度并练满一级后自动停止 + 提示。进度显示「当前 85 BPM · 第 6/13 步」。 */
-const trainerTotal = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
-const trainerBpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
-function updateTrainerProg(){
-  const el = $("trainerProg");
-  el.classList.toggle("live", S.playing && S.trainer.on);
-  if (!S.trainer.on){ el.textContent = ""; return; }
-  const total = trainerTotal();
-  el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total)}/${total} 步`;
-}
-/* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除） */
-function trainerOnBarBoundary(){
-  const t = S.trainer;
-  trBarCnt++;
-  if (trBarCnt < t.everyN){ updateTrainerProg(); return false; }
-  trBarCnt = 0;
-  if (trainerBpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
-    stop();
-    $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
-    updateTrainerProg();
-    return true;
+const Trainer = (() => {
+  /* 会话状态：trStepIdx 当前第几级（0 基）、trBarCnt 本级已练小节数；start() 时经 reset() 重置 */
+  let trStepIdx = 0, trBarCnt = 0;
+  const total = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
+  const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
+  function reset(){ trStepIdx = 0; trBarCnt = 0; }
+  function updateProg(){
+    const el = $("trainerProg");
+    el.classList.toggle("live", S.playing && S.trainer.on);
+    if (!S.trainer.on){ el.textContent = ""; return; }
+    el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
   }
-  trStepIdx = Math.min(trStepIdx + 1, trainerTotal() - 1);
-  setBpm(trainerBpmFor(trStepIdx), false);
-  updateTrainerProg();
-  return false;
-}
-$("trainerToggle").addEventListener("click", e => {
-  e.currentTarget.blur();
-  S.trainer.on = !S.trainer.on;
-  $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
-  $("trainerPanel").hidden = !S.trainer.on;
-  if (S.trainer.on){ trStepIdx = 0; trBarCnt = 0; setBpm(S.trainer.start, false); }   // 开启即定位到起始速度
-  updateTrainerProg();
-  persist();
-});
-/* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
-function bindTrParam(id, key, min, max){
-  $(id).addEventListener("change", e => {
-    let v = Math.round(+e.target.value);
-    if (!isFinite(v)) v = S.trainer[key];
-    v = Math.min(max, Math.max(min, v));
-    S.trainer[key] = v;
-    e.target.value = v;
-    if (S.trainer.target <= S.trainer.start){          // 目标被改到不高于起始 → 抬回起始 +1
-      S.trainer.target = Math.min(240, S.trainer.start + 1);
-      $("trTarget").value = S.trainer.target;
+  /* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除） */
+  function onBarBoundary(){
+    const t = S.trainer;
+    trBarCnt++;
+    if (trBarCnt < t.everyN){ updateProg(); return false; }
+    trBarCnt = 0;
+    if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
+      Controls.stop();
+      $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
+      updateProg();
+      return true;
     }
-    if (key === "start" && S.trainer.on && !S.playing){ trStepIdx = 0; setBpm(S.trainer.start, false); }
-    updateTrainerProg();
-    persist();
+    trStepIdx = Math.min(trStepIdx + 1, total() - 1);
+    Controls.setBpm(bpmFor(trStepIdx), false);
+    updateProg();
+    return false;
+  }
+  $("trainerToggle").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.trainer.on = !S.trainer.on;
+    $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
+    $("trainerPanel").hidden = !S.trainer.on;
+    if (S.trainer.on){ reset(); Controls.setBpm(S.trainer.start, false); }   // 开启即定位到起始速度
+    updateProg();
+    Store.persist();
   });
-}
-bindTrParam("trStart", "start", 30, 236);
-bindTrParam("trTarget", "target", 31, 240);
-bindTrParam("trStepInp", "step", 1, 20);
-bindTrParam("trEvery", "everyN", 1, 8);
-
-/* ================= 预设库 ================= */
-/* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
-function presetItemEl(name, metaText, isActive){
-  const item = document.createElement("div");
-  item.className = "preset-item" + (isActive ? " active" : "");
-  const box = document.createElement("div");
-  const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name;
-  const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText;
-  box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
-  return item;
-}
-function buildPresetList(){
-  const list = $("presetList");
-  list.innerHTML = "";
-  const sec1 = document.createElement("div");
-  sec1.className = "preset-section";
-  sec1.textContent = `内置预设 · ${BUILTINS.length} 个`;
-  list.appendChild(sec1);
-  BUILTINS.forEach((p, i) => {
-    const isActive = S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
-    const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + (p.meter === 6 ? "6/8" : p.meter + "/4") + "）" : "");
-    const item = presetItemEl(p.name, meta, isActive);
-    item.addEventListener("click", () => {
-      S.sel = {type:"builtin", idx:i};
-      if (p.meter !== S.sig) setSig(p.meter);
-      refreshAfterPatternChange();
-      persist();
+  /* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
+  function bindTrParam(id, key, min, max){
+    $(id).addEventListener("change", e => {
+      let v = Math.round(+e.target.value);
+      if (!isFinite(v)) v = S.trainer[key];
+      v = Math.min(max, Math.max(min, v));
+      S.trainer[key] = v;
+      e.target.value = v;
+      if (S.trainer.target <= S.trainer.start){          // 目标被改到不高于起始 → 抬回起始 +1
+        S.trainer.target = Math.min(240, S.trainer.start + 1);
+        $("trTarget").value = S.trainer.target;
+      }
+      if (key === "start" && S.trainer.on && !S.playing){ reset(); Controls.setBpm(S.trainer.start, false); }
+      updateProg();
+      Store.persist();
     });
-    list.appendChild(item);
+  }
+  bindTrParam("trStart", "start", 30, 236);
+  bindTrParam("trTarget", "target", 31, 240);
+  bindTrParam("trStepInp", "step", 1, 20);
+  bindTrParam("trEvery", "everyN", 1, 8);
+  return { reset, updateProg, onBarBoundary, total, bpmFor };
+})();
+
+/* ================= Controls · 播放控制 / BPM / 拍号 / 音量 / 静音拍 ================= */
+const Controls = (() => {
+  const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
+  const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
+  let timer = null;
+  let taps = [], tapResetT = null;
+
+  function start(){
+    Audio.ensureCtx();
+    if (S.trainer.on){
+      Trainer.reset();
+      setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
+    }
+    S.playing = true;
+    schedBar = 0; schedStep = 0;
+    loopStart = ctx.currentTime + 0.08;
+    nextNoteTime = loopStart;
+    timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
+    $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
+    $("statusDot").classList.add("live");
+    Viz.resetTracking();
+    rafId = requestAnimationFrame(Viz.paintFrame);
+    Store.persist();
+  }
+  function stop(){
+    S.playing = false;
+    clearInterval(timer);
+    cancelAnimationFrame(rafId);
+    $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
+    $("statusDot").classList.remove("live");
+    $("statusText").textContent = "已停止";
+    Viz.resetForStop();
+    Trainer.updateProg();
+    Store.persist();
+  }
+  $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
+  window.addEventListener("keydown", e => {
+    if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
+    if ($("editor").classList.contains("open")){
+      if (e.key === "Escape") Editor.tryClose();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
+      return;
+    }
+    if (e.code === "Space" && !["INPUT","BUTTON"].includes(document.activeElement.tagName)){
+      e.preventDefault(); S.playing ? stop() : start();
+    }
   });
-  if (customs.length){
-    const sec2 = document.createElement("div");
-    sec2.className = "preset-section";
-    sec2.textContent = `我的预设 · ${customs.length} 个`;
-    list.appendChild(sec2);
-    customs.forEach((c, i) => {
-      const isActive = S.sel.type === "custom" && S.sel.id === c.id && c.meter === S.sig;
-      const item = presetItemEl(c.name, (c.meter === 6 ? "6/8" : c.meter + "/4") + " · 自定义", isActive);
-      const del = document.createElement("button");
-      del.className = "del"; del.title = "删除"; del.textContent = "×";
-      del.addEventListener("click", e => {
-        e.stopPropagation();
-        uiConfirm(`删除预设「${c.name}」？删除后不可恢复。`, () => {
-          customs.splice(i, 1);
-          if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
-          refreshAfterPatternChange();
-          persist();
-        }, {danger:true, okText:"删除"});
-      });
-      item.appendChild(del);
+  window.addEventListener("pointerdown", Audio.ensureCtx, {once:true});
+
+  function updateMeta(){
+    $("patternMeta").textContent = `${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍 · ${S.bpm} BPM`;
+  }
+  function setBpm(v, save){
+    v = Math.min(240, Math.max(30, Math.round(v)));
+    if (S.playing){
+      const posBeats = (ctx.currentTime - loopStart) / spb();
+      S.bpm = v;
+      loopStart = ctx.currentTime - posBeats * spb();
+    } else S.bpm = v;
+    $("bpmNum").textContent = v;
+    $("bpmSlider").value = v;
+    updateMeta();
+    Trainer.updateProg();
+    if (save !== false) Store.persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
+  }
+  /* ±1 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
+  function bindStep(btn, delta){
+    let t1 = null, t2 = null;
+    const step = () => setBpm(S.bpm + delta);
+    btn.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      step();
+      t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 400);
+    });
+    const end = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; btn.blur(); };
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointerleave", end);
+    btn.addEventListener("pointercancel", end);
+  }
+  bindStep($("bpmMinus"), -1);
+  bindStep($("bpmPlus"), 1);
+  $("bpmNum").addEventListener("click", () => {
+    Modal.uiPrompt("输入 BPM（30–240）", S.bpm, v => {
+      if (v && v.trim() !== "") setBpm(+v || S.bpm);
+    });
+  });
+  $("bpmSlider").addEventListener("input", e => setBpm(+e.target.value, false));
+  $("bpmSlider").addEventListener("change", Store.persist);
+
+  $("tapBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    const now = performance.now();
+    if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
+    taps.push(now); if (taps.length > 5) taps.shift();
+    const btn = $("tapBtn");
+    if (taps.length >= 2){
+      let sum = 0;
+      for (let i = 1; i < taps.length; i++) sum += taps[i] - taps[i - 1];
+      setBpm(60000 / (sum / (taps.length - 1)));
+      btn.textContent = `TAP · ${S.bpm} BPM`;
+    } else {
+      btn.textContent = "TAP · 再点一次";
+    }
+    clearTimeout(tapResetT);
+    tapResetT = setTimeout(() => { btn.textContent = "TAP 测速"; }, 2600);
+    btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
+  });
+
+  /* 拍号切换统一入口：状态 + pill 高亮一处维护 */
+  function setSig(n){
+    S.sig = n;
+    document.querySelectorAll("#sigRow .pill").forEach(p => p.classList.toggle("active", +p.dataset.sig === n));
+  }
+  $("sigRow").addEventListener("click", e => {
+    const btn = e.target.closest("[data-sig]");
+    if (!btn) return;
+    btn.blur();
+    setSig(+btn.dataset.sig);
+    Presets.refreshAfterPatternChange();
+    Store.persist();
+  });
+
+  $("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; });
+  $("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; });
+  $("volMaster").addEventListener("change", Store.persist);
+  $("volAccent").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
+
+  $("muteToggle").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.mute = !S.mute;
+    $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+    Viz.syncMuteBars();
+    Store.persist();
+  });
+
+  return { start, stop, setBpm, setSig, updateMeta };
+})();
+
+/* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
+const Presets = (() => {
+  /* 播放中切换节奏型：挂起到小节边界无缝生效 */
+  let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
+
+  /* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
+  function presetItemEl(name, metaText, isActive){
+    const item = document.createElement("div");
+    item.className = "preset-item" + (isActive ? " active" : "");
+    const box = document.createElement("div");
+    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name;
+    const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText;
+    box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
+    return item;
+  }
+  function buildPresetList(){
+    const list = $("presetList");
+    list.innerHTML = "";
+    const sec1 = document.createElement("div");
+    sec1.className = "preset-section";
+    sec1.textContent = `内置预设 · ${BUILTINS.length} 个`;
+    list.appendChild(sec1);
+    BUILTINS.forEach((p, i) => {
+      const isActive = S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
+      const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + (p.meter === 6 ? "6/8" : p.meter + "/4") + "）" : "");
+      const item = presetItemEl(p.name, meta, isActive);
       item.addEventListener("click", () => {
-        S.sel = {type:"custom", id:c.id};
-        if (c.meter !== S.sig) setSig(c.meter);
+        S.sel = {type:"builtin", idx:i};
+        if (p.meter !== S.sig) Controls.setSig(p.meter);
         refreshAfterPatternChange();
-        persist();
+        Store.persist();
       });
       list.appendChild(item);
     });
+    if (customs.length){
+      const sec2 = document.createElement("div");
+      sec2.className = "preset-section";
+      sec2.textContent = `我的预设 · ${customs.length} 个`;
+      list.appendChild(sec2);
+      customs.forEach((c, i) => {
+        const isActive = S.sel.type === "custom" && S.sel.id === c.id && c.meter === S.sig;
+        const item = presetItemEl(c.name, (c.meter === 6 ? "6/8" : c.meter + "/4") + " · 自定义", isActive);
+        const del = document.createElement("button");
+        del.className = "del"; del.title = "删除"; del.textContent = "×";
+        del.addEventListener("click", e => {
+          e.stopPropagation();
+          Modal.uiConfirm(`删除预设「${c.name}」？删除后不可恢复。`, () => {
+            customs.splice(i, 1);
+            if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
+            refreshAfterPatternChange();
+            Store.persist();
+          }, {danger:true, okText:"删除"});
+        });
+        item.appendChild(del);
+        item.addEventListener("click", () => {
+          S.sel = {type:"custom", id:c.id};
+          if (c.meter !== S.sig) Controls.setSig(c.meter);
+          refreshAfterPatternChange();
+          Store.persist();
+        });
+        list.appendChild(item);
+      });
+    }
+    $("presetCount").textContent = `${BUILTINS.length} 内置${customs.length ? " + " + customs.length + " 自定义" : ""}`;
+    $("exportBtn").disabled = !customs.length;
   }
-  $("presetCount").textContent = `${BUILTINS.length} 内置${customs.length ? " + " + customs.length + " 自定义" : ""}`;
-}
-/* 拍号回退提示：选中节奏型与当前拍号不匹配时，告知用户并提供一键切回 */
-function updateFallbackNote(){
-  const note = $("fallbackNote");
-  const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
-  const isFallback = !S.preview && selP && selP.meter !== S.sig;
-  if (isFallback){
-    const mL = selP.meter === 6 ? "6/8" : selP.meter + "/4";
-    $("fallbackText").textContent = `「${selP.name}」是 ${mL} 节奏型，当前 ${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍下已回退为基础节奏`;
-    $("fallbackBtn").textContent = "切回 " + mL;
-    note.hidden = false;
-  } else note.hidden = true;
-}
-$("fallbackBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
-  if (!selP) return;
-  setSig(selP.meter);
-  refreshAfterPatternChange();
-  persist();
-});
-function refreshAfterPatternChange(){
-  if (S.playing){
-    /* 播放中不立即重置：挂起到小节边界由 scheduler 无缝应用 */
-    pendingPattern = true;
-    sigChgPending = (S.sig !== appliedSig);
-    buildPresetList();
-    updateFallbackNote();
-    return;
+  /* 拍号回退提示：选中节奏型与当前拍号不匹配时，告知用户并提供一键切回 */
+  function updateFallbackNote(){
+    const note = $("fallbackNote");
+    const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
+    const isFallback = !S.preview && selP && selP.meter !== S.sig;
+    if (isFallback){
+      const mL = selP.meter === 6 ? "6/8" : selP.meter + "/4";
+      $("fallbackText").textContent = `「${selP.name}」是 ${mL} 节奏型，当前 ${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍下已回退为基础节奏`;
+      $("fallbackBtn").textContent = "切回 " + mL;
+      note.hidden = false;
+    } else note.hidden = true;
   }
-  applyPatternChange();
-}
-function applyPatternChange(){
-  pendingPattern = false; sigChgPending = false;
-  appliedSig = S.sig;
-  const p = curPattern();
-  $("patternName").textContent = p.name;
-  updateMeta();
-  buildPresetList();
-  buildViz();
-  updateFallbackNote();
-}
-
-/* ================= 编辑器 ================= */
-function openEditor(){
-  if (S.playing) stop();
-  const src = curPattern();
-  draft = { name: src.name + "-副本", meter: src.meter, bars: src.bars.map(bar => bar.map(s => ({...s}))) };
-  edSel = null; editBar = 0;
-  undoStack = []; dirty = false;
-  $("presetNameInput").value = draft.name;
-  $("editorMeter").textContent = draft.meter;
-  $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + (draft.meter === 6 ? "6/8" : draft.meter + "/4") + " 拍";
-  renderEditor();
-  $("editor").classList.add("open");
-}
-function stopAudition(){
-  stop();
-  S.preview = false;
-  if (prevSigBeforeAudition !== null){ setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
-  buildViz();
-  updateFallbackNote();
-  $("auditionBtn").textContent = "试听";
-}
-function closeEditor(){
-  if (S.preview) stopAudition();
-  if (S.playing) stop();
-  buildViz();                       // 试听可能改过视图，恢复
-  $("auditionBtn").textContent = "试听";
-  $("editor").classList.remove("open");
-}
-function tryCloseEditor(){
-  if (!dirty){ closeEditor(); return; }
-  uiConfirm("草稿尚未保存，确定丢弃修改并返回练习？", () => closeEditor());
-}
-function barSum(bar){ return draft.bars[bar].reduce((a, s) => a + s.d, 0); }
-function barValid(bar){ return Math.abs(barSum(bar) - draft.meter) < 1e-9; }
-function renderEditor(){
-  const wrap = $("editorBars");
-  wrap.innerHTML = "";
-  let allValid = true;
-  for (let b = 0; b < LOOP_BARS; b++){
-    const ok = barValid(b);
-    if (!ok) allValid = false;
-    const row = document.createElement("div");
-    row.className = "edbar";
-    const label = document.createElement("div");
-    label.className = "edbar-label" + (ok ? "" : " bad") + (b === editBar ? " editing" : "");
-    label.innerHTML = `<div class="n">小节 ${b + 1}</div><div class="s">${barSum(b)} / ${draft.meter} 拍</div>`;
-    const track = document.createElement("div");
-    track.className = "edtrack" + (ok ? "" : " bad");
-    let acc = 0;
-    draft.bars[b].forEach((s, i) => {
-      const c = document.createElement("div");
-      const isSel = edSel && edSel.bar === b && edSel.idx === i;
-      c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
-      c.style.left = (acc / draft.meter * 100) + "%";
-      c.style.width = `calc(${s.d / draft.meter * 100}% - 4px)`;
-      acc += s.d;
-      if (s.d >= 0.5){
-        const sp = document.createElement("span");
-        sp.textContent = stepLabel(s);
-        c.appendChild(sp);
-      }
-      c.addEventListener("click", () => { edSel = {bar:b, idx:i}; editBar = b; renderEditor(); });
-      track.appendChild(c);
-    });
-    track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; renderEditor(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
-    row.appendChild(label); row.appendChild(track);
-    wrap.appendChild(row);
-  }
-  $("editorStatus").textContent = allValid ? "校验通过 · 可以保存" : "存在时值不完整的小节";
-  $("editorStatusWrap").className = "status " + (allValid ? "ok" : "bad");
-  $("savePresetBtn").disabled = !allValid;
-  $("savePresetBtn").className = "pill" + (allValid ? " active" : "");
-  $("undoBtn").disabled = !undoStack.length;
-  $("paletteTitle").textContent = edSel
-    ? "音符块库 · 点击替换选中的「" + stepLabel(draft.bars[edSel.bar][edSel.idx]) + "」"
-    : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
-  if (S.preview) buildViz();        // 试听中实时反映编辑
-}
-PALETTE.forEach(p => {
-  const el = document.createElement("button");
-  el.className = "pal-item";
-  el.innerHTML = `<span class="bar${p.rest ? " rest" : ""}" style="width:${p.w}px"></span><span><div class="nm">${p.nm}</div><div class="du">${p.du}</div></span>`;
-  el.addEventListener("click", () => {
-    pushUndo();
-    const step = D(p.d, p.rest);
-    if (edSel){ draft.bars[edSel.bar].splice(edSel.idx, 1, step); }
-    else { draft.bars[editBar].push(step); }
-    renderEditor();
+  $("fallbackBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
+    if (!selP) return;
+    Controls.setSig(selP.meter);
+    refreshAfterPatternChange();
+    Store.persist();
   });
-  $("palette").appendChild(el);
-});
-/* 撤销栈：任何草稿变更前先快照，Ctrl+Z / 撤销按钮回退 */
-function pushUndo(){
-  undoStack.push(JSON.stringify(draft.bars));
-  if (undoStack.length > 50) undoStack.shift();
-  dirty = true;
-}
-function undoEdit(){
-  if (!undoStack.length) return;
-  draft.bars = JSON.parse(undoStack.pop());
-  edSel = null;
-  renderEditor();
-}
-$("undoBtn").addEventListener("click", e => { e.currentTarget.blur(); undoEdit(); });
-$("delStepBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  if (!edSel) return;
-  pushUndo();
-  draft.bars[edSel.bar].splice(edSel.idx, 1);
-  edSel = null;
-  renderEditor();
-});
-$("copyBarBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
-    pushUndo();
-    const src = draft.bars[editBar].map(s => ({...s}));
-    draft.bars = draft.bars.map(() => src.map(s => ({...s})));
-    edSel = null;
-    renderEditor();
-  }, {okText:"复制"});
-});
-$("clearBarBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  uiConfirm("清空当前小节的全部音符？", () => {
-    pushUndo();
-    draft.bars[editBar] = [];
-    edSel = null;
-    renderEditor();
-  }, {danger:true, okText:"清空"});
-});
-$("auditionBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  if (S.preview){                   // 停止试听
-    stopAudition();
-  } else {
-    prevSigBeforeAudition = S.sig;  // 试听结束还原主界面拍号
-    setSig(draft.meter);
-    S.preview = true;
-    buildViz();
-    start();
-    $("auditionBtn").textContent = "停止试听";
+  function refreshAfterPatternChange(){
+    if (S.playing){
+      /* 播放中不立即重置：挂起到小节边界由 scheduler 无缝应用 */
+      pendingPattern = true;
+      sigChgPending = (S.sig !== appliedSig);
+      buildPresetList();
+      updateFallbackNote();
+      return;
+    }
+    applyPatternChange();
   }
-});
-$("savePresetBtn").addEventListener("click", e => {
-  e.currentTarget.blur();
-  if ($("savePresetBtn").disabled) return;
-  const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
-  const id = "c" + Date.now();
-  customs.push({ id, name, meter: draft.meter, bars: draft.bars.map(bar => bar.map(s => ({...s}))) });
-  S.sel = {type:"custom", id};
-  dirty = false;
-  if (S.preview) stopAudition();
-  setSig(draft.meter);
-  persist();
-  closeEditor();
-  refreshAfterPatternChange();
-});
-$("editBtn").addEventListener("click", e => { e.currentTarget.blur(); openEditor(); });
-$("editorBack").addEventListener("click", e => { e.currentTarget.blur(); tryCloseEditor(); });
+  function applyPatternChange(){
+    pendingPattern = false; sigChgPending = false;
+    appliedSig = S.sig;
+    const p = curPattern();
+    $("patternName").textContent = p.name;
+    Controls.updateMeta();
+    buildPresetList();
+    Viz.buildViz();
+    updateFallbackNote();
+  }
+  /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
+     返回 {applied:true, resetBar} 表示已应用（调用方需重映射 loopStart）；
+     拍号变化时等到循环起点（schedBar === 0）才应用。 */
+  function consumePending(schedBarNow){
+    if (!pendingPattern) return {applied:false};
+    if (sigChgPending && schedBarNow !== 0) return {applied:false};
+    const resetBar = sigChgPending ? 0 : schedBarNow;
+    applyPatternChange();
+    return {applied:true, resetBar};
+  }
 
-/* ================= 应用内弹窗 ================= */
-/* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
-   导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
-let modalOpen = false, modalOkCb = null;
-function uiModal(msg, opts){
-  opts = opts || {};
-  modalOpen = true; modalOkCb = opts.onOk || null;
-  $("modalMsg").textContent = msg;
-  const inp = $("modalInput");
-  inp.hidden = !opts.input;
-  if (opts.input) inp.value = opts.input;
-  $("modalOk").textContent = opts.okText || "确定";
-  $("modalOk").className = "pill " + (opts.danger ? "danger" : "active");
-  $("modalMask").hidden = false;
-  (opts.input ? inp : $("modalOk")).focus();
-}
-function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
-function uiPrompt(msg, initial, onOk){ uiModal(msg, {input:String(initial), onOk:onOk}); }
-function closeModal(ok){
-  if (!modalOpen) return;
-  modalOpen = false;
-  $("modalMask").hidden = true;
-  const cb = modalOkCb; modalOkCb = null;
-  if (ok && cb) cb($("modalInput").hidden ? undefined : $("modalInput").value);
-}
-$("modalOk").addEventListener("click", () => closeModal(true));
-$("modalCancel").addEventListener("click", () => closeModal(false));
-$("modalMask").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(false); });
-$("modalInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); closeModal(true); } });
-window.addEventListener("keydown", e => {
-  if (!modalOpen) return;
-  if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
-  if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
-}, true);
+  /* ---- 预设导入导出 UI（v0.6.0） ---- */
+  $("exportBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    Store.exportPresets();
+  });
+  $("importBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    $("importFile").click();
+  });
+  $("importFile").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";                      // 允许连续导入同一文件
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const res = Store.importPresets(String(r.result || ""));
+      if (res.ok){
+        buildPresetList();
+        Modal.uiAlert(`成功导入 ${res.count} 个预设，已加入「我的预设」。`);
+      } else {
+        Modal.uiAlert("导入失败：" + res.error);
+      }
+    };
+    r.readAsText(f);
+  });
 
-/* ================= 持久化 & 初始化 ================= */
-function persist(){
-  localStorage.setItem("beatsight.m2", JSON.stringify({
-    bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs, trainer:S.trainer
-  }));
-}
-setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending };
+})();
+
+/* ================= Editor · 自定义节奏型编辑器 ================= */
+const Editor = (() => {
+  /* 编辑器草稿 + 撤销栈 */
+  let draft = null, edSel = null, editBar = 0;
+  let undoStack = [], dirty = false;
+  let prevSigBeforeAudition = null;
+
+  function open(){
+    if (S.playing) Controls.stop();
+    const src = curPattern();
+    draft = { name: src.name + "-副本", meter: src.meter, bars: src.bars.map(bar => bar.map(s => ({...s}))) };
+    edSel = null; editBar = 0;
+    undoStack = []; dirty = false;
+    $("presetNameInput").value = draft.name;
+    $("editorMeter").textContent = draft.meter;
+    $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + (draft.meter === 6 ? "6/8" : draft.meter + "/4") + " 拍";
+    render();
+    $("editor").classList.add("open");
+  }
+  function stopAudition(){
+    Controls.stop();
+    S.preview = false;
+    if (prevSigBeforeAudition !== null){ Controls.setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
+    Viz.buildViz();
+    Presets.updateFallbackNote();
+    $("auditionBtn").textContent = "试听";
+  }
+  function close(){
+    if (S.preview) stopAudition();
+    if (S.playing) Controls.stop();
+    Viz.buildViz();                       // 试听可能改过视图，恢复
+    $("auditionBtn").textContent = "试听";
+    $("editor").classList.remove("open");
+  }
+  function tryClose(){
+    if (!dirty){ close(); return; }
+    Modal.uiConfirm("草稿尚未保存，确定丢弃修改并返回练习？", () => close());
+  }
+  function barSum(bar){ return draft.bars[bar].reduce((a, s) => a + s.d, 0); }
+  function barValid(bar){ return Math.abs(barSum(bar) - draft.meter) < 1e-9; }
+  function render(){
+    const wrap = $("editorBars");
+    wrap.innerHTML = "";
+    let allValid = true;
+    for (let b = 0; b < LOOP_BARS; b++){
+      const ok = barValid(b);
+      if (!ok) allValid = false;
+      const row = document.createElement("div");
+      row.className = "edbar";
+      const label = document.createElement("div");
+      label.className = "edbar-label" + (ok ? "" : " bad") + (b === editBar ? " editing" : "");
+      label.innerHTML = `<div class="n">小节 ${b + 1}</div><div class="s">${barSum(b)} / ${draft.meter} 拍</div>`;
+      const track = document.createElement("div");
+      track.className = "edtrack" + (ok ? "" : " bad");
+      let acc = 0;
+      draft.bars[b].forEach((s, i) => {
+        const c = document.createElement("div");
+        const isSel = edSel && edSel.bar === b && edSel.idx === i;
+        c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
+        c.style.left = (acc / draft.meter * 100) + "%";
+        c.style.width = `calc(${s.d / draft.meter * 100}% - 4px)`;
+        acc += s.d;
+        if (s.d >= 0.5){
+          const sp = document.createElement("span");
+          sp.textContent = Viz.stepLabel(s);
+          c.appendChild(sp);
+        }
+        c.addEventListener("click", () => { edSel = {bar:b, idx:i}; editBar = b; render(); });
+        track.appendChild(c);
+      });
+      track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; render(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
+      row.appendChild(label); row.appendChild(track);
+      wrap.appendChild(row);
+    }
+    $("editorStatus").textContent = allValid ? "校验通过 · 可以保存" : "存在时值不完整的小节";
+    $("editorStatusWrap").className = "status " + (allValid ? "ok" : "bad");
+    $("savePresetBtn").disabled = !allValid;
+    $("savePresetBtn").className = "pill" + (allValid ? " active" : "");
+    $("undoBtn").disabled = !undoStack.length;
+    $("paletteTitle").textContent = edSel
+      ? "音符块库 · 点击替换选中的「" + Viz.stepLabel(draft.bars[edSel.bar][edSel.idx]) + "」"
+      : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
+    if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
+  }
+  PALETTE.forEach(p => {
+    const el = document.createElement("button");
+    el.className = "pal-item";
+    el.innerHTML = `<span class="bar${p.rest ? " rest" : ""}" style="width:${p.w}px"></span><span><div class="nm">${p.nm}</div><div class="du">${p.du}</div></span>`;
+    el.addEventListener("click", () => {
+      pushUndo();
+      const step = D(p.d, p.rest);
+      if (edSel){ draft.bars[edSel.bar].splice(edSel.idx, 1, step); }
+      else { draft.bars[editBar].push(step); }
+      render();
+    });
+    $("palette").appendChild(el);
+  });
+  /* 撤销栈：任何草稿变更前先快照，Ctrl+Z / 撤销按钮回退 */
+  function pushUndo(){
+    undoStack.push(JSON.stringify(draft.bars));
+    if (undoStack.length > 50) undoStack.shift();
+    dirty = true;
+  }
+  function undo(){
+    if (!undoStack.length) return;
+    draft.bars = JSON.parse(undoStack.pop());
+    edSel = null;
+    render();
+  }
+  $("undoBtn").addEventListener("click", e => { e.currentTarget.blur(); undo(); });
+  $("delStepBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if (!edSel) return;
+    pushUndo();
+    draft.bars[edSel.bar].splice(edSel.idx, 1);
+    edSel = null;
+    render();
+  });
+  $("copyBarBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    Modal.uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
+      pushUndo();
+      const src = draft.bars[editBar].map(s => ({...s}));
+      draft.bars = draft.bars.map(() => src.map(s => ({...s})));
+      edSel = null;
+      render();
+    }, {okText:"复制"});
+  });
+  $("clearBarBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    Modal.uiConfirm("清空当前小节的全部音符？", () => {
+      pushUndo();
+      draft.bars[editBar] = [];
+      edSel = null;
+      render();
+    }, {danger:true, okText:"清空"});
+  });
+  $("auditionBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if (S.preview){                   // 停止试听
+      stopAudition();
+    } else {
+      prevSigBeforeAudition = S.sig;  // 试听结束还原主界面拍号
+      Controls.setSig(draft.meter);
+      S.preview = true;
+      Viz.buildViz();
+      Controls.start();
+      $("auditionBtn").textContent = "停止试听";
+    }
+  });
+  $("savePresetBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if ($("savePresetBtn").disabled) return;
+    const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
+    const id = "c" + Date.now();
+    customs.push({ id, name, meter: draft.meter, bars: draft.bars.map(bar => bar.map(s => ({...s}))) });
+    S.sel = {type:"custom", id};
+    dirty = false;
+    if (S.preview) stopAudition();
+    Controls.setSig(draft.meter);
+    Store.persist();
+    close();
+    Presets.refreshAfterPatternChange();
+  });
+  $("editBtn").addEventListener("click", e => { e.currentTarget.blur(); open(); });
+  $("editorBack").addEventListener("click", e => { e.currentTarget.blur(); tryClose(); });
+
+  return { open, tryClose, undo, draft: () => draft };
+})();
+
+/* ================= 初始化（装配） ================= */
+Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
 $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
@@ -1285,9 +1480,12 @@ $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
 $("trainerPanel").hidden = !S.trainer.on;
 $("trStart").value = S.trainer.start; $("trTarget").value = S.trainer.target;
 $("trStepInp").value = S.trainer.step; $("trEvery").value = S.trainer.everyN;
-setSig(S.sig);
-refreshAfterPatternChange();
-updateTrainerProg();
+Controls.setSig(S.sig);
+Presets.refreshAfterPatternChange();
+Trainer.updateProg();
+
+/* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
+window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, basicPattern };
 </script>
 </body>
 </html>
