@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 · M2</title>
+<title>BeatSight 时值节拍器</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -33,8 +33,10 @@ button:disabled{cursor:not-allowed}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .card-title{font-size:14px;font-weight:600}
-.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--green)}
-.status .dot{width:8px;height:8px}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3)}
+.status:has(.dot.live){color:var(--green)}
+.status .dot{width:8px;height:8px;background:var(--t3)}
+.status .dot.live{background:var(--green)}
 .status.ok{color:var(--green)} .status.ok .dot{background:var(--green)}
 .status.bad{color:var(--red)} .status.bad .dot{background:var(--red)}
 .caption{font-size:12px;color:var(--t3);margin-top:14px}
@@ -43,13 +45,20 @@ button:disabled{cursor:not-allowed}
 .pattern-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pattern-head .name{font-size:20px;font-weight:700}
 .pattern-head .meta{font-size:13px;color:var(--t2);margin-top:4px}
+/* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
+.fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:10px;padding:10px 14px;font-size:12px}
+.fallback-note[hidden]{display:none}
+.fallback-note span{flex:1;min-width:0}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative}
 .bar-row{position:relative;height:86px;margin-bottom:14px}
 .bar-row:last-child{margin-bottom:0}
+.bar-row.current{background:rgba(30,215,96,.07);border-radius:10px}
+.bar-row.muted-bar .cell{opacity:.5}
+.bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-9px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
-.beat-zone{position:absolute;top:0;height:47px;border-radius:10px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+.beat-zone{position:absolute;top:0;height:44px;border-radius:10px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
 .ruler-lab{position:absolute;top:67px;font-size:10px;font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
@@ -85,7 +94,7 @@ button:disabled{cursor:not-allowed}
 .group{display:flex;flex-direction:column;gap:10px}
 .group-label{font-size:11px;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px}
-.step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono)}
+.step-btn{width:44px;height:44px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono)}
 .bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);min-width:92px;text-align:center;cursor:pointer;border-radius:8px}
 .bpm-num:hover{background:var(--card2)}
 .slider-row{display:flex;align-items:center;gap:14px}
@@ -135,7 +144,8 @@ input[type=range].vol{width:120px}
 .editor-title{font-size:16px;font-weight:700}
 .editor-actions{display:flex;gap:10px}
 .edbar{display:flex;gap:12px;align-items:center;margin-bottom:14px}
-.edbar-label{width:64px;flex:none}
+.edbar-label{width:78px;flex:none}
+.edbar-label .s{white-space:nowrap}
 .edbar-label .n{font-size:12px;font-weight:500;color:var(--t2)}
 .edbar-label .s{font-size:10px;font-family:var(--mono);color:var(--t3);margin-top:2px}
 .edbar-label.bad .n,.edbar-label.bad .s{color:var(--red)}
@@ -164,6 +174,17 @@ input[type=range].vol{width:120px}
 .name-input{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;padding:10px 14px;width:280px;font-family:inherit;outline:none}
 .name-input:focus{border-color:var(--border)}
 
+/* ---------- 应用内弹窗（替代原生 confirm/prompt：沙盒 iframe 会静默拦截原生弹窗） ---------- */
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;animation:modalIn .12s ease-out}
+.modal-mask[hidden]{display:none}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:340px;max-width:calc(100vw - 48px);animation:modalPop .15s ease-out}
+.modal-msg{font-size:14px;line-height:1.7;margin-bottom:18px}
+.modal-input{width:100%;margin:-6px 0 18px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+.pill.danger{background:var(--red);color:var(--on-green);font-weight:700}
+@keyframes modalIn{from{opacity:0}to{opacity:1}}
+@keyframes modalPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
 /* ---------- 响应式 ---------- */
 @media (max-width:960px){
   body{overflow-x:hidden}
@@ -179,12 +200,13 @@ input[type=range].vol{width:120px}
   .bpm-num{font-size:38px;min-width:76px}
   .bar-row{height:66px;margin-bottom:10px}
   .cell{height:34px}
-  .beat-zone{height:37px}
+  .beat-zone{height:34px}
   .ruler-lab{top:52px;font-size:9px}
   .cell-label{top:38px;font-size:10px}
   .cell .subs{inset:0 4px}
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
+  input[type=range]::-webkit-slider-thumb{width:22px;height:22px}
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
 }
@@ -326,6 +348,18 @@ input[type=range].vol{width:120px}
   </div>
 </div>
 
+<!-- ================= 应用内弹窗 ================= -->
+<div class="modal-mask" id="modalMask" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
+    <div class="modal-msg" id="modalMsg"></div>
+    <input class="name-input modal-input" id="modalInput" hidden>
+    <div class="modal-actions">
+      <button class="pill outline" id="modalCancel">取消</button>
+      <button class="pill active" id="modalOk">确定</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ================= 数据 ================= */
@@ -369,7 +403,9 @@ const CONFIG = {
 };
 
 /* ================= 状态 ================= */
-const saved = JSON.parse(localStorage.getItem("beatsight.m2") || "{}");
+/* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
+function loadSaved(){ try{ return JSON.parse(localStorage.getItem("beatsight.m2") || "{}"); }catch(e){ return {}; } }
+const saved = loadSaved();
 const S = {
   bpm: saved.bpm || 96,
   vol: saved.vol ?? 0.8,
@@ -429,13 +465,13 @@ function playClick(t, stepStartBeat, isBarStart){
   const g = ctx.createGain();
   const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
   osc.type = isBarStart ? "triangle" : "sine";
-  osc.frequency.value = isBarStart ? 1568 : (isBeat ? 1046.5 : 784);
+  osc.frequency.value = isBarStart ? CONFIG.freqAccent : (isBeat ? CONFIG.freqBeat : CONFIG.freqSub);
   const peak = S.vol * (isBarStart ? S.accentVol : (isBeat ? 0.8 : 0.5));
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + 0.004);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + CONFIG.decay);
   osc.connect(g); g.connect(masterGain);
-  osc.start(t); osc.stop(t + 0.1);
+  osc.start(t); osc.stop(t + CONFIG.decay + 0.01);
 }
 function scheduler(){
   const bars = curPattern().bars;
@@ -482,7 +518,7 @@ function buildViz(){
   const p = curPattern();
   for (let b = 0; b < LOOP_BARS; b++){
     const row = document.createElement("div");
-    row.className = "bar-row";
+    row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
     // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
     const zones = [];
     for (let k = 0; k < S.sig; k++){
@@ -572,7 +608,9 @@ function buildViz(){
   for (let i = 1; i < S.sig; i++){
     const gl = document.createElement("div");
     gl.className = "grid-line";
-    gl.style.left = (i / S.sig * 100) + "%";
+    /* 拍边界 = 下一颗格子的左边缘（格子右缩 4px 留缝），网格线需左移 2px 落在缝隙中央，
+       否则会压住格子左边 1px——白格顶部 12px 无覆盖段会读作"突出一小块"（v0.4.4 修复） */
+    gl.style.left = `calc(${i / S.sig * 100}% - 2px)`;
     viz.appendChild(gl);
   }
   playheadEl = document.createElement("div");
@@ -734,6 +772,7 @@ function stop(){
 }
 $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
 window.addEventListener("keydown", e => {
+  if (modalOpen) return;                       // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
   if ($("editor").classList.contains("open")){
     if (e.key === "Escape") tryCloseEditor();
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undoEdit(); }
@@ -749,7 +788,7 @@ window.addEventListener("pointerdown", ensureCtx, {once:true});
 function updateMeta(){
   $("patternMeta").textContent = `${S.sig === 6 ? "6/8" : S.sig + "/4"} 拍 · ${S.bpm} BPM`;
 }
-function setBpm(v){
+function setBpm(v, save){
   v = Math.min(240, Math.max(30, Math.round(v)));
   if (S.playing){
     const posBeats = (ctx.currentTime - loopStart) / spb();
@@ -759,7 +798,7 @@ function setBpm(v){
   $("bpmNum").textContent = v;
   $("bpmSlider").value = v;
   updateMeta();
-  persist();
+  if (save !== false) persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
 }
 /* ±1 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
 function bindStep(btn, delta){
@@ -778,10 +817,12 @@ function bindStep(btn, delta){
 bindStep($("bpmMinus"), -1);
 bindStep($("bpmPlus"), 1);
 $("bpmNum").addEventListener("click", () => {
-  const v = prompt("输入 BPM（30–240）", S.bpm);
-  if (v !== null && v.trim() !== "") setBpm(+v || S.bpm);
+  uiPrompt("输入 BPM（30–240）", S.bpm, v => {
+    if (v && v.trim() !== "") setBpm(+v || S.bpm);
+  });
 });
-$("bpmSlider").addEventListener("input", e => setBpm(+e.target.value));
+$("bpmSlider").addEventListener("input", e => setBpm(+e.target.value, false));
+$("bpmSlider").addEventListener("change", persist);
 
 let taps = [], tapResetT = null;
 $("tapBtn").addEventListener("click", e => {
@@ -817,13 +858,16 @@ $("sigRow").addEventListener("click", e => {
   persist();
 });
 
-$("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; persist(); });
-$("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; persist(); });
+$("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; });
+$("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; });
+$("volMaster").addEventListener("change", persist);
+$("volAccent").addEventListener("change", persist);   // 拖动过程只更新 UI，松手才写 localStorage
 
 $("muteToggle").addEventListener("click", e => {
   e.currentTarget.blur();
   S.mute = !S.mute;
   $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+  rowEls.forEach((r, b) => r.classList.toggle("muted-bar", S.mute && b === LOOP_BARS - 1));
   persist();
 });
 
@@ -869,11 +913,12 @@ function buildPresetList(){
       del.className = "del"; del.title = "删除"; del.textContent = "×";
       del.addEventListener("click", e => {
         e.stopPropagation();
-        if (!confirm(`删除预设「${c.name}」？删除后不可恢复。`)) return;
-        customs.splice(i, 1);
-        if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
-        refreshAfterPatternChange();
-        persist();
+        uiConfirm(`删除预设「${c.name}」？删除后不可恢复。`, () => {
+          customs.splice(i, 1);
+          if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
+          refreshAfterPatternChange();
+          persist();
+        }, {danger:true, okText:"删除"});
       });
       item.appendChild(del);
       item.addEventListener("click", () => {
@@ -958,8 +1003,8 @@ function closeEditor(){
   $("editor").classList.remove("open");
 }
 function tryCloseEditor(){
-  if (dirty && !confirm("草稿尚未保存，确定丢弃修改并返回练习？")) return;
-  closeEditor();
+  if (!dirty){ closeEditor(); return; }
+  uiConfirm("草稿尚未保存，确定丢弃修改并返回练习？", () => closeEditor());
 }
 function barSum(bar){ return draft.bars[bar].reduce((a, s) => a + s.d, 0); }
 function barValid(bar){ return Math.abs(barSum(bar) - draft.meter) < 1e-9; }
@@ -993,7 +1038,7 @@ function renderEditor(){
       c.addEventListener("click", () => { edSel = {bar:b, idx:i}; editBar = b; renderEditor(); });
       track.appendChild(c);
     });
-    track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; } });
+    track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; renderEditor(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
     row.appendChild(label); row.appendChild(track);
     wrap.appendChild(row);
   }
@@ -1043,20 +1088,22 @@ $("delStepBtn").addEventListener("click", e => {
 });
 $("copyBarBtn").addEventListener("click", e => {
   e.currentTarget.blur();
-  if (!confirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。")) return;
-  pushUndo();
-  const src = draft.bars[editBar].map(s => ({...s}));
-  draft.bars = draft.bars.map(() => src.map(s => ({...s})));
-  edSel = null;
-  renderEditor();
+  uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
+    pushUndo();
+    const src = draft.bars[editBar].map(s => ({...s}));
+    draft.bars = draft.bars.map(() => src.map(s => ({...s})));
+    edSel = null;
+    renderEditor();
+  }, {okText:"复制"});
 });
 $("clearBarBtn").addEventListener("click", e => {
   e.currentTarget.blur();
-  if (!confirm("清空当前小节的全部音符？")) return;
-  pushUndo();
-  draft.bars[editBar] = [];
-  edSel = null;
-  renderEditor();
+  uiConfirm("清空当前小节的全部音符？", () => {
+    pushUndo();
+    draft.bars[editBar] = [];
+    edSel = null;
+    renderEditor();
+  }, {danger:true, okText:"清空"});
 });
 $("auditionBtn").addEventListener("click", e => {
   e.currentTarget.blur();
@@ -1088,14 +1135,48 @@ $("savePresetBtn").addEventListener("click", e => {
 $("editBtn").addEventListener("click", e => { e.currentTarget.blur(); openEditor(); });
 $("editorBack").addEventListener("click", e => { e.currentTarget.blur(); tryCloseEditor(); });
 
+/* ================= 应用内弹窗 ================= */
+/* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
+   导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
+let modalOpen = false, modalOkCb = null;
+function uiModal(msg, opts){
+  opts = opts || {};
+  modalOpen = true; modalOkCb = opts.onOk || null;
+  $("modalMsg").textContent = msg;
+  const inp = $("modalInput");
+  inp.hidden = !opts.input;
+  if (opts.input) inp.value = opts.input;
+  $("modalOk").textContent = opts.okText || "确定";
+  $("modalOk").className = "pill " + (opts.danger ? "danger" : "active");
+  $("modalMask").hidden = false;
+  (opts.input ? inp : $("modalOk")).focus();
+}
+function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
+function uiPrompt(msg, initial, onOk){ uiModal(msg, {input:String(initial), onOk:onOk}); }
+function closeModal(ok){
+  if (!modalOpen) return;
+  modalOpen = false;
+  $("modalMask").hidden = true;
+  const cb = modalOkCb; modalOkCb = null;
+  if (ok && cb) cb($("modalInput").hidden ? undefined : $("modalInput").value);
+}
+$("modalOk").addEventListener("click", () => closeModal(true));
+$("modalCancel").addEventListener("click", () => closeModal(false));
+$("modalMask").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(false); });
+$("modalInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); closeModal(true); } });
+window.addEventListener("keydown", e => {
+  if (!modalOpen) return;
+  if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
+  if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
+}, true);
+
 /* ================= 持久化 & 初始化 ================= */
 function persist(){
   localStorage.setItem("beatsight.m2", JSON.stringify({
     bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel, customs
   }));
 }
-$("bpmNum").textContent = S.bpm;
-$("bpmSlider").value = S.bpm;
+setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
 $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");

@@ -110,6 +110,7 @@ node --check _check.js && rm _check.js
 
 **坑（都踩过）**：
 - `--user-data-dir` 每次必须换新目录，否则静默失败无截图
+- headless=new 有 ~500px 最小窗口宽度：`--window-size=390` 实际 innerWidth=500，截图按 390 裁会"假性溢出"。诊断响应式先 dump-dom 验证真实 innerWidth，或用 `--force-device-scale-factor=2` + 双倍窗口尺寸折算
 - 含持续 rAF/AudioContext 的页面用 `--virtual-time-budget` 截不到播放态，用 `--timeout=9000`（也只能抓加载态）
 - 播放/发声验证必须真人点击（浏览器音频手势策略）
 - 想截图特定预设/编辑器：临时复制一份文件，改 `sel` 默认值或末尾追加 `openEditor()`，截完删除临时文件
