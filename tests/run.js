@@ -40,7 +40,7 @@ function makeEl(id){
     removeEventListener(){},
     appendChild(c){ this.children.push(c); return c; },
     remove(){}, blur(){}, focus(){}, animate(){},
-    closest(){ return null; },
+    closest(){ return makeEl("closest-proxy"); },   // 近似真实 DOM：返回带 classList 的祖先代理
     /* 测试辅助：触发已绑定的事件 */
     fire(t, ev){
       (this._h[t] || []).forEach(f => f(Object.assign({
@@ -407,6 +407,73 @@ section("T13 音色 · 三套合成音色与持久化");
   const lastHit = FakeAudioContext.last.hits[FakeAudioContext.last.hits.length - 1];
   ok(lastHit.kind === "osc" && lastHit.sweepTo === undefined, "播放中切 click：下一颗即振荡器发声，不打断播放");
   ok(bDrum.Store.S.playing, "切音色后播放未中断");
+}
+
+/* ================= 场景 T14：预备拍（v0.9.0） ================= */
+section("T14 预备拍 · 计数发声 + 训练器不受污染");
+{
+  /* bpm 96 → spb 0.625s；countIn 3 拍：预备拍落在 0.08 / 0.705 / 1.33，1.955 起进正式第 1 小节 */
+  const { beat, els } = loadApp({ "beatsight.m2": JSON.stringify({ countIn: { on: true, beats: 3 } }) });
+  const S = beat.Store.S;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 0.5);
+  beat.Viz.paintFrame();   // rAF 置空，手动补一帧
+  eq(els["statusText"].textContent, "预备拍 · 1 / 3", "预备拍期间状态栏显示计数");
+  drive(ac, beat, 3);
+  const hits = ac.hits;
+  near(hits[0].t, 0.08, 1e-6, "预备拍第 1 声 t=0.08");
+  eq(hits[0].freq, 1568, "预备拍第 1 声为重拍音");
+  near(hits[1].t, 0.08 + 0.625, 1e-6, "预备拍第 2 声间隔 1 拍");
+  eq(hits[1].freq, 1046.5, "预备拍第 2 声为正拍音");
+  eq(hits[2].freq, 1046.5, "预备拍第 3 声为正拍音");
+  near(hits[3].t, 0.08 + 3 * 0.625, 1e-6, "预备拍结束后立即进正式第 1 小节");
+  eq(hits[3].freq, 1568, "正式第 1 小节首音仍为重拍");
+  beat.Controls.stop();
+  const hitsBefore = ac.hits.length;
+  beat.Controls.start();   // 每次播放重新数预备拍
+  drive(ac, beat, 1);
+  ok(ac.hits.length > hitsBefore && ac.hits[hitsBefore].freq === 1568, "重新播放再次触发预备拍（首声重拍）");
+
+  /* 预备拍 + 变速训练：爬坡计数不含预备拍（everyN=1 时完成 2 级即停） */
+  const { beat: b2 } = loadApp({ "beatsight.m2": JSON.stringify({
+    countIn: { on: true, beats: 2 },
+    trainer: { on: true, start: 70, target: 80, step: 10, everyN: 1 },
+  })});
+  b2.Controls.start();
+  const ac2 = FakeAudioContext.last;
+  const stopped = drive(ac2, b2, 30);
+  ok(stopped, "预备拍+训练：练到目标自动停止");
+  const S2 = b2.Store.S;
+  eq(S2.bpm, 80, "训练完成停在 80 BPM");
+  /* 关闭时零变化回归 */
+  const { beat: b3 } = loadApp();
+  b3.Controls.start();
+  const ac3 = FakeAudioContext.last;
+  drive(ac3, b3, 1);
+  near(ac3.hits[0].t, 0.08, 1e-6, "预备拍关闭：第 1 声即正式节奏型");
+}
+
+/* ================= 场景 T15：拍号切换挂起窗口内可视化不脱轨（v0.9.0 修复） ================= */
+section("T15 播放中切拍号 · 挂起窗口内 viz 按旧拍号渲染");
+{
+  /* 4/4 民谣扫弦播放中切 3/4：新拍号要等到循环起点（4 小节边界）才应用。
+     bpm 96 → 一小节 2.5s、循环 10s。drive 到 ~7.6s（旧循环第 4 小节中段）时
+     paintFrame 必须仍按 4/4 渲染：状态栏「第 4 小节」而非回卷「第 1 小节」 */
+  const { beat, els } = loadApp();
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 1);
+  beat.Store.S.sel = { type: "builtin", idx: 6 };   // 华尔兹 3/4
+  beat.Controls.setSig(3);
+  beat.Presets.refreshAfterPatternChange();
+  drive(ac, beat, 6.6);                              // 累计 ~7.6s：旧循环第 4 小节
+  beat.Viz.paintFrame();
+  ok(els["statusText"].textContent.includes("第 4 小节"), "挂起窗口内状态栏仍按旧 4/4 渲染（第 4 小节，不回卷）");
+  drive(ac, beat, 4);                                // 越过循环起点 → 新拍号生效
+  beat.Viz.paintFrame();
+  ok(els["statusText"].textContent.includes("播放中"), "循环起点后正常播放");
+  ok(beat.Store.S.playing, "全程播放未中断");
 }
 
 /* ---------------- 汇总 ---------------- */

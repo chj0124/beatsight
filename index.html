@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v0.8.0</title>
+<title>BeatSight 时值节拍器 v0.9.0</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -235,9 +235,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v0.8.0</span>
+    <span class="ver">v0.9.0</span>
   </div>
-  <div class="chip"><span class="dot"></span>M6 · 多音色</div>
+  <div class="chip"><span class="dot"></span>M7 · 预备拍</div>
 </header>
 
 <div class="main">
@@ -329,6 +329,8 @@ input[type=range].vol{width:120px}
       <div class="config">
         <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle">变速训练 · 自动爬坡<span class="switch"></span></button>
+        <button class="toggle-pill off" id="countInToggle">预备拍<span class="switch"></span></button>
+        <input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数" hidden>
       </div>
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
@@ -415,7 +417,7 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v0.8.0 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色
+   BeatSight v0.9.0 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
    模块（IIFE，按依赖方向排序，禁止反向引用）：
      Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
      Modal    应用内弹窗
@@ -511,6 +513,9 @@ let ctx = null, masterGain = null;
 let loopStart = 0;
 let nextNoteTime = 0, schedBar = 0, schedStep = 0;
 let rafId = null;
+/* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
+   loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
+let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
 const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
   accents: ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0],
   bars:rep4(Array.from({length:meter},()=>D(TPB)))});
@@ -525,7 +530,6 @@ const curPattern = () => {
   }
   return basicPattern(S.sig);
 };
-const loopTicks = () => S.sig * LOOP_BARS * TPB;
 
 /* ================= Store · 持久化 / 状态 / 导入导出 ================= */
 const Store = (() => {
@@ -559,6 +563,8 @@ const Store = (() => {
     swing: SWINGS.includes(saved.swing) ? saved.swing : 50,          // v0.7.0
     accentGrp: (saved.accentGrp && typeof saved.accentGrp === "object") ? saved.accentGrp : {},  // v0.7.0
     timbre: ["click","wood","drum"].includes(saved.timbre) ? saved.timbre : "click",  // v0.8.0
+    countIn: { on: !!(saved.countIn && saved.countIn.on),            // v0.9.0 预备拍
+      beats: Math.min(8, Math.max(1, Math.round(+((saved.countIn || {}).beats) || 4))) },
     playing: false,
     preview: false,
     trainer: Object.assign({}, trDefaults, trSaved),
@@ -574,7 +580,7 @@ const Store = (() => {
   function persist(){
     localStorage.setItem("beatsight.m2", JSON.stringify({
       v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
-      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, customs, trainer:S.trainer
+      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer
     }));
   }
 
@@ -717,18 +723,23 @@ const Viz = (() => {
   let glEls = [];                                            // 短音符合并标注（组标签）
   let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
   let lastBar = -1, lastStep = -1;
+  /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
+     播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
+     paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
+  let vizSig = S.sig, lastCi = -1;
 
   function stepLabel(s){
     return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
   }
 
   function buildViz(){
+    vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
     viz.innerHTML = "";
     rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = [];
     zoneEls = []; rulerEls = []; glEls = [];
     const p = curPattern();
-    const barTicks = S.sig * TPB;
+    const barTicks = vizSig * TPB;
     for (let b = 0; b < LOOP_BARS; b++){
       const row = document.createElement("div");
       row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
@@ -887,8 +898,24 @@ const Viz = (() => {
 
   function paintFrame(){
     if (!S.playing) return;
-    const posT = Math.max(0, ((ctx.currentTime - loopStart) / spb() * TPB) % loopTicks());   // 播放位置（tick）
-    const barTicks = S.sig * TPB;
+    /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
+       跑道拍点随计数脉冲（跨小节时按 vizSig 折行） */
+    if (ciBeats > 0 && ctx.currentTime < loopStart){
+      const idx = Math.min(ciBeats - 1, Math.floor((ctx.currentTime - ciStart) / spb()));
+      if (idx !== lastCi){
+        lastCi = idx;
+        const z = zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig];
+        if (z) z.animate([
+          {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
+          {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
+        ], {duration:320, easing:"ease-out"});
+      }
+      $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
+      rafId = requestAnimationFrame(paintFrame); return;
+    }
+    lastCi = -1;
+    const posT = Math.max(0, ((ctx.currentTime - loopStart) / spb() * TPB) % (vizSig * LOOP_BARS * TPB));   // 播放位置（tick，按渲染拍号取模）
+    const barTicks = vizSig * TPB;
     const bar = Math.floor(posT / barTicks);
     const tib = posT - bar * barTicks;                          // 小节内位置（tick）
     const pw = tib / barTicks * 100;
@@ -923,7 +950,7 @@ const Viz = (() => {
     const t16 = Math.floor((tib + 1e-6) / 12);
     if (bar !== lastBar || t16 !== lastT16){
       let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
-      if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = S.sig * 4 - 1; }  // 跨小节：闪上一小节最后一格
+      if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
       const sub = subEls[fb] && subEls[fb][fk];
       if (sub){
         // 配色随底色反转：白块（已弹/正在弹）上闪绿光，暗块上闪绿光（规范：绿为功能强调色，最高强调用近白）
@@ -940,11 +967,11 @@ const Viz = (() => {
       }
       // 座次尺：当前十六分位置高亮
       if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-      const rkey = S.sig === 6 ? Math.floor(t16 / 2) * 2 : t16;
+      const rkey = vizSig === 6 ? Math.floor(t16 / 2) * 2 : t16;
       const rl = rulerEls[bar] && rulerEls[bar][rkey];
       if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
       // 状态栏读数：第几小节 · 第几拍 + 拍内座次
-      const sfx = (S.sig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
+      const sfx = (vizSig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
       const mutedNow = S.mute && bar === LOOP_BARS - 1;
       $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
     }
@@ -1057,13 +1084,19 @@ const Audio = (() => {
   /* setInterval(25ms) 轮询：把未来 150ms 窗口内的音符注册到 audio clock；
      位置换算：posTicks = (ctx.currentTime - loopStart) / spb × TPB */
   function scheduler(){
+    /* 预备拍（v0.9.0）：loopStart 之前的时段调度 ciLeft 声计数（首声重拍、其余正拍）。
+       独立路径：不走 swing、不受静音拍影响；正式音符的调度从 loopStart 才开始 */
+    while (ciLeft > 0 && ciNext < ctx.currentTime + CONFIG.schedWindow){
+      playClick(ciNext, 0, ciLeft === ciBeats);
+      ciNext += spb(); ciLeft--;
+    }
     const pat = Presets.activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
     while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
       const steps = bars[schedBar];
-      if (!steps || steps.length === 0){                  // 空小节：安全跳过
-        nextNoteTime += S.sig * spb();
+      if (!steps || steps.length === 0){                  // 空小节：安全跳过（用快照拍号，挂起窗口内 S.sig 可能已变）
+        nextNoteTime += pat.meter * spb();
         schedBar = (schedBar + 1) % LOOP_BARS;
         continue;
       }
@@ -1074,8 +1107,8 @@ const Audio = (() => {
         let t0 = nextNoteTime;
         /* Swing（v0.7.0）：拍内后半的八分（起始位置 %48===24 且时值恰为 24t）发声延后
            (swing-50)/50×24t；时间轴本身不动——下一颗音符仍按记谱时间进入。
-           6/8 自带摇摆属性，不套用。 */
-        if (S.swing > 50 && S.sig !== 6 && steps[schedStep].t === TPB / 2 && cumT % TPB === TPB / 2){
+           6/8 自带摇摆属性，不套用（用快照拍号判断，挂起窗口内 S.sig 可能已变）。 */
+        if (S.swing > 50 && pat.meter !== 6 && steps[schedStep].t === TPB / 2 && cumT % TPB === TPB / 2){
           t0 += (S.swing - 50) / 50 * (TPB / 2) * spb() / TPB;
         }
         playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
@@ -1182,6 +1215,12 @@ const Controls = (() => {
     S.playing = true;
     schedBar = 0; schedStep = 0;
     loopStart = ctx.currentTime + 0.08;
+    /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
+    if (S.countIn.on && S.countIn.beats > 0){
+      ciBeats = S.countIn.beats; ciLeft = ciBeats;
+      ciStart = loopStart; ciNext = ciStart;
+      loopStart = ciStart + ciBeats * spb();
+    } else { ciBeats = 0; ciLeft = 0; }
     nextNoteTime = loopStart;
     timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
@@ -1192,6 +1231,7 @@ const Controls = (() => {
   }
   function stop(){
     S.playing = false;
+    ciLeft = 0; ciBeats = 0;              // 清预备拍会话状态
     clearInterval(timer);
     cancelAnimationFrame(rafId);
     $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
@@ -1349,6 +1389,22 @@ const Controls = (() => {
     S.mute = !S.mute;
     $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
     Viz.syncMuteBars();
+    Store.persist();
+  });
+
+  /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
+  $("countInToggle").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.countIn.on = !S.countIn.on;
+    $("countInToggle").className = "toggle-pill " + (S.countIn.on ? "on" : "off");
+    $("countInBeats").hidden = !S.countIn.on;
+    Store.persist();
+  });
+  $("countInBeats").addEventListener("change", e => {
+    let v = Math.round(+e.target.value);
+    if (!isFinite(v)) v = S.countIn.beats;
+    v = Math.min(8, Math.max(1, v));
+    S.countIn.beats = v; e.target.value = v;
     Store.persist();
   });
 

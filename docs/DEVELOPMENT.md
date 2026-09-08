@@ -59,6 +59,8 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×4] }
 - **Swing 是演奏参数不是时值**：`S.swing ∈ {50,67,75}` 存 S 不入 pattern；只偏移拍内后半八分的发声时刻（(swing-50)/50×24t），时间轴与块宽均不动；6/8 不套用
 - **奇数拍重拍分组**：`ACC_GROUPS = {5:[[0,2],[0,3]], 7:[[0,3,5],[0,2,4]]}`；`S.accentGrp[sig]` 记录选择，作用于 basicPattern 与新建自定义；内置/已存预设自带 accents 不受影响
 - **播放中发声读 `Presets.activePattern()` 快照**（v0.7.0）：S.sel/S.sig 切换即变，直读 curPattern() 会在小节中途换节奏型导致 schedStep 越界（v0.4.0 起潜伏 bug）；快照仅在小节边界 applyPatternChange 时更新
+- **paintFrame 只认 `vizSig`**（v0.9.0）：buildViz 时锁定的渲染拍号。播放中切拍号的挂起窗口内 S.sig 已变、画面未变，paintFrame 若用 S.sig 会让播放头按新拍号提前回卷（v0.9.0 修复的可视化脱轨 bug）
+- **预备拍（v0.9.0）**：`S.countIn = {on, beats(1–8)}` 持久化；会话游标 ciStart/ciBeats/ciNext/ciLeft 在共享状态区，start() 时 loopStart 顺延 N 拍，scheduler 在 loopStart 之前独立调度计数音（不走 swing/静音拍），paintFrame 在此期间只显示「预备拍 · n / N」+ 跑道脉冲
 - **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`**：与 mute/bpm/swing 一并持久化在 beatsight.m2；会话状态 `trStepIdx`/`trBarCnt` 不持久化，`start()` 时重置
 - **自定义预设以 `id` 引用**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`
 - 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`，同时 `updateFallbackNote()` 显示琥珀色提示条（含一键切回）
