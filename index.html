@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v0.9.1</title>
+<title>BeatSight 时值节拍器 v1.0.0</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -235,9 +235,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v0.9.1</span>
+    <span class="ver">v1.0.0</span>
   </div>
-  <div class="chip"><span class="dot"></span>M7 · 预备拍</div>
+  <div class="chip"><span class="dot"></span>v1.0 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -417,7 +417,9 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v0.9.0 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
+   BeatSight v1.0.0 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
+   结构沿革：v0.6 模块化 → v0.7 tick 制 → v0.9 vizSig 渲染拍号 → v1.0 依赖方向净化
+   （共享状态区移到 Store 之后，draft/appliedPat/activePattern 上移，模块间无反向引用）
    模块（IIFE，按依赖方向排序，禁止反向引用）：
      Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
      Modal    应用内弹窗
@@ -429,8 +431,9 @@ input[type=range].vol{width:120px}
      Editor   自定义节奏型编辑器
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
-     2. 跨模块共享的可变状态（S、customs、音频时钟变量）集中在「共享状态」区声明，
-        模块只做函数归属与接口收敛；S 的创建/迁移/落盘归 Store
+     2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
+        S/customs 由 Store 创建，draft/appliedPat/activePattern 也归此区——
+        任何模块不得反向引用后方模块，运行期热路径（paintFrame/scheduler）只读本区与前方模块
      3. 用户可控字符串一律 textContent 赋值，禁止 innerHTML 拼接
    数据模型（v0.7.0 tick 制）：
      时值单位为 tick，TPB=48 ticks/拍（48=2⁴×3，整除 2/3/4/6/8/12/16/24，
@@ -504,32 +507,6 @@ const CONFIG = {
   },
 };
 
-/* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
-const $ = id => document.getElementById(id);
-const spb = () => 60 / S.bpm;                          // 秒/拍
-const meterName = m => ({6:"6/8",5:"5/4",7:"7/4"})[m] || (m + "/4");
-const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
-let ctx = null, masterGain = null;
-let loopStart = 0;
-let nextNoteTime = 0, schedBar = 0, schedStep = 0;
-let rafId = null;
-/* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
-   loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
-let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
-const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
-  accents: ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0],
-  bars:rep4(Array.from({length:meter},()=>D(TPB)))});
-const curPattern = () => {
-  if (S.preview && Editor.draft()) return Editor.draft();
-  if (S.sel.type === "custom"){
-    const c = customs.find(x => x.id === S.sel.id);
-    if (c && c.meter === S.sig) return c;
-  } else {
-    const p = BUILTINS[S.sel.idx];
-    if (p && p.meter === S.sig) return p;
-  }
-  return basicPattern(S.sig);
-};
 
 /* ================= Store · 持久化 / 状态 / 导入导出 ================= */
 const Store = (() => {
@@ -673,6 +650,38 @@ const Store = (() => {
 })();
 const S = Store.S;
 const customs = Store.customs;
+
+/* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
+const $ = id => document.getElementById(id);
+const spb = () => 60 / S.bpm;                          // 秒/拍
+const meterName = m => ({6:"6/8",5:"5/4",7:"7/4"})[m] || (m + "/4");
+const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
+let ctx = null, masterGain = null;
+let loopStart = 0;
+let nextNoteTime = 0, schedBar = 0, schedStep = 0;
+let rafId = null;
+/* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
+   loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
+let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
+const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
+  accents: ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0],
+  bars:rep4(Array.from({length:meter},()=>D(TPB)))});
+const curPattern = () => {
+  if (S.preview && draft) return draft;
+  if (S.sel.type === "custom"){
+    const c = customs.find(x => x.id === S.sel.id);
+    if (c && c.meter === S.sig) return c;
+  } else {
+    const p = BUILTINS[S.sel.idx];
+    if (p && p.meter === S.sig) return p;
+  }
+  return basicPattern(S.sig);
+};
+let draft = null;                    // 编辑器草稿（Editor 写入，curPattern 试听时读取）
+let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
+/* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
+   放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
+const activePattern = () => (S.preview || !S.playing) ? curPattern() : (appliedPat || curPattern());
 
 /* ================= Modal · 应用内弹窗 ================= */
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
@@ -936,7 +945,7 @@ const Viz = (() => {
       trailGlowEl.style.top = rowEls[bar].offsetTop + "px";
       trailGlowEl.style.height = cellEls[bar][0].offsetHeight + "px";
     }
-    const steps = Presets.activePattern().bars[bar];
+    const steps = activePattern().bars[bar];
     const cum = []; let acc = 0;
     steps.forEach(s => { cum.push(acc); acc += s.t; });
     let active = 0;
@@ -994,7 +1003,7 @@ const Viz = (() => {
         if (b < bar) cls += "played";
         else if (b > bar) cls += "upcoming";
         else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
-        if (Presets.activePattern().bars[b][i].rest) cls += " rest";
+        if (activePattern().bars[b][i].rest) cls += " rest";
         if (b === nb && i === ni) cls += " next";
         el.className = cls;
         fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
@@ -1100,7 +1109,7 @@ const Audio = (() => {
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
     }
-    const pat = Presets.activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
+    const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
     while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
@@ -1425,14 +1434,8 @@ const Controls = (() => {
 const Presets = (() => {
   /* 播放中切换节奏型：挂起到小节边界无缝生效 */
   let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
-  /* 正在发声的节奏型快照（v0.7.0 修复）：S.sel/S.sig 在切换瞬间即变，若 scheduler 直读
-     curPattern() 会在小节中途拿到新节奏型——schedStep 可能越界（v0.4.0 起潜伏，tests T12 捕获）。
-     播放/试听期间一律读 appliedPat，仅在小节边界 applyPatternChange 时换快照 */
-  let appliedPat = null;
-  function activePattern(){
-    if (S.preview || !S.playing) return curPattern();
-    return appliedPat || curPattern();
-  }
+  /* appliedPat/activePattern 已上移至共享状态区（v1.0.0）——
+     历史：v0.7.0 修复播放中切换越界（tests T12）；v1.0.0 为消除 Viz→Presets 反向依赖而上移 */
 
   /* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
   function presetItemEl(name, metaText, isActive){
@@ -1574,13 +1577,13 @@ const Presets = (() => {
     r.readAsText(f);
   });
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, activePattern };
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending };
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
 const Editor = (() => {
   /* 编辑器草稿 + 撤销栈 */
-  let draft = null, edSel = null, editBar = 0;
+  let edSel = null, editBar = 0;   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
   let undoStack = [], dirty = false;
   let prevSigBeforeAudition = null;
 

@@ -1,5 +1,31 @@
 # 变更记录
 
+## v1.0.0 · 依赖方向净化 + Editor 测试 + CI（2026-09-11）
+
+复盘报告（beatsight-review-v0.9.0）结构项与基建项，标记架构进入稳定期：
+
+### 结构
+
+- **依赖方向净化（H2）**：`activePattern`/`draft`/`appliedPat` 所有权上移至共享状态区（该区整体移到 Store 之后）。消除两处反向依赖：Viz.paintFrame → Presets.activePattern（每帧热路径）、共享 curPattern → Editor.draft。现在模块严格单向：数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → init
+- **共享状态前向引用消除（M5）**：spb/curPattern 等不再引用未声明的 const（此前靠箭头函数惰性求值侥幸安全，新人极易踩 TDZ）
+- 模块边界规则更新为："不得反向引用后方模块；运行期热路径只读共享状态区与前方模块"（写入 index.html 头注释与 DEVELOPMENT §3.0）
+
+### 测试
+
+- **M1：Editor 全流程覆盖（T17，12 断言）**：打开生成副本草稿 → palette 追加致超限 → 保存禁用+校验提示 → 撤销恢复 → 保存 → customs+1/S.sel 指向/编辑器关闭/持久化/当前节奏型切换
+- 总计 17 场景 128 断言
+- **H3：CI 上线**：`.github/workflows/test.yml`——push/PR 自动跑语法校验 + tests/run.js（ubuntu + Node 22，零依赖零安装）
+
+### 文档与基建
+
+- **M2**：docs/prd.html 加置顶存档横幅（v1.0 原始 PRD 仅存档，现行功能以 CHANGELOG + DEVELOPMENT.md 为准）
+- **M3**：DEVELOPMENT §5 自验流程 macOS 化；新增 `tests/screenshot.sh` 把无头截图的沙箱坑（--no-sandbox、后台+pkill、user-data-dir 换新）固化成一条命令
+
+### 自验
+
+- tests 128/128 PASS；语法校验通过；`tests/screenshot.sh` 实跑截图确认渲染正常、控制台零报错
+- 重构不改变任何行为（128 断言含 v0.5.0 以来的全部回归场景护航）
+
 ## v0.9.1 · 防御性补丁（2026-09-11）
 
 复盘报告（beatsight-review-v0.9.0）高/中优先级项的第一批：

@@ -505,6 +505,33 @@ section("T16 防御 · persist 写失败不炸 + accents 归一");
   eq(JSON.stringify(b2.Store.customs[0].accents), JSON.stringify([0, 1, 3]), "accents 归一为 [0,1,3]");
 }
 
+/* ================= 场景 T17：Editor 全流程（v1.0.0，M1 补覆盖） ================= */
+section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
+{
+  const { beat, els, storage } = loadApp();
+  beat.Editor.open();
+  const d = beat.Editor.draft();
+  ok(d && d.name.endsWith("-副本"), "打开编辑器：基于当前节奏型生成副本草稿");
+  ok(els["editor"].classList.contains("open"), "编辑器 overlay 打开");
+
+  const palette = els["palette"].children;
+  eq(palette.length, 11, "音符块库 11 项（含两个三连音组块）");
+  palette[10].fire("click");                       // 追加休止符（48t）→ 小节 1 超限
+  eq(els["savePresetBtn"].disabled, true, "小节时值超限 → 保存禁用");
+  ok(els["editorStatus"].textContent.includes("不完整"), "校验状态提示时值不完整");
+  beat.Editor.undo();
+  eq(els["savePresetBtn"].disabled, false, "撤销后校验恢复通过");
+
+  els["presetNameInput"].value = "测试预设T17";
+  els["savePresetBtn"].fire("click");
+  eq(beat.Store.customs.length, 1, "保存后 customs +1");
+  eq(beat.Store.customs[0].name, "测试预设T17", "预设名正确");
+  eq(beat.Store.S.sel.id, beat.Store.customs[0].id, "S.sel 指向新预设 id");
+  ok(!els["editor"].classList.contains("open"), "保存后编辑器关闭");
+  eq(JSON.parse(storage.get("beatsight.m2")).customs.length, 1, "新预设已持久化");
+  eq(beat.curPattern().name, "测试预设T17", "保存后当前节奏型即新预设");
+}
+
 /* ---------------- 汇总 ---------------- */
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
 if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }

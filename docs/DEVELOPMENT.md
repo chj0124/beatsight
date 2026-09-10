@@ -27,20 +27,21 @@ beatsight/
 
 ## 3. 核心架构
 
-### 3.0 模块地图（v0.6.0 起）
+### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化）
 
-`<script>` 为 8 个 IIFE 逻辑模块，按依赖方向排序，**禁止反向引用**：
+`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → init**
 
 ```
-Store（持久化/状态创建/迁移/导入导出）→ Modal（应用内弹窗）→ Viz（时值可视化）
-→ Audio（Web Audio 前瞻调度）→ Trainer（变速训练器）→ Controls（播放控制/BPM/拍号/音量/静音拍）
+Store（持久化/状态创建/迁移/导入导出）
+共享状态（S/customs 别名、draft、appliedPat、activePattern、curPattern、音频时钟变量）
+→ Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
+→ Trainer（变速训练器）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍）
 → Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）→ init（装配）
 ```
 
-- 模块间只通过暴露接口通信（`Trainer.updateProg()`、`Presets.consumePending()`、`Viz.resetForStop()` 等），禁止直读内部变量
-- 跨模块共享的可变状态（S、customs、`ctx`/`loopStart`/`nextNoteTime`/`schedBar`/`schedStep`/`rafId`）集中在「共享状态」区声明；S 的创建/迁移/落盘归 Store
+- **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
 - `window.__beat` 暴露全部模块接口，是 tests/run.js 的断言入口，也是控制台调试入口
-- 完整的函数归属清单见 index.html 顶部注释；下列 3.1–3.5 的机制描述不变，只是函数现在有模块归属
+- 下列 3.1–3.5 的机制描述不变，只是函数有模块归属
 
 ### 3.1 数据模型（v0.7.0 起 tick 制）
 
@@ -126,18 +127,14 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 
 ```bash
 # 0) 自动化测试（v0.6.0 起，最快反馈，先跑这个）
-node tests/run.js    # 56 断言全 PASS 才继续
+node tests/run.js    # 全 PASS 才继续；CI（.github/workflows/test.yml）在每次 push 自动跑同一套
 
-# 1) JS 语法校验（提取内联脚本）
-python -c "import re,io;html=io.open('index.html',encoding='utf-8').read();io.open('_check.js','w',encoding='utf-8').write(re.search(r'<script>(.*?)</script>',html,re.S).group(1))"
-node --check _check.js && rm _check.js
+# 1) JS 语法校验（提取内联脚本，编译不执行）
+node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);new Function(m[1])"
 
-# 2) Chrome 无头渲染截图（路径按本机实际调整）
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu \
-  --user-data-dir="$TEMP/chp-随机名" --window-size=1440,1100 --virtual-time-budget=4000 \
-  --screenshot="%TEMP%\check.png" "file:///绝对路径/index.html"
-
-# 3) 控制台报错检查：加 --enable-logging=stderr --v=0，grep CONSOLE 应为空
+# 2)+3) 无头 Chrome 截图 + 控制台报错检查（macOS 一条命令，v1.0.0 起固化）
+tests/screenshot.sh              # 桌面 1440×1150
+tests/screenshot.sh 800 1800     # 窄屏
 ```
 
 **坑（都踩过）**：
@@ -150,14 +147,14 @@ node --check _check.js && rm _check.js
 
 ## 6. 路线图（2026-09-07 重排）
 
-已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~ / ~~v0.9 预备拍+可视化脱轨修复~~ / ~~v0.9.1 防御性补丁~~ / ~~v1.0 依赖方向净化+Editor 测试+CI~~
 
 按优先级排队：
 
-1. **v0.9 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
+1. **v1.1 练习闭环第一刀**：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
 2. **PWA 离线（原 M3-1）**：内联 manifest（Blob URL）+ Service Worker；iOS 需 apple-touch-icon（可用 SVG data URI）
 3. **后台持续发声（原 M3-3）**：优先 `navigator.wakeLock.request("screen")`；iOS Safari 不支持 WakeLock 时用静音循环 audio 元素保活；均需设置页开关
-4. **v1.0 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v0.9 统计数据使用情况再定
+4. **v1.2 训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视 v1.1 统计数据使用情况再定
 
 ## 7. 用户协作偏好
 
