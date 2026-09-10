@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v0.9.0</title>
+<title>BeatSight 时值节拍器 v0.9.1</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -235,7 +235,7 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v0.9.0</span>
+    <span class="ver">v0.9.1</span>
   </div>
   <div class="chip"><span class="dot"></span>M7 · 预备拍</div>
 </header>
@@ -577,11 +577,15 @@ const Store = (() => {
     S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:0};
   }
 
+  /* v0.9.1 修复：写路径也要容错——隐私模式/配额超限时 setItem 会抛 QuotaExceededError，
+     裸奔会把调用它的每个交互（播放、调速、开关训练…）整个炸断。失败静默降级：状态在内存，只是不落盘 */
   function persist(){
-    localStorage.setItem("beatsight.m2", JSON.stringify({
-      v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
-      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer
-    }));
+    try{
+      localStorage.setItem("beatsight.m2", JSON.stringify({
+        v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
+        swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer
+      }));
+    }catch(e){}
   }
 
   /* ---- 预设导入导出 ----
@@ -640,7 +644,7 @@ const Store = (() => {
     if (p.accents !== undefined){
       if (!Array.isArray(p.accents) || !p.accents.length ||
           p.accents.some(a => typeof a !== "number" || a < 0 || a >= meter)) return null;
-      accents = p.accents.slice();
+      accents = [...new Set(p.accents)].sort((a, b) => a - b);   // v0.9.1：去重 + 升序归一，防脏数据乱重拍
     }
     return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars};
   }
@@ -896,6 +900,15 @@ const Viz = (() => {
     rowEls.forEach((r, b) => r.classList.toggle("muted-bar", S.mute && b === LOOP_BARS - 1));
   }
 
+  /* 跑道拍点脉冲（v0.9.1 提取）：换拍瞬间与预备拍计数共用同一组关键帧 */
+  function pulseZone(z){
+    if (!z) return;
+    z.animate([
+      {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
+      {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
+    ], {duration:320, easing:"ease-out"});
+  }
+
   function paintFrame(){
     if (!S.playing) return;
     /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
@@ -904,11 +917,7 @@ const Viz = (() => {
       const idx = Math.min(ciBeats - 1, Math.floor((ctx.currentTime - ciStart) / spb()));
       if (idx !== lastCi){
         lastCi = idx;
-        const z = zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig];
-        if (z) z.animate([
-          {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
-          {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
-        ], {duration:320, easing:"ease-out"});
+        pulseZone(zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig]);
       }
       $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
       rafId = requestAnimationFrame(paintFrame); return;
@@ -935,11 +944,7 @@ const Viz = (() => {
     // 换拍瞬间：拍点容器（跑道）脉冲
     const beat = Math.floor(tib / TPB);
     if (bar !== lastBar || beat !== lastBeat){
-      const z = zoneEls[bar] && zoneEls[bar][beat];
-      if (z) z.animate([
-        {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
-        {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
-      ], {duration:320, easing:"ease-out"});
+      pulseZone(zoneEls[bar] && zoneEls[bar][beat]);
       lastBeat = beat;
     }
     // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
@@ -1016,6 +1021,11 @@ const Audio = (() => {
     }
     if (ctx.state === "suspended") ctx.resume();
   }
+  /* v0.9.1：iOS Safari 切后台会挂起 AudioContext，回前台且正在播放时兜底恢复
+     （首次 pointerdown 的 once 解锁覆盖不到这个场景） */
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && S.playing && ctx && ctx.state === "suspended") ctx.resume();
+  });
   /* 噪声 buffer：程序生成的 0.5s 白噪声，wood/drum 音色共用（零采样文件硬约束） */
   let noiseBuf = null;
   function getNoiseBuf(){

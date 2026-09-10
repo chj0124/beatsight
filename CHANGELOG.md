@@ -1,5 +1,16 @@
 # 变更记录
 
+## v0.9.1 · 防御性补丁（2026-09-11）
+
+复盘报告（beatsight-review-v0.9.0）高/中优先级项的第一批：
+
+- **persist() 写路径容错**：此前 loadSaved 有 try/catch、迁移备份有 try/catch，唯独 persist 裸奔——隐私模式/配额超限时 setItem 抛 QuotaExceededError，会把调用它的每个交互（播放、调速、开关训练）整个炸断。修复：try/catch 静默降级（状态在内存生效，只是不落盘）。tests T16 用「setItem 必抛错」的 stub 锁定：播放/调速/切拍号全程不抛
+- **iOS 后台返回音频自愈**：新增 `visibilitychange` 监听——回前台且播放中且 ctx 被挂起时自动 resume（首次 pointerdown 的 once 解锁覆盖不到这个场景）。真机验证项
+- **跑道脉冲动画去重**：换拍脉冲与预备拍计数脉冲的 WAAPI 关键帧完全重复，提取 `pulseZone()`（Viz 内部）
+- **导入 accents 归一**：validatePreset 对 accents 去重 + 升序（`[3,0,3]` 这类脏数据此前能过校验，重拍落点会错乱）
+- 测试：新增 T16（5 断言），总计 16 场景 116 断言
+- 自验：tests 116/116 PASS；语法校验通过
+
 ## v0.9.0 · 预备拍 + 播放中切拍号可视化脱轨修复（2026-09-08）
 
 ### 新功能：预备拍

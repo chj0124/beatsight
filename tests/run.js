@@ -76,9 +76,11 @@ class FakeAudioContext {
   resume(){}
 }
 
-/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage} */
-function loadApp(seed){
+/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage}
+   opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16） */
+function loadApp(seed, opts){
   const store = new Map(Object.entries(seed || {}));
+  const throwOnWrite = !!(opts && opts.throwOnWrite);
   const els = {};
   const intervals = new Map();
   let timerSeq = 1;
@@ -87,7 +89,7 @@ function loadApp(seed){
     console,
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
-      setItem: (k, v) => store.set(k, String(v)),
+      setItem: (k, v) => { if (throwOnWrite) throw new DOMException("quota", "QuotaExceededError"); store.set(k, String(v)); },
       removeItem: k => store.delete(k),
     },
     document: {
@@ -474,6 +476,33 @@ section("T15 播放中切拍号 · 挂起窗口内 viz 按旧拍号渲染");
   beat.Viz.paintFrame();
   ok(els["statusText"].textContent.includes("播放中"), "循环起点后正常播放");
   ok(beat.Store.S.playing, "全程播放未中断");
+}
+
+/* ================= 场景 T16：v0.9.1 防御性补丁 ================= */
+section("T16 防御 · persist 写失败不炸 + accents 归一");
+{
+  /* H1：localStorage 写路径抛错（隐私模式/配额超限）时交互链不能断。
+     注意：setSig 必须与 refreshAfterPatternChange 成对调用（真实 UI 的绑定路径如此），
+     单独调 setSig 会让 viz 与 curPattern 脱节——那是测试误用，不是 app bug */
+  const { beat } = loadApp({}, { throwOnWrite: true });
+  let threw = false;
+  try {
+    beat.Controls.setBpm(120);
+    beat.Controls.setSig(3);
+    beat.Presets.refreshAfterPatternChange();
+    beat.Controls.start();
+    drive(FakeAudioContext.last, beat, 1);
+    beat.Controls.stop();
+  } catch(e){ threw = true; }
+  ok(!threw, "persist 写失败时 播放/调速/切拍号 全程不抛异常");
+  eq(beat.Store.S.bpm, 120, "写失败时状态仍在内存生效");
+
+  /* M6：导入的 accents 去重 + 升序归一 */
+  const { beat: b2 } = loadApp();
+  const r = b2.Store.importPresets(JSON.stringify({ presets: [{ name: "乱序重拍", meter: 4, accents: [3, 0, 3, 1],
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }]}));
+  ok(r.ok, "乱序/重复 accents 的预设可导入");
+  eq(JSON.stringify(b2.Store.customs[0].accents), JSON.stringify([0, 1, 3]), "accents 归一为 [0,1,3]");
 }
 
 /* ---------------- 汇总 ---------------- */
