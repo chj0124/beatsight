@@ -1,0 +1,14 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 语法校验（提取内联脚本，编译不执行）
+        run: node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);if(!m)process.exit(1);new Function(m[1]);console.log('syntax OK')"
+      - name: 自动化测试
+        run: node tests/run.js
