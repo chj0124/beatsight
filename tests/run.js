@@ -20,6 +20,9 @@ if (!m){ console.error("index.html 中未找到 <script> 块"); process.exit(1);
 const SRC = m[1];
 
 /* ---------------- DOM / 浏览器环境 stub ---------------- */
+/* index.html 里靠 attribute 承载初值的元素：stub 不解析 HTML，需在此复刻，否则读到 undefined。
+   bpmSlider 的 min/max 是滑杆刻度的取值域（v1.1 起刻度位置由它换算），缺了就全变 NaN%。 */
+const HTML_ATTRS = { bpmSlider: { min: "30", max: "240", value: "96" } };
 function makeEl(id){
   const el = {
     _id: id, _h: {},
@@ -39,6 +42,8 @@ function makeEl(id){
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
     removeEventListener(){},
     appendChild(c){ this.children.push(c); return c; },
+    setAttribute(k, v){ this[k] = v; },          // v1.1：aria-label 等属性设置
+    getAttribute(k){ return this[k] === undefined ? null : this[k]; },
     remove(){}, blur(){}, focus(){}, animate(){},
     closest(){ return makeEl("closest-proxy"); },   // 近似真实 DOM：返回带 classList 的祖先代理
     /* 测试辅助：触发已绑定的事件 */
@@ -94,8 +99,11 @@ function loadApp(seed, opts){
       removeItem: k => store.delete(k),
     },
     document: {
-      getElementById: id => (els[id] = els[id] || makeEl(id)),
-      createElement: () => makeEl("dyn"),
+      getElementById: id => {
+        if (!els[id]) Object.assign(els[id] = makeEl(id), HTML_ATTRS[id] || {});
+        return els[id];
+      },
+      createElement: tag => Object.assign(makeEl("dyn"), { tagName: String(tag || "").toUpperCase() }),   // v1.1：记录标签名，可断言生成的元素类型（如刻度必须是 <i> 而非 <option>）
       querySelectorAll: () => [],
       addEventListener(){},
       body: makeEl("body"),
@@ -565,6 +573,76 @@ section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
   /* 边界语义 + 向后兼容：默认 100% 的听感必须与 v1.0.0 完全一致 */
   near(levels(0).accent, 0.8 * C.levelBeat, 1e-6, "增强量 0% → 重拍与正拍齐平");
   near(levels(1).accent, 0.8 * 1, 1e-6, "增强量 100% → 重拍 1.0，与 v1.0.0 默认听感一致");
+}
+
+/* ================= 场景 T19：常用速度快捷档 + ±5 步进（v1.1） ================= */
+section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰");
+{
+  const { beat, els } = loadApp();
+  const S = beat.Store.S;
+  eq(JSON.stringify(beat.CONFIG.speedPresets), JSON.stringify([60, 72, 84, 96, 120]), "快捷档值 = 60/72/84/96/120");
+
+  /* 快捷档与滑杆刻度同源生成（单一数据源 CONFIG.speedPresets） */
+  const pills = els["bpmPresetRow"].children;
+  eq(pills.length, 5, "生成 5 个快捷档按钮");
+  eq(pills.map(b => +b.dataset.bpm).join(","), "60,72,84,96,120", "dataset.bpm 与常量一致");
+  eq(pills.map(b => +b.textContent).join(","), "60,72,84,96,120", "按钮文案与常量一致");
+  /* 滑杆刻度：与档位同源，且必须是手绘 <i> —— 回归守卫。
+     Chrome 不渲染 range 的 datalist 刻度（已实测），若有人改回 <option>，tagName 断言会立刻红。 */
+  const ticks = els["bpmTicks"].children;
+  eq(ticks.length, 5, "滑杆刻度同源生成 5 项");
+  ok(ticks.every(t => t.tagName === "I"), "刻度是 <i> 元素而非 <option>（Chrome 不渲染 datalist 刻度）");
+  const lefts = ticks.map(t => parseFloat(t.style.left));
+  ok(Math.abs(lefts[1] - 20) < 1e-9, "72 BPM 刻度落在 20%（(72−30)/(240−30)）");
+  ok(lefts.every((p, i) => i === 0 || p > lefts[i - 1]), "刻度从左到右严格递增");
+  ok(lefts.every(p => p > 0 && p < 100), "刻度均落在滑杆行程内部");
+  eq(pills[0].getAttribute("aria-label"), "跳到 60 BPM", "快捷档带无障碍标签");
+
+  /* 点击档位 → 直达该 BPM，并同步数字 / 滑杆 / 高亮 */
+  pills[4].fire("click");
+  eq(S.bpm, 120, "点击 120 档 → S.bpm = 120");
+  eq(+els["bpmNum"].textContent, 120, "大数字同步");
+  eq(+els["bpmSlider"].value, 120, "滑杆位置同步");
+  ok(pills[4].classList.contains("active"), "命中档位高亮");
+  ok(!pills[0].classList.contains("active"), "未命中档位不高亮");
+
+  /* 非档位值（滑杆 / ±1 调出来的）→ 全部不高亮 */
+  beat.Controls.setBpm(97);
+  ok(pills.every(b => !b.classList.contains("active")), "BPM 不等于任何档位时全部不高亮");
+
+  /* ±5 粗调：单击一步（长按连发依赖 setTimeout，测试环境不真跑） */
+  beat.Controls.setBpm(100);
+  els["bpmPlus5"].fire("pointerdown");
+  eq(S.bpm, 105, "+5 → 105");
+  els["bpmMinus5"].fire("pointerdown");
+  eq(S.bpm, 100, "−5 → 100");
+  for (let i = 0; i < 4; i++) els["bpmMinus5"].fire("pointerdown");
+  eq(S.bpm, 80, "连续 −5 累计正确（100 → 80）");
+
+  /* 越界钳制沿用 setBpm 的 30–240 */
+  beat.Controls.setBpm(238);
+  els["bpmPlus5"].fire("pointerdown");
+  eq(S.bpm, 240, "+5 触顶钳制到 240");
+  beat.Controls.setBpm(32);
+  els["bpmMinus5"].fire("pointerdown");
+  eq(S.bpm, 30, "−5 触底钳制到 30");
+
+  /* 播放中点击档位：不打断播放（setBpm 内部做 loopStart 重映射） */
+  beat.Controls.start();
+  drive(FakeAudioContext.last, beat, 1);
+  ok(S.playing, "已进入播放态");
+  pills[0].fire("click");
+  eq(S.bpm, 60, "播放中点 60 档生效");
+  ok(S.playing, "播放未被打断");
+
+  /* 训练模式：BPM 归训练器阶梯管，快捷档与 ±5 置灰；关闭后恢复 */
+  els["trainerToggle"].fire("click");
+  ok(S.trainer.on, "训练已开启");
+  ok(pills.every(b => b.disabled), "训练开启 → 快捷档全部置灰");
+  ok(els["bpmPlus5"].disabled && els["bpmMinus5"].disabled, "训练开启 → ±5 置灰");
+  els["trainerToggle"].fire("click");
+  ok(!S.trainer.on, "训练已关闭");
+  ok(pills.every(b => !b.disabled) && !els["bpmPlus5"].disabled, "训练关闭 → 快捷档与 ±5 恢复可用");
 }
 
 /* ---------------- 汇总 ---------------- */

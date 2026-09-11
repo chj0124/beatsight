@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.0.1</title>
+<title>BeatSight 时值节拍器 v1.1</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -94,11 +94,17 @@ button:disabled{cursor:not-allowed}
 .play-btn:active{transform:scale(.96)}
 .group{display:flex;flex-direction:column;gap:10px}
 .group-label{font-size:11px;color:var(--t3)}
-.bpm-row{display:flex;align-items:center;gap:12px}
+.bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
 .step-btn{width:44px;height:44px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono)}
 .bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);min-width:92px;text-align:center;cursor:pointer;border-radius:8px}
 .bpm-num:hover{background:var(--card2)}
 .slider-row{display:flex;align-items:center;gap:14px}
+/* 滑杆刻度层（v1.1）：datalist 在 Chrome 下即使不加 appearance:none 也不渲染刻度，
+   改为绝对定位的刻度条；左右内缩 = 圆钮半径，使刻度与圆钮行程对齐 */
+.slider-wrap{position:relative;flex:1;min-width:0;display:flex;align-items:center;--thumb-r:8px}
+.slider-wrap>input[type=range]{width:100%;flex:1}
+.bpm-ticks{position:absolute;left:var(--thumb-r);right:var(--thumb-r);top:0;bottom:0;pointer-events:none}
+.bpm-ticks i{position:absolute;top:50%;width:2px;height:12px;border-radius:1px;background:var(--border);transform:translate(-50%,-50%)}
 input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
 input[type=range].vol{width:120px}
@@ -220,6 +226,7 @@ input[type=range].vol{width:120px}
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
   input[type=range]::-webkit-slider-thumb{width:22px;height:22px}
+  .slider-wrap{--thumb-r:11px}   /* 圆钮在窄屏放大到 22px，刻度内缩同步改为半径 11px，否则刻度会与圆钮错位 */
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
 }
@@ -236,9 +243,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.0.1</span>
+    <span class="ver">v1.1</span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.0 · 稳定版</div>
+  <div class="chip"><span class="dot"></span>v1.1 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -276,14 +283,20 @@ input[type=range].vol{width:120px}
       <div class="group">
         <div class="group-label">速度 BPM · 范围 30–240</div>
         <div class="bpm-row">
-          <button class="step-btn" id="bpmMinus">-1</button>
+          <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
+          <button class="step-btn" id="bpmMinus" aria-label="减 1 BPM">-1</button>
           <div class="bpm-num" id="bpmNum" title="点击直接输入 BPM">96</div>
-          <button class="step-btn" id="bpmPlus">+1</button>
+          <button class="step-btn" id="bpmPlus" aria-label="加 1 BPM">+1</button>
+          <button class="step-btn" id="bpmPlus5" aria-label="加 5 BPM">+5</button>
         </div>
         <div class="slider-row">
-          <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
+          <div class="slider-wrap">
+            <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
+            <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
+          </div>
           <button class="pill outline" id="tapBtn">TAP 测速</button>
         </div>
+        <div class="bpm-row" id="bpmPresetRow" role="group" aria-label="常用速度快捷档"></div>
       </div>
       <div class="vdivider"></div>
       <div class="group">
@@ -418,9 +431,10 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v1.0.1 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
+   BeatSight v1.1 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
    结构沿革：v0.6 模块化 → v0.7 tick 制 → v0.9 vizSig 渲染拍号 → v1.0 依赖方向净化
    （共享状态区移到 Store 之后，draft/appliedPat/activePattern 上移，模块间无反向引用）
+              → v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度
    模块（IIFE，按依赖方向排序，禁止反向引用）：
      Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
      Modal    应用内弹窗
@@ -499,6 +513,9 @@ const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
   attack:0.004, decay:0.09,                          // 包络：4ms 起音、90ms 衰减
   schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、150ms 窗口
+  /* 常用速度快捷档（v1.1）：BPM 快捷键与滑杆刻度同源生成，避免两处各写一份数值。
+     取传统节拍器 12 递增阶梯（60/72/84/96/108/120）的子集，含默认 96 与常用目标 120 */
+  speedPresets:[60, 72, 84, 96, 120],
   /* 音量层级：正拍/细分固定档；重拍 = accentMin + (accentMax-accentMin) × 重拍增强量
      保证重拍恒 ≥ 正拍（accentMin 即正拍档），默认增强量 100% 时重拍 = accentMax */
   levelBeat:0.8, levelSub:0.5, accentMin:0.8, accentMax:1,
@@ -1200,6 +1217,7 @@ const Trainer = (() => {
     $("trainerPanel").hidden = !S.trainer.on;
     if (S.trainer.on){ reset(); Controls.setBpm(S.trainer.start, false); }   // 开启即定位到起始速度
     updateProg();
+    Controls.syncBpmUI();   // 训练开关影响 BPM 快捷档/±5 可用性（开启即置灰、关闭即恢复）
     Store.persist();
   });
   /* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
@@ -1232,6 +1250,43 @@ const Controls = (() => {
   const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
   let timer = null;
   let taps = [], tapResetT = null;
+
+  /* 常用速度快捷档（v1.1）：按钮与滑杆刻度都由 CONFIG.speedPresets 生成（单一数据源，不两处各写一份）。
+     紧贴模块初始化执行，保证任何 setBpm/syncBpmUI 调用之前 presetBtns 已就绪。
+     用 createElement 而非 innerHTML：测试沙箱靠 appendChild 记录子元素，才能断言点击行为 */
+  const presetBtns = CONFIG.speedPresets.map(v => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.textContent = String(v);
+    b.dataset.bpm = String(v);
+    b.setAttribute("aria-label", `跳到 ${v} BPM`);
+    b.addEventListener("click", e => { e.currentTarget.blur(); setBpm(v); });
+    $("bpmPresetRow").appendChild(b);
+    return b;
+  });
+  /* 滑杆刻度：Chrome 对 range 的 datalist 刻度根本不渲染（已实测，见 CHANGELOG v1.1），
+     所以改成手绘绝对定位刻度层：按 BPM 在 [min,max] 的百分比落点。
+     取值范围从滑杆属性读，避免与 HTML 各写一份 30/240。 */
+  (() => {
+    const sl = $("bpmSlider"), min = +sl.min, max = +sl.max;
+    CONFIG.speedPresets.forEach(v => {
+      const i = document.createElement("i");
+      i.style.left = ((v - min) / (max - min) * 100) + "%";
+      $("bpmTicks").appendChild(i);
+    });
+  })();
+  /* 快捷档高亮 + 训练模式置灰。
+     置灰原因：训练开启时 BPM 归训练器阶梯管（每练满 everyN 小节会 setBpm(bpmFor(trStepIdx))），
+     手点档位 / ±5 都会被阶梯覆盖，点了等于白点。±1 维持原有行为未动。 */
+  function syncBpmUI(){
+    const locked = !!S.trainer.on;
+    presetBtns.forEach(b => {
+      b.classList.toggle("active", +b.dataset.bpm === S.bpm);
+      b.disabled = locked;
+    });
+    $("bpmMinus5").disabled = locked;
+    $("bpmPlus5").disabled = locked;
+  }
 
   function start(){
     Audio.ensureCtx();
@@ -1296,9 +1351,10 @@ const Controls = (() => {
     $("bpmSlider").value = v;
     updateMeta();
     Trainer.updateProg();
+    syncBpmUI();                              // 唯一入口统一收口：滑杆/步进/TAP/训练器改速后高亮都跟随
     if (save !== false) Store.persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
   }
-  /* ±1 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
+  /* ±1 / ±5 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
   function bindStep(btn, delta){
     let t1 = null, t2 = null;
     const step = () => setBpm(S.bpm + delta);
@@ -1314,6 +1370,8 @@ const Controls = (() => {
   }
   bindStep($("bpmMinus"), -1);
   bindStep($("bpmPlus"), 1);
+  bindStep($("bpmMinus5"), -5);                 // v1.1：±5 粗调（60→120 只需 12 次，而非 60 次）
+  bindStep($("bpmPlus5"), 5);
   $("bpmNum").addEventListener("click", () => {
     Modal.uiPrompt("输入 BPM（30–240）", S.bpm, v => {
       if (v && v.trim() !== "") setBpm(+v || S.bpm);
@@ -1435,7 +1493,7 @@ const Controls = (() => {
     Store.persist();
   });
 
-  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta };
+  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI };
 })();
 
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
