@@ -55,13 +55,14 @@ function makeEl(id){
 class FakeParam {
   constructor(v){ this.value = v; }
   setValueAtTime(){} linearRampToValueAtTime(){}
-  exponentialRampToValueAtTime(v){ this._rampTo = v; }   // v0.8.0：记录扫频目标（鼓组底鼓断言用）
+  exponentialRampToValueAtTime(v){ this._rampTo = v; this._peak = Math.max(this._peak || 0, v); }   // _rampTo=v0.8.0 扫频目标；_peak=v1.0.1 包络峰值（末次归零 ramp 会覆盖 _rampTo）
 }
 class FakeNode {
   constructor(ctx, kind){ this.frequency = new FakeParam(0); this.gain = new FakeParam(1); this.Q = new FakeParam(0); this.type = ""; this._ctx = ctx; this._kind = kind; this._dest = null; }
   connect(d){ if (d && d._kind) this._dest = d; }
   start(t){
-    if (this._kind === "osc") this._ctx.hits.push({ t, kind: "osc", freq: this.frequency.value, type: this.type, sweepTo: this.frequency._rampTo });
+    if (this._kind === "osc") this._ctx.hits.push({ t, kind: "osc", freq: this.frequency.value, type: this.type, sweepTo: this.frequency._rampTo,
+      gain: this._dest && this._dest.gain ? this._dest.gain._peak : undefined });   // v1.0.1：记录包络峰值（层级增益断言用）
     if (this._kind === "noise") this._ctx.hits.push({ t, kind: "noise", filterType: this._dest && this._dest.type, filterFreq: this._dest && this._dest.frequency.value });
   }
   stop(){}
@@ -530,6 +531,40 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
   ok(!els["editor"].classList.contains("open"), "保存后编辑器关闭");
   eq(JSON.parse(storage.get("beatsight.m2")).customs.length, 1, "新预设已持久化");
   eq(beat.curPattern().name, "测试预设T17", "保存后当前节奏型即新预设");
+}
+
+/* ================= 场景 T18：层级增益不变量（v1.0.1） ================= */
+/* v1.0.0 缺陷：重拍直接以 S.accentVol 作倍率，而正拍固定 ×0.8，
+   于是「重拍增强量」低于 80% 时重拍反而轻于正拍，听觉强调层级倒挂。 */
+section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
+{
+  const { beat: probe } = loadApp();
+  const C = probe.CONFIG;
+
+  /* click 音色三档频率互异，按频率区分层级，返回各层级的包络峰值 */
+  const levels = (accentVol) => {
+    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, accentVol, bpm: 120 }) });
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, 3);
+    const pick = f => { const h = ac.hits.find(x => x.kind === "osc" && x.freq === f); return h ? h.gain : undefined; };
+    return { accent: pick(C.freqAccent), beat: pick(C.freqBeat), sub: pick(C.freqSub) };
+  };
+
+  const L = levels(0.56);
+  near(L.accent, 0.8 * (C.accentMin + (C.accentMax - C.accentMin) * 0.56), 1e-6, "重拍增益 = 总音量 ×（accentMin + 增量 × 增强量）");
+  near(L.beat, 0.8 * C.levelBeat, 1e-6, "正拍增益 = 总音量 × levelBeat");
+  ok(L.accent > L.beat, "增强量 56% 时重拍高于正拍（v1.0.0 此处倒挂）");
+  ok(L.beat > L.sub, "正拍高于细分");
+
+  /* 全量程：任何增强量都必须保持 重拍 ≥ 正拍 > 细分 */
+  const broken = [0, 0.1, 0.25, 0.5, 0.56, 0.79, 0.8, 0.99, 1]
+    .filter(v => { const l = levels(v); return !(l.accent >= l.beat && l.beat > l.sub); });
+  eq(broken.length, 0, "增强量 0–100% 全程维持 重拍 ≥ 正拍 > 细分");
+
+  /* 边界语义 + 向后兼容：默认 100% 的听感必须与 v1.0.0 完全一致 */
+  near(levels(0).accent, 0.8 * C.levelBeat, 1e-6, "增强量 0% → 重拍与正拍齐平");
+  near(levels(1).accent, 0.8 * 1, 1e-6, "增强量 100% → 重拍 1.0，与 v1.0.0 默认听感一致");
 }
 
 /* ---------------- 汇总 ---------------- */
