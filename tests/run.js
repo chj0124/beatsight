@@ -465,26 +465,38 @@ section("T14 预备拍 · 计数发声 + 训练器不受污染");
   near(ac3.hits[0].t, 0.08, 1e-6, "预备拍关闭：第 1 声即正式节奏型");
 }
 
-/* ================= 场景 T15：拍号切换挂起窗口内可视化不脱轨（v0.9.0 修复） ================= */
-section("T15 播放中切拍号 · 挂起窗口内 viz 按旧拍号渲染");
+/* ================= 场景 T15：播放中切拍号立即生效 + 渲染不脱轨（v1.1.1 改契约） ================= */
+section("T15 播放中切拍号 · 立即生效，且 viz 按新拍号渲染不脱轨");
 {
-  /* 4/4 民谣扫弦播放中切 3/4：新拍号要等到循环起点（4 小节边界）才应用。
-     bpm 96 → 一小节 2.5s、循环 10s。drive 到 ~7.6s（旧循环第 4 小节中段）时
-     paintFrame 必须仍按 4/4 渲染：状态栏「第 4 小节」而非回卷「第 1 小节」 */
-  const { beat, els } = loadApp();
+  /* 历史契约（v0.9.0）：「挂起窗口内 viz 按旧拍号渲染」——那是当时「等循环起点」设计的产物。
+     v1.1.1 改为「点下即生效」后，常规路径已无挂起窗口（仅极罕见的小节末无音符起点才挂起），
+     故本场景改为守住真正的不变量：切拍后立即按新拍号发声与渲染，且状态栏读数始终落在
+     新拍号的合法小节/拍位内（不提前回卷、不越界、不脱轨）。 */
+  const { beat, els, sandbox } = loadApp();
+  const statusEl = sandbox.document.getElementById("statusText");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   drive(ac, beat, 1);
   beat.Store.S.sel = { type: "builtin", idx: 6 };   // 华尔兹 3/4
   beat.Controls.setSig(3);
   beat.Presets.refreshAfterPatternChange();
-  drive(ac, beat, 6.6);                              // 累计 ~7.6s：旧循环第 4 小节
+  eq(beat.activePattern().meter, 3, "切拍后立即发声的就是 3/4（不再等循环起点）");
+  eq(beat.Presets.consumePending(1).applied, false, "立即生效路径不留挂起（consumePending 无事可做）");
+  drive(ac, beat, 6.6);                              // 越过原来 4/4 循环的边界
   beat.Viz.paintFrame();
-  ok(els["statusText"].textContent.includes("第 4 小节"), "挂起窗口内状态栏仍按旧 4/4 渲染（第 4 小节，不回卷）");
-  drive(ac, beat, 4);                                // 越过循环起点 → 新拍号生效
-  beat.Viz.paintFrame();
-  ok(els["statusText"].textContent.includes("播放中"), "循环起点后正常播放");
+  const txt = statusEl.textContent;
+  const m = txt.match(/第 (\d+) 小节 · (\d)/);
+  ok(!!m, "状态栏可解析出小节/拍位：" + txt);
+  if (m){
+    const barNo = +m[1], beatNo = +m[2];
+    ok(barNo >= 1 && barNo <= 4, "小节号落在 4 小节循环内（实测 " + barNo + "）");
+    ok(beatNo >= 1 && beatNo <= 3, "拍位按 3/4 渲染（实测第 " + beatNo + " 拍，≤3 才说明没用旧 4/4）");
+  }
   ok(beat.Store.S.playing, "全程播放未中断");
+  drive(ac, beat, 4);                                // 再越过若干新循环边界
+  beat.Viz.paintFrame();
+  ok(beat.Store.S.playing, "越过新循环起点后仍正常播放");
+  ok(/第 [1-4] 小节/.test(statusEl.textContent), "读数持续合法：" + statusEl.textContent);
 }
 
 /* ================= 场景 T16：v0.9.1 防御性补丁 ================= */
@@ -643,6 +655,104 @@ section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰")
   els["trainerToggle"].fire("click");
   ok(!S.trainer.on, "训练已关闭");
   ok(pills.every(b => !b.disabled) && !els["bpmPlus5"].disabled, "训练关闭 → 快捷档与 ±5 恢复可用");
+}
+
+/* ================= 场景 T20：播放中切换节奏型 · 点下即生效（v1.1.1） ================= */
+section("T20 播放中切节奏型 · 点下即生效（不再等小节边界）+ 不跳针 + 停止无残留");
+{
+  /* 用户实拍 bug：播放三连音基础时点「四分基础」，第 1 小节仍走三连音，要等小节边界才换。
+     根因：refreshAfterPatternChange 在播放中一律挂起到小节边界。
+     v1.1.1 改为 Audio.resyncToNow() 就地接续：不动时间轴，只把「已走过的 tick」在新节奏型里
+     重新定位到第一个可接的音符起点。 */
+  const { beat, els, sandbox } = loadApp();
+  const S = beat.Store.S;
+  const statusEl = sandbox.document.getElementById("statusText");
+  S.sel = { type: "builtin", idx: 8 };              // 三连音基础：12 × 16t = 一小节
+  beat.Presets.refreshAfterPatternChange();
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 1.2);                             // 96BPM 4/4 → 一小节 2.5s，此刻仍在第 1 小节内
+  const tClick = ac.currentTime;
+  const nBefore = ac.hits.length;
+  eq(els["patternName"].textContent, "三连音基础", "开播时标题为三连音基础");
+
+  S.sel = { type: "builtin", idx: 1 };              // 四分基础（同为 4/4）
+  beat.Presets.refreshAfterPatternChange();
+
+  /* 核心断言：不等小节边界，点完标题就换 */
+  eq(els["patternName"].textContent, "四分基础", "点下立刻换型（标题即变，不再等小节边界）");
+  eq(beat.activePattern().meter, 4, "发声快照同步切到新节奏型");
+  eq(beat.Presets.consumePending(1).applied, false, "立即生效路径不留挂起");
+
+  drive(ac, beat, 3.2);
+  const hits = ac.hits.slice(nBefore);
+  ok(hits.length >= 4, "切换后持续发声（实测 " + hits.length + " 颗）");
+  ok(hits.every(h => h.t >= tClick), "新音符不排在过去（无时间倒流、不重现已走过的部分）");
+  const gaps = hits.slice(1).map((h, i) => +(h.t - hits[i].t).toFixed(4));
+  ok(gaps.length > 0 && gaps.every(g => g === 0.625), "切换后全是四分密度（0.625s/颗，实际 " + gaps.slice(0, 4).join(",") + "）");
+  ok(S.playing, "播放未中断");
+
+  /* 不跳针（幂等）：中途重复点同一个节奏型，跨点击的整段音轨间隔必须恒为规整四分。
+     这比「数条数」硬——窗口相位不同条数本来就会差 1，但只要有漏音、重音或相位跳动，
+     间隔里必然出现 1.25s（漏一颗）或 0（重一颗） */
+  const nAll = ac.hits.length;
+  drive(ac, beat, 1.2);
+  const preClick = ac.hits.slice(nAll).map(h => h.t);
+  beat.Presets.refreshAfterPatternChange();         // 重复点当前节奏型：应完全无副作用
+  drive(ac, beat, 1.2);
+  const all = ac.hits.slice(nAll).map(h => h.t);
+  const allGaps = all.slice(1).map((t, i) => +(t - all[i]).toFixed(4));
+  ok(preClick.length >= 1, "点击前已有音符可对照（实测 " + preClick.length + " 颗）");
+  ok(allGaps.length > 0 && allGaps.every(g => g === 0.625),
+     "跨重复点击整段间隔恒为四分（无跳针/漏音/重音，实际 " + allGaps.slice(0, 5).join(",") + "）");
+  ok(!statusEl.textContent.includes("第 5 小节"), "读数未脱轨");
+
+  /* 停止兜底：切换后立刻停止，标题必须与选中节奏型一致（半切换残留回归） */
+  S.sel = { type: "builtin", idx: 2 };              // 八分摇滚
+  beat.Presets.refreshAfterPatternChange();
+  beat.Controls.stop();
+  eq(els["patternName"].textContent, beat.curPattern().name, "停止后标题与选中节奏型一致（无半切换残留）");
+  eq(beat.activePattern().name, beat.curPattern().name, "停止后发声快照与选中节奏型一致");
+}
+
+/* ================= 场景 T21：全组合切换不变量扫描（v1.1.1） ================= */
+section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 3 个点击相位）");
+{
+  /* 「就地接续」是相位换算逻辑，最容易在边界（稀疏↔密集、奇数拍↔4/4、小节末）出破例，
+     单点用例覆盖不到。这里把 9 个代表性节奏型两两对切 × 3 个点击相位全跑一遍，
+     只守四条硬不变量：立即切换 / 不排到过去 / 时刻严格递增 / 播放不中断。 */
+  const idxs = [0, 1, 2, 5, 6, 8, 9, 10, 11];
+  const waits = [0.35, 1.7, 3.1];
+  const problems = [];
+  let cases = 0;
+  for (const from of idxs) for (const to of idxs) for (const wait of waits){
+    const { beat, els } = loadApp();
+    const S = beat.Store.S;
+    S.sel = { type: "builtin", idx: from };
+    beat.Presets.refreshAfterPatternChange();
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, wait);
+    const tClick = ac.currentTime, n0 = ac.hits.length;
+    const fromName = els["patternName"].textContent;
+    S.sel = { type: "builtin", idx: to };
+    const mt = beat.BUILTINS[to].meter;
+    if (mt !== S.sig) beat.Controls.setSig(mt);
+    beat.Presets.refreshAfterPatternChange();
+    const toName = beat.curPattern().name;
+    drive(ac, beat, 12);
+    const seg = ac.hits.slice(n0).map(h => h.t);
+    cases++;
+    const tag = fromName + " → " + toName + " @" + wait + "s";
+    if (els["patternName"].textContent !== toName) problems.push(tag + "：标题未立即切换");
+    if (seg.some(t => t < tClick - 1e-9)) problems.push(tag + "：音符排到过去");
+    for (let i = 1; i < seg.length; i++) if (!(seg[i] > seg[i - 1])) problems.push(tag + "：时刻非严格递增");
+    if (!S.playing) problems.push(tag + "：播放被中断");
+    if (seg.length < 4) problems.push(tag + "：切换后发声过少（" + seg.length + "）");
+  }
+  eq(cases, idxs.length * idxs.length * waits.length, "扫描组合数");
+  ok(problems.length === 0, "全部组合满足不变量（" + cases + " 组，破例 " + problems.length + "）");
+  problems.slice(0, 8).forEach(p => console.log("      · " + p));
 }
 
 /* ---------------- 汇总 ---------------- */

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.1</title>
+<title>BeatSight 时值节拍器 v1.1.1</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -243,9 +243,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.1.1</span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.1 · 稳定版</div>
+  <div class="chip"><span class="dot"></span>v1.1.1 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -431,10 +431,11 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v1.1 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
+   BeatSight v1.1.1 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
    结构沿革：v0.6 模块化 → v0.7 tick 制 → v0.9 vizSig 渲染拍号 → v1.0 依赖方向净化
    （共享状态区移到 Store 之后，draft/appliedPat/activePattern 上移，模块间无反向引用）
               → v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度
+              → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块（IIFE，按依赖方向排序，禁止反向引用）：
      Store    持久化 / 状态创建 / 数据迁移 / 预设导入导出
      Modal    应用内弹窗
@@ -1174,7 +1175,45 @@ const Audio = (() => {
       }
     }
   }
-  return { ensureCtx, scheduler };
+  /* 播放中「立即换型」（v1.1.1）：把当前调度相位从旧节奏型换算到新节奏型，做到点下即生效。
+     做法：**不动时间轴**（loopStart 保持），只用「已真实经过的 tick 数」在新拍号的循环网格里
+     重新求出 (小节, 小节内 tick)，再取新节奏型中第一个「起始 tick ≥ 该位置」的音符接续。
+       · 同拍号 → 换算结果就是原位置，得到的 (bar, step) 与原 (schedBar, schedStep) 完全等价，
+         即本函数对「同节奏型」是幂等的（cum(schedStep) 恒等于已走 tick），相位零跳动；
+       · 拍号变化 → 位置按新拍号重新解释（小节线本来就会挪，播放头一次像素位移不可避免），
+         但仍保证不产生「排到过去」的音符，也不会重现已经走过的部分。
+     必须在 appliedPat 被替换**之前**调用：需要靠 activePattern() 读旧节奏型来算已走过的 tick。
+     返回 true = 已就地接续；false = 新节奏型在当前小节已无音符起点可接（调用方回退到小节边界挂起）。 */
+  function resyncToNow(newPat){
+    if (!S.playing) return false;
+    const oldSteps = activePattern().bars[schedBar];
+    if (!oldSteps || !oldSteps.length) return false;
+    /* 已走过的 tick：nextNoteTime 恒等于「本小节 tick 0 时刻 + 该小节累计 tick」，可反推 */
+    let walked = 0;
+    for (let i = 0; i < schedStep && i < oldSteps.length; i++) walked += oldSteps[i].t;
+    const barTicks = newPat.meter * TPB, loopTicks = barTicks * LOOP_BARS;
+    /* 以 loopStart 为原点、按新拍号重新解释当前绝对位置（同拍号时落回原位置） */
+    let posT = (nextNoteTime - loopStart) / spb() * TPB % loopTicks;
+    if (posT < 0) posT += loopTicks;
+    let b = Math.floor(posT / barTicks);
+    const tib = posT - b * barTicks;                    // 小节内位置（tick）
+    /* 新节奏型该小节内第一个「起始 tick ≥ tib」的音符；本小节已无起点则推到下一小节 */
+    let steps = newPat.bars[b] || [];
+    let j = -1, acc = 0;
+    for (let i = 0; i < steps.length; i++){
+      if (acc >= tib - 1e-6){ j = i; break; }
+      acc += steps[i].t;
+    }
+    if (j < 0){
+      b = (b + 1) % LOOP_BARS; acc = 0; j = 0;
+      if (!((newPat.bars[b] || []).length)) return false;   // 空小节：交给边界逻辑兜底
+    }
+    schedBar = b; schedStep = j;
+    /* 只向前推进：acc ≥ tib 保证新时刻不早于原 nextNoteTime（不会把音符排到过去） */
+    nextNoteTime = loopStart + (b * barTicks + acc) * spb() / TPB;
+    return true;
+  }
+  return { ensureCtx, scheduler, resyncToNow };
 })();
 
 /* ================= Trainer · 变速训练器 ================= */
@@ -1319,6 +1358,7 @@ const Controls = (() => {
     $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
     $("statusDot").classList.remove("live");
     $("statusText").textContent = "已停止";
+    Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
     Viz.resetForStop();
     Trainer.updateProg();
     Store.persist();
@@ -1586,7 +1626,15 @@ const Presets = (() => {
   });
   function refreshAfterPatternChange(){
     if (S.playing){
-      /* 播放中不立即重置：挂起到小节边界由 scheduler 无缝应用 */
+      /* v1.1.1：先试「就地接续」——点下即生效，不再等一个小节。
+         （用户 bug：播放中从三连音基础切四分基础，第 1 小节仍走三连音，要等小节边界才换）
+         必须在 applyPatternChange 之前调用：resyncToNow 要靠旧节奏型算已走过的 tick */
+      if (Audio.resyncToNow(curPattern())){
+        applyPatternChange();
+        Viz.resetTracking();            // 网格与相位都可能变，强制下一帧全量重画高亮
+        return;
+      }
+      /* 兜底（罕见：新节奏型在当前小节已无音符起点可接）——仍挂起到小节边界无缝生效 */
       pendingPattern = true;
       sigChgPending = (S.sig !== appliedSig);
       buildPresetList();
@@ -1594,6 +1642,11 @@ const Presets = (() => {
       return;
     }
     applyPatternChange();
+  }
+  /* 停止播放时兜底（v1.1.1）：把挂起的切换就地落定。
+     否则会留下半切换残留——档位高亮在点击时已切、标题与可视化仍停在旧节奏型（用户截图实拍）。 */
+  function flushPending(){
+    if (pendingPattern) applyPatternChange();
   }
   function applyPatternChange(){
     pendingPattern = false; sigChgPending = false;
@@ -1643,7 +1696,7 @@ const Presets = (() => {
     r.readAsText(f);
   });
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending };
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending };
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -1837,7 +1890,7 @@ Presets.refreshAfterPatternChange();
 Trainer.updateProg();
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, basicPattern };
+window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, activePattern, basicPattern };
 </script>
 </body>
 </html>
