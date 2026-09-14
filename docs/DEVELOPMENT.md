@@ -39,7 +39,7 @@ beatsight/
     └── DEVELOPMENT.md    # 本文档
 ```
 
-**没有 CI**：项目早期用过 GitHub Actions（`.github/workflows/`），后来全部移除——发布统一走 WorkBuddy（在线版：https://beatsight-68235.app.workbuddy.host/ ），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。这样少一套要维护的流水线配置，检查内容一条不少。
+**没有 CI**：项目早期用过 GitHub Actions（`.github/workflows/`），后来全部移除——发布统一走 WorkBuddy（在线版：https://beatsight-34873.app.workbuddy.host/ ，v1.4 起；旧链接 beatsight-68235 已随换绑废弃），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。这样少一套要维护的流水线配置，检查内容一条不少。
 
 ## 3. 核心架构
 
