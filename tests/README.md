@@ -3,7 +3,7 @@
 ```bash
 # 平时不用单独跑下面这些——改完代码直接跑这一条就够：
 #   node tools/check-all.js   （约 6 秒，跑完全部检查并给汇总）
-node tests/run.js            # 主套件：44 个场景组 / 590 断言（约 0.3s）
+node tests/run.js            # 主套件：47 个场景组 / 640 断言（约 0.3s）
 FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；check-all 默认跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）

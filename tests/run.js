@@ -2332,6 +2332,14 @@ section("T39 练习记录 · 脏条目丢弃 / 400 条环形截断 / 清除");
   eq(beat.Store.logSessions[399].name, "new", "最新的在最末");
   eq(JSON.parse(storage.get("beatsight.log")).sessions.length, 400, "落盘也是 400 条");
 
+  /* 写失败路径（v1.6 补盖 L807）：log 落盘被拒（隐私模式）不炸交互链，且经既有通道可见（chip 变红） */
+  const appW = loadApp({}, { throwOnWrite: true });
+  appW.beat.Controls.start();
+  drive(FakeAudioContext.last, appW.beat, 31);
+  appW.beat.Controls.stop();
+  eq(appW.beat.Store.logSessions.length, 1, "写失败时内存中仍入账（场次不丢，只是没落盘）");
+  ok(appW.els["persistDot"].classList.contains("bad"), "log 写失败 → 顶栏状态点变红（与预设写失败同一通道）");
+
   /* 清除流程：弹确认框 → 确认 → 清空 + 落盘 + 文案回到空态 */
   const app2 = loadApp({ "beatsight.log": JSON.stringify({ v: 1, sessions: [{ t: Date.now(), sec: 60, bpm: 96, name: "y" }] }) });
   app2.els["statsBtn"].fire("click");
