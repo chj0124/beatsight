@@ -24,7 +24,8 @@ beatsight/
 │   ├── hang-case.js      # 看门狗的单用例探针（被 hang-guard 调起）
 │   ├── screenshot.sh     # macOS 无头截图自验
 │   └── README.md         # 测试原理与补断言规则
-├── tools/                # 零依赖检查器（CI 与本地自验都跑，见 §5）
+├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
+│   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
 │   ├── check-dom-ids.js        # DOM 引用完整性：$("x") 不得悬空
@@ -35,7 +36,7 @@ beatsight/
     └── DEVELOPMENT.md    # 本文档
 ```
 
-`.github/workflows/` 有两个工作流：`test.yml`（语法 + 三项检查 + 全量测试 + 死循环看门狗 + 失败产物）与 `pages.yml`（在线版部署）。
+**没有 CI**：项目早期用过 GitHub Actions（`.github/workflows/`），后来全部移除——发布统一走 WorkBuddy（在线版：https://beatsight-68235.app.workbuddy.host/ ），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。这样少一套要维护的流水线配置，检查内容一条不少。
 
 ## 3. 核心架构
 
@@ -206,29 +207,27 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 ## 5. 自验流程（改完代码必须做）
 
 ```bash
-# 0) 自动化测试（v0.6.0 起，最快反馈，先跑这个）
-node tests/run.js    # 全 PASS 才继续；CI（.github/workflows/test.yml）在每次 push 自动跑同一套
-                     # v1.2.4 起渲染层已进覆盖（T23 系列用 driveFrames 同时推进音频时钟与 rAF 帧），
-                     # 改 paintFrame / 加守卫后**必须**有对应断言，否则下一个人会把它改回来
-FULL_SCAN=1 node tests/run.js   # 跑 T21 的 243 组全组合扫描（默认只跑抽样 16 组，CI 里跑全量）
-node tests/hang-guard.js   # 死循环看门狗（v1.2.4 起）：每用例独立子进程 + 超时强杀
-                     # 单进程的 run.js 一旦被死循环卡住会挂满 CI 的 6 小时超时，而不是干脆失败
-                     # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
+# 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
+node tools/check-all.js          # 顺序：语法 → 架构约束 → lint → DOM 引用 → 全量测试 → 看门狗 → 覆盖率
+                                 # 约 6 秒；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
+node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 2 秒）
 
-# 1) JS 语法校验（提取内联脚本，编译不执行）
-node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);new Function(m[1])"
-
-# 1.5) 四项零依赖检查（v1.3 起，CI 里也跑）
-node tools/check-module-order.js   # 架构约束：模块不得反向引用（R1/R2 零例外，R3 白名单登记）
-node tools/check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
-node tools/check-dom-ids.js        # DOM 引用完整性：$("x") 不得悬空
-node tools/check-coverage.js       # 行覆盖率（v1.3.1）：V8 内置采集，总阈值 97% / 分区 90%
-                                   # 加 --full 跑全量扫描；改完核心逻辑务必看一眼分区表
+# 需要单独跑某一项时（排查用）
+node tests/run.js                # 主套件：抽样的 T21（16 组）
+FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
+node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
+                                 # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
+node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
+node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
+node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
+node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
 # 2)+3) 无头 Chrome 截图 + 控制台报错检查（macOS 一条命令，v1.0.0 起固化）
 tests/screenshot.sh              # 桌面 1440×1150
 tests/screenshot.sh 800 1800     # 窄屏
 ```
+
+**为什么没有 CI**：发布走 WorkBuddy，不再用 GitHub Actions。代价是"没人替你跑检查"，所以 `tools/check-all.js` 必须成为习惯——**改动后先跑它再看效果**，而不是等上线才发现。
 
 **必须在真实浏览器里人工做一次的事（无法自动化，别跳过）**：
 
@@ -250,19 +249,20 @@ tests/screenshot.sh 800 1800     # 窄屏
 
 ## 6. 路线图（2026-09-07 重排）
 
-已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~ / ~~v0.9 预备拍+可视化脱轨修复~~ / ~~v0.9.1 防御性补丁~~ / ~~v1.0 依赖方向净化+Editor 测试+CI~~ / ~~v1.0.1 重拍增强量倒挂+音量行错位~~ / ~~v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度~~ / ~~v1.1.1 播放中切节奏型点下即生效（相位就地接续）+ 停止落定挂起~~ / ~~v1.2 弹跳球预判式可视化（onset 表 + 预测终点 + 真实球体物理）~~ / ~~v1.2.4 持久值健壮性收口（加载路径校验复用 + 渲染帧外壳/主体分离 + 调度器防死循环 + 音量末级钳制 + 渲染层进测试覆盖 + 死循环看门狗）~~ / ~~v1.3 审计第二/三梯队（持久化冷热分离 + 后台调度自适应 + 渲染几何缓存与增量重绘 + CI 三项检查 + 无障碍分级 + PWA 元信息与 Pages + 音频生命周期补全 + 跨 origin 提示）~~ / ~~v1.3.1 遗留收口（V8 内置覆盖率采集并接入 CI + 弹跳球物理逐帧数值断言 + 交互接线层补测 + 旧键清理）~~
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~ / ~~v0.9 预备拍+可视化脱轨修复~~ / ~~v0.9.1 防御性补丁~~ / ~~v1.0 依赖方向净化+Editor 测试+CI~~ / ~~v1.0.1 重拍增强量倒挂+音量行错位~~ / ~~v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度~~ / ~~v1.1.1 播放中切节奏型点下即生效（相位就地接续）+ 停止落定挂起~~ / ~~v1.2 弹跳球预判式可视化（onset 表 + 预测终点 + 真实球体物理）~~ / ~~v1.2.4 持久值健壮性收口（加载路径校验复用 + 渲染帧外壳/主体分离 + 调度器防死循环 + 音量末级钳制 + 渲染层进测试覆盖 + 死循环看门狗）~~ / ~~v1.3 审计第二/三梯队（持久化冷热分离 + 后台调度自适应 + 渲染几何缓存与增量重绘 + 静态检查三项 + 无障碍分级 + PWA 元信息 + 音频生命周期补全 + 跨 origin 提示）~~ / ~~v1.3.1 遗留收口（V8 内置覆盖率 + 弹跳球物理逐帧数值断言 + 交互接线层补测 + 旧键清理）~~ / ~~v1.3.2 发布渠道收口（移除 GitHub Actions，改由 WorkBuddy 发布 + tools/check-all.js 一键自验）~~
 
 按优先级排队：
 
 1. **v1.4 练习闭环第一刀**（原 v1.1，因 v1.1 让位给 BPM 速度档而后移）：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
-2. **PWA 离线**：内联 manifest（Blob URL）+ Service Worker（元信息与 `theme-color` / `icon` / Pages 部署已在 v1.3 就位）
+2. **PWA 离线**：内联 manifest（Blob URL）+ Service Worker（元信息、`theme-color`、SVG icon 已在 v1.3 就位）
 3. **后台持续发声收尾**：自适应窗口（v1.3）已打通调度侧阻塞点；剩余是 iOS 保活——优先 `navigator.wakeLock.request("screen")`，不支持时用静音循环 audio 元素，均需设置页开关
 4. **训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视统计数据使用情况再定
 
 ### 已埋的技术债 / 后续要盯
 - 快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
-- **静态检查仍是自写的窄规则集**：架构约束 / 四项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无 `no-undef`、无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只进 CI、不进产物（"零依赖"约束针对的是 `file://` 直开的运行时产物，不是开发工具）
+- **静态检查仍是自写的窄规则集**：架构约束 / 四项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无 `no-undef`、无类型检查）。要更全套就加 `package.json` + ESLint devDependency——**只用于本地自验，不进产物**（"零依赖"约束针对的是 `file://` 直开的运行时产物，不是开发工具）
+- **检查全靠自觉**：移除 CI 后没有任何机制强制跑 `tools/check-all.js`。上线前那一步要真的跑它，别跳
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
 - 覆盖率唯一未覆盖的 3 行是 `scheduler` 的 `MAX_SCHED_STEPS` 硬上限分支（实测 99.8%）——单轮调度要处理超过 512 个音符才会触发，属**刻意保留的防御性代码**，不为了数字去造人工状态点亮它
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效；T30 覆盖了公式本身，但没单独构造触顶场景。改动行高/内边距时要留意

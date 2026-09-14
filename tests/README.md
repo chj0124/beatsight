@@ -1,13 +1,17 @@
 # BeatSight 自动化测试
 
 ```bash
+# 平时不用单独跑下面这些——改完代码直接跑这一条就够：
+#   node tools/check-all.js   （约 6 秒，跑完全部检查并给汇总）
 node tests/run.js            # 主套件：35 个场景组 / 502 断言（约 0.2s）
-FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；CI 里跑全量）
+FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；check-all 默认跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）
 ```
 
-零依赖，CI 基线 Node 22（本机 Node ≥ 18 未实测，声明以 CI 为准）。退出码 0 = 全绿，1 = 有失败项。每次 push 由 GitHub Actions 自动运行（`.github/workflows/test.yml`）。
+零依赖，基线 Node 22（低版本未实测）。退出码 0 = 全绿，1 = 有失败项。
+
+**本项目没有 CI**：发布统一走 WorkBuddy，所以没有流水线替你跑测试。改完请手动执行 `node tools/check-all.js`（它会把下面的套件、看门狗、四项静态检查、覆盖率一次跑完并给汇总）。
 
 ## 覆盖率是这套测试的体检报告
 
@@ -28,7 +32,7 @@ node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总
 | 进程模型 | 单进程，全部用例跑在一起 | 每用例一个子进程，父进程超时强杀 |
 | 失败表现 | 断言 ✗ | 断言 ✗ 或**被强杀**（超时即判定为死循环） |
 
-`run.js` 是单进程的：如果某个用例让主线程进死循环（历史案例：持久值 `sig:-3` 使 `scheduler` 空小节分支永不推进），整个进程会挂住——**在 CI 上表现为跑满 6 小时超时，而不是干脆失败**。这种卡死无法在进程内打断：单线程被占死时 `setTimeout` 看门狗根本轮不到执行。所以死循环类风险单独用子进程 + 超时来守。
+`run.js` 是单进程的：如果某个用例让主线程进死循环（历史案例：持久值 `sig:-3` 使 `scheduler` 空小节分支永不推进），整个进程会挂住——**表现为一直不返回（原来挂在 CI 上时是跑满 6 小时超时），而不是干脆失败**。这种卡死无法在进程内打断：单线程被占死时 `setTimeout` 看门狗根本轮不到执行。所以死循环类风险单独用子进程 + 超时来守。
 
 ```bash
 # 看门狗可指向别的构建，用来验证「它真的抓得住死循环」：
@@ -44,7 +48,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **DOM**：按 id 缓存的元素 stub；`addEventListener` 存 handler，测试用 `el.fire("change")` 触发
 - **AudioContext**：伪造实现，`currentTime` 手动推进，逐 tick 驱动 `scheduler()`；`setState()` 可模拟 iOS 的 `interrupted` / `closed`
 - **渲染层**：`requestAnimationFrame` 默认置空（引擎/状态层用例只断言数据），**但渲染层已进覆盖**——T23/T27 用 `driveFrames()` 同时推进音频时钟与 rAF 帧，真正执行 `paintFrame`
-  - v1.2.3 之前这里全空，所以「`paintFrame` 内抛异常 → rAF 循环静默死亡」这类问题**CI 拦不住**；新增渲染层断言是为了让这类缺陷以后能被拦住
+  - v1.2.3 之前这里全空，所以「`paintFrame` 内抛异常 → rAF 循环静默死亡」这类问题**自动化检查拦不住**；新增渲染层断言是为了让这类缺陷以后能被拦住
 - **探针计数**（`PROBE`，v1.3.0）：`offset*` 读取与 `className` 写入都计数。性能承诺（帧内零布局读取、增量重绘）**不数就没法断言**，光靠人眼 review 下一次改动就会破功
 - **几何模型**（v1.3.1）：行按创建序分层（`_rowTop = 58 + i×86`），格子的 `offsetLeft/offsetWidth` 由 `style.left/style.width` 的百分比反解（600px 视作行宽）。v1.3.0 之前所有 `offset*` 恒为 0，导致弹跳球的"顶点不出容器空域"钳制算出**负跳高**（球向下飞），任何抛物线断言都是假的
 - **桩的忠实度**（v1.3.0 起补齐，都是踩过才加的）：
@@ -109,6 +113,6 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - 新功能动到 Store / Trainer / scheduler 时必须有对应断言
 - 动到 `paintFrame` / 新增渲染层守卫时**必须有**对应断言（用 `driveFrames()` 真正跑帧，别只断言状态值）——否则下一个改动者会把守卫改回去
 - **性能/生命周期类承诺要用探针计数或状态计数来断言**（"零布局读取"、"写入次数"、"窗口大小"、"resume 次数"）。这类性质没有肉眼可辨的症状，不量化就等于没测
-- **看覆盖率找空白**（`node tools/check-coverage.js`）：`run.js` 里修一处逻辑往往只覆盖了"函数被调用"，**接线层**（事件处理器体）容易整片空白。覆盖率掉到分区阈值以下 CI 会红
+- **看覆盖率找空白**（`node tools/check-coverage.js`）：`run.js` 里修一处逻辑往往只覆盖了"函数被调用"，**接线层**（事件处理器体）容易整片空白。覆盖率掉到分区阈值以下 check-all 会失败
 - **写完断言要反向验证**：把修复临时退回（或 `BEATSIGHT_HTML=<旧版>`），确认目标断言真的会失败。测不出失败的测试是橡皮图章——v1.3 就靠这招发现了两处"假绿"（桩默认 `hidden:false` 掩盖了错误弹窗没打开；桩 `className`/`classList` 分离掩盖了语义属性没同步），v1.3.1 又发现 `fireWin` 丢掉事件载荷导致键盘接线静默通过
 - **别用写死的期望值**：草稿来自当前选中的预设，不同预设每小节音符数不同（v1.3.1 在编辑器用例上踩过）；测试数据也要落在业务钳制范围内（`bpm: 333` 会被钳到 240）
