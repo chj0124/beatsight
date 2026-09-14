@@ -508,6 +508,7 @@ input[type=range].vol{width:120px}
         <div class="editor-title">练习统计</div>
       </div>
       <div class="editor-actions">
+        <button class="pill outline" id="statsExport">导出记录</button>
         <button class="pill outline" id="statsClear">清除记录</button>
       </div>
     </div>
@@ -518,9 +519,14 @@ input[type=range].vol{width:120px}
         <div class="stat-card"><div class="stat-num" id="statRecord">—</div><div class="stat-lab">速度纪录（BPM）</div></div>
         <div class="stat-card"><div class="stat-num" id="statCount">0</div><div class="stat-lab">累计场次</div></div>
       </div>
-      <div class="card-title" style="margin-bottom:4px">近 7 天</div>
+      <div class="card-title" style="margin-bottom:4px">练习分布</div>
+      <div class="bpm-row" id="statsRangeRow" style="margin-bottom:8px">
+        <button class="pill active" data-range="7" aria-pressed="true">近 7 天</button>
+        <button class="pill" data-range="30" aria-pressed="false">近 30 天</button>
+      </div>
       <div class="stats-bars" id="statsBars"></div>
-      <div class="hint" id="statsNote" style="margin-top:14px"></div>
+      <div class="hint" id="statsByPattern" style="margin-top:14px"></div>
+      <div class="hint" id="statsNote" style="margin-top:6px"></div>
     </div>
   </div>
 </div>
@@ -574,7 +580,7 @@ input[type=range].vol{width:120px}
 /* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -806,6 +812,11 @@ const Store = (() => {
     persistLog();
   }
   function clearLog(){ sessions.length = 0; persistLog(); }
+  /* 练习记录导出（v1.6）：与预设导出同构的 JSON 备份 */
+  function serializeLog(){
+    return JSON.stringify({ app:"beatsight", kind:"practice-log", v:1,
+      exportedAt: new Date().toISOString(), sessions }, null, 2);
+  }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
   const customs = [];
@@ -981,7 +992,7 @@ const Store = (() => {
   }
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler,
-    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog };
+    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog };
 })();
 const S = Store.S;
 const customs = Store.customs;
@@ -2799,12 +2810,14 @@ const Stats = (() => {
 
   /* 汇总（纯函数，now 可注入——测试用固定时钟断言）：
      weekSec = 本周（周一起）练习秒数；streak = 连续练习天数（今天没练从昨天往回数，不归零）；
-     days = 近 7 天逐日秒数（含今天，供条图）；maxBpm = 速度纪录；count = 累计场次 */
-  function summarize(list, now){
+     days = 近 rangeDays 天逐日秒数（v1.6 支持 7/30 天视图）；maxBpm = 速度纪录；count = 累计场次；
+     byPattern = 各节奏型速度纪录（按 BPM 降序，最多 3 条） */
+  function summarize(list, now, rangeDays){
+    const range = rangeDays === 30 ? 30 : 7;
     const days = [];
-    for (let i = 6; i >= 0; i--){
+    for (let i = range - 1; i >= 0; i--){
       const d = new Date(now); d.setDate(d.getDate() - i);
-      days.push({ key: dayKey(d.getTime()), label: "周" + WEEKDAYS[d.getDay()], sec: 0, today: i === 0 });
+      days.push({ key: dayKey(d.getTime()), label: "周" + WEEKDAYS[d.getDay()], sec: 0, today: i === 0, t: d.getTime() });
     }
     const byDay = {};
     days.forEach(d => { byDay[d.key] = d; });
@@ -2813,22 +2826,29 @@ const Stats = (() => {
     wkStart.setHours(0, 0, 0, 0);
     let weekSec = 0, maxBpm = 0;
     const daySet = new Set();
+    const perPat = {};
     list.forEach(r => {
       const k = dayKey(r.t);
       daySet.add(k);
       if (byDay[k]) byDay[k].sec += r.sec;
       if (r.t >= wkStart.getTime()) weekSec += r.sec;
       if (r.bpm > maxBpm) maxBpm = r.bpm;
+      if (r.name){
+        if (!perPat[r.name] || r.bpm > perPat[r.name]) perPat[r.name] = r.bpm;
+      }
     });
     let streak = 0;
     const cur = new Date(now);
     if (!daySet.has(dayKey(cur.getTime()))) cur.setDate(cur.getDate() - 1);   // 今天还没练：从昨天数起
     while (daySet.has(dayKey(cur.getTime()))){ streak++; cur.setDate(cur.getDate() - 1); }
-    return { weekSec, streak, maxBpm, count: list.length, days };
+    const byPattern = Object.keys(perPat).map(name => ({ name, bpm: perPat[name] }))
+      .sort((a, b) => b.bpm - a.bpm).slice(0, 3);
+    return { weekSec, streak, maxBpm, count: list.length, days, byPattern, range };
   }
 
+  let rangeDays = 7;                     // v1.6：7/30 天视图切换（会话内状态，不持久化）
   function render(){
-    const r = summarize(Store.logSessions, Date.now());
+    const r = summarize(Store.logSessions, Date.now(), rangeDays);
     $("statWeek").textContent = String(Math.round(r.weekSec / 60));
     $("statStreak").textContent = String(r.streak);
     $("statRecord").textContent = r.maxBpm > 0 ? String(r.maxBpm) : "—";
@@ -2844,17 +2864,26 @@ const Stats = (() => {
       bar.className = "st-bar" + (d.sec > 0 ? "" : " empty");
       bar.style.height = (d.sec > 0 && maxSec > 0 ? Math.max(4, d.sec / maxSec * 100) : 2) + "%";
       bw.appendChild(bar); col.appendChild(bw);
-      const dl = document.createElement("div"); dl.className = "st-day"; dl.textContent = d.label;
+      const dl = document.createElement("div"); dl.className = "st-day";
+      /* 30 天视图下标星期会挤成糊，改标日期（每 5 天一个刻度 + 今天） */
+      dl.textContent = r.range === 30
+        ? ((r.days.indexOf(d) % 5 === 0 || d.today) ? String(new Date(d.t).getDate()) : "")
+        : d.label;
       const vl = document.createElement("div"); vl.className = "st-val";
       vl.textContent = d.sec > 0 ? String(Math.round(d.sec / 60)) : "";
       col.appendChild(dl); col.appendChild(vl);
       wrap.appendChild(col);
     });
+    $("statsByPattern").textContent = r.byPattern.length
+      ? "各节奏型速度纪录：" + r.byPattern.map(p => `${p.name} · ${p.bpm} BPM`).join("　")
+      : "";
     $("statsNote").textContent = r.count === 0
       ? "还没有练习记录——播放 30 秒以上会自动记一场。数据只保存在本机浏览器。"
-      : "近 7 天柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场";
+      : "柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场（可导出备份）";
   }
   function open(){
+    rangeDays = 7;
+    setPressed("#statsRangeRow", p => +p.dataset.range === 7);
     render();
     $("statsOverlay").classList.add("open");
     Modal.refreshInert();              // 与编辑器同一套焦点陷阱：背景置 inert
@@ -2867,6 +2896,27 @@ const Stats = (() => {
 
   $("statsBtn").addEventListener("click", e => { e.currentTarget.blur(); open(); });
   $("statsClose").addEventListener("click", e => { e.currentTarget.blur(); close(); });
+  /* 近 7/30 天视图切换（v1.6）：会话内状态，不持久化——每次打开默认回 7 天 */
+  $("statsRangeRow").addEventListener("click", e => {
+    const btn = e.target.closest("[data-range]");
+    if (!btn) return;
+    btn.blur();
+    rangeDays = +btn.dataset.range;
+    setPressed("#statsRangeRow", p => +p.dataset.range === rangeDays);
+    render();
+  });
+  /* 导出练习记录（v1.6）：与预设导出同一个下载通道 */
+  $("statsExport").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if (!Store.logSessions.length){ Modal.uiAlert("还没有练习记录可导出。"); return; }
+    const blob = new Blob([Store.serializeLog()], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
+    a.download = `beatsight-log-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
   $("statsClear").addEventListener("click", e => {
     e.currentTarget.blur();
     Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {

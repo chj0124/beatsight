@@ -59,6 +59,8 @@ const HTML_CHILDREN = {
   sigRow:    [2, 3, 4, 5, 6, 7].map(n => ({ className: "pill" + (n === 4 ? " active" : ""), dataset: { sig: String(n) } })),
   swingRow:  [50, 67, 75].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { swing: String(n) } })),
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
+  /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */
+  statsRangeRow: [7, 30].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { range: String(n) } })),
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。
@@ -215,7 +217,7 @@ function loadApp(seed, opts){
         const c = makeEl(id + "-pill");
         c.className = spec.className;
         Object.assign(c.dataset, spec.dataset);
-        c.textContent = spec.dataset.sig || spec.dataset.swing || spec.dataset.timbre || "";
+        c.textContent = spec.dataset.sig || spec.dataset.swing || spec.dataset.timbre || spec.dataset.range || "";
         els[id].children.push(c);
       });
     }
@@ -2307,7 +2309,7 @@ section("T38 练习记录 · ≥30s 自动入账 / 秒停与试听不计");
   eq(els["statCount"].textContent, "1", "累计场次卡 = 1");
   eq(els["statRecord"].textContent, "96", "速度纪录卡 = 96");
   eq(els["statsBars"].children.length, 7, "近 7 天条图 7 根柱");
-  ok(els["statsNote"].textContent.indexOf("近 7 天") >= 0, "有数据时的说明文案");
+  ok(els["statsNote"].textContent.indexOf("柱高") >= 0, "有数据时的说明文案（v1.6 起文案改「柱高=当天分钟数」）");
   fireWin("keydown", { code: "Space" });
   ok(!S.playing, "统计打开时空格不触发播放");
   fireWin("keydown", { key: "Escape" });
@@ -2619,6 +2621,56 @@ section("T45 训练计划 · 生成 / 今日参数 / 完成推进 / 顺延与收
   const app6 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
     plan: { baseStart: 70, baseTarget: 140, day: 9 } }) });
   eq(app6.beat.Store.S.plan, null, "脏计划（day 越界）→ 丢弃");
+}
+
+/* ================= 场景 T46：统计增强（v1.6）：30 天视图 / 各节奏型纪录 / 导出 ================= */
+section("T46 统计增强 · 7/30 天切换 / 各节奏型速度纪录 / 导出练习记录");
+{
+  /* summarize 的 30 天口径：10 天前的场次在 7 天视图不进桶、30 天视图进桶 */
+  const now = new Date(2026, 8, 15, 12, 0, 0).getTime();
+  const at = n => { const d = new Date(2026, 8, 15, 10, 0, 0); d.setDate(d.getDate() - n); return d.getTime(); };
+  const list = [
+    { t: at(10), sec: 300, bpm: 100, name: "民谣" },
+    { t: at(1), sec: 60, bpm: 120, name: "民谣" },
+    { t: at(0), sec: 60, bpm: 90, name: "Funk" },
+  ];
+  const S7 = loadApp().beat.Stats.summarize(list, now, 7);
+  eq(S7.days.length, 7, "7 天视图 7 根柱");
+  eq(S7.days.reduce((a, d) => a + d.sec, 0), 120, "7 天视图不含 10 天前的场次");
+  const S30 = loadApp().beat.Stats.summarize(list, now, 30);
+  eq(S30.days.length, 30, "30 天视图 30 根柱");
+  eq(S30.days.reduce((a, d) => a + d.sec, 0), 420, "30 天视图含 10 天前的场次");
+  eq(S30.range, 30, "range 标记 = 30");
+  /* 各节奏型速度纪录：同名取最高、按 BPM 降序 */
+  eq(JSON.stringify(S30.byPattern), JSON.stringify([{ name: "民谣", bpm: 120 }, { name: "Funk", bpm: 90 }]),
+    "各节奏型纪录：民谣取最高 120、Funk 90");
+  /* 默认参数兼容：不传 rangeDays = 7 天 */
+  eq(loadApp().beat.Stats.summarize(list, now).days.length, 7, "rangeDays 缺省 = 7");
+
+  /* UI：切换 30 天 → 30 根柱 + pill 高亮同源；重开 overlay 复位回 7 天 */
+  const app = loadApp({ "beatsight.log": JSON.stringify({ v: 1, sessions: list }) });
+  app.els["statsBtn"].fire("click");
+  eq(app.els["statsBars"].children.length, 7, "打开默认 7 根柱");
+  app.els["statsRangeRow"].fire("click", { target: pill({ range: "30" }) });
+  eq(app.els["statsBars"].children.length, 30, "切到 30 天 → 30 根柱");
+  const p30 = app.els["statsRangeRow"].children.find(c => c.dataset.range === "30");
+  ok(p30.classList.contains("active") && p30.getAttribute("aria-pressed") === "true", "30 天 pill 高亮与 aria 同源");
+  ok(app.els["statsByPattern"].textContent.indexOf("民谣 · 120 BPM") >= 0, "节奏型纪录行显示「民谣 · 120 BPM」");
+  app.els["statsClose"].fire("click");
+  app.els["statsBtn"].fire("click");
+  eq(app.els["statsBars"].children.length, 7, "重开 overlay 复位回 7 天视图");
+
+  /* 导出：有序列化内容 + 文件名带日期；空记录导出给提示不下载 */
+  const parsed = JSON.parse(app.beat.Store.serializeLog());
+  eq(parsed.kind, "practice-log", "导出格式 kind=practice-log");
+  eq(parsed.sessions.length, 3, "导出含全部 3 场");
+  app.els["statsExport"].fire("click");
+  ok(true, "有记录时点导出不报错（下载走 Blob + a.click 通道）");
+  const app2 = loadApp();
+  app2.els["statsBtn"].fire("click");
+  app2.els["statsExport"].fire("click");
+  eq(app2.els["modalMsg"].textContent, "还没有练习记录可导出。", "空记录导出 → 提示而非下载空文件");
+  app2.els["modalOk"].fire("click");
 }
 
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
