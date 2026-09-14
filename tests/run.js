@@ -769,7 +769,7 @@ section("T22 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / �
   drive(ac, beat, 3);                              // 96BPM：四分 0.625s/颗
 
   const buf = beat.onsetBuf();
-  ok(buf.length >= 2, "onset 缓冲覆盖当前跳跃区间（实测 " + buf.length + " 条，窗口=最近 1s + 前瞻 150ms）");
+  ok(buf.length >= 2, "onset 缓冲覆盖当前跳跃区间（实测 " + buf.length + " 条，保留最近 1s 且至少 8 条 + 前瞻）");
   ok(buf.every((e, i) => i === 0 || e.t > buf[i - 1].t), "端点时刻严格递增");
   const recentHits = ac.hits.filter(h => h.t > ac.currentTime - 1);   // 缓冲只留最近 1s，对照同窗口
   ok(recentHits.length > 0 && recentHits.every(h => buf.some(e => Math.abs(e.t - h.t) < 1e-9)),
