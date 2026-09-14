@@ -755,6 +755,84 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
   problems.slice(0, 8).forEach(p => console.log("      · " + p));
 }
 
+/* ================= 场景 T22：弹跳球 onset 表（v1.2） ================= */
+section("T22 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / 休止跳过 / 预测永远有下一跳");
+{
+  /* 弹跳球的每个落点都来自 onsetBuf/onsetNext（Audio 写、Viz 只读）。这里守数据层的硬不变量；
+     渲染层（paintBall 的抛物线/挤压拉伸）是纯函数映射，由人工截图验收。 */
+  const { beat } = loadApp();
+  const S = beat.Store.S;
+  S.sel = { type: "builtin", idx: 1 };            // 四分基础
+  beat.Presets.refreshAfterPatternChange();
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 3);                              // 96BPM：四分 0.625s/颗
+
+  const buf = beat.onsetBuf();
+  ok(buf.length >= 2, "onset 缓冲覆盖当前跳跃区间（实测 " + buf.length + " 条，窗口=最近 1s + 前瞻 150ms）");
+  ok(buf.every((e, i) => i === 0 || e.t > buf[i - 1].t), "端点时刻严格递增");
+  const recentHits = ac.hits.filter(h => h.t > ac.currentTime - 1);   // 缓冲只留最近 1s，对照同窗口
+  ok(recentHits.length > 0 && recentHits.every(h => buf.some(e => Math.abs(e.t - h.t) < 1e-9)),
+     "最近 1s 内每个发声时刻都能在 onset 表找到（落点=真实发声时刻）");
+  const nx = beat.onsetNext();
+  ok(!!nx, "预测落点存在（球永远有目的地）");
+  ok(nx && nx.t > buf[buf.length - 1].t, "预测落点总在最后一个已排程端点之后");
+  ok(nx && nx.t > ac.currentTime, "预测落点在未来（不受 150ms 前瞻窗口限制）");
+  eq(nx && +(nx.t - buf[buf.length - 1].t).toFixed(4), 0.625, "四分基础：预测与缓冲的间距即四分密度");
+
+  /* Swing：后半八分落点后移 (67-50)/50×24t = 8.16t ≈ 0.10625s → 相邻间距一长一短交替 */
+  const w = loadApp();
+  const S2 = w.beat.Store.S;
+  S2.sel = { type: "builtin", idx: 2 };           // 八分摇滚
+  w.beat.Presets.refreshAfterPatternChange();
+  S2.swing = 67;
+  w.beat.Controls.start();
+  const ac2 = FakeAudioContext.last;
+  drive(ac2, w.beat, 2);
+  const gaps = w.beat.onsetBuf().map((e, i, a) => i ? +(e.t - a[i - 1].t).toFixed(4) : null).slice(1);
+  const LONG = 0.4188, SHORT = 0.2063;            // 0.3125 ± 0.10625
+  ok(gaps.length >= 2 && gaps.every(g => Math.abs(g - LONG) < 2e-3 || Math.abs(g - SHORT) < 2e-3),
+     "Swing 67%：落点间距一长一短（实测 " + gaps.slice(0, 4).join(",") + "）");
+  ok(gaps.every((g, i) => i === 0 || Math.abs(g - gaps[i - 1]) > 0.1), "Swing 落点严格长短交替（球的运动跟随律动）");
+
+  /* 静音拍：第 4 小节不发声但端点照记（视觉照常——静音小节里球是唯一节拍来源） */
+  const m3 = loadApp();
+  const S3 = m3.beat.Store.S;
+  S3.sel = { type: "builtin", idx: 1 };
+  m3.beat.Presets.refreshAfterPatternChange();
+  S3.mute = true;
+  m3.beat.Controls.start();
+  const ac3 = FakeAudioContext.last;
+  drive(ac3, m3.beat, 9);                          // 第 4 小节窗口 7.5–10s，修剪保留最近 1s
+  const buf3 = m3.beat.onsetBuf();
+  ok(buf3.some(e => e.bar === 3), "静音小节的端点照常记入（球照跳）");
+  ok(!ac3.hits.some(h => h.t >= 8 && h.t < 10), "静音小节无声（对照：声音确实没了，只剩球）");
+
+  /* 休止符：占时不发声也不产生落点——球做长跳跨过 */
+  const restPat = { id: "r1", name: "含休止", meter: 4,
+    bars: [0, 1, 2, 3].map(() => [{ t: 48, rest: false }, { t: 24, rest: true }, { t: 24, rest: false }, { t: 48, rest: false }, { t: 48, rest: false }]) };
+  const r = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, customs: [restPat], sel: { type: "custom", id: "r1" } }) });
+  r.beat.Controls.start();
+  const ac4 = FakeAudioContext.last;
+  drive(ac4, r.beat, 3);
+  ok(r.beat.onsetBuf().every(e => e.cumT !== 48), "休止符位置（cumT=48）不产生落点");
+
+  /* resync 点下即生效：切换后预测立刻跟随新节奏型（不等小节边界、不留旧型残影） */
+  const q = loadApp();
+  const S5 = q.beat.Store.S;
+  S5.sel = { type: "builtin", idx: 8 };           // 三连音基础
+  q.beat.Presets.refreshAfterPatternChange();
+  q.beat.Controls.start();
+  const ac5 = FakeAudioContext.last;
+  drive(ac5, q.beat, 1.2);
+  S5.sel = { type: "builtin", idx: 1 };           // 点下切四分基础
+  q.beat.Presets.refreshAfterPatternChange();
+  drive(ac5, q.beat, 0.2);                         // 一个调度周期内预测必已换新
+  const nx5 = q.beat.onsetNext();
+  ok(nx5 && nx5.cumT % 48 === 0, "切换后预测落点立即按新节奏型（四分网格）");
+  ok(q.beat.onsetBuf().every((e, i, a) => i === 0 || e.t > a[i - 1].t), "切换后 onset 表仍严格递增（不排到过去）");
+}
+
 /* ---------------- 汇总 ---------------- */
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
 if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }

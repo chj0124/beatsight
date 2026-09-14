@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.1.1</title>
+<title>BeatSight 时值节拍器 v1.2</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -52,7 +52,7 @@ button:disabled{cursor:not-allowed}
 .fallback-note span{flex:1;min-width:0}
 
 /* ---------- 时值可视化 ---------- */
-.viz{position:relative}
+.viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
 .bar-row{position:relative;height:86px;margin-bottom:14px}
 .bar-row:last-child{margin-bottom:0}
 .bar-row.current{background:rgba(30,215,96,.07);border-radius:10px}
@@ -87,6 +87,12 @@ button:disabled{cursor:not-allowed}
 .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none;z-index:6}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
 .trail-glow{position:absolute;left:0;width:0%;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px)}
+
+/* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
+   跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
+   按弧起算的角度会在接缝回卷（demo 实测伪影）。跨弧状态量必须连续 */
+.bounce-ball{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);pointer-events:none;z-index:7;transform-origin:50% 100%}
+.bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
 
 /* ---------- 走带控制 ---------- */
 .transport{display:flex;align-items:center;gap:32px;flex-wrap:wrap}
@@ -218,6 +224,7 @@ input[type=range].vol{width:120px}
   .vdivider{display:none}
   .bpm-num{font-size:38px;min-width:76px}
   .bar-row{height:66px;margin-bottom:10px}
+  .viz{padding-top:50px}              /* 窄屏球域略降：跳高上限仍 48px，贴边但不裁切 */
   .cell{height:34px}
   .beat-zone{height:34px}
   .ruler-lab{top:52px;font-size:9px}
@@ -243,9 +250,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.1.1</span>
+    <span class="ver">v1.2</span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.1.1 · 稳定版</div>
+  <div class="chip"><span class="dot"></span>v1.2 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -272,7 +279,7 @@ input[type=range].vol{width:120px}
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
       </div>
       <div class="viz" id="viz"></div>
-      <div class="caption">时值 = 长度 —— 底部 1 e & a 为拍内座次，跑道亮边 = 换拍，绿框呼吸 = 下一颗预告；休止符显示为等长空白占位</div>
+      <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
@@ -344,6 +351,7 @@ input[type=range].vol{width:120px}
         <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle">变速训练 · 自动爬坡<span class="switch"></span></button>
         <button class="toggle-pill off" id="countInToggle">预备拍<span class="switch"></span></button>
+        <button class="toggle-pill on" id="bounceToggle">弹跳球 · 预判提示<span class="switch"></span></button>
         <input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数" hidden>
       </div>
       <div class="tr-panel" id="trainerPanel" hidden>
@@ -514,6 +522,9 @@ const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
   attack:0.004, decay:0.09,                          // 包络：4ms 起音、90ms 衰减
   schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、150ms 窗口
+  /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
+     squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
+  bounce:{ k:120, min:10, max:48, squash:0.07 },
   /* 常用速度快捷档（v1.1）：BPM 快捷键与滑杆刻度同源生成，避免两处各写一份数值。
      取传统节拍器 12 递增阶梯（60/72/84/96/108/120）的子集，含默认 96 与常用目标 120 */
   speedPresets:[60, 72, 84, 96, 120],
@@ -566,6 +577,7 @@ const Store = (() => {
       beats: Math.min(8, Math.max(1, Math.round(+((saved.countIn || {}).beats) || 4))) },
     playing: false,
     preview: false,
+    bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
     trainer: Object.assign({}, trDefaults, trSaved),
   };
   const customs = saved.customs || [];
@@ -582,7 +594,8 @@ const Store = (() => {
     try{
       localStorage.setItem("beatsight.m2", JSON.stringify({
         v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
-        swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer
+        swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer,
+        bounce:S.bounce
       }));
     }catch(e){}
   }
@@ -682,6 +695,11 @@ let ctx = null, masterGain = null;
 let loopStart = 0;
 let nextNoteTime = 0, schedBar = 0, schedStep = 0;
 let rafId = null;
+/* 弹跳球（v1.2）onset 表：Audio.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
+   Viz.paintBall 只读。onsetBuf = 已排程端点（原地 push/shift，导出引用不失效）；
+   onsetNext = 调度游标处的下一发声点预测——视觉要「看得远一跳」，150ms 前瞻窗口不够，
+   渲染层靠它保证球永远有目的地（demo 实测：缺它球在慢速下落地僵住） */
+let onsetBuf = [], onsetNext = null;
 /* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
    loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
 let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
@@ -758,6 +776,7 @@ const Viz = (() => {
   let glEls = [];                                            // 短音符合并标注（组标签）
   let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
   let lastBar = -1, lastStep = -1;
+  let ballEl = null, shadowEl = null;                          // 弹跳球（v1.2）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
@@ -883,6 +902,11 @@ const Viz = (() => {
     trailGlowEl.className = "trail-glow";
     viz.appendChild(trailGlowEl);
     viz.appendChild(playheadEl);
+    /* 弹跳球（v1.2）：落在 viz 顶层（z-index 7），影子在播放头之上、球之下 */
+    shadowEl = document.createElement("div"); shadowEl.className = "bounce-shadow";
+    ballEl = document.createElement("div"); ballEl.className = "bounce-ball";
+    viz.appendChild(shadowEl); viz.appendChild(ballEl);
+    parkBall();
     $("vizTitle").textContent = `时值可视化 · ${meterName(S.sig)} · 同屏 4 小节`;
     resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
@@ -914,6 +938,7 @@ const Viz = (() => {
     playheadEl.style.left = "0%";
     trailGlowEl.style.left = "0%";
     trailGlowEl.style.width = "0%";
+    parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
       el.className = "cell upcoming" + (curPattern().bars[b][i].rest ? " rest" : "");
@@ -938,6 +963,68 @@ const Viz = (() => {
       {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
       {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
     ], {duration:320, easing:"ease-out"});
+  }
+
+  /* 弹跳球（v1.2）：停止/待命姿态——停在第一小节第一个落点上方 */
+  function parkBall(){
+    if (!ballEl || !rowEls[0]) return;
+    const x = rowEls[0].offsetLeft - 8, y = rowEls[0].offsetTop - 20;
+    ballEl.style.transform = `translate(${x}px, ${y}px)`;
+    shadowEl.style.transform = `translate(${x - 1}px, ${y + 15}px)`;
+    shadowEl.style.opacity = ".3";
+  }
+  /* 弹跳球每帧驱动。端点 = onsetBuf（已排程）+ onsetNext（预测，球永远有目的地）；
+     落点时刻 = 真实发声时刻（含 Swing、静音小节照跳）。y = H·4p(1−p) 重力抛物线，
+     H ∝ T²（跳得越久飞得越高）；触地 70ms 挤压回弹、空中随垂直速度拉伸、落地前预压。
+     每帧只做便宜事：两次 offsetLeft/offsetTop 读取 + transform 写入，不碰布局 */
+  function paintBall(now){
+    if (!ballEl) return;
+    if (!S.bounce){ ballEl.style.display = "none"; shadowEl.style.display = "none"; return; }
+    ballEl.style.display = ""; shadowEl.style.display = "";
+    const entries = onsetNext ? onsetBuf.concat([onsetNext]) : onsetBuf;
+    if (!entries.length) return;
+    const CB = CONFIG.bounce;
+    const posOf = e => {
+      const row = rowEls[e.bar] || rowEls[0];
+      if (!row) return { x: 0, y: 0 };
+      return { x: row.offsetLeft + (e.cumT / (vizSig * TPB)) * row.offsetWidth - 8, y: row.offsetTop - 20 };
+    };
+    let i = -1;
+    for (let k = 0; k < entries.length - 1; k++)
+      if (entries[k].t <= now && now < entries[k + 1].t){ i = k; break; }
+    if (i < 0){                                    // 起点前（预备拍/刚开播）：停在第一落点
+      if (now < entries[0].t){
+        const g = posOf(entries[0]);
+        ballEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
+        shadowEl.style.transform = `translate(${g.x - 1}px, ${g.y + 15}px)`;
+        shadowEl.style.opacity = ".3";
+      }
+      return;
+    }
+    const a = entries[i], b = entries[i + 1];
+    const T = b.t - a.t;
+    if (T <= 0) return;
+    const p = Math.min(1, Math.max(0, (now - a.t) / T));
+    const A = posOf(a), Bp = posOf(b);
+    const x = A.x + (Bp.x - A.x) * p;
+    const yBase = A.y + (Bp.y - A.y) * p;          // 跨小节/循环回卷：贴地滑行换行，不瞬移
+    const H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
+    const y = yBase - H * 4 * p * (1 - p);
+    let sx = 1, sy = 1;
+    const dtL = now - a.t, dtR = b.t - now;
+    if (dtL < CB.squash){                          // 触地挤压 → 回弹（落地瞬间的重量感）
+      const f = dtL / CB.squash, e2 = 1 - (1 - f) * (1 - f);
+      sy = 0.68 + 0.32 * e2; sx = 1.38 - 0.38 * e2;
+    } else {                                       // 空中：随垂直速度拉伸（体积近似守恒）
+      const vN = Math.min(1, Math.abs(1 - 2 * p) * (H / 60));
+      sy = 1 + 0.2 * vN; sx = 1 - 0.12 * vN;
+      if (dtR < CB.squash){ const g2 = 1 - dtR / CB.squash; sy *= 1 - 0.1 * g2; sx *= 1 + 0.08 * g2; }
+    }
+    ballEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
+    /* 地面投影：球越高影子越小越淡（人眼靠影子判断弹跳高度，没有影子的球像浮着的圆点） */
+    const hN = Math.min(1, (yBase - y) / CB.max);
+    shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yBase + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
+    shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
   }
 
   function paintFrame(){
@@ -982,6 +1069,7 @@ const Viz = (() => {
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
     fillEls[bar][active].style.width = t < 24 ? "100%" : Math.min(1, (tib - cum[active]) / t) * 100 + "%";
+    paintBall(ctx.currentTime);                     // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / 12);
     if (bar !== lastBar || t16 !== lastT16){
@@ -1126,6 +1214,37 @@ const Audio = (() => {
     osc.connect(g); g.connect(masterGain);
     osc.start(t); osc.stop(t + CONFIG.decay + 0.01);
   }
+  /* Swing 偏移（秒）：拍内后半的八分（起始位置 %48===24 且时值恰为 24t）发声延后
+     (swing-50)/50×24t；时间轴本身不动。6/8 自带摇摆属性，不套用。
+     v1.2 抽成共享纯函数：排程与弹跳球的落点预测必须同源，否则球会教用户抢拍 */
+  function swingShift(pat, note, cumT){
+    return (S.swing > 50 && pat.meter !== 6 && note.t === TPB / 2 && cumT % TPB === TPB / 2)
+      ? (S.swing - 50) / 50 * (TPB / 2) * spb() / TPB : 0;
+  }
+  /* 弹跳球：预测调度游标处的下一发声点。不变量 nextNoteTime == 本小节 tick 0 时刻 + 累计 tick
+     → barStart 可反推；逐小节向前找第一个非休止音符，时刻 = barStart + tick 偏移 + swingShift。
+     与排程同源（同快照 pat、同 swingShift），故预测值与下周期实际入缓冲的值严格相等 */
+  function predictNext(pat){
+    const bars = pat.bars, barTicks = pat.meter * TPB;
+    const steps0 = bars[schedBar];
+    if (!steps0 || !steps0.length) return null;
+    let cumCur = 0;
+    for (let i = 0; i < schedStep && i < steps0.length; i++) cumCur += steps0[i].t;
+    const barStart = nextNoteTime - cumCur * spb() / TPB;
+    for (let k = 0; k < LOOP_BARS; k++){
+      const b = (schedBar + k) % LOOP_BARS;
+      const steps = bars[b];
+      if (!steps || !steps.length) continue;
+      let cum = 0;
+      for (let i = 0; i < steps.length; i++){
+        const n = steps[i];
+        if ((k > 0 || i >= schedStep) && !n.rest)
+          return { t: barStart + (k * barTicks + cum) * spb() / TPB + swingShift(pat, n, cum), bar: b, cumT: cum };
+        cum += n.t;
+      }
+    }
+    return null;
+  }
   /* setInterval(25ms) 轮询：把未来 150ms 窗口内的音符注册到 audio clock；
      位置换算：posTicks = (ctx.currentTime - loopStart) / spb × TPB */
   function scheduler(){
@@ -1148,15 +1267,12 @@ const Audio = (() => {
       let cumT = 0;
       for (let i = 0; i < schedStep; i++) cumT += steps[i].t;
       const muted = S.mute && schedBar === LOOP_BARS - 1;
-      if (!muted && !steps[schedStep].rest){
-        let t0 = nextNoteTime;
-        /* Swing（v0.7.0）：拍内后半的八分（起始位置 %48===24 且时值恰为 24t）发声延后
-           (swing-50)/50×24t；时间轴本身不动——下一颗音符仍按记谱时间进入。
-           6/8 自带摇摆属性，不套用（用快照拍号判断，挂起窗口内 S.sig 可能已变）。 */
-        if (S.swing > 50 && pat.meter !== 6 && steps[schedStep].t === TPB / 2 && cumT % TPB === TPB / 2){
-          t0 += (S.swing - 50) / 50 * (TPB / 2) * spb() / TPB;
-        }
-        playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
+      if (!steps[schedStep].rest){
+        const t0 = nextNoteTime + swingShift(pat, steps[schedStep], cumT);
+        /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
+           静音拍训练中球就是唯一的节拍来源）；时刻含 Swing 偏移，落点即真实发声时刻 */
+        onsetBuf.push({ t: t0, bar: schedBar, cumT });
+        if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
       }
       nextNoteTime += steps[schedStep].t * spb() / TPB;
       schedStep++;
@@ -1174,6 +1290,11 @@ const Audio = (() => {
         }
       }
     }
+    /* 弹跳球（v1.2）：刷新「下一落点」预测并修剪旧端点（保留最近 1s 已落地端点，
+       bracket 查找需要 now 之前的一个端点）。早期 return 路径（变速到顶/挂起消费）
+       跳过本轮刷新，下一个 25ms 周期补上，视觉无感 */
+    onsetNext = predictNext(pat);
+    while (onsetBuf.length > 2 && onsetBuf[0].t < ctx.currentTime - 1) onsetBuf.shift();
   }
   /* 播放中「立即换型」（v1.1.1）：把当前调度相位从旧节奏型换算到新节奏型，做到点下即生效。
      做法：**不动时间轴**（loopStart 保持），只用「已真实经过的 tick 数」在新拍号的循环网格里
@@ -1335,6 +1456,7 @@ const Controls = (() => {
     }
     S.playing = true;
     schedBar = 0; schedStep = 0;
+    onsetBuf.length = 0; onsetNext = null;          // 弹跳球：清 onset 表，从第一拍重新建立
     loopStart = ctx.currentTime + 0.08;
     /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
     if (S.countIn.on && S.countIn.beats > 0){
@@ -1514,6 +1636,14 @@ const Controls = (() => {
     S.mute = !S.mute;
     $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
     Viz.syncMuteBars();
+    Store.persist();
+  });
+
+  /* 弹跳球开关（v1.2）：只控显隐，onset 表照常维护（重新打开时球立即就位，无需暖机） */
+  $("bounceToggle").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.bounce = !S.bounce;
+    $("bounceToggle").className = "toggle-pill " + (S.bounce ? "on" : "off");
     Store.persist();
   });
 
@@ -1878,6 +2008,7 @@ Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并�
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
 $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+$("bounceToggle").className = "toggle-pill " + (S.bounce ? "on" : "off");   // v1.2 弹跳球开关初始化
 /* 变速训练器：恢复开关/参数 UI（trStart 等输入框值以钳制后的配置为准） */
 $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
 $("trainerPanel").hidden = !S.trainer.on;
@@ -1890,7 +2021,8 @@ Presets.refreshAfterPatternChange();
 Trainer.updateProg();
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, activePattern, basicPattern };
+window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, activePattern, basicPattern,
+  onsetBuf: () => onsetBuf, onsetNext: () => onsetNext };   // v1.2：弹跳球 onset 表（T22 断言入口）
 </script>
 </body>
 </html>
