@@ -29,6 +29,7 @@ const CASES = [
   ["vol_neg",            "音量 -5"],
   ["vol_str",            "音量 \"x\""],
   ["bpm_dirty",          "脏 BPM"],
+  ["hunger_skip",        "后台节流 10 分钟后回前台（追赶逻辑写成逐拍会死循环）"],
   ["editor_clear_bar",   "试听中清空小节（真实用户路径）"],
   ["normal_path",        "正常路径（守卫不得误伤）"],
   ["dirty_misc",         "脏重拍分组 / trainer 原型污染"],

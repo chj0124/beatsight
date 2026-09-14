@@ -16,31 +16,65 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = fs.readFileSync(process.env.BEATSIGHT_HTML || path.join(__dirname, "..", "index.html"), "utf8");
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
 if (!m){ console.error("index.html 中未找到 <script> 块"); process.exit(1); }
 const SRC = m[1];
+/* v1.3.0（审计 P2-17）：内联脚本只编译一次，之后每个用例复用同一个 vm.Script 跑进新上下文。
+   原先每个 case 都 new vm.Script 重新编译 1900+ 行，是全套件最没意义的一笔开销 */
+const COMPILED = new vm.Script(SRC, { filename: "index.inline.js" });
 
 /* ---------------- DOM / 浏览器环境 stub ---------------- */
+/* 探针计数器（v1.3.0，审计 P1-4）：用来断言「一帧内零布局读取」与「增量重绘真的减少了 DOM 写入」。
+   这两条性能承诺如果只靠人眼 review，下一次改动就会悄悄破功。 */
+const PROBE = { layoutReads: 0, classWrites: 0 };
+const resetProbe = () => { PROBE.layoutReads = 0; PROBE.classWrites = 0; };
+
 /* index.html 里靠 attribute 承载初值的元素：stub 不解析 HTML，需在此复刻，否则读到 undefined。
    bpmSlider 的 min/max 是滑杆刻度的取值域（v1.1 起刻度位置由它换算），缺了就全变 NaN%。 */
-const HTML_ATTRS = { bpmSlider: { min: "30", max: "240", value: "96" } };
+const HTML_ATTRS = {
+  bpmSlider: { min: "30", max: "240", value: "96" },
+  /* 标记里声明了 `hidden` 的元素：真实 DOM 加载后它们就是隐藏的，stub 必须同样如此。
+     不做的话「预设库为空才提示跨地址迁移」这类依赖初始隐藏状态的逻辑会被误判为通过/失败
+     （v1.3.0 P2-14 踩到）。 */
+  fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeats: { hidden: true },
+  trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
+  modalMask: { hidden: true }, modalInput: { hidden: true },
+};
+/* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
+   所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
+   `setPressed()` 变成空转 —— aria-pressed 这类无障碍断言根本跑不起来（v1.3.0 为 P2-11 而加）。 */
+const HTML_CHILDREN = {
+  sigRow:    [2, 3, 4, 5, 6, 7].map(n => ({ className: "pill" + (n === 4 ? " active" : ""), dataset: { sig: String(n) } })),
+  swingRow:  [50, 67, 75].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { swing: String(n) } })),
+  timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
+};
 function makeEl(id){
+  /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。
+     原先它们是各自独立的存储：`classList.toggle("active")` 改了 Set，`className` 字符串纹丝不动，
+     于是「视觉高亮与 aria-pressed 是否一致」这类跨视图断言根本无从写起（v1.3.0 P2-11 踩到）。 */
+  const cls = new Set();
   const el = {
     _id: id, _h: {},
     children: [],
     style: new Proxy({}, { get: (t, k) => (k in t ? t[k] : ""), set: (t, k, v) => { t[k] = v; return true; } }),
     classList: {
-      _s: new Set(),
-      add(...c){ c.forEach(x => this._s.add(x)); },
-      remove(...c){ c.forEach(x => this._s.delete(x)); },
-      toggle(c, f){ (f === undefined ? !this._s.has(c) : !!f) ? this._s.add(c) : this._s.delete(c); },
-      contains(c){ return this._s.has(c); },
+      add(...c){ c.forEach(x => cls.add(x)); },
+      remove(...c){ c.forEach(x => cls.delete(x)); },
+      toggle(c, f){ (f === undefined ? !cls.has(c) : !!f) ? cls.add(c) : cls.delete(c); },
+      contains(c){ return cls.has(c); },
     },
     dataset: {},
-    textContent: "", value: "", className: "", innerHTML: "", title: "",
-    hidden: false, disabled: false,
-    offsetWidth: 0, offsetHeight: 0, offsetLeft: 0, offsetTop: 0, scrollWidth: 0,
+    textContent: "", value: "", title: "",
+    hidden: false, disabled: false, inert: false,
+    /* 布局属性做成**计数的 getter**：值给确定常量即可（帧内逻辑只需数值合理，
+       这里要断言的是"读了几次"，不是读到了多少）。原先它们是普通数据属性，
+       无法区分"读了"和"没读"——P1-4 的两条性能承诺都不可验证。 */
+    get offsetWidth(){ PROBE.layoutReads++; return 600; },
+    get offsetHeight(){ PROBE.layoutReads++; return 44; },
+    get offsetLeft(){ PROBE.layoutReads++; return 0; },
+    get offsetTop(){ PROBE.layoutReads++; return 0; },
+    scrollWidth: 0,
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
     removeEventListener(){},
     appendChild(c){ this.children.push(c); return c; },
@@ -56,6 +90,20 @@ function makeEl(id){
       }, ev)));
     },
   };
+  /* className 与 classList 共享同一份 Set；写入计数用于断言增量重绘的收益 */
+  Object.defineProperty(el, "className", {
+    get(){ return [...cls].join(" "); },
+    set(v){ PROBE.classWrites++; cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach(c => cls.add(c)); },
+    enumerable: true, configurable: true,
+  });
+  /* innerHTML 忠实清空子节点（真实 DOM 语义）。原先它只是个普通字符串属性，
+     `$("viz").innerHTML = ""` 并不会清掉 stub 累积的 children —— 渲染层按「行/格」检查 DOM
+     时会读到上一次 buildViz 的残留。 */
+  Object.defineProperty(el, "innerHTML", {
+    get(){ return el._html || ""; },
+    set(v){ el._html = v; el.children.length = 0; },
+    enumerable: true, configurable: true,
+  });
   return el;
 }
 
@@ -75,16 +123,23 @@ class FakeNode {
   stop(){}
 }
 class FakeAudioContext {
-  constructor(){ this.currentTime = 0; this.state = "running"; this.destination = {}; this.hits = []; this.sampleRate = 48000; FakeAudioContext.last = this; }
+  constructor(){
+    this.currentTime = 0; this.state = "running"; this.destination = {}; this.hits = [];
+    this.sampleRate = 48000; this.resumeCount = 0; this.onstatechange = null;
+    FakeAudioContext.last = this;
+  }
   createOscillator(){ return new FakeNode(this, "osc"); }
   createGain(){ return new FakeNode(this, "gain"); }
   createBiquadFilter(){ return new FakeNode(this, "filter"); }
   createBuffer(ch, len, rate){ return { getChannelData: () => new Float32Array(len) }; }
   createBufferSource(){ return new FakeNode(this, "noise"); }
-  resume(){}
+  resume(){ this.resumeCount++; if (this.state === "suspended" || this.state === "interrupted") this.state = "running"; }
+  /* v1.3.0（审计 P2-13）：模拟系统/其他 App 改变音频会话状态，并触发 onstatechange——
+     iOS 的 "interrupted" 与 "closed" 是原实现完全没处理的两个分支 */
+  setState(s){ this.state = s; if (typeof this.onstatechange === "function") this.onstatechange(); }
 }
 
-/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage}
+/* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage, fireDoc, fireWin, docHidden}
    opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16） */
 function loadApp(seed, opts){
   const store = new Map(Object.entries(seed || {}));
@@ -92,6 +147,25 @@ function loadApp(seed, opts){
   const els = {};
   const intervals = new Map();
   let timerSeq = 1;
+  /* v1.3.0（审计 P1-3/P2-13）：document / window 级监听器要能被测试触发，
+     否则「回前台补排」「pagehide 停播」这类生命周期行为完全无法断言（原先 addEventListener 是空函数） */
+  const docH = {}, winH = {};
+  const addTo = (bag, t, f) => { (bag[t] = bag[t] || []).push(f); };
+  const fireAll = bag => t => (bag[t] || []).forEach(f => f({ preventDefault(){}, stopPropagation(){} }));
+
+  const elFor = id => {
+    if (!els[id]){
+      Object.assign(els[id] = makeEl(id), HTML_ATTRS[id] || {});
+      (HTML_CHILDREN[id] || []).forEach(spec => {
+        const c = makeEl(id + "-pill");
+        c.className = spec.className;
+        Object.assign(c.dataset, spec.dataset);
+        c.textContent = spec.dataset.sig || spec.dataset.swing || spec.dataset.timbre || "";
+        els[id].children.push(c);
+      });
+    }
+    return els[id];
+  };
 
   const sandbox = {
     console,
@@ -101,15 +175,24 @@ function loadApp(seed, opts){
       removeItem: k => store.delete(k),
     },
     document: {
-      getElementById: id => {
-        if (!els[id]) Object.assign(els[id] = makeEl(id), HTML_ATTRS[id] || {});
-        return els[id];
-      },
+      getElementById: elFor,
       createElement: tag => Object.assign(makeEl("dyn"), { tagName: String(tag || "").toUpperCase() }),   // v1.1：记录标签名，可断言生成的元素类型（如刻度必须是 <i> 而非 <option>）
-      querySelectorAll: () => [],
-      addEventListener(){},
+      /* 只支持 `#id .pill` 这一种选择器——setPressed() 需要它返回 pill 组；
+         其它选择器返回空数组（与原先行为一致） */
+      querySelectorAll: sel => {
+        const m2 = /^#([\w-]+)\s+\.pill$/.exec(sel);
+        if (m2){
+          const host = elFor(m2[1]);
+          return host.children.filter(c => /(^| )pill( |$)/.test(c.className));
+        }
+        /* 焦点陷阱（P2-11）：Modal.refreshInert() 用 `.main, .topbar` 选背景并置 inert */
+        if (sel === ".main, .topbar") return [elFor("mainBg"), elFor("topbarBg")];
+        return [];
+      },
+      addEventListener: (t, f) => addTo(docH, t, f),
       body: makeEl("body"),
       activeElement: { tagName: "DIV" },
+      hidden: false,                 // v1.3.0：前台/后台切换（P1-3 自适应窗口断言用）
     },
     AudioContext: FakeAudioContext,
     setInterval: (fn, ms) => { const id = timerSeq++; intervals.set(id, fn); return id; },
@@ -124,12 +207,25 @@ function loadApp(seed, opts){
     FileReader: function(){},
   };
   sandbox.window = sandbox;
-  sandbox.window.addEventListener = () => {};
+  sandbox.window.addEventListener = (t, f) => addTo(winH, t, f);
   vm.createContext(sandbox);
-  new vm.Script(SRC, { filename: "index.inline.js" }).runInContext(sandbox);
+  COMPILED.runInContext(sandbox);
   const beat = sandbox.window.__beat;
   if (!beat) throw new Error("window.__beat 调试句柄未暴露——模块化装配失败");
-  return { beat, els, sandbox, storage: store };
+  return {
+    beat, els, sandbox, storage: store,
+    fireDoc: fireAll(docH), fireWin: fireAll(winH),
+    /* 切前台/后台：改 document.hidden 后触发 visibilitychange。
+       注意**两个 bag 都要发**：真实浏览器里该事件在 document 上派发并冒泡到 window，
+       所以 `document.addEventListener` 与 `window.addEventListener` 两种写法都会收到
+       （本应用 Store 挂在 window 上、Audio 挂在 document 上，只发一个会漏） */
+    setHidden: h => {
+      sandbox.document.hidden = h;
+      fireAll(docH)("visibilitychange");
+      fireAll(winH)("visibilitychange");
+    },
+    firePageHide: () => { fireAll(winH)("pagehide"); fireAll(docH)("pagehide"); },
+  };
 }
 
 /* ---------------- 断言辅助 ---------------- */
@@ -303,8 +399,13 @@ section("T8 Store · 旧浮点数据迁移 tick + 备份");
   ok(c.bars[0].every(s => s.d === undefined), "迁移后无残留 d 字段");
   ok(storage.has("beatsight.m2.bak"), "迁移前已备份 beatsight.m2.bak");
   eq(JSON.parse(storage.get("beatsight.m2.bak")).customs[0].bars[0][0].d, 1, "备份保留原始浮点数据");
-  beat.Store.persist();
-  eq(JSON.parse(storage.get("beatsight.m2")).v, 3, "persist 写入 v:3");
+  /* v1.3.0 契约更新：写目标由单键 beatsight.m2 改为冷热分离的
+     beatsight.state（热）/ beatsight.customs（冷）。旧键降级为只读的迁移来源。
+     persist() 现在是 250ms 防抖，要断言落盘内容必须显式 flush()（页面隐藏/pagehide 也走它） */
+  beat.Store.flush();
+  eq(JSON.parse(storage.get("beatsight.state")).v, 3, "flush 后热键写入 beatsight.state（v:3）");
+  eq(JSON.parse(storage.get("beatsight.customs")).customs.length, 1, "迁移后的预设写入冷键 beatsight.customs");
+  eq(JSON.parse(storage.get("beatsight.customs")).customs[0].bars[0][0].t, 48, "冷键里是迁移后的 tick（非原始浮点 d）");
   eq(beat.curPattern().name, "旧预设", "迁移后 id 引用仍命中原预设");
 }
 
@@ -395,8 +496,8 @@ section("T13 音色 · 三套合成音色与持久化");
   eq(bBad.Store.S.timbre, "click", "非法音色值回退 click");
   const { beat: bWood, storage: stWood } = loadApp({ "beatsight.m2": JSON.stringify({ timbre: "wood" }) });
   eq(bWood.Store.S.timbre, "wood", "持久化音色 wood 正确恢复");
-  bWood.Store.persist();
-  eq(JSON.parse(stWood.get("beatsight.m2")).timbre, "wood", "persist 写入 timbre 字段");
+  bWood.Store.flush();                 // v1.3.0：热键写入改为防抖，断言落盘内容前须 flush
+  eq(JSON.parse(stWood.get("beatsight.state")).timbre, "wood", "flush 后热键写入 timbre 字段");
 
   /* 木鱼：全部层级走带通滤波噪声 */
   bWood.Controls.start();
@@ -506,7 +607,9 @@ section("T16 防御 · persist 写失败不炸 + accents 归一");
 {
   /* H1：localStorage 写路径抛错（隐私模式/配额超限）时交互链不能断。
      注意：setSig 必须与 refreshAfterPatternChange 成对调用（真实 UI 的绑定路径如此），
-     单独调 setSig 会让 viz 与 curPattern 脱节——那是测试误用，不是 app bug */
+     单独调 setSig 会让 viz 与 curPattern 脱节——那是测试误用，不是 app bug。
+     v1.3.0：persist() 改为防抖后，必须显式 flush() 才会真正触发那次抛异常的 setItem，
+     否则这条用例会变成空跑（写没发生，自然不抛）——那是假绿 */
   const { beat } = loadApp({}, { throwOnWrite: true });
   let threw = false;
   try {
@@ -516,6 +619,8 @@ section("T16 防御 · persist 写失败不炸 + accents 归一");
     beat.Controls.start();
     drive(FakeAudioContext.last, beat, 1);
     beat.Controls.stop();
+    beat.Store.flush();              // 真正把写盘打出去（会抛 QuotaExceededError → 被内部兜住）
+    beat.Store.persistCold();        // 冷键路径同样要兜住
   } catch(e){ threw = true; }
   ok(!threw, "persist 写失败时 播放/调速/切拍号 全程不抛异常");
   eq(beat.Store.S.bpm, 120, "写失败时状态仍在内存生效");
@@ -551,7 +656,12 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
   eq(beat.Store.customs[0].name, "测试预设T17", "预设名正确");
   eq(beat.Store.S.sel.id, beat.Store.customs[0].id, "S.sel 指向新预设 id");
   ok(!els["editor"].classList.contains("open"), "保存后编辑器关闭");
-  eq(JSON.parse(storage.get("beatsight.m2")).customs.length, 1, "新预设已持久化");
+  /* v1.3.0 契约更新：预设库落在冷键 beatsight.customs（立即写，不防抖）。
+     热键 beatsight.state 里不再含 customs —— 这正是 P1-5 要的效果：
+     500 个预设时冷键 715 KB，但它只在增删改预设时写；每次调速/开关只写 <1 KB 的热键 */
+  eq(JSON.parse(storage.get("beatsight.customs")).customs.length, 1, "新预设已写入冷键 beatsight.customs");
+  ok(!/customs/.test(JSON.stringify(JSON.parse(storage.get("beatsight.state") || "{}"))),
+     "热键不再携带 preset 库（冷热分离生效）");
   eq(beat.curPattern().name, "测试预设T17", "保存后当前节奏型即新预设");
 }
 
@@ -722,9 +832,20 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
 {
   /* 「就地接续」是相位换算逻辑，最容易在边界（稀疏↔密集、奇数拍↔4/4、小节末）出破例，
      单点用例覆盖不到。这里把 9 个代表性节奏型两两对切 × 3 个点击相位全跑一遍，
-     只守四条硬不变量：立即切换 / 不排到过去 / 时刻严格递增 / 播放不中断。 */
-  const idxs = [0, 1, 2, 5, 6, 8, 9, 10, 11];
-  const waits = [0.35, 1.7, 3.1];
+     只守四条硬不变量：立即切换 / 不排到过去 / 时刻严格递增 / 播放不中断。
+
+     v1.3.0（审计 P2-17）加 FULL_SCAN 开关：243 组是本套件最耗时的一段（每格都要新建沙箱 +
+     驱动十几秒音频）。默认跑抽样 9 组，FULL_SCAN=1 跑全量——CI 跑全量，本地改代码时跑抽样。
+     抽样取自同一批代表值（稀疏 / 密集 / 奇数拍 / 三连音），守的是同一组不变量，只是覆盖面小。
+     下面的组合数断言按实际跑的组数校验，所以「抽样模式被静默改成全量」或反过来都能被发现。 */
+  const FULL = process.env.FULL_SCAN === "1";
+  const IDXS_ALL = [0, 1, 2, 5, 6, 8, 9, 10, 11];
+  const WAITS_ALL = [0.35, 1.7, 3.1];
+  /* 抽样：4 个节奏型（扫弦/四分/切分/三连音）× 点击相位取「中段」——最易出破例的小节末相位留给全量 */
+  const idxs = FULL ? IDXS_ALL : [0, 1, 5, 8];
+  const waits = FULL ? WAITS_ALL : [1.7];
+  console.log("      · 模式：" + (FULL ? "全量" : "抽样（FULL_SCAN=1 跑全量）")
+    + " · " + idxs.length + "×" + idxs.length + "×" + waits.length + " = " + (idxs.length * idxs.length * waits.length) + " 组");
   const problems = [];
   let cases = 0;
   for (const from of idxs) for (const to of idxs) for (const wait of waits){
@@ -881,8 +1002,8 @@ section("T23b 空小节 customs · 结构校验淘汰 + 隔离备份 + 渲染不
   const bad = { id: "z", name: "坏预设-空小节", meter: 4, bars: [[], [], [], []] };
   const { beat, storage } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, customs: [bad], sel: { type: "custom", id: "z" } }) });
   eq(beat.Store.customs.length, 0, "空小节预设被 load 路径的结构校验淘汰（原先原样信任）");
-  ok(storage.has("beatsight.m2.quarantine"), "淘汰项隔离到 beatsight.m2.quarantine，可人工找回");
-  eq(JSON.parse(storage.get("beatsight.m2.quarantine")).length, 1, "隔离备份内容完整");
+  ok(storage.has("beatsight.quarantine"), "淘汰项隔离到 beatsight.quarantine，可人工找回");
+  eq(JSON.parse(storage.get("beatsight.quarantine")).length, 1, "隔离备份内容完整");
   beat.Controls.start();
   const err = driveFrames(FakeAudioContext.last, beat, 2);
   ok(!err, "空小节不再让渲染帧抛异常（v1.2.3 此处 TypeError）");
@@ -896,7 +1017,7 @@ section("T23b 空小节 customs · 结构校验淘汰 + 隔离备份 + 渲染不
   eq(b2.Store.customs[0].id, "keep", "合法预设的 id 被保留");
   eq(JSON.stringify(b2.Store.customs[0].accents), JSON.stringify([0, 2]), "合法预设的 accents 被保留");
   eq(b2.curPattern().name, "合法预设", "合法预设仍被选为当前节奏型");
-  ok(!st2.has("beatsight.m2.quarantine"), "无淘汰项时不产生 quarantine 备份");
+  ok(!st2.has("beatsight.quarantine"), "无淘汰项时不产生 quarantine 备份");
 }
 
 section("T23c 音量越界 · 必须钳制到 [0,1]，增益不得超 0 dBFS");
@@ -995,6 +1116,322 @@ section("T23g 正常路径 · 新守卫不得误伤");
     const e = driveFrames(FakeAudioContext.last, b, 3);
     ok(!e, `${name} 正常路径无异常（${e || "OK"}）`);
   });
+}
+
+/* ================================================================================
+   场景 T24–T29：v1.3.0「第二 / 第三梯队」改造
+   对应审计条目：P1-5 持久化冷热分离 · P2-9/P2-10 版本号与重复逻辑 · P1-3 后台调度
+                 P1-4 渲染性能 · P2-11 无障碍 · P2-13/P2-14 音频生命周期与跨 origin 提示
+   ================================================================================ */
+
+section("T24 持久化 · 冷热分离 / 防抖 / 失败可见（审计 P1-5）");
+{
+  /* 载荷量级是 P1-5 的原始动因：原实现把预设库塞进同一个 key，而 persist() 挂在
+     几乎每个交互上（调速、每个开关、TAP、拍号、音色、音量）。实测 500 预设 = 715 KB，
+     每次点击都要全量 JSON.stringify + 同步写盘 → 5–20ms 主线程阻塞 → 音频掉音。 */
+  const { beat, storage, setHidden } = loadApp();
+  ok(!storage.has("beatsight.state") && !storage.has("beatsight.customs"), "全新用户：加载时不预写任何键");
+
+  beat.Store.persist();
+  ok(!storage.has("beatsight.state"), "persist() 是防抖的——调用后不立即落盘");
+  beat.Store.flush();
+  ok(storage.has("beatsight.state"), "flush() 立即落盘热键");
+  const hot = JSON.parse(storage.get("beatsight.state"));
+  eq(hot.v, 3, "热键带 schema 版本");
+  ok(!("customs" in hot), "热键里不含 customs（冷热分离生效）");
+  ok(!storage.has("beatsight.customs"), "纯热变更不写冷键——预设库没变就不该重写它");
+
+  /* 冷数据：预设增删改必须立即写，不能防抖（丢掉一个手写节奏型代价太大） */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "冷热测试", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }]}));
+  ok(storage.has("beatsight.customs"), "导入预设 → 冷键立即落盘（不经防抖）");
+  eq(JSON.parse(storage.get("beatsight.customs")).customs.length, 1, "冷键内容正确");
+
+  /* 页面隐藏时强制落盘：防抖窗口内的改动不能在切走时丢 */
+  const b2 = loadApp();
+  b2.beat.Store.persist();
+  ok(!b2.storage.has("beatsight.state"), "切换前：仍在防抖窗口内，尚未落盘");
+  b2.setHidden(true);
+  ok(b2.storage.has("beatsight.state"), "页面隐藏 → 强制 flush 落盘");
+
+  /* 载荷量级对照 */
+  const b3 = loadApp();
+  const mk = i => ({ name: "P" + i, meter: 4, bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) });
+  b3.beat.Store.importPresets(JSON.stringify({ presets: Array.from({ length: 100 }, (_, i) => mk(i)) }));
+  b3.beat.Store.flush();
+  const coldLen = b3.storage.get("beatsight.customs").length;
+  const hotLen = b3.storage.get("beatsight.state").length;
+  ok(coldLen > 20 * hotLen,
+    `100 个预设时冷键 ${coldLen} B / 热键 ${hotLen} B（${Math.round(coldLen / hotLen)}×）——调速开关只动热键`);
+
+  /* 失败可见：原先 catch(e){} 完全静默，用户"预设存不进去"毫无察觉 */
+  const b4 = loadApp({}, { throwOnWrite: true });
+  b4.beat.Controls.setBpm(150);
+  b4.beat.Store.flush();
+  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 保存失败", "写失败 → 顶栏 chip 明示");
+  ok(b4.els["persistDot"].classList.contains("bad"), "写失败 → 状态点变红");
+  eq(b4.els["modalMask"].hidden, false, "写失败 → 一次性弹窗告知（不再静默降级）");
+}
+
+section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10）");
+{
+  const { beat, els, sandbox } = loadApp();
+  ok(/^\d+\.\d+\.\d+$/.test(beat.VERSION), `VERSION 形如 x.y.z（实际 ${beat.VERSION}）`);
+  eq(sandbox.document.title, "BeatSight 时值节拍器 v" + beat.VERSION, "标题由 VERSION 派生");
+  eq(els["brandVer"].textContent, "v" + beat.VERSION, "品牌区版本号由 VERSION 派生");
+  eq(els["brandChip"].textContent, "v" + beat.VERSION + " · 稳定版", "顶栏 chip 由 VERSION 派生");
+  /* 关键：标记段不得再出现**硬编码**版本号——那正是 P2-9 要根治的漂移源。
+     要去掉注释再比（文件里到处是「v1.3.0：某某修复」这类历史注释，它们不是真相源） */
+  const markup = html.slice(0, html.indexOf("<script>"))
+    .replace(/<!--[\s\S]*?-->/g, "")      // HTML 注释
+    .replace(/\/\*[\s\S]*?\*\//g, "");    // CSS 注释
+  eq((markup.match(/v\d+\.\d+\.\d+/g) || []).length, 0, "标记段（去注释）零硬编码版本号");
+
+  /* selectedPreset()：原先在 Presets 里写了两遍（updateFallbackNote 与 fallbackBtn） */
+  const b = loadApp({ "beatsight.m2": JSON.stringify({ v: 3,
+    customs: [{ id: "a", name: "自定义A", meter: 4, bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }],
+    sel: { type: "custom", id: "a" } }) });
+  eq(b.beat.selectedPreset().name, "自定义A", "selectedPreset：custom id 命中");
+  b.beat.Store.S.sel = { type: "builtin", idx: 2 };
+  eq(b.beat.selectedPreset().name, b.beat.BUILTINS[2].name, "selectedPreset：builtin idx 命中");
+  b.beat.Store.S.sel = { type: "custom", id: "ghost" };
+  eq(b.beat.selectedPreset(), undefined, "selectedPreset：不存在的 id → undefined（不抛）");
+
+  /* defaultAccents()：原先在 basicPattern 与 Editor 各写一条阶梯 */
+  eq(JSON.stringify(b.beat.defaultAccents(4)), "[0]", "4/4 默认重拍分组 [0]");
+  eq(JSON.stringify(b.beat.defaultAccents(5)), "[0,2]", "5/4 默认档 2+3 → [0,2]");
+  eq(JSON.stringify(b.beat.defaultAccents(7)), "[0,3,5]", "7/4 默认档 3+2+2 → [0,3,5]");
+
+  const b2 = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, sig: 5, accentGrp: { "5": 1 } }) });
+  eq(JSON.stringify(b2.beat.defaultAccents(5)), "[0,3]", "5/4 切到 3+2 档 → [0,3]（accentGrp 被遵从）");
+  b2.beat.Editor.open();
+  eq(JSON.stringify(b2.beat.Editor.draft().accents), JSON.stringify(b2.beat.defaultAccents(5)),
+    "编辑器草稿的默认重拍分组与 defaultAccents 同源（抽取前的重复点）");
+}
+
+section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜底（审计 P1-3）");
+{
+  const app = loadApp();
+  const beat = app.beat;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+
+  ac.currentTime += 0.02; beat.Audio.scheduler();
+  /* 游标会**越过**窗口边界：while 的退出条件是「游标 ≥ now+窗口」，所以 nextNoteTime
+     天然落在 [now+win, now+win+一个音符时长] 区间内。断言按这个口径写，否则会误报。 */
+  const fg = beat.clock().nextNoteTime - ac.currentTime;
+  ok(fg >= beat.CONFIG.schedWindow - 1e-6 && fg <= beat.CONFIG.schedWindow + 0.7,
+    `前台窗口收在 ${beat.CONFIG.schedWindow}s 一档（实测游标超前 ${fg.toFixed(3)}s → 低延迟）`);
+
+  /* 切后台：窗口必须拉到 > 1000ms（浏览器对后台标签页 setInterval 的节流下限），
+     否则「每次唤醒只排 150ms 的音、然后静音 850ms」→ 必然断续 */
+  app.setHidden(true);
+  ac.currentTime += 0.02; beat.Audio.scheduler();
+  const bg = beat.clock().nextNoteTime - ac.currentTime;
+  ok(bg > 1.0, `后台窗口拉到 ${beat.CONFIG.schedWindowBg}s（实测游标超前 ${bg.toFixed(3)}s > 1s 节流下限）`);
+  ok(bg - fg > 0.3, `可见性切换确实改变了窗口（前台游标超前 ${fg.toFixed(3)}s → 后台 ${bg.toFixed(3)}s）`);
+
+  /* 模拟后台被严重节流（Chrome intensive throttling 可到 1 次/分钟唤醒）：30 秒没调度 */
+  const hitsBefore = ac.hits.length;
+  ac.currentTime += 30;
+
+  /* 回前台（visibilitychange）→ 立即补排，不必等下一个 25ms 周期 */
+  app.setHidden(false);
+  const after = beat.clock();
+  ok(ac.hits.length > hitsBefore, `回前台立即补排（新增 ${ac.hits.length - hitsBefore} 次排程）`);
+
+  /* 饥饿兜底：绝不允许把过去 30 秒的音符一次性排到"现在"——那听感是一坨同时爆响。
+     MAX_SCHED_STEPS 只拦得住死循环，拦不住这个。 */
+  const past = ac.hits.slice(hitsBefore).filter(h => h.t < ac.currentTime - 1e-6);
+  eq(past.length, 0, "没有任何音符被排到过去（否则 30 秒的音会瞬间叠响）");
+  ok(after.nextNoteTime >= ac.currentTime, "游标已重新锚定，不落后于当前时钟");
+  ok(after.nextNoteTime <= ac.currentTime + 1.2, "游标也没被推得过远（仍落在一个窗口内）");
+  ok(after.loopStart >= ac.currentTime && after.loopStart <= ac.currentTime + 0.2,
+    "时间轴原点已重新锚定到当前时刻附近（不再是几十秒前的旧时间轴 → 不会「有游标但窗口外」空档）");
+  eq(after.schedBar, 0, "小节游标归零（相位重新起算）");
+  const times = ac.hits.slice(hitsBefore).map(h => h.t);
+  ok(times.every((t, i) => i === 0 || t > times[i - 1]), "补排后的时刻严格递增（无重复/无倒退）");
+}
+
+section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计 P1-4）");
+{
+  const app = loadApp();
+  const beat = app.beat;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  driveFrames(ac, beat, 1);                       // 进入稳定播放态
+
+  /* 连跑约一个多小节（96BPM 4/4 四分基础一小节 2.5s），逐帧统计：
+     布局读取 / className 写入。两者都是"性能承诺"，不数就断言不了。 */
+  let frames = 0, reads = 0, idle = 0, incr = 0, full = 0, maxW = 0;
+  for (let i = 0; i < 140; i++){
+    ac.currentTime += 0.02;
+    beat.Audio.scheduler();
+    resetProbe();
+    beat.Viz.paintFrame();
+    frames++;
+    reads += PROBE.layoutReads;
+    if (PROBE.classWrites === 0){ idle++; continue; }
+    maxW = Math.max(maxW, PROBE.classWrites);
+    if (PROBE.classWrites <= 10) incr++; else full++;
+  }
+  eq(reads, 0, `连跑 ${frames} 帧、共 ${idle + incr + full} 次重绘，全程零 offset* 读取（不再帧中途强制重排）`);
+  ok(idle > incr + full, `多数帧无事可做（${idle}/${frames} 帧零写入——"音符未变"提前返回生效）`);
+  ok(incr >= 3, `增量重绘确实生效：${incr} 帧只改少数格子（≤10 次 className 写入，原实现每次换音符要 128 次）`);
+  ok(full <= 2, `只有换小节那 ${full} 帧走全量重扫（增量未退化成"每帧全量"）`);
+  ok(maxW <= 60, `单帧写入有上界（最大 ${maxW} 次）`);
+
+  /* 增量重绘最危险的失效方式是"漏改某格"→ 画面与声音脱节。
+     逐帧交叉检查渲染结果是否仍满足全量重绘会产出的那套不变量。 */
+  const rows = () => app.els["viz"].children.filter(c => /(^| )bar-row( |$)/.test(c.className));
+  const cellsOf = r => r.children.filter(c => /(^| )cell( |$)/.test(c.className));
+  const checkGrid = () => {
+    const rs = rows();
+    if (rs.length !== 4) return `行数 ${rs.length} ≠ 4`;
+    const cellRows = rs.map(cellsOf);
+    const act = [], nxt = [];
+    cellRows.forEach((cs, b) => cs.forEach((c, i) => {
+      if (/(^| )active( |$)/.test(c.className)) act.push([b, i]);
+      if (/(^| )next( |$)/.test(c.className)) nxt.push([b, i]);
+    }));
+    if (act.length !== 1) return `active 格数 ${act.length} ≠ 1`;
+    if (nxt.length !== 1) return `next 格数 ${nxt.length} ≠ 1`;
+    const curRow = rs.findIndex(r => r.classList.contains("current"));
+    if (curRow !== act[0][0]) return `current 行 ${curRow} ≠ active 所在行 ${act[0][0]}`;
+    const [ab, ai] = act[0];
+    for (let b = 0; b < 4; b++) for (let i = 0; i < cellRows[b].length; i++){
+      const cn = cellRows[b][i].className;
+      const want = (b < ab) ? "played" : (b > ab) ? "upcoming" : (i < ai) ? "played" : (i === ai) ? "active" : "upcoming";
+      if (!new RegExp("(^| )" + want + "( |$)").test(cn)) return `格[${b}][${i}] 应为 ${want}，实际「${cn}」`;
+    }
+    const [nb, ni] = nxt[0];
+    const expB = ni === 0 ? (nb + 3) % 4 : nb;         // next 只能是 active 的下一格，或下一行第一格
+    if (!(nb === ab && ni === ai + 1) && !(nb === (ab + 1) % 4 && ni === 0)) return `next 位置 [${nb}][${ni}] 不是 active 的后继`;
+    if (nb !== expB && ni !== 0) return `next 行不合法`;
+    return null;
+  };
+  let checked = 0; const problems = [];
+  for (let k = 0; k < 300; k++){
+    ac.currentTime += 0.02;
+    beat.Audio.scheduler();
+    beat.Viz.paintFrame();
+    if (k % 6) continue;
+    checked++;
+    const p = checkGrid();
+    if (p) problems.push(p);
+  }
+  ok(problems.length === 0, `增量重绘与全量重绘结果一致（抽查 ${checked} 帧，破例 ${problems.length} 例）`);
+  problems.slice(0, 5).forEach(p => console.log("      · " + p));
+}
+
+section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷阱（审计 P2-11）");
+{
+  const { beat, els, sandbox } = loadApp();
+
+  /* 开关：role=switch + aria-checked，且与视觉同源（同一个助手写） */
+  eq(els["muteToggle"].getAttribute("aria-checked"), "false", "静音拍开关初始 aria-checked=false");
+  els["muteToggle"].fire("click");
+  eq(els["muteToggle"].getAttribute("aria-checked"), "true", "点击后 aria-checked 跟随状态");
+  ok(/(^| )on( |$)/.test(els["muteToggle"].className), "视觉（className=on）与语义（aria-checked=true）同步");
+  els["bounceToggle"].fire("click");
+  eq(els["bounceToggle"].getAttribute("aria-checked"), "false", "弹跳球开关关闭 → aria-checked=false");
+  els["countInToggle"].fire("click");
+  eq(els["countInToggle"].getAttribute("aria-checked"), "true", "预备拍开关 → aria-checked=true");
+
+  /* 三选一 pill 组：aria-pressed 与 .active 同源 */
+  const pills = sel => els[sel].children;
+  eq(pills("sigRow")[2].getAttribute("aria-pressed"), "true", "4/4 初始 aria-pressed=true");
+  beat.Controls.setSig(6);
+  eq(pills("sigRow")[2].getAttribute("aria-pressed"), "false", "切到 6/8 后 4/4 的 aria-pressed 复位");
+  eq(pills("sigRow")[4].getAttribute("aria-pressed"), "true", "6/8 的 aria-pressed 置位");
+  ok(!/(^| )active( |$)/.test(pills("sigRow")[2].className) && /(^| )active( |$)/.test(pills("sigRow")[4].className),
+    "视觉高亮与 aria-pressed 一致（原先只改 classList）");
+  beat.Controls.setSwing(67);
+  eq(pills("swingRow")[1].getAttribute("aria-pressed"), "true", "Swing 档位 aria-pressed 同步");
+  beat.Controls.setTimbre("drum");
+  eq(pills("timbreRow")[2].getAttribute("aria-pressed"), "true", "音色档位 aria-pressed 同步");
+
+  /* 分级播报：粗粒度事件写 srAnnounce；高频读数 #statusText 绝不挂 aria-live。
+     注意这两条要**查 index.html 原文**——它们是纯标记属性，用 stub 断言等于在断言 stub 自己 */
+  ok(/id="srAnnounce"[^>]*aria-live="polite"/.test(html), "播报区在标记里挂了 aria-live=polite");
+  ok(/id="srAnnounce"[^>]*role="status"/.test(html), "播报区在标记里声明 role=status");
+  ok(!/id="statusText"[^>]*aria-live/.test(html), "高频状态栏没有 aria-live（否则读屏每换一个十六分音就刷屏）");
+  eq((html.match(/role="switch"/g) || []).length, 4, "标记里 4 个 .toggle-pill 都声明了 role=switch");
+  eq((html.match(/id="(mute|bounce|countIn|trainer)Toggle"[^>]*aria-checked=/g) || []).length, 4,
+    "4 个开关在标记里都带初始 aria-checked");
+  beat.Controls.start();
+  ok(/开始播放/.test(els["srAnnounce"].textContent), `开始播放被播报：「${els["srAnnounce"].textContent}」`);
+  beat.Controls.stop();
+  eq(els["srAnnounce"].textContent, "已停止", "停止被播报");
+
+  /* 播放键标签随状态变（原先静态写「播放/停止」） */
+  eq(els["playBtn"].getAttribute("aria-label"), "播放", "停机时 aria-label=播放");
+  beat.Controls.start();
+  eq(els["playBtn"].getAttribute("aria-label"), "停止", "播放中 aria-label=停止");
+  beat.Controls.stop();
+
+  /* 焦点陷阱：弹窗/编辑器打开时背景 inert（用重算而非置位，嵌套弹窗不会提前摘掉） */
+  const bg = () => sandbox.document.querySelectorAll(".main, .topbar");
+  ok(!bg().some(e => e.inert), "常态：背景可交互");
+  beat.Modal.uiAlert("测试");
+  ok(bg().every(e => e.inert), "弹窗打开 → 背景 inert（Tab 不再跑到背后）");
+  els["modalOk"].fire("click");
+  ok(!bg().some(e => e.inert), "弹窗关闭 → inert 摘除");
+  beat.Editor.open();
+  ok(bg().every(e => e.inert), "编辑器打开 → 背景 inert");
+  /* 嵌套：编辑器里再弹确认框，关掉弹窗后编辑器还开着 → 背景必须保持 inert（重算而非置位） */
+  beat.Modal.uiAlert("嵌套");
+  els["modalOk"].fire("click");
+  ok(bg().every(e => e.inert), "嵌套弹窗关闭后仍保持 inert（编辑器还开着）");
+  beat.Editor.tryClose();
+  ok(!bg().some(e => e.inert), "编辑器关闭 → inert 摘除");
+}
+
+section("T29 音频生命周期 + 跨 origin 迁移提示（审计 P2-13 / P2-14）");
+{
+  /* iOS 的两个关键状态：interrupted（通话/闹钟抢占音频会话，Safari 私有状态）
+     与 closed（上下文被彻底关闭）。原实现只认 suspended → 通话结束后可能永久无声。 */
+  const app = loadApp();
+  const beat = app.beat;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  ok(typeof ac.onstatechange === "function", "已安装 ctx.onstatechange（原先完全没监听）");
+
+  const r0 = ac.resumeCount;
+  ac.setState("interrupted");
+  eq(ac.resumeCount, r0 + 1, "interrupted → 自动 resume（否则通话结束后永久无声）");
+
+  /* closed → 重建上下文，否则旧时钟失效后表现为「在播放但一直不出声」 */
+  ac.setState("closed");
+  const ac2 = FakeAudioContext.last;
+  ok(ac2 !== ac, "closed → 已重建 AudioContext");
+  eq(ac2.state, "running", "新上下文为 running");
+  ok(beat.Store.S.playing, "重建后仍在播放（不是被迫停机）");
+  const c = beat.clock();
+  ok(c.nextNoteTime >= ac2.currentTime - 0.2 && c.nextNoteTime <= ac2.currentTime + 1.0 + 0.2,
+    "游标已按新时钟重新锚定（否则会领先新时钟几分钟 → 一直不出声）");
+  const err = driveFrames(ac2, beat, 2);
+  ok(!err, `重建后能继续正常排程与渲染（${err || "OK"}）`);
+
+  /* pagehide：页面离开必须停播（移动端否则「切走了还在响」） */
+  const app2 = loadApp();
+  app2.beat.Controls.start();
+  ok(app2.beat.Store.S.playing, "pagehide 前在播放");
+  app2.firePageHide();
+  ok(!app2.beat.Store.S.playing, "pagehide → 自动停播");
+
+  /* 跨 origin 提示：README 同时推荐「双击 index.html」与在线版，但两者 origin 不同、
+     localStorage 不共享，用户看不到任何提示。预设库为空时露一次。 */
+  const fresh = loadApp();
+  eq(fresh.els["migHint"].hidden, false, "预设库为空 → 提示跨地址不共享预设");
+  fresh.els["migHintBtn"].fire("click");
+  eq(fresh.els["migHint"].hidden, true, "确认后关闭");
+  ok(fresh.beat.Store.S.migHint, "确认状态记入内存");
+  fresh.beat.Store.flush();
+  eq(JSON.parse(fresh.storage.get("beatsight.state")).migHint, true, "确认状态已持久化（不再重复打扰）");
+  const withPresets = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, customs: [{ id: "x", name: "已有", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }) });
+  eq(withPresets.els["migHint"].hidden, true, "已有预设的用户不显示该提示");
 }
 
 /* ---------------- 汇总 ---------------- */

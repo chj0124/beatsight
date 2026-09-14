@@ -92,6 +92,24 @@ if (CASE in SIGS){
   out(!err, "脏拍号 " + CASE + " 渲染帧不抛异常", err || "OK");
   out(beat.Store.S.playing === true, "脏拍号 " + CASE + " 播放未中断", "playing=" + beat.Store.S.playing);
 
+} else if (CASE === "hunger_skip"){
+  /* v1.3.0（审计 P1-3）：后台被长时间节流后回前台，游标已落后几十秒。
+     这条路径最容易写成死循环：如果"追赶"逻辑用 while 逐拍补排，而不是直接重新锚定，
+     就会把过去几十秒的音符一个个排出来（甚至排不完）。用超时守它。 */
+  const { beat } = loadApp(seed({ v: 3, bpm: 120, sig: 4 }));
+  beat.Controls.start();
+  const ac = FAC.last;
+  driveFrames(ac, beat, 0.5);
+  const before = ac.hits.length;
+  ac.currentTime += 600;                     // 模拟被节流 10 分钟
+  beat.Audio.scheduler();                    // 若这里逐拍追赶 → 超时被强杀
+  const n = ac.hits.length - before;
+  out(n < 200, "饥饿兜底：单次调度排程量有界", "新增 " + n + " 条（不是逐拍追赶几百条）");
+  const c = beat.clock();
+  out(c.nextNoteTime >= ac.currentTime && c.loopStart >= ac.currentTime,
+      "饥饿兜底：时间轴重新锚定到当前时刻",
+      "游标-现在=" + (c.nextNoteTime - ac.currentTime).toFixed(3) + "s");
+
 } else if (CASE === "customs_empty_bar"){
   const bad = { id:"z", name:"坏预设-空小节", meter:4, bars:[[],[],[],[]] };
   const { beat, store } = loadApp(seed({ v:3, customs:[bad], sel:{type:"custom",id:"z"} }));
@@ -99,8 +117,8 @@ if (CASE in SIGS){
   const err = driveFrames(FAC.last, beat, 2);
   out(beat.Store.customs.length === 0, "空小节预设被结构校验淘汰", "customs=" + beat.Store.customs.length);
   out(!err, "空小节预设不崩渲染帧", err || "OK");
-  out(store.has("beatsight.m2.quarantine"), "淘汰项已隔离备份（可人工找回）",
-      store.has("beatsight.m2.quarantine") ? "beatsight.m2.quarantine" : "无备份");
+  out(store.has("beatsight.quarantine"), "淘汰项已隔离备份（可人工找回）",
+      store.has("beatsight.quarantine") ? "beatsight.quarantine" : "无备份");
 
 } else if (CASE in VOLS){
   const v = VOLS[CASE];

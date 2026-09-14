@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.2.4</title>
+<meta name="theme-color" content="#121212">
+<meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象时值翻译成一眼看懂的长度。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M9 3h10l4 22H5L9 3z' fill='%231ED760'/%3E%3Cline x1='13' y1='21' x2='18.5' y2='7' stroke='%230A0A0A' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='17' cy='10.5' r='2.1' fill='%230A0A0A'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BeatSight 时值节拍器</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -26,6 +31,7 @@ button:disabled{cursor:not-allowed}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
 .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(30,215,96,.6);animation:pulse 1s infinite}
+.dot.bad{background:var(--red);animation:none}   /* v1.3.0：本地保存失败（P1-5 可观测） */
 @keyframes pulse{50%{opacity:.4}}
 
 /* ---------- 主布局 ---------- */
@@ -243,6 +249,18 @@ input[type=range].vol{width:120px}
   .card-head{flex-direction:column;align-items:flex-start;gap:6px}
   .status{white-space:nowrap}
 }
+
+/* ---------- 无障碍（v1.3.0，审计 P2-11） ---------- */
+/* 读屏专用：视觉上不可见但可被读屏取到（不能省——把它 display:none 读屏就听不到了） */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* 动效降级：本应用是重动效设计，但前庭功能敏感用户会不适。
+   不做整体关闭——弹跳球的**位置**是功能性的「何时落拍」提示，去掉等于砍掉核心功能；
+   这里只关掉装饰性动画与尾迹光晕，形变（挤压/拉伸）由 JS 侧 REDUCE 置为无 */
+@media (prefers-reduced-motion: reduce){
+  .dot.live, .cell.next{animation:none}
+  .trail-glow{display:none}
+}
 </style>
 </head>
 <body>
@@ -251,9 +269,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.2.4</span>
+    <span class="ver" id="brandVer"></span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.2.4 · 稳定版</div>
+  <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
 </header>
 
 <div class="main">
@@ -279,13 +297,16 @@ input[type=range].vol{width:120px}
         <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
       </div>
+      <!-- 分级播报（v1.3.0，P2-11）：#statusText 每换一个十六分音就更新，给它加 aria-live 会刷屏；
+           所以另设一个粗粒度播报区，只在「开始 / 停止 / 训练完成 / 进入预备拍」四处写入 -->
+      <span id="srAnnounce" class="sr-only" role="status" aria-live="polite"></span>
       <div class="viz" id="viz"></div>
       <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
     <section class="card transport">
-      <button class="play-btn" id="playBtn" aria-label="播放/停止">
+      <button class="play-btn" id="playBtn" aria-label="播放">
         <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
       </button>
       <div class="group">
@@ -310,12 +331,12 @@ input[type=range].vol{width:120px}
       <div class="group">
         <div class="group-label">拍号 · 奇数拍可选重拍分组</div>
         <div class="bpm-row" id="sigRow">
-          <button class="pill" data-sig="2">2/4</button>
-          <button class="pill" data-sig="3">3/4</button>
-          <button class="pill active" data-sig="4">4/4</button>
-          <button class="pill" data-sig="5">5/4</button>
-          <button class="pill" data-sig="6">6/8</button>
-          <button class="pill" data-sig="7">7/4</button>
+          <button class="pill" data-sig="2" aria-pressed="false">2/4</button>
+          <button class="pill" data-sig="3" aria-pressed="false">3/4</button>
+          <button class="pill active" data-sig="4" aria-pressed="true">4/4</button>
+          <button class="pill" data-sig="5" aria-pressed="false">5/4</button>
+          <button class="pill" data-sig="6" aria-pressed="false">6/8</button>
+          <button class="pill" data-sig="7" aria-pressed="false">7/4</button>
         </div>
         <div id="accGroup" hidden><div class="bpm-row" id="accRow" style="margin-top:8px"></div></div>
       </div>
@@ -323,18 +344,18 @@ input[type=range].vol{width:120px}
       <div class="group">
         <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
         <div class="bpm-row" id="swingRow">
-          <button class="pill active" data-swing="50">直</button>
-          <button class="pill" data-swing="67">Swing</button>
-          <button class="pill" data-swing="75">重 Swing</button>
+          <button class="pill active" data-swing="50" aria-pressed="true">直</button>
+          <button class="pill" data-swing="67" aria-pressed="false">Swing</button>
+          <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
         </div>
       </div>
       <div class="vdivider"></div>
       <div class="group">
         <div class="group-label">音色 · 程序合成（零采样文件）</div>
         <div class="bpm-row" id="timbreRow">
-          <button class="pill active" data-timbre="click">电子</button>
-          <button class="pill" data-timbre="wood">木鱼</button>
-          <button class="pill" data-timbre="drum">鼓组</button>
+          <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
+          <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
+          <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
         </div>
       </div>
       <div class="vdivider"></div>
@@ -349,10 +370,10 @@ input[type=range].vol{width:120px}
     <div class="group">
       <div class="group-label">训练模式</div>
       <div class="config">
-        <button class="toggle-pill off" id="muteToggle">静音拍 · 每 4 小节<span class="switch"></span></button>
-        <button class="toggle-pill off" id="trainerToggle">变速训练 · 自动爬坡<span class="switch"></span></button>
-        <button class="toggle-pill off" id="countInToggle">预备拍<span class="switch"></span></button>
-        <button class="toggle-pill on" id="bounceToggle">弹跳球 · 预判提示<span class="switch"></span></button>
+        <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍 · 每 4 小节<span class="switch"></span></button>
+        <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
+        <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
+        <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
         <input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数" hidden>
       </div>
       <div class="tr-panel" id="trainerPanel" hidden>
@@ -372,6 +393,13 @@ input[type=range].vol{width:120px}
       <div class="card-head">
         <div class="card-title">节奏型预设库</div>
         <div class="chip" id="presetCount">8 内置</div>
+      </div>
+      <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
+           但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
+           而且收不到任何提示。预设库为空时提示一次，确认后不再出现 -->
+      <div class="fallback-note" id="migHint" hidden>
+        <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
+        <button class="pill outline" id="migHintBtn">知道了</button>
       </div>
       <div id="presetList"></div>
       <div class="preset-io">
@@ -440,8 +468,10 @@ input[type=range].vol{width:120px}
 <script>
 "use strict";
 /* ================================================================================
-   BeatSight v1.1.1 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍
-   结构沿革：v0.6 模块化 → v0.7 tick 制 → v0.9 vizSig 渲染拍号 → v1.0 依赖方向净化
+    BeatSight v1.3 · 单文件模块化结构 + tick 制节奏模型 + 程序合成音色 + 预备拍 + 弹跳球
+    结构沿革：v0.6 模块化 → v0.7 tick 制 → v0.9 vizSig 渲染拍号 → v1.0 依赖方向净化
+              → v1.2.4 持久值收口 + 渲染帧外壳/主体分离 → v1.3 持久化冷热分离 +
+                后台调度自适应窗口 + 渲染几何缓存与增量重绘 + 无障碍分级（详见 CHANGELOG）
    （共享状态区移到 Store 之后，draft/appliedPat/activePattern 上移，模块间无反向引用）
               → v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
@@ -467,7 +497,16 @@ input[type=range].vol{width:120px}
    ================================================================================ */
 
 /* ================= 数据 ================= */
+/* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
+   此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
+   出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
+const VERSION = "1.3.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
+/* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
+   靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
+   判据处一律用具名常量；纯样式里的 px 保持裸数字（勿机械替换） */
+const T16 = TPB / 4;                                   // 12t 十六分（刻度网格单位）
+const T8  = TPB / 2;                                   // 24t 八分（短音符/独立标签的判据阈值）
 const D = (t, rest) => ({t, rest: !!rest});            // t 单位：tick
 const rep4 = steps => [0,1,2,3].map(() => steps.map(s => ({...s})));
 const BUILTINS = [
@@ -522,7 +561,13 @@ const SWINGS = [50, 67, 75];
 const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
   attack:0.004, decay:0.09,                          // 包络：4ms 起音、90ms 衰减
-  schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、150ms 窗口
+  schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、前台窗口 150ms
+  /* 后台窗口（v1.3.0，审计 P1-3）：浏览器对后台标签页的 setInterval 节流下限是 1000ms，
+     150ms 的窗口在后台等于「每次唤醒只排 150ms 的音，然后静音 850ms」→ 必然断续。
+     取 1.2s：大于节流下限且留 20% 余量。行为代价见 DEVELOPMENT.md §3.2 */
+  schedWindowBg:1.2,
+  /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
+  persistDebounce:250,
   /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
      squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
   bounce:{ k:120, min:10, max:48, squash:0.07 },
@@ -544,14 +589,37 @@ const CONFIG = {
 
 /* ================= Store · 持久化 / 状态 / 导入导出 ================= */
 const Store = (() => {
+  /* ---- 冷热分离的持久化（v1.3.0，审计 P1-5）----
+     原实现把整个预设库塞进**一个** key，而 persist() 挂在几乎每个交互上
+     （调速、每个开关、TAP、拍号、音色、音量）。实测载荷：10 个自定义预设 14 KB /
+     100 个 143 KB / 500 个 **715 KB** —— 每次点击都要全量 JSON.stringify + 同步写盘，
+     主线程阻塞 5–20ms，而这正好会触发音频掉音（与 P1-3 同源）。
+     做法：按写入频率拆成两个 key——
+       hot  beatsight.state     bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce
+                                < 1 KB，每次交互写（250ms 尾部防抖合并突发）
+       cold beatsight.customs   customs 数组，只在增删改预设时写（立即写，不防抖——丢不起）
+     旧键 beatsight.m2 降级为**只读的迁移来源**：读到且新键缺失时拆分写入新键 + 备份 .bak。
+     读取优先级：新键存在即以其为准，否则回落旧键（保证老用户与既有测试的种子数据都能跑）。
+     可靠性（同 P1-5 第 2 条）：写失败不再被 `catch(e){}` 吞掉——通过 setPersistFailHandler
+     把失败上报给装配层（顶栏 chip 变红 + 一次性提示），否则用户「预设存不进去」完全不可见。
+     依赖方向：本模块不引用 Modal（后方模块），只暴露一个回调钩子，由初始化段注册。 */
+  const KEY_HOT = "beatsight.state", KEY_COLD = "beatsight.customs";
+  const KEY_LEGACY = "beatsight.m2", KEY_BAK = "beatsight.m2.bak", KEY_QUAR = "beatsight.quarantine";
+
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
-  function loadSaved(){ try{ return JSON.parse(localStorage.getItem("beatsight.m2") || "{}"); }catch(e){ return {}; } }
-  const rawSaved = localStorage.getItem("beatsight.m2");
-  const saved = loadSaved();
+  function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
+  const rawSaved = localStorage.getItem(KEY_LEGACY);
+  const legacy = readJSON(KEY_LEGACY) || {};
+  const hotIn = readJSON(KEY_HOT);
+  const coldIn = readJSON(KEY_COLD);
+  /* 新键存在（读得出对象）即以其为准；否则用旧键——首次升级与全新用户都走这条 */
+  const saved = hotIn && typeof hotIn === "object" ? Object.assign({}, legacy, hotIn) : legacy;
+  const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
+                     : (Array.isArray(legacy.customs) ? legacy.customs : []);
   /* v0.7.0 迁移：旧浮点拍数 d → tick（×48）。迁移前整包备份到 beatsight.m2.bak */
-  if (rawSaved && saved.v !== 3){
-    try{ localStorage.setItem("beatsight.m2.bak", rawSaved); }catch(e){}
-    (saved.customs || []).forEach(c => (c.bars || []).forEach(bar => bar.forEach(s => {
+  if (rawSaved && legacy.v !== 3){
+    try{ localStorage.setItem(KEY_BAK, rawSaved); }catch(e){}
+    savedCustoms.forEach(c => (c.bars || []).forEach(bar => bar.forEach(s => {
       if (typeof s.d === "number" && s.t === undefined){ s.t = Math.round(s.d * TPB); delete s.d; }
     })));
     saved.v = 3;
@@ -604,21 +672,22 @@ const Store = (() => {
     playing: false,
     preview: false,
     bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
+    migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
-  /* customs 走与导入完全相同的校验路径；非法项隔离到 .quarantine，不静默丢弃也不放行 */
+  /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
   const customs = [];
   const rejectedCustoms = [];
-  (Array.isArray(saved.customs) ? saved.customs : []).forEach((c, i) => {
+  savedCustoms.forEach((c, i) => {
     const v = validatePreset(c);
     if (v) customs.push(Object.assign({}, v,
       { id: (c && typeof c.id === "string" && c.id) ? c.id : ("c" + Date.now() + "-" + i) }));
     else rejectedCustoms.push(c);
   });
   if (rejectedCustoms.length){
-    try{ localStorage.setItem("beatsight.m2.quarantine", JSON.stringify(rejectedCustoms)); }catch(e){}
-    try{ console.warn("[BeatSight] " + rejectedCustoms.length + " 个预设未通过结构校验，已隔离到 beatsight.m2.quarantine"); }catch(e){}
+    try{ localStorage.setItem(KEY_QUAR, JSON.stringify(rejectedCustoms)); }catch(e){}
+    try{ console.warn("[BeatSight] " + rejectedCustoms.length + " 个预设未通过结构校验，已隔离到 " + KEY_QUAR); }catch(e){}
   }
   /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用 */
   if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
@@ -626,17 +695,58 @@ const Store = (() => {
     S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:0};
   }
 
-  /* v0.9.1 修复：写路径也要容错——隐私模式/配额超限时 setItem 会抛 QuotaExceededError，
-     裸奔会把调用它的每个交互（播放、调速、开关训练…）整个炸断。失败静默降级：状态在内存，只是不落盘 */
-  function persist(){
-    try{
-      localStorage.setItem("beatsight.m2", JSON.stringify({
-        v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
-        swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, customs, trainer:S.trainer,
-        bounce:S.bounce
-      }));
-    }catch(e){}
+  /* 一次性冷热拆分迁移（v1.3.0）：旧键存在而新键缺失 → 把整包按冷热拆开写入新键。
+     不做这一步的话，beatsight.m2 会一直是唯一真相源：每次启动都要重新解析整包
+     （500 预设 = 715 KB），冷热分离就白做了。写完旧键即降级为只读来源（不删除，
+     与 v0.7.0 保留 .bak 的既有习惯一致，用户出问题时可回退）。
+     直接用 setItem 而非 persistCold()/onPersistFail：这是加载期的迁移动作，
+     失败只该留个 warn，不该占用「保存失败」的一次性提示名额（那个留给用户真实交互）。 */
+  if (rawSaved && (!hotIn || !coldIn)){
+    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }catch(e){}
+    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); }catch(e){}
   }
+
+  /* ---- 写路径（v1.3.0 冷热分离）----
+     v0.9.1 起写失败就已被 try/catch 兜住（隐私模式/配额超限时裸奔会把调用它的每个交互整个炸断），
+     但那是**静默**降级：用户攒了几十个预设却存不进去，界面上没有任何迹象。
+     v1.3.0 补上"可观测"：失败回调交给装配层去变红 chip + 一次性提示。 */
+  let persistTimer = null;
+  let persistFailCb = null;
+  function setPersistFailHandler(fn){ persistFailCb = typeof fn === "function" ? fn : null; }
+  let persistFailNotified = false;
+  function onPersistFail(e){
+    try{ console.warn("[BeatSight] 本地保存失败（存储空间已满或处于隐私模式）：", e && e.message ? e.message : e); }catch(e1){}
+    if (persistFailNotified) return;      // 只提示一次，避免连环弹窗
+    persistFailNotified = true;
+    try{ if (persistFailCb) persistFailCb(); }catch(e2){}
+  }
+  function hotPayload(){
+    return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
+      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
+      migHint:S.migHint };
+  }
+  function persistHotNow(){
+    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
+    catch(e){ onPersistFail(e); }
+  }
+  /* 冷数据：预设库增删改时立即落盘，不做防抖（丢掉一个用户手写的节奏型代价太大） */
+  function persistCold(){
+    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); }
+    catch(e){ onPersistFail(e); }
+  }
+  /* 热数据：尾部防抖。高频交互（TAP 连点 / ±1 长按连发 / 滑杆）只落盘一次。
+     载荷已 <1 KB，防抖省下的是重复的**同步写盘**而不是序列化 */
+  function persist(){
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => { persistTimer = null; persistHotNow(); }, CONFIG.persistDebounce);
+  }
+  /* 立即落盘（防抖窗口内未落盘的改动不能在切走/关闭时丢失） */
+  function flush(){
+    if (persistTimer !== null){ clearTimeout(persistTimer); persistTimer = null; }
+    persistHotNow();
+  }
+  window.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+  window.addEventListener("pagehide", flush);
 
   /* ---- 预设导入导出 ----
      导出格式（v0.7.0 起 v:2，tick 制）：{app:"beatsight", kind:"presets", v:2, exportedAt,
@@ -714,17 +824,49 @@ const Store = (() => {
     /* v0.7.0 修复：同毫秒内连续两次导入时 c<base>-i<n> 会与上一批撞 id（tests T5 捕获），
        改用会话内单调递增序号兜底 */
     out.forEach(v => customs.push({ id: "c" + base + "-" + (idSeq++), ...v }));
+    persistCold();                       // 冷数据：预设库变了立即落盘
     persist();
     return {ok:true, count: out.length};
   }
 
-  return { S, customs, persist, serializePresets, exportPresets, importPresets };
+  return { S, customs, persist, persistCold, flush, setPersistFailHandler,
+    serializePresets, exportPresets, importPresets };
 })();
 const S = Store.S;
 const customs = Store.customs;
 
 /* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
 const $ = id => document.getElementById(id);
+
+/* ---- 共享 UI 同步助手（v1.3.0，审计 P2-11）----
+   放在共享区而不是某个模块里：Trainer 与 Controls 都要同步开关的视觉与语义，
+   若把助手放进 Controls，Trainer 调用它就多一处反向引用（R3 白名单要再长一条）。
+   共享区在所有人之前，谁都能用，不产生方向问题。 */
+/* 读屏播报：只用于「状态迁移」这类粗粒度事件。
+   高频读数（#statusText 每换一个十六分音就更新）绝不能挂 aria-live，否则读屏会刷屏 */
+const announce = msg => { const el = $("srAnnounce"); if (el) el.textContent = msg; };
+/* 开关三件套（className + aria-checked）收在一个函数里。
+   原先 4 个开关各写一遍 `className = "toggle-pill " + (on ? "on" : "off")`，
+   加 aria 后再各写一遍必然漂移——语义与视觉必须同源 */
+function setToggle(id, on){
+  const el = $(id);
+  if (!el) return;
+  el.className = "toggle-pill " + (on ? "on" : "off");
+  el.setAttribute("aria-checked", on ? "true" : "false");
+}
+/* 三选一 pill 组：classList 的 active 与 aria-pressed 同源更新 */
+function setPressed(sel, on){
+  document.querySelectorAll(sel + " .pill").forEach(p => {
+    p.classList.toggle("active", on(p));
+    p.setAttribute("aria-pressed", on(p) ? "true" : "false");
+  });
+}
+/* 动效降级（审计 P2-11）：本应用是重动效设计，但前庭功能敏感用户会不适。
+   不做整体关闭——弹跳球的**位置**是功能性的「何时落拍」提示，去掉等于砍掉核心功能；
+   这里只把形变（触地挤压 / 空中拉伸）置为无形变，装饰性动画交给 CSS 的
+   @media (prefers-reduced-motion) 处理。matchMedia 在测试沙箱里不存在，故做存在性判断 */
+const REDUCE_MOTION = (typeof matchMedia === "function") && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const spb = () => 60 / S.bpm;                          // 秒/拍
 const meterName = m => ({6:"6/8",5:"5/4",7:"7/4"})[m] || (m + "/4");
 const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
@@ -740,22 +882,29 @@ let onsetBuf = [], onsetNext = null;
 /* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
    loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
 let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
+/* 默认重拍分组（v1.3.0 抽取）：基本回退节奏与编辑器新建草稿共用同一条阶梯。
+   原先两处各写一遍（basicPattern 与 Editor），将来改分组规则必然漏一处 */
+const defaultAccents = meter => ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0];
 const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
-  accents: ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0],
+  accents: defaultAccents(meter),
   bars:rep4(Array.from({length:meter},()=>D(TPB)))});
+/* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
+   fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处。
+   注意：本函数不做拍号匹配——拍号不匹配统一由 curPattern 落到 basicPattern */
+const selectedPreset = () => S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
 const curPattern = () => {
   if (S.preview && draft) return draft;
-  if (S.sel.type === "custom"){
-    const c = customs.find(x => x.id === S.sel.id);
-    if (c && c.meter === S.sig) return c;
-  } else {
-    const p = BUILTINS[S.sel.idx];
-    if (p && p.meter === S.sig) return p;
-  }
+  const p = selectedPreset();
+  if (p && p.meter === S.sig) return p;
   return basicPattern(S.sig);
 };
 let draft = null;                    // 编辑器草稿（Editor 写入，curPattern 试听时读取）
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
+/* 渲染帧异常恢复钩子（v1.3.0）：由装配层（初始化段）注入。
+   为什么是钩子而不是直接写 Controls.stop()：paintFrame 是**每帧热路径**，而 Controls 声明在
+   Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
+   与 Store 的 setPersistFailHandler 用同一套模式：模块只暴露回调，跨模块装配交给装配层。 */
+let onFrameError = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
 const activePattern = () => (S.preview || !S.playing) ? curPattern() : (appliedPat || curPattern());
@@ -764,9 +913,18 @@ const activePattern = () => (S.preview || !S.playing) ? curPattern() : (appliedP
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
    导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
 const Modal = (() => {
-  let modalOpen = false, modalOkCb = null;
+  let modalOpen = false, modalOkCb = null, prevFocus = null;
+  /* 焦点陷阱（v1.3.0，审计 P2-11）：弹窗打开后 Tab 仍会跑到背景内容上（读屏与键盘用户
+     会「走丢」）。用 inert 把背景整体置为不可交互。
+     注意用**重算**而不是置位/复位：编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器
+     对应的 inert 一起摘掉。 */
+  function refreshInert(){
+    const off = modalOpen || ($("editor") && $("editor").classList.contains("open"));
+    document.querySelectorAll(".main, .topbar").forEach(el => { el.inert = !!off; });
+  }
   function uiModal(msg, opts){
     opts = opts || {};
+    if (!modalOpen){ prevFocus = document.activeElement; }     // 只记最外层那一次
     modalOpen = true; modalOkCb = opts.onOk || null;
     $("modalMsg").textContent = msg;
     const inp = $("modalInput");
@@ -776,6 +934,7 @@ const Modal = (() => {
     $("modalOk").className = "pill " + (opts.danger ? "danger" : "active");
     $("modalCancel").style.display = opts.hideCancel ? "none" : "";
     $("modalMask").hidden = false;
+    refreshInert();
     (opts.input ? inp : $("modalOk")).focus();
   }
   function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
@@ -787,6 +946,10 @@ const Modal = (() => {
     $("modalMask").hidden = true;
     const cb = modalOkCb; modalOkCb = null;
     if (ok && cb) cb($("modalInput").hidden ? undefined : $("modalInput").value);
+    refreshInert();
+    /* 焦点归位：键盘用户关掉弹窗后应该回到触发它的那个按钮上，而不是被丢到 body */
+    try{ if (prevFocus && prevFocus.focus) prevFocus.focus(); }catch(e){}
+    prevFocus = null;
   }
   $("modalOk").addEventListener("click", () => closeModal(true));
   $("modalCancel").addEventListener("click", () => closeModal(false));
@@ -797,7 +960,7 @@ const Modal = (() => {
     if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
     if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
   }, true);
-  return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen };
+  return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen, refreshInert };
 })();
 
 /* ================= Viz · 时值可视化 ================= */
@@ -813,6 +976,21 @@ const Viz = (() => {
   let glEls = [];                                            // 短音符合并标注（组标签）
   let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
   let lastBar = -1, lastStep = -1;
+  let lastPainted = null;                                      // v1.3.0：增量重绘的上一次状态
+  /* 行几何缓存（v1.3.0，审计 P1-4）：帧内一律读这里，绝不读 offset*。
+     为什么要缓存：原实现每帧先写 7 处 style（播放头 left / 尾迹 left+width …），紧接着
+     paintBall 里去读 row.offsetLeft/offsetWidth —— 浏览器被迫在帧中途做一次**同步重排**
+     （layout thrashing，rAF 里最典型的性能反模式），中低端机上直接表现为掉帧。
+     几何只在 buildViz 与 resize 后变化，两处填充即可（那两处之前没有待生效的样式写入，
+     读 offset 不会触发强制重排） */
+  let rowGeo = [];
+  function cacheGeo(){
+    rowGeo = rowEls.map((r, i) => ({
+      left: r.offsetLeft, top: r.offsetTop, width: r.offsetWidth,
+      height: (cellEls[i] && cellEls[i][0]) ? cellEls[i][0].offsetHeight : 44,
+    }));
+  }
+  const geoOf = i => rowGeo[i] || null;
   let ballEl = null, shadowEl = null, waitEl = null;           // 弹跳球（v1.2）：当前球/影子/接力待命球
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
@@ -877,19 +1055,19 @@ const Viz = (() => {
         fills.push(fill);
         /* 块内按十六分切成刻度线；三连音块（t 不整除 12t=十六分）不画——
            十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
-        if (s.t % 12 === 0){
+        if (s.t % T16 === 0){
           const subs = document.createElement("div");
           subs.className = "subs";
-          const nSub = s.t / 12;
+          const nSub = s.t / T16;
           for (let u = 0; u < nSub; u++){
             const sub = document.createElement("div");
             sub.className = "sub";
             subs.appendChild(sub);
-            subEls[b][startT / 12 + u] = sub;     // 以十六分位置为键，供经过动效查找
+            subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
           }
           c.appendChild(subs);
         }
-        if (s.t >= 24){                    // 时值标签移到格子下方，与小格零冲突
+        if (s.t >= T8){                    // 时值标签移到格子下方，与小格零冲突
           const lb = document.createElement("div");
           lb.className = "cell-label";
           lb.textContent = stepLabel(s);
@@ -905,7 +1083,7 @@ const Viz = (() => {
       let run = null, acc2 = 0;
       p.bars[b].forEach((s, i) => {
         const startT2 = acc2; acc2 += s.t;
-        const shorty = s.t < 24 && !s.rest;
+        const shorty = s.t < T8 && !s.rest;
         if (shorty && !run) run = {i0:i, i1:i+1, tick:startT2, nm:DUR_NAME[s.t] || (fmtBeat(s.t) + "拍")};
         else if (shorty && run) run.i1 = i + 1;
         else if (run){ groups.push(run); run = null; }
@@ -944,6 +1122,7 @@ const Viz = (() => {
     ballEl = document.createElement("div"); ballEl.className = "bounce-ball";
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
+    cacheGeo();                      // v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）
     parkBall();
     $("vizTitle").textContent = `时值可视化 · ${meterName(S.sig)} · 同屏 4 小节`;
     resetTracking();
@@ -965,11 +1144,18 @@ const Viz = (() => {
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (!S.playing) buildViz(); }, 200);
+    resizeTimer = setTimeout(() => {
+      /* v1.3.0：播放中不重建 DOM（会打断动画），但几何确实变了 → 重采缓存即可，
+         否则弹跳球/光晕会继续按旧尺寸画，表现为"球跑偏到行外" */
+      if (S.playing) cacheGeo();
+      else buildViz();
+    }, 200);
   });
 
-  /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用 */
-  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; }
+  /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
+     lastPainted 一并清空——网格可能整片重建（格子数、拍号都会变），
+     此时增量重绘的前提（同一套 cellEls、同一个小节）已经不成立，必须走全量 */
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; }
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
@@ -1008,8 +1194,9 @@ const Viz = (() => {
 
   /* 弹跳球（v1.2）：停止/待命姿态——停在第一小节第一个落点上方 */
   function parkBall(){
-    if (!ballEl || !rowEls[0]) return;
-    const x = rowEls[0].offsetLeft - 8, y = rowEls[0].offsetTop - 20;
+    const g0 = geoOf(0);
+    if (!ballEl || !g0) return;
+    const x = g0.left - 8, y = g0.top - 20;
     ballEl.style.transform = `translate(${x}px, ${y}px)`;
     shadowEl.style.transform = `translate(${x - 1}px, ${y + 15}px)`;
     shadowEl.style.opacity = ".3";
@@ -1033,14 +1220,15 @@ const Viz = (() => {
     const CB = CONFIG.bounce;
     const barTicksV = vizSig * TPB;
     const barEnd = now - tib * spb() / TPB + barTicksV * spb() / TPB;   // 本小节右界的音频时刻（跨循环回卷也成立）
+    /* v1.3.0：posOf / rightEdge 改读几何缓存（原先每帧 2 次 offset* 读取 → 帧中途强制同步重排） */
     const posOf = (barIdx, cumT) => {
-      const row = rowEls[barIdx] || rowEls[0];
-      if (!row) return { x: 0, y: 0 };
-      return { x: row.offsetLeft + (cumT / barTicksV) * row.offsetWidth - 8, y: row.offsetTop - 20 };
+      const g = geoOf(barIdx) || geoOf(0);
+      if (!g) return { x: 0, y: 0 };
+      return { x: g.left + (cumT / barTicksV) * g.width - 8, y: g.top - 20 };
     };
     const rightEdge = () => {
-      const row = rowEls[bar];
-      return row ? { x: row.offsetLeft + row.offsetWidth - 10, y: row.offsetTop - 20 } : { x: 0, y: 0 };
+      const g = geoOf(bar);
+      return g ? { x: g.left + g.width - 10, y: g.top - 20 } : { x: 0, y: 0 };
     };
     /* 本小节的球：上一颗本行 onset → 下一颗（本行 onset 或行右缘终点）。
        小节前导休止时本行尚无已落地 onset：球停在首个 onset 处待命 */
@@ -1079,6 +1267,9 @@ const Viz = (() => {
       sy = 1 + 0.2 * vN; sx = 1 - 0.12 * vN;
       if (dtR < CB.squash){ const g2 = 1 - dtR / CB.squash; sy *= 1 - 0.1 * g2; sx *= 1 + 0.08 * g2; }
     }
+    /* 动效降级（v1.3.0，审计 P2-11）：把挤压/拉伸置为无形变。
+       只降形变、保留位置——球在哪儿、什么时候落地是本应用的核心功能提示，不能去掉 */
+    if (REDUCE_MOTION){ sx = 1; sy = 1; }
     ballEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
     /* 地面投影：球越高影子越小越淡（人眼靠影子判断弹跳高度，没有影子的球像浮着的圆点） */
     const hN = Math.min(1, (yBase - y) / CB.max);
@@ -1131,8 +1322,8 @@ const Viz = (() => {
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
-      trailGlowEl.style.top = row.offsetTop + "px";
-      trailGlowEl.style.height = rowCells[0].offsetHeight + "px";
+      const g = geoOf(bar);
+      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px"; }
     }
     const steps = activePattern().bars[bar] || [];
     /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
@@ -1152,10 +1343,10 @@ const Viz = (() => {
     // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
-    fillEls[bar][active].style.width = t < 24 ? "100%" : Math.min(1, (tib - cum[active]) / t) * 100 + "%";
+    fillEls[bar][active].style.width = t < T8 ? "100%" : Math.min(1, (tib - cum[active]) / t) * 100 + "%";
     paintBall(ctx.currentTime, bar, tib);           // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
-    const t16 = Math.floor((tib + 1e-6) / 12);
+    const t16 = Math.floor((tib + 1e-6) / T16);
     if (bar !== lastBar || t16 !== lastT16){
       let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
       if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
@@ -1184,34 +1375,68 @@ const Viz = (() => {
       $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
     }
     lastT16 = t16;
-    if (bar === lastBar && active === lastStep) return;   // 音符未变：本帧只需上面的逐帧动画，跳过全量重绘
+    if (bar === lastBar && active === lastStep) return;   // 音符未变：本帧只需上面的逐帧动画，跳过重绘
+    const prev = lastPainted;
     lastBar = bar; lastStep = active;
-    rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
     // 下一颗音符预告（跨小节时指向下一行第一颗）
     let nb = bar, ni = active + 1;
     if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
-    /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义预设下等于每次重绘 64 次线性查找），
+    /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义模式下等于每次重绘 64 次线性查找），
        并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
     const cellsPat = activePattern();
-    for (let b = 0; b < LOOP_BARS; b++){
-      const bSteps = cellsPat.bars[b] || [];
-      for (let i = 0; i < cellEls[b].length; i++){
-        const el = cellEls[b][i];
-        let cls = "cell ";
-        if (b < bar) cls += "played";
-        else if (b > bar) cls += "upcoming";
-        else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
-        if (bSteps[i] && bSteps[i].rest) cls += " rest";
-        if (b === nb && i === ni) cls += " next";
-        el.className = cls;
-        fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
-        const lb = labelEls[b][i];
-        if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
+    /* 增量重绘（v1.3.0，审计 P1-4）：
+       原实现每次换音符都把 4 小节全部格子重写一遍——Funk 十六分单小节 16 格，
+       4 小节全扫 = 128 次 style/class 写入；240BPM 下每秒换 16 次音符 ≈ 2000 次 DOM 写入/秒。
+       桌面无感，但中低端手机叠加弹跳球动画就掉帧。
+       现在只改真正变化的那几格（换音符 ≈ 6 次写入）；换小节时整行状态都变了，仍走全量。
+       两条路径共用同一个 setCell()，所以「增量结果 == 全量结果」是结构性保证，不是巧合。
+       触发全量的条件：首帧 / 换小节 / active 前进超过 1 格（掉帧或节流导致跨格）/ 回退 */
+    const stepGap = prev ? active - prev.active : Infinity;
+    const full = !prev || prev.bar !== bar || stepGap < 1 || stepGap > 1 || cellEls[bar].length !== (prev ? prev.len : -1);
+    if (full){
+      rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
+      for (let b = 0; b < LOOP_BARS; b++){
+        const bSteps = cellsPat.bars[b] || [];
+        for (let i = 0; i < cellEls[b].length; i++) setCell(b, i, bar, active, nb, ni, bSteps);
+        setGroup(b, bar, active);
       }
-      glEls[b].forEach(g => {
-        g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
-      });
+    } else {
+      /* 同小节内前进一格。变化的格子是：旧 active（→played）、新 active（→active）、
+         新 active 的下一格（→ 新增 .next）；旧 active 的 .next 正好落在新 active 上，已被覆盖 */
+      const bSteps = cellsPat.bars[bar] || [];
+      setCell(bar, prev.active, bar, active, nb, ni, bSteps);
+      setCell(bar, active, bar, active, nb, ni, bSteps);
+      if (prev.nb !== nb || prev.ni !== ni){
+        setCell(prev.nb, prev.ni, bar, active, nb, ni, cellsPat.bars[prev.nb] || []);
+        setCell(nb, ni, bar, active, nb, ni, cellsPat.bars[nb] || []);
+      }
+      setGroup(bar, bar, active);
     }
+    lastPainted = { bar, active, nb, ni, len: cellEls[bar].length };
+  }
+
+  /* 单格重绘（v1.3.0）：全量与增量共用，保证两条路径产出的 DOM 完全一致 */
+  function setCell(b, i, bar, active, nextB, nextI, bSteps){
+    const el = cellEls[b] && cellEls[b][i];
+    if (!el) return;
+    let cls = "cell ";
+    if (b < bar) cls += "played";
+    else if (b > bar) cls += "upcoming";
+    else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
+    const st = bSteps[i];
+    if (st && st.rest) cls += " rest";
+    if (b === nextB && i === nextI) cls += " next";
+    el.className = cls;
+    const f = fillEls[b] && fillEls[b][i];
+    if (f) f.style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+    const lb = labelEls[b][i];
+    if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
+  }
+  /* 组标签（短音符合并标注）高亮——只与当前小节、当前 active 有关 */
+  function setGroup(b, bar, active){
+    glEls[b].forEach(g => {
+      g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
+    });
   }
 
   /* 渲染帧外壳（v1.2.4）：只做三件事——检查播放态、兜住主体异常、续上下一帧。
@@ -1226,10 +1451,8 @@ const Viz = (() => {
       paintFrameBody();
     }catch(e){
       try{ console.error("[BeatSight] 渲染帧异常，已停止播放", e); }catch(e1){}
-      try{ Controls.stop(); }catch(e2){}
-      try{
-        Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
-      }catch(e3){}
+      /* 恢复动作（停播 + 弹窗）经钩子交给装配层：热路径本身不引用后方模块 */
+      try{ if (onFrameError) onFrameError(e); }catch(e2){}
       return;
     }
     rafId = requestAnimationFrame(paintFrame);
@@ -1240,18 +1463,57 @@ const Viz = (() => {
 
 /* ================= Audio · Web Audio 前瞻调度 ================= */
 const Audio = (() => {
+  /* 前瞻窗口按可见性自适应（v1.3.0，审计 P1-3）。
+     为什么要自适应：调度时钟跑在主线程 setInterval(25ms) 上，而浏览器对**后台标签页**的
+     定时器节流下限是 1000ms（Chrome 在页面隐藏 5 分钟后还有 intensive throttling，约 1 次/分钟）。
+     固定 150ms 窗口在后台就是「每次唤醒排 150ms 的音，然后静音 850ms」——后台播放必然断续，
+     这也是路线图 M8「后台持续发声」一直落不了地的技术阻塞点。
+     行为变化（已同步到 DEVELOPMENT.md §3.2）：后台下已排入的音符无法撤销，
+     故「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复 150ms，无延迟。 */
+  const schedWindow = () => (document.hidden === true ? CONFIG.schedWindowBg : CONFIG.schedWindow);
+  /* 音频生命周期（v1.3.0，审计 P2-13）：原实现只认 "suspended"，漏了 iOS 的两个关键状态：
+     · "interrupted" —— 通话/闹钟/其他 App 抢占音频会话后 Safari 的私有状态，恢复路径与
+       suspended 不同。不认它 → 通话结束后可能**永久无声**且界面毫无异常。
+     · "closed" —— 上下文被彻底关闭，必须重建；不重建则后续 resume() 全是空操作。
+     外加 pagehide：页面离开时未停播，移动端会出现「切走了还在响」。 */
+  function watchCtx(){
+    if (!ctx) return;
+    ctx.onstatechange = () => {
+      if (!ctx) return;
+      if (ctx.state === "interrupted" && S.playing) ctx.resume();
+      if (ctx.state === "closed" && S.playing){
+        /* 旧时钟已随上下文一起失效：不重新锚定相位的话，nextNoteTime 还停在旧时间轴上
+           （可能领先新时钟几分钟），表现为"在播放但一直不出声"。这里按新时钟重新起一节 */
+        ctx = null; masterGain = null;
+        ensureCtx();
+        loopStart = ctx.currentTime + 0.08;
+        nextNoteTime = loopStart;
+        schedBar = 0; schedStep = 0;
+        onsetBuf.length = 0; onsetNext = null;
+        Viz.resetTracking();                 // Viz 在 Audio 之前声明：向前引用，方向安全
+        watchCtx();
+      }
+    };
+  }
   function ensureCtx(){
     if (!ctx){
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
+      watchCtx();
     }
-    if (ctx.state === "suspended") ctx.resume();
+    if (ctx.state === "suspended" || ctx.state === "interrupted") ctx.resume();
   }
   /* v0.9.1：iOS Safari 切后台会挂起 AudioContext，回前台且正在播放时兜底恢复
-     （首次 pointerdown 的 once 解锁覆盖不到这个场景） */
+     （首次 pointerdown 的 once 解锁覆盖不到这个场景）
+     v1.3.0（审计 P1-3）：回前台补排一次。后台窗口被拉长到 1.2s，且唤醒可能被压到 1 次/分钟，
+     游标有可能已经落在当前时钟之前；立即补排一次，不必等下一个 25ms 周期。
+     注意顺序：此刻 document.hidden 已为 false，故本次补排用前台窗口（先补排、再收窄）——
+     若反过来先收窄，就可能出现「窗口已收窄但队列是空的」那一小段空隙 */
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && S.playing && ctx && ctx.state === "suspended") ctx.resume();
+    if (document.hidden) return;
+    if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) ctx.resume();
+    if (S.playing) scheduler();
   });
   /* 噪声 buffer：程序生成的 0.5s 白噪声，wood/drum 音色共用（零采样文件硬约束） */
   let noiseBuf = null;
@@ -1330,8 +1592,8 @@ const Audio = (() => {
      (swing-50)/50×24t；时间轴本身不动。6/8 自带摇摆属性，不套用。
      v1.2 抽成共享纯函数：排程与弹跳球的落点预测必须同源，否则球会教用户抢拍 */
   function swingShift(pat, note, cumT){
-    return (S.swing > 50 && pat.meter !== 6 && note.t === TPB / 2 && cumT % TPB === TPB / 2)
-      ? (S.swing - 50) / 50 * (TPB / 2) * spb() / TPB : 0;
+    return (S.swing > 50 && pat.meter !== 6 && note.t === T8 && cumT % TPB === T8)
+      ? (S.swing - 50) / 50 * T8 * spb() / TPB : 0;
   }
   /* 弹跳球：预测调度游标处的下一发声点。不变量 nextNoteTime == 本小节 tick 0 时刻 + 累计 tick
      → barStart 可反推；逐小节向前找第一个非休止音符，时刻 = barStart + tick 偏移 + swingShift。
@@ -1357,18 +1619,37 @@ const Audio = (() => {
     }
     return null;
   }
-  /* setInterval(25ms) 轮询：把未来 150ms 窗口内的音符注册到 audio clock；
+  /* setInterval(25ms) 轮询：把未来一个窗口内的音符注册到 audio clock；
+     窗口按可见性自适应（前台 150ms / 后台 1.2s，见 schedWindow）；
      位置换算：posTicks = (ctx.currentTime - loopStart) / spb × TPB */
   function scheduler(){
+    /* 本轮窗口只取一次：避免调度途中 visible/hidden 翻转导致同一次调用里两个分支用不同窗口 */
+    const win = schedWindow();
     /* 预备拍（v0.9.0）：loopStart 之前的时段调度 ciLeft 声计数（首声重拍、其余正拍）。
        独立路径：不走 swing、不受静音拍影响；正式音符的调度从 loopStart 才开始 */
-    while (ciLeft > 0 && ciNext < ctx.currentTime + CONFIG.schedWindow){
+    while (ciLeft > 0 && ciNext < ctx.currentTime + win){
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
     }
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
+    /* 调度饥饿兜底（v1.3.0，审计 P1-3）：后台被长时间节流（Chrome intensive throttling
+       约 1 次/分钟唤醒）时，游标可能落后实时时钟几十秒。若不处理，下面的 while 会把过去
+       几十秒的音符**一次性全部排到"现在"**——听感是一坨同时爆响（MAX_SCHED_STEPS 只拦得住
+       死循环，拦不住这个）。
+       为什么是"重新锚定"而不是"按整循环/整小节前移"：前移的粒度至少是一小节（慢速 7/4 可达
+       16s、一个循环 56s），前移后游标很容易落到前瞻窗口之外，于是又要多等一整格的静音；
+       而此时相位早已没有意义（已经静音几十秒，用户也不在看画面）。直接以当前时刻起新的一轮
+       最干净：不补发过去的音符（不叠响），也不额外静音。
+       触发条件「落后超过一个窗口」保证正常情况下（后台窗口 1.2s > 1s 节流）永不触发。 */
+    if (ciLeft === 0 && win > 0 && nextNoteTime < ctx.currentTime - win){
+      nextNoteTime = ctx.currentTime + 0.05;
+      loopStart = nextNoteTime;                        // 时间轴与游标对齐 = 从循环起点重新开始
+      schedBar = 0; schedStep = 0;
+      onsetBuf.length = 0; onsetNext = null;           // 旧端点全部过期，弹跳球按新游标重建
+      Viz.resetTracking();
+    }
     /* v1.2.4 防死循环（硬上限）：任何情况下单轮调度最多处理 MAX_SCHED_STEPS 个音符即退出。
        原实现没有这层保护，而下面「空小节安全跳过」分支用的是 `pat.meter * spb()`：
        拍号一旦是脏值（如 {"sig":-3}）该步长为 **负数**，nextNoteTime 只减不增，
@@ -1377,7 +1658,7 @@ const Audio = (() => {
        正常负载远低于此上限（240BPM 三十二分在 1.2s 后台窗口内约 38 个音符） */
     const MAX_SCHED_STEPS = 512;
     let guard = 0;
-    while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
+    while (nextNoteTime < ctx.currentTime + win){
       if (++guard > MAX_SCHED_STEPS){
         try{ console.warn("[BeatSight] 调度器单轮迭代超限，已强制退出（疑似脏数据）"); }catch(e){}
         break;
@@ -1489,6 +1770,7 @@ const Trainer = (() => {
     if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
       Controls.stop();
       $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
+      announce(`训练完成，已达到 ${t.target} BPM`);
       updateProg();
       return true;
     }
@@ -1500,7 +1782,7 @@ const Trainer = (() => {
   $("trainerToggle").addEventListener("click", e => {
     e.currentTarget.blur();
     S.trainer.on = !S.trainer.on;
-    $("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
+    setToggle("trainerToggle", S.trainer.on);
     $("trainerPanel").hidden = !S.trainer.on;
     if (S.trainer.on){ reset(); Controls.setBpm(S.trainer.start, false); }   // 开启即定位到起始速度
     updateProg();
@@ -1594,9 +1876,12 @@ const Controls = (() => {
     nextNoteTime = loopStart;
     timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
+    $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
     $("statusDot").classList.add("live");
     Viz.resetTracking();
     rafId = requestAnimationFrame(Viz.paintFrame);
+    announce(S.countIn.on && S.countIn.beats > 0
+      ? `开始播放，${S.countIn.beats} 拍预备` : "开始播放");
     Store.persist();
   }
   function stop(){
@@ -1605,8 +1890,10 @@ const Controls = (() => {
     clearInterval(timer);
     cancelAnimationFrame(rafId);
     $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
+    $("playBtn").setAttribute("aria-label", "播放");
     $("statusDot").classList.remove("live");
     $("statusText").textContent = "已停止";
+    announce("已停止");
     Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
     Viz.resetForStop();
     Trainer.updateProg();
@@ -1693,10 +1980,10 @@ const Controls = (() => {
     btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
   });
 
-  /* 拍号切换统一入口：状态 + pill 高亮一处维护 */
+  /* 拍号切换统一入口：状态 + pill 高亮 + aria-pressed 一处维护 */
   function setSig(n){
     S.sig = n;
-    document.querySelectorAll("#sigRow .pill").forEach(p => p.classList.toggle("active", +p.dataset.sig === n));
+    setPressed("#sigRow", p => +p.dataset.sig === n);
     refreshAccRow();
   }
   $("sigRow").addEventListener("click", e => {
@@ -1712,7 +1999,7 @@ const Controls = (() => {
      否则块宽随 swing 扭动会破坏「时值=长度」的核心认知翻译 */
   function setSwing(v, save){
     S.swing = v;
-    document.querySelectorAll("#swingRow .pill").forEach(p => p.classList.toggle("active", +p.dataset.swing === v));
+    setPressed("#swingRow", p => +p.dataset.swing === v);
     if (save !== false) Store.persist();
   }
   $("swingRow").addEventListener("click", e => {
@@ -1733,7 +2020,10 @@ const Controls = (() => {
     row.innerHTML = "";
     ACC_LABELS[S.sig].forEach((lb, i) => {
       const b = document.createElement("button");
-      b.className = "pill" + ((S.accentGrp[S.sig] || 0) === i ? " active" : "");
+      const on = (S.accentGrp[S.sig] || 0) === i;
+      b.className = "pill" + (on ? " active" : "");
+      b.setAttribute("aria-pressed", on ? "true" : "false");   // v1.3.0：与 .active 同源
+      b.setAttribute("aria-label", `重拍分组 ${lb}`);
       b.textContent = lb;
       b.addEventListener("click", ev => {
         ev.currentTarget.blur();
@@ -1748,7 +2038,7 @@ const Controls = (() => {
   /* 音色（v0.8.0）：整体三选一，变更即时生效（下一发音符即新音色，不打断播放） */
   function setTimbre(v, save){
     S.timbre = v;
-    document.querySelectorAll("#timbreRow .pill").forEach(p => p.classList.toggle("active", p.dataset.timbre === v));
+    setPressed("#timbreRow", p => p.dataset.timbre === v);
     if (save !== false) Store.persist();
   }
   $("timbreRow").addEventListener("click", e => {
@@ -1766,7 +2056,7 @@ const Controls = (() => {
   $("muteToggle").addEventListener("click", e => {
     e.currentTarget.blur();
     S.mute = !S.mute;
-    $("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
+    setToggle("muteToggle", S.mute);
     Viz.syncMuteBars();
     Store.persist();
   });
@@ -1775,7 +2065,7 @@ const Controls = (() => {
   $("bounceToggle").addEventListener("click", e => {
     e.currentTarget.blur();
     S.bounce = !S.bounce;
-    $("bounceToggle").className = "toggle-pill " + (S.bounce ? "on" : "off");
+    setToggle("bounceToggle", S.bounce);
     Store.persist();
   });
 
@@ -1783,7 +2073,7 @@ const Controls = (() => {
   $("countInToggle").addEventListener("click", e => {
     e.currentTarget.blur();
     S.countIn.on = !S.countIn.on;
-    $("countInToggle").className = "toggle-pill " + (S.countIn.on ? "on" : "off");
+    setToggle("countInToggle", S.countIn.on);
     $("countInBeats").hidden = !S.countIn.on;
     Store.persist();
   });
@@ -1850,6 +2140,7 @@ const Presets = (() => {
             customs.splice(i, 1);
             if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
             refreshAfterPatternChange();
+            Store.persistCold();             // v1.3.0：预设库变更 → 冷键立即落盘
             Store.persist();
           }, {danger:true, okText:"删除"});
         });
@@ -1869,7 +2160,7 @@ const Presets = (() => {
   /* 拍号回退提示：选中节奏型与当前拍号不匹配时，告知用户并提供一键切回 */
   function updateFallbackNote(){
     const note = $("fallbackNote");
-    const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
+    const selP = selectedPreset();
     const isFallback = !S.preview && selP && selP.meter !== S.sig;
     if (isFallback){
       const mL = meterName(selP.meter);
@@ -1880,7 +2171,7 @@ const Presets = (() => {
   }
   $("fallbackBtn").addEventListener("click", e => {
     e.currentTarget.blur();
-    const selP = S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
+    const selP = selectedPreset();
     if (!selP) return;
     Controls.setSig(selP.meter);
     refreshAfterPatternChange();
@@ -1958,7 +2249,21 @@ const Presets = (() => {
     r.readAsText(f);
   });
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending };
+  /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）：只在「预设库为空 + 从未确认过」时露一次。
+     迁移逻辑本身不需要这里做——导入导出已经够了，缺的只是"告诉用户有这么个坑" */
+  function maybeShowMigHint(){
+    const el = $("migHint");
+    if (!el || S.migHint || customs.length) return;
+    el.hidden = false;
+  }
+  $("migHintBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.migHint = true;
+    $("migHint").hidden = true;
+    Store.persist();
+  });
+
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, maybeShowMigHint };
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -1972,7 +2277,7 @@ const Editor = (() => {
     if (S.playing) Controls.stop();
     const src = curPattern();
     draft = { name: src.name + "-副本", meter: src.meter,
-      accents: (src.accents || (ACC_GROUPS[src.meter] ? ACC_GROUPS[src.meter][S.accentGrp[src.meter] || 0] : [0])).slice(),
+      accents: (src.accents || defaultAccents(src.meter)).slice(),
       bars: src.bars.map(bar => bar.map(s => ({...s}))) };
     edSel = null; editBar = 0;
     undoStack = []; dirty = false;
@@ -1981,6 +2286,7 @@ const Editor = (() => {
     $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + meterName(draft.meter) + " 拍";
     render();
     $("editor").classList.add("open");
+    Modal.refreshInert();                 // v1.3.0：编辑器打开 → 背景 inert（焦点不再跑到背后）
   }
   function stopAudition(){
     Controls.stop();
@@ -1996,6 +2302,7 @@ const Editor = (() => {
     Viz.buildViz();                       // 试听可能改过视图，恢复
     $("auditionBtn").textContent = "试听";
     $("editor").classList.remove("open");
+    Modal.refreshInert();                 // v1.3.0：编辑器关闭 → 摘掉背景 inert
   }
   function tryClose(){
     if (!dirty){ close(); return; }
@@ -2025,7 +2332,7 @@ const Editor = (() => {
         c.style.left = (acc / (draft.meter * TPB) * 100) + "%";
         c.style.width = `calc(${s.t / (draft.meter * TPB) * 100}% - 4px)`;
         acc += s.t;
-        if (s.t >= 24){
+        if (s.t >= T8){
           const sp = document.createElement("span");
           sp.textContent = Viz.stepLabel(s);
           c.appendChild(sp);
@@ -2125,6 +2432,7 @@ const Editor = (() => {
     dirty = false;
     if (S.preview) stopAudition();
     Controls.setSig(draft.meter);
+    Store.persistCold();                 // v1.3.0：新增预设 → 冷键立即落盘
     Store.persist();
     close();
     Presets.refreshAfterPatternChange();
@@ -2136,13 +2444,49 @@ const Editor = (() => {
 })();
 
 /* ================= 初始化（装配） ================= */
+/* 版本号：三处显示全部由 VERSION 派生（唯一真相源，见「数据」区的说明） */
+document.title = `BeatSight 时值节拍器 v${VERSION}`;
+$("brandVer").textContent = "v" + VERSION;
+$("brandChip").textContent = "v" + VERSION + " · 稳定版";
+/* 保存失败可见化（v1.3.0，审计 P1-5）：顶栏状态点变红 + 文案改「保存失败」+ 一次性提示。
+   原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉 */
+Store.setPersistFailHandler(() => {
+  try{
+    $("persistDot").classList.add("bad");
+    $("brandChip").textContent = "v" + VERSION + " · 保存失败";
+  }catch(e){}
+  try{
+    Modal.uiAlert("本地保存失败（可能是浏览器存储空间已满，或处于隐私模式）。\n"
+      + "当前改动仅在本次会话有效，请用「导出预设」备份你的自定义节奏型。");
+  }catch(e){}
+});
+/* 渲染帧异常恢复（v1.3.0）：注入给 Viz.paintFrame 的钩子。
+   异常时停播（顺带取消 rAF/interval）+ 弹窗告知，用户至少知道出了什么事、以及如何自救；
+   否则症状会是「画面卡住、声音还在响、控制台一片安静」，无从下手。
+   两个动作**各自包 try**（v1.2.4 就定下的约定，抽成钩子时必须一并带过来）：
+   万一异常源头就在这些 DOM 写入里（例如状态栏元素本身出问题），
+   不能让「告诉用户」这一步被前一步的异常一起带走——那正是本钩子存在的意义。
+   回归：tests T23f（注入状态栏写入即抛，仍要求弹窗可见） */
+onFrameError = e => {
+  try{ Controls.stop(); }catch(e1){}
+  try{
+    Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
+  }catch(e2){}
+};
+/* 页面离开时停播（v1.3.0，审计 P2-13）：pagehide 覆盖 bfcache 与真正的卸载，visibilitychange
+   覆盖不到。放在装配层而不是 Audio 模块内——Audio 声明在 Controls 之前，模块内直接调
+   Controls.stop() 会构成反向引用（tools/check-module-order.js 会拦下来） */
+window.addEventListener("pagehide", () => { if (S.playing) Controls.stop(); });
 Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
-$("muteToggle").className = "toggle-pill " + (S.mute ? "on" : "off");
-$("bounceToggle").className = "toggle-pill " + (S.bounce ? "on" : "off");   // v1.2 弹跳球开关初始化
-/* 变速训练器：恢复开关/参数 UI（trStart 等输入框值以钳制后的配置为准） */
-$("trainerToggle").className = "toggle-pill " + (S.trainer.on ? "on" : "off");
+/* 开关初值：视觉（className）与语义（aria-checked）由同一个助手一次写全。
+   v1.3.0 之前这里是三行手写的 className，加无障碍语义时极易漏改其中一处 */
+setToggle("muteToggle", S.mute);
+setToggle("bounceToggle", S.bounce);
+setToggle("trainerToggle", S.trainer.on);
+setToggle("countInToggle", S.countIn.on);
+$("countInBeats").hidden = !S.countIn.on;
 $("trainerPanel").hidden = !S.trainer.on;
 $("trStart").value = S.trainer.start; $("trTarget").value = S.trainer.target;
 $("trStepInp").value = S.trainer.step; $("trEvery").value = S.trainer.everyN;
@@ -2150,11 +2494,14 @@ Controls.setSig(S.sig);
 Controls.setSwing(S.swing, false);
 Controls.setTimbre(S.timbre, false);
 Presets.refreshAfterPatternChange();
+Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次「跨地址不共享预设」
 Trainer.updateProg();
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, curPattern, activePattern, basicPattern,
-  onsetBuf: () => onsetBuf, onsetNext: () => onsetNext };   // v1.2：弹跳球 onset 表（T22 断言入口）
+window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
+  selectedPreset, defaultAccents, curPatternRef: () => curPattern(),
+  onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
+  clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
 </script>
 </body>
 </html>

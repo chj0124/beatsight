@@ -1,17 +1,18 @@
 # BeatSight 自动化测试
 
 ```bash
-node tests/run.js            # 主套件：23 个场景组 / 264 断言
+node tests/run.js            # 主套件：29 个场景组 / 350 断言（约 0.2s）
+FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；CI 里跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 ```
 
-零依赖，任意 Node ≥ 18 可直接运行。退出码 0 = 全绿，1 = 有失败项。每次 push 由 GitHub Actions 自动运行（.github/workflows/test.yml）。
+零依赖，CI 基线 Node 22（本机 Node ≥ 18 未实测，声明以 CI 为准）。退出码 0 = 全绿，1 = 有失败项。每次 push 由 GitHub Actions 自动运行（`.github/workflows/test.yml`）。
 
 ## 两套测试为什么分开
 
 | | `run.js` | `hang-guard.js` |
 |---|---|---|
-| 管什么 | **值对不对**（状态、时序、文案、类名） | **会不会把主线程卡死** |
+| 管什么 | **值对不对**（状态、时序、文案、类名、结构不变量） | **会不会把主线程卡死** |
 | 进程模型 | 单进程，全部用例跑在一起 | 每用例一个子进程，父进程超时强杀 |
 | 失败表现 | 断言 ✗ | 断言 ✗ 或**被强杀**（超时即判定为死循环） |
 
@@ -29,13 +30,19 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 
 - **localStorage**：Map 实现，可按场景预置数据（容错 / 脏项回退 / 迁移）
 - **DOM**：按 id 缓存的元素 stub；`addEventListener` 存 handler，测试用 `el.fire("change")` 触发
-- **AudioContext**：伪造实现，`currentTime` 手动推进，逐 tick 驱动 `scheduler()`
-- **渲染层**：`requestAnimationFrame` 默认置空（引擎/状态层用例只断言数据），**但渲染层已进覆盖**——T23 系列用 `driveFrames()` 同时推进音频时钟与 rAF 帧，真正执行 `paintFrame`
+- **AudioContext**：伪造实现，`currentTime` 手动推进，逐 tick 驱动 `scheduler()`；`setState()` 可模拟 iOS 的 `interrupted` / `closed`
+- **渲染层**：`requestAnimationFrame` 默认置空（引擎/状态层用例只断言数据），**但渲染层已进覆盖**——T23/T27 用 `driveFrames()` 同时推进音频时钟与 rAF 帧，真正执行 `paintFrame`
   - v1.2.3 之前这里全空，所以「`paintFrame` 内抛异常 → rAF 循环静默死亡」这类问题**CI 拦不住**；新增渲染层断言是为了让这类缺陷以后能被拦住
+- **探针计数**（`PROBE`，v1.3.0）：`offset*` 读取与 `className` 写入都计数。性能承诺（帧内零布局读取、增量重绘）**不数就没法断言**，光靠人眼 review 下一次改动就会破功
+- **桩的忠实度**（v1.3.0 补齐，都是踩过才加的）：
+  - `classList` 与 `className` 是**同一份数据**的两个视图（真实 DOM 如此）——否则「视觉高亮与 aria-pressed 是否一致」这类跨视图断言写不出来
+  - `innerHTML = ""` **清空 children**（真实 DOM 语义）——否则按「行/格」检查渲染结果会读到上一次 `buildViz` 的残留
+  - 标记里声明 `hidden` 的元素初始即隐藏（`HTML_ATTRS`）；静态 pill 组（sigRow/swingRow/timbreRow）按标记复刻（`HTML_CHILDREN`），否则 `querySelectorAll("#sigRow .pill")` 拿到空集合，`setPressed()` 空转
+  - `document` / `window` 级监听器可触发（`setHidden()` / `firePageHide()`）——生命周期行为（回前台补排、pagehide 停播）原先完全无法断言
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor）。
+（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` 等断言入口）。
 
 ## 覆盖场景
 
@@ -48,7 +55,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T5 | 预设导入导出：非法 JSON / 非法 tick / 小节不完整 / 未开放拍号拒绝；v1 旧格式（浮点 d）自动换算；5/7 拍接受；accents 保留；导出→导入往返 id 唯一 |
 | T6 | 节奏型选择失效（custom id 不存在 / builtin idx 越界）→ 回退基础节奏 |
 | T7 | 模块装配完整性：`__beat` 八个模块与关键接口存在 |
-| T8 | v0.7 迁移：旧浮点 customs → tick，备份 beatsight.m2.bak，persist 写 v:3，id 引用仍命中 |
+| T8 | v0.7 迁移：旧浮点 customs → tick，备份 beatsight.m2.bak，**新契约**（v1.3.0）：热键 `beatsight.state` + 冷键 `beatsight.customs`，id 引用仍命中 |
 | T9 | 三连音：八分三连音 ×12 整数校验通过；残缺组（2/3）拒绝；小节和整数严格相等 |
 | T10 | Swing：后半拍八分延后 (swing-50)/50×24t 精确到 1e-6 秒；下一颗按时进入；swing=50 均匀 |
 | T11 | 奇数拍重拍分组：Take Five [0,3] 发音频率序列；5/4 默认 2+3、7/4 默认 3+2+2 |
@@ -61,12 +68,20 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T18 | 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂） |
 | T19 | 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰 |
 | T20 | 播放中切节奏型 · 点下即生效（不再等小节边界）+ 不跳针 + 停止无残留 |
-| T21 | 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 3 个点击相位 = 243 组） |
+| T21 | 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 3 个点击相位 = 243 组；默认抽样 4×4×1，`FULL_SCAN=1` 跑全量） |
 | T22 | 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / 休止跳过 / 预测永远有下一跳 |
 | T23 | 持久值健壮性（v1.2.4，7 个子场景）：脏拍号（含 `-3` 死循环用例）· 空小节 customs 淘汰+隔离备份 · 音量钳制（断言**送达增益峰值 ≤ 1.0**）· 脏 BPM · 试听中清空小节（真实用户路径）· 帧内异常被外壳兜住且用户可见 · 正常路径与 6/8、5/4、7/4 防误伤 |
+| T24 | 持久化冷热分离（v1.3.0）：热键防抖 + `flush()` 立即落盘 + 冷键不防抖 + 页面隐藏强制落盘 + 载荷量级对照 + 写失败可见（chip 变红 + 弹窗） |
+| T25 | 版本号单一真相源 + 重复逻辑抽取：`VERSION` 派生三处显示、标记段去注释后零硬编码版本号、`selectedPreset()` 三种情形、`defaultAccents()` 与编辑器草稿同源 |
+| T26 | 后台播放：前台 150ms / 后台 1.2s 自适应窗口、回前台立即补排、**饥饿兜底**（落后 30s 后不得把过去音符排到"现在"、时间轴重新锚定、时刻严格递增） |
+| T27 | 渲染性能：连跑 140 帧**零 `offset*` 读取**、增量重绘生效（多数帧零写入、≥3 帧少量写入、仅换小节帧全量）+ 逐帧交叉检查渲染结果满足全量重绘的不变量 |
+| T28 | 无障碍：4 个开关 `role=switch`/`aria-checked` 与视觉同源、三组 pill `aria-pressed` 与 `.active` 一致、分级播报（`srAnnounce` 有 aria-live，`statusText` 没有）、播放键标签随状态、弹窗/编辑器焦点陷阱（含嵌套弹窗） |
+| T29 | 音频生命周期 + 跨 origin 提示：`ctx.onstatechange` 认 `interrupted`（自动 resume）与 `closed`（重建上下文 + 重新锚定时钟）、`pagehide` 停播、预设库为空才提示「跨地址不共享预设」且确认后持久化 |
 
 ## 何时补断言
 
 - 修 bug 时：先加一条能复现该 bug 的断言，再修（v0.6.0 的 trainer null 脏值、v0.7.0 的 activePattern 快照与导入 id 冲突均按此流程）
 - 新功能动到 Store / Trainer / scheduler 时必须有对应断言
 - 动到 `paintFrame` / 新增渲染层守卫时**必须有**对应断言（用 `driveFrames()` 真正跑帧，别只断言状态值）——否则下一个改动者会把守卫改回去
+- **性能/生命周期类承诺要用探针计数或状态计数来断言**（"零布局读取"、"写入次数"、"窗口大小"、"resume 次数"）。这类性质没有肉眼可辨的症状，不量化就等于没测
+- **写完断言要反向验证**：把修复临时退回（或 `BEATSIGHT_HTML=<旧版>`），确认目标断言真的会失败。测不出失败的测试是橡皮图章——v1.3.0 就靠这招发现了两处"假绿"（桩默认 `hidden:false` 掩盖了错误弹窗没打开；桩 `className`/`classList` 分离掩盖了语义属性没同步）

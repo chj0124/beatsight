@@ -1,0 +1,38 @@
+name: pages
+
+# 在线版部署（审计 P2-12）：README 一直引导用户访问 https://chj0124.github.io/beatsight/，
+# 但仓库既没有 Pages workflow、也没开启 Pages —— 那是个"照做会 404"的指引。
+# 本文件补上自动部署；仍需仓库所有者在 Settings → Pages 把 Source 设为 "GitHub Actions"
+# （这一步只能人工点，workflow 无法自己开启 Pages）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # 允许手动触发（改完 Pages 设置后无需空提交）
+
+permissions:
+  contents: read
+  pages: write              # 发布 Pages
+  id-token: write           # deploy-pages 需要 OIDC
+
+# 同一时间只跑一个部署，但不要打断正在进行的发布
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # 与 test.yml 同样固定到 commit SHA（供应链硬化）
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d   # v6.0.0
+      # 单文件应用：仓库根即站点根，index.html 直接可访问。tests/ 与 docs/ 会一并发布
+      # （它们本来就在公开仓库里，不额外暴露任何东西）
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1
