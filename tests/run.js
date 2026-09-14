@@ -2129,6 +2129,92 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
   }
 }
 
-/* ---------------- 汇总 ---------------- */
+section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）");
+{
+  /* 用户实拍反馈：播放中拖 BPM 滑杆后，球与播放头对不上，只有暂停再开才恢复。
+     根因（诊断脚本实测）：setBpm 重映射 loopStart 让"时钟推出来的位置"在那一瞬连续，
+     但**已经排进音频时钟的 onset 绝对时刻无法回改**——它们按旧 spb 算。
+     于是「前瞻窗口 + 最多一颗音符时长」这段里两边以不同速率前进，累积出错位；
+     此后两边同速前进 → **错位永久保留**：
+       96→200 BPM 实测固定偏 −49.82 tick（≈1.04 拍，球在播放头后方），
+       连续 20 次改速后偏 −37.26 tick。改速前是 0.00 tick。
+     修法：播放头位置改由 onset 表插值（与球同源），分叉从结构上消失（见 audioPosAt）。 */
+  const app = loadApp();
+  const beat = app.beat, els = app.els, S = beat.Store.S;
+  const TPBv = 48;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  const iv = beat.Viz.internals();
+  const barT = () => S.sig * TPBv;
+  const headT = () => {
+    const el = els["viz"].children.find(c => /(^| )playhead( |$)/.test(c.className));
+    return el ? parseFloat(el.style.left) / 100 * barT() : NaN;
+  };
+  const ballT = () => {
+    const m = /(-?[0-9.]+)px, (-?[0-9.]+)px/.exec(iv.ballEl.style.transform);
+    if (!m) return NaN;
+    const g = iv.rowGeo[Math.floor(headT() / barT())] || iv.rowGeo[0];
+    return g ? (+m[1] + 8 - g.left) / g.width * barT() : NaN;
+  };
+  /* 每帧采样的最大偏差。容差 1.5 tick 的来由：终端弧上球停在行右缘 −10px、播放头在 100%，
+     两者差 2px ≈ 0.64 tick（既有设计，不是本次问题），所以不能卡到 0 */
+  const TOL = 1.5;
+  const pump = (sec, step) => {
+    step = step || 0.01;
+    let worst = 0;
+    for (let i = 0; i < Math.round(sec / step); i++){
+      ac.currentTime += step;
+      beat.Audio.scheduler();
+      beat.Viz.paintFrame();
+      const d = Math.abs(ballT() - headT());
+      if (isFinite(d) && d > worst) worst = d;
+    }
+    return worst;
+  };
+
+  ok(pump(1.2) <= TOL, "静止播放（96 BPM）：播放头与球每帧对齐——基线");
+
+  beat.Controls.setBpm(200);
+  const w1 = pump(3);
+  ok(w1 <= TOL, `播放中 96→200 BPM：全程最大偏差 ${w1.toFixed(2)} tick（修复前会永久偏 49.82 tick ≈ 1.04 拍）`);
+
+  /* 模拟拖滑杆：逐格连续改速。旧实现每次改速都会再累积一份错位 */
+  let w2 = 0;
+  for (let i = 0; i < 20; i++){ beat.Controls.setBpm(200 - i * 3); w2 = Math.max(w2, pump(0.06)); }
+  w2 = Math.max(w2, pump(2));
+  ok(w2 <= TOL, `连续 20 次改速后最大偏差 ${w2.toFixed(2)} tick（修复前实测 37.26 tick）`);
+
+  /* 反向改速与极端值（同一路径，训练器自动爬坡走的也是它） */
+  beat.Controls.setBpm(30);
+  const w3 = pump(2);
+  ok(w3 <= TOL, `200→30 BPM 大幅降速：最大偏差 ${w3.toFixed(2)} tick`);
+  beat.Controls.setBpm(240);
+  const w4 = pump(2);
+  ok(w4 <= TOL, `30→240 BPM：最大偏差 ${w4.toFixed(2)} tick`);
+  ok(S.playing, "全程播放未中断");
+
+  /* setBpm 的锚点：改速后不变量 `nextNoteTime == loopStart + tick×spb/TPB` 必须继续成立。
+     为什么单独立一条：播放头已改走 onset 表，所以**播放头断言抓不到锚点错误**（反向验证已证实
+     退回锚点后 T36 的前面几条仍全绿）。而不变量本身是 load-bearing 的——resyncToNow 靠它
+     算「就地接续」点，破坏它会导致「改速后马上切节奏型 → 接到错误位置」。
+     真实游标 tick 由 onsetNext（predictNext 的预测终点，其 t 即游标时刻）给出。 */
+  {
+    beat.Controls.setBpm(150);
+    const c = beat.clock(), nn = beat.onsetNext();
+    ok(!!nn, "改速后仍有预测终点（onsetNext）");
+    if (nn){
+      ok(Math.abs(nn.t - c.nextNoteTime) < 1e-9, "预测终点的时刻 == 排程游标");
+      const loopTicks = barT() * 4, spbNow = 60 / S.bpm;
+      const mod = v => ((v % loopTicks) + loopTicks) % loopTicks;
+      const fromBase = mod((c.nextNoteTime - c.loopStart) / spbNow * TPBv);
+      const trueTick = mod(nn.bar * barT() + nn.cumT);
+      ok(Math.abs(fromBase - trueTick) < 1e-6,
+        `改速后不变量成立：时间基推出 ${fromBase.toFixed(3)} == 真实游标 ${trueTick.toFixed(3)}`);
+    }
+  }
+  beat.Controls.stop();
+}
+
+
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
 if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
