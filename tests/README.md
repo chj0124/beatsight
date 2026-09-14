@@ -3,7 +3,7 @@
 ```bash
 # 平时不用单独跑下面这些——改完代码直接跑这一条就够：
 #   node tools/check-all.js   （约 6 秒，跑完全部检查并给汇总）
-node tests/run.js            # 主套件：36 个场景组 / 515 断言（约 0.2s）
+node tests/run.js            # 主套件：44 个场景组 / 590 断言（约 0.3s）
 FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；check-all 默认跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）
@@ -17,8 +17,8 @@ node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总
 
 `tools/check-coverage.js` 用 **Node 内置的 V8 覆盖率**（`NODE_V8_COVERAGE`）采集——
 不需要 c8/nyc/istanbul 任何依赖，`vm.Script` 编译的沙箱脚本同样会被采到。
-当前 **99.8%**，12 个模块里 11 个 100%；唯一未覆盖的是 `scheduler` 的 `MAX_SCHED_STEPS`
-防御分支（刻意保留，不为了数字造人工状态）。
+当前 **99.4%**（v1.4 起 14 个分区，Stats 100%）；未覆盖的主要是 `scheduler` 的 `MAX_SCHED_STEPS`
+防御分支（刻意保留，不为了数字造人工状态）与 KeepAlive 的个别防御性 catch。
 
 它也是找"测试空白"最好用的工具：v1.3.1 靠它一眼看出**事件处理器体**（点 pill、TAP、空格键、
 导入导出、编辑器选中删除、窗口 resize、弹窗键盘）整层没被跑过——原先测试只直接调模块函数，
@@ -65,7 +65,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` 等断言入口）。
+（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / KeepAlive（v1.4 起 10 个模块），以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` 等断言入口）。
 
 ## 覆盖场景
 
@@ -106,6 +106,14 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T33 | Presets 剩余接线：点自定义预设项（自动切拍号）· 一键切回（`fallbackBtn`）· 导入失败给出可读原因 · 导出/导入按钮自身接线 |
 | T34 | 挂起兜底路径（v1.3.1）：就地接续失败时才走的降级分支（唯一入口是**试听中的草稿**——正常预设不可能有空小节），用「可视化没立刻重建」区分它和接续路径，并验证越过循环起点后真正生效 |
 | T35 | 剩余边角接线（v1.3.1）：窗口 resize（未播放重建 / 播放中只重采几何缓存，不打断动画）· 弹窗 Esc/Enter（两条确认路径：无输入框走 window、有输入框走输入框自身）· 编辑器选中音符块→库标题变替换语义→删除→撤销→取消选中 · v0.4 老数据 sel 下标→id 迁移（含越界回退）· 组标签（短音符合并标注）高亮 · 时值非法预设被拒 · `predictNext` 全休止/全空回退 · `resyncToNow` 顺延到下一小节 |
+| T36 | 播放中改 BPM（v1.3.4）：播放头与弹跳球共用 onset 表，改速/连拖/极端值全程不分叉；调度不变量 `nextNoteTime == loopStart + tick×spb/TPB` 改速后仍成立 |
+| T37 | 练习统计汇总（v1.4）：固定时钟注入断言本周时长（周一起）/ 连续天数（今天没练不归零）/ 速度纪录 / 近 7 天桶 |
+| T38 | 练习记录（v1.4）：≥30s 停止自动入账（时长取音频时钟差）· <30s 与试听不计 · 冷键立即落盘 · 统计 overlay 打开/四卡/条图/Esc 关闭/空格不误触 |
+| T39 | 练习记录加载校验（v1.4）：脏条目丢弃 · 405 条截到 400 环形上限 · 清除记录全流程（确认弹窗 → 归零 → 空态文案） |
+| T40 | 训练收成（v1.4）：练到目标记 `done:true` · 中途停记 `reached` · 秒停不记录 · `last` 随热键持久化 |
+| T41 | 上次训练一键继续（v1.4）：无历史按钮隐藏 · 未完成从 reached 接续起播 · 已完成原配置再来一轮 · 脏 last 钳制/丢弃 |
+| T42 | 后台保活（v1.4）：开关默认关并持久化 · wakeLock 申请/释放 · 无 wakeLock 时静音循环 audio 兜底 · 关开关不申请任何保活 |
+| T43 | PWA 注册收口（v1.4）：file:// 不注册 SW · https 注册 sw.js + 注入 manifest link · 无 serviceWorker 能力时只注入 manifest 不抛错 |
 
 ## 何时补断言
 

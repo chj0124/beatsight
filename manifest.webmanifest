@@ -1,0 +1,14 @@
+{
+  "name": "BeatSight 时值节拍器",
+  "short_name": "BeatSight",
+  "description": "吉他练习用的节奏可视化节拍器 —— 把抽象的「时值」翻译成「长度」。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

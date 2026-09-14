@@ -224,6 +224,21 @@ input[type=range].vol{width:120px}
 @keyframes modalIn{from{opacity:0}to{opacity:1}}
 @keyframes modalPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 
+/* ---------- 练习统计（v1.4） ---------- */
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card2);border-radius:10px;padding:16px}
+.stat-num{font-size:28px;font-weight:700;font-family:var(--mono)}
+.stat-lab{font-size:12px;color:var(--t3);margin-top:4px}
+.stats-bars{display:flex;gap:10px;align-items:flex-end;margin-top:8px}
+.st-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.st-barwrap{height:100px;width:100%;display:flex;align-items:flex-end}
+.st-bar{width:100%;border-radius:6px 6px 2px 2px;background:var(--green);min-height:2px;opacity:.85}
+.st-bar.empty{background:var(--line);opacity:.6}
+.st-col.today .st-bar{box-shadow:0 0 10px rgba(30,215,96,.4)}
+.st-day{font-size:11px;color:var(--t3)}
+.st-col.today .st-day{color:var(--green);font-weight:600}
+.st-val{font-size:11px;font-family:var(--mono);color:var(--t2)}
+
 /* ---------- 响应式 ---------- */
 @media (max-width:960px){
   body{overflow-x:hidden}
@@ -250,6 +265,7 @@ input[type=range].vol{width:120px}
   .slider-wrap{--thumb-r:11px}   /* 圆钮在窄屏放大到 22px，刻度内缩同步改为半径 11px，否则刻度会与圆钮错位 */
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
+  .stat-cards{grid-template-columns:repeat(2,1fr)}
 }
 /* 手机窄屏（≤560px）：卡片头改上下两行——标题与状态灯不再争抢同一行宽度而各自被挤断行 */
 @media (max-width:560px){
@@ -278,7 +294,10 @@ input[type=range].vol{width:120px}
     BeatSight 时值节拍器
     <span class="ver" id="brandVer"></span>
   </div>
-  <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="pill outline" id="statsBtn">练习统计</button>
+    <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
+  </div>
 </header>
 
 <div class="main">
@@ -379,10 +398,15 @@ input[type=range].vol{width:120px}
       <div class="config">
         <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍 · 每 4 小节<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
+        <!-- 上次训练一键继续（v1.4）：有训练历史时才出现；放开关行而不是 tr-panel 里——
+             面板在训练关闭时是隐藏的，最需要它的恰恰是「还没开训练」的那一刻 -->
+        <button class="pill outline" id="trResumeBtn" hidden>继续上次训练</button>
         <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
         <!-- 拍数输入紧跟在它所属的开关后面（v1.3.3）。原先排在行末（弹跳球之后）→ 看起来像弹跳球的参数 -->
         <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
         <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
+        <!-- 后台保活（v1.4）：wakeLock 防息屏 + iOS 静音循环音频兜底，开关持久化 -->
+        <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
       </div>
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
@@ -461,6 +485,35 @@ input[type=range].vol{width:120px}
   </div>
 </div>
 
+<!-- ================= 练习统计（v1.4） ================= -->
+<div class="editor" id="statsOverlay" role="dialog" aria-modal="true" aria-label="练习统计">
+  <div class="editor-inner">
+    <div class="editor-topbar">
+      <div class="left">
+        <button class="back-btn" id="statsClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回练习
+        </button>
+        <div class="editor-title">练习统计</div>
+      </div>
+      <div class="editor-actions">
+        <button class="pill outline" id="statsClear">清除记录</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-num" id="statWeek">0</div><div class="stat-lab">本周练习（分钟）</div></div>
+        <div class="stat-card"><div class="stat-num" id="statStreak">0</div><div class="stat-lab">连续天数</div></div>
+        <div class="stat-card"><div class="stat-num" id="statRecord">—</div><div class="stat-lab">速度纪录（BPM）</div></div>
+        <div class="stat-card"><div class="stat-num" id="statCount">0</div><div class="stat-lab">累计场次</div></div>
+      </div>
+      <div class="card-title" style="margin-bottom:4px">近 7 天</div>
+      <div class="stats-bars" id="statsBars"></div>
+      <div class="hint" id="statsNote" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 应用内弹窗 ================= -->
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
@@ -492,6 +545,8 @@ input[type=range].vol{width:120px}
      Controls 播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      Presets  预设库 / 拍号回退提示 / 播放中切换挂起
      Editor   自定义节奏型编辑器
+     Stats    练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     KeepAlive 后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -508,7 +563,7 @@ input[type=range].vol{width:120px}
 /* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
-const VERSION = "1.3.4";
+const VERSION = "1.4.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -576,6 +631,9 @@ const CONFIG = {
   schedWindowBg:1.2,
   /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
   persistDebounce:250,
+  /* 练习记录（v1.4）：短于 logMinSec 秒的播放不算一场练习（误触/试听音色不该进统计）；
+     logMax 为 beatsight.log 的环形截断上限——400 场按每天 3 场约够用 4 个月，远超统计口径所需 */
+  logMinSec:30, logMax:400,
   /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
      squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
   bounce:{ k:120, min:10, max:48, squash:0.07 },
@@ -613,6 +671,7 @@ const Store = (() => {
      依赖方向：本模块不引用 Modal（后方模块），只暴露一个回调钩子，由初始化段注册。 */
   const KEY_HOT = "beatsight.state", KEY_COLD = "beatsight.customs";
   const KEY_LEGACY = "beatsight.m2", KEY_BAK = "beatsight.m2.bak", KEY_QUAR = "beatsight.quarantine";
+  const KEY_LOG = "beatsight.log";       // v1.4 练习记录（冷键：只在停止时写，不进防抖热键）
 
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
@@ -656,6 +715,11 @@ const Store = (() => {
   const trSaved = {};
   /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获） */
   ["start","target","step","everyN"].forEach(k => { if (isNum(trSrc[k])) trSaved[k] = trSrc[k]; });
+  /* 上次训练（v1.4）：reached 钳到合法 BPM 域；at 只做展示参考，缺了不致命 */
+  if (trSrc.last && typeof trSrc.last === "object" && isNum(trSrc.last.reached)){
+    trSaved.last = { reached: Math.min(240, Math.max(30, Math.round(trSrc.last.reached))),
+      done: !!trSrc.last.done, at: numOr(trSrc.last.at, 0) };
+  }
 
   /* 重拍分组：只接受 ACC_GROUPS 里真实存在的档位下标（0/1），杜绝脏值被当数组下标用 */
   const accentGrpSaved = {};
@@ -680,9 +744,36 @@ const Store = (() => {
     playing: false,
     preview: false,
     bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
+    keepAwake: !!saved.keepAwake,                   // v1.4 后台保活：默认关（耗电/系统策略由用户决定）
     migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
+
+  /* ---- 练习记录（v1.4，冷键 beatsight.log）----
+     加载即校验：t/sec 必须是非负有限数，bpm 缺省 0，name 缺省空串——脏条目直接丢弃
+     （与 customs 的隔离策略不同：统计丢了只是数字不准，不值得占用隔离区与弹窗名额）。
+     写入只在「停止一次 ≥30s 的练习」时发生，立即落盘不防抖（丢一场练习比丢一次 BPM 调整肉疼） */
+  const logIn = readJSON(KEY_LOG);
+  const sessions = [];
+  if (logIn && Array.isArray(logIn.sessions)){
+    logIn.sessions.forEach(r => {
+      if (r && isNum(r.t) && isNum(r.sec) && r.sec > 0){
+        sessions.push({ t: r.t, sec: r.sec, bpm: numOr(r.bpm, 0),
+          name: typeof r.name === "string" ? r.name.slice(0, 40) : "" });
+      }
+    });
+    if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
+  }
+  function persistLog(){
+    try{ localStorage.setItem(KEY_LOG, JSON.stringify({ v:1, sessions })); }
+    catch(e){ onPersistFail(e); }
+  }
+  function appendSession(rec){
+    sessions.push(rec);
+    if (sessions.length > CONFIG.logMax) sessions.shift();   // 环形截断：只留最近 logMax 场
+    persistLog();
+  }
+  function clearLog(){ sessions.length = 0; persistLog(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
   const customs = [];
@@ -751,7 +842,7 @@ const Store = (() => {
   function hotPayload(){
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
-      migHint:S.migHint };
+      keepAwake:S.keepAwake, migHint:S.migHint };
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
@@ -858,7 +949,7 @@ const Store = (() => {
   }
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler,
-    serializePresets, exportPresets, importPresets };
+    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog };
 })();
 const S = Store.S;
 const customs = Store.customs;
@@ -928,6 +1019,9 @@ const curPattern = () => {
 };
 let draft = null;                    // 编辑器草稿（Editor 写入，curPattern 试听时读取）
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
+/* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
+   时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
+let sessStartT = null;
 /* 渲染帧异常恢复钩子（v1.3.0）：由装配层（初始化段）注入。
    为什么是钩子而不是直接写 Controls.stop()：paintFrame 是**每帧热路径**，而 Controls 声明在
    Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
@@ -947,7 +1041,8 @@ const Modal = (() => {
      注意用**重算**而不是置位/复位：编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器
      对应的 inert 一起摘掉。 */
   function refreshInert(){
-    const off = modalOpen || ($("editor") && $("editor").classList.contains("open"));
+    const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
+      || ($("statsOverlay") && $("statsOverlay").classList.contains("open"));   // v1.4：统计 overlay 同套焦点陷阱
     document.querySelectorAll(".main, .topbar").forEach(el => { el.inert = !!off; });
   }
   function uiModal(msg, opts){
@@ -1830,14 +1925,35 @@ const Audio = (() => {
 const Trainer = (() => {
   /* 会话状态：trStepIdx 当前第几级（0 基）、trBarCnt 本级已练小节数；start() 时经 reset() 重置 */
   let trStepIdx = 0, trBarCnt = 0;
+  let trDone = false;              // v1.4：本次播放是否由「练到目标」收尾（完成 vs 中途手动停）
   const total = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
-  function reset(){ trStepIdx = 0; trBarCnt = 0; }
+  function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
+  /* 「上次训练一键继续」（v1.4）：有训练历史时才露面。
+     文案：完成 → 再来一轮；中途停 → 从练到的级别接着练 */
+  function refreshResume(){
+    const b = $("trResumeBtn");
+    const last = S.trainer.last;
+    if (!last){ b.hidden = true; return; }
+    b.hidden = false;
+    b.textContent = last.done
+      ? `再来一轮 · ${S.trainer.start}→${S.trainer.target} BPM`
+      : `继续上次 · 从 ${last.reached} BPM 接着练`;
+  }
   function updateProg(){
     const el = $("trainerProg");
     el.classList.toggle("live", S.playing && S.trainer.on);
-    if (!S.trainer.on){ el.textContent = ""; return; }
-    el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
+    if (!S.trainer.on){ el.textContent = ""; }
+    else el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
+    refreshResume();
+  }
+  /* 训练会话收成（v1.4，Controls.stop 调用）：本次播放确实练过（过过至少一个小节边界
+     或爬过级）才产出 last 记录，避免「开了训练开关但秒停」污染接续点。
+     done 由 trDone 显式标记，不靠 reached>=target 推断——手动停在目标级但没练满不算完成 */
+  function consumeSession(){
+    if (!S.trainer.on) return null;
+    if (!trDone && trBarCnt === 0 && trStepIdx === 0) return null;
+    return { reached: bpmFor(trStepIdx), done: trDone };
   }
   /* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除） */
   function onBarBoundary(){
@@ -1846,6 +1962,7 @@ const Trainer = (() => {
     if (trBarCnt < t.everyN){ updateProg(); return false; }
     trBarCnt = 0;
     if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
+      trDone = true;                             // v1.4：先于 stop() 标记完成（stop 里 consumeSession 要读）
       Controls.stop();
       $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
       announce(`训练完成，已达到 ${t.target} BPM`);
@@ -1888,7 +2005,27 @@ const Trainer = (() => {
   bindTrParam("trTarget", "target", 31, 240);
   bindTrParam("trStepInp", "step", 1, 20);
   bindTrParam("trEvery", "everyN", 1, 8);
-  return { reset, updateProg, onBarBoundary, total, bpmFor };
+  /* 上次训练一键继续（v1.4）：未完成 → 本次从练到的级别起步（把 start 推进到 reached——
+     这就是爬坡训练的语义：起点跟着进度走，而不是每轮都从头）；已完成 → 原配置再来一轮 */
+  $("trResumeBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    const last = S.trainer.last;
+    if (!last || S.playing) return;
+    if (!S.trainer.on){
+      S.trainer.on = true;
+      setToggle("trainerToggle", true);
+      $("trainerPanel").hidden = false;
+    }
+    if (!last.done && last.reached < S.trainer.target){
+      S.trainer.start = last.reached;
+      $("trStart").value = last.reached;
+    }
+    Controls.syncBpmUI();
+    updateProg();
+    Store.persist();
+    Controls.start();
+  });
+  return { reset, updateProg, onBarBoundary, total, bpmFor, consumeSession, refreshResume };
 })();
 
 /* ================= Controls · 播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍 ================= */
@@ -1952,6 +2089,8 @@ const Controls = (() => {
       loopStart = ciStart + ciBeats * spb();
     } else { ciBeats = 0; ciLeft = 0; }
     nextNoteTime = loopStart;
+    sessStartT = ctx.currentTime;              // v1.4：练习计时起点（音频时钟，挂起不计时）
+    KeepAlive.sync();                          // v1.4：后台保活随播放状态生效
     timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
@@ -1967,6 +2106,19 @@ const Controls = (() => {
     ciLeft = 0; ciBeats = 0;              // 清预备拍会话状态
     clearInterval(timer);
     cancelAnimationFrame(rafId);
+    /* 练习记录（v1.4）：有效练习（≥30s 且非编辑器试听）自动入账到 beatsight.log。
+       时长取音频时钟差——挂起期间（来电/锁屏）天然不计入 */
+    if (sessStartT !== null && ctx && !S.preview){
+      const sec = ctx.currentTime - sessStartT;
+      if (sec >= CONFIG.logMinSec){
+        Store.appendSession({ t: Date.now(), sec: Math.round(sec), bpm: S.bpm, name: activePattern().name });
+      }
+    }
+    sessStartT = null;
+    /* 训练计划（v1.4）：训练开着时结束播放 → 记下进度，供「继续上次训练」接续 */
+    const tr = Trainer.consumeSession();
+    if (tr){ S.trainer.last = Object.assign({}, tr, { at: Date.now() }); }
+    KeepAlive.sync();                     // 停止即释放 wakeLock / 静音音频
     $("playIcon").outerHTML = SVG_PLAY.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "播放");
     $("statusDot").classList.remove("live");
@@ -1980,6 +2132,10 @@ const Controls = (() => {
   $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
+    if (Stats.isOpen()){                          // v1.4：统计 overlay 打开时键盘归它管（空格不误触播放）
+      if (e.key === "Escape") Stats.close();
+      return;
+    }
     if ($("editor").classList.contains("open")){
       if (e.key === "Escape") Editor.tryClose();
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
@@ -2527,6 +2683,152 @@ const Editor = (() => {
   return { open, tryClose, undo, draft: () => draft };
 })();
 
+/* ================= Stats · 练习统计（v1.4） ================= */
+/* 数据来自 Store.logSessions（beatsight.log 冷键）。本模块只做汇总计算与 overlay 渲染，
+   记录动作在 Controls.stop() 里完成（那里是唯一能同时拿到时长/速度/节奏型的收口点）。 */
+const Stats = (() => {
+  const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+  const dayKey = t => { const d = new Date(t); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
+
+  /* 汇总（纯函数，now 可注入——测试用固定时钟断言）：
+     weekSec = 本周（周一起）练习秒数；streak = 连续练习天数（今天没练从昨天往回数，不归零）；
+     days = 近 7 天逐日秒数（含今天，供条图）；maxBpm = 速度纪录；count = 累计场次 */
+  function summarize(list, now){
+    const days = [];
+    for (let i = 6; i >= 0; i--){
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      days.push({ key: dayKey(d.getTime()), label: "周" + WEEKDAYS[d.getDay()], sec: 0, today: i === 0 });
+    }
+    const byDay = {};
+    days.forEach(d => { byDay[d.key] = d; });
+    const wkStart = new Date(now);
+    wkStart.setDate(wkStart.getDate() - (wkStart.getDay() + 6) % 7);   // 周一
+    wkStart.setHours(0, 0, 0, 0);
+    let weekSec = 0, maxBpm = 0;
+    const daySet = new Set();
+    list.forEach(r => {
+      const k = dayKey(r.t);
+      daySet.add(k);
+      if (byDay[k]) byDay[k].sec += r.sec;
+      if (r.t >= wkStart.getTime()) weekSec += r.sec;
+      if (r.bpm > maxBpm) maxBpm = r.bpm;
+    });
+    let streak = 0;
+    const cur = new Date(now);
+    if (!daySet.has(dayKey(cur.getTime()))) cur.setDate(cur.getDate() - 1);   // 今天还没练：从昨天数起
+    while (daySet.has(dayKey(cur.getTime()))){ streak++; cur.setDate(cur.getDate() - 1); }
+    return { weekSec, streak, maxBpm, count: list.length, days };
+  }
+
+  function render(){
+    const r = summarize(Store.logSessions, Date.now());
+    $("statWeek").textContent = String(Math.round(r.weekSec / 60));
+    $("statStreak").textContent = String(r.streak);
+    $("statRecord").textContent = r.maxBpm > 0 ? String(r.maxBpm) : "—";
+    $("statCount").textContent = String(r.count);
+    const wrap = $("statsBars");
+    wrap.innerHTML = "";
+    const maxSec = r.days.reduce((a, d) => Math.max(a, d.sec), 0);
+    r.days.forEach(d => {
+      const col = document.createElement("div");
+      col.className = "st-col" + (d.today ? " today" : "");
+      const bw = document.createElement("div"); bw.className = "st-barwrap";
+      const bar = document.createElement("div");
+      bar.className = "st-bar" + (d.sec > 0 ? "" : " empty");
+      bar.style.height = (d.sec > 0 && maxSec > 0 ? Math.max(4, d.sec / maxSec * 100) : 2) + "%";
+      bw.appendChild(bar); col.appendChild(bw);
+      const dl = document.createElement("div"); dl.className = "st-day"; dl.textContent = d.label;
+      const vl = document.createElement("div"); vl.className = "st-val";
+      vl.textContent = d.sec > 0 ? String(Math.round(d.sec / 60)) : "";
+      col.appendChild(dl); col.appendChild(vl);
+      wrap.appendChild(col);
+    });
+    $("statsNote").textContent = r.count === 0
+      ? "还没有练习记录——播放 30 秒以上会自动记一场。数据只保存在本机浏览器。"
+      : "近 7 天柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场";
+  }
+  function open(){
+    render();
+    $("statsOverlay").classList.add("open");
+    Modal.refreshInert();              // 与编辑器同一套焦点陷阱：背景置 inert
+  }
+  function close(){
+    $("statsOverlay").classList.remove("open");
+    Modal.refreshInert();
+  }
+  const isOpen = () => $("statsOverlay").classList.contains("open");
+
+  $("statsBtn").addEventListener("click", e => { e.currentTarget.blur(); open(); });
+  $("statsClose").addEventListener("click", e => { e.currentTarget.blur(); close(); });
+  $("statsClear").addEventListener("click", e => {
+    e.currentTarget.blur();
+    Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {
+      Store.clearLog();
+      render();
+    }, { danger: true, okText: "清除" });
+  });
+  return { summarize, open, close, isOpen };
+})();
+
+/* ================= KeepAlive · 后台保活（v1.4） ================= */
+/* 目标：开着开关播放时，锁屏/切后台尽量不断音。两级策略：
+     ① navigator.wakeLock.request("screen")（标准 API，防息屏；切后台标签时系统会自动释放，
+        回前台后在 visibilitychange 里重新申请）
+     ② 不支持的（iOS Safari 历来没有 wakeLock 或老版本）降级为静音循环 audio 元素——
+        iOS 对「正在播放媒体」的页面保活更宽容（程序生成的 0.5s 静音 WAV，零采样文件原则不变）
+   开关 S.keepAwake 持久化，默认关（保活有电量与系统策略代价，应由用户显式打开）。
+   本模块只读共享状态 S，不引用任何模块；start/stop 由 Controls 经 sync() 通知（白名单 R3）。 */
+const KeepAlive = (() => {
+  let lock = null, audioEl = null;
+  /* 程序生成 0.5s 静音 WAV（8kHz / 8-bit / 单声道：PCM 静音电平是 128 不是 0） */
+  function silentWav(){
+    if (typeof btoa !== "function") return "";
+    const n = 4000, head = [
+      0x52,0x49,0x46,0x46, 36+n&255,(36+n)>>8&255,(36+n)>>16&255,(36+n)>>24&255, 0x57,0x41,0x56,0x45,
+      0x66,0x6D,0x74,0x20, 16,0,0,0, 1,0, 1,0, 0x40,0x1F,0,0, 0x40,0x1F,0,0, 1,0, 8,0,
+      0x64,0x61,0x74,0x61, n&255,n>>8&255,n>>16&255,n>>24&255];
+    let s = "";
+    for (let i = 0; i < head.length; i++) s += String.fromCharCode(head[i]);
+    for (let i = 0; i < n; i++) s += String.fromCharCode(128);
+    return "data:audio/wav;base64," + btoa(s);
+  }
+  function useAudioFallback(){
+    if (audioEl) return;
+    try{
+      const a = document.createElement("audio");
+      if (typeof a.play !== "function") return;      // 极老环境/测试桩：没有播放能力就放弃
+      a.loop = true;
+      a.src = silentWav();
+      const p = a.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+      audioEl = a;
+    }catch(e){}
+  }
+  function acquire(){
+    if (lock || audioEl) return;
+    if (typeof navigator !== "undefined" && navigator.wakeLock && typeof navigator.wakeLock.request === "function"){
+      try{
+        navigator.wakeLock.request("screen").then(l => {
+          lock = l;
+          if (lock && typeof lock.addEventListener === "function"){
+            lock.addEventListener("release", () => { lock = null; });
+          }
+        }).catch(() => { useAudioFallback(); });     // 申请被拒（如低电量模式）→ 降级
+      }catch(e){ useAudioFallback(); }
+    } else useAudioFallback();
+  }
+  function release(){
+    if (lock){ try{ lock.release(); }catch(e){} lock = null; }
+    if (audioEl){ try{ audioEl.pause(); }catch(e){} audioEl = null; }
+  }
+  function sync(){ if (S.keepAwake && S.playing) acquire(); else release(); }
+  /* wakeLock 在页面隐藏时被系统自动释放；回前台时若仍在播放则重新申请 */
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+  return { sync,
+    /* 仅供测试断言保活路径（T42）：wakeLock 已持有 / 静音音频兜底已起 */
+    state: () => ({ locked: !!lock, audio: !!audioEl }) };
+})();
+
 /* ================= 初始化（装配） ================= */
 /* 版本号：三处显示全部由 VERSION 派生（唯一真相源，见「数据」区的说明） */
 document.title = `BeatSight 时值节拍器 v${VERSION}`;
@@ -2579,10 +2881,39 @@ Controls.setSwing(S.swing, false);
 Controls.setTimbre(S.timbre, false);
 Presets.refreshAfterPatternChange();
 Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次「跨地址不共享预设」
-Trainer.updateProg();
+Trainer.updateProg();                // 内含 refreshResume()：有训练历史时亮出「继续上次」
+
+/* 后台保活开关（v1.4）：扳动即刻生效（播放中打开立即申请，关闭立即释放） */
+$("keepAwakeToggle").addEventListener("click", e => {
+  e.currentTarget.blur();
+  S.keepAwake = !S.keepAwake;
+  setToggle("keepAwakeToggle", S.keepAwake);
+  KeepAlive.sync();
+  Store.persist();
+});
+
+/* PWA 离线安装（v1.4）：仅在线版注册。
+   两个客观限制决定了它不是「纯内联」的：
+     · Service Worker 只能以同源 URL 注册，Blob URL 注册被浏览器禁止 → sw.js 必须是独立文件；
+     · manifest 里的图标按 manifest 自身 URL 解析相对路径，Blob 形态下会解析失败
+       → manifest.webmanifest / icon.svg 也是独立文件。
+   它们只被 http(s) 部署使用；file:// 下整段跳过，单文件性质与离线双击直开完全不受影响。 */
+try{
+  if (typeof location !== "undefined" && /^https?:$/.test(location.protocol)){
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = "manifest.webmanifest";
+    (document.head || document.body).appendChild(link);
+    if (typeof navigator !== "undefined" && navigator.serviceWorker
+        && typeof navigator.serviceWorker.register === "function"){
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  }
+}catch(e){}
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
+window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
+  CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents,
   onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
   clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）

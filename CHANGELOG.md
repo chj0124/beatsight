@@ -1,5 +1,58 @@
 # 变更记录
 
+## v1.4.0 · 练习闭环 + PWA 离线 + 后台保活 + 训练接续（2026-09-15）
+
+路线图 M8 四件事一次做完：练习统计、PWA 离线安装、后台持续发声收尾（保活侧）、训练计划第一刀（上次训练一键继续）。
+
+### 练习闭环（原路线图第 1 优先级）
+
+- **自动记录**：停止播放时，有效练习（**≥30 秒**且非编辑器试听）自动入账到新的冷键 `beatsight.log`（`{v:1, sessions:[{t, sec, bpm, name}]}`）。短于 30 秒视为误触/试音，不进统计。试听（S.preview）明确排除——编辑节奏型不算练习
+- **时长取音频时钟差**（`ctx.currentTime`），不用 `Date.now`：时钟挂起（来电/锁屏/iOS 后台）期间练习本就等于暂停，不应计入
+- **冷键语义**：只在停止时立即落盘，不进 250ms 防抖热键；环形截断最近 400 场（`CONFIG.logMax`）；加载即校验，脏条目丢弃
+- **统计 overlay**（顶栏「练习统计」入口）：本周时长（周一起）/ 连续天数 / 速度纪录 / 累计场次四卡 + 近 7 天条图（纯 div，不引图表库）+ 清除记录（确认弹窗）
+- 连续天数口径：**今天没练不归零**，从昨天往回数；汇总 `Stats.summarize(list, now)` 是纯函数，`now` 可注入（测试用固定时钟断言）
+- 无障碍与焦点陷阱复用既有机制：overlay 打开时背景 inert、Esc 关闭、空格不误触播放
+
+### PWA 离线安装
+
+新增三个独立文件：`manifest.webmanifest` / `icon.svg` / `sw.js`。**这是对「单文件」原则的首次、也是唯一一次妥协**，由两个客观限制决定：
+
+- Service Worker 只能以同源 URL 注册，**Blob URL 注册被浏览器禁止**（原 DEVELOPMENT.md 里「manifest/sw 用 Blob 内联注册」的设想在 SW 上不成立）
+- manifest 内图标按 manifest 自身 URL 解析相对路径，Blob 形态下解析失败
+
+`index.html` 里的注册逻辑按协议收口：**仅 `http(s)` 才注入 manifest link 并注册 `sw.js`；`file://` 下整段跳过**，单文件双击直开零副作用。SW 策略：导航请求 network-first（线上更新刷新即生效，不必手工 bump 缓存版本）、断网回退缓存的 index.html；静态资源 cache-first。
+
+### 后台持续发声收尾（保活侧）
+
+- 调度侧阻塞点 v1.3 已打通（自适应前瞻窗口 + 回前台补排 + 饥饿兜底）；本版补**系统侧保活**：新开关「后台保活」（默认关，持久化到热键）
+- 两级策略：优先 `navigator.wakeLock.request("screen")`（页面隐藏时系统自动释放，回前台经 visibilitychange 重新申请）；不支持或被拒时降级为**程序生成的 0.5s 静音循环 WAV**（`document.createElement("audio")`，零采样文件原则不变）
+- `KeepAlive.sync()` 挂在 start/stop 上（白名单 R3：Controls→KeepAlive），状态迁移即同步
+- **仍需真人验收**（无法自动化，同 v1.3 的约定）：真实浏览器播放 → 切后台 30 秒 → 回来确认不断音；iOS 上开关打开后锁屏/切后台的保活效果
+
+### 训练计划第一刀：上次训练一键继续
+
+- 训练开着时结束播放 → `Trainer.consumeSession()` 收成 `{reached, done}` 存入 `S.trainer.last`（随热键持久化，加载走白名单校验、reached 钳 30–240）
+- `done` 由 `trDone` 显式标记，**不靠 reached≥target 推断**——手动停在目标级但没练满不算完成
+- 秒停不记录（一个小节边界都没过视为误触），防污染接续点
+- 「继续上次」按钮放开关行而非 tr-panel 里——面板在训练关闭时是隐藏的，最需要它的恰恰是还没开训练的那一刻。未完成 → 起始推进到上次练到的级别并起播（爬坡语义：起点跟进度走）；已完成 → 原配置再来一轮
+
+### 架构与测试
+
+- 模块扩到 10 个：`Stats`、`KeepAlive` 排在 Editor 之后，`tools/check-module-order.js` 的 EXPECTED_ORDER 与白名单同步登记（Controls→Stats ×2、Controls→KeepAlive ×2）
+- 测试桩补三样：`document.head`（manifest link 落点）、`createElement("audio")` 最小 play/pause（静音兜底路径）、可注入的 `location`/`navigator`/`btoa`（PWA 与保活分支）；T28 的开关计数断言 4→5
+- 新增 T37–T43（7 场景 60+ 断言）：汇总口径固定时钟断言 / ≥30s 入账 / 秒停与试听排除 / 400 截断与脏条目 / 训练完成与中途停收成 / 接续行为与脏 last 回退 / wakeLock 申请释放与静音兜底 / PWA 协议收口
+- 反向验证三刀全部如期变红：① logMinSec 改 99999 → T38 入账断言红；② 禁用 start 推进 → T41 三条红；③ 禁用 sync 与 https 判断 → T42/T43 八条红
+- 结果：590 断言全绿；行覆盖率 99.4%（KeepAlive 分区曾因 vm 沙箱缺 btoa 掉到 84.9%，桩补上后回到阈值内）
+- 期间顺手修了 T38 自身的健壮性：入账断言失败后读 `rec.sec` 会把整套测试炸掉（遮蔽后续所有场景），改为失败也继续报数
+
+### 自验
+
+`node tools/check-all.js` 全绿（语法 / 架构约束 / lint / DOM 引用 / 全量测试 / 看门狗 / 覆盖率）；无头 Chrome 桌面截图主界面与统计 overlay 各一张，控制台 0 条消息。
+
+
+
+用户报："播放过程中调整 BPM，球的动画就跟不上播放头的动画了，只有暂停再重新开启才一致。"
+
 ## v1.3.4 · 修：播放中改 BPM 后播放头与弹跳球永久脱轨（2026-09-14，用户实拍反馈）
 
 用户报："播放过程中调整 BPM，球的动画就跟不上播放头的动画了，只有暂停再重新开启才一致。"

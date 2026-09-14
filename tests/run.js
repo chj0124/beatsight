@@ -49,6 +49,7 @@ const HTML_ATTRS = {
   fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
   modalMask: { hidden: true }, modalInput: { hidden: true },
+  trResumeBtn: { hidden: true },       // v1.4：无训练历史时「继续上次」不露面
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
@@ -226,7 +227,17 @@ function loadApp(seed, opts){
     },
     document: {
       getElementById: elFor,
-      createElement: tag => Object.assign(makeEl("dyn"), { tagName: String(tag || "").toUpperCase() }),   // v1.1：记录标签名，可断言生成的元素类型（如刻度必须是 <i> 而非 <option>）
+      createElement: tag => {
+        const el = Object.assign(makeEl("dyn"), { tagName: String(tag || "").toUpperCase() });   // v1.1：记录标签名，可断言生成的元素类型（如刻度必须是 <i> 而非 <option>）
+        /* v1.4：KeepAlive 的 iOS 兜底是静音循环 audio 元素——桩给它最小可用的 play/pause，
+           否则「无 wakeLock 时降级音频」这条路径根本跑不进 */
+        if (String(tag).toLowerCase() === "audio"){
+          el.play = () => { el._played = true; return { catch(){} }; };
+          el.pause = () => { el._played = false; };
+          el.loop = false; el.src = "";
+        }
+        return el;
+      },
       /* 只支持 `#id .pill` 这一种选择器——setPressed() 需要它返回 pill 组；
          其它选择器返回空数组（与原先行为一致） */
       querySelectorAll: sel => {
@@ -241,10 +252,19 @@ function loadApp(seed, opts){
       },
       addEventListener: (t, f) => addTo(docH, t, f),
       body: makeEl("body"),
+      head: makeEl("head"),            // v1.4：PWA manifest <link> 的落点
       activeElement: { tagName: "DIV" },
       hidden: false,                 // v1.3.0：前台/后台切换（P1-3 自适应窗口断言用）
     },
     AudioContext: FakeAudioContext,
+    /* v1.4：PWA / 保活需要可注入的 location 与 navigator。
+       默认 undefined——typeof 守卫会把这两条路径判定为「非浏览器环境」而整体跳过，
+       与老用例的行为一致（它们不该突然开始注册 SW） */
+    location: opts && opts.location,
+    navigator: opts && opts.navigator,
+    /* v1.4：KeepAlive 的静音 WAV 是运行时 btoa 出来的——vm 沙箱默认没有 btoa，
+       不补上的话 silentWav 永远走「typeof 守卫早退」分支，生成体进不了覆盖 */
+    btoa: typeof btoa === "function" ? btoa : undefined,
     setInterval: (fn, ms) => { const id = timerSeq++; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id),
     /* 定时器：**记录但不自动执行**（与原行为一致——自动执行会让 tap 复位、长按连发等
@@ -443,7 +463,7 @@ section("T6 curPattern · 选择失效时回退基础节奏");
 section("T7 模块化 · 接口与装配完整性");
 {
   const { beat } = loadApp();
-  ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor"].forEach(k =>
+  ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "KeepAlive"].forEach(k =>
     ok(!!beat[k], `__beat.${k} 已暴露`));
   ["start", "stop", "setBpm", "setSig"].forEach(k => ok(typeof beat.Controls[k] === "function", `Controls.${k}()`));
   ["serializePresets", "exportPresets", "importPresets", "persist"].forEach(k => ok(typeof beat.Store[k] === "function", `Store.${k}()`));
@@ -451,6 +471,9 @@ section("T7 模块化 · 接口与装配完整性");
   ok(typeof beat.Presets.consumePending === "function", "Presets.consumePending()");
   ok(typeof beat.Editor.draft === "function", "Editor.draft() 访问器");
   ok(typeof beat.Controls.setSwing === "function", "Controls.setSwing()（v0.7.0 新增）");
+  ok(typeof beat.Stats.summarize === "function", "Stats.summarize()（v1.4 新增）");
+  ok(typeof beat.KeepAlive.sync === "function", "KeepAlive.sync()（v1.4 新增）");
+  ok(typeof beat.Store.appendSession === "function" && typeof beat.Store.clearLog === "function", "Store.appendSession/clearLog（v1.4 新增）");
 }
 
 /* ================= 场景 T8：v0.7.0 localStorage 浮点 → tick 迁移 ================= */
@@ -1423,9 +1446,9 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   ok(/id="srAnnounce"[^>]*aria-live="polite"/.test(html), "播报区在标记里挂了 aria-live=polite");
   ok(/id="srAnnounce"[^>]*role="status"/.test(html), "播报区在标记里声明 role=status");
   ok(!/id="statusText"[^>]*aria-live/.test(html), "高频状态栏没有 aria-live（否则读屏每换一个十六分音就刷屏）");
-  eq((html.match(/role="switch"/g) || []).length, 4, "标记里 4 个 .toggle-pill 都声明了 role=switch");
-  eq((html.match(/id="(mute|bounce|countIn|trainer)Toggle"[^>]*aria-checked=/g) || []).length, 4,
-    "4 个开关在标记里都带初始 aria-checked");
+  eq((html.match(/role="switch"/g) || []).length, 5, "标记里 5 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活）");
+  eq((html.match(/id="(mute|bounce|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 5,
+    "5 个开关在标记里都带初始 aria-checked");
   beat.Controls.start();
   ok(/开始播放/.test(els["srAnnounce"].textContent), `开始播放被播报：「${els["srAnnounce"].textContent}」`);
   beat.Controls.stop();
@@ -2215,6 +2238,248 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
   beat.Controls.stop();
 }
 
+/* ================= 场景 T37：练习统计汇总口径（v1.4，纯函数注入固定时钟） ================= */
+section("T37 Stats · 本周时长 / 连续天数 / 速度纪录 / 近7天");
+{
+  loadApp();
+  /* 固定时钟：2026-09-15（周二）12:00。本周起点 = 周一 09-14 00:00 */
+  const now = new Date(2026, 8, 15, 12, 0, 0).getTime();
+  const at = (offsetDays, hour) => { const d = new Date(2026, 8, 15, hour || 10, 0, 0); d.setDate(d.getDate() - offsetDays); return d.getTime(); };
+  const sessions = [
+    { t: at(0), sec: 60, bpm: 96, name: "a" },     // 今天
+    { t: at(1), sec: 120, bpm: 100, name: "b" },   // 昨天（周一，本周内）
+    { t: at(2), sec: 60, bpm: 90, name: "c" },     // 前天（上周日，本周外）
+    { t: at(5), sec: 60, bpm: 88, name: "d" },     // 上周四，本周外
+    { t: at(8), sec: 60, bpm: 120, name: "e" },    // 上上周，本周外
+  ];
+  const r = loadApp().beat.Stats.summarize(sessions, now);
+  eq(r.weekSec, 180, "本周时长只算周一起（今天 60 + 周一 120 = 180s）");
+  eq(r.streak, 3, "连续天数：今天→昨天→前天 = 3 天（大前天断档）");
+  eq(r.maxBpm, 120, "速度纪录 = 历史最高 BPM");
+  eq(r.count, 5, "累计场次 = 5");
+  eq(r.days.length, 7, "近 7 天条图固定 7 根");
+  ok(r.days[6].today && r.days[6].sec === 60, "最后一根是今天（60s）");
+  eq(r.days[5].sec, 120, "昨天 120s");
+  /* 今天没练时 streak 不归零，从昨天往回数 */
+  const r2 = loadApp().beat.Stats.summarize([{ t: at(1), sec: 60, bpm: 96, name: "x" }], now);
+  eq(r2.streak, 1, "今天未练：连续天数从昨天起算（streak=1，不归零）");
+  const r3 = loadApp().beat.Stats.summarize([], now);
+  eq(r3.streak, 0, "空记录：streak=0");
+  eq(r3.maxBpm, 0, "空记录：速度纪录 0（UI 显示 —）");
+}
+
+/* ================= 场景 T38：练习记录入账（v1.4） ================= */
+section("T38 练习记录 · ≥30s 自动入账 / 秒停与试听不计");
+{
+  const { beat, els, storage, fireWin } = loadApp();
+  const S = beat.Store.S;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, beat, 31);
+  beat.Controls.stop();
+  eq(beat.Store.logSessions.length, 1, "播放 31 秒后停止 → 入账 1 场");
+  const rec = beat.Store.logSessions[0] || {};   // 入账失败时也要让后续断言报「实际 undefined」而不是炸掉整套
+  near(rec.sec, 31, 1.5, "时长取音频时钟差 ≈31s");
+  eq(rec.bpm, 96, "记录当时的 BPM");
+  eq(rec.name, "民谣扫弦 · 下-下上-上下上", "记录当时的节奏型名");
+  ok(!!storage.get("beatsight.log"), "冷键 beatsight.log 已立即落盘（不防抖）");
+  eq(JSON.parse(storage.get("beatsight.log")).v, 1, "log 格式 v:1");
+
+  beat.Controls.start();
+  drive(ac, beat, 2);
+  beat.Controls.stop();
+  eq(beat.Store.logSessions.length, 1, "播放 2 秒停止 → 不入账（<30s 视为误触/试音）");
+
+  S.preview = true;                              // 编辑器试听不算练习
+  beat.Controls.start();
+  drive(ac, beat, 31);
+  beat.Controls.stop();
+  S.preview = false;
+  eq(beat.Store.logSessions.length, 1, "试听 31 秒 → 不入账");
+
+  /* 统计 overlay：入账后四卡与条图渲染；Esc 关闭；空格不误触播放 */
+  els["statsBtn"].fire("click");
+  ok(els["statsOverlay"].classList.contains("open"), "统计 overlay 打开");
+  eq(els["statCount"].textContent, "1", "累计场次卡 = 1");
+  eq(els["statRecord"].textContent, "96", "速度纪录卡 = 96");
+  eq(els["statsBars"].children.length, 7, "近 7 天条图 7 根柱");
+  ok(els["statsNote"].textContent.indexOf("近 7 天") >= 0, "有数据时的说明文案");
+  fireWin("keydown", { code: "Space" });
+  ok(!S.playing, "统计打开时空格不触发播放");
+  fireWin("keydown", { key: "Escape" });
+  ok(!els["statsOverlay"].classList.contains("open"), "Esc 关闭统计 overlay");
+}
+
+/* ================= 场景 T39：练习记录加载校验与截断（v1.4） ================= */
+section("T39 练习记录 · 脏条目丢弃 / 400 条环形截断 / 清除");
+{
+  const seed = { v: 1, sessions: [
+    ...Array.from({ length: 405 }, (_, i) => ({ t: 1000000 + i * 1000, sec: 60, bpm: 96, name: "x" })),
+    { t: "bad", sec: 60 },                        // 脏：t 非数字
+    { t: 5, sec: -3 },                            // 脏：sec 非正
+    { sec: 60 },                                  // 脏：缺 t
+  ]};
+  const { beat, storage } = loadApp({ "beatsight.log": JSON.stringify(seed) });
+  eq(beat.Store.logSessions.length, 400, "加载即校验：405 条截到 400，3 条脏记录丢弃");
+  beat.Store.appendSession({ t: Date.now(), sec: 31, bpm: 100, name: "new" });
+  eq(beat.Store.logSessions.length, 400, "追加上限：401 → 截回 400（最旧的被淘汰）");
+  eq(beat.Store.logSessions[399].name, "new", "最新的在最末");
+  eq(JSON.parse(storage.get("beatsight.log")).sessions.length, 400, "落盘也是 400 条");
+
+  /* 清除流程：弹确认框 → 确认 → 清空 + 落盘 + 文案回到空态 */
+  const app2 = loadApp({ "beatsight.log": JSON.stringify({ v: 1, sessions: [{ t: Date.now(), sec: 60, bpm: 96, name: "y" }] }) });
+  app2.els["statsBtn"].fire("click");
+  app2.els["statsClear"].fire("click");
+  app2.els["modalOk"].fire("click");
+  eq(app2.beat.Store.logSessions.length, 0, "确认清除后记录归零");
+  eq(app2.els["statsNote"].textContent.indexOf("还没有练习记录"), 0, "空态文案");
+  eq(app2.els["statRecord"].textContent, "—", "空态速度纪录占位");
+}
+
+/* ================= 场景 T40：训练收成 → 上次训练（v1.4） ================= */
+section("T40 训练计划 · 完成记 done / 中途停记 reached");
+{
+  /* 完成路径：70→90，步长 10，每级 1 小节 */
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 70, target: 90, step: 10, everyN: 1 } }) });
+  beat.Controls.start();
+  drive(FakeAudioContext.last, beat, 30);
+  ok(!beat.Store.S.playing, "练到目标自动停止");
+  const last = beat.Store.S.trainer.last;
+  ok(!!last && last.done === true, "完成 → last.done=true");
+  eq(last && last.reached, 90, "完成 → reached=目标 90");
+  ok(els["trResumeBtn"].hidden === false, "「继续上次」按钮亮出");
+  ok(els["trResumeBtn"].textContent.indexOf("再来一轮") >= 0, "完成后文案 = 再来一轮 · 70→90");
+
+  /* 中途手动停：开训练 70→200，练 ~8s（过 ≥1 个小节边界）后停 */
+  const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 70, target: 200, step: 10, everyN: 4 } }) });
+  app2.beat.Controls.start();
+  drive(FakeAudioContext.last, app2.beat, 8);
+  app2.beat.Controls.stop();
+  const last2 = app2.beat.Store.S.trainer.last;
+  ok(!!last2 && last2.done === false, "中途停 → done=false");
+  eq(last2 && last2.reached, 70, "中途停 → reached=当前级别 70");
+  ok(app2.els["trResumeBtn"].textContent.indexOf("从 70 BPM 接着练") >= 0, "中途停文案 = 继续上次 · 从 70 BPM 接着练");
+
+  /* 秒停不记录：开了训练但一个小节边界都没过 → 不产出 last */
+  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 70, target: 200, step: 10, everyN: 4 } }) });
+  app3.beat.Controls.start();
+  drive(FakeAudioContext.last, app3.beat, 1);
+  app3.beat.Controls.stop();
+  ok(!app3.beat.Store.S.trainer.last, "秒停 → 不记录（防误触污染接续点）");
+
+  /* 持久化：last 随热键落盘，重启后还在 */
+  app2.beat.Store.flush();
+  const savedHot = JSON.parse(app2.storage.get("beatsight.state"));
+  ok(savedHot.trainer.last && savedHot.trainer.last.reached === 70, "last 随 beatsight.state 持久化");
+}
+
+/* ================= 场景 T41：上次训练一键继续（v1.4） ================= */
+section("T41 训练计划 · 「继续上次」接续行为");
+{
+  /* 无历史 → 按钮隐藏 */
+  const app0 = loadApp();
+  eq(app0.els["trResumeBtn"].hidden, true, "无训练历史 → 按钮不露面");
+
+  /* 未完成：从练到的级别接着练（start 被推进到 reached，训练自动开启并起播） */
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: false, start: 70, target: 150, step: 4, everyN: 4,
+      last: { reached: 110, done: false, at: 1 } } }) });
+  eq(els["trResumeBtn"].hidden, false, "有历史 → 按钮显示");
+  els["trResumeBtn"].fire("click");
+  const S = beat.Store.S;
+  ok(S.trainer.on, "点击后训练开关自动打开");
+  eq(S.trainer.start, 110, "起始被推进到上次练到的 110");
+  eq(els["trStart"].value, 110, "起始输入框同步 110");
+  ok(S.playing, "点击即起播");
+  eq(S.bpm, 110, "起播速度 = 110");
+  beat.Controls.stop();
+
+  /* 已完成：再来一轮 → 不动 start，按原配置起播 */
+  const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4,
+      last: { reached: 120, done: true, at: 1 } } }) });
+  app2.els["trResumeBtn"].fire("click");
+  eq(app2.beat.Store.S.trainer.start, 70, "已完成 → 起始保持 70（再来一轮）");
+  ok(app2.beat.Store.S.playing, "已完成 → 点击即起播");
+  app2.beat.Controls.stop();
+
+  /* 脏 last 回退：reached 超界钳制、非数字整条丢弃 */
+  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4, last: { reached: 999, done: false, at: 1 } } }) });
+  eq(app3.beat.Store.S.trainer.last.reached, 240, "reached 超界钳到 240");
+  const app4 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4, last: { reached: "x" } } }) });
+  ok(!app4.beat.Store.S.trainer.last, "reached 非数字 → last 整条丢弃");
+}
+
+/* ================= 场景 T42：后台保活（v1.4） ================= */
+section("T42 KeepAlive · wakeLock 优先 / 静音音频兜底 / 开关持久化");
+{
+  /* 默认关；扳动后 persist 落盘 */
+  const { beat, els, storage } = loadApp();
+  const S = beat.Store.S;
+  eq(S.keepAwake, false, "后台保活默认关");
+  els["keepAwakeToggle"].fire("click");
+  eq(S.keepAwake, true, "扳动后 keepAwake=true");
+  ok(els["keepAwakeToggle"].classList.contains("on"), "开关视觉同步 on");
+  eq(els["keepAwakeToggle"].getAttribute("aria-checked"), "true", "aria-checked 同源");
+  beat.Store.flush();
+  eq(JSON.parse(storage.get("beatsight.state")).keepAwake, true, "开关状态持久化到热键");
+  const app2 = loadApp({ "beatsight.state": storage.get("beatsight.state") });
+  eq(app2.beat.Store.S.keepAwake, true, "重载后开关仍是开");
+
+  /* wakeLock 路径：start 申请、stop 释放（同步 thenable 避免异步编排） */
+  const calls = [];
+  const lockObj = { released: false, release(){ this.released = true; }, addEventListener(){} };
+  const nav = { wakeLock: { request(t){ calls.push(t); return { then(fn){ fn(lockObj); return { catch(){} }; } }; } } };
+  const app3 = loadApp({}, { navigator: nav });
+  app3.beat.Store.S.keepAwake = true;
+  app3.beat.Controls.start();
+  eq(JSON.stringify(calls), JSON.stringify(["screen"]), "播放中+开关开 → 申请 wakeLock('screen')");
+  ok(app3.beat.KeepAlive.state().locked, "锁已持有");
+  app3.beat.Controls.stop();
+  ok(lockObj.released, "停止 → 释放 wakeLock");
+
+  /* 无 wakeLock（iOS 老版本）→ 静音循环 audio 兜底；stop 释放 */
+  const app4 = loadApp({}, { navigator: {} });
+  app4.beat.Store.S.keepAwake = true;
+  app4.beat.Controls.start();
+  ok(app4.beat.KeepAlive.state().audio, "无 wakeLock → 静音音频兜底已起");
+  app4.beat.Controls.stop();
+  ok(!app4.beat.KeepAlive.state().audio, "停止 → 静音音频已停");
+
+  /* 开关关着 → 播放也不申请任何保活 */
+  const app5 = loadApp({}, { navigator: nav });
+  app5.beat.Controls.start();
+  eq(calls.length, 1, "开关关 → 播放不申请 wakeLock");
+  app5.beat.Controls.stop();
+}
+
+/* ================= 场景 T43：PWA 注册按协议收口（v1.4） ================= */
+section("T43 PWA · 仅 http(s) 注册 manifest + sw.js，file:// 完全跳过");
+{
+  /* file://：serviceWorker 在场也不许注册 */
+  const regCalls = [];
+  const navSW = { serviceWorker: { register(u){ regCalls.push(u); return { catch(){} }; } } };
+  loadApp({}, { location: { protocol: "file:" }, navigator: navSW });
+  eq(regCalls.length, 0, "file:// 协议 → 不注册 SW（单文件双击场景零副作用）");
+
+  /* 无 location（极老/测试环境）→ 整段跳过不抛错（前面全部用例已在跑这条路径） */
+  ok(true, "无 location 环境已在全部既有用例中验证不抛错");
+
+  /* https：注册 sw.js + 注入 manifest link */
+  const app = loadApp({}, { location: { protocol: "https:" }, navigator: navSW });
+  eq(JSON.stringify(regCalls), JSON.stringify(["sw.js"]), "https → 注册 sw.js");
+  const link = app.sandbox.document.head.children.find(c => c.rel === "manifest");
+  ok(!!link && link.href === "manifest.webmanifest", "https → <link rel=manifest> 指向 manifest.webmanifest");
+
+  /* 无 serviceWorker 能力（老浏览器）→ 只注入 manifest，不抛错 */
+  const app2 = loadApp({}, { location: { protocol: "https:" }, navigator: {} });
+  ok(!!app2.sandbox.document.head.children.find(c => c.rel === "manifest"), "无 SW 能力 → manifest 仍注入");
+}
 
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
 if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }

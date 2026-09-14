@@ -4,8 +4,8 @@
 
 ## 1. 项目性质与硬约束
 
-- **单文件应用**：所有代码在 `index.html`（HTML+CSS+JS 一体），禁止引入构建工具、框架、外部 CDN
-- **零依赖、离线优先**：必须能双击 file:// 直接运行（PWA 化是 M3，不能破坏单文件性质——manifest/sw 用 Blob 内联注册）
+- **单文件应用**：应用代码全在 `index.html`（HTML+CSS+JS 一体），禁止引入构建工具、框架、外部 CDN
+- **零依赖、离线优先**：必须能双击 file:// 直接运行。v1.4 PWA 化的落地方式：新增 `manifest.webmanifest`/`sw.js`/`icon.svg` 三个**独立文件**，注册逻辑在 index.html 里按协议收口（仅 http(s) 生效，file:// 整段跳过）——**SW 不能用 Blob 内联注册**（浏览器禁止），这是单文件原则唯一的一次妥协，且不影响单文件直开
 - **移动优先**：布局以 390px 宽度为基准，桌面端 `max-width:1440px` 居中
 - **界面语言**：中文
 - **音色约束**（v0.8.0 起三音色）：click = 正拍 1046.5Hz / 重拍 1568Hz(triangle) / 细分 784Hz，短促包络（4ms 起音，90ms 衰减）；wood = 带通噪声（重拍 2000 / 正拍 1500 / 细分 1100Hz，Q=8，30ms）；drum = 底鼓扫频 150→50 / 军鼓带通 1800 / 踩镲高通 8000（音量 ×0.7）。全部集中在 `CONFIG` / `CONFIG.timbres` 常量区，勿散落硬编码；噪声一律程序生成 buffer，**禁止引入采样文件**
@@ -14,7 +14,10 @@
 
 ```
 beatsight/
-├── index.html            # 全部代码（样式 <style> + 逻辑 <script>）
+├── index.html            # 全部应用代码（样式 <style> + 逻辑 <script>）
+├── manifest.webmanifest  # PWA manifest（v1.4；仅在线版被引用，file:// 下不加载）
+├── sw.js                 # Service Worker（v1.4；同上。导航 network-first、静态 cache-first）
+├── icon.svg              # PWA 图标（同源相对路径，manifest 内引用）
 ├── README.md             # 项目门面
 ├── CHANGELOG.md          # 版本记录
 ├── LICENSE               # MIT
@@ -40,16 +43,17 @@ beatsight/
 
 ## 3. 核心架构
 
-### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化）
+### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块）
 
-`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → init**
+`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → Stats → KeepAlive → init**
 
 ```
-Store（持久化/状态创建/迁移/导入导出）
-共享状态（S/customs 别名、draft、appliedPat、activePattern、curPattern、UI 同步助手、音频时钟变量）
+Store（持久化/状态创建/迁移/导入导出/练习记录）
+共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
-→ Trainer（变速训练器）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍）
-→ Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）→ init（装配）
+→ Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
+→ Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）
+→ Stats（练习统计汇总 + overlay）→ KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 
 - **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
@@ -174,6 +178,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 | `beatsight.customs` | `{v:1, customs}` 预设库 | 只在预设增删改时，**立即写**（不防抖——丢掉一个手写节奏型代价太大） |
 | `beatsight.m2` | **旧键，只读的迁移来源** | 仅首次升级时读取；拆分成功且写后校验通过后**删除**（v1.3.1），备份存 `beatsight.m2.bak` |
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
+| `beatsight.log` | `{v:1, sessions:[{t, sec, bpm, name}]}` 练习记录（v1.4） | 停止一次 ≥30s 的有效练习时**立即写**（冷键语义，不进防抖）；环形截断最近 400 场 |
 
 - 为什么要拆：原实现把预设库塞进同一个 key，而 `persist()` 挂在几乎每个交互上。实测 10/100/500 个预设 = 14 KB / 143 KB / **715 KB**，每次点击都要全量 `JSON.stringify` + 同步写盘 → 5–20ms 主线程阻塞，**正好会触发音频掉音**（与 P1-3 同源）
 - **防抖窗口内不能丢**：`visibilitychange`（转为隐藏）与 `pagehide` 都会 `flush()`
@@ -249,14 +254,12 @@ tests/screenshot.sh 800 1800     # 窄屏
 
 ## 6. 路线图（2026-09-07 重排）
 
-已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~ / ~~v0.9 预备拍+可视化脱轨修复~~ / ~~v0.9.1 防御性补丁~~ / ~~v1.0 依赖方向净化+Editor 测试+CI~~ / ~~v1.0.1 重拍增强量倒挂+音量行错位~~ / ~~v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度~~ / ~~v1.1.1 播放中切节奏型点下即生效（相位就地接续）+ 停止落定挂起~~ / ~~v1.2 弹跳球预判式可视化（onset 表 + 预测终点 + 真实球体物理）~~ / ~~v1.2.4 持久值健壮性收口（加载路径校验复用 + 渲染帧外壳/主体分离 + 调度器防死循环 + 音量末级钳制 + 渲染层进测试覆盖 + 死循环看门狗）~~ / ~~v1.3 审计第二/三梯队（持久化冷热分离 + 后台调度自适应 + 渲染几何缓存与增量重绘 + 静态检查三项 + 无障碍分级 + PWA 元信息 + 音频生命周期补全 + 跨 origin 提示）~~ / ~~v1.3.1 遗留收口（V8 内置覆盖率 + 弹跳球物理逐帧数值断言 + 交互接线层补测 + 旧键清理）~~ / ~~v1.3.2 发布渠道收口（移除 GitHub Actions，改由 WorkBuddy 发布 + tools/check-all.js 一键自验）~~
+已完成：~~M1 节拍内核~~ / ~~M2 预设+编辑器~~ / ~~M3-2 变速训练器~~ / ~~v0.6 模块化+导入导出+持久化测试~~ / ~~v0.7 tick 制+三连音/Swing/奇数拍~~ / ~~v0.8 三套程序合成音色~~ / ~~v0.9 预备拍+可视化脱轨修复~~ / ~~v0.9.1 防御性补丁~~ / ~~v1.0 依赖方向净化+Editor 测试+CI~~ / ~~v1.0.1 重拍增强量倒挂+音量行错位~~ / ~~v1.1 BPM 常用速度档（60/72/84/96/120）+ ±5 粗调 + 滑杆手绘刻度~~ / ~~v1.1.1 播放中切节奏型点下即生效（相位就地接续）+ 停止落定挂起~~ / ~~v1.2 弹跳球预判式可视化（onset 表 + 预测终点 + 真实球体物理）~~ / ~~v1.2.4 持久值健壮性收口（加载路径校验复用 + 渲染帧外壳/主体分离 + 调度器防死循环 + 音量末级钳制 + 渲染层进测试覆盖 + 死循环看门狗）~~ / ~~v1.3 审计第二/三梯队（持久化冷热分离 + 后台调度自适应 + 渲染几何缓存与增量重绘 + 静态检查三项 + 无障碍分级 + PWA 元信息 + 音频生命周期补全 + 跨 origin 提示）~~ / ~~v1.3.1 遗留收口（V8 内置覆盖率 + 弹跳球物理逐帧数值断言 + 交互接线层补测 + 旧键清理）~~ / ~~v1.3.2 发布渠道收口（移除 GitHub Actions，改由 WorkBuddy 发布 + tools/check-all.js 一键自验）~~ / ~~v1.4 练习闭环（练习记录+统计 overlay）+ PWA 离线 + 后台保活开关 + 上次训练一键继续~~
 
 按优先级排队：
 
-1. **v1.4 练习闭环第一刀**（原 v1.1，因 v1.1 让位给 BPM 速度档而后移）：停止时自动记录有效播放（≥30 秒）到 `beatsight.log`；统计 overlay（顶栏 chip 入口）：本周时长/连续天数/速度纪录/累计场次四卡 + 近 7 天条图（div 实现，不引图表库）
-2. **PWA 离线**：内联 manifest（Blob URL）+ Service Worker（元信息、`theme-color`、SVG icon 已在 v1.3 就位）
-3. **后台持续发声收尾**：自适应窗口（v1.3）已打通调度侧阻塞点；剩余是 iOS 保活——优先 `navigator.wakeLock.request("screen")`，不支持时用静音循环 audio 元素，均需设置页开关
-4. **训练计划**：「上次训练一键继续」起步，7 天爬升计划的形态视统计数据使用情况再定
+1. **后台持续发声真人验收**：调度侧（v1.3 自适应窗口）与系统侧（v1.4 wakeLock/静音音频保活开关）都已就位，剩 §5 的真人 30s 后台验收（桌面 Chrome 一轮 + iOS Safari 一轮，后者开「后台保活」再验锁屏）
+2. **7 天爬升训练计划**：形态视统计数据使用情况再定（「继续上次」已提供最小闭环）
 
 ### 已埋的技术债 / 后续要盯
 - 快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份

@@ -34,7 +34,7 @@ const SRC = m[1];
 const lines = SRC.split("\n");
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "KeepAlive"];
 
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，
@@ -45,6 +45,8 @@ const WHITELIST = [
   { from: "Trainer",  to: "Controls", reason: "训练到目标时调 Controls.stop()/setBpm()/syncBpmUI()——由调度周期或事件触发" },
   { from: "Controls", to: "Presets",  reason: "stop() 调 Presets.flushPending() 落定挂起切换——停止流程中执行" },
   { from: "Controls", to: "Editor",   reason: "keydown 处理器调 Editor.tryClose()/undo()——用户按键时执行" },
+  { from: "Controls", to: "Stats",    reason: "v1.4：keydown 处理器查 Stats.isOpen()/close()——统计 overlay 打开时键盘归它管，用户按键时执行" },
+  { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
 ];
 
 /* 逐行剥掉注释（含跨行块注释；跳过字符串，避免把字符串里的 // 当注释）。
