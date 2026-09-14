@@ -1,10 +1,27 @@
 # BeatSight 自动化测试
 
 ```bash
-node tests/run.js
+node tests/run.js            # 主套件：23 个场景组 / 264 断言
+node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 ```
 
 零依赖，任意 Node ≥ 18 可直接运行。退出码 0 = 全绿，1 = 有失败项。每次 push 由 GitHub Actions 自动运行（.github/workflows/test.yml）。
+
+## 两套测试为什么分开
+
+| | `run.js` | `hang-guard.js` |
+|---|---|---|
+| 管什么 | **值对不对**（状态、时序、文案、类名） | **会不会把主线程卡死** |
+| 进程模型 | 单进程，全部用例跑在一起 | 每用例一个子进程，父进程超时强杀 |
+| 失败表现 | 断言 ✗ | 断言 ✗ 或**被强杀**（超时即判定为死循环） |
+
+`run.js` 是单进程的：如果某个用例让主线程进死循环（历史案例：持久值 `sig:-3` 使 `scheduler` 空小节分支永不推进），整个进程会挂住——**在 CI 上表现为跑满 6 小时超时，而不是干脆失败**。这种卡死无法在进程内打断：单线程被占死时 `setTimeout` 看门狗根本轮不到执行。所以死循环类风险单独用子进程 + 超时来守。
+
+```bash
+# 看门狗可指向别的构建，用来验证「它真的抓得住死循环」：
+BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
+#   v1.2.3 原版实测输出：✗ sig_neg 超时强杀 3.0s ← 主线程死循环；退出码 1
+```
 
 ## 原理
 
@@ -13,7 +30,9 @@ node tests/run.js
 - **localStorage**：Map 实现，可按场景预置数据（容错 / 脏项回退 / 迁移）
 - **DOM**：按 id 缓存的元素 stub；`addEventListener` 存 handler，测试用 `el.fire("change")` 触发
 - **AudioContext**：伪造实现，`currentTime` 手动推进，逐 tick 驱动 `scheduler()`
-- **rAF 置空**：`paintFrame` 不运行，测试只断言引擎与状态层（视觉验证仍走无头 Chrome 截图）
+- **渲染层**：`requestAnimationFrame` 默认置空（引擎/状态层用例只断言数据），**但渲染层已进覆盖**——T23 系列用 `driveFrames()` 同时推进音频时钟与 rAF 帧，真正执行 `paintFrame`
+  - v1.2.3 之前这里全空，所以「`paintFrame` 内抛异常 → rAF 循环静默死亡」这类问题**CI 拦不住**；新增渲染层断言是为了让这类缺陷以后能被拦住
+- **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
 （Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor）。
@@ -39,8 +58,15 @@ node tests/run.js
 | T15 | 播放中切拍号挂起窗口内 viz 按旧拍号渲染不回卷（vizSig 回归） |
 | T16 | persist 写失败（隐私模式/配额）不炸交互链；导入 accents 去重排序归一 |
 | T17 | Editor 全流程：打开/编辑/校验/撤销/保存/持久化/选择切换 |
+| T18 | 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂） |
+| T19 | 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰 |
+| T20 | 播放中切节奏型 · 点下即生效（不再等小节边界）+ 不跳针 + 停止无残留 |
+| T21 | 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 3 个点击相位 = 243 组） |
+| T22 | 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / 休止跳过 / 预测永远有下一跳 |
+| T23 | 持久值健壮性（v1.2.4，7 个子场景）：脏拍号（含 `-3` 死循环用例）· 空小节 customs 淘汰+隔离备份 · 音量钳制（断言**送达增益峰值 ≤ 1.0**）· 脏 BPM · 试听中清空小节（真实用户路径）· 帧内异常被外壳兜住且用户可见 · 正常路径与 6/8、5/4、7/4 防误伤 |
 
 ## 何时补断言
 
 - 修 bug 时：先加一条能复现该 bug 的断言，再修（v0.6.0 的 trainer null 脏值、v0.7.0 的 activePattern 快照与导入 id 冲突均按此流程）
 - 新功能动到 Store / Trainer / scheduler 时必须有对应断言
+- 动到 `paintFrame` / 新增渲染层守卫时**必须有**对应断言（用 `driveFrames()` 真正跑帧，别只断言状态值）——否则下一个改动者会把守卫改回去

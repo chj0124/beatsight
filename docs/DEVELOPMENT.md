@@ -85,7 +85,9 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 - **停止时落定挂起**：`Controls.stop()` 调 `Presets.flushPending()`。档位高亮在点击时就切了，若挂起的切换不被消费，就会出现「档位已换、标题与网格还是旧的」半切换残留
 - **静音拍**：`S.mute && schedBar === 3` 时跳过发声（视觉照常）
 - **变速训练（v0.5.0）**：小节边界调 `trainerOnBarBoundary()`——每练满 `everyN` 小节经 `setBpm(v,false)` 升一级（时钟重映射不打断播放），到目标并练满一级自动 `stop()` 并提示；返回 true 时 scheduler 立即退出本次调度。爬坡会覆盖播放中的手动调速（下一级边界生效）
-- 空小节（编辑器草稿）安全跳过
+- 空小节（编辑器草稿）安全跳过。**跳过时空小节也强制正向推进 `nextNoteTime += pat.meter * spb()`**（`adv > 0 && isFinite(adv)` 兜底 0.5s），并有一层 `MAX_SCHED_STEPS = 512` 硬上限——脏拍号（`-3` / `0` / `"abc"`）曾让这个分支永不推进 → 主线程死循环（v1.2.4 修）
+- **持久值收口（v1.2.4）**：`Store` 加载路径与编辑器共用**同一份**校验（`VALID_T` / `VALID_METER` 已上移到 `S` 创建之前，`validatePreset()` 复用）。`bpm`/`vol`/`accentVol`/`sig` 一律经 `numOr`/`clamp01`/白名单取值；`customs` 逐项校验，**淘汰项不静默丢弃**而是写入 `beatsight.m2.quarantine` + `console.warn`，用户可人工找回。trainer / accents 用**显式白名单抽取**，不用 `Object.assign` 整包（消除对「`Object.assign` 只拷自有属性」的侥幸依赖）
+- **发声末级钳制**：`playClick` 送出增益前过 `Math.min(1, Math.max(0, …))`。对合法输入是**无操作**（合法上界本就是 1），只在持久值被改坏时兜住 `vol:1e6 → +120 dBFS` 这类削波爆音
 - 拍号/音量的 UI 入口统一走 `setSig()` / `setBpm()`，不要新写并行的 pill 高亮逻辑
 - **弹跳球 onset 表（v1.2）**：排程每个非休止音符时（含静音小节）顺手 `onsetBuf.push({t, bar, cumT})`，时刻含 `swingShift()` 偏移；每轮调度末尾 `onsetNext = predictNext(pat)` 预测游标处下一发声点（与排程同源，值严格相等）；修剪保留最近 1s 已落地端点。Swing 偏移公式共享为 `swingShift()`——改 Swing 只改这一处，否则球与声音会分叉
 
@@ -93,6 +95,18 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 
 `paintFrame()` 每帧只做便宜事：播放头 left% + 当前音符 fill 宽度% + 弹跳球 transform。
 小节/音符切换时才做全量重绘（class 切换 + fill 0/100% + 组标签高亮）。
+
+**外壳 / 主体两层（v1.2.4，改渲染层必须先读）**：
+
+```
+paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameBody() }catch{ 停播 + 弹窗 + console.error } ③ 续 rAF
+  └── paintFrameBody()  ← 主体：只画，**绝不调用 requestAnimationFrame**
+```
+
+- **续期只在 `paintFrame()` 一处**。这是硬约束：主体任何一条 `return` 分支都不再需要自己续期，所以「任何异常路径都不会丢掉下一帧」这个性质是**一眼可验证**的。v1.2.3 主体内部有 3 处各自 `requestAnimationFrame(...) + return`，中途抛异常 → 循环永久死亡 → 症状是**画面冻结、声音照响、控制台安静**
+- 外壳的恢复动作各自包 `try`：万一异常源头就在这些 DOM 写入里（例如状态栏元素本身出问题），不能让它把「告诉用户」这一步也一起带走
+- 主体守卫（脏值一律跳过本帧，等 `buildViz` / `setBpm` 修正回来再画）：`barTicks` / `posT` 非有限 → return；本行未渲染出格子 → return；**空小节 → return**（与 `scheduler` 同名守卫对齐）
+- 全量重绘前 `activePattern()` **只取一次快照**（原先每格调一次，自定义预设下等于每次重绘 64 次线性查找）
 
 **弹跳球（v1.2）**：`paintBall(now, bar, tib)` 每帧驱动。端点 = `onsetBuf`（已排程，Audio 写 Viz 读）+ `onsetNext`（Audio 预测的下一发声点——**视觉要看得远一跳，不能依赖调度器 150ms 前瞻窗口**，否则慢速下落地僵住）。落点时刻 = 真实发声时刻（含 Swing、静音小节照跳、休止跳过）。运动：y = H·4p(1−p)，H = clamp(120·T², 10, 48) 且顶点不出容器空域；触地 70ms 挤压回弹 + 空中拉伸 + 落地预压 + 地面投影；不做滚动旋转（接缝回卷伪影）。**跨小节 = 接力制（v1.2.3）**：每小节一颗球自始至终跳完本行，终端弧终点 = 本行右缘（时刻 = 小节边界，与下一行首拍发声同时），期间待命球（半透明）停在新行首 onset 处、边界无缝交接；小节前导休止时球停在首 onset 待命。onsetBuf 修剪保留最近 1s 且 ≥8 条（30BPM 的 7/4 小节 16s，上一颗本行 onset 可能很远）。开关 `S.bounce`（默认开）只控显隐。
 
@@ -136,6 +150,10 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 ```bash
 # 0) 自动化测试（v0.6.0 起，最快反馈，先跑这个）
 node tests/run.js    # 全 PASS 才继续；CI（.github/workflows/test.yml）在每次 push 自动跑同一套
+                     # v1.2.4 起渲染层已进覆盖（T23 系列用 driveFrames 同时推进音频时钟与 rAF 帧），
+                     # 改 paintFrame / 加守卫后**必须**有对应断言，否则下一个人会把它改回来
+node tests/hang-guard.js   # 死循环看门狗（v1.2.4 起）：每用例独立子进程 + 超时强杀
+                     # 单进程的 run.js 一旦被死循环卡住会挂满 CI 的 6 小时超时，而不是干脆失败
 
 # 1) JS 语法校验（提取内联脚本，编译不执行）
 node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);new Function(m[1])"
@@ -169,6 +187,9 @@ tests/screenshot.sh 800 1800     # 窄屏
 ### 已埋的技术债 / 后续要盯
 - 快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
+- **版本号仍是 5 处硬编码**（`<title>` / 品牌 span / chip / 2 处注释）靠人工同步（审计 P2-9）。收敛方案：在 CONFIG 上方加 `const VERSION`，`document.title` 与两个 DOM 写入都由它派生，再补一条「源码里 `v\d+\.\d+\.\d+` 出现次数 ≤ 1」的断言
+- **CI 只有语法校验 + 跑测试**（审计 P1-7）：无 lint、无覆盖率、无产物保存（失败截图/日志）
+- `Viz.paintBall` 的物理动画（76 行）仍无逐帧数值断言，T23 只覆盖「不抛异常 + 类名/文案正确」
 
 ### 已明确不处理（不再跟进）
 - **Firefox 圆钮样式**（2026-09-11 决定忽略）：本项目只写了 `::-webkit-slider-thumb`，没有 `::-moz-range-thumb`，理论上 FF 下圆钮可能与刻度略错位。本机无 Firefox、未实测，用户已决定不处理 → **不再列为待办，也不要主动盘它**（不必提、不必测、不必补）。仅当日后真有人在 Firefox 下反馈刻度错位时，再回来补这两条伪元素规则

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.2.3</title>
+<title>BeatSight 时值节拍器 v1.2.4</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -251,9 +251,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.2.3</span>
+    <span class="ver">v1.2.4</span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.2.3 · 稳定版</div>
+  <div class="chip"><span class="dot"></span>v1.2.4 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -556,33 +556,70 @@ const Store = (() => {
     })));
     saved.v = 3;
   }
-  /* 变速训练器配置：saved.trainer 缺项/脏项回退默认值 */
+  /* ---- 持久值校验收口（v1.2.4）----
+     原则：localStorage 里的任何值都当不可信输入，先过校验器再进 S / customs。
+     修复的历史缺陷（v1.2.3 及以前）：
+       · sig 只挡 falsy（`saved.sig || 4`）。"abc" / -3 / 99 全部放行 → basicPattern 产出空小节
+         → buildViz 渲染 0 格 → paintFrame 读 cellEls[bar][0].offsetHeight 抛 TypeError。
+         异常落在 rAF 回调内，下一帧的 requestAnimationFrame 从未注册 → **渲染循环永久死亡**
+         （画面冻结、声音照响、无任何报错），正是本项目最不想出现的状态。
+       · vol / accentVol 原样透传。实测 vol:1e6 会把增益送到 +120 dBFS（削波爆音、听力风险）。
+       · customs 在本路径零校验，而 importPresets 走严格 validatePreset —— 同一份数据两套信任级别。
+     回归测试：tests/run.js T23 / T23b / T23c */
+  const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
+  const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
+  const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
+  const numOr = (v, dft) => (isNum(v) ? v : dft);
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+
+  /* 变速训练器配置：saved.trainer 缺项/脏项回退默认值。
+     显式按白名单取值，不用 Object.assign 整包合并——后者会把源对象的 __proto__ 键经 [[Set]]
+     写到目标对象上并改写其原型（当前因后续只拷 own 属性而侥幸无害，但不必留这个不确定性） */
   const trDefaults = {on:false, start:70, target:120, step:4, everyN:4};
-  const trSaved = Object.assign({}, saved.trainer || {});
+  const trSrc = (saved.trainer && typeof saved.trainer === "object") ? saved.trainer : {};
+  const trSaved = {};
   /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获） */
-  ["start","target","step","everyN"].forEach(k => {
-    const v = trSaved[k];
-    if (v === null || typeof v === "boolean" || !isFinite(+v)) delete trSaved[k];
+  ["start","target","step","everyN"].forEach(k => { if (isNum(trSrc[k])) trSaved[k] = trSrc[k]; });
+
+  /* 重拍分组：只接受 ACC_GROUPS 里真实存在的档位下标（0/1），杜绝脏值被当数组下标用 */
+  const accentGrpSaved = {};
+  Object.keys(ACC_GROUPS).forEach(m => {
+    const idx = (saved.accentGrp && typeof saved.accentGrp === "object") ? +saved.accentGrp[m] : NaN;
+    if (idx === 0 || idx === 1) accentGrpSaved[m] = idx;
   });
+
+  const savedCountIn = (saved.countIn && typeof saved.countIn === "object") ? saved.countIn : {};
   const S = {
-    bpm: saved.bpm || 96,
-    vol: saved.vol ?? 0.8,
-    accentVol: saved.accentVol ?? 1,
+    bpm: numOr(saved.bpm, 96),
+    vol: clamp01(numOr(saved.vol, 0.8)),
+    accentVol: clamp01(numOr(saved.accentVol, 1)),
     mute: !!saved.mute,
-    sig: saved.sig || 4,
+    sig: VALID_METER.includes(+saved.sig) ? +saved.sig : 4,
     sel: saved.sel || {type:"builtin", idx:0},
     swing: SWINGS.includes(saved.swing) ? saved.swing : 50,          // v0.7.0
-    accentGrp: (saved.accentGrp && typeof saved.accentGrp === "object") ? saved.accentGrp : {},  // v0.7.0
+    accentGrp: accentGrpSaved,                                       // v0.7.0
     timbre: ["click","wood","drum"].includes(saved.timbre) ? saved.timbre : "click",  // v0.8.0
-    countIn: { on: !!(saved.countIn && saved.countIn.on),            // v0.9.0 预备拍
-      beats: Math.min(8, Math.max(1, Math.round(+((saved.countIn || {}).beats) || 4))) },
+    countIn: { on: !!savedCountIn.on,                                // v0.9.0 预备拍
+      beats: Math.min(8, Math.max(1, Math.round(numOr(savedCountIn.beats, 4)))) },
     playing: false,
     preview: false,
     bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
-    trainer: Object.assign({}, trDefaults, trSaved),
+    trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
-  const customs = saved.customs || [];
-  customs.forEach((c, i) => { if (!c.id) c.id = "c" + Date.now() + "-" + i; });
+
+  /* customs 走与导入完全相同的校验路径；非法项隔离到 .quarantine，不静默丢弃也不放行 */
+  const customs = [];
+  const rejectedCustoms = [];
+  (Array.isArray(saved.customs) ? saved.customs : []).forEach((c, i) => {
+    const v = validatePreset(c);
+    if (v) customs.push(Object.assign({}, v,
+      { id: (c && typeof c.id === "string" && c.id) ? c.id : ("c" + Date.now() + "-" + i) }));
+    else rejectedCustoms.push(c);
+  });
+  if (rejectedCustoms.length){
+    try{ localStorage.setItem("beatsight.m2.quarantine", JSON.stringify(rejectedCustoms)); }catch(e){}
+    try{ console.warn("[BeatSight] " + rejectedCustoms.length + " 个预设未通过结构校验，已隔离到 beatsight.m2.quarantine"); }catch(e){}
+  }
   /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用 */
   if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
     const c0 = customs[S.sel.idx];
@@ -606,9 +643,8 @@ const Store = (() => {
        presets:[{name, meter, accents?, bars:[[{t, rest}…]×4]}]}
      导入兼容 v:1 旧格式（浮点 d 自动 ×48 转 tick）。
      校验：拍号 ∈ {2,3,4,5,6,7}、恰好 4 小节、时值 ∈ 合法 tick 集合、
-     每小节 tick 和严格等于 meter×48（整数相等）；id 一律重新生成 */
-  const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];
-  const VALID_METER = [2, 3, 4, 5, 6, 7];
+     每小节 tick 和严格等于 meter×48（整数相等）；id 一律重新生成。
+     v1.2.4：VALID_T / VALID_METER 已上移到 S 创建之前，加载路径复用同一份校验 */
   let idSeq = 0;   // 导入 id 会话内单调序号（见 importPresets）
 
   function serializePresets(){
@@ -937,14 +973,17 @@ const Viz = (() => {
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
+    if (!playheadEl) return;                   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
     playheadEl.style.left = "0%";
     trailGlowEl.style.left = "0%";
     trailGlowEl.style.width = "0%";
     parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
+    const pat = curPattern();
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
-      el.className = "cell upcoming" + (curPattern().bars[b][i].rest ? " rest" : "");
-      fillEls[b][i].style.width = "0%";
+      const st = (pat.bars[b] || [])[i];       // v1.2.4：快照与已渲染格子可能因瞬态长度不一，容忍之
+      el.className = "cell upcoming" + (st && st.rest ? " rest" : "");
+      if (fillEls[b][i]) fillEls[b][i].style.width = "0%";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
     }));
@@ -1060,8 +1099,11 @@ const Viz = (() => {
     }
   }
 
-  function paintFrame(){
-    if (!S.playing) return;
+  /* 每帧主体：只做便宜事。rafId 的续期统一交给外层 paintFrame()，
+     这里**不碰 requestAnimationFrame** —— 保证「无论从哪条分支返回，下一帧都会被排上」
+     （v1.2.4 修复：主体曾在自己内部 3 处各自续期并提前 return，一旦中途抛异常，
+      下一帧再也没人注册 → 渲染循环永久死亡） */
+  function paintFrameBody(){
     /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
        跑道拍点随计数脉冲（跨小节时按 vizSig 折行） */
     if (ciBeats > 0 && ctx.currentTime < loopStart){
@@ -1071,23 +1113,32 @@ const Viz = (() => {
         pulseZone(zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig]);
       }
       $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
-      rafId = requestAnimationFrame(paintFrame); return;
+      return;
     }
     lastCi = -1;
-    const posT = Math.max(0, ((ctx.currentTime - loopStart) / spb() * TPB) % (vizSig * LOOP_BARS * TPB));   // 播放位置（tick，按渲染拍号取模）
     const barTicks = vizSig * TPB;
-    const bar = Math.floor(posT / barTicks);
+    const posT = Math.max(0, ((ctx.currentTime - loopStart) / spb() * TPB) % (vizSig * LOOP_BARS * TPB));   // 播放位置（tick，按渲染拍号取模）
+    /* v1.2.4 边界守卫：拍号或时钟任一异常就跳过本帧（等 buildViz / setBpm 把它修正回来再画）。
+       绝不让 NaN 顺着 rowEls[NaN] 这种下标访问炸进 rAF 回调 —— 那是不可恢复的 */
+    if (!isFinite(barTicks) || barTicks <= 0 || !isFinite(posT)) return;
+    const bar = Math.floor(posT / barTicks) % LOOP_BARS;
     const tib = posT - bar * barTicks;                          // 小节内位置（tick）
     const pw = tib / barTicks * 100;
     playheadEl.style.left = pw + "%";
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     trailGlowEl.style.left = (pw - tail) + "%";
     trailGlowEl.style.width = tail + "%";
+    const row = rowEls[bar], rowCells = cellEls[bar];
+    if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
-      trailGlowEl.style.top = rowEls[bar].offsetTop + "px";
-      trailGlowEl.style.height = cellEls[bar][0].offsetHeight + "px";
+      trailGlowEl.style.top = row.offsetTop + "px";
+      trailGlowEl.style.height = rowCells[0].offsetHeight + "px";
     }
-    const steps = activePattern().bars[bar];
+    const steps = activePattern().bars[bar] || [];
+    /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
+       这条路径**不需要损坏数据就能触发**：编辑器「清空当前小节」时若正在试听，curPattern() 返回
+       的草稿就有空小节，画面照常重建、下一帧即崩 */
+    if (!steps.length) return;
     const cum = []; let acc = 0;
     steps.forEach(s => { cum.push(acc); acc += s.t; });
     let active = 0;
@@ -1133,20 +1184,24 @@ const Viz = (() => {
       $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
     }
     lastT16 = t16;
-    if (bar === lastBar && active === lastStep){ rafId = requestAnimationFrame(paintFrame); return; }
+    if (bar === lastBar && active === lastStep) return;   // 音符未变：本帧只需上面的逐帧动画，跳过全量重绘
     lastBar = bar; lastStep = active;
     rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
     // 下一颗音符预告（跨小节时指向下一行第一颗）
     let nb = bar, ni = active + 1;
     if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
+    /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义预设下等于每次重绘 64 次线性查找），
+       并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
+    const cellsPat = activePattern();
     for (let b = 0; b < LOOP_BARS; b++){
+      const bSteps = cellsPat.bars[b] || [];
       for (let i = 0; i < cellEls[b].length; i++){
         const el = cellEls[b][i];
         let cls = "cell ";
         if (b < bar) cls += "played";
         else if (b > bar) cls += "upcoming";
         else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
-        if (activePattern().bars[b][i].rest) cls += " rest";
+        if (bSteps[i] && bSteps[i].rest) cls += " rest";
         if (b === nb && i === ni) cls += " next";
         el.className = cls;
         fillEls[b][i].style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
@@ -1156,6 +1211,26 @@ const Viz = (() => {
       glEls[b].forEach(g => {
         g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
       });
+    }
+  }
+
+  /* 渲染帧外壳（v1.2.4）：只做三件事——检查播放态、兜住主体异常、续上下一帧。
+     续期只此一处，所以「任何异常路径都不会丢掉下一帧」这个性质是可以一眼看出来的。
+     抛出时：停播（顺带取消 rAF/interval）+ 弹窗告知，用户至少知道出了什么事、以及如何自救；
+     否则症状会是"画面卡住、声音还在响、控制台一片安静"，无从下手。
+     恢复动作各自包 try：万一异常源头就在这些 DOM 写入里（例如状态栏元素本身出问题），
+     不能让它把"告诉用户"这一步也一起带走。 */
+  function paintFrame(){
+    if (!S.playing) return;
+    try{
+      paintFrameBody();
+    }catch(e){
+      try{ console.error("[BeatSight] 渲染帧异常，已停止播放", e); }catch(e1){}
+      try{ Controls.stop(); }catch(e2){}
+      try{
+        Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
+      }catch(e3){}
+      return;
     }
     rafId = requestAnimationFrame(paintFrame);
   }
@@ -1222,7 +1297,11 @@ const Audio = (() => {
        修复 v1.0.0 缺陷：原实现把 S.accentVol 直接当倍率，滑块低于 80% 时
        重拍(×accentVol) 反而轻于正拍(×0.8)，听觉强调层级倒挂 */
     const accentGain = CONFIG.accentMin + (CONFIG.accentMax - CONFIG.accentMin) * S.accentVol;
-    const peak = S.vol * (isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub));
+    /* v1.2.4 最终防线：合法范围内 peak 上限本就是 accentMax(=1)，故此钳制对正常值是**无操作**，
+       不改变任何现有听感（T18 层级增益不变量不受影响）；只为挡住未来新增发声路径漏做钳制——
+       实测 v1.2.3 下 vol:1e6 会把增益送到 +120 dBFS（削波爆音） */
+    const peak = Math.min(1, Math.max(0,
+      S.vol * (isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub))));
     const TM = CONFIG.timbres;
     if (S.timbre === "wood"){                      // 木鱼：带通噪声，层级差体现在中心频率
       const W = TM.wood;
@@ -1290,10 +1369,23 @@ const Audio = (() => {
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
+    /* v1.2.4 防死循环（硬上限）：任何情况下单轮调度最多处理 MAX_SCHED_STEPS 个音符即退出。
+       原实现没有这层保护，而下面「空小节安全跳过」分支用的是 `pat.meter * spb()`：
+       拍号一旦是脏值（如 {"sig":-3}）该步长为 **负数**，nextNoteTime 只减不增，
+       `while (nextNoteTime < ctx.currentTime + schedWindow)` 永远成立 →
+       **主线程死循环、标签页 100% CPU 卡死**（实测复现，比"渲染冻结"更严重）。
+       正常负载远低于此上限（240BPM 三十二分在 1.2s 后台窗口内约 38 个音符） */
+    const MAX_SCHED_STEPS = 512;
+    let guard = 0;
     while (nextNoteTime < ctx.currentTime + CONFIG.schedWindow){
+      if (++guard > MAX_SCHED_STEPS){
+        try{ console.warn("[BeatSight] 调度器单轮迭代超限，已强制退出（疑似脏数据）"); }catch(e){}
+        break;
+      }
       const steps = bars[schedBar];
       if (!steps || steps.length === 0){                  // 空小节：安全跳过（用快照拍号，挂起窗口内 S.sig 可能已变）
-        nextNoteTime += pat.meter * spb();
+        const adv = pat.meter * spb();                    // v1.2.4：强制正向推进，脏拍号不得让进度倒退
+        nextNoteTime += (isFinite(adv) && adv > 0) ? adv : 0.5;
         schedBar = (schedBar + 1) % LOOP_BARS;
         continue;
       }
@@ -1538,7 +1630,12 @@ const Controls = (() => {
     $("patternMeta").textContent = `${meterName(S.sig)} 拍 · ${S.bpm} BPM`;
   }
   function setBpm(v, save){
-    v = Math.min(240, Math.max(30, Math.round(v)));
+    /* v1.2.4：脏输入回退当前值。原先 Math.round("abc") = NaN → Math.max(30, NaN) = NaN →
+       S.bpm = NaN → spb() = NaN → 位置换算全 NaN → 调度器彻底不发声、渲染层读 rowEls[NaN]。
+       BPM 只有这一个入口，在此收口比在每个调用点各防一次省事 */
+    v = Math.round(+v);
+    if (!isFinite(v)) v = isFinite(S.bpm) ? S.bpm : 96;
+    v = Math.min(240, Math.max(30, v));
     if (S.playing){
       const posBeats = (ctx.currentTime - loopStart) / spb();
       S.bpm = v;

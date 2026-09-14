@@ -12,3 +12,7 @@ jobs:
         run: node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);if(!m)process.exit(1);new Function(m[1]);console.log('syntax OK')"
       - name: 自动化测试
         run: node tests/run.js
+      # 单进程跑测试时，一旦有用例把主线程卡进死循环，进程会挂住 → CI 跑满 6 小时超时。
+      # 这道看门狗给每个用例起独立子进程并按超时强杀，把「挂起」转成「明确失败」。
+      - name: 死循环看门狗（每用例独立子进程 + 超时强杀）
+        run: node tests/hang-guard.js 8000
