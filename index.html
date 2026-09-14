@@ -563,7 +563,7 @@ input[type=range].vol{width:120px}
 /* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
-const VERSION = "1.4.0";
+const VERSION = "1.4.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -643,13 +643,23 @@ const CONFIG = {
   /* 音量层级：正拍/细分固定档；重拍 = accentMin + (accentMax-accentMin) × 重拍增强量
      保证重拍恒 ≥ 正拍（accentMin 即正拍档），默认增强量 100% 时重拍 = accentMax */
   levelBeat:0.8, levelSub:0.5, accentMin:0.8, accentMax:1,
-  /* v0.8.0 三套程序合成音色（零采样文件，噪声 buffer 程序生成） */
+  /* v0.8.0 三套程序合成音色（零采样文件，噪声 buffer 程序生成）
+     v1.4.1 响度修复（用户实拍：木鱼调到最大仍听不清）：**滤波噪声路径缺 makeup gain**。
+     定量根因——白噪声 RMS≈0.577，经带通后只剩 sqrt(BW/奈奎斯特) 倍：
+       木鱼 带通 Q=8（带宽 ~190–250Hz）≈ −23dB（幅度 1/14），且 decay 30ms 比 click 的 90ms 短促；
+       军鼓 带通 Q=1.2 ≈ −14dB；踩镲 高通 ×hatGain ≈ −7dB；click/底鼓走振荡器无滤波损失（0dB）。
+     makeup = 补偿滤波衰减的增益倍数；cap = 该路径的增益钳制上限（挡脏持久值）。
+     增益 >1 在噪声路径是安全的：削波看的是**信号幅度**而非增益值——滤波后噪声 RMS 仅为峰值的
+     3%–14%，放大十几倍后输出幅度仍远低于 0 dBFS。振荡器路径（click/底鼓）维持 ≤1 钳制不变。 */
   timbres: {
-    wood: { decay:0.03, q:8, freqSub:1100, freqBeat:1500, freqAccent:2000 },   // 木鱼：带通噪声短促敲击
+    wood: { decay:0.06, q:8, freqSub:1100, freqBeat:1500, freqAccent:2000,   // 木鱼：带通噪声短促敲击
+            makeup:14 },                                                     // v1.4.1：补偿 ≈23dB 滤波衰减
     drum: { kickFrom:150, kickTo:50, kickSweep:0.1, kickDecay:0.12,            // 重拍=底鼓（正弦扫频）
             snareFreq:1800, snareQ:1.2, snareDecay:0.08,                       // 正拍=军鼓（带通噪声）
             hatFreq:8000, hatDecay:0.02, hatGain:0.7 },                        // 细分=踩镲（高通噪声，降音量防刺耳）
   },
+  /* 鼓组噪声路径的 makeup（v1.4.1）：挂在 drum 对象外会打断上面的成组注释，独立列出 */
+  drumMakeup: { snare:5, hat:2.5 },
 };
 
 
@@ -1698,15 +1708,21 @@ const Audio = (() => {
     }
     return noiseBuf;
   }
-  /* 滤波噪声一击：木鱼（带通）/军鼓（带通）/踩镲（高通）共用发声路径 */
-  function noiseHit(t, filterType, freq, q, peak, decay){
+  /* 滤波噪声一击：木鱼（带通）/军鼓（带通）/踩镲（高通）共用发声路径。
+     v1.4.1：makeup 补偿滤波衰减（默认 1 = 不补偿）。钳制上限就取 makeup 本身——
+     它等于「满音量重拍」在该路径应达到的增益，天然是合理天花板（peak 在 playClick 已钳 ≤1，
+     peak×makeup 只会因脏值穿透才越界）。安全性论证见 CONFIG.timbres 注释：
+     削波看信号幅度不看增益值，滤波后噪声 RMS 仅为峰值的 3%–14%。 */
+  function noiseHit(t, filterType, freq, q, peak, decay, makeup){
+    const mk = typeof makeup === "number" && isFinite(makeup) && makeup > 0 ? makeup : 1;
+    const effPeak = Math.min(mk, Math.max(0, peak) * mk);
     const src = ctx.createBufferSource();
     src.buffer = getNoiseBuf();
     const f = ctx.createBiquadFilter();
     f.type = filterType; f.frequency.value = freq; f.Q.value = q;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(effPeak, 0.0001), t + CONFIG.attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
     src.connect(f); f.connect(g); g.connect(masterGain);
     src.start(t); src.stop(t + decay + 0.01);
@@ -1740,14 +1756,14 @@ const Audio = (() => {
     const TM = CONFIG.timbres;
     if (S.timbre === "wood"){                      // 木鱼：带通噪声，层级差体现在中心频率
       const W = TM.wood;
-      noiseHit(t, "bandpass", [W.freqSub, W.freqBeat, W.freqAccent][level], W.q, peak, W.decay);
+      noiseHit(t, "bandpass", [W.freqSub, W.freqBeat, W.freqAccent][level], W.q, peak, W.decay, W.makeup);
       return;
     }
     if (S.timbre === "drum"){                      // 鼓组：重拍底鼓 / 正拍军鼓 / 细分踩镲
-      const D = TM.drum;
+      const D = TM.drum, DM = CONFIG.drumMakeup;
       if (level === 2) kickHit(t, peak);
-      else if (level === 1) noiseHit(t, "bandpass", D.snareFreq, D.snareQ, peak, D.snareDecay);
-      else noiseHit(t, "highpass", D.hatFreq, 1, peak * D.hatGain, D.hatDecay);
+      else if (level === 1) noiseHit(t, "bandpass", D.snareFreq, D.snareQ, peak, D.snareDecay, DM.snare);
+      else noiseHit(t, "highpass", D.hatFreq, 1, peak * D.hatGain, D.hatDecay, DM.hat);
       return;
     }
     /* click（默认）：振荡器短促敲击 */

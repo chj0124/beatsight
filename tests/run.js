@@ -164,7 +164,10 @@ class FakeNode {
   start(t){
     if (this._kind === "osc") this._ctx.hits.push({ t, kind: "osc", freq: this.frequency.value, type: this.type, sweepTo: this.frequency._rampTo,
       gain: this._dest && this._dest.gain ? this._dest.gain._peak : undefined });   // v1.0.1：记录包络峰值（层级增益断言用）
-    if (this._kind === "noise") this._ctx.hits.push({ t, kind: "noise", filterType: this._dest && this._dest.type, filterFreq: this._dest && this._dest.frequency.value });
+    if (this._kind === "noise") this._ctx.hits.push({ t, kind: "noise", filterType: this._dest && this._dest.type, filterFreq: this._dest && this._dest.frequency.value,
+      /* v1.4.1：噪声链是 src → filter → gain，增益峰值在**第二级**——
+         断言 makeup gain 补偿（T44）必须能看到它 */
+      gain: this._dest && this._dest._dest && this._dest._dest.gain ? this._dest._dest.gain._peak : undefined });
   }
   stop(){}
 }
@@ -2481,5 +2484,68 @@ section("T43 PWA · 仅 http(s) 注册 manifest + sw.js，file:// 完全跳过")
   ok(!!app2.sandbox.document.head.children.find(c => c.rel === "manifest"), "无 SW 能力 → manifest 仍注入");
 }
 
-console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
-if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
+/* ================= 场景 T44：音色响度 · 噪声路径 makeup 增益补偿（v1.4.1） ================= */
+section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路径不受影响");
+{
+  /* 用户实拍：木鱼调到最大仍听不清。根因：滤波噪声路径缺 makeup gain——
+     带通 Q=8 后噪声幅度只剩 ~1/14（≈−23dB），包络峰值却与振荡器路径同值。
+     修复：noiseHit 按 min(makeup, peak × makeup) 送增益；上限=makeup 本身
+     （= 满音量重拍应达到的增益，天然天花板；削波看信号幅度不看增益值，滤波噪声安全）。
+     参照（vol=0.8, accentVol=1）：accent peak=0.8 / beat=0.64 / sub=0.4 */
+  const noiseGain = (timbre, filterFreq, extra) => {
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify(Object.assign(
+      { v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre }, extra || {})) });
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, 3);
+    beat.Controls.stop();
+    const h = ac.hits.find(x => x.kind === "noise" && x.filterFreq === filterFreq);
+    return h ? h.gain : undefined;
+  };
+  const MK = 14;                    // wood.makeup 的规格值：硬编码，不读 CONFIG——
+  const DM = { snare: 5, hat: 2.5 };// 读 CONFIG 算期望值会让「改错 CONFIG」两边一起变（自指，反向验证会漏）
+
+  near(noiseGain("wood", 2000), 0.8 * MK, 1e-6, "木鱼重拍 = 0.8 × makeup（补偿后）");
+  near(noiseGain("wood", 1500), 0.64 * MK, 1e-6, "木鱼正拍 = 0.64 × makeup");
+  near(noiseGain("wood", 1100), 0.4 * MK, 1e-6, "木鱼细分 = 0.4 × makeup");
+  ok(noiseGain("wood", 2000) > noiseGain("wood", 1500)
+     && noiseGain("wood", 1500) > noiseGain("wood", 1100), "木鱼层级保持：重拍 > 正拍 > 细分");
+
+  near(noiseGain("drum", 1800), 0.64 * DM.snare, 1e-6, "军鼓 = 0.64 × snareMakeup");
+  near(noiseGain("drum", 8000), 0.28 * DM.hat, 1e-6, "踩镲 = 0.28（含 hatGain 0.7）× hatMakeup");
+  /* 底鼓是振荡器（sine 扫频，sweepTo=50），不得被 makeup 波及 */
+  {
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "drum" }) });
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, 3);
+    beat.Controls.stop();
+    const kick = ac.hits.find(x => x.kind === "osc" && x.sweepTo === 50);
+    ok(kick && Math.abs(kick.gain - 0.8) < 1e-6, "底鼓（振荡器路径）增益不变 = 0.8");
+  }
+  /* click 路径完全不受影响（T18 已全量程覆盖，此处补一条噪声开关存在时的对照） */
+  {
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "click" }) });
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, 3);
+    beat.Controls.stop();
+    const h = ac.hits.find(x => x.kind === "osc" && x.freq === 1568);
+    ok(h && Math.abs(h.gain - 0.8) < 1e-6, "click 重拍增益不变 = 0.8");
+  }
+  /* 上限 = makeup 本身：满音量重拍恰好顶到天花板，不会越界 */
+  near(noiseGain("wood", 2000, { vol: 1 }), MK, 1e-6, "满音量时木鱼重拍 = makeup（天花板），不越界");
+  /* 脏 makeup 回退 1（不补偿也不炸） */
+  {
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "wood" }) });
+    beat.CONFIG.timbres.wood.makeup = "x";          // 直接污染配置（模拟未来改坏）
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    drive(ac, beat, 3);
+    beat.Controls.stop();
+    const h = ac.hits.find(x => x.kind === "noise" && x.filterFreq === 2000);
+    ok(h && Math.abs(h.gain - 0.8) < 1e-6, "脏 makeup → 回退不补偿（0.8），不产 NaN");
+  }
+}
+
+console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
