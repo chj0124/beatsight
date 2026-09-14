@@ -33,21 +33,30 @@ jobs:
       - name: DOM 引用完整性（$() 悬空引用）
         run: node tools/check-dom-ids.js
 
+      # 覆盖率：用 Node 内置的 V8 覆盖采集（NODE_V8_COVERAGE），零依赖。
+      # 双阈值（总 97% / 分区 90%）是为了防止"一个模块烂掉、另一个模块补偿"。
+      # 当前实测 99.8%，唯一未覆盖的是 scheduler 的 MAX_SCHED_STEPS 防御分支。
+      - name: 行覆盖率（V8 内置采集 + 双阈值）
+        run: node tools/check-coverage.js --full 2>&1 | tee coverage.log
+
       - name: 自动化测试（全量组合扫描）
         run: |
           set -o pipefail
-          FULL_SCAN=1 node tests/run.js 2>&1 | tee test-output.log
+          FULL_SCAN=1 node tests/run.js 2>&1 | tee -a test-output.log
 
       # 单进程跑测试时，一旦有用例把主线程卡进死循环，进程会挂住 → CI 跑满 6 小时超时。
       # 这道看门狗给每个用例起独立子进程并按超时强杀，把「挂起」转成「明确失败」。
       - name: 死循环看门狗（每用例独立子进程 + 超时强杀）
         run: node tests/hang-guard.js 8000 2>&1 | tee -a test-output.log
 
-      # 失败产物：CI 红的时候光看页面日志很难定位（尤其看门狗的超时），留一份完整输出（审计 P1-7 第 5 条）
+      # 失败产物：CI 红的时候光看页面日志很难定位（尤其看门狗的超时与覆盖率的未覆盖行），
+      # 留一份完整输出（审计 P1-7 第 5 条）
       - name: 保存测试输出（仅失败时）
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         with:
           name: test-output
-          path: test-output.log
+          path: |
+            test-output.log
+            coverage.log
           if-no-files-found: ignore

@@ -500,7 +500,7 @@ input[type=range].vol{width:120px}
 /* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -697,13 +697,33 @@ const Store = (() => {
 
   /* 一次性冷热拆分迁移（v1.3.0）：旧键存在而新键缺失 → 把整包按冷热拆开写入新键。
      不做这一步的话，beatsight.m2 会一直是唯一真相源：每次启动都要重新解析整包
-     （500 预设 = 715 KB），冷热分离就白做了。写完旧键即降级为只读来源（不删除，
-     与 v0.7.0 保留 .bak 的既有习惯一致，用户出问题时可回退）。
-     直接用 setItem 而非 persistCold()/onPersistFail：这是加载期的迁移动作，
-     失败只该留个 warn，不该占用「保存失败」的一次性提示名额（那个留给用户真实交互）。 */
-  if (rawSaved && (!hotIn || !coldIn)){
-    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }catch(e){}
-    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); }catch(e){}
+     （500 预设 = 715 KB），冷热分离就白做了。
+     v1.3.1：拆分成功后**删除旧键**——否则老用户会永远留着一个最大可达 715 KB 的废弃键。
+     删除靠两道保证，缺一不删：
+       ① **写后校验**：写完立刻读回来确认能解析出预期结构（新键才是真相源）；
+       ② **必有备份**：删除前确保 beatsight.m2.bak 存在（整包原文）。已存在则不覆盖——
+          保留最早那份最原始的数据（可能是 v1 浮点格式），比覆盖成 v:3 更有价值。
+     removeItem 失败也不影响正确性：新键已经能独立工作，旧键只是残留。
+     直接用 setItem/removeItem 而非 persistCold()/onPersistFail：这是加载期的迁移动作，
+     失败只该留个 warn，不该占用「保存失败」的一次性提示名额（那个留给用户真实交互）。
+     触发条件只认 `!hotIn`（**热键缺席 = 真正从 v1.3 之前升级上来**）：
+     若热键已存在而冷键缺失，那是"半迁移"或用户手动删了冷键——此时旧键里的内容可能是陈旧的，
+     按它重建会把用户已删掉的预设复活。宁可不动，让本会话按旧键兜底读一次即可。 */
+  if (rawSaved && !hotIn){
+    let splitOK = false;
+    try{
+      localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload()));
+      localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs }));
+      const bHot = JSON.parse(localStorage.getItem(KEY_HOT) || "null");
+      const bCold = JSON.parse(localStorage.getItem(KEY_COLD) || "null");
+      splitOK = !!(bHot && typeof bHot === "object" && bCold && Array.isArray(bCold.customs));
+    }catch(e){ splitOK = false; }
+    if (!splitOK){
+      try{ console.warn("[BeatSight] 冷热拆分迁移未通过写后校验，保留旧键 " + KEY_LEGACY + " 以备重试"); }catch(e){}
+    } else {
+      try{ if (!localStorage.getItem(KEY_BAK)) localStorage.setItem(KEY_BAK, rawSaved); }catch(e){}
+      try{ localStorage.removeItem(KEY_LEGACY); }catch(e){}
+    }
   }
 
   /* ---- 写路径（v1.3.0 冷热分离）----
@@ -1458,7 +1478,12 @@ const Viz = (() => {
     rafId = requestAnimationFrame(paintFrame);
   }
 
-  return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars };
+  return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars,
+    /* v1.3.1：暴露内部件**仅供测试**断言弹跳球物理（T30）。
+       之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
+       「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
+       （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
+    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo }) };
 })();
 
 /* ================= Audio · Web Audio 前瞻调度 ================= */
@@ -2499,7 +2524,7 @@ Trainer.updateProg();
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
 window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
-  selectedPreset, defaultAccents, curPatternRef: () => curPattern(),
+  selectedPreset, defaultAccents,
   onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
   clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
 </script>

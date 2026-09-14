@@ -1,12 +1,24 @@
 # BeatSight 自动化测试
 
 ```bash
-node tests/run.js            # 主套件：29 个场景组 / 350 断言（约 0.2s）
+node tests/run.js            # 主套件：35 个场景组 / 502 断言（约 0.2s）
 FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；CI 里跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
+node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）
 ```
 
 零依赖，CI 基线 Node 22（本机 Node ≥ 18 未实测，声明以 CI 为准）。退出码 0 = 全绿，1 = 有失败项。每次 push 由 GitHub Actions 自动运行（`.github/workflows/test.yml`）。
+
+## 覆盖率是这套测试的体检报告
+
+`tools/check-coverage.js` 用 **Node 内置的 V8 覆盖率**（`NODE_V8_COVERAGE`）采集——
+不需要 c8/nyc/istanbul 任何依赖，`vm.Script` 编译的沙箱脚本同样会被采到。
+当前 **99.8%**，12 个模块里 11 个 100%；唯一未覆盖的是 `scheduler` 的 `MAX_SCHED_STEPS`
+防御分支（刻意保留，不为了数字造人工状态）。
+
+它也是找"测试空白"最好用的工具：v1.3.1 靠它一眼看出**事件处理器体**（点 pill、TAP、空格键、
+导入导出、编辑器选中删除、窗口 resize、弹窗键盘）整层没被跑过——原先测试只直接调模块函数，
+接线是否接对了根本没验。补完那层后覆盖率从 89.7% 升到 99.8%，并且真的抓到若干接线缺陷。
 
 ## 两套测试为什么分开
 
@@ -34,11 +46,18 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **渲染层**：`requestAnimationFrame` 默认置空（引擎/状态层用例只断言数据），**但渲染层已进覆盖**——T23/T27 用 `driveFrames()` 同时推进音频时钟与 rAF 帧，真正执行 `paintFrame`
   - v1.2.3 之前这里全空，所以「`paintFrame` 内抛异常 → rAF 循环静默死亡」这类问题**CI 拦不住**；新增渲染层断言是为了让这类缺陷以后能被拦住
 - **探针计数**（`PROBE`，v1.3.0）：`offset*` 读取与 `className` 写入都计数。性能承诺（帧内零布局读取、增量重绘）**不数就没法断言**，光靠人眼 review 下一次改动就会破功
-- **桩的忠实度**（v1.3.0 补齐，都是踩过才加的）：
+- **几何模型**（v1.3.1）：行按创建序分层（`_rowTop = 58 + i×86`），格子的 `offsetLeft/offsetWidth` 由 `style.left/style.width` 的百分比反解（600px 视作行宽）。v1.3.0 之前所有 `offset*` 恒为 0，导致弹跳球的"顶点不出容器空域"钳制算出**负跳高**（球向下飞），任何抛物线断言都是假的
+- **桩的忠实度**（v1.3.0 起补齐，都是踩过才加的）：
   - `classList` 与 `className` 是**同一份数据**的两个视图（真实 DOM 如此）——否则「视觉高亮与 aria-pressed 是否一致」这类跨视图断言写不出来
   - `innerHTML = ""` **清空 children**（真实 DOM 语义）——否则按「行/格」检查渲染结果会读到上一次 `buildViz` 的残留
   - 标记里声明 `hidden` 的元素初始即隐藏（`HTML_ATTRS`）；静态 pill 组（sigRow/swingRow/timbreRow）按标记复刻（`HTML_CHILDREN`），否则 `querySelectorAll("#sigRow .pill")` 拿到空集合，`setPressed()` 空转
-  - `document` / `window` 级监听器可触发（`setHidden()` / `firePageHide()`）——生命周期行为（回前台补排、pagehide 停播）原先完全无法断言
+  - `document` / `window` 级监听器**可触发且带事件载荷**（`setHidden()` / `fireWin("keydown", {code:"Space"})` / `firePageHide()`）。v1.3.0 时 `fireWin` 只接受事件名、丢掉载荷，于是键盘/文件类接线**永远不匹配而静默通过**
+  - `click()` 会触发自身 click 处理器（导出预设的 `<a download>` 靠它）
+  - `setTimeout` 记录但不自动执行，需要时用 `runTimers()` 手动冲刷——否则藏在防抖里的真实路径（窗口 resize 重建、TAP 文案复位、导出后 revokeObjectURL）永远跑不到
+  - `FileReader` 真能把内容交给 `onload`（原桩是空构造函数，一调 `readAsText` 就 TypeError）
+  - `matchMedia` 可注入（`loadApp({}, {reduceMotion:true})`）——`REDUCE_MOTION` 在加载期求值，不注入就测不了动效降级
+  - `pill(spec)` 辅助：模拟"点击某个带 `data-*` 的按钮"（真实浏览器里 `e.target.closest("[data-sig]")` 会返回它）
+  - `setNow(v)`：TAP 测速按 `performance.now()` 的间隔算 BPM，必须能精确摆布
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
@@ -77,6 +96,12 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T27 | 渲染性能：连跑 140 帧**零 `offset*` 读取**、增量重绘生效（多数帧零写入、≥3 帧少量写入、仅换小节帧全量）+ 逐帧交叉检查渲染结果满足全量重绘的不变量 |
 | T28 | 无障碍：4 个开关 `role=switch`/`aria-checked` 与视觉同源、三组 pill `aria-pressed` 与 `.active` 一致、分级播报（`srAnnounce` 有 aria-live，`statusText` 没有）、播放键标签随状态、弹窗/编辑器焦点陷阱（含嵌套弹窗） |
 | T29 | 音频生命周期 + 跨 origin 提示：`ctx.onstatechange` 认 `interrupted`（自动 resume）与 `closed`（重建上下文 + 重新锚定时钟）、`pagehide` 停播、预设库为空才提示「跨地址不共享预设」且确认后持久化 |
+| T30 | 弹跳球物理逐帧数值断言（v1.3.1）：落点贴音符块左缘（±2px）· 弧内每帧 y 符合重力抛物线 `y=yBase−H·4p(1−p)` 且实测跳高 = 公式值 · 触地挤压/空中拉伸（体积近似守恒）· 影子随高度变小变淡且水平跟随 · 接力待命球只在终端弧出现 · 关开关全体隐藏 · reduced-motion 去形变但保位置 |
+| T31 | 交互接线（v1.3.1）：三组 pill 真实点击（含点到空白处提前返回）· 动态重拍分组档 · 音量滑杆 input · 快捷速度档 · 播放键与空格键 · ±5 步进 · BPM 弹窗 · TAP 测速 · 预备拍数钳制 · 预设列表点击 · 导入导出接线 · 删除自定义预设 · 编辑器调色板/撤销/复制/清空/保存禁用 · 空格在编辑器内被吃掉 · Esc/Ctrl+Z · 试听开合 · 弹窗取消两种路径 |
+| T32 | 旧键清理（v1.3.1）：拆分成功→删 `beatsight.m2` · 删前必有 `.bak` · `.bak` 已存在不覆盖 · 写后校验未过则**保留**旧键 · 半迁移状态不动旧键 · 二次启动不产生多余备份 |
+| T33 | Presets 剩余接线：点自定义预设项（自动切拍号）· 一键切回（`fallbackBtn`）· 导入失败给出可读原因 · 导出/导入按钮自身接线 |
+| T34 | 挂起兜底路径（v1.3.1）：就地接续失败时才走的降级分支（唯一入口是**试听中的草稿**——正常预设不可能有空小节），用「可视化没立刻重建」区分它和接续路径，并验证越过循环起点后真正生效 |
+| T35 | 剩余边角接线（v1.3.1）：窗口 resize（未播放重建 / 播放中只重采几何缓存，不打断动画）· 弹窗 Esc/Enter（两条确认路径：无输入框走 window、有输入框走输入框自身）· 编辑器选中音符块→库标题变替换语义→删除→撤销→取消选中 · v0.4 老数据 sel 下标→id 迁移（含越界回退）· 组标签（短音符合并标注）高亮 · 时值非法预设被拒 · `predictNext` 全休止/全空回退 · `resyncToNow` 顺延到下一小节 |
 
 ## 何时补断言
 
@@ -84,4 +109,6 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - 新功能动到 Store / Trainer / scheduler 时必须有对应断言
 - 动到 `paintFrame` / 新增渲染层守卫时**必须有**对应断言（用 `driveFrames()` 真正跑帧，别只断言状态值）——否则下一个改动者会把守卫改回去
 - **性能/生命周期类承诺要用探针计数或状态计数来断言**（"零布局读取"、"写入次数"、"窗口大小"、"resume 次数"）。这类性质没有肉眼可辨的症状，不量化就等于没测
-- **写完断言要反向验证**：把修复临时退回（或 `BEATSIGHT_HTML=<旧版>`），确认目标断言真的会失败。测不出失败的测试是橡皮图章——v1.3.0 就靠这招发现了两处"假绿"（桩默认 `hidden:false` 掩盖了错误弹窗没打开；桩 `className`/`classList` 分离掩盖了语义属性没同步）
+- **看覆盖率找空白**（`node tools/check-coverage.js`）：`run.js` 里修一处逻辑往往只覆盖了"函数被调用"，**接线层**（事件处理器体）容易整片空白。覆盖率掉到分区阈值以下 CI 会红
+- **写完断言要反向验证**：把修复临时退回（或 `BEATSIGHT_HTML=<旧版>`），确认目标断言真的会失败。测不出失败的测试是橡皮图章——v1.3 就靠这招发现了两处"假绿"（桩默认 `hidden:false` 掩盖了错误弹窗没打开；桩 `className`/`classList` 分离掩盖了语义属性没同步），v1.3.1 又发现 `fireWin` 丢掉事件载荷导致键盘接线静默通过
+- **别用写死的期望值**：草稿来自当前选中的预设，不同预设每小节音符数不同（v1.3.1 在编辑器用例上踩过）；测试数据也要落在业务钳制范围内（`bpm: 333` 会被钳到 240）
