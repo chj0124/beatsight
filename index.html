@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BeatSight 时值节拍器 v1.2</title>
+<title>BeatSight 时值节拍器 v1.2.1</title>
 <style>
 :root{
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
@@ -250,9 +250,9 @@ input[type=range].vol{width:120px}
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver">v1.2</span>
+    <span class="ver">v1.2.1</span>
   </div>
-  <div class="chip"><span class="dot"></span>v1.2 · 稳定版</div>
+  <div class="chip"><span class="dot"></span>v1.2.1 · 稳定版</div>
 </header>
 
 <div class="main">
@@ -1006,9 +1006,16 @@ const Viz = (() => {
     if (T <= 0) return;
     const p = Math.min(1, Math.max(0, (now - a.t) / T));
     const A = posOf(a), Bp = posOf(b);
-    const x = A.x + (Bp.x - A.x) * p;
-    const yBase = A.y + (Bp.y - A.y) * p;          // 跨小节/循环回卷：贴地滑行换行，不瞬移
-    const H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
+    /* 跨小节/循环回卷的长跳（v1.2.1）：匀速左移+基线下沉读作「贴地斜滑」，
+       像最后一拍没跳完就跑了。改为 smoothstep 水平缓动——前段守住当前音符、
+       中段一次明确的跨行跃迁、落地减速，且跳高随水平距离加成；时序不变，
+       落地仍精确卡在下一小节第 1 拍的发声时刻 */
+    const crossRow = a.bar !== b.bar;
+    const pX = crossRow ? p * p * (3 - 2 * p) : p;
+    const x = A.x + (Bp.x - A.x) * pX;
+    const yBase = A.y + (Bp.y - A.y) * pX;
+    let H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
+    if (crossRow) H = Math.max(H, Math.min(Math.abs(Bp.x - A.x) * 0.15, CB.max * 1.6));
     const y = yBase - H * 4 * p * (1 - p);
     let sx = 1, sy = 1;
     const dtL = now - a.t, dtR = b.t - now;
