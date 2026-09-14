@@ -153,6 +153,9 @@ input[type=range].vol{width:120px}
 .tr-panel{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:12px}
 .tr-panel[hidden]{display:none}
 .tr-panel .lab{font-size:12px;color:var(--t2)}
+/* 7 天计划行（v1.5）：[hidden] 会被 display:flex 覆盖，必须显式写（同 .inp-with-unit 的坑） */
+.tr-plan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%}
+.tr-plan[hidden]{display:none}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
@@ -414,6 +417,14 @@ input[type=range].vol{width:120px}
         <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
         <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
         <div class="tr-prog" id="trainerProg"></div>
+        <!-- 7 天爬升计划（v1.5）：有计划时显示今日卡；无计划时显示生成入口。
+             进度按「完成天数」推进而不是日历——缺练一天就整体顺延，不搞补卡 -->
+        <button class="pill outline" id="planGenBtn">生成 7 天计划</button>
+        <div class="tr-plan" id="planRow" hidden>
+          <span class="lab" id="planInfo"></span>
+          <button class="pill outline" id="planStartBtn">开始今日训练</button>
+          <button class="pill outline" id="planEndBtn">退出计划</button>
+        </div>
       </div>
     </div>
     <div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
@@ -563,7 +574,7 @@ input[type=range].vol{width:120px}
 /* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量 */
-const VERSION = "1.4.1";
+const VERSION = "1.5.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -730,6 +741,16 @@ const Store = (() => {
     trSaved.last = { reached: Math.min(240, Math.max(30, Math.round(trSrc.last.reached))),
       done: !!trSrc.last.done, at: numOr(trSrc.last.at, 0) };
   }
+  /* 7 天计划（v1.5）：白名单抽取 + 域校验（起点 30–236、目标 ≤240 且 > 起点、day 1–7） */
+  const planSrc = (saved.plan && typeof saved.plan === "object") ? saved.plan : null;
+  let planSaved = null;
+  if (planSrc && isNum(planSrc.baseStart) && isNum(planSrc.baseTarget) && isNum(planSrc.day)){
+    const bs = Math.round(planSrc.baseStart), bt = Math.round(planSrc.baseTarget);
+    const dy = Math.round(planSrc.day);
+    if (bs >= 30 && bs <= 236 && bt <= 240 && bt > bs && dy >= 1 && dy <= 7){
+      planSaved = { baseStart: bs, baseTarget: bt, day: dy };
+    }
+  }
 
   /* 重拍分组：只接受 ACC_GROUPS 里真实存在的档位下标（0/1），杜绝脏值被当数组下标用 */
   const accentGrpSaved = {};
@@ -756,6 +777,7 @@ const Store = (() => {
     bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
     keepAwake: !!saved.keepAwake,                   // v1.4 后台保活：默认关（耗电/系统策略由用户决定）
     migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
+    plan: planSaved,                                // v1.5 七天爬升计划（null = 无计划）
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
@@ -852,7 +874,7 @@ const Store = (() => {
   function hotPayload(){
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
-      keepAwake:S.keepAwake, migHint:S.migHint };
+      keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan };
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
@@ -1946,21 +1968,75 @@ const Trainer = (() => {
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
   function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
   /* 「上次训练一键继续」（v1.4）：有训练历史时才露面。
-     文案：完成 → 再来一轮；中途停 → 从练到的级别接着练 */
+     文案：完成 → 再来一轮；中途停 → 从练到的级别接着练。
+     v1.5：计划进行中时不露面——计划本身就是接续机制，两个入口并存会抢语义 */
   function refreshResume(){
     const b = $("trResumeBtn");
     const last = S.trainer.last;
-    if (!last){ b.hidden = true; return; }
+    if (!last || S.plan){ b.hidden = true; return; }
     b.hidden = false;
     b.textContent = last.done
       ? `再来一轮 · ${S.trainer.start}→${S.trainer.target} BPM`
       : `继续上次 · 从 ${last.reached} BPM 接着练`;
   }
+  /* ---- 7 天爬升计划（v1.5）----
+     生成：把当前 trainer 的起始/目标切成 7 段，Day i 练 dayStart(i)→dayTarget(i)。
+     推进：只有「练到当天目标自动停止」（trDone）才算完成一天；中途手动停 → 当天不算，
+     明天还练这一段（缺练顺延，不搞补卡）。Day 7 完成 → 计划清空 + 完成提示。
+     手动改参数不触碰计划（以手动为准，计划只负责给「开始今日训练」铺参数）。 */
+  const planDayTarget = i => Math.min(S.plan.baseTarget,
+    S.plan.baseStart + Math.round((S.plan.baseTarget - S.plan.baseStart) / 7 * i));
+  const planDayStart = i => i <= 1 ? S.plan.baseStart : planDayTarget(i - 1);
+  function refreshPlanUI(){
+    const has = !!S.plan;
+    $("planRow").hidden = !has;
+    $("planGenBtn").hidden = has;
+    if (!has) return;
+    const d = S.plan.day;
+    $("planInfo").textContent = `7 天计划 · Day ${d}/7 · 今日 ${planDayStart(d)}→${planDayTarget(d)} BPM`;
+  }
+  $("planGenBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    S.plan = { baseStart: S.trainer.start, baseTarget: S.trainer.target, day: 1 };
+    refreshPlanUI();
+    refreshResume();
+    Store.persist();
+    announce("已生成 7 天计划");
+  });
+  $("planStartBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if (!S.plan || S.playing) return;
+    const d = S.plan.day;
+    S.trainer.on = true;
+    setToggle("trainerToggle", true);
+    S.trainer.start = planDayStart(d);
+    S.trainer.target = planDayTarget(d);
+    $("trStart").value = S.trainer.start;
+    $("trTarget").value = S.trainer.target;
+    Controls.syncBpmUI();
+    updateProg();
+    Store.persist();
+    Controls.start();
+  });
+  $("planEndBtn").addEventListener("click", e => {
+    e.currentTarget.blur();
+    if (!S.plan) return;
+    Modal.uiConfirm(`退出 7 天计划？当前进度（Day ${S.plan.day}/7）将被清除。`, () => {
+      S.plan = null;
+      refreshPlanUI();
+      refreshResume();
+      updateProg();
+      Store.persist();
+    }, { okText: "退出计划" });
+  });
   function updateProg(){
     const el = $("trainerProg");
     el.classList.toggle("live", S.playing && S.trainer.on);
     if (!S.trainer.on){ el.textContent = ""; }
     else el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
+    /* 计划进行中面板常显（即使训练开关关着——计划卡要在） */
+    $("trainerPanel").hidden = !S.trainer.on && !S.plan;
+    refreshPlanUI();
     refreshResume();
   }
   /* 训练会话收成（v1.4，Controls.stop 调用）：本次播放确实练过（过过至少一个小节边界
@@ -1980,8 +2056,23 @@ const Trainer = (() => {
     if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
       trDone = true;                             // v1.4：先于 stop() 标记完成（stop 里 consumeSession 要读）
       Controls.stop();
-      $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
-      announce(`训练完成，已达到 ${t.target} BPM`);
+      /* 7 天计划（v1.5）：完成当天 → 推进到明天；Day 7 完成 → 计划收官清空 */
+      if (S.plan){
+        if (S.plan.day >= 7){
+          const target0 = S.plan.baseTarget;
+          S.plan = null;
+          $("statusText").textContent = `7 天计划完成 · 已达成 ${target0} BPM`;
+          announce(`7 天计划全部完成，已达到 ${target0} BPM`);
+        } else {
+          S.plan.day++;
+          $("statusText").textContent = `第 ${S.plan.day - 1} 天完成 · 明天 ${planDayStart(S.plan.day)}→${planDayTarget(S.plan.day)} BPM`;
+          announce(`第 ${S.plan.day - 1} 天完成，明天继续`);
+        }
+        Store.persist();
+      } else {
+        $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
+        announce(`训练完成，已达到 ${t.target} BPM`);
+      }
       updateProg();
       return true;
     }

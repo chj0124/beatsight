@@ -50,6 +50,7 @@ const HTML_ATTRS = {
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
   modalMask: { hidden: true }, modalInput: { hidden: true },
   trResumeBtn: { hidden: true },       // v1.4：无训练历史时「继续上次」不露面
+  planRow: { hidden: true },           // v1.5：无计划时「今日卡」不露面
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
@@ -2546,6 +2547,78 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
     const h = ac.hits.find(x => x.kind === "noise" && x.filterFreq === 2000);
     ok(h && Math.abs(h.gain - 0.8) < 1e-6, "脏 makeup → 回退不补偿（0.8），不产 NaN");
   }
+}
+
+/* ================= 场景 T45：7 天爬升计划（v1.5） ================= */
+section("T45 训练计划 · 生成 / 今日参数 / 完成推进 / 顺延与收官");
+{
+  /* 生成：按当前 trainer 配置切 7 段（70→140，跨度 70，每天 10） */
+  const { beat, els, storage } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 70, target: 140, step: 4, everyN: 1 } }) });
+  const S = beat.Store.S;
+  els["planGenBtn"].fire("click");
+  ok(!!S.plan && S.plan.day === 1, "生成计划：day=1");
+  eq(S.plan.baseStart, 70, "计划起点 = 当前起始 70");
+  eq(S.plan.baseTarget, 140, "计划终点 = 当前目标 140");
+  eq(els["planRow"].hidden, false, "今日卡显示");
+  eq(els["planGenBtn"].hidden, true, "生成入口隐藏");
+  eq(els["planInfo"].textContent, "7 天计划 · Day 1/7 · 今日 70→80 BPM", "Day1 今日段 70→80（跨度/7=10）");
+
+  /* 今日参数与起播 */
+  els["planStartBtn"].fire("click");
+  ok(S.playing, "开始今日训练 → 起播");
+  eq(S.trainer.start, 70, "今日起始写入 trainer.start");
+  eq(S.trainer.target, 80, "今日目标写入 trainer.target");
+  eq(els["trTarget"].value, 80, "目标输入框同步");
+  beat.Controls.stop();                      // 手动停：当天不算完成
+  eq(S.plan.day, 1, "中途手动停 → 当天不算完成（缺练顺延）");
+
+  /* 完成当天 → 推进到 Day 2（完成一段才算，不靠日历） */
+  els["planStartBtn"].fire("click");
+  drive(FakeAudioContext.last, beat, 60);    // 70→80 step 4 everyN 1：4 级 × 1 小节
+  ok(!S.playing, "练到当天目标自动停止");
+  eq(S.plan && S.plan.day, 2, "完成当天 → 推进到 Day 2");
+  eq(els["planInfo"].textContent, "7 天计划 · Day 2/7 · 今日 80→90 BPM", "Day2 今日段 80→90");
+  beat.Store.flush();
+  eq(JSON.parse(storage.get("beatsight.state")).plan.day, 2, "计划进度随热键持久化");
+
+  /* Day 7 完成 → 计划收官清空 + 完成提示 */
+  const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 130, target: 140, step: 10, everyN: 1 },
+    plan: { baseStart: 70, baseTarget: 140, day: 7 } }) });
+  eq(app2.els["planInfo"].textContent, "7 天计划 · Day 7/7 · 今日 130→140 BPM", "Day7 今日段 130→140（收官日顶到总目标）");
+  app2.els["planStartBtn"].fire("click");
+  drive(FakeAudioContext.last, app2.beat, 60);
+  eq(app2.beat.Store.S.plan, null, "Day 7 完成 → 计划清空");
+  ok(app2.els["statusText"].textContent.indexOf("7 天计划完成") === 0, "收官提示文案");
+
+  /* 退出计划：确认后清空；无计划时点退出不弹窗 */
+  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: true, start: 70, target: 140, step: 4, everyN: 1 },
+    plan: { baseStart: 70, baseTarget: 140, day: 3 } }) });
+  app3.els["planEndBtn"].fire("click");
+  app3.els["modalOk"].fire("click");
+  eq(app3.beat.Store.S.plan, null, "确认退出 → 计划清空");
+  eq(app3.els["planRow"].hidden, true, "退出后今日卡隐藏");
+  eq(app3.els["planGenBtn"].hidden, false, "退出后生成入口回来");
+  app3.els["planEndBtn"].fire("click");
+  eq(app3.els["modalMask"].hidden, true, "无计划时点退出 → 不弹确认框");
+
+  /* 计划进行中「继续上次」隐藏（计划本身就是接续机制，两个入口不并存） */
+  const app4 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    trainer: { on: false, start: 70, target: 140, step: 4, everyN: 1,
+      last: { reached: 90, done: false, at: 1 } },
+    plan: { baseStart: 70, baseTarget: 140, day: 2 } }) });
+  eq(app4.els["trResumeBtn"].hidden, true, "计划进行中 → 继续上次隐藏");
+  eq(app4.els["trainerPanel"].hidden, false, "计划进行中即使训练开关关着，面板也显示（计划卡要在）");
+
+  /* 脏计划回退：目标≤起点 / day 越界 → 整条丢弃 */
+  const app5 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    plan: { baseStart: 140, baseTarget: 70, day: 1 } }) });
+  eq(app5.beat.Store.S.plan, null, "脏计划（目标≤起点）→ 丢弃");
+  const app6 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
+    plan: { baseStart: 70, baseTarget: 140, day: 9 } }) });
+  eq(app6.beat.Store.S.plan, null, "脏计划（day 越界）→ 丢弃");
 }
 
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
