@@ -46,7 +46,7 @@ const HTML_ATTRS = {
   /* 标记里声明了 `hidden` 的元素：真实 DOM 加载后它们就是隐藏的，stub 必须同样如此。
      不做的话「预设库为空才提示跨地址迁移」这类依赖初始隐藏状态的逻辑会被误判为通过/失败
      （v1.3.0 P2-14 踩到）。 */
-  fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeats: { hidden: true },
+  fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
   modalMask: { hidden: true }, modalInput: { hidden: true },
 };
@@ -1722,6 +1722,18 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(S.countIn.beats, 8, "预备拍数超上限 → 钳到 8");
   els["countInBeats"].value = "abc"; els["countInBeats"].fire("change");
   eq(S.countIn.beats, 8, "预备拍数脏值 → 回退原值（不清零）");
+
+  /* 拍数输入必须**紧跟**「预备拍」开关（v1.3.3 修的）：
+     原先它排在 .config 行最末（弹跳球之后），打开预备拍时行尾凭空冒出一个孤零零的「4」，
+     视觉上像是弹跳球的参数（用户实拍反馈）。用标记层 + 运行时两层断言锁住位置。 */
+  const seg = html.slice(html.indexOf('id="countInToggle"'), html.indexOf('id="bounceToggle"'));
+  ok(/id="countInBeatsWrap"/.test(seg),
+    "拍数输入在标记里夹在「预备拍」与「弹跳球」之间（不再隔着弹跳球）");
+  ok(/<span class="hint">拍<\/span>/.test(html), "拍数带可见单位「拍」（原先只有 aria-label，肉眼无从判断）");
+  els["countInToggle"].fire("click");
+  eq(els["countInBeatsWrap"].hidden, false, "打开预备拍 → 拍数输入出现");
+  els["countInToggle"].fire("click");
+  eq(els["countInBeatsWrap"].hidden, true, "关闭预备拍 → 拍数输入隐藏");
 
   /* 预设列表：点内置项 / 点自定义项的删除按钮 / 调色板的回退提示 */
   const listItems = () => els["presetList"].children.filter(c => c._h && c._h.click);
