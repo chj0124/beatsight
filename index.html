@@ -287,6 +287,142 @@ input[type=range].vol{width:120px}
   .dot.live, .cell.next{animation:none}
   .trail-glow{display:none}
 }
+
+/* 分区编号角标（v1.7.0）：观测台主题的三件套标题件。经典主题下整体隐藏——
+   经典主题的视觉一行不改，本主题的全部差异由下方 body[data-theme="obs"] 作用域覆盖 */
+.sec-tag{display:none}
+
+/* ================================================================================
+   主题 · 数据观测台（v1.7.0 新增；经典为默认主题，本块全部为增量覆盖）
+   --------------------------------------------------------------------------------
+   设计规范（简短版）：
+   · 气质：克制的工程师深色仪表盘。时值块 + 弹跳球的主可视化区是视觉中心，
+     控制区退居次要层级；信息密度高但不拥挤。
+   · 配色：近黑深蓝底 #0A0C12，面板 #11141C 拉开级差；分层靠 1px 半透明白描边
+     （rgba 白 6%~16%）而非底色差。主强调 = 电光蓝 #3B82F6（高光 #60A5FA），
+     仅用于当前播放状态、主按钮、关键数据；青绿 #2DD4A8 只做进行/成功点缀
+     （训练中进度、校验通过、今日柱）；琥珀保留「非错误提示」语义；功能色不做装饰。
+   · 排版：分区标题 = 大号编号（01/02/03…）+ 小号大写英文标签 + 中文标题三件套；
+     数字一律等宽 + tabular-nums；关键指标 = 大号 KPI 数字 + 小字标注。
+   · 组件：圆角克制（卡片 8px、控件 6px、音符块 6px）；pill 由胶囊收敛为分段矩形；
+     hover/active 只给「描边提亮 / 底色微变」级反馈，过渡 ≤150ms，不放花哨动画
+     干扰「读谱」这个核心场景。
+   · 实现纪律：只新增、不改名——现有 id/class 与经典主题样式全部保留；
+     本块规则一律以 body[data-theme="obs"] 起头。
+   ================================================================================ */
+body[data-theme="obs"]{
+  --bg:#0A0C12; --card:#11141C; --card2:#171B27; --cell:#1E2434;
+  --line:rgba(255,255,255,.07); --border:rgba(255,255,255,.16);
+  --green:#3B82F6; --red:#F87171;
+  --t1:#E8ECF5; --t2:#97A1B5; --t3:#5F6B7E; --on-green:#FFFFFF;
+  --rest-line:rgba(255,255,255,.22);
+  --teal:#2DD4A8; --accent-hi:#60A5FA;
+  background:radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.06), transparent 60%), var(--bg);
+}
+
+/* ---------- 观测台 · 顶栏与品牌 ---------- */
+body[data-theme="obs"] .topbar{height:56px;border-bottom:1px solid var(--line)}
+body[data-theme="obs"] .brand{font-weight:600;letter-spacing:.02em}
+body[data-theme="obs"] .brand svg path{fill:var(--green)}
+body[data-theme="obs"] .brand svg line{stroke:#0A0C12}
+body[data-theme="obs"] .brand svg circle{fill:#0A0C12}
+body[data-theme="obs"] .brand .ver{background:transparent;border:1px solid var(--line);border-radius:6px;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .chip{background:transparent;border:1px solid var(--line);border-radius:6px}
+body[data-theme="obs"] .dot.live{box-shadow:0 0 8px rgba(59,130,246,.6)}
+body[data-theme="obs"] .status.ok{color:var(--teal)} body[data-theme="obs"] .status.ok .dot{background:var(--teal)}
+
+/* ---------- 观测台 · 卡片与分区标题三件套 ---------- */
+body[data-theme="obs"] .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:22px 24px}
+body[data-theme="obs"] .card-head{flex-wrap:wrap;margin-bottom:14px}
+body[data-theme="obs"] .card-title{font-size:15px;font-weight:600;letter-spacing:.01em}
+body[data-theme="obs"] .sec-tag{display:flex;align-items:baseline;gap:10px;width:100%;margin-bottom:6px}
+body[data-theme="obs"] .sec-tag b{font:600 18px/1 var(--mono);color:var(--green);opacity:.85;letter-spacing:.04em}
+body[data-theme="obs"] .sec-tag i{font:500 10px/1 var(--mono);font-style:normal;letter-spacing:.18em;color:var(--t3);text-transform:uppercase}
+/* 训练模式：角标内联在 group-label 里，不收成整行 */
+body[data-theme="obs"] .group-label .sec-tag{display:inline-flex;width:auto;margin:0 10px 0 0}
+body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
+body[data-theme="obs"] .caption{border-top:1px solid var(--line);padding-top:12px}
+
+/* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
+body[data-theme="obs"] .pattern-head{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+body[data-theme="obs"] .pattern-head .name{font-size:19px}
+body[data-theme="obs"] .pattern-head .meta{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--t3)}
+
+/* ---------- 观测台 · 时值可视化（视觉中心） ---------- */
+body[data-theme="obs"] .bar-row.current{background:rgba(59,130,246,.05);box-shadow:inset 0 0 0 1px rgba(59,130,246,.22)}
+body[data-theme="obs"] .beat-zone{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);border-radius:8px}
+body[data-theme="obs"] .cell{background:var(--cell);border-radius:6px}
+body[data-theme="obs"] .cell.active{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.9), 0 0 10px rgba(59,130,246,.28)}
+body[data-theme="obs"] .cell.next{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.4);animation:nextGlowObs .7s ease-in-out infinite}
+@keyframes nextGlowObs{50%{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.14)}}
+body[data-theme="obs"] .trail-glow{background:linear-gradient(90deg,rgba(59,130,246,.08),rgba(59,130,246,.3) 55%,rgba(59,130,246,.55))}
+body[data-theme="obs"] .bounce-ball{box-shadow:0 0 8px rgba(59,130,246,.4)}
+body[data-theme="obs"] .grid-line{background:rgba(255,255,255,.06)}
+body[data-theme="obs"] .cell.played .sub,body[data-theme="obs"] .cell.active .sub{border-right-color:rgba(10,12,18,.25)}
+
+/* ---------- 观测台 · 走带控制 ---------- */
+body[data-theme="obs"] .transport{row-gap:20px}
+body[data-theme="obs"] .play-btn{background:var(--green);box-shadow:0 4px 16px rgba(59,130,246,.3)}
+body[data-theme="obs"] .play-btn svg path,body[data-theme="obs"] .play-btn svg rect{fill:#fff}
+body[data-theme="obs"] .step-btn{border-radius:6px;background:var(--card2);border:1px solid var(--line);transition:border-color .12s}
+body[data-theme="obs"] .step-btn:hover{border-color:var(--border)}
+body[data-theme="obs"] .bpm-num{font-size:56px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .vdivider{background:var(--line)}
+body[data-theme="obs"] input[type=range]{background:rgba(255,255,255,.10);height:4px}
+body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(59,130,246,.35)}
+body[data-theme="obs"] .bpm-ticks i{background:rgba(255,255,255,.14)}
+
+/* ---------- 观测台 · 分段控件（pill 收敛为矩形） ---------- */
+body[data-theme="obs"] .pill{border-radius:6px;background:var(--card2);border:1px solid var(--line);color:var(--t2);font-family:var(--mono);font-variant-numeric:tabular-nums;padding:8px 14px;font-size:12px;transition:border-color .12s,color .12s,background .12s}
+body[data-theme="obs"] .pill:hover{border-color:var(--border);color:var(--t1)}
+body[data-theme="obs"] .pill.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+body[data-theme="obs"] .pill.outline{background:transparent}
+body[data-theme="obs"] .pill.flash{background:var(--green);color:#fff}
+body[data-theme="obs"] .pill.danger{background:var(--red);border-color:var(--red);color:#fff}
+body[data-theme="obs"] .pill:disabled{background:var(--card2);color:var(--t3)}
+
+/* ---------- 观测台 · 配置开关与训练面板 ---------- */
+body[data-theme="obs"] .toggle-pill{background:var(--card);border:1px solid var(--line);border-radius:8px}
+body[data-theme="obs"] .switch{background:rgba(255,255,255,.14)}
+body[data-theme="obs"] .tr-panel{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+body[data-theme="obs"] .tr-inp{background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .tr-inp:focus{border-color:var(--green)}
+body[data-theme="obs"] .tr-prog{font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .tr-prog.live{color:var(--teal)}
+
+/* ---------- 观测台 · 预设库侧栏 ---------- */
+body[data-theme="obs"] .preset-item{border-radius:6px;border-left:2px solid transparent;padding-left:10px}
+body[data-theme="obs"] .preset-item.active{background:var(--card2);border-left-color:var(--green)}
+body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
+body[data-theme="obs"] .preset-section{font-family:var(--mono);letter-spacing:.12em}
+body[data-theme="obs"] .sidebar-note{border-top:1px solid var(--line);padding-top:12px}
+
+/* ---------- 观测台 · 编辑器 ---------- */
+body[data-theme="obs"] .edcell{border-radius:4px}
+body[data-theme="obs"] .edcell.sel{background:rgba(59,130,246,.14);box-shadow:0 0 0 1.5px var(--green)}
+body[data-theme="obs"] .edbar-label.editing .n{color:var(--accent-hi)}
+body[data-theme="obs"] .pal-item{border:1px solid var(--line);border-radius:6px}
+body[data-theme="obs"] .check-dot{background:var(--teal)}
+body[data-theme="obs"] .check-row.bad .check-dot{background:var(--red)}
+body[data-theme="obs"] .name-input{background:var(--card2);border-radius:6px}
+body[data-theme="obs"] .name-input:focus{border-color:var(--green)}
+
+/* ---------- 观测台 · 练习统计 ---------- */
+body[data-theme="obs"] .stat-card{background:var(--card2);border:1px solid var(--line);border-radius:8px}
+body[data-theme="obs"] .stat-num{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .st-bar{border-radius:3px 3px 1px 1px;opacity:.9}
+body[data-theme="obs"] .st-col.today .st-bar{background:var(--teal);box-shadow:0 0 8px rgba(45,212,168,.35)}
+body[data-theme="obs"] .st-col.today .st-day{color:var(--teal)}
+body[data-theme="obs"] .st-val{font-variant-numeric:tabular-nums}
+
+/* ---------- 观测台 · 弹窗 ---------- */
+body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
+
+/* ---------- 观测台 · 窄屏修正（优先级高于经典媒体查询里的同名规则） ---------- */
+@media (max-width:960px){
+  body[data-theme="obs"] .card{padding:16px}
+  body[data-theme="obs"] .bpm-num{font-size:42px;min-width:84px}
+}
 </style>
 </head>
 <body>
@@ -298,6 +434,8 @@ input[type=range].vol{width:120px}
     <span class="ver" id="brandVer"></span>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
+    <!-- 主题切换（v1.7.0）：经典 ↔ 观测台；偏好存独立冷键 beatsight.theme -->
+    <button class="pill outline" id="themeToggle">主题 · 经典</button>
     <button class="pill outline" id="statsBtn">练习统计</button>
     <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
   </div>
@@ -323,6 +461,7 @@ input[type=range].vol{width:120px}
     <!-- 时值可视化 -->
     <section class="card">
       <div class="card-head">
+        <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
         <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
       </div>
@@ -335,6 +474,7 @@ input[type=range].vol{width:120px}
 
     <!-- 走带控制 -->
     <section class="card transport">
+      <span class="sec-tag"><b>02</b><i>Transport</i></span>
       <button class="play-btn" id="playBtn" aria-label="播放">
         <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
       </button>
@@ -397,7 +537,7 @@ input[type=range].vol{width:120px}
 
     <!-- 训练模式 -->
     <div class="group">
-      <div class="group-label">训练模式</div>
+      <div class="group-label"><span class="sec-tag"><b>03</b><i>Training</i></span>训练模式</div>
       <div class="config">
         <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍 · 每 4 小节<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
@@ -434,6 +574,7 @@ input[type=range].vol{width:120px}
   <aside class="col">
     <section class="card">
       <div class="card-head">
+        <span class="sec-tag"><b>04</b><i>Library</i></span>
         <div class="card-title">节奏型预设库</div>
         <div class="chip" id="presetCount">8 内置</div>
       </div>
@@ -474,6 +615,7 @@ input[type=range].vol{width:120px}
 
     <div class="card">
       <div class="card-head">
+        <span class="sec-tag"><b>05</b><i>Pattern Editor</i></span>
         <div class="card-title" id="editorCardTitle">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</div>
         <div class="status ok" id="editorStatusWrap"><span class="dot" id="editorDot"></span><span id="editorStatus">校验通过</span></div>
       </div>
@@ -513,6 +655,7 @@ input[type=range].vol{width:120px}
       </div>
     </div>
     <div class="card">
+      <span class="sec-tag"><b>06</b><i>Practice Stats</i></span>
       <div class="stat-cards">
         <div class="stat-card"><div class="stat-num" id="statWeek">0</div><div class="stat-lab">本周练习（分钟）</div></div>
         <div class="stat-card"><div class="stat-num" id="statStreak">0</div><div class="stat-lab">连续天数</div></div>
@@ -583,7 +726,7 @@ input[type=range].vol{width:120px}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.6.6";
+const VERSION = "1.7.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -684,6 +827,19 @@ const CONFIG = {
   /* 鼓组噪声路径的 makeup（v1.4.1）：挂在 drum 对象外会打断上面的成组注释，独立列出 */
   drumMakeup: { snare:5, hat:2.5 },
 };
+
+/* 主题化闪烁配色（v1.7.0 观测台主题）：换拍脉冲与十六分闪烁的 WAAPI 取色按 body[data-theme]
+   查表——观测台把功能绿换成电光蓝。读 DOM 属性而非 getComputedStyle：后者在渲染热路径
+   属布局读取，是性能禁区（v1.3.0 P1-4）。主题切换本身见装配区末尾的主题逻辑 */
+const FLASH_THEME = {
+  classic:{ zoneOn:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)",
+            zoneOff:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)",
+            edge:"#1ED760", glow:"rgba(30,215,96,.85)", strong:"rgba(30,215,96,.4)", soft:"rgba(30,215,96,.28)" },
+  obs:{     zoneOn:"inset 0 0 0 1.5px rgba(59,130,246,.75), 0 0 14px rgba(59,130,246,.30)",
+            zoneOff:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(59,130,246,0)",
+            edge:"#3B82F6", glow:"rgba(59,130,246,.85)", strong:"rgba(59,130,246,.4)", soft:"rgba(59,130,246,.28)" },
+};
+const flashTheme = () => (document.body.getAttribute("data-theme") === "obs" ? FLASH_THEME.obs : FLASH_THEME.classic);
 
 
 /* ================= Store · 持久化 / 状态 / 导入导出 ================= */
@@ -1386,9 +1542,10 @@ const Viz = (() => {
   /* 跑道拍点脉冲（v0.9.1 提取）：换拍瞬间与预备拍计数共用同一组关键帧 */
   function pulseZone(z){
     if (!z) return;
+    const fc = flashTheme();   // v1.7.0：脉冲配色随主题（观测台 = 电光蓝）
     z.animate([
-      {boxShadow:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)"},
-      {boxShadow:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)"}
+      {boxShadow:fc.zoneOn},
+      {boxShadow:fc.zoneOff}
     ], {duration:320, easing:"ease-out"});
   }
 
@@ -1597,12 +1754,13 @@ const Viz = (() => {
       if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
       const sub = subEls[fb] && subEls[fb][fk];
       if (sub){
-        // 配色随底色反转：白块（已弹/正在弹）上闪绿光，暗块上闪绿光（规范：绿为功能强调色，最高强调用近白）
+        // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
         const cellCls = sub.closest(".cell").classList;
         const onWhite = cellCls.contains("played") || cellCls.contains("active");   // 正在弹的块也是白填充
-        const edge = "#1ED760";
-        const glow = "rgba(30,215,96,.85)";
-        const fillFlash = onWhite ? "rgba(30,215,96,.4)" : "rgba(30,215,96,.28)";
+        const fc = flashTheme();   // v1.7.0：闪烁配色随主题（观测台 = 电光蓝）
+        const edge = fc.edge;
+        const glow = fc.glow;
+        const fillFlash = onWhite ? fc.strong : fc.soft;
         const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
         sub.animate([
           {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
@@ -3111,10 +3269,30 @@ try{
   }
 }catch(e){}
 
+/* 主题切换（v1.7.0）：「经典 / 观测台」双主题。
+   持久化用**独立冷键** beatsight.theme——主题只是视觉偏好，不进 beatsight.state 热键，
+   现有 5 个持久键的键名与数据结构零改动（审计 P1-5 的冷热分离纪律原样适用）。
+   应用方式只写 body 的 data-theme 属性，全部样式差异由 CSS 作用域覆盖完成（无属性 = 经典）；
+   写失败静默降级：视觉偏好丢失不值得惊动用户（不触发 persistFail 那套上报） */
+const THEME_KEY = "beatsight.theme";
+const applyTheme = t => {
+  document.body.setAttribute("data-theme", t);
+  $("themeToggle").textContent = "主题 · " + (t === "obs" ? "观测台" : "经典");
+};
+let themeNow = "classic";
+try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}
+applyTheme(themeNow);
+$("themeToggle").addEventListener("click", e => {
+  e.currentTarget.blur();
+  themeNow = themeNow === "obs" ? "classic" : "obs";
+  applyTheme(themeNow);
+  try{ localStorage.setItem(THEME_KEY, themeNow); }catch(e2){}
+});
+
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
 window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
-  selectedPreset, defaultAccents,
+  selectedPreset, defaultAccents, flashTheme,
   onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
   clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
 </script>

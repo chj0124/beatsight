@@ -759,3 +759,41 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
   beat.Controls.stop();
 }
 
+
+/* ================================================================================
+   场景 T38：主题切换 · 观测台主题（v1.7.0）
+   经典 ↔ 观测台：body[data-theme] 落位、切换钮文案、独立冷键 beatsight.theme 持久化、
+   重载恢复、闪烁配色查表随主题。纪律断言：切换主题不得顺手写任何现有持久键。
+   ================================================================================ */
+section("T38 主题切换 · 观测台主题（v1.7.0）");
+{
+  const app = loadApp();
+  const body = app.sandbox.document.body;
+  eq(body.getAttribute("data-theme"), "classic", "默认经典主题（无偏好时落 classic）");
+  eq(app.els["themeToggle"].textContent, "主题 · 经典", "切换钮初始文案");
+  eq(app.beat.flashTheme().edge, "#1ED760", "经典主题下闪烁配色为功能绿");
+
+  const before = new Set([...app.storage.keys()]);
+  app.els["themeToggle"].fire("click", {});
+  eq(body.getAttribute("data-theme"), "obs", "点击后切到观测台");
+  eq(app.els["themeToggle"].textContent, "主题 · 观测台", "切换钮文案同步");
+  eq(app.storage.get("beatsight.theme"), "obs", "偏好写入独立冷键 beatsight.theme");
+  eq(app.beat.flashTheme().edge, "#3B82F6", "观测台下闪烁配色为电光蓝");
+  const added = [...app.storage.keys()].filter(k => !before.has(k));
+  eq(added.join(","), "beatsight.theme", "切换主题只新增独立冷键——现有 5 个持久键一个不碰");
+
+  app.els["themeToggle"].fire("click", {});
+  eq(body.getAttribute("data-theme"), "classic", "再点切回经典");
+  eq(app.storage.get("beatsight.theme"), "classic", "冷键同步回写");
+
+  /* 重载恢复：种子冷键 obs → 加载即观测台 */
+  const app2 = loadApp({ "beatsight.theme": "obs" });
+  eq(app2.sandbox.document.body.getAttribute("data-theme"), "obs", "冷键 obs 重载后恢复观测台");
+  eq(app2.els["themeToggle"].textContent, "主题 · 观测台", "重载后切换钮文案跟随");
+  eq(app2.beat.flashTheme().edge, "#3B82F6", "重载后闪烁配色跟随主题");
+
+  /* 反向验证锚点：flashTheme 查的是 body 属性而不是别处的缓存——
+     直接改属性而不走切换钮，配色也必须立刻跟上 */
+  body.setAttribute("data-theme", "obs");
+  eq(app.beat.flashTheme().edge, "#3B82F6", "flashTheme 直读 body[data-theme]，无缓存分叉");
+}
