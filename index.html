@@ -1483,10 +1483,20 @@ const defaultAccents = meter => ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGr
 const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
   accents: defaultAccents(meter),
   bars:rep4(Array.from({length:meter},()=>D(TPB)))});
-/* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
-   fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处。
+/* 把「预设引用」解析成节奏型对象（v2.0.0 抽取）：ref 形状与 S.sel 相同
+   （{type:"builtin", idx} / {type:"custom", id}），解析不到（引用已被删）返回 undefined。
+   为什么抽出来：曲式编排要解析**任意** ref——段里引用的不是"当前选中的预设"。
+   若各写一份，就会出现"曲式里的预设"与"当前预设"两套解析边界，而两者出错时的表现
+   一模一样（静默回退到 basicPattern），那种 bug 极难查。
+   **失败值刻意是 undefined 而不是 null**：T24 有一条断言写明了"不存在的 id → undefined（不抛）"，
+   改成 null 也是一次行为变化——抽取重构要能证明"零变化"，就不该在这里顺手改语义。
+   调用方一律用真值判断（`if (!pat)`），不要写 `=== null`。
    注意：本函数不做拍号匹配——拍号不匹配统一由 curPattern 落到 basicPattern */
-const selectedPreset = () => S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
+const resolveRef = ref => (!ref ? undefined
+  : (ref.type === "custom" ? customs.find(c => c.id === ref.id) : BUILTINS[ref.idx]));
+/* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
+   fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处 */
+const selectedPreset = () => resolveRef(S.sel);
 const curPattern = () => {
   if (S.preview && previewRef) return previewRef;
   const p = selectedPreset();
@@ -3047,6 +3057,13 @@ const Controls = (() => {
 const Presets = (() => {
   /* 播放中切换节奏型：挂起到小节边界无缝生效 */
   let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
+  /* 待应用的节奏型引用（v2.0.0 泛化）：null = 用 curPattern()（预设路径，行为与旧版一致）。
+     为什么要有它：曲式编排要"换下一段的型"，而那**不是**当前选中的预设——
+     若为此另写一条切换路径，就要把 scheduler 中途退出 + loopStart 重映射 + resetTracking
+     + 与变速训练器的次序**再实现一遍**。这里只把"待应用谁"抽成一个引用，
+     三条既有路径（立即生效 / 小节边界挂起 / 停止兜底）全部共用它，取型来源仍然只有一处。
+     一次性消费：applyPatternChange 用完即清，避免影响下一次切换。 */
+  let pendingRef = null;
   /* appliedPat/activePattern 已上移至共享状态区（v1.0.0）——
      历史：v0.7.0 修复播放中切换越界（tests T12）；v1.0.0 为消除 Viz→Presets 反向依赖而上移 */
 
@@ -3159,7 +3176,11 @@ const Presets = (() => {
   function applyPatternChange(){
     pendingPattern = false; sigChgPending = false;
     appliedSig = S.sig;
-    const p = curPattern();
+    /* 取型来源只有这一处（v2.0.0 泛化）：pendingRef 有值就用它（曲式块切换），
+       否则用 curPattern()（用户选预设）。解析不到时回退 curPattern()——
+       曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义 */
+    const p = (pendingRef ? resolveRef(pendingRef) : null) || curPattern();
+    pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
     Controls.updateMeta();
@@ -3222,7 +3243,18 @@ const Presets = (() => {
     Store.persist();
   });
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, maybeShowMigHint };
+  /* 把"下一次要应用的型"排进挂起队列（v2.0.0）：曲式编排的块/段切换用它。
+     调用方随后由 scheduler 的小节边界统一施加（与用户切预设走的是同一条路）。
+     resetBar 由 consumePending 按"是否变拍号"决定——曲式要求整首同拍号，
+     所以曲式调用方拿到的恒为 0（新块从它自己的第 0 小节开始）。 */
+  function scheduleRef(ref){
+    pendingRef = ref;
+    pendingPattern = true;
+    sigChgPending = (S.sig !== appliedSig);
+    buildPresetList();
+    updateFallbackNote();
+  }
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, maybeShowMigHint };
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -4039,6 +4071,7 @@ $("themeToggle").addEventListener("click", e => {
 /** @type {any} */ (window).__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
+  resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
   EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
   limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照

@@ -85,6 +85,44 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
   b.beat.Store.S.sel = { type: "custom", id: "ghost" };
   eq(b.beat.selectedPreset(), undefined, "selectedPreset：不存在的 id → undefined（不抛）");
 
+  /* resolveRef() / scheduleRef()：v2.0.0 为曲式编排泛化出的两件东西。
+     它们本身是给"段里引用任意预设"用的，但**抽取重构必须证明这两条路真的通了**——
+     否则下一步就是在一个没验证过的钩子上盖房子。 */
+  const b3 = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, sel: { type: "custom", id: "x" },
+    customs: [{ id: "x", name: "自定义X", meter: 4, bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }) });
+  eq(b3.beat.resolveRef({ type: "builtin", idx: 1 }).name, b3.beat.BUILTINS[1].name,
+     "resolveRef：builtin 命中");
+  eq(b3.beat.resolveRef({ type: "custom", id: "x" }).name, "自定义X", "resolveRef：custom 命中");
+  eq(b3.beat.resolveRef({ type: "custom", id: "ghost" }), undefined, "resolveRef：引用不存在 → undefined（不抛）");
+  eq(b3.beat.resolveRef({ type: "builtin", idx: 999 }), undefined, "resolveRef：idx 越界 → undefined");
+  /* 「不抛」要写成显式捕获而不是直接 eq：变异掉 null 守卫后直接调用会抛异常，
+     那会让**整套测试崩溃**、后面用例一条都跑不到（改成捕获 → 失败是具名的） */
+  let nullThrew = false, nullVal;
+  try { nullVal = b3.beat.resolveRef(null); } catch(e){ nullThrew = true; }
+  eq(nullThrew, false, "resolveRef：空引用不抛异常");
+  eq(nullVal, undefined, "resolveRef：空引用 → undefined");
+  eq(b3.beat.selectedPreset().name, "自定义X", "selectedPreset 就是 resolveRef(S.sel)（抽取后行为不变）");
+
+  b3.beat.Presets.refreshAfterPatternChange();                 // 未播放 → 走"立即生效"路径
+  eq(b3.els["patternName"].textContent, "自定义X",
+     "pendingRef 为空时应用的是当前选中预设（既有路径行为不变）");
+  b3.beat.Presets.scheduleRef({ type: "builtin", idx: 2 });     // 排一个"别的型"
+  eq(b3.els["patternName"].textContent, "自定义X", "刚排上时尚未生效（要等小节边界）");
+  const pend = b3.beat.Presets.consumePending(0);
+  eq(pend.applied, true, "小节边界消费挂起成功");
+  eq(pend.resetBar, 0, "同拍号且 schedBarNow=0 → resetBar = 0（拍号没变，不是 sigChg 那条路）");
+  eq(b3.els["patternName"].textContent, b3.beat.BUILTINS[2].name,
+     "★ 消费后生效的是 scheduleRef 排的那个型，**不是** S.sel 指的——泛化真的通了");
+  eq(b3.beat.Presets.consumePending(0).applied, false, "挂起是一次性的（pendingPattern 已消费）");
+  /* ★ pendingRef 也必须一次性消费。只测「pendingPattern 已消费」是不够的——
+     变异验证时发现：不清 pendingRef 时上面那条照样通过，因为拦在 `!pendingPattern` 那关。
+     真正的后果在**下一条预设路径**上暴露：用户切了预设走挂起，却会沿用上一次残留的 ref
+     （切了预设却播放上一个曲式块）。所以这里显式走一次预设路径确认。 */
+  b3.beat.Store.S.sel = { type: "custom", id: "x" };
+  b3.beat.Presets.refreshAfterPatternChange();
+  eq(b3.els["patternName"].textContent, "自定义X",
+     "★ 消费后再走预设路径：应用的是 S.sel，不是上一次残留的 pendingRef");
+
   /* defaultAccents()：原先在 basicPattern 与 Editor 各写一条阶梯 */
   eq(JSON.stringify(b.beat.defaultAccents(4)), "[0]", "4/4 默认重拍分组 [0]");
   eq(JSON.stringify(b.beat.defaultAccents(5)), "[0,2]", "5/4 默认档 2+3 → [0,2]");

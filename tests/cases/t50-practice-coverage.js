@@ -197,3 +197,23 @@ section("T50d 练习分布 · 听辨战绩落盘失败要走既有的一次性�
   ok(app.els["persistDot"].classList.contains("bad"), "写失败 → 状态点变红");
   app.els["modalOk"].fire("click");
 }
+
+/* ================= 场景 T50e：超过 8 种时的截断提示 ================= */
+section("T50e 练习分布 · 超过 8 种只列前 8，并明确告知被截断了");
+{
+  const DAY = 86400000, now = Date.now();
+  /* 12 种各练一场：列表只画 8 行，但**必须告诉用户还有 4 种没显示**——
+     静默截断会让人以为自己这周只练了 8 种 */
+  const names = ["四分基础", "八分摇滚", "附点布鲁斯", "切分节奏型", "Funk 十六分", "华尔兹分解",
+    "摇曳 6/8", "三连音基础", "Take Five 律动 · 5/4", "Money 型 · 7/4", "特雷斯略 3+3+2",
+    "民谣扫弦 · 下-下上-上下上"];
+  const app = loadApp({ "beatsight.log": JSON.stringify({ v: 1,
+    sessions: names.map((n, i) => ({ t: now - (i % 3) * DAY, sec: 60, bpm: 90 + i, name: n })) }) });
+  const els = app.els;
+  const txt = id => { const e = els[id]; return e ? e.textContent : "(未创建)"; };
+  els["statsBtn"].fire("click");
+  eq(els["statsPatList"].children.length, 8, "超过 8 种时只画 8 行");
+  ok(txt("statsPatHead").includes("12 种"), "表头仍报出真实种类数（实际「" + txt("statsPatHead") + "」）");
+  ok(txt("statsPatHead").includes("只列前 8 种"), "并明确写出被截断（实际「" + txt("statsPatHead") + "」）");
+  els["statsClose"].fire("click");
+}
