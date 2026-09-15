@@ -1642,6 +1642,71 @@ function arrangeProblems(a){
     out.push(`各段拍号不一致（${[...meters].map(m => meterName(m)).join(" / ")}）——整首必须同拍号`);
   return out;
 }
+
+/* ---- 曲式编排的节目单步进（v2.0.0 S3）----
+   三个**纯函数**：只依赖传进来的曲式对象与范围，不读 S / 不碰 DOM / 不产生副作用
+   （唯一的外部引用是 LOOP_BARS 这个常量）。这样 T52 能拿固定数据直接断言，不用搭沙箱。 */
+
+/* 一段的总小节数 = Σ(块遍数) × 4。刻意**每次都算**而不存字段：存了就会与 blocks 不同步 */
+function secBars(sec){
+  return sec.blocks.reduce((a, b) => a + b.repeats, 0) * LOOP_BARS;
+}
+/* 段内第 bar 小节落在第几个块、该块的第几个小节。块边界 = 各块 repeats × 4 的累加。
+   越界（bar 不在 [0, secBars)）返回 null——**不静默钳到最后一个块**，
+   那会把"游标跑飞"变成"播放错内容"，比崩溃更难查 */
+function blockAt(sec, bar){
+  if (!sec || !Array.isArray(sec.blocks)) return null;
+  let acc = 0;
+  for (let i = 0; i < sec.blocks.length; i++){
+    const n = sec.blocks[i].repeats * LOOP_BARS;
+    if (bar >= acc && bar < acc + n)
+      return { blockIdx: i, localBar: bar - acc,
+        schedBar: (bar - acc) % LOOP_BARS,       // 型内的 4 小节循环游标（同型重复时自然回绕）
+        ref: sec.blocks[i].ref };
+    acc += n;
+  }
+  return null;
+}
+/* 沿节目单前进一小节（**唯一的一份步进逻辑**）。
+     a   曲式对象
+     sel 播放范围 {from, to, loop}（段 index，含端点）
+     sec,bar 当前位置；bar < 0 表示"尚未开始" → 返回范围起点的第 0 小节
+   返回 { sec, bar, blockIdx, localBar, schedBar, ref, pattern, blockChanged, sectionChanged }
+     · blockChanged   = **解析后的节奏型**换了（调用方据此决定要不要挂起切换）
+     · sectionChanged = 跨段了
+   返回 null = 已到播放范围末尾且不循环 → 调用方应停止播放
+
+   ★ scheduler（实际排程）与 predictNext（弹跳球预测）**必须都走这一个函数**。
+   两边各写一份步进逻辑的话，一旦不一致就会在段/块边界分叉——而分叉会同时打坏
+   弹跳球、播放头、和待命球的交接，且极难复现（阶段一探针把这条列为 ①′ 的头号雷）。
+
+   注意 blockChanged 比的是**解析后的型**而不是 blockIdx：段内两个块若恰好引用同一个预设，
+   就不需要挂起切换（无型可换还重置 schedBar → 画面白跳一下，见方案 R9）。 */
+function arrNextBar(a, sel, sec, bar){
+  if (!a || !Array.isArray(a.sections) || !a.sections.length) return null;
+  const to = Math.min(a.sections.length - 1, Math.max(0, sel.to | 0));
+  const from = Math.min(to, Math.max(0, sel.from | 0));
+  const curBlock = (bar >= 0) ? blockAt(a.sections[sec], bar) : null;
+  const curPat = curBlock ? resolveRef(curBlock.ref) : null;
+
+  /* 推进：未开始 → 落到起点；否则 +1 小节 */
+  let s = (bar >= 0) ? sec : from, b = (bar >= 0) ? bar + 1 : 0;
+  if (s < from){ s = from; b = 0; }                    // 落在范围之前：拉回起点
+  if (b >= secBars(a.sections[s])){                    // 本段走完
+    if (s >= to){
+      if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
+      s = from;
+    } else { s++; }
+    b = 0;
+  }
+  const blk = blockAt(a.sections[s], b);
+  if (!blk) return null;                               // 数据本身坏了：不猜，交给调用方停
+  const pat = resolveRef(blk.ref);
+  return { sec: s, bar: b, blockIdx: blk.blockIdx, localBar: blk.localBar,
+    schedBar: blk.schedBar, ref: blk.ref, pattern: pat,
+    blockChanged: pat !== curPat,
+    sectionChanged: (bar < 0) || sec !== s };
+}
 /* 试听对象（v1.10.0 泛化）：原先这里写死 `S.preview && draft`，只服务编辑器试听。
    听辨训练要试听的是「候选题」而不是编辑器草稿，于是把「试听谁」抽成一个引用。
    **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
@@ -4212,6 +4277,7 @@ $("themeToggle").addEventListener("click", e => {
   selectedPreset, defaultAccents, flashTheme,
   resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
   arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
+  secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
   EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
   limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照

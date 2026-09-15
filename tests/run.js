@@ -25,6 +25,7 @@ const CASE_FILES = [
   "./cases/t49-ear-training",
   "./cases/t50-practice-coverage",
   "./cases/t51-arrangement-model",
+  "./cases/t52-arrangement-cursor",
 ];
 for (const f of CASE_FILES) require(f);
 
