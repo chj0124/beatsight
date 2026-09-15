@@ -726,7 +726,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.8.0";
+const VERSION = "1.8.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1676,25 +1676,24 @@ const Viz = (() => {
         const first = nbSteps.find(s2 => !s2.rest);
         if (first){
           const g = posOf(nb, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((s2, n2) => s2 + n2.t, 0));
-          /* 起跑预备（v1.8.0）：把终端弧的**下落半弧**平行复制到新行首 onset 正上方——
-             终端弧过 apex（p=0.5）起，待命球从同一高度 H 沿同一条抛物线的下落段同步下落，
-             与上一小节的球在小节边界**同时触地**；交接后正式球在同一点落地挤压接管，
-             「下落 → 挤压 → 回弹 → 第一跳」速度连续，接力变成双重奏。
-             apex 之前保持原停泊位（半透明"下一个是你"的提示不提前抢戏）；
-             只动待命球的位移/形变，交接时刻（= b2.t）分毫不动；
-             REDUCE_MOTION 下整段不下落（纯装饰降级，停泊位保留） */
-          const halfT = (b2.t - a.t) / 2;                        // 终端弧后半 = 下落段时长
-          const dtH = b2.t - now;                                // 距交接（终端弧终点 = 小节右缘时刻）
-          let wy = 0, wsx = 1, wsy = 1;
-          if (!REDUCE_MOTION && dtH >= 0 && dtH < halfT){
-            const ph = 1 - dtH / halfT / 2;                      // 0.5(apex) → 1(触地)：抛物线下落半段相位
-            wy = H * 4 * ph * (1 - ph);
-            const vN = Math.min(1, Math.abs(1 - 2 * ph) * (H / 60));   // 空中拉伸与主体同式
-            wsy = 1 + 0.2 * vN; wsx = 1 - 0.12 * vN;
+          /* 起跑预备（v1.8.0）：把终端弧**整条抛物线**（起跳 + 下落，含水平分量）平行复制到
+             下一行——待命球从新行首 onset 左侧起跳，与主球同相位 p、同高度 H、同形变，
+             小节边界同时触地（落点 = 新行首 onset），交接后正式球在同一点落地挤压接管，
+             「斜入 → 触地 → 挤压 → 回弹 → 第一跳」速度连续，接力变成双重奏。
+             水平跨距 = 终端弧跨距、封顶行宽 20%：长弧（如慢速 6/8）或窄屏不至于飞出视口。
+             只动待命球，交接时刻（= b2.t）分毫不动；
+             REDUCE_MOTION 下保持贴地停泊位不跳（纯装饰降级） */
+          let wx = 0, wy = 0, wsx = 1, wsy = 1;
+          if (!REDUCE_MOTION){
+            const gRow = geoOf(nb) || geoOf(0);
+            const hopSpan = Math.min(Bp.x - A.x, (gRow ? gRow.width : 0) * 0.2);
+            wx = -hopSpan * (1 - p);                             // 起跳点在落点左侧，触地归零
+            wy = H * 4 * p * (1 - p);                            // 与主球同一条抛物线、同一相位
+            wsx = sx; wsy = sy;                                  // 同弧同相位 → 直接复用本帧形变
           }
           waitEl.style.display = "";
           waitEl.style.opacity = "";
-          waitEl.style.transform = `translate(${g.x}px, ${(g.y - wy).toFixed(1)}px) scale(${wsx.toFixed(3)},${wsy.toFixed(3)})`;
+          waitEl.style.transform = `translate(${(g.x + wx).toFixed(1)}px, ${(g.y - wy).toFixed(1)}px) scale(${wsx.toFixed(3)},${wsy.toFixed(3)})`;
         } else waitEl.style.display = "none";
       } else waitEl.style.display = "none";
     }

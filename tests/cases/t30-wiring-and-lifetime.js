@@ -799,12 +799,12 @@ section("T38 主题切换 · 观测台主题（v1.7.0）");
 }
 
 /* ================================================================================
-   场景 T41：待命球起跑预备 · 下落半弧复制（v1.8.0）
-   终端弧过 apex 后，待命球在新行首 onset 正上方沿同一条抛物线的下落段同步下落，
-   与上一小节的球在小节边界同时触地。核心不变量：**交接时刻分毫不动**——
-   过界第一帧正式球必须已在新行首 onset、待命球隐藏；下落只允许出现在终端弧后半。
+   场景 T41：待命球起跑预备 · 终端弧整条抛物线复制（v1.8.0）
+   终端弧期间（最后一颗 onset → 小节边界），待命球把主球的抛物线**含水平分量**平行复制到
+   下一行：从新行首 onset 左侧起跳、同相位同高同形变、边界同时触地。
+   核心不变量：**交接时刻分毫不动**——过界第一帧正式球必须已在新行首 onset、待命球隐藏。
    ================================================================================ */
-section("T41 待命球起跑预备 · 下落半弧复制（v1.8.0）");
+section("T41 待命球起跑预备 · 终端弧抛物线复制（v1.8.0）");
 {
   const app = loadApp();
   const beat = app.beat;
@@ -813,12 +813,17 @@ section("T41 待命球起跑预备 · 下落半弧复制（v1.8.0）");
   const iv = beat.Viz.internals();
   const spbV = 60 / beat.Store.S.bpm;
   const barDur = beat.Store.S.sig * spbV;
-  /* 民谣扫弦：末 onset 在 144t（第 4 拍），终端弧 = 1 拍 = 0.625s；下落段 = 其前半 = 0.3125s。
-     跳高 H 与实现同式：clamp(120·T², 10, 48) 再受「顶点不出容器空域」钳制（首行 A.y+6） */
-  const T = 1 * spbV, halfT = T / 2;
+  /* 民谣扫弦：末 onset 在 144t（第 4 拍），终端弧 = 1 拍 = 0.625s。
+     与实现同式：H = clamp(120·T²,10,48) 再受首行「顶点不出容器空域」钳制；
+     hopSpan = min(终端弧水平跨距, 行宽×20%)。行几何用 stub 模型（行宽 600、left 0） */
+  const T = 1 * spbV;
+  const rowW = iv.rowGeo[0].width, rowL = iv.rowGeo[0].left;
   const H = Math.min(Math.max(10, Math.min(48, 120 * T * T)), (iv.rowGeo[0].top - 20) + 6);
+  const arcSpan = (rowL + rowW - 10) - (rowL + (144 / 192) * rowW - 8);
+  const hopSpan = Math.min(arcSpan, rowW * 0.2);
+  const aT = beat.clock().loopStart + 3 * spbV;              // 末 onset（第 4 拍）时刻
   const barEnd = beat.clock().loopStart + barDur;            // 第 1 小节右缘 = 交接时刻
-  const gY = iv.rowGeo[1].top - 20;                          // 待命球停泊位 y（新行首 onset 基线）
+  const landX = iv.rowGeo[1].left - 8, landY = iv.rowGeo[1].top - 20;   // 落点 = 新行首 onset
   const states = [];
   const DT = 0.005;
   for (let i = 0; i < Math.round(barDur * 1.2 / DT); i++){
@@ -828,31 +833,39 @@ section("T41 待命球起跑预备 · 下落半弧复制（v1.8.0）");
     const bm = /(-?[\d.]+)px/.exec(iv.ballEl.style.transform);
     const wm = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)(?: scale\(([\d.]+),([\d.]+)\))?/.exec(iv.waitEl.style.transform);
     states.push({ now: ac.currentTime, bx: bm ? +bm[1] : NaN,
-      wy: wm ? +wm[2] : NaN, wsy: wm && wm[4] ? +wm[4] : 1,
+      wx: wm ? +wm[1] : NaN, wy: wm ? +wm[2] : NaN, wsy: wm && wm[4] ? +wm[4] : 1,
       disp: iv.waitEl.style.display });
   }
 
-  /* ① 终端弧前半（apex 之前）：保持停泊位——贴地、无形变，下落不提前抢戏 */
-  const early = states.filter(s => s.disp !== "none" && s.now < barEnd - halfT - 0.02);
-  ok(early.length > 5, `终端弧前半采到 ${early.length} 帧待命球（民谣扫弦终端弧 = 1 拍）`);
-  ok(early.every(s => Math.abs(s.wy - gY) < 0.2), "apex 前待命球贴地停驻（y = 停泊位，无下落）");
+  /* ① 终端弧之前（非 terminal）：待命球不露面 */
+  const preArc = states.filter(s => s.now < aT - 0.02);
+  ok(preArc.length > 5 && preArc.every(s => s.disp === "none"), "终端弧开始前待命球隐藏（不提前抢戏）");
 
-  /* ② 下落段（终端弧后半）：从 ≈H 同步下落、单调趋地、边界前贴地；空中拉伸 sy>1 */
-  const fall = states.filter(s => s.now >= barEnd - halfT && s.now < barEnd - 0.004);
-  ok(fall.length > 5, `下落段采到 ${fall.length} 帧（halfT=${(halfT * 1000).toFixed(0)}ms）`);
-  const offs = fall.map(s => gY - s.wy);                     // 离地高度序列（应单调递减 → 0）
-  ok(Math.max(...offs) > H * 0.8, `下落起点 ≈ 终端弧同高 H=${H.toFixed(1)}px（实测峰值 ${Math.max(...offs).toFixed(1)}）`);
-  ok(offs[offs.length - 1] < H * 0.15, `触地前高度收敛到 ${offs[offs.length - 1].toFixed(1)}px（→ 0，与老球同时落地）`);
-  ok(offs.every((v, i) => i === 0 || v <= offs[i - 1] + 0.6), "下落单调不回弹（抛物线下落段，无上下抖动）");
-  ok(fall.some(s => s.wsy > 1.01), "下落途中带空中拉伸（sy>1，与主体球同式）");
+  /* ② 终端弧期间：逐帧对照复制的抛物线——同相位 p、同高 H、水平从 landX-hopSpan 单调右移到 landX */
+  const arc = states.filter(s => s.now >= aT && s.now < barEnd - 0.004);
+  ok(arc.length > 10, `终端弧期间采到 ${arc.length} 帧（T=${(T * 1000).toFixed(0)}ms）`);
+  const bad = arc.filter(s => {
+    const p = (s.now - aT) / T;
+    const expY = landY - H * 4 * p * (1 - p);
+    const expX = landX - hopSpan * (1 - p);
+    return Math.abs(s.wy - expY) > 3 || Math.abs(s.wx - expX) > 3;
+  });
+  eq(bad.length, 0, `逐帧贴合复制抛物线 y=landY−H·4p(1−p) / x=landX−hopSpan·(1−p)（容差 3px，偏差帧 ${bad.length}）`);
+  const offs = arc.map(s => landY - s.wy);
+  ok(Math.max(...offs) > H * 0.9, `弧顶 ≈ H=${H.toFixed(1)}px（实测峰值 ${Math.max(...offs).toFixed(1)}）`);
+  const xs = arc.map(s => s.wx);
+  ok(xs.every((v, i) => i === 0 || v >= xs[i - 1] - 0.6), "水平单调右移（抛物线斜入，非直上直下）");
+  ok(Math.abs(xs[0] - (landX - hopSpan)) < 4 && Math.abs(xs[xs.length - 1] - landX) < 4,
+    `起跳点 landX−hopSpan=${(landX - hopSpan).toFixed(0)}、触地点 landX=${landX}（实测 ${xs[0].toFixed(1)} → ${xs[xs.length - 1].toFixed(1)}）`);
+  ok(arc.some(s => s.wsy > 1.01), "空中拉伸与主球同式（sy>1）");
 
-  /* ③ 交接不变量：过界第一帧，待命球隐藏、正式球已落在新行首 onset（x = 新行 left − 8）——
-     下落动画对交接时刻零影响（删掉这性质此断言即红，反向验证已跑） */
+  /* ③ 交接不变量：过界第一帧，待命球隐藏、正式球已落在新行首 onset——
+     复制动画对交接时刻零影响（删掉这性质此断言即红，反向验证已跑） */
   const after = states.find(s => s.now >= barEnd);
   ok(!!after, "采到跨过小节边界的帧");
   if (after){
     eq(after.disp, "none", "过界后待命球立即隐藏（交接完成）");
-    near(after.bx, iv.rowGeo[1].left - 8, 2.5, `过界第一帧正式球 x=${after.bx.toFixed(1)} ≈ 新行首 onset（交接时刻未被动画推迟）`);
+    near(after.bx, landX, 2.5, `过界第一帧正式球 x=${after.bx.toFixed(1)} ≈ 新行首 onset（交接时刻未被动画推迟）`);
   }
   beat.Controls.stop();
 }
