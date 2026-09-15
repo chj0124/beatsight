@@ -20,6 +20,8 @@ const CASE_FILES = [
   "./cases/t24-audit-hardening",
   "./cases/t30-wiring-and-lifetime",
   "./cases/t37-stats-and-training",
+  "./cases/t47-stroke-direction",
+  "./cases/t48-practice-limit",
 ];
 for (const f of CASE_FILES) require(f);
 

@@ -3,7 +3,7 @@
 ```bash
 # 平时不用单独跑下面这些——改完代码直接跑这一条就够：
 #   node tools/check-all.js   （约 6 秒，跑完全部检查并给汇总）
-node tests/run.js            # 主套件：47 个场景组 / 640 断言（约 0.3s）
+node tests/run.js            # 主套件：68 个场景组 / 788 断言（约 0.4s）
 FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；check-all 默认跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）
@@ -17,8 +17,8 @@ node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总
 
 `tools/check-coverage.js` 用 **Node 内置的 V8 覆盖率**（`NODE_V8_COVERAGE`）采集——
 不需要 c8/nyc/istanbul 任何依赖，`vm.Script` 编译的沙箱脚本同样会被采到。
-当前 **99.4%**（v1.4 起 14 个分区，Stats 100%）；未覆盖的主要是 `scheduler` 的 `MAX_SCHED_STEPS`
-防御分支（刻意保留，不为了数字造人工状态）与 KeepAlive 的个别防御性 catch。
+当前 **99.9%**（v1.4 起 14 个分区，Stats 100%）；未覆盖的主要是 `scheduler` 的 `MAX_SCHED_STEPS`
+防御分支（刻意保留，不为了数字造人工状态）——**只剩这 3 行**。
 
 它也是找"测试空白"最好用的工具：v1.3.1 靠它一眼看出**事件处理器体**（点 pill、TAP、空格键、
 导入导出、编辑器选中删除、窗口 resize、弹窗键盘）整层没被跑过——原先测试只直接调模块函数，
@@ -54,7 +54,14 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **桩的忠实度**（v1.3.0 起补齐，都是踩过才加的）：
   - `classList` 与 `className` 是**同一份数据**的两个视图（真实 DOM 如此）——否则「视觉高亮与 aria-pressed 是否一致」这类跨视图断言写不出来
   - `innerHTML = ""` **清空 children**（真实 DOM 语义）——否则按「行/格」检查渲染结果会读到上一次 `buildViz` 的残留
-  - 标记里声明 `hidden` 的元素初始即隐藏（`HTML_ATTRS`）；静态 pill 组（sigRow/swingRow/timbreRow）按标记复刻（`HTML_CHILDREN`），否则 `querySelectorAll("#sigRow .pill")` 拿到空集合，`setPressed()` 空转
+  - 标记里声明 `hidden` 的元素初始即隐藏（`HTML_ATTRS`）；静态 pill 组（sigRow/swingRow/timbreRow/statsRangeRow/dirRow）按标记复刻（`HTML_CHILDREN`），否则 `querySelectorAll("#sigRow .pill")` 拿到空集合，`setPressed()` 空转
+    - `dirRow` 的第三档是 `data-dir=""`（"不标注"）——**空串不是 undefined**，`pill()` 的
+      `dataset.dir !== undefined` 判据对它成立，所以「清除方向」这条路测得到（v1.9.0）
+    - `limitRow` **不需要**登记：它由 `buildPillRow` 在运行期 `appendChild` 生成，不是静态标记
+  - **DOM 桩按 id 惰性创建**（v1.9.0 又验一遍的老教训）：若被测代码从没 `$("某id")` 过，
+    `els["某id"]` 就是 `undefined`。断言里**别直接解引用** `.textContent`——那会让整套测试
+    以 TypeError 告负、后面所有用例一条都跑不到。写个 `const prog = els => (els["limitProg"] || {}).textContent`
+    之类的安全读取，让失败表现为「实际 (未创建)」而不是崩溃（v1.3.1「断言不该炸掉后续用例」）
   - `document` / `window` 级监听器**可触发且带事件载荷**（`setHidden()` / `fireWin("keydown", {code:"Space"})` / `firePageHide()`）。v1.3.0 时 `fireWin` 只接受事件名、丢掉载荷，于是键盘/文件类接线**永远不匹配而静默通过**
   - `click()` 会触发自身 click 处理器（导出预设的 `<a download>` 靠它）
   - `setTimeout` 记录但不自动执行，需要时用 `runTimers()` 手动冲刷——否则藏在防抖里的真实路径（窗口 resize 重建、TAP 文案复位、导出后 revokeObjectURL）永远跑不到
@@ -65,7 +72,12 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / KeepAlive（v1.4 起 10 个模块），以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` 等断言入口）。
+（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / KeepAlive（v1.4 起 10 个模块），以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` 等断言入口）。
+
+**注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
+每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**
+（`limitState: () => ({bars: limitBars, t0: limitT0})`）——`limitBars` 是原始值，
+在装配时直接挂上 `limitBars` 只会把当时的数字拷进去，之后永远是 0。
 
 ## 覆盖场景
 
@@ -114,6 +126,16 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T41 | 上次训练一键继续（v1.4）：无历史按钮隐藏 · 未完成从 reached 接续起播 · 已完成原配置再来一轮 · 脏 last 钳制/丢弃 |
 | T42 | 后台保活（v1.4）：开关默认关并持久化 · wakeLock 申请/释放 · 无 wakeLock 时静音循环 audio 兜底 · 关开关不申请任何保活 |
 | T43 | PWA 注册收口（v1.4）：file:// 不注册 SW · https 注册 sw.js + 注入 manifest link · 无 serviceWorker 能力时只注入 manifest 不抛错 |
+| T44 | 音色响度（v1.4.1）：木鱼/军鼓/踩镲的 makeup 补偿 = `min(cap, peak × makeup)` · 同音色内层级不变 · 上限挡脏值 · 振荡器路径不受影响 |
+| T45 | 7 天爬升计划（v1.5）：生成 / 今日参数 / 完成推进 / 缺练顺延 / Day 7 收官 |
+| T46 | 统计增强（v1.6）：7/30 天视图切换 · 各节奏型速度纪录 · 练习记录导出 |
+| T47 | 扫弦方向标注（v1.9.0，5 个子场景）：数据与名称逐字对应 · 其余内置预设零 dir · 徽标渲染（含 12t 切分位格）· 脏 dir 静默降级（含休止符上的 dir 被抹掉）· 导出往返保留 · **窄格整体隐藏** · 编辑器三档可用性/高亮/写入/撤销/重复点不推栈 · 休止符禁用 · **加 dir 前后发声逐位相同**（纯记谱层的核心断言） |
+| T48 | 练习量控制（v1.9.0，8 个子场景）：档位生成与文案 · 默认「不限」· 10 种脏 limit 全部回退 · 合法值不被表引用污染 · 热键落盘且 < 1KB · **按小节恰在第 N 小节边界停 + 发声个数恰好 N×每小节音数** · 按分钟按音频时钟差停 · **预备拍不计入（且进度区在预备拍期间为空）** · 每轮开始归零 · 播放中改档位立即生效 · 与变速训练器「谁先到谁停」双向 · 「不限」行为零变化 |
+
+> **编号说明**：`section()` 的 T 编号目前有重复——T38 与 T41 各被用两次
+> （`t37-stats-and-training.js` 与 `t30-wiring-and-lifetime.js`）。这只是日志标签重复，
+> 不影响执行与断言；但**新增用例请从当前最大值往上取号，别复用**（v1.9.0 起为 T47/T48，
+> 下一个是 T49）。哪天顺手整理时，把重复的两个改掉即可。
 
 ## 何时补断言
 

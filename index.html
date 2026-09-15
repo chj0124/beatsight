@@ -89,6 +89,12 @@ button:disabled{cursor:not-allowed}
 .cell .sub{flex:1;border-right:1px solid rgba(255,255,255,.10)}
 .cell .sub:last-child{border-right:none}
 .cell.played .sub,.cell.active .sub{border-right-color:rgba(0,0,0,.18)}
+/* 扫弦方向徽标（v1.9.0）：↓ 下扫 / ↑ 上扫。
+   配色刻意**不跟随主题色**：绿/蓝在白填充格（.cell.played 是纯白 fill）上对比不足。
+   统一用「深底 + 亮描边 + 近白字形」——暗底格与白填充格上都能读清，且两个主题通吃，
+   不必再往观测台覆盖块里加一份。方向只靠字形表达（不靠实心/描边），小尺寸下更可靠。
+   宽度 14px + 左偏 2px：窄格放不下时由 fitCellAnnotations() 整体隐藏（不裁半个徽标） */
+.cell-strum{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;font-weight:700;color:#FFFFFF;pointer-events:none;z-index:2}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none;z-index:6}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -159,6 +165,9 @@ input[type=range].vol{width:120px}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
+/* 练习量（v1.9.0）：训练模式区内的独立一行。外层 .group 的 gap 已负责上下间距，
+   这里只管内部纵向排布（标签 / 档位 / 进度） */
+.limit-panel{display:flex;flex-direction:column;gap:8px}
 .tr-prog.live{color:var(--green)}
 
 /* ---------- 侧栏 ---------- */
@@ -201,7 +210,14 @@ input[type=range].vol{width:120px}
 .edcell.rest span{color:var(--t3)}
 .edcell.sel{background:rgba(30,215,96,.15);box-shadow:0 0 0 1.5px var(--green)}
 .edcell.sel span{color:var(--green)}
+/* 编辑器里的方向标注（v1.9.0）：与主视图同义，但这里是列表形态，直接用字形内联在文字前，
+   不做徽标。选择器必须写成 `.edcell .ed-strum`——`.edcell span` 是 (0,1,1)，
+   单类名 `.ed-strum` 是 (0,1,0) 会被它压过，字号与颜色都改不动 */
+.edcell .ed-strum{font-size:13px;font-weight:700;color:var(--t2);margin-right:5px;flex:none}
+.edcell.sel .ed-strum{color:var(--green)}
 .ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
+/* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
+.ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -551,6 +567,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <!-- 后台保活（v1.4）：wakeLock 防息屏 + iOS 静音循环音频兜底，开关持久化 -->
         <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
       </div>
+      <!-- 练习量（v1.9.0）：到点自动停。与变速训练器职责分离——训练器管「练多快」，这里管「练多少」，
+           两者可同时开（谁先到谁停）。档位按钮由 LIMIT_PRESETS 生成（Controls.syncLimitUI），
+           不在标记里写死，避免 UI 与判定两处各维护一份档位表 -->
+      <div class="limit-panel">
+        <div class="group-label">练习量 · 到点自动停（可选）</div>
+        <div class="bpm-row" id="limitRow" role="group" aria-label="练习量档位"></div>
+        <div class="hint" id="limitProg"></div>
+      </div>
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
         <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" value="120" aria-label="目标 BPM">
@@ -626,6 +650,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" id="copyBarBtn">复制小节到全部</button>
         <button class="pill outline" id="clearBarBtn">清空当前小节</button>
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · Ctrl+Z 撤销</span>
+      </div>
+      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中、或选中的是休止符时三个按钮禁用
+           （休止符不承载扫弦动作）——禁用而不是弹窗报错，避免误点即打扰 -->
+      <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
+        <span class="hint">扫弦标注</span>
+        <button class="pill" data-dir="D" aria-pressed="false" disabled>↓ 下扫</button>
+        <button class="pill" data-dir="U" aria-pressed="false" disabled>↑ 上扫</button>
+        <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
+        <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
       <div class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</div>
       <div class="palette" id="palette"></div>
@@ -726,18 +759,25 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.8.2";
+const VERSION = "1.9.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
    判据处一律用具名常量；纯样式里的 px 保持裸数字（勿机械替换） */
 const T16 = TPB / 4;                                   // 12t 十六分（刻度网格单位）
 const T8  = TPB / 2;                                   // 24t 八分（短音符/独立标签的判据阈值）
-const D = (t, rest) => ({t, rest: !!rest});            // t 单位：tick
+/* dir（v1.9.0）：扫弦方向标注 'D'=下扫 / 'U'=上扫。**可选字段，与发声完全无关**——
+   它是记谱层字段，scheduler 一行都不用读它（与 Swing「演奏参数不入时值」同一类先例）。
+   省略即「不标注」，所以老数据零迁移、老 JSON 导入后就是"无箭头"。
+   rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
+   JSON 往返，同样无需为它加代码 */
+const D = (t, rest, dir) => ({t, rest: !!rest, ...(dir ? {dir} : {})});            // t 单位：tick
 const rep4 = steps => [0,1,2,3].map(() => steps.map(s => ({...s})));
+/* 唯一带扫弦方向标注（v1.9.0）的内置预设：方向逐字对应它自己的名字「下-下上-上下上」
+   （下 下 上 上 下 上 = D D U U D U）。此前这个名字只存在于标题字符串里，界面完全表达不出来 */
 const BUILTINS = [
   {name:"民谣扫弦 · 下-下上-上下上", desc:"4/4 · 扫弦 · 弹唱", meter:4,
-   bars:rep4([D(48),D(24),D(24),D(36),D(12),D(48)])},
+   bars:rep4([D(48,0,"D"),D(24,0,"D"),D(24,0,"U"),D(36,0,"U"),D(12,0,"D"),D(48,0,"U")])},
   {name:"四分基础", desc:"4/4 · 新手入门 · 最简节奏型", meter:4,
    bars:rep4([D(48),D(48),D(48),D(48)])},
   {name:"八分摇滚", desc:"4/4 · 八分均分 · 驱动感", meter:4,
@@ -828,6 +868,21 @@ const CONFIG = {
   drumMakeup: { snare:5, hat:2.5 },
 };
 
+/* 练习量档位表（v1.9.0）：UI 生成、加载校验、进度文案三处共用同一份，避免各写一遍单位换算。
+   mode 决定「按什么计数」：bars = 已练小节数（调度器在小节边界累加），
+   min = 音频时钟分钟数（与 beatsight.log 的会话时长同口径）。
+   **本表同时充当加载校验的白名单**：S.limit 只接受表内存在的 (mode, n) 组合，
+   脏值一律回退「不限」——比"mode 白名单 + n 任意正数"更严，也免了另写一套域校验 */
+const LIMIT_PRESETS = [
+  { mode:"off",  n:0,  text:"不限",    label:"不限制练习量" },
+  { mode:"bars", n:8,  text:"8 小节",  label:"练满 8 小节自动停止" },
+  { mode:"bars", n:16, text:"16 小节", label:"练满 16 小节自动停止" },
+  { mode:"bars", n:32, text:"32 小节", label:"练满 32 小节自动停止" },
+  { mode:"min",  n:5,  text:"5 分钟",  label:"练满 5 分钟自动停止" },
+  { mode:"min",  n:10, text:"10 分钟", label:"练满 10 分钟自动停止" },
+];
+const LIMIT_OFF = { mode:"off", n:0 };
+
 /* 主题化闪烁配色（v1.7.0 观测台主题）：换拍脉冲与十六分闪烁的 WAAPI 取色按 body[data-theme]
    查表——观测台把功能绿换成电光蓝。读 DOM 属性而非 getComputedStyle：后者在渲染热路径
    属布局读取，是性能禁区（v1.3.0 P1-4）。主题切换本身见装配区末尾的主题逻辑 */
@@ -892,6 +947,7 @@ const Store = (() => {
      回归测试：tests/run.js T23 / T23b / T23c */
   const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
   const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
+  const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
   const numOr = (v, dft) => (isNum(v) ? v : dft);
   const clamp01 = v => Math.min(1, Math.max(0, v));
@@ -928,6 +984,14 @@ const Store = (() => {
   });
 
   const savedCountIn = (saved.countIn && typeof saved.countIn === "object") ? saved.countIn : {};
+  /* 练习量（v1.9.0）：显式白名单抽取——只接受 LIMIT_PRESETS 里存在的 (mode, n) 组合，
+     其余（含缺项、null、布尔、"abc"、负数、超表范围）一律回退「不限」。
+     比 Object.assign 整包拷贝安全：脏值不会带着意外字段漏进 S.limit。
+     **必须拷贝而不是直接引用表项**——表是模块级常量，被 S 持有后任何写入都会污染它 */
+  const limitSaved = (saved.limit && typeof saved.limit === "object")
+    ? (LIMIT_PRESETS.find(p => p.mode === saved.limit.mode && p.n === +saved.limit.n) || LIMIT_OFF)
+    : LIMIT_OFF;
+  const limitInit = { mode: limitSaved.mode, n: limitSaved.n };
   const S = {
     bpm: numOr(saved.bpm, 96),
     vol: clamp01(numOr(saved.vol, 0.8)),
@@ -946,6 +1010,7 @@ const Store = (() => {
     keepAwake: !!saved.keepAwake,                   // v1.4 后台保活：默认关（耗电/系统策略由用户决定）
     migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     plan: planSaved,                                // v1.5 七天爬升计划（null = 无计划）
+    limit: limitInit,                               // v1.9.0 练习量（{mode:"off"|"bars"|"min", n}）
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
@@ -1047,7 +1112,8 @@ const Store = (() => {
   function hotPayload(){
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
-      keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan };
+      keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
+      limit:{ mode:S.limit.mode, n:S.limit.n } };   // v1.9.0：只写这两个字段（不整包透传）
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
@@ -1118,7 +1184,12 @@ const Store = (() => {
         else return null;
         if (!VALID_T.includes(t)) return null;
         sum += t;
-        steps.push({t, rest: !!s.rest});
+        /* 扫弦方向（v1.9.0）：纯装饰字段，脏值**静默降级为"不标注"**，不让整条预设失败。
+           判据与 v1.2.4「淘汰项不静默丢弃」不冲突——那条针对的是会让节奏型**不可用**的结构性
+           损坏（时值非法、小节不完整）；箭头丢了节奏型依然完整可弹，弹窗报错反而更糟。
+           休止符不承载扫弦动作，带 dir 也一并抹掉 */
+        const dir = (!s.rest && VALID_DIR.includes(s.dir)) ? s.dir : undefined;
+        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
       bars.push(steps);
@@ -1255,6 +1326,23 @@ let appliedPat = null;               // 正在发声的节奏型快照（Presets
 /* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
    时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
 let sessStartT = null;
+/* 练习量（v1.9.0）：limitBars = 本次会话已走完的小节数（Audio 在小节边界累加——只有调度器
+   看得见小节边界，这是唯一与发声同源的视角）；limitT0 = min 模式的计时基准（音频时钟）；
+   onLimitPulse = 到点处置钩子。**为什么用钩子**：Audio 声明在 Controls 之前，直接调
+   Controls.stop() 属反向引用，tools/check-module-order.js 会拦下来——与 onFrameError /
+   Store.setPersistFailHandler 同一套「模块只暴露回调，跨模块装配交给装配层」模式。 */
+let limitBars = 0, limitT0 = null;
+let onLimitPulse = null;
+/* 练习量是否已到点（Audio 每个调度周期问一次）。两种模式只在「数什么」上不同：
+     bars → 数小节（limitBars 只在小节边界增长，故天然按小节对齐）
+     min  → 数音频时钟差（与 beatsight.log 的会话时长同口径；时钟挂起时本就不计时）
+   预备拍不计入练习量：limitT0 在预备拍数完那一刻才取（见 Controls.start 与 Audio 的预备拍循环） */
+function limitHit(){
+  const L = S.limit;
+  if (!L || L.mode === "off") return false;
+  if (L.mode === "bars") return limitBars >= L.n;
+  return limitT0 !== null && ctx !== null && (ctx.currentTime - limitT0) >= L.n * 60;
+}
 /* 渲染帧异常恢复钩子（v1.3.0）：由装配层（初始化段）注入。
    为什么是钩子而不是直接写 Controls.stop()：paintFrame 是**每帧热路径**，而 Controls 声明在
    Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
@@ -1329,6 +1417,7 @@ const Viz = (() => {
        └── span  (z2)  时值名称标签（t≥24，即 ≥0.5 拍才有独立标签） */
   let rowEls = [], cellEls = [], playheadEl = null, trailGlowEl = null;
   let subEls = [], fillEls = [], labelEls = [], lastT16 = -1;
+  let strumEls = [];                                         // 扫弦方向徽标（v1.9.0），与 labelEls 同构：无徽标处存 null
   let glEls = [];                                            // 短音符合并标注（组标签）
   let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
   let lastBar = -1, lastStep = -1;
@@ -1361,7 +1450,7 @@ const Viz = (() => {
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
     viz.innerHTML = "";
-    rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = [];
+    rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = [];
     const p = curPattern();
     const barTicks = vizSig * TPB;
@@ -1396,6 +1485,7 @@ const Viz = (() => {
       const cells = [];
       const fills = [];
       const labels = [];
+      const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
       subEls.push({});
       let acc = 0;
       p.bars[b].forEach((s, i) => {
@@ -1431,6 +1521,15 @@ const Viz = (() => {
           row.appendChild(lb);
           labels.push(lb);
         } else labels.push(null);
+        /* 扫弦方向徽标（v1.9.0）：挂进格子内部（随格子移动、被格子 overflow 裁），
+           窄格放不下时由 fitCellAnnotations() 整体隐藏，不做部分裁切 */
+        if (s.dir){
+          const sm = document.createElement("div");
+          sm.className = "cell-strum";
+          sm.textContent = s.dir === "U" ? "↑" : "↓";
+          c.appendChild(sm);
+          strums.push(sm);
+        } else strums.push(null);
         row.appendChild(c); cells.push(c);
       });
       /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
@@ -1456,7 +1555,7 @@ const Viz = (() => {
       });
       glEls.push(groups.filter(g => g.el));
       viz.appendChild(row);
-      rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels);
+      rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels); strumEls.push(strums);
     }
     for (let i = 1; i < S.sig; i++){
       const gl = document.createElement("div");
@@ -1483,12 +1582,21 @@ const Viz = (() => {
     $("vizTitle").textContent = `时值可视化 · ${meterName(S.sig)} · 同屏 4 小节`;
     resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-    fitCellLabels();
+    fitCellAnnotations();
   }
-  /* 格子标签自适应：标签比格子宽时隐藏 */
-  function fitCellLabels(){
+  /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
+     标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
+     所以「自适应只在结构变化时做一次」的既有性质不变——paintFrame 里仍然一次 offset* 都不读
+     （v1.3.0 P1-4 的性能承诺靠这一点成立，往帧内加读取会立刻破功） */
+  const STRUM_MIN_W = 20;      // 徽标 14px + 左偏 2px + 余量：窄于此值整体隐藏，不做部分裁切
+  function fitCellAnnotations(){
     labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
       if (lb) lb.style.display = (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : "";
+    }));
+    /* 徽标是定宽元素（不随文字变宽），故阈值取常量而不是 scrollWidth——
+       定宽与实测宽度比较在真浏览器里才是正确判据 */
+    strumEls.forEach((strums, b) => strums.forEach((sm, i) => {
+      if (sm) sm.style.display = (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : "";
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
       const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
@@ -2056,11 +2164,24 @@ const Audio = (() => {
   function scheduler(){
     /* 本轮窗口只取一次：避免调度途中 visible/hidden 翻转导致同一次调用里两个分支用不同窗口 */
     const win = schedWindow();
+    /* 练习量（v1.9.0）：每个 25ms 周期问一次「该不该停」。放在最前——一旦到点立刻停播，
+       本周期不再排任何音符（少排一个音就少一次"停了还在响"的观感）。到点判定归共享状态区的
+       limitHit()，处置归注入的 onLimitPulse（Audio 不能反向调用 Controls）。
+       为什么 min 模式也靠这里而不是小节边界：30BPM 的 7/4 一小节 16 秒，按边界判会晚停十几秒；
+       25ms 周期判定则与 BPM/拍号完全无关 */
+    if (onLimitPulse && onLimitPulse()) return;
     /* 预备拍（v0.9.0）：loopStart 之前的时段调度 ciLeft 声计数（首声重拍、其余正拍）。
        独立路径：不走 swing、不受静音拍影响；正式音符的调度从 loopStart 才开始 */
     while (ciLeft > 0 && ciNext < ctx.currentTime + win){
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
+      /* 预备拍数完这一刻才取练习量计时基准（v1.9.0）：预备拍是"准备"，不该吃掉练习量的额度。
+         为什么已经有 start() 里的赋值还要再来一次：两者值通常相同（start() 计算 loopStart 时
+         已把 N 拍顺延进去），但职责不同——start() 那次负责"有预备拍时先置 null"，
+         这次负责"数完再取"；顺带让进度显示在预备拍期间保持空白（基准为空即不显示）。
+         反向验证证实：去掉本次赋值，min 模式仍不会把预备拍算进去（值等价），
+         但进度区会在预备拍期间就显示「已练 0:00 / 5:00」——所以它不是冗余代码 */
+      if (ciLeft === 0) limitT0 = loopStart;
     }
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
@@ -2099,6 +2220,7 @@ const Audio = (() => {
         const adv = pat.meter * spb();                    // v1.2.4：强制正向推进，脏拍号不得让进度倒退
         nextNoteTime += (isFinite(adv) && adv > 0) ? adv : 0.5;
         schedBar = (schedBar + 1) % LOOP_BARS;
+        limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
         continue;
       }
       let cumT = 0;
@@ -2115,6 +2237,7 @@ const Audio = (() => {
       schedStep++;
       if (schedStep >= steps.length){
         schedStep = 0; schedBar = (schedBar + 1) % LOOP_BARS;
+        limitBars++;                                     // v1.9.0：练习量按小节累计（本处是小节边界的唯一出口）
         /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
         if (S.trainer.on && Trainer.onBarBoundary()) return;
         /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
@@ -2415,6 +2538,12 @@ const Controls = (() => {
     } else { ciBeats = 0; ciLeft = 0; }
     nextNoteTime = loopStart;
     sessStartT = ctx.currentTime;              // v1.4：练习计时起点（音频时钟，挂起不计时）
+    /* 练习量（v1.9.0）：每次开始都从零起算。min 模式的基准点分两种情形——
+       无预备拍：就是本轮循环起点；有预备拍：先留 null，等预备拍数完那一刻再取
+       （Audio 预备拍循环里赋值），这样「练 5 分钟」不会被预备拍的几拍偷走 */
+    limitBars = 0;
+    limitT0 = (S.countIn.on && S.countIn.beats > 0) ? null : loopStart;
+    syncLimitProg();
     KeepAlive.sync();                          // v1.4：后台保活随播放状态生效
     timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
@@ -2452,6 +2581,7 @@ const Controls = (() => {
     Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
     Viz.resetForStop();
     Trainer.updateProg();
+    syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
     Store.persist();
   }
   $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
@@ -2644,7 +2774,65 @@ const Controls = (() => {
     Store.persist();
   });
 
-  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI };
+  /* ================= 练习量（v1.9.0） =================
+     档位由 LIMIT_PRESETS 生成（复用 v1.6.4 抽出的 buildPillRow，不另写一份 pill 生成逻辑）；
+     被选中档位、aria-pressed、进度文案三者与 S.limit 同源。
+     进度刷新由 onLimitPulse 在每个调度周期驱动，带字符串去重——25ms 一次无条件写 textContent
+     会持续触发样式重算，不值得 */
+  let lastLimitProg = null;
+  function syncLimitUI(){
+    buildPillRow($("limitRow"), LIMIT_PRESETS, {
+      text: p => p.text,
+      label: p => p.label,
+      /* 用 (mode, n) 双条件比对而不是只比 mode：以后若加"16 分钟"这类同 mode 多档，
+         只比 mode 会让两档同时高亮 */
+      isOn: p => p.mode === S.limit.mode && p.n === S.limit.n,
+      onPick: p => {
+        S.limit = { mode: p.mode, n: p.n };
+        syncLimitUI();
+        syncLimitProg();
+        Store.persist();
+      },
+    });
+  }
+  function syncLimitProg(){
+    const L = S.limit;
+    let txt = "";
+    if (L.mode !== "off" && S.playing && limitT0 !== null){
+      if (L.mode === "bars") txt = `已练 ${limitBars} / ${L.n} 小节`;
+      else {
+        const sec = Math.max(0, Math.floor(ctx.currentTime - limitT0));
+        txt = `已练 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} / ${L.n}:00`;
+      }
+    }
+    if (txt !== lastLimitProg){ lastLimitProg = txt; $("limitProg").textContent = txt; }
+  }
+  /* Audio 每个调度周期调用（经共享状态区的 onLimitPulse 钩子注入）。
+     返回 true = 已停播，Audio 本次调度立即退出。
+     文案与读屏播报沿用「训练完成」的同一套做法：先 stop() 再覆盖状态栏——stop() 内部会统一
+     写「已停止」并播报，所以覆盖必须发生在它之后 */
+  function onLimitPulse(){
+    if (limitHit()){
+      const L = S.limit;
+      const txt = L.mode === "bars"
+        ? `已练满 ${L.n} 小节 · 自动停止`
+        : `已练满 ${L.n} 分钟 · 自动停止`;
+      stop();
+      lastLimitProg = null;                     // 下一轮 start 必须重刷（否则沿用上一轮的进度串）
+      $("statusText").textContent = txt;
+      announce(txt);
+      return true;
+    }
+    syncLimitProg();
+    return false;
+  }
+  syncLimitUI();                                // 装配即生成档位（初始选中态来自已加载的 S.limit）
+  /* 进度区显式初始化一次：不能依赖标记里的初值——已持久化「按小节」档位时，
+     若这里不写，页面会先显示上一轮残留或空白，直到第一次 start() 才被纠正 */
+  syncLimitProg();
+
+  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI,
+    onLimitPulse, syncLimitUI, syncLimitProg };
 })();
 
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
@@ -2899,6 +3087,13 @@ const Editor = (() => {
         c.style.left = (acc / (draft.meter * TPB) * 100) + "%";
         c.style.width = `calc(${s.t / (draft.meter * TPB) * 100}% - 4px)`;
         acc += s.t;
+        /* 扫弦方向（v1.9.0）：排在文字标签之前（flex 顺序即为书写顺序） */
+        if (s.dir){
+          const ds = document.createElement("span");
+          ds.className = "ed-strum";
+          ds.textContent = s.dir === "U" ? "↑" : "↓";
+          c.appendChild(ds);
+        }
         if (s.t >= T8){
           const sp = document.createElement("span");
           sp.textContent = Viz.stepLabel(s);
@@ -2919,6 +3114,17 @@ const Editor = (() => {
     $("paletteTitle").textContent = edSel
       ? "音符块库 · 点击替换选中的「" + Viz.stepLabel(draft.bars[edSel.bar][edSel.idx]) + "」"
       : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
+    /* 扫弦标注行（v1.9.0）：可用性、高亮、aria-pressed 与选中状态**同源更新**。
+       三点全部收在这里——分散写必然漂移（v1.3.0 开关三件套的教训）。
+       预设选的 dir 用 "" 表示不标注，与「没有该字段」等价 */
+    const selStep = edSel ? draft.bars[edSel.bar][edSel.idx] : null;
+    const dirUsable = !!(selStep && !selStep.rest);
+    const curDir = dirUsable && selStep.dir ? selStep.dir : "";
+    setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
+    document.querySelectorAll("#dirRow .pill").forEach(p => { p.disabled = !dirUsable; });
+    $("dirHint").textContent = !selStep
+      ? "先在上方选中一个音符"
+      : (selStep.rest ? "休止符不承载扫弦动作" : "已选中「" + Viz.stepLabel(selStep) + "」");
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -2956,6 +3162,21 @@ const Editor = (() => {
     render();
   }
   $("undoBtn").addEventListener("click", e => { e.currentTarget.blur(); undo(); });
+  /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
+     保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈 */
+  $("dirRow").addEventListener("click", e => {
+    const btn = e.target.closest("[data-dir]");
+    if (!btn) return;
+    btn.blur();
+    if (!edSel) return;
+    const s = draft.bars[edSel.bar][edSel.idx];
+    if (!s || s.rest) return;
+    const want = btn.dataset.dir || "";
+    if ((s.dir || "") === want) return;
+    pushUndo();
+    if (want) s.dir = want; else delete s.dir;
+    render();
+  });
   $("delStepBtn").addEventListener("click", e => {
     e.currentTarget.blur();
     if (!edSel) return;
@@ -3233,6 +3454,10 @@ onFrameError = e => {
     Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
   }catch(e2){}
 };
+/* 练习量到点处置（v1.9.0）：同样是装配层注入的钩子——Audio.scheduler 每个周期调用它，
+   由 Controls 决定停不停、怎么显示。Audio 声明在 Controls 之前，直接调用会构成反向引用，
+   tools/check-module-order.js 会拦下来（与上面 onFrameError 同一套模式，DEVELOPMENT §3.0） */
+onLimitPulse = Controls.onLimitPulse;
 /* 页面离开时停播（v1.3.0，审计 P2-13）：pagehide 覆盖 bfcache 与真正的卸载，visibilitychange
    覆盖不到。放在装配层而不是 Audio 模块内——Audio 声明在 Controls 之前，模块内直接调
    Controls.stop() 会构成反向引用（tools/check-module-order.js 会拦下来） */
@@ -3309,6 +3534,8 @@ $("themeToggle").addEventListener("click", e => {
 window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
+  LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
+  limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
   onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
   clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
 </script>

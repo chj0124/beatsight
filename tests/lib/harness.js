@@ -64,6 +64,13 @@ const HTML_CHILDREN = {
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
   /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */
   statsRangeRow: [7, 30].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { range: String(n) } })),
+  /* v1.9.0：编辑器的扫弦方向三档。第三档 data-dir=""（不标注）——空串**不是** undefined，
+     pill() 的 `dataset.dir !== undefined` 判据对它成立，故「清除方向」这条路测得到 */
+  dirRow: [
+    { className: "pill", dataset: { dir: "D" } },
+    { className: "pill", dataset: { dir: "U" } },
+    { className: "pill", dataset: { dir: "" } },
+  ],
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。

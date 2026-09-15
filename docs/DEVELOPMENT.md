@@ -100,7 +100,16 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×4] }
 - **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`**：与 mute/bpm/swing 一并持久化在 beatsight.m2；会话状态 `trStepIdx`/`trBarCnt` 不持久化，`start()` 时重置
 - **自定义预设以 `id` 引用**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`
 - 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`，同时 `updateFallbackNote()` 显示琥珀色提示条（含一键切回）
-- **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`
+- **扫弦方向 `dir`（v1.9.0，可选字段）**：步对象上可挂 `dir: "D"|"U"`（下扫/上扫），省略即不标注。
+  **它是纯记谱层字段——`scheduler` 一行都不读**（与 Swing「演奏参数不入时值」同类先例），
+  所以老数据零迁移、老 JSON 导入后就是"无箭头"。内置民谣扫弦带 `DDUUDU`，与其名称逐字对应。
+  `rep4` / 编辑器 `{...s}` / 撤销栈 `JSON.stringify` / 导出全部自动带上，无需为它加代码；
+  渲染见 §3.4，编辑器入口见 §3.5
+  - **校验口径的分界线**（改动前务必先读这条）：`dir` 脏值**静默降级为"不标注"**，
+    不让整条预设失败；休止符上的 `dir` 一并抹掉（休止不承载扫弦动作）。
+    这与 v1.2.4「淘汰项不静默丢弃」**不冲突**，因为那条针对的是会让节奏型**不可用**的
+    结构性损坏（时值非法、小节不完整）；箭头丢了节奏型依然完整可弹，为它弹窗报错反而更糟
+- **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`、`validatePreset`（加载/导入校验）
 - **用户可控字符串（预设名等）一律 textContent 赋值，禁止 innerHTML 拼接**
 
 ### 3.2 音频引擎（Web Audio 前瞻调度）
@@ -120,6 +129,23 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 - **停止时落定挂起**：`Controls.stop()` 调 `Presets.flushPending()`。档位高亮在点击时就切了，若挂起的切换不被消费，就会出现「档位已换、标题与网格还是旧的」半切换残留
 - **静音拍**：`S.mute && schedBar === 3` 时跳过发声（视觉照常）
 - **变速训练（v0.5.0）**：小节边界调 `trainerOnBarBoundary()`——每练满 `everyN` 小节经 `setBpm(v,false)` 升一级（时钟重映射不打断播放），到目标并练满一级自动 `stop()` 并提示；返回 true 时 scheduler 立即退出本次调度。爬坡会覆盖播放中的手动调速（下一级边界生效）
+- **练习量（v1.9.0）**：两句就说完——**入口在 `scheduler()` 最前面**，`if (onLimitPulse && onLimitPulse()) return;`
+  每个 25ms 周期问一次「该不该停」；**计数在 `schedBar` 前进的两处**（正常小节边界 + 空小节跳过分支）
+  各 `limitBars++`，保持「计数 = 小节边界数」这条不变式
+  - 为什么判定放最前面而不是小节边界：`min` 模式按音频时钟差算，若按小节边界判，
+    30BPM 的 7/4（一小节 16 秒）会晚停十几秒；放这里则与 BPM/拍号完全无关
+  - `bars` 模式天然按小节对齐（`limitBars` 只在小节边界增长），不需要额外对齐逻辑
+  - **到点处置归注入的钩子**（`onLimitPulse`，装配层赋 `Controls.onLimitPulse`）：
+    Audio 声明在 Controls 之前，直接调 `Controls.stop()` 是反向引用（§3.0 的钩子纪律）。
+    与 `onFrameError` / `Store.setPersistFailHandler` 同一套模式
+  - **预备拍不吃额度**：`limitT0` 在预备拍数完那一刻才取（`Controls.start` 里先置 null）。
+    注意它主要是为**进度显示**服务的——去掉它，min 模式的停止时刻其实不变
+    （`start()` 算 `loopStart` 时已把 N 拍顺延进去，值等价），但进度区会在预备拍期间就显示
+    「已练 0:00 / 5:00」。**别当成冗余代码删掉**（反向验证已确认这条）
+  - **已知行为（与既有训练器同源）**：`bars` 模式的墙钟停止时刻会早于小节边界最多约 0.85s
+    （前瞻窗口 150ms + 一个音符时长）。小节计数在**排程**时累加，而 `stop()` 只停时钟与画面、
+    **不取消已排入音频时钟的振荡器**——所以那 N 小节的音一个不少地响完。
+    判据始终是「发声个数 = N × 每小节音数」，不是墙钟
 - 空小节（编辑器草稿）安全跳过。**跳过时空小节也强制正向推进 `nextNoteTime += pat.meter * spb()`**（`adv > 0 && isFinite(adv)` 兜底 0.5s），并有一层 `MAX_SCHED_STEPS = 512` 硬上限——脏拍号（`-3` / `0` / `"abc"`）曾让这个分支永不推进 → 主线程死循环（v1.2.4 修）
 - **持久值收口（v1.2.4）**：`Store` 加载路径与编辑器共用**同一份**校验（`VALID_T` / `VALID_METER` 已上移到 `S` 创建之前，`validatePreset()` 复用）。`bpm`/`vol`/`accentVol`/`sig` 一律经 `numOr`/`clamp01`/白名单取值；`customs` 逐项校验，**淘汰项不静默丢弃**而是写入 `beatsight.quarantine` + `console.warn`，用户可人工找回。trainer / accents 用**显式白名单抽取**，不用 `Object.assign` 整包（消除对「`Object.assign` 只拷自有属性」的侥幸依赖）
 - **发声末级钳制**：`playClick` 送出增益前过 `Math.min(1, Math.max(0, …))`。对合法输入是**无操作**（合法上界本就是 1），只在持久值被改坏时兜住 `vol:1e6 → +120 dBFS` 这类削波爆音
@@ -173,6 +199,17 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 - 闪烁判定：`t16 = floor(bib/0.25)`，变化时闪「刚走完的格」（同小节 t16-1，跨小节闪上行最后一格）
 - 闪烁配色：绿块上白边白光、白/暗块上绿边绿光（WAAPI 动态取色，260ms）
 - **短音符合并标注（v0.4.0 起）**：连续 ≥2 个 d<0.5 非休止音符共享组标签「十六 ×n」（`.cell-label.group`，存于 `glEls`），随播放高亮，过窄自动隐藏
+- **扫弦方向徽标（v1.9.0）**：`.cell-strum` 挂在**格子内部**（`strumEls` 与 `labelEls` 同构，无徽标处存 null），
+  显示 ↓ / ↑。三个必须知道的设计点：
+  1. **不跟随主题色**：绿/蓝在 `.cell.played` 的纯白填充上对比不足，改用「深底 + 亮描边 + 近白字形」，
+     两个主题通吃——不必往观测台覆盖块再加一份
+  2. **画在格内而不是时值标签行**：标签只给 t≥24 发声，画在标签行会丢掉切分位上那颗下扫
+     （民谣扫弦第 5 颗，12t），而它恰恰是最需要提示的一颗。T47 有一句专门钉这条
+  3. **窄格整体隐藏**，不做部分裁切：`fitCellAnnotations()` 里用常量阈值 `STRUM_MIN_W=20`
+     比较 `offsetWidth`（徽标是定宽元素，拿 `scrollWidth` 比没有意义）
+- **`fitCellLabels` 已改名 `fitCellAnnotations`（v1.9.0）**：一处函数同时管时值标签、组标签、
+  扫弦徽标三者的宽窄自适应。**调用点与帧内纪律一律不变**——仍只在 `buildViz` 末尾与 resize 后调用，
+  `paintFrame` 里一次 `offset*` 都不读（v1.3.0 P1-4 的性能承诺靠这一点成立，往帧内加读取会立刻破功）
 
 ### 3.5 编辑器
 
@@ -180,12 +217,17 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 校验：`barSum(bar) === draft.meter`（1e-9 容差），任一小节不完整 → 保存按钮禁用 + 该行标红。
 **撤销栈（v0.4.0 起）**：任何草稿变更前先 `pushUndo()` 快照（JSON 序列化 bars，上限 50）；Ctrl+Z / 撤销按钮回退。危险操作（复制到全部/清空/未保存返回）需 confirm。
 试听：`S.preview=true` 后复用主引擎，`curPattern()` 返回 draft；试听前记录 `prevSigBeforeAudition`，停止/保存时还原主界面拍号。
+**扫弦方向三档（v1.9.0）**：`#dirRow` 的「↓ 下扫 / ↑ 上扫 / 不标注」作用于 `edSel` 选中的音符。
+可用性、高亮、`aria-pressed` 与选中状态**同源更新**（三件事全部收在 `render()` 里）——
+分散写必然漂移，这是 v1.3.0 开关三件套的教训。未选中、或选中的是休止符时三档禁用并给出原因
+（禁用而不是弹窗报错，避免误点即打扰）；点击处理器同样再拦一次，两道防线。
+重复点当前档位不产生变更、不污染撤销栈（T47c 有一句专门钉这条）。
 
 ### 3.6 持久化：冷热分离（v1.3.0，审计 P1-5）
 
 | key | 内容 | 写入时机 |
 |---|---|---|
-| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/migHint（**< 1 KB**） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写 |
+| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/keepAwake/migHint/plan/**limit**（**< 1 KB**，实测 328 字节） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写 |
 | `beatsight.customs` | `{v:1, customs}` 预设库 | 只在预设增删改时，**立即写**（不防抖——丢掉一个手写节奏型代价太大） |
 | `beatsight.m2` | **旧键，只读的迁移来源** | 仅首次升级时读取；拆分成功且写后校验通过后**删除**（v1.3.1），备份存 `beatsight.m2.bak` |
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
@@ -297,7 +339,16 @@ tests/screenshot.sh 800 1800     # 窄屏
 1. ~~v1.4.1 修 bug：木鱼/鼓组响度不足~~ **已完成（2026-09-15）**：滤波噪声路径补 makeup gain（木鱼 ×14 / 军鼓 ×5 / 踩镲 ×2.5，上限=makeup 本身），wood decay 30→60ms，T44 覆盖；**真人试听校准待定**（推算值，尤其手机小喇叭对 1500–2000Hz 的表现）
 2. ~~后台持续发声真人验收~~ **已验收（2026-09-15，桌面 Chrome 切后台 30 秒无断音）**；**iOS 已明确不作为目标平台**（用户无 iOS 设备、以后也不考虑——静音 WAV 兜底代码保留，它对无 wakeLock 的桌面/Android 浏览器同样有效，但 iOS 专属的兼容性话术与验收项不再跟进）
 3. ~~7 天爬升训练计划~~ **已完成（v1.5.0）**；~~统计增强~~ **已完成（v1.6.0：导出 / 30 天视图 / 各节奏型纪录）**
-4. **M8 已全部关闭**。下一步候选（暂无排期）：统计数据攒两三周后再看是否需要趋势/目标类功能；旧链接 beatsight-68235 下线（需在「设置—数据管理—应用」里手动操作）
+4. ~~**M8 已全部关闭**。下一步候选（暂无排期）：统计数据攒两三周后再看是否需要趋势/目标类功能；旧链接 beatsight-68235 下线（需在「设置—数据管理—应用」里手动操作）~~ **已接手（v1.8.2 → v1.9.0）**：
+   - ~~v1.8.2 仓库卫生收口 + 文档对齐~~ **已完成**：删 `.trae-html-share-packages/`（224 KB 入库 zip 垃圾）、
+     `.gitignore` 补规则、README 功能表补齐 v1.6.4–v1.8、装 pre-commit 钩子（`core.hooksPath` 是本机配置，**clone 后各自跑一次**）
+   - ~~v1.9.0 扫弦方向标注 ↑↓ + 练习量控制~~ **已完成**：见 CHANGELOG v1.9.0
+   - **待办（已定，未开工）**：v1.10.0 听辨训练（节奏默写）——泛化 `curPattern()` 的试听机制复用同一音频引擎，
+     手写「易混组」出题，新模块 `Ear` 需登记进 `tools/check-module-order.js`；
+     可选类型检查闸门（JSDoc + `tsc --checkJs --noEmit`，照 ESLint 的"可选加强项、缺依赖自动跳过"模式接入）。
+     **详见 [PLAN-v1.9.md](PLAN-v1.9.md)**
+   - **更远（P3，需先出设计探针）**：曲式编排（多段落串联）。会动音频核心的"严格 4 小节循环"模型
+     （`schedBar` 0..3 + 单锚点 `loopStart`），牵连 T12/T15/T20/T21 一大批相位不变量的前提，**不与小改动混批**
 
 ### 已埋的技术债 / 后续要盯
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
