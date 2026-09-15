@@ -928,6 +928,10 @@ const CONFIG = {
   /* 导入护栏：超大 JSON 全量读入 + 逐条校验会长时间阻塞主线程（正好会触发音频掉音，
      与持久化载荷同理）。2MB / 500 条远超正常使用量级（12 个内置 + 手写几十个） */
   importMaxBytes:2 * 1024 * 1024, importMaxCount:500,
+  /* 曲式编排（v2.0.0）的四道硬上限：不是为了"规范"，是为了让 UI 不会因为一段编到 200 段
+     而变得不可用（列表跑出屏幕、上移下移变成灾难）。都远超真实歌曲的量级——
+     一首歌通常 4–8 段、每段 1–2 块；16 遍 × 4 小节 = 64 小节的单段已经很长了 */
+  arrMaxSections:24, arrMaxBlocks:8, arrMaxRepeats:16, arrMaxBars:256,
   /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
      squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
   bounce:{ k:120, min:10, max:48, squash:0.07 },
@@ -1025,6 +1029,7 @@ const Store = (() => {
   const KEY_LEGACY = "beatsight.m2", KEY_BAK = "beatsight.m2.bak", KEY_QUAR = "beatsight.quarantine";
   const KEY_LOG = "beatsight.log";       // v1.4 练习记录（冷键：只在停止时写，不进防抖热键）
   const KEY_EAR = "beatsight.ear";       // v1.10.0 听辨训练战绩（冷键：只在答完一题时写）
+  const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
 
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
@@ -1101,6 +1106,104 @@ const Store = (() => {
     ? (LIMIT_PRESETS.find(p => p.mode === saved.limit.mode && p.n === +saved.limit.n) || LIMIT_OFF)
     : LIMIT_OFF;
   const limitInit = { mode: limitSaved.mode, n: limitSaved.n };
+
+  /* ---- 曲式库（v2.0.0，冷键 beatsight.arranges）----
+     形状（与预设引用同源，见 S1 抽出的 resolveRef）：
+       { id, name, sections: [ { name, blocks: [ { ref:{type,idx|id}, repeats } ] } ] }
+     段 = **有序的若干块**：块是"某个节奏型 × 整数遍"。(a) 型段（同 4 小节重复）就是 1 个块；
+     (b) 型段（两个不同乐句）就是 2 个块。统一用一种形状，不做双形状——
+     两者差别只有一层数组，而双形状意味着每条读写路径都要判两次。
+
+     ★ 本模块**只做结构校验**（类型/长度/上限/总小节数），**不做引用存在性与拍号一致性**——
+     那两项要 resolveRef() 才能判，而它在共享状态区（本模块之后）。与其把解析逻辑抄一份进
+     这里（那正是 S1 抽 resolveRef 要消灭的"两套解析边界"），不如承认这条边界：
+       · 结构问题 → 这里拦（脏数据不该进内存）
+       · 引用/拍号问题 → 共享状态区的 arrangeProblems()（保存前与播放前各判一次，因为
+         预设可能在曲式保存之后被删掉）
+     这条边界写在 DEVELOPMENT.md §3.10，别在实现时"顺手"把解析搬进来。 */
+  let arrSeq = 0;                        // 新建 id 的会话内单调序号（同 importPresets 的理由：防同毫秒撞号）
+  function normArrange(raw){
+    if (!raw || typeof raw !== "object") return null;
+    if (typeof raw.name !== "string" || !raw.name.trim()) return null;
+    if (!Array.isArray(raw.sections) || !raw.sections.length
+        || raw.sections.length > CONFIG.arrMaxSections) return null;
+    const sections = [];
+    let totalBars = 0;
+    for (const s of raw.sections){
+      if (!s || typeof s !== "object") return null;
+      if (!Array.isArray(s.blocks) || !s.blocks.length
+          || s.blocks.length > CONFIG.arrMaxBlocks) return null;
+      const blocks = [];
+      for (const b of s.blocks){
+        if (!b || typeof b !== "object" || !b.ref || typeof b.ref !== "object") return null;
+        const isBuiltin = b.ref.type === "builtin" && Number.isInteger(+b.ref.idx) && +b.ref.idx >= 0;
+        const isCustom = b.ref.type === "custom" && typeof b.ref.id === "string" && !!b.ref.id;
+        if (!isBuiltin && !isCustom) return null;
+        const reps = Math.round(numOr(b.repeats, 0));
+        if (reps < 1 || reps > CONFIG.arrMaxRepeats) return null;
+        totalBars += reps * LOOP_BARS;
+        /* 只留白名单字段：脏数据不带着意外字段漏进内存（同 S.limit 的处理） */
+        blocks.push({ ref: isBuiltin ? { type:"builtin", idx:+b.ref.idx } : { type:"custom", id:b.ref.id },
+          repeats: reps });
+      }
+      sections.push({ name: typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 40) : "",
+        blocks });
+    }
+    if (!totalBars || totalBars > CONFIG.arrMaxBars) return null;
+    const id = (typeof raw.id === "string" && raw.id) ? raw.id : "a" + Date.now() + "-" + (arrSeq++);
+    return { id, name: raw.name.trim().slice(0, 40), sections };
+  }
+  const arrIn = readJSON(KEY_ARRANGES);
+  const arranges = [];
+  {
+    let dropped = 0;
+    if (arrIn && Array.isArray(arrIn.arranges)){
+      /* 坏条目丢弃并记 warn（口径同 beatsight.log）：曲式丢了只是要重编，
+         不值得占用隔离区与弹窗名额 */
+      arrIn.arranges.forEach(r => { const v = normArrange(r); if (v) arranges.push(v); else dropped++; });
+    }
+    if (dropped){
+      try{ console.warn("[BeatSight] " + dropped + " 条曲式未通过结构校验，已丢弃"); }catch(e){}
+    }
+  }
+  function persistArranges(){
+    try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify({ v:1, arranges })); }
+    catch(e){ onPersistFail(e); }
+  }
+  /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
+     在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
+     结构损坏由 normArrange 拦（那是边界），这里的 `x &&` 是"加载路径永不因脏数据崩溃"的兜底，
+     与本项目 localStorage 容错的既定原则一致 */
+  const findArrange = id => arranges.find(x => x && x.id === id) || null;
+  /* 新增或更新（按 id 判定）。返回规范化后的对象，结构不合法返回 null——
+     调用方（UI）要把 null 当成"这份草稿还不能存" */
+  function upsertArrange(a){
+    const v = normArrange(a);
+    if (!v) return null;
+    const i = arranges.findIndex(x => x && x.id === v.id);
+    if (i >= 0) arranges[i] = v; else arranges.push(v);
+    persistArranges();
+    return v;
+  }
+  function deleteArrange(id){
+    const i = arranges.findIndex(x => x && x.id === id);
+    if (i < 0) return false;
+    arranges.splice(i, 1);
+    persistArranges();
+    return true;
+  }
+  /* 曲式选择（v2.0.0，热键）：playMode 二选一；arrangeSel 记"哪条曲式 + 播哪几段 + 是否循环"。
+     id 必须真的存在于已加载的曲式库里，否则整条选择作废、回退预设模式——
+     **这一项能在 Store 里判**（arranges 就在上面），它不需要 resolveRef 那种跨模块解析。
+     from/to 钳制到该曲式的段范围内：段数可能在别处被改小（改曲式后回来），
+     留着越界的 to 会让"范围循环"直接跑飞 */
+  const arrSrc = (saved.arrangeSel && typeof saved.arrangeSel === "object") ? saved.arrangeSel : {};
+  const arrTarget = findArrange(typeof arrSrc.id === "string" ? arrSrc.id : "");
+  const arrLast = arrTarget ? arrTarget.sections.length - 1 : 0;
+  const arrFrom = Math.min(arrLast, Math.max(0, Math.round(numOr(arrSrc.from, 0))));
+  const arrTo = Math.min(arrLast, Math.max(arrFrom, Math.round(numOr(arrSrc.to, arrFrom))));
+  const playModeInit = (saved.playMode === "arrange" && arrTarget) ? "arrange" : "preset";
+
   /* 状态对象显式标注类型（v1.10.0 类型闸门）：S 是全应用最中心的数据结构，
      不标注的话在 noImplicitAny:false 下它的属性全是隐式 any，属性名拼错也查不出来。
      实测这条标注把「S.limit.noSuchField」这类笔误从逃过变成拦住。
@@ -1113,6 +1216,8 @@ const Store = (() => {
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
    *   limit: { mode: string, n: number },
+   *   playMode: string,
+   *   arrangeSel: { id: string, from: number, to: number, loop: boolean },
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last: any }
    * }} */
   const S = {
@@ -1134,6 +1239,12 @@ const Store = (() => {
     migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     plan: planSaved,                                // v1.5 七天爬升计划（null = 无计划）
     limit: limitInit,                               // v1.9.0 练习量（{mode:"off"|"bars"|"min", n}）
+    /* v2.0.0 曲式编排：playMode 是"播当前预设 还是 播曲式"的二选一开关。
+       为什么用独立字段而不是把 "arrange" 塞进 S.sel.type：S.sel 被 selectedPreset /
+       curPattern / buildPresetList / 编辑器一大堆地方读，塞进去等于每个读取点都要判一次
+       "这是不是曲式"，而其中大多数点对曲式没有意义——污染面比新加字段大得多 */
+    playMode: playModeInit,
+    arrangeSel: { id: arrTarget ? arrTarget.id : "", from: arrFrom, to: arrTo, loop: !!arrSrc.loop },
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
@@ -1261,7 +1372,9 @@ const Store = (() => {
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
-      limit:{ mode:S.limit.mode, n:S.limit.n } };   // v1.9.0：只写这两个字段（不整包透传）
+      limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
+      playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
+      arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop } };
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
@@ -1379,7 +1492,8 @@ const Store = (() => {
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler,
     serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
-    earStats: ear, recordEar, resetEar };
+    earStats: ear, recordEar, resetEar,
+    arranges, findArrange, upsertArrange, deleteArrange, persistArranges };
 })();
 const S = Store.S;
 const customs = Store.customs;
@@ -1503,6 +1617,31 @@ const curPattern = () => {
   if (p && p.meter === S.sig) return p;
   return basicPattern(S.sig);
 };
+/* 曲式里"需要解析才能判"的两项检查（v2.0.0）：引用是否存在、各块拍号是否一致。
+   返回问题字符串数组（空 = 通过）。
+   为什么不在 Store 里判：那要 resolveRef()，而它在共享状态区（Store 之后）。
+   与其把解析逻辑抄一份进 Store（那正是 S1 抽 resolveRef 要消灭的"两套解析边界"），
+   不如承认这条边界：**结构问题在 Store 拦，解析问题在这里判**。
+   调用时机：保存曲式前一次、**每次开始播放前一次**——因为曲式存下来之后，
+   它引用的自定义预设完全可能在编辑/导入时被删掉。
+   拍号一致性：v2 要求整首同拍号（段落边界与循环边界重合，才不会与既有的
+   "拍号变则等循环起点" 机制缠在一起）。 */
+function arrangeProblems(a){
+  const out = [];
+  if (!a || !Array.isArray(a.sections) || !a.sections.length) return ["曲式结构不完整"];
+  const meters = new Set();
+  a.sections.forEach((sec, i) => {
+    if (!Array.isArray(sec.blocks) || !sec.blocks.length){ out.push(`第 ${i + 1} 段没有任何内容`); return; }
+    sec.blocks.forEach((b, j) => {
+      const p = resolveRef(b.ref);
+      if (!p){ out.push(`第 ${i + 1} 段第 ${j + 1} 块引用的节奏型不存在（可能已被删除）`); return; }
+      meters.add(p.meter);
+    });
+  });
+  if (meters.size > 1)
+    out.push(`各段拍号不一致（${[...meters].map(m => meterName(m)).join(" / ")}）——整首必须同拍号`);
+  return out;
+}
 /* 试听对象（v1.10.0 泛化）：原先这里写死 `S.preview && draft`，只服务编辑器试听。
    听辨训练要试听的是「候选题」而不是编辑器草稿，于是把「试听谁」抽成一个引用。
    **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
@@ -4072,6 +4211,7 @@ $("themeToggle").addEventListener("click", e => {
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
   resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
+  arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
   EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
   limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
