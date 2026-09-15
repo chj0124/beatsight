@@ -24,7 +24,7 @@ node tools/check-all.js --quick  # 约 2 秒，跳过 243 组全量组合扫描�
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
 ```
 
-**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过；② 真实浏览器截图自验；③ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变）；③ 真实浏览器截图自验；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
 
 ## 功能现状
 
