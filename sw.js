@@ -22,22 +22,32 @@ self.addEventListener("activate", e => {
   );
 });
 
+/* 只缓存同源 http(s) 的 GET 成功响应：错误页（500/404）入缓存会污染离线回退；
+   跨源（opaque）响应与非 http(s) 请求（如 chrome-extension://）不该被长期钉死在缓存里，
+   且 cache.put 对后者会直接抛错产生 unhandled rejection 噪音。
+   （导航请求本就只可能是同源，只需校验 r.ok。） */
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  if (!/^https?:$/.test(new URL(e.request.url).protocol)) return;
   if (e.request.mode === "navigate"){
     e.respondWith(
       fetch(e.request).then(r => {
-        const cp = r.clone();
-        caches.open(CACHE).then(c => c.put(e.request, cp));
+        if (r.ok){
+          const cp = r.clone();
+          caches.open(CACHE).then(c => c.put(e.request, cp));
+        }
         return r;
       }).catch(() => caches.match("./index.html"))
     );
     return;
   }
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
-      const cp = resp.clone();
-      caches.open(CACHE).then(c => c.put(e.request, cp));
+      if (resp.ok){
+        const cp = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, cp));
+      }
       return resp;
     }))
   );

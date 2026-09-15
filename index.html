@@ -651,6 +651,9 @@ const CONFIG = {
   /* 练习记录（v1.4）：短于 logMinSec 秒的播放不算一场练习（误触/试听音色不该进统计）；
      logMax 为 beatsight.log 的环形截断上限——400 场按每天 3 场约够用 4 个月，远超统计口径所需 */
   logMinSec:30, logMax:400,
+  /* 导入护栏：超大 JSON 全量读入 + 逐条校验会长时间阻塞主线程（正好会触发音频掉音，
+     与持久化载荷同理）。2MB / 500 条远超正常使用量级（12 个内置 + 手写几十个） */
+  importMaxBytes:2 * 1024 * 1024, importMaxCount:500,
   /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
      squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
   bounce:{ k:120, min:10, max:48, squash:0.07 },
@@ -972,10 +975,15 @@ const Store = (() => {
 
   /* 返回 {ok:true, count} 或 {ok:false, error}；错误文案供弹窗展示（一律 textContent） */
   function importPresets(text){
+    /* 体量护栏：解析/校验前先行拒绝，超大输入不值得进 JSON.parse */
+    if (typeof text === "string" && text.length > CONFIG.importMaxBytes)
+      return {ok:false, error:"文件过大（超过 2 MB），不像是预设备份"};
     let data;
     try { data = JSON.parse(text); } catch(e){ return {ok:false, error:"文件不是有效的 JSON"}; }
     const list = Array.isArray(data) ? data : (data && Array.isArray(data.presets) ? data.presets : null);
     if (!list || !list.length) return {ok:false, error:"文件中没有预设数据"};
+    if (list.length > CONFIG.importMaxCount)
+      return {ok:false, error:"预设数量过多（" + list.length + " 个，上限 " + CONFIG.importMaxCount + " 个）"};
     const out = [];
     for (const p of list){
       const v = validatePreset(p);
@@ -1701,6 +1709,7 @@ const Audio = (() => {
         /* 旧时钟已随上下文一起失效：不重新锚定相位的话，nextNoteTime 还停在旧时间轴上
            （可能领先新时钟几分钟），表现为"在播放但一直不出声"。这里按新时钟重新起一节 */
         ctx = null; masterGain = null;
+        noiseBuf = null;      // 旧上下文生成的噪声 buffer 一并废弃：跨上下文复用是否可用依赖浏览器实现
         ensureCtx();
         loopStart = ctx.currentTime + 0.08;
         nextNoteTime = loopStart;
@@ -2594,6 +2603,10 @@ const Presets = (() => {
     const f = e.target.files && e.target.files[0];
     e.target.value = "";                      // 允许连续导入同一文件
     if (!f) return;
+    if (f.size > CONFIG.importMaxBytes){      // 快速失败：超大文件不进 readAsText
+      Modal.uiAlert("导入失败：文件过大（超过 2 MB），不像是预设备份。");
+      return;
+    }
     const r = new FileReader();
     r.onload = () => {
       const res = Store.importPresets(String(r.result || ""));
@@ -2679,7 +2692,11 @@ const Editor = (() => {
       row.className = "edbar";
       const label = document.createElement("div");
       label.className = "edbar-label" + (ok ? "" : " bad") + (b === editBar ? " editing" : "");
-      label.innerHTML = `<div class="n">小节 ${b + 1}</div><div class="s">${fmtBeat(barSum(b))} / ${draft.meter} 拍</div>`;
+      const labN = document.createElement("div");
+      labN.className = "n"; labN.textContent = "小节 " + (b + 1);
+      const labS = document.createElement("div");
+      labS.className = "s"; labS.textContent = fmtBeat(barSum(b)) + " / " + draft.meter + " 拍";
+      label.appendChild(labN); label.appendChild(labS);
       const track = document.createElement("div");
       track.className = "edtrack" + (ok ? "" : " bad");
       let acc = 0;
@@ -2715,7 +2732,15 @@ const Editor = (() => {
   PALETTE.forEach(p => {
     const el = document.createElement("button");
     el.className = "pal-item";
-    el.innerHTML = `<span class="bar${p.rest ? " rest" : ""}" style="width:${p.w}px"></span><span><div class="nm">${p.nm}</div><div class="du">${p.du}</div></span>`;
+    const bar = document.createElement("span");
+    bar.className = "bar" + (p.rest ? " rest" : ""); bar.style.width = p.w + "px";
+    const txt = document.createElement("span");
+    const nm = document.createElement("div");
+    nm.className = "nm"; nm.textContent = p.nm;
+    const du = document.createElement("div");
+    du.className = "du"; du.textContent = p.du;
+    txt.appendChild(nm); txt.appendChild(du);
+    el.appendChild(bar); el.appendChild(txt);
     el.addEventListener("click", () => {
       pushUndo();
       /* 三连音组块（grp=3）：一次插入/替换为 3 枚——单个三连音符在记谱上无意义 */

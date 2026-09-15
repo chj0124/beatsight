@@ -170,7 +170,9 @@ class FakeNode {
     if (this._kind === "noise") this._ctx.hits.push({ t, kind: "noise", filterType: this._dest && this._dest.type, filterFreq: this._dest && this._dest.frequency.value,
       /* v1.4.1：噪声链是 src → filter → gain，增益峰值在**第二级**——
          断言 makeup gain 补偿（T44）必须能看到它 */
-      gain: this._dest && this._dest._dest && this._dest._dest.gain ? this._dest._dest.gain._peak : undefined });
+      gain: this._dest && this._dest._dest && this._dest._dest.gain ? this._dest._dest.gain._peak : undefined,
+      /* 记录噪声 buffer 的出生上下文：closed 重建后若复用旧 buffer 会被这条看见（T29c） */
+      bufCtx: this.buffer ? this.buffer._ctx : null });
   }
   stop(){}
 }
@@ -183,7 +185,7 @@ class FakeAudioContext {
   createOscillator(){ return new FakeNode(this, "osc"); }
   createGain(){ return new FakeNode(this, "gain"); }
   createBiquadFilter(){ return new FakeNode(this, "filter"); }
-  createBuffer(ch, len, rate){ return { getChannelData: () => new Float32Array(len) }; }
+  createBuffer(ch, len, rate){ return { _ctx: this, getChannelData: () => new Float32Array(len) }; }
   createBufferSource(){ return new FakeNode(this, "noise"); }
   resume(){ this.resumeCount++; if (this.state === "suspended" || this.state === "interrupted") this.state = "running"; }
   /* v1.3.0（审计 P2-13）：模拟系统/其他 App 改变音频会话状态，并触发 onstatechange——
@@ -454,6 +456,26 @@ section("T5 Store · 预设导入导出校验（tick 制）");
   ok(round.ok && round.count === 4, "导出→再导入 往返成功");
   const ids = Store.customs.map(c => c.id);
   ok(new Set(ids).size === ids.length, "往返后全部 id 仍唯一");
+
+  /* 体量护栏：超大文件 / 超多条目在解析与逐条校验前直接拒绝（不阻塞主线程） */
+  const big = Store.importPresets(" ".repeat(beat.CONFIG.importMaxBytes + 1));
+  ok(big.ok === false && /过大/.test(big.error), "超过 2MB 的文本拒绝（进 JSON.parse 之前）");
+  const many = Store.importPresets(JSON.stringify({ presets:
+    Array.from({ length: beat.CONFIG.importMaxCount + 1 }, () => ({ name: "x", meter: 4,
+      bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) })) }));
+  ok(many.ok === false && /过多/.test(many.error), "超过 500 条预设拒绝（进逐条校验之前）");
+  eq(Store.customs.length, 8, "护栏拒绝后 customs 不受影响");
+}
+
+section("T5b 导入护栏 · 文件入口接线（change 事件快速失败）");
+{
+  const app = loadApp();
+  const els = app.els;
+  els["importFile"].fire("change", { target: { files: [{ size: app.beat.CONFIG.importMaxBytes + 1 }], value: "" } });
+  eq(els["modalMask"].hidden, false, "超大文件 → 弹窗告知");
+  ok(/文件过大/.test(els["modalMsg"].textContent), `文案可读：「${els["modalMsg"].textContent.slice(0, 30)}」`);
+  eq(app.beat.Store.customs.length, 0, "超大文件未进入解析（customs 不变）");
+  els["modalOk"].fire("click");
 }
 
 /* ================= 场景 T6：节奏型回退 ================= */
@@ -1508,6 +1530,23 @@ section("T29 音频生命周期 + 跨 origin 迁移提示（审计 P2-13 / P2-14
     "游标已按新时钟重新锚定（否则会领先新时钟几分钟 → 一直不出声）");
   const err = driveFrames(ac2, beat, 2);
   ok(!err, `重建后能继续正常排程与渲染（${err || "OK"}）`);
+
+  /* T29c：closed 重建后噪声 buffer 必须随新上下文重建。
+     原路径把 ctx/masterGain/时钟/onsetBuf 全重置了，唯独 noiseBuf 留着旧上下文的 buffer——
+     木鱼/鼓组音色在重建后复用它，跨上下文复用 AudioBuffer 是否可用依赖浏览器实现
+     （老 Safari 直接抛错），属「极端路径 + 实现侥幸」。这里用 wood 音色走滤波噪声路径，
+     断言重建后送进 BufferSource 的 buffer 出生自新上下文。 */
+  const appW = loadApp({ "beatsight.state": JSON.stringify({ v: 3, timbre: "wood" }) });
+  appW.beat.Controls.start();
+  const acW = FakeAudioContext.last;
+  driveFrames(acW, appW.beat, 2);
+  ok(acW.hits.some(h => h.kind === "noise"), "wood 音色下产生滤波噪声发声（断言前提）");
+  acW.setState("closed");
+  const acW2 = FakeAudioContext.last;
+  ok(acW2 !== acW, "wood 播放中 closed → 上下文已重建");
+  driveFrames(acW2, appW.beat, 2);
+  const nh = acW2.hits.find(h => h.kind === "noise");
+  ok(nh && nh.bufCtx === acW2, "重建后噪声 buffer 出生自新上下文（旧 buffer 不得跨上下文复用）");
 
   /* pagehide：页面离开必须停播（移动端否则「切走了还在响」） */
   const app2 = loadApp();
