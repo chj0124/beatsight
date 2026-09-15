@@ -39,8 +39,10 @@ beatsight/
 │   ├── check-coverage.js       # 行覆盖率（V8 内置采集，双阈值）
 │   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对 / 字符串掩码 / 声明表）
 └── docs/
-    ├── prd.html          # 原始产品需求文档 v1.0
-    └── DEVELOPMENT.md    # 本文档
+    ├── prd.html          # 原始产品需求文档 v1.0（已归档：现行功能以 CHANGELOG 为准）
+    ├── DEVELOPMENT.md    # 本文档
+    ├── PLAN-v1.5.md      # 历史方案存档（v1.4.1→v1.6 的 P0–P3 已全部落地）
+    └── PLAN-v1.9.md      # 现行方案：v1.8.2→v1.10（工程债 / 扫弦方向 / 练习量 / 听辨训练 / 曲式编排评估）
 ```
 
 **发布渠道（两条，各司其职）**：
