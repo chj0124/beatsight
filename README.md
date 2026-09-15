@@ -88,7 +88,8 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发交接文档：架构、数据模型、自验方法、M3 任务拆解 |
 | [docs/PLAN-v1.5.md](docs/PLAN-v1.5.md) | 后续改进与继续开发方案（v1.4.1→v1.5+，**已归档**：P0–P3 全部落地） |
 | [docs/PLAN-v1.9.md](docs/PLAN-v1.9.md) | **现行**后续开发方案（v1.8.2→v1.10）：工程债收口、扫弦方向标注、练习量控制、听辨训练 |
-| [docs/PLAN-v2-arrangement.md](docs/PLAN-v2-arrangement.md) | 曲式编排 **设计探针**（v2.0.0 立项评估）：17 条"严格 4 小节循环"假设盘点、三个改动档位对比、待拍板的决策点。**不动代码** |
+| [docs/PLAN-v2-arrangement.md](docs/PLAN-v2-arrangement.md) | 曲式编排 **设计探针**（v2.0.0 立项评估）：18 条"严格 4 小节循环"假设盘点、三个改动档位对比、待拍板的决策点。**不动代码** |
+| [docs/PLAN-v2-impl.md](docs/PLAN-v2-impl.md) | 曲式编排 **阶段二实施方案**（v2.0.0）：数据模型、核心机制、测试计划、反向验证变异清单、分步提交计划。**已定档位①′ + 块结构** |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
 
 ## 设计稿
