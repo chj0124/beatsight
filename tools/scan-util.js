@@ -1,10 +1,11 @@
 /* 扫描工具（零依赖）：从 index.html 提取内联脚本 + 剥离注释 + 括号配对
    ---------------------------------------------------------------------------
-   被 tools/check-module-order.js 与 tools/check-lint.js 共用。
-   为什么不用 ESLint / AST：本仓库的硬约束是**运行时零依赖**（index.html 必须能 file:// 直开），
-   连 CI 里的工具也刻意保持零依赖——沙箱/离线环境下 npx 拉包不可靠（实测 SIGTERM）。
-   这里的实现用"正则 + 括号配对 + 逐行剥注释"，覆盖面小于真 ESLint，但**可验证、不飘**。
-   规则口径都写在各自检查器的注释里。 */
+   被 tools/check-module-order.js / tools/check-lint.js / tools/check-eslint.js 共用。
+   为什么这里仍用"正则 + 括号配对 + 逐行剥注释"而不是全靠 AST：本仓库的硬约束是**运行时零依赖**
+   （index.html 必须能 file:// 直开），发布链路（Cloudflare 自动跑 tools/check-all.js）**不保证**
+   先 npm install，所以作为**硬闸门**的那几个检查器必须零依赖、不装任何东西也能跑。
+   ESLint 现在装了（devDependency），但它只作为 check-all.js 里的**可选加强项**：
+   缺 node_modules 就自动跳过，绝不会因为"没装开发依赖"把上线堵死。详见 tools/check-eslint.js 文件头。 */
 "use strict";
 const fs = require("fs");
 

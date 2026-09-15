@@ -10,10 +10,15 @@
      1) 语法校验          提取内联脚本编译（不执行）
      2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
      3) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）
-     4) DOM 引用完整性    $("x") 不得悬空
-     5) 自动化测试        FULL_SCAN=1 全量组合扫描
-     6) 死循环看门狗      每用例独立子进程 + 超时强杀
-     7) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     4) 代码卫生 · 加强   ESLint（AST/控制流规则；装了才跑，没装自动跳过，不影响产物）
+     5) DOM 引用完整性    $("x") 不得悬空
+     6) 自动化测试        FULL_SCAN=1 全量组合扫描
+     7) 死循环看门狗      每用例独立子进程 + 超时强杀
+     8) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+
+   第 4 项是**可选加强项**：它依赖 node_modules（npm install 才有），而产物始终零依赖、
+   Cloudflare 的发布链路不保证跑过 install。所以缺 eslint 时它主动 exit 0 并打印"跳过"，
+   绝不因为"没装开发依赖"把上线堵死。规则集与 check-lint.js 刻意不重叠，详见 eslint.config.js。
 
    用法：
      node tools/check-all.js          # 全套（约 2–3 秒）
@@ -36,6 +41,7 @@ const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
   { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"] },
   { name: "代码卫生 · 零依赖 lint", cmd: process.execPath, args: ["tools/check-lint.js"] },
+  { name: "代码卫生 · ESLint（加强）", cmd: process.execPath, args: ["tools/check-eslint.js"] },
   { name: "DOM 引用完整性", cmd: process.execPath, args: ["tools/check-dom-ids.js"] },
   { name: "自动化测试" + (QUICK ? "（抽样）" : "（FULL_SCAN 全量）"), cmd: process.execPath, args: ["tests/run.js"], env: { FULL_SCAN: QUICK ? "" : "1" } },
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },

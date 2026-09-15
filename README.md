@@ -16,11 +16,13 @@
 ## 开发者：改完跑一条命令
 
 ```bash
-node tools/check-all.js          # 约 6 秒：语法 → 架构约束 → 代码卫生 → DOM 引用 → 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js          # 约 6 秒：语法 → 架构约束 → 零依赖 lint → ESLint（可选）→ DOM 引用 → 全量测试 → 死循环看门狗 → 行覆盖率
 node tools/check-all.js --quick  # 约 2 秒，跳过 243 组全量组合扫描（改代码时用）
 ```
 
-零依赖、零安装，Node ≥ 22 直接跑。项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——它在两条发布渠道上的位置不一样：**Cloudflare** 的构建命令里串了全量检查，不通过就不部署（硬闸门）；**WorkBuddy** 是纯手动发布，没人拦你，只能发布前自己跑一遍。
+**核心闸门零依赖、零安装，Node ≥ 22 直接跑**——不装任何东西也能跑完整套检查。其中只有 ESLint 那一步是**可选加强项**：`npm install` 装了才跑，没装就自动跳过并明确打印「跳过」（它补的是 AST/控制流类规则，与 `check-lint.js` 刻意不重叠）。想启用它，仓库根跑一次 `npm install` 即可；**它绝不会因为"没装开发依赖"堵住部署**。
+
+项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——它在两条发布渠道上的位置不一样：**Cloudflare** 的构建命令里串了全量检查，不通过就不部署（硬闸门）；**WorkBuddy** 是纯手动发布，没人拦你，只能发布前自己跑一遍。
 
 ```bash
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验

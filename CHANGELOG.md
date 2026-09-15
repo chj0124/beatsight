@@ -1,5 +1,49 @@
 # 变更记录
 
+## v1.6.5 · 工程：接入 ESLint 本地自验（可选加强项）（2026-09-15）
+
+无新功能、无行为变化——`index.html` 只动了版本号一行（`const VERSION` 1.6.4 → 1.6.5，遵守
+v1.6.4 起的发版规则）。落实 `docs/DEVELOPMENT.md` §6「已埋的技术债」里那条：*静态检查仍是自写
+的窄规则集……要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物*。
+
+### 工程
+
+- **新增开发期自验工具链**（`package.json` + `package-lock.json` + `eslint.config.js` +
+  `tools/check-eslint.js`），唯一 devDependency 是 `eslint`。**运行时零依赖不变**：`index.html`
+  仍可 `file://` 直开，上站产物仍只有 `index.html` / `sw.js` / `manifest.webmanifest` / `icon.svg`
+  这 4 个文件
+- **`tools/check-eslint.js` 是三件事的包装**：① 用现成的 `scan-util.extractScript()` 抠出内联脚本
+  （ESLint 读不了 `.html`）；② 以合成路径交给 ESLint 10 的 flat config 跑；③ 把 ESLint 行号加回
+  `index.html` 的行偏移（`htmlLine = eslintLine + 545`，即 `<script>` 所在行之前的新行数），
+  打印 `index.html:<行>:<列>` + 出错行的 caret 框
+- **规则口径「只漏报、不误报」**：只启用**当前 0 命中**的规则，让这道闸门开箱即绿、不留噪音。
+  覆盖死代码 / 重复键 / switch 穿透 / 恒真条件 / 条件里赋值 / 变量遮蔽 / NaN·typeof 误用等的
+  AST 与数据流检查；`no-empty` 开 `allowEmptyCatch` 放行 16 处刻意的静默降级 `catch(e){}`，
+  `no-shadow` 白名单放行顶级 tick 助手 `D`（`Audio` 里两处有意重名的鼓音色变量）。
+  **`no-undef` 故意关闭**（未装 `globals` 包）：宿主全局审计仍归 `check-lint.js` 手维护的
+  `GLOBALS` 白名单，两者**刻意不重叠**，分工理由写在 `eslint.config.js` 文件头
+- **接入 `tools/check-all.js` 第 4 步（现共 8 步）**：插在「零依赖 lint」与「DOM 引用」之间。
+  它是**可选加强项**——发布链路（Cloudflare 自动跑 `check-all.js`）不保证先 `npm install`，
+  所以缺 `node_modules` 时它主动打印「跳过」并 `exit 0`，**绝不会因为"没装开发依赖"堵住上线**
+- **`.gitignore` 只忽略 `node_modules/`**：`package.json` / `package-lock.json` 要入库（前者声明
+  devDependency，后者锁版本保证规则集可复现），并由注释放明这条边界
+- **改正两处过时的文档断言**：`tools/check-lint.js` 与 `tools/scan-util.js` 的文件头原写「实测
+  `npx --yes eslint@9` 直接被 SIGTERM（离线拉不到包）」——本次实测 registry 可达、`npm install`
+  正常，该断言已证伪，两处改写为「零依赖硬闸门 vs ESLint 可选加强项」的真实分工
+
+### 自验
+
+- `node tools/check-all.js` 全绿 **8/8**（语法 / 架构约束 / 零依赖 lint / **ESLint（加强）** /
+  DOM 引用 / 测试 / 看门狗 / 覆盖率），行覆盖率 **99.9%**（2305/2308，仍只剩 Audio 的 3 行防御分支）；
+  ESLint 那步 0.70s
+- **反向验证（证明这道新闸门真能拦住东西）**：往内联脚本注入 `if (window.__eslintProbe = 1) …`
+  （条件里赋值 + 恒真条件）→ `tools/check-eslint.js` 立刻变红并报 `no-cond-assign` /
+  `no-constant-condition`，**行号列号精确落在 `index.html:547:20`**（caret 对准 `window` 的 `w`）；
+  同一份改动 `tools/check-lint.js` 却**全绿**——这正是它两条正则的盲区（`eqeqeq` 只认 `==`/`!=`，
+  `no-undef` 的赋值正则排除前导 `.`），说明新增能力与既有能力确实互补。改动已按 sha256 原样还原
+- **优雅降级验证**：临时移走 `node_modules` → `tools/check-eslint.js` 打印「⊘ 未安装 eslint，跳过」
+  且 `exit 0`；`node tools/check-all.js --quick` 仍 8/8 全绿，证明"没装开发依赖"不影响任何产物
+
 ## v1.6.4 · 阶段三（工程深化）：快捷档抽取通用 preset row 组件 / 版本徽章对齐（2026-09-15）
 
 无新功能，纯内部重构，外加一处早该做的版本号对齐（`index.html` 有改动，行为零变化）。落实

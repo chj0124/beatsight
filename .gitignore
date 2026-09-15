@@ -3,3 +3,9 @@ Thumbs.db
 _check.js
 NVIDIA Corporation/
 dist/
+
+# 开发期自验工具链的依赖树（只跑本地，不进上站产物）
+# 产物始终只有 index.html / sw.js / manifest.webmanifest / icon.svg
+# package.json 与 package-lock.json 要提交（前者声明 eslint devDependency，后者锁版本保证规则集可复现）；
+# 只有装出来的 node_modules 不入库。
+node_modules/
