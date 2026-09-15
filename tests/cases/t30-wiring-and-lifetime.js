@@ -4,7 +4,7 @@
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。
    用例按场景组切分，新增用例请进对应文件，避免回到「一个文件塞下全部场景」。 */
 "use strict";
-const { loadApp, FakeAudioContext, pill, driveFrames, ok, eq, section, PROBE, resetProbe, html } = require("../lib/harness");
+const { loadApp, FakeAudioContext, pill, driveFrames, ok, eq, near, section, PROBE, resetProbe, html } = require("../lib/harness");
 
 /* ================================================================================
    场景 T30–T32：v1.3.1「遗留问题」
@@ -151,6 +151,45 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
     }
     eq(deform, 0, "reduced-motion：全程无形变（scale 恒为 1,1）");
     ok(moved > 50, `reduced-motion：位置照常推进 ${moved} 帧（球何时落拍是核心功能提示，不能去掉）`);
+  }
+
+  /* ⑧ 触顶钳制：「顶点不出容器空域」H = min(H, A.y + 6)。单独构造场景的理由：
+     ② 里的 H 是照着同一条公式复算出来的，只有「弧足够长、钳制真的成为约束」时删掉它才会变红。
+     默认 96 BPM 下原始跳高 46.9px 仅比上界 44px 高 2.9px，余量太薄（默认速度一改就悄悄失效）。
+     这里降到 60 BPM（每弧 1.0s）：原始 120px 先被 max 截到 48px，仍明显高于上界 44px →
+     钳制成为唯一约束，实测跳高必须等于上界（而非 48px）；删掉钳制必然变红。 */
+  {
+    const slow = loadApp();
+    slow.beat.Controls.setBpm(60);                          // 慢速 → 长弧 → 原始跳高触顶
+    slow.beat.Controls.start();
+    const sac = FakeAudioContext.last;
+    const siv = slow.beat.Viz.internals();
+    const yBase2 = siv.rowGeo[0].top - 20;                  // 第 1 行基线（即 A.y）
+    const cap = yBase2 + 6;                                 // 钳制上界：顶点最多再往上 6px
+    ok(cap < CB.max, `构造前提成立：钳制上界 ${cap}px < max ${CB.max}px，钳制确实有生效空间`);
+
+    let minY = Infinity;
+    const sOnsets = new Map();
+    for (let i = 0; i < Math.round(3 / DT); i++){           // 跑满 3s：60 BPM 下第 1 小节约 4s，弧足够长
+      sac.currentTime += DT;
+      slow.beat.Audio.scheduler();
+      slow.beat.Viz.paintFrame();
+      slow.beat.onsetBuf().forEach(e => sOnsets.set(e.bar + ":" + e.t.toFixed(4), e));
+      const yy = nums(siv.ballEl.style.transform)[1];
+      if (isFinite(yy) && yy < minY) minY = yy;             // 记录整段时间里的最高点（y 越小越高）
+    }
+    const sos = [...sOnsets.values()].filter(e => e.bar === 0).sort((a, b) => a.t - b.t);
+    ok(sos.length >= 5, `慢速下仍采集到第 1 小节的 ${sos.length} 个发声点`);
+    const T2 = sos[1].t - sos[0].t;
+    const rawH = Math.min(CB.max, Math.max(CB.min, CB.k * T2 * T2));
+    ok(rawH > cap + 1, `弧够长：未钳制跳高 ${rawH.toFixed(1)}px 高于上界 ${cap}px（T=${T2.toFixed(2)}s）`);
+    const peak2 = yBase2 - minY;                            // 实测跳高 = 基线 − 最高点
+    near(peak2, cap, 1.5, `实测跳高 ${peak2.toFixed(1)}px = 钳制值 ${cap}px（未钳制会是 ${rawH.toFixed(1)}px）`);
+    ok(Math.abs(peak2 - rawH) > 2,
+      `实测明显低于未钳制值（${peak2.toFixed(1)} vs ${rawH.toFixed(1)}px）——钳制真的在起作用`);
+    ok(minY >= yBase2 - cap - 1.5,
+      `顶点始终未越过空域上界（最高点 y=${minY.toFixed(1)} ≥ ${(yBase2 - cap).toFixed(1)}px）`);
+    slow.beat.Controls.stop();
   }
 }
 
