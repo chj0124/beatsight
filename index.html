@@ -1031,6 +1031,29 @@ function setPressed(sel, on){
     p.setAttribute("aria-pressed", on(p) ? "true" : "false");
   });
 }
+/* 通用预设行组件（v1.6.4）：把「一行 pill 由值表生成」收成一处。
+   BPM 快捷档（CONFIG.speedPresets）与奇数拍重拍分组（ACC_LABELS）本是同一形态：
+   清空容器 → 逐值建 button → 写 aria-pressed / aria-label（需要时加 data-*）→ 绑点击。
+   原先两处各写一遍，日后音量、拍号再加常用值就会变成第三、四份（DEVELOPMENT §6 记的债）。
+   用 createElement + appendChild 而非 innerHTML 拼串：测试沙箱靠 appendChild 记录子元素，
+   才能断言生成数量、文案与点击行为（见 tests/lib/harness.js）。
+   opt.text/label 出文案与无障碍名；opt.key 声明 data-* 键（不需要就略去）；
+   opt.isOn 定初始选中态；opt.onPick 是点击回调（按钮 blur 已代劳）。 */
+function buildPillRow(host, items, opt){
+  host.innerHTML = "";
+  return items.map((it, i) => {
+    const b = document.createElement("button");
+    const on = opt.isOn ? !!opt.isOn(it, i) : false;
+    b.className = "pill" + (on ? " active" : "");
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.textContent = opt.text(it, i);
+    b.setAttribute("aria-label", opt.label(it, i));
+    if (opt.key) b.dataset[opt.key] = String(it);
+    b.addEventListener("click", ev => { ev.currentTarget.blur(); opt.onPick(it, i, ev); });
+    host.appendChild(b);
+    return b;
+  });
+}
 /* 动效降级（审计 P2-11）：本应用是重动效设计，但前庭功能敏感用户会不适。
    不做整体关闭——弹跳球的**位置**是功能性的「何时落拍」提示，去掉等于砍掉核心功能；
    这里只把形变（触地挤压 / 空中拉伸）置为无形变，装饰性动画交给 CSS 的
@@ -2164,16 +2187,12 @@ const Controls = (() => {
 
   /* 常用速度快捷档（v1.1）：按钮与滑杆刻度都由 CONFIG.speedPresets 生成（单一数据源，不两处各写一份）。
      紧贴模块初始化执行，保证任何 setBpm/syncBpmUI 调用之前 presetBtns 已就绪。
-     用 createElement 而非 innerHTML：测试沙箱靠 appendChild 记录子元素，才能断言点击行为 */
-  const presetBtns = CONFIG.speedPresets.map(v => {
-    const b = document.createElement("button");
-    b.className = "pill";
-    b.textContent = String(v);
-    b.dataset.bpm = String(v);
-    b.setAttribute("aria-label", `跳到 ${v} BPM`);
-    b.addEventListener("click", e => { e.currentTarget.blur(); setBpm(v); });
-    $("bpmPresetRow").appendChild(b);
-    return b;
+     v1.6.4 起行生成交给共享的 buildPillRow，不再手写 createElement 循环 */
+  const presetBtns = buildPillRow($("bpmPresetRow"), CONFIG.speedPresets, {
+    text: v => String(v),
+    label: v => `跳到 ${v} BPM`,
+    key: "bpm",
+    onPick: v => setBpm(v),
   });
   /* 滑杆刻度：Chrome 对 range 的 datalist 刻度根本不渲染（已实测，见 CHANGELOG v1.1），
      所以改成手绘绝对定位刻度层：按 BPM 在 [min,max] 的百分比落点。
@@ -2192,7 +2211,9 @@ const Controls = (() => {
   function syncBpmUI(){
     const locked = !!S.trainer.on;
     presetBtns.forEach(b => {
-      b.classList.toggle("active", +b.dataset.bpm === S.bpm);
+      const on = +b.dataset.bpm === S.bpm;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");   // v1.6.4：与 .active 同源（其余 pill 组早已如此）
       b.disabled = locked;
     });
     $("bpmMinus5").disabled = locked;
@@ -2384,21 +2405,15 @@ const Controls = (() => {
     wrap.hidden = !groups;
     if (!groups) return;
     const row = $("accRow");
-    row.innerHTML = "";
-    ACC_LABELS[S.sig].forEach((lb, i) => {
-      const b = document.createElement("button");
-      const on = (S.accentGrp[S.sig] || 0) === i;
-      b.className = "pill" + (on ? " active" : "");
-      b.setAttribute("aria-pressed", on ? "true" : "false");   // v1.3.0：与 .active 同源
-      b.setAttribute("aria-label", `重拍分组 ${lb}`);
-      b.textContent = lb;
-      b.addEventListener("click", ev => {
-        ev.currentTarget.blur();
+    buildPillRow(row, ACC_LABELS[S.sig], {
+      text: lb => lb,
+      label: lb => `重拍分组 ${lb}`,
+      isOn: (lb, i) => (S.accentGrp[S.sig] || 0) === i,
+      onPick: (lb, i) => {
         S.accentGrp[S.sig] = i;
         refreshAccRow();
         Store.persist();
-      });
-      row.appendChild(b);
+      },
     });
   }
 

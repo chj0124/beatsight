@@ -1,5 +1,45 @@
 # 变更记录
 
+## v1.6.4 · 阶段三（工程深化）：快捷档抽取通用 preset row 组件（2026-09-15）
+
+无新功能，纯内部重构（`index.html` 有改动，但无用户可见的行为变化）。落实
+`docs/DEVELOPMENT.md` §6「已埋的技术债」里那条：*快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；
+若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份*。
+
+### 重构
+
+- **共享区新增 `buildPillRow(host, items, opt)`**（与 `setPressed` 相邻，位于所有模块之前）：
+  把「一行 pill 由值表生成」收成一处——清空容器 → 逐值建 button → 写 `aria-pressed` /
+  `aria-label`（可选 `data-*`）→ 绑点击。`opt.text/label` 出文案与无障碍名，`opt.key`
+  声明 `data-*` 键（不需要就略去），`opt.isOn` 定初始选中态，`opt.onPick` 是点击回调（blur 已代劳）。
+  仍用 `createElement` + `appendChild` 而非 `innerHTML` 拼串：测试沙箱靠 `appendChild`
+  记录子元素，才能断言生成数量、文案与点击行为。放共享区而非某模块内：将来 Presets / Editor
+  也要用时不必再登记 R3 反向引用白名单
+- **两个消费方改为复用**（原先同形态各写一遍，正是「别复制三份」的隐患）：
+  - BPM 快捷档（`Controls` 的 `presetBtns`）：`CONFIG.speedPresets` 仍是唯一数据源，
+    5 个按钮的 `dataset.bpm` / 文案 / `aria-label` 由组件统一产出
+  - 奇数拍重拍分组（`refreshAccRow`）：改为 `buildPillRow($("accRow"), ACC_LABELS[S.sig], …)`，
+    选中态由 `isOn` 表达，点击仍走「落值 → 重建行 → 持久化」
+- **顺带补齐无障碍同源**：`syncBpmUI` 原先只改 `classList` 的 `.active`，现同时写 `aria-pressed`，
+  与 `#sigRow` / `#swingRow` / `#timbreRow` 三组的既有做法对齐（T28 一直守着「视觉高亮与
+  aria-pressed 一致」，BPM 行此前是漏网的第四组）
+- 滑杆手绘刻度（`<i>` + 百分比 `left`）**未动**：它是刻度层不是 pill 行，仍直接读 `CONFIG.speedPresets`
+
+### 测试
+
+- **断言一条未改、总数不变：659 PASS / 0 FAIL**。T19（档位/文案/`aria-label`/点击直达/非档位
+  不高亮/训练置灰）与 T31（`accRow` 生成 2 个分组档 + 点击落值）**原样通过**——组件化没有偷换契约
+- **反向验证**：把 `buildPillRow` 里的 `host.appendChild(b)` 改成永不成立的条件后，T19 立刻变红
+  （「生成 5 个快捷档按钮」期望 5 实际 0 等 3 条断言失败，随后取 `pills[0]` 抛错），改动已还原
+- `docs/DEVELOPMENT.md` §6 该条从「待办」改为**已完成（v1.6.4）**；顺手改正同节一处过时表述
+  （原文称静态检查「无 `no-undef`」、只有「四项 lint」，实际该规则自 v1.6.2 起已就位、现为五项）
+
+### 自验
+
+- `node tools/check-all.js` 全绿 **7/7**（语法 / 架构约束 / lint 五规则 / DOM 引用 / 测试 / 看门狗 / 覆盖率），
+  行覆盖率 **99.9%**（2302/2305，仍只剩 Audio 的 3 行防御分支）
+- `FULL_SCAN=1 node tests/run.js` → **659 PASS / 0 FAIL**
+
 ## v1.6.3 · 阶段三（工程深化）：弹跳球触顶钳制补测（2026-09-15）
 
 无新功能，`index.html` 一字未改——只补一条此前仅"顺带覆盖"的断言。
