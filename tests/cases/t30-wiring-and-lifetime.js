@@ -797,3 +797,57 @@ section("T38 主题切换 · 观测台主题（v1.7.0）");
   body.setAttribute("data-theme", "obs");
   eq(app.beat.flashTheme().edge, "#3B82F6", "flashTheme 直读 body[data-theme]，无缓存分叉");
 }
+
+/* ================================================================================
+   场景 T41：待命球起跑预备（v1.8.0）
+   终端弧末期待命球做「预蹲 + 渐显」预告小节开头。核心不变量：**交接时刻分毫不动**——
+   过界第一帧正式球必须已在新行首 onset、待命球隐藏；渐显/形变只允许出现在窗口内。
+   ================================================================================ */
+section("T41 待命球起跑预备 · 窗口/幅度/交接不变量（v1.8.0）");
+{
+  const app = loadApp();
+  const beat = app.beat;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  const iv = beat.Viz.internals();
+  const spbV = 60 / beat.Store.S.bpm;
+  const barDur = beat.Store.S.sig * spbV;
+  const W = Math.min(0.3, Math.max(0.12, spbV * 0.25));      // 与实现同式：拍长 25%，夹 120–300ms
+  const barEnd = beat.clock().loopStart + barDur;            // 第 1 小节右缘 = 交接时刻
+  const states = [];
+  const DT = 0.005;
+  for (let i = 0; i < Math.round(barDur * 1.2 / DT); i++){
+    ac.currentTime += DT;
+    beat.Audio.scheduler();
+    beat.Viz.paintFrame();
+    const bm = /(-?[\d.]+)px/.exec(iv.ballEl.style.transform);
+    states.push({ now: ac.currentTime, bx: bm ? +bm[1] : NaN,
+      op: iv.waitEl.style.opacity, tr: iv.waitEl.style.transform, disp: iv.waitEl.style.display });
+  }
+  const sc = s => { const m = /scale\(([\d.]+),([\d.]+)\)/.exec(s.tr); return m ? [+m[1], +m[2]] : [1, 1]; };
+
+  /* ① 窗口外（终端弧早期）：不渐显、无形变——装饰不许提前抢戏 */
+  const before = states.filter(s => s.disp !== "none" && s.now < barEnd - W - 0.02);
+  ok(before.length > 5, `终端弧早期采到 ${before.length} 帧待命球（民谣扫弦终端弧 = 1 拍）`);
+  ok(before.every(s => s.op === ""), "窗口外透明度走 CSS 基准 .45（无内联渐显）");
+  ok(before.every(s => { const v = sc(s); return v[0] === 1 && v[1] === 1; }), "窗口外无形变 scale(1,1)");
+
+  /* ② 窗口内：渐显 > .45 且单调走向边界；预蹲幅度克制（sy 收在 0.85–1.0 区间） */
+  const inWin = states.filter(s => s.now >= barEnd - W && s.now < barEnd);
+  ok(inWin.length > 5, `预备窗口内采到 ${inWin.length} 帧（W=${(W * 1000).toFixed(0)}ms）`);
+  ok(inWin.every(s => parseFloat(s.op) > 0.45 && parseFloat(s.op) <= 0.8), "窗口内透明度渐显于 (.45, .80]");
+  ok(inWin.every(s => { const v = sc(s); return v[1] >= 0.84 && v[1] < 1; }), "窗口内已预蹲且 sy 收在 [0.85, 1)");
+  const lastIn = inWin[inWin.length - 1];
+  ok(sc(lastIn)[1] < 0.92, `临近交接压到 sy=${sc(lastIn)[1]}（目标 ≈0.85，越近压越实）`);
+
+  /* ③ 交接不变量：过界第一帧，待命球隐藏、正式球已落在新行首 onset（x = 新行 left − 8）——
+     预备动画对交接时刻零影响（删掉这性质此断言即红，反向验证已跑） */
+  const after = states.find(s => s.now >= barEnd);
+  ok(!!after, "采到跨过小节边界的帧");
+  if (after){
+    eq(after.disp, "none", "过界后待命球立即隐藏（交接完成）");
+    const g1 = iv.rowGeo[1];
+    near(after.bx, g1.left - 8, 2.5, `过界第一帧正式球 x=${after.bx.toFixed(1)} ≈ 新行首 onset（交接时刻未被动画推迟）`);
+  }
+  beat.Controls.stop();
+}

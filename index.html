@@ -726,7 +726,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.7.0";
+const VERSION = "1.8.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1676,8 +1676,22 @@ const Viz = (() => {
         const first = nbSteps.find(s2 => !s2.rest);
         if (first){
           const g = posOf(nb, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((s2, n2) => s2 + n2.t, 0));
+          /* 起跑预备（v1.8.0）：交接前最后一小段做克制的"预蹲 + 渐显"——各就各位的提示。
+             窗口 = 拍长的 25% 并夹 120–300ms：慢速下不拖、快速下不频闪（读谱场景忌噪）。
+             只动待命球的形变与透明度，落点/交接时刻（= b2.t）分毫不动；
+             交接瞬间本球隐藏、正式球在新行首 onset 落地挤压接管，预蹲→落地回弹正好连成"吸气→出发"。
+             REDUCE_MOTION 下只留透明度渐显，形变关掉（与主体的"只降形变"纪律一致） */
+          const W = Math.min(0.3, Math.max(0.12, spb() * 0.25));
+          const dtH = b2.t - now;                              // 距交接（终端弧终点 = 小节右缘时刻）
+          let wx = 1, wy = 1, wop = "";
+          if (dtH >= 0 && dtH < W){
+            const q = 1 - dtH / W;                             // 0→1：越接近交接压得越实、越亮
+            wop = (0.45 + 0.35 * q).toFixed(3);
+            if (!REDUCE_MOTION){ wy = 1 - 0.15 * q; wx = 1 + 0.1 * q; }   // 体积近似守恒的预蹲
+          }
           waitEl.style.display = "";
-          waitEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
+          waitEl.style.opacity = wop;
+          waitEl.style.transform = `translate(${g.x}px, ${g.y}px) scale(${wx.toFixed(3)},${wy.toFixed(3)})`;
         } else waitEl.style.display = "none";
       } else waitEl.style.display = "none";
     }
