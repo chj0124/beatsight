@@ -1,5 +1,53 @@
 # 变更记录
 
+## v1.6.2 · 工程加固：测试套件拆分 / lint 第五规则 no-undef / 文档归档（2026-09-15）
+
+无新功能，`index.html` 一字未改——本轮只动 `tests/`、`tools/`、`docs/`（工程与交接质量）。
+
+### 工程
+
+- **测试套件拆分**（`tests/`）：单个 `run.js`（含沙箱、桩与 43 个场景组）拆成
+  `tests/lib/harness.js`（共享 vm 沙箱 + DOM/音频桩 + `drive`/`driveFrames` + 断言工具）
+  与 `tests/cases/*.js`（8 个用例文件，每个文件一个场景组），`run.js` 瘦身为约 20 行的
+  **装配器**（`CASE_FILES` 数组按 `require` 顺序决定执行顺序）。新增用例只需往数组末尾追加，
+  既有用例的报错定位保持稳定
+- **断言总数一个不少**：拆前拆后跑 `FULL_SCAN=1 node tests/run.js` 均为 **653 PASS / 0 FAIL**，
+  断言全量 diff 为空；`hang-guard`（进程隔离看门狗）与行覆盖率工具**无需任何改动**即可继续工作
+
+### 代码卫生
+
+- **lint 增第五规则 `no-undef`**（`tools/check-lint.js` + `tools/scan-util.js`）：
+  - `scan-util` 新增 `maskStrings()`（长度保持的字符串/模板内容掩码，避免把字符串里的标识符
+    误认成代码）+ `collectDeclarations()`（全文件**扁平**声明表，不做作用域分层）
+  - 规则本身取**最窄口径**：赋值目标 `name =`（排除 `==` / `=>`）指向未声明标识符 → `error`
+    （隐式全局）；裸调用 `name(` 指向未声明标识符 → `warn`（大概率是宿主全局）。配 `GLOBALS`
+    宿主白名单（语言内建 + 定时器/帧调度 + 浏览器宿主）
+  - **设计取向是「故意欠报」**：假阴性（漏报）可以接受，假阳性（误报）不可接受——一个会误报的
+    检查器最终只会被关掉。因此不做作用域分层（同名遮蔽等会被漏掉），只看「全文件压根没声明过」
+  - **零假阳性**：当前代码 495 个声明 / 625 个作用域块 / 2557 行下全部通过；赋值目标命中 0 处，
+    裸调用命中 14 处且**全部**是真实宿主全局（`String`/`Date`/`setTimeout`/`matchMedia`/`btoa` …）
+  - **反向验证**：对 `index.html` 注入拼错变量名——`lastRulerElZ =` 如期报 `error` 并退出 1；
+    `requestAnimatonFrame(` 如期报 `warning`。两类命中都抓得到
+- `tools/check-all.js` 与 `docs/DEVELOPMENT.md` 的 lint 描述同步为「五条规则」，
+  DEVELOPMENT 补一条反向验证命令
+
+### 文档
+
+- **`docs/PLAN-v1.5.md` 归档**：顶部加归档横幅——P0–P3 已全部落地（v1.4.1/v1.5/v1.6 均已发布），
+  保留仅为追溯当时排期与取舍；现行约定以 CHANGELOG 与 DEVELOPMENT 为准
+- **`docs/prd.html` 横幅纠偏**：原横幅写「已演进至 v1.0.0+」，与事实不符（早已 v1.6.x）。
+  改为「v1.0 原始需求文档（历史存档），功能现状一律以 CHANGELOG.md 与 docs/DEVELOPMENT.md 为准」
+- **`README.md` 文档表**：补 `docs/PLAN-v1.5.md` 一行，并给 PRD 与 PLAN 两处标注「已归档」
+- **Editor `innerHTML` 残留审视**：核查确认 v1.6.1 已收口——全文件 `innerHTML` 仅剩「清空」语义
+  用法（`= ""`）与注释，无模板拼接残留，本轮无需再改
+
+### 自验
+
+- `node tools/check-all.js` 全绿 **7/7**（语法 / 架构约束 / lint 五规则 / DOM 引用 / 测试 / 看门狗 / 覆盖率），
+  行覆盖率 **99.9%**（2288/2291，仅剩 Audio 的 3 行防御分支）
+- `FULL_SCAN=1 node tests/run.js` → **653 PASS / 0 FAIL**
+- lint 反向验证：注入拼错变量名可被 `error`/`warning` 捕获（见上）
+
 ## v1.6.1 · 健壮性收口：SW 缓存加固 / 上下文重建清缓冲 / 导入护栏 / 提交门禁（2026-09-15）
 
 无新功能，一轮防御性修复与流程加固。

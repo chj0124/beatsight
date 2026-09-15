@@ -30,10 +30,10 @@ beatsight/
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
-│   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
+│   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
 │   ├── check-dom-ids.js        # DOM 引用完整性：$("x") 不得悬空
 │   ├── check-coverage.js       # 行覆盖率（V8 内置采集，双阈值）
-│   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对）
+│   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对 / 字符串掩码 / 声明表）
 └── docs/
     ├── prd.html          # 原始产品需求文档 v1.0
     └── DEVELOPMENT.md    # 本文档
@@ -223,7 +223,8 @@ FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
 node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
                                  # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
-node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
+node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
+                                 # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
 node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
