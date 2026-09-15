@@ -1676,22 +1676,25 @@ const Viz = (() => {
         const first = nbSteps.find(s2 => !s2.rest);
         if (first){
           const g = posOf(nb, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((s2, n2) => s2 + n2.t, 0));
-          /* 起跑预备（v1.8.0）：交接前最后一小段做克制的"预蹲 + 渐显"——各就各位的提示。
-             窗口 = 拍长的 25% 并夹 120–300ms：慢速下不拖、快速下不频闪（读谱场景忌噪）。
-             只动待命球的形变与透明度，落点/交接时刻（= b2.t）分毫不动；
-             交接瞬间本球隐藏、正式球在新行首 onset 落地挤压接管，预蹲→落地回弹正好连成"吸气→出发"。
-             REDUCE_MOTION 下只留透明度渐显，形变关掉（与主体的"只降形变"纪律一致） */
-          const W = Math.min(0.3, Math.max(0.12, spb() * 0.25));
-          const dtH = b2.t - now;                              // 距交接（终端弧终点 = 小节右缘时刻）
-          let wx = 1, wy = 1, wop = "";
-          if (dtH >= 0 && dtH < W){
-            const q = 1 - dtH / W;                             // 0→1：越接近交接压得越实、越亮
-            wop = (0.45 + 0.35 * q).toFixed(3);
-            if (!REDUCE_MOTION){ wy = 1 - 0.15 * q; wx = 1 + 0.1 * q; }   // 体积近似守恒的预蹲
+          /* 起跑预备（v1.8.0）：把终端弧的**下落半弧**平行复制到新行首 onset 正上方——
+             终端弧过 apex（p=0.5）起，待命球从同一高度 H 沿同一条抛物线的下落段同步下落，
+             与上一小节的球在小节边界**同时触地**；交接后正式球在同一点落地挤压接管，
+             「下落 → 挤压 → 回弹 → 第一跳」速度连续，接力变成双重奏。
+             apex 之前保持原停泊位（半透明"下一个是你"的提示不提前抢戏）；
+             只动待命球的位移/形变，交接时刻（= b2.t）分毫不动；
+             REDUCE_MOTION 下整段不下落（纯装饰降级，停泊位保留） */
+          const halfT = (b2.t - a.t) / 2;                        // 终端弧后半 = 下落段时长
+          const dtH = b2.t - now;                                // 距交接（终端弧终点 = 小节右缘时刻）
+          let wy = 0, wsx = 1, wsy = 1;
+          if (!REDUCE_MOTION && dtH >= 0 && dtH < halfT){
+            const ph = 1 - dtH / halfT / 2;                      // 0.5(apex) → 1(触地)：抛物线下落半段相位
+            wy = H * 4 * ph * (1 - ph);
+            const vN = Math.min(1, Math.abs(1 - 2 * ph) * (H / 60));   // 空中拉伸与主体同式
+            wsy = 1 + 0.2 * vN; wsx = 1 - 0.12 * vN;
           }
           waitEl.style.display = "";
-          waitEl.style.opacity = wop;
-          waitEl.style.transform = `translate(${g.x}px, ${g.y}px) scale(${wx.toFixed(3)},${wy.toFixed(3)})`;
+          waitEl.style.opacity = "";
+          waitEl.style.transform = `translate(${g.x}px, ${(g.y - wy).toFixed(1)}px) scale(${wsx.toFixed(3)},${wsy.toFixed(3)})`;
         } else waitEl.style.display = "none";
       } else waitEl.style.display = "none";
     }
