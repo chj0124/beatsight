@@ -3,7 +3,7 @@
 ```bash
 # 平时不用单独跑下面这些——改完代码直接跑这一条就够：
 #   node tools/check-all.js   （约 6 秒，跑完全部检查并给汇总）
-node tests/run.js            # 主套件：68 个场景组 / 788 断言（约 0.4s）
+node tests/run.js            # 主套件：74 个场景组 / 874 断言（约 0.5s）
 FULL_SCAN=1 node tests/run.js  # 同上，且跑 T21 的 243 组全组合扫描（约 0.6s；check-all 默认跑全量）
 node tests/hang-guard.js     # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
 node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总阈值 97% / 分区 90%）
@@ -72,7 +72,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / KeepAlive（v1.4 起 10 个模块），以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` 等断言入口）。
+（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / Ear（v1.10 起 11 个模块）/ KeepAlive，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
 
 **注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
 每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**
@@ -131,11 +131,12 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T46 | 统计增强（v1.6）：7/30 天视图切换 · 各节奏型速度纪录 · 练习记录导出 |
 | T47 | 扫弦方向标注（v1.9.0，5 个子场景）：数据与名称逐字对应 · 其余内置预设零 dir · 徽标渲染（含 12t 切分位格）· 脏 dir 静默降级（含休止符上的 dir 被抹掉）· 导出往返保留 · **窄格整体隐藏** · 编辑器三档可用性/高亮/写入/撤销/重复点不推栈 · 休止符禁用 · **加 dir 前后发声逐位相同**（纯记谱层的核心断言） |
 | T48 | 练习量控制（v1.9.0，8 个子场景）：档位生成与文案 · 默认「不限」· 10 种脏 limit 全部回退 · 合法值不被表引用污染 · 热键落盘且 < 1KB · **按小节恰在第 N 小节边界停 + 发声个数恰好 N×每小节音数** · 按分钟按音频时钟差停 · **预备拍不计入（且进度区在预备拍期间为空）** · 每轮开始归零 · 播放中改档位立即生效 · 与变速训练器「谁先到谁停」双向 · 「不限」行为零变化 |
+| T49 | 听辨训练（v1.10.0，7 个子场景）：易混组表完整性（名字可解析 / 同组时值互不相同）/ 出题（**300 次随机断言答案必在候选内**、打乱真的发生、答案位置分布均匀）/ 进入即停播 + 自动放 2 小节 / 作答即停播 + 判分 + 连对 + 冷键落盘 + 重复作答被拒 / 退出恢复 + Escape + 空格不误触 + inert / 脏战绩回退与清零 / 会话额度优先于练习量 |
 
 > **编号说明**：`section()` 的 T 编号目前有重复——T38 与 T41 各被用两次
 > （`t37-stats-and-training.js` 与 `t30-wiring-and-lifetime.js`）。这只是日志标签重复，
 > 不影响执行与断言；但**新增用例请从当前最大值往上取号，别复用**（v1.9.0 起为 T47/T48，
-> 下一个是 T49）。哪天顺手整理时，把重复的两个改掉即可。
+> v1.10.0 起为 T49，下一个是 T50）。哪天顺手整理时，把重复的两个改掉即可。
 
 ## 何时补断言
 

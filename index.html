@@ -258,6 +258,22 @@ input[type=range].vol{width:120px}
 .st-col.today .st-day{color:var(--green);font-weight:600}
 .st-val{font-size:11px;font-family:var(--mono);color:var(--t2)}
 
+/* ---------- 听辨训练（v1.10.0） ---------- */
+/* 候选卡片：只画记谱、不给名字——给名字就变成「读名字猜」，练不到耳朵。
+   作答后：✅ 选中的那张描边转绿/红，正确答案那张也描绿（答错时用户才知道错在哪），
+   其余淡出。用 <button> 而不是 <div>：键盘用户要能 Tab 到、回车选中 */
+.ear-cands{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.ear-cand{display:flex;align-items:center;gap:14px;background:var(--card2);border-radius:10px;padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+.ear-cand:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
+.ear-cand:disabled{cursor:default}
+.ear-cand-lab{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t2);flex:none}
+.ear-strip{position:relative;flex:1;height:36px;min-width:0}
+.ear-block{position:absolute;top:0;height:100%;border-radius:6px;background:rgba(255,255,255,.16)}
+.ear-block.rest{background:transparent;border:1px dashed var(--rest-line)}
+.ear-cand.right{box-shadow:inset 0 0 0 1.5px var(--green)}
+.ear-cand.wrong{box-shadow:inset 0 0 0 1.5px var(--red)}
+.ear-cand.dim{opacity:.4}
+
 /* ---------- 响应式 ---------- */
 @media (max-width:960px){
   body{overflow-x:hidden}
@@ -575,6 +591,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="bpm-row" id="limitRow" role="group" aria-label="练习量档位"></div>
         <div class="hint" id="limitProg"></div>
       </div>
+      <!-- 听辨训练入口（v1.10.0）：独立全屏 overlay，与编辑器 / 练习统计同一套交互。
+           入口放训练模式区而不是顶栏：顶栏已有主题 + 练习统计两个按钮，再加一个在 390px 窄屏上会挤，
+           而它本来就是"训练模式"的一种。右侧小字回报正确率，给一个持续练下去的理由 -->
+      <div class="bpm-row">
+        <button class="pill outline" id="earBtn">听辨训练 · 练耳朵</button>
+        <span class="hint" id="earMini"></span>
+      </div>
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
         <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" value="120" aria-label="目标 BPM">
@@ -707,6 +730,44 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </div>
 </div>
 
+<!-- ================= 听辨训练（v1.10.0） ================= -->
+<div class="editor" id="earOverlay" role="dialog" aria-modal="true" aria-label="听辨训练">
+  <div class="editor-inner">
+    <div class="editor-topbar">
+      <div class="left">
+        <button class="back-btn" id="earClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回练习
+        </button>
+        <div class="editor-title">听辨训练 · 节奏默写</div>
+      </div>
+      <div class="editor-actions">
+        <button class="pill outline" id="earReset">清零战绩</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="sec-tag"><b>07</b><i>Ear Training</i></span>
+        <div class="card-title" id="earHead">听一段节奏，从三个记谱里选出你听到的那个</div>
+        <div class="status" id="earStatusWrap"><span class="dot" id="earDot"></span><span id="earStatus">准备开始</span></div>
+      </div>
+      <div class="bpm-row">
+        <button class="pill active" id="earPlayBtn">出题并播放</button>
+        <span class="hint">每题自动放 2 小节。候选只给记谱、不给名字——按听到的选，别看名字猜</span>
+      </div>
+      <!-- 候选按点击顺序无关：渲染顺序在每次出题时打乱（Fisher–Yates，rand 可注入以便断言） -->
+      <div class="ear-cands" id="earCands" role="group" aria-label="候选记谱"></div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-num" id="earTotal">0</div><div class="stat-lab">累计题数</div></div>
+        <div class="stat-card"><div class="stat-num" id="earAcc">—</div><div class="stat-lab">正确率</div></div>
+        <div class="stat-card"><div class="stat-num" id="earStreak">0</div><div class="stat-lab">当前连对</div></div>
+        <div class="stat-card"><div class="stat-num" id="earBest">0</div><div class="stat-lab">最高连对</div></div>
+      </div>
+      <div class="hint" id="earNote"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 应用内弹窗 ================= -->
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
@@ -759,7 +820,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.9.1";
+const VERSION = "1.10.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -883,6 +944,26 @@ const LIMIT_PRESETS = [
 ];
 const LIMIT_OFF = { mode:"off", n:0 };
 
+/* 听辨训练（v1.10.0）——出题质量的关键在这张表，不在代码。
+   随机从 12 个内置预设里抽会出两类坏题：「送分题」（八分摇滚 vs 华尔兹分解根本不会听错）
+   与「无解题」（两个候选听感几乎相同，只能靠猜）。所以改为手写**同组候选**：
+   组内成员在听觉上真的容易混，答案永远是其中之一。
+   用**名字**引用内置预设而不是下标——下标会随内置库增删而移位，名字不会（名字重复时取最前一个）。
+   组内拍号允许不同：第 3 组就是靠"数出几拍"来区分的，候选各自按自己的拍号画一小节。
+   表完整性（每个名字都能解析到预设、每组至少 2 个候选）由 tests T49 断言，不在运行期兜底——
+   表写错是开发期错误，应该在测试里立刻炸，而不是让用户遇到一道没有正确答案的题。 */
+const EAR_GROUPS = [
+  { name:"附点 vs 均分 vs 三连音", desc:"把「听不出附点」练掉",
+    keys:["附点布鲁斯", "八分摇滚", "三连音基础"] },
+  { name:"切分 vs 均分 vs 十六分", desc:"重音位移与细分密度",
+    keys:["切分节奏型", "八分摇滚", "Funk 十六分"] },
+  { name:"拍号辨识 3/4 · 5/4 · 7/4", desc:"靠数拍子分辨小节长度",
+    keys:["华尔兹分解", "Take Five 律动 · 5/4", "Money 型 · 7/4"] },
+];
+/* 每题放几小节。内置预设 4 小节内容相同（rep4），所以 2 小节 = 把这段节奏听两遍，
+   足够辨认又不拖沓。走 Controls 的「会话播放额度」自动停，不用定时器（定时器在后台会被节流） */
+const EAR_BARS = 2;
+
 /* 主题化闪烁配色（v1.7.0 观测台主题）：换拍脉冲与十六分闪烁的 WAAPI 取色按 body[data-theme]
    查表——观测台把功能绿换成电光蓝。读 DOM 属性而非 getComputedStyle：后者在渲染热路径
    属布局读取，是性能禁区（v1.3.0 P1-4）。主题切换本身见装配区末尾的主题逻辑 */
@@ -916,6 +997,7 @@ const Store = (() => {
   const KEY_HOT = "beatsight.state", KEY_COLD = "beatsight.customs";
   const KEY_LEGACY = "beatsight.m2", KEY_BAK = "beatsight.m2.bak", KEY_QUAR = "beatsight.quarantine";
   const KEY_LOG = "beatsight.log";       // v1.4 练习记录（冷键：只在停止时写，不进防抖热键）
+  const KEY_EAR = "beatsight.ear";       // v1.10.0 听辨训练战绩（冷键：只在答完一题时写）
 
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
@@ -1058,6 +1140,31 @@ const Store = (() => {
     return JSON.stringify({ app:"beatsight", kind:"practice-log", v:1,
       exportedAt: new Date().toISOString(), sessions }, null, 2);
   }
+
+  /* ---- 听辨训练战绩（v1.10.0，冷键 beatsight.ear）----
+     与练习记录同类的「攒出来的数字」：加载即校验、脏项丢弃即可（不值得占用隔离区与弹窗名额）。
+     写入只在「答完一题」时发生，立即落盘不防抖——丢一题代价虽小，但口径与 log 保持一致：
+     这类数字是攒出来的，防抖丢一次会让用户觉得数据在漂。
+     right 用 min(total, …) 夹住：脏数据里 right > total 会算出 >100% 的正确率。 */
+  const earIn = readJSON(KEY_EAR);
+  const ear = { total: 0, right: 0, best: 0 };
+  if (earIn && typeof earIn === "object"){
+    ear.total = Math.max(0, Math.floor(numOr(earIn.total, 0)));
+    ear.right = Math.min(ear.total, Math.max(0, Math.floor(numOr(earIn.right, 0))));
+    ear.best = Math.max(0, Math.floor(numOr(earIn.best, 0)));
+  }
+  function persistEar(){
+    try{ localStorage.setItem(KEY_EAR, JSON.stringify({ v:1, total:ear.total, right:ear.right, best:ear.best })); }
+    catch(e){ onPersistFail(e); }
+  }
+  /* best 由调用方传入当前连对数（连对是会话状态，不持久化——重开页面就从 0 起算） */
+  function recordEar(ok, streak){
+    ear.total++;
+    if (ok) ear.right++;
+    if (isNum(streak) && streak > ear.best) ear.best = streak;
+    persistEar();
+  }
+  function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
   const customs = [];
@@ -1244,7 +1351,8 @@ const Store = (() => {
   }
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler,
-    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog };
+    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
+    earStats: ear, recordEar, resetEar };
 })();
 const S = Store.S;
 const customs = Store.customs;
@@ -1414,7 +1522,8 @@ const Modal = (() => {
      对应的 inert 一起摘掉。 */
   function refreshInert(){
     const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
-      || ($("statsOverlay") && $("statsOverlay").classList.contains("open"));   // v1.4：统计 overlay 同套焦点陷阱
+      || ($("statsOverlay") && $("statsOverlay").classList.contains("open"))   // v1.4：统计 overlay 同套焦点陷阱
+      || ($("earOverlay") && $("earOverlay").classList.contains("open"));      // v1.10.0：听辨训练同套
     document.querySelectorAll(".main, .topbar").forEach(el => { asEl(el).inert = !!off; });
   }
   function uiModal(msg, opts){
@@ -2646,6 +2755,10 @@ const Controls = (() => {
       if (e.key === "Escape") Stats.close();
       return;
     }
+    if (Ear.isOpen()){                            // v1.10.0：听辨训练同套（空格不误触播放）
+      if (e.key === "Escape") Ear.close();
+      return;
+    }
     if ($("editor").classList.contains("open")){
       if (e.key === "Escape") Editor.tryClose();
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
@@ -3435,6 +3548,204 @@ const Stats = (() => {
   return { summarize, open, close, isOpen };
 })();
 
+/* ================= Ear · 听辨训练（v1.10.0） ================= */
+/* 把立项时就写着的目标「解决听不出附点/切分」补成闭环：在此之前的版本只让人**看得见**节奏，
+   没有任何练耳朵的入口。玩法：取一个易混组 → 播 2 小节（**不显示题目**）→
+   从 3 张只给记谱、不给名字的候选里选 → 即时反馈 + 战绩。
+   为什么只给记谱不给名字：给了名字就变成「读名字猜」（「附点布鲁斯」这个名字直接把答案写在脸上），
+   练不到耳朵。作答后才揭示名字。
+   本模块声明在 Controls / Viz / Store 之后，直接调用它们是**向前引用**，不产生方向问题。
+   它对外部状态的唯一写入是共享状态区的 previewRef / playQuota —— 复用主引擎的试听通道，
+   绝不另起一套调度（那会立刻产生双时钟、双热键、双缓存三份麻烦）。 */
+const Ear = (() => {
+  let question = null;        // { group, groupIdx, cands:[pattern…], answerIdx, answer }
+  let answered = false, picked = -1;
+  let streak = 0;             // 当前连对：会话状态，不持久化（重开页面从 0 起算）
+  let enterSig = null;        // 进入前的拍号，退出时还原
+
+  /* 「本题正在播放」**从状态推导**，不设独立标志位：
+     标志位一旦有一条停播路径没走到（作答提前停、pagehide、额度耗尽之外的停止），
+     按钮就会永远卡在「播放中…」且禁用——而推导值不可能与真实状态失同步。
+     playQuota>0 说明额度还没用完（正在放）；S.playing 由 Controls 维护。 */
+  const isPlaying = () => S.playing || playQuota > 0;
+
+  const letter = i => "ABC"[i] || String(i + 1);
+  const acc = () => Store.earStats.total
+    ? Math.round(Store.earStats.right / Store.earStats.total * 100) + "%" : "—";
+
+  /* 出题（纯函数，rand 可注入——测试用固定序列断言「答案必在候选内」与「打乱真的发生」）。
+     返回 null 表示该组不可用（表里名字写错）：调用方换一组重试，绝不把坏题交给用户。 */
+  function makeQuestion(rand){
+    const gi = Math.min(EAR_GROUPS.length - 1, Math.floor(rand() * EAR_GROUPS.length));
+    const g = EAR_GROUPS[gi];
+    const cands = g.keys.map(k => BUILTINS.find(p => p.name === k)).filter(Boolean);
+    if (cands.length < 2) return null;
+    /* Fisher–Yates：答案位置必须随机，否则用户会学出「总选 A」的歪策略 */
+    for (let i = cands.length - 1; i > 0; i--){
+      const j = Math.floor(rand() * (i + 1));
+      const t = cands[i]; cands[i] = cands[j]; cands[j] = t;
+    }
+    const answerIdx = Math.floor(rand() * cands.length);
+    return { group: g, groupIdx: gi, cands, answerIdx, answer: cands[answerIdx] };
+  }
+  /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），休止符画虚线框 */
+  function stripFor(pat){
+    const strip = document.createElement("div");
+    strip.className = "ear-strip";
+    const barTicks = pat.meter * TPB;
+    let at = 0;
+    pat.bars[0].forEach(s => {
+      const b = document.createElement("div");
+      b.className = "ear-block" + (s.rest ? " rest" : "");
+      b.style.left = (at / barTicks * 100) + "%";
+      b.style.width = `calc(${s.t / barTicks * 100}% - 3px)`;
+      at += s.t;
+      strip.appendChild(b);
+    });
+    return strip;
+  }
+  function render(){
+    const wrap = $("earCands");
+    wrap.innerHTML = "";
+    if (question){
+      question.cands.forEach((p, i) => {
+        const b = document.createElement("button");
+        let cls = "ear-cand";
+        if (answered){
+          b.disabled = true;
+          if (i === question.answerIdx) cls += " right";                       // 正确答案始终描绿
+          else if (i === picked) cls += " wrong";                              // 选错的描红
+          else cls += " dim";
+        }
+        b.className = cls;
+        const lab = document.createElement("span");
+        lab.className = "ear-cand-lab";
+        lab.textContent = letter(i);
+        b.appendChild(lab);
+        b.appendChild(stripFor(p));
+        if (!answered) b.addEventListener("click", () => answer(i));
+        wrap.appendChild(b);
+      });
+    }
+    $("earTotal").textContent = String(Store.earStats.total);
+    $("earAcc").textContent = acc();
+    $("earStreak").textContent = String(streak);
+    $("earBest").textContent = String(Store.earStats.best);
+    $("earStatusWrap").className = "status" + (answered ? (picked === question.answerIdx ? " ok" : " bad") : "");
+    $("earStatus").textContent = !question ? "题库不可用"
+      : isPlaying() ? "播放中… 仔细听"
+      : answered ? (picked === question.answerIdx ? "答对了" : "答错了")
+      : "请选择你听到的节奏";
+    $("earPlayBtn").disabled = isPlaying();
+    $("earPlayBtn").className = "pill" + (isPlaying() ? " outline" : (answered ? "" : " active"));
+    $("earPlayBtn").textContent = isPlaying() ? "播放中…" : !question ? "出题并播放" : answered ? "下一题" : "重听";
+    $("earNote").textContent = !question ? ""
+      : answered
+        /* 注意：模板字符串里不能用全角空格（U+3000）——ESLint 的 no-irregular-whitespace
+           对模板串不豁免（只豁免普通字符串），会当场报错。分隔一律用 " · " */
+        ? `正确答案是 ${letter(question.answerIdx)} · ${question.answer.name} · 本组：${question.group.name}（${question.group.desc}）`
+        : "共 3 个候选，只放 2 小节，放完自动停。听不出来就点「重听」";
+    syncMini();
+  }
+  /* 主界面入口旁的一行小字：给一个"已经练了多少"的可见回报 */
+  function syncMini(){
+    const e = Store.earStats;
+    $("earMini").textContent = e.total
+      ? `正确率 ${acc()} · 最高连对 ${e.best} · 共 ${e.total} 题`
+      : "听节奏、选记谱——把「听不出附点/切分」练掉";
+  }
+  /* 停播 + 摘掉试听态（不动 overlay 显隐，也不还原拍号——下一题还要用新的拍号） */
+  function stopAudio(){
+    if (S.playing || S.preview) Controls.stop();
+    S.preview = false;
+    previewRef = null;
+    playQuota = 0;
+    onQuotaDone = null;
+  }
+  function play(){
+    if (!question) return;
+    stopAudio();                          // 保险：别在播放中换题时叠两层
+    S.preview = true;
+    previewRef = question.answer;
+    Controls.setSig(question.answer.meter);
+    Viz.buildViz();
+    /* 走会话播放额度自动停，不用定时器：定时器在后台标签页会被节流到 1 次/分钟，
+       而额度由调度器在小节边界计数，与 BPM 无关、后台也准 */
+    playQuota = EAR_BARS;
+    onQuotaDone = () => { render(); announce("放完了，请选择"); };
+    Controls.start();
+    render();
+    announce("播放题目，共 " + question.answer.meter + " 拍 × " + EAR_BARS + " 小节");
+  }
+  function next(){
+    stopAudio();
+    let q = null;
+    /* 每组试一次：表里若有个名字写错（该组凑不够 2 个候选），换下一组，不把坏题交给用户。
+       表本身的完整性由 tests T49 断言——那是开发期错误，应该在测试里立刻炸 */
+    for (let k = 0; k < EAR_GROUPS.length && !q; k++) q = makeQuestion(Math.random);
+    question = q;
+    answered = false; picked = -1;
+    render();
+    if (question) play(); else announce("题库不可用");
+  }
+  function answer(i){
+    if (!question || answered) return;
+    stopAudio();                          // 作答即停：都听出来/放弃了，没必要把剩下的小节放完
+    answered = true; picked = i;
+    const ok = i === question.answerIdx;
+    streak = ok ? streak + 1 : 0;
+    Store.recordEar(ok, streak);          // 冷键立即落盘，不防抖
+    render();
+    announce(ok ? `答对了，连对 ${streak}`
+      : `答错了，正确答案是 ${letter(question.answerIdx)} ${question.answer.name}`);
+  }
+  function open(){
+    if (S.playing && !S.preview) Controls.stop();   // 进入即停主播放，否则两路声音叠在一起
+    enterSig = S.sig;
+    streak = 0;
+    $("earOverlay").classList.add("open");
+    Modal.refreshInert();
+    next();
+  }
+  function close(){
+    stopAudio();
+    if (enterSig !== null){ Controls.setSig(enterSig); enterSig = null; }
+    Viz.buildViz();                       // 试听期间改过视图与拍号，恢复
+    Presets.updateFallbackNote();
+    $("earOverlay").classList.remove("open");
+    Modal.refreshInert();
+    syncMini();
+  }
+  const isOpen = () => $("earOverlay").classList.contains("open");
+  /* 测试入口：题目内部状态（候选顺序、答案位置、作答与否）光看 DOM 数不全 */
+  const state = () => ({
+    hasQuestion: !!question,
+    groupIdx: question ? question.groupIdx : -1,
+    names: question ? question.cands.map(p => p.name) : [],
+    answerIdx: question ? question.answerIdx : -1,
+    answerName: question ? question.answer.name : "",
+    answered, picked, streak, playing: isPlaying(),
+  });
+
+  $("earBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
+  $("earClose").addEventListener("click", e => { evEl(e).blur(); close(); });
+  $("earPlayBtn").addEventListener("click", e => {
+    evEl(e).blur();
+    if (isPlaying()) return;                          // 播放中不响应（按钮此时也是禁用的，双重保险）
+    if (!question || answered) next(); else play();
+  });
+  $("earReset").addEventListener("click", e => {
+    evEl(e).blur();
+    Modal.uiConfirm("清零听辨训练战绩？累计题数、正确率与最高连对都会归零。", () => {
+      Store.resetEar(); streak = 0; render();
+    }, { danger: true, okText: "清零" });
+  });
+  syncMini();
+  render();                                // 装配即初始化战绩显示（真实数字来自已加载的冷键）
+
+  return { open, close, isOpen, next, play, answer, makeQuestion, state };
+})();
+
 /* ================= KeepAlive · 后台保活（v1.4） ================= */
 /* 目标：开着开关播放时，锁屏/切后台尽量不断音。两级策略：
      ① navigator.wakeLock.request("screen")（标准 API，防息屏；切后台标签时系统会自动释放，
@@ -3601,11 +3912,14 @@ $("themeToggle").addEventListener("click", e => {
 });
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-/** @type {any} */ (window).__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
+/** @type {any} */ (window).__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
+  EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
   limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
+  quota: () => ({ bars: playQuota, hasDone: !!onQuotaDone }),   // v1.10.0：会话播放额度
+  previewState: () => ({ on: S.preview, name: previewRef ? previewRef.name : null, isDraft: previewRef === draft }),
   onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
   clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
 </script>

@@ -58,7 +58,7 @@ beatsight/
 
 ### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块）
 
-`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → Stats → KeepAlive → init**
+`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → Stats → Ear → KeepAlive → init**
 
 ```
 Store（持久化/状态创建/迁移/导入导出/练习记录）
@@ -66,7 +66,8 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
 → Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）
-→ Stats（练习统计汇总 + overlay）→ KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
+→ Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）
+→ KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 
 - **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
@@ -234,6 +235,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 | `beatsight.m2` | **旧键，只读的迁移来源** | 仅首次升级时读取；拆分成功且写后校验通过后**删除**（v1.3.1），备份存 `beatsight.m2.bak` |
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
 | `beatsight.log` | `{v:1, sessions:[{t, sec, bpm, name}]}` 练习记录（v1.4） | 停止一次 ≥30s 的有效练习时**立即写**（冷键语义，不进防抖）；环形截断最近 400 场 |
+| `beatsight.ear` | `{v:1, total, right, best}` 听辨训练战绩（v1.10.0） | 答完一题**立即写**（冷键同语义）；`right` 用 `min(total,…)` 夹住，防脏数据算出 >100% 正确率 |
 | `beatsight.theme` | `"classic"` / `"obs"` 主题偏好（v1.7.0） | 点顶栏「主题」切换时立即写；**独立键**，不进上面的冷热拆分，写失败静默降级 |
 
 - 为什么要拆：原实现把预设库塞进同一个 key，而 `persist()` 挂在几乎每个交互上。实测 10/100/500 个预设 = 14 KB / 143 KB / **715 KB**，每次点击都要全量 `JSON.stringify` + 同步写盘 → 5–20ms 主线程阻塞，**正好会触发音频掉音**（与 P1-3 同源）
@@ -249,6 +251,29 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 - **三选一 pill**：`setPressed(selector, pred)` 让 `.active` 与 `aria-pressed` 同源更新
 - **动效降级**：`prefers-reduced-motion` 下 CSS 关掉装饰性动画（`.dot.live` / `.cell.next` / `.trail-glow`），JS 侧 `REDUCE_MOTION` 把弹跳球的挤压/拉伸置为无形变。**只降形变、保留位置**——球在哪儿、何时落地是核心功能提示，不能去掉
 - **焦点陷阱**：弹窗/编辑器打开时给 `.main` / `.topbar` 置 `inert`，关闭时还原焦点。用 `Modal.refreshInert()` **重算**而不是置位/复位——编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器对应的 inert 一起摘掉
+
+### 3.8 听辨训练（v1.10.0）
+
+模块 `Ear`（排在 `Stats` 之后、`KeepAlive` 之前）。玩法：取一个易混组 → 自动播 2 小节 →
+从 3 张**只给记谱不给名字**的候选里选 → 即时反馈 + 战绩。
+
+- **候选不给名字**是刻意的，别"顺手加上"：「附点布鲁斯」这个名字直接把答案写在脸上，
+  给了名字就变成「读名字猜」，练不到耳朵。作答后才揭示
+- **出题质量在数据表里，不在代码里**：随机抽内置预设会出送分题与无解题，所以手写 `EAR_GROUPS`
+  易混组（同组候选听觉上真的容易混）。组表完整性由 T49 断言——表写错是开发期错误，
+  要在测试里立刻炸，而不是让用户遇到一道没有正确答案的题
+- **候选顺序打乱、答案位置随机**：否则用户会学出「总选 A」的歪策略（T49b 用 300 次随机断言分布）
+- **复用主引擎的试听通道**：`previewRef` 泛化（见 §3.1 的 `curPattern`），
+  编辑器指向草稿、听辨指向本题答案。**绝不另起一套调度**——双时钟、双热键、双缓存三份麻烦
+- **自动停靠「会话播放额度」**：共享状态 `playQuota` + `onQuotaDone`，与练习量共用同一个
+  `onLimitPulse` 钩子（见 §3.2）。**额度分支优先于练习量**——试听不是练习，那段声音不该
+  消耗用户的练习量额度、也不该弹「已练满 N 小节」。T49g 把练习量设成「1 小节就停」来钉这条
+- **「正在播放」从状态推导**（`S.playing || playQuota > 0`），不设独立标志位：
+  标志位一旦有一条停播路径没走到，按钮就永远卡在「播放中…」且禁用
+- **作答即停播**，并顺手作废额度（否则下一题会带着旧额度「放一半就停」）
+- 战绩存冷键 `beatsight.ear`；`right` 用 `min(total, …)` 夹住，防脏数据算出 >100% 正确率
+- 接入既有那套 overlay 纪律：`Modal.refreshInert()` 纳入 `earOverlay`；键盘处理器加 `Ear` 分支
+  （overlay 打开时空格不误触播放、Escape 关闭）——`Controls → Ear` 已在 R3 白名单登记，理由同 `Controls → Stats`
 
 ## 4. 设计规范（视觉 tokens）
 
@@ -364,10 +389,10 @@ tests/screenshot.sh 800 1800     # 窄屏
    - ~~v1.8.2 仓库卫生收口 + 文档对齐~~ **已完成**：删 `.trae-html-share-packages/`（224 KB 入库 zip 垃圾）、
      `.gitignore` 补规则、README 功能表补齐 v1.6.4–v1.8、装 pre-commit 钩子（`core.hooksPath` 是本机配置，**clone 后各自跑一次**）
    - ~~v1.9.0 扫弦方向标注 ↑↓ + 练习量控制~~ **已完成**：见 CHANGELOG v1.9.0
-   - **待办（已定，未开工）**：v1.10.0 听辨训练（节奏默写）——泛化 `curPattern()` 的试听机制复用同一音频引擎，
-     手写「易混组」出题，新模块 `Ear` 需登记进 `tools/check-module-order.js`；
-     可选类型检查闸门（JSDoc + `tsc --checkJs --noEmit`，照 ESLint 的"可选加强项、缺依赖自动跳过"模式接入）。
-     **详见 [PLAN-v1.9.md](PLAN-v1.9.md)**
+   - ~~v1.10.0 听辨训练（节奏默写）~~ **已完成**：新模块 `Ear` + 手写易混组 + 会话播放额度自动停 +
+     冷键 `beatsight.ear`；前置的 `previewRef` 泛化作为纯重构单独提交。见 §3.8 与 CHANGELOG v1.10.0
+   - ~~可选类型检查闸门~~ **已完成（v1.9.1）**：见 §2 仓库树与 §5 自验清单
+   - **方案与施工记录**：[PLAN-v1.9.md](PLAN-v1.9.md)（含落地过程与方案的偏差、反向验证清单）
    - **更远（P3，需先出设计探针）**：曲式编排（多段落串联）。会动音频核心的"严格 4 小节循环"模型
      （`schedBar` 0..3 + 单锚点 `loopStart`），牵连 T12/T15/T20/T21 一大批相位不变量的前提，**不与小改动混批**
 
