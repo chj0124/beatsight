@@ -34,7 +34,9 @@ beatsight/
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
-│   ├── check-eslint.js         # 代码卫生 · 加强（可选）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
+│   ├── check-eslint.js         # 代码卫生 · 加强（**可选**）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
+│   ├── check-tsc.js            # 类型检查 · 加强（**可选**）：tsc 包装（同上；见 §5 与 tools/tsconfig.typecheck.json）
+│   ├── tsconfig.typecheck.json # 类型闸门的规则集与取舍说明（为什么 checkJs 开着、严格开关关着）
 │   ├── check-dom-ids.js        # DOM 引用完整性：$("x") 不得悬空
 │   ├── check-coverage.js       # 行覆盖率（V8 内置采集，双阈值）
 │   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对 / 字符串掩码 / 声明表）
@@ -285,7 +287,8 @@ getComputedStyle）。
 
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
-node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → ESLint(可选) → DOM 引用 → 全量测试 → 看门狗 → 覆盖率
+node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → ESLint(可选) → 类型检查(可选)
+                                 #       → DOM 引用 → 全量测试 → 看门狗 → 覆盖率（共 9 步）
                                  # 约 6 秒；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
 node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 2 秒）
 
@@ -301,6 +304,11 @@ node tools/check-eslint.js       # 代码卫生 · 加强（可选）：ESLint 1
                                  # 装了 node_modules 才跑，缺依赖自动跳过并 exit 0（绝不堵部署）
                                  # 它负责抽内联脚本并把 ESLint 行号映射回 index.html；规则集见 eslint.config.js
                                  # 反向验证：注入 if (x = y) 应报 no-cond-assign 且行号正确（check-lint 看不见这条）
+node tools/check-tsc.js          # 类型检查 · 加强（可选）：tsc 的 checkJs，把关**模块接口与数据模型**
+                                 # 与 ESLint 同一套降级口径（装了才跑、缺依赖标 ⊘ 跳过）
+                                 # 配置与"为什么不开 noImplicitAny"见 tools/tsconfig.typecheck.json
+                                 # 反向验证：注入 S.limit.noSuchField / S.trainr.on / S.sig="four"
+                                 #   应分别报 TS2339 / TS2551(Did you mean 'trainer'?) / TS2322，行号准确
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
 node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
@@ -308,6 +316,19 @@ node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97
 tests/screenshot.sh              # 桌面 1440×1150
 tests/screenshot.sh 800 1800     # 窄屏
 ```
+
+**可选闸门的"跳过"必须是 ⊘、不能是 ✓**（v1.9.1 修的一个假绿）：`check-all.js` 只认退出码，
+而这两步按设计就是缺依赖时 `exit 0`——于是"没装依赖所以没查"与"查了且通过"在汇总里长得一模一样。
+现在 `STEPS` 里给可选步骤声明 `optional: "<依赖路径>"`，`check-all.js` 自己检查依赖、
+缺了就直接标 ⊘ 且**不调用**；汇总多打印一行「实跑 N/M 项」。
+**别把它改回只看退出码**——那等于让汇总里的 ✓ 撒谎，而它能撒谎的话，其余 ✓ 就都不值得信了。
+
+**类型闸门管什么、不管什么**（别期待它管 DOM）：它把关的是**模块接口与数据模型**——
+`Store.zzzNoSuchMethod()` 这类接口拼错、`S.limit.noSuchField` / `S.trainr.on` 这类字段拼错、
+类型不符的赋值，实测都能拦住（含 "Did you mean" 提示）。它**不管** DOM 元素类型：
+`$` 故意标成返回 `any`（30+ 种元素类型逐一标注的维护成本远高于收益，而"id 是否存在"
+已由 `check-dom-ids.js` 保证）；事件里读写当前元素统一走 `evEl(ev)` / `evTarget(ev)`
+两个有文档的助手，`querySelectorAll` 的结果过 `asEl(el)`。这三个助手就是这套取舍的全部落点。
 
 **为什么不用 GitHub Actions**：改由本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少。而它在两条发布渠道上的强制力不同：**Cloudflare 的构建命令里串了全量检查**（不通过即不部署），等于在部署路径上装了硬闸门；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住，WorkBuddy 不会。
 
@@ -353,7 +374,7 @@ tests/screenshot.sh 800 1800     # 窄屏
 ### 已埋的技术债 / 后续要盯
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
-- ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。**仍未做类型检查**（无 TS/JSDoc 类型校验）
+- ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（第 5 步，现共 9 步）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**仍未做的是严格模式**：`noImplicitAny` 打开会立刻得到 **759 条**报错（"隐式 any"占 55%），修它等于给全文件补 JSDoc/类型，是一次独立的重构。开启路径：先给模块导出的接口与数据模型逐个补标注，每补完一块就把对应开关打开一点，别一次性开
 - **检查只在 Cloudflare 那条路上是强制的，别处全靠自觉**：Cloudflare 构建时必定跑一次全量检查，失败即不部署（想上线上不去）；但**提交时**和 **WorkBuddy 手动发布时**没有任何机制强制跑 `tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
 - 覆盖率唯一未覆盖的 3 行是 `scheduler` 的 `MAX_SCHED_STEPS` 硬上限分支（实测 99.8%）——单轮调度要处理超过 512 个音符才会触发，属**刻意保留的防御性代码**，不为了数字去造人工状态点亮它

@@ -759,7 +759,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "1.9.0";
+const VERSION = "1.9.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -992,6 +992,20 @@ const Store = (() => {
     ? (LIMIT_PRESETS.find(p => p.mode === saved.limit.mode && p.n === +saved.limit.n) || LIMIT_OFF)
     : LIMIT_OFF;
   const limitInit = { mode: limitSaved.mode, n: limitSaved.n };
+  /* 状态对象显式标注类型（v1.10.0 类型闸门）：S 是全应用最中心的数据结构，
+     不标注的话在 noImplicitAny:false 下它的属性全是隐式 any，属性名拼错也查不出来。
+     实测这条标注把「S.limit.noSuchField」这类笔误从逃过变成拦住。
+     注意：这是**类型声明**，不是运行时校验——脏值的钳制仍由上面那些 numOr/clamp01 负责 */
+  /** @type {{
+   *   bpm: number, vol: number, accentVol: number, mute: boolean, sig: number,
+   *   sel: { type: string, idx?: number, id?: string },
+   *   swing: number, accentGrp: Record<string, number>, timbre: string,
+   *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
+   *   bounce: boolean, keepAwake: boolean, migHint: boolean,
+   *   plan: null | { baseStart: number, baseTarget: number, day: number },
+   *   limit: { mode: string, n: number },
+   *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last: any }
+   * }} */
   const S = {
     bpm: numOr(saved.bpm, 96),
     vol: clamp01(numOr(saved.vol, 0.8)),
@@ -1236,7 +1250,30 @@ const S = Store.S;
 const customs = Store.customs;
 
 /* ================= 共享状态（跨模块可变状态集中声明于此） ================= */
+/* 取 DOM 元素（v1.10.0 补类型标注）。返回类型刻意是 any：
+   本应用用同一个 $ 取 30+ 种元素（input / button / div / span / range…），逐一标注每处调用点
+   的元素类型，维护成本远高于收益；而「id 到底存不存在」这个真正会出错的性质，已由
+   tools/check-dom-ids.js 保证（$("x") 不得悬空）。类型闸门把关的是**模块接口与数据模型**，
+   不是 DOM 元素类型——这条边界写在 tools/check-tsc.js 的文件头。 */
+/** @type {(id: string) => any} */
 const $ = id => document.getElementById(id);
+
+/* 事件处理器里读「当前元素 / 事件目标」（v1.10.0 类型闸门收口）：
+   DOM 类型上 EventTarget 并没有 blur / value / files / closest，而本项目的监听器一律绑在元素上、
+   处理器体内直接读写这些成员，是全文件统一的写法（40+ 处）。与其在每处各写一次 cast，
+   不如在这里声明一次约定。返回 any 而非 Element，因为调用点还要读 input 独有的 .value / .files。
+   这不是「放行一切」：事件对象本身拼错（e.targt）或事件类型对不上照样报错，
+   被放行的只有「这个元素上有哪些成员」这一层。 */
+/** @type {(ev: Event) => any} */
+const evEl = ev => ev.currentTarget;
+/** @type {(ev: Event) => any} */
+const evTarget = ev => ev.target;
+/* 把 querySelectorAll 拿到的 Element 当 HTMLElement 用（v1.10.0 类型闸门）：
+   静态类型上 querySelectorAll 给的是 Element，而 .inert / .disabled 在 lib.dom 上属
+   HTMLElement / 表单元素。本项目这两处运行时拿到的确实是 HTMLElement，故收口一次并注明。
+   与 $ 的区别：这里明确是「已知为 HTMLElement 的集合元素」，不是「随便什么元素」 */
+/** @type {(el: Element) => any} */
+const asEl = el => el;
 
 /* ---- 共享 UI 同步助手（v1.3.0，审计 P2-11）----
    放在共享区而不是某个模块里：Trainer 与 Controls 都要同步开关的视觉与语义，
@@ -1279,7 +1316,7 @@ function buildPillRow(host, items, opt){
     b.textContent = opt.text(it, i);
     b.setAttribute("aria-label", opt.label(it, i));
     if (opt.key) b.dataset[opt.key] = String(it);
-    b.addEventListener("click", ev => { ev.currentTarget.blur(); opt.onPick(it, i, ev); });
+    b.addEventListener("click", ev => { evEl(ev).blur(); opt.onPick(it, i, ev); });
     host.appendChild(b);
     return b;
   });
@@ -1364,7 +1401,7 @@ const Modal = (() => {
   function refreshInert(){
     const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
       || ($("statsOverlay") && $("statsOverlay").classList.contains("open"));   // v1.4：统计 overlay 同套焦点陷阱
-    document.querySelectorAll(".main, .topbar").forEach(el => { el.inert = !!off; });
+    document.querySelectorAll(".main, .topbar").forEach(el => { asEl(el).inert = !!off; });
   }
   function uiModal(msg, opts){
     opts = opts || {};
@@ -1475,7 +1512,7 @@ const Viz = (() => {
         for (let s = 0; s < markN; s++){
           const lb = document.createElement("div");
           lb.className = "ruler-lab" + (s === 0 ? " down" : "");
-          lb.textContent = s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]);
+          lb.textContent = String(s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]));
           lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
           row.appendChild(lb);
           rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
@@ -2030,7 +2067,7 @@ const Audio = (() => {
   }
   function ensureCtx(){
     if (!ctx){
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx = new (window.AudioContext || /** @type {any} */ (window).webkitAudioContext)();
       masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
       watchCtx();
@@ -2339,7 +2376,7 @@ const Trainer = (() => {
     $("planInfo").textContent = `7 天计划 · Day ${d}/7 · 今日 ${planDayStart(d)}→${planDayTarget(d)} BPM`;
   }
   $("planGenBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.plan = { baseStart: S.trainer.start, baseTarget: S.trainer.target, day: 1 };
     refreshPlanUI();
     refreshResume();
@@ -2347,7 +2384,7 @@ const Trainer = (() => {
     announce("已生成 7 天计划");
   });
   $("planStartBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if (!S.plan || S.playing) return;
     const d = S.plan.day;
     S.trainer.on = true;
@@ -2362,7 +2399,7 @@ const Trainer = (() => {
     Controls.start();
   });
   $("planEndBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if (!S.plan) return;
     Modal.uiConfirm(`退出 7 天计划？当前进度（Day ${S.plan.day}/7）将被清除。`, () => {
       S.plan = null;
@@ -2425,7 +2462,7 @@ const Trainer = (() => {
     return false;
   }
   $("trainerToggle").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.trainer.on = !S.trainer.on;
     setToggle("trainerToggle", S.trainer.on);
     $("trainerPanel").hidden = !S.trainer.on;
@@ -2437,11 +2474,11 @@ const Trainer = (() => {
   /* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
   function bindTrParam(id, key, min, max){
     $(id).addEventListener("change", e => {
-      let v = Math.round(+e.target.value);
+      let v = Math.round(+evTarget(e).value);
       if (!isFinite(v)) v = S.trainer[key];
       v = Math.min(max, Math.max(min, v));
       S.trainer[key] = v;
-      e.target.value = v;
+      evTarget(e).value = v;
       if (S.trainer.target <= S.trainer.start){          // 目标被改到不高于起始 → 抬回起始 +1
         S.trainer.target = Math.min(240, S.trainer.start + 1);
         $("trTarget").value = S.trainer.target;
@@ -2458,7 +2495,7 @@ const Trainer = (() => {
   /* 上次训练一键继续（v1.4）：未完成 → 本次从练到的级别起步（把 start 推进到 reached——
      这就是爬坡训练的语义：起点跟着进度走，而不是每轮都从头）；已完成 → 原配置再来一轮 */
   $("trResumeBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     const last = S.trainer.last;
     if (!last || S.playing) return;
     if (!S.trainer.on){
@@ -2584,7 +2621,7 @@ const Controls = (() => {
     syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
     Store.persist();
   }
-  $("playBtn").addEventListener("click", e => { e.currentTarget.blur(); S.playing ? stop() : start(); });
+  $("playBtn").addEventListener("click", e => { evEl(e).blur(); S.playing ? stop() : start(); });
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
     if (Stats.isOpen()){                          // v1.4：统计 overlay 打开时键盘归它管（空格不误触播放）
@@ -2653,11 +2690,11 @@ const Controls = (() => {
       if (v && v.trim() !== "") setBpm(+v || S.bpm);
     });
   });
-  $("bpmSlider").addEventListener("input", e => setBpm(+e.target.value, false));
+  $("bpmSlider").addEventListener("input", e => setBpm(+evTarget(e).value, false));
   $("bpmSlider").addEventListener("change", Store.persist);
 
   $("tapBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     const now = performance.now();
     if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
     taps.push(now); if (taps.length > 5) taps.shift();
@@ -2682,7 +2719,7 @@ const Controls = (() => {
     refreshAccRow();
   }
   $("sigRow").addEventListener("click", e => {
-    const btn = e.target.closest("[data-sig]");
+    const btn = evTarget(e).closest("[data-sig]");
     if (!btn) return;
     btn.blur();
     setSig(+btn.dataset.sig);
@@ -2698,7 +2735,7 @@ const Controls = (() => {
     if (save !== false) Store.persist();
   }
   $("swingRow").addEventListener("click", e => {
-    const btn = e.target.closest("[data-swing]");
+    const btn = evTarget(e).closest("[data-swing]");
     if (!btn) return;
     btn.blur();
     setSwing(+btn.dataset.swing);
@@ -2731,19 +2768,19 @@ const Controls = (() => {
     if (save !== false) Store.persist();
   }
   $("timbreRow").addEventListener("click", e => {
-    const btn = e.target.closest("[data-timbre]");
+    const btn = evTarget(e).closest("[data-timbre]");
     if (!btn) return;
     btn.blur();
     setTimbre(btn.dataset.timbre);
   });
 
-  $("volMaster").addEventListener("input", e => { S.vol = e.target.value / 100; $("volMasterPct").textContent = e.target.value + "%"; });
-  $("volAccent").addEventListener("input", e => { S.accentVol = e.target.value / 100; $("volAccentPct").textContent = e.target.value + "%"; });
+  $("volMaster").addEventListener("input", e => { S.vol = evTarget(e).value / 100; $("volMasterPct").textContent = evTarget(e).value + "%"; });
+  $("volAccent").addEventListener("input", e => { S.accentVol = evTarget(e).value / 100; $("volAccentPct").textContent = evTarget(e).value + "%"; });
   $("volMaster").addEventListener("change", Store.persist);
   $("volAccent").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
 
   $("muteToggle").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.mute = !S.mute;
     setToggle("muteToggle", S.mute);
     Viz.syncMuteBars();
@@ -2752,7 +2789,7 @@ const Controls = (() => {
 
   /* 弹跳球开关（v1.2）：只控显隐，onset 表照常维护（重新打开时球立即就位，无需暖机） */
   $("bounceToggle").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.bounce = !S.bounce;
     setToggle("bounceToggle", S.bounce);
     Store.persist();
@@ -2760,17 +2797,17 @@ const Controls = (() => {
 
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
   $("countInToggle").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.countIn.on = !S.countIn.on;
     setToggle("countInToggle", S.countIn.on);
     $("countInBeatsWrap").hidden = !S.countIn.on;
     Store.persist();
   });
   $("countInBeats").addEventListener("change", e => {
-    let v = Math.round(+e.target.value);
+    let v = Math.round(+evTarget(e).value);
     if (!isFinite(v)) v = S.countIn.beats;
     v = Math.min(8, Math.max(1, v));
-    S.countIn.beats = v; e.target.value = v;
+    S.countIn.beats = v; evTarget(e).value = v;
     Store.persist();
   });
 
@@ -2809,9 +2846,11 @@ const Controls = (() => {
   }
   /* Audio 每个调度周期调用（经共享状态区的 onLimitPulse 钩子注入）。
      返回 true = 已停播，Audio 本次调度立即退出。
+     名字刻意不叫 onLimitPulse —— 那会遮蔽共享状态区里的同名钩子变量（ESLint no-shadow 会报，
+     而遮蔽恰恰会让「到底谁在调谁」变得难读）。这里叫 limitPulse，导出时再挂到那个名字上。
      文案与读屏播报沿用「训练完成」的同一套做法：先 stop() 再覆盖状态栏——stop() 内部会统一
      写「已停止」并播报，所以覆盖必须发生在它之后 */
-  function onLimitPulse(){
+  function limitPulse(){
     if (limitHit()){
       const L = S.limit;
       const txt = L.mode === "bars"
@@ -2832,7 +2871,7 @@ const Controls = (() => {
   syncLimitProg();
 
   return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI,
-    onLimitPulse, syncLimitUI, syncLimitProg };
+    onLimitPulse: limitPulse, syncLimitUI, syncLimitProg };
 })();
 
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
@@ -2917,7 +2956,7 @@ const Presets = (() => {
     } else note.hidden = true;
   }
   $("fallbackBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     const selP = selectedPreset();
     if (!selP) return;
     Controls.setSig(selP.meter);
@@ -2972,16 +3011,16 @@ const Presets = (() => {
 
   /* ---- 预设导入导出 UI ---- */
   $("exportBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     Store.exportPresets();
   });
   $("importBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     $("importFile").click();
   });
   $("importFile").addEventListener("change", e => {
-    const f = e.target.files && e.target.files[0];
-    e.target.value = "";                      // 允许连续导入同一文件
+    const f = evTarget(e).files && evTarget(e).files[0];
+    evTarget(e).value = "";                      // 允许连续导入同一文件
     if (!f) return;
     if (f.size > CONFIG.importMaxBytes){      // 快速失败：超大文件不进 readAsText
       Modal.uiAlert("导入失败：文件过大（超过 2 MB），不像是预设备份。");
@@ -3008,7 +3047,7 @@ const Presets = (() => {
     el.hidden = false;
   }
   $("migHintBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     S.migHint = true;
     $("migHint").hidden = true;
     Store.persist();
@@ -3121,7 +3160,7 @@ const Editor = (() => {
     const dirUsable = !!(selStep && !selStep.rest);
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
-    document.querySelectorAll("#dirRow .pill").forEach(p => { p.disabled = !dirUsable; });
+    document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     $("dirHint").textContent = !selStep
       ? "先在上方选中一个音符"
       : (selStep.rest ? "休止符不承载扫弦动作" : "已选中「" + Viz.stepLabel(selStep) + "」");
@@ -3161,11 +3200,11 @@ const Editor = (() => {
     edSel = null;
     render();
   }
-  $("undoBtn").addEventListener("click", e => { e.currentTarget.blur(); undo(); });
+  $("undoBtn").addEventListener("click", e => { evEl(e).blur(); undo(); });
   /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
      保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈 */
   $("dirRow").addEventListener("click", e => {
-    const btn = e.target.closest("[data-dir]");
+    const btn = evTarget(e).closest("[data-dir]");
     if (!btn) return;
     btn.blur();
     if (!edSel) return;
@@ -3178,7 +3217,7 @@ const Editor = (() => {
     render();
   });
   $("delStepBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if (!edSel) return;
     pushUndo();
     draft.bars[edSel.bar].splice(edSel.idx, 1);
@@ -3186,7 +3225,7 @@ const Editor = (() => {
     render();
   });
   $("copyBarBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     Modal.uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
       pushUndo();
       const src = draft.bars[editBar].map(s => ({...s}));
@@ -3196,7 +3235,7 @@ const Editor = (() => {
     }, {okText:"复制"});
   });
   $("clearBarBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     Modal.uiConfirm("清空当前小节的全部音符？", () => {
       pushUndo();
       draft.bars[editBar] = [];
@@ -3205,7 +3244,7 @@ const Editor = (() => {
     }, {danger:true, okText:"清空"});
   });
   $("auditionBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if (S.preview){                   // 停止试听
       stopAudition();
     } else {
@@ -3218,7 +3257,7 @@ const Editor = (() => {
     }
   });
   $("savePresetBtn").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if ($("savePresetBtn").disabled) return;
     const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
     const id = "c" + Date.now();
@@ -3233,8 +3272,8 @@ const Editor = (() => {
     close();
     Presets.refreshAfterPatternChange();
   });
-  $("editBtn").addEventListener("click", e => { e.currentTarget.blur(); open(); });
-  $("editorBack").addEventListener("click", e => { e.currentTarget.blur(); tryClose(); });
+  $("editBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
+  $("editorBack").addEventListener("click", e => { evEl(e).blur(); tryClose(); });
 
   return { open, tryClose, undo, draft: () => draft };
 })();
@@ -3332,11 +3371,11 @@ const Stats = (() => {
   }
   const isOpen = () => $("statsOverlay").classList.contains("open");
 
-  $("statsBtn").addEventListener("click", e => { e.currentTarget.blur(); open(); });
-  $("statsClose").addEventListener("click", e => { e.currentTarget.blur(); close(); });
+  $("statsBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
+  $("statsClose").addEventListener("click", e => { evEl(e).blur(); close(); });
   /* 近 7/30 天视图切换（v1.6）：会话内状态，不持久化——每次打开默认回 7 天 */
   $("statsRangeRow").addEventListener("click", e => {
-    const btn = e.target.closest("[data-range]");
+    const btn = evTarget(e).closest("[data-range]");
     if (!btn) return;
     btn.blur();
     rangeDays = +btn.dataset.range;
@@ -3345,7 +3384,7 @@ const Stats = (() => {
   });
   /* 导出练习记录（v1.6）：与预设导出同一个下载通道 */
   $("statsExport").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     if (!Store.logSessions.length){ Modal.uiAlert("还没有练习记录可导出。"); return; }
     const blob = new Blob([Store.serializeLog()], { type: "application/json" });
     const a = document.createElement("a");
@@ -3356,7 +3395,7 @@ const Stats = (() => {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   $("statsClear").addEventListener("click", e => {
-    e.currentTarget.blur();
+    evEl(e).blur();
     Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {
       Store.clearLog();
       render();
@@ -3484,7 +3523,7 @@ Trainer.updateProg();                // 内含 refreshResume()：有训练历史
 
 /* 后台保活开关（v1.4）：扳动即刻生效（播放中打开立即申请，关闭立即释放） */
 $("keepAwakeToggle").addEventListener("click", e => {
-  e.currentTarget.blur();
+  evEl(e).blur();
   S.keepAwake = !S.keepAwake;
   setToggle("keepAwakeToggle", S.keepAwake);
   KeepAlive.sync();
@@ -3524,14 +3563,14 @@ let themeNow = "classic";
 try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}
 applyTheme(themeNow);
 $("themeToggle").addEventListener("click", e => {
-  e.currentTarget.blur();
+  evEl(e).blur();
   themeNow = themeNow === "obs" ? "classic" : "obs";
   applyTheme(themeNow);
   try{ localStorage.setItem(THEME_KEY, themeNow); }catch(e2){}
 });
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-window.__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
+/** @type {any} */ (window).__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定

@@ -1,5 +1,78 @@
 # 变更记录
 
+## v1.9.1 · 工程：接入类型检查闸门（tsc）+ 修掉 check-all 汇总里的一个假绿（2026-09-15）
+
+无新功能、无行为变化。`index.html` 的行为改动为零（下面列的源码改动都是**类型层面**的等价改写），
+版本号照例 bump。
+
+### 一、修掉一个假绿：可选步骤的"跳过"过去显示成 ✓
+
+`check-all.js` 只认退出码，而 ESLint 那步按设计就是"缺依赖时 exit 0"——于是**没装依赖所以没查**
+和**查了且通过**在汇总里长得一模一样，都打 ✓。实测：本仓库从 v1.6.5 起就没装过 `node_modules`
+（v1.6.5 的 CHANGELOG 说"接入 ESLint"，实际从未跑起来），一年多来汇总一直写着"全部通过 8/8"，
+而真正跑过的只有 7 项。
+
+- 修法：`STEPS` 里给可选步骤加 `optional: "<依赖路径>"`，本文件**自己**检查依赖是否存在；
+  缺了就直接标 `⊘ 未安装依赖，未执行` 且**不调用**那个步骤。汇总新增「实跑 N/M 项」与一行说明。
+  现在"到底查了几项"是一眼可见的，不用去猜（这比多修一个 bug 重要——它决定其余所有 ✓ 可不可信）
+
+### 二、接入类型检查闸门（tsc，可选加强项）
+
+落实 DEVELOPMENT.md §6 里挂了很久的那条债：*仍未做类型检查（无 TS/JSDoc 类型校验）*。
+
+- 新增 `tools/check-tsc.js`（包装器）+ `tools/tsconfig.typecheck.json`（规则集与取舍说明），
+  按 ESLint 那套完全相同的模式接入：**装了才跑，没装标 ⊘ 跳过，绝不用"没装开发依赖"堵住上线**。
+  新 devDependency：`typescript`。产物不变，上站仍只有 4 个文件
+- **包装器要做三件事**（与 check-eslint 同构）：① 用 `scan-util.extractScript` 抠出内联脚本
+  （tsc 读不了 .html）；② 写成临时 `inline.js` 并把 tsconfig 复制到同目录跑 `tsc -p`；
+  ③ 把 tsc 的行号加回 `index.html` 的行偏移，打印 `index.html:<行>:<列>` + caret 框
+- **为什么在抽取文件末尾补一行 `export {};`**：补上之后 tsc 把它当**模块**而不是全局脚本。
+  这不是为消错而变换代码，而是更贴近真实作用域——浏览器里 `<script>` 顶层的 `const Audio`
+  只在脚本内遮蔽全局，并不与 lib.dom 的 `declare var Audio` 冲突。按全局脚本检查时 tsc 会报
+  `Cannot redeclare block-scoped variable 'Audio'`，并把后面 4 处 `Audio.scheduler` 解析成
+  **HTMLAudioElement 的属性**（5 条与真实代码无关的假报错）。补这一行后 5 条自然消失，
+  其余检查**一条不松**。追加在文件末尾，前面所有行号分毫不动，映射表因此仍然成立
+- **严格开关刻意关闭，并写明理由**：`noImplicitAny` / `strictNullChecks` 关了。打开会立刻得到
+  **759 条**报错（TS7005/7006/7034 即"隐式 any"占 55%），修它等于给全文件补类型，
+  是独立的重构，不该混在"加一道闸门"里做。当前口径：**在不开隐式 any 的前提下把能查的都查出来**
+
+### 三、闸门落地时抓到的真问题（全部已修）
+
+| 问题 | 条数 | 处置 |
+|---|---|---|
+| `e.currentTarget.blur()` / `e.target.value` / `.files` / `.closest()` —— DOM 类型上 `EventTarget` 没有这些成员 | 46 | 在共享状态区加两个**有文档的**取值助手 `evEl(ev)` / `evTarget(ev)`，批量收口；不再在 46 处各写一次 cast |
+| `$("x").value/.disabled/.min/.max` —— `$` 返回 `HTMLElement` | 22 | 给 `$` 加 `@type {(id:string)=>any}`。逐一标注 30+ 种元素类型维护成本远高于收益，而"id 是否存在"这个真会出错的性质已由 `check-dom-ids.js` 保证 |
+| `querySelectorAll` 结果的 `.inert` / `.disabled` —— 静态类型是 `Element` | 2 | 加 `asEl(el)` 收口一次并注明"已知为 HTMLElement 的集合元素" |
+| `lb.textContent = <number>` | 1 | 补 `String(...)`（运行时行为本来就靠隐式转换，改成显式） |
+| `window.webkitAudioContext` / `window.__beat` 未声明 | 2 | 就地 cast 并注明 |
+| **`onLimitPulse` 名字遮蔽**（Controls 内的函数与共享状态区的同名钩子变量重名） | 1 | **这是 ESLint `no-shadow` 抓到的**（不是我读代码发现的）：内层函数改名 `limitPulse`，导出时再挂到那个名字上。装一次 `npm install` 立刻收获——正好印证"可选闸门不是摆设" |
+
+### 反向验证（新闸门必须证明它抓得住东西）
+
+往 `Store` 的返回语句前注入 6 类错误，逐条确认被拦且**行号准确**：
+
+| 注入 | 结果 |
+|---|---|
+| `S.bpm.toFixedxxxxxxxx()` | ✗ TS2339 `Property 'toFixedxxxxxxxx' does not exist on type 'number'` |
+| `S.limit.noSuchField` | ✗ TS2339 并列出该对象的真实成员 |
+| `S.trainr.on`（拼错字段名） | ✗ TS2551 `Did you mean 'trainer'?` |
+| `S.countIn.beatz = 3` | ✗ TS2551 `Did you mean 'beats'?` |
+| `S.sig = "four"`（类型不符） | ✗ TS2322 `Type 'string' is not assignable to type 'number'` |
+| `Store.zzzNoSuchMethod()` | ✗ TS2448 使用先于声明 |
+
+为此给 `S` 补了显式类型标注（12 行 `@type`）——**这是闸门真正长牙的地方**：
+不标注时 `S` 的属性在 `noImplicitAny:false` 下全是隐式 any，`S.limit.noSuchField` 这种笔误
+能大摇大摆通过（实测过）。`S` 是全应用最中心的数据结构，值得这一份标注。
+
+### 自验
+
+- `node tools/check-all.js` 全绿 **9/9**（新增第 5 步类型检查）· 行覆盖率 **99.9%** · 用时 5.8s
+- 两条可选闸门实测都在真跑：ESLint 0.35s、tsc 0.17s
+- **降级路径实测**：临时移走 `node_modules` → 两步均显示 `⊘ 未安装依赖，未执行`，
+  汇总改为「全部通过 · 实跑 7/9 项」，退出码仍为 0（不堵部署）
+- `index.html` 的 46 处事件取值改写与其余 5 处类型修正是**等价改写**，788 条断言（含 T31/T35
+  那批直接触发事件处理器的接线用例）全部照过
+
 ## v1.9.0 · 功能：扫弦方向标注 ↑↓ + 练习量控制（2026-09-15）
 
 两个新功能，都在**不碰音频时间轴**的前提下完成：一个补记谱层，一个管练习回合。

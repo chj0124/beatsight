@@ -5,9 +5,11 @@
   "scripts": {
     "verify": "node tools/check-all.js",
     "verify:quick": "node tools/check-all.js --quick",
-    "lint:eslint": "node tools/check-eslint.js"
+    "lint:eslint": "node tools/check-eslint.js",
+    "check:types": "node tools/check-tsc.js"
   },
   "devDependencies": {
-    "eslint": "^10.10.0"
+    "eslint": "^10.10.0",
+    "typescript": "^7.0.2"
   }
 }
