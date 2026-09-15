@@ -30,10 +30,10 @@ beatsight/
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
-│   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
+│   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
 │   ├── check-dom-ids.js        # DOM 引用完整性：$("x") 不得悬空
 │   ├── check-coverage.js       # 行覆盖率（V8 内置采集，双阈值）
-│   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对）
+│   └── scan-util.js            # 上面几个共用的扫描工具（剥注释 / 括号配对 / 字符串掩码 / 声明表）
 └── docs/
     ├── prd.html          # 原始产品需求文档 v1.0
     └── DEVELOPMENT.md    # 本文档
@@ -223,7 +223,8 @@ FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
 node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
                                  # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
-node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars
+node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
+                                 # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
 node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
@@ -269,7 +270,7 @@ tests/screenshot.sh 800 1800     # 窄屏
 - **检查全靠自觉**：移除 CI 后没有任何机制强制跑 `tools/check-all.js`。上线前那一步要真的跑它，别跳
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
 - 覆盖率唯一未覆盖的 3 行是 `scheduler` 的 `MAX_SCHED_STEPS` 硬上限分支（实测 99.8%）——单轮调度要处理超过 512 个音符才会触发，属**刻意保留的防御性代码**，不为了数字去造人工状态点亮它
-- `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效；T30 覆盖了公式本身，但没单独构造触顶场景。改动行高/内边距时要留意
+- `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移
 
 ### 已明确不处理（不再跟进）
 - **Firefox 圆钮样式**（2026-09-11 决定忽略）：本项目只写了 `::-webkit-slider-thumb`，没有 `::-moz-range-thumb`，理论上 FF 下圆钮可能与刻度略错位。本机无 Firefox、未实测，用户已决定不处理 → **不再列为待办，也不要主动盘它**（不必提、不必测、不必补）。仅当日后真有人在 Firefox 下反馈刻度错位时，再回来补这两条伪元素规则

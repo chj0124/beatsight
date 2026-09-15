@@ -3,7 +3,7 @@
    为什么不是 ESLint：本仓库的硬约束是**运行时零依赖**（index.html 必须能 file:// 直开），
    CI 里的工具也刻意保持零依赖。实测本沙箱 `npx --yes eslint@9` 直接被 SIGTERM（离线拉不到包），
    而把一个**无法验证**的 lint 步骤塞进 CI 比没有 lint 更糟——它要么常年红，要么被人关掉。
-   所以这里用「正则 + 逐行剥注释 + 花括号作用域」实现四条规则，覆盖面小于 ESLint，但可验证、不飘。
+   所以这里用「正则 + 逐行剥注释 + 花括号作用域」实现五条规则，覆盖面小于 ESLint，但可验证、不飘。
    若日后要更全的规则集，正路是加 package.json + eslint devDependency（只进 CI 不进产物）。
 
    规则（口径都写在这里，改口径请同步改注释）：
@@ -15,10 +15,25 @@
                              · `for (const x of …)` 的头部声明跳过（它的作用域是循环本身，
                                两个并列 for 各自声明 x 不是重复声明）
      no-unused-vars  （warn） 顶层声明后整个文件再未出现的标识符
-   退出码 0 = 无 error（warn 会打印但不拦），1 = 有 error。 */
+     no-undef        （error）对**未声明**标识符赋值
+                     （warn） 对**未声明**标识符发起裸调用
+                             · 判定底座是「全文件扁平声明表」：const/let/var（含解构）、
+                               function/class 名、函数与箭头形参、catch 形参全收进一个 Set，
+                               **不做作用域分层**。取舍是明确的：只会漏报（某作用域内的名字
+                               在别处被当成全局名，我们放过），不会误报（不依赖作用域模型，
+                               所以不会出现「两个兄弟块各自 build() 被判重复」那类冤枉）。
+                             · 字符串字面量已**等长掩码**，`"foo("` 不会被当成调用。
+                             · 宿主/语言全局走白名单（GLOBALS）——白名单是**穷举**的，只在引入新的
+                               宿主 API 时才追加，避免它退化成"什么都放行"的垃圾桶。
+                             · 裸调用只认「名字紧跟 `(`」这一种形态，对象字面量方法简写（`{ foo(){} }`）
+                               这类写法没覆盖，属**已知漏报**（本项目不用方法简写）。 */
+
 "use strict";
+
 const path = require("path");
-const { extractScript, stripComments, lineStarts } = require("./scan-util");
+const {
+  extractScript, stripComments, lineStarts, maskStrings, collectDeclarations, lineOf,
+} = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const SRC = extractScript(HTML);
@@ -139,6 +154,63 @@ const declsFiltered = decls.filter(d => !/^\s*for\s*\(/.test(clean[d.line - 1] |
   }
 }
 
+/* no-undef：未声明标识符（窄规则）
+   —— 只查两类"一定是标识符使用"的形态，正则不会误伤别的语法：
+        a) 赋值目标 `name =`   → error：写的是隐式全局，本项目脚本头部 "use strict"，
+                                 运行时直接 ReferenceError，板上钉钉是 bug
+        b) 裸调用   `name(`     → warn ：可能是漏加白名单的宿主 API 或方法简写，
+                                 留一条人工确认的口子，不拦 CI
+   底座：全文件扁平声明表（collectDeclarations）+ 宿主全局白名单 + 字符串等长掩码。
+   取舍见文件头：只漏报、不误报。 */
+const GLOBALS = new Set([
+  /* 语言内建 */
+  "String", "Number", "Boolean", "Object", "Array", "Function", "Symbol", "BigInt",
+  "Math", "JSON", "Date", "RegExp", "Error", "TypeError", "RangeError", "SyntaxError",
+  "EvalError", "ReferenceError", "URIError", "AggregateError",
+  "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Promise", "Proxy", "Reflect",
+  "parseInt", "parseFloat", "isNaN", "isFinite", "encodeURIComponent", "decodeURIComponent",
+  "encodeURI", "decodeURI", "Infinity", "NaN", "undefined", "globalThis", "arguments",
+  /* 定时器 / 帧调度 / 微任务 */
+  "setTimeout", "clearTimeout", "setInterval", "clearInterval",
+  "requestAnimationFrame", "cancelAnimationFrame", "queueMicrotask", "requestIdleCallback",
+  /* 浏览器宿主 */
+  "window", "self", "document", "navigator", "location", "history",
+  "localStorage", "sessionStorage", "indexedDB", "console", "performance",
+  "URL", "URLSearchParams", "Blob", "File", "FileReader", "FormData", "Headers",
+  "fetch", "atob", "btoa", "matchMedia", "AudioContext", "webkitAudioContext",
+  "OffscreenCanvas", "Notification", "crypto", "customElements", "alert", "confirm",
+]);
+
+{
+  const masked = maskStrings(flat);
+  const declared = new Set(collectDeclarations(masked).map(d => d.name));
+  const known = n => declared.has(n) || GLOBALS.has(n);
+  const KW = new Set([
+    "if", "for", "while", "switch", "catch", "return", "typeof", "void", "delete",
+    "new", "in", "of", "do", "else", "case", "function", "with", "yield", "await",
+    "throw", "instanceof", "import", "export", "default", "extends", "as", "from",
+    "get", "set", "static", "async", "class", "super", "this", "true", "false", "null",
+  ]);
+
+  /* 赋值目标 `name =`（排除 `==` / `=>`） */
+  const seenAsg = new Set();
+  for (const m of masked.matchAll(/(?<![A-Za-z0-9_$.])([A-Za-z_$][\w$]*)\s*=(?![=>])/g)){
+    const n = m[1];
+    if (KW.has(n) || known(n) || seenAsg.has(n)) continue;
+    seenAsg.add(n);
+    err(lineOf(masked, m.index), "no-undef", `对未声明标识符赋值（隐式全局）：${n}`);
+  }
+
+  /* 裸调用 `name(` */
+  const seenCall = new Set();
+  for (const m of masked.matchAll(/(?<![A-Za-z0-9_$.])([A-Za-z_$][\w$]*)\s*\(/g)){
+    const n = m[1];
+    if (KW.has(n) || known(n) || seenCall.has(n)) continue;
+    seenCall.add(n);
+    warn(lineOf(masked, m.index), "no-undef", `未声明标识符被调用：${n}（宿主全局？请加入 GLOBALS 白名单）`);
+  }
+}
+
 /* ---- 输出 ---- */
 console.log("══════════════════════════════════════════════════════════");
 console.log("  代码卫生检查 · 零依赖 lint（" + path.relative(process.cwd(), HTML) + "）");
@@ -153,7 +225,7 @@ if (errors.length){
   console.log("\n  ✗ " + errors.length + " 条错误：");
   errors.forEach(e => console.log(`      L${e.ln} [${e.rule}] ${e.msg}`));
 } else {
-  console.log("\n  ✓ 四条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars）");
+  console.log("\n  ✓ 五条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）");
 }
 console.log("──────────────────────────────────────────────────────────");
 console.log(errors.length ? "  代码卫生检查：失败" : "  代码卫生检查：通过");

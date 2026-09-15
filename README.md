@@ -64,8 +64,9 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 
 | 文档 | 说明 |
 |---|---|
-| [docs/prd.html](docs/prd.html) | 产品需求文档 v1.0（原始 PRD） |
+| [docs/prd.html](docs/prd.html) | 产品需求文档 v1.0（原始 PRD，**已归档**：现行功能以 CHANGELOG 为准） |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发交接文档：架构、数据模型、自验方法、M3 任务拆解 |
+| [docs/PLAN-v1.5.md](docs/PLAN-v1.5.md) | 后续改进与继续开发方案（v1.4.1→v1.5+，**已归档**：P0–P3 全部落地） |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
 
 ## 设计稿

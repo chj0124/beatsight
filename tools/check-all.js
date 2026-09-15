@@ -9,7 +9,7 @@
 
      1) 语法校验          提取内联脚本编译（不执行）
      2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
-     3) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars）
+     3) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）
      4) DOM 引用完整性    $("x") 不得悬空
      5) 自动化测试        FULL_SCAN=1 全量组合扫描
      6) 死循环看门狗      每用例独立子进程 + 超时强杀
