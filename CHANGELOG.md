@@ -1,5 +1,33 @@
 # 变更记录
 
+## v1.6.6 · 工程：补最小 wrangler.jsonc，修复 Cloudflare 构建一直失败（2026-09-15）
+
+无新功能、无行为变化——`index.html` 只动了版本号一行（`const VERSION` 1.6.5 → 1.6.6，遵守
+v1.6.4 起的发版规则）。这次修的是**部署链路**，不是页面本身。
+
+### 修复
+
+- **现象**：Cloudflare 侧 `Workers Builds: beatsight` 每次构建都是红色失败（起止时间同一秒的
+  瞬时失败），线上长期停在 v1.6.0。回查 GitHub check-runs 发现**仓库里 4 个提交全部失败**，
+  连 v1.6.5 之前的 `1cb60fc` 也不例外——所以与 ESLint / v1.6.5 那批改动无关，是纯配置问题
+- **真因**：本项目在 Cloudflare 上是 Workers **静态资源**（Static Assets）托管，而 Workers 的
+  assets **必须**由 Wrangler 配置文件声明资源目录（`assets.directory`）。此前仓库刻意不放任何
+  Cloudflare 配置文件（`docs/DEVELOPMENT.md` §2 原文"零构建文件"），构建里的部署命令解析不到
+  要发布的文件，当场失败 → 每次构建都红 → 生产环境一直停留在最后一次手工部署的版本
+- **修复**：新增最小 `wrangler.jsonc`，只声明 `name` / `compatibility_date` /
+  `assets.directory = ./dist`。**构建命令 / 部署命令 / 根目录仍全部在 Dashboard 里配**，仓库里
+  依旧没有 `_headers` / `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管、Worker
+  不参与请求）
+- **同步修正文档**：`docs/DEVELOPMENT.md` §2 仓库树补一行 `wrangler.jsonc`，并把"仓库里也不放
+  任何 Cloudflare 配置文件……保持'零构建文件'"改写成上面这条实际约束
+- **产物仍不入库**：`dist/` 由 Cloudflare 构建命令现场生成（只拷 4 个产物），`.gitignore` 里
+  早已忽略，`file://` 直开与"上站仍只有 4 个文件"的性质不变
+
+### 注意（Dashboard 侧，仓库改不了）
+
+- 「部署命令」若是 `npx wrangler versions upload`，它只会**上传一个版本、并不提升到生产**（那是
+  非生产分支的默认值）；生产分支应为 `npx wrangler deploy`。此项只能在 Cloudflare Dashboard 改
+
 ## v1.6.5 · 工程：接入 ESLint 本地自验（可选加强项）（2026-09-15）
 
 无新功能、无行为变化——`index.html` 只动了版本号一行（`const VERSION` 1.6.4 → 1.6.5，遵守

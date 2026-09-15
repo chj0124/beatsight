@@ -1,0 +1,12 @@
+/* Cloudflare Workers 静态资源（Static Assets）唯一一份入库配置。
+   Workers 的 assets 必须由 Wrangler 配置文件声明资源目录，否则 Cloudflare 构建里的
+   `npx wrangler versions upload` 会在"解析配置"这一步直接失败（线上一直是旧版就是这么来的）。
+   这里只声明"发布什么"；构建命令 / 部署命令 / 根目录仍在 Cloudflare Dashboard 里配。
+   dist/ 由构建命令现场生成（只拷 4 个产物），本地不产出、已 gitignore。 */
+{
+  "name": "beatsight",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./dist"
+  }
+}

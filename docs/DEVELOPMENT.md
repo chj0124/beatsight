@@ -23,6 +23,7 @@ beatsight/
 ├── LICENSE               # MIT
 ├── package.json          # 开发期自验工具链（唯一 devDependency：eslint；只跑本地，不进产物）
 ├── eslint.config.js      # ESLint flat config（本地自验专用，规则集与取舍写在文件头）
+├── wrangler.jsonc        # Cloudflare Workers 静态资源目录声明（唯一入库的 Cloudflare 配置；构建/部署命令仍在 Dashboard）
 ├── tests/
 │   ├── run.js            # 主测试套件（node tests/run.js，零依赖）
 │   ├── hang-guard.js     # 死循环看门狗：每用例独立子进程 + 超时强杀
@@ -47,7 +48,7 @@ beatsight/
 - **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。构建命令里串了 `node tools/check-all.js` 全量检查，**不通过就不部署**，所以这条路上线上始终是最新代码
 - **② WorkBuddy，手动**：https://beatsight-34873.app.workbuddy.host/ （v1.4 起；旧链接 beatsight-68235 已随换绑废弃）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
 
-项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。仓库里也不放任何 Cloudflare 配置文件（无 `wrangler.*` / `_headers` / `_redirects` / `functions/`），配置全在 Dashboard，保持"零构建文件"。
+项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败——**构建命令 / 部署命令 / 根目录仍全部在 Dashboard 里配**，仓库里没有 `_headers` / `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。
 
 ## 3. 核心架构
 
