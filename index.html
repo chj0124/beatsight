@@ -1353,12 +1353,18 @@ const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当�
    注意：本函数不做拍号匹配——拍号不匹配统一由 curPattern 落到 basicPattern */
 const selectedPreset = () => S.sel.type === "custom" ? customs.find(c => c.id === S.sel.id) : BUILTINS[S.sel.idx];
 const curPattern = () => {
-  if (S.preview && draft) return draft;
+  if (S.preview && previewRef) return previewRef;
   const p = selectedPreset();
   if (p && p.meter === S.sig) return p;
   return basicPattern(S.sig);
 };
-let draft = null;                    // 编辑器草稿（Editor 写入，curPattern 试听时读取）
+/* 试听对象（v1.10.0 泛化）：原先这里写死 `S.preview && draft`，只服务编辑器试听。
+   听辨训练要试听的是「候选题」而不是编辑器草稿，于是把「试听谁」抽成一个引用。
+   **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
+   （那会立刻产生双时钟、双热键、双缓存三份麻烦）。
+   S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
+let previewRef = null;
+let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
 /* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
    时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
@@ -1380,6 +1386,14 @@ function limitHit(){
   if (L.mode === "bars") return limitBars >= L.n;
   return limitT0 !== null && ctx !== null && (ctx.currentTime - limitT0) >= L.n * 60;
 }
+/* 会话播放额度（v1.10.0，听辨训练用）：>0 时本次播放只放这么多小节，到点自动停。
+   只作用于本次播放，**不持久化、不进 S.limit**——练习量是用户设置，试听额度是程序的临时约束。
+   刻意让它与练习量共用同一套「到点停」机制（同一个注入钩子 onLimitPulse），
+   而不是再写一条停播路径：多一条路径就要多处理一遍与变速训练器 / 挂起切换 /
+   后台重锚定 / 练习记录入账的交叠，而那几处的坑都踩过。
+   onQuotaDone 由听辨训练注入（额度用尽时更新它自己的界面）。 */
+let playQuota = 0;
+let onQuotaDone = null;
 /* 渲染帧异常恢复钩子（v1.3.0）：由装配层（初始化段）注入。
    为什么是钩子而不是直接写 Controls.stop()：paintFrame 是**每帧热路径**，而 Controls 声明在
    Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
@@ -2595,6 +2609,10 @@ const Controls = (() => {
   function stop(){
     S.playing = false;
     ciLeft = 0; ciBeats = 0;              // 清预备拍会话状态
+    /* 会话播放额度一并作废（v1.10.0）：不清的话，中途手动停一次，
+       下次普通播放会带着上一轮的额度"放两小节就停"——那是最难查的那类残留 bug。
+       听辨训练那条路径是「先清零再 stop」，所以不受这行影响 */
+    playQuota = 0;
     clearInterval(timer);
     cancelAnimationFrame(rafId);
     /* 练习记录（v1.4）：有效练习（≥30s 且非编辑器试听）自动入账到 beatsight.log。
@@ -2851,6 +2869,17 @@ const Controls = (() => {
      文案与读屏播报沿用「训练完成」的同一套做法：先 stop() 再覆盖状态栏——stop() 内部会统一
      写「已停止」并播报，所以覆盖必须发生在它之后 */
   function limitPulse(){
+    /* ① 会话播放额度（v1.10.0 听辨训练）：到点静默停 + 回调对方自己的界面。
+       刻意不走下面「练习量到点」那套文案——试听不是练习，不该弹「已练满 N 小节」 */
+    if (playQuota > 0){
+      if (limitBars < playQuota){ syncLimitProg(); return false; }
+      playQuota = 0;                            // 先清零再 stop：stop 可能重入
+      stop();
+      lastLimitProg = null;
+      syncLimitProg();
+      if (onQuotaDone) onQuotaDone();
+      return true;
+    }
     if (limitHit()){
       const L = S.limit;
       const txt = L.mode === "bars"
@@ -3081,6 +3110,7 @@ const Editor = (() => {
   function stopAudition(){
     Controls.stop();
     S.preview = false;
+    previewRef = null;                    // v1.10.0：试听对象一并摘掉（curPattern 靠它判断试听谁）
     if (prevSigBeforeAudition !== null){ Controls.setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
     Viz.buildViz();
     Presets.updateFallbackNote();
@@ -3251,6 +3281,7 @@ const Editor = (() => {
       prevSigBeforeAudition = S.sig;  // 试听结束还原主界面拍号
       Controls.setSig(draft.meter);
       S.preview = true;
+      previewRef = draft;             // v1.10.0：指出「试听谁」（编辑器是草稿，听辨训练是候选题）
       Viz.buildViz();
       Controls.start();
       $("auditionBtn").textContent = "停止试听";
