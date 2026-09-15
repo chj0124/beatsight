@@ -39,7 +39,12 @@ beatsight/
     └── DEVELOPMENT.md    # 本文档
 ```
 
-**没有 CI**：项目早期用过 GitHub Actions（`.github/workflows/`），后来全部移除——发布统一走 WorkBuddy（在线版：https://beatsight-34873.app.workbuddy.host/ ，v1.4 起；旧链接 beatsight-68235 已随换绑废弃），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。这样少一套要维护的流水线配置，检查内容一条不少。
+**发布渠道（两条，各司其职）**：
+
+- **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。构建命令里串了 `node tools/check-all.js` 全量检查，**不通过就不部署**，所以这条路上线上始终是最新代码
+- **② WorkBuddy，手动**：https://beatsight-34873.app.workbuddy.host/ （v1.4 起；旧链接 beatsight-68235 已随换绑废弃）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
+
+项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。仓库里也不放任何 Cloudflare 配置文件（无 `wrangler.*` / `_headers` / `_redirects` / `functions/`），配置全在 Dashboard，保持"零构建文件"。
 
 ## 3. 核心架构
 
@@ -233,7 +238,7 @@ tests/screenshot.sh              # 桌面 1440×1150
 tests/screenshot.sh 800 1800     # 窄屏
 ```
 
-**为什么没有 CI**：发布走 WorkBuddy，不再用 GitHub Actions。代价是"没人替你跑检查"，所以 `tools/check-all.js` 必须成为习惯——**改动后先跑它再看效果**，而不是等上线才发现。
+**为什么不用 GitHub Actions**：改由本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少。而它在两条发布渠道上的强制力不同：**Cloudflare 的构建命令里串了全量检查**（不通过即不部署），等于在部署路径上装了硬闸门；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住，WorkBuddy 不会。
 
 **发版规则（v1.6.4 起）：每次发版都 bump `index.html` 的 `const VERSION`**，功能版与工程版一视同仁（改这一行即可，`<title>` / 品牌区 / chip 三处显示由它派生）。此前 v1.6.1~v1.6.4 连发四版都没动它，线上徽章长期停在 `v1.6.0`——代码明明都上了线，看号的人却只能得出"部署没生效"的结论。版本号是用户唯一能看到的"这批代码是哪一版"的凭据，工程版跳过 bump 等于让这个凭据说谎。
 
@@ -269,7 +274,7 @@ tests/screenshot.sh 800 1800     # 窄屏
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
 - **静态检查仍是自写的窄规则集**：架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——**只用于本地自验，不进产物**（"零依赖"约束针对的是 `file://` 直开的运行时产物，不是开发工具）
-- **检查全靠自觉**：移除 CI 后没有任何机制强制跑 `tools/check-all.js`。上线前那一步要真的跑它，别跳
+- **检查只在 Cloudflare 那条路上是强制的，别处全靠自觉**：Cloudflare 构建时必定跑一次全量检查，失败即不部署（想上线上不去）；但**提交时**和 **WorkBuddy 手动发布时**没有任何机制强制跑 `tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
 - 覆盖率唯一未覆盖的 3 行是 `scheduler` 的 `MAX_SCHED_STEPS` 硬上限分支（实测 99.8%）——单轮调度要处理超过 512 个音符才会触发，属**刻意保留的防御性代码**，不为了数字去造人工状态点亮它
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移

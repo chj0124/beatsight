@@ -6,7 +6,9 @@
 
 ## 快速开始
 
-- **在线使用**：https://beatsight-34873.app.workbuddy.host/（支持 PWA 安装到桌面/主屏幕，装完可离线使用）
+- **在线使用 ①（Cloudflare，自动发布）**：https://beatsight.chenhuajian1995.workers.dev/ —— 仓库接 Git，**推 `main` 即自动构建部署，线上始终是最新代码**
+- **在线使用 ②（WorkBuddy，手动发布）**：https://beatsight-34873.app.workbuddy.host/ —— **只在你用 WorkBuddy 打开项目并发布时才更新，滞后是常态**，别拿它判断"线上是不是最新版"
+- 两条在线渠道都支持 PWA 安装到桌面/主屏幕，装完可离线使用
 - **本地使用**：双击 `index.html`（任意现代浏览器，手机浏览器同样适用）
 - ⚠️ **两种用法的数据不互通**：`file://` 与 `https://` 是不同 origin，`localStorage` 不共享。在本地攒的预设，打开在线版会看到空的——迁移请用「导出预设」/「导入预设」
 - 首次发声需先点击页面任意位置（浏览器音频策略），空格键开始/停止
@@ -18,13 +20,15 @@ node tools/check-all.js          # 约 6 秒：语法 → 架构约束 → 代�
 node tools/check-all.js --quick  # 约 2 秒，跳过 243 组全量组合扫描（改代码时用）
 ```
 
-零依赖、零安装，Node ≥ 22 直接跑。**这个项目没有 CI**——发布走 WorkBuddy，所以上面这条命令就是唯一的门禁，改完请真的跑一遍。
+零依赖、零安装，Node ≥ 22 直接跑。项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——它在两条发布渠道上的位置不一样：**Cloudflare** 的构建命令里串了全量检查，不通过就不部署（硬闸门）；**WorkBuddy** 是纯手动发布，没人拦你，只能发布前自己跑一遍。
 
 ```bash
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
 ```
 
-**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变）；③ 真实浏览器截图自验；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍，本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变）；③ 真实浏览器截图自验；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+
+**两条渠道怎么发**：① Cloudflare 不需要额外动作——推 `main` 就自动构建部署，这是常规发版；② WorkBuddy 要单独手动发（用 WorkBuddy 打开项目去发布），且因为它只在你用它的时候才更新，**落后几个版本是常态**。两个地址的数据也不互通（各自 `localStorage`，要迁移用「导出预设」）。
 
 ## 功能现状
 
@@ -42,7 +46,7 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 | v1.2.4 | 持久值健壮性收口：脏数据不再能杀死渲染层；渲染层进测试覆盖；LICENSE 落地 | ✅ 已完成 |
 | v1.3 | 持久化冷热分离（写盘阻塞消除）、后台播放自适应窗口、渲染几何缓存+增量重绘、无障碍分级改造、静态检查（架构约束/零依赖 lint/DOM 引用） | ✅ 已完成 |
 | v1.3.1 | 行覆盖率 99.8%（V8 内置采集）、弹跳球物理逐帧数值断言、交互接线层补测、旧键清理 | ✅ 已完成 |
-| v1.3.2 | 发布渠道收口：移除 GitHub Actions，发布统一走 WorkBuddy；`tools/check-all.js` 一条命令跑完全部检查 | ✅ 已完成 |
+| v1.3.2 | 发布渠道收口：移除 GitHub Actions，发布改走 WorkBuddy（v1.6.4 起为双渠道：Cloudflare 自动 + WorkBuddy 手动，见上）；`tools/check-all.js` 一条命令跑完全部检查 | ✅ 已完成 |
 | v1.4 | 练习闭环（≥30s 自动入账 + 统计 overlay：本周时长/连续天数/速度纪录/累计场次 + 近 7 天条图）、PWA 离线安装、后台保活开关（wakeLock + 静音音频兜底）、上次训练一键继续 | ✅ 已完成 |
 | v1.4.1 | 修：木鱼/鼓组响度不足——滤波噪声路径补 makeup gain（木鱼 ×14 / 军鼓 ×5 / 踩镲 ×2.5，振荡器路径不变） | ✅ 已完成（真人试听校准待定） |
 | v1.5 | 7 天爬升训练计划：生成 7 段排程、今日卡一键开练、完成才推进/缺练顺延、Day 7 收官 | ✅ 已完成 |
