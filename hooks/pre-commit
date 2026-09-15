@@ -1,0 +1,4 @@
+#!/bin/sh
+# BeatSight 提交前门禁：快速自验。跳过 T21 全组合扫描（那是发布前全量检查的事）。
+# 想绕过（不该是常态）：git commit --no-verify
+exec node tools/check-all.js --quick

@@ -1,5 +1,30 @@
 # 变更记录
 
+## v1.6.1 · 健壮性收口：SW 缓存加固 / 上下文重建清缓冲 / 导入护栏 / 提交门禁（2026-09-15）
+
+无新功能，一轮防御性修复与流程加固。
+
+### 修复
+
+- **Service Worker 缓存加固**（sw.js）：导航与静态请求都只缓存 `r.ok` 的同源 http(s) GET 成功响应——原先 500/404 错误页会入缓存污染离线回退，跨源与非 http(s) 请求（如 chrome-extension://）进 `cache.put` 产生 unhandled rejection 噪音
+- **AudioContext closed 重建路径补清 `noiseBuf`**：重建时 ctx/masterGain/时钟/onsetBuf 都重置了，唯独噪声 buffer 留着旧上下文的——木鱼/鼓组音色在重建后跨上下文复用 buffer 是否可用依赖浏览器实现（老 Safari 抛错），不再留这个侥幸
+- **Editor 两处 `innerHTML` 模板拼接改 `createElement`/`textContent`**（小节标签、音符块库项）：数据本是常量无注入风险，但文件头明令「禁止 innerHTML 拼接」，未登记的例外会被后来者照抄到用户字符串上。此后全文件 innerHTML 仅剩「清空」语义用法
+- **导入预设体量护栏**：文件 >2MB（change 事件按 `f.size` 快速失败，不进 readAsText）、文本 >2MB（进 JSON.parse 前拒绝）、条目 >500（进逐条校验前拒绝），均有可读错误文案；阈值入 CONFIG（`importMaxBytes`/`importMaxCount`）
+
+### 流程
+
+- **提交门禁**：新增 `tools/install-hooks.sh`——装一次即把 pre-commit 钩子指向仓库内 `hooks/`（core.hooksPath），每次提交自动跑 `check-all.js --quick`；本项目没有 CI，这一步把「全靠自觉」变成「默认拦截」。README 补发布前清单
+
+### 测试
+
+- 新增 T29c（4 断言）：wood 音色播放中 closed 重建后，送进 BufferSource 的噪声 buffer 必须出生自新上下文；反向验证：修复前该断言如期变红
+- 新增 T5b（3 断言）+ T5 补 3 断言：体量护栏的文本/条目/文件三条路径，拒绝后 customs 不受影响
+- 测试桩：`createBuffer` 产物标记出生上下文（`_ctx`），噪声 hit 记录 `bufCtx`
+
+### 自验
+
+`node tools/check-all.js` 全绿（653 断言）。
+
 ## v1.6.0 · 统计增强：导出 / 30 天视图 / 各节奏型速度纪录（2026-09-15）
 
 - **导出练习记录**：统计 overlay 新增「导出记录」——JSON 下载（`beatsight-log-YYYYMMDD.json`），与预设导出同一通道；空记录时给提示而不是下载空文件

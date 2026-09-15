@@ -20,6 +20,12 @@ node tools/check-all.js --quick  # 约 2 秒，跳过 243 组全量组合扫描�
 
 零依赖、零安装，Node ≥ 22 直接跑。**这个项目没有 CI**——发布走 WorkBuddy，所以上面这条命令就是唯一的门禁，改完请真的跑一遍。
 
+```bash
+sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
+```
+
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过；② 真实浏览器截图自验；③ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+
 ## 功能现状
 
 | 里程碑 | 内容 | 状态 |
