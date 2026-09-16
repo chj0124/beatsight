@@ -369,8 +369,10 @@ Editor 设 `previewRef = draft`，Ear 设 `previewRef = 候选题` —— **仍�
    开启路径写成"逐块补标注、逐块开开关"，别一次性开。**2026-09-16 已按这条路径推进第一步**：
    共 **8 项**严格检查实测 0 报错（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` /
    `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；
-   另加非家族的 `noImplicitReturns` / `noFallthroughCasesInSwitch`），已直接打开，
-   只剩 `noImplicitAny`（727）与 `strictNullChecks`（251）两笔债待逐块消化。
+   另加非家族的 `noImplicitReturns` / `noFallthroughCasesInSwitch`），已直接打开。
+   **2026-09-17 已推进第二步**：`noImplicitAny` 分两批补完全量前置 `@param` 与内联 `@type`
+   （727 → 282 → 0）后打开，strict 家族至此已开 **7 项**；只剩 `strictNullChecks` 一笔债
+   （重测 **96** 条：TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）待逐块消化。
 2. **`S` 的类型标注是闸门真正长牙的地方**：不标注时 `noImplicitAny:false` 让 `S` 的属性全是隐式 any，
    `S.limit.noSuchField` 这种笔误能大摇大摆通过（实测过）；补 12 行 `@type` 之后，
    `S.trainr.on` 会报 `Did you mean 'trainer'?`。**给中心数据结构标类型，比给全文件补类型划算得多。**

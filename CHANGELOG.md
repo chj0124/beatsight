@@ -102,8 +102,25 @@
   （TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）、`strictNullChecks` 打开 → **251 条**
   （TS2339 95 / TS18047 91 / TS2322 43 / TS2349 14 / TS2345 8）。`strictPropertyInitialization`
   依赖 `strictNullChecks`，故随之暂关（本文件无 class，本就无影响）
+  （**2026-09-17 更新**：`noImplicitAny` 一笔已清零并打开，`strictNullChecks` 重测为 **96** 条——见下条追加）
 - **口径纠偏**：旧文档写的"759 条"是 v1.9.1 当时的数字，现树重测为 **727**——四处引用
   （本文件 v1.9.1 条目 / DEVELOPMENT §6 / PLAN-v1.9 §7 / tsconfig 头）已一并改为 727 并注明来龙去脉
+- 扩面后 `node tools/check-all.js` 仍全绿 **10/10**（tsc 步 0 报错）
+
+### 追加 · noImplicitAny 闸门打开（2026-09-17）
+
+接上条追加的开启路径，落**第二步**。开工前那笔债由 **727 → 282 → 0** 分两批补完，全文件 0 报错，
+故在 `tools/tsconfig.typecheck.json` 把 `noImplicitAny` 由 `false` 改为 `true`（改的仍是
+`compilerOptions`，**不动 `index.html`、不动产物**，故不 bump `VERSION`）：
+
+- **补债方式**（全部是纯注释，零运行时改动）：给函数签名补前置 `@param` / `@returns`（清 TS7006），
+  给同名容器补 `@type {Record<string, any>}` / `Record<string, number>` 或收窄成 `"from"|"to"` 键联合
+  （清 TS7053），回调参数就地内联 `(/** @type {any} */ s) => …`；省略实参的位置一律写成可选形
+  `@param {any} [name]`（防止 TS2554 回归）
+- strict 家族至此已开 **7 项**（新收 `noImplicitAny`），只剩 `strictNullChecks` 一项
+- **该债重测**：`strictNullChecks` 打开 → **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 /
+  TS2769 3 / TS2531 1），比上条的 **251** 降下来——大量隐式 any 消失后，原先被 any 传染出来的
+  空值报错一并消失，剩 96 条才是真正要逐处判空的
 - 扩面后 `node tools/check-all.js` 仍全绿 **10/10**（tsc 步 0 报错）
 
 ## v2.0.1 · 功能：使用方法页 + 顶栏常驻入口（2026-09-16）
