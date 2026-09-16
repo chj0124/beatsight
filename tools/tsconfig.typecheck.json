@@ -4,15 +4,23 @@
      给 tools/check-tsc.js 用：那份脚本把 index.html 的内联脚本抽成 inline.js 放进临时目录，
      再把本文件复制到同一目录，然后跑 `tsc -p`。所以 include 写的是**跟本文件同级**的 inline.js。
 
-     为什么 checkJs 开着、三条严格开关却关着（这不是偷懒，是有意的边界）：
-       · 本项目是 2800+ 行既有 JS，几乎没有 JSDoc 标注。打开 noImplicitAny 会立刻得到
-         759 条报错（TS7005/7006/7034 占 55%，全是「隐式 any」），而修它等于给全文件补类型，
+     严格开关：**能开的都开了**（2026-09-16 扩面，TS 7.0.2 实测）。
+       · strict 家族一共 9 项，其中 6 项打开后 0 报错，故直接开：
+         strictFunctionTypes / strictBindCallApply / noImplicitThis / alwaysStrict /
+         useUnknownInCatchVariables / strictBuiltinIteratorReturn。
+       · 另加开两项**非 strict 家族**、但同样只在抓真错的严格检查：
+         noImplicitReturns / noFallthroughCasesInSwitch。
+       · 只剩两项关着，各自对应一笔**已量化**的既有债务（同一份实测）：
+         noImplicitAny 打开 → **727** 条（TS7006 291 / TS7005 337 / TS7034 74 / TS7053 24 / TS18047 1）；
+         strictNullChecks 打开 → **251** 条（TS2339 95 / TS18047 91 / TS2322 43 / TS2349 14 / TS2345 8）。
+         本项目是 5200+ 行既有 JS，几乎没有 JSDoc 标注，修它等于给全文件补类型，
          是一次独立的重构，不该混在「加一道闸门」里做。
-       · 所以当前定位是：**在不开隐式 any 的前提下，把能查的都查出来**。这条口径并非空转——
+       · strictPropertyInitialization 依赖 strictNullChecks，故随之暂关（本文件无 class，本就无影响）。
+       · 所以当前定位是：**在不开隐式 any / 空值检查的前提下，把能查的都查出来**。这条口径并非空转——
          落地时实测抓到：模块名 Audio 遮蔽 DOM 全局 Audio（TS 把 5 处调用解析成了
          HTMLAudioElement 的属性）、EventTarget 上取 .value/.files/.closest/.blur 的 46 处、
          textContent 被赋数字、window.webkitAudioContext 与 window.__beat 未声明。
-       · 严格开关的开启路径记在 docs/DEVELOPMENT.md §6「已埋的技术债」。
+       · 这两笔债务的开启路径与按模块的分布记在 docs/DEVELOPMENT.md §6「已埋的技术债」。
 
      lib 里必须有 DOM：本应用全部代码都直接操作 DOM，去掉 DOM 会得到完全无关的报错。
      types: [] 刻意留空——不引入 @types 包，闸门只依赖 typescript 本体（保持"装一个依赖就能跑"）。 */
@@ -24,9 +32,19 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "types": [],
+
     "strict": false,
     "noImplicitAny": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true,
+    "strictBuiltinIteratorReturn": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["inline.js"]
 }

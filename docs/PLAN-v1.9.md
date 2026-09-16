@@ -362,10 +362,15 @@ Editor 设 `previewRef = draft`，Ear 设 `previewRef = 候选题` —— **仍�
 方案里只写了「JSDoc + `tsc --checkJs --noEmit`，照 ESLint 模式接入」，实际落地比这句话具体得多，
 几条经验值得记下来：
 
-1. **严格模式没法一步到位**：`noImplicitAny` 打开立刻 759 条报错（"隐式 any"占 55%）。最终口径改为
+1. **严格模式没法一步到位**：`noImplicitAny` 打开立刻 727 条报错（v1.9.1 落笔时按当时口径记为 759；
+   2026-09-16 在 TS 7.0.2 + 现树下重测为 **727**，"隐式 any"占 55%）。当时最终口径改为
    「`checkJs` 开着、严格开关关着」——听起来很弱，但**并不空转**：落地时实测抓到 6 类真问题
    （46 处 `EventTarget` 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等）。
-   开启路径写成"逐块补标注、逐块开开关"，别一次性开。
+   开启路径写成"逐块补标注、逐块开开关"，别一次性开。**2026-09-16 已按这条路径推进第一步**：
+   共 **8 项**严格检查实测 0 报错（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` /
+   `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；
+   另加非家族的 `noImplicitReturns` / `noFallthroughCasesInSwitch`），已直接打开，
+   只剩 `noImplicitAny`（727）与 `strictNullChecks`（251）两笔债待逐块消化。
 2. **`S` 的类型标注是闸门真正长牙的地方**：不标注时 `noImplicitAny:false` 让 `S` 的属性全是隐式 any，
    `S.limit.noSuchField` 这种笔误能大摇大摆通过（实测过）；补 12 行 `@type` 之后，
    `S.trainr.on` 会报 `Did you mean 'trainer'?`。**给中心数据结构标类型，比给全文件补类型划算得多。**

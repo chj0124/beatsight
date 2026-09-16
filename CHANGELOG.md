@@ -89,6 +89,23 @@
     `MAX_SCHED_STEPS` 上限守卫）与**不可达分支**（`durName` 的 192/144/96/6 时值——内置预设与
     听辨组表都不产生这些时值，函数亦未导出），故不硬凑断言。
 
+### 追加 · 类型闸门严格开关扩面（2026-09-16）
+
+落实 DEVELOPMENT.md §6 那条债的**第一步**（原文的开启路径是"逐块补标注、逐块开开关，别一次性开"）。
+在 TS 7.0.2 下逐项实测，**8 项严格检查打开后 0 报错**，故一次直接开——改的是
+`tools/tsconfig.typecheck.json` 的 `compilerOptions`，**不动 `index.html`、不动产物**，故不 bump `VERSION`：
+
+- 新开 8 项：strict 家族 6 项（`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` /
+  `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`）+ 非家族但同样只抓真错的
+  2 项（`noImplicitReturns` / `noFallthroughCasesInSwitch`）
+- 仍关着两项，各对应一笔**已量化**的债（同一份实测）：`noImplicitAny` 打开 → **727 条**
+  （TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）、`strictNullChecks` 打开 → **251 条**
+  （TS2339 95 / TS18047 91 / TS2322 43 / TS2349 14 / TS2345 8）。`strictPropertyInitialization`
+  依赖 `strictNullChecks`，故随之暂关（本文件无 class，本就无影响）
+- **口径纠偏**：旧文档写的"759 条"是 v1.9.1 当时的数字，现树重测为 **727**——四处引用
+  （本文件 v1.9.1 条目 / DEVELOPMENT §6 / PLAN-v1.9 §7 / tsconfig 头）已一并改为 727 并注明来龙去脉
+- 扩面后 `node tools/check-all.js` 仍全绿 **10/10**（tsc 步 0 报错）
+
 ## v2.0.1 · 功能：使用方法页 + 顶栏常驻入口（2026-09-16）
 
 顶栏新增「**使用方法**」按钮（在状态 chip 之前），打开一页分层的说明：
@@ -377,9 +394,10 @@ WorkBuddy 渠道换绑到新链接 **https://beatsight-48543.app.workbuddy.host/
   `Cannot redeclare block-scoped variable 'Audio'`，并把后面 4 处 `Audio.scheduler` 解析成
   **HTMLAudioElement 的属性**（5 条与真实代码无关的假报错）。补这一行后 5 条自然消失，
   其余检查**一条不松**。追加在文件末尾，前面所有行号分毫不动，映射表因此仍然成立
-- **严格开关刻意关闭，并写明理由**：`noImplicitAny` / `strictNullChecks` 关了。打开会立刻得到
-  **759 条**报错（TS7005/7006/7034 即"隐式 any"占 55%），修它等于给全文件补类型，
-  是独立的重构，不该混在"加一道闸门"里做。当前口径：**在不开隐式 any 的前提下把能查的都查出来**
+- **严格开关当时刻意关闭，并写明理由**：`noImplicitAny` / `strictNullChecks` 关了。打开会立刻得到
+  **727 条**报错（`noImplicitAny` 一项；v1.9.1 落笔时按当时口径记为 759，2026-09-16 在 TS 7.0.2
+  + 现树下重测为 727。TS7005/7006/7034 即"隐式 any"占 55%），修它等于给全文件补类型，
+  是独立的重构，不该混在"加一道闸门"里做。当时口径：**在不开隐式 any 的前提下把能查的都查出来**
 
 ### 三、闸门落地时抓到的真问题（全部已修）
 
