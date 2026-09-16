@@ -1673,7 +1673,7 @@ const Store = (() => {
   /* 热数据：尾部防抖。高频交互（TAP 连点 / ±1 长按连发 / 滑杆）只落盘一次。
      载荷已 <1 KB，防抖省下的是重复的**同步写盘**而不是序列化 */
   function persist(){
-    clearTimeout(persistTimer);
+    if (persistTimer !== null) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => { persistTimer = null; persistHotNow(); }, CONFIG.persistDebounce);
   }
   /* 立即落盘（防抖窗口内未落盘的改动不能在切走/关闭时丢失） */
@@ -2155,7 +2155,8 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
      还留在背景上，键盘/读屏用户一开 overlay 就「丢焦点」。返回归还函数，close 时调用。 */
   /** @param {any} el */
   function trapFocus(el){
-    const back = asEl(document.activeElement);
+    const af = document.activeElement;
+    const back = af ? asEl(af) : null;
     try{ el.focus({ preventScroll: true }); }catch(e){}
     return () => { try{ if (back && back.focus) back.focus(); }catch(e){} };
   }
@@ -2420,17 +2421,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (sm) writes.push([sm, (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
-      const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
-      if (!first || !last) return;
+      const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1], el = g.el;
+      if (!first || !last || !el) return;
       const w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
-      writes.push([g.el, (w < g.el.scrollWidth + 8) ? "none" : ""]);
+      writes.push([el, (w < el.scrollWidth + 8) ? "none" : ""]);
     }));
     writes.forEach(([el, v]) => { el.style.display = v; });
   }
   /** @type {null | ReturnType<typeof setTimeout>} */
   let resizeTimer = null;
   window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
+    if (resizeTimer !== null) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       /* v1.3.0：播放中不重建 DOM（会打断动画），但几何确实变了 → 重采缓存即可，
          否则弹跳球/光晕会继续按旧尺寸画，表现为"球跑偏到行外" */
@@ -2448,7 +2449,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
-    if (!playheadEl) return;                   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
+    if (!playheadEl || !trailGlowEl) return;   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
     playheadEl.style.transform = "translateX(0px)";
     trailGlowEl.style.transform = "translateX(0px) scaleX(0)";
     parkBall();
@@ -2461,7 +2462,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
     }));
-    glEls.forEach(list => list.forEach(g => g.el.className = "cell-label group"));
+    glEls.forEach(list => list.forEach(g => { if (g.el) g.el.className = "cell-label group"; }));
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
     lastBeat = -1;
   }
@@ -2485,7 +2486,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 弹跳球（v1.2）：停止/待命姿态——停在第一小节第一个落点上方 */
   function parkBall(){
     const g0 = geoOf(0);
-    if (!ballEl || !g0) return;
+    if (!ballEl || !shadowEl || !g0) return;
     const x = g0.left - 8, y = g0.top - 20;
     ballEl.style.transform = `translate(${x}px, ${y}px)`;
     shadowEl.style.transform = `translate(${x - 1}px, ${y + 15}px)`;
@@ -2538,7 +2539,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
   /** @param {number} now @param {number} bar @param {number} tib */
   function paintBall(now, bar, tib){
-    if (!ballEl) return;
+    if (!ballEl || !shadowEl) return;
     if (!S.bounce){
       ballEl.style.display = "none"; shadowEl.style.display = "none";
       if (waitEl) waitEl.style.display = "none";
@@ -2649,10 +2650,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      （v1.2.4 修复：主体曾在自己内部 3 处各自续期并提前 return，一旦中途抛异常，
       下一帧再也没人注册 → 渲染循环永久死亡） */
   function paintFrameBody(){
+    /* 本地别名：ctx / playheadEl / trailGlowEl 均为模块级可空引用，
+       收窄跨不过函数调用边界，一次性取别名并守卫（严格空值闸门） */
+    const c = ctx, ph = playheadEl, tg = trailGlowEl;
+    if (!c || !ph || !tg) return;              // 未建上下文 / buildViz 尚未成功跑过：无可绘制之物
     /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
        跑道拍点随计数脉冲（跨小节时按 vizSig 折行） */
-    if (ciBeats > 0 && ctx.currentTime < loopStart){
-      const idx = Math.min(ciBeats - 1, Math.floor((ctx.currentTime - ciStart) / spb()));
+    if (ciBeats > 0 && c.currentTime < loopStart){
+      const idx = Math.min(ciBeats - 1, Math.floor((c.currentTime - ciStart) / spb()));
       if (idx !== lastCi){
         lastCi = idx;
         pulseZone(zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig]);
@@ -2665,12 +2670,12 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!isFinite(barTicks) || barTicks <= 0) return;
     /* 播放位置（v1.3.4）：优先取 onset 表（与弹跳球同源，播放中改 BPM 也不会与球分叉）；
        onset 表覆盖不到时（预备拍/刚启动）回落到时钟公式 */
-    const ap = audioPosAt(ctx.currentTime);
+    const ap = audioPosAt(c.currentTime);
     let bar, tib;
     if (ap){
       bar = ap.bar; tib = ap.tib;
     } else {
-      const posT = Math.max(0, ((ctx.currentTime - loopStart) / spb() * TPB) % (vizSig * LOOP_BARS * TPB));
+      const posT = Math.max(0, ((c.currentTime - loopStart) / spb() * TPB) % (vizSig * LOOP_BARS * TPB));
       /* v1.2.4 边界守卫：拍号或时钟任一异常就跳过本帧（等 buildViz / setBpm 把它修正回来再画）。
          绝不让 NaN 顺着 rowEls[NaN] 这种下标访问炸进 rAF 回调 —— 那是不可恢复的 */
       if (!isFinite(posT)) return;
@@ -2682,16 +2687,16 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
     const gHead = geoOf(bar);
     const headPx = gHead ? gHead.left + pw / 100 * gHead.width : 0;
-    playheadEl.style.transform = `translateX(${headPx.toFixed(1)}px)`;
+    ph.style.transform = `translateX(${headPx.toFixed(1)}px)`;
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
-    trailGlowEl.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
+    tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
       const g = geoOf(bar);
-      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px";
-        trailGlowEl.style.width = (g.width * 0.1) + "px"; }
+      if (g){ tg.style.top = g.top + "px"; tg.style.height = g.height + "px";
+        tg.style.width = (g.width * 0.1) + "px"; }
     }
     const steps = activePattern().bars[bar] || [];
     /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
@@ -2712,7 +2717,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
     fillEls[bar][active].style.transform = "scaleX(" + (t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)) + ")";
-    paintBall(ctx.currentTime, bar, tib);           // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
+    paintBall(c.currentTime, bar, tib);             // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
     if (bar !== lastBar || t16 !== lastT16){
@@ -2722,8 +2727,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
       /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
       if (sub && !REDUCE_MOTION){
         // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
-        const cellCls = sub.closest(".cell").classList;
-        const onWhite = cellCls.contains("played") || cellCls.contains("active");   // 正在弹的块也是白填充
+        const cellNode = sub.closest(".cell");
+        const onWhite = !!cellNode && (cellNode.classList.contains("played") || cellNode.classList.contains("active"));   // 正在弹的块也是白填充
         const fc = flashTheme();   // v1.7.0：闪烁配色随主题（观测台 = 电光蓝）
         const edge = fc.edge;
         const glow = fc.glow;
@@ -2807,6 +2812,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   /** @param {any} b @param {any} bar @param {any} active */
   function setGroup(b, bar, active){
     glEls[b].forEach(g => {
+      if (!g.el) return;
       g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
     });
   }
@@ -2863,8 +2869,8 @@ const Audio = (() => {
            （可能领先新时钟几分钟），表现为"在播放但一直不出声"。这里按新时钟重新起一节 */
         ctx = null; masterGain = null;
         noiseBuf = null;      // 旧上下文生成的噪声 buffer 一并废弃：跨上下文复用是否可用依赖浏览器实现
-        ensureCtx();
-        loopStart = ctx.currentTime + 0.08;
+        const c = ensureCtx();          // 重建后的上下文（同步返回，闭包内收窄才保得住）
+        loopStart = c.currentTime + 0.08;
         nextNoteTime = loopStart;
         schedBar = 0; schedStep = 0;
         onsetBuf.length = 0; onsetNext = null;
@@ -2873,6 +2879,9 @@ const Audio = (() => {
       }
     };
   }
+  /* 返回值即当前上下文：调用方（如 watchCtx 重建路径）拿本地常量用，
+     避免 TS 对模块级 let 的收窄在函数调用后被重置/固化导致误判 */
+  /** @returns {AudioContext} */
   function ensureCtx(){
     if (!ctx){
       ctx = new (window.AudioContext || /** @type {any} */ (window).webkitAudioContext)();
@@ -2881,6 +2890,7 @@ const Audio = (() => {
       watchCtx();
     }
     if (ctx.state === "suspended" || ctx.state === "interrupted") ctx.resume();
+    return ctx;
   }
   /* v0.9.1：iOS Safari 切后台会挂起 AudioContext，回前台且正在播放时兜底恢复
      （首次 pointerdown 的 once 解锁覆盖不到这个场景）
@@ -2898,7 +2908,9 @@ const Audio = (() => {
   let noiseBuf = null;
   function getNoiseBuf(){
     if (!noiseBuf){
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      const c = ctx;                       // 仅在有上下文时才会走到这里发声
+      if (!c) return null;
+      noiseBuf = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate);
       const data = noiseBuf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     }
@@ -2913,30 +2925,34 @@ const Audio = (() => {
   function noiseHit(t, filterType, freq, q, peak, decay, makeup){
     const mk = typeof makeup === "number" && isFinite(makeup) && makeup > 0 ? makeup : 1;
     const effPeak = Math.min(mk, Math.max(0, peak) * mk);
-    const src = ctx.createBufferSource();
+    const c = ctx, mg = masterGain;          // 仅在有上下文+总线时发声
+    if (!c || !mg) return;
+    const src = c.createBufferSource();
     src.buffer = getNoiseBuf();
-    const f = ctx.createBiquadFilter();
+    const f = c.createBiquadFilter();
     f.type = filterType; f.frequency.value = freq; f.Q.value = q;
-    const g = ctx.createGain();
+    const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(Math.max(effPeak, 0.0001), t + CONFIG.attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-    src.connect(f); f.connect(g); g.connect(masterGain);
+    src.connect(f); f.connect(g); g.connect(mg);
     src.start(t); src.stop(t + decay + 0.01);
   }
   /* 鼓组底鼓：正弦扫频 kickFrom→kickTo */
   /** @param {number} t @param {number} peak */
   function kickHit(t, peak){
     const D = CONFIG.timbres.drum;
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
+    const c = ctx, mg = masterGain;          // 仅在有上下文+总线时发声
+    if (!c || !mg) return;
+    const osc = c.createOscillator();
+    const g = c.createGain();
     osc.type = "sine";
     osc.frequency.setValueAtTime(D.kickFrom, t);
     osc.frequency.exponentialRampToValueAtTime(D.kickTo, t + D.kickSweep);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + D.kickDecay);
-    osc.connect(g); g.connect(masterGain);
+    osc.connect(g); g.connect(mg);
     osc.start(t); osc.stop(t + D.kickDecay + 0.01);
   }
   /** @param {number} t @param {number} stepStartBeat @param {any} isAccent */
@@ -2966,14 +2982,16 @@ const Audio = (() => {
       return;
     }
     /* click（默认）：振荡器短促敲击 */
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
+    const c = ctx, mg = masterGain;          // 仅在有上下文+总线时发声
+    if (!c || !mg) return;
+    const osc = c.createOscillator();
+    const g = c.createGain();
     osc.type = isAccent ? "triangle" : "sine";
     osc.frequency.value = isAccent ? CONFIG.freqAccent : (isBeat ? CONFIG.freqBeat : CONFIG.freqSub);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + CONFIG.decay);
-    osc.connect(g); g.connect(masterGain);
+    osc.connect(g); g.connect(mg);
     osc.start(t); osc.stop(t + CONFIG.decay + 0.01);
   }
   /* Swing 偏移（秒）：拍内后半的八分（起始位置 %48===24 且时值恰为 24t）发声延后
@@ -3077,9 +3095,11 @@ const Audio = (() => {
        为什么 min 模式也靠这里而不是小节边界：30BPM 的 7/4 一小节 16 秒，按边界判会晚停十几秒；
        25ms 周期判定则与 BPM/拍号完全无关 */
     if (onLimitPulse && onLimitPulse()) return;
+    const c = ctx;                            // 无上下文则不排音；取本地常量，闭包内 narrowing 才保得住
+    if (!c) return;
     /* 预备拍（v0.9.0）：loopStart 之前的时段调度 ciLeft 声计数（首声重拍、其余正拍）。
        独立路径：不走 swing、不受静音拍影响；正式音符的调度从 loopStart 才开始 */
-    while (ciLeft > 0 && ciNext < ctx.currentTime + win){
+    while (ciLeft > 0 && ciNext < c.currentTime + win){
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
       /* 预备拍数完这一刻才取练习量计时基准（v1.9.0）：预备拍是"准备"，不该吃掉练习量的额度。
@@ -3102,8 +3122,8 @@ const Audio = (() => {
        而此时相位早已没有意义（已经静音几十秒，用户也不在看画面）。直接以当前时刻起新的一轮
        最干净：不补发过去的音符（不叠响），也不额外静音。
        触发条件「落后超过一个窗口」保证正常情况下（后台窗口 1.2s > 1s 节流）永不触发。 */
-    if (ciLeft === 0 && win > 0 && nextNoteTime < ctx.currentTime - win){
-      nextNoteTime = ctx.currentTime + 0.05;
+    if (ciLeft === 0 && win > 0 && nextNoteTime < c.currentTime - win){
+      nextNoteTime = c.currentTime + 0.05;
       loopStart = nextNoteTime;                        // 时间轴与游标对齐 = 从循环起点重新开始
       schedBar = 0; schedStep = 0;
       onsetBuf.length = 0; onsetNext = null;           // 旧端点全部过期，弹跳球按新游标重建
@@ -3117,7 +3137,7 @@ const Audio = (() => {
        正常负载远低于此上限（240BPM 三十二分在 1.2s 后台窗口内约 38 个音符） */
     const MAX_SCHED_STEPS = 512;
     let guard = 0;
-    while (nextNoteTime < ctx.currentTime + win){
+    while (nextNoteTime < c.currentTime + win){
       if (++guard > MAX_SCHED_STEPS){
         try{ console.warn("[BeatSight] 调度器单轮迭代超限，已强制退出（疑似脏数据）"); }catch(e){}
         break;
@@ -3181,7 +3201,7 @@ const Audio = (() => {
     onsetNext = (S.playMode === "arrange") ? predictNextArrange() : predictNext(pat);
     /* 修剪：保留最近 1s 且至少 8 条已落地端点——接力制（v1.2.3）下球的「上一颗本行 onset」
        可能是一整小节之前（30BPM 的 7/4 小节长 16s），窗口太短会让球中途错误待命 */
-    while (onsetBuf.length > 8 && onsetBuf[0].t < ctx.currentTime - 1) onsetBuf.shift();
+    while (onsetBuf.length > 8 && onsetBuf[0].t < c.currentTime - 1) onsetBuf.shift();
   }
   /* 播放中「立即换型」（v1.1.1）：把当前调度相位从旧节奏型换算到新节奏型，做到点下即生效。
      做法：**不动时间轴**（loopStart 保持），只用「已真实经过的 tick 数」在新拍号的循环网格里
@@ -3254,18 +3274,18 @@ const Trainer = (() => {
      推进：只有「练到当天目标自动停止」（trDone）才算完成一天；中途手动停 → 当天不算，
      明天还练这一段（缺练顺延，不搞补卡）。Day 7 完成 → 计划清空 + 完成提示。
      手动改参数不触碰计划（以手动为准，计划只负责给「开始今日训练」铺参数）。 */
-  /** @param {number} i */
-  const planDayTarget = i => Math.min(S.plan.baseTarget,
-    S.plan.baseStart + Math.round((S.plan.baseTarget - S.plan.baseStart) / 7 * i));
-  /** @param {number} i */
-  const planDayStart = i => i <= 1 ? S.plan.baseStart : planDayTarget(i - 1);
+  /** @param {NonNullable<typeof S.plan>} p @param {number} i */
+  const planDayTarget = (p, i) => Math.min(p.baseTarget,
+    p.baseStart + Math.round((p.baseTarget - p.baseStart) / 7 * i));
+  /** @param {NonNullable<typeof S.plan>} p @param {number} i */
+  const planDayStart = (p, i) => i <= 1 ? p.baseStart : planDayTarget(p, i - 1);
   function refreshPlanUI(){
-    const has = !!S.plan;
-    $("planRow").hidden = !has;
-    $("planGenBtn").hidden = has;
-    if (!has) return;
-    const d = S.plan.day;
-    $("planInfo").textContent = `7 天计划 · Day ${d}/7 · 今日 ${planDayStart(d)}→${planDayTarget(d)} BPM`;
+    const p = S.plan;
+    $("planRow").hidden = !p;
+    $("planGenBtn").hidden = !!p;
+    if (!p) return;
+    const d = p.day;
+    $("planInfo").textContent = `7 天计划 · Day ${d}/7 · 今日 ${planDayStart(p, d)}→${planDayTarget(p, d)} BPM`;
   }
   $("planGenBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -3281,8 +3301,8 @@ const Trainer = (() => {
     const d = S.plan.day;
     S.trainer.on = true;
     setToggle("trainerToggle", true);
-    S.trainer.start = planDayStart(d);
-    S.trainer.target = planDayTarget(d);
+    S.trainer.start = planDayStart(S.plan, d);
+    S.trainer.target = planDayTarget(S.plan, d);
     $("trStart").value = S.trainer.start;
     $("trTarget").value = S.trainer.target;
     Controls.syncBpmUI();
@@ -3337,7 +3357,7 @@ const Trainer = (() => {
           announce(`7 天计划全部完成，已达到 ${target0} BPM`);
         } else {
           S.plan.day++;
-          $("statusText").textContent = `第 ${S.plan.day - 1} 天完成 · 明天 ${planDayStart(S.plan.day)}→${planDayTarget(S.plan.day)} BPM`;
+          $("statusText").textContent = `第 ${S.plan.day - 1} 天完成 · 明天 ${planDayStart(S.plan, S.plan.day)}→${planDayTarget(S.plan, S.plan.day)} BPM`;
           announce(`第 ${S.plan.day - 1} 天完成，明天继续`);
         }
         Store.persist();
@@ -3485,6 +3505,8 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
   }
   function start(){
     Audio.ensureCtx();
+    const c = ctx;                           // ensureCtx 保证此时必非 null；取本地常量，闭包里 narrowing 才保得住
+    if (!c) return;
     if (S.trainer.on){
       Trainer.reset();
       setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
@@ -3499,7 +3521,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     const arrProbs = arrangeStart();
     if (arrProbs) Modal.uiAlert("这首曲式暂时不能播放，已切换到预设模式：\n" + arrProbs.join("\n"));
     onsetBuf.length = 0; onsetNext = null;          // 弹跳球：清 onset 表，从第一拍重新建立
-    loopStart = ctx.currentTime + 0.08;
+    loopStart = c.currentTime + 0.08;
     /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
     if (S.countIn.on && S.countIn.beats > 0){
       ciBeats = S.countIn.beats; ciLeft = ciBeats;
@@ -3507,7 +3529,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       loopStart = ciStart + ciBeats * spb();
     } else { ciBeats = 0; ciLeft = 0; }
     nextNoteTime = loopStart;
-    sessStartT = ctx.currentTime;              // v1.4：练习计时起点（音频时钟，挂起不计时）
+    sessStartT = c.currentTime;                // v1.4：练习计时起点（音频时钟，挂起不计时）
     /* 练习量（v1.9.0）：每次开始都从零起算。min 模式的基准点分两种情形——
        无预备拍：就是本轮循环起点；有预备拍：先留 null，等预备拍数完那一刻再取
        （Audio 预备拍循环里赋值），这样「练 5 分钟」不会被预备拍的几拍偷走 */
@@ -3532,8 +3554,8 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
        下次普通播放会带着上一轮的额度"放两小节就停"——那是最难查的那类残留 bug。
        听辨训练那条路径是「先清零再 stop」，所以不受这行影响 */
     playQuota = 0;
-    clearInterval(timer);
-    cancelAnimationFrame(rafId);
+    if (timer !== null) clearInterval(timer);
+    if (rafId !== null) cancelAnimationFrame(rafId);
     /* 练习记录（v1.4）：有效练习（≥30s 且非编辑器试听）自动入账到 beatsight.log。
        时长取音频时钟差——挂起期间（来电/锁屏）天然不计入 */
     if (sessStartT !== null && ctx && !S.preview){
@@ -3582,7 +3604,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
       return;
     }
-    const ae = document.activeElement;
+    const ae = /** @type {Element} */ (document.activeElement);
     if (e.code === "Space" && !["INPUT","BUTTON","SELECT","TEXTAREA"].includes(ae.tagName)
         && !(ae.getAttribute && ae.getAttribute("role") === "button")){   // v2.0.2：role=button 的预设项/编辑器格自己处理 Space
       e.preventDefault(); S.playing ? stop() : start();
@@ -3629,7 +3651,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
       step();
       t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 400);
     });
-    const end = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; btn.blur(); };
+    const end = () => { if (t1 !== null) clearTimeout(t1); if (t2 !== null) clearInterval(t2); t1 = t2 = null; btn.blur(); };
     btn.addEventListener("pointerup", end);
     btn.addEventListener("pointerleave", end);
     btn.addEventListener("pointercancel", end);
@@ -3664,7 +3686,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     } else {
       btn.textContent = "TAP · 再点一次";
     }
-    clearTimeout(tapResetT);
+    if (tapResetT !== null) clearTimeout(tapResetT);
     tapResetT = setTimeout(() => { btn.textContent = "TAP 测速"; }, 2600);
     btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
   });
@@ -3796,7 +3818,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   function syncLimitProg(){
     const L = S.limit;
     let txt = "";
-    if (L.mode !== "off" && S.playing && limitT0 !== null){
+    if (L.mode !== "off" && S.playing && limitT0 !== null && ctx){
       if (L.mode === "bars") txt = `已练 ${limitBars} / ${L.n} 小节`;
       else {
         const sec = Math.max(0, Math.floor(ctx.currentTime - limitT0));
@@ -4004,7 +4026,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
      返回 {applied:true, resetBar} 表示已应用（调用方需重映射 loopStart）；
      拍号变化时等到循环起点（schedBar === 0）才应用。 */
-  /** @param {number} schedBarNow */
+  /** @param {number} schedBarNow @returns {{applied: false} | {applied: true, resetBar: number}} */
   function consumePending(schedBarNow){
     if (!pendingPattern) return {applied:false};
     if (sigChgPending && schedBarNow !== 0) return {applied:false};
@@ -4121,10 +4143,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     Modal.uiConfirm("草稿尚未保存，确定丢弃修改并返回练习？", () => close());
   }
   /** @param {number} bar */
-  function barSum(bar){ return draft.bars[bar].reduce((a, s) => a + s.t, 0); }
+  function barSum(bar){ const d = draft; if (!d) return 0; return d.bars[bar].reduce((a, s) => a + s.t, 0); }
   /** @param {number} bar */
-  function barValid(bar){ return barSum(bar) === draft.meter * TPB; }   // tick 制：整数严格相等
+  function barValid(bar){ const d = draft; if (!d) return false; return barSum(bar) === d.meter * TPB; }   // tick 制：整数严格相等
   function render(){
+    const d = draft;
+    if (!d) return;                       // 草稿为空（编辑器未打开）：无可渲染之物
     const wrap = $("editorBars");
     wrap.innerHTML = "";
     let allValid = true;
@@ -4138,7 +4162,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       const labN = document.createElement("div");
       labN.className = "n"; labN.textContent = "小节 " + (b + 1);
       const labS = document.createElement("div");
-      labS.className = "s"; labS.textContent = fmtBeat(barSum(b)) + " / " + draft.meter + " 拍";
+      labS.className = "s"; labS.textContent = fmtBeat(barSum(b)) + " / " + d.meter + " 拍";
       label.appendChild(labN); label.appendChild(labS);
       const track = document.createElement("div");
       track.className = "edtrack" + (ok ? "" : " bad");
@@ -4148,14 +4172,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       track.tabIndex = 0;
       track.setAttribute("aria-label", "选中小节 " + (b + 1));
       let acc = 0;
-      draft.bars[b].forEach((s, i) => {
+      d.bars[b].forEach((s, i) => {
         /* 音符格用真 <button>（v2.0.2）：选中/替换/删除/扫弦标注全依赖先选中它，
            div + click 对键盘与读屏用户是死路。button 原生处理 Enter/Space → click */
         const c = document.createElement("button");
         const isSel = edSel && edSel.bar === b && edSel.idx === i;
         c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
-        c.style.left = (acc / (draft.meter * TPB) * 100) + "%";
-        c.style.width = `calc(${s.t / (draft.meter * TPB) * 100}% - 4px)`;
+        c.style.left = (acc / (d.meter * TPB) * 100) + "%";
+        c.style.width = `calc(${s.t / (d.meter * TPB) * 100}% - 4px)`;
         c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}`);
         c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
@@ -4189,12 +4213,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     $("savePresetBtn").className = "pill" + (allValid ? " active" : "");
     $("undoBtn").disabled = !undoStack.length;
     $("paletteTitle").textContent = edSel
-      ? "音符块库 · 点击替换选中的「" + Viz.stepLabel(draft.bars[edSel.bar][edSel.idx]) + "」"
+      ? "音符块库 · 点击替换选中的「" + Viz.stepLabel(d.bars[edSel.bar][edSel.idx]) + "」"
       : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
     /* 扫弦标注行（v1.9.0）：可用性、高亮、aria-pressed 与选中状态**同源更新**。
        三点全部收在这里——分散写必然漂移（v1.3.0 开关三件套的教训）。
        预设选的 dir 用 "" 表示不标注，与「没有该字段」等价 */
-    const selStep = edSel ? draft.bars[edSel.bar][edSel.idx] : null;
+    const selStep = edSel ? d.bars[edSel.bar][edSel.idx] : null;
     const dirUsable = !!(selStep && !selStep.rest);
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
@@ -4217,24 +4241,30 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     txt.appendChild(nm); txt.appendChild(du);
     el.appendChild(bar); el.appendChild(txt);
     el.addEventListener("click", () => {
+      const d = draft;
+      if (!d) return;
       pushUndo();
       /* 三连音组块（grp=3）：一次插入/替换为 3 枚——单个三连音符在记谱上无意义 */
       const steps = p.grp ? Array.from({length:p.grp}, () => D(p.t, p.rest)) : [D(p.t, p.rest)];
-      if (edSel){ draft.bars[edSel.bar].splice(edSel.idx, 1, ...steps); }
-      else { draft.bars[editBar].push(...steps); }
+      if (edSel){ d.bars[edSel.bar].splice(edSel.idx, 1, ...steps); }
+      else { d.bars[editBar].push(...steps); }
       render();
     });
     $("palette").appendChild(el);
   });
   /* 撤销栈：任何草稿变更前先快照，Ctrl+Z / 撤销按钮回退 */
   function pushUndo(){
-    undoStack.push(JSON.stringify(draft.bars));
+    const d = draft;
+    if (!d) return;
+    undoStack.push(JSON.stringify(d.bars));
     if (undoStack.length > 50) undoStack.shift();
     dirty = true;
   }
   function undo(){
-    if (!undoStack.length) return;
-    draft.bars = JSON.parse(undoStack.pop());
+    const d = draft;
+    const snap = undoStack.pop();
+    if (!d || snap === undefined) return;
+    d.bars = JSON.parse(snap);
     edSel = null;
     render();
   }
@@ -4246,7 +4276,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (!btn) return;
     btn.blur();
     if (!edSel) return;
-    const s = draft.bars[edSel.bar][edSel.idx];
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
     if (!s || s.rest) return;
     const want = btn.dataset.dir || "";
     if ((s.dir || "") === want) return;
@@ -4257,17 +4289,21 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!edSel) return;
+    const d = draft;
+    if (!d) return;
     pushUndo();
-    draft.bars[edSel.bar].splice(edSel.idx, 1);
+    d.bars[edSel.bar].splice(edSel.idx, 1);
     edSel = null;
     render();
   });
   $("copyBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
+      const d = draft;
+      if (!d) return;
       pushUndo();
-      const src = draft.bars[editBar].map(s => ({...s}));
-      draft.bars = draft.bars.map(() => src.map(s => ({...s})));
+      const src = d.bars[editBar].map(s => ({...s}));
+      d.bars = d.bars.map(() => src.map(s => ({...s})));
       edSel = null;
       render();
     }, {okText:"复制"});
@@ -4275,8 +4311,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   $("clearBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("清空当前小节的全部音符？", () => {
+      const d = draft;
+      if (!d) return;
       pushUndo();
-      draft.bars[editBar] = [];
+      d.bars[editBar] = [];
       edSel = null;
       render();
     }, {danger:true, okText:"清空"});
@@ -4286,10 +4324,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (S.preview){                   // 停止试听
       stopAudition();
     } else {
+      const d = draft;
+      if (!d) return;
       prevSigBeforeAudition = S.sig;  // 试听结束还原主界面拍号
-      Controls.setSig(draft.meter);
+      Controls.setSig(d.meter);
       S.preview = true;
-      previewRef = draft;             // v1.10.0：指出「试听谁」（编辑器是草稿，听辨训练是候选题）
+      previewRef = d;                 // v1.10.0：指出「试听谁」（编辑器是草稿，听辨训练是候选题）
       Viz.buildViz();
       Controls.start();
       $("auditionBtn").textContent = "停止试听";
@@ -4298,14 +4338,16 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   $("savePresetBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if ($("savePresetBtn").disabled) return;
+    const d = draft;
+    if (!d) return;
     const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
     const id = "c" + Date.now();
-    customs.push({ id, name, meter: draft.meter, accents: draft.accents.slice(),
-      bars: draft.bars.map(bar => bar.map(s => ({...s}))) });
+    customs.push({ id, name, meter: d.meter, accents: (d.accents || []).slice(),
+      bars: d.bars.map(bar => bar.map(s => ({...s}))) });
     S.sel = {type:"custom", id};
     dirty = false;
     if (S.preview) stopAudition();
-    Controls.setSig(draft.meter);
+    Controls.setSig(d.meter);
     Store.persistCold();                 // v1.3.0：新增预设 → 冷键立即落盘
     Store.persist();
     close();
@@ -4582,6 +4624,7 @@ const Ear = (() => {
   function makeQuestion(rand){
     const gi = Math.min(EAR_GROUPS.length - 1, Math.floor(rand() * EAR_GROUPS.length));
     const g = EAR_GROUPS[gi];
+    /** @type {any[]} */
     const cands = g.keys.map(k => BUILTINS.find(p => p.name === k)).filter(Boolean);
     if (cands.length < 2) return null;
     /* Fisher–Yates：答案位置必须随机，否则用户会学出「总选 A」的歪策略 */
@@ -4626,13 +4669,14 @@ const Ear = (() => {
   function render(){
     const wrap = $("earCands");
     wrap.innerHTML = "";
-    if (question){
-      question.cands.forEach((p, i) => {
+    const q = question;                     // 取本地常量：闭包里 narrowing 不保留，const 别名才能一路生效
+    if (q){
+      q.cands.forEach((p, i) => {
         const b = document.createElement("button");
         let cls = "ear-cand";
         if (answered){
           b.disabled = true;
-          if (i === question.answerIdx) cls += " right";                       // 正确答案始终描绿
+          if (i === q.answerIdx) cls += " right";                              // 正确答案始终描绿
           else if (i === picked) cls += " wrong";                              // 选错的描红
           else cls += " dim";
         }
@@ -4651,7 +4695,7 @@ const Ear = (() => {
     $("earAcc").textContent = acc();
     $("earStreak").textContent = String(streak);
     $("earBest").textContent = String(Store.earStats.best);
-    $("earStatusWrap").className = "status" + (answered ? (picked === question.answerIdx ? " ok" : " bad") : "");
+    $("earStatusWrap").className = "status" + (answered && question ? (picked === question.answerIdx ? " ok" : " bad") : "");
     $("earStatus").textContent = !question ? "题库不可用"
       : isPlaying() ? "播放中… 仔细听"
       : answered ? (picked === question.answerIdx ? "答对了" : "答错了")
@@ -4780,7 +4824,7 @@ const Arrange = (() => {
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
   /** @type {null | (() => void)} */
   let untrap = null;                       // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
-  const cur = () => Store.findArrange(curId);
+  const cur = () => curId === null ? null : Store.findArrange(curId);
   /** @param {any} ref */
   const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
   /** @param {any} ref */
@@ -4886,7 +4930,7 @@ const Arrange = (() => {
         btn.className = "arg-mini" + (S.arrangeSel[which] === i ? " sel" : "");
         btn.textContent = txt; btn.setAttribute("aria-label", aria);
         btn.addEventListener("click", () => {
-          S.arrangeSel.id = curId;
+          S.arrangeSel.id = a.id;
           S.arrangeSel[which] = i;
           if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
           if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
@@ -4944,8 +4988,10 @@ const Arrange = (() => {
       const b = document.createElement("button");
       b.className = "arg-mini"; b.textContent = text;
       b.addEventListener("click", () => {
+        const pk = picking;
+        if (!pk) return;
         const d = snapshot();
-        d.sections[picking.sec].blocks[picking.blk].ref = ref;
+        d.sections[pk.sec].blocks[pk.blk].ref = ref;
         picking = null;
         save(d);
       });

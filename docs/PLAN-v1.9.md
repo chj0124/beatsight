@@ -371,8 +371,14 @@ Editor 设 `previewRef = draft`，Ear 设 `previewRef = 候选题` —— **仍�
    `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；
    另加非家族的 `noImplicitReturns` / `noFallthroughCasesInSwitch`），已直接打开。
    **2026-09-17 已推进第二步**：`noImplicitAny` 分两批补完全量前置 `@param` 与内联 `@type`
-   （727 → 282 → 0）后打开，strict 家族至此已开 **7 项**；只剩 `strictNullChecks` 一笔债
-   （重测 **96** 条：TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）待逐块消化。
+   （727 → 282 → 0）后打开，strict 家族至此已开 **7 项**。
+   **同日推进第三步（收官）**：`strictNullChecks` 那 **96** 条（TS18047 74 / TS2345 10 / TS2322 4 /
+   TS18048 4 / TS2769 3 / TS2531 1）按模块分七块逐块消化——Trainer 6（`S.plan`）→ 小尾 9
+   （Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → Audio 20（`ctx`）→ Viz 25（缓存 DOM 引用）
+   → Editor 25（`draft`），统一用「取本地别名 + 判空守卫」（模块级可空 `let` 在函数顶部取别名并早返回、
+   定时器句柄先判 `!== null`、`.closest()` 补 `!!`），**96 → 0** 后打开。strict 家族至此已开 **8 项**
+   （`strictPropertyInitialization` 随 `strictNullChecks` 生效，本文件无 class 故无影响），
+   **与两项额外严格检查全部打开且全绿，类型闸门扩面就此收官**。
 2. **`S` 的类型标注是闸门真正长牙的地方**：不标注时 `noImplicitAny:false` 让 `S` 的属性全是隐式 any，
    `S.limit.noSuchField` 这种笔误能大摇大摆通过（实测过）；补 12 行 `@type` 之后，
    `S.trainr.on` 会报 `Did you mean 'trainer'?`。**给中心数据结构标类型，比给全文件补类型划算得多。**

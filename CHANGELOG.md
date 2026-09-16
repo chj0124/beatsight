@@ -123,6 +123,24 @@
   空值报错一并消失，剩 96 条才是真正要逐处判空的
 - 扩面后 `node tools/check-all.js` 仍全绿 **10/10**（tsc 步 0 报错）
 
+### 追加 · strictNullChecks 闸门打开（2026-09-17）
+
+接上两条追加的开启路径，落**第三步（收官）**。那 **96** 条已量化空值债按模块分七块逐块消化，
+全文件 0 报错，故在 `tools/tsconfig.typecheck.json` 把 `strictNullChecks` 由 `false` 改为 `true`
+（改的仍是 `compilerOptions`，**不动 `index.html`、不动产物**，故不 bump `VERSION`）：
+
+- **按模块分组与启动顺序**（开工前先按模块列清单，再挑第一块动手）：Trainer 6（`S.plan`）→
+  小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → Audio 20（`ctx`）→
+  Viz 25（缓存 DOM 引用）→ Editor 25（`draft`）
+- **补债方式**（统一是「取本地别名 + 判空守卫」，零运行时语义改动）：模块级可空 `let` 状态
+  （`ctx` / `playheadEl` / `trailGlowEl` / `shadowEl` / `resizeTimer` / `draft`）在函数顶部
+  一次性取本地别名（`const c = ctx, ph = playheadEl, tg = trailGlowEl;`）并早返回守卫，
+  收窄跨不过闭包/调用边界的问题就此消化；定时器句柄先判 `!== null` 再 `clearTimeout`；
+  `.closest()` 返回值补 `!!` 守卫
+- strict 家族至此已开 **8 项**（新收 `strictNullChecks`），`strictPropertyInitialization` 随之生效
+  （本文件无 class，本就无影响）——**strict 家族与两项额外严格检查全部打开且全绿**
+- 收官后 `node tools/check-all.js` 全绿 **10/10**（tsc 步 0 报错）、`node tests/run.js` **1342 PASS / 0 FAIL**
+
 ## v2.0.1 · 功能：使用方法页 + 顶栏常驻入口（2026-09-16）
 
 顶栏新增「**使用方法**」按钮（在状态 chip 之前），打开一页分层的说明：

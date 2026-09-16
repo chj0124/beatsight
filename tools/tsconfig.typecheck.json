@@ -4,26 +4,26 @@
      给 tools/check-tsc.js 用：那份脚本把 index.html 的内联脚本抽成 inline.js 放进临时目录，
      再把本文件复制到同一目录，然后跑 `tsc -p`。所以 include 写的是**跟本文件同级**的 inline.js。
 
-     严格开关：**能开的都开了**（2026-09-16 首次扩面；2026-09-17 再开 noImplicitAny）。
-       · strict 家族一共 9 项，其中 7 项打开后 0 报错，故直接开：
+     严格开关：**能开的都开了**（2026-09-16 首次扩面；2026-09-17 开 noImplicitAny，同日再开 strictNullChecks）。
+       · strict 家族一共 9 项，现已**全开**：
          strictFunctionTypes / strictBindCallApply / noImplicitThis / alwaysStrict /
-         useUnknownInCatchVariables / strictBuiltinIteratorReturn / **noImplicitAny**。
+         useUnknownInCatchVariables / strictBuiltinIteratorReturn / noImplicitAny /
+         **strictNullChecks**（第 9 项 strictPropertyInitialization 依赖它，随之生效；本文件无 class，本就无影响）。
        · 另加开两项**非 strict 家族**、但同样只在抓真错的严格检查：
          noImplicitReturns / noFallthroughCasesInSwitch。
        · **noImplicitAny 已开（2026-09-17）**：原本打开会得到 **727** 条
          （TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）。本项目是 5200+ 行既有 JS，
          几乎没有 JSDoc 标注，修它等于给全文件补类型，故当时按「逐块补标注、逐块开开关」的路径挂起。
          现已分两批补完全量前置 @param 与内联 @type 标注（727 → 282 → 0），全文件 **0 报错**，故打开。
-       · 只剩 `strictNullChecks` 关着，对应最后一笔**已量化**的债：打开 → **96** 条
+       · **strictNullChecks 已开（2026-09-17）**：当时打开会得到 **96** 条
          （TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）。
          该数字在 noImplicitAny 补齐后由原先的 **251** 降下来——大量「隐式 any」消失后，
          原先被 any 传染出来的空值报错一并消失，剩下 96 条才是真正要逐处判空的。
-         strictPropertyInitialization 依赖 strictNullChecks，故随之暂关（本文件无 class，本就无影响）。
-       · 所以当前定位是：**在不开空值检查的前提下，把能查的都查出来**。这条口径并非空转——
-         2026-09-16 扩面落地时实测抓到：模块名 Audio 遮蔽 DOM 全局 Audio（TS 把 5 处调用解析成了
-         HTMLAudioElement 的属性）、EventTarget 上取 .value/.files/.closest/.blur 的 46 处、
-         textContent 被赋数字、window.webkitAudioContext 与 window.__beat 未声明。
-       · 剩余这笔债的开启路径与按模块的分布记在 docs/DEVELOPMENT.md §6「已埋的技术债」。
+         已按模块分七块逐块消化（Audio 20 / Viz 25 / Editor 25 / Controls 11 / Trainer 6 / 小尾 9），
+         统一用「取本地别名 + 判空守卫」补上，**96 → 0**，全文件 0 报错，故打开。
+         strictPropertyInitialization 依赖 strictNullChecks，随之生效（本文件无 class，本就无影响）。
+       · 至此 strict 家族与两项额外严格检查**全部打开且全绿**，类型闸门扩面收官。
+       · 这轮攻坚的按模块分布与开启路径记在 docs/DEVELOPMENT.md §6「已埋的技术债」。
 
      lib 里必须有 DOM：本应用全部代码都直接操作 DOM，去掉 DOM 会得到完全无关的报错。
      types: [] 刻意留空——不引入 @types 包，闸门只依赖 typescript 本体（保持"装一个依赖就能跑"）。 */
@@ -38,7 +38,7 @@
 
     "strict": false,
     "noImplicitAny": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
 
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
