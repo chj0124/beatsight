@@ -286,6 +286,16 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(S.sel.idx, 3, "点内置预设项 → 选中它");
   eq(els["patternName"].textContent, beat.BUILTINS[3].name, "标题同步为该预设名");
 
+  /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter/Space 激活 */
+  const it5 = listItems()[5];
+  eq(it5.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
+  eq(it5.tabIndex, 0, "预设项可 Tab 聚焦");
+  it5.fire("keydown", { key: "Enter" });
+  eq(S.sel.idx, 5, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
+  eq(listItems()[5].getAttribute("aria-current"), "true", "当前项带 aria-current");
+  listItems()[4].fire("keydown", { key: " ", code: "Space" });
+  eq(S.sel.idx, 4, "★ Space 同样激活（role=button 的键盘契约）");
+
   /* 导入：走 FileReader 接线（桩的 FileReader 会把 FILE_TEXT 交给 onload） */
   app.setFileText(JSON.stringify({ presets: [{ name: "接线导入", meter: 4,
     bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }));
@@ -692,7 +702,10 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
   const barT = () => S.sig * TPBv;
   const headT = () => {
     const el = els["viz"].children.find(c => /(^| )playhead( |$)/.test(c.className));
-    return el ? parseFloat(el.style.left) / 100 * barT() : NaN;
+    /* v2.0.2：播放头改 transform 驱动（帧内不再写 left%）——断言同一物理量，改读 translateX */
+    const m = el ? /translateX\((-?[0-9.]+)px\)/.exec(el.style.transform) : null;
+    const g = iv.rowGeo[0];
+    return m && g ? (+m[1] - g.left) / g.width * barT() : NaN;
   };
   const ballT = () => {
     const m = /(-?[0-9.]+)px, (-?[0-9.]+)px/.exec(iv.ballEl.style.transform);

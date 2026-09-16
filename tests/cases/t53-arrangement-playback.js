@@ -242,3 +242,55 @@ section("T53f 曲式播放 · 曲式被删 / 引用失效时退回预设模式�
   ok(!!beat.activePattern(), "仍能正常发声（回退到当前选中的预设 / 基础节奏）");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T53h：时值可视化渲染的是曲式的型 ================= */
+section("T53h 曲式播放 · viz 网格 = 曲式的型，不是选中预设（v2.0.2 回归）");
+{
+  /* 用户实拍 bug：曲式播放时网格仍是「当前选中的预设」，球按曲式的落点跳 → 音画错位。
+     根因：buildViz 用了 curPattern() 而非 activePattern()。用「选中预设 ≠ 曲式首块的型」
+     的场景钉死它：默认选中民谣扫弦（6 格/行），曲式首块是四分基础（4 格/行）——
+     渲染错了立刻能数出来 */
+  const one = A("一段", [{ name: "A", blocks: [BL(1, 1)] }]);
+  const { beat, els, ac } = startArrange(one, { from: 0, to: 0 });
+  const countCells = row => row.children.filter(c => /(^| )cell( |$)/.test(c.className)).length;
+  eq(beat.curPattern().name, beat.BUILTINS[0].name, "前提：当前选中民谣扫弦（与曲式的型不同）");
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
+     "★ 网格 = 曲式首块的型（四分基础 4 格），不是选中预设（6 格）");
+  drive(ac, beat, 1.2);
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
+     "播放中越过小节边界后网格仍是曲式的型");
+  beat.Controls.stop();
+}
+
+/* ================= 场景 T53i：往回跳段下一个小节边界即生效 ================= */
+section("T53i 曲式播放 · 「◀ 上一段」下一边界即生效（v2.0.2 回归）");
+{
+  /* 用户实拍 bug：播放中点「上一段」毫无反应——arrNextBar 只拉回 s < from，
+     从不处理 s > to，要等当前段整段播完才绕回 */
+  const two = A("两段", [
+    { name: "A", blocks: [BL(0, 2)] },   // 8 小节
+    { name: "B", blocks: [BL(2, 2)] },   // 8 小节
+  ]);
+  const { beat, els, ac } = startArrange(two, { from: 0, to: 1 });
+  drive(ac, beat, 9.2);                  // 240BPM：1 小节 = 1s → 第 2 段第 1 小节
+  eq(beat.arrangeState().sec, 1, "前提：已在第 2 段");
+  els["argJumpPrev"].fire("click");
+  drive(ac, beat, 1.2);                  // 过一个小节边界
+  eq(JSON.stringify([beat.arrangeState().sec, beat.arrangeState().bar]), JSON.stringify([0, 0]),
+     "★ 下一边界即回到第 1 段第 0 小节（不再等第 2 段播完）");
+  beat.Controls.stop();
+}
+
+/* ================= 场景 T53j：曲式拍号 ≠ 当前拍号时对齐 ================= */
+section("T53j 曲式播放 · 曲式拍号（6/8）≠ 当前拍号时同步 S.sig（v2.0.2 回归）");
+{
+  /* 曲式整首同拍号，但可能与当前 S.sig 不同；不同步的话 vizSig / loopStart 重映射 /
+     predictNextArrange 的 barDur 全按错的拍号算——球与播放头错位的另一半根因 */
+  const sway = A("摇曳曲", [{ name: "A", blocks: [BL(7, 1)] }]);   // 摇曳 6/8
+  const { beat, els, ac } = startArrange(sway, { from: 0, to: 0, loop: true });
+  eq(beat.Store.S.sig, 6, "★ 进入曲式播放时 S.sig 切到曲式拍号（6/8）");
+  ok((els["vizTitle"].textContent || "").includes("6/8"), "viz 标题跟着变 6/8");
+  drive(ac, beat, 1.0);
+  ok(beat.Store.S.playing, "6/8 曲式正常播放不中断");
+  beat.Controls.stop();
+}

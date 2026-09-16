@@ -233,3 +233,28 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   eq(S.arrangeSel.loop, true, "★ 跳段会打开循环（只练这一段）");
   eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 1]), "跳到第 2 段");
 }
+
+/* ================= 场景 T54g：跳段的即时反馈与单段禁用（v2.0.2） ================= */
+section("T54g 曲式 UI · 跳段即时反馈 / 单段禁用跳段按钮");
+{
+  /* 用户实拍 bug：跳段按钮「点了没反应」——旧实现只改范围等边界拉回，
+     停止状态/往回跳时界面零变化；单段曲式（新建默认）更是字面意义的哑键 */
+  const { beat, els } = seeded();
+  beat.Arrange.open();
+  els["argList"].children[0].fire("click");
+  els["argPlay"].fire("click");
+  beat.Controls.stop();                                   // 停止状态下点跳段
+  els["argJumpNext"].fire("click");
+  ok((els["argNowMeta"].textContent || "").includes("第 2 段"),
+     "★ 停止时点「下一段」立即显示目标段（不再是零反馈）");
+  ok((els["argNowName"].textContent || "").includes("副歌"), "段名同步切到目标段");
+
+  /* 单段曲式：两个跳段按钮禁用（不是留着当哑键） */
+  const solo = bare();
+  solo.beat.Arrange.open();
+  solo.els["argNew"].fire("click");
+  solo.els["argPlay"].fire("click");
+  eq(solo.els["argJumpPrev"].disabled, true, "★ 单段曲式「◀ 上一段」禁用");
+  eq(solo.els["argJumpNext"].disabled, true, "★ 单段曲式「下一段 ▶」禁用");
+  solo.beat.Controls.stop();
+}

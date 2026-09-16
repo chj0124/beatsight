@@ -23,6 +23,9 @@
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 button:disabled{cursor:not-allowed}
+/* 焦点可见性（v2.0.2）：全局重置抹掉了浏览器默认焦点框，键盘用户 Tab 不到位置——
+   与既有的空格启停 / Esc / Ctrl+Z 键盘体系配套的最后一块 */
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 
 /* ---------- 顶栏 ---------- */
 .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line)}
@@ -77,7 +80,7 @@ button:disabled{cursor:not-allowed}
 .cell-label{position:absolute;top:48px;font-size:12px;font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
-.cell .fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:transparent;pointer-events:none;z-index:0}
+.cell .fill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:transparent;pointer-events:none;z-index:0}
 .cell.played .fill{background:#FFFFFF}
 .cell.active{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .cell.active .fill{background:#FFFFFF}
@@ -96,9 +99,12 @@ button:disabled{cursor:not-allowed}
    宽度 14px + 左偏 2px：窄格放不下时由 fitCellAnnotations() 整体隐藏（不裁半个徽标） */
 .cell-strum{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;font-weight:700;color:#FFFFFF;pointer-events:none;z-index:2}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
-.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none;z-index:6}
+.playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
-.trail-glow{position:absolute;left:0;width:0%;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px)}
+/* 尾迹（v2.0.2 transform 化）：宽度在换行时按行宽定死（行的 10%），帧内只写
+   translateX + scaleX（origin 右缘 = 贴在播放头身后）——每帧改 left/width% 会触发
+   layout 且让 blur(2px) 每帧重算位图，是中低端机掉帧的主因之一 */
+.trail-glow{position:absolute;left:0;width:0;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px);transform-origin:right;will-change:transform}
 
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
@@ -373,6 +379,9 @@ input[type=range].vol{width:120px}
 }
 /* 手机窄屏（≤560px）：卡片头改上下两行——标题与状态灯不再争抢同一行宽度而各自被挤断行 */
 @media (max-width:560px){
+  /* 顶栏换行（v2.0.2）：390px 下品牌区+三个按钮合计溢出约 100px，
+     原先被 body{overflow-x:hidden} 静默裁掉，最右侧「使用方法」不可见 */
+  .topbar{flex-wrap:wrap;height:auto;min-height:64px;padding-top:10px;padding-bottom:10px;row-gap:10px}
   .card-head{flex-direction:column;align-items:flex-start;gap:6px}
   .status{white-space:nowrap}
 }
@@ -546,6 +555,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </div>
 </header>
 
+<!-- 分级播报（v1.3.0，P2-11）：#statusText 每换一个十六分音就更新，给它加 aria-live 会刷屏；
+     所以另设一个粗粒度播报区，只在「开始 / 停止 / 训练完成 / 进入预备拍」等处写入。
+     v2.0.2：挪到 body 直属——原先在 .main 里，overlay 打开时 .main 被 inert，
+     播报区随子树一起从辅助技术树移除，听辨训练的出题/作答反馈对读屏用户全灭 -->
+<span id="srAnnounce" class="sr-only" role="status" aria-live="polite"></span>
+
 <div class="main">
   <div class="col">
     <!-- 当前节奏型 -->
@@ -569,11 +584,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
         <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
-      </div>
-      <!-- 分级播报（v1.3.0，P2-11）：#statusText 每换一个十六分音就更新，给它加 aria-live 会刷屏；
-           所以另设一个粗粒度播报区，只在「开始 / 停止 / 训练完成 / 进入预备拍」四处写入 -->
-      <span id="srAnnounce" class="sr-only" role="status" aria-live="polite"></span>
-      <div class="viz" id="viz"></div>
+    </div>
+    <div class="viz" id="viz"></div>
       <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
@@ -1918,6 +1930,10 @@ function arrNextBar(a, sel, sec, bar){
   /* 推进：未开始 → 落到起点；否则 +1 小节 */
   let s = (bar >= 0) ? sec : from, b = (bar >= 0) ? bar + 1 : 0;
   if (s < from){ s = from; b = 0; }                    // 落在范围之前：拉回起点
+  /* 落在范围之后同样拉回（v2.0.2 修）：跳段/缩范围是即时的，旧逻辑只在段走完才绕回——
+     往回跳段时当前段最长还要播完整段，用户观感是「上一段点了没反应」。
+     回卷方向与循环一致：范围从头（from）重新开始 */
+  if (s > to){ s = from; b = 0; }
   if (b >= secBars(a.sections[s])){                    // 本段走完
     if (s >= to){
       if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
@@ -2081,7 +2097,11 @@ const Viz = (() => {
     viz.innerHTML = "";
     rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = [];
-    const p = curPattern();
+    /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
+       appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
+       网格与发声分裂：画面是旧预设的格子，球却按曲式的落点跳（用户实拍：音画错位）。
+       停止/试听时 activePattern() 本就回落 curPattern()，预设模式行为零变化 */
+    const p = activePattern();
     const barTicks = vizSig * TPB;
     for (let b = 0; b < LOOP_BARS; b++){
       const row = document.createElement("div");
@@ -2196,7 +2216,7 @@ const Viz = (() => {
     }
     playheadEl = document.createElement("div");
     playheadEl.className = "playhead";
-    playheadEl.style.left = "0%";
+    playheadEl.style.transform = "translateX(0px)";
     trailGlowEl = document.createElement("div");      // 播放头尾迹光晕
     trailGlowEl.className = "trail-glow";
     viz.appendChild(trailGlowEl);
@@ -2207,6 +2227,8 @@ const Viz = (() => {
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
     cacheGeo();                      // v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）
+    const g0 = geoOf(0);             // 尾迹宽度 = 行宽 10%（定死，帧内只写 transform；v2.0.2）
+    if (g0) trailGlowEl.style.width = (g0.width * 0.1) + "px";
     parkBall();
     $("vizTitle").textContent = `时值可视化 · ${meterName(S.sig)} · 同屏 4 小节`;
     resetTracking();
@@ -2219,20 +2241,25 @@ const Viz = (() => {
      （v1.3.0 P1-4 的性能承诺靠这一点成立，往帧内加读取会立刻破功） */
   const STRUM_MIN_W = 20;      // 徽标 14px + 左偏 2px + 余量：窄于此值整体隐藏，不做部分裁切
   function fitCellAnnotations(){
+    /* 两阶段执行（v2.0.2）：先全部量测、再统一写入。原先「读 offsetWidth → 写 display」交错，
+       任何样式写都把文档标脏、下一次读取强制同步布局——一次 buildViz 触发几十次重排，
+       播放中换型时这笔尖刺会推迟音频调度（掉音诱因）。分离后强制布局只剩 1 次 */
+    const writes = [];
     labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
-      if (lb) lb.style.display = (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : "";
+      if (lb) writes.push([lb, (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : ""]);
     }));
     /* 徽标是定宽元素（不随文字变宽），故阈值取常量而不是 scrollWidth——
        定宽与实测宽度比较在真浏览器里才是正确判据 */
     strumEls.forEach((strums, b) => strums.forEach((sm, i) => {
-      if (sm) sm.style.display = (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : "";
+      if (sm) writes.push([sm, (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
       const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
       if (!first || !last) return;
       const w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
-      g.el.style.display = (w < g.el.scrollWidth + 8) ? "none" : "";
+      writes.push([g.el, (w < g.el.scrollWidth + 8) ? "none" : ""]);
     }));
+    writes.forEach(([el, v]) => { el.style.display = v; });
   }
   let resizeTimer = null;
   window.addEventListener("resize", () => {
@@ -2240,7 +2267,9 @@ const Viz = (() => {
     resizeTimer = setTimeout(() => {
       /* v1.3.0：播放中不重建 DOM（会打断动画），但几何确实变了 → 重采缓存即可，
          否则弹跳球/光晕会继续按旧尺寸画，表现为"球跑偏到行外" */
-      if (S.playing) cacheGeo();
+      if (S.playing){ cacheGeo(); fitCellAnnotations(); }
+      /* v2.0.2：播放中也补跑标注自适应——跨断点（格子 44→34px）后旧宽度判定已失效，
+         不重跑会错误隐藏/显示标签徽标直到下次 buildViz。它不做 DOM 重建，不打断动画 */
       else buildViz();
     }, 200);
   });
@@ -2253,16 +2282,15 @@ const Viz = (() => {
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
     if (!playheadEl) return;                   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
-    playheadEl.style.left = "0%";
-    trailGlowEl.style.left = "0%";
-    trailGlowEl.style.width = "0%";
+    playheadEl.style.transform = "translateX(0px)";
+    trailGlowEl.style.transform = "translateX(0px) scaleX(0)";
     parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
     const pat = curPattern();
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
       const st = (pat.bars[b] || [])[i];       // v1.2.4：快照与已渲染格子可能因瞬态长度不一，容忍之
       el.className = "cell upcoming" + (st && st.rest ? " rest" : "");
-      if (fillEls[b][i]) fillEls[b][i].style.width = "0%";
+      if (fillEls[b][i]) fillEls[b][i].style.transform = "scaleX(0)";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
     }));
@@ -2473,15 +2501,20 @@ const Viz = (() => {
       tib = posT - bar * barTicks;                              // 小节内位置（tick）
     }
     const pw = tib / barTicks * 100;
-    playheadEl.style.left = pw + "%";
+    /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
+       位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
+    const gHead = geoOf(bar);
+    const headPx = gHead ? gHead.left + pw / 100 * gHead.width : 0;
+    playheadEl.style.transform = `translateX(${headPx.toFixed(1)}px)`;
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
-    trailGlowEl.style.left = (pw - tail) + "%";
-    trailGlowEl.style.width = tail + "%";
+    const trailW = gHead ? gHead.width * 0.1 : 0;
+    trailGlowEl.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
       const g = geoOf(bar);
-      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px"; }
+      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px";
+        trailGlowEl.style.width = (g.width * 0.1) + "px"; }
     }
     const steps = activePattern().bars[bar] || [];
     /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
@@ -2501,7 +2534,7 @@ const Viz = (() => {
     // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
-    fillEls[bar][active].style.width = t < T8 ? "100%" : Math.min(1, (tib - cum[active]) / t) * 100 + "%";
+    fillEls[bar][active].style.transform = "scaleX(" + (t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)) + ")";
     paintBall(ctx.currentTime, bar, tib);           // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
@@ -2587,7 +2620,7 @@ const Viz = (() => {
     if (b === nextB && i === nextI) cls += " next";
     el.className = cls;
     const f = fillEls[b] && fillEls[b][i];
-    if (f) f.style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+    if (f) f.style.transform = (b < bar || (b === bar && i < active)) ? "scaleX(1)" : "scaleX(0)";
     const lb = labelEls[b][i];
     if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
   }
@@ -3224,6 +3257,11 @@ const Controls = (() => {
       return;
     }
     arrSec = first.sec; arrBar = first.bar;
+    /* 拍号对齐（v2.0.2 修）：曲式整首同拍号，但它可能与当前 S.sig 不同——不同又不切的话，
+       buildViz 的 vizSig、consumePending 的 loopStart 重映射、predictNextArrange 的 barDur
+       全按 S.sig 算，与型的实际小节长度分裂（球/播放头错位）。与「选中不同拍号预设」同一套切换 */
+    const fm = first.pattern && first.pattern.meter;
+    if (fm && fm !== S.sig) setSig(fm);
     schedBar = first.schedBar; schedStep = 0;
     Presets.scheduleRef(first.ref);
     Presets.flushPending();                    // 此刻尚未排程，挂起立即落定
@@ -3321,7 +3359,9 @@ const Controls = (() => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
       return;
     }
-    if (e.code === "Space" && !["INPUT","BUTTON"].includes(document.activeElement.tagName)){
+    const ae = document.activeElement;
+    if (e.code === "Space" && !["INPUT","BUTTON","SELECT","TEXTAREA"].includes(ae.tagName)
+        && !(ae.getAttribute && ae.getAttribute("role") === "button")){   // v2.0.2：role=button 的预设项/编辑器格自己处理 Space
       e.preventDefault(); S.playing ? stop() : start();
     }
   });
@@ -3368,6 +3408,10 @@ const Controls = (() => {
     btn.addEventListener("pointerup", end);
     btn.addEventListener("pointerleave", end);
     btn.addEventListener("pointercancel", end);
+    /* click 兜底（v2.0.2）：键盘 Enter/Space 与读屏激活只发 click、不发 pointerdown，
+       且这类「无指针」click 的 detail 恒为 0（指针 click detail ≥ 1）——用它区分两条路径，
+       指针路径已由 pointerdown 步进过，这里只补键盘/读屏，不存在双击两步的窗口 */
+    btn.addEventListener("click", e => { if (e.detail === 0) step(); });
   }
   bindStep($("bpmMinus"), -1);
   bindStep($("bpmPlus"), 1);
@@ -3591,12 +3635,21 @@ const Presets = (() => {
   function presetItemEl(name, metaText, isActive){
     const item = document.createElement("div");
     item.className = "preset-item" + (isActive ? " active" : "");
+    /* 键盘/读屏可达（v2.0.2）：原先是纯 div + click，键盘与读屏用户选不了节奏型。
+       项内可能嵌删除按钮，不能整体做成 <button>（按钮套按钮非法），故用 role+tabindex+keydown */
+    item.setAttribute("role", "button");
+    item.tabIndex = 0;
+    if (isActive) item.setAttribute("aria-current", "true");
     const box = document.createElement("div");
     const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name;
     const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText;
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
     return item;
   }
+  /* Enter/Space 激活（v2.0.2）：role="button" 的键盘契约——与 click 走同一个处理函数 */
+  const itemKeys = fn => e => {
+    if (e.key === "Enter" || e.key === " " || e.code === "Space"){ e.preventDefault(); fn(); }
+  };
   function buildPresetList(){
     const list = $("presetList");
     list.innerHTML = "";
@@ -3608,12 +3661,14 @@ const Presets = (() => {
       const isActive = S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
       const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + meterName(p.meter) + "）" : "");
       const item = presetItemEl(p.name, meta, isActive);
-      item.addEventListener("click", () => {
+      const pick = () => {
         S.sel = {type:"builtin", idx:i};
         if (p.meter !== S.sig) Controls.setSig(p.meter);
         refreshAfterPatternChange();
         Store.persist();
-      });
+      };
+      item.addEventListener("click", pick);
+      item.addEventListener("keydown", itemKeys(pick));
       list.appendChild(item);
     });
     if (customs.length){
@@ -3637,12 +3692,14 @@ const Presets = (() => {
           }, {danger:true, okText:"删除"});
         });
         item.appendChild(del);
-        item.addEventListener("click", () => {
+        const pick = () => {
           S.sel = {type:"custom", id:c.id};
           if (c.meter !== S.sig) Controls.setSig(c.meter);
           refreshAfterPatternChange();
           Store.persist();
-        });
+        };
+        item.addEventListener("click", pick);
+        item.addEventListener("keydown", itemKeys(pick));
         list.appendChild(item);
       });
     }
@@ -3840,13 +3897,22 @@ const Editor = (() => {
       label.appendChild(labN); label.appendChild(labS);
       const track = document.createElement("div");
       track.className = "edtrack" + (ok ? "" : " bad");
+      /* 轨道本身也是「选中小节 N」的按钮（v2.0.2）：点空白区换目标小节——
+         原先只绑 click，键盘用户无法选中音符也无法换小节，编辑器整条链路对他们不可用 */
+      track.setAttribute("role", "button");
+      track.tabIndex = 0;
+      track.setAttribute("aria-label", "选中小节 " + (b + 1));
       let acc = 0;
       draft.bars[b].forEach((s, i) => {
-        const c = document.createElement("div");
+        /* 音符格用真 <button>（v2.0.2）：选中/替换/删除/扫弦标注全依赖先选中它，
+           div + click 对键盘与读屏用户是死路。button 原生处理 Enter/Space → click */
+        const c = document.createElement("button");
         const isSel = edSel && edSel.bar === b && edSel.idx === i;
         c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
         c.style.left = (acc / (draft.meter * TPB) * 100) + "%";
         c.style.width = `calc(${s.t / (draft.meter * TPB) * 100}% - 4px)`;
+        c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}`);
+        c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
         /* 扫弦方向（v1.9.0）：排在文字标签之前（flex 顺序即为书写顺序） */
         if (s.dir){
@@ -3864,6 +3930,11 @@ const Editor = (() => {
         track.appendChild(c);
       });
       track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; render(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
+      track.addEventListener("keydown", e => {
+        if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
+          e.preventDefault(); editBar = b; edSel = null; render();
+        }
+      });
       row.appendChild(label); row.appendChild(track);
       wrap.appendChild(row);
     }
@@ -4622,6 +4693,12 @@ const Arrange = (() => {
     const a = cur();
     $("argNowName").textContent = a ? a.name : "";
     $("argJump").hidden = (S.playMode !== "arrange");
+    /* 单段曲式没有「上一段/下一段」可跳：禁用而不是留着当哑键（v2.0.2）。
+       判定看「正在播的曲式」优先——刷新后 curId 未恢复（overlay 没开过），用 cur() 会误禁用 */
+    const aj = arrangeCur() || a;
+    const noJump = !aj || aj.sections.length <= 1;
+    $("argJumpPrev").disabled = noJump;
+    $("argJumpNext").disabled = noJump;
     $("argNowMeta").textContent = "";
     if (S.playMode === "arrange" && a){
       const cls = arrangeProblems(a);
@@ -4642,12 +4719,23 @@ const Arrange = (() => {
   }
   /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制） */
   function jumpTo(i){
-    const a = cur();
-    if (!a) return;
+    /* 取「正在播的曲式」优先（v2.0.2）：跳段作用于播放，不是编辑——curId 是编辑选中项，
+       刷新页面后直接进曲式播放（playMode 持久化）时 overlay 没开过、curId 是 null，
+       用 cur() 的跳段就是哑键 */
+    const a = arrangeCur() || cur();
+    if (!a || a.sections.length <= 1) return;          // 单段无可跳（按钮已禁用，这里是双保险）
     const k = Math.min(a.sections.length - 1, Math.max(0, i));
     S.arrangeSel.from = k; S.arrangeSel.to = k; S.arrangeSel.loop = true;
     Store.persist();
-    refreshBar(); refreshNow();
+    refreshBar();
+    /* 即时反馈（v2.0.2 修）：旧实现只改范围、等小节边界拉回——停止状态/往回跳时界面
+       毫无变化，用户观感是「按钮坏了」。这里先把目标段写到主界面那一行，
+       下一小节边界 onArrangeBar 的 refreshNow 会用真实游标覆盖它 */
+    const nm = a.sections[k] && a.sections[k].name;
+    $("argNowName").textContent = a.name + (nm ? " · " + nm : "");
+    $("argNowMeta").textContent = S.playing
+      ? `→ 第 ${k + 1} 段 · 本小节结束后进入`
+      : `已定位到第 ${k + 1} 段 · 播放从这里开始`;
   }
 
   function open(){
