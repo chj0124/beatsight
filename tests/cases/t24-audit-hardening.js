@@ -282,7 +282,7 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   ok(/id="srAnnounce"[^>]*aria-live="polite"/.test(html), "播报区在标记里挂了 aria-live=polite");
   ok(/id="srAnnounce"[^>]*role="status"/.test(html), "播报区在标记里声明 role=status");
   ok(!/id="statusText"[^>]*aria-live/.test(html), "高频状态栏没有 aria-live（否则读屏每换一个十六分音就刷屏）");
-  eq((html.match(/role="switch"/g) || []).length, 5, "标记里 5 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活）");
+  eq((html.match(/role="switch"/g) || []).length, 6, "标记里 6 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环）");
   eq((html.match(/id="(mute|bounce|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 5,
     "5 个开关在标记里都带初始 aria-checked");
   beat.Controls.start();

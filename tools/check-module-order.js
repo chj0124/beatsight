@@ -34,7 +34,7 @@ const SRC = m[1];
 const lines = SRC.split("\n");
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "Ear", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "Ear", "Arrange", "KeepAlive"];
 
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，
@@ -47,6 +47,7 @@ const WHITELIST = [
   { from: "Controls", to: "Editor",   reason: "keydown 处理器调 Editor.tryClose()/undo()——用户按键时执行" },
   { from: "Controls", to: "Stats",    reason: "v1.4：keydown 处理器查 Stats.isOpen()/close()——统计 overlay 打开时键盘归它管，用户按键时执行" },
   { from: "Controls", to: "Ear",      reason: "v1.10.0：keydown 处理器查 Ear.isOpen()/close()——同 Stats 那一套，听辨训练 overlay 打开时键盘归它管" },
+  { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Stats 那一套，曲式编排 overlay 打开时键盘归它管" },
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
 ];
 

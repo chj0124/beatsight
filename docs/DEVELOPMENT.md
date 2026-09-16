@@ -56,7 +56,7 @@ beatsight/
 
 ## 3. 核心架构
 
-### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块）
+### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块）
 
 `<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → Stats → Ear → KeepAlive → init**
 
@@ -66,7 +66,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
 → Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）
-→ Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）
+→ Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 
@@ -236,6 +236,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
 | `beatsight.log` | `{v:1, sessions:[{t, sec, bpm, name}]}` 练习记录（v1.4） | 停止一次 ≥30s 的有效练习时**立即写**（冷键语义，不进防抖）；环形截断最近 400 场 |
 | `beatsight.ear` | `{v:1, total, right, best}` 听辨训练战绩（v1.10.0） | 答完一题**立即写**（冷键同语义）；`right` 用 `min(total,…)` 夹住，防脏数据算出 >100% 正确率。v1.11.0 起同时显示在统计面板（**只是读，不新增键**） |
+| `beatsight.arranges` | `{v:1, arranges:[{id, name, sections:[{name, blocks:[{ref, repeats}]}]}]}` 曲式库（v2.0.0） | 增删改曲式时**立即写**（冷键语义，丢不起）。**只做结构校验**（段/块/遍数/上限/总小节数）；引用存在性与拍号一致性由共享状态区的 `arrangeProblems()` 判（要 `resolveRef`，而它在 Store 之后——这条边界别混，见 §3.9 的口径讨论） |
 | `beatsight.theme` | `"classic"` / `"obs"` 主题偏好（v1.7.0） | 点顶栏「主题」切换时立即写；**独立键**，不进上面的冷热拆分，写失败静默降级 |
 
 - 为什么要拆：原实现把预设库塞进同一个 key，而 `persist()` 挂在几乎每个交互上。实测 10/100/500 个预设 = 14 KB / 143 KB / **715 KB**，每次点击都要全量 `JSON.stringify` + 同步写盘 → 5–20ms 主线程阻塞，**正好会触发音频掉音**（与 P1-3 同源）
