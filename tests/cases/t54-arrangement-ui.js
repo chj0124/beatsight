@@ -163,6 +163,14 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
   eq(beat.Modal.isOpen(), true, "★ 只剩一块时删会被告知（不是静默删掉导致段变空）");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges[0].sections[0].blocks.length, 1, "块没被删");
+
+  /* 删块真实路径：上面那条守的是"最后一块不许删"，这条守"能删时真删掉、且删对了那块" */
+  const idxBefore = beat.Store.arranges[0].sections[1].blocks.map(b => b.ref.idx);
+  eq(idxBefore.length, 3, "副歌此时 3 块（前面加过一块）");
+  secRows(els)[1].children[2].children[0].children[4].fire("click");   // 第 1 块的 ✕
+  eq(beat.Store.arranges[0].sections[1].blocks.length, 2, "★ 非最后一块可以删（3 → 2）");
+  eq(beat.Store.arranges[0].sections[1].blocks[0].ref.idx, idxBefore[1], "删的是第 1 块（后面的顶上来）");
+  eq(secRows(els)[1].children[2].children.length, 3, "重渲染后 2 块 + 「+ 块」");
   beat.Arrange.close();
 }
 
@@ -263,4 +271,41 @@ section("T54g 曲式 UI · 跳段即时反馈 / 单段隐藏跳段按钮");
   eq(solo.els["argJumpPrev"].hidden, true, "★ 单段曲式「◀ 上一段」隐藏");
   eq(solo.els["argJumpNext"].hidden, true, "★ 单段曲式「下一段 ▶」隐藏");
   solo.beat.Controls.stop();
+}
+
+/* ================= 场景 T54h：删除整条曲式 / 删正在播的那条后回落（v2.0.2） ================= */
+section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落预设");
+{
+  const { beat, els } = seeded();
+  beat.Arrange.open();
+  els["argList"].children[0].fire("click");
+  els["argNew"].fire("click");                        // 再建一条，curId 指向新条
+  eq(beat.Store.arranges.length, 2, "两条曲式");
+  const victim = beat.Store.arranges[1].id;
+
+  els["argDel"].fire("click");
+  eq(beat.Modal.isOpen(), true, "★ 删整条曲式要确认（不是点了就没）");
+  els["modalOk"].fire("click");
+  eq(beat.Store.arranges.length, 1, "确认后删掉一条");
+  ok(!beat.Store.arranges.some(x => x.id === victim), "删的是当前选中的那条");
+  eq(beat.Arrange.isOpen(), true, "删完仍留在编排界面");
+  beat.Arrange.close();
+}
+{
+  const { beat, els } = seeded();
+  const S = beat.Store.S;
+  beat.Arrange.open();
+  els["argList"].children[0].fire("click");
+  els["argPlay"].fire("click");                       // 进入曲式播放（overlay 自动关）
+  eq(S.playMode, "arrange", "先进入曲式播放");
+  beat.Controls.stop();                               // 停下但 playMode 仍是 arrange
+  beat.Arrange.open();
+  els["argList"].children[0].fire("click");
+  els["argDel"].fire("click");
+  els["modalOk"].fire("click");
+  eq(beat.Store.arranges.length, 0, "库已空");
+  eq(S.playMode, "preset", "★ 删掉正在播的曲式 → 回落预设模式（不会对着空 id 播）");
+  eq(S.arrangeSel.id, "", "★ arrangeSel 一并清空（不留悬空 id）");
+  eq(beat.Arrange.isOpen(), true, "仍在编排界面");
+  beat.Arrange.close();
 }

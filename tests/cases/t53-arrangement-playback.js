@@ -359,3 +359,31 @@ section("T53l 曲式播放 · 引用的自定义型被删后仍在曲式里 → 
   ok(msg.indexOf("引用的节奏型不存在") >= 0, "点明根因是引用不存在（用户知道该去补哪个预设）");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T53m：主界面实时进度（v2.0.2 修 · refreshNow 的 cur() → arrangeCur()） ================= */
+section("T53m 曲式播放 · 主界面实时进度（刷新后直接播放，curId 未恢复）");
+{
+  /* 用户实拍 bug：刷新页面后 playMode 从持久化恢复成 arrange，直接开始播放——
+     此时编排 overlay 从没开过、curId 仍是 null。refreshNow 若用 cur()（编辑选中项）就整个空转，
+     主界面那行「第 N/M 段 · 第 X/Y 小节」永不刷新。本用例专为这条回归而设：
+     startArrange 不开 overlay，所以这里天然就是「curId 为 null」的场景 */
+  const two = A("两段", [
+    { name: "A", blocks: [BL(0, 1)] },
+    { name: "B", blocks: [BL(2, 1)] },
+  ]);
+  const { beat, ac, els } = startArrange(two, { from: 0, to: 1 });
+
+  drive(ac, beat, 1.2);                        // 越过第 1/2 小节边界（240BPM：1 小节 = 1s）
+  const st1 = beat.arrangeState();
+  eq(JSON.stringify([st1.sec, st1.bar]), JSON.stringify([0, 1]), "前提：调度游标已过第 1 个边界");
+  ok((els["argNowMeta"].textContent || "").includes("第 1/2 段"),
+     "★ curId 为 null 时进度条仍刷新（旧实现用 cur() 会永远空白）：「" + els["argNowMeta"].textContent + "」");
+  eq(els["argNowName"].textContent, "两段 · A", "★ 段名亦随播放刷新");
+
+  drive(ac, beat, 4);                          // 继续走到第 2 段
+  eq(beat.arrangeState().sec, 1, "前提：已进入第 2 段");
+  ok((els["argNowMeta"].textContent || "").includes("第 2/2 段"),
+     "★ 跨段后进度条跟着走：「" + els["argNowMeta"].textContent + "」");
+  ok((els["argNowName"].textContent || "").includes("B"), "★ 段名切到第 2 段");
+  beat.Controls.stop();
+}

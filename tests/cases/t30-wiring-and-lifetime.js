@@ -607,6 +607,29 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
   /* 点轨道空白处 = 取消选中，回到「追加」语义 */
   rowTrack().fire("click", { target: rowTrack() });
   ok(/点击追加到/.test(els["paletteTitle"].textContent), "取消选中后库标题回到追加语义");
+
+  /* v2.0.2：轨道本身即「选中小节 N」的按钮（role=button + tabIndex），
+     键盘 Enter/Space 应等价于点空白区——换目标小节并取消音符选中。
+     这是编辑器对键盘用户的入口，删掉 keydown 处理器整条链路就断（反向验证见 CHANGELOG） */
+  const trackOf = b => els["editorBars"].children[b].children[1];
+  const editMark = b => els["editorBars"].children[b].children[0].classList.contains("editing");
+  cells()[0].fire("click");
+  ok(/点击替换选中的/.test(els["paletteTitle"].textContent), "先选中第 1 小节的音符（替换语义）");
+  ok(editMark(0), "第 1 小节处于「编辑中」");
+  /* 事件源自子元素时不激活（target === track 守卫） */
+  trackOf(1).fire("keydown", { key: "Enter", target: cells()[0] });
+  ok(editMark(0) && /点击替换选中的/.test(els["paletteTitle"].textContent),
+    "★ 事件来自音符格（非轨道本身）→ 不切换小节");
+  trackOf(1).fire("keydown", { key: "a", target: trackOf(1) });
+  ok(editMark(0), "★ 普通字母键不切换小节");
+  /* Enter 激活 */
+  trackOf(1).fire("keydown", { key: "Enter", target: trackOf(1) });
+  ok(editMark(1), "★ 轨道上按 Enter → 第 2 小节变成「编辑中」");
+  ok(/点击追加到「小节 2」/.test(els["paletteTitle"].textContent),
+    "★ 且取消音符选中（库标题回到追加语义，目标小节 2）");
+  /* Space 激活（code === "Space" 分支） */
+  trackOf(0).fire("keydown", { key: " ", code: "Space", target: trackOf(0) });
+  ok(editMark(0), "★ 空格同样可切换（code=Space 分支）");
   beat.Editor.tryClose(); els["modalOk"].fire("click");
 
   /* v0.4.0 老数据：sel 用数组下标引用自定义预设，加载时应升级为 id 引用 */
