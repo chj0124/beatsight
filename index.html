@@ -1394,6 +1394,7 @@ const Store = (() => {
     return { id, name: raw.name.trim().slice(0, 40), sections };
   }
   const arrIn = readJSON(KEY_ARRANGES);
+  /** @type {{ id: string, name: string, sections: { name: string, blocks: { ref: { type: string, idx?: number, id?: string }, repeats: number }[] }[] }[]} */
   const arranges = [];
   {
     let dropped = 0;
@@ -1493,6 +1494,7 @@ const Store = (() => {
      （与 customs 的隔离策略不同：统计丢了只是数字不准，不值得占用隔离区与弹窗名额）。
      写入只在「停止一次 ≥30s 的练习」时发生，立即落盘不防抖（丢一场练习比丢一次 BPM 调整肉疼） */
   const logIn = readJSON(KEY_LOG);
+  /** @type {{ t: number, sec: number, bpm: number, name: string }[]} */
   const sessions = [];
   if (logIn && Array.isArray(logIn.sessions)){
     logIn.sessions.forEach(r => {
@@ -1545,7 +1547,9 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }[]} */
   const customs = [];
+  /** @type {any[]} */
   const rejectedCustoms = [];
   savedCustoms.forEach((c, i) => {
     const v = validatePreset(c);
@@ -1598,7 +1602,9 @@ const Store = (() => {
      v0.9.1 起写失败就已被 try/catch 兜住（隐私模式/配额超限时裸奔会把调用它的每个交互整个炸断），
      但那是**静默**降级：用户攒了几十个预设却存不进去，界面上没有任何迹象。
      v1.3.0 补上"可观测"：失败回调交给装配层去变红 chip + 一次性提示。 */
+  /** @type {null | ReturnType<typeof setTimeout>} */
   let persistTimer = null;
+  /** @type {null | (() => void)} */
   let persistFailCb = null;
   function setPersistFailHandler(fn){ persistFailCb = typeof fn === "function" ? fn : null; }
   let persistFailNotified = false;
@@ -1617,6 +1623,7 @@ const Store = (() => {
      而"下一次成功写入"本来就是最可靠的恢复证据（每次 persist/persistCold 都会经过这里）。
      边角：若冷键成功而热键仍失败，会先报一次恢复、下一次热写失败再报一次——这是自我纠正的，
      好过永久卡在红着不动的状态。 */
+  /** @type {null | (() => void)} */
   let persistRecoverCb = null;
   function setPersistRecoverHandler(fn){ persistRecoverCb = typeof fn === "function" ? fn : null; }
   function onPersistOk(){
@@ -1848,7 +1855,7 @@ const REDUCE_MOTION = (typeof matchMedia === "function") && matchMedia("(prefers
 const spb = () => 60 / S.bpm;                          // 秒/拍
 const meterName = m => ({6:"6/8",5:"5/4",7:"7/4"})[m] || (m + "/4");
 const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
-let ctx = null, masterGain = null;
+let ctx = /** @type {AudioContext|null} */ (null), masterGain = /** @type {GainNode|null} */ (null);
 let loopStart = 0;
 let nextNoteTime = 0, schedBar = 0, schedStep = 0;
 /* 曲式编排的会话游标（v2.0.0 S4）：第几段、段内第几小节。**不持久化**——每次 start()
@@ -1857,10 +1864,12 @@ let arrSec = 0, arrBar = -1;
 /* 曲式走到范围末尾且**不循环**时的停止钩子（v2.0.0 S4）。
    **为什么用钩子**：Audio 声明在 Controls 之前，直接调 Controls.stop() 是反向引用（R3）。
    与 onLimitPulse / onPersistFail 同一套做法，理由相同。 */
+/** @type {null | (() => void)} */
 let onArrangeEnd = null;
 /* 曲式每走一小节的回调（v2.0.0 S5）：用来刷新主界面"现在在第几段 / 全曲进度"。
    **为什么是钩子而不是每帧刷新**：一是 Audio 不能反向调用 Arrange（R3），
    二是它每小节才变一次，挂在渲染热路径上纯属浪费。与 onArrangeEnd 同一套做法。 */
+/** @type {null | (() => void)} */
 let onArrangeBar = null;
 /* 当前正在播的曲式（非曲式模式返回 null）。调用方据此决定要不要走节目单逻辑。
    刻意每次现查：曲式可能在别处被删掉，缓存下来会指向一个已经不存在的对象 */
@@ -1879,12 +1888,13 @@ function arrangeNextRow(sec, bar){
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
   return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar };
 }
+/** @type {null | number} */
 let rafId = null;
 /* 弹跳球（v1.2）onset 表：Audio.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
    Viz.paintBall 只读。onsetBuf = 已排程端点（原地 push/shift，导出引用不失效）；
    onsetNext = 调度游标处的下一发声点预测——视觉要「看得远一跳」，150ms 前瞻窗口不够，
    渲染层靠它保证球永远有目的地（demo 实测：缺它球在慢速下落地僵住） */
-let onsetBuf = [], onsetNext = null;
+let onsetBuf = /** @type {{ t: number, bar: number, cumT: number, aSec: number, aBar: number }[]} */ ([]), onsetNext = /** @type {null | { t: number, bar: number, cumT: number }} */ (null);
 /* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
    loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
 let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
@@ -2013,18 +2023,23 @@ function arrNextBar(a, sel, sec, bar){
    **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
    （那会立刻产生双时钟、双热键、双缓存三份麻烦）。
    S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
 let previewRef = null;
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
 /* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
    时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
+/** @type {null | number} */
 let sessStartT = null;
 /* 练习量（v1.9.0）：limitBars = 本次会话已走完的小节数（Audio 在小节边界累加——只有调度器
    看得见小节边界，这是唯一与发声同源的视角）；limitT0 = min 模式的计时基准（音频时钟）；
    onLimitPulse = 到点处置钩子。**为什么用钩子**：Audio 声明在 Controls 之前，直接调
    Controls.stop() 属反向引用，tools/check-module-order.js 会拦下来——与 onFrameError /
    Store.setPersistFailHandler 同一套「模块只暴露回调，跨模块装配交给装配层」模式。 */
-let limitBars = 0, limitT0 = null;
+let limitBars = /** @type {number} */ (0), limitT0 = /** @type {null | number} */ (null);
+/** @type {null | (() => boolean)} */
 let onLimitPulse = null;
 /* 练习量是否已到点（Audio 每个调度周期问一次）。两种模式只在「数什么」上不同：
      bars → 数小节（limitBars 只在小节边界增长，故天然按小节对齐）
@@ -2043,17 +2058,20 @@ function limitHit(){
    后台重锚定 / 练习记录入账的交叠，而那几处的坑都踩过。
    onQuotaDone 由听辨训练注入（额度用尽时更新它自己的界面）。 */
 let playQuota = 0;
+/** @type {null | (() => void)} */
 let onQuotaDone = null;
 /* 渲染帧异常恢复钩子（v1.3.0）：由装配层（初始化段）注入。
    为什么是钩子而不是直接写 Controls.stop()：paintFrame 是**每帧热路径**，而 Controls 声明在
    Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
    与 Store 的 setPersistFailHandler 用同一套模式：模块只暴露回调，跨模块装配交给装配层。 */
+/** @type {null | ((e: any) => void)} */
 let onFrameError = null;
 /* 调度器异常恢复钩子（v2.0.2，审计 D3）：与 onFrameError 同一套模式、同一个理由——
    scheduler 同样声明在 Controls 之前，出了异常要停播只能经注入回调，不能反向引用 Controls。
    **为什么渲染帧有边界而调度器此前没有**：paintFrame 挂在 rAF 上、异常会中断整帧，
    症状明显；scheduler 挂在 setInterval 上，抛错只刷控制台，音频时钟照走、画面却停更，
    表现为"播放中但没声音"——这种静默失效更难自查，恰恰更需要显式边界。 */
+/** @type {null | ((e: any) => void)} */
 let onSchedError = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
@@ -2077,7 +2095,7 @@ const activePattern = () => {
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
    导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
 const Modal = (() => {
-  let modalOpen = false, modalOkCb = null, prevFocus = null;
+let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((v: string | undefined) => void)} */ (null), prevFocus = /** @type {any} */ (null);
   /* 焦点陷阱（v1.3.0，审计 P2-11）：弹窗打开后 Tab 仍会跑到背景内容上（读屏与键盘用户
      会「走丢」）。用 inert 把背景整体置为不可交互。
      注意用**重算**而不是置位/复位：编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器
@@ -2150,12 +2168,15 @@ const Viz = (() => {
        ├── .subs (z1)  十六分刻度线：满格高、只画内部十六分分界线（末格不画）；
        │               三连音块（t 不整除 12）不画刻度——十六分网格对三连音无意义
        └── span  (z2)  时值名称标签（t≥24，即 ≥0.5 拍才有独立标签） */
-  let rowEls = [], cellEls = [], playheadEl = null, trailGlowEl = null;
-  let subEls = [], fillEls = [], labelEls = [], lastT16 = -1;
+let rowEls = /** @type {HTMLElement[]} */ ([]), cellEls = /** @type {HTMLElement[][]} */ ([]), playheadEl = /** @type {HTMLElement|null} */ (null), trailGlowEl = /** @type {HTMLElement|null} */ (null);
+let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), fillEls = /** @type {HTMLElement[][]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
+  /** @type {(HTMLElement|null)[][]} */
   let strumEls = [];                                         // 扫弦方向徽标（v1.9.0），与 labelEls 同构：无徽标处存 null
+  /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[][]} */
   let glEls = [];                                            // 短音符合并标注（组标签）
-  let zoneEls = [], rulerEls = [], lastBeat = -1, lastRulerEl = null;   // 跑道：拍点容器 + 座次尺
+let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<number, HTMLElement>[]} */ ([]), lastBeat = /** @type {number} */ (-1), lastRulerEl = /** @type {HTMLElement|null} */ (null);   // 跑道：拍点容器 + 座次尺
   let lastBar = -1, lastStep = -1;
+  /** @type {null | { bar: number, active: number, nb: number, ni: number, len: number }} */
   let lastPainted = null;                                      // v1.3.0：增量重绘的上一次状态
   /* 行几何缓存（v1.3.0，审计 P1-4）：帧内一律读这里，绝不读 offset*。
      为什么要缓存：原实现每帧先写 7 处 style（播放头 left / 尾迹 left+width …），紧接着
@@ -2163,6 +2184,7 @@ const Viz = (() => {
      （layout thrashing，rAF 里最典型的性能反模式），中低端机上直接表现为掉帧。
      几何只在 buildViz 与 resize 后变化，两处填充即可（那两处之前没有待生效的样式写入，
      读 offset 不会触发强制重排） */
+  /** @type {{ left: number, top: number, width: number, height: number }[]} */
   let rowGeo = [];
   function cacheGeo(){
     rowGeo = rowEls.map((r, i) => ({
@@ -2171,7 +2193,7 @@ const Viz = (() => {
     }));
   }
   const geoOf = i => rowGeo[i] || null;
-  let ballEl = null, shadowEl = null, waitEl = null;           // 弹跳球（v1.2）：当前球/影子/接力待命球
+let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
@@ -2221,9 +2243,13 @@ const Viz = (() => {
         }
       }
       rulerEls.push(rl);
+      /** @type {HTMLElement[]} */
       const cells = [];
+      /** @type {HTMLElement[]} */
       const fills = [];
+      /** @type {(HTMLElement|null)[]} */
       const labels = [];
+      /** @type {(HTMLElement|null)[]} */
       const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
       subEls.push({});
       let acc = 0;
@@ -2273,8 +2299,9 @@ const Viz = (() => {
       });
       /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
          保证最难辨认的十六分/三连音也有名称可读 */
+      /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[]} */
       const groups = [];
-      let run = null, acc2 = 0;
+let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }} */ (null), acc2 = /** @type {number} */ (0);
       p.bars[b].forEach((s, i) => {
         const startT2 = acc2; acc2 += s.t;
         const shorty = s.t < T8 && !s.rest;
@@ -2334,6 +2361,7 @@ const Viz = (() => {
     /* 两阶段执行（v2.0.2）：先全部量测、再统一写入。原先「读 offsetWidth → 写 display」交错，
        任何样式写都把文档标脏、下一次读取强制同步布局——一次 buildViz 触发几十次重排，
        播放中换型时这笔尖刺会推迟音频调度（掉音诱因）。分离后强制布局只剩 1 次 */
+    /** @type {[HTMLElement, string][]} */
     const writes = [];
     labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
       if (lb) writes.push([lb, (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : ""]);
@@ -2351,6 +2379,7 @@ const Viz = (() => {
     }));
     writes.forEach(([el, v]) => { el.style.display = v; });
   }
+  /** @type {null | ReturnType<typeof setTimeout>} */
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
@@ -2495,7 +2524,7 @@ const Viz = (() => {
       return;
     }
     const terminal = !nxtInBar;                             // 终端弧：终点 = 本行右缘
-    const a = prev, b2 = nxtInBar || { t: barEnd, terminal: true };
+    const a = prev, b2 = nxtInBar || /** @type {any} */ ({ t: barEnd, terminal: true });
     const T = b2.t - a.t;
     if (T <= 0) return;
     const p = Math.min(1, Math.max(0, (now - a.t) / T));
@@ -2618,7 +2647,7 @@ const Viz = (() => {
        这条路径**不需要损坏数据就能触发**：编辑器「清空当前小节」时若正在试听，curPattern() 返回
        的草稿就有空小节，画面照常重建、下一帧即崩 */
     if (!steps.length) return;
-    const cum = []; let acc = 0;
+const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     steps.forEach(s => { cum.push(acc); acc += s.t; });
     let active = 0;
     for (let i = 0; i < steps.length; i++){ if (tib >= cum[i]) active = i; }
@@ -2812,6 +2841,7 @@ const Audio = (() => {
     if (S.playing) scheduler();
   });
   /* 噪声 buffer：程序生成的 0.5s 白噪声，wood/drum 音色共用（零采样文件硬约束） */
+  /** @type {AudioBuffer | null} */
   let noiseBuf = null;
   function getNoiseBuf(){
     if (!noiseBuf){
@@ -3319,8 +3349,9 @@ const Trainer = (() => {
 const Controls = (() => {
   const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
   const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
+  /** @type {null | ReturnType<typeof setInterval>} */
   let timer = null;
-  let taps = [], tapResetT = null;
+let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnType<typeof setTimeout>} */ (null);
 
   /* 常用速度快捷档（v1.1）：按钮与滑杆刻度都由 CONFIG.speedPresets 生成（单一数据源，不两处各写一份）。
      紧贴模块初始化执行，保证任何 setBpm/syncBpmUI 调用之前 presetBtns 已就绪。
@@ -3526,7 +3557,7 @@ const Controls = (() => {
   }
   /* ±1 / ±5 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
   function bindStep(btn, delta){
-    let t1 = null, t2 = null;
+let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @type {null | ReturnType<typeof setInterval>} */ (null);
     const step = () => setBpm(S.bpm + delta);
     btn.addEventListener("pointerdown", e => {
       e.preventDefault();
@@ -3677,6 +3708,7 @@ const Controls = (() => {
      被选中档位、aria-pressed、进度文案三者与 S.limit 同源。
      进度刷新由 onLimitPulse 在每个调度周期驱动，带字符串去重——25ms 一次无条件写 textContent
      会持续触发样式重算，不值得 */
+  /** @type {string | null} */
   let lastLimitProg = null;
   function syncLimitUI(){
     buildPillRow($("limitRow"), LIMIT_PRESETS, {
@@ -3749,13 +3781,14 @@ const Controls = (() => {
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
 const Presets = (() => {
   /* 播放中切换节奏型：挂起到小节边界无缝生效 */
-  let pendingPattern = false, sigChgPending = false, appliedSig = S.sig;
+let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {boolean} */ (false), appliedSig = /** @type {number} */ (S.sig);
   /* 待应用的节奏型引用（v2.0.0 泛化）：null = 用 curPattern()（预设路径，行为与旧版一致）。
      为什么要有它：曲式编排要"换下一段的型"，而那**不是**当前选中的预设——
      若为此另写一条切换路径，就要把 scheduler 中途退出 + loopStart 重映射 + resetTracking
      + 与变速训练器的次序**再实现一遍**。这里只把"待应用谁"抽成一个引用，
      三条既有路径（立即生效 / 小节边界挂起 / 停止兜底）全部共用它，取型来源仍然只有一处。
      一次性消费：applyPatternChange 用完即清，避免影响下一次切换。 */
+  /** @type {null | { type: string, idx?: number, id?: string }} */
   let pendingRef = null;
   /* appliedPat/activePattern 已上移至共享状态区（v1.0.0）——
      历史：v0.7.0 修复播放中切换越界（tests T12）；v1.0.0 为消除 Viz→Presets 反向依赖而上移 */
@@ -3970,9 +4003,11 @@ const Presets = (() => {
 /* ================= Editor · 自定义节奏型编辑器 ================= */
 const Editor = (() => {
   /* 编辑器草稿 + 撤销栈 */
-  let edSel = null, editBar = 0;   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
-  let undoStack = [], dirty = false;
+let edSel = /** @type {null | { bar: number, idx: number }} */ (null), editBar = /** @type {number} */ (0);   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
+let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (false);
+  /** @type {null | number} */
   let prevSigBeforeAudition = null;
+  /** @type {null | (() => void)} */
   let untrap = null;               // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
 
   function open(){
@@ -4277,6 +4312,7 @@ const Stats = (() => {
         lastT: a.lastT, recent: a.bpms.slice(-5) };      // 最近 ≤5 场（本期之内），迷你趋势用它
     }).sort((x, y) => y.count - x.count || y.sec - x.sec);
     const touched = new Set(practice.map(p => p.name));
+    /** @type {string[]} */
     const names = [];
     (available || []).forEach(n => { if (n && names.indexOf(n) < 0) names.push(n); });
     const untouched = names.filter(n => !touched.has(n)).map(n => ({ name: n, ever: seenAll.has(n) }));
@@ -4385,6 +4421,7 @@ const Stats = (() => {
       ? "还没有练习记录——播放 30 秒以上会自动记一场。数据只保存在本机浏览器。"
       : "柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场（可导出备份）";
   }
+  /** @type {null | (() => void)} */
   let untrap = null;                   // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   function open(){
     rangeDays = 7;
@@ -4439,10 +4476,13 @@ const Stats = (() => {
    它对外部状态的唯一写入是共享状态区的 previewRef / playQuota —— 复用主引擎的试听通道，
    绝不另起一套调度（那会立刻产生双时钟、双热键、双缓存三份麻烦）。 */
 const Ear = (() => {
+  /** @type {null | { group: { name: string, desc: string }, groupIdx: number, cands: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }[], answerIdx: number, answer: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] } }} */
   let question = null;        // { group, groupIdx, cands:[pattern…], answerIdx, answer }
   let answered = false, picked = -1;
   let streak = 0;             // 当前连对：会话状态，不持久化（重开页面从 0 起算）
+  /** @type {null | number} */
   let enterSig = null;        // 进入前的拍号，退出时还原
+  /** @type {null | (() => void)} */
   let untrap = null;          // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
 
   /* 「本题正在播放」**从状态推导**，不设独立标志位：
@@ -4648,8 +4688,11 @@ const Ear = (() => {
    播放接线在 Audio/Controls（S4）——本模块只做"把曲式编出来"这件事。
    声明在 Presets / Controls 之后，所以直接调它们是**向前引用**，不产生方向问题。 */
 const Arrange = (() => {
+  /** @type {string | null} */
   let curId = null;
+  /** @type {null | { sec: number, blk: number }} */
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
+  /** @type {null | (() => void)} */
   let untrap = null;                       // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   const cur = () => Store.findArrange(curId);
   const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
@@ -4989,6 +5032,7 @@ const Arrange = (() => {
    **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
 const Help = (() => {
   let more = false;
+  /** @type {null | (() => void)} */
   let untrap = null;                  // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   function render(){
     $("helpMore").hidden = !more;
@@ -5026,7 +5070,7 @@ const Help = (() => {
    开关 S.keepAwake 持久化，默认关（保活有电量与系统策略代价，应由用户显式打开）。
    本模块只读共享状态 S，不引用任何模块；start/stop 由 Controls 经 sync() 通知（白名单 R3）。 */
 const KeepAlive = (() => {
-  let lock = null, audioEl = null;
+let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null} */ (null);
   /* 程序生成 0.5s 静音 WAV（8kHz / 8-bit / 单声道：PCM 静音电平是 128 不是 0） */
   function silentWav(){
     if (typeof btoa !== "function") return "";
