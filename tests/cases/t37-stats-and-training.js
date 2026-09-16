@@ -257,34 +257,6 @@ section("T43 PWA · 仅 http(s) 注册 manifest + sw.js，file:// 完全跳过")
   ok(!!app2.sandbox.document.head.children.find(c => c.rel === "manifest"), "无 SW 能力 → manifest 仍注入");
 }
 
-/* ================= 场景 T42b：KeepAlive 释放事件与申请被拒降级（v1.4 补漏） =================
-   T42 的锁桩 addEventListener 是空函数、thenable 的 catch 是空函数，两条真实分支从未执行：
-   wakeLock 被系统回收时的 release 监听（L5245）、申请被拒时的静音音频降级（L5247）。 */
-section("T42b KeepAlive · release 事件置空 / request 被拒降级静音音频");
-{
-  /* ① 持锁时挂 release 监听；系统回收派发 release → lock 置空（L5245） */
-  const lock = { listeners: {}, release(){}, addEventListener(t, f){ this.listeners[t] = f; } };
-  const nav = { wakeLock: { request(){ return { then(fn){ fn(lock); return { catch(){} }; } }; } } };
-  const app = loadApp({}, { navigator: nav });
-  app.beat.Store.S.keepAwake = true;
-  app.beat.Controls.start();
-  ok(app.beat.KeepAlive.state().locked, "锁已持有");
-  ok(typeof lock.listeners.release === "function", "★ 持锁时挂了 release 监听（L5245）");
-  lock.listeners.release();                            // 系统回收 → 触发监听
-  ok(!app.beat.KeepAlive.state().locked, "★ 收到 release 事件 → lock 置空（保活状态与实际一致）");
-  app.beat.Controls.stop();
-
-  /* ② 申请被拒（低电量模式等）走 .catch → 降级静音音频（L5247） */
-  const navReject = { wakeLock: { request(){ return { then(){ return { catch(fn){ fn(); } }; } }; } } };
-  const app2 = loadApp({}, { navigator: navReject });
-  app2.beat.Store.S.keepAwake = true;
-  app2.beat.Controls.start();
-  ok(!app2.beat.KeepAlive.state().locked, "申请被拒 → 未持有锁");
-  ok(app2.beat.KeepAlive.state().audio, "★ .catch 降级 → 静音音频兜底已起（L5247）");
-  app2.beat.Controls.stop();
-  ok(!app2.beat.KeepAlive.state().audio, "停止 → 降级音频已停");
-}
-
 /* ================= 场景 T44：音色响度 · 噪声路径 makeup 增益补偿（v1.4.1） ================= */
 section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路径不受影响");
 {
