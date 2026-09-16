@@ -11,7 +11,11 @@ dist/
 node_modules/
 
 # IDE 的「分享 HTML」功能会把产物打成 zip 丢在这里（v1.8.2 清理）。
-# 它们不是项目产物，上站也不需要（Cloudflare 只拷 4 个文件到 dist/），
+# 它们不是项目产物，上站也不需要（Cloudflare 只拷 4 个上站产物 + `_headers` 到 dist/），
 # 且 .tmp-* 明显是临时残留 —— 一律不入库，防止下次再被塞回来。
 .trae-html-share-packages/
 *.html.zip
+
+# 会话/IDE 的临时上传落盘目录：里面是 UUID 命名的图片残留，不被任何文件引用，
+# 也不是产物（v2.0.2 审计 D7 清理）。
+.uploads/

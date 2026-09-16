@@ -30,8 +30,9 @@
    这样"到底查了几项"是**能一眼看出来**的，不用去猜。
 
    用法：
-     node tools/check-all.js          # 全套（约 2–3 秒）
-     node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描（改代码时的快速反馈）
+     node tools/check-all.js               # 全套（本机实测约 17 秒）
+     node tools/check-all.js --quick       # 跳过 T21 的 243 组全量扫描（本机实测约 11 秒）
+     node tools/check-all.js --strict-env  # CI 用：可选加强项缺依赖时报错（不允许静默跳过）
    退出码 0 = 全部通过，1 = 有失败项。 */
 "use strict";
 const fs = require("fs");
@@ -40,6 +41,9 @@ const { spawnSync } = require("child_process");
 
 const ROOT = path.join(__dirname, "..");
 const QUICK = process.argv.includes("--quick");
+/* CI 里最容易出的事：忘记 npm ci，于是 ESLint / tsc 两步永远是 ⊘——汇总虽写着"实跑 8/10"，
+   但没人会去核对那个分母。--strict-env 把"可选跳过"变成"报错"，逼 CI 要么装上依赖、要么改口径。 */
+const STRICT_ENV = process.argv.includes("--strict-env");
 
 /* 语法校验没有独立脚本（就一行），内联在这里，与新检出的仓库保持一致 */
 const SYNTAX = "const fs=require('fs');const m=fs.readFileSync('index.html','utf8')"
@@ -74,6 +78,11 @@ for (const step of STEPS){
      否则汇总里的 ✓ 会撒谎（假装查过）。 */
   if (step.optional && !fs.existsSync(path.join(ROOT, step.optional))){
     console.log("\n▸ " + step.name);
+    if (STRICT_ENV){
+      console.log("  ✗ --strict-env：缺少 " + step.optional + "，可选加强项不允许跳过（请先 `npm ci`）。");
+      results.push({ name: step.name, ok: false, skipped: false, ms: 0, status: 2 });
+      break;
+    }
     console.log("  ⊘ 跳过（未安装 " + path.basename(step.optional) + "）——这是可选加强项，不是失败项");
     results.push({ name: step.name, ok: true, skipped: true, ms: 0, status: 0 });
     continue;

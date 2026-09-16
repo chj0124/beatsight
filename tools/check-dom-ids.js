@@ -20,6 +20,20 @@ const html = fs.readFileSync(HTML, "utf8");
 const script = extractScript(HTML);
 const code = stripComments(script.split("\n")).join("\n");
 
+/* 行号映射：抽取段紧跟在 <script> 之后（stripComments 逐行处理、不改变行数），所以
+     抽取段第 N 行 = index.html 第 (N + baseLine) 行
+   与 check-eslint.js / check-tsc.js 同一口径——否则这里报的行号对不上任何文件。 */
+function lineOffset(htmlText){
+  const at = htmlText.indexOf("<script>");
+  if (at < 0) return -1;
+  return (htmlText.slice(0, at).match(/\n/g) || []).length;
+}
+const baseLine = lineOffset(html);
+if (baseLine < 0){
+  console.error("  ✗ 未找到 <script> 块：" + path.relative(process.cwd(), HTML));
+  process.exit(2);
+}
+
 /* HTML 里声明的 id（只看标记段，避免把脚本里拼出来的 id 当成声明） */
 const markup = html.slice(0, html.indexOf("<script>"));
 const declared = new Set();
@@ -36,7 +50,7 @@ const referenced = new Map();     // id → 首次出现的行号
   let mm;
   while ((mm = re.exec(code))){
     const id = mm[1];
-    if (!referenced.has(id)) referenced.set(id, code.slice(0, mm.index).split("\n").length);
+    if (!referenced.has(id)) referenced.set(id, code.slice(0, mm.index).split("\n").length + baseLine);
   }
 }
 
@@ -50,7 +64,7 @@ console.log("  HTML 声明 " + declared.size + " 个 id · 代码引用 " + refe
 
 if (dangling.length){
   console.log("\n  ✗ " + dangling.length + " 个悬空引用（$() 会返回 null，报错点在下游）：");
-  dangling.forEach(([id, ln]) => console.log(`      L${ln}  $("${id}") —— HTML 里没有这个 id`));
+  dangling.forEach(([id, ln]) => console.log(`      index.html:${ln}  $("${id}") —— HTML 里没有这个 id`));
 } else {
   console.log("\n  ✓ 零悬空引用");
 }

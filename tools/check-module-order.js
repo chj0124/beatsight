@@ -21,6 +21,11 @@
         可以调用后方模块——那时所有 const 早已初始化完毕。但必须在下方 WHITELIST 登记并写明
         理由；条目一旦不再被用到也会报错（防止白名单慢慢腐烂成"什么都放行"）。
 
+     R4（扇出上限，告警）：一个模块直接引用的**下游模块个数**（扇出）不得超过 MAX_FANOUT。
+        它是"某模块会不会膨胀成上帝对象"的最直接指标。Controls 是 UI 中枢、当前已顶到上限
+        （指向它全部的 7 个下游），再想加一条就必须显式抬高下方 MAX_FANOUT 常量——让"中枢又
+        胖了一圈"成为一次看得见、需要理由的改动，而不是悄悄发生。
+
    退出码 0 = 全部通过，1 = 有违规。CI 与本地自验都跑它。 */
 "use strict";
 const fs = require("fs");
@@ -51,6 +56,11 @@ const WHITELIST = [
   { from: "Controls", to: "Help",     reason: "v2.0.1：keydown 处理器查 Help.isOpen()/close()——同上一批那一套，使用方法 overlay 打开时键盘归它管" },
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
 ];
+
+/* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。Controls 是 UI 中枢、当前已顶到 7
+   （它指向全部下游），再想加一条就必须显式抬高这个常量——让"中枢又胖一圈"成为一次看得见、
+   需要理由的改动，而不是悄悄发生。新功能的 UI 装配请内聚到各自模块内部。 */
+const MAX_FANOUT = 7;
 
 /* 逐行剥掉注释（含跨行块注释；跳过字符串，避免把字符串里的 // 当注释）。
    不做这一步会大量误报：形如「停止时的视觉复位（Controls.stop 调用）」的**行内块注释**
@@ -204,6 +214,29 @@ if (r2Hits.length){
       }
     });
     WHITELIST.forEach(w => console.log(`      · ${w.from} → ${w.to}：${w.reason}`));
+  }
+}
+
+/* R4 扇出上限（告警）：统计每个模块**直接引用**的下游模块个数（distinct to），超限即告警 */
+{
+  const fanout = new Map();
+  [...r1Hits, ...r2Hits, ...r3Hits].forEach(h => {
+    if (!fanout.has(h.from)) fanout.set(h.from, new Set());
+    fanout.get(h.from).add(h.to);
+  });
+  const over = [];
+  modules.forEach(mod => {
+    const outs = fanout.get(mod.name) || new Set();
+    if (outs.size > MAX_FANOUT) over.push({ name: mod.name, outs: [...outs] });
+  });
+  const summary = [...fanout.entries()]
+    .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))
+    .map(([name, set]) => `${name}×${set.size}`)
+    .join("  ·  ");
+  if (over.length){
+    over.forEach(o => fail(`R4 扇出超限：${o.name} 直接引用 ${o.outs.length} 个下游模块（上限 ${MAX_FANOUT}）：${o.outs.join(" / ")}\n        新功能的 UI 装配请内聚到各自模块内部，Controls 只做事件转发；确需抬高时显式改大 MAX_FANOUT 并写明理由`));
+  } else {
+    pass(`R4 模块扇出均在上限内（MAX_FANOUT=${MAX_FANOUT}）：${summary}`);
   }
 }
 

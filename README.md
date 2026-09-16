@@ -16,13 +16,13 @@
 ## 开发者：改完跑一条命令
 
 ```bash
-node tools/check-all.js          # 约 6 秒，共 10 步：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 全量测试 → 死循环看门狗 → 行覆盖率
-node tools/check-all.js --quick  # 约 2 秒，跳过 243 组全量组合扫描（改代码时用）
+node tools/check-all.js          # 约 17 秒（本机实测），共 10 步：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js --quick  # 约 11 秒（本机实测），跳过 243 组全量组合扫描（改代码时用）
 ```
 
 **核心闸门零依赖、零安装，Node ≥ 22 直接跑**——不装任何东西也能跑完整套检查。其中有 **2 步是可选加强项**（ESLint / 类型检查）：`npm install` 装了才跑，没装就在汇总里标 **⊘ 未安装依赖，未执行**、并打印「实跑 N/10 项」——**不会显示成 ✓**（区分"没查"和"查了通过"，否则汇总就在撒谎）。想启用，仓库根跑一次 `npm install` 即可；**它们绝不会因为"没装开发依赖"堵住部署**。
 
-类型检查这步把关的是**模块接口与数据模型**：接口方法名拼错、`S.xxx` 状态字段拼错、类型不符的赋值都能拦住（带 "Did you mean" 提示）；它不管 DOM 元素类型（那由 `check-dom-ids.js` 管）。它不开严格模式，原因写在 `tools/tsconfig.typecheck.json`。
+类型检查这步把关的是**模块接口与数据模型**：接口方法名拼错、`S.xxx` 状态字段拼错、类型不符的赋值都能拦住（带 "Did you mean" 提示）；它不管 DOM 元素类型（那由 `check-dom-ids.js` 管）。它的严格开关**该开的都开了**——strict 家族 9 项（含 `noImplicitAny` / `strictNullChecks`）加 `noImplicitReturns` / `noFallthroughCasesInSwitch` 全部打开，取舍与开启路径写在 `tools/tsconfig.typecheck.json`。
 
 项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——它在两条发布渠道上的位置不一样：**Cloudflare** 的构建命令里串了全量检查，不通过就不部署（硬闸门）；**WorkBuddy** 是纯手动发布，没人拦你，只能发布前自己跑一遍。
 

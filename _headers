@@ -1,0 +1,8 @@
+# Cloudflare 静态资源自定义响应头（v2.0.3 审计 C3）。
+# 构建时被拷进 dist/（见 wrangler.jsonc 的 build.command），由 Workers 解析并作用于
+# 静态资源响应；本文件自身不会作为资源对外提供。两个头都对功能无影响，属"默认关上更安全"：
+#   X-Content-Type-Options: nosniff  禁止浏览器按嗅探出的类型解释响应（防 MIME 混淆）
+#   Referrer-Policy: no-referrer     跳转不回传 Referer（本应用不读 Referer，也无外链统计）
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer

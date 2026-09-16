@@ -1,5 +1,128 @@
 # 变更记录
 
+## v2.0.4 · 工程：审计落地 B（诊断面板 · 监听器协议 · 扇出护栏 · 可版本化部署）（2026-09-17）
+
+承接 v2.0.3 的「阶段 A + C」，本版落地审计报告的**阶段 B**——四件「高收益、低成本」的事：
+把静默劣化变成可读数字、把弹窗监听器的注册/清理收成一个协议、给模块扇出加一道机器护栏、
+让 Cloudflare 部署命令进仓库。**除新增一个 `?debug=1` 诊断面板外，不改任何用户可见功能语义。**
+
+### B1 · 隐藏诊断面板（`?debug=1`）
+
+新增一段**隐藏诊断面板**，聚合四类静默劣化计数器：掉帧（`frameErr`）、调度异常（`schedErr`）、
+持久化失败/恢复（`persistFail` / `persistRecover`）、限流脉冲（`limitPulse`）。
+
+- 计数器本体 `diag` **始终存在**（`window.__beat.diag`），只有面板 DOM 受 `?debug=1` 控制——
+  测试因此可以无 UI 断言计数，`file://` 直开也只是没有面板而已，单文件性质不受影响。
+- 复用既有注入钩子（`onFrameError` / `onSchedError` / `onLimitPulse` / `Store` 的两个持久化钩子），
+  **不引入任何新依赖边**，模块地图与 `EXPECTED_ORDER` / `WHITELIST` 保持 13 条不变，
+  故这段代码落在装配层而非新开 IIFE 模块。
+- `onLimitPulse` 只包一层用于计数，且**只计返回 `true`（真的到点停播）**——该钩子每个 25ms 调度周期
+  都会被问一次，若按调用次数计，计数器会以 40/s 空转、把唯一有意义的读数淹没；返回值原样透传，停播语义零改动。
+- 回归：`tests/cases/t56-diagnostics.js`（T56–T56f）。
+
+### B2 · 弹层监听器统一注册 / 清理协议
+
+把 5 个 overlay（编辑 / 统计 / 听辨 / 曲式 / 说明）的开合从"各写一遍"收敛成 `Modal` 上的
+一对原语，并给"打开期间要绑的监听器"提供统一的登记出口：
+
+- `Modal.openOverlay(id)` / `closeOverlay(id)` 统一负责挂/摘 `.open`、`refreshInert()`、焦点进出；
+  此前散落在各模块、各持一份的 `untrap` 局部变量已全部删除。`openOverlay` **幂等**——
+  已开再开不再重复 `trapFocus`（此前重复 open 会让前一个归还闭包被覆盖后永久丢失）。
+- `Modal.bindOverlay(id, target, type, fn, opts)` / `unbindOverlay(id)`：**登记与解绑共用同一份账本**，
+  `unbindOverlay` 不需要调用方复述绑了哪些，结构上杜绝"关闭时忘了解绑"。编辑器 / 听辨 / 曲式里
+  随内容重建的节点监听器全部改走这对原语，且**每次 `render()` 重建前先 `unbindOverlay`**。
+  迁移后 `index.html` 0 处直接 `removeEventListener`（只在 `unbindOverlay` 内）。
+- 回归：`tests/cases/t57-overlay-listeners.js`（T57–T57e）——反复开合 N 次计数不累积、
+  同一打开内多次 `render()` 不增长、`open` 幂等不翻倍。因 harness 的 `removeEventListener`
+  是空操作，用例断言的是应用级账本 `Modal.overlayListenerCount(id)`（与真实 DOM 摘除解耦）。
+- 详情见 `docs/DEVELOPMENT.md` §3.10。
+
+### B3 · 扇出护栏 + 「新功能 UI 内聚各模块」约定
+
+`Controls` 是 UI 层中枢，直接引用 7 个下游模块，是依赖图里最大的扇出点——合理，但也是"每加一个
+新 overlay 就顺手在它的 keydown 里再补一段、慢慢长成上帝对象"的风险面。给这条线加一道机器护栏，
+并把约定写进文档：
+
+- `tools/check-module-order.js` 新增 **R4（扇出上限告警）**：统计每个模块**直接引用**的下游模块
+  个数（distinct `to`），超过 `MAX_FANOUT`（=7）即告警并失败。`Controls` 当前正好顶在上限上，
+  于是"再给控件中枢挂一条下游引用"会**当场报红**，必须显式抬高常量并写明理由——把一次悄悄发生的
+  架构漂移，变成一次看得见、需要辩护的改动。**反向验证**：把 `MAX_FANOUT` 临时调成 6，
+  `Controls`（7 条）确实报红、`check-module-order.js` 退出码 1。
+- 约定「**新功能的 UI 内聚在各自模块内部，`Controls` 只做事件转发**」：新 overlay/面板落在它自己的
+  模块里，开合与监听器复用 `Modal` 的原语（B2）。文档见 `docs/DEVELOPMENT.md` §3.0 与 §3.11。
+- 本项**只加检查、不动 `index.html`**：13 条模块声明顺序与 10 条 R3 白名单均无改动。
+
+### B4 · 构建命令进版本库（`wrangler.jsonc`）
+
+此前 `wrangler.jsonc` 只声明 `assets.directory`，"构建什么、怎么构建"只活在 Cloudflare Dashboard
+的表单里——不可 review、不可 diff、不可回滚，本地也无法完整复现线上构建（审计指出的"配置漂移"）。
+现在把构建步骤落回仓库可版本化字段：
+
+- `wrangler.jsonc` 增 `build.command`：**全量自验（`node tools/check-all.js`，不通过即 `&&` 短路）
+  + 装配 `dist/`（4 个上站产物加 `_headers`，共 5 个条目）**。本地 `npx wrangler deploy` /
+  `wrangler versions upload` 会先跑它，部署前的检查与产物与线上口径一致。
+- **诚实边界**：Cloudflare 的 Git 集成构建（Workers Builds）**不读** wrangler 配置里的 Custom Builds
+  （官方明确说明），所以线上那次构建仍以 **Dashboard 里配的构建/部署命令为准**。本字段解决的是
+  "本地可复现 + 配置进版本库"，**不是**"线上改由仓库驱动"——这句话写进了 `wrangler.jsonc` 头部注释
+  与 `docs/DEVELOPMENT.md` §2，免得后人误以为线上也读它。
+- `_headers` 随之成为构建命令里的显式一项（`docs/DEVELOPMENT.md` §2 仓库树、`.gitignore` 相关注释同步）。
+
+### 版本
+
+`VERSION` 2.0.3 → **2.0.4**。
+
+## v2.0.3 · 工程：审计落地 A + C（信任修复 · 工程卫生）（2026-09-17）
+
+承接 v2.0.2 的审计报告（`spec.md`），把其中**收益最高、成本最低**的两档一次落地：
+先用「阶段 A」修掉文档 / 工具与代码现实之间的漂移，再用「阶段 C」顺手清掉几处工程卫生债。
+**不改任何功能语义**，上站对外资源仍只有 `index.html` / `sw.js` / `manifest.webmanifest` / `icon.svg` 四个文件。
+
+### A · 文档与自验工具去漂移
+
+审计证据显示多处「说明与实际不符」，逐条对齐：
+
+- **耗时口径（A1）**：`README.md` / `docs/DEVELOPMENT.md` / `tools/check-all.js` 头部原写
+  「约 6 秒 / 约 2–3 秒」，与实测（完整约 17s、`--quick` 约 11s）差一个量级，已改为实测值。
+- **严格开关口径（A1）**：`README.md` 原写「它不开严格模式」，与 `tools/tsconfig.typecheck.json` 里
+  strict 家族全开的现实相反，已改为如实描述。
+- **覆盖率注释版本号（A2）**：`tools/check-coverage.js` 头部硬编码「当前（v1.3.1）…」，早已过期，
+  改为不写具体版本号，避免再次漂移。
+- **行号偏移（A3）**：`tools/check-dom-ids.js` 报的行号取自内联脚本切片、未加 `index.html` 起始行偏移，
+  与 `check-eslint.js` / `check-tsc.js` 不一致，报错定位对不上文件；已补 `baseLine`。
+- **仓库卫生（A4）**：`.gitignore` 增加 `.uploads/`，并把误入库的 2 个 PNG `git rm --cached` 掉。
+- **`--strict-env`（A5）**：`tools/check-all.js` 新增该开关——`CI=true` 且可选步骤（ESLint / tsc）
+  缺依赖时**报错**而非静默 `⊘`，让 CI 里的「没查」不再被当成「查了通过」。
+
+### C1 · 抽取 `clear(el)`
+
+全文件 11 处「先清空容器、再逐个 `appendChild`」的渲染函数，起手都是 `el.innerHTML = ""`，
+现统一走共享区的 `clear(el)`。实现**刻意保持 `innerHTML = ""` 语义**（而非 `replaceChildren`）：
+真实 DOM 与测试桩都以它连带清空子节点，换实现会让桩与真实行为分叉。
+
+### C2 · 清理 5 个未引用 id
+
+`argBar` / `editorCardTitle` / `editorDot` / `earHead` / `earDot` 在代码、CSS、测试中均无引用
+（纯历史遗留），删掉 `id` 属性、保留 `class` 钩子。`check-dom-ids.js` 由「声明 147 / 引用 142」
+收敛为 142 / 142，零未用、零悬空。
+
+### C3 · `_headers`
+
+新增入库的 `_headers`（构建时拷进 `dist/`，文件自身不对外提供），下发
+`X-Content-Type-Options: nosniff` 与 `Referrer-Policy: no-referrer`——都对功能无影响，属默认关上更安全。
+
+### C4 · `package.json` 补字段
+
+补 `version`（与 `VERSION` 对齐）、`engines.node >= 22`（README 已如此要求）、`test`（`node tests/run.js`）。
+
+### C5 · `<script>` 开头模块索引
+
+脚本头的模块清单此前停在 v1.3、且缺 `Ear` / `Arrange` / `Help`。补成完整的 **16 段索引**
+（模块名 + `index.html` 绝对行号），作为 5400+ 行单文件内的导航；并注明行号需随增删重算。
+
+### 版本
+
+`VERSION` 2.0.2 → **2.0.3**。
+
 ## v2.0.2 · 工程：审计驱动的健壮性加固（2026-09-16）
 
 一轮技术负责人视角的全维度代码审计后，挑出的「高收益低成本」项一次落地：**不改任何功能语义**，

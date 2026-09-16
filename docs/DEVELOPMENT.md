@@ -21,9 +21,10 @@ beatsight/
 ├── README.md             # 项目门面
 ├── CHANGELOG.md          # 版本记录
 ├── LICENSE               # MIT
-├── package.json          # 开发期自验工具链（唯一 devDependency：eslint；只跑本地，不进产物）
+├── package.json          # 开发期自验工具链（devDependencies：eslint + typescript，均为**可选**加强项；只跑本地，不进产物）
 ├── eslint.config.js      # ESLint flat config（本地自验专用，规则集与取舍写在文件头）
-├── wrangler.jsonc        # Cloudflare Workers 静态资源目录声明（唯一入库的 Cloudflare 配置；构建/部署命令仍在 Dashboard）
+├── _headers              # 静态资源响应头（v2.0.3 审计 C3；构建时拷进 dist/，自身不对外提供）
+├── wrangler.jsonc        # Cloudflare Workers 静态资源配置（资源目录 + 构建命令；唯一入库的 Cloudflare 配置）
 ├── tests/
 │   ├── run.js            # 主测试套件（node tests/run.js，零依赖）
 │   ├── hang-guard.js     # 死循环看门狗：每用例独立子进程 + 超时强杀
@@ -32,7 +33,7 @@ beatsight/
 │   └── README.md         # 测试原理与补断言规则
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
-│   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
+│   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3/R4）
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
 │   ├── check-version.js        # 版本一致性：VERSION / CHANGELOG / 代码注释三处不得漂移（唯一真相源）
 │   ├── check-eslint.js         # 代码卫生 · 加强（**可选**）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
@@ -62,7 +63,7 @@ beatsight/
     都会被路由回当前工作区自己那个应用**——所以一个应用只能在"当初创建它的那个工作区"里更新。
     旧应用更新不了就换绑新链接（34873 → 48543 就是这么发生的）
 
-项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败——**构建命令 / 部署命令 / 根目录仍全部在 Dashboard 里配**，仓库里没有 `_headers` / `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。
+项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败。仓库里另有 `_headers`（纯文本响应头规则，构建时拷进 `dist/`，由 Workers 解析后作用于静态资源响应，自身不对外提供）；**没有** `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。v2.0.4（审计 B4）起，构建步骤也进了 `wrangler.jsonc`：`build.command` = 全量自验 + 装配 `dist/`，使本地 `npx wrangler deploy` 可完整复现线上构建；但 **Cloudflare 的 Git 集成构建（Workers Builds）不读** wrangler 配置里的 Custom Builds（官方既有行为），线上那次构建仍以 Dashboard 里配的构建/部署命令为准——详见 `wrangler.jsonc` 头部注释。
 
 ## 3. 核心架构
 
@@ -85,8 +86,10 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
   - **R1 零例外**：IIFE 顶层执行期不得引用后方模块（真会产生 TDZ 的场景）
   - **R2 零例外**：**每帧渲染热路径**（paintFrame / paintFrameBody / paintBall）体内不得出现「后方模块名 + .」
   - **R3 白名单**：运行时回调可以调用后方模块，但必须在检查器的 WHITELIST 逐条登记并写明理由；条目失效（代码里不再出现）也会报错，防止白名单腐烂成"什么都放行"
+  - **R4 扇出上限（告警，v2.0.4 新增）**：一个模块**直接引用的下游模块个数**（扇出）不得超过 `MAX_FANOUT`（=7）。扇出是"某模块会不会膨胀成上帝对象"的最直接指标；`Controls` 当前已顶到上限（指向它全部的 7 个下游），再想加一条就必须显式抬高常量——让"中枢又胖一圈"成为一次看得见、需要理由的改动，而不是悄悄发生
   - 注：审计报告原文把 scheduler 也划进 R2，但同时又称 `Audio→Trainer` 属于"合法的运行时调用"（而它就在 scheduler 体内），自相矛盾。这里按实际语义修正——scheduler 是 25ms 周期回调，跨模块调用只发生在小节边界（约每 1–2 秒一次），归入 R3
 - **跨模块装配用"钩子"而非直接调用**：`Store.setPersistFailHandler(fn)`、`onFrameError`。模块只暴露回调，由 init 段注入——避免小状态（Store）与渲染热路径（Viz）为了报告错误而反向引用后方模块
+- **新功能的 UI 装配内聚在各自模块内部（v2.0.4 约定）**：`Controls` 只做事件转发与共享状态读写，不再为某个新功能去挂一个新的下游模块；新 overlay/面板一律以自身模块为界，开合与监听器复用 `Modal` 的开合/登记原语（§3.10）。这条约定由 R4 的扇出上限机器守住（见 §3.11）
 
 - `window.__beat` 暴露全部模块接口，是 tests/run.js 的断言入口，也是控制台调试入口
 - 下列 3.1–3.5 的机制描述不变，只是函数有模块归属
@@ -261,7 +264,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 - **开关三件套收口**：`setToggle(id, on)` 一次写全 `className` + `aria-checked`。原先 4 个开关各写一遍 className，加无障碍语义后必然漂移
 - **三选一 pill**：`setPressed(selector, pred)` 让 `.active` 与 `aria-pressed` 同源更新
 - **动效降级**：`prefers-reduced-motion` 下 CSS 关掉装饰性动画（`.dot.live` / `.cell.next` / `.trail-glow`），JS 侧 `REDUCE_MOTION` 把弹跳球的挤压/拉伸置为无形变。**只降形变、保留位置**——球在哪儿、何时落地是核心功能提示，不能去掉
-- **焦点陷阱**：弹窗/编辑器打开时给 `.main` / `.topbar` 置 `inert`，关闭时还原焦点。用 `Modal.refreshInert()` **重算**而不是置位/复位——编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器对应的 inert 一起摘掉
+- **焦点陷阱**：弹窗/编辑器打开时给 `.main` / `.topbar` 置 `inert`，关闭时还原焦点。用 `Modal.refreshInert()` **重算**而不是置位/复位——编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器对应的 inert 一起摘掉。开合的挂/摘 `.open`、重算 inert、焦点进出由 `Modal.openOverlay()/closeOverlay()` 统一负责（见 §3.10）
 
 ### 3.8 听辨训练（v1.10.0）
 
@@ -318,6 +321,50 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 新名字算"从没练过"）。这是 name-keyed 日志的固有性质，不值得为它加 id 迁移——
 预设名是用户可见的展示名，改名的语义本来就是"换了个名字"。
 
+### 3.10 overlay 开合与监听器协议（v2.0.4，审计 B2）
+
+5 个 overlay（编辑 `#editor` / 统计 `#statsOverlay` / 听辨 `#earOverlay` / 曲式 `#arrangeOverlay` /
+说明 `#helpOverlay`）的开合，此前各写一遍同样三件事——挂/摘 `.open`、`refreshInert()`、焦点进出——
+并各持一份 `untrap` 局部变量；打开期间**按内容动态建出的节点**所绑的监听器没有统一登记出口，
+「关闭时忘了解绑」只能靠人眼 review（spec.md 内存泄漏段的"需持续关注"）。
+
+统一为 `Modal` 上的一对开合原语 + 一对监听器登记原语：
+
+| 原语 | 职责 |
+|---|---|
+| `openOverlay(id)` | 挂 `.open`；`refreshInert()`；首次开时 `trapFocus(el)` 并把归还闭包记进该 id 的账本。**幂等**——已开再开直接返回（否则重复 open 会把前一个 `untrap` 覆盖后永久丢失） |
+| `closeOverlay(id)` | 摘 `.open`；先 `unbindOverlay(id)` 清监听器、再执行 `untrap` 归还焦点、最后 `refreshInert()`（顺序与原先逐条写死时一致） |
+| `bindOverlay(id, target, type, fn, opts)` | 向该 id 账本记一条 `{target,type,fn,opts}` 并 `addEventListener`；原样返回 `fn`。动态节点一律用它 |
+| `unbindOverlay(id)` | 遍历账本 `removeEventListener` 后清空，返回解绑条数。**每次 `render()` 重建内容前先调一次**（否则记录随重建次数无界增长） |
+
+- **为什么"登记与解绑共用同一份记录"**：漏解绑的根因是"绑的时候没记、解的时候想不起来解什么"。
+  把登记与解绑绑成同一份账本后，解绑不需要调用方复述绑了哪些——结构上就不可能漏。
+- **不要在模块里直接 `removeEventListener`**：`index.html` 现在 0 处直接调用（只在 `unbindOverlay` 内）。
+  新增 overlay 一律走这对原语；`Modal.overlayListenerCount(id)` 是给测试与排查用的只读视图。
+- **回归用例 `tests/cases/t57-overlay-listeners.js`（T57–T57e）**：反复开合 N 次断言计数不累积、
+  同一次打开内多次 `render()` 计数不增长、`open` 幂等不翻倍、无动态监听器的统计/说明恒为 0。
+  **注意测法**：harness 的 `removeEventListener` 是空操作（真实浏览器才摘监听器），
+  所以断言的是应用级账本 `overlayListenerCount`，而不是元素桩上的 `_h` 数组长度。
+
+### 3.11 新功能 UI 归属与扇出护栏（v2.0.4，审计 B3）
+
+`Controls` 是 UI 层中枢，当前**直接引用 7 个下游模块**（Presets / Editor / Stats / Ear / Arrange /
+Help / KeepAlive），是整张依赖图里最大的扇出点。这既是中枢的合理形态，也是**未来扩展的主要风险面**：
+每加一个新 overlay 就顺手在 `Controls` 的 keydown 里再补一段，`Controls` 会慢慢长成"什么都管"的
+上帝对象，到那时谁想拆都拆不动。
+
+因此约定 —— **新功能的 UI 内聚在各自模块内部，`Controls` 只做事件转发**：
+
+- 新 overlay / 面板默认落在**它自己的模块**里（`open` / `close` / `render` 都在模块内部），不要塞进 `Controls`
+- `Controls` 只保留两件事：**事件转发**（把键盘/点击派发给当前打开的那个 overlay）与**共享状态读写**
+- 键盘归属沿用既有模式（`Stats` / `Ear` / `Arrange` / `Help` 的 `isOpen()` / `close()`）：overlay 打开时键盘归它管。
+  这一类是 `Controls` 既有的下游引用，属于**转发**，不算新装配
+- overlay 的开合与监听器一律复用 `Modal` 的开合/登记原语（§3.10），不要各自再写一遍
+
+护栏 —— `check-module-order.js` 的 **R4**：统计每个模块**直接引用的下游模块个数**，超过 `MAX_FANOUT`（=7）即告警。
+`Controls` 现在就顶在上限上，于是"再给控件中枢加一条下游引用"会**当场失败**，必须显式抬高常量并写明理由——
+把一次悄悄发生的架构漂移，变成一次看得见、需要辩护的改动。
+
 ## 4. 设计规范（视觉 tokens）
 
 | 用途 | 值 |
@@ -357,8 +404,8 @@ getComputedStyle）。
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
 node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint(可选) → 类型检查(可选)
                                  #       → DOM 引用 → 全量测试 → 看门狗 → 覆盖率（共 10 步）
-                                 # 约 6 秒；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
-node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 2 秒）
+                                 # 约 17 秒（本机实测）；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
+node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 11 秒）
 
 # 需要单独跑某一项时（排查用）
 node tests/run.js                # 主套件：抽样的 T21（16 组）
@@ -377,7 +424,8 @@ node tools/check-eslint.js       # 代码卫生 · 加强（可选）：ESLint 1
                                  # 反向验证：注入 if (x = y) 应报 no-cond-assign 且行号正确（check-lint 看不见这条）
 node tools/check-tsc.js          # 类型检查 · 加强（可选）：tsc 的 checkJs，把关**模块接口与数据模型**
                                  # 与 ESLint 同一套降级口径（装了才跑、缺依赖标 ⊘ 跳过）
-                                 # 严格开关的取舍（哪些开了、哪两项还关着、各自多少条债）见 tools/tsconfig.typecheck.json
+                                 # 严格开关：strict 家族 9 项 + noImplicitReturns / noFallthroughCasesInSwitch 全部已开且全绿
+                                 #   （开启路径与两轮攻坚的债务数字）见 tools/tsconfig.typecheck.json
                                  # 反向验证：注入 S.limit.noSuchField / S.trainr.on / S.sig="four"
                                  #   应分别报 TS2339 / TS2551(Did you mean 'trainer'?) / TS2322，行号准确
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空

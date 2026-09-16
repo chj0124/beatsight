@@ -1,8 +1,13 @@
 {
   "name": "beatsight",
+  "version": "2.0.4",
   "private": true,
-  "description": "开发期自验工具链（只跑本地，不进上站产物）。运行时零依赖不变：index.html 仍可 file:// 直开；上站产物仍只有 index.html / sw.js / manifest.webmanifest / icon.svg",
+  "description": "开发期自验工具链（只跑本地，不进上站产物）。运行时零依赖不变：index.html 仍可 file:// 直开；上站对外资源仍只有 index.html / sw.js / manifest.webmanifest / icon.svg",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "test": "node tests/run.js",
     "verify": "node tools/check-all.js",
     "verify:quick": "node tools/check-all.js --quick",
     "lint:eslint": "node tools/check-eslint.js",

@@ -29,6 +29,8 @@ const CASE_FILES = [
   "./cases/t53-arrangement-playback",
   "./cases/t54-arrangement-ui",
   "./cases/t55-help",
+  "./cases/t56-diagnostics",
+  "./cases/t57-overlay-listeners",
 ];
 for (const f of CASE_FILES) require(f);
 
