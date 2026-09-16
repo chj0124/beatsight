@@ -34,6 +34,7 @@ beatsight/
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3）
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
+│   ├── check-version.js        # 版本一致性：VERSION / CHANGELOG / 代码注释三处不得漂移（唯一真相源）
 │   ├── check-eslint.js         # 代码卫生 · 加强（**可选**）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
 │   ├── check-tsc.js            # 类型检查 · 加强（**可选**）：tsc 包装（同上；见 §5 与 tools/tsconfig.typecheck.json）
 │   ├── tsconfig.typecheck.json # 类型闸门的规则集与取舍说明（为什么 checkJs 开着、严格开关关着）
@@ -352,8 +353,8 @@ getComputedStyle）。
 
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
-node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → ESLint(可选) → 类型检查(可选)
-                                 #       → DOM 引用 → 全量测试 → 看门狗 → 覆盖率（共 9 步）
+node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint(可选) → 类型检查(可选)
+                                 #       → DOM 引用 → 全量测试 → 看门狗 → 覆盖率（共 10 步）
                                  # 约 6 秒；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
 node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 2 秒）
 
@@ -365,6 +366,9 @@ node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
 node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
                                  # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
+node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量三者互相对齐
+                                 # 拦「注释写着 v2.0.2、VERSION 还停在 2.0.1」这类发版漂移
+                                 # 反向验证：把 VERSION 改小一格应报"代码引用了更高版本"并退出 1
 node tools/check-eslint.js       # 代码卫生 · 加强（可选）：ESLint 10 的 AST/控制流规则，补零依赖 lint 的盲区
                                  # 装了 node_modules 才跑，缺依赖自动跳过并 exit 0（绝不堵部署）
                                  # 它负责抽内联脚本并把 ESLint 行号映射回 index.html；规则集见 eslint.config.js

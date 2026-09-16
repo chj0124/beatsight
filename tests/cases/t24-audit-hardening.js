@@ -59,6 +59,22 @@ section("T24 持久化 · 冷热分离 / 防抖 / 失败可见（审计 P1-5）"
   eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 保存失败", "写失败 → 顶栏 chip 明示");
   ok(b4.els["persistDot"].classList.contains("bad"), "写失败 → 状态点变红");
   eq(b4.els["modalMask"].hidden, false, "写失败 → 一次性弹窗告知（不再静默降级）");
+  ok(b4.els["modalMsg"].textContent.indexOf("本地保存失败") >= 0, "弹窗文案可读（含原因与「导出预设」备份建议）");
+
+  /* 恢复回路（v2.0.2，审计 D5）：原先 persistFailNotified 一旦置 true 就**永不归位**——
+     存储失败过之后即便恢复（用户清了空间 / 退出隐私模式），顶栏会永远停在"保存失败"，
+     且后续再失败也不再告知。恢复必须同样可见，通知闸门必须真正复位。 */
+  b4.els["modalOk"].fire("click");                                          // 关掉失败弹窗
+  b4.sandbox.localStorage.setItem = (k, v) => b4.storage.set(k, String(v)); // 模拟配额/隐私模式恢复
+  b4.beat.Store.flush();
+  ok(!b4.els["persistDot"].classList.contains("bad"), "★ 写入恢复成功 → 状态点不再标红");
+  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 稳定版", "★ 写入恢复成功 → 顶栏 chip 复位");
+  eq(b4.els["srAnnounce"].textContent, "本地保存已恢复", "★ 写入恢复成功 → 读屏播报恢复（用户可感知）");
+  /* 闸门复位的最强证据：恢复之后再坏一次，应当**重新**告知（不是从此永远沉默） */
+  b4.sandbox.localStorage.setItem = () => { throw new DOMException("quota", "QuotaExceededError"); };
+  b4.beat.Store.flush();
+  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 保存失败", "★ 再次失败 → 仍能重新告知（通知闸门已复位）");
+  eq(b4.els["modalMask"].hidden, false, "再次失败 → 弹窗重新出现");
 }
 
 section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10）");

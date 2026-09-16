@@ -156,3 +156,36 @@ section("T23g 正常路径 · 新守卫不得误伤");
   });
 }
 
+section("T23h 调度器异常 · 与渲染帧同构的边界（v2.0.2 审计 D3）");
+{
+  /* scheduler 是 setInterval(25ms) 的周期回调。v2.0.2 之前它**没有任何异常边界**：
+     一次意外（脏数据走到未设防分支 / AudioContext 被系统关闭 / DOM 引用失效）会让同一个
+     错误每 25ms 重抛一次——控制台刷屏、音频时钟照走而状态停更，用户看到的是
+     "在播放但没声音"，极难归因。这里注入一个**确定性的**调度期故障并断言收口行为：
+     不冒泡 / 记日志 / 停播 / 可见提示（与 T23f 的 paintFrame 边界逐条对应）。 */
+  const { beat, els, sandbox } = loadApp();
+  beat.Controls.start();
+  drive(FakeAudioContext.last, beat, 0.3);
+  ok(beat.Store.S.playing, "前提：注入前正在播放");
+
+  let errLogged = 0;
+  sandbox.console = { log(){}, warn(){}, error(){ errLogged++; } };
+  /* schedWindow() 是 schedulerBody() 的首句、读 document.hidden——把它换成"读即抛"，
+     就得到一个每个 25ms 周期都会命中的调度期故障（比偶发脏数据更确定）。
+     写侧吸收掉：setHidden 的赋值不该被这次注入牵连。 */
+  let hits = 0;
+  Object.defineProperty(sandbox.document, "hidden", {
+    get(){ hits++; throw new Error("注入的调度故障"); },
+    set(){}, configurable: true,
+  });
+
+  let escaped = null;
+  try { beat.Audio.scheduler(); } catch(e){ escaped = e; }
+  ok(!escaped, `调度器异常不再冒泡出 scheduler()（周期回调不会反复重抛）${escaped ? "：" + escaped.message : ""}`);
+  ok(hits > 0, "故障确实被触发（证明本用例有效）");
+  eq(errLogged, 1, "异常已写入控制台，便于事后定位");
+  eq(els["modalMask"].hidden, false, "用户看到可见提示，而不是「在播放但没声音」");
+  ok(els["modalMsg"].textContent.indexOf("节拍调度出现异常") >= 0, "提示文案点明是调度异常：" + els["modalMsg"].textContent);
+  eq(beat.Store.S.playing, false, "调度异常 → 经注入钩子自动停播");
+}
+
