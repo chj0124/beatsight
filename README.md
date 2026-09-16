@@ -7,7 +7,7 @@
 ## 快速开始
 
 - **在线使用 ①（Cloudflare，自动发布）**：https://beatsight.chenhuajian1995.workers.dev/ —— 仓库接 Git，**推 `main` 即自动构建部署，线上始终是最新代码**
-- **在线使用 ②（WorkBuddy，手动发布）**：https://beatsight-34873.app.workbuddy.host/ —— **只在你用 WorkBuddy 打开项目并发布时才更新，滞后是常态**，别拿它判断"线上是不是最新版"
+- **在线使用 ②（WorkBuddy，手动发布）**：https://beatsight-48543.app.workbuddy.host/ （v2.0.1 起；旧链接 beatsight-34873 已随换绑废弃）—— **只在你用 WorkBuddy 打开项目并发布时才更新，滞后是常态**，别拿它判断"线上是不是最新版"
 - 两条在线渠道都支持 PWA 安装到桌面/主屏幕，装完可离线使用
 - **本地使用**：双击 `index.html`（任意现代浏览器，手机浏览器同样适用）
 - ⚠️ **两种用法的数据不互通**：`file://` 与 `https://` 是不同 origin，`localStorage` 不共享。在本地攒的预设，打开在线版会看到空的——迁移请用「导出预设」/「导入预设」

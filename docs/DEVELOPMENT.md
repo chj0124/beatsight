@@ -50,7 +50,14 @@ beatsight/
 **发布渠道（两条，各司其职）**：
 
 - **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。构建命令里串了 `node tools/check-all.js` 全量检查，**不通过就不部署**，所以这条路上线上始终是最新代码
-- **② WorkBuddy，手动**：https://beatsight-34873.app.workbuddy.host/ （v1.4 起；旧链接 beatsight-68235 已随换绑废弃）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
+- **② WorkBuddy，手动**：https://beatsight-48543.app.workbuddy.host/ （v2.0.1 起；旧链接 beatsight-34873 已随换绑废弃，停在 v1.6.0 不再更新）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
+  - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`（只有 `index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` 四个文件，约 300 KB）。
+    不要直接发 `beatsight/`——那里有 44 MB 的 `node_modules`，以及 `tests/` `tools/` `docs/` `package.json` `wrangler.jsonc`，
+    发上去就都变成公开可访问的了。**每次重新发布前要先重新 copy 覆盖**，否则会发到旧版本
+  - ★ **应用归属是按"工作区（会话）"判定的，不是按目录**：每个 WorkBuddy 工作区根目录有一个
+    `.<appId>.genie` 标记文件，记录它发布到哪个应用。**指定别的 appId、或从别的工作区的目录发布，
+    都会被路由回当前工作区自己那个应用**——所以一个应用只能在"当初创建它的那个工作区"里更新。
+    旧应用更新不了就换绑新链接（34873 → 48543 就是这么发生的）
 
 项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败——**构建命令 / 部署命令 / 根目录仍全部在 Dashboard 里配**，仓库里没有 `_headers` / `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。
 
