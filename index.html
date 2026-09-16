@@ -315,6 +315,21 @@ input[type=range].vol{width:120px}
 .arg-now-name{font-size:13px;color:var(--t1)}
 .arg-now-meta{font-size:11px;font-family:var(--mono);color:var(--t3)}
 
+/* ---------- 使用方法（v2.0.1） ---------- */
+.help-list{margin:6px 0 0 20px;font-size:13px;color:var(--t2);line-height:1.85}
+.help-list li{margin-bottom:2px}
+.help-list b,.help-dl dt{color:var(--t1);font-weight:600}
+.help-tip{margin-top:10px;font-size:12px;color:var(--t3);background:var(--card2);
+  border-left:2px solid var(--green);border-radius:0 6px 6px 0;padding:8px 12px;line-height:1.6}
+/* 词条式列表：控制项名与说明两列，窄屏自动堆叠（grid 而不是 float，省一份清浮动） */
+.help-dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:6px 0 0;
+  font-size:13px;line-height:1.7;color:var(--t2)}
+.help-dl dt{text-align:right}
+@media (max-width: 640px){
+  .help-dl{grid-template-columns:1fr;gap:2px}
+  .help-dl dt{text-align:left;margin-top:8px}
+}
+
 /* ---------- 响应式 ---------- */
 /* 窄屏（≤640px）：段行拆成三行。390px 下「段号 + 名字输入(110px) + 块列表 + 5 个操作钮」
    根本放不下一行——实测预设名被压成一字一行、操作钮直接跑出屏外（先出截图再定方案，
@@ -523,6 +538,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <!-- 主题切换（v1.7.0）：经典 ↔ 观测台；偏好存独立冷键 beatsight.theme -->
     <button class="pill outline" id="themeToggle">主题 · 经典</button>
     <button class="pill outline" id="statsBtn">练习统计</button>
+    <!-- 使用方法（v2.0.1）：放在 chip 之前。听辨训练的入口之所以不在这里，
+         是因为顶栏在 390px 窄屏上已经很挤——那条理由对「帮助」不成立：
+         帮助是**低频但必须随时能找到**的入口，藏起来就没人看了 -->
+    <button class="pill outline" id="helpBtn">使用方法</button>
     <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
   </div>
 </header>
@@ -881,6 +900,101 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </div>
 </div>
 
+<!-- ================= 使用方法（v2.0.1） ================= -->
+<div class="editor" id="helpOverlay" role="dialog" aria-modal="true" aria-label="使用方法">
+  <div class="editor-inner">
+    <div class="editor-topbar">
+      <div class="left">
+        <button class="back-btn" id="helpClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回练习
+        </button>
+        <div class="editor-title">使用方法</div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="sec-tag"><b>09</b><i>How to use</i></span>
+
+      <div class="card-title" style="margin-bottom:4px">三步上手</div>
+      <ol class="help-list">
+        <li>右侧「节奏型」里选一个（或点「编辑节奏型」自己画一个）</li>
+        <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
+        <li>按播放（或空格键）开始</li>
+      </ol>
+      <div class="help-tip">这个应用的核心是「把节奏<b>画出来</b>」——不只看拍子，还看每个音有多长。</div>
+
+      <div class="card-title" style="margin:22px 0 4px">画面怎么看</div>
+      <ul class="help-list">
+        <li><b>4 行 = 1 个循环的 4 小节</b>，一行是一小节</li>
+        <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）</li>
+        <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
+        <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上</li>
+        <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
+      </ul>
+
+      <div class="card-title" style="margin:22px 0 4px">先试这几个开关</div>
+      <ul class="help-list">
+        <li><b>静音拍</b>：每 4 小节的最后一小节<b>不发声</b>，逼你靠内心数拍。练节奏不稳特别有效</li>
+        <li><b>变速训练</b>：设好起始 / 目标 BPM，自动一级级加速爬到目标（不用自己按）</li>
+        <li><b>练习量</b>：练满 N 小节或 N 分钟自动停——想练 5 分钟就练 5 分钟</li>
+        <li><b>预备拍</b>：点播放后先数几拍再进正拍</li>
+      </ul>
+
+      <div class="bpm-row" style="margin-top:18px">
+        <button class="pill outline" id="helpMoreBtn" aria-expanded="false" aria-controls="helpMore">展开完整说明</button>
+      </div>
+
+      <!-- 完整说明：默认收起。想一次看完的人再展开——默认全展开会让"先试这几个开关"
+           那一段被埋掉，而那才是新用户真正需要先看到的 -->
+      <div id="helpMore" hidden>
+        <div class="card-title" style="margin:22px 0 4px">全部控制项</div>
+        <dl class="help-dl">
+          <dt>速度 BPM</dt><dd>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120</dd>
+          <dt>拍号</dt><dd>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</dd>
+          <dt>Swing</dt><dd>把每拍后半的八分往后推，做出摇摆感。<b>只改发声时机，不改时间轴</b></dd>
+          <dt>音色 / 音量</dt><dd>电子 / 木鱼 / 鼓组（都是程序合成，不占体积）。重拍增强 = 重拍比正拍响多少</dd>
+          <dt>弹跳球</dt><dd>关掉就只剩声音；静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源</dd>
+          <dt>后台保活</dt><dd>切到别的标签页或手机息屏时尽量不被系统暂停（耗电换连续，按需开）</dd>
+        </dl>
+
+        <div class="card-title" style="margin:22px 0 4px">训练模式</div>
+        <ul class="help-list">
+          <li><b>变速训练</b>：起始 / 目标 / 步长 / 每级小节数四项。练到目标自动停，也可以中途接着上次练</li>
+          <li><b>练习量</b>：按小节或按时间到点自动停。<b>和变速训练可以同时开，谁先到听谁的</b></li>
+          <li><b>听辨训练</b>：只放声音、不给谱，从三个候选里选是哪个节奏型——专治「听不出附点和切分」</li>
+          <li><b>练习统计</b>：顶栏可看本周时长、连续天数、本期练过/没碰的节奏型，以及听辨正确率</li>
+        </ul>
+
+        <div class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</div>
+        <ul class="help-list">
+          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
+          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；播放中「◀ 上一段 / 下一段 ▶」跳段</li>
+          <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
+        </ul>
+
+        <div class="card-title" style="margin:22px 0 4px">自己画节奏型</div>
+        <ul class="help-list">
+          <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
+          <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声</li>
+        </ul>
+
+        <div class="card-title" style="margin:22px 0 4px">数据与隐私</div>
+        <ul class="help-list">
+          <li>所有数据只存在<b>这台设备的浏览器里</b>，不上传任何服务器</li>
+          <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出预设」存一份 JSON 备份</li>
+        </ul>
+
+        <div class="card-title" style="margin:22px 0 4px">键盘</div>
+        <dl class="help-dl">
+          <dt>空格</dt><dd>开始 / 停止播放（焦点不在输入框或按钮上时）</dd>
+          <dt>Esc</dt><dd>关闭当前打开的面板</dd>
+          <dt>Ctrl / ⌘ + Z</dt><dd>节奏型编辑器里撤销一步</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 应用内弹窗 ================= -->
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
@@ -933,7 +1047,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.0.0";
+const VERSION = "2.0.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1877,7 +1991,8 @@ const Modal = (() => {
     const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
       || ($("statsOverlay") && $("statsOverlay").classList.contains("open"))   // v1.4：统计 overlay 同套焦点陷阱
       || ($("earOverlay") && $("earOverlay").classList.contains("open"))        // v1.10.0：听辨训练同套
-      || ($("arrangeOverlay") && $("arrangeOverlay").classList.contains("open")); // v2.0.0：曲式编排同套
+      || ($("arrangeOverlay") && $("arrangeOverlay").classList.contains("open"))  // v2.0.0：曲式编排同套
+      || ($("helpOverlay") && $("helpOverlay").classList.contains("open"));      // v2.0.1：使用方法同套
     document.querySelectorAll(".main, .topbar").forEach(el => { asEl(el).inert = !!off; });
   }
   function uiModal(msg, opts){
@@ -3195,6 +3310,10 @@ const Controls = (() => {
     }
     if (Arrange.isOpen()){                        // v2.0.0：曲式编排同套（空格不误触播放）
       if (e.key === "Escape") Arrange.close();
+      return;
+    }
+    if (Help.isOpen()){                             // v2.0.1：使用方法同套
+      if (e.key === "Escape") Help.close();
       return;
     }
     if ($("editor").classList.contains("open")){
@@ -4612,6 +4731,37 @@ const Arrange = (() => {
   return { open, close, isOpen, refreshBar, refreshNow, jumpTo };
 })();
 
+/* ================= Help · 使用方法（v2.0.1） ================= */
+/* 只有一个 overlay 的开关与"更多内容"的展开状态。内容本身是**静态标记**（不渲染、不取数据）——
+   好处是没有 JS 也能看到全文，且不会被 JS 故障连带弄丢一份纯说明文字。
+   **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
+const Help = (() => {
+  let more = false;
+  function render(){
+    $("helpMore").hidden = !more;
+    $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
+    $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
+  }
+  /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
+     读的时候让它继续响着更有用（编辑器/曲式编排是"要动手改"，才需要停） */
+  function open(){
+    render();
+    $("helpOverlay").classList.add("open");
+    Modal.refreshInert();
+  }
+  function close(){
+    $("helpOverlay").classList.remove("open");
+    Modal.refreshInert();
+  }
+  const isOpen = () => $("helpOverlay").classList.contains("open");
+
+  $("helpBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
+  $("helpClose").addEventListener("click", e => { evEl(e).blur(); close(); });
+  $("helpMoreBtn").addEventListener("click", e => { evEl(e).blur(); more = !more; render(); });
+  render();
+  return { open, close, isOpen, more: () => more };
+})();
+
 /* ================= KeepAlive · 后台保活（v1.4） ================= */
 /* 目标：开着开关播放时，锁屏/切后台尽量不断音。两级策略：
      ① navigator.wakeLock.request("screen")（标准 API，防息屏；切后台标签时系统会自动释放，
@@ -4794,6 +4944,7 @@ $("themeToggle").addEventListener("click", e => {
   arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
   secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
   Arrange,                                        // v2.0.0：曲式编排 UI
+  Help,                                           // v2.0.1：使用方法
   arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
   EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数

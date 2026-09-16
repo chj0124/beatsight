@@ -56,7 +56,7 @@ beatsight/
 
 ## 3. 核心架构
 
-### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块）
+### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块；v2.0.1 起 13 模块）
 
 `<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Presets → Editor → Stats → Ear → KeepAlive → init**
 
@@ -66,7 +66,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
 → Presets（预设库/回退提示/播放中切换挂起）→ Editor（自定义编辑器）
-→ Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）
+→ Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 
