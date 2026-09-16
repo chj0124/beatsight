@@ -1818,10 +1818,12 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
    调用方回落到原有的 (bar+1)%4（对预设模式零行为变化）。 */
-function arrangeNextRow(){
+function arrangeNextRow(sec, bar){
   const a = arrangeCur();
   if (!a) return null;
-  const nxt = arrNextBar(a, S.arrangeSel, arrSec, arrBar);
+  /* 默认取调度游标；调用方（paintBall 的待命球）可显式传可听位置——见该调用点注释 */
+  const nxt = arrNextBar(a, S.arrangeSel,
+    sec === undefined ? arrSec : sec, bar === undefined ? arrBar : bar);
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
   return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar };
 }
@@ -2442,8 +2444,12 @@ const Viz = (() => {
     if (waitEl){
       if (terminal){
         /* 曲式模式下"下一行"可能属于下一段的型（arrangeNextRow 走 arrNextBar 得出）；
-           预设模式下它返回 null → 回落到既有的 (bar + 1) % LOOP_BARS，一字未改 */
-        const nrow = arrangeNextRow();
+           预设模式下它返回 null → 回落到既有的 (bar + 1) % LOOP_BARS，一字未改。
+           v2.0.2：必须按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻窗口，
+           终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
+           prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
+        const nrow = (prev && prev.aBar !== undefined)
+          ? arrangeNextRow(prev.aSec, prev.aBar) : arrangeNextRow();
         const nb = nrow ? nrow.bar : (bar + 1) % LOOP_BARS;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[nb] || []);
         const first = nbSteps.find(s2 => !s2.rest);
@@ -2942,7 +2948,10 @@ const Audio = (() => {
         const t0 = nextNoteTime + swingShift(pat, steps[schedStep], cumT);
         /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
            静音拍训练中球就是唯一的节拍来源）；时刻含 Swing 偏移，落点即真实发声时刻 */
-        onsetBuf.push({ t: t0, bar: schedBar, cumT });
+        /* aSec/aBar（v2.0.2）：端点入缓冲时的节目单位置。渲染层的待命球要按**可听**位置
+           算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
+           提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
+        onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar });
         if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
       }
       nextNoteTime += steps[schedStep].t * spb() / TPB;

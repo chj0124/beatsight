@@ -294,3 +294,37 @@ section("T53j 曲式播放 · 曲式拍号（6/8）≠ 当前拍号时同步 S.s
   ok(beat.Store.S.playing, "6/8 曲式正常播放不中断");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T53k：待命球按可听位置选行 ================= */
+section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回归）");
+{
+  /* 用户实拍 bug（截图）：当前小节（第 4 行）末尾的终端弧上，待命球指向第 2 行而不是
+     回卷的第 1 行。根因：待命球用调度游标 arrSec/arrBar 选行，而调度游标比声音**早一个
+     前瞻窗口**——终端弧的最后 ~150ms 里它已进到下一小节，arrangeNextRow 指到再下一行。
+     修复：onset 携带入缓冲时的节目单位置（aSec/aBar），待命球按最后落地端点（=可听位置）算。
+     场景：单段两块（各 1 遍），可听走到第 4 小节（bar 3）末尾时，调度游标已进入第 5 小节——
+     待命球必须指向 bar 0（第 5 小节 = 块 1 的第 0 行），而不是 bar 1 */
+  const one = A("单段两块", [{ name: "A", blocks: [BL(1, 1), BL(2, 1)] }]);
+  const { beat, ac } = startArrange(one, { from: 0, to: 0, loop: true });
+  /* internals() 每轮重取：块边界调度时 buildViz 会重建球元素，缓存的引用会脱节 */
+  let caught = null;
+  for (let i = 0; i < 600 && !caught; i++){
+    ac.currentTime += 0.02;
+    beat.Audio.scheduler();
+    beat.Viz.paintFrame();
+    const iv = beat.Viz.internals();
+    const buf = beat.onsetBuf();
+    let aud = null;
+    for (const e of buf){ if (e.t <= ac.currentTime) aud = e; else break; }
+    if (!aud || aud.bar !== 3) continue;                       // 可听位置：第 4 行
+    if (beat.arrangeState().bar === 3) continue;               // 调度游标必须已先行过界
+    if (iv.waitEl.style.display === "none") continue;          // 待命球在跳（终端弧）
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(iv.waitEl.style.transform);
+    if (m) caught = { y: +m[2], g0: iv.rowGeo[0].top - 20, g1: iv.rowGeo[1].top - 20 };
+  }
+  ok(!!caught, "捕捉到「可听 bar 3 末尾 + 调度游标已过界 + 待命球可见」的窗口");
+  if (caught)
+    ok(Math.abs(caught.y - caught.g0) < Math.abs(caught.y - caught.g1),
+       `★ 待命球跳向第 1 行（y=${caught.y}，地线 ${caught.g0}），不是第 2 行（地线 ${caught.g1}）`);
+  beat.Controls.stop();
+}
