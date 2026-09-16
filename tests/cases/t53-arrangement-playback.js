@@ -242,3 +242,89 @@ section("T53f 曲式播放 · 曲式被删 / 引用失效时退回预设模式�
   ok(!!beat.activePattern(), "仍能正常发声（回退到当前选中的预设 / 基础节奏）");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T53h：时值可视化渲染的是曲式的型 ================= */
+section("T53h 曲式播放 · viz 网格 = 曲式的型，不是选中预设（v2.0.2 回归）");
+{
+  /* 用户实拍 bug：曲式播放时网格仍是「当前选中的预设」，球按曲式的落点跳 → 音画错位。
+     根因：buildViz 用了 curPattern() 而非 activePattern()。用「选中预设 ≠ 曲式首块的型」
+     的场景钉死它：默认选中民谣扫弦（6 格/行），曲式首块是四分基础（4 格/行）——
+     渲染错了立刻能数出来 */
+  const one = A("一段", [{ name: "A", blocks: [BL(1, 1)] }]);
+  const { beat, els, ac } = startArrange(one, { from: 0, to: 0 });
+  const countCells = row => row.children.filter(c => /(^| )cell( |$)/.test(c.className)).length;
+  eq(beat.curPattern().name, beat.BUILTINS[0].name, "前提：当前选中民谣扫弦（与曲式的型不同）");
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
+     "★ 网格 = 曲式首块的型（四分基础 4 格），不是选中预设（6 格）");
+  drive(ac, beat, 1.2);
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
+     "播放中越过小节边界后网格仍是曲式的型");
+  beat.Controls.stop();
+}
+
+/* ================= 场景 T53i：往回跳段下一个小节边界即生效 ================= */
+section("T53i 曲式播放 · 「◀ 上一段」下一边界即生效（v2.0.2 回归）");
+{
+  /* 用户实拍 bug：播放中点「上一段」毫无反应——arrNextBar 只拉回 s < from，
+     从不处理 s > to，要等当前段整段播完才绕回 */
+  const two = A("两段", [
+    { name: "A", blocks: [BL(0, 2)] },   // 8 小节
+    { name: "B", blocks: [BL(2, 2)] },   // 8 小节
+  ]);
+  const { beat, els, ac } = startArrange(two, { from: 0, to: 1 });
+  drive(ac, beat, 9.2);                  // 240BPM：1 小节 = 1s → 第 2 段第 1 小节
+  eq(beat.arrangeState().sec, 1, "前提：已在第 2 段");
+  els["argJumpPrev"].fire("click");
+  drive(ac, beat, 1.2);                  // 过一个小节边界
+  eq(JSON.stringify([beat.arrangeState().sec, beat.arrangeState().bar]), JSON.stringify([0, 0]),
+     "★ 下一边界即回到第 1 段第 0 小节（不再等第 2 段播完）");
+  beat.Controls.stop();
+}
+
+/* ================= 场景 T53j：曲式拍号 ≠ 当前拍号时对齐 ================= */
+section("T53j 曲式播放 · 曲式拍号（6/8）≠ 当前拍号时同步 S.sig（v2.0.2 回归）");
+{
+  /* 曲式整首同拍号，但可能与当前 S.sig 不同；不同步的话 vizSig / loopStart 重映射 /
+     predictNextArrange 的 barDur 全按错的拍号算——球与播放头错位的另一半根因 */
+  const sway = A("摇曳曲", [{ name: "A", blocks: [BL(7, 1)] }]);   // 摇曳 6/8
+  const { beat, els, ac } = startArrange(sway, { from: 0, to: 0, loop: true });
+  eq(beat.Store.S.sig, 6, "★ 进入曲式播放时 S.sig 切到曲式拍号（6/8）");
+  ok((els["vizTitle"].textContent || "").includes("6/8"), "viz 标题跟着变 6/8");
+  drive(ac, beat, 1.0);
+  ok(beat.Store.S.playing, "6/8 曲式正常播放不中断");
+  beat.Controls.stop();
+}
+
+/* ================= 场景 T53k：待命球按可听位置选行 ================= */
+section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回归）");
+{
+  /* 用户实拍 bug（截图）：当前小节（第 4 行）末尾的终端弧上，待命球指向第 2 行而不是
+     回卷的第 1 行。根因：待命球用调度游标 arrSec/arrBar 选行，而调度游标比声音**早一个
+     前瞻窗口**——终端弧的最后 ~150ms 里它已进到下一小节，arrangeNextRow 指到再下一行。
+     修复：onset 携带入缓冲时的节目单位置（aSec/aBar），待命球按最后落地端点（=可听位置）算。
+     场景：单段两块（各 1 遍），可听走到第 4 小节（bar 3）末尾时，调度游标已进入第 5 小节——
+     待命球必须指向 bar 0（第 5 小节 = 块 1 的第 0 行），而不是 bar 1 */
+  const one = A("单段两块", [{ name: "A", blocks: [BL(1, 1), BL(2, 1)] }]);
+  const { beat, ac } = startArrange(one, { from: 0, to: 0, loop: true });
+  /* internals() 每轮重取：块边界调度时 buildViz 会重建球元素，缓存的引用会脱节 */
+  let caught = null;
+  for (let i = 0; i < 600 && !caught; i++){
+    ac.currentTime += 0.02;
+    beat.Audio.scheduler();
+    beat.Viz.paintFrame();
+    const iv = beat.Viz.internals();
+    const buf = beat.onsetBuf();
+    let aud = null;
+    for (const e of buf){ if (e.t <= ac.currentTime) aud = e; else break; }
+    if (!aud || aud.bar !== 3) continue;                       // 可听位置：第 4 行
+    if (beat.arrangeState().bar === 3) continue;               // 调度游标必须已先行过界
+    if (iv.waitEl.style.display === "none") continue;          // 待命球在跳（终端弧）
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(iv.waitEl.style.transform);
+    if (m) caught = { y: +m[2], g0: iv.rowGeo[0].top - 20, g1: iv.rowGeo[1].top - 20 };
+  }
+  ok(!!caught, "捕捉到「可听 bar 3 末尾 + 调度游标已过界 + 待命球可见」的窗口");
+  if (caught)
+    ok(Math.abs(caught.y - caught.g0) < Math.abs(caught.y - caught.g1),
+       `★ 待命球跳向第 1 行（y=${caught.y}，地线 ${caught.g0}），不是第 2 行（地线 ${caught.g1}）`);
+  beat.Controls.stop();
+}

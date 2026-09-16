@@ -271,6 +271,19 @@ section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰")
   els["bpmMinus5"].fire("pointerdown");
   eq(S.bpm, 30, "−5 触底钳制到 30");
 
+  /* click 兜底（v2.0.2）：键盘 Enter/Space 与读屏激活只发 click、不发 pointerdown，
+     且这类「无指针」click 的 detail 恒为 0——没有这层这四个按钮对他们是「哑键」。
+     指针路径（pointerdown→click，detail ≥ 1）不得二次步进 */
+  beat.Controls.setBpm(100);
+  els["bpmPlus"].fire("click", { detail: 0 });
+  eq(S.bpm, 101, "★ 键盘/读屏路径（click detail=0）→ +1 生效");
+  els["bpmMinus5"].fire("click", { detail: 0 });
+  eq(S.bpm, 96, "键盘/读屏路径 → −5 生效");
+  els["bpmPlus5"].fire("pointerdown");
+  els["bpmPlus5"].fire("pointerup");
+  els["bpmPlus5"].fire("click", { detail: 1 });
+  eq(S.bpm, 101, "★ 指针路径 pointerdown 步进一次，随后的兼容 click 被抑制（96 → 101，不是 106）");
+
   /* 播放中点击档位：不打断播放（setBpm 内部做 loopStart 重映射） */
   beat.Controls.start();
   drive(FakeAudioContext.last, beat, 1);

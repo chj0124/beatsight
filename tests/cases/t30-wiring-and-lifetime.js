@@ -286,6 +286,16 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(S.sel.idx, 3, "点内置预设项 → 选中它");
   eq(els["patternName"].textContent, beat.BUILTINS[3].name, "标题同步为该预设名");
 
+  /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter/Space 激活 */
+  const it5 = listItems()[5];
+  eq(it5.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
+  eq(it5.tabIndex, 0, "预设项可 Tab 聚焦");
+  it5.fire("keydown", { key: "Enter" });
+  eq(S.sel.idx, 5, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
+  eq(listItems()[5].getAttribute("aria-current"), "true", "当前项带 aria-current");
+  listItems()[4].fire("keydown", { key: " ", code: "Space" });
+  eq(S.sel.idx, 4, "★ Space 同样激活（role=button 的键盘契约）");
+
   /* 导入：走 FileReader 接线（桩的 FileReader 会把 FILE_TEXT 交给 onload） */
   app.setFileText(JSON.stringify({ presets: [{ name: "接线导入", meter: 4,
     bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }));
@@ -359,6 +369,55 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   beat.Modal.uiConfirm("再问一次", () => { throw new Error("点遮罩不该执行 onOk"); });
   els["modalMask"].fire("click");
   eq(els["modalMask"].hidden, true, "点遮罩 → 也算取消");
+}
+
+section("T31c 焦点陷阱 · 弹窗叠层 inert 与语义化标记（v2.0.2，P1/P2 无障碍批次）");
+{
+  const app = loadApp();
+  const beat = app.beat, els = app.els;
+
+  /* 弹窗叠在 overlay 上时 overlay 本身也要 inert（v2.0.2 修的洞）：
+     此前 refreshInert 只盖 .main/.topbar，Tab 能从弹窗逃逸进底下的 overlay */
+  els["helpBtn"].fire("click");
+  eq(els["helpOverlay"].classList.contains("open"), true, "使用方法 overlay 打开");
+  eq(els["mainBg"].inert, true, "overlay 打开 → 背景 inert");
+  eq(!!els["helpOverlay"].inert, false, "仅 overlay 打开 → overlay 自身不 inert");
+  beat.Modal.uiConfirm("叠层测试", () => { throw new Error("取消时不该执行 onOk"); });
+  eq(els["helpOverlay"].inert, true, "★ 弹窗叠上 overlay → overlay 也 inert（焦点逃不进底下）");
+  els["modalCancel"].fire("click");
+  eq(!!els["helpOverlay"].inert, false, "弹窗关闭 → overlay 摘掉 inert");
+  eq(els["mainBg"].inert, true, "弹窗关闭但 overlay 还开着 → 背景保持 inert");
+  els["helpClose"].fire("click");
+  eq(!!els["mainBg"].inert, false, "overlay 关闭 → 背景 inert 一并摘掉");
+
+  /* 语义化标记（P2-sem）：main landmark / h1 / h2 / 输入框 label / dialog 可聚焦 */
+  ok(/<main class="main">/.test(html), "主内容是 <main> landmark");
+  ok(/<h1 class="brand">/.test(html), "品牌区是 h1（页面此前零标题层级）");
+  for (const id of ["editor", "statsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"]){
+    ok(new RegExp('id="' + id + '"[^>]*tabindex="-1"').test(html), id + " 带 tabindex=-1（trapFocus 的前提：dialog 可程序化聚焦）");
+  }
+  ok(/<h2 class="card-title"/.test(html) && !/<div class="card-title"/.test(html), "卡片标题全部进 h2");
+  ok(/id="presetNameInput"[^>]*aria-label/.test(html), "预设名称输入有 label");
+  ok(/id="modalInput"[^>]*aria-labelledby="modalMsg"/.test(html), "弹窗输入用提示语做 label");
+
+  /* 主题切换的开关态对读屏可见（按钮文案只报当前主题） */
+  eq(els["themeToggle"].getAttribute("aria-pressed"), "false", "经典主题 → aria-pressed=false");
+  els["themeToggle"].fire("click");
+  eq(els["themeToggle"].getAttribute("aria-pressed"), "true", "切到观测台 → aria-pressed=true");
+  els["themeToggle"].fire("click");
+
+  /* 听辨候选的文字等价（v2.0.2）：纯图形记谱对读屏此前只有一个孤零零的「A」。
+     断言按时值播报，且**不含预设名**——「别看名字猜」的规则对读屏同样成立 */
+  beat.Ear.open();
+  const cands = els["earCands"].children.filter(c => /(^| )ear-cand( |$)/.test(c.className));
+  const st = beat.Ear.state();
+  eq(cands.length, st.names.length, "候选按钮与题目候选数一致");
+  cands.forEach((c, i) => {
+    const lab = c.getAttribute("aria-label") || "";
+    ok(lab.indexOf("候选 " + "ABC"[i] + "：") === 0, "候选 " + "ABC"[i] + " 带时值文字等价：" + lab);
+    ok(lab.indexOf(st.names[i]) === -1, "文字等价不泄漏预设名（防读屏「看名字猜」）");
+  });
+  beat.Ear.close();
 }
 
 section("T32 旧键清理 · 冷热拆分后删除 beatsight.m2（v1.3.1）");
@@ -692,7 +751,10 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
   const barT = () => S.sig * TPBv;
   const headT = () => {
     const el = els["viz"].children.find(c => /(^| )playhead( |$)/.test(c.className));
-    return el ? parseFloat(el.style.left) / 100 * barT() : NaN;
+    /* v2.0.2：播放头改 transform 驱动（帧内不再写 left%）——断言同一物理量，改读 translateX */
+    const m = el ? /translateX\((-?[0-9.]+)px\)/.exec(el.style.transform) : null;
+    const g = iv.rowGeo[0];
+    return m && g ? (+m[1] - g.left) / g.width * barT() : NaN;
   };
   const ballT = () => {
     const m = /(-?[0-9.]+)px, (-?[0-9.]+)px/.exec(iv.ballEl.style.transform);

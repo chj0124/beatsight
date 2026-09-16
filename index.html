@@ -16,16 +16,26 @@
   --green:#1ED760; --red:#F3727F;
   --t1:#FFFFFF; --t2:#B3B3B3; --t3:#8C8C8C; --on-green:#0A0A0A;
   --amber:#E3B341; --rest-line:#5A5A5A;
+  /* 强调色 token（v2.0.2 收口）：「最高强调用近白」是规范，此前 #FFFFFF/#4D4D4D/#fff 散落多处 */
+  --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
+  --peak-rest:#4D4D4D;   /* 休止格的已弹填充：降一档，不抢发声格 */
+  --thumb:#FFFFFF;       /* 滑杆 / 开关圆点 */
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  --mono:"Inter",ui-monospace,"SF Mono",monospace;
+  /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
+     「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 button:disabled{cursor:not-allowed}
+/* 焦点可见性（v2.0.2）：全局重置抹掉了浏览器默认焦点框，键盘用户 Tab 不到位置——
+   与既有的空格启停 / Esc / Ctrl+Z 键盘体系配套的最后一块 */
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 
 /* ---------- 顶栏 ---------- */
-.topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line)}
+/* v2.0.2 PWA 安全区：viewport-fit=cover 下页面铺进刘海/圆角区，env() 把内容拉回可视区（v2.0.2 补） */
+.topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 calc(24px + env(safe-area-inset-right, 0px)) 0 calc(24px + env(safe-area-inset-left, 0px));border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
 .brand .ver{font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
@@ -35,7 +45,7 @@ button:disabled{cursor:not-allowed}
 @keyframes pulse{50%{opacity:.4}}
 
 /* ---------- 主布局 ---------- */
-.main{display:grid;grid-template-columns:1fr 360px;gap:24px;max-width:1440px;margin:0 auto;padding:24px}
+.main{display:grid;grid-template-columns:1fr 360px;gap:24px;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -53,7 +63,7 @@ button:disabled{cursor:not-allowed}
 .pattern-head .name{font-size:20px;font-weight:700}
 .pattern-head .meta{font-size:13px;color:var(--t2);margin-top:4px}
 /* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
-.fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:10px;padding:10px 14px;font-size:12px}
+.fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12px}
 .fallback-note[hidden]{display:none}
 .fallback-note span{flex:1;min-width:0}
 
@@ -61,11 +71,11 @@ button:disabled{cursor:not-allowed}
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
 .bar-row{position:relative;height:86px;margin-bottom:14px}
 .bar-row:last-child{margin-bottom:0}
-.bar-row.current{background:rgba(30,215,96,.07);border-radius:10px}
+.bar-row.current{background:rgba(30,215,96,.07);border-radius:8px}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-9px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
-.beat-zone{position:absolute;top:0;height:44px;border-radius:10px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+.beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
 .ruler-lab{position:absolute;top:67px;font-size:10px;font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
@@ -77,12 +87,12 @@ button:disabled{cursor:not-allowed}
 .cell-label{position:absolute;top:48px;font-size:12px;font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
-.cell .fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:transparent;pointer-events:none;z-index:0}
-.cell.played .fill{background:#FFFFFF}
+.cell .fill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:transparent;pointer-events:none;z-index:0}
+.cell.played .fill{background:var(--peak)}
 .cell.active{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
-.cell.active .fill{background:#FFFFFF}
+.cell.active .fill{background:var(--peak)}
 .cell.rest{background:transparent;border:1px dashed var(--rest-line)}
-.cell.rest.played .fill{background:#4D4D4D}
+.cell.rest.played .fill{background:var(--peak-rest)}
 .cell.rest.active .fill{background:rgba(255,255,255,.35)}
 /* 十六分刻度线：满格高、只画内部十六分分界线（末格不画——格边缘即边界，右缘再画会垂出一条多余竖线） */
 .cell .subs{position:absolute;inset:0 4px;display:flex;z-index:1;pointer-events:none}
@@ -94,11 +104,14 @@ button:disabled{cursor:not-allowed}
    统一用「深底 + 亮描边 + 近白字形」——暗底格与白填充格上都能读清，且两个主题通吃，
    不必再往观测台覆盖块里加一份。方向只靠字形表达（不靠实心/描边），小尺寸下更可靠。
    宽度 14px + 左偏 2px：窄格放不下时由 fitCellAnnotations() 整体隐藏（不裁半个徽标） */
-.cell-strum{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;font-weight:700;color:#FFFFFF;pointer-events:none;z-index:2}
+.cell-strum{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;font-weight:700;color:var(--peak);pointer-events:none;z-index:2}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
-.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--green);pointer-events:none;z-index:6}
+.playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
-.trail-glow{position:absolute;left:0;width:0%;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px)}
+/* 尾迹（v2.0.2 transform 化）：宽度在换行时按行宽定死（行的 10%），帧内只写
+   translateX + scaleX（origin 右缘 = 贴在播放头身后）——每帧改 left/width% 会触发
+   layout 且让 blur(2px) 每帧重算位图，是中低端机掉帧的主因之一 */
+.trail-glow{position:absolute;left:0;width:0;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px);transform-origin:right;will-change:transform}
 
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
@@ -114,8 +127,11 @@ button:disabled{cursor:not-allowed}
 .group{display:flex;flex-direction:column;gap:10px}
 .group-label{font-size:11px;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
-.step-btn{width:44px;height:44px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono)}
-.bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);min-width:92px;text-align:center;cursor:pointer;border-radius:8px}
+.step-btn{width:44px;height:44px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono);transition:background .12s,transform .06s}
+/* 经典主题交互反馈（v2.0.2 补）：观测台有 hover/active，经典此前裸奔 */
+.step-btn:hover{background:var(--line)}
+.step-btn:active{background:var(--border);transform:scale(.94)}
+.bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:92px;text-align:center;cursor:pointer;border-radius:8px}
 .bpm-num:hover{background:var(--card2)}
 .slider-row{display:flex;align-items:center;gap:14px}
 /* 滑杆刻度层（v1.1）：datalist 在 Chrome 下即使不加 appearance:none 也不渲染刻度，
@@ -125,11 +141,19 @@ button:disabled{cursor:not-allowed}
 .bpm-ticks{position:absolute;left:var(--thumb-r);right:var(--thumb-r);top:0;bottom:0;pointer-events:none}
 .bpm-ticks i{position:absolute;top:50%;width:2px;height:12px;border-radius:1px;background:var(--border);transform:translate(-50%,-50%)}
 input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--thumb);box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
+/* 滑杆键盘焦点（v2.0.2 补）：全局重置抹掉了默认 outline，给圆钮补光晕——
+   :focus-visible 的 outline 画在轨道条上不显眼，焦点态必须在 thumb 上 */
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(30,215,96,.55),0 2px 6px rgba(0,0,0,.4)}
+input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(30,215,96,.55),0 2px 6px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--thumb);border:none;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
 input[type=range].vol{width:120px}
-.pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2)}
+.pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
+.pill:hover:not(:disabled):not(.active){background:var(--line);color:var(--t1)}
+.pill.active:hover:not(:disabled){filter:brightness(1.12)}
 .pill.active{background:var(--green);color:var(--on-green);font-weight:700}
 .pill.outline{background:transparent;border:1px solid var(--border);color:var(--t1)}
+.pill.outline:hover:not(:disabled){background:rgba(255,255,255,.06)}
 .pill.flash{background:var(--green);color:var(--on-green)}
 .pill:disabled{background:var(--card2);color:var(--t3)}
 .vdivider{width:1px;height:90px;background:var(--line);flex:none}
@@ -143,7 +167,7 @@ input[type=range].vol{width:120px}
 .toggle-pill.on{color:var(--t1)}
 .toggle-pill.off{color:var(--t2)}
 .switch{width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;transition:background .15s;flex:none}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--thumb);transition:left .15s}
 .toggle-pill.on .switch{background:var(--green)}
 .toggle-pill.on .switch::after{left:18px}
 .hint{font-size:12px;color:var(--t3)}
@@ -187,8 +211,11 @@ input[type=range].vol{width:120px}
 
 /* ---------- 编辑器 ---------- */
 .editor{position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;display:none}
+/* overlay 容器本身可被程序化聚焦（tabindex=-1，焦点管理见 Modal.trapFocus），
+   但容器上的焦点框没有意义——焦点框留给里面的控件 */
+.editor:focus{outline:none}
 .editor.open{display:block}
-.editor-inner{max-width:1080px;margin:0 auto;padding:0 24px 48px}
+.editor-inner{max-width:1080px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
 .editor-topbar{height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:24px}
 .editor-topbar .left{display:flex;align-items:center;gap:16px}
 .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
@@ -248,7 +275,7 @@ input[type=range].vol{width:120px}
    注意用 auto-fit 而不是 auto-fill：auto-fit 会把**空轨道折叠掉**，所以 4 张卡仍能均分整行；
    auto-fill 会保留空轨道，4 张卡只占 4/6 宽、右边空一块。窄屏下自动换行 */
 .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-.stat-card{background:var(--card2);border-radius:10px;padding:16px}
+.stat-card{background:var(--card2);border-radius:8px;padding:16px}
 .stat-num{font-size:28px;font-weight:700;font-family:var(--mono)}
 .stat-lab{font-size:12px;color:var(--t3);margin-top:4px}
 .stats-bars{display:flex;gap:10px;align-items:flex-end;margin-top:8px}
@@ -281,7 +308,7 @@ input[type=range].vol{width:120px}
    作答后：✅ 选中的那张描边转绿/红，正确答案那张也描绿（答错时用户才知道错在哪），
    其余淡出。用 <button> 而不是 <div>：键盘用户要能 Tab 到、回车选中 */
 .ear-cands{display:flex;flex-direction:column;gap:12px;margin-top:18px}
-.ear-cand{display:flex;align-items:center;gap:14px;background:var(--card2);border-radius:10px;padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+.ear-cand{display:flex;align-items:center;gap:14px;background:var(--card2);border-radius:8px;padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .ear-cand:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
 .ear-cand:disabled{cursor:default}
 .ear-cand-lab{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t2);flex:none}
@@ -302,11 +329,11 @@ input[type=range].vol{width:120px}
 .arg-sec{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
 .arg-sec:last-child{border-bottom:none}
 .arg-sec-label{flex:none;width:34px;font-size:11px;font-family:var(--mono);color:var(--t3)}
-.arg-name{width:110px;flex:none;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:7px;color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-name{width:110px;flex:none;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 .arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
 .arg-block{display:flex;align-items:center;gap:6px;background:var(--card2);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
-.arg-reps{width:38px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:5px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
+.arg-reps{width:38px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:4px 8px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 .arg-ops{flex:none;display:flex;gap:4px}
@@ -314,6 +341,8 @@ input[type=range].vol{width:120px}
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .arg-now-name{font-size:13px;color:var(--t1)}
 .arg-now-meta{font-size:11px;font-family:var(--mono);color:var(--t3)}
+/* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
+.arg-jump{justify-content:center;margin-top:14px}
 
 /* ---------- 使用方法（v2.0.1） ---------- */
 .help-list{margin:6px 0 0 20px;font-size:13px;color:var(--t2);line-height:1.85}
@@ -373,6 +402,9 @@ input[type=range].vol{width:120px}
 }
 /* 手机窄屏（≤560px）：卡片头改上下两行——标题与状态灯不再争抢同一行宽度而各自被挤断行 */
 @media (max-width:560px){
+  /* 顶栏换行（v2.0.2）：390px 下品牌区+三个按钮合计溢出约 100px，
+     原先被 body{overflow-x:hidden} 静默裁掉，最右侧「使用方法」不可见 */
+  .topbar{flex-wrap:wrap;height:auto;min-height:64px;padding-top:10px;padding-bottom:10px;row-gap:10px}
   .card-head{flex-direction:column;align-items:flex-start;gap:6px}
   .status{white-space:nowrap}
 }
@@ -415,7 +447,8 @@ body[data-theme="obs"]{
   --bg:#0A0C12; --card:#11141C; --card2:#171B27; --cell:#1E2434;
   --line:rgba(255,255,255,.07); --border:rgba(255,255,255,.16);
   --green:#3B82F6; --red:#F87171;
-  --t1:#E8ECF5; --t2:#97A1B5; --t3:#5F6B7E; --on-green:#FFFFFF;
+  /* --t3 原值 #5F6B7E 在 --card 上只有 ≈3.5:1，不达 WCAG AA 4.5:1（v2.0.2 提到 ≈6.3:1） */
+  --t1:#E8ECF5; --t2:#97A1B5; --t3:#8A97AC; --on-green:#FFFFFF;
   --rest-line:rgba(255,255,255,.22);
   --teal:#2DD4A8; --accent-hi:#60A5FA;
   background:radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.06), transparent 60%), var(--bg);
@@ -425,8 +458,8 @@ body[data-theme="obs"]{
 body[data-theme="obs"] .topbar{height:56px;border-bottom:1px solid var(--line)}
 body[data-theme="obs"] .brand{font-weight:600;letter-spacing:.02em}
 body[data-theme="obs"] .brand svg path{fill:var(--green)}
-body[data-theme="obs"] .brand svg line{stroke:#0A0C12}
-body[data-theme="obs"] .brand svg circle{fill:#0A0C12}
+body[data-theme="obs"] .brand svg line{stroke:var(--bg)}
+body[data-theme="obs"] .brand svg circle{fill:var(--bg)}
 body[data-theme="obs"] .brand .ver{background:transparent;border:1px solid var(--line);border-radius:6px;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .chip{background:transparent;border:1px solid var(--line);border-radius:6px}
 body[data-theme="obs"] .dot.live{box-shadow:0 0 8px rgba(59,130,246,.6)}
@@ -529,11 +562,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 <body>
 
 <header class="topbar">
-  <div class="brand">
+  <h1 class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
     <span class="ver" id="brandVer"></span>
-  </div>
+  </h1>
   <div style="display:flex;align-items:center;gap:10px">
     <!-- 主题切换（v1.7.0）：经典 ↔ 观测台；偏好存独立冷键 beatsight.theme -->
     <button class="pill outline" id="themeToggle">主题 · 经典</button>
@@ -546,7 +579,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </div>
 </header>
 
-<div class="main">
+<!-- 分级播报（v1.3.0，P2-11）：#statusText 每换一个十六分音就更新，给它加 aria-live 会刷屏；
+     所以另设一个粗粒度播报区，只在「开始 / 停止 / 训练完成 / 进入预备拍」等处写入。
+     v2.0.2：挪到 body 直属——原先在 .main 里，overlay 打开时 .main 被 inert，
+     播报区随子树一起从辅助技术树移除，听辨训练的出题/作答反馈对读屏用户全灭 -->
+<span id="srAnnounce" class="sr-only" role="status" aria-live="polite"></span>
+
+<main class="main">
   <div class="col">
     <!-- 当前节奏型 -->
     <div class="pattern-head">
@@ -567,14 +606,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <section class="card">
       <div class="card-head">
         <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
-        <div class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</div>
+        <h2 class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</h2>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
-      </div>
-      <!-- 分级播报（v1.3.0，P2-11）：#statusText 每换一个十六分音就更新，给它加 aria-live 会刷屏；
-           所以另设一个粗粒度播报区，只在「开始 / 停止 / 训练完成 / 进入预备拍」四处写入 -->
-      <span id="srAnnounce" class="sr-only" role="status" aria-live="polite"></span>
-      <div class="viz" id="viz"></div>
-      <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
+    </div>
+    <div class="viz" id="viz"></div>
+    <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
+         单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示 -->
+    <div class="arg-now arg-jump" id="argJump" hidden>
+      <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
+      <span class="arg-now-meta" id="argNowMeta"></span>
+      <button class="pill outline" id="argJumpNext">下一段 ▶</button>
+    </div>
+    <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
@@ -695,7 +738,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <section class="card">
       <div class="card-head">
         <span class="sec-tag"><b>04</b><i>Library</i></span>
-        <div class="card-title">节奏型预设库</div>
+        <h2 class="card-title">节奏型预设库</h2>
         <div class="chip" id="presetCount">8 内置</div>
       </div>
       <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
@@ -707,15 +750,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
       <div id="presetList"></div>
       <!-- 曲式编排（v2.0.0）：入口放在预设卡片里——曲式与预设是**同一层概念**
-           （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能 -->
+           （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能。
+           跳段行不在这里（v2.0.2 挪到时值可视化正下方），这里只留入口与曲式名 -->
       <div class="arg-now" id="argBar">
         <button class="pill outline" id="argOpen">编排曲式</button>
         <span class="arg-now-name" id="argNowName"></span>
-      </div>
-      <div class="arg-now" id="argJump" hidden>
-        <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
-        <span class="arg-now-meta" id="argNowMeta"></span>
-        <button class="pill outline" id="argJumpNext">下一段 ▶</button>
       </div>
       <div class="preset-io">
         <button class="pill outline" id="exportBtn" disabled>导出预设</button>
@@ -725,10 +764,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请用「导出预设」备份 JSON，换设备后用「导入预设」恢复。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
     </section>
   </aside>
-</div>
+</main>
 
 <!-- ================= 自定义节奏型编辑器 ================= -->
-<div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器">
+<div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器" tabindex="-1">
   <div class="editor-inner">
     <div class="editor-topbar">
       <div class="left">
@@ -747,7 +786,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <div class="card">
       <div class="card-head">
         <span class="sec-tag"><b>05</b><i>Pattern Editor</i></span>
-        <div class="card-title" id="editorCardTitle">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</div>
+        <h2 class="card-title" id="editorCardTitle">编辑区 · 4 小节 · 点击音符块选中，从下方音符块库替换或追加</h2>
         <div class="status ok" id="editorStatusWrap"><span class="dot" id="editorDot"></span><span id="editorStatus">校验通过</span></div>
       </div>
       <div id="editorBars"></div>
@@ -767,11 +806,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
-      <div class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</div>
+      <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
       <div class="palette" id="palette"></div>
       <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2)">预设名称</span>
-        <input class="name-input" id="presetNameInput" value="我的节奏型">
+        <input class="name-input" id="presetNameInput" value="我的节奏型" aria-label="节奏型名称">
         <span class="hint">保存后可在主界面「我的预设」中找到</span>
       </div>
     </div>
@@ -779,7 +818,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 </div>
 
 <!-- ================= 练习统计（v1.4） ================= -->
-<div class="editor" id="statsOverlay" role="dialog" aria-modal="true" aria-label="练习统计">
+<div class="editor" id="statsOverlay" role="dialog" aria-modal="true" aria-label="练习统计" tabindex="-1">
   <div class="editor-inner">
     <div class="editor-topbar">
       <div class="left">
@@ -805,7 +844,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              并进统计面板——"练了多久"和"耳朵有没有变好"该在同一处看 -->
         <div class="stat-card"><div class="stat-num" id="statEar">—</div><div class="stat-lab" id="statEarLab">听辨正确率</div></div>
       </div>
-      <div class="card-title" style="margin-bottom:4px">练习分布</div>
+      <h2 class="card-title" style="margin-bottom:4px">练习分布</h2>
       <div class="bpm-row" id="statsRangeRow" style="margin-bottom:8px">
         <button class="pill active" data-range="7" aria-pressed="true">近 7 天</button>
         <button class="pill" data-range="30" aria-pressed="false">近 30 天</button>
@@ -824,7 +863,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 </div>
 
 <!-- ================= 听辨训练（v1.10.0） ================= -->
-<div class="editor" id="earOverlay" role="dialog" aria-modal="true" aria-label="听辨训练">
+<div class="editor" id="earOverlay" role="dialog" aria-modal="true" aria-label="听辨训练" tabindex="-1">
   <div class="editor-inner">
     <div class="editor-topbar">
       <div class="left">
@@ -841,7 +880,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <div class="card">
       <div class="card-head">
         <span class="sec-tag"><b>07</b><i>Ear Training</i></span>
-        <div class="card-title" id="earHead">听一段节奏，从三个记谱里选出你听到的那个</div>
+        <h2 class="card-title" id="earHead">听一段节奏，从三个记谱里选出你听到的那个</h2>
         <div class="status" id="earStatusWrap"><span class="dot" id="earDot"></span><span id="earStatus">准备开始</span></div>
       </div>
       <div class="bpm-row">
@@ -862,7 +901,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 </div>
 
 <!-- ================= 曲式编排（v2.0.0） ================= -->
-<div class="editor" id="arrangeOverlay" role="dialog" aria-modal="true" aria-label="曲式编排">
+<div class="editor" id="arrangeOverlay" role="dialog" aria-modal="true" aria-label="曲式编排" tabindex="-1">
   <div class="editor-inner">
     <div class="editor-topbar">
       <div class="left">
@@ -879,7 +918,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     </div>
     <div class="card">
       <span class="sec-tag"><b>08</b><i>Arrangement</i></span>
-      <div class="card-title" style="margin-bottom:4px">曲式库</div>
+      <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
       <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
       <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
       <div class="stats-head">段落结构</div>
@@ -901,7 +940,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 </div>
 
 <!-- ================= 使用方法（v2.0.1） ================= -->
-<div class="editor" id="helpOverlay" role="dialog" aria-modal="true" aria-label="使用方法">
+<div class="editor" id="helpOverlay" role="dialog" aria-modal="true" aria-label="使用方法" tabindex="-1">
   <div class="editor-inner">
     <div class="editor-topbar">
       <div class="left">
@@ -915,7 +954,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <div class="card">
       <span class="sec-tag"><b>09</b><i>How to use</i></span>
 
-      <div class="card-title" style="margin-bottom:4px">三步上手</div>
+      <h2 class="card-title" style="margin-bottom:4px">三步上手</h2>
       <ol class="help-list">
         <li>右侧「节奏型」里选一个（或点「编辑节奏型」自己画一个）</li>
         <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
@@ -923,7 +962,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </ol>
       <div class="help-tip">这个应用的核心是「把节奏<b>画出来</b>」——不只看拍子，还看每个音有多长。</div>
 
-      <div class="card-title" style="margin:22px 0 4px">画面怎么看</div>
+      <h2 class="card-title" style="margin:22px 0 4px">画面怎么看</h2>
       <ul class="help-list">
         <li><b>4 行 = 1 个循环的 4 小节</b>，一行是一小节</li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）</li>
@@ -932,7 +971,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
       </ul>
 
-      <div class="card-title" style="margin:22px 0 4px">先试这几个开关</div>
+      <h2 class="card-title" style="margin:22px 0 4px">先试这几个开关</h2>
       <ul class="help-list">
         <li><b>静音拍</b>：每 4 小节的最后一小节<b>不发声</b>，逼你靠内心数拍。练节奏不稳特别有效</li>
         <li><b>变速训练</b>：设好起始 / 目标 BPM，自动一级级加速爬到目标（不用自己按）</li>
@@ -947,7 +986,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <!-- 完整说明：默认收起。想一次看完的人再展开——默认全展开会让"先试这几个开关"
            那一段被埋掉，而那才是新用户真正需要先看到的 -->
       <div id="helpMore" hidden>
-        <div class="card-title" style="margin:22px 0 4px">全部控制项</div>
+        <h2 class="card-title" style="margin:22px 0 4px">全部控制项</h2>
         <dl class="help-dl">
           <dt>速度 BPM</dt><dd>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120</dd>
           <dt>拍号</dt><dd>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</dd>
@@ -957,7 +996,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <dt>后台保活</dt><dd>切到别的标签页或手机息屏时尽量不被系统暂停（耗电换连续，按需开）</dd>
         </dl>
 
-        <div class="card-title" style="margin:22px 0 4px">训练模式</div>
+        <h2 class="card-title" style="margin:22px 0 4px">训练模式</h2>
         <ul class="help-list">
           <li><b>变速训练</b>：起始 / 目标 / 步长 / 每级小节数四项。练到目标自动停，也可以中途接着上次练</li>
           <li><b>练习量</b>：按小节或按时间到点自动停。<b>和变速训练可以同时开，谁先到听谁的</b></li>
@@ -965,26 +1004,27 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>练习统计</b>：顶栏可看本周时长、连续天数、本期练过/没碰的节奏型，以及听辨正确率</li>
         </ul>
 
-        <div class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</div>
+        <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
         <ul class="help-list">
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
-          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；播放中「◀ 上一段 / 下一段 ▶」跳段</li>
+          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
+            播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
           <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
         </ul>
 
-        <div class="card-title" style="margin:22px 0 4px">自己画节奏型</div>
+        <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
           <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声</li>
         </ul>
 
-        <div class="card-title" style="margin:22px 0 4px">数据与隐私</div>
+        <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
         <ul class="help-list">
           <li>所有数据只存在<b>这台设备的浏览器里</b>，不上传任何服务器</li>
           <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出预设」存一份 JSON 备份</li>
         </ul>
 
-        <div class="card-title" style="margin:22px 0 4px">键盘</div>
+        <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
         <dl class="help-dl">
           <dt>空格</dt><dd>开始 / 停止播放（焦点不在输入框或按钮上时）</dd>
           <dt>Esc</dt><dd>关闭当前打开的面板</dd>
@@ -999,7 +1039,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
     <div class="modal-msg" id="modalMsg"></div>
-    <input class="name-input modal-input" id="modalInput" hidden>
+    <input class="name-input modal-input" id="modalInput" hidden aria-labelledby="modalMsg">
     <div class="modal-actions">
       <button class="pill outline" id="modalCancel">取消</button>
       <button class="pill active" id="modalOk">确定</button>
@@ -1801,10 +1841,12 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
    调用方回落到原有的 (bar+1)%4（对预设模式零行为变化）。 */
-function arrangeNextRow(){
+function arrangeNextRow(sec, bar){
   const a = arrangeCur();
   if (!a) return null;
-  const nxt = arrNextBar(a, S.arrangeSel, arrSec, arrBar);
+  /* 默认取调度游标；调用方（paintBall 的待命球）可显式传可听位置——见该调用点注释 */
+  const nxt = arrNextBar(a, S.arrangeSel,
+    sec === undefined ? arrSec : sec, bar === undefined ? arrBar : bar);
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
   return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar };
 }
@@ -1918,6 +1960,10 @@ function arrNextBar(a, sel, sec, bar){
   /* 推进：未开始 → 落到起点；否则 +1 小节 */
   let s = (bar >= 0) ? sec : from, b = (bar >= 0) ? bar + 1 : 0;
   if (s < from){ s = from; b = 0; }                    // 落在范围之前：拉回起点
+  /* 落在范围之后同样拉回（v2.0.2 修）：跳段/缩范围是即时的，旧逻辑只在段走完才绕回——
+     往回跳段时当前段最长还要播完整段，用户观感是「上一段点了没反应」。
+     回卷方向与循环一致：范围从头（from）重新开始 */
+  if (s > to){ s = from; b = 0; }
   if (b >= secBars(a.sections[s])){                    // 本段走完
     if (s >= to){
       if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
@@ -1976,7 +2022,21 @@ let onQuotaDone = null;
 let onFrameError = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
-const activePattern = () => (S.preview || !S.playing) ? curPattern() : (appliedPat || curPattern());
+/* 曲式模式的「待命型」（v2.0.2）：停止且处于曲式模式时，界面应该显示「下一次播放从哪儿开始」
+   = 播放范围起点的第 0 小节。跳段定位（arrangeSel 变化）后网格立即跟着换，
+   用户才能确认「定位生效了」——否则只有一行文字变、网格与小球原地不动（用户实拍困惑） */
+const arrangeHomePattern = () => {
+  const a = arrangeCur();
+  if (!a) return null;
+  const first = arrNextBar(a, S.arrangeSel, 0, -1);
+  return (first && first.pattern) || null;
+};
+const activePattern = () => {
+  if (S.preview) return curPattern();
+  if (S.playing) return appliedPat || curPattern();
+  if (S.playMode === "arrange"){ const h = arrangeHomePattern(); if (h) return h; }
+  return curPattern();
+};
 
 /* ================= Modal · 应用内弹窗 ================= */
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
@@ -1987,6 +2047,7 @@ const Modal = (() => {
      会「走丢」）。用 inert 把背景整体置为不可交互。
      注意用**重算**而不是置位/复位：编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器
      对应的 inert 一起摘掉。 */
+  const OVERLAY_IDS = ["editor", "statsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"];
   function refreshInert(){
     const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
       || ($("statsOverlay") && $("statsOverlay").classList.contains("open"))   // v1.4：统计 overlay 同套焦点陷阱
@@ -1994,6 +2055,16 @@ const Modal = (() => {
       || ($("arrangeOverlay") && $("arrangeOverlay").classList.contains("open"))  // v2.0.0：曲式编排同套
       || ($("helpOverlay") && $("helpOverlay").classList.contains("open"));      // v2.0.1：使用方法同套
     document.querySelectorAll(".main, .topbar").forEach(el => { asEl(el).inert = !!off; });
+    /* 叠层修正（v2.0.2）：弹窗开在 overlay 之上时，overlay 本身也要 inert——
+       此前只盖 .main/.topbar，Tab 能从弹窗逃逸进底下的 overlay（焦点陷阱破洞） */
+    OVERLAY_IDS.forEach(id => { const el = $(id); if (el) asEl(el).inert = modalOpen; });
+  }
+  /* overlay 焦点管理（v2.0.2）：打开 overlay 时焦点必须跟着进去——背景被 inert 后焦点
+     还留在背景上，键盘/读屏用户一开 overlay 就「丢焦点」。返回归还函数，close 时调用。 */
+  function trapFocus(el){
+    const back = asEl(document.activeElement);
+    try{ el.focus({ preventScroll: true }); }catch(e){}
+    return () => { try{ if (back && back.focus) back.focus(); }catch(e){} };
   }
   function uiModal(msg, opts){
     opts = opts || {};
@@ -2033,7 +2104,7 @@ const Modal = (() => {
     if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
     if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
   }, true);
-  return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen, refreshInert };
+  return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen, refreshInert, trapFocus };
 })();
 
 /* ================= Viz · 时值可视化 ================= */
@@ -2081,7 +2152,11 @@ const Viz = (() => {
     viz.innerHTML = "";
     rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = [];
-    const p = curPattern();
+    /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
+       appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
+       网格与发声分裂：画面是旧预设的格子，球却按曲式的落点跳（用户实拍：音画错位）。
+       停止/试听时 activePattern() 本就回落 curPattern()，预设模式行为零变化 */
+    const p = activePattern();
     const barTicks = vizSig * TPB;
     for (let b = 0; b < LOOP_BARS; b++){
       const row = document.createElement("div");
@@ -2196,7 +2271,7 @@ const Viz = (() => {
     }
     playheadEl = document.createElement("div");
     playheadEl.className = "playhead";
-    playheadEl.style.left = "0%";
+    playheadEl.style.transform = "translateX(0px)";
     trailGlowEl = document.createElement("div");      // 播放头尾迹光晕
     trailGlowEl.className = "trail-glow";
     viz.appendChild(trailGlowEl);
@@ -2207,6 +2282,8 @@ const Viz = (() => {
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
     cacheGeo();                      // v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）
+    const g0 = geoOf(0);             // 尾迹宽度 = 行宽 10%（定死，帧内只写 transform；v2.0.2）
+    if (g0) trailGlowEl.style.width = (g0.width * 0.1) + "px";
     parkBall();
     $("vizTitle").textContent = `时值可视化 · ${meterName(S.sig)} · 同屏 4 小节`;
     resetTracking();
@@ -2219,20 +2296,25 @@ const Viz = (() => {
      （v1.3.0 P1-4 的性能承诺靠这一点成立，往帧内加读取会立刻破功） */
   const STRUM_MIN_W = 20;      // 徽标 14px + 左偏 2px + 余量：窄于此值整体隐藏，不做部分裁切
   function fitCellAnnotations(){
+    /* 两阶段执行（v2.0.2）：先全部量测、再统一写入。原先「读 offsetWidth → 写 display」交错，
+       任何样式写都把文档标脏、下一次读取强制同步布局——一次 buildViz 触发几十次重排，
+       播放中换型时这笔尖刺会推迟音频调度（掉音诱因）。分离后强制布局只剩 1 次 */
+    const writes = [];
     labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
-      if (lb) lb.style.display = (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : "";
+      if (lb) writes.push([lb, (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : ""]);
     }));
     /* 徽标是定宽元素（不随文字变宽），故阈值取常量而不是 scrollWidth——
        定宽与实测宽度比较在真浏览器里才是正确判据 */
     strumEls.forEach((strums, b) => strums.forEach((sm, i) => {
-      if (sm) sm.style.display = (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : "";
+      if (sm) writes.push([sm, (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
       const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1];
       if (!first || !last) return;
       const w = last.offsetLeft + last.offsetWidth - first.offsetLeft;
-      g.el.style.display = (w < g.el.scrollWidth + 8) ? "none" : "";
+      writes.push([g.el, (w < g.el.scrollWidth + 8) ? "none" : ""]);
     }));
+    writes.forEach(([el, v]) => { el.style.display = v; });
   }
   let resizeTimer = null;
   window.addEventListener("resize", () => {
@@ -2240,7 +2322,9 @@ const Viz = (() => {
     resizeTimer = setTimeout(() => {
       /* v1.3.0：播放中不重建 DOM（会打断动画），但几何确实变了 → 重采缓存即可，
          否则弹跳球/光晕会继续按旧尺寸画，表现为"球跑偏到行外" */
-      if (S.playing) cacheGeo();
+      if (S.playing){ cacheGeo(); fitCellAnnotations(); }
+      /* v2.0.2：播放中也补跑标注自适应——跨断点（格子 44→34px）后旧宽度判定已失效，
+         不重跑会错误隐藏/显示标签徽标直到下次 buildViz。它不做 DOM 重建，不打断动画 */
       else buildViz();
     }, 200);
   });
@@ -2253,16 +2337,15 @@ const Viz = (() => {
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
     if (!playheadEl) return;                   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
-    playheadEl.style.left = "0%";
-    trailGlowEl.style.left = "0%";
-    trailGlowEl.style.width = "0%";
+    playheadEl.style.transform = "translateX(0px)";
+    trailGlowEl.style.transform = "translateX(0px) scaleX(0)";
     parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
     const pat = curPattern();
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
       const st = (pat.bars[b] || [])[i];       // v1.2.4：快照与已渲染格子可能因瞬态长度不一，容忍之
       el.className = "cell upcoming" + (st && st.rest ? " rest" : "");
-      if (fillEls[b][i]) fillEls[b][i].style.width = "0%";
+      if (fillEls[b][i]) fillEls[b][i].style.transform = "scaleX(0)";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
     }));
@@ -2278,7 +2361,7 @@ const Viz = (() => {
 
   /* 跑道拍点脉冲（v0.9.1 提取）：换拍瞬间与预备拍计数共用同一组关键帧 */
   function pulseZone(z){
-    if (!z) return;
+    if (!z || REDUCE_MOTION) return;   // v2.0.2：纯装饰脉冲，前庭敏感用户降级（拍点位置由球/填充表达）
     const fc = flashTheme();   // v1.7.0：脉冲配色随主题（观测台 = 电光蓝）
     z.animate([
       {boxShadow:fc.zoneOn},
@@ -2385,7 +2468,10 @@ const Viz = (() => {
     const x = A.x + (Bp.x - A.x) * p;
     const yBase = A.y;                                      // 全程本行：基线恒定
     let H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
-    H = Math.min(H, A.y + 6);                               // 顶点不出容器空域
+    /* 跳高钳制（注释与实现对齐，v2.0.2 修正表述）：钳的是「长弧飞进卡片头」——
+       顶点允许探出 .viz 上缘至多 6px（球心 -6、球沿 ≈ -13 时落在卡片区是半透明过渡帧，
+       视觉上只是「跳到最高处蹭一下」而非错位；此前注释写「不出容器空域」与 +6 余量矛盾） */
+    H = Math.min(H, A.y + 6);
     const y = yBase - H * 4 * p * (1 - p);
     let sx = 1, sy = 1;
     const dtL = now - a.t, dtR = b2.t - now;
@@ -2409,8 +2495,12 @@ const Viz = (() => {
     if (waitEl){
       if (terminal){
         /* 曲式模式下"下一行"可能属于下一段的型（arrangeNextRow 走 arrNextBar 得出）；
-           预设模式下它返回 null → 回落到既有的 (bar + 1) % LOOP_BARS，一字未改 */
-        const nrow = arrangeNextRow();
+           预设模式下它返回 null → 回落到既有的 (bar + 1) % LOOP_BARS，一字未改。
+           v2.0.2：必须按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻窗口，
+           终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
+           prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
+        const nrow = (prev && prev.aBar !== undefined)
+          ? arrangeNextRow(prev.aSec, prev.aBar) : arrangeNextRow();
         const nb = nrow ? nrow.bar : (bar + 1) % LOOP_BARS;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[nb] || []);
         const first = nbSteps.find(s2 => !s2.rest);
@@ -2473,15 +2563,20 @@ const Viz = (() => {
       tib = posT - bar * barTicks;                              // 小节内位置（tick）
     }
     const pw = tib / barTicks * 100;
-    playheadEl.style.left = pw + "%";
+    /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
+       位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
+    const gHead = geoOf(bar);
+    const headPx = gHead ? gHead.left + pw / 100 * gHead.width : 0;
+    playheadEl.style.transform = `translateX(${headPx.toFixed(1)}px)`;
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
-    trailGlowEl.style.left = (pw - tail) + "%";
-    trailGlowEl.style.width = tail + "%";
+    const trailW = gHead ? gHead.width * 0.1 : 0;
+    trailGlowEl.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
       const g = geoOf(bar);
-      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px"; }
+      if (g){ trailGlowEl.style.top = g.top + "px"; trailGlowEl.style.height = g.height + "px";
+        trailGlowEl.style.width = (g.width * 0.1) + "px"; }
     }
     const steps = activePattern().bars[bar] || [];
     /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
@@ -2501,7 +2596,7 @@ const Viz = (() => {
     // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
-    fillEls[bar][active].style.width = t < T8 ? "100%" : Math.min(1, (tib - cum[active]) / t) * 100 + "%";
+    fillEls[bar][active].style.transform = "scaleX(" + (t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)) + ")";
     paintBall(ctx.currentTime, bar, tib);           // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
@@ -2509,7 +2604,8 @@ const Viz = (() => {
       let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
       if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
       const sub = subEls[fb] && subEls[fb][fk];
-      if (sub){
+      /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
+      if (sub && !REDUCE_MOTION){
         // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
         const cellCls = sub.closest(".cell").classList;
         const onWhite = cellCls.contains("played") || cellCls.contains("active");   // 正在弹的块也是白填充
@@ -2587,7 +2683,7 @@ const Viz = (() => {
     if (b === nextB && i === nextI) cls += " next";
     el.className = cls;
     const f = fillEls[b] && fillEls[b][i];
-    if (f) f.style.width = (b < bar || (b === bar && i < active)) ? "100%" : "0%";
+    if (f) f.style.transform = (b < bar || (b === bar && i < active)) ? "scaleX(1)" : "scaleX(0)";
     const lb = labelEls[b][i];
     if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
   }
@@ -2904,7 +3000,10 @@ const Audio = (() => {
         const t0 = nextNoteTime + swingShift(pat, steps[schedStep], cumT);
         /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
            静音拍训练中球就是唯一的节拍来源）；时刻含 Swing 偏移，落点即真实发声时刻 */
-        onsetBuf.push({ t: t0, bar: schedBar, cumT });
+        /* aSec/aBar（v2.0.2）：端点入缓冲时的节目单位置。渲染层的待命球要按**可听**位置
+           算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
+           提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
+        onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar });
         if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
       }
       nextNoteTime += steps[schedStep].t * spb() / TPB;
@@ -3224,6 +3323,11 @@ const Controls = (() => {
       return;
     }
     arrSec = first.sec; arrBar = first.bar;
+    /* 拍号对齐（v2.0.2 修）：曲式整首同拍号，但它可能与当前 S.sig 不同——不同又不切的话，
+       buildViz 的 vizSig、consumePending 的 loopStart 重映射、predictNextArrange 的 barDur
+       全按 S.sig 算，与型的实际小节长度分裂（球/播放头错位）。与「选中不同拍号预设」同一套切换 */
+    const fm = first.pattern && first.pattern.meter;
+    if (fm && fm !== S.sig) setSig(fm);
     schedBar = first.schedBar; schedStep = 0;
     Presets.scheduleRef(first.ref);
     Presets.flushPending();                    // 此刻尚未排程，挂起立即落定
@@ -3321,7 +3425,9 @@ const Controls = (() => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
       return;
     }
-    if (e.code === "Space" && !["INPUT","BUTTON"].includes(document.activeElement.tagName)){
+    const ae = document.activeElement;
+    if (e.code === "Space" && !["INPUT","BUTTON","SELECT","TEXTAREA"].includes(ae.tagName)
+        && !(ae.getAttribute && ae.getAttribute("role") === "button")){   // v2.0.2：role=button 的预设项/编辑器格自己处理 Space
       e.preventDefault(); S.playing ? stop() : start();
     }
   });
@@ -3368,6 +3474,10 @@ const Controls = (() => {
     btn.addEventListener("pointerup", end);
     btn.addEventListener("pointerleave", end);
     btn.addEventListener("pointercancel", end);
+    /* click 兜底（v2.0.2）：键盘 Enter/Space 与读屏激活只发 click、不发 pointerdown，
+       且这类「无指针」click 的 detail 恒为 0（指针 click detail ≥ 1）——用它区分两条路径，
+       指针路径已由 pointerdown 步进过，这里只补键盘/读屏，不存在双击两步的窗口 */
+    btn.addEventListener("click", e => { if (e.detail === 0) step(); });
   }
   bindStep($("bpmMinus"), -1);
   bindStep($("bpmPlus"), 1);
@@ -3591,12 +3701,21 @@ const Presets = (() => {
   function presetItemEl(name, metaText, isActive){
     const item = document.createElement("div");
     item.className = "preset-item" + (isActive ? " active" : "");
+    /* 键盘/读屏可达（v2.0.2）：原先是纯 div + click，键盘与读屏用户选不了节奏型。
+       项内可能嵌删除按钮，不能整体做成 <button>（按钮套按钮非法），故用 role+tabindex+keydown */
+    item.setAttribute("role", "button");
+    item.tabIndex = 0;
+    if (isActive) item.setAttribute("aria-current", "true");
     const box = document.createElement("div");
     const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name;
     const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText;
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
     return item;
   }
+  /* Enter/Space 激活（v2.0.2）：role="button" 的键盘契约——与 click 走同一个处理函数 */
+  const itemKeys = fn => e => {
+    if (e.key === "Enter" || e.key === " " || e.code === "Space"){ e.preventDefault(); fn(); }
+  };
   function buildPresetList(){
     const list = $("presetList");
     list.innerHTML = "";
@@ -3608,12 +3727,14 @@ const Presets = (() => {
       const isActive = S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
       const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + meterName(p.meter) + "）" : "");
       const item = presetItemEl(p.name, meta, isActive);
-      item.addEventListener("click", () => {
+      const pick = () => {
         S.sel = {type:"builtin", idx:i};
         if (p.meter !== S.sig) Controls.setSig(p.meter);
         refreshAfterPatternChange();
         Store.persist();
-      });
+      };
+      item.addEventListener("click", pick);
+      item.addEventListener("keydown", itemKeys(pick));
       list.appendChild(item);
     });
     if (customs.length){
@@ -3637,12 +3758,14 @@ const Presets = (() => {
           }, {danger:true, okText:"删除"});
         });
         item.appendChild(del);
-        item.addEventListener("click", () => {
+        const pick = () => {
           S.sel = {type:"custom", id:c.id};
           if (c.meter !== S.sig) Controls.setSig(c.meter);
           refreshAfterPatternChange();
           Store.persist();
-        });
+        };
+        item.addEventListener("click", pick);
+        item.addEventListener("keydown", itemKeys(pick));
         list.appendChild(item);
       });
     }
@@ -3698,8 +3821,12 @@ const Presets = (() => {
     appliedSig = S.sig;
     /* 取型来源只有这一处（v2.0.0 泛化）：pendingRef 有值就用它（曲式块切换），
        否则用 curPattern()（用户选预设）。解析不到时回退 curPattern()——
-       曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义 */
-    const p = (pendingRef ? resolveRef(pendingRef) : null) || curPattern();
+       曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义。
+       v2.0.2：停止且处于曲式模式时回退到「待命型」（播放范围起点）而不是当前预设——
+       跳段定位走这条路刷新网格/标题，画面要跟「下一次播放从哪儿开始」一致 */
+    const p = (pendingRef ? resolveRef(pendingRef) : null)
+      || (!S.playing && S.playMode === "arrange" ? arrangeHomePattern() : null)
+      || curPattern();
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
@@ -3783,6 +3910,7 @@ const Editor = (() => {
   let edSel = null, editBar = 0;   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
   let undoStack = [], dirty = false;
   let prevSigBeforeAudition = null;
+  let untrap = null;               // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
 
   function open(){
     if (S.playing) Controls.stop();
@@ -3798,6 +3926,7 @@ const Editor = (() => {
     render();
     $("editor").classList.add("open");
     Modal.refreshInert();                 // v1.3.0：编辑器打开 → 背景 inert（焦点不再跑到背后）
+    untrap = Modal.trapFocus($("editor"));   // v2.0.2：焦点随 overlay 移入
   }
   function stopAudition(){
     Controls.stop();
@@ -3815,6 +3944,7 @@ const Editor = (() => {
     $("auditionBtn").textContent = "试听";
     $("editor").classList.remove("open");
     Modal.refreshInert();                 // v1.3.0：编辑器关闭 → 摘掉背景 inert
+    if (untrap){ untrap(); untrap = null; }   // v2.0.2：焦点归还触发按钮
   }
   function tryClose(){
     if (!dirty){ close(); return; }
@@ -3840,13 +3970,22 @@ const Editor = (() => {
       label.appendChild(labN); label.appendChild(labS);
       const track = document.createElement("div");
       track.className = "edtrack" + (ok ? "" : " bad");
+      /* 轨道本身也是「选中小节 N」的按钮（v2.0.2）：点空白区换目标小节——
+         原先只绑 click，键盘用户无法选中音符也无法换小节，编辑器整条链路对他们不可用 */
+      track.setAttribute("role", "button");
+      track.tabIndex = 0;
+      track.setAttribute("aria-label", "选中小节 " + (b + 1));
       let acc = 0;
       draft.bars[b].forEach((s, i) => {
-        const c = document.createElement("div");
+        /* 音符格用真 <button>（v2.0.2）：选中/替换/删除/扫弦标注全依赖先选中它，
+           div + click 对键盘与读屏用户是死路。button 原生处理 Enter/Space → click */
+        const c = document.createElement("button");
         const isSel = edSel && edSel.bar === b && edSel.idx === i;
         c.className = "edcell" + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
         c.style.left = (acc / (draft.meter * TPB) * 100) + "%";
         c.style.width = `calc(${s.t / (draft.meter * TPB) * 100}% - 4px)`;
+        c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}`);
+        c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
         /* 扫弦方向（v1.9.0）：排在文字标签之前（flex 顺序即为书写顺序） */
         if (s.dir){
@@ -3864,6 +4003,11 @@ const Editor = (() => {
         track.appendChild(c);
       });
       track.addEventListener("click", e => { if (e.target === track){ editBar = b; edSel = null; render(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
+      track.addEventListener("keydown", e => {
+        if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
+          e.preventDefault(); editBar = b; edSel = null; render();
+        }
+      });
       row.appendChild(label); row.appendChild(track);
       wrap.appendChild(row);
     }
@@ -4178,16 +4322,19 @@ const Stats = (() => {
       ? "还没有练习记录——播放 30 秒以上会自动记一场。数据只保存在本机浏览器。"
       : "柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场（可导出备份）";
   }
+  let untrap = null;                   // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   function open(){
     rangeDays = 7;
     setPressed("#statsRangeRow", p => +p.dataset.range === 7);
     render();
     $("statsOverlay").classList.add("open");
     Modal.refreshInert();              // 与编辑器同一套焦点陷阱：背景置 inert
+    untrap = Modal.trapFocus($("statsOverlay"));
   }
   function close(){
     $("statsOverlay").classList.remove("open");
     Modal.refreshInert();
+    if (untrap){ untrap(); untrap = null; }
   }
   const isOpen = () => $("statsOverlay").classList.contains("open");
 
@@ -4238,6 +4385,7 @@ const Ear = (() => {
   let answered = false, picked = -1;
   let streak = 0;             // 当前连对：会话状态，不持久化（重开页面从 0 起算）
   let enterSig = null;        // 进入前的拍号，退出时还原
+  let untrap = null;          // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
 
   /* 「本题正在播放」**从状态推导**，不设独立标志位：
      标志位一旦有一条停播路径没走到（作答提前停、pagehide、额度耗尽之外的停止），
@@ -4265,6 +4413,18 @@ const Ear = (() => {
     return { group: g, groupIdx: gi, cands, answerIdx, answer: cands[answerIdx] };
   }
   /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），休止符画虚线框 */
+  /* 时值文字等价（v2.0.2）：候选记谱是纯图形，读屏此前只能听到孤零零一个「A」。
+     按时值逐个报（与视觉记谱同一信息量），不给名字——「别看名字猜」的规则对读屏同样成立 */
+  const durName = t => {
+    switch (t){
+      case 192: return "全音符"; case 144: return "附点二分"; case 96: return "二分";
+      case 72: return "附点四分"; case 48: return "四分"; case 36: return "附点八分";
+      case 24: return "八分"; case 18: return "附点十六分"; case 12: return "十六分";
+      case 6: return "三十二分";
+      default: return (t / T16) + " 个十六分";
+    }
+  };
+  const candLabel = p => p.bars[0].map(s => s.rest ? durName(s.t) + "休止" : durName(s.t)).join("，");
   function stripFor(pat){
     const strip = document.createElement("div");
     strip.className = "ear-strip";
@@ -4294,6 +4454,7 @@ const Ear = (() => {
           else cls += " dim";
         }
         b.className = cls;
+        b.setAttribute("aria-label", "候选 " + letter(i) + "：" + candLabel(p));
         const lab = document.createElement("span");
         lab.className = "ear-cand-lab";
         lab.textContent = letter(i);
@@ -4381,6 +4542,7 @@ const Ear = (() => {
     streak = 0;
     $("earOverlay").classList.add("open");
     Modal.refreshInert();
+    untrap = Modal.trapFocus($("earOverlay"));
     next();
   }
   function close(){
@@ -4390,6 +4552,7 @@ const Ear = (() => {
     Presets.updateFallbackNote();
     $("earOverlay").classList.remove("open");
     Modal.refreshInert();
+    if (untrap){ untrap(); untrap = null; }
     syncMini();
   }
   const isOpen = () => $("earOverlay").classList.contains("open");
@@ -4429,6 +4592,7 @@ const Ear = (() => {
 const Arrange = (() => {
   let curId = null;
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
+  let untrap = null;                       // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   const cur = () => Store.findArrange(curId);
   const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
   const refDead = ref => !resolveRef(ref);
@@ -4622,6 +4786,13 @@ const Arrange = (() => {
     const a = cur();
     $("argNowName").textContent = a ? a.name : "";
     $("argJump").hidden = (S.playMode !== "arrange");
+    /* 单段曲式没有「上一段/下一段」可跳：直接隐藏而不是禁用置灰（v2.0.2）——
+       禁用的按钮仍是视觉噪音，藏起来只留中间的位置信息。
+       判定看「正在播的曲式」优先——刷新后 curId 未恢复（overlay 没开过），用 cur() 会误隐藏 */
+    const aj = arrangeCur() || a;
+    const noJump = !aj || aj.sections.length <= 1;
+    $("argJumpPrev").hidden = noJump;
+    $("argJumpNext").hidden = noJump;
     $("argNowMeta").textContent = "";
     if (S.playMode === "arrange" && a){
       const cls = arrangeProblems(a);
@@ -4642,12 +4813,30 @@ const Arrange = (() => {
   }
   /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制） */
   function jumpTo(i){
-    const a = cur();
-    if (!a) return;
+    /* 取「正在播的曲式」优先（v2.0.2）：跳段作用于播放，不是编辑——curId 是编辑选中项，
+       刷新页面后直接进曲式播放（playMode 持久化）时 overlay 没开过、curId 是 null，
+       用 cur() 的跳段就是哑键 */
+    const a = arrangeCur() || cur();
+    if (!a || a.sections.length <= 1) return;          // 单段无可跳（按钮已禁用，这里是双保险）
     const k = Math.min(a.sections.length - 1, Math.max(0, i));
     S.arrangeSel.from = k; S.arrangeSel.to = k; S.arrangeSel.loop = true;
     Store.persist();
-    refreshBar(); refreshNow();
+    refreshBar();
+    /* 即时反馈（v2.0.2 修）：旧实现只改范围、等小节边界拉回——停止状态/往回跳时界面
+       毫无变化，用户观感是「按钮坏了」。这里先把目标段写到主界面那一行，
+       下一小节边界 onArrangeBar 的 refreshNow 会用真实游标覆盖它 */
+    const nm = a.sections[k] && a.sections[k].name;
+    $("argNowName").textContent = a.name + (nm ? " · " + nm : "");
+    $("argNowMeta").textContent = S.playing
+      ? `→ 第 ${k + 1} 段 · 本小节结束后进入`
+      : `已定位到第 ${k + 1} 段 · 播放从这里开始`;
+    /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（v2.0.2）。
+       否则只有文字变、画面原地不动——用户无法确认定位生效（实拍困惑：「球还在第一小节」） */
+    if (!S.playing){
+      const home = arrangeHomePattern();
+      if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+      Presets.applyPatternChange();
+    }
   }
 
   function open(){
@@ -4657,6 +4846,7 @@ const Arrange = (() => {
     render();
     $("arrangeOverlay").classList.add("open");
     Modal.refreshInert();
+    untrap = Modal.trapFocus($("arrangeOverlay"));
   }
   function close(){
     picking = null;
@@ -4668,6 +4858,7 @@ const Arrange = (() => {
     }
     $("arrangeOverlay").classList.remove("open");
     Modal.refreshInert();
+    if (untrap){ untrap(); untrap = null; }
     refreshBar();
   }
   const isOpen = () => $("arrangeOverlay").classList.contains("open");
@@ -4737,6 +4928,7 @@ const Arrange = (() => {
    **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
 const Help = (() => {
   let more = false;
+  let untrap = null;                  // v2.0.2：overlay 焦点归还函数（Modal.trapFocus）
   function render(){
     $("helpMore").hidden = !more;
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
@@ -4748,10 +4940,12 @@ const Help = (() => {
     render();
     $("helpOverlay").classList.add("open");
     Modal.refreshInert();
+    untrap = Modal.trapFocus($("helpOverlay"));
   }
   function close(){
     $("helpOverlay").classList.remove("open");
     Modal.refreshInert();
+    if (untrap){ untrap(); untrap = null; }
   }
   const isOpen = () => $("helpOverlay").classList.contains("open");
 
@@ -4925,6 +5119,8 @@ const THEME_KEY = "beatsight.theme";
 const applyTheme = t => {
   document.body.setAttribute("data-theme", t);
   $("themeToggle").textContent = "主题 · " + (t === "obs" ? "观测台" : "经典");
+  /* v2.0.2：开关态对读屏可见（按钮文案只报当前主题，不报「按下去会怎样」） */
+  $("themeToggle").setAttribute("aria-pressed", t === "obs" ? "true" : "false");
 };
 let themeNow = "classic";
 try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}
