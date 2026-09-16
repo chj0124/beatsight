@@ -443,8 +443,8 @@ section("T46 统计增强 · 7/30 天切换 / 各节奏型速度纪录 / 导出�
   app2.els["modalOk"].fire("click");
 }
 
-/* ================= 场景 T46b：下载通道去重（v2.0.2 审计 D9） ================= */
-section("T46b 下载通道 · 「导出预设」与「导出记录」共用同一个 downloadJSON（v2.0.2 审计 D9）");
+/* ================= 场景 T46b：下载通道去重（v2.0.2 审计 · 去重下载） ================= */
+section("T46b 下载通道 · 「导出预设」与「导出记录」共用同一个 downloadJSON（v2.0.2 审计 · 去重下载）");
 {
   /* 原先两条出口各写一份「Blob → createObjectURL → 造 <a download> → 追加/click/移除 → 延时 revoke」
      （连 1s 延时都一样）。重复实现的典型故障是"改一处漏一处"——例如给文件名加前缀时只改了一边。
@@ -478,5 +478,5 @@ section("T46b 下载通道 · 「导出预设」与「导出记录」共用同�
      "★ 两条出口共用同一文件名模板 beatsight-<kind>-YYYYMMDD.json");
   ok(anchors.every(a => a.href.indexOf("blob:") === 0), "两条出口都指向 createObjectURL 建的 blob 地址");
   app.runTimers();
-  eq(revoked.length, 2, "★ 两条出口都排程了 revokeObjectURL（漏掉清理正是 D9 要消灭的重复代码故障）");
+  eq(revoked.length, 2, "★ 两条出口都排程了 revokeObjectURL（漏掉清理正是这次去重要消灭的重复代码故障）");
 }

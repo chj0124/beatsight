@@ -4860,7 +4860,10 @@ const Arrange = (() => {
   /* 播放中每个小节边界回调（由 Audio 经注入钩子调用，不是反向引用）：
      刷新"现在在第几段"与"全曲进度" */
   function refreshNow(){
-    const a = cur();
+    /* 取「正在播的曲式」优先（v2.0.2 修）：本函数是播放回调，不是编辑——
+       curId 是编辑选中项，刷新页面后直接进曲式播放（playMode 持久化）时
+       overlay 没开过、curId 是 null，用 cur() 会让整条实时进度永不刷新 */
+    const a = arrangeCur() || cur();
     if (S.playMode !== "arrange" || !a) return;
     const totalBars = a.sections.reduce((s, y) => s + secBars(y), 0);
     let done = 0;
