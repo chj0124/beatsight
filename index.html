@@ -320,6 +320,8 @@ input[type=range].vol{width:120px}
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .arg-now-name{font-size:13px;color:var(--t1)}
 .arg-now-meta{font-size:11px;font-family:var(--mono);color:var(--t3)}
+/* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
+.arg-jump{justify-content:center;margin-top:14px}
 
 /* ---------- 使用方法（v2.0.1） ---------- */
 .help-list{margin:6px 0 0 20px;font-size:13px;color:var(--t2);line-height:1.85}
@@ -586,7 +588,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     </div>
     <div class="viz" id="viz"></div>
-      <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
+    <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
+         单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示 -->
+    <div class="arg-now arg-jump" id="argJump" hidden>
+      <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
+      <span class="arg-now-meta" id="argNowMeta"></span>
+      <button class="pill outline" id="argJumpNext">下一段 ▶</button>
+    </div>
+    <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
     <!-- 走带控制 -->
@@ -719,15 +728,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
       <div id="presetList"></div>
       <!-- 曲式编排（v2.0.0）：入口放在预设卡片里——曲式与预设是**同一层概念**
-           （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能 -->
+           （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能。
+           跳段行不在这里（v2.0.2 挪到时值可视化正下方），这里只留入口与曲式名 -->
       <div class="arg-now" id="argBar">
         <button class="pill outline" id="argOpen">编排曲式</button>
         <span class="arg-now-name" id="argNowName"></span>
-      </div>
-      <div class="arg-now" id="argJump" hidden>
-        <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
-        <span class="arg-now-meta" id="argNowMeta"></span>
-        <button class="pill outline" id="argJumpNext">下一段 ▶</button>
       </div>
       <div class="preset-io">
         <button class="pill outline" id="exportBtn" disabled>导出预设</button>
@@ -4693,12 +4698,13 @@ const Arrange = (() => {
     const a = cur();
     $("argNowName").textContent = a ? a.name : "";
     $("argJump").hidden = (S.playMode !== "arrange");
-    /* 单段曲式没有「上一段/下一段」可跳：禁用而不是留着当哑键（v2.0.2）。
-       判定看「正在播的曲式」优先——刷新后 curId 未恢复（overlay 没开过），用 cur() 会误禁用 */
+    /* 单段曲式没有「上一段/下一段」可跳：直接隐藏而不是禁用置灰（v2.0.2）——
+       禁用的按钮仍是视觉噪音，藏起来只留中间的位置信息。
+       判定看「正在播的曲式」优先——刷新后 curId 未恢复（overlay 没开过），用 cur() 会误隐藏 */
     const aj = arrangeCur() || a;
     const noJump = !aj || aj.sections.length <= 1;
-    $("argJumpPrev").disabled = noJump;
-    $("argJumpNext").disabled = noJump;
+    $("argJumpPrev").hidden = noJump;
+    $("argJumpNext").hidden = noJump;
     $("argNowMeta").textContent = "";
     if (S.playMode === "arrange" && a){
       const cls = arrangeProblems(a);
