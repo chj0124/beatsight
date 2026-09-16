@@ -1099,7 +1099,9 @@ const T8  = TPB / 2;                                   // 24t 八分（短音符
    省略即「不标注」，所以老数据零迁移、老 JSON 导入后就是"无箭头"。
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码 */
+/** @param {number} t @param {any} [rest] @param {string} [dir] @returns {any} */
 const D = (t, rest, dir) => ({t, rest: !!rest, ...(dir ? {dir} : {})});            // t 单位：tick
+/** @param {any[]} steps @returns {any[]} */
 const rep4 = steps => [0,1,2,3].map(() => steps.map(s => ({...s})));
 /* 唯一带扫弦方向标注（v1.9.0）的内置预设：方向逐字对应它自己的名字「下-下上-上下上」
    （下 下 上 上 下 上 = D D U U D U）。此前这个名字只存在于标题字符串里，界面完全表达不出来 */
@@ -1143,11 +1145,14 @@ const PALETTE = [
   {t:6,   nm:"三十二分",   du:"0.125 拍",  w:6},
   {t:48,  nm:"休止符",     du:"占时不发声", w:24, rest:true},
 ];
+/** @type {Record<number, string>} */
 const DUR_NAME = {192:"全",96:"二分",72:"附点四",48:"四分",36:"附点八",24:"八分",16:"八三连",12:"十六",8:"十六三连",6:"三十二"};
 const SUB_NAMES = ["e","&","a"];      // 拍内十六分座次名
 const LOOP_BARS = 4;
 /* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2） */
+/** @type {Record<number, number[][]>} */
 const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
+/** @type {Record<number, string[]>} */
 const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
@@ -1272,6 +1277,7 @@ const Store = (() => {
   const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
 
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
+  /** @param {string} k @returns {any} */
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
   const rawSaved = localStorage.getItem(KEY_LEGACY);
   const legacy = readJSON(KEY_LEGACY) || {};
@@ -1279,12 +1285,13 @@ const Store = (() => {
   const coldIn = readJSON(KEY_COLD);
   /* 新键存在（读得出对象）即以其为准；否则用旧键——首次升级与全新用户都走这条 */
   const saved = hotIn && typeof hotIn === "object" ? Object.assign({}, legacy, hotIn) : legacy;
+  /** @type {any[]} */
   const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
                      : (Array.isArray(legacy.customs) ? legacy.customs : []);
   /* v0.7.0 迁移：旧浮点拍数 d → tick（×48）。迁移前整包备份到 beatsight.m2.bak */
   if (rawSaved && legacy.v !== 3){
     try{ localStorage.setItem(KEY_BAK, rawSaved); }catch(e){}
-    savedCustoms.forEach(c => (c.bars || []).forEach(bar => bar.forEach(s => {
+    savedCustoms.forEach(c => (c.bars || []).forEach((/** @type {any} */ bar) => bar.forEach((/** @type {any} */ s) => {
       if (typeof s.d === "number" && s.t === undefined){ s.t = Math.round(s.d * TPB); delete s.d; }
     })));
     saved.v = 3;
@@ -1302,15 +1309,20 @@ const Store = (() => {
   const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
   const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
   const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
+  /** @param {any} v @returns {boolean} */
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
+  /** @param {any} v @param {number} dft @returns {number} */
   const numOr = (v, dft) => (isNum(v) ? v : dft);
+  /** @param {number} v @returns {number} */
   const clamp01 = v => Math.min(1, Math.max(0, v));
 
   /* 变速训练器配置：saved.trainer 缺项/脏项回退默认值。
      显式按白名单取值，不用 Object.assign 整包合并——后者会把源对象的 __proto__ 键经 [[Set]]
      写到目标对象上并改写其原型（当前因后续只拷 own 属性而侥幸无害，但不必留这个不确定性） */
   const trDefaults = {on:false, start:70, target:120, step:4, everyN:4};
+  /** @type {Record<string, any>} */
   const trSrc = (saved.trainer && typeof saved.trainer === "object") ? saved.trainer : {};
+  /** @type {Record<string, any>} */
   const trSaved = {};
   /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获） */
   ["start","target","step","everyN"].forEach(k => { if (isNum(trSrc[k])) trSaved[k] = trSrc[k]; });
@@ -1331,6 +1343,7 @@ const Store = (() => {
   }
 
   /* 重拍分组：只接受 ACC_GROUPS 里真实存在的档位下标（0/1），杜绝脏值被当数组下标用 */
+  /** @type {Record<string, number>} */
   const accentGrpSaved = {};
   Object.keys(ACC_GROUPS).forEach(m => {
     const idx = (saved.accentGrp && typeof saved.accentGrp === "object") ? +saved.accentGrp[m] : NaN;
@@ -1362,6 +1375,7 @@ const Store = (() => {
          预设可能在曲式保存之后被删掉）
      这条边界写在 DEVELOPMENT.md §3.10，别在实现时"顺手"把解析搬进来。 */
   let arrSeq = 0;                        // 新建 id 的会话内单调序号（同 importPresets 的理由：防同毫秒撞号）
+  /** @param {any} raw */
   function normArrange(raw){
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.name !== "string" || !raw.name.trim()) return null;
@@ -1401,7 +1415,7 @@ const Store = (() => {
     if (arrIn && Array.isArray(arrIn.arranges)){
       /* 坏条目丢弃并记 warn（口径同 beatsight.log）：曲式丢了只是要重编，
          不值得占用隔离区与弹窗名额 */
-      arrIn.arranges.forEach(r => { const v = normArrange(r); if (v) arranges.push(v); else dropped++; });
+      /** @type {any[]} */ (arrIn.arranges).forEach(r => { const v = normArrange(r); if (v) arranges.push(v); else dropped++; });
     }
     if (dropped){
       try{ console.warn("[BeatSight] " + dropped + " 条曲式未通过结构校验，已丢弃"); }catch(e){}
@@ -1415,9 +1429,11 @@ const Store = (() => {
      在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
      结构损坏由 normArrange 拦（那是边界），这里的 `x &&` 是"加载路径永不因脏数据崩溃"的兜底，
      与本项目 localStorage 容错的既定原则一致 */
+  /** @param {string} id @returns {any} */
   const findArrange = id => arranges.find(x => x && x.id === id) || null;
   /* 新增或更新（按 id 判定）。返回规范化后的对象，结构不合法返回 null——
      调用方（UI）要把 null 当成"这份草稿还不能存" */
+  /** @param {any} a @returns {any} */
   function upsertArrange(a){
     const v = normArrange(a);
     if (!v) return null;
@@ -1426,6 +1442,7 @@ const Store = (() => {
     persistArranges();
     return v;
   }
+  /** @param {string} id @returns {boolean} */
   function deleteArrange(id){
     const i = arranges.findIndex(x => x && x.id === id);
     if (i < 0) return false;
@@ -1459,7 +1476,7 @@ const Store = (() => {
    *   limit: { mode: string, n: number },
    *   playMode: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean },
-   *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last: any }
+   *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
    * }} */
   const S = {
     bpm: numOr(saved.bpm, 96),
@@ -1497,7 +1514,7 @@ const Store = (() => {
   /** @type {{ t: number, sec: number, bpm: number, name: string }[]} */
   const sessions = [];
   if (logIn && Array.isArray(logIn.sessions)){
-    logIn.sessions.forEach(r => {
+    /** @type {any[]} */ (logIn.sessions).forEach(r => {
       if (r && isNum(r.t) && isNum(r.sec) && r.sec > 0){
         sessions.push({ t: r.t, sec: r.sec, bpm: numOr(r.bpm, 0),
           name: typeof r.name === "string" ? r.name.slice(0, 40) : "" });
@@ -1509,6 +1526,7 @@ const Store = (() => {
     try{ localStorage.setItem(KEY_LOG, JSON.stringify({ v:1, sessions })); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
+  /** @param {{ t: number, sec: number, bpm: number, name: string }} rec */
   function appendSession(rec){
     sessions.push(rec);
     if (sessions.length > CONFIG.logMax) sessions.shift();   // 环形截断：只留最近 logMax 场
@@ -1538,6 +1556,7 @@ const Store = (() => {
     catch(e){ onPersistFail(e); }
   }
   /* best 由调用方传入当前连对数（连对是会话状态，不持久化——重开页面就从 0 起算） */
+  /** @param {boolean} ok @param {number} streak */
   function recordEar(ok, streak){
     ear.total++;
     if (ok) ear.right++;
@@ -1606,8 +1625,10 @@ const Store = (() => {
   let persistTimer = null;
   /** @type {null | (() => void)} */
   let persistFailCb = null;
+  /** @param {any} fn */
   function setPersistFailHandler(fn){ persistFailCb = typeof fn === "function" ? fn : null; }
   let persistFailNotified = false;
+  /** @param {any} e */
   function onPersistFail(e){
     try{ console.warn("[BeatSight] 本地保存失败（存储空间已满或处于隐私模式）：", e && e.message ? e.message : e); }catch(e1){}
     if (persistFailNotified) return;      // 只提示一次，避免连环弹窗
@@ -1625,6 +1646,7 @@ const Store = (() => {
      好过永久卡在红着不动的状态。 */
   /** @type {null | (() => void)} */
   let persistRecoverCb = null;
+  /** @param {any} fn */
   function setPersistRecoverHandler(fn){ persistRecoverCb = typeof fn === "function" ? fn : null; }
   function onPersistOk(){
     if (!persistFailNotified) return;     // 正常路径零开销：没失败过就什么都不做
@@ -1684,12 +1706,13 @@ const Store = (() => {
      抽成一个 Store 级工具即可：Store 声明在 Stats 之前，Stats 后向复用不构成反向引用。
      为什么 revoke 要延时：Safari 上同步 revoke 会打断正在发起的下载；1s 足够且不会长期占住
      blob 内存。返回 objectURL 供测试断言与手动清理。 */
+  /** @param {string} kind @param {string} text @returns {string} */
   function downloadJSON(kind, text){
     const blob = new Blob([text], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
+    const dt = new Date(), p2 = (/** @type {number} */ n) => String(n).padStart(2, "0");
     a.download = `beatsight-${kind}-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -1702,6 +1725,7 @@ const Store = (() => {
     return true;
   }
 
+  /** @param {any} p @returns {any} */
   function validatePreset(p){
     if (!p || typeof p.name !== "string" || !p.name.trim()) return null;
     const meter = +p.meter;
@@ -1733,13 +1757,14 @@ const Store = (() => {
     let accents;
     if (p.accents !== undefined){
       if (!Array.isArray(p.accents) || !p.accents.length ||
-          p.accents.some(a => typeof a !== "number" || a < 0 || a >= meter)) return null;
+          p.accents.some((/** @type {number} */ a) => typeof a !== "number" || a < 0 || a >= meter)) return null;
       accents = [...new Set(p.accents)].sort((a, b) => a - b);   // v0.9.1：去重 + 升序归一，防脏数据乱重拍
     }
     return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars};
   }
 
   /* 返回 {ok:true, count} 或 {ok:false, error}；错误文案供弹窗展示（一律 textContent） */
+  /** @param {string} text @returns {any} */
   function importPresets(text){
     /* 体量护栏：解析/校验前先行拒绝，超大输入不值得进 JSON.parse */
     if (typeof text === "string" && text.length > CONFIG.importMaxBytes)
@@ -1806,10 +1831,12 @@ const asEl = el => el;
    共享区在所有人之前，谁都能用，不产生方向问题。 */
 /* 读屏播报：只用于「状态迁移」这类粗粒度事件。
    高频读数（#statusText 每换一个十六分音就更新）绝不能挂 aria-live，否则读屏会刷屏 */
+/** @param {string} msg @returns {void} */
 const announce = msg => { const el = $("srAnnounce"); if (el) el.textContent = msg; };
 /* 开关三件套（className + aria-checked）收在一个函数里。
    原先 4 个开关各写一遍 `className = "toggle-pill " + (on ? "on" : "off")`，
    加 aria 后再各写一遍必然漂移——语义与视觉必须同源 */
+/** @param {string} id @param {boolean} on @returns {void} */
 function setToggle(id, on){
   const el = $(id);
   if (!el) return;
@@ -1817,6 +1844,7 @@ function setToggle(id, on){
   el.setAttribute("aria-checked", on ? "true" : "false");
 }
 /* 三选一 pill 组：classList 的 active 与 aria-pressed 同源更新 */
+/** @param {string} sel @param {(p: any) => boolean} on @returns {void} */
 function setPressed(sel, on){
   document.querySelectorAll(sel + " .pill").forEach(p => {
     p.classList.toggle("active", on(p));
@@ -1831,6 +1859,7 @@ function setPressed(sel, on){
    才能断言生成数量、文案与点击行为（见 tests/lib/harness.js）。
    opt.text/label 出文案与无障碍名；opt.key 声明 data-* 键（不需要就略去）；
    opt.isOn 定初始选中态；opt.onPick 是点击回调（按钮 blur 已代劳）。 */
+/** @param {any} host @param {any[]} items @param {{ key?: string, text: (it: any, i: number) => string, label: (it: any, i: number) => string, isOn?: (it: any, i: number) => any, onPick: (it: any, i: number, ev: any) => void }} opt @returns {any[]} */
 function buildPillRow(host, items, opt){
   host.innerHTML = "";
   return items.map((it, i) => {
@@ -1853,7 +1882,9 @@ function buildPillRow(host, items, opt){
 const REDUCE_MOTION = (typeof matchMedia === "function") && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const spb = () => 60 / S.bpm;                          // 秒/拍
-const meterName = m => ({6:"6/8",5:"5/4",7:"7/4"})[m] || (m + "/4");
+/** @param {number} m */
+const meterName = m => (/** @type {Record<number,string>} */ ({6:"6/8",5:"5/4",7:"7/4"}))[m] || (m + "/4");
+/** @param {number} t */
 const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
 let ctx = /** @type {AudioContext|null} */ (null), masterGain = /** @type {GainNode|null} */ (null);
 let loopStart = 0;
@@ -1879,6 +1910,7 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
    调用方回落到原有的 (bar+1)%4（对预设模式零行为变化）。 */
+/** @param {any} [sec] @param {any} [bar] */
 function arrangeNextRow(sec, bar){
   const a = arrangeCur();
   if (!a) return null;
@@ -1900,7 +1932,9 @@ let onsetBuf = /** @type {{ t: number, bar: number, cumT: number, aSec: number, 
 let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
 /* 默认重拍分组（v1.3.0 抽取）：基本回退节奏与编辑器新建草稿共用同一条阶梯。
    原先两处各写一遍（basicPattern 与 Editor），将来改分组规则必然漏一处 */
+/** @param {number} meter */
 const defaultAccents = meter => ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0];
+/** @param {number} meter */
 const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
   accents: defaultAccents(meter),
   bars:rep4(Array.from({length:meter},()=>D(TPB)))});
@@ -1913,6 +1947,7 @@ const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当�
    改成 null 也是一次行为变化——抽取重构要能证明"零变化"，就不该在这里顺手改语义。
    调用方一律用真值判断（`if (!pat)`），不要写 `=== null`。
    注意：本函数不做拍号匹配——拍号不匹配统一由 curPattern 落到 basicPattern */
+/** @param {any} ref */
 const resolveRef = ref => (!ref ? undefined
   : (ref.type === "custom" ? customs.find(c => c.id === ref.id) : BUILTINS[ref.idx]));
 /* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
@@ -1933,13 +1968,14 @@ const curPattern = () => {
    它引用的自定义预设完全可能在编辑/导入时被删掉。
    拍号一致性：v2 要求整首同拍号（段落边界与循环边界重合，才不会与既有的
    "拍号变则等循环起点" 机制缠在一起）。 */
+/** @param {any} a */
 function arrangeProblems(a){
   const out = [];
   if (!a || !Array.isArray(a.sections) || !a.sections.length) return ["曲式结构不完整"];
   const meters = new Set();
-  a.sections.forEach((sec, i) => {
+  a.sections.forEach((/** @type {any} */ sec, /** @type {number} */ i) => {
     if (!Array.isArray(sec.blocks) || !sec.blocks.length){ out.push(`第 ${i + 1} 段没有任何内容`); return; }
-    sec.blocks.forEach((b, j) => {
+    sec.blocks.forEach((/** @type {any} */ b, /** @type {number} */ j) => {
       const p = resolveRef(b.ref);
       if (!p){ out.push(`第 ${i + 1} 段第 ${j + 1} 块引用的节奏型不存在（可能已被删除）`); return; }
       meters.add(p.meter);
@@ -1955,12 +1991,14 @@ function arrangeProblems(a){
    （唯一的外部引用是 LOOP_BARS 这个常量）。这样 T52 能拿固定数据直接断言，不用搭沙箱。 */
 
 /* 一段的总小节数 = Σ(块遍数) × 4。刻意**每次都算**而不存字段：存了就会与 blocks 不同步 */
+/** @param {any} sec */
 function secBars(sec){
-  return sec.blocks.reduce((a, b) => a + b.repeats, 0) * LOOP_BARS;
+  return sec.blocks.reduce((/** @type {number} */ a, /** @type {any} */ b) => a + b.repeats, 0) * LOOP_BARS;
 }
 /* 段内第 bar 小节落在第几个块、该块的第几个小节。块边界 = 各块 repeats × 4 的累加。
    越界（bar 不在 [0, secBars)）返回 null——**不静默钳到最后一个块**，
    那会把"游标跑飞"变成"播放错内容"，比崩溃更难查 */
+/** @param {any} sec @param {any} bar */
 function blockAt(sec, bar){
   if (!sec || !Array.isArray(sec.blocks)) return null;
   let acc = 0;
@@ -1989,6 +2027,7 @@ function blockAt(sec, bar){
 
    注意 blockChanged 比的是**解析后的型**而不是 blockIdx：段内两个块若恰好引用同一个预设，
    就不需要挂起切换（无型可换还重置 schedBar → 画面白跳一下，见方案 R9）。 */
+/** @param {any} a @param {any} sel @param {any} sec @param {any} bar */
 function arrNextBar(a, sel, sec, bar){
   if (!a || !Array.isArray(a.sections) || !a.sections.length) return null;
   const to = Math.min(a.sections.length - 1, Math.max(0, sel.to | 0));
@@ -2114,11 +2153,13 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
   }
   /* overlay 焦点管理（v2.0.2）：打开 overlay 时焦点必须跟着进去——背景被 inert 后焦点
      还留在背景上，键盘/读屏用户一开 overlay 就「丢焦点」。返回归还函数，close 时调用。 */
+  /** @param {any} el */
   function trapFocus(el){
     const back = asEl(document.activeElement);
     try{ el.focus({ preventScroll: true }); }catch(e){}
     return () => { try{ if (back && back.focus) back.focus(); }catch(e){} };
   }
+  /** @param {any} msg @param {any} opts */
   function uiModal(msg, opts){
     opts = opts || {};
     if (!modalOpen){ prevFocus = document.activeElement; }     // 只记最外层那一次
@@ -2134,9 +2175,13 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     refreshInert();
     (opts.input ? inp : $("modalOk")).focus();
   }
+  /** @param {any} msg @param {any} onOk @param {any} [opts] */
   function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
+  /** @param {any} msg @param {any} initial @param {any} onOk */
   function uiPrompt(msg, initial, onOk){ uiModal(msg, {input:String(initial), onOk:onOk}); }
+  /** @param {any} msg */
   function uiAlert(msg){ uiModal(msg, {okText:"知道了", hideCancel:true}); }
+  /** @param {any} ok */
   function closeModal(ok){
     if (!modalOpen) return;
     modalOpen = false;
@@ -2150,8 +2195,8 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
   }
   $("modalOk").addEventListener("click", () => closeModal(true));
   $("modalCancel").addEventListener("click", () => closeModal(false));
-  $("modalMask").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(false); });
-  $("modalInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); closeModal(true); } });
+  $("modalMask").addEventListener("click", (/** @type {MouseEvent} */ e) => { if (e.target === e.currentTarget) closeModal(false); });
+  $("modalInput").addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => { if (e.key === "Enter"){ e.preventDefault(); closeModal(true); } });
   window.addEventListener("keydown", e => {
     if (!modalOpen) return;
     if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
@@ -2192,6 +2237,7 @@ let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<
       height: (cellEls[i] && cellEls[i][0]) ? cellEls[i][0].offsetHeight : 44,
     }));
   }
+  /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
 let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
@@ -2199,6 +2245,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
   let vizSig = S.sig, lastCi = -1;
 
+  /** @param {any} s */
   function stepLabel(s){
     return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
   }
@@ -2230,6 +2277,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       }
       zoneEls.push(zones);
       // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
+      /** @type {Record<number, HTMLElement>} */
       const rl = {};
       const markN = S.sig === 6 ? 2 : 4;
       for (let k = 0; k < S.sig; k++){
@@ -2253,7 +2301,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
       subEls.push({});
       let acc = 0;
-      p.bars[b].forEach((s, i) => {
+      p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
         const startT = acc;
         const c = document.createElement("div");
         c.className = "cell upcoming" + (s.rest ? " rest" : "");
@@ -2302,7 +2350,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[]} */
       const groups = [];
 let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }} */ (null), acc2 = /** @type {number} */ (0);
-      p.bars[b].forEach((s, i) => {
+      p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
         const startT2 = acc2; acc2 += s.t;
         const shorty = s.t < T8 && !s.rest;
         if (shorty && !run) run = {i0:i, i1:i+1, tick:startT2, nm:DUR_NAME[s.t] || (fmtBeat(s.t) + "拍")};
@@ -2424,6 +2472,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
 
   /* 跑道拍点脉冲（v0.9.1 提取）：换拍瞬间与预备拍计数共用同一组关键帧 */
+  /** @param {any} z */
   function pulseZone(z){
     if (!z || REDUCE_MOTION) return;   // v2.0.2：纯装饰脉冲，前庭敏感用户降级（拍点位置由球/填充表达）
     const fc = flashTheme();   // v1.7.0：脉冲配色随主题（观测台 = 电光蓝）
@@ -2460,6 +2509,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        → 错位**永久保留**，只有重开播放才恢复（用户实拍反馈）。训练器自动爬坡走的是同一条路径。
      播放头与球共用同一份 onset 表后，这个分叉从结构上消失（与「全量/增量共用 setCell」同一思路）。
      返回 null 表示 onset 表还覆盖不到 now（例如预备拍期间端点全在未来），由调用方用时钟公式兜底。 */
+  /** @param {number} now */
   function audioPosAt(now){
     let prev = null, nxt = null;
     for (const e of onsetBuf){
@@ -2486,6 +2536,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const endTicks = inBar ? inBar.cumT : barTicks;
     return { bar, tib: prev.cumT + (endTicks - prev.cumT) * p };
   }
+  /** @param {number} now @param {number} bar @param {number} tib */
   function paintBall(now, bar, tib){
     if (!ballEl) return;
     if (!S.bounce){
@@ -2498,7 +2549,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const barTicksV = vizSig * TPB;
     const barEnd = now - tib * spb() / TPB + barTicksV * spb() / TPB;   // 本小节右界的音频时刻（跨循环回卷也成立）
     /* v1.3.0：posOf / rightEdge 改读几何缓存（原先每帧 2 次 offset* 读取 → 帧中途强制同步重排） */
-    const posOf = (barIdx, cumT) => {
+    const posOf = (/** @type {number} */ barIdx, /** @type {number} */ cumT) => {
       const g = geoOf(barIdx) || geoOf(0);
       if (!g) return { x: 0, y: 0 };
       return { x: g.left + (cumT / barTicksV) * g.width - 8, y: g.top - 20 };
@@ -2567,9 +2618,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           ? arrangeNextRow(prev.aSec, prev.aBar) : arrangeNextRow();
         const nb = nrow ? nrow.bar : (bar + 1) % LOOP_BARS;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[nb] || []);
-        const first = nbSteps.find(s2 => !s2.rest);
+        const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
-          const g = posOf(nb, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((s2, n2) => s2 + n2.t, 0));
+          const g = posOf(nb, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((/** @type {number} */ s2, /** @type {any} */ n2) => s2 + n2.t, 0));
           /* 起跑预备（v1.8.0）：把终端弧**整条抛物线**（起跳 + 下落，含水平分量）平行复制到
              下一行——待命球从新行首 onset 左侧起跳，与主球同相位 p、同高度 H、同形变，
              小节边界同时触地（落点 = 新行首 onset），交接后正式球在同一点落地挤压接管，
@@ -2648,7 +2699,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        的草稿就有空小节，画面照常重建、下一帧即崩 */
     if (!steps.length) return;
 const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
-    steps.forEach(s => { cum.push(acc); acc += s.t; });
+    steps.forEach((/** @type {any} */ s) => { cum.push(acc); acc += s.t; });
     let active = 0;
     for (let i = 0; i < steps.length; i++){ if (tib >= cum[i]) active = i; }
     // 换拍瞬间：拍点容器（跑道）脉冲
@@ -2735,6 +2786,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   }
 
   /* 单格重绘（v1.3.0）：全量与增量共用，保证两条路径产出的 DOM 完全一致 */
+  /** @param {any} b @param {any} i @param {any} bar @param {any} active @param {any} nextB @param {any} nextI @param {any} bSteps */
   function setCell(b, i, bar, active, nextB, nextI, bSteps){
     const el = cellEls[b] && cellEls[b][i];
     if (!el) return;
@@ -2752,6 +2804,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
   }
   /* 组标签（短音符合并标注）高亮——只与当前小节、当前 active 有关 */
+  /** @param {any} b @param {any} bar @param {any} active */
   function setGroup(b, bar, active){
     glEls[b].forEach(g => {
       g.el.className = "cell-label group" + (b === bar && active >= g.i0 && active < g.i1 ? " on" : "");
@@ -2856,6 +2909,7 @@ const Audio = (() => {
      它等于「满音量重拍」在该路径应达到的增益，天然是合理天花板（peak 在 playClick 已钳 ≤1，
      peak×makeup 只会因脏值穿透才越界）。安全性论证见 CONFIG.timbres 注释：
      削波看信号幅度不看增益值，滤波后噪声 RMS 仅为峰值的 3%–14%。 */
+  /** @param {number} t @param {any} filterType @param {number} freq @param {number} q @param {number} peak @param {number} decay @param {number} makeup */
   function noiseHit(t, filterType, freq, q, peak, decay, makeup){
     const mk = typeof makeup === "number" && isFinite(makeup) && makeup > 0 ? makeup : 1;
     const effPeak = Math.min(mk, Math.max(0, peak) * mk);
@@ -2871,6 +2925,7 @@ const Audio = (() => {
     src.start(t); src.stop(t + decay + 0.01);
   }
   /* 鼓组底鼓：正弦扫频 kickFrom→kickTo */
+  /** @param {number} t @param {number} peak */
   function kickHit(t, peak){
     const D = CONFIG.timbres.drum;
     const osc = ctx.createOscillator();
@@ -2884,6 +2939,7 @@ const Audio = (() => {
     osc.connect(g); g.connect(masterGain);
     osc.start(t); osc.stop(t + D.kickDecay + 0.01);
   }
+  /** @param {number} t @param {number} stepStartBeat @param {any} isAccent */
   function playClick(t, stepStartBeat, isAccent){
     const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
     const level = isAccent ? 2 : (isBeat ? 1 : 0);
@@ -2923,6 +2979,7 @@ const Audio = (() => {
   /* Swing 偏移（秒）：拍内后半的八分（起始位置 %48===24 且时值恰为 24t）发声延后
      (swing-50)/50×24t；时间轴本身不动。6/8 自带摇摆属性，不套用。
      v1.2 抽成共享纯函数：排程与弹跳球的落点预测必须同源，否则球会教用户抢拍 */
+  /** @param {any} pat @param {any} note @param {number} cumT */
   function swingShift(pat, note, cumT){
     return (S.swing > 50 && pat.meter !== 6 && note.t === T8 && cumT % TPB === T8)
       ? (S.swing - 50) / 50 * T8 * spb() / TPB : 0;
@@ -2930,6 +2987,7 @@ const Audio = (() => {
   /* 弹跳球：预测调度游标处的下一发声点。不变量 nextNoteTime == 本小节 tick 0 时刻 + 累计 tick
      → barStart 可反推；逐小节向前找第一个非休止音符，时刻 = barStart + tick 偏移 + swingShift。
      与排程同源（同快照 pat、同 swingShift），故预测值与下周期实际入缓冲的值严格相等 */
+  /** @param {any} pat */
   function predictNext(pat){
     const bars = pat.bars, barTicks = pat.meter * TPB;
     const steps0 = bars[schedBar];
@@ -3134,6 +3192,7 @@ const Audio = (() => {
          但仍保证不产生「排到过去」的音符，也不会重现已经走过的部分。
      必须在 appliedPat 被替换**之前**调用：需要靠 activePattern() 读旧节奏型来算已走过的 tick。
      返回 true = 已就地接续；false = 新节奏型在当前小节已无音符起点可接（调用方回退到小节边界挂起）。 */
+  /** @param {any} newPat */
   function resyncToNow(newPat){
     if (!S.playing) return false;
     const oldSteps = activePattern().bars[schedBar];
@@ -3175,6 +3234,7 @@ const Trainer = (() => {
   let trStepIdx = 0, trBarCnt = 0;
   let trDone = false;              // v1.4：本次播放是否由「练到目标」收尾（完成 vs 中途手动停）
   const total = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
+  /** @param {number} k */
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
   function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
   /* 「上次训练一键继续」（v1.4）：有训练历史时才露面。
@@ -3194,8 +3254,10 @@ const Trainer = (() => {
      推进：只有「练到当天目标自动停止」（trDone）才算完成一天；中途手动停 → 当天不算，
      明天还练这一段（缺练顺延，不搞补卡）。Day 7 完成 → 计划清空 + 完成提示。
      手动改参数不触碰计划（以手动为准，计划只负责给「开始今日训练」铺参数）。 */
+  /** @param {number} i */
   const planDayTarget = i => Math.min(S.plan.baseTarget,
     S.plan.baseStart + Math.round((S.plan.baseTarget - S.plan.baseStart) / 7 * i));
+  /** @param {number} i */
   const planDayStart = i => i <= 1 ? S.plan.baseStart : planDayTarget(i - 1);
   function refreshPlanUI(){
     const has = !!S.plan;
@@ -3205,7 +3267,7 @@ const Trainer = (() => {
     const d = S.plan.day;
     $("planInfo").textContent = `7 天计划 · Day ${d}/7 · 今日 ${planDayStart(d)}→${planDayTarget(d)} BPM`;
   }
-  $("planGenBtn").addEventListener("click", e => {
+  $("planGenBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.plan = { baseStart: S.trainer.start, baseTarget: S.trainer.target, day: 1 };
     refreshPlanUI();
@@ -3213,7 +3275,7 @@ const Trainer = (() => {
     Store.persist();
     announce("已生成 7 天计划");
   });
-  $("planStartBtn").addEventListener("click", e => {
+  $("planStartBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!S.plan || S.playing) return;
     const d = S.plan.day;
@@ -3228,7 +3290,7 @@ const Trainer = (() => {
     Store.persist();
     Controls.start();
   });
-  $("planEndBtn").addEventListener("click", e => {
+  $("planEndBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!S.plan) return;
     Modal.uiConfirm(`退出 7 天计划？当前进度（Day ${S.plan.day}/7）将被清除。`, () => {
@@ -3291,7 +3353,7 @@ const Trainer = (() => {
     updateProg();
     return false;
   }
-  $("trainerToggle").addEventListener("click", e => {
+  $("trainerToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.trainer.on = !S.trainer.on;
     setToggle("trainerToggle", S.trainer.on);
@@ -3302,8 +3364,9 @@ const Trainer = (() => {
     Store.persist();
   });
   /* 参数变更：钳制 + 约束（目标必须高于起始），训练开启且停机时 BPM 立即跟随新起始值 */
+  /** @param {string} id @param {"start"|"target"|"step"|"everyN"} key @param {number} min @param {number} max */
   function bindTrParam(id, key, min, max){
-    $(id).addEventListener("change", e => {
+    $(id).addEventListener("change", (/** @type {Event} */ e) => {
       let v = Math.round(+evTarget(e).value);
       if (!isFinite(v)) v = S.trainer[key];
       v = Math.min(max, Math.max(min, v));
@@ -3324,7 +3387,7 @@ const Trainer = (() => {
   bindTrParam("trEvery", "everyN", 1, 8);
   /* 上次训练一键继续（v1.4）：未完成 → 本次从练到的级别起步（把 start 推进到 reached——
      这就是爬坡训练的语义：起点跟着进度走，而不是每轮都从头）；已完成 → 原配置再来一轮 */
-  $("trResumeBtn").addEventListener("click", e => {
+  $("trResumeBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const last = S.trainer.last;
     if (!last || S.playing) return;
@@ -3495,7 +3558,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
     Store.persist();
   }
-  $("playBtn").addEventListener("click", e => { evEl(e).blur(); S.playing ? stop() : start(); });
+  $("playBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); S.playing ? stop() : start(); });
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
     if (Stats.isOpen()){                          // v1.4：统计 overlay 打开时键盘归它管（空格不误触播放）
@@ -3530,6 +3593,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
   function updateMeta(){
     $("patternMeta").textContent = `${meterName(S.sig)} 拍 · ${S.bpm} BPM`;
   }
+  /** @param {number} v @param {any} [save] */
   function setBpm(v, save){
     /* v1.2.4：脏输入回退当前值。原先 Math.round("abc") = NaN → Math.max(30, NaN) = NaN →
        S.bpm = NaN → spb() = NaN → 位置换算全 NaN → 调度器彻底不发声、渲染层读 rowEls[NaN]。
@@ -3556,10 +3620,11 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     if (save !== false) Store.persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
   }
   /* ±1 / ±5 步进：单击步进，长按 400ms 后连续加速（每 90ms 一步） */
+  /** @param {any} btn @param {number} delta */
   function bindStep(btn, delta){
 let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @type {null | ReturnType<typeof setInterval>} */ (null);
     const step = () => setBpm(S.bpm + delta);
-    btn.addEventListener("pointerdown", e => {
+    btn.addEventListener("pointerdown", (/** @type {PointerEvent} */ e) => {
       e.preventDefault();
       step();
       t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 400);
@@ -3571,21 +3636,21 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     /* click 兜底（v2.0.2）：键盘 Enter/Space 与读屏激活只发 click、不发 pointerdown，
        且这类「无指针」click 的 detail 恒为 0（指针 click detail ≥ 1）——用它区分两条路径，
        指针路径已由 pointerdown 步进过，这里只补键盘/读屏，不存在双击两步的窗口 */
-    btn.addEventListener("click", e => { if (e.detail === 0) step(); });
+    btn.addEventListener("click", (/** @type {MouseEvent} */ e) => { if (e.detail === 0) step(); });
   }
   bindStep($("bpmMinus"), -1);
   bindStep($("bpmPlus"), 1);
   bindStep($("bpmMinus5"), -5);                 // v1.1：±5 粗调（60→120 只需 12 次，而非 60 次）
   bindStep($("bpmPlus5"), 5);
   $("bpmNum").addEventListener("click", () => {
-    Modal.uiPrompt("输入 BPM（30–240）", S.bpm, v => {
+    Modal.uiPrompt("输入 BPM（30–240）", S.bpm, (/** @type {string} */ v) => {
       if (v && v.trim() !== "") setBpm(+v || S.bpm);
     });
   });
-  $("bpmSlider").addEventListener("input", e => setBpm(+evTarget(e).value, false));
+  $("bpmSlider").addEventListener("input", (/** @type {InputEvent} */ e) => setBpm(+evTarget(e).value, false));
   $("bpmSlider").addEventListener("change", Store.persist);
 
-  $("tapBtn").addEventListener("click", e => {
+  $("tapBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const now = performance.now();
     if (taps.length && now - taps[taps.length - 1] > 2500) taps = [];
@@ -3605,12 +3670,13 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   });
 
   /* 拍号切换统一入口：状态 + pill 高亮 + aria-pressed 一处维护 */
+  /** @param {number} n */
   function setSig(n){
     S.sig = n;
     setPressed("#sigRow", p => +p.dataset.sig === n);
     refreshAccRow();
   }
-  $("sigRow").addEventListener("click", e => {
+  $("sigRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-sig]");
     if (!btn) return;
     btn.blur();
@@ -3621,12 +3687,13 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
 
   /* Swing（v0.7.0）：演奏参数，只影响发声时机与播放头——音符块宽度始终按记谱时值，
      否则块宽随 swing 扭动会破坏「时值=长度」的核心认知翻译 */
+  /** @param {number} v @param {any} [save] */
   function setSwing(v, save){
     S.swing = v;
     setPressed("#swingRow", p => +p.dataset.swing === v);
     if (save !== false) Store.persist();
   }
-  $("swingRow").addEventListener("click", e => {
+  $("swingRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-swing]");
     if (!btn) return;
     btn.blur();
@@ -3654,24 +3721,25 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   }
 
   /* 音色（v0.8.0）：整体三选一，变更即时生效（下一发音符即新音色，不打断播放） */
+  /** @param {any} v @param {any} [save] */
   function setTimbre(v, save){
     S.timbre = v;
     setPressed("#timbreRow", p => p.dataset.timbre === v);
     if (save !== false) Store.persist();
   }
-  $("timbreRow").addEventListener("click", e => {
+  $("timbreRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-timbre]");
     if (!btn) return;
     btn.blur();
     setTimbre(btn.dataset.timbre);
   });
 
-  $("volMaster").addEventListener("input", e => { S.vol = evTarget(e).value / 100; $("volMasterPct").textContent = evTarget(e).value + "%"; });
-  $("volAccent").addEventListener("input", e => { S.accentVol = evTarget(e).value / 100; $("volAccentPct").textContent = evTarget(e).value + "%"; });
+  $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100; $("volMasterPct").textContent = evTarget(e).value + "%"; });
+  $("volAccent").addEventListener("input", (/** @type {InputEvent} */ e) => { S.accentVol = evTarget(e).value / 100; $("volAccentPct").textContent = evTarget(e).value + "%"; });
   $("volMaster").addEventListener("change", Store.persist);
   $("volAccent").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
 
-  $("muteToggle").addEventListener("click", e => {
+  $("muteToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.mute = !S.mute;
     setToggle("muteToggle", S.mute);
@@ -3680,7 +3748,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   });
 
   /* 弹跳球开关（v1.2）：只控显隐，onset 表照常维护（重新打开时球立即就位，无需暖机） */
-  $("bounceToggle").addEventListener("click", e => {
+  $("bounceToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.bounce = !S.bounce;
     setToggle("bounceToggle", S.bounce);
@@ -3688,14 +3756,14 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   });
 
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
-  $("countInToggle").addEventListener("click", e => {
+  $("countInToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.countIn.on = !S.countIn.on;
     setToggle("countInToggle", S.countIn.on);
     $("countInBeatsWrap").hidden = !S.countIn.on;
     Store.persist();
   });
-  $("countInBeats").addEventListener("change", e => {
+  $("countInBeats").addEventListener("change", (/** @type {Event} */ e) => {
     let v = Math.round(+evTarget(e).value);
     if (!isFinite(v)) v = S.countIn.beats;
     v = Math.min(8, Math.max(1, v));
@@ -3794,6 +3862,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      历史：v0.7.0 修复播放中切换越界（tests T12）；v1.0.0 为消除 Viz→Presets 反向依赖而上移 */
 
   /* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
+  /** @param {string} name @param {string} metaText @param {any} isActive */
   function presetItemEl(name, metaText, isActive){
     const item = document.createElement("div");
     item.className = "preset-item" + (isActive ? " active" : "");
@@ -3809,6 +3878,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     return item;
   }
   /* Enter/Space 激活（v2.0.2）：role="button" 的键盘契约——与 click 走同一个处理函数 */
+  /** @param {() => void} fn @returns {(e: KeyboardEvent) => void} */
   const itemKeys = fn => e => {
     if (e.key === "Enter" || e.key === " " || e.code === "Space"){ e.preventDefault(); fn(); }
   };
@@ -3880,7 +3950,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       note.hidden = false;
     } else note.hidden = true;
   }
-  $("fallbackBtn").addEventListener("click", e => {
+  $("fallbackBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const selP = selectedPreset();
     if (!selP) return;
@@ -3934,6 +4004,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
      返回 {applied:true, resetBar} 表示已应用（调用方需重映射 loopStart）；
      拍号变化时等到循环起点（schedBar === 0）才应用。 */
+  /** @param {number} schedBarNow */
   function consumePending(schedBarNow){
     if (!pendingPattern) return {applied:false};
     if (sigChgPending && schedBarNow !== 0) return {applied:false};
@@ -3943,15 +4014,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
 
   /* ---- 预设导入导出 UI ---- */
-  $("exportBtn").addEventListener("click", e => {
+  $("exportBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Store.exportPresets();
   });
-  $("importBtn").addEventListener("click", e => {
+  $("importBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     $("importFile").click();
   });
-  $("importFile").addEventListener("change", e => {
+  $("importFile").addEventListener("change", (/** @type {Event} */ e) => {
     const f = evTarget(e).files && evTarget(e).files[0];
     evTarget(e).value = "";                      // 允许连续导入同一文件
     if (!f) return;
@@ -3979,7 +4050,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!el || S.migHint || customs.length) return;
     el.hidden = false;
   }
-  $("migHintBtn").addEventListener("click", e => {
+  $("migHintBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.migHint = true;
     $("migHint").hidden = true;
@@ -3990,6 +4061,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      调用方随后由 scheduler 的小节边界统一施加（与用户切预设走的是同一条路）。
      resetBar 由 consumePending 按"是否变拍号"决定——曲式要求整首同拍号，
      所以曲式调用方拿到的恒为 0（新块从它自己的第 0 小节开始）。 */
+  /** @param {any} ref */
   function scheduleRef(ref){
     pendingRef = ref;
     pendingPattern = true;
@@ -4164,10 +4236,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     edSel = null;
     render();
   }
-  $("undoBtn").addEventListener("click", e => { evEl(e).blur(); undo(); });
+  $("undoBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); undo(); });
   /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
      保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈 */
-  $("dirRow").addEventListener("click", e => {
+  $("dirRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-dir]");
     if (!btn) return;
     btn.blur();
@@ -4180,7 +4252,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (want) s.dir = want; else delete s.dir;
     render();
   });
-  $("delStepBtn").addEventListener("click", e => {
+  $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!edSel) return;
     pushUndo();
@@ -4188,7 +4260,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     edSel = null;
     render();
   });
-  $("copyBarBtn").addEventListener("click", e => {
+  $("copyBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("把当前小节复制到全部 4 小节？其余小节的现有内容会被覆盖。", () => {
       pushUndo();
@@ -4198,7 +4270,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       render();
     }, {okText:"复制"});
   });
-  $("clearBarBtn").addEventListener("click", e => {
+  $("clearBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("清空当前小节的全部音符？", () => {
       pushUndo();
@@ -4207,7 +4279,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       render();
     }, {danger:true, okText:"清空"});
   });
-  $("auditionBtn").addEventListener("click", e => {
+  $("auditionBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (S.preview){                   // 停止试听
       stopAudition();
@@ -4221,7 +4293,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       $("auditionBtn").textContent = "停止试听";
     }
   });
-  $("savePresetBtn").addEventListener("click", e => {
+  $("savePresetBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if ($("savePresetBtn").disabled) return;
     const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
@@ -4237,8 +4309,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     close();
     Presets.refreshAfterPatternChange();
   });
-  $("editBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
-  $("editorBack").addEventListener("click", e => { evEl(e).blur(); tryClose(); });
+  $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("editorBack").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); tryClose(); });
 
   return { open, tryClose, undo, draft: () => draft };
 })();
@@ -4438,10 +4510,10 @@ const Stats = (() => {
   }
   const isOpen = () => $("statsOverlay").classList.contains("open");
 
-  $("statsBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
-  $("statsClose").addEventListener("click", e => { evEl(e).blur(); close(); });
+  $("statsBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("statsClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
   /* 近 7/30 天视图切换（v1.6）：会话内状态，不持久化——每次打开默认回 7 天 */
-  $("statsRangeRow").addEventListener("click", e => {
+  $("statsRangeRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-range]");
     if (!btn) return;
     btn.blur();
@@ -4450,13 +4522,13 @@ const Stats = (() => {
     render();
   });
   /* 导出练习记录（v1.6）：与预设导出同一个下载通道 */
-  $("statsExport").addEventListener("click", e => {
+  $("statsExport").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!Store.logSessions.length){ Modal.uiAlert("还没有练习记录可导出。"); return; }
     /* v2.0.2：与「导出预设」共用同一个下载工具（原先这里与 Store.exportPresets 是两份复制） */
     Store.downloadJSON("log", Store.serializeLog());
   });
-  $("statsClear").addEventListener("click", e => {
+  $("statsClear").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {
       Store.clearLog();
@@ -4664,14 +4736,14 @@ const Ear = (() => {
     answered, picked, streak, playing: isPlaying(),
   });
 
-  $("earBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
-  $("earClose").addEventListener("click", e => { evEl(e).blur(); close(); });
-  $("earPlayBtn").addEventListener("click", e => {
+  $("earBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("earClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+  $("earPlayBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (isPlaying()) return;                          // 播放中不响应（按钮此时也是禁用的，双重保险）
     if (!question || answered) next(); else play();
   });
-  $("earReset").addEventListener("click", e => {
+  $("earReset").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("清零听辨训练战绩？累计题数、正确率与最高连对都会归零。", () => {
       Store.resetEar(); streak = 0; render();
@@ -4967,9 +5039,9 @@ const Arrange = (() => {
   }
   const isOpen = () => $("arrangeOverlay").classList.contains("open");
 
-  $("argOpen").addEventListener("click", e => { evEl(e).blur(); open(); });
-  $("argClose").addEventListener("click", e => { evEl(e).blur(); close(); });
-  $("argNew").addEventListener("click", e => {
+  $("argOpen").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("argClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+  $("argNew").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const v = Store.upsertArrange({ name: "新曲式", sections: [{ name: "主歌", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 2 }] }] });
     if (!v) return;
@@ -4978,7 +5050,7 @@ const Arrange = (() => {
     Store.persist();
     render(); refreshBar();
   });
-  $("argDel").addEventListener("click", e => {
+  $("argDel").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const a = cur();
     if (!a) return;
@@ -4990,14 +5062,14 @@ const Arrange = (() => {
       render(); refreshBar();
     }, { danger: true, okText: "删除" });
   });
-  $("argAddSec").addEventListener("click", e => {
+  $("argAddSec").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const d = snapshot();
     if (!d) return;
     d.sections.push({ name: "", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 1 }] });
     save(d);
   });
-  $("argLoopBtn").addEventListener("click", e => {
+  $("argLoopBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.arrangeSel.loop = !S.arrangeSel.loop;
     Store.persist();
@@ -5017,10 +5089,10 @@ const Arrange = (() => {
     Controls.stop();
     Controls.start();
   }
-  $("argPlay").addEventListener("click", e => { evEl(e).blur(); play(false); });
-  $("argPlayRange").addEventListener("click", e => { evEl(e).blur(); play(true); });
-  $("argJumpPrev").addEventListener("click", e => { evEl(e).blur(); jumpTo(arrSec - 1); });
-  $("argJumpNext").addEventListener("click", e => { evEl(e).blur(); jumpTo(arrSec + 1); });
+  $("argPlay").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(false); });
+  $("argPlayRange").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(true); });
+  $("argJumpPrev").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec - 1); });
+  $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec + 1); });
 
   refreshBar();
   return { open, close, isOpen, refreshBar, refreshNow, jumpTo };
@@ -5054,9 +5126,9 @@ const Help = (() => {
   }
   const isOpen = () => $("helpOverlay").classList.contains("open");
 
-  $("helpBtn").addEventListener("click", e => { evEl(e).blur(); open(); });
-  $("helpClose").addEventListener("click", e => { evEl(e).blur(); close(); });
-  $("helpMoreBtn").addEventListener("click", e => { evEl(e).blur(); more = !more; render(); });
+  $("helpBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("helpClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+  $("helpMoreBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); more = !more; render(); });
   render();
   return { open, close, isOpen, more: () => more };
 })();
@@ -5208,7 +5280,7 @@ Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次�
 Trainer.updateProg();                // 内含 refreshResume()：有训练历史时亮出「继续上次」
 
 /* 后台保活开关（v1.4）：扳动即刻生效（播放中打开立即申请，关闭立即释放） */
-$("keepAwakeToggle").addEventListener("click", e => {
+$("keepAwakeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   S.keepAwake = !S.keepAwake;
   setToggle("keepAwakeToggle", S.keepAwake);
@@ -5250,7 +5322,7 @@ const applyTheme = t => {
 let themeNow = "classic";
 try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}
 applyTheme(themeNow);
-$("themeToggle").addEventListener("click", e => {
+$("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   themeNow = themeNow === "obs" ? "classic" : "obs";
   applyTheme(themeNow);
