@@ -442,3 +442,41 @@ section("T46 统计增强 · 7/30 天切换 / 各节奏型速度纪录 / 导出�
   eq(app2.els["modalMsg"].textContent, "还没有练习记录可导出。", "空记录导出 → 提示而非下载空文件");
   app2.els["modalOk"].fire("click");
 }
+
+/* ================= 场景 T46b：下载通道去重（v2.0.2 审计 D9） ================= */
+section("T46b 下载通道 · 「导出预设」与「导出记录」共用同一个 downloadJSON（v2.0.2 审计 D9）");
+{
+  /* 原先两条出口各写一份「Blob → createObjectURL → 造 <a download> → 追加/click/移除 → 延时 revoke」
+     （连 1s 延时都一样）。重复实现的典型故障是"改一处漏一处"——例如给文件名加前缀时只改了一边。
+     统一成 Store.downloadJSON(kind, text) 后，两条出口必须共用同一模板
+     beatsight-<kind>-YYYYMMDD.json。用 spy 把"共用"钉死：createObjectURL 各一次、<a download>
+     各命中模板、两条都排程了 revoke（漏掉清理正是重复代码最易漏的一处）。 */
+  const mk = i => ({ name: "P" + i, meter: 4, bars: [0, 1, 2, 3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) });
+  const app = loadApp({
+    "beatsight.customs": JSON.stringify({ v: 1, customs: [mk(1)] }),
+    "beatsight.log": JSON.stringify({ v: 1, sessions: [{ t: Date.now(), sec: 60, bpm: 100, name: "民谣" }] }),
+  });
+  const urls = [], anchors = [], revoked = [];
+  app.sandbox.URL.createObjectURL = blob => { urls.push(blob); return "blob:spy" + urls.length; };
+  app.sandbox.URL.revokeObjectURL = u => { revoked.push(u); };
+  const realCreate = app.sandbox.document.createElement;
+  app.sandbox.document.createElement = tag => {
+    const el = realCreate(tag);
+    if (el.tagName === "A") anchors.push(el);        // downloadJSON 只造 <a>，不会误捕别的元素
+    return el;
+  };
+  const d = new Date(), p2 = n => String(n).padStart(2, "0");
+  const dateTag = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`;
+
+  ok(app.beat.Store.exportPresets(), "「导出预设」返回 true（有预设）");
+  app.els["statsBtn"].fire("click");
+  app.els["statsExport"].fire("click");              // 有 1 条记录 → 走下载而不是提示
+
+  eq(urls.length, 2, "★ 两条出口都经由同一个 downloadJSON（createObjectURL 各一次，没有第三份副本）");
+  eq(JSON.stringify(anchors.map(a => a.download)),
+     JSON.stringify(["beatsight-presets-" + dateTag + ".json", "beatsight-log-" + dateTag + ".json"]),
+     "★ 两条出口共用同一文件名模板 beatsight-<kind>-YYYYMMDD.json");
+  ok(anchors.every(a => a.href.indexOf("blob:") === 0), "两条出口都指向 createObjectURL 建的 blob 地址");
+  app.runTimers();
+  eq(revoked.length, 2, "★ 两条出口都排程了 revokeObjectURL（漏掉清理正是 D9 要消灭的重复代码故障）");
+}

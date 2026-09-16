@@ -10,14 +10,15 @@
      1) 语法校验          提取内联脚本编译（不执行）
      2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
      3) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）
-     4) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
-     5) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
-     6) DOM 引用完整性    $("x") 不得悬空
-     7) 自动化测试        FULL_SCAN=1 全量组合扫描
-     8) 死循环看门狗      每用例独立子进程 + 超时强杀
-     9) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     4) 版本一致性        VERSION / CHANGELOG / 代码注释三处版本号不得漂移
+     5) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
+     6) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
+     7) DOM 引用完整性    $("x") 不得悬空
+     8) 自动化测试        FULL_SCAN=1 全量组合扫描
+     9) 死循环看门狗      每用例独立子进程 + 超时强杀
+    10) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
-   第 4、5 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖、
+   第 5、6 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖、
    Cloudflare 的发布链路不保证跑过 install。所以缺依赖时它们主动 exit 0 并打印"跳过"，
    绝不因为"没装开发依赖"把上线堵死。规则集与 check-lint.js 刻意不重叠，详见 eslint.config.js
    与 tools/tsconfig.typecheck.json。
@@ -49,6 +50,7 @@ const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
   { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"] },
   { name: "代码卫生 · 零依赖 lint", cmd: process.execPath, args: ["tools/check-lint.js"] },
+  { name: "版本一致性", cmd: process.execPath, args: ["tools/check-version.js"] },
   /* optional = 该步骤所需的依赖相对路径；不存在就标 ⊘ 跳过（不调用），不让它伪装成 ✓ */
   { name: "代码卫生 · ESLint（加强）", cmd: process.execPath, args: ["tools/check-eslint.js"],
     optional: "node_modules/eslint" },

@@ -1087,7 +1087,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.0.1";
+const VERSION = "2.0.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1407,7 +1407,7 @@ const Store = (() => {
     }
   }
   function persistArranges(){
-    try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify({ v:1, arranges })); }
+    try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify({ v:1, arranges })); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
   /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
@@ -1504,7 +1504,7 @@ const Store = (() => {
     if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
   }
   function persistLog(){
-    try{ localStorage.setItem(KEY_LOG, JSON.stringify({ v:1, sessions })); }
+    try{ localStorage.setItem(KEY_LOG, JSON.stringify({ v:1, sessions })); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
   function appendSession(rec){
@@ -1532,7 +1532,7 @@ const Store = (() => {
     ear.best = Math.max(0, Math.floor(numOr(earIn.best, 0)));
   }
   function persistEar(){
-    try{ localStorage.setItem(KEY_EAR, JSON.stringify({ v:1, total:ear.total, right:ear.right, best:ear.best })); }
+    try{ localStorage.setItem(KEY_EAR, JSON.stringify({ v:1, total:ear.total, right:ear.right, best:ear.best })); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
   /* best 由调用方传入当前连对数（连对是会话状态，不持久化——重开页面就从 0 起算） */
@@ -1608,6 +1608,22 @@ const Store = (() => {
     persistFailNotified = true;
     try{ if (persistFailCb) persistFailCb(); }catch(e2){}
   }
+  /* 恢复出口（v2.0.2，审计 D5）：上面的标志**原先一旦置 true 就永久锁死**——用户清理了存储、
+     或退出隐私模式之后，即便保存早已恢复正常，顶栏仍然红着「保存失败」，而且再也不提示
+     （因为 `if (persistFailNotified) return` 把后续提示全吞了）。用户因此会误以为"一直存不进去"，
+     进而放弃保存动作。这里给失败状态一个**可撤销的出口**：任何一次写成功都证明存储已可用，
+     就复位标志并把"已恢复"交给装配层复原 chip / 状态点。
+     为什么不在失败时就地重试探测：写路径是高频的，探测要额外付出同步写盘代价；
+     而"下一次成功写入"本来就是最可靠的恢复证据（每次 persist/persistCold 都会经过这里）。
+     边角：若冷键成功而热键仍失败，会先报一次恢复、下一次热写失败再报一次——这是自我纠正的，
+     好过永久卡在红着不动的状态。 */
+  let persistRecoverCb = null;
+  function setPersistRecoverHandler(fn){ persistRecoverCb = typeof fn === "function" ? fn : null; }
+  function onPersistOk(){
+    if (!persistFailNotified) return;     // 正常路径零开销：没失败过就什么都不做
+    persistFailNotified = false;
+    try{ if (persistRecoverCb) persistRecoverCb(); }catch(e){}
+  }
   function hotPayload(){
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
@@ -1617,12 +1633,12 @@ const Store = (() => {
       arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop } };
   }
   function persistHotNow(){
-    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); }
+    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
   /* 冷数据：预设库增删改时立即落盘，不做防抖（丢掉一个用户手写的节奏型代价太大） */
   function persistCold(){
-    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); }
+    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
   /* 热数据：尾部防抖。高频交互（TAP 连点 / ±1 长按连发 / 滑杆）只落盘一次。
@@ -1655,15 +1671,27 @@ const Store = (() => {
     }, null, 2);
   }
 
+  /* JSON 文件下载（v2.0.2，审计「去重下载」）：预设导出与练习记录导出此前是**两份逐字复制**的
+     实现（Blob → objectURL → <a download> → 追加 / click / 移除 → 延时 revoke），
+     连 1s 的 revoke 延时都一样——改一处漏一处只是时间问题（例如要给文件名加前缀）。
+     抽成一个 Store 级工具即可：Store 声明在 Stats 之前，Stats 后向复用不构成反向引用。
+     为什么 revoke 要延时：Safari 上同步 revoke 会打断正在发起的下载；1s 足够且不会长期占住
+     blob 内存。返回 objectURL 供测试断言与手动清理。 */
+  function downloadJSON(kind, text){
+    const blob = new Blob([text], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
+    a.download = `beatsight-${kind}-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return url;
+  }
+
   function exportPresets(){
     if (!customs.length) return false;
-    const blob = new Blob([serializePresets()], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
-    a.download = `beatsight-presets-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    downloadJSON("presets", serializePresets());
     return true;
   }
 
@@ -1730,7 +1758,8 @@ const Store = (() => {
     return {ok:true, count: out.length};
   }
 
-  return { S, customs, persist, persistCold, flush, setPersistFailHandler,
+  return { S, customs, persist, persistCold, flush, setPersistFailHandler, setPersistRecoverHandler,
+    downloadJSON,
     serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
     earStats: ear, recordEar, resetEar,
     arranges, findArrange, upsertArrange, deleteArrange, persistArranges };
@@ -2020,6 +2049,12 @@ let onQuotaDone = null;
    Viz 之后——直接调用等于让渲染热路径反向引用后方模块，tools/check-module-order.js 会拦下来。
    与 Store 的 setPersistFailHandler 用同一套模式：模块只暴露回调，跨模块装配交给装配层。 */
 let onFrameError = null;
+/* 调度器异常恢复钩子（v2.0.2，审计 D3）：与 onFrameError 同一套模式、同一个理由——
+   scheduler 同样声明在 Controls 之前，出了异常要停播只能经注入回调，不能反向引用 Controls。
+   **为什么渲染帧有边界而调度器此前没有**：paintFrame 挂在 rAF 上、异常会中断整帧，
+   症状明显；scheduler 挂在 setInterval 上，抛错只刷控制台，音频时钟照走、画面却停更，
+   表现为"播放中但没声音"——这种静默失效更难自查，恰恰更需要显式边界。 */
+let onSchedError = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
 /* 曲式模式的「待命型」（v2.0.2）：停止且处于曲式模式时，界面应该显示「下一次播放从哪儿开始」
@@ -2931,7 +2966,21 @@ const Audio = (() => {
   /* setInterval(25ms) 轮询：把未来一个窗口内的音符注册到 audio clock；
      窗口按可见性自适应（前台 150ms / 后台 1.2s，见 schedWindow）；
      位置换算：posTicks = (ctx.currentTime - loopStart) / spb × TPB */
+  /* 异常边界（v2.0.2，审计 D3）：scheduler 是 setInterval 周期回调，此前**没有任何异常边界**——
+     一次意外（脏数据走到某个未设防的分支、AudioContext 被系统关闭、DOM 引用失效）就会让
+     同一个错误每 25ms 重抛一次：控制台刷屏、音频时钟继续走而画面/状态停更，
+     用户看到的是"在播放但没声音"，还很难归因。
+     这里收成一个边界：记日志 → 经注入钩子停播（与 paintFrame/onFrameError 完全同构）。
+     ★ 主体抽成 schedulerBody() 是**纯搬移**：所有 return 的语义一字未改
+     （原来 `return` = 结束本轮调度，现在仍 = 结束本轮调度），换型/停播路径不受影响。 */
   function scheduler(){
+    try{ schedulerBody(); }
+    catch(e){
+      try{ console.error("[BeatSight] 调度器异常，已停止播放", e); }catch(e1){}
+      try{ if (onSchedError) onSchedError(e); }catch(e2){}
+    }
+  }
+  function schedulerBody(){
     /* 本轮窗口只取一次：避免调度途中 visible/hidden 翻转导致同一次调用里两个分支用不同窗口 */
     const win = schedWindow();
     /* 练习量（v1.9.0）：每个 25ms 周期问一次「该不该停」。放在最前——一旦到点立刻停播，
@@ -3312,15 +3361,22 @@ const Controls = (() => {
      走 scheduleRef + flushPending，而不是直接改 appliedPat——**与用户切预设是同一条路**，
      于是 patternName / updateMeta / buildViz 那些副作用一个都不会漏。
      曲式不存在、已被删、或范围非法 → 退回预设模式并清空选择：
-     绝不留下"在曲式模式但没有曲式"这种半状态（它会让播放一路用回退节奏型而不自知） */
+     绝不留下"在曲式模式但没有曲式"这种半状态（它会让播放一路用回退节奏型而不自知）
+
+     v2.0.2（审计 D2）：这里**再判一次 arrangeProblems**。曲式存下来之后，它引用的自定义
+     预设完全可能在编辑 / 导入 / 删除时消失——保存前检查过，不代表此刻还对（冷数据会过期）。
+     发现坏引用或拍号不一致时同样退回预设模式，并把问题清单**返回给调用方**去提示用户。
+     为什么返回值而不是在这里弹窗：本函数只管"落到起点"这一件事，弹窗是 start() 的职责；
+     返回值也让这条判定能被测试直接断言。返回 null = 正常（或本就不是曲式模式） */
   function arrangeStart(){
-    if (S.playMode !== "arrange") return;
+    if (S.playMode !== "arrange") return null;
     const a = arrangeCur();
-    const first = a ? arrNextBar(a, S.arrangeSel, 0, -1) : null;
+    const probs = a ? arrangeProblems(a) : ["这首曲式不存在或已被删除"];
+    const first = probs.length ? null : arrNextBar(a, S.arrangeSel, 0, -1);
     if (!first){
       S.playMode = "preset";
       S.arrangeSel = { id: "", from: 0, to: 0, loop: false };
-      return;
+      return probs.length ? probs : ["播放范围里没有可播的小节"];
     }
     arrSec = first.sec; arrBar = first.bar;
     /* 拍号对齐（v2.0.2 修）：曲式整首同拍号，但它可能与当前 S.sig 不同——不同又不切的话，
@@ -3331,6 +3387,7 @@ const Controls = (() => {
     schedBar = first.schedBar; schedStep = 0;
     Presets.scheduleRef(first.ref);
     Presets.flushPending();                    // 此刻尚未排程，挂起立即落定
+    return null;
   }
   function start(){
     Audio.ensureCtx();
@@ -3340,7 +3397,13 @@ const Controls = (() => {
     }
     S.playing = true;
     schedBar = 0; schedStep = 0;
-    arrangeStart();                                     // v2.0.0：曲式模式 → 型与游标落到范围起点
+    /* 曲式模式 → 型与游标落到范围起点（v2.0.0）。返回非 null = 曲式已坏（不存在 / 引用失效 /
+       拍号不一致 / 范围无内容），arrangeStart 已退回预设模式。**这里不中断播放**：用户按下的是
+       「播放」，退回预设节奏继续放比静音更符合预期；但必须弹窗说明——否则用户只会看到
+       「我选的曲式，播的却是别的型」，这正是 D2 要消灭的静默降级。
+       （Modal 声明在 Controls 之前，此处是后向引用，不违反模块顺序约束） */
+    const arrProbs = arrangeStart();
+    if (arrProbs) Modal.uiAlert("这首曲式暂时不能播放，已切换到预设模式：\n" + arrProbs.join("\n"));
     onsetBuf.length = 0; onsetNext = null;          // 弹跳球：清 onset 表，从第一拍重新建立
     loopStart = ctx.currentTime + 0.08;
     /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
@@ -4353,13 +4416,8 @@ const Stats = (() => {
   $("statsExport").addEventListener("click", e => {
     evEl(e).blur();
     if (!Store.logSessions.length){ Modal.uiAlert("还没有练习记录可导出。"); return; }
-    const blob = new Blob([Store.serializeLog()], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    const dt = new Date(), p2 = n => String(n).padStart(2, "0");
-    a.download = `beatsight-log-${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    /* v2.0.2：与「导出预设」共用同一个下载工具（原先这里与 Store.exportPresets 是两份复制） */
+    Store.downloadJSON("log", Store.serializeLog());
   });
   $("statsClear").addEventListener("click", e => {
     evEl(e).blur();
@@ -5032,6 +5090,17 @@ Store.setPersistFailHandler(() => {
       + "当前改动仅在本次会话有效，请用「导出预设」备份你的自定义节奏型。");
   }catch(e){}
 });
+/* 保存恢复可见化（v2.0.2，审计 D5）：与失败提示配对的**出口**。
+   失败标志原先一旦置位就永久锁死，用户清理存储后顶栏仍红着「保存失败」——这里是解药：
+   任何一次写成功都会走到这里，把 chip 文案与状态点复原成正常态。
+   两个动作各自包 try（与失败钩子同一条约定：DOM 写入本身也可能出问题）。 */
+Store.setPersistRecoverHandler(() => {
+  try{
+    $("persistDot").classList.remove("bad");
+    $("brandChip").textContent = "v" + VERSION + " · 稳定版";
+  }catch(e){}
+  try{ announce("本地保存已恢复"); }catch(e){}
+});
 /* 渲染帧异常恢复（v1.3.0）：注入给 Viz.paintFrame 的钩子。
    异常时停播（顺带取消 rAF/interval）+ 弹窗告知，用户至少知道出了什么事、以及如何自救；
    否则症状会是「画面卡住、声音还在响、控制台一片安静」，无从下手。
@@ -5043,6 +5112,15 @@ onFrameError = e => {
   try{ Controls.stop(); }catch(e1){}
   try{
     Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
+  }catch(e2){}
+};
+/* 调度器异常恢复（v2.0.2，审计 D3）：与 onFrameError 完全同构（注入给 Audio.scheduler）。
+   同样**两个动作各自包 try**——异常源头可能就是状态栏/弹窗这些 DOM 写入，
+   不能让"告诉用户"这一步被它一起带走。 */
+onSchedError = e => {
+  try{ Controls.stop(); }catch(e1){}
+  try{
+    Modal.uiAlert("节拍调度出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
   }catch(e2){}
 };
 /* 练习量到点处置（v1.9.0）：同样是装配层注入的钩子——Audio.scheduler 每个周期调用它，

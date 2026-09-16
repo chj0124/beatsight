@@ -328,3 +328,34 @@ section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回�
        `★ 待命球跳向第 1 行（y=${caught.y}，地线 ${caught.g0}），不是第 2 行（地线 ${caught.g1}）`);
   beat.Controls.stop();
 }
+
+/* ================= 场景 T53l：曲式引用的型已消失（v2.0.2 审计 D2） ================= */
+section("T53l 曲式播放 · 引用的自定义型被删后仍在曲式里 → 退回预设且可见告知（v2.0.2 回归）");
+{
+  /* 与 T53f 不同：T53f 是"整首曲式被删"（arrangeCur 找不到），本用例是"曲式还在、
+     但它引用的自定义预设没了"。结构校验（normArrange）拦不住这种——id 非空、类型合法，
+     只有解析（resolveRef）才知道型不见了。这正是 D2 要消灭的静默降级：v2.0.2 之前
+     用户按下播放，播出来是别的型，却没有任何提示（"我选的曲式，播的却是别的"）。 */
+  const ghost = { ref: { type: "custom", id: "ghost" }, repeats: 1 };
+  const bad = A("坏引用", [
+    { name: "A", blocks: [ghost] },
+    { name: "B", blocks: [ghost] },
+  ]);
+  const { beat, els } = startArrange(bad, { from: 0, to: 1 });
+
+  eq(JSON.stringify(beat.Store.arranges[0].sections[0].blocks[0].ref),
+     JSON.stringify({ type: "custom", id: "ghost" }),
+     "前提：坏引用通过了结构校验、确实进了内存（结构层拦不住「型不存在」）");
+  eq(beat.Store.S.playMode, "preset", "★ 播放前重判发现坏引用 → 退回预设模式（不再按坏曲式硬播）");
+  eq(beat.Store.S.playing, true, "退回预设**不中断播放**（用户按的是播放，静音比换型更意外）");
+  eq(beat.Store.S.arrangeSel.id, "", "退回时清空 arrangeSel（不留下指向坏曲式的半状态）");
+  ok(!!beat.activePattern(), "仍能正常发声（回退到当前预设 / 基础节奏）");
+
+  eq(els["modalMask"].hidden, false, "★ 可见告知——不再静默降级");
+  const msg = els["modalMsg"].textContent;
+  ok(msg.indexOf("暂时不能播放") >= 0, "文案点明这首曲式不能播放：" + msg);
+  ok(msg.indexOf("第 1 段第 1 块") >= 0 && msg.indexOf("第 2 段第 1 块") >= 0,
+     "★ 问题清单逐条列出（两段的坏引用都在，不是只报第一条）：" + msg);
+  ok(msg.indexOf("引用的节奏型不存在") >= 0, "点明根因是引用不存在（用户知道该去补哪个预设）");
+  beat.Controls.stop();
+}
