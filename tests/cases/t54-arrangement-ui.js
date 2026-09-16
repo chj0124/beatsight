@@ -248,6 +248,11 @@ section("T54g 曲式 UI · 跳段即时反馈 / 单段隐藏跳段按钮");
   ok((els["argNowMeta"].textContent || "").includes("第 2 段"),
      "★ 停止时点「下一段」立即显示目标段（不再是零反馈）");
   ok((els["argNowName"].textContent || "").includes("副歌"), "段名同步切到目标段");
+  /* v2.0.2：停止时定位不只是文字——网格与标题立即换成目标段的型（用户实拍困惑：
+     「定位到第 3 段了，小球还在第一小节跳」）。副歌首块 = 八分摇滚（8 格/行） */
+  const cells0 = els["viz"].children[0].children.filter(c => /(^| )cell( |$)/.test(c.className)).length;
+  eq(cells0, beat.BUILTINS[2].bars[0].length, "★ 定位后网格立即换成副歌的型（8 格，不再是主歌的 6 格）");
+  eq(els["patternName"].textContent, beat.BUILTINS[2].name, "标题同步成副歌首块的型");
 
   /* 单段曲式：两个跳段按钮整体隐藏（v2.0.2：不显示 > 禁用置灰），位置信息仍由 meta 显示 */
   const solo = bare();

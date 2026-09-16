@@ -985,7 +985,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</div>
         <ul class="help-list">
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
-          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；播放中「◀ 上一段 / 下一段 ▶」跳段</li>
+          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
+            播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
           <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
         </ul>
 
@@ -1999,7 +2000,21 @@ let onQuotaDone = null;
 let onFrameError = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
-const activePattern = () => (S.preview || !S.playing) ? curPattern() : (appliedPat || curPattern());
+/* 曲式模式的「待命型」（v2.0.2）：停止且处于曲式模式时，界面应该显示「下一次播放从哪儿开始」
+   = 播放范围起点的第 0 小节。跳段定位（arrangeSel 变化）后网格立即跟着换，
+   用户才能确认「定位生效了」——否则只有一行文字变、网格与小球原地不动（用户实拍困惑） */
+const arrangeHomePattern = () => {
+  const a = arrangeCur();
+  if (!a) return null;
+  const first = arrNextBar(a, S.arrangeSel, 0, -1);
+  return (first && first.pattern) || null;
+};
+const activePattern = () => {
+  if (S.preview) return curPattern();
+  if (S.playing) return appliedPat || curPattern();
+  if (S.playMode === "arrange"){ const h = arrangeHomePattern(); if (h) return h; }
+  return curPattern();
+};
 
 /* ================= Modal · 应用内弹窗 ================= */
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
@@ -3769,8 +3784,12 @@ const Presets = (() => {
     appliedSig = S.sig;
     /* 取型来源只有这一处（v2.0.0 泛化）：pendingRef 有值就用它（曲式块切换），
        否则用 curPattern()（用户选预设）。解析不到时回退 curPattern()——
-       曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义 */
-    const p = (pendingRef ? resolveRef(pendingRef) : null) || curPattern();
+       曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义。
+       v2.0.2：停止且处于曲式模式时回退到「待命型」（播放范围起点）而不是当前预设——
+       跳段定位走这条路刷新网格/标题，画面要跟「下一次播放从哪儿开始」一致 */
+    const p = (pendingRef ? resolveRef(pendingRef) : null)
+      || (!S.playing && S.playMode === "arrange" ? arrangeHomePattern() : null)
+      || curPattern();
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
@@ -4751,6 +4770,13 @@ const Arrange = (() => {
     $("argNowMeta").textContent = S.playing
       ? `→ 第 ${k + 1} 段 · 本小节结束后进入`
       : `已定位到第 ${k + 1} 段 · 播放从这里开始`;
+    /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（v2.0.2）。
+       否则只有文字变、画面原地不动——用户无法确认定位生效（实拍困惑：「球还在第一小节」） */
+    if (!S.playing){
+      const home = arrangeHomePattern();
+      if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+      Presets.applyPatternChange();
+    }
   }
 
   function open(){
