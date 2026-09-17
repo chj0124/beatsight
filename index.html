@@ -16,6 +16,7 @@
   --green:#1ED760; --red:#F3727F;
   --t1:#FFFFFF; --t2:#B3B3B3; --t3:#8C8C8C; --on-green:#0A0A0A;
   --amber:#E3B341; --rest-line:#5A5A5A;
+  --blue:#4FA3E3;        /* 空扫括号（v2.1.0）：只动手不出声的标记色，刻意区别于绿色主题 */
   /* 强调色 token（v2.0.2 收口）：「最高强调用近白」是规范，此前 #FFFFFF/#4D4D4D/#fff 散落多处 */
   --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
   --peak-rest:#4D4D4D;   /* 休止格的已弹填充：降一档，不抢发声格 */
@@ -99,12 +100,18 @@ button:disabled{cursor:not-allowed}
 .cell .sub{flex:1;border-right:1px solid rgba(255,255,255,.10)}
 .cell .sub:last-child{border-right:none}
 .cell.played .sub,.cell.active .sub{border-right-color:rgba(0,0,0,.18)}
-/* 扫弦方向徽标（v1.9.0）：↓ 下扫 / ↑ 上扫。
+/* 扫弦方向徽标（v1.9.0）：字形按数据字段的**手部动作**渲染。
+   v2.1.0 全局翻转：'D'（下扫）→ ↑、'U'（上扫）→ ↓。翻转只发生在渲染层这一处，
+   数据字段与导出格式一字未动（老数据零迁移）。依据见下方 dir 字段注释。
    配色刻意**不跟随主题色**：绿/蓝在白填充格（.cell.played 是纯白 fill）上对比不足。
    统一用「深底 + 亮描边 + 近白字形」——暗底格与白填充格上都能读清，且两个主题通吃，
    不必再往观测台覆盖块里加一份。方向只靠字形表达（不靠实心/描边），小尺寸下更可靠。
    宽度 14px + 左偏 2px：窄格放不下时由 fitCellAnnotations() 整体隐藏（不裁半个徽标） */
 .cell-strum{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;font-weight:700;color:var(--peak);pointer-events:none;z-index:2}
+/* 空扫（v2.1.0）：**休止槽携带 dir** = 手在动、弦不出声，用蓝色括号标记。
+   与发声格的实心徽标一眼区分（形状不同 + 颜色不同，不依赖单一维度）。
+   宽度与 .cell-strum 同量级，故共用 fitCellAnnotations() 的 STRUM_MIN_W 阈值 */
+.cell-air{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-left:2px solid var(--blue);border-right:2px solid var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;font-weight:700;color:var(--blue);pointer-events:none;z-index:2}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -112,6 +119,25 @@ button:disabled{cursor:not-allowed}
    translateX + scaleX（origin 右缘 = 贴在播放头身后）——每帧改 left/width% 会触发
    layout 且让 blur(2px) 每帧重算位图，是中低端机掉帧的主因之一 */
 .trail-glow{position:absolute;left:0;width:0;pointer-events:none;z-index:5;background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.35) 55%,rgba(30,215,96,.65));filter:blur(2px);transform-origin:right;will-change:transform}
+
+/* 歌词对齐轨（v2.1.0 F1）：独立于 .viz 的一条卫星轨，**与上方节奏网格共享同一根时间轴**——
+   走带线与「正在唱的字」都由同一次 tick 换算驱动（同一份 arrSec/arrBar/小节内 tick），
+   所以循环段落时两轨不漂移。字块按「段内 tick / 段长」铺开（一段可跨多小节），
+   延音字靠 dur 拉长时值块；视觉语言与 .cell 同源：白填充 = 已唱、绿描边 + 亮绿字 = 正在唱。
+   刻意做成 #viz 的**兄弟节点**而不是子节点：T27 用「#viz 内恰有 4 行 .bar-row / 恰 1 个 active」
+   把渲染层锁死在网格不变量上，歌词块塞进去会立刻破功。
+   纯视觉轨（pointer-events:none）：拖动微调由编辑视图承担，这层一个字都不接收 */
+.lyric-lane{position:relative;height:48px;margin-top:10px}
+.lyric-lane[hidden]{display:none}
+.lyric-chip{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
+.lyric-chip .lfill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:var(--peak);pointer-events:none;z-index:0}
+.lyric-chip.played .lfill{background:var(--peak)}
+.lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
+.lyric-chip.on .lfill{background:var(--peak)}
+.lyric-char{position:relative;z-index:1;font-size:13px;font-weight:500;color:var(--t2);white-space:nowrap}
+.lyric-chip.played .lyric-char{color:var(--on-green);font-weight:600}
+.lyric-chip.on .lyric-char{color:var(--green);font-weight:600}
+.lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
@@ -242,6 +268,8 @@ input[type=range].vol{width:120px}
    单类名 `.ed-strum` 是 (0,1,0) 会被它压过，字号与颜色都改不动 */
 .edcell .ed-strum{font-size:13px;font-weight:700;color:var(--t2);margin-right:5px;flex:none}
 .edcell.sel .ed-strum{color:var(--green)}
+/* 空扫（v2.1.0）：编辑器内的蓝色括号标记，与主视图 .cell-air 同义 */
+.edcell .ed-air{font-size:13px;font-weight:700;color:var(--blue);margin-right:5px;flex:none}
 .ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
 /* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
 .ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
@@ -625,6 +653,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          装饰性 SVG（品牌标/播放三角/各返回箭头）同理由父节点的 aria-label 或隐藏语义兜住，
          不在本次范围内逐个补 aria-hidden（见 CHANGELOG 的"已知未做"） -->
     <div class="viz" id="viz" aria-hidden="true"></div>
+    <!-- 歌词对齐轨（v2.1.0 F1）：与上方节奏网格**共享同一根时间轴**——同一次 tick 换算
+         同时驱动这里的走带线与当前字高亮。字块按「段内 tick / 段长」铺开（一段可跨多小节），
+         延音字拉长时值块。无歌词行时整块 hidden，不占位。
+         aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
+    <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
     <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
          单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示 -->
     <div class="arg-now arg-jump" id="argJump" hidden>
@@ -821,12 +854,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill outline" id="clearBarBtn">清空当前小节</button>
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · Ctrl+Z 撤销</span>
       </div>
-      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中、或选中的是休止符时三个按钮禁用
-           （休止符不承载扫弦动作）——禁用而不是弹窗报错，避免误点即打扰 -->
+      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时三个按钮禁用
+           ——禁用而不是弹窗报错，避免误点即打扰。
+           v2.1.0：休止符同样可标注（＝空扫，只动手不出声）；字形按手部动作翻转（下扫=↑） -->
       <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
         <span class="hint">扫弦标注</span>
-        <button class="pill" data-dir="D" aria-pressed="false" disabled>↓ 下扫</button>
-        <button class="pill" data-dir="U" aria-pressed="false" disabled>↑ 上扫</button>
+        <button class="pill" data-dir="D" aria-pressed="false" disabled>↑ 下扫</button>
+        <button class="pill" data-dir="U" aria-pressed="false" disabled>↓ 上扫</button>
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
@@ -1039,7 +1073,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
           <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
-          <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声</li>
+          <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
+          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
         </ul>
 
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
@@ -1129,9 +1164,15 @@ const TPB = 48;                                        // ticks per beat（PPQN�
    判据处一律用具名常量；纯样式里的 px 保持裸数字（勿机械替换） */
 const T16 = TPB / 4;                                   // 12t 十六分（刻度网格单位）
 const T8  = TPB / 2;                                   // 24t 八分（短音符/独立标签的判据阈值）
-/* dir（v1.9.0）：扫弦方向标注 'D'=下扫 / 'U'=上扫。**可选字段，与发声完全无关**——
-   它是记谱层字段，scheduler 一行都不用读它（与 Swing「演奏参数不入时值」同一类先例）。
+/* dir（v1.9.0）：扫弦方向标注。字段存的是**手部动作**：'D'=手往下扫 / 'U'=手往上扫。
+   v2.1.0 全局翻转（用户定稿）：渲染时按「下扫=↑、上扫=↓」画箭头——拨片从低音弦走向
+   高音弦，在吉他谱里记作向上的箭头。**翻转只发生在渲染层**（.cell-strum / .ed-strum
+   两处 textContent），字段值与导出 JSON 一字未动，所以老数据零迁移。
+   **可选字段，与发声完全无关**——它是记谱层字段，scheduler 一行都不用读它
+   （与 Swing「演奏参数不入时值」同一类先例）。
    省略即「不标注」，所以老数据零迁移、老 JSON 导入后就是"无箭头"。
+   休止槽携带 dir = **空扫**（v2.1.0）：手在动、弦不出声，渲染成蓝色括号而非实心徽标；
+   空扫同样不发声（休止的「不发声」由 scheduler 按 rest 判定，与 dir 无关）。
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码 */
 /** @param {number} t @param {any} [rest] @param {string} [dir] @returns {any} */
@@ -1191,6 +1232,12 @@ const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
 const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
+/* F1 歌词对齐轨（v2.1.0）的粒度与基准（第 0 轮契约）：1 格 = 十六分 = 12t（拖动吸附单位），
+   基准时值 = 八分 = 2 格 = 24t（粘贴歌词后按字均分的默认值）。
+   两者都由 TPB 派生、不写死 12/24——改 PPQN 时跟着变，与全文件"单一来源"的口径一致 */
+const LYRIC_GRID = T16;             // 1 格 = 十六分
+const LYRIC_BASE = 2 * LYRIC_GRID;  // 基准单位：八分 = 2 格
+const LYRIC_MIN_DUR = LYRIC_GRID;   // 最短时值：1 格（再短就没有可拖动的抓手了）
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
@@ -1248,6 +1295,9 @@ const CONFIG = {
   },
   /* 鼓组噪声路径的 makeup（v1.4.1）：挂在 drum 对象外会打断上面的成组注释，独立列出 */
   drumMakeup: { snare:5, hat:2.5 },
+  /* F1 歌词对齐轨（v2.1.0）：容量与域上限。吸附/基准粒度见数据区的 LYRIC_GRID / LYRIC_BASE。
+     上限的作用是让"脏数据"在加载时就有界可钳——不依赖段落长度解析（那条边界在共享状态区） */
+  lyricMaxLines: 256, lyricMaxChars: 256, lyricMaxChLen: 8, lyricMaxDur: 128 * TPB,
 };
 
 /* 练习量档位表（v1.9.0）：UI 生成、加载校验、进度文案三处共用同一份，避免各写一遍单位换算。
@@ -1334,6 +1384,7 @@ const Store = (() => {
   const KEY_LOG = "beatsight.log";       // v1.4 练习记录（冷键：只在停止时写，不进防抖热键）
   const KEY_EAR = "beatsight.ear";       // v1.10.0 听辨训练战绩（冷键：只在答完一题时写）
   const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
+  const KEY_LYRICS = "beatsight.lyrics";       // v2.1.0 F1 歌词对齐轨（冷键：只在增删改歌词行时写）
 
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
   /** @param {string} k @returns {any} */
@@ -1543,6 +1594,105 @@ const Store = (() => {
     persistArranges();
     return true;
   }
+
+  /* ---- 歌词对齐轨（v2.1.0 F1，冷键 beatsight.lyrics）----
+     形状：{ arrangeId, sec, chars: [ { t, dur, ch } ] }
+       · **一行歌词绑定一个曲式段落**：arrangeId = 曲式 id、sec = 段下标（0 起）。
+         同一曲式可给多个段落各挂一行，故身份 = (arrangeId, sec) 二元组（契约里的
+         「曲式id#段下标」在内存里拆成两个字段，免得每条读写路径都去 split 字符串）。
+       · t   = 该字的**进场锚点**，单位 tick，坐标系是**段内绝对 tick**（段首 = 0）。
+         于是"循环该段"＝"循环该句"，锚点跟着段落走、不产生绝对时间残留（验收断言 8/9
+         在结构上直接成立，不需要额外补偿）。
+       · dur = 该字的**时值**，单位 tick，必为 LYRIC_GRID 的整数倍。延音字 dur > LYRIC_BASE，
+         播放时高亮铺满整个 dur、且其间**不产生新锚点**（验收断言 5）。
+       · ch  = 字（trim 后非空；上限 lyricMaxChLen，容忍词/连字）。
+
+     ★ 本模块**只做结构校验**（类型/域/吸附/排序/重叠/上限），**不做"越界"校验**——
+     越界要先知道段落有多长，而段落长度 = Σ blocks.repeats × LOOP_BARS × 拍号 × TPB，
+     其中拍号要 resolveRef() 才能拿（共享状态区，本模块之后）。这与曲式库是同一条边界：
+       结构/行内自洽 → 这里拦（脏数据不该进内存）
+       越界（依赖段落长度）→ 共享状态区 lyricSpan() 兜底并记 warn
+     重叠**能**在这里判：它只涉及本行相邻两字，与段落长度无关。
+     脏字一律「跳过 + 计数 warn」，不整行丢弃（契约：「跳过坏字、Console 警告，不 crash」）——
+     与 validatePreset 的"整批拒绝"刻意不同：歌词是逐字录入的长文本，
+     为一个坏字废掉整句、要用户重贴一遍，代价与收益不成比例。 */
+  /** @param {any} raw @returns {any} */
+  function normLyricLine(raw){
+    if (!raw || typeof raw !== "object") return null;
+    if (typeof raw.arrangeId !== "string" || !raw.arrangeId) return null;
+    if (!Number.isInteger(raw.sec) || raw.sec < 0) return null;
+    if (!Array.isArray(raw.chars) || !raw.chars.length
+        || raw.chars.length > CONFIG.lyricMaxChars) return null;
+    /* 先按 t 升序：重叠判定只在有序序列上才有意义（乱序输入不该被判成"重叠"而被丢） */
+    const src = raw.chars.slice().sort((a, b) => numOr(a && a.t, 0) - numOr(b && b.t, 0));
+    const chars = [];
+    let bad = 0, lastEnd = 0;
+    for (const c of src){
+      if (!c || typeof c !== "object"){ bad++; continue; }
+      const ch = (typeof c.ch === "string") ? c.ch.trim().slice(0, CONFIG.lyricMaxChLen) : "";
+      if (!ch){ bad++; continue; }
+      if (!isNum(c.t) || c.t < 0){ bad++; continue; }
+      const t = Math.round(c.t / LYRIC_GRID) * LYRIC_GRID;      // 吸附到十六分格（断言 6）
+      if (t < lastEnd){ bad++; continue; }                      // 重叠：跳过靠后的那个字
+      let dur = isNum(c.dur) ? Math.round(c.dur / LYRIC_GRID) * LYRIC_GRID : LYRIC_BASE;
+      dur = Math.min(CONFIG.lyricMaxDur, Math.max(LYRIC_MIN_DUR, dur));
+      chars.push({ t, dur, ch });
+      lastEnd = t + dur;
+    }
+    if (!chars.length) return null;
+    if (bad){
+      try{ console.warn("[BeatSight] 歌词行 " + raw.arrangeId + "#" + raw.sec
+        + " 跳过 " + bad + " 个坏字（越界/重叠/空字）"); }catch(e){}
+    }
+    return { arrangeId: raw.arrangeId, sec: raw.sec, chars };
+  }
+  const lyrIn = readJSON(KEY_LYRICS);
+  /** @type {{ arrangeId: string, sec: number, chars: { t: number, dur: number, ch: string }[] }[]} */
+  const lyrics = [];
+  {
+    let dropped = 0;
+    if (lyrIn && Array.isArray(lyrIn.lines)){
+      /* 坏行丢弃并记 warn（口径同 beatsight.arranges）：歌词丢了只是要重录，不值得占隔离区名额 */
+      /** @type {any[]} */ (lyrIn.lines).forEach(r => {
+        if (lyrics.length >= CONFIG.lyricMaxLines){ dropped++; return; }
+        const v = normLyricLine(r);
+        /* 同 (曲式, 段) 只留第一条：重复条目是脏数据，留第一条即可 */
+        if (v && !lyrics.some(x => x.arrangeId === v.arrangeId && x.sec === v.sec)) lyrics.push(v);
+        else dropped++;
+      });
+    }
+    if (dropped){
+      try{ console.warn("[BeatSight] " + dropped + " 条歌词行未通过结构校验，已丢弃"); }catch(e){}
+    }
+  }
+  function persistLyrics(){
+    try{ localStorage.setItem(KEY_LYRICS, JSON.stringify({ v:1, lines: lyrics })); onPersistOk(); }
+    catch(e){ onPersistFail(e); }
+  }
+  /* `x &&` 的兜底理由同 findArrange：lyrics 来自 localStorage（用户可手动改坏），
+     而读取发生在渲染/调度热路径上，一旦条目是 null/undefined，`x.arrangeId` 会直接让整块挂掉 */
+  /** @param {string} arrangeId @param {number} sec @returns {any} */
+  const findLyric = (arrangeId, sec) => lyrics.find(x => x && x.arrangeId === arrangeId && x.sec === sec) || null;
+  /* 新增或更新（按 (arrangeId, sec) 判定）。返回规范化后的行；结构不合法返回 null，
+     调用方（UI）要把 null 当成"这份录入还不能存" */
+  /** @param {string} arrangeId @param {number} sec @param {any} chars @returns {any} */
+  function upsertLyric(arrangeId, sec, chars){
+    const v = normLyricLine({ arrangeId, sec, chars });
+    if (!v) return null;
+    const i = lyrics.findIndex(x => x && x.arrangeId === v.arrangeId && x.sec === v.sec);
+    if (i >= 0) lyrics[i] = v; else lyrics.push(v);
+    persistLyrics();
+    return v;
+  }
+  /** @param {string} arrangeId @param {number} sec @returns {boolean} */
+  function deleteLyric(arrangeId, sec){
+    const i = lyrics.findIndex(x => x && x.arrangeId === arrangeId && x.sec === sec);
+    if (i < 0) return false;
+    lyrics.splice(i, 1);
+    persistLyrics();
+    return true;
+  }
+
   /* 曲式选择（v2.0.0，热键）：playMode 二选一；arrangeSel 记"哪条曲式 + 播哪几段 + 是否循环"。
      id 必须真的存在于已加载的曲式库里，否则整条选择作废、回退预设模式——
      **这一项能在 Store 里判**（arranges 就在上面），它不需要 resolveRef 那种跨模块解析。
@@ -1569,6 +1719,7 @@ const Store = (() => {
    *   limit: { mode: string, n: number },
    *   playMode: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean },
+   *   lyricCue: boolean,
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
    * }} */
   const S = {
@@ -1601,6 +1752,9 @@ const Store = (() => {
        "这是不是曲式"，而其中大多数点对曲式没有意义——污染面比新加字段大得多 */
     playMode: playModeInit,
     arrangeSel: { id: arrTarget ? arrTarget.id : "", from: arrFrom, to: arrTo, loop: !!arrSrc.loop },
+    /* v2.1.0 F1：锚点提示音开关——每个字的锚点进场时补一声短木鱼（复用 wood 音色，见 playClick）。
+       默认**关**：这是叠加在节拍器之上的额外发声，属"用户显式要了才开"的类别（同 keepAwake） */
+    lyricCue: !!saved.lyricCue,
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
@@ -1779,6 +1933,7 @@ const Store = (() => {
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
       limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
+      lyricCue:S.lyricCue,                        // v2.1.0 F1：锚点提示音开关（热键：跟着每次点击写）
       arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop } };
   }
   function persistHotNow(){
@@ -1867,8 +2022,9 @@ const Store = (() => {
         /* 扫弦方向（v1.9.0）：纯装饰字段，脏值**静默降级为"不标注"**，不让整条预设失败。
            判据与 v1.2.4「淘汰项不静默丢弃」不冲突——那条针对的是会让节奏型**不可用**的结构性
            损坏（时值非法、小节不完整）；箭头丢了节奏型依然完整可弹，弹窗报错反而更糟。
-           休止符不承载扫弦动作，带 dir 也一并抹掉 */
-        const dir = (!s.rest && VALID_DIR.includes(s.dir)) ? s.dir : undefined;
+           v2.1.0 放开休止符限制：休止槽上的 dir 是**空扫**（手在动、弦不出声），是合法记谱，
+           故只校验取值本身是否在 VALID_DIR 内，不再按 rest 抹掉 */
+        const dir = VALID_DIR.includes(s.dir) ? s.dir : undefined;
         steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
@@ -1922,7 +2078,8 @@ const Store = (() => {
     serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
-    arranges, findArrange, upsertArrange, deleteArrange, persistArranges };
+    arranges, findArrange, upsertArrange, deleteArrange, persistArranges,
+    lyrics, findLyric, upsertLyric, deleteLyric, persistLyrics };   // v2.1.0 F1 歌词对齐轨（冷键 beatsight.lyrics）
 })();
 const S = Store.S;
 const customs = Store.customs;
@@ -2273,6 +2430,55 @@ const activePattern = () => {
   return curPattern();
 };
 
+/* ---- F1 歌词对齐轨的「段内解析」（v2.1.0）----
+   Store 只做结构校验（形状/域/吸附/重叠），而"越界"要先知道段落有多长，
+   段落长度 = Σ blocks.repeats × LOOP_BARS × **拍号** × TPB，其中拍号要 resolveRef() 才能拿。
+   于是这一段与 arrangeProblems 落在同一处（Store 之后）——理由完全相同，见曲式库那段注释。
+   两个查询都是**纯函数**：只读 Store 与 resolveRef，不改任何东西。
+
+   ★ 越界的字在这里被**剔除**、而不是写回 Store。理由：越界是"按当前段落"才成立的判断，
+   而同一个曲式可能在别处被加长（改 blocks.repeats）；把剔除结果写回会让"用户录入过什么"
+   永久丢失。剔除结果按 (行对象身份) 缓存——upsertLyric 会换掉行对象，缓存自然失效，
+   不需要另设失效逻辑，也不会出现"第二份会过期的数据"。 */
+const LYRIC_NONE = [];
+/** @type {Map<string, { line: any, chars: any[] }>} */
+const lyricFit = new Map();
+/* 一段的 tick 长度。解析不出拍号（引用被删）返回 0 → 调用方不判越界，
+   交给 arrangeProblems 去报"引用不存在"（那才是这类坏数据的正确出口） */
+/** @param {string} arrangeId @param {number} secIdx @returns {number} */
+function lyricSpanTicks(arrangeId, secIdx){
+  const a = Store.findArrange(arrangeId);
+  const sec = a ? a.sections[secIdx] : null;
+  if (!sec || !Array.isArray(sec.blocks) || !sec.blocks.length) return 0;
+  let meter = 0;
+  for (const b of sec.blocks){
+    const p = resolveRef(b.ref);
+    if (p && p.meter){ meter = p.meter; break; }   // 段内拍号由 arrangeProblems 保证一致，取首个可解析的
+  }
+  return meter ? secBars(sec) * meter * TPB : 0;
+}
+/* 该段落可用于渲染/发声的字表（已按 t 升序、已剔除越界字）。无行 → LYRIC_NONE */
+/** @param {string} arrangeId @param {number} secIdx @returns {any[]} */
+function lyricCharsAt(arrangeId, secIdx){
+  const line = Store.findLyric(arrangeId, secIdx);
+  if (!line || !line.chars.length) return LYRIC_NONE;
+  const key = arrangeId + "#" + secIdx;
+  const hit = lyricFit.get(key);
+  if (hit && hit.line === line) return hit.chars;
+  const span = lyricSpanTicks(arrangeId, secIdx);
+  let chars = line.chars;
+  if (span > 0){
+    const kept = line.chars.filter(c => c.t < span);
+    if (kept.length !== line.chars.length){
+      chars = kept;
+      try{ console.warn("[BeatSight] 歌词行 " + key + " 有 " + (line.chars.length - kept.length)
+        + " 个字超出段落范围，已忽略"); }catch(e){}
+    }
+  }
+  lyricFit.set(key, { line, chars });
+  return chars;
+}
+
 /* ================= Modal · 应用内弹窗 ================= */
 /* 原生 confirm/prompt 在沙盒 iframe（如预览面板）中会被静默拦截并直接返回"取消"，
    导致「返回练习」等流程表现为"点了没反应"（v0.4.6 修复）。统一改用应用内弹窗。 */
@@ -2443,6 +2649,17 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
   let vizSig = S.sig, lastCi = -1;
 
+  /* ---------- 歌词对齐轨状态（v2.1.0 F1） ----------
+     与网格状态完全并列的一套引用，生命周期同样挂在 buildViz / resetForStop 上。
+     lyricRunSig = 已渲染的「曲式id#段下标」：段切换时才重建字块（每小节至多一次），
+     稳态帧只写 transform，不碰 DOM 结构。 */
+  let lyricEl = /** @type {HTMLElement|null} */ (null), lyricHeadEl = /** @type {HTMLElement|null} */ (null);
+  let lyricChipEls = /** @type {HTMLElement[]} */ ([]), lyricFillEls = /** @type {HTMLElement[]} */ ([]);
+  let lyricChars = /** @type {any[]} */ ([]);
+  let lyricRunSig = /** @type {string} */ ("");
+  let lyricSpan = 0, lyricBarTicks = 0, lyricW = 0;
+  let lastLyricAct = -2, lastLyricPlay = -1;
+
   /** @param {any} s */
   function stepLabel(s){
     return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
@@ -2533,11 +2750,13 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
           labels.push(lb);
         } else labels.push(null);
         /* 扫弦方向徽标（v1.9.0）：挂进格子内部（随格子移动、被格子 overflow 裁），
-           窄格放不下时由 fitCellAnnotations() 整体隐藏，不做部分裁切 */
+           窄格放不下时由 fitCellAnnotations() 整体隐藏，不做部分裁切。
+           v2.1.0：字形按手部动作翻转（D→↑ 下扫 / U→↓ 上扫）；休止槽带 dir = 空扫，
+           换用蓝色括号类 .cell-air（两种变体都进 strums，共用同一套窄格隐藏逻辑） */
         if (s.dir){
           const sm = document.createElement("div");
-          sm.className = "cell-strum";
-          sm.textContent = s.dir === "U" ? "↑" : "↓";
+          sm.className = s.rest ? "cell-air" : "cell-strum";
+          sm.textContent = s.dir === "D" ? "↑" : "↓";
           c.appendChild(sm);
           strums.push(sm);
         } else strums.push(null);
@@ -2597,6 +2816,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
     fitCellAnnotations();
+    buildLyricLane();                // v2.1.0 F1：网格重建时同步重建歌词轨（两轨同一份 tick 基准）
   }
   /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
      标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
@@ -2636,7 +2856,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      约定：谁在布局上动手脚，谁就有责任调它。当前调用方 = resize 与主题切换两个。
      注：本函数不在渲染热路径上（帧内绝不调），所以这里读 offset* 是安全的。 */
   function relayout(){
-    if (S.playing){ cacheGeo(); fitCellAnnotations(); }
+    if (S.playing){ cacheGeo(); fitCellAnnotations(); remeasureLyric(); }
     else buildViz();
   }
   /** @type {null | ReturnType<typeof setTimeout>} */
@@ -2649,7 +2869,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
      lastPainted 一并清空——网格可能整片重建（格子数、拍号都会变），
      此时增量重绘的前提（同一套 cellEls、同一个小节）已经不成立，必须走全量 */
-  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; }
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricAct = -2; lastLyricPlay = -1; }
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
@@ -2669,6 +2889,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     glEls.forEach(list => list.forEach(g => { if (g.el) g.el.className = "cell-label group"; }));
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
     lastBeat = -1;
+    /* 歌词轨随停播归零：走带线回到段首、字块全部退回未唱态。**不重建 DOM**
+       （结构没变，重建反而会重排一次）——只把状态写回去 */
+    if (lyricHeadEl) lyricHeadEl.style.transform = "translateX(0px)";
+    lyricChipEls.forEach((chip, i) => {
+      chip.className = "lyric-chip";
+      if (lyricFillEls[i]) lyricFillEls[i].style.transform = "scaleX(0)";
+    });
+    lastLyricAct = -2; lastLyricPlay = -1;
   }
 
   /* 静音拍开关视觉同步：第 4 小节预标识（Controls 静音开关调用） */
@@ -2849,6 +3077,95 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
   }
 
+  /* ---------- 歌词对齐轨渲染（v2.1.0 F1） ----------
+     两级职责，与网格的 buildViz/paintFrame 同构：
+       · buildLyricLane()：**结构层**。段切换 / 网格重建时才跑，负责建清字块与走带线，
+         并在这一刻采集轨道宽度（offsetWidth）。稳态帧一次都不读它。
+       · paintLyric()：**每帧层**。只写 transform 与少量 className，零布局读取
+         ——与 P1-4「帧内绝不读 offset*」是同一份承诺。
+     「段内位置」= arrBar × 段内小节 tick + 小节内 tick。arrBar/arrSec 由 Audio 的节目单
+     游标维护（与排程、弹跳球落点同源），所以歌词轨与拍点轨共用**同一个相位**：
+     循环整段时两轨一起回卷，不各算各的（验收 9 的成立依据）。 */
+  function buildLyricLane(){
+    const lane = $("lyricLane");
+    if (!lane) return;
+    lyricEl = lane; lyricHeadEl = null; lyricChipEls = []; lyricFillEls = [];
+    lyricChars = LYRIC_NONE; lyricRunSig = ""; lyricSpan = 0; lyricBarTicks = 0; lyricW = 0;
+    lastLyricAct = -2; lastLyricPlay = -1;
+    clear(lane);
+    const a = arrangeCur();
+    if (!a || !a.sections.length){ lane.hidden = true; return; }   // 预设模式 / 曲式已删：整轨收起，不占位
+    /* 停机时 arrBar = -1（节目单游标尚未起步）：预览第 0 段，让用户选中曲式后立刻看得见歌词行 */
+    const secIdx = Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), a.sections.length - 1);
+    const span = lyricSpanTicks(a.id, secIdx);
+    const chars = lyricCharsAt(a.id, secIdx);
+    if (!span || !chars.length){ lane.hidden = true; return; }
+    for (const ch of chars){
+      const t = Math.max(0, ch.t || 0), d = ch.dur || LYRIC_BASE;
+      const chip = document.createElement("div");
+      chip.className = "lyric-chip";
+      chip.style.left = (t / span * 100) + "%";
+      chip.style.width = (d / span * 100) + "%";
+      const fill = document.createElement("div");
+      fill.className = "lfill";
+      const label = document.createElement("span");
+      label.className = "lyric-char";
+      label.textContent = ch.c;                 // 边界规则 3：用户可控字符串只走 textContent
+      chip.appendChild(fill); chip.appendChild(label);
+      lane.appendChild(chip);
+      lyricChipEls.push(chip); lyricFillEls.push(fill);
+    }
+    lyricHeadEl = document.createElement("div");
+    lyricHeadEl.className = "lyric-head";
+    lane.appendChild(lyricHeadEl);
+    lane.hidden = false;
+    /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：这样
+       arrBar × lyricBarTicks 与 span 必然同源，拍号取错时也不会出现轨道溢出错位 */
+    const bars = secBars(a.sections[secIdx]) || LOOP_BARS;
+    lyricChars = chars; lyricSpan = span; lyricBarTicks = span / bars;
+    lyricRunSig = a.id + "#" + secIdx;
+    lyricW = lane.offsetWidth;                  // 结构变化时采集一次（稳态帧绝不读）
+  }
+  /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
+  function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
+
+  /** @param {number} tib 小节内 tick（与拍点轨同源，来自 audioPosAt） */
+  function paintLyric(tib){
+    const lane = lyricEl;
+    if (!lane || lane.hidden) return;           // 预设模式 / 无歌词行：整帧零开销（T27 走的就是这条）
+    const a = arrangeCur();
+    if (!a) return;
+    const secIdx = Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), Math.max(0, a.sections.length - 1));
+    if (a.id + "#" + secIdx !== lyricRunSig){ buildLyricLane(); return; }   // 段切换：本帧重建，下一帧起走稳态
+    if (!lyricSpan || !lyricHeadEl || !lyricChars.length) return;
+    /* 段内绝对 tick（契约：char.t 为**段内** tick，跨小节不自增）。停机预览时 arrBar<0 → 钳在段首 */
+    const secTick = Math.max(0, (arrBar < 0 ? 0 : arrBar) * lyricBarTicks + tib);
+    const pct = Math.min(1, secTick / lyricSpan);
+    /* 走带线：与 #viz 的播放头同一份 tick 换算（同一根时间轴），只是定义域从「小节」换成「段」 */
+    lyricHeadEl.style.transform = `translateX(${(lyricW * pct).toFixed(1)}px)`;
+    /* 字态判据：played = 时值已走完（弹完定格）、on = 落在 [t, t+dur) 内。
+       ★「延音字保持高亮整个时值」就长在这个区间判据上：dur 越长 on 态持续越久，
+       期间 act 不前进 → 不会有第二个字被点亮；音频侧同一区间内也不排新锚点（验收 5）。 */
+    let act = -1, play = 0;
+    for (let i = 0; i < lyricChars.length; i++){
+      const c = lyricChars[i], t = Math.max(0, c.t || 0), d = c.dur || LYRIC_BASE;
+      if (secTick >= t && secTick < t + d) act = i;
+      if (secTick >= t + d) play++;             // 字按 t 升序且互不重叠（数据层已保证）→ 恰是前 play 个
+    }
+    if (act !== lastLyricAct || play !== lastLyricPlay){
+      for (let i = 0; i < lyricChipEls.length; i++){
+        lyricChipEls[i].className = "lyric-chip" + (i < play ? " played" : (i === act ? " on" : ""));
+        if (lyricFillEls[i]) lyricFillEls[i].style.transform = (i < play) ? "scaleX(1)" : "scaleX(0)";
+      }
+      lastLyricAct = act; lastLyricPlay = play;
+    }
+    /* 只有「正在唱」那一块在长；已唱满是 1、未到是 0（上面的状态翻转时已写好） */
+    if (act >= 0 && lyricFillEls[act]){
+      const c = lyricChars[act], d = c.dur || LYRIC_BASE;
+      lyricFillEls[act].style.transform = "scaleX(" + Math.min(1, (secTick - c.t) / d).toFixed(3) + ")";
+    }
+  }
+
   /* 每帧主体：只做便宜事。rafId 的续期统一交给外层 paintFrame()，
      这里**不碰 requestAnimationFrame** —— 保证「无论从哪条分支返回，下一帧都会被排上」
      （v1.2.4 修复：主体曾在自己内部 3 处各自续期并提前 return，一旦中途抛异常，
@@ -2895,6 +3212,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
     tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
+    paintLyric(tib);                 // 歌词轨：与上面两行同一份 tib，同一帧里画完（两轨共享时钟）
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
@@ -3041,11 +3359,15 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   }
 
   return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout,
+    /* v2.1.0 F1：歌词对齐轨（独立于网格的一条卫星轨）——buildLyricLane 供装配层在
+       「曲式/段落变化」时重建；paintLyric 只由 paintFrameBody 内部调用，暴露出来是为了让
+       测试能单独断言「同一份 tib 下轨道位置与高亮」而不用驱动整套音频排程 */
+    buildLyricLane, paintLyric,
     /* v1.3.1：暴露内部件**仅供测试**断言弹跳球物理（T30）。
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo }) };
+    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricHeadEl, lyricChipEls, lyricFillEls }) };
 })();
 
 /* ================= Audio · Web Audio 前瞻调度 ================= */
@@ -3221,6 +3543,50 @@ const Audio = (() => {
     return (S.swing > 50 && pat.meter !== 6 && note.t === T8 && cumT % TPB === T8)
       ? (S.swing - 50) / 50 * T8 * spb() / TPB : 0;
   }
+  /* 锚点提示音（v2.1.0 F1）：歌词字进场时补一声短木鱼。
+     复用 wood 音色的带通噪声路径（noiseHit）——不新增合成器、不碰主总线；
+     ★ 刻意**不与 playClick 的层级判定共用**：锚点音高固定，不参与"重拍/正拍/弱拍"分级
+     （那套分级是拍点轨的语义，套到字锚点上没有意义）。
+     音量取电平档 LEVEL_BEAT 而非 accentGain：它是"提示"不是"重拍"，不该随 accentVol 一起变 */
+  /** @param {number} t */
+  function lyricCueHit(t){
+    const W = CONFIG.timbres.wood;
+    const peak = Math.min(1, Math.max(0, S.vol * CONFIG.levelBeat));
+    if (peak <= 0) return;                       // 音量为 0：与 playClick 同口径，不排空音
+    noiseHit(t, "bandpass", W.freqAccent, W.q, peak, W.decay, W.makeup);
+  }
+  /* 把本小节覆盖到的歌词锚点排进音频时钟（v2.1.0 F1）。
+     · 坐标系：char.t 是**段内绝对 tick**（段首 = 0，见第 0 轮契约），
+       故段内第 arrBar 小节覆盖 [arrBar×小节tick, (arrBar+1)×小节tick)，小节tick = meter×TPB
+       （曲式整首同拍号，故可整小节算，不必逐块求和）。
+     · 为什么在小节起点**一次排完**，而不是挂在 onset 上：锚点与音符起点**不必重合**
+       （用户可把字拖到任意十六分格），挂在 onset 上会漏掉"锚点不落在音符上"的字。
+     · 与拍点轨共用同一根时间轴：时刻 = 本小节起点 + 段内偏移 × spb/TPB，本小节起点取自
+       调度游标 nextNoteTime——与音符排程同一个 loopStart 时钟，故 BPM 变化、循环段落
+       都随之按 tick 重算，不残留绝对时间（断言 8 / 9）。
+     · 延音占位不触发（断言 5）：延音字只有一个锚点（t），其后是被 dur 覆盖的不发音空位，
+       没有任何字的 t 落在里面，循环自然一次也不响。 */
+  /** @param {number} barStartT @param {number} meter */
+  function emitLyricCues(barStartT, meter){
+    if (!S.lyricCue || arrBar < 0) return;       // 开关关 / 游标未起步：不出声
+    if (!arrangeCur()) return;                   // 曲式已被删：不猜
+    const chars = lyricCharsAt(S.arrangeSel.id, arrSec);
+    if (!chars.length) return;
+    const barTicks = meter * TPB, base = arrBar * barTicks;
+    for (let i = 0; i < chars.length; i++){
+      const off = chars[i].t - base;
+      if (off < 0 || off >= barTicks) continue;  // 不在本小节：交给它自己的小节去排
+      lyricCueHit(barStartT + off * spb() / TPB);
+    }
+  }
+  /* 已排过提示音的小节起点（v2.1.0 F1）：幂等护栏。
+     scheduler 每 25ms 一轮，同一小节只会被"从头开始处理"一次（nextNoteTime 单调前进），
+     但 reanchor / 上下文重建会让游标跳回——用起点时刻当键，天然区分每一"遍"，
+     无需额外显式复位（停机再启时 loopStart 也总是新的 currentTime）。
+     ★ 不复位也安全的前提正是"键是时刻"：重复排程只可能发生在时刻完全相等时，而那是
+     同一小节同一次处理，本就不该排两遍 */
+  /** @type {null | number} */
+  let cueBarT = null;
   /* 弹跳球：预测调度游标处的下一发声点。不变量 nextNoteTime == 本小节 tick 0 时刻 + 累计 tick
      → barStart 可反推；逐小节向前找第一个非休止音符，时刻 = barStart + tick 偏移 + swingShift。
      与排程同源（同快照 pat、同 swingShift），故预测值与下周期实际入缓冲的值严格相等 */
@@ -3380,6 +3746,15 @@ const Audio = (() => {
         schedBar = (schedBar + 1) % LOOP_BARS;
         limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
         continue;
+      }
+      /* 歌词锚点提示音（v2.1.0 F1）：在小节起点把本小节覆盖到的字锚点排进音频时钟。
+         「小节起点」用 schedStep===0 判定——此刻 nextNoteTime 正是本小节起点，且 arrBar
+         已由上一个边界（或 start/arrangeStart）指向本小节。cueBarT 是幂等护栏：
+         reanchor / 上下文重建会把游标跳回，时刻不同则视为新的一遍（正常重排），
+         时刻相同则说明是同一小节同一次处理（不重排）。 */
+      if (schedStep === 0 && cueBarT !== nextNoteTime){
+        cueBarT = nextNoteTime;
+        emitLyricCues(nextNoteTime, pat.meter);
       }
       let cumT = 0;
       for (let i = 0; i < schedStep; i++) cumT += steps[i].t;
@@ -4445,11 +4820,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
         c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}`);
         c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
-        /* 扫弦方向（v1.9.0）：排在文字标签之前（flex 顺序即为书写顺序） */
+        /* 扫弦方向（v1.9.0）：排在文字标签之前（flex 顺序即为书写顺序）。
+           v2.1.0：按手部动作翻转字形；休止槽带 dir = 空扫，用蓝色括号类 .ed-air */
         if (s.dir){
           const ds = document.createElement("span");
-          ds.className = "ed-strum";
-          ds.textContent = s.dir === "U" ? "↑" : "↓";
+          ds.className = s.rest ? "ed-air" : "ed-strum";
+          ds.textContent = s.dir === "D" ? "↑" : "↓";
           c.appendChild(ds);
         }
         if (s.t >= T8){
@@ -4479,15 +4855,16 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
     /* 扫弦标注行（v1.9.0）：可用性、高亮、aria-pressed 与选中状态**同源更新**。
        三点全部收在这里——分散写必然漂移（v1.3.0 开关三件套的教训）。
-       预设选的 dir 用 "" 表示不标注，与「没有该字段」等价 */
+       预设选的 dir 用 "" 表示不标注，与「没有该字段」等价。
+       v2.1.0：休止符放开——休止槽上的方向即**空扫**，三档同样可用，提示语点明语义 */
     const selStep = edSel ? d.bars[edSel.bar][edSel.idx] : null;
-    const dirUsable = !!(selStep && !selStep.rest);
+    const dirUsable = !!selStep;
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
     document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     $("dirHint").textContent = !selStep
       ? "先在上方选中一个音符"
-      : (selStep.rest ? "休止符不承载扫弦动作" : "已选中「" + Viz.stepLabel(selStep) + "」");
+      : (selStep.rest ? "休止符上标注方向 = 空扫（只动手不出声）" : "已选中「" + Viz.stepLabel(selStep) + "」");
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -4541,7 +4918,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const d = draft;
     if (!d) return;
     const s = d.bars[edSel.bar][edSel.idx];
-    if (!s || s.rest) return;
+    if (!s) return;
     const want = btn.dataset.dir || "";
     if ((s.dir || "") === want) return;
     pushUndo();
@@ -5819,6 +6196,8 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
   arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
   secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
+  lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
+  LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
   Arrange,                                        // v2.0.0：曲式编排 UI
   Help,                                           // v2.0.1：使用方法
   diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）

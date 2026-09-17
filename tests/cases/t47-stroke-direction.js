@@ -18,6 +18,12 @@ function strumOf(els, b, i){
   if (!c) return null;
   return c.children.find(ch => ch.className === "cell-strum") || null;
 }
+/* 空扫（v2.1.0）：休止槽带 dir → 蓝色括号 .cell-air，与 .cell-strum 互斥 */
+function airOf(els, b, i){
+  const c = cellsOf(els, b)[i];
+  if (!c) return null;
+  return c.children.find(ch => ch.className === "cell-air") || null;
+}
 /* 编辑器第 b 小节的格子（edbar 的 children = [label, track]，track 的 children = edcell） */
 function edCellsOf(els, b){
   return els["editorBars"].children[b].children[1].children;
@@ -42,10 +48,11 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
   const BUILTINS = beat.BUILTINS;
   const Store = beat.Store;
 
-  /* ---- ① 内置民谣扫弦：方向与其名称逐字对应 ---- */
+  /* ---- ① 内置民谣扫弦：方向字段与其名称逐字对应（v2.1.0 的翻转只在渲染层，数据一字未动） ---- */
   const folk = BUILTINS[0];
   eq(folk.name, "民谣扫弦 · 下-下上-上下上", "idx 0 仍是民谣扫弦");
-  eq(folk.bars[0].map(s => s.dir).join(""), "DDUUDU", "方向 = ↓↓↑↑↓↑，与名称「下-下上-上下上」逐字对应");
+  eq(folk.bars[0].map(s => s.dir).join(""), "DDUUDU",
+     "字段 = 下 下 上 上 下 上 —— 记的是**手部动作**，不是画出来的箭头");
   ok(folk.bars.every(b => b.map(s => s.dir).join("") === "DDUUDU"), "rep4 展开后 4 小节方向全同");
   ok(folk.bars[0].every(s => s.t !== undefined && s.rest === false), "带 dir 的步仍保留 t / rest 原字段（未破坏结构）");
 
@@ -53,17 +60,17 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
   eq(BUILTINS.slice(1).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
      "只有民谣扫弦带方向标注，其余内置预设零 dir");
 
-  /* ---- ③ 渲染：带 dir 出徽标、不带不出 ---- */
+  /* ---- ③ 渲染：字形按**手部动作**翻转（v2.1.0 全局翻转：下扫=↑、上扫=↓） ---- */
   beat.Viz.buildViz();
   ok(!!strumOf(els, 0, 0), "idx0 第 1 格渲染出 .cell-strum 徽标");
-  eq((strumOf(els, 0, 0) || {}).textContent, "↓", "第 1 格 = 下扫 ↓");
-  eq((strumOf(els, 0, 2) || {}).textContent, "↑", "第 3 格 = 上扫 ↑");
+  eq((strumOf(els, 0, 0) || {}).textContent, "↑", "第 1 格 dir=\"D\"（下扫）→ 画 ↑");
+  eq((strumOf(els, 0, 2) || {}).textContent, "↓", "第 3 格 dir=\"U\"（上扫）→ 画 ↓");
   eq(cellsOf(els, 0)[0].children.filter(c => c.className === "cell-strum").length, 1,
      "每格最多一个徽标（不重复挂）");
   /* 12t 十六分格也有徽标——**这正是「箭头必须画在格内」的原因**：
      时值标签行只给 t≥24 的格发标签，若把箭头挂在标签行，切分位上的这颗下扫就丢了，
      而它恰恰是民谣扫弦里最需要提示的一颗（其宽度 6.25%，窄格隐藏逻辑会管它） */
-  eq((strumOf(els, 0, 4) || {}).textContent, "↓", "12t 十六分格同样带徽标（不因无时值标签而丢失）");
+  eq((strumOf(els, 0, 4) || {}).textContent, "↑", "12t 十六分格同样带徽标（不因无时值标签而丢失）");
   Store.S.sel = { type: "builtin", idx: 1 };            // 四分基础：无 dir
   beat.Presets.refreshAfterPatternChange();
   eq([0,1,2,3].reduce((n, b) => n + cellsOf(els, b).filter(c =>
@@ -81,7 +88,16 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
   const rRest = Store.importPresets(JSON.stringify({ presets: [{ name: "方向校验3", meter: 4,
     bars: [0,1,2,3].map(() => [{ t:48, rest:true, dir:"D" }, { t:48 }, { t:48 }, { t:48 }]) }] }));
   ok(rRest.ok, "休止符带 dir 不导致失败");
-  eq(last().dir, undefined, "休止符上的 dir 被抹掉（休止不承载扫弦动作）");
+  eq(last().dir, "D", "休止槽上的 dir **保留** = 空扫（v2.1.0 放开 rest 限制）");
+  eq(last().rest, true, "它仍然是不发声的休止槽（放开的是标注，不是发声）");
+
+  /* ---- ④b 空扫渲染：休止槽带 dir → 蓝色括号 .cell-air，与 .cell-strum 互斥 ---- */
+  Store.S.sel = { type:"custom", id: Store.customs[Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
+  const air = airOf(els, 0, 0);
+  ok(!!air, "休止槽带 dir → 渲染 .cell-air（蓝括号），而不是 .cell-strum");
+  eq((air || {}).textContent, "↑", "空扫字形同样按手部动作翻转：dir=\"D\" → ↑");
+  ok(strumOf(els, 0, 0) === null, "同一个格不会同时挂实心徽标（两种变体互斥）");
 
   /* ---- ⑤ 导出 → 导入往返保留 dir ---- */
   ok(Store.importPresets(JSON.stringify(mk("U"))).ok, "合法 dir=\"U\" 导入成功");
@@ -129,16 +145,16 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   edCellsOf(els, 0)[0].fire("click");
   ok(els["dirRow"].children.every(b => !b.disabled), "选中非休止音符 → 三档启用");
   ok(els["dirHint"].textContent.includes("四分"), "提示语回显选中音符的时值");
-  eq(els["dirRow"].children[0].getAttribute("aria-pressed"), "true", "当前是下扫 → ↓ 档 aria-pressed=true（与高亮同源）");
-  eq(els["dirRow"].children[1].getAttribute("aria-pressed"), "false", "↑ 档未选中");
+  eq(els["dirRow"].children[0].getAttribute("aria-pressed"), "true", "当前是下扫 → 「↑ 下扫」档 aria-pressed=true（与高亮同源）");
+  eq(els["dirRow"].children[1].getAttribute("aria-pressed"), "false", "「↓ 上扫」档未选中");
 
   /* 点 ↑ 上扫 */
   els["dirRow"].fire("click", { target: pill({ dir: "U" }) });
-  eq(beat.Editor.draft().bars[0][0].dir, "U", "点「↑ 上扫」→ 草稿该步 dir 变 U");
-  eq(els["dirRow"].children[1].getAttribute("aria-pressed"), "true", "切换后 ↑ 档 aria-pressed=true");
+  eq(beat.Editor.draft().bars[0][0].dir, "U", "点「↓ 上扫」→ 草稿该步 dir 变 U");
+  eq(els["dirRow"].children[1].getAttribute("aria-pressed"), "true", "切换后「↓ 上扫」档 aria-pressed=true");
   const edStrums = edCellsOf(els, 0)[0].children.filter(c => c.className === "ed-strum");
   eq(edStrums.length, 1, "编辑器格子内联出一个方向标注");
-  eq((edStrums[0] || {}).textContent, "↑", "编辑器内显示 ↑（与主视图同义）");
+  eq((edStrums[0] || {}).textContent, "↓", "编辑器内显示 ↓（dir=\"U\" 上扫，与主视图同义同翻转）");
 
   /* 撤销回退方向（pushUndo 已把 dir 一并纳入快照） */
   beat.Editor.undo();
@@ -159,18 +175,26 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   eq(beat.Editor.draft().bars[0][0].dir, "D", "重复点当前档位不推撤销栈：撤一次回到「回到 D」那步之前");
 }
 
-/* ================= 场景 T47d：编辑器 · 休止符不可标注 ================= */
-section("T47d 扫弦方向 · 休止符不可标注");
+/* ================= 场景 T47d：编辑器 · 休止槽 = 空扫（v2.1.0 放开） ================= */
+section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
 {
   const { beat, els } = loadApp();
   beat.Store.S.sel = { type:"builtin", idx: 5 };       // Funk 十六分：idx 3 / 6 / 11 为休止符
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
   edCellsOf(els, 0)[3].fire("click");                  // idx 3 是休止符
-  ok(els["dirRow"].children.every(b => b.disabled), "选中休止符 → 三档禁用");
-  eq(els["dirHint"].textContent, "休止符不承载扫弦动作", "给出明确原因，而不是静默无反应");
+  ok(els["dirRow"].children.every(b => !b.disabled),
+     "选中休止符 → 三档照常启用（v2.1.0 放开：休止槽上的方向 = 空扫）");
+  ok(els["dirHint"].textContent.includes("空扫"), "提示语点明语义（不是「不可标注」了）");
   els["dirRow"].fire("click", { target: pill({ dir: "D" }) });
-  eq(beat.Editor.draft().bars[0][3].dir, undefined, "休止符上不会被写入 dir（处理器同样拦截）");
+  eq(beat.Editor.draft().bars[0][3].dir, "D", "休止槽上写入 dir（空扫）");
+  const airs = edCellsOf(els, 0)[3].children.filter(c => c.className === "ed-air");
+  eq(airs.length, 1, "编辑器内联出 .ed-air（蓝括号），不是 .ed-strum");
+  eq((airs[0] || {}).textContent, "↑", "空扫字形同样翻转：dir=\"D\" → ↑");
+  eq(edCellsOf(els, 0)[3].children.filter(c => c.className === "ed-strum").length, 0,
+     "空扫格不出现实心徽标（两变体互斥）");
+  beat.Editor.undo();
+  eq(beat.Editor.draft().bars[0][3].dir, undefined, "撤销把空扫标注一并退回（与其它草稿变更同一套纪律）");
 }
 
 /* ================= 场景 T47e：dir 是纯记谱层，发声逐位不变 ================= */
