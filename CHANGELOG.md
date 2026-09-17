@@ -102,6 +102,24 @@
   就构成"引用后方模块"，`tools/check-module-order.js` 会当场拦下。正确做法是新建一个
   声明在 Controls **之前**的 `Log` 模块，属结构级改动，值得单独立项而不是塞进这批。
 
+### 发布阻塞修复：`--strict-env` 第一次真跑，抓出 3 个类型错误
+
+v2.0.6 推 `main` 后 Cloudflare 构建**失败**在 `✗ 类型检查 · tsc（加强）`。这不是误报，是 P0-5
+加的那个开关**第一次发挥作用**：
+
+- 此前本地 tsc 与 ESLint 一直是 **⊘ 跳过**（没装 `node_modules`），所以它们从未真正检查过这一版代码；
+  构建环境装了依赖 → `--strict-env` 不允许静默跳过 → tsc 一跑就红。
+- 三个错误**全部来自本批新增的代码**，本地一次都没照到：
+  1. `TR_RANGE[k]`：`k` 是 `string`，而 `TR_RANGE` 没有索引签名（TS7053 ×2）
+     → 抽出 `TR_KEYS` 并标成字面量联合类型 `("start"|"target"|"step"|"everyN")[]`，
+     键表成了具名常量，索引也随之类型安全；
+  2. `function diagCopy(btn)`：参数缺标注，`noImplicitAny` 下报 TS7006 → 补 `@param {HTMLElement}`。
+- 本地补做并留档：`npm install`（79 个包）→ `node tools/check-all.js --strict-env` →
+  **全部通过 · 实跑 12/12 项**（ESLint / tsc 不再是 ⊘，浏览器冒烟 4.89s）。
+- **教训写进流程**：改到带类型标注的接口（JSDoc / `S` 的字段 / 模块返回面）时，推之前必须
+  `npm install` 后跑一次全量 `--strict-env`——**⊘ 不等于通过**，它只说明"这一项没查"。
+  这正是本文件头一直在强调的那件事，这次是它自己被忽略了。
+
 ### 回归测试与验证
 
 - 新增 `tests/cases/t59-p1-audit.js`（T59–T59h）：起停重入/句柄泄漏（用新增的桩能力

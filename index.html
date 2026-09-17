@@ -1089,20 +1089,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1118  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1316  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L1925  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2271  Modal         应用内弹窗
-     L2401  Viz           时值可视化渲染与每帧动画
-     L3046  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L3474  Trainer       变速训练器
-     L3669  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L4126  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L4357  Editor        自定义节奏型编辑器
-     L4619  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L4842  Ear           听辨训练（v1.10.0）
-     L5065  Arrange       曲式编排（v2.0.0）
-     L5413  Help          使用方法（v2.0.1）
-     L5460  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L5519  初始化（装配） 各模块 hook 接线与启动
+     L1930  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L2276  Modal         应用内弹窗
+     L2406  Viz           时值可视化渲染与每帧动画
+     L3051  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L3479  Trainer       变速训练器
+     L3674  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L4131  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L4362  Editor        自定义节奏型编辑器
+     L4624  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L4847  Ear           听辨训练（v1.10.0）
+     L5070  Arrange       曲式编排（v2.0.0）
+     L5418  Help          使用方法（v2.0.1）
+     L5465  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L5524  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1403,8 +1403,13 @@ const Store = (() => {
   /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获）
      v2.0.5（审计 P0-2）：再补**域**钳制（域值取自 TR_RANGE，与 UI 输入共用同一份常数）。
      此前只判"是不是有限数"、不判域，于是 step:0 能一路进 S.trainer：total() 变 Infinity、
-     bpmFor(k) 恒等于 start → 爬坡既不升速也永不自动停，用户看到的就是"训练卡住了" */
-  ["start","target","step","everyN"].forEach(k => {
+     bpmFor(k) 恒等于 start → 爬坡既不升速也永不自动停，用户看到的就是"训练卡住了"。
+     ★ 键表单独声明并标成字面量联合类型（v2.0.6）：否则 `TR_RANGE[k]` 里的 k 只是 string，
+       而 TR_RANGE 没有索引签名 → 类型闸门报 TS7053。**这条正是被 Cloudflare 构建拦下来的**：
+       本地 tsc 一直是 ⊘（没装 node_modules），所以它直到线上才第一次真跑 */
+  /** @type {("start"|"target"|"step"|"everyN")[]} */
+  const TR_KEYS = ["start", "target", "step", "everyN"];
+  TR_KEYS.forEach(k => {
     if (isNum(trSrc[k])) trSaved[k] = clampRange(trSrc[k], TR_RANGE[k][0], TR_RANGE[k][1]);
   });
   /* 目标必须高于起始（与 UI 侧 bindTrParam 的"抬回起始 +1"同一条规则）。
@@ -5588,7 +5593,9 @@ function diagReport(){
   ].join("\n");
 }
 /** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
- *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应" */
+ *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应"。
+ *  ★ btn 必须标注类型：`noImplicitAny` 开着，缺标注会报 TS7006（同样是被线上构建拦下来的）
+ *  @param {HTMLElement} btn */
 function diagCopy(btn){
   const text = diagReport();
   const done = () => { btn.textContent = "已复制"; };
