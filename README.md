@@ -16,21 +16,28 @@
 ## 开发者：改完跑一条命令
 
 ```bash
-node tools/check-all.js          # 约 17 秒（本机实测），共 10 步：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 全量测试 → 死循环看门狗 → 行覆盖率
-node tools/check-all.js --quick  # 约 11 秒（本机实测），跳过 243 组全量组合扫描（改代码时用）
+node tools/check-all.js          # 共 12 步：语法 → 架构约束 → 零依赖 lint → 版本一致性 → 文档一致性 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js --quick  # 跳过 243 组全量组合扫描（改代码时用）
 ```
 
-**核心闸门零依赖、零安装，Node ≥ 22 直接跑**——不装任何东西也能跑完整套检查。其中有 **2 步是可选加强项**（ESLint / 类型检查）：`npm install` 装了才跑，没装就在汇总里标 **⊘ 未安装依赖，未执行**、并打印「实跑 N/10 项」——**不会显示成 ✓**（区分"没查"和"查了通过"，否则汇总就在撒谎）。想启用，仓库根跑一次 `npm install` 即可；**它们绝不会因为"没装开发依赖"堵住部署**。
+**这里刻意不写"约几秒"**（v2.0.5 起由 `tools/check-docs.js` 强制）：耗时随机器、Node 版本、跑不跑 `FULL_SCAN` 而变，写死在文档里必然过期——历史上这两个数字已经被"改正"过一次又歪了。命令末尾自己会打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
+
+**核心闸门零依赖、零安装，Node ≥ 22 直接跑**——不装任何东西也能跑完整套检查。其中有 **2 步是可选加强项**（ESLint / 类型检查）：`npm install` 装了才跑，没装就在汇总里标 **⊘ 未安装依赖，未执行**、并打印「实跑 N/M 项」——**不会显示成 ✓**（区分"没查"和"查了通过"，否则汇总就在撒谎）。想启用，仓库根跑一次 `npm install` 即可；**它们绝不会因为"没装开发依赖"堵住部署**。
+
+另有 **1 步是"环境可选"**（第 9 步浏览器冒烟）：本机装了 Chrome / Edge 才会跑，没有就同样标 ⊘。它与上面两步的区别是——**构建镜像里必然没有浏览器**，所以 `--strict-env` 也不把它算作失败（浏览器是"环境能力"而非"开发依赖"，没有 `npm ci` 能把它装进产物）。它验的是桩测不出的那一整类：真实布局与样式、真实帧率、真实 Service Worker、控制台零报错。
 
 类型检查这步把关的是**模块接口与数据模型**：接口方法名拼错、`S.xxx` 状态字段拼错、类型不符的赋值都能拦住（带 "Did you mean" 提示）；它不管 DOM 元素类型（那由 `check-dom-ids.js` 管）。它的严格开关**该开的都开了**——strict 家族 9 项（含 `noImplicitAny` / `strictNullChecks`）加 `noImplicitReturns` / `noFallthroughCasesInSwitch` 全部打开，取舍与开启路径写在 `tools/tsconfig.typecheck.json`。
 
-项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——它在两条发布渠道上的位置不一样：**Cloudflare** 的构建命令里串了全量检查，不通过就不部署（硬闸门）；**WorkBuddy** 是纯手动发布，没人拦你，只能发布前自己跑一遍。
+项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——但它在两条发布渠道上的位置不一样，**别把"Cloudflare 会拦"当成可以跳过本地自验的理由**：
+
+- **WorkBuddy**：纯手动发布，没有任何机制拦你，只能发布前自己跑一遍。
+- **Cloudflare**：`wrangler.jsonc` 里的 `build.command` 串了全量自验（`&&` 短路，不通过即中止），但**Workers Builds（Git 集成构建）不读 wrangler 配置里的自定义构建命令**（Cloudflare 官方既有行为）——所以线上那次构建跑什么，取决于 Dashboard 里那串命令，而它不在版本库里。**能称作"硬闸门"的只有本地/命令行 `wrangler deploy` 这条路**。（v2.0.5 修正：此前这里写的是"构建命令里串了全量检查，不通过就不部署（硬闸门）"，把仓库里的一份配置当成了线上事实。）
 
 ```bash
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
 ```
 
-**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍，本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变）；③ 真实浏览器截图自验；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍，本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变；`package.json` / `package-lock.json` 的 version 由 `check-version.js` 一并把关）；③ 浏览与资源自验：`node tools/smoke.js` 已自动覆盖「能启动、无控制台报错、版本号一致、可视化网格渲染、关键元素样式、Service Worker 注册、播放态帧率」——**但它看不出"好不好用"**，视觉/手感类改动仍要人眼过一遍；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
 
 **两条渠道怎么发**：① Cloudflare 不需要额外动作——推 `main` 就自动构建部署，这是常规发版；② WorkBuddy 要单独手动发（用 WorkBuddy 打开项目去发布），且因为它只在你用它的时候才更新，**落后几个版本是常态**。两个地址的数据也不互通（各自 `localStorage`，要迁移用「导出预设」）。
 

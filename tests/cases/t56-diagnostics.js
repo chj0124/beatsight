@@ -21,8 +21,9 @@ section("T56 诊断面板 · 计数器恒存在（无 location 也照样记账�
   const { beat, sandbox } = loadApp();
   ok(beat.diag && typeof beat.diag === "object", "window.__beat.diag 已暴露");
   eq(JSON.stringify(beat.diag),
-     JSON.stringify({ frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0 }),
-     "五个计数器初值全为 0");
+    JSON.stringify({ frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
+      reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0 }),
+    "全部计数器初值全为 0（v2.0.6 起多了重锚两档 + 脚本错/未捕获两档）");
   eq(panels({ sandbox }).length, 0, "没有 ?debug=1 → 不挂面板 DOM（零视觉、零布局开销）");
   ok(beat.VERSION && lineOf({ sandbox }) === "(未挂载)", "未挂面板时读取探针也不抛");
 }
@@ -35,7 +36,8 @@ section("T56b 诊断面板 · 开关只认 ?debug=1（含参数解析边界）")
   const box = panels(on)[0];
   eq(box.getAttribute("role"), "status", "面板 role=status（计数变化不只对眼睛可见）");
   ok(/^诊断 · v/.test(box.children[0].textContent), "标题带版本：" + box.children[0].textContent);
-  ok(lineOf(on).indexOf("掉帧 0") === 0, "初始计数行从 0 起：" + lineOf(on));
+  ok(lineOf(on).indexOf("渲染异常 0") === 0, "初始计数行从 0 起："
+    + lineOf(on) + "（v2.0.6 起首项叫「渲染异常」——原名「掉帧」名不副实：它数的是帧内抛异常次数）");
 
   const mid = loadApp({}, { location: { search: "?x=1&debug=1", protocol: "https:" } });
   eq(panels(mid).length, 1, "debug=1 不在首位也认（按参数解析，不是前缀匹配）");
@@ -122,5 +124,5 @@ section("T56f 诊断面板 · 计数变化即时反映到面板文本");
   app.beat.Controls.setBpm(150);
   app.beat.Store.flush();
   ok(lineOf(app).indexOf("存失败 1") >= 0, "写失败后计数行同步更新：" + lineOf(app));
-  ok(lineOf(app).indexOf("掉帧 0") >= 0, "未触发的维度保持 0（读数可对照）");
+  ok(lineOf(app).indexOf("渲染异常 0") >= 0, "未触发的维度保持 0（读数可对照）");
 }

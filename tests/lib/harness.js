@@ -54,6 +54,11 @@ const HTML_ATTRS = {
   modalMask: { hidden: true }, modalInput: { hidden: true },
   trResumeBtn: { hidden: true },       // v1.4：无训练历史时「继续上次」不露面
   planRow: { hidden: true },           // v1.5：无计划时「今日卡」不露面
+  /* v2.0.5（审计 P0-8）：标记里承载语义、但桩不会从 HTML 读到的两处——
+     #bpmNum 由 <div> 改成了真 <button>（键盘可达），#viz 加了 aria-hidden（整块对读屏隐藏）。
+     不在此复刻的话，"改回 div"这类退化不会被任何断言拦下。 */
+  bpmNum: { tagName: "BUTTON" },
+  viz: { "aria-hidden": "true" },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
@@ -204,10 +209,14 @@ class FakeAudioContext {
 }
 
 /* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage, fireDoc, fireWin, docHidden}
-   opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16） */
+   opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16）
+   opts.throwOnRead ：模拟沙盒 iframe / "站点数据被禁用"——getItem 一律抛 SecurityError（v2.0.5 T58）。
+     与 throwOnWrite 同一类注入：这类**容器策略**在桩里本来无法复现，而它恰恰是"整页白屏"
+     这类最严重症状的触发条件（Store 里任何一处漏了 try 都会被它照出来），必须可注入才能断言 */
 function loadApp(seed, opts){
   const store = new Map(Object.entries(seed || {}));
   const throwOnWrite = !!(opts && opts.throwOnWrite);
+  const throwOnRead = !!(opts && opts.throwOnRead);
   const els = {};
   const intervals = new Map();
   const timeouts = new Map();
@@ -239,9 +248,17 @@ function loadApp(seed, opts){
   const sandbox = {
     console,
     localStorage: {
-      getItem: k => (store.has(k) ? store.get(k) : null),
+      getItem: k => {
+        if (throwOnRead) throw new DOMException("denied", "SecurityError");
+        return store.has(k) ? store.get(k) : null;
+      },
       setItem: (k, v) => { if (throwOnWrite) throw new DOMException("quota", "QuotaExceededError"); store.set(k, String(v)); },
       removeItem: k => store.delete(k),
+      /* v2.0.6（审计 P1-9）：诊断面板要枚举"哪个键在膨胀"（配额是按 origin 总量算的），
+         所以桩必须补上 length / key() —— 只实现 get/set/remove 的桩会让那条枚举路径
+         永远走 catch 分支，测试便无法覆盖它（第一版就是这样，覆盖率闸门当场把它抓出来了） */
+      get length(){ return store.size; },
+      key: i => { const ks = [...store.keys()]; return i >= 0 && i < ks.length ? ks[i] : null; },
     },
     document: {
       getElementById: elFor,
@@ -330,6 +347,11 @@ function loadApp(seed, opts){
     setNow: v => { sandbox.performance.now = () => v; },
     /* 手动冲刷已排期的 setTimeout 回调（防抖重建 / 文案复位这类路径） */
     runTimers: () => { const fns = [...timeouts.values()]; timeouts.clear(); fns.forEach(f => f()); },
+    /* 活跃定时器计数（v2.0.6，审计 P1-3）：断言"起停重入不泄漏句柄"必须能看见它。
+       桩此前只在内部维护这两个 Map，外部无从观察，于是"start() 被调两次会留下一个孤儿
+       setInterval（音符排两遍、且再也清不掉）"这类缺陷在测试里完全没有抓手 */
+    intervalCount: () => intervals.size,
+    timeoutCount: () => timeouts.size,
   };
 }
 

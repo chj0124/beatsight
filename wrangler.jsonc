@@ -6,9 +6,23 @@
    使本地 `npx wrangler deploy` 能完整复现线上构建——先跑全量自验（不通过即中止，`&&` 短路），
    再把 5 个产物装配进 dist/。这样"部署配置"也进了版本库：可 review、可 diff、可回滚。
 
+   --strict-env（v2.0.5，审计 P0-5）：自验链里 ESLint / tsc 是**可选加强项**，缺 node_modules 时
+   它们会标 ⊘ 跳过而不是失败——本地这样设计是对的（零依赖产物不该被开发依赖卡住），
+   但在**构建环境**里就成了漏洞：忘跑 `npm ci` 时两步永远是 ⊘，汇总照样写"全部通过 · 实跑 8/10"，
+   而"实跑 8/10"那个分母没人会去核对。加了它之后，构建环境里缺依赖会直接报错中止。
+
    ⚠ 注意（Cloudflare 官方既有行为，非本项目可改）：**Workers Builds（Git 集成构建）不读
    wrangler 配置里的 Custom Builds**——所以线上那次构建仍以 Dashboard 里配的构建/部署命令为准；
    本字段只保证"本地 `wrangler deploy` / `wrangler versions upload` 会执行它"，即本地可复现。
+   由此推出一条**必须说清的结论**（v2.0.5 审计 A1/E1 修正了此前文档的说法）：能称作"硬闸门"的
+   只有本地/命令行那条路；线上那次构建到底跑没跑自验，取决于 Dashboard 里那串命令，
+   而它不在版本库里（改不动、review 不了、diff 不出来）。别把"Cloudflare 会拦"当成可以
+   跳过本地全量自验的理由——它拦不拦取决于一个仓库外的东西。
+
+   ⚠ 已修（v2.0.6，审计 P1-8）：上面这条命令原先用 `rm -rf` / `mkdir -p` / `cp`，需要 POSIX shell，
+   **Windows 的 cmd 下跑不了**，与"本地可完整复现"的目标有落差。装配那半段现已收进
+   `tools/build-dist.js`（fs.rmSync / mkdirSync / copyFileSync，全平台可用），
+   命令里只剩两个 node 调用，两处平台（本地 Windows / Cloudflare 的 Linux 构建镜像）行为一致。
 
    dist/ 由 build.command 现场生成：4 个上站产物（index.html / sw.js / manifest.webmanifest / icon.svg）
    加 `_headers`，共 5 个条目；本地不产出、已 gitignore。 `_headers` 由 Workers 解析为响应头，
@@ -17,7 +31,7 @@
   "name": "beatsight",
   "compatibility_date": "2026-09-15",
   "build": {
-    "command": "node tools/check-all.js && rm -rf dist && mkdir -p dist && cp index.html sw.js manifest.webmanifest icon.svg _headers dist/"
+    "command": "node tools/check-all.js --strict-env && node tools/build-dist.js"
   },
   "assets": {
     "directory": "./dist"

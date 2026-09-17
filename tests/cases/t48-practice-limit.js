@@ -90,15 +90,19 @@ section("T48b 练习量 · 按小节：不提前、不多走");
   eq(status(els), "已练满 8 小节 · 自动停止", "状态栏文案说明停止原因");
   eq(prog(els), "", "停止后清空进度区");
   /* 停止时刻的**墙钟**会比小节边界早，这是设计使然，不是早停：
-     小节计数是在**排程**时累加的（调度器按前瞻窗口 150ms + 一个音符时长向前排，最远约 0.8s），
-     所以「第 8 小节已排完」这一刻的墙钟 ≈ 边界 − 0.8s。此时 stop() 只停时钟与画面，
+     小节计数是在**排程**时累加的（调度器按前瞻窗口 + 一个音符时长向前排），
+     所以「第 8 小节已排完」这一刻的墙钟 ≈ 边界 − (窗口 + 最长音符)。此时 stop() 只停时钟与画面，
      **不会取消已排入音频时钟的振荡器**——那 8 小节的音一个不少地响完，听感上不多不少。
      这与既有「变速训练器到目标自动停」（Trainer.onBarBoundary → Controls.stop）是同一条路径、
      同一种行为；此处断言只是把这条边界钉住，防止日后有人把计数挪到别处变成真的早停/晚停。
-     ——所以真正的判据是 limitBars === 8（上一行已断言），这里只钉「墙钟不得早于一个排程跨度」 */
+     ——所以真正的判据是 limitBars === 8（上一行已断言），这里只钉「墙钟不得早于一个排程跨度」。
+     ★ 容差**由配置与谱面算出**，不写死（v2.0.6）：窗口刚从 0.15 提到 0.3，
+       原本写死的 0.85 立刻变成了假红——而它不是断言失败，是断言自己过期了 */
+  const maxTick = Math.max(...beat.curPattern().bars.flat().map(/** @param {any} s */ s => s.t));
+  const span = beat.CONFIG.schedWindow + maxTick * 60 / S.bpm / 48;    // 窗口 + 最长一个音符
   const boundary = 0.08 + 8 * BAR_SEC;                    // 20.08s
-  ok(ac.currentTime <= boundary && ac.currentTime >= boundary - 0.85,
-     `墙钟停止时刻落在 [边界−0.85s, 边界] 内（实际 ${ac.currentTime.toFixed(3)}s，边界 ${boundary}s）`);
+  ok(ac.currentTime <= boundary && ac.currentTime >= boundary - span,
+     `墙钟停止时刻落在 [边界−${span.toFixed(2)}s, 边界] 内（实际 ${ac.currentTime.toFixed(3)}s，边界 ${boundary}s）`);
 }
 
 /* ================= 场景 T48c：min 模式 —— 按音频时钟，预备拍不计入 ================= */

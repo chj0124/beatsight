@@ -6,11 +6,13 @@
    发版规则（v1.6.4 起）要求「每次发版都 bump 这一行」，此前这条纪律只靠人记，
    这里把它固化成机器检查——和 check-dom-ids 同样的思路：人眼核对过一次的结论不该反复靠人眼。
 
-   三项检查：
+   四项检查：
      1) index.html 里存在 `const VERSION = "x.y.z"` 且是合法 semver；
      2) CHANGELOG.md 的首条 `## vX.Y.Z` 必须**等于** VERSION（发了版就要有记录，且记录与代码一致）；
      3) index.html 全文出现的 `vX.Y.Z` 字面量**不得高于** VERSION
         （高于 = 代码已含该版改动却没 bump VERSION，正是 D4 要拦的那种漂移）。
+     4) package.json 的 version 必须**等于** VERSION（v2.0.6，审计 P1-8）——它是同一事实的
+        第二份手抄，此前无人核对。
 
    为什么第 3 项是「不高于」而不是「必须相等」：注释里引用历史版本（形如「v1.6.0 修」）
    是合理且有信息量的写法，不该被禁；真正有问题的是引用一个**还没发**的版本号。
@@ -81,6 +83,29 @@ if (ver){
   } else if (seen.size){
     const top = [...seen.keys()].sort((a, b) => cmp(semver(a), semver(b))).pop();
     console.log(`  · 全文版本字面量 ${seen.size} 个，最高 v${top}（未超过 VERSION）`);
+  }
+}
+
+/* 4) package.json 的 version 必须与 VERSION 一致（v2.0.6，审计 P1-8）
+   为什么补这项：package.json / package-lock.json 里各有一个 version，与 index.html 的 VERSION
+   是**同一个事实的第二、第三份手抄**，而此前没有任何检查器在读它们（grep "package" 在旧版本里
+   零命中）。它们的用途不同（npm 元信息 vs 运行时真相源），所以不能合并成一个，
+   只能靠这条闸门保证三者同步——发版时忘了改 package.json，从此就会被拦下来。 */
+{
+  const pkgPath = path.join(ROOT, "package.json");
+  try{
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+    const pv = semver(pkg.version);
+    if (!pv){
+      problems.push(`package.json 的 version "${pkg.version}" 不是 x.y.z 形式的 semver`);
+    } else if (ver && cmp(pv, ver) !== 0){
+      problems.push(`package.json 的 version 是 ${pkg.version}，而 index.html 的 VERSION 是 ${vm[1]}`
+        + "——发版要同时改这两处（外加 CHANGELOG 首条）");
+    } else if (ver){
+      console.log(`  · package.json version = ${pkg.version}（与 VERSION 一致）`);
+    }
+  }catch(e){
+    problems.push("package.json 读不到或不是合法 JSON：" + (e && e.message ? e.message : e));
   }
 }
 

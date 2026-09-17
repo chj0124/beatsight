@@ -561,7 +561,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 /* ---------- 诊断面板（v2.0.4，审计 P1-1）：仅 `?debug=1` 时挂载，右下角一行计数 ---------- */
 .diag{position:fixed;z-index:60;right:calc(12px + env(safe-area-inset-right, 0px));bottom:calc(12px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;gap:4px;max-width:80vw;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:500 11px/1.4 var(--mono);color:var(--t2);pointer-events:none}
 .diag b{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
-.diag .diag-line{white-space:nowrap;font-variant-numeric:tabular-nums}
+.diag .diag-line{white-space:normal;font-variant-numeric:tabular-nums}
+/* 复制按钮（v2.0.6，审计 P1-9）：面板本身 pointer-events:none（不想挡住底下的画面），
+   所以要单独把按钮放回可点。字号比面板正文再小一档，避免抢占视觉重心 */
+.diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px 10px;font:600 10px/1.4 var(--mono)}
 </style>
 </head>
 <body>
@@ -614,7 +617,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</h2>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     </div>
-    <div class="viz" id="viz"></div>
+    <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
+         "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
+         语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
+         安全性依据：格子全是 div、鼠标不可点、无 tabindex、无键盘契约——
+         本模块除 resize 外不注册任何监听器，故 aria-hidden 不会藏掉可操作元素。
+         装饰性 SVG（品牌标/播放三角/各返回箭头）同理由父节点的 aria-label 或隐藏语义兜住，
+         不在本次范围内逐个补 aria-hidden（见 CHANGELOG 的"已知未做"） -->
+    <div class="viz" id="viz" aria-hidden="true"></div>
     <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
          单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示 -->
     <div class="arg-now arg-jump" id="argJump" hidden>
@@ -636,7 +646,16 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="bpm-row">
           <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
           <button class="step-btn" id="bpmMinus" aria-label="减 1 BPM">-1</button>
-          <div class="bpm-num" id="bpmNum" title="点击直接输入 BPM">96</div>
+          <!-- v2.0.5（审计 P0-8）：原为 <div>，只绑了 click——键盘完全够不着它
+               （全局 Space 分支只认 INPUT/BUTTON/SELECT/TEXTAREA 与 role=button，
+               而它三者都不是），读屏也报不出"这是可以点的"。
+               改真按钮即可自动获得：Tab 可达、Enter/Space 激活、读屏报"按钮"。
+               静止态外观不变（无头 Chrome 实拍新旧两版对比 + getComputedStyle 实测：
+               背景透明、无边框、无 outline、字号 46px、盒子 92×54，与旧 <div> 一致——
+               全局 button 重置已覆盖 background/border/color，.bpm-num 只管字号、字重、等宽与宽度）。
+               唯一新增的可见态是聚焦时的绿色焦点环（:focus-visible，L34）——那正是本次改动的目的：
+               让键盘用户看得见焦点。旧 <div> 永远没有焦点环，因为它不可聚焦。 -->
+          <button class="bpm-num" id="bpmNum" type="button" title="点击直接输入 BPM">96</button>
           <button class="step-btn" id="bpmPlus" aria-label="加 1 BPM">+1</button>
           <button class="step-btn" id="bpmPlus5" aria-label="加 5 BPM">+5</button>
         </div>
@@ -1027,7 +1046,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <ul class="help-list">
           <li>所有数据只存在<b>这台设备的浏览器里</b>，不上传任何服务器</li>
           <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出预设」存一份 JSON 备份</li>
+          <li>若自定义预设曾因<b>结构损坏</b>被隔离（<code>beatsight.quarantine</code>），它们会一直占着本地配额；
+            这里可以查看条数并清理（清理不可撤销，介意的话先导出备份）</li>
         </ul>
+        <!-- v2.0.6（审计 P1-5）：隔离区原先只有写入、没有出口。默认隐藏，render() 按实际条数显隐 -->
+        <button class="pill outline" id="helpClearQuar" hidden aria-label="清理被隔离的损坏预设">清理隔离数据</button>
 
         <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
         <dl class="help-dl">
@@ -1064,22 +1087,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1090  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1264  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L1809  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2147  Modal         应用内弹窗
-     L2223  Viz           时值可视化渲染与每帧动画
-     L2861  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L3262  Trainer       变速训练器
-     L3445  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L3885  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L4111  Editor        自定义节奏型编辑器
-     L4376  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L4605  Ear           听辨训练（v1.10.0）
-     L4830  Arrange       曲式编排（v2.0.0）
-     L5183  Help          使用方法（v2.0.1）
-     L5218  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L5277  初始化（装配） 各模块 hook 接线与启动
+     L1118  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1316  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L1925  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L2271  Modal         应用内弹窗
+     L2401  Viz           时值可视化渲染与每帧动画
+     L3046  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L3474  Trainer       变速训练器
+     L3669  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L4126  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L4357  Editor        自定义节奏型编辑器
+     L4619  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L4842  Ear           听辨训练（v1.10.0）
+     L5065  Arrange       曲式编排（v2.0.0）
+     L5413  Help          使用方法（v2.0.1）
+     L5460  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L5519  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1099,7 +1122,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.0.4";
+const VERSION = "2.0.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1172,9 +1195,19 @@ const SWINGS = [50, 67, 75];
 const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
   attack:0.004, decay:0.09,                          // 包络：4ms 起音、90ms 衰减
-  schedInterval:25, schedWindow:0.15,                // 前瞻调度：25ms 轮询、前台窗口 150ms
+  /* 前瞻窗口 v2.0.6（审计 P1-1）由 0.15 提到 0.3。理由：调度回调跑在主线程 25ms 轮询上，
+     单轮"余量" = 窗口 − 轮询间隔；窗口 150ms 时余量只有 125ms，而小节边界那一轮还要顺手做
+     变速爬级、练习量到点停播、换型重建网格这些重活——任何一次主线程阻塞超过余量，
+     时间轴就会被重锚定（见 Audio 内的 reanchor）**静默吞掉**那段时间的音符。
+     翻倍到 300ms 等于把容错翻倍，代价是"变更生效"最多多等 150ms（后台窗口 1.2s 不变）。
+     ★ 刻意**没有**照审计建议把重活"投到 queueMicrotask / setTimeout(…,0)"：微任务与定时器
+       仍然跑在同一根主线程上，总耗时一分不少，只是把阻塞从回调内挪到回调之后——而定时器
+       不会重叠执行，所以对"下一轮会不会迟到"没有任何改善。真正有效的只有两件事：
+       ① 窗口留足余量（本条）；② 让"已经吞了几次"变成可读数字（重锚计数，装进诊断面板） */
+  schedInterval:25, schedWindow:0.3,                 // 前瞻调度：25ms 轮询、前台窗口 300ms
   /* 后台窗口（v1.3.0，审计 P1-3）：浏览器对后台标签页的 setInterval 节流下限是 1000ms，
-     150ms 的窗口在后台等于「每次唤醒只排 150ms 的音，然后静音 850ms」→ 必然断续。
+     前台那点窗口（v2.0.6 起 300ms，此前 150ms）在后台等于「每次唤醒只排那一小段的音，
+     然后整段静音」→ 必然断续。
      取 1.2s：大于节流下限且留 20% 余量。行为代价见 DEVELOPMENT.md §3.2 */
   schedWindowBg:1.2,
   /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
@@ -1190,7 +1223,7 @@ const CONFIG = {
      一首歌通常 4–8 段、每段 1–2 块；16 遍 × 4 小节 = 64 小节的单段已经很长了 */
   arrMaxSections:24, arrMaxBlocks:8, arrMaxRepeats:16, arrMaxBars:256,
   /* 弹跳球（v1.2）：跳高 ∝ 跳距²（重力一致，k=120 → 96BPM 四分≈47px，十六分贴地快跳）；
-     squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器 150ms 前瞻窗口 */
+     squash=触地挤压/预压窗口（秒）。教训：球的落点由 onset 表驱动，不接调度器前瞻窗口 */
   bounce:{ k:120, min:10, max:48, squash:0.07 },
   /* 常用速度快捷档（v1.1）：BPM 快捷键与滑杆刻度同源生成，避免两处各写一份数值。
      取传统节拍器 12 递增阶梯（60/72/84/96/108/120）的子集，含默认 96 与常用目标 120 */
@@ -1231,6 +1264,20 @@ const LIMIT_PRESETS = [
   { mode:"min",  n:10, text:"10 分钟", label:"练满 10 分钟自动停止" },
 ];
 const LIMIT_OFF = { mode:"off", n:0 };
+
+/* 速度 BPM 的合法域（v2.0.5，审计 P0-2）——**全应用唯一一份**：HTML 上 bpmSlider 的 min/max、
+   setBpm 的钳制、加载校验三处同源。30–240 覆盖真实练习场景（60 = 慢速跟练，240 = 十六分扫弦的极限） */
+const BPM_RANGE = [30, 240];
+
+/* 变速训练器四参数的合法域（v2.0.5，审计 P0-2）——两个使用方共用：
+     · 加载校验（Store：localStorage 里的值不可信）
+     · UI 输入钳制（Trainer.bindTrParam，以及 HTML 上 trStart/trTarget/trStepInp/trEvery 的 min/max）
+   之所以必须抽出来：此前加载侧只判"是不是有限数"、不判域，于是脏值能一路进 S.trainer，
+   而 step:0 会让 total() 变成 Infinity、爬坡永远升不到目标（既不升速也永不自动停）；
+   两处各写一遍数字则必然各自漂移——与 LIMIT_PRESETS「UI 生成、加载校验、进度文案三处共用」同一思路。
+   start 上界 236 / target 下界 31 是"目标必须高于起始"这条规则留下的余量。
+   改这里的数值时记得同改 HTML 上那四个 input 的 min/max（它们只是给浏览器看的提示，不是闸门） */
+const TR_RANGE = { start:[30, 236], target:[31, 240], step:[1, 20], everyN:[1, 8] };
 
 /* 听辨训练（v1.10.0）——出题质量的关键在这张表，不在代码。
    随机从 12 个内置预设里抽会出两类坏题：「送分题」（八分摇滚 vs 华尔兹分解根本不会听错）
@@ -1291,12 +1338,24 @@ const Store = (() => {
   /* localStorage 容错：数据损坏（手动改坏/写入中断）时回退默认值，不再整页白屏 */
   /** @param {string} k @returns {any} */
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ return null; } }
-  const rawSaved = localStorage.getItem(KEY_LEGACY);
+  /* v2.0.5（审计 P0-1）：本行曾是 Store 里**唯一**未包 try 的 localStorage 访问，而上面那行
+     注释正承诺"不再整页白屏"。沙盒 iframe / "站点数据被禁用"时 getItem 抛 SecurityError
+     （旧浏览器下 localStorage 本身未定义则 ReferenceError），Store IIFE 求值即失败 →
+     `const S = Store.S` 失败 → 后面 16 个模块全部拿不到 S。这是"一处不设防、全站陪葬"的典型，
+     与本模块其余每一处访问同一口径兜住 */
+  let rawSaved = null;
+  try{ rawSaved = localStorage.getItem(KEY_LEGACY); }catch(e){}
   const legacy = readJSON(KEY_LEGACY) || {};
   const hotIn = readJSON(KEY_HOT);
   const coldIn = readJSON(KEY_COLD);
-  /* 新键存在（读得出对象）即以其为准；否则用旧键——首次升级与全新用户都走这条 */
-  const saved = hotIn && typeof hotIn === "object" ? Object.assign({}, legacy, hotIn) : legacy;
+  /* 新键存在（读得出对象）即以其为准；否则用旧键——首次升级与全新用户都走这条。
+     v2.0.6（审计 P1-6）：目标对象从 `{}` 改成 `Object.create(null)`——`Object.assign` 走的是
+     `[[Set]]`，而 JSON.parse 产出的**自有** `__proto__` 键会把目标对象的原型改写掉
+     （下游 `saved.bpm` 之类的缺失字段就会从被污染的原型上读到注入值）。
+     同文件 L1368 附近为 trainer 显式规避过这个坑（逐字段白名单），这里补上同一个理由。
+     注：原型为 null 不影响后续所有读取（这里只用 own 属性，且 S 的每个字段都显式取值） */
+  const saved = hotIn && typeof hotIn === "object"
+    ? Object.assign(Object.create(null), legacy, hotIn) : legacy;
   /** @type {any[]} */
   const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
                      : (Array.isArray(legacy.customs) ? legacy.customs : []);
@@ -1325,6 +1384,11 @@ const Store = (() => {
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
   /** @param {any} v @param {number} dft @returns {number} */
   const numOr = (v, dft) => (isNum(v) ? v : dft);
+  /* v2.0.5（审计 P0-2）：整数域钳制。**只在 v 已由 isNum/numOr 保证是有限数时用**——
+     本助手负责"取整 + 钳到 [lo,hi]"，不负责挡 NaN/Infinity（那是 isNum 的职责，两者分工别混）。
+     Math.round 放在钳制之前：脏值 30.7 应落到 31 而不是被 min/max 先压成 30.7 再取整 */
+  /** @param {any} v @param {number} lo @param {number} hi @returns {number} */
+  const clampRange = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v)));
   /** @param {number} v @returns {number} */
   const clamp01 = v => Math.min(1, Math.max(0, v));
 
@@ -1336,11 +1400,23 @@ const Store = (() => {
   const trSrc = (saved.trainer && typeof saved.trainer === "object") ? saved.trainer : {};
   /** @type {Record<string, any>} */
   const trSaved = {};
-  /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获） */
-  ["start","target","step","everyN"].forEach(k => { if (isNum(trSrc[k])) trSaved[k] = trSrc[k]; });
+  /* v0.6.0 修复：+null=0、+true=1 均为有限数，旧写法放过了 null/布尔脏值（tests T2 捕获）
+     v2.0.5（审计 P0-2）：再补**域**钳制（域值取自 TR_RANGE，与 UI 输入共用同一份常数）。
+     此前只判"是不是有限数"、不判域，于是 step:0 能一路进 S.trainer：total() 变 Infinity、
+     bpmFor(k) 恒等于 start → 爬坡既不升速也永不自动停，用户看到的就是"训练卡住了" */
+  ["start","target","step","everyN"].forEach(k => {
+    if (isNum(trSrc[k])) trSaved[k] = clampRange(trSrc[k], TR_RANGE[k][0], TR_RANGE[k][1]);
+  });
+  /* 目标必须高于起始（与 UI 侧 bindTrParam 的"抬回起始 +1"同一条规则）。
+     只钳各自的值不够：start=200 而 target 缺项（回落默认 120）时两者会交叉，
+     而 target <= start 会让 bpmFor(0) 立刻 >= target——训练一开就报"完成" */
+  const trStartV = numOr(trSaved.start, trDefaults.start);
+  if (numOr(trSaved.target, trDefaults.target) <= trStartV){
+    trSaved.target = Math.min(TR_RANGE.target[1], trStartV + 1);
+  }
   /* 上次训练（v1.4）：reached 钳到合法 BPM 域；at 只做展示参考，缺了不致命 */
   if (trSrc.last && typeof trSrc.last === "object" && isNum(trSrc.last.reached)){
-    trSaved.last = { reached: Math.min(240, Math.max(30, Math.round(trSrc.last.reached))),
+    trSaved.last = { reached: clampRange(trSrc.last.reached, BPM_RANGE[0], BPM_RANGE[1]),
       done: !!trSrc.last.done, at: numOr(trSrc.last.at, 0) };
   }
   /* 7 天计划（v1.5）：白名单抽取 + 域校验（起点 30–236、目标 ≤240 且 > 起点、day 1–7） */
@@ -1491,7 +1567,12 @@ const Store = (() => {
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
    * }} */
   const S = {
-    bpm: numOr(saved.bpm, 96),
+    /* v2.0.5（审计 P0-2）：本字段此前是 S 里**唯一**没有域钳制的数值（vol/accentVol 有 clamp01、
+       sig/swing/timbre 有白名单、countIn.beats 有 1–8），而 UI 侧 setBpm 明确钳 30–240、
+       还专门注释了 NaN 的灾难。后果是自洽性缺口：S.bpm 的合法性取决于"装配层有没有记得调用
+       setBpm"这个顺序细节。当前**不可达**（装配段 `Controls.setBpm(S.bpm)` 初始就补了钳制），
+       故本条是纵深防御而非在修的 bug——但"能读到的 S 永远是合法值"这条性质不该依赖调用顺序 */
+    bpm: clampRange(numOr(saved.bpm, 96), BPM_RANGE[0], BPM_RANGE[1]),
     vol: clamp01(numOr(saved.vol, 0.8)),
     accentVol: clamp01(numOr(saved.accentVol, 1)),
     mute: !!saved.mute,
@@ -1589,8 +1670,30 @@ const Store = (() => {
     else rejectedCustoms.push(c);
   });
   if (rejectedCustoms.length){
-    try{ localStorage.setItem(KEY_QUAR, JSON.stringify(rejectedCustoms)); }catch(e){}
-    try{ console.warn("[BeatSight] " + rejectedCustoms.length + " 个预设未通过结构校验，已隔离到 " + KEY_QUAR); }catch(e){}
+    /* 写前判重（v2.0.6，审计 P1-5）：这段在**每次启动**都会执行，而"用户没去清理脏数据"是常态，
+       于是每次启动都要白付一次同步写（脏预设可能很大）。与已存内容完全一致就跳过。
+       这里必须自己读原始串：KEY_QUAR 全文件只在此处写、别处不读——"隔离了但用户拿不回"
+       正是审计点出的问题，配套补了下面的 quarantine() / clearQuarantine() 出口 */
+    const payload = JSON.stringify(rejectedCustoms);
+    let prev = null;
+    try{ prev = localStorage.getItem(KEY_QUAR); }catch(e){}
+    if (prev !== payload){
+      try{ localStorage.setItem(KEY_QUAR, payload); }catch(e){}
+      try{ console.warn("[BeatSight] " + rejectedCustoms.length + " 个预设未通过结构校验，已隔离到 " + KEY_QUAR
+        + "（可在「使用方法 → 数据与隐私」里清理）"); }catch(e){}
+    }
+  }
+  /* 隔离区的读 / 清出口（v2.0.6，审计 P1-5）。
+     为什么必须补：原先只有写、全文件无人读——"隔离"退化成了"换个地方静默丢弃"，
+     而且脏数据会一直占着配额（配额满了全应用的写盘都会失败）。有了出口才是真可恢复 */
+  /** @returns {any[]} */
+  const quarantine = () => rejectedCustoms.slice();
+  /** @returns {number} 清掉的条数 */
+  function clearQuarantine(){
+    const n = rejectedCustoms.length;
+    rejectedCustoms.length = 0;
+    try{ localStorage.removeItem(KEY_QUAR); }catch(e){}
+    return n;
   }
   /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用 */
   if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
@@ -1787,6 +1890,13 @@ const Store = (() => {
     if (!list || !list.length) return {ok:false, error:"文件中没有预设数据"};
     if (list.length > CONFIG.importMaxCount)
       return {ok:false, error:"预设数量过多（" + list.length + " 个，上限 " + CONFIG.importMaxCount + " 个）"};
+    /* 总量闸门（v2.0.6，审计 P1-5）：上面的 importMaxCount 管的是**单份文件**，
+       而 customs 原先没有总量上限——导入 10 份备份就是 5000 条，而 persistCold 是
+       **不防抖的全量同步写**（一次约 7 MB），正是冷热分离当初要消灭的 715 KB 场景的十倍。
+       量级上与单文件上限同源（同一个 CONFIG.importMaxCount），避免两套阈值各说各话 */
+    if (customs.length + list.length > CONFIG.importMaxCount)
+      return {ok:false, error:"库里已有 " + customs.length + " 个，再加本次 " + list.length
+        + " 个会超过上限 " + CONFIG.importMaxCount + " 个——请先删掉一些再导入"};
     const out = [];
     for (const p of list){
       const v = validatePreset(p);
@@ -1806,6 +1916,7 @@ const Store = (() => {
     downloadJSON,
     serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
     earStats: ear, recordEar, resetEar,
+    quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
     arranges, findArrange, upsertArrange, deleteArrange, persistArranges };
 })();
 const S = Store.S;
@@ -1943,7 +2054,7 @@ function arrangeNextRow(sec, bar){
 let rafId = null;
 /* 弹跳球（v1.2）onset 表：Audio.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
    Viz.paintBall 只读。onsetBuf = 已排程端点（原地 push/shift，导出引用不失效）；
-   onsetNext = 调度游标处的下一发声点预测——视觉要「看得远一跳」，150ms 前瞻窗口不够，
+   onsetNext = 调度游标处的下一发声点预测——视觉要「看得远一跳」，调度前瞻窗口不够，
    渲染层靠它保证球永远有目的地（demo 实测：缺它球在慢速下落地僵住） */
 let onsetBuf = /** @type {{ t: number, bar: number, cumT: number, aSec: number, aBar: number }[]} */ ([]), onsetNext = /** @type {null | { t: number, bar: number, cumT: number }} */ (null);
 /* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
@@ -2131,6 +2242,14 @@ let onFrameError = null;
    表现为"播放中但没声音"——这种静默失效更难自查，恰恰更需要显式边界。 */
 /** @type {null | ((e: any) => void)} */
 let onSchedError = null;
+/* 时间轴重新锚定钩子（v2.0.6，审计 P1-1）。存在的理由与上面两个钩子不同：
+   **不是为了做处置，而是为了让一件只在暗处发生的事变得可见**。
+   scheduler 有两条防线会把时间轴与游标强行对齐到"现在"（长节流唤醒后的饥饿兜底、
+   单轮迭代超限），而这一步会**静默丢掉**那段时间里本该排出的音符——用户听到的是
+   "卡了一下/漏了几拍"，却没有任何日志或数字能指认它。这里只报一个计数（装配层 diagBump），
+   让"发生过几次重锚定"成为一个可读的读数：0 = 从未漏拍，>0 = 该去看诊断面板了 */
+/** @type {null | ((why: string) => void)} */
+let onReanchor = null;
 /* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
 /* 曲式模式的「待命型」（v2.0.2）：停止且处于曲式模式时，界面应该显示「下一次播放从哪儿开始」
@@ -2501,18 +2620,25 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }));
     writes.forEach(([el, v]) => { el.style.display = v; });
   }
+  /* 布局变动后的统一收敛（v2.0.5，审计 P0-3）。这段逻辑原本只长在 resize 里，于是
+     「主题切换」这个同样会改变行几何的事件被漏在门外——观测台主题把 .topbar 从 64px 压到 56px、
+     .card / .pattern-head 的内边距也跟着变，行 y 位移约 22px，而 cacheGeo 只有 buildViz 与
+     resize 两个调用点 → 播放中切主题后弹跳球与尾迹会**一直**按旧几何画（现象：球飘在行外），
+     直到下一次 buildViz / resize 才自愈。
+     两处该用同一套取舍，所以抽成一个函数而不是复制第二份：
+       · 播放中：只重采几何 + 重跑标注自适应（都不重建 DOM，不打断动画）
+       · 停机时：整树重建（顺便把标注与哨兵一次算准）
+     约定：谁在布局上动手脚，谁就有责任调它。当前调用方 = resize 与主题切换两个。
+     注：本函数不在渲染热路径上（帧内绝不调），所以这里读 offset* 是安全的。 */
+  function relayout(){
+    if (S.playing){ cacheGeo(); fitCellAnnotations(); }
+    else buildViz();
+  }
   /** @type {null | ReturnType<typeof setTimeout>} */
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     if (resizeTimer !== null) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      /* v1.3.0：播放中不重建 DOM（会打断动画），但几何确实变了 → 重采缓存即可，
-         否则弹跳球/光晕会继续按旧尺寸画，表现为"球跑偏到行外" */
-      if (S.playing){ cacheGeo(); fitCellAnnotations(); }
-      /* v2.0.2：播放中也补跑标注自适应——跨断点（格子 44→34px）后旧宽度判定已失效，
-         不重跑会错误隐藏/显示标签徽标直到下次 buildViz。它不做 DOM 重建，不打断动画 */
-      else buildViz();
-    }, 200);
+    resizeTimer = setTimeout(relayout, 200);
   });
 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
@@ -2909,7 +3035,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     rafId = requestAnimationFrame(paintFrame);
   }
 
-  return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars,
+  return { stepLabel, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout,
     /* v1.3.1：暴露内部件**仅供测试**断言弹跳球物理（T30）。
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
@@ -2922,10 +3048,11 @@ const Audio = (() => {
   /* 前瞻窗口按可见性自适应（v1.3.0，审计 P1-3）。
      为什么要自适应：调度时钟跑在主线程 setInterval(25ms) 上，而浏览器对**后台标签页**的
      定时器节流下限是 1000ms（Chrome 在页面隐藏 5 分钟后还有 intensive throttling，约 1 次/分钟）。
-     固定 150ms 窗口在后台就是「每次唤醒排 150ms 的音，然后静音 850ms」——后台播放必然断续，
+     固定一小段的前台窗口在后台就是「每次唤醒排那一小段的音，然后整段静音」——后台播放必然断续，
      这也是路线图 M8「后台持续发声」一直落不了地的技术阻塞点。
      行为变化（已同步到 DEVELOPMENT.md §3.2）：后台下已排入的音符无法撤销，
-     故「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复 150ms，无延迟。 */
+     故「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复前台窗口，无延迟。
+     v2.0.6（审计 P1-1）：前台窗口由 150ms 提到 300ms——见 CONFIG.schedWindow 处的取舍说明。 */
   const schedWindow = () => (document.hidden === true ? CONFIG.schedWindowBg : CONFIG.schedWindow);
   /* 音频生命周期（v1.3.0，审计 P2-13）：原实现只认 "suspended"，漏了 iOS 的两个关键状态：
      · "interrupted" —— 通话/闹钟/其他 App 抢占音频会话后 Safari 的私有状态，恢复路径与
@@ -2936,7 +3063,7 @@ const Audio = (() => {
     if (!ctx) return;
     ctx.onstatechange = () => {
       if (!ctx) return;
-      if (ctx.state === "interrupted" && S.playing) ctx.resume();
+      if (ctx.state === "interrupted" && S.playing) resumeCtx();
       if (ctx.state === "closed" && S.playing){
         /* 旧时钟已随上下文一起失效：不重新锚定相位的话，nextNoteTime 还停在旧时间轴上
            （可能领先新时钟几分钟），表现为"在播放但一直不出声"。这里按新时钟重新起一节 */
@@ -2952,17 +3079,31 @@ const Audio = (() => {
       }
     };
   }
+  /* 恢复上下文（v2.0.6，审计 P1-4）：resume() 在 Safari 无手势时会 reject，
+     此前返回值从未被接住 → 未处理的 Promise rejection（控制台噪音，且掩盖真问题）。
+     为什么不像 L5350 那样直接 .catch()：真浏览器返回 Promise，但测试桩的 resume() 返回 undefined，
+     一旦无脑 .catch 就是 TypeError。这里显式判类型，两种环境都安全——与装配层那段同一套写法 */
+  function resumeCtx(){
+    if (!ctx) return;
+    const p = ctx.resume();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  }
   /* 返回值即当前上下文：调用方（如 watchCtx 重建路径）拿本地常量用，
      避免 TS 对模块级 let 的收窄在函数调用后被重置/固化导致误判 */
   /** @returns {AudioContext} */
   function ensureCtx(){
+    /* closed 即废弃（v2.0.6，审计 P1-4）：watchCtx 的 onstatechange 只在**播放中**才重建
+       （`S.playing` 为假时它什么也不做），于是停机期间被系统关闭的上下文会一直留着：
+       之后 start() 拿到的 ctx.currentTime 是**冻结**的，表现是"界面在播放、永远不出声"，
+       而且毫无报错。把"closed 一律作废"提到取上下文这一步，两条路（播放中/停机期间）就统一了 */
+    if (ctx && ctx.state === "closed"){ ctx = null; masterGain = null; noiseBuf = null; }
     if (!ctx){
       ctx = new (window.AudioContext || /** @type {any} */ (window).webkitAudioContext)();
       masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
       watchCtx();
     }
-    if (ctx.state === "suspended" || ctx.state === "interrupted") ctx.resume();
+    if (ctx.state === "suspended" || ctx.state === "interrupted") resumeCtx();
     return ctx;
   }
   /* v0.9.1：iOS Safari 切后台会挂起 AudioContext，回前台且正在播放时兜底恢复
@@ -2973,7 +3114,7 @@ const Audio = (() => {
      若反过来先收窄，就可能出现「窗口已收窄但队列是空的」那一小段空隙 */
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
-    if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) ctx.resume();
+    if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) resumeCtx();
     if (S.playing) scheduler();
   });
   /* 噪声 buffer：程序生成的 0.5s 白噪声，wood/drum 音色共用（零采样文件硬约束） */
@@ -3143,7 +3284,7 @@ const Audio = (() => {
     return null;
   }
   /* setInterval(25ms) 轮询：把未来一个窗口内的音符注册到 audio clock；
-     窗口按可见性自适应（前台 150ms / 后台 1.2s，见 schedWindow）；
+     窗口按可见性自适应（前台 300ms / 后台 1.2s，见 schedWindow）；
      位置换算：posTicks = (ctx.currentTime - loopStart) / spb × TPB */
   /* 异常边界（v2.0.2，审计 D3）：scheduler 是 setInterval 周期回调，此前**没有任何异常边界**——
      一次意外（脏数据走到某个未设防的分支、AudioContext 被系统关闭、DOM 引用失效）就会让
@@ -3186,22 +3327,29 @@ const Audio = (() => {
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
-    /* 调度饥饿兜底（v1.3.0，审计 P1-3）：后台被长时间节流（Chrome intensive throttling
-       约 1 次/分钟唤醒）时，游标可能落后实时时钟几十秒。若不处理，下面的 while 会把过去
-       几十秒的音符**一次性全部排到"现在"**——听感是一坨同时爆响（MAX_SCHED_STEPS 只拦得住
-       死循环，拦不住这个）。
-       为什么是"重新锚定"而不是"按整循环/整小节前移"：前移的粒度至少是一小节（慢速 7/4 可达
+    /* 重新锚定（v2.0.6，审计 P1-1 / P1-7）：把时间轴与游标对齐到"当前时刻"，即从循环起点起新的一轮。
+       两条防线共用它——① 长节流唤醒后的调度饥饿；② 单轮迭代超限（脏数据让游标永不前进）。
+       为什么是"起新的一轮"而不是"按整循环/整小节前移"：前移的粒度至少是一小节（慢速 7/4 可达
        16s、一个循环 56s），前移后游标很容易落到前瞻窗口之外，于是又要多等一整格的静音；
-       而此时相位早已没有意义（已经静音几十秒，用户也不在看画面）。直接以当前时刻起新的一轮
-       最干净：不补发过去的音符（不叠响），也不额外静音。
-       触发条件「落后超过一个窗口」保证正常情况下（后台窗口 1.2s > 1s 节流）永不触发。 */
-    if (ciLeft === 0 && win > 0 && nextNoteTime < c.currentTime - win){
+       而此时相位早已没有意义（已经静音了几十秒 / 已经判定数据不可信，用户也不在看画面）。
+       它只依赖 c.currentTime，因此**天然幂等**——两条防线共用不会互相放大。
+       ★ 代价必须明说：这一步会静默丢掉那段时间里本该排出的音符。所以它上报一次计数
+         （onReanchor，带原因），把"到底漏没漏拍、因为什么漏"变成可读的数字——
+         而不是只能靠用户描述"好像卡了一下"（这正是审计 P1-1 那条"静默吞拍"的诉求） */
+    const reanchor = (/** @type {string} */ why) => {
       nextNoteTime = c.currentTime + 0.05;
       loopStart = nextNoteTime;                        // 时间轴与游标对齐 = 从循环起点重新开始
       schedBar = 0; schedStep = 0;
       onsetBuf.length = 0; onsetNext = null;           // 旧端点全部过期，弹跳球按新游标重建
       Viz.resetTracking();
-    }
+      if (onReanchor) onReanchor(why);
+    };
+    /* 饥饿兜底（v1.3.0，审计 P1-3）：后台被长时间节流（Chrome intensive throttling
+       约 1 次/分钟唤醒）时，游标可能落后实时时钟几十秒。若不处理，下面的 while 会把过去
+       几十秒的音符**一次性全部排到"现在"**——听感是一坨同时爆响（MAX_SCHED_STEPS 只拦得住
+       死循环，拦不住这个）。
+       触发条件「落后超过一个窗口」保证正常情况下（后台窗口 1.2s > 1s 节流）永不触发。 */
+    if (ciLeft === 0 && win > 0 && nextNoteTime < c.currentTime - win) reanchor("starved");
     /* v1.2.4 防死循环（硬上限）：任何情况下单轮调度最多处理 MAX_SCHED_STEPS 个音符即退出。
        原实现没有这层保护，而下面「空小节安全跳过」分支用的是 `pat.meter * spb()`：
        拍号一旦是脏值（如 {"sig":-3}）该步长为 **负数**，nextNoteTime 只减不增，
@@ -3212,7 +3360,12 @@ const Audio = (() => {
     let guard = 0;
     while (nextNoteTime < c.currentTime + win){
       if (++guard > MAX_SCHED_STEPS){
-        try{ console.warn("[BeatSight] 调度器单轮迭代超限，已强制退出（疑似脏数据）"); }catch(e){}
+        /* v2.0.6（审计 P1-7）：超限后**不能只是 break**——`break` 留下的是"已排了大量音符 +
+           游标停在远未来（或脏数据导致的永不前进）"的混合状态：接着要么长时间静音，
+           要么下一轮继续溢出、每 25ms 重复一次。改用与饥饿兜底同一个 reanchor()：
+           把轴与游标对齐到当下，让下一轮从一个干净的状态重新开始。 */
+        try{ console.warn("[BeatSight] 调度器单轮迭代超限，已重新锚定（疑似脏数据）"); }catch(e){}
+        reanchor("overflow");
         break;
       }
       const steps = bars[schedBar];
@@ -3326,7 +3479,17 @@ const Trainer = (() => {
   /* 会话状态：trStepIdx 当前第几级（0 基）、trBarCnt 本级已练小节数；start() 时经 reset() 重置 */
   let trStepIdx = 0, trBarCnt = 0;
   let trDone = false;              // v1.4：本次播放是否由「练到目标」收尾（完成 vs 中途手动停）
-  const total = () => Math.max(1, Math.round((S.trainer.target - S.trainer.start) / S.trainer.step) + 1);
+  /* 总级数（v2.0.5，审计 P0-7）。原式用 Math.round：**凡是 (目标−起始) 不能被步长整除、
+     且小数部分 < 0.5 的组合，级数都会被低估**——70→100 步长 7（round(30/7)=4）算出的顶级是 98。
+     而 onBarBoundary 判"练到目标"用的是 bpmFor(idx) >= target，98 >= 100 永远不成立：
+     trStepIdx 被 Math.min 钉死在 total()-1，每 everyN 小节重复设同一个 BPM，
+     **既不升速、也永不自动停**（用户看到的现象是"训练卡住了"，而控制台一片安静）。
+     改 Math.ceil：不整除时补出最后一级，再由 bpmFor 的 min(target, …) 把末级收在目标值上。
+     等价性已逐条核对：现有全部测试组合在 round 与 ceil 下结果相同
+     （70→80/步4 的 2.5 进位、70→120/步4 的 12.5 进位、70→140/步4 的 17.5 进位都取 3/13/18），
+     所以这是"只修坏点、不动好点"的替换。step 的 Math.max(1, …) 是第二道防线
+     （主防线在 TR_RANGE：脏 step:0 已在校验期被钳成 1） */
+  const total = () => Math.max(1, Math.ceil((S.trainer.target - S.trainer.start) / Math.max(1, S.trainer.step)) + 1);
   /** @param {number} k */
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
   function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
@@ -3474,10 +3637,12 @@ const Trainer = (() => {
       Store.persist();
     });
   }
-  bindTrParam("trStart", "start", 30, 236);
-  bindTrParam("trTarget", "target", 31, 240);
-  bindTrParam("trStepInp", "step", 1, 20);
-  bindTrParam("trEvery", "everyN", 1, 8);
+  /* v2.0.5（审计 P0-2）：域值改从 TR_RANGE 读——与加载校验（Store）共用同一份，
+     不再一处一个数字两处各写一遍（此前 HTML 的 min/max、这里的实参、Store 的校验三者互不相干） */
+  bindTrParam("trStart", "start", TR_RANGE.start[0], TR_RANGE.start[1]);
+  bindTrParam("trTarget", "target", TR_RANGE.target[0], TR_RANGE.target[1]);
+  bindTrParam("trStepInp", "step", TR_RANGE.step[0], TR_RANGE.step[1]);
+  bindTrParam("trEvery", "everyN", TR_RANGE.everyN[0], TR_RANGE.everyN[1]);
   /* 上次训练一键继续（v1.4）：未完成 → 本次从练到的级别起步（把 start 推进到 reached——
      这就是爬坡训练的语义：起点跟着进度走，而不是每轮都从头）；已完成 → 原配置再来一轮 */
   $("trResumeBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -3577,6 +3742,13 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     return null;
   }
   function start(){
+    /* 重入保护（v2.0.6，审计 P1-3）：start() 会新开一个 setInterval 并覆盖 timer 句柄——
+       而旧句柄一旦被覆盖就再也清不掉，两个 25ms 循环同时排程 = 每个音符排两遍（听感是
+       "每一拍都成了装饰音"）、且留下一个永远跑着的孤儿 interval。
+       此前靠"每个外部调用点自己记得先判 S.playing"来规避（playBtn / trResumeBtn / argPlay…），
+       那是把不变式存在调用方的记忆里；这里补上，从此入口自身即是幂等的。
+       注意守卫必须在 ensureCtx 之前：没有上下文时的 early return 不该改变播放状态 */
+    if (S.playing) return;
     Audio.ensureCtx();
     const c = ctx;                           // ensureCtx 保证此时必非 null；取本地常量，闭包里 narrowing 才保得住
     if (!c) return;
@@ -3622,13 +3794,19 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
   }
   function stop(){
     S.playing = false;
-    ciLeft = 0; ciBeats = 0;              // 清预备拍会话状态
+    /* 预备拍会话状态：ciLeft=0 已足以让调度侧的预备拍循环不再进入；ciNext/ciStart 一并归零
+       是为了不给"句柄型状态"留下需要靠下一次 start() 覆盖的残值（v2.0.6，审计 P1-3） */
+    ciLeft = 0; ciBeats = 0; ciNext = 0; ciStart = 0;
     /* 会话播放额度一并作废（v1.10.0）：不清的话，中途手动停一次，
        下次普通播放会带着上一轮的额度"放两小节就停"——那是最难查的那类残留 bug。
        听辨训练那条路径是「先清零再 stop」，所以不受这行影响 */
     playQuota = 0;
-    if (timer !== null) clearInterval(timer);
-    if (rafId !== null) cancelAnimationFrame(rafId);
+    /* 句柄必须清空（v2.0.6，审计 P1-3）：原先只 clear 不置 null，于是
+       `if (timer !== null)` 恒为真、`if (rafId !== null)` 同理——这两个判据形同虚设，
+       也让 start() 无法用句柄判断"是否已在运行"（重入保护只能另找依据）。
+       清空后，句柄本身即可表达"有没有在跑"，这一点对将来所有新增的启动/停止路径都成立 */
+    if (timer !== null){ clearInterval(timer); timer = null; }
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
     /* 练习记录（v1.4）：有效练习（≥30s 且非编辑器试听）自动入账到 beatsight.log。
        时长取音频时钟差——挂起期间（来电/锁屏）天然不计入 */
     if (sessStartT !== null && ctx && !S.preview){
@@ -3737,7 +3915,11 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   bindStep($("bpmPlus"), 1);
   bindStep($("bpmMinus5"), -5);                 // v1.1：±5 粗调（60→120 只需 12 次，而非 60 次）
   bindStep($("bpmPlus5"), 5);
-  $("bpmNum").addEventListener("click", () => {
+  /* v2.0.5（审计 P0-8）：#bpmNum 改成真按钮后天然可被 Tab 聚焦，于是必须与其它按钮同一规矩
+     ——激活后 blur()。否则焦点留在按钮上，用户接着按空格会再次打开输入框，而不是播放/停止
+     （全局 Space 分支把 BUTTON 排除在外，正是为了不抢按钮自己的键盘契约） */
+  $("bpmNum").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
     Modal.uiPrompt("输入 BPM（30–240）", S.bpm, (/** @type {string} */ v) => {
       if (v && v.trim() !== "") setBpm(+v || S.bpm);
     });
@@ -4093,8 +4275,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     $("patternName").textContent = p.name;
     Controls.updateMeta();
     buildPresetList();
-    Viz.buildViz();
+    /* v2.0.5（审计 P0-4）：先定 #fallbackNote 的显隐，再建网格——顺序不能反。
+       buildViz 末尾会 cacheGeo() 采集行几何，而这条回退提示带（约 44px 高）就夹在
+       节奏型头部与可视化卡片之间：先采集再显隐，等于"采完几何再改布局"，
+       弹跳球与播放头会整体偏 44px，直到底盘被下一次重建才纠正。
+       三处同构调用点（本处 / Editor.stopAudition / Ear.close）一并改 */
     updateFallbackNote();
+    Viz.buildViz();
   }
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
      返回 {applied:true, resetBar} 表示已应用（调用方需重映射 loopStart）；
@@ -4194,8 +4381,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     S.preview = false;
     previewRef = null;                    // v1.10.0：试听对象一并摘掉（curPattern 靠它判断试听谁）
     if (prevSigBeforeAudition !== null){ Controls.setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
-    Viz.buildViz();
+    /* v2.0.5（审计 P0-4）：顺序同 applyPatternChange——提示带显隐会改变行几何，
+       必须在 buildViz 采几何之前定下来 */
     Presets.updateFallbackNote();
+    Viz.buildViz();
     $("auditionBtn").textContent = "试听";
   }
   function close(){
@@ -4835,8 +5024,11 @@ const Ear = (() => {
   function close(){
     stopAudio();
     if (enterSig !== null){ Controls.setSig(enterSig); enterSig = null; }
-    Viz.buildViz();                       // 试听期间改过视图与拍号，恢复
+    /* v2.0.5（审计 P0-4）：顺序同 applyPatternChange——提示带显隐会改变行几何，
+       必须在 buildViz 采几何之前定下来（原先那行注释"试听期间改过视图与拍号，恢复"
+       意思没变，只是把同一件事摆到正确的先后） */
     Presets.updateFallbackNote();
+    Viz.buildViz();
     Modal.closeOverlay("earOverlay");     // v2.0.4：统一开合协议（解绑登记 + 归还焦点 + 摘 inert）
     syncMini();
   }
@@ -5228,6 +5420,12 @@ const Help = (() => {
     $("helpMore").hidden = !more;
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
     $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
+    /* v2.0.6（审计 P1-5）：隔离区有内容时才露出清理入口，并带上条数——
+       没有损坏数据的用户不该看到一个"清理"按钮而去想「我丢了什么」 */
+    const n = Store.quarantine().length;
+    const b = $("helpClearQuar");
+    b.hidden = n === 0;
+    b.textContent = "清理隔离数据（" + n + " 条）";
   }
   /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
      读的时候让它继续响着更有用（编辑器/曲式编排是"要动手改"，才需要停） */
@@ -5243,6 +5441,18 @@ const Help = (() => {
   $("helpBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("helpClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
   $("helpMoreBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); more = !more; render(); });
+  /* 清理前先确认（不可撤销）：用应用内弹窗，与其它破坏性操作同一套协议 */
+  $("helpClearQuar").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const n = Store.quarantine().length;
+    if (!n) return;
+    Modal.uiConfirm("确定清理 " + n + " 条被隔离的损坏预设？此操作不可撤销。", () => {
+      Store.clearQuarantine();
+      render();
+      $("statusText").textContent = "已清理隔离数据";
+      announce("已清理 " + n + " 条隔离数据");
+    });
+  });
   render();
   return { open, close, isOpen, more: () => more };
 })();
@@ -5326,18 +5536,71 @@ $("brandChip").textContent = "v" + VERSION + " · 稳定版";
    ★ 计数器本体（diag）**始终存在**，只有面板 DOM 受开关控制——测试因此可以无 UI 断言计数，
    file:// 直开（没有 location.search）时也只是没有面板而已。 */
 /** @type {Record<string, number>} */
-const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0 };
+const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
+  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0 };
 /** @type {null | { box: HTMLElement, line: HTMLElement }} */
 let diagPanel = null;
 function diagPaint(){
   if (!diagPanel) return;
-  diagPanel.line.textContent = "掉帧 " + diag.frameErr + " · 调度 " + diag.schedErr
-    + " · 存失败 " + diag.persistFail + " · 存恢复 " + diag.persistRecover + " · 限流 " + diag.limitPulse;
+  /* v2.0.6（审计 P1-9）两处订正：
+     ① **正名**：frameErr 统计的是"渲染帧抛异常的次数"（由 onFrameError 兜住），此前标签写作
+        "掉帧"——而真正的掉帧（rAF 没按时来）从来没有被统计过，读数名不副实；
+     ② **补计数**：新增「重锚」（调度器强行对齐时间轴的次数，>0 就意味着漏过拍；拆成饿/超两类，
+        因为处置完全不同：饿=被节流，属环境；超=数据可疑，属 bug）与「脚本错 / 未捕获」
+        （window.onerror 与 unhandledrejection，此前完全无人计数）。 */
+  diagPanel.line.textContent = "渲染异常 " + diag.frameErr + " · 调度异常 " + diag.schedErr
+    + " · 重锚 " + (diag.reanchorStarved + diag.reanchorOverflow)
+    + "(饿" + diag.reanchorStarved + "/超" + diag.reanchorOverflow + ")"
+    + " · 存失败 " + diag.persistFail + " · 存恢复 " + diag.persistRecover
+    + " · 限流 " + diag.limitPulse
+    + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection;
 }
 /** @param {string} k */
 function diagBump(k){
   diag[k]++;
   diagPaint();                       // 面板未挂载时是空转（diagPaint 首句即返回）
+}
+/** 各键的占用字符数（v2.0.6，审计 P1-9）。为什么值得进诊断：localStorage 配额是**按 origin
+ *  总量**算的，出了"存不下"只能看到一句 QuotaExceeded——不知道是哪个键在膨胀就没法治
+ *  （beatsight.customs 曾出现过 715 KB 量级）。读不到（沙盒/禁用）就返回说明文字，不抛 */
+function diagStorageUsage(){
+  try{
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k === null) continue;
+      const v = localStorage.getItem(k);
+      out.push(k + "=" + (v ? v.length : 0));
+    }
+    return out.length ? out.join(" ") : "(空)";
+  }catch(e){ return "(不可读)"; }
+}
+/** 生成一段可直接粘贴给别人（或贴进 issue）的现场信息 */
+function diagReport(){
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) ? navigator.userAgent : "(未知)";
+  const url = (typeof location !== "undefined" && location.href) ? location.href : "(未知)";
+  return [
+    "BeatSight v" + VERSION + " 诊断信息",
+    "URL: " + url,
+    "UA: " + ua,
+    "计数: " + JSON.stringify(diag),
+    "本地存储: " + diagStorageUsage(),
+  ].join("\n");
+}
+/** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
+ *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应" */
+function diagCopy(btn){
+  const text = diagReport();
+  const done = () => { btn.textContent = "已复制"; };
+  const fallback = () => { Modal.uiAlert(text); };
+  try{
+    const nav = /** @type {any} */ (navigator);
+    if (nav && nav.clipboard && nav.clipboard.writeText){
+      nav.clipboard.writeText(text).then(done, fallback);
+      return;
+    }
+  }catch(e){ /* 落到下面的兜底 */ }
+  fallback();
 }
 function diagBuild(){
   if (typeof document === "undefined" || !document.body) return;
@@ -5348,8 +5611,15 @@ function diagBuild(){
   head.textContent = "诊断 · v" + VERSION;
   const line = document.createElement("span");
   line.className = "diag-line";
+  /* 复制按钮（v2.0.6）：面板此前只能看不能带走。用户报障时能把现场信息贴出来，
+     价值远大于让开发者隔空猜（尤其"重锚 >0"这种只有本机能观察到的读数） */
+  const copy = document.createElement("button");
+  copy.className = "pill outline diag-copy";
+  copy.textContent = "复制诊断信息";
+  copy.addEventListener("click", () => diagCopy(copy));
   box.appendChild(head);
   box.appendChild(line);
+  box.appendChild(copy);
   document.body.appendChild(box);
   diagPanel = { box, line };
   diagPaint();
@@ -5369,6 +5639,19 @@ const diagOn = (() => {
   catch(e){ return false; }
 })();
 if (diagOn) diagBuild();
+
+/* 时间轴重锚计数（v2.0.6，审计 P1-1）：Audio 每执行一次 reanchor 就报一次原因。
+   分成两类而不是合成一个总数——两者的处置完全不同：
+     饿 starved  = 主线程/定时器被长时间节流（后台唤醒、机器卡）→ 属环境，调机器或看窗口余量；
+     超 overflow = 单轮迭代触顶 → 属数据可疑，直接去查节奏型/拍号是不是坏值。
+   这条读数的意义在于：重锚会**静默吞掉**那段时间本该排出的音符，此前没有任何痕迹，
+   用户只能描述"好像卡了一下"。现在 0 = 从未漏拍，>0 = 有据可查 */
+onReanchor = why => { diagBump(why === "overflow" ? "reanchorOverflow" : "reanchorStarved"); };
+/* 脚本错误边界（v2.0.6，审计 P1-9）：此前只有各模块自己的 try/catch 与 console，
+   任何逃出边界的错误（典型是事件处理器里抛的）在诊断面板上**完全没有计数**。
+   这里只计数、不拦截（不 preventDefault、不改任何既有行为） */
+window.addEventListener("error", () => { diagBump("winErr"); });
+window.addEventListener("unhandledrejection", () => { diagBump("rejection"); });
 
 /* 保存失败可见化（v1.3.0，审计 P1-5）：顶栏状态点变红 + 文案改「保存失败」+ 一次性提示。
    原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉 */
@@ -5499,10 +5782,18 @@ try{
 const THEME_KEY = "beatsight.theme";
 /** @param {string} t */
 const applyTheme = t => {
+  /* v2.0.5（审计 P0-3）：主题是**布局尺度**的变更（topbar 高 64→56px、卡片与节奏型头部的
+     内边距都不同），所以换完必须让 Viz 重新收敛几何——否则播放中切主题，弹跳球与尾迹会
+     一直按旧几何画（现象：球飘在行外），直到下一次 buildViz / resize 才自愈。
+     只在"真的变了"时收敛：初始调用时 body 上还没有属性（按约定"无属性 = 经典"，见上方注释），
+     故经典用户不会多付一次重建；而初始主题就是观测台的用户会正确触发一次——
+     那次首屏几何本来是按经典算的，属同一个 bug 的静止态（不播放时看不出，一播放就偏） */
+  const prev = document.body.getAttribute("data-theme") || "classic";
   document.body.setAttribute("data-theme", t);
   $("themeToggle").textContent = "主题 · " + (t === "obs" ? "观测台" : "经典");
   /* v2.0.2：开关态对读屏可见（按钮文案只报当前主题，不报「按下去会怎样」） */
   $("themeToggle").setAttribute("aria-pressed", t === "obs" ? "true" : "false");
+  if (prev !== t) Viz.relayout();
 };
 let themeNow = "classic";
 try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}

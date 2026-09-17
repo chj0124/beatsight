@@ -29,7 +29,8 @@ beatsight/
 │   ├── run.js            # 主测试套件（node tests/run.js，零依赖）
 │   ├── hang-guard.js     # 死循环看门狗：每用例独立子进程 + 超时强杀
 │   ├── hang-case.js      # 看门狗的单用例探针（被 hang-guard 调起）
-│   ├── screenshot.sh     # macOS 无头截图自验
+│   ├── screenshot.sh     # 无头截图自验（**已过时**：仅 macOS 可用、且只截图不断言）
+│   │                     #   → 已由 tools/smoke.js 取代（跨平台 + 会断言真实 DOM/CSS/帧率/SW）
 │   └── README.md         # 测试原理与补断言规则
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
@@ -131,7 +132,7 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×4] }
 ### 3.2 音频引擎（Web Audio 前瞻调度）
 
 ```
-setInterval(CONFIG.schedInterval=25ms) → scheduler()：把未来 CONFIG.schedWindow=150ms 内的音符注册到 audio clock
+setInterval(CONFIG.schedInterval=25ms) → scheduler()：把未来 CONFIG.schedWindow=300ms 内的音符注册到 audio clock
 loopStart = ctx.currentTime（循环起点的音频时钟时间）
 位置换算：pos(拍) = (ctx.currentTime - loopStart) / (60/bpm)
 ```
@@ -159,7 +160,7 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
     （`start()` 算 `loopStart` 时已把 N 拍顺延进去，值等价），但进度区会在预备拍期间就显示
     「已练 0:00 / 5:00」。**别当成冗余代码删掉**（反向验证已确认这条）
   - **已知行为（与既有训练器同源）**：`bars` 模式的墙钟停止时刻会早于小节边界最多约 0.85s
-    （前瞻窗口 150ms + 一个音符时长）。小节计数在**排程**时累加，而 `stop()` 只停时钟与画面、
+    （前瞻窗口 + 一个音符时长）。小节计数在**排程**时累加，而 `stop()` 只停时钟与画面、
     **不取消已排入音频时钟的振荡器**——所以那 N 小节的音一个不少地响完。
     判据始终是「发声个数 = N × 每小节音数」，不是墙钟
 - 空小节（编辑器草稿）安全跳过。**跳过时空小节也强制正向推进 `nextNoteTime += pat.meter * spb()`**（`adv > 0 && isFinite(adv)` 兜底 0.5s），并有一层 `MAX_SCHED_STEPS = 512` 硬上限——脏拍号（`-3` / `0` / `"abc"`）曾让这个分支永不推进 → 主线程死循环（v1.2.4 修）
@@ -167,12 +168,14 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 - **发声末级钳制**：`playClick` 送出增益前过 `Math.min(1, Math.max(0, …))`。对合法输入是**无操作**（合法上界本就是 1），只在持久值被改坏时兜住 `vol:1e6 → +120 dBFS` 这类削波爆音
 - 拍号/音量的 UI 入口统一走 `setSig()` / `setBpm()`，不要新写并行的 pill 高亮逻辑
 - **弹跳球 onset 表（v1.2）**：排程每个非休止音符时（含静音小节）顺手 `onsetBuf.push({t, bar, cumT})`，时刻含 `swingShift()` 偏移；每轮调度末尾 `onsetNext = predictNext(pat)` 预测游标处下一发声点（与排程同源，值严格相等）；修剪保留最近 1s 已落地端点。Swing 偏移公式共享为 `swingShift()`——改 Swing 只改这一处，否则球与声音会分叉
-- **前瞻窗口按可见性自适应（v1.3.0，审计 P1-3）**：`schedWindow()` = 前台 150ms（`CONFIG.schedWindow`）/ 后台 1.2s（`CONFIG.schedWindowBg`）
-  - 为什么：调度时钟跑在主线程 `setInterval(25ms)` 上，而浏览器对**后台标签页**的定时器节流下限是 **1000ms**（Chrome 隐藏 5 分钟后还有 intensive throttling，约 1 次/分钟）。固定 150ms 窗口在后台等于「每次唤醒排 150ms 的音，然后静音 850ms」→ 后台播放必然断续。这也是路线图 M8「后台持续发声」一直落不了地的技术阻塞点
+- **前瞻窗口按可见性自适应（v1.3.0，审计 P1-3）**：`schedWindow()` = 前台 300ms（`CONFIG.schedWindow`）/ 后台 1.2s（`CONFIG.schedWindowBg`）
+  - 为什么：调度时钟跑在主线程 `setInterval(25ms)` 上，而浏览器对**后台标签页**的定时器节流下限是 **1000ms**（Chrome 隐藏 5 分钟后还有 intensive throttling，约 1 次/分钟）。哪怕是几百毫秒的前台窗口，在后台也等于「每次唤醒只排那一小段的音，其余时间静音」→ 后台播放必然断续。这也是路线图 M8「后台持续发声」一直落不了地的技术阻塞点
   - 后台窗口取 1.2s：大于节流下限，留 20% 余量
-  - **行为变化（必须知道）**：后台下已排入的音符**无法撤销**，所以「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复 150ms，无额外延迟
+  - **前台窗口 150ms → 300ms（v2.0.6，审计 P1-1）**：单轮余量 = 窗口 − 轮询间隔，150ms 时只有 125ms，而小节边界那一轮还要顺手做变速爬级、到点停播、换型重建网格——任何一次阻塞超过余量，时间轴就会被重锚定并**静默丢掉**那段时间的音符。翻倍后容错翻倍，代价是"变更生效"最多多等 150ms。取舍与"为什么不改成投微任务"的理由写在 `CONFIG.schedWindow` 上方
+  - **行为变化（必须知道）**：后台下已排入的音符**无法撤销**，所以「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复前台窗口，无额外延迟
   - 回前台（`visibilitychange`）会**立即补排一次**，不等下一个 25ms 周期。顺序上「先补排、再收窄窗口」——此刻 `document.hidden` 已为 false，故本次补排用前台窗口
-  - **调度饥饿兜底**：若游标落后实时时钟超过一个窗口（后台被长时间节流），**以当前时刻重新锚定**整条时间轴（`nextNoteTime = now + 0.05`，`loopStart` 同步、`schedBar/schedStep` 归零、onset 表清空），而不是把过去几十秒的音符一次性排到"现在"（那听感是一坨同时爆响；`MAX_SCHED_STEPS` 只拦得住死循环，拦不住这个）。用「重新锚定」而不是「按整循环前移」：前移粒度至少一小节（慢速 7/4 可达 16s、一循环 56s），很容易落到窗口之外反而多出一整格静音；而此时相位早已无意义
+  - **调度饥饿兜底**：若游标落后实时时钟超过一个窗口（后台被长时间节流），**以当前时刻重新锚定**整条时间轴（`nextNoteTime = now + 0.05`，`loopStart` 同步、`schedBar/schedStep` 归零、onset 表清空），而不是把过去几十秒的音符一次性排到"现在"（那听感是一坨同时爆响；`MAX_SCHED_STEPS` 只拦得住死循环，拦不住这个）。用「重新锚定」而不是「按整循环前移」：前移粒度至少一小节（慢速 7/4 可达 16s、一循环 56s），很容易落到窗口之外反而多出一格静音；而此时相位早已无意义
+  - **重锚必须可见（v2.0.6，审计 P1-1）**：两条防线（饥饿兜底、单轮迭代超限）共用 `reanchor(why)`，每次上报计数到诊断面板（`重锚 N(饿X/超Y)`）。重锚会**静默吞掉**那段时间的音符，此前毫无痕迹——**0 = 从未漏拍，>0 即有据可查**。`饿`（被节流，属环境）与`超`（单轮触顶，属数据可疑）分开计数，因为处置完全不同
 
 ### 3.3 渲染循环（rAF，每帧）
 
@@ -402,14 +405,19 @@ getComputedStyle）。
 
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
-node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → 版本一致性 → ESLint(可选) → 类型检查(可选)
-                                 #       → DOM 引用 → 全量测试 → 看门狗 → 覆盖率（共 10 步）
-                                 # 约 17 秒（本机实测）；先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
-node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用（约 11 秒）
+node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → 版本一致性 → 文档一致性
+                                 #       → ESLint(可选) → 类型检查(可选) → DOM 引用 → 浏览器冒烟(环境可选)
+                                 #       → 全量测试 → 看门狗 → 覆盖率（共 12 步）
+                                 # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
+                                 # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
+node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用
 
 # 需要单独跑某一项时（排查用）
 node tests/run.js                # 主套件：抽样的 T21（16 组）
 FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
+node tools/smoke.js              # 真实浏览器冒烟（CDP）：file:// 与 http://127.0.0.1 双通道
+                                 # 断言真实 DOM/CSS/帧率/Service Worker/控制台零报错；本机没浏览器则退出码 3（跳过）
+                                 # 跨平台，取代了 tests/screenshot.sh（那个只在 macOS 上能用，且只截图不断言）
 node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
                                  # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
@@ -431,9 +439,10 @@ node tools/check-tsc.js          # 类型检查 · 加强（可选）：tsc 的 
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
 node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
-# 2)+3) 无头 Chrome 截图 + 控制台报错检查（macOS 一条命令，v1.0.0 起固化）
-tests/screenshot.sh              # 桌面 1440×1150
-tests/screenshot.sh 800 1800     # 窄屏
+# 2)+3) 真实浏览器冒烟 + 控制台报错检查（v2.0.6 起跨平台，取代 macOS 专用的 tests/screenshot.sh）
+node tools/smoke.js              # file:// 与 http://127.0.0.1 双通道；CDP 取页面内实测值
+node tools/smoke.js --file-only  # 只跑 file://（无本地服务时用）
+BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时指定
 ```
 
 **可选闸门的"跳过"必须是 ⊘、不能是 ✓**（v1.9.1 修的一个假绿）：`check-all.js` 只认退出码，
@@ -441,6 +450,15 @@ tests/screenshot.sh 800 1800     # 窄屏
 现在 `STEPS` 里给可选步骤声明 `optional: "<依赖路径>"`，`check-all.js` 自己检查依赖、
 缺了就直接标 ⊘ 且**不调用**；汇总多打印一行「实跑 N/M 项」。
 **别把它改回只看退出码**——那等于让汇总里的 ✓ 撒谎，而它能撒谎的话，其余 ✓ 就都不值得信了。
+
+**两类"跳过"必须分清（v2.0.6，审计 P1-10）**——多了一种可选步骤之后，这条更重要：
+- `optional`（第 6/7 步 ESLint、tsc）：缺的是**开发依赖**。`npm ci` 能装上，所以 `--strict-env`
+  下要报错，逼 CI 装上而不是假装查过。
+- `skipCode`（第 9 步浏览器冒烟）：缺的是**环境能力**（本机得有 Chrome/Edge）。构建镜像里
+  必然没有，把它算失败会无谓地堵住部署——所以 `--strict-env` 也**不**升级为错误。
+  它由被调脚本用**退出码 3** 表达"本机缺这项能力"。
+两者在汇总里都显示 ⊘，但"为什么没跑"分开写清——这正是本文件区分 ⊘/✓ 的初衷。
+另外：失败计数 `failed` 必须排除环境缺失那类（它的 `ok` 是 false），否则 ⊘ 会被算成失败。
 
 **类型闸门管什么、不管什么**（别期待它管 DOM）：它把关的是**模块接口与数据模型**——
 `Store.zzzNoSuchMethod()` 这类接口拼错、`S.limit.noSuchField` / `S.trainr.on` 这类字段拼错、
@@ -504,9 +522,9 @@ tests/screenshot.sh 800 1800     # 窄屏
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
 - ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（第 5 步，现共 9 步）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**严格模式已扩面（2026-09-16）**：TS 7.0.2 下实测，**8 项严格检查打开后 0 报错**，故已直接开（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；另加非 strict 家族、但同样只抓真错的 2 项：`noImplicitReturns` / `noFallthroughCasesInSwitch`；均写在 tools/tsconfig.typecheck.json 的 `compilerOptions` 里）。**只剩两笔已量化的债**：~~`noImplicitAny` 打开会得到 **727 条**（TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）~~ **`noImplicitAny` 已清零并打开（2026-09-17）**——按"逐块补标注、逐块开开关"的路径分两批（727 → 282 → 0）补完全量前置 `@param` / `@returns` 与内联 `@type`，全文件 0 报错后把开关由 `false` 改为 `true`（改的是 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物）。**只剩一笔债**：~~`strictNullChecks` 打开会得到 **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）~~ **`strictNullChecks` 已清零并打开（2026-09-17）收官**——那 96 条（比原记的 **251** 降下来，因为大量隐式 any 消失后，原先被 any 传染出来的空值报错一并消失）按模块分七块逐块消化：Trainer 6（`S.plan`）→ 小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → Audio 20（`ctx`）→ Viz 25（缓存 DOM 引用）→ Editor 25（`draft`），统一用「取本地别名 + 判空守卫」补上（模块级可空 `let` 在函数顶部取别名并早返回，定时器句柄先判 `!== null` 再 `clearTimeout`，`.closest()` 补 `!!` 守卫），全文件 0 报错后把开关由 `false` 改为 `true`。**至此 strict 家族 8 项与两项额外严格检查全部打开且全绿，类型闸门扩面收官**。改动仍只在 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物。
-- **检查只在 Cloudflare 那条路上是强制的，别处靠钩子 / 自觉**：Cloudflare 构建时必定跑一次全量检查，失败即不部署（想上线上不去）；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（约 11 秒，跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
+- **检查没有"必经之路"，全靠钩子 / 自觉**（v2.0.5 修正，原写的是"Cloudflare 构建时必定跑一次全量检查，失败即不部署"）：Cloudflare 的**线上**构建跑什么，取决于 Dashboard 里那串构建命令——**Workers Builds（Git 集成构建）不读仓库里 `wrangler.jsonc` 的 `build.command`**（Cloudflare 官方既有行为），所以仓库里那份配置只约束本地与命令行的 `wrangler deploy`。换句话说，**没有任何一道闸门是"推上去就一定过不去"的**；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
-- 覆盖率未覆盖的共 **7 行**（实测 99.8%），分两处、性质不同：**Audio 4 行** —— `arrNextBar` 的 onset 扫描兜底 `return null`（L2964）+ 单轮调度 `MAX_SCHED_STEPS` 硬上限分支（L3034–L3036）；**Ear 3 行** —— `durName` 里 192/144/96 与 6 这几档时值（L4478 / L4479 / L4481）。前 4 行属**刻意保留的防御性代码**（要造出超 512 音符的单轮调度、或人为打断 onset 扫描才会触发）；后 3 行属**不可达分支**（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。两类都不为了数字去造人工状态点亮它
+- 覆盖率未覆盖的共 **11 行**（实测 99.7%），分三组、性质不同：**Audio 8 行** —— `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（v2.0.6 新增的代码里，只有"出事才走"的那几条没被点亮）；**Ear 3 行** —— `durName` 里 192/144/96 与 6 这几档时值。前 8 行属**刻意保留的防御性代码**（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会触发）；后 3 行属**不可达分支**（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。两类都不为了数字去造人工状态点亮它。**具体行号一律不抄进文档**（v2.0.5）：本行原先写的 5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**——它们随代码行移动而漂移，抄一次就等着烂；现在以 `node tools/check-coverage.js` 的输出为准，它自己会打印未覆盖行所在的行号
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移
 
 ### 已明确不处理（不再跟进）
