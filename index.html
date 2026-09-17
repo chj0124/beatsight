@@ -365,6 +365,19 @@ input[type=range].vol{width:120px}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:4px 8px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 .arg-ops{flex:none;display:flex;gap:4px}
+/* 歌词编辑轨（v2.1.0 F1）：每个段行下方一条。头部 = 锚点提示音开关 + 粘贴框 + 清除，
+   轨道本体是绝对定位的字块（拖本体改起始 t、拖右缘抓手改时值 dur）。
+   与主视图 .lyric-lane 刻意**不同构**：那边是只读放映（百分比定位 + 走带线），
+   这边要能抓住字块拖动，所以是 flex 头部 + relative 轨道两条横向带 */
+.arg-lyric{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 10px}
+.arg-lyric-cue{flex:none}
+.arg-lyric-paste{flex:1;min-width:120px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-lyric-lane{flex-basis:100%;position:relative;height:26px;margin-top:4px;background:var(--card2);border-radius:6px}
+.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:11px;line-height:1;cursor:grab;overflow:hidden;touch-action:none;user-select:none}
+.arg-lyric-chip.dragging{cursor:grabbing;box-shadow:0 0 0 2px var(--green)}
+.arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap}
+.arg-lyric-grip{position:absolute;top:0;right:0;width:6px;height:100%;cursor:ew-resize}
+.arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .arg-now-name{font-size:13px;color:var(--t1)}
@@ -400,6 +413,8 @@ input[type=range].vol{width:120px}
   .arg-item-meta{flex:none;max-width:45%}
   .arg-blocks{flex-basis:100%;order:3;margin-top:8px}
   .arg-ops{flex-basis:100%;order:4;margin-top:8px;justify-content:flex-start;flex-wrap:wrap}
+  /* 歌词轨（v2.1.0 F1）：390px 下「开关 + 粘贴框 + 清除」也放不下一行——粘贴框自己占满一行 */
+  .arg-lyric-paste{flex-basis:100%;order:3}
 }
 @media (max-width:960px){
   body{overflow-x:hidden}
@@ -2127,13 +2142,19 @@ const asEl = el => el;
 const announce = msg => { const el = $("srAnnounce"); if (el) el.textContent = msg; };
 /* 开关三件套（className + aria-checked）收在一个函数里。
    原先 4 个开关各写一遍 `className = "toggle-pill " + (on ? "on" : "off")`，
-   加 aria 后再各写一遍必然漂移——语义与视觉必须同源 */
-/** @param {string} id @param {boolean} on @returns {void} */
-function setToggle(id, on){
-  const el = $(id);
+   加 aria 后再各写一遍必然漂移——语义与视觉必须同源。
+   v2.1.0（F1）：拆成 applyToggle(el) + setToggle(id) 两层。歌词轨的「锚点提示音」开关是
+   **渲染时按段动态生成**的（每个段行一个），没有静态 id，setToggle(id) 够不着它；
+   拆一层让两条路径共用同一份实现，视觉与语义仍只有一处。 */
+/** @param {any} el @param {boolean} on @returns {void} */
+function applyToggle(el, on){
   if (!el) return;
   el.className = "toggle-pill " + (on ? "on" : "off");
   el.setAttribute("aria-checked", on ? "true" : "false");
+}
+/** @param {string} id @param {boolean} on @returns {void} */
+function setToggle(id, on){
+  applyToggle($(id), on);
 }
 /* 三选一 pill 组：classList 的 active 与 aria-pressed 同源更新 */
 /** @param {string} sel @param {(p: any) => boolean} on @returns {void} */
@@ -5453,6 +5474,10 @@ const Arrange = (() => {
   let curId = null;
   /** @type {null | { sec: number, blk: number }} */
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
+  /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。render 重建 DOM 时拖拽必然已结束
+     （只有 pointerup 才提交，而提交才触发 render），所以不必跨渲染保持节点句柄。 */
+  /** @type {null | { chip: any, ctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
+  let drag = null;
   const cur = () => curId === null ? null : Store.findArrange(curId);
   /** @param {any} ref */
   const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
@@ -5467,6 +5492,193 @@ const Arrange = (() => {
   }
   /* 深拷贝一份草稿再改：直接改库里的对象会绕过校验（脏值会留在内存里） */
   const snapshot = () => JSON.parse(JSON.stringify(cur()));
+
+  /* ---------- 歌词编辑轨（v2.1.0 F1） ----------
+     契约：歌词挂在**曲式的段**上，char.t 是段内绝对 tick（段首 = 0）。
+     本模块只负责「把用户的手势/粘贴翻译成 chars 数组」这一件事：归一化（吸附 12 tick、
+     重叠跳过靠后的字、越界过滤、空字丢弃）全部由 Store.upsertLyric 完成。
+     UI 不做第二套校验——否则「库里存的」与「界面上看到的」会各说各话。
+     拖动换算用 lane.offsetWidth（结构层采集一次），不碰 getBoundingClientRect：
+     拖动是低频手势，且 px→tick 只需要轨道宽度，不需要元素在屏幕上的坐标。 */
+
+  /** @param {any} ev */
+  function onDragMove(ev){
+    if (!drag) return;
+    const ctx = drag.ctx, span = ctx.span, chars = ctx.chars;
+    const raw = Math.round(((ev.clientX - drag.x0) / drag.perTick) / LYRIC_GRID) * LYRIC_GRID;
+    /* 邻居边界（v2.1.0）：一次正常拖动不该把隔壁的字吃掉。"重叠丢弃"是给**脏数据**兜底的
+       降级路径，不能让它变成正常操作的后果——那样用户会以为字块被拖消失了。 */
+    const prev = drag.k > 0 ? chars[drag.k - 1] : null;
+    const next = drag.k + 1 < chars.length ? chars[drag.k + 1] : null;
+    if (drag.mode === "move"){
+      const min = prev ? prev.t + prev.dur : 0;
+      const cap = Math.min(span - drag.d0, next ? next.t - drag.d0 : span - drag.d0);
+      const max = Math.max(min, cap);
+      drag.t = Math.max(min, Math.min(max, drag.t0 + raw));
+      drag.d = drag.d0;
+    } else {
+      const lim = Math.min(span, next ? next.t : span);
+      drag.d = Math.max(LYRIC_MIN_DUR,
+        Math.min(Math.min(CONFIG.lyricMaxDur, lim - drag.t0), drag.d0 + raw));
+      drag.t = drag.t0;
+    }
+    drag.chip.style.left = (drag.t / span * 100) + "%";
+    drag.chip.style.width = (drag.d / span * 100) + "%";
+    drag.chip.setAttribute("aria-label",
+      `第 ${drag.k + 1} 个字「${chars[drag.k].ch}」起点 ${drag.t} tick，时值 ${drag.d} tick`);
+  }
+
+  function onDragEnd(){
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    d.chip.classList.remove("dragging");
+    if (d.t === d.t0 && d.d === d.d0) return;        // 只是点了一下：不动库、不重绘
+    const chars = d.ctx.chars.map((/** @type {any} */ c, /** @type {number} */ idx) =>
+      idx === d.k ? { t: d.t, dur: d.d, ch: c.ch } : { t: c.t, dur: c.dur, ch: c.ch });
+    Store.upsertLyric(d.ctx.arr, d.ctx.sec, chars);  // 归一化后一个字都不剩时保留原数据（返回 null）
+    render();
+  }
+
+  /** @param {any} target @param {any} chip @param {any} ctx @param {number} k @param {string} mode */
+  function bindDrag(target, chip, ctx, k, mode){
+    Modal.bindOverlay("arrangeOverlay", target, "pointerdown", (/** @type {any} */ ev) => {
+      if (ctx.span <= 0) return;                     // 段落长度未知：没有可换算的坐标系，只读
+      ev.preventDefault();
+      /* 抓手是字块的**子元素**：不拦住冒泡的话，同一个 pointerdown 会继续冒到字块自己的
+         「移动」监听上，drag 当场被改写成 move —— 拖右缘就变成拖整块。拦掉是安全的：
+         轨道/段行这一条链上没有别的 pointerdown 监听。（同元素上的多条监听不受
+         stopPropagation 影响，所以它对"字块本体"那条没副作用。） */
+      ev.stopPropagation();
+      const c = ctx.chars[k];
+      drag = {
+        chip: chip, ctx: ctx, k: k, mode: mode,
+        perTick: (ctx.lane.offsetWidth || 1) / ctx.span,
+        x0: ev.clientX, t0: c.t, d0: c.dur, t: c.t, d: c.dur,
+      };
+      chip.classList.add("dragging");
+    });
+  }
+
+  /* 拖动期间的移动/抬手挂在 window 而不是字块上：指针移出字块（甚至移出浮层）后仍要跟随，
+     否则拖出边界就断在半路。只在模块装配时挂这一次——按字挂会在每次 render 后无界增长
+     （v2.0.4 的 overlay 登记纪律同理）；没有 drag 时两个回调都空转。
+     pointercancel 与 pointerup 同路收尾：被系统手势（来电、边缘返回）抢走指针时没有
+     pointerup，不兜这一下 drag 会永久卡住，字块一直黏着指针跑。 */
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragEnd);
+  window.addEventListener("pointercancel", onDragEnd);
+
+  /** @param {any} ctx @param {number} k @returns {any} */
+  function mkLyricChip(ctx, k){
+    const c = ctx.chars[k], span = ctx.span;
+    const chip = document.createElement("div");
+    chip.className = "arg-lyric-chip";
+    chip.style.left = (c.t / span * 100) + "%";
+    chip.style.width = (Math.min(c.dur, span - c.t) / span * 100) + "%";   // 视觉不越出轨道，数据仍原样交回 Store
+    const txt = document.createElement("span");
+    txt.className = "arg-lyric-char";                // 不复用主视图 .lyric-char：那边是灰字 13px，压在绿底字块上没法看
+    txt.textContent = c.ch;                          // 边界规则 3：用户可控字符串只走 textContent
+    chip.setAttribute("role", "button");
+    chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick`);
+    bindDrag(chip, chip, ctx, k, "move");            // 拖本体 = 改起点 t
+    const grip = document.createElement("div");
+    grip.className = "arg-lyric-grip";
+    grip.setAttribute("aria-label", `拖动改第 ${k + 1} 个字「${c.ch}」的时值`);
+    bindDrag(grip, chip, ctx, k, "dur");             // 拖右缘抓手 = 改时值 dur
+    chip.appendChild(txt); chip.appendChild(grip);
+    return chip;
+  }
+
+  /** @param {any} sec @param {number} span @param {any} line @returns {string} */
+  function lyricTip(sec, span, line){
+    if (!span) return "这一段还没有可用的拍号——先给块选一个节奏型，歌词轨才知道段落有多长。";
+    const head = `段内 ${secBars(sec)} 小节 / ${span} tick（${Math.round(span / LYRIC_GRID)} 格）`;
+    if (!line) return head + "：粘贴歌词后回车，每个字默认一个八分（2 格），再拖动微调。";
+    return head + ` · ${line.chars.length} 个字：拖字块改起点、拖右缘改时值（12 tick 吸附）`;
+  }
+
+  /* 粘贴 → 按字均分落库。默认值 = 每字一个基准单位（八分 = 2 格）自段首顺排。
+     段落 tick 放不下整句时只落库放得下的部分：越界字在播放侧是**静默忽略**，
+     若照单全收，用户看到字块却听不到锚点，反而更难排查。 */
+  /** @param {any} a @param {number} i @param {string} text */
+  function distribute(a, i, text){
+    const chars = String(text || "").replace(/\s+/g, "").split("");
+    if (!chars.length){ Store.deleteLyric(a.id, i); render(); return; }
+    const span = lyricSpanTicks(a.id, i);
+    const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : chars.length;
+    if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); render(); return; }
+    const n = Math.min(chars.length, fit);
+    Store.upsertLyric(a.id, i, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
+      ({ t: k * LYRIC_BASE, dur: LYRIC_BASE, ch: ch })));
+    render();
+  }
+
+  /** @param {any} a @param {any} sec @param {number} i @returns {any} */
+  function mkLyricRow(a, sec, i){
+    const span = lyricSpanTicks(a.id, i);
+    const line = Store.findLyric(a.id, i);
+    const ly = document.createElement("div");
+    ly.className = "arg-lyric";
+
+    /* 锚点提示音：全书一个 S.lyricCue，每条轨头都映同一状态（改一处，各段同源） */
+    const cue = document.createElement("button");
+    cue.className = "toggle-pill";
+    cue.setAttribute("role", "switch");
+    cue.setAttribute("aria-label", "锚点提示音：每个字进场一声短木鱼，延音占位不触发");
+    cue.textContent = "锚点提示音";
+    const sw = document.createElement("span"); sw.className = "switch";
+    cue.appendChild(sw);
+    applyToggle(cue, S.lyricCue);                    // 先写三件套，再补本轨的定位类（className 会覆盖 Set）
+    cue.classList.add("arg-lyric-cue");
+    Modal.bindOverlay("arrangeOverlay", cue, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      S.lyricCue = !S.lyricCue;
+      Store.persist();
+      render();
+    });
+    ly.appendChild(cue);
+
+    /* 粘贴框：change（回车/失焦）即按字均分落库，不做逐键重排——否则每敲一个字就把
+       手动微调过的位置冲掉，而"贴一整句"恰恰是先贴再拖的用法 */
+    const box = document.createElement("input");
+    box.className = "arg-lyric-paste";
+    box.type = "text";
+    box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch).join("") : "";
+    box.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：粘贴后回车按字均分");
+    Modal.bindOverlay("arrangeOverlay", box, "change", () => { distribute(a, i, box.value); });
+    ly.appendChild(box);
+
+    const clr = document.createElement("button");
+    clr.className = "arg-mini"; clr.textContent = "清除";
+    clr.disabled = !line;
+    clr.setAttribute("aria-label", "清除第 " + (i + 1) + " 段的歌词");
+    Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      Store.deleteLyric(a.id, i);
+      render();
+    });
+    ly.appendChild(clr);
+
+    const lane = document.createElement("div");
+    lane.className = "arg-lyric-lane";
+    const ctx = { lane: lane, arr: a.id, sec: i, chars: line ? line.chars : [], span: span };
+    if (span > 0){
+      /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
+         两边看到的字集必须一致，否则"界面上有、听不到" */
+      for (let k = 0; k < ctx.chars.length; k++){
+        if (ctx.chars[k].t >= span) continue;
+        lane.appendChild(mkLyricChip(ctx, k));
+      }
+    }
+    ly.appendChild(lane);
+
+    const tip = document.createElement("div");
+    tip.className = "arg-lyric-tip";
+    tip.textContent = lyricTip(sec, span, line);
+    ly.appendChild(tip);
+    return ly;
+  }
 
   function render(){
     const list = $("argList");
@@ -5598,6 +5810,10 @@ const Arrange = (() => {
       ops.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
       ops.appendChild(rm);
       row.appendChild(ops);
+      /* 歌词轨挂在段行下方（v2.1.0 F1）：顺序是 [段号, 段名, 块, 操作, 歌词]。
+         必须在 .arg-ops **之后**追加——测试按 children[2]/[3] 定位块与操作钮，
+         插在前面会把既有定位全部挪位。 */
+      row.appendChild(mkLyricRow(a, sec, i));
       wrap.appendChild(row);
     });
 
