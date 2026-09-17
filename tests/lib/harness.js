@@ -59,6 +59,9 @@ const HTML_ATTRS = {
      不在此复刻的话，"改回 div"这类退化不会被任何断言拦下。 */
   bpmNum: { tagName: "BUTTON" },
   viz: { "aria-hidden": "true" },
+  /* v2.1.0（F1 歌词对齐轨）：#lyricLane 在标记里就是 `hidden` + 对读屏隐藏的卫星轨，
+     初始必须是收起态——否则「预设模式/无歌词行时整轨收起」这条不变量在桩里恒真，测不到。 */
+  lyricLane: { hidden: true, "aria-hidden": "true" },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，

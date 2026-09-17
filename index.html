@@ -3110,7 +3110,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       fill.className = "lfill";
       const label = document.createElement("span");
       label.className = "lyric-char";
-      label.textContent = ch.c;                 // 边界规则 3：用户可控字符串只走 textContent
+      label.textContent = ch.ch;                // 边界规则 3：用户可控字符串只走 textContent（Store 归一化后的字段名是 ch）
       chip.appendChild(fill); chip.appendChild(label);
       lane.appendChild(chip);
       lyricChipEls.push(chip); lyricFillEls.push(fill);
