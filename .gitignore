@@ -1,6 +1,29 @@
 Thumbs.db
 .DS_Store
 _check.js
+
+# 真浏览器验收工具（v2.4.2）。零依赖 CDP 自验脚本 + 它产出的报告与截图：
+# 一次性验收用，跑完就该删；留在这里只是方便复跑，**不属于上站产物**，
+# 也不该进版本库（截图是二进制、报告是本机绝对路径）。
+# 注意 `_headers` 与它们只差一个下划线前缀，但**必须入库**（Cloudflare Pages 配置）——
+# 所以这里逐个列举，不用 `_*` 这类宽通配（宽通配会连 `_headers` 一起忽略掉）。
+_cdp-verify.js
+_cdp-report.json
+_cdp-shot.png
+_cdp-shot-notab.png
+_cdp-seed.html
+# v2.4.3：定位「箭头被裁」时按单个几何问题拆出的几个探针（各自只答一个问题，
+# 比反复读一张截图快且准）。同样是**一次性验收工具**，定位完即弃。
+_cdp-clip.js
+_cdp-span.js
+_cdp-dup.js
+_cdp-dir.js
+_cdp-dir.png
+_cdp-tab.js
+_cdp-tab.png
+_cdpdbg-*.json
+# 本机预览服务（v2.4.1 起用来核对渲染结果）。它按需重建，不入库。
+_serve.js
 NVIDIA Corporation/
 dist/
 

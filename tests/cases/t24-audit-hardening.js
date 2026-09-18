@@ -298,10 +298,21 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   ok(/id="srAnnounce"[^>]*aria-live="polite"/.test(html), "播报区在标记里挂了 aria-live=polite");
   ok(/id="srAnnounce"[^>]*role="status"/.test(html), "播报区在标记里声明 role=status");
   ok(!/id="statusText"[^>]*aria-live/.test(html), "高频状态栏没有 aria-live（否则读屏每换一个十六分音就刷屏）");
-  eq((html.match(/role="switch"/g) || []).length, 6, "标记里 6 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环）");
+  /* v2.4.3：＋「循环本段」→ 8 个；其中带初始 aria-checked 的仍是 5 个，
+     因为循环开关与六线开关一样在标记里就写了初值（off/false），故它落在下面那条的**正则之外**
+     ——那条只认 mute/bounce/countIn/trainer/keepAwake 这五个 id，不是"所有开关" */
+  eq((html.match(/role="switch"/g) || []).length, 8, "标记里 8 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环 +v2.4.2 六线底纹 +v2.4.3 练习循环）");
   eq((html.match(/id="(mute|bounce|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 5,
     "5 个开关在标记里都带初始 aria-checked");
-  beat.Controls.start();
+  /* v2.4.2 新增的开关（六线底纹）单独点名守一遍：
+     它是默认**开**的，故标记里必须是 class="toggle-pill on" + aria-checked="true"——
+     若哪天有人把初值写反，"打开应用先看到纸 vs 先看到箭头"这个观感决定就悄悄丢了。
+     ★ 从整个 <button ...> 标签里取，不写属性顺序：本文件里 tabToggle 的 class 在 id 之前，
+       而 keepAwakeToggle 的 id 在 class 之前——按"id 跟着 class"写正则会对着其中一个永远为假
+       （这里踩过一次：断言红了但标记其实是对的）。 */
+  const tabTag = (html.match(/<button[^>]*id="tabToggle"[^>]*>/) || [""])[0];
+  ok(/class="toggle-pill on"/.test(tabTag), "★ 六线底纹开关默认开（class 含 on）");
+  ok(/aria-checked="true"/.test(tabTag), "★ 六线底纹开关 aria-checked=true（与 S.showTab 默认 true 同口径）");  beat.Controls.start();
   ok(/开始播放/.test(els["srAnnounce"].textContent), `开始播放被播报：「${els["srAnnounce"].textContent}」`);
   beat.Controls.stop();
   eq(els["srAnnounce"].textContent, "已停止", "停止被播报");

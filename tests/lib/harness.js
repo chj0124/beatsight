@@ -41,6 +41,13 @@ const resetProbe = () => { PROBE.layoutReads = 0; PROBE.classWrites = 0; };
    `fitCellLabels` 的宽窄判断与弹跳球的落点也都有真实量级。 */
 const ROW_TOP0 = 58, ROW_H = 86;
 let rowSeq = 0;
+/* 行宽（v2.4.2）：原先是写死的 600。STRUM_MIN_W 由 20 降到 14 之后，"窄格隐藏"这条分支
+   在 600px 行宽下再也走不到——**合法时值的最小档是 6t**（VALID_T 的末位），
+   600px 上等于 18.75px ≥ 14，于是 6t 格反而变可见了。想继续测那条规则只有两条路：
+   改小阈值（假的，改了就不是在测产品）或改小行宽（真的，行宽本来就是外部条件）。
+   故开成可覆盖量，默认仍是 600，只有需要压缩几何的用例才传 opts.rowW。 */
+let ROW_W = 600;
+const rowW = () => ROW_W;
 
 /* index.html 里靠 attribute 承载初值的元素：stub 不解析 HTML，需在此复刻，否则读到 undefined。
    bpmSlider 的 min/max 是滑杆刻度的取值域（v1.1 起刻度位置由它换算），缺了就全变 NaN%。 */
@@ -62,6 +69,12 @@ const HTML_ATTRS = {
   /* v2.1.0（F1 歌词对齐轨）：#lyricLane 在标记里就是 `hidden` + 对读屏隐藏的卫星轨，
      初始必须是收起态——否则「预设模式/无歌词行时整轨收起」这条不变量在桩里恒真，测不到。 */
   lyricLane: { hidden: true, "aria-hidden": "true" },
+  /* v2.4.3（练习循环）：两个 <select>。它们不是 <div>——`sel.options` 与 `sel.disabled`
+     都是 select 特有的接口，"位置稳定地灰掉而不是藏起来"这条 UI 决策要靠 disabled 断言。
+     loopToggle 是 <button role=switch>，与 tabToggle 同类。 */
+  loopFrom: { tagName: "SELECT" },
+  loopTo: { tagName: "SELECT" },
+  loopToggle: { tagName: "BUTTON" },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
@@ -104,6 +117,7 @@ function makeEl(id){
       contains(c){ return cls.has(c); },
     },
     dataset: {},
+    parentNode: null,                            // v2.4.1：insertAdjacentElement 要靠它找到兄弟位置
     textContent: "", value: "", title: "",
     hidden: false, disabled: false, inert: false,
     /* 布局属性做成**计数的 getter**：这里要断言的是"读了几次"，不是读到了多少；
@@ -111,19 +125,42 @@ function makeEl(id){
     get offsetWidth(){
       PROBE.layoutReads++;
       const m = /([\d.]+)%/.exec(el.style.width || "");
-      return m ? 600 * (+m[1]) / 100 : 600;
+      return m ? ROW_W * (+m[1]) / 100 : ROW_W;
     },
     get offsetHeight(){ PROBE.layoutReads++; return 44; },
     get offsetLeft(){
       PROBE.layoutReads++;
       const m = /^(-?[\d.]+)%/.exec(el.style.left || "");
-      return m ? Math.round(600 * (+m[1]) / 100) : 0;
+      return m ? Math.round(ROW_W * (+m[1]) / 100) : 0;
     },
     get offsetTop(){ PROBE.layoutReads++; return el._rowTop === undefined ? 0 : el._rowTop; },
+    /* v2.4.3：<select> 的 options。真实 DOM 里 `sel.options` **就是**它的 option 子元素集合
+       （同一份数据两个视图），这里照此从 children 派生——不另存一份。
+       不做的话 syncLoopUI 读 `sel.options.length` 直接抛错，
+       而那是"选项已建好就不再重建"的幂等判据，正是要断言的点。 */
+    get options(){
+      return el.children.filter(c => c.tagName === "OPTION");
+    },
     scrollWidth: 0,
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
     removeEventListener(){},
-    appendChild(c){ this.children.push(c); return c; },
+    appendChild(c){ this.children.push(c); if (c) c.parentNode = el; return c; },
+    /* v2.4.1：兄弟插入。原先桩只有 appendChild，"把新节点插到某个既有节点旁边"
+       这类需求在桩里根本表达不出来——于是 Arrange 的候选预设行只能 append 到末尾
+       （真实浏览器里就是"点第 6 段的「换」，候选出现在第 10 段之后"，用户看不见）。
+       补上这两个方法后，测试才能守住"候选行就在触点正下方"这条 UI 事实。 */
+    insertBefore(c, ref){
+      const i = ref ? this.children.indexOf(ref) : -1;
+      if (i < 0){ this.children.push(c); return c; }
+      this.children.splice(i, 0, c); return c;
+    },
+    insertAdjacentElement(pos, c){
+      const p = this.parentNode;
+      if (pos !== "afterend" || !p){ this.children.push(c); return null; }
+      const i = p.children.indexOf(el);
+      if (i < 0){ p.children.push(c); return null; }
+      p.children.splice(i + 1, 0, c); return c;
+    },
     setAttribute(k, v){ this[k] = v; },          // v1.1：aria-label 等属性设置
     getAttribute(k){ return this[k] === undefined ? null : this[k]; },
     remove(){}, blur(){}, focus(){}, animate(){},
@@ -223,11 +260,33 @@ class FakeAudioContext {
    opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16）
    opts.throwOnRead ：模拟沙盒 iframe / "站点数据被禁用"——getItem 一律抛 SecurityError（v2.0.5 T58）。
      与 throwOnWrite 同一类注入：这类**容器策略**在桩里本来无法复现，而它恰恰是"整页白屏"
-     这类最严重症状的触发条件（Store 里任何一处漏了 try 都会被它照出来），必须可注入才能断言 */
+     这类最严重症状的触发条件（Store 里任何一处漏了 try 都会被它照出来），必须可注入才能断言
+   opts.seedDemo   ：v2.4.1。**默认 true —— 即"示例曲已带出过"**。
+     为什么默认开：应用在首次打开（冷键 beatsight.demoSeeded 缺失）时会静默带出示例曲
+     （7 个节奏型 + 1 首曲式 + 10 行歌词，见 index.html 装配层的 `if (!Store.demoSeeded())`）。
+     这对真实用户是对的，但会让**所有**"预设库初始为空 / customs.length === N"的老用例
+     全部偏 7（T01 的 2→9、T20 的 0→7…）。那些用例要验证的是它们各自的规则，
+     不是"示例曲有没有自动进来"，所以默认把闩置上、让它们回到自己设计的起点。
+     想测"首次打开会带出"的用例（T63a/c）传 `{ seedDemo: false }`。
+     ★ 载体是**独立的冷键 beatsight.demoSeeded**，不是热键 beatsight.state：
+       往热键里塞东西会让 `!hotIn` 为假，从而跳过 beatsight.m2 的冷热拆分迁移
+       （t08 的迁移用例当场炸过）。这也正是生产代码把它独立成键的原因。
+   opts.rowW      ：v2.4.2。桩模拟的行宽，默认 600px。只有需要"几何压缩"的用例才传
+     （见 ROW_W 的注释：STRUM_MIN_W 降档后，6t 最小合法时值在 600px 上已不再触发隐藏）。
+     注意它是**模块级**的，每次 loadApp 都会按本次 opts 重设——不会串到下一个用例。 */
 function loadApp(seed, opts){
-  const store = new Map(Object.entries(seed || {}));
-  const throwOnWrite = !!(opts && opts.throwOnWrite);
-  const throwOnRead = !!(opts && opts.throwOnRead);
+  const o = opts || {};
+  const throwOnWrite = !!o.throwOnWrite;
+  const throwOnRead = !!o.throwOnRead;
+  /* v2.4.2：行宽可覆盖（默认 600）。见 ROW_W 的说明——窄格隐藏的临界点随
+     STRUM_MIN_W 变化后，只有压缩行宽才能把那条分支重新走到 */
+  ROW_W = typeof o.rowW === "number" && o.rowW > 0 ? o.rowW : 600;
+  const seedObj = { ...(seed || {}) };
+  /* 默认置闩（视为已带出）；seedDemo:false 时保持键缺失 → 应用走"首次带出"分支 */
+  if (o.seedDemo !== false && seedObj["beatsight.demoSeeded"] === undefined){
+    seedObj["beatsight.demoSeeded"] = "1";
+  }
+  const store = new Map(Object.entries(seedObj));
   const els = {};
   const intervals = new Map();
   const timeouts = new Map();

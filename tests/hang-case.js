@@ -26,6 +26,13 @@ function makeEl(id){
     classList:{_s:new Set(),add(...c){c.forEach(x=>this._s.add(x));},remove(...c){c.forEach(x=>this._s.delete(x));},
       toggle(c,f){(f===undefined?!this._s.has(c):!!f)?this._s.add(c):this._s.delete(c);},contains(c){return this._s.has(c);}},
     dataset:{},textContent:"",value:"",className:"",innerHTML:"",title:"",hidden:false,disabled:false,
+    /* v2.4.3：真实 <select> 的 `.options` **就是**它的 option 子元素集合（同一份数据两个视图）。
+       本桩此前没有这个 getter，而 syncLoopUI 会读 `sel.options.length` 做"选项已建好就不再重建"
+       的幂等判据 → 桩里读到 undefined、`.length` 抛 TypeError，**每个用例一开播就崩**，
+       表现是"无输出（进程异常退出）"（看门狗因此全红：16/16）。
+       ★ 教训：桩与真实 DOM 的**接口面**必须对齐，只补需要的字段会持续漏。
+         这里照 tests/lib/harness.js 的同一口径从 children 派生，不另存一份 */
+    get options(){ return this.children.filter(c=>c.tagName==="OPTION"); },
     offsetWidth:0,offsetHeight:0,offsetLeft:0,offsetTop:0,scrollWidth:0,
     addEventListener(t,f){(this._h[t]=this._h[t]||[]).push(f);},removeEventListener(){},
     appendChild(c){this.children.push(c);return c;},setAttribute(k,v){this[k]=v;},
@@ -47,6 +54,13 @@ class FAC{constructor(){this.currentTime=0;this.state="running";this.destination
 
 function loadApp(seed){
   const store = new Map(Object.entries(seed || {}));
+  /* v2.4.1：这些用例判的是「脏数据会不会把主线程卡死」，不是「首次打开带不带出示例曲」。
+     沙箱 localStorage 初始为空 → 会走 index.html 的**首次打开**分支，静默带出 7 个
+     《在他乡》示例节奏型，从而污染期望值（customs_empty_bar 就要求被淘汰后
+     `customs.length === 0`，带出后变成 7 → 假失败）。
+     所以这里显式落「示例曲已带出」的闩，把沙箱摆成**老设备**的样子——与
+     tests/lib/harness.js 的 seedDemo 默认值同一口径（见 tests/README.md）。 */
+  store.set("beatsight.demoSeeded", "1");
   const els = {}, iv = new Map(); let seq = 1;
   const sb = {
     console:{ log(){}, warn(){}, error(){} },

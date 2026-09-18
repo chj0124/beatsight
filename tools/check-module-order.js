@@ -39,7 +39,7 @@ const SRC = m[1];
 const lines = SRC.split("\n");
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Tracks", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
 
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，
@@ -55,6 +55,7 @@ const WHITELIST = [
   { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Stats 那一套，曲式编排 overlay 打开时键盘归它管" },
   { from: "Controls", to: "Help",     reason: "v2.0.1：keydown 处理器查 Help.isOpen()/close()——同上一批那一套，使用方法 overlay 打开时键盘归它管" },
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
+  { from: "Tracks",   to: "Presets",  reason: "v2.4.0：set() 切轨后调 Presets.refreshAfterPatternChange() 重建列表 + 就地接续换型——用户点击切换条时执行，非初始化期、非每帧热路径" },
 ];
 
 /* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。Controls 是 UI 中枢、当前已顶到 7

@@ -107,14 +107,21 @@ function maskStrings(src){
 
 /* 声明表：从（已剥注释 + 已遮蔽字符串的）源码里收集**所有声明名**，返回 [{ name, off }]。
    覆盖 const/let/var（含解构模式、`const a = 1, b = 2` 多声明符）、function/class 名、
-   函数与箭头函数的形参、catch 形参、`for (const x of …)` 的头部声明。
+   函数与箭头函数的形参、catch 形参、`for (const x of …)` 的头部声明，以及
+   对象字面量的**方法简写**（`{ foo(){} }` / `{ get x(){} }` / `{ async foo(){} }`）。
    口径：**只求多收，不求精确**——多收只会让 no-undef 少报（假阴性），不会误报（假阳性）；
    因此刻意不做作用域划分，也不区分初始化表达式里的标识符该不该算声明符。
-   两条实现纪律（都踩过坑）：
+   三条实现纪律（都踩过坑）：
      · 主循环只跳到关键字之后，**绝不吞掉初始化表达式**——模块体形如
        `const Store = (() => { … })()`，一旦"跳过初始化式"，模块体内所有声明就全丢了
        （曾因此少收 200+ 个名字，no-undef 全线误报）；
-     · 声明列表的边界靠括号深度找同层的 `;`，而不是猜初始化式有多长。 */
+     · 声明列表的边界靠括号深度找同层的 `;`，而不是猜初始化式有多长；
+     · **方法简写必须单独一遍扫**（v2.4.1 补）：它长得和裸调用一模一样（`name(`），
+       主循环认不出它是声明，于是模块返回面写成
+       `return { …, setLoopPerSec(v){ … } };` 时，`setLoopPerSec` 会被 no-undef 当成
+       "未声明的宿主 API"报假阳性。判定用**前置字符**：`{` 或 `,` 紧跟其后，
+       且名字不是关键字——这与"调用"（前面是 `=`、`(`、`return` 等）可区分。
+       白名单式的 GLOBALS 修法不可取：那是把**自己的方法**塞进"宿主全局"名单，语义完全错。 */
 function collectDeclarations(src){
   const out = [], seen = new Set();
   const add = (name, off) => { if (name && !seen.has(name)){ seen.add(name); out.push({ name, off }); } };
@@ -220,6 +227,21 @@ function collectDeclarations(src){
     const open = m.index + m[0].length - 1;
     const close = closeOf(open, "(", ")");
     if (close > open) addAllIn(open + 1, close);
+  }
+
+  /* 对象字面量方法简写：`{ foo(){} }` / `{ get x(){} }` / `{ async foo(){} }` / `{ *gen(){} }`
+     （主循环认不出它，单独扫一遍。触发条件：`(` 前的名字，且名字前一个非空字符是 `{` 或 `,`。
+       这样 `foo(` 的调用不会命中（调用前面是 `=`/`(`/`return`/行首等），不会误收。
+       `get`/`set`/`async`/`static` 是修饰位，真正的名字在它们之后，故一并作为关键字跳过。） */
+  for (const m of src.matchAll(/(?<![A-Za-z0-9_$.])([A-Za-z_$][\w$]*)\s*\(/g)){
+    const n = m[1];
+    let k = m.index - 1;
+    while (k >= 0 && isWs(src[k])) k--;              // 跳过名字与前置标点之间的空白
+    if (k < 0) continue;
+    const prev = src[k];
+    if (prev !== "{" && prev !== ",") continue;      // 只在对象字面量位置命中
+    if (n === "get" || n === "set" || n === "async" || n === "static" || n === "yield") continue;
+    add(n, m.index);
   }
 
   return out;

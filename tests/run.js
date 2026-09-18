@@ -37,6 +37,8 @@ const CASE_FILES = [
   "./cases/t61-lyric-loop",            // v2.2.0：F2 按歌词行选段循环（落点 / 爬坡粒度 / 跨小节延音完整）
   "./cases/t62-strum-track",           // v2.2.0：扫弦轨升级（zone 三态音色 / 空扫静默 / 录入 UI）
   "./cases/t63-demo-song",             // v2.3.0：示例曲《在他乡》载入（谱面映射 / 幂等 / 播放冒烟）
+  "./cases/t64-track-split",           // v2.4.0：双入口拆分（轨状态 / 过滤 / 回退 / 门控 / 零迁移）
+  "./cases/t65-practice-loop",         // v2.4.3：练习循环（区间归一 / 下拉 / 调度回绕 / 起始游标 / 曲式收起）
 ];
 for (const f of CASE_FILES) require(f);
 
