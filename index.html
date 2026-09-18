@@ -1155,21 +1155,21 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1185  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1512  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2236  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2637  Modal         应用内弹窗
-     L2767  Viz           时值可视化渲染与每帧动画
-     L3537  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L4034  Trainer       变速训练器
-     L4246  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L4703  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L4934  Editor        自定义节奏型编辑器
-     L5229  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L5452  Ear           听辨训练（v1.10.0）
-     L5675  Arrange       曲式编排（v2.0.0）
-     L6289  Help          使用方法（v2.0.1）
-     L6336  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L6395  初始化（装配） 各模块 hook 接线与启动
+     L1518  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2243  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L2645  Modal         应用内弹窗
+     L2775  Viz           时值可视化渲染与每帧动画
+     L3545  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L4042  Trainer       变速训练器
+     L4255  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L4712  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L4943  Editor        自定义节奏型编辑器
+     L5238  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L5461  Ear           听辨训练（v1.10.0）
+     L5684  Arrange       曲式编排（v2.0.0）
+     L6299  Help          使用方法（v2.0.1）
+     L6346  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L6405  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1189,7 +1189,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.3.0";
+const VERSION = "2.3.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1356,9 +1356,14 @@ const DEMO_SONG = [
    （块的引用先记 preset 名，载入时按名解成 custom id——名字是本批数据自带的命名空间），
    lyrics[i] = 第 i 段的 chars（段内绝对 tick） */
 function demoBuildSpec(){
+  /** @param {string} patId @returns {any[]} */
   const demoBar = patId => {
+    /** @type {Record<number, (string | number | null)[]>} */
     const marks = {};
-    DEMO_STRUMS[patId].forEach(mk => { marks[mk[0]] = mk; });
+    /** @type {Record<string, (string | number | null)[][]>} */
+    const strums = DEMO_STRUMS;
+    strums[patId].forEach(mk => { marks[/** @type {number} */ (mk[0])] = mk; });
+    /** @type {any[]} */
     const out = [];
     for (let c = 0; c < 16; c++){
       const m = marks[c];
@@ -1374,8 +1379,9 @@ function demoBuildSpec(){
     sections: DEMO_SONG.map(s => ({ name: s.name,
       blocks: [{ refName: s.preset, repeats: s.repeats }] })) };
   const lyrics = DEMO_SONG.map(s => {
+    /** @type {any[]} */
     const out = [];
-    s.words.forEach((bar, bi) => bar.forEach(w =>
+    s.words.forEach((bar, bi) => bar.forEach((/** @type {any[]} */ w) =>
       out.push({ t: bi * 4 * TPB + w[0] * T16, dur: w[1] * T16, ch: w[2] })));
     return out;
   });
@@ -1771,7 +1777,8 @@ const Store = (() => {
     if (!Array.isArray(raw.chars) || !raw.chars.length
         || raw.chars.length > CONFIG.lyricMaxChars) return null;
     /* 先按 t 升序：重叠判定只在有序序列上才有意义（乱序输入不该被判成"重叠"而被丢） */
-    const src = raw.chars.slice().sort((a, b) => numOr(a && a.t, 0) - numOr(b && b.t, 0));
+    const src = raw.chars.slice().sort((/** @type {any} */ a, /** @type {any} */ b) =>
+      numOr(a && a.t, 0) - numOr(b && b.t, 0));
     const chars = [];
     let bad = 0, lastEnd = 0;
     for (const c of src){
@@ -1965,7 +1972,7 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
-  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }[]} */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }[]} */
   const customs = [];
   /** @type {any[]} */
   const rejectedCustoms = [];
@@ -2509,11 +2516,11 @@ function arrNextBar(a, sel, sec, bar){
    **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
    （那会立刻产生双时钟、双热键、双缓存三份麻烦）。
    S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let previewRef = null;
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
 /* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
    时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
@@ -2595,6 +2602,7 @@ const activePattern = () => {
    而同一个曲式可能在别处被加长（改 blocks.repeats）；把剔除结果写回会让"用户录入过什么"
    永久丢失。剔除结果按 (行对象身份) 缓存——upsertLyric 会换掉行对象，缓存自然失效，
    不需要另设失效逻辑，也不会出现"第二份会过期的数据"。 */
+/** @type {any[]} */
 const LYRIC_NONE = [];
 /** @type {Map<string, { line: any, chars: any[] }>} */
 const lyricFit = new Map();
@@ -2623,7 +2631,7 @@ function lyricCharsAt(arrangeId, secIdx){
   const span = lyricSpanTicks(arrangeId, secIdx);
   let chars = line.chars;
   if (span > 0){
-    const kept = line.chars.filter(c => c.t < span);
+    const kept = line.chars.filter((/** @type {any} */ c) => c.t < span);
     if (kept.length !== line.chars.length){
       chars = kept;
       try{ console.warn("[BeatSight] 歌词行 " + key + " 有 " + (line.chars.length - kept.length)
@@ -4239,7 +4247,8 @@ const Trainer = (() => {
     Controls.start();
   });
   return { reset, updateProg, onBarBoundary, total, bpmFor, consumeSession, refreshResume,
-    /** F2 歌词行循环（v2.2.0）：开/关「每段一级」爬坡粒度。返回当前状态（供断言） */
+    /** F2 歌词行循环（v2.2.0）：开/关「每段一级」爬坡粒度。返回当前状态（供断言）
+        @param {any} v @returns {boolean} */
     setLoopPerSec(v){ loopPerSec = !!v; return loopPerSec; } };
 })();
 
@@ -5459,7 +5468,7 @@ const Stats = (() => {
    它对外部状态的唯一写入是共享状态区的 previewRef / playQuota —— 复用主引擎的试听通道，
    绝不另起一套调度（那会立刻产生双时钟、双热键、双缓存三份麻烦）。 */
 const Ear = (() => {
-  /** @type {null | { group: { name: string, desc: string }, groupIdx: number, cands: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] }[], answerIdx: number, answer: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string }[][] } }} */
+  /** @type {null | { group: { name: string, desc: string }, groupIdx: number, cands: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }[], answerIdx: number, answer: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] } }} */
   let question = null;        // { group, groupIdx, cands:[pattern…], answerIdx, answer }
   let answered = false, picked = -1;
   let streak = 0;             // 当前连对：会话状态，不持久化（重开页面从 0 起算）
@@ -5683,7 +5692,7 @@ const Arrange = (() => {
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
   /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。render 重建 DOM 时拖拽必然已结束
      （只有 pointerup 才提交，而提交才触发 render），所以不必跨渲染保持节点句柄。 */
-  /** @type {null | { chip: any, ctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
+  /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
   let drag = null;
   const cur = () => curId === null ? null : Store.findArrange(curId);
   /** @param {any} ref */
@@ -5711,7 +5720,7 @@ const Arrange = (() => {
   /** @param {any} ev */
   function onDragMove(ev){
     if (!drag) return;
-    const ctx = drag.ctx, span = ctx.span, chars = ctx.chars;
+    const lctx = drag.lctx, span = lctx.span, chars = lctx.chars;
     const raw = Math.round(((ev.clientX - drag.x0) / drag.perTick) / LYRIC_GRID) * LYRIC_GRID;
     /* 邻居边界（v2.1.0）：一次正常拖动不该把隔壁的字吃掉。"重叠丢弃"是给**脏数据**兜底的
        降级路径，不能让它变成正常操作的后果——那样用户会以为字块被拖消失了。 */
@@ -5741,26 +5750,26 @@ const Arrange = (() => {
     drag = null;
     d.chip.classList.remove("dragging");
     if (d.t === d.t0 && d.d === d.d0) return;        // 只是点了一下：不动库、不重绘
-    const chars = d.ctx.chars.map((/** @type {any} */ c, /** @type {number} */ idx) =>
+    const chars = d.lctx.chars.map((/** @type {any} */ c, /** @type {number} */ idx) =>
       idx === d.k ? { t: d.t, dur: d.d, ch: c.ch } : { t: c.t, dur: c.dur, ch: c.ch });
-    Store.upsertLyric(d.ctx.arr, d.ctx.sec, chars);  // 归一化后一个字都不剩时保留原数据（返回 null）
+    Store.upsertLyric(d.lctx.arr, d.lctx.sec, chars);  // 归一化后一个字都不剩时保留原数据（返回 null）
     render();
   }
 
-  /** @param {any} target @param {any} chip @param {any} ctx @param {number} k @param {string} mode */
-  function bindDrag(target, chip, ctx, k, mode){
+  /** @param {any} target @param {any} chip @param {any} lctx @param {number} k @param {string} mode */
+  function bindDrag(target, chip, lctx, k, mode){
     Modal.bindOverlay("arrangeOverlay", target, "pointerdown", (/** @type {any} */ ev) => {
-      if (ctx.span <= 0) return;                     // 段落长度未知：没有可换算的坐标系，只读
+      if (lctx.span <= 0) return;                     // 段落长度未知：没有可换算的坐标系，只读
       ev.preventDefault();
       /* 抓手是字块的**子元素**：不拦住冒泡的话，同一个 pointerdown 会继续冒到字块自己的
          「移动」监听上，drag 当场被改写成 move —— 拖右缘就变成拖整块。拦掉是安全的：
          轨道/段行这一条链上没有别的 pointerdown 监听。（同元素上的多条监听不受
          stopPropagation 影响，所以它对"字块本体"那条没副作用。） */
       ev.stopPropagation();
-      const c = ctx.chars[k];
+      const c = lctx.chars[k];
       drag = {
-        chip: chip, ctx: ctx, k: k, mode: mode,
-        perTick: (ctx.lane.offsetWidth || 1) / ctx.span,
+        chip: chip, lctx: lctx, k: k, mode: mode,
+        perTick: (lctx.lane.offsetWidth || 1) / lctx.span,
         x0: ev.clientX, t0: c.t, d0: c.dur, t: c.t, d: c.dur,
       };
       chip.classList.add("dragging");
@@ -5776,9 +5785,9 @@ const Arrange = (() => {
   window.addEventListener("pointerup", onDragEnd);
   window.addEventListener("pointercancel", onDragEnd);
 
-  /** @param {any} ctx @param {number} k @returns {any} */
-  function mkLyricChip(ctx, k){
-    const c = ctx.chars[k], span = ctx.span;
+  /** @param {any} lctx @param {number} k @returns {any} */
+  function mkLyricChip(lctx, k){
+    const c = lctx.chars[k], span = lctx.span;
     const chip = document.createElement("div");
     chip.className = "arg-lyric-chip";
     chip.style.left = (c.t / span * 100) + "%";
@@ -5788,11 +5797,11 @@ const Arrange = (() => {
     txt.textContent = c.ch;                          // 边界规则 3：用户可控字符串只走 textContent
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick`);
-    bindDrag(chip, chip, ctx, k, "move");            // 拖本体 = 改起点 t
+    bindDrag(chip, chip, lctx, k, "move");           // 拖本体 = 改起点 t
     const grip = document.createElement("div");
     grip.className = "arg-lyric-grip";
     grip.setAttribute("aria-label", `拖动改第 ${k + 1} 个字「${c.ch}」的时值`);
-    bindDrag(grip, chip, ctx, k, "dur");             // 拖右缘抓手 = 改时值 dur
+    bindDrag(grip, chip, lctx, k, "dur");            // 拖右缘抓手 = 改时值 dur
     chip.appendChild(txt); chip.appendChild(grip);
     return chip;
   }
@@ -5884,13 +5893,13 @@ const Arrange = (() => {
 
     const lane = document.createElement("div");
     lane.className = "arg-lyric-lane";
-    const ctx = { lane: lane, arr: a.id, sec: i, chars: line ? line.chars : [], span: span };
+    const lctx = { lane: lane, arr: a.id, sec: i, chars: line ? line.chars : [], span: span };
     if (span > 0){
       /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
          两边看到的字集必须一致，否则"界面上有、听不到" */
-      for (let k = 0; k < ctx.chars.length; k++){
-        if (ctx.chars[k].t >= span) continue;
-        lane.appendChild(mkLyricChip(ctx, k));
+      for (let k = 0; k < lctx.chars.length; k++){
+        if (lctx.chars[k].t >= span) continue;
+        lane.appendChild(mkLyricChip(lctx, k));
       }
     }
     ly.appendChild(lane);
@@ -6212,6 +6221,7 @@ const Arrange = (() => {
       const r = Store.importPresets(JSON.stringify(missing));
       if (!r.ok){ Modal.uiAlert("示例节奏型载入失败：" + r.error); return; }
     }
+    /** @param {string} nm @returns {string} */
     const idOf = nm => { const c = Store.customs.find(x => x.name === nm); return c ? c.id : ""; };
     const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
       sections: spec.arrange.sections.map(s => ({ name: s.name,
