@@ -79,6 +79,14 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { dir: "U" } },
     { className: "pill", dataset: { dir: "" } },
   ],
+  /* v2.2.0 扫弦轨：弦区四档。第一档 data-zone=""（默认/中）——空串与 dirRow 的「不标注」
+     同构：pill() 的 dataset.zone !== undefined 判据对它成立，「回默认」这条路测得到 */
+  zoneRow: [
+    { className: "pill", dataset: { zone: "" } },
+    { className: "pill", dataset: { zone: "0" } },
+    { className: "pill", dataset: { zone: "1" } },
+    { className: "pill", dataset: { zone: "2" } },
+  ],
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。

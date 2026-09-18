@@ -289,8 +289,13 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const row0 = els["argSections"].children[0];
   const ly = row0.children[4];
   ok(/(^| )arg-lyric/.test(ly.className), "★ 歌词行在段行 children[4]（.arg-ops 之后，既有定位不挪位）");
-  const [cue, box, clr, laneEl, tip] = ly.children;
-  ok(cue.className.includes("toggle-pill") && cue.className.includes("arg-lyric-cue"), "锚点开关是 toggle-pill");
+  /* 行内结构（v2.2.0）：[cue 锚点开关, box 粘贴框, clr 清除, lane 字块轨, tip 提示]；
+     有歌词行时 cue 后多一个「循环本行」钮（F2），之后下标 +1 —— 用类名定位而不是裸下标 */
+  const byCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
+  const cue = byCls(ly, /arg-lyric-cue/), box = byCls(ly, /arg-lyric-paste/),
+        clr = byCls(ly, c => c.textContent === "清除"), laneEl = byCls(ly, /arg-lyric-lane/), tip = byCls(ly, /arg-lyric-tip/);
+  ok(!byCls(ly, /arg-lyric-loop/), "无歌词行时不出「循环本行」（空动作不摆出来）");
+  ok(cue.className.includes("toggle-pill"), "锚点开关是 toggle-pill");
   eq(cue.getAttribute("aria-checked"), "false", "锚点提示音默认关");
   eq(clr.disabled, true, "无歌词行时「清除」禁用");
   eq(laneEl.children.length, 0, "无行时字块轨为空");
@@ -304,27 +309,29 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(JSON.stringify(line.chars.map(c => c.t)), "[0,24,48,72]", "★ 默认每字一个八分（24tick）自段首顺排");
   ok(line.chars.every(c => c.dur === beat.LYRIC_BASE), "默认时值 = 基准单位");
 
-  /* render 后重取（每次落库都整行重建） */
+  /* render 后重取（每次落库都整行重建）；有行后 lane/tip 下标顺移一位（循环钮插在 cue 后） */
   const ly2 = els["argSections"].children[0].children[4];
-  eq(ly2.children[3].children.length, 4, "均分后字块上轨");
-  eq(ly2.children[1].value, "你好世界", "框内回显落库后的词");
-  ok(ly2.children[4].textContent.includes("4 个字"), "提示同步字数");
-  eq(ly2.children[3].children[0].getAttribute("aria-label"),
+  ok(!!byCls(ly2, /arg-lyric-loop/), "★ 有歌词行后出现「循环本行」钮（F2 入口）");
+  eq(byCls(ly2, /arg-lyric-lane/).children.length, 4, "均分后字块上轨");
+  eq(byCls(ly2, /arg-lyric-paste/).value, "你好世界", "框内回显落库后的词");
+  ok(byCls(ly2, /arg-lyric-tip/).textContent.includes("4 个字"), "提示同步字数");
+  eq(byCls(ly2, /arg-lyric-lane/).children[0].getAttribute("aria-label"),
      "第 1 个字「你」起点 0 tick，时值 24 tick", "字块 aria 标签含位置");
-  eq(ly2.children[3].children[0].children[1].className, "arg-lyric-grip", "字块右缘有时值抓手");
+  eq(byCls(ly2, /arg-lyric-lane/).children[0].children[1].className, "arg-lyric-grip", "字块右缘有时值抓手");
 
   /* 段落放不下的部分不录（768 / 24 = 32 字上限） */
-  ly2.children[1].value = "字".repeat(40);
-  ly2.children[1].fire("change");
+  byCls(ly2, /arg-lyric-paste/).value = "字".repeat(40);
+  byCls(ly2, /arg-lyric-paste/).fire("change");
   eq(St.findLyric("t1", 0).chars.length, 32, "★ 超出段长的字不录（「界面有、听不到」是最难查的错觉）");
 
   /* 换成两个字，开始拖拽（perTick = 轨宽 600px / 768tick = 0.78125） */
   const ly3 = els["argSections"].children[0].children[4];
-  ly3.children[1].value = "你好";
-  ly3.children[1].fire("change");
+  byCls(ly3, /arg-lyric-paste/).value = "你好";
+  byCls(ly3, /arg-lyric-paste/).fire("change");
 
   /* 拖字块本体 = 改起点：+18.75px = +24tick */
-  let chips = els["argSections"].children[0].children[4].children[3].children;
+  const laneOf = () => byCls(els["argSections"].children[0].children[4], /arg-lyric-lane/);
+  let chips = laneOf().children;
   const chip1 = chips[1];
   chip1.fire("pointerdown", { clientX: 100 });
   ok(chip1.className.includes("dragging"), "按下进入拖拽态");
@@ -336,7 +343,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   ok(!chip1.className.includes("dragging"), "抬手摘掉拖拽态");
 
   /* 邻居边界：往左拖过前一个字的终点，吞不掉它 */
-  chips = els["argSections"].children[0].children[4].children[3].children;
+  chips = laneOf().children;
   const chip1b = chips[1];                          // 「好」@48
   chip1b.fire("pointerdown", { clientX: 200 });
   fireWin("pointermove", { clientX: 162.5 });       // −37.5px = −48tick → 0，但前一个字占 [0,24)
@@ -344,7 +351,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(St.findLyric("t1", 0).chars[1].t, 24, "★ 拖过邻居终点被钳在 24，不会吃掉前一个字");
 
   /* 拖右缘改时值：被下一个字顶住 → 未变 → 不动库 */
-  chips = els["argSections"].children[0].children[4].children[3].children;
+  chips = laneOf().children;
   const lineBefore = St.findLyric("t1", 0);
   const grip0 = chips[0].children[1];
   grip0.fire("pointerdown", { clientX: 300 });
@@ -362,30 +369,30 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
 
   /* 清除 */
   let ly4 = els["argSections"].children[0].children[4];
-  ly4.children[2].fire("click");
+  byCls(ly4, c => c.textContent === "清除").fire("click");
   eq(St.findLyric("t1", 0), null, "「清除」删掉本段歌词行");
   ly4 = els["argSections"].children[0].children[4];
-  eq(ly4.children[2].disabled, true, "清除后按钮回到禁用");
-  eq(ly4.children[1].value, "", "框清空");
+  eq(byCls(ly4, c => c.textContent === "清除").disabled, true, "清除后按钮回到禁用");
+  eq(byCls(ly4, /arg-lyric-paste/).value, "", "框清空");
 
   /* 空文本 = 删行（与「清除」同一个出口） */
-  ly4.children[1].value = "你好";
-  ly4.children[1].fire("change");
+  byCls(ly4, /arg-lyric-paste/).value = "你好";
+  byCls(ly4, /arg-lyric-paste/).fire("change");
   ok(!!St.findLyric("t1", 0), "先录两个字");
   const ly5 = els["argSections"].children[0].children[4];
-  ly5.children[1].value = "   ";
-  ly5.children[1].fire("change");
+  byCls(ly5, /arg-lyric-paste/).value = "   ";
+  byCls(ly5, /arg-lyric-paste/).fire("change");
   eq(St.findLyric("t1", 0), null, "★ 粘贴空白 = 删行（不留空行脏数据）");
 
   /* 锚点提示音开关：全书一个 S.lyricCue，走热键落盘 */
   const ly6 = els["argSections"].children[0].children[4];
-  ly6.children[0].fire("click");
+  byCls(ly6, /arg-lyric-cue/).fire("click");
   eq(St.S.lyricCue, true, "开关写入 S.lyricCue");
   runTimers();   // 热键走防抖落盘（persistDebounce），先冲刷定时器再读
   eq(JSON.parse(storage.get("beatsight.state")).lyricCue, true, "★ 开关状态持久化（热键）");
   const ly7 = els["argSections"].children[0].children[4];
-  eq(ly7.children[0].getAttribute("aria-checked"), "true", "重渲染后开关态一致（读屏可读）");
-  ly7.children[0].fire("click");
+  eq(byCls(ly7, /arg-lyric-cue/).getAttribute("aria-checked"), "true", "重渲染后开关态一致（读屏可读）");
+  byCls(ly7, /arg-lyric-cue/).fire("click");
   eq(St.S.lyricCue, false, "再点关回");
   beat.Arrange.close();
 
@@ -395,6 +402,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   ]}) });
   dead.beat.Arrange.open();
   const dly = dead.els["argSections"].children[0].children[4];
-  eq(dly.children[3].children.length, 0, "span 不可知 → 不画字块");
-  ok(dly.children[4].textContent.includes("先给块选一个节奏型"), "★ 提示告知先选节奏型");
+  const dByCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
+  eq(dByCls(dly, /arg-lyric-lane/).children.length, 0, "span 不可知 → 不画字块");
+  ok(dByCls(dly, /arg-lyric-tip/).textContent.includes("先给块选一个节奏型"), "★ 提示告知先选节奏型");
 }

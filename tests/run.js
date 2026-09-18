@@ -34,6 +34,8 @@ const CASE_FILES = [
   "./cases/t58-p0-audit",              // v2.0.5：审计 P0 批次（抛错读盘 / 脏值域 / 级数 / 无障碍）
   "./cases/t59-p1-audit",              // v2.0.6：审计 P1 批次（句柄重入 / ctx 重建 / 数据边界 / 重锚计数）
   "./cases/t60-lyric-align",           // v2.1.0：F1 歌词对齐轨（数据层 / 段内解析 / 渲染 / 锚点音 / 编辑轨）
+  "./cases/t61-lyric-loop",            // v2.2.0：F2 按歌词行选段循环（落点 / 爬坡粒度 / 跨小节延音完整）
+  "./cases/t62-strum-track",           // v2.2.0：扫弦轨升级（zone 三态音色 / 空扫静默 / 录入 UI）
 ];
 for (const f of CASE_FILES) require(f);
 

@@ -112,6 +112,13 @@ button:disabled{cursor:not-allowed}
    与发声格的实心徽标一眼区分（形状不同 + 颜色不同，不依赖单一维度）。
    宽度与 .cell-strum 同量级，故共用 fitCellAnnotations() 的 STRUM_MIN_W 阈值 */
 .cell-air{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-left:2px solid var(--blue);border-right:2px solid var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;font-weight:700;color:var(--blue);pointer-events:none;z-index:2}
+/* 弦区色带（v2.2.0 扫弦轨）：zone 徽标 = 方向徽标下方一条 2px 色带，低/中/高 各一色。
+   与方向徽标分两个类——空扫格只有方向括号，不挂色带（空扫的 zone 只是数据，无声可染） */
+.cell-zone{position:absolute;left:2px;bottom:2px;width:14px;height:2px;border-radius:1px;pointer-events:none;z-index:2}
+.cell-zone.z0{background:#c47b3a}.cell-zone.z1{background:#9a9a9a}.cell-zone.z2{background:#3a7bc4}
+/* 编辑器内联徽标（v2.2.0）：与主视图同一套类名语义（ed-* 前缀），字号沿用 .ed-strum */
+.edcell .ed-zone{font-size:10px;font-weight:700;margin-right:4px;flex:none;border-radius:2px;padding:0 3px}
+.edcell .ed-zone.z0{color:#c47b3a}.edcell .ed-zone.z1{color:#9a9a9a}.edcell .ed-zone.z2{color:#3a7bc4}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -879,6 +886,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
+      <!-- 弦区三态（v2.2.0 扫弦轨）：与方向行同套交互（作用于选中音符）。
+           「默认」= 不写 zone 字段 = 中弦区——老数据与老导出 JSON 零迁移 -->
+      <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（低/中/高）">
+        <span class="hint">弦区</span>
+        <button class="pill" data-zone="" aria-pressed="false" disabled>默认（中）</button>
+        <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区</button>
+        <button class="pill" data-zone="1" aria-pressed="false" disabled>中弦区</button>
+        <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区</button>
+      </div>
       <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
       <div class="palette" id="palette"></div>
       <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
@@ -1137,22 +1153,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1168  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1381  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2102  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2503  Modal         应用内弹窗
-     L2633  Viz           时值可视化渲染与每帧动画
-     L3394  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L3875  Trainer       变速训练器
-     L4070  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L4527  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L4758  Editor        自定义节奏型编辑器
-     L5022  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L5245  Ear           听辨训练（v1.10.0）
-     L5468  Arrange       曲式编排（v2.0.0）
-     L6011  Help          使用方法（v2.0.1）
-     L6058  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L6117  初始化（装配） 各模块 hook 接线与启动
+     L1184  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1405  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2129  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L2530  Modal         应用内弹窗
+     L2660  Viz           时值可视化渲染与每帧动画
+     L3430  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L3927  Trainer       变速训练器
+     L4139  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L4596  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L4827  Editor        自定义节奏型编辑器
+     L5122  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L5345  Ear           听辨训练（v1.10.0）
+     L5568  Arrange       曲式编排（v2.0.0）
+     L6154  Help          使用方法（v2.0.1）
+     L6201  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L6260  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1172,7 +1188,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1189,7 +1205,12 @@ const T8  = TPB / 2;                                   // 24t 八分（短音符
    休止槽携带 dir = **空扫**（v2.1.0）：手在动、弦不出声，渲染成蓝色括号而非实心徽标；
    空扫同样不发声（休止的「不发声」由 scheduler 按 rest 判定，与 dir 无关）。
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
-   JSON 往返，同样无需为它加代码 */
+   JSON 往返，同样无需为它加代码。
+   zone（v2.2.0 扫弦轨）：弦区三态 0=低 / 1=中 / 2=高。与 dir 的关键差别——zone **参与发声**
+   （Audio 按 zone 取不同滤波中心频率，低弦区闷、高弦区亮；详见 CONFIG.strumZones 与
+   scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，T62e 守这条）。
+   空扫（rest+dir）保持静默——zone 只在发声音符上有听感意义，数据上仍可与空扫共存
+   （记的是"这次空扫发生在哪片弦区"）。省略 = 默认中弦区，老数据零迁移。 */
 /** @param {number} t @param {any} [rest] @param {string} [dir] @returns {any} */
 const D = (t, rest, dir) => ({t, rest: !!rest, ...(dir ? {dir} : {})});            // t 单位：tick
 /** @param {any[]} steps @returns {any[]} */
@@ -1313,6 +1334,9 @@ const CONFIG = {
   /* F1 歌词对齐轨（v2.1.0）：容量与域上限。吸附/基准粒度见数据区的 LYRIC_GRID / LYRIC_BASE。
      上限的作用是让"脏数据"在加载时就有界可钳——不依赖段落长度解析（那条边界在共享状态区） */
   lyricMaxLines: 256, lyricMaxChars: 256, lyricMaxChLen: 8, lyricMaxDur: 128 * TPB,
+  /* 扫弦弦区音色（v2.2.0）：三档中心频率 = 三片弦区的亮度。带通噪声路径（同 wood 音色系），
+     zone 省略时回退 MID（1）。低弦区闷、高弦区亮，频率比 ≈ 1:2:4——比 1:1.4:2 更易盲听区分 */
+  strumZones: { LOW: 700, MID: 1400, HIGH: 2800, q: 2.5, decay: 0.07, makeup: 8 },
 };
 
 /* 练习量档位表（v1.9.0）：UI 生成、加载校验、进度文案三处共用同一份，避免各写一遍单位换算。
@@ -1446,6 +1470,7 @@ const Store = (() => {
   const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
   const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
   const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
+  const VALID_ZONE = [0, 1, 2];                               // 合法弦区（v2.2.0）：低/中/高
   /** @param {any} v @returns {boolean} */
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
   /** @param {any} v @param {number} dft @returns {number} */
@@ -2040,7 +2065,9 @@ const Store = (() => {
            v2.1.0 放开休止符限制：休止槽上的 dir 是**空扫**（手在动、弦不出声），是合法记谱，
            故只校验取值本身是否在 VALID_DIR 内，不再按 rest 抹掉 */
         const dir = VALID_DIR.includes(s.dir) ? s.dir : undefined;
-        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {})});
+        /* 弦区（v2.2.0）：与 dir 同一口径——非法值静默降级为省略（=中弦区），不牵连整条预设 */
+        const zone = VALID_ZONE.includes(s.zone) ? s.zone : undefined;
+        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
       bars.push(steps);
@@ -2781,6 +2808,15 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
           c.appendChild(sm);
           strums.push(sm);
         } else strums.push(null);
+        /* 弦区色带（v2.2.0）：发声音符带 zone → 徽标下方一条 2px 色带（低/中/高三色）。
+           空扫格不挂（zone 对静默格只是数据，视觉上不给"这颗音有声"的错觉）。
+           色带进 strums 同构数组？不进——它不参与窄格隐藏（窄格整条徽标已隐藏，色带跟着格宽缩没意义，
+           且色带只有 2px 高、不遮任何内容，留着比藏了更稳） */
+        if (s.zone !== undefined && !s.rest){
+          const zb = document.createElement("div");
+          zb.className = "cell-zone z" + s.zone;
+          c.appendChild(zb);
+        }
         row.appendChild(c); cells.push(c);
       });
       /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
@@ -3517,8 +3553,18 @@ const Audio = (() => {
     osc.connect(g); g.connect(mg);
     osc.start(t); osc.stop(t + D.kickDecay + 0.01);
   }
-  /** @param {number} t @param {number} stepStartBeat @param {any} isAccent */
-  function playClick(t, stepStartBeat, isAccent){
+  /* 弦区三态（v2.2.0）：zone 参与发声但不碰时间轴。低/中/高弦区各一个带通中心频率
+     （低闷高亮，频率比 ≈ 1:2:4）。省略 zone = 中弦区（老数据零迁移、听感不变）。
+     ★ 与 click 音色层级的关系：zone 只改"在哪个频段响"，不改"多响"——层级仍由
+     重拍/正拍/细分决定（peak 计算一字未动），两套维度正交 */
+  /** @param {number} t @param {number} peak @param {any} zone */
+  function strumZoneHit(t, peak, zone){
+    const Z = CONFIG.strumZones;
+    const freq = zone === 0 ? Z.LOW : (zone === 2 ? Z.HIGH : Z.MID);
+    noiseHit(t, "bandpass", freq, Z.q, peak, Z.decay, Z.makeup);
+  }
+  /** @param {number} t @param {number} stepStartBeat @param {any} isAccent @param {any} [zone] */
+  function playClick(t, stepStartBeat, isAccent, zone){
     const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
     const level = isAccent ? 2 : (isBeat ? 1 : 0);
     /* 重拍增强量 0% = 与正拍齐平，100% = 最大强调（accentMax）。
@@ -3530,6 +3576,10 @@ const Audio = (() => {
        实测 v1.2.3 下 vol:1e6 会把增益送到 +120 dBFS（削波爆音） */
     const peak = Math.min(1, Math.max(0,
       S.vol * (isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub))));
+    /* 弦区（v2.2.0）：音符显式带了 zone 就按弦区频段发声，优先于全局音色——
+       扫弦谱里「这颗音扫哪片弦」是对这颗音的描述，比「整首用木鱼还是鼓组」更具体。
+       只在 wood/click 系有意义；drum 音色的三件套（底鼓/军鼓/踩镲）已自带频段分工，不叠加 */
+    if (zone !== undefined && S.timbre !== "drum"){ strumZoneHit(t, peak, zone); return; }
     const TM = CONFIG.timbres;
     if (S.timbre === "wood"){                      // 木鱼：带通噪声，层级差体现在中心频率
       const W = TM.wood;
@@ -3788,7 +3838,9 @@ const Audio = (() => {
            算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
            提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
         onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar });
-        if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB));
+        /* zone（v2.2.0）：从音符快照透传给 playClick——空扫（rest）根本走不到这里，
+           「空扫静默」由上面的 !rest 判定天然保证，无需在 zone 分支里再判一次 */
+        if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB), steps[schedStep].zone);
       }
       nextNoteTime += steps[schedStep].t * spb() / TPB;
       schedStep++;
@@ -3894,6 +3946,10 @@ const Trainer = (() => {
   /** @param {number} k */
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
   function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
+  /* F2 按歌词行循环（v2.2.0）：爬坡粒度开关。true = 每循环一整段升一级（句跟句练），
+     false/省略 = 每 everyN 小节升一级（v1.9 起的老口径，预设练习不变）。
+     由 Arrange.loopLyricSection 在落点选择时开启；非曲式循环时无意义（段长不可知）。 */
+  let loopPerSec = false;
   /* 「上次训练一键继续」（v1.4）：有训练历史时才露面。
      文案：完成 → 再来一轮；中途停 → 从练到的级别接着练。
      v1.5：计划进行中时不露面——计划本身就是接续机制，两个入口并存会抢语义 */
@@ -3976,11 +4032,22 @@ const Trainer = (() => {
     if (!trDone && trBarCnt === 0 && trStepIdx === 0) return null;
     return { reached: bpmFor(trStepIdx), done: trDone };
   }
-  /* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除） */
+  /* 小节边界回调。返回 true = 已自动停止（scheduler 本次调度立即退出，interval 已被 stop() 清除）
+     F2（v2.2.0）：loopPerSec 模式下，「练满一级」的计数单位从 everyN 小节换成一整段
+     （段长 = secBars(当前段)，由曲式游标处的共享函数读）。口径与 everyN 同构：
+     trBarCnt 数到段长 = 练完一句 = 升一级。 */
   function onBarBoundary(){
     const t = S.trainer;
     trBarCnt++;
-    if (trBarCnt < t.everyN){ updateProg(); return false; }
+    /* 每级目标数：loopPerSec 时读当前段的实际小节数；否则读配置的 everyN。
+       读不到段（预设模式/曲式已删）时回退 everyN——爬坡语义不能凭空消失 */
+    let need = t.everyN;
+    if (loopPerSec && S.playMode === "arrange"){
+      const a = arrangeCur();
+      const sec = a ? a.sections[arrSec] : null;
+      if (sec) need = Math.max(1, secBars(sec));
+    }
+    if (trBarCnt < need){ updateProg(); return false; }
     trBarCnt = 0;
     if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
       trDone = true;                             // v1.4：先于 stop() 标记完成（stop 里 consumeSession 要读）
@@ -4064,7 +4131,9 @@ const Trainer = (() => {
     Store.persist();
     Controls.start();
   });
-  return { reset, updateProg, onBarBoundary, total, bpmFor, consumeSession, refreshResume };
+  return { reset, updateProg, onBarBoundary, total, bpmFor, consumeSession, refreshResume,
+    /** F2 歌词行循环（v2.2.0）：开/关「每段一级」爬坡粒度。返回当前状态（供断言） */
+    setLoopPerSec(v){ loopPerSec = !!v; return loopPerSec; } };
 })();
 
 /* ================= Controls · 播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍 ================= */
@@ -4849,6 +4918,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           ds.textContent = s.dir === "D" ? "↑" : "↓";
           c.appendChild(ds);
         }
+        /* 弦区（v2.2.0）：发声音符带 zone → 内联一个文字徽标（低/中/高）。
+           用字不用色点：编辑器里 zone 是**参数**不是装饰，读屏与色弱用户都得拿到 */
+        if (s.zone !== undefined && !s.rest){
+          const zb = document.createElement("span");
+          zb.className = "ed-zone z" + s.zone;
+          zb.textContent = ["低", "中", "高"][s.zone];
+          c.appendChild(zb);
+        }
         if (s.t >= T8){
           const sp = document.createElement("span");
           sp.textContent = Viz.stepLabel(s);
@@ -4886,6 +4963,11 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     $("dirHint").textContent = !selStep
       ? "先在上方选中一个音符"
       : (selStep.rest ? "休止符上标注方向 = 空扫（只动手不出声）" : "已选中「" + Viz.stepLabel(selStep) + "」");
+    /* 弦区（v2.2.0）：与方向行同源更新。「默认（中）」= 无 zone 字段，
+       高亮判据与方向行同构（dataset 空串 ↔ 字段省略） */
+    const curZone = dirUsable && selStep.zone !== undefined ? String(selStep.zone) : "";
+    setPressed("#zoneRow", p => (p.dataset.zone || "") === curZone);
+    document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -4944,6 +5026,24 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if ((s.dir || "") === want) return;
     pushUndo();
     if (want) s.dir = want; else delete s.dir;
+    render();
+  });
+  /* 弦区（v2.2.0）：与方向行同一套纪律——pushUndo 先行、同档重按不推栈、
+     空串 = 回默认（删字段）。zone 参与发声，但写入侧与 dir 一样只是数据 */
+  $("zoneRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const btn = evTarget(e).closest("[data-zone]");
+    if (!btn) return;
+    btn.blur();
+    if (!edSel) return;
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
+    if (!s) return;
+    const want = btn.dataset.zone || "";
+    const cur = s.zone === undefined ? "" : String(s.zone);
+    if (cur === want) return;
+    pushUndo();
+    if (want === "") delete s.zone; else s.zone = +want;
     render();
   });
   $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -5639,6 +5739,21 @@ const Arrange = (() => {
     });
     ly.appendChild(cue);
 
+    /* 循环本行（F2，v2.2.0）：把这句歌词设成「只播这一段 + 循环 + 变速爬坡」。
+       无歌词行的段不给按钮——「循环一句还没有词的话」是个空动作 */
+    if (line){
+      const loopBtn = document.createElement("button");
+      loopBtn.className = "arg-mini arg-lyric-loop";
+      loopBtn.textContent = "循环本行";
+      loopBtn.setAttribute("aria-label", "循环第 " + (i + 1) + " 段的歌词行（自动配变速爬坡）");
+      Modal.bindOverlay("arrangeOverlay", loopBtn, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        loopLyricSection(a.id, i);
+        render();
+      });
+      ly.appendChild(loopBtn);
+    }
+
     /* 粘贴框：change（回车/失焦）即按字均分落库，不做逐键重排——否则每敲一个字就把
        手动微调过的位置冲掉，而"贴一整句"恰恰是先贴再拖的用法 */
     const box = document.createElement("input");
@@ -5928,6 +6043,34 @@ const Arrange = (() => {
     }
   }
 
+  /* ---- 按歌词行循环（F2，v2.2.0）----
+     歌词行身份 = (曲式id, 段下标)，故「循环某一行」就是「只循环那一段」：
+     复用跳段的同一套机制（from=to=段、loop=true），循环边界按**段内绝对 tick**
+     计算——跨小节的字（dur 越过小节线）完整落在段内，回卷只发生在段尾，
+     不存在「字被边界切两半」的情形。
+     变速训练器叠加其上：见 Trainer.onBarBoundary 的 loopPerSec 分支——
+     开启时每循环一整段升一级（而不是每 everyN 小节），爬坡粒度跟句子对齐。 */
+  /** @param {string} arrangeId @param {number} secIdx */
+  function loopLyricSection(arrangeId, secIdx){
+    const a = Store.findArrange(arrangeId);
+    if (!a || !a.sections[secIdx]) return;
+    if (!S.trainer.on){ S.trainer.on = true; }             // 歌词行循环天然配爬坡（协议默认）
+    Trainer.setLoopPerSec(true);                           // 爬坡粒度 = 一整段（句跟句练）
+    setToggle("trainerToggle", true);                      // 训练面板与开关态同步（协议路径不经过 toggle 处理器）
+    $("trainerPanel").hidden = false;
+    S.playMode = "arrange";
+    S.arrangeSel = { id: arrangeId, from: secIdx, to: secIdx, loop: true };
+    Trainer.reset();
+    if (!S.playing) Controls.setBpm(S.trainer.start, false);
+    Store.persist();
+    refreshBar();
+    if (!S.playing){                          // 与 jumpTo 同一套：停机时定位立即反映到网格/标题
+      const home = arrangeHomePattern();
+      if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+      Presets.applyPatternChange();
+    }
+  }
+
   function open(){
     Controls.stop();                                  // 进入即停（与编辑器/统计同一套）
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
@@ -6005,7 +6148,7 @@ const Arrange = (() => {
   $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec + 1); });
 
   refreshBar();
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo };
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection };
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
