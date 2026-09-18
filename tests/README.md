@@ -21,7 +21,7 @@ node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总
 
 `tools/check-coverage.js` 用 **Node 内置的 V8 覆盖率**（`NODE_V8_COVERAGE`）采集——
 不需要 c8/nyc/istanbul 任何依赖，`vm.Script` 编译的沙箱脚本同样会被采到。
-当前 **99.7%**，17 个分区里 **15 个是 100%**，只剩三组共 **11 行**：`Audio` 的防御分支（8 行，含重锚超限、`ctx` 被系统关闭后重建、`resume` 异常三条「出事才走」的路）
+当前 **99.7%**，17 个分区里 **15 个是 100%**，只剩三组共 **11 行**：`AudioEngine` 的防御分支（8 行，含重锚超限、`ctx` 被系统关闭后重建、`resume` 异常三条「出事才走」的路）
 与 `Ear` 的 `durName` 边角档位（3 行）——前者属"刻意保留的兜底"、后者属不可达分支，
 都不为了数字去造人工状态。
 
@@ -77,12 +77,20 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
   - `setTimeout` 记录但不自动执行，需要时用 `runTimers()` 手动冲刷——否则藏在防抖里的真实路径（窗口 resize 重建、TAP 文案复位、导出后 revokeObjectURL）永远跑不到
   - `FileReader` 真能把内容交给 `onload`（原桩是空构造函数，一调 `readAsText` 就 TypeError）
   - `matchMedia` 可注入（`loadApp({}, {reduceMotion:true})`）——`REDUCE_MOTION` 在加载期求值，不注入就测不了动效降级
+  - `createDocumentFragment` 有桩且语义忠实（v2.4.4）：**append 片段 = 子节点摊平搬家、片段清空**
+    （真实 DOM 如此）。只推片段壳进 children 的话，所有按 `children[i]` 定位的断言会整体错位。
+    ★ 两份桩都要改：`lib/harness.js` 与 `hang-case.js` 的私有沙箱各有一份——改默认行为时
+    以「谁构造了沙箱」为准过一遍所有桩，别只看谁在用它
+- **sw.js 也进测试了**（v2.4.4，`t67-service-worker.js`）：vm 沙箱 + `self/caches/fetch` 桩 +
+  **同步 Promise（SP）**。★ SP 有个时序修正必须知道：真实浏览器里 revalidate 的 `cache.put`
+  落在之后的微任务，`caches.match` 先读到事件前的旧值；SP 是立即执行的，put 会抢先落盘
+  让"命中旧缓存"失真——所以桩的 put 只登记进队列，由 `fire()` 在事件处理完后统一 flush
   - `pill(spec)` 辅助：模拟"点击某个带 `data-*` 的按钮"（真实浏览器里 `e.target.closest("[data-sig]")` 会返回它）
   - `setNow(v)`：TAP 测速按 `performance.now()` 的间隔算 BPM，必须能精确摆布
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / Audio / Trainer / Controls / Presets / Editor / Stats / Ear（v1.10 起 11 个模块）/ KeepAlive，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
+（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Stats / Ear（v1.10 起 11 个模块）/ KeepAlive，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
 
 **注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
 每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**

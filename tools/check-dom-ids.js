@@ -13,7 +13,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const { extractScript, stripComments } = require("./scan-util");
+const { extractScript, stripComments, lineOffset } = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const html = fs.readFileSync(HTML, "utf8");
@@ -22,12 +22,7 @@ const code = stripComments(script.split("\n")).join("\n");
 
 /* 行号映射：抽取段紧跟在 <script> 之后（stripComments 逐行处理、不改变行数），所以
      抽取段第 N 行 = index.html 第 (N + baseLine) 行
-   与 check-eslint.js / check-tsc.js 同一口径——否则这里报的行号对不上任何文件。 */
-function lineOffset(htmlText){
-  const at = htmlText.indexOf("<script>");
-  if (at < 0) return -1;
-  return (htmlText.slice(0, at).match(/\n/g) || []).length;
-}
+   lineOffset 已从 scan-util 统一导出（v2.4.4），与 check-eslint.js / check-tsc.js 同一口径。 */
 const baseLine = lineOffset(html);
 if (baseLine < 0){
   console.error("  ✗ 未找到 <script> 块：" + path.relative(process.cwd(), HTML));

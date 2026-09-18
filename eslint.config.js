@@ -1,6 +1,6 @@
 /* ESLint 配置（**本地自验专用，不进上站产物**）
    ---------------------------------------------------------------------------
-   上站产物只有 4 个文件：index.html / sw.js / manifest.webmanifest / icon.svg。
+   上站产物为 8 个对外文件：index.html / sw.js / manifest.webmanifest / icon.svg + 4 个 PNG 图标回退。
    本文件与 node_modules / package-lock.json 只存在于开发机，永远不会被发布；
    "运行时零依赖"这条硬约束针对的是 file:// 直开的产物，不是开发工具。
 

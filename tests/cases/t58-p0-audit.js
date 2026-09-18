@@ -37,7 +37,7 @@ section("T58 P0-1 · getItem 一律抛错（沙盒 iframe / 站点数据被禁�
     eq(S.bpm, 96, "读盘全部失败时 BPM 回落到默认 96（而不是白屏）");
     eq(S.sig, 4, "拍号回默认 4");
     eq(S.trainer.start, 70, "trainer 回默认值");
-    ok(!!beat.Viz && !!beat.Audio && !!beat.Controls && !!beat.Trainer,
+    ok(!!beat.Viz && !!beat.AudioEngine && !!beat.Controls && !!beat.Trainer,
       "S 之后的模块全部可用（说明 Store 没有在求值期抛出）");
   }
 }

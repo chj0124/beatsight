@@ -59,7 +59,7 @@ section("T61b 歌词行循环 · 循环边界正确 / 每段升一级 / 到目�
      驱动按每级实际秒数走（60BPM 段=16s，之后逐级略快），给足余量 */
   const driveSteps = (app, beat, ac, seconds) => {
     const dt = 0.02, n = Math.ceil(seconds / dt);
-    for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.Audio.scheduler(); }
+    for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.AudioEngine.scheduler(); }
   };
   driveSteps(null, beat, ac, 80);
   eq(beat.Store.S.playing, false, "★ 练到目标级并练满一段后自动停（爬坡与循环同一条边界链）");
@@ -79,7 +79,7 @@ section("T61c 歌词行循环 · 爬坡步进精确（60→62→64，每级一�
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const step = seconds => { const dt = 0.02, n = Math.ceil(seconds / dt);
-    for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.Audio.scheduler(); } };
+    for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.AudioEngine.scheduler(); } };
   step(4.5);
   eq(beat.Store.S.bpm, 60, "第一段内 BPM 不动（loopPerSec：一段内不升级）");
   step(12);                                   // 越过第 4 小节边界（60BPM 段长 16s）
@@ -103,7 +103,7 @@ section("T61d 歌词行循环 · 跨小节的字完整 / 边界回卷不切断")
   beat.Arrange.loopLyricSection("t1", 0);
   beat.Controls.start();
   const ac = FakeAudioContext.last;
-  const dt2 = 0.02; for (let i = 0; i < Math.ceil(30 / dt2); i++){ ac.currentTime += dt2; beat.Audio.scheduler(); }
+  const dt2 = 0.02; for (let i = 0; i < Math.ceil(30 / dt2); i++){ ac.currentTime += dt2; beat.AudioEngine.scheduler(); }
   const cues = noiseCues(ac);
   const ts = cues.map(h => +h.t.toFixed(3));
   near(ts[0], 0.08, 1e-3, "「星」锚点 = 段首");

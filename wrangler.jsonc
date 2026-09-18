@@ -4,7 +4,7 @@
 
    build.command（v2.0.4 审计 B4）：把"构建什么、怎么构建"从 Cloudflare Dashboard 收回仓库，
    使本地 `npx wrangler deploy` 能完整复现线上构建——先跑全量自验（不通过即中止，`&&` 短路），
-   再把 5 个产物装配进 dist/。这样"部署配置"也进了版本库：可 review、可 diff、可回滚。
+   再把 9 个产物装配进 dist/。这样"部署配置"也进了版本库：可 review、可 diff、可回滚。
 
    --strict-env（v2.0.5，审计 P0-5）：自验链里 ESLint / tsc 是**可选加强项**，缺 node_modules 时
    它们会标 ⊘ 跳过而不是失败——本地这样设计是对的（零依赖产物不该被开发依赖卡住），
@@ -24,8 +24,9 @@
    `tools/build-dist.js`（fs.rmSync / mkdirSync / copyFileSync，全平台可用），
    命令里只剩两个 node 调用，两处平台（本地 Windows / Cloudflare 的 Linux 构建镜像）行为一致。
 
-   dist/ 由 build.command 现场生成：4 个上站产物（index.html / sw.js / manifest.webmanifest / icon.svg）
-   加 `_headers`，共 5 个条目；本地不产出、已 gitignore。 `_headers` 由 Workers 解析为响应头，
+   dist/ 由 build.command 现场生成：8 个上站产物（index.html / sw.js / manifest.webmanifest /
+   icon.svg + 4 个 PNG 图标回退）
+   加 `_headers`，共 9 个条目；本地不产出、已 gitignore。 `_headers` 由 Workers 解析为响应头，
    本身不作为静态资源对外提供。 */
 {
   "name": "beatsight",

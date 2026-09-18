@@ -44,16 +44,10 @@ try {
   process.exit(0);
 }
 
-const { extractScript } = require("./scan-util");
+const { extractScript, lineOffset } = require("./scan-util");
 
-/* 行号映射（与 check-eslint.js 同一套算法，别各写一份）：
-     抽取段第 1 行 = <script> 所在行的剩余部分（本项目 <script> 后直接换行 → 空行）
+/* 行号映射口径：lineOffset 已从 scan-util 统一导出（v2.4.4 起不再各写一份）。
      抽取段第 N 行 = index.html 第 (N + baseLine) 行 */
-function lineOffset(html){
-  const at = html.indexOf("<script>");
-  if (at < 0) return -1;
-  return (html.slice(0, at).match(/\n/g) || []).length;
-}
 
 const html = fs.readFileSync(HTML, "utf8");
 const baseLine = lineOffset(html);

@@ -180,7 +180,7 @@ section("T23h 调度器异常 · 与渲染帧同构的边界（v2.0.2 审计 D3�
   });
 
   let escaped = null;
-  try { beat.Audio.scheduler(); } catch(e){ escaped = e; }
+  try { beat.AudioEngine.scheduler(); } catch(e){ escaped = e; }
   ok(!escaped, `调度器异常不再冒泡出 scheduler()（周期回调不会反复重抛）${escaped ? "：" + escaped.message : ""}`);
   ok(hits > 0, "故障确实被触发（证明本用例有效）");
   eq(errLogged, 1, "异常已写入控制台，便于事后定位");

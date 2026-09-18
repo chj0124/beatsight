@@ -16,8 +16,9 @@
 beatsight/
 ├── index.html            # 全部应用代码（样式 <style> + 逻辑 <script>）
 ├── manifest.webmanifest  # PWA manifest（v1.4；仅在线版被引用，file:// 下不加载）
-├── sw.js                 # Service Worker（v1.4；同上。导航 network-first、静态 cache-first）
+├── sw.js                 # Service Worker（v1.4；同上。导航 network-first、静态资源 stale-while-revalidate）
 ├── icon.svg              # PWA 图标（同源相对路径，manifest 内引用）
+├── icon-*.png            # PWA 图标 PNG 回退（192/512 含 maskable；v2.4.4）——**构建期由 tools/gen-icons.js 生成、不入库**（二进制走不动纯文本发布路径；生成器与 icon.svg 同坐标）
 ├── README.md             # 项目门面
 ├── CHANGELOG.md          # 版本记录
 ├── LICENSE               # MIT
@@ -56,7 +57,10 @@ beatsight/
 
 - **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。构建命令里串了 `node tools/check-all.js` 全量检查，**不通过就不部署**，所以这条路上线上始终是最新代码
 - **② WorkBuddy，手动**：https://beatsight-48543.app.workbuddy.host/ （v2.0.1 起；旧链接 beatsight-34873 已随换绑废弃，停在 v1.6.0 不再更新）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
-  - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`（只有 `index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` 四个文件，约 300 KB）。
+  - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`（只有 `index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` / 4 个 `icon-*.png`，共 8 个文件）。
+    **PNG 不入库**（v2.4.4 起由 `tools/gen-icons.js` 生成）——发布前先在仓库根跑一次
+    `node tools/gen-icons.js`（默认输出到仓库根）再 copy；漏了也不致命
+    （sw.js 把 PNG 列为可选资源，404 不拖垮 install，只是老设备没有位图图标）。
     不要直接发 `beatsight/`——那里有 44 MB 的 `node_modules`，以及 `tests/` `tools/` `docs/` `package.json` `wrangler.jsonc`，
     发上去就都变成公开可访问的了。**每次重新发布前要先重新 copy 覆盖**，否则会发到旧版本
   - ★ **应用归属是按"工作区（会话）"判定的，不是按目录**：每个 WorkBuddy 工作区根目录有一个
@@ -70,12 +74,12 @@ beatsight/
 
 ### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块；v2.0.1 起 13 模块；v2.4.0 起 14 模块）
 
-`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → Audio → Trainer → Controls → Tracks → Presets → Editor → Stats → Ear → KeepAlive → init**
+`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → AudioEngine → Trainer → Controls → Tracks → Presets → Editor → Stats → Ear → KeepAlive → init**
 
 ```
 Store（持久化/状态创建/迁移/导入导出/练习记录）
 共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
-→ Modal（应用内弹窗）→ Viz（时值可视化）→ Audio（Web Audio 前瞻调度）
+→ Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
 → Tracks（节拍轨切换：普通节拍 / 带扫弦的节拍 双入口，v2.4.0）
 → Presets（预设库/回退提示/轨内回退检查/播放中切换挂起）→ Editor（自定义编辑器）
@@ -84,7 +88,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
 ```
 
 - **v2.4.0 的双入口拆分不改核心**：`Tracks` 是**入口维度**的模块，只决定三件事——预设库列哪些型（`hasStrum` 过滤）、记谱层画不画扫弦标注、zone 音色走不走。`bpm/sig/vol/swing/timbre` 仍是同一个 `S` 单例（用户拍板"全部共享，仅入口区分"），`spb()` 与 `scheduler` 一行未改。`Tracks → Presets` 是 R3 白名单条目（`set()` 切轨后调 `refreshAfterPatternChange()`，用户点击时执行）。
-- **轨判定的"两处实现、一个语义"**：`Store` 的迁移期用局部 `strumOf`（因为共享区 `hasStrum` 声明在 Store 之后，顶层读它是 R1 反向引用），运行期一律走共享区 `hasStrum`（Presets/Audio/Viz 三处）。两者判据都写成"`dir` 或 `zone` 任一 `!== undefined`"，由 `tests/cases/t64-track-split.js` 的 T64b/T64e 同时钉住——判据要改时两条一起红。
+- **轨判定的"两处实现、一个语义"**：`Store` 的迁移期用局部 `strumOf`（因为共享区 `hasStrum` 声明在 Store 之后，顶层读它是 R1 反向引用），运行期一律走共享区 `hasStrum`（Presets/AudioEngine/Viz 三处）。两者判据都写成"`dir` 或 `zone` 任一 `!== undefined`"，由 `tests/cases/t64-track-split.js` 的 T64b/T64e 同时钉住——判据要改时两条一起红。
 
 - **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
 - **v1.3.0：这条规则从"注释里的口号"变成了可执行检查**（`tools/check-module-order.js`），并精确化为三条：
@@ -92,7 +96,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
   - **R2 零例外**：**每帧渲染热路径**（paintFrame / paintFrameBody / paintBall）体内不得出现「后方模块名 + .」
   - **R3 白名单**：运行时回调可以调用后方模块，但必须在检查器的 WHITELIST 逐条登记并写明理由；条目失效（代码里不再出现）也会报错，防止白名单腐烂成"什么都放行"
   - **R4 扇出上限（告警，v2.0.4 新增）**：一个模块**直接引用的下游模块个数**（扇出）不得超过 `MAX_FANOUT`（=7）。扇出是"某模块会不会膨胀成上帝对象"的最直接指标；`Controls` 当前已顶到上限（指向它全部的 7 个下游），再想加一条就必须显式抬高常量——让"中枢又胖一圈"成为一次看得见、需要理由的改动，而不是悄悄发生
-  - 注：审计报告原文把 scheduler 也划进 R2，但同时又称 `Audio→Trainer` 属于"合法的运行时调用"（而它就在 scheduler 体内），自相矛盾。这里按实际语义修正——scheduler 是 25ms 周期回调，跨模块调用只发生在小节边界（约每 1–2 秒一次），归入 R3
+  - 注：审计报告原文把 scheduler 也划进 R2，但同时又称 `AudioEngine→Trainer` 属于"合法的运行时调用"（而它就在 scheduler 体内），自相矛盾。这里按实际语义修正——scheduler 是 25ms 周期回调，跨模块调用只发生在小节边界（约每 1–2 秒一次），归入 R3
 - **跨模块装配用"钩子"而非直接调用**：`Store.setPersistFailHandler(fn)`、`onFrameError`。模块只暴露回调，由 init 段注入——避免小状态（Store）与渲染热路径（Viz）为了报告错误而反向引用后方模块
 - **新功能的 UI 装配内聚在各自模块内部（v2.0.4 约定）**：`Controls` 只做事件转发与共享状态读写，不再为某个新功能去挂一个新的下游模块；新 overlay/面板一律以自身模块为界，开合与监听器复用 `Modal` 的开合/登记原语（§3.10）。这条约定由 R4 的扇出上限机器守住（见 §3.11）
 
@@ -142,7 +146,7 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 ```
 
 - **播放中变速不中断**：`setBpm` 重映射 `loopStart = now - posBeats × 新spb`
-- **播放中切换节奏型**（v1.1.1 改）：先试 `Audio.resyncToNow(newPat)` **就地接续**——**不动时间轴**，只用「已真实经过的 tick 数」在新节奏型的循环网格里重求 `(小节, 小节内 tick)`，取新节奏型中第一个「起始 tick ≥ 该位置」的音符接续。成功即点下生效，不再等小节边界；仅当新节奏型在本小节已无起点可接时返回 false，回退到旧的挂起路径（`pendingPattern` → `scheduler()` 小节边界消费并重映射 `loopStart`）
+- **播放中切换节奏型**（v1.1.1 改）：先试 `AudioEngine.resyncToNow(newPat)` **就地接续**——**不动时间轴**，只用「已真实经过的 tick 数」在新节奏型的循环网格里重求 `(小节, 小节内 tick)`，取新节奏型中第一个「起始 tick ≥ 该位置」的音符接续。成功即点下生效，不再等小节边界；仅当新节奏型在本小节已无起点可接时返回 false，回退到旧的挂起路径（`pendingPattern` → `scheduler()` 小节边界消费并重映射 `loopStart`）
   - 关键不变量：`nextNoteTime == 本小节 tick 0 时刻 + 该小节累计 tick`。靠它能反推已走 tick，也让本函数对「同节奏型」幂等（`cum(schedStep)` 恒等于已走 tick）→ 重复点同一个节奏型相位零跳动
   - 接续点取「第一个 ≥ 当前位置的起点」，故 `nextNoteTime` **只向前**，绝不会把音符排到过去
   - 拍号变化时 `loopStart` 同样不动，位置按新拍号重新解释：小节线会挪（播放头一次像素位移，不可避免），但音频连续、不重现已走部分
@@ -157,7 +161,7 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
     30BPM 的 7/4（一小节 16 秒）会晚停十几秒；放这里则与 BPM/拍号完全无关
   - `bars` 模式天然按小节对齐（`limitBars` 只在小节边界增长），不需要额外对齐逻辑
   - **到点处置归注入的钩子**（`onLimitPulse`，装配层赋 `Controls.onLimitPulse`）：
-    Audio 声明在 Controls 之前，直接调 `Controls.stop()` 是反向引用（§3.0 的钩子纪律）。
+    AudioEngine 声明在 Controls 之前，直接调 `Controls.stop()` 是反向引用（§3.0 的钩子纪律）。
     与 `onFrameError` / `Store.setPersistFailHandler` 同一套模式
   - **预备拍不吃额度**：`limitT0` 在预备拍数完那一刻才取（`Controls.start` 里先置 null）。
     注意它主要是为**进度显示**服务的——去掉它，min 模式的停止时刻其实不变
@@ -208,7 +212,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
    - 回归：`tests/run.js` T27 逐帧交叉检查渲染结果是否仍满足全量重绘的那套不变量（active 唯一、current 行对齐、前后格状态、next 唯一且为 active 后继、fill 宽度）
 
 
-**弹跳球（v1.2）**：`paintBall(now, bar, tib)` 每帧驱动。端点 = `onsetBuf`（已排程，Audio 写 Viz 读）+ `onsetNext`（Audio 预测的下一发声点——**视觉要看得远一跳，不能依赖调度器 150ms 前瞻窗口**，否则慢速下落地僵住）。落点时刻 = 真实发声时刻（含 Swing、静音小节照跳、休止跳过）。运动：y = H·4p(1−p)，H = clamp(120·T², 10, 48) 且顶点不出容器空域；触地 70ms 挤压回弹 + 空中拉伸 + 落地预压 + 地面投影；不做滚动旋转（接缝回卷伪影）。**跨小节 = 接力制（v1.2.3）**：每小节一颗球自始至终跳完本行，终端弧终点 = 本行右缘（时刻 = 小节边界，与下一行首拍发声同时），期间待命球（半透明）停在新行首 onset 处、边界无缝交接；小节前导休止时球停在首 onset 待命。onsetBuf 修剪保留最近 1s 且 ≥8 条（30BPM 的 7/4 小节 16s，上一颗本行 onset 可能很远）。开关 `S.bounce`（默认开）只控显隐。**待命球起跑预备（v1.8.0，v1.8.1 修正为含水平分量）**：终端弧期间（末 onset → 小节边界），待命球把主球的终端弧**整条抛物线**平行复制到下一行——从新行首 onset 左侧起跳，同相位 p、同高 H、同形变（复用主球本帧 sx/sy），边界同时触地；水平跨距 = 终端弧跨距、封顶行宽 20%。只动待命球位移/形变，交接时刻（= b2.t）分毫不动；REDUCE_MOTION 下保持贴地停泊位不跳。回归：tests T41（逐帧贴合复制抛物线 3px 容差 / 水平单调 / 过界交接位置不变）。
+**弹跳球（v1.2）**：`paintBall(now, bar, tib)` 每帧驱动。端点 = `onsetBuf`（已排程，AudioEngine 写 Viz 读）+ `onsetNext`（AudioEngine 预测的下一发声点——**视觉要看得远一跳，不能依赖调度器 150ms 前瞻窗口**，否则慢速下落地僵住）。落点时刻 = 真实发声时刻（含 Swing、静音小节照跳、休止跳过）。运动：y = H·4p(1−p)，H = clamp(120·T², 10, 48) 且顶点不出容器空域；触地 70ms 挤压回弹 + 空中拉伸 + 落地预压 + 地面投影；不做滚动旋转（接缝回卷伪影）。**跨小节 = 接力制（v1.2.3）**：每小节一颗球自始至终跳完本行，终端弧终点 = 本行右缘（时刻 = 小节边界，与下一行首拍发声同时），期间待命球（半透明）停在新行首 onset 处、边界无缝交接；小节前导休止时球停在首 onset 待命。onsetBuf 修剪保留最近 1s 且 ≥8 条（30BPM 的 7/4 小节 16s，上一颗本行 onset 可能很远）。开关 `S.bounce`（默认开）只控显隐。**待命球起跑预备（v1.8.0，v1.8.1 修正为含水平分量）**：终端弧期间（末 onset → 小节边界），待命球把主球的终端弧**整条抛物线**平行复制到下一行——从新行首 onset 左侧起跳，同相位 p、同高 H、同形变（复用主球本帧 sx/sy），边界同时触地；水平跨距 = 终端弧跨距、封顶行宽 20%。只动待命球位移/形变，交接时刻（= b2.t）分毫不动；REDUCE_MOTION 下保持贴地停泊位不跳。回归：tests T41（逐帧贴合复制抛物线 3px 容差 / 水平单调 / 过界交接位置不变）。
 
 ### 3.4 时值可视化三层结构（z-index）
 
@@ -416,7 +420,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 两次独立钳制做不到这件事——`from=3 / to=1` 各自都合法，合起来是空区间，调度器会算出
 "永远到不了 `to`"从而卡死。读取一律经它（localStorage 当不可信输入）。
 
-`Audio.rescheduleLoop()` 让改完立刻可听：scheduler 是**前瞻式**的（已有一批音符排进了音频时钟），
+`AudioEngine.rescheduleLoop()` 让改完立刻可听：scheduler 是**前瞻式**的（已有一批音符排进了音频时钟），
 规则改了不会自己回头。它与 `resyncToNow` 的分工：那个是"换了节奏型要在新型里找回相位"（**保**相位），
 这个是"循环规则变了、相位本来就该重置"（**弃**相位）。**固有差异（不是遗漏）**：参考页能清 `sched`
 队列，BeatSight 的音符已交给 Web Audio 排程，已发出的 ≤1.2s 前瞻窗**无法撤回**——听感上最多是
@@ -430,6 +434,27 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 再 `floor((t-t0)/barSec)`"反推小节号，而默认型**各小节音符数完全相同** → "没回绕"与
 "回绕了但被平移"给出**字节相同**的读数，据此误判成功能没生效。改用**指纹型**（第 i 小节排 i+1 颗音）
 后，小节身份由音数直接读出：ON `[1,2]` → `[2,3,2,3,2]`；OFF 对照 → `[1,2,3,4,1]`。
+
+### 3.13 模式字段契约与产物戳记（v2.4.4，外部审计收口）
+
+- **`Audio` 模块已改名 `AudioEngine`**（原名遮蔽全局 `window.Audio` 构造器）。改名波及面：
+  check-module-order 的 EXPECTED_ORDER / WHITELIST、全部测试用例、本文档——
+  这类改名以后照此办理：先改代码，再 `grep -rn "\b旧名\b"（避开 Web Audio / AudioContext）` 收尾
+- **模式字段一律经 `setMode(field, value, why)`**（共享状态区）：`playing` / `preview` /
+  `playMode` 三个全局面貌字段的写入点曾散落 9 处裸赋值。setMode 做三件事——值域白名单
+  （非法值拒写 + warn）、同值幂等（不算迁移）、迁移轨迹（最近 20 次，`modeTrailView()` 只读）。
+  ★ **不做互斥规则**：试听流程就是 preview=true 在先、playing=true 在后，两态合法共存
+  （T66c 钉这条，防有人补臆想的互斥）
+- **产物戳记自检**：`build-dist.js` 装配时给 dist/index.html 注入
+  `<meta name="beatsight-build" content="v版本|时间|sha1">`；在线版启动时 `stampCheck()`
+  核对——缺失记 `diag.noStamp`（WorkBuddy 手动链是目录拷贝、天然无戳记，缺席只计数不告警）、
+  版本不符才 `diag.stampMismatch` + console.warn。file:// 与 localhost 不查。
+  这条把「线上那次构建跑没跑自验」从**不可知**变成**诊断面板的一个读数**
+- **R2 热路径名单扩至 5 个**：`paintFrame / paintFrameBody / paintBall / paintBeatFlash /
+  repaintCells`（v2.4.4 拆出后两个）。**往帧路径上抽 helper 时，名字必须登记进
+  check-module-order.js 的 HOT**——否则拆分会静默缩小 R2 覆盖面
+- **测试桩新增两个语义**：DocumentFragment（append 片段 = 子节点摊平搬家，harness 与
+  hang-case **两份桩**都要改）；sw.js 的同步 Promise 桩 + put 写回队列（见 tests/README.md）
 
 ## 4. 设计规范（视觉 tokens）
 
@@ -539,6 +564,8 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 - ~~**后台 30 秒不断音**（v1.3 自适应窗口的验收，审计 P1-3）~~ **已验收（2026-09-15，桌面 Chrome，用户确认无断音）**。该验收项至此关闭；仅当未来改动 scheduler 的窗口/锚定逻辑时才需要重做。
 - **后台切回后「点下即生效」的延迟**：后台期间切节奏型，最多延迟一个窗口（1.2s）才生效——这是设计取舍，确认可接受即可。
 
+**index.html 禁止过格式化器**（v2.4.4 审计补记）：`tools/check-module-order.js` 的 R1 用「恰好 2 空格缩进 = IIFE 顶层语句」做判定，prettier 一次全文件重排就会让这条架构闸门**静默失效**。同理 `check-lint.js` 依赖逐行括号配平。要引入格式化工具，先把这两个检查器改成括号深度/AST 判定。
+
 **写完检查器/断言后要反向验证**（v1.3 起的硬规矩）：把修复临时"退回"，确认目标断言**真的会失败**。没做过反向验证的测试等于没有测试——尤其对"窗口自适应""增量重绘""零布局读取"这类**没有肉眼可辨症状**的性能承诺。
 
 **坑（都踩过）**：
@@ -584,10 +611,10 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 ### 已埋的技术债 / 后续要盯
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
-- ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（第 5 步，现共 9 步）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**严格模式已扩面（2026-09-16）**：TS 7.0.2 下实测，**8 项严格检查打开后 0 报错**，故已直接开（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；另加非 strict 家族、但同样只抓真错的 2 项：`noImplicitReturns` / `noFallthroughCasesInSwitch`；均写在 tools/tsconfig.typecheck.json 的 `compilerOptions` 里）。**只剩两笔已量化的债**：~~`noImplicitAny` 打开会得到 **727 条**（TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）~~ **`noImplicitAny` 已清零并打开（2026-09-17）**——按"逐块补标注、逐块开开关"的路径分两批（727 → 282 → 0）补完全量前置 `@param` / `@returns` 与内联 `@type`，全文件 0 报错后把开关由 `false` 改为 `true`（改的是 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物）。**只剩一笔债**：~~`strictNullChecks` 打开会得到 **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）~~ **`strictNullChecks` 已清零并打开（2026-09-17）收官**——那 96 条（比原记的 **251** 降下来，因为大量隐式 any 消失后，原先被 any 传染出来的空值报错一并消失）按模块分七块逐块消化：Trainer 6（`S.plan`）→ 小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → Audio 20（`ctx`）→ Viz 25（缓存 DOM 引用）→ Editor 25（`draft`），统一用「取本地别名 + 判空守卫」补上（模块级可空 `let` 在函数顶部取别名并早返回，定时器句柄先判 `!== null` 再 `clearTimeout`，`.closest()` 补 `!!` 守卫），全文件 0 报错后把开关由 `false` 改为 `true`。**至此 strict 家族 8 项与两项额外严格检查全部打开且全绿，类型闸门扩面收官**。改动仍只在 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物。
+- ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（第 5 步，现共 9 步）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**严格模式已扩面（2026-09-16）**：TS 7.0.2 下实测，**8 项严格检查打开后 0 报错**，故已直接开（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；另加非 strict 家族、但同样只抓真错的 2 项：`noImplicitReturns` / `noFallthroughCasesInSwitch`；均写在 tools/tsconfig.typecheck.json 的 `compilerOptions` 里）。**只剩两笔已量化的债**：~~`noImplicitAny` 打开会得到 **727 条**（TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）~~ **`noImplicitAny` 已清零并打开（2026-09-17）**——按"逐块补标注、逐块开开关"的路径分两批（727 → 282 → 0）补完全量前置 `@param` / `@returns` 与内联 `@type`，全文件 0 报错后把开关由 `false` 改为 `true`（改的是 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物）。**只剩一笔债**：~~`strictNullChecks` 打开会得到 **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）~~ **`strictNullChecks` 已清零并打开（2026-09-17）收官**——那 96 条（比原记的 **251** 降下来，因为大量隐式 any 消失后，原先被 any 传染出来的空值报错一并消失）按模块分七块逐块消化：Trainer 6（`S.plan`）→ 小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → AudioEngine 20（`ctx`）→ Viz 25（缓存 DOM 引用）→ Editor 25（`draft`），统一用「取本地别名 + 判空守卫」补上（模块级可空 `let` 在函数顶部取别名并早返回，定时器句柄先判 `!== null` 再 `clearTimeout`，`.closest()` 补 `!!` 守卫），全文件 0 报错后把开关由 `false` 改为 `true`。**至此 strict 家族 8 项与两项额外严格检查全部打开且全绿，类型闸门扩面收官**。改动仍只在 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物。
 - **检查没有"必经之路"，全靠钩子 / 自觉**（v2.0.5 修正，原写的是"Cloudflare 构建时必定跑一次全量检查，失败即不部署"）：Cloudflare 的**线上**构建跑什么，取决于 Dashboard 里那串构建命令——**Workers Builds（Git 集成构建）不读仓库里 `wrangler.jsonc` 的 `build.command`**（Cloudflare 官方既有行为），所以仓库里那份配置只约束本地与命令行的 `wrangler deploy`。换句话说，**没有任何一道闸门是"推上去就一定过不去"的**；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
-- 覆盖率未覆盖的共 **11 行**（实测 99.7%），分三组、性质不同：**Audio 8 行** —— `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（v2.0.6 新增的代码里，只有"出事才走"的那几条没被点亮）；**Ear 3 行** —— `durName` 里 192/144/96 与 6 这几档时值。前 8 行属**刻意保留的防御性代码**（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会触发）；后 3 行属**不可达分支**（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。两类都不为了数字去造人工状态点亮它。**具体行号一律不抄进文档**（v2.0.5）：本行原先写的 5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**——它们随代码行移动而漂移，抄一次就等着烂；现在以 `node tools/check-coverage.js` 的输出为准，它自己会打印未覆盖行所在的行号
+- 覆盖率未覆盖的共 **11 行**（实测 99.7%），分三组、性质不同：**AudioEngine 8 行** —— `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（v2.0.6 新增的代码里，只有"出事才走"的那几条没被点亮）；**Ear 3 行** —— `durName` 里 192/144/96 与 6 这几档时值。前 8 行属**刻意保留的防御性代码**（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会触发）；后 3 行属**不可达分支**（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。两类都不为了数字去造人工状态点亮它。**具体行号一律不抄进文档**（v2.0.5）：本行原先写的 5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**——它们随代码行移动而漂移，抄一次就等着烂；现在以 `node tools/check-coverage.js` 的输出为准，它自己会打印未覆盖行所在的行号
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移
 
 ### 已明确不处理（不再跟进）

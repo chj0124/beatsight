@@ -158,7 +158,7 @@ section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜
   beat.Controls.start();
   const ac = FakeAudioContext.last;
 
-  ac.currentTime += 0.02; beat.Audio.scheduler();
+  ac.currentTime += 0.02; beat.AudioEngine.scheduler();
   /* 游标会**越过**窗口边界：while 的退出条件是「游标 ≥ now+窗口」，所以 nextNoteTime
      天然落在 [now+win, now+win+一个音符时长] 区间内。断言按这个口径写，否则会误报。 */
   const fg = beat.clock().nextNoteTime - ac.currentTime;
@@ -168,7 +168,7 @@ section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜
   /* 切后台：窗口必须拉到 > 1000ms（浏览器对后台标签页 setInterval 的节流下限），
      否则「每次唤醒只排 150ms 的音、然后静音 850ms」→ 必然断续 */
   app.setHidden(true);
-  ac.currentTime += 0.02; beat.Audio.scheduler();
+  ac.currentTime += 0.02; beat.AudioEngine.scheduler();
   const bg = beat.clock().nextNoteTime - ac.currentTime;
   ok(bg > 1.0, `后台窗口拉到 ${beat.CONFIG.schedWindowBg}s（实测游标超前 ${bg.toFixed(3)}s > 1s 节流下限）`);
   ok(bg - fg > 0.3, `可见性切换确实改变了窗口（前台游标超前 ${fg.toFixed(3)}s → 后台 ${bg.toFixed(3)}s）`);
@@ -208,7 +208,7 @@ section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计
   let frames = 0, reads = 0, idle = 0, incr = 0, full = 0, maxW = 0;
   for (let i = 0; i < 140; i++){
     ac.currentTime += 0.02;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     resetProbe();
     beat.Viz.paintFrame();
     frames++;
@@ -255,7 +255,7 @@ section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计
   let checked = 0; const problems = [];
   for (let k = 0; k < 300; k++){
     ac.currentTime += 0.02;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
     if (k % 6) continue;
     checked++;

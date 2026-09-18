@@ -76,6 +76,18 @@ function lineStarts(lines){
 
 const lineOf = (src, idx) => { let n = 1; for (let i = 0; i < idx; i++) if (src[i] === "\n") n++; return n; };
 
+/* 行号映射（check-eslint / check-tsc / check-dom-ids 共用这一份，别各写一份）：
+     抽取段紧跟在 <script> 之后，所以
+     抽取段第 1 行 = <script> 所在行的剩余部分（本项目 <script> 后直接换行 → 空行）
+     抽取段第 N 行 = index.html 第 (N + baseLine) 行
+   baseLine 取 <script> 之前的换行数（稳一点：不写死具体行号）。
+   返回 -1 = 没找到 <script> 块，调用方据此 exit 2（自身故障）。 */
+function lineOffset(html){
+  const at = html.indexOf("<script>");
+  if (at < 0) return -1;
+  return (html.slice(0, at).match(/\n/g) || []).length;
+}
+
 /* 把字符串 / 模板字面量的**内容**替换成空格（长度不变，偏移与行号仍可与原文对齐；
    换行原样保留，行结构不被破坏）。
    为什么需要：stripComments 只剥注释、刻意保留字符串（它要避免把字面量里的 // 当注释），
@@ -247,4 +259,4 @@ function collectDeclarations(src){
   return out;
 }
 
-module.exports = { extractScript, stripComments, matchBrace, lineStarts, lineOf, maskStrings, collectDeclarations };
+module.exports = { extractScript, stripComments, matchBrace, lineStarts, lineOf, lineOffset, maskStrings, collectDeclarations };

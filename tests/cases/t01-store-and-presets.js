@@ -150,7 +150,7 @@ section("T6 curPattern · 选择失效时回退基础节奏");
 section("T7 模块化 · 接口与装配完整性");
 {
   const { beat } = loadApp();
-  ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Presets", "Editor", "Stats", "KeepAlive"].forEach(k =>
+  ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Stats", "KeepAlive"].forEach(k =>
     ok(!!beat[k], `__beat.${k} 已暴露`));
   ["start", "stop", "setBpm", "setSig"].forEach(k => ok(typeof beat.Controls[k] === "function", `Controls.${k}()`));
   ["serializePresets", "exportPresets", "importPresets", "persist"].forEach(k => ok(typeof beat.Store[k] === "function", `Store.${k}()`));

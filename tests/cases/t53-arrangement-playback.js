@@ -310,7 +310,7 @@ section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回�
   let caught = null;
   for (let i = 0; i < 600 && !caught; i++){
     ac.currentTime += 0.02;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
     const iv = beat.Viz.internals();
     const buf = beat.onsetBuf();

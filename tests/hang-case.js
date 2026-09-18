@@ -35,7 +35,11 @@ function makeEl(id){
     get options(){ return this.children.filter(c=>c.tagName==="OPTION"); },
     offsetWidth:0,offsetHeight:0,offsetLeft:0,offsetTop:0,scrollWidth:0,
     addEventListener(t,f){(this._h[t]=this._h[t]||[]).push(f);},removeEventListener(){},
-    appendChild(c){this.children.push(c);return c;},setAttribute(k,v){this[k]=v;},
+    appendChild(c){
+      /* v2.4.4：DocumentFragment 语义同 harness——append 片段 = 子节点摊平搬家 */
+      if(c&&c._isFragment){const kids=c.children.slice();c.children.length=0;kids.forEach(k=>this.appendChild(k));return c;}
+      this.children.push(c);return c;
+    },setAttribute(k,v){this[k]=v;},
     getAttribute(k){return this[k]===undefined?null:this[k];},
     remove(){},blur(){},focus(){},animate(){},closest(){return makeEl("p");},
     fire(t,ev){(this._h[t]||[]).forEach(f=>f(Object.assign({currentTarget:el,target:el,
@@ -67,6 +71,8 @@ function loadApp(seed){
     localStorage:{getItem:k=>(store.has(k)?store.get(k):null),setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)},
     document:{getElementById:id=>{if(!els[id])Object.assign(els[id]=makeEl(id),id==="bpmSlider"?{min:"30",max:"240",value:"96"}:{});return els[id];},
       createElement:t=>Object.assign(makeEl("dyn"),{tagName:String(t||"").toUpperCase()}),
+      /* v2.4.4：DocumentFragment 桩（与 harness.js 同口径；Editor/Arrange 批量插入用） */
+      createDocumentFragment:()=>Object.assign(makeEl("frag"),{_isFragment:true,tagName:"#fragment"}),
       querySelectorAll:()=>[],addEventListener(){},body:makeEl("body"),activeElement:{tagName:"DIV"}},
     AudioContext:FAC, setInterval:(f,m)=>{const i=seq++;iv.set(i,f);return i;}, clearInterval:i=>iv.delete(i),
     setTimeout:()=>0, clearTimeout(){}, requestAnimationFrame:()=>0, cancelAnimationFrame(){},
@@ -84,7 +90,7 @@ function driveFrames(ac, beat, seconds){
   let firstErr = null;
   for (let i = 0; i < n; i++){
     ac.currentTime += dt;
-    try { beat.Audio.scheduler(); } catch(e){ if(!firstErr) firstErr = "scheduler: " + e.message; }
+    try { beat.AudioEngine.scheduler(); } catch(e){ if(!firstErr) firstErr = "scheduler: " + e.message; }
     try { beat.Viz.paintFrame(); } catch(e){ if(!firstErr) firstErr = "paintFrame: " + e.message; }
     if (!beat.Store.S.playing) break;
   }
@@ -116,7 +122,7 @@ if (CASE in SIGS){
   driveFrames(ac, beat, 0.5);
   const before = ac.hits.length;
   ac.currentTime += 600;                     // 模拟被节流 10 分钟
-  beat.Audio.scheduler();                    // 若这里逐拍追赶 → 超时被强杀
+  beat.AudioEngine.scheduler();                    // 若这里逐拍追赶 → 超时被强杀
   const n = ac.hits.length - before;
   out(n < 200, "饥饿兜底：单次调度排程量有界", "新增 " + n + " 条（不是逐拍追赶几百条）");
   const c = beat.clock();
@@ -141,7 +147,7 @@ if (CASE in SIGS){
   const vol = beat.Store.S.vol;
   beat.Controls.start();
   const ac = FAC.last;
-  for (let i = 0; i < 60; i++){ ac.currentTime += 0.02; beat.Audio.scheduler(); }
+  for (let i = 0; i < 60; i++){ ac.currentTime += 0.02; beat.AudioEngine.scheduler(); }
   const valid = RAMPS.filter(x => x > 0.0002);
   const max = valid.length ? Math.max(...valid) : 0;
   out(vol >= 0 && vol <= 1, "音量 " + CASE + " 钳制到 [0,1]", "S.vol=" + vol);

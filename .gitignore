@@ -42,3 +42,6 @@ node_modules/
 # 会话/IDE 的临时上传落盘目录：里面是 UUID 命名的图片残留，不被任何文件引用，
 # 也不是产物（v2.0.2 审计 D7 清理）。
 .uploads/
+
+# v2.4.4：PNG 图标由 tools/gen-icons.js 构建期生成，不入库（任何"只能推文本"的发布路径都带不动二进制）
+icon-*.png

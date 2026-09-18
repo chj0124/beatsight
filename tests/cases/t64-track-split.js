@@ -382,7 +382,7 @@ section("T64i 双入口 · 既有调用方回归：导出面/曲式/Ear/列表�
   ok(typeof beat.Presets.ensureValidForTrack === "function", "Presets.ensureValidForTrack 已导出");
   eq(beat.Store.S.track, "plain", "__beat 仍能读 S.track");
   /* 既有导出面一项不少（抽查关键几个） */
-  ["Store","Modal","Viz","Audio","Trainer","Controls","Presets","Editor","Stats","Ear","Arrange","Help","KeepAlive"]
+  ["Store","Modal","Viz","AudioEngine","Trainer","Controls","Presets","Editor","Stats","Ear","Arrange","Help","KeepAlive"]
     .forEach(k => ok(!!beat[k], `模块 ${k} 仍导出`));
   /* 曲式编排不受轨过滤影响：全部内置型仍可作为块引用（含带扫弦的） */
   eq(beat.resolveRef({ type: "builtin", idx: 0 }).name, "民谣扫弦 · 下-下上-上下上",

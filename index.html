@@ -120,7 +120,7 @@ button:disabled{cursor:not-allowed}
    仍由 fitCellAnnotations 按格宽整体隐藏），只把字形换成贯穿弦区的竖箭头、并补六线底纹。
    ★ 弦区与 zone 的对应：zone 0=低音 / 1=中（全部）/ 2=高音。
      参考页里「全部弦」是默认的饱满下扫，对应 zone 1；
-     故 zone 1（或缺省）画满六线、zone 0 画下三线、zone 2 画上三线——与 Audio 的
+     故 zone 1（或缺省）画满六线、zone 0 画下三线、zone 2 画上三线——与 AudioEngine 的
      滤波中心频率（低闷/中/高亮）在语义上对齐，不制造"画了却听不出来"的视觉谎。 */
 .strums{position:relative}
 /* 六线底纹：绝对定位铺满行内，z-index 提到 1 压在格子**上面**（v2.4.3）。
@@ -1306,20 +1306,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1335  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1669  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2527  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2979  Modal         应用内弹窗
-     L3109  Viz           时值可视化渲染与每帧动画
-     L3964  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L4497  Trainer       变速训练器
-     L4710  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5178  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L5297  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L5839  Editor        自定义节奏型编辑器
-     L6134  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L6357  Ear           听辨训练（v1.10.0）
-     L6580  Arrange       曲式编排（v2.0.0）
-     L7238  Help          使用方法（v2.0.1）
-     L7285  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L7344  初始化（装配） 各模块 hook 接线与启动
+     L3015  Modal         应用内弹窗
+     L3145  Viz           时值可视化渲染与每帧动画
+     L4032  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L4576  Trainer       变速训练器
+     L4789  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5251  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L5370  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L5912  Editor        自定义节奏型编辑器
+     L6211  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L6434  Ear           听辨训练（v1.10.0）
+     L6657  Arrange       曲式编排（v2.0.0）
+     L7328  Help          使用方法（v2.0.1）
+     L7375  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L7434  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1339,7 +1339,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.4.3";
+const VERSION = "2.4.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1359,7 +1359,7 @@ const T8  = TPB / 2;                                   // 24t 八分（短音符
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码。
    zone（v2.2.0 扫弦轨）：弦区三态 0=低 / 1=中 / 2=高。与 dir 的关键差别——zone **参与发声**
-   （Audio 按 zone 取不同滤波中心频率，低弦区闷、高弦区亮；详见 CONFIG.strumZones 与
+   （AudioEngine 按 zone 取不同滤波中心频率，低弦区闷、高弦区亮；详见 CONFIG.strumZones 与
    scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，T62e 守这条）。
    空扫（rest+dir）保持静默——zone 只在发声音符上有听感意义，数据上仍可与空扫共存
    （记的是"这次空扫发生在哪片弦区"）。省略 = 默认中弦区，老数据零迁移。 */
@@ -1545,7 +1545,7 @@ const CONFIG = {
   /* 前瞻窗口 v2.0.6（审计 P1-1）由 0.15 提到 0.3。理由：调度回调跑在主线程 25ms 轮询上，
      单轮"余量" = 窗口 − 轮询间隔；窗口 150ms 时余量只有 125ms，而小节边界那一轮还要顺手做
      变速爬级、练习量到点停播、换型重建网格这些重活——任何一次主线程阻塞超过余量，
-     时间轴就会被重锚定（见 Audio 内的 reanchor）**静默吞掉**那段时间的音符。
+     时间轴就会被重锚定（见 AudioEngine 内的 reanchor）**静默吞掉**那段时间的音符。
      翻倍到 300ms 等于把容错翻倍，代价是"变更生效"最多多等 150ms（后台窗口 1.2s 不变）。
      ★ 刻意**没有**照审计建议把重活"投到 queueMicrotask / setTimeout(…,0)"：微任务与定时器
        仍然跑在同一根主线程上，总耗时一分不少，只是把阻塞从回调内挪到回调之后——而定时器
@@ -1893,10 +1893,19 @@ const Store = (() => {
       try{ console.warn("[BeatSight] " + dropped + " 条曲式未通过结构校验，已丢弃"); }catch(e){}
     }
   }
-  function persistArranges(){
-    try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify({ v:1, arranges })); onPersistOk(); }
-    catch(e){ onPersistFail(e); }
+  /* 冷键持久化工厂（v2.4.4）：persistArranges / persistLyrics / persistLog / persistEar
+     曾是逐字同构的四份（try{ setItem(KEY, JSON.stringify({v:1,…})); onPersistOk(); }catch …），
+     差异只有 key 与载荷。抽成工厂后「写成功复位 / 写失败上报」这条纪律只剩一份，
+     新增冷键时不可能再写出第四份漏掉上报的变体。
+     （onPersistOk/onPersistFail 是函数声明、提升可见，工厂定义在它们之前也安全。） */
+  /** @param {string} key @param {() => any} payload @returns {() => void} */
+  function makePersister(key, payload){
+    return function(){
+      try{ localStorage.setItem(key, JSON.stringify(payload())); onPersistOk(); }
+      catch(e){ onPersistFail(e); }
+    };
   }
+  const persistArranges = makePersister(KEY_ARRANGES, () => ({ v:1, arranges }));
   /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
      在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
      结构损坏由 normArrange 拦（那是边界），这里的 `x &&` 是"加载路径永不因脏数据崩溃"的兜底，
@@ -1994,10 +2003,7 @@ const Store = (() => {
       try{ console.warn("[BeatSight] " + dropped + " 条歌词行未通过结构校验，已丢弃"); }catch(e){}
     }
   }
-  function persistLyrics(){
-    try{ localStorage.setItem(KEY_LYRICS, JSON.stringify({ v:1, lines: lyrics })); onPersistOk(); }
-    catch(e){ onPersistFail(e); }
-  }
+  const persistLyrics = makePersister(KEY_LYRICS, () => ({ v:1, lines: lyrics }));
   /* `x &&` 的兜底理由同 findArrange：lyrics 来自 localStorage（用户可手动改坏），
      而读取发生在渲染/调度热路径上，一旦条目是 null/undefined，`x.arrangeId` 会直接让整块挂掉 */
   /** @param {string} arrangeId @param {number} sec @returns {any} */
@@ -2040,7 +2046,7 @@ const Store = (() => {
      的 R1 会拦下来。所以这里只能有一个**局部等价判据**。
      ★ 为什么等价是安全的（不会漂移成"两套边界"）：
        这里是**一次性迁移判定**，只在"state 里没有 track 键"时执行一次；
-       运行期一切过滤/门控走的都是共享区那个 hasStrum（Presets / Audio / Viz 三处）。
+       运行期一切过滤/门控走的都是共享区那个 hasStrum（Presets / AudioEngine / Viz 三处）。
        两者的判据都写成"dir 或 zone 任一 !== undefined"，
        并由 T64 的两条断言同时钉住（见 tests/cases/t64-track-split.js T64b/T64e）。
        若哪天判据要改，T64 会同时红——这正是"只有一个语义、两处实现"可控的前提。
@@ -2181,10 +2187,7 @@ const Store = (() => {
     });
     if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
   }
-  function persistLog(){
-    try{ localStorage.setItem(KEY_LOG, JSON.stringify({ v:1, sessions })); onPersistOk(); }
-    catch(e){ onPersistFail(e); }
-  }
+  const persistLog = makePersister(KEY_LOG, () => ({ v:1, sessions }));
   /** @param {{ t: number, sec: number, bpm: number, name: string }} rec */
   function appendSession(rec){
     sessions.push(rec);
@@ -2210,10 +2213,7 @@ const Store = (() => {
     ear.right = Math.min(ear.total, Math.max(0, Math.floor(numOr(earIn.right, 0))));
     ear.best = Math.max(0, Math.floor(numOr(earIn.best, 0)));
   }
-  function persistEar(){
-    try{ localStorage.setItem(KEY_EAR, JSON.stringify({ v:1, total:ear.total, right:ear.right, best:ear.best })); onPersistOk(); }
-    catch(e){ onPersistFail(e); }
-  }
+  const persistEar = makePersister(KEY_EAR, () => ({ v:1, total:ear.total, right:ear.right, best:ear.best }));
   /* best 由调用方传入当前连对数（连对是会话状态，不持久化——重开页面就从 0 起算） */
   /** @param {boolean} ok @param {number} streak */
   function recordEar(ok, streak){
@@ -2657,12 +2657,12 @@ const loopStartBar = () => {
    从播放范围起点重置，与 schedBar / limitBars 同类。arrBar = -1 表示"尚未开始" */
 let arrSec = 0, arrBar = -1;
 /* 曲式走到范围末尾且**不循环**时的停止钩子（v2.0.0 S4）。
-   **为什么用钩子**：Audio 声明在 Controls 之前，直接调 Controls.stop() 是反向引用（R3）。
+   **为什么用钩子**：AudioEngine 声明在 Controls 之前，直接调 Controls.stop() 是反向引用（R3）。
    与 onLimitPulse / onPersistFail 同一套做法，理由相同。 */
 /** @type {null | (() => void)} */
 let onArrangeEnd = null;
 /* 曲式每走一小节的回调（v2.0.0 S5）：用来刷新主界面"现在在第几段 / 全曲进度"。
-   **为什么是钩子而不是每帧刷新**：一是 Audio 不能反向调用 Arrange（R3），
+   **为什么是钩子而不是每帧刷新**：一是 AudioEngine 不能反向调用 Arrange（R3），
    二是它每小节才变一次，挂在渲染热路径上纯属浪费。与 onArrangeEnd 同一套做法。 */
 /** @type {null | (() => void)} */
 let onArrangeBar = null;
@@ -2691,7 +2691,7 @@ function arrangeNextRow(sec, bar){
 }
 /** @type {null | number} */
 let rafId = null;
-/* 弹跳球（v1.2）onset 表：Audio.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
+/* 弹跳球（v1.2）onset 表：AudioEngine.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
    Viz.paintBall 只读。onsetBuf = 已排程端点（原地 push/shift，导出引用不失效）；
    onsetNext = 调度游标处的下一发声点预测——视觉要「看得远一跳」，调度前瞻窗口不够，
    渲染层靠它保证球永远有目的地（demo 实测：缺它球在慢速下落地僵住） */
@@ -2730,11 +2730,11 @@ const selectedPreset = () => resolveRef(S.sel);
    只认 zone 会漏掉纯方向谱（"民谣扫弦"若哪天删了 zone 标注，它就悄悄混进普通入口）。
    两个都认才是这条谓词真正想表达的事：**这个节奏型含有超出「节拍音」的信息**。
 
-   为什么抽成一处纯函数（而不是在 Presets / Audio / Controls 各判一次）：
+   为什么抽成一处纯函数（而不是在 Presets / AudioEngine / Controls 各判一次）：
    这是"两个入口的分界线"本身。三处各写一遍 = 三条会各自漂移的边界，
    而漂移的表现是"列表里看不到、却能被播出来"这种最难自查的不一致。
-   ★ 只读入参、不读 S、不读 DOM、不改任何东西——故可被任何模块（含前方的 Audio？不，
-   它在共享状态区，位于 Audio 之前）安全调用，也直接经 __beat 供测试断言。 */
+   ★ 只读入参、不读 S、不读 DOM、不改任何东西——故可被任何模块（含前方的 AudioEngine？不，
+   它在共享状态区，位于 AudioEngine 之前）安全调用，也直接经 __beat 供测试断言。 */
 /** @param {any} pat @returns {boolean} */
 function hasStrum(pat){
   if (!pat || !Array.isArray(pat.bars)) return false;
@@ -2860,18 +2860,18 @@ let appliedPat = null;               // 正在发声的节奏型快照（Presets
    时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
 /** @type {null | number} */
 let sessStartT = null;
-/* 练习量（v1.9.0）：limitBars = 本次会话已走完的小节数（Audio 在小节边界累加——只有调度器
+/* 练习量（v1.9.0）：limitBars = 本次会话已走完的小节数（AudioEngine 在小节边界累加——只有调度器
    看得见小节边界，这是唯一与发声同源的视角）；limitT0 = min 模式的计时基准（音频时钟）；
-   onLimitPulse = 到点处置钩子。**为什么用钩子**：Audio 声明在 Controls 之前，直接调
+   onLimitPulse = 到点处置钩子。**为什么用钩子**：AudioEngine 声明在 Controls 之前，直接调
    Controls.stop() 属反向引用，tools/check-module-order.js 会拦下来——与 onFrameError /
    Store.setPersistFailHandler 同一套「模块只暴露回调，跨模块装配交给装配层」模式。 */
 let limitBars = /** @type {number} */ (0), limitT0 = /** @type {null | number} */ (null);
 /** @type {null | (() => boolean)} */
 let onLimitPulse = null;
-/* 练习量是否已到点（Audio 每个调度周期问一次）。两种模式只在「数什么」上不同：
+/* 练习量是否已到点（AudioEngine 每个调度周期问一次）。两种模式只在「数什么」上不同：
      bars → 数小节（limitBars 只在小节边界增长，故天然按小节对齐）
      min  → 数音频时钟差（与 beatsight.log 的会话时长同口径；时钟挂起时本就不计时）
-   预备拍不计入练习量：limitT0 在预备拍数完那一刻才取（见 Controls.start 与 Audio 的预备拍循环） */
+   预备拍不计入练习量：limitT0 在预备拍数完那一刻才取（见 Controls.start 与 AudioEngine 的预备拍循环） */
 function limitHit(){
   const L = S.limit;
   if (!L || L.mode === "off") return false;
@@ -2908,7 +2908,43 @@ let onSchedError = null;
    让"发生过几次重锚定"成为一个可读的读数：0 = 从未漏拍，>0 = 该去看诊断面板了 */
 /** @type {null | ((why: string) => void)} */
 let onReanchor = null;
-/* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/Audio 每帧都读，
+
+/* ---- 模式字段契约（v2.4.4，审计收口）----
+   S.playing / S.preview / S.playMode 是全局面貌状态，写入点曾散落 9 处裸赋值，
+   「哪些值合法、什么时候跳的」只存在于各处注释里。收口为 setMode：
+     ① 值域白名单——非法值**拒写**并记 warn（脏值宁可视而不见，也不进 S）；
+     ② 同值幂等——重复赋同值不算一次迁移（stop() 被连调两次不该留两条轨迹）；
+     ③ 迁移轨迹——最近 20 次 {字段, 新值, 原因, 时刻} 存 modeTrail，
+        「状态是怎么变成这样的」从考古题变成可读的表。
+   ★ 刻意**不做互斥规则**：试听流程就是 preview=true 在先、playing=true 在后
+     （Editor 试听 / Ear 放题都如此），两态合法共存——把臆想的互斥写进契约会误伤真流程。 */
+/** @type {Record<string, any[]>} */
+const MODE_FIELDS = {
+  playing: [false, true],
+  preview: [false, true],
+  playMode: ["preset", "arrange"],
+};
+/** @type {{ f: string, v: any, why: string, t: number }[]} */
+const modeTrail = [];
+/** @param {string} field @param {any} value @param {string} [why] 迁移原因（进轨迹，便于排查）
+    @returns {boolean} 是否接受本次写入 */
+function setMode(field, value, why){
+  const dom = MODE_FIELDS[field];
+  if (!dom || !dom.includes(value)){
+    try{ console.warn("[BeatSight] 非法模式写入被拒绝：" + field + " = " + String(value)); }catch(e){}
+    return false;
+  }
+  const Sany = /** @type {any} */ (S);          // 动态字段访问：值域已由上面的白名单把住
+  if (Sany[field] === value) return true;       // 幂等：同值重写不算迁移
+  Sany[field] = value;
+  modeTrail.push({ f: field, v: value, why: why || "", t: Date.now() });
+  if (modeTrail.length > 20) modeTrail.shift();
+  return true;
+}
+/** 模式迁移轨迹的只读视图（诊断与测试用） @returns {any[]} */
+const modeTrailView = () => modeTrail.slice();
+
+/* 播放/试听期间的节奏型读取入口（v1.0.0 从 Presets 上移至此——Viz/AudioEngine 每帧都读，
    放在 Presets 里会构成 Viz→Presets 反向依赖）：预览或停机直读当前选择，播放中读快照 */
 /* 曲式模式的「待命型」（v2.0.2）：停止且处于曲式模式时，界面应该显示「下一次播放从哪儿开始」
    = 播放范围起点的第 0 小节。跳段定位（arrangeSel 变化）后网格立即跟着换，
@@ -3116,6 +3152,10 @@ const Viz = (() => {
        └── span  (z2)  时值名称标签（t≥24，即 ≥0.5 拍才有独立标签） */
 let rowEls = /** @type {HTMLElement[]} */ ([]), cellEls = /** @type {HTMLElement[][]} */ ([]), playheadEl = /** @type {HTMLElement|null} */ (null), trailGlowEl = /** @type {HTMLElement|null} */ (null);
 let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), fillEls = /** @type {HTMLElement[][]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
+/* v2.4.4：sub → 宿主 cell 的正查表（与 subEls 同键）。paintFrameBody 的十六分闪烁原先
+   靠 sub.closest(".cell") 现场上溯 DOM——帧路径上的 DOM 查询能免则免（v1.3.0 P1-4 的口径），
+   建网格时顺手登记一次，帧内只读表。 */
+let subCellEls = /** @type {Record<number, HTMLElement>[]} */ ([]);
   /** @type {(HTMLElement|null)[][]} */
   let strumEls = [];                                         // 扫弦方向徽标（v1.9.0），与 labelEls 同构：无徽标处存 null
   /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[][]} */
@@ -3165,6 +3205,188 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
   }
 
+  /** 建一小节的行（buildViz 的子工序，v2.4.4 由其体内拆出，**纯搬移**、行为等价）：
+      跑道拍点 → 六线底纹与箭头层（仅扫弦轨）→ 拍内座次尺 → 音符格（含刻度线/标签/箭头）
+      → 短音符组标签，并把本行登记进 rowEls/cellEls/subEls/… 各同构数组
+      （"数组第 b 项 = 第 b 小节"是渲染层既有约定，paintFrame/resetForStop 都按它对齐）。
+      @param {number} b 小节序号 @param {any} p 当前节奏型（activePattern 快照）
+      @param {number} barTicks 每小节 tick 数 @param {HTMLElement} viz 网格容器
+      @returns {void} */
+  function buildBarRow(b, p, barTicks, viz){
+    const row = document.createElement("div");
+    row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
+    // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
+    const zones = [];
+    for (let k = 0; k < S.sig; k++){
+      const z = document.createElement("div");
+      z.className = "beat-zone";
+      z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
+      z.style.width = `calc(${100 / S.sig}% - 6px)`;
+      row.appendChild(z);
+      zones.push(z);
+    }
+    zoneEls.push(zones);
+    /* 六线谱底纹（v2.4.2，照搬参考页）：每条小节行铺一层六条等距弦线当"纸"。
+       只挂扫弦轨——普通轨没有扫弦箭头，留一层无解释的横线纯属噪音（同 v2.4.0 的轨门控口径）。
+       六条线的 y 由 CSS 变量 --gtop / --gt 推出（5/12/19/26/33/40，全部收在格子内），
+       与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
+       createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
+    if (S.track === "strum"){
+      const tab = document.createElement("div");
+      tab.className = "tab";
+      /* 六条弦线：y = 5 + li×7（li=0..5）→ 5/12/19/26/33/40，全部落在 44px 格子内。
+         与 CSS 里 --yT1/--yT2/--yB1/--yB2 是同一组数字的两处表述，故这里直接读变量运算，
+         不写字面量——写死会让"改弦间距"变成两处改一处漏。 */
+      for (let li = 0; li < 6; li++){
+        const ln = document.createElement("i");
+        ln.style.top = `calc(var(--gtop) + ${li} * var(--gt))`;
+        tab.appendChild(ln);
+      }
+      row.appendChild(tab);
+    }
+    /* 扫弦箭头层（v2.4.3）：**独立一层**，是 .cell 的兄弟节点而不是子节点。
+       理由见 CSS 里 .strums 的注释——格子有 overflow:hidden + 44px 高，
+       挂进去必然裁掉箭头的尖端与低音区尾巴（v2.4.2 的 bug，实测 24/24 全被裁）。
+       只挂扫弦轨：普通轨没有箭头，空层纯属浪费（同 v2.4.0 轨门控口径） */
+    if (S.track === "strum"){
+      const sl = document.createElement("div");
+      sl.className = "strums";
+      row.appendChild(sl);
+      strumLayers.push(sl);
+    } else strumLayers.push(null);
+    // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
+    /** @type {Record<number, HTMLElement>} */
+    const rl = {};
+    const markN = S.sig === 6 ? 2 : 4;
+    for (let k = 0; k < S.sig; k++){
+      for (let s = 0; s < markN; s++){
+        const lb = document.createElement("div");
+        lb.className = "ruler-lab" + (s === 0 ? " down" : "");
+        lb.textContent = String(s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]));
+        lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
+        row.appendChild(lb);
+        rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
+      }
+    }
+    rulerEls.push(rl);
+    /** @type {HTMLElement[]} */
+    const cells = [];
+    /** @type {HTMLElement[]} */
+    const fills = [];
+    /** @type {(HTMLElement|null)[]} */
+    const labels = [];
+    /** @type {(HTMLElement|null)[]} */
+    const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
+    subEls.push({});
+    let acc = 0;
+    /* 空扫的弦区要"跟随前一记实扫"（参考页明文），故在本小节内自上而下逐格携带。
+       跨小节不延续：新小节从全部弦重起——小节是扫弦谱的语义单位，跨小节沿用上一小节
+       末格的弦区会让新小节首格凭空落在低音区，读谱时无从解释。 */
+    let prevZone = 1;
+    p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
+      const startT = acc;
+      const c = document.createElement("div");
+      c.className = "cell upcoming" + (s.rest ? " rest" : "");
+      c.style.left = (acc / barTicks * 100) + "%";
+      c.style.width = `calc(${s.t / barTicks * 100}% - 4px)`;
+      acc += s.t;
+      const fill = document.createElement("div");
+      fill.className = "fill";
+      c.appendChild(fill);
+      fills.push(fill);
+      /* 块内按十六分切成刻度线；三连音块（t 不整除 12t=十六分）不画——
+         十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
+      if (s.t % T16 === 0){
+        const subs = document.createElement("div");
+        subs.className = "subs";
+        const nSub = s.t / T16;
+        for (let u = 0; u < nSub; u++){
+          const sub = document.createElement("div");
+          sub.className = "sub";
+          subs.appendChild(sub);
+          subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
+        }
+        c.appendChild(subs);
+      }
+      if (s.t >= T8){                    // 时值标签移到格子下方，与小格零冲突
+        const lb = document.createElement("div");
+        lb.className = "cell-label";
+        lb.textContent = stepLabel(s);
+        lb.style.left = `calc(${startT / barTicks * 100}% + 2px)`;
+        row.appendChild(lb);
+        labels.push(lb);
+      } else labels.push(null);
+      /* 扫弦竖箭头（v2.4.2 引入，v2.4.3 修正挂载位置）：照搬参考页的贯穿式竖箭头。
+         v2.1.0：字形按手部动作翻转（D→↑ 下扫 / U→↓ 上扫）。
+         v2.4.2：由「14px 方形徽标」换成**贯穿弦区的竖箭头**——
+           箭头跨越的弦数表达弦区（kF 贯穿六线 / kB 低音下三线 / kT 高音上三线），
+           方向由 .dn/.up 决定箭头画在哪一端；休止槽带 dir = 空扫，换成蓝色**虚线**箭头。
+           弦区取自 zone（0=低音 / 1=中=全部弦 / 2=高音）；空扫取前一记实扫的 zone
+           （参考页明文："弦区跟随前一记实扫"），没有前一记时落全部弦。
+         ★ v2.4.3 修 bug：v2.4.2 把它 appendChild 进格子（c.appendChild(sm)），
+           而格子的 `overflow:hidden` + `height:44px` 会把箭头裁掉——
+           尖端在 top:-5px（超出格子上界）、kB 的尾巴到 53px（超出格子下界 44px）。
+           实测 24/24 支箭头全部被裁，这正是"为什么箭头缺了头顶的尖端"的真因。
+           现在挂进**同行的 .strums 层**（不裁切、满行高），水平位置用格中心的百分比。
+         v2.4.0 轨门控：普通节拍轨**不画箭头**——它承诺"只出节拍音与重音"，
+         画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
+         ★ 注意 strums 数组必须**同时**推入占位 null：它与格子逐位同构，
+           fitCellAnnotations() 按下标对齐做窄格隐藏，少推一项会让隐藏判据整体错位 */
+      if (s.dir && S.track === "strum"){
+        const sm = document.createElement("div");
+        /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
+        const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
+        const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
+        sm.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
+        /* ★ v2.4.3：把自己对应的**格子下标**写在 data-i 上。
+           为什么需要它：层里的孩子是**紧凑**的（无方向的格不产生节点），
+           所以「层里第 i 个孩子」≠「第 i 格」——只有全格都有方向时才偶然相等。
+           读谱/测试要按格定位时，用 data-i 才是稳的（别用子节点序数反推）。
+           不改成"每格都塞占位节点"的理由：那会让一行凭空多出十几个空 div，
+           而 .strums 是每帧都可能被重建的节点，白增 DOM 规模与合成开销。 */
+        sm.dataset.i = String(i);
+        /* 水平定位到**格中心**：格子左缘 + 格宽的一半，用同一套 % 算，
+           与格子的 `left`/`width` 共口径（都不依赖像素宽度） */
+        const w = s.t / barTicks;
+        sm.style.left = ((startT / barTicks) + w / 2) * 100 + "%";
+        const sl = strumLayers[b];
+        if (sl) sl.appendChild(sm);
+        strums.push(sm);
+        if (!s.rest) prevZone = z;         // 只有实扫更新"前一记弦区"
+      } else strums.push(null);
+      /* 弦区色带（v2.2.0）已由 v2.4.2 的**贯穿式竖箭头**取代——弦区现在直接表达为
+         "箭头跨哪几条弦"，比"徽标下方 2px 色带"更贴近参考页的六线谱读法，
+         也不必再为"色带在窄格下要不要跟着藏"单独决策（整支箭头一起藏）。
+         zoneEls 保留为空数组（resetForStop / 其它迭代点仍按同构数组走，删掉会多处分叉）。 */
+      row.appendChild(c); cells.push(c);
+    });
+    /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
+       保证最难辨认的十六分/三连音也有名称可读 */
+    /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[]} */
+    const groups = [];
+let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }} */ (null), acc2 = /** @type {number} */ (0);
+    p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
+      const startT2 = acc2; acc2 += s.t;
+      const shorty = s.t < T8 && !s.rest;
+      if (shorty && !run) run = {i0:i, i1:i+1, tick:startT2, nm:DUR_NAME[s.t] || (fmtBeat(s.t) + "拍")};
+      else if (shorty && run) run.i1 = i + 1;
+      else if (run){ groups.push(run); run = null; }
+    });
+    if (run) groups.push(run);
+    groups.forEach(g => {
+      if (g.i1 - g.i0 < 2) return;                    // 单个短音符不标注，避免拥挤
+      const lb = document.createElement("div");
+      lb.className = "cell-label group";
+      lb.textContent = g.nm + " ×" + (g.i1 - g.i0);
+      lb.style.left = `calc(${g.tick / barTicks * 100}% + 2px)`;
+      row.appendChild(lb);
+      g.el = lb;
+    });
+    glEls.push(groups.filter(g => g.el));
+    viz.appendChild(row);
+    rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels); strumEls.push(strums);
+  }
+
   function buildViz(){
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
@@ -3177,180 +3399,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        停止/试听时 activePattern() 本就回落 curPattern()，预设模式行为零变化 */
     const p = activePattern();
     const barTicks = vizSig * TPB;
-    for (let b = 0; b < LOOP_BARS; b++){
-      const row = document.createElement("div");
-      row.className = "bar-row" + (S.mute && b === LOOP_BARS - 1 ? " muted-bar" : "");   // 静音拍：第 4 小节预标识
-      // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
-      const zones = [];
-      for (let k = 0; k < S.sig; k++){
-        const z = document.createElement("div");
-        z.className = "beat-zone";
-        z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
-        z.style.width = `calc(${100 / S.sig}% - 6px)`;
-        row.appendChild(z);
-        zones.push(z);
-      }
-      zoneEls.push(zones);
-      /* 六线谱底纹（v2.4.2，照搬参考页）：每条小节行铺一层六条等距弦线当"纸"。
-         只挂扫弦轨——普通轨没有扫弦箭头，留一层无解释的横线纯属噪音（同 v2.4.0 的轨门控口径）。
-         六条线的 y 由 CSS 变量 --gtop / --gt 推出（5/12/19/26/33/40，全部收在格子内），
-         与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
-         createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
-      if (S.track === "strum"){
-        const tab = document.createElement("div");
-        tab.className = "tab";
-        /* 六条弦线：y = 5 + li×7（li=0..5）→ 5/12/19/26/33/40，全部落在 44px 格子内。
-           与 CSS 里 --yT1/--yT2/--yB1/--yB2 是同一组数字的两处表述，故这里直接读变量运算，
-           不写字面量——写死会让"改弦间距"变成两处改一处漏。 */
-        for (let li = 0; li < 6; li++){
-          const ln = document.createElement("i");
-          ln.style.top = `calc(var(--gtop) + ${li} * var(--gt))`;
-          tab.appendChild(ln);
-        }
-        row.appendChild(tab);
-      }
-      /* 扫弦箭头层（v2.4.3）：**独立一层**，是 .cell 的兄弟节点而不是子节点。
-         理由见 CSS 里 .strums 的注释——格子有 overflow:hidden + 44px 高，
-         挂进去必然裁掉箭头的尖端与低音区尾巴（v2.4.2 的 bug，实测 24/24 全被裁）。
-         只挂扫弦轨：普通轨没有箭头，空层纯属浪费（同 v2.4.0 轨门控口径） */
-      if (S.track === "strum"){
-        const sl = document.createElement("div");
-        sl.className = "strums";
-        row.appendChild(sl);
-        strumLayers.push(sl);
-      } else strumLayers.push(null);
-      // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
-      /** @type {Record<number, HTMLElement>} */
-      const rl = {};
-      const markN = S.sig === 6 ? 2 : 4;
-      for (let k = 0; k < S.sig; k++){
-        for (let s = 0; s < markN; s++){
-          const lb = document.createElement("div");
-          lb.className = "ruler-lab" + (s === 0 ? " down" : "");
-          lb.textContent = String(s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]));
-          lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
-          row.appendChild(lb);
-          rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
-        }
-      }
-      rulerEls.push(rl);
-      /** @type {HTMLElement[]} */
-      const cells = [];
-      /** @type {HTMLElement[]} */
-      const fills = [];
-      /** @type {(HTMLElement|null)[]} */
-      const labels = [];
-      /** @type {(HTMLElement|null)[]} */
-      const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
-      subEls.push({});
-      let acc = 0;
-      /* 空扫的弦区要"跟随前一记实扫"（参考页明文），故在本小节内自上而下逐格携带。
-         跨小节不延续：新小节从全部弦重起——小节是扫弦谱的语义单位，跨小节沿用上一小节
-         末格的弦区会让新小节首格凭空落在低音区，读谱时无从解释。 */
-      let prevZone = 1;
-      p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
-        const startT = acc;
-        const c = document.createElement("div");
-        c.className = "cell upcoming" + (s.rest ? " rest" : "");
-        c.style.left = (acc / barTicks * 100) + "%";
-        c.style.width = `calc(${s.t / barTicks * 100}% - 4px)`;
-        acc += s.t;
-        const fill = document.createElement("div");
-        fill.className = "fill";
-        c.appendChild(fill);
-        fills.push(fill);
-        /* 块内按十六分切成刻度线；三连音块（t 不整除 12t=十六分）不画——
-           十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
-        if (s.t % T16 === 0){
-          const subs = document.createElement("div");
-          subs.className = "subs";
-          const nSub = s.t / T16;
-          for (let u = 0; u < nSub; u++){
-            const sub = document.createElement("div");
-            sub.className = "sub";
-            subs.appendChild(sub);
-            subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
-          }
-          c.appendChild(subs);
-        }
-        if (s.t >= T8){                    // 时值标签移到格子下方，与小格零冲突
-          const lb = document.createElement("div");
-          lb.className = "cell-label";
-          lb.textContent = stepLabel(s);
-          lb.style.left = `calc(${startT / barTicks * 100}% + 2px)`;
-          row.appendChild(lb);
-          labels.push(lb);
-        } else labels.push(null);
-        /* 扫弦竖箭头（v2.4.2 引入，v2.4.3 修正挂载位置）：照搬参考页的贯穿式竖箭头。
-           v2.1.0：字形按手部动作翻转（D→↑ 下扫 / U→↓ 上扫）。
-           v2.4.2：由「14px 方形徽标」换成**贯穿弦区的竖箭头**——
-             箭头跨越的弦数表达弦区（kF 贯穿六线 / kB 低音下三线 / kT 高音上三线），
-             方向由 .dn/.up 决定箭头画在哪一端；休止槽带 dir = 空扫，换成蓝色**虚线**箭头。
-             弦区取自 zone（0=低音 / 1=中=全部弦 / 2=高音）；空扫取前一记实扫的 zone
-             （参考页明文："弦区跟随前一记实扫"），没有前一记时落全部弦。
-           ★ v2.4.3 修 bug：v2.4.2 把它 appendChild 进格子（c.appendChild(sm)），
-             而格子的 `overflow:hidden` + `height:44px` 会把箭头裁掉——
-             尖端在 top:-5px（超出格子上界）、kB 的尾巴到 53px（超出格子下界 44px）。
-             实测 24/24 支箭头全部被裁，这正是"为什么箭头缺了头顶的尖端"的真因。
-             现在挂进**同行的 .strums 层**（不裁切、满行高），水平位置用格中心的百分比。
-           v2.4.0 轨门控：普通节拍轨**不画箭头**——它承诺"只出节拍音与重音"，
-           画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
-           ★ 注意 strums 数组必须**同时**推入占位 null：它与格子逐位同构，
-             fitCellAnnotations() 按下标对齐做窄格隐藏，少推一项会让隐藏判据整体错位 */
-        if (s.dir && S.track === "strum"){
-          const sm = document.createElement("div");
-          /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
-          const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
-          const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
-          sm.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
-          /* ★ v2.4.3：把自己对应的**格子下标**写在 data-i 上。
-             为什么需要它：层里的孩子是**紧凑**的（无方向的格不产生节点），
-             所以「层里第 i 个孩子」≠「第 i 格」——只有全格都有方向时才偶然相等。
-             读谱/测试要按格定位时，用 data-i 才是稳的（别用子节点序数反推）。
-             不改成"每格都塞占位节点"的理由：那会让一行凭空多出十几个空 div，
-             而 .strums 是每帧都可能被重建的节点，白增 DOM 规模与合成开销。 */
-          sm.dataset.i = String(i);
-          /* 水平定位到**格中心**：格子左缘 + 格宽的一半，用同一套 % 算，
-             与格子的 `left`/`width` 共口径（都不依赖像素宽度） */
-          const w = s.t / barTicks;
-          sm.style.left = ((startT / barTicks) + w / 2) * 100 + "%";
-          const sl = strumLayers[b];
-          if (sl) sl.appendChild(sm);
-          strums.push(sm);
-          if (!s.rest) prevZone = z;         // 只有实扫更新"前一记弦区"
-        } else strums.push(null);
-        /* 弦区色带（v2.2.0）已由 v2.4.2 的**贯穿式竖箭头**取代——弦区现在直接表达为
-           "箭头跨哪几条弦"，比"徽标下方 2px 色带"更贴近参考页的六线谱读法，
-           也不必再为"色带在窄格下要不要跟着藏"单独决策（整支箭头一起藏）。
-           zoneEls 保留为空数组（resetForStop / 其它迭代点仍按同构数组走，删掉会多处分叉）。 */
-        row.appendChild(c); cells.push(c);
-      });
-      /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
-         保证最难辨认的十六分/三连音也有名称可读 */
-      /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[]} */
-      const groups = [];
-let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }} */ (null), acc2 = /** @type {number} */ (0);
-      p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
-        const startT2 = acc2; acc2 += s.t;
-        const shorty = s.t < T8 && !s.rest;
-        if (shorty && !run) run = {i0:i, i1:i+1, tick:startT2, nm:DUR_NAME[s.t] || (fmtBeat(s.t) + "拍")};
-        else if (shorty && run) run.i1 = i + 1;
-        else if (run){ groups.push(run); run = null; }
-      });
-      if (run) groups.push(run);
-      groups.forEach(g => {
-        if (g.i1 - g.i0 < 2) return;                    // 单个短音符不标注，避免拥挤
-        const lb = document.createElement("div");
-        lb.className = "cell-label group";
-        lb.textContent = g.nm + " ×" + (g.i1 - g.i0);
-        lb.style.left = `calc(${g.tick / barTicks * 100}% + 2px)`;
-        row.appendChild(lb);
-        g.el = lb;
-      });
-      glEls.push(groups.filter(g => g.el));
-      viz.appendChild(row);
-      rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels); strumEls.push(strums);
-    }
+    for (let b = 0; b < LOOP_BARS; b++) buildBarRow(b, p, barTicks, viz);
     for (let i = 1; i < S.sig; i++){
       const gl = document.createElement("div");
       gl.className = "grid-line";
@@ -3663,7 +3712,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          并在这一刻采集轨道宽度（offsetWidth）。稳态帧一次都不读它。
        · paintLyric()：**每帧层**。只写 transform 与少量 className，零布局读取
          ——与 P1-4「帧内绝不读 offset*」是同一份承诺。
-     「段内位置」= arrBar × 段内小节 tick + 小节内 tick。arrBar/arrSec 由 Audio 的节目单
+     「段内位置」= arrBar × 段内小节 tick + 小节内 tick。arrBar/arrSec 由 AudioEngine 的节目单
      游标维护（与排程、弹跳球落点同源），所以歌词轨与拍点轨共用**同一个相位**：
      循环整段时两轨一起回卷，不各算各的（验收 9 的成立依据）。 */
   function buildLyricLane(){
@@ -3750,6 +3799,86 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      这里**不碰 requestAnimationFrame** —— 保证「无论从哪条分支返回，下一帧都会被排上」
      （v1.2.4 修复：主体曾在自己内部 3 处各自续期并提前 return，一旦中途抛异常，
       下一帧再也没人注册 → 渲染循环永久死亡） */
+  /** 十六分换格瞬间的副层反馈（paintFrameBody 的子工序，v2.4.4 拆出，**纯搬移**）：
+      刚走完的小格闪烁（REDUCE_MOTION 下跳过）→ 座次尺高亮搬家 → 状态栏读数。
+      只在「换格/换小节」时调用。它仍是每帧热路径的一部分——已登记进
+      tools/check-module-order.js 的 HOT 名单，体内同样不得引用后方模块（R2）。
+      @param {number} bar 当前小节 @param {number} beat 当前拍 @param {number} t16 十六分座次
+      @returns {void} */
+  function paintBeatFlash(bar, beat, t16){
+    let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
+    if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
+    const sub = subEls[fb] && subEls[fb][fk];
+    /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
+    if (sub && !REDUCE_MOTION){
+      // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
+      const cellNode = subCellEls[fb] && subCellEls[fb][fk];   // v2.4.4：查表代替 closest() 上溯
+      const onWhite = !!cellNode && (cellNode.classList.contains("played") || cellNode.classList.contains("active"));   // 正在弹的块也是白填充
+      const fc = flashTheme();   // v1.7.0：闪烁配色随主题（观测台 = 电光蓝）
+      const edge = fc.edge;
+      const glow = fc.glow;
+      const fillFlash = onWhite ? fc.strong : fc.soft;
+      const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
+      sub.animate([
+        {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
+        {boxShadow: base, backgroundColor: "transparent"}
+      ], {duration: 260, easing: "ease-out"});
+    }
+    // 座次尺：当前十六分位置高亮
+    if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
+    const rkey = vizSig === 6 ? Math.floor(t16 / 2) * 2 : t16;
+    const rl = rulerEls[bar] && rulerEls[bar][rkey];
+    if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
+    // 状态栏读数：第几小节 · 第几拍 + 拍内座次
+    const sfx = (vizSig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
+    const mutedNow = S.mute && bar === LOOP_BARS - 1;
+    $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
+  }
+
+  /** 音符级重绘（paintFrameBody 的子工序，v2.4.4 拆出，**纯搬移**）：
+      全量与增量两条路径共用同一个 setCell()，「增量结果 == 全量结果」是结构性保证
+      （v1.3.0，审计 P1-4）。触发全量的条件：首帧 / 换小节 / active 前进超过 1 格 / 回退 /
+      格子数变化。同是每帧热路径——已登记进 HOT 名单（R2），体内不得引用后方模块。
+      @param {number} bar 当前小节 @param {number} active 当前音符下标 @returns {void} */
+  function repaintCells(bar, active){
+    const prev = lastPainted;
+    // 下一颗音符预告（跨小节时指向下一行第一颗）
+  let nb = bar, ni = active + 1;
+  if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
+  /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义模式下等于每次重绘 64 次线性查找），
+     并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
+  const cellsPat = activePattern();
+  /* 增量重绘（v1.3.0，审计 P1-4）：
+     原实现每次换音符都把 4 小节全部格子重写一遍——Funk 十六分单小节 16 格，
+     4 小节全扫 = 128 次 style/class 写入；240BPM 下每秒换 16 次音符 ≈ 2000 次 DOM 写入/秒。
+     桌面无感，但中低端手机叠加弹跳球动画就掉帧。
+     现在只改真正变化的那几格（换音符 ≈ 6 次写入）；换小节时整行状态都变了，仍走全量。
+     两条路径共用同一个 setCell()，所以「增量结果 == 全量结果」是结构性保证，不是巧合。
+     触发全量的条件：首帧 / 换小节 / active 前进超过 1 格（掉帧或节流导致跨格）/ 回退 */
+  const stepGap = prev ? active - prev.active : Infinity;
+  const full = !prev || prev.bar !== bar || stepGap < 1 || stepGap > 1 || cellEls[bar].length !== (prev ? prev.len : -1);
+  if (full){
+    rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
+    for (let b = 0; b < LOOP_BARS; b++){
+      const bSteps = cellsPat.bars[b] || [];
+      for (let i = 0; i < cellEls[b].length; i++) setCell(b, i, bar, active, nb, ni, bSteps);
+      setGroup(b, bar, active);
+    }
+  } else {
+    /* 同小节内前进一格。变化的格子是：旧 active（→played）、新 active（→active）、
+       新 active 的下一格（→ 新增 .next）；旧 active 的 .next 正好落在新 active 上，已被覆盖 */
+    const bSteps = cellsPat.bars[bar] || [];
+    setCell(bar, prev.active, bar, active, nb, ni, bSteps);
+    setCell(bar, active, bar, active, nb, ni, bSteps);
+    if (prev.nb !== nb || prev.ni !== ni){
+      setCell(prev.nb, prev.ni, bar, active, nb, ni, cellsPat.bars[prev.nb] || []);
+      setCell(nb, ni, bar, active, nb, ni, cellsPat.bars[nb] || []);
+    }
+    setGroup(bar, bar, active);
+  }
+  lastPainted = { bar, active, nb, ni, len: cellEls[bar].length };
+  }
+
   function paintFrameBody(){
     /* 本地别名：ctx / playheadEl / trailGlowEl 均为模块级可空引用，
        收窄跨不过函数调用边界，一次性取别名并守卫（严格空值闸门） */
@@ -3823,73 +3952,12 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
     if (bar !== lastBar || t16 !== lastT16){
-      let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
-      if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
-      const sub = subEls[fb] && subEls[fb][fk];
-      /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
-      if (sub && !REDUCE_MOTION){
-        // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
-        const cellNode = sub.closest(".cell");
-        const onWhite = !!cellNode && (cellNode.classList.contains("played") || cellNode.classList.contains("active"));   // 正在弹的块也是白填充
-        const fc = flashTheme();   // v1.7.0：闪烁配色随主题（观测台 = 电光蓝）
-        const edge = fc.edge;
-        const glow = fc.glow;
-        const fillFlash = onWhite ? fc.strong : fc.soft;
-        const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
-        sub.animate([
-          {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
-          {boxShadow: base, backgroundColor: "transparent"}
-        ], {duration: 260, easing: "ease-out"});
-      }
-      // 座次尺：当前十六分位置高亮
-      if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-      const rkey = vizSig === 6 ? Math.floor(t16 / 2) * 2 : t16;
-      const rl = rulerEls[bar] && rulerEls[bar][rkey];
-      if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
-      // 状态栏读数：第几小节 · 第几拍 + 拍内座次
-      const sfx = (vizSig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
-      const mutedNow = S.mute && bar === LOOP_BARS - 1;
-      $("statusText").textContent = mutedNow ? `静音拍 · 第 ${bar + 1} 小节 · 心中默数` : `播放中 · 第 ${bar + 1} 小节 · ${beat + 1}${sfx}`;
+      paintBeatFlash(bar, beat, t16);
     }
     lastT16 = t16;
     if (bar === lastBar && active === lastStep) return;   // 音符未变：本帧只需上面的逐帧动画，跳过重绘
-    const prev = lastPainted;
     lastBar = bar; lastStep = active;
-    // 下一颗音符预告（跨小节时指向下一行第一颗）
-    let nb = bar, ni = active + 1;
-    if (ni >= cellEls[bar].length){ nb = (bar + 1) % LOOP_BARS; ni = 0; }
-    /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义模式下等于每次重绘 64 次线性查找），
-       并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
-    const cellsPat = activePattern();
-    /* 增量重绘（v1.3.0，审计 P1-4）：
-       原实现每次换音符都把 4 小节全部格子重写一遍——Funk 十六分单小节 16 格，
-       4 小节全扫 = 128 次 style/class 写入；240BPM 下每秒换 16 次音符 ≈ 2000 次 DOM 写入/秒。
-       桌面无感，但中低端手机叠加弹跳球动画就掉帧。
-       现在只改真正变化的那几格（换音符 ≈ 6 次写入）；换小节时整行状态都变了，仍走全量。
-       两条路径共用同一个 setCell()，所以「增量结果 == 全量结果」是结构性保证，不是巧合。
-       触发全量的条件：首帧 / 换小节 / active 前进超过 1 格（掉帧或节流导致跨格）/ 回退 */
-    const stepGap = prev ? active - prev.active : Infinity;
-    const full = !prev || prev.bar !== bar || stepGap < 1 || stepGap > 1 || cellEls[bar].length !== (prev ? prev.len : -1);
-    if (full){
-      rowEls.forEach((r, b) => r.classList.toggle("current", b === bar));
-      for (let b = 0; b < LOOP_BARS; b++){
-        const bSteps = cellsPat.bars[b] || [];
-        for (let i = 0; i < cellEls[b].length; i++) setCell(b, i, bar, active, nb, ni, bSteps);
-        setGroup(b, bar, active);
-      }
-    } else {
-      /* 同小节内前进一格。变化的格子是：旧 active（→played）、新 active（→active）、
-         新 active 的下一格（→ 新增 .next）；旧 active 的 .next 正好落在新 active 上，已被覆盖 */
-      const bSteps = cellsPat.bars[bar] || [];
-      setCell(bar, prev.active, bar, active, nb, ni, bSteps);
-      setCell(bar, active, bar, active, nb, ni, bSteps);
-      if (prev.nb !== nb || prev.ni !== ni){
-        setCell(prev.nb, prev.ni, bar, active, nb, ni, cellsPat.bars[prev.nb] || []);
-        setCell(nb, ni, bar, active, nb, ni, cellsPat.bars[nb] || []);
-      }
-      setGroup(bar, bar, active);
-    }
-    lastPainted = { bar, active, nb, ni, len: cellEls[bar].length };
+    repaintCells(bar, active);
   }
 
   /* 单格重绘（v1.3.0）：全量与增量共用，保证两条路径产出的 DOM 完全一致 */
@@ -3961,8 +4029,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricHeadEl, lyricChipEls, lyricFillEls }) };
 })();
 
-/* ================= Audio · Web Audio 前瞻调度 ================= */
-const Audio = (() => {
+/* ================= AudioEngine · Web Audio 前瞻调度 ================= */
+const AudioEngine = (() => {
   /* 前瞻窗口按可见性自适应（v1.3.0，审计 P1-3）。
      为什么要自适应：调度时钟跑在主线程 setInterval(25ms) 上，而浏览器对**后台标签页**的
      定时器节流下限是 1000ms（Chrome 在页面隐藏 5 分钟后还有 intensive throttling，约 1 次/分钟）。
@@ -3992,7 +4060,7 @@ const Audio = (() => {
         nextNoteTime = loopStart;
         schedBar = loopStartBar(); schedStep = 0;
         onsetBuf.length = 0; onsetNext = null;
-        Viz.resetTracking();                 // Viz 在 Audio 之前声明：向前引用，方向安全
+        Viz.resetTracking();                 // Viz 在 AudioEngine 之前声明：向前引用，方向安全
         watchCtx();
       }
     };
@@ -4276,12 +4344,90 @@ const Audio = (() => {
       try{ if (onSchedError) onSchedError(e); }catch(e2){}
     }
   }
+  /** 排程一个音符位（schedulerBody 主循环的一步，v2.4.4 由其体内拆出，**纯搬移**）：
+      空小节安全跳过 → 歌词锚点提示音 → 发声（Swing/静音拍/弦区门控）→ 游标前进 →
+      小节边界四件事（练习量计数 → 变速爬坡 → 曲式推进 → 挂起切换消费）。
+      @param {any} pat activePattern() 快照 @param {any} bars 快照的小节数组
+      @param {number[]} accents 重拍落点 @param {AudioContext} c 音频上下文（非空，调用方已判）
+      @returns {boolean} true = 本轮调度就此结束（对应拆分前主体里的 return）；false = 主循环继续 */
+  function schedOneStep(pat, bars, accents, c){
+    const steps = bars[schedBar];
+    if (!steps || steps.length === 0){                  // 空小节：安全跳过（用快照拍号，挂起窗口内 S.sig 可能已变）
+      const adv = pat.meter * spb();                    // v1.2.4：强制正向推进，脏拍号不得让进度倒退
+      nextNoteTime += (isFinite(adv) && adv > 0) ? adv : 0.5;
+      schedBar = loopNextBar(schedBar);
+      limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
+      return false;   // 空小节跳过：主循环继续下一步
+    }
+    /* 歌词锚点提示音（v2.1.0 F1）：在小节起点把本小节覆盖到的字锚点排进音频时钟。
+       「小节起点」用 schedStep===0 判定——此刻 nextNoteTime 正是本小节起点，且 arrBar
+       已由上一个边界（或 start/arrangeStart）指向本小节。cueBarT 是幂等护栏：
+       reanchor / 上下文重建会把游标跳回，时刻不同则视为新的一遍（正常重排），
+       时刻相同则说明是同一小节同一次处理（不重排）。 */
+    if (schedStep === 0 && cueBarT !== nextNoteTime){
+      cueBarT = nextNoteTime;
+      emitLyricCues(nextNoteTime, pat.meter);
+    }
+    let cumT = 0;
+    for (let i = 0; i < schedStep; i++) cumT += steps[i].t;
+    const muted = S.mute && schedBar === LOOP_BARS - 1;
+    if (!steps[schedStep].rest){
+      const t0 = nextNoteTime + swingShift(pat, steps[schedStep], cumT);
+      /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
+         静音拍训练中球就是唯一的节拍来源）；时刻含 Swing 偏移，落点即真实发声时刻 */
+      /* aSec/aBar（v2.0.2）：端点入缓冲时的节目单位置。渲染层的待命球要按**可听**位置
+         算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
+         提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
+      onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar });
+      /* zone（v2.2.0）：从音符快照透传给 playClick——空扫（rest）根本走不到这里，
+         「空扫静默」由上面的 !rest 判定天然保证，无需在 zone 分支里再判一次。
+         v2.4.0 轨门控：**普通节拍轨不传 zone**——zone 是扫弦轨的弦区音色，
+         普通轨要的正是"只有节拍音与重音"。这样 playClick 里 `zone !== undefined` 那条
+         分支整体不成立，自动退回全局音色（click/wood/drum），无需在 playClick 里判 track：
+         门控只在这一处（发声入口），playClick 保持"只认自己的入参"的纯函数性质。
+         ★ 时刻一字不动：zone 只改频段不改时间轴（T62e 守这条），不传 zone 同样不碰时刻 */
+      if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB),
+        S.track === "strum" ? steps[schedStep].zone : undefined);
+    }
+    nextNoteTime += steps[schedStep].t * spb() / TPB;
+    schedStep++;
+    if (schedStep >= steps.length){
+      schedStep = 0; schedBar = loopNextBar(schedBar);
+      limitBars++;                                     // v1.9.0：练习量按小节累计（本处与空小节跳过是仅有的两个小节边界出口，共用 loopNextBar）
+      /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
+      if (S.trainer.on && Trainer.onBarBoundary()) return true;
+      /* 曲式编排（v2.0.0 S4）：在小节边界推进节目单。
+         ★ 次序是刻意的：练习量计数 → 变速训练器 → **曲式推进** → 统一的挂起消费。
+           曲式推进排在挂起消费**之前**，因为它可能"排一个待应用的切换"交给下面同一条
+           consumePending 路径——绝不另写一条切换路径（那条已经处理好了 scheduler 中途
+           退出 + loopStart 重映射 + resetTracking + 与变速训练器的次序）。
+         走到范围末尾且不循环 → 经注入钩子停止（AudioEngine 不能反向调用 Controls）。 */
+      if (S.playMode === "arrange"){
+        const nxt = arrNextBar(arrangeCur(), S.arrangeSel, arrSec, arrBar);
+        if (!nxt){ if (onArrangeEnd) onArrangeEnd(); return true; }
+        arrSec = nxt.sec; arrBar = nxt.bar;
+        schedBar = nxt.schedBar;                        // 节目单是型内游标的唯一来源
+        if (nxt.blockChanged) Presets.scheduleRef(nxt.ref);
+        if (onArrangeBar) onArrangeBar();               // 刷新"现在在第几段"（每小节一次，不是每帧）
+      }
+      /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
+      const pend = Presets.consumePending(schedBar);
+      if (pend.applied){
+        schedBar = pend.resetBar;
+        loopStart = nextNoteTime - schedBar * S.sig * spb();
+        Viz.resetTracking();
+        return true;                                          // bars 引用已过期，下个调度周期继续
+      }
+    }
+    return false;
+  }
+
   function schedulerBody(){
     /* 本轮窗口只取一次：避免调度途中 visible/hidden 翻转导致同一次调用里两个分支用不同窗口 */
     const win = schedWindow();
     /* 练习量（v1.9.0）：每个 25ms 周期问一次「该不该停」。放在最前——一旦到点立刻停播，
        本周期不再排任何音符（少排一个音就少一次"停了还在响"的观感）。到点判定归共享状态区的
-       limitHit()，处置归注入的 onLimitPulse（Audio 不能反向调用 Controls）。
+       limitHit()，处置归注入的 onLimitPulse（AudioEngine 不能反向调用 Controls）。
        为什么 min 模式也靠这里而不是小节边界：30BPM 的 7/4 一小节 16 秒，按边界判会晚停十几秒；
        25ms 周期判定则与 BPM/拍号完全无关 */
     if (onLimitPulse && onLimitPulse()) return;
@@ -4344,74 +4490,7 @@ const Audio = (() => {
         reanchor("overflow");
         break;
       }
-      const steps = bars[schedBar];
-      if (!steps || steps.length === 0){                  // 空小节：安全跳过（用快照拍号，挂起窗口内 S.sig 可能已变）
-        const adv = pat.meter * spb();                    // v1.2.4：强制正向推进，脏拍号不得让进度倒退
-        nextNoteTime += (isFinite(adv) && adv > 0) ? adv : 0.5;
-        schedBar = loopNextBar(schedBar);
-        limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
-        continue;
-      }
-      /* 歌词锚点提示音（v2.1.0 F1）：在小节起点把本小节覆盖到的字锚点排进音频时钟。
-         「小节起点」用 schedStep===0 判定——此刻 nextNoteTime 正是本小节起点，且 arrBar
-         已由上一个边界（或 start/arrangeStart）指向本小节。cueBarT 是幂等护栏：
-         reanchor / 上下文重建会把游标跳回，时刻不同则视为新的一遍（正常重排），
-         时刻相同则说明是同一小节同一次处理（不重排）。 */
-      if (schedStep === 0 && cueBarT !== nextNoteTime){
-        cueBarT = nextNoteTime;
-        emitLyricCues(nextNoteTime, pat.meter);
-      }
-      let cumT = 0;
-      for (let i = 0; i < schedStep; i++) cumT += steps[i].t;
-      const muted = S.mute && schedBar === LOOP_BARS - 1;
-      if (!steps[schedStep].rest){
-        const t0 = nextNoteTime + swingShift(pat, steps[schedStep], cumT);
-        /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
-           静音拍训练中球就是唯一的节拍来源）；时刻含 Swing 偏移，落点即真实发声时刻 */
-        /* aSec/aBar（v2.0.2）：端点入缓冲时的节目单位置。渲染层的待命球要按**可听**位置
-           算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
-           提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
-        onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar });
-        /* zone（v2.2.0）：从音符快照透传给 playClick——空扫（rest）根本走不到这里，
-           「空扫静默」由上面的 !rest 判定天然保证，无需在 zone 分支里再判一次。
-           v2.4.0 轨门控：**普通节拍轨不传 zone**——zone 是扫弦轨的弦区音色，
-           普通轨要的正是"只有节拍音与重音"。这样 playClick 里 `zone !== undefined` 那条
-           分支整体不成立，自动退回全局音色（click/wood/drum），无需在 playClick 里判 track：
-           门控只在这一处（发声入口），playClick 保持"只认自己的入参"的纯函数性质。
-           ★ 时刻一字不动：zone 只改频段不改时间轴（T62e 守这条），不传 zone 同样不碰时刻 */
-        if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB),
-          S.track === "strum" ? steps[schedStep].zone : undefined);
-      }
-      nextNoteTime += steps[schedStep].t * spb() / TPB;
-      schedStep++;
-      if (schedStep >= steps.length){
-        schedStep = 0; schedBar = loopNextBar(schedBar);
-        limitBars++;                                     // v1.9.0：练习量按小节累计（本处与空小节跳过是仅有的两个小节边界出口，共用 loopNextBar）
-        /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
-        if (S.trainer.on && Trainer.onBarBoundary()) return;
-        /* 曲式编排（v2.0.0 S4）：在小节边界推进节目单。
-           ★ 次序是刻意的：练习量计数 → 变速训练器 → **曲式推进** → 统一的挂起消费。
-             曲式推进排在挂起消费**之前**，因为它可能"排一个待应用的切换"交给下面同一条
-             consumePending 路径——绝不另写一条切换路径（那条已经处理好了 scheduler 中途
-             退出 + loopStart 重映射 + resetTracking + 与变速训练器的次序）。
-           走到范围末尾且不循环 → 经注入钩子停止（Audio 不能反向调用 Controls）。 */
-        if (S.playMode === "arrange"){
-          const nxt = arrNextBar(arrangeCur(), S.arrangeSel, arrSec, arrBar);
-          if (!nxt){ if (onArrangeEnd) onArrangeEnd(); return; }
-          arrSec = nxt.sec; arrBar = nxt.bar;
-          schedBar = nxt.schedBar;                        // 节目单是型内游标的唯一来源
-          if (nxt.blockChanged) Presets.scheduleRef(nxt.ref);
-          if (onArrangeBar) onArrangeBar();               // 刷新"现在在第几段"（每小节一次，不是每帧）
-        }
-        /* 播放中切换节奏型：在小节边界无缝生效（拍号变化则等到循环起点），避免跳针 */
-        const pend = Presets.consumePending(schedBar);
-        if (pend.applied){
-          schedBar = pend.resetBar;
-          loopStart = nextNoteTime - schedBar * S.sig * spb();
-          Viz.resetTracking();
-          return;                                          // bars 引用已过期，下个调度周期继续
-        }
-      }
+      if (schedOneStep(pat, bars, accents, c)) return;   // true = 本轮结束（变速到顶/曲式播完/挂起落定）
     }
     /* 弹跳球（v1.2）：刷新「下一落点」预测并修剪旧端点（保留最近 1s 已落地端点，
        bracket 查找需要 now 之前的一个端点）。早期 return 路径（变速到顶/挂起消费）
@@ -4767,7 +4846,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     const probs = a ? arrangeProblems(a) : ["这首曲式不存在或已被删除"];
     const first = probs.length ? null : arrNextBar(a, S.arrangeSel, 0, -1);
     if (!first){
-      S.playMode = "preset";
+      setMode("playMode", "preset", "曲式校验失败回退");
       S.arrangeSel = { id: "", from: 0, to: 0, loop: false };
       return probs.length ? probs : ["播放范围里没有可播的小节"];
     }
@@ -4782,6 +4861,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     Presets.flushPending();                    // 此刻尚未排程，挂起立即落定
     return null;
   }
+  /** 开始播放（幂等：S.playing 时直接返回）。建立音频时钟锚点、预备拍、调度周期与渲染循环。 @returns {void} */
   function start(){
     /* 重入保护（v2.0.6，审计 P1-3）：start() 会新开一个 setInterval 并覆盖 timer 句柄——
        而旧句柄一旦被覆盖就再也清不掉，两个 25ms 循环同时排程 = 每个音符排两遍（听感是
@@ -4790,14 +4870,14 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
        那是把不变式存在调用方的记忆里；这里补上，从此入口自身即是幂等的。
        注意守卫必须在 ensureCtx 之前：没有上下文时的 early return 不该改变播放状态 */
     if (S.playing) return;
-    Audio.ensureCtx();
+    AudioEngine.ensureCtx();
     const c = ctx;                           // ensureCtx 保证此时必非 null；取本地常量，闭包里 narrowing 才保得住
     if (!c) return;
     if (S.trainer.on){
       Trainer.reset();
       setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
     }
-    S.playing = true;
+    setMode("playing", true, "start");
     schedBar = loopStartBar(); schedStep = 0;   // v2.4.3：循环开着就直接落在区间起点（否则第一遍要先白弹到 from）
     /* 曲式模式 → 型与游标落到范围起点（v2.0.0）。返回非 null = 曲式已坏（不存在 / 引用失效 /
        拍号不一致 / 范围无内容），arrangeStart 已退回预设模式。**这里不中断播放**：用户按下的是
@@ -4818,12 +4898,12 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     sessStartT = c.currentTime;                // v1.4：练习计时起点（音频时钟，挂起不计时）
     /* 练习量（v1.9.0）：每次开始都从零起算。min 模式的基准点分两种情形——
        无预备拍：就是本轮循环起点；有预备拍：先留 null，等预备拍数完那一刻再取
-       （Audio 预备拍循环里赋值），这样「练 5 分钟」不会被预备拍的几拍偷走 */
+       （AudioEngine 预备拍循环里赋值），这样「练 5 分钟」不会被预备拍的几拍偷走 */
     limitBars = 0;
     limitT0 = (S.countIn.on && S.countIn.beats > 0) ? null : loopStart;
     syncLimitProg();
     KeepAlive.sync();                          // v1.4：后台保活随播放状态生效
-    timer = setInterval(Audio.scheduler, CONFIG.schedInterval);
+    timer = setInterval(AudioEngine.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
     $("statusDot").classList.add("live");
@@ -4833,8 +4913,9 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       ? `开始播放，${S.countIn.beats} 拍预备` : "开始播放");
     Store.persist();
   }
+  /** 停止播放：清会话游标与额度、落定挂起切换、停调度与渲染循环、练习入账。 @returns {void} */
   function stop(){
-    S.playing = false;
+    setMode("playing", false, "stop");
     /* 预备拍会话状态：ciLeft=0 已足以让调度侧的预备拍循环不再进入；ciNext/ciStart 一并归零
        是为了不给"句柄型状态"留下需要靠下一次 start() 覆盖的残值（v2.0.6，审计 P1-3） */
     ciLeft = 0; ciBeats = 0; ciNext = 0; ciStart = 0;
@@ -4902,7 +4983,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       e.preventDefault(); S.playing ? stop() : start();
     }
   });
-  window.addEventListener("pointerdown", Audio.ensureCtx, {once:true});
+  window.addEventListener("pointerdown", AudioEngine.ensureCtx, {once:true});
 
   function updateMeta(){
     $("patternMeta").textContent = `${meterName(S.sig)} 拍 · ${S.bpm} BPM`;
@@ -5057,41 +5138,33 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   $("volMaster").addEventListener("change", Store.persist);
   $("volAccent").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
 
-  $("muteToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    S.mute = !S.mute;
-    setToggle("muteToggle", S.mute);
-    Viz.syncMuteBars();
-    Store.persist();
-  });
+  /* 开关处理器工厂（v2.4.4）：mute/bounce/showTab/countIn 四个开关处理器曾是同构的
+     复制粘贴（blur → 翻转 → setToggle → persist），差异只在翻转的字段与收尾动作。
+     v1.3.0 已有「开关三件套各写一遍必然漂移」的教训（见 §3.7 setToggle），别把处理器的
+     骨架再复制一遍——新增开关一律走 bindToggle。 */
+  /** @param {string} id @param {() => boolean} flip 翻转目标字段并返回新值 @param {() => void} [after] 收尾动作（同步副层 UI 等） */
+  function bindToggle(id, flip, after){
+    $(id).addEventListener("click", (/** @type {MouseEvent} */ e) => {
+      evEl(e).blur();
+      setToggle(id, flip());
+      if (after) after();
+      Store.persist();
+    });
+  }
+
+  bindToggle("muteToggle", () => (S.mute = !S.mute), () => Viz.syncMuteBars());
 
   /* 弹跳球开关（v1.2）：只控显隐，onset 表照常维护（重新打开时球立即就位，无需暖机） */
-  $("bounceToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    S.bounce = !S.bounce;
-    setToggle("bounceToggle", S.bounce);
-    Store.persist();
-  });
+  bindToggle("bounceToggle", () => (S.bounce = !S.bounce));
 
   /* 六线底纹开关（v2.4.2）：只切 .viz 上的 no-tab 类，**不重建 DOM**——
      六线是纯背景层，重建整棵树会让播放中的动画抖一下，而 `.viz.no-tab .tab{display:none}`
      一条 CSS 规则就够了。箭头不受影响（它是内容，不是底纹）。 */
-  $("tabToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    S.showTab = !S.showTab;
-    setToggle("tabToggle", S.showTab);
-    Viz.syncTabLayer();
-    Store.persist();
-  });
+  bindToggle("tabToggle", () => (S.showTab = !S.showTab), () => Viz.syncTabLayer());
 
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
-  $("countInToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    S.countIn.on = !S.countIn.on;
-    setToggle("countInToggle", S.countIn.on);
-    $("countInBeatsWrap").hidden = !S.countIn.on;
-    Store.persist();
-  });
+  bindToggle("countInToggle", () => (S.countIn.on = !S.countIn.on),
+    () => { $("countInBeatsWrap").hidden = !S.countIn.on; });
   $("countInBeats").addEventListener("change", (/** @type {Event} */ e) => {
     let v = Math.round(+evTarget(e).value);
     if (!isFinite(v)) v = S.countIn.beats;
@@ -5134,8 +5207,8 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     }
     if (txt !== lastLimitProg){ lastLimitProg = txt; $("limitProg").textContent = txt; }
   }
-  /* Audio 每个调度周期调用（经共享状态区的 onLimitPulse 钩子注入）。
-     返回 true = 已停播，Audio 本次调度立即退出。
+  /* AudioEngine 每个调度周期调用（经共享状态区的 onLimitPulse 钩子注入）。
+     返回 true = 已停播，AudioEngine 本次调度立即退出。
      名字刻意不叫 onLimitPulse —— 那会遮蔽共享状态区里的同名钩子变量（ESLint no-shadow 会报，
      而遮蔽恰恰会让「到底谁在调谁」变得难读）。这里叫 limitPulse，导出时再挂到那个名字上。
      文案与读屏播报沿用「训练完成」的同一套做法：先 stop() 再覆盖状态栏——stop() 内部会统一
@@ -5624,7 +5697,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       /* v1.1.1：先试「就地接续」——点下即生效，不再等一个小节。
          （用户 bug：播放中从三连音基础切四分基础，第 1 小节仍走三连音，要等小节边界才换）
          必须在 applyPatternChange 之前调用：resyncToNow 要靠旧节奏型算已走过的 tick */
-      if (Audio.resyncToNow(curPattern())){
+      if (AudioEngine.resyncToNow(curPattern())){
         applyPatternChange();
         Viz.resetTracking();            // 网格与相位都可能变，强制下一帧全量重画高亮
         return;
@@ -5804,9 +5877,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     syncLoopUI();
     Store.persist();                                // 练习偏好：跟热键走（250ms 防抖）
     if (!changed) return;
-    /* 播放中：把循环的起点**立刻**生效。rescheduleLoop 由 Audio 提供
+    /* 播放中：把循环的起点**立刻**生效。rescheduleLoop 由 AudioEngine 提供
        （它才持有 schedBar / loopStart 这些私有游标，Controls 与 Presets 都不该直接碰） */
-    if (S.playing) Audio.rescheduleLoop();
+    if (S.playing) AudioEngine.rescheduleLoop();
   }
   /* 「循环本段」：一键把区间置为整段（等价于"就循环这个型"）。
      已是整段时再点 = 关掉——同一颗按钮管开关与"归位到全段"，比另加一颗"重置"少一个控件 */
@@ -5860,7 +5933,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   }
   function stopAudition(){
     Controls.stop();
-    S.preview = false;
+    setMode("preview", false, "停止试听");
     previewRef = null;                    // v1.10.0：试听对象一并摘掉（curPattern 靠它判断试听谁）
     if (prevSigBeforeAudition !== null){ Controls.setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
     /* v2.0.5（审计 P0-4）：顺序同 applyPatternChange——提示带显隐会改变行几何，
@@ -5890,6 +5963,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const wrap = $("editorBars");
     clear(wrap);
     Modal.unbindOverlay("editor");        // v2.0.4：重建前先解绑上一轮登记（否则记录随每次重建无界增长）
+    /* v2.4.4：4 小节的行先入 DocumentFragment、最后一次插入——逐次 appendChild 会
+       每行触发一次样式/布局失效（编辑器每次按键都全量重建，累积可感知） */
+    const frag = document.createDocumentFragment();
     let allValid = true;
     for (let b = 0; b < LOOP_BARS; b++){
       const ok = barValid(b);
@@ -5953,8 +6029,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
         }
       });
       row.appendChild(label); row.appendChild(track);
-      wrap.appendChild(row);
+      frag.appendChild(row);
     }
+    wrap.appendChild(frag);               // 一次插入（DocumentFragment 语义：子节点整体搬家）
     $("editorStatus").textContent = allValid ? "校验通过 · 可以保存" : "存在时值不完整的小节";
     $("editorStatusWrap").className = "status " + (allValid ? "ok" : "bad");
     $("savePresetBtn").disabled = !allValid;
@@ -6100,7 +6177,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       if (!d) return;
       prevSigBeforeAudition = S.sig;  // 试听结束还原主界面拍号
       Controls.setSig(d.meter);
-      S.preview = true;
+      setMode("preview", true, "编辑器试听");
       previewRef = d;                 // v1.10.0：指出「试听谁」（编辑器是草稿，听辨训练是候选题）
       Viz.buildViz();
       Controls.start();
@@ -6486,7 +6563,7 @@ const Ear = (() => {
   /* 停播 + 摘掉试听态（不动 overlay 显隐，也不还原拍号——下一题还要用新的拍号） */
   function stopAudio(){
     if (S.playing || S.preview) Controls.stop();
-    S.preview = false;
+    setMode("preview", false, "听辨停播");
     previewRef = null;
     playQuota = 0;
     onQuotaDone = null;
@@ -6494,7 +6571,7 @@ const Ear = (() => {
   function play(){
     if (!question) return;
     stopAudio();                          // 保险：别在播放中换题时叠两层
-    S.preview = true;
+    setMode("preview", true, "听辨放题");
     previewRef = question.answer;
     Controls.setSig(question.answer.meter);
     Viz.buildViz();
@@ -6579,7 +6656,7 @@ const Ear = (() => {
 
 /* ================= Arrange · 曲式编排（v2.0.0） ================= */
 /* 编排 UI。数据模型与校验在 Store（S2），节目单步进在共享状态区（S3），
-   播放接线在 Audio/Controls（S4）——本模块只做"把曲式编出来"这件事。
+   播放接线在 AudioEngine/Controls（S4）——本模块只做"把曲式编出来"这件事。
    声明在 Presets / Controls 之后，所以直接调它们是**向前引用**，不产生方向问题。 */
 const Arrange = (() => {
   /** @type {string | null} */
@@ -6807,6 +6884,120 @@ const Arrange = (() => {
     return ly;
   }
 
+  /** 建一个段行（render 的子工序，v2.4.4 由 forEach 回调体内拆出，**纯搬移**）：
+      [段号, 段名, 块列, 操作钮, 歌词轨] 五件套 + 起/终范围钮 + 上移/下移/删除。
+      行内所有交互经 Modal.bindOverlay 登记（重渲染前的统一解绑靠它，见 §3.10）。
+      @param {any} a 当前曲式 @param {any} sec 段对象 @param {number} i 段下标
+      @returns {any} 段行元素；null = 本段跳过（对应拆分前回调里的 return） */
+  function buildSecRow(a, sec, i){
+    const row = document.createElement("div");
+    row.className = "arg-sec";
+    const lab = document.createElement("div"); lab.className = "arg-sec-label";
+    lab.textContent = "段 " + (i + 1);
+    row.appendChild(lab);
+    const nm = document.createElement("input");
+    nm.className = "arg-name"; nm.type = "text"; nm.value = sec.name;
+    nm.setAttribute("aria-label", "第 " + (i + 1) + " 段名称");
+    Modal.bindOverlay("arrangeOverlay", nm, "change", () => { const d = snapshot(); d.sections[i].name = String(nm.value).slice(0, 40); save(d); });
+    row.appendChild(nm);
+    const blks = document.createElement("div"); blks.className = "arg-blocks";
+    sec.blocks.forEach((/** @type {any} */ b, /** @type {number} */ j) => {
+      const chip = document.createElement("div");
+      chip.className = "arg-block" + (refDead(b.ref) ? " dead" : "");
+      const nmb = document.createElement("span"); nmb.textContent = refName(b.ref);
+      const reps = document.createElement("input");
+      reps.className = "arg-reps"; reps.type = "number"; reps.min = "1"; reps.max = String(CONFIG.arrMaxRepeats);
+      reps.value = String(b.repeats);
+      reps.setAttribute("aria-label", `第 ${i + 1} 段第 ${j + 1} 块的重复遍数`);
+      Modal.bindOverlay("arrangeOverlay", reps, "change", () => {
+        const d = snapshot();
+        d.sections[i].blocks[j].repeats = Math.min(CONFIG.arrMaxRepeats, Math.max(1, Math.round(+reps.value) || 1));
+        save(d);
+      });
+      const pick = document.createElement("button");
+      pick.className = "arg-mini"; pick.textContent = "换";
+      pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
+      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; render(); });
+      const del = document.createElement("button");
+      del.className = "arg-mini"; del.textContent = "✕";
+      del.setAttribute("aria-label", `删除第 ${i + 1} 段第 ${j + 1} 块`);
+      Modal.bindOverlay("arrangeOverlay", del, "click", () => {
+        if (sec.blocks.length <= 1){ Modal.uiAlert("一段至少要有 1 块——要清空就把整段删掉。"); return; }
+        const d = snapshot(); d.sections[i].blocks.splice(j, 1); save(d);
+      });
+      /* 单位也做成元素而不是 createTextNode：一是测试沙箱没有 createTextNode，
+         二是本项目的惯例是"用 createElement + appendChild 而不是拼串"——
+         这样 DOM 结构在断言里是可见的（见 tests/lib/harness.js） */
+      const unit = document.createElement("span"); unit.textContent = " 遍";
+      chip.appendChild(nmb); chip.appendChild(reps);
+      chip.appendChild(unit);
+      chip.appendChild(pick); chip.appendChild(del);
+      blks.appendChild(chip);
+    });
+    const addB = document.createElement("button");
+    addB.className = "arg-mini"; addB.textContent = "+ 块";
+    addB.setAttribute("aria-label", "给第 " + (i + 1) + " 段加一块");
+    Modal.bindOverlay("arrangeOverlay", addB, "click", () => {
+      const d = snapshot();
+      d.sections[i].blocks.push({ ref: { type: "builtin", idx: 0 }, repeats: 1 });
+      save(d);
+    });
+    blks.appendChild(addB);
+    row.appendChild(blks);
+
+    const ops = document.createElement("div"); ops.className = "arg-ops";
+    /* 范围起/终直接设在段行上：沙箱不支持 <select>，且这样"点哪段设哪段"更好按 */
+    /** @param {"from"|"to"} which @param {string} txt @param {string} aria */
+    const mkRange = (which, txt, aria) => {
+      const btn = document.createElement("button");
+      btn.className = "arg-mini" + (S.arrangeSel[which] === i ? " sel" : "");
+      btn.textContent = txt; btn.setAttribute("aria-label", aria);
+      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
+        S.arrangeSel.id = a.id;
+        S.arrangeSel[which] = i;
+        if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
+        if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
+        Store.persist();
+        render(); refreshBar();
+      });
+      return btn;
+    };
+    ops.appendChild(mkRange("from", "起", "把第 " + (i + 1) + " 段设为播放起点"));
+    ops.appendChild(mkRange("to", "终", "把第 " + (i + 1) + " 段设为播放终点"));
+    /* 上移/下移做成同一个助手：原先两条各写一遍交换逻辑，而 lint 把这两个内联回调
+       当成同一作用域（报重复声明 t）。抽出来既去重，也顺带规避 */
+    /** @param {number} dir @param {string} aria @param {boolean} dis */
+    const mkMove = (dir, aria, dis) => {
+      const btn = document.createElement("button");
+      btn.className = "arg-mini"; btn.textContent = dir < 0 ? "↑" : "↓";
+      btn.disabled = dis;
+      btn.setAttribute("aria-label", aria);
+      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
+        const d = snapshot();
+        const s = d.sections[i]; d.sections[i] = d.sections[i + dir]; d.sections[i + dir] = s;
+        save(d);
+      });
+      return btn;
+    };
+    const rm = document.createElement("button");
+    rm.className = "arg-mini"; rm.textContent = "✕";
+    rm.disabled = a.sections.length <= 1;
+    rm.setAttribute("aria-label", "删除第 " + (i + 1) + " 段");
+    Modal.bindOverlay("arrangeOverlay", rm, "click", () => {
+      if (a.sections.length <= 1){ Modal.uiAlert("一首曲式至少要有 1 段。"); return; }
+      Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
+    });
+    ops.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
+    ops.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
+    ops.appendChild(rm);
+    row.appendChild(ops);
+    /* 歌词轨挂在段行下方（v2.1.0 F1）：顺序是 [段号, 段名, 块, 操作, 歌词]。
+       必须在 .arg-ops **之后**追加——测试按 children[2]/[3] 定位块与操作钮，
+       插在前面会把既有定位全部挪位。 */
+    row.appendChild(mkLyricRow(a, sec, i));
+    return row;
+  }
+
   function render(){
     const list = $("argList");
     clear(list);
@@ -6835,114 +7026,13 @@ const Arrange = (() => {
     $("argAddSec").disabled = !a;
     if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argRangeRow")); return; }
 
+    /* v2.4.4：段行先入 DocumentFragment、最后一次插入（同 Editor.render 的批量插入口径） */
+    const frag = document.createDocumentFragment();
     a.sections.forEach((/** @type {any} */ sec, /** @type {number} */ i) => {
-      const row = document.createElement("div");
-      row.className = "arg-sec";
-      const lab = document.createElement("div"); lab.className = "arg-sec-label";
-      lab.textContent = "段 " + (i + 1);
-      row.appendChild(lab);
-      const nm = document.createElement("input");
-      nm.className = "arg-name"; nm.type = "text"; nm.value = sec.name;
-      nm.setAttribute("aria-label", "第 " + (i + 1) + " 段名称");
-      Modal.bindOverlay("arrangeOverlay", nm, "change", () => { const d = snapshot(); d.sections[i].name = String(nm.value).slice(0, 40); save(d); });
-      row.appendChild(nm);
-      const blks = document.createElement("div"); blks.className = "arg-blocks";
-      sec.blocks.forEach((/** @type {any} */ b, /** @type {number} */ j) => {
-        const chip = document.createElement("div");
-        chip.className = "arg-block" + (refDead(b.ref) ? " dead" : "");
-        const nmb = document.createElement("span"); nmb.textContent = refName(b.ref);
-        const reps = document.createElement("input");
-        reps.className = "arg-reps"; reps.type = "number"; reps.min = "1"; reps.max = String(CONFIG.arrMaxRepeats);
-        reps.value = String(b.repeats);
-        reps.setAttribute("aria-label", `第 ${i + 1} 段第 ${j + 1} 块的重复遍数`);
-        Modal.bindOverlay("arrangeOverlay", reps, "change", () => {
-          const d = snapshot();
-          d.sections[i].blocks[j].repeats = Math.min(CONFIG.arrMaxRepeats, Math.max(1, Math.round(+reps.value) || 1));
-          save(d);
-        });
-        const pick = document.createElement("button");
-        pick.className = "arg-mini"; pick.textContent = "换";
-        pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
-        Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; render(); });
-        const del = document.createElement("button");
-        del.className = "arg-mini"; del.textContent = "✕";
-        del.setAttribute("aria-label", `删除第 ${i + 1} 段第 ${j + 1} 块`);
-        Modal.bindOverlay("arrangeOverlay", del, "click", () => {
-          if (sec.blocks.length <= 1){ Modal.uiAlert("一段至少要有 1 块——要清空就把整段删掉。"); return; }
-          const d = snapshot(); d.sections[i].blocks.splice(j, 1); save(d);
-        });
-        /* 单位也做成元素而不是 createTextNode：一是测试沙箱没有 createTextNode，
-           二是本项目的惯例是"用 createElement + appendChild 而不是拼串"——
-           这样 DOM 结构在断言里是可见的（见 tests/lib/harness.js） */
-        const unit = document.createElement("span"); unit.textContent = " 遍";
-        chip.appendChild(nmb); chip.appendChild(reps);
-        chip.appendChild(unit);
-        chip.appendChild(pick); chip.appendChild(del);
-        blks.appendChild(chip);
-      });
-      const addB = document.createElement("button");
-      addB.className = "arg-mini"; addB.textContent = "+ 块";
-      addB.setAttribute("aria-label", "给第 " + (i + 1) + " 段加一块");
-      Modal.bindOverlay("arrangeOverlay", addB, "click", () => {
-        const d = snapshot();
-        d.sections[i].blocks.push({ ref: { type: "builtin", idx: 0 }, repeats: 1 });
-        save(d);
-      });
-      blks.appendChild(addB);
-      row.appendChild(blks);
-
-      const ops = document.createElement("div"); ops.className = "arg-ops";
-      /* 范围起/终直接设在段行上：沙箱不支持 <select>，且这样"点哪段设哪段"更好按 */
-      /** @param {"from"|"to"} which @param {string} txt @param {string} aria */
-      const mkRange = (which, txt, aria) => {
-        const btn = document.createElement("button");
-        btn.className = "arg-mini" + (S.arrangeSel[which] === i ? " sel" : "");
-        btn.textContent = txt; btn.setAttribute("aria-label", aria);
-        Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
-          S.arrangeSel.id = a.id;
-          S.arrangeSel[which] = i;
-          if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
-          if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
-          Store.persist();
-          render(); refreshBar();
-        });
-        return btn;
-      };
-      ops.appendChild(mkRange("from", "起", "把第 " + (i + 1) + " 段设为播放起点"));
-      ops.appendChild(mkRange("to", "终", "把第 " + (i + 1) + " 段设为播放终点"));
-      /* 上移/下移做成同一个助手：原先两条各写一遍交换逻辑，而 lint 把这两个内联回调
-         当成同一作用域（报重复声明 t）。抽出来既去重，也顺带规避 */
-      /** @param {number} dir @param {string} aria @param {boolean} dis */
-      const mkMove = (dir, aria, dis) => {
-        const btn = document.createElement("button");
-        btn.className = "arg-mini"; btn.textContent = dir < 0 ? "↑" : "↓";
-        btn.disabled = dis;
-        btn.setAttribute("aria-label", aria);
-        Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
-          const d = snapshot();
-          const s = d.sections[i]; d.sections[i] = d.sections[i + dir]; d.sections[i + dir] = s;
-          save(d);
-        });
-        return btn;
-      };
-      const rm = document.createElement("button");
-      rm.className = "arg-mini"; rm.textContent = "✕";
-      rm.disabled = a.sections.length <= 1;
-      rm.setAttribute("aria-label", "删除第 " + (i + 1) + " 段");
-      Modal.bindOverlay("arrangeOverlay", rm, "click", () => {
-        if (a.sections.length <= 1){ Modal.uiAlert("一首曲式至少要有 1 段。"); return; }
-        Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
-      });
-      ops.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
-      ops.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
-      ops.appendChild(rm);
-      row.appendChild(ops);
-      /* 歌词轨挂在段行下方（v2.1.0 F1）：顺序是 [段号, 段名, 块, 操作, 歌词]。
-         必须在 .arg-ops **之后**追加——测试按 children[2]/[3] 定位块与操作钮，
-         插在前面会把既有定位全部挪位。 */
-      row.appendChild(mkLyricRow(a, sec, i));
-      wrap.appendChild(row);
+      const row = buildSecRow(a, sec, i);
+      if (row) frag.appendChild(row);
     });
+    wrap.appendChild(frag);               // 一次插入（此后 wrap.children 即段行序列，picking 定位不变）
 
     /* 正在挑预设 → 在**当前段行正下方**列出可选项（v2.4.1 修）。
        旧实现把候选行追加到 #argSections 末尾——点第 6 段的「换」，候选却出现在
@@ -7024,7 +7114,7 @@ const Arrange = (() => {
       if (cls.length){ $("argProblems").textContent = "⚠ " + cls.join("；"); }
     }
   }
-  /* 播放中每个小节边界回调（由 Audio 经注入钩子调用，不是反向引用）：
+  /* 播放中每个小节边界回调（由 AudioEngine 经注入钩子调用，不是反向引用）：
      刷新"现在在第几段"与"全曲进度" */
   function refreshNow(){
     /* 取「正在播的曲式」优先（v2.0.2 修）：本函数是播放回调，不是编辑——
@@ -7192,7 +7282,7 @@ const Arrange = (() => {
     Modal.uiConfirm("删除曲式「" + a.name + "」？", () => {
       Store.deleteArrange(a.id);
       curId = Store.arranges.length ? Store.arranges[0].id : null;
-      if (S.playMode === "arrange"){ S.playMode = "preset"; S.arrangeSel = { id: "", from: 0, to: 0, loop: false }; }
+      if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false }; }
       Store.persist();
       render(); refreshBar();
       Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
@@ -7218,7 +7308,7 @@ const Arrange = (() => {
     if (!a) return;
     const cls = arrangeProblems(a);
     if (cls.length){ Modal.uiAlert("这首曲式还不能播放：\n" + cls.join("\n")); return; }
-    S.playMode = "arrange";
+    setMode("playMode", "arrange", "曲式播放");
     S.arrangeSel.id = a.id;
     if (!rangeOnly){ S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; }
     Store.persist();
@@ -7362,7 +7452,7 @@ $("brandChip").textContent = "v" + VERSION + " · 稳定版";
    file:// 直开（没有 location.search）时也只是没有面板而已。 */
 /** @type {Record<string, number>} */
 const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
-  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0 };
+  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0 };
 /** @type {null | { box: HTMLElement, line: HTMLElement }} */
 let diagPanel = null;
 function diagPaint(){
@@ -7378,12 +7468,38 @@ function diagPaint(){
     + "(饿" + diag.reanchorStarved + "/超" + diag.reanchorOverflow + ")"
     + " · 存失败 " + diag.persistFail + " · 存恢复 " + diag.persistRecover
     + " · 限流 " + diag.limitPulse
-    + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection;
+    + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection
+    /* v2.4.4：戳记计数只在出事时才占地方（正常部署恒为 0，一行读数不该为两个 0 买单） */
+    + (diag.noStamp || diag.stampMismatch
+      ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "");
 }
 /** @param {string} k */
 function diagBump(k){
   diag[k]++;
   diagPaint();                       // 面板未挂载时是空转（diagPaint 首句即返回）
+}
+
+/* 产物戳记自检（v2.4.4，堵「线上构建跑没跑自验不可知」的缺口）：
+   Workers Builds（Git 集成构建）不读仓库里 wrangler.jsonc 的 build.command——线上那次构建
+   跑什么取决于 Dashboard 里仓库外的命令。build-dist.js 装配时把「版本|时间|sha1」以
+   <meta name="beatsight-build"> 注入 dist/index.html，这里在启动时核对：
+     · 戳记缺失     → 只记 noStamp 计数（**不告警**：WorkBuddy 手动发布链是目录拷贝、
+       天然无戳记；本机/冒烟通道同理——缺席不是罪证，只是"这条路没过自验链"的读数）；
+     · 戳记版本不符 → 戳记在、版本却对不上 = 产物被手工拼过或张冠李戴，这才 console.warn。
+   file:// 与沙箱（无 location）直接不查。 */
+function stampCheck(){
+  if (typeof location === "undefined" || !location) return;
+  if (!/^https?:$/.test(location.protocol || "")) return;           // file://：本地副本无戳记是预期
+  if (/^(localhost|127\.)/.test(location.hostname || "")) return;   // 本机开发 / smoke 通道：不查
+  const q = document.querySelector;
+  const m = (typeof q === "function") ? document.querySelector('meta[name="beatsight-build"]') : null;
+  const v = m && m.getAttribute("content");
+  if (!v){ diagBump("noStamp"); return; }
+  if (String(v).split("|")[0] !== "v" + VERSION){
+    diagBump("stampMismatch");
+    try{ console.warn("[BeatSight] 产物戳记版本不符：" + v + " ≠ v" + VERSION
+      + "（这份产物绕过了自验链，或戳记是别的版本留下的）"); }catch(e){}
+  }
 }
 /** 各键的占用字符数（v2.0.6，审计 P1-9）。为什么值得进诊断：localStorage 配额是**按 origin
  *  总量**算的，出了"存不下"只能看到一句 QuotaExceeded——不知道是哪个键在膨胀就没法治
@@ -7467,7 +7583,7 @@ const diagOn = (() => {
 })();
 if (diagOn) diagBuild();
 
-/* 时间轴重锚计数（v2.0.6，审计 P1-1）：Audio 每执行一次 reanchor 就报一次原因。
+/* 时间轴重锚计数（v2.0.6，审计 P1-1）：AudioEngine 每执行一次 reanchor 就报一次原因。
    分成两类而不是合成一个总数——两者的处置完全不同：
      饿 starved  = 主线程/定时器被长时间节流（后台唤醒、机器卡）→ 属环境，调机器或看窗口余量；
      超 overflow = 单轮迭代触顶 → 属数据可疑，直接去查节奏型/拍号是不是坏值。
@@ -7479,6 +7595,7 @@ onReanchor = why => { diagBump(why === "overflow" ? "reanchorOverflow" : "reanch
    这里只计数、不拦截（不 preventDefault、不改任何既有行为） */
 window.addEventListener("error", () => { diagBump("winErr"); });
 window.addEventListener("unhandledrejection", () => { diagBump("rejection"); });
+stampCheck();   // v2.4.4：产物戳记自检（在线版核对 <meta name="beatsight-build">，详见函数注释）
 
 /* 保存失败可见化（v1.3.0，审计 P1-5）：顶栏状态点变红 + 文案改「保存失败」+ 一次性提示。
    原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉 */
@@ -7519,7 +7636,7 @@ onFrameError = e => {
     Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
   }catch(e2){}
 };
-/* 调度器异常恢复（v2.0.2，审计 D3）：与 onFrameError 完全同构（注入给 Audio.scheduler）。
+/* 调度器异常恢复（v2.0.2，审计 D3）：与 onFrameError 完全同构（注入给 AudioEngine.scheduler）。
    同样**两个动作各自包 try**——异常源头可能就是状态栏/弹窗这些 DOM 写入，
    不能让"告诉用户"这一步被它一起带走。 */
 onSchedError = e => {
@@ -7529,8 +7646,8 @@ onSchedError = e => {
     Modal.uiAlert("节拍调度出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
   }catch(e2){}
 };
-/* 练习量到点处置（v1.9.0）：同样是装配层注入的钩子——Audio.scheduler 每个周期调用它，
-   由 Controls 决定停不停、怎么显示。Audio 声明在 Controls 之前，直接调用会构成反向引用，
+/* 练习量到点处置（v1.9.0）：同样是装配层注入的钩子——AudioEngine.scheduler 每个周期调用它，
+   由 Controls 决定停不停、怎么显示。AudioEngine 声明在 Controls 之前，直接调用会构成反向引用，
    tools/check-module-order.js 会拦下来（与上面 onFrameError 同一套模式，DEVELOPMENT §3.0） */
 onLimitPulse = () => {
   /* v2.0.4：包一层只为诊断计数。★ 只计「真的到点停播」（返回 true）——
@@ -7540,7 +7657,7 @@ onLimitPulse = () => {
   if (stopped) diagBump("limitPulse");
   return stopped;
 };
-/* 曲式走到播放范围末尾且不循环（v2.0.0 S4）：经钩子停止（Audio 不能反向调用 Controls，R3）。
+/* 曲式走到播放范围末尾且不循环（v2.0.0 S4）：经钩子停止（AudioEngine 不能反向调用 Controls，R3）。
    stop() 会把状态写成「已停止」，这里补一句更能说明原因的文案——
    用户需要区分"我自己按停的"与"这首曲式放完了" */
 onArrangeEnd = () => {
@@ -7553,7 +7670,7 @@ onArrangeBar = Arrange.refreshNow;
    直接调 Arrange.loadDemo() 是反向引用 → 经钩子注入（同 onArrangeBar 那套） */
 onDemoRestore = () => Arrange.loadDemo();
 /* 页面离开时停播（v1.3.0，审计 P2-13）：pagehide 覆盖 bfcache 与真正的卸载，visibilitychange
-   覆盖不到。放在装配层而不是 Audio 模块内——Audio 声明在 Controls 之前，模块内直接调
+   覆盖不到。放在装配层而不是 AudioEngine 模块内——AudioEngine 声明在 Controls 之前，模块内直接调
    Controls.stop() 会构成反向引用（tools/check-module-order.js 会拦下来） */
 window.addEventListener("pagehide", () => { if (S.playing) Controls.stop(); });
 Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
@@ -7652,12 +7769,13 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 });
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-/** @type {any} */ (window).__beat = { Store, Modal, Viz, Audio, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
+/** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
   CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
   selectedPreset, defaultAccents, flashTheme,
   resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
   hasStrum,                                      // v2.4.0：两个入口的分界线（dir 或 zone 任一存在）
   Tracks,                                        // v2.4.0：节拍轨切换（普通节拍 / 带扫弦的节拍）
+  setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）
   arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
   secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
   lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）

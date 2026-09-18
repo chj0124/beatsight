@@ -8,7 +8,7 @@
    保证"抽出来的脚本"三家完全一致）。
 
    为什么缺 eslint 要优雅跳过（exit 0）而不是报错：
-     上站产物刻意"零构建文件"——只有 index.html / sw.js / manifest.webmanifest / icon.svg，
+     上站产物刻意"零构建文件"——只有 index.html / sw.js / manifest.webmanifest / icon.svg 等静态文件，
      node_modules 永远不进产物。Cloudflare 那条自动发布链路会跑 node tools/check-all.js，
      但**不保证**先跑过 npm install。若这条检查在没装依赖时判失败，就会把一个纯开发期的
      加强项变成部署的硬闸门，直接把上线堵死——那是拿最坏的结果换最小的收益。
@@ -33,17 +33,11 @@ try {
   process.exit(0);
 }
 
-const { extractScript } = require("./scan-util");
+const { extractScript, lineOffset } = require("./scan-util");
 
-/* 行号映射：抽取段紧跟在 <script> 之后，所以
+/* 行号映射口径（lineOffset 已从 scan-util 统一导出，v2.4.4 起不再各写一份）：
      抽取段第 1 行 = <script> 所在行的剩余部分（本项目 <script> 后直接换行 → 空行）
-     抽取段第 N 行 = index.html 第 (N + baseLine) 行
-   baseLine 取 <script> 之前的换行数（稳一点：不写死 546） */
-function lineOffset(html){
-  const at = html.indexOf("<script>");
-  if (at < 0) return -1;
-  return (html.slice(0, at).match(/\n/g) || []).length;
-}
+     抽取段第 N 行 = index.html 第 (N + baseLine) 行 */
 
 const html = fs.readFileSync(HTML, "utf8");
 const baseLine = lineOffset(html);

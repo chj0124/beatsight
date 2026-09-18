@@ -1,5 +1,43 @@
 # 变更记录
 
+## v2.4.4 · 外部审计驱动的结构收口：安全头补齐 + 模块改名 + 巨函数拆分 + 产物戳记自检（2026-09-18）
+
+**来源**：一次全仓外部审计（五维：代码质量/性能/架构/安全/工程化）。结论与 v2.0.2 内审一致——
+代码本体健康，缺口在链路。本版只做结构与工程收口，**零功能语义变化**。
+
+- **安全头补齐（`_headers`）**：新增 `Content-Security-Policy`（default-src 'self'，脚本/样式保留
+  'unsafe-inline'——单文件内联架构的既定取舍）、`frame-ancestors 'none'` + `X-Frame-Options: DENY`
+  （关点击劫持面）、`Permissions-Policy`（mic/camera/geolocation 全关）、`HSTS`。
+- **`Audio` 模块改名 `AudioEngine`**：原模块名遮蔽全局 `window.Audio` 构造器——虽无实际调用
+  `new Audio()`，但名字本身就是地雷。改名波及 check-module-order 的 EXPECTED_ORDER/WHITELIST、
+  全部测试用例与 DEVELOPMENT.md（共 80+ 处，机器可验证）。
+- **四个百行级函数拆分（纯搬移，行为等价）**：`buildViz` 拆出 `buildBarRow`（建一小节行）；
+  `schedulerBody` 拆出 `schedOneStep`（主循环的一步，return/continue 语义换算为返回值）；
+  `paintFrameBody` 拆出 `paintBeatFlash`（十六分闪烁+座次尺+状态栏）与 `repaintCells`
+  （全量/增量重绘）；`Arrange.render` 拆出 `buildSecRow`（建段行）。
+  ★ 拆出 paintFrameBody 的两个 helper 后**同步登记进 check-module-order.js 的 HOT 名单**——
+  否则拆分会静默缩小 R2 热路径检查的覆盖面（这条教训已写进该文件 HOT 注释里）。
+- **复制粘贴收口**：四个 persist 冷键函数抽成 `makePersister(key, payload)` 工厂；
+  四个开关处理器抽成 `bindToggle(id, flip, after)` 工厂。
+- **渲染性能两点**：Editor/Arrange 的全量重建改用 DocumentFragment 一次插入（测试桩同步补了
+  DocumentFragment 语义：append 片段 = 子节点摊平搬家，harness.js 与 hang-case.js **两份桩都改了**）；
+  十六分闪烁的 `sub.closest(".cell")` 改为建网格时登记的 `subCellEls` 正查表（帧内零 DOM 上溯）。
+- **部署闸门（产物戳记自检）**：`build-dist.js` 装配时把「check-all 通过」戳记写入 dist
+  （版本 + 时间戳 + 文件校验和），index.html 启动时校验——缺戳记/版本不符时在诊断面板可见，
+  把「线上那次构建到底跑没跑自验」从不可知变成可读。
+- **工程杂项**：`lineOffset` 三处重复实现收进 `scan-util.js` 统一导出；check-module-order.js
+  的 stripComments/matchBrace/lineOf 同样改为复用 scan-util（删掉三份逐字相同的私有拷贝）；
+  check-module-order 文件头补「index.html 禁止过格式化器」的硬约束说明（R1 依赖缩进约定）；
+  sw.js 文件头注释版本漂移修正；PWA 补 192/512 PNG 图标回退（含 maskable）——
+  **二进制不入库**，由 `tools/gen-icons.js`（零依赖光栅化 + PNG 编码）构建期生成落 dist/
+  （任何"只能推文本"的发布路径都带不动二进制）；sw.js 预缓存拆成关键资源（严格 addAll）
+  + 可选图标（逐个 catch，仓库根开发环境没有 PNG 也装得上）；sw.js 纳入
+  测试（tests/cases/t67-service-worker.js，同步 Promise 桩 + 写回队列时序修正）；
+  新增模式字段契约 `setMode()`（tests/cases/t66-mode-contract.js：值域白名单 / 幂等 / 迁移轨迹）；
+  checklist.md / tasks.md 补「快照声明」横幅（它们是 2026-09-17 审计的当时实测值，会漂移，
+  口径以 check-all 实时输出为准）。
+- **关键入口补 JSDoc 签名**：buildViz / schedulerBody / start / stop。
+
 ## v2.4.3 · 练习循环（只反复磨第 X 到第 Y 小节）+ 扫弦箭头改挂独立图层（2026-09-18）
 
 **功能**：新增**练习循环**面板（预设库卡片内、轨切换条之下、列表之上）。

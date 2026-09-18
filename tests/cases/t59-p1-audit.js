@@ -39,12 +39,12 @@ section("T59 P1-3 · 起停重入：不产生孤儿 interval，句柄必被清�
 section("T59b P1-4 · ctx 被系统关闭后，下次取用必须换成新上下文");
 {
   const { beat } = loadApp();
-  beat.Audio.ensureCtx();
+  beat.AudioEngine.ensureCtx();
   const first = FakeAudioContext.last;
   ok(!!first, "ensureCtx 建立了上下文");
   first.setState("closed");                     // 停机期间被系统关闭（watchCtx 只在播放中才重建）
   eq(FakeAudioContext.last, first, "停机期间不会自动重建（这正是缺陷的入口）");
-  const second = beat.Audio.ensureCtx();
+  const second = beat.AudioEngine.ensureCtx();
   ok(second !== first, "★ 下次 ensureCtx 丢弃已 closed 的上下文并重建（否则表现为「在播放、永不出声」）");
   eq(second.state, "running", "新上下文可用");
 }
@@ -151,7 +151,7 @@ section("T59f P1-1 · 调度饥饿（重锚）被记进诊断计数，不再静�
   ok(!!ac, "播放中已建立音频上下文");
   eq(beat.diag.reanchorStarved, 0, "初始重锚计数为 0");
   ac.currentTime += 60;                          // 模拟后台被节流 60 秒：游标远远落后实时时钟
-  beat.Audio.scheduler();
+  beat.AudioEngine.scheduler();
   eq(beat.diag.reanchorStarved, 1, "★ 一次饥饿重锚被计数（此前完全静默，用户只能说「好像卡了一下」）");
   eq(beat.Store.S.playing, true, "重锚不影响播放状态（只是把时间轴对齐到当下）");
 }

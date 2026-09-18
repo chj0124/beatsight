@@ -39,6 +39,8 @@ const CASE_FILES = [
   "./cases/t63-demo-song",             // v2.3.0：示例曲《在他乡》载入（谱面映射 / 幂等 / 播放冒烟）
   "./cases/t64-track-split",           // v2.4.0：双入口拆分（轨状态 / 过滤 / 回退 / 门控 / 零迁移）
   "./cases/t65-practice-loop",         // v2.4.3：练习循环（区间归一 / 下拉 / 调度回绕 / 起始游标 / 曲式收起）
+  "./cases/t66-mode-contract",         // v2.4.4：模式字段契约（setMode 值域 / 幂等 / 迁移轨迹 / 无互斥）
+  "./cases/t67-service-worker",        // v2.4.4：sw.js 缓存策略（预缓存 / 清旧 / network-first / SWR / 不接管三类）
 ];
 for (const f of CASE_FILES) require(f);
 

@@ -12,7 +12,7 @@
 
      R2（强约束，零例外）：**每帧渲染热路径**（paintFrame / paintFrameBody / paintBall）
         体内不得出现「后方模块名 + .」——它们每秒执行约 60 次，只能读共享状态区与前方模块。
-        （注：审计报告原文把 scheduler 也划进 R2，但同一份报告又称表里的 Audio→Trainer
+        （注：审计报告原文把 scheduler 也划进 R2，但同一份报告又称表里的 AudioEngine→Trainer
          属于"合法的运行时调用"——而该调用就在 scheduler 体内，自相矛盾。
          这里按实际语义修正：scheduler 是**周期回调**（25ms 一次，跨模块调用只发生在小节边界，
          约每 1–2 秒一次），归入 R3；真正的每帧热路径只有上面三个渲染函数。）
@@ -26,10 +26,18 @@
         （指向它全部的 7 个下游），再想加一条就必须显式抬高下方 MAX_FANOUT 常量——让"中枢又
         胖了一圈"成为一次看得见、需要理由的改动，而不是悄悄发生。
 
+   ⚠ 实现前提（v2.4.4 审计补记）：R1 的"顶层语句"判定依赖「IIFE 顶层恰好 2 空格缩进」这一
+   **格式约定**。因此 index.html **禁止过 prettier / 格式化器**——一次全文件重排就会让 R1 的
+   判定面静默失效（语句缩进变了，检查器看到的"顶层"就不再是顶层）。这条同样写在
+   docs/DEVELOPMENT.md §5。引入任何格式化工具前，先把这个检查器改成括号深度判定。
+
    退出码 0 = 全部通过，1 = 有违规。CI 与本地自验都跑它。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
+/* 剥注释 / 括号配对 / 行号换算统一复用 scan-util（v2.4.4 起不再各写一份；
+   此前本文件内嵌的三份私有实现与 scan-util 语义逐字相同，属复制粘贴债）。 */
+const { stripComments, matchBrace, lineOf } = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const html = fs.readFileSync(HTML, "utf8");
@@ -38,15 +46,17 @@ if (!m){ console.error("未找到 <script> 块：" + HTML); process.exit(1); }
 const SRC = m[1];
 const lines = SRC.split("\n");
 
+const clean = stripComments(lines);
+
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "Audio", "Trainer", "Controls", "Tracks", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Tracks", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
 
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，
    而不是因为"反正能跑"。 */
 const WHITELIST = [
-  { from: "Audio",    to: "Trainer",  reason: "scheduler() 在小节边界调 Trainer.onBarBoundary()——周期回调，非每帧热路径" },
-  { from: "Audio",    to: "Presets",  reason: "scheduler() 在小节边界调 Presets.consumePending() 消费挂起的节奏型切换——同上，每小节一次" },
+  { from: "AudioEngine",    to: "Trainer",  reason: "scheduler() 在小节边界调 Trainer.onBarBoundary()——周期回调，非每帧热路径" },
+  { from: "AudioEngine",    to: "Presets",  reason: "scheduler() 在小节边界调 Presets.consumePending() 消费挂起的节奏型切换——同上，每小节一次" },
   { from: "Trainer",  to: "Controls", reason: "训练到目标时调 Controls.stop()/setBpm()/syncBpmUI()——由调度周期或事件触发" },
   { from: "Controls", to: "Presets",  reason: "stop() 调 Presets.flushPending() 落定挂起切换——停止流程中执行" },
   { from: "Controls", to: "Editor",   reason: "keydown 处理器调 Editor.tryClose()/undo()——用户按键时执行" },
@@ -63,59 +73,6 @@ const WHITELIST = [
    需要理由的改动，而不是悄悄发生。新功能的 UI 装配请内聚到各自模块内部。 */
 const MAX_FANOUT = 7;
 
-/* 逐行剥掉注释（含跨行块注释；跳过字符串，避免把字符串里的 // 当注释）。
-   不做这一步会大量误报：形如「停止时的视觉复位（Controls.stop 调用）」的**行内块注释**
-   会被判成「Viz 在初始化期反向引用 Controls」。 */
-function stripComments(srcLines){
-  let inBlock = false;
-  return srcLines.map(line => {
-    let out = "", i = 0;
-    while (i < line.length){
-      const c = line[i], c2 = line[i + 1];
-      if (inBlock){
-        if (c === "*" && c2 === "/"){ inBlock = false; i += 2; continue; }
-        i++; continue;
-      }
-      if (c === "/" && c2 === "*"){ inBlock = true; i += 2; continue; }
-      if (c === "/" && c2 === "/" && (i === 0 || /\s/.test(line[i - 1]))) break;
-      if (c === '"' || c === "'" || c === "`"){
-        const q = c; out += c; i++;
-        while (i < line.length && line[i] !== q){
-          if (line[i] === "\\"){ out += line[i]; i++; }
-          out += line[i]; i++;
-        }
-        if (i < line.length){ out += line[i]; i++; }
-        continue;
-      }
-      out += c; i++;
-    }
-    return out;
-  });
-}
-const clean = stripComments(lines);
-
-const lineOf = idx => { let n = 1; for (let i = 0; i < idx; i++) if (SRC[i] === "\n") n++; return n; };
-
-/* 从 from 处起的第一个 `{` 做括号配对（跳过注释与字符串；热路径函数体内无正则字面量） */
-function matchBrace(from){
-  let i = SRC.indexOf("{", from);
-  if (i < 0) return -1;
-  let depth = 0;
-  for (; i < SRC.length; i++){
-    const c = SRC[i], c2 = SRC[i + 1];
-    if (c === "/" && c2 === "/"){ while (i < SRC.length && SRC[i] !== "\n") i++; continue; }
-    if (c === "/" && c2 === "*"){ i = SRC.indexOf("*/", i + 2); if (i < 0) return -1; i++; continue; }
-    if (c === '"' || c === "'" || c === "`"){
-      const q = c; i++;
-      while (i < SRC.length && SRC[i] !== q){ if (SRC[i] === "\\") i++; i++; }
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}"){ depth--; if (depth === 0) return i; }
-  }
-  return -1;
-}
-
 /* 收集模块块：`const Name = (() => {` … 配对的 `}` */
 const modules = [];
 {
@@ -124,9 +81,9 @@ const modules = [];
   while ((mm = re.exec(SRC))){
     const name = mm[1];
     if (!EXPECTED_ORDER.includes(name)) continue;      // 只认 EXPECTED_ORDER 里那几个模块（VERSION 等常量不算）
-    const end = matchBrace(mm.index);
+    const end = matchBrace(SRC, mm.index);
     if (end < 0){ console.error("括号配对失败：" + name); process.exit(1); }
-    modules.push({ name, start: mm.index, end, startLine: lineOf(mm.index), endLine: lineOf(end) });
+    modules.push({ name, start: mm.index, end, startLine: lineOf(SRC, mm.index), endLine: lineOf(SRC, end) });
   }
 }
 modules.sort((a, b) => a.start - b.start);
@@ -152,13 +109,16 @@ console.log("══════════════════════�
 const order = {};
 modules.forEach((mod, i) => { order[mod.name] = i; });
 
-/* 热路径函数体（R2） */
-const HOT = ["paintFrame", "paintFrameBody", "paintBall"];
+/* 热路径函数体（R2）。
+   v2.4.4：paintFrameBody 拆出的两个子工序（paintBeatFlash / repaintCells）同样逐帧执行，
+   必须一并登记——否则拆分会**静默缩小 R2 的覆盖面**（检查器只认这个名单里的函数体）。
+   教训写在这里：往帧路径上抽 helper 时，helper 的名字必须进这份名单。 */
+const HOT = ["paintFrame", "paintFrameBody", "paintBall", "paintBeatFlash", "repaintCells"];
 const hotRanges = [];
 HOT.forEach(fn => {
   const idx = SRC.search(new RegExp("function\\s+" + fn + "\\s*\\("));
   if (idx < 0){ fail("未找到热路径函数 " + fn + "()——检查器可能已失效，需同步更新"); return; }
-  const end = matchBrace(idx);
+  const end = matchBrace(SRC, idx);
   if (end < 0){ fail("热路径函数 " + fn + "() 括号配对失败"); return; }
   hotRanges.push({ fn, start: idx, end });
 });

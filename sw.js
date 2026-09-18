@@ -1,4 +1,4 @@
-/* BeatSight Service Worker（v1.4）——只被在线版（http/https）注册；file:// 下 index.html 不加载它。
+/* BeatSight Service Worker（CACHE=beatsight-pwa-v2）——只被在线版（http/https）注册；file:// 下 index.html 不加载它。
    策略：
      · 导航请求（打开页面）走 network-first：线上更新后刷新即生效，不依赖手工 bump 缓存版本；
        断网时回退到缓存的 index.html（这就是「离线可用」的来源）。
@@ -12,11 +12,20 @@
    常规内容更新不需要动它——导航 network-first 与资源 SWR 都已保证新内容最终会到。 */
 "use strict";
 const CACHE = "beatsight-pwa-v2";
+/* 关键资源：离线可用的底线，addAll 任一失败即 install 失败（宁可装不上，不可装个残的）。
+   注意 PNG 图标**不在**此列——它们由 tools/gen-icons.js 在构建期生成、只存在于 dist/，
+   仓库根的开发环境（以及任何没过 build-dist 的部署）里根本没有这两个文件 */
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+/* 可选资源：PNG 图标回退（构建产物里有就预缓存，没有也不该拖垮 install） */
+const ASSETS_OPTIONAL = ["./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS).then(() =>
+        /* 逐个加、各自吞错：一个图标 404 不该让整个 SW 装不上（离线能力是关键路径，图标不是） */
+        Promise.all(ASSETS_OPTIONAL.map(a => c.add(a).catch(() => {})))))
+      .then(() => self.skipWaiting())
   );
 });
 

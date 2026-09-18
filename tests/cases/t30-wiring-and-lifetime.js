@@ -45,7 +45,7 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
   const DT = 0.0025;
   for (let i = 0; i < Math.round(barDur * 2 / DT); i++){          // 跑满两个小节
     ac.currentTime += DT;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
     beat.onsetBuf().forEach(e => onsets.set(e.bar + ":" + e.t.toFixed(4), e));
     samples.push(Object.assign({ now: ac.currentTime }, state()));
@@ -142,7 +142,7 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
     let deform = 0, moved = 0, prevX = null;
     for (let i = 0; i < 400; i++){
       rac.currentTime += DT;
-      rm.beat.Audio.scheduler();
+      rm.beat.AudioEngine.scheduler();
       rm.beat.Viz.paintFrame();
       const b = nums(riv.ballEl.style.transform);
       if (b.length > 2 && (Math.abs(b[2] - 1) > 1e-6 || Math.abs(b[3] - 1) > 1e-6)) deform++;
@@ -172,7 +172,7 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
     const sOnsets = new Map();
     for (let i = 0; i < Math.round(3 / DT); i++){           // 跑满 3s：60 BPM 下第 1 小节约 4s，弧足够长
       sac.currentTime += DT;
-      slow.beat.Audio.scheduler();
+      slow.beat.AudioEngine.scheduler();
       slow.beat.Viz.paintFrame();
       slow.beat.onsetBuf().forEach(e => sOnsets.set(e.bar + ":" + e.t.toFixed(4), e));
       const yy = nums(siv.ballEl.style.transform)[1];
@@ -657,7 +657,7 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
     let groupCells = 0, litFrames = 0;
     for (let i = 0; i < 400; i++){
       ac2.currentTime += 0.02;
-      b2.beat.Audio.scheduler();
+      b2.beat.AudioEngine.scheduler();
       b2.beat.Viz.paintFrame();
       let anyLit = false, anyGroup = false;
       b2.els["viz"].children.forEach(r => r.children.forEach(c => {
@@ -732,7 +732,7 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
     let guard = 0;
     while (guard++ < 3000 && cursorTick() < 130){             // 推到超过新节奏型末颗起点 96t
       ac3.currentTime += 0.01;
-      b5.Audio.scheduler();
+      b5.AudioEngine.scheduler();
       b5.Viz.paintFrame();
     }
     const t0 = cursorTick();
@@ -793,7 +793,7 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
     let worst = 0;
     for (let i = 0; i < Math.round(sec / step); i++){
       ac.currentTime += step;
-      beat.Audio.scheduler();
+      beat.AudioEngine.scheduler();
       beat.Viz.paintFrame();
       const d = Math.abs(ballT() - headT());
       if (isFinite(d) && d > worst) worst = d;
@@ -913,7 +913,7 @@ section("T41 待命球起跑预备 · 终端弧抛物线复制（v1.8.0）");
   const DT = 0.005;
   for (let i = 0; i < Math.round(barDur * 1.2 / DT); i++){
     ac.currentTime += DT;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
     const bm = /(-?[\d.]+)px/.exec(iv.ballEl.style.transform);
     const wm = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)(?: scale\(([\d.]+),([\d.]+)\))?/.exec(iv.waitEl.style.transform);

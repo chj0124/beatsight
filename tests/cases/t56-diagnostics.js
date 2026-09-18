@@ -22,8 +22,8 @@ section("T56 诊断面板 · 计数器恒存在（无 location 也照样记账�
   ok(beat.diag && typeof beat.diag === "object", "window.__beat.diag 已暴露");
   eq(JSON.stringify(beat.diag),
     JSON.stringify({ frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
-      reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0 }),
-    "全部计数器初值全为 0（v2.0.6 起多了重锚两档 + 脚本错/未捕获两档）");
+      reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0 }),
+    "全部计数器初值全为 0（v2.0.6 起重锚两档 + 脚本错/未捕获；v2.4.4 起戳记缺失/版本不符两档）");
   eq(panels({ sandbox }).length, 0, "没有 ?debug=1 → 不挂面板 DOM（零视觉、零布局开销）");
   ok(beat.VERSION && lineOf({ sandbox }) === "(未挂载)", "未挂面板时读取探针也不抛");
 }
@@ -93,7 +93,7 @@ section("T56d 诊断面板 · 掉帧 / 调度异常计数（复用 onFrameError 
   Object.defineProperty(s.sandbox.document, "hidden", {
     get(){ hits++; throw new Error("注入的调度故障"); }, set(){}, configurable: true,
   });
-  s.beat.Audio.scheduler();
+  s.beat.AudioEngine.scheduler();
   ok(hits > 0, "调度故障确实被触发（证明本用例有效）");
   eq(s.beat.diag.schedErr, 1, "调度期异常 → schedErr 计一次（与 T23h 同构）");
   eq(s.beat.diag.frameErr, 0, "互不串台：调度异常不污染掉帧计数");

@@ -144,7 +144,17 @@ function makeEl(id){
     scrollWidth: 0,
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
     removeEventListener(){},
-    appendChild(c){ this.children.push(c); if (c) c.parentNode = el; return c; },
+    appendChild(c){
+      /* v2.4.4：DocumentFragment 语义——把片段 append 到父节点时，**子节点整体搬家**、
+         片段自身清空（真实 DOM 如此）。不做这层摊平，children 里会混进片段壳，
+         所有按 children[i] 定位的断言全部错位。 */
+      if (c && c._isFragment){
+        const kids = c.children.slice(); c.children.length = 0;
+        kids.forEach(k => this.appendChild(k));
+        return c;
+      }
+      this.children.push(c); if (c) c.parentNode = el; return c;
+    },
     /* v2.4.1：兄弟插入。原先桩只有 appendChild，"把新节点插到某个既有节点旁边"
        这类需求在桩里根本表达不出来——于是 Arrange 的候选预设行只能 append 到末尾
        （真实浏览器里就是"点第 6 段的「换」，候选出现在第 10 段之后"，用户看不见）。
@@ -343,6 +353,12 @@ function loadApp(seed, opts){
         }
         return el;
       },
+      /* v2.4.4：DocumentFragment 桩（Editor/Arrange 的批量插入用）。
+         片段自身就是一个收集容器；append 到父节点时由 appendChild 里的 _isFragment
+         分支把子节点摊平搬家（语义同真实 DOM）。 */
+      createDocumentFragment(){
+        return Object.assign(makeEl("frag"), { _isFragment: true, tagName: "#fragment" });
+      },
       /* 只支持 `#id .pill` 这一种选择器——setPressed() 需要它返回 pill 组；
          其它选择器返回空数组（与原先行为一致） */
       querySelectorAll: sel => {
@@ -442,7 +458,7 @@ function drive(ctx, beat, seconds, onTick){
   const n = Math.ceil(seconds / dt);
   for (let i = 0; i < n; i++){
     ctx.currentTime += dt;
-    beat.Audio.scheduler();
+    beat.AudioEngine.scheduler();
     if (onTick) onTick();
     if (!beat.Store.S.playing) return true;
   }
@@ -455,7 +471,7 @@ function driveFrames(ac, beat, seconds){
   let firstErr = null;
   for (let i = 0; i < n; i++){
     ac.currentTime += dt;
-    try { beat.Audio.scheduler(); } catch(e){ if (!firstErr) firstErr = "scheduler: " + e.message; }
+    try { beat.AudioEngine.scheduler(); } catch(e){ if (!firstErr) firstErr = "scheduler: " + e.message; }
     try { beat.Viz.paintFrame(); } catch(e){ if (!firstErr) firstErr = "paintFrame: " + e.message; }
     if (!beat.Store.S.playing) break;
   }
