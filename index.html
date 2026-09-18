@@ -1002,6 +1002,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
       <div class="editor-actions">
         <button class="pill outline" id="argNew">新建曲式</button>
+        <button class="pill outline" id="argDemo">载入示例</button>
         <button class="pill outline" id="argDel">删除</button>
       </div>
     </div>
@@ -1153,22 +1154,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1184  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1405  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2129  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L2530  Modal         应用内弹窗
-     L2660  Viz           时值可视化渲染与每帧动画
-     L3430  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L3927  Trainer       变速训练器
-     L4139  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L4596  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L4827  Editor        自定义节奏型编辑器
-     L5122  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L5345  Ear           听辨训练（v1.10.0）
-     L5568  Arrange       曲式编排（v2.0.0）
-     L6154  Help          使用方法（v2.0.1）
-     L6201  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L6260  初始化（装配） 各模块 hook 接线与启动
+     L1185  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1512  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2236  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L2637  Modal         应用内弹窗
+     L2767  Viz           时值可视化渲染与每帧动画
+     L3537  Audio         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L4034  Trainer       变速训练器
+     L4246  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L4703  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L4934  Editor        自定义节奏型编辑器
+     L5229  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L5452  Ear           听辨训练（v1.10.0）
+     L5675  Arrange       曲式编排（v2.0.0）
+     L6289  Help          使用方法（v2.0.1）
+     L6336  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L6395  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1188,7 +1189,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.2.0";
+const VERSION = "2.3.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1274,6 +1275,112 @@ const SWINGS = [50, 67, 75];
 const LYRIC_GRID = T16;             // 1 格 = 十六分
 const LYRIC_BASE = 2 * LYRIC_GRID;  // 基准单位：八分 = 2 格
 const LYRIC_MIN_DUR = LYRIC_GRID;   // 最短时值：1 格（再短就没有可拖动的抓手了）
+/* ================= 示例曲《在他乡》谱面数据（v2.3.0）=================
+   数据逐格来自参考谱面（用户填写的十六分格表），不再自行推定：
+     · 扫弦格 [格0-15, 方向, 弦区, 空扫?]：方向存**手部动作**（D=下扫/U=上扫，渲染层翻转字形）；
+       弦区 0=低/1=全/2=高（谱面标记 B/F/T 的映射）；空扫 = 休止槽带 dir（蓝括号，不发声），
+       格里没标记 = 无动作（纯休止，连手都不动）。
+     · 词行 [格, 时值格, 字]：格 × 16 分 = 段内 tick；跨小节延音靠 dur 延长，始终留在同一行内
+       （桥段「夜」落在小节首并延至下一个「那」，正是这条的活样本）。
+     · 段长补齐：本工具节奏型 = 4 小节循环、段长必为 4 的倍数；词行不足 4 小节时
+       按该行**最后一个节奏型**补扫（手不停、嘴休息）——歌词与扫弦数据本身一格不增删。 */
+const DEMO_ID = "demo-ztx", DEMO_SONG_NAME = "在他乡（示例）";
+const DEMO_STRUMS = {
+  P1: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",2],[5,"U",null,1],[6,"D",0],[7,"U",null,1],
+       [8,"D",null,1],[9,"U",null,1],[10,"D",2],[11,"U",2],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
+  P2: [[0,"D",0],[1,"U",null,1],[4,"D",2],[5,"U",null,1],[6,"D",2],[7,"U",2],[8,"D",2],[9,"U",2],
+       [10,"D",2],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
+  P3: [[0,"D",0],[1,"U",null,1],[4,"D",2],[5,"U",null,1],[6,"D",2],[7,"U",2],[8,"D",2],[9,"U",null,1],
+       [10,"D",2],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
+  P4: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
+       [14,"D",2],[15,"U",2]],
+  P5: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
+       [8,"D",0],[9,"U",0],[10,"D",0],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
+};
+/* 7 个自定义节奏型：5 个基本型 + 2 个组合型（收束 = P2+P1，收尾 = P4+P1）。
+   seq 不足 4 小节的用最末一个小节的型补齐（见上方「段长补齐」约定） */
+const DEMO_PRESETS = [
+  { name: "在他乡 · 节奏型1（十六分满扫）", seq: ["P1"] },
+  { name: "在他乡 · 节奏型2（副歌）", seq: ["P2"] },
+  { name: "在他乡 · 节奏型3（主歌）", seq: ["P3"] },
+  { name: "在他乡 · 节奏型4（雨夜）", seq: ["P4"] },
+  { name: "在他乡 · 节奏型5（桥段）", seq: ["P5"] },
+  { name: "在他乡 · 收束", seq: ["P2", "P1"] },
+  { name: "在他乡 · 收尾", seq: ["P4", "P1"] },
+];
+/* 段 = 词行（行=段的契约）；和弦序列写进段名（本工具无和弦轨）；repeats 只在大于 4 小节的行用 */
+const DEMO_SONG = [
+  { name: "开头 · 我多想 C", preset: "在他乡 · 节奏型1（十六分满扫）", repeats: 1, words: [
+    [[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+  { name: "副歌 · 上 C·Am·Dm", preset: "在他乡 · 节奏型2（副歌）", repeats: 1, words: [
+    [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+    [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
+    [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
+  { name: "副歌 · 下 G·C·Am·Dm", preset: "在他乡 · 节奏型2（副歌）", repeats: 1, words: [
+    [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
+    [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+    [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
+    [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
+  { name: "收束 · 我的心伤 G·G", preset: "在他乡 · 收束", repeats: 1, words: [
+    [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,10,"伤"]],
+    [[0,16,"﹣"]]] },
+  { name: "主歌一 · 那年你踏上 C·Dm·F·C", preset: "在他乡 · 节奏型3（主歌）", repeats: 1, words: [
+    [[0,2,"那"],[2,1,"年"],[3,1,"你"],[4,2,"踏"],[6,4,"上"],[10,2,"暮"],[12,2,"色"],[14,2,"他"]],
+    [[0,16,"乡"]],
+    [[0,2,"你"],[2,1,"以"],[3,1,"为"],[4,2,"那"],[6,4,"里"],[10,2,"有"],[12,2,"你"],[14,2,"的"]],
+    [[0,2,"理"],[2,14,"想"]]] },
+  { name: "主歌一 · 你看着周围 C·Dm", preset: "在他乡 · 节奏型3（主歌）", repeats: 1, words: [
+    [[0,2,"你"],[2,1,"看"],[3,1,"着"],[4,2,"周"],[6,4,"围"],[10,2,"陌"],[12,2,"生"],[14,2,"目"]],
+    [[0,16,"光"]]] },
+  { name: "桥段 · 那一夜 G·C·Dm·C", preset: "在他乡 · 节奏型5（桥段）", repeats: 1, words: [
+    [[12,2,"那"],[14,2,"一"]],
+    [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
+    [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
+    [[0,16,"夜"]]] },
+  { name: "主歌二 · 清晨醒来 F·C", preset: "在他乡 · 节奏型3（主歌）", repeats: 1, words: [
+    [[0,2,"清"],[2,1,"晨"],[3,1,"醒"],[4,2,"来"],[6,4,"却"],[10,2,"没"],[12,2,"人"],[14,2,"在"]],
+    [[0,2,"身"],[2,14,"旁"]]] },
+  { name: "主歌二 · 人静的雨夜 Am·Em·F·C·Am·Em", preset: "在他乡 · 节奏型4（雨夜）", repeats: 2, words: [
+    [[2,2,"人"],[4,2,"静"],[6,2,"的"],[8,2,"雨"],[10,6,"夜"]],
+    [[0,2,"想"],[2,2,"起"],[4,2,"了"],[6,10,"她"]],
+    [[2,2,"她"],[4,2,"的"],[6,2,"挽"],[8,2,"留"],[10,6,"还"]],
+    [[0,2,"萦"],[2,2,"绕"],[4,2,"耳"],[6,10,"旁"]],
+    [[2,2,"想"],[4,2,"起"],[6,2,"离"],[8,2,"别"],[10,6,"她"]],
+    [[0,2,"带"],[2,1,"泪"],[3,1,"的"],[4,2,"脸"],[6,10,"庞"]]] },
+  { name: "主歌二 · 你忍不住的 F·G", preset: "在他乡 · 收尾", repeats: 1, words: [
+    [[2,2,"你"],[4,2,"忍"],[6,2,"不"],[8,2,"住"],[10,6,"的"]],
+    [[0,2,"哭"],[2,2,"出"],[4,2,"声"],[6,4,"响"],[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+];
+/* 谱面 → 本工具数据模型（纯函数，不碰 Store/DOM；测试经 __beat 直接断言）。
+   返回 { presets, arrange, lyrics }：presets 供 importPresets，arrange 供 upsertArrange
+   （块的引用先记 preset 名，载入时按名解成 custom id——名字是本批数据自带的命名空间），
+   lyrics[i] = 第 i 段的 chars（段内绝对 tick） */
+function demoBuildSpec(){
+  const demoBar = patId => {
+    const marks = {};
+    DEMO_STRUMS[patId].forEach(mk => { marks[mk[0]] = mk; });
+    const out = [];
+    for (let c = 0; c < 16; c++){
+      const m = marks[c];
+      if (!m) out.push({ t: T16, rest: true });                                  // 无动作
+      else if (m[3]) out.push({ t: T16, rest: true, dir: m[1] });                // 空扫：动手不出声
+      else out.push({ t: T16, dir: m[1], zone: m[2] });                          // 实扫：方向 × 弦区
+    }
+    return out;
+  };
+  const presets = DEMO_PRESETS.map(p => ({ name: p.name, meter: 4,
+    bars: [0, 1, 2, 3].map(i => demoBar(p.seq[Math.min(i, p.seq.length - 1)])) }));
+  const arrange = { id: DEMO_ID, name: DEMO_SONG_NAME,
+    sections: DEMO_SONG.map(s => ({ name: s.name,
+      blocks: [{ refName: s.preset, repeats: s.repeats }] })) };
+  const lyrics = DEMO_SONG.map(s => {
+    const out = [];
+    s.words.forEach((bar, bi) => bar.forEach(w =>
+      out.push({ t: bi * 4 * TPB + w[0] * T16, dur: w[1] * T16, ch: w[2] })));
+    return out;
+  });
+  return { presets, arrange, lyrics };
+}
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
@@ -6091,6 +6198,34 @@ const Arrange = (() => {
   }
   const isOpen = () => $("arrangeOverlay").classList.contains("open");
 
+  /* 载入示例《在他乡》（v2.3.0）：一键生成 7 个节奏型预设 + 整首曲式 + 10 段歌词。
+     幂等：曲式库已有同名曲式就只提示、不重复建（预设按名查重，删过曲式留下预设的场景
+     也不会重复）。引用按名解成 custom id——名字是这批数据自带的命名空间 */
+  function loadDemo(){
+    if (Store.arranges.some(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME)){
+      Modal.uiAlert("示例《在他乡》已在曲式库里——在左侧列表选中它即可。");
+      return;
+    }
+    const spec = demoBuildSpec();
+    const missing = spec.presets.filter(p => !Store.customs.some(c => c.name === p.name));
+    if (missing.length){
+      const r = Store.importPresets(JSON.stringify(missing));
+      if (!r.ok){ Modal.uiAlert("示例节奏型载入失败：" + r.error); return; }
+    }
+    const idOf = nm => { const c = Store.customs.find(x => x.name === nm); return c ? c.id : ""; };
+    const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
+      sections: spec.arrange.sections.map(s => ({ name: s.name,
+        blocks: [{ ref: { type: "custom", id: idOf(s.blocks[0].refName) }, repeats: s.blocks[0].repeats }] })) });
+    if (!v){ Modal.uiAlert("示例曲式未通过结构校验——请检查示例节奏型是否都在。"); return; }
+    spec.lyrics.forEach((chars, i) => Store.upsertLyric(v.id, i, chars));
+    curId = v.id;
+    S.arrangeSel = { id: v.id, from: 0, to: v.sections.length - 1, loop: false };
+    Store.persist();
+    render(); refreshBar();
+    announce("已载入示例《在他乡》：7 个节奏型 + 全曲 10 段歌词");
+  }
+  $("argDemo").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); loadDemo(); });
+
   $("argOpen").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("argClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
   $("argNew").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -6148,7 +6283,7 @@ const Arrange = (() => {
   $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec + 1); });
 
   refreshBar();
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection };
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection, loadDemo };
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
@@ -6557,6 +6692,7 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
   lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
   LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
+  demoBuildSpec, DEMO_ID,                       // v2.3.0：示例曲《在他乡》谱面 → 数据模型的纯转换
   Arrange,                                        // v2.0.0：曲式编排 UI
   Help,                                           // v2.0.1：使用方法
   diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
