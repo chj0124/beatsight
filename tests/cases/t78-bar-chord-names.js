@@ -107,8 +107,8 @@ section("T78c 翻页窗口 · ★ 页内第 4 小节的第 1 行（预告行）�
   eq(JSON.stringify(chordTexts(beat)), JSON.stringify(["C", "Am", "Dm", "G"]),
      "起点四行 = 歌曲第 0-3 小节和弦");
   step(beat, ac, 158);                             // ≈3.2s → 页内第 4 小节（末行）→ 预告生效
-  eq(JSON.stringify(chordTexts(beat)), JSON.stringify(["Em", "Am", "Dm", "G"]),
-     "★ 第 1 行换成**下一小节**的和弦 Em（与徽标/格子同源：走 winPrevBar，不是 k+1 之外的错位）");
+  eq(JSON.stringify(chordTexts(beat)), JSON.stringify(["Em（下一小节 · 八音型）", "Am", "Dm", "G"]),
+     "★ 第 1 行换成**下一小节**的和弦 Em，并把预告信息并入胶囊（v2.8.0；与格子同源：走 winPrevBar）");
   step(beat, ac, 60);                              // ≈4.4s → 翻页，预告内容原地转正
   eq(JSON.stringify(chordTexts(beat)), JSON.stringify(["Em", "F", "G", "Am"]),
      "★ 翻页后四行 = 歌曲第 4-7 小节和弦（B 段 Em·F·G·Am）");

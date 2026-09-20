@@ -21,16 +21,18 @@
   --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
   --peak-rest:#4D4D4D;   /* 休止格的已弹填充：降一档，不抢发声格 */
   --thumb:#FFFFFF;       /* 滑杆 / 开关圆点 */
-  /* 六线谱几何（v2.4.2 立变量，v2.4.3 收进格子）：六条弦线必须整体落在 44px 的
-     .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘（用户观感
-     "六弦画在格子外面"）。现 --gt 弦间距 7px、--gtop 顶端留白 5px，
-     线落 5/12/19/26/33/40（顶留 5px、底留 4px）。
+  /* 六线谱几何（v2.4.2 立变量，v2.4.3 收进格子，v2.8.0 铺满格子）：六条弦线必须整体
+     落在 44px 的 .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
+     （用户观感"六弦画在格子外面"）。v2.4.3~v2.7.x 用 7px 间距 + 5px 顶端留白
+     （线落 5/12/19/26/33/40）。v2.8.0 改为**铺满**（用户要求）：一弦贴格子顶边、
+     六弦贴格子底边，故 --gtop 归零、--gt = 44/5 = 8.8px，
+     线落 0/8.8/17.6/26.4/35.2/44（上下零留白）。
      抽成变量是因为竖箭头的三种弦区跨距（kF/kB/kT）各要引用其中两个端点，
      写死数字会让"改一处忘三处"。 */
-  --gt:7px;              /* 弦间距 */
-  --gtop:5px;            /* 第一条弦线的顶端留白 */
-  --yT1:5px;  --yT2:19px; /* 上三线（高音区）首/末 */
-  --yB1:26px; --yB2:40px; /* 下三线（低音区）首/末 */
+  --gt:8.8px;            /* 弦间距 = 44px / 5 段 */
+  --gtop:0;              /* 第一条弦线（一弦）贴格子顶边 */
+  --yT1:0px;  --yT2:17.6px; /* 上三线（高音区 1-3 弦）首/末 */
+  --yB1:26.4px; --yB2:44px; /* 下三线（低音区 4-6 弦）首/末 */
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
      「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
@@ -80,22 +82,23 @@ button:disabled{cursor:not-allowed}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
-.bar-row{position:relative;height:86px;margin-bottom:14px}
+.bar-row{position:relative;height:86px;margin-bottom:20px}   /* 行距 20px：给行顶的「和弦胶囊」条带腾竖向空间（v2.8.0 由 14px 加大） */
 .bar-row:last-child{margin-bottom:0}
 .bar-row.current{background:rgba(30,215,96,.07);border-radius:8px}
 .bar-row.muted-bar .cell{opacity:.5}
-.bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-9px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
-/* 预告行（v2.7.0）：曲式翻页窗口页内第 4 小节期间，第 1 行临时换成"下一小节"的内容。
-   整行降透明 = 它是"未来"，与在播行/历史行区分开；徽标挂左上（静音拍标签在右上，
-   且预告行恒不是静音行——翻页档下静音恒为第 4 行，两者不会撞位） */
+.bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
+/* 预告行（v2.7.0；v2.8.0 预告信息并入和弦胶囊，不再单独挂徽标）：
+   曲式翻页窗口页内**最后一行**期间，第 1 行临时换成"下一小节"的内容。
+   整行降透明 = 它是"未来"，与在播行/历史行区分开 */
 .bar-row.preview-row{opacity:.55}
-.preview-badge{position:absolute;left:6px;top:-9px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:10.5px;color:var(--t2);pointer-events:none;white-space:nowrap}
-/* 小节和弦名（v2.7.4）：把段名尾部的和弦序列摊到**每小节行上方**——原先它只出现在远端侧栏
-   的「曲名 · 段名」里，离扫弦与歌词区太远，弹唱时眼睛得来回跳。一行 = 一小节，故一行一颗。
-   居中对齐：行顶 top:-9px 条带的左端被预告徽标占、右端被「静音小节」占（见上面两条），
-   中段空着，和弦恒居中即与两者都不撞位（窄屏且预告徽标很长时也只是靠得近，不叠字）。
-   绿色（--green）与网格高亮同色系，视觉上从属"这一小节"，不与徽标/静音标签抢主次 */
-.bar-chord{position:absolute;left:50%;top:-9px;transform:translateX(-50%);z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
+/* 小节和弦名（v2.7.4；v2.8.0 左对齐 + 并入预告信息 + 上移出格）：
+   段名尾部的和弦序列摊到**每小节行上方**，一行 = 一小节故一行一颗。
+   左对齐（left:6px）；整体上移到 top:-18px——原先 -9px 的条带会压住格子顶部 ~6px，
+   挡住扫弦标记（用户实拍）。预告行（第 1 行）不再另挂徽标，而是把预告信息并进同一颗胶囊：
+   文本 =「和弦名（下一小节 · 型名）」（该小节无和弦时只剩括号里的预告信息）。
+   行距已由 14px 加大到 20px，给这条行头条带腾出竖向空间。
+   绿色（--green）与网格高亮同色系，视觉上从属"这一小节" */
+.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
@@ -124,9 +127,10 @@ button:disabled{cursor:not-allowed}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
-   几何常量（v2.4.3 起）：--gt 弦间距 7px、--gtop 顶端留白 5px，六线落在
-   5/12/19/26/33/40——全部收进 44px 的格子高度内（参考页的 9px×6=53px 超出格子，
-   v2.4.2 照搬后正是用户报的"六弦画在格子外面"）。
+   几何常量（v2.4.3 起）：--gt 弦间距 8.8px、--gtop 顶端留白 0，六线落在
+   0/8.8/17.6/26.4/35.2/44——v2.8.0 起**铺满格子**：一弦贴格子顶边、六弦贴底边
+   （用户要求；v2.4.3~v2.7.x 为 7px 间距留白 5px 的 5/12/19/26/33/40）。全部收在
+   44px 的格子高度内（参考页的 9px×6=53px 超出格子，v2.4.2 照搬后正是用户报的"六弦画在格子外面"）。
    与旧版「14px 方形徽标 + 2px 色带」的关系：**结构不动**（仍挂在各自格子内部，
    仍由 fitCellAnnotations 按格宽整体隐藏），只把字形换成贯穿弦区的竖箭头、并补六线底纹。
    ★ 弦区与 zone 的对应：zone 0=低音 / 1=中（全部）/ 2=高音。
@@ -151,7 +155,7 @@ button:disabled{cursor:not-allowed}
    正解（照搬参考页）：一行内所有箭头放进**独立的一层** .strums，
    它是 .cell 的兄弟节点、不裁切、高度按行的完整高度给足，箭头用百分比定位到格中心。
    这样"箭头"与"格子"解耦：格子的 overflow/圆角/宽高都不再影响箭头几何。
-   v2.4.3 注：六线收进格子（5→40）后 kF 箭头（35px 高）几何上已能塞进格子，
+   v2.4.3 注：六线收进格子、v2.8.0 进一步铺满（0→44）后 kF 箭头（44px 高）几何上已能塞进格子，
    但行级挂载保留——解耦的边界不因几何变化而回退。 */
 .strums{position:absolute;left:0;right:0;top:0;height:100%;pointer-events:none;z-index:2}
 /* 竖箭头：水平位置由行内百分比定（一格中心），垂直跨距由 --y1/--y2 定。
@@ -180,9 +184,9 @@ button:disabled{cursor:not-allowed}
 .strumv.dn::after{top:var(--y1);border-bottom:7px solid var(--peak)}
 .strumv.up::after{top:calc(var(--y2) - 7px);border-top:7px solid var(--peak)}
 /* 弦区跨距：低音区=下三线(4-6弦)、高音区=上三线(1-3弦)、全部弦=贯穿六线 */
-.strumv.kF{--y1:var(--yT1);--y2:var(--yB2)}   /* 全部弦 5→40 */
-.strumv.kB{--y1:var(--yB1);--y2:var(--yB2)}   /* 低音区 26→40（4-6 弦） */
-.strumv.kT{--y1:var(--yT1);--y2:var(--yT2)}   /* 高音区 5→19（1-3 弦） */
+.strumv.kF{--y1:var(--yT1);--y2:var(--yB2)}   /* 全部弦 0→44 */
+.strumv.kB{--y1:var(--yB1);--y2:var(--yB2)}   /* 低音区 26.4→44（4-6 弦） */
+.strumv.kT{--y1:var(--yT1);--y2:var(--yT2)}   /* 高音区 0→17.6（1-3 弦） */
 /* 空扫：蓝色虚线竖箭头（只动手不出声），弦区跟随前一记实扫 */
 .strumv.ghost::before{background:none;border-left:2px dashed var(--blue);width:0}
 .strumv.ghost::after{border-bottom-color:var(--blue)}
@@ -214,11 +218,11 @@ button:disabled{cursor:not-allowed}
    走带线与「正在唱的字」都由同一次 tick 换算驱动（同一份 arrSec/arrBar/小节内 tick），
    所以循环段落时两轨不漂移。字块按「段内 tick / 段长」铺开（一段可跨多小节），
    延音字靠 dur 拉长时值块；视觉语言与 .cell 同源：白填充 = 已唱、绿描边 + 亮绿字 = 正在唱。
-   刻意做成 #viz 的**兄弟节点**而不是子节点：T27 用「#viz 内恰有 4 行 .bar-row / 恰 1 个 active」
+   刻意做成 #viz 的**兄弟节点**而不是子节点：T27 用「#viz 内恰有窗口行数个 .bar-row / 恰 1 个 active」
    把渲染层锁死在网格不变量上，歌词块塞进去会立刻破功。
    纯视觉轨（pointer-events:none）：拖动微调由编辑视图承担，这层一个字都不接收。
    v2.7.2 按小节分行（用户实拍诉求：整段一行横排时，歌词位置与小球/网格行对不上）：
-   歌词轨 = 与网格四行一一对应的四条 .lyric-row（第 i 行 = 窗口第 i 小节，
+   歌词轨 = 与网格逐行一一对应的若干条 .lyric-row（第 i 行 = 窗口第 i 小节，行数 = 同屏行数档位；
    预告行生效时第 1 行 = 下一小节的歌词），行内按小节内 tick 百分比定位字块；
    当前行带 .cur 底色、走带线只在当前行出现 */
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
@@ -293,6 +297,12 @@ input[type=range].vol{width:120px}
 /* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
 .viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+/* 同屏行数档位（v2.8.0 req3）：时值可视化卡片顶部、开关行之下、网格之上。
+   与 .track-row / .limit-panel 同一套写法（flex + gap + 下方留白）；
+   档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
+.viz-rows-panel{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.viz-rows .pill{padding:7px 14px;font-size:12px}
 .toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:9999px;padding:10px 14px 10px 16px;font-size:13px}
 .toggle-pill.on{color:var(--t1)}
 .toggle-pill.off{color:var(--t2)}
@@ -837,6 +847,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            普通轨下由 Tracks 隐藏（不画六线也不画箭头） -->
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
     </div>
+    <!-- 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**一档可见行数。
+         用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的上下两层，
+         共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
+         值域 1–4，默认 4（= 旧口径「同屏 4 小节」，老用户升级后逐位不变）。
+         ★ 只在**曲式模式**生效：预设模式下网格行数仍随型走（型多长画多行），
+           本档位只对曲式窗口长度与歌词轨行数起作用。
+         按钮由 VIZ_ROW_COUNTS 在 Controls.syncRowsUI 里生成，不在标记里写死——
+         与练习量档位 / 轨切换条同一套「一行 pill 由值表生成」的纪律（单一数据源） -->
+    <div class="viz-rows-panel">
+      <div class="group-label">同屏行数 · 曲式模式下扫弦与歌词共用</div>
+      <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
+    </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
          语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
@@ -1376,23 +1398,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1408  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1801  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2690  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3318  Modal         应用内弹窗
-     L3448  Viz           时值可视化渲染与每帧动画
-     L4707  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5334  Trainer       变速训练器
-     L5547  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6012  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6142  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6889  Editor        自定义节奏型编辑器
-     L7245  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7468  Ear           听辨训练（v1.10.0）
-     L7691  Arrange       曲式编排（v2.0.0）
-     L8444  Help          使用方法（v2.0.1）
-     L8491  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8550  初始化（装配） 各模块 hook 接线与启动
+     L1430  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1830  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2726  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3354  Modal         应用内弹窗
+     L3484  Viz           时值可视化渲染与每帧动画
+     L4753  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5380  Trainer       变速训练器
+     L5593  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6082  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6212  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6959  Editor        自定义节奏型编辑器
+     L7315  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7538  Ear           听辨训练（v1.10.0）
+     L7761  Arrange       曲式编排（v2.0.0）
+     L8514  Help          使用方法（v2.0.1）
+     L8561  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8620  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1412,7 +1434,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.7.4";
+const VERSION = "2.8.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1513,6 +1535,13 @@ const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
 const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
+/* 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**的可见行数。
+   用户明确要求「共用一个档位」——两轨是同一根时间轴上的上下两层，行数必须一致才能逐行对齐。
+   值域 1–4（4 = 旧口径「同屏 4 小节」）。它是**唯一真相源**：S 的加载校验与 Controls 的
+   档位按钮都从这里取，不在两处各维护一份。曲式模式下它就是窗口长度（原 ARR_WIN_BARS 恒 4
+   的替代，见 Viz.arrWinBars）；预设模式下网格行数仍随型走（型多长画多行），本档位只对
+   曲式窗口与歌词轨生效。 */
+const VIZ_ROW_COUNTS = [1, 2, 3, 4];
 /* F1 歌词对齐轨（v2.1.0）的粒度与基准（第 0 轮契约）：1 格 = 十六分 = 12t（拖动吸附单位），
    基准时值 = 八分 = 2 格 = 24t（粘贴歌词后按字均分的默认值）。
    两者都由 TPB 派生、不写死 12/24——改 PPQN 时跟着变，与全文件"单一来源"的口径一致 */
@@ -2247,6 +2276,7 @@ const Store = (() => {
    *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
    *   showTab: boolean,
+   *   vizRows: number,
    *   loopRange: { on: boolean, from: number, to: number },
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
    *   limit: { mode: string, n: number },
@@ -2284,6 +2314,11 @@ const Store = (() => {
     /* v2.4.2 六线底纹开关：默认开（六线是扫弦谱的"纸"，第一眼就该在）。
        它只控制**底纹**显隐，不影响扫弦箭头的绘制——箭头是内容，底纹是参照物。 */
     showTab: saved.showTab !== false,
+    /* v2.8.0 req3 同屏行数档位：扫弦网格窗口与歌词轨**共用**（见 VIZ_ROW_COUNTS 的值表注释）。
+       它是用户的**视图偏好**，跟 showTab 同类——下次打开还要看同样的行数，所以进热键载荷。
+       默认 4 = 旧口径「同屏 4 小节」：老用户升级后看到的行数逐位不变。
+       加载校验用白名单（VIZ_ROW_COUNTS.includes）：脏值/越界一律回落到 4，不信存储。 */
+    vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 4,
     /* v2.4.3 指定小节循环：「只反复练这些小节里的第 X 到第 Y 小节」。
        ★ 为什么 BeatSight 还需要它（它有别于参考页的场景）：选中一个型本来就会无限循环——
          所以"循环某个节奏型"这件事**本来就成立**。真正缺的是**更小的粒度**：某一两小节
@@ -2503,6 +2538,7 @@ const Store = (() => {
       strumVol:S.strumVol,                        // v2.5.0：扫弦声部音量（与 vol 并列的热键显示偏好）
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
       showTab:S.showTab,                          // v2.4.2：六线底纹开关（显示偏好，跟热键走）
+      vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
       limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
@@ -3503,9 +3539,9 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      与 vizSig 一样，buildViz 时锁定一次，本帧结构生命周期内只认它 */
   let vizBars = DEF_BARS;
 
-  /* ---- 曲式模式的「滚动窗口」（v2.5.2 第 Ⅱ 期）----
-     用户要的是：网格里的 4 行 = **这首歌正在弹的那 4 小节**，跟着播放往前走，
-     而不是"某个型的 4 小节被盖 4 遍"。做法是把窗口里的 4 个小节**合成为一个临时的型**：
+  /* ---- 曲式模式的「滚动窗口」（v2.5.2 第 Ⅱ 期；v2.8.0 req3：窗口长度改为可调）----
+     用户要的是：网格里的 N 行 = **这首歌正在弹的那 N 小节**（N = 同屏行数档位），跟着播放往前走，
+     而不是"某个型的 N 小节被盖 N 遍"。做法是把窗口里的 N 个小节**合成为一个临时的型**：
      于是每一行仍然是"某个型的第 bar 小节"，行可以来自不同的段、不同的型，
      而下游（格子 / 填充 / 闪烁 / 弹跳球）一行都不用改。
 
@@ -3513,11 +3549,17 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
          · 型内小节号 —— `schedBar` 与端点表里的 `e.bar` 用的口径（调度器口径）
          · 歌曲小节号 —— 跨段摊平后的一维号（窗口口径，见共享区的 songBars/songBarAt）
        端点缓冲区里存的是**前者**，所以画之前要走一次 `rowOfOnset()` 换算。 */
-  const ARR_WIN_BARS = 4;                 // 同屏 4 行（与"同屏 4 小节"的既有口径一致）
+  /* 窗口长度（v2.8.0 req3）：由同屏行数档位 S.vizRows 决定，取代旧版恒为 4 的常量。
+     ★ 为什么是函数而不是常量：档位可在运行期由 Controls 改；改动处**紧接着**就调 buildViz 重建，
+       所以本函数的每次读取都与「当前已建成的网格」同一口径——不存在"网格已按新行数重建、
+       行界判据还按旧行数"的错行窗口（这正是 vizSig/vizBars 要锁的同类风险，此处靠"同步重建"消掉）。
+     ★ 它同时是**歌词轨的行数**：两轨共用这一档位（见 VIZ_ROW_COUNTS 的值表注释），
+       行数一致才能逐行对齐。预设模式不走这里——网格行数仍随型走（型多长画多行）。 */
+  function arrWinBars(){ return S.vizRows; }
   let winStart = -1;                      // 窗口起点（歌曲小节号）；-1 = 还没定过 / 不适用
   /** @type {any} */
   let winPat = null;                      // 窗口合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
-  /* 预告行（v2.7.0）：页内第 4 小节期间，第 1 行临时替换成"下一小节"的内容。
+  /* 预告行（v2.7.0）：页内最后一行的那个小节期间，第 1 行临时替换成"下一小节"的内容。
      winPrevBar = 预告的歌曲小节号（-1 = 本窗口不带预告）；winPrevSteps = 预告行的格子；
      winPrevName = 徽标上的型名。三者同生同灭（窗口同步一处写入，resetWindow 一处清） */
   let winPrevBar = -1;
@@ -3529,14 +3571,14 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return (S.playMode === "arrange" && winPat) ? winPat : activePattern();
   }
   /** 窗口起点该取哪个小节（**改这一行就是改手感**）：
-      按 4 小节翻页（v2.7.0 用户拍板）→ 球从第 1 行逐行走到第 4 行，与预设模式同手感；
-        静音拍（每 4 小节静第 4 小节）恒落第 4 行，与预设模式的行位惯例对齐
+      按 N 小节翻页（v2.7.0 用户拍板；N = 同屏行数档位）→ 球从第 1 行逐行走到第 N 行，与预设模式同手感；
+        静音拍（每 MUTE_PERIOD 小节静一小节）恒落页内对应行，与预设模式的行位惯例对齐
       跟播放头滚动（旧档）→ 当前小节永远是第 1 行：Math.max(0, k) */
   /** @param {number} k @returns {number} */
-  function winAnchor(k){ return Math.max(0, Math.floor(k / ARR_WIN_BARS) * ARR_WIN_BARS); }
+  function winAnchor(k){ const W = arrWinBars(); return Math.max(0, Math.floor(k / W) * W); }
   /* 本窗口该不该带预告行、预告哪一小节（v2.7.0 用户拍板的方案）：
-     严格 4 翻页后，播到页内第 4 小节时"下一小节"在屏外——扫弦型可能在段边界变化，
-     没有提前量右手就没法准备。把整屏最陈旧的第 1 行（3 小节前的历史）临时替换成
+     严格按档位翻页后，播到页内最后一行时"下一小节"在屏外——扫弦型可能在段边界变化，
+     没有提前量右手就没法准备。把整屏最陈旧的第 1 行（N-1 小节前的历史）临时替换成
      下一小节的内容。返回 {bar, steps, name}；不带预告（不在页末 / 后面没有下一小节）
      返回 {bar:-1}。
      ★ 内容必须与节目单同源：走 arrNextBar——范围循环时"下一小节"是范围起点而不是
@@ -3544,7 +3586,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      ★ 每帧热路径上的便宜守卫在先：只在页内最后一行才做 songBarAt/arrNextBar 的解析。 */
   /** @param {number} k @returns {{bar: number, steps?: any[]|null, name?: string}} */
   function previewBarFor(k){
-    if (k < 0 || k !== winAnchor(k) + ARR_WIN_BARS - 1) return { bar: -1 };
+    if (k < 0 || k !== winAnchor(k) + arrWinBars() - 1) return { bar: -1 };
     const a = arrangeCur();
     if (!a) return { bar: -1 };
     const at = songBarAt(a, k);
@@ -3562,7 +3604,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         （用户实拍：重新播放后第 1 行不是歌曲第 1 小节）。
         调用点在 AudioEngine / Controls —— 那正是 `schedBar = loopStartBar(...)` 的四处 */
   function resetWindow(){ winStart = -1; winPat = null; winPrevBar = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2; }
-  /** 把窗口里的 ARR_WIN_BARS 个小节合成为一个临时型（每小节取自它所引用的型）。
+  /** 把窗口里的 arrWinBars() 个小节合成为一个临时型（每小节取自它所引用的型）。
       任一小节解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
   /** @param {any} a @param {number} W @returns {any} */
@@ -3571,7 +3613,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     if (!total) return null;
     const bars = [];
     let meter = S.sig, accents = null;
-    for (let i = 0; i < ARR_WIN_BARS; i++){
+    for (let i = 0; i < arrWinBars(); i++){
       const at = songBarAt(a, (W + i) % total);       // 走到曲尾就绕回开头（看清"接下来会回到哪"）
       if (!at) return null;
       const p = resolveRef(at.ref);
@@ -3607,7 +3649,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       const a = arrangeCur();
       if (a){
         const r = songBarBefore(a, e.aSec) + e.aBar - winStart;
-        return (r >= 0 && r < ARR_WIN_BARS) ? r : -1;
+        return (r >= 0 && r < arrWinBars()) ? r : -1;
       }
     }
     return Math.min(vizBars - 1, Math.max(0, e.bar));
@@ -3700,13 +3742,14 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     zoneEls.push(zones);
     /* 六线谱底纹（v2.4.2，照搬参考页）：每条小节行铺一层六条等距弦线当"纸"。
        只挂扫弦轨——普通轨没有扫弦箭头，留一层无解释的横线纯属噪音（同 v2.4.0 的轨门控口径）。
-       六条线的 y 由 CSS 变量 --gtop / --gt 推出（5/12/19/26/33/40，全部收在格子内），
+       六条线的 y 由 CSS 变量 --gtop / --gt 推出（0/8.8/17.6/26.4/35.2/44，铺满格子），
        与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
        createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
     if (S.track === "strum"){
       const tab = document.createElement("div");
       tab.className = "tab";
-      /* 六条弦线：y = 5 + li×7（li=0..5）→ 5/12/19/26/33/40，全部落在 44px 格子内。
+      /* 六条弦线：y = 0 + li×8.8（li=0..5）→ 0/8.8/17.6/26.4/35.2/44，铺满 44px 格子
+         （一弦贴顶边、六弦贴底边）。
          与 CSS 里 --yT1/--yT2/--yB1/--yB2 是同一组数字的两处表述，故这里直接读变量运算，
          不写字面量——写死会让"改弦间距"变成两处改一处漏。 */
       for (let li = 0; li < 6; li++){
@@ -3855,14 +3898,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       g.el = lb;
     });
     glEls.push(groups.filter(g => g.el));
-    /* 小节和弦名（v2.7.4）：挂在**行内**（.bar-row 的直接子节点），与预告徽标同一挂法——
-       行顶 top:-9px 条带的中段，既不挤 .cell/.cell-label/.ruler-lab（行下半部），
-       也不占徽标（左上）/静音标签（右上）的位置。无和弦的小节不挂，保持 null 占位 */
+    /* 小节和弦名（v2.7.4；v2.8.0 并入预告信息）：挂在**行内**（.bar-row 的直接子节点），
+       左对齐在行头条带（top:-18px，见 CSS），已移出格子范围、不挡扫弦标记。
+       预告行（第 1 行）把预告信息并进同一颗胶囊：文本 =「和弦名（下一小节 · 型名）」，
+       该小节无和弦时只剩括号里的预告信息。无内容的不挂，保持 null 占位（与行逐位同构） */
     const chord = chordAtRow(b);
-    if (chord){
+    const pvName = (b === 0 && winPrevBar >= 0 && winPrevName) ? winPrevName : "";
+    const chordText = chord ? (pvName ? `${chord}（下一小节 · ${pvName}）` : chord)
+                            : (pvName ? `下一小节 · ${pvName}` : "");
+    if (chordText){
       const cc = document.createElement("div");
       cc.className = "bar-chord";
-      cc.textContent = chord;
+      cc.textContent = chordText;
       row.appendChild(cc);
       barChordEls.push(cc);
     } else barChordEls.push(null);
@@ -3899,18 +3946,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (winPat && winPrevBar >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
     } else { winPat = null; winStart = -1; }
     const p = vizPattern();
-    vizBars = patBars(p);          // v2.5.1：网格的行数随型走；v2.5.2：曲式模式下 = 窗口长度(4)
+    vizBars = patBars(p);          // v2.5.1：网格的行数随型走；v2.5.2：曲式模式下 = 窗口长度（= 同屏行数档位）
     const barTicks = vizSig * TPB;
     for (let b = 0; b < vizBars; b++) buildBarRow(b, p, barTicks, viz);
-    /* v2.7.0 预告行徽标：预告行挂在第 1 行——它是"未来"，没有徽标会与正读顺序混
-       （此刻四行 = [下一小节, 第 2, 第 3, 第 4 小节]，必须有一句话说明第一行是谁） */
-    if (winPrevBar >= 0 && winPrevName && rowEls[0]){
-      rowEls[0].classList.add("preview-row");
-      const badge = document.createElement("div");
-      badge.className = "preview-badge";
-      badge.textContent = "下一小节 · " + winPrevName;
-      rowEls[0].appendChild(badge);
-    }
+    /* v2.7.0 预告行：预告行挂在第 1 行——它是"未来"，降透明与正读顺序区分开
+       （此刻 N 行 = [下一小节, 第 2 … 第 N 小节]。预告信息已并入第 1 行的和弦胶囊，
+       见 buildBarRow；这里只负责行级标识） */
+    if (winPrevBar >= 0 && winPrevName && rowEls[0]) rowEls[0].classList.add("preview-row");
     for (let i = 1; i < S.sig; i++){
       const gl = document.createElement("div");
       gl.className = "grid-line";
@@ -4283,7 +4325,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
     const W = winStart >= 0 ? winStart
       : winAnchor(songBarBefore(a, Math.min(Math.max(S.arrangeSel.from, 0), a.sections.length - 1)));
-    for (let r = 0; r < ARR_WIN_BARS; r++){
+    for (let r = 0; r < arrWinBars(); r++){
       /* 预告行（v2.7.0）：页内第 4 小节期间第 1 行 = 下一小节。歌词行跟着换内容
          （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
       const k = (r === 0 && winPrevBar >= 0) ? winPrevBar : (W + r) % total;
@@ -4363,7 +4405,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★ 按**行下标**（kk − W）定位而不是按小节号匹配 row.bar：窗口走到曲尾会绕回开头
        （同一窗口里同一个小节号可能出现两次），按下标永远不会两处同时点亮 */
     const kk = (k !== undefined) ? k : ((S.playing && ctx) ? audibleSongBar(ctx.currentTime) : -1);
-    const curIdx = (kk >= W && kk < W + ARR_WIN_BARS) ? kk - W : -1;
+    const curIdx = (kk >= W && kk < W + arrWinBars()) ? kk - W : -1;
     /* 行态签名：played/on/cur 任一变化才重写 className（稳态帧只动当前字的 fill 与走带线） */
     let sig = "";
     /** @type {{ row: any, i: number, st: string }[]} */
@@ -4690,6 +4732,10 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
        由 Controls 单向调用。Controls 声明在 Viz 之后，不构成反向引用。 */
     syncTabLayer,
+    /* v2.8.0 req3：曲式滚动窗口的长度（= 同屏行数档位 S.vizRows）——网格与歌词轨共用的那一个数。
+       暴露出来给测试与「两轨共用同一档位」的调用方一个单一真相源
+       （值表 VIZ_ROW_COUNTS 的注释里「见 Viz.arrWinBars」指的就是这里）。 */
+    arrWinBars,
     /* v2.1.0 F1：歌词对齐轨（独立于网格的一条卫星轨）——buildLyricLane 供装配层在
        「曲式/段落变化」时重建；paintLyric 只由 paintFrameBody 内部调用，暴露出来是为了让
        测试能单独断言「同一份 tib 下轨道位置与高亮」而不用驱动整套音频排程 */
@@ -5923,6 +5969,28 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
      一条 CSS 规则就够了。箭头不受影响（它是内容，不是底纹）。 */
   bindToggle("tabToggle", () => (S.showTab = !S.showTab), () => Viz.syncTabLayer());
 
+  /* 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**的可见行数（值表 VIZ_ROW_COUNTS）。
+     与上面几个"图层开关"不同——改行数等于换掉 DOM 的行数，必须重建整棵树，所以这里不能像
+     tabToggle 那样只切个类名，得走 buildPillRow 生成按钮、选中即调 Viz.buildViz()
+     （它末尾会顺带重建歌词轨，两轨行数同源）。
+     ★ 为什么写完 S.vizRows 就**紧接着** buildViz：arrWinBars() 每次现读 S.vizRows，两件事在
+       同一同步 tick 内完成，才不存在"网格已按新行数重建、行界判据还按旧行数"的错行窗口
+       （这正是 Viz.arrWinBars 注释里说的、靠"同步重建"消掉的那类风险）。 */
+  function syncRowsUI(){
+    buildPillRow($("vizRowsRow"), VIZ_ROW_COUNTS, {
+      key: "rows",                        // 按钮带 data-rows=N：测试与样式都能按档位定位
+      text: n => n + " 行",
+      label: n => "同屏 " + n + " 行",
+      isOn: n => n === S.vizRows,
+      onPick: n => {
+        S.vizRows = n;
+        Viz.buildViz();                 // 先按新行数重建网格（含歌词轨），再刷档位高亮
+        syncRowsUI();
+        Store.persist();
+      },
+    });
+  }
+
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
   bindToggle("countInToggle", () => (S.countIn.on = !S.countIn.on),
     () => { $("countInBeatsWrap").hidden = !S.countIn.on; });
@@ -6001,12 +6069,14 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     return false;
   }
   syncLimitUI();                                // 装配即生成档位（初始选中态来自已加载的 S.limit）
+  /* 同屏行数档位（v2.8.0 req3）：装配即生成档位按钮（初始选中态来自已加载的 S.vizRows） */
+  syncRowsUI();
   /* 进度区显式初始化一次：不能依赖标记里的初值——已持久化「按小节」档位时，
      若这里不写，页面会先显示上一轮残留或空白，直到第一次 start() 才被纠正 */
   syncLimitProg();
 
   return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI,
-    onLimitPulse: limitPulse, syncLimitUI, syncLimitProg };
+    onLimitPulse: limitPulse, syncLimitUI, syncLimitProg, syncRowsUI };
 })();
 
 /* ================= Tracks · 节拍轨切换（v2.4.0） ================= */
