@@ -1,6 +1,6 @@
 {
   "name": "beatsight",
-  "version": "2.6.4",
+  "version": "2.7.0",
   "private": true,
   "description": "开发期自验工具链（只跑本地，不进上站产物）。运行时零依赖不变：index.html 仍可 file:// 直开；上站对外资源为 index.html / sw.js / manifest.webmanifest / icon.svg / icon-192.png / icon-512.png / icon-maskable-192.png / icon-maskable-512.png",
   "engines": {
