@@ -11,7 +11,7 @@
         （PLAN-v1.9 / PLAN-v2-arrangement / PLAN-v2-impl 三份都缺）——读者按表点进去，
         看到的是还在写"确认后开工"的方案，无从判断该不该信。
 
-   三项都改成机器可判的规则，而不是再手写一遍数值：
+   四项都改成机器可判的规则，而不是再手写一遍数值：
 
      1) 模块索引行号 = index.html 实际 banner 行号（复用 gen-index.js 的解析，口径唯一）
      2) 不许手写耗时：这四个文件的正文里不得出现「约 N 秒」。
@@ -20,6 +20,9 @@
         ——命令自己会在末尾打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。文档只描述"怎么用、为什么"。
      3) 归档状态一致：README 文档表里标了「已归档 / 已落地」的 Markdown 文档，
         正文开头必须有同一状态词（写清"已归档/已落地 + 以什么为准"）。
+     4) 审计快照横幅：spec.md / tasks.md / checklist.md 是 2026-09-17 那次审计（基线 v2.0.2）的
+        产物，里面的数字必然随代码演进漂移。它们因此被排除在"手写耗时"规则之外（见 TIMING_FILES），
+        但正文开头必须各自带一行统一横幅「历史快照 · 已归档」——否则读者会拿旧数字当现状。
 
    刻意不做的事：不去校验 README 里"实跑 8/10 项"这类**步数**，也不去校验正文里引用的
    代码行号（如"未覆盖的 L2964"）——前者要工具改口径时同改多处文案，收益低；后者更适合
@@ -35,7 +38,8 @@ const genIndex = require("./gen-index.js");
 const ROOT = path.join(__dirname, "..");
 
 /* 手写耗时的禁区（相对路径）。刻意排除：CHANGELOG（历史记录，改了反而失真）、
-   docs/PLAN-*.md（归档方案，是当年的快照）、spec.md / checklist.md / tasks.md（审计产物） */
+   docs/PLAN-*.md（归档方案，是当年的快照）、spec.md / checklist.md / tasks.md（审计产物，
+   由下面的第 4 项快照横幅规则单独管） */
 const TIMING_FILES = [
   "README.md",
   "docs/DEVELOPMENT.md",
@@ -44,11 +48,17 @@ const TIMING_FILES = [
 ];
 const TIMING_RE = /约\s*\d+(?:\.\d+)?\s*秒/g;
 
+/* 审计产物必须带统一快照横幅：这三份是 2026-09-17 审计（基线 v2.0.2）的产物，数字会随代码演进
+   漂移。它们不适用"手写耗时"规则，但正文开头必须有「历史快照 · 已归档」这行，读者才不会被旧数字误导。 */
+const SNAPSHOT_FILES = ["spec.md", "tasks.md", "checklist.md"];
+const SNAPSHOT_MARKER = "历史快照 · 已归档";
+const SNAPSHOT_HEAD_LINES = 20;
+
 const problems = [];
 const report = [];
 
 console.log("══════════════════════════════════════════════════════════");
-console.log("  文档一致性（模块索引 · 手写耗时 · 归档状态）");
+console.log("  文档一致性（模块索引 · 手写耗时 · 归档状态 · 审计快照）");
 console.log("══════════════════════════════════════════════════════════");
 
 /* ---- 1) 模块索引行号 ---- */
@@ -117,14 +127,38 @@ console.log("══════════════════════�
   }
 }
 
+/* ---- 4) 审计快照横幅 ---- */
+{
+  const missing = [];
+  SNAPSHOT_FILES.forEach(rel => {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)){
+      missing.push(`${rel} 不存在`);
+      return;
+    }
+    const head = fs.readFileSync(full, "utf8").split("\n").slice(0, SNAPSHOT_HEAD_LINES).join("\n");
+    if (!head.includes(SNAPSHOT_MARKER)){
+      missing.push(`${rel}：正文前 ${SNAPSHOT_HEAD_LINES} 行缺少「${SNAPSHOT_MARKER}」横幅`
+        + "——这是审计产物，数字会漂移，读者需要一行显式的「历史快照」声明");
+    }
+  });
+  if (missing.length){
+    report.push(`✗ 审计快照：${missing.length} 处缺失（spec.md / tasks.md / checklist.md）`);
+    missing.forEach(x => problems.push("审计快照 —— " + x));
+  } else {
+    report.push(`✓ 审计快照：${SNAPSHOT_FILES.length} 份审计产物均带「${SNAPSHOT_MARKER}」横幅`);
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
   console.log("  ✗ " + problems.length + " 处文档漂移：");
   problems.forEach(p => console.log("      · " + p));
   console.log("  修法：索引行号 → `node tools/gen-index.js --write`；"
-    + "耗时 → 删掉数字交给命令输出；归档状态 → 给文档正文补一行状态横幅。");
+    + "耗时 → 删掉数字交给命令输出；归档状态 → 给文档正文补一行状态横幅；"
+    + "审计快照 → 给 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行。");
   process.exit(1);
 }
-console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态）");
+console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照）");
 process.exit(0);
