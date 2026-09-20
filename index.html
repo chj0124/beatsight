@@ -1408,20 +1408,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1437  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1837  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2733  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3361  Modal         应用内弹窗
-     L3491  Viz           时值可视化渲染与每帧动画
-     L4760  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5387  Trainer       变速训练器
-     L5600  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6089  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6219  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6966  Editor        自定义节奏型编辑器
-     L7322  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7545  Ear           听辨训练（v1.10.0）
-     L7768  Arrange       曲式编排（v2.0.0）
-     L8521  Help          使用方法（v2.0.1）
-     L8568  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8627  初始化（装配） 各模块 hook 接线与启动
+     L3365  Modal         应用内弹窗
+     L3495  Viz           时值可视化渲染与每帧动画
+     L4764  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5391  Trainer       变速训练器
+     L5604  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6094  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6224  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6971  Editor        自定义节奏型编辑器
+     L7327  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7550  Ear           听辨训练（v1.10.0）
+     L7773  Arrange       曲式编排（v2.0.0）
+     L8526  Help          使用方法（v2.0.1）
+     L8573  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8632  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1441,7 +1441,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.1";
+const VERSION = "2.8.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2967,8 +2967,12 @@ let rafId = null;
    渲染层靠它保证球永远有目的地（demo 实测：缺它球在慢速下落地僵住） */
 let onsetBuf = /** @type {{ t: number, bar: number, cumT: number, aSec: number, aBar: number, pb: number }[]} */ ([]), onsetNext = /** @type {null | { t: number, bar: number, cumT: number, aSec?: number, aBar?: number, pb?: number }} */ (null);
 /* 预备拍（v0.9.0）：ciStart=预备拍起点（音频时钟），ciBeats=本次预备拍数，ciNext/ciLeft=调度游标；
-   loopStart 顺延到预备拍结束之后——预备拍期间 paintFrame 位置为负、只显示倒计时 */
-let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0;
+   ciEnd=预备拍结束时刻（= ciStart + ciBeats 拍）。视觉门控（paintFrameBody）只认 ciEnd：
+   ★ 为什么不能用 loopStart 当预备拍边界：loopStart 会在播放途中"型/块切换"时被重映射到未来
+     （见 schedOneStep 的 consumePending 分支）——那本是调度取型对齐用的，可一旦拿它做预备拍边界，
+     整首连播跨段时就会把那个未来时刻误判成"又进了预备拍"，于是小球被门控挡住、藏掉该小节末尾几拍。
+     这也是为什么 ciBeats 不能在预备拍数完后清零（调度侧仍要靠它置首声重拍，见 schedulerBody）。 */
+let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0, ciEnd = 0;
 /* 默认重拍分组（v1.3.0 抽取）：基本回退节奏与编辑器新建草稿共用同一条阶梯。
    原先两处各写一遍（basicPattern 与 Editor），将来改分组规则必然漏一处 */
 /** @param {number} meter */
@@ -4596,7 +4600,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!c || !ph || !tg) return;              // 未建上下文 / buildViz 尚未成功跑过：无可绘制之物
     /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
        跑道拍点随计数脉冲（跨小节时按 vizSig 折行） */
-    if (ciBeats > 0 && c.currentTime < loopStart){
+    if (ciBeats > 0 && c.currentTime < ciEnd){
       const idx = Math.min(ciBeats - 1, Math.floor((c.currentTime - ciStart) / spb()));
       if (idx !== lastCi){
         lastCi = idx;
@@ -5704,7 +5708,8 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       ciBeats = S.countIn.beats; ciLeft = ciBeats;
       ciStart = loopStart; ciNext = ciStart;
       loopStart = ciStart + ciBeats * spb();
-    } else { ciBeats = 0; ciLeft = 0; }
+      ciEnd = loopStart;                       // 视觉门控的固定边界：此后不随 loopStart 重映射而移动
+    } else { ciBeats = 0; ciLeft = 0; ciEnd = 0; }
     nextNoteTime = loopStart;
     sessStartT = c.currentTime;                // v1.4：练习计时起点（音频时钟，挂起不计时）
     /* 练习量（v1.9.0）：每次开始都从零起算。min 模式的基准点分两种情形——
@@ -5729,7 +5734,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     setMode("playing", false, "stop");
     /* 预备拍会话状态：ciLeft=0 已足以让调度侧的预备拍循环不再进入；ciNext/ciStart 一并归零
        是为了不给"句柄型状态"留下需要靠下一次 start() 覆盖的残值（v2.0.6，审计 P1-3） */
-    ciLeft = 0; ciBeats = 0; ciNext = 0; ciStart = 0;
+    ciLeft = 0; ciBeats = 0; ciNext = 0; ciStart = 0; ciEnd = 0;
     /* 会话播放额度一并作废（v1.10.0）：不清的话，中途手动停一次，
        下次普通播放会带着上一轮的额度"放两小节就停"——那是最难查的那类残留 bug。
        听辨训练那条路径是「先清零再 stop」，所以不受这行影响 */

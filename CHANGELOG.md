@@ -1,5 +1,24 @@
 # 变更记录
 
+## v2.8.2 · 修整首连播 + 预备拍：小球动画不再跳过第一小节最后两拍（2026-09-21）
+
+**来源**：用户报「整首连播在打开预备拍时，小球动画会跳过第一小节的最后两拍」。
+
+- **根因**：曲式（整首连播）每遇段/块边界时，`schedOneStep` 的 `consumePending` 分支会把
+  `loopStart` 重映射到**未来**（≈前瞻窗口处：`loopStart = nextNoteTime - schedBar*S.sig*spb()`）。
+  而预备拍视觉门控 `paintFrameBody` 旧写法用的是 `if (ciBeats > 0 && c.currentTime < loopStart)`
+  ——`ciBeats` 只在 `stop()` 清零、播放途中一直保持 >0，于是每当 `loopStart` 被改写到未来，
+  这个条件就**重新成立**：状态栏切回「预备拍 · 4 / 4」，`paintFrameBody` 在调用 `paintBall`
+  之前提前 return，小球冻结、该小节末尾几拍被藏掉。
+- **修法**：预备拍门控改用新增的 `ciEnd`（= `ciStart + ciBeats 拍`），它**只在 `start()` 设置、
+  只在 `stop()` 清零**，播放途中不随 `loopStart` 的重映射而移动；门控判据变为
+  `c.currentTime < ciEnd`，跨段不再误判为"又进了预备拍"。无预备拍时 `ciBeats=0 && ciEnd=0`，
+  门控恒不进入，正常路径逐位不变。
+- 测试：新增 `t80-countin-arrange-no-reenter`——240BPM、两段各 1 小节，断言跨段**不重新**出现
+  「预备拍」、第 1 小节第 4 拍状态栏读数出现过；对照场景（预备拍关）不出现预备拍文案。
+  用缺陷版（门控仍用 `loopStart`）单跑该用例得 8 PASS / 2 FAIL，失败恰为上述两项，证明用例
+  能忠实抓回归。全量 2412 PASS / 0 FAIL。
+
 ## v2.8.1 · 修 v2.8.0 两处画面回归：六线底纹消失 / 和弦胶囊贴格（2026-09-21）
 
 **来源**：用户发实拍图报 v2.8.0 引入两处观感回归（本版一次性收口）。
