@@ -45,6 +45,7 @@ const CASE_FILES = [
   "./cases/t69-pattern-length",        // v2.5.1：型的小节数自由化（校验域 / 网格行数 / 回绕 / 段长 / 循环下拉）
   "./cases/t70-arrange-window",        // v2.5.2：网格 = 歌曲小节上的滚动窗口（跨段取行 / 状态栏口径 / 回落）
   "./cases/t71-editor-bars",           // v2.6.1：编辑器增删小节（复制当前小节 / 下限 1 / 上限 64 / 撤销回退）
+  "./cases/t72-loop-rewind-ball",       // v2.6.2：练习循环的渲染层回卷（球不倒退 / 待命球指向区间起点 / .next 同口径）
 ];
 for (const f of CASE_FILES) require(f);
 

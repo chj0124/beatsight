@@ -272,6 +272,9 @@ input[type=range].vol{width:120px}
 
 /* ---------- 配置开关 ---------- */
 .config{display:flex;gap:12px;flex-wrap:wrap}
+/* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
+   与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
+.viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:9999px;padding:10px 14px 10px 16px;font-size:13px}
 .toggle-pill.on{color:var(--t1)}
 .toggle-pill.off{color:var(--t2)}
@@ -281,8 +284,9 @@ input[type=range].vol{width:120px}
 .toggle-pill.on .switch::after{left:18px}
 .hint{font-size:12px;color:var(--t3)}
 /* 带单位的输入（v1.3.3）：预备拍拍数。必须紧贴它所修饰的那个开关——
-   原先它排在 .config 行的最末（弹跳球之后），打开预备拍时行尾会凭空冒出一个孤零零的「4」，
-   看起来像弹跳球的参数（用户实拍反馈）。
+   原先它排在开关行的最末（弹跳球之后），打开预备拍时行尾会凭空冒出一个孤零零的「4」，
+   看起来像弹跳球的参数（用户实拍反馈）。v2.6.2 随预备拍开关一起迁到 .viz-toggles，
+   贴附关系不变。
    注意 [hidden] 的 display:none 会被类选择器的 display:flex 覆盖（同 .tr-panel[hidden] 的坑），
    必须显式写一条 [hidden] 规则。 */
 .inp-with-unit{display:flex;align-items:center;gap:6px}
@@ -325,6 +329,9 @@ input[type=range].vol{width:120px}
 /* 分隔点：窄屏换行时它留在上一行末会看着像句号，故随 flex 一起换行即可（不做特殊处理） */
 .loop-sep{color:var(--t3);font-size:12px}
 .loop-row .lab{font-size:12px;color:var(--t3)}
+/* 「第 X 到 Y 小节」作为一个单元整体折行（v2.6.2）：nowrap + inline-flex，
+   要么整组留在行尾、要么整组落到下一行——「小节」不会孤零零挂在新行开头 */
+.loop-range{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .loop-sel{background:var(--bg);color:var(--t1);border:1px solid var(--line);border-radius:6px;
   padding:5px 6px;font-size:12px;font-family:inherit;min-width:44px}
 .loop-panel.on .loop-sel{border-color:var(--green)}
@@ -761,6 +768,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          是因为顶栏在 390px 窄屏上已经很挤——那条理由对「帮助」不成立：
          帮助是**低频但必须随时能找到**的入口，藏起来就没人看了 -->
     <button class="pill outline" id="helpBtn">使用方法</button>
+    <!-- 后台保活（v1.4；v2.6.2 从「训练模式」区迁到顶栏）：wakeLock 防息屏 + iOS 静音循环
+         音频兜底，开关持久化。它是"这台设备别睡"的应用级环境开关，与主题 / 版本状态
+         同属顶栏一区，不属于任何一个训练功能 -->
+    <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
     <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
   </div>
 </header>
@@ -794,6 +805,19 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
         <h2 class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</h2>
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+    </div>
+    <!-- 视听辅助开关（v2.6.2 从「训练模式」区迁出）：这三个管的是**这张图上看到什么 /
+         开演前怎么数拍**——预备拍是开演前的数拍、弹跳球与六线底纹是画面的图层，
+         都不是训练功能，贴着它们作用的时值可视化区才不用跨区建立心智模型。
+         拍数输入必须紧跟它所属的预备拍开关（v1.3.3 的教训：排在行尾会像别的开关的参数） -->
+    <div class="viz-toggles">
+      <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
+      <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
+      <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
+      <!-- 六线底纹开关（v2.4.2）：扫弦谱的六条弦线参照背景，默认开。
+           与弹跳球同属"视觉辅助"；只在扫弦轨有意义，
+           普通轨下由 Tracks 隐藏（不画六线也不画箭头） -->
+      <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
     </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
@@ -908,16 +932,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <!-- 上次训练一键继续（v1.4）：有训练历史时才出现；放开关行而不是 tr-panel 里——
              面板在训练关闭时是隐藏的，最需要它的恰恰是「还没开训练」的那一刻 -->
         <button class="pill outline" id="trResumeBtn" hidden>继续上次训练</button>
-        <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
-        <!-- 拍数输入紧跟在它所属的开关后面（v1.3.3）。原先排在行末（弹跳球之后）→ 看起来像弹跳球的参数 -->
-        <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
-        <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
-        <!-- 六线底纹开关（v2.4.2）：扫弦谱的六条弦线参照背景，默认开。
-             放在弹跳球之后，与它同属"视觉辅助"分组；只在扫弦轨有意义，
-             普通轨下由 Tracks 隐藏（不画六线也不画箭头） -->
-        <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
-        <!-- 后台保活（v1.4）：wakeLock 防息屏 + iOS 静音循环音频兜底，开关持久化 -->
-        <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
+        <!-- v2.6.2：预备拍 / 弹跳球 / 六线底纹迁到时值可视化卡片顶部（.viz-toggles），
+             后台保活迁到顶栏——它们管的是"画面怎么画 / 设备别睡"，不是训练功能 -->
       </div>
       <!-- 练习量（v1.9.0）：到点自动停。与变速训练器职责分离——训练器管「练多快」，这里管「练多少」，
            两者可同时开（谁先到谁停）。档位按钮由 LIMIT_PRESETS 生成（Controls.syncLimitUI），
@@ -991,9 +1007,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="loop-row">
           <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环本段<span class="switch"></span></button>
           <span class="loop-sep" aria-hidden="true">·</span>
-          <span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
+          <!-- 「第 X 到 Y 小节」包成**一个** flex item（v2.6.2）：5 个零件散着排时，
+               窄屏会把末尾的「小节」二字单独挤到下一行（用户实拍反馈）。包成一个
+               nowrap 单元后，放不下就整体折行，绝不落单 -->
+          <span class="loop-range"><span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
           <span class="lab">到</span><select class="loop-sel" id="loopTo" aria-label="循环结束小节"></select>
-          <span class="lab">小节</span>
+          <span class="lab">小节</span></span>
         </div>
         <div class="hint" id="loopHint"></div>
       </div>
@@ -1335,23 +1354,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1367  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1747  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2636  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3218  Modal         应用内弹窗
-     L3348  Viz           时值可视化渲染与每帧动画
-     L4406  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5018  Trainer       变速训练器
-     L5231  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5696  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L5821  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6542  Editor        自定义节奏型编辑器
-     L6898  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7121  Ear           听辨训练（v1.10.0）
-     L7344  Arrange       曲式编排（v2.0.0）
-     L8027  Help          使用方法（v2.0.1）
-     L8074  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8133  初始化（装配） 各模块 hook 接线与启动
+     L1386  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1766  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2655  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3238  Modal         应用内弹窗
+     L3368  Viz           时值可视化渲染与每帧动画
+     L4439  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5051  Trainer       变速训练器
+     L5264  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5729  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L5854  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6575  Editor        自定义节奏型编辑器
+     L6931  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7154  Ear           听辨训练（v1.10.0）
+     L7377  Arrange       曲式编排（v2.0.0）
+     L8060  Help          使用方法（v2.0.1）
+     L8107  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8166  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1371,7 +1390,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.6.1";
+const VERSION = "2.6.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2823,7 +2842,8 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    为什么要它：待命球原先按 (bar+1) % 型长 取"下一行"，这在曲式里是错的——
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
-   调用方回落到 (bar+1)%vizBars（模数 = 当前型的小节数，对预设模式零行为变化）。 */
+   调用方回落到 loopNextBar（v2.6.2：循环开着时取区间起点，关着时 ≡ (bar+1)%vizBars，
+   模数 = 当前型的小节数，对不循环的预设模式零行为变化）。 */
 /** @param {any} [sec] @param {any} [bar] */
 function arrangeNextRow(sec, bar){
   const a = arrangeCur();
@@ -3915,7 +3935,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        由调用方回落到时钟公式（宁可短暂用时钟，也不要拿一个窗口外的行号去索引 rowEls） */
     const bar = rowOfOnset(prev);
     if (bar < 0) return null;
-    const inBar = (nxt && rowOfOnset(nxt) === bar) ? nxt : null;
+    /* v2.6.2 循环回卷守卫：下一端点与 prev 同row但 cumT 不增 → 它不是本小节的后续音，
+       而是循环回卷后**下一遍**的起点（时间向前、位置回退）。练习循环 [k,k] 时
+       每一遍都落在同一行，若不判这一条，inBar 成立 → tib 从行尾向行首插值，
+       播放头会倒着扫回去（用户实拍 bug）。按"行内无后续"处理：向前走到行右缘 */
+    const inBar = (nxt && rowOfOnset(nxt) === bar && nxt.cumT > prev.cumT) ? nxt : null;
     /* 终端弧的终点 = 本小节右缘的音频时刻。与 paintBall 里 barEnd 的算式等价：
        终端弧的 tick 速率由当前 spb 决定，两处推出来的时刻相同 */
     const endT = inBar ? inBar.t : prev.t + (barTicks - prev.cumT) * spb() / TPB;
@@ -3957,7 +3981,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     let nxt = null;
     for (const e of onsetBuf) if (e.t > now){ nxt = e; break; }
     if (!nxt) nxt = onsetNext;                              // 预测终点（T22 保证其恒在缓冲尾之后）
-    const nxtInBar = (nxt && rowOfOnset(nxt) === bar) ? nxt : null;
+    /* v2.6.2 循环回卷守卫（与 audioPosAt 同一判据）：同row但 cumT 不增的下一端点是
+       循环下一遍的起点——按终端弧处理，球向前跳完本行全程（终点 = 行右缘），
+       不倒着飞回行首；行首的预备交给下面的待命球（与不循环时的接力同一套逻辑）。
+       prev 为空（本行尚无端点落地）时不判 cumT——那本来就是"待命在首个 onset"分支 */
+    const nxtInBar = (nxt && rowOfOnset(nxt) === bar && (!prev || nxt.cumT > prev.cumT)) ? nxt : null;
     if (!prev){
       const g = nxtInBar ? posOf(bar, nxtInBar.cumT) : posOf(bar, 0);
       ballEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
@@ -4002,7 +4030,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (waitEl){
       if (terminal){
         /* 曲式模式下"下一行"可能属于下一段的型（arrangeNextRow 走 arrNextBar 得出）；
-           预设模式下它返回 null → 回落到既有的 (bar + 1) % vizBars，一字未改。
+           预设模式下它返回 null → 回落到 loopNextBar（v2.6.2）：循环开着时"下一行"
+           是**区间起点**而不是顺序的下一行——循环 [k,k] 时就是本行自己（待命球在本行
+           开头起跑预备），循环 [1,2] 时是第 1 行；循环关着时 loopNextBar ≡ (bar+1)%vizBars，
+           与不循环的旧行为一字不差。
            v2.0.2：必须按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻窗口，
            终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
            prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
@@ -4012,7 +4043,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              cand = 内容下标：下一小节所属型的**型内**小节号（用来取那一行的音符）
              rowNext = 行的下标：待命球画在**窗口的第几行**（下一小节 = 当前行 + 1）
            预设模式下窗口 = 型自身，两者相等 → 行为与 v2.5.1 一字不差 */
-        const cand = nrow ? nrow.bar : (bar + 1) % vizBars;
+        const cand = nrow ? nrow.bar : loopNextBar(bar, vizBars);
         const rowNext = (S.playMode === "arrange") ? Math.min(vizBars - 1, bar + 1) : cand;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[cand] || []);
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
@@ -4198,7 +4229,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const prev = lastPainted;
     // 下一颗音符预告（跨小节时指向下一行第一颗）
   let nb = bar, ni = active + 1;
-  if (ni >= cellEls[bar].length){ nb = (bar + 1) % vizBars; ni = 0; }
+  /* v2.6.2：跨小节走 loopNextBar——循环开着时"下一行"是区间起点（与待命球同一口径），
+     关掉时 ≡ (bar+1)%vizBars。否则 .next 预告会指到区间外那一行的第一格 */
+  if (ni >= cellEls[bar].length){ nb = loopNextBar(bar, vizBars); ni = 0; }
   /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义模式下等于每次重绘 64 次线性查找），
      并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
   const cellsPat = vizPattern();
