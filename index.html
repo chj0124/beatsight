@@ -846,11 +846,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
     <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
-         单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示 -->
+         单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示。
+         v2.7.3 末尾加「范围循环」开关：跳段=锁当前段反复磨，开关就是出口——关掉即解除锁定，
+         从当前段一路播到曲末后停（详见 Arrange.jumpTo / refreshBar 的注释） -->
     <div class="arg-now arg-jump" id="argJump" hidden>
       <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
       <span class="arg-now-meta" id="argNowMeta"></span>
       <button class="pill outline" id="argJumpNext">下一段 ▶</button>
+      <button class="toggle-pill off" id="argJumpLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
     </div>
     <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
@@ -1367,23 +1370,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1399  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1792  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2681  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3294  Modal         应用内弹窗
-     L3424  Viz           时值可视化渲染与每帧动画
-     L4652  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5279  Trainer       变速训练器
-     L5492  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5957  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6087  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6834  Editor        自定义节奏型编辑器
-     L7190  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7413  Ear           听辨训练（v1.10.0）
-     L7636  Arrange       曲式编排（v2.0.0）
-     L8365  Help          使用方法（v2.0.1）
-     L8412  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8471  初始化（装配） 各模块 hook 接线与启动
+     L1402  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1795  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2684  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3297  Modal         应用内弹窗
+     L3427  Viz           时值可视化渲染与每帧动画
+     L4655  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5282  Trainer       变速训练器
+     L5495  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5960  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6090  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6837  Editor        自定义节奏型编辑器
+     L7193  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7416  Ear           听辨训练（v1.10.0）
+     L7639  Arrange       曲式编排（v2.0.0）
+     L8392  Help          使用方法（v2.0.1）
+     L8439  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8498  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1403,7 +1406,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.7.2";
+const VERSION = "2.7.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8086,6 +8089,11 @@ const Arrange = (() => {
     const noJump = !aj || aj.sections.length <= 1;
     $("argJumpPrev").hidden = noJump;
     $("argJumpNext").hidden = noJump;
+    /* v2.7.3：跳段行的「范围循环」开关与编排面板的「范围循环」是**同一个字段**
+       （S.arrangeSel.loop）——两处入口共用一份数据、同源刷新，不存在第二份真相
+       （与预设区「循环本段」共用 S.loopRange 是同一套做法）。所有会改这个字段的
+       路径（jumpTo / 面板按钮 / 「全部」/ 播放入口）都会过 refreshBar，故只在这里同步。 */
+    setToggle("argJumpLoopBtn", !!S.arrangeSel.loop);
     $("argNowMeta").textContent = "";
     if (S.playMode === "arrange" && a){
       const cls = arrangeProblems(a);
@@ -8121,7 +8129,8 @@ const Arrange = (() => {
     const sec = a.sections[curSec];
     $("argNowName").textContent = a.name + (sec && sec.name ? " · " + sec.name : "");
   }
-  /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制） */
+  /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制）。
+     出口 = 跳段行的「范围循环」开关（v2.7.3）——关掉即解除锁定、放行到曲末，见其绑定注释 */
   /** @param {number} i */
   function jumpTo(i){
     /* 取「正在播的曲式」优先（v2.0.2）：跳段作用于播放，不是编辑——curId 是编辑选中项，
@@ -8357,6 +8366,24 @@ const Arrange = (() => {
   const jumpBase = () => (S.playing ? arrSec : S.arrangeSel.from);
   $("argJumpPrev").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() - 1); });
   $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() + 1); });
+  /* 跳段行的「范围循环」开关（v2.7.3）——跳段被困在该段的**出口**。
+     问题：jumpTo 把范围锁成单段并打开循环（from=to=k, loop=true），这是"反复磨这一段"的
+     默认；但此前整条链路没有出口——arrNextBar 走到段尾遇 loop 为真就 `s = from` 回卷、
+     永不返回 null，onArrangeEnd 也就永不触发，于是播放永远困在第 k 段（用户实拍）。
+     开：只把 loop 置真，范围不动（跳段就是"锁本段"，与面板同一字段、同一语义）。
+     关：解除锁定——loop 置假；且若范围已被跳段收成**单段**（from===to），把 to 放开到曲末，
+     变成"从当前段一路播到曲末后自然停"（用户选定：解除后继续往下走，而不是原地再放一遍就停）。
+     范围本就是多段（面板设的起/终、「全部」、整首连播）时只关循环、不动用户设的 from/to。 */
+  $("argJumpLoopBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const a = arrangeCur() || cur();
+    const on = !S.arrangeSel.loop;
+    S.arrangeSel.loop = on;
+    if (!on && a && S.arrangeSel.from === S.arrangeSel.to)
+      S.arrangeSel.to = a.sections.length - 1;
+    Store.persist();
+    render(); refreshBar();
+  });
 
   refreshBar();
   return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection, loadDemo, ensureDemo, demoStale };

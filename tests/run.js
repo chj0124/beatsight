@@ -50,6 +50,7 @@ const CASE_FILES = [
   "./cases/t74-demo-version-migration", // v2.6.4：切轨假选中去除 + 示例曲版本迁移（120 小节混杂态收敛 / 删除不复活）
   "./cases/t75-page-flip-preview",      // v2.7.0：跳段基准分语境 + 翻页档预告行（替换 / 徽标 / 已弹豁免 / 待命球落点 / 边界）
   "./cases/t76-voices-and-lyric-audible", // v2.7.1：双声部打通（dir-only/鼓组）+ 歌词轨与计数器可听域对齐
+  "./cases/t77-jump-loop-release",      // v2.7.3：跳段的「范围循环」解除开关（同源字段 / 单段放行到曲末）
 ];
 for (const f of CASE_FILES) require(f);
 

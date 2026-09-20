@@ -62,7 +62,12 @@ const fileLine = n => n + scriptStartLine - 1;
 const covDir = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-cov-"));
 const env = Object.assign({}, process.env, { NODE_V8_COVERAGE: covDir });
 if (FULL) env.FULL_SCAN = "1";
-const run = spawnSync(process.execPath, [path.join(ROOT, "tests", "run.js")], { cwd: ROOT, env, encoding: "utf8" });
+/* 覆盖率插桩要为**每一次 vm.Script 编译**的内联脚本留存区间：FULL_SCAN 下 loadApp() 被调用
+   数百次，区间累积到约 2GB，正好顶穿 Node 默认 old-space 上限（本沙箱实测 2240MB），于是进程在
+   全部用例跑完、收尾 flush 覆盖率的瞬间 FATAL（exit 134，cov 目录为空 → 报"测试套件未通过"）。
+   注意这是**覆盖率插桩自身的内存开销**，与用例成败无关：同一套件不加覆盖率时 2345/2345 全绿。
+   故只给这个带插桩的子进程抬高上限（V8 按需增长，不预占），别动普通测试步骤。 */
+const run = spawnSync(process.execPath, ["--max-old-space-size=4096", path.join(ROOT, "tests", "run.js")], { cwd: ROOT, env, encoding: "utf8" });
 if (run.status !== 0){
   console.error("测试套件未通过，覆盖率无意义。先修测试：");
   console.error((run.stdout || "").split("\n").filter(l => /^  ✗|结果/.test(l)).join("\n"));

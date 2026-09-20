@@ -304,7 +304,7 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   /* v2.4.3：＋「循环本段」→ 8 个；其中带初始 aria-checked 的仍是 5 个，
      因为循环开关与六线开关一样在标记里就写了初值（off/false），故它落在下面那条的**正则之外**
      ——那条只认 mute/bounce/countIn/trainer/keepAwake 这五个 id，不是"所有开关" */
-  eq((html.match(/role="switch"/g) || []).length, 8, "标记里 8 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环 +v2.4.2 六线底纹 +v2.4.3 练习循环）");
+  eq((html.match(/role="switch"/g) || []).length, 9, "标记里 9 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环 +v2.4.2 六线底纹 +v2.4.3 练习循环 +v2.7.3 跳段行范围循环）");
   eq((html.match(/id="(mute|bounce|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 5,
     "5 个开关在标记里都带初始 aria-checked");
   /* v2.4.2 新增的开关（六线底纹）单独点名守一遍：
