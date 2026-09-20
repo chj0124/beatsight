@@ -1367,23 +1367,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1391  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1784  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2673  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3286  Modal         应用内弹窗
-     L3416  Viz           时值可视化渲染与每帧动画
-     L4593  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5220  Trainer       变速训练器
-     L5433  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5898  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6028  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6775  Editor        自定义节奏型编辑器
-     L7131  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7354  Ear           听辨训练（v1.10.0）
-     L7577  Arrange       曲式编排（v2.0.0）
-     L8306  Help          使用方法（v2.0.1）
-     L8353  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8412  初始化（装配） 各模块 hook 接线与启动
+     L1399  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1792  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2681  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3294  Modal         应用内弹窗
+     L3424  Viz           时值可视化渲染与每帧动画
+     L4652  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5279  Trainer       变速训练器
+     L5492  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5957  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6087  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6834  Editor        自定义节奏型编辑器
+     L7190  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7413  Ear           听辨训练（v1.10.0）
+     L7636  Arrange       曲式编排（v2.0.0）
+     L8365  Help          使用方法（v2.0.1）
+     L8412  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8471  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4311,6 +4311,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const curIdx = (kk >= W && kk < W + ARR_WIN_BARS) ? kk - W : -1;
     /* 行态签名：played/on/cur 任一变化才重写 className（稳态帧只动当前字的 fill 与走带线） */
     let sig = "";
+    /** @type {{ row: any, i: number, st: string }[]} */
     const states = [];
     lyricRows.forEach((row, ri) => {
       const isCur = ri === curIdx;
