@@ -210,15 +210,22 @@ button:disabled{cursor:not-allowed}
    延音字靠 dur 拉长时值块；视觉语言与 .cell 同源：白填充 = 已唱、绿描边 + 亮绿字 = 正在唱。
    刻意做成 #viz 的**兄弟节点**而不是子节点：T27 用「#viz 内恰有 4 行 .bar-row / 恰 1 个 active」
    把渲染层锁死在网格不变量上，歌词块塞进去会立刻破功。
-   纯视觉轨（pointer-events:none）：拖动微调由编辑视图承担，这层一个字都不接收 */
-.lyric-lane{position:relative;height:48px;margin-top:10px}
+   纯视觉轨（pointer-events:none）：拖动微调由编辑视图承担，这层一个字都不接收。
+   v2.7.2 按小节分行（用户实拍诉求：整段一行横排时，歌词位置与小球/网格行对不上）：
+   歌词轨 = 与网格四行一一对应的四条 .lyric-row（第 i 行 = 窗口第 i 小节，
+   预告行生效时第 1 行 = 下一小节的歌词），行内按小节内 tick 百分比定位字块；
+   当前行带 .cur 底色、走带线只在当前行出现 */
+.lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
-.lyric-chip{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
+.lyric-row{position:relative;height:22px;border-radius:6px}
+.lyric-row.cur{background:rgba(255,255,255,.05)}
+.lyric-row.preview{opacity:.55}                     /* 预告行的歌词 = 未来，与 .preview-row 同一份降权 */
+.lyric-chip{position:absolute;top:1px;height:20px;border-radius:5px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
 .lyric-chip .lfill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:var(--peak);pointer-events:none;z-index:0}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:relative;z-index:1;font-size:13px;font-weight:500;color:var(--t2);white-space:nowrap}
+.lyric-char{position:relative;z-index:1;font-size:12px;font-weight:500;color:var(--t2);white-space:nowrap}
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:600}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:600}
 .lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
@@ -832,9 +839,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          装饰性 SVG（品牌标/播放三角/各返回箭头）同理由父节点的 aria-label 或隐藏语义兜住，
          不在本次范围内逐个补 aria-hidden（见 CHANGELOG 的"已知未做"） -->
     <div class="viz" id="viz" aria-hidden="true"></div>
-    <!-- 歌词对齐轨（v2.1.0 F1）：与上方节奏网格**共享同一根时间轴**——同一次 tick 换算
-         同时驱动这里的走带线与当前字高亮。字块按「段内 tick / 段长」铺开（一段可跨多小节），
-         延音字拉长时值块。无歌词行时整块 hidden，不占位。
+    <!-- 歌词对齐轨（v2.1.0 F1；v2.7.2 起按小节分行）：与上方节奏网格**共享同一根时间轴**。
+         每行对应网格窗口的一小节（4 行 = 4 小节窗口），字块按「小节内 tick / 小节长」在行内
+         铺开，跨小节延音在小节边界截断、下一行续显；首行在播放中可显示上一小节（preview，
+         半透明）作回看。行走带线只出现在可听域当前行。无歌词行时整块 hidden，不占位。
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
     <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
@@ -1395,7 +1403,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.7.1";
+const VERSION = "2.7.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3606,16 +3614,19 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return vizBars === MUTE_PERIOD && b === MUTE_PERIOD - 1;
   }
 
-  /* ---------- 歌词对齐轨状态（v2.1.0 F1） ----------
+  /* ---------- 歌词对齐轨状态（v2.1.0 F1；v2.7.2 按小节分行） ----------
      与网格状态完全并列的一套引用，生命周期同样挂在 buildViz / resetForStop 上。
-     lyricRunSig = 已渲染的「曲式id#段下标」：段切换时才重建字块（每小节至多一次），
-     稳态帧只写 transform，不碰 DOM 结构。 */
-  let lyricEl = /** @type {HTMLElement|null} */ (null), lyricHeadEl = /** @type {HTMLElement|null} */ (null);
+     lyricRows[i] = 窗口第 i 小节的歌词行（与网格四行一一对应）；
+     lyricRunSig = 已渲染的「曲式id@窗口起点#预告行」：窗口翻转/预告生效时才重建字块
+     （由 buildViz 末尾的调用兜住），稳态帧只写 transform 与少量 className，不碰 DOM 结构。
+     lyricChipEls / lyricFillEls 保留**跨行平铺**视图（resetForStop 与测试按平铺下标读） */
+  let lyricEl = /** @type {HTMLElement|null} */ (null);
   let lyricChipEls = /** @type {HTMLElement[]} */ ([]), lyricFillEls = /** @type {HTMLElement[]} */ ([]);
-  let lyricChars = /** @type {any[]} */ ([]);
+  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number }[], chipEls: HTMLElement[], fillEls: HTMLElement[] }[]} */
+  let lyricRows = [];
   let lyricRunSig = /** @type {string} */ ("");
-  let lyricSpan = 0, lyricBarTicks = 0, lyricW = 0;
-  let lastLyricAct = -2, lastLyricPlay = -1;
+  let lyricW = 0;
+  let lastLyricStates = "";                   // 行态签名（played/on/cur 集合）：变了才重写 className
 
   /** @param {any} s */
   function stepLabel(s){
@@ -3949,7 +3960,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
      lastPainted 一并清空——网格可能整片重建（格子数、拍号都会变），
      此时增量重绘的前提（同一套 cellEls、同一个小节）已经不成立，必须走全量 */
-  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricAct = -2; lastLyricPlay = -1; lastAudSongBar = -2; }
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricStates = ""; lastAudSongBar = -2; }
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
@@ -3973,14 +3984,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     glEls.forEach(list => list.forEach(g => { if (g.el) g.el.className = "cell-label group"; }));
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
     lastBeat = -1;
-    /* 歌词轨随停播归零：走带线回到段首、字块全部退回未唱态。**不重建 DOM**
+    /* 歌词轨随停播归零：走带线全部收起、字块全部退回未唱态。**不重建 DOM**
        （结构没变，重建反而会重排一次）——只把状态写回去 */
-    if (lyricHeadEl) lyricHeadEl.style.transform = "translateX(0px)";
+    lyricRows.forEach(r => { r.head.style.display = "none"; r.el.classList.remove("cur"); });
     lyricChipEls.forEach((chip, i) => {
       chip.className = "lyric-chip";
       if (lyricFillEls[i]) lyricFillEls[i].style.transform = "scaleX(0)";
     });
-    lastLyricAct = -2; lastLyricPlay = -1;
+    lastLyricStates = "";
   }
 
   /* 静音拍开关视觉同步：标出本窗口里会被静音的那一行（Controls 静音开关调用） */
@@ -4191,105 +4202,150 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
   }
 
-  /* ---------- 歌词对齐轨渲染（v2.1.0 F1） ----------
+  /* ---------- 歌词对齐轨渲染（v2.1.0 F1；v2.7.2 按小节分行） ----------
      两级职责，与网格的 buildViz/paintFrame 同构：
-       · buildLyricLane()：**结构层**。段切换 / 网格重建时才跑，负责建清字块与走带线，
-         并在这一刻采集轨道宽度（offsetWidth）。稳态帧一次都不读它。
+       · buildLyricLane()：**结构层**。网格重建（窗口翻转/预告行变化/换型）时才跑，
+         负责建清四条行与字块，并在这一刻采集轨道宽度（offsetWidth）。稳态帧一次都不读它。
        · paintLyric()：**每帧层**。只写 transform 与少量 className，零布局读取
          ——与 P1-4「帧内绝不读 offset*」是同一份承诺。
-     「段内位置」= arrBar × 段内小节 tick + 小节内 tick。arrBar/arrSec 由 AudioEngine 的节目单
-     游标维护（与排程、弹跳球落点同源），所以歌词轨与拍点轨共用**同一个相位**：
-     循环整段时两轨一起回卷，不各算各的（验收 9 的成立依据）。 */
+     v2.7.2 起**按小节分行**：第 i 条 lyric-row = 网格窗口第 i 行那一小节（预告行生效时
+     第 1 行 = 下一小节，与网格的 .preview-row 同步降权）——字块横向位置 = 小节内 tick，
+     与正上方那一行网格共用同一根时间轴（v2.7.1 起行列定位全部走可听域，
+     见 audibleArrangePos 的注释）。旧版"整段一条横排"在段长 >1 小节时，歌词位置与
+     小球/网格行的对应关系要靠心算，分行后第几小节的歌词就在第几行。 */
   function buildLyricLane(){
     const lane = $("lyricLane");
     if (!lane) return;
-    lyricEl = lane; lyricHeadEl = null; lyricChipEls = []; lyricFillEls = [];
-    lyricChars = LYRIC_NONE; lyricRunSig = ""; lyricSpan = 0; lyricBarTicks = 0; lyricW = 0;
-    lastLyricAct = -2; lastLyricPlay = -1;
+    lyricEl = lane; lyricChipEls = []; lyricFillEls = []; lyricRows = [];
+    lyricRunSig = ""; lyricW = 0; lastLyricStates = "";
     clear(lane);
     const a = arrangeCur();
     if (!a || !a.sections.length){ lane.hidden = true; return; }   // 预设模式 / 曲式已删：整轨收起，不占位
-    /* 停机时 arrBar = -1（节目单游标尚未起步）：预览第 0 段，让用户选中曲式后立刻看得见歌词行。
-       播放中取**可听域**段号（v2.7.1，与 paintLyric 同源）：buildViz 的窗口重建本身就由
-       可听小节触发，若这里读调度游标 arrSec，建的段与 paintLyric 画的段会在边界前
-       差一整段——runSig 对不上就每帧重建（歌词轨狂闪） */
-    const apos = S.playing ? audibleArrangePos() : null;
-    const secIdx = apos ? apos.sec
-      : Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), a.sections.length - 1);
-    const span = lyricSpanTicks(a.id, secIdx);
-    const chars = lyricCharsAt(a.id, secIdx);
-    if (!span || !chars.length){ lane.hidden = true; return; }
-    for (const ch of chars){
-      const t = Math.max(0, ch.t || 0), d = ch.dur || LYRIC_BASE;
-      const chip = document.createElement("div");
-      chip.className = "lyric-chip";
-      chip.style.left = (t / span * 100) + "%";
-      chip.style.width = (d / span * 100) + "%";
-      const fill = document.createElement("div");
-      fill.className = "lfill";
-      const label = document.createElement("span");
-      label.className = "lyric-char";
-      label.textContent = ch.ch;                // 边界规则 3：用户可控字符串只走 textContent（Store 归一化后的字段名是 ch）
-      chip.appendChild(fill); chip.appendChild(label);
-      lane.appendChild(chip);
-      lyricChipEls.push(chip); lyricFillEls.push(fill);
+    const total = songBars(a);
+    if (!total){ lane.hidden = true; return; }
+    /* 窗口起点与网格同源：播放中沿用 winStart（paintFrameBody 按可听位置维护，本函数
+       由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
+       与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
+    const W = winStart >= 0 ? winStart
+      : winAnchor(songBarBefore(a, Math.min(Math.max(S.arrangeSel.from, 0), a.sections.length - 1)));
+    for (let r = 0; r < ARR_WIN_BARS; r++){
+      /* 预告行（v2.7.0）：页内第 4 小节期间第 1 行 = 下一小节。歌词行跟着换内容
+         （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
+      const k = (r === 0 && winPrevBar >= 0) ? winPrevBar : (W + r) % total;
+      const rowEl = document.createElement("div");
+      rowEl.className = "lyric-row" + (r === 0 && winPrevBar >= 0 ? " preview" : "");
+      /** @type {any} */
+      const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [] };
+      const at = songBarAt(a, k);
+      if (at){
+        const span = lyricSpanTicks(a.id, at.sec);
+        const chars = lyricCharsAt(a.id, at.sec);
+        if (span > 0 && chars.length){
+          /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：与 span 必然同源，
+             拍号取错时也不会出现轨道溢出错位 */
+          const bt = span / (secBars(a.sections[at.sec]) || DEF_BARS);
+          const lo = at.bar * bt;
+          row.barTicks = bt;
+          row.chars = chars
+            .filter(c => Math.max(0, c.t || 0) >= lo && Math.max(0, c.t || 0) < lo + bt)
+            .map(c => {
+              const t = Math.max(0, c.t || 0), d = c.dur || LYRIC_BASE;
+              /* 跨小节延音字钳在本行右缘：分行后它不再有"下一行"可延伸（旧版单行横排
+                 靠 dur 自然跨过去）；数据本身不动，只是这一行的呈现截断 */
+              return { lt: t - lo, ld: Math.max(0, Math.min(d, bt - (t - lo))), ch: c.ch };
+            });
+          for (const c of row.chars){
+            const chip = document.createElement("div");
+            chip.className = "lyric-chip";
+            chip.style.left = (c.lt / bt * 100) + "%";
+            chip.style.width = (c.ld / bt * 100) + "%";
+            const fill = document.createElement("div");
+            fill.className = "lfill";
+            const label = document.createElement("span");
+            label.className = "lyric-char";
+            label.textContent = c.ch;            // 边界规则 3：用户可控字符串只走 textContent
+            chip.appendChild(fill); chip.appendChild(label);
+            rowEl.appendChild(chip);
+            row.chipEls.push(chip); row.fillEls.push(fill);
+            lyricChipEls.push(chip); lyricFillEls.push(fill);
+          }
+        }
+      }
+      const head = document.createElement("div");
+      head.className = "lyric-head";
+      head.style.display = "none";             // 走带线只在「正在唱」的那一行出现
+      rowEl.appendChild(head);
+      row.head = head;
+      lane.appendChild(rowEl);
+      lyricRows.push(row);
     }
-    lyricHeadEl = document.createElement("div");
-    lyricHeadEl.className = "lyric-head";
-    lane.appendChild(lyricHeadEl);
+    /* 窗口里一个小节的歌词都没有 → 整轨收起不占位（与旧版"当前段无歌词行即收起"同义）。
+       窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来 */
+    if (!lyricRows.some(r => r.chars.length)){ lane.hidden = true; return; }
     lane.hidden = false;
-    /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：这样
-       arrBar × lyricBarTicks 与 span 必然同源，拍号取错时也不会出现轨道溢出错位 */
-    const bars = secBars(a.sections[secIdx]) || DEF_BARS;
-    lyricChars = chars; lyricSpan = span; lyricBarTicks = span / bars;
-    lyricRunSig = a.id + "#" + secIdx;
+    lyricRunSig = a.id + "@" + W + "#" + winPrevBar;
     lyricW = lane.offsetWidth;                  // 结构变化时采集一次（稳态帧绝不读）
   }
   /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
   function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
 
-  /** @param {number} tib 小节内 tick（与拍点轨同源，来自 audioPosAt） */
-  function paintLyric(tib){
+  /** @param {number} tib 小节内 tick（与拍点轨同源，来自 audioPosAt）
+      @param {number} [k] 可听歌曲小节号（paintFrameBody 每帧已算好，直接传入省一次 onset 表扫描；
+        测试直调时不传，内部按可听域现算） */
+  function paintLyric(tib, k){
     const lane = lyricEl;
     if (!lane || lane.hidden) return;           // 预设模式 / 无歌词行：整帧零开销（T27 走的就是这条）
     const a = arrangeCur();
     if (!a) return;
-    /* 段/小节号取**可听域**（v2.7.1 修，与网格窗口 v2.5.2 同一条原则）：调度游标
-       arrSec/arrBar 比发声早一个前瞻窗口，而小节内 tick（入参 tib）来自可听域——
-       两个域拼在一起，每逢小节/段边界前那一小段，段内位置被拼错将近一小节：
-       声音还在上一段末尾，歌词已提前点亮下一段的字（用户实拍）。停机/预备拍等
-       可听位置还不存在时回退调度游标——维持停机预览第 0 段的旧行为 */
-    const apos = S.playing ? audibleArrangePos() : null;
-    const secIdx = apos ? apos.sec
-      : Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), Math.max(0, a.sections.length - 1));
-    if (a.id + "#" + secIdx !== lyricRunSig){ buildLyricLane(); return; }   // 段切换：本帧重建，下一帧起走稳态
-    if (!lyricSpan || !lyricHeadEl || !lyricChars.length) return;
-    /* 段内绝对 tick（契约：char.t 为**段内** tick，跨小节不自增）。停机预览时 arrBar<0 → 钳在段首 */
-    const barInSec = apos ? apos.bar : (arrBar < 0 ? 0 : arrBar);
-    const secTick = Math.max(0, barInSec * lyricBarTicks + tib);
-    const pct = Math.min(1, secTick / lyricSpan);
-    /* 走带线：与 #viz 的播放头同一份 tick 换算（同一根时间轴），只是定义域从「小节」换成「段」 */
-    lyricHeadEl.style.transform = `translateX(${(lyricW * pct).toFixed(1)}px)`;
-    /* 字态判据：played = 时值已走完（弹完定格）、on = 落在 [t, t+dur) 内。
-       ★「延音字保持高亮整个时值」就长在这个区间判据上：dur 越长 on 态持续越久，
-       期间 act 不前进 → 不会有第二个字被点亮；音频侧同一区间内也不排新锚点（验收 5）。 */
-    let act = -1, play = 0;
-    for (let i = 0; i < lyricChars.length; i++){
-      const c = lyricChars[i], t = Math.max(0, c.t || 0), d = c.dur || LYRIC_BASE;
-      if (secTick >= t && secTick < t + d) act = i;
-      if (secTick >= t + d) play++;             // 字按 t 升序且互不重叠（数据层已保证）→ 恰是前 play 个
-    }
-    if (act !== lastLyricAct || play !== lastLyricPlay){
-      for (let i = 0; i < lyricChipEls.length; i++){
-        lyricChipEls[i].className = "lyric-chip" + (i < play ? " played" : (i === act ? " on" : ""));
-        if (lyricFillEls[i]) lyricFillEls[i].style.transform = (i < play) ? "scaleX(1)" : "scaleX(0)";
+    const total = songBars(a);
+    if (!total) return;
+    const W = winStart >= 0 ? winStart
+      : winAnchor(songBarBefore(a, Math.min(Math.max(S.arrangeSel.from, 0), a.sections.length - 1)));
+    if (a.id + "@" + W + "#" + winPrevBar !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
+    /* 当前行 = **可听**歌曲小节号所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级）：
+       调度游标早一个前瞻窗口，按它着色会"词先跳、声后到"。停机/预备拍 → -1：
+       全部保持未唱态（停机预览不点亮任何字）。
+       ★ 按**行下标**（kk − W）定位而不是按小节号匹配 row.bar：窗口走到曲尾会绕回开头
+       （同一窗口里同一个小节号可能出现两次），按下标永远不会两处同时点亮 */
+    const kk = (k !== undefined) ? k : ((S.playing && ctx) ? audibleSongBar(ctx.currentTime) : -1);
+    const curIdx = (kk >= W && kk < W + ARR_WIN_BARS) ? kk - W : -1;
+    /* 行态签名：played/on/cur 任一变化才重写 className（稳态帧只动当前字的 fill 与走带线） */
+    let sig = "";
+    const states = [];
+    lyricRows.forEach((row, ri) => {
+      const isCur = ri === curIdx;
+      const isPast = curIdx >= 0 && ri < curIdx;
+      let rs = isCur ? "C" : (isPast ? "P" : "F");
+      for (let i = 0; i < row.chars.length; i++){
+        const c = row.chars[i];
+        const st = isPast ? "p" : (isCur ? (tib >= c.lt + c.ld ? "p" : (tib >= c.lt ? "o" : "-")) : "-");
+        rs += st;
+        states.push({ row, i, st });
       }
-      lastLyricAct = act; lastLyricPlay = play;
+      sig += rs + ",";
+    });
+    if (sig !== lastLyricStates){
+      lastLyricStates = sig;
+      lyricRows.forEach((row, ri) => {
+        row.el.classList.toggle("cur", ri === curIdx);
+        row.head.style.display = ri === curIdx ? "" : "none";
+      });
+      for (const s of states){
+        s.row.chipEls[s.i].className = "lyric-chip" + (s.st === "p" ? " played" : (s.st === "o" ? " on" : ""));
+        s.row.fillEls[s.i].style.transform = (s.st === "p") ? "scaleX(1)" : "scaleX(0)";
+      }
     }
-    /* 只有「正在唱」那一块在长；已唱满是 1、未到是 0（上面的状态翻转时已写好） */
-    if (act >= 0 && lyricFillEls[act]){
-      const c = lyricChars[act], d = c.dur || LYRIC_BASE;
-      lyricFillEls[act].style.transform = "scaleX(" + Math.min(1, (secTick - c.t) / d).toFixed(3) + ")";
+    /* 只有「正在唱」那一块在长；走带线跟到当前行内位置（与播放头同一份 tick 换算） */
+    for (const s of states){
+      if (s.st === "o"){
+        const c = s.row.chars[s.i];
+        s.row.fillEls[s.i].style.transform = "scaleX(" + Math.min(1, (tib - c.lt) / c.ld).toFixed(3) + ")";
+      }
+    }
+    if (curIdx >= 0){
+      const cur = lyricRows[curIdx];
+      if (cur && cur.barTicks > 0)
+        cur.head.style.transform = `translateX(${(lyricW * Math.min(1, tib / cur.barTicks)).toFixed(1)}px)`;
     }
   }
 
@@ -4405,8 +4461,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★ 触发条件用**可听小节号**而不是调度游标：调度器提前一个前瞻窗口（300ms）推进
          arrSec/arrBar，按它重建会"画面先跳、声音后到"。每小节一次，不是每帧
          —— 与 T27「帧内零布局读取」的承诺不冲突（buildViz 里的量测只在结构变化时发生）。 */
+    let audK = -1;                            // 本帧的可听歌曲小节号（末尾传给 paintLyric，省一次 onset 表扫描）
     if (S.playMode === "arrange" && ctx){
       const k = audibleSongBar(ctx.currentTime);
+      audK = k;
       /* 可听小节变化 → 通知「第 N 段 · 第 M 小节」计数器与段序条（v2.7.1）。
          它们此前由调度域的 onArrangeBar 刷新——比发声早一个前瞻窗口，
          计数器先跳、声音后到（与歌词轨同一类问题，用户实拍）。触发必须在这里
@@ -4468,7 +4526,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
     tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
-    paintLyric(tib);                 // 歌词轨：与上面两行同一份 tib，同一帧里画完（两轨共享时钟）
+    paintLyric(tib, audK);         // 歌词轨：与上面两行同一份 tib、同一份可听小节号，同一帧里画完（两轨共享时钟）
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
@@ -4587,7 +4645,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricHeadEl, lyricChipEls, lyricFillEls }) };
+    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls }) };
 })();
 
 /* ================= AudioEngine · Web Audio 前瞻调度 ================= */

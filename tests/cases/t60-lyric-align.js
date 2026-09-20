@@ -162,8 +162,11 @@ section("T60c 段内解析 · 段落 tick 长度 / 越界剔除不写回 / 行�
   eq(app2.beat.lyricCharsAt("t9", 0).length, 2, "★ span 不可知时不过滤（不把数据误判死）");
 }
 
-/* ================= 场景 T60d：渲染层 buildLyricLane / paintLyric ================= */
-section("T60d 歌词轨渲染 · 建轨几何 / 走带线 / 字态切换 / 收起不变量");
+/* ================= 场景 T60d：渲染层 buildLyricLane / paintLyric =================
+   v2.7.2 改写：歌词轨从「整段一条横排」改为**按小节分行**（四条 .lyric-row 与网格
+   四行一一对应，行内位置 = 小节内 tick）。几何断言的分母从段长（768）换成小节长（192）；
+   停机预览从"钳在段首"改为**全部未唱态**（停机没有"当前行"）。 */
+section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 / 收起不变量");
 {
   const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
   beat.Store.upsertLyric("t1", 0, [
@@ -174,35 +177,28 @@ section("T60d 歌词轨渲染 · 建轨几何 / 走带线 / 字态切换 / 收�
   beat.Viz.buildLyricLane();
   const lane = els["lyricLane"];
   eq(lane.hidden, false, "曲式模式 + 有歌词行 → 轨道展开");
-  const chips = lane.children.filter(c => /(^| )lyric-chip/.test(c.className));
-  eq(chips.length, 3, "三个字块");
-  eq(chips[0].style.left, "0%", "字块 0 左偏移 = 0/768");
-  eq(chips[0].style.width, "3.125%", "字块宽 = dur/span（24/768）");
-  eq(chips[1].style.left, "25%", "字块 1 左 = 192/768");
-  eq(chips[2].style.width, "6.25%", "延音字宽 = 48/768");
-  eq(chips[0].children[1].textContent, "你", "字走 textContent（边界规则 3）");
-  const head = lane.children[lane.children.length - 1];
-  eq(head.className, "lyric-head", "走带线挂在字块之后");
-
-  /* 停机预览（arrBar = -1 → 钳在段首）：paintLyric 只写 transform 与 className */
+  const rows = lane.children.filter(c => /(^| )lyric-row/.test(c.className));
+  eq(rows.length, 4, "★ 按小节分行：四条 lyric-row（与网格四行一一对应）");
+  const rowChips = r => rows[r].children.filter(c => /(^| )lyric-chip/.test(c.className));
+  eq(rowChips(0).length, 1, "第 1 行（窗口第 1 小节）1 个字块");
+  eq(rowChips(1).length, 2, "★ 第 2 行 2 个字块——段内 t=192/240 落在第 2 小节（旧版全在一条横排里）");
+  eq(rowChips(2).length + rowChips(3).length, 0, "第 3、4 小节无字 → 空行（占位对齐网格行）");
+  /* 行内几何 = 小节内 tick / 192（本型一小节 = 4 拍 × 48） */
+  eq(rowChips(0)[0].style.left, "0%", "「你」在第 1 行左端（小节内 0/192）");
+  eq(rowChips(0)[0].style.width, "12.5%", "「你」宽 = 24/192");
+  eq(rowChips(1)[0].style.left, "0%", "「好」在第 2 行左端（(192−192)/192）");
+  eq(rowChips(1)[1].style.left, "25%", "「世」左 = (240−192)/192");
+  eq(rowChips(1)[1].style.width, "25%", "延音字宽 = 48/192");
+  eq(rowChips(0)[0].children[1].textContent, "你", "字走 textContent（边界规则 3）");
+  /* 走带线：每行一条，停机时全部收起（没有"当前行"） */
+  eq(rows.filter(r => r.children.some(c => c.className === "lyric-head")).length, 4, "每行各有一条走带线");
+  ok(rows.every(r => r.children.find(c => c.className === "lyric-head").style.display === "none"),
+     "停机时走带线全部收起");
+  /* 停机预览：played/on 都不点——什么也没播过（v2.7.1 的"钳在段首"是单条横排时代的语义） */
   beat.Viz.paintLyric(96);
-  eq(head.style.transform, "translateX(75.0px)", "走带线 = 段内进度 × 轨宽（96/768 × 600px）");
-  ok(/(^| )played/.test(chips[0].className), "时值走完的字 = played（弹完定格）");
-  ok(!/(^| )(on|played)( |$)/.test(chips[1].className), "未到的字不带态");
-  eq(beat.Viz.internals().lyricFillEls[0].style.transform, "scaleX(1)", "唱完的字填充定格 1");
-
-  beat.Viz.paintLyric(204);
-  ok(/(^| )on/.test(chips[1].className), "落在 [t, t+dur) 内 = on（正在唱）");
-  eq(beat.Viz.internals().lyricFillEls[1].style.transform, "scaleX(0.500)", "正在唱的字按进度填充");
-
-  /* 延音字：整个时值内 act 不前进 —— 期间没有任何别的字被点亮 */
-  beat.Viz.paintLyric(276);              // 「世」时值 [240,288) 内
-  ok(/(^| )on/.test(chips[2].className), "延音字进场即 on");
-  beat.Viz.paintLyric(282);
-  eq(beat.Viz.internals().lyricFillEls[2].style.transform, "scaleX(0.875)", "延音期间填充持续推进");
-  ok(/played/.test(chips[0].className) && /played/.test(chips[1].className)
-     && /(^| )on/.test(chips[2].className),
-     "★ 延音占位期间不点亮别的字（验收 5 的渲染侧）");
+  ok(beat.Viz.internals().lyricChipEls.every(c => c.className === "lyric-chip"),
+     "★ 停机预览不点亮任何字（played/on 都没有）");
+  ok(rows.every(r => !r.classList.contains("cur")), "停机预览无当前行标记");
 
   /* 收起不变量：切回预设模式 → 整轨收起且清空（不占位、不留残影） */
   beat.Store.S.playMode = "preset";
