@@ -1357,20 +1357,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1386  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1766  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2655  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3238  Modal         应用内弹窗
-     L3368  Viz           时值可视化渲染与每帧动画
-     L4439  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5051  Trainer       变速训练器
-     L5264  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5729  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L5854  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6575  Editor        自定义节奏型编辑器
-     L6931  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7154  Ear           听辨训练（v1.10.0）
-     L7377  Arrange       曲式编排（v2.0.0）
-     L8060  Help          使用方法（v2.0.1）
-     L8107  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8166  初始化（装配） 各模块 hook 接线与启动
+     L3261  Modal         应用内弹窗
+     L3391  Viz           时值可视化渲染与每帧动画
+     L4462  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5074  Trainer       变速训练器
+     L5287  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5752  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L5877  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6608  Editor        自定义节奏型编辑器
+     L6964  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7187  Ear           听辨训练（v1.10.0）
+     L7410  Arrange       曲式编排（v2.0.0）
+     L8093  Help          使用方法（v2.0.1）
+     L8140  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8199  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1390,7 +1390,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.6.2";
+const VERSION = "2.6.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2819,6 +2819,14 @@ let arrSec = 0, arrBar = -1;
    与 onLimitPulse / onPersistFail 同一套做法，理由相同。 */
 /** @type {null | (() => void)} */
 let onArrangeEnd = null;
+/* playMode 变更钩子（v2.6.3）：模式一变就要同步主界面跳段行（argJump）的显隐——
+   那一行的显隐规则住在 Arrange.refreshBar 里，而"退出曲式"的动作（点侧栏预设、
+   曲式校验失败回退）不经过 Arrange 的任何一个入口，跳段行就带着「第 N/M 段」
+   残留在预设模式的主界面上（用户实拍）。
+   setMode 是 playMode 的唯一写入口（t66 契约），钩子挂在这里不可能漏。
+   与 onArrangeBar / onArrangeEnd 同一套装配层注入模式（共享状态区不引用后方模块）。 */
+/** @type {null | (() => void)} */
+let onPlayModeChange = null;
 /* 曲式每走一小节的回调（v2.0.0 S5）：用来刷新主界面"现在在第几段 / 全曲进度"。
    **为什么是钩子而不是每帧刷新**：一是 AudioEngine 不能反向调用 Arrange（R3），
    二是它每小节才变一次，挂在渲染热路径上纯属浪费。与 onArrangeEnd 同一套做法。 */
@@ -2854,6 +2862,18 @@ function arrangeNextRow(sec, bar){
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
   return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar };
 }
+/* 曲式**播放中**"现在该播的型"：节目单游标（arrSec/arrBar）处的块解析出的节奏型（v2.6.3）。
+   为什么要它：曲式播放的取型唯一来源是节目单（blockAt），S.sel 与播放无关——
+   但 refreshAfterPatternChange / applyPatternChange 原先在"曲式 + 播放中"拿 curPattern()
+   （= S.sel 指向的型）去重排时间轴、重建画面：切轨导致 S.sel 被回退成普通型时，
+   标题/网格变成那个型，节目单却还在走（用户实拍：连播中切普通轨，画面变成四分基础）。
+   游标尚未起步（arrBar = -1）或曲式已被删时返回 null，调用方回退既有口径。 */
+const arrangePlayPattern = () => {
+  const a = arrangeCur();
+  if (!a || arrBar < 0 || !a.sections[arrSec]) return null;
+  const blk = blockAt(a.sections[arrSec], arrBar);
+  return blk ? resolveRef(blk.ref) : null;
+};
 /** @type {null | number} */
 let rafId = null;
 /* 弹跳球（v1.2）onset 表：AudioEngine.scheduler 写入（含静音小节、跳过休止，时刻含 Swing 偏移），
@@ -3162,6 +3182,9 @@ function setMode(field, value, why){
   Sany[field] = value;
   modeTrail.push({ f: field, v: value, why: why || "", t: Date.now() });
   if (modeTrail.length > 20) modeTrail.shift();
+  /* v2.6.3：playMode 的实际迁移要同步主界面跳段行显隐（见 onPlayModeChange 的注释）。
+     放在幂等检查**之后**——同值重写不算迁移，不该触发一轮重刷 */
+  if (field === "playMode" && onPlayModeChange) onPlayModeChange();
   return true;
 }
 /** 模式迁移轨迹的只读视图（诊断与测试用） @returns {any[]} */
@@ -6357,7 +6380,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       /* v1.1.1：先试「就地接续」——点下即生效，不再等一个小节。
          （用户 bug：播放中从三连音基础切四分基础，第 1 小节仍走三连音，要等小节边界才换）
          必须在 applyPatternChange 之前调用：resyncToNow 要靠旧节奏型算已走过的 tick */
-      if (AudioEngine.resyncToNow(curPattern())){
+      /* v2.6.3：曲式播放中的接续目标 = **节目单游标处的型**，不是 curPattern()——
+         曲式播放的取型唯一来源是节目单（blockAt），S.sel 与播放无关。
+         原先拿 curPattern() 去 resync：切轨导致 S.sel 被回退成普通型时，时间轴被拽进
+         另一个型的网格，标题/画面与节目单分裂（用户实拍：连播中切普通轨，画面变成
+         四分基础）。走节目单后：切轨 = 同型幂等（相位零跳动），胶囊条换当前段的型
+         才真的"点下即生效"。拿不到节目单型（游标未起步/曲式被删）时回退既有口径 */
+      const target = (S.playMode === "arrange" ? arrangePlayPattern() : null) || curPattern();
+      if (AudioEngine.resyncToNow(target)){
         applyPatternChange();
         Viz.resetTracking();            // 网格与相位都可能变，强制下一帧全量重画高亮
         return;
@@ -6383,9 +6413,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        否则用 curPattern()（用户选预设）。解析不到时回退 curPattern()——
        曲式引用的预设被删掉时就靠这一条兜住，与「选中即回退 basicPattern」同一套语义。
        v2.0.2：停止且处于曲式模式时回退到「待命型」（播放范围起点）而不是当前预设——
-       跳段定位走这条路刷新网格/标题，画面要跟「下一次播放从哪儿开始」一致 */
+       跳段定位走这条路刷新网格/标题，画面要跟「下一次播放从哪儿开始」一致。
+       v2.6.3：**曲式播放中**回退到「节目单游标处的型」而不是当前预设——
+       曲式播放的取型唯一来源是节目单，拿 S.sel 重建画面会与节目单分裂（用户实拍） */
     const p = (pendingRef ? resolveRef(pendingRef) : null)
       || (!S.playing && S.playMode === "arrange" ? arrangeHomePattern() : null)
+      || (S.playing && S.playMode === "arrange" ? arrangePlayPattern() : null)
       || curPattern();
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
@@ -8398,6 +8431,10 @@ onArrangeEnd = () => {
   announce("曲式播放完毕");
 };
 onArrangeBar = Arrange.refreshNow;
+/* v2.6.3：playMode 一变就同步主界面跳段行（argJump）显隐——点预设退出曲式时
+   不再残留「◀ 上一段 / 第 N/M 段 / 下一段 ▶」（用户实拍）。注入而非直接调用：
+   setMode 住在共享状态区，直接调 Arrange 是反向引用（同 onArrangeBar 的纪律） */
+onPlayModeChange = () => Arrange.refreshBar();
 /* 「一个型有几小节」的查询注入（v2.5.1）：共享区的 secBars / blockAt / arrNextBar 是**纯函数**，
    不直接引用 resolveRef（那会让 T52 那批"纯函数可直测"的断言必须先建一份 Store）。
    这里把真正的解析注入进去——与 onArrangeBar / onLimitPulse 同一套"跨模块装配交给装配层"
@@ -8530,6 +8567,7 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   Help,                                           // v2.0.1：使用方法
   diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
   arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
+  arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
   LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
   EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
   limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
