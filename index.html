@@ -1362,20 +1362,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1391  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1784  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2673  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3279  Modal         应用内弹窗
-     L3409  Viz           时值可视化渲染与每帧动画
-     L4541  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5153  Trainer       变速训练器
-     L5366  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5831  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L5961  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6702  Editor        自定义节奏型编辑器
-     L7058  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7281  Ear           听辨训练（v1.10.0）
-     L7504  Arrange       曲式编排（v2.0.0）
-     L8228  Help          使用方法（v2.0.1）
-     L8275  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8334  初始化（装配） 各模块 hook 接线与启动
+     L3286  Modal         应用内弹窗
+     L3416  Viz           时值可视化渲染与每帧动画
+     L4593  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5220  Trainer       变速训练器
+     L5433  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L5898  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6028  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6775  Editor        自定义节奏型编辑器
+     L7131  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7354  Ear           听辨训练（v1.10.0）
+     L7577  Arrange       曲式编排（v2.0.0）
+     L8306  Help          使用方法（v2.0.1）
+     L8353  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8412  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1395,7 +1395,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.7.0";
+const VERSION = "2.7.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2861,6 +2861,13 @@ let onDemoRestore = null;
    refreshBar/refreshNow 可以直接调 Presets.syncDemoSecRow()，不需要钩子。 */
 /** @type {null | ((i: number) => void)} */
 let onDemoJump = null;
+/* 可听小节变化钩子（v2.7.1）：Viz.paintFrameBody 每帧按**可听**歌曲小节号检测变化
+   （audibleSongBar，与播放头/弹跳球同源），变了才调一次。与 onArrangeBar 并存——
+   后者在调度域（早一个前瞻窗口），服务排程侧；本钩子服务"现在听到哪"的呈现
+   （跳段行计数器 / 段序条高亮），必须等声音真的走到。注入而非直接调用：
+   Viz 在 Arrange 之前声明，直接调是反向引用 */
+/** @type {null | (() => void)} */
+let onAudibleBar = null;
 /* 当前正在播的曲式（非曲式模式返回 null）。调用方据此决定要不要走节目单逻辑。
    刻意每次现查：曲式可能在别处被删掉，缓存下来会指向一个已经不存在的对象 */
 const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrangeSel.id) : null);
@@ -3429,6 +3436,9 @@ let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<
    箭头挂在这里而不是格子里——格子有 overflow:hidden，挂进去会被裁（见 .strums 注释） */
 let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   let lastBar = -1, lastStep = -1;
+  /* 上一帧的可听歌曲小节号（v2.7.1）：onAudibleBar 钩子的变化检测基准。
+     只在 paintFrameBody 的曲式分支里写；时间轴重锚/窗口丢弃时随 resetTracking 归零 */
+  let lastAudSongBar = -2;
   /** @type {null | { bar: number, active: number, nb: number, ni: number, len: number }} */
   let lastPainted = null;                                      // v1.3.0：增量重绘的上一次状态
   /* 行几何缓存（v1.3.0，审计 P1-4）：帧内一律读这里，绝不读 offset*。
@@ -3516,7 +3526,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         窗口若不跟着丢弃，重新按播放键就会停在上一次听到的地方，与声音对不上
         （用户实拍：重新播放后第 1 行不是歌曲第 1 小节）。
         调用点在 AudioEngine / Controls —— 那正是 `schedBar = loopStartBar(...)` 的四处 */
-  function resetWindow(){ winStart = -1; winPat = null; winPrevBar = -1; winPrevSteps = null; winPrevName = ""; }
+  function resetWindow(){ winStart = -1; winPat = null; winPrevBar = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2; }
   /** 把窗口里的 ARR_WIN_BARS 个小节合成为一个临时型（每小节取自它所引用的型）。
       任一小节解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
@@ -3566,6 +3576,23 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       }
     }
     return Math.min(vizBars - 1, Math.max(0, e.bar));
+  }
+  /** 可听域的节目单位置（v2.7.1）：歌词轨与「第 N 段 · 第 M 小节」计数器共用。
+      ★ 为什么不能读调度游标 arrSec/arrBar：调度器提前一个前瞻窗口（前台 0.3s /
+        后台 1.2s）推进它们，而 paintLyric 的小节内 tick 来自可听域（audioPosAt）——
+        两个域拼在一起，每逢小节/段边界前那一小段，段内位置会被拼错将近一小节：
+        声音还在上一段末尾，歌词已整轨切到下一段（用户实拍，与 v2.5.2 网格窗口
+        「按调度游标重建会画面先跳、声音后到」是同一类问题，这两处是漏网的同款）。
+      返回 null = 取不到可听位置（预设模式 / 无上下文），调用方回退调度游标——
+      停机预览等旧行为逐位不变（audibleSongBar 内部在还没有落地端点时也会回退游标） */
+  function audibleArrangePos(){
+    if (S.playMode !== "arrange" || !ctx) return null;
+    const a = arrangeCur();
+    if (!a) return null;
+    const k = audibleSongBar(ctx.currentTime);
+    if (k < 0) return null;
+    const at = songBarAt(a, k);
+    return at ? { sec: at.sec, bar: at.bar } : null;
   }
   /** 这一行会不会被静音拍静掉（**只用于视觉标识**，真正的发声门控在 scheduler）。
       曲式模式：窗口起点是已知的歌曲小节号 → 按线性号直接算，精确（4 行里恰有一行会被标出）。
@@ -3922,7 +3949,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
      lastPainted 一并清空——网格可能整片重建（格子数、拍号都会变），
      此时增量重绘的前提（同一套 cellEls、同一个小节）已经不成立，必须走全量 */
-  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricAct = -2; lastLyricPlay = -1; }
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricAct = -2; lastLyricPlay = -1; lastAudSongBar = -2; }
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
@@ -4182,8 +4209,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     clear(lane);
     const a = arrangeCur();
     if (!a || !a.sections.length){ lane.hidden = true; return; }   // 预设模式 / 曲式已删：整轨收起，不占位
-    /* 停机时 arrBar = -1（节目单游标尚未起步）：预览第 0 段，让用户选中曲式后立刻看得见歌词行 */
-    const secIdx = Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), a.sections.length - 1);
+    /* 停机时 arrBar = -1（节目单游标尚未起步）：预览第 0 段，让用户选中曲式后立刻看得见歌词行。
+       播放中取**可听域**段号（v2.7.1，与 paintLyric 同源）：buildViz 的窗口重建本身就由
+       可听小节触发，若这里读调度游标 arrSec，建的段与 paintLyric 画的段会在边界前
+       差一整段——runSig 对不上就每帧重建（歌词轨狂闪） */
+    const apos = S.playing ? audibleArrangePos() : null;
+    const secIdx = apos ? apos.sec
+      : Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), a.sections.length - 1);
     const span = lyricSpanTicks(a.id, secIdx);
     const chars = lyricCharsAt(a.id, secIdx);
     if (!span || !chars.length){ lane.hidden = true; return; }
@@ -4222,11 +4254,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!lane || lane.hidden) return;           // 预设模式 / 无歌词行：整帧零开销（T27 走的就是这条）
     const a = arrangeCur();
     if (!a) return;
-    const secIdx = Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), Math.max(0, a.sections.length - 1));
+    /* 段/小节号取**可听域**（v2.7.1 修，与网格窗口 v2.5.2 同一条原则）：调度游标
+       arrSec/arrBar 比发声早一个前瞻窗口，而小节内 tick（入参 tib）来自可听域——
+       两个域拼在一起，每逢小节/段边界前那一小段，段内位置被拼错将近一小节：
+       声音还在上一段末尾，歌词已提前点亮下一段的字（用户实拍）。停机/预备拍等
+       可听位置还不存在时回退调度游标——维持停机预览第 0 段的旧行为 */
+    const apos = S.playing ? audibleArrangePos() : null;
+    const secIdx = apos ? apos.sec
+      : Math.min(Math.max(arrBar < 0 ? 0 : arrSec, 0), Math.max(0, a.sections.length - 1));
     if (a.id + "#" + secIdx !== lyricRunSig){ buildLyricLane(); return; }   // 段切换：本帧重建，下一帧起走稳态
     if (!lyricSpan || !lyricHeadEl || !lyricChars.length) return;
     /* 段内绝对 tick（契约：char.t 为**段内** tick，跨小节不自增）。停机预览时 arrBar<0 → 钳在段首 */
-    const secTick = Math.max(0, (arrBar < 0 ? 0 : arrBar) * lyricBarTicks + tib);
+    const barInSec = apos ? apos.bar : (arrBar < 0 ? 0 : arrBar);
+    const secTick = Math.max(0, barInSec * lyricBarTicks + tib);
     const pct = Math.min(1, secTick / lyricSpan);
     /* 走带线：与 #viz 的播放头同一份 tick 换算（同一根时间轴），只是定义域从「小节」换成「段」 */
     lyricHeadEl.style.transform = `translateX(${(lyricW * pct).toFixed(1)}px)`;
@@ -4367,6 +4407,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          —— 与 T27「帧内零布局读取」的承诺不冲突（buildViz 里的量测只在结构变化时发生）。 */
     if (S.playMode === "arrange" && ctx){
       const k = audibleSongBar(ctx.currentTime);
+      /* 可听小节变化 → 通知「第 N 段 · 第 M 小节」计数器与段序条（v2.7.1）。
+         它们此前由调度域的 onArrangeBar 刷新——比发声早一个前瞻窗口，
+         计数器先跳、声音后到（与歌词轨同一类问题，用户实拍）。触发必须在这里
+         （可听域每帧检测），不能只换 refreshNow 的数据源：那会让它在调度边界
+         读到旧位置、然后整整一小节没人再刷 */
+      if (k !== lastAudSongBar){
+        lastAudSongBar = k;
+        if (k >= 0 && onAudibleBar) onAudibleBar();
+      }
       /* v2.7.0：除窗口起点外还要盯**预告行**——进入页内第 4 小节（预告生效）与
          翻页（预告随窗口换）都要重建一次。previewBarFor 只在页末才做解析，平时是算术 */
       const ws = k >= 0 ? winAnchor(k) : winStart;
@@ -4531,6 +4580,9 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        「曲式/段落变化」时重建；paintLyric 只由 paintFrameBody 内部调用，暴露出来是为了让
        测试能单独断言「同一份 tib 下轨道位置与高亮」而不用驱动整套音频排程 */
     buildLyricLane, paintLyric,
+    /* v2.7.1：可听域节目单位置（歌词轨/跳段行计数器/段序条共用）。
+       Arrange / Presets 声明都在 Viz 之后，读它是合法方向 */
+    audibleArrangePos,
     /* v1.3.1：暴露内部件**仅供测试**断言弹跳球物理（T30）。
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
@@ -4682,9 +4734,9 @@ const AudioEngine = (() => {
        修复 v1.0.0 缺陷：原实现把 S.accentVol 直接当倍率，滑块低于 80% 时
        重拍(×accentVol) 反而轻于正拍(×0.8)，听觉强调层级倒挂 */
     const accentGain = CONFIG.accentMin + (CONFIG.accentMax - CONFIG.accentMin) * S.accentVol;
-    /* ★ 声部拆分的正交性（v2.5.0，改这里前先读）：本函数现在承担**两条独立声部**——
+    /* ★ 声部拆分的正交性（v2.5.0，改这里前先读）：本函数承担**两条独立声部**——
          节拍声部（click / wood / drum 那一下）→ 音量 S.vol
-         扫弦声部（弦区带通噪声）        → 音量 S.strumVol
+         扫弦声部（弦区带通噪声；鼓组下的扫弦格）→ 音量 S.strumVol
        「层级」与「声部音量」是两个正交维度：
          tier = 这一下有多重（重拍增强对它生效，两条声部共用同一套层级）
          声部音量 = 这条线整体多响（两条各调各的，互不缩放）
@@ -4694,17 +4746,24 @@ const AudioEngine = (() => {
        v1.2.4 的最终防线（钳到 [0,1]）两条声部各自保留——实测 vol:1e6 会把增益送到
        +120 dBFS，strumVol 走同一套脏值路径，理由逐字相同 */
     const tier = isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub);
-    /* 弦区（v2.2.0）：音符显式带了 zone 就按弦区频段发声，优先于全局音色——
-       扫弦谱里「这颗音扫哪片弦」是对这颗音的描述，比「整首用木鱼还是鼓组」更具体。
-       只在 wood/click 系有意义；drum 音色的三件套（底鼓/军鼓/踩镲）已自带频段分工，不叠加 */
+    /* 声部判定（v2.7.1 打通）：入参 zone !== undefined 即扫弦声部——dir-only 的格
+       由调度入口补成中弦区（见 schedOneStep 的 stepZone）。v2.7.1 之前 drum 音色
+       整体除外：鼓组下 zone 被丢弃、扫弦格全走 S.vol，于是鼓组 + 扫弦轨时
+       「节拍」拉到 0 全静默、「扫弦」滑条恒无效（用户实拍）。现在鼓组下扫弦格
+       仍按层级选鼓件（底鼓/军鼓/踩镲自带频段分工，不叠加弦区频段），
+       但音量走 S.strumVol——两条滑条在三种音色下都成立 */
+    const voiceVol = zone !== undefined ? S.strumVol : S.vol;
+    /* 弦区（v2.2.0）：扫弦声部在 click/wood 系下按弦区频段发声，优先于全局音色——
+       扫弦谱里「这颗音扫哪片弦」是对这颗音的描述，比「整首用木鱼还是电子」更具体。
+       drum 不叠加：三件套已自带频段分工，zone 在那里只选声部音量（见上） */
     if (zone !== undefined && S.timbre !== "drum"){
-      strumZoneHit(t, Math.min(1, Math.max(0, S.strumVol * tier)), zone);
+      strumZoneHit(t, Math.min(1, Math.max(0, voiceVol * tier)), zone);
       return;
     }
     /* v1.2.4 最终防线：合法范围内 peak 上限本就是 accentMax(=1)，故此钳制对正常值是**无操作**，
        不改变任何现有听感（T18 层级增益不变量不受影响）；只为挡住未来新增发声路径漏做钳制——
        实测 v1.2.3 下 vol:1e6 会把增益送到 +120 dBFS（削波爆音） */
-    const peak = Math.min(1, Math.max(0, S.vol * tier));
+    const peak = Math.min(1, Math.max(0, voiceVol * tier));
     const TM = CONFIG.timbres;
     if (S.timbre === "wood"){                      // 木鱼：带通噪声，层级差体现在中心频率
       const W = TM.wood;
@@ -4911,12 +4970,19 @@ const AudioEngine = (() => {
        ★ 对 4 小节的型，新判据与旧判据**逐位等价**：schedPlayBar 从 0 起、每小节 +1，
          而 4 小节型的第 4 小节恒落在 `%4 === 3` 上；所以既有数据的行为一字未变。 */
     const muted = S.mute && (schedPlayBar % MUTE_PERIOD) === MUTE_PERIOD - 1;
-    const stepZone = S.track === "strum" ? step.zone : undefined;
+    /* 扫弦声部入口（v2.7.1 放宽）：判据从「带 zone」放宽到「带扫弦记谱（dir 或 zone）」。
+       纯方向谱（内置「民谣扫弦」只有 dir 没有 zone）此前整谱走节拍声部——
+       「扫弦」滑条对它恒无效、「节拍」拉到 0 全静默（用户实拍）。dir-only 的格
+       补成中弦区（zone 1）——与数据契约「省略 zone = 中弦区」同义；时刻一字不动，
+       zone 仍只改声部与频段、不碰时间轴（T62e 守的那条不变量不受影响） */
+    const stepZone = S.track === "strum" && (step.zone !== undefined || step.dir !== undefined)
+      ? (step.zone === undefined ? 1 : step.zone) : undefined;
     /* 这一步自身发的是「扫弦声」还是「节拍音」（v2.5.0）？
-       判据必须与 playClick 里那条 zone 分支**逐字一致**（drum 音色下 zone 不生效、
-       仍走节拍音）。写错这一处的后果很隐蔽：下面补拍点时会把"已经被自身顶掉的那一拍"
+       判据必须与 playClick 的声部入口**逐字一致**（透传后的 zone !== undefined 即扫弦声部；
+       v2.7.1 起 drum 不再除外——鼓组下扫弦格同样走 strumVol，见 playClick 的声部判定）。
+       写错这一处的后果很隐蔽：下面补拍点时会把"已经被自身顶掉的那一拍"
        再补一声（或反过来漏掉），而单看每一行代码都是对的 */
-    const stepIsStrum = stepZone !== undefined && S.timbre !== "drum";
+    const stepIsStrum = stepZone !== undefined;
     if (!step.rest){
       const t0 = nextNoteTime + swingShift(pat, step, cumT);
       /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
@@ -4925,8 +4991,9 @@ const AudioEngine = (() => {
          算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
          提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
       onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar, pb: schedPlayBar });
-      /* zone（v2.2.0）：从音符快照透传给 playClick——空扫（rest）根本走不到这里，
-         「空扫静默」由上面的 !rest 判定天然保证，无需在 zone 分支里再判一次。
+      /* zone（v2.2.0）：从音符快照透传给 playClick（dir-only 的格已在上面补成中弦区）
+         ——空扫（rest）根本走不到这里，「空扫静默」由上面的 !rest 判定天然保证，
+         无需在 zone 分支里再判一次。
          v2.4.0 轨门控：**普通节拍轨不传 zone**——zone 是扫弦轨的弦区音色，
          普通轨要的正是"只有节拍音与重音"。这样 playClick 里 `zone !== undefined` 那条
          分支整体不成立，自动退回全局音色（click/wood/drum），无需在 playClick 里判 track：
@@ -6066,7 +6133,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function demoCurSec(){
     const a = Store.findArrange(S.arrangeSel.id);
     if (!a || a.id !== DEMO_ID) return -1;
-    return (S.playing && S.playMode === "arrange") ? arrSec : S.arrangeSel.from;
+    /* 播放中跟**可听位置**（v2.7.1，与歌词轨/跳段行计数器同源）：调度游标 arrSec
+       早一个前瞻窗口，段序条高亮会先于声音跳到下一段。取不到回退游标 */
+    if (S.playing && S.playMode === "arrange"){
+      const apos = Viz.audibleArrangePos();
+      return apos ? apos.sec : arrSec;
+    }
+    return S.arrangeSel.from;
   }
   /** 把「整首连播」行与段序条直接挂进示例分组（不再套一层 wrapper）。
       扁平的理由是**可定位性**：这两块都要被测试按类名找，而 stub 不解析 HTML、
@@ -7977,11 +8050,16 @@ const Arrange = (() => {
        overlay 没开过、curId 是 null，用 cur() 会让整条实时进度永不刷新 */
     const a = arrangeCur() || cur();
     if (S.playMode !== "arrange" || !a) return;
+    /* v2.7.1：段/小节号优先取**可听域**（与歌词轨、网格窗口同源）——调度游标
+       arrSec/arrBar 比发声早一个前瞻窗口，直接读它会"计数器先跳、声音后到"
+       （用户实拍：球还在上一段末尾，这里已写下一段）。取不到（未起播）回退调度游标 */
+    const apos = S.playing ? Viz.audibleArrangePos() : null;
+    const curSec = apos ? apos.sec : arrSec, curBar = apos ? apos.bar : arrBar;
     const totalBars = a.sections.reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0);
     let done = 0;
-    for (let i = 0; i < arrSec; i++) done += secBars(a.sections[i]);
-    $("argNowMeta").textContent = `第 ${arrSec + 1}/${a.sections.length} 段 · 第 ${done + arrBar + 1}/${totalBars} 小节`;
-    const sec = a.sections[arrSec];
+    for (let i = 0; i < curSec; i++) done += secBars(a.sections[i]);
+    $("argNowMeta").textContent = `第 ${curSec + 1}/${a.sections.length} 段 · 第 ${done + curBar + 1}/${totalBars} 小节`;
+    const sec = a.sections[curSec];
     $("argNowName").textContent = a.name + (sec && sec.name ? " · " + sec.name : "");
   }
   /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制） */
@@ -8566,6 +8644,10 @@ onArrangeEnd = () => {
   announce("曲式播放完毕");
 };
 onArrangeBar = Arrange.refreshNow;
+/* 可听小节变化 → 同一个刷新入口（v2.7.1）。与调度域的 onArrangeBar 双触发：
+   refreshNow 内部改读可听域位置，调度边界那次调用写到的是旧位置（无害的幂等写），
+   真正"走到"的那一下由本钩子保证 */
+onAudibleBar = Arrange.refreshNow;
 /* v2.6.3：playMode 一变就同步主界面跳段行（argJump）显隐——点预设退出曲式时
    不再残留「◀ 上一段 / 第 N/M 段 / 下一段 ▶」（用户实拍）。注入而非直接调用：
    setMode 住在共享状态区，直接调 Arrange 是反向引用（同 onArrangeBar 的纪律）。

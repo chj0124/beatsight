@@ -143,7 +143,10 @@ if (CASE in SIGS){
 } else if (CASE in VOLS){
   const v = VOLS[CASE];
   RAMPS = [];
-  const { beat } = loadApp(seed({ v:3, vol:v, accentVol:1, bpm:120 }));
+  /* sel idx 1（四分基础 → 普通轨）：本探针守的是**节拍声部**的 0 dBFS 上限。
+     v2.7.1 起默认型（民谣扫弦）归扫弦声部——那条路径的峰值上限是 makeup（=8），
+     安全性论证见 CONFIG.timbres 注释（削波看信号幅度，不看增益值），混进来会误报 */
+  const { beat } = loadApp(seed({ v:3, vol:v, accentVol:1, bpm:120, sel:{ type:"builtin", idx:1 } }));
   const vol = beat.Store.S.vol;
   beat.Controls.start();
   const ac = FAC.last;

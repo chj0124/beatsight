@@ -69,7 +69,10 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
 {
   /* 「就地接续」是相位换算逻辑，最容易在边界（稀疏↔密集、奇数拍↔4/4、小节末）出破例，
      单点用例覆盖不到。这里把 9 个代表性节奏型两两对切 × 3 个点击相位全跑一遍，
-     只守四条硬不变量：立即切换 / 不排到过去 / 时刻严格递增 / 播放不中断。
+     只守四条硬不变量：立即切换 / 不排到过去 / 时刻不倒退 / 播放不中断。
+     v2.7.1 口径修正：「严格递增」放宽为「单调不减 + 同刻至多两声」——扫弦轨下
+     拍点节拍音与扫弦在同一时刻叠加出声是设计语义（双声部并列），不算重复排程；
+     但同一时刻出现第 3 声仍是 bug（除了这两条声部，没有第三条发声路径）。
 
      v1.3.0（审计 P2-17）加 FULL_SCAN 开关：243 组是本套件最耗时的一段（每格都要新建沙箱 +
      驱动十几秒音频）。默认跑抽样 9 组，FULL_SCAN=1 跑全量——CI 跑全量，本地改代码时跑抽样。
@@ -106,7 +109,9 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
     const tag = fromName + " → " + toName + " @" + wait + "s";
     if (els["patternName"].textContent !== toName) problems.push(tag + "：标题未立即切换");
     if (seg.some(t => t < tClick - 1e-9)) problems.push(tag + "：音符排到过去");
-    for (let i = 1; i < seg.length; i++) if (!(seg[i] > seg[i - 1])) problems.push(tag + "：时刻非严格递增");
+    for (let i = 1; i < seg.length; i++) if (!(seg[i] >= seg[i - 1])) problems.push(tag + "：时刻倒退");
+    for (let i = 2; i < seg.length; i++)
+      if (seg[i] === seg[i - 1] && seg[i] === seg[i - 2]) problems.push(tag + "：同一时刻三声（超出双声部叠加）");
     if (!S.playing) problems.push(tag + "：播放被中断");
     if (seg.length < 4) problems.push(tag + "：切换后发声过少（" + seg.length + "）");
   }

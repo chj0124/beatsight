@@ -22,7 +22,7 @@
      且**每次点击后都要重新取**——曲式播放换型会走 scheduleRef → buildPresetList，
      整张列表（连带段序条）都会被重建，旧引用指向的是已脱离文档的节点。 */
 "use strict";
-const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
+const { loadApp, FakeAudioContext, drive, driveFrames, ok, eq, near, section } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 /* 本组统一在扫弦轨上跑：示例曲的 7 个型全带 dir，普通轨下整组不渲染 */
@@ -51,11 +51,6 @@ const mkDirNoZone = () => [0,1,2,3].map(() => [
 /* 对照：整小节一个全音符、无 dir 无 zone（hasStrum 为假） */
 const mkWholeNote = () => [0,1,2,3].map(() => [{ t: 192 }]);
 
-/* 双声检测：不允许出现"同一时刻两条发声记录"（补网格最容易犯的错） */
-function noDouble(ac, label){
-  const ts = ac.hits.map(h => +h.t.toFixed(4));
-  eq(new Set(ts).size, ts.length, `${label}：没有同一时刻的重复发声`);
-}
 /* 把一个新的扫弦谱装进应用并起播（返回音频桩）。
    opts 里的参数在 start() **之前**写入——起播后再改 BPM 会走时钟重映射，
    首音时刻会被改写，本组的时刻断言就没法对齐了。
@@ -132,15 +127,38 @@ section("T68b 双声部 · 无扫弦记谱的谱不补网格（长音中间的�
   eq(ac.hits.length, 1, "★ 一小节只响 1 声（若补网格会变成 4 声——那种谱本身就是节拍器）");
 }
 
-/* ================= 场景 T68c：自身就是那一拍的音符不被重复排 ================= */
-section("T68c 双声部 · 落在拍上的普通音符只响一次（补网格不得造成双声）");
+/* ================= 场景 T68c：落在拍上的音符与网格的叠/顶规则 =================
+   v2.7.1 起 dir-only 的格也归扫弦声部（民谣扫弦形状）——扫弦声**不顶掉**拍点，
+   拍点叠在它上面（双声部并列的设计语义）；只有**不带扫弦记谱**的普通音符
+   仍顶掉自己那一拍（它自己就是这一拍的节拍音）。 */
+section("T68c 双声部 · 扫弦格叠拍点 / 普通音符仍顶掉自己那一拍");
 {
+  /* dir-only 谱：4 颗实扫各自落在 4 个拍上 → 每拍 = 扫弦 + 拍点两声 */
   const { beat } = loadStrum();
   const ac = startWith(beat, "带方向无弦区", mkDirNoZone());
   drive(ac, beat, 2.2);
   beat.Controls.stop();
-  eq(ac.hits.length, 4, "★ 一小节恰好 4 声（4 颗音各自覆盖自己那一拍，网格不再补）");
-  noDouble(ac, "带方向无弦区");
+  eq(ac.hits.length, 8, "★ 一小节 8 声 = 4 扫弦 + 4 拍点（v2.7.1 前是 4 声：扫弦格顶掉了拍点）");
+  eq(clicksOf(ac).length, 4, "4 声拍点网格（每一拍都出节拍音）");
+  eq(strumsOf(ac).length, 4, "4 声扫弦（dir-only → 中弦区噪声）");
+  [0, 0.625, 1.25, 1.875].forEach((off, i) => {
+    const at = ac.hits.filter(h => Math.abs(h.t - (0.08 + off)) < 1e-6);
+    eq(at.length, 2, `第 ${i + 1} 拍：扫弦与拍点**同刻叠加**（双声部并列）`);
+    ok(at.some(h => h.kind === "osc") && at.some(h => h.kind === "noise"),
+       `第 ${i + 1} 拍：一声节拍（osc）+ 一声扫弦（noise），不是同声部双响`);
+  });
+
+  /* 混合谱：不带扫弦记谱的普通音符仍顶掉自己那一拍（网格不补双声） */
+  const { beat: b2 } = loadStrum();
+  const ac2 = startWith(b2, "混合谱", [0,1,2,3].map(() => [
+    { t: 48 }, { t: 48, dir: "D" }, { t: 48 }, { t: 48 },
+  ]));
+  drive(ac2, b2, 2.2);
+  b2.Controls.stop();
+  eq(ac2.hits.length, 5, "★ 混合谱 5 声 = 拍1/3/4 各 1 声（普通音符顶掉网格）+ 拍2 两声（扫弦+拍点叠加）");
+  const atBeat0 = ac2.hits.filter(h => Math.abs(h.t - 0.08) < 1e-6);
+  eq(atBeat0.length, 1, "★ 拍 1 只有 1 声——普通音符顶掉网格拍点（不双声）");
+  eq(atBeat0[0].kind, "osc", "顶掉后留下的是节拍声部那一下");
 }
 
 /* ================= 场景 T68d：静音拍下节拍网格一起静音 ================= */
@@ -314,13 +332,15 @@ section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSe
 section("T68j 整首连播 · 段序条高亮随播放推进（不是钉在第 1 段）");
 {
   const { beat, els } = loadDemo();
-  /* 240BPM → 一小节 1s；**第 1 段 = 1 小节**（v2.6.0 起是逐小节谱，不再垫到 4 小节）= 1s */
+  /* 240BPM → 一小节 1s；**第 1 段 = 1 小节**（v2.6.0 起是逐小节谱，不再垫到 4 小节）= 1s。
+     v2.7.1 起段序条高亮跟**可听位置**（onAudibleBar 由渲染帧驱动），
+     所以这里必须用 driveFrames（scheduler + paintFrame 双时钟）而不是只跑调度 */
   beat.Controls.setBpm(240);
   playAllOf(els).fire("click");
   const ac = FakeAudioContext.last;
   ok(noteOf(els).textContent.includes("第 1/10"),
      "起播时指向第 1 段（实际「" + noteOf(els).textContent + "」）");
-  drive(ac, beat, 1.4);
+  driveFrames(ac, beat, 1.4);
   const row = secRowOf(els);
   eq(row.children[1].getAttribute("aria-pressed"), "true",
      "★ 走完第 1 段后高亮移到第 2 段（跟着节目单推进，不是钉在第 1 段）");

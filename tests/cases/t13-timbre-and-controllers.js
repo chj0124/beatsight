@@ -19,9 +19,12 @@ section("T13 音色 · 三套合成音色与持久化");
   bWood.Store.flush();                 // v1.3.0：热键写入改为防抖，断言落盘内容前须 flush
   eq(JSON.parse(stWood.get("beatsight.state")).timbre, "wood", "flush 后热键写入 timbre 字段");
 
-  /* 木鱼：全部层级走带通滤波噪声 */
-  bWood.Controls.start();
-  drive(FakeAudioContext.last, bWood, 1.5);
+  /* 木鱼：全部层级走带通滤波噪声。
+     v2.7.1 起默认型（民谣扫弦，带 dir）在扫弦轨上归扫弦声部——测全局音色必须换
+     无扫弦记谱的型（sel idx 1 四分基础 → 普通轨），否则测到的是弦区频段 */
+  const { beat: bWood2 } = loadApp({ "beatsight.m2": JSON.stringify({ timbre: "wood", sel: { type: "builtin", idx: 1 } }) });
+  bWood2.Controls.start();
+  drive(FakeAudioContext.last, bWood2, 1.5);
   const hw = FakeAudioContext.last.hits;
   ok(hw.length > 0 && hw.every(h => h.kind === "noise" && h.filterType === "bandpass"), "wood：全部发声为带通噪声");
   eq(hw[0].filterFreq, 2000, "wood：小节首拍（重拍）中心 2000Hz");
@@ -46,8 +49,10 @@ section("T13 音色 · 三套合成音色与持久化");
 /* ================= 场景 T14：预备拍（v0.9.0） ================= */
 section("T14 预备拍 · 计数发声 + 训练器不受污染");
 {
-  /* bpm 96 → spb 0.625s；countIn 3 拍：预备拍落在 0.08 / 0.705 / 1.33，1.955 起进正式第 1 小节 */
-  const { beat, els } = loadApp({ "beatsight.m2": JSON.stringify({ countIn: { on: true, beats: 3 } }) });
+  /* bpm 96 → spb 0.625s；countIn 3 拍：预备拍落在 0.08 / 0.705 / 1.33，1.955 起进正式第 1 小节。
+     sel idx 1（四分基础 → 普通轨）：v2.7.1 起默认的民谣扫弦归扫弦声部（噪声链），
+     本场景按频率断层级，必须用纯节拍声部的型 */
+  const { beat, els } = loadApp({ "beatsight.m2": JSON.stringify({ countIn: { on: true, beats: 3 }, sel: { type: "builtin", idx: 1 } }) });
   const S = beat.Store.S;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -193,9 +198,11 @@ section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
   const { beat: probe } = loadApp();
   const C = probe.CONFIG;
 
-  /* click 音色三档频率互异，按频率区分层级，返回各层级的包络峰值 */
+  /* click 音色三档频率互异，按频率区分层级，返回各层级的包络峰值。
+     sel idx 2（八分摇滚 → 普通轨）：重拍/正拍/细分三层俱全且全是节拍声部——
+     v2.7.1 起默认型（民谣扫弦）归扫弦声部，它的拍内位置不再出 click 三档频率 */
   const levels = (accentVol) => {
-    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, accentVol, bpm: 120 }) });
+    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, accentVol, bpm: 120, sel: { type: "builtin", idx: 2 } }) });
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);

@@ -153,7 +153,10 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
 
 section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜底（审计 P1-3）");
 {
-  const app = loadApp();
+  /* sel idx 1（四分基础 → 普通轨）：v2.7.1 起默认型（民谣扫弦）在扫弦轨会让
+     拍点节拍音与扫弦**同刻叠加**（设计如此），本场景的「时刻严格递增」断言
+     需要一条纯节拍声部的单声道时间轴 */
+  const app = loadApp({ "beatsight.state": JSON.stringify({ v: 3, sel: { type: "builtin", idx: 1 } }) });
   const beat = app.beat;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
