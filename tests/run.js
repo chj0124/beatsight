@@ -47,6 +47,7 @@ const CASE_FILES = [
   "./cases/t71-editor-bars",           // v2.6.1：编辑器增删小节（复制当前小节 / 下限 1 / 上限 64 / 撤销回退）
   "./cases/t72-loop-rewind-ball",       // v2.6.2：练习循环的渲染层回卷（球不倒退 / 待命球指向区间起点 / .next 同口径）
   "./cases/t73-arrange-mode-exit",      // v2.6.3：曲式模式的主界面收口（退出后跳段行不残留 / 播放中切轨不分裂）
+  "./cases/t74-demo-version-migration", // v2.6.4：切轨假选中去除 + 示例曲版本迁移（120 小节混杂态收敛 / 删除不复活）
 ];
 for (const f of CASE_FILES) require(f);
 
