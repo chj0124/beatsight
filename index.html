@@ -30,7 +30,10 @@
      抽成变量是因为竖箭头的三种弦区跨距（kF/kB/kT）各要引用其中两个端点，
      写死数字会让"改一处忘三处"。 */
   --gt:8.8px;            /* 弦间距 = 44px / 5 段 */
-  --gtop:0;              /* 第一条弦线（一弦）贴格子顶边 */
+  --gtop:0px;            /* 第一条弦线（一弦）贴格子顶边。★ 单位不能省：buildBarRow 的
+                            线 top 走 calc(var(--gtop) + N*var(--gt))，calc 里「无单位 0」
+                            是 <number>，不能与 <length> 相加 → 六条线的 top 全部失效、
+                            退回 auto 叠在同一处，观感就是"六线底纹不见了"（v2.8.0 回归点） */
   --yT1:0px;  --yT2:17.6px; /* 上三线（高音区 1-3 弦）首/末 */
   --yB1:26.4px; --yB2:44px; /* 下三线（低音区 4-6 弦）首/末 */
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -91,14 +94,18 @@ button:disabled{cursor:not-allowed}
    曲式翻页窗口页内**最后一行**期间，第 1 行临时换成"下一小节"的内容。
    整行降透明 = 它是"未来"，与在播行/历史行区分开 */
 .bar-row.preview-row{opacity:.55}
-/* 小节和弦名（v2.7.4；v2.8.0 左对齐 + 并入预告信息 + 上移出格）：
+/* 小节和弦名（v2.7.4；v2.8.0 左对齐 + 并入预告信息 + 上移出格；v2.8.1 收紧行高与格子留距）：
    段名尾部的和弦序列摊到**每小节行上方**，一行 = 一小节故一行一颗。
    左对齐（left:6px）；整体上移到 top:-18px——原先 -9px 的条带会压住格子顶部 ~6px，
    挡住扫弦标记（用户实拍）。预告行（第 1 行）不再另挂徽标，而是把预告信息并进同一颗胶囊：
    文本 =「和弦名（下一小节 · 型名）」（该小节无和弦时只剩括号里的预告信息）。
    行距已由 14px 加大到 20px，给这条行头条带腾出竖向空间。
-   绿色（--green）与网格高亮同色系，视觉上从属"这一小节" */
-.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
+   ★ v2.8.1：line-height:1——胶囊默认继承 body 的 1.5 行高（11px 字 → 16.5px 内容高
+     + 2px 边框 = 18.5px 盒高），top:-18px 时盒底落在 +0.5px，正好压在格子顶边上
+     （用户报"贴在格子上"）。行高收到 1 后盒高 13px，盒底落到 -5px：与格子顶边留 ~5px、
+     与上一行内容底（86px 行高只用到 ~82px，再叠 20px 行距 ⇒ 约 24px 带宽）留 ~6px，
+     两侧均衡、不挤上一行座次尺，也不压本行格子。 */
+.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
@@ -1398,23 +1405,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1430  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1830  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2726  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3354  Modal         应用内弹窗
-     L3484  Viz           时值可视化渲染与每帧动画
-     L4753  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5380  Trainer       变速训练器
-     L5593  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6082  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6212  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6959  Editor        自定义节奏型编辑器
-     L7315  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7538  Ear           听辨训练（v1.10.0）
-     L7761  Arrange       曲式编排（v2.0.0）
-     L8514  Help          使用方法（v2.0.1）
-     L8561  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8620  初始化（装配） 各模块 hook 接线与启动
+     L1437  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1837  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2733  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3361  Modal         应用内弹窗
+     L3491  Viz           时值可视化渲染与每帧动画
+     L4760  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5387  Trainer       变速训练器
+     L5600  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6089  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6219  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6966  Editor        自定义节奏型编辑器
+     L7322  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7545  Ear           听辨训练（v1.10.0）
+     L7768  Arrange       曲式编排（v2.0.0）
+     L8521  Help          使用方法（v2.0.1）
+     L8568  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8627  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1434,7 +1441,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.0";
+const VERSION = "2.8.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
