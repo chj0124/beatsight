@@ -41,6 +41,10 @@ const CASE_FILES = [
   "./cases/t65-practice-loop",         // v2.4.3：练习循环（区间归一 / 下拉 / 调度回绕 / 起始游标 / 曲式收起）
   "./cases/t66-mode-contract",         // v2.4.4：模式字段契约（setMode 值域 / 幂等 / 迁移轨迹 / 无互斥）
   "./cases/t67-service-worker",        // v2.4.4：sw.js 缓存策略（预缓存 / 清旧 / network-first / SWR / 不接管三类）
+  "./cases/t68-whole-song-and-voices", // v2.5.0：整首连播入口 + 扫弦/节拍双声部（每拍出声 / 独立音量 / 脏值）
+  "./cases/t69-pattern-length",        // v2.5.1：型的小节数自由化（校验域 / 网格行数 / 回绕 / 段长 / 循环下拉）
+  "./cases/t70-arrange-window",        // v2.5.2：网格 = 歌曲小节上的滚动窗口（跨段取行 / 状态栏口径 / 回落）
+  "./cases/t71-editor-bars",           // v2.6.1：编辑器增删小节（复制当前小节 / 下限 1 / 上限 64 / 撤销回退）
 ];
 for (const f of CASE_FILES) require(f);
 

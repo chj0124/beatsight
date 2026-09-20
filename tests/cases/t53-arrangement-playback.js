@@ -296,14 +296,20 @@ section("T53j 曲式播放 · 曲式拍号（6/8）≠ 当前拍号时同步 S.s
 }
 
 /* ================= 场景 T53k：待命球按可听位置选行 ================= */
-section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回归）");
+section("T53k 曲式播放 · 待命球恒落在**下一行**（v2.0.2 回归；v2.5.2 起判据随滚动窗口改写）");
 {
-  /* 用户实拍 bug（截图）：当前小节（第 4 行）末尾的终端弧上，待命球指向第 2 行而不是
-     回卷的第 1 行。根因：待命球用调度游标 arrSec/arrBar 选行，而调度游标比声音**早一个
-     前瞻窗口**——终端弧的最后 ~150ms 里它已进到下一小节，arrangeNextRow 指到再下一行。
+  /* 用户实拍 bug（截图）：当前小节末尾的终端弧上，待命球指向别的行。
+     根因：待命球用调度游标 arrSec/arrBar 选行，而调度游标比声音**早一个前瞻窗口**——
+     终端弧的最后 ~150ms 里它已进到下一小节，arrangeNextRow 指到再下一行。
      修复：onset 携带入缓冲时的节目单位置（aSec/aBar），待命球按最后落地端点（=可听位置）算。
-     场景：单段两块（各 1 遍），可听走到第 4 小节（bar 3）末尾时，调度游标已进入第 5 小节——
-     待命球必须指向 bar 0（第 5 小节 = 块 1 的第 0 行），而不是 bar 1 */
+     场景：单段两块（各 1 遍），可听走到第 4 小节（bar 3）末尾时，调度游标已进入第 5 小节。
+
+     ★ v2.5.2 判据改写（**不是放松，是换了观测点**）：滚动窗口下"行"与"内容"已经分开——
+       行 = 当前行 + 1（结构性保证，见 paintBall 里的 rowNext），内容 = 按可听位置
+       （prev.aSec/aBar）算出的下一小节。于是"待命球落在第几行"不再能区分
+       「按可听位置算」与「按调度游标算」——那是好事：那一类错行从结构上不可能再发生。
+       但这条断言**仍然抓得住回退**：若有人把行号改回 `nrow.bar`（旧写法），
+       在 4 行的窗口里它会解析成 0 → 待命球跳到第 1 行，而正确值是第 2 行，当场红。 */
   const one = A("单段两块", [{ name: "A", blocks: [BL(1, 1), BL(2, 1)] }]);
   const { beat, ac } = startArrange(one, { from: 0, to: 0, loop: true });
   /* internals() 每轮重取：块边界调度时 buildViz 会重建球元素，缓存的引用会脱节 */
@@ -316,7 +322,7 @@ section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回�
     const buf = beat.onsetBuf();
     let aud = null;
     for (const e of buf){ if (e.t <= ac.currentTime) aud = e; else break; }
-    if (!aud || aud.bar !== 3) continue;                       // 可听位置：第 4 行
+    if (!aud || aud.bar !== 3) continue;                       // 可听位置：块 0 的第 4 小节（窗口第 1 行）
     if (beat.arrangeState().bar === 3) continue;               // 调度游标必须已先行过界
     if (iv.waitEl.style.display === "none") continue;          // 待命球在跳（终端弧）
     const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(iv.waitEl.style.transform);
@@ -324,8 +330,9 @@ section("T53k 曲式播放 · 待命球目标行按可听位置算（v2.0.2 回�
   }
   ok(!!caught, "捕捉到「可听 bar 3 末尾 + 调度游标已过界 + 待命球可见」的窗口");
   if (caught)
-    ok(Math.abs(caught.y - caught.g0) < Math.abs(caught.y - caught.g1),
-       `★ 待命球跳向第 1 行（y=${caught.y}，地线 ${caught.g0}），不是第 2 行（地线 ${caught.g1}）`);
+    ok(Math.abs(caught.y - caught.g1) < Math.abs(caught.y - caught.g0),
+       `★ 待命球落在**下一行**（y=${caught.y}，下一行地线 ${caught.g1}，当前行地线 ${caught.g0}）——`
+       + "回退成按 nrow.bar 选行会解析到第 1 行，这条会红");
   beat.Controls.stop();
 }
 

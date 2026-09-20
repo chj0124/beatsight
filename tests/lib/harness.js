@@ -75,6 +75,10 @@ const HTML_ATTRS = {
   loopFrom: { tagName: "SELECT" },
   loopTo: { tagName: "SELECT" },
   loopToggle: { tagName: "BUTTON" },
+  /* v2.5.0：「扫弦」音量条在标记里就是 `hidden`（默认轨可能是普通轨，不该先闪一下），
+     由 Tracks.syncTrackUI 按当前轨收放。不复刻初始态的话，"普通轨该收起"这条不变量
+     在桩里恒真——而它正是这条 UI 决策的全部内容。 */
+  volStrumRow: { hidden: true },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，

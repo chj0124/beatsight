@@ -96,8 +96,17 @@ section("T65a 练习循环 · 默认关 / clampLoop 归一（from<=to）/ 脏值
      from=3 / to=1 各自都在 [0,3] 内、都是"合法值"——只有跨字段归一能救 */
   eq(JSON.stringify(cl({ on: true, from: 3, to: 1 })),
      JSON.stringify({ on: true, from: 1, to: 3 }), "★ from>to 被交换（空区间不可能出现）");
+  /* ★ v2.5.1 口径变化：clampLoop 的域从 [0, LOOP_BARS-1] 放宽到 [0, MAX_PAT_BARS-1]。
+     为什么必须放宽：型不再恒为 4 小节，而 clampLoop 跑在**加载期**（那时还不知道当前型是谁）。
+     于是钳制分两层，两条断言各守一层：
+       ① clampLoop（加载期）= 只做**绝对域**，保证形状与 from<=to；
+       ② loopRangeFor(n)（使用期）= 按当前型的小节数二次收窄。 */
   eq(JSON.stringify(cl({ on: true, from: 9, to: -4 })),
-     JSON.stringify({ on: true, from: 0, to: 3 }), "越界值钳到 [0, LOOP_BARS-1]");
+     JSON.stringify({ on: true, from: 0, to: 9 }), "越界值钳到绝对域 [0, MAX_PAT_BARS-1] 并交换");
+  eq(JSON.stringify(cl({ on: true, from: beat.MAX_PAT_BARS, to: 1 })).includes('"from":1'),
+     true, "超上限（= MAX_PAT_BARS）被钳回域内（上界是开的）");
+  eq(cl({ on: true, from: beat.MAX_PAT_BARS + 99, to: 1 }).to, beat.MAX_PAT_BARS - 1,
+     "远超上限也被钳到 MAX_PAT_BARS-1（两步：先钳域，再交换保证 from<=to）");
   eq(JSON.stringify(cl({ on: true, from: 1.4, to: 2.6 })),
      JSON.stringify({ on: true, from: 1, to: 3 }), "小数取整（clampRange 的 Math.round）");
   eq(cl(null).on, false, "null → 关");
@@ -105,9 +114,25 @@ section("T65a 练习循环 · 默认关 / clampLoop 归一（from<=to）/ 脏值
   eq(JSON.stringify(cl({ on: 1, from: "2", to: null })),
      JSON.stringify({ on: true, from: 0, to: 3 }), "非数 from/to 回退默认（on 走 !! 强转）");
 
-  /* 脏种子：加载路径同样过 clampLoop */
+  /* ★ 第二层：loopRangeFor(n) 按"当前型的小节数"把区间收窄。
+     它才是"型变短之后不会指到不存在的小节"的保证——clampLoop 做不到（它不知道型有多长）。 */
+  const lrf = beat.loopRangeFor;
+  S.loopRange = { on: true, from: 5, to: 5 };
+  eq(JSON.stringify(lrf(4)), JSON.stringify({ on: true, from: 3, to: 3 }),
+     "★ 型只有 4 小节时，存下来的 5 被收窄到 3（末小节）");
+  eq(JSON.stringify(lrf(1)), JSON.stringify({ on: true, from: 0, to: 0 }),
+     "★ 型只有 1 小节时，区间收成 [0,0]（不越界、也不是空区间）");
+  eq(JSON.stringify(lrf(30)), JSON.stringify({ on: true, from: 5, to: 5 }),
+     "型比区间长 → 原值不动（收窄是单向的）");
+  /* patBars：唯一真相源，脏入参退回默认小节数 */
+  eq(beat.patBars({ bars: [[], [], [], [], [], []] }), 6, "patBars 读 bars.length（6 小节）");
+  eq(beat.patBars(null), beat.DEF_BARS, "patBars(null) → 默认小节数");
+  eq(beat.patBars({ bars: [] }), beat.DEF_BARS, "空 bars → 默认小节数（0 小节的型没有合法解释）");
+
+  /* 脏种子：加载路径同样只过 clampLoop（绝对域）——**按型收窄在使用期做** */
   eq(JSON.stringify(loadApp(seedState({ loopRange: { on: true, from: 5, to: 5 } })).beat.Store.S.loopRange),
-     JSON.stringify({ on: true, from: 3, to: 3 }), "脏种子 from=to=5 → 钳到 3（单小节循环合法）");
+     JSON.stringify({ on: true, from: 5, to: 5 }),
+     "脏种子 from=to=5 → 落在绝对域内，原样存入（收窄留到使用期）");
   eq(JSON.stringify(loadApp(seedState({ loopRange: "junk" })).beat.Store.S.loopRange),
      JSON.stringify({ on: false, from: 0, to: 3 }), "loopRange 非对象 → 全默认");
 }

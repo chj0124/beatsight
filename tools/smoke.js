@@ -155,8 +155,20 @@ function probe(){
   }catch(e){ out.storage = { available: false, err: String(e && e.name || e) }; }
   try{
     if (navigator.serviceWorker){
-      const regs = await navigator.serviceWorker.getRegistrations();
-      out.sw = { supported: true, registrations: regs.length };
+      /* ★ register() 只是**发起**注册作业，不是同步完成。探针一等到 window.__beat 就查
+         getRegistrations()——而 __beat 的赋值点离 register() 只有几十行，作业常常还没落地，
+         于是读到 0，这条断言就变成随机红（实测同一份代码连跑两次：一次 0、一次 1）。
+         给一个有上界（4s）的轮询等待：**等的是"异步动作完成"，不是"把失败等成成功"**——
+         真没注册的话，4 秒后照样读到 0、照样判失败。
+         file:// 通道整段跳过注册（见 index.html 里 PWA 那段），所以那里不等待，免得白等 4 秒。 */
+      const swStart = performance.now();
+      const deadline = swStart + 4000;
+      let regs = await navigator.serviceWorker.getRegistrations();
+      while (regs.length === 0 && location.protocol !== "file:" && performance.now() < deadline){
+        await new Promise(r => setTimeout(r, 100));
+        regs = await navigator.serviceWorker.getRegistrations();
+      }
+      out.sw = { supported: true, registrations: regs.length, waitedMs: Math.round(performance.now() - swStart) };
     } else out.sw = { supported: false };
   }catch(e){ out.sw = { supported: false, err: String(e && e.name || e) }; }
   try{

@@ -154,6 +154,50 @@ if (CASE in SIGS){
   out(max <= 1.0000001, "音量 " + CASE + " 增益不超 0 dBFS",
       "峰值 " + (max ? max.toFixed(3) + " (" + (20*Math.log10(max)).toFixed(1) + " dBFS)" : "静音兜底"));
 
+} else if (CASE === "strum_vol_dirty"){
+  /* v2.5.0：扫弦声部音量（S.strumVol）是**第二个**进入 scheduler 热路径的声部数值，
+     与 vol 同一类风险：脏值不得把增益送出天文数字，也不得让主线程卡住。
+     ★ 必须同时带上"带弦区记谱的谱"——那条路径才会真的走到 strumZoneHit；
+       不带弦区的谱走的是节拍声部，测不到 strumVol 那条分支（会变成假绿）。
+     谱：16 格十六分，只第 1 格带 zone（小节和 = 16×12 = 192 才过结构校验） */
+  const bars = [0,1,2,3].map(() => Array.from({ length: 16 }, (_, i) =>
+    i === 0 ? { t: 12, dir: "D", zone: 0 } : { t: 12, rest: true }));
+  RAMPS = [];
+  const { beat } = loadApp(seed({ v:3, strumVol:1e6, vol:0.8, accentVol:1, bpm:120,
+    customs:[{ id:"sv", name:"带弦区谱", meter:4, bars }], sel:{ type:"custom", id:"sv" } }));
+  const sv = beat.Store.S.strumVol;
+  beat.Controls.start();
+  const ac = FAC.last;
+  const err = driveFrames(ac, beat, 1.5);
+  const valid = RAMPS.filter(x => x > 0.0002);
+  const max = valid.length ? Math.max(...valid) : 0;
+  out(sv >= 0 && sv <= 1, "脏扫弦音量钳制到 [0,1]", "S.strumVol=" + JSON.stringify(sv));
+  out(!err, "脏扫弦音量不崩渲染帧", err || "OK");
+  /* 扫弦声部带 makeup 增益（strumZones.makeup = 8），所以上界是 makeup 而不是 1：
+     该路径的合法天花板 = 满音量 × makeup。断言写 makeup 本身，不写死 8 的"大概值"以外的数——
+     削波看信号幅度不看增益值，这条补的是"不能因为脏值再放大一轮" */
+  out(max <= 8.0000001, "脏扫弦音量下增益不越过该路径的合法天花板",
+      "峰值 " + (max ? max.toFixed(3) : "静音兜底"));
+  out(ac.hits.length > 0, "脏扫弦音量下仍能发声", "发声 " + ac.hits.length + " 次");
+
+} else if (CASE === "pat_bars_max"){
+  /* v2.5.1：型的小节数放开到 MAX_PAT_BARS(=64) 之后，长型必须是"**能跑**"而不只是"能存"。
+     这条路径最可能出的问题不是崩而是慢：调度器每轮要沿型内小节环绕（predictNext 从 4 次
+     变 64 次）、重绘要面向 64 行；脏数据与长型叠加能把主线程拖死。
+     谱：64 小节 × 每小节 4 个四分（和 = 192 = 4×TPB，过结构校验）。 */
+  const bars = [];
+  for (let i = 0; i < 64; i++) bars.push([{t:48},{t:48},{t:48},{t:48}]);
+  const { beat } = loadApp(seed({ v:3, bpm:120, track:"plain",
+    customs:[{ id:"long", name:"六十四小节", meter:4, bars }], sel:{ type:"custom", id:"long" } }));
+  out(beat.patBars(beat.curPattern()) === 64, "64 小节的型通过校验并生效",
+      "bars.length=" + beat.curPattern().bars.length);
+  beat.Controls.start();
+  const ac = FAC.last;
+  const err = driveFrames(ac, beat, 1.5);
+  out(!err, "长型不崩渲染帧", err || "OK");
+  out(ac.hits.length > 0, "长型仍在发声", "发声 " + ac.hits.length + " 次");
+  out(beat.Store.S.playing === true, "长型播放未中断", "");
+
 } else if (CASE === "bpm_dirty"){
   const { beat } = loadApp(seed({ bpm:"abc" }));
   beat.Controls.start();

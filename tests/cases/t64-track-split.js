@@ -9,7 +9,8 @@
         且**切轨后自动回退**（不静默留一个列表外的选中项）。
    另守三条既有不变量不受影响：
      · 老用户零迁移：beatsight.state 里没有 track 键 → 落到 "plain"，行为与升级前一致；
-     · 时刻不动：扫弦轨与普通轨下同一音符的发声时刻逐位相同（门控只碰音色不碰时间轴）；
+     · 时刻不动：门控只碰音色、不碰时间轴（**v2.5.0 起口径收窄为"节拍音声部"**——
+       扫弦轨另有一条节拍器网格，两轨的"发声点数"不再相等，详见 T64g 与 T68）；
      · 既有调用方不受影响：__beat 的导出面只增不减，Ear/Arrange 仍能拿到全部内置型。 */
 "use strict";
 const { loadApp, FakeAudioContext, pill, drive, ok, eq, near, section } = require("../lib/harness");
@@ -328,11 +329,20 @@ section("T64g 双入口 · 普通轨不传 zone（退回全局音色）/ 时刻�
   eq(bandP.length, 0, "★ 普通轨：同样两颗音**不**走弦区音色（zone 被门控掉）");
   ok(acp.hits.filter(h => h.kind === "osc").length > 0, "普通轨改用全局音色（click 振荡器）");
 
-  /* ★ 时刻逐位不变：两条轨下同一谱的发声时刻完全相同 */
-  const allS = acs.hits.map(h => +h.t.toFixed(4)).sort((a, b) => a - b);
-  const allP = acp.hits.map(h => +h.t.toFixed(4)).sort((a, b) => a - b);
-  eq(allS.length, allP.length, "两条轨的发声**点数**相同（门控不吞音）");
-  eq(allS.join(","), allP.join(","), "★ 两条轨的发声时刻逐位相同（zone 不碰时间轴）");
+  /* ★ 时刻逐位不变：**节拍音声部**的发声时刻两轨完全相同（zone 不碰时间轴）。
+     ★ v2.5.0 改写（这次改动是有意为之，不是回归）：两轨的"发声**点数**"从此**不再相等**——
+       扫弦轨多出一条节拍器网格（扫弦谱下每一拍都要有节拍音，见 T68）。
+       旧断言 `allS.length === allP.length` 与 `allS.join === allP.join`（比全部 hits）
+       在新语义下必然失败，且它测的其实不是"zone 有没有碰时间轴"，而是"两轨音数是否碰巧相同"。
+       新口径把要守的不变量写准：**同一批音符的节拍音时刻逐位相同**，扫弦声则叠加在
+       对应音符的**同一时刻**上（叠加不顺延）。 */
+  const oscS = acs.hits.filter(h => h.kind === "osc").map(h => +h.t.toFixed(4)).sort((a, b) => a - b);
+  const oscP = acp.hits.filter(h => h.kind === "osc").map(h => +h.t.toFixed(4)).sort((a, b) => a - b);
+  eq(oscS.length > 0 && oscS.join(","), oscP.join(","),
+    "★ 两轨的节拍音时刻逐位相同（zone 不碰时间轴，节拍网格落在同一条轴上）");
+  const strumTimes = bandS.map(h => +h.t.toFixed(4));
+  ok(strumTimes.length === 2 && strumTimes.every(t => oscP.includes(t)),
+    "★ 扫弦声叠加在对应音符的同一时刻（不是把它推后）");
 }
 
 /* ================= 场景 T64h：记谱层门控（箭头 / 六线底纹不画） ================= */
