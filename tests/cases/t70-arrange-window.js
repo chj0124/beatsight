@@ -1,13 +1,15 @@
-/* BeatSight 自动化测试 · 网格 = 歌曲小节上的滚动窗口（v2.5.2，第 Ⅱ 期）
+/* BeatSight 自动化测试 · 网格 = 歌曲小节上的翻页窗口（v2.5.2 第 Ⅱ 期立窗口，v2.7.0 改翻页档）
    T70 系列。
    ---------------------------------------------------------------------------
-   契约（用户拍板）：网格恒 4 行，是**歌曲小节序列上的一个窗口**，跟着播放头往前走；
-   播到歌曲第 k 小节，四行就是第 k / k+1 / k+2 / k+3 小节（可跨段），
-   而不像 v2.5.1 那样"把当前型的 4 小节盖 4 遍"。
+   契约（v2.7.0 用户拍板）：网格恒 4 行，是**歌曲小节序列上按 4 小节翻页的窗口**——
+   页内球从第 1 行逐行走到第 4 行（与预设模式同手感），跨页整体翻；
+   页内第 4 小节期间，第 1 行临时替换成**下一小节**的内容（预告行，带徽标），
+   解决"严格翻页后扫弦内容无法提前准备"的问题。
+   （旧档 v2.5.2：逐小节滚动，当前小节恒为第 1 行——球永远在第一行跳，用户实拍否定。）
 
    怎么观测"行内容"（本组的关键手法）：给不同段用**格子数不同**的型——
    四音型每小节 4 格、八音型每小节 8 格。于是"每行有几格"就是那一行属于哪个型的指纹，
-   不用去读内部结构。滚动一旦生效，跨段时行指纹会从 [4,4,4,4] 变成 [4,4,4,8] → [4,4,8,8] …
+   不用去读内部结构。
    ★ 驱动必须**同时**推时钟与调 paintFrame：窗口的重建挂在渲染侧（按可听位置），
      只调 scheduler 不会触发它（那正是"画面别提前跳"的设计要求）。 */
 "use strict";
@@ -54,26 +56,31 @@ function step(beat, ac, n){
 /* 命中数：统计 [a,b) 时间里落到音频时钟上的发声（与 t68 同一口径） */
 const inWin0 = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 1e-6).length;
 
-/* ================= 场景 T70a：窗口随可听小节滚动 ================= */
-section("T70a 滚动窗口 · 四行 = 歌曲当前小节起的 4 小节（跨段时行指纹会变）");
+/* ================= 场景 T70a：窗口按 4 小节翻页 + 页末预告行 ================= */
+section("T70a 翻页窗口 · 页内窗口不动（球逐行走），页末第 1 行换预告，跨页整体翻");
 {
   const { beat, els, ac } = startTwoStages();
   step(beat, ac, 2);
   eq(beat.Store.S.playing, true, "前提：曲式播放中");
   eq(rowCells(els).length, 4, "★ 网格恒 4 行（窗口长度）");
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
-     "歌曲第 1 小节起：四行都是四音型（第 1-4 小节）");
+     "第 1 小节起：四行 = 第 1-4 小节");
 
-  step(beat, ac, 60);                       // 走过第 1 小节（1s = 50 步）→ 窗口滚到第 2 小节
-  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 8]),
-     "★ 滚到第 2 小节：四行 = 第 2/3/4/5 小节 —— 末行已经是下一段的八音型");
+  step(beat, ac, 60);                       // 走过第 1 小节（1s = 50 步）→ 第 2 小节
+  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
+     "★ 翻页档：第 2 小节窗口**不动**（球走到第 2 行）——旧滚动档这里末行已被换成第 5 小节");
 
   step(beat, ac, 50);                       // → 第 3 小节
-  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 8, 8]),
-     "★ 再滚一格：四行 = 第 3/4/5/6 小节（两段各占两行）");
-  step(beat, ac, 100);                      // → 第 5 小节
+  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
+     "第 3 小节窗口仍不动（球走到第 3 行）");
+
+  step(beat, ac, 50);                       // → 第 4 小节（页内最后一行）→ 预告行生效
+  eq(JSON.stringify(rowCells(els)), JSON.stringify([8, 4, 4, 4]),
+     "★ 页内第 4 小节：第 1 行临时替换成**下一小节**（八音型预告），球在第 4 行");
+
+  step(beat, ac, 50);                       // → 第 5 小节 → 翻页
   eq(JSON.stringify(rowCells(els)), JSON.stringify([8, 8, 8, 8]),
-     "★ 走到第二段里：四行 = 第 5/6/7/8 小节，全是八音型");
+     "★ 翻到第二页：四行 = 第 5/6/7/8 小节（预告内容原地转正为第 1 行）");
   beat.Controls.stop();
 }
 
@@ -109,15 +116,18 @@ section("T70c 滚动窗口 · 预设模式仍画「这个型」（行数 = 型�
 }
 
 /* ================= 场景 T70e：卡片标题跟着窗口报歌曲小节范围 ================= */
-section("T70e 滚动窗口 · 卡片标题报「歌曲第 N-M 小节」并随窗口滚动");
+section("T70e 翻页窗口 · 卡片标题报「歌曲第 N-M 小节」并随翻页换页");
 {
   const { beat, els, ac } = startTwoStages();
   step(beat, ac, 2);
   ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
      "★ 起播时标题 = 歌曲第 1-4 小节（实际「" + els["vizTitle"].textContent + "」）");
   step(beat, ac, 60);
-  ok(/歌曲第 2-5 小节/.test(els["vizTitle"].textContent),
-     "★ 标题跟着窗口滚（实际「" + els["vizTitle"].textContent + "」）");
+  ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
+     "页内行进不换标题（实际「" + els["vizTitle"].textContent + "」）");
+  step(beat, ac, 150);                       // 进到第 5 小节 → 翻页
+  ok(/歌曲第 5-8 小节/.test(els["vizTitle"].textContent),
+     "★ 翻页后标题换页（实际「" + els["vizTitle"].textContent + "」）");
   beat.Controls.stop();
   /* 预设模式下标题报的是"同屏 N 小节"（N = 型的小节数），不再写死 4 */
   const p = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
@@ -216,12 +226,12 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
 }
 
 /* ================= 场景 T70h：重新播放时窗口回到播放范围起点 ================= */
-section("T70h 滚动窗口 · 重新播放要把窗口拨回起点（v2.6.0 修，真实浏览器发现）");
+section("T70h 翻页窗口 · 重新播放要把窗口拨回起点（v2.6.0 修，真实浏览器发现）");
 {
   const { beat, els, ac } = startTwoStages();
-  step(beat, ac, 60);                            // 滚到第 2 小节
-  ok(/歌曲第 2-5 小节/.test(els["vizTitle"].textContent),
-     "前提：窗口已滚离起点（实际「" + els["vizTitle"].textContent + "」）");
+  step(beat, ac, 220);                           // 翻过页（4.4s → 第 5 小节）
+  ok(/歌曲第 5-8 小节/.test(els["vizTitle"].textContent),
+     "前提：窗口已翻离起点（实际「" + els["vizTitle"].textContent + "」）");
   beat.Controls.stop();
   beat.Controls.start();                         // 重新按播放
   step(beat, ac, 2);

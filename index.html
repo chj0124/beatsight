@@ -85,6 +85,11 @@ button:disabled{cursor:not-allowed}
 .bar-row.current{background:rgba(30,215,96,.07);border-radius:8px}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-9px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
+/* 预告行（v2.7.0）：曲式翻页窗口页内第 4 小节期间，第 1 行临时换成"下一小节"的内容。
+   整行降透明 = 它是"未来"，与在播行/历史行区分开；徽标挂左上（静音拍标签在右上，
+   且预告行恒不是静音行——翻页档下静音恒为第 4 行，两者不会撞位） */
+.bar-row.preview-row{opacity:.55}
+.preview-badge{position:absolute;left:6px;top:-9px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:10.5px;color:var(--t2);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
@@ -3467,22 +3472,51 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   let winStart = -1;                      // 窗口起点（歌曲小节号）；-1 = 还没定过 / 不适用
   /** @type {any} */
   let winPat = null;                      // 窗口合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
+  /* 预告行（v2.7.0）：页内第 4 小节期间，第 1 行临时替换成"下一小节"的内容。
+     winPrevBar = 预告的歌曲小节号（-1 = 本窗口不带预告）；winPrevSteps = 预告行的格子；
+     winPrevName = 徽标上的型名。三者同生同灭（窗口同步一处写入，resetWindow 一处清） */
+  let winPrevBar = -1;
+  /** @type {any[]|null} */
+  let winPrevSteps = null;
+  let winPrevName = "";
   /** 渲染层该画哪个型：曲式模式 = 窗口合成型；预设模式 = 当前型（原行为，一字未改）。 */
   function vizPattern(){
     return (S.playMode === "arrange" && winPat) ? winPat : activePattern();
   }
   /** 窗口起点该取哪个小节（**改这一行就是改手感**）：
-        跟播放头滚动 → 当前小节永远是第 1 行（用户选的那一档）
-        按 4 小节翻页 → Math.floor(k / ARR_WIN_BARS) * ARR_WIN_BARS（另一档，改这里即可切换） */
+      按 4 小节翻页（v2.7.0 用户拍板）→ 球从第 1 行逐行走到第 4 行，与预设模式同手感；
+        静音拍（每 4 小节静第 4 小节）恒落第 4 行，与预设模式的行位惯例对齐
+      跟播放头滚动（旧档）→ 当前小节永远是第 1 行：Math.max(0, k) */
   /** @param {number} k @returns {number} */
-  function winAnchor(k){ return Math.max(0, k); }
+  function winAnchor(k){ return Math.max(0, Math.floor(k / ARR_WIN_BARS) * ARR_WIN_BARS); }
+  /* 本窗口该不该带预告行、预告哪一小节（v2.7.0 用户拍板的方案）：
+     严格 4 翻页后，播到页内第 4 小节时"下一小节"在屏外——扫弦型可能在段边界变化，
+     没有提前量右手就没法准备。把整屏最陈旧的第 1 行（3 小节前的历史）临时替换成
+     下一小节的内容。返回 {bar, steps, name}；不带预告（不在页末 / 后面没有下一小节）
+     返回 {bar:-1}。
+     ★ 内容必须与节目单同源：走 arrNextBar——范围循环时"下一小节"是范围起点而不是
+       歌曲第 k+1 小节，跳段缩范围后亦然。
+     ★ 每帧热路径上的便宜守卫在先：只在页内最后一行才做 songBarAt/arrNextBar 的解析。 */
+  /** @param {number} k @returns {{bar: number, steps?: any[]|null, name?: string}} */
+  function previewBarFor(k){
+    if (k < 0 || k !== winAnchor(k) + ARR_WIN_BARS - 1) return { bar: -1 };
+    const a = arrangeCur();
+    if (!a) return { bar: -1 };
+    const at = songBarAt(a, k);
+    if (!at) return { bar: -1 };
+    const nxt = arrNextBar(a, S.arrangeSel, at.sec, at.bar);
+    if (!nxt) return { bar: -1 };                     // 范围播完且不循环：没有"下一小节"
+    const pat = nxt.pattern || resolveRef(nxt.ref);
+    if (!pat || !Array.isArray(pat.bars)) return { bar: -1 };
+    return { bar: k + 1, steps: pat.bars[nxt.schedBar] || [], name: pat.name || "" };
+  }
   /** 丢弃当前窗口，让下一次建网格重新锚到播放范围起点（v2.6.0 修）。
       ★ 为什么必须有它：`winStart` 是**跨播放会话**留存的状态，而"时间轴重新起一轮"的四个点
         （开播 / 重锚 / 循环区间变更 / 上下文重建）都会把调度游标拨回范围起点——
         窗口若不跟着丢弃，重新按播放键就会停在上一次听到的地方，与声音对不上
         （用户实拍：重新播放后第 1 行不是歌曲第 1 小节）。
         调用点在 AudioEngine / Controls —— 那正是 `schedBar = loopStartBar(...)` 的四处 */
-  function resetWindow(){ winStart = -1; winPat = null; }
+  function resetWindow(){ winStart = -1; winPat = null; winPrevBar = -1; winPrevSteps = null; winPrevName = ""; }
   /** 把窗口里的 ARR_WIN_BARS 个小节合成为一个临时型（每小节取自它所引用的型）。
       任一小节解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
@@ -3759,14 +3793,31 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        立刻能在网格上看到那一段的开头。 */
     const arr = (S.playMode === "arrange") ? arrangeCur() : null;
     if (arr){
-      if (winStart < 0 || !S.playing) winStart = winAnchor(songBarBefore(arr, S.arrangeSel.from));
+      /* 预告行只在**播放中**存在（它由 paintFrameBody 按可听位置维护）；
+         停止/未播时清掉——否则上一次播放留下的预告会粘在跳段定位后的新窗口上 */
+      if (winStart < 0 || !S.playing){
+        winStart = winAnchor(songBarBefore(arr, S.arrangeSel.from));
+        winPrevBar = -1; winPrevSteps = null; winPrevName = "";
+      }
       winPat = arrWindowPat(arr, winStart);
       if (!winPat) winStart = -1;          // 合成不出来（引用缺失等）：回落到"画当前型"
+      /* v2.7.0 预告行替换：本窗口带预告时，第 1 行的格子换成"下一小节"的内容。
+         winPat 每次现合成、改它不外泄；行的其它层（跑道/六线/座次尺）与内容无关，不用动 */
+      if (winPat && winPrevBar >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
     } else { winPat = null; winStart = -1; }
     const p = vizPattern();
     vizBars = patBars(p);          // v2.5.1：网格的行数随型走；v2.5.2：曲式模式下 = 窗口长度(4)
     const barTicks = vizSig * TPB;
     for (let b = 0; b < vizBars; b++) buildBarRow(b, p, barTicks, viz);
+    /* v2.7.0 预告行徽标：预告行挂在第 1 行——它是"未来"，没有徽标会与正读顺序混
+       （此刻四行 = [下一小节, 第 2, 第 3, 第 4 小节]，必须有一句话说明第一行是谁） */
+    if (winPrevBar >= 0 && winPrevName && rowEls[0]){
+      rowEls[0].classList.add("preview-row");
+      const badge = document.createElement("div");
+      badge.className = "preview-badge";
+      badge.textContent = "下一小节 · " + winPrevName;
+      rowEls[0].appendChild(badge);
+    }
     for (let i = 1; i < S.sig; i++){
       const gl = document.createElement("div");
       gl.className = "grid-line";
@@ -4080,7 +4131,12 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              rowNext = 行的下标：待命球画在**窗口的第几行**（下一小节 = 当前行 + 1）
            预设模式下窗口 = 型自身，两者相等 → 行为与 v2.5.1 一字不差 */
         const cand = nrow ? nrow.bar : loopNextBar(bar, vizBars);
-        const rowNext = (S.playMode === "arrange") ? Math.min(vizBars - 1, bar + 1) : cand;
+        /* v2.7.0 翻页档：页内第 4 行的"下一行"是下一页的第 1 行——预告行已经把
+           下一小节的内容摆在那里，待命球就落它上面（翻页瞬间内容原地转正，接力不断）。
+           页内其余行照旧 +1；没有预告（范围播完）时退回原钳制口径 */
+        const rowNext = (S.playMode === "arrange")
+          ? ((bar === vizBars - 1 && winPrevBar >= 0) ? 0 : Math.min(vizBars - 1, bar + 1))
+          : cand;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[cand] || []);
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
@@ -4311,8 +4367,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          —— 与 T27「帧内零布局读取」的承诺不冲突（buildViz 里的量测只在结构变化时发生）。 */
     if (S.playMode === "arrange" && ctx){
       const k = audibleSongBar(ctx.currentTime);
-      if (k >= 0 && k !== winStart){
-        winStart = winAnchor(k);
+      /* v2.7.0：除窗口起点外还要盯**预告行**——进入页内第 4 小节（预告生效）与
+         翻页（预告随窗口换）都要重建一次。previewBarFor 只在页末才做解析，平时是算术 */
+      const ws = k >= 0 ? winAnchor(k) : winStart;
+      const pv = previewBarFor(k);
+      if (k >= 0 && (ws !== winStart || pv.bar !== winPrevBar)){
+        winStart = ws;
+        winPrevBar = pv.bar; winPrevSteps = pv.steps || null; winPrevName = pv.name || "";
         buildViz();
         resetTracking();
       }
@@ -4408,8 +4469,13 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   function setCell(b, i, bar, active, nextB, nextI, bSteps){
     const el = cellEls[b] && cellEls[b][i];
     if (!el) return;
+    /* v2.7.0 预告行豁免：带预告的窗口里第 1 行画的是"下一小节"（未来），
+       按"行号 < 当前行 → 已弹"刷白就把未来画成了历史——恒按未弹画（.next 预告格除外，
+       那正是它该亮的一格） */
+    const isPreview = (S.playMode === "arrange" && winPrevBar >= 0 && b === 0);
     let cls = "cell ";
-    if (b < bar) cls += "played";
+    if (isPreview) cls += "upcoming";
+    else if (b < bar) cls += "played";
     else if (b > bar) cls += "upcoming";
     else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
     const st = bSteps[i];
@@ -4417,7 +4483,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     if (b === nextB && i === nextI) cls += " next";
     el.className = cls;
     const f = fillEls[b] && fillEls[b][i];
-    if (f) f.style.transform = (b < bar || (b === bar && i < active)) ? "scaleX(1)" : "scaleX(0)";
+    if (f) f.style.transform = (!isPreview && (b < bar || (b === bar && i < active))) ? "scaleX(1)" : "scaleX(0)";
     const lb = labelEls[b][i];
     if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
     /* 扫弦箭头高亮（v2.4.2）：与格子同一份"正在弹"判据（b===bar && i===active）。
@@ -8146,8 +8212,14 @@ const Arrange = (() => {
   }
   $("argPlay").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(false); });
   $("argPlayRange").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(true); });
-  $("argJumpPrev").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec - 1); });
-  $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(arrSec + 1); });
+  /* 跳段基准（v2.7.0）：**播放中**相对"正在播的段"（arrSec，与跳段行显示的「第 N 段」一致）；
+     **停止时**相对"当前定位"（arrangeSel.from，与「已定位到第 N 段」一致）。
+     原先恒用 arrSec——那是**调度游标**（上次播到哪儿），而段序条跳段只改 arrangeSel.from
+     不动它：定位到第 3 段后点「下一段」= jumpTo(arrSec+1)，可能原地不动（用户实拍：
+     停止 + 定位第 3 段，点「下一段」毫无反应），或在上次播完整首时被钳到末段跳飞 */
+  const jumpBase = () => (S.playing ? arrSec : S.arrangeSel.from);
+  $("argJumpPrev").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() - 1); });
+  $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() + 1); });
 
   refreshBar();
   return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection, loadDemo, ensureDemo, demoStale };
