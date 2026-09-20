@@ -90,6 +90,12 @@ button:disabled{cursor:not-allowed}
    且预告行恒不是静音行——翻页档下静音恒为第 4 行，两者不会撞位） */
 .bar-row.preview-row{opacity:.55}
 .preview-badge{position:absolute;left:6px;top:-9px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:10.5px;color:var(--t2);pointer-events:none;white-space:nowrap}
+/* 小节和弦名（v2.7.4）：把段名尾部的和弦序列摊到**每小节行上方**——原先它只出现在远端侧栏
+   的「曲名 · 段名」里，离扫弦与歌词区太远，弹唱时眼睛得来回跳。一行 = 一小节，故一行一颗。
+   居中对齐：行顶 top:-9px 条带的左端被预告徽标占、右端被「静音小节」占（见上面两条），
+   中段空着，和弦恒居中即与两者都不撞位（窄屏且预告徽标很长时也只是靠得近，不叠字）。
+   绿色（--green）与网格高亮同色系，视觉上从属"这一小节"，不与徽标/静音标签抢主次 */
+.bar-chord{position:absolute;left:50%;top:-9px;transform:translateX(-50%);z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
@@ -1370,23 +1376,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1402  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1795  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2684  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3297  Modal         应用内弹窗
-     L3427  Viz           时值可视化渲染与每帧动画
-     L4655  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5282  Trainer       变速训练器
-     L5495  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L5960  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6090  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6837  Editor        自定义节奏型编辑器
-     L7193  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7416  Ear           听辨训练（v1.10.0）
-     L7639  Arrange       曲式编排（v2.0.0）
-     L8392  Help          使用方法（v2.0.1）
-     L8439  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8498  初始化（装配） 各模块 hook 接线与启动
+     L1408  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1801  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2690  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3318  Modal         应用内弹窗
+     L3448  Viz           时值可视化渲染与每帧动画
+     L4707  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5334  Trainer       变速训练器
+     L5547  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6012  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6142  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6889  Editor        自定义节奏型编辑器
+     L7245  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7468  Ear           听辨训练（v1.10.0）
+     L7691  Arrange       曲式编排（v2.0.0）
+     L8444  Help          使用方法（v2.0.1）
+     L8491  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8550  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1406,7 +1412,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.7.3";
+const VERSION = "2.7.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3079,6 +3085,21 @@ function blockAt(sec, bar){
   }
   return null;
 }
+/* 段名尾部的和弦序列 → 数组（v2.7.4）。段名契约 = 「<结构名> · <歌词首句> <和弦1>[·<和弦2>…]」
+   （见 DEMO_SONG 注释："本工具无和弦轨"，和弦只能寄生在段名里），**一小节一个和弦**、
+   和弦数 == secBars(段)（示例曲 10 段逐段吻合：1/3/4/2/4/2/4/2/6/2）。
+   取「最后一个空格之后」那一段记号再按「·」拆，并用「以 A–G 开头」过滤——
+   这样没有和弦序列的段名（用户自建段、歌词里带空格的）不会被误读成和弦。
+   纯函数（同 secBars/songBarAt 一族）：不碰 Store、不碰 DOM，可直测。 */
+/** @param {string} name @returns {string[]} */
+function secChords(name){
+  const s = String(name === null || name === undefined ? "" : name);
+  const sp = s.lastIndexOf(" ");
+  if (sp < 0) return [];
+  return s.slice(sp + 1).split("·")
+    .map(/** @param {string} t */ t => t.trim())
+    .filter(/** @param {string} t */ t => /^[A-G][#b]?/.test(t));
+}
 /* 沿节目单前进一小节（**唯一的一份步进逻辑**）。
      a   曲式对象
      sel 播放范围 {from, to, loop}（段 index，含端点）
@@ -3446,6 +3467,9 @@ let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<
 /* 扫弦箭头层（v2.4.3）：每小节一行，与 rowEls 逐位同构（普通轨为 null）。
    箭头挂在这里而不是格子里——格子有 overflow:hidden，挂进去会被裁（见 .strums 注释） */
 let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
+  /* 小节和弦名胶囊（v2.7.4）：每小节行上方一颗，与 rowEls 逐位同构（无和弦的小节存 null）。
+     与 rowEls/cellEls 同一生命周期——由 buildBarRow 逐行 append、buildViz 清空 */
+  let barChordEls = /** @type {(HTMLElement|null)[]} */ ([]);
   let lastBar = -1, lastStep = -1;
   /* 上一帧的可听歌曲小节号（v2.7.1）：onAudibleBar 钩子的变化检测基准。
      只在 paintFrameBody 的曲式分支里写；时间轴重锚/窗口丢弃时随 resetTracking 归零 */
@@ -3615,6 +3639,23 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     if (S.playMode === "arrange" && winStart >= 0)
       return ((winStart + b) % MUTE_PERIOD) === MUTE_PERIOD - 1;
     return vizBars === MUTE_PERIOD && b === MUTE_PERIOD - 1;
+  }
+  /* 本行（窗口第 b 行）对应的**小节和弦名**（v2.7.4）。一行 = 一小节，故一行取一个和弦。
+     小节号口径与 arrWindowPat / buildLyricLane 完全同源：预告行（第 1 行）取 winPrevBar
+     （它的格子内容也已被换成那一小节），其余行取 winStart+b 并对全曲长度取模
+     （走到曲尾绕回开头——与窗口"看清接下来回到哪"的既有口径一致）。
+     取不到（非曲式模式 / 窗口未锚 / 段名无和弦序列）返回 ""，调用方不挂胶囊。 */
+  /** @param {number} b @returns {string} */
+  function chordAtRow(b){
+    const a = arrangeCur();
+    if (!a || winStart < 0) return "";
+    const total = songBars(a);
+    if (!total) return "";
+    const k = (b === 0 && winPrevBar >= 0) ? winPrevBar : (winStart + b) % total;
+    const at = songBarAt(a, k);
+    if (!at) return "";
+    const cs = secChords(a.sections[at.sec].name);
+    return cs[at.bar] || "";
   }
 
   /* ---------- 歌词对齐轨状态（v2.1.0 F1；v2.7.2 按小节分行） ----------
@@ -3814,6 +3855,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       g.el = lb;
     });
     glEls.push(groups.filter(g => g.el));
+    /* 小节和弦名（v2.7.4）：挂在**行内**（.bar-row 的直接子节点），与预告徽标同一挂法——
+       行顶 top:-9px 条带的中段，既不挤 .cell/.cell-label/.ruler-lab（行下半部），
+       也不占徽标（左上）/静音标签（右上）的位置。无和弦的小节不挂，保持 null 占位 */
+    const chord = chordAtRow(b);
+    if (chord){
+      const cc = document.createElement("div");
+      cc.className = "bar-chord";
+      cc.textContent = chord;
+      row.appendChild(cc);
+      barChordEls.push(cc);
+    } else barChordEls.push(null);
     viz.appendChild(row);
     rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels); strumEls.push(strums);
   }
@@ -3823,7 +3875,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const viz = $("viz");
     clear(viz);
     rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = []; strumEls = [];
-    zoneEls = []; rulerEls = []; glEls = []; strumLayers = [];
+    zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
        appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
        网格与发声分裂：画面是旧预设的格子，球却按曲式的落点跳（用户实拍：音画错位）。
@@ -4649,7 +4701,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls }) };
+    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls }) };
 })();
 
 /* ================= AudioEngine · Web Audio 前瞻调度 ================= */
@@ -8869,6 +8921,7 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
   secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
   songBars, songBarBefore, songBarAt,           // v2.5.2：歌曲线性小节号（滚动窗口的口径）
+  secChords,                                    // v2.7.4：段名尾部的和弦序列（每小节一颗，纯函数）
   patBars, setPatLenOf, loopRangeFor,           // v2.5.1：型长查询（唯一真相源）/ 注入点 / 循环区间按型收窄
   DEF_BARS, MAX_PAT_BARS,                       // v2.5.1：型的默认与上限小节数
   lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）

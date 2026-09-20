@@ -51,6 +51,7 @@ const CASE_FILES = [
   "./cases/t75-page-flip-preview",      // v2.7.0：跳段基准分语境 + 翻页档预告行（替换 / 徽标 / 已弹豁免 / 待命球落点 / 边界）
   "./cases/t76-voices-and-lyric-audible", // v2.7.1：双声部打通（dir-only/鼓组）+ 歌词轨与计数器可听域对齐
   "./cases/t77-jump-loop-release",      // v2.7.3：跳段的「范围循环」解除开关（同源字段 / 单段放行到曲末）
+  "./cases/t78-bar-chord-names",        // v2.7.4：小节上方的和弦名（段名解析 / 逐行渲染 / 预告行 / 无和弦段 / 预设模式）
 ];
 for (const f of CASE_FILES) require(f);
 
