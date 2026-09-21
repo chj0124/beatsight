@@ -52,6 +52,13 @@ const clean = stripComments(lines);
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
 const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Tracks", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
 
+/* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE（目前仅初始化段的 diagOn：
+   调试开关求值，不参与模块间通信，故不进 EXPECTED_ORDER）。第 0 步的「双向 diff」要求：
+   正则命中的每个名字要么属于 EXPECTED_ORDER、要么在此显式登记并写明理由；二者之外
+   的**多出者一律报错**——这正是 P0-2 要堵的口子：旧实现把不认识的模块直接 continue 掉，
+   检查器对"没见过的新模块"完全失明，它带 TDZ 风险也能全绿通过。 */
+const NON_MODULE_IIFE = ["diagOn"];
+
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，
    而不是因为"反正能跑"。 */
@@ -93,14 +100,18 @@ if (depths[depths.length - 1] !== 0){
   process.exit(2);
 }
 
-/* 收集模块块：`const Name = (() => {` … 配对的 `}` */
+/* 收集模块块：`const Name = (() => {` … 配对的 `}`。
+   v2.8.12（P0-2）：正则命中的**全部**名字都记进 matchedNames，供第 0 步做双向 diff；
+   只有 EXPECTED_ORDER 里的才是架构模块、进入 modules 参与 R1–R4 判定。 */
 const modules = [];
+const matchedNames = [];
 {
   const re = /^const (\w+) = \(\(\) => \{/gm;
   let mm;
   while ((mm = re.exec(SRC))){
     const name = mm[1];
-    if (!EXPECTED_ORDER.includes(name)) continue;      // 只认 EXPECTED_ORDER 里那几个模块（VERSION 等常量不算）
+    matchedNames.push({ name, line: lineOf(SRC, mm.index) });
+    if (!EXPECTED_ORDER.includes(name)) continue;      // 非模块：留给第 0 步的双向 diff 报错/登记
     const end = matchBrace(SRC, mm.index);
     if (end < 0){ console.error("括号配对失败：" + name); process.exit(1); }
     /* 模块体的嵌套深度：`const Name = (() => {` 那个 `{` 之后的一层。
@@ -121,13 +132,30 @@ console.log("══════════════════════�
 console.log("  架构约束 · 模块不得反向引用（" + path.relative(process.cwd(), HTML) + "）");
 console.log("══════════════════════════════════════════════════════════");
 
-/* 0) 声明顺序必须与约定一致 */
+/* 0) 声明顺序必须与约定一致；且正则命中的模块名集合与 EXPECTED_ORDER **双向 diff**：
+      · 命中但既不在 EXPECTED_ORDER、也不在 NON_MODULE_IIFE 的 → 新模块逃逸，报错；
+      · NON_MODULE_IIFE 里登记了、代码里却没命中 → 登记腐烂，报错。
+   P0-2：旧实现在收集循环里 `continue` 掉不认识的名字，检查器对「没见过的新模块」完全失明——
+   新模块即便带 TDZ 风险也能全绿通过。此处的双向 diff 正是要堵这个口子
+   （与 gen-index「只报错不猜」同约定）。 */
 {
   const got = modules.map(x => x.name);
   if (got.join(",") !== EXPECTED_ORDER.join(",")){
     fail("模块声明顺序与约定不符\n      约定：" + EXPECTED_ORDER.join(" → ") + "\n      实际：" + got.join(" → "));
   } else {
     pass("声明顺序符合约定：" + got.join(" → "));
+  }
+
+  const stray = matchedNames.filter(x => !EXPECTED_ORDER.includes(x.name) && !NON_MODULE_IIFE.includes(x.name));
+  if (stray.length){
+    stray.forEach(x => fail(`新模块逃逸：${x.name}(L${x.line}) 命中「const X = (() => {」但既不在 EXPECTED_ORDER、也不在 NON_MODULE_IIFE\n        若它是架构模块，请加入 EXPECTED_ORDER 并调整声明顺序；若是非模块 IIFE，请登记进 NON_MODULE_IIFE 并写明理由`));
+  } else {
+    pass("正则命中的模块名集合与 EXPECTED_ORDER 双向一致（无非模块逃逸）");
+  }
+
+  const staleNonModule = NON_MODULE_IIFE.filter(n => !matchedNames.some(x => x.name === n));
+  if (staleNonModule.length){
+    fail(`NON_MODULE_IIFE 登记已失效（代码里不再出现，应删除）：${staleNonModule.join(" / ")}`);
   }
 }
 
