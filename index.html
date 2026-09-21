@@ -1412,22 +1412,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1862  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2883  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3540  Modal         应用内弹窗
-     L3670  Viz           时值可视化渲染与每帧动画
-     L4955  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5582  Trainer       变速训练器
-     L5800  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6300  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6430  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7222  Editor        自定义节奏型编辑器
-     L7578  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7801  Ear           听辨训练（v1.10.0）
-     L8026  Arrange       曲式编排（v2.0.0）
-     L8785  Help          使用方法（v2.0.1）
-     L8832  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8906  初始化（装配） 各模块 hook 接线与启动
+     L1923  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2950  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3607  Modal         应用内弹窗
+     L3737  Viz           时值可视化渲染与每帧动画
+     L5022  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5649  Trainer       变速训练器
+     L5867  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6367  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6500  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L7293  Editor        自定义节奏型编辑器
+     L7649  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7872  Ear           听辨训练（v1.10.0）
+     L8097  Arrange       曲式编排（v2.0.0）
+     L8860  Help          使用方法（v2.0.1）
+     L8907  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8981  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.30";
+const VERSION = "2.9.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1541,19 +1541,15 @@ function patBars(pat){
   const n = pat && Array.isArray(pat.bars) ? pat.bars.length : 0;
   return n > 0 ? n : DEF_BARS;
 }
-/* 「这个型带不带扫弦记谱」——两个入口（普通节拍 / 带扫弦的节拍）的分界线。
+/* 「这个型带不带扫弦记谱」——决定扫弦记谱层画不画、扫弦声部响不响，
+   也决定预设库把它归入「节拍」还是「扫弦」两类中的哪一类。
    判据：`dir`（扫弦方向）或 `zone`（弦区）任一存在。两者都是**记谱层**字段、
    与发声时间轴无关，故"有没有它们"就能区分"这是份扫弦谱还是份纯节拍谱"。
 
-   ★★ 声明位置（v2.8.8 合并前这里是**两份**）：它必须在 Store **之前**。
-     原本有两份实现——Store 里一份叫 `strumOf`（给加载期的 S.track 初值用）、
-     共享区一份叫 `hasStrum`（给运行期的过滤/门控用），理由曾是"共享区在 Store 之后，
-     加载期够不着"。而它其实**只依赖 pat.bars**，不依赖 S、不依赖 resolveRef，
-     完全没必要待在共享区——上移到数据区即可两边同调一份。
-     两份判据的真实代价：改判据要改两处，靠 t64 的两条断言同时钉住；而"测试也跟着改错"
-     这个缺口是测试兜不住的（本轮审计 §1.4）。合并后语义只有一处定义。
+   ★★ 声明位置在数据区（Store 之前）：Viz / AudioEngine / Presets / Tracks 运行期
+     都要调它，而它**只依赖 pat.bars**、不依赖 S、不依赖 resolveRef，放在数据区最合适。
    ★ 与 patLenOf 那条"加载期局部判据"不同：patLenOf 需要查已落盘的型，
-     所以它**必须**留在 Store 里；本函数不需要查任何状态，故可以上移。 */
+     所以它**必须**留在 Store 里；本函数不需要查任何状态，故可以前移。 */
 /** @param {any} pat @returns {boolean} */
 function hasStrum(pat){
   if (!pat || !Array.isArray(pat.bars)) return false;
@@ -1607,13 +1603,18 @@ const DEMO_STRUMS = {
      存在的唯一理由是"两个相邻小节各用不同的型"——那正是把 4 小节循环硬套到逐小节谱上的产物。
      v2.5.1 让型可以任意小节数、v2.5.2 让网格成为歌曲小节上的滚动窗口之后，它该还原成本来的样子：
      **段 4 = （P2 × 1 遍）+（P1 × 1 遍）**，两块而已（见 DEMO_SONG.strums 与 demoBuildSpec）。
-     于是《在他乡》的原子单元就是这 5 个 1 小节的型，与参考页的 STRUMS.P1~P5 一一对应。 */
+     于是《在他乡》的原子单元就是这 5 个 1 小节的型，与参考页的 STRUMS.P1~P5 一一对应。
+   ★ v2.9.0 改名：这 5 个型要**并入「扫弦」分类**与内置扫弦型并列展示（不再单独挂
+     "示例曲"分组），名字里带"在他乡 · 节奏型N"既长又和"分组头"重复。改成通用名后
+     它们就是 5 个可独立拿来用的扫弦型；旧数据里的旧名由一次性迁移收敛（见
+     demoLegacyIndex / migrateDemoPatternNames）。名字不再是这批数据的命名空间——
+     曲式块的引用改按**下标**（见 demoBuildSpec 的 refIdx），识别改按**内容**（demoIndexOf）。 */
 const DEMO_PRESETS = [
-  { name: "在他乡 · 节奏型1（十六分满扫）", strum: "P1" },
-  { name: "在他乡 · 节奏型2（副歌）", strum: "P2" },
-  { name: "在他乡 · 节奏型3（主歌）", strum: "P3" },
-  { name: "在他乡 · 节奏型4（雨夜）", strum: "P4" },
-  { name: "在他乡 · 节奏型5（桥段）", strum: "P5" },
+  { name: "十六分满扫", strum: "P1" },
+  { name: "副歌扫弦", strum: "P2" },
+  { name: "主歌扫弦", strum: "P3" },
+  { name: "雨夜扫弦", strum: "P4" },
+  { name: "桥段扫弦", strum: "P5" },
 ];
 /* 段 = 词行（行=段的契约）；和弦序列写进段名（本工具无和弦轨）。
    ★★ `strums` 是**逐小节**的型 id 序列，数组长度就是这一段的小节数（v2.6.0 第 Ⅳ 期）。
@@ -1669,7 +1670,8 @@ const DEMO_SONG = [
 ];
 /* 谱面 → 本工具数据模型（纯函数，不碰 Store/DOM；测试经 __beat 直接断言）。
    返回 { presets, arrange, lyrics }：presets 供 importPresets，arrange 供 upsertArrange
-   （块的引用先记 preset 名，载入时按名解成 custom id——名字是本批数据自带的命名空间），
+   （块的引用记的是**在 presets 里的下标** refIdx，载入时由 ensureDemo 解成落在库里的 custom id
+   ——v2.9.0 起不再按名字解：名字已改成通用名，与用户自建型可能重名，下标才是稳定引用），
    lyrics[i] = 第 i 段的 chars（段内绝对 tick） */
 function demoBuildSpec(){
   /** @param {string} patId @returns {any[]} */
@@ -1691,19 +1693,21 @@ function demoBuildSpec(){
   };
   /* 每个型 = **1 小节**（原子单元），型长自由是 v2.5.1 放开的能力 */
   const presets = DEMO_PRESETS.map(p => ({ name: p.name, meter: 4, bars: [demoBar(p.strum)] }));
-  const nameOf = /** @type {Record<string, string>} */ ({});
-  DEMO_PRESETS.forEach(p => { nameOf[p.strum] = p.name; });
+  /* 型 id（P1..P5）→ 在 presets 里的下标。块按**下标**引用（v2.9.0）：名字已改成通用名，
+     不再是这批数据的命名空间；下标与 DEMO_PRESETS 一一对应，载入时解成 custom id */
+  const idxOf = /** @type {Record<string, number>} */ ({});
+  DEMO_PRESETS.forEach((p, i) => { idxOf[p.strum] = i; });
   /* 逐小节的型 id → 块：**相邻同型合成一块**（块 = 型 × N 遍）。
      这样"段 4 = P2 一小节 + P1 一小节"自然落成两块，不需要再为它造一个组合型。
      顺序与相邻关系都保持不变，所以块的展开结果与逐小节序列逐一对应 */
-  /** @param {string[]} seq @returns {{ refName: string, repeats: number }[]} */
+  /** @param {string[]} seq @returns {{ refIdx: number, repeats: number }[]} */
   const toBlocks = seq => {
-    /** @type {{ refName: string, repeats: number }[]} */
+    /** @type {{ refIdx: number, repeats: number }[]} */
     const out = [];
     seq.forEach(id => {
       const last = out[out.length - 1];
-      if (last && last.refName === nameOf[id]) last.repeats++;
-      else out.push({ refName: nameOf[id], repeats: 1 });
+      if (last && last.refIdx === idxOf[id]) last.repeats++;
+      else out.push({ refIdx: idxOf[id], repeats: 1 });
     });
     return out;
   };
@@ -1730,6 +1734,59 @@ function demoPresetEq(stored, spec){
   const canon = (/** @type {any[]} */ bars) => JSON.stringify((bars || []).map(bar => (bar || []).map(/** @param {any} s */ s =>
     [s.t, s.rest ? 1 : 0, s.dir || "", s.zone === undefined ? "" : s.zone])));
   return canon(stored.bars) === canon(spec.bars);
+}
+/* 示例曲 5 个型的**规范谱**（缓存：demoBuildSpec 是纯函数，结果恒定）。
+   v2.9.0 起曲式块按 presets 下标引用，改名/识别都以这份规范谱为准 */
+/** @type {null | ReturnType<typeof demoBuildSpec>} */
+let _demoSpec = null;
+function demoSpec(){
+  if (!_demoSpec) _demoSpec = demoBuildSpec();
+  return _demoSpec;
+}
+/* 内容认型（v2.9.0）：返回该自定义型对应示例规范谱的下标，认不出 -1。
+   ★ 取代旧的"名字前缀"判据——名字已改成通用名（十六分满扫 等），与用户自建型可能重名，
+     内容才是稳定标识（demoPresetEq 比 meter + 逐步规范化的 [t,rest,dir,zone]） */
+/** @param {any} c @returns {number} */
+function demoIndexOf(c){
+  if (!c || !Array.isArray(c.bars)) return -1;
+  return demoSpec().presets.findIndex(p => demoPresetEq(c, p));
+}
+/* 旧示例型的名字前缀（v2.3.0–v2.8.x）。只服务**老数据一次性迁移**：
+   v2.6.0 之前的示例型是 4 小节型、内容对不上现在的 1 小节规范谱，
+   只能靠旧名的序号认回来（demoIndexOf 认不出它们） */
+const DEMO_LEGACY_PREFIX = "在他乡 · 节奏型";
+/** @param {any} name @returns {number} 旧名「在他乡 · 节奏型N…」的 0 基下标，认不出 -1 */
+function demoLegacyIndex(name){
+  if (typeof name !== "string" || !name.startsWith(DEMO_LEGACY_PREFIX)) return -1;
+  const m = name.slice(DEMO_LEGACY_PREFIX.length).match(/^\s*(\d+)/);
+  return m ? Number(m[1]) - 1 : -1;
+}
+/* 在给定库里按"内容优先、旧名序号兜底"找第 i 个示例型（v2.9.0）。
+   收成一处：ensureDemo（收敛内容）、demoStale（判落后）、一次性改名迁移
+   必须看**同一份**认型规则，三处各写一遍 = 三条会漂移的边界。
+   入参 customs 显式传入而非直接读 Store：本函数留在数据区，保持"纯函数可直测" */
+/** @param {any[]} customs @param {number} i @returns {any} */
+function demoCustomAt(customs, i){
+  if (!Array.isArray(customs) || i < 0 || i >= DEMO_PRESETS.length) return undefined;
+  const p = demoSpec().presets[i];
+  return customs.find(c => demoPresetEq(c, p)) || customs.find(c => demoLegacyIndex(c && c.name) === i);
+}
+/* 老数据一次性改名（v2.9.0）：示例型旧名「在他乡 · 节奏型N…」→ 新的通用名（十六分满扫 等）。
+   ★ 与内容收敛（ensureDemo）分开：这里只认旧名序号、只动 name，不碰内容——
+     v2.6.0 之前的 4 小节型内容对不上新规范谱，改名后仍需 ensureDemo 把内容改回参考谱。
+   ★ 幂等：改完名字不再命中旧前缀，二次启动改 0 条、零写盘。
+   返回改名的条数，供调用方决定是否落盘 */
+/** @param {any[]} customs @returns {number} */
+function migrateDemoPatternNames(customs){
+  if (!Array.isArray(customs)) return 0;
+  let n = 0;
+  customs.forEach(c => {
+    if (!c) return;
+    const i = demoLegacyIndex(c.name);
+    if (i < 0 || i >= DEMO_PRESETS.length) return;
+    if (c.name !== DEMO_PRESETS[i].name){ c.name = DEMO_PRESETS[i].name; n++; }
+  });
+  return n;
 }
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
@@ -1937,10 +1994,6 @@ const Store = (() => {
   const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
   const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
   const VALID_ZONE = [0, 1, 2];                               // 合法弦区（v2.2.0）：低/中/高
-  /* 合法轨（v2.4.0）：普通节拍 / 带扫弦的节拍。**轨不是"声音参数"而是"入口身份"**——
-     bpm/sig/vol/swing/timbre 全部共享同一个 S（用户拍板"全部共享，仅入口区分"），
-     track 只决定三件事：预设库列哪些、扫弦记谱层画不画、zone 音色走不走 */
-  const VALID_TRACK = ["plain", "strum"];
   /** @param {any} v @returns {boolean} */
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
   /** @param {any} v @param {number} dft @returns {number} */
@@ -2254,50 +2307,6 @@ const Store = (() => {
   const arrTo = Math.min(arrLast, Math.max(arrFrom, Math.round(numOr(arrSrc.to, arrFrom))));
   const playModeInit = (saved.playMode === "arrange" && arrTarget) ? "arrange" : "preset";
 
-  /* 轨初值（v2.4.0）。★ 为什么这里要**再有一份** hasStrum 的判据，而不是调共享区那个：
-     共享区的 hasStrum 定义在 Store **之后**（它要跟 resolveRef / curPattern 待在一起），
-     而 Store 的 IIFE 顶层执行期读它 = 反向引用 → TDZ 崩溃，且 tools/check-module-order.js
-     的 R1 会拦下来。所以这里只能有一个**局部等价判据**。
-     ★ 为什么等价是安全的（不会漂移成"两套边界"）：
-       这里是**一次性迁移判定**，只在"state 里没有 track 键"时执行一次；
-       运行期一切过滤/门控走的都是共享区那个 hasStrum（Presets / AudioEngine / Viz 三处）。
-       两者的判据都写成"dir 或 zone 任一 !== undefined"，
-       并由 T64 的两条断言同时钉住（见 tests/cases/t64-track-split.js T64b/T64e）。
-       若哪天判据要改，T64 会同时红——这正是"只有一个语义、两处实现"可控的前提。
-     ★ 三条分支的次序（缺一不可，T64e / T35 各钉一条）：
-       ① state 里有合法的 track 键 → 用它（用户点过切换条，意图最明确）；
-       ② 没有键、且 saved.sel **能解析** → 按该型的性质反推（他升级前听什么就留在哪条轨）；
-       ③ 没有键、且 saved.sel **解析不出来**（越界的废引用）→ 落到默认轨（strum），
-          与"全新用户 / 空 state"的结论一致——同一个"无有效 sel"不该有第二种答案。
-     ★ v2.8.8：判据本身已上移到数据区的 `hasStrum`（与运行期过滤/门控同一份实现），
-       此处不再有第二份 `strumOf`。它只依赖 pat.bars、不需要任何状态，
-       所以 Store 的加载期完全可以调它——"共享区在 Store 之后够不着"从来不是真理由。 */
-  const selSaved = saved.sel || { type: "builtin", idx: 0 };
-  const selPatInit = selSaved.type === "custom"
-    ? savedCustoms.find((/** @type {any} */ c) => c && c.id === selSaved.id)
-    : BUILTINS[selSaved.idx];
-  /* ★ 反推的**前提是 sel 解析得出来**。解析不出来（老数据的 custom 下标越界、
-     或 builtin 下标越界）说明这条 sel 本来就是废的——此时"他升级前在听什么"没有答案，
-     该退到**全新用户的默认**（内置第 0 个 = 民谣扫弦）而不是硬判成 plain。
-     理由：默认 sel 也是 {builtin, idx:0}（见上一行），来源一致、结论才一致；
-     否则同一个"无有效 sel"在两条路径上会落到不同轨，属于自相矛盾。
-     T35 的越界回退断言就是这条的守门人（它要求越界 → 内置第 0 个）。 */
-  const selResolvable = !!selPatInit;
-  const trackInit = VALID_TRACK.includes(saved.track)
-    ? saved.track
-    : (!selResolvable || hasStrum(selPatInit) ? "strum" : "plain");
-
-  /* 当前轨下"第一个可用内置型"的下标（v2.4.0）。
-     ★ 与共享区 Tracks.visibleBuiltins()[0].i 同一条规则，但**不能调它**：
-       Tracks 声明在 Store 之后（模块次序），Store 的 IIFE 顶层执行期调它是反向引用（R1 会拦）。
-       所以这里用同一个判据 —— v2.8.8 起就是数据区的 `hasStrum` 本体（不再有局部副本）。
-     ★ 用它替换旧代码里硬编码的 `idx:0`（民谣扫弦 = 扫弦型）：普通轨下那样回退会立刻非法。
-     返回 0 是最后的兜底——只有整个内置库都成了扫弦型这种构造性错误才走到 */
-  function firstBuiltinForTrack(){
-    const i = BUILTINS.findIndex(p => trackInit === "strum" || !hasStrum(p));
-    return i >= 0 ? i : 0;
-  }
-
   /* 状态对象显式标注类型（v1.10.0 类型闸门）：S 是全应用最中心的数据结构，
      不标注的话在 noImplicitAny:false 下它的属性全是隐式 any，属性名拼错也查不出来。
      实测这条标注把「S.limit.noSuchField」这类笔误从逃过变成拦住。
@@ -2314,7 +2323,6 @@ const Store = (() => {
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
    *   limit: { mode: string, n: number },
    *   playMode: string,
-   *   track: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },
    *   lyricCue: boolean,
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
@@ -2371,24 +2379,6 @@ const Store = (() => {
        curPattern / buildPresetList / 编辑器一大堆地方读，塞进去等于每个读取点都要判一次
        "这是不是曲式"，而其中大多数点对曲式没有意义——污染面比新加字段大得多 */
     playMode: playModeInit,
-    /* v2.4.0「双入口」：track 决定用户当前站在哪条轨上——
-         "plain" 普通节拍（只出节拍音与重音，过滤掉带扫弦记谱的预设）
-         "strum" 带扫弦的节拍（在节拍之上叠加扫弦记谱：方向箭头 + 弦区音色）
-
-       ★ 迁移规则（**这是本字段唯一的难点**）：分两步，且第二步才是默认值的真相源。
-         ① saved.track 是合法值 → 直接用它（用户显式选过轨，尊重选择）；
-         ② 没有该键（老用户升级 / 全新用户）→ **由 saved.sel 反推**：
-              选中的型带扫弦记谱 → "strum"，否则 → "plain"。
-         为什么不做成"缺省一律 plain"：那会让**老用户在升级后听到别的东西**。
-         v2.4.0 之前应用默认开着「民谣扫弦」（BUILTINS[0]，带 dir），
-         若缺省落到 plain，用户一升级就被自动换成「四分基础」——箭头没了、弦区音色没了，
-         而他什么都没点。这正是用户明确要求"不影响已有调用方"要防的事。
-         按 sel 反推则保证**升级前后听到的完全一样**（连同箭头与弦区音色），
-         而"普通轨要过滤扫弦型"这条需求由**切换条 + 过滤**两件独立的事去满足，
-         不必靠"改初始轨"来实现。
-         ★ 兜底顺序：先 isStr 再赋 track，所以前面 S 的字段（sel）必须已经定好——
-           这就是本字段排在 sel 之后、且用 selPat 局部变量读它的原因 */
-    track: trackInit,
     arrangeSel: { id: arrTarget ? arrTarget.id : "", from: arrFrom, to: arrTo, loop: !!arrSrc.loop, byLyric: !!arrSrc.byLyric },
     /* v2.1.0 F1：锚点提示音开关——每个字的锚点进场时补一声短木鱼（复用 wood 音色，见 playClick）。
        默认**关**：这是叠加在节拍器之上的额外发声，属"用户显式要了才开"的类别（同 keepAwake） */
@@ -2487,16 +2477,10 @@ const Store = (() => {
     return n;
   }
   /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用。
-     ★ v2.4.0：越界兜底**不能硬编码 idx:0**——内置第 0 个是「民谣扫弦」（带扫弦记谱），
-       而本会话的轨可能正是"普通节拍"（见 trackInit）。硬写 0 会在加载期就埋一个
-       "普通轨下选中了扫弦型"的非法状态，随后被 ensureValidForTrack 再改一次——
-       同一次加载跑两遍纠正、且中间那一瞬 S.sel 与列表不一致。
-       这里直接用**与 ensureValidForTrack 同一条规则**（当前轨的第一个可用内置型）：
-       规则只有一处定义在语义上（"回退 = 同轨首个可用项"），两处实现都写在加载/运行期的
-       各自位置——T64e 的两条断言同时钉住它们。 */
+     越界的废引用（下标处的型已不存在）→ 回退到内置第 0 个（idx:0）。 */
   if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
     const c0 = customs[S.sel.idx];
-    S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:firstBuiltinForTrack()};
+    S.sel = c0 ? {type:"custom", id:c0.id} : {type:"builtin", idx:0};
   }
 
   /* 一次性冷热拆分迁移（v1.3.0）：旧键存在而新键缺失 → 把整包按冷热拆开写入新键。
@@ -2576,7 +2560,6 @@ const Store = (() => {
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
       limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
-      track:S.track,                              // v2.4.0：普通节拍 / 带扫弦的节拍（入口身份）
       lyricCue:S.lyricCue,                        // v2.1.0 F1：锚点提示音开关（热键：跟着每次点击写）
       arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop, byLyric:!!S.arrangeSel.byLyric } };
   }
@@ -2602,6 +2585,12 @@ const Store = (() => {
   }
   window.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
   window.addEventListener("pagehide", flush);
+
+  /* 老数据一次性改名（v2.9.0）：示例型旧名 → 通用名（见 migrateDemoPatternNames）。
+     放在热/冷键拆分与写路径都就绪之后：此时 persistCold 及其失败/恢复回调均已定义，
+     且这是加载期的静默收敛——失败只走 warn，不该占用「保存失败」提示名额（同拆分迁移口径）。
+     幂等：迁移后名字不再命中旧前缀，二次启动改 0 条、不写盘 */
+  if (migrateDemoPatternNames(customs)) persistCold();
 
   /* ---- 预设导入导出 ----
      导出格式（v0.7.0 起 v:2，tick 制）：{app:"beatsight", kind:"presets", v:2, exportedAt,
@@ -3147,22 +3136,6 @@ const resolveRef = ref => (!ref ? undefined
 /* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
    fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处 */
 const selectedPreset = () => resolveRef(S.sel);
-/* 是否"带扫弦记谱"（v2.4.0）：判定一颗音符算不算扫弦信息。
-   **判据是 dir 或 zone 任一存在**，两个都算，理由分别是：
-     · dir  = 方向箭头（记谱层；v1.9.0）——用户看得见"这是扫弦谱"的第一特征；
-     · zone = 弦区音色（发声层；v2.2.0）——**即使一个谱只有 zone 没有 dir，它的听感也确实带扫弦**。
-   只认 dir 会漏掉"只有弦区标注"的谱（听感上是扫弦、列表里却混进普通入口），
-   只认 zone 会漏掉纯方向谱（"民谣扫弦"若哪天删了 zone 标注，它就悄悄混进普通入口）。
-   两个都认才是这条谓词真正想表达的事：**这个节奏型含有超出「节拍音」的信息**。
-
-   为什么抽成一处纯函数（而不是在 Presets / AudioEngine / Controls 各判一次）：
-   这是"两个入口的分界线"本身。三处各写一遍 = 三条会各自漂移的边界，
-   而漂移的表现是"列表里看不到、却能被播出来"这种最难自查的不一致。
-   ★ 只读入参、不读 S、不读 DOM、不改任何东西——故可被任何模块（含前方的 AudioEngine？不，
-   它在共享状态区，位于 AudioEngine 之前）安全调用，也直接经 __beat 供测试断言。 */
-/* v2.8.8：`hasStrum` 已上移到数据区（在 Store 之前），本处不再有定义——
-   加载期（Store 的 S.track 初值反推）与运行期（Presets 过滤 / Tracks / AudioEngine 门控）
-   自此同调一份判据。改动前这里与 Store 里的 `strumOf` 是两份逐字相同的实现。 */
 const curPattern = () => {
   if (S.preview && previewRef) return previewRef;
   const p = selectedPreset();
@@ -3917,6 +3890,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} viz 网格容器
       @returns {void} */
   function buildBarRow(b, p, barTicks, viz){
+    const hasStr = hasStrum(p);
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
     // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
@@ -3931,11 +3905,12 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     }
     zoneEls.push(zones);
     /* 六线谱底纹（v2.4.2，照搬参考页）：每条小节行铺一层六条等距弦线当"纸"。
-       只挂扫弦轨——普通轨没有扫弦箭头，留一层无解释的横线纯属噪音（同 v2.4.0 的轨门控口径）。
+       v2.9.0：改按**当前型**是否带扫弦记谱（hasStr）决定——不带记谱的型没有扫弦箭头，
+       留一层无解释的横线纯属噪音（原为 v2.4.0 的「只挂扫弦轨」门控）。
        六条线的 y 由 CSS 变量 --gtop / --gt 推出（0/8.8/17.6/26.4/35.2/44，铺满格子），
        与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
        createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
-    if (S.track === "strum"){
+    if (hasStr){
       const tab = document.createElement("div");
       tab.className = "tab";
       /* 六条弦线：y = 0 + li×8.8（li=0..5）→ 0/8.8/17.6/26.4/35.2/44，铺满 44px 格子
@@ -3952,8 +3927,8 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     /* 扫弦箭头层（v2.4.3）：**独立一层**，是 .cell 的兄弟节点而不是子节点。
        理由见 CSS 里 .strums 的注释——格子有 overflow:hidden + 44px 高，
        挂进去必然裁掉箭头的尖端与低音区尾巴（v2.4.2 的 bug，实测 24/24 全被裁）。
-       只挂扫弦轨：普通轨没有箭头，空层纯属浪费（同 v2.4.0 轨门控口径） */
-    if (S.track === "strum"){
+       v2.9.0：改按当前型是否带扫弦记谱（hasStr）决定；不带记谱的型没有箭头，空层纯属浪费 */
+    if (hasStr){
       const sl = document.createElement("div");
       sl.className = "strums";
       row.appendChild(sl);
@@ -4035,11 +4010,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
            尖端在 top:-5px（超出格子上界）、kB 的尾巴到 53px（超出格子下界 44px）。
            实测 24/24 支箭头全部被裁，这正是"为什么箭头缺了头顶的尖端"的真因。
            现在挂进**同行的 .strums 层**（不裁切、满行高），水平位置用格中心的百分比。
-         v2.4.0 轨门控：普通节拍轨**不画箭头**——它承诺"只出节拍音与重音"，
-         画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
+         v2.9.0：门控改按当前型是否带扫弦记谱（hasStr）——不带记谱的型**不画箭头**，
+         它承诺"只出节拍音与重音"，画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
          ★ 注意 strums 数组必须**同时**推入占位 null：它与格子逐位同构，
            fitCellAnnotations() 按下标对齐做窄格隐藏，少推一项会让隐藏判据整体错位 */
-      if (s.dir && S.track === "strum"){
+      if (s.dir && hasStr){
         const sm = document.createElement("div");
         /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
         const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
@@ -4187,14 +4162,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     fitCellAnnotations();
     buildLyricLane();                // v2.1.0 F1：网格重建时同步重建歌词轨（两轨同一份 tick 基准）
   }
-  /* 六线底纹显隐（v2.4.2）：把 S.showTab / S.track 两个条件收成 .viz 上的一个类，
+  /* 六线底纹显隐（v2.4.2）：把 S.showTab / 当前型是否带扫弦记谱两个条件收成 .viz 上的一个类，
      由 CSS `.viz.no-tab .tab{display:none}` 落地。
      为什么不在 buildViz 里"按开关决定要不要创建 .tab"：那样切开关就得重建整棵树
-     （播放中会抖），而且轨切换本来就会重建——两件事的触发频率差太远。
-     所以 .tab 的**创建**只由轨决定（扫弦轨建、普通轨不建），**显隐**由这个类决定。
+     （播放中会抖），而且换型本来就会重建——两件事的触发频率差太远。
+     所以 .tab 的**创建**只由当前型的 hasStrum 决定（带记谱建、不带不建），**显隐**由这个类决定。
      buildViz 末尾与开关处理器都调它，保证两个入口收敛到同一结果。 */
   function syncTabLayer(){
-    $("viz").classList.toggle("no-tab", !(S.showTab && S.track === "strum"));
+    $("viz").classList.toggle("no-tab", !(S.showTab && hasStrum(vizPattern())));
   }
   /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
      标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
@@ -5336,8 +5311,10 @@ const AudioEngine = (() => {
        纯方向谱（内置「民谣扫弦」只有 dir 没有 zone）此前整谱走节拍声部——
        「扫弦」滑条对它恒无效、「节拍」拉到 0 全静默（用户实拍）。dir-only 的格
        补成中弦区（zone 1）——与数据契约「省略 zone = 中弦区」同义；时刻一字不动，
-       zone 仍只改声部与频段、不碰时间轴（T62e 守的那条不变量不受影响） */
-    const stepZone = S.track === "strum" && (step.zone !== undefined || step.dir !== undefined)
+       zone 仍只改声部与频段、不碰时间轴（T62e 守的那条不变量不受影响）。
+       v2.9.0：去掉「只认扫弦轨」的外层门控——是否走扫弦声部**只看这一格自身**是否带记谱，
+       与设哪个分组无关（分组只影响列表展示）；不带记谱的格自然退回全局音色 */
+    const stepZone = (step.zone !== undefined || step.dir !== undefined)
       ? (step.zone === undefined ? 1 : step.zone) : undefined;
     /* 这一步自身发的是「扫弦声」还是「节拍音」（v2.5.0）？
        判据必须与 playClick 的声部入口**逐字一致**（透传后的 zone !== undefined 即扫弦声部；
@@ -5356,9 +5333,9 @@ const AudioEngine = (() => {
       /* zone（v2.2.0）：从音符快照透传给 playClick（dir-only 的格已在上面补成中弦区）
          ——空扫（rest）根本走不到这里，「空扫静默」由上面的 !rest 判定天然保证，
          无需在 zone 分支里再判一次。
-         v2.4.0 轨门控：**普通节拍轨不传 zone**——zone 是扫弦轨的弦区音色，
-         普通轨要的正是"只有节拍音与重音"。这样 playClick 里 `zone !== undefined` 那条
-         分支整体不成立，自动退回全局音色（click/wood/drum），无需在 playClick 里判 track：
+         v2.9.0：门控只看**本格自身**是否带记谱——不带记谱的格 stepZone 为 undefined，
+         playClick 里 `zone !== undefined` 那条分支整体不成立，自动退回全局音色
+         （click/wood/drum），无需在 playClick 里判任何分组：
          门控只在这一处（发声入口），playClick 保持"只认自己的入参"的纯函数性质。
          ★ 时刻一字不动：zone 只改频段不改时间轴（T62e 守这条），不传 zone 同样不碰时刻 */
       if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB), stepZone);
@@ -5445,13 +5422,13 @@ const AudioEngine = (() => {
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
     const accents = pat.accents || [0];
-    /* 节拍器网格是否生效（v2.5.0）：**扫弦轨 × 当前谱真的带扫弦记谱**。
-       ★ 为什么不能只看 track：不带扫弦记谱的谱**本身就是节拍器**（音符落在拍上，
-         那一下就是这一拍的声音），再补一层网格会把长音中间多敲出几下——
+    /* 节拍器网格是否生效（v2.5.0）：**当前谱真的带扫弦记谱**（v2.9.0 去轨门控）。
+       ★ 判据只能是 hasStrum，不能看任何分组开关：不带扫弦记谱的谱**本身就是节拍器**
+         （音符落在拍上，那一下就是这一拍的声音），再补一层网格会把长音中间多敲出几下——
          那是行为变化，不是修复（实测会打翻 T48/T65 那批"发声个数恰好 N"的断言）。
-       ★ 判据取共享区的 hasStrum（与 Tracks / Presets 同一份语义，不另写一遍）：
+       ★ 判据取共享区的 hasStrum（与 Viz / Presets 同一份语义，不另写一遍）：
          它扫的是 pat.bars 的全部格，每轮 25ms 只算一次，不进每步热路径 */
-    const strumGrid = S.track === "strum" && hasStrum(pat);
+    const strumGrid = hasStrum(pat);
     /* 重新锚定（v2.0.6，审计 P1-1 / P1-7）：把时间轴与游标对齐到"当前时刻"，即从循环起点起新的一轮。
        两条防线共用它——① 长节流唤醒后的调度饥饿；② 单轮迭代超限（脏数据让游标永不前进）。
        为什么是"起新的一轮"而不是"按整循环/整小节前移"：前移的粒度至少是一小节（慢速 7/4 可达
@@ -6379,15 +6356,18 @@ const Tracks = (() => {
     const c = customs.filter(hasStrum).length;
     return b + c;
   }
-  /* 示例曲《在他乡》的节奏型识别（v2.4.1）。判据是**名字前缀**而非 id：
-     示例的 7 个型由 demoBuildSpec() 按名生成、经 importPresets 落成随机 id
-     （c<时间戳>-<序号>），id 每次载入都不同，名字才是稳定标识。
-     前缀常量与 DEMO_PRESETS 的命名口径写在一处——那边是 `"在他乡 · " + 型名`，
-     这里只认这个前缀，改文案时两边一起改。
-     ★ 用 startsWith 而不是 includes：用户自己写一个"我的在他乡练习"不该被误收进示例组 */
-  const DEMO_NAME_PREFIX = "在他乡 · ";
+  /* 示例曲《在他乡》的节奏型识别（v2.4.1；v2.9.0 改口径）。
+     ★ 旧口径是**名字前缀**（"在他乡 · "）而非 id：示例型由 demoBuildSpec() 生成、
+       经 importPresets 落成随机 id（c<时间戳>-<序号>），id 每次载入都不同，名字才稳定。
+     ★ v2.9.0 起改为**内容认型**：示例型已改成通用名（十六分满扫 等），前缀不复存在，
+       且通用名与用户自建型可能重名。比内容（demoPresetEq：meter + 逐步 [t,rest,dir,zone]）
+       才是稳定标识；老数据里内容对不上的（v2.6.0 前的 4 小节型）用旧名序号兜底
+       （demoLegacyIndex，仅服务一次性迁移窗口）。 */
   /** @param {any} c @returns {boolean} */
-  const isDemoCustom = c => !!c && typeof c.name === "string" && c.name.startsWith(DEMO_NAME_PREFIX);
+  const isDemoCustom = c => demoIndexOf(c) >= 0 || demoLegacyIndex(c && c.name) >= 0;
+  /* 旧名前缀（v2.3.0–v2.8.x 示例型名字 = "在他乡 · " + 型名）。保留常量只为
+     shortDemoName() 剥前缀兜底；v2.9.0 起新数据不再使用它 */
+  const DEMO_NAME_PREFIX = "在他乡 · ";
   /* 拆成"示例组"与"其余自定义"两份。调用方（buildPresetList）据此把示例置顶——
      分组逻辑放这里而不是渲染层内联：它是**可见集**的一部分，与 visibleCustoms 同源 */
   function splitCustoms(){
@@ -6714,10 +6694,11 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
   /** @param {string} full @returns {string} */
   function shortDemoName(full){
-    /* "在他乡 · 节奏型1（十六分满扫）" → "节奏型1"；"在他乡 · 收束" → "收束"。
-       ★ 前缀常量属于 Tracks（示例型识别的唯一来源），这里必须经 Tracks 取——
-         裸写 DEMO_NAME_PREFIX 是未定义引用（它是另一个 IIFE 里的 const，不共享作用域）。
-         同一份前缀在两处各写一遍字符串字面量的做法更糟：改文案时会漏改一处 */
+    /* v2.9.0：示例型已改成通用名（十六分满扫 等），不再带"在他乡 · "前缀，短标签 = 原名。
+       这里保留旧式「节奏型N（型名）→ 节奏型 N」的兜底，覆盖老数据尚未被一次性迁移
+       （migrateDemoPatternNames）收敛到的极端情形。
+       ★ 前缀常量属于 Tracks（示例型识别的历史来源），这里必须经 Tracks 取——
+         裸写 DEMO_NAME_PREFIX 是未定义引用（它是另一个 IIFE 里的 const，不共享作用域） */
     const s = String(full).replace(Tracks.DEMO_NAME_PREFIX, "");
     const m = s.match(/^节奏型\s*(\d+)/);
     return m ? "节奏型 " + m[1] : s.replace(/（.*?）/, "").trim();
@@ -8614,7 +8595,9 @@ const Arrange = (() => {
        用户在预设库里根本看不到它们，"换个节奏型"变成一件做不到的事。
        这正是 T64d/T64j 踩过的同一个坑（importPresets 不重建列表），此处收口。 */
     let created = false;
-    const missing = spec.presets.filter(p => !Store.customs.some(c => c.name === p.name));
+    /* v2.9.0：认型改按**内容 + 下标**（demoCustomAt），不再按名字——名字已改成通用名，
+       与用户自建型可能重名；同一台机器上"旧型 + 新曲式"的混杂态也唯有比内容才分得清 */
+    const missing = spec.presets.filter((p, i) => !demoCustomAt(Store.customs, i));
     if (missing.length){
       const r = Store.importPresets(JSON.stringify(missing));
       if (!r.ok) return { ok: false, error: r.error, id: "" };
@@ -8625,8 +8608,8 @@ const Arrange = (() => {
        （整首连播 120 小节就是这么来的）。就地改内容而**保住 id**——曲式块按 id 引用，
        换 id 会把整首曲式打成坏引用。用户改过的示例型同样收敛回参考谱（变体请另存名字） */
     let updated = 0;
-    spec.presets.forEach(p => {
-      const c = Store.customs.find(x => x.name === p.name);
+    spec.presets.forEach((p, i) => {
+      const c = demoCustomAt(Store.customs, i);
       if (c && !demoPresetEq(c, p)){
         c.meter = p.meter;
         c.bars = JSON.parse(JSON.stringify(p.bars));
@@ -8634,8 +8617,10 @@ const Arrange = (() => {
       }
     });
     if (updated) Store.persistCold();            // customs 变更 → 冷键立即落盘（同删除路径的口径）
-    /** @param {string} nm @returns {string} */
-    const idOf = nm => { const c = Store.customs.find(x => x.name === nm); return c ? c.id : ""; };
+    /* 曲式块按 **presets 下标**（b.refIdx）解成落在库里的 custom id（v2.9.0）。
+       此前按名解（b.refName）——名字已通用化，不能再当命名空间 */
+    /** @param {number} i @returns {string} */
+    const idAt = i => { const c = demoCustomAt(Store.customs, i); return c ? c.id : ""; };
     const exist = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
     /* v2.6.0（第 Ⅳ 期）：**逐块**映射，不再只取 blocks[0]。
        示例曲改成逐小节谱之后，「收束」「收尾」两段各有 **2 个块**（P2×1 + P1×1），
@@ -8643,7 +8628,7 @@ const Arrange = (() => {
        表现为"最后一句没声音/对不上"。 */
     const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
       sections: spec.arrange.sections.map(s => ({ name: s.name,
-        blocks: s.blocks.map(b => ({ ref: { type: "custom", id: idOf(b.refName) }, repeats: b.repeats })) })) });
+        blocks: s.blocks.map(b => ({ ref: { type: "custom", id: idAt(b.refIdx) }, repeats: b.repeats })) })) });
     if (!v) return { ok: false, error: "示例曲式未通过结构校验——请检查示例节奏型是否都在。", id: "" };
     spec.lyrics.forEach((chars, i) => Store.upsertLyric(v.id, i, chars));
     Store.persist();
@@ -8663,9 +8648,9 @@ const Arrange = (() => {
     const spec = demoBuildSpec();
     const ar = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
     if (!ar) return false;
-    /* ① 示例型：缺型，或同名但内容对不上（旧 4 小节型） */
-    const patBad = spec.presets.some(p => {
-      const c = Store.customs.find(x => x.name === p.name);
+    /* ① 示例型：缺型，或内容对不上（旧 4 小节型） */
+    const patBad = spec.presets.some((p, i) => {
+      const c = demoCustomAt(Store.customs, i);
       return !c || !demoPresetEq(c, p);
     });
     if (patBad) return true;
