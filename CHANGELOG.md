@@ -1,5 +1,16 @@
 # 变更记录
 
+## v2.8.26 · 交互 P2-8：退回预设模式后示例段「切换节奏型」胶囊条仍渲染（动作与反馈脱节）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 16 条（P2 组）。本节只落这一条，独立成版与提交。
+
+- **P2-8 退回单型练习后，胶囊条仍可改曲式数据**：
+  - **根因**：`exitArrangeForPreset`（`index.html:6643`）把 `S.playMode` 退回 `"preset"`、清 `arrangeSel.loop` / `byLyric`，但**不清 `S.arrangeSel.id`**。而 `buildDemoSegRow`（`index.html:6658`）的渲染判据只查 `Store.findArrange(S.arrangeSel.id)` 的 id 是否为 `DEMO_ID`——于是退回预设模式后这条胶囊条依旧渲染。此时点胶囊走 `applyDemoSeg`，改的是**曲式块引用**（要下次进曲式才生效），对当前的单型练习毫无即时效果：动作与反馈脱节。
+  - **修法（用户拍板「隐藏胶囊条」）**：`buildDemoSegRow` 的入口判据补一维 `S.playMode === "arrange"`，即 `if (S.playMode !== "arrange" || !ar || ar.id !== DEMO_ID) return null;`。与函数头注释的原始意图（"返回 null = 当前没在编排这首示例曲"）一致。换型能力不受损——从段序行点进曲式即可（`jumpDemoSection` 会把 playMode 置回 `"arrange"`）。
+- **测试与反向验证**：
+  - 在 `tests/cases/t68-whole-song-and-voices.js` 加 T68l：进曲式（点段序条第 5 段）确认胶囊条已渲染 → 点侧栏节奏型退回单型练习 → 断言 `segRowOf(els) === null`（同时记录根因仍在：`arrangeSel.id` 仍指向示例曲，故判据不能只看它）。**旧实现**该断言变红（2489 PASS / 1 FAIL）；**新实现**全绿。
+- **自验**：`node tools/check-all.js` 全绿（含新增 T68l；自动化测试 2490 PASS / 0 FAIL）。
+
 ## v2.8.25 · 播放 P2-7：帧路径上 arrangeCur() 的重复线性查找（实测稳态帧 12→1）（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 15 条（P2 组）。本节只落这一条，独立成版与提交。

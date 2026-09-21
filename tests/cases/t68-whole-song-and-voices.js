@@ -329,6 +329,29 @@ section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSe
      JSON.stringify({ id: beat.DEMO_ID, from: secIdx, to: secIdx, loop: false, byLyric: false }),
      "范围收窄到该段（免得改了这一段、播放却走到别的段）");
 }
+/* ================= 场景 T68l：退回预设模式后「切换节奏型」胶囊条必须消失（v2.8.26 · P2-8） ================= */
+section("T68l 整首连播 · 点预设退回单练后，示例段胶囊条不再渲染（动作/反馈不许脱节）");
+{
+  const { beat, els } = loadDemo();
+  /* 先点段序条进曲式（与 T68k 同一入口）：这一步之后 S.arrangeSel.id 指向示例曲，
+     胶囊条才该出现。它是本条的**前提**，不是被测点 */
+  secRowOf(els).children[4].fire("click");
+  ok(!!segRowOf(els), "前提：进曲式后胶囊条已渲染");
+  eq(beat.Store.S.playMode, "arrange", "前提：此刻在曲式模式");
+
+  /* 点侧栏节奏型 → exitArrangeForPreset：playMode 退回 "preset"，但**不清**
+     S.arrangeSel.id。修复前胶囊条只看 id，于是它仍会渲染；点它是改曲式块引用，
+     对当前单型练习毫无即时效果——动作与反馈脱节。 */
+  const target = demoItemsOf(els).find(it => it.children[0].children[0].textContent === "节奏型 2");
+  ok(!!target, "前提：示例组里有「节奏型 2」条目");
+  target.fire("click");
+  eq(beat.Store.S.playMode, "preset", "点预设后退回单型练习");
+  eq(beat.Store.S.arrangeSel.id, beat.DEMO_ID,
+     "根因仍在：出口不清 arrangeSel.id，它依旧指向示例曲（判据不能只看它）");
+  ok(segRowOf(els) === null,
+     "★ 修复点：胶囊条按 playMode 判据隐藏，退回预设后不再渲染（此前会残留可点）");
+  beat.Controls.stop();
+}
 section("T68j 整首连播 · 段序条高亮随播放推进（不是钉在第 1 段）");
 {
   const { beat, els } = loadDemo();
