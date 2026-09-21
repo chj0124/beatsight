@@ -6,9 +6,13 @@
 
    精确化后的三条不变量（本文件逐条检查）：
 
-     R1（强约束，零例外）：IIFE **顶层执行期**不得引用后方模块。
+     R1（强约束，零例外）：IIFE **求值期**不得引用后方模块。
         这才是真会产生初始化顺序错误（TDZ）的场景，也是 v1.0.0 消除 Viz→Presets 的真实动机。
-        实现：模块体内**恰好 2 空格缩进**的语句就是 IIFE 顶层语句。
+        实现（v2.8.17，审计 P1-5）：该引用**不在任何函数体内**。旧判据是「括号深度 == 模块体
+        深度」——它把「IIFE 顶层 if/catch 块内」的语句（深度 bodyDepth+1）误归 R3，而 R3 是
+        可以登记白名单放行的；但这类语句同样在 IIFE 求值期执行、有真实 TDZ 风险，R1「零例外」
+        被一层块缩进绕过。新判据只认「函数体」才算运行时：块（if/for/while/switch/catch/
+        对象字面量/class 体）不是函数，其内语句仍算 R1。
 
      R2（强约束，零例外）：**每帧渲染热路径**（paintFrame / paintFrameBody / paintBall）
         体内不得出现「后方模块名 + .」——它们每秒执行约 60 次，只能读共享状态区与前方模块。
@@ -83,13 +87,15 @@ const WHITELIST = [
    需要理由的改动，而不是悄悄发生。新功能的 UI 装配请内聚到各自模块内部。 */
 const MAX_FANOUT = 7;
 
-/* ---- 嵌套深度（v2.8.8 前这里用的是缩进，见下面的说明）----
-   R1 与 R2 都要回答"这条语句在哪个嵌套层"，历史上两种答案来源：
-     · 缩进（旧）：「IIFE 顶层 = 恰好 2 空格缩进」——**格式约定**，不是结构事实。
+/* ---- 嵌套深度（v2.8.8 起由缩进改为括号深度）----
+   历史上 R1/R2 都要回答"这条语句在哪个嵌套层"，两种答案来源：
+     · 缩进（更旧）：「IIFE 顶层 = 恰好 2 空格缩进」——**格式约定**，不是结构事实。
        代价是 index.html 被禁止过任何格式化器（prettier 一次全文件重排就会让判定面静默失效）。
-     · 括号深度（现在）：先 blankNonCode 抹掉注释与字符串内容，再逐字符数 `{` / `}`。
+     · 括号深度（v2.8.8）：先 blankNonCode 抹掉注释与字符串内容，再逐字符数 `{` / `}`。
        **结构事实**，与缩进、换行、是否格式化完全无关。
    换用深度后那条禁令解除：docs/DEVELOPMENT.md §5 已同步改为"可以格式化了"。
+   分工现状：R1 自 v2.8.17 起改按**函数体深度**判定（见下），R2 按热路径**行区间**判定；
+   这里保留的括号深度 depths 仍供下面那条**深度自检**用——它保证 blankNonCode 没漏写法。
    ⚠ 自检：整段脚本跑完深度必须回到 0。回不去说明 blankNonCode 漏掉了某种写法
      （例如正则字面量里写了不配对的花括号），此时深度全部不可信 —— 宁可报错退出，
      也不能让一个错位的深度表继续产出结论（这与 check-lint.js 的"括号必须配平"自检同源）。 */
@@ -100,6 +106,71 @@ if (depths[depths.length - 1] !== 0){
     + "多半是出现了 blankNonCode 未处理的写法，请先看 tools/scan-util.js 的 blankNonCode。\n"
     + "拒绝带着错位的深度表继续判定（宁可报错，不可给出假结论）。");
   process.exit(4);
+}
+
+/* ---- 函数体深度（v2.8.17，审计 P1-5）----
+   R1 的判据是「该引用**不在任何函数体内**」——块（if/for/while/switch/catch/对象字面量/
+   class 体）不是函数体，其内语句仍在 IIFE 求值期执行、有真实 TDZ 风险，必须按 R1 零例外。
+   做法：先给每个 `{` 打「是不是函数体」的标记，再逐字符累计 funcDepth[i] = 位置 i 之前
+   已打开的**函数体**括号个数。判定时把「引用所在行的 funcDepth」与「模块体基线 funcBase」
+   比较：相等 = 不在任何函数内（含顶层 if/for 块内）→ R1；更深 = 在函数/回调内 → R3。
+   为什么用「整行第一个代码字符」而不用 hits 的行内 index 定位：那是**剥注释后的行**下标，
+   与 SRC 绝对偏移不同源（R2 行区间判定里踩过同一个坑，见下），故沿用与 bodyDepth 时代
+   一致的整行口径。 */
+const parenMatch = new Int32Array(bare.length).fill(-1);
+{
+  const st = [];
+  for (let i = 0; i < bare.length; i++){
+    if (bare[i] === "(") st.push(i);
+    else if (bare[i] === ")"){ const o = st.pop(); if (o !== undefined){ parenMatch[i] = o; parenMatch[o] = i; } }
+  }
+}
+const CTRL_KW = ["if", "for", "while", "switch", "catch", "with"];
+/* `{` 是否为**函数体**（prevSig = 它前面最近的非空白字符下标）：
+     · 前面是 `>` 且再前是 `=`（箭头 `=>`）→ 是；
+     · 前面是 `)` 时，回看配对 `(` 之前的标识符：控制流关键字（if/for/…）→ 否，
+       其余（`function` / 函数名 / 方法名 / `catch` 之外的调用形）→ 是；
+     · 其余（`try {` / `else {` / `do {` / 对象或 class 体 / 静态块）→ 否（按块算，属求值期）。 */
+function isFuncBrace(prevSig){
+  if (prevSig < 0) return false;
+  if (bare[prevSig] === ">"){
+    let e = prevSig - 1;
+    while (e >= 0 && /\s/.test(bare[e])) e--;
+    return bare[e] === "=";
+  }
+  if (bare[prevSig] === ")"){
+    const o = parenMatch[prevSig];
+    if (o < 0) return false;
+    let r = o - 1;
+    while (r >= 0 && /\s/.test(bare[r])) r--;
+    if (r < 0) return false;
+    let s = r;
+    while (s >= 0 && /[A-Za-z0-9_$]/.test(bare[s])) s--;
+    return !CTRL_KW.includes(bare.slice(s + 1, r + 1));
+  }
+  return false;
+}
+const funcDepth = new Int32Array(bare.length + 1);
+{
+  const st = [];
+  let fd = 0, prevSig = -1;
+  for (let i = 0; i < bare.length; i++){
+    const c = bare[i];
+    if (/\s/.test(c)){ funcDepth[i] = fd; continue; }
+    if (c === "{"){
+      funcDepth[i] = fd;
+      const isF = isFuncBrace(prevSig);
+      st.push(isF);
+      if (isF) fd++;
+    } else if (c === "}"){
+      if (st.pop()) fd--;
+      funcDepth[i] = fd;
+    } else {
+      funcDepth[i] = fd;
+    }
+    prevSig = i;
+  }
+  funcDepth[bare.length] = fd;
 }
 
 /* 收集模块块：`const Name = (() => {` … 配对的 `}`。
@@ -116,12 +187,13 @@ const matchedNames = [];
     if (!EXPECTED_ORDER.includes(name)) continue;      // 非模块：留给第 0 步的双向 diff 报错/登记
     const end = matchBrace(SRC, mm.index);
     if (end < 0){ console.error("括号配对失败：" + name); process.exit(4); }
-    /* 模块体的嵌套深度：`const Name = (() => {` 那个 `{` 之后的一层。
-       本层里的语句 = IIFE 求值期就会执行的语句（R1 的判据）；再深一层就是在某个
-       function / if / 对象字面量里，属运行时才走到的分支（R3）。 */
+    /* 模块体基线：`const Name = (() => {` 那个 `{` 之后一层的**函数体深度**。
+       模块体本身也是箭头函数体，故求值期基线为 funcBase；引用处 funcDepth == funcBase
+       = 不在任何函数体内（含顶层 if/for/catch 块内、对象/class 字面量内）= IIFE 求值期
+       就会执行（R1 的判据）；更深 = 在某个 function / 回调体内 = 运行时才走到（R3）。 */
     const open = SRC.indexOf("{", mm.index);
-    const bodyDepth = depths[open] + 1;
-    modules.push({ name, start: mm.index, end, startLine: lineOf(SRC, mm.index), endLine: lineOf(SRC, end), bodyDepth });
+    const funcBase = funcDepth[open + 1];
+    modules.push({ name, start: mm.index, end, startLine: lineOf(SRC, mm.index), endLine: lineOf(SRC, end), funcBase });
   }
 }
 modules.sort((a, b) => a.start - b.start);
@@ -200,24 +272,26 @@ modules.forEach((mod, mi) => {
       if (!hit) return;
       const rec = { from: mod.name, to: other.name, line: ln, code: (lines[ln - 1] || "").trim() };
       if (inHot) r2Hits.push(rec);
-      /* R1 判据（v2.8.8）：这一行的第一个代码字符处的**括号深度**是否正好等于模块体深度。
-         等于 → 语句在 IIFE 体内、且不在任何嵌套块/函数里 = 求值期就会执行 = TDZ 风险区；
-         深于它 → 在某个 function/if/回调体内 = 运行时才走到 = R3 范畴。 */
-      else if (depthOfLine(ln) === mod.bodyDepth) r1Hits.push(rec);
+      /* R1 判据（v2.8.17，审计 P1-5）：这一行的第一个代码字符处**不在任何函数体内**。
+         函数体深度 == 模块体基线 → 语句在 IIFE 求值期执行（顶层语句、顶层 if/for/catch
+         块内、对象/class 字面量内都算）→ TDZ 风险区，按 R1 零例外处理；
+         更深 → 在某个 function / 回调体内 → 运行时才走到 → R3 范畴。
+         （旧判据只看「括号深度 == 模块体深度」，把 IIFE 顶层块内语句误归 R3、可白名单放行。） */
+      else if (funcDepthOfLine(ln) === mod.funcBase) r1Hits.push(rec);
       else r3Hits.push(rec);
     });
   }
 });
 
-/* 一行代码所在的嵌套深度 = 该行**第一个非空白字符**处的深度。
-   取第一个非空字符而不是行首：行首的缩进空白本身不带深度信息，而形如
+/* 一行代码所在的**函数体深度** = 该行**第一个非空白字符**处的 funcDepth。
+   取第一个非空字符而不是行首：行首的缩进空白本身不带信息，而形如
    `  } catch (e){ Modal.x() }` 这种一行里既有收尾又有起始的写法，判"这段语句在哪一层"
    应当以第一个代码字符为准。 */
-function depthOfLine(ln){
+function funcDepthOfLine(ln){
   const raw = bare.slice(lineStartOf[ln - 1], lineStartOf[ln - 1] + (lines[ln - 1] || "").length);
   let i = 0;
   while (i < raw.length && /\s/.test(raw[i])) i++;
-  return depths[lineStartOf[ln - 1] + i];
+  return funcDepth[lineStartOf[ln - 1] + i];
 }
 
 if (r1Hits.length){
