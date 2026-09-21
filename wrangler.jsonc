@@ -35,6 +35,15 @@
    「全部通过 · 实跑 10/12 项」——**恰好复现 --strict-env 当初要防的那个假绿**。
    （这也是对 v2.0.5 条目里「`CI=true` 且缺依赖时报错」那句描述的更正：实现落地为显式 flag。）
 
+   ★ Wrangler 版本已钉（v2.8.5）：`package.json` 的 devDependencies 现在显式声明 `wrangler`。
+   官方文档在 deploy command 与 preview deploy command 两处都写着
+   「Workers Builds will use the Wrangler version set in your `package.json`」——
+   而在此之前本仓库**根本没有声明过它**，于是线上那次 deploy 用哪个 Wrangler 版本由 npx 解析决定、
+   不由仓库决定；上面那句「本地 `npx wrangler deploy` 能完整复现线上构建」在 deploy 这一步
+   其实不成立（两侧版本都没被钉住，只是碰巧一致）。现在两侧都读同一份 `package-lock.json`，
+   deploy 用的 Wrangler 版本才算真的可复现。仍在同一张清单上的下一处：**Workers Builds 的 Node 版本
+   仓库侧仍未声明**（无 `.nvmrc`），目前依赖平台默认值。
+
    ⚠ 已修（v2.0.6，审计 P1-8）：上面这条命令原先用 `rm -rf` / `mkdir -p` / `cp`，需要 POSIX shell，
    **Windows 的 cmd 下跑不了**，与"本地可完整复现"的目标有落差。装配那半段现已收进
    `tools/build-dist.js`（fs.rmSync / mkdirSync / copyFileSync，全平台可用），

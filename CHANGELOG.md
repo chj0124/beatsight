@@ -1,5 +1,43 @@
 # 变更记录
 
+## v2.8.5 · 把 Wrangler 版本钉进仓库：部署链路上最后一处「不由仓库决定」的事实（2026-09-21）
+
+**来源**：v2.8.4 验证通过（Cloudflare 构建绿、线上版本号已成 v2.8.4）后，去核对 Cloudflare 官方文档时发现。
+
+- 官方文档（Workers Builds → Configuration）在 deploy command 与 preview deploy command 两处都写着：
+  「Workers Builds will use the Wrangler version set in your `package.json`.」
+  而本仓库的 `package.json` **从未声明过 `wrangler`** —— devDependencies 一直只有 `eslint` + `typescript`。
+- 后果：线上那次 deploy 实际用哪个 Wrangler 版本，**由 npx 的解析结果决定，不由仓库决定**。
+  于是 `wrangler.jsonc` 文件头那句「使本地 `npx wrangler deploy` 能完整复现线上构建」
+  **在 deploy 这一步并不成立**——两侧各自的 Wrangler 版本都没被钉住，只是碰巧一致而已。
+  这与 v2.8.3 修的 `package-lock.json` 漂移是**同一类病**：一个影响构建/部署结果的事实，没有被声明。
+- 本版把 `wrangler: ^4.135.0` 加进 devDependencies 并锁进 `package-lock.json`。
+  用 caret + 锁文件（与 `eslint` / `typescript` 同一风格），实际生效版本由 `npm ci` 按锁文件确定。
+  选 `4.135.0` 是因为它正是当前 `latest`：**与"现在能正常部署的那个版本"一致**——
+  本版不借机升级 Wrangler，只是把既有行为钉下来；升级是另一件事，应单独做、单独验证。
+- 顺带记录一条同类问题的**下一处潜在落点**：`wrangler@4.135.0` 的 `engines` 是 `node >=22.0.0`，
+  与本仓库 `engines: ">=22"` 一致；但 **Workers Builds 实际用哪个 Node 版本，仓库侧仍未声明**
+  （没有 `.nvmrc` / `.node-version`），目前依赖平台默认值。本版不动它，记在此处备查。
+
+**取舍（含实测代价，不靠估）**：`wrangler` 是 devDependency、不进产物（上站仍只有 9 个条目），
+「`index.html` 可 `file://` 直开」这条运行时零依赖约束不受影响。但**依赖树确实变大了**，实测：
+锁文件包数 **98 → 189（+91）**、锁文件体积 46.7 KB → 95.9 KB。多出来的是 Wrangler 自带的运行时与打包器
+（`workerd` / `miniflare` / `unenv` / `esbuild` / `blake3-wasm` / `@cloudflare/kv-asset-handler` 等），
+其中相当一部分是**各平台的可选依赖**（`workerd-{darwin,linux,windows}-*`、`esbuild-*`），
+`npm ci` 只会装当前平台那一份。判断：可接受——构建本来就要跑一遍全量测试与覆盖率，这点安装量相对很小；
+而且线上 deploy 本来就要用 Wrangler，只是把它从「npx 现场取」换成「按锁文件装」。
+
+**自验**：本版只动依赖声明与文档，未改任何产品代码，故沿用既有结论（12 步全绿）。针对本版另确认两项：
+① 跑 `npm install --package-lock-only` 后，锁文件把 `node_modules/wrangler` 解析到 **4.135.0**，
+   且 `packages[""].devDependencies` 已含 `wrangler: ^4.135.0`；
+② 四份版本号一致（VERSION / CHANGELOG 首条 / package.json / package-lock.json 均 2.8.5）。
+⚠ **本机跑不了的那一步要说清**：`wrangler` 本体的实际安装（含 `workerd` 的 install 脚本）
+在开发沙箱内无法完成——与本项目已知的"管道式子进程"限制同源，不是仓库问题。
+所以 **「`npm ci` 能装上 wrangler」这一步没有在本地被验证过**，只验证了锁文件的解析结果。
+最终以「推送后 Cloudflare 构建是否绿、线上版本号是否变 2.8.5」为准。
+若构建转红：回退本版即可（`git revert`），部署链路其余部分不受影响；
+且 Cloudflare 构建失败时线上继续提供上一个成功版本，站点不会中断。
+
 ## v2.8.4 · 文档修正：部署机制那段补上「Dashboard 填 `npm run ci`」（2026-09-21）
 
 **来源**：v2.8.3 落地后去核对 Cloudflare 侧配置时发现的一处文档滞后。

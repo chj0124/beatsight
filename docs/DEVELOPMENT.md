@@ -22,7 +22,7 @@ beatsight/
 ├── README.md             # 项目门面
 ├── CHANGELOG.md          # 版本记录
 ├── LICENSE               # MIT
-├── package.json          # 开发期自验工具链（devDependencies：eslint + typescript，均为**可选**加强项；只跑本地，不进产物）
+├── package.json          # 开发期工具链（devDependencies：eslint / typescript 为**可选**加强项，wrangler 为部署工具且钉版本；只跑本地，不进产物）
 ├── eslint.config.js      # ESLint flat config（本地自验专用，规则集与取舍写在文件头）
 ├── _headers              # 静态资源响应头（v2.0.3 审计 C3；构建时拷进 dist/，自身不对外提供）
 ├── wrangler.jsonc        # Cloudflare Workers 静态资源配置（资源目录 + 构建命令；唯一入库的 Cloudflare 配置）
