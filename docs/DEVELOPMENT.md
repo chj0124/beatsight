@@ -761,7 +761,7 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 已由 `check-dom-ids.js` 保证）；事件里读写当前元素统一走 `evEl(ev)` / `evTarget(ev)`
 两个有文档的助手，`querySelectorAll` 的结果过 `asEl(el)`。这三个助手就是这套取舍的全部落点。
 
-**为什么不用 GitHub Actions**：改由本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少；v2.8.3 起把这串收成一个稳定指针 `npm run ci`（`package.json` 里 = `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`）。而它在两条发布渠道上的强制力不同：**Cloudflare Dashboard 的 Build command 填 `npm run ci` 时**，部署路径上就有硬闸门（不通过即不部署）——注意这串命令只存在于 **Dashboard**，仓库改不了它，换 clone / 换账号都得各自填一次；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住（前提是 Dashboard 那串确实填对了），WorkBuddy 不会。
+**为什么以本地 check-all 为主、仓库内 CI 为补位**（v2.8.17 订正：旧标题「为什么不用 GitHub Actions」已过时）：机器检查的主入口是本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少；**v2.8.8 起仓库内另有 CI**（`.github/workflows/ci.yml`：推 main / PR 时跑 `npm run ci`，并另开一个 job 跑真实浏览器冒烟 `node tools/smoke.js`）——它覆盖所有分支与 PR，是本地这一遍的**补位**而非替代；v2.8.3 起把这串收成一个稳定指针 `npm run ci`（`package.json` 里 = `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`）。而它在两条发布渠道上的强制力不同：**Cloudflare Dashboard 的 Build command 填 `npm run ci` 时**，部署路径上就有硬闸门（不通过即不部署）——注意这串命令只存在于 **Dashboard**，仓库改不了它，换 clone / 换账号都得各自填一次；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住（前提是 Dashboard 那串确实填对了），WorkBuddy 不会。
 
 **发版规则（v1.6.4 起）：每次发版都 bump `index.html` 的 `const VERSION`**，功能版与工程版一视同仁（改这一行即可，`<title>` / 品牌区 / chip 三处显示由它派生）。此前 v1.6.1~v1.6.4 连发四版都没动它，线上徽章长期停在 `v1.6.0`——代码明明都上了线，看号的人却只能得出"部署没生效"的结论。版本号是用户唯一能看到的"这批代码是哪一版"的凭据，工程版跳过 bump 等于让这个凭据说谎。
 

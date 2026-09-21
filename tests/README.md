@@ -13,7 +13,7 @@ node ../tools/check-coverage.js  # 行覆盖率（跑一遍套件并采集，总
 
 零依赖，基线 Node 22（低版本未实测）。退出码 0 = 全绿，1 = 有失败项。
 
-**本项目没有 CI**：不用 GitHub Actions，所以没有流水线替你跑测试（Cloudflare 只在上线时拦一遍，本地这一遍仍靠手动）。改完请手动执行 `node tools/check-all.js`（它会把下面的套件、看门狗、全部静态检查、覆盖率一次跑完并给汇总）。
+**本地 check-all 为主、仓库内 CI 为补位**（v2.8.17 订正：旧表述「本项目没有 CI」已过时）：机器检查的主入口是本地 `node tools/check-all.js`，而 Cloudflare 只在上线时拦一遍、本地这一遍仍靠手动；**v2.8.8 起仓库内另有 CI**（`.github/workflows/ci.yml`：推 main / PR 时跑 `npm run ci` + 真实浏览器冒烟），但它不覆盖你本地提交前的这一遍。改完请手动执行 `node tools/check-all.js`（它会把下面的套件、看门狗、全部静态检查、覆盖率一次跑完并给汇总）。
 
 **这套测试测不到什么**（v2.0.6 起由 `tools/smoke.js` 补上另一半）：桩里的 `requestAnimationFrame` 是空函数、`AudioContext.currentTime` 是手推数字、几何按百分比反解成 600px 行宽、`removeEventListener` 是空操作、`setTimeout` 只记录不执行。所以**真实布局与样式、真实帧率、真实音频时钟、事件冒泡与焦点、Service Worker 的离线行为**都测不出来。`node tools/smoke.js` 用真实 Chrome（CDP）在 `file://` 与 `http://127.0.0.1` 两条通道上断言这些，并带回播放态帧率等实测数字——两者是互补关系，不是替代关系。
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # BeatSight：安装本地 git 钩子（零依赖，不进产物）。
-# 本项目没有 CI——发布走双渠道（Cloudflare 推 main 自动部署 + WorkBuddy 手动发布），
-# 机器检查全靠 tools/check-all.js 自觉跑。
+# 机器检查以 tools/check-all.js 为主入口；v2.8.8 起仓库内另有 .github/workflows/ci.yml 作补位
+# （推 main / PR 时跑 npm run ci + 真实浏览器冒烟），但它不覆盖本地提交前的这一遍。
 # 这个脚本把「自觉」变成「默认」：pre-commit 自动跑快速自验（约 2 秒），
 # 提交被拦下时请先修问题再提交；全量检查仍在发布前手动跑（node tools/check-all.js）。
 # 用法：sh tools/install-hooks.sh（clone 后跑一次即可，core.hooksPath 是本机配置不随仓库走）
