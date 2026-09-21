@@ -1,5 +1,17 @@
 # 变更记录
 
+## v2.8.19 · 文档 P1-8：AGENTS.md 写「16 个 IIFE 模块」，实际为 14（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 9 条（P1 组收尾）。本节只落这一条，独立成版与提交。
+
+- **P1-8 AGENTS.md 的 IIFE 模块数错了 2 个，且来源正是它自己禁止的「凭旧文档记忆」**：
+  - **根因**：`AGENTS.md:7`（一句话项目画像）写着「16 个 IIFE 模块」，而实际是 **14 个**——`tools/check-module-order.js` 的 `EXPECTED_ORDER` 与 `index.html` 头部模块索引一致为 Store → Modal → Viz → AudioEngine → Trainer → Controls → Tracks → Presets → Editor → Stats → Ear → Arrange → Help → KeepAlive（14 模块 + 数据/共享状态/初始化 3 个区块）。"16" 是从 `spec.md` / `tasks.md` C5 / `checklist.md`（均为 2026-09-17 审计、基线 v2.0.2 的历史快照）抄来的旧数。
+  - **后果**：AGENTS.md 是写给所有 AI 会话的常驻入口，且它自己第 1 节明令「**不要凭训练记忆描述项目状态**」——这条数字恰恰是凭旧文档记忆写入的，属于自我打脸式误导。
+  - **修法（报告的最小修复）**：改为「14 个 IIFE 模块：Store → … → KeepAlive，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`」，并顺带把 14 个名字按声明顺序列出，读者一眼可核。**不改** `spec.md` / `tasks.md` / `checklist.md`——它们是带日期的历史快照（审计报告亦如此定性），改它们等于篡改快照。
+  - **备注（同批发现的、未在本条范围内的漂移）**：`tools/check-wiring.js:3` 写「本项目 15 个 IIFE 模块」、`.github/workflows/ci.yml:6` 写「全部 12 步自验」（实际 14 步）——两处均不在 P1-8 的报告条目内，遵「只处理当前这一条」暂不动，已在汇报里单列供决策。
+
+**自验**：`node tools/check-all.js`（全量）**2479 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6692/6759，阈值 97%/90%）；死循环看门狗通过。
+
 ## v2.8.18 · 文档/评论 P1-7：四份文件仍写「本项目没有 CI」，与 v2.8.8 落地的仓库内 CI 相反（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 8 条（P1 组）。本节只落这一条，独立成版与提交。
