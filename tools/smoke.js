@@ -280,11 +280,21 @@ async function runPass(label, url, userDataDir){
   const args = [
     "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
     "--disable-extensions", "--window-size=1440,1000",
+    /* v2.8.30 加固（CI 冒烟偶发「等不到调试目标」）：
+       Ubuntu 24.04 起内核默认限制非特权 user namespace，Chrome 的沙箱会起不来 → 无头实例
+       当场退出、调试端口永不监听。本地 macOS/Windows 无此限制，故只在 CI 暴露。
+       --no-sandbox 关掉该沙箱；--disable-dev-shm-usage 规避容器里 /dev/shm 过小导致崩溃。
+       代价：仅作用于本脚本拉起的这一个一次性无头实例，且只加载自备的本地内容。 */
+    "--no-sandbox", "--disable-dev-shm-usage",
     "--remote-debugging-port=" + cdpPort,
     "--user-data-dir=" + userDataDir,
     url,
   ];
-  const child = spawn(browser, args, { stdio: "ignore" });
+  /* v2.8.30：把浏览器 stderr 收下来。此前 stdio:"ignore" 让「起不来」只剩一句
+     「浏览器是否启动失败？」，排查只能靠猜；现在失败时把浏览器自己的话原样带进报错。 */
+  const child = spawn(browser, args, { stdio: ["ignore", "ignore", "pipe"] });
+  let browserErr = "";
+  if (child.stderr) child.stderr.on("data", d => { browserErr += d.toString(); });
   const result = { label, url, errors: [], warnings: [], probe: null };
   let cdp = null;
   try{
@@ -298,7 +308,11 @@ async function runPass(label, url, userDataDir){
         if (page){ targets = page; break; }
       }catch(e){ /* 还没起来 */ }
     }
-    if (!targets) throw new Error("等不到调试目标（浏览器是否启动失败？）");
+    if (!targets){
+      const tail = browserErr.trim().split("\n").slice(-6).join("\n      ");
+      throw new Error("等不到调试目标（浏览器是否启动失败？）"
+        + (tail ? "\n      浏览器 stderr：\n      " + tail : "（浏览器未输出 stderr）"));
+    }
     cdp = await connectCdp(targets.webSocketDebuggerUrl);
     await cdp.send("Runtime.enable");
     await cdp.send("Log.enable").catch(() => {});

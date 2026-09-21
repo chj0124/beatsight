@@ -68,6 +68,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq chromium-browser || sudo apt-get install -y -qq chromium
           echo "path=$(command -v chromium-browser || command -v chromium)" >> "$GITHUB_OUTPUT"
+      - name: 报告浏览器版本
+        # v2.8.30：把选中的浏览器与版本打进日志。冒烟若再「起不来」，这行能直接回答
+        # "是哪只浏览器、什么版本"——此前只能从一行报错里猜。
+        run: ${{ steps.chrome.outputs.path }} --version || true
       - name: 跑冒烟
         env:
           BEATSIGHT_CHROME: ${{ steps.chrome.outputs.path }}

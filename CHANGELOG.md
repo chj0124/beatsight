@@ -1,5 +1,18 @@
 # 变更记录
 
+## v2.8.30 · 修 CI 红灯：补 bindImport 形参类型（tsc）+ 冒烟无头启动加固（2026-09-21）
+
+**来源**：推送 v2.8.29 后 CI run 两个 job 皆红（job1「自验+构建」、job2「真实浏览器冒烟」），逐条查清后修。
+
+**修法**：
+- **job1 真因（`index.html`）**：`bindImport(inputId, tooBigMsg, onText)` 三个形参无类型 → tsc 报 5 条 `TS7006`（隐式 any，`7037:23/32/43`、`7052:60`、`7074:73`）。该缺陷由 v2.8.28 的 P3-B（抽公共导入装配器）引入，v2.8.28 那次 CI 亦同因变红；本地之所以「假绿」是 `node_modules` 缺失时 `check-all` 把 ESLint/tsc 标 ⊘ 未执行。给三个形参补 JSDoc 类型（`@param {string} inputId @param {string} tooBigMsg @param {(text: string) => void} onText`）后 5 条归零，并把两处调用点回调整好类型。
+- **索引连带（`index.html` 头部模块索引）**：上述 JSDoc 新增 1 行使其后所有模块 banner 下移 1 行，触发「文档一致性」7 条行号漂移。用 `node tools/gen-index.js --write` 重算行号（短名与描述未动）。
+- **job2 加固（`tools/smoke.js` / `.github/workflows/ci.yml`）**：job2 失败点是两条通道均报「等不到调试目标」，发生在**加载页面之前**（CDP 调试端口未监听），与页面内容无关；对照 v2.8.28 的冒烟曾通过、两版只差几行 CSS，判为 CI 环境问题——Ubuntu 24.04 起内核默认限制非特权 user namespace，Chrome 沙箱起不来导致无头实例当场退出。给无头实例补 `--no-sandbox` / `--disable-dev-shm-usage`；并把浏览器 stderr 捕获进该报错（此前 `stdio:"ignore"` 让失败只剩一句无从下手的话）。CI 里冒烟前新增「报告浏览器版本」一步。
+
+**取舍**：tsc 修法只补类型标注、不动任何行为；索引由生成器重算而非手改数字。`--no-sandbox` 仅作用于冒烟脚本拉起的这一个一次性无头实例、且只加载自备本地内容，不涉及产物与运行时（`index.html` 仍零依赖、`file://` 直开）。断言一条未削弱。
+
+**自验**：`node tools/check-all.js --strict-env` 实跑 13/14 全绿（tsc ✓、ESLint ✓；仅浏览器冒烟因本机无浏览器 ⊘）；自动化测试 2502 PASS / 0 FAIL；死循环看门狗 49 PASS / 0 FAIL / 0 超时；行覆盖率 99.2%。
+
 ## v2.8.29 · 歌词字号加大两号并加粗（主视图 + 曲式编辑器）（2026-09-21）
 
 **来源**：用户诉求「歌词行的字体加大两号并加粗」。经确认口径：主视图歌词 12px → 16px（+4px）、字重 500 → 700（加粗）；曲式编辑器歌词同步 11px → 15px + 加粗。

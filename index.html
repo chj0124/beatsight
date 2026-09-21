@@ -1421,13 +1421,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L5800  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      L6300  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
      L6430  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7221  Editor        自定义节奏型编辑器
-     L7577  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7800  Ear           听辨训练（v1.10.0）
-     L8025  Arrange       曲式编排（v2.0.0）
-     L8784  Help          使用方法（v2.0.1）
-     L8831  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8905  初始化（装配） 各模块 hook 接线与启动
+     L7222  Editor        自定义节奏型编辑器
+     L7578  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7801  Ear           听辨训练（v1.10.0）
+     L8026  Arrange       曲式编排（v2.0.0）
+     L8785  Help          使用方法（v2.0.1）
+     L8832  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8906  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.29";
+const VERSION = "2.8.30";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7034,6 +7034,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* 两个导入入口（预设 / 全量数据包）逐字同构：取文件 → 清 value（允许连续导入同一文件）→
      体积快速失败 → FileReader 读文本 → 交给各自回调解析。抽成装配器消重复，
      差异只有「超大文件提示语」与「解析回调」两处，都作为入参传入。 */
+  /** @param {string} inputId @param {string} tooBigMsg @param {(text: string) => void} onText */
   function bindImport(inputId, tooBigMsg, onText){
     $(inputId).addEventListener("change", (/** @type {Event} */ e) => {
       const f = evTarget(e).files && evTarget(e).files[0];
