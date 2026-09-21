@@ -1,5 +1,17 @@
 # 变更记录
 
+## v2.8.21 · 工具 P2-3：check-lint 的 no-var / eqeqeq 在未遮蔽字符串上判定（实测复现）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 11 条（P2 组）。本节只落这一条，独立成版与提交。
+
+- **P2-3 「零依赖 lint」的两条规则会被字符串字面量误报**：
+  - **根因**：`tools/check-lint.js` 的 no-var（L105）与 eqeqeq（L107-114）在 `raw = clean[i-1]` 上判定，而 `stripComments` **刻意保留字符串**（`scan-util.js:20` 注释即写明），只有 no-undef 走了 `maskStrings`。于是字面量 `const a = "x == y";` 会被判 eqeqeq、`const b = "var z = 1";` 会被判 no-var——文件头那句「字符串与注释已剥离，不会误报」是错的。当前全绿纯属 `index.html` 的字符串恰好不含 `==` / `var x`。
+  - **修法（报告的最小修复）**：在 `flat` 旁一次性算出 `maskedFlat = maskStrings(flat)` 与 `maskedLines`（等长遮蔽，行号/偏移不变），no-var / eqeqeq 改在 `maskedLines[i-1]` 上跑；no-undef 复用同一份 `maskedFlat`，不再重复计算。同步更正文件头 L15 的口径注释。
+- **测试与反向验证**：构造 `repro-lint-tmp.html`（含 `"x == y"` / `"var z = 1"` 两个字面量）——**旧判据**（在未遮蔽文本上裸判）报 `L2 eqeqeq`、`L3 no-var` 两条**假阳性**；**新判据** `node tools/check-lint.js repro-lint-tmp.html` **exit 0、五条规则全过**（仅剩 no-unused-vars 警告，不拦 CI）。对真实 `index.html` 仍全绿（其字符串不触发这两条，故行为不变）。复现文件用后即删。
+- **备注**：只动了工具，未改 `index.html` 逻辑；本版号只出现在五处版本落点，均不在 `index.html` 内（`check-version.js` 第 3 项不涉及）。
+
+**自验**：`node tools/check-all.js`（全量）**2479 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6692/6759，阈值 97%/90%）；死循环看门狗通过。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.20 · 文档 P1-9：wrangler.jsonc 注释写「无 `.nvmrc`」，而 `.nvmrc` 早在 v2.8.8 已入库（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 10 条（P1 组收尾完成）。本节只落这一条，独立成版与提交。

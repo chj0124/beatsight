@@ -12,7 +12,9 @@
 
    规则（口径都写在这里，改口径请同步改注释）：
      no-var          （error）禁止 var —— 本项目全程 const/let
-     eqeqeq          （error）禁止 == / !=（字符串与注释已剥离，不会误报）
+     eqeqeq          （error）禁止 == / !=（注释已剥离、字符串已**等长遮蔽**，不会误报。
+                             审计 P2-3：早期版本误以为"字符串已剥离"而在未遮蔽文本上判定，
+                             字面量 "a == b" 会被裸判成违规——现两条规则均改在 maskStrings 输出上跑）
      no-redeclare    （error）同一个**花括号块**里重复声明同名 const/let/function
                              · 作用域按真实花括号块划分（不是按缩进）——否则两个兄弟函数体
                                里各写一个 `const g` 会被误判
@@ -55,6 +57,11 @@ const clean = stripComments(lines);
 const starts = lineStarts(clean);
 const nLines = lines.length;
 const flat = clean.join("\n");
+/* 等长遮蔽字符串字面量（行号/偏移不变）。no-var / eqeqeq 必须在**遮蔽后**的文本上判定：
+   stripComments 刻意保留字符串，字面量 "a == b" / "var x" 会被裸判成违规（审计 P2-3 实测复现）。
+   遮蔽版同时供下方 no-undef 复用，避免重复计算。 */
+const maskedFlat = maskStrings(flat);
+const maskedLines = maskedFlat.split("\n");
 
 /* ---- 自检：剥离后的源码花括号必须配平，否则作用域模型不成立（多行模板串会破坏它） ---- */
 {
@@ -101,13 +108,14 @@ const DECL_RE = /^(\s*)(?:const|let|var)\s+(.+)$/;
 for (let i = 1; i <= nLines; i++){
   const raw = clean[i - 1] || "";
   if (!raw.trim()) continue;
+  const mraw = maskedLines[i - 1] || "";          // 字符串已等长遮蔽：no-var / eqeqeq 看这一版
 
-  if (/\bvar\s+[A-Za-z_$]/.test(raw)) err(i, "no-var", "使用了 var：" + lines[i - 1].trim());
+  if (/\bvar\s+[A-Za-z_$]/.test(mraw)) err(i, "no-var", "使用了 var：" + lines[i - 1].trim());
 
   {   /* eqeqeq：== / != 且不是 === / !== 的一部分 */
     const re = /[^=!<>]([=!])=(?!=)/g;
     let mm;
-    while ((mm = re.exec(raw))){
+    while ((mm = re.exec(mraw))){
       const op = mm[1] + "=";
       err(i, "eqeqeq", `使用了 ${op}（应为 ${op}=）：` + lines[i - 1].trim());
     }
@@ -194,7 +202,7 @@ const GLOBALS = new Set([
 ]);
 
 {
-  const masked = maskStrings(flat);
+  const masked = maskedFlat;
   const declared = new Set(collectDeclarations(masked).map(d => d.name));
   const known = n => declared.has(n) || GLOBALS.has(n);
   const KW = new Set([
