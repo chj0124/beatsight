@@ -40,7 +40,7 @@
 
    用法：`node tools/check-wiring.js [index.html 路径]`
      ——反向验证：拿一份删掉某条装配赋值的副本喂进来应当退出 1，证明确实拦得住。
-   退出码 0 = 装配完整，1 = 有注入槽未装配。 */
+   退出码 0 = 装配完整，1 = 有注入槽未装配，4 = 自身故障（找不到 <script> 块；见审计 P1-6）。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -50,7 +50,14 @@ const ROOT = path.join(__dirname, "..");
 const HTML = process.argv[2] || path.join(ROOT, "index.html");
 
 const html = fs.readFileSync(HTML, "utf8");
-const script = extractScript(HTML);
+let script;
+try {
+  script = extractScript(HTML);
+} catch (e){
+  console.error("  ✗ " + e.message);
+  console.error("  这是**工具故障，不是有未装配的注入槽**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
+}
 /* 注释必须先剥掉，否则会**假绿**：本文件里 `onLimitPulse = 到点处置钩子。**为什么用钩子**…`
    这类注释说明文字长得和赋值一模一样，不剥就会把一个从没被赋过值的钩子判成"已装配"。
    这是所有源码正则检查的共同陷阱，与 check-module-order.js 剥注释的理由同源

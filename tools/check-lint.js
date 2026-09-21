@@ -40,7 +40,14 @@ const {
 } = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
-const SRC = extractScript(HTML);
+let SRC;
+try {
+  SRC = extractScript(HTML);
+} catch (e){
+  console.error("  ✗ " + e.message);
+  console.error("  这是**工具故障，不是代码违规**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
+}
 const lines = SRC.split("\n");
 const clean = stripComments(lines);
 /* 偏移必须基于**剥离后**的行起点：剥注释会缩短行内长度，用原始行起点会算错位置，
@@ -56,7 +63,8 @@ const flat = clean.join("\n");
   if (open !== close){
     console.error(`剥注释后花括号不配平（{ ${open} vs } ${close}）——`
       + `多半是出现了跨行模板字符串，请把 tools/check-lint.js 的剥注释逻辑升级为带状态的扫描`);
-    process.exit(2);
+    console.error("  这是**工具故障，不是代码违规**——本次未被验证（退出码 4 = 未能执行）。");
+    process.exit(4);
   }
 }
 

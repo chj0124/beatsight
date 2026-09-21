@@ -15,7 +15,9 @@
      所以口径是：装了才查，没装就明确地说"跳过"，绝不假装通过。
 
    规则集在 eslint.config.js（与 check-lint.js 分工不重叠，理由写在那边）。
-   退出码：0 = 通过或跳过，1 = 有 ESLint 报错，2 = 自身故障（找不到脚本块等）。 */
+   退出码：0 = 通过或跳过，1 = 有 ESLint 报错，4 = 自身故障（找不到脚本块等）。
+   自身故障用 4 而非 2（v2.8.14，审计 P1-6）：与 tools/check-all.js 的 TOOL_FAIL_CODE 统一，
+   故障据此记成「工具故障 · 未被验证」而非「检查未通过」，也不中止后续步骤。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -43,7 +45,8 @@ const html = fs.readFileSync(HTML, "utf8");
 const baseLine = lineOffset(html);
 if (baseLine < 0){
   console.error("  ✗ 未找到 <script> 块：" + path.relative(ROOT, HTML));
-  process.exit(2);
+  console.error("  这是**工具故障，不是 ESLint 报错**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 let code;
@@ -51,7 +54,8 @@ try {
   code = extractScript(HTML);
 } catch (e){
   console.error("  ✗ " + e.message);
-  process.exit(2);
+  console.error("  这是**工具故障，不是 ESLint 报错**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 /* 把报错位置渲染成"源码行 + 脱字符"，方便直接定位 */
@@ -102,5 +106,6 @@ function frame(htmlLines, line, column){
   process.exit(0);
 })().catch(e => {
   console.error("  ✗ ESLint 执行失败：" + (e && e.message ? e.message : e));
-  process.exit(2);
+  console.error("  这是**工具故障，不是 ESLint 报错**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 });

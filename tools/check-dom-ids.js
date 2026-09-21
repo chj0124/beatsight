@@ -9,7 +9,7 @@
      1) 每个 `$("x")` / `getElementById("x")` 引用的 id 在 HTML 里必须存在；
      2) 报告 HTML 里声明了但代码从不引用的 id（只提示，不算错——纯样式钩子是合法的）。
 
-   退出码 0 = 无悬空引用，1 = 有。 */
+   退出码 0 = 无悬空引用，1 = 有，4 = 自身故障（找不到 <script> 块；见审计 P1-6）。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -17,7 +17,14 @@ const { extractScript, stripComments, lineOffset } = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const html = fs.readFileSync(HTML, "utf8");
-const script = extractScript(HTML);
+let script;
+try {
+  script = extractScript(HTML);
+} catch (e){
+  console.error("  ✗ " + e.message);
+  console.error("  这是**工具故障，不是有悬空引用**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
+}
 const code = stripComments(script.split("\n")).join("\n");
 
 /* 行号映射：抽取段紧跟在 <script> 之后（stripComments 逐行处理、不改变行数），所以
@@ -26,7 +33,8 @@ const code = stripComments(script.split("\n")).join("\n");
 const baseLine = lineOffset(html);
 if (baseLine < 0){
   console.error("  ✗ 未找到 <script> 块：" + path.relative(process.cwd(), HTML));
-  process.exit(2);
+  console.error("  这是**工具故障，不是有悬空引用**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 /* HTML 里声明的 id（只看标记段，避免把脚本里拼出来的 id 当成声明） */

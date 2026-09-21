@@ -18,7 +18,8 @@
      node tools/check-coverage.js --min=95        # 自定义总阈值
      node tools/check-coverage.js --full          # 跑 FULL_SCAN=1 全量组合扫描
      node tools/check-coverage.js --list=40       # 额外列出 40 个未覆盖函数名
-   退出码 0 = 达标，1 = 低于阈值（CI 用它兜住"某块代码悄悄失去覆盖"）。
+   退出码 0 = 达标，1 = 低于阈值（CI 用它兜住"某块代码悄悄失去覆盖"），4 = 自身故障（未能执行）。
+   自身故障用 4 而非 2（v2.8.14，审计 P1-6）：见下方 spawn 失败处的说明，与 check-all 的 TOOL_FAIL_CODE 统一。
 
    为什么要两个阈值：只看总数会掩盖"某个模块烂掉、另一个模块补偿"。
    分区阈值保证每个模块自己不低于底线。
@@ -112,7 +113,8 @@ for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
 fs.rmSync(covDir, { recursive: true, force: true });
 if (!ranges.length){
   console.error("没有采集到 index.inline.js 的覆盖率——检查 tests/run.js 是否仍经 vm.Script 加载内联脚本");
-  process.exit(2);
+  console.error("  这是**工具故障，不是覆盖率不达标**——本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 /* 按 startOffset 排序，便于用「start ≤ off < end 中 start 最大者」取最内层区间 */
 ranges.sort((a, b) => a.startOffset - b.startOffset);

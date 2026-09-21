@@ -1,5 +1,32 @@
 # 变更记录
 
+## v2.8.14 · 修复 P1-6：工具故障退出码不统一，检查器自身故障被误记为「未通过」并中止后续步骤（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 4 条。本节只落这一条，独立成版与提交。
+
+- **根因**：`tools/check-all.js` 只认 `TOOL_FAIL_CODE = 4` 为「工具故障」（记成 ⊘ 未被验证、**不中止**后续步骤），
+  但各检查器自身的故障路径却各用各的退出码——`check-tsc` / `check-eslint` / `check-coverage` /
+  `check-dom-ids` / `check-module-order` / `check-lint` 的「找不到 script 块 / 括号不配平 / 输出无法解析」
+  等自故障统统自报 **2**，`check-module-order` 另有两处甚至自报 **1**。于是「工具故障」被 `check-all`
+  误判成「✗ 未通过（退出码 2/1）」，**并中止它之后的所有步骤**——一次与代码无关的解析失败能把整套自验拦腰截断。
+  更隐蔽的是 `check-dom-ids` / `check-lint` / `check-wiring`：`extractScript` 在前置位置**直接抛错**，
+  连自报退出码的机会都没有，Node 默认以退出码 1 收场，同样伪装成「失败」。
+- **修法**：按报告最小修复的第一方案，把全部检查器的「自身故障」路径统一到 **4**（`TOOL_FAIL_CODE`）——
+  `scan-util.js` 注释、六个检查器的文件头退出码口径与全部自故障分支一并改齐；
+  对 `extractScript` 会抛错的三个检查器（`check-dom-ids` / `check-lint` / `check-wiring`）补 try/catch，
+  捕获后打印「这是工具故障，不是违规」并 `exit(4)`；`.catch` 型异步故障（`check-eslint`）同样归到 4。
+- **取舍**：选「统一到 4」而不是「让 check-all 把 2 也当故障」——只保留一个故障码，口径唯一、无歧义；
+  代价是要动 6 个文件（而非改 check-all 一行），换来的是「任何检查器故障都走同一条 ⊘ 通道」。
+- **测试与反向验证**：以无 `<script>` 块的副本 `noscript.html` 喂入，对比 git HEAD 与工作区——
+  `check-module-order` / `check-dom-ids` / `check-lint` / `check-wiring` 全部由 **exit 1 → exit 4**；
+  真实 `index.html` 仍全部 exit 0。仓库既有测试无一处断言检查器退出码，故不新增用例、以反向脚本为准（数据见上）。
+- **备注**：本次代码注释带 `v2.8.14` 前向标号（`check-version.js` 第 3 项只扫 index.html，工具注释不受影响），
+  仍按该守卫的既定修法**连同五处版本号一并落版再验收**。
+
+**自验**：`node tools/check-all.js`（全量）**2476 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项
+（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6674/6741，阈值 97%/90%）；
+死循环看门狗 49 PASS / 0 FAIL。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.13 · 修复 P1-1：wakeLock「授予晚于释放」竞态，保活开关会「关了但没关」（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 3 条。本节只落这一条，独立成版与提交。

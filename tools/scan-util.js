@@ -81,7 +81,7 @@ const lineOf = (src, idx) => { let n = 1; for (let i = 0; i < idx; i++) if (src[
      抽取段第 1 行 = <script> 所在行的剩余部分（本项目 <script> 后直接换行 → 空行）
      抽取段第 N 行 = index.html 第 (N + baseLine) 行
    baseLine 取 <script> 之前的换行数（稳一点：不写死具体行号）。
-   返回 -1 = 没找到 <script> 块，调用方据此 exit 2（自身故障）。 */
+   返回 -1 = 没找到 <script> 块，调用方据此 exit 4（自身故障，见 tools/check-all.js 的 TOOL_FAIL_CODE）。 */
 function lineOffset(html){
   const at = html.indexOf("<script>");
   if (at < 0) return -1;

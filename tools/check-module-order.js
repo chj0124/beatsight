@@ -32,7 +32,9 @@
    旧实现把架构闸门押在"永不格式化"这条约定上，是典型的形式依赖结构；现在依赖的是结构本身。
    保留一条不变的自检：整段脚本跑完深度必须回到 0，否则报错退出（宁可报错，不可给假结论）。
 
-   退出码 0 = 全部通过，1 = 有违规。CI 与本地自验都跑它。 */
+   退出码 0 = 全部通过，1 = 有违规，4 = 自身故障（找不到 <script> 块 / 括号配对失败 / 深度自检失败）。
+   自身故障用 4 而非 1/2（v2.8.14，审计 P1-6）：与 tools/check-all.js 的 TOOL_FAIL_CODE 统一，
+   故障据此记成「工具故障 · 未被验证」而非「检查未通过」，也不中止后续步骤。CI 与本地自验都跑它。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -43,7 +45,7 @@ const { stripComments, matchBrace, lineOf, blankNonCode, braceDepths } = require
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const html = fs.readFileSync(HTML, "utf8");
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
-if (!m){ console.error("未找到 <script> 块：" + HTML); process.exit(1); }
+if (!m){ console.error("未找到 <script> 块：" + HTML); process.exit(4); }
 const SRC = m[1];
 const lines = SRC.split("\n");
 
@@ -97,7 +99,7 @@ if (depths[depths.length - 1] !== 0){
   console.error("嵌套深度自检失败：整段脚本跑完深度为 " + depths[depths.length - 1] + "（应为 0）——"
     + "多半是出现了 blankNonCode 未处理的写法，请先看 tools/scan-util.js 的 blankNonCode。\n"
     + "拒绝带着错位的深度表继续判定（宁可报错，不可给出假结论）。");
-  process.exit(2);
+  process.exit(4);
 }
 
 /* 收集模块块：`const Name = (() => {` … 配对的 `}`。
@@ -113,7 +115,7 @@ const matchedNames = [];
     matchedNames.push({ name, line: lineOf(SRC, mm.index) });
     if (!EXPECTED_ORDER.includes(name)) continue;      // 非模块：留给第 0 步的双向 diff 报错/登记
     const end = matchBrace(SRC, mm.index);
-    if (end < 0){ console.error("括号配对失败：" + name); process.exit(1); }
+    if (end < 0){ console.error("括号配对失败：" + name); process.exit(4); }
     /* 模块体的嵌套深度：`const Name = (() => {` 那个 `{` 之后的一层。
        本层里的语句 = IIFE 求值期就会执行的语句（R1 的判据）；再深一层就是在某个
        function / if / 对象字面量里，属运行时才走到的分支（R3）。 */

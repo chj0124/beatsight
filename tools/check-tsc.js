@@ -22,7 +22,10 @@
    （注：check-all.js 只认退出码，它自己也知道这步是可选依赖，会在汇总里标 ⊘ 而不是 ✓。）
 
    规则集（含"为什么不开 noImplicitAny"）在 tools/tsconfig.typecheck.json 的文件头。
-   退出码：0 = 通过或跳过，1 = 有类型错误，2 = 自身故障（找不到 script 块 / tsc 跑了但输出无法解析）。 */
+   退出码：0 = 通过或跳过，1 = 有类型错误，4 = 自身故障（找不到 script 块 / tsc 跑了但输出无法解析）。
+   自身故障用 4 而非 2（v2.8.14，审计 P1-6）：与 tools/check-all.js 的 TOOL_FAIL_CODE 统一，
+   它据此把本步骤记成「工具故障 · 未被验证」而不是「检查未通过」——否则故障会伪装成失败，
+   还会中止后续步骤（审计 §E2 要消灭的正是这个）。 */
 "use strict";
 const fs = require("fs");
 const os = require("os");
@@ -53,7 +56,8 @@ const html = fs.readFileSync(HTML, "utf8");
 const baseLine = lineOffset(html);
 if (baseLine < 0){
   console.error("  ✗ 未找到 <script> 块：" + path.relative(ROOT, HTML));
-  process.exit(2);
+  console.error("  这是**工具故障，不是类型错误**——类型检查本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 let code;
@@ -61,7 +65,8 @@ try {
   code = extractScript(HTML);
 } catch (e){
   console.error("  ✗ " + e.message);
-  process.exit(2);
+  console.error("  这是**工具故障，不是类型错误**——类型检查本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 const htmlLines = html.split("\n");
@@ -126,7 +131,8 @@ for (const line of out.split("\n")){
 if (!diags.length && status !== 0){
   console.log("\n  ✗ tsc 以退出码 " + status + " 结束，但没有解析到任何诊断 —— 多半是配置或环境问题：");
   console.log(out.split("\n").slice(0, 20).map(l => "      " + l).join("\n"));
-  process.exit(2);
+  console.log("  这是**工具故障，不是类型错误**——类型检查本次未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
 }
 
 const errors = diags.filter(d => d.sev === "error");
