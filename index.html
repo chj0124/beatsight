@@ -234,17 +234,17 @@ button:disabled{cursor:not-allowed}
    当前行带 .cur 底色、走带线只在当前行出现 */
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
-.lyric-row{position:relative;height:22px;border-radius:6px}
+.lyric-row{position:relative;height:28px;border-radius:6px}
 .lyric-row.cur{background:rgba(255,255,255,.05)}
 .lyric-row.preview{opacity:.55}                     /* 预告行的歌词 = 未来，与 .preview-row 同一份降权 */
-.lyric-chip{position:absolute;top:1px;height:20px;border-radius:5px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
+.lyric-chip{position:absolute;top:1px;height:26px;border-radius:5px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
 .lyric-chip .lfill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:var(--peak);pointer-events:none;z-index:0}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:relative;z-index:1;font-size:12px;font-weight:500;color:var(--t2);white-space:nowrap}
-.lyric-chip.played .lyric-char{color:var(--on-green);font-weight:600}
-.lyric-chip.on .lyric-char{color:var(--green);font-weight:600}
+.lyric-char{position:relative;z-index:1;font-size:16px;font-weight:700;color:var(--t2);white-space:nowrap}
+.lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
+.lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 .lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
@@ -544,7 +544,7 @@ input[type=range].vol{width:120px}
 .arg-lyric-cue{flex:none}
 .arg-lyric-paste{flex:1;min-width:120px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 .arg-lyric-lane{flex-basis:100%;position:relative;height:26px;margin-top:4px;background:var(--card2);border-radius:6px}
-.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:11px;line-height:1;cursor:grab;overflow:hidden;touch-action:none;user-select:none}
+.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:hidden;touch-action:none;user-select:none}
 .arg-lyric-chip.dragging{cursor:grabbing;box-shadow:0 0 0 2px var(--green)}
 .arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap}
 .arg-lyric-grip{position:absolute;top:0;right:0;width:6px;height:100%;cursor:ew-resize}
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.28";
+const VERSION = "2.8.29";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8134,7 +8134,7 @@ const Arrange = (() => {
     chip.style.left = (c.t / span * 100) + "%";
     chip.style.width = (Math.min(c.dur, span - c.t) / span * 100) + "%";   // 视觉不越出轨道，数据仍原样交回 Store
     const txt = document.createElement("span");
-    txt.className = "arg-lyric-char";                // 不复用主视图 .lyric-char：那边是灰字 13px，压在绿底字块上没法看
+    txt.className = "arg-lyric-char";                // 不复用主视图 .lyric-char：那边是灰字 16px 加粗，压在绿底字块上没法看
     txt.textContent = c.ch;                          // 边界规则 3：用户可控字符串只走 textContent
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick`);
