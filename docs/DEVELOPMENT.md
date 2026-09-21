@@ -39,6 +39,8 @@ beatsight/
 │   ├── check-wiring.js         # 装配完整性：`let onXxx = null;` 约定的钩子与 patLenOf 注入点是否真被接上
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
 │   ├── check-version.js        # 版本一致性：VERSION / CHANGELOG / package.json / package-lock.json / 代码注释不得漂移
+│   ├── check-docs.js           # 文档一致性：模块索引行号 / 禁手写耗时 / 归档状态 / README 版本号与步数 / 禁手写覆盖率
+│   ├── check-headers.js        # _headers 结构：全路径 glob 恰好一行 · 6 个安全头齐全且缩进 · 无 BOM / 无孤立收尾
 │   ├── check-eslint.js         # 代码卫生 · 加强（**可选**）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
 │   ├── check-tsc.js            # 类型检查 · 加强（**可选**）：tsc 包装（同上；见 §5 与 tools/tsconfig.typecheck.json）
 │   ├── tsconfig.typecheck.json # 类型闸门的规则集与取舍说明（为什么 checkJs 开着、严格开关关着）
@@ -69,7 +71,10 @@ beatsight/
     都会被路由回当前工作区自己那个应用**——所以一个应用只能在"当初创建它的那个工作区"里更新。
     旧应用更新不了就换绑新链接（34873 → 48543 就是这么发生的）
 
-项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败。仓库里另有 `_headers`（纯文本响应头规则，构建时拷进 `dist/`，由 Workers 解析后作用于静态资源响应，自身不对外提供）；**没有** `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。v2.0.4（审计 B4）起，构建步骤也进了 `wrangler.jsonc`：`build.command` = 全量自验 + 装配 `dist/`，使本地 `npx wrangler deploy` 可完整复现线上构建；但 **Cloudflare 的 Git 集成构建（Workers Builds）不读** wrangler 配置里的 Custom Builds（官方既有行为），线上那次构建仍以 Dashboard 里配的构建/部署命令为准——详见 `wrangler.jsonc` 头部注释。
+项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败。仓库里另有 `_headers`（纯文本响应头规则，构建时拷进 `dist/`，由 Workers 解析后作用于静态资源响应，自身不对外提供）；**没有** `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。
+
+  - ★ **安全头的作用域 = 只有 Cloudflare 这一条渠道**（v2.8.7，审计 §S1 补记）：`_headers` 是 **Cloudflare Workers 静态资源**的格式，只有走 Workers 的那条路会解析它。渠道 ② 的发布集在上面写着——**8 个文件、不含 `_headers`**，所以那 6 个头在 WorkBuddy 渠道**按构造就不生效**。WorkBuddy 的静态托管是否支持某种等价机制（或会不会读同名文件）**未实测**，本仓库也没有为它准备等价配置；因此"两渠道等价"这句从未成立，**别拿 Cloudflare 的响应头去推断 WorkBuddy 的行为**。要让两渠道真正等价，要么给 ② 找到并接上等价机制，要么在 ② 侧明确接受"无这些头"这一事实——**在补上之前，安全头相关的结论一律只对 Cloudflare 渠道负责**。
+  - ★ **`/*` 是路径 glob，不是注释开头**（v2.8.7，审计 §S1）：`_headers` 只认 `#` 为注释，`/*` 的含义是"匹配所有路径"，目前 `_headers` 正是靠它让 6 条头作用于全站——**这层作用域是"声明"出来的巧合，改动前请先读文件里那段作用域说明**。结构性约束（glob 恰好一行、6 个头齐全且缩进、无 BOM、无孤立收尾标记）由 `tools/check-headers.js` 把守（自验链第 7 步）——因为这类改动**不会报错，只会静默失效**。v2.0.4（审计 B4）起，构建步骤也进了 `wrangler.jsonc`：`build.command` = 全量自验 + 装配 `dist/`，使本地 `npx wrangler deploy` 可完整复现线上构建；但 **Cloudflare 的 Git 集成构建（Workers Builds）不读** wrangler 配置里的 Custom Builds（官方既有行为），线上那次构建仍以 Dashboard 里配的构建/部署命令为准——详见 `wrangler.jsonc` 头部注释。
 
 ## 3. 核心架构
 
@@ -679,8 +684,8 @@ getComputedStyle）。
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
 node tools/check-all.js          # 顺序：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性
-                                 #       → ESLint(可选) → 类型检查(可选) → DOM 引用 → 浏览器冒烟(环境可选)
-                                 #       → 全量测试 → 看门狗 → 覆盖率（共 13 步）
+                                 #       → _headers 结构 → ESLint(可选) → 类型检查(可选) → DOM 引用
+                                 #       → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 14 步）
                                  # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
 node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用
@@ -702,6 +707,12 @@ node tools/check-wiring.js       # 装配完整性：钩子注入槽（`let onXx
                                  # 守住"漏赋值 = 功能静默失效"这类**逃过全部既有闸门**的故障
                                  # 名单自动收列（以 `on` + 大写字母开头即纳入），新增钩子无需改本工具
                                  # 反向验证：删掉装配段任一 `onXxx = …` 应报「从未被赋过非 null 值」并退出 1
+node tools/check-headers.js      # _headers 结构：`/*` 全路径 glob 恰好一行 · 6 个安全头齐全且缩进
+                                 # 为什么单独成闸：_headers 是本仓库唯一"写错了不报错、只会静默失效"的配置
+                                 #   （Cloudflare 对畸形行不告警），所以"删掉 `/*` → 6 条头全失效"必须机器判
+                                 # 与 _headers 里那段作用域声明配套——那边写清"为什么不能动"，这边守住"动没动坏"
+                                 # 反向验证：删掉 `/*` 行 / 再插一行 `/*` / 删掉任一条头 / 把某条头改成顶格
+                                 #   → 四种都会报出具体原因并退出 1（v2.8.7 全部实测过）
 node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
                                  # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
 node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量 / package.json / package-lock.json

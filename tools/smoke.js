@@ -23,6 +23,11 @@
    CI/构建镜像里本来就没有它，把它算成失败会无谓地堵住部署（与 ESLint/tsc 那种"可选加强项"
    同理但更强——那两个至少还能 npm ci）；check-all 收到 3 就标 ⊘，且 --strict-env 也不升级为错误。
 
+   性能预算（v2.8.7，审计 §F11）：它不只判断"能跑"，还判断"跑得好"——首屏 / 帧率 /
+   整树重建 / 单帧耗时四项各有定量阈值（见下方 PERF_BUDGET），任何"改一处就拖慢渲染"的
+   隐性退化会在此当场变红，而不是等用户察觉。阈值刻意留了 10–100 倍余量，
+   理由见 PERF_BUDGET 上方那段关于"假红"的说明。
+
    用法：node tools/smoke.js             # 两条通道都跑
          node tools/smoke.js --file-only # 只跑 file://（无本地服务时用） */
 "use strict";
@@ -64,6 +69,35 @@ console.log("  · 浏览器 " + browser);
 /* 取自 index.html 的 VERSION，用来断言"页面里显示的版本号与代码一致"（真实 DOM 里的读法，
    比在桩里断言 textContent 更接近用户看到的东西） */
 const VERSION = (/const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")) || [])[1] || "";
+
+/* ---------------------------------------------------------------------------
+   性能预算（v2.8.7，审计 §F11）：把"能跑"升级为"跑得好"。
+   为什么需要它：本脚本此前只做**定性**判断（帧率够不够、整树重建快不快），
+   而 `paintFrameMs` 连判断都没有——它只被测出来打印，从不参与断言。于是
+   "改一处就拖慢渲染"这类**隐性退化**在整条自验链里没有任何一处会变红，
+   正好违反本项目对隐性退化的一贯态度（`check-coverage` 的 97%/90% 双阈值同理）。
+
+   ★ 阈值怎么定的（每个数字都必须写清依据，否则下一个人只会把红改成绿）：
+     取「实测值 × 安全倍数」，不是"取个整好看的数"。倍数刻意给大，是为了不出现**假红**——
+     `eslint.config.js` 里那句"一个常年飘红的检查很快就会被所有人无视或直接关掉"
+     对性能断言同样成立：宁可放过 3 倍退化，也不要让它随机飘红。
+       · bootMs       首屏（导航开始 → DOMContentLoaded 结束，浏览器自己记的时间，
+                      与探针何时连上 CDP 无关）——实测 247–257ms，预算 5000（约 20 倍余量）
+       · fps          播放态真实 rAF 帧率；headless 下稳定 60–61，预算沿用 50（不为几帧冒险）
+       · buildVizMs   整树重建，实测 3.4–5.5ms（只在换型/换主题发生，不逐帧），预算 50
+       · paintFrameMs 同步循环下界，实测 0.007–0.01 ms/帧。注意它是**下界**：循环期间
+                      音频时钟几乎不动，增量重绘会走"状态没变"的短路分支（该探针第一版
+                      就因此量出 0.001ms 的假象，见 probe 内注释）。所以 1ms 这个预算
+                      相当于 100 倍余量，它只拦"每帧都在重建整棵树"那个量级的退化——
+                      而那正是它该拦的、也是唯一值得拦的。
+   ★ 刻意**不**把这些实测数字抄进任何文档（v2.8.7）：它们由本脚本每次现场打印，
+     抄进 docs/ 就变成又一个"抄一遍就等着烂"的数值，与 check-docs.js 的立身之道冲突。 */
+const PERF_BUDGET = {
+  bootMs: 5000,
+  fps: 50,
+  buildVizMs: 50,
+  paintFrameMs: 1,
+};
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -200,8 +234,16 @@ function probe(){
       requestAnimationFrame(tick);
     });
     beat.Controls.stop();
+    /* 首屏耗时取自 **Navigation Timing**，不是探针自己的 performance.now()：
+       探针要等 CDP 连上才注入，那时页面早启动完了，用探针的时间戳量出来的是
+       "CDP 握手耗时"而非首屏。Navigation Timing 由浏览器从**导航开始**记账，
+       何时去问都一样，因而可复现。loadMs 只打印不断言（loadEventEnd 在极少数
+       时序下可能仍是 0，拿它做闸门会变成假红）。 */
+    const nav = (performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null) || {};
     out.perf = { buildVizMs: +buildMs.toFixed(2), paintFrameMs: +frameMs.toFixed(3),
-      measuredWhilePlaying: playing, syncFrames: N, fps: fps };
+      measuredWhilePlaying: playing, syncFrames: N, fps: fps,
+      bootMs: Math.round(nav.domContentLoadedEventEnd || 0),
+      loadMs: Math.round(nav.loadEventEnd || 0) };
   }catch(e){ out.perf = { err: String(e && e.message || e) }; }
   return JSON.stringify(out);
 })()`;
@@ -302,13 +344,26 @@ async function main(){
           d.sw ? JSON.stringify(d.sw) : "");
       }
       if (d.perf && d.perf.buildVizMs !== undefined){
-        console.log("  · 实测：buildViz " + d.perf.buildVizMs + " ms/次 · 播放态帧率 " + d.perf.fps
-          + " fps（rAF 自跑 1 秒）· 同步循环下界 " + d.perf.paintFrameMs + " ms/帧"
+        /* 实测行同时打印**预算**，让"快到红线"在真的变红之前就看得见——只报实测值的话，
+           从 5ms 退化到 45ms 是无声的，直到某天越过 50 才突然变红（那时已经很难定位）。 */
+        console.log("  · 实测：首屏 " + d.perf.bootMs + " ms（预算 ≤ " + PERF_BUDGET.bootMs + "）· buildViz "
+          + d.perf.buildVizMs + " ms/次（预算 < " + PERF_BUDGET.buildVizMs + "）· 播放态帧率 " + d.perf.fps
+          + " fps（预算 ≥ " + PERF_BUDGET.fps + "，rAF 自跑 1 秒）· 同步循环下界 " + d.perf.paintFrameMs
+          + " ms/帧（预算 < " + PERF_BUDGET.paintFrameMs + "）· load 结束 " + d.perf.loadMs + " ms"
           + "（" + (d.perf.measuredWhilePlaying ? "播放态" : "⚠ 非播放态，读数无效") + "）");
         ok(d.perf.measuredWhilePlaying === true, p.label + "：播放态已建立（性能读数的前提）");
-        ok(d.perf.fps >= 50, p.label + "：播放态帧率 ≥ 50fps（真实 rAF，非桩）", "实际 " + d.perf.fps + " fps");
-        ok(d.perf.buildVizMs < 50, p.label + "：整树重建 < 50ms（它只发生在换型/换主题，不逐帧）",
+        ok(d.perf.bootMs > 0 && d.perf.bootMs <= PERF_BUDGET.bootMs,
+          p.label + "：首屏 ≤ " + PERF_BUDGET.bootMs + "ms（导航→DOMContentLoaded，Navigation Timing 实测）",
+          "实际 " + d.perf.bootMs + " ms");
+        ok(d.perf.fps >= PERF_BUDGET.fps,
+          p.label + "：播放态帧率 ≥ " + PERF_BUDGET.fps + "fps（真实 rAF，非桩）", "实际 " + d.perf.fps + " fps");
+        ok(d.perf.buildVizMs < PERF_BUDGET.buildVizMs,
+          p.label + "：整树重建 < " + PERF_BUDGET.buildVizMs + "ms（它只发生在换型/换主题，不逐帧）",
           "实际 " + d.perf.buildVizMs + " ms");
+        /* v2.8.7（§F11）：这一条以前**只打印不断言**——它正是"隐性退化不会被拦下"的缺口本身 */
+        ok(d.perf.paintFrameMs < PERF_BUDGET.paintFrameMs,
+          p.label + "：同步循环单帧 < " + PERF_BUDGET.paintFrameMs + "ms（下界读数，只拦整树重建级退化）",
+          "实际 " + d.perf.paintFrameMs + " ms/帧");
       }
     }
     ok(r.errors.length === 0, p.label + "：控制台零报错", r.errors.slice(0, 3).join(" / "));

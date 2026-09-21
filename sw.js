@@ -16,15 +16,25 @@ const CACHE = "beatsight-pwa-v2";
    注意 PNG 图标**不在**此列——它们由 tools/gen-icons.js 在构建期生成、只存在于 dist/，
    仓库根的开发环境（以及任何没过 build-dist 的部署）里根本没有这两个文件 */
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
-/* 可选资源：PNG 图标回退（构建产物里有就预缓存，没有也不该拖垮 install） */
+/* 可选资源：PNG 图标回退（构建产物里有就预缓存，没有也不该拖垮 install）。
+   v2.8.7（审计 §Q4）：跳过时会在控制台留一条 console.info，理由见下面 install 内的说明 */
 const ASSETS_OPTIONAL = ["./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(
     caches.open(CACHE)
       .then(c => c.addAll(ASSETS).then(() =>
-        /* 逐个加、各自吞错：一个图标 404 不该让整个 SW 装不上（离线能力是关键路径，图标不是） */
-        Promise.all(ASSETS_OPTIONAL.map(a => c.add(a).catch(() => {})))))
+        /* 逐个加、各自吞错：一个图标 404 不该让整个 SW 装不上（离线能力是关键路径，图标不是）。
+           ★ v2.8.7（审计 §Q4）：但"吞掉"不等于"不该说"。PNG 图标只由 tools/build-dist.js
+           在构建期生成到 dist/，所以**仓库根的开发环境里它们必然 404**——于是"本地跑得对"
+           与"线上跑得对"在这里并不等价，而此前的 `catch(() => {})` 把这件事完全掩盖了。
+           补一条 console.info 记下**跳过的是哪一个**：不一致因此可见，而不是静默消失。
+           用 info 而非 warn/error 是刻意的——这是**预期内**的正常情况（开发环境本来就没有
+           这两个文件），用 warn 会让每次本地加载都出现黄色条目，很快就会被人无视。 */
+        Promise.all(ASSETS_OPTIONAL.map(a => c.add(a).catch(() => {
+          console.info("[beatsight/sw] 可选资源未预缓存（已跳过，不影响离线能力）：" + a
+            + " —— PNG 图标只存在于构建产物 dist/，仓库根的开发环境没有它属正常");
+        })))))
       .then(() => self.skipWaiting())
   );
 });
