@@ -58,7 +58,7 @@
 
    用法：
      node tools/check-all.js               # 全套（耗时随机器与 Node 版本而变，看末尾汇总）
-     node tools/check-all.js --quick       # 跳过 T21 的 243 组全量扫描（改代码时用）
+     node tools/check-all.js --quick       # 跳过 T21 全量组合扫描（改代码时用）
      node tools/check-all.js --strict-env  # CI 用：可选加强项缺依赖时报错（不允许静默跳过）
    退出码 0 = 没有失败项（仍可能含 ⊘ 未执行；**本地**工具故障也不计失败），
           1 = 有失败项，或 --strict-env 下出现工具故障（CI 里工具起不来是真问题）。

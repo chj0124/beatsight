@@ -688,15 +688,15 @@ node tools/check-all.js          # 顺序：语法 → 架构约束 → 装配�
                                  #       → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 14 步）
                                  # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
-node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用
+node tools/check-all.js --quick  # 跳过 T21 全量组合扫描，改代码时用
 
 # npm 别名（v2.8.3）：`npm run verify` = 上面那一行；`npm run verify:quick` = 带 --quick
 #   `npm run ci` = `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`（构建侧唯一入口）
 #   ★ Cloudflare Dashboard 的 Build command 就填 `npm run ci`——命令内容留在仓库，Dashboard 只留一行指针
 
 # 需要单独跑某一项时（排查用）
-node tests/run.js                # 主套件：抽样的 T21（16 组）
-FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
+node tests/run.js                # 主套件：抽样 T21
+FULL_SCAN=1 node tests/run.js    # 全量 T21
 node tools/smoke.js              # 真实浏览器冒烟（CDP）：file:// 与 http://127.0.0.1 双通道
                                  # 断言真实 DOM/CSS/帧率/Service Worker/控制台零报错；本机没浏览器则退出码 3（跳过）
                                  # 跨平台，取代了 tests/screenshot.sh（那个只在 macOS 上能用，且只截图不断言）

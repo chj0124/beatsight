@@ -39,8 +39,8 @@
 ## 功能迭代 P0（核心）
 
 - [ ] **P0-1 音频延迟校准**：新增 `Calibration` 模块（插在 `Audio` 后）；手动敲击采集中位数偏移；经 `Audio.setLatencyOffset(fn)` 注入补偿；偏移持久化。登记 R3 `Audio→Calibration`。
-- [ ] **P0-2 渐进提速训练**：`Trainer` 扩展 `startBPM/targetBPM/stepBPM/barsPerStep`；跨小节边界提速；接入 `Stats` 记录达成最高 BPM。
-- [ ] **P0-3 练习数据导出/导入增强**：全量导出 + schema 版本校验 + 导入合并/覆盖三态；按 `VERSION` 做前向兼容拒绝。
+- [x] **P0-2 渐进提速训练**（已于 v0.5.0 落地，字段名为 `trainer.start/target/step/everyN`）：`Trainer` 扩展 `startBPM/targetBPM/stepBPM/barsPerStep`；跨小节边界提速；接入 `Stats` 记录达成最高 BPM。
+- [x] **P0-3 练习数据导出/导入增强**（已于 v2.8.8 落地，导入为合并而非替换）：全量导出 + schema 版本校验 + 导入合并/覆盖三态；按 `VERSION` 做前向兼容拒绝。
 
 ## 功能迭代 P1（体验）
 
