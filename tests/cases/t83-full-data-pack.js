@@ -150,3 +150,36 @@ section("T82f 全量数据包 · 导出接线 + 容量闸门（库内总量 / �
   ok(b3.Store.logSessions.length <= 400, "导入后记录数被截到 logMax=400（实际 "
     + b3.Store.logSessions.length + "）——冷键的容量约束不因导入而失效");
 }
+
+/* ================= 场景 T82g：听辨战绩只认白名单键（P3 工程卫生） ================= */
+section("T82g 全量数据包 · 听辨战绩键名白名单（垃圾键不进内存 / 不环回外泄）");
+{
+  const { beat } = loadApp();
+  const res = beat.Store.importAll(JSON.stringify({
+    kind: "all", ear: { total: 7, right: 5, best: 4, evil: 999 } }));
+  ok(res.ok, "带多余键的包仍可导入（多余键被忽略，不是整包拒绝）");
+  eq(beat.Store.earStats.total, 7, "白名单内的 total 正常合并");
+  ok(beat.Store.earStats.best >= 4, "白名单内的 best 正常合并（累计量取较大值）");
+  /* 反向验证锚点：合并若回退成 `Object.keys(data.ear)`，evil 会写进内存 ear，
+     下面两条立刻变红——① earStats.evil 不再是 undefined；② 再导出的 ear 带上 evil */
+  ok(beat.Store.earStats.evil === undefined, "白名单外的键不进内存 earStats（实际 "
+    + beat.Store.earStats.evil + "）");
+  const re = JSON.parse(beat.Store.serializeAll()).ear;
+  eq(Object.keys(re).sort().join(","), "best,right,total",
+    "再导出的 ear 只含 total/right/best（垃圾键不会随导出环回）");
+}
+
+/* ================= 场景 T82h：歌词合并受总量上限约束（P3 工程卫生） ================= */
+section("T82h 全量数据包 · 歌词合并受 lyricMaxLines 总量约束（与加载路径同口径）");
+{
+  const { beat } = loadApp();
+  const lines = Array.from({ length: 300 }, (_, i) => ({
+    arrangeId: "a-cap-" + i, sec: i, chars: [{ t: 0, dur: 24, ch: "字" }] }));
+  const r = beat.Store.importAll(JSON.stringify({ kind: "all", lines }));
+  ok(r.ok, "大批歌词行可导入");
+  /* 反向验证锚点：合并若不受上限约束（删掉那句容量判断），这里会是 300 而非 256 */
+  eq(beat.Store.lyrics.length, 256,
+    "导入后歌词被截到 lyricMaxLines=256——外部包顶不穿容量上限");
+  eq(r.added.lyrics, 256, "加入计数如实反映只进了 256 行");
+  eq(r.skipped.lyrics, 300 - 256, "剩余 44 行计入 skipped（用户知道被截了多少）");
+}

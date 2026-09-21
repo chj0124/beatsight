@@ -1,5 +1,29 @@
 # 变更记录
 
+## v2.8.28 · 工程卫生 P3：审计 P3 组的 9 条清理（P3-A ~ P3-I）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 18 条（P3 组，本组最后一条）。P3 是报告最末一组「工程卫生」，条目分散在源码注释、构建/自验工具与几处工程配置里，逐条独立、互不耦合，故合并为一版。
+
+- **P3-A 死代码与陈旧注释（`index.html`）**：`durName` 里两条恒不可达的分支（时值名映射的兜底已被前面分支完全覆盖）删除；`zoneEls` 上方注释仍描述早已不存在的选择逻辑，改为与实现一致的说明。
+- **P3-B 两个近重复的导入处理器合并（`index.html`）**：预设导入与整包导入各自复制了一份「读文件 → 解析 → 报错文案 → 落库」的骨架，抽为 `bindImport(inputId, tooMsg, onText)`，两处调用只传差异项（错误文案与落库回调）。行为不变，重复消除。
+- **P3-C 两次导入的数据校验缺口（`index.html`，带测试）**：
+  - **耳战绩键名无白名单**：`importAll` 合并外部耳训战绩时照单全收键名，异常包可写入任意键污染后续统计。加 `EAR_KEYS = ["total","right","best"]` 白名单，只接受已知键。
+  - **歌词合并不受行数约束**：导入的歌词数组直接并入，绕过了本地新增时的 `CONFIG.lyricMaxLines` 上限（导入即可突破 UI 限制）。合并处补同一上限判据（`if (lyrics.length >= CONFIG.lyricMaxLines) { lyrDrop++; return; }`）。
+  - 在 `tests/cases/t83-full-data-pack.js` 加 T82g（越界键名被丢弃）/ T82h（超限歌词被拒收）。
+- **P3-D `bindStep` 连发的计时器竞态（`index.html`，带测试 + 反向验证）**：长按 step 键的 `pointerdown` 若在上一次的 `setTimeout` / `setInterval` 尚未触发时又被触发（快速连点 / 指针抖动），旧句柄会被覆盖而不清除，遗留的定时器在松手后仍继续跑——`t1` 泄漏表现为「按键停了但还在步进」。入口补 `if (t1 !== null) clearTimeout(t1); if (t2 !== null) clearInterval(t2);`。在 `tests/cases/t30-wiring-and-lifetime.js` 加 T31b：连续两次 `pointerdown` 后松手，断言无遗留定时器。**旧实现**该断言变红；**新实现**全绿。
+- **P3-E 工程配置（`manifest.webmanifest` / `.github/workflows/ci.yml`）**：manifest 补 `"id": "./"`（PWA 安装身份稳定，避免同源多入口被视作不同应用）；CI 工作流补 `permissions: contents: read`（最小权限，遵循 Actions 默认收紧的方向）。
+- **P3-F 冒烟工具的路径边界与端口资源（`tools/smoke.js`）**：
+  - **路径前缀判断错误**：静态服务用裸 `file.startsWith(ROOT)` 判「在仓库内」，会把同前缀的**兄弟目录**放进服务范围（`ROOT=/a/beatsight` 时 `/a/beatsight2/x` 也命中）。改为按路径分隔符判边界（`file === ROOT || file.startsWith(ROOT + path.sep)`）。
+  - **端口被占时不再假红**：CDP 端口若已被**另一个**浏览器/调试实例占用，本脚本 spawn 的实例会因冲突起不来，而 `runPass` 却连上别人的实例、探针拿不到 `__beatBoot`，整串断言被误报成代码失败。改为 `main()` 入口先 try-bind 探测：端口占用则打印 ⊘ 并**以退出码 3 跳过**（端口是环境资源，不是失败项），并支持 `BEATSIGHT_SMOKE_PORT` 覆盖端口基号。
+- **P3-G 看门狗的故障分类（`tests/hang-guard.js` / `tests/hang-case.js`）**：
+  - **信号 ≠ 死循环**：旧判据 `if (e.killed || e.signal) timedOut = true` 把 OOM（SIGKILL）/ 段错误（SIGSEGV）/ abort（SIGABRT）一律报成「主线程死循环」——把环境/崩溃问题指到一个不存在的地方去查。改为按耗时区分：跑满超时被强杀 = 死循环；未跑满超时即被信号终止 = 疑似 OOM/崩溃，计入**工具故障**（退出码 4，check-all 标 ⚠ 并继续）；子进程自报退出码 4 = 输入/工具故障。新增 `toolFaults` 计数与独立清单。
+  - **空值保护**：`hang-case.js` 的 `html.match(/<script>…/)[1]` 在输入文件不是 BeatSight 产物（缺 `<script>` 块）时会 `null[1]` 崩溃，方向完全指错。补判空后显式报「输入/工具故障」并以退出码 4 交回看门狗。
+  - **反向验证**：构造一个无 `<script>` 的输入文件跑 `hang-case.js` → 清晰报错 + 退出码 4（而非崩溃）；分别注入 SIGKILL / 死循环 / 退出码 4 / 退出码 2 四类结局，确认分类器各自落到 `killedSignal` / `timedOut` / `toolFail` / 普通失败，无一误判。
+- **P3-H 删除过时产物并清理引用（`tests/screenshot.sh`）**：该脚本只在 macOS 上工作（硬编码 `/Applications/Google Chrome.app/…`），`sleep 18` + `pkill`、零断言，早已被跨平台的 `tools/smoke.js` 取代。删除文件，并同步更新 `docs/DEVELOPMENT.md`（目录树 2 行 + 命令区 2 处注释）与 `tools/smoke.js` 头部注释中的引用。（`CHANGELOG` 里的历史提及属快照，按仓库约定不改写。）
+- **P3-I 自验汇总表按显示宽度对齐（`tools/check-all.js`）**：步名混有 CJK，`String.padEnd(28)` 只数 code unit（全角字符在等宽终端占 2 列），导致「自动化测试（FULL_SCAN 全量）」这类行右列整体右移、表看着是歪的。加 `dispWidth()`（宽/全角按 2 列）后按显示宽度补空格，14 个步名全部对齐到 28 列。
+- **行号漂移说明**：报告给的部分行号已与当前代码不符（如 `tools/check-all.js` 的 `padEnd` 报告写 L192、实际在 L214；`bindStep` 竞态、`durName`、`zoneEls`、`smoke.js` 路径判断等亦有偏移）。本次一律**以代码实际状态为准**定位并修复。
+- **自验**：`node tools/check-all.js` 全绿（实跑 11/14 项，另 2 项可选加强项缺 `node_modules` ⊘、1 项浏览器冒烟环境缺失 ⊘；文档一致性 / 版本一致性均通过；自动化测试 2502 PASS / 0 FAIL；死循环看门狗 49 PASS / 0 FAIL / 0 死循环超时；行覆盖率 99.2%，总阈值 97%）。
+
 ## v2.8.27 · 文档/工程 P2-9：手抄（且已漂移的）数字与过期注记从文档注释里清除（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 17 条（P2 组）。本节只落这一条，独立成版与提交。

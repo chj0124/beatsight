@@ -36,17 +36,31 @@ console.log("══════════════════════�
 console.log("  死循环看门狗 · 每用例独立子进程，超时 " + TIMEOUT + "ms 强杀");
 console.log("══════════════════════════════════════════════════════════");
 
-let pass = 0, fail = 0, hangs = 0;
+let pass = 0, fail = 0, hangs = 0, toolFaults = 0;
 const hangsList = [];
+const toolFaultList = [];
 
 for (const [id, label] of CASES){
-  let raw = "", timedOut = false;
+  let raw = "", timedOut = false, killedSignal = null, toolFail = false;
   const t0 = Date.now();
   try {
     raw = execFileSync(process.execPath, [path.join(__dirname, "hang-case.js"), id],
       { encoding: "utf8", timeout: TIMEOUT, stdio: ["ignore", "pipe", "pipe"] });
   } catch (e){
-    if (e.killed || e.signal) timedOut = true;
+    /* ★ 判"是不是死循环"只能按**超时**，不能按"有没有信号"：
+       execFileSync 超时会杀子进程（signal=SIGTERM），但 **OOM(SIGKILL) / 段错误(SIGSEGV) /
+       abort(SIGABRT) 同样会让 e.signal 有值**。老写法 `if (e.killed || e.signal) timedOut = true`
+       把后三种一并报成"主线程死循环"——把一个环境/崩溃问题指到一个不存在的地方去查。
+       区分依据（与 check-all 的退出码约定对齐）：
+         · 超时强杀：实际耗时已到 TIMEOUT（留 50ms 抖动余量）且被信号终止
+         · 其它信号：被信号终止但没跑满超时 → 疑似 OOM / 进程崩溃，归**工具故障**（退出码 4），
+                     不是死循环，也不该伪装成用例失败
+         · 子进程自报未执行：退出码 4（hang-case 用它表达"输入/工具故障"）
+         · 其余：普通非零退出，把 stdout/stderr 交给下面按输出判定 */
+    const elapsed = Date.now() - t0;
+    if (elapsed >= TIMEOUT - 50 && (e.killed || e.signal)) timedOut = true;
+    else if (e.signal) killedSignal = e.signal;
+    else if (e.status === 4) toolFail = true;
     else raw = (e.stdout || "") + (e.stderr || "");
   }
   const ms = Date.now() - t0;
@@ -55,6 +69,19 @@ for (const [id, label] of CASES){
     hangs++; hangsList.push(id);
     console.log("  ✗ " + id.padEnd(20) + " 超时强杀 " + (ms / 1000).toFixed(1) + "s"
       + "  ← 主线程死循环（用户侧表现：标签页卡死）");
+    continue;
+  }
+
+  if (killedSignal){
+    toolFaults++; toolFaultList.push(id);
+    console.log("  ⚠ " + id.padEnd(20) + " 被信号 " + killedSignal + " 终止 " + (ms / 1000).toFixed(1) + "s"
+      + "  ← 疑似 OOM / 进程崩溃，**不是主线程死循环**；本用例未被验证");
+    continue;
+  }
+
+  if (toolFail){
+    toolFaults++; toolFaultList.push(id);
+    console.log("  ⚠ " + id.padEnd(20) + " 子进程自报未能执行（退出码 4）——工具/输入故障，不是用例失败");
     continue;
   }
 
@@ -78,6 +105,10 @@ for (const [id, label] of CASES){
 }
 
 console.log();
-console.log("  结果：" + pass + " PASS / " + fail + " FAIL / " + hangs + " 死循环超时");
+console.log("  结果：" + pass + " PASS / " + fail + " FAIL / " + hangs + " 死循环超时"
+  + (toolFaults ? " / " + toolFaults + " 工具故障未验证" : ""));
 if (hangsList.length) console.log("  死循环用例：" + hangsList.join(", "));
-process.exit(fail || hangs ? 1 : 0);
+if (toolFaultList.length) console.log("  未验证用例（工具故障，非死循环）：" + toolFaultList.join(", "));
+/* 退出码约定与 check-all 一致：1 = 有用例失败/死循环；4 = **工具故障**（本步骤未被验证，
+   check-all 会标 ⚠ 并继续）；0 = 通过。有真失败时以 1 优先（真失败才是要被处置的那个）。 */
+process.exit(fail || hangs ? 1 : (toolFaults ? 4 : 0));

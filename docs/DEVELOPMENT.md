@@ -30,8 +30,6 @@ beatsight/
 │   ├── run.js            # 主测试套件（node tests/run.js，零依赖）
 │   ├── hang-guard.js     # 死循环看门狗：每用例独立子进程 + 超时强杀
 │   ├── hang-case.js      # 看门狗的单用例探针（被 hang-guard 调起）
-│   ├── screenshot.sh     # 无头截图自验（**已过时**：仅 macOS 可用、且只截图不断言）
-│   │                     #   → 已由 tools/smoke.js 取代（跨平台 + 会断言真实 DOM/CSS/帧率/SW）
 │   └── README.md         # 测试原理与补断言规则
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
@@ -699,7 +697,7 @@ node tests/run.js                # 主套件：抽样 T21
 FULL_SCAN=1 node tests/run.js    # 全量 T21
 node tools/smoke.js              # 真实浏览器冒烟（CDP）：file:// 与 http://127.0.0.1 双通道
                                  # 断言真实 DOM/CSS/帧率/Service Worker/控制台零报错；本机没浏览器则退出码 3（跳过）
-                                 # 跨平台，取代了 tests/screenshot.sh（那个只在 macOS 上能用，且只截图不断言）
+                                 # 跨平台，取代了已删除的 tests/screenshot.sh（那个只在 macOS 上能用，且只截图不断言）
 node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
                                  # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
@@ -733,7 +731,7 @@ node tools/check-tsc.js          # 类型检查 · 加强（可选）：tsc 的 
 node tools/check-dom-ids.js      # DOM 引用完整性：$("x") 不得悬空
 node tools/check-coverage.js     # 行覆盖率：V8 内置采集，总阈值 97% / 分区 90%
 
-# 2)+3) 真实浏览器冒烟 + 控制台报错检查（v2.0.6 起跨平台，取代 macOS 专用的 tests/screenshot.sh）
+# 2)+3) 真实浏览器冒烟 + 控制台报错检查（v2.0.6 起跨平台；原 macOS 专用的 tests/screenshot.sh 已删除）
 node tools/smoke.js              # file:// 与 http://127.0.0.1 双通道；CDP 取页面内实测值
 node tools/smoke.js --file-only  # 只跑 file://（无本地服务时用）
 BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时指定
@@ -826,7 +824,7 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
 - 覆盖率未覆盖的行**分两类、性质不同**（**条数、百分比、行号一律不抄进文档**，v2.0.5 起一律以 `node tools/check-coverage.js` 的输出为准——它会打印总量、分区占比与未覆盖行的绝对行号）：
   **一类是刻意保留的防御性代码**——**AudioEngine** 里 `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会走到）；v2.0.6 之后的新模块（Arrange / 初始化装配 / Presets 等）也各留了几条同类"出事才走"的路径。
-  **另一类是不可达分支**——**Ear** 的 `durName` 里 192/144/96 与 6 这几档时值（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。
+  **另一类是不可达分支**——**Ear** 的 `durName` 里 192/96 与 6 这几档时值（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。原先还列了 144/18 两档，实为 `VALID_T` 之外的死分支（任何经校验的型都到不了），已于 P3 工程卫生清理中删除。
   两类都不为了数字去造人工状态点亮它。**本行原先同时抄了条数与行号，两样都烂了**：条数原写"共 11 行 / 实测 99.7%"，在 v2.8.3 自验时实测已是 **36 行 / 99.4%**（多出来的部分正是 v2.0.6～v2.8 各版新增的防御性路径）；5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**。这正是 `tools/check-docs.js` 文件头写的那句——"手写数字注定要烂"
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移
 

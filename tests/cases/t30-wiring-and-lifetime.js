@@ -371,6 +371,33 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(els["modalMask"].hidden, true, "点遮罩 → 也算取消");
 }
 
+/* ================= 场景 T31b：长按键 pointerdown 连发不得泄漏定时器（P3-D 工程卫生） ================= */
+section("T31b 长按键竞态 · pointerdown 连发（无 up/cancel）不泄漏 t1 句柄（P3-D）");
+{
+  const app = loadApp();
+  const els = app.els;
+
+  /* 极端触发条件：触屏与鼠标同时按下、或系统/驱动把 pointerdown 连发两次，中间**没有**
+     pointerup / pointercancel。修之前第二次 handler 直接覆盖 t1 句柄，第一只 setTimeout
+     就此失去认领者；400ms 后它照跑、起一只 setInterval，而 t2 只记得后一只——
+     前一只 setInterval 每 90ms 步进一次且永远清不掉（直到某次 up/cancel 才随机拾回）。 */
+  els["bpmMinus"].fire("pointerdown");
+  /* 基线：此刻的 pending setTimeout 含 bindStep 的 t1 与 setBpm→persist 的防抖（各 1 只） */
+  const afterOne = app.timeoutCount();
+  els["bpmMinus"].fire("pointerdown");
+  /* 反向验证锚点：删掉 bindStep 里的 `if (t1 !== null) clearTimeout(t1);`，
+     第二次不再清旧 t1，这里会变成 afterOne + 1（孤儿定时器） */
+  eq(app.timeoutCount(), afterOne,
+    "★ 连发第二次 pointerdown → pending 定时器数不增加（旧 t1 进新一轮前被清，不留孤儿）");
+
+  app.runTimers();
+  /* 反向验证锚点：无 clearTimeout 时两只回调都会跑、各自 setInterval，
+     intervals 会残留 2 只（t2 只认领得了一只） */
+  eq(app.intervalCount(), 1, "★ 连发长按也只起 1 只 setInterval（无孤儿 interval）");
+  els["bpmMinus"].fire("pointerup");
+  eq(app.intervalCount(), 0, "★ 抬指后无残留 interval（连发路径也没漏下孤儿）");
+}
+
 section("T31c 焦点陷阱 · 弹窗叠层 inert 与语义化标记（v2.0.2，P1/P2 无障碍批次）");
 {
   const app = loadApp();

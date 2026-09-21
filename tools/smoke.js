@@ -7,7 +7,7 @@
      · removeEventListener 是空操作、setTimeout 只记录不执行、querySelectorAll 只认两种选择器
    于是有一整类问题**在桩里永远测不出来**：真实布局、真实样式（改标签名后的视觉回归）、
    真实音频时钟、真实事件冒泡与焦点、以及 Service Worker 的离线行为。
-   `tests/screenshot.sh` 本意是补这块，但它硬编码了 macOS 的 Chrome 路径、只抓一张加载态截图、
+   `tests/screenshot.sh`（已删除）本意是补这块，但它硬编码了 macOS 的 Chrome 路径、只抓一张加载态截图、
    也不做任何断言——在 Windows 上根本跑不了。本脚本用 CDP 把它重做成**跨平台且会断言**的冒烟。
 
    做法（零依赖关键点）：Node 22 自带 fetch 与 WebSocket，所以可以直接连 CDP——
@@ -18,7 +18,8 @@
      4) 逐项断言，并把控制台报错 / 未捕获异常也作为失败项
    两条通道都验：`file://` 直开（双击即用的那条路）与 `http://127.0.0.1`（PWA/离线那条路）。
 
-   退出码：0 = 全部通过；1 = 有断言失败；3 = **本机没有可用浏览器**（跳过，不算失败）。
+   退出码：0 = 全部通过；1 = 有断言失败；3 = **本机没有可用浏览器**（跳过，不算失败），
+   或 **冒烟端口被占用**（同为环境资源，不算失败）。
    为什么"没有浏览器"要有一个专用退出码：浏览器是**环境能力**，不是开发依赖。
    CI/构建镜像里本来就没有它，把它算成失败会无谓地堵住部署（与 ESLint/tsc 那种"可选加强项"
    同理但更强——那两个至少还能 npm ci）；check-all 收到 3 就标 ⊘，且 --strict-env 也不升级为错误。
@@ -35,12 +36,25 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const http = require("http");
+const net = require("net");
 const { spawn } = require("child_process");
 
 const ROOT = path.join(__dirname, "..");
 const FILE_ONLY = process.argv.includes("--file-only");
-const PORT_BASE = 8791;                       // CDP 端口；HTTP 服务端口取 PORT_BASE+1
+/* CDP 端口；HTTP 服务端口取 PORT_BASE+1。允许用 BEATSIGHT_SMOKE_PORT 覆盖默认基号：
+   端口是**环境资源**，机器上已有别的调试实例时不该要求开发者去改源码。 */
+const PORT_BASE = Number(process.env.BEATSIGHT_SMOKE_PORT) || 8791;
 const HTTP_PORT = PORT_BASE + 1;
+
+/** 端口是否被占用（try-bind，监听成功即立刻释放并返回 false） */
+function portInUse(port){
+  return new Promise(resolve => {
+    const srv = net.createServer();
+    srv.once("error", err => resolve(err && err.code === "EADDRINUSE"));
+    srv.once("listening", () => srv.close(() => resolve(false)));
+    srv.listen(port, "127.0.0.1");
+  });
+}
 
 /* ---------- 1) 找浏览器 ---------- */
 const CANDIDATES = [
@@ -108,7 +122,12 @@ function startServer(){
   const srv = http.createServer((req, res) => {
     const rel = decodeURIComponent(String(req.url || "/").split("?")[0]).replace(/^\/+/, "") || "index.html";
     const file = path.join(ROOT, rel);
-    if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
+    /* ★ 目录边界必须按「路径分隔符」判，不能裸 startsWith(ROOT)：
+       裸判会把同前缀的**兄弟目录**放进来——ROOT=/a/beatsight 时，/a/beatsight2/x 也以
+       "/a/beatsight" 开头，于是仓库外的文件被当仓库内文件服务出去（本地工具，风险低，
+       但语义是错的）。补上分隔符即 `file === ROOT || file.startsWith(ROOT + sep)`。 */
+    const inRoot = file === ROOT || file.startsWith(ROOT + path.sep);
+    if (!inRoot || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
       res.writeHead(404); res.end("not found"); return;
     }
     res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream",
@@ -314,6 +333,16 @@ function ok(cond, name, detail){
 }
 
 async function main(){
+  /* ★ CDP 端口被占时必须走 ⊘（退出码 3），不能硬跑：
+     若 8791 已被**另一个**浏览器/调试实例监听，本脚本 spawn 的那个实例会因端口冲突起不来，
+     而 runPass 里 fetch `/json/list` 却会成功——它连上的是**别人**的实例，页面不是我们的 URL，
+     探针白等 4 秒拿不到 __beatBoot，于是整串断言变红。那是"端口是环境资源"被误报成"代码失败"，
+     正是 P1-6/冒烟退出码要消除的那类假红。 */
+  if (await portInUse(PORT_BASE)){
+    console.log("  ⊘ 冒烟端口 " + PORT_BASE + " 已被占用 —— 跳过（端口是环境资源，不是失败项）");
+    console.log("    想跑的话：设 BEATSIGHT_SMOKE_PORT=<空闲端口基号>（HTTP 取该值 +1）");
+    process.exit(3);
+  }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-smoke-"));
   let server = null;
   /* v2.8.8：两条通道都带 `?debug=1`。

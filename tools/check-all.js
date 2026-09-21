@@ -207,11 +207,23 @@ fs.rmSync(COV_DIR, { recursive: true, force: true });
 console.log("\n══════════════════════════════════════════════════════════");
 console.log("  结果汇总");
 console.log("══════════════════════════════════════════════════════════");
+/* v2.8.28（审计 P3）：汇总列按**显示宽度**对齐，不是字符数。
+   步名里混着 CJK（全角字符在等宽终端占 2 列），`String.padEnd(28)` 只数 code unit，
+   于是「自动化测试（FULL_SCAN 全量）」这类行被算短、右列时间戳整体右移，汇总表看着是歪的
+   （纯外观，但这是每天都要扫一眼的表）。口径：宽/全角字符按 2 列，其余按 1 列。 */
+function dispWidth(str){
+  let w = 0;
+  for (const ch of str){
+    w += /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+  }
+  return w;
+}
 results.forEach(r => {
   const mark = r.toolError ? "⚠" : (r.skipped ? "⊘" : (r.ok ? "✓" : "✗"));
   const time = r.toolError ? "工具故障，未验证"
     : (r.skipped ? (r.env ? "环境缺失，未执行" : "未安装依赖，未执行") : (r.ms / 1000).toFixed(2) + "s");
-  console.log("  " + mark + " " + r.name.padEnd(28) + time);
+  const nameCol = r.name + " ".repeat(Math.max(0, 28 - dispWidth(r.name)));
+  console.log("  " + mark + " " + nameCol + time);
 });
 
 /* 分解式汇总（v2.8.6，审计 §E5）：原先只有一行「N 项失败 · 实跑 R/M 项」，而"没跑到"

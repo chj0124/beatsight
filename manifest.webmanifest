@@ -4,6 +4,7 @@
   "description": "吉他练习用的节奏可视化节拍器 —— 把抽象的「时值」翻译成「长度」。",
   "start_url": "./",
   "scope": "./",
+  "id": "./",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#121212",

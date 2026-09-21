@@ -16,7 +16,18 @@ const CASE = process.argv[2];
 /* 默认测仓库里的 index.html；BEATSIGHT_HTML 可指向别的构建，
    便于拿历史版本验证「看门狗真的抓得住死循环」（见 tests/README.md）。 */
 const HTML = process.env.BEATSIGHT_HTML || path.join(__dirname, "..", "index.html");
-const SRC = fs.readFileSync(HTML, "utf8").match(/<script>([\s\S]*?)<\/script>/)[1];
+/* ★ match(...)[1] 必须先判空：文件不存在 / 不是 BeatSight 产物 / 被裁剪掉 <script> 时，
+   match 返回 null，`null[1]` 会抛 "Cannot read properties of null"——一个完全指错方向的崩溃
+   （看起来像探针代码有 bug，实际是**输入文件不对**）。这里显式报"输入/工具故障"并以退出码 4
+   交给 hang-guard（它会按工具故障记账，不再伪装成死循环或用例失败）。 */
+const html = fs.readFileSync(HTML, "utf8");
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch){
+  console.error("✗ 在 " + HTML + " 里找不到 <script>…</script> 块——不是 BeatSight 产物或已被裁剪。");
+  console.error("  BEATSIGHT_HTML 是否指错了文件？（这是输入/工具故障，不是用例失败）");
+  process.exit(4);
+}
+const SRC = scriptMatch[1];
 
 /* ---------------- DOM / 音频 stub（与 run.js 同口径的最小复刻） ---------------- */
 function makeEl(id){
