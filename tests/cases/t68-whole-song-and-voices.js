@@ -19,8 +19,8 @@
         本组断言这四条路（整首连播 / 段序条跳段 / 点预设退出 / 播放中高亮跟随）。
 
    ★ 元素定位：沙箱 stub 不解析 HTML，动态生成的节点只能按类名遍历取；
-     且**每次点击后都要重新取**——曲式播放换型会走 scheduleRef → buildPresetList，
-     整张列表（连带段序条）都会被重建，旧引用指向的是已脱离文档的节点。 */
+     且**每次点击后都要重新取**——曲式播放换型会经 applyPatternChange → buildPresetList
+     重建整张列表（连带段序条），旧引用指向的是已脱离文档的节点。 */
 "use strict";
 const { loadApp, FakeAudioContext, drive, driveFrames, ok, eq, near, section } = require("../lib/harness");
 
@@ -249,7 +249,7 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
      "★ 范围 = 整首 10 段 + 开范围循环（放完自动从头再来，这才叫「练」）");
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
-  /* 元素重新取：起播会经 scheduleRef → buildPresetList 重建整张列表 */
+  /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表 */
   eq(playAllOf(els).getAttribute("aria-pressed"), "true", "按钮进入高亮态");
   eq(secRowOf(els).children[0].getAttribute("aria-pressed"), "true", "段序条高亮第 1 段");
   eq(secRowOf(els).children[9].getAttribute("aria-pressed"), "false", "第 10 段未高亮");

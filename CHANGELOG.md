@@ -1,5 +1,20 @@
 # 变更记录
 
+## v2.8.24 · 播放 P2-6：曲式换块时 scheduleRef 与 applyPatternChange 重复全量重建侧栏列表（实测 −11%）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 14 条（P2 组）。本节只落这一条，独立成版与提交。
+
+- **P2-6 每个小节边界把整张预设列表重建两遍**：
+  - **根因**：曲式（整首连播）换块时，scheduler 在小节边界先调 `Presets.scheduleRef(nxt.ref)`（`index.html:7079`），它除了登记挂起外还顺手 `buildPresetList()` + `updateFallbackNote()` 全量重建侧栏；紧接着**同一个边界**又经 `consumePending` → `applyPatternChange`（`index.html:6954-6980`）**再做一遍同样的全量重建**（L6972 / L6978）。`scheduleRef` 只由曲式路径调用（`scheduler` L5385 与 `arrangeStart` L5850），两处调用点后面都紧跟 `consumePending` / `flushPending` → `applyPatternChange`，故 scheduleRef 里的重建是纯冗余，且正撞在「小节边界那一轮必须最省、阻塞超余量就吞拍」的纪律上（CONFIG 注释 L1738-1746）。
+  - **修法（报告的最小修复）**：`scheduleRef` 退化为**只登记挂起**（置 `pendingRef` / `pendingPattern` / `sigChgPending`），删去 `buildPresetList()` 与 `updateFallbackNote()`；列表重建统一交给紧随其后的 `applyPatternChange`。段序条高亮不受影响——它由 `Arrange.refreshNow` / `refreshBar` → `syncDemoSecRow()` 每小节同步（L8468 / L8460），另有 `stop()` / `playWholeSong` / `jumpDemoSection` 三处兜底，`syncDemoSecRow` 本身幂等安全。
+- **测试与反向验证**：
+  - 在 `tests/cases/t24-audit-hardening.js` 加断言：`resetProbe()` 后调 `Presets.scheduleRef(...)`，要求 `PROBE.classWrites === 0`（排一个型不得产生任何 className 写入）。**旧实现**该断言变红——**期望 0，实际 42** 次 className 写入（探针钉死「顺手重建」）；**新实现**为 0。
+  - 顺带订正两处因本次改动而过期的注释（`index.html` 中 `buildPresetList` 尾注、`tests/cases/t68-whole-song-and-voices.js` 头注与 L252），把「scheduleRef → buildPresetList」改为实际路径「applyPatternChange → buildPresetList」。
+- **实测量化**（临时脚本 `tmp-measure-p26.js`，240 BPM、strum 种子、600 帧、3 次换块，用后即删）：每次换块边界帧的 className 写入 **770→687 / 730→647 / 730→647**（**每块 −83 次**，约 **−11%**）；600 帧合计 **8257→8008**（Δ=249=3×83）。
+- **备注**：`index.html` 内以注释形式出现本版号（`scheduleRef` 处 `★ v2.8.24`），`check-version.js` 第 3 项据此要求 VERSION 同步到 2.8.24——版本号与代码改动同版落地。
+
+**自验**：`node tools/check-all.js`（全量）**2480 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6695/6762，阈值 97%/90%，Presets 分区 95.2%）；死循环看门狗通过。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.23 · 工具 P2-5：check-dom-ids 的引用正则只认双引号（单引号/模板串整段逃逸审计）（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 13 条（P2 组）。本节只落这一条，独立成版与提交。

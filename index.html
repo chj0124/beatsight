@@ -1421,13 +1421,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L5779  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      L6274  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
      L6404  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7190  Editor        自定义节奏型编辑器
-     L7546  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7769  Ear           听辨训练（v1.10.0）
-     L7992  Arrange       曲式编排（v2.0.0）
-     L8751  Help          使用方法（v2.0.1）
-     L8798  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8872  初始化（装配） 各模块 hook 接线与启动
+     L7194  Editor        自定义节奏型编辑器
+     L7550  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7773  Ear           听辨训练（v1.10.0）
+     L7996  Arrange       曲式编排（v2.0.0）
+     L8755  Help          使用方法（v2.0.1）
+     L8802  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8876  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.23";
+const VERSION = "2.8.24";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6783,8 +6783,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     Tracks.syncTrackUI();              // v2.4.0：条上高亮与"已隐藏 N 个"说明跟列表同批刷新
     syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/切轨/开播都经这里兜住）
     /* v2.5.0：段序条也一样——它随列表重建而重建，新造的胶囊默认没有任何高亮，
-       必须在这里补一次。★ 这条不是可选的锦上添花：曲式播放中每换一个型都会走
-       scheduleRef → buildPresetList，漏了这一步的话**段序条会在播到第 2 段时整个熄灭**
+       必须在这里补一次。★ 这条不是可选的锦上添花：曲式播放中每换一个型都会经
+       consumePending → applyPatternChange → buildPresetList 重建列表，漏了这一步的话
+       **段序条会在播到第 2 段时整个熄灭**
        （元素是新的、高亮是旧的）。与上面两条是同一个道理：列表重建的收尾处必须把
        所有"由列表承载的状态"各同步一次 */
     syncDemoSecRow();
@@ -7074,14 +7075,17 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* 把"下一次要应用的型"排进挂起队列（v2.0.0）：曲式编排的块/段切换用它。
      调用方随后由 scheduler 的小节边界统一施加（与用户切预设走的是同一条路）。
      resetBar 由 consumePending 按"是否变拍号"决定——曲式要求整首同拍号，
-     所以曲式调用方拿到的恒为 0（新块从它自己的第 0 小节开始）。 */
+     所以曲式调用方拿到的恒为 0（新块从它自己的第 0 小节开始）。
+     ★ v2.8.24（审计 P2-6）：本函数**只登记挂起**，不再顺手重建侧栏列表。它仅由曲式
+     路径调用，两个调用点（scheduler 块切换 / arrangeStart）都紧接着走
+     consumePending / flushPending → applyPatternChange，后者已做全量重建
+     （buildPresetList + updateFallbackNote）——在这里再建一次等于每个小节边界把整张
+     列表重建两遍，正撞在"小节边界那一轮必须最省"的纪律上。 */
   /** @param {any} ref */
   function scheduleRef(ref){
     pendingRef = ref;
     pendingPattern = true;
     sigChgPending = (S.sig !== appliedSig);
-    buildPresetList();
-    updateFallbackNote();
   }
   /* ===== 练习循环（v2.4.3）=====
      规格：把播放限制在当前型的第 [from, to] 小节之间无限回绕。

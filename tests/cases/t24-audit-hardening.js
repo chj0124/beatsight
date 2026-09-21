@@ -122,7 +122,11 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
   b3.beat.Presets.refreshAfterPatternChange();                 // 未播放 → 走"立即生效"路径
   eq(b3.els["patternName"].textContent, "自定义X",
      "pendingRef 为空时应用的是当前选中预设（既有路径行为不变）");
+  /* P2-6：scheduleRef 只登记挂起、不再顺手重建侧栏——重建交给紧随其后的 applyPatternChange。
+     探针把这条钉死：排一个型不得产生任何 className 写入（旧实现会全量重建，探针 > 0）。 */
+  resetProbe();
   b3.beat.Presets.scheduleRef({ type: "builtin", idx: 2 });     // 排一个"别的型"
+  eq(PROBE.classWrites, 0, "★ scheduleRef 只排挂起、不重建列表（审计 P2-6；旧实现此处 > 0）");
   eq(b3.els["patternName"].textContent, "自定义X", "刚排上时尚未生效（要等小节边界）");
   const pend = b3.beat.Presets.consumePending(0);
   eq(pend.applied, true, "小节边界消费挂起成功");
