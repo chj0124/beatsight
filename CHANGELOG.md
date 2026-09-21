@@ -13,6 +13,15 @@
 
 **自验**：`node tools/check-all.js --strict-env` 实跑 13/14 全绿（tsc ✓、ESLint ✓；仅浏览器冒烟因本机无浏览器 ⊘）；自动化测试 2502 PASS / 0 FAIL；死循环看门狗 49 PASS / 0 FAIL / 0 超时；行覆盖率 99.2%。
 
+### 发布渠道（补记）
+
+WorkBuddy 渠道换绑到新链接 **https://beatsight.app.workbuddy.host/**，旧链接 `beatsight-48543` **废弃**（不再更新）。
+Cloudflare 那条 `beatsight.chenhuajian1995.workers.dev` 未变，仍是判断"线上是否最新"的基准。
+
+换绑原因与上次同源：应用归属按「工作区（会话）」判定，`beatsight-48543` 所属的工作区已不在当前环境，
+无法再更新，只能在新工作区发布并换绑。本次同时把发布副本的来源固定为 `node tools/build-dist.js` 的 `dist/`
+（9 个上站条目，含 4 个构建期生成的 PNG），`README.md` / `docs/DEVELOPMENT.md` 的渠道地址同步。
+
 ## v2.8.29 · 歌词字号加大两号并加粗（主视图 + 曲式编辑器）（2026-09-21）
 
 **来源**：用户诉求「歌词行的字体加大两号并加粗」。经确认口径：主视图歌词 12px → 16px（+4px）、字重 500 → 700（加粗）；曲式编辑器歌词同步 11px → 15px + 加粗。

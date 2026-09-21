@@ -57,17 +57,20 @@ beatsight/
 **发布渠道（两条，各司其职）**：
 
 - **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。**Dashboard 的 Build command 填的是 `npm run ci`**（v2.8.3 起；定义在 `package.json`，= `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`），全量检查串在里面、**不通过就不部署**，所以这条路上线上始终是最新代码。注意那一行**只存在于 Dashboard**、仓库改不了它——仓库侧能做的是把它压到只剩这个稳定指针（理由与坑见 `wrangler.jsonc` 头部）
-- **② WorkBuddy，手动**：https://beatsight-48543.app.workbuddy.host/ （v2.0.1 起；旧链接 beatsight-34873 已随换绑废弃，停在 v1.6.0 不再更新）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
-  - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`（只有 `index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` / 4 个 `icon-*.png`，共 8 个文件）。
-    **PNG 不入库**（v2.4.4 起由 `tools/gen-icons.js` 生成）——发布前先在仓库根跑一次
-    `node tools/gen-icons.js`（默认输出到仓库根）再 copy；漏了也不致命
-    （sw.js 把 PNG 列为可选资源，404 不拖垮 install，只是老设备没有位图图标）。
+- **② WorkBuddy，手动**：https://beatsight.app.workbuddy.host/ （v2.8.30 起；旧链接 beatsight-48543 已随换绑废弃，不再更新）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
+  - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`。
+    v2.8.30 起这份副本**直接取 `node tools/build-dist.js` 产出的 `dist/`**——它恰好就是上站清单
+    （5 个拷贝条目 `index.html` / `sw.js` / `manifest.webmanifest` / `icon.svg` / `_headers`
+    + 4 个构建期生成的 `icon-*.png`，共 9 个文件），拷一份到 `beatsight-publish/` 再发即可。
+    **别直接发 `dist/`**：发布器可能把它当构建产物过滤掉，发上去是空站。
+    **PNG 不入库**（v2.4.4 起由 `tools/gen-icons.js` 生成），由 `build-dist.js` 现场生成进 `dist/`，
+    所以不必再手工跑 `gen-icons.js`（手工跑会输出到仓库根，反而多出一份无人清理的副本）。
     不要直接发 `beatsight/`——那里有 44 MB 的 `node_modules`，以及 `tests/` `tools/` `docs/` `package.json` `wrangler.jsonc`，
     发上去就都变成公开可访问的了。**每次重新发布前要先重新 copy 覆盖**，否则会发到旧版本
   - ★ **应用归属是按"工作区（会话）"判定的，不是按目录**：每个 WorkBuddy 工作区根目录有一个
     `.<appId>.genie` 标记文件，记录它发布到哪个应用。**指定别的 appId、或从别的工作区的目录发布，
     都会被路由回当前工作区自己那个应用**——所以一个应用只能在"当初创建它的那个工作区"里更新。
-    旧应用更新不了就换绑新链接（34873 → 48543 就是这么发生的）
+    旧应用更新不了就换绑新链接（34873 → 48543 → beatsight 就是这么发生的）
 
 项目**不用 GitHub Actions**（`.github/workflows/` 早期有过、后全部移除），机器检查改由 `node tools/check-all.js` 在本地一键跑完（见 §5）。Cloudflare 侧只留一份最小配置 `wrangler.jsonc`：Workers 的静态资源（Static Assets）**必须**由 Wrangler 配置文件声明资源目录（`assets.directory = ./dist`），否则构建里的部署命令无法定位要发布的文件、当场失败。仓库里另有 `_headers`（纯文本响应头规则，构建时拷进 `dist/`，由 Workers 解析后作用于静态资源响应，自身不对外提供）；**没有** `_redirects` / `functions/`，也没有 Worker 脚本（纯静态托管，Worker 不参与请求）。
 
