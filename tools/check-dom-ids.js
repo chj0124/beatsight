@@ -5,7 +5,7 @@
    审计时人工核对过一次（67 个引用 vs 69 个 id，零悬空），这里把它固化成机器检查，
    以后不必再靠人眼。
 
-   检查两件事：
+   检查两件事（引号无关，`"` / `'` / `` ` `` 三种都认）：
      1) 每个 `$("x")` / `getElementById("x")` 引用的 id 在 HTML 里必须存在；
      2) 报告 HTML 里声明了但代码从不引用的 id（只提示，不算错——纯样式钩子是合法的）。
 
@@ -49,10 +49,12 @@ const declared = new Set();
 /* 代码里引用的 id */
 const referenced = new Map();     // id → 首次出现的行号
 {
-  const re = /(?:\$|getElementById)\(\s*"([^"]+)"\s*\)/g;
+  /* 引号无关：`$("x")` / `$('x')` / `$(`x`)` 都要进审计面（审计 P2-5——
+     只认双引号时单引号/模板串引用会整段逃逸，属假绿）。 */
+  const re = /(?:\$|getElementById)\(\s*(["'`])([^"'`]+)\1\s*\)/g;
   let mm;
   while ((mm = re.exec(code))){
-    const id = mm[1];
+    const id = mm[2];
     if (!referenced.has(id)) referenced.set(id, code.slice(0, mm.index).split("\n").length + baseLine);
   }
 }
