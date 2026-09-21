@@ -8,6 +8,8 @@
    环境变量 BEATSIGHT_HTML 可指向别的构建（用于历史版本对照）。
    ================================================================================ */
 "use strict";
+const fs = require("fs");
+const path = require("path");
 const h = require("./lib/harness");
 
 /* 场景组装配顺序 = 执行顺序。新增文件请追加到末尾，保持既有用例的报错定位稳定。 */
@@ -58,6 +60,23 @@ const CASE_FILES = [
   "./cases/t82-keepalive-fallback",     // v2.8.8：后台保活兜底失败可见化（成功恒 0 / 被拒与无能力均留痕 / 面板只在非 0 时占位）
   "./cases/t83-full-data-pack",         // v2.8.8：全量数据包导出导入（四类冷数据 / 合并语义 / 三种校验口径 / 体量护栏）
 ];
+/* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
+   新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
+   断言，是比失败更危险的假绿（历史上有过"文件在、没被 require"的先例）。
+   故启动时把目录内容与清单**双向对账**，任一方向漂移即报错退出（退出码 1 = 真失败，非工具故障）。 */
+{
+  const listed = new Set(CASE_FILES.map(f => path.basename(f) + ".js"));
+  const onDisk = new Set(fs.readdirSync(path.join(__dirname, "cases")).filter(f => f.endsWith(".js")));
+  const unlisted = [...onDisk].filter(f => !listed.has(f));   // 目录有、清单没有 → 静默漏测
+  const missing  = [...listed].filter(f => !onDisk.has(f));   // 清单有、目录没有 → require 必失败
+  if (unlisted.length || missing.length){
+    console.error("✗ 用例清单与 tests/cases/ 不一致（闸门 P2-2）：");
+    if (unlisted.length) console.error("  未登记进 CASE_FILES（不会被执行）：" + unlisted.join("、"));
+    if (missing.length)  console.error("  CASE_FILES 中存在但目录缺失：" + missing.join("、"));
+    console.error("  请使两者一致后重跑（新增用例请追加到 CASE_FILES 末尾）。");
+    process.exit(1);
+  }
+}
 for (const f of CASE_FILES) require(f);
 
 const { pass, fail, failNames } = h.stats();

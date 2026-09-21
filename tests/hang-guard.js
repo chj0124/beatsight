@@ -16,26 +16,21 @@ const path = require("path");
 
 const TIMEOUT = +(process.argv[2] || 8000);
 
-const CASES = [
-  ["sig_abc",            "脏拍号 abc"],
-  ["sig_neg",            "脏拍号 -3（v1.2.3 实测主线程死循环）"],
-  ["sig_big",            "脏拍号 99"],
-  ["sig_zero",           "脏拍号 0"],
-  ["sig_null",           "脏拍号 null"],
-  ["sig_bool",           "脏拍号 true"],
-  ["customs_empty_bar",  "空小节自定义预设"],
-  ["vol_big",            "音量 1e6（v1.2.3 实测 +120 dBFS）"],
-  ["vol_3",              "音量 3"],
-  ["vol_neg",            "音量 -5"],
-  ["vol_str",            "音量 \"x\""],
-  ["strum_vol_dirty",    "脏扫弦音量（v2.5.0：第二个进热路径的声部音量，带弦区谱驱动）"],
-  ["pat_bars_max",       "型长上限 64 小节（v2.5.1：长型必须「能跑」，不只是「能存」）"],
-  ["bpm_dirty",          "脏 BPM"],
-  ["hunger_skip",        "后台节流 10 分钟后回前台（追赶逻辑写成逐拍会死循环）"],
-  ["editor_clear_bar",   "试听中清空小节（真实用户路径）"],
-  ["normal_path",        "正常路径（守卫不得误伤）"],
-  ["dirty_misc",         "脏重拍分组 / trainer 原型污染"],
-];
+/* v2.8.16（审计 P2-2）：清单不再在本文件手抄一份——向 hang-case.js 索要（`--list`）。
+   此前两处各维护一份 id/标签，新增探针只改一处就会「本文件漏跑 / hang-case 走到未知用例」，
+   且两个方向都不会被闸门发现。现在本文件只负责超时强杀，清单以实现文件为准。 */
+let CASES;
+try {
+  CASES = execFileSync(process.execPath, [path.join(__dirname, "hang-case.js"), "--list"],
+    { encoding: "utf8" }).trim().split("\n").filter(Boolean).map(l => {
+      const i = l.indexOf("|");
+      return i < 0 ? [l, ""] : [l.slice(0, i), l.slice(i + 1)];
+    });
+} catch (e){
+  console.error("✗ 无法从 hang-case.js 取得用例清单（--list）：" + e.message);
+  console.error("  这是**工具故障，不是用例失败**——本步骤未被验证（退出码 4 = 未能执行）。");
+  process.exit(4);
+}
 
 console.log("══════════════════════════════════════════════════════════");
 console.log("  死循环看门狗 · 每用例独立子进程，超时 " + TIMEOUT + "ms 强杀");

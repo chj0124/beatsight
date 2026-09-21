@@ -65,6 +65,7 @@
      tools/check-docs.js 现在会拦下重新写回它的手——耗时由本文件在末尾自己打印。 */
 "use strict";
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
@@ -89,6 +90,13 @@ const TOOL_FAIL_CODE = 4;
 const SYNTAX = "const fs=require('fs');const m=fs.readFileSync('index.html','utf8')"
   + ".match(/<script>([\\s\\S]*?)<\\/script>/);if(!m)throw new Error('未找到 <script>');"
   + "new Function(m[1]);console.log('inline script 编译通过')";
+
+/* v2.8.16（审计 P2-1）：全量模式下最贵的那一遍（FULL_SCAN=1 组合扫描）此前被**跑两次**——
+   第 12 步自己跑一次，第 14 步 check-coverage.js --full 内部又 spawn 一次同一套件。
+   现在第 12 步带着 NODE_V8_COVERAGE 跑（同一遍既出测试结论、又把 V8 区间落盘到本目录），
+   第 14 步 check-coverage 用 `--reuse=<本目录>` 直接分析这份落盘、**跳过重跑**。
+   目录在整套检查跑完后清理（见循环之后）。 */
+const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 
 const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
@@ -117,9 +125,16 @@ const STEPS = [
      约定：退出码 3 = 本机缺这项能力 → 按 ⊘ 记账（既不算通过也不算失败，结论见汇总）。 */
   { name: "浏览器冒烟 · 真实 DOM", cmd: process.execPath, args: ["tools/smoke.js"],
     skipCode: 3, skipNote: "本机没有 Chrome / Edge" },
-  { name: "自动化测试" + (QUICK ? "（抽样）" : "（FULL_SCAN 全量）"), cmd: process.execPath, args: ["tests/run.js"], env: { FULL_SCAN: QUICK ? "" : "1" } },
+  /* v2.8.16（审计 P2-1）：本步同时承担覆盖率采集——FULL_SCAN 下覆盖率插桩的内存开销约 2GB，
+     故带头抬高 old-space 上限（V8 按需增长，不预占；只影响这个带插桩的子进程）。
+     第 14 步据此落盘分析，不再重跑套件。 */
+  { name: "自动化测试" + (QUICK ? "（抽样）" : "（FULL_SCAN 全量）"), cmd: process.execPath,
+    args: ["--max-old-space-size=4096", "tests/run.js"],
+    env: { FULL_SCAN: QUICK ? "" : "1", NODE_V8_COVERAGE: COV_DIR } },
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
-  { name: "行覆盖率", cmd: process.execPath, args: ["tools/check-coverage.js"].concat(QUICK ? [] : ["--full"]) },
+  /* v2.8.16（审计 P2-1）：--reuse 复用第 12 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
+  { name: "行覆盖率", cmd: process.execPath,
+    args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]) },
 ];
 
 console.log("══════════════════════════════════════════════════════════");
@@ -186,6 +201,8 @@ for (const step of STEPS){
 }
 
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+/* v2.8.16（审计 P2-1）：第 12/14 步共享的覆盖率落盘目录，检查跑完后清理（无论成败） */
+fs.rmSync(COV_DIR, { recursive: true, force: true });
 console.log("\n══════════════════════════════════════════════════════════");
 console.log("  结果汇总");
 console.log("══════════════════════════════════════════════════════════");

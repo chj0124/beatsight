@@ -110,6 +110,42 @@ const seed = o => ({ "beatsight.m2": JSON.stringify(o) });
 const SIGS = { sig_abc:"abc", sig_neg:-3, sig_big:99, sig_zero:0, sig_null:null, sig_bool:true };
 const VOLS = { vol_big:1e6, vol_3:3, vol_neg:-5, vol_str:"x" };
 
+/* v2.8.16（审计 P2-2）：本文件是这些探针的**实现真相源**，故用例清单也从这里出——
+   hang-guard 不再自带一份 id/标签，改为 `--list` 向本文件索要，消除「两处清单各改一处」的漂移。
+   格式：每行 `id|中文说明`，供调用方解析显示。顺序即 hang-guard 的执行顺序（保持历史输出稳定）。
+   ★ 新增探针必须**同时**登记到 CASE_LIST（否则 hang-guard 看不到它）并补上对应分支
+     （否则运行到它时会落进末尾的「未知用例」而失败）——两侧互为闸门。 */
+const SIG_LABELS = {
+  sig_abc:"脏拍号 abc", sig_neg:"脏拍号 -3（v1.2.3 实测主线程死循环）", sig_big:"脏拍号 99",
+  sig_zero:"脏拍号 0", sig_null:"脏拍号 null", sig_bool:"脏拍号 true",
+};
+const VOL_LABELS = {
+  vol_big:"音量 1e6（v1.2.3 实测 +120 dBFS）", vol_3:"音量 3", vol_neg:"音量 -5", vol_str:"音量 \"x\"",
+};
+const SPECIAL_LABELS = {
+  customs_empty_bar:"空小节自定义预设",
+  strum_vol_dirty:"脏扫弦音量（v2.5.0：第二个进热路径的声部音量，带弦区谱驱动）",
+  pat_bars_max:"型长上限 64 小节（v2.5.1：长型必须「能跑」，不只是「能存」）",
+  bpm_dirty:"脏 BPM",
+  hunger_skip:"后台节流 10 分钟后回前台（追赶逻辑写成逐拍会死循环）",
+  editor_clear_bar:"试听中清空小节（真实用户路径）",
+  normal_path:"正常路径（守卫不得误伤）",
+  dirty_misc:"脏重拍分组 / trainer 原型污染",
+};
+const CASE_LIST = [
+  ...Object.keys(SIGS).map(id => [id, SIG_LABELS[id]]),
+  ["customs_empty_bar", SPECIAL_LABELS.customs_empty_bar],
+  ...Object.keys(VOLS).map(id => [id, VOL_LABELS[id]]),
+  ...["strum_vol_dirty", "pat_bars_max", "bpm_dirty", "hunger_skip",
+      "editor_clear_bar", "normal_path", "dirty_misc"].map(id => [id, SPECIAL_LABELS[id]]),
+];
+
+/* `--list`：把清单吐给调用方（hang-guard），本模式不加载 index.html、不执行任何探针 */
+if (CASE === "--list"){
+  CASE_LIST.forEach(([id, label]) => console.log(id + "|" + label));
+  process.exit(0);
+}
+
 if (CASE in SIGS){
   const v = SIGS[CASE];
   const { beat } = loadApp(seed({ sig: v }));

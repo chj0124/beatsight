@@ -17,9 +17,16 @@
      node tools/check-coverage.js                 # 跑抽样模式，总阈值 97%、分区阈值 90%
      node tools/check-coverage.js --min=95        # 自定义总阈值
      node tools/check-coverage.js --full          # 跑 FULL_SCAN=1 全量组合扫描
+     node tools/check-coverage.js --reuse=<dir>   # 复用别处已落盘的 V8 覆盖率，**不再重跑套件**（见下）
      node tools/check-coverage.js --list=40       # 额外列出 40 个未覆盖函数名
    退出码 0 = 达标，1 = 低于阈值（CI 用它兜住"某块代码悄悄失去覆盖"），4 = 自身故障（未能执行）。
    自身故障用 4 而非 2（v2.8.14，审计 P1-6）：见下方 spawn 失败处的说明，与 check-all 的 TOOL_FAIL_CODE 统一。
+
+   `--reuse` 是 v2.8.16（审计 P2-1）加的去重入口：本脚本默认会**自己 spawn 一遍测试套件**来
+   采集覆盖率，而 check-all 的第 12 步（tests/run.js，FULL_SCAN=1）已经在跑同一套件了——全量
+   模式下最贵的那一遍因此白跑两次。改成 check-all 在第 12 步带上 NODE_V8_COVERAGE 跑（同一遍
+   既出结论又落盘区间），第 14 步再用本脚本的 `--reuse=<那个目录>` 直接分析落盘、跳过 spawn。
+   单独运行（不带 --reuse）时行为完全不变。
 
    为什么要两个阈值：只看总数会掩盖"某个模块烂掉、另一个模块补偿"。
    分区阈值保证每个模块自己不低于底线。
@@ -49,6 +56,7 @@ const argOf = (name, dft) => {
 const MIN = +argOf("min", 97);
 const MIN_SECTION = +argOf("min-section", 90);
 const FULL = argv.includes("--full");
+const REUSE = argOf("reuse", "");        // v2.8.16（审计 P2-1）：非空 = 复用该目录的落盘，不重跑套件
 const LIST = +argOf("list", 12);
 
 const ROOT = path.join(__dirname, "..");
@@ -61,33 +69,45 @@ const lines = SRC.split("\n");
 const scriptStartLine = html.slice(0, html.indexOf("<script>")).split("\n").length;
 const fileLine = n => n + scriptStartLine - 1;
 
-/* ---- 跑测试套件并采集覆盖率 ---- */
-const covDir = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-cov-"));
-const env = Object.assign({}, process.env, { NODE_V8_COVERAGE: covDir });
-if (FULL) env.FULL_SCAN = "1";
-/* 覆盖率插桩要为**每一次 vm.Script 编译**的内联脚本留存区间：FULL_SCAN 下 loadApp() 被调用
-   数百次，区间累积到约 2GB，正好顶穿 Node 默认 old-space 上限（本沙箱实测 2240MB），于是进程在
-   全部用例跑完、收尾 flush 覆盖率的瞬间 FATAL（exit 134，cov 目录为空 → 报"测试套件未通过"）。
-   注意这是**覆盖率插桩自身的内存开销**，与用例成败无关：同一套件不加覆盖率时 2345/2345 全绿。
-   故只给这个带插桩的子进程抬高上限（V8 按需增长，不预占），别动普通测试步骤。 */
-const run = spawnSync(process.execPath, ["--max-old-space-size=4096", path.join(ROOT, "tests", "run.js")], { cwd: ROOT, env, encoding: "utf8" });
-/* ★ 先分「子进程压根没起来」与「测试真的没过」（v2.8.6，审计 §E2）：spawnSync 失败时
-   `status` 为 null、`error` 有值，而此前这里直接按 `status !== 0` 处理，于是会打印
-   「测试套件未通过，覆盖率无意义。先修测试：」+ 一张**空的**失败清单——因为 stdout 是空的，
-   那条过滤正则一条也匹配不到。结果是：把"测试没跑成"说成"测试没过"，还附一份空清单，
-   把人送去找一个不存在的失败用例。本机沙箱实测正是这个形状（管道式 spawnSync 报 EBUSY，
-   而当时测试套件本身 2412 PASS / 0 FAIL 完全健康）。
-   退出码 4 = 本步骤未能执行，由 tools/check-all.js 按「工具故障」记账（既不算 ✓ 也不算 ✗）。 */
-if (run.error){
-  console.error("⊘ 无法启动测试子进程（" + (run.error.code || run.error.errno || "?") + "）：" + run.error.message);
-  console.error("  这是**工具故障，不是测试失败**——覆盖率本次未被验证（退出码 4 = 未能执行）。");
-  console.error("  先查环境（权限 / 沙箱 / 资源），别去查测试。");
-  process.exit(4);
-}
-if (run.status !== 0){
-  console.error("测试套件未通过，覆盖率无意义。先修测试：");
-  console.error((run.stdout || "").split("\n").filter(l => /^  ✗|结果/.test(l)).join("\n"));
-  process.exit(1);
+/* ---- 采集覆盖率：`--reuse=<dir>` 分析上游落盘，否则自己跑一遍套件（v2.8.16，审计 P2-1）---- */
+let covDir;
+if (REUSE){
+  /* 复用模式：上游（check-all 第 12 步）已经带着 NODE_V8_COVERAGE 跑过同一套件并把区间落盘，
+     这里直接分析那份落盘即可，**绝不重跑套件**——这正是 P2-1 要去掉的那一遍。 */
+  covDir = REUSE;
+  if (!fs.existsSync(covDir)){
+    console.error("⊘ --reuse 指定的覆盖率目录不存在：" + covDir);
+    console.error("  这是**工具故障，不是覆盖率不达标**——本次未被验证（退出码 4 = 未能执行）。");
+    process.exit(4);
+  }
+} else {
+  covDir = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-cov-"));
+  const env = Object.assign({}, process.env, { NODE_V8_COVERAGE: covDir });
+  if (FULL) env.FULL_SCAN = "1";
+  /* 覆盖率插桩要为**每一次 vm.Script 编译**的内联脚本留存区间：FULL_SCAN 下 loadApp() 被调用
+     数百次，区间累积到约 2GB，正好顶穿 Node 默认 old-space 上限（本沙箱实测 2240MB），于是进程在
+     全部用例跑完、收尾 flush 覆盖率的瞬间 FATAL（exit 134，cov 目录为空 → 报"测试套件未通过"）。
+     注意这是**覆盖率插桩自身的内存开销**，与用例成败无关：同一套件不加覆盖率时 2345/2345 全绿。
+     故只给这个带插桩的子进程抬高上限（V8 按需增长，不预占），别动普通测试步骤。 */
+  const run = spawnSync(process.execPath, ["--max-old-space-size=4096", path.join(ROOT, "tests", "run.js")], { cwd: ROOT, env, encoding: "utf8" });
+  /* ★ 先分「子进程压根没起来」与「测试真的没过」（v2.8.6，审计 §E2）：spawnSync 失败时
+     `status` 为 null、`error` 有值，而此前这里直接按 `status !== 0` 处理，于是会打印
+     「测试套件未通过，覆盖率无意义。先修测试：」+ 一张**空的**失败清单——因为 stdout 是空的，
+     那条过滤正则一条也匹配不到。结果是：把"测试没跑成"说成"测试没过"，还附一份空清单，
+     把人送去找一个不存在的失败用例。本机沙箱实测正是这个形状（管道式 spawnSync 报 EBUSY，
+     而当时测试套件本身 2412 PASS / 0 FAIL 完全健康）。
+     退出码 4 = 本步骤未能执行，由 tools/check-all.js 按「工具故障」记账（既不算 ✓ 也不算 ✗）。 */
+  if (run.error){
+    console.error("⊘ 无法启动测试子进程（" + (run.error.code || run.error.errno || "?") + "）：" + run.error.message);
+    console.error("  这是**工具故障，不是测试失败**——覆盖率本次未被验证（退出码 4 = 未能执行）。");
+    console.error("  先查环境（权限 / 沙箱 / 资源），别去查测试。");
+    process.exit(4);
+  }
+  if (run.status !== 0){
+    console.error("测试套件未通过，覆盖率无意义。先修测试：");
+    console.error((run.stdout || "").split("\n").filter(l => /^  ✗|结果/.test(l)).join("\n"));
+    process.exit(1);
+  }
 }
 
 /* ---- 汇总所有 coverage-*.json 里 index.inline.js 的区间 ---- */
@@ -110,7 +130,7 @@ for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
     }
   }
 }
-fs.rmSync(covDir, { recursive: true, force: true });
+if (!REUSE) fs.rmSync(covDir, { recursive: true, force: true });
 if (!ranges.length){
   console.error("没有采集到 index.inline.js 的覆盖率——检查 tests/run.js 是否仍经 vm.Script 加载内联脚本");
   console.error("  这是**工具故障，不是覆盖率不达标**——本次未被验证（退出码 4 = 未能执行）。");
@@ -173,7 +193,8 @@ const overall = stat(lines.map((_, i) => i));
 /* ---- 输出 ---- */
 let failed = false;
 console.log("══════════════════════════════════════════════════════════");
-console.log("  行覆盖率 · V8 内置采集（" + (FULL ? "FULL_SCAN=1 全量" : "抽样") + "）");
+console.log("  行覆盖率 · V8 内置采集（" + (FULL ? "FULL_SCAN=1 全量" : "抽样")
+  + (REUSE ? " · 复用第 12 步落盘" : "") + "）");
 console.log("══════════════════════════════════════════════════════════");
 const bar = p => {
   const n = Math.round(p / 5);

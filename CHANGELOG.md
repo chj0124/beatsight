@@ -1,5 +1,21 @@
 # 变更记录
 
+## v2.8.16 · 工程化 P2-1/P2-2：全量套件去重（覆盖率不再重跑一遍）+ 用例清单双向对账（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 6 条（报告把两条并作一组「测试工程化」）。本节只落这一组，独立成版与提交。
+
+- **P2-1 全量模式下最贵的那一遍被跑两次**：
+  - **根因**：`tools/check-all.js` 第 12 步 `tests/run.js`（FULL_SCAN=1）与第 14 步 `check-coverage.js --full` 各自独立执行完整组合扫描——后者为采集 V8 覆盖率**又 spawn 了一遍同一套件**。全链最贵的部分（实测 13.9s）因此白跑两次。
+  - **修法**：给 `check-coverage.js` 加 `--reuse=<dir>` 入口——直接分析上游已落盘的 V8 覆盖率区间、**跳过 spawn**；`check-all.js` 第 12 步带 `NODE_V8_COVERAGE=<共享临时目录>` 跑（同一遍既出测试结论又落盘区间），第 14 步用 `--reuse` 复用该目录，跑完清理。单独运行 `check-coverage.js`（不带 `--reuse`）行为完全不变。
+  - **取舍**：覆盖率插桩在 FULL_SCAN 下区间累积约 2GB（会顶穿默认 old-space 上限），故第 12 步带上 `--max-old-space-size=4096`（该旗标原先在 check-coverage 的 spawn 里，现随「采集职责」一并前移）。实测第 14 步由「重跑整个套件」降为 **0.25s** 纯分析，覆盖率数字前后一致（99.0%）。
+- **P2-2 两份手工清单会漂移、且漂移方向是静默的**：
+  - **根因**：`tests/run.js` 的 `CASE_FILES`（执行顺序）与 `tests/cases/` 目录手工对账；`tests/hang-guard.js` 的 `CASES` 与 `tests/hang-case.js` 的分支实现手工对账。新增用例只改一处 → 要么**静默漏测**（PASS 数照旧好看），要么运行时才报「未知用例」。
+  - **修法**：`tests/run.js` 启动时 `readdirSync("cases")` 与 `CASE_FILES` **双向对账**，任一方向漂移即 `exit 1`；`tests/hang-case.js` 作为清单实现真相源、新增 `--list` 子命令输出 `id|说明`，`hang-guard.js` 改为向它索要（拿不到清单按工具故障 `exit 4`），不再自带副本。
+- **测试与反向验证**：P2-2 的对账闸门做了反向验证——临时新建一个未登记的 `tests/cases/*.js`，`run.js` 立即以「未登记进 CASE_FILES」`exit 1`（删除后恢复 45 个用例、全量复跑仍全绿）。`hang-case.js --list` 与消费方 `hang-guard.js` 结果一致（18 例，49 PASS / 0 FAIL）。P2-1 为等价重构：带插桩的第 12 步与 `--reuse` 的第 14 步跑出的覆盖率与旧路径逐位相同。
+- **备注**：本次 `tools/check-coverage.js` / `tools/check-all.js` 注释带 `v2.8.16` 前向标号，连同五处版本号一并落版（`check-version.js` 只约束 `index.html` 的标号不高于 VERSION）。
+
+**自验**：`node tools/check-all.js`（全量）**2479 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6692/6759，阈值 97%/90%）；死循环看门狗通过。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.15 · 修复 P1-2/P1-3/P1-4：三处「状态纪律」缺口（死状态表 / 绕过 setMode / 会话开关不复位）（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 5 条（报告把三条并作一组「状态纪律」）。本节只落这一组，独立成版与提交。
