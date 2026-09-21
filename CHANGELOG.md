@@ -1,5 +1,25 @@
 # 变更记录
 
+## v2.8.15 · 修复 P1-2/P1-3/P1-4：三处「状态纪律」缺口（死状态表 / 绕过 setMode / 会话开关不复位）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 5 条（报告把三条并作一组「状态纪律」）。本节只落这一组，独立成版与提交。
+
+- **P1-2 `subCellEls` 声明了、读了、却从未写入（v2.4.4 重构断头路）**：
+  - **根因**：注释承诺「建网格时登记一次、帧内只读表」，但 `buildBarRow` 的刻度线循环从未写入它、`buildViz` 的重建清空列表也不含它，表永远是 `[]`。`paintBeatFlash` 里 `cellNode` 恒为 `undefined` → `onWhite` 恒 `false` → 十六分闪烁在**已弹白块**上永远走 `fc.soft`（淡光）而非设计的 `fc.strong`（强光）。
+  - **修法**：`buildBarRow` 刻度线循环内补 `subCellEls[b][startT / T16 + u] = c;`；`buildViz` 重建处补 `subCellEls = []`。
+- **P1-3 `loopLyricSection` 裸写 `S.playMode`，绕过 setMode 契约**：
+  - **根因**：`setMode` 是 `playMode` 的唯一写入口（t66 契约），全文件其余 6 处都走它，唯独这里裸赋值——不进 `modeTrail`（迁移轨迹缺一条）、不触发 `onPlayModeChange`，`Tracks.syncTrackUI()` 不跑、轨说明文字不更新（与 v2.6.3/v2.6.4 修的「argJump 残留」同一类半状态）。
+  - **修法**：改为 `setMode("playMode", "arrange", "歌词行循环")`。
+  - **取舍**：报告建议「删掉后面冗余的 `refreshBar()`」，实测**保留**——`setMode` 对**同值**早退、不触发 `onPlayModeChange`（幂等），删掉会在「已是曲式模式再点循环本行」时丢刷新；故保留这处显式刷新。
+- **P1-4 `Trainer.loopPerSec` 一旦置 true 永不复位**：
+  - **根因**：`loopPerSec` 是模块级**会话**状态，`Trainer.reset()` 不复位它；此后任何曲式模式下的普通变速训练都悄悄按「整段一级」而非面板的「每 N 小节一级」爬坡，无界面提示。
+  - **修法（与报告字面方案不同，见取舍）**：`Trainer.reset()` 复位 `loopPerSec = false`；把「按歌词行循环」的意图**持久化**到 `S.arrangeSel.byLyric`（`loopLyricSection` 置 true；跳段/跳演示段/退出预设/改范围/换型等非歌词入口置 false）；`Controls.start()` 在 `reset()` 之后按 `byLyric` 重推 `setLoopPerSec`。两条路径（播放中调用 / 开播前调用）由同一意图源 `byLyric` 兜底。
+  - **取舍**：报告字面方案（只在 `reset()` 里加 `loopPerSec = false`）**实测会让 T61b/c/d 变红**——「循环本行」通常在按下播放**之前**点，其 `setLoopPerSec(true)` 必然被 `Controls.start()` 里的 `Trainer.reset()` 抹掉，功能当场失效。隔离实验证得：仅上 P1-2/P1-3 时 2476 PASS / 0 FAIL，加上字面 P1-4 后 T61 三例转红；故改为「意图持久化 + 开播重推」。代价是 `arrangeSel` 增加一个字段（热键体积仍 < 1 KB），换来两条路径语义一致。
+- **测试与反向验证**：新增 T61e 钉住 `byLyric` 的写入 / 非歌词入口清除 / 开播重推 / 不跨会话泄漏（非歌词入口仍按 `everyN` 升一级）；既有 T61b/c/d 与 T51f、T68g/h/k 同步新字段。反向验证：把 P1-4 回退成报告字面方案（仅 `reset()` 复位），T61b/c/d 立即变红——证明修复确为目标缺陷。
+- **备注**：本次代码注释带 `v2.8.15` 前向标号，按 `check-version.js` 第 3 项口径，连同五处版本号一并落版再验收。
+
+**自验**：`node tools/check-all.js`（全量）**2479 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6692/6759，阈值 97%/90%）；死循环看门狗通过。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.14 · 修复 P1-6：工具故障退出码不统一，检查器自身故障被误记为「未通过」并中止后续步骤（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 4 条。本节只落这一条，独立成版与提交。

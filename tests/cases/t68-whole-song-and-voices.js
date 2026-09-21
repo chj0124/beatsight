@@ -245,7 +245,7 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "★ 点「整首连播」切到曲式模式");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 9, loop: true }),
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 9, loop: true, byLyric: false }),
      "★ 范围 = 整首 10 段 + 开范围循环（放完自动从头再来，这才叫「练」）");
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
@@ -268,7 +268,7 @@ section("T68h 整首连播 · 点段序条第 N 段 = 只循环那一段");
   secRowOf(els).children[4].fire("click");
   eq(beat.Store.S.playMode, "arrange", "点段号即进入曲式模式（否则 jumpTo 读不到可跳的曲式）");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 4, to: 4, loop: true }),
+     JSON.stringify({ id: beat.DEMO_ID, from: 4, to: 4, loop: true, byLyric: false }),
      "★ 范围收成 [第 5 段, 第 5 段] + 循环 = 只磨这一段");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
   const row = secRowOf(els);
@@ -326,7 +326,7 @@ section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSe
      "只换型、不动遍数");
   eq(ar1.sections[0].blocks[0].ref.id, ar0.sections[0].blocks[0].ref.id, "别的段不受影响");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: secIdx, to: secIdx, loop: false }),
+     JSON.stringify({ id: beat.DEMO_ID, from: secIdx, to: secIdx, loop: false, byLyric: false }),
      "范围收窄到该段（免得改了这一段、播放却走到别的段）");
 }
 section("T68j 整首连播 · 段序条高亮随播放推进（不是钉在第 1 段）");

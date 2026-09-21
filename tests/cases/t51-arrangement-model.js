@@ -190,13 +190,13 @@ section("T51f 曲式模型 · playMode / arrangeSel 热键字段（含越界钳�
 
   const d = loadApp({ "beatsight.arranges": seed }).beat.Store.S;
   eq(d.playMode, "preset", "默认播放模式是预设");
-  eq(JSON.stringify(d.arrangeSel), JSON.stringify({ id: "", from: 0, to: 0, loop: false }),
+  eq(JSON.stringify(d.arrangeSel), JSON.stringify({ id: "", from: 0, to: 0, loop: false, byLyric: false }),
      "默认 arrangeSel 指向空曲式、范围 0–0、不循环");
 
   const dirty = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "xyz", arrangeSel: "abc" }) }).beat.Store.S;
   eq(dirty.playMode, "preset", "playMode 脏值 → 回退 preset");
-  eq(JSON.stringify(dirty.arrangeSel), JSON.stringify({ id: "", from: 0, to: 0, loop: false }),
+  eq(JSON.stringify(dirty.arrangeSel), JSON.stringify({ id: "", from: 0, to: 0, loop: false, byLyric: false }),
      "arrangeSel 脏值 → 回退默认");
 
   /* id 不存在（曲式被删了）→ 整条选择作废、回退预设模式 */
@@ -209,7 +209,7 @@ section("T51f 曲式模型 · playMode / arrangeSel 热键字段（含越界钳�
   const okv = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a3", from: 1, to: 1, loop: true } }) }).beat.Store.S;
   eq(okv.playMode, "arrange", "选中存在的曲式 → 进曲式模式");
-  eq(JSON.stringify(okv.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 1, loop: true }),
+  eq(JSON.stringify(okv.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 1, loop: true, byLyric: false }),
      "from/to/loop 原样保留");
 
   const clamp = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
@@ -236,7 +236,7 @@ section("T51f 曲式模型 · playMode / arrangeSel 热键字段（含越界钳�
   app.beat.Store.flush();
   const hot = JSON.parse(app.storage.get("beatsight.state"));
   eq(hot.playMode, "arrange", "热键带 playMode");
-  eq(JSON.stringify(hot.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 2, loop: true }),
+  eq(JSON.stringify(hot.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 2, loop: true, byLyric: false }),
      "热键带完整 arrangeSel");
   ok(app.storage.get("beatsight.state").length < 1024,
      "热键仍 < 1 KB（新增字段没有破坏冷热分离，实际 " + app.storage.get("beatsight.state").length + " 字节）");

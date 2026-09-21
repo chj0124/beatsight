@@ -1416,18 +1416,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L2877  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L3533  Modal         应用内弹窗
      L3663  Viz           时值可视化渲染与每帧动画
-     L4932  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5559  Trainer       变速训练器
-     L5772  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6262  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6392  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7176  Editor        自定义节奏型编辑器
-     L7532  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7755  Ear           听辨训练（v1.10.0）
-     L7978  Arrange       曲式编排（v2.0.0）
-     L8731  Help          使用方法（v2.0.1）
-     L8778  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8852  初始化（装配） 各模块 hook 接线与启动
+     L4934  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5561  Trainer       变速训练器
+     L5779  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6274  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6404  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L7190  Editor        自定义节奏型编辑器
+     L7546  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7769  Ear           听辨训练（v1.10.0）
+     L7992  Arrange       曲式编排（v2.0.0）
+     L8751  Help          使用方法（v2.0.1）
+     L8798  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8872  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.14";
+const VERSION = "2.8.15";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2315,7 +2315,7 @@ const Store = (() => {
    *   limit: { mode: string, n: number },
    *   playMode: string,
    *   track: string,
-   *   arrangeSel: { id: string, from: number, to: number, loop: boolean },
+   *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },
    *   lyricCue: boolean,
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
    * }} */
@@ -2389,7 +2389,7 @@ const Store = (() => {
          ★ 兜底顺序：先 isStr 再赋 track，所以前面 S 的字段（sel）必须已经定好——
            这就是本字段排在 sel 之后、且用 selPat 局部变量读它的原因 */
     track: trackInit,
-    arrangeSel: { id: arrTarget ? arrTarget.id : "", from: arrFrom, to: arrTo, loop: !!arrSrc.loop },
+    arrangeSel: { id: arrTarget ? arrTarget.id : "", from: arrFrom, to: arrTo, loop: !!arrSrc.loop, byLyric: !!arrSrc.byLyric },
     /* v2.1.0 F1：锚点提示音开关——每个字的锚点进场时补一声短木鱼（复用 wood 音色，见 playClick）。
        默认**关**：这是叠加在节拍器之上的额外发声，属"用户显式要了才开"的类别（同 keepAwake） */
     lyricCue: !!saved.lyricCue,
@@ -2578,7 +2578,7 @@ const Store = (() => {
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
       track:S.track,                              // v2.4.0：普通节拍 / 带扫弦的节拍（入口身份）
       lyricCue:S.lyricCue,                        // v2.1.0 F1：锚点提示音开关（热键：跟着每次点击写）
-      arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop } };
+      arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop, byLyric:!!S.arrangeSel.byLyric } };
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); onPersistOk(); }
@@ -3972,6 +3972,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     /** @type {(HTMLElement|null)[]} */
     const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
     subEls.push({});
+    subCellEls.push({});
     let acc = 0;
     /* 空扫的弦区要"跟随前一记实扫"（参考页明文），故在本小节内自上而下逐格携带。
        跨小节不延续：新小节从全部弦重起——小节是扫弦谱的语义单位，跨小节沿用上一小节
@@ -3999,6 +4000,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
           sub.className = "sub";
           subs.appendChild(sub);
           subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
+          subCellEls[b][startT / T16 + u] = c;   // v2.4.4：同键登记宿主 cell，供 paintBeatFlash 判 onWhite 免 DOM 上溯
         }
         c.appendChild(subs);
       }
@@ -4100,7 +4102,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
     clear(viz);
-    rowEls = []; cellEls = []; subEls = []; fillEls = []; labelEls = []; strumEls = [];
+    rowEls = []; cellEls = []; subEls = []; subCellEls = []; fillEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
        appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
@@ -5577,10 +5579,13 @@ const Trainer = (() => {
   const total = () => Math.max(1, Math.ceil((S.trainer.target - S.trainer.start) / Math.max(1, S.trainer.step)) + 1);
   /** @param {number} k */
   const bpmFor = k => Math.min(S.trainer.target, S.trainer.start + k * S.trainer.step);
-  function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; }
+  function reset(){ trStepIdx = 0; trBarCnt = 0; trDone = false; loopPerSec = false; }
   /* F2 按歌词行循环（v2.2.0）：爬坡粒度开关。true = 每循环一整段升一级（句跟句练），
      false/省略 = 每 everyN 小节升一级（v1.9 起的老口径，预设练习不变）。
-     由 Arrange.loopLyricSection 在落点选择时开启；非曲式循环时无意义（段长不可知）。 */
+     由 Arrange.loopLyricSection 在落点选择时开启；非曲式循环时无意义（段长不可知）。
+     v2.8.15（审计 P1-4）：这是**会话级**开关，reset() 会把它复位；而「循环本行」通常
+     在按下播放**之前**点，其置位必然被 Controls.start 里的 reset 抹掉——故把意图持久化
+     到 S.arrangeSel.byLyric，由 Controls.start 在 reset 后按它重推（见 setLoopPerSec 注释）。 */
   let loopPerSec = false;
   /* 「上次训练一键继续」（v1.4）：有训练历史时才露面。
      文案：完成 → 再来一轮；中途停 → 从练到的级别接着练。
@@ -5765,6 +5770,8 @@ const Trainer = (() => {
   });
   return { reset, updateProg, onBarBoundary, total, bpmFor, consumeSession, refreshResume,
     /** F2 歌词行循环（v2.2.0）：开/关「每段一级」爬坡粒度。返回当前状态（供断言）
+        v2.8.15（审计 P1-4）：会话级开关，reset() 会复位；Controls.start 在 reset 后
+        按 S.arrangeSel.byLyric 重推——故「循环本行」的置位不丢，而普通入口不会残留。
         @param {any} v @returns {boolean} */
     setLoopPerSec(v){ loopPerSec = !!v; return loopPerSec; } };
 })();
@@ -5830,7 +5837,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     const first = probs.length ? null : arrNextBar(a, S.arrangeSel, 0, -1);
     if (!first){
       setMode("playMode", "preset", "曲式校验失败回退");
-      S.arrangeSel = { id: "", from: 0, to: 0, loop: false };
+      S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false };
       return probs.length ? probs : ["播放范围里没有可播的小节"];
     }
     arrSec = first.sec; arrBar = first.bar;
@@ -5858,6 +5865,11 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     if (!c) return;
     if (S.trainer.on){
       Trainer.reset();
+      /* 重推「按歌词行循环」的爬坡粒度（v2.8.15，审计 P1-4）：reset() 会把 loopPerSec 复位，
+         而「循环本行」是在按下播放**之前**点的——其置位必然被上面的 reset 抹掉。
+         故把意图持久化在 arrangeSel.byLyric 上，会话开播时按它重推，而非靠模块级开关自带记忆
+         （否则该开关一旦置 true 就永不复位，此后任何曲式变速训练都悄悄按「整段一级」爬坡）。 */
+      Trainer.setLoopPerSec(!!S.arrangeSel.byLyric);
       setBpm(S.trainer.start, false);   // 此刻 S.playing 尚为 false：直接赋值，不触发时钟重映射
     }
     setMode("playing", true, "start");
@@ -6550,7 +6562,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const probs = arrangeProblems(a);
     if (probs.length){ Modal.uiAlert("示例曲暂时不能播放：\n" + probs.join("\n")); return; }
     setMode("playMode", "arrange", "整首连播");
-    S.arrangeSel = { id: a.id, from: 0, to: a.sections.length - 1, loop: true };
+    S.arrangeSel = { id: a.id, from: 0, to: a.sections.length - 1, loop: true, byLyric: false };
     Store.persist();
     Controls.stop();                 // 幂等（stop 可重入），保证"从头播"而不是从中间续
     Controls.start();
@@ -6568,6 +6580,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!a) return;
     setMode("playMode", "arrange", "点段序条跳段");
     S.arrangeSel.id = a.id;
+    S.arrangeSel.byLyric = false;
     if (onDemoJump) onDemoJump(i);
     syncDemoSecRow();
   }
@@ -6617,6 +6630,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (S.playMode !== "arrange") return false;
     setMode("playMode", "preset", "点选预设回到单型练习");
     S.arrangeSel.loop = false;       // 范围循环是曲式的语义，退回单型后不该留着它下次突然生效
+    S.arrangeSel.byLyric = false;    // 同理，爬坡粒度意图也复位（审计 P1-4）
     return true;
   }
   /* 常驻「切换节奏型」胶囊条。返回 null = 当前没在编排这首示例曲（调用方据此不插入）。
@@ -6701,7 +6715,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!v){ announce("这段的节奏型没能换过去，请检查曲式是否完整"); return; }
     /* 让主界面这一行立刻反映"现在用哪个型"：曲式模式下标题由 blockAt 决定，
        换了引用后需要一次刷新才会显示新名字。范围收窄到该段，避免播到别的段 */
-    S.arrangeSel = { id: ar.id, from: secIdx, to: secIdx, loop: false };
+    S.arrangeSel = { id: ar.id, from: secIdx, to: secIdx, loop: false, byLyric: false };
     Store.persist();
     refreshAfterPatternChange();
     announce("第 " + (secIdx + 1) + " 段已换成「" + (dst ? dst.name : "节奏型") + "」");
@@ -8276,6 +8290,7 @@ const Arrange = (() => {
       Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
         S.arrangeSel.id = a.id;
         S.arrangeSel[which] = i;
+        S.arrangeSel.byLyric = false;   // 手设起/终 = 普通范围，非歌词行循环（审计 P1-4）
         if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
         if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
         Store.persist();
@@ -8406,7 +8421,7 @@ const Arrange = (() => {
       `${a.sections.slice(f, t + 1).reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0)} 小节）`;
     const all = document.createElement("button");
     all.className = "arg-mini"; all.textContent = "全部";
-    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; Store.persist(); render(); refreshBar(); });
+    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; S.arrangeSel.byLyric = false; Store.persist(); render(); refreshBar(); });
     rr.appendChild(info); rr.appendChild(all);
     setToggle("argLoopBtn", S.arrangeSel.loop);
 
@@ -8478,7 +8493,7 @@ const Arrange = (() => {
     const a = arrangeCur() || cur();
     if (!a || a.sections.length <= 1) return;          // 单段无可跳（按钮已禁用，这里是双保险）
     const k = Math.min(a.sections.length - 1, Math.max(0, i));
-    S.arrangeSel.from = k; S.arrangeSel.to = k; S.arrangeSel.loop = true;
+    S.arrangeSel.from = k; S.arrangeSel.to = k; S.arrangeSel.loop = true; S.arrangeSel.byLyric = false;   // 跳段是普通单段循环，非歌词行循环（审计 P1-4）
     Store.persist();
     refreshBar();
     /* 即时反馈（v2.0.2 修）：旧实现只改范围、等小节边界拉回——停止状态/往回跳时界面
@@ -8510,12 +8525,14 @@ const Arrange = (() => {
     const a = Store.findArrange(arrangeId);
     if (!a || !a.sections[secIdx]) return;
     if (!S.trainer.on){ S.trainer.on = true; }             // 歌词行循环天然配爬坡（协议默认）
-    Trainer.setLoopPerSec(true);                           // 爬坡粒度 = 一整段（句跟句练）
     setToggle("trainerToggle", true);                      // 训练面板与开关态同步（协议路径不经过 toggle 处理器）
     $("trainerPanel").hidden = false;
-    S.playMode = "arrange";
-    S.arrangeSel = { id: arrangeId, from: secIdx, to: secIdx, loop: true };
+    setMode("playMode", "arrange", "歌词行循环");           // playMode 唯一写入口（t66 契约）
+    S.arrangeSel = { id: arrangeId, from: secIdx, to: secIdx, loop: true, byLyric: true };
     Trainer.reset();
+    /* 播放中调用：立即生效；停机（开播前）调用：reset 会复位 loopPerSec，由 Controls.start
+       按 S.arrangeSel.byLyric 重推——两条路都由同一意图源兜底（审计 P1-4） */
+    Trainer.setLoopPerSec(true);                           // 爬坡粒度 = 一整段（句跟句练）
     if (!S.playing) Controls.setBpm(S.trainer.start, false);
     Store.persist();
     refreshBar();
@@ -8630,7 +8647,7 @@ const Arrange = (() => {
     if (!r.ok){ Modal.uiAlert("示例《在他乡》载入失败：" + r.error); return; }
     curId = r.id;
     const sel = Store.findArrange(r.id);
-    S.arrangeSel = { id: r.id, from: 0, to: sel ? sel.sections.length - 1 : 0, loop: false };
+    S.arrangeSel = { id: r.id, from: 0, to: sel ? sel.sections.length - 1 : 0, loop: false, byLyric: false };
     Store.persist();
     render(); refreshBar();
     if (already){
@@ -8650,7 +8667,7 @@ const Arrange = (() => {
     const v = Store.upsertArrange({ name: "新曲式", sections: [{ name: "主歌", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 2 }] }] });
     if (!v) return;
     curId = v.id;
-    S.arrangeSel = { id: v.id, from: 0, to: 0, loop: false };
+    S.arrangeSel = { id: v.id, from: 0, to: 0, loop: false, byLyric: false };
     Store.persist();
     render(); refreshBar();
   });
@@ -8661,7 +8678,7 @@ const Arrange = (() => {
     Modal.uiConfirm("删除曲式「" + a.name + "」？", () => {
       Store.deleteArrange(a.id);
       curId = Store.arranges.length ? Store.arranges[0].id : null;
-      if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false }; }
+      if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
       Store.persist();
       render(); refreshBar();
       Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
@@ -8677,6 +8694,7 @@ const Arrange = (() => {
   $("argLoopBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.arrangeSel.loop = !S.arrangeSel.loop;
+    S.arrangeSel.byLyric = false;    // 手动切范围循环 = 回到普通循环语义（审计 P1-4）
     Store.persist();
     render(); refreshBar();
   });
@@ -8689,6 +8707,7 @@ const Arrange = (() => {
     if (cls.length){ Modal.uiAlert("这首曲式还不能播放：\n" + cls.join("\n")); return; }
     setMode("playMode", "arrange", "曲式播放");
     S.arrangeSel.id = a.id;
+    S.arrangeSel.byLyric = false;    // 面板「播放」= 普通范围/整首，非歌词行循环（审计 P1-4）
     if (!rangeOnly){ S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; }
     Store.persist();
     close();
@@ -8718,6 +8737,7 @@ const Arrange = (() => {
     const a = arrangeCur() || cur();
     const on = !S.arrangeSel.loop;
     S.arrangeSel.loop = on;
+    S.arrangeSel.byLyric = false;    // 手动切范围循环 = 回到普通循环语义（审计 P1-4）
     if (!on && a && S.arrangeSel.from === S.arrangeSel.to)
       S.arrangeSel.to = a.sections.length - 1;
     Store.persist();

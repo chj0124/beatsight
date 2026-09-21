@@ -114,3 +114,30 @@ section("T61d 歌词行循环 · 跨小节的字完整 / 边界回卷不切断")
      "★ 延音覆盖区间 [12.08, 16.08) 内零锚点（跨小节的字不产生边界回声）");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T61e：byLyric 意图标记 · 开播重推 · 非歌词入口不残留（审计 P1-4） ================= */
+section("T61e 歌词行循环 · byLyric 意图标记 / 开播重推 / 非歌词入口不泄漏");
+{
+  /* loopPerSec 无读 getter，用 bpm 的实际走向反推它的真值：
+     everyN=1 陷阱下——loopPerSec 若为 true，要练满一整段（4 小节）才升一级；false 则每 1 小节升 */
+  const { beat } = loadApp(seed({ trainer: { on: true, start: 60, target: 66, step: 2, everyN: 1 } }));
+  const step = seconds => { const dt = 0.02, n = Math.ceil(seconds / dt);
+    for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.AudioEngine.scheduler(); } };
+
+  /* 1) 歌词行落点 → byLyric 置真（意图持久化，跨停机/开播存活） */
+  beat.Arrange.loopLyricSection("t1", 0);
+  eq(beat.Store.S.arrangeSel.byLyric, true, "★ 歌词行循环在 arrangeSel 上留 byLyric 意图标记");
+
+  /* 2) 改用普通跳段 → 清标记。跳段单段循环与歌词行循环在 from/to/loop 上同形，
+        唯 byLyric 能区分——不清就会把「整段一级」悄悄带进普通练习 */
+  beat.Arrange.jumpTo(1);
+  eq(beat.Store.S.arrangeSel.byLyric, false, "★ 跳段（非歌词入口）清掉 byLyric");
+
+  /* 3) 开播：Controls.start 在 reset 后按 byLyric 重推 loopPerSec=false →
+        everyN=1 生效，每 1 小节升一级（若残留为 true，此步 BPM 仍停在 60） */
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  step(4.5);
+  eq(beat.Store.S.bpm, 62, "★ 非歌词入口按 everyN 升一级（loopPerSec 未从歌词会话泄漏）");
+  beat.Controls.stop();
+}
