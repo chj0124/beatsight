@@ -234,6 +234,38 @@ section("T42 KeepAlive · wakeLock 优先 / 静音音频兜底 / 开关持久化
   app5.beat.Controls.stop();
 }
 
+/* ================= 场景 T42b：保活竞态 · 唤醒锁授予晚于释放（P1-1） ================= */
+section("T42b KeepAlive · 请求落定晚于释放时不得补持唤醒锁");
+{
+  /* 反向验证锚点：request 异步落定晚于 release——落定前用户已停止播放/关掉开关，
+     唤醒锁不能"补持"。旧实现 .then 里无条件 lock = l，锁会永久持有（state().locked 恒 true），
+     直到页面隐藏被系统回收：开关关了但没关，静默耗电。 */
+  const late = [];
+  const lateLock = { released: false, release(){ this.released = true; }, addEventListener(){} };
+  /* 手动可控 thenable：回调先攒起来，测试里显式"落定" */
+  const navLate = { wakeLock: { request(){ return { then(fn){ late.push(fn); return { catch(){} }; } }; } } };
+  const app = loadApp({}, { navigator: navLate });
+  app.beat.Store.S.keepAwake = true;
+  app.beat.Controls.start();               // 播放中 → acquire() 发起申请，回调入队（尚未落定）
+  eq(late.length, 1, "申请已发起但尚未落定");
+  app.beat.Controls.stop();                // 落定前停止播放 → release() 此时 lock 仍为 null
+  ok(!app.beat.KeepAlive.state().locked, "释放时锁尚未持有（竞态窗口已出现）");
+  late[0](lateLock);                       // 现在才落定：旧实现会在此无条件补持
+  ok(!app.beat.KeepAlive.state().locked, "★ 落定晚于释放：唤醒锁不得被补持（P1-1 反向验证锚点）");
+  ok(lateLock.released, "★ 过期的锁就地释放，不留给系统回收");
+
+  /* 对称路径：申请被拒后的降级落定同样可能已过期，不得再起静音音频兜底 */
+  const rejections = [];
+  const navRej = { wakeLock: { request(){ return { then(){ return { catch(fn){ rejections.push(fn); } }; } }; } } };
+  const app2 = loadApp({}, { navigator: navRej });
+  app2.beat.Store.S.keepAwake = true;
+  app2.beat.Controls.start();              // 需要保活 → acquire 发起申请，拒绝回调入队
+  eq(rejections.length, 1, "拒绝回调已入队（尚未落定）");
+  app2.beat.Controls.stop();               // 落定前停止播放
+  rejections[0]();                         // 现在才落定拒绝：旧实现会在此起音频兜底
+  ok(!app2.beat.KeepAlive.state().audio, "★ 落定晚于释放：被拒的降级不得再起音频兜底（对称锚点）");
+}
+
 /* ================= 场景 T43：PWA 注册按协议收口（v1.4） ================= */
 section("T43 PWA · 仅 http(s) 注册 manifest + sw.js，file:// 完全跳过");
 {
