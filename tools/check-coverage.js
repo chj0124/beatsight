@@ -70,6 +70,19 @@ if (FULL) env.FULL_SCAN = "1";
    注意这是**覆盖率插桩自身的内存开销**，与用例成败无关：同一套件不加覆盖率时 2345/2345 全绿。
    故只给这个带插桩的子进程抬高上限（V8 按需增长，不预占），别动普通测试步骤。 */
 const run = spawnSync(process.execPath, ["--max-old-space-size=4096", path.join(ROOT, "tests", "run.js")], { cwd: ROOT, env, encoding: "utf8" });
+/* ★ 先分「子进程压根没起来」与「测试真的没过」（v2.8.6，审计 §E2）：spawnSync 失败时
+   `status` 为 null、`error` 有值，而此前这里直接按 `status !== 0` 处理，于是会打印
+   「测试套件未通过，覆盖率无意义。先修测试：」+ 一张**空的**失败清单——因为 stdout 是空的，
+   那条过滤正则一条也匹配不到。结果是：把"测试没跑成"说成"测试没过"，还附一份空清单，
+   把人送去找一个不存在的失败用例。本机沙箱实测正是这个形状（管道式 spawnSync 报 EBUSY，
+   而当时测试套件本身 2412 PASS / 0 FAIL 完全健康）。
+   退出码 4 = 本步骤未能执行，由 tools/check-all.js 按「工具故障」记账（既不算 ✓ 也不算 ✗）。 */
+if (run.error){
+  console.error("⊘ 无法启动测试子进程（" + (run.error.code || run.error.errno || "?") + "）：" + run.error.message);
+  console.error("  这是**工具故障，不是测试失败**——覆盖率本次未被验证（退出码 4 = 未能执行）。");
+  console.error("  先查环境（权限 / 沙箱 / 资源），别去查测试。");
+  process.exit(4);
+}
 if (run.status !== 0){
   console.error("测试套件未通过，覆盖率无意义。先修测试：");
   console.error((run.stdout || "").split("\n").filter(l => /^  ✗|结果/.test(l)).join("\n"));

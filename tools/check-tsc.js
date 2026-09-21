@@ -74,7 +74,7 @@ function frame(line, column){
 
 /* 临时目录：放抽取出的 inline.js + 一份 tsconfig 副本，跑完即删 */
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-tsc-"));
-let out = "", status = 0;
+let out = "", status = 0, spawnFailed = null;
 try {
   fs.writeFileSync(path.join(dir, "inline.js"), code + "\nexport {};\n");
   fs.copyFileSync(CONFIG, path.join(dir, "tsconfig.json"));
@@ -82,17 +82,32 @@ try {
   const r = spawnSync(process.execPath, [tscBin, "-p", path.join(dir, "tsconfig.json")], {
     cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
   });
-  if (r.error) throw r.error;
-  out = (r.stdout || "") + (r.stderr || "");
-  status = r.status === null ? 2 : r.status;
+  /* ★ 与 check-coverage.js 统一口径（v2.8.6，审计 §E2）：这里原本写 `throw r.error`。
+     方向是对的（确实没把工具故障当成"类型检查未通过"），但抛异常会让本步骤以**退出码 1** 收场，
+     tools/check-all.js 只能把它记进"失败项"——于是整条链的汇总照样会说成「类型检查未通过」，
+     本机沙箱实测正是这么误导了整整一轮。改用约定退出码 4 自报"未能执行"
+     （约定见 check-all.js 的 TOOL_FAIL_CODE），汇总才能把它单列成「工具故障」。
+     **不是**把这条做对的地方改错，而是把"只对自己正确"改成"全链可读"。
+     ★ 退出必须放在 finally 之后：process.exit() 会跳过 finally，临时目录就漏在系统里了。 */
+  spawnFailed = r.error || null;
+  if (!spawnFailed){
+    out = (r.stdout || "") + (r.stderr || "");
+    status = r.status === null ? 2 : r.status;
+  }
 } finally {
   try{ fs.rmSync(dir, { recursive: true, force: true }); }catch(e){}
 }
-
 console.log("══════════════════════════════════════════════════════════");
 console.log("  类型检查 · tsc（本地自验 · index.html 内联脚本）");
 console.log("══════════════════════════════════════════════════════════");
 console.log("  已扫 " + code.split("\n").length + " 行内联脚本 · 配置见 tools/tsconfig.typecheck.json");
+
+if (spawnFailed){
+  console.log("  ⊘ 无法启动 tsc（" + (spawnFailed.code || spawnFailed.errno || "?") + "）：" + spawnFailed.message);
+  console.log("  这是**工具故障，不是类型错误**——类型检查本次未被验证（退出码 4 = 未能执行）。");
+  console.log("  先查环境（权限 / 沙箱 / 资源），别去查源码里的类型。");
+  process.exit(4);
+}
 
 /* tsc 的诊断行形如：<file>(<line>,<col>): error TS1234: <message>
    同一处可能跟一行缩进的补充说明（"Type 'x' is not assignable..."），一并收集。 */

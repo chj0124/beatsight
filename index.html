@@ -1408,20 +1408,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1437  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1837  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2733  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3365  Modal         应用内弹窗
-     L3495  Viz           时值可视化渲染与每帧动画
-     L4764  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5391  Trainer       变速训练器
-     L5604  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6094  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6224  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6971  Editor        自定义节奏型编辑器
-     L7327  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7550  Ear           听辨训练（v1.10.0）
-     L7773  Arrange       曲式编排（v2.0.0）
-     L8526  Help          使用方法（v2.0.1）
-     L8573  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8632  初始化（装配） 各模块 hook 接线与启动
+     L3379  Modal         应用内弹窗
+     L3509  Viz           时值可视化渲染与每帧动画
+     L4778  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5405  Trainer       变速训练器
+     L5618  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6108  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6238  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L6985  Editor        自定义节奏型编辑器
+     L7341  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7564  Ear           听辨训练（v1.10.0）
+     L7787  Arrange       曲式编排（v2.0.0）
+     L8540  Help          使用方法（v2.0.1）
+     L8587  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8646  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1441,7 +1441,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.5";
+const VERSION = "2.8.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3052,19 +3052,33 @@ function arrangeProblems(a){
    三个**纯函数**：只依赖传进来的曲式对象与范围，不读 S / 不碰 DOM / 不产生副作用
    （外部引用只有下面那个注入的 `patLenOf`）。这样 T52 能拿固定数据直接断言，不用搭沙箱。 */
 
-/* 「一个型有几小节」的查询入口（v2.5.1）。**装配层注入**，默认恒为 DEF_BARS。
+/* 「一个型有几小节」的查询入口（v2.5.1）。**装配层注入**。
    ★ 为什么是可注入的、而不是在这里直接调 resolveRef：本组三个函数被 T52 当**纯函数**断言
      （传固定数据、不搭沙箱）。直接引用 resolveRef 会让它们依赖 Store 的加载结果，
      那批断言就得先建一份完整 Store——为了一处长度查询，把"纯函数可直测"这条性质丢掉不划算。
-   ★ 为什么默认值必须是 DEF_BARS：一堆老数据（导入的曲式 JSON、测试里的假 ref）引用的是
-     **不存在**的型；默认值让它退回"4 小节"这个历史口径，行为与 v2.5.0 逐位相同。
-   ★ 注入点在装配层（`setPatLenOf(ref => patBars(resolveRef(ref)))`）。忘了注入不会崩，
-     但段长会退回 4 的倍数——所以 T51 用**示例曲的真实段长**（30 小节、段长 1/3/4/2/…）
-     钉住它：注入漏了那一条立刻红。 */
+   ★ 「老数据引用了不存在的型」由**注入的那份实现**负责，不是由默认值负责（v2.8.6 澄清）：
+     装配注入的是 `ref => patBars(resolveRef(ref))`；`resolveRef` 对不存在的 ref 返回 null，
+     而 `patBars(null)` 返回 DEF_BARS（断言见 tests/cases/t65-practice-loop.js）。
+     也就是说这个数据场景永远走**真实实现**，与默认值无关——v2.5.1 的注释把两者混为一谈，
+     才让"默认值必须是 DEF_BARS"看起来像条硬约束，其实不是。
+   ★ 默认实现 = **显式抛错**，不再是「恒 4」（v2.8.6，审计 §A1）：
+     原先是 `() => DEF_BARS`，那是一句**恒 4 的静默谎言**——它与真实实现（按型实际小节数）
+     语义完全不同，忘了注入不会崩，只会让段长悄悄退回 4 的倍数（v2.5.1 前《在他乡》
+     被从 30 小节垫成 44 小节，就是这个口径的产物）。V8 覆盖率显示这条默认实现
+     **从未被执行过**，即它在生产中恒被覆盖，却没有任何检查器保证这一点。
+     按本项目"宁可响亮失败，不可静默降级"的一贯态度改为抛错：静态那半交给
+     tools/check-wiring.js（管"装没装"），运行时这半管"没装就别想安静地拿到 4"。
+   ★ 注入点在装配层（`setPatLenOf(ref => patBars(resolveRef(ref)))`）——忘了注入时，
+     T51 用**示例曲的真实段长**（30 小节、段长 1/3/4/2/…）钉住它：漏了那一条立刻红。 */
+/** 未注入时的实现：抛错，而不是返回一个"看起来合理"的假值。
+    @returns {never} */
+function patLenNotInjected(){
+  throw new Error("patLenOf 未注入：装配层漏了 setPatLenOf(...)（静态检查见 tools/check-wiring.js）");
+}
 /** @type {(ref: any) => number} */
-let patLenOf = () => DEF_BARS;
+let patLenOf = patLenNotInjected;
 /** @param {(ref: any) => number} fn */
-function setPatLenOf(fn){ patLenOf = (typeof fn === "function") ? fn : (() => DEF_BARS); }
+function setPatLenOf(fn){ patLenOf = (typeof fn === "function") ? fn : patLenNotInjected; }
 
 /* 一段的总小节数 = Σ(块的遍数 × **该块所引用型的实际小节数**)。刻意**每次都算**而不存字段：
    存了就会与 blocks 不同步。（v2.5.1 前是 ×LOOP_BARS——那正是"段长必为 4 的倍数"的来源，

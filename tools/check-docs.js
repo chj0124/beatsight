@@ -11,7 +11,7 @@
         （PLAN-v1.9 / PLAN-v2-arrangement / PLAN-v2-impl 三份都缺）——读者按表点进去，
         看到的是还在写"确认后开工"的方案，无从判断该不该信。
 
-   四项都改成机器可判的规则，而不是再手写一遍数值：
+   七项都改成机器可判的规则，而不是再手写一遍数值：
 
      1) 模块索引行号 = index.html 实际 banner 行号（复用 gen-index.js 的解析，口径唯一）
      2) 不许手写耗时：这四个文件的正文里不得出现「约 N 秒」。
@@ -23,11 +23,31 @@
      4) 审计快照横幅：spec.md / tasks.md / checklist.md 是 2026-09-17 那次审计（基线 v2.0.2）的
         产物，里面的数字必然随代码演进漂移。它们因此被排除在"手写耗时"规则之外（见 TIMING_FILES），
         但正文开头必须各自带一行统一横幅「历史快照 · 已归档」——否则读者会拿旧数字当现状。
+     5) README 的版本声明必须等于 VERSION（v2.8.6，审计 §Q1）。README 正文那句
+        「当前 `vX.Y.Z`」是**对外第一入口的现状描述**，也是最容易被引用传播的一处；
+        它此前**恰好落在两个闸门之间**——check-version.js 只校验
+        VERSION ↔ CHANGELOG ↔ package.json ↔ package-lock.json，本文件又只查
+        索引/耗时/归档/快照，于是这句声明自 v2.8.0 起漏更新了两版（一直写着 v2.7.0）
+        而闸门一路绿灯。这不是笔误，是制度性盲区：**没人核对 ≠ 没问题**。
+        另附一条与 check-version.js 第 3 项同口径的前瞻规则：README 也不得引用高于 VERSION 的版本号。
+     6) 自验步数一致（v2.8.6，审计 §F12）：README 与 docs/DEVELOPMENT.md 里的步数声明必须与
+        tools/check-all.js 的 STEPS 实际结构一致。漂移通道很具体："加了第 13 步、忘了改文档"
+        ——改的时候人在看代码，不在看这两份文档。**但检查范围刻意收得很窄**（只认两处形状：
+        命令注释 `# 共 N 步…`，以及 ⊘ 说明句「N 步里有 M 步可能标 ⊘」），因为两份文档
+        大量引用**历史步数**（技术债清单里写着"第 4 步（现共 8 步）"，那是 v1.6.5 当时的原话，
+        属于应当保留的历史记录）。宽正则分不清现状声明与历史引文——本规则第一版就这么
+        误判了两处，故改为窄口径。详见规则 6 代码里的注释。
+     7) 不许手写"当前覆盖率"（v2.8.6，审计 §F12）：与第 2 项同源同处置。
+        实测证据：tests/README.md 写「当前 **99.7%**…只剩三组共 **11 行**」，
+        而 v2.8.3 自验实测是 **99.4% / 36 行**——又是一个"抄一遍就等着烂"的数字。
 
-   刻意不做的事：不去校验 README 里"实跑 8/10 项"这类**步数**，也不去校验正文里引用的
-   代码行号（如"未覆盖的 L2964"）——前者要工具改口径时同改多处文案，收益低；后者更适合
-   由产出方（check-coverage）直接打印，让文档指过去而不是抄一遍。这类"抄一遍就等着烂"的
-   数值，本轮只处理耗时这一处最典型、被审计点名过的。
+   刻意不做的事：不去校验正文里引用的**代码行号**（如"未覆盖的 L2964"）——它更适合由产出方
+   （check-coverage）直接打印，让文档指过去而不是抄一遍；也不去比对"实测值"本身
+   （那要求本文件跑一遍完整测试套件，与"极便宜的纯读文件比对"这个定位冲突）。
+   ★ v2.8.6 订正：本条此前写的是"不去校验 README 里'实跑 8/10 项'这类**步数**，收益低"。
+     那个判断现在改了——收益低的是"实跑数"（它随环境变，本就该由命令自己打印），
+     而**声明的总步数**是仓库自己的结构事实，机器一读即知，属于该管的那一类。
+     新判断见第 6 项：管的不是"实跑了几项"，是"仓库总共有几项"。
 
    退出码 0 = 一致，1 = 有漂移。 */
 "use strict";
@@ -58,7 +78,7 @@ const problems = [];
 const report = [];
 
 console.log("══════════════════════════════════════════════════════════");
-console.log("  文档一致性（模块索引 · 手写耗时 · 归档状态 · 审计快照）");
+console.log("  文档一致性（索引行号 · 耗时 · 归档 · 快照 · 版本/步数 · 覆盖率现状）");
 console.log("══════════════════════════════════════════════════════════");
 
 /* ---- 1) 模块索引行号 ---- */
@@ -150,15 +170,152 @@ console.log("══════════════════════�
   }
 }
 
+/* ---- 5) README 的版本声明必须等于 VERSION（v2.8.6，审计 §Q1）---- */
+{
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const vm = /const\s+VERSION\s*=\s*"([^"]+)"/.exec(html);
+  const ver = vm ? vm[1] : null;
+  const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
+  /* 声明形状刻意收得很窄——「当前 + 反引号包着的 vX.Y.Z」。
+     宽正则（比如"全文任何 vX.Y.Z 都要等于 VERSION"）会把历史引用一并误伤，
+     而历史引用正是这份 README 大量存在且**应当**存在的东西（"v2.0.5 起""v2.7.0 起"）。 */
+  const claim = /当前\s*`v(\d+\.\d+\.\d+)`/.exec(readme);
+  if (!ver){
+    report.push("⊘ README 版本号：index.html 里读不到 VERSION，本条跳过（check-version.js 会拦）");
+  } else if (!claim){
+    problems.push("README.md 里找不到形如「当前 `vX.Y.Z`」的版本声明"
+      + "——这是对外第一入口的现状描述，必须显式声明：找不到就**没有可核对的对象**，"
+      + "漂移会再次无声发生（v2.8.0→v2.8.2 期间本就是这种状态）");
+  } else if (claim[1] !== ver){
+    problems.push("README.md 声明「当前 v" + claim[1] + "」，而 index.html 的 VERSION 是 " + ver
+      + "（README L" + (readme.slice(0, claim.index).split("\n").length) + "）"
+      + "——发版必须同时改这一处");
+  } else {
+    report.push("✓ README 版本号：当前 `v" + ver + "`（与 VERSION 对齐）");
+  }
+  /* 同口径的前瞻规则（与 check-version.js 第 3 项一致）：README 也不许引用还没发的版本号 */
+  if (ver){
+    const sv = s => { const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(s || ""); return m ? [+m[1], +m[2], +m[3]] : null; };
+    const cmp = (a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]);
+    const seen = new Map();
+    for (const mm of readme.matchAll(/\bv(\d+\.\d+\.\d+)\b/g)){
+      if (!seen.has(mm[1])) seen.set(mm[1], readme.slice(0, mm.index).split("\n").length);
+    }
+    const base = sv(ver);
+    [...seen.entries()].filter(([v]) => sv(v) && cmp(sv(v), base) > 0).forEach(([v, ln]) => {
+      problems.push("README.md L" + ln + " 引用了 v" + v + "，高于当前 VERSION " + ver
+        + "——文档提前引用了一个还没发布的版本？");
+    });
+  }
+}
+
+/* ---- 6) 自验步数：文档里的步数声明必须与 check-all.js 的 STEPS 实际结构一致 ---- */
+const STEP_COUNT_FILES = ["README.md", "docs/DEVELOPMENT.md"];
+{
+  const all = fs.readFileSync(path.join(ROOT, "tools/check-all.js"), "utf8");
+  const block = /const STEPS = \[([\s\S]*?)\n\];/.exec(all);
+  /* 数 `{ name:` 而不是数行：STEPS 里带注释块，数行会把注释算进去。
+     若将来有人换了写法导致这里数不出来，**直接报错而不是猜**——与 gen-index.js
+     "条目数不一致时只报错、不猜"同一条约定：工具替人编一个数字，等于把噪音固化进文件。 */
+  const actual = block ? (block[1].match(/\{\s*name\s*:/g) || []).length : 0;
+  /* 第三步可推导的数：能被 ⊘ 记账的步数 = 带 `optional:`（缺开发依赖）+ 带 `skipCode:`（缺环境能力） */
+  const optionalSteps = block ? (block[1].match(/\boptional\s*:/g) || []).length : 0;
+  const skipCodeSteps = block ? (block[1].match(/\bskipCode\s*:/g) || []).length : 0;
+  if (!actual){
+    problems.push("tools/check-docs.js：在 tools/check-all.js 里数不出 STEPS 条目数"
+      + "——要么 STEPS 的写法变了，要么正则该改；本条不能「猜一个数」继续");
+  } else {
+    const hits = [];
+    STEP_COUNT_FILES.forEach(rel => {
+      const full = path.join(ROOT, rel);
+      if (!fs.existsSync(full)) return;
+      fs.readFileSync(full, "utf8").split("\n").forEach((ln, i) => {
+        const at = rel + ":" + (i + 1);
+        /* (a) 命令注释里的步数声明，形如 `# 共 N 步：…`——**读者就是按它数步数的**。
+           ★ 为什么刻意只认「行首（允许缩进）是 #」这一种形状，而不是全文扫「共 N 步」：
+             本仓库文档大量**引用历史步数**（docs/DEVELOPMENT.md 的技术债清单里写着
+             "作为第 4 步（现共 8 步）""第 5 步，现共 9 步"，那是 v1.6.5 / v1.9.1 当时的原话，
+             属于**应当保留**的历史记录）。宽正则分不清"现状声明"与"历史引文"，
+             把它一并判红就是假红——而假红的代价本项目自己算过（eslint.config.js：
+             "一个常年飘红的检查很快就会被所有人无视或直接关掉，等于没写"）。
+             本条宁可窄而准：只守"读者会照着数的地方"。
+             首次编写时就因为用了宽正则，把 L798 两处历史引文误判成漂移（当时的实测输出为证）。 */
+        if (/^\s*#/.test(ln)){
+          for (const m of ln.matchAll(/共\s*(\d+)\s*步/g)){
+            if (+m[1] !== actual) hits.push(at + " 写「共 " + m[1] + " 步」，实际 " + actual + " 步（命令注释）");
+          }
+        }
+        /* (b) ⊘ 说明句，形如「N 步里有 M 步可能标 ⊘」——两个数都能从 STEPS 直接推出来，
+           所以它和 (a) 是同一类"仓库自己的结构事实"，该管；(a) 那种形状无法覆盖散文，
+           这一条正好补上读者最容易读到的那句。 */
+        for (const m of ln.matchAll(/(\d+)\s*步里有\s*(\d+)\s*步可能标/g)){
+          if (+m[1] !== actual){
+            hits.push(at + " 写「" + m[1] + " 步里有…」，实际 " + actual + " 步");
+          }
+          if (+m[2] !== optionalSteps + skipCodeSteps){
+            hits.push(at + " 写「…里有 " + m[2] + " 步可能标 ⊘」，实际 " + (optionalSteps + skipCodeSteps)
+              + " 步（" + optionalSteps + " 个 optional + " + skipCodeSteps + " 个 skipCode）");
+          }
+        }
+      });
+    });
+    if (hits.length){
+      report.push("✗ 自验步数：" + hits.length + " 处与 tools/check-all.js 的 STEPS 不符（实际 " + actual + " 步）");
+      hits.forEach(h => problems.push("自验步数 —— " + h));
+    } else {
+      report.push("✓ 自验步数：" + STEP_COUNT_FILES.length + " 份文档的步数声明与 STEPS 一致（"
+        + actual + " 步，其中 " + (optionalSteps + skipCodeSteps) + " 步可 ⊘）");
+    }
+  }
+}
+
+/* ---- 7) 不许手写"当前覆盖率"（v2.8.6，审计 §F12）----
+   与第 2 项（不许手写耗时）同源同处置。实测证据：tests/README.md 写「当前 **99.7%**…
+   17 个分区里 **15 个是 100%**…共 **11 行**」，而 v2.8.3 自验实测是 99.4% / 36 行。
+   ★ 为什么只禁「当前…N%」这一种写法，而不是禁掉文档里所有百分比：
+     历史叙述（「v2.0.5 时是 99.8%」「原写 99.7%，v2.8.3 实测已是 99.4%」）是有信息量的，
+     而且**明确标注了过去时**。真正有害的是以**现状口吻**断言一个会变的数字。 */
+const COVERAGE_FILES = ["tests/README.md", "docs/DEVELOPMENT.md"];
+const COVERAGE_CLAIM_RE = /当前[^\n]{0,40}?\d+(?:\.\d+)?\s*%/g;
+/* ★ 本规则的口径**刻意很窄**，而且它拦不住的东西要说清楚（免得下一个人以为它是万能的）：
+     · 只认「当前…N%」这一种形状。换成别的措辞（「覆盖率是 X%」）就绕得过去。
+     · 为什么不做宽：宽口径（如「覆盖率…N%」）会把**历史叙述**一并误伤——
+       tests/README.md 自己就写着「覆盖率从 89.7% 升到 99.8%」，docs/DEVELOPMENT.md
+       整段都在引用旧数字来讲"手写数字注定要烂"这个教训。那些是**该留**的内容。
+     · 取舍理由与规则 6 同源：宁可窄而准，不接受假红（假红的代价见 eslint.config.js）。
+     · 本轮实测还暴露了窄口径的一个副作用：**引用旧句子时若把「当前」一起引进来，会被自己拦下**
+       （tests/README.md 的第一版改写就是这样）。这不完全是坏事——它逼引用者把"旧文说的是什么"
+       与"现在是什么"在措辞上分开，正是本规则想要的效果。 */
+{
+  const hits = [];
+  COVERAGE_FILES.forEach(rel => {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)) return;
+    fs.readFileSync(full, "utf8").split("\n").forEach((ln, i) => {
+      for (const m of ln.matchAll(COVERAGE_CLAIM_RE)) hits.push(rel + ":" + (i + 1) + " 「" + m[0] + "」");
+    });
+  });
+  if (hits.length){
+    report.push("✗ 手写覆盖率现状：" + hits.length + " 处（覆盖率随用例增减而变，写死在文档里必烂）");
+    hits.forEach(h => problems.push("手写覆盖率现状 —— " + h));
+  } else {
+    report.push("✓ 手写覆盖率现状：2 份覆盖率叙述文件均无「当前 N%」（数字由 check-coverage 自己输出）");
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
   console.log("  ✗ " + problems.length + " 处文档漂移：");
   problems.forEach(p => console.log("      · " + p));
   console.log("  修法：索引行号 → `node tools/gen-index.js --write`；"
-    + "耗时 → 删掉数字交给命令输出；归档状态 → 给文档正文补一行状态横幅；"
-    + "审计快照 → 给 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行。");
+    + "耗时 / 覆盖率现状 → 删掉数字，改指命令输出（`check-all` 与 `check-coverage` 自己会打印）；"
+    + "归档状态 → 给文档正文补一行状态横幅；"
+    + "审计快照 → 给 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行；"
+    + "README 版本号 → 与 index.html 的 VERSION 对齐；"
+    + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐。");
   process.exit(1);
 }
-console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照）");
+console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"
+  + " README 版本号 / 自验步数 / 无手写覆盖率现状）");
 process.exit(0);

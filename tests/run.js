@@ -54,6 +54,7 @@ const CASE_FILES = [
   "./cases/t78-bar-chord-names",    // v2.7.4：小节上方的和弦名（段名解析 / 逐行渲染 / 预告行 / 无和弦段 / 预设模式）
   "./cases/t79-viz-rows",           // v2.8.0：同屏行数档位（扫弦窗口与歌词轨共用 / 脏值白名单 / 预设模式不受影响）
   "./cases/t80-countin-arrange-no-reenter", // v2.8.2：整首连播 + 预备拍不再重入门控（小球跳过首小节末拍）
+  "./cases/t81-wiring-slots",       // v2.8.6：注入槽装配（钩子被接上 / patLenOf 未注入必须抛错，审计 A1）
 ];
 for (const f of CASE_FILES) require(f);
 

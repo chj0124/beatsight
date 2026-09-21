@@ -36,8 +36,9 @@ beatsight/
 ├── tools/                # 零依赖检查器（见 §5：node tools/check-all.js 一条命令跑全套）
 │   ├── check-all.js            # 本地完整自验入口（取代原来的 GitHub Actions CI）
 │   ├── check-module-order.js   # 架构约束：模块不得反向引用（R1/R2/R3/R4）
+│   ├── check-wiring.js         # 装配完整性：`let onXxx = null;` 约定的钩子与 patLenOf 注入点是否真被接上
 │   ├── check-lint.js           # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
-│   ├── check-version.js        # 版本一致性：VERSION / CHANGELOG / 代码注释三处不得漂移（唯一真相源）
+│   ├── check-version.js        # 版本一致性：VERSION / CHANGELOG / package.json / package-lock.json / 代码注释不得漂移
 │   ├── check-eslint.js         # 代码卫生 · 加强（**可选**）：ESLint 包装（抽脚本 + 行号回映射；缺依赖自动跳过）
 │   ├── check-tsc.js            # 类型检查 · 加强（**可选**）：tsc 包装（同上；见 §5 与 tools/tsconfig.typecheck.json）
 │   ├── tsconfig.typecheck.json # 类型闸门的规则集与取舍说明（为什么 checkJs 开着、严格开关关着）
@@ -527,9 +528,15 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 （音符块库的 `d.bars[editBar].push(...)` 会越界抛错）。
 
 **曲式段长怎么拿到型长**：`secBars(sec)` / `blockAt(sec, bar)` 是**纯函数**（T52 直测，不搭沙箱），
-不能直接引用 `resolveRef`。做法是装配层注入 `setPatLenOf(ref => patBars(resolveRef(ref)))`，
-默认值恒为 `DEF_BARS`（老数据与测试里的假 ref 行为不变）。**忘了注入不会崩，但段长会退回 4 的倍数**
-——由 `t69` 的"3 小节 × 1 遍 = 3"钉住。
+不能直接引用 `resolveRef`。做法是装配层注入 `setPatLenOf(ref => patBars(resolveRef(ref)))`。
+**忘了注入现在会抛错，不再静默退回 4**（v2.8.6，审计 §A1 改的）：原先默认实现是 `() => DEF_BARS`，
+那是个**恒 4 的静默谎言**——它与真实实现语义完全不同（真实实现按型实际小节数），忘了注入不会崩，
+只会让段长悄悄退回「4 的倍数」。V8 覆盖率显示这条默认实现**从未被执行过**，即它在生产中恒被覆盖，
+却没有任何检查器保证这一点。现在由两半合起来守：`tools/check-wiring.js` 静态管"装没装"，
+默认实现本身管"没装就别想安静地拿到 4"。
+★ 「老数据引用了不存在的型」**不是**默认值的职责（v2.6.1 之前的注释把两者混为一谈）：
+那个场景永远走**注入的真实实现**——`resolveRef` 对不存在的 ref 返回 null，而 `patBars(null)` 返回 `DEF_BARS`。
+——段长的正确性由 `t69` 的"3 小节 × 1 遍 = 3"钉住。
 
 **渲染层要与拍号同时锁定型长**：`vizBars`（连同 `vizSig`）。行数、静音拍标识、播放头折行、
 弹跳球行界必须用**同一个**模数，否则换型瞬间会"网格已按新型重建、播放头还按旧模数折行"。
@@ -671,9 +678,9 @@ getComputedStyle）。
 
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；这就是取代 CI 的入口）
-node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依赖 lint → 版本一致性 → 文档一致性
+node tools/check-all.js          # 顺序：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性
                                  #       → ESLint(可选) → 类型检查(可选) → DOM 引用 → 浏览器冒烟(环境可选)
-                                 #       → 全量测试 → 看门狗 → 覆盖率（共 12 步）
+                                 #       → 全量测试 → 看门狗 → 覆盖率（共 13 步）
                                  # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
 node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用
@@ -691,10 +698,14 @@ node tools/smoke.js              # 真实浏览器冒烟（CDP）：file:// 与 
 node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程 + 8s 超时强杀
                                  # 反向验证：BEATSIGHT_HTML=<旧版 index.html> node tests/hang-guard.js 3000
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
+node tools/check-wiring.js       # 装配完整性：钩子注入槽（`let onXxx = null;` 约定）与 patLenOf 是否被接上
+                                 # 守住"漏赋值 = 功能静默失效"这类**逃过全部既有闸门**的故障
+                                 # 名单自动收列（以 `on` + 大写字母开头即纳入），新增钩子无需改本工具
+                                 # 反向验证：删掉装配段任一 `onXxx = …` 应报「从未被赋过非 null 值」并退出 1
 node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
                                  # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
-node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量 / package-lock.json
-                                 #   四者互相对齐（第 4 份是 v2.8.3 补的——此前文件头声明查它、代码却没读，
+node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量 / package.json / package-lock.json
+                                 #   五者互相对齐（第 5 份是 v2.8.3 补的——此前文件头声明查它、代码却没读，
                                  #   锁文件已悄悄漂了 3 个版本而闸门全绿；见 CHANGELOG v2.8.3）
                                  # 拦「注释写着 v2.0.2、VERSION 还停在 2.0.1」这类发版漂移
                                  # 反向验证：把 VERSION 改小一格应报"代码引用了更高版本"并退出 1
