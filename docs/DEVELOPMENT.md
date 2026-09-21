@@ -678,6 +678,10 @@ node tools/check-all.js          # 顺序：语法 → 架构约束 → 零依�
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
 node tools/check-all.js --quick  # 跳过 T21 的 243 组全量扫描，改代码时用
 
+# npm 别名（v2.8.3）：`npm run verify` = 上面那一行；`npm run verify:quick` = 带 --quick
+#   `npm run ci` = `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`（构建侧唯一入口）
+#   ★ Cloudflare Dashboard 的 Build command 就填 `npm run ci`——命令内容留在仓库，Dashboard 只留一行指针
+
 # 需要单独跑某一项时（排查用）
 node tests/run.js                # 主套件：抽样的 T21（16 组）
 FULL_SCAN=1 node tests/run.js    # 全量 T21（243 组）
@@ -689,7 +693,9 @@ node tests/hang-guard.js         # 死循环看门狗：每用例独立子进程
 node tools/check-module-order.js # 架构约束：R1/R2 零例外，R3 白名单登记
 node tools/check-lint.js         # 代码卫生：no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef
                                  # 反向验证：node tools/check-lint.js <注入拼错变量的 index.html> 应报错退出 1
-node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量三者互相对齐
+node tools/check-version.js      # 版本一致性：VERSION / CHANGELOG 首条 / 代码里的版本字面量 / package-lock.json
+                                 #   四者互相对齐（第 4 份是 v2.8.3 补的——此前文件头声明查它、代码却没读，
+                                 #   锁文件已悄悄漂了 3 个版本而闸门全绿；见 CHANGELOG v2.8.3）
                                  # 拦「注释写着 v2.0.2、VERSION 还停在 2.0.1」这类发版漂移
                                  # 反向验证：把 VERSION 改小一格应报"代码引用了更高版本"并退出 1
 node tools/check-eslint.js       # 代码卫生 · 加强（可选）：ESLint 10 的 AST/控制流规则，补零依赖 lint 的盲区
@@ -733,7 +739,7 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 已由 `check-dom-ids.js` 保证）；事件里读写当前元素统一走 `evEl(ev)` / `evTarget(ev)`
 两个有文档的助手，`querySelectorAll` 的结果过 `asEl(el)`。这三个助手就是这套取舍的全部落点。
 
-**为什么不用 GitHub Actions**：改由本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少。而它在两条发布渠道上的强制力不同：**Cloudflare 的构建命令里串了全量检查**（不通过即不部署），等于在部署路径上装了硬闸门；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住，WorkBuddy 不会。
+**为什么不用 GitHub Actions**：改由本地 `tools/check-all.js` 一条命令跑完，少一套要维护的流水线配置，检查内容一条不少；v2.8.3 起把这串收成一个稳定指针 `npm run ci`（`package.json` 里 = `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`）。而它在两条发布渠道上的强制力不同：**Cloudflare Dashboard 的 Build command 填 `npm run ci` 时**，部署路径上就有硬闸门（不通过即不部署）——注意这串命令只存在于 **Dashboard**，仓库改不了它，换 clone / 换账号都得各自填一次；**WorkBuddy 那条纯手动，没人拦你**。所以"改完先跑它再看效果"依然是习惯要求——只是漏跑时 Cloudflare 会替你拦住（前提是 Dashboard 那串确实填对了），WorkBuddy 不会。
 
 **发版规则（v1.6.4 起）：每次发版都 bump `index.html` 的 `const VERSION`**，功能版与工程版一视同仁（改这一行即可，`<title>` / 品牌区 / chip 三处显示由它派生）。此前 v1.6.1~v1.6.4 连发四版都没动它，线上徽章长期停在 `v1.6.0`——代码明明都上了线，看号的人却只能得出"部署没生效"的结论。版本号是用户唯一能看到的"这批代码是哪一版"的凭据，工程版跳过 bump 等于让这个凭据说谎。
 
@@ -790,9 +796,13 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 - ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
 - ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的第 4 步（现共 8 步）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（第 5 步，现共 9 步）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**严格模式已扩面（2026-09-16）**：TS 7.0.2 下实测，**8 项严格检查打开后 0 报错**，故已直接开（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；另加非 strict 家族、但同样只抓真错的 2 项：`noImplicitReturns` / `noFallthroughCasesInSwitch`；均写在 tools/tsconfig.typecheck.json 的 `compilerOptions` 里）。**只剩两笔已量化的债**：~~`noImplicitAny` 打开会得到 **727 条**（TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）~~ **`noImplicitAny` 已清零并打开（2026-09-17）**——按"逐块补标注、逐块开开关"的路径分两批（727 → 282 → 0）补完全量前置 `@param` / `@returns` 与内联 `@type`，全文件 0 报错后把开关由 `false` 改为 `true`（改的是 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物）。**只剩一笔债**：~~`strictNullChecks` 打开会得到 **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）~~ **`strictNullChecks` 已清零并打开（2026-09-17）收官**——那 96 条（比原记的 **251** 降下来，因为大量隐式 any 消失后，原先被 any 传染出来的空值报错一并消失）按模块分七块逐块消化：Trainer 6（`S.plan`）→ 小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → AudioEngine 20（`ctx`）→ Viz 25（缓存 DOM 引用）→ Editor 25（`draft`），统一用「取本地别名 + 判空守卫」补上（模块级可空 `let` 在函数顶部取别名并早返回，定时器句柄先判 `!== null` 再 `clearTimeout`，`.closest()` 补 `!!` 守卫），全文件 0 报错后把开关由 `false` 改为 `true`。**至此 strict 家族 8 项与两项额外严格检查全部打开且全绿，类型闸门扩面收官**。改动仍只在 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物。
-- **检查没有"必经之路"，全靠钩子 / 自觉**（v2.0.5 修正，原写的是"Cloudflare 构建时必定跑一次全量检查，失败即不部署"）：Cloudflare 的**线上**构建跑什么，取决于 Dashboard 里那串构建命令——**Workers Builds（Git 集成构建）不读仓库里 `wrangler.jsonc` 的 `build.command`**（Cloudflare 官方既有行为），所以仓库里那份配置只约束本地与命令行的 `wrangler deploy`。换句话说，**没有任何一道闸门是"推上去就一定过不去"的**；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路
+- **检查没有"必经之路"，全靠钩子 / 自觉**（v2.0.5 修正，原写的是"Cloudflare 构建时必定跑一次全量检查，失败即不部署"）：Cloudflare 的**线上**构建跑什么，取决于 Dashboard 里那串构建命令——**Workers Builds（Git 集成构建）不读仓库里 `wrangler.jsonc` 的 `build.command`**（Cloudflare 官方既有行为），所以仓库里那份配置只约束本地与命令行的 `wrangler deploy`。换句话说，**没有任何一道闸门是"推上去就一定过不去"的**；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路。
+  **v2.8.3 收口**：把要填进 Dashboard 的那串从"手抄四步"收敛为一行稳定指针 `npm run ci`——命令的**内容**留在仓库（`package.json` + `tools/`），**唯一的仓库外之物**只是"填哪一行"这件事本身。失效面（Dashboard 没填对）因此依然存在，但它从此是一行可核对的东西，而不是一段要跟着仓库演进同步更新的脚本文本。⚠ 该脚本里 `npm ci` 与 `--strict-env` **缺一不可**：前者保证装齐 devDependency（否则 ESLint / tsc 被标 ⊘ 跳过，你验的不是同一件事），后者把"缺依赖"由跳过升级为报错
 - **后台持续发声仍需真人验收**（见 §5）：自适应窗口只能用假时钟断言，浏览器层面的定时器节流无法在无头环境复现
-- 覆盖率未覆盖的共 **11 行**（实测 99.7%），分三组、性质不同：**AudioEngine 8 行** —— `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（v2.0.6 新增的代码里，只有"出事才走"的那几条没被点亮）；**Ear 3 行** —— `durName` 里 192/144/96 与 6 这几档时值。前 8 行属**刻意保留的防御性代码**（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会触发）；后 3 行属**不可达分支**（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。两类都不为了数字去造人工状态点亮它。**具体行号一律不抄进文档**（v2.0.5）：本行原先写的 5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**——它们随代码行移动而漂移，抄一次就等着烂；现在以 `node tools/check-coverage.js` 的输出为准，它自己会打印未覆盖行所在的行号
+- 覆盖率未覆盖的行**分两类、性质不同**（**条数、百分比、行号一律不抄进文档**，v2.0.5 起一律以 `node tools/check-coverage.js` 的输出为准——它会打印总量、分区占比与未覆盖行的绝对行号）：
+  **一类是刻意保留的防御性代码**——**AudioEngine** 里 `arrNextBar` 的 onset 扫描兜底、单轮调度 `MAX_SCHED_STEPS` 硬上限触发后的**重锚分支**、以及 `ctx` 被系统关闭后重建 / `resumeCtx()` 的异常分支（要造出超 512 音符的单轮调度、或让上下文被系统关闭才会走到）；v2.0.6 之后的新模块（Arrange / 初始化装配 / Presets 等）也各留了几条同类"出事才走"的路径。
+  **另一类是不可达分支**——**Ear** 的 `durName` 里 192/144/96 与 6 这几档时值（内置库与听辨出题组都不用这几档时值，`durName` 也不对外导出）。
+  两类都不为了数字去造人工状态点亮它。**本行原先同时抄了条数与行号，两样都烂了**：条数原写"共 11 行 / 实测 99.7%"，在 v2.8.3 自验时实测已是 **36 行 / 99.4%**（多出来的部分正是 v2.0.6～v2.8 各版新增的防御性路径）；5 个行号（L2964 / L3034–L3036 / L4478 / L4479 / L4481）在 v2.0.4 全维度审计中实测**全部失效**。这正是 `tools/check-docs.js` 文件头写的那句——"手写数字注定要烂"
 - `Viz.paintBall` 的 `H = min(clamp(k·T²,10,48), yBase+6)` 里那道"顶点不出容器空域"的钳制，只在**第一行且弧很长**时才会真正生效（默认 96 BPM 下未钳制跳高 46.9px 仅比上界 44px 高 2.9px，余量很薄）。**已补专门场景**：T30 ⑧ 把 BPM 降到 60 构造长弧（未钳制 48px 明显高于上界 44px），断言实测跳高等于上界而非未钳制值——删掉钳制即变红（反向验证已跑）。改动行高/内边距时要留意上界 `yBase+6` 会随行位置漂移
 
 ### 已明确不处理（不再跟进）

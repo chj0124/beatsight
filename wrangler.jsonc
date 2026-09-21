@@ -18,6 +18,22 @@
    只有本地/命令行那条路；线上那次构建到底跑没跑自验，取决于 Dashboard 里那串命令，
    而它不在版本库里（改不动、review 不了、diff 不出来）。别把"Cloudflare 会拦"当成可以
    跳过本地全量自验的理由——它拦不拦取决于一个仓库外的东西。
+   （官方原文用的是 "Currently, Workers Builds does not honor the configurations set in
+   Custom Builds within your Wrangler configuration file." ——即"目前不支持"，非永久性设计，
+   值得后续回看：<https://developers.cloudflare.com/workers/ci-cd/builds/configuration/>）
+
+   ★ Dashboard 的 Build command 该填什么（v2.8.3）：**只填一行 `npm run ci`**。
+   不要再把命令内容抄进 Dashboard —— 那样等于把三个文件路径钉在仓库外，改脚本名或挪路径会让
+   线上构建**静默断掉**。`npm run ci` 的定义在 package.json（版本库内），
+   内容 = `npm ci && node tools/check-all.js --strict-env && npm run build`，
+   与下面 build.command 的语义完全一致。仓库外只剩这 11 个字符，几乎永不改动。
+
+   ⚠ 该脚本里 `npm ci` 与 `--strict-env` **缺一不可**（v2.8.3）：Cloudflare Workers Builds
+   默认注入 `CI=true`，但 `check-all.js` 只认 `--strict-env` 这个 **CLI flag**、**不读 `CI`
+   环境变量**（L63 是 `process.argv.includes(...)`）。所以若在 Dashboard 里写成不带 flag 的
+   `npm run verify`，构建镜像缺 node_modules 时 ESLint / tsc 会静默标 ⊘、汇总照样打印
+   「全部通过 · 实跑 10/12 项」——**恰好复现 --strict-env 当初要防的那个假绿**。
+   （这也是对 v2.0.5 条目里「`CI=true` 且缺依赖时报错」那句描述的更正：实现落地为显式 flag。）
 
    ⚠ 已修（v2.0.6，审计 P1-8）：上面这条命令原先用 `rm -rf` / `mkdir -p` / `cp`，需要 POSIX shell，
    **Windows 的 cmd 下跑不了**，与"本地可完整复现"的目标有落差。装配那半段现已收进

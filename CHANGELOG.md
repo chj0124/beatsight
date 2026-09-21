@@ -1,5 +1,68 @@
 # 变更记录
 
+## v2.8.3 · 构建侧收口：Cloudflare 构建命令收敛为「一行指针」+ 版本闸门补上第四份手抄（2026-09-21）
+
+**来源**：v2.8.2 基线的全维度代码审计（只读扫描，未改仓库）。审计指出工程化的第一缺口是
+「检查没有必经之路」，顺着它查出三件事：构建命令内容只能写在 Dashboard（**平台约束，非缺陷**）、
+`package.json` 缺 `build` / `ci` 入口（**真缺陷**）、版本闸门宣称覆盖 `package-lock.json`
+却从未读过它（**真缺陷**）。本版收口前两件，并修掉第三件。
+
+### 构建侧：仓库外只剩 11 个字符
+
+- **新增两个 npm 入口**：`npm run build`（`node tools/build-dist.js`）与
+  `npm run ci`（`npm ci && node tools/check-all.js --strict-env && npm run build`）。
+- **Cloudflare Dashboard 的 Build command 从此只填一行**：`npm run ci` —— 闸门的**内容**
+  留在 `tools/check-all.js`、**编排**留在 `package.json`，两者都在版本库里；仓库外只剩这 11 个字符，
+  几乎永不改动。此前 Dashboard 里必须**硬写三个文件路径**，改脚本名或挪路径会让线上构建
+  **静默断掉**，而仓库里没有任何东西会提醒你。
+- **⚠ `--strict-env` 与 `npm ci` 缺一不可（这是"假绿"防线，不是风格问题）**：
+  Cloudflare Workers Builds 默认注入 `CI=true`，但 `check-all.js` L63 是
+  `process.argv.includes("--strict-env")` —— **它不读 `CI` 环境变量**。若图省事写成
+  `npm run verify`（无 flag），构建镜像又没有 `node_modules` 时，ESLint / tsc 两步会静默标 ⊘、
+  汇总照样打印「全部通过 · 实跑 10/12 项」——**恰好复现 `--strict-env` 当初要防的那个假绿**。
+  这两个前提现在被封在 `npm run ci` 内部，Dashboard 上填不出错。
+- **记录一条平台约束（不是缺陷，无需补救）**：Workers Builds **不读**仓库里的 Custom Builds。
+  Cloudflare 官方文档原文：「Currently, Workers Builds does not honor the configurations set in
+  Custom Builds within your Wrangler configuration file.」→「那一行调用」本身**结构性地无法**
+  进版本库。本版的做法是**把仓库外的残留压到最小且稳定**，而不是试图把它搬进来。
+  （原文用 "Currently"，即"目前不支持"，值得后续回看。）
+- **同时更正 v2.0.5 条目的一处历史描述**：那条写的是「`CI=true` 且可选步骤缺依赖时报错」，
+  但实现落地为**显式 CLI flag**（`--strict-env`），并不读环境变量。语义等价，但"靠 `CI=true`
+  自动触发"在代码里不成立——而 Cloudflare 恰好会注入 `CI=true`，这个不一致很容易让人误以为
+  严格模式会自动生效。按「历史条目保持原样」的既定约定，v2.0.5 那条**不改**，更正记在这里。
+
+### 版本闸门：补上第 5 项（宣称与实现差了整整一年）
+
+- `tools/check-version.js` 的注释从 v2.0.6 起就写着「package.json / **package-lock.json** 里
+  各有一个 version……只能靠这条闸门保证**三者**同步」，但代码**只读了 `package.json`** ——
+  `grep "package-lock"` 在该文件里**所有命中都在注释中，没有一行代码**。
+- **实测漂移**：`VERSION` 已到 `2.8.2`，而 `package-lock.json` 仍是 `2.7.4` —— 横跨
+  v2.8.0 / v2.8.1 / v2.8.2 **三次发版**，闸门一路绿灯。连带地，`README.md` 发布前清单里
+  「`package.json` / `package-lock.json` 的 version 由 `check-version.js` 一并把关」**这句是失实的**。
+- **本版补上第 5 项**：顶层 `version` 与 `packages[""].version` **两处**都必须等于 `VERSION`。
+  为什么单列一项而不并进第 4 项——**漂移通道不同**：`package.json` 是**手改**的（失败姿势是
+  "发版时漏了"）；`package-lock.json` 是 `npm install` **顺手改**的（只在跑过 install 时才动），
+  于是"改了前者忘了后者"才是最自然的失败姿势。两者只能分别守。
+- 本次 `package-lock.json` 已同步至 `2.8.3`；README 那句失实描述**现已成真**（文案无需改）。
+
+### 文档
+
+- `wrangler.jsonc` 头部注释补上「Dashboard 该填 `npm run ci`」及 `--strict-env` 的必要性。
+- **`README.md` 的「当前 `vX.Y.Z`」从 v2.7.0 改正为 v2.8.3**：该行自 v2.8.0 起就漏更新
+  （v2.8.0 的「同屏行数档位」也一直没进功能清单）。它能一直歪的原因很具体——落在两个闸门之间：
+  `check-version.js` 只管 `VERSION ↔ CHANGELOG ↔ package.json/lock`，而 `check-docs.js` 按设计
+  **不校验正文数值**（见该文件「刻意不做的事」一节）。属审计报告 §Q1，本版顺手改正。
+- `README.md` / `docs/DEVELOPMENT.md` 的构建命令说明同步为 `npm run ci`。
+
+**取舍说明**：本版**不引入 GitHub Actions**。「要有 CI」与「要用 GitHub Actions」是两件事——
+前者要的是"闸门不可被跳过"，而 Cloudflare 这条路本身就能承担强制力（构建失败即不部署）。
+外部 CI 能补的只有三件（PR 阶段拦截、WorkBuddy 手动渠道零强制、那一行调用本身入库），
+**三件都不紧急，且都要新增一套要维护的流水线**。本版先用"一行指针"堵上最容易出事的那个洞
+（路径硬编码在仓库外），是否上外部 CI 留给后续独立决策。
+
+（历史对照：CI 曾于 v1.0.0 上线，v1.3.2 随"发布渠道迁移"连同整个 `.github/` 目录被移除。
+本版动作与那次**打包移除**不同——只补仓库内的入口，**不动发布渠道、不删任何东西**。）
+
 ## v2.8.2 · 修整首连播 + 预备拍：小球动画不再跳过第一小节最后两拍（2026-09-21）
 
 **来源**：用户报「整首连播在打开预备拍时，小球动画会跳过第一小节的最后两拍」。

@@ -29,22 +29,22 @@ node tools/check-all.js --quick  # 跳过 243 组全量组合扫描（改代码�
 
 类型检查这步把关的是**模块接口与数据模型**：接口方法名拼错、`S.xxx` 状态字段拼错、类型不符的赋值都能拦住（带 "Did you mean" 提示）；它不管 DOM 元素类型（那由 `check-dom-ids.js` 管）。它的严格开关**该开的都开了**——strict 家族 9 项（含 `noImplicitAny` / `strictNullChecks`）加 `noImplicitReturns` / `noFallthroughCasesInSwitch` 全部打开，取舍与开启路径写在 `tools/tsconfig.typecheck.json`。
 
-项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——但它在两条发布渠道上的位置不一样，**别把"Cloudflare 会拦"当成可以跳过本地自验的理由**：**WorkBuddy** 纯手动发布，没有任何机制拦你，只能发布前自己跑一遍；**Cloudflare** 的 `wrangler.jsonc` 虽串了全量自验（`&&` 短路，不通过即中止），但 **Workers Builds（Git 集成构建）不读 wrangler 配置里的自定义构建命令**（Cloudflare 官方既有行为）——所以线上那次构建跑什么，取决于 Dashboard 里那串不在版本库的命令。**能称作"硬闸门"的只有本地/命令行 `wrangler deploy` 这条路**。
+项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——但它在两条发布渠道上的位置不一样，**别把"Cloudflare 会拦"当成可以跳过本地自验的理由**：**WorkBuddy** 纯手动发布，没有任何机制拦你，只能发布前自己跑一遍；**Cloudflare** 那边，构建命令**只能配在 Dashboard**（Workers Builds 不读仓库里的 Custom Builds，Cloudflare 官方既有行为），所以仓库侧的对策不是"把它搬进来"，而是**把仓库外的残留压到最小**——**Dashboard 里只填一行 `npm run ci`**（定义在 `package.json`，内容 = `npm ci && node tools/check-all.js --strict-env && npm run build`）。**别把命令内容抄进 Dashboard**：那等于把三个文件路径钉在仓库外，改脚本名或挪路径会让线上构建**静默断掉**，而仓库里没有任何东西会提醒你。⚠ 那一行里的 `npm ci` 与 `--strict-env` **缺一不可**——Cloudflare 会注入 `CI=true`，但 `check-all.js` 只认 `--strict-env` 这个 flag、不读该环境变量；写成不带 flag 的 `npm run verify`，构建镜像缺依赖时 ESLint / tsc 会静默标 ⊘、汇总照样打印「全部通过 · 实跑 10/12 项」，**正是它当初要防的那个假绿**。
 
 ```bash
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
 ```
 
-**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍，本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变；`package.json` / `package-lock.json` 的 version 由 `check-version.js` 一并把关）；③ 浏览与资源自验：`node tools/smoke.js` 已自动覆盖「能启动、无控制台报错、版本号一致、可视化网格渲染、关键元素样式、Service Worker 注册、播放态帧率」——**但它看不出"好不好用"**，视觉/手感类改动仍要人眼过一遍；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍（Dashboard 里那行 `npm run ci`），本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变；`package.json` 与 `package-lock.json` 的 version 由 `check-version.js` 一并把关，后者跑 `npm install --package-lock-only` 即可同步）；③ 浏览与资源自验：`node tools/smoke.js` 已自动覆盖「能启动、无控制台报错、版本号一致、可视化网格渲染、关键元素样式、Service Worker 注册、播放态帧率」——**但它看不出"好不好用"**，视觉/手感类改动仍要人眼过一遍；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
 
 ## 功能现状
 
-当前 `v2.7.0`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
+当前 `v2.8.3`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
 
 - **节拍内核**：Web Audio 时钟调度；时值可视化（音符块宽度与时值严格成正比）；BPM / 拍号 / TAP 测速；双通道音量。tick 制节奏模型（PPQN=48）支持三连音、Swing 三档、5/4 与 7/4 奇数拍
 - **节奏库与编辑器**：12 个内置预设；自定义节奏型编辑器（时值校验、试听、增删小节 1–64、本地保存）；预设导入导出 JSON
 - **记谱与训练**：扫弦方向标注 ↑↓、预备拍、静音拍、三套合成音色（电子 / 木鱼 / 鼓组）
-- **可视化**：弹跳球预判落点、十六分小格、当前高亮、双主题（经典 / 观测台）
+- **可视化**：弹跳球预判落点、十六分小格、当前高亮、同屏行数档位（1–4 行可调，曲式窗口与歌词轨共用）、双主题（经典 / 观测台）
 - **练习工具**：变速训练（自动爬坡）、练习量控制（N 小节 / N 分钟自动停）、7 天爬升计划、听辨训练（节奏默写）、练习统计（时长 / 连续天数 / 速度纪录 / 趋势，可导出 JSON）
 - **编排与多轨**：曲式编排（多段串成歌曲、范围循环、跳段）、整首连播、双入口（普通节拍 / 带扫弦）、双声部（节拍 + 扫弦各一条音量条）
 - **平台**：单文件零依赖、离线优先；在线版支持 PWA 安装与后台保活

@@ -6,13 +6,22 @@
    发版规则（v1.6.4 起）要求「每次发版都 bump 这一行」，此前这条纪律只靠人记，
    这里把它固化成机器检查——和 check-dom-ids 同样的思路：人眼核对过一次的结论不该反复靠人眼。
 
-   四项检查：
+   五项检查：
      1) index.html 里存在 `const VERSION = "x.y.z"` 且是合法 semver；
      2) CHANGELOG.md 的首条 `## vX.Y.Z` 必须**等于** VERSION（发了版就要有记录，且记录与代码一致）；
      3) index.html 全文出现的 `vX.Y.Z` 字面量**不得高于** VERSION
         （高于 = 代码已含该版改动却没 bump VERSION，正是 D4 要拦的那种漂移）。
      4) package.json 的 version 必须**等于** VERSION（v2.0.6，审计 P1-8）——它是同一事实的
         第二份手抄，此前无人核对。
+     5) package-lock.json 的 version（含 `packages[""].version`）必须**等于** VERSION
+        （v2.8.3 补）。第 4 项的注释从 v2.0.6 起就宣称"保证三者同步"，但**代码从未读过这个文件**
+        ——宣称与实现差了整整一年，实测漂移：VERSION 已到 2.8.2 而 lock 仍是 2.7.4，
+        横跨 v2.8.0 / 2.8.1 / 2.8.2 三次发版，闸门一路绿灯。补它的理由与第 4 项同源
+        （"抄一遍就等着烂"的数值），但**漂移通道不同**，所以必须是独立一项而不是并进第 4 项：
+          · package.json 是**手改**的 → 忘记改的表现是"发版时漏了"；
+          · package-lock.json 是 `npm install` **顺手改**的（只在跑过 install 时才动）→
+            不改 package.json 也不会连带变，于是"改了前者忘了后者"是最自然的失败姿势。
+        两者只能分别守。
 
    为什么第 3 项是「不高于」而不是「必须相等」：注释里引用历史版本（形如「v1.6.0 修」）
    是合理且有信息量的写法，不该被禁；真正有问题的是引用一个**还没发**的版本号。
@@ -109,12 +118,39 @@ if (ver){
   }
 }
 
+/* 5) package-lock.json 的 version 必须与 VERSION 一致（v2.8.3 补，理由见文件头第 5 项）
+   两处都要看：顶层 version 与 packages[""].version —— npm 会把同一个事实写在两个地方，
+   只查一处等于给这类漂移留了半边门。 */
+{
+  const lockPath = path.join(ROOT, "package-lock.json");
+  try{
+    const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+    const root = lock.packages && lock.packages[""] ? lock.packages[""] : null;
+    const lv = semver(lock.version);
+    const lvRoot = root ? semver(root.version) : null;
+    if (!lv){
+      problems.push(`package-lock.json 的 version "${lock.version}" 不是 x.y.z 形式的 semver`);
+    } else if (ver && cmp(lv, ver) !== 0){
+      problems.push(`package-lock.json 的 version 是 ${lock.version}，而 index.html 的 VERSION 是 ${vm[1]}`
+        + "——发版要同时改这里（跑 `npm install --package-lock-only` 即可同步）");
+    } else if (ver && lvRoot && cmp(lvRoot, ver) !== 0){
+      problems.push(`package-lock.json 里 packages[""].version 是 ${root.version}，而 VERSION 是 ${vm[1]}`
+        + "——同一个事实在同一文件里的第二处抄写，也要一并对齐");
+    } else {
+      console.log(`  · package-lock.json version = ${lock.version}（与 VERSION 一致，含 packages[""]）`);
+    }
+  }catch(e){
+    problems.push("package-lock.json 读不到或不是合法 JSON：" + (e && e.message ? e.message : e));
+  }
+}
+
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
   console.log("  ✗ " + problems.length + " 处版本漂移：");
   problems.forEach(p => console.log("      · " + p));
-  console.log("  修法：把 index.html 的 VERSION bump 到本次版本号，并在 CHANGELOG.md 顶部补一条同名条目。");
+  console.log("  修法：把 index.html 的 VERSION bump 到本次版本号，并在 CHANGELOG.md 顶部补一条同名条目；"
+    + "package.json 与 package-lock.json 的 version 一并对齐。");
   process.exit(1);
 }
-console.log("  ✓ 版本号一致（VERSION / CHANGELOG / 代码注释）");
+console.log("  ✓ 版本号一致（VERSION / CHANGELOG / package.json / package-lock.json / 代码注释）");
 process.exit(0);
