@@ -1,5 +1,21 @@
 # 变更记录
 
+## v2.8.25 · 播放 P2-7：帧路径上 arrangeCur() 的重复线性查找（实测稳态帧 12→1）（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 15 条（P2 组）。本节只落这一条，独立成版与提交。
+
+- **P2-7 每帧反复线性查找当前曲式**：
+  - **根因**：帧热路径里对「当前曲式」的解析走 `arrangeCur()` → `Store.findArrange(id)`，而 `findArrange` 是 `arranges.find(x => x.id === id)` 的**线性扫描**（`index.html:2128`）。单帧内该查找被多处各自触发：`paintBall` 遍历 `onsetBuf`，对**每个端点**调 `rowOfOnset(e)`，每次又各自 `arrangeCur()`；叠加 `audioPosAt` 3 次、`paintLyric` 1 次、`audibleSongBar` 1 次、`arrangeNextRow` 1 次。单帧查找次数 ≈ 端点缓冲长度 + 4，**随数据量线性增长**（长曲 / 多端点时恶化）。
+  - **修法（报告的最小修复）**：`paintFrameBody` 顶部**取一次** `arrangeCur()` 快照，向下传给 `audibleSongBar` / `audioPosAt` / `paintLyric` / `paintBall`；`paintBall` 再透传给其内部的 `rowOfOnset` 与终点弧调用的 `arrangeNextRow`。这些被调函数统一加可选形参 `a`，**不传则退回各自现查**（`if (a === undefined) a = arrangeCur()`），保持既有调用方与冷路径（`buildViz` / `buildLyricLane` / `arrangePlayPattern`）行为不变。帧内 `S.playMode` / `S.arrangeSel.id` 不变（中间只读状态、不切选择），故快照与现查等价。
+  - **顺带修一处报告未列出的热点**：`paintBall` 终点弧调用的 `arrangeNextRow` 原先也各自现查，本次一并纳入快照下传（否则「取一次」不彻底）。
+- **测试与反向验证**：
+  - 在 `tests/cases/t24-audit-hardening.js` 加 T27b：包一层计数器改写 `beat.Store.findArrange`，驱动 240 BPM / 单块 8 次重复的曲式，热身 50 帧后统计 300 帧的每帧查找次数。断言**稳态帧中位 = 1**、多数帧恰好 1 次、每帧至少 1 次。**旧实现**该组断言变红（中位 12）；**新实现**中位 1。
+- **实测量化**（240 BPM / 单块 8 次重复 / `onsetBuf.length=8` / 热身 50 + 观测 300 帧）：
+  - 旧：min 12 · median 12 · max 26 · avg 12.66
+  - 新：min 1 · median 1 · max 14 · avg 1.29（直方图 {"1":244,"2":48,"3":5,"4":1,"13":1,"14":1}）
+  - ⇒ 稳态帧 **12 → 1**（约 12×）；残余的 13/14 为小节边界帧，那里另经 `Arrange.refreshNow` → `arrangeCur()`。
+- **自验**：`node tools/check-all.js` 全绿（含新增 T27b）。
+
 ## v2.8.24 · 播放 P2-6：曲式换块时 scheduleRef 与 applyPatternChange 重复全量重建侧栏列表（实测 −11%）（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 14 条（P2 组）。本节只落这一条，独立成版与提交。

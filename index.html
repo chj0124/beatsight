@@ -1414,20 +1414,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1862  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L2877  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3533  Modal         应用内弹窗
-     L3663  Viz           时值可视化渲染与每帧动画
-     L4934  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5561  Trainer       变速训练器
-     L5779  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6274  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6404  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7194  Editor        自定义节奏型编辑器
-     L7550  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7773  Ear           听辨训练（v1.10.0）
-     L7996  Arrange       曲式编排（v2.0.0）
-     L8755  Help          使用方法（v2.0.1）
-     L8802  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8876  初始化（装配） 各模块 hook 接线与启动
+     L3534  Modal         应用内弹窗
+     L3664  Viz           时值可视化渲染与每帧动画
+     L4948  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5575  Trainer       变速训练器
+     L5793  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6288  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6418  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L7208  Editor        自定义节奏型编辑器
+     L7564  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7787  Ear           听辨训练（v1.10.0）
+     L8010  Arrange       曲式编排（v2.0.0）
+     L8769  Help          使用方法（v2.0.1）
+     L8816  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8890  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.24";
+const VERSION = "2.8.25";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3081,9 +3081,10 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
    调用方回落到 loopNextBar（v2.6.2：循环开着时取区间起点，关着时 ≡ (bar+1)%vizBars，
    模数 = 当前型的小节数，对不循环的预设模式零行为变化）。 */
-/** @param {any} [sec] @param {any} [bar] */
-function arrangeNextRow(sec, bar){
-  const a = arrangeCur();
+/** @param {any} [sec] @param {any} [bar]
+    @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查） */
+function arrangeNextRow(sec, bar, a){
+  if (a === undefined) a = arrangeCur();
   if (!a) return null;
   /* 默认取调度游标；调用方（paintBall 的待命球）可显式传可听位置——见该调用点注释 */
   const nxt = arrNextBar(a, S.arrangeSel,
@@ -3808,9 +3809,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         arrSec/arrBar，按它重建会"画面先跳、声音后到"（用户实拍过同类错位，v2.0.2）。
         优先取 onset 表里**已落地**的那一条（与播放头/球同源）；刚起播还没有落地端点时
         退回调度游标。返回 -1 = 还没起步 / 不在曲式模式。 */
-  /** @param {number} now @returns {number} */
-  function audibleSongBar(now){
-    const a = arrangeCur();
+  /** @param {number} now
+      @param {any} [a] 已取到的 arrangeCur() 快照（paintFrameBody 每帧取一次下传，省重复线性查；不传则现查）
+      @returns {number} */
+  function audibleSongBar(now, a){
+    if (a === undefined) a = arrangeCur();
     if (!a) return -1;
     let hit = null;
     for (const e of onsetBuf) if (e.t <= now && e.aBar !== undefined && e.aBar >= 0) hit = e;
@@ -3821,11 +3824,13 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /** 端点 → **窗口行**。预设模式：端点的 bar 就是行号（原行为，一字未改）。
       曲式模式：端点带的是节目单位置（aSec/aBar），换算成歌曲小节号后取它在窗口里的偏移；
       不在窗口内（前瞻窗口排到了更远的小节）返回 -1，调用方不画那个端点。 */
-  /** @param {any} e @returns {number} */
-  function rowOfOnset(e){
+  /** @param {any} e
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数）
+      @returns {number} */
+  function rowOfOnset(e, a){
     if (!e) return 0;
     if (S.playMode === "arrange" && winStart >= 0 && e.aBar !== undefined && e.aBar >= 0){
-      const a = arrangeCur();
+      if (a === undefined) a = arrangeCur();
       if (a){
         const r = songBarBefore(a, e.aSec) + e.aBar - winStart;
         return (r >= 0 && r < arrWinBars()) ? r : -1;
@@ -3845,7 +3850,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     if (S.playMode !== "arrange" || !ctx) return null;
     const a = arrangeCur();
     if (!a) return null;
-    const k = audibleSongBar(ctx.currentTime);
+    const k = audibleSongBar(ctx.currentTime, a);
     if (k < 0) return null;
     const at = songBarAt(a, k);
     return at ? { sec: at.sec, bar: at.bar } : null;
@@ -4315,8 +4320,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        → 错位**永久保留**，只有重开播放才恢复（用户实拍反馈）。训练器自动爬坡走的是同一条路径。
      播放头与球共用同一份 onset 表后，这个分叉从结构上消失（与「全量/增量共用 setCell」同一思路）。
      返回 null 表示 onset 表还覆盖不到 now（例如预备拍期间端点全在未来），由调用方用时钟公式兜底。 */
-  /** @param {number} now */
-  function audioPosAt(now){
+  /** @param {number} now
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数） */
+  function audioPosAt(now, a){
     let prev = null, nxt = null;
     for (const e of onsetBuf){
       if (e.t <= now) prev = e;
@@ -4329,20 +4335,20 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!prev){
       /* 还没有任何已落地的端点（刚启动/预备拍）：停在下一颗的位置，与 paintBall 的 !prev 分支一致 */
       if (!nxt) return null;
-      const r0 = rowOfOnset(nxt);
+      const r0 = rowOfOnset(nxt, a);
       return { bar: r0 < 0 ? 0 : r0, tib: nxt.cumT, pb: nxt.pb };
     }
     const barTicks = vizSig * TPB;
     /* v2.5.2：行号走 rowOfOnset 换算（曲式模式下端点存的是型内小节号，行号是窗口偏移）。
        换算出 -1 = 这个端点不在本窗口里（前瞻窗口排到了更远的小节）→ 本帧不用 onset 表，
        由调用方回落到时钟公式（宁可短暂用时钟，也不要拿一个窗口外的行号去索引 rowEls） */
-    const bar = rowOfOnset(prev);
+    const bar = rowOfOnset(prev, a);
     if (bar < 0) return null;
     /* v2.6.2 循环回卷守卫：下一端点与 prev 同row但 cumT 不增 → 它不是本小节的后续音，
        而是循环回卷后**下一遍**的起点（时间向前、位置回退）。练习循环 [k,k] 时
        每一遍都落在同一行，若不判这一条，inBar 成立 → tib 从行尾向行首插值，
        播放头会倒着扫回去（用户实拍 bug）。按"行内无后续"处理：向前走到行右缘 */
-    const inBar = (nxt && rowOfOnset(nxt) === bar && nxt.cumT > prev.cumT) ? nxt : null;
+    const inBar = (nxt && rowOfOnset(nxt, a) === bar && nxt.cumT > prev.cumT) ? nxt : null;
     /* 终端弧的终点 = 本小节右缘的音频时刻。与 paintBall 里 barEnd 的算式等价：
        终端弧的 tick 速率由当前 spb 决定，两处推出来的时刻相同 */
     const endT = inBar ? inBar.t : prev.t + (barTicks - prev.cumT) * spb() / TPB;
@@ -4353,8 +4359,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        曲式模式下它由窗口起点算得更准，调用方会优先用那条路 */
     return { bar, tib: prev.cumT + (endTicks - prev.cumT) * p, pb: prev.pb };
   }
-  /** @param {number} now @param {number} bar @param {number} tib */
-  function paintBall(now, bar, tib){
+  /** @param {number} now @param {number} bar @param {number} tib
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
+  function paintBall(now, bar, tib, a){
     if (!ballEl || !shadowEl) return;
     if (!S.bounce){
       ballEl.style.display = "none"; shadowEl.style.display = "none";
@@ -4380,7 +4387,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     let prev = null;
     /* v2.5.2：行号比较一律走 rowOfOnset —— 曲式模式下端点存的是**型内**小节号，
        而行号是**窗口偏移**，直接比会拿"第 0 小节"去匹配"第 1 行"（球会跳到错误的行上） */
-    for (const e of onsetBuf) if (rowOfOnset(e) === bar && e.t <= now) prev = e;   // buf 按时间递增，取最后一个
+    for (const e of onsetBuf) if (rowOfOnset(e, a) === bar && e.t <= now) prev = e;   // buf 按时间递增，取最后一个
     let nxt = null;
     for (const e of onsetBuf) if (e.t > now){ nxt = e; break; }
     if (!nxt) nxt = onsetNext;                              // 预测终点（T22 保证其恒在缓冲尾之后）
@@ -4388,7 +4395,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        循环下一遍的起点——按终端弧处理，球向前跳完本行全程（终点 = 行右缘），
        不倒着飞回行首；行首的预备交给下面的待命球（与不循环时的接力同一套逻辑）。
        prev 为空（本行尚无端点落地）时不判 cumT——那本来就是"待命在首个 onset"分支 */
-    const nxtInBar = (nxt && rowOfOnset(nxt) === bar && (!prev || nxt.cumT > prev.cumT)) ? nxt : null;
+    const nxtInBar = (nxt && rowOfOnset(nxt, a) === bar && (!prev || nxt.cumT > prev.cumT)) ? nxt : null;
     if (!prev){
       const g = nxtInBar ? posOf(bar, nxtInBar.cumT) : posOf(bar, 0);
       ballEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
@@ -4398,11 +4405,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       return;
     }
     const terminal = !nxtInBar;                             // 终端弧：终点 = 本行右缘
-    const a = prev, b2 = nxtInBar || /** @type {any} */ ({ t: barEnd, terminal: true });
-    const T = b2.t - a.t;
+    const s0 = prev, b2 = nxtInBar || /** @type {any} */ ({ t: barEnd, terminal: true });
+    const T = b2.t - s0.t;
     if (T <= 0) return;
-    const p = Math.min(1, Math.max(0, (now - a.t) / T));
-    const A = posOf(bar, a.cumT), Bp = terminal ? rightEdge() : posOf(bar, b2.cumT);
+    const p = Math.min(1, Math.max(0, (now - s0.t) / T));
+    const A = posOf(bar, s0.cumT), Bp = terminal ? rightEdge() : posOf(bar, b2.cumT);
     const x = A.x + (Bp.x - A.x) * p;
     const yBase = A.y;                                      // 全程本行：基线恒定
     let H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
@@ -4412,7 +4419,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     H = Math.min(H, A.y + 6);
     const y = yBase - H * 4 * p * (1 - p);
     let sx = 1, sy = 1;
-    const dtL = now - a.t, dtR = b2.t - now;
+    const dtL = now - s0.t, dtR = b2.t - now;
     if (dtL < CB.squash){                          // 触地挤压 → 回弹（落地瞬间的重量感）
       const f = dtL / CB.squash, e2 = 1 - (1 - f) * (1 - f);
       sy = 0.68 + 0.32 * e2; sx = 1.38 - 0.38 * e2;
@@ -4441,7 +4448,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
            prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
         const nrow = (prev && prev.aBar !== undefined)
-          ? arrangeNextRow(prev.aSec, prev.aBar) : arrangeNextRow();
+          ? arrangeNextRow(prev.aSec, prev.aBar, a) : arrangeNextRow(undefined, undefined, a);
         /* ★ 这里有两个**不同的**下标，v2.5.2 起必须分开（曲式模式下它们不再相等）：
              cand = 内容下标：下一小节所属型的**型内**小节号（用来取那一行的音符）
              rowNext = 行的下标：待命球画在**窗口的第几行**（下一小节 = 当前行 + 1）
@@ -4569,11 +4576,12 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
 
   /** @param {number} tib 小节内 tick（与拍点轨同源，来自 audioPosAt）
       @param {number} [k] 可听歌曲小节号（paintFrameBody 每帧已算好，直接传入省一次 onset 表扫描；
-        测试直调时不传，内部按可听域现算） */
-  function paintLyric(tib, k){
+        测试直调时不传，内部按可听域现算）
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查） */
+  function paintLyric(tib, k, a){
     const lane = lyricEl;
     if (!lane || lane.hidden) return;           // 预设模式 / 无歌词行：整帧零开销（T27 走的就是这条）
-    const a = arrangeCur();
+    if (a === undefined) a = arrangeCur();
     if (!a) return;
     const total = songBars(a);
     if (!total) return;
@@ -4740,9 +4748,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★ 触发条件用**可听小节号**而不是调度游标：调度器提前一个前瞻窗口（300ms）推进
          arrSec/arrBar，按它重建会"画面先跳、声音后到"。每小节一次，不是每帧
          —— 与 T27「帧内零布局读取」的承诺不冲突（buildViz 里的量测只在结构变化时发生）。 */
+    /* ★ v2.8.25（审计 P2-7）：本帧**唯一**的 arrangeCur() 快照，向下传给 audibleSongBar /
+       audioPosAt / paintLyric / paintBall。此前各处各自现查：paintBall 内每个 onsetBuf 元素
+       都要 rowOfOnset→arrangeCur（内部是 Store.findArrange 线性扫），叠加 audioPosAt 的 3 次
+       与 paintLyric 的 1 次，单帧查找次数随端点缓冲长度线性增长——会随数据量恶化。
+       帧内 S.playMode / S.arrangeSel.id 不变（中间只读状态、不切选择），故快照与现查等价。 */
+    const arrCur = arrangeCur();
     let audK = -1;                            // 本帧的可听歌曲小节号（末尾传给 paintLyric，省一次 onset 表扫描）
     if (S.playMode === "arrange" && ctx){
-      const k = audibleSongBar(ctx.currentTime);
+      const k = audibleSongBar(ctx.currentTime, arrCur);
       audK = k;
       /* 可听小节变化 → 通知「第 N 段 · 第 M 小节」计数器与段序条（v2.7.1）。
          它们此前由调度域的 onArrangeBar 刷新——比发声早一个前瞻窗口，
@@ -4784,7 +4798,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!isFinite(barTicks) || barTicks <= 0) return;
     /* 播放位置（v1.3.4）：优先取 onset 表（与弹跳球同源，播放中改 BPM 也不会与球分叉）；
        onset 表覆盖不到时（预备拍/刚启动）回落到时钟公式 */
-    const ap = audioPosAt(c.currentTime);
+    const ap = audioPosAt(c.currentTime, arrCur);
     let bar, tib, pb = null;
     if (ap){
       bar = ap.bar; tib = ap.tib; pb = (typeof ap.pb === "number") ? ap.pb : null;
@@ -4805,7 +4819,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
     tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
-    paintLyric(tib, audK);         // 歌词轨：与上面两行同一份 tib、同一份可听小节号，同一帧里画完（两轨共享时钟）
+    paintLyric(tib, audK, arrCur);         // 歌词轨：与上面两行同一份 tib、同一份可听小节号，同一帧里画完（两轨共享时钟）
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
@@ -4832,7 +4846,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
     fillEls[bar][active].style.transform = "scaleX(" + (t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)) + ")";
-    paintBall(c.currentTime, bar, tib);             // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
+    paintBall(c.currentTime, bar, tib, arrCur);             // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
     if (bar !== lastBar || t16 !== lastT16){

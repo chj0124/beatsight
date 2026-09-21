@@ -273,6 +273,50 @@ section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计
   problems.slice(0, 5).forEach(p => console.log("      · " + p));
 }
 
+section("T27b 曲式模式 · 帧内 arrangeCur() 单次快照（审计 P2-7）");
+{
+  /* 帧热路径此前在各处**各自** arrangeCur()（内部是 Store.findArrange 线性扫）：paintBall 对
+     onsetBuf 逐元素 rowOfOnset→arrangeCur，叠加 audioPosAt(3) / paintLyric(1) / audibleSongBar(1)
+     / arrangeNextRow(1)，单帧查找次数随端点缓冲长度线性增长——正是「帧内只做便宜事」要挡的结构
+     （会随数据量恶化）。修法：paintFrameBody 开头取一次快照，向下传给全部帧内消费方。
+     这里用计数探针把契约钉死：稳态帧恰好查 1 次，且**不随端点缓冲长度增长**。
+     240 BPM：一小节 = 1s（与 t53 同口径），50 帧预热 + 300 帧观测稳稳落在 8 小节范围内。 */
+  const BL2 = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
+  const app = loadApp({
+    "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "t1", name: "测",
+      sections: [{ name: "A", blocks: [BL2(0, 8)] }] }] }),
+    "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
+      arrangeSel: { id: "t1", from: 0, to: 0, loop: false } }) });
+  const beat = app.beat;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  for (let i = 0; i < 50; i++){ ac.currentTime += 0.02; beat.AudioEngine.scheduler(); beat.Viz.paintFrame(); }
+
+  /* 计数探针：Store 是普通对象字面量，覆写 findArrange 即刻生效（arrangeCur 每次现查它）。
+     每帧在 paintFrame 之前归零，只数**渲染帧内**的查找——scheduler 自己那部分另算、不混入。 */
+  const orig = beat.Store.findArrange;
+  let n = 0;
+  beat.Store.findArrange = (id) => { n++; return orig(id); };
+  const counts = [];
+  for (let i = 0; i < 300; i++){
+    ac.currentTime += 0.02;
+    beat.AudioEngine.scheduler();
+    n = 0;
+    beat.Viz.paintFrame();
+    counts.push(n);
+  }
+  beat.Store.findArrange = orig;
+
+  const bufLen = beat.onsetBuf().length;
+  const sorted = counts.slice().sort((x, y) => x - y);
+  const median = sorted[sorted.length >> 1];
+  const once = counts.filter(c => c === 1).length;
+  ok(bufLen >= 6, `前提：端点缓冲有 ${bufLen} 颗端点（逐元素查找才会被放大成 bufLen 倍）`);
+  eq(median, 1, `★ 稳态帧中位查找 1 次（旧实现 = 12 次 ≈ 端点缓冲长度 + 4，随数据量线性增长）`);
+  ok(once > counts.length / 2, `★ 多数帧（${once}/${counts.length}）恰好查 1 次——一次快照下传生效`);
+  ok(sorted[0] >= 1, "每帧至少查 1 次（快照就在 paintFrameBody 顶部，早退路径之前）");
+}
+
 section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷阱（审计 P2-11）");
 {
   const { beat, els, sandbox } = loadApp();
