@@ -79,6 +79,14 @@ function loadApp(seed){
     performance:{now:()=>Date.now()}, URL:{createObjectURL:()=>"blob:",revokeObjectURL(){}}, Blob, FileReader:function(){},
   };
   sb.window = sb; sb.window.addEventListener = () => {};
+  /* v2.8.8：`window.__beat`（完整内部句柄）已改为**条件挂载**（只认 ?debug=1 或宿主预置的
+     BEATSIGHT_TEST）。本文件**自带一份私有沙箱**、不走 tests/lib/harness.js——所以
+     harness 里加的那个标记**覆盖不到这里**：漏了它，下面 `sb.window.__beat` 就是 undefined，
+     看门狗每个用例都会以 "Cannot read properties of undefined" 崩掉。
+     ★ 这是本仓库的一个已知陷阱：**同一个仓库里存在多份 DOM/存储 stub 时，任何"改默认行为"
+       的改动都要把所有 stub 都过一遍**（判断依据是"谁构造了沙箱"，不是"谁在用沙箱"）。
+       所以这一行不能删，也不能改成"从 harness 导入一个常量"——私有沙箱必须自己声明。 */
+  sb.BEATSIGHT_TEST = true;
   vm.createContext(sb);
   new vm.Script(SRC, { filename:"inline.js" }).runInContext(sb);
   return { beat: sb.window.__beat, els, store };

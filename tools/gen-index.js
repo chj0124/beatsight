@@ -158,7 +158,13 @@ if (require.main === module){
     console.log("  ✓ 一致（行号与 banner 逐条对齐）");
     process.exit(0);
   }
-  if (WRITE && a.entries.length === a.banners.length && problems.every(p => /偏 \d+ 行/.test(p))){
+  /* v2.8.8：`偏 -?\d+ 行` —— **必须容忍负号**。原正则写的是 `偏 \d+ 行`，于是
+     "索引比 banner 大"（偏移为负，例如删了一行注释后索引全部多 1）这一整类漂移
+     **永远进不了自动回写分支**：脚本会打印一份完全正确的诊断，然后告诉你"修法：
+     node tools/gen-index.js --write"——而那条命令跑出来还是同一份诊断。
+     即"修法指向的正是刚刚失败的那件事"，是自指的死循环提示。
+     这类偏移恰恰是最常见的一种（删/加一行就会让**其后所有**模块索引整体 ±1）。 */
+  if (WRITE && a.entries.length === a.banners.length && problems.every(p => /偏 -?\d+ 行/.test(p))){
     fs.writeFileSync(HTML, rewrite(src));
     console.log("  ✓ 已回写 " + problems.length + " 条行号（短名与描述未动）");
     console.log("    改动前：" + problems.slice(0, 3).join("；"));

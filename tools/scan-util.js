@@ -117,6 +117,56 @@ function maskStrings(src){
   return buf.join("");
 }
 
+/* 把注释**与**字符串/模板字面量的内容一起替换成空格（长度与换行原样保留，偏移可与原文对齐）。
+   用途：只看**代码结构**的扫描（典型是花括号深度计数）——字符串里的 `{`、注释里随手写的一对
+   `{}` 都会让朴素计数彻底错位。
+   与 maskStrings 的差别：那个只遮字符串（它要保留注释以便别的规则读注释），本函数连注释一起遮。
+   ★ 顺序必须是**先遮字符串再遮注释**：否则 `"/*"` 这类字面量内容会被当成注释起点，
+     后面整段代码都会被"注释掉"。 */
+function blankNonCode(src){
+  const buf = src.split("");
+  /* 遮掉 [from, to) 区间内的字符，但**保留换行**（行号与偏移必须与原文逐字对齐） */
+  const put = (from, to) => { for (let j = from; j < to; j++) if (src[j] !== "\n") buf[j] = " "; };
+  let i = 0;
+  while (i < src.length){
+    const c = src[i], c2 = src[i + 1];
+    if (c === "/" && c2 === "/"){ let j = i; while (j < src.length && src[j] !== "\n") j++; put(i, j); i = j; continue; }
+    if (c === "/" && c2 === "*"){
+      const end = src.indexOf("*/", i + 2);
+      const stop = end < 0 ? src.length : end + 2;
+      put(i, stop); i = stop; continue;
+    }
+    if (c === '"' || c === "'" || c === "`"){
+      const q = c;
+      put(i, i + 1); i++;
+      while (i < src.length && src[i] !== q){
+        if (src[i] === "\\"){ put(i, i + 2); i += 2; continue; }   // 转义对：两个字符一起吃掉
+        if (src[i] === "\n" && q !== "`") break;                   // 单/双引号不跨行：视作未闭合，就近收手
+        put(i, i + 1); i++;
+      }
+      if (i < src.length && src[i] === q){ put(i, i + 1); i++; }
+      continue;
+    }
+    i++;
+  }
+  return buf.join("");
+}
+
+/* 逐字符的花括号深度：返回 depth[i] = 处理第 i 个字符**之前**的深度，长度 src.length + 1。
+   输入必须是 blankNonCode 处理过的源码（否则字符串/注释里的花括号会把它带偏）。
+   用途：判定"这条语句在哪个嵌套层"——比看缩进可靠得多（缩进会被格式化器改写，括号不会）。 */
+function braceDepths(src){
+  const out = new Int32Array(src.length + 1);
+  let d = 0;
+  for (let i = 0; i < src.length; i++){
+    out[i] = d;
+    const c = src[i];
+    if (c === "{") d++; else if (c === "}") d--;
+  }
+  out[src.length] = d;
+  return out;
+}
+
 /* 声明表：从（已剥注释 + 已遮蔽字符串的）源码里收集**所有声明名**，返回 [{ name, off }]。
    覆盖 const/let/var（含解构模式、`const a = 1, b = 2` 多声明符）、function/class 名、
    函数与箭头函数的形参、catch 形参、`for (const x of …)` 的头部声明，以及
@@ -259,4 +309,5 @@ function collectDeclarations(src){
   return out;
 }
 
-module.exports = { extractScript, stripComments, matchBrace, lineStarts, lineOf, lineOffset, maskStrings, collectDeclarations };
+module.exports = { extractScript, stripComments, matchBrace, lineStarts, lineOf, lineOffset,
+  maskStrings, blankNonCode, braceDepths, collectDeclarations };

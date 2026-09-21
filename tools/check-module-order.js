@@ -26,10 +26,11 @@
         （指向它全部的 7 个下游），再想加一条就必须显式抬高下方 MAX_FANOUT 常量——让"中枢又
         胖了一圈"成为一次看得见、需要理由的改动，而不是悄悄发生。
 
-   ⚠ 实现前提（v2.4.4 审计补记）：R1 的"顶层语句"判定依赖「IIFE 顶层恰好 2 空格缩进」这一
-   **格式约定**。因此 index.html **禁止过 prettier / 格式化器**——一次全文件重排就会让 R1 的
-   判定面静默失效（语句缩进变了，检查器看到的"顶层"就不再是顶层）。这条同样写在
-   docs/DEVELOPMENT.md §5。引入任何格式化工具前，先把这个检查器改成括号深度判定。
+   ✅ 已修（v2.8.8，本轮审计「高」级项）：R1/R2 的"在哪一层"判定已由**缩进**换成**括号深度**
+   （先 blankNonCode 抹掉注释与字符串内容，再逐字符数 `{`/`}`），与缩进、换行、是否格式化
+   完全无关。**`index.html` 自此可以用 prettier / 格式化器了**——DEVELOPMENT.md §5 的禁令已解除。
+   旧实现把架构闸门押在"永不格式化"这条约定上，是典型的形式依赖结构；现在依赖的是结构本身。
+   保留一条不变的自检：整段脚本跑完深度必须回到 0，否则报错退出（宁可报错，不可给假结论）。
 
    退出码 0 = 全部通过，1 = 有违规。CI 与本地自验都跑它。 */
 "use strict";
@@ -37,7 +38,7 @@ const fs = require("fs");
 const path = require("path");
 /* 剥注释 / 括号配对 / 行号换算统一复用 scan-util（v2.4.4 起不再各写一份；
    此前本文件内嵌的三份私有实现与 scan-util 语义逐字相同，属复制粘贴债）。 */
-const { stripComments, matchBrace, lineOf } = require("./scan-util");
+const { stripComments, matchBrace, lineOf, blankNonCode, braceDepths } = require("./scan-util");
 
 const HTML = process.argv[2] || path.join(__dirname, "..", "index.html");
 const html = fs.readFileSync(HTML, "utf8");
@@ -73,6 +74,25 @@ const WHITELIST = [
    需要理由的改动，而不是悄悄发生。新功能的 UI 装配请内聚到各自模块内部。 */
 const MAX_FANOUT = 7;
 
+/* ---- 嵌套深度（v2.8.8 前这里用的是缩进，见下面的说明）----
+   R1 与 R2 都要回答"这条语句在哪个嵌套层"，历史上两种答案来源：
+     · 缩进（旧）：「IIFE 顶层 = 恰好 2 空格缩进」——**格式约定**，不是结构事实。
+       代价是 index.html 被禁止过任何格式化器（prettier 一次全文件重排就会让判定面静默失效）。
+     · 括号深度（现在）：先 blankNonCode 抹掉注释与字符串内容，再逐字符数 `{` / `}`。
+       **结构事实**，与缩进、换行、是否格式化完全无关。
+   换用深度后那条禁令解除：docs/DEVELOPMENT.md §5 已同步改为"可以格式化了"。
+   ⚠ 自检：整段脚本跑完深度必须回到 0。回不去说明 blankNonCode 漏掉了某种写法
+     （例如正则字面量里写了不配对的花括号），此时深度全部不可信 —— 宁可报错退出，
+     也不能让一个错位的深度表继续产出结论（这与 check-lint.js 的"括号必须配平"自检同源）。 */
+const bare = blankNonCode(SRC);
+const depths = braceDepths(bare);
+if (depths[depths.length - 1] !== 0){
+  console.error("嵌套深度自检失败：整段脚本跑完深度为 " + depths[depths.length - 1] + "（应为 0）——"
+    + "多半是出现了 blankNonCode 未处理的写法，请先看 tools/scan-util.js 的 blankNonCode。\n"
+    + "拒绝带着错位的深度表继续判定（宁可报错，不可给出假结论）。");
+  process.exit(2);
+}
+
 /* 收集模块块：`const Name = (() => {` … 配对的 `}` */
 const modules = [];
 {
@@ -83,7 +103,12 @@ const modules = [];
     if (!EXPECTED_ORDER.includes(name)) continue;      // 只认 EXPECTED_ORDER 里那几个模块（VERSION 等常量不算）
     const end = matchBrace(SRC, mm.index);
     if (end < 0){ console.error("括号配对失败：" + name); process.exit(1); }
-    modules.push({ name, start: mm.index, end, startLine: lineOf(SRC, mm.index), endLine: lineOf(SRC, end) });
+    /* 模块体的嵌套深度：`const Name = (() => {` 那个 `{` 之后的一层。
+       本层里的语句 = IIFE 求值期就会执行的语句（R1 的判据）；再深一层就是在某个
+       function / if / 对象字面量里，属运行时才走到的分支（R3）。 */
+    const open = SRC.indexOf("{", mm.index);
+    const bodyDepth = depths[open] + 1;
+    modules.push({ name, start: mm.index, end, startLine: lineOf(SRC, mm.index), endLine: lineOf(SRC, end), bodyDepth });
   }
 }
 modules.sort((a, b) => a.start - b.start);
@@ -120,7 +145,12 @@ HOT.forEach(fn => {
   if (idx < 0){ fail("未找到热路径函数 " + fn + "()——检查器可能已失效，需同步更新"); return; }
   const end = matchBrace(SRC, idx);
   if (end < 0){ fail("热路径函数 " + fn + "() 括号配对失败"); return; }
-  hotRanges.push({ fn, start: idx, end });
+  /* v2.8.8：热路径归属改按**行区间**判定，不再按字符偏移。
+     旧写法是 `lineStartOf[行] + hit.index`，而 hit.index 是**剥过注释的行**里的下标、
+     lineStartOf 却是**原始行**的起点——两者不同源，算出来的偏移会系统性偏小
+     （剥掉的注释越长、偏得越多），于是 R2 可能把真命中判成"不在热路径里"（假阴性）。
+     按行区间判定与"是否需要偏移"彻底解耦：区间是闭的、只会更保守，不会漏报。 */
+  hotRanges.push({ fn, from: lineOf(SRC, idx), to: lineOf(SRC, end) });
 });
 pass("已定位 " + hotRanges.length + "/" + HOT.length + " 个热路径函数体：" + HOT.join(" / "));
 
@@ -133,19 +163,32 @@ for (let i = 0; i < lines.length; i++){ lineStartOf[i] = lineStart; lineStart +=
 modules.forEach((mod, mi) => {
   for (let ln = mod.startLine; ln <= mod.endLine; ln++){
     const text = clean[ln - 1] || "";
-    const indent = (text.match(/^ */) || [""])[0].length;
+    const inHot = hotRanges.some(r => ln >= r.from && ln <= r.to);
     modules.forEach((other, oi) => {
       if (oi <= mi) return;                                   // 只查"后方"
       const hit = new RegExp("\\b" + other.name + "\\s*\\.").exec(text);
       if (!hit) return;
       const rec = { from: mod.name, to: other.name, line: ln, code: (lines[ln - 1] || "").trim() };
-      const charAt = lineStartOf[ln - 1] + hit.index;
-      if (hotRanges.some(r => charAt >= r.start && charAt <= r.end)) r2Hits.push(rec);
-      else if (indent === 2) r1Hits.push(rec);
+      if (inHot) r2Hits.push(rec);
+      /* R1 判据（v2.8.8）：这一行的第一个代码字符处的**括号深度**是否正好等于模块体深度。
+         等于 → 语句在 IIFE 体内、且不在任何嵌套块/函数里 = 求值期就会执行 = TDZ 风险区；
+         深于它 → 在某个 function/if/回调体内 = 运行时才走到 = R3 范畴。 */
+      else if (depthOfLine(ln) === mod.bodyDepth) r1Hits.push(rec);
       else r3Hits.push(rec);
     });
   }
 });
+
+/* 一行代码所在的嵌套深度 = 该行**第一个非空白字符**处的深度。
+   取第一个非空字符而不是行首：行首的缩进空白本身不带深度信息，而形如
+   `  } catch (e){ Modal.x() }` 这种一行里既有收尾又有起始的写法，判"这段语句在哪一层"
+   应当以第一个代码字符为准。 */
+function depthOfLine(ln){
+  const raw = bare.slice(lineStartOf[ln - 1], lineStartOf[ln - 1] + (lines[ln - 1] || "").length);
+  let i = 0;
+  while (i < raw.length && /\s/.test(raw[i])) i++;
+  return depths[lineStartOf[ln - 1] + i];
+}
 
 if (r1Hits.length){
   r1Hits.forEach(h => fail(`R1 初始化期反向引用：${h.from}(L${h.line}) → ${h.to}  「${h.code}」`));

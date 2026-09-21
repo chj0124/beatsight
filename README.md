@@ -29,7 +29,9 @@ node tools/check-all.js --quick  # 跳过 243 组全量组合扫描（改代码�
 
 类型检查这步把关的是**模块接口与数据模型**：接口方法名拼错、`S.xxx` 状态字段拼错、类型不符的赋值都能拦住（带 "Did you mean" 提示）；它不管 DOM 元素类型（那由 `check-dom-ids.js` 管）。它的严格开关**该开的都开了**——strict 家族 9 项（含 `noImplicitAny` / `strictNullChecks`）加 `noImplicitReturns` / `noFallthroughCasesInSwitch` 全部打开，取舍与开启路径写在 `tools/tsconfig.typecheck.json`。
 
-项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——但它在两条发布渠道上的位置不一样，**别把"Cloudflare 会拦"当成可以跳过本地自验的理由**：**WorkBuddy** 纯手动发布，没有任何机制拦你，只能发布前自己跑一遍；**Cloudflare** 那边，构建命令**只能配在 Dashboard**（Workers Builds 不读仓库里的 Custom Builds，Cloudflare 官方既有行为），所以仓库侧的对策不是"把它搬进来"，而是**把仓库外的残留压到最小**——**Dashboard 里只填一行 `npm run ci`**（定义在 `package.json`，内容 = `npm ci && node tools/check-all.js --strict-env && npm run build`）。**别把命令内容抄进 Dashboard**：那等于把三个文件路径钉在仓库外，改脚本名或挪路径会让线上构建**静默断掉**，而仓库里没有任何东西会提醒你。⚠ 那一行里的 `npm ci` 与 `--strict-env` **缺一不可**——Cloudflare 会注入 `CI=true`，但 `check-all.js` 只认 `--strict-env` 这个 flag、不读该环境变量；写成不带 flag 的 `npm run verify`，构建镜像缺依赖时 ESLint / tsc 会静默标 ⊘、汇总照样打印「全部通过 · 实跑 10/12 项」，**正是它当初要防的那个假绿**。
+**v2.8.8 起有 CI 了**（`.github/workflows/ci.yml`）：推送与 PR 都会跑 `npm run ci`，并**另开一个 job 跑真实浏览器冒烟**（`node tools/smoke.js`）——冒烟在 check-all 里是"环境可选"，构建镜像必然没有浏览器，所以它在部署链路上**恒为 0 次**，只有 CI 里会真的跑起来。CI 不是 Cloudflare 那条路的替代品，是补位：那条只拦"推到 main 触发的那次构建"，而仓库内的 CI 对所有分支与 PR 生效、可 review 可 diff。
+
+在此之前项目**不用 GitHub Actions**，机器检查全由上面这条命令承担——但它在两条发布渠道上的位置不一样，**别把"Cloudflare 会拦"当成可以跳过本地自验的理由**：**WorkBuddy** 纯手动发布，没有任何机制拦你，只能发布前自己跑一遍；**Cloudflare** 那边，构建命令**只能配在 Dashboard**（Workers Builds 不读仓库里的 Custom Builds，Cloudflare 官方既有行为），所以仓库侧的对策不是"把它搬进来"，而是**把仓库外的残留压到最小**——**Dashboard 里只填一行 `npm run ci`**（定义在 `package.json`，内容 = `npm ci && node tools/check-all.js --strict-env && npm run build`）。**别把命令内容抄进 Dashboard**：那等于把三个文件路径钉在仓库外，改脚本名或挪路径会让线上构建**静默断掉**，而仓库里没有任何东西会提醒你。⚠ 那一行里的 `npm ci` 与 `--strict-env` **缺一不可**——Cloudflare 会注入 `CI=true`，但 `check-all.js` 只认 `--strict-env` 这个 flag、不读该环境变量；写成不带 flag 的 `npm run verify`，构建镜像缺依赖时 ESLint / tsc 会静默标 ⊘、汇总照样打印「全部通过 · 实跑 10/12 项」，**正是它当初要防的那个假绿**。
 
 ```bash
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
@@ -39,7 +41,7 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 
 ## 功能现状
 
-当前 `v2.8.7`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
+当前 `v2.8.8`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
 
 - **节拍内核**：Web Audio 时钟调度；时值可视化（音符块宽度与时值严格成正比）；BPM / 拍号 / TAP 测速；双通道音量。tick 制节奏模型（PPQN=48）支持三连音、Swing 三档、5/4 与 7/4 奇数拍
 - **节奏库与编辑器**：12 个内置预设；自定义节奏型编辑器（时值校验、试听、增删小节 1–64、本地保存）；预设导入导出 JSON
@@ -56,6 +58,7 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 - **双入口与双声部**（v2.4 / v2.5）：预设库顶部「普通节拍 / 带扫弦」切换条，两条轨的**速度、拍号、音量、Swing、音色完全共享**，切轨不动速；带扫弦轨上**每一拍都出节拍音**，扫弦声叠在记谱位置（同时刻，不推后）；音量分「节拍」（拍点 / 预备拍 / 歌词提示音）与「扫弦」两条独立滑条
 - **曲式编排**（v2.0）：一首歌 = 若干段、每段 = 一个节奏型 × N 遍；「起/终」设范围 + 范围循环 = 只练副歌，播放中可跳段。**整首须同拍号**
 - **数据与隐私**：全部存本机 `localStorage`，无账号、无上传；两种用法的数据不互通（见上）
+- **备份与迁移**：预设可导出 / 导入 JSON；「**导出全部数据**」一次带走**整包**——预设 + 曲式编排 + 歌词对齐 + 练习记录 + 听辨战绩（v2.8.8：这四类此前只能存本机，换设备或换通道就整份消失）。导入按**合并**语义写回，不会覆盖本机已有的
 
 > 更细的操作说明——全部控制项 · 训练模式 · 曲式编排 · 自己画节奏型 · 数据隐私 · 键盘快捷键——见顶栏常驻「使用方法」页；架构、数据模型与自验细节见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 

@@ -1,0 +1,71 @@
+# BeatSight 仓库内 CI（v2.8.8，本轮审计「高」级项）
+# ---------------------------------------------------------------------------
+# 为什么必须有这个文件：在此之前，本仓库**唯一的硬闸门在仓库外**——
+# Cloudflare Dashboard 里手工填的一行 `npm run ci`。它改不动、review 不了、diff 不出来，
+# 而且只拦"推到 main 触发的那次构建"：**任何协作者（以及 AI）都能直接 git push 绕开
+# 全部 12 步自验**；WorkBuddy 那条手动发布通道更是零拦截。
+# 这个文件把同一条命令搬进版本库，于是"每次改动都跑一遍机器检查"变成可 review、
+# 可 diff、对所有分支与 PR 生效的事实，而不再依赖某个人记得跑。
+#
+# ⚠ 它不是 Cloudflare 那条路的替代品，是**补位**：
+#    Cloudflare = 部署侧的最后一道（仓库外，仍有价值）；
+#    本文件     = 代码侧的闸门（仓库内，可 review、对所有分支生效）。
+#
+# 命令口径：一律复用 package.json 里已有的 `npm run ci`
+#   （= npm ci && node tools/check-all.js --strict-env && npm run build）。
+#   不在 workflow 里重写那串命令——抄一份就等于把三个文件路径钉在第二个地方，
+#   改脚本名或挪路径时两边都会静默漂移（正是 wrangler.jsonc 头部反复强调的那条纪律）。
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支上的连续推送只保留最新一次：自验要跑全量组合扫描，排队跑旧提交没有意义
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 自验 + 构建（npm run ci）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc   # v2.8.8：Node 版本由仓库声明，不再依赖平台默认值
+          cache: npm
+      - run: npm run ci
+
+  smoke:
+    name: 真实浏览器冒烟（tools/smoke.js）
+    runs-on: ubuntu-latest
+    # 为什么单开一个 job 而不是塞进 verify：
+    #   ① 它需要浏览器，而 check-all.js 里那步是"环境可选"——构建镜像里必然没有浏览器，
+    #      于是**唯一能抓真实布局/样式/帧率/SW 的那一步，在部署链路上恒为 0 次**。
+    #      放进 CI 之后它终于会真的跑起来；
+    #   ② 它比自验慢、且依赖环境能力，失败不该连带掩盖自验结论——分开跑，结论各自可读。
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: 准备浏览器
+        id: chrome
+        run: |
+          for p in /usr/bin/google-chrome /usr/bin/chromium /usr/bin/chromium-browser /snap/bin/chromium; do
+            if [ -x "$p" ]; then echo "path=$p" >> "$GITHUB_OUTPUT"; exit 0; fi
+          done
+          echo "runner 未预装浏览器，尝试安装 chromium"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq chromium-browser || sudo apt-get install -y -qq chromium
+          echo "path=$(command -v chromium-browser || command -v chromium)" >> "$GITHUB_OUTPUT"
+      - name: 跑冒烟
+        env:
+          BEATSIGHT_CHROME: ${{ steps.chrome.outputs.path }}
+        run: node tools/smoke.js

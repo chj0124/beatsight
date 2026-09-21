@@ -351,9 +351,15 @@ function loadApp(seed, opts){
         /* v1.4：KeepAlive 的 iOS 兜底是静音循环 audio 元素——桩给它最小可用的 play/pause，
            否则「无 wakeLock 时降级音频」这条路径根本跑不进 */
         if (String(tag).toLowerCase() === "audio"){
-          el.play = () => { el._played = true; return { catch(){} }; };
-          el.pause = () => { el._played = false; };
           el.loop = false; el.src = "";
+          el.pause = () => { el._played = false; };
+          /* v2.8.8：兜底失败路径必须能被注入。真实浏览器里这段静音循环音频会被两类东西
+             拒绝——自动播放策略、以及 CSP 的 media-src 未放行 `data:`（v2.8.8 前正是后者，
+             线上静默拦掉了整条后台保活）。桩原先恒成功，于是 `keepAliveFail` 那条新计数
+             永远为 0，「静默失败有没有变成可读数字」这件事也就无从断言。
+             opts.audioFail: "reject" = play() 被拒；"noplay" = 环境根本没有 play */
+          if (opts && opts.audioFail === "noplay"){ /* 刻意不装 play：模拟极老环境 */ }
+          else el.play = () => { el._played = true; return { catch(fn){ if (opts && opts.audioFail === "reject") fn(); } }; };
         }
         return el;
       },
@@ -413,12 +419,23 @@ function loadApp(seed, opts){
       self.readAsText = () => { self.result = FILE_TEXT; if (self.onload) self.onload(); };
     },
   };
+  /* v2.8.8：`window.__beat`（完整内部句柄）改为**条件挂载**——只有 `?debug=1` 或宿主预置
+     `window.BEATSIGHT_TEST` 时才挂。沙箱属于后者：这个标记必须在**脚本执行前**就位，
+     它是"启动方声明自己是测试环境"的方式（页面不猜，只认标记）。
+     漏了它时下面那句会直接抛——这正是想要的失败形态：宁可 loudly 炸，不要静默跑空。 */
+  sandbox.BEATSIGHT_TEST = true;
   sandbox.window = sandbox;
   sandbox.window.addEventListener = (t, f) => addTo(winH, t, f);
   vm.createContext(sandbox);
   COMPILED.runInContext(sandbox);
   const beat = sandbox.window.__beat;
-  if (!beat) throw new Error("window.__beat 调试句柄未暴露——模块化装配失败");
+  if (!beat) throw new Error("window.__beat 调试句柄未暴露——模块化装配失败，"
+    + "或 index.html 的 EXPOSE_INTERNALS 判定没认出测试沙箱（BEATSIGHT_TEST 标记丢了？）");
+  /* `window.__beatBoot`（只含版本与计数的启动探针）是**无条件**挂载的：
+     它才是"应用是否启动成功"的正规读数，冒烟脚本用它在生产页面上判白屏。
+     这里也断言一次，防止有人把两个句柄的挂载条件改反了。 */
+  if (!sandbox.window.__beatBoot || sandbox.window.__beatBoot.booted !== true)
+    throw new Error("window.__beatBoot 启动探针未挂载——它必须与调试开关无关，恒存在");
   return {
     beat, els, sandbox, storage: store,
     fireDoc: fireAll(docH), fireWin: fireAll(winH),

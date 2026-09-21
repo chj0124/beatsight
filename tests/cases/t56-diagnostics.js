@@ -22,8 +22,10 @@ section("T56 诊断面板 · 计数器恒存在（无 location 也照样记账�
   ok(beat.diag && typeof beat.diag === "object", "window.__beat.diag 已暴露");
   eq(JSON.stringify(beat.diag),
     JSON.stringify({ frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
-      reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0 }),
-    "全部计数器初值全为 0（v2.0.6 起重锚两档 + 脚本错/未捕获；v2.4.4 起戳记缺失/版本不符两档）");
+      reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0,
+      keepAliveFail: 0 }),
+    "全部计数器初值全为 0（v2.0.6 起重锚两档 + 脚本错/未捕获；v2.4.4 起戳记缺失/版本不符两档；"
+    + "v2.8.8 起保活兜底失败——新增计数器必须同步改本断言，否则会静默少算一类静默失效）");
   eq(panels({ sandbox }).length, 0, "没有 ?debug=1 → 不挂面板 DOM（零视觉、零布局开销）");
   ok(beat.VERSION && lineOf({ sandbox }) === "(未挂载)", "未挂面板时读取探针也不抛");
 }

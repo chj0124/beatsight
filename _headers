@@ -25,10 +25,20 @@
 #   顺带更正本轮审计原文的一处误判：审计称"收尾的 `*/` 会被解析成一条无意义的路径规则"。
 #   实测（git log --all -- _headers：本文件只被 d7fdd1a 引入过一次）**从未出现过 `*/` 行**，
 #   故"删除 `*/`"这一步无需执行——审计描述的是它以为的形状，不是实际形状。
+#   ★ v2.8.8：补 `media-src 'self' data:` 与 `object-src 'none'`（两条此前都**缺席**，
+#     于是双双回落到 `default-src 'self'`）。其中 media-src 那条是**真故障**，不是收紧：
+#     KeepAlive 的后台保活兜底是一段程序生成的静音 WAV，以 `data:audio/wav;base64,…` 形式
+#     喂给一个 <audio loop>；而 `data:` **不在 'self' 内**，所以这段音频在 Cloudflare 线上
+#     会被 CSP 拦掉 —— **无 Wake Lock 的浏览器（桌面 Firefox / Safari / 老 Android）
+#     后台保活静默失效**，且失败被 `.catch(() => {})` 吞掉、诊断面板里一个数字都没有。
+#   （注意 tools/check-headers.js 的边界：它只断言**结构**、不校验取值 —— 这条改动它不会拦，
+#     也不该拦。"CSP 该放行什么"是 review 的事，不是正则的事。）
+#   object-src 那条只是收紧：本应用不用 object / embed / applet，显式关掉。
+#
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Frame-Options: DENY
   Permissions-Policy: microphone=(), camera=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains

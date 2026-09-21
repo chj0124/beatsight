@@ -1,6 +1,6 @@
 {
   "name": "beatsight",
-  "version": "2.8.7",
+  "version": "2.8.8",
   "private": true,
   "description": "开发期自验工具链（只跑本地，不进上站产物）。运行时零依赖不变：index.html 仍可 file:// 直开；上站对外资源为 index.html / sw.js / manifest.webmanifest / icon.svg / icon-192.png / icon-512.png / icon-maskable-192.png / icon-maskable-512.png。`npm run ci` 是构建/检查侧的唯一入口——Cloudflare Dashboard 的构建命令填它（见 wrangler.jsonc 头部注释，别把命令内容写进 Dashboard）",
   "engines": {
@@ -13,7 +13,9 @@
     "lint:eslint": "node tools/check-eslint.js",
     "check:types": "node tools/check-tsc.js",
     "build": "node tools/build-dist.js",
-    "ci": "npm ci && node tools/check-all.js --strict-env && npm run build"
+    "ci": "npm ci && node tools/check-all.js --strict-env && npm run build",
+    "hooks": "node tools/install-hooks.js",
+    "prepare": "node tools/install-hooks.js"
   },
   "devDependencies": {
     "eslint": "^10.10.0",

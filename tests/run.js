@@ -55,6 +55,8 @@ const CASE_FILES = [
   "./cases/t79-viz-rows",           // v2.8.0：同屏行数档位（扫弦窗口与歌词轨共用 / 脏值白名单 / 预设模式不受影响）
   "./cases/t80-countin-arrange-no-reenter", // v2.8.2：整首连播 + 预备拍不再重入门控（小球跳过首小节末拍）
   "./cases/t81-wiring-slots",       // v2.8.6：注入槽装配（钩子被接上 / patLenOf 未注入必须抛错，审计 A1）
+  "./cases/t82-keepalive-fallback",     // v2.8.8：后台保活兜底失败可见化（成功恒 0 / 被拒与无能力均留痕 / 面板只在非 0 时占位）
+  "./cases/t83-full-data-pack",         // v2.8.8：全量数据包导出导入（四类冷数据 / 合并语义 / 三种校验口径 / 体量护栏）
 ];
 for (const f of CASE_FILES) require(f);
 

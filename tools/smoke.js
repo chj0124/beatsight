@@ -165,13 +165,19 @@ async function evaluate(cdp, expression){
 /** 页面内探针（字符串，注入到页面执行）。刻意不用模板字符串里的反引号，避免转义地狱 */
 function probe(){
   return `(async () => {
+  /* v2.8.8：等的是 window.__beatBoot（**无条件**挂载的启动探针），不再等 window.__beat。
+     __beat 是完整内部句柄，v2.8.8 起只在 ?debug=1 或 BEATSIGHT_TEST 下挂载——
+     生产页面上它**不存在**。若继续拿它当"启动成功"的判据，就会把"句柄已收起"
+     误判成"应用白屏"：等满 4 秒、然后报一个完全指错了方向的失败。
+     用途拆开之后，这条断言问的就只是"页面 boot 起来了没有"。
+     （本函数的返回值是模板字符串，注释里刻意不写反引号——原注释已警告过。） */
   const t0 = performance.now();
-  while (!window.__beat && performance.now() - t0 < 4000) await new Promise(r => setTimeout(r, 50));
-  const beat = window.__beat;
-  const out = { booted: !!beat, version: null, bpmNum: null, viz: null, storage: null, perf: null, sw: null };
-  if (!beat) return JSON.stringify(out);
+  while (!window.__beatBoot && performance.now() - t0 < 4000) await new Promise(r => setTimeout(r, 50));
+  const boot = window.__beatBoot;
+  const out = { booted: !!boot, version: null, bpmNum: null, viz: null, storage: null, perf: null, sw: null };
+  if (!boot) return JSON.stringify(out);
   out.version = { chip: document.getElementById("brandChip").textContent,
-                  title: document.title, const: beat.VERSION };
+                  title: document.title, const: boot.version };
   const el = document.getElementById("bpmNum");
   if (el){
     const cs = getComputedStyle(el);
@@ -207,17 +213,17 @@ function probe(){
   }catch(e){ out.sw = { supported: false, err: String(e && e.name || e) }; }
   try{
     const t1 = performance.now();
-    beat.Viz.buildViz();
+    window.__beat.Viz.buildViz();
     const buildMs = performance.now() - t1;
     /* 渲染成本必须**在播放态下**测：paintFrame 首句是 if (!S.playing) return，
        停机时逐帧循环量到的是 0（第一版探针就踩了这个坑——量出来 0.001ms，
        看着像"渲染免费"，其实什么都没跑）。所以先真的开播，确认 playing 为真，再量。 */
-    beat.Controls.start();
+    window.__beat.Controls.start();
     await new Promise(r => setTimeout(r, 400));
-    const playing = !!beat.Store.S.playing;
+    const playing = !!window.__beat.Store.S.playing;
     const t2 = performance.now();
     const N = 200;
-    for (let i = 0; i < N; i++) beat.Viz.paintFrame();
+    for (let i = 0; i < N; i++) window.__beat.Viz.paintFrame();
     const frameMs = (performance.now() - t2) / N;
     /* ★ 上面那个同步循环量到的是**下界**：循环期间音频时钟几乎不动，增量重绘会走
        "状态没变"的短路分支。真正对用户有意义的读数是**播放态下的实际帧率**——
@@ -233,7 +239,7 @@ function probe(){
       };
       requestAnimationFrame(tick);
     });
-    beat.Controls.stop();
+    window.__beat.Controls.stop();
     /* 首屏耗时取自 **Navigation Timing**，不是探针自己的 performance.now()：
        探针要等 CDP 连上才注入，那时页面早启动完了，用探针的时间戳量出来的是
        "CDP 握手耗时"而非首屏。Navigation Timing 由浏览器从**导航开始**记账，
@@ -310,11 +316,21 @@ function ok(cond, name, detail){
 async function main(){
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-smoke-"));
   let server = null;
-  const passes = [{ label: "file://", url: "file:///" + path.join(ROOT, "index.html").replace(/\\/g, "/") }];
+  /* v2.8.8：两条通道都带 `?debug=1`。
+     为什么必须带：`window.__beat`（完整内部句柄）已从"无条件挂载"改为**仅调试/测试态**挂载，
+     而本脚本的性能读数（buildViz 耗时 / 播放态帧率 / 整树重建）必须经它驱动
+     `Viz.buildViz()` 与 `Controls.start()`——没有它就量不到任何东西。
+     ★ 代价要写清楚：带 ?debug=1 会挂出右下角诊断面板（多一个 body 子节点）。
+       本脚本的断言全部按 id 取元素，不受它影响；"控制台零报错"同样不受影响。
+       于是"这一趟跑的是调试态页面"是**已知且可接受**的取舍——它是开发者工具，不是用户路径。
+     ★ 启动探针用的是 window.__beatBoot（无条件挂载），所以"有没有白屏"这条
+       仍然是在**与生产完全一致**的条件下验的，没被 debug 开关污染。 */
+  const DEBUG_Q = "?debug=1";
+  const passes = [{ label: "file://", url: "file:///" + path.join(ROOT, "index.html").replace(/\\/g, "/") + DEBUG_Q }];
   if (!FILE_ONLY){
     try{
       server = await startServer();
-      passes.push({ label: "http://127.0.0.1", url: "http://127.0.0.1:" + HTTP_PORT + "/index.html" });
+      passes.push({ label: "http://127.0.0.1", url: "http://127.0.0.1:" + HTTP_PORT + "/index.html" + DEBUG_Q });
     }catch(e){ console.log("  · 本地服务起不来（" + e.message + "），只跑 file://"); }
   }
 
@@ -322,7 +338,7 @@ async function main(){
     console.log("\n▸ 通道 " + p.label);
     const r = await runPass(p.label, p.url, path.join(tmp, "profile-" + p.label.replace(/[^a-z]/gi, "")));
     const d = r.probe;
-    ok(!!d && d.booted, p.label + "：应用启动成功（window.__beat 就位、没有白屏）",
+    ok(!!d && d.booted, p.label + "：应用启动成功（window.__beatBoot 就位、没有白屏）",
       d ? "" : r.errors.join(" / "));
     if (d && d.booted){
       ok(d.version.chip === "v" + VERSION + " · 稳定版", p.label + "：顶栏版本 chip = v" + VERSION,

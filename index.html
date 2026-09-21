@@ -1079,8 +1079,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill outline" id="exportBtn" disabled>导出预设</button>
         <button class="pill outline" id="importBtn">导入预设</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <!-- v2.8.8：全量数据包。此前只有预设能跨设备带走，而曲式 / 歌词 / 练习记录 / 听辨战绩
+             四个冷键一旦换设备（或 file:// ↔ https:// 换通道）就整份消失——它们恰恰是重做代价
+             最高的一类数据。「导出全部」把它们与预设一起打包，「导入全部」按合并语义写回 -->
+        <button class="pill outline" id="exportAllBtn">导出全部数据</button>
+        <button class="pill outline" id="importAllBtn">导入全部数据</button>
+        <input type="file" id="importAllFile" accept="application/json,.json" hidden>
       </div>
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请用「导出预设」备份 JSON，换设备后用「导入预设」恢复。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
+      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请用「导出预设」备份 JSON，换设备后用「导入预设」恢复。曲式编排、歌词对齐、练习记录、听辨战绩同样只在本机：换设备或换通道（file:// 与 https:// 数据不互通）前，请用「导出全部数据」带走整包。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
     </section>
   </aside>
 </main>
@@ -1405,23 +1411,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1437  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1837  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2733  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3379  Modal         应用内弹窗
-     L3509  Viz           时值可视化渲染与每帧动画
-     L4778  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5405  Trainer       变速训练器
-     L5618  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6108  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6238  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L6985  Editor        自定义节奏型编辑器
-     L7341  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7564  Ear           听辨训练（v1.10.0）
-     L7787  Arrange       曲式编排（v2.0.0）
-     L8540  Help          使用方法（v2.0.1）
-     L8587  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8646  初始化（装配） 各模块 hook 接线与启动
+     L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1862  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2869  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3525  Modal         应用内弹窗
+     L3655  Viz           时值可视化渲染与每帧动画
+     L4924  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5551  Trainer       变速训练器
+     L5764  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6254  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6384  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L7168  Editor        自定义节奏型编辑器
+     L7524  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7747  Ear           听辨训练（v1.10.0）
+     L7970  Arrange       曲式编排（v2.0.0）
+     L8723  Help          使用方法（v2.0.1）
+     L8770  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8839  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1441,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.7";
+const VERSION = "2.8.8";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1534,6 +1540,25 @@ const MAX_PAT_BARS = 64;
 function patBars(pat){
   const n = pat && Array.isArray(pat.bars) ? pat.bars.length : 0;
   return n > 0 ? n : DEF_BARS;
+}
+/* 「这个型带不带扫弦记谱」——两个入口（普通节拍 / 带扫弦的节拍）的分界线。
+   判据：`dir`（扫弦方向）或 `zone`（弦区）任一存在。两者都是**记谱层**字段、
+   与发声时间轴无关，故"有没有它们"就能区分"这是份扫弦谱还是份纯节拍谱"。
+
+   ★★ 声明位置（v2.8.8 合并前这里是**两份**）：它必须在 Store **之前**。
+     原本有两份实现——Store 里一份叫 `strumOf`（给加载期的 S.track 初值用）、
+     共享区一份叫 `hasStrum`（给运行期的过滤/门控用），理由曾是"共享区在 Store 之后，
+     加载期够不着"。而它其实**只依赖 pat.bars**，不依赖 S、不依赖 resolveRef，
+     完全没必要待在共享区——上移到数据区即可两边同调一份。
+     两份判据的真实代价：改判据要改两处，靠 t64 的两条断言同时钉住；而"测试也跟着改错"
+     这个缺口是测试兜不住的（本轮审计 §1.4）。合并后语义只有一处定义。
+   ★ 与 patLenOf 那条"加载期局部判据"不同：patLenOf 需要查已落盘的型，
+     所以它**必须**留在 Store 里；本函数不需要查任何状态，故可以上移。 */
+/** @param {any} pat @returns {boolean} */
+function hasStrum(pat){
+  if (!pat || !Array.isArray(pat.bars)) return false;
+  return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
+    && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined)));
 }
 /* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2） */
 /** @type {Record<number, number[][]>} */
@@ -2021,7 +2046,9 @@ const Store = (() => {
   /* 型的实际小节数（v2.5.1，**加载期**的局部判据）。
      ★ 为什么这里再写一份、而不是调共享区的 patBars：本函数被 arranges 的**加载**路径调用，
        而共享区（含 patBars 的调用方）在本模块之后执行 → 顶层读它是反向引用（R1 会拦 TDZ）。
-       与 S.track 初值的 strumOf 同一套理由、同一套纪律。
+       ★ 注意与 `hasStrum` 的分野（v2.8.8）：那个判据**已上移**到数据区、Store 直接调用，
+         因为它只读 pat.bars、不查任何已落盘的型；本函数要查 savedCustoms / BUILTINS，
+         所以它**必须**留在 Store 里。上移与否看的是"要不要状态"，不是"加载期能不能调"。
      ★ 只查**已落盘**的型（savedCustoms + BUILTINS）：加载期能看到的型就只有这些。
        引用不存在 → 退回默认小节数，交给 arrangeProblems() 去报"引用不存在"
        （那是这类坏数据的正确出口，见上方那段边界说明）。
@@ -2241,11 +2268,10 @@ const Store = (() => {
        ① state 里有合法的 track 键 → 用它（用户点过切换条，意图最明确）；
        ② 没有键、且 saved.sel **能解析** → 按该型的性质反推（他升级前听什么就留在哪条轨）；
        ③ 没有键、且 saved.sel **解析不出来**（越界的废引用）→ 落到默认轨（strum），
-          与"全新用户 / 空 state"的结论一致——同一个"无有效 sel"不该有第二种答案。 */
-  /** @param {any} p */
-  const strumOf = p => !!(p && Array.isArray(p.bars)
-    && p.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
-      && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined))));
+          与"全新用户 / 空 state"的结论一致——同一个"无有效 sel"不该有第二种答案。
+     ★ v2.8.8：判据本身已上移到数据区的 `hasStrum`（与运行期过滤/门控同一份实现），
+       此处不再有第二份 `strumOf`。它只依赖 pat.bars、不需要任何状态，
+       所以 Store 的加载期完全可以调它——"共享区在 Store 之后够不着"从来不是真理由。 */
   const selSaved = saved.sel || { type: "builtin", idx: 0 };
   const selPatInit = selSaved.type === "custom"
     ? savedCustoms.find((/** @type {any} */ c) => c && c.id === selSaved.id)
@@ -2259,16 +2285,16 @@ const Store = (() => {
   const selResolvable = !!selPatInit;
   const trackInit = VALID_TRACK.includes(saved.track)
     ? saved.track
-    : (!selResolvable || strumOf(selPatInit) ? "strum" : "plain");
+    : (!selResolvable || hasStrum(selPatInit) ? "strum" : "plain");
 
   /* 当前轨下"第一个可用内置型"的下标（v2.4.0）。
      ★ 与共享区 Tracks.visibleBuiltins()[0].i 同一条规则，但**不能调它**：
        Tracks 声明在 Store 之后（模块次序），Store 的 IIFE 顶层执行期调它是反向引用（R1 会拦）。
-       所以这里用局部等价判据（与上面 selHasStrum 共用 strumOf）。
+       所以这里用同一个判据 —— v2.8.8 起就是数据区的 `hasStrum` 本体（不再有局部副本）。
      ★ 用它替换旧代码里硬编码的 `idx:0`（民谣扫弦 = 扫弦型）：普通轨下那样回退会立刻非法。
      返回 0 是最后的兜底——只有整个内置库都成了扫弦型这种构造性错误才走到 */
   function firstBuiltinForTrack(){
-    const i = BUILTINS.findIndex(p => trackInit === "strum" || !strumOf(p));
+    const i = BUILTINS.findIndex(p => trackInit === "strum" || !hasStrum(p));
     return i >= 0 ? i : 0;
   }
 
@@ -2698,6 +2724,114 @@ const Store = (() => {
     return {ok:true, count: out.length};
   }
 
+  /* ---- 全量数据包（v2.8.8，本轮审计「业务短板」项）----
+     为什么要有它：`beatsight.arranges` / `beatsight.lyrics` / `beatsight.log` / `beatsight.ear`
+     四个冷键此前**只能存本机**——预设早就有 import/export，缺的恰恰是这几类更贵的数据：
+     曲式是逐段编出来的、歌词是逐字对到十六分格上的、练习记录是攒了几个月的历史，
+     重做一遍的代价比重画一个节奏型高一个量级。而 README 明确写了 `file://` 与 `https://`
+     是两个 origin、localStorage 不共享——换设备、换通道，这些数据就整份消失。
+
+     口径（刻意与既有两条导入路径保持一致，不另创一套）：
+       · 预设：与 importPresets 同一份**严格**校验（validatePreset）+ 同一组护栏
+         （单份条数 / 库内总量），任一坏条目 → **整批拒绝**（预设是"要么全对要么别进"的数据）；
+       · 曲式 / 歌词：复用加载期的 normArrange / normLyricLine，坏条目**丢弃并计数**，
+         ——与它们落盘时"脏数据不该进内存、但不必为一条废掉整包"的口径逐字相同；
+       · 练习记录 / 听辨战绩：纯数值，取合并（记录取并集后按 logMax 截断、战绩取逐字段较大值）。
+     ★ 合并而不是替换：导入通常在"已有数据"的机器上发生，替换会静默抹掉本机那一份，
+       而这类数据丢了没法撤销（与预设的"追加"语义同源）。 */
+  const PACK_V = 1;
+  function serializeAll(){
+    return JSON.stringify({
+      app:"beatsight", kind:"all", v:PACK_V, version:VERSION, exportedAt:new Date().toISOString(),
+      presets: customs.map(c => ({ name:c.name, meter:c.meter,
+        ...(c.accents ? {accents:c.accents} : {}), bars:c.bars })),
+      arranges, lines: lyrics, log: sessions, ear,
+    }, null, 2);
+  }
+  function exportAll(){ downloadJSON("all", serializeAll()); return true; }
+
+  /** @param {string} text @returns {any} */
+  function importAll(text){
+    if (typeof text === "string" && text.length > CONFIG.importMaxBytes)
+      return { ok:false, error:"文件过大（超过 2 MB），不像是 BeatSight 数据包" };
+    let data;
+    try { data = JSON.parse(text); } catch(e){ return { ok:false, error:"文件不是有效的 JSON" }; }
+    if (!data || typeof data !== "object") return { ok:false, error:"数据包格式不正确" };
+    /* 允许导入这几种：全量包（kind:"all"）、老的预设包（kind:"presets"）、以及裸数组。
+       预设包能被吃进来是刻意的——用户手上只有那份 JSON 时，不该让他"先去找另一种导出"。 */
+    const kind = typeof data.kind === "string" ? data.kind : "all";
+    if (kind !== "all" && kind !== "presets")
+      return { ok:false, error:"这不是 BeatSight 的数据包（kind=" + String(data.kind).slice(0, 20) + "）" };
+
+    /* ---- 预设：严格、整批 ---- */
+    const inPresets = Array.isArray(data.presets) ? data.presets
+                    : (Array.isArray(data) ? data : []);
+    const okPresets = [];
+    if (inPresets.length){
+      if (inPresets.length > CONFIG.importMaxCount)
+        return { ok:false, error:"预设数量过多（" + inPresets.length + " 个，上限 " + CONFIG.importMaxCount + " 个）" };
+      if (customs.length + inPresets.length > CONFIG.importMaxCount)
+        return { ok:false, error:"库里已有 " + customs.length + " 个，再加本次 " + inPresets.length
+          + " 个会超过上限 " + CONFIG.importMaxCount + " 个——请先删掉一些再导入" };
+      for (const p of inPresets){
+        const v = validatePreset(p);
+        if (!v) return { ok:false, error:"预设「" + (p && p.name ? String(p.name).slice(0, 40) : "?")
+          + "」格式不正确（拍号 / 时值 / 小节完整性校验失败）" };
+        okPresets.push(v);
+      }
+    }
+    /* ---- 曲式 / 歌词：逐条归一，坏条目丢弃并计数 ---- */
+    let arrAdd = 0, arrDrop = 0;
+    if (Array.isArray(data.arranges)){
+      data.arranges.forEach((/** @type {any} */ r) => {
+        const v = normArrange(r);
+        /* 同 id 只留一条：导入是**合并**，撞 id 时以本机已有为准（不动用户正在用的那份） */
+        if (v && !arranges.some(a => a && a.id === v.id)){ arranges.push(v); arrAdd++; } else arrDrop++;
+      });
+    }
+    let lyrAdd = 0, lyrDrop = 0;
+    if (Array.isArray(data.lines)){
+      data.lines.forEach((/** @type {any} */ r) => {
+        const v = normLyricLine(r);
+        if (v && !lyrics.some(x => x && x.arrangeId === v.arrangeId && x.sec === v.sec)){ lyrics.push(v); lyrAdd++; }
+        else lyrDrop++;
+      });
+    }
+    /* ---- 练习记录：并集，按 logMax 截断（新的在前，与追加口径一致） ---- */
+    let logAdd = 0;
+    if (Array.isArray(data.log)){
+      data.log.forEach((/** @type {any} */ r) => {
+        if (!r || typeof r !== "object") return;
+        if (!isNum(r.start) || !isNum(r.sec)) return;      // 缺"什么时候练的 / 练了多久"就不是一条记录
+        sessions.push(r); logAdd++;
+      });
+      if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
+    }
+    /* ---- 听辨战绩：逐字段取较大值（它是累计量，取并集没有意义） ---- */
+    let earMerge = 0;
+    if (data.ear && typeof data.ear === "object"){
+      Object.keys(data.ear).forEach(k => {
+        const inc = data.ear[k], cur = (/** @type {any} */ (ear))[k];
+        if (isNum(inc) && (!isNum(cur) || inc > cur)){ (/** @type {any} */ (ear))[k] = inc; earMerge++; }
+      });
+    }
+    if (arrDrop || lyrDrop){
+      try{ console.warn("[BeatSight] 全量导入跳过 " + arrDrop + " 条曲式 / " + lyrDrop
+        + " 条歌词行（未通过结构校验或与本机已有条目重复）"); }catch(e){}
+    }
+    /* 预设先落：它是最贵的一份，先写下去再动其余冷键（与 importPresets 的顺序同源） */
+    const base = Date.now();
+    okPresets.forEach(v => customs.push({ id:"c" + base + "-" + (idSeq++), ...v }));
+    if (okPresets.length) persistCold();
+    if (arrAdd) persistArranges();
+    if (lyrAdd) persistLyrics();
+    if (logAdd) persistLog();
+    if (earMerge) persistEar();
+    persist();
+    return { ok:true, added: { presets:okPresets.length, arranges:arrAdd, lyrics:lyrAdd, log:logAdd, ear:earMerge },
+      skipped: { arranges:arrDrop, lyrics:lyrDrop } };
+  }
+
   /* ---- 示例曲「已带出过」的闩（v2.4.1，独立冷键 beatsight.demoSeeded）----
      读失败/键缺失一律返回 false（= 尚未带出）——多跑一次 ensureDemo 是无害的（幂等），
      漏跑一次才是"示例曲不出现"的功能缺失，故失败方向倒向"当作没带出"。
@@ -2713,7 +2847,9 @@ const Store = (() => {
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler, setPersistRecoverHandler,
     downloadJSON,
-    serializePresets, exportPresets, importPresets, logSessions: sessions, appendSession, clearLog, serializeLog,
+    serializePresets, exportPresets, importPresets,
+    serializeAll, exportAll, importAll,          // v2.8.8：全量数据包（曲式/歌词/记录/战绩的跨设备迁移）
+    logSessions: sessions, appendSession, clearLog, serializeLog,
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
     arranges, findArrange, upsertArrange, deleteArrange, persistArranges,
@@ -3009,12 +3145,9 @@ const selectedPreset = () => resolveRef(S.sel);
    而漂移的表现是"列表里看不到、却能被播出来"这种最难自查的不一致。
    ★ 只读入参、不读 S、不读 DOM、不改任何东西——故可被任何模块（含前方的 AudioEngine？不，
    它在共享状态区，位于 AudioEngine 之前）安全调用，也直接经 __beat 供测试断言。 */
-/** @param {any} pat @returns {boolean} */
-function hasStrum(pat){
-  if (!pat || !Array.isArray(pat.bars)) return false;
-  return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
-    && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined)));
-}
+/* v2.8.8：`hasStrum` 已上移到数据区（在 Store 之前），本处不再有定义——
+   加载期（Store 的 S.track 初值反推）与运行期（Presets 过滤 / Tracks / AudioEngine 门控）
+   自此同调一份判据。改动前这里与 Store 里的 `strumOf` 是两份逐字相同的实现。 */
 const curPattern = () => {
   if (S.preview && previewRef) return previewRef;
   const p = selectedPreset();
@@ -3269,6 +3402,19 @@ let onSchedError = null;
    让"发生过几次重锚定"成为一个可读的读数：0 = 从未漏拍，>0 = 该去看诊断面板了 */
 /** @type {null | ((why: string) => void)} */
 let onReanchor = null;
+/* 后台保活降级失败钩子（v2.8.8，本轮审计「高」级项）。
+   与 onReanchor 同一类理由：**只为了让一件只在暗处发生的事变得可见**。
+   背景：KeepAlive 有两级能力——① `navigator.wakeLock`（Chrome/Edge 系可用）；
+   ② 无 Wake Lock 时降级为「循环播放一段程序生成的静音 WAV」（`data:audio/wav` URL）。
+   ② 此前有**两处**静默失败：
+     · `_headers` 的 CSP 缺 `media-src`，回落到 `default-src 'self'`，而 `data:` 不在
+       `'self'` 内 → 线上（Cloudflare 通道）这段音频被 CSP 拦掉（已随 v2.8.8 补 `media-src`）；
+     · 即便不被拦，`a.play()` 的 rejection 与 try/catch 里的异常都被**空 catch 吞掉**，
+       诊断面板上一个数字都没有 —— 用户看到的是"切到后台声音停了"，无从归因。
+   这里注入一个计数钩子：兜底音频起不来就 +1，与 reanchor 同手法把静默失败变成可读数字。
+   ★ 只报**降级失败**，不报"没走降级"（Chrome 上 wakeLock 成功时本就不该有计数）。 */
+/** @type {null | ((why: string) => void)} */
+let onKeepAliveFail = null;
 
 /* ---- 模式字段契约（v2.4.4，审计收口）----
    S.playing / S.preview / S.playMode 是全局面貌状态，写入点曾散落 9 处裸赋值，
@@ -6852,6 +6998,43 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     r.readAsText(f);
   });
 
+  /* ---- 全量数据包 UI（v2.8.8）----
+     为什么放在预设卡的同一行：它导入的**包含**预设，放在这里用户不必去第二个地方找备份入口；
+     与「导出预设/导入预设」并排也让两者的差别一目了然（前者只带节奏型，后者带整包）。 */
+  $("exportAllBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    Store.exportAll();
+    announce("已导出全部数据（预设 / 曲式 / 歌词 / 练习记录 / 听辨战绩）");
+  });
+  $("importAllBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    $("importAllFile").click();
+  });
+  $("importAllFile").addEventListener("change", (/** @type {Event} */ e) => {
+    const f = evTarget(e).files && evTarget(e).files[0];
+    evTarget(e).value = "";                      // 允许连续导入同一文件
+    if (!f) return;
+    if (f.size > CONFIG.importMaxBytes){
+      Modal.uiAlert("导入失败：文件过大（超过 2 MB），不像是 BeatSight 数据包。");
+      return;
+    }
+    const r = new FileReader();
+    r.onload = () => {
+      const res = Store.importAll(String(r.result || ""));
+      if (!res.ok){ Modal.uiAlert("导入失败：" + res.error); return; }
+      buildPresetList();
+      /* 曲式 / 歌词各自的界面（编排面板 / 歌词轨）都在打开时按库重建，故这里不需要也不该
+         Presets 去调用 Arrange（那是反向引用）。只需把"这份数据已经进来了"告知读屏用户 */
+      const a = res.added;
+      Modal.uiAlert("已导入：预设 " + a.presets + " 个 · 曲式 " + a.arranges + " 条 · 歌词 "
+        + a.lyrics + " 行 · 练习记录 " + a.log + " 场"
+        + (res.skipped.arranges || res.skipped.lyrics
+          ? "\n（跳过 " + res.skipped.arranges + " 条曲式 / " + res.skipped.lyrics
+            + " 条歌词行：未通过结构校验，或与本机已有的重复）" : ""));
+    };
+    r.readAsText(f);
+  });
+
   /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）：只在「预设库为空 + 从未确认过」时露一次。
      迁移逻辑本身不需要这里做——导入导出已经够了，缺的只是"告诉用户有这么个坑" */
   function maybeShowMigHint(){
@@ -8606,17 +8789,27 @@ let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null
     for (let i = 0; i < n; i++) s += String.fromCharCode(128);
     return "data:audio/wav;base64," + btoa(s);
   }
+  /* v2.8.8：兜底失败不再"静默吞掉"。此前三个出口全是空 catch / 空 catch 回调——
+     没有任何日志、没有任何计数，用户只看到"切到后台声音停了"，无从归因。
+     现在统一经 onKeepAliveFail 报一次（装配层接进诊断计数 + 一条 warn），
+     与 onReanchor 同一类做法：让"只在暗处发生的事"变成可读的数字 */
+  /** @param {string} why */
+  function keepAliveFail(why){
+    try{ if (onKeepAliveFail) onKeepAliveFail(why); }catch(e){}
+  }
   function useAudioFallback(){
     if (audioEl) return;
     try{
       const a = document.createElement("audio");
-      if (typeof a.play !== "function") return;      // 极老环境/测试桩：没有播放能力就放弃
+      if (typeof a.play !== "function"){ keepAliveFail("无播放能力"); return; }   // 极老环境/测试桩
       a.loop = true;
       a.src = silentWav();
       const p = a.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
+      /* 被拒（自动播放策略）或被 CSP 拦（media-src 未放行 data:）都走这里——
+         两者听起来一模一样，只有靠这个计数才能把"到底是哪种"指认出来 */
+      if (p && typeof p.catch === "function") p.catch(() => { keepAliveFail("play 被拒"); });
       audioEl = a;
-    }catch(e){}
+    }catch(e){ keepAliveFail("抛错"); }
   }
   function acquire(){
     if (lock || audioEl) return;
@@ -8664,7 +8857,8 @@ $("brandChip").textContent = "v" + VERSION + " · 稳定版";
    file:// 直开（没有 location.search）时也只是没有面板而已。 */
 /** @type {Record<string, number>} */
 const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
-  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0 };
+  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0,
+  keepAliveFail: 0 };
 /** @type {null | { box: HTMLElement, line: HTMLElement }} */
 let diagPanel = null;
 function diagPaint(){
@@ -8683,7 +8877,11 @@ function diagPaint(){
     + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection
     /* v2.4.4：戳记计数只在出事时才占地方（正常部署恒为 0，一行读数不该为两个 0 买单） */
     + (diag.noStamp || diag.stampMismatch
-      ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "");
+      ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "")
+    /* v2.8.8：保活兜底失败同理——它恒 0 才是正常的（有 Wake Lock 时根本不走兜底），
+       但**一旦非 0 就是"后台播放没保住"的确证**，必须占地方。放在最后一行是刻意的：
+       它是"功能级"告警，优先级高于前面那些"计数级"读数 */
+    + (diag.keepAliveFail ? " · ⚠保活兜底失败 ×" + diag.keepAliveFail : "");
 }
 /** @param {string} k */
 function diagBump(k){
@@ -8802,6 +9000,15 @@ if (diagOn) diagBuild();
    这条读数的意义在于：重锚会**静默吞掉**那段时间本该排出的音符，此前没有任何痕迹，
    用户只能描述"好像卡了一下"。现在 0 = 从未漏拍，>0 = 有据可查 */
 onReanchor = why => { diagBump(why === "overflow" ? "reanchorOverflow" : "reanchorStarved"); };
+/* 后台保活兜底失败计数（v2.8.8，本轮审计「高」级项）。
+   只计数 + 一条 warn，**不做任何处置**：兜底失败意味着"切到后台可能被节流"，
+   但这是环境能力问题（CSP 拦了 data: 音频 / 自动播放策略拒绝 / 环境根本没有 play），
+   强行弹窗只会在用户每次切后台时打扰他。让它出现在诊断面板与「复制诊断信息」里，
+   用户报障时就能一句话指认"后台没保住是因为兜底音频起不来"。 */
+onKeepAliveFail = why => {
+  diagBump("keepAliveFail");
+  try{ console.warn("[BeatSight] 后台保活兜底失败（" + why + "）：切到后台可能被浏览器节流"); }catch(e){}
+};
 /* 脚本错误边界（v2.0.6，审计 P1-9）：此前只有各模块自己的 try/catch 与 console，
    任何逃出边界的错误（典型是事件处理器里抛的）在诊断面板上**完全没有计数**。
    这里只计数、不拦截（不 preventDefault、不改任何既有行为） */
@@ -9006,42 +9213,63 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   try{ localStorage.setItem(THEME_KEY, themeNow); }catch(e2){}
 });
 
-/* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言 */
-/** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
-  CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
-  selectedPreset, defaultAccents, flashTheme,
-  resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
-  hasStrum,                                      // v2.4.0：两个入口的分界线（dir 或 zone 任一存在）
-  Tracks,                                        // v2.4.0：节拍轨切换（普通节拍 / 带扫弦的节拍）
-  setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）
-  arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
-  secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
-  songBars, songBarBefore, songBarAt,           // v2.5.2：歌曲线性小节号（滚动窗口的口径）
-  secChords,                                    // v2.7.4：段名尾部的和弦序列（每小节一颗，纯函数）
-  patBars, setPatLenOf, loopRangeFor,           // v2.5.1：型长查询（唯一真相源）/ 注入点 / 循环区间按型收窄
-  DEF_BARS, MAX_PAT_BARS,                       // v2.5.1：型的默认与上限小节数
-  lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
-  LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
-  demoBuildSpec, DEMO_ID,                       // v2.3.0：示例曲《在他乡》谱面 → 数据模型的纯转换
-  demoPresetEq,                                 // v2.6.4：示例型内容级一致判定（同名不同命的旧数据只有比内容才分得出来）
-  Arrange,                                        // v2.0.0：曲式编排 UI
-  Help,                                           // v2.0.1：使用方法
-  diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
-  arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
-  arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
-  LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
-  EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
-  limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
-  quota: () => ({ bars: playQuota, hasDone: !!onQuotaDone }),   // v1.10.0：会话播放额度
-  previewState: () => ({ on: S.preview, name: previewRef ? previewRef.name : null, isDraft: previewRef === draft }),
-  onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
-  arrangeState: () => {
-    const a = arrangeCur();                        // 非曲式模式 → null，blockIdx 为 -1
-    const blk = (a && a.sections[arrSec]) ? blockAt(a.sections[arrSec], arrBar) : null;
-    return { sec: arrSec, bar: arrBar, mode: S.playMode, blockIdx: blk ? blk.blockIdx : -1,
-      id: S.arrangeSel.id, from: S.arrangeSel.from, to: S.arrangeSel.to, loop: S.arrangeSel.loop };
-  },
-  clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
+/* 启动探针（v2.8.8）：**恒存在**，且刻意只放两个只读标量。
+   它取代 `__beat` 承担"应用是否启动成功"这一个用途（tools/smoke.js 靠它判白屏）——
+   原先 smoke 等到 `window.__beat` 就算启动成功，而 `__beat` 一旦被下面的开关收起，
+   这个探针就会永远等不到、把"内部句柄已收起"误判成"应用白屏"。
+   用途拆开之后，"启动了吗"与"内部句柄暴露了吗"两件事不再互相冒充。 */
+/** @type {any} */ (window).__beatBoot = { version: VERSION, booted: true, diag };
+
+/* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言。
+   ★★ v2.8.8：改为**条件挂载**（此前无条件）。
+     它把 13 个模块与若干内部 getter（含 `Store`、`clock()`、`onsetBuf()`、`arrangeState()`）
+     整个挂到 window 上——任何能在本页面执行脚本的东西（CSP 因单文件架构必须留
+     `'unsafe-inline'`，见 `_headers`）都能读写全部状态与 localStorage 全部键。
+     收起后，生产环境只剩上面那个只含两个标量的 `__beatBoot`。
+     放行的两种情形：
+       · `?debug=1`（诊断面板同一个开关，语义一致：调试态才给调试句柄）；
+       · 宿主预置了 `window.BEATSIGHT_TEST`（tests/lib/harness.js 的 vm 沙箱预置它）。
+     ★ 为什么用"宿主预置标记"而不是判断 location：测试沙箱没有 location，
+       且"这是不是被测环境"应当由**启动方**声明，不该由页面猜。 */
+const EXPOSE_INTERNALS = diagOn
+  || !!(typeof window !== "undefined" && (/** @type {any} */ (window)).BEATSIGHT_TEST);
+if (EXPOSE_INTERNALS){
+  /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
+    CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
+    selectedPreset, defaultAccents, flashTheme,
+    resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
+    hasStrum,                                      // v2.4.0：两个入口的分界线（dir 或 zone 任一存在）
+    Tracks,                                        // v2.4.0：节拍轨切换（普通节拍 / 带扫弦的节拍）
+    setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）
+    arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
+    secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）
+    songBars, songBarBefore, songBarAt,           // v2.5.2：歌曲线性小节号（滚动窗口的口径）
+    secChords,                                    // v2.7.4：段名尾部的和弦序列（每小节一颗，纯函数）
+    patBars, setPatLenOf, loopRangeFor,           // v2.5.1：型长查询（唯一真相源）/ 注入点 / 循环区间按型收窄
+    DEF_BARS, MAX_PAT_BARS,                       // v2.5.1：型的默认与上限小节数
+    lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
+    LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
+    demoBuildSpec, DEMO_ID,                       // v2.3.0：示例曲《在他乡》谱面 → 数据模型的纯转换
+    demoPresetEq,                                 // v2.6.4：示例型内容级一致判定（同名不同命的旧数据只有比内容才分得出来）
+    Arrange,                                        // v2.0.0：曲式编排 UI
+    Help,                                           // v2.0.1：使用方法
+    diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
+    arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
+    arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
+    LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
+    EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
+    limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
+    quota: () => ({ bars: playQuota, hasDone: !!onQuotaDone }),   // v1.10.0：会话播放额度
+    previewState: () => ({ on: S.preview, name: previewRef ? previewRef.name : null, isDraft: previewRef === draft }),
+    onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
+    arrangeState: () => {
+      const a = arrangeCur();                        // 非曲式模式 → null，blockIdx 为 -1
+      const blk = (a && a.sections[arrSec]) ? blockAt(a.sections[arrSec], arrBar) : null;
+      return { sec: arrSec, bar: arrBar, mode: S.playMode, blockIdx: blk ? blk.blockIdx : -1,
+        id: S.arrangeSel.id, from: S.arrangeSel.from, to: S.arrangeSel.to, loop: S.arrangeSel.loop };
+    },
+    clock: () => ({ nextNoteTime, loopStart, schedBar, schedStep }) };   // v1.3.0：调度游标（T26 断言入口）
+}
 </script>
 </body>
 </html>
