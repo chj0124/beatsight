@@ -41,8 +41,9 @@
    而在此之前本仓库**根本没有声明过它**，于是线上那次 deploy 用哪个 Wrangler 版本由 npx 解析决定、
    不由仓库决定；上面那句「本地 `npx wrangler deploy` 能完整复现线上构建」在 deploy 这一步
    其实不成立（两侧版本都没被钉住，只是碰巧一致）。现在两侧都读同一份 `package-lock.json`，
-   deploy 用的 Wrangler 版本才算真的可复现。仍在同一张清单上的下一处：**Workers Builds 的 Node 版本
-   仓库侧仍未声明**（无 `.nvmrc`），目前依赖平台默认值。
+   deploy 用的 Wrangler 版本才算真的可复现。同一张清单上的**最后一处已闭合**：Node 版本。
+   v2.8.8 起 `.nvmrc`（内容 `22`）已入库，`ci.yml` 显式消费（`node-version-file`），
+   Workers Builds 构建镜像亦读 `.nvmrc`（**需实测**确认 Cloudflare 构建镜像确实兑现）。
 
    ⚠ 已修（v2.0.6，审计 P1-8）：上面这条命令原先用 `rm -rf` / `mkdir -p` / `cp`，需要 POSIX shell，
    **Windows 的 cmd 下跑不了**，与"本地可完整复现"的目标有落差。装配那半段现已收进

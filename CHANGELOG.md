@@ -1,5 +1,17 @@
 # 变更记录
 
+## v2.8.20 · 文档 P1-9：wrangler.jsonc 注释写「无 `.nvmrc`」，而 `.nvmrc` 早在 v2.8.8 已入库（2026-09-21）
+
+**来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 10 条（P1 组收尾完成）。本节只落这一条，独立成版与提交。
+
+- **P1-9 wrangler.jsonc 的「最后一处不受仓库控制」把已闭合的洞重新说成开放项**：
+  - **根因**：`wrangler.jsonc:44-45` 注释仍写「Workers Builds 的 Node 版本仓库侧仍未声明（无 `.nvmrc`），目前依赖平台默认值」，但 `.nvmrc`（内容 `22`）已在 **v2.8.8（f43d5aa）** 入库，且 `.github/workflows/ci.yml` 用它钉 CI 的 Node（两处 job 的 `node-version-file: .nvmrc`）。wrangler.jsonc 最后改动停在 v2.8.5，此后的 v2.8.8 变更没回填到这段注释。
+  - **后果**：把「最后一处不受仓库控制的事实」这个**已闭合**的洞重新描述成开放项，下一个审计者会按它再查一遍，属于显式误导。
+  - **修法（报告的最小修复）**：改写为「同一张清单上的**最后一处已闭合**：Node 版本。v2.8.8 起 `.nvmrc`（内容 `22`）已入库，`ci.yml` 显式消费（`node-version-file`），Workers Builds 构建镜像亦读 `.nvmrc`（**需实测**确认 Cloudflare 构建镜像确实兑现）」——保留报告要求的「需实测」限定，不把平台侧行为说成已核实。
+- **备注**：本次未改 `index.html` 逻辑；本版号只出现在上述五处版本落点，均不在 `index.html` 内（`check-version.js` 第 3 项不涉及）。
+
+**自验**：`node tools/check-all.js`（全量）**2479 PASS / 0 FAIL**，实跑 11/14 项、⊘ 3 项（ESLint / tsc 缺 node_modules、浏览器冒烟缺环境，均为正常态）；行覆盖率 **99.0%**（6692/6759，阈值 97%/90%）；死循环看门狗通过。版本号五处一致由 `check-version.js` 与 `check-docs.js` 强制。
+
 ## v2.8.19 · 文档 P1-8：AGENTS.md 写「16 个 IIFE 模块」，实际为 14（2026-09-21）
 
 **来源**：按 `docs/AUDIT-2026-09-21.md` 依 P0→P3 逐条落地的第 9 条（P1 组收尾）。本节只落这一条，独立成版与提交。
