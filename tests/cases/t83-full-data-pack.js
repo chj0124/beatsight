@@ -23,7 +23,7 @@ const PACK = () => ({
   arranges: [{ id: "a-import-1", name: "导入曲式",
     sections: [{ name: "主歌", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 2 }] }] }],
   lines: [{ arrangeId: "a-import-1", sec: 0, chars: [{ t: 0, dur: 24, ch: "回" }] }],
-  log: [{ start: 1700000000000, sec: 120 }],
+  log: [{ t: 1700000000000, sec: 120 }],
   ear: { total: 7, right: 5, best: 4 },
 });
 
@@ -51,6 +51,17 @@ section("T82b 全量数据包 · 导入四类数据（合并语义）");
   eq(res.added.arranges, 1, "曲式 +1");
   eq(res.added.lyrics, 1, "歌词 +1");
   eq(res.added.log, 1, "练习记录 +1");
+  /* 反向验证锚点：练习记录的字段名必须是 t（时间戳），不是 start。
+     导入侧若回退成 r.start，上面那条 +1 会变 0 而报红——这正是本次修复要钉住的口径。 */
+  const imported = beat.Store.logSessions.find(s => s.t === 1700000000000);
+  ok(imported, "导入的练习记录真的落进 logSessions（按 t 找得到）");
+  eq(imported && imported.sec, 120, "sec 原样保留");
+  eq(imported && imported.bpm, 0, "bpm 缺省补 0（白名单归一化，不整条塞进冷键）");
+  eq(imported && imported.name, "", "name 缺省补空串（白名单归一化）");
+  /* 只有 start 键的旧形状必须被丢弃：它缺"什么时候练的"，不是一条可展示的记录 */
+  const legacyStart = beat.Store.importAll(JSON.stringify({
+    kind: "all", log: [{ start: 1700000000000, sec: 120 }] }));
+  eq(legacyStart.added.log, 0, "只带 start 键的记录被丢弃（字段名口径钉死）");
   eq(beat.Store.customs.length, before + 1, "预设真的进了库（不是只报了个数）");
   eq(beat.Store.arranges.some(a => a.id === "a-import-1"), true, "曲式按 id 进库");
   eq(beat.Store.lyrics.some(l => l.arrangeId === "a-import-1" && l.sec === 0), true, "歌词行进库");
@@ -133,7 +144,7 @@ section("T82f 全量数据包 · 导出接线 + 容量闸门（库内总量 / �
   /* 练习记录的环形上限：它是**冷键的容量约束**，导入不得绕过——
      否则一份攒了很久的备份能把 beatsight.log 撑到任意大 */
   const { beat: b3 } = loadApp();
-  const many = { kind: "all", log: Array.from({ length: 450 }, (_, i) => ({ start: 1700000000000 + i, sec: 60 })) };
+  const many = { kind: "all", log: Array.from({ length: 450 }, (_, i) => ({ t: 1700000000000 + i, sec: 60 })) };
   const r2 = b3.Store.importAll(JSON.stringify(many));
   ok(r2.ok, "大批练习记录可导入");
   ok(b3.Store.logSessions.length <= 400, "导入后记录数被截到 logMax=400（实际 "

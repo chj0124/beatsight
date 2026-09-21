@@ -1413,21 +1413,21 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L1862  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2869  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3525  Modal         应用内弹窗
-     L3655  Viz           时值可视化渲染与每帧动画
-     L4924  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5551  Trainer       变速训练器
-     L5764  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6254  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6384  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7168  Editor        自定义节奏型编辑器
-     L7524  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7747  Ear           听辨训练（v1.10.0）
-     L7970  Arrange       曲式编排（v2.0.0）
-     L8723  Help          使用方法（v2.0.1）
-     L8770  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8839  初始化（装配） 各模块 hook 接线与启动
+     L2877  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3533  Modal         应用内弹窗
+     L3663  Viz           时值可视化渲染与每帧动画
+     L4932  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5559  Trainer       变速训练器
+     L5772  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6262  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
+     L6392  Presets       预设库 / 回退提示 / 播放中切换挂起
+     L7176  Editor        自定义节奏型编辑器
+     L7532  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7755  Ear           听辨训练（v1.10.0）
+     L7978  Arrange       曲式编排（v2.0.0）
+     L8731  Help          使用方法（v2.0.1）
+     L8778  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8847  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.8.10";
+const VERSION = "2.8.11";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2797,14 +2797,22 @@ const Store = (() => {
         else lyrDrop++;
       });
     }
-    /* ---- 练习记录：并集，按 logMax 截断（新的在前，与追加口径一致） ---- */
+    /* ---- 练习记录：并集，按 logMax 截断（保留最近的，与 appendSession 口径一致） ---- */
     let logAdd = 0;
     if (Array.isArray(data.log)){
       data.log.forEach((/** @type {any} */ r) => {
         if (!r || typeof r !== "object") return;
-        if (!isNum(r.start) || !isNum(r.sec)) return;      // 缺"什么时候练的 / 练了多久"就不是一条记录
-        sessions.push(r); logAdd++;
+        /* 字段名是 t（时间戳），不是 start——与加载路径（KEY_LOG 归一化）同口径：
+           t/sec 必须是有限数、sec > 0，且只取白名单字段（bpm 缺省 0、name 缺省空串），
+           不让外部包把任意键塞进冷键 */
+        if (!isNum(r.t) || !isNum(r.sec) || r.sec <= 0) return;
+        sessions.push({ t: r.t, sec: r.sec, bpm: numOr(r.bpm, 0),
+          name: typeof r.name === "string" ? r.name.slice(0, 40) : "" });
+        logAdd++;
       });
+      /* appendSession 把新记录 push 到尾部、超限时 shift 掉头部（最旧）——
+         合并后按 t 升序排列再截断，保留的同样是**最近**的 logMax 场 */
+      sessions.sort((a, b) => a.t - b.t);
       if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
     }
     /* ---- 听辨战绩：逐字段取较大值（它是累计量，取并集没有意义） ---- */
