@@ -55,7 +55,7 @@ beatsight/
 
 **发布渠道（两条，各司其职）**：
 
-- **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。构建命令里串了 `node tools/check-all.js` 全量检查，**不通过就不部署**，所以这条路上线上始终是最新代码
+- **① Cloudflare，自动**：仓库接 Git，推 `main` 即自动构建部署 → https://beatsight.chenhuajian1995.workers.dev/ 。**Dashboard 的 Build command 填的是 `npm run ci`**（v2.8.3 起；定义在 `package.json`，= `npm ci` + `node tools/check-all.js --strict-env` + `npm run build`），全量检查串在里面、**不通过就不部署**，所以这条路上线上始终是最新代码。注意那一行**只存在于 Dashboard**、仓库改不了它——仓库侧能做的是把它压到只剩这个稳定指针（理由与坑见 `wrangler.jsonc` 头部）
 - **② WorkBuddy，手动**：https://beatsight-48543.app.workbuddy.host/ （v2.0.1 起；旧链接 beatsight-34873 已随换绑废弃，停在 v1.6.0 不再更新）。**只在你用 WorkBuddy 打开项目并发布时才更新**——所以它滞后是常态、不是故障，随手一比"WorkBuddy 上还是旧版"不说明任何问题，判断"线上是不是最新"请以 Cloudflare 为准
   - ★ **发布的是一整份目录，所以要单独建一份干净副本再发**：`beatsight-publish/`（只有 `index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` / 4 个 `icon-*.png`，共 8 个文件）。
     **PNG 不入库**（v2.4.4 起由 `tools/gen-icons.js` 生成）——发布前先在仓库根跑一次
