@@ -44,7 +44,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const { extractScript, stripComments } = require("./scan-util");
+const { extractScript, stripComments, maskStrings } = require("./scan-util");
 
 const ROOT = path.join(__dirname, "..");
 const HTML = process.argv[2] || path.join(ROOT, "index.html");
@@ -67,6 +67,9 @@ try {
    而 `…\s*$` 那种又碰巧能过——同一份代码里两种写法行为不一致，极难排查。
    本文件第一版就踩了这个坑：11 个明明已装配的钩子被全部报成"从未赋值"。 */
 const lines = stripComments(script.split("\n")).map(l => l.replace(/\r$/, ""));
+/* 字符串字面量再等长遮蔽一层（行号/偏移不变）：否则字面量里的 `onX = fn` 会被当成"已装配"（假绿），
+   或字面量里的 `let onX = null;` 会被误收成一个注入槽（假红）。审计 P2-4：原版两个洞都真实存在。 */
+const maskedLines = maskStrings(lines.join("\n")).split("\n");
 const scriptStartLine = html.slice(0, html.indexOf("<script>")).split("\n").length;
 const fileLine = n => n + scriptStartLine - 1;      // 脚本内 1-based 行号 → index.html 绝对行号
 
@@ -77,12 +80,20 @@ console.log("══════════════════════�
 const problems = [];
 const wiring = [];
 
-/* ---- 自动收列注入槽：`let onXxx = null;`（名字大写开头 = 钩子约定） ---- */
-const DECL_RE = /^\s*let\s+([A-Za-z_$][\w$]*)\s*=\s*null\s*;?\s*$/;
+/* ---- 自动收列注入槽：`let onXxx = null;`（名字大写开头 = 钩子约定） ----
+   ★ 支持一行多声明符（`let onA = null, onB = null;`）：按逗号切分后逐个匹配 `name = null`。
+   审计 P2-4：旧版正则锚定整行、只认单个声明符，`let onA = null, onB = null;` 这种写法会
+   **两个槽都不收**，从此不受本闸门管辖（静默逃逸）。 */
+const DECL_RE = /^\s*let\s+(.+?);?\s*$/;
+const DECL_ONE = /^\s*([A-Za-z_$][\w$]*)\s*=\s*null\s*$/;
 const slots = [];
-lines.forEach((ln, i) => {
+maskedLines.forEach((ln, i) => {
   const m = DECL_RE.exec(ln);
-  if (m && /^on[A-Z]/.test(m[1])) slots.push({ name: m[1], declLine: i + 1 });
+  if (!m) return;
+  for (const part of m[1].split(",")){
+    const dm = DECL_ONE.exec(part);
+    if (dm && /^on[A-Z]/.test(dm[1])) slots.push({ name: dm[1], declLine: i + 1 });
+  }
 });
 
 /* ---- 规则 1：每个钩子必须被赋过非 null 值 ---- */
@@ -93,9 +104,12 @@ slots.forEach(slot => {
   let at = 0;
   for (let i = 0; i < lines.length; i++){
     if (i + 1 === slot.declLine) continue;                 // 声明行本身不算装配
-    const m = assignRe.exec(lines[i]);
+    /* 在**遮蔽后**的行上找赋值目标（字符串里的 `onX = fn` 不算装配）；
+       RHS 却要读**原文**（等长偏移对齐）——这样 `onX = "str"` 这种字符串右值不会被误判成空/复位 */
+    const m = assignRe.exec(maskedLines[i]);
     if (!m) continue;
-    const rhs = m[1].trim();
+    const base = m.index + m[0].length - m[1].length;
+    const rhs = lines[i].slice(base).trim();
     /* 复位成 null 不算装配（onQuotaDone 在 stopAudio 里就是这么做的——那是**摘钩子**） */
     if (!rhs || rhs === "null" || rhs === "null;") continue;
     at = i + 1;
@@ -114,11 +128,11 @@ slots.forEach(slot => {
   const CALL_RE = /setPatLenOf\s*\(\s*([^)\n]*)\s*\)/;
   let callLine = 0;
   for (let i = 0; i < lines.length; i++){
-    const idx = lines[i].indexOf("setPatLenOf");
+    const idx = maskedLines[i].indexOf("setPatLenOf");   // 遮蔽后：字符串里的同名调用不算
     if (idx < 0) continue;
     /* 跳过声明行 `function setPatLenOf(fn){ … }`：它有参数，会被上面那条正则当成"调用" */
-    if (/\bfunction\s*$/.test(lines[i].slice(0, idx))) continue;
-    const m = CALL_RE.exec(lines[i]);
+    if (/\bfunction\s*$/.test(maskedLines[i].slice(0, idx))) continue;
+    const m = CALL_RE.exec(maskedLines[i]);
     if (!m) continue;
     const arg = (m[1] || "").trim();
     if (!arg || arg === "null" || arg === "undefined") continue;
