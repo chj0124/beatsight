@@ -22,15 +22,16 @@
      且**每次点击后都要重新取**——曲式播放换型会经 applyPatternChange → buildPresetList
      重建整张列表（连带段序条），旧引用指向的是已脱离文档的节点。 */
 "use strict";
-const { loadApp, FakeAudioContext, drive, driveFrames, ok, eq, near, section } = require("../lib/harness");
+const { loadApp, FakeAudioContext, drive, driveFrames, ok, eq, near, section, html } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
-/* 本组统一在扫弦轨上跑：示例曲的 7 个型全带 dir，普通轨下整组不渲染 */
-const loadStrum = () => loadApp(seedState({ track: "strum", sel: { type: "builtin", idx: 1 } }));
+/* 本组统一从同一个内置型（四分基础）起跑：双声部判据只看**谱的内容**（hasStrum），
+   与"当前在哪条轨"无关——两态轨模型已在 v2.9.0 删除 */
+const loadStrum = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
 /* ①～⑥ 不需要示例曲；⑦～⑩ 要——示例是**首次打开**才静默带出的，
    harness 默认把闩落上（"视作已带出"），所以这里显式 seedDemo:false 让它真的载入
    （与 t63 的 firstRun 同一口径） */
-const loadDemo = () => loadApp(seedState({ track: "strum", sel: { type: "builtin", idx: 1 } }),
+const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }),
   { seedDemo: false });
 
 /* 稀疏扫弦谱：16 格十六分里只有两记实扫（第 1、3 拍）+ 一记空扫（第 2 拍），其余**纯休止**。
@@ -74,8 +75,9 @@ const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType ==
 /* 只在 [a,b) 时间里发声的次数（用于"某小节静音"这类断言，比累计计数稳） */
 const inWindow = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 1e-6).length;
 
-/* 示例曲分组里的三样东西。**每次现取**：点击会触发列表重建，旧引用随即失效 */
-const boxOf = els => els["presetList"].children.find(x => /(^| )preset-demo-group( |$)/.test(x.className));
+/* 曲式分组（v2.9.0 起类名 = .preset-arrange-group；旧名 .preset-demo-group 已删）。
+   **每次现取**：点击会触发列表重建，旧引用随即失效 */
+const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
 const playAllOf = els => playRowOf(els).children[0];               // 行内第 1 个 = 按钮
 const noteOf = els => playRowOf(els).children[1];                  // 行内第 2 个 = 状态说明
@@ -90,7 +92,10 @@ const segRowOf = els => {
   }
   return null;
 };
-const demoItemsOf = els => boxOf(els).children.filter(x => /(^| )preset-item( |$)/.test(x.className));
+/* 全列表按**显示名**取条目（v2.9.0 示例型已并入扫弦区，不再挂在曲式分组里）。
+   条目是 presetList 的直接子节点（夹在分区标题之间），显示名 = item.children[0].children[0] */
+const itemByName = (els, name) => els["presetList"].children.find(x =>
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === name);
 
 /* ================= 场景 T68a：扫弦轨每一拍都出节拍音 ================= */
 section("T68a 双声部 · 扫弦谱下每一拍都出节拍音（含空扫与纯休止所在的拍）");
@@ -207,7 +212,7 @@ section("T68e 双声部 · 节拍音量与扫弦音量互不缩放（并列，�
 }
 
 /* ================= 场景 T68f：S.strumVol 加载校验 / 持久化 / UI 同步 ================= */
-section("T68f 双声部 · strumVol 脏值钳制 / 热键持久化 / 扫弦条随轨显隐");
+section("T68f 双声部 · strumVol 脏值钳制 / 热键持久化 / 扫弦条常显（标记）");
 {
   const val = v => loadApp(seedState({ strumVol: v })).beat.Store.S.strumVol;
   eq(val(5), 1, "脏值 5 → 钳到 1");
@@ -226,12 +231,12 @@ section("T68f 双声部 · strumVol 脏值钳制 / 热键持久化 / 扫弦条�
   ok(String(storage.get("beatsight.state")).indexOf('"strumVol":0.4') >= 0,
      "★ 松手落盘到热键 beatsight.state（下次打开接着用）");
 
-  /* 扫弦条只在扫弦轨出现：普通轨没有任何扫弦声可调 */
-  eq(els["volStrumRow"].hidden, false, "扫弦轨：扫弦条可见");
-  beat.Tracks.set("plain");
-  eq(els["volStrumRow"].hidden, true, "★ 普通轨：扫弦条收起");
-  beat.Tracks.set("strum");
-  eq(els["volStrumRow"].hidden, false, "切回扫弦轨又出现");
+  /* v2.9.0：扫弦条改为**常显**（判据从"当前在哪条轨"变成"当前型是否带扫弦记谱"）。
+     轨模型已删，生产代码不再按 id 读写 #volStrumRow，它的可见性已退化成**纯标记**——
+     用 stub 断言等于在断言 stub 自己，只能查 index.html 原文（与 t24/t55 同一口径）。 */
+  const volStrumTag = (html.match(/<[^>]*id="volStrumRow"[^>]*>/) || [""])[0];
+  ok(volStrumTag && !/\bhidden\b/.test(volStrumTag),
+     "★ 扫弦音量条在标记里常显（不带 hidden；轨模型删除后不再随轨收起）");
 }
 
 /* ================= 场景 T68g：整首连播入口 ================= */
@@ -255,8 +260,8 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   eq(secRowOf(els).children[9].getAttribute("aria-pressed"), "false", "第 10 段未高亮");
   ok(noteOf(els).textContent.includes("第 1/10 段"),
      "状态说明给出「整首连播中 · 第 1/10 段」（实际「" + noteOf(els).textContent + "」）");
-  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"） */
-  ok(String(beat.activePattern().name).indexOf("节奏型1") >= 0,
+  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫 */
+  ok(String(beat.activePattern().name).indexOf("十六分满扫") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
   beat.Controls.stop();
 }
@@ -274,8 +279,8 @@ section("T68h 整首连播 · 点段序条第 N 段 = 只循环那一段");
   const row = secRowOf(els);
   eq(row.children[4].getAttribute("aria-pressed"), "true", "第 5 段高亮");
   eq(row.children[0].getAttribute("aria-pressed"), "false", "第 1 段取消高亮");
-  /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动） */
-  ok(String(beat.activePattern().name).indexOf("节奏型3") >= 0,
+  /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。v2.9.0：段 5 = P3 = 主歌扫弦 */
+  ok(String(beat.activePattern().name).indexOf("主歌扫弦") >= 0,
      "★ 停止时定位：生效的型已换成第 5 段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
@@ -286,12 +291,12 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "前提：已在整首连播中");
 
-  const target = demoItemsOf(els).find(it => it.children[0].children[0].textContent === "节奏型 2");
-  ok(!!target, "前提：示例组里有「节奏型 2」条目");
+  const target = itemByName(els, "副歌扫弦");
+  ok(!!target, "前提：扫弦区里有「副歌扫弦」条目（v2.9.0 示例 5 型并入扫弦区）");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
   eq(beat.Store.S.sel.type, "custom", "选中的就是这个自定义型");
-  ok(String(beat.activePattern().name).indexOf("节奏型2") >= 0,
+  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   eq(beat.Store.S.arrangeSel.loop, false, "退回单型后清掉曲式的范围循环（免得下次突然生效）");
   eq(els["loopPanel"].hidden, false, "练习循环面板重新露出（它在曲式模式下是收起的）");
@@ -303,8 +308,8 @@ section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSe
 {
   const { beat, els } = loadDemo();
   /* 先跳段 → S.arrangeSel.id 指向示例曲，切换胶囊条才会渲染出来。
-     挑第 5 段（主歌一 · 那年你踏上，当前用「节奏型 3」）——它本来就不是节奏型 2，
-     点「节奏型 2」才验得出"真的换过去了"（若本来就用它，点完看不出任何变化） */
+     挑第 5 段（主歌一 · 那年你踏上，当前用「主歌扫弦」P3）——它本来就不是副歌扫弦，
+     点「副歌扫弦」才验得出"真的换过去了"（若本来就用它，点完看不出任何变化） */
   secRowOf(els).children[4].fire("click");
   const segRow = segRowOf(els);
   ok(!!segRow, "前提：切换节奏型胶囊条已渲染（只在编排示例曲时出现）");
@@ -314,13 +319,13 @@ section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSe
   const ar0 = beat.Store.findArrange(beat.DEMO_ID);
   const before = ar0.sections[secIdx].blocks[0].ref.id;
   const beforeName = beat.Store.customs.find(c => c.id === before).name;
-  ok(!String(beforeName).includes("节奏型2"), "前提：第 5 段本来用的不是节奏型 2（实际「" + beforeName + "」）");
+  ok(!String(beforeName).includes("副歌扫弦"), "前提：第 5 段本来用的不是副歌扫弦（实际「" + beforeName + "」）");
   segRow.children[1].fire("click");
 
   const ar1 = beat.Store.findArrange(beat.DEMO_ID);
   const after = ar1.sections[secIdx].blocks[0].ref.id;
   ok(after !== before, "★ 该段的块引用真的换掉了（不是只改了 UI）");
-  ok(String(beat.Store.customs.find(c => c.id === after).name).includes("节奏型2"),
+  ok(String(beat.Store.customs.find(c => c.id === after).name).includes("副歌扫弦"),
      "★ 换成的正是被点的那一颗（实际「" + beat.Store.customs.find(c => c.id === after).name + "」）");
   eq(ar1.sections[secIdx].blocks[0].repeats, ar0.sections[secIdx].blocks[0].repeats,
      "只换型、不动遍数");
@@ -342,8 +347,8 @@ section("T68l 整首连播 · 点预设退回单练后，示例段胶囊条不�
   /* 点侧栏节奏型 → exitArrangeForPreset：playMode 退回 "preset"，但**不清**
      S.arrangeSel.id。修复前胶囊条只看 id，于是它仍会渲染；点它是改曲式块引用，
      对当前单型练习毫无即时效果——动作与反馈脱节。 */
-  const target = demoItemsOf(els).find(it => it.children[0].children[0].textContent === "节奏型 2");
-  ok(!!target, "前提：示例组里有「节奏型 2」条目");
+  const target = itemByName(els, "副歌扫弦");
+  ok(!!target, "前提：扫弦区里有「副歌扫弦」条目");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "点预设后退回单型练习");
   eq(beat.Store.S.arrangeSel.id, beat.DEMO_ID,

@@ -37,9 +37,8 @@ const CASE_FILES = [
   "./cases/t59-p1-audit",              // v2.0.6：审计 P1 批次（句柄重入 / ctx 重建 / 数据边界 / 重锚计数）
   "./cases/t60-lyric-align",           // v2.1.0：F1 歌词对齐轨（数据层 / 段内解析 / 渲染 / 锚点音 / 编辑轨）
   "./cases/t61-lyric-loop",            // v2.2.0：F2 按歌词行选段循环（落点 / 爬坡粒度 / 跨小节延音完整）
-  "./cases/t62-strum-track",           // v2.2.0：扫弦轨升级（zone 三态音色 / 空扫静默 / 录入 UI）
+  "./cases/t62-strum-zone",            // v2.2.0：扫弦弦区（zone 三态音色 / 空扫静默 / 录入 UI）
   "./cases/t63-demo-song",             // v2.3.0：示例曲《在他乡》载入（谱面映射 / 幂等 / 播放冒烟）
-  "./cases/t64-track-split",           // v2.4.0：双入口拆分（轨状态 / 过滤 / 回退 / 门控 / 零迁移）
   "./cases/t65-practice-loop",         // v2.4.3：练习循环（区间归一 / 下拉 / 调度回绕 / 起始游标 / 曲式收起）
   "./cases/t66-mode-contract",         // v2.4.4：模式字段契约（setMode 值域 / 幂等 / 迁移轨迹 / 无互斥）
   "./cases/t67-service-worker",        // v2.4.4：sw.js 缓存策略（预缓存 / 清旧 / network-first / SWR / 不接管三类）
@@ -59,6 +58,7 @@ const CASE_FILES = [
   "./cases/t81-wiring-slots",       // v2.8.6：注入槽装配（钩子被接上 / patLenOf 未注入必须抛错，审计 A1）
   "./cases/t82-keepalive-fallback",     // v2.8.8：后台保活兜底失败可见化（成功恒 0 / 被拒与无能力均留痕 / 面板只在非 0 时占位）
   "./cases/t83-full-data-pack",         // v2.8.8：全量数据包导出导入（四类冷数据 / 合并语义 / 三种校验口径 / 体量护栏）
+  "./cases/t84-sidebar-zones",          // v2.9.0：侧栏三区分类（hasStrum 判据 / 按内容分区 / 分区下按对象删除）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

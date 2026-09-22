@@ -1,14 +1,15 @@
 /* BeatSight 自动化测试 · 示例曲《在他乡》（v2.3.0）
    T63 系列。
    ---------------------------------------------------------------------------
-   契约：示例数据逐格来自参考谱面（用户填的十六分格表），载入 = 7 个节奏型预设
+   契约：示例数据逐格来自参考谱面（用户填的十六分格表），载入 = 5 个节奏型预设
    + 整首曲式（10 段，行=段）+ 每段歌词行（段内绝对 tick）。方向存手部动作
    （D=下扫/U=上扫，渲染层翻转）；弦区 0=低/1=全/2=高；空扫 = rest+dir；
-   段长不足 4 小节按行末节奏型补扫（歌词/扫弦数据 1:1 不增删）。
+   逐小节谱：段长 = 该段真实小节数（v2.6.0 起不再垫到 4 的倍数）。
 
    v2.4.1 起入口变了：overlay 里的「载入示例」按钮已删，改由 init 期的
-   Arrange.ensureDemo() 自动把 7 个节奏型 + 曲式 + 歌词带出来（预设库自动带出）。
-   所以本组不再点按钮，而是直接调确保入口，并补一条"自动带出、无需手动点"的断言。 */
+   Arrange.ensureDemo() 自动把 5 个节奏型 + 曲式 + 歌词带出来（预设库自动带出）。
+   所以本组不再点按钮，而是直接调确保入口，并补一条"自动带出、无需手动点"的断言。
+   v2.9.0：5 个型改通用名并并入「扫弦」区，曲式条目落在「自定义」区。 */
 "use strict";
 const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
 
@@ -39,36 +40,42 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   ok(a.sections[1].name.includes("C·Am·Dm"), "★ 和弦序列写进段名（无和弦轨的落点）");
   ok(a.sections[8].name.includes("Am·Em·F·C·Am·Em"), "六和弦行完整进段名");
   eq(JSON.stringify(beat.arrangeProblems(a)), "[]", "曲式无引用/拍号问题");
-  /* ★ v2.4.1：预设在侧栏可见——这是"能切换节奏型"的前提。
-     旧版只 importPresets 不刷列表，数据在库里但侧栏看不到，用户就"切不了型"。
-     ★ 必须在**扫弦轨**上看：示例 7 个型全带 dir，普通轨会被 hasStrum 过滤掉
-       （这正是"仍在扫弦轨，普通轨隐藏"的设计口径），故先切轨再断言列表。
+  /* ★ v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区（常显，两态切换条已删）。
+     示例曲的 5 个型按**内容**（hasStrum）落进「扫弦」区，与内置「民谣扫弦」并列；
+     「自定义」区只放曲式条目（示例曲《在他乡》）+ 整首连播行 + 段序条。
      ★ 用"递归取文本"而不是 el.textContent：沙箱 stub 的 textContent 是自己的字符串字段、
        不聚合子节点（真实 DOM 才聚合），直接读会是空串——那样这条断言恒假，
        测的就不是"列表里有没有示例"了 */
   const deepText = el => (el.textContent || "") +
     (el.children || []).map(deepText).join(" ");
-  beat.Tracks.set("strum");
   const kids = els["presetList"].children;
-  ok(kids.length > 0 && kids[0].className.includes("demo-section"),
-     "★ 侧栏第一组就是示例曲（预设库第一位）");
-  const demoBox = kids.find(x => x.className.includes("demo-group"));
-  ok(!!demoBox, "示例组已渲染");
-  /* ★ v2.5.0 口径修正：原来数的是 `children.length === 7`（第一个子节点恰好是第 1 个型时成立）——
-     它测的其实不是"7 个型"，而是"组里恰好有 7 个孩子"。加了整首连播那一行之后这条必然假，
-     而它并不代表功能坏了。改为按**条目类名**数：`preset-item` 才是"节奏型条目"这个语义 */
-  const demoItems = demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className));
-  eq(demoItems.length, 5, "示例组里 5 个节奏型条目（v2.6.0 起型 = 单小节原子单元）");
+  /* ★ 三区分类判据是**内容**（hasStrum），不是运行期"当前轨"——不再先切轨再断言列表 */
+  const beatN = beat.BUILTINS.filter(p => !beat.hasStrum(p)).length
+    + beat.Store.customs.filter(c => !beat.hasStrum(c)).length;
+  const strumN = beat.BUILTINS.filter(p => beat.hasStrum(p)).length
+    + beat.Store.customs.filter(c => beat.hasStrum(c)).length;
+  eq(JSON.stringify(kids.filter(x => x.className === "preset-section").map(x => x.textContent)),
+     JSON.stringify([`节拍 · ${beatN} 个`, `扫弦 · ${strumN} 个`, `自定义 · ${beat.Store.arranges.length} 首`]),
+     "★ 侧栏三区标题常显（节拍 / 扫弦 / 自定义），第一区在列表头部");
+  /* 示例 5 型并入扫弦区：扫弦区至少含内置「民谣扫弦」+ 示例 5 型 */
+  ok(deepText(els["presetList"]).includes("十六分满扫"),
+     "★ 示例型「十六分满扫」在扫弦区可见（能看到才切得动）");
+  ok(!deepText(els["presetList"]).includes("在他乡 · 节奏型"),
+     "★ 示例型已改通用名（十六分满扫 等），不再带「在他乡 · 节奏型N」旧前缀");
+  const demoBox = kids.find(x => x.className === "preset-arrange-group");
+  ok(!!demoBox, "★ 「自定义」区里的曲式容器已渲染");
+  eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 1,
+     "自定义区里 1 条曲式条目（示例曲《在他乡》——v2.9.0 起 5 个型不再单独成组）");
   /* v2.5.0：整首连播入口与段序条（用户反馈「只能重复练习单一节奏型」的落点）。
-     两者都是示例分组的**直接子节点**（扁平挂法，见 buildDemoSongRow 的注释），
+     两者都挂在「自定义」区容器下（扁平挂法，见 buildDemoSongRow 的注释），
      按钮在「整首连播」那一行内部 */
   const playRow = demoBox.children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
-  ok(!!playRow, "★ 示例组里有「整首连播」那一行");
+  ok(!!playRow, "★ 自定义区里有「整首连播」那一行");
   const playAll = playRow && playRow.children[0];
-  ok(!!playAll, "★ 示例组里有「整首连播」按钮");
+  ok(!!playAll, "★ 自定义区里有「整首连播」按钮");
   eq(playAll.textContent, "整首连播", "按钮文案");
   const secRow = demoBox.children.find(x => /(^| )demo-sec-row( |$)/.test(x.className));
-  ok(!!secRow, "★ 示例组里有段序条");
+  ok(!!secRow, "★ 自定义区里有段序条");
   eq(secRow.children.length, 10, "★ 段序条按原曲顺序列出全部 10 段");
   eq(secRow.children[0].textContent, "1 开头", "第 1 段短标签 = 序号 + 段名（「 · 」之前那段）");
   eq(secRow.children[7].textContent, "8 主歌二", "第 8 段短标签");
@@ -77,14 +84,6 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   eq(secRow.getAttribute("role"), "group", "段序条是 pill 组（与其余 pill 组同契约）");
   eq(secRow.children[0].getAttribute("aria-pressed"), "false",
      "★ 未在编排这首示例曲时整条不高亮（悬空高亮比没有高亮更容易误读）");
-  const demoTxt = deepText(demoBox);
-  ok(demoTxt.includes("节奏型 1"), "★ 示例节奏型出现在侧栏预设列表里（能看到才切得动）");
-  ok(!demoTxt.includes("在他乡 · 节奏型"),
-     "★ 条目显示短名（剥掉「在他乡 · 」前缀）——分组头已交代曲名，逐条重复是噪声");
-  ok(deepText(els["presetList"]).includes("内置预设"), "内置预设组仍在（示例是**新增**一组，不是替换）");
-  beat.Tracks.set("plain");
-  eq(els["presetList"].children.filter(x => x.className.includes("demo-section")).length, 0,
-     "★ 普通轨下示例组整体隐藏（与「普通轨隐藏」的口径一致）");
 
   /* 歌词锚点抽查（段内绝对 tick = 小节×192 + 格×12，时值 = 格×12） */
   const xiang = charAt(beat, 1, "乡");
@@ -104,14 +103,14 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   const { beat, els } = firstRun();
   beat.Arrange.open();
   bringDemo(beat);
-  const p1 = pByName(beat, "在他乡 · 节奏型1（十六分满扫）");
+  const p1 = pByName(beat, "十六分满扫");
   eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 1 }),
      "P1 格0 = 全部弦下扫（F→zone1，谱面 ↓ 存 D）");
   eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U" }),
      "P1 格1 = 空扫上扫（蓝括号：rest+dir，不带 zone）");
   eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 0 }),
      "P1 格6 = 低音弦区下扫（B→zone0）");
-  const p4 = pByName(beat, "在他乡 · 节奏型4（雨夜）");
+  const p4 = pByName(beat, "雨夜扫弦");
   eq(JSON.stringify(p4.bars[0][8]), JSON.stringify({ t: 12, rest: true }),
      "★ 无动作格 = 纯休止（无 dir 无 zone，与空扫区分开）");
   ok(beat.Store.customs.every(c => c.bars.length === 1
@@ -196,12 +195,12 @@ section("T63e 示例载入 · 《在他乡》= 30 小节逐小节谱（段长 1/
   /* ★ 逐小节谱 → 块的映射：相邻同型合并成一块（块 = 型 × N 遍）。
      这一串就是整首歌的骨架，任何一处错位都会在这里现形 */
   const runs = a.sections.flatMap(s => s.blocks.map(b =>
-    b.repeats + "×" + String(beat.resolveRef(b.ref).name).replace("在他乡 · ", ""))).join(" | ");
+    b.repeats + "×" + String(beat.resolveRef(b.ref).name))).join(" | ");
   eq(runs,
-     "1×节奏型1（十六分满扫） | 3×节奏型2（副歌） | 4×节奏型2（副歌） | 1×节奏型2（副歌） | 1×节奏型1（十六分满扫）"
-     + " | 4×节奏型3（主歌） | 2×节奏型3（主歌） | 4×节奏型5（桥段） | 2×节奏型3（主歌）"
-     + " | 6×节奏型4（雨夜） | 1×节奏型4（雨夜） | 1×节奏型1（十六分满扫）",
-     "★ 全曲 12 个块，逐段逐块与参考页的 30 小节表对齐");
+     "1×十六分满扫 | 3×副歌扫弦 | 4×副歌扫弦 | 1×副歌扫弦 | 1×十六分满扫"
+     + " | 4×主歌扫弦 | 2×主歌扫弦 | 4×桥段扫弦 | 2×主歌扫弦"
+     + " | 6×雨夜扫弦 | 1×雨夜扫弦 | 1×十六分满扫",
+     "★ 全曲 12 个块，逐段逐块与参考页的 30 小节表对齐（v2.9.0 型名改为通用名）");
 
   /* ★★ 最要紧的一条：**段长与词行逐小节对齐**。
      以前段长被垫过（1→4、2→4、6→8），多出来的小节"手不停嘴休息"；

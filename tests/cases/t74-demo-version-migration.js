@@ -1,32 +1,40 @@
-/* BeatSight 自动化测试 · 切轨假选中 + 示例曲版本迁移（v2.6.4）
+/* BeatSight 自动化测试 · 示例曲版本迁移 + 曲式模式下的选中语义（v2.6.4 / v2.9.0）
    T74 系列。
    ---------------------------------------------------------------------------
-   两条用户实拍：
-
-   ① 连播（曲式模式）中切到普通轨，侧栏「四分基础」被高亮、可视化却还在在他乡——
-     像"切不过去"。成因：ensureValidForTrack 在曲式模式下仍把 S.sel 回退成普通型，
-     制造了一个"已选中"的假象（曲式播放根本不读 S.sel）。
-     修法：曲式模式下不回退（S.sel 只是"退回预设后选谁"）；trackNote 在曲式模式下
-     给"以节目单为准"的提示；进出模式经 onPlayModeChange 各刷一次。
+   ① 曲式模式下的「假选中」（v2.6.4）：曲式播放根本不读 S.sel，侧栏却在被回退的
+      S.sel 上画"选中"高亮 → 像"已经选中了四分基础"。
+     修法：曲式模式下一律不画选中高亮（isActive = S.playMode !== "arrange" && …），
+     S.sel 只在退回单练后作数。
+     v2.9.0：两态轨模型（含 ensureValidForTrack 回退）删除，"切轨"这个触发源已消失；
+     本组保留仍成立的高亮契约，去掉依赖轨 UI 的步骤。
 
    ② 整首连播出 120 小节（参考谱是 30 小节）。成因：示例型**名字**从 v2.4.4 起没变，
      内容却从「4 小节型」换成过「1 小节型」（v2.6.0）；ensureDemo 按名查重，
      把"旧型 + 新曲式"的混杂态判成"数据齐全"——30 小节 × 4 = 120。
      修法：同名再比内容（demoPresetEq），不一致就地收敛回参考谱（保住 id）；
      init 加"闩已落但内容对不上"的迁移分支（demoStale）；
-     用户**删掉**曲式的恒 false——只收敛，不复活。 */
+     用户**删掉**曲式的恒 false——只收敛，不复活。
+     v2.9.0：示例型改通用名、曲式块按**下标**引用；认型改按**内容**（demoIndexOf）。 */
 "use strict";
 const { loadApp, FakeAudioContext, drive, ok, eq, section } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
-const loadDemo = () => loadApp(seedState({ track: "strum", sel: { type: "builtin", idx: 1 } }),
+/* v2.9.0：轨模型已删，起跑型与"在哪条轨"无关 */
+const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }),
   { seedDemo: false });
-const boxOf = els => els["presetList"].children.find(x => /(^| )preset-demo-group( |$)/.test(x.className));
+const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 const playAllOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className)).children[0];
 const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
 const itemByName = (els, name) => els["presetList"].children
   .filter(x => /(^| )preset-item( |$)/.test(x.className)).find(x => deepText(x).includes(name));
-const demoPats = beat => beat.Store.customs.filter(c => c.name.startsWith("在他乡 · 节奏型"));
+const activeItems = els => els["presetList"].children.filter(x =>
+  /(^| )preset-item( |$)/.test(x.className) && /(^| )active( |$)/.test(x.className));
+/* v2.9.0：示例型已改通用名（十六分满扫 等），不能再按旧名前缀认。
+   名字取自规范谱（demoBuildSpec），mangleToOld4Bar 只改内容不碰名字，故 mangle 后仍认得出 */
+const demoPats = beat => {
+  const names = beat.demoBuildSpec().presets.map(p => p.name);
+  return beat.Store.customs.filter(c => names.includes(c.name));
+};
 /* 把 5 个示例型就地改成 v2.4.x 时代的「4 小节旧版」（同名同 id、内容 ×4）——
    这正是用户机器上"旧型 + 新曲式"混杂态的复刻 */
 const mangleToOld4Bar = beat => {
@@ -35,8 +43,8 @@ const mangleToOld4Bar = beat => {
 };
 const totalBars = beat => beat.songBars(beat.Store.findArrange(beat.DEMO_ID));
 
-/* ================= 场景 T74a：曲式播放中切轨 → 不再有假选中（图三） ================= */
-section("T74a 曲式播放中切普通轨 · ★ S.sel 不被回退、列表无假高亮、模式提示在");
+/* ================= 场景 T74a：曲式播放中 → 不制造假选中（图三） ================= */
+section("T74a 曲式播放中 · ★ 侧栏无假高亮（曲式不读 S.sel）；点预设退回后高亮恢复");
 {
   const { beat, els } = loadDemo();
   playAllOf(els).fire("click");
@@ -44,32 +52,24 @@ section("T74a 曲式播放中切普通轨 · ★ S.sel 不被回退、列表无�
   drive(ac, beat, 2);
   const selBefore = JSON.stringify(beat.Store.S.sel);
 
-  els["trackRow"].children[0].fire("click");                 // 切到普通轨
-  eq(JSON.stringify(beat.Store.S.sel), selBefore,
-    "★ 切轨不再回退 S.sel（曲式播放不读它；它只是'退回预设后选谁'）");
-  eq(beat.Store.S.playMode, "arrange", "播放模式不受影响");
-  const highlighted = els["presetList"].children.filter(x =>
-    /(^| )preset-item( |$)/.test(x.className) && /(^| )active( |$)/.test(x.className));
-  eq(highlighted.length, 0, "★ 列表里**没有**任何条目被高亮——不再制造'已选中四分基础'的假象");
-  ok(String(els["trackNote"].textContent).includes("节目单"),
-    "★ 轨说明换成模式提示（实际「" + els["trackNote"].textContent + "」）");
-  ok(String(els["patternName"].textContent).includes("在他乡"), "标题仍跟节目单");
+  /* v2.9.0：轨 UI 已删，S.sel 不能被"切轨"改写了——直接断言它的语义不变即可 */
+  eq(beat.Store.S.playMode, "arrange", "整首连播后是曲式模式");
+  eq(JSON.stringify(beat.Store.S.sel), selBefore, "曲式播放不动 S.sel（它只是'退回预设后选谁'）");
+  eq(activeItems(els).length, 0,
+    "★ 列表里**没有**任何条目被高亮——不制造'已选中'的假象（高亮语义 = 正在练这个型）");
+  ok(String(els["patternName"].textContent).length > 0, "标题有内容（跟节目单）");
 
   /* 出口仍是对等入口：点任一节奏型 = 退回单练它（BUILTINS[1] = 四分基础） */
   itemByName(els, "四分基础").fire("click");
   eq(beat.Store.S.playMode, "preset", "点预设退回预设模式");
   eq(JSON.stringify(beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 1 }), "S.sel 落到被点的型");
   eq(els["patternName"].textContent, "四分基础", "标题跟上");
-  const litNow = els["presetList"].children.filter(x =>
-    /(^| )preset-item( |$)/.test(x.className) && /(^| )active( |$)/.test(x.className));
-  eq(litNow.length, 1, "退回预设模式后选中高亮恢复（高亮语义与模式一致）");
-  ok(!String(els["trackNote"].textContent).includes("节目单"),
-    "★ 退出曲式后模式提示同步消失（onPlayModeChange 钩子刷的）");
+  eq(activeItems(els).length, 1, "退回预设模式后选中高亮恢复（高亮语义与模式一致）");
   beat.Controls.stop();
 }
 
-/* ================= 场景 T74b：曲式停止态切轨 → 同样不制造假选中 ================= */
-section("T74b 曲式停止态切普通轨 · S.sel 不变 + 提示在（停止时展示待命型是 v2.0.2 的设计）");
+/* ================= 场景 T74b：曲式停止态 → 同样无假高亮（停止时展示待命型是 v2.0.2 的设计） ================= */
+section("T74b 曲式停止态 · S.sel 不变 + 无假高亮 + 画面是待命型（v2.0.2 设计）");
 {
   const { beat, els } = loadDemo();
   playAllOf(els).fire("click");
@@ -77,11 +77,10 @@ section("T74b 曲式停止态切普通轨 · S.sel 不变 + 提示在（停止�
   drive(ac, beat, 2);
   beat.Controls.stop();
   const selBefore = JSON.stringify(beat.Store.S.sel);
-  els["trackRow"].children[0].fire("click");
-  eq(JSON.stringify(beat.Store.S.sel), selBefore, "★ 停止态切轨同样不回退 S.sel");
-  ok(String(els["trackNote"].textContent).includes("节目单"), "模式提示在");
-  ok(String(els["patternName"].textContent).includes("在他乡"),
-    "停止 + 曲式 = 显示待命型（播放范围起点），与画面其它部分一致");
+  eq(JSON.stringify(beat.Store.S.sel), selBefore, "★ 停止态 S.sel 不变（曲式播放不动它）");
+  eq(activeItems(els).length, 0, "★ 停止 + 曲式 = 依旧无选中高亮");
+  eq(els["patternName"].textContent, beat.demoBuildSpec().presets[0].name,
+    "停止 + 曲式 = 显示待命型（播放范围起点，这里是 P1），与画面其它部分一致");
 }
 
 /* ================= 场景 T74c：120 小节混杂态 → 收敛回参考谱 ================= */

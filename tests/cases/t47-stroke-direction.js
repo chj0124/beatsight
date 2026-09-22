@@ -296,35 +296,19 @@ section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
   eq(beat.Editor.draft().bars[0][3].dir, undefined, "撤销把空扫标注一并退回（与其它草稿变更同一套纪律）");
 }
 
-/* ================= 场景 T47e：dir 的声部语义（v2.7.1 改写） =================
+/* ================= 场景 T47e：dir 的声部语义（v2.7.1 改写 / v2.9.0 收口） =================
    v2.7.1 之前：dir 是纯记谱层，发不发声、怎么发声都与它无关（旧 T47e 守"逐位不变"）。
-   v2.7.1 起 dir 参与**声部归属**（扫弦轨上带 dir 的发声音符归扫弦声部）——
-   旧不变量按设计死亡，存活的两条在这里重钉：
-     ① 普通轨：dir 仍被轨门控挡在发声层外（与 T64g 的 zone 门控同一条防线）；
-     ② 扫弦轨：dir 只改声部与叠加网格，**时刻一字不动**（时间轴不变量不死）。 */
-section("T47e 扫弦方向 · 普通轨发声不变 / 扫弦轨只改声部不动时间轴");
+   v2.7.1 起 dir 参与**声部归属**（带 dir 的发声音符归扫弦声部）。
+   v2.9.0：两态轨模型删除——旧实现靠"普通轨门控 dir 发声"的那道防线（原场景①）随轨模型
+     一起消失，判据改按**内容**（hasStrum：带 dir 或 zone 的型整体归扫弦声部）。
+     所以原场景①（普通轨发声门控）退役；存活的不变量只剩一条——dir 只改声部与叠加网格，
+     **时刻一字不动**（时间轴不变量不死）。 */
+section("T47e 扫弦方向 · dir-only 谱归扫弦声部 + 只改声部不动时间轴");
 {
-  /* ① 普通轨发声门控（与 T64g 的 zone 版同一手法）：让「已生效的 appliedPat 带 dir」
-     漏进普通轨——先扫弦轨选中（合法），再直接改 S.track（不经 Tracks.set，不触发
-     refresh/回退）。此时唯一能挡住 dir 的就是 scheduler 里的轨门控 */
   const bars = [0,1,2,3].map(() => [{ t:48 }, { t:24 }, { t:24 }, { t:36 }, { t:12 }, { t:48 }]);
-  const { beat: bp } = loadApp();                   // 默认：扫弦轨 + 民谣扫弦（带 dir）
-  eq(bp.curPattern().name, "民谣扫弦 · 下-下上-上下上", "前提①：扫弦轨下民谣扫弦已生效（appliedPat 带 dir）");
-  bp.Store.S.track = "plain";
-  eq(bp.curPattern().name, "民谣扫弦 · 下-下上-上下上", "前提②：轨已切 plain，生效的型仍带 dir");
-  bp.Controls.start();
-  const acp = FakeAudioContext.last;
-  drive(acp, bp, 3);
-  bp.Controls.stop();
-  ok(acp.hits.length > 0 && acp.hits.every(h => h.kind === "osc"),
-     "★ 普通轨：dir 被挡在发声层外——全部走节拍声部（振荡器），零扫弦噪声");
-  const relP = acp.hits.map(h => +(h.t - acp.hits[0].t).toFixed(6));
-  eq(JSON.stringify(relP), JSON.stringify([0, 0.625, 0.9375, 1.25, 1.71875, 1.875, 2.5, 3.125]),
-     "★ 普通轨：时刻 = 谱面六颗音原位（不补网格、不动时间轴）");
-
-  /* ② 扫弦轨：dir-only 谱 = 民谣扫弦形状。v2.7.1 后每小节 = 6 声扫弦 + 4 声拍点网格，
+  /* dir-only 谱 = 民谣扫弦形状。v2.7.1 后每小节 = 6 声扫弦 + 4 声拍点网格，
      与无 dir 孪生（无网格、6 声节拍音）对比：原 6 颗音的时刻必须原样含在其中 */
-  const strumWithDir = playSeq(null, 3);                   // 默认即民谣扫弦（带 dir）+ 默认扫弦轨
+  const strumWithDir = playSeq(null, 3);                   // 默认即民谣扫弦（带 dir，hasStrum）
   const strumWithout = playSeq(beat => {
     beat.Store.customs.push({ id:"c-twin2", name:"无方向孪生2", meter:4, bars });
     beat.Store.S.sel = { type:"custom", id:"c-twin2" };

@@ -17,7 +17,7 @@
 const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
-const loadStrum = () => loadApp(seedState({ track: "strum", sel: { type: "builtin", idx: 1 } }));
+const loadStrum = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
 
 /* 造 n 小节的型：每小节 4 个四分音符（和 = 192 = 4×TPB） */
 const mkBars = n => Array.from({ length: n }, () => [
@@ -28,7 +28,7 @@ const rowsOf = els => els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(
 
 /* 导入一个 n 小节的型并选中它，返回 {beat, els, id} */
 function withPattern(n, opts){
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }), opts);
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }), opts);
   const r = beat.Store.importPresets(JSON.stringify({ presets: [{ name: n + "小节型", meter: 4, bars: mkBars(n) }] }));
   if (!r.ok) return { beat, els, id: "", error: r.error };
   const c = beat.Store.customs[beat.Store.customs.length - 1];

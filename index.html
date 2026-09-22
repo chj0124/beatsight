@@ -294,9 +294,10 @@ input[type=range].vol{width:120px}
 .vol-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}
 .vol-row>span:first-child{min-width:52px}     /* 标签定宽：否则「节拍」2字 与「重拍增强」4字 使整组错位（v2.5.0 加了「扫弦」后仍是三条同宽） */
 .vol-row .pct{font-family:var(--mono);min-width:38px;text-align:right}
-/* v2.5.0：「扫弦」音量条按轨收放。★ [hidden] 的 display:none 会被上面的 display:flex
-   覆盖（同 .tr-panel / .tr-plan 的坑，L282 已记过一次）——必须显式写这条，
-   否则普通轨下它会**照样显示**，而代码里 hidden 明明置了 true（最难查的那种"看着对"） */
+/* ★ [hidden] 的 display:none 会被上面的 display:flex 覆盖（同 .tr-panel / .tr-plan 的坑，
+   L282 已记过一次）——必须显式写这条，否则置了 hidden 的元素会**照样显示**
+   （最难查的那种"看着对"）。v2.9.0 起「扫弦」条改为常显、不再按轨收放，但这条规则
+   作为 .vol-row 的通用显隐兜底保留 */
 .vol-row[hidden]{display:none}
 
 /* ---------- 配置开关 ---------- */
@@ -371,14 +372,11 @@ input[type=range].vol{width:120px}
 .preset-item.active .meta{color:var(--green)}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
 .preset-item .del:hover{color:var(--red);background:rgba(243,114,127,.1)}
-/* 示例曲分组（v2.4.1）：《在他乡》整首歌的入口，恒占预设库**第一位**。
-   与普通分组用左侧一条绿色竖线区分——"这一组是那首示例歌"比"字号大一点"更一眼可辨；
-   竖线的 3px 宽度与 .preset-item.active 的圆角半径成比例，视觉上是一组而非一根突兀的线。
-   徽标 .preset-badge 是"这是示例"的身份标记（纯文字，不做成按钮——它不响应点击） */
-.preset-section.demo-section{display:flex;align-items:center;gap:8px;color:var(--green);margin-top:0}
-.preset-section .preset-badge{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--green);
-  border:1px solid rgba(30,215,96,.45);border-radius:999px;padding:1px 7px;flex:none}
-.preset-demo-group{border-left:2px solid rgba(30,215,96,.45);padding-left:8px;margin-bottom:4px}
+/* 「自定义」区（v2.9.0）：曲式条目（Store.arranges）+ 当前曲式的「整首连播」行与段序条。
+   与节拍/扫弦两区用左侧一条绿色竖线区分——"这一组是曲式（整首怎么弹）"比字号更一眼可辨。
+   v2.4.1 的"示例曲分组"样式（.preset-section.demo-section / .preset-badge / .preset-demo-group）
+   随该分组一并删除：示例曲的 5 个型已按内容并入「扫弦」区，不再单独成组。 */
+.preset-arrange-group{border-left:2px solid rgba(30,215,96,.45);padding-left:8px;margin-bottom:4px}
 /* 常驻切换节奏型胶囊条（v2.4.1）：直接挂在示例分组内——它就是"这首歌有哪几个段"的目录。
    点一下 = 把当前段的节奏型换成它（不必进曲式编排 overlay 逐个「换」）。
    排布用 flex-wrap：5~7 颗胶囊在窄侧栏会自动折行，不做横向滚动（侧栏宽度本来就紧） */
@@ -1314,7 +1312,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <dt>速度 BPM</dt><dd>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120</dd>
           <dt>拍号</dt><dd>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</dd>
           <dt>Swing</dt><dd>把每拍后半的八分往后推，做出摇摆感。<b>只改发声时机，不改时间轴</b></dd>
-          <dt>音色 / 音量</dt><dd>电子 / 木鱼 / 鼓组（都是程序合成，不占体积）。<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只在「带扫弦」轨出现）。两条<b>各调各的</b>：把「节拍」拉到 0，扫弦照样响。重拍增强 = 重拍比正拍响多少（两条声部都受影响）</dd>
+          <dt>音色 / 音量</dt><dd>电子 / 木鱼 / 鼓组（都是程序合成，不占体积）。<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）。两条<b>各调各的</b>：把「节拍」拉到 0，扫弦照样响。重拍增强 = 重拍比正拍响多少（两条声部都受影响）</dd>
           <dt>弹跳球</dt><dd>关掉就只剩声音；静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源</dd>
           <dt>后台保活</dt><dd>切到别的标签页或手机息屏时尽量不被系统暂停（耗电换连续，按需开）</dd>
         </dl>
@@ -1394,22 +1392,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1442  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1918  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2871  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3512  Modal         应用内弹窗
-     L3642  Viz           时值可视化渲染与每帧动画
-     L4929  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5558  Trainer       变速训练器
-     L5776  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6276  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7069  Editor        自定义节奏型编辑器
-     L7425  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7648  Ear           听辨训练（v1.10.0）
-     L7873  Arrange       曲式编排（v2.0.0）
-     L8636  Help          使用方法（v2.0.1）
-     L8683  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8757  初始化（装配） 各模块 hook 接线与启动
+     L1422  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1898  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2851  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3492  Modal         应用内弹窗
+     L3622  Viz           时值可视化渲染与每帧动画
+     L4909  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5538  Trainer       变速训练器
+     L5756  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6256  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7021  Editor        自定义节奏型编辑器
+     L7377  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7600  Ear           听辨训练（v1.10.0）
+     L7825  Arrange       曲式编排（v2.0.0）
+     L8586  Help          使用方法（v2.0.1）
+     L8633  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8707  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1528,7 +1526,7 @@ function patBars(pat){
    判据：`dir`（扫弦方向）或 `zone`（弦区）任一存在。两者都是**记谱层**字段、
    与发声时间轴无关，故"有没有它们"就能区分"这是份扫弦谱还是份纯节拍谱"。
 
-   ★★ 声明位置在数据区（Store 之前）：Viz / AudioEngine / Presets / Tracks 运行期
+   ★★ 声明位置在数据区（Store 之前）：Viz / AudioEngine / Presets 运行期
      都要调它，而它**只依赖 pat.bars**、不依赖 S、不依赖 resolveRef，放在数据区最合适。
    ★ 与 patLenOf 那条"加载期局部判据"不同：patLenOf 需要查已落盘的型，
      所以它**必须**留在 Store 里；本函数不需要查任何状态，故可以前移。 */
@@ -1743,15 +1741,25 @@ function demoLegacyIndex(name){
   const m = name.slice(DEMO_LEGACY_PREFIX.length).match(/^\s*(\d+)/);
   return m ? Number(m[1]) - 1 : -1;
 }
-/* 在给定库里按"内容优先、旧名序号兜底"找第 i 个示例型（v2.9.0）。
+/* 在给定库里按"内容优先、名字兜底"找第 i 个示例型（v2.9.0）。
    收成一处：ensureDemo（收敛内容）、demoStale（判落后）、一次性改名迁移
    必须看**同一份**认型规则，三处各写一遍 = 三条会漂移的边界。
-   入参 customs 显式传入而非直接读 Store：本函数留在数据区，保持"纯函数可直测" */
+   入参 customs 显式传入而非直接读 Store：本函数留在数据区，保持"纯函数可直测"。
+   ★ 三级兜底与它们的窗口（v2.9.0 修正 ordering 缺口）：
+     ① 内容（demoPresetEq）——稳定标识，首选；
+     ② 旧名序号（demoLegacyIndex）——服务「旧名 + 4 小节旧内容」的一次性迁移窗口；
+     ③ **改名后的通用名**（c.name === p.name）——服务「旧名已被 migrateDemoPatternNames
+        改成通用名、但内容还没收敛」的窗口。没有它，启动期"先改名后收敛"的顺序会把旧型
+        的两种标识（内容 + 旧名）一起抹掉 → ensureDemo 认不出 → 重复建 5 个型（10 个型、
+        整首连播 120 小节）。代价：用户自建型若恰好叫示例通用名（十六分满扫 等）会被
+        收敛回参考谱——名字高度特异、且只在内容对不上时才命中，判为可接受（变体请另存名字） */
 /** @param {any[]} customs @param {number} i @returns {any} */
 function demoCustomAt(customs, i){
   if (!Array.isArray(customs) || i < 0 || i >= DEMO_PRESETS.length) return undefined;
   const p = demoSpec().presets[i];
-  return customs.find(c => demoPresetEq(c, p)) || customs.find(c => demoLegacyIndex(c && c.name) === i);
+  return customs.find(c => demoPresetEq(c, p))
+    || customs.find(c => demoLegacyIndex(c && c.name) === i)
+    || customs.find(c => c && c.name === p.name);
 }
 /* 老数据一次性改名（v2.9.0）：示例型旧名「在他乡 · 节奏型N…」→ 新的通用名（十六分满扫 等）。
    ★ 与内容收敛（ensureDemo）分开：这里只认旧名序号、只动 name，不碰内容——
@@ -3073,7 +3081,7 @@ function arrangeNextRow(sec, bar, a){
    为什么要它：曲式播放的取型唯一来源是节目单（blockAt），S.sel 与播放无关——
    但 refreshAfterPatternChange / applyPatternChange 原先在"曲式 + 播放中"拿 curPattern()
    （= S.sel 指向的型）去重排时间轴、重建画面：切轨导致 S.sel 被回退成普通型时，
-   标题/网格变成那个型，节目单却还在走（用户实拍：连播中切普通轨，画面变成四分基础）。
+   标题/网格变成那个型，节目单却还在走（用户实拍 · v2.9.0 前：连播中切轨，画面变成四分基础）。
    游标尚未起步（arrBar = -1）或曲式已被删时返回 null，调用方回退既有口径。 */
 const arrangePlayPattern = () => {
   const a = arrangeCur();
@@ -3641,7 +3649,7 @@ let subCellEls = /** @type {Record<number, HTMLElement>[]} */ ([]);
   /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[][]} */
   let glEls = [];                                            // 短音符合并标注（组标签）
 let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<number, HTMLElement>[]} */ ([]), lastBeat = /** @type {number} */ (-1), lastRulerEl = /** @type {HTMLElement|null} */ (null);   // 跑道：拍点容器 + 座次尺
-/* 扫弦箭头层（v2.4.3）：每小节一行，与 rowEls 逐位同构（普通轨为 null）。
+/* 扫弦箭头层（v2.4.3）：每小节一行，与 rowEls 逐位同构（无扫弦记谱的小节为 null）。
    箭头挂在这里而不是格子里——格子有 overflow:hidden，挂进去会被裁（见 .strums 注释） */
 let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   /* 小节和弦名胶囊（v2.7.4）：每小节行上方一颗，与 rowEls 逐位同构（无和弦的小节存 null）。
@@ -6292,40 +6300,43 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   const itemKeys = fn => e => {
     if (e.key === "Enter" || e.key === " " || e.code === "Space"){ e.preventDefault(); fn(); }
   };
-  /* 示例曲分组（v2.4.1）：分组头 + 7 个节奏型 + 常驻的「切换节奏型」胶囊条。
-     结构与内置/自定义组同构（都是 preset-section + preset-item 列表），
-     只是外面多一层 .preset-demo-group 的绿色竖线做身份区分。
-
-     ★ 切换胶囊条（demoSegRow）是这次新增的**第二个切换入口**：
-       原来要换"这一段用哪个节奏型"必须进曲式编排 overlay、找到对应段、点「换」、
-       再在一长串候选里挑——而主界面上正对着的时值可视化区**离那里很远**。
-       胶囊条把它拉回预设卡片内：点一下 = 把当前段的块指向该型，下一个小节边界生效。
-       两条路径共用同一份数据（曲式里的 block.ref），不存在第二套真相。 */
-  /** @param {HTMLElement} list @param {any[]} demo */
-  function buildDemoGroup(list, demo){
-    const secD = document.createElement("div");
-    secD.className = "preset-section demo-section";
-    const badge = document.createElement("span");
-    badge.className = "preset-badge"; badge.textContent = "示例曲";
-    const title = document.createElement("span");
-    title.textContent = DEMO_SONG_NAME + " · " + demo.length + " 个节奏型";
-    secD.appendChild(badge); secD.appendChild(title);
-    list.appendChild(secD);
-
+  /* 「自定义」区（v2.9.0）：只放**曲式条目**（Store.arranges，含内置示例曲《在他乡》）。
+     ★ 与旧「示例曲分组」的区别：v2.9.0 把示例曲的 5 个节奏型并入了「扫弦」区（按内容认型
+       demoIndexOf），这里不再列节奏型，只列"整首怎么弹"的曲式条目——点一条 = 选中并立即
+       播放整首（见 playArrange：对任何曲式都成立，不再写死 DEMO_ID）。
+     ★ 整首连播行 + 段序条挂在**当前选中的曲式**上（缺省取第一条）：它们是"这首歌有哪几段 /
+       现在播到哪"的视图，只对正在用的那一条有意义——多条曲式各挂一条只会互相打架。
+     ★ 切换节奏型胶囊条（demoSegRow）是"换本段用哪个型"的入口：候选 = 全部示例型
+       （按内容认型），只在"正在播这条曲式"时出现（判据见 buildDemoSegRow）。 */
+  /** @param {HTMLElement} list */
+  function buildArrangeGroup(list){
     const group = document.createElement("div");
-    group.className = "preset-demo-group";
-    /* 整首连播 + 段序条（v2.5.0）挂在**节奏型之前**：它是"这首歌怎么弹"的入口，
-       而下面那 7 个节奏型是"某一段用哪个型"的素材。顺序即层级。
-       曲式不在库里（用户删过）时整块不出现——没有可连播的对象，
-       摆一个点下去只弹提示的按钮是噪音（此时分组下方有「恢复示例曲」引导） */
-    const songAr = Store.findArrange(DEMO_ID);
-    if (songAr) buildDemoSongRow(group, songAr);
-    demo.forEach(c => group.appendChild(buildPresetItem(c, shortDemoName(c.name))));
-    /* 常驻切换条：只在"当前正在用这首示例曲"时出现——
-       没在用它就没有可切换的对象，硬显示一排名不对题的胶囊只会制造噪声。
-       判据看 S.arrangeSel.id（当前选中的曲式）是否就是示例曲 */
-    const segRow = buildDemoSegRow(demo);
-    if (segRow) group.appendChild(segRow);
+    group.className = "preset-arrange-group";
+    const ars = Store.arranges;
+    if (!ars.length){
+      const h = document.createElement("div");
+      h.className = "hint";
+      h.textContent = "还没有曲式——点下方「编排曲式」从头编一首。";
+      group.appendChild(h);
+      list.appendChild(group);
+      return;
+    }
+    const active = Store.findArrange(S.arrangeSel.id) || ars[0];
+    if (active) buildDemoSongRow(group, active);
+    /* 曲式条目：点一条 = 选中并立即播放整首（含示例曲，即旧的「整首连播」语义） */
+    ars.forEach(a => {
+      const isActive = S.arrangeSel.id === a.id;
+      const item = presetItemEl(a.name, `${a.sections.length} 段 · 曲式`, isActive);
+      const pick = () => playArrange(a);
+      item.addEventListener("click", pick);
+      item.addEventListener("keydown", itemKeys(pick));
+      group.appendChild(item);
+    });
+    const demo = customs.filter(c => demoIndexOf(c) >= 0);
+    if (demo.length){
+      const segRow = buildDemoSegRow(demo);
+      if (segRow) group.appendChild(segRow);
+    }
     list.appendChild(group);
   }
   /* ---- 整首连播 + 段序条（v2.5.0）----
@@ -6344,11 +6355,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        三者操作的都是同一份数据（S.playMode 与 S.arrangeSel），不存在第二套真相。 */
 
   /** 段序条 / 整首连播的元素引用。**列表重建即失效**，故 buildPresetList 每次先清空
-      （切到普通轨时示例组不渲染，留着旧引用会让 sync 往已脱离文档的节点上写） */
+      （列表重建时这些节点会被换掉，留着旧引用会让 sync 往已脱离文档的节点上写） */
   /** @type {HTMLElement|null} */ let demoSongNote = null;
   /** @type {HTMLElement|null} */ let demoPlayAllBtn = null;
   /** @type {HTMLElement|null} */ let demoSecRowEl = null;
   /** @type {HTMLElement[]} */ let demoSecPills = [];
+  /** 当前渲染了段序条 / 整首连播的**曲式 id**（v2.9.0）：段序条与切换节奏型胶囊条都只服务
+      "正在用的那一条曲式"，click 时要拿它去 Store 里找——不再写死 DEMO_ID。
+      @type {string|null} */ let demoArrId = null;
 
   /* 段的短标签：段名形如「副歌 · 上 C·Am·Dm」「主歌二 · 人静的雨夜 Am·Em…」——
      " · " 之前那一段才是用户对这首歌结构的称呼（副歌/主歌/桥段/收束），
@@ -6363,7 +6377,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      S.arrangeSel.from 就是编排面板里的「起」。 */
   function demoCurSec(){
     const a = Store.findArrange(S.arrangeSel.id);
-    if (!a || a.id !== DEMO_ID) return -1;
+    if (!a || !demoArrId || a.id !== demoArrId) return -1;
     /* 播放中跟**可听位置**（v2.7.1，与歌词轨/跳段行计数器同源）：调度游标 arrSec
        早一个前瞻窗口，段序条高亮会先于声音跳到下一段。取不到回退游标 */
     if (S.playing && S.playMode === "arrange"){
@@ -6372,10 +6386,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     }
     return S.arrangeSel.from;
   }
-  /** 把「整首连播」行与段序条直接挂进示例分组（不再套一层 wrapper）。
+  /** 把「整首连播」行与段序条直接挂进「自定义」区容器（不再套一层 wrapper）。
       扁平的理由是**可定位性**：这两块都要被测试按类名找，而 stub 不解析 HTML、
       只能逐层遍历 children——每多一层都要在每个用例里多写一次 `.children.find`。
-      @param {HTMLElement} group 示例分组容器 @param {any} a 示例曲式 */
+      ★ v2.9.0：参数 a 从"示例曲常量"泛化为**任意曲式**——它只服务 buildArrangeGroup
+        选中的那一条（缺省第一条）；段序条/连播按钮都按 a 的 sections 现算，不再写死 DEMO_ID。
+      @param {HTMLElement} group 自定义区容器 @param {any} a 曲式 */
   function buildDemoSongRow(group, a){
     const head = document.createElement("div");
     head.className = "demo-play-row";
@@ -6384,7 +6400,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.textContent = "整首连播";
     btn.title = "按原曲顺序从第 1 段播到最后一段，放完自动从头再来";
     btn.setAttribute("aria-label", "整首连播：按原曲顺序串起全部 " + a.sections.length + " 段并循环");
-    btn.addEventListener("click", () => { btn.blur(); playWholeSong(); });
+    btn.addEventListener("click", () => { btn.blur(); playArrange(a); });
     const note = document.createElement("span");
     note.className = "demo-play-note";
     head.appendChild(btn); head.appendChild(note);
@@ -6406,23 +6422,26 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     });
     group.appendChild(row);
     demoSongNote = note; demoPlayAllBtn = btn; demoSecRowEl = row; demoSecPills = pills;
+    demoArrId = a.id;                // v2.9.0：段序条/切换型胶囊都按这条曲式定位，不再写死 DEMO_ID
   }
   /* 整首连播（唯一出口）。先校验再切模式——校验失败时**不动**用户当前的播放模式，
      否则"点一下，什么也没响起来，却把模式改了"是最难自查的那种半状态。
      循环恒开：用户要的是"练习"（串联并切换多种节奏型反复过），放完停下不算练习闭环；
-     想只过一遍就停的人可以按停止键，或在编排面板关掉「范围循环」（那个开关仍归编排面板管）。 */
-  function playWholeSong(){
-    const a = Store.findArrange(DEMO_ID);
-    if (!a){ announce("示例曲不在曲式库里"); return; }
+     想只过一遍就停的人可以按停止键，或在编排面板关掉「范围循环」（那个开关仍归编排面板管）。
+     ★ v2.9.0：收 arrange 对象（不再写死 DEMO_ID）——「自定义」区里任何一条曲式都用它播。
+     调用方：buildArrangeGroup 的条目点击、buildDemoSongRow 的「整首连播」按钮。 */
+  /** @param {any} a 要整首连播的曲式 @returns {void} */
+  function playArrange(a){
+    if (!a){ announce("曲式不在库里"); return; }
     const probs = arrangeProblems(a);
-    if (probs.length){ Modal.uiAlert("示例曲暂时不能播放：\n" + probs.join("\n")); return; }
+    if (probs.length){ Modal.uiAlert("这条曲式暂时不能播放：\n" + probs.join("\n")); return; }
     setMode("playMode", "arrange", "整首连播");
     S.arrangeSel = { id: a.id, from: 0, to: a.sections.length - 1, loop: true, byLyric: false };
     Store.persist();
     Controls.stop();                 // 幂等（stop 可重入），保证"从头播"而不是从中间续
     Controls.start();
     syncDemoSecRow();
-    announce("整首连播：《" + DEMO_SONG_NAME + "》共 " + a.sections.length + " 段");
+    announce("整首连播：《" + a.name + "》共 " + a.sections.length + " 段");
   }
   /* 点段序条第 i 段 = 只循环这一段。复用 Arrange.jumpTo（v2.4.3 的"拉回"机制）：
      它把范围置成 [i,i] + loop，下一个小节边界生效；停止状态下还会把网格换成该段的型。
@@ -6431,7 +6450,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        于是点了段号毫无反应（这批 bug 的典型症状就是"按钮坏了"）。 */
   /** @param {number} i */
   function jumpDemoSection(i){
-    const a = Store.findArrange(DEMO_ID);
+    const a = Store.findArrange(demoArrId);
     if (!a) return;
     setMode("playMode", "arrange", "点段序条跳段");
     S.arrangeSel.id = a.id;
@@ -6442,14 +6461,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* 段序条 + 整首连播按钮的呈现。**单一渲染入口**：段落切换（每小节）、跳段、启停、
      列表重建都调它，不在多处各写一遍"更新哪颗胶囊"——那种写法漏一处就是界面对不上状态。
      元素不存在（未渲染 / 已脱离文档）时静默返回：它被 arrange 的 refreshBar 调，
-     而 refreshBar 在任何一次编排面板动作时都会跑，那时侧栏可能是普通轨（无示例组）。 */
+     而 refreshBar 在任何一次编排面板动作时都会跑，那时侧栏可能没有这条曲式的分组。 */
   function syncDemoSecRow(){
     if (!demoSecRowEl || !demoSecPills.length) return;
-    /* ★ 查的是**示例曲本身**（按固定 id），不是"当前选中的曲式"：
-       刷新页面后 S.arrangeSel.id 是空的（示例是启动时静默带出的，没被"选中"过），
-       若以它为入口整条就会空着——而"这首曲子有哪几段"与"现在有没有在播它"是两件事。
+    /* ★ v2.9.0：查的是**渲染这条段序条的那条曲式**（demoArrId，由 buildDemoSongRow 写入），
+       不再是写死的示例曲 id。段序条与切换型胶囊条都只服务"正在用的那一条曲式"——
+       列表重建时若该曲式被删/demoArrId 落空，这里静默返回即可（元素引用也已在上游清空）。
        高亮与"整首/单段"那一态才需要 isMine 这个条件（见下）。 */
-    const a = Store.findArrange(DEMO_ID);
+    const a = Store.findArrange(demoArrId);
     if (!a) return;
     const n = a.sections.length;
     /* cur = -1 表示"当前播放的不是这首示例曲"（demoCurSec 自己判 isMine 并返回 -1），
@@ -6480,7 +6499,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        于是"点了侧栏某个节奏型 + 按播放"播的仍是节目单，而画面标题已经换成他点的那一项；
        用户报的"只能重复练习单一节奏型"，一半就是这个半状态造成的：
        他以为自己在单练某一段，实际在整首连播里打转（或反之，退不出去）。
-     与 playWholeSong / jumpDemoSection 合起来才构成"两个对等入口"这个契约。 */
+     与 playArrange / jumpDemoSection 合起来才构成"两个对等入口"这个契约。 */
   function exitArrangeForPreset(){
     if (S.playMode !== "arrange") return false;
     setMode("playMode", "preset", "点选预设回到单型练习");
@@ -6503,7 +6522,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /** @param {any[]} demo @returns {HTMLElement|null} */
   function buildDemoSegRow(demo){
     const ar = Store.findArrange(S.arrangeSel.id);
-    if (S.playMode !== "arrange" || !ar || ar.id !== DEMO_ID) return null;
+    if (S.playMode !== "arrange" || !ar || ar.id !== demoArrId) return null;
     const wrap = document.createElement("div");
 
     const note = document.createElement("div");
@@ -6546,9 +6565,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     /* v2.9.0：示例型已改成通用名（十六分满扫 等），不再带"在他乡 · "前缀，短标签 = 原名。
        这里保留旧式「节奏型N（型名）→ 节奏型 N」的兜底，覆盖老数据尚未被一次性迁移
        （migrateDemoPatternNames）收敛到的极端情形。
-       ★ 前缀常量属于 Tracks（示例型识别的历史来源），这里必须经 Tracks 取——
-         裸写 DEMO_NAME_PREFIX 是未定义引用（它是另一个 IIFE 里的 const，不共享作用域） */
-    const s = String(full).replace(Tracks.DEMO_NAME_PREFIX, "");
+       ★ 前缀常量 DEMO_LEGACY_PREFIX 在数据区（Store 之前）声明，Presets 可直接引用 */
+    const s = String(full).replace(DEMO_LEGACY_PREFIX, "");
     const m = s.match(/^节奏型\s*(\d+)/);
     return m ? "节奏型 " + m[1] : s.replace(/（.*?）/, "").trim();
   }
@@ -6560,7 +6578,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /** @param {number} secIdx @param {string} id @returns {void} */
   function applyDemoSeg(secIdx, id){
     const ar = Store.findArrange(S.arrangeSel.id);
-    if (!ar || ar.id !== DEMO_ID) return;
+    if (!ar || ar.id !== demoArrId) return;
     if (!Store.customs.some((/** @type {any} */ c) => c.id === id)) return;      // 型已被删：幂等退出
     const dst = Store.customs.find((/** @type {any} */ c) => c.id === id);
     const v = Store.upsertArrange({ id: ar.id, name: ar.name,
@@ -6581,73 +6599,74 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     refreshAfterPatternChange();
     announce("第 " + (secIdx + 1) + " 段已换成「" + (dst ? dst.name : "节奏型") + "」");
   }
+  /* 一个内置型条目。v2.9.0 从 buildPresetList 内联循环里抽出——节拍区与扫弦区都要渲染
+     内置型，两处内联等于两条会漂移的渲染路径（选中态判据、键盘契约各写一遍）。
+     ★ 内置项仍带**原始下标 i**：S.sel.idx 指向 BUILTINS 的下标（不是分区后的序位），
+       这样过滤成两区后仍精确指回原数组。
+     @param {HTMLElement} list @param {any} p @param {number} i @returns {void} */
+  function pushBuiltinItem(list, p, i){
+    /* v2.6.4：曲式模式下不显示"选中高亮"——高亮的语义是"正在练这个型"，
+       曲式播放由节目单唯一决定，任何高亮都在说谎（用户实拍：连播中侧栏高亮
+       四分基础、画面在他乡）。在播什么的真相由段序条/整首连播按钮表达 */
+    const isActive = S.playMode !== "arrange" && S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
+    const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + meterName(p.meter) + "）" : "");
+    const item = presetItemEl(p.name, meta, isActive);
+    const pick = () => {
+      exitArrangeForPreset();                    // v2.5.0：点内置型 = 回到单练它（见该函数注释）
+      S.sel = {type:"builtin", idx:i};
+      if (p.meter !== S.sig) Controls.setSig(p.meter);
+      refreshAfterPatternChange();
+      Store.persist();
+    };
+    item.addEventListener("click", pick);
+    item.addEventListener("keydown", itemKeys(pick));
+    list.appendChild(item);
+  }
+  /** 一个分区标题（纯文字，不可点）。 @param {HTMLElement} list @param {string} text @returns {void} */
+  function pushSection(list, text){
+    const sec = document.createElement("div");
+    sec.className = "preset-section";
+    sec.textContent = text;
+    list.appendChild(sec);
+  }
+  /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠（常显）。
+     分类判据是**内容**（hasStrum：谱里有没有 dir/zone），不再有"当前轨"这个运行期状态——
+     两态切换条（普通节拍 / 带扫弦）整条删除。
+       · 节拍区：BUILTINS 与 customs 里不带扫弦记谱的型
+       · 扫弦区：带扫弦记谱的型（内置「民谣扫弦」+ 示例曲 5 型 + 扫弦自定义）
+       · 自定义区：曲式条目（Store.arranges，含内置示例曲《在他乡》），由 buildArrangeGroup 渲染
+     ★ 示例曲 5 型不再单独挂"示例曲"分组：它们按内容落进扫弦区，与内置扫弦型并列。 */
   function buildPresetList(){
     const list = $("presetList");
     clear(list);
     /* v2.5.0：段序条 / 整首连播的元素引用随列表重建而失效——每次重建先清空。
-       不清的话，切到普通轨（示例组整块不渲染）后 syncDemoSecRow 仍认为"有条可刷"，
-       会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它） */
-    demoSongNote = null; demoPlayAllBtn = null; demoSecRowEl = null; demoSecPills = [];
-    /* v2.4.0：两个入口各列各的型。可见集由 Tracks 提供（**单一来源**）——
-       "列表里能列谁"与"切轨后能回退到谁"必须看同一份集合，否则回退可能落到列表外的项上。
-       ★ 内置项仍带**原始下标 i**（不是过滤后的序位）：S.sel.idx 指向 BUILTINS 的下标，
-         而 BLT 数组里存的是 {p, i} 对，pick 用的是 x.i——过滤后仍精确指回原数组 */
-    const BLT = Tracks.visibleBuiltins();
-    const hidden = Tracks.hiddenCount();
-    /* v2.4.1：示例曲《在他乡》的节奏型**恒占列表第一位**（单独成组，在内置之前）。
-       用户的原话是"示例直接放到预设库（扫弦）的第一位"——它是一首歌的完整节奏型集，
-       与"单个节奏型"不同层，混在内置/自定义里既找不到也说不清。
-       SPL.demo 只在扫弦轨非空（示例 7 个型全带 dir，普通轨被 hasStrum 过滤掉），
-       所以普通轨下这一组自然不出现，无需另加轨判断。 */
-    const SPL = Tracks.splitCustoms();
-    if (SPL.demo.length) buildDemoGroup(list, SPL.demo);
-    const CST = SPL.rest;
-    const sec1 = document.createElement("div");
-    sec1.className = "preset-section";
-    sec1.textContent = hidden > 0
-      ? `内置预设 · ${BLT.length} 个（另有 ${hidden} 个扫弦型在当前轨不显示）`
-      : `内置预设 · ${BLT.length} 个`;
-    list.appendChild(sec1);
-    BLT.forEach(({ p, i }) => {
-      /* v2.6.4：曲式模式下不显示"选中高亮"——高亮的语义是"正在练这个型"，
-         曲式播放由节目单唯一决定，任何高亮都在说谎（用户实拍：连播中侧栏高亮
-         四分基础、画面在他乡）。在播什么的真相由段序条/整首连播按钮表达 */
-      const isActive = S.playMode !== "arrange" && S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
-      const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + meterName(p.meter) + "）" : "");
-      const item = presetItemEl(p.name, meta, isActive);
-      const pick = () => {
-        exitArrangeForPreset();                    // v2.5.0：点内置型 = 回到单练它（见该函数注释）
-        S.sel = {type:"builtin", idx:i};
-        if (p.meter !== S.sig) Controls.setSig(p.meter);
-        refreshAfterPatternChange();
-        Store.persist();
-      };
-      item.addEventListener("click", pick);
-      item.addEventListener("keydown", itemKeys(pick));
-      list.appendChild(item);
-    });
-    if (CST.length){
-      const sec2 = document.createElement("div");
-      sec2.className = "preset-section";
-      sec2.textContent = `我的预设 · ${CST.length} 个`;
-      list.appendChild(sec2);
-      /* v2.4.1：与示例组共用同一个条目构造器（buildPresetItem）——
-         两处内联等于两条会漂移的渲染路径（示例组的删除按钮行为、
-         选中态判据、键盘契约都会各写一遍）。差异只在"分组"这一层 */
-      CST.forEach(c => list.appendChild(buildPresetItem(c)));
-    }
-    /* 注意：CST 现在是 Tracks.splitCustoms().rest（已剔掉示例型），
-       所以这里的每一条都是用户自建/导入的普通自定义型 */
+       不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoSecRow 仍认为"有条可刷"，
+       会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
+       demoArrId 一并清空：它标识"这条段序条服务哪条曲式"，列表重建后由
+       buildDemoSongRow 重新写入（未渲染时保持 null，demoCurSec/syncDemoSecRow 据此静默跳过） */
+    demoSongNote = null; demoPlayAllBtn = null; demoSecRowEl = null; demoSecPills = []; demoArrId = null;
+    const beatBuiltins = /** @type {any[]} */ ([]), strumBuiltins = /** @type {any[]} */ ([]);
+    BUILTINS.forEach((p, i) => (hasStrum(p) ? strumBuiltins : beatBuiltins).push({ p, i }));
+    const beatCustoms = customs.filter(c => !hasStrum(c));
+    const strumCustoms = customs.filter(c => hasStrum(c));
+    pushSection(list, `节拍 · ${beatBuiltins.length + beatCustoms.length} 个`);
+    beatBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
+    beatCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
+    pushSection(list, `扫弦 · ${strumBuiltins.length + strumCustoms.length} 个`);
+    strumBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
+    strumCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
+    pushSection(list, `自定义 · ${Store.arranges.length} 首`);
+    buildArrangeGroup(list);
     buildDemoNoteIfNeeded(list);
-    $("presetCount").textContent = `${BLT.length} 内置${CST.length ? " + " + CST.length + " 自定义" : ""}`;
+    $("presetCount").textContent = `${BUILTINS.length} 内置`
+      + (customs.length ? ` + ${customs.length} 自定义` : "");
     $("exportBtn").disabled = !customs.length;
-    Tracks.syncTrackUI();              // v2.4.0：条上高亮与"已隐藏 N 个"说明跟列表同批刷新
-    syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/切轨/开播都经这里兜住）
+    syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/开播都经这里兜住）
     /* v2.5.0：段序条也一样——它随列表重建而重建，新造的胶囊默认没有任何高亮，
        必须在这里补一次。★ 这条不是可选的锦上添花：曲式播放中每换一个型都会经
        consumePending → applyPatternChange → buildPresetList 重建列表，漏了这一步的话
        **段序条会在播到第 2 段时整个熄灭**
-       （元素是新的、高亮是旧的）。与上面两条是同一个道理：列表重建的收尾处必须把
+       （元素是新的、高亮是旧的）。与上面一条是同一个道理：列表重建的收尾处必须把
        所有"由列表承载的状态"各同步一次 */
     syncDemoSecRow();
   }
@@ -6672,11 +6691,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     del.addEventListener("click", e => {
       e.stopPropagation();
       Modal.uiConfirm(`删除预设「${c.name}」？删除后不可恢复。`, () => {
-        /* ★ v2.4.0：删除必须按**对象身份**定位，不能再用过滤前的下标。
-           本循环现在遍历的是 Tracks.visibleCustoms() 的结果（可能是 customs 的子集），
-           若沿用 `customs.splice(i, 1)`，普通轨下删"我的预设"的第 1 项会删掉 customs 里
-           真正的第 1 项——而被显示的那一项可能排在第 3 位。（切轨前后删除行为不一致，
-           这类错删用户几乎不可能自己定位。）indexOf 在两种轨下都对 */
+        /* ★ 删除必须按**对象身份**定位（indexOf），不能再用列表里的位置。
+           v2.9.0 起列表把 customs 拆成节拍/扫弦两区渲染，显示序位与 customs 下标更不对应：
+           若沿用 `customs.splice(i, 1)`，删"扫弦区第 1 项"会删掉 customs 里真正的第 1 项——
+           而被显示的那一项可能排在第 3 位。（这类错删用户几乎不可能自己定位。） */
         const at = customs.indexOf(c);
         if (at < 0) return;                     // 已被别处删掉：幂等退出
         customs.splice(at, 1);
@@ -6701,12 +6719,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /* 示例曲还没带出来时，在列表底部给一句"怎么拿到它"的引导（v2.4.1）。
      正常流程下 ensureDemo() 在启动时就补齐了，这里覆盖的是"用户删掉了示例节奏型"
      或"跨地址/清站点数据后冷键丢失"的场景——不给路径的话用户只能猜。
-     只在扫弦轨显示：普通轨下示例型本就不可见（全带 dir），提示一个看不见的东西是噪音 */
+     ★ v2.9.0：不再按轨判断显隐（轨模型已删）——示例型按内容落进「扫弦」区，
+       它"在不在库里"用内容认型（demoIndexOf）判定，与分区位置无关。 */
   /** @param {HTMLElement} list */
   function buildDemoNoteIfNeeded(list){
-    if (!Tracks.isStrum()) return;
     if (Store.arranges.some(x => x.id === DEMO_ID)) return;    // 已在库里：不需要提示
-    if (customs.some(Tracks.isDemoCustom)) return;             // 型还在（只是曲式被删）
+    if (customs.some((/** @type {any} */ c) => demoIndexOf(c) >= 0)) return;   // 型还在（只是曲式被删）
     const note = document.createElement("div");
     note.className = "sidebar-note";
     note.id = "demoRestoreNote";
@@ -6720,43 +6738,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     note.appendChild(document.createElement("br"));
     note.appendChild(btn);
     list.appendChild(note);
-  }
-  /* 切轨后的"当前型是否还站得住"检查（v2.4.0）。
-     ★ 它**不是**迁移机制（迁移由 Store 的 trackInit 按 sel 反推完成，见那段注释），
-       而是**运行期不变量**的执法点：无论是用户点切换条、还是删除/导入预设导致
-       当前选中型变成扫弦型，普通轨下都不该有一个"列表里没有、却被播着"的型。
-     ★ 后果若不加这一步就是**静默不一致**：列表里看不见那一项、高亮也没有，
-       但控件读数停在它上面，用户点播放听到的是一个界面上不存在的型。
-     ★ 回退目标的选择：优先同轨的**第一个可用项**（普通轨 = 第一个无扫弦内置型），
-       而不是无脑 basicPattern——回退到真预设更接近用户预期（他本来就在用预设）；
-       只有在同轨一个可用项都没有时（极端：用户把自定义全设成扫弦型）才落基础节奏。
-       拍号也跟着切：与 buildPresetList 里 pick() 的同一条规则，避免"换了型却回退到基础节奏"。
-     返回 true = 本次确实做了回退（供测试与读屏播报判断，不静默降级） */
-  function ensureValidForTrack(){
-    if (S.preview) return false;                         // 试听中不动用户的选择（与 updateFallbackNote 同口径）
-    /* v2.6.4：曲式模式下**不回退**——播放内容由节目单唯一决定（blockAt/scheduleRef），
-       S.sel 只是"退回预设模式后选谁"。此时把 S.sel 改成普通型，等于在侧栏制造一个
-       "已选中某型"的假象，而画面（正确地）纹丝不动（用户实拍：连播中切普通轨，
-       四分基础被高亮，可视化还在在他乡——像"切不过去"）。
-       退回预设的入口（点任一预设）会先 exitArrangeForPreset 再回到这里，
-       届时 playMode 已是 preset，回退照常兜底——"普通轨不该有扫弦型被播"的不变量不破 */
-    if (S.playMode === "arrange") return false;
-    const selP = selectedPreset();
-    if (Tracks.isStrum() || !hasStrum(selP)) return false;   // 扫弦轨下扫弦型合法；普通轨下选中的不是扫弦型 → 无需处理
-    const first = Tracks.visibleBuiltins()[0];
-    if (first){
-      S.sel = { type: "builtin", idx: first.i };
-      if (first.p.meter !== S.sig) Controls.setSig(first.p.meter);
-    } else {
-      /* 同轨无任何内置可用项：退回"基础节奏"，并把 sel 指到一个一定安全的引用上。
-         idx 留 0 而非删 sel——S.sel 是全应用到处读的结构，不设"空引用"这种状态 */
-      S.sel = { type: "builtin", idx: 0 };
-    }
-    const nm = curPattern().name;
-    announce("当前节奏型带扫弦记谱，普通节拍下不适用，已切到「" + nm + "」");
-    try{ console.warn("[BeatSight] 切到普通节拍：选中的「" + (selP ? selP.name : "?")
-      + "」带扫弦记谱，已回退到「" + nm + "」"); }catch(e){}
-    return true;
   }
   /* 拍号回退提示：选中节奏型与当前拍号不匹配时，告知用户并提供一键切回 */
   function updateFallbackNote(){
@@ -6779,10 +6760,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     Store.persist();
   });
   function refreshAfterPatternChange(){
-    /* v2.4.0：**入口守卫放在最前**——后面前提是"curPattern() 在当前轨站得住"。
-       放这里的额外好处：所有刷新路径（用户点预设 / 切轨 / 删除自定义 / 停止兜底）都经过本函数，
-       于是"普通轨下不该有扫弦型在播"这条不变量只有一个执法点，不会漏。 */
-    ensureValidForTrack();
+    /* v2.9.0：删掉了旧的「当前型在当前轨站不站得住」守卫（ensureValidForTrack）——
+       两态轨模型已取消，节拍/扫弦型在侧栏始终可见可选，"列表里没有却被播着"不再可能。
+       拍号不匹配的提示仍由 updateFallbackNote 负责。 */
     if (S.playing){
       /* v1.1.1：先试「就地接续」——点下即生效，不再等一个小节。
          （用户 bug：播放中从三连音基础切四分基础，第 1 小节仍走三连音，要等小节边界才换）
@@ -6790,7 +6770,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       /* v2.6.3：曲式播放中的接续目标 = **节目单游标处的型**，不是 curPattern()——
          曲式播放的取型唯一来源是节目单（blockAt），S.sel 与播放无关。
          原先拿 curPattern() 去 resync：切轨导致 S.sel 被回退成普通型时，时间轴被拽进
-         另一个型的网格，标题/画面与节目单分裂（用户实拍：连播中切普通轨，画面变成
+         另一个型的网格，标题/画面与节目单分裂（用户实拍 · v2.9.0 前：连播中切轨，画面变成
          四分基础）。走节目单后：切轨 = 同型幂等（相位零跳动），胶囊条换当前段的型
          才真的"点下即生效"。拿不到节目单型（游标未起步/曲式被删）时回退既有口径 */
       const target = (S.playMode === "arrange" ? arrangePlayPattern() : null) || curPattern();
@@ -7045,7 +7025,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   bindLoopSel("loopFrom", true);
   bindLoopSel("loopTo", false);
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, maybeShowMigHint, ensureValidForTrack, syncLoopUI, setLoopRange,
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, maybeShowMigHint, syncLoopUI, setLoopRange,
     syncDemoSecRow };                             // v2.5.0：段序条呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）
 })();
 
@@ -8238,12 +8218,10 @@ const Arrange = (() => {
        旧实现把候选行追加到 #argSections 末尾——点第 6 段的「换」，候选却出现在
        第 10 段 + 歌词轨之后，用户视觉上「点了没反应」（必须滚动到底才看得见）。
        改为插到触发它的段行紧后面：候选与触点在同一个视野里，这是「就地选择」的
-       基本要求（同 .track-row 贴住 #presetList 的理由）。
-       ★ 仍然刻意不做轨过滤——曲式编排可以引用任意预设（含带扫弦记谱的型），
-         因为"曲式"是独立于两个入口的第三种组织方式：它自己就带着"这一段用什么型"
-         的信息。若此处跟着 S.track 过滤，会把"切轨"变成一次**破坏性**操作，
-         与"切轨不换参数、不动数据"的原则正面冲突。
-         过滤只发生在一处：侧栏预设列表（buildPresetList），即"用户点选"的那条路径 */
+       基本要求（同「自定义」区把曲式条目与其段序条贴在一起的理由）。
+       ★ 候选恒为全部预设（含带扫弦记谱的型）：v2.9.0 起侧栏也不再按轨过滤——
+         节拍/扫弦两区常显，编排 overlay 与侧栏看到的是同一全集，故此处无需可见性判断。
+         这正是"曲式是独立于节拍/扫弦两区的第三种组织方式"的体现：它自带"这一段用哪个型" */
     if (picking){
       const pickRow = document.createElement("div");
       pickRow.className = "arg-sec arg-pick";
@@ -8427,9 +8405,9 @@ const Arrange = (() => {
   }
   const isOpen = () => $("arrangeOverlay").classList.contains("open");
 
-  /* 载入示例《在他乡》（v2.3.0）：一键生成 7 个节奏型预设 + 整首曲式 + 10 段歌词。
-     幂等：曲式库已有同名曲式就只提示、不重复建（预设按名查重，删过曲式留下预设的场景
-     也不会重复）。引用按名解成 custom id——名字是这批数据自带的命名空间。
+  /* 载入示例《在他乡》（v2.3.0）：一键生成 5 个节奏型预设 + 整首曲式 + 10 段歌词。
+     幂等：曲式库已有同名曲式就只提示、不重复建（预设按内容 + 下标查重，删过曲式留下预设的场景
+     也不会重复）。引用按**内容 + 下标**解成 custom id（v2.9.0：名字已通用化，不再当命名空间）。
 
      v2.4.1 拆两半：ensureDemo() 只做"确保数据齐全"（无提示、无 UI 副作用、幂等），
      loadDemo() 在其上加"打开并选中它"的交互。拆的理由是自动带出（init 时静默补齐）
@@ -8439,10 +8417,10 @@ const Arrange = (() => {
     const spec = demoBuildSpec();
     /* ★ v2.4.1 关键修复：导入预设后必须刷新**侧栏预设列表**。
        importPresets 只落数据（Store 不该知道列表怎么画），旧实现的 loadDemo 只调了
-       本 overlay 的 render()/refreshBar()——两者都不碰侧栏。后果：7 个节奏型进了
+       本 overlay 的 render()/refreshBar()——两者都不碰侧栏。后果：5 个节奏型进了
        beatsight.customs（16 KB 数据确实写进去了），但侧栏列表一动不动，
        用户在预设库里根本看不到它们，"换个节奏型"变成一件做不到的事。
-       这正是 T64d/T64j 踩过的同一个坑（importPresets 不重建列表），此处收口。 */
+       这正是 importPresets 不重建列表这个老坑（v2.4.1 修复的同一类），此处收口。 */
     let created = false;
     /* v2.9.0：认型改按**内容 + 下标**（demoCustomAt），不再按名字——名字已改成通用名，
        与用户自建型可能重名；同一台机器上"旧型 + 新曲式"的混杂态也唯有比内容才分得清 */
@@ -8481,7 +8459,7 @@ const Arrange = (() => {
     if (!v) return { ok: false, error: "示例曲式未通过结构校验——请检查示例节奏型是否都在。", id: "" };
     spec.lyrics.forEach((chars, i) => Store.upsertLyric(v.id, i, chars));
     Store.persist();
-    /* 预设列表在两种情况下都要刷：新建了预设（列表多 7 项）、或只是补了曲式
+    /* 预设列表在两种情况下都要刷：新建了预设（列表多 5 项）、或只是补了曲式
        （列表不变但选中态/计数可能变）。统一刷一次，不分支——分支正是漏刷的来源。
        Presets 是顶层 const（本模块声明顺序在其后，运行时已初始化），直接按名引用 */
     Presets.refreshAfterPatternChange();
@@ -8521,7 +8499,7 @@ const Arrange = (() => {
     if (already){
       Modal.uiAlert("示例《在他乡》已在曲式库里——已在左侧列表为你选中它。");
     } else {
-      announce("已载入示例《在他乡》：7 个节奏型 + 全曲 10 段歌词");
+      announce("已载入示例《在他乡》：5 个节奏型 + 全曲 10 段歌词");
     }
   }
   /* v2.4.1：「载入示例」按钮已删除——示例改为启动时自动带出（见装配层的 Arrange.ensureDemo()），
@@ -8993,9 +8971,8 @@ onAudibleBar = Arrange.refreshNow;
 /* v2.6.3：playMode 一变就同步主界面跳段行（argJump）显隐——点预设退出曲式时
    不再残留「◀ 上一段 / 第 N/M 段 / 下一段 ▶」（用户实拍）。注入而非直接调用：
    setMode 住在共享状态区，直接调 Arrange 是反向引用（同 onArrangeBar 的纪律）。
-   v2.6.4：Tracks.syncTrackUI 一并——轨说明在曲式模式下是"以节目单为准"的提示，
-   不进/出模式各刷一次就会漏（同 argJump 曾经的残留） */
-onPlayModeChange = () => { Arrange.refreshBar(); Tracks.syncTrackUI(); };
+   v2.9.0：原先一并调的 Tracks.syncTrackUI 随两态轨模型一起删除。 */
+onPlayModeChange = () => { Arrange.refreshBar(); };
 /* 「一个型有几小节」的查询注入（v2.5.1）：共享区的 secBars / blockAt / arrNextBar 是**纯函数**，
    不直接引用 resolveRef（那会让 T52 那批"纯函数可直测"的断言必须先建一份 Store）。
    这里把真正的解析注入进去——与 onArrangeBar / onLimitPulse 同一套"跨模块装配交给装配层"
@@ -9029,9 +9006,9 @@ $("trStepInp").value = S.trainer.step; $("trEvery").value = S.trainer.everyN;
 Controls.setSig(S.sig);
 Controls.setSwing(S.swing, false);
 Controls.setTimbre(S.timbre, false);
-/* 示例曲《在他乡》首次带出（v2.4.1）：**只在第一次打开时**静默补齐 7 个节奏型 +
+/* 示例曲《在他乡》首次带出（v2.4.1）：**只在第一次打开时**静默补齐 5 个节奏型 +
    整首曲式，让预设库首位恒有它——用户不必再去点一个按钮。
-   ★ 为什么加"已带出过"的闩而不无条件 ensureDemo()：示例 = 7 个节奏型 + 1 首曲式 + 10 行歌词，
+   ★ 为什么加"已带出过"的闩而不无条件 ensureDemo()：示例 = 5 个节奏型 + 1 首曲式 + 10 行歌词，
      是一份**别人的**曲目。每次启动都补齐，等于用户主动删掉后下次打开它又回来了——
      那不是"贴心的默认素材"，而是"删不掉的东西"。口径：首次打开静默带出一次并落闩；
      之后无论用户删不删都不再自动写（想找回来走侧栏的「恢复示例曲」手动入口）。

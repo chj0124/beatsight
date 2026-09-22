@@ -23,9 +23,10 @@
 const { loadApp, FakeAudioContext, drive, driveFrames, ok, eq, near, section } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
-/* 扫弦轨 + 无扫弦记谱的基底选择（idx 1 四分基础）——场景里再 import 自己的谱 */
+/* 无扫弦记谱的基底选择（idx 1 四分基础）——场景里再 import 自己的谱。
+   v2.9.0：轨模型已删，起跑型与"在哪条轨"无关，双声部判据只看**谱的内容** */
 const loadStrum = extra => loadApp(seedState(Object.assign(
-  { track: "strum", sel: { type: "builtin", idx: 1 } }, extra || {})));
+  { sel: { type: "builtin", idx: 1 } }, extra || {})));
 const clicksOf = ac => ac.hits.filter(h => h.kind === "osc");
 const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
   && [700, 1400, 2800].includes(h.filterFreq));
@@ -48,9 +49,11 @@ function startWith(beat, name, bars, opts){
 /* ================= 场景 T76a：dir-only 谱的「扫弦」滑条真的管用 ================= */
 section("T76a 双声部打通 · 纯方向谱（民谣扫弦形状）归扫弦声部");
 {
-  /* 默认开局就是用户实拍的那条路径：扫弦轨 + 民谣扫弦（dir-only）+ 电子音色 */
+  /* 默认开局就是用户实拍的那条路径：默认型 = 民谣扫弦（dir-only）+ 电子音色 */
   const { beat } = loadApp();
-  eq(beat.Store.S.track, "strum", "前提：默认轨 = 扫弦轨（民谣扫弦反推）");
+  eq(beat.Store.S.sel.type, "builtin", "前提：默认选中的是内置型");
+  eq(beat.curPattern().name, "民谣扫弦 · 下-下上-上下上",
+    "前提：默认型 = 民谣扫弦（dir-only，与实拍同谱；v2.9.0 起不再有「扫弦轨」这回事）");
   beat.Store.S.vol = 0;                               // 「节拍」拉到 0
   beat.Controls.start();
   const ac = FakeAudioContext.last;

@@ -75,10 +75,10 @@ const HTML_ATTRS = {
   loopFrom: { tagName: "SELECT" },
   loopTo: { tagName: "SELECT" },
   loopToggle: { tagName: "BUTTON" },
-  /* v2.5.0：「扫弦」音量条在标记里就是 `hidden`（默认轨可能是普通轨，不该先闪一下），
-     由 Tracks.syncTrackUI 按当前轨收放。不复刻初始态的话，"普通轨该收起"这条不变量
-     在桩里恒真——而它正是这条 UI 决策的全部内容。 */
-  volStrumRow: { hidden: true },
+  /* v2.9.0：轨模型已删，「扫弦」音量条改为**常显**——判据从"当前在哪条轨"变成
+     "当前型是否带扫弦记谱"，三分类下随时可能切到扫弦型，跟着显隐会让滑条忽隐忽现。
+     标记里也没有 `hidden`；桩若仍留初始 hidden，"恒可见"这条断言会被静默架空。 */
+  volStrumRow: { },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
    所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
@@ -96,7 +96,7 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { dir: "U" } },
     { className: "pill", dataset: { dir: "" } },
   ],
-  /* v2.2.0 扫弦轨：弦区四档。第一档 data-zone=""（默认/中）——空串与 dirRow 的「不标注」
+  /* v2.2.0：扫弦弦区四档。第一档 data-zone=""（默认/中）——空串与 dirRow 的「不标注」
      同构：pill() 的 dataset.zone !== undefined 判据对它成立，「回默认」这条路测得到 */
   zoneRow: [
     { className: "pill", dataset: { zone: "" } },
@@ -277,9 +277,9 @@ class FakeAudioContext {
      这类最严重症状的触发条件（Store 里任何一处漏了 try 都会被它照出来），必须可注入才能断言
    opts.seedDemo   ：v2.4.1。**默认 true —— 即"示例曲已带出过"**。
      为什么默认开：应用在首次打开（冷键 beatsight.demoSeeded 缺失）时会静默带出示例曲
-     （7 个节奏型 + 1 首曲式 + 10 行歌词，见 index.html 装配层的 `if (!Store.demoSeeded())`）。
+     （5 个节奏型 + 1 首曲式 + 10 行歌词，见 index.html 装配层的 `if (!Store.demoSeeded())`）。
      这对真实用户是对的，但会让**所有**"预设库初始为空 / customs.length === N"的老用例
-     全部偏 7（T01 的 2→9、T20 的 0→7…）。那些用例要验证的是它们各自的规则，
+     全部偏 5（T01 的 2→7、T20 的 0→5…）。那些用例要验证的是它们各自的规则，
      不是"示例曲有没有自动进来"，所以默认把闩置上、让它们回到自己设计的起点。
      想测"首次打开会带出"的用例（T63a/c）传 `{ seedDemo: false }`。
      ★ 载体是**独立的冷键 beatsight.demoSeeded**，不是热键 beatsight.state：

@@ -1,4 +1,4 @@
-/* BeatSight 自动化测试 · 扫弦轨升级（v2.2.0）
+/* BeatSight 自动化测试 · 扫弦弦区（zone）行为
    T62 系列。
    ---------------------------------------------------------------------------
    契约：
@@ -9,17 +9,17 @@
        （v2.4.2 前是 .cell-zone.z{0,1,2} 色带）；编辑器仍挂 .ed-zone 文字徽标；
      · 编辑：dirRow（方向三档）+ zoneRow（弦区四档：默认/低/中/高）同套纪律——
        pushUndo 先行、同档重按不推栈。
-   v2.4.0 起（双入口拆分）本组统一在**扫弦轨**上运行：zone 的音色与弦区跨距是扫弦轨的呈现，
-   普通轨下 zone 既不发弦区音色也不画箭头底纹（那两条由 T64g / T64h 专测）。 */
+   v2.9.0：两态轨模型（普通轨 / 扫弦轨）已删除，zone 是否生效不再取决于"当前在哪条轨"，
+   而取决于**谱本身**——带扫弦记谱（dir/zone）的型即走扫弦声部、按弦区发色、画箭头跨距。
+   故本组不再需要"把应用切到扫弦轨"，每个场景各自导入带 zone 的谱来触发弦区分支。 */
 "use strict";
 const { loadApp, FakeAudioContext, pill, drive, ok, eq, near, section, html } = require("../lib/harness");
 
-/* ★ v2.4.0：本组所有用例都在扫弦轨上跑。
-   用 seed 显式声明 track:"strum"（而不是靠 sel 反推），这样"本组测的是扫弦轨"这件事
-   写在用例里、不依赖迁移规则的实现细节——将来迁移规则若调整，本组语义不变。
-   同时把 sel 指到非扫弦型（idx 1），避免加载期回退干扰本组自己的 sel 赋值 */
+/* ★ v2.9.0：轨模型已删，本组不再"切到扫弦轨"——统一从一个**无扫弦记谱**的起点加载
+   （sel 指内置「四分基础」idx 1），各场景再自行导入带 zone 的谱触发弦区分支。
+   起点选无扫弦型，可避免默认型/示例曲自带的弦区记谱干扰本组自己的断言。 */
 const STRUM_SEED = () => ({
-  "beatsight.state": JSON.stringify({ track: "strum", sel: { type: "builtin", idx: 1 } }),
+  "beatsight.state": JSON.stringify({ sel: { type: "builtin", idx: 1 } }),
 });
 const loadStrum = () => loadApp(STRUM_SEED());
 
@@ -39,7 +39,7 @@ const mkBars = () => [0,1,2,3].map(() => [
 ]);
 
 /* ================= 场景 T62a：zone 数据层 ================= */
-section("T62a 扫弦轨 · zone 校验 / 默认省略 / 脏值降级");
+section("T62a 弦区 · zone 校验 / 默认省略 / 脏值降级");
 {
   const { beat } = loadStrum();
   const St = beat.Store;
@@ -59,7 +59,7 @@ section("T62a 扫弦轨 · zone 校验 / 默认省略 / 脏值降级");
 }
 
 /* ================= 场景 T62b：三弦区音色可区分 ================= */
-section("T62b 扫弦轨 · 三弦区音色可区分 / 空扫静默 / 时刻不动");
+section("T62b 弦区 · 三弦区音色可区分 / 空扫静默 / 时刻不动");
 {
   const { beat } = loadStrum();
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "弦区", meter: 4, bars: mkBars() }] }));
@@ -112,7 +112,7 @@ const zkOf = (els, b, i) => {
   const cl = " " + a.className + " ";
   return / kF /.test(cl) ? "kF" : (/ kB /.test(cl) ? "kB" : (/ kT /.test(cl) ? "kT" : "?"));
 };
-section("T62c 扫弦轨 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫沿用前一记");
+section("T62c 弦区 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫沿用前一记");
 {
   const { beat, els } = loadStrum();
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "弦区", meter: 4, bars: mkBars() }] }));
@@ -138,7 +138,7 @@ section("T62c 扫弦轨 · 主视图箭头弦区跨距 / 编辑器徽标 / 空�
   eq(cells0.filter(c => c.children.some(ch => /(^| )strumv( |$)/.test(ch.className))).length, 0,
      "★ 格子里一支箭头都没有（挂进去必被 overflow:hidden 裁掉尖端）");
   const lyr = strumLayerOf(els, 0);
-  ok(!!lyr, "★ 扫弦轨第 0 行存在独立的箭头图层 .strums");
+  ok(!!lyr, "★ 带扫弦记谱的第 0 行存在独立的箭头图层 .strums");
   /* ★ 修正口径（v2.4.3 自测时抓到）：层里的孩子是**紧凑**的——无方向的格不产生节点，
      所以 children.length ≠ 格数，只有"全格都有方向"时才偶然相等。
      断言改成守**真正的**对应关系：每个箭头都带 data-i，且取值恰好是 {0..n-1} 的子集，
@@ -171,7 +171,7 @@ section("T62c 扫弦轨 · 主视图箭头弦区跨距 / 编辑器徽标 / 空�
 
   /* 无 zone 的格不挂（老数据零迁移的直接体现）。
      ★ v2.4.3：改数 `.strums` 图层里的箭头（格子本身已不再承载 strumv），
-     且此时是普通轨/无扫弦型 → 该层**根本不创建**（轨门控），故用可空访问 */
+     且此时换成**无扫弦记谱**的型 → 该层**根本不创建**（按内容门控），故用可空访问 */
   beat.Store.S.sel = { type: "builtin", idx: 1 };
   beat.Presets.refreshAfterPatternChange();
   const l0 = strumLayerOf(els, 0);
@@ -179,7 +179,7 @@ section("T62c 扫弦轨 · 主视图箭头弦区跨距 / 编辑器徽标 / 空�
 }
 
 /* ================= 场景 T62d：录入 UI（zoneRow 四档） ================= */
-section("T62d 扫弦轨 · zoneRow 写入 / 撤销 / 同档不推栈");
+section("T62d 弦区 · zoneRow 写入 / 撤销 / 同档不推栈");
 {
   const { beat, els } = loadStrum();
   beat.Editor.open();

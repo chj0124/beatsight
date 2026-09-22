@@ -36,7 +36,7 @@ function step(beat, ac, n){
 /* 两段曲式：A 用「四音型」（4 格/小节）×4 小节，B 用「八音型」（8 格/小节）×4 小节。
    段名尾部各带一串和弦 → 8 小节：0-3 = A 的和弦，4-7 = B 的和弦。240BPM 下一小节 1s */
 function startTwoStages(loop){
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "四音型", meter: 4, bars: mkBars(4, 4) },
     { name: "八音型", meter: 4, bars: mkBars(4, 8) },
@@ -118,7 +118,7 @@ section("T78c 翻页窗口 · ★ 页内第 4 小节的第 1 行（预告行）�
 /* ================= 场景 T78d：无和弦段不挂胶囊 ================= */
 section("T78d 无和弦段 · 该段各行不挂胶囊（null 占位），不影响有和弦的段");
 {
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "四音型", meter: 4, bars: mkBars(4, 4) },
   ] }));
@@ -146,7 +146,7 @@ section("T78d 无和弦段 · 该段各行不挂胶囊（null 占位），不影
 /* ================= 场景 T78e：预设模式不生效 ================= */
 section("T78e 预设模式 · 不挂和弦（和弦只在曲式模式的小节上有意义）");
 {
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   eq(beat.Store.S.playMode, "preset", "前提：预设模式（默认）");
   const cc = beat.Viz.internals().barChordEls;
   eq(cc.length, rowEls(els).length, "胶囊数组与网格行同构（既有 4 行就有 4 个 null）");

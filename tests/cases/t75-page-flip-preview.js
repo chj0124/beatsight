@@ -36,7 +36,7 @@ function step(beat, ac, n){
 /* 两段曲式：A = 四音型（4 格/小节）4 小节，B = 八音型（8 格/小节）4 小节。
    240BPM 下一小节 1s。返回 {beat, els, ac, idA, idB} */
 function startTwoStages(loop){
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "四音型", meter: 4, bars: mkBars(4, 4) },
     { name: "八音型", meter: 4, bars: mkBars(4, 8) },
@@ -57,9 +57,9 @@ function startTwoStages(loop){
 /* ================= 场景 T75a：跳段按钮基准分语境 ================= */
 section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一段无反应」），播放中相对正在播的段");
 {
-  const { beat, els } = loadApp(seedState({ track: "strum", sel: { type: "builtin", idx: 0 } }),
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 0 } }),
     { seedDemo: false });
-  const boxOf = () => els["presetList"].children.find(x => /(^| )preset-demo-group( |$)/.test(x.className));
+  const boxOf = () => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   const playAllOf = () => boxOf().children.find(x => /(^| )demo-play-row( |$)/.test(x.className)).children[0];
   const secRowOf = () => boxOf().children.find(x => /(^| )demo-sec-row( |$)/.test(x.className));
   playAllOf().fire("click");

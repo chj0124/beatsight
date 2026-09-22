@@ -281,19 +281,24 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
 
   /* 预设列表：点内置项 / 点自定义项的删除按钮 / 调色板的回退提示 */
   const listItems = () => els["presetList"].children.filter(c => c._h && c._h.click);
+  /* v2.9.0：侧栏按「节拍 / 扫弦 / 自定义」三区渲染，带扫弦记谱的「民谣扫弦」（BUILTINS[0]）
+     被排到扫弦区、落在其余内置项之后——显示序位与 BUILTINS 下标整体错开一位。
+     故一律按**名字**定位，不按显示序位取项 */
+  const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
+  const itemByName = nm => listItems().find(c => deepText(c).includes(nm));
   ok(listItems().length >= beat.BUILTINS.length, `预设列表渲染出 ${listItems().length} 个可点项`);
-  listItems()[3].fire("click");
+  itemByName(beat.BUILTINS[3].name).fire("click");
   eq(S.sel.idx, 3, "点内置预设项 → 选中它");
   eq(els["patternName"].textContent, beat.BUILTINS[3].name, "标题同步为该预设名");
 
   /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter/Space 激活 */
-  const it5 = listItems()[5];
+  const it5 = itemByName(beat.BUILTINS[5].name);
   eq(it5.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
   eq(it5.tabIndex, 0, "预设项可 Tab 聚焦");
   it5.fire("keydown", { key: "Enter" });
   eq(S.sel.idx, 5, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
-  eq(listItems()[5].getAttribute("aria-current"), "true", "当前项带 aria-current");
-  listItems()[4].fire("keydown", { key: " ", code: "Space" });
+  eq(itemByName(beat.BUILTINS[5].name).getAttribute("aria-current"), "true", "当前项带 aria-current");
+  itemByName(beat.BUILTINS[4].name).fire("keydown", { key: " ", code: "Space" });
   eq(S.sel.idx, 4, "★ Space 同样激活（role=button 的键盘契约）");
 
   /* 导入：走 FileReader 接线（桩的 FileReader 会把 FILE_TEXT 交给 onload） */
@@ -560,7 +565,10 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
 
   /* 播放中切到不同拍号的节奏型 → 接续失败 → 挂起 */
   const target = beat.BUILTINS.findIndex(p => p.meter === 3);
-  els["presetList"].children.filter(c => c._h && c._h.click)[target].fire("click");
+  /* v2.9.0：三区渲染下显示序位 ≠ BUILTINS 下标（民谣扫弦移到扫弦区），按名字定位 */
+  const tItems = els["presetList"].children.filter(c => c._h && c._h.click);
+  const tText = el => String(el.textContent || "") + (el.children || []).map(tText).join("");
+  tItems.find(c => tText(c).includes(beat.BUILTINS[target].name)).fire("click");
   eq(els["vizTitle"].textContent, vizBefore,
     "挂起生效：可视化**没有**立刻重建（「就地接续」路径会立刻 rebuildViz——这条区分两条路径）");
   eq(S.sig, 3, "新拍号已记录（等小节边界生效）");

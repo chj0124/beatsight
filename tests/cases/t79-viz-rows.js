@@ -31,7 +31,7 @@ const rowsPill = (els, n) => rowsPills(els).find(c => c.dataset.rows === String(
    —— 歌词轨因此每屏都有字（否则整轨收起，行数断言无从谈起）。
    BPM 240 → 一小节 1s（50 个 0.02s 驱动步）。 */
 function setup(){
-  const app = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const app = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   const { beat } = app;
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一板", meter: 4, bars: mkBars(1, 4) }] }));
   const pid = beat.Store.customs[beat.Store.customs.length - 1].id;
@@ -57,7 +57,7 @@ function step(beat, ac, n){
 /* ================= 场景 T79a：档位 = 窗口长度，arrWinBars 现读 S.vizRows ================= */
 section("T79a 档位即窗口长度 · arrWinBars() 与 S.vizRows 同一真相源，默认 4");
 {
-  const { beat } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   eq(beat.Store.S.vizRows, 4, "默认档 = 4（旧口径「同屏 4 小节」，老用户升级后逐位不变）");
   eq(beat.Viz.arrWinBars(), 4, "arrWinBars() 现读 S.vizRows（不是写死的常量）");
   beat.Store.S.vizRows = 2;
@@ -67,7 +67,7 @@ section("T79a 档位即窗口长度 · arrWinBars() 与 S.vizRows 同一真相�
 /* ================= 场景 T79b：档位选择器（值表生成的 pill 行） ================= */
 section("T79b 档位选择器 · 一行 pill 由 VIZ_ROW_COUNTS 生成、带 data-rows、选中态跟着 S.vizRows");
 {
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   const pills = rowsPills(els);
   eq(pills.length, 4, "四个档位按钮（值域 1-4 由值表生成，不在标记里写死）");
   eq(pills.map(p => p.dataset.rows).join(","), "1,2,3,4", "每个按钮带 data-rows=N（测试与样式按档位定位）");
@@ -94,7 +94,7 @@ section("T79c 加载校验 · 脏值 / 越界走白名单回落到默认 4");
 /* ================= 场景 T79d：预设模式不受档位影响 ================= */
 section("T79d 预设模式不受档位影响 · 网格行数仍随型走（型多长画多行）");
 {
-  const { beat, els } = loadApp(seedState({ track: "plain", sel: { type: "builtin", idx: 1 }, vizRows: 2 }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 2 }));
   eq(beat.Store.S.playMode, "preset", "前提：预设模式（默认）");
   eq(beat.Store.S.vizRows, 2, "档位已置 2");
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),

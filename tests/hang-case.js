@@ -245,7 +245,7 @@ if (CASE in SIGS){
      谱：64 小节 × 每小节 4 个四分（和 = 192 = 4×TPB，过结构校验）。 */
   const bars = [];
   for (let i = 0; i < 64; i++) bars.push([{t:48},{t:48},{t:48},{t:48}]);
-  const { beat } = loadApp(seed({ v:3, bpm:120, track:"plain",
+  const { beat } = loadApp(seed({ v:3, bpm:120,
     customs:[{ id:"long", name:"六十四小节", meter:4, bars }], sel:{ type:"custom", id:"long" } }));
   out(beat.patBars(beat.curPattern()) === 64, "64 小节的型通过校验并生效",
       "bars.length=" + beat.curPattern().bars.length);
