@@ -298,7 +298,7 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
      （= 满音量重拍应达到的增益，天然天花板；削波看信号幅度不看增益值，滤波噪声安全）。
      参照（vol=0.8, accentVol=1）：accent peak=0.8 / beat=0.64 / sub=0.4 */
   const noiseGain = (timbre, filterFreq, extra) => {
-    /* sel idx 2（八分摇滚 → 普通轨）：v2.7.1 起默认型（民谣扫弦）归扫弦声部，
+    /* sel idx 2（八分摇滚，无扫弦记谱）：v2.7.1 起带扫弦记谱的谱（如民谣扫弦）归扫弦声部，
        测全局音色的层级增益必须用无扫弦记谱的型 */
     const { beat } = loadApp({ "beatsight.state": JSON.stringify(Object.assign(
       { v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre, sel: { type: "builtin", idx: 2 } }, extra || {})) });

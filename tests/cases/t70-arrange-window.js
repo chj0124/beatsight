@@ -22,7 +22,7 @@ const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 /* n 个四分音符一小节 → 每行 n 个格子 */
 const mkBars = (n, per) => Array.from({ length: n }, () =>
   Array.from({ length: per }, (_, i) => ({ t: 192 / per })));
-/* 主视图每行的格子数（行 = .bar-row，格 = .cell）。与 t47/t62/t64 同一套定位手法 */
+/* 主视图每行的格子数（行 = .bar-row，格 = .cell）。与 t47/t62 同一套定位手法 */
 const rowCells = els => els["viz"].children
   .filter(el => /(^| )bar-row( |$)/.test(el.className))
   .map(r => r.children.filter(c => /(^| )cell( |$)/.test(c.className)).length);

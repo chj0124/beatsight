@@ -1117,7 +1117,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
-      <!-- 弦区三态（v2.2.0 扫弦轨）：与方向行同套交互（作用于选中音符）。
+      <!-- 弦区三态（v2.2.0 起）：与方向行同套交互（作用于选中音符）。
            「默认」= 不写 zone 字段 = 中弦区——老数据与老导出 JSON 零迁移 -->
       <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（低/中/高）">
         <span class="hint">弦区</span>
@@ -1392,22 +1392,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1422  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1898  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2851  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3492  Modal         应用内弹窗
-     L3622  Viz           时值可视化渲染与每帧动画
-     L4909  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5538  Trainer       变速训练器
-     L5756  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6256  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7021  Editor        自定义节奏型编辑器
-     L7377  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7600  Ear           听辨训练（v1.10.0）
-     L7825  Arrange       曲式编排（v2.0.0）
-     L8586  Help          使用方法（v2.0.1）
-     L8633  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8707  初始化（装配） 各模块 hook 接线与启动
+     L1423  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1909  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2862  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3503  Modal         应用内弹窗
+     L3633  Viz           时值可视化渲染与每帧动画
+     L4920  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5549  Trainer       变速训练器
+     L5767  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6267  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7032  Editor        自定义节奏型编辑器
+     L7388  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7611  Ear           听辨训练（v1.10.0）
+     L7836  Arrange       曲式编排（v2.0.0）
+     L8597  Help          使用方法（v2.0.1）
+     L8644  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8718  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1446,7 +1446,7 @@ const T8  = TPB / 2;                                   // 24t 八分（短音符
    按 rest 判定，与 dir 无关）。
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码。
-   zone（v2.2.0 扫弦轨）：弦区三态 0=低 / 1=中 / 2=高。与 dir 的关键差别——zone **参与发声**
+   zone（v2.2.0 起）：弦区三态 0=低 / 1=中 / 2=高。与 dir 的关键差别——zone **参与发声**
    （AudioEngine 按 zone 取不同滤波中心频率，低弦区闷、高弦区亮；详见 CONFIG.strumZones 与
    scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，T62e 守这条）。
    空扫（rest+dir）保持静默——zone 只在发声音符上有听感意义，数据上仍可与空扫共存
@@ -2932,8 +2932,8 @@ function setPressed(sel, on){
    才能断言生成数量、文案与点击行为（见 tests/lib/harness.js）。
    opt.text/label 出文案与无障碍名；opt.key 声明 data-* 键（不需要就略去）；
    opt.value 出该键的**取值**，默认 String(it)——当 items 是数值时（BPM 快捷档）直接可用。
-   v2.4.0 补：items 也可能是**对象**（节拍轨表 {key,text,label,tip}），此时 String(it) 会写出
-   "[object Object]"——一个能生成、能高亮、却读不出轨名的按钮。故取值必须能显式给：
+   v2.4.0 补：items 也可能是**对象**（{key,text,label,tip}），此时 String(it) 会写出
+   "[object Object]"——一个能生成、能高亮、却读不出名字的按钮。故取值必须能显式给：
    凡带 key 的调用方，若 items 非原始值就必须同时给 value（"取值从哪来"不能靠猜）。 */
 /** @param {any} host @param {any[]} items @param {{ key?: string, text: (it: any, i: number) => string, label: (it: any, i: number) => string, value?: (it: any, i: number) => string, isOn?: (it: any, i: number) => any, onPick: (it: any, i: number, ev: any) => void }} opt @returns {any[]} */
 function buildPillRow(host, items, opt){
@@ -3873,7 +3873,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   }
 
   /** 建一小节的行（buildViz 的子工序，v2.4.4 由其体内拆出，**纯搬移**、行为等价）：
-      跑道拍点 → 六线底纹与箭头层（仅扫弦轨）→ 拍内座次尺 → 音符格（含刻度线/标签/箭头）
+      跑道拍点 → 六线底纹与箭头层（仅带扫弦记谱的小节）→ 拍内座次尺 → 音符格（含刻度线/标签/箭头）
       → 短音符组标签，并把本行登记进 rowEls/cellEls/subEls/… 各同构数组
       （"数组第 b 项 = 第 b 小节"是渲染层既有约定，paintFrame/resetForStop 都按它对齐）。
       @param {number} b 小节序号 @param {any} p 当前节奏型（activePattern 快照）
@@ -5075,7 +5075,7 @@ const AudioEngine = (() => {
     const tier = isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub);
     /* 声部判定（v2.7.1 打通）：入参 zone !== undefined 即扫弦声部——dir-only 的格
        由调度入口补成中弦区（见 schedOneStep 的 stepZone）。v2.7.1 之前 drum 音色
-       整体除外：鼓组下 zone 被丢弃、扫弦格全走 S.vol，于是鼓组 + 扫弦轨时
+       整体除外：鼓组下 zone 被丢弃、扫弦格全走 S.vol，于是鼓组 + 带扫弦记谱的谱时
        「节拍」拉到 0 全静默、「扫弦」滑条恒无效（用户实拍）。现在鼓组下扫弦格
        仍按层级选鼓件（底鼓/军鼓/踩镲自带频段分工，不叠加弦区频段），
        但音量走 S.strumVol——两条滑条在三种音色下都成立 */
@@ -5262,7 +5262,7 @@ const AudioEngine = (() => {
       游标前进 → 小节边界四件事（练习量计数 → 变速爬坡 → 曲式推进 → 挂起切换消费）。
       @param {any} pat activePattern() 快照 @param {any} bars 快照的小节数组
       @param {number[]} accents 重拍落点 @param {AudioContext} c 音频上下文（非空，调用方已判）
-      @param {boolean} strumGrid 是否在本步跨度内补节拍拍点（v2.5.0：扫弦轨 × 扫弦谱；
+      @param {boolean} strumGrid 是否在本步跨度内补节拍拍点（v2.5.0：带扫弦记谱的谱；
         由 schedulerBody 每轮算一次，不进每步热路径）
       @returns {boolean} true = 本轮调度就此结束（对应拆分前主体里的 return）；false = 主循环继续 */
   function schedOneStep(pat, bars, accents, c, strumGrid){
@@ -9116,7 +9116,7 @@ if (EXPOSE_INTERNALS){
     CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
-    hasStrum,                                      // v2.4.0：两个入口的分界线（dir 或 zone 任一存在）
+    hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
     setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）
     arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
     secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）

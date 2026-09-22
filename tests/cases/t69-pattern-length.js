@@ -23,7 +23,7 @@ const loadStrum = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }))
 const mkBars = n => Array.from({ length: n }, () => [
   { t: 48 }, { t: 48 }, { t: 48 }, { t: 48 },
 ]);
-/* 主视图的行（每行 = 一小节）。与 t47/t62/t64 同一套定位手法 */
+/* 主视图的行（每行 = 一小节）。与 t47/t62 同一套定位手法 */
 const rowsOf = els => els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className));
 
 /* 导入一个 n 小节的型并选中它，返回 {beat, els, id} */

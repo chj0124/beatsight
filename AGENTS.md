@@ -4,7 +4,7 @@
 
 ## 0. 一句话项目画像
 
-BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` ~626 KB 内聚全部逻辑，14 个 IIFE 模块：Store → Modal → Viz → AudioEngine → Trainer → Controls → Tracks → Presets → Editor → Stats → Ear → Arrange → Help → KeepAlive，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
+BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` ~604 KB 内聚全部逻辑，13 个 IIFE 模块：Store → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Stats → Ear → Arrange → Help → KeepAlive，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
 
 ## 1. 动手前必读（按顺序）
 

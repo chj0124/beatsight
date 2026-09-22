@@ -98,7 +98,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Stats / Ear（v1.10 起 11 个模块）/ KeepAlive，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
+（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Stats / Ear / Arrange（v2.0.0）/ Help（v2.0.1）/ KeepAlive，共 13 个模块，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
 
 **注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
 每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**
@@ -163,7 +163,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T52 | 节目单步进的三个纯函数（v2.0.0 S3，5 个子场景）：`secBars`（段长由数据派生）/ `blockAt`（块边界按累加算、**遍数不同时**才分得出）、`schedBar` 回绕、越界返回 null / `arrNextBar` 的段边界·块边界·范围循环·单段循环·范围前拉回 / **`blockChanged` 比的是解析后的型**（段内两块同一预设时不挂起，方案 R9）/ 坏数据返回 null 而不是硬撑 |
 | T53 | 曲式播放集成（v2.0.0 S4，13 个子场景）：跨段换型（无缝 / `schedBar` 归零 / 端点严格递增不跳针）/ 落点预测走节目单（**新块音符位置只在 0 处重合的型对**才测得出）/ 整首放完停止 · 范围循环 · 单段循环 / 播放中改范围 = 跳段在小节边界生效（**含型内游标归零**）/ 练习量按小节照常累计且优先于"曲式没放完" / 曲式失效退回预设模式 / 中间夹一个**全休止块**时预测与待命球都要能跨过去 / **引用的自定义型被删后仍在曲式里**（v2.0.2 D2：结构校验拦不住、解析才发现 → 退回预设**不中断播放**且弹窗逐条列出问题清单） / **播放中实时进度必须刷新**（v2.0.2 修：`refreshNow` 由 `cur()` 改为 `arrangeCur() || cur()`——刷新页面后直接进曲式播放时编排 overlay 从没开过、`curId` 为 null，旧写法整条进度永不刷新；本用例专守这条，主界面 `argNowMeta`/`argNowName` 要随小节边界/跨段走） |
 | T54 | 编排 UI（v2.0.0 S5，6 个子场景）：overlay 开合 / Escape / **背景 inert**（`refreshInert` 要把新 overlay 加进去）/ 空格不误触播放 / 曲式库列表与新建 / 段落改名·加段·上移下移·删除确认 / 块遍数夹取·换预设（内联候选行）·删块保护 / 播放范围「起/终」与循环开关 / 播放入口 / 主界面显示与跳段。另含两处**真实删除路径**（v2.0.2）：删块（非最后一块要真删掉且删的是点的那块、重渲染后计数对）· 删整条曲式（**要经确认弹窗**，不是点了就没；删掉**正在播**的那条后必须回落 `preset` 并清空 `arrangeSel`，不留悬空 id）。行内下标速查写在文件头 |
-| T55 | 使用方法页（v2.0.1，4 个子场景）：顶栏入口 / **不自动弹窗** / 打开不打断播放（与曲式编排的区别）/ Escape+空格路由 / 背景 inert / 完整说明默认收起与展开收起（含按钮文案联动与 `aria-expanded`）/ 内容覆盖（**查标记原文**，且切片长度要有**上界**——只判 >N 的话"切到文件末尾"这种静默错误过得了）/ 正文零硬编码版本号 |\n
+| T55 | 使用方法页（v2.0.1，4 个子场景）：顶栏入口 / **不自动弹窗** / 打开不打断播放（与曲式编排的区别）/ Escape+空格路由 / 背景 inert / 完整说明默认收起与展开收起（含按钮文案联动与 `aria-expanded`）/ 内容覆盖（**查标记原文**，且切片长度要有**上界**——只判 >N 的话"切到文件末尾"这种静默错误过得了）/ 正文零硬编码版本号 |
 > **编号说明**：`section()` 的 T 编号目前有重复——T38 与 T41 各被用两次
 > （`t37-stats-and-training.js` 与 `t30-wiring-and-lifetime.js`）。这只是日志标签重复，
 > 不影响执行与断言；但**新增用例请从当前最大值往上取号，别复用**（v1.9.0 起为 T47/T48，

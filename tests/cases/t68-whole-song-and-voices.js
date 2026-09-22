@@ -4,7 +4,7 @@
    两条用户反馈各对应一半：
 
    ① 「扫弦示例曲只在有扫弦的音符位置发声，忽略了节拍器应在每一拍都发声的本质」
-      → 契约：**扫弦轨 × 带扫弦记谱的谱**下，节拍器作为独立声部**每一拍都出声**，
+      → 契约：**带扫弦记谱的谱**下，节拍器作为独立声部**每一拍都出声**，
         扫弦声叠在扫弦记谱的位置上；两者音量各由一条滑条独立控制（节拍 S.vol / 扫弦 S.strumVol）。
       四条边界一起钉住，缺一条都会退化：
         · 空扫（rest+dir）与纯休止所处的**拍**也要有节拍音（这正是"每拍都响"的判据）；
@@ -69,7 +69,7 @@ function startWith(beat, name, bars, opts){
   return FakeAudioContext.last;
 }
 const clicksOf = ac => ac.hits.filter(h => h.kind === "osc");
-/* 扫弦声 = 弦区三档带通噪声（与 t62/t64 同一口径） */
+/* 扫弦声 = 弦区三档带通噪声（与 t62 同一口径） */
 const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
   && [700, 1400, 2800].includes(h.filterFreq));
 /* 只在 [a,b) 时间里发声的次数（用于"某小节静音"这类断言，比累计计数稳） */
@@ -97,7 +97,7 @@ const segRowOf = els => {
 const itemByName = (els, name) => els["presetList"].children.find(x =>
   /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === name);
 
-/* ================= 场景 T68a：扫弦轨每一拍都出节拍音 ================= */
+/* ================= 场景 T68a：扫弦谱每一拍都出节拍音 ================= */
 section("T68a 双声部 · 扫弦谱下每一拍都出节拍音（含空扫与纯休止所在的拍）");
 {
   const { beat } = loadStrum();

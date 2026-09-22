@@ -62,8 +62,8 @@ section("T23c 音量越界 · 必须钳制到 [0,1]，增益不得超 0 dBFS");
 {
   const cases = [[1e6, "1e6（v1.2.3 实测 +120 dBFS）"], [3, "3"], [-5, "负数"], ["x", "字符串"]];
   cases.forEach(([v, desc]) => {
-    /* sel idx 1（四分基础 → 普通轨）：本场景守的是**节拍声部**的 0 dBFS 上限。
-       v2.7.1 起默认型（民谣扫弦）归扫弦声部——那条路径有 makeup 增益
+    /* sel idx 1（四分基础，无扫弦记谱）：本场景守的是**节拍声部**的 0 dBFS 上限。
+       v2.7.1 起带扫弦记谱的谱（如民谣扫弦）归扫弦声部——那条路径有 makeup 增益
        （峰值 ≤ makeup=8，安全性论证见 CONFIG.timbres 注释），混进来会误报 */
     const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: v, accentVol: 1, bpm: 120, sel: { type: "builtin", idx: 1 } }) });
     const vol = beat.Store.S.vol;

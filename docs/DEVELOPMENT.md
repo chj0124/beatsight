@@ -79,26 +79,25 @@ beatsight/
 
 ## 3. 核心架构
 
-### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块；v2.0.1 起 13 模块；v2.4.0 起 14 模块）
+### 3.0 模块地图（v0.6.0 起；v1.0.0 依赖方向净化；v1.4 扩到 10 模块；v1.10 起 11 模块；v2.0 起 12 模块；v2.0.1 起 13 模块；v2.4.0 短暂 14 模块、v2.9.0 撤销回 13）
 
-`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → AudioEngine → Trainer → Controls → Tracks → Presets → Editor → Stats → Ear → KeepAlive → init**
+`<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Stats → Ear → KeepAlive → init**
 
 ```
 Store（持久化/状态创建/迁移/导入导出/练习记录）
 共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
-→ Tracks（节拍轨切换：普通节拍 / 带扫弦的节拍 双入口，v2.4.0）
-→ Presets（预设库/回退提示/轨内回退检查/播放中切换挂起/整首连播与段序条，v2.5.0）→ Editor（自定义编辑器）
+→ Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与段序条，v2.5.0；三区常显于 v2.9.0）→ Editor（自定义编辑器）
 → Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 
-- **v2.4.0 的双入口拆分不改核心**：`Tracks` 是**入口维度**的模块，只决定三件事——预设库列哪些型（`hasStrum` 过滤）、记谱层画不画扫弦标注、zone 音色走不走。`bpm/sig/vol/swing/timbre` 仍是同一个 `S` 单例（用户拍板"全部共享，仅入口区分"），`spb()` 与 `scheduler` 一行未改。`Tracks → Presets` 是 R3 白名单条目（`set()` 切轨后调 `refreshAfterPatternChange()`，用户点击时执行）。
-- **v2.5.0 的两条声部（改发声前必读）**：扫弦轨上节拍器与扫弦是**两条独立声部**，不是一条。
+- **v2.9.0：两态「轨」模型取消，改为按**内容**分类的三区侧栏**：旧版在预设库顶部有一条「普通节拍 / 带扫弦」切换条（`Tracks` 模块 + `S.track`），它维护一个**运行期的"当前轨"状态**，再按该状态过滤预设、门控记谱与声部。v2.9.0 把这条切换条整条删掉，预设库改为「节拍 / 扫弦 / 自定义」三区**常显**堆叠——**分类判据是每个型自己的内容**（`hasStrum` = 带 `dir` 或 `zone` 记谱），"这个型归哪一区 / 画不画扫弦标注 / 走节拍声部还是扫弦声部"全部由型自身决定，**不再有任何隐藏的"当前轨"状态**。`bpm/sig/vol/swing/timbre` 依旧是同一个 `S` 单例（沿用"全部共享"的既有约定），`spb()` 与 `scheduler` 一行未改。
+- **v2.5.0 的两条声部（改发声前必读）**：带扫弦记谱的谱上，节拍器与扫弦是**两条独立声部**，不是一条。
   - `schedOneStep` 里：先按原有逻辑发"这一步自己的声"（带扫弦记谱 → 扫弦声，否则 → 节拍音），
     再跑一遍**节拍器网格**（半开区间 `[cumT, cumT+step.t)` 扫拍点，逐拍补一声 click）。
-  - 网格的生效条件是 `S.track === "strum" && hasStrum(pat)` 两个都成立：**不带扫弦记谱的谱本身就是节拍器**，
+  - 网格的生效条件只有一条 —— `hasStrum(pat)`（v2.9.0 去掉了旧的 `S.track === "strum"` 门控）：**不带扫弦记谱的谱本身就是节拍器**，
     给它补网格会把长音中间多敲出几下（行为变化，非修复）。`hasStrum` 每轮调度只算一次（在 `schedulerBody`），
     不进每步热路径。
   - 音量：节拍声部走 `S.vol`、扫弦声部走 `S.strumVol`，**并列不串联**（`strumVol` 不乘在 `vol` 上）。
@@ -122,7 +121,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
   （全文件只有"曲式校验失败"与"删除曲式"会退回预设），用户点了节奏型再按播放，播的仍是节目单。
   呈现收口在 `Presets.syncDemoSecRow()` 一处，由 `Arrange.refreshBar/refreshNow` 与 `Controls.stop` 调用
   （`Arrange → Presets` 是向前引用，合法；反向的跳段经新钩子 `onDemoJump` 注入装配层）。
-- **轨判定的"两处实现、一个语义"**：`Store` 的迁移期用局部 `strumOf`（因为共享区 `hasStrum` 声明在 Store 之后，顶层读它是 R1 反向引用），运行期一律走共享区 `hasStrum`（Presets/AudioEngine/Viz 三处）。两者判据都写成"`dir` 或 `zone` 任一 `!== undefined`"，由 `tests/cases/t64-track-split.js` 的 T64b/T64e 同时钉住——判据要改时两条一起红。
+- **分类判据 `hasStrum` 只有一处实现**：v2.8.8 起它从 `Store` 上移到**数据区**（`Store` 之前），只读 `pat.bars`、不查任何已落盘的型，因此 `Store` 的迁移期与运行期（`Presets` / `AudioEngine` / `Viz`）**共用同一份** `hasStrum`，不再有"两处实现"的分野。判据是「`dir` 或 `zone` 任一 `!== undefined`」，回归见 `tests/cases/t62-strum-zone.js` 与 `t84-sidebar-zones.js`。
 
 - **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
 - **v1.3.0：这条规则从"注释里的口号"变成了可执行检查**（`tools/check-module-order.js`），并精确化为三条：
@@ -287,7 +286,7 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
      旧 `active` 那格也在其中，离场时自动摘掉高亮，不需要第二条复位路径；
      `resetForStop()` 只补一朵停机兜底（此时 `setCell` 不会再被调用）
 - **六线底纹 `.tab`**：每行铺 6 条 `<i>`（y 由变量推出 → 8/17/26/35/44/53）。
-  **只挂扫弦轨**——普通轨没有箭头，留一层无解释的横线纯属噪音（同 v2.4.0 轨门控口径）。
+  **只挂在带扫弦记谱的谱上**——不带扫弦记谱的谱没有箭头，留一层无解释的横线纯属噪音（分类判据同 `hasStrum`，v2.9.0 去轨门控）。
   由「六线 · 扫弦谱底纹」开关（`S.showTab`，默认开）控制，走 `.viz.no-tab` 整层移除
   （不是 `opacity:0`——省掉每帧一条合成层）。**该开关只管底纹，不影响箭头**：
   箭头是内容，底纹是参照物
