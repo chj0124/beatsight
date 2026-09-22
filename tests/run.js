@@ -59,6 +59,7 @@ const CASE_FILES = [
   "./cases/t82-keepalive-fallback",     // v2.8.8：后台保活兜底失败可见化（成功恒 0 / 被拒与无能力均留痕 / 面板只在非 0 时占位）
   "./cases/t83-full-data-pack",         // v2.8.8：全量数据包导出导入（四类冷数据 / 合并语义 / 三种校验口径 / 体量护栏）
   "./cases/t84-sidebar-zones",          // v2.9.0：侧栏三区分类（hasStrum 判据 / 按内容分区 / 分区下按对象删除）
+  "./cases/t85-sidebar-fold",           // v2.10.0：侧栏分区折叠（默认全收起 / 记忆选择 / 只隐藏不删节点 / 重建重新套用）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

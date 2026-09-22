@@ -344,13 +344,22 @@ input[type=range].vol{width:120px}
 .tr-prog.live{color:var(--green)}
 
 /* ---------- 侧栏 ---------- */
-.preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px}
+/* v2.10.0：三个分区标题改成**可折叠**（用户要求）。标题自身即点击区（role=button，见 pushSection）。
+   ★ 箭头只能用 ::after 伪元素——标题的 className 必须恰好是 "preset-section"（t63 用 === 严格比对），
+     也不能往 textContent 里塞箭头字符（t63 / t84b 都逐字比对标题文案）。
+   折叠态由 aria-expanded 驱动（[aria-expanded="false"] 时箭头转 −90°）——状态只有一份真相，
+   不给折叠态另加类名（类名空间已被测试逐字占用）。 */
+.preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.preset-section:hover{color:var(--t2)}
 .preset-section:first-child{margin-top:0}
+.preset-section::after{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
+.preset-section[aria-expanded="false"]::after{transform:rotate(-90deg)}
 /* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
    常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
 .loop-panel{margin-bottom:14px}
-.loop-panel .group-label{margin-bottom:7px}
+/* v2.10.0：说明文字从独占的 .group-label 行并入开关行尾——灰度注脚，随 flex 一起折行 */
+.loop-desc{font-size:12px;color:var(--t3)}
 .loop-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .loop-row .pill{padding:7px 12px;font-size:12px}
 /* 分隔点：窄屏换行时它留在上一行末会看着像句号，故随 flex 一起换行即可（不做特殊处理） */
@@ -365,6 +374,9 @@ input[type=range].vol{width:120px}
 .loop-panel .hint{margin-top:6px}
 .loop-panel .hint:empty{display:none}
 .preset-item{padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+/* v2.10.0：折叠分区靠 hidden 隐藏条目——上面这条 display:flex 会盖掉 [hidden] 的 display:none
+   （同 .vol-row[hidden] / .tr-panel[hidden] 的坑），必须显式写一条 */
+.preset-item[hidden]{display:none}
 .preset-item:hover{background:var(--card2)}
 .preset-item.active{background:var(--card2)}
 .preset-item .name{font-size:13px;font-weight:500}
@@ -377,6 +389,7 @@ input[type=range].vol{width:120px}
    v2.4.1 的"示例曲分组"样式（.preset-section.demo-section / .preset-badge / .preset-demo-group）
    随该分组一并删除：示例曲的 5 个型已按内容并入「扫弦」区，不再单独成组。 */
 .preset-arrange-group{border-left:2px solid rgba(30,215,96,.45);padding-left:8px;margin-bottom:4px}
+.preset-arrange-group[hidden]{display:none}
 /* 常驻切换节奏型胶囊条（v2.4.1）：直接挂在示例分组内——它就是"这首歌有哪几个段"的目录。
    点一下 = 把当前段的节奏型换成它（不必进曲式编排 overlay 逐个「换」）。
    排布用 flex-wrap：5~7 颗胶囊在窄侧栏会自动折行，不做横向滚动（侧栏宽度本来就紧） */
@@ -392,6 +405,7 @@ input[type=range].vol{width:120px}
 .demo-play-row .pill[aria-pressed="true"]{background:var(--green);color:#0A0A0A;border-color:var(--green)}
 .demo-play-note{font-size:10.5px;color:var(--t3);line-height:1.4;min-width:0}
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
+.sidebar-note[hidden]{display:none}
 .preset-io{display:flex;gap:10px;margin-top:12px}
 .preset-io .pill:disabled{opacity:.4}
 
@@ -958,9 +972,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
              恒在反而更稳定（用不到时它不影响任何声音） -->
         <div class="group-label">音量 · 节拍 / 扫弦 / 重拍增强</div>
-        <div class="vol-row"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
-        <div class="vol-row" id="volStrumRow"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
-        <div class="vol-row"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
+        <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
+             title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
+             供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl） -->
+        <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
+        <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+        <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
       </div>
     </section>
 
@@ -1035,7 +1052,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              下拉区间 = 精确到某一两小节。两者说的是同一件事（循环区间的范围），
              所以共用 S.loopRange 一份数据、由一个开关控制，不存在两个真相 -->
       <div class="loop-panel" id="loopPanel">
-        <div class="group-label">练习循环 · 只反复磨这几小节</div>
+        <!-- v2.10.0：原来「练习循环 · 只反复磨这几小节」独占一行（.group-label），
+             白白吃掉一行高度；改为缩短成「只反复磨这几小节」并入开关同一行、
+             贴在该行末尾作灰度注脚。开关自身已写明「循环本段」，故去掉冗余的「练习循环」 -->
         <div class="loop-row">
           <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环本段<span class="switch"></span></button>
           <span class="loop-sep" aria-hidden="true">·</span>
@@ -1045,6 +1064,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <span class="loop-range"><span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
           <span class="lab">到</span><select class="loop-sel" id="loopTo" aria-label="循环结束小节"></select>
           <span class="lab">小节</span></span>
+          <span class="loop-desc">只反复磨这几小节</span>
         </div>
         <div class="hint" id="loopHint"></div>
       </div>
@@ -1392,22 +1412,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1423  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1909  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2862  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3503  Modal         应用内弹窗
-     L3633  Viz           时值可视化渲染与每帧动画
-     L4920  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5549  Trainer       变速训练器
-     L5767  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6267  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7033  Editor        自定义节奏型编辑器
-     L7389  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7612  Ear           听辨训练（v1.10.0）
-     L7837  Arrange       曲式编排（v2.0.0）
-     L8598  Help          使用方法（v2.0.1）
-     L8645  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8719  初始化（装配） 各模块 hook 接线与启动
+     L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1929  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2894  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3535  Modal         应用内弹窗
+     L3665  Viz           时值可视化渲染与每帧动画
+     L4952  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5581  Trainer       变速训练器
+     L5799  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6299  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7111  Editor        自定义节奏型编辑器
+     L7467  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7690  Ear           听辨训练（v1.10.0）
+     L7915  Arrange       曲式编排（v2.0.0）
+     L8676  Help          使用方法（v2.0.1）
+     L8723  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8797  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1427,7 +1447,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.9.0";
+const VERSION = "2.10.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2071,6 +2091,14 @@ const Store = (() => {
     : LIMIT_OFF;
   const limitInit = { mode: limitSaved.mode, n: limitSaved.n };
 
+  /* 预设库分区折叠（v2.10.0）：三个分区标题可点开/收起。值 = **展开**布尔，与 aria-expanded 同向。
+     默认 false = **全部收起**（用户选择），故"没存过"与"存过 false"同义。
+     为什么进**热键**（同 showTab / vizRows）：它是"这个人的界面长什么样"的显示偏好，
+     不是预设库内容——换设备不该把面板开合当数据搬。
+     加载校验走**显式白名单**：只认三个键上的严格 true，其余（脏值 / 多出来的键 / 非布尔）一律回落收起 */
+  const foldSrc = (saved.fold && typeof saved.fold === "object") ? saved.fold : {};
+  const foldInit = { beat: foldSrc.beat === true, strum: foldSrc.strum === true, custom: foldSrc.custom === true };
+
   /* ---- 曲式库（v2.0.0，冷键 beatsight.arranges）----
      形状（与预设引用同源，见 S1 抽出的 resolveRef）：
        { id, name, sections: [ { name, blocks: [ { ref:{type,idx|id}, repeats } ] } ] }
@@ -2309,6 +2337,7 @@ const Store = (() => {
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
    *   showTab: boolean,
    *   vizRows: number,
+   *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
    *   limit: { mode: string, n: number },
@@ -2350,6 +2379,8 @@ const Store = (() => {
        默认 4 = 旧口径「同屏 4 小节」：老用户升级后看到的行数逐位不变。
        加载校验用白名单（VIZ_ROW_COUNTS.includes）：脏值/越界一律回落到 4，不信存储。 */
     vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 4,
+    /* v2.10.0 预设库分区折叠：三区标题可点开/收起（true = 展开）。默认**全部收起**。 */
+    fold: foldInit,
     /* v2.4.3 指定小节循环：「只反复练这些小节里的第 X 到第 Y 小节」。
        ★ 为什么 BeatSight 还需要它（它有别于参考页的场景）：选中一个型本来就会无限循环——
          所以"循环某个节奏型"这件事**本来就成立**。真正缺的是**更小的粒度**：某一两小节
@@ -2546,6 +2577,7 @@ const Store = (() => {
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
       showTab:S.showTab,                          // v2.4.2：六线底纹开关（显示偏好，跟热键走）
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
+      fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
       limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
@@ -6623,14 +6655,59 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     item.addEventListener("keydown", itemKeys(pick));
     list.appendChild(item);
   }
-  /** 一个分区标题（纯文字，不可点）。 @param {HTMLElement} list @param {string} text @returns {void} */
-  function pushSection(list, text){
+  /* v2.10.0：分区标题从"纯文字"改成**可折叠开关**（用户要求：几个分类可折叠）。
+     ★ 两条被测试钉住、不能碰的既有契约：
+       1. className 必须**恰好**是 "preset-section"（t63 用 === 严格比对），
+          textContent 也必须逐字不差（t63 / t84b 都比对标题文案）——
+          故箭头只能走 CSS ::after，不能加类名、也不能塞箭头文字节点。
+       2. 折叠只**置 hidden**、不删节点：t30 / t63 / t68 / t73 / t74 / t75 / t84
+          一律遍历 `#presetList.children` 找条目，删了节点全线失配。
+     键盘契约照抄 presetItemEl（role=button + tabIndex=0 + Enter/Space 激活）。 */
+  /** @param {HTMLElement} list @param {string} text @param {"beat"|"strum"|"custom"} key @returns {void} */
+  function pushSection(list, text, key){
     const sec = document.createElement("div");
     sec.className = "preset-section";
     sec.textContent = text;
+    sec.setAttribute("role", "button");
+    sec.tabIndex = 0;
+    sec.setAttribute("aria-expanded", S.fold[key] ? "true" : "false");
+    const act = () => { sec.blur(); toggleFold(key); };
+    sec.addEventListener("click", act);
+    sec.addEventListener("keydown", itemKeys(act));
     list.appendChild(sec);
   }
-  /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠（常显）。
+  /* 展开/收起一个分区：翻转状态 → 立即套用 → 落热键（记忆选择）。
+     折叠是**纯视图**动作：不碰 S.sel、也不重建列表——重建会白费一次 DOM 重建，
+     还会让正在播放的段序条闪一下（列表重建即重造节点，见 buildPresetList 的收尾注释）。 */
+  /** @param {"beat"|"strum"|"custom"} key @returns {void} */
+  function toggleFold(key){
+    S.fold[key] = !S.fold[key];
+    applyFold();
+    Store.persist();                 // 记忆选择：同 showTab / vizRows，走热键防抖
+  }
+  /* 把三个分区的开合**套用到列表**上：以三个 .preset-section 为界，标题的 aria-expanded 与
+     "其后、下一个标题之前的全部孩子"的 hidden 同步（自定义区那条顺带盖住了 .preset-arrange-group
+     与可能出现的 #demoRestoreNote，无需逐个点名）。
+     为什么按位置切段、不给每区套 wrapper：条目必须是 #presetList 的**直接**子节点——
+     测试逐层遍历 children，多一层就全线失配（同 buildDemoSongRow 的扁平挂法注释）。
+     ★ 每次 buildPresetList 重建后都要重新套用：列表是全新节点，hidden 不会自己继承过来。 */
+  function applyFold(){
+    const list = $("presetList");
+    const kids = Array.from(list.children);
+    const heads = kids.filter(c => c.className === "preset-section");
+    /** @type {Array<"beat"|"strum"|"custom">} */
+    const ZONES = ["beat", "strum", "custom"];
+    heads.forEach((h, i) => {
+      const on = !!S.fold[ZONES[i]];
+      h.setAttribute("aria-expanded", on ? "true" : "false");
+      const start = kids.indexOf(h) + 1;
+      const end = (i + 1 < heads.length) ? kids.indexOf(heads[i + 1]) : kids.length;
+      for (let k = start; k < end; k++) kids[k].hidden = !on;
+    });
+  }
+  /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠。
+     v2.10.0：三区标题改为**可折叠**（默认全部收起，开合记忆在 S.fold / 热键），
+     折叠只置 hidden、不删节点，收尾由 applyFold 统一套用。
      分类判据是**内容**（hasStrum：谱里有没有 dir/zone），不再有"当前轨"这个运行期状态——
      两态切换条（普通节拍 / 带扫弦）整条删除。
        · 节拍区：BUILTINS 与 customs 里不带扫弦记谱的型
@@ -6650,13 +6727,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     BUILTINS.forEach((p, i) => (hasStrum(p) ? strumBuiltins : beatBuiltins).push({ p, i }));
     const beatCustoms = customs.filter(c => !hasStrum(c));
     const strumCustoms = customs.filter(c => hasStrum(c));
-    pushSection(list, `节拍 · ${beatBuiltins.length + beatCustoms.length} 个`);
+    pushSection(list, `节拍 · ${beatBuiltins.length + beatCustoms.length} 个`, "beat");
     beatBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
     beatCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
-    pushSection(list, `扫弦 · ${strumBuiltins.length + strumCustoms.length} 个`);
+    pushSection(list, `扫弦 · ${strumBuiltins.length + strumCustoms.length} 个`, "strum");
     strumBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
     strumCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
-    pushSection(list, `自定义 · ${Store.arranges.length} 首`);
+    pushSection(list, `自定义 · ${Store.arranges.length} 首`, "custom");
     buildArrangeGroup(list);
     buildDemoNoteIfNeeded(list);
     $("presetCount").textContent = `${BUILTINS.length} 内置`
@@ -6670,6 +6747,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （元素是新的、高亮是旧的）。与上面一条是同一个道理：列表重建的收尾处必须把
        所有"由列表承载的状态"各同步一次 */
     syncDemoSecRow();
+    applyFold();                       // v2.10.0：折叠态也是"由列表承载的状态"——新建的条目默认 hidden=false，必须重新套用
   }
   /* 一个**自定义型**条目（含删除按钮 + 选中态 + 键盘契约）。v2.4.1 抽出：
      示例组与"我的预设"组共用。删除按**对象身份**定位（indexOf）而非过滤序位——
