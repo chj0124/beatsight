@@ -161,3 +161,99 @@ section("T79g 持久化 · 档位写进热键 beatsight.state（下次打开还�
   const app = loadApp(seedState({ vizRows: 3 }));
   eq(app.beat.Store.S.vizRows, 3, "★ 带 vizRows=3 重新加载 → 档位照读（跨会话留存）");
 }
+
+/* ================= 场景 T79h：曲式 + 1 行档 ⇒ 不做预告行（v2.10.3 修） ================= */
+section("T79h 曲式 + 1 行档 · 预告行不成立：行内容 = 当前小节、格子照常有 .active（白填充的前提）");
+{
+  /* 用户实拍症状：「播放自定义整首连播时，小球正常滚动，但格子里的白色动画不会自动填满」。
+     根因在预告行的判据：`k === winAnchor(k) + N - 1` 在 **N = 1** 时恒成立
+     （winAnchor(k) = floor(k/1)*1 = k），于是曲式模式下唯一那一行每帧都被当成「未来」：
+       ① 内容换成下一小节；② 整行加 .preview-row（降权 55%）；
+       ③ setCell 的 isPreview 豁免让它**永远拿不到 .active / .played**。
+     而白色填充的底色只长在 `.cell.played .fill` / `.cell.active .fill` 上
+     （`.cell .fill` 本身是 background:transparent）→ 帧内每帧写入的 scaleX(进度) 全部不可见。
+     球不受影响，因为 paintBall 走自己的 onsetBuf/onsetNext，与「格子 class + CSS」这条链无关
+     ——「只有半边坏」正是这个 bug 最难自查的地方，所以下面把三条症状都钉住。
+
+     ★ 观测手法与 T70g 同一套：**格子数 = 型的指纹**。四格型 / 八格型一眼分得出那一行
+       属于哪个小节，不用去读内部结构。
+     ★ 反向验证（回退修复后这三条必须变红，实测具名 ✗ 3 条）：
+       · 把守卫退回 `arrWinBars() < 1`（= 删掉它）→ 「全程没有预告行」实际 260、
+         「每帧恰有 1 个 .active 格」实际 0、「行内容 = 当前可听小节」实际 56；
+       · 把守卫放宽到 `< 3`（连 2 行档一起吃掉）→ 只有下面那条对照组变红。
+       注意后一条：**T75（预告行）拦不住它**——T75 全程用默认 4 行档，
+       "N≥2 仍要预告" 这个边界只由本组的对照组钉住。 */
+  const buildSong = rowsN => {
+    const app = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: rowsN }));
+    const { beat, els } = app;
+    beat.Store.importPresets(JSON.stringify({ presets: [
+      { name: "四格", meter: 4, bars: mkBars(1, 4) },
+      { name: "八格", meter: 4, bars: mkBars(1, 8) },
+    ] }));
+    const [p4, p8] = beat.Store.customs.slice(-2);
+    /* 小节 0-1 = 四格型；小节 2-5 = 八格型（全曲 6 小节，范围循环） */
+    const arr = beat.Store.upsertArrange({ name: "一行档曲式", sections: [
+      { name: "A", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 2 }] },
+      { name: "B", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 4 }] },
+    ] });
+    beat.Store.S.playMode = "arrange";
+    beat.Store.S.arrangeSel = { id: arr.id, from: 0, to: 1, loop: true };
+    beat.Controls.setBpm(240);                     // 一小节 1s = 50 个 0.02s 驱动步
+    beat.Presets.refreshAfterPatternChange();
+    return { beat, els, arr };
+  };
+  /* 逐帧同时推时钟、调度与渲染（窗口重建挂在渲染侧，只推 scheduler 不会触发）。
+     判据一律落在**当前行**（带 .current 的那一行，由 repaintCells 按本帧 bar 打上）：
+       · 它必须恰有 1 个 .active 格 —— 白色填充（.cell.active .fill）能不能显示的前提；
+       · 它的格子数必须 = 当前**可听**小节的指纹（4 / 8 格）——即"行内容跟得上球"。
+     两档共用同一套判据，于是"1 行档坏了、2 行档没坏"这件事是被同一条尺子量出来的。 */
+  const runFrames = (beat, els, ac, arr, n) => {
+    const view = { framesAll: 0, frames: 0, active1: 0, preview: 0, mismatch: 0, kinds: new Set() };
+    for (let i = 0; i < n; i++){
+      ac.currentTime += 0.02;
+      beat.AudioEngine.scheduler();
+      beat.Viz.paintFrame();
+      const rs = els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className));
+      if (!rs.length) continue;
+      view.framesAll++;
+      if (rs.some(r => r.classList.contains("preview-row"))) view.preview++;
+      const cur = rs.findIndex(r => r.classList.contains("current"));
+      if (cur < 0) continue;                       // 还没进入播放（无 .current 行）：不计入
+      const cells = rs[cur].children.filter(c => /(^| )cell( |$)/.test(c.className));
+      view.frames++;
+      view.kinds.add(cells.length);
+      if (cells.filter(c => c.classList.contains("active")).length === 1) view.active1++;
+      const p = beat.Viz.audibleArrangePos();
+      if (p && cells.length !== ((beat.songBarBefore(arr, p.sec) + p.bar) < 2 ? 4 : 8)) view.mismatch++;
+    }
+    return view;
+  };
+
+  /* ---- 1 行档：预告行必须整体关闭 ---- */
+  const one = buildSong(1);
+  eq(rowCells(one.els).length, 1, "前提：1 行档下网格只有 1 行");
+  eq(JSON.stringify(rowCells(one.els)), JSON.stringify([4]), "停机锚在播放范围起点（小节 0 = 四格型）");
+  one.beat.Controls.start();
+  const v1 = runFrames(one.beat, one.els, FakeAudioContext.last, one.arr, 260);
+  one.beat.Controls.stop();
+  eq(v1.framesAll, 260, "驱动了 260 帧（≈5.2s，跨 5 个小节）");
+  eq(v1.preview, 0,
+     "★★ 1 行档全程没有预告行（修复前 260/260 —— 这正是「唯一那行被当成未来」的源头）");
+  ok(v1.frames >= 250, "有效采样帧 ≥250（帧数够多，下面的恒等式不是空转）");
+  eq(v1.active1, v1.frames,
+     "★★ 每帧恰有 1 个 .active 格（只有 .cell.active .fill 才有白底；修复前恒为 0 → 填充不可见）");
+  eq(v1.mismatch, 0,
+     "★★ 每帧行内容 = 当前可听小节（修复前整屏是下一小节，指纹与节目单差一小节）");
+  ok(v1.kinds.has(4) && v1.kinds.has(8),
+     "★ 全程两种型都出现过（4 格 / 8 格都命中，本场景不是「只撞上一种型」的假绿）");
+
+  /* ---- 对照：守卫只能吃掉 N=1，N≥2 的预告行一字不动 ---- */
+  const two = buildSong(2);
+  eq(rowCells(two.els).length, 2, "前提：2 行档下网格 2 行");
+  two.beat.Controls.start();
+  const v2 = runFrames(two.beat, two.els, FakeAudioContext.last, two.arr, 260);
+  two.beat.Controls.stop();
+  ok(v2.preview > 0, "★★ 2 行档照旧出现预告行（修复只关掉 N=1，没把预告机制一起关掉）");
+  eq(v2.active1, v2.frames, "2 行档每帧同样恰有 1 个 .active 格（对照：这条路径本来就没坏）");
+  eq(v2.mismatch, 0, "2 行档：预告行只占第 1 行，当前行的内容仍与节目单同源");
+}

@@ -1315,7 +1315,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <ul class="help-list">
         <li><b>一行 = 一小节</b>；<b>同屏画几行由「同屏行数」档位决定（1–4 行）</b>。
           曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
-          （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行）；
+          （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行），
+          读到页末还会把第 1 行临时换成「下一小节 · 型名」提前备型——<b>预告行只在 2 行及以上出现</b>，
+          1 行档就是干净的一行 = 正在弹的这一个小节；
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）</li>
@@ -1424,22 +1426,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1455  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1946  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2913  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3555  Modal         应用内弹窗
-     L3685  Viz           时值可视化渲染与每帧动画
-     L5172  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5801  Trainer       变速训练器
-     L6019  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6519  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7331  Editor        自定义节奏型编辑器
-     L7687  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7910  Ear           听辨训练（v1.10.0）
-     L8135  Arrange       曲式编排（v2.0.0）
-     L8896  Help          使用方法（v2.0.1）
-     L8943  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9017  初始化（装配） 各模块 hook 接线与启动
+     L1457  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1948  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2915  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3557  Modal         应用内弹窗
+     L3687  Viz           时值可视化渲染与每帧动画
+     L5193  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5822  Trainer       变速训练器
+     L6040  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6540  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7352  Editor        自定义节奏型编辑器
+     L7708  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7931  Ear           听辨训练（v1.10.0）
+     L8156  Arrange       曲式编排（v2.0.0）
+     L8917  Help          使用方法（v2.0.1）
+     L8964  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9038  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1459,7 +1461,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.2";
+const VERSION = "2.10.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3782,7 +3784,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      winPrevSteps = 预告行的格子；winPrevName = 徽标上的型名。
      三者同生同灭（窗口同步一处写入，resetWindow 一处清）。
      ★ 预设模式不做预告行：那里的窗口内容全部来自同一个型，(k+1) 小节在型内是确定的，
-       不需要提前解析节目单；下一行该显示什么由 `nextRowOf()` 算术得出。 */
+       不需要提前解析节目单；下一行该显示什么由 `nextRowOf()` 算术得出。
+     ★★ **要求 N ≥ 2**（v2.10.3 修）：见 previewBarFor 的注释——N = 1 时窗口恒等于当前
+       小节，"下一小节"本来就在眼前，预告没有信息量；且页末判据在 N=1 时恒成立，
+       会把唯一那一行永久当成"未来"，令格子恒 upcoming → 白填充不可见。1 行档下三者恒为
+       -1 / null / ""（守卫在 previewBarFor，状态本身不需要额外分支）。 */
   let winPrevBar = -1;
   /** @type {any[]|null} */
   let winPrevSteps = null;
@@ -3847,9 +3853,24 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      返回 {bar:-1}。
      ★ 内容必须与节目单同源：走 arrNextBar——范围循环时"下一小节"是范围起点而不是
        歌曲第 k+1 小节，跳段缩范围后亦然。
-     ★ 每帧热路径上的便宜守卫在先：只在页内最后一行才做 songBarAt/arrNextBar 的解析。 */
+     ★ 每帧热路径上的便宜守卫在先：只在页内最后一行才做 songBarAt/arrNextBar 的解析。
+
+     ★★ 前提：**N ≥ 2**（v2.10.3 修）。预告行的机制是"把**整屏最陈旧的第 1 行**让给屏外的
+       下一小节"——它要求屏内还有别的行在正常显示当前页。N = 1 时，"每 N 小节翻页"退化成
+       "跟播放头滚动"（`winAnchor(k) = floor(k/1)*1 = k`），窗口恒等于当前小节，
+       下一小节**本来就不在屏外**；而下面的判据 `k === winAnchor(k) + N - 1` 在 N=1 时
+       **恒成立**，于是唯一那一行每帧都被当成"未来"：
+         ① 内容被换成下一小节（`winPat.bars[0] = winPrevSteps`），与球在走的当前小节错开；
+         ② 整行加 `.preview-row`（opacity .55）；
+         ③ `setCell` 的 `isPreview` 豁免让它**永远拿不到 `.active` / `.played`** ——
+            而白色填充的底色只长在 `.cell.played .fill` / `.cell.active .fill` 上
+            （`.cell .fill` 本身是 `background:transparent`），于是帧内每帧写入的
+            `scaleX(进度)` 全部不可见。用户实拍症状 = 「小球正常滚动，但格子里的白色填充
+            不会自动填满」（球走 onset 表，与"格子 class + CSS"这条链完全独立，故只有半边坏）。
+       1 行档下预告没有任何信息量，直接关掉：窗口照常按每一小节翻页，格子回到正常态。 */
   /** @param {number} k @returns {{bar: number, steps?: any[]|null, name?: string}} */
   function previewBarFor(k){
+    if (arrWinBars() < 2) return { bar: -1 };          // v2.10.3：预告行要求屏内有多行可牺牲
     if (k < 0 || k !== winAnchor(k) + arrWinBars() - 1) return { bar: -1 };
     const a = arrangeCur();
     if (!a) return { bar: -1 };
