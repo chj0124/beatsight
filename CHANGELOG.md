@@ -1,5 +1,21 @@
 # 变更记录
 
+## v2.10.1 · 修「六线底纹开关显示已开却不显示底纹」（2026-09-22）
+
+**来源**：用户实拍反馈——「每次更新后打开工具，六线 · 扫弦谱底纹的开关默认已开，但是却没有显示底纹」。截图中 ↑↓ 箭头、灰格、座次尺俱在，唯独没有六线谱。
+
+**根因**（三处耦合导致的"开关说谎"）：①标记里 `#tabToggle` 的初值**写死**为 `class="toggle-pill on"` + `aria-checked="true"`，只是"默认值提示"，真实开合态存在 `S.showTab`（点击会改写并持久化）；②显隐由 `Viz.syncTabLayer()` 把 `!(S.showTab && hasStrum(vizPattern()))` 收成 `.viz` 上的 `no-tab` 类（CSS：`.viz.no-tab .tab{display:none}`），**不重建 DOM**；③装配层的启动初始化块原先只同步 mute / bounce / trainer / countIn 四个开关，`tabToggle` 的 `setToggle` **只**出现在点击处理器里。于是「上次关掉 → 重载（含每次更新后的冷启动）」这条路径上，pill 显示"开"、aria 是 `true`，而 `.viz` 已带 `no-tab`——开关与事实相反，用户无从判断该信谁。
+
+**修法**（`index.html` 装配层三条 `setToggle`，零行为变更、不动标记）：
+- 在启动初始化块补 `setToggle("tabToggle", S.showTab);`——视觉与语义由 `setToggle` 一次写全，此后 pill 恒等于 `S.showTab`（与既有四个开关同源）。
+- 顺带补同族漏改的 `setToggle("keepAwakeToggle", S.keepAwake);`——`#keepAwakeToggle` 标记同样写死 `off`，`setToggle` 原先也只在点击处理器里调；用户打开保活后重载同样会说谎。
+- **只修"显示出来的状态"，不改用户记住的偏好值**：`S.showTab` 的默认与持久化语义原样保留。
+- `tests/lib/harness.js`：给 `#tabToggle` 补静态初值（`className: "toggle-pill on"` / `aria-checked: "true"`）。此前桩里它的起始 `className` 是 `""`、aria 读到 `null`，与真实标记不同形，导致"启动有没有做收敛"在测试里**完全不可观测**——这正是该缺陷长期无测试可拦的原因。
+
+**取舍**：显隐仍是 `(S.showTab && hasStrum(vizPattern()))` 的**合取**，不被本次启动收敛简化——偏好为开但当前型不带扫弦记谱时依然不铺底纹（v2.9.0 的刻意设计，t86d 专门钉住）。`.tab` 的**创建**只由内容决定、**显隐**只由 `no-tab` 类决定，故藏起来时 DOM 仍在（t86b 断言其存在，补上 t47「只看存在、看不到可见性」的盲点）。开关语义未变（仍 `role="switch"`，`t24` 钉死的恰 9 处不受影响），标记一字未动。
+
+**自验**：`node tools/check-all.js --strict-env` 全绿（tsc ✓、ESLint ✓；仅浏览器冒烟因本机无浏览器 ⊘）；自动化测试 **2461 PASS / 0 FAIL**（新增 `t86-tab-toggle-boot-sync` 5 个子场景 / 27 条断言，已做**反向验证**：临时抽掉两行启动收敛后 6 条目标断言如期转红，随后复原）。行覆盖率 99.2%。索引行号由 `node tools/gen-index.js --write` 重算。
+
 ## v2.10.0 · 侧栏三区可折叠 + 「循环本段」排版 + 音量条说明（2026-09-22）
 
 **来源**：用户三条诉求——①节奏型预设库的分类标题增加可折叠，收揽垂直空间；②「循环本段」的说明文字调整排版；③「音量 · 节拍 / 扫弦 / 重拍增强」三条音量条增加说明文字。经确认口径：折叠取「全部收起 · 记忆选择」、说明文字「与开关放同一行」、音量条说明「仅悬浮 / 读屏提示」（不占常显版面）、`#loopHint` 动态状态行**保留在下一行**、折叠后「编排曲式」入口**保持常显**。

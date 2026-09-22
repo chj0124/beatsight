@@ -75,6 +75,14 @@ const HTML_ATTRS = {
   loopFrom: { tagName: "SELECT" },
   loopTo: { tagName: "SELECT" },
   loopToggle: { tagName: "BUTTON" },
+  /* v2.10.1：六线底纹开关（tabToggle）与 loopToggle 同是 `<button role=switch>`，但它还多一层
+     "标记里写死初值"——真实标记是 `class="toggle-pill on"` + `aria-checked="true"`。
+     桩不复刻这组初值的话，它的起始 className 是 ""、aria-checked 读到 null，
+     于是「启动后 pill 是否与 S.showTab 同源」这条断言被静默架空：无论启动做没做收敛，
+     stub 里都看不见那个写死的"开"——这正是"说谎的开关"长期无测试可拦的原因（t86 补上）。
+     ★ 用 `className` 键而非 `class`：前者会走 className 的 setter 填进 classList 那份 Set，
+       与真实 DOM 的 className ⇄ classList 同源；写 `class` 只会多一个读不到的属性。 */
+  tabToggle: { className: "toggle-pill on", "aria-checked": "true" },
   /* v2.9.0：轨模型已删，「扫弦」音量条改为**常显**——判据从"当前在哪条轨"变成
      "当前型是否带扫弦记谱"，三分类下随时可能切到扫弦型，跟着显隐会让滑条忽隐忽现。
      标记里也没有 `hidden`；桩若仍留初始 hidden，"恒可见"这条断言会被静默架空。 */
