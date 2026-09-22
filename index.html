@@ -554,6 +554,13 @@ input[type=range].vol{width:120px}
 .arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+/* ★ [hidden] 必须显式补一条（v2.10.2 修）：上面那句 `display:flex` 是**作者样式**，
+   优先级高于 UA 的 `[hidden]{display:none}` ——于是 `#argJump hidden` 形同虚设，
+   预设模式下整行「上一段 / 第 N 段 · 第 M 小节 / 下一段 / 范围循环」照样显示
+   （用户实拍截图：底部露出一枚孤立的绿色「范围循环」开关）。
+   本文件其余 10 处 `[hidden]{display:none}` 都是同一个坑的补丁，`.arg-now` 是漏网的那一个
+   ——本行与它们同类，改动 `.arg-now` 的 display 时别忘了它。 */
+.arg-now[hidden]{display:none}
 .arg-now-name{font-size:13px;color:var(--t1)}
 .arg-now-meta{font-size:11px;font-family:var(--mono);color:var(--t3)}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
@@ -857,16 +864,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            不带记谱的型本来就不画六线也不画箭头，开关对它自然无可见效果（v2.9.0 去轨门控） -->
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
     </div>
-    <!-- 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**一档可见行数。
-         用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的上下两层，
-         共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
+    <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
+         一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
+         上下两层，共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
          值域 1–4，默认 4（= 旧口径「同屏 4 小节」，老用户升级后逐位不变）。
-         ★ 只在**曲式模式**生效：预设模式下网格行数仍随型走（型多长画多行），
-           本档位只对曲式窗口长度与歌词轨行数起作用。
+         ★ N = **网格行数**，两种模式下都是「N 行窗口」：曲式模式下窗口 = 歌曲的 N 个连续小节；
+           预设模式下窗口 = 当前型的 N 个连续小节位——型短于 N 绕回重复铺满 N 行，
+           型长于 N 按 N 行翻页（v2.10.2 行为变更；此前预设模式画「型的全部小节」，
+           档位点下去毫无反应）。
          按钮由 VIZ_ROW_COUNTS 在 Controls.syncRowsUI 里生成，不在标记里写死——
          与练习量档位 / 轨切换条同一套「一行 pill 由值表生成」的纪律（单一数据源） -->
     <div class="viz-rows-panel">
-      <div class="group-label">同屏行数 · 曲式模式下扫弦与歌词共用</div>
+      <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
       <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
     </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
@@ -1304,8 +1313,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
       <h2 class="card-title" style="margin:22px 0 4px">画面怎么看</h2>
       <ul class="help-list">
-        <li><b>一行 = 一小节</b>；<b>曲式模式下四行是「这首歌正在弹的 4 小节」</b>，跟着播放往前滚
-          （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行）；预设模式下四行就是当前这个型的全部小节</li>
+        <li><b>一行 = 一小节</b>；<b>同屏画几行由「同屏行数」档位决定（1–4 行）</b>。
+          曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
+          （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行）；
+          预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
+          （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上</li>
@@ -1412,22 +1424,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1929  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2894  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3535  Modal         应用内弹窗
-     L3665  Viz           时值可视化渲染与每帧动画
-     L4952  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5581  Trainer       变速训练器
-     L5799  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6299  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7111  Editor        自定义节奏型编辑器
-     L7467  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7690  Ear           听辨训练（v1.10.0）
-     L7915  Arrange       曲式编排（v2.0.0）
-     L8676  Help          使用方法（v2.0.1）
-     L8723  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8797  初始化（装配） 各模块 hook 接线与启动
+     L1455  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1946  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2913  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3555  Modal         应用内弹窗
+     L3685  Viz           时值可视化渲染与每帧动画
+     L5172  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5801  Trainer       变速训练器
+     L6019  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6519  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7331  Editor        自定义节奏型编辑器
+     L7687  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7910  Ear           听辨训练（v1.10.0）
+     L8135  Arrange       曲式编排（v2.0.0）
+     L8896  Help          使用方法（v2.0.1）
+     L8943  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9017  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1447,7 +1459,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.1";
+const VERSION = "2.10.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1563,12 +1575,17 @@ const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
 const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
-/* 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**的可见行数。
-   用户明确要求「共用一个档位」——两轨是同一根时间轴上的上下两层，行数必须一致才能逐行对齐。
+/* 同屏行数档位（v2.8.0 req3；v2.10.2 起**两种模式都生效**）：扫弦网格窗口与歌词轨**共用**的
+   可见行数。用户明确要求「共用一个档位」——两轨是同一根时间轴上的上下两层，行数必须一致
+   才能逐行对齐。
    值域 1–4（4 = 旧口径「同屏 4 小节」）。它是**唯一真相源**：S 的加载校验与 Controls 的
-   档位按钮都从这里取，不在两处各维护一份。曲式模式下它就是窗口长度（原 ARR_WIN_BARS 恒 4
-   的替代，见 Viz.arrWinBars）；预设模式下网格行数仍随型走（型多长画多行），本档位只对
-   曲式窗口与歌词轨生效。 */
+   档位按钮都从这里取，不在两处各维护一份。
+   ★ 语义（v2.10.2 行为变更）：N 恒等于**网格行数**，两种模式下都是"N 行窗口"——
+     曲式模式下窗口是歌曲第 k…k+N-1 小节（见 Viz.arrWindowPat）；
+     预设模式下窗口是**当前型**的 N 个连续小节位（见 Viz.presetWindowPat）：
+     型短于 N 就绕回重复铺满 N 行，型长于 N 就按 N 行翻页。
+     v2.8.0~v2.10.1 只对曲式窗口与歌词轨生效，预设模式画"型的全部小节"
+     ——那让档位按钮在预设模式下点下去毫无反应（用户实拍：「行数按钮在一些情形中无效」）。 */
 const VIZ_ROW_COUNTS = [1, 2, 3, 4];
 /* F1 歌词对齐轨（v2.1.0）的粒度与基准（第 0 轮契约）：1 格 = 十六分 = 12t（拖动吸附单位），
    基准时值 = 八分 = 2 格 = 24t（粘贴歌词后按字均分的默认值）。
@@ -2376,7 +2393,9 @@ const Store = (() => {
     showTab: saved.showTab !== false,
     /* v2.8.0 req3 同屏行数档位：扫弦网格窗口与歌词轨**共用**（见 VIZ_ROW_COUNTS 的值表注释）。
        它是用户的**视图偏好**，跟 showTab 同类——下次打开还要看同样的行数，所以进热键载荷。
-       默认 4 = 旧口径「同屏 4 小节」：老用户升级后看到的行数逐位不变。
+       默认 4 = 旧口径「同屏 4 小节」：v2.10.2 起两种模式都窗口化，默认档下
+       **4 小节及更短的型**看到的行数与升级前逐位不变（型长 > 4 的型才从"型多长画多行"
+       变成"4 行一页"，那是本次的行为变更）。
        加载校验用白名单（VIZ_ROW_COUNTS.includes）：脏值/越界一律回落到 4，不信存储。 */
     vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 4,
     /* v2.10.0 预设库分区折叠：三区标题可点开/收起（true = 展开）。默认**全部收起**。 */
@@ -3096,8 +3115,9 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    为什么要它：待命球原先按 (bar+1) % 型长 取"下一行"，这在曲式里是错的——
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
-   调用方回落到 loopNextBar（v2.6.2：循环开着时取区间起点，关着时 ≡ (bar+1)%vizBars，
-   模数 = 当前型的小节数，对不循环的预设模式零行为变化）。 */
+   调用方回落到 Viz.nextPatBarOf（v2.6.2：循环开着时取区间起点；关着时顺序下一小节。
+   v2.10.2 起该函数返回的是**型内小节号**，由 Viz 内部再折成窗口行号——
+   旧版这里传的是 loopNextBar(bar, vizBars)，那时行号恰好等于型内小节号，故为等价）。 */
 /** @param {any} [sec] @param {any} [bar]
     @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查） */
 function arrangeNextRow(sec, bar, a){
@@ -3714,42 +3734,105 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
   let vizSig = S.sig, lastCi = -1;
-  /* vizBars（v2.5.1）：当前画面渲染所用的**型的小节数**，与 vizSig 同一时刻锁定。
-     为什么也要锁：渲染层的每一处"第几行"（行数、静音拍标识、播放头折行、球的行界）
-     必须用**同一个**模数，否则换型瞬间会出现"网格已按新型重建、播放头还按旧模数折行"的错行。
-     与 vizSig 一样，buildViz 时锁定一次，本帧结构生命周期内只认它 */
-  let vizBars = DEF_BARS;
+  /* vizBars / vizPatLen（v2.5.1 起；v2.10.2 拆成两个数）——都是 buildViz 时锁定的"模数"，
+     与 vizSig 同一套纪律（本帧结构生命周期内只认它们，不再现读 S / activePattern）。
 
-  /* ---- 曲式模式的「滚动窗口」（v2.5.2 第 Ⅱ 期；v2.8.0 req3：窗口长度改为可调）----
-     用户要的是：网格里的 N 行 = **这首歌正在弹的那 N 小节**（N = 同屏行数档位），跟着播放往前走，
-     而不是"某个型的 N 小节被盖 N 遍"。做法是把窗口里的 N 个小节**合成为一个临时的型**：
-     于是每一行仍然是"某个型的第 bar 小节"，行可以来自不同的段、不同的型，
+       ★ 为什么必须拆成两个（v2.10.2 修）：v2.8.0 起窗口机制让"网格行数"与"型的小节数"
+         变成了两个**不同的**数，而旧代码只有一个 vizBars 身兼二职——
+         曲式模式下它是窗口长度（3.15 节的注释自承），预设模式下又是型长。
+         现在两模式都窗口化，二义性必须消除：
+         · vizBars    = **显示行数** = 窗口长度 = patBars(vizPattern())（= 同屏行数档位）
+         · vizPatLen  = **内容模数** = 型的小节数 = patBars(activePattern())
+       读错了的症状很隐蔽：拿行数当模数去算"型内第几小节"，1 小节的型 + 4 行档就会
+       算出根本不存在的小节号（练习循环区间会因此落到区间外）。 */
+  let vizBars = DEF_BARS;
+  let vizPatLen = DEF_BARS;
+
+  /* ---- 网格的「N 行窗口」（v2.5.2 第 Ⅱ 期立骨；v2.8.0 req3 窗口长度可调；v2.10.2 扩到预设模式）----
+     用户要的是：网格里的 N 行 = **正在弹的那 N 个连续小节位**（N = 同屏行数档位）。做法是把
+     窗口里的 N 个小节**合成为一个临时的型**：于是每一行仍然是"某个型的第 bar 小节"，
      而下游（格子 / 填充 / 闪烁 / 弹跳球）一行都不用改。
 
-     ★ 两个必须分清的"小节号"（改这块最容易错的地方）：
+     ★ 两个模式共用同一份窗口状态（winStart / winPat），但**起点口径不同**：
+         · 曲式模式：winStart = **歌曲小节号**（跨段摊平后的一维号，见 songBars/songBarAt），
+           窗口各行的内容取自不同的段 / 不同的型；
+         · 预设模式（v2.10.2）：winStart = **型内小节号**，且恒为 N 的整数倍，
+           窗口各行的内容都取自同一个型的 (winStart + i) % 型长 小节。
+       两种模式互斥（playMode 只有一个），故共用一份状态不会打架；
+       所有曲式专属的分支都已带 `S.playMode === "arrange"` 守卫。
+
+     ★ 三个必须分清的"小节号"（改这块最容易错的地方）：
          · 型内小节号 —— `schedBar` 与端点表里的 `e.bar` 用的口径（调度器口径）
-         · 歌曲小节号 —— 跨段摊平后的一维号（窗口口径，见共享区的 songBars/songBarAt）
-       端点缓冲区里存的是**前者**，所以画之前要走一次 `rowOfOnset()` 换算。 */
+         · 歌曲小节号 —— 曲式模式下跨段摊平后的一维号（窗口口径）
+         · 窗口行号   —— 画面上的第几行（`rowOfOnset` / `patBarOfRow` 负责两向换算）
+       端点缓冲区里存的是**第一个**，所以画之前必须换算，不能直接当行号用。 */
   /* 窗口长度（v2.8.0 req3）：由同屏行数档位 S.vizRows 决定，取代旧版恒为 4 的常量。
+     它是**两种模式共用的可见行数**（v2.10.2 起）。
      ★ 为什么是函数而不是常量：档位可在运行期由 Controls 改；改动处**紧接着**就调 buildViz 重建，
        所以本函数的每次读取都与「当前已建成的网格」同一口径——不存在"网格已按新行数重建、
        行界判据还按旧行数"的错行窗口（这正是 vizSig/vizBars 要锁的同类风险，此处靠"同步重建"消掉）。
      ★ 它同时是**歌词轨的行数**：两轨共用这一档位（见 VIZ_ROW_COUNTS 的值表注释），
-       行数一致才能逐行对齐。预设模式不走这里——网格行数仍随型走（型多长画多行）。 */
+       行数一致才能逐行对齐。（歌词轨本身只在曲式模式出现，见 buildLyricLane） */
   function arrWinBars(){ return S.vizRows; }
-  let winStart = -1;                      // 窗口起点（歌曲小节号）；-1 = 还没定过 / 不适用
+  let winStart = -1;                      // 窗口起点（曲式 = 歌曲小节号；预设 = 型内小节号）；-1 = 还没定过
   /** @type {any} */
-  let winPat = null;                      // 窗口合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
-  /* 预告行（v2.7.0）：页内最后一行的那个小节期间，第 1 行临时替换成"下一小节"的内容。
-     winPrevBar = 预告的歌曲小节号（-1 = 本窗口不带预告）；winPrevSteps = 预告行的格子；
-     winPrevName = 徽标上的型名。三者同生同灭（窗口同步一处写入，resetWindow 一处清） */
+  let winPat = null;                      // 当前窗口的合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
+  /* 预告行（v2.7.0）：**曲式模式独有**——页内最后一行的那个小节期间，第 1 行临时替换成
+     "下一小节"的内容。winPrevBar = 预告的歌曲小节号（-1 = 本窗口不带预告）；
+     winPrevSteps = 预告行的格子；winPrevName = 徽标上的型名。
+     三者同生同灭（窗口同步一处写入，resetWindow 一处清）。
+     ★ 预设模式不做预告行：那里的窗口内容全部来自同一个型，(k+1) 小节在型内是确定的，
+       不需要提前解析节目单；下一行该显示什么由 `nextRowOf()` 算术得出。 */
   let winPrevBar = -1;
   /** @type {any[]|null} */
   let winPrevSteps = null;
   let winPrevName = "";
-  /** 渲染层该画哪个型：曲式模式 = 窗口合成型；预设模式 = 当前型（原行为，一字未改）。 */
+  /** 渲染层该画哪个型（v2.10.2：两种模式都返回**窗口合成型**）。
+      winPat 为 null（尚未建过网格 / 曲式合成失败）时回落 activePattern()，
+      即"画当前型"的旧行为——那是降级路径，不是常态。
+      热路径（paintFrameBody / repaintCells / syncTabLayer）都经它取型，故必须 O(1)。 */
   function vizPattern(){
-    return (S.playMode === "arrange" && winPat) ? winPat : activePattern();
+    return winPat || activePattern();
+  }
+  /** 窗口行 → **型内小节号**（内容下标）。预设模式下两者不同：窗口第 i 行装的是型的
+      第 (winStart + i) % 型长 小节（型短于窗口时绕回重复，故同一小节会出现多行）。 */
+  /** @param {number} row @returns {number} */
+  function patBarOfRow(row){
+    const len = vizPatLen;
+    if (!(len > 0) || winStart < 0) return row;
+    return ((winStart + row) % len + len) % len;
+  }
+  /** **型内小节号** → 窗口行号；不在本窗口里返回 -1（调用方按"看不见"处理）。
+      ★ 必须走它而不是直接拿 e.bar 当行号：窗口化后行号与型内小节号不再是同一个数
+        （旧实现里 vizBars 恒等于型长，两者恰好相等，所以一直是直取）。 */
+  /** @param {number} b @returns {number} */
+  function rowOfPatBar(b){
+    const len = vizPatLen, W = vizBars;
+    if (winStart < 0 || !(len > 0) || !(W > 0)) return Math.min(Math.max(0, W - 1), Math.max(0, Math.floor(b) || 0));
+    const bi = Number.isFinite(b) ? Math.floor(b) : 0;
+    const i = ((bi - winStart) % len + len) % len;
+    return (i < W) ? i : -1;
+  }
+  /** 「下一小节的型内小节号」（内容下标）：预设模式走练习循环（区间起点 / 顺序下一小节），
+      曲式模式返回 loopNextBar 的同口径值（曲式下它就是 (bar+1)%W，见 loopNextBar 的守卫）。 */
+  /** @param {number} bar 当前**行号** @returns {number} */
+  function nextPatBarOf(bar){
+    if (S.playMode === "arrange" || winStart < 0) return loopNextBar(bar, vizBars);
+    const len = vizPatLen;
+    return loopNextBar(patBarOfRow(bar), len);
+  }
+  /** 「下一行」的行号（`.next` 预告格与弹跳球待命球共用同一口径）。
+      曲式：窗口是歌曲小节的连续序列，行号即偏移 → (bar+1)%W。
+      预设（v2.10.2）：先求下一小节的型内小节号，再折进**翻页后**它所在的那一行——
+        `cand % W`（页锚恒为 W 的倍数，故下一小节的行号就是它在新页里的偏移）。
+      这样即使在页边界上，待命球也指向翻页后它真正落到的那一行。
+      ★ v2.10.2 之前这里传的是 loopNextBar(bar, vizBars)：那时 vizBars 恰好等于型长，
+        bar（行号）也恰好等于型内小节号，所以对；现在两个前提都不成立了。 */
+  /** @param {number} bar @returns {number} */
+  function nextRowOf(bar){
+    if (S.playMode === "arrange" || winStart < 0) return loopNextBar(bar, vizBars);
+    const W = vizBars;
+    return ((nextPatBarOf(bar) % W) + W) % W;
   }
   /** 窗口起点该取哪个小节（**改这一行就是改手感**）：
       按 N 小节翻页（v2.7.0 用户拍板；N = 同屏行数档位）→ 球从第 1 行逐行走到第 N 行，与预设模式同手感；
@@ -3783,8 +3866,21 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         （开播 / 重锚 / 循环区间变更 / 上下文重建）都会把调度游标拨回范围起点——
         窗口若不跟着丢弃，重新按播放键就会停在上一次听到的地方，与声音对不上
         （用户实拍：重新播放后第 1 行不是歌曲第 1 小节）。
-        调用点在 AudioEngine / Controls —— 那正是 `schedBar = loopStartBar(...)` 的四处 */
-  function resetWindow(){ winStart = -1; winPat = null; winPrevBar = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2; }
+        调用点在 AudioEngine / Controls —— 那正是 `schedBar = loopStartBar(...)` 的四处
+
+      ★ v2.10.2：**只丢曲式那一个窗口**（预设模式刻意不丢，理由是"丢了反而错"）：
+        预设窗口的内容完全由 (当前型, 页锚) 现算，而页锚每帧都会按**可听小节**重算一遍
+        （paintFrameBody 的预设同步分支）——若在这里把它清成 -1/null，下一帧必然触发一次
+        整树重建，而那次重建会换掉 playheadEl / ballEl / cellEls 等全部元素引用。
+        帧内重建是既有的禁忌（见 paintFrameBody 顶部那段"顺序是硬约束"），
+        而"首帧必重建"还会让所有"取一次 internals() 再驱动"的用例（T30/T72/T41…）
+        拿到一对已被丢弃的节点——症状是球永远不动，与功能本身毫无关系。
+        正确性不受影响：页锚对不上时（循环区间落在别的页、上一轮停在更后的页）
+        预设同步分支下一帧就会自行重建，见那里的注释。 */
+  function resetWindow(){
+    if (S.playMode === "arrange"){ winStart = -1; winPat = null; }
+    winPrevBar = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2;
+  }
   /** 把窗口里的 arrWinBars() 个小节合成为一个临时型（每小节取自它所引用的型）。
       任一小节解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
@@ -3805,6 +3901,26 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     }
     return { name: "", desc: "", meter, accents: accents || [0], bars };
   }
+  /** 预设模式的窗口合成型（v2.10.2，与 arrWindowPat 同构）：把**当前型**按窗口起点 W 铺成
+      N 行，第 i 行 = pat.bars[(W + i) % 型长]。
+        · 型长 < N → 绕回重复铺满 N 行（用户拍板 Q1：1 小节的型 + 4 行档 = 同一小节铺 4 行）；
+        · 型长 > N → 只铺 W..W+N-1 这一段，随播放按 N 小节翻页（Q2）。
+      下行（格子 / 填充 / 闪烁 / 弹跳球行界）用的都是"行号"，本函数让"行号 → 小节"的映射
+      全部收在这一处，于是它们一行都不用改——这是选合成型而不是让渲染层到处支持"窗口"的理由
+      （同 arrWindowPat 的取舍）。
+      ★ 行的**音符对象是原型的引用**（不是拷贝）：调用方只读（buildBarRow 只 forEach、
+      setCell 只读 st.rest），重复铺满时同一小节的多行共享同一批对象是安全的、也省内存。
+      ★ 返回的是新对象（不是型本身）：下游有 `winPat.bars[0] = …` 这类就地改写（曲式的预告行），
+      共享引用会让改写外泄回型。 */
+  /** @param {any} pat @param {number} W @returns {any} */
+  function presetWindowPat(pat, W){
+    if (!pat || !Array.isArray(pat.bars) || !pat.bars.length) return null;
+    const len = pat.bars.length;
+    const bars = [];
+    for (let i = 0; i < arrWinBars(); i++) bars.push(pat.bars[(W + i) % len] || []);
+    return { name: pat.name || "", desc: pat.desc || "", meter: pat.meter,
+      accents: Array.isArray(pat.accents) ? pat.accents : [0], bars };
+  }
   /** 曲式模式：现在**听到**的是歌曲第几小节（线性号）。
       ★ 必须按可听位置、不能按调度游标：调度器提前一个前瞻窗口（默认 300ms）推进
         arrSec/arrBar，按它重建会"画面先跳、声音后到"（用户实拍过同类错位，v2.0.2）。
@@ -3822,9 +3938,23 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     if (arrBar >= 0) return songBarBefore(a, arrSec) + arrBar;
     return -1;
   }
-  /** 端点 → **窗口行**。预设模式：端点的 bar 就是行号（原行为，一字未改）。
+  /** 预设模式：现在**听到**的是型的第几小节（型内小节号）。
+      与 audibleSongBar 同源同理由——调度游标 `schedBar` 早一个前瞻窗口（300ms）推进，
+      按它翻页会"画面先翻、声音后到"。故优先取 onset 表里**已落地**的那一条的 `e.bar`
+      （端点表存的就是型内小节号，与播放头/球完全同源）；刚起播还没有落地端点时退回 schedBar。
+      返回 -1 = 不在预设模式。 */
+  /** @param {number} now @returns {number} */
+  function audiblePatBar(now){
+    if (S.playMode === "arrange") return -1;
+    let hit = null;
+    for (const e of onsetBuf) if (e.t <= now && typeof e.bar === "number") hit = e;
+    if (hit) return hit.bar;
+    return schedBar;
+  }
+  /** 端点 → **窗口行**。
+      预设模式（v2.10.2）：端点带的是**型内小节号**，走 rowOfPatBar 折进行号；不在窗口返回 -1。
       曲式模式：端点带的是节目单位置（aSec/aBar），换算成歌曲小节号后取它在窗口里的偏移；
-      不在窗口内（前瞻窗口排到了更远的小节）返回 -1，调用方不画那个端点。 */
+        不在窗口内（前瞻窗口排到了更远的小节）返回 -1，调用方不画那个端点。 */
   /** @param {any} e
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数）
       @returns {number} */
@@ -3837,7 +3967,10 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         return (r >= 0 && r < arrWinBars()) ? r : -1;
       }
     }
-    return Math.min(vizBars - 1, Math.max(0, e.bar));
+    /* 预设模式：型内小节号 → 窗口行。窗口未锚（winStart < 0，尚无网格）时 rowOfPatBar
+       自动退回"钳进行数域"的旧口径，不会给出越界行号 */
+    if (S.playMode !== "arrange") return rowOfPatBar(e.bar);
+    return Math.min(vizBars - 1, Math.max(0, e.bar));   // 曲式回落：窗口未锚时画当前型（原行为）
   }
   /** 可听域的节目单位置（v2.7.1）：歌词轨与「第 N 段 · 第 M 小节」计数器共用。
       ★ 为什么不能读调度游标 arrSec/arrBar：调度器提前一个前瞻窗口（前台 0.3s /
@@ -3857,9 +3990,14 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return at ? { sec: at.sec, bar: at.bar } : null;
   }
   /** 这一行会不会被静音拍静掉（**只用于视觉标识**，真正的发声门控在 scheduler）。
-      曲式模式：窗口起点是已知的歌曲小节号 → 按线性号直接算，精确（4 行里恰有一行会被标出）。
-      预设模式：只有 4 小节的型才等价于"型内最后一小节"；更短的型其静音落点随循环次数轮转
-      （1 小节的型每 4 遍静一次），**静态标不出来** —— 到点那一刻状态栏会写「静音拍」兜住。 */
+      曲式模式：窗口起点是已知的歌曲小节号 → 按线性号直接算，精确（N 行里恰有一行会被标出）。
+      预设模式（v2.10.2 起窗口化后反而**更准**了）：窗口锚点 winStart 恒为 N 的整数倍，
+      而第 b 行的线性小节位置就是 winStart + b，于是"行号 == 乐句相位"——
+      只要 N === MUTE_PERIOD（档位 4）就能精确标出，**与型有多长无关**
+      （v2.10.1 及以前拿 vizBars 当型长判据，1 小节的型标不出来；
+       现在 1 小节的型 × 4 行档同样能标对第 4 行）。
+      ★ N ≠ MUTE_PERIOD 时仍然标不出来（一页只覆盖乐句的一段，静音落点随翻页轮转），
+      那时不标，由状态栏在到点那一刻写「静音拍」兜住。 */
   /** @param {number} b @returns {boolean} */
   function mutedRow(b){
     if (!S.mute) return false;
@@ -3908,11 +4046,13 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       跑道拍点 → 六线底纹与箭头层（仅带扫弦记谱的小节）→ 拍内座次尺 → 音符格（含刻度线/标签/箭头）
       → 短音符组标签，并把本行登记进 rowEls/cellEls/subEls/… 各同构数组
       （"数组第 b 项 = 第 b 小节"是渲染层既有约定，paintFrame/resetForStop 都按它对齐）。
-      @param {number} b 小节序号 @param {any} p 当前节奏型（activePattern 快照）
+      @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} viz 网格容器
       @returns {void} */
   function buildBarRow(b, p, barTicks, viz){
-    const hasStr = hasStrum(p);
+    /* v2.10.2：扫弦判据走 vizHasStrum()（预设模式问**型本身**而不是当前页的合成型），
+       否则型长于窗口时底纹会随翻页闪烁——见 vizHasStrum 的注释 */
+    const hasStr = vizHasStrum();
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
     // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
@@ -4117,10 +4257,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
        网格与发声分裂：画面是旧预设的格子，球却按曲式的落点跳（用户实拍：音画错位）。
        停止/试听时 activePattern() 本就回落 curPattern()，预设模式行为零变化 */
-    /* ---- 曲式模式：先把滚动窗口定下来（v2.5.2 第 Ⅱ 期）----
-       窗口起点：**播放中沿用当前窗口**（它由 paintFrameBody 按可听位置维护，不能在这里重置，
-       否则每次换型都会把窗口拽回段首）；停止/未播时锚到播放范围起点，这样"跳段定位"
-       立刻能在网格上看到那一段的开头。 */
+    /* ---- 先把窗口定下来（v2.5.2 第 Ⅱ 期立骨；v2.10.2 起**两种模式都窗口化**）----
+       曲式：窗口起点 = 歌曲小节号。播放中沿用当前窗口（它由 paintFrameBody 按可听位置维护，
+       不能在这里重置，否则每次换型都会把窗口拽回段首）；停止/未播时锚到播放范围起点，
+       这样"跳段定位"立刻能在网格上看到那一段的开头。
+       预设（v2.10.2）：窗口起点 = **型内小节号**，恒为 N 的整数倍。停机/换型回到第 0 页；
+       播放中沿用（由 paintFrameBody 按可听小节维护，翻页才重建）。 */
+    const ap = activePattern();
+    vizPatLen = patBars(ap);            // 内容模数（型长）：本帧结构生命周期内只认它
     const arr = (S.playMode === "arrange") ? arrangeCur() : null;
     if (arr){
       /* 预告行只在**播放中**存在（它由 paintFrameBody 按可听位置维护）；
@@ -4134,9 +4278,26 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       /* v2.7.0 预告行替换：本窗口带预告时，第 1 行的格子换成"下一小节"的内容。
          winPat 每次现合成、改它不外泄；行的其它层（跑道/六线/座次尺）与内容无关，不用动 */
       if (winPat && winPrevBar >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
-    } else { winPat = null; winStart = -1; }
+    } else {
+      /* 预设模式（v2.10.2）：同构的 N 行窗口。型短于 N → 绕回重复铺满；型长于 N → 按 N 翻页。
+         ★ 起点必须落在 [0, 型长-1] 且按 N 对齐：换型 / 编辑器改短 / 导入更短的型之后，
+           存下来的 winStart 可能指到不存在的小节上（localStorage / 上一次的型都不可信）。
+           停机时一律回到第 0 页——重新按播放键看到的就是型的开头（与曲式同一口径）。
+         ★ 预告行是曲式独有的（要解析节目单的"下一小节"），预设模式这里必须显式清掉，
+           否则从曲式切回预设会把上一次的预告粘在第 1 行上 */
+      winPrevBar = -1; winPrevSteps = null; winPrevName = "";
+      if (winStart < 0 || winStart >= vizPatLen || !S.playing) winStart = 0;
+      else winStart -= winStart % arrWinBars();       // 对齐到页边界（N 的整数倍）
+      winPat = presetWindowPat(ap, winStart);
+      /* 型结构坏了（bars 空）→ 回落到"画当前型"。起点置 0 而不是 -1：paintFrameBody
+         的翻页同步以"页锚变了才重建"为判据（见该处注释），留 -1 会让它在坏数据下每帧重建。
+         此刻 vizPattern() 回落 activePattern()，行数也退回型长——一条自洽的降级路径 */
+      if (!winPat) winStart = 0;
+    }
     const p = vizPattern();
-    vizBars = patBars(p);          // v2.5.1：网格的行数随型走；v2.5.2：曲式模式下 = 窗口长度（= 同屏行数档位）
+    /* 行数 = 窗口长度（v2.10.2 起两模式同一口径）。winPat 为 null 的降级路径下
+       patBars(p) 退回型长 —— 与旧口径一致，不会画出越界的行 */
+    vizBars = patBars(p);
     const barTicks = vizSig * TPB;
     for (let b = 0; b < vizBars; b++) buildBarRow(b, p, barTicks, viz);
     /* v2.7.0 预告行：预告行挂在第 1 行——它是"未来"，降透明与正读顺序区分开
@@ -4167,10 +4328,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const g0 = geoOf(0);             // 尾迹宽度 = 行宽 10%（定死，帧内只写 transform；v2.0.2）
     if (g0) trailGlowEl.style.width = (g0.width * 0.1) + "px";
     parkBall();
-    /* 卡片标题（v2.5.2）：曲式模式下报的是**歌曲哪几小节**（滚动窗口的第一个到最后一个），
-       而不是笼统的"同屏 4 小节"——窗口在滚，标题跟着滚，用户才知道自己看到的是全曲哪一段。
-       行数也一起报（预设模式下 1 小节的型就是 1 行，写死"4 小节"会说谎）。
-       窗口走到曲尾会绕回开头（那是刻意的：能提前看到"接下来回到哪"），标题如实说明 */
+    /* 卡片标题（v2.5.2；v2.10.2 两种模式都窗口化后统一按"行数"报）：
+       曲式模式下报的是**歌曲哪几小节**（滚动窗口的第一个到最后一个），窗口在滚、标题跟着滚，
+       用户才知道自己看到的是全曲哪一段；窗口走到曲尾会绕回开头（那是刻意的），标题如实说明。
+       ★ 预设分支报「同屏 N 小节」在窗口化后**依然准确**——N 就是网格行数，
+         也就是本屏覆盖的 N 个连续小节位（型短于 N 时其中若干行是同一小节的重复）；
+         与档位按钮上的「N 行」是同一个 N，不再需要在这里改写口径。
+         原先那句"预设模式下 1 小节的型就是 1 行，写死 4 小节会说谎"已随 v2.10.2 失效：
+         现在 1 小节的型配 4 行档就是真的 4 行。 */
     const totalBars = arr ? songBars(arr) : 0;
     const wEnd = winStart + vizBars;
     $("vizTitle").textContent = (S.playMode === "arrange" && winStart >= 0)
@@ -4184,14 +4349,23 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     fitCellAnnotations();
     buildLyricLane();                // v2.1.0 F1：网格重建时同步重建歌词轨（两轨同一份 tick 基准）
   }
+  /* 「这个型带不带扫弦记谱」在**窗口化之后**该问谁（v2.10.2）。
+     ★ 为什么不能一律问 vizPattern()：窗口合成型只含**当前页**的小节。型长于窗口时，
+       若扫弦记谱只在第 5 小节而当前页是 0-3，底纹与箭头会随翻页整层闪烁——
+       而底纹是"纸"、判据该贴**型本身**。
+       故：预设模式问 activePattern()（= 型，与 v2.10.1 的口径一字不差）；
+           曲式模式仍问窗口合成型（行来自不同的型，只能按可见行判，原行为不变）。 */
+  function vizHasStrum(){
+    return hasStrum(S.playMode === "arrange" ? vizPattern() : activePattern());
+  }
   /* 六线底纹显隐（v2.4.2）：把 S.showTab / 当前型是否带扫弦记谱两个条件收成 .viz 上的一个类，
      由 CSS `.viz.no-tab .tab{display:none}` 落地。
      为什么不在 buildViz 里"按开关决定要不要创建 .tab"：那样切开关就得重建整棵树
      （播放中会抖），而且换型本来就会重建——两件事的触发频率差太远。
-     所以 .tab 的**创建**只由当前型的 hasStrum 决定（带记谱建、不带不建），**显隐**由这个类决定。
+     所以 .tab 的**创建**只由 vizHasStrum() 决定（带记谱建、不带不建），**显隐**由这个类决定。
      buildViz 末尾与开关处理器都调它，保证两个入口收敛到同一结果。 */
   function syncTabLayer(){
-    $("viz").classList.toggle("no-tab", !(S.showTab && hasStrum(vizPattern())));
+    $("viz").classList.toggle("no-tab", !(S.showTab && vizHasStrum()));
   }
   /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
      标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
@@ -4256,7 +4430,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     trailGlowEl.style.transform = "translateX(0px) scaleX(0)";
     parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
-    const pat = curPattern();
+    /* 复位用**画面上的那个型**（vizPattern = 窗口合成型），不是 curPattern()（v2.10.2 修）。
+       原先取 curPattern() 隐含了"格子 = 当前型的小节"这个前提，窗口化后不成立：
+       预设模式下第 b 行装的是型的第 (winStart+b) % 型长 小节，而曲式模式下第 b 行
+       甚至来自别的型——用 curPattern().bars[b] 取 rest 会把休止标记复位到错的小节上
+       （症状：停机后某些格子保留/丢失虚框，很难与"球停在哪儿"联系起来）。
+       与 setCell / buildBarRow 同一份口径，三处不再各取各的型。 */
+    const pat = vizPattern();
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
       const st = (pat.bars[b] || [])[i];       // v1.2.4：快照与已渲染格子可能因瞬态长度不一，容忍之
       el.className = "cell upcoming" + (st && st.rest ? " rest" : "");
@@ -4444,26 +4624,28 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (waitEl){
       if (terminal){
         /* 曲式模式下"下一行"可能属于下一段的型（arrangeNextRow 走 arrNextBar 得出）；
-           预设模式下它返回 null → 回落到 loopNextBar（v2.6.2）：循环开着时"下一行"
-           是**区间起点**而不是顺序的下一行——循环 [k,k] 时就是本行自己（待命球在本行
-           开头起跑预备），循环 [1,2] 时是第 1 行；循环关着时 loopNextBar ≡ (bar+1)%vizBars，
-           与不循环的旧行为一字不差。
+           预设模式下它返回 null → 回落到 nextPatBarOf（v2.6.2 起走 loopNextBar 的循环口径）：
+           循环开着时"下一行"是**区间起点**而不是顺序的下一行——循环 [k,k] 时就是本行自己
+           （待命球在本行开头起跑预备），循环 [1,2] 时是第 1 行。
            v2.0.2：必须按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻窗口，
            终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
            prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
         const nrow = (prev && prev.aBar !== undefined)
           ? arrangeNextRow(prev.aSec, prev.aBar, a) : arrangeNextRow(undefined, undefined, a);
-        /* ★ 这里有两个**不同的**下标，v2.5.2 起必须分开（曲式模式下它们不再相等）：
-             cand = 内容下标：下一小节所属型的**型内**小节号（用来取那一行的音符）
-             rowNext = 行的下标：待命球画在**窗口的第几行**（下一小节 = 当前行 + 1）
-           预设模式下窗口 = 型自身，两者相等 → 行为与 v2.5.1 一字不差 */
-        const cand = nrow ? nrow.bar : loopNextBar(bar, vizBars);
-        /* v2.7.0 翻页档：页内第 4 行的"下一行"是下一页的第 1 行——预告行已经把
+        /* ★ 这里有两个**不同的**下标，v2.5.2 起必须分开（曲式模式下它们不再相等；
+           v2.10.2 起预设模式窗口化后也不再相等）：
+             cand = 内容下标：下一小节的**型内**小节号（用来取那一行的音符）
+             rowNext = 行的下标：待命球画在**窗口的第几行** */
+        const cand = nrow ? nrow.bar : nextPatBarOf(bar);
+        /* v2.7.0 翻页档：页内第 N 行的"下一行"是下一页的第 1 行——曲式模式下预告行已经把
            下一小节的内容摆在那里，待命球就落它上面（翻页瞬间内容原地转正，接力不断）。
-           页内其余行照旧 +1；没有预告（范围播完）时退回原钳制口径 */
+           页内其余行照旧 +1；没有预告（范围播完）时退回原钳制口径。
+           v2.10.2 预设模式：没有预告行，用 cand % 行数 —— 页锚恒为行数的整数倍，
+           故"下一小节在翻页后落到第几行"就是它在新页里的偏移。这样页边界上待命球
+           指向的也是它真正要去的那一行（旧写法直接拿 cand 当行号，型长 > 行数时会指向屏外） */
         const rowNext = (S.playMode === "arrange")
           ? ((bar === vizBars - 1 && winPrevBar >= 0) ? 0 : Math.min(vizBars - 1, bar + 1))
-          : cand;
+          : ((cand % vizBars) + vizBars) % vizBars;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[cand] || []);
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
@@ -4681,15 +4863,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (rl){ rl.classList.add("on"); lastRulerEl = rl; }
     // 状态栏读数：第几小节 · 第几拍 + 拍内座次
     const sfx = (vizSig !== 6 && t16 % 4 > 0) ? SUB_NAMES[t16 % 4 - 1] : "";
-    /* 状态栏读数（v2.5.2）：曲式模式下报**歌曲第几小节**（窗口起点 + 行号），而不是"第几行"
-       —— 滚动窗口下第 1 行永远是当前小节，报行号等于永远显示"第 1 小节"（等于把位置信息删了）。
-       预设模式下 shownBar 就是行号（原行为一字未改）。
-       「静音拍」这一句走**发声侧的真值**、不走行标识那套静态判据：1 小节的型每 4 遍才静一次，
-       静态标不出来，但"这一遍到底静没静"是确定的（见 mutedRow 的注释）。
+    /* 状态栏读数（v2.5.2；v2.10.2 预设分支改口径）：曲式模式下报**歌曲第几小节**
+       （窗口起点 + 行号），而不是"第几行"—— 滚动窗口下第 1 行永远是当前小节，
+       报行号等于永远显示"第 1 小节"（等于把位置信息删了）。
+       预设模式下报**型内第几小节**（patBarOfRow(行号)）：
+         · 型长 ≤ 行数时逐位等于行号 + 1，与窗口化之前**一字不差**（老数据的读数不变）；
+         · 型长 > 行数时才是对的答案 —— 若照搬"行号 + 1"，6 小节的型在第二页会报
+           「第 1-4 小节」而型里根本没有对应关系（行号只是页内偏移）。
+       「静音拍」这一句走**发声侧的真值**、不走行标识那套静态判据：到点那一刻由 phase 判定，
+       静态标不出来的档位（≠4）照样能在这里说明白（见 mutedRow 的注释）。
        ★ 乐句相位由调用方（paintFrameBody）**显式传进来**，不在这里现算：它要读可听端点的 pb
          与窗口起点，那两样都在渲染主循环的局部作用域里；在这里偷偷读模块变量会把
          "这一帧到底按谁的时刻画"变成隐式契约（本函数也被单独调用过） */
-    const shownBar = (S.playMode === "arrange" && winStart >= 0) ? winStart + bar : bar;
+    const shownBar = (S.playMode === "arrange" && winStart >= 0) ? winStart + bar : patBarOfRow(bar);
     const mutedNow = S.mute && (phase % MUTE_PERIOD) === MUTE_PERIOD - 1;
     $("statusText").textContent = mutedNow
       ? `静音拍 · 第 ${shownBar + 1} 小节 · 心中默数`
@@ -4708,9 +4894,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const prev = lastPainted;
     // 下一颗音符预告（跨小节时指向下一行第一颗）
   let nb = bar, ni = active + 1;
-  /* v2.6.2：跨小节走 loopNextBar——循环开着时"下一行"是区间起点（与待命球同一口径），
-     关掉时 ≡ (bar+1)%vizBars。否则 .next 预告会指到区间外那一行的第一格 */
-  if (ni >= cellEls[bar].length){ nb = loopNextBar(bar, vizBars); ni = 0; }
+  /* v2.6.2：跨小节走"下一行"的口径——循环开着时"下一行"是区间起点（与待命球同一口径），
+     关掉时 ≡ (bar+1)%行数。否则 .next 预告会指到区间外那一行的第一格。
+     ★ v2.10.2：换成 nextRowOf()。它内部按模式分流——曲式下逐位等价于原先的
+       loopNextBar(bar, vizBars)；预设模式下窗口化后"行号 ≠ 型内小节号"，
+       必须先把行号折成型内小节号再走循环，最后折回**翻页后**的行号
+       （旧写法会把行号当小节号传进去，1 小节型 + 非默认循环区间就会算出区间外的行号） */
+  if (ni >= cellEls[bar].length){ nb = nextRowOf(bar); ni = 0; }
   /* v1.2.4：快照只取一次（原先每格调一次 activePattern()，自定义模式下等于每次重绘 64 次线性查找），
      并容忍 cellEls 与快照长度不一致的瞬态——不做无谓的越界下标访问 */
   const cellsPat = vizPattern();
@@ -4746,12 +4936,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
 
   function paintFrameBody(){
-    /* ---- 曲式模式的滚动窗口：**先同步窗口，再取元素别名**（v2.5.2 第 Ⅱ 期）----
+    /* ---- 窗口先同步，再取元素别名（v2.5.2 第 Ⅱ 期；v2.10.2 补预设模式那条同构分支）----
        顺序是硬约束：重建网格会换掉 playheadEl / trailGlowEl 这两个元素，别名在下面两行才取，
        重建放在别名之后就会整帧拿着一对已被丢弃的节点写样式（画面完全不动，最难查的那种）。
        ★ 触发条件用**可听小节号**而不是调度游标：调度器提前一个前瞻窗口（300ms）推进
-         arrSec/arrBar，按它重建会"画面先跳、声音后到"。每小节一次，不是每帧
-         —— 与 T27「帧内零布局读取」的承诺不冲突（buildViz 里的量测只在结构变化时发生）。 */
+         arrSec/arrBar（预设模式则是 schedBar），按它重建会"画面先跳、声音后到"。
+         每小节一次，不是每帧 —— 与 T27「帧内零布局读取」的承诺不冲突
+         （buildViz 里的量测只在结构变化时发生）。 */
     /* ★ v2.8.25（审计 P2-7）：本帧**唯一**的 arrangeCur() 快照，向下传给 audibleSongBar /
        audioPosAt / paintLyric / paintBall。此前各处各自现查：paintBall 内每个 onsetBuf 元素
        都要 rowOfOnset→arrangeCur（内部是 Store.findArrange 线性扫），叠加 audioPosAt 的 3 次
@@ -4781,6 +4972,26 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         buildViz();
         resetTracking();
       }
+    } else if (ctx){
+      /* ---- 预设模式的翻页同步（v2.10.2）：与上面那段同构，只是基准换成**型内小节号** ----
+         窗口只在"页锚"变化时才重建，而页锚 = winAnchor(可听小节) = floor(k/N)*N：
+           · 型长 ≤ N（绝大多数型）→ k < N → 页锚恒为 0 → 本分支一次都不重建，
+             老行为逐位不变；
+           · 型长 > N → 每走满 N 个小节翻一页（用户拍板 Q2）。
+         ★ 用 audiblePatBar 而不是 schedBar 直接算：schedBar 早一个前瞻窗口，
+           按它翻页会"画面先翻、声音后到"（与曲式同一类错位，见 audibleSongBar 的注释）。
+         预设模式没有预告行（winPrev* 恒为 -1），故不必像上面那样盯 pv.bar */
+      const apb = audiblePatBar(ctx.currentTime);
+      /* winStart = -1 有两种来历，都必须建一次窗口：resetWindow 之后的首帧、
+         以及"从未建过"。建完 winStart 即为页锚（降级时置 0），故不会每帧重建 */
+      if (apb >= 0){
+        const ank = winAnchor(apb);
+        if (ank !== winStart){
+          winStart = ank;
+          buildViz();
+          resetTracking();
+        }
+      }
     }
     /* 本地别名：ctx / playheadEl / trailGlowEl 均为模块级可空引用，
        收窄跨不过函数调用边界，一次性取别名并守卫（严格空值闸门） */
@@ -4807,12 +5018,21 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (ap){
       bar = ap.bar; tib = ap.tib; pb = (typeof ap.pb === "number") ? ap.pb : null;
     } else {
-      const posT = Math.max(0, ((c.currentTime - loopStart) / spb() * TPB) % (vizSig * vizBars * TPB));
+      /* 时钟回落（v2.10.2 改模数）：位置按**型长**（内容模数）折，再换算成窗口行。
+         原先用的是 vizBars —— 那时它恰好等于型长，所以对；现在 vizBars 是行数，
+         拿它当模数会让 1 小节型 + 4 行档算出"型内第 3 小节"这种不存在的位置。
+         曲式模式保持原样：窗口里的行就是歌曲小节的连续偏移，按窗口长度折即可 */
+      const arrMode = (S.playMode === "arrange");
+      const mod = arrMode ? vizBars : vizPatLen;
+      if (!(mod > 0)) return;
+      const posT = Math.max(0, ((c.currentTime - loopStart) / spb() * TPB) % (vizSig * mod * TPB));
       /* v1.2.4 边界守卫：拍号或时钟任一异常就跳过本帧（等 buildViz / setBpm 把它修正回来再画）。
          绝不让 NaN 顺着 rowEls[NaN] 这种下标访问炸进 rAF 回调 —— 那是不可恢复的 */
       if (!isFinite(posT)) return;
-      bar = Math.floor(posT / barTicks) % vizBars;
-      tib = posT - bar * barTicks;                              // 小节内位置（tick）
+      const pbIdx = Math.floor(posT / barTicks) % mod;           // 曲式 = 行偏移；预设 = 型内小节号
+      if (arrMode) bar = pbIdx;
+      else { const r = rowOfPatBar(pbIdx); bar = r >= 0 ? r : 0; }
+      tib = posT - pbIdx * barTicks;                             // 小节内位置（tick）
     }
     const pw = tib / barTicks * 100;
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。

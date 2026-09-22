@@ -106,9 +106,11 @@ section("T71e 编辑器增删小节 · 存成预设后小节数真的落库（�
   els["savePresetBtn"].fire("click");
   eq(beat.patBars(beat.curPattern()), 3, "★ 保存后的型是 3 小节（validatePreset 的域 1~64 放它进来）");
   eq(beat.curPattern().name, "我的三小节", "名字取自输入框");
-  /* 端到端：主视图网格的行数跟着这个新型走 */
+  /* 端到端：主视图随即重建，行数 = 同屏行数档位（默认 4）。
+     v2.10.2 起行数由档位唯一决定，3 小节的型绕回铺满 4 行（旧契约"行数 = 型长"已改，
+     型长体现在**窗口里装哪几个小节**上 —— 内容断言见 t87-preset-row-window） */
   const vizRows = els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className)).length;
-  eq(vizRows, 3, "★ 主视图随即渲染 3 行（小节数从编辑器一路传到渲染层）");
+  eq(vizRows, 4, "★ 主视图随即渲染 4 行（默认档位；小节的增删体现在窗口内容上）");
 }
 
 /* ================= 场景 T71f：上限 MAX_PAT_BARS ================= */

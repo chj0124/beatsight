@@ -101,19 +101,20 @@ section("T70b 滚动窗口 · 状态栏报歌曲小节号（不是「第几行�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T70c：预设模式不受影响 ================= */
-section("T70c 滚动窗口 · 预设模式仍画「这个型」（行数 = 型的小节数，内容不跨型取）");
+/* ================= 场景 T70c：预设模式也是「N 行窗口」（v2.10.2） ================= */
+section("T70c 滚动窗口 · 预设模式同样是 N 行窗口（内容取当前型，不跨型）");
 {
   const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   eq(beat.Store.S.playMode, "preset", "前提：预设模式（默认）");
-  /* 内置四分基础：4 小节 × 4 格 */
+  /* 内置四分基础：4 小节 × 4 格 —— 恰好铺满默认 4 行档 */
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]), "4 小节的型 → 4 行、每行 4 格");
-  /* 换成 1 小节的型 → 只有 1 行（型本身就是这样，不是滚动窗口的 4 行） */
+  /* 换成 1 小节的型：默认 4 行档 → 同一小节绕回重复铺满 4 行（v2.10.2 起，
+     不再退回"型多长就画多行"；行数由档位唯一决定，见 t87-preset-row-window 的内容断言） */
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一小节", meter: 4, bars: mkBars(1, 4) }] }));
   beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
-  eq(rowCells(els).length, 1, "★ 预设模式下 1 小节的型就画 1 行（窗口只在曲式模式下生效）");
-  eq(JSON.stringify(rowCells(els)), JSON.stringify([4]), "内容是这个型本身，不跨型取");
+  eq(rowCells(els).length, 4, "★ 预设模式 1 小节的型 + 4 行档 → 4 行（绕回重复铺满）");
+  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]), "每行内容都是这个型的那一小节，不跨型取");
   beat.Controls.stop();
 }
 
