@@ -1401,13 +1401,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L5549  Trainer       变速训练器
      L5767  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      L6267  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7032  Editor        自定义节奏型编辑器
-     L7388  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7611  Ear           听辨训练（v1.10.0）
-     L7836  Arrange       曲式编排（v2.0.0）
-     L8597  Help          使用方法（v2.0.1）
-     L8644  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8718  初始化（装配） 各模块 hook 接线与启动
+     L7033  Editor        自定义节奏型编辑器
+     L7389  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7612  Ear           听辨训练（v1.10.0）
+     L7837  Arrange       曲式编排（v2.0.0）
+     L8598  Help          使用方法（v2.0.1）
+     L8645  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8719  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -6450,6 +6450,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        于是点了段号毫无反应（这批 bug 的典型症状就是"按钮坏了"）。 */
   /** @param {number} i */
   function jumpDemoSection(i){
+    if (!demoArrId) return;
     const a = Store.findArrange(demoArrId);
     if (!a) return;
     setMode("playMode", "arrange", "点段序条跳段");
@@ -6463,7 +6464,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      元素不存在（未渲染 / 已脱离文档）时静默返回：它被 arrange 的 refreshBar 调，
      而 refreshBar 在任何一次编排面板动作时都会跑，那时侧栏可能没有这条曲式的分组。 */
   function syncDemoSecRow(){
-    if (!demoSecRowEl || !demoSecPills.length) return;
+    if (!demoSecRowEl || !demoSecPills.length || !demoArrId) return;
     /* ★ v2.9.0：查的是**渲染这条段序条的那条曲式**（demoArrId，由 buildDemoSongRow 写入），
        不再是写死的示例曲 id。段序条与切换型胶囊条都只服务"正在用的那一条曲式"——
        列表重建时若该曲式被删/demoArrId 落空，这里静默返回即可（元素引用也已在上游清空）。
@@ -6599,7 +6600,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     refreshAfterPatternChange();
     announce("第 " + (secIdx + 1) + " 段已换成「" + (dst ? dst.name : "节奏型") + "」");
   }
-  /* 一个内置型条目。v2.9.0 从 buildPresetList 内联循环里抽出——节拍区与扫弦区都要渲染
+  /** 一个内置型条目。v2.9.0 从 buildPresetList 内联循环里抽出——节拍区与扫弦区都要渲染
      内置型，两处内联等于两条会漂移的渲染路径（选中态判据、键盘契约各写一遍）。
      ★ 内置项仍带**原始下标 i**：S.sel.idx 指向 BUILTINS 的下标（不是分区后的序位），
        这样过滤成两区后仍精确指回原数组。
