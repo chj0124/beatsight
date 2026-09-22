@@ -88,7 +88,7 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
 共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
 → Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
-→ Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与段序条，v2.5.0；三区常显于 v2.9.0）→ Editor（自定义编辑器）
+→ Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与播放范围滑块，v2.5.0 起·滑块于 v2.10.4；三区常显于 v2.9.0）→ Editor（自定义编辑器）
 → Stats（练习统计汇总 + overlay）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
@@ -121,6 +121,8 @@ Store（持久化/状态创建/迁移/导入导出/练习记录）
   （全文件只有"曲式校验失败"与"删除曲式"会退回预设），用户点了节奏型再按播放，播的仍是节目单。
   呈现收口在 `Presets.syncDemoSecRow()` 一处，由 `Arrange.refreshBar/refreshNow` 与 `Controls.stop` 调用
   （`Arrange → Presets` 是向前引用，合法；反向的跳段经新钩子 `onDemoJump` 注入装配层）。
+  ★ **v2.10.4 更新**：段序条已换成**播放范围双滑块**（`syncDemoRange`，钩子改为 `onDemoRange`
+  → `Arrange.setRange`），"切换节奏型"胶囊条整条删除。详见 §3.17；`jumpTo` 保留但只服务跳段行。
 - **分类判据 `hasStrum` 只有一处实现**：v2.8.8 起它从 `Store` 上移到**数据区**（`Store` 之前），只读 `pat.bars`、不查任何已落盘的型，因此 `Store` 的迁移期与运行期（`Presets` / `AudioEngine` / `Viz`）**共用同一份** `hasStrum`，不再有"两处实现"的分野。判据是「`dir` 或 `zone` 任一 `!== undefined`」，回归见 `tests/cases/t62-strum-zone.js` 与 `t84-sidebar-zones.js`。
 
 - **任何模块不得反向引用后方模块**；运行期热路径（paintFrame/scheduler 每帧/每 25ms 读）只读共享状态区与前方模块——v1.0.0 把 activePattern/draft 从 Presets/Editor 上移至此区，消除了 Viz→Presets、共享→Editor 两处反向依赖
@@ -662,7 +664,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 **端点为换算补齐的字段**：`aSec/aBar`（节目单位置，v2.0.2 已有）+ `pb`（发声时的**乐句相位**）。
 `predictNextArrange` 的两个返回也补了 `aSec/aBar`——否则预测端点会被画到错误的行上。
 
-**v2.7.1：歌词轨 / 跳段行计数器 / 段序条高亮也改走可听域**（`Viz.audibleArrangePos()` =
+**v2.7.1：歌词轨 / 跳段行计数器 / 播放位置读数也改走可听域**（`Viz.audibleArrangePos()` =
 `audibleSongBar` + `songBarAt`）。此前 `paintLyric` 把调度游标 `arrSec/arrBar`（早一个前瞻
 窗口）与可听域的小节内 tick 拼在一起——每逢小节/段边界前那一小段，段内位置被拼错将近
 一小节，歌词与「第 N 段 · 第 M 小节」先跳、声音后到（用户实拍，与本节"重建由渲染侧驱动"
@@ -707,10 +709,58 @@ demoBuildSpec()                    // 纯函数：谱面 → { presets, arrange,
   判据见 T63e 的"没有字越界"。
 - **`ensureDemo()` 必须逐块映射**：段 4（收束）与段 10（收尾）各有 **2 块**，
   只映射 `blocks[0]` 会把第二块整块丢掉（段长变短、末句无声）。
-- **胶囊条 `applyDemoSeg()` 只换第 1 块的型**、其余块原样保留：它的语义是"这一段用哪个型"，
-  不是"把这一段重编"。
+- **`applyDemoSeg()` 随「切换节奏型」胶囊条一起删除（v2.10.4）**：它只换第 1 块的型、其余块原样保留，
+  语义是"这一段用哪个型"而不是"把这一段重编"——**这条语义约束本身仍然有效**：
+  将来若在别处重开"换本段用哪个型"的入口，必须照此只动第 1 块。
+  删除理由见 §3.17（候选与「扫弦」区重复 + 与新范围滑块语义相冲）。
 - **不要重新引入 4 小节的"组合型"**（旧版的「收束/收尾」就是这么来的）：
   一个段里放两块就表达了"相邻小节各用不同的型"，这才是该用模型的地方。
+
+### 3.17 侧栏「播放范围」双滑块（v2.10.4，改侧栏范围 UI 前必读）
+
+**它取代了什么**：v2.5.0 的「段序条」（N 颗段号胶囊，`buildDemoSongRow` 里生成）与 v2.4.1 的
+「切换节奏型」胶囊条（`buildDemoSegRow`，已删除）。
+
+**为什么换（能力，不是样式）**：`Arrange.jumpTo` 把 `S.arrangeSel.from` 与 `.to` **写死成同一个值**，
+所以 N 颗胶囊只能表达 **N 种状态**（"只循环某一段"）；而 `S.arrangeSel` 本就支持任意区间
+（10 段 = **N(N+1)/2 = 55 种**）。滑块用 1 个控件解锁全部区间，**且不随段数增长**
+（`CONFIG.arrMaxSections = 24` 时同样只占一行）。"跳到单段"没丢——两个 thumb 拖到重合即 `from === to`。
+
+**契约（六条）**：
+
+| # | 契约 | 说明 |
+|---|---|---|
+| 1 | 取值域 **1-based 段号** | `min=1` / `max=段数`。内部 `from`/`to` 是 0-based，换算只在 `onRangeInput` 与 `syncDemoRange` 两处。**别把 1-based 值直接写进 S** |
+| 2 | 双向钳制 | 起点越过终点时把终点一起顶走，反之亦然 → 任何时刻 `from <= to`（空区间会让调度器永远到不了 `to`，见 `Store.clampLoop` 注释） |
+| 3 | **`input` / `change` 两级** | `input`（拖动中，每秒几十次）只改 S + 视觉 + 走 250ms 热键防抖；`change`（松手/键盘提交）才调 `onDemoRange`。**合成一级 = 一次拖动跑几十轮 `applyPatternChange`**，会吃掉音频排程窗口（同 `CONFIG.schedWindow` 的教训） |
+| 4 | 滑块 = **范围**，不是位置 | 播放期间两个 thumb 必须纹丝不动。"现在播到第几段"由 `.demo-play-note` 承担（`demoCurSec()` → 可听位置），**别把那行说明删掉** |
+| 5 | 重合时的 z-index 翻转 | `from === to` 时上层 input 会挡住下层 thumb；重合在**最左**时让终点在上，其余让起点在上。不做这一步，重合态总有一侧拖不动（而它是最常用的一档） |
+| 6 | 注入而非直调 | `Presets` 声明在 `Arrange` 之前 → 反向调用要登记 R3 白名单。故走共享区钩子 `onDemoRange` = `Arrange.setRange`，装配层接线（与 `onDemoBar` / `onArrangeBar` 同套） |
+
+**实现取舍（为什么是两个原生 range 叠层，而不是自绘）**：
+① 原生滑块自带键盘与读屏语义，自绘要手工补 `role=slider` + `aria-valuenow/valuetext` + 方向键，
+   且**双 thumb 的读屏区分**最麻烦；② 直接复用既有 `input[type=range]` 样式（观测台主题、
+   `focus-visible` 环、移动端 22px thumb 自动生效），与音量 / BPM 三条滑杆视觉同源；
+③ 测试桩**没有 `getBoundingClientRect`**，自绘拖拽在桩里驱动不了，而原生滑块就是
+   `.value` + `fire("input")`。★ 但选择器**必须**带 `.demo-range-input` 提高特异性——
+   全局 `input[type=range]` 与 `body[data-theme="obs"] input[type=range]`（0,2,2）都会命中这两个
+   input，少了这一级 `height` 会被压回 4px。
+
+**踩过的坑（`setRange` 的静默早退）**：取曲式不能只用 `arrangeCur() || cur()` ——
+`arrangeCur()` 在 `playMode !== "arrange"` 时恒为 `null`（而拖滑块最常在**还没进曲式模式**时发生），
+`cur()` 又依赖编排 overlay 开过（它读编辑选中项 `curId`）。两个都为 `null` 时函数**静默早退**：
+模式没切、`loop` 没开、主界面没反馈、网格没换型，而滑块看起来"能拖、值也变了"。
+故补了两级兜底 `Store.findArrange(S.arrangeSel.id) || Store.arranges[0]`
+（`onRangeInput` 已先把渲染中那条曲式的 id 写进 `S.arrangeSel.id`）。
+回归：`tests/cases/t88-demo-range-slider.js`（11 场景 / 71 条断言）+ 看门狗 `arrange_range_dirty`。
+
+**三处「播放范围」入口共用一份 `S.arrangeSel`**（改任何一处都要想清另两处）：
+
+| 入口 | 位置 | 能力 |
+|---|---|---|
+| 主界面跳段行 `#argJump` | 时值可视化正下方 | 只能单段（`jumpTo`，含「范围循环」出口开关） |
+| 编排 overlay 的段行「起 / 终」 | 弹层内 | 任意区间（`#argRangeRow` 只读显示 + 「全部」） |
+| **侧栏范围滑块** | 预设库「自定义」区 | 任意区间（`setRange`） |
 
 ## 4. 设计规范（视觉 tokens）
 

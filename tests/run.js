@@ -62,6 +62,7 @@ const CASE_FILES = [
   "./cases/t85-sidebar-fold",           // v2.10.0：侧栏分区折叠（默认全收起 / 记忆选择 / 只隐藏不删节点 / 重建重新套用）
   "./cases/t86-tab-toggle-boot-sync",   // v2.10.1：六线底纹开关的启动收敛（默认/重载两条路径下 pill 恒等于 S.showTab；同族 keepAwake）
   "./cases/t87-preset-row-window",      // v2.10.2：预设模式的 N 行窗口（型短于 N 重复铺满 / 型长于 N 翻页 / .arg-now[hidden] 补丁）
+  "./cases/t88-demo-range-slider",      // v2.10.4：侧栏「播放范围」双滑块（取代段号胶囊 / 1-based 域 / 双向钳制 / input·change 两级）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

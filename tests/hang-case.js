@@ -142,13 +142,14 @@ const SPECIAL_LABELS = {
   editor_clear_bar:"试听中清空小节（真实用户路径）",
   normal_path:"正常路径（守卫不得误伤）",
   dirty_misc:"脏重拍分组 / trainer 原型污染",
+  arrange_range_dirty:"反向播放范围 from > to（v2.10.4：滑块让这对字段变成连续可写）",
 };
 const CASE_LIST = [
   ...Object.keys(SIGS).map(id => [id, SIG_LABELS[id]]),
   ["customs_empty_bar", SPECIAL_LABELS.customs_empty_bar],
   ...Object.keys(VOLS).map(id => [id, VOL_LABELS[id]]),
   ...["strum_vol_dirty", "pat_bars_max", "bpm_dirty", "hunger_skip",
-      "editor_clear_bar", "normal_path", "dirty_misc"].map(id => [id, SPECIAL_LABELS[id]]),
+      "editor_clear_bar", "normal_path", "dirty_misc", "arrange_range_dirty"].map(id => [id, SPECIAL_LABELS[id]]),
 ];
 
 /* `--list`：把清单吐给调用方（hang-guard），本模式不加载 index.html、不执行任何探针 */
@@ -297,6 +298,37 @@ if (CASE in SIGS){
   out(beat.Store.S.trainer.everyN === 4 && beat.Store.S.trainer.start === 70,
       "trainer 原型污染未生效",
       "everyN=" + beat.Store.S.trainer.everyN + " / start=" + beat.Store.S.trainer.start);
+
+} else if (CASE === "arrange_range_dirty"){
+  /* v2.10.4：侧栏「播放范围」双滑块把 S.arrangeSel.from/to 变成了**连续可写**的一对字段
+     ——这是它相较原来 10 颗段号胶囊（只能 from === to）新增的风险面。
+     `from > to` 是本项目明写过的死循环形态（见 Store.clampLoop 的注释：两个独立钳制
+     各自都合法，合起来却是空区间，调度器会算出"永远到不了 to"从而卡住主线程）。
+     本探针在**加载之后**直接把反向区间写进 S（模拟滑块钳制失效 / 将来某个新入口漏钳），
+     再驱动播放：若调度器靠逐小节追赶来兜，这里会被超时强杀。
+     ★ 刻意不 seed 已经反向的持久数据：Store 加载期本就有双向归一
+       （arrTo 取 Math.max(arrFrom, …)），过一遍加载就被修好了，测不到运行期这条。
+     ★ 也刻意**不依赖示例曲**：本文件的 loadApp 落了「示例已带出」的闩（见其注释），
+       所以这里自带一条三段曲式，用 builtin 引用（不需要额外 seed customs）。 */
+  const sec = nm => ({ name: nm, blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 }] });
+  const { beat } = loadApp({
+    "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
+      { id: "a1", name: "三段测试曲式", sections: [sec("一"), sec("二"), sec("三")] }] }),
+    "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange",
+      arrangeSel: { id: "a1", from: 0, to: 2, loop: true, byLyric: false } }),
+  });
+  const a = beat.Store.findArrange("a1");
+  out(!!a, "前提：三段曲式已在库里", a ? a.sections.length + " 段" : "缺失");
+  if (a){
+    beat.Controls.stop();                                  // 幂等：确保停止态再写脏值
+    beat.Store.S.arrangeSel.from = 2;                      // 第 3 段
+    beat.Store.S.arrangeSel.to = 0;                        // 第 1 段 —— 反向
+    beat.Controls.start();
+    const err = driveFrames(FAC.last, beat, 1.5);          // 区间不归一 → 这里挂住被强杀
+    out(!err, "反向区间不崩渲染帧", err || "OK");
+    out(beat.Store.S.playing === true, "反向区间播放未中断", "playing=" + beat.Store.S.playing);
+    out(FAC.last.hits.length > 0, "反向区间仍在发声（不是静默空转）", FAC.last.hits.length + " 次");
+  }
 
 } else {
   console.error("未知用例 " + CASE); process.exit(2);

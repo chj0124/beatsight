@@ -66,24 +66,35 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   ok(!!demoBox, "★ 「自定义」区里的曲式容器已渲染");
   eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 1,
      "自定义区里 1 条曲式条目（示例曲《在他乡》——v2.9.0 起 5 个型不再单独成组）");
-  /* v2.5.0：整首连播入口与段序条（用户反馈「只能重复练习单一节奏型」的落点）。
+  /* v2.5.0：整首连播入口；v2.10.4：段序条那 10 颗段号胶囊换成了「播放范围」双滑块。
      两者都挂在「自定义」区容器下（扁平挂法，见 buildDemoSongRow 的注释），
-     按钮在「整首连播」那一行内部 */
+     按钮在「整首连播」那一行内部，两个滑块在 .demo-range 里 */
   const playRow = demoBox.children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
   ok(!!playRow, "★ 自定义区里有「整首连播」那一行");
   const playAll = playRow && playRow.children[0];
   ok(!!playAll, "★ 自定义区里有「整首连播」按钮");
   eq(playAll.textContent, "整首连播", "按钮文案");
-  const secRow = demoBox.children.find(x => /(^| )demo-sec-row( |$)/.test(x.className));
-  ok(!!secRow, "★ 自定义区里有段序条");
-  eq(secRow.children.length, 10, "★ 段序条按原曲顺序列出全部 10 段");
-  eq(secRow.children[0].textContent, "1 开头", "第 1 段短标签 = 序号 + 段名（「 · 」之前那段）");
-  eq(secRow.children[7].textContent, "8 主歌二", "第 8 段短标签");
-  ok(String(secRow.children[0].getAttribute("aria-label")).includes("只循环这一段"),
-     "段号的语义写进 aria-label（点它 = 只循环那一段）");
-  eq(secRow.getAttribute("role"), "group", "段序条是 pill 组（与其余 pill 组同契约）");
-  eq(secRow.children[0].getAttribute("aria-pressed"), "false",
-     "★ 未在编排这首示例曲时整条不高亮（悬空高亮比没有高亮更容易误读）");
+  /* ★ v2.10.4：段号胶囊 → 双滑块。断言口径随之从"10 颗胶囊的影子"改成"两个 thumb 的影子" */
+  const rangeWrap = demoBox.children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  ok(!!rangeWrap, "★ 自定义区里有「播放范围」滑块容器（取代原段序条）");
+  const rNote = rangeWrap.children[0], rTrack = rangeWrap.children[1];
+  eq(rNote.className, "demo-range-note", "第 1 个孩子 = 读数行");
+  eq(rTrack.className, "demo-range-track", "第 2 个孩子 = 轨道");
+  ok(!!demoBox.children.find(x => /(^| )demo-sec-row( |$)/.test(x.className)) === false,
+     "★ 旧的段序条（.demo-sec-row）已不存在——不是与新控件并存");
+  /* 轨道里 = 填充条 + 起点滑块 + 终点滑块（顺序即 DOM 顺序，测试桩不解析 HTML，只能按序取） */
+  const rFill = rTrack.children[0], rFrom = rTrack.children[1], rTo = rTrack.children[2];
+  eq(rFill.className, "demo-range-fill", "轨道第 1 个孩子 = 区间填充条");
+  ok(/(^| )demo-range-from( |$)/.test(rFrom.className), "轨道第 2 个孩子 = 起点滑块");
+  ok(/(^| )demo-range-to( |$)/.test(rTo.className), "轨道第 3 个孩子 = 终点滑块");
+  eq(rFrom.type, "range", "起点是原生 range（自带键盘与读屏语义）");
+  eq(rTo.type, "range", "终点也是原生 range");
+  /* 数值域用 1-based 段号：《在他乡》10 段 → min=1 / max=10 */
+  eq([rFrom.min, rFrom.max].join(), "1,10", "★ 起点滑块按 1-based 段号取值域（第 1 段 ↔ value=1）");
+  eq([rTo.min, rTo.max].join(), "1,10", "★ 终点滑块同域");
+  ok(String(rFrom.getAttribute("aria-label")).includes("共 10 段"),
+     "读屏名带上总段数（实际「" + rFrom.getAttribute("aria-label") + "」）");
+  eq(rTrack.getAttribute("role"), "group", "轨道是控件组（与其余控件组同契约）");
 
   /* 歌词锚点抽查（段内绝对 tick = 小节×192 + 格×12，时值 = 格×12） */
   const xiang = charAt(beat, 1, "乡");

@@ -61,13 +61,22 @@ section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一�
     { seedDemo: false });
   const boxOf = () => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   const playAllOf = () => boxOf().children.find(x => /(^| )demo-play-row( |$)/.test(x.className)).children[0];
-  const secRowOf = () => boxOf().children.find(x => /(^| )demo-sec-row( |$)/.test(x.className));
+  /* v2.10.4：段序条已换成「播放范围」双滑块。定位第 3 段 = 把两个 thumb 拖到第 3 段重合，
+     并走完 input（拖动中）+ change（提交）两级——只发 input 不会应用范围 */
+  const rangeOf = () => boxOf().children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  const setRange = (f, t) => {
+    const track = rangeOf().children[1];
+    const fromEl = track.children[1], toEl = track.children[2];
+    fromEl.value = String(f); toEl.value = String(t);
+    fromEl.fire("input"); toEl.fire("input");
+    fromEl.fire("change"); toEl.fire("change");
+  };
   playAllOf().fire("click");
   const ac = FakeAudioContext.last;
   drive(ac, beat, 3);                              // 96BPM ≈ 1.2 小节 → 已进第 2 段（arrSec=1）
   beat.Controls.stop();
 
-  secRowOf().children[2].fire("click");            // 段序条定位第 3 段
+  setRange(3, 3);                                  // 范围滑块定位第 3 段（两个 thumb 重合）
   eq(beat.Store.S.arrangeSel.from, 2, "前提：已定位到第 3 段");
   els["argJumpNext"].fire("click");
   eq(beat.Store.S.arrangeSel.from, 3,

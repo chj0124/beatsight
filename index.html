@@ -390,16 +390,39 @@ input[type=range].vol{width:120px}
    随该分组一并删除：示例曲的 5 个型已按内容并入「扫弦」区，不再单独成组。 */
 .preset-arrange-group{border-left:2px solid rgba(30,215,96,.45);padding-left:8px;margin-bottom:4px}
 .preset-arrange-group[hidden]{display:none}
-/* 常驻切换节奏型胶囊条（v2.4.1）：直接挂在示例分组内——它就是"这首歌有哪几个段"的目录。
-   点一下 = 把当前段的节奏型换成它（不必进曲式编排 overlay 逐个「换」）。
-   排布用 flex-wrap：5~7 颗胶囊在窄侧栏会自动折行，不做横向滚动（侧栏宽度本来就紧） */
-.demo-seg-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
-.demo-seg-row .pill{padding:5px 10px;font-size:11.5px}
-.demo-seg-row .pill[aria-pressed="true"]{background:var(--green);color:#0A0A0A;border-color:var(--green)}
-.demo-seg-note{font-size:10.5px;color:var(--t3);line-height:1.5;margin-bottom:2px}
+/* 「播放范围」双滑块（v2.10.4）：取代原「段序条」那 N 颗段号胶囊，也取代了
+   v2.4.1 的「切换节奏型」胶囊条（后者的候选与「扫弦」区内容重复，已删除）。
+   ★ 为什么必须换掉胶囊：`Arrange.jumpTo` 把 from/to 写死成同一个值，所以胶囊
+     **只能表达"只循环某一段"**（10 段 = 10 种状态）；而 `S.arrangeSel` 本就支持任意区间
+     （10 段 = 55 种）。滑块用 **1 个控件**解锁全部区间，且**不随段数增长**
+     （24 段与 10 段同样只占一行）。顺便解决"胶囊只能一眼看数量、看不出范围"这条硬伤。
+   ★ 实现用两个原生 <input type=range> 叠层，而不是自绘 pointer events，三个理由：
+     ① 原生滑块自带键盘（方向键微调）与无障碍语义，自绘要手工补一整套 role=slider
+        + aria-valuenow/valuetext + 方向键处理，且双 thumb 的读屏区分最麻烦；
+     ② **直接复用 input[type=range] 的既有样式**——观测台主题、focus-visible 环、
+        移动端 22px thumb 全部自动生效，与音量/BPM 三条滑杆视觉同源；
+     ③ 测试桩没有 getBoundingClientRect，自绘拖拽在桩里**根本驱动不了**；
+        原生滑块在桩里就是 `.value` + `fire("input")`，可断言。
+   ★ 类名必须带 .demo-range-input 提高特异性：全局 `input[type=range]` 与观测台主题的
+     `body[data-theme="obs"] input[type=range]`（(0,2,2)）都会命中这两个 input，
+     不加这一级会把 height 压回 4px、background 被主题色覆盖（观感就是"滑块变了形"）。 */
+.demo-range{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
+.demo-range-note{font-size:10.5px;color:var(--t3);line-height:1.5}
+/* 轨道容器：两个 input 绝对定位叠在同一处。
+   ★ 两个 input 都 pointer-events:none，只让 **thumb** 可抓——否则上层那条通轨会把下层的
+     thumb 整个吃掉（两个 thumb 重合时更明显：只剩最上面那个抓得住）。代价是"点轨道跳转"
+     不可用，由拖动与键盘（方向键）补齐。 */
+.demo-range-track{position:relative;height:22px}
+.demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}
+.demo-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
+.demo-range-track input[type=range].demo-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
+.demo-range-track input[type=range].demo-range-input::-webkit-slider-thumb{pointer-events:auto}
+.demo-range-track input[type=range].demo-range-input::-moz-range-thumb{pointer-events:auto}
 /* 整首连播那一行（v2.5.0）：按钮 + 状态说明并排。
-   说明用 .demo-play-note 而不是上面的 .demo-seg-note——后者是块级、独占一行，
-   搁在按钮旁边会被挤到下一行去。高亮态与段序条同一套视觉语言（绿底黑字） */
+   说明用 .demo-play-note（行内、与按钮同排）而不是 .demo-range-note（块级、独占一行），
+   否则会被挤到下一行去。高亮态与范围滑块同一套视觉语言（绿底黑字）。
+   ★ v2.10.4：这一行的说明还兼着**报当前位置**的职责（「播放中 · 第 3/10 段」）——
+     段序条被滑块取代后，'现在播到第几段'就只剩这里能看，别把它删掉。 */
 .demo-play-row{display:flex;align-items:center;gap:8px;margin:2px 0 0}
 .demo-play-row .pill{padding:6px 12px;font-size:12px;flex:none}
 .demo-play-row .pill[aria-pressed="true"]{background:var(--green);color:#0A0A0A;border-color:var(--green)}
@@ -1362,9 +1385,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
         <ul class="help-list">
           <li><b>整首连播</b>：预设库「示例曲」分组顶部那个按钮——一键按原曲顺序从第 1 段走到第 10 段，
-            放完自动从头再来，<b>不用打开编排面板</b>。它下面的<b>段号条</b>（<code>1 开头 … 10 主歌二</code>）
-            显示现在在第几段，<b>点某一段 = 只循环那一段</b></li>
+            放完自动从头再来，<b>不用打开编排面板</b>。按钮旁边的说明写着<b>现在播到第几段</b></li>
+          <li><b>播放范围滑块</b>（在「整首连播」下面）：<b>拖两个滑块自由选范围</b>——
+            比如拖成「第 3–7 段」就只练副歌到桥段，放完在区间内循环。读数行会把它翻译成
+            「第 3–7 段 · 副歌 → 桥段 · 16 小节」；<b>两个滑块拖到重合 = 只循环这一段</b>（最常用的一档）。
+            它和编排面板里的「起 / 终」是<b>同一份范围</b>，两边改哪边都同步。
+            注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几段"看上面那行说明</li>
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
+          <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——侧栏上的「切换节奏型」
+            胶囊条已删除（它的候选与「扫弦」区里的条目完全重复）</li>
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
           <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
@@ -1426,22 +1455,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1457  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1948  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2915  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3557  Modal         应用内弹窗
-     L3687  Viz           时值可视化渲染与每帧动画
-     L5193  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5822  Trainer       变速训练器
-     L6040  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6540  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7352  Editor        自定义节奏型编辑器
-     L7708  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7931  Ear           听辨训练（v1.10.0）
-     L8156  Arrange       曲式编排（v2.0.0）
-     L8917  Help          使用方法（v2.0.1）
-     L8964  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9038  初始化（装配） 各模块 hook 接线与启动
+     L1486  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1977  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2944  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3590  Modal         应用内弹窗
+     L3720  Viz           时值可视化渲染与每帧动画
+     L5226  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5855  Trainer       变速训练器
+     L6073  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6573  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7388  Editor        自定义节奏型编辑器
+     L7744  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7967  Ear           听辨训练（v1.10.0）
+     L8192  Arrange       曲式编排（v2.0.0）
+     L9015  Help          使用方法（v2.0.1）
+     L9062  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9136  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1461,7 +1490,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.3";
+const VERSION = "2.10.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3097,12 +3126,16 @@ let onArrangeBar = null;
    与 onArrangeBar/onArrangeEnd 同一套装配层注入模式（DEVELOPMENT §3.0）。 */
 /** @type {null | (() => void)} */
 let onDemoRestore = null;
-/* 跳段钩子（v2.5.0）：侧栏段序条的"点第 N 段"要触发 Arrange.jumpTo(n)。
-   同样是"Presets 声明在前、Arrange 在后"的反向引用问题，故走同一套钩子注入。
+/* 「播放范围」钩子（v2.10.4）：侧栏双滑块拖出 from/to 后要触发 Arrange.setRange(from, to)。
+   ★ 为什么必须是钩子而不是直接调：Presets 声明在 Arrange **之前**，运行期反向调用要登记
+     R3 白名单；而装配层在所有模块之后，注入天然合法（与既有的 onArrangeBar 一族同源）。
+   ★ v2.10.4 起它取代了原来的 `onDemoJump`：段序条那 N 颗段号胶囊已换成滑块，
+     滑块表达的是**区间**而不是"跳到某一段"，所以钩子的形状从 (i) 变成 (from, to)。
+     跳到单段仍然做得到——把两个 thumb 拖到重合即 from === to。
    注：反过来 Arrange → Presets 是**合法方向**（Arrange 在后），所以曲式那侧的
-   refreshBar/refreshNow 可以直接调 Presets.syncDemoSecRow()，不需要钩子。 */
-/** @type {null | ((i: number) => void)} */
-let onDemoJump = null;
+   refreshBar/refreshNow 可以直接调 Presets.syncDemoRange()，不需要钩子。 */
+/** @type {null | ((from: number, to: number) => void)} */
+let onDemoRange = null;
 /* 可听小节变化钩子（v2.7.1）：Viz.paintFrameBody 每帧按**可听**歌曲小节号检测变化
    （audibleSongBar，与播放头/弹跳球同源），变了才调一次。与 onArrangeBar 并存——
    后者在调度域（早一个前瞻窗口），服务排程侧；本钩子服务"现在听到哪"的呈现
@@ -6205,7 +6238,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     $("statusText").textContent = "已停止";
     announce("已停止");
     Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
-    Presets.syncDemoSecRow();             // v2.5.0：停机后段序条要回到"下一个起点"（它在播放中跟调度游标，停机跟范围起点）
+    Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 S.arrangeSel.from）
     Viz.resetForStop();
     Trainer.updateProg();
     syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
@@ -6577,10 +6610,16 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      ★ 与旧「示例曲分组」的区别：v2.9.0 把示例曲的 5 个节奏型并入了「扫弦」区（按内容认型
        demoIndexOf），这里不再列节奏型，只列"整首怎么弹"的曲式条目——点一条 = 选中并立即
        播放整首（见 playArrange：对任何曲式都成立，不再写死 DEMO_ID）。
-     ★ 整首连播行 + 段序条挂在**当前选中的曲式**上（缺省取第一条）：它们是"这首歌有哪几段 /
-       现在播到哪"的视图，只对正在用的那一条有意义——多条曲式各挂一条只会互相打架。
-     ★ 切换节奏型胶囊条（demoSegRow）是"换本段用哪个型"的入口：候选 = 全部示例型
-       （按内容认型），只在"正在播这条曲式"时出现（判据见 buildDemoSegRow）。 */
+     ★ 整首连播行 + 播放范围滑块挂在**当前选中的曲式**上（缺省取第一条）：它们是
+       "这首歌有哪几段 / 现在播到哪 / 练哪一段到哪一段"的视图，只对正在用的那一条有意义
+       ——多条曲式各挂一条只会互相打架。
+     ★ v2.10.4：本区删掉了 v2.4.1 的「切换节奏型」胶囊条（buildDemoSegRow）。
+       删除理由（用户确认）：它的候选就是示例曲那 5 个型，而它们**已经按内容落在「扫弦」区**
+       （v2.9.0 起按 hasStrum 分区），等于同一份清单在同一张侧栏里出现两次。
+       代价与出口：侧栏不再有"换本段用哪个型"的入口，改去「编排曲式」→ 该段行 → 换型
+       （那里本来就有内联候选行）。另注：它与本轮新加的**范围滑块语义相冲**——
+       applyDemoSeg 收尾会把 S.arrangeSel 收窄成 from === to，拖好的范围会被一次换型清掉。
+     ★ 范围滑块是本区**唯一**能表达"练第 3 段到第 7 段"的控件；跳到单段 = 两个 thumb 重合。 */
   /** @param {HTMLElement} list */
   function buildArrangeGroup(list){
     const group = document.createElement("div");
@@ -6605,11 +6644,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       item.addEventListener("keydown", itemKeys(pick));
       group.appendChild(item);
     });
-    const demo = customs.filter(c => demoIndexOf(c) >= 0);
-    if (demo.length){
-      const segRow = buildDemoSegRow(demo);
-      if (segRow) group.appendChild(segRow);
-    }
     list.appendChild(group);
   }
   /* ---- 整首连播 + 段序条（v2.5.0）----
@@ -6621,25 +6655,31 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
           = 单型死循环。于是"整首练"变成一件要绕路、绕过去也不像在"练"的事。
      这里补的是**入口与顺手度**，不是新机制：整首连播 = 切曲式模式 + 范围=整首 +
      开范围循环 + 开始播放，全部复用既有门面（scheduler / arrNextBar / arrangeStart 一行不改）。
-     ★ 两个入口的对等关系（这是本次的契约）：
+     ★ 三个入口的对等关系（v2.5.0 立契约，v2.10.4 更新表述）：
          点侧栏任一节奏型 → 回到"单练它"（见 exitArrangeForPreset）
-         点「整首连播」    → 按原曲顺序练全曲
-         点段序条第 N 段   → 只循环第 N 段（复用 v2.4.3 的 jumpTo：range=[N,N] + loop）
+         点「整首连播」    → 按原曲顺序练全曲（范围 = 整首）
+         拖「播放范围」滑块 → 练第 a 段到第 b 段；两个 thumb 拖到重合即"只循环这一段"
        三者操作的都是同一份数据（S.playMode 与 S.arrangeSel），不存在第二套真相。 */
 
-  /** 段序条 / 整首连播的元素引用。**列表重建即失效**，故 buildPresetList 每次先清空
-      （列表重建时这些节点会被换掉，留着旧引用会让 sync 往已脱离文档的节点上写） */
+  /** 整首连播按钮 / 播放范围滑块 / 状态说明的元素引用。**列表重建即失效**，
+      故 buildPresetList 每次先清空（列表重建时这些节点会被换掉，留着旧引用会让 sync
+      往已脱离文档的节点上写）。
+      ★ v2.10.4：段序条那组（demoSecRowEl / demoSecPills）随双滑块一起换成了下面这组。 */
   /** @type {HTMLElement|null} */ let demoSongNote = null;
   /** @type {HTMLElement|null} */ let demoPlayAllBtn = null;
-  /** @type {HTMLElement|null} */ let demoSecRowEl = null;
-  /** @type {HTMLElement[]} */ let demoSecPills = [];
-  /** 当前渲染了段序条 / 整首连播的**曲式 id**（v2.9.0）：段序条与切换节奏型胶囊条都只服务
-      "正在用的那一条曲式"，click 时要拿它去 Store 里找——不再写死 DEMO_ID。
+  /** @type {HTMLElement|null} */ let demoRangeWrapEl = null;
+  /** @type {HTMLElement|null} */ let demoRangeNoteEl = null;
+  /** @type {HTMLElement|null} */ let demoRangeFillEl = null;
+  /** @type {HTMLInputElement|null} */ let demoRangeFromEl = null;
+  /** @type {HTMLInputElement|null} */ let demoRangeToEl = null;
+  /** 当前渲染了范围滑块 / 整首连播的**曲式 id**（v2.9.0）：两者都只服务"正在用的那一条
+      曲式"，拖动时要拿它去 Store 里找——不再写死 DEMO_ID。
       @type {string|null} */ let demoArrId = null;
 
   /* 段的短标签：段名形如「副歌 · 上 C·Am·Dm」「主歌二 · 人静的雨夜 Am·Em…」——
      " · " 之前那一段才是用户对这首歌结构的称呼（副歌/主歌/桥段/收束），
-     和弦序列与歌词首句是给第二层看的。窄侧栏里 10 颗胶囊要能一眼扫完 */
+     和弦序列与歌词首句是给第二层看的。滑块上方那行读数与 aria-valuetext 都要靠它：
+     轨道上放不下段名，全靠这行把"第 3–7 段"翻译成"副歌 → 桥段" */
   /** @param {string} full @returns {string} */
   function shortSecName(full){
     const s = String(full).split(" · ")[0].trim();
@@ -6659,11 +6699,69 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     }
     return S.arrangeSel.from;
   }
-  /** 把「整首连播」行与段序条直接挂进「自定义」区容器（不再套一层 wrapper）。
+  /* 造一个范围滑块 input（v2.10.4）。**不能用 $() 取它**——它是运行期创建的动态节点
+     （check-dom-ids.js 只认标记里写死的 id），故由 buildDemoSongRow 用闭包变量持有。
+     数值域用 **1-based 段号**（min=1 / max=段数）：读屏与 aria-valuenow 都按"第 N 段"
+     理解人类，而内部的 from/to 是 0-based，换算只发生在 onRangeInput 与 syncDemoRange 两处。
+     ★ **input 与 change 分两级**，这是"拖动途中不做重活"的落点：
+       · `input`  —— 拖动中连续触发（每秒几十次）：只改 S、读数与填充条，落盘走既有 250ms 防抖；
+       · `change` —— 松手/键盘改变提交时触发一次：才去调 onDemoRange（Arrange.setRange），
+         那里会跑 refreshBar + 停播时重建网格这些**重活**。
+       两级合并成一级的话，一次拖动就会跑几十轮 applyPatternChange —— 正是
+       CONFIG.schedWindow 注释里"重活拖长主线程会让时间轴被重锚定、静默吞掉音符"那类问题。 */
+  /** @param {any} a 曲式 @param {string} cls 区分起点/终点（测试按它定位） @param {string} label 读屏名
+      @returns {HTMLInputElement} */
+  function makeRangeInput(a, cls, label){
+    const el = document.createElement("input");
+    el.type = "range";
+    el.className = "demo-range-input " + cls;
+    el.min = "1"; el.max = String(a.sections.length); el.step = "1";
+    /* ★ 必须是字符串：lib.dom 里 HTMLInputElement.value 的类型是 string，
+       写数字 1 会被类型闸门拦下（TS2322）。这类"类型闸门的正常拦截"在本仓库
+       出现过多次，别当误报改类型标注，改值本身 */
+    el.value = "1";
+    el.setAttribute("aria-label", label + "（共 " + a.sections.length + " 段）");
+    const isFrom = cls === "demo-range-from";
+    el.addEventListener("input", () => onRangeInput(isFrom, false));
+    el.addEventListener("change", () => onRangeInput(isFrom, true));
+    return el;
+  }
+  /* 滑块拖动（v2.10.4）。三条规矩：
+     ① **起点不得越过终点**（反之亦然）——越过时把对方一起顶走，于是"两个 thumb 拖到重合"
+        自然表达"只循环这一段"，不必再给一个"单段"开关；
+     ② "进入曲式模式"只在**提交**那一步发生（见 Arrange.setRange）：与旧的"点段号"同语义
+        ——拖范围 = 我要练这一段到那一段。拖动途中不动模式，免得反复切；
+     ③ 范围变更**不在拖动时立刻跳段**——既有契约是下一小节边界才拉回（见 onArrangeBar 的
+        refreshNow，以及 jumpTo 里为"用户以为按钮坏了"补的那段即时反馈）。 */
+  /** @param {boolean} isFrom 这次拖动的是起点还是终点
+      @param {boolean} commit true = 松手/提交（跑重活并通知 Arrange）；false = 拖动中（只刷视觉）
+      @returns {void} */
+  function onRangeInput(isFrom, commit){
+    if (!demoArrId || !demoRangeFromEl || !demoRangeToEl) return;
+    const a = Store.findArrange(demoArrId);
+    if (!a) return;
+    const M = a.sections.length;
+    /** @param {any} v @returns {number} */
+    const clamp = v => Math.min(M, Math.max(1, Math.round(+v || 1)));
+    let f = clamp(demoRangeFromEl.value);
+    let t = clamp(demoRangeToEl.value);
+    if (isFrom && f > t) t = f;              // 起点越过终点：把终点顶到起点
+    if (!isFrom && t < f) f = t;             // 反之把起点拉到终点
+    demoRangeFromEl.value = String(f);
+    demoRangeToEl.value = String(t);
+    S.arrangeSel.id = a.id;
+    S.arrangeSel.from = f - 1;
+    S.arrangeSel.to = t - 1;
+    S.arrangeSel.byLyric = false;            // 手动拖范围 = 回到普通区间语义（与 jumpTo 同口径）
+    Store.persist();
+    if (commit && onDemoRange) onDemoRange(f - 1, t - 1);
+    syncDemoRange();
+  }
+  /** 把「整首连播」行与「播放范围」双滑块直接挂进「自定义」区容器（不再套一层 wrapper）。
       扁平的理由是**可定位性**：这两块都要被测试按类名找，而 stub 不解析 HTML、
       只能逐层遍历 children——每多一层都要在每个用例里多写一次 `.children.find`。
       ★ v2.9.0：参数 a 从"示例曲常量"泛化为**任意曲式**——它只服务 buildArrangeGroup
-        选中的那一条（缺省第一条）；段序条/连播按钮都按 a 的 sections 现算，不再写死 DEMO_ID。
+        选中的那一条（缺省第一条）；滑块/连播按钮都按 a 的 sections 现算，不再写死 DEMO_ID。
       @param {HTMLElement} group 自定义区容器 @param {any} a 曲式 */
   function buildDemoSongRow(group, a){
     const head = document.createElement("div");
@@ -6679,23 +6777,28 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     head.appendChild(btn); head.appendChild(note);
     group.appendChild(head);
 
-    const row = document.createElement("div");
-    row.className = "demo-seg-row demo-sec-row";
-    row.setAttribute("role", "group");
-    row.setAttribute("aria-label", "曲式顺序：点某一段只循环那一段");
-    const pills = a.sections.map((/** @type {any} */ s, /** @type {number} */ i) => {
-      const b = document.createElement("button");
-      b.className = "pill";
-      b.textContent = (i + 1) + " " + shortSecName(s.name);
-      b.title = "第 " + (i + 1) + " 段 · " + s.name;
-      b.setAttribute("aria-label", "跳到第 " + (i + 1) + " 段「" + s.name + "」并只循环这一段");
-      b.addEventListener("click", () => { b.blur(); jumpDemoSection(i); });
-      row.appendChild(b);
-      return b;
-    });
-    group.appendChild(row);
-    demoSongNote = note; demoPlayAllBtn = btn; demoSecRowEl = row; demoSecPills = pills;
-    demoArrId = a.id;                // v2.9.0：段序条/切换型胶囊都按这条曲式定位，不再写死 DEMO_ID
+    /* 播放范围双滑块（v2.10.4，取代原 N 颗段号胶囊）：为什么换、为什么用两个原生 range
+       叠层而不是自绘，全部理由写在 CSS 的 .demo-range 注释里 */
+    const wrap = document.createElement("div");
+    wrap.className = "demo-range";
+    const rNote = document.createElement("div");
+    rNote.className = "demo-range-note";
+    const track = document.createElement("div");
+    track.className = "demo-range-track";
+    track.setAttribute("role", "group");
+    track.setAttribute("aria-label", "播放范围：拖动两个端点，选择从第几段练到第几段");
+    const fill = document.createElement("div");
+    fill.className = "demo-range-fill";
+    const fromEl = makeRangeInput(a, "demo-range-from", "播放范围起点");
+    const toEl = makeRangeInput(a, "demo-range-to", "播放范围终点");
+    track.appendChild(fill); track.appendChild(fromEl); track.appendChild(toEl);
+    wrap.appendChild(rNote); wrap.appendChild(track);
+    group.appendChild(wrap);
+
+    demoSongNote = note; demoPlayAllBtn = btn;
+    demoRangeWrapEl = wrap; demoRangeNoteEl = rNote; demoRangeFillEl = fill;
+    demoRangeFromEl = fromEl; demoRangeToEl = toEl;
+    demoArrId = a.id;                // 滑块/连播都按这条曲式定位，不再写死 DEMO_ID
   }
   /* 整首连播（唯一出口）。先校验再切模式——校验失败时**不动**用户当前的播放模式，
      否则"点一下，什么也没响起来，却把模式改了"是最难自查的那种半状态。
@@ -6713,58 +6816,80 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     Store.persist();
     Controls.stop();                 // 幂等（stop 可重入），保证"从头播"而不是从中间续
     Controls.start();
-    syncDemoSecRow();
+    syncDemoRange();
     announce("整首连播：《" + a.name + "》共 " + a.sections.length + " 段");
   }
-  /* 点段序条第 i 段 = 只循环这一段。复用 Arrange.jumpTo（v2.4.3 的"拉回"机制）：
-     它把范围置成 [i,i] + loop，下一个小节边界生效；停止状态下还会把网格换成该段的型。
-     ★ 点之前必须先把 playMode 置成 arrange：jumpTo 读的是 arrangeCur()（只看曲式模式），
-       不置的话它退到 cur()（编辑选中项）——而编辑选中项在"从没开过编排面板"时是 null，
-       于是点了段号毫无反应（这批 bug 的典型症状就是"按钮坏了"）。 */
-  /** @param {number} i */
-  function jumpDemoSection(i){
-    if (!demoArrId) return;
-    const a = Store.findArrange(demoArrId);
-    if (!a) return;
-    setMode("playMode", "arrange", "点段序条跳段");
-    S.arrangeSel.id = a.id;
-    S.arrangeSel.byLyric = false;
-    if (onDemoJump) onDemoJump(i);
-    syncDemoSecRow();
-  }
-  /* 段序条 + 整首连播按钮的呈现。**单一渲染入口**：段落切换（每小节）、跳段、启停、
-     列表重建都调它，不在多处各写一遍"更新哪颗胶囊"——那种写法漏一处就是界面对不上状态。
-     元素不存在（未渲染 / 已脱离文档）时静默返回：它被 arrange 的 refreshBar 调，
-     而 refreshBar 在任何一次编排面板动作时都会跑，那时侧栏可能没有这条曲式的分组。 */
-  function syncDemoSecRow(){
-    if (!demoSecRowEl || !demoSecPills.length || !demoArrId) return;
-    /* ★ v2.9.0：查的是**渲染这条段序条的那条曲式**（demoArrId，由 buildDemoSongRow 写入），
-       不再是写死的示例曲 id。段序条与切换型胶囊条都只服务"正在用的那一条曲式"——
-       列表重建时若该曲式被删/demoArrId 落空，这里静默返回即可（元素引用也已在上游清空）。
-       高亮与"整首/单段"那一态才需要 isMine 这个条件（见下）。 */
+  /* 范围滑块 + 整首连播按钮 + 状态说明的呈现。**单一渲染入口**：段落切换（每小节）、
+     拖动、跳段、启停、列表重建都调它，不在多处各写一遍"更新哪个 thumb"——
+     那种写法漏一处就是界面对不上状态。
+     元素不存在（未渲染 / 已脱离文档）时静默返回：它被 Arrange 的 refreshBar 调，
+     而 refreshBar 在任何一次编排面板动作时都会跑，那时侧栏可能没有这条曲式的分组。
+     ★ v2.10.4：由 syncDemoSecRow 改名并改写——原来刷的是 N 颗段号的 aria-pressed，
+       现在刷两个 thumb 的 value / 填充条几何 / 读数 / aria-valuetext。 */
+  function syncDemoRange(){
+    if (!demoRangeFromEl || !demoRangeToEl || !demoArrId) return;
+    /* ★ v2.9.0：查的是**渲染这套滑块的那条曲式**（demoArrId，由 buildDemoSongRow 写入），
+       不是写死的示例曲 id。列表重建时若该曲式被删 / demoArrId 落空，这里静默返回即可
+       （元素引用也已在上游清空）。只有"整首/局部"与位置文案才需要 isMine 这个条件。 */
     const a = Store.findArrange(demoArrId);
     if (!a) return;
     const n = a.sections.length;
-    /* cur = -1 表示"当前播放的不是这首示例曲"（demoCurSec 自己判 isMine 并返回 -1），
-       此时整条不高亮——悬空的高亮比没有高亮更容易误读 */
-    const cur = demoCurSec();
-    demoSecPills.forEach((b, i) => {
-      const on = i === cur;
-      b.classList.toggle("active", on);
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-    });
-    /* "整首"这一态 = 当前选中的就是这首 + 曲式模式 + 范围恰是整首。与"某一段"互斥，
-       所以两颗高亮不会同时出现——同一份 S.arrangeSel 推出来的两个视图 */
+    /* 范围按当前曲式的段数再收一次。**与加载期的分工**：Store 加载时做的是绝对域钳制
+       （那时还不知道当前是哪条曲式、有几段）；换曲式后旧范围可能越界，故使用点再收窄。
+       与 loopRangeFor(按型收窄) 是同一套两层钳制思路 */
+    const f = Math.min(n - 1, Math.max(0, S.arrangeSel.from));
+    const t = Math.min(n - 1, Math.max(f, S.arrangeSel.to));
+    demoRangeFromEl.value = String(f + 1);
+    demoRangeToEl.value = String(t + 1);
+    /* 填充条用百分比定位（与既有网格/歌词轨同口径）：桩里 offsetLeft 正是按 style.left
+       的百分比反解出来的，所以几何在测试里也可断言 */
+    /** @param {number} i @returns {number} */
+    const pct = i => (n > 1 ? (i / (n - 1)) * 100 : 0);
+    if (demoRangeFillEl){
+      demoRangeFillEl.style.left = pct(f) + "%";
+      demoRangeFillEl.style.width = (pct(t) - pct(f)) + "%";
+    }
+    /* ★ 两个 thumb 重合时（from === to，即"只练这一段"）上层 input 会把下层 thumb 整个挡住，
+       必须按"哪边还有移动余地"决定谁在上：重合在最左时让**终点**在上（还能往右扩），
+       其余情况让**起点**在上（还能往左扩）。不做这一步，重合态就有一侧永远拖不动——
+       而"单段循环"恰恰是最常用的一档（旧的段号胶囊就是这个语义）。 */
+    const fromOnTop = !(f === t && f === 0);
+    demoRangeFromEl.style.zIndex = fromOnTop ? "3" : "2";
+    demoRangeToEl.style.zIndex = fromOnTop ? "2" : "3";
+    /* 段名上不了轨道，只能靠 aria-valuetext 与上方读数把"第 N 段"翻译成"副歌/主歌一"。
+       aria-valuenow 由浏览器按 value/min/max 自动算，是数字；valuetext 才是读屏听到的那句 */
+    /** @param {number} s @returns {string} */
+    const nm = s => (a.sections[s] ? shortSecName(a.sections[s].name) : "");
+    /** @param {number} s @returns {string} */
+    const vt = s => "第 " + (s + 1) + " 段" + (nm(s) ? " · " + nm(s) : "");
+    demoRangeFromEl.setAttribute("aria-valuetext", vt(f));
+    demoRangeToEl.setAttribute("aria-valuetext", vt(t));
+    if (demoRangeNoteEl){
+      const bars = a.sections.slice(f, t + 1)
+        .reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0);
+      demoRangeNoteEl.textContent = (f === t)
+        ? `第 ${f + 1} 段 · ${nm(f)} · ${bars} 小节（只循环这一段）`
+        : `第 ${f + 1}–${t + 1} 段 · ${nm(f)} → ${nm(t)} · ${bars} 小节`;
+    }
+    /* "整首"这一态 = 当前选中的就是这条曲式 + 曲式模式 + 范围恰是整首。
+       滑块取代段号后不再有"某一段"的高亮，所以这里只留整首/局部这一个视图 */
     const isMine = S.arrangeSel.id === a.id;
-    const whole = isMine && S.playMode === "arrange" && S.arrangeSel.from === 0 && S.arrangeSel.to === n - 1;
+    const whole = isMine && S.playMode === "arrange" && f === 0 && t === n - 1;
     if (demoPlayAllBtn){
       demoPlayAllBtn.classList.toggle("active", whole);
       demoPlayAllBtn.setAttribute("aria-pressed", whole ? "true" : "false");
     }
+    /* ★ 这一行还兼着"现在播到第几段"的职责：段序条被滑块取代后逐段高亮没有了，
+       位置信息只剩这里（demoCurSec 走的是**可听位置**，与跳段行的 #argNowMeta 同源）。
+       T68j 就是钉这条的——别把它简化成一句静态文案。 */
     if (demoSongNote){
-      demoSongNote.textContent = whole
-        ? (S.playing ? `整首连播中 · 第 ${cur + 1}/${n} 段` : `整首连播 · 已就绪 · 共 ${n} 段`)
-        : `按原曲顺序 ${n} 段 · 点段号只循环那一段`;
+      const cur = demoCurSec();
+      /* 局部范围按"单段 / 区间"分两种说法：`第 3–3 段` 这种叠加写法读起来像手误，
+         而"两个 thumb 重合 = 只循环这一段"恰是最常用的一档，值得单独说清楚 */
+      demoSongNote.textContent = (S.playing && isMine && cur >= 0)
+        ? `播放中 · 第 ${cur + 1}/${n} 段`
+        : (whole ? `整首连播 · 已就绪 · 共 ${n} 段`
+          : (f === t ? `已选第 ${f + 1} 段 · 拖滑块改范围` : `已选第 ${f + 1}–${t + 1} 段 · 拖滑块改范围`));
     }
   }
   /* 从曲式模式回到"单练当前节奏型"（v2.5.0）。
@@ -6773,105 +6898,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        于是"点了侧栏某个节奏型 + 按播放"播的仍是节目单，而画面标题已经换成他点的那一项；
        用户报的"只能重复练习单一节奏型"，一半就是这个半状态造成的：
        他以为自己在单练某一段，实际在整首连播里打转（或反之，退不出去）。
-     与 playArrange / jumpDemoSection 合起来才构成"两个对等入口"这个契约。 */
+     与 playArrange / 拖范围滑块 合起来才构成"三个对等入口"这个契约。 */
   function exitArrangeForPreset(){
     if (S.playMode !== "arrange") return false;
     setMode("playMode", "preset", "点选预设回到单型练习");
     S.arrangeSel.loop = false;       // 范围循环是曲式的语义，退回单型后不该留着它下次突然生效
     S.arrangeSel.byLyric = false;    // 同理，爬坡粒度意图也复位（审计 P1-4）
     return true;
-  }
-  /* 常驻「切换节奏型」胶囊条。返回 null = 当前没在编排这首示例曲（调用方据此不插入）。
-     契约：点第 k 颗 = 把"当前正在播/正在选的那一段"的节奏型换成示例的第 k 个型。
-     ★ 用 S.arrangeSel 定位目标段（而非另存一份状态）：它与编排 overlay 里的
-       「起/终」是同一个字段，两处操作同一份数据，不会出现"主界面改了一段、
-       进 overlay 看到另一段"的分裂。
-     ★ 换的是**块引用**（block.ref），不是 S.sel——S.sel 是"预设库里选中的那个型"，
-       曲式播放时由 blockAt 决定实际用哪个型。改 S.sel 对这个场景是无效操作。
-     ★ v2.8.26（P2-8）：判据必须**同时**看 playMode。exitArrangeForPreset 只把 playMode
-       退回 "preset"，不清 S.arrangeSel.id——只看 id 的话，退回预设模式后这条胶囊仍会
-       渲染，而点它改的是曲式块引用、要下次进曲式才生效：动作与反馈脱节。
-       加 S.playMode === "arrange" 后，胶囊只在"真的在编排这首示例曲"时出现；
-       仍想换型可从段序行点进曲式再操作。 */
-  /** @param {any[]} demo @returns {HTMLElement|null} */
-  function buildDemoSegRow(demo){
-    const ar = Store.findArrange(S.arrangeSel.id);
-    if (S.playMode !== "arrange" || !ar || ar.id !== demoArrId) return null;
-    const wrap = document.createElement("div");
-
-    const note = document.createElement("div");
-    note.className = "demo-seg-note";
-    const secIdx = Math.min(Math.max(0, S.arrangeSel.from), ar.sections.length - 1);
-    const sec = ar.sections[secIdx];
-    note.textContent = `切换节奏型 · 第 ${secIdx + 1} 段「${sec.name}」`;
-    wrap.appendChild(note);
-
-    const row = document.createElement("div");
-    row.className = "demo-seg-row";
-    row.id = "demoSegRow";
-    row.setAttribute("role", "group");
-    row.setAttribute("aria-label", "切换本段节奏型");
-    /* 当前段引用的型 → 高亮哪一颗。按 id 比对（示例的 7 个型与引用的 id 同源） */
-    const curRefId = (sec.blocks[0] && sec.blocks[0].ref && sec.blocks[0].ref.type === "custom")
-      ? sec.blocks[0].ref.id : "";
-    demo.forEach(c => {
-      const b = document.createElement("button");
-      b.className = "pill";
-      /* 短标签：把"在他乡 · 节奏型1（十六分满扫）"压成"节奏型1"——
-         侧栏窄，全名会把胶囊挤成两行；全名放 title/aria-label 供悬停与读屏 */
-      b.textContent = shortDemoName(c.name);
-      b.title = c.name;
-      b.dataset.demoId = c.id;
-      const on = c.id === curRefId;
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-      b.setAttribute("aria-label", "把第 " + (secIdx + 1) + " 段换成「" + c.name + "」");
-      b.addEventListener("click", () => {
-        b.blur();
-        applyDemoSeg(secIdx, c.id);
-      });
-      row.appendChild(b);
-    });
-    wrap.appendChild(row);
-    return wrap;
-  }
-  /** @param {string} full @returns {string} */
-  function shortDemoName(full){
-    /* v2.9.0：示例型已改成通用名（十六分满扫 等），不再带"在他乡 · "前缀，短标签 = 原名。
-       这里保留旧式「节奏型N（型名）→ 节奏型 N」的兜底，覆盖老数据尚未被一次性迁移
-       （migrateDemoPatternNames）收敛到的极端情形。
-       ★ 前缀常量 DEMO_LEGACY_PREFIX 在数据区（Store 之前）声明，Presets 可直接引用 */
-    const s = String(full).replace(DEMO_LEGACY_PREFIX, "");
-    const m = s.match(/^节奏型\s*(\d+)/);
-    return m ? "节奏型 " + m[1] : s.replace(/（.*?）/, "").trim();
-  }
-  /* 把第 i 段的第 0 块换成指定型。复用 Store 的曲式写入口（保证结构校验与落盘一致）：
-     直接改 Store.arranges 里的对象再 persist 是**绕过校验**的写法，
-     而 upsertArrange 会走 validateArrange——块引用不存在的型会被拦下来。
-     ★ 换完必须 refreshAfterPatternChange()：主界面标题/可视化/播放中的相位接送
-       全靠它（它内部有 rescheduleCurrent 那条"点下即生效"的路径，与预设库点击同源）。 */
-  /** @param {number} secIdx @param {string} id @returns {void} */
-  function applyDemoSeg(secIdx, id){
-    const ar = Store.findArrange(S.arrangeSel.id);
-    if (!ar || ar.id !== demoArrId) return;
-    if (!Store.customs.some((/** @type {any} */ c) => c.id === id)) return;      // 型已被删：幂等退出
-    const dst = Store.customs.find((/** @type {any} */ c) => c.id === id);
-    const v = Store.upsertArrange({ id: ar.id, name: ar.name,
-      sections: ar.sections.map((/** @type {any} */ s, /** @type {number} */ i) => i === secIdx
-        /* v2.6.0（第 Ⅳ 期）：只换**第 1 块**的型，其余块原样保留。
-           此前是"重建成单块"，那对"一段 = 一个型"成立，但对逐小节谱的段
-           （「收束」= P2×1 + P1×1）会把第 2 块整块删掉——换一次型就把段长改短了。
-           胶囊条的语义是"这一段用哪个型"，不是"把这一段重编"，所以只能动它该动的那一块。 */
-        ? { name: s.name, blocks: s.blocks.map((/** @type {any} */ x, /** @type {number} */ j) => j === 0
-            ? { ref: { type: "custom", id: id }, repeats: x.repeats }
-            : { ref: x.ref, repeats: x.repeats }) }
-        : { name: s.name, blocks: s.blocks.map((/** @type {any} */ x) => ({ ref: x.ref, repeats: x.repeats })) }) });
-    if (!v){ announce("这段的节奏型没能换过去，请检查曲式是否完整"); return; }
-    /* 让主界面这一行立刻反映"现在用哪个型"：曲式模式下标题由 blockAt 决定，
-       换了引用后需要一次刷新才会显示新名字。范围收窄到该段，避免播到别的段 */
-    S.arrangeSel = { id: ar.id, from: secIdx, to: secIdx, loop: false, byLyric: false };
-    Store.persist();
-    refreshAfterPatternChange();
-    announce("第 " + (secIdx + 1) + " 段已换成「" + (dst ? dst.name : "节奏型") + "」");
   }
   /** 一个内置型条目。v2.9.0 从 buildPresetList 内联循环里抽出——节拍区与扫弦区都要渲染
      内置型，两处内联等于两条会漂移的渲染路径（选中态判据、键盘契约各写一遍）。
@@ -6958,12 +6991,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function buildPresetList(){
     const list = $("presetList");
     clear(list);
-    /* v2.5.0：段序条 / 整首连播的元素引用随列表重建而失效——每次重建先清空。
-       不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoSecRow 仍认为"有条可刷"，
+    /* v2.5.0：整首连播 / 范围滑块的元素引用随列表重建而失效——每次重建先清空。
+       不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoRange 仍认为"有得可刷"，
        会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
-       demoArrId 一并清空：它标识"这条段序条服务哪条曲式"，列表重建后由
-       buildDemoSongRow 重新写入（未渲染时保持 null，demoCurSec/syncDemoSecRow 据此静默跳过） */
-    demoSongNote = null; demoPlayAllBtn = null; demoSecRowEl = null; demoSecPills = []; demoArrId = null;
+       demoArrId 一并清空：它标识"这套控件服务哪条曲式"，列表重建后由
+       buildDemoSongRow 重新写入（未渲染时保持 null，demoCurSec/syncDemoRange 据此静默跳过） */
+    demoSongNote = null; demoPlayAllBtn = null;
+    demoRangeWrapEl = null; demoRangeNoteEl = null; demoRangeFillEl = null;
+    demoRangeFromEl = null; demoRangeToEl = null; demoArrId = null;
     const beatBuiltins = /** @type {any[]} */ ([]), strumBuiltins = /** @type {any[]} */ ([]);
     BUILTINS.forEach((p, i) => (hasStrum(p) ? strumBuiltins : beatBuiltins).push({ p, i }));
     const beatCustoms = customs.filter(c => !hasStrum(c));
@@ -6981,13 +7016,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       + (customs.length ? ` + ${customs.length} 自定义` : "");
     $("exportBtn").disabled = !customs.length;
     syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/开播都经这里兜住）
-    /* v2.5.0：段序条也一样——它随列表重建而重建，新造的胶囊默认没有任何高亮，
-       必须在这里补一次。★ 这条不是可选的锦上添花：曲式播放中每换一个型都会经
+    /* v2.5.0：范围滑块也一样——它随列表重建而重建，新造的 input 默认 value=1、
+       填充条默认贴左、读数为空，必须在这里补一次。
+       ★ 这条不是可选的锦上添花：曲式播放中每换一个型都会经
        consumePending → applyPatternChange → buildPresetList 重建列表，漏了这一步的话
-       **段序条会在播到第 2 段时整个熄灭**
-       （元素是新的、高亮是旧的）。与上面一条是同一个道理：列表重建的收尾处必须把
+       **滑块会在播到第 2 段时整个跳回"整首"**
+       （元素是新的、范围是旧的）。与上面一条是同一个道理：列表重建的收尾处必须把
        所有"由列表承载的状态"各同步一次 */
-    syncDemoSecRow();
+    syncDemoRange();
     applyFold();                       // v2.10.0：折叠态也是"由列表承载的状态"——新建的条目默认 hidden=false，必须重新套用
   }
   /* 一个**自定义型**条目（含删除按钮 + 选中态 + 键盘契约）。v2.4.1 抽出：
@@ -7346,7 +7382,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   bindLoopSel("loopTo", false);
 
   return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, maybeShowMigHint, syncLoopUI, setLoopRange,
-    syncDemoSecRow };                             // v2.5.0：段序条呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）
+    syncDemoRange };                              // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -8615,19 +8651,19 @@ const Arrange = (() => {
       const cls = arrangeProblems(a);
       if (cls.length){ $("argProblems").textContent = "⚠ " + cls.join("；"); }
     }
-    /* v2.5.0：侧栏段序条与主界面这一行**同源刷新**。放这里的理由是"所有会让
+    /* v2.5.0：侧栏范围滑块与主界面这一行**同源刷新**。放这里的理由是"所有会让
        '现在在哪一段 / 播的是整首还是某一段'改变的编排侧动作都会过 refreshBar"
        （render、跳段、切范围循环、删曲式、开关 overlay）——一处收口，不必在五六处各补一次。
        方向是合法的：Arrange 声明在 Presets 之后，调它是向前引用 */
-    Presets.syncDemoSecRow();
+    Presets.syncDemoRange();
   }
   /* 播放中每个小节边界回调（由 AudioEngine 经注入钩子调用，不是反向引用）：
      刷新"现在在第几段"与"全曲进度" */
   function refreshNow(){
-    /* v2.5.0：段序条高亮 + 「整首连播中 · 第 N/10 段」随播放推进。
+    /* v2.5.0：滑块读数（含「播放中 · 第 N/10 段」）随播放推进。
        放在最前面（早于下面的守卫）是因为它就是"播放位置的呈现"——
-       与守卫守的"有没有曲式可刷"无关，syncDemoSecRow 自己会判该不该画 */
-    Presets.syncDemoSecRow();
+       与守卫守的"有没有曲式可刷"无关，syncDemoRange 自己会判该不该画 */
+    Presets.syncDemoRange();
     /* 取「正在播的曲式」优先（v2.0.2 修）：本函数是播放回调，不是编辑——
        curId 是编辑选中项，刷新页面后直接进曲式播放（playMode 持久化）时
        overlay 没开过、curId 是 null，用 cur() 会让整条实时进度永不刷新 */
@@ -8668,6 +8704,68 @@ const Arrange = (() => {
       : `已定位到第 ${k + 1} 段 · 播放从这里开始`;
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（v2.0.2）。
        否则只有文字变、画面原地不动——用户无法确认定位生效（实拍困惑：「球还在第一小节」） */
+    if (!S.playing){
+      const home = arrangeHomePattern();
+      if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+      Presets.applyPatternChange();
+    }
+  }
+  /* 侧栏「播放范围」双滑块（v2.10.4）：把范围设成 [from, to]（两端都含），下一个小节边界生效。
+     ★ 与 jumpTo 的分工：jumpTo 是**单段**（from = to = i），服务主界面跳段行的
+       「◀ 上一段 / 下一段 ▶」；本函数是**任意区间**，服务侧栏那两个 thumb。
+       两者共用同一份 S.arrangeSel 与同一套"小节边界拉回"机制，jumpTo(i) 恰好等价于
+       setRange(i, i) —— 区别只在 loop 与定位文案。
+     ★ 循环恒开：与 jumpTo / playArrange 同口径（"拖出范围"就是"我要练这段范围"，
+       放完一遍就停不算练习闭环）。想只过一遍就停的人：按停止键，或在跳段行 / 编排面板
+       关掉「范围循环」——那个开关依然是出口（v2.7.3）。
+     ★ 范围变更**不在调用时立刻跳段**：本函数只写字段 + 刷新呈现，真正的拉回发生在
+       下一个小节边界（onArrangeBar 的 refreshNow）。
+     ★ 自包含 setMode：不让将来第二个调用点忘了切模式。旧 jumpDemoSection 把它放在调用方，
+       而 jumpTo 读的是 arrangeCur()（只看曲式模式）——漏切就会退到 cur()（编辑选中项），
+       在"从没开过编排面板"时那是 null，于是操作毫无反应（这批 bug 的典型症状是"按钮坏了"）。
+     ★ 会跑重活（refreshBar + 停播时重建网格），所以侧栏只在**松手提交**时调它一次，
+       拖动途中不调——见 Presets.makeRangeInput 的 input/change 两级说明。
+     ★ 故意**不** announce：拖动会连续提交，读屏会被刷屏；范围信息由两个 thumb 的
+       aria-valuetext 承担（"第 3 段 · 副歌"）。 */
+  /** @param {number} from 起始段下标（0-based，含） @param {number} to 结束段下标（0-based，含）
+      @returns {void} */
+  function setRange(from, to){
+    /* 取曲式的顺序：正在播的 → 编辑器选中的 → **S.arrangeSel 指向的** → 库里第一条。
+       ★ 前两个是 jumpTo 的既有顺序，但**单靠它们不够**：`arrangeCur()` 在 playMode 不是
+         "arrange" 时恒为 null（见共享状态区的定义），而侧栏拖滑块恰恰**最常在还没进曲式
+         模式时发生**；`cur()` 又依赖编排 overlay 开过（它读的是编辑选中项 curId）。
+         两个都为 null 时本函数会**静默早退**——实测代价：T68h 四条断言全红（模式没切、
+         loop 没开、主界面没反馈、网格没换型），而滑块看起来"能拖、值也变了"。
+         第三、四个兜底就是为这个场景补的：拖的是哪条曲式，S.arrangeSel.id 说得清
+         （onRangeInput 已先把渲染中那条曲式的 id 写进去）。 */
+    const a = arrangeCur() || cur() || Store.findArrange(S.arrangeSel.id) || Store.arranges[0];
+    if (!a) return;
+    const M = a.sections.length;
+    const f = Math.min(M - 1, Math.max(0, Math.round(from)));
+    /* 与 Store.clampLoop 同口径的**双向归一**：两个独立的钳制做不到 from <= to
+       （from=3 / to=1 各自合法，合起来是空区间，调度器会算出"永远到不了 to"从而卡死） */
+    const t = Math.min(M - 1, Math.max(f, Math.round(to)));
+    setMode("playMode", "arrange", "拖侧栏播放范围");
+    S.arrangeSel.id = a.id;
+    S.arrangeSel.from = f;
+    S.arrangeSel.to = t;
+    S.arrangeSel.loop = true;
+    S.arrangeSel.byLyric = false;
+    Store.persist();
+    refreshBar();
+    /* 即时反馈（与 jumpTo 同一处理，v2.0.2 那条"别让用户以为控件坏了"的结论同样适用）：
+       先把目标范围写到主界面那一行，下一小节边界 refreshNow 会用真实游标覆盖它 */
+    const nf = a.sections[f] && a.sections[f].name;
+    const nt = a.sections[t] && a.sections[t].name;
+    const span = (f === t)
+      ? (nf ? " · " + nf : "")
+      : ((nf || nt) ? " · " + (nf || "") + " → " + (nt || "") : "");
+    const idx = (f === t) ? `第 ${f + 1}` : `第 ${f + 1}–${t + 1}`;
+    $("argNowName").textContent = a.name + span;
+    $("argNowMeta").textContent = S.playing
+      ? `→ ${idx} 段 · 本小节结束后进入`
+      : `已定位到 ${idx} 段 · 播放从这里开始`;
+    /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（同 jumpTo） */
     if (!S.playing){
       const home = arrangeHomePattern();
       if (home && home.meter !== S.sig) Controls.setSig(home.meter);
@@ -8911,7 +9009,7 @@ const Arrange = (() => {
   });
 
   refreshBar();
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, loopLyricSection, loadDemo, ensureDemo, demoStale };
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
@@ -9303,8 +9401,12 @@ setPatLenOf(ref => patBars(resolveRef(ref)));
 /* 侧栏「恢复示例曲」按钮的回调（v2.4.1）：Presets 声明在 Arrange 之前，
    直接调 Arrange.loadDemo() 是反向引用 → 经钩子注入（同 onArrangeBar 那套） */
 onDemoRestore = () => Arrange.loadDemo();
-/* 侧栏段序条的跳段回调（v2.5.0）：同样因为 Presets 声明在前而只能走钩子 */
-onDemoJump = Arrange.jumpTo;
+/* 侧栏「播放范围」双滑块的回调（v2.10.4）：同样因为 Presets 声明在前而只能走钩子。
+   ★ v2.10.4 起它取代了 `onDemoJump = Arrange.jumpTo`——滑块表达的是**区间**而不是
+     "跳到某一段"，所以钩子的形状从 (i) 变成了 (from, to)。
+     跳到单段仍做得到：两个 thumb 拖到重合即 from === to（jumpTo 依然是那条路径的实现，
+     它现在只服务主界面跳段行的「上一段 / 下一段」）。 */
+onDemoRange = Arrange.setRange;
 /* 页面离开时停播（v1.3.0，审计 P2-13）：pagehide 覆盖 bfcache 与真正的卸载，visibilitychange
    覆盖不到。放在装配层而不是 AudioEngine 模块内——AudioEngine 声明在 Controls 之前，模块内直接调
    Controls.stop() 会构成反向引用（tools/check-module-order.js 会拦下来） */

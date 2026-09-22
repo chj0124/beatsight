@@ -81,16 +81,21 @@ const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-g
 const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
 const playAllOf = els => playRowOf(els).children[0];               // 行内第 1 个 = 按钮
 const noteOf = els => playRowOf(els).children[1];                  // 行内第 2 个 = 状态说明
-const secRowOf = els => boxOf(els).children.find(x => /(^| )demo-sec-row( |$)/.test(x.className));
-/* 「切换节奏型」胶囊条（v2.4.1）：它挂在**一层 wrapper 里**（note + row），
-   不是分组的直接子节点——所以要下一层找。段序条也是 .demo-seg-row，
-   但它是直接子节点，两者靠"在谁的孩子里"区分 */
-const segRowOf = els => {
-  for (const ch of boxOf(els).children){
-    const hit = (ch.children || []).find(c => /(^| )demo-seg-row( |$)/.test(c.className));
-    if (hit) return hit;
-  }
-  return null;
+/* 「播放范围」双滑块（v2.10.4 取代原段序条那 10 颗段号胶囊）。
+   结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
+   测试桩不解析 HTML，只能按 children 序位取，所以这几个 helper 与 buildDemoSongRow 的
+   挂法是一对——改挂法就要同步改这里。**每次现取**：点击会触发列表重建，旧引用随即失效 */
+const rangeOf = els => boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
+const rangeTrackOf = els => rangeOf(els).children[1];
+const rangeFromOf = els => rangeTrackOf(els).children[1];
+const rangeToOf = els => rangeTrackOf(els).children[2];
+/* 拖一次滑块 = 走完 input（拖动中，只刷视觉）+ change（松手提交，跑重活并通知 Arrange）两级。
+   真实浏览器就是这么发的顺序；**只发 input 不会应用范围**（见 Presets.makeRangeInput 注释） */
+const dragRange = (els, from, to) => {
+  const f = rangeFromOf(els), t = rangeToOf(els);
+  f.value = String(from); t.value = String(to);
+  f.fire("input"); t.fire("input");
+  f.fire("change"); t.fire("change");
 };
 /* 全列表按**显示名**取条目（v2.9.0 示例型已并入扫弦区，不再挂在曲式分组里）。
    条目是 presetList 的直接子节点（夹在分区标题之间），显示名 = item.children[0].children[0] */
@@ -256,29 +261,35 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
   /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表 */
   eq(playAllOf(els).getAttribute("aria-pressed"), "true", "按钮进入高亮态");
-  eq(secRowOf(els).children[0].getAttribute("aria-pressed"), "true", "段序条高亮第 1 段");
-  eq(secRowOf(els).children[9].getAttribute("aria-pressed"), "false", "第 10 段未高亮");
+  /* v2.10.4：段序条已换成范围滑块——"整首连播"在滑块上的表现 = **两个 thumb 拉满**。
+     滑块表达的是范围、不是当前位置，所以原来"第 1 段高亮 / 第 10 段不高亮"那两条
+     已随段序条一并消失；"现在在第几段"改由下面那条状态说明承担 */
+  eq(rangeFromOf(els).value, "1", "滑块起点拉满到第 1 段");
+  eq(rangeToOf(els).value, "10", "滑块终点拉满到第 10 段");
   ok(noteOf(els).textContent.includes("第 1/10 段"),
-     "状态说明给出「整首连播中 · 第 1/10 段」（实际「" + noteOf(els).textContent + "」）");
+     "状态说明给出「播放中 · 第 1/10 段」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
   /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫 */
   ok(String(beat.activePattern().name).indexOf("十六分满扫") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
   beat.Controls.stop();
 }
 
-/* ================= 场景 T68h：段序条跳段 ================= */
-section("T68h 整首连播 · 点段序条第 N 段 = 只循环那一段");
+/* ================= 场景 T68h：滑块把范围拖到重合 = 只循环那一段 ================= */
+section("T68h 整首连播 · 拖范围滑块到重合 = 只循环那一段");
 {
   const { beat, els } = loadDemo();
-  secRowOf(els).children[4].fire("click");
-  eq(beat.Store.S.playMode, "arrange", "点段号即进入曲式模式（否则 jumpTo 读不到可跳的曲式）");
+  /* v2.10.4：原来是点段序条第 5 颗胶囊（jumpTo → from=to=4），现在把两个 thumb 拖到第 5 段重合。
+     断言口径**逐位不变**——这正是换控件想要的结果：控件变了，数据语义一位都不该动 */
+  dragRange(els, 5, 5);
+  eq(beat.Store.S.playMode, "arrange", "拖滑块即进入曲式模式（否则 setRange 读不到可跳的曲式）");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
      JSON.stringify({ id: beat.DEMO_ID, from: 4, to: 4, loop: true, byLyric: false }),
      "★ 范围收成 [第 5 段, 第 5 段] + 循环 = 只磨这一段");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
-  const row = secRowOf(els);
-  eq(row.children[4].getAttribute("aria-pressed"), "true", "第 5 段高亮");
-  eq(row.children[0].getAttribute("aria-pressed"), "false", "第 1 段取消高亮");
+  eq(rangeFromOf(els).value, "5", "起点 thumb 落在第 5 段");
+  eq(rangeToOf(els).value, "5", "终点 thumb 也落在第 5 段（重合态）");
+  ok(/第 5 段/.test(els["argNowMeta"].textContent),
+     "★ 主界面那一行给出即时反馈（下一小节边界才会真的拉回）（实际「" + els["argNowMeta"].textContent + "」）");
   /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。v2.9.0：段 5 = P3 = 主歌扫弦 */
   ok(String(beat.activePattern().name).indexOf("主歌扫弦") >= 0,
      "★ 停止时定位：生效的型已换成第 5 段引用的那个（实际「" + beat.activePattern().name + "」）");
@@ -303,80 +314,39 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T68k：侧栏「切换节奏型」胶囊条（v2.4.1 的真实点击路径） ================= */
-section("T68k 整首连播 · 侧栏把当前段换成另一个型（applyDemoSeg 真实点击路径）");
-{
-  const { beat, els } = loadDemo();
-  /* 先跳段 → S.arrangeSel.id 指向示例曲，切换胶囊条才会渲染出来。
-     挑第 5 段（主歌一 · 那年你踏上，当前用「主歌扫弦」P3）——它本来就不是副歌扫弦，
-     点「副歌扫弦」才验得出"真的换过去了"（若本来就用它，点完看不出任何变化） */
-  secRowOf(els).children[4].fire("click");
-  const segRow = segRowOf(els);
-  ok(!!segRow, "前提：切换节奏型胶囊条已渲染（只在编排示例曲时出现）");
-  eq(segRow.children.length, 5, "5 个示例型各一颗胶囊");
-
-  const secIdx = 4;
-  const ar0 = beat.Store.findArrange(beat.DEMO_ID);
-  const before = ar0.sections[secIdx].blocks[0].ref.id;
-  const beforeName = beat.Store.customs.find(c => c.id === before).name;
-  ok(!String(beforeName).includes("副歌扫弦"), "前提：第 5 段本来用的不是副歌扫弦（实际「" + beforeName + "」）");
-  segRow.children[1].fire("click");
-
-  const ar1 = beat.Store.findArrange(beat.DEMO_ID);
-  const after = ar1.sections[secIdx].blocks[0].ref.id;
-  ok(after !== before, "★ 该段的块引用真的换掉了（不是只改了 UI）");
-  ok(String(beat.Store.customs.find(c => c.id === after).name).includes("副歌扫弦"),
-     "★ 换成的正是被点的那一颗（实际「" + beat.Store.customs.find(c => c.id === after).name + "」）");
-  eq(ar1.sections[secIdx].blocks[0].repeats, ar0.sections[secIdx].blocks[0].repeats,
-     "只换型、不动遍数");
-  eq(ar1.sections[0].blocks[0].ref.id, ar0.sections[0].blocks[0].ref.id, "别的段不受影响");
-  eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: secIdx, to: secIdx, loop: false, byLyric: false }),
-     "范围收窄到该段（免得改了这一段、播放却走到别的段）");
-}
-/* ================= 场景 T68l：退回预设模式后「切换节奏型」胶囊条必须消失（v2.8.26 · P2-8） ================= */
-section("T68l 整首连播 · 点预设退回单练后，示例段胶囊条不再渲染（动作/反馈不许脱节）");
-{
-  const { beat, els } = loadDemo();
-  /* 先点段序条进曲式（与 T68k 同一入口）：这一步之后 S.arrangeSel.id 指向示例曲，
-     胶囊条才该出现。它是本条的**前提**，不是被测点 */
-  secRowOf(els).children[4].fire("click");
-  ok(!!segRowOf(els), "前提：进曲式后胶囊条已渲染");
-  eq(beat.Store.S.playMode, "arrange", "前提：此刻在曲式模式");
-
-  /* 点侧栏节奏型 → exitArrangeForPreset：playMode 退回 "preset"，但**不清**
-     S.arrangeSel.id。修复前胶囊条只看 id，于是它仍会渲染；点它是改曲式块引用，
-     对当前单型练习毫无即时效果——动作与反馈脱节。 */
-  const target = itemByName(els, "副歌扫弦");
-  ok(!!target, "前提：扫弦区里有「副歌扫弦」条目");
-  target.fire("click");
-  eq(beat.Store.S.playMode, "preset", "点预设后退回单型练习");
-  eq(beat.Store.S.arrangeSel.id, beat.DEMO_ID,
-     "根因仍在：出口不清 arrangeSel.id，它依旧指向示例曲（判据不能只看它）");
-  ok(segRowOf(els) === null,
-     "★ 修复点：胶囊条按 playMode 判据隐藏，退回预设后不再渲染（此前会残留可点）");
-  beat.Controls.stop();
-}
-section("T68j 整首连播 · 段序条高亮随播放推进（不是钉在第 1 段）");
+/* ================= 场景 T68k / T68l：随「切换节奏型」胶囊条一并删除（v2.10.4） =================
+   这两条测的是 v2.4.1 加、v2.8.26 修的那个侧栏「切换节奏型」胶囊条
+   （buildDemoSegRow / applyDemoSeg）。v2.10.4 该控件**整体删除**，两条用例因此失去被测对象。
+   ★ 为什么删控件（用户确认）：它的候选就是示例曲那 5 个型，而它们已按内容落在「扫弦」区
+     （v2.9.0 起按 hasStrum 分区），等于同一份清单在同一张侧栏里出现两次；
+     且 applyDemoSeg 收尾会把 S.arrangeSel 收窄成 from === to，与新增的范围滑块语义相冲
+     （拖好的范围会被一次换型清掉）。
+   ★ "换本段用哪个型"的出口仍然存在：进「编排曲式」→ 该段行 → 换型（那里本来就有内联候选行）。
+   ★ 这里**不是**把断言改宽蒙过去，而是被测功能本身不存在了——所以整段移除，不留空壳。 */
+section("T68j 整首连播 · 位置读数随播放推进（段序条已换成范围滑块）");
 {
   const { beat, els } = loadDemo();
   /* 240BPM → 一小节 1s；**第 1 段 = 1 小节**（v2.6.0 起是逐小节谱，不再垫到 4 小节）= 1s。
-     v2.7.1 起段序条高亮跟**可听位置**（onAudibleBar 由渲染帧驱动），
-     所以这里必须用 driveFrames（scheduler + paintFrame 双时钟）而不是只跑调度 */
+     v2.7.1 起"现在在第几段"跟**可听位置**（demoCurSec → Viz.audibleArrangePos，由渲染帧驱动），
+     所以这里必须用 driveFrames（scheduler + paintFrame 双时钟）而不是只跑调度。
+     ★ v2.10.4：段序条的逐段高亮没有了（滑块表达的是**范围**，不是当前位置），
+       位置信息只剩 .demo-play-note 这一行——它成了本条唯一可断言的载体。 */
   beat.Controls.setBpm(240);
   playAllOf(els).fire("click");
   const ac = FakeAudioContext.last;
   ok(noteOf(els).textContent.includes("第 1/10"),
      "起播时指向第 1 段（实际「" + noteOf(els).textContent + "」）");
   driveFrames(ac, beat, 1.4);
-  const row = secRowOf(els);
-  eq(row.children[1].getAttribute("aria-pressed"), "true",
-     "★ 走完第 1 段后高亮移到第 2 段（跟着节目单推进，不是钉在第 1 段）");
-  eq(row.children[0].getAttribute("aria-pressed"), "false", "第 1 段取消高亮");
-  ok(noteOf(els).textContent.includes("第 2/10 段"),
-     "★ 状态说明同步推进（实际「" + noteOf(els).textContent + "」）");
+  ok(noteOf(els).textContent.includes("第 2/10"),
+     "★ 走完第 1 段后读数移到第 2 段（跟着节目单推进，不是钉在第 1 段）（实际「" + noteOf(els).textContent + "」）");
+  /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–10，不随播放跳动
+     （"滑块自己会走"是这类控件最常见的实现错误，钉住它） */
+  eq(rangeFromOf(els).value, "1", "整首连播期间起点停在 1（滑块不跟播放位置走）");
+  eq(rangeToOf(els).value, "10", "整首连播期间终点停在 10");
   beat.Controls.stop();
-  /* 停机后回到"范围起点"口径（停止时看的不是调度游标——它不表达"下次从哪开始"） */
-  eq(secRowOf(els).children[0].getAttribute("aria-pressed"), "true",
-     "★ 停机后高亮回到播放范围起点（第 1 段），不是停在刚播完那一段");
+  /* 停机后回到"范围起点"口径（停止时看的不是调度游标——它不表达"下次从哪开始"）：
+     范围没变，仍是从头；但读数不再写「播放中」 */
+  ok(!/播放中/.test(noteOf(els).textContent),
+     "★ 停机后读数不再写「播放中」（实际「" + noteOf(els).textContent + "」）");
+  eq(rangeFromOf(els).value, "1", "停机后起点仍在范围起点");
 }
