@@ -305,7 +305,7 @@ input[type=range].vol{width:120px}
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
 .viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 /* 同屏行数档位（v2.8.0 req3）：时值可视化卡片顶部、开关行之下、网格之上。
-   与 .track-row / .limit-panel 同一套写法（flex + gap + 下方留白）；
+   与 .limit-panel 同一套写法（flex + gap + 下方留白）；
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
 .viz-rows-panel{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -345,17 +345,8 @@ input[type=range].vol{width:120px}
 /* ---------- 侧栏 ---------- */
 .preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px}
 .preset-section:first-child{margin-top:0}
-/* 轨切换条（v2.4.0）：预设库**最顶部**的两选一。放在这里而不是顶栏，因为它是
-   「这个列表里有什么」的筛选器——贴着被它筛选的列表，用户不必建立"顶部那个开关
-   会改变侧栏内容"的心智模型；顶栏在 390px 下也已排满（v2.0.2 起跳段行就是这么挪走的）。
-   与 .arg-now 同一套写法（flex + gap + 顶部留白），两者在卡片里纵向相邻、视觉成组 */
-.track-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.track-row .pill{padding:7px 14px;font-size:12px}
-/* 切换条右侧的补充说明（当前轨的过滤结果 / 隐藏了几个扫弦型），窄屏允许换行独占一行 */
-.track-note{font-size:11px;color:var(--t3);flex-basis:100%}
-.track-note:empty{display:none}
-/* 练习循环面板（v2.4.3）：紧贴在轨切换条之下、预设列表之上——它是"对当前选中的型"生效的
-   常驻控件，与 .track-row 同层（写法也照抄：flex + gap + 下方留白，两者纵向相邻、视觉成组）。
+/* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
+   常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
 .loop-panel{margin-bottom:14px}
 .loop-panel .group-label{margin-bottom:7px}
@@ -850,8 +841,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
       <!-- 六线底纹开关（v2.4.2）：扫弦谱的六条弦线参照背景，默认开。
-           与弹跳球同属"视觉辅助"；只在扫弦轨有意义，
-           普通轨下由 Tracks 隐藏（不画六线也不画箭头） -->
+           与弹跳球同属"视觉辅助"；只对**带扫弦记谱的型**有意义——
+           不带记谱的型本来就不画六线也不画箭头，开关对它自然无可见效果（v2.9.0 去轨门控） -->
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
     </div>
     <!-- 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**一档可见行数。
@@ -965,11 +956,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              就只剩扫弦，节拍器整个没了）。
              改法是两条**并列独立**的声部音量：节拍走 S.vol、扫弦走 S.strumVol
              （两条在 playClick 里各走各的，互不缩放），对齐参考页那对「节拍 / 扫弦」滑条。
-             「扫弦」整行只在带扫弦的节拍轨出现——普通轨没有任何扫弦声可调，
-             留一条恒不起作用的滑条只会让人以为它坏了（显隐由 Tracks.syncTrackUI 收口） -->
+             v2.9.0：去掉轨门控后「扫弦」行**常显**——判据从"当前在哪条轨"改成"当前型是否
+             带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
+             恒在反而更稳定（用不到时它不影响任何声音） -->
         <div class="group-label">音量 · 节拍 / 扫弦 / 重拍增强</div>
         <div class="vol-row"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
-        <div class="vol-row" id="volStrumRow" hidden><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+        <div class="vol-row" id="volStrumRow"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
         <div class="vol-row"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
       </div>
     </section>
@@ -1035,20 +1027,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
         <button class="pill outline" id="migHintBtn">知道了</button>
       </div>
-      <!-- 轨切换条（v2.4.0）：普通节拍 / 带扫弦的节拍 两个入口。
-           **放在 #presetList 之上、扣在卡片标题之下**——它是「下面这个列表在列什么」的
-           筛选器，贴住被筛选的内容才不用建立跨区心智模型（同 .arg-now 放在预设卡片里的理由）。
-           按钮由 buildPillRow 在 Tracks 模块里生成，不在标记里写死——
-           与 BPM 快捷档 / 重拍分组同一套「一行 pill 由值表生成」的纪律（单一数据源）。
-           role="group" + aria-label：读屏用户听到的是「轨」这一组两个选项，
-           而不是两个孤立的按钮 -->
-      <div class="track-row" id="trackRow" role="group" aria-label="节拍轨"></div>
-      <div class="track-note" id="trackNote"></div>
       <!-- 练习循环（v2.4.3）：只反复磨第 X 到第 Y 小节。
-           ★ 为什么放在轨切换条下面、预设列表上面：它作用的对象是"当前选中的那个型"，
-             而不是列表里的某一项——放进条目里会变成 8 份互相打架的开关（同一个时刻
-             只可能有一个型在响，却允许 8 个地方都显示"循环中"）。放在列表之上的
-             常驻区，语义就是"对下面这个库的当前选择生效"，与 .track-row 同一层心智。
+           ★ 为什么放在预设列表上面：它作用的对象是"当前选中的那个型"，
+             而不是列表里的某一项——放进条目里会变成 N 份互相打架的开关（同一个时刻
+             只可能有一个型在响，却允许 N 个地方都显示"循环中"）。放在列表之上的
+             常驻区，语义就是"对下面这个库的当前选择生效"。
            ★ 两处入口互斥（见 setLoopRange / armLoopRow 的注释）：
              「循环本段」= 把区间设成当前型的全部 4 小节（语义上等价于"老老实实循环它"），
              下拉区间 = 精确到某一两小节。两者说的是同一件事（循环区间的范围），
@@ -1411,23 +1394,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1443  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1923  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2950  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3607  Modal         应用内弹窗
-     L3737  Viz           时值可视化渲染与每帧动画
-     L5022  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5649  Trainer       变速训练器
-     L5867  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6367  Tracks        节拍轨切换（v2.4.0：普通节拍 / 带扫弦的节拍 双入口）
-     L6500  Presets       预设库 / 回退提示 / 播放中切换挂起
-     L7293  Editor        自定义节奏型编辑器
-     L7649  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7872  Ear           听辨训练（v1.10.0）
-     L8097  Arrange       曲式编排（v2.0.0）
-     L8860  Help          使用方法（v2.0.1）
-     L8907  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L8981  初始化（装配） 各模块 hook 接线与启动
+     L1442  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1918  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2871  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3512  Modal         应用内弹窗
+     L3642  Viz           时值可视化渲染与每帧动画
+     L4929  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5558  Trainer       变速训练器
+     L5776  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6276  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7069  Editor        自定义节奏型编辑器
+     L7425  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L7648  Ear           听辨训练（v1.10.0）
+     L7873  Arrange       曲式编排（v2.0.0）
+     L8636  Help          使用方法（v2.0.1）
+     L8683  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L8757  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

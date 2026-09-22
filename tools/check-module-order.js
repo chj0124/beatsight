@@ -56,7 +56,7 @@ const lines = SRC.split("\n");
 const clean = stripComments(lines);
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Tracks", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
 
 /* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE（目前仅初始化段的 diagOn：
    调试开关求值，不参与模块间通信，故不进 EXPECTED_ORDER）。第 0 步的「双向 diff」要求：
@@ -79,7 +79,6 @@ const WHITELIST = [
   { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Stats 那一套，曲式编排 overlay 打开时键盘归它管" },
   { from: "Controls", to: "Help",     reason: "v2.0.1：keydown 处理器查 Help.isOpen()/close()——同上一批那一套，使用方法 overlay 打开时键盘归它管" },
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
-  { from: "Tracks",   to: "Presets",  reason: "v2.4.0：set() 切轨后调 Presets.refreshAfterPatternChange() 重建列表 + 就地接续换型——用户点击切换条时执行，非初始化期、非每帧热路径" },
 ];
 
 /* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。Controls 是 UI 中枢、当前已顶到 7
