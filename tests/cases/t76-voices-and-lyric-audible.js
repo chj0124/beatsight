@@ -155,8 +155,8 @@ section("T76c 可听域对齐 · 调度越界 ≠ 可听越界，歌词/计数�
     ok(/played/.test(chipOf(0, 0).className), "段 A 的字时值已走完 = played");
     ok(chipOf(1, 0).className === "lyric-chip", "★ 段 B 的字仍是未唱态（不提前点亮）");
   }
-  ok(els["argNowMeta"].textContent.includes("第 1/2 段"),
-     "★ 计数器仍在第 1 段（实际「" + els["argNowMeta"].textContent + "」）");
+  /* v2.10.14：原这里的两条 argNowMeta「第 1/2 段 / 第 2/2 段」计数器断言随说明文字删除退役——
+     可听域跟随的覆盖仍由下面的歌词 cur 行切换（跟声音走、不跟调度走）承担 */
 
   /* 可听位置越过边界后，两处在同一帧里跟过去（1.12s：段 B 第 1 小节早期） */
   driveFrames(ac, beat, 0.22);
@@ -165,8 +165,6 @@ section("T76c 可听域对齐 · 调度越界 ≠ 可听越界，歌词/计数�
        "★ 可听越界后当前行移到第 2 行（跟着声音走，不是跟着调度走）");
     ok(/(^| )on/.test(chipOf(1, 0).className), "段 B 的字进入 on（正在唱）");
   }
-  ok(els["argNowMeta"].textContent.includes("第 2/2 段"),
-     "★ 计数器同步到第 2 段（实际「" + els["argNowMeta"].textContent + "」）");
   beat.Controls.stop();
 }
 

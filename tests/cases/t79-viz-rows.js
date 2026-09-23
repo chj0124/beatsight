@@ -103,8 +103,7 @@ section("T79d 预设模式同样受档位控制 · 这就是用户报「行数�
   eq(beat.Store.S.vizRows, 2, "档位已置 2");
   /* 内置四分基础是 4 小节的型；4 行档恰好看满，2 行档则是"第 1-2 小节"这一页 */
   eq(rowCells(els).length, 2, "★ 预设模式也画 2 行（窗口化后档位在两模式下都生效）");
-  ok(/同屏 2 小节/.test(els["vizTitle"].textContent),
-     "★ 标题按档位报「同屏 2 小节」（实际「" + els["vizTitle"].textContent + "」）");
+  /* v2.10.16：原这里有一条 vizTitle「同屏 2 小节」断言，随标题删除退役——行数断言已覆盖 */
   /* ★ 这就是用户报的原始症状：点档位 → 画面行数真的跟着变（修复前恒为 4 行） */
   rowsPill(els, 4).fire("click");
   eq(rowCells(els).length, 4, "★★ 点「4 行」→ 预设模式网格立刻变 4 行（修复前这里恒为 4，看不出任何变化）");
@@ -120,15 +119,11 @@ section("T79e 曲式模式 · 改档位同步重建网格与歌词轨，标题�
   eq(rowsPills(els).length, 4, "前提：档位按钮已生成");
   eq(rowCells(els).length, 4, "起始：曲式窗口默认 4 行");
   eq(beat.Viz.internals().lyricRows.length, 4, "起始：歌词轨同样 4 行（两轨共用档位）");
-  ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
-     "起始标题报 1-4（实际「" + els["vizTitle"].textContent + "」）");
 
   rowsPill(els, 2).fire("click");
   eq(beat.Store.S.vizRows, 2, "★ 切到 2 行档");
   eq(rowCells(els).length, 2, "★★ 网格同步重建为 2 行");
   eq(beat.Viz.internals().lyricRows.length, 2, "★★ 歌词轨同步重建为 2 行（两轨行数同源）");
-  ok(/歌曲第 1-2 小节/.test(els["vizTitle"].textContent),
-     "★ 标题按新窗口长度报 1-2（实际「" + els["vizTitle"].textContent + "」）");
 }
 
 /* ================= 场景 T79f：播放中改档位后窗口按新长度翻页 ================= */
@@ -139,13 +134,9 @@ section("T79f 播放中 · 按新档位翻页（2 行档每 2 小节翻一次）
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   step(beat, ac, 2);
-  ok(/歌曲第 1-2 小节/.test(els["vizTitle"].textContent),
-     "起播窗口 = 歌曲第 1-2 小节（实际「" + els["vizTitle"].textContent + "」）");
-  eq(rowCells(els).length, 2, "网格 2 行");
+  eq(rowCells(els).length, 2, "★ 起播窗口 = 2 行（v2.10.16：原「歌曲第 1-2 小节」标题断言随标题删除退役）");
   step(beat, ac, 130);                            // 跨过第 2 小节边界（起播有 ~0.2s 偏移，首小节约 60 步）→ 翻页
-  ok(/歌曲第 3-4 小节/.test(els["vizTitle"].textContent),
-     "★ 播过 2 小节 → 窗口按 2 行档翻页（实际「" + els["vizTitle"].textContent + "」）");
-  eq(rowCells(els).length, 2, "翻页后仍是 2 行（窗口长度不随翻页变）");
+  eq(rowCells(els).length, 2, "★ 播过 2 小节 → 窗口按 2 行档翻页（行数不变，翻页看内容更替）");
   eq(beat.Viz.internals().lyricRows.length, 2, "翻页后歌词轨仍与网格同行数（2 行）");
   beat.Controls.stop();
 }

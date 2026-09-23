@@ -550,8 +550,8 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
      所以唯一入口是**试听中的草稿**。这条路径此前零覆盖。
      两个关键细节（第一版都写错了）：
        ① 不能先驱动帧：空小节会被调度器迅速跳过，游标离开空小节后接续就成功了；
-       ② 判据不能用标题：预览态下 activePattern() 返回草稿，标题两侧都指向草稿名。
-          改用可视化标题里的拍号——它只在 applyPatternChange → buildViz 时才更新。 */
+       ② 判据不能用标题（v2.10.16 前用可视化标题里的拍号，它只在 applyPatternChange →
+          buildViz 时才更新；标题已删）——改用 PROBE.layoutReads（buildViz 重建必读布局）。 */
   const app = loadApp();
   const beat = app.beat, els = app.els, S = beat.Store.S;
   beat.Editor.open();
@@ -560,8 +560,9 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
   els["auditionBtn"].fire("click");                                   // 试听：开始播放但**不驱动**
   ok(S.playing && S.preview, "试听中（播放 + 预览态）");
   eq(beat.clock().schedBar, 0, "未驱动 → 调度游标仍停在第 1 小节（正是那个空小节）");
-  const vizBefore = els["vizTitle"].textContent;
-  eq(/4\/4/.test(vizBefore), true, `可视化当前按 4/4 渲染：「${vizBefore}」`);
+  /* v2.10.16：原用 vizTitle 的拍号文字当「重建/没重建」观察面——标题已删。
+     改用 PROBE.layoutReads：buildViz 重建必读布局（cacheGeo），挂起则一次都不读 */
+  const reads0 = PROBE.layoutReads;
 
   /* 播放中切到不同拍号的节奏型 → 接续失败 → 挂起 */
   const target = beat.BUILTINS.findIndex(p => p.meter === 3);
@@ -569,15 +570,15 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
   const tItems = els["presetList"].children.filter(c => c._h && c._h.click);
   const tText = el => String(el.textContent || "") + (el.children || []).map(tText).join("");
   tItems.find(c => tText(c).includes(beat.BUILTINS[target].name)).fire("click");
-  eq(els["vizTitle"].textContent, vizBefore,
+  eq(PROBE.layoutReads, reads0,
     "挂起生效：可视化**没有**立刻重建（「就地接续」路径会立刻 rebuildViz——这条区分两条路径）");
   eq(S.sig, 3, "新拍号已记录（等小节边界生效）");
 
   /* 驱动越过若干小节边界：挂起被消费，节奏型真正生效 */
   const err = driveFrames(FakeAudioContext.last, beat, 16);
   ok(!err, `挂起窗口内调度 + 渲染无异常（${err || "OK"}）`);
-  ok(/3\/4/.test(els["vizTitle"].textContent),
-    `越过循环起点后按新拍号重建可视化：「${els["vizTitle"].textContent}」`);
+  ok(PROBE.layoutReads > reads0,
+    "★ 越过循环起点后按新拍号重建可视化（buildViz 读了布局）");
   ok(S.playing, "整个过程播放未中断（挂起不会打断播放）");
   beat.Controls.stop();
   beat.Editor.tryClose(); els["modalOk"].fire("click");
@@ -589,12 +590,11 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
   const beat = app.beat, els = app.els, S = beat.Store.S;
 
   /* 窗口 resize：防抖 200ms 后重建（未播放）或只重采几何缓存（播放中，不打断动画） */
-  const vizBefore = els["vizTitle"].textContent;
   const readsBefore = PROBE.layoutReads;
   app.fireWin("resize");
   app.runTimers();
   ok(PROBE.layoutReads > readsBefore, "resize（未播放）→ 重建可视化（读了一次布局）");
-  eq(els["vizTitle"].textContent, vizBefore, "重建后标题不变（同一拍号）");
+  /* v2.10.16：原「重建后标题不变（同一拍号）」随 #vizTitle 删除退役 */
 
   beat.Controls.start();
   resetProbe();

@@ -169,23 +169,25 @@ section("T87e 预设窗口 · 点档位 → 画面行数真的变（修复前恒
   eq(JSON.parse(storage.get("beatsight.state")).vizRows, 4, "最后一次点击的档位已落热键");
 }
 
-/* ================= 场景 T87f：Q3 · hidden 失效的开关行（CSS 覆盖） ================= */
-section("T87f 底部「范围循环」开关 · .arg-now 必须显式补 [hidden]{display:none}（Q3）");
+/* ================= 场景 T87f：Q3 · hidden 失效的开关行（CSS 覆盖） =================
+   v2.10.14 改写：#argJump 行**常显**（播放键住进来了，整行 hidden 会把它一起藏掉），
+   行级 hidden 契约随之废除——本组改盯仍带 hidden 的「范围循环」开关：
+   .arg-now[hidden]{display:none} 那条补丁规则仍有别的 .arg-now 行在用，必须保留。 */
+section("T87f 底部「范围循环」开关 · .arg-now 显式 [hidden]{display:none} 补丁仍在（Q3）");
 {
-  /* ★ DOM 桩不跑 CSS，所以这里只能断言**样式文本**——而这一条恰恰只能这么测：
-     缺陷的本质是"作者样式的 display 盖掉了 UA 的 [hidden]"，桩里永远复现不出来
-     （t73c 断言的 els["argJump"].hidden === true 在修复前后都为真）。
-     故本组把"补丁存在"变成可判：规则在 → hidden 属性才真的生效。 */
+  /* ★ DOM 桩不跑 CSS，所以这里只能断言**样式文本**——缺陷的本质是"作者样式的 display
+     盖掉了 UA 的 [hidden]"，桩里永远复现不出来。故把"补丁存在"变成可判。 */
   ok(/\.arg-now\{[^}]*display\s*:\s*flex/.test(html),
      "前提：.arg-now 的 display 是 flex（作者样式，会盖掉 UA 的 [hidden]{display:none}）");
   ok(/\.arg-now\[hidden\]\s*\{\s*display\s*:\s*none\s*\}/.test(html),
-     "★★ .arg-now[hidden]{display:none} 存在——否则预设模式下整行「范围循环」照样显示");
+     "★★ .arg-now[hidden]{display:none} 仍在——跳段行常显了，但其它 .arg-now 行的 hidden 语义还得靠它");
   ok(/\.vol-row\[hidden\]\s*\{\s*display\s*:\s*none\s*\}/.test(html),
      "对照：既有补丁 .vol-row[hidden] 仍在（本行照抄同一套约定，便于统一维护）");
-  ok(/id="argJump"[^>]*\shidden/.test(html),
-     "标记里 #argJump 仍带 hidden（补丁管的是让 hidden 生效，不是改显隐规则）");
+  ok(!/id="argJump"[^>]*\shidden/.test(html),
+     "★ 标记里 #argJump 不再带 hidden（v2.10.14：行常显，收口改为上/下段键置灰）");
   const { els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
-  eq(els["argJump"].hidden, true, "预设模式下 #argJump.hidden 为真（配合上面的 CSS 规则才真的看不见）");
+  eq(els["argJumpPrev"].disabled, true, "预设模式下「上一段」置灰（新的收口呈现面）");
+  eq(els["argJumpNext"].disabled, true, "预设模式下「下一段」置灰");
 }
 
 /* ================= 场景 T87g：1 小节型 + 非默认练习循环 → 行号不越界 ================= */

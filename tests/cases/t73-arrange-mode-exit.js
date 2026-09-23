@@ -8,6 +8,9 @@
      而"退出曲式"（点侧栏预设 / 校验失败回退）不经过 Arrange 的任何入口。
      修法：setMode 是 playMode 的唯一写入口（t66 契约），在它上面挂变更钩子
      （onPlayModeChange，装配层注入 Arrange.refreshBar）——模式一变就同步，不可能漏。
+     ★ v2.10.14：收口的**呈现面**从「整行 hidden」改为「上/下段键 disabled 置灰」
+       （跳段行常显——播放键住进了这一行；#argNowMeta 进度文字已删），
+       钩子机制与同步时机不变，T73a/T73c 的断言随之改写（不是回归）。
 
    ② 曲式播放中，画面与节目单分裂：连播中 S.sel 被外力改写成别的型（旧实现：切成普通轨，
      ensureValidForTrack 把它回退成四分基础），refreshAfterPatternChange 拿 curPattern()
@@ -31,8 +34,11 @@ const deepText = el => String(el.textContent || "") + (el.children || []).map(de
 const itemByName = (els, name) => els["presetList"].children
   .filter(x => /(^| )preset-item( |$)/.test(x.className)).find(x => deepText(x).includes(name));
 
-/* ================= 场景 T73a：退出曲式 → 跳段行立即消失（图一） ================= */
-section("T73a 曲式退出收口 · ★ 点预设退回单练后，跳段行不再残留（含「第 N/M 段」进度）");
+/* ================= 场景 T73a：退出曲式 → 跳段键立即置灰（图一） =================
+   v2.10.14 口径改写：跳段行**常显**（播放键住进了这一行，整行隐藏会把它一起藏掉），
+   模式退出的收口从「整行 hidden」改为「上/下段键 disabled 置灰」；
+   「第 N/M 段」进度文字（#argNowMeta）已按用户要求删除，清空断言随之退役。 */
+section("T73a 曲式退出收口 · ★ 点预设退回单练后，跳段键立即置灰（行常显，播放键不受影响）");
 {
   const { beat, els } = loadDemo();
   playAllOf(els).fire("click");
@@ -40,15 +46,16 @@ section("T73a 曲式退出收口 · ★ 点预设退回单练后，跳段行不�
   drive(ac, beat, 3);
   beat.Controls.stop();
 
-  /* 前提：曲式模式下跳段行是显示的（playMode 进 arrange 时经钩子同步过一次） */
+  /* 前提：曲式模式下跳段键可用（playMode 进 arrange 时经钩子同步过一次） */
   eq(beat.Store.S.playMode, "arrange", "前提：整首连播后是曲式模式");
-  eq(els["argJump"].hidden, false, "前提：曲式模式下跳段行显示（钩子在进模式时已同步）");
+  eq(els["argJumpPrev"].disabled, false, "前提：曲式模式下「上一段」可用（钩子在进模式时已同步）");
+  eq(els["argJumpNext"].disabled, false, "前提：曲式模式下「下一段」可用");
 
   itemByName(els, "四分基础").fire("click");
   eq(beat.Store.S.playMode, "preset", "点预设 → 退回预设模式（v2.5.0 契约不变）");
-  eq(els["argJump"].hidden, true, "★ 跳段行随模式退出立即隐藏——不再残留在主界面");
-  eq(els["argNowMeta"].textContent, "", "★ 「第 N/M 段 · 第 k/120 小节」进度一并清空");
-  ok(!String(els["argNowName"].textContent).includes("在他乡"),
+  eq(els["argJumpPrev"].disabled, true, "★ 「上一段」随模式退出立即置灰——不再残留可点状态");
+  eq(els["argJumpNext"].disabled, true, "★ 「下一段」同步置灰");
+  ok(String(els["argNowName"].textContent).length === 0 || !String(els["argNowName"].textContent).includes("在他乡"),
     "★ 曲式名一并清空（实际「" + els["argNowName"].textContent + "」）");
   eq(els["patternName"].textContent, "四分基础", "标题落在被点的预设上");
 }
@@ -76,8 +83,8 @@ section("T73b 曲式播放中 · ★ 标题/网格只跟节目单游标，与 S.
   eq(afterName, (beat.arrangePlayPattern() || {}).name || "",
     `★ S.sel 被改写后标题仍是节目单的型（实际「${afterName}」）——旧实现这里变成「四分基础」`);
   ok(afterName !== "四分基础", "★ 画面没有被 S.sel 拽走");
-  ok(String(els["vizTitle"].textContent).includes("歌曲第"),
-    "★ 网格仍是曲式窗口口径（实际「" + els["vizTitle"].textContent + "」）");
+  /* v2.10.16：原「网格仍是曲式窗口口径」的 vizTitle 断言随标题删除退役——
+     曲式窗口口径的回归观察面 = T70/T75/T79 的网格内容断言 */
 
   /* 继续走：节目单照常推进，标题每过一个块都换——证明时间轴没被那次改写拽坏 */
   let sawOther = false;
@@ -103,8 +110,8 @@ section("T73c 曲式播放中点预设 · 退回单练它（对等入口契约�
 
   eq(beat.Store.S.playMode, "preset", "播放中点预设 → 退回预设模式");
   eq(els["patternName"].textContent, "四分基础", "标题立即换成分外被点的型");
-  ok(String(els["vizTitle"].textContent).includes("同屏"), "网格口径回到预设模式");
-  eq(els["argJump"].hidden, true, "跳段行同步隐藏");
+  /* v2.10.16：原「网格口径回到预设模式」的 vizTitle 断言随标题删除退役——模式切换本身已由上一条 S.playMode 断言覆盖 */
+  eq(els["argJumpPrev"].disabled, true, "★ 跳段键同步置灰（v2.10.14：行常显，收口改为置灰）");
   eq(beat.Store.S.playing, true, "播放不中断（就地接续，不是停了重来）");
   const n0 = ac.hits.length;
   drive(ac, beat, 2);

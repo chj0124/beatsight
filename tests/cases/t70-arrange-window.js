@@ -118,24 +118,22 @@ section("T70c 滚动窗口 · 预设模式同样是 N 行窗口（内容取当�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T70e：卡片标题跟着窗口报歌曲小节范围 ================= */
-section("T70e 翻页窗口 · 卡片标题报「歌曲第 N-M 小节」并随翻页换页");
+/* ================= 场景 T70e：翻页窗口（v2.10.16 改写：观察面从标题改为网格内容） =================
+   原本靠 #vizTitle 的「歌曲第 N-M 小节」文字观察翻页——标题已按用户要求删除（与状态灯重复）。
+   翻页行为的回归观察改走**网格首行内容**：翻页前首行 = 第 1 小节的格子，翻页后 = 第 5 小节的
+   （与 T70 系列既有的 rowCells / 行内容断言同一套观察手段，覆盖不缩水）。 */
+section("T70e 翻页窗口 · 页内行进不翻页、进到第 5 小节翻页（观察面 = 网格首行）");
 {
   const { beat, els, ac } = startTwoStages();
+  const firstRowCells = () => (rowCells(els)[0] ?? -1);   // 复用既有的行格数助手（桩同构观察）
   step(beat, ac, 2);
-  ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
-     "★ 起播时标题 = 歌曲第 1-4 小节（实际「" + els["vizTitle"].textContent + "」）");
+  const atStart = firstRowCells(els);
+  ok(atStart > 0, "前提：起播时首行有格子（实际 " + atStart + " 格）");
   step(beat, ac, 60);
-  ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
-     "页内行进不换标题（实际「" + els["vizTitle"].textContent + "」）");
+  eq(firstRowCells(els), atStart, "★ 页内行进：首行内容不变（没翻页）");
   step(beat, ac, 150);                       // 进到第 5 小节 → 翻页
-  ok(/歌曲第 5-8 小节/.test(els["vizTitle"].textContent),
-     "★ 翻页后标题换页（实际「" + els["vizTitle"].textContent + "」）");
+  ok(firstRowCells(els) !== -1, "★ 翻页后网格仍在（整树重建未破坏行结构）");
   beat.Controls.stop();
-  /* 预设模式下标题报的是"同屏 N 小节"（N = 型的小节数），不再写死 4 */
-  const p = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
-  ok(/同屏 4 小节/.test(p.els["vizTitle"].textContent),
-     "预设模式：同屏 4 小节（4 小节的型）");
 }
 
 /* ================= 场景 T70f：静音拍改按「乐句位置」判（1 小节的型才有意义） ================= */
@@ -228,18 +226,16 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T70h：重新播放时窗口回到播放范围起点 ================= */
+/* ================= 场景 T70h：重新播放时窗口回到播放范围起点 =================
+   v2.10.16：原两条 vizTitle 前提断言（「歌曲第 5-8」「歌曲第 1-4」）随标题删除退役——
+   回归目标（winStart 回起点）改由下面既有的**四行格子指纹**断言承担。 */
 section("T70h 翻页窗口 · 重新播放要把窗口拨回起点（v2.6.0 修，真实浏览器发现）");
 {
   const { beat, els, ac } = startTwoStages();
   step(beat, ac, 220);                           // 翻过页（4.4s → 第 5 小节）
-  ok(/歌曲第 5-8 小节/.test(els["vizTitle"].textContent),
-     "前提：窗口已翻离起点（实际「" + els["vizTitle"].textContent + "」）");
   beat.Controls.stop();
   beat.Controls.start();                         // 重新按播放
   step(beat, ac, 2);
-  ok(/歌曲第 1-4 小节/.test(els["vizTitle"].textContent),
-     "★ 重新播放 → 窗口回到播放范围起点（实际「" + els["vizTitle"].textContent + "」）");
   /* 为什么它不是"顺手加的断言"：winStart 是**跨播放会话留存**的状态，
      而开播 / 重锚 / 循环区间变更 / 上下文重建这四处都会把调度游标拨回范围起点——
      窗口不跟着丢弃，重新播放就会停在上次听到的地方，与声音对不上。

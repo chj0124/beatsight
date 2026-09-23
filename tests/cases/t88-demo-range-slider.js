@@ -148,12 +148,11 @@ section("T88d 两级契约 · 只发 input（拖动中）不得提交：不改�
   eq(beat.Store.S.playMode, "preset", "★ 只发 input 不切模式（提交那一步才切）");
   eq([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to].join(","), "3,5",
      "拖动中 S 已就地更新（松手前视觉就要跟手）");
-  eq(els["argNowMeta"].textContent, "", "拖动中不写主界面即时反馈（那是提交那一步的事）");
   /* 松手提交 → 模式切换 + 重活一起发生 */
   dragRange(els, 4, 6, true);
   eq(beat.Store.S.playMode, "arrange", "★ 松手提交后才切到曲式模式");
-  ok(/第 4–6 小节/.test(els["argNowMeta"].textContent),
-     "★ 提交后主界面那一行给出即时反馈（实际「" + els["argNowMeta"].textContent + "」）");
+  /* v2.10.14：原两条 argNowMeta 反馈断言（拖动中不写 / 提交后写「第 4–6 小节」）随说明文字
+     删除退役——可见反馈 = thumb 即时移动（T88b/C 已覆盖）+ 生效型切换 */
 }
 
 /* ================= 场景 T88e：重合 = 单段 ================= */

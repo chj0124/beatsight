@@ -35,7 +35,9 @@ function startArrange(sections, sel){
 }
 const three = () => [SEC4("A"), SEC4("B"), SEC4("C")];
 const checked = els => els["argJumpLoopBtn"].getAttribute("aria-checked");
-const isOn = els => els["argJumpLoopBtn"].className.includes("on");
+/* v2.11.1：范围循环钮改 jump-btn 双态图标后 className 不再带 on/off（那是 toggle-pill 的口径），
+   开/关的唯一真相 = aria-checked（setToggle 的 className 整写会抹掉 jump-btn/loop-btn 类，已弃用） */
+const isOn = els => els["argJumpLoopBtn"].getAttribute("aria-checked") === "true";
 
 /* ================= 场景 T77：跳段默认锁定循环 + 开关同步 ================= */
 section("T77 跳段 · 默认锁定循环 / 开关与字段同源");

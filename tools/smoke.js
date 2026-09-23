@@ -339,12 +339,13 @@ function layoutProbe(){
   if (!card) return JSON.stringify(out);
   const cr = card.getBoundingClientRect();
   out.cardTextLeft = round(cr.left + parseFloat(getComputedStyle(card).paddingLeft));
-  out.title = textLeft(q("#vizTitle"));
+  /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
+     （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
+  out.title = textLeft(q(".card-head-left .group-label"));
   out.toggle = textLeft(q(".viz-toggles > .toggle-pill"));
   out.rowsLabel = textLeft(q(".viz-rows-panel > .group-label"));
   out.rowsPillBox = boxLeft(q("#vizRowsRow > .pill"));
   out.caption = textLeft(q(".caption"));
-  out.phName = textLeft(q(".pattern-head .name"));
   out.vizRowsPanel = boxLeft(q(".viz-rows-panel"));
   const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
   out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
@@ -521,17 +522,14 @@ async function main(){
           "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
         ok(sameLine(m.caption, base), p.label + "·" + label + "：底部说明行也在这条线上",
           "标题 " + base + " vs 说明 " + m.caption);
-        ok(sameLine(m.phName, base),
-          p.label + "·" + label + "：★★ 当前节奏型行的名称与卡片标题同一条左边缘（需求②的 (ii)）",
-          "标题 " + base + " vs 名称 " + m.phName);
       }
       if (lay.wide){
         ok(lay.wide.sigGroup > lay.wide.vizRowsPanel,
           p.label + "：★★ 桌面下拍号在「同屏行数」右侧（需求①）",
           "行数 " + lay.wide.vizRowsPanel + " vs 拍号 " + lay.wide.sigGroup);
-        ok(lay.wide.timbreGroup < lay.wide.volGroup && lay.wide.volGroup < lay.wide.editBtn,
-          p.label + "：★★ 桌面下顺序为 音色 → 音量 → 编辑节奏型（需求②）",
-          [lay.wide.timbreGroup, lay.wide.volGroup, lay.wide.editBtn].join(" → "));
+        ok(sameLine(lay.wide.volGroup, lay.wide.title),
+          p.label + "：★★ 音量组在标题正下方（卡片头左列，左缘 = 卡片内容边缘）（v2.10.15）",
+          "标题 " + lay.wide.title + " vs 音量组 " + lay.wide.volGroup);
       } else {
         ok(false, p.label + "：桌面布局未取到（需求①②的相对位置本项未验证）", "");
       }
@@ -556,7 +554,7 @@ async function main(){
           "实际 background=" + d.bpmNum.bg);
         ok(d.bpmNum.outline === "none", p.label + "：#bpmNum 静止态无 outline（绿框只在聚焦时出现）",
           "实际 outline=" + d.bpmNum.outline);
-        ok(d.bpmNum.font === "46px" && d.bpmNum.w === 92, p.label + "：#bpmNum 尺寸字号与设计一致（92×54 / 46px）",
+        ok(d.bpmNum.font === "40px" && d.bpmNum.w === 80, p.label + "：#bpmNum 尺寸字号与设计一致（80×48 / 40px，v2.10.19 降档）",
           "实际 " + d.bpmNum.w + "×" + d.bpmNum.h + " / " + d.bpmNum.font);
       } else ok(false, p.label + "：#bpmNum 存在");
       if (p.label.startsWith("http")){

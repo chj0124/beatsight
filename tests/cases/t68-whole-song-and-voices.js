@@ -289,8 +289,8 @@ section("T68h 整首连播 · 拖范围滑块到重合 = 只循环那一段");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
   eq(rangeFromOf(els).value, "5", "起点 thumb 落在第 5 小节");
   eq(rangeToOf(els).value, "5", "终点 thumb 也落在第 5 小节（重合态）");
-  ok(/第 5 小节/.test(els["argNowMeta"].textContent),
-     "★ 主界面那一行给出即时反馈（下一小节边界才会真的拉回）（实际「" + els["argNowMeta"].textContent + "」）");
+  /* v2.10.14：原 argNowMeta「第 5 小节」即时反馈断言随说明文字删除退役——
+     可见反馈 = thumb 即时移动（上面两条）+ 生效型即时切换（下面一条） */
   /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。
      小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「副歌扫弦」 */
   ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,

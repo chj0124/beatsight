@@ -65,8 +65,21 @@ button:disabled{cursor:not-allowed}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+/* v2.10.14（用户要求①）：时值可视化卡的卡片头改为顶对齐（.viz-head）——BPM 组住进头行后，
+   「平齐」= BPM 的组标签与标题**同一行起步**；center 对齐会让标题垂直悬在 BPM 组中间。
+   状态灯仍是最后一个孩子（贴最右）。≤560px 的 column 折叠照常生效 */
+.viz-head{align-items:stretch;flex-wrap:wrap;row-gap:12px;justify-content:flex-start;column-gap:48px}   /* v2.10.17 紧凑排列（BPM 紧随音量列 48px）；v2.10.18 改 stretch——左列撑满头行高（头行高 = 最高的 BPM 组），音量组得以沉底 */
+/* v2.10.16：`.viz-head .status{margin-top:4px}` 基线补丁删除——状态灯已从头行最右搬进
+   左列（与角标/音量同列上下分布），列内 gap 统一对齐，不再需要行内微调 */
+/* v2.10.15：左块**竖排**。v2.10.16：上行只剩角标（标题 #vizTitle 删除），
+   状态灯成为左列第二行（用户要求：与标题同列上下分布） */
+.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(320px,100%)}   /* v2.10.18：固定 320px——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号 */
+.card-head-left .group{width:100%;flex:1;justify-content:space-evenly}   /* v2.10.20：音量组撑满列内剩余高度、三条滑杆行距均摊（v2.10.18 的 margin-top:auto 把剩余空间全堆在状态灯↔音量标签之间——用户反馈仍太大；现在死空间转移进组内，音量条间隙变大、标签紧贴状态灯下方） */
+.card-head-left .vol-row{width:100%}
 .card-title{font-size:14px;font-weight:600}
-.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3)}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3);width:100%}   /* v2.11.0：撑满左列宽（列是 align-items:flex-start，子项默认不拉伸） */
+.status #statusText{min-width:16em;margin-right:auto}   /* v2.10.17 固定宽度防抖；v2.11.0 加 margin-right:auto——把节奏型名推到行尾，与音量行的百分号列**同一右缘**对齐（用户要求③） */
+.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis}   /* v2.10.18：允许收缩（列宽已固定，长名字省略号，不再撑宽列） */
 .status:has(.dot.live){color:var(--green)}
 .status .dot{width:8px;height:8px;background:var(--t3)}
 .status .dot.live{background:var(--green)}
@@ -74,15 +87,15 @@ button:disabled{cursor:not-allowed}
 .status.bad{color:var(--red)} .status.bad .dot{background:var(--red)}
 .caption{font-size:12px;color:var(--t3);margin-top:14px}
 
-/* ---------- 当前节奏型头部 ---------- */
-/* 当前节奏型行：**裸行，没有卡片外壳**，所以必须自己补上与 `.card` 同值的左右内边距，
-   否则它的内容比卡片内容左/右各偏 24px（窄屏 16px）——实测 390px 下偏 16px、1440px 下偏 24px。
-   v2.10.11（用户要求 ii）补齐；v2.10.12 后本行右侧只剩「音量」，但这条内边距与
-   "音色/音量在不在本行"无关（是裸行与卡片内容的对齐），**一个字都不用改**。
-   ★ 改 `.card` 的 padding 时记得同步这里与窄屏那条 */
-.pattern-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px}
-.pattern-head .name{font-size:20px;font-weight:700}
-.pattern-head .meta{font-size:13px;color:var(--t2);margin-top:4px}
+/* ---------- 当前节奏型名（v2.10.16） ---------- */
+/* 「当前节奏型」裸行（.pattern-head）整块删除（用户要求）：名字搬进跳段行（#argJump），
+   meta（「4/4 拍 · N BPM」）删除（拍号/速度各有自己的显示面）。
+   原 .pattern-head 三条规则、窄屏两条、观测台三条随元素一并清理，不留死样式。
+   .pat-now：跳段行里的名字（两枚圆形键的右侧，行高由播放键撑起，垂直居中即可） */
+/* v2.10.17：.pat-now 从跳段行搬进状态灯行（「● 已停止　十六分满扫」），样式见 .status .pat-now */
+/* 页面底部提示行（v2.10.16）：与 .main 同源的左右内边距（桌面 24px + 安全区、窄屏 16px），
+   上下各留一拍呼吸空间 */
+.page-foot{max-width:1440px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
 /* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
 .fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12px}
 .fallback-note[hidden]{display:none}
@@ -260,17 +273,43 @@ button:disabled{cursor:not-allowed}
 .bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
 
 /* ---------- 走带控制 ---------- */
-.transport{display:flex;align-items:center;gap:32px;flex-wrap:wrap}
+/* v2.10.14：`.card.transport` 整卡删除——BPM/Swing（v2.10.13 去时值卡）、音色/音量（v2.10.11
+   去当前节奏型行）、拍号（v2.10.11 去 .viz-rows-row）相继搬走后只剩播放键，而播放键也搬进了
+   主界面跳段行（#argJump，与上/下段键同排），本卡再无内容。`.transport` 与观测台的两条
+   覆盖一并删除；`.play-btn` 留下（跟着播放键搬了家） */
 .play-btn{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(30,215,96,.35);flex:none}
 .play-btn:active{transform:scale(.96)}
 .group{display:flex;flex-direction:column;gap:10px}
 .group-label{font-size:11px;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
-.step-btn{width:44px;height:44px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono);transition:background .12s,transform .06s}
+.viz-head .bpm-row{justify-content:space-between}   /* v2.11.0（用户要求）：BPM 组两行按钮拉伸到组宽后两端对齐——-5↔60 左缘对齐、+5↔120 右缘对齐（两行同宽由列布局 stretch 保证） */
+.step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono);transition:background .12s,transform .06s}   /* v2.10.19：44→40 与大数字降档配套 */
+/* v2.10.14（用户要求③）：上/下段跳段键改音乐播放器「上一首/下一首」的圆形图标键——
+   与播放键同一套圆形语言（播放键是页面里唯一的绿色实心圆，跳段键用灰底深图标，
+   与 .step-btn 同规格 44px）。常显；不可用（非曲式模式 / 单段曲式）置灰而不是隐藏——
+   v2.0.2 那条「隐藏而不是禁用」的判据随播放键进本行作废：整行隐藏会连播放键一起藏掉 */
+.jump-btn{width:52px;height:52px;border-radius:50%;background:var(--card2);color:var(--t1);display:flex;align-items:center;justify-content:center;flex:none;transition:background .12s,opacity .12s}
+.jump-btn:hover{background:var(--line)}
+.jump-btn:active{transform:scale(.94)}
+.jump-btn:disabled{opacity:.35;cursor:default}
+/* v2.10.22：范围循环钮的双态图案切换与点亮态（aria-checked 由 setToggle 驱动） */
+.trio{display:flex;gap:10px;grid-column:2;align-items:center}
+.arg-jump > .loop-btn{grid-column:3;justify-self:start}
+.loop-btn .ico-on{display:none}
+.loop-btn[aria-checked="true"] .ico-on{display:block}
+.loop-btn[aria-checked="true"] .ico-off{display:none}
+.loop-btn[aria-checked="true"]{color:var(--green)}
+/* v2.11.0（用户要求）：循环钮**不要任何背景图层**——图标直接浮在页面背景上（含 hover）；
+   开启态的点亮只靠图标变绿（+ 数字 1），不靠底色；观测台主题的边框覆盖一并去除 */
+.loop-btn, .loop-btn:hover, .loop-btn[aria-checked="true"]{background:transparent}
+body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked="true"]{background:transparent;border:none}
+.jump-btn:disabled:hover{background:var(--card2)}
 /* 经典主题交互反馈（v2.0.2 补）：观测台有 hover/active，经典此前裸奔 */
 .step-btn:hover{background:var(--line)}
 .step-btn:active{background:var(--border);transform:scale(.94)}
-.bpm-num{font-size:46px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:92px;text-align:center;cursor:pointer;border-radius:8px}
+/* v2.10.19：常用速度快捷档收窄（仅该行）——36→32px，为「BPM 组降一档高度」的一部分 */
+#bpmPresetRow .pill{padding:7px 14px;font-size:12px}
+.bpm-num{font-size:40px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:80px;text-align:center;cursor:pointer;border-radius:8px}   /* v2.10.19：46→40（用户要求 40px 方案）——BPM 组降一档高度，左列剩余空间（状态灯↔音量空隙）同步收紧 */
 .bpm-num:hover{background:var(--card2)}
 .slider-row{display:flex;align-items:center;gap:14px}
 /* 滑杆刻度层（v1.1）：datalist 在 Chrome 下即使不加 appearance:none 也不渲染刻度，
@@ -306,10 +345,19 @@ input[type=range].vol{width:120px}
 .vol-row[hidden]{display:none}
 
 /* ---------- 配置开关 ---------- */
-.config{display:flex;gap:12px;flex-wrap:wrap}
+/* v2.10.15：`.config` 随「静音拍 / 变速训练」开关搬去 .viz-toggles 而删除——
+   本文件已无使用者（原训练模式区的开关行） */
+/* v2.10.18：训练组壳子 display:contents——「继续上次训练」与变速面板都隐藏时，
+   壳子高度为 0 但作为 flex 子项仍占一个 20px 间隔槽（单列布局下预设库上方间隔
+   44px = 这 20 + 栅格 24 的元凶）。contents 让壳子退出布局：子元素隐藏时不占槽，
+   显示时自然加入主列流（与 .col 的其余块同距） */
+.tr-dock{display:contents}
 /* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
-.viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}   /* v2.10.17：12→16，与卡片头下边距统一 */
+/* v2.10.14：v2.10.13 的 `.viz-head-row`（预备拍 + BPM + Swing 同行）撤掉——BPM 上移进
+   卡片头行（与标题平齐）、Swing 下移进「同屏行数 + 拍号」那一行，本行只剩预备拍，
+   恢复 v2.10.12 及以前的独立 `.viz-toggles` 结构 */
 /* v2.10.11（用户实报「这几行文案最左边没对齐」）——本行开关**去掉左内边距**，让「预备拍 /
    弹跳球 · 预判提示 / 六线 · 扫弦谱底纹」的文字落到卡片内容边缘，与上方标题、下方组标签
    以及再下面那排 pill 的**盒子**边缘落在同一条线上。
@@ -323,15 +371,17 @@ input[type=range].vol{width:120px}
    flex + gap + 下方留白（原先这句写的是"与 .limit-panel 同一套写法"，
    那个类随练习量一起删了，v2.10.12 起改为自述）；
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
-.viz-rows-panel{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.viz-rows-panel{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}   /* v2.10.17：7px→10px，与 .group 的 gap 同值——修「行数与拍号没对齐」（实测差 3px） */
 /* v2.10.11（用户要求①）：「同屏行数」与「拍号」并排一行（拍号从走带卡搬来、紧邻其右）。
    `flex-wrap:wrap` 是必需的——实测 390px 下卡片内容可用宽仅 326px，而拍号那 6 颗 pill
    单行需要约 384px（原本就在折行），并排必然折行 → 窄屏下自动退回"上下两行"的观感。
    `.viz-rows-panel` 自己那 12px 下边距在这里归零：本行已经给了间距，叠加会变成 24px */
-.viz-rows-row{display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;margin-bottom:12px}
+.viz-rows-row{display:flex;align-items:flex-start;gap:16px 28px;flex-wrap:wrap;margin-bottom:12px}   /* v2.10.17：行内折行行距 28→16（纵向间隔统一 16px），横向 28 保留 */
 .viz-rows-row > .viz-rows-panel{margin-bottom:0}
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.viz-rows .pill{padding:7px 14px;font-size:12px}
+/* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:7px 14px;font-size:12px}` 缩小规则删除——
+   它让「同屏行数」的 pill（实测 31px 高）与旁边「拍号」的默认 .pill（36px 高）大小不一，
+   同一行里参差。现在两排都用默认 .pill 规格（36px / 13px / 9×16），量过的一致 */
 .toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:9999px;padding:10px 14px 10px 16px;font-size:13px}
 /* v2.10.6：六线底纹开关会按当前型显隐（syncTabLayer 置 hidden），而上面这行作者的
    display:flex 特异性高于 UA 的 [hidden]{display:none}——同 .arg-now / .vol-row 那一族，
@@ -470,6 +520,20 @@ input[type=range].vol{width:120px}
 .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
 .editor-title{font-size:16px;font-weight:700}
 .editor-actions{display:flex;gap:10px}
+/* ---------- 浮层小窗（v2.10.13）：设置弹窗的 Dialog 形态 ----------
+   与 .editor（全屏页面式）的区别：**不全屏**、主界面在四周仍可见（backdrop 压暗）、
+   **点窗外即关**（backdrop 就是根元素本身，面板是它唯一的子块——点击命中根 = 命中窗外，
+   面板内点击冒泡上来时 target 已不是 currentTarget，不会误关）。
+   开合仍走 Modal 的统一 overlay 协议（.open / 背景 inert / 焦点陷阱），
+   Esc 关闭在 Controls 的 keydown 路由里——这三样与全屏式完全同源，一行没改。 */
+.dialog{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}   /* v2.10.17：压暗 + 毛玻璃模糊（用户要求） */
+.dialog.open{display:flex}
+.dialog:focus{outline:none}
+.dialog-panel{background:var(--bg);border:1px solid var(--line);border-radius:16px;width:min(600px,100%);max-height:min(84vh,760px);overflow-y:auto;padding:24px}
+.dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.dialog-title{font-size:16px;font-weight:700}
+.dialog-x{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t2);flex:none}
+.dialog-x:hover{background:var(--card2)}
 .edbar{display:flex;gap:12px;align-items:center;margin-bottom:14px}
 .edbar-label{width:78px;flex:none}
 .edbar-label .s{white-space:nowrap}
@@ -603,6 +667,7 @@ input[type=range].vol{width:120px}
 .arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.arg-jump{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}   /* v2.10.23：三列 Grid——三键组**精确居中**（中列 auto），循环钮在右列贴着三键组排（用户要求：居中不考虑循环钮，循环顺着排）；循环隐藏时右列空置，三键组仍居中 */
 /* ★ [hidden] 必须显式补一条（v2.10.2 修）：上面那句 `display:flex` 是**作者样式**，
    优先级高于 UA 的 `[hidden]{display:none}` ——于是 `#argJump hidden` 形同虚设，
    预设模式下整行「上一段 / 第 N 段 · 第 M 小节 / 下一段 / 范围循环」照样显示
@@ -611,7 +676,6 @@ input[type=range].vol{width:120px}
    ——本行与它们同类，改动 `.arg-now` 的 display 时别忘了它。 */
 .arg-now[hidden]{display:none}
 .arg-now-name{font-size:13px;color:var(--t1)}
-.arg-now-meta{font-size:11px;font-family:var(--mono);color:var(--t3)}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
 .arg-jump{justify-content:center;margin-top:14px}
 
@@ -651,25 +715,23 @@ input[type=range].vol{width:120px}
   .topbar{padding:0 16px}
   .brand{font-size:15px}
   .topbar .chip{display:none}
-  .pattern-head{flex-wrap:wrap;gap:10px;padding:0 16px}   /* 内边距必须跟着 .card 一起缩（见 .pattern-head 那条注释） */
-  .pattern-head .name{font-size:17px;min-width:0}
   .main{grid-template-columns:1fr;padding:16px}
   .card{padding:16px}
-  .transport{gap:20px}
   .vdivider{display:none}
-  .bpm-num{font-size:38px;min-width:76px}
+  .bpm-num{font-size:34px;min-width:70px}   /* v2.10.19：随桌面档同步下调 */
   .bar-row{height:66px;margin-bottom:10px}
   .viz{padding-top:50px}              /* 窄屏球域略降：跳高上限仍 48px，贴边但不裁切 */
   .cell{height:34px}
   .beat-zone{height:34px}
   .ruler-lab{top:52px;font-size:9px}
   .cell-label{top:38px;font-size:10px}
-  /* 六线谱几何缩到窄屏版（v2.4.2 立先例，v2.4.3 重收）：格子只有 34px 高。
-     v2.4.2 收到 6px 弦距时线落 5..35px，第 6 线仍压在格子下缘外 1px；
-     现按"六线必须整体在格子内部"收到 5px 弦距 → 线落 5/10/15/20/25/30
-     （顶留 5px、底留 4px），座次尺（52px）更不受压。变量重写而非另写一套类：
-     竖箭头的跨距 calc 引用的就是这几个变量，改一处两边同时跟着走。 */
-  :root{--gt:5px;--gtop:5px;--yT1:5px;--yT2:15px;--yB1:20px;--yB2:30px}
+  /* 六线谱几何缩到窄屏版：格子 34px 高。★ v2.10.16 修复「窄屏底纹铺不满」（用户实报）：
+     v2.8.0 把六线改成「铺满格子」（一弦贴顶、六弦贴底）时**只改了桌面那一档**（--gtop:0、
+     --gt:8.8），本档还留着 v2.4.3「整体在格子内部」的老几何（--gtop:5px → 顶空 5px、
+     底空 4px），窄屏下底纹缩在水中间。现按同一契约重算：34/5 = 6.8px 弦距，
+     线落 0/6.8/13.6/20.4/27.2/34（上下零留白）；扫弦箭头的跨距 calc 引用同一组变量，
+     改一处两边同时跟着走。座次尺（52px，在格子外的 .viz 顶部）不受影响。 */
+  :root{--gt:6.8px;--gtop:0px;--yT1:0px;--yT2:13.6px;--yB1:20.4px;--yB2:34px}
   .cell .subs{inset:0 4px}
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
@@ -677,6 +739,8 @@ input[type=range].vol{width:120px}
   .slider-wrap{--thumb-r:11px}   /* 圆钮在窄屏放大到 22px，刻度内缩同步改为半径 11px，否则刻度会与圆钮错位 */
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
+  .dialog{padding:16px}   /* 窄屏下浮层小窗贴边距收窄，与 .card 的 16px 同步 */
+  .page-foot{padding:0 16px 16px}   /* 页底提示行与 .card 的窄屏 16px 同步 */
   .stat-cards{grid-template-columns:repeat(2,1fr)}
 }
 /* 手机窄屏（≤560px）：卡片头改上下两行——标题与状态灯不再争抢同一行宽度而各自被挤断行 */
@@ -757,9 +821,6 @@ body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
 body[data-theme="obs"] .caption{border-top:1px solid var(--line);padding-top:12px}
 
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
-body[data-theme="obs"] .pattern-head{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
-body[data-theme="obs"] .pattern-head .name{font-size:19px}
-body[data-theme="obs"] .pattern-head .meta{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--t3)}
 
 /* ---------- 观测台 · 时值可视化（视觉中心） ---------- */
 body[data-theme="obs"] .bar-row.current{background:rgba(59,130,246,.05);box-shadow:inset 0 0 0 1px rgba(59,130,246,.22)}
@@ -774,12 +835,12 @@ body[data-theme="obs"] .grid-line{background:rgba(255,255,255,.06)}
 body[data-theme="obs"] .cell.played .sub,body[data-theme="obs"] .cell.active .sub{border-right-color:rgba(10,12,18,.25)}
 
 /* ---------- 观测台 · 走带控制 ---------- */
-body[data-theme="obs"] .transport{row-gap:20px}
 body[data-theme="obs"] .play-btn{background:var(--green);box-shadow:0 4px 16px rgba(59,130,246,.3)}
 body[data-theme="obs"] .play-btn svg path,body[data-theme="obs"] .play-btn svg rect{fill:#fff}
 body[data-theme="obs"] .step-btn{border-radius:6px;background:var(--card2);border:1px solid var(--line);transition:border-color .12s}
+body[data-theme="obs"] .jump-btn{border-radius:50%;background:var(--card2);border:1px solid var(--line);transition:border-color .12s,opacity .12s}
 body[data-theme="obs"] .step-btn:hover{border-color:var(--border)}
-body[data-theme="obs"] .bpm-num{font-size:56px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .bpm-num{font-size:48px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}   /* v2.10.19：56→48 同步降档 */
 body[data-theme="obs"] .vdivider{background:var(--line)}
 body[data-theme="obs"] input[type=range]{background:rgba(255,255,255,.10);height:4px}
 body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(59,130,246,.35)}
@@ -834,7 +895,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 /* ---------- 观测台 · 窄屏修正（优先级高于经典媒体查询里的同名规则） ---------- */
 @media (max-width:960px){
   body[data-theme="obs"] .card{padding:16px}
-  body[data-theme="obs"] .bpm-num{font-size:42px;min-width:84px}
+  body[data-theme="obs"] .bpm-num{font-size:36px;min-width:76px}   /* v2.10.19：随桌面档同步下调 */
 }
 
 /* ---------- 诊断面板（v2.0.4，审计 P1-1）：仅 `?debug=1` 时挂载，右下角一行计数 ---------- */
@@ -897,39 +958,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
 <main class="main">
   <div class="col">
-    <!-- 当前节奏型 -->
-    <div class="pattern-head">
-      <div>
-        <div class="name" id="patternName">民谣扫弦 · 下-下上-上下上</div>
-        <div class="meta" id="patternMeta">4/4 拍 · 96 BPM</div>
-      </div>
-      <!-- v2.10.12：本行右侧只剩**音量** —— 「音色」进了设置弹窗（用户要求①），
-           「编辑节奏型」搬去侧栏「编排曲式」左边（用户同批补充）。v2.10.11 为窄屏整组折行
-           而加的 `.ph-controls` 包裹层因此撤掉（只剩一件，不必再包一层）。
-           ★「音量」是**故意留在主界面**的：练习过程中会实时调它，属高频控件；
-             而音色定下来就不动，才够格进设置（判据见顶栏那段注释） -->
-      <div class="group">
-        <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
-             （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
-             音量——于是"节拍器响不响"与"扫弦响不响"没法分开调（用户反馈：扫弦谱一放起来
-             就只剩扫弦，节拍器整个没了）。
-             改法是两条**并列独立**的声部音量：节拍走 S.vol、扫弦走 S.strumVol
-             （两条在 playClick 里各走各的，互不缩放），对齐参考页那对「节拍 / 扫弦」滑条。
-             v2.9.0：去掉轨门控后「扫弦」行**常显**——判据从"当前在哪条轨"改成"当前型是否
-             带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
-             恒在反而更稳定（用不到时它不影响任何声音）。
-             v2.10.11：本块整块从走带卡搬到当前节奏型行（用户要求②）
-             v2.10.12：兄弟块「音色」搬进设置弹窗，本块留在原位（判据见上） -->
-        <div class="group-label">音量</div>
-        <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
-             title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
-             供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl）。
-             ★ 本行文字缩短成「音量」后，这三条的区分**全靠**这里的 title / aria-label 与行内标签 -->
-        <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
-        <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
-        <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
-      </div>
-    </div>
+    <!-- v2.10.16：「当前节奏型」裸行（.pattern-head）整块删除——名字搬进播放键行（#argJump，
+         跳段行从此在任何模式下都显示当前型），meta（「4/4 拍 · 82 BPM」）按用户要求删除
+         （拍号看拍号 pill、速度看 BPM 大字，零重复）。#.pattern-head 的左边缘内边距契约
+         （v2.10.11 ii）随之退役。搬迁史：音色 v2.10.12 进设置弹窗、编辑节奏型 v2.10.12 去侧栏、
+         音量 v2.10.15 去时值卡、名字+meta v2.10.16 去跳段行 -->
 
     <!-- 拍号回退提示：选中节奏型与当前拍号不匹配时显示 -->
     <div class="fallback-note" id="fallbackNote" hidden>
@@ -939,11 +972,78 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
     <!-- 时值可视化 -->
     <section class="card">
-      <div class="card-head">
-        <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
-        <h2 class="card-title" id="vizTitle">时值可视化 · 4/4 · 同屏 4 小节</h2>
-        <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
-    </div>
+      <!-- v2.10.14：BPM 组上移进卡片头行、与标题**顶对齐**（.viz-head）——
+           "平齐" = BPM 的组标签与标题同一行起步。左块（角标+标题）包一层 .card-head-left，
+           让 space-between 的三个孩子是 [左块][BPM][状态灯]：标题贴左、状态灯贴右不变。
+           BPM 组的 id 与接线一律未动（#bpmMinus5/#bpmMinus/#bpmNum/#bpmPlus/#bpmPlus5/
+           #bpmTicks/#bpmSlider/#tapBtn/#bpmPresetRow）——搬块不换 id（v2.10.11 立的规矩） -->
+      <!-- v2.10.15（用户要求①）：音量三条搬进左块、标题正下方（左列竖排）——
+           与右侧 BPM 组的高块同高呼应。当前节奏型行只剩名字与 meta。
+           ★「音量」是**故意留在主界面**的：练习过程中会实时调它，属高频控件（v2.10.12 判据）；
+           三个 input 的 id / aria-label / 行内说明（title）一律未动，接线（input/change）不变 -->
+      <div class="card-head viz-head">
+        <!-- v2.10.16：左列改三行——角标 → 状态灯 → 音量组。
+             ★ 标题（原 #vizTitle「时值可视化 · 4/4 · 歌曲第…」）整块删除：播放位置与状态灯
+               文案重复、拍号与拍号 pill / 节奏型名重复，卡片以角标「01 Rhythm Map」为名；
+             ★ 状态灯从头行最右搬进左列（与标题同列、上下分布——用户要求），
+               #statusDot / #statusText 的 id 与接线不动；
+             ★ `.viz-head .status{margin-top:4px}` 基线补丁随之删除（列内 gap 已对齐） -->
+        <div class="card-head-left">
+          <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
+          <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span><span class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</span></div>
+          <div class="group">
+            <div class="group-label">音量</div>
+            <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
+                 （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
+                 音量——于是"节拍器响不响"与"扫弦响不响"没法分开调（用户反馈：扫弦谱一放起来
+                 就只剩扫弦，节拍器整个没了）。
+                 改法是两条**并列独立**的声部音量：节拍走 S.vol、扫弦走 S.strumVol
+                 （两条在 playClick 里各走各的，互不缩放），对齐参考页那对「节拍 / 扫弦」滑条。
+                 v2.9.0：去掉轨门控后「扫弦」行**常显**——判据从"当前在哪条轨"改成"当前型是否
+                 带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
+                 恒在反而更稳定（用不到时它不影响任何声音）。
+                 v2.10.11：本块从走带卡搬到当前节奏型行（用户要求②）
+                 v2.10.12：兄弟块「音色」搬进设置弹窗，本块留在原位（判据见上）
+                 v2.10.15：本块搬进时值可视化卡卡片头左列、标题正下方（用户要求①） -->
+            <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
+                 title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
+                 供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl）。
+                 ★ 本行文字缩短成「音量」后，这三条的区分**全靠**这里的 title / aria-label 与行内标签 -->
+            <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
+            <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+            <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
+          </div>
+        </div>
+        <!-- 速度 BPM：标签 + 步进行 + 滑杆 + TAP + 快捷档，四层一个不少。
+             #bpmTicks 是滑杆的刻度层，必须与滑块同处 .slider-wrap（绝对定位对齐圆钮行程） -->
+        <div class="group">
+          <div class="group-label">速度 BPM · 范围 30–240</div>
+          <div class="bpm-row">
+            <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
+            <button class="step-btn" id="bpmMinus" aria-label="减 1 BPM">-1</button>
+            <!-- v2.0.5（审计 P0-8）：原为 <div>，只绑了 click——键盘完全够不着它
+                 （全局 Space 分支只认 INPUT/BUTTON/SELECT/TEXTAREA 与 role=button，
+                 而它三者都不是），读屏也报不出"这是可以点的"。
+                 改真按钮即可自动获得：Tab 可达、Enter/Space 激活、读屏报"按钮"。
+                 静止态外观不变（无头 Chrome 实拍新旧两版对比 + getComputedStyle 实测：
+                 背景透明、无边框、无 outline、字号 46px、盒子 92×54，与旧 <div> 一致——
+                 全局 button 重置已覆盖 background/border/color，.bpm-num 只管字号、字重、等宽与宽度）。
+                 唯一新增的可见态是聚焦时的绿色焦点环（:focus-visible，L34）——那正是本次改动的目的：
+                 让键盘用户看得见焦点。旧 <div> 永远没有焦点环，因为它不可聚焦。 -->
+            <button class="bpm-num" id="bpmNum" type="button" title="点击直接输入 BPM">96</button>
+            <button class="step-btn" id="bpmPlus" aria-label="加 1 BPM">+1</button>
+            <button class="step-btn" id="bpmPlus5" aria-label="加 5 BPM">+5</button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-wrap">
+              <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
+              <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
+            </div>
+            <button class="pill outline" id="tapBtn">TAP 测速</button>
+          </div>
+          <div class="bpm-row" id="bpmPresetRow" role="group" aria-label="常用速度快捷档"></div>
+        </div>
+      </div>
     <!-- 视听辅助开关（v2.6.2 从「训练模式」区迁出）：这三个管的是**这张图上看到什么 /
          开演前怎么数拍**——预备拍是开演前的数拍、弹跳球与六线底纹是画面的图层，
          都不是训练功能，贴着它们作用的时值可视化区才不用跨区建立心智模型。
@@ -953,9 +1053,20 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          每次练习都可能改，属高频，故留下。
          ★ 上一版（v2.10.11 需求③）那条 `.viz-toggles .toggle-pill{padding-left:0}`
            仍作用于「预备拍」，左边缘对齐的约定不变 -->
+    <!-- v2.10.14：v2.10.13 短命的 `.viz-head-row` 撤掉——BPM 上移进卡片头、Swing 下移进
+         「同屏行数 + 拍号」那一行，本行恢复只剩「预备拍」的独立结构 -->
+    <!-- v2.10.15（用户要求③）：「静音拍」「变速训练」两个开关从训练模式区（02）搬进本行、
+         与预备拍同排——它们都是"练习怎么练"的开算子，聚在一行好找。
+         ★ 搬块不换 id（#muteToggle / #trainerToggle），接线（bindToggle）一行没动；
+         ★ 训练模式区（02）保留：继续上次训练按钮与变速训练面板（#trainerPanel，显隐仍由
+           #trainerToggle 控制）留在原处，只是开关去了前线；
+         ★ `.viz-toggles .toggle-pill{padding-left:0}` 对本行全部开关生效——
+           三个开关的文字都落到卡片内容边缘（v2.10.11 ③选丙的同一口径） -->
     <div class="viz-toggles">
       <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
       <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
+      <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍 · 每 4 小节<span class="switch"></span></button>
+      <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
     </div>
     <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
          一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
@@ -970,6 +1081,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <!-- v2.10.11（用户要求①）：本行改为「同屏行数 + 拍号」并排——拍号**整块**从走带卡搬到这里、
          紧邻同屏行数右侧。窄屏放不下时自动折回上下两行（实测 390px 下拍号 6 颗 pill 单行需
          384px > 可用 326px，见 .viz-rows-row 的 CSS 注释） -->
+    <!-- v2.10.14（用户要求②）：Swing 下移进本行、排最右——「与同屏行数平齐」。
+         1280px 视口下三块合计约 892px > 卡片内容宽 785px，Swing 会自动折到拍号下方
+         （flex-wrap 兜底）；更宽的屏幕一行放下。id 与接线不动（#swingRow） -->
     <div class="viz-rows-row">
       <div class="viz-rows-panel">
         <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
@@ -990,6 +1104,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </div>
         <div id="accGroup" hidden><div class="bpm-row" id="accRow" style="margin-top:8px"></div></div>
       </div>
+      <!-- v2.10.17（用户确认）：Swing 三档搬进设置弹窗「发声」组——设定型参数（定了整首不变），
+           符合「练习过程中会不会去点它」的低频判据；本行回到「同屏行数 + 拍号」两块（折行问题随之消失）。
+           #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
     </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
@@ -1005,88 +1122,60 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          半透明）作回看。行走带线只出现在可听域当前行。无歌词行时整块 hidden，不占位。
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
-    <!-- 跳段（v2.0.2）：贴在时值可视化正下方——播放中对着球与格子调段，视线不离开演奏区。
-         单段曲式没有可跳目标：两个按钮整体隐藏（refreshBar 控制），位置信息仍由中间 meta 显示。
-         v2.7.3 末尾加「范围循环」开关：跳段=锁当前段反复磨，开关就是出口——关掉即解除锁定，
-         从当前段一路播到曲末后停（详见 Arrange.jumpTo / refreshBar 的注释） -->
-    <div class="arg-now arg-jump" id="argJump" hidden>
-      <button class="pill outline" id="argJumpPrev">◀ 上一段</button>
-      <span class="arg-now-meta" id="argNowMeta"></span>
-      <button class="pill outline" id="argJumpNext">下一段 ▶</button>
-      <button class="toggle-pill off" id="argJumpLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
+    <!-- 跳段 + 播放（v2.0.2 立；v2.10.14 大改）：贴在时值可视化正下方——播放中对着球与格子调段，
+         视线不离开演奏区。
+         ★ v2.10.14（用户要求③）：播放键从走带卡搬进本行、居「上一段 / 下一段」中间——
+           走带卡因此整卡删除（角标 02 腾空，03–09 相应上移一位）。
+           本行从此**常显**：非曲式模式 / 单段曲式下上/下段键**置灰**（.jump-btn:disabled），
+           不再整行隐藏——整行隐藏会把播放键一起藏掉（v2.0.2 那条"隐藏而不是禁用"随之作废）。
+         ★ 上/下段键改音乐播放器「上一首/下一首」的圆形图标键（⏮/⏭ 双三角，44px，
+           与 BPM 步进键同规格），aria-label 保留文字语义。
+         ★「第 N 段 · 第 M 小节」说明文字（#argNowMeta）按用户要求**删除**——
+           它原先承担的四处反馈（播放位置 / 跳段定位 / 范围拖动回显 / 模式残留清空）一并下线，
+           跳段的可见反馈只剩侧栏范围滑块即时移动（syncDemoRange 同源刷新）。
+         ★ v2.7.3 的「范围循环」开关保留：跳段=锁当前段反复磨，开关就是出口——关掉即解除锁定，
+           从当前段一路播到曲末后停（详见 Arrange.jumpTo / refreshBar 的注释）。
+           预设模式下它仍隐藏（没有"当前段"可言） -->
+    <div class="arg-now arg-jump" id="argJump">
+      <div class="trio">
+      <button class="jump-btn" id="argJumpPrev" aria-label="上一段" disabled>
+        <!-- v2.10.21（用户选 C）：单三角——跳段是单步动作，比 ⏮/⏭ 的"快进快退"隐喻更准 -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16.5 5.5v13L6.5 12l10-6.5z" fill="currentColor"/></svg>
+      </button>
+      <button class="play-btn" id="playBtn" aria-label="播放">
+        <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
+      </button>
+      <button class="jump-btn" id="argJumpNext" aria-label="下一段" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7.5 5.5v13l10-6.5-10-6.5z" fill="currentColor"/></svg>
+      </button>
+      </div>
+      <!-- v2.10.17：原这里的「当前节奏型名」搬去左列状态灯行（名字跟在 ● 后面更顺，
+           且状态文案固定宽度、名字位置稳定）；#patternName 的 id 与刷新接线不动 -->
+      <!-- v2.10.22（用户要求）：范围循环改双态图标钮（参考音乐播放器）——
+           关 = 顺序循环图案（放行到曲末）；开 = 单曲循环图案 + 数字 1（锁定范围反复磨），绿色点亮。
+           两枚 SVG 并存、按 aria-checked 由 CSS 切换显隐；role=switch / aria-checked / 接线
+           （setToggle → S.arrangeSel.loop）与预设模式隐藏规则全部不变 -->
+      <button class="jump-btn loop-btn" id="argJumpLoopBtn" role="switch" aria-checked="false" aria-label="范围循环" hidden>
+        <svg class="ico-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+        <svg class="ico-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11.4 11.6l1.2-.9v4.6"/></svg>
+      </button>
     </div>
     <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
-    <!-- 走带控制 -->
-    <section class="card transport">
-      <span class="sec-tag"><b>02</b><i>Transport</i></span>
-      <button class="play-btn" id="playBtn" aria-label="播放">
-        <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
-      </button>
-      <div class="group">
-        <div class="group-label">速度 BPM · 范围 30–240</div>
-        <div class="bpm-row">
-          <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
-          <button class="step-btn" id="bpmMinus" aria-label="减 1 BPM">-1</button>
-          <!-- v2.0.5（审计 P0-8）：原为 <div>，只绑了 click——键盘完全够不着它
-               （全局 Space 分支只认 INPUT/BUTTON/SELECT/TEXTAREA 与 role=button，
-               而它三者都不是），读屏也报不出"这是可以点的"。
-               改真按钮即可自动获得：Tab 可达、Enter/Space 激活、读屏报"按钮"。
-               静止态外观不变（无头 Chrome 实拍新旧两版对比 + getComputedStyle 实测：
-               背景透明、无边框、无 outline、字号 46px、盒子 92×54，与旧 <div> 一致——
-               全局 button 重置已覆盖 background/border/color，.bpm-num 只管字号、字重、等宽与宽度）。
-               唯一新增的可见态是聚焦时的绿色焦点环（:focus-visible，L34）——那正是本次改动的目的：
-               让键盘用户看得见焦点。旧 <div> 永远没有焦点环，因为它不可聚焦。 -->
-          <button class="bpm-num" id="bpmNum" type="button" title="点击直接输入 BPM">96</button>
-          <button class="step-btn" id="bpmPlus" aria-label="加 1 BPM">+1</button>
-          <button class="step-btn" id="bpmPlus5" aria-label="加 5 BPM">+5</button>
-        </div>
-        <div class="slider-row">
-          <div class="slider-wrap">
-            <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
-            <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
-          </div>
-          <button class="pill outline" id="tapBtn">TAP 测速</button>
-        </div>
-        <div class="bpm-row" id="bpmPresetRow" role="group" aria-label="常用速度快捷档"></div>
-      </div>
-      <!-- v2.10.11：原「拍号」块（`.group` + `#sigRow` + `#accGroup`）**整块搬去时值可视化卡的
-           `.viz-rows-row`**（紧邻「同屏行数」右侧）。它前面那条 `.vdivider` 一并删掉——
-           留着就会与下面这条连成两条竖线 -->
-      <div class="vdivider"></div>
-      <div class="group">
-        <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
-        <div class="bpm-row" id="swingRow">
-          <button class="pill active" data-swing="50" aria-pressed="true">直</button>
-          <button class="pill" data-swing="67" aria-pressed="false">Swing</button>
-          <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
-        </div>
-      </div>
-      <!-- v2.10.11：本卡原含 5 个 group（BPM / 拍号 / Swing / 音色 / 音量），现只剩 **BPM 与 Swing**——
-           拍号搬去时值可视化卡的 `.viz-rows-row`（紧邻「同屏行数」右侧），
-           音色与音量搬去当前节奏型行（排在「编辑节奏型」左侧）。
-           两条多余的 `.vdivider` 随各自被搬走的块一并删掉（留着会连成双竖线） -->
-    </section>
+    <!-- v2.10.14：走带卡（原 02 Transport）整卡删除——BPM 与 Swing v2.10.13 搬去时值可视化卡、
+         音色/音量 v2.10.11 搬去当前节奏型行、拍号 v2.10.11 搬去 .viz-rows-row，本卡只剩播放键；
+         播放键本轮也搬进了主界面跳段行（#argJump，居上/下段键中间）。角标 03–09 相应上移一位
+         （02 腾空），保持连续无空号——与 v2.10.12 收拾 06 空号同一口径 -->
 
-    <!-- 训练模式 -->
-    <div class="group">
-      <div class="group-label"><span class="sec-tag"><b>03</b><i>Training</i></span>训练模式</div>
-      <div class="config">
-        <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍 · 每 4 小节<span class="switch"></span></button>
-        <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
-        <!-- 上次训练一键继续（v1.4）：有训练历史时才出现；放开关行而不是 tr-panel 里——
-             面板在训练关闭时是隐藏的，最需要它的恰恰是「还没开训练」的那一刻 -->
-        <button class="pill outline" id="trResumeBtn" hidden>继续上次训练</button>
-        <!-- v2.6.2：预备拍 / 弹跳球 / 六线底纹迁到时值可视化卡片顶部（.viz-toggles），
-             后台保活迁到顶栏——它们管的是"画面怎么画 / 设备别睡"，不是训练功能 -->
-      </div>
-      <!-- v2.10.12：原「练习量 · 到点自动停」整块删除（用户要求②，功能一并删除）；
-           原「听辨训练」入口搬到顶栏（用户要求③，占原「练习统计」那一格）。
-           本区因此只剩变速训练器与它的面板。
-           ★ 注意：练习量的**内核**没有删干净，也**不能**删干净——听辨训练的「每次只放 2 小节」
-             额度复用了同一套到点停机制（`limitBars` / `onLimitPulse` / `Controls.stop` 里那段
-             分支），详见共享状态区的注释 -->
+    <!-- v2.10.16（用户要求）：「02 Training 训练模式」标题行整行删除——两个开关已在预备拍行，
+         区里只剩「继续上次训练」按钮（有训练历史才出现）与变速训练面板（开变速训练才出现），
+         平时该区域完全不可见，标题没有存在的必要。角标 02 腾空，后续 03–08 上移一位 → 02–07。
+         ★ 注意：练习量的**内核**没有删干净，也**不能**删干净——听辨训练的「每次只放 2 小节」
+           额度复用了同一套到点停机制（`limitBars` / `onLimitPulse` / `Controls.stop` 里那段
+           分支），详见共享状态区的注释 -->
+    <div class="group tr-dock">
+      <button class="pill outline" id="trResumeBtn" hidden>继续上次训练</button>
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
         <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" value="120" aria-label="目标 BPM">
@@ -1103,14 +1192,13 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </div>
       </div>
     </div>
-    <div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div>
   </div>
 
   <!-- 侧栏：预设库 -->
   <aside class="col">
     <section class="card">
       <div class="card-head">
-        <span class="sec-tag"><b>04</b><i>Library</i></span>
+        <span class="sec-tag"><b>02</b><i>Library</i></span>
         <h2 class="card-title">节奏型预设库</h2>
         <div class="chip" id="presetCount">8 内置</div>
       </div>
@@ -1169,6 +1257,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </aside>
 </main>
 
+<!-- v2.10.16（用户要求）：快捷键/音频解锁提示移到**页面最底部**——原先在主列末尾
+     （训练面板之后），现放到两栏栅格之外、通栏一行；左右内边距与 .main 同源
+     （桌面 24px、≤960px 16px），底部留一屏呼吸空间 -->
+<div class="page-foot"><div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div></div>
+
 <!-- ================= 自定义节奏型编辑器 ================= -->
 <div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器" tabindex="-1">
   <div class="editor-inner">
@@ -1188,7 +1281,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
     <div class="card">
       <div class="card-head">
-        <span class="sec-tag"><b>05</b><i>Pattern Editor</i></span>
+        <span class="sec-tag"><b>03</b><i>Pattern Editor</i></span>
         <h2 class="card-title" id="editorCardTitle">编辑区 · 点击音符块选中，从下方音符块库替换或追加</h2>
         <div class="status ok" id="editorStatusWrap"><span class="dot"></span><span id="editorStatus">校验通过</span></div>
       </div>
@@ -1256,7 +1349,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     </div>
     <div class="card">
       <div class="card-head">
-        <span class="sec-tag"><b>07</b><i>Ear Training</i></span>
+        <span class="sec-tag"><b>05</b><i>Ear Training</i></span>
         <h2 class="card-title">听一段节奏，从三个记谱里选出你听到的那个</h2>
         <div class="status" id="earStatusWrap"><span class="dot"></span><span id="earStatus">准备开始</span></div>
       </div>
@@ -1294,7 +1387,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
     </div>
     <div class="card">
-      <span class="sec-tag"><b>08</b><i>Arrangement</i></span>
+      <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
       <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
       <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
       <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
@@ -1329,7 +1422,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
     </div>
     <div class="card">
-      <span class="sec-tag"><b>09</b><i>How to use</i></span>
+      <span class="sec-tag"><b>07</b><i>How to use</i></span>
 
       <h2 class="card-title" style="margin-bottom:4px">三步上手</h2>
       <ol class="help-list">
@@ -1449,55 +1542,66 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      ★ 判据写在这里，供后续加项时自问：**「你在练习过程中会不会去点它？」** 会 → 留主界面。
      ★ 开合走 Modal 的统一 overlay 协议（挂 .open + 背景 inert + 焦点陷阱），
        键盘路由在 Controls 的 keydown 里（Esc 关闭、空格不误触播放）。
-     ★ 角标用 **06**：那是原「练习统计」腾出来的号（06 → 09 因此重新连续，无空号） -->
-<div class="editor" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="设置" tabindex="-1">
-  <div class="editor-inner">
-    <div class="editor-topbar">
-      <div class="left">
-        <button class="back-btn" id="settingsClose">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          返回练习
-        </button>
-        <div class="editor-title">设置</div>
+     ★ v2.10.13（用户反馈「不是我想象中的那种弹窗」）：形态从全屏页面式（.editor）改为
+       **浮层小窗**（.dialog）——不全屏、主界面在四周仍可见（backdrop 压暗）、
+       **点窗外即关**（backdrop 就是根元素，面板内点击冒泡上来 target ≠ currentTarget 不误关）。
+       「返回练习」工具栏随之撤掉，改为右上角 ✕（#settingsClose，id 不变，接线不变）。
+     ★ 角标用 **04**：v2.10.16「训练模式」标题行删除后再次全体上移一位（本卡原为 05）。 -->
+<div class="dialog" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="设置" tabindex="-1">
+  <div class="dialog-panel">
+    <div class="dialog-head">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="sec-tag"><b>04</b><i>Settings</i></span>
+        <div class="dialog-title">设置</div>
+      </div>
+      <button class="dialog-x" id="settingsClose" aria-label="关闭设置">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- 组① 外观与辅助（v2.10.12 从顶栏与 .viz-toggles 收进来） -->
+    <h2 class="card-title" style="margin-bottom:8px">外观与辅助</h2>
+    <div class="bpm-row">
+      <button class="pill outline" id="themeToggle">主题 · 经典</button>
+      <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
+      <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
+    </div>
+    <div class="hint" style="margin-top:8px">主题（经典 / 观测台）与两个画面图层开关。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）。</div>
+
+    <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调） -->
+    <h2 class="card-title" style="margin:24px 0 8px">发声</h2>
+    <div class="bpm-row" id="timbreRow">
+      <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
+      <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
+      <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
+    </div>
+    <div class="hint" style="margin-top:8px">三套音色都是<b>程序合成</b>（不占体积、没有采样文件）。<b>音量不在这里</b>：节拍 / 扫弦 / 重拍增强三条滑杆留在主界面的状态灯下方——练习中会随时调，属高频控件。</div>
+    <!-- Swing（v2.10.17 从时值卡的「同屏行数」行搬进来）：设定型参数，与音色同一判据。
+         #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
+    <div class="group" style="margin-top:24px">
+      <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
+      <div class="bpm-row" id="swingRow">
+        <button class="pill active" data-swing="50" aria-pressed="true">直</button>
+        <button class="pill" data-swing="67" aria-pressed="false">Swing</button>
+        <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
       </div>
     </div>
-    <div class="card">
-      <span class="sec-tag"><b>06</b><i>Settings</i></span>
 
-      <!-- 组① 外观与辅助（v2.10.12 从顶栏与 .viz-toggles 收进来） -->
-      <h2 class="card-title" style="margin-bottom:8px">外观与辅助</h2>
-      <div class="bpm-row">
-        <button class="pill outline" id="themeToggle">主题 · 经典</button>
-        <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
-        <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
-      </div>
-      <div class="hint" style="margin-top:8px">主题（经典 / 观测台）与两个画面图层开关。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对**带扫弦记谱的型**有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）。</div>
-
-      <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调） -->
-      <h2 class="card-title" style="margin:24px 0 8px">发声</h2>
-      <div class="bpm-row" id="timbreRow">
-        <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
-        <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
-        <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
-      </div>
-      <div class="hint" style="margin-top:8px">三套音色都是**程序合成**（不占体积、没有采样文件）。**音量不在这里**：节拍 / 扫弦 / 重拍增强三条滑杆留在主界面的「当前节奏型」那一行右侧——练习中会随时调，属高频控件。</div>
-
-      <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
-      <h2 class="card-title" style="margin:24px 0 8px">数据与说明</h2>
-      <div class="bpm-row">
-        <button class="pill outline" id="exportBtn" disabled>导出预设</button>
-        <button class="pill outline" id="importBtn">导入预设</button>
-        <input type="file" id="importFile" accept="application/json,.json" hidden>
-        <button class="pill outline" id="exportAllBtn">导出全部数据</button>
-        <button class="pill outline" id="importAllBtn">导入全部数据</button>
-        <input type="file" id="importAllFile" accept="application/json,.json" hidden>
-      </div>
-      <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包：预设 + 曲式编排 + 歌词对齐 + 听辨战绩。导入按**合并**语义写回，不会覆盖本机已有的。</div>
-      <div class="bpm-row" style="margin-top:14px">
-        <button class="pill outline" id="helpBtn">使用方法</button>
-      </div>
-      <div class="hint" style="margin-top:8px">完整操作说明：全部控制项 · 训练模式 · 曲式编排 · 自己画节奏型 · 数据隐私 · 键盘快捷键。</div>
+    <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
+    <h2 class="card-title" style="margin:24px 0 8px">数据与说明</h2>
+    <div class="bpm-row">
+      <button class="pill outline" id="exportBtn" disabled>导出预设</button>
+      <button class="pill outline" id="importBtn">导入预设</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <button class="pill outline" id="exportAllBtn">导出全部数据</button>
+      <button class="pill outline" id="importAllBtn">导入全部数据</button>
+      <input type="file" id="importAllFile" accept="application/json,.json" hidden>
     </div>
+    <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包：预设 + 曲式编排 + 歌词对齐 + 听辨战绩。导入按<b>合并</b>语义写回，不会覆盖本机已有的。</div>
+    <div class="bpm-row" style="margin-top:14px">
+      <button class="pill outline" id="helpBtn">使用方法</button>
+    </div>
+    <div class="hint" style="margin-top:8px">完整操作说明：全部控制项 · 训练模式 · 曲式编排 · 自己画节奏型 · 数据隐私 · 键盘快捷键。</div>
   </div>
 </div>
 
@@ -1525,22 +1629,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1556  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2044  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3001  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3672  Modal         应用内弹窗
-     L3804  Viz           时值可视化渲染与每帧动画
-     L5446  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6071  Trainer       变速训练器
-     L6289  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6733  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7570  Editor        自定义节奏型编辑器
-     L7926  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L7957  Ear           听辨训练（v1.10.0）
-     L8175  Arrange       曲式编排（v2.0.0）
-     L9033  Help          使用方法（v2.0.1）
-     L9080  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9154  初始化（装配） 各模块 hook 接线与启动
+     L1660  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2148  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3105  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3776  Modal         应用内弹窗
+     L3908  Viz           时值可视化渲染与每帧动画
+     L5539  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6164  Trainer       变速训练器
+     L6382  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6825  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7666  Editor        自定义节奏型编辑器
+     L8022  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8060  Ear           听辨训练（v1.10.0）
+     L8278  Arrange       曲式编排（v2.0.0）
+     L9142  Help          使用方法（v2.0.1）
+     L9189  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9263  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1566,7 +1670,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.10.12";
+const VERSION = "2.11.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4575,21 +4679,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const g0 = geoOf(0);             // 尾迹宽度 = 行宽 10%（定死，帧内只写 transform；v2.0.2）
     if (g0) trailGlowEl.style.width = (g0.width * 0.1) + "px";
     parkBall();
-    /* 卡片标题（v2.5.2；v2.10.2 两种模式都窗口化后统一按"行数"报）：
-       曲式模式下报的是**歌曲哪几小节**（滚动窗口的第一个到最后一个），窗口在滚、标题跟着滚，
-       用户才知道自己看到的是全曲哪一段；窗口走到曲尾会绕回开头（那是刻意的），标题如实说明。
-       ★ 预设分支报「同屏 N 小节」在窗口化后**依然准确**——N 就是网格行数，
-         也就是本屏覆盖的 N 个连续小节位（型短于 N 时其中若干行是同一小节的重复）；
-         与档位按钮上的「N 行」是同一个 N，不再需要在这里改写口径。
-         原先那句"预设模式下 1 小节的型就是 1 行，写死 4 小节会说谎"已随 v2.10.2 失效：
-         现在 1 小节的型配 4 行档就是真的 4 行。 */
-    const totalBars = arr ? songBars(arr) : 0;
-    const wEnd = winStart + vizBars;
-    $("vizTitle").textContent = (S.playMode === "arrange" && winStart >= 0)
-      ? (totalBars && wEnd > totalBars
-        ? `时值可视化 · ${meterName(S.sig)} · 歌曲第 ${winStart + 1}-${totalBars} 小节（末尾回到开头）`
-        : `时值可视化 · ${meterName(S.sig)} · 歌曲第 ${winStart + 1}-${wEnd} 小节`)
-      : `时值可视化 · ${meterName(S.sig)} · 同屏 ${vizBars} 小节`;
+    /* v2.10.16：卡片标题（原 #vizTitle，曾按模式报「歌曲第 X–Y 小节 / 同屏 N 小节」）整块删除
+       （用户要求：与状态灯文案重复）——播放位置看状态灯（左列）、拍号看拍号 pill。
+       窗口口径的自动化观察面改由网格内容断言承担（T70/T79 本就逐行断言格子）。
+       原 totalBars/wEnd 只为拼标题而算，随之一并删除 */
     resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
     syncTabLayer();
@@ -6331,7 +6424,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
 
   /* 曲式模式：把"要播的型"与节目单游标落到播放范围起点（v2.0.0 S4）。
      走 scheduleRef + flushPending，而不是直接改 appliedPat——**与用户切预设是同一条路**，
-     于是 patternName / updateMeta / buildViz 那些副作用一个都不会漏。
+     于是 patternName / buildViz 那些副作用一个都不会漏。
      曲式不存在、已被删、或范围非法 → 退回预设模式并清空选择：
      绝不留下"在曲式模式但没有曲式"这种半状态（它会让播放一路用回退节奏型而不自知）
 
@@ -6486,9 +6579,9 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
   });
   window.addEventListener("pointerdown", AudioEngine.ensureCtx, {once:true});
 
-  function updateMeta(){
-    $("patternMeta").textContent = `${meterName(S.sig)} 拍 · ${S.bpm} BPM`;
-  }
+  /* v2.10.16：updateMeta（#patternMeta「4/4 拍 · N BPM」）随 meta 元素删除——
+     拍号看拍号 pill、速度看 #bpmNum 大字，零重复。原三个调用点
+     （setBpm 尾部 / Controls 出口 / Presets.applyPatternChange）一并拆除 */
   /** @param {number} v @param {any} [save] */
   function setBpm(v, save){
     /* v1.2.4：脏输入回退当前值。原先 Math.round("abc") = NaN → Math.max(30, NaN) = NaN →
@@ -6510,7 +6603,6 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     } else S.bpm = v;
     $("bpmNum").textContent = v;
     $("bpmSlider").value = v;
-    updateMeta();
     Trainer.updateProg();
     syncBpmUI();                              // 唯一入口统一收口：滑杆/步进/TAP/训练器改速后高亮都跟随
     if (save !== false) Store.persist();      // 滑块拖动走 input 高频触发，由 change 事件统一落盘
@@ -6726,7 +6818,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   /* 同屏行数档位（v2.8.0 req3）：装配即生成档位按钮（初始选中态来自已加载的 S.vizRows） */
   syncRowsUI();
 
-  return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI,
+  return { start, stop, setBpm, setSig, setSwing, setTimbre, syncBpmUI,
     onLimitPulse: limitPulse, syncRowsUI };
 })();
 
@@ -6992,8 +7084,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!a){ announce("曲式不在库里"); return; }
     const probs = arrangeProblems(a);
     if (probs.length){ Modal.uiAlert("这条曲式暂时不能播放：\n" + probs.join("\n")); return; }
-    setMode("playMode", "arrange", "整首连播");
+    /* ★ 顺序敏感（v2.10.14 修）：先写 arrangeSel 再切模式——setMode 的变更钩子会同步跑
+       Arrange.refreshBar，而跳段键的置灰判据要读 arrangeSel.id；反过来的话钩子那一刻
+       曲式还没就位，键被错误置灰且无人再刷（此前按钮"整行隐藏"把这个潜伏 bug 盖住了，
+       常显+置灰后当场暴露）。 */
     S.arrangeSel = { id: a.id, from: 0, to: songBars(a) - 1, loop: true, byLyric: false };
+    setMode("playMode", "arrange", "整首连播");
     Store.persist();
     Controls.stop();                 // 幂等（stop 可重入），保证"从头播"而不是从中间续
     Controls.start();
@@ -7062,7 +7158,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       demoPlayAllBtn.setAttribute("aria-pressed", whole ? "true" : "false");
     }
     /* ★ 这一行还兼着"现在播到第几小节"的职责：段序条被滑块取代后逐段高亮没有了，
-       位置信息只剩这里（demoCurBar 走的是**可听位置**，与跳段行的 #argNowMeta 同源）。
+       位置信息只剩这里（demoCurBar 走的是**可听位置**；v2.10.14 起跳段行的 #argNowMeta
+       已删，侧栏读数是播放位置的唯一文字面）。
        T68j 就是钉这条的——别把它简化成一句静态文案。 */
     if (demoSongNote){
       const cur = demoCurBar();
@@ -7348,7 +7445,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
-    Controls.updateMeta();
     buildPresetList();
     /* v2.0.5（审计 P0-4）：先定 #fallbackNote 的显隐，再建网格——顺序不能反。
        buildViz 末尾会 cacheGeo() 采集行几何，而这条回退提示带（约 44px 高）就夹在
@@ -7950,6 +8046,13 @@ const Settings = (() => {
 
   $("settingsBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("settingsClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+  /* 点窗外即关（v2.10.13）：浮层小窗的 backdrop 就是根元素本身（.dialog-panel 是它唯一的
+     子块），点击命中根 = 命中窗外。面板内点击会冒泡到根，但那时 target 已不是
+     currentTarget，不会误关。静态绑定（元素不重建），所以不走 bindOverlay——
+     那套登记是给"随内容重建的监听器"的，这里没有随内容重建的东西。 */
+  $("settingsOverlay").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    if (e.target === e.currentTarget) close();
+  });
 
   return { open, close, isOpen };
 })();
@@ -8627,20 +8730,30 @@ const Arrange = (() => {
   /* 主界面那一行：曲式名 + 当前段 + 上/下段跳转 */
   function refreshBar(){
     const a = cur();
-    $("argNowName").textContent = a ? a.name : "";    $("argJump").hidden = (S.playMode !== "arrange");
-    /* 单段曲式没有「上一段/下一段」可跳：直接隐藏而不是禁用置灰（v2.0.2）——
-       禁用的按钮仍是视觉噪音，藏起来只留中间的位置信息。
-       判定看「正在播的曲式」优先——刷新后 curId 未恢复（overlay 没开过），用 cur() 会误隐藏 */
+    $("argNowName").textContent = a ? a.name : "";
+    /* v2.10.14（用户要求⑤）：跳段行**常显**——上/下段键不可用（非曲式模式 / 单段曲式）改**置灰**
+       而不是隐藏。v2.0.2 那条「直接隐藏而不是禁用置灰」的判据作废：理由变了——播放键住进了
+       本行，整行隐藏会把它一起藏掉；而 v2.0.2 嫌"禁用按钮是视觉噪音"的前提（藏起来只留中间的
+       位置信息）也随 #argNowMeta 删除不复存在。判定看「正在播的曲式」优先——刷新后 curId 未恢复
+       （overlay 没开过），用 cur() 会误隐藏 */
     const aj = arrangeCur() || a;
-    const noJump = !aj || aj.sections.length <= 1;
-    $("argJumpPrev").hidden = noJump;
-    $("argJumpNext").hidden = noJump;
+    /* 置灰判据 = 原「隐藏」判据 + 模式本身：预设模式下哪怕 curId 选中了一条多段曲式，
+       跳段也不该可用（jumpTo 只写 arrangeSel 不切模式，点了会是半状态）——
+       v2.10.13 及以前这一层由「整行 hidden」兜着，常显后必须显式写进判据 */
+    const noJump = S.playMode !== "arrange" || !aj || aj.sections.length <= 1;
+    $("argJumpPrev").disabled = noJump;
+    $("argJumpNext").disabled = noJump;
     /* v2.7.3：跳段行的「范围循环」开关与编排面板的「范围循环」是**同一个字段**
        （S.arrangeSel.loop）——两处入口共用一份数据、同源刷新，不存在第二份真相
        （与预设区「循环本段」共用 S.loopRange 是同一套做法）。所有会改这个字段的
        路径（jumpTo / 面板按钮 / 「全部」/ 播放入口）都会过 refreshBar，故只在这里同步。 */
-    setToggle("argJumpLoopBtn", !!S.arrangeSel.loop);
-    $("argNowMeta").textContent = "";
+    /* 本轮修：不能走 setToggle——applyToggle 会**整写 className**（"toggle-pill on/off"），
+       把本钮身上的 jump-btn/loop-btn 类抹掉 → 圆钮样式与双态 SVG 切换 CSS 全部失效，
+       两枚图标同时显示（用户实报"还是两个单独的按钮"）。改为只写 aria-checked 与显隐 */
+    $("argJumpLoopBtn").setAttribute("aria-checked", S.arrangeSel.loop ? "true" : "false");
+    /* v2.10.14：行常显后，「范围循环」的预设模式隐藏不再由整行 hidden 捎带——
+       在这里显式写（曲式模式下常驻，t77 的"不随单段而隐藏"口径不变） */
+    $("argJumpLoopBtn").hidden = (S.playMode !== "arrange");
     if (S.playMode === "arrange" && a){
       const cls = arrangeProblems(a);
       if (cls.length){ $("argProblems").textContent = "⚠ " + cls.join("；"); }
@@ -8667,11 +8780,10 @@ const Arrange = (() => {
        arrSec/arrBar 比发声早一个前瞻窗口，直接读它会"计数器先跳、声音后到"
        （用户实拍：球还在上一段末尾，这里已写下一段）。取不到（未起播）回退调度游标 */
     const apos = S.playing ? Viz.audibleArrangePos() : null;
-    const curSec = apos ? apos.sec : arrSec, curBar = apos ? apos.bar : arrBar;
-    const totalBars = a.sections.reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0);
-    let done = 0;
-    for (let i = 0; i < curSec; i++) done += secBars(a.sections[i]);
-    $("argNowMeta").textContent = `第 ${curSec + 1}/${a.sections.length} 段 · 第 ${done + curBar + 1}/${totalBars} 小节`;
+    const curSec = apos ? apos.sec : arrSec;
+    /* v2.10.14：「第 N/M 段 · 第 M/总 小节」实时进度文字（原 #argNowMeta）按用户要求删除——
+       播放位置的可见反馈只剩侧栏滑块读数（syncDemoRange，同样走可听位置）；
+       原 totalBars/done 累加只为拼那段文字，随之一并删除 */
     const sec = a.sections[curSec];
     $("argNowName").textContent = a.name + (sec && sec.name ? " · " + sec.name : "");
   }
@@ -8694,12 +8806,11 @@ const Arrange = (() => {
     refreshBar();
     /* 即时反馈（v2.0.2 修）：旧实现只改范围、等小节边界拉回——停止状态/往回跳时界面
        毫无变化，用户观感是「按钮坏了」。这里先把目标段写到主界面那一行，
-       下一小节边界 onArrangeBar 的 refreshNow 会用真实游标覆盖它 */
+       下一小节边界 onArrangeBar 的 refreshNow 会用真实游标覆盖它。
+       v2.10.14：#argNowMeta（「→ 第 N 段 · 本小节结束后进入」等文字）按用户要求删除——
+       可见反馈改为侧栏范围滑块的即时移动（refreshBar → syncDemoRange，同源刷新）+ 段名 */
     const nm = a.sections[k] && a.sections[k].name;
     $("argNowName").textContent = a.name + (nm ? " · " + nm : "");
-    $("argNowMeta").textContent = S.playing
-      ? `→ 第 ${k + 1} 段 · 本小节结束后进入`
-      : `已定位到第 ${k + 1} 段 · 播放从这里开始`;
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（v2.0.2）。
        否则只有文字变、画面原地不动——用户无法确认定位生效（实拍困惑：「球还在第一小节」） */
     if (!S.playing){
@@ -8760,11 +8871,9 @@ const Arrange = (() => {
     const span = (f === t)
       ? (nf ? " · " + nf : "")
       : ((nf || nt) ? " · " + (nf || "") + " → " + (nt || "") : "");
-    const idx = (f === t) ? `第 ${f + 1} 小节` : `第 ${f + 1}–${t + 1} 小节`;
     $("argNowName").textContent = a.name + span;
-    $("argNowMeta").textContent = S.playing
-      ? `→ ${idx} · 本小节结束后进入`
-      : `已定位到 ${idx} · 播放从这里开始`;
+    /* v2.10.14：#argNowMeta（「→ 第 N–M 小节 · 本小节结束后进入」回显）按用户要求删除——
+       拖动/提交的可见反馈由侧栏滑块本体承担（thumb 即时移动） */
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（同 jumpTo） */
     if (!S.playing){
       const home = arrangeHomePattern();

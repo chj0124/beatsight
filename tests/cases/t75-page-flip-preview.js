@@ -84,7 +84,8 @@ section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一�
     "★ 停止时点「下一段」→ 跳到下一段的起点（小节 2 在段 1 内 → 下一段 = 段 2 起点 = 小节 4；不再是零反馈）");
   els["argJumpPrev"].fire("click");
   eq(beat.Store.S.arrangeSel.from, 1, "★ 再点「上一段」→ 回到上一段起点（段 2 → 段 1 起点 = 小节 1）");
-  ok(/第 2 段/.test(els["argNowMeta"].textContent), "定位文案同步（实际「" + els["argNowMeta"].textContent + "」）");
+  /* v2.10.14：原这里还有一条 argNowMeta 定位文案断言——说明文字已按用户要求删除，
+     定位的可见反馈 = 侧栏范围滑块 thumb 即时移动（上面两条 from 断言已覆盖） */
 
   /* 播放中：基准 = 正在播的段（与跳段行显示的「第 N 段」一致） */
   beat.Controls.start();

@@ -87,9 +87,9 @@ beatsight/
 Store（持久化/状态创建/迁移/导入导出/练习记录）
 共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
-→ Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账）
+→ Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账；★ v2.10.14 起**没有走带卡**——BPM 在时值卡头行、Swing 在同屏行数行、播放键在跳段行中间，上/下段键常显置灰）
 → Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与播放范围滑块，v2.5.0 起·滑块于 v2.10.4；三区常显于 v2.9.0）→ Editor（自定义编辑器）
-→ Settings（设置弹窗：主题 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出 / 使用方法入口，v2.10.12）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
+→ Settings（设置弹窗：浮层小窗形态、点窗外即关，主题 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出 / 使用方法入口，v2.10.12；形态改 Dialog 于 v2.10.13）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
 ```
 

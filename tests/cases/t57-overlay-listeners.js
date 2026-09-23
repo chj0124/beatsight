@@ -182,3 +182,38 @@ section("T57e 弹层 · 重复 open 幂等（不覆盖焦点归还闭包）");
   /* 关闭后返回焦点：这一路径由协议统一负责，不能被幂等分支吃掉 */
   ok(!els["arrangeOverlay"].classList.contains("open"), "close 后 open 类已摘（焦点归还闭包执行过）");
 }
+
+/* ================= T57f：设置浮层小窗「点窗外即关」 ================= */
+/* v2.10.13（用户反馈「不是我想象中的那种弹窗」）：设置从全屏页面式改为 Dialog 形态——
+   不全屏、点窗外直接退出。backdrop 就是根元素本身（.dialog-panel 是它唯一的子块），
+   所以判据与 Modal 自己那条 modalMask 完全同款：e.target === e.currentTarget 才关。
+   桩的 fire 默认 target = currentTarget = 被触发的元素——正好就是「点了窗外」；
+   传 { target: 面板内元素 } 则模拟「点了窗内」，不该关。 */
+section("T57f 设置浮层小窗 · 点窗外即关、点窗内不关、Esc 仍关");
+{
+  const app = loadApp();
+  const { beat, els } = app;
+  /* 反向验证（旧版）守卫：v2.10.12 及更早没有这条行为路径，属预期失败 */
+  if (!els["settingsBtn"] || !beat.Settings){
+    ok(false, "设置：元素/模块不存在（旧版上属预期）");
+  } else {
+    beat.Settings.open();
+    ok(els["settingsOverlay"].classList.contains("open"), "前提：设置已打开");
+    /* 点窗外（backdrop = 根元素）→ 关 */
+    els["settingsOverlay"].fire("click");
+    ok(!els["settingsOverlay"].classList.contains("open"),
+      "★ 点窗外（target === currentTarget）→ 直接关闭");
+    /* 点窗内（面板里的按钮冒泡上来）→ 不关 */
+    beat.Settings.open();
+    els["settingsOverlay"].fire("click", { target: els["themeToggle"] });
+    ok(els["settingsOverlay"].classList.contains("open"),
+      "★ 点窗内（target ≠ currentTarget，如主题按钮）→ 不关闭");
+    /* ✕ 关闭钮（id 不变）仍可关 */
+    els["settingsClose"].fire("click");
+    ok(!els["settingsOverlay"].classList.contains("open"), "右上角 ✕（#settingsClose）仍可关闭");
+    /* Esc 路由不受形态变更影响：Controls 的 keydown 分支查 Settings.isOpen() 原样保留 */
+    beat.Settings.open();
+    app.fireWin("keydown", { key: "Escape" });
+    ok(!els["settingsOverlay"].classList.contains("open"), "Esc 仍可关闭（键盘路由不受形态变更影响）");
+  }
+}

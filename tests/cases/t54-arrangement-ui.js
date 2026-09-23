@@ -215,8 +215,9 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   beat.Arrange.open();
   els["argList"].children[0].fire("click");
 
-  /* 主界面：非曲式模式下不显示跳转行 */
-  eq(els["argJump"].hidden, true, "非曲式模式下隐藏跳转行");
+  /* 主界面：非曲式模式下跳段键置灰（v2.10.14：行常显——播放键住进了这一行，收口改置灰） */
+  eq(els["argJumpPrev"].disabled, true, "非曲式模式下「上一段」置灰");
+  eq(els["argJumpNext"].disabled, true, "非曲式模式下「下一段」置灰");
   ok((els["argNowName"].textContent || "").includes("练习曲"), "编排里选中后，主界面显示曲式名");
 
   /* 「从头播」→ 进曲式模式、范围是全曲、开始播放 */
@@ -225,7 +226,7 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   eq(S.playMode, "arrange", "进入曲式模式");
   eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 15]), "「从头播」的范围是全曲（小节 0..15）");
   eq(S.playing, true, "且已开始播放");
-  eq(els["argJump"].hidden, false, "★ 曲式模式下显示跳转行");
+  eq(els["argJumpPrev"].disabled, false, "★ 曲式模式下「上一段」恢复可用");
   beat.Controls.stop();
 
   /* 「播选中范围」：先把范围设成只播第 2 段 */
@@ -243,19 +244,20 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([8, 15]), "跳到第 2 段（小节 8..15）");
 }
 
-/* ================= 场景 T54g：跳段的即时反馈与单段隐藏（v2.0.2） ================= */
-section("T54g 曲式 UI · 跳段即时反馈 / 单段隐藏跳段按钮");
+/* ================= 场景 T54g：跳段的即时反馈与单段置灰（v2.0.2 立 · v2.10.14 改口径） ================= */
+section("T54g 曲式 UI · 跳段即时生效 / 单段置灰跳段键");
 {
   /* 用户实拍 bug：跳段按钮「点了没反应」——旧实现只改范围等边界拉回，
-     停止状态/往回跳时界面零变化；单段曲式（新建默认）更是字面意义的哑键 */
+     停止状态/往回跳时界面零变化；单段曲式（新建默认）更是字面意义的哑键。
+     v2.10.14：原「立即显示目标段」的 argNowMeta 文案已按用户要求删除——
+     即时反馈 = 侧栏范围滑块 thumb 移动 + 网格/标题立即换型（下面的断言就是它） */
   const { beat, els } = seeded();
   beat.Arrange.open();
   els["argList"].children[0].fire("click");
   els["argPlay"].fire("click");
   beat.Controls.stop();                                   // 停止状态下点跳段
   els["argJumpNext"].fire("click");
-  ok((els["argNowMeta"].textContent || "").includes("第 2 段"),
-     "★ 停止时点「下一段」立即显示目标段（不再是零反馈）");
+  ok(beat.Store.S.arrangeSel.from >= 4, "★ 停止时点「下一段」范围立即跳到目标段（不再是零反馈）");
   ok((els["argNowName"].textContent || "").includes("副歌"), "段名同步切到目标段");
   /* v2.0.2：停止时定位不只是文字——网格与标题立即换成目标段的型（用户实拍困惑：
      「定位到第 3 段了，小球还在第一小节跳」）。副歌首块 = 八分摇滚（8 格/行） */
@@ -263,14 +265,13 @@ section("T54g 曲式 UI · 跳段即时反馈 / 单段隐藏跳段按钮");
   eq(cells0, beat.BUILTINS[2].bars[0].length, "★ 定位后网格立即换成副歌的型（8 格，不再是主歌的 6 格）");
   eq(els["patternName"].textContent, beat.BUILTINS[2].name, "标题同步成副歌首块的型");
 
-  /* 单段曲式：两个跳段按钮整体隐藏（v2.0.2：不显示 > 禁用置灰），位置信息仍由 meta 显示 */
+  /* 单段曲式：两个跳段按钮置灰（v2.10.14：常显 + disabled；原「隐藏 > 置灰」的口径随播放键进本行作废） */
   const solo = bare();
   solo.beat.Arrange.open();
   solo.els["argNew"].fire("click");
   solo.els["argPlay"].fire("click");
-  eq(solo.els["argJump"].hidden, false, "曲式模式下跳段行仍在（显示位置信息）");
-  eq(solo.els["argJumpPrev"].hidden, true, "★ 单段曲式「◀ 上一段」隐藏");
-  eq(solo.els["argJumpNext"].hidden, true, "★ 单段曲式「下一段 ▶」隐藏");
+  eq(solo.els["argJumpPrev"].disabled, true, "★ 单段曲式「上一段」置灰（仍可见，圆形键常显）");
+  eq(solo.els["argJumpNext"].disabled, true, "★ 单段曲式「下一段」置灰");
   solo.beat.Controls.stop();
 }
 
