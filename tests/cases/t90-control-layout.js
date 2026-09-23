@@ -30,7 +30,7 @@ const M = {
   vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（标题+音量+BPM+状态灯）"],
   togglesRow: ['<div class="viz-toggles">', '<!-- 同屏行数档位', "预备拍 + 训练开关行"],
   rowsRow: ['<div class="viz-rows-row">', '<div class="viz" id="viz"', "同屏行数 + 拍号 + Swing 的并排行"],
-  jumpRow: ['<div class="arg-now arg-jump" id="argJump">', '<div class="caption">', "跳段 + 播放行"],
+  jumpRow: ['<div class="arg-now arg-jump" id="argJump">', "</section>", "跳段 + 播放行"],
   settingsOverlay: ['<div class="dialog" id="settingsOverlay"', "<!-- ================= 应用内弹窗", "设置浮层小窗"],
   css: ["<style>", "</style>", "样式表"],
 };
@@ -241,8 +241,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ v2.10.16：`.card-head-left-top` 上行包裹随标题删除一并清理");
   ok(/^\.status \.pat-now\{/m.test(css),
     "★ v2.10.17：`.status .pat-now`（状态灯行里的当前节奏型名）样式在位");
-  ok(/^\.page-foot\{/m.test(css),
-    "★ v2.10.16：`.page-foot`（页面底部提示行，与 .main 同源内边距）样式在位");
+  ok(!/^\.page-foot/m.test(css) && !/^\.caption\{/m.test(css) && !/\.page-foot\{/m.test(css),
+    "★ v2.11.1：`.page-foot` 与 `.caption` 的**规则**随文案区删除一并清理（内容移入使用方法；"
+    + "清理注释里保留名字作纪念不算违规）");
   ok(/--gt:6\.8px;--gtop:0px;--yT1:0px;--yT2:13\.6px;--yB1:20\.4px;--yB2:34px/.test(css),
     "★★ v2.10.16：窄屏六线几何改为「铺满」——34/5=6.8px 弦距、线落 0..34 上下零留白"
     + "（修复 v2.8.0 只改桌面档、窄屏仍留 v2.4.3 上下留白导致的「底纹铺不满」）");

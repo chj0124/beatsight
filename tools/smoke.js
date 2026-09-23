@@ -345,7 +345,7 @@ function layoutProbe(){
   out.toggle = textLeft(q(".viz-toggles > .toggle-pill"));
   out.rowsLabel = textLeft(q(".viz-rows-panel > .group-label"));
   out.rowsPillBox = boxLeft(q("#vizRowsRow > .pill"));
-  out.caption = textLeft(q(".caption"));
+
   out.vizRowsPanel = boxLeft(q(".viz-rows-panel"));
   const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
   out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
@@ -520,8 +520,7 @@ async function main(){
         ok(sameLine(m.rowsPillBox, base),
           p.label + "·" + label + "：★ 行数 pill 的**盒子**左边缘也在这条线上（丙只动开关、不动 pill）",
           "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
-        ok(sameLine(m.caption, base), p.label + "·" + label + "：底部说明行也在这条线上",
-          "标题 " + base + " vs 说明 " + m.caption);
+
       }
       if (lay.wide){
         ok(lay.wide.sigGroup > lay.wide.vizRowsPanel,

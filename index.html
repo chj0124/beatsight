@@ -61,7 +61,7 @@ button:disabled{cursor:not-allowed}
 @keyframes pulse{50%{opacity:.4}}
 
 /* ---------- 主布局 ---------- */
-.main{display:grid;grid-template-columns:1fr 360px;gap:24px;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
+.main{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}   /* v2.11.1：align-items:start——侧栏按内容收高，不再被拉到与主列等高（消除侧栏下方吊着的大片空棚） */
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -85,7 +85,6 @@ button:disabled{cursor:not-allowed}
 .status .dot.live{background:var(--green)}
 .status.ok{color:var(--green)} .status.ok .dot{background:var(--green)}
 .status.bad{color:var(--red)} .status.bad .dot{background:var(--red)}
-.caption{font-size:12px;color:var(--t3);margin-top:14px}
 
 /* ---------- 当前节奏型名（v2.10.16） ---------- */
 /* 「当前节奏型」裸行（.pattern-head）整块删除（用户要求）：名字搬进跳段行（#argJump），
@@ -95,7 +94,8 @@ button:disabled{cursor:not-allowed}
 /* v2.10.17：.pat-now 从跳段行搬进状态灯行（「● 已停止　十六分满扫」），样式见 .status .pat-now */
 /* 页面底部提示行（v2.10.16）：与 .main 同源的左右内边距（桌面 24px + 安全区、窄屏 16px），
    上下各留一拍呼吸空间 */
-.page-foot{max-width:1440px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
+/* v2.11.1：页底文案区（.page-foot）整块删除——图例与快捷键提示移入「使用方法」；
+   左缘/极窄屏分档的对齐修正随元素一并退役 */
 /* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
 .fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12px}
 .fallback-note[hidden]{display:none}
@@ -740,7 +740,6 @@ input[type=range].vol{width:120px}
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
   .dialog{padding:16px}   /* 窄屏下浮层小窗贴边距收窄，与 .card 的 16px 同步 */
-  .page-foot{padding:0 16px 16px}   /* 页底提示行与 .card 的窄屏 16px 同步 */
   .stat-cards{grid-template-columns:repeat(2,1fr)}
 }
 /* 手机窄屏（≤560px）：卡片头改上下两行——标题与状态灯不再争抢同一行宽度而各自被挤断行 */
@@ -1160,7 +1159,6 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <svg class="ico-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11.4 11.6l1.2-.9v4.6"/></svg>
       </button>
     </div>
-    <div class="caption">时值 = 长度 —— 弹跳球预告「何时」落拍（跳距与时值成正比），底部 1 e & a 为拍内座次，跑道亮边 = 换拍；休止符显示为等长空白占位</div>
     </section>
 
     <!-- v2.10.14：走带卡（原 02 Transport）整卡删除——BPM 与 Swing v2.10.13 搬去时值可视化卡、
@@ -1252,7 +1250,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            导入全部数据 + 两个隐藏的 file input）**搬进设置弹窗**——它们是"换设备 / 换通道
            才用一次"的数据管理项，不该占着练习界面。id 全未改动，所以 `exportBtn.disabled`
            的联动逻辑照旧生效（它设的是一个隐藏元素的 disabled，无副作用） -->
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请到顶栏「设置」→「数据与说明」里用「导出预设」备份 JSON，换设备后用「导入预设」恢复。曲式编排、歌词对齐、听辨战绩同样只在本机：换设备或换通道（file:// 与 https:// 数据不互通）前，请用同处的「导出全部数据」带走整包。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
+      <!-- v2.11.1（用户要求）：原「自定义节奏型保存在本机浏览器中…」的长段说明整段删除——
+           数据备份的入口就在同卡的导入导出按钮上，长文案与设置弹窗「数据与说明」组重复，
+           且「变速训练器在『训练模式』区」的提法已过期（标题行 v2.10.16 已删） -->
     </section>
   </aside>
 </main>
@@ -1260,7 +1260,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 <!-- v2.10.16（用户要求）：快捷键/音频解锁提示移到**页面最底部**——原先在主列末尾
      （训练面板之后），现放到两栏栅格之外、通栏一行；左右内边距与 .main 同源
      （桌面 24px、≤960px 16px），底部留一屏呼吸空间 -->
-<div class="page-foot"><div class="hint">空格键 开始 / 停止 · 首次点击页面解锁音频 · 动画由音频时钟驱动，声画偏差 &lt; 16ms</div></div>
+<!-- v2.11.1（用户要求）：原页底的「时值 = 长度」图例与快捷键提示移入「使用方法」——
+     图例在「画面怎么看」逐条全有（纯重复，径直删）；提示拆出两个未覆盖的点补进帮助：
+     「首次点击解锁音频」进三步上手、「音频时钟驱动」进画面怎么看 -->
+
 
 <!-- ================= 自定义节奏型编辑器 ================= -->
 <div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="自定义节奏型编辑器" tabindex="-1">
@@ -1428,7 +1431,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <ol class="help-list">
         <li>右侧「节奏型」里选一个（或点「编辑节奏型」自己画一个）</li>
         <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
-        <li>按播放（或空格键）开始</li>
+        <li>按播放（或空格键）开始——浏览器的首次点击是在解锁音频，属正常现象</li>
       </ol>
       <div class="help-tip">这个应用的核心是「把节奏<b>画出来</b>」——不只看拍子，还看每个音有多长。</div>
 
@@ -1445,6 +1448,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
+        <li>画面动画由<b>音频时钟</b>驱动——以声音为准对齐画面，声画偏差 &lt; 16ms</li>
       </ul>
 
       <h2 class="card-title" style="margin:22px 0 4px">先试这几个开关</h2>
@@ -1629,22 +1633,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1660  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2148  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3105  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3776  Modal         应用内弹窗
-     L3908  Viz           时值可视化渲染与每帧动画
-     L5539  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6164  Trainer       变速训练器
-     L6382  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6825  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7666  Editor        自定义节奏型编辑器
-     L8022  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8060  Ear           听辨训练（v1.10.0）
-     L8278  Arrange       曲式编排（v2.0.0）
-     L9142  Help          使用方法（v2.0.1）
-     L9189  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9263  初始化（装配） 各模块 hook 接线与启动
+     L1664  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2152  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3109  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3780  Modal         应用内弹窗
+     L3912  Viz           时值可视化渲染与每帧动画
+     L5543  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6168  Trainer       变速训练器
+     L6386  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6829  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7670  Editor        自定义节奏型编辑器
+     L8026  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8064  Ear           听辨训练（v1.10.0）
+     L8282  Arrange       曲式编排（v2.0.0）
+     L9146  Help          使用方法（v2.0.1）
+     L9193  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9267  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1670,7 +1674,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.11.0";
+const VERSION = "2.11.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
