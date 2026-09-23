@@ -425,7 +425,7 @@ section("T31c 焦点陷阱 · 弹窗叠层 inert 与语义化标记（v2.0.2，P
   /* 语义化标记（P2-sem）：main landmark / h1 / h2 / 输入框 label / dialog 可聚焦 */
   ok(/<main class="main">/.test(html), "主内容是 <main> landmark");
   ok(/<h1 class="brand">/.test(html), "品牌区是 h1（页面此前零标题层级）");
-  for (const id of ["editor", "statsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"]){
+  for (const id of ["editor", "settingsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"]){
     ok(new RegExp('id="' + id + '"[^>]*tabindex="-1"').test(html), id + " 带 tabindex=-1（trapFocus 的前提：dialog 可程序化聚焦）");
   }
   ok(/<h2 class="card-title"/.test(html) && !/<div class="card-title"/.test(html), "卡片标题全部进 h2");

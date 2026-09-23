@@ -21,11 +21,9 @@ const CASE_FILES = [
   "./cases/t23-dirty-value-robustness",
   "./cases/t24-audit-hardening",
   "./cases/t30-wiring-and-lifetime",
-  "./cases/t37-stats-and-training",
+  "./cases/t37-training-and-keepalive",
   "./cases/t47-stroke-direction",
-  "./cases/t48-practice-limit",
   "./cases/t49-ear-training",
-  "./cases/t50-practice-coverage",
   "./cases/t51-arrangement-model",
   "./cases/t52-arrangement-cursor",
   "./cases/t53-arrangement-playback",
@@ -63,6 +61,8 @@ const CASE_FILES = [
   "./cases/t86-tab-toggle-boot-sync",   // v2.10.1：六线底纹开关的启动收敛（默认/重载两条路径下 pill 恒等于 S.showTab；同族 keepAwake）
   "./cases/t87-preset-row-window",      // v2.10.2：预设模式的 N 行窗口（型短于 N 重复铺满 / 型长于 N 翻页 / .arg-now[hidden] 补丁）
   "./cases/t88-demo-range-slider",      // v2.10.4：侧栏「播放范围」双滑块（取代段号胶囊 / 1-based 域 / 双向钳制 / input·change 两级）
+  "./cases/t89-narrow-range-next-row",  // v2.10.8：范围小节数 < 同屏行数时，待命球与 .next 预告格的落点（循环回卷 → 行号不再等于 +1）
+  "./cases/t90-control-layout",         // v2.10.11：控件搬家（拍号→同屏行数右侧；音色/音量→编辑节奏型左侧）+ 左边缘对齐的两条 CSS 契约
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

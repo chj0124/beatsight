@@ -143,13 +143,15 @@ const SPECIAL_LABELS = {
   normal_path:"正常路径（守卫不得误伤）",
   dirty_misc:"脏重拍分组 / trainer 原型污染",
   arrange_range_dirty:"反向播放范围 from > to（v2.10.4：滑块让这对字段变成连续可写）",
+  narrow_range_short_song:"范围短于窗口 + 全曲短于窗口（v2.10.8：新增「小节号↔行号」映射）",
 };
 const CASE_LIST = [
   ...Object.keys(SIGS).map(id => [id, SIG_LABELS[id]]),
   ["customs_empty_bar", SPECIAL_LABELS.customs_empty_bar],
   ...Object.keys(VOLS).map(id => [id, VOL_LABELS[id]]),
   ...["strum_vol_dirty", "pat_bars_max", "bpm_dirty", "hunger_skip",
-      "editor_clear_bar", "normal_path", "dirty_misc", "arrange_range_dirty"].map(id => [id, SPECIAL_LABELS[id]]),
+      "editor_clear_bar", "normal_path", "dirty_misc", "arrange_range_dirty",
+      "narrow_range_short_song"].map(id => [id, SPECIAL_LABELS[id]]),
 ];
 
 /* `--list`：把清单吐给调用方（hang-guard），本模式不加载 index.html、不执行任何探针 */
@@ -328,6 +330,37 @@ if (CASE in SIGS){
     out(!err, "反向区间不崩渲染帧", err || "OK");
     out(beat.Store.S.playing === true, "反向区间播放未中断", "playing=" + beat.Store.S.playing);
     out(FAC.last.hits.length > 0, "反向区间仍在发声（不是静默空转）", FAC.last.hits.length + " 次");
+  }
+
+} else if (CASE === "narrow_range_short_song"){
+  /* v2.10.8：渲染层新增了一层「歌曲小节号 → 窗口行号」映射（Viz.rowOfSongBar /
+     arrNextRowOf），它有两处必须配对成立的易错点：
+       ① 行号 = 小节号 − 窗口起点，而 arrWindowPat 在**全曲短于窗口 / 走到曲尾**时会
+          绕回重复铺行（`songBarAt(a, (winStart + i) % total)`）→ 必须按 songBars 取模；
+       ② 结果行号必须落在 [0, 窗口长度)。
+     本探针把这两个前提同时构造到极端：**全曲只有 1 小节**（窗口 4 行全是同一小节，
+     `% total` 的模数退化成 1）+ **播放范围也正好是那 1 小节**（循环回卷 → "下一小节"
+     就是当前小节自己）。预期不挂；若取模/钳制被写成会自增或回卷不收敛的形态，
+     这里会被超时强杀（这类缺陷同进程内打断不了，只能靠子进程 + 超时）。 */
+  const ONE = { id: "one", name: "一小节", meter: 4, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] };
+  const { beat } = loadApp({
+    "beatsight.customs": JSON.stringify({ v: 1, customs: [ONE] }),
+    "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
+      { id: "a1", name: "一小节曲式", sections: [{ name: "唯一", blocks: [
+        { ref: { type: "custom", id: "one" }, repeats: 1 }] }] }] }),
+    "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange", vizRows: 4,
+      arrangeSel: { id: "a1", from: 0, to: 0, loop: true, byLyric: false } }),
+  });
+  const a = beat.Store.findArrange("a1");
+  out(!!a, "前提：一小节曲式已在库里", a ? a.sections.length + " 段" : "缺失");
+  if (a){
+    out(beat.Viz.arrWinBars() === 4, "前提：窗口 4 行 > 全曲 1 小节（窗口会绕回重复铺行）",
+        "arrWinBars=" + beat.Viz.arrWinBars());
+    beat.Controls.start();
+    const err = driveFrames(FAC.last, beat, 1.2);
+    out(!err, "范围短于窗口 + 全曲短于窗口：渲染帧不抛", err || "OK");
+    out(beat.Store.S.playing === true, "播放未中断", "playing=" + beat.Store.S.playing);
+    out(FAC.last.hits.length > 0, "仍在发声（不是静默空转）", FAC.last.hits.length + " 次");
   }
 
 } else {

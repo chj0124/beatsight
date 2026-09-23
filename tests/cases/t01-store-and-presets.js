@@ -150,7 +150,8 @@ section("T6 curPattern · 选择失效时回退基础节奏");
 section("T7 模块化 · 接口与装配完整性");
 {
   const { beat } = loadApp();
-  ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Stats", "KeepAlive"].forEach(k =>
+  /* v2.10.12：模块清单把 `Stats` 换成 `Settings`（练习统计删除、设置弹窗新增），总数仍 13 */
+  ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "KeepAlive"].forEach(k =>
     ok(!!beat[k], `__beat.${k} 已暴露`));
   ["start", "stop", "setBpm", "setSig"].forEach(k => ok(typeof beat.Controls[k] === "function", `Controls.${k}()`));
   ["serializePresets", "exportPresets", "importPresets", "persist"].forEach(k => ok(typeof beat.Store[k] === "function", `Store.${k}()`));
@@ -158,8 +159,10 @@ section("T7 模块化 · 接口与装配完整性");
   ok(typeof beat.Presets.consumePending === "function", "Presets.consumePending()");
   ok(typeof beat.Editor.draft === "function", "Editor.draft() 访问器");
   ok(typeof beat.Controls.setSwing === "function", "Controls.setSwing()（v0.7.0 新增）");
-  ok(typeof beat.Stats.summarize === "function", "Stats.summarize()（v1.4 新增）");
+  /* v2.10.12：原 `beat.Stats.summarize` 与 `Store.appendSession/clearLog` 两条随练习统计 /
+     练习记录一起删除 */
   ok(typeof beat.KeepAlive.sync === "function", "KeepAlive.sync()（v1.4 新增）");
-  ok(typeof beat.Store.appendSession === "function" && typeof beat.Store.clearLog === "function", "Store.appendSession/clearLog（v1.4 新增）");
+  ok(typeof beat.Settings === "object" && typeof beat.Settings.open === "function",
+     "★ Settings.open/close（v2.10.12 新增的设置弹窗模块，取代 Stats 的架构槽位）");
 }
 

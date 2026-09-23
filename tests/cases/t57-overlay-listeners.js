@@ -24,7 +24,7 @@ const CYCLES = 5;
    未改动则直接关）——本组只开合、不改草稿，故 tryClose 走得通，且更贴近真实路径。 */
 const OVERLAYS = [
   { id: "editor",         name: "编辑器",   btn: "editBtn", mod: "Editor",  closeMod: "tryClose", needSeed: false },
-  { id: "statsOverlay",   name: "统计",     btn: "statsBtn", mod: "Stats",  closeMod: "close",    needSeed: false },
+  { id: "settingsOverlay", name: "设置",    btn: "settingsBtn", mod: "Settings", closeMod: "close", needSeed: false },
   { id: "earOverlay",     name: "听辨训练", btn: "earBtn",  mod: "Ear",     closeMod: "close",    needSeed: false },
   { id: "arrangeOverlay", name: "曲式编排", btn: "argOpen", mod: "Arrange", closeMod: "close",    needSeed: true  },
   { id: "helpOverlay",    name: "使用方法", btn: "helpBtn", mod: "Help",    closeMod: "close",    needSeed: false },
@@ -77,11 +77,21 @@ OVERLAYS.forEach(ov => {
   const M = beat.Modal;
   const closeFn = () => beat[ov.mod][ov.closeMod]();
 
+  /* 元素缺失时给**具名失败**而不是崩溃：反向验证（BEATSIGHT_HTML=<旧版>）时，
+     新 overlay 在旧版里不存在 —— 崩掉会中断整套件、让后面的用例都没机会跑（崩溃不算证据）。
+     ★ 只查**入口按钮**：弹层容器（`#editor` / `#settingsOverlay` …）是**惰性创建**的 ——
+       `Modal.openOverlay(id)` 打开时才 `$()`，因此开合之前 `els[ov.id]` 必然是 undefined，
+       那不是"元素缺失"（实测定过：五个容器在 loadApp 后全是 undefined）。 */
+  if (!els[ov.btn]){
+    ok(false, `${ov.name}：元素不存在（入口 #${ov.btn} / 弹层 #${ov.id}）——旧版上属预期`);
+    return;
+  }
+
   /* 首次打开：静态标记里的入口按钮 → 模块 open() → 渲染出动态节点 */
   els[ov.btn].fire("click");
   ok(els[ov.id].classList.contains("open"), `${ov.name}：入口按钮可打开（挂 open 类）`);
   const n0 = M.overlayListenerCount(ov.id);
-  if (ov.id === "statsOverlay" || ov.id === "helpOverlay"){
+  if (ov.id === "settingsOverlay" || ov.id === "helpOverlay"){
     eq(n0, 0, `${ov.name}：该 overlay 无随内容重建的监听器（计数恒 0）`);
   } else {
     ok(n0 > 0, `★ ${ov.name}：打开即登记了动态监听器（计数 ${n0}，不是 0）`);
@@ -141,8 +151,10 @@ section("T57d 统计 / 使用方法 · 开合行为与 inert 契约不变");
   const { beat, els } = app;
   const mainBg = app.sandbox.document.getElementById("mainBg");
 
-  [["Stats", "statsOverlay", "统计"], ["Help", "helpOverlay", "使用方法"]].forEach(([modKey, id, name]) => {
+  [["Settings", "settingsOverlay", "设置"], ["Help", "helpOverlay", "使用方法"]].forEach(([modKey, id, name]) => {
     const mod = beat[modKey];
+    /* 反向验证（旧版）守卫：旧版没有 Settings 模块 —— 具名失败而不是崩溃 */
+    if (!mod){ ok(false, `${name}：模块 ${modKey} 不存在（旧版上属预期）`); return; }
     mod.open();
     ok(els[id].classList.contains("open"), `${name}：openOverlay 挂上 open 类`);
     eq(mainBg.inert, true, `★ ${name} 打开 → 背景置 inert`);

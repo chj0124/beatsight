@@ -56,7 +56,7 @@ section("T24 持久化 · 冷热分离 / 防抖 / 失败可见（审计 P1-5）"
   const b4 = loadApp({}, { throwOnWrite: true });
   b4.beat.Controls.setBpm(150);
   b4.beat.Store.flush();
-  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 保存失败", "写失败 → 顶栏 chip 明示");
+  eq(b4.els["brandChip"].textContent, "保存失败", "写失败 → 顶栏 chip 明示");
   ok(b4.els["persistDot"].classList.contains("bad"), "写失败 → 状态点变红");
   eq(b4.els["modalMask"].hidden, false, "写失败 → 一次性弹窗告知（不再静默降级）");
   ok(b4.els["modalMsg"].textContent.indexOf("本地保存失败") >= 0, "弹窗文案可读（含原因与「导出预设」备份建议）");
@@ -68,12 +68,12 @@ section("T24 持久化 · 冷热分离 / 防抖 / 失败可见（审计 P1-5）"
   b4.sandbox.localStorage.setItem = (k, v) => b4.storage.set(k, String(v)); // 模拟配额/隐私模式恢复
   b4.beat.Store.flush();
   ok(!b4.els["persistDot"].classList.contains("bad"), "★ 写入恢复成功 → 状态点不再标红");
-  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 稳定版", "★ 写入恢复成功 → 顶栏 chip 复位");
+  eq(b4.els["brandChip"].textContent, "稳定版", "★ 写入恢复成功 → 顶栏 chip 复位");
   eq(b4.els["srAnnounce"].textContent, "本地保存已恢复", "★ 写入恢复成功 → 读屏播报恢复（用户可感知）");
   /* 闸门复位的最强证据：恢复之后再坏一次，应当**重新**告知（不是从此永远沉默） */
   b4.sandbox.localStorage.setItem = () => { throw new DOMException("quota", "QuotaExceededError"); };
   b4.beat.Store.flush();
-  eq(b4.els["brandChip"].textContent, "v" + b4.beat.VERSION + " · 保存失败", "★ 再次失败 → 仍能重新告知（通知闸门已复位）");
+  eq(b4.els["brandChip"].textContent, "保存失败", "★ 再次失败 → 仍能重新告知（通知闸门已复位）");
   eq(b4.els["modalMask"].hidden, false, "再次失败 → 弹窗重新出现");
 }
 
@@ -83,7 +83,30 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
   ok(/^\d+\.\d+\.\d+$/.test(beat.VERSION), `VERSION 形如 x.y.z（实际 ${beat.VERSION}）`);
   eq(sandbox.document.title, "BeatSight 时值节拍器 v" + beat.VERSION, "标题由 VERSION 派生");
   eq(els["brandVer"].textContent, "v" + beat.VERSION, "品牌区版本号由 VERSION 派生");
-  eq(els["brandChip"].textContent, "v" + beat.VERSION + " · 稳定版", "顶栏 chip 由 VERSION 派生");
+  /* ★ v2.10.9（用户实报）：顶栏原先**两处**显示版本号（品牌区徽章 + 最右的保存状态 chip），
+     整条读下来重复（「…节拍器 vX 主题 · 经典 … vX · 稳定版」）。用户选择保留**左侧**那一处，
+     故 chip 不再带版本号。这条断言钉住"不重复"——否则将来谁把版本号加回 chip，
+     两处又会一起显示，而"版本号由 VERSION 派生"那两条断言仍然全绿、拦不住 */
+  eq(els["brandChip"].textContent.indexOf("v" + beat.VERSION), -1,
+    "★★ 顶栏 chip 不重复版本号（版本号只出现在品牌区徽章与 <title> 两处）");
+  eq(els["brandChip"].textContent, "稳定版", "chip 只报保存状态");
+  /* ★ v2.10.10（用户要求）：状态点从顶栏最右的 chip **移进左边那个版本徽章**，且"只保留绿点
+     （文案退成 sr-only、视觉上不可见）"。用标记字符串断言而不是 DOM 父子——桩不解析 HTML，
+     静态元素都是孤立桩（parentNode 恒 null），走路树断言不出来 */
+  const topbarBlock = html.slice(html.indexOf('<header class="topbar"'), html.indexOf("</header>"));
+  const brandBlock = topbarBlock.slice(topbarBlock.indexOf('<h1 class="brand"'), topbarBlock.indexOf("</h1>"));
+  const dotTag = (brandBlock.match(/<span[^>]*id="persistDot"[^>]*>/) || [""])[0];
+  const chipTag = (topbarBlock.match(/<span[^>]*id="brandChip"[^>]*>/) || [""])[0];
+  const dotAt = brandBlock.indexOf('id="persistDot"'), verAt = brandBlock.indexOf('id="brandVer"');
+  ok(dotAt >= 0 && verAt >= 0 && dotAt < verAt,
+    "★★ 状态点已并进品牌区徽章、且排在版本号**之前**（读作「● vX.Y.Z」）");
+  ok(/aria-hidden="true"/.test(dotTag),
+    "★ 点 aria-hidden：颜色不是唯一线索（状态另由 sr-only 文案承载）——实际「" + dotTag + "」");
+  ok(/title="[^"]+"/.test(dotTag), "★ 点带 title（分不出红绿的鼠标用户悬停仍有字可看）");
+  ok(!/class="chip"/.test(topbarBlock),
+    "★★ 顶栏原那个 chip 已整块取消（`.chip` 只剩预设计数 #presetCount 在用）");
+  ok(/sr-only/.test(chipTag),
+    "★ 状态文案退成 sr-only（视觉上只剩一颗点）——实际「" + chipTag + "」");
   /* 关键：标记段不得再出现**硬编码**版本号——那正是 P2-9 要根治的漂移源。
      要去掉注释再比（文件里到处是「v1.3.0：某某修复」这类历史注释，它们不是真相源） */
   const markup = html.slice(0, html.indexOf("<script>"))

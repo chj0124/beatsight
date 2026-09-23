@@ -102,20 +102,22 @@ section("T56d 诊断面板 · 掉帧 / 调度异常计数（复用 onFrameError 
 }
 
 /* ================= 场景 T56e：限流脉冲只计「真的到点停播」 ================= */
-section("T56e 诊断面板 · 限流脉冲只计真停播（不被 40/s 轮询淹没）");
+section("T56e 诊断面板 · 限流脉冲只计真停播（不被 40/s 轮询淹没）——驱动源现为听辨训练的会话额度");
 {
+  /* v2.10.12：练习量删除后，驱动 `limitPulse` 的只剩**听辨训练的会话额度**
+     （进入听辨 → `playQuota = EAR_BARS` 2 小节 → 放满自动停）。计数语义不变：
+     未到点不计、到点恰计一次。 */
   const { beat, els } = loadApp();
-  beat.Store.S.limit = { mode: "bars", n: 8 };      // 8 小节 = 20s 音乐
-  beat.Controls.start();
+  els["earBtn"].fire("click");                      // 进入听辨训练：自动放 2 小节
   const ac = FakeAudioContext.last;
   /* 未到点前，钩子每 25ms 被问一次却必须**不计**——否则计数器以 40/s 空转，
      把"到点触发了几次"这个唯一有意义的读数彻底淹没 */
-  eq(drive(ac, beat, 4), false, "前提：4 秒时仍在播放");
+  eq(drive(ac, beat, 1), false, "前提：1 秒时仍在播放（2 小节 @240BPM = 2s）");
   eq(beat.diag.limitPulse, 0, "播放中反复轮询 → 不计数");
-  eq(drive(ac, beat, 40), true, "练习量到点 → 自动停止");
+  eq(drive(ac, beat, 40), true, "额度到点 → 自动停止");
   eq(beat.Store.S.playing, false, "已停止");
   eq(beat.diag.limitPulse, 1, "到点停播 → limitPulse 恰计一次（不是每次轮询都计）");
-  ok(/已练满 8 小节/.test(els["statusText"].textContent), "既有停播文案零变化：" + els["statusText"].textContent);
+  ok(!/已练满/.test(els["statusText"].textContent), "练习量的到点文案已随练习量删除");
 }
 
 /* ================= 场景 T56f：面板文本随计数刷新 ================= */

@@ -11,7 +11,7 @@
      · role 是 button **不是** switch（t24 钉死 role="switch" 恰 9 处）
    加载校验走**显式白名单**：只认三个键上的严格 true，脏值 / 非对象 / 多出来的键一律回落收起。 */
 "use strict";
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 const isItem = el => /(^| )preset-item( |$)/.test(el.className);
 const isSection = el => /(^| )preset-section( |$)/.test(el.className);
@@ -44,10 +44,12 @@ section("T85a 分区折叠 · 默认全部收起 / 标题即按钮 / 只置 hidd
   ok(z.beat.concat(z.strum, z.custom).every(c => c.hidden === true),
      "★ 默认收起时三区全部成员 hidden（含自定义区的曲式组 / 还原提示）");
   ok(z.kids.filter(isItem).length > 0, "列表里确实有条目（不是空列表上做无用断言）");
-  /* 用户决策「保持常显」：编排入口与导出/导入在 #presetList **之外**（标记里的兄弟节点），
-     折叠任何分区都不该波及它们——它们不在 applyFold 的遍历范围内 */
+  /* 用户决策「保持常显」：编排入口在 #presetList **之外**（标记里的兄弟节点），
+     折叠任何分区都不该波及它——它不在 applyFold 的遍历范围内。
+     ★ v2.10.12：原「导出/导入区」（`.preset-io`）整行搬进了顶栏「设置」弹窗，侧栏不再有它 */
   ok(els["argOpen"].hidden === false, "「编排曲式」入口常显（在 #presetList 之外，折叠不波及）");
-  ok(els["exportBtn"].hidden === false, "导出/导入区常显（同上）");
+  ok(els["editBtn"].hidden === false, "「编辑节奏型」也在本行常显（v2.10.12 从主列搬来）");
+  ok(!/class="preset-io"/.test(html), "★ 侧栏不再有导出/导入区（已搬进设置弹窗）");
 }
 
 /* ================= 场景 T85b：点击 / 键盘开合 · 只影响本区 · 不重建列表 ================= */

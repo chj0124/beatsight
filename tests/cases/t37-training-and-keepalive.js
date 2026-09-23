@@ -1,116 +1,11 @@
-/* BeatSight 自动化测试 · 练习闭环：统计汇总 / 记录入账与截断 / 训练计划 / 保活 / PWA / 统计导出
-   T37–T46。练习统计、训练计划、后台保活与 PWA 注册。
+/* BeatSight 自动化测试 · 训练计划 / 保活 / PWA / 音色响度 / 下载通道
+   T40–T46b（v2.10.12：原 T37/T38/T39/T46「练习统计与练习记录」各组随功能删除，
+   文件名由 t37-stats-and-training 改为 t37-training-and-keepalive，只剩训练计划与保活）。
    ---------------------------------------------------------------------------
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。
    用例按场景组切分，新增用例请进对应文件，避免回到「一个文件塞下全部场景」。 */
 "use strict";
 const { loadApp, FakeAudioContext, pill, ok, eq, near, section, drive } = require("../lib/harness");
-
-/* ================= 场景 T37：练习统计汇总口径（v1.4，纯函数注入固定时钟） ================= */
-section("T37 Stats · 本周时长 / 连续天数 / 速度纪录 / 近7天");
-{
-  loadApp();
-  /* 固定时钟：2026-09-15（周二）12:00。本周起点 = 周一 09-14 00:00 */
-  const now = new Date(2026, 8, 15, 12, 0, 0).getTime();
-  const at = (offsetDays, hour) => { const d = new Date(2026, 8, 15, hour || 10, 0, 0); d.setDate(d.getDate() - offsetDays); return d.getTime(); };
-  const sessions = [
-    { t: at(0), sec: 60, bpm: 96, name: "a" },     // 今天
-    { t: at(1), sec: 120, bpm: 100, name: "b" },   // 昨天（周一，本周内）
-    { t: at(2), sec: 60, bpm: 90, name: "c" },     // 前天（上周日，本周外）
-    { t: at(5), sec: 60, bpm: 88, name: "d" },     // 上周四，本周外
-    { t: at(8), sec: 60, bpm: 120, name: "e" },    // 上上周，本周外
-  ];
-  const r = loadApp().beat.Stats.summarize(sessions, now);
-  eq(r.weekSec, 180, "本周时长只算周一起（今天 60 + 周一 120 = 180s）");
-  eq(r.streak, 3, "连续天数：今天→昨天→前天 = 3 天（大前天断档）");
-  eq(r.maxBpm, 120, "速度纪录 = 历史最高 BPM");
-  eq(r.count, 5, "累计场次 = 5");
-  eq(r.days.length, 7, "近 7 天条图固定 7 根");
-  ok(r.days[6].today && r.days[6].sec === 60, "最后一根是今天（60s）");
-  eq(r.days[5].sec, 120, "昨天 120s");
-  /* 今天没练时 streak 不归零，从昨天往回数 */
-  const r2 = loadApp().beat.Stats.summarize([{ t: at(1), sec: 60, bpm: 96, name: "x" }], now);
-  eq(r2.streak, 1, "今天未练：连续天数从昨天起算（streak=1，不归零）");
-  const r3 = loadApp().beat.Stats.summarize([], now);
-  eq(r3.streak, 0, "空记录：streak=0");
-  eq(r3.maxBpm, 0, "空记录：速度纪录 0（UI 显示 —）");
-}
-
-/* ================= 场景 T38：练习记录入账（v1.4） ================= */
-section("T38 练习记录 · ≥30s 自动入账 / 秒停与试听不计");
-{
-  const { beat, els, storage, fireWin } = loadApp();
-  const S = beat.Store.S;
-  beat.Controls.start();
-  const ac = FakeAudioContext.last;
-  drive(ac, beat, 31);
-  beat.Controls.stop();
-  eq(beat.Store.logSessions.length, 1, "播放 31 秒后停止 → 入账 1 场");
-  const rec = beat.Store.logSessions[0] || {};   // 入账失败时也要让后续断言报「实际 undefined」而不是炸掉整套
-  near(rec.sec, 31, 1.5, "时长取音频时钟差 ≈31s");
-  eq(rec.bpm, 96, "记录当时的 BPM");
-  eq(rec.name, "民谣扫弦 · 下-下上-上下上", "记录当时的节奏型名");
-  ok(!!storage.get("beatsight.log"), "冷键 beatsight.log 已立即落盘（不防抖）");
-  eq(JSON.parse(storage.get("beatsight.log")).v, 1, "log 格式 v:1");
-
-  beat.Controls.start();
-  drive(ac, beat, 2);
-  beat.Controls.stop();
-  eq(beat.Store.logSessions.length, 1, "播放 2 秒停止 → 不入账（<30s 视为误触/试音）");
-
-  S.preview = true;                              // 编辑器试听不算练习
-  beat.Controls.start();
-  drive(ac, beat, 31);
-  beat.Controls.stop();
-  S.preview = false;
-  eq(beat.Store.logSessions.length, 1, "试听 31 秒 → 不入账");
-
-  /* 统计 overlay：入账后四卡与条图渲染；Esc 关闭；空格不误触播放 */
-  els["statsBtn"].fire("click");
-  ok(els["statsOverlay"].classList.contains("open"), "统计 overlay 打开");
-  eq(els["statCount"].textContent, "1", "累计场次卡 = 1");
-  eq(els["statRecord"].textContent, "96", "速度纪录卡 = 96");
-  eq(els["statsBars"].children.length, 7, "近 7 天条图 7 根柱");
-  ok(els["statsNote"].textContent.indexOf("柱高") >= 0, "有数据时的说明文案（v1.6 起文案改「柱高=当天分钟数」）");
-  fireWin("keydown", { code: "Space" });
-  ok(!S.playing, "统计打开时空格不触发播放");
-  fireWin("keydown", { key: "Escape" });
-  ok(!els["statsOverlay"].classList.contains("open"), "Esc 关闭统计 overlay");
-}
-
-/* ================= 场景 T39：练习记录加载校验与截断（v1.4） ================= */
-section("T39 练习记录 · 脏条目丢弃 / 400 条环形截断 / 清除");
-{
-  const seed = { v: 1, sessions: [
-    ...Array.from({ length: 405 }, (_, i) => ({ t: 1000000 + i * 1000, sec: 60, bpm: 96, name: "x" })),
-    { t: "bad", sec: 60 },                        // 脏：t 非数字
-    { t: 5, sec: -3 },                            // 脏：sec 非正
-    { sec: 60 },                                  // 脏：缺 t
-  ]};
-  const { beat, storage } = loadApp({ "beatsight.log": JSON.stringify(seed) });
-  eq(beat.Store.logSessions.length, 400, "加载即校验：405 条截到 400，3 条脏记录丢弃");
-  beat.Store.appendSession({ t: Date.now(), sec: 31, bpm: 100, name: "new" });
-  eq(beat.Store.logSessions.length, 400, "追加上限：401 → 截回 400（最旧的被淘汰）");
-  eq(beat.Store.logSessions[399].name, "new", "最新的在最末");
-  eq(JSON.parse(storage.get("beatsight.log")).sessions.length, 400, "落盘也是 400 条");
-
-  /* 写失败路径（v1.6 补盖 L807）：log 落盘被拒（隐私模式）不炸交互链，且经既有通道可见（chip 变红） */
-  const appW = loadApp({}, { throwOnWrite: true });
-  appW.beat.Controls.start();
-  drive(FakeAudioContext.last, appW.beat, 31);
-  appW.beat.Controls.stop();
-  eq(appW.beat.Store.logSessions.length, 1, "写失败时内存中仍入账（场次不丢，只是没落盘）");
-  ok(appW.els["persistDot"].classList.contains("bad"), "log 写失败 → 顶栏状态点变红（与预设写失败同一通道）");
-
-  /* 清除流程：弹确认框 → 确认 → 清空 + 落盘 + 文案回到空态 */
-  const app2 = loadApp({ "beatsight.log": JSON.stringify({ v: 1, sessions: [{ t: Date.now(), sec: 60, bpm: 96, name: "y" }] }) });
-  app2.els["statsBtn"].fire("click");
-  app2.els["statsClear"].fire("click");
-  app2.els["modalOk"].fire("click");
-  eq(app2.beat.Store.logSessions.length, 0, "确认清除后记录归零");
-  eq(app2.els["statsNote"].textContent.indexOf("还没有练习记录"), 0, "空态文案");
-  eq(app2.els["statRecord"].textContent, "—", "空态速度纪录占位");
-}
 
 /* ================= 场景 T40：训练收成 → 上次训练（v1.4） ================= */
 section("T40 训练计划 · 完成记 done / 中途停记 reached");
@@ -427,68 +322,21 @@ section("T45 训练计划 · 生成 / 今日参数 / 完成推进 / 顺延与收
   eq(app6.beat.Store.S.plan, null, "脏计划（day 越界）→ 丢弃");
 }
 
-/* ================= 场景 T46：统计增强（v1.6）：30 天视图 / 各节奏型纪录 / 导出 ================= */
-section("T46 统计增强 · 7/30 天切换 / 各节奏型速度纪录 / 导出练习记录");
-{
-  /* summarize 的 30 天口径：10 天前的场次在 7 天视图不进桶、30 天视图进桶 */
-  const now = new Date(2026, 8, 15, 12, 0, 0).getTime();
-  const at = n => { const d = new Date(2026, 8, 15, 10, 0, 0); d.setDate(d.getDate() - n); return d.getTime(); };
-  const list = [
-    { t: at(10), sec: 300, bpm: 100, name: "民谣" },
-    { t: at(1), sec: 60, bpm: 120, name: "民谣" },
-    { t: at(0), sec: 60, bpm: 90, name: "Funk" },
-  ];
-  const S7 = loadApp().beat.Stats.summarize(list, now, 7);
-  eq(S7.days.length, 7, "7 天视图 7 根柱");
-  eq(S7.days.reduce((a, d) => a + d.sec, 0), 120, "7 天视图不含 10 天前的场次");
-  const S30 = loadApp().beat.Stats.summarize(list, now, 30);
-  eq(S30.days.length, 30, "30 天视图 30 根柱");
-  eq(S30.days.reduce((a, d) => a + d.sec, 0), 420, "30 天视图含 10 天前的场次");
-  eq(S30.range, 30, "range 标记 = 30");
-  /* 各节奏型速度纪录：同名取最高、按 BPM 降序 */
-  eq(JSON.stringify(S30.byPattern), JSON.stringify([{ name: "民谣", bpm: 120 }, { name: "Funk", bpm: 90 }]),
-    "各节奏型纪录：民谣取最高 120、Funk 90");
-  /* 默认参数兼容：不传 rangeDays = 7 天 */
-  eq(loadApp().beat.Stats.summarize(list, now).days.length, 7, "rangeDays 缺省 = 7");
-
-  /* UI：切换 30 天 → 30 根柱 + pill 高亮同源；重开 overlay 复位回 7 天 */
-  const app = loadApp({ "beatsight.log": JSON.stringify({ v: 1, sessions: list }) });
-  app.els["statsBtn"].fire("click");
-  eq(app.els["statsBars"].children.length, 7, "打开默认 7 根柱");
-  app.els["statsRangeRow"].fire("click", { target: pill({ range: "30" }) });
-  eq(app.els["statsBars"].children.length, 30, "切到 30 天 → 30 根柱");
-  const p30 = app.els["statsRangeRow"].children.find(c => c.dataset.range === "30");
-  ok(p30.classList.contains("active") && p30.getAttribute("aria-pressed") === "true", "30 天 pill 高亮与 aria 同源");
-  ok(app.els["statsByPattern"].textContent.indexOf("民谣 · 120 BPM") >= 0, "节奏型纪录行显示「民谣 · 120 BPM」");
-  app.els["statsClose"].fire("click");
-  app.els["statsBtn"].fire("click");
-  eq(app.els["statsBars"].children.length, 7, "重开 overlay 复位回 7 天视图");
-
-  /* 导出：有序列化内容 + 文件名带日期；空记录导出给提示不下载 */
-  const parsed = JSON.parse(app.beat.Store.serializeLog());
-  eq(parsed.kind, "practice-log", "导出格式 kind=practice-log");
-  eq(parsed.sessions.length, 3, "导出含全部 3 场");
-  app.els["statsExport"].fire("click");
-  ok(true, "有记录时点导出不报错（下载走 Blob + a.click 通道）");
-  const app2 = loadApp();
-  app2.els["statsBtn"].fire("click");
-  app2.els["statsExport"].fire("click");
-  eq(app2.els["modalMsg"].textContent, "还没有练习记录可导出。", "空记录导出 → 提示而非下载空文件");
-  app2.els["modalOk"].fire("click");
-}
-
 /* ================= 场景 T46b：下载通道去重（v2.0.2 审计 · 去重下载） ================= */
-section("T46b 下载通道 · 「导出预设」与「导出记录」共用同一个 downloadJSON（v2.0.2 审计 · 去重下载）");
+section("T46b 下载通道 · 「导出预设」与「导出全部数据」共用同一个 downloadJSON（v2.0.2 审计 · 去重下载）");
 {
   /* 原先两条出口各写一份「Blob → createObjectURL → 造 <a download> → 追加/click/移除 → 延时 revoke」
      （连 1s 延时都一样）。重复实现的典型故障是"改一处漏一处"——例如给文件名加前缀时只改了一边。
      统一成 Store.downloadJSON(kind, text) 后，两条出口必须共用同一模板
      beatsight-<kind>-YYYYMMDD.json。用 spy 把"共用"钉死：createObjectURL 各一次、<a download>
-     各命中模板、两条都排程了 revoke（漏掉清理正是重复代码最易漏的一处）。 */
+     各命中模板、两条都排程了 revoke（漏掉清理正是重复代码最易漏的一处）。
+     ★ v2.10.12：原第二条出口是「导出记录」（练习统计的 `#statsExport`），统计删除后改用
+     「导出全部数据」（`#exportAllBtn`，现在在设置弹窗里）——它走的是同一份 `downloadJSON` */
   const mk = i => ({ name: "P" + i, meter: 4, bars: [0, 1, 2, 3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) });
   const app = loadApp({
     "beatsight.customs": JSON.stringify({ v: 1, customs: [mk(1)] }),
-    "beatsight.log": JSON.stringify({ v: 1, sessions: [{ t: Date.now(), sec: 60, bpm: 100, name: "民谣" }] }),
+    "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "a1", name: "曲式",
+      sections: [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 }] }] }] }),
   });
   const urls = [], anchors = [], revoked = [];
   app.sandbox.URL.createObjectURL = blob => { urls.push(blob); return "blob:spy" + urls.length; };
@@ -503,12 +351,11 @@ section("T46b 下载通道 · 「导出预设」与「导出记录」共用同�
   const dateTag = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`;
 
   ok(app.beat.Store.exportPresets(), "「导出预设」返回 true（有预设）");
-  app.els["statsBtn"].fire("click");
-  app.els["statsExport"].fire("click");              // 有 1 条记录 → 走下载而不是提示
+  ok(app.beat.Store.exportAll(), "「导出全部数据」返回 true");
 
   eq(urls.length, 2, "★ 两条出口都经由同一个 downloadJSON（createObjectURL 各一次，没有第三份副本）");
   eq(JSON.stringify(anchors.map(a => a.download)),
-     JSON.stringify(["beatsight-presets-" + dateTag + ".json", "beatsight-log-" + dateTag + ".json"]),
+     JSON.stringify(["beatsight-presets-" + dateTag + ".json", "beatsight-all-" + dateTag + ".json"]),
      "★ 两条出口共用同一文件名模板 beatsight-<kind>-YYYYMMDD.json");
   ok(anchors.every(a => a.href.indexOf("blob:") === 0), "两条出口都指向 createObjectURL 建的 blob 地址");
   app.runTimers();

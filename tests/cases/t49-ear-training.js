@@ -5,7 +5,7 @@
    本组有一条断言比其余都重要：**答案必须真的在候选里**。出题一旦错位，
    用户会「答对了却判错」——那是最伤信任的一类 bug，而且肉眼测不出来（题面看起来永远正常）。 */
 "use strict";
-const { loadApp, FakeAudioContext, driveFrames, ok, eq, section } = require("../lib/harness");
+const { loadApp, FakeAudioContext, driveFrames, ok, eq, section, html } = require("../lib/harness");
 
 const at = els => ({          // 读 DOM 桩上的类名/文案一律经此：元素按 id 惰性创建，直接解引用会炸掉整套
   txt: id => { const e = els[id]; return e ? e.textContent : "(未创建)"; },
@@ -98,13 +98,12 @@ section("T49c 听辨训练 · 进入即停播 + 自动放 2 小节后停");
   ok(t.txt("earPlayBtn").includes("播放中"), "播放期间按钮显示「播放中…」（实际「" + t.txt("earPlayBtn") + "」）");
 
   /* 放完自动停：2 小节按题目拍号算，7/4 最慢（8.75s），给到 12s 余量 */
-  const before = beat.Store.logSessions.length;
   driveFrames(ac, beat, 12);
   eq(S.playing, false, "2 小节放完自动停（不用手点）");
   eq(beat.quota().bars, 0, "额度已清零");
   eq(beat.Ear.state().playing, false, "模块内部 playing 标志同步回落");
   eq(t.txt("earPlayBtn"), "重听", "停后按钮变「重听」（尚未作答）");
-  eq(beat.Store.logSessions.length, before, "试听不计入练习记录（S.preview 通道的既有语义）");
+  /* v2.10.12：原「试听不计入练习记录」断言随练习记录删除 */
   ok(!t.txt("statusText").includes("已练满"),
      "不显示「已练满 N 小节」——试听不是练习（实际「" + t.txt("statusText") + "」）");
 }
@@ -241,31 +240,21 @@ section("T49f 听辨训练 · 脏战绩回退 / 清零");
   eq(et.txt("earAcc"), "—", "无题时正确率显示 —（而不是 NaN）");
 }
 
-/* ================= 场景 T49g：入口小字 + 与练习量互不干扰 ================= */
-section("T49g 听辨训练 · 入口小字 / 不抢练习量的判定");
+/* ================= 场景 T49g：入口已迁顶栏 + 额度是唯一判据（v2.10.12） ================= */
+section("T49g 听辨训练 · 入口迁顶栏（原「练习统计」那一格）；练习量删除后额度是唯一判据");
 {
   const app = loadApp();
-  const beat = app.beat, els = app.els, S = beat.Store.S;
-  const t = at(els);
-  ok(t.txt("earMini").includes("听节奏"), "无战绩时入口旁给一句说明（实际「" + t.txt("earMini") + "」）");
-  ok(!t.txt("earMini").includes("正确率"), "无战绩时不显示正确率（避免 0/0 的假数字）");
-
-  /* 把练习量设成「练 1 小节就停」，再进听辨：额度分支必须**优先**，
-     否则试听会在第 1 小节就被练习量截断，还会弹出「已练满 1 小节」这种错文案 */
-  S.limit = { mode: "bars", n: 1 };
-  els["earBtn"].fire("click");
-  const ac = FakeAudioContext.last;
-  driveFrames(ac, beat, 12);
-  eq(S.playing, false, "听辨放完自动停");
-  eq(beat.limitState().bars, beat.EAR_BARS,
-     `放满 2 小节才停（练习量设的是 1 小节，被会话额度正确压过；实际 ${beat.limitState().bars} 小节）`);
-  ok(!t.txt("statusText").includes("已练满"), "练习量的到点文案没有被听辨训练误触发");
-  els["earClose"].fire("click");
-  beat.Controls.stop();
-
-  /* 有战绩后入口小字换成数字 */
-  const app2 = loadApp({ "beatsight.ear": JSON.stringify({ total: 10, right: 7, best: 3 }) });
-  const t2 = at(app2.els);
-  ok(t2.txt("earMini").includes("70%"), "有战绩后显示正确率（实际「" + t2.txt("earMini") + "」）");
-  ok(t2.txt("earMini").includes("最高连对 3"), "并显示最高连对");
+  const els = app.els, S = app.beat.Store.S;
+  /* 入口搬家（用户要求③）：元素在顶栏里；原先旁边那行正确率小字（#earMini）按用户要求取消
+     ——正确率在听辨训练自己的 overlay 里能看（#earAcc / #earTotal / #earBest） */
+  const topbar = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+  ok(/id="earBtn"/.test(topbar), "★ 「听辨训练」入口已在顶栏（原「练习统计」那一格）");
+  ok(!/id="earMini"/.test(html), "★ 入口旁的正确率小字已取消（正确率在听辨 overlay 里看）");
+  ok(/<button class="pill outline" id="earBtn">听辨训练<\/button>/.test(topbar),
+     "文案也从「听辨训练 · 练耳朵」收成「听辨训练」（顶栏不是吆喝的地方）");
+  /* ★ v2.10.12：练习量删除后，`S.limit` 字段本身也删了（不留空壳）；
+     「本次只放 2 小节」的判定只剩 `limitBars`（与听辨额度 playQuota 比较）——
+     这条口径由 T49c 覆盖（进入即自动放 2 小节后停），这里只钉"字段不留"这一件 */
+  ok(!("limit" in S), "★ `S.limit` 已随练习量删除（不留永远没人读的空壳字段）");
+  ok(typeof app.beat.Store.earStats === "object", "听辨战绩仍在（听辨 overlay 里可看正确率）");
 }

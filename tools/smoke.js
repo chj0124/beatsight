@@ -207,10 +207,24 @@ function probe(){
   const t0 = performance.now();
   while (!window.__beatBoot && performance.now() - t0 < 4000) await new Promise(r => setTimeout(r, 50));
   const boot = window.__beatBoot;
-  const out = { booted: !!boot, version: null, bpmNum: null, viz: null, domNodes: null, storage: null, perf: null, sw: null };
+  const out = { booted: !!boot, version: null, badgeDot: null, bpmNum: null, viz: null, domNodes: null, storage: null, perf: null, sw: null };
   if (!boot) return JSON.stringify(out);
-  out.version = { chip: document.getElementById("brandChip").textContent,
+  out.version = { ver: document.getElementById("brandVer").textContent,
+                  chip: document.getElementById("brandChip").textContent,
                   title: document.title, const: boot.version };
+  /* v2.10.10（用户要求：把状态点移进品牌区徽章）：点是否真的画在徽章的矩形里 —— **木桩测不出来**
+     的那一类（桩不解析 HTML、也给不出真实布局）。取两者的 getBoundingClientRect 比包络，
+     顺带取计算样式确认它真被画出来（尺寸 > 0 且底色非透明） */
+  const pdEl = document.getElementById("persistDot"), bvEl = document.getElementById("brandVer");
+  if (pdEl && bvEl && bvEl.parentNode){
+    const a = pdEl.getBoundingClientRect();
+    const b = bvEl.parentNode.getBoundingClientRect();
+    out.badgeDot = {
+      inside: a.left >= b.left - 1 && a.right <= b.right + 1
+              && a.top >= b.top - 1 && a.bottom <= b.bottom + 1,
+      w: Math.round(a.width), h: Math.round(a.height),
+      bg: getComputedStyle(pdEl).backgroundColor };
+  }
   const el = document.getElementById("bpmNum");
   if (el){
     const cs = getComputedStyle(el);
@@ -294,6 +308,53 @@ function probe(){
 })()`;
 }
 
+/** 布局探针（v2.10.11）：只量「左边缘对齐 + 控件搬家后的相对位置」，供**两种视口**各跑一遍。
+    为什么与主探针分开：它必须在**切换视口后重跑**，而主探针里的字号 / 盒子尺寸断言只在默认
+    宽度下成立（例：窄屏 `.bpm-num` 会缩到 38px）。桩给不出真实布局——
+    「几行文案的左边缘是否真的落在同一条线上」只能这样验（尺寸靠"行距远大于跳高上限"那种
+    数值推断不算验证；这里是直接量像素） */
+function layoutProbe(){
+  return `(() => {
+  const round = v => Math.round(v * 10) / 10;
+  /* 第一段非空文字的**真实**左边缘（Range 量文本节点，而不是元素盒子）——
+     元素盒子在按钮上会含 padding，看不出"文案"到底从哪开始 */
+  const textLeft = el => {
+    if (!el) return null;
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    let n;
+    while ((n = w.nextNode())){
+      if (n.textContent && n.textContent.trim()){
+        const rg = document.createRange(); rg.selectNodeContents(n);
+        const r = rg.getBoundingClientRect();
+        if (r.width > 0) return round(r.left);
+      }
+    }
+    return null;
+  };
+  const boxLeft = el => { const r = el && el.getBoundingClientRect(); return r ? round(r.left) : null; };
+  const q = s => document.querySelector(s);
+  const out = { w: window.innerWidth };
+  const vizEl = q("#viz");
+  const card = vizEl && vizEl.closest(".card");
+  if (!card) return JSON.stringify(out);
+  const cr = card.getBoundingClientRect();
+  out.cardTextLeft = round(cr.left + parseFloat(getComputedStyle(card).paddingLeft));
+  out.title = textLeft(q("#vizTitle"));
+  out.toggle = textLeft(q(".viz-toggles > .toggle-pill"));
+  out.rowsLabel = textLeft(q(".viz-rows-panel > .group-label"));
+  out.rowsPillBox = boxLeft(q("#vizRowsRow > .pill"));
+  out.caption = textLeft(q(".caption"));
+  out.phName = textLeft(q(".pattern-head .name"));
+  out.vizRowsPanel = boxLeft(q(".viz-rows-panel"));
+  const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
+  out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
+  out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
+  out.volGroup = vol ? boxLeft(vol.parentElement) : null;
+  out.editBtn = boxLeft(q("#editBtn"));
+  return JSON.stringify(out);
+})()`;
+}
+
 /** 在浏览器里跑一轮：打开 url → 等页面 → 取探针结果 + 控制台错误 */
 async function runPass(label, url, userDataDir){
   const cdpPort = PORT_BASE;
@@ -338,6 +399,21 @@ async function runPass(label, url, userDataDir){
     await cdp.send("Log.enable").catch(() => {});
     const raw = await evaluate(cdp, probe());
     result.probe = JSON.parse(raw);
+    /* v2.10.11：布局探针跑两遍——默认（桌面）宽度一遍，再切到 390px 一遍，量完恢复视口。
+       失败只标记 result.layout = null（对应的几条断言会报"未验证"），不影响其它断言。 */
+    try{
+      const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
+      const narrow = JSON.parse(await evaluate(cdp, layoutProbe()));
+      await cdp.send("Emulation.clearDeviceMetricsOverride");
+      await sleep(150);
+      result.layout = { wide, narrow };
+    }catch(e){
+      result.layout = null;
+      console.log("  ! 布局探针未取到（只影响本轮新增的对齐断言）：" + (e && e.message ? e.message : e));
+    }
     cdp.events.forEach(ev => {
       if (ev.method === "Runtime.exceptionThrown"){
         const d = ev.params.exceptionDetails || {};
@@ -404,9 +480,69 @@ async function main(){
     ok(!!d && d.booted, p.label + "：应用启动成功（window.__beatBoot 就位、没有白屏）",
       d ? "" : r.errors.join(" / "));
     if (d && d.booted){
-      ok(d.version.chip === "v" + VERSION + " · 稳定版", p.label + "：顶栏版本 chip = v" + VERSION,
+      /* v2.10.9（用户实报）：顶栏原先有两处版本号（品牌区徽章 + 最右的保存状态 chip），
+         整条读下来重复 → 已按用户要求保留**左侧**那一处。故这里盯的从 chip 改为徽章，
+         并加一条"chip 不再重复版本号"——不然改坏了两处一起显示、也没人拦 */
+      ok(d.version.ver === "v" + VERSION, p.label + "：品牌区版本号 = v" + VERSION,
+        "实际 " + (d.version && d.version.ver));
+      ok(!!d.version.chip && d.version.chip.indexOf("v" + VERSION) < 0,
+        p.label + "：顶栏 chip 只报保存状态、不重复版本号",
         "实际 " + (d.version && d.version.chip));
       ok(d.version.const === VERSION, p.label + "：页面内 VERSION 与源码一致");
+      /* v2.10.10：状态点真的落在品牌区徽章矩形内、且真的被画出来（真布局，桩测不到） */
+      ok(!!d.badgeDot && d.badgeDot.inside === true,
+        p.label + "：保存状态点渲染在版本徽章矩形内（真布局）",
+        d.badgeDot ? JSON.stringify(d.badgeDot) : "探针未取到 #persistDot / #brandVer");
+      ok(!!d.badgeDot && d.badgeDot.w > 0 && d.badgeDot.h > 0
+         && !/rgba\(0, 0, 0, 0\)/.test(d.badgeDot.bg),
+        p.label + "：状态点真的被画出来（尺寸 > 0、底色非透明）",
+        d.badgeDot ? "w=" + d.badgeDot.w + " h=" + d.badgeDot.h + " bg=" + d.badgeDot.bg : "");
+      /* ---- v2.10.11：左边缘对齐（需求③选丙 + 需求②(ii) 补齐）—— 全是**真几何**，桩测不到 ----
+         桌面（1440 窗口）与窄屏（390，模拟手机）各验一遍：用户报的那次就发生在窄屏上。 */
+      const lay = r.layout || {};
+      const sameLine = (a, b) => typeof a === "number" && typeof b === "number" && Math.abs(a - b) <= 0.51;
+      for (const pair of [["桌面", lay.wide], ["窄屏390", lay.narrow]]){
+        const label = pair[0], m = pair[1];
+        if (!m){
+          ok(false, p.label + "：" + label + " 布局探针未取到（本项未验证）", "见上方的探针提示");
+          continue;
+        }
+        const base = m.title;
+        ok(sameLine(m.cardTextLeft, base),
+          p.label + "·" + label + "：前提——标题文字就在卡片内容边缘上（基准可信）",
+          "内容边缘 " + m.cardTextLeft + " vs 标题 " + base + "（视口 " + m.w + "）");
+        ok(sameLine(m.toggle, base),
+          p.label + "·" + label + "：★ 开关行文字与标题同一条左边缘（需求③选丙）",
+          "标题 " + base + " vs 开关 " + m.toggle);
+        ok(sameLine(m.rowsLabel, base),
+          p.label + "·" + label + "：行数标签文字也在这条线上", "标题 " + base + " vs 标签 " + m.rowsLabel);
+        ok(sameLine(m.rowsPillBox, base),
+          p.label + "·" + label + "：★ 行数 pill 的**盒子**左边缘也在这条线上（丙只动开关、不动 pill）",
+          "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
+        ok(sameLine(m.caption, base), p.label + "·" + label + "：底部说明行也在这条线上",
+          "标题 " + base + " vs 说明 " + m.caption);
+        ok(sameLine(m.phName, base),
+          p.label + "·" + label + "：★★ 当前节奏型行的名称与卡片标题同一条左边缘（需求②的 (ii)）",
+          "标题 " + base + " vs 名称 " + m.phName);
+      }
+      if (lay.wide){
+        ok(lay.wide.sigGroup > lay.wide.vizRowsPanel,
+          p.label + "：★★ 桌面下拍号在「同屏行数」右侧（需求①）",
+          "行数 " + lay.wide.vizRowsPanel + " vs 拍号 " + lay.wide.sigGroup);
+        ok(lay.wide.timbreGroup < lay.wide.volGroup && lay.wide.volGroup < lay.wide.editBtn,
+          p.label + "：★★ 桌面下顺序为 音色 → 音量 → 编辑节奏型（需求②）",
+          [lay.wide.timbreGroup, lay.wide.volGroup, lay.wide.editBtn].join(" → "));
+      } else {
+        ok(false, p.label + "：桌面布局未取到（需求①②的相对位置本项未验证）", "");
+      }
+      if (lay.narrow){
+        /* 窄屏下这两块放不下，必须**折行**而不是溢出（body 有 overflow-x:hidden，溢出会被静默裁掉） */
+        ok(lay.narrow.sigGroup <= lay.narrow.vizRowsPanel + 0.51,
+          p.label + "：★ 窄屏下拍号折到下一行（左边缘回到卡片内容列，没被裁）",
+          "行数 " + lay.narrow.vizRowsPanel + " vs 拍号 " + lay.narrow.sigGroup);
+      } else {
+        ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
+      }
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");
       /* v2.10.5：DOM 规模断言（第 5 项性能预算）。放在这里而不是 perf 那一组里，

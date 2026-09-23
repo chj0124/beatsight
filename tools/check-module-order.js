@@ -56,7 +56,7 @@ const lines = SRC.split("\n");
 const clean = stripComments(lines);
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Stats", "Ear", "Arrange", "Help", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "Ear", "Arrange", "Help", "KeepAlive"];
 
 /* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE（目前仅初始化段的 diagOn：
    调试开关求值，不参与模块间通信，故不进 EXPECTED_ORDER）。第 0 步的「双向 diff」要求：
@@ -74,11 +74,14 @@ const WHITELIST = [
   { from: "Trainer",  to: "Controls", reason: "训练到目标时调 Controls.stop()/setBpm()/syncBpmUI()——由调度周期或事件触发" },
   { from: "Controls", to: "Presets",  reason: "stop() 调 Presets.flushPending() 落定挂起切换——停止流程中执行" },
   { from: "Controls", to: "Editor",   reason: "keydown 处理器调 Editor.tryClose()/undo()——用户按键时执行" },
-  { from: "Controls", to: "Stats",    reason: "v1.4：keydown 处理器查 Stats.isOpen()/close()——统计 overlay 打开时键盘归它管，用户按键时执行" },
-  { from: "Controls", to: "Ear",      reason: "v1.10.0：keydown 处理器查 Ear.isOpen()/close()——同 Stats 那一套，听辨训练 overlay 打开时键盘归它管" },
-  { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Stats 那一套，曲式编排 overlay 打开时键盘归它管" },
+  { from: "Controls", to: "Settings", reason: "v2.10.12：keydown 处理器查 Settings.isOpen()/close()——设置 overlay 打开时键盘归它管，用户按键时执行（取代被删除的 Stats 那一条）" },
+  { from: "Controls", to: "Ear",      reason: "v1.10.0：keydown 处理器查 Ear.isOpen()/close()——同 Settings 那一套，听辨训练 overlay 打开时键盘归它管" },
+  { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Settings 那一套，曲式编排 overlay 打开时键盘归它管" },
   { from: "Controls", to: "Help",     reason: "v2.0.1：keydown 处理器查 Help.isOpen()/close()——同上一批那一套，使用方法 overlay 打开时键盘归它管" },
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
+  /* ★ v2.10.12：**没有** `Settings → Help` 这一条——设置弹窗里的「使用方法」按钮，
+     其点击 handler 仍在 `Help` 模块里（按 id `#helpBtn` 绑定，元素搬进设置弹窗后照旧生效）。
+     搬家式改动**只搬元素、不搬接线**，就不会产生新的反向引用（教训见 T90 的注释） */
 ];
 
 /* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。Controls 是 UI 中枢、当前已顶到 7

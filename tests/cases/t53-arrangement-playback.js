@@ -109,7 +109,7 @@ section("T53c 曲式播放 · 整首放完停止 / 范围循环 / 单段循环")
   drive(a1.ac, a1.beat, 8.6);
   eq(a1.beat.Store.S.playing, false, "★ 走完范围末尾且不循环 → 停止");
   eq(a1.els["statusText"].textContent, "曲式播放完毕", "状态说明是「曲式播放完毕」（不是笼统的「已停止」）");
-  ok(a1.beat.Store.logSessions.length === 0, "曲式播放不足 30s 不记练习（既有口径不变）");
+  /* v2.10.12：原「不足 30s 不记练习」断言随练习记录删除 */
 
   /* 循环 → 回到第 1 段继续播 */
   const a2 = startArrange(two, { from: 0, to: 1, loop: true });
@@ -155,22 +155,15 @@ section("T53d 曲式播放 · 播放中改范围（跳段在小节边界生效�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T53e：与练习量、变速训练器的叠加 ================= */
-section("T53e 曲式播放 · 练习量按小节照常累计 / 曲式模式不记入预设路径");
+/* ================= 场景 T53e：曲式播放不污染「当前预设」的选择 ================= */
+section("T53e 曲式播放 · S.sel 独立于曲式游标（v2.10.12：原练习量叠加场景已随练习量删除）");
 {
   const two = A("两段", [
     { name: "A", blocks: [BL(0, 1)] },
     { name: "B", blocks: [BL(2, 1)] },
   ]);
-  const { app, beat, ac } = startArrange(two, { from: 0, to: 1, loop: true });
-  beat.Store.S.limit = { mode: "bars", n: 6 };     // 240BPM：6 小节 = 6s
-  drive(ac, beat, 2.5);
-  eq(beat.limitState().bars, 2, "练习量按小节累计（与曲式无关，既有口径不变）");
-  drive(ac, beat, 4.0);                            // 越过 6 小节
-  eq(beat.Store.S.playing, false, "★ 练满 6 小节 → 停止（练习量优先于「曲式还没放完」）");
-  ok(app.els["statusText"].textContent.includes("已练满"),
-     "停止原因是练习量（实际「" + app.els["statusText"].textContent + "」）");
-  ok(!app.els["statusText"].textContent.includes("曲式播放完毕"), "不会误报成曲式放完");
+  const { beat, ac } = startArrange(two, { from: 0, to: 1, loop: true });
+  drive(ac, beat, 4.5);
 
   /* 曲式模式下的播放不应把"当前预设"改掉（S.sel 是独立的） */
   const before = JSON.stringify(beat.Store.S.sel);

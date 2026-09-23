@@ -53,7 +53,7 @@ button:disabled{cursor:not-allowed}
 /* v2.0.2 PWA 安全区：viewport-fit=cover 下页面铺进刘海/圆角区，env() 把内容拉回可视区（v2.0.2 补） */
 .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 calc(24px + env(safe-area-inset-right, 0px)) 0 calc(24px + env(safe-area-inset-left, 0px));border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
-.brand .ver{font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
+.brand .ver{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
 .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(30,215,96,.6);animation:pulse 1s infinite}
@@ -75,7 +75,12 @@ button:disabled{cursor:not-allowed}
 .caption{font-size:12px;color:var(--t3);margin-top:14px}
 
 /* ---------- 当前节奏型头部 ---------- */
-.pattern-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* 当前节奏型行：**裸行，没有卡片外壳**，所以必须自己补上与 `.card` 同值的左右内边距，
+   否则它的内容比卡片内容左/右各偏 24px（窄屏 16px）——实测 390px 下偏 16px、1440px 下偏 24px。
+   v2.10.11（用户要求 ii）补齐；v2.10.12 后本行右侧只剩「音量」，但这条内边距与
+   "音色/音量在不在本行"无关（是裸行与卡片内容的对齐），**一个字都不用改**。
+   ★ 改 `.card` 的 padding 时记得同步这里与窄屏那条 */
+.pattern-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px}
 .pattern-head .name{font-size:20px;font-weight:700}
 .pattern-head .meta{font-size:13px;color:var(--t2);margin-top:4px}
 /* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
@@ -305,10 +310,26 @@ input[type=range].vol{width:120px}
 /* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
 .viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+/* v2.10.11（用户实报「这几行文案最左边没对齐」）——本行开关**去掉左内边距**，让「预备拍 /
+   弹跳球 · 预判提示 / 六线 · 扫弦谱底纹」的文字落到卡片内容边缘，与上方标题、下方组标签
+   以及再下面那排 pill 的**盒子**边缘落在同一条线上。
+   为什么只看这一行：其余行的左边缘本来就都在卡片内容边缘（实测 390px 下均为 32px），
+   唯一"看起来缩进"的就是本行——因为 `.toggle-pill` 的底色 `var(--card)` 与卡片底色**完全相同**，
+   看不见"底"，那 16px 的内边距就被读成了缩进（pill 有可见底色，盒子对齐是看得见的）。
+   ★ 只去左边、保留右边：右侧留着才不至于让文字贴住开关本体。
+   ★ 作用域限定在 `.viz-toggles` 内——别顺手改成全局 `.toggle-pill`（那是全站开关的观感变更） */
+.viz-toggles .toggle-pill{padding-left:0}
 /* 同屏行数档位（v2.8.0 req3）：时值可视化卡片顶部、开关行之下、网格之上。
-   与 .limit-panel 同一套写法（flex + gap + 下方留白）；
+   flex + gap + 下方留白（原先这句写的是"与 .limit-panel 同一套写法"，
+   那个类随练习量一起删了，v2.10.12 起改为自述）；
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
 .viz-rows-panel{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+/* v2.10.11（用户要求①）：「同屏行数」与「拍号」并排一行（拍号从走带卡搬来、紧邻其右）。
+   `flex-wrap:wrap` 是必需的——实测 390px 下卡片内容可用宽仅 326px，而拍号那 6 颗 pill
+   单行需要约 384px（原本就在折行），并排必然折行 → 窄屏下自动退回"上下两行"的观感。
+   `.viz-rows-panel` 自己那 12px 下边距在这里归零：本行已经给了间距，叠加会变成 24px */
+.viz-rows-row{display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;margin-bottom:12px}
+.viz-rows-row > .viz-rows-panel{margin-bottom:0}
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .viz-rows .pill{padding:7px 14px;font-size:12px}
 .toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:9999px;padding:10px 14px 10px 16px;font-size:13px}
@@ -342,9 +363,6 @@ input[type=range].vol{width:120px}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
-/* 练习量（v1.9.0）：训练模式区内的独立一行。外层 .group 的 gap 已负责上下间距，
-   这里只管内部纵向排布（标签 / 档位 / 进度） */
-.limit-panel{display:flex;flex-direction:column;gap:8px}
 .tr-prog.live{color:var(--green)}
 
 /* ---------- 侧栏 ---------- */
@@ -437,8 +455,8 @@ input[type=range].vol{width:120px}
 .demo-play-note{font-size:10.5px;color:var(--t3);line-height:1.4;min-width:0}
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
 .sidebar-note[hidden]{display:none}
-.preset-io{display:flex;gap:10px;margin-top:12px}
-.preset-io .pill:disabled{opacity:.4}
+/* `.preset-io` 随四个导入导出按钮搬进设置弹窗而删除（v2.10.12）——现在那四个按钮用的是
+   通用的 `.bpm-row`，禁用态由全局 `.pill:disabled` 负责，不再需要这条私有规则 */
 
 /* ---------- 编辑器 ---------- */
 .editor{position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;display:none}
@@ -633,7 +651,7 @@ input[type=range].vol{width:120px}
   .topbar{padding:0 16px}
   .brand{font-size:15px}
   .topbar .chip{display:none}
-  .pattern-head{flex-wrap:wrap;gap:10px}
+  .pattern-head{flex-wrap:wrap;gap:10px;padding:0 16px}   /* 内边距必须跟着 .card 一起缩（见 .pattern-head 那条注释） */
   .pattern-head .name{font-size:17px;min-width:0}
   .main{grid-template-columns:1fr;padding:16px}
   .card{padding:16px}
@@ -834,21 +852,40 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   <h1 class="brand">
     <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M9 3h10l4 22H5L9 3z" fill="#1ED760"/><line x1="13" y1="21" x2="18.5" y2="7" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/><circle cx="17" cy="10.5" r="2.1" fill="#0A0A0A"/></svg>
     BeatSight 时值节拍器
-    <span class="ver" id="brandVer"></span>
+    <!-- 版本徽章（左）：内含**保存状态点** + 版本号 → 读作「● v2.10.10」。
+         点的语义：绿 = 本地保存正常，红 = 保存失败（v1.3.0 起的"保存失灵可观测"入口）。
+         ★ v2.10.10（用户要求）：点原先在顶栏最右那个 chip 里，旁边还带一份版本号文案（与徽章
+           重复）。现按用户要求「只保留绿点表示稳定版、并把它并进左边的徽章」：chip 整块取消，
+           点移进徽章。**徽章里点在前、版本号在后**，且 `#brandVer` 必须只装版本号文本——
+           装配层用 `textContent` 写它，点若是它的子节点会被一并抹掉。
+         ★ 点 `aria-hidden="true"`：**纯颜色对读屏用户是零信息**，状态由紧随其后的 sr-only
+           文案承载；`title` 兼作鼠标用户的文字线索（分不出红绿的人悬停仍有字可看） -->
+    <span class="ver"><span class="dot" id="persistDot" aria-hidden="true" title="本地保存正常"></span><span id="brandVer"></span></span>
   </h1>
+  <!-- 保存状态的无障碍文案（视觉上不可见；位置紧随徽章，与那颗点同处一段）：
+       装配层写「稳定版」/「保存失败」。★ 别删——删了那颗点对读屏用户就彻底消失了 -->
+  <span class="sr-only" id="brandChip"></span>
   <div style="display:flex;align-items:center;gap:10px">
-    <!-- 主题切换（v1.7.0）：经典 ↔ 观测台；偏好存独立冷键 beatsight.theme -->
-    <button class="pill outline" id="themeToggle">主题 · 经典</button>
-    <button class="pill outline" id="statsBtn">练习统计</button>
-    <!-- 使用方法（v2.0.1）：放在 chip 之前。听辨训练的入口之所以不在这里，
-         是因为顶栏在 390px 窄屏上已经很挤——那条理由对「帮助」不成立：
-         帮助是**低频但必须随时能找到**的入口，藏起来就没人看了 -->
-    <button class="pill outline" id="helpBtn">使用方法</button>
+    <!-- v2.10.12（用户要求）：顶栏收口成三个高频入口 —— 「设置」/「听辨训练」/「后台保活」。
+         低频的全局项（主题切换 / 使用方法 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出）
+         全部收进设置弹窗；「练习统计」与「练习量」整块删除。
+         ★ 判据是"你在练习过程中会不会去点它"：调音量会、切主题不会、导出数据更不会 -->
+    <button class="pill outline" id="settingsBtn">设置</button>
+    <!-- 听辨训练入口（v1.10.0；v2.10.12 从训练模式区迁到顶栏，占原「练习统计」那一格）。
+         它原来那句注释写着"顶栏已有主题 + 练习统计、再加一个在 390px 上会挤"——
+         现在那两项都走了，顶栏反而更空，正好把它接上来；而且它本身就是一种训练模式，
+         比"设置"更该常驻。
+         ★ 原先旁边的正确率小字（`#earMini`）按用户要求**取消**：正确率在听辨训练自己的
+           overlay 里能看（`#earAcc`），顶栏不必再占一格；文案也从「听辨训练 · 练耳朵」
+           收成「听辨训练」（顶栏不是吆喝的地方） -->
+    <button class="pill outline" id="earBtn">听辨训练</button>
     <!-- 后台保活（v1.4；v2.6.2 从「训练模式」区迁到顶栏）：wakeLock 防息屏 + iOS 静音循环
-         音频兜底，开关持久化。它是"这台设备别睡"的应用级环境开关，与主题 / 版本状态
-         同属顶栏一区，不属于任何一个训练功能 -->
+         音频兜底，开关持久化。它是"这台设备别睡"的应用级环境开关，与版本状态同属顶栏一区，
+         不属于任何一个训练功能 -->
     <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
-    <div class="chip"><span class="dot" id="persistDot"></span><span id="brandChip"></span></div>
+    <!-- ★ 这里原先有个 `.chip`（保存状态点 + 「稳定版」文案），v2.10.10 整块取消：
+         点已移进品牌区徽章、文案退成 sr-only（见 h1.brand 上方那段注释）。
+         **别再往顶栏加回第二个状态/版本类元素**——那正是 v2.10.9 修掉的"重复显示" -->
   </div>
 </header>
 
@@ -866,7 +903,32 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="name" id="patternName">民谣扫弦 · 下-下上-上下上</div>
         <div class="meta" id="patternMeta">4/4 拍 · 96 BPM</div>
       </div>
-      <button class="pill outline" id="editBtn">编辑节奏型</button>
+      <!-- v2.10.12：本行右侧只剩**音量** —— 「音色」进了设置弹窗（用户要求①），
+           「编辑节奏型」搬去侧栏「编排曲式」左边（用户同批补充）。v2.10.11 为窄屏整组折行
+           而加的 `.ph-controls` 包裹层因此撤掉（只剩一件，不必再包一层）。
+           ★「音量」是**故意留在主界面**的：练习过程中会实时调它，属高频控件；
+             而音色定下来就不动，才够格进设置（判据见顶栏那段注释） -->
+      <div class="group">
+        <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
+             （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
+             音量——于是"节拍器响不响"与"扫弦响不响"没法分开调（用户反馈：扫弦谱一放起来
+             就只剩扫弦，节拍器整个没了）。
+             改法是两条**并列独立**的声部音量：节拍走 S.vol、扫弦走 S.strumVol
+             （两条在 playClick 里各走各的，互不缩放），对齐参考页那对「节拍 / 扫弦」滑条。
+             v2.9.0：去掉轨门控后「扫弦」行**常显**——判据从"当前在哪条轨"改成"当前型是否
+             带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
+             恒在反而更稳定（用不到时它不影响任何声音）。
+             v2.10.11：本块整块从走带卡搬到当前节奏型行（用户要求②）
+             v2.10.12：兄弟块「音色」搬进设置弹窗，本块留在原位（判据见上） -->
+        <div class="group-label">音量</div>
+        <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
+             title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
+             供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl）。
+             ★ 本行文字缩短成「音量」后，这三条的区分**全靠**这里的 title / aria-label 与行内标签 -->
+        <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
+        <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+        <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
+      </div>
     </div>
 
     <!-- 拍号回退提示：选中节奏型与当前拍号不匹配时显示 -->
@@ -886,17 +948,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
          开演前怎么数拍**——预备拍是开演前的数拍、弹跳球与六线底纹是画面的图层，
          都不是训练功能，贴着它们作用的时值可视化区才不用跨区建立心智模型。
          拍数输入必须紧跟它所属的预备拍开关（v1.3.3 的教训：排在行尾会像别的开关的参数） -->
+    <!-- v2.10.12（用户要求①）：本行原先有三个开关，「弹跳球 · 预判提示」与「六线 · 扫弦谱底纹」
+         已搬进**设置弹窗**（低频的画面图层），本行只剩「预备拍」——它是**开演前数拍**、
+         每次练习都可能改，属高频，故留下。
+         ★ 上一版（v2.10.11 需求③）那条 `.viz-toggles .toggle-pill{padding-left:0}`
+           仍作用于「预备拍」，左边缘对齐的约定不变 -->
     <div class="viz-toggles">
       <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
       <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
-      <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
-      <!-- 六线底纹开关（v2.4.2）：扫弦谱的六条弦线参照背景，默认开。
-           与弹跳球同属"视觉辅助"；只对**带扫弦记谱的型**有意义——
-           不带记谱的型本来就不画六线也不画箭头，开关对它自然无可见效果（v2.9.0 去轨门控）。
-           v2.10.6：开关本体跟随型显隐（syncTabLayer 置 hidden）——节拍型下整个开关藏起来，
-           不再出现「点了没反应」；标记里写死的 on/aria-checked 仍只是默认值提示，
-           真实开合态由启动收敛（setToggle）与显隐（syncTabLayer）接管 -->
-      <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
     </div>
     <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
          一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
@@ -908,9 +967,29 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            档位点下去毫无反应）。
          按钮由 VIZ_ROW_COUNTS 在 Controls.syncRowsUI 里生成，不在标记里写死——
          与练习量档位 / 轨切换条同一套「一行 pill 由值表生成」的纪律（单一数据源） -->
-    <div class="viz-rows-panel">
-      <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
-      <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
+    <!-- v2.10.11（用户要求①）：本行改为「同屏行数 + 拍号」并排——拍号**整块**从走带卡搬到这里、
+         紧邻同屏行数右侧。窄屏放不下时自动折回上下两行（实测 390px 下拍号 6 颗 pill 单行需
+         384px > 可用 326px，见 .viz-rows-row 的 CSS 注释） -->
+    <div class="viz-rows-row">
+      <div class="viz-rows-panel">
+        <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
+        <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
+      </div>
+      <!-- 拍号（v2.10.11 从走带卡整块搬来）：`.group-label` + `#sigRow`（6 档）+ `#accGroup`
+           （奇数拍时才出现的「重拍分组」，默认 hidden）——`accGroup` 必须跟着搬，
+           它是拍号的语义附属物，留在走带卡里就没人能触发它了 -->
+      <div class="group">
+        <div class="group-label">拍号 · 奇数拍可选重拍分组</div>
+        <div class="bpm-row" id="sigRow">
+          <button class="pill" data-sig="2" aria-pressed="false">2/4</button>
+          <button class="pill" data-sig="3" aria-pressed="false">3/4</button>
+          <button class="pill active" data-sig="4" aria-pressed="true">4/4</button>
+          <button class="pill" data-sig="5" aria-pressed="false">5/4</button>
+          <button class="pill" data-sig="6" aria-pressed="false">6/8</button>
+          <button class="pill" data-sig="7" aria-pressed="false">7/4</button>
+        </div>
+        <div id="accGroup" hidden><div class="bpm-row" id="accRow" style="margin-top:8px"></div></div>
+      </div>
     </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
@@ -972,19 +1051,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </div>
         <div class="bpm-row" id="bpmPresetRow" role="group" aria-label="常用速度快捷档"></div>
       </div>
-      <div class="vdivider"></div>
-      <div class="group">
-        <div class="group-label">拍号 · 奇数拍可选重拍分组</div>
-        <div class="bpm-row" id="sigRow">
-          <button class="pill" data-sig="2" aria-pressed="false">2/4</button>
-          <button class="pill" data-sig="3" aria-pressed="false">3/4</button>
-          <button class="pill active" data-sig="4" aria-pressed="true">4/4</button>
-          <button class="pill" data-sig="5" aria-pressed="false">5/4</button>
-          <button class="pill" data-sig="6" aria-pressed="false">6/8</button>
-          <button class="pill" data-sig="7" aria-pressed="false">7/4</button>
-        </div>
-        <div id="accGroup" hidden><div class="bpm-row" id="accRow" style="margin-top:8px"></div></div>
-      </div>
+      <!-- v2.10.11：原「拍号」块（`.group` + `#sigRow` + `#accGroup`）**整块搬去时值可视化卡的
+           `.viz-rows-row`**（紧邻「同屏行数」右侧）。它前面那条 `.vdivider` 一并删掉——
+           留着就会与下面这条连成两条竖线 -->
       <div class="vdivider"></div>
       <div class="group">
         <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
@@ -994,34 +1063,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
         </div>
       </div>
-      <div class="vdivider"></div>
-      <div class="group">
-        <div class="group-label">音色 · 程序合成（零采样文件）</div>
-        <div class="bpm-row" id="timbreRow">
-          <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
-          <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
-          <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
-        </div>
-      </div>
-      <div class="vdivider"></div>
-      <div class="group">
-        <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
-             （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
-             音量——于是"节拍器响不响"与"扫弦响不响"没法分开调（用户反馈：扫弦谱一放起来
-             就只剩扫弦，节拍器整个没了）。
-             改法是两条**并列独立**的声部音量：节拍走 S.vol、扫弦走 S.strumVol
-             （两条在 playClick 里各走各的，互不缩放），对齐参考页那对「节拍 / 扫弦」滑条。
-             v2.9.0：去掉轨门控后「扫弦」行**常显**——判据从"当前在哪条轨"改成"当前型是否
-             带扫弦记谱"，而三分类下随时可能切到扫弦型，跟着显隐只会让滑条忽隐忽现；
-             恒在反而更稳定（用不到时它不影响任何声音） -->
-        <div class="group-label">音量 · 节拍 / 扫弦 / 重拍增强</div>
-        <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
-             title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
-             供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl） -->
-        <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
-        <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
-        <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
-      </div>
+      <!-- v2.10.11：本卡原含 5 个 group（BPM / 拍号 / Swing / 音色 / 音量），现只剩 **BPM 与 Swing**——
+           拍号搬去时值可视化卡的 `.viz-rows-row`（紧邻「同屏行数」右侧），
+           音色与音量搬去当前节奏型行（排在「编辑节奏型」左侧）。
+           两条多余的 `.vdivider` 随各自被搬走的块一并删掉（留着会连成双竖线） -->
     </section>
 
     <!-- 训练模式 -->
@@ -1036,21 +1081,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <!-- v2.6.2：预备拍 / 弹跳球 / 六线底纹迁到时值可视化卡片顶部（.viz-toggles），
              后台保活迁到顶栏——它们管的是"画面怎么画 / 设备别睡"，不是训练功能 -->
       </div>
-      <!-- 练习量（v1.9.0）：到点自动停。与变速训练器职责分离——训练器管「练多快」，这里管「练多少」，
-           两者可同时开（谁先到谁停）。档位按钮由 LIMIT_PRESETS 生成（Controls.syncLimitUI），
-           不在标记里写死，避免 UI 与判定两处各维护一份档位表 -->
-      <div class="limit-panel">
-        <div class="group-label">练习量 · 到点自动停（可选）</div>
-        <div class="bpm-row" id="limitRow" role="group" aria-label="练习量档位"></div>
-        <div class="hint" id="limitProg"></div>
-      </div>
-      <!-- 听辨训练入口（v1.10.0）：独立全屏 overlay，与编辑器 / 练习统计同一套交互。
-           入口放训练模式区而不是顶栏：顶栏已有主题 + 练习统计两个按钮，再加一个在 390px 窄屏上会挤，
-           而它本来就是"训练模式"的一种。右侧小字回报正确率，给一个持续练下去的理由 -->
-      <div class="bpm-row">
-        <button class="pill outline" id="earBtn">听辨训练 · 练耳朵</button>
-        <span class="hint" id="earMini"></span>
-      </div>
+      <!-- v2.10.12：原「练习量 · 到点自动停」整块删除（用户要求②，功能一并删除）；
+           原「听辨训练」入口搬到顶栏（用户要求③，占原「练习统计」那一格）。
+           本区因此只剩变速训练器与它的面板。
+           ★ 注意：练习量的**内核**没有删干净，也**不能**删干净——听辨训练的「每次只放 2 小节」
+             额度复用了同一套到点停机制（`limitBars` / `onLimitPulse` / `Controls.stop` 里那段
+             分支），详见共享状态区的注释 -->
       <div class="tr-panel" id="trainerPanel" hidden>
         <span class="lab">起始</span><input class="tr-inp" id="trStart" type="number" min="30" max="236" value="70" aria-label="起始 BPM">
         <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" value="120" aria-label="目标 BPM">
@@ -1114,23 +1150,21 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <div id="presetList"></div>
       <!-- 曲式编排（v2.0.0）：入口放在预设卡片里——曲式与预设是**同一层概念**
            （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能。
-           跳段行不在这里（v2.0.2 挪到时值可视化正下方），这里只留入口与曲式名 -->
+           跳段行不在这里（v2.0.2 挪到时值可视化正下方），这里只留入口与曲式名。
+           ★ v2.10.12（用户要求）：「编辑节奏型」搬来本行、排在「编排曲式」**左边**——
+             它同样是"改播什么"，与预设 / 曲式同层；原先它在主列顶部那一行（`.pattern-head`）。
+             `.arg-now` 自带 `flex-wrap`，窄屏会自动折行。`#editBtn` 仍是编辑器 overlay 的
+             唯一入口（`t57` 的入口映射按 id 取，搬家不影响） -->
       <div class="arg-now">
+        <button class="pill outline" id="editBtn">编辑节奏型</button>
         <button class="pill outline" id="argOpen">编排曲式</button>
         <span class="arg-now-name" id="argNowName"></span>
       </div>
-      <div class="preset-io">
-        <button class="pill outline" id="exportBtn" disabled>导出预设</button>
-        <button class="pill outline" id="importBtn">导入预设</button>
-        <input type="file" id="importFile" accept="application/json,.json" hidden>
-        <!-- v2.8.8：全量数据包。此前只有预设能跨设备带走，而曲式 / 歌词 / 练习记录 / 听辨战绩
-             四个冷键一旦换设备（或 file:// ↔ https:// 换通道）就整份消失——它们恰恰是重做代价
-             最高的一类数据。「导出全部」把它们与预设一起打包，「导入全部」按合并语义写回 -->
-        <button class="pill outline" id="exportAllBtn">导出全部数据</button>
-        <button class="pill outline" id="importAllBtn">导入全部数据</button>
-        <input type="file" id="importAllFile" accept="application/json,.json" hidden>
-      </div>
-      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请用「导出预设」备份 JSON，换设备后用「导入预设」恢复。曲式编排、歌词对齐、练习记录、听辨战绩同样只在本机：换设备或换通道（file:// 与 https:// 数据不互通）前，请用「导出全部数据」带走整包。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
+      <!-- v2.10.12（用户要求）：原 `.preset-io` 整行（导出预设 / 导入预设 / 导出全部数据 /
+           导入全部数据 + 两个隐藏的 file input）**搬进设置弹窗**——它们是"换设备 / 换通道
+           才用一次"的数据管理项，不该占着练习界面。id 全未改动，所以 `exportBtn.disabled`
+           的联动逻辑照旧生效（它设的是一个隐藏元素的 disabled，无副作用） -->
+      <div class="sidebar-note">自定义节奏型保存在本机浏览器中，清除站点数据会一并删除——重要节奏型请到顶栏「设置」→「数据与说明」里用「导出预设」备份 JSON，换设备后用「导入预设」恢复。曲式编排、歌词对齐、听辨战绩同样只在本机：换设备或换通道（file:// 与 https:// 数据不互通）前，请用同处的「导出全部数据」带走整包。变速训练器在「训练模式」区开启：设好起始 / 目标 BPM 与步长，自动逐级爬坡。</div>
     </section>
   </aside>
 </main>
@@ -1201,50 +1235,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 </div>
 
 <!-- ================= 练习统计（v1.4） ================= -->
-<div class="editor" id="statsOverlay" role="dialog" aria-modal="true" aria-label="练习统计" tabindex="-1">
-  <div class="editor-inner">
-    <div class="editor-topbar">
-      <div class="left">
-        <button class="back-btn" id="statsClose">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          返回练习
-        </button>
-        <div class="editor-title">练习统计</div>
-      </div>
-      <div class="editor-actions">
-        <button class="pill outline" id="statsExport">导出记录</button>
-        <button class="pill outline" id="statsClear">清除记录</button>
-      </div>
-    </div>
-    <div class="card">
-      <span class="sec-tag"><b>06</b><i>Practice Stats</i></span>
-      <div class="stat-cards">
-        <div class="stat-card"><div class="stat-num" id="statWeek">0</div><div class="stat-lab">本周练习（分钟）</div></div>
-        <div class="stat-card"><div class="stat-num" id="statStreak">0</div><div class="stat-lab">连续天数</div></div>
-        <div class="stat-card"><div class="stat-num" id="statRecord">—</div><div class="stat-lab">速度纪录（BPM）</div></div>
-        <div class="stat-card"><div class="stat-num" id="statCount">0</div><div class="stat-lab">累计场次</div></div>
-        <!-- 听辨战绩（v1.11.0）：此前 beatsight.ear 是孤立的一块，只在训练入口旁显示一行。
-             并进统计面板——"练了多久"和"耳朵有没有变好"该在同一处看 -->
-        <div class="stat-card"><div class="stat-num" id="statEar">—</div><div class="stat-lab" id="statEarLab">听辨正确率</div></div>
-      </div>
-      <h2 class="card-title" style="margin-bottom:4px">练习分布</h2>
-      <div class="bpm-row" id="statsRangeRow" style="margin-bottom:8px">
-        <button class="pill active" data-range="7" aria-pressed="true">近 7 天</button>
-        <button class="pill" data-range="30" aria-pressed="false">近 30 天</button>
-      </div>
-      <div class="stats-bars" id="statsBars"></div>
-      <!-- 各节奏型本期分布（v1.11.0）：日柱图回答「哪天练了」，这里回答「练的是什么、
-           哪块一次没碰、有没有在推进」。原先只有一句「各节奏型速度纪录」——
-           那是全时段极值，既不体现本期覆盖，也看不出趋势 -->
-      <div class="stats-head" id="statsPatHead"></div>
-      <div id="statsPatList"></div>
-      <div class="hint" id="statsUntouched" style="margin-top:10px"></div>
-      <div class="hint" id="statsByPattern" style="margin-top:14px"></div>
-      <div class="hint" id="statsNote" style="margin-top:6px"></div>
-    </div>
-  </div>
-</div>
-
+<!-- v2.10.12（用户要求②）：原「练习统计」整个 overlay 在此删除 —— 连同顶栏的 `#statsBtn`、
+     `Stats` 模块（汇总计算 / 趋势 / 各节奏型分布 / 听辨战绩展示）、以及它消费的练习记录
+     `beatsight.log`（用户选"甲"：记录一起删，含「导出全部数据」里那一类）。
+     ★ 听辨战绩本身**没丢**：听辨训练自己的 overlay 里就能看正确率（`#earAcc` / `#earTotal` / `#earBest`） -->
 <!-- ================= 听辨训练（v1.10.0） ================= -->
 <div class="editor" id="earOverlay" role="dialog" aria-modal="true" aria-label="听辨训练" tabindex="-1">
   <div class="editor-inner">
@@ -1447,6 +1441,66 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
   </div>
 </div>
 
+<!-- ================= 设置（v2.10.12 新增） ================= -->
+<!-- 为什么要它：顶栏原先平铺着主题切换 / 练习统计 / 使用方法 / 后台保活四个控件，而卡片里还散着
+     弹跳球 / 六线底纹 / 音色、侧栏底下还压着四个导入导出——它们的共同点是**低频**：
+     练习过程中你不会去点（调音量会，切主题不会，导出数据更不会）。收进一个设置弹窗，
+     主界面就只剩"练习时会碰的东西"。
+     ★ 判据写在这里，供后续加项时自问：**「你在练习过程中会不会去点它？」** 会 → 留主界面。
+     ★ 开合走 Modal 的统一 overlay 协议（挂 .open + 背景 inert + 焦点陷阱），
+       键盘路由在 Controls 的 keydown 里（Esc 关闭、空格不误触播放）。
+     ★ 角标用 **06**：那是原「练习统计」腾出来的号（06 → 09 因此重新连续，无空号） -->
+<div class="editor" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="设置" tabindex="-1">
+  <div class="editor-inner">
+    <div class="editor-topbar">
+      <div class="left">
+        <button class="back-btn" id="settingsClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#B3B3B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回练习
+        </button>
+        <div class="editor-title">设置</div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="sec-tag"><b>06</b><i>Settings</i></span>
+
+      <!-- 组① 外观与辅助（v2.10.12 从顶栏与 .viz-toggles 收进来） -->
+      <h2 class="card-title" style="margin-bottom:8px">外观与辅助</h2>
+      <div class="bpm-row">
+        <button class="pill outline" id="themeToggle">主题 · 经典</button>
+        <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
+        <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
+      </div>
+      <div class="hint" style="margin-top:8px">主题（经典 / 观测台）与两个画面图层开关。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对**带扫弦记谱的型**有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）。</div>
+
+      <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调） -->
+      <h2 class="card-title" style="margin:24px 0 8px">发声</h2>
+      <div class="bpm-row" id="timbreRow">
+        <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
+        <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
+        <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
+      </div>
+      <div class="hint" style="margin-top:8px">三套音色都是**程序合成**（不占体积、没有采样文件）。**音量不在这里**：节拍 / 扫弦 / 重拍增强三条滑杆留在主界面的「当前节奏型」那一行右侧——练习中会随时调，属高频控件。</div>
+
+      <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
+      <h2 class="card-title" style="margin:24px 0 8px">数据与说明</h2>
+      <div class="bpm-row">
+        <button class="pill outline" id="exportBtn" disabled>导出预设</button>
+        <button class="pill outline" id="importBtn">导入预设</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button class="pill outline" id="exportAllBtn">导出全部数据</button>
+        <button class="pill outline" id="importAllBtn">导入全部数据</button>
+        <input type="file" id="importAllFile" accept="application/json,.json" hidden>
+      </div>
+      <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包：预设 + 曲式编排 + 歌词对齐 + 听辨战绩。导入按**合并**语义写回，不会覆盖本机已有的。</div>
+      <div class="bpm-row" style="margin-top:14px">
+        <button class="pill outline" id="helpBtn">使用方法</button>
+      </div>
+      <div class="hint" style="margin-top:8px">完整操作说明：全部控制项 · 训练模式 · 曲式编排 · 自己画节奏型 · 数据隐私 · 键盘快捷键。</div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 应用内弹窗 ================= -->
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
@@ -1471,22 +1525,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1502  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1993  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2988  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3663  Modal         应用内弹窗
-     L3795  Viz           时值可视化渲染与每帧动画
-     L5383  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6012  Trainer       变速训练器
-     L6230  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6730  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7567  Editor        自定义节奏型编辑器
-     L7923  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L8146  Ear           听辨训练（v1.10.0）
-     L8371  Arrange       曲式编排（v2.0.0）
-     L9229  Help          使用方法（v2.0.1）
-     L9276  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9350  初始化（装配） 各模块 hook 接线与启动
+     L1556  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2044  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3001  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3672  Modal         应用内弹窗
+     L3804  Viz           时值可视化渲染与每帧动画
+     L5446  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6071  Trainer       变速训练器
+     L6289  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6733  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7570  Editor        自定义节奏型编辑器
+     L7926  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L7957  Ear           听辨训练（v1.10.0）
+     L8175  Arrange       曲式编排（v2.0.0）
+     L9033  Help          使用方法（v2.0.1）
+     L9080  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9154  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1500,13 +1554,19 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    ================================================================================ */
 
 /* ================= 数据 ================= */
-/* 版本号唯一真相源（v1.3.0）：<title> 与品牌区两处 DOM 全部由它派生。
+/* 版本号唯一真相源（v1.3.0）：<title> 与品牌区徽章两处显示全部由它派生。
    此前版本号在 <title> / .ver / .chip 三处硬编码靠人工同步（审计 P2-9），漏改一处就会
    出现「标题写 v1.2.3、chip 写 v1.2.4」这种自相矛盾。回归：tests T25 断言标记段内无版本字面量。
+   ★ v2.10.9~v2.10.10（用户两次实报，最终形态）：顶栏原先有**两处**版本号——品牌区徽章
+     （左）与最右那个保存状态 chip（`vX.Y.Z · 稳定版`），中间夹着四个控件，于是整条顶栏读下来
+     首尾各一份（「BeatSight 时值节拍器 v2.10.8 主题 · 经典 练习统计 使用方法 后台保活
+     v2.10.8 · 稳定版」）。用户先要求**保留左侧那一处**，随后要求**只留一颗绿点表示稳定版、
+     并把它并进左边的徽章**——故 chip 整块取消、状态点移入徽章、chip 文案退成 sr-only。
+     显示处三处 → **两处**（`<title>` 与 `.ver` 徽章）；状态**只剩颜色 + title**，不再有可见文字。
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
-   跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.7";
+   跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
+const VERSION = "2.10.12";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1883,9 +1943,8 @@ const CONFIG = {
   schedWindowBg:1.2,
   /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
   persistDebounce:250,
-  /* 练习记录（v1.4）：短于 logMinSec 秒的播放不算一场练习（误触/试听音色不该进统计）；
-     logMax 为 beatsight.log 的环形截断上限——400 场按每天 3 场约够用 4 个月，远超统计口径所需 */
-  logMinSec:30, logMax:400,
+  /* ★ v2.10.12：原 `logMinSec:30, logMax:400`（练习记录的入账门槛与环形上限）随
+     「练习统计」一起删除——练习记录 `beatsight.log` 的唯一消费者就是统计面板（用户选"甲"） */
   /* 导入护栏：超大 JSON 全量读入 + 逐条校验会长时间阻塞主线程（正好会触发音频掉音，
      与持久化载荷同理）。2MB / 500 条远超正常使用量级（12 个内置 + 手写几十个） */
   importMaxBytes:2 * 1024 * 1024, importMaxCount:500,
@@ -1927,20 +1986,11 @@ const CONFIG = {
   strumZones: { LOW: 700, MID: 1400, HIGH: 2800, q: 2.5, decay: 0.07, makeup: 8 },
 };
 
-/* 练习量档位表（v1.9.0）：UI 生成、加载校验、进度文案三处共用同一份，避免各写一遍单位换算。
-   mode 决定「按什么计数」：bars = 已练小节数（调度器在小节边界累加），
-   min = 音频时钟分钟数（与 beatsight.log 的会话时长同口径）。
-   **本表同时充当加载校验的白名单**：S.limit 只接受表内存在的 (mode, n) 组合，
-   脏值一律回退「不限」——比"mode 白名单 + n 任意正数"更严，也免了另写一套域校验 */
-const LIMIT_PRESETS = [
-  { mode:"off",  n:0,  text:"不限",    label:"不限制练习量" },
-  { mode:"bars", n:8,  text:"8 小节",  label:"练满 8 小节自动停止" },
-  { mode:"bars", n:16, text:"16 小节", label:"练满 16 小节自动停止" },
-  { mode:"bars", n:32, text:"32 小节", label:"练满 32 小节自动停止" },
-  { mode:"min",  n:5,  text:"5 分钟",  label:"练满 5 分钟自动停止" },
-  { mode:"min",  n:10, text:"10 分钟", label:"练满 10 分钟自动停止" },
-];
-const LIMIT_OFF = { mode:"off", n:0 };
+/* ★ v2.10.12：原「练习量档位表」`LIMIT_PRESETS`（6 档：不限 / 8·16·32 小节 / 5·10 分钟）与
+   `LIMIT_OFF` 随练习量整块删除。它们原先同时充当"UI 生成、加载校验、进度文案"三处的单一数据源，
+   所以删除时三处都要清：UI（`Controls.syncLimitUI`）、加载校验（Store 里的 `limitInit`）、
+   进度文案（`syncLimitProg`）；`S.limit` 字段本身也一并去掉——**不留空壳**，
+   否则 `S.limit` 会变成一个永远为默认值、没人读的字段（比删掉更难查） */
 
 /* 速度 BPM 的合法域（v2.0.5，审计 P0-2）——**全应用唯一一份**：HTML 上 bpmSlider 的 min/max、
    setBpm 的钳制、加载校验三处同源。30–240 覆盖真实练习场景（60 = 慢速跟练，240 = 十六分扫弦的极限） */
@@ -1951,7 +2001,8 @@ const BPM_RANGE = [30, 240];
      · UI 输入钳制（Trainer.bindTrParam，以及 HTML 上 trStart/trTarget/trStepInp/trEvery 的 min/max）
    之所以必须抽出来：此前加载侧只判"是不是有限数"、不判域，于是脏值能一路进 S.trainer，
    而 step:0 会让 total() 变成 Infinity、爬坡永远升不到目标（既不升速也永不自动停）；
-   两处各写一遍数字则必然各自漂移——与 LIMIT_PRESETS「UI 生成、加载校验、进度文案三处共用」同一思路。
+   两处各写一遍数字则必然各自漂移——与（v2.10.12 已删的）练习量档位表「UI 生成、加载校验、
+   进度文案三处共用」同一思路。
    start 上界 236 / target 下界 31 是"目标必须高于起始"这条规则留下的余量。
    改这里的数值时记得同改 HTML 上那四个 input 的 min/max（它们只是给浏览器看的提示，不是闸门） */
 const TR_RANGE = { start:[30, 236], target:[31, 240], step:[1, 20], everyN:[1, 8] };
@@ -2004,11 +2055,11 @@ const Store = (() => {
      旧键 beatsight.m2 降级为**只读的迁移来源**：读到且新键缺失时拆分写入新键 + 备份 .bak。
      读取优先级：新键存在即以其为准，否则回落旧键（保证老用户与既有测试的种子数据都能跑）。
      可靠性（同 P1-5 第 2 条）：写失败不再被 `catch(e){}` 吞掉——通过 setPersistFailHandler
-     把失败上报给装配层（顶栏 chip 变红 + 一次性提示），否则用户「预设存不进去」完全不可见。
+     把失败上报给装配层（品牌区徽章里的状态点变红 + 一次性弹窗），否则用户「预设存不进去」完全不可见。
      依赖方向：本模块不引用 Modal（后方模块），只暴露一个回调钩子，由初始化段注册。 */
   const KEY_HOT = "beatsight.state", KEY_COLD = "beatsight.customs";
   const KEY_LEGACY = "beatsight.m2", KEY_BAK = "beatsight.m2.bak", KEY_QUAR = "beatsight.quarantine";
-  const KEY_LOG = "beatsight.log";       // v1.4 练习记录（冷键：只在停止时写，不进防抖热键）
+  /* ★ v2.10.12：原 `KEY_LOG = "beatsight.log"`（v1.4 练习记录冷键）随练习统计一起删除 */
   const KEY_EAR = "beatsight.ear";       // v1.10.0 听辨训练战绩（冷键：只在答完一题时写）
   const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
   const KEY_LYRICS = "beatsight.lyrics";       // v2.1.0 F1 歌词对齐轨（冷键：只在增删改歌词行时写）
@@ -2146,14 +2197,9 @@ const Store = (() => {
   });
 
   const savedCountIn = (saved.countIn && typeof saved.countIn === "object") ? saved.countIn : {};
-  /* 练习量（v1.9.0）：显式白名单抽取——只接受 LIMIT_PRESETS 里存在的 (mode, n) 组合，
-     其余（含缺项、null、布尔、"abc"、负数、超表范围）一律回退「不限」。
-     比 Object.assign 整包拷贝安全：脏值不会带着意外字段漏进 S.limit。
-     **必须拷贝而不是直接引用表项**——表是模块级常量，被 S 持有后任何写入都会污染它 */
-  const limitSaved = (saved.limit && typeof saved.limit === "object")
-    ? (LIMIT_PRESETS.find(p => p.mode === saved.limit.mode && p.n === +saved.limit.n) || LIMIT_OFF)
-    : LIMIT_OFF;
-  const limitInit = { mode: limitSaved.mode, n: limitSaved.n };
+  /* ★ v2.10.12：原「练习量」的加载校验（`limitSaved` / `limitInit`：只接受 `LIMIT_PRESETS`
+     里存在的 (mode, n) 组合、脏值回退"不限"）随练习量整块删除 —— `S.limit` 字段本身也不留
+     （见上面 `LIMIT_PRESETS` 的注释：不留一个永远没人读的空壳字段） */
 
   /* 预设库分区折叠（v2.10.0）：三个分区标题可点开/收起。值 = **展开**布尔，与 aria-expanded 同向。
      默认 false = **全部收起**（用户选择），故"没存过"与"存过 false"同义。
@@ -2217,7 +2263,7 @@ const Store = (() => {
         const reps = Math.round(numOr(b.repeats, 0));
         if (reps < 1 || reps > CONFIG.arrMaxRepeats) return null;
         totalBars += reps * patLenOf(b.ref);   // v2.5.1：按**型实际小节数**累加（原为恒 4）
-        /* 只留白名单字段：脏数据不带着意外字段漏进内存（同 S.limit 的处理） */
+        /* 只留白名单字段：脏数据不带着意外字段漏进内存（同听辨战绩等其它冷键的显式白名单口径） */
         blocks.push({ ref: isBuiltin ? { type:"builtin", idx:+b.ref.idx } : { type:"custom", id:b.ref.id },
           repeats: reps });
       }
@@ -2408,7 +2454,7 @@ const Store = (() => {
 
   /* 状态对象显式标注类型（v1.10.0 类型闸门）：S 是全应用最中心的数据结构，
      不标注的话在 noImplicitAny:false 下它的属性全是隐式 any，属性名拼错也查不出来。
-     实测这条标注把「S.limit.noSuchField」这类笔误从逃过变成拦住。
+     实测这条标注把「S.trainer.noSuchField」这类笔误从逃过变成拦住。
      注意：这是**类型声明**，不是运行时校验——脏值的钳制仍由上面那些 numOr/clamp01 负责 */
   /** @type {{
    *   bpm: number, vol: number, accentVol: number, strumVol: number, mute: boolean, sig: number,
@@ -2421,7 +2467,6 @@ const Store = (() => {
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
-   *   limit: { mode: string, n: number },
    *   playMode: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },   // v2.10.7：from/to = 线性小节号（0-based 含端点，可落在段中间）
    *   lyricCue: boolean,
@@ -2477,7 +2522,7 @@ const Store = (() => {
     keepAwake: !!saved.keepAwake,                   // v1.4 后台保活：默认关（耗电/系统策略由用户决定）
     migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     plan: planSaved,                                // v1.5 七天爬升计划（null = 无计划）
-    limit: limitInit,                               // v1.9.0 练习量（{mode:"off"|"bars"|"min", n}）
+    /* v2.10.12：原 `limit: limitInit`（v1.9.0 练习量）随练习量删除——见 LIMIT_PRESETS 注释 */
     /* v2.0.0 曲式编排：playMode 是"播当前预设 还是 播曲式"的二选一开关。
        为什么用独立字段而不是把 "arrange" 塞进 S.sel.type：S.sel 被 selectedPreset /
        curPattern / buildPresetList / 编辑器一大堆地方读，塞进去等于每个读取点都要判一次
@@ -2490,35 +2535,13 @@ const Store = (() => {
     trainer: Object.assign({}, trDefaults, trSaved, { on: !!trSrc.on }),
   };
 
-  /* ---- 练习记录（v1.4，冷键 beatsight.log）----
-     加载即校验：t/sec 必须是非负有限数，bpm 缺省 0，name 缺省空串——脏条目直接丢弃
-     （与 customs 的隔离策略不同：统计丢了只是数字不准，不值得占用隔离区与弹窗名额）。
-     写入只在「停止一次 ≥30s 的练习」时发生，立即落盘不防抖（丢一场练习比丢一次 BPM 调整肉疼） */
-  const logIn = readJSON(KEY_LOG);
-  /** @type {{ t: number, sec: number, bpm: number, name: string }[]} */
-  const sessions = [];
-  if (logIn && Array.isArray(logIn.sessions)){
-    /** @type {any[]} */ (logIn.sessions).forEach(r => {
-      if (r && isNum(r.t) && isNum(r.sec) && r.sec > 0){
-        sessions.push({ t: r.t, sec: r.sec, bpm: numOr(r.bpm, 0),
-          name: typeof r.name === "string" ? r.name.slice(0, 40) : "" });
-      }
-    });
-    if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
-  }
-  const persistLog = makePersister(KEY_LOG, () => ({ v:1, sessions }));
-  /** @param {{ t: number, sec: number, bpm: number, name: string }} rec */
-  function appendSession(rec){
-    sessions.push(rec);
-    if (sessions.length > CONFIG.logMax) sessions.shift();   // 环形截断：只留最近 logMax 场
-    persistLog();
-  }
-  function clearLog(){ sessions.length = 0; persistLog(); }
-  /* 练习记录导出（v1.6）：与预设导出同构的 JSON 备份 */
-  function serializeLog(){
-    return JSON.stringify({ app:"beatsight", kind:"practice-log", v:1,
-      exportedAt: new Date().toISOString(), sessions }, null, 2);
-  }
+  /* ★ v2.10.12：原「练习记录」（v1.4，冷键 `beatsight.log`：`logIn`/`sessions`/`persistLog`/
+     `appendSession`/`clearLog`/`serializeLog` 六件套）整段删除 —— 它唯一的消费者是「练习统计」
+     （用户选"甲"：记录一起删，含「导出全部数据」里那一类）。
+     入账点（`Controls.stop` 里那段 ≥30s 自动入账）与 `__beat` 的 `logSessions` 出口一并去掉。
+     ★ 注意：删掉记录**不影响**任何发声或练习流程——它只是一份写给统计看的历史。
+     ★ `Store.earStats`（听辨战绩）**不属此类**：它有自己的消费者（听辨训练自己的 overlay），
+       下面这一段保留原样 */
 
   /* ---- 听辨训练战绩（v1.10.0，冷键 beatsight.ear）----
      与练习记录同类的「攒出来的数字」：加载即校验、脏项丢弃即可（不值得占用隔离区与弹窗名额）。
@@ -2640,7 +2663,7 @@ const Store = (() => {
      或退出隐私模式之后，即便保存早已恢复正常，顶栏仍然红着「保存失败」，而且再也不提示
      （因为 `if (persistFailNotified) return` 把后续提示全吞了）。用户因此会误以为"一直存不进去"，
      进而放弃保存动作。这里给失败状态一个**可撤销的出口**：任何一次写成功都证明存储已可用，
-     就复位标志并把"已恢复"交给装配层复原 chip / 状态点。
+     就复位标志并把"已恢复"交给装配层复原状态点（颜色 + title + sr-only 文案）。
      为什么不在失败时就地重试探测：写路径是高频的，探测要额外付出同步写盘代价；
      而"下一次成功写入"本来就是最可靠的恢复证据（每次 persist/persistCold 都会经过这里）。
      边角：若冷键成功而热键仍失败，会先报一次恢复、下一次热写失败再报一次——这是自我纠正的，
@@ -2663,7 +2686,7 @@ const Store = (() => {
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint, plan:S.plan,
-      limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
+      /* v2.10.12：原 `limit:{ mode:S.limit.mode, n:S.limit.n }` 随练习量删除（不再写这个键） */
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
       lyricCue:S.lyricCue,                        // v2.1.0 F1：锚点提示音开关（热键：跟着每次点击写）
       arrangeSel:{ v:2, id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop, byLyric:!!S.arrangeSel.byLyric } };
@@ -2841,7 +2864,10 @@ const Store = (() => {
       app:"beatsight", kind:"all", v:PACK_V, version:VERSION, exportedAt:new Date().toISOString(),
       presets: customs.map(c => ({ name:c.name, meter:c.meter,
         ...(c.accents ? {accents:c.accents} : {}), bars:c.bars })),
-      arranges, lines: lyrics, log: sessions, ear,
+      /* ★ v2.10.12：原 `log: sessions`（练习记录）随练习统计删除——它不再有消费者。
+         旧数据包里若带 `log` 字段，导入时会被**静默忽略**（下面 importAll 已不再读它），
+         这是刻意的：为一条没人看的字段把整包判为"格式不对"没有道理 */
+      arranges, lines: lyrics, ear,
     }, null, 2);
   }
   function exportAll(){ downloadJSON("all", serializeAll()); return true; }
@@ -2896,24 +2922,10 @@ const Store = (() => {
         else lyrDrop++;
       });
     }
-    /* ---- 练习记录：并集，按 logMax 截断（保留最近的，与 appendSession 口径一致） ---- */
-    let logAdd = 0;
-    if (Array.isArray(data.log)){
-      data.log.forEach((/** @type {any} */ r) => {
-        if (!r || typeof r !== "object") return;
-        /* 字段名是 t（时间戳），不是 start——与加载路径（KEY_LOG 归一化）同口径：
-           t/sec 必须是有限数、sec > 0，且只取白名单字段（bpm 缺省 0、name 缺省空串），
-           不让外部包把任意键塞进冷键 */
-        if (!isNum(r.t) || !isNum(r.sec) || r.sec <= 0) return;
-        sessions.push({ t: r.t, sec: r.sec, bpm: numOr(r.bpm, 0),
-          name: typeof r.name === "string" ? r.name.slice(0, 40) : "" });
-        logAdd++;
-      });
-      /* appendSession 把新记录 push 到尾部、超限时 shift 掉头部（最旧）——
-         合并后按 t 升序排列再截断，保留的同样是**最近**的 logMax 场 */
-      sessions.sort((a, b) => a.t - b.t);
-      if (sessions.length > CONFIG.logMax) sessions.splice(0, sessions.length - CONFIG.logMax);
-    }
+    /* ★ v2.10.12：原「练习记录：并集，按 logMax 截断」整段删除 —— 记录功能随练习统计一起去掉。
+       旧数据包里的 `log` 字段**静默忽略**（不报错）：它是历史包的合法内容，
+       为一条已废弃的字段把整包判为"格式不对"对用户没有任何好处。
+       `sessions` / `isNum` / `CONFIG.logMax` 在本段删除后不再被引用，故一并清掉了 */
     /* ---- 听辨战绩：逐字段取较大值（它是累计量，取并集没有意义） ---- */
     /* 键名白名单：ear 只认 total/right/best 三个字段（见其定义处）。不限键名时，
        外部包多塞的键会被 persistEar 原样写进冷键（持久化污染，且再导出时外泄） */
@@ -2935,10 +2947,10 @@ const Store = (() => {
     if (okPresets.length) persistCold();
     if (arrAdd) persistArranges();
     if (lyrAdd) persistLyrics();
-    if (logAdd) persistLog();
+    /* v2.10.12：原 `if (logAdd) persistLog();` 随练习记录删除 */
     if (earMerge) persistEar();
     persist();
-    return { ok:true, added: { presets:okPresets.length, arranges:arrAdd, lyrics:lyrAdd, log:logAdd, ear:earMerge },
+    return { ok:true, added: { presets:okPresets.length, arranges:arrAdd, lyrics:lyrAdd, ear:earMerge },
       skipped: { arranges:arrDrop, lyrics:lyrDrop } };
   }
 
@@ -2963,7 +2975,8 @@ const Store = (() => {
     downloadJSON,
     serializePresets, exportPresets, importPresets,
     serializeAll, exportAll, importAll,          // v2.8.8：全量数据包（曲式/歌词/记录/战绩的跨设备迁移）
-    logSessions: sessions, appendSession, clearLog, serializeLog,
+    /* v2.10.12：`logSessions` / `appendSession` / `clearLog` / `serializeLog`
+       （练习记录的四个出口）随练习统计一起删除 —— 现在没有任何调用方 */
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
     arranges, findArrange, upsertArrange, deleteArrange, persistArranges,
@@ -3206,7 +3219,11 @@ function arrangeNextRow(sec, bar, a){
   const nxt = arrNextBar(a, S.arrangeSel,
     sec === undefined ? arrSec : sec, bar === undefined ? arrBar : bar);
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
-  return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar };
+  /* lin（v2.10.8）：下一小节的**线性歌曲小节号**。渲染层要按它算"这个小节落在窗口第几行"——
+     bar 那个字段是**型内小节号**（用来取那一行的音符），两者自 v2.10.2 起就不再相等，
+     混用会算出不存在的小节号。求行号见 Viz.rowOfSongBar。 */
+  return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar,
+    lin: songBarBefore(a, nxt.sec) + nxt.bar };
 }
 /* 曲式**播放中**"现在该播的型"：节目单游标（arrSec/arrBar）处的块解析出的节奏型（v2.6.3）。
    为什么要它：曲式播放的取型唯一来源是节目单（blockAt），S.sel 与播放无关——
@@ -3488,34 +3505,26 @@ let previewRef = null;
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
 /** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
-/* 练习记录（v1.4）：本次播放的音频时钟起点。用 ctx.currentTime 而不是 Date.now——
-   时钟挂起（来电/锁屏）时练习本就等于暂停，时长不应计入。stop() 后置回 null */
-/** @type {null | number} */
-let sessStartT = null;
-/* 练习量（v1.9.0）：limitBars = 本次会话已走完的小节数（AudioEngine 在小节边界累加——只有调度器
-   看得见小节边界，这是唯一与发声同源的视角）；limitT0 = min 模式的计时基准（音频时钟）；
-   onLimitPulse = 到点处置钩子。**为什么用钩子**：AudioEngine 声明在 Controls 之前，直接调
-   Controls.stop() 属反向引用，tools/check-module-order.js 会拦下来——与 onFrameError /
-   Store.setPersistFailHandler 同一套「模块只暴露回调，跨模块装配交给装配层」模式。 */
-let limitBars = /** @type {number} */ (0), limitT0 = /** @type {null | number} */ (null);
+/* ★ v2.10.12：原 `sessStartT`（v1.4 练习计时起点，用 ctx.currentTime 而非 Date.now，
+   以便时钟挂起时不计时）随练习记录一起删除——它唯一的消费者就是「≥30s 自动入账」 */
+/* 小节计数与「到点停」钩子（原练习量的内核；v2.10.12 起只服务**听辨训练的会话额度**）：
+   limitBars = 本次会话已走完的小节数（AudioEngine 在小节边界累加——只有调度器看得见小节边界，
+   这是唯一与发声同源的视角）；onLimitPulse = 到点处置钩子。
+   **为什么用钩子**：AudioEngine 声明在 Controls 之前，直接调 Controls.stop() 属反向引用，
+   tools/check-module-order.js 会拦下来——与 onFrameError / Store.setPersistFailHandler 同一套
+   「模块只暴露回调，跨模块装配交给装配层」模式。
+   ★★ v2.10.12 删掉了练习量（档位 / UI / `limitHit()` / `limitT0`），但**这两样必须留着**：
+      听辨训练的「每次只放 2 小节」额度复用的就是它们（见下面的 playQuota）。
+      删它俩会让听辨训练的自动停播静默失效——那种坏法没有任何报错。 */
+let limitBars = /** @type {number} */ (0);
 /** @type {null | (() => boolean)} */
 let onLimitPulse = null;
-/* 练习量是否已到点（AudioEngine 每个调度周期问一次）。两种模式只在「数什么」上不同：
-     bars → 数小节（limitBars 只在小节边界增长，故天然按小节对齐）
-     min  → 数音频时钟差（与 beatsight.log 的会话时长同口径；时钟挂起时本就不计时）
-   预备拍不计入练习量：limitT0 在预备拍数完那一刻才取（见 Controls.start 与 AudioEngine 的预备拍循环） */
-function limitHit(){
-  const L = S.limit;
-  if (!L || L.mode === "off") return false;
-  if (L.mode === "bars") return limitBars >= L.n;
-  return limitT0 !== null && ctx !== null && (ctx.currentTime - limitT0) >= L.n * 60;
-}
 /* 会话播放额度（v1.10.0，听辨训练用）：>0 时本次播放只放这么多小节，到点自动停。
-   只作用于本次播放，**不持久化、不进 S.limit**——练习量是用户设置，试听额度是程序的临时约束。
-   刻意让它与练习量共用同一套「到点停」机制（同一个注入钩子 onLimitPulse），
-   而不是再写一条停播路径：多一条路径就要多处理一遍与变速训练器 / 挂起切换 /
-   后台重锚定 / 练习记录入账的交叠，而那几处的坑都踩过。
-   onQuotaDone 由听辨训练注入（额度用尽时更新它自己的界面）。 */
+   只作用于本次播放，**不持久化、不进 S**——它是程序的临时约束，不是用户设置。
+   ★ v2.10.12：练习量删除后，它成了「到点停」这套机制**唯一**的消费者，
+     `limitBars` / `onLimitPulse` 因此从"练习量的一部分"变成"额度的基础设施"。
+     仍然不另写一条停播路径：多一条就要多处理一遍与变速训练器 / 挂起切换 / 后台重锚定 的交叠，
+     而那几处的坑都踩过。onQuotaDone 由听辨训练注入（额度用尽时更新它自己的界面）。 */
 let playQuota = 0;
 /** @type {null | (() => void)} */
 let onQuotaDone = null;
@@ -3669,10 +3678,10 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
      会「走丢」）。用 inert 把背景整体置为不可交互。
      注意用**重算**而不是置位/复位：编辑器里再弹确认框时，弹窗关闭不能把仍开着的编辑器
      对应的 inert 一起摘掉。 */
-  const OVERLAY_IDS = ["editor", "statsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"];
+  const OVERLAY_IDS = ["editor", "settingsOverlay", "earOverlay", "arrangeOverlay", "helpOverlay"];
   function refreshInert(){
     const off = modalOpen || ($("editor") && $("editor").classList.contains("open"))
-      || ($("statsOverlay") && $("statsOverlay").classList.contains("open"))   // v1.4：统计 overlay 同套焦点陷阱
+      || ($("settingsOverlay") && $("settingsOverlay").classList.contains("open"))  // v2.10.12：设置 overlay 同套焦点陷阱
       || ($("earOverlay") && $("earOverlay").classList.contains("open"))        // v1.10.0：听辨训练同套
       || ($("arrangeOverlay") && $("arrangeOverlay").classList.contains("open"))  // v2.0.0：曲式编排同套
       || ($("helpOverlay") && $("helpOverlay").classList.contains("open"));      // v2.0.1：使用方法同套
@@ -3909,6 +3918,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /* ---------- ② 窗口解析（型 ↔ 行） ----------
      N 行窗口的全部解析：渲染层画哪个型（vizPattern）、窗口行 ↔ 型内小节号的双向映射
      （patBarOfRow / rowOfPatBar）、"下一小节/下一行"（nextPatBarOf / nextRowOf）、
+     小节号 ↔ 行号（rowOfSongBar / arrNextRowOf，v2.10.8：范围短于窗口时"下一行"不再等于 +1）、
      窗口锚点（winAnchor）、预告行（previewBarFor / resetWindow）、
      两种窗口合成型（曲式 arrWindowPat / 预设 presetWindowPat）。
      本区只做**纯解析**，不建 DOM、不读布局——把它想成"网格的节目单"。 */
@@ -3946,8 +3956,48 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     const len = vizPatLen;
     return loopNextBar(patBarOfRow(bar), len);
   }
+  /** 歌曲线性小节号 → 它**当前**画在窗口的第几行；不在本窗口（需要翻页）返回 -1。
+      ★ 两处"不取模不行 / 不钳范围不行"的来历：
+        ① 行号 = 小节号 − 窗口起点，而 arrWindowPat 在**曲尾会绕回开头铺行**
+           （`songBarAt(a, (winStart + i) % total)`）——所以"减去窗口起点"这句在最后一页不成立，
+           必须按 songBars 取模，否则最后一页会算出负数行号；
+        ② 行号必须落在 [0, W)：超出即"这个小节不在本窗口里" → 交调用方决定要不要翻页。
+      v2.10.8 新增（原先没有这层映射，各处只按"位置式 +1"推）。 */
+  /** @param {number} lin @param {any} a @returns {number} */
+  function rowOfSongBar(lin, a){
+    const total = a ? songBars(a) : 0, W = vizBars;
+    if (!(total > 0) || !(W > 0) || winStart < 0 || !(lin >= 0)) return -1;
+    const i = ((lin - winStart) % total + total) % total;
+    return i < W ? i : -1;
+  }
+  /** 「下一小节」落在窗口第几行（曲式模式，v2.10.8）。
+      ★ 为什么必须由**节目单**算（arrNextBar → lin），不能沿用"位置式 +1"：
+        播放范围可以短于窗口（滑块只选 1 小节，而屏内是 4 行档），此时范围末小节的
+        "下一小节"是**范围起点**（arrNextBar 的循环回卷），它落在窗口的哪一行完全可能是
+        当前行、或更前面的一行。按 bar+1 画会把它摆到"范围外那一行"上——用户实拍症状：
+        球跑到下一小节的位置显示预备动画，而那个位置上的小节这一轮永远不会播。
+      ★ 与两档翻页的关系：向前翻页（下一小节在下一页）与向后跨页（范围末小节回卷到**更前面**
+        那一页）本函数都返回 -1，调用方一律回落既有口径 —— 于是"向前翻页时球落到第 1 行"
+        这条既有行为逐位不变，本函数只负责把"下一小节本来就在本窗口里"这一类算准。
+      返回 -1 = 算不出（无曲式 / 窗口未锚 / 无下一小节 / 需翻页）。 */
+  /** @param {number} bar 当前**行号** @returns {number} */
+  function arrNextRowOf(bar){
+    const a = arrangeCur();
+    const total = a ? songBars(a) : 0;
+    if (!(total > 0) || winStart < 0 || !(vizBars > 0)) return -1;
+    /* 行 → 歌曲线性号：同样要取模（曲尾绕回那件事，见 rowOfSongBar ①） */
+    const at = songBarAt(a, ((winStart + bar) % total + total) % total);
+    if (!at) return -1;
+    /* 显式传可听位置（at.sec/at.bar）——**不能**让 arrangeNextRow 默认取调度游标：
+       调度器早一个前瞻窗口推进，按它算会让 .next / 待命球提前指到再下一行（v2.0.2 实拍） */
+    const nrow = arrangeNextRow(at.sec, at.bar, a);
+    if (!nrow || typeof nrow.lin !== "number") return -1;
+    return rowOfSongBar(nrow.lin, a);
+  }
   /** 「下一行」的行号（`.next` 预告格与弹跳球待命球共用同一口径）。
-      曲式：窗口是歌曲小节的连续序列，行号即偏移 → (bar+1)%W。
+      曲式（v2.10.8）：由节目单算（arrNextRowOf）——范围短于窗口时"下一小节"是范围起点，
+        行号完全可能 ≤ 当前行；算不出（需翻页 / 范围播完）才回落 (bar+1)%W。
+        v2.10.7 及更早一律按 (bar+1)%W，于是范围短于窗口时 `.next` 会提前指到范围外那一行。
       预设（v2.10.2）：先求下一小节的型内小节号，再折进**翻页后**它所在的那一行——
         `cand % W`（页锚恒为 W 的倍数，故下一小节的行号就是它在新页里的偏移）。
       这样即使在页边界上，待命球也指向翻页后它真正落到的那一行。
@@ -3955,7 +4005,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         bar（行号）也恰好等于型内小节号，所以对；现在两个前提都不成立了。 */
   /** @param {number} bar @returns {number} */
   function nextRowOf(bar){
-    if (S.playMode === "arrange" || winStart < 0) return loopNextBar(bar, vizBars);
+    if (winStart < 0) return loopNextBar(bar, vizBars);
+    if (S.playMode === "arrange"){
+      const r = arrNextRowOf(bar);
+      return r >= 0 ? r : loopNextBar(bar, vizBars);
+    }
     const W = vizBars;
     return ((nextPatBarOf(bar) % W) + W) % W;
   }
@@ -4847,8 +4901,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            v2.10.2 预设模式：没有预告行，用 cand % 行数 —— 页锚恒为行数的整数倍，
            故"下一小节在翻页后落到第几行"就是它在新页里的偏移。这样页边界上待命球
            指向的也是它真正要去的那一行（旧写法直接拿 cand 当行号，型长 > 行数时会指向屏外） */
+        const byPos = (bar === vizBars - 1 && winPrevBar >= 0) ? 0 : Math.min(vizBars - 1, bar + 1);
+        /* ★ v2.10.8：曲式模式优先按**下一小节真正落在哪一行**算（nrow.lin 是节目单给出的
+           线性小节号，"循环回卷"已经含在其中），不再只按"位置式 +1"。
+           范围短于窗口（滑块只选 1 小节而屏内 4 行档）时，范围末小节的下一小节是**范围起点**，
+           位置式 +1 会把它画到"范围外那一行"上——用户实拍：球跑到下一小节的位置显示预备动画，
+           而那一行上的小节这一轮永远不会播。rowOfSongBar 返回 -1（下一小节不在本窗口，例如
+           需要向前/向后翻页）时回落下面那套既有口径，故翻页档与"范围播完不循环"逐位不变。 */
+        const rTrue = (S.playMode === "arrange" && nrow && typeof nrow.lin === "number")
+          ? rowOfSongBar(nrow.lin, a) : -1;
         const rowNext = (S.playMode === "arrange")
-          ? ((bar === vizBars - 1 && winPrevBar >= 0) ? 0 : Math.min(vizBars - 1, bar + 1))
+          ? (rTrue >= 0 ? rTrue : byPos)
           : ((cand % vizBars) + vizBars) % vizBars;
         const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[cand] || []);
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
@@ -5864,13 +5927,9 @@ const AudioEngine = (() => {
     while (ciLeft > 0 && ciNext < c.currentTime + win){
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
-      /* 预备拍数完这一刻才取练习量计时基准（v1.9.0）：预备拍是"准备"，不该吃掉练习量的额度。
-         为什么已经有 start() 里的赋值还要再来一次：两者值通常相同（start() 计算 loopStart 时
-         已把 N 拍顺延进去），但职责不同——start() 那次负责"有预备拍时先置 null"，
-         这次负责"数完再取"；顺带让进度显示在预备拍期间保持空白（基准为空即不显示）。
-         反向验证证实：去掉本次赋值，min 模式仍不会把预备拍算进去（值等价），
-         但进度区会在预备拍期间就显示「已练 0:00 / 5:00」——所以它不是冗余代码 */
-      if (ciLeft === 0) limitT0 = loopStart;
+      /* ★ v2.10.12：原「预备拍数完这一刻才取练习量计时基准」（`if (ciLeft === 0) limitT0 = loopStart;`）
+         随练习量删除 —— 那条注释解释的是 min 模式的基准点为什么要在预备拍数完才取，
+         练习量删掉后基准本身与那次赋值都没有了存在的理由。 */
     }
     const pat = activePattern();   // 播放中读快照：切换挂起期间不会被新节奏型顶掉
     const bars = pat.bars;
@@ -6342,13 +6401,12 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       ciEnd = loopStart;                       // 视觉门控的固定边界：此后不随 loopStart 重映射而移动
     } else { ciBeats = 0; ciLeft = 0; ciEnd = 0; }
     nextNoteTime = loopStart;
-    sessStartT = c.currentTime;                // v1.4：练习计时起点（音频时钟，挂起不计时）
-    /* 练习量（v1.9.0）：每次开始都从零起算。min 模式的基准点分两种情形——
-       无预备拍：就是本轮循环起点；有预备拍：先留 null，等预备拍数完那一刻再取
-       （AudioEngine 预备拍循环里赋值），这样「练 5 分钟」不会被预备拍的几拍偷走 */
+    /* ★ v2.10.12：原 `sessStartT = c.currentTime`（练习计时起点）随练习记录删除 */
+    /* 会话额度（v1.10.0）：每次开始都从零起算——limitBars 是小节计数，听辨训练的
+       「每次只放 2 小节」靠它判定到点（详见共享状态区 playQuota 的注释） */
     limitBars = 0;
-    limitT0 = (S.countIn.on && S.countIn.beats > 0) ? null : loopStart;
-    syncLimitProg();
+    /* v2.10.12：原 `limitT0 = …`（min 模式的计时基准）与 `syncLimitProg()`（练习量进度文案）
+       随练习量删除。额度只用 limitBars 数小节，不需要计时基准；进度文案也没有了承载元素 */
     KeepAlive.sync();                          // v1.4：后台保活随播放状态生效
     timer = setInterval(AudioEngine.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
@@ -6376,15 +6434,10 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
        清空后，句柄本身即可表达"有没有在跑"，这一点对将来所有新增的启动/停止路径都成立 */
     if (timer !== null){ clearInterval(timer); timer = null; }
     if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
-    /* 练习记录（v1.4）：有效练习（≥30s 且非编辑器试听）自动入账到 beatsight.log。
-       时长取音频时钟差——挂起期间（来电/锁屏）天然不计入 */
-    if (sessStartT !== null && ctx && !S.preview){
-      const sec = ctx.currentTime - sessStartT;
-      if (sec >= CONFIG.logMinSec){
-        Store.appendSession({ t: Date.now(), sec: Math.round(sec), bpm: S.bpm, name: activePattern().name });
-      }
-    }
-    sessStartT = null;
+    /* ★ v2.10.12：原「练习记录入账」（有效练习 ≥30s 且非试听 → `Store.appendSession`）
+       整段删除，连同它的计时起点 `sessStartT`（`start()` 里那行赋值也一并去掉了）——
+       记录功能随练习统计一起删除（用户选"甲"）。**音频时钟差那套口径不用保留**：
+       它服务的就是记录时长，没有第二个消费者 */
     /* 训练计划（v1.4）：训练开着时结束播放 → 记下进度，供「继续上次训练」接续 */
     const tr = Trainer.consumeSession();
     if (tr){ S.trainer.last = Object.assign({}, tr, { at: Date.now() }); }
@@ -6398,14 +6451,14 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 arrangeSel.from）
     Viz.resetForStop();
     Trainer.updateProg();
-    syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
+    /* v2.10.12：原 `syncLimitProg()`（停止即清空练习量进度文案）随练习量删除 */
     Store.persist();
   }
   $("playBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); S.playing ? stop() : start(); });
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
-    if (Stats.isOpen()){                          // v1.4：统计 overlay 打开时键盘归它管（空格不误触播放）
-      if (e.key === "Escape") Stats.close();
+    if (Settings.isOpen()){                       // v2.10.12：设置 overlay 打开时键盘归它管（空格不误触播放）
+      if (e.key === "Escape") Settings.close();
       return;
     }
     if (Ear.isOpen()){                            // v1.10.0：听辨训练同套（空格不误触播放）
@@ -6650,81 +6703,31 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     Store.persist();
   });
 
-  /* ================= 练习量（v1.9.0） =================
-     档位由 LIMIT_PRESETS 生成（复用 v1.6.4 抽出的 buildPillRow，不另写一份 pill 生成逻辑）；
-     被选中档位、aria-pressed、进度文案三者与 S.limit 同源。
-     进度刷新由 onLimitPulse 在每个调度周期驱动，带字符串去重——25ms 一次无条件写 textContent
-     会持续触发样式重算，不值得 */
-  /** @type {string | null} */
-  let lastLimitProg = null;
-  function syncLimitUI(){
-    buildPillRow($("limitRow"), LIMIT_PRESETS, {
-      text: p => p.text,
-      label: p => p.label,
-      /* 用 (mode, n) 双条件比对而不是只比 mode：以后若加"16 分钟"这类同 mode 多档，
-         只比 mode 会让两档同时高亮 */
-      isOn: p => p.mode === S.limit.mode && p.n === S.limit.n,
-      onPick: p => {
-        S.limit = { mode: p.mode, n: p.n };
-        syncLimitUI();
-        syncLimitProg();
-        Store.persist();
-      },
-    });
-  }
-  function syncLimitProg(){
-    const L = S.limit;
-    let txt = "";
-    if (L.mode !== "off" && S.playing && limitT0 !== null && ctx){
-      if (L.mode === "bars") txt = `已练 ${limitBars} / ${L.n} 小节`;
-      else {
-        const sec = Math.max(0, Math.floor(ctx.currentTime - limitT0));
-        txt = `已练 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} / ${L.n}:00`;
-      }
-    }
-    if (txt !== lastLimitProg){ lastLimitProg = txt; $("limitProg").textContent = txt; }
-  }
-  /* AudioEngine 每个调度周期调用（经共享状态区的 onLimitPulse 钩子注入）。
-     返回 true = 已停播，AudioEngine 本次调度立即退出。
+  /* ================= 会话额度（原练习量区；v2.10.12 起**只剩听辨训练的额度**） =================
+     每个调度周期由 AudioEngine 经共享状态区的 `onLimitPulse` 钩子问一次「该不该停」。
      名字刻意不叫 onLimitPulse —— 那会遮蔽共享状态区里的同名钩子变量（ESLint no-shadow 会报，
      而遮蔽恰恰会让「到底谁在调谁」变得难读）。这里叫 limitPulse，导出时再挂到那个名字上。
      文案与读屏播报沿用「训练完成」的同一套做法：先 stop() 再覆盖状态栏——stop() 内部会统一
      写「已停止」并播报，所以覆盖必须发生在它之后 */
   function limitPulse(){
-    /* ① 会话播放额度（v1.10.0 听辨训练）：到点静默停 + 回调对方自己的界面。
-       刻意不走下面「练习量到点」那套文案——试听不是练习，不该弹「已练满 N 小节」 */
+    /* 会话播放额度（v1.10.0 听辨训练）：到点静默停 + 回调对方自己的界面。
+       ★ v2.10.12：这是本函数**唯一**剩下的职责——练习量的档位 / UI / 进度文案都删了，
+         所以「已练满 N 小节」那条分支与 `syncLimitProg` 一并删除。
+       ★ 刻意不弹「已练满」那套文案——试听不是练习。 */
     if (playQuota > 0){
-      if (limitBars < playQuota){ syncLimitProg(); return false; }
+      if (limitBars < playQuota) return false;
       playQuota = 0;                            // 先清零再 stop：stop 可能重入
       stop();
-      lastLimitProg = null;
-      syncLimitProg();
       if (onQuotaDone) onQuotaDone();
       return true;
     }
-    if (limitHit()){
-      const L = S.limit;
-      const txt = L.mode === "bars"
-        ? `已练满 ${L.n} 小节 · 自动停止`
-        : `已练满 ${L.n} 分钟 · 自动停止`;
-      stop();
-      lastLimitProg = null;                     // 下一轮 start 必须重刷（否则沿用上一轮的进度串）
-      $("statusText").textContent = txt;
-      announce(txt);
-      return true;
-    }
-    syncLimitProg();
     return false;
   }
-  syncLimitUI();                                // 装配即生成档位（初始选中态来自已加载的 S.limit）
   /* 同屏行数档位（v2.8.0 req3）：装配即生成档位按钮（初始选中态来自已加载的 S.vizRows） */
   syncRowsUI();
-  /* 进度区显式初始化一次：不能依赖标记里的初值——已持久化「按小节」档位时，
-     若这里不写，页面会先显示上一轮残留或空白，直到第一次 start() 才被纠正 */
-  syncLimitProg();
 
   return { start, stop, setBpm, setSig, setSwing, setTimbre, updateMeta, syncBpmUI,
-    onLimitPulse: limitPulse, syncLimitUI, syncLimitProg, syncRowsUI };
+    onLimitPulse: limitPulse, syncRowsUI };
 })();
 
 /* ================= Presets · 预设库 / 回退提示 / 播放中切换挂起 ================= */
@@ -7920,227 +7923,35 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   return { open, tryClose, undo, draft: () => draft };
 })();
 
-/* ================= Stats · 练习统计（v1.4） ================= */
-/* 数据来自 Store.logSessions（beatsight.log 冷键）。本模块只做汇总计算与 overlay 渲染，
-   记录动作在 Controls.stop() 里完成（那里是唯一能同时拿到时长/速度/节奏型的收口点）。 */
-const Stats = (() => {
-  const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
-  /** @param {number} t */
-  const dayKey = t => { const d = new Date(t); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
-
-  /* 汇总（纯函数，now 可注入——测试用固定时钟断言）：
-     weekSec = 本周（周一起）练习秒数；streak = 连续练习天数（今天没练从昨天往回数，不归零）；
-     days = 近 rangeDays 天逐日秒数（v1.6 支持 7/30 天视图）；maxBpm = 速度纪录；count = 累计场次；
-     byPattern = 各节奏型**全时段**速度纪录（按 BPM 降序，最多 3 条）；
-     practice / untouched = v1.11.0 新增，见下。
-
-     两个口径的差别是刻意的，别"统一"掉：
-       · byPattern / maxBpm 是**全时段极值**——"我最高打到过多少"必须跨期看
-       · practice / untouched 是**本期（rangeDays 窗口内）**的——"这周练了哪些、哪块没碰"
-         只在窗口内才成立。available 由调用方传入（内置 + 自定义的名字），
-         缺省为空数组 → 不产出未碰清单：纯函数不自己去读全局状态 */
-  /** @param {any} list @param {number} now @param {number} rangeDays @param {any} available */
-  function summarize(list, now, rangeDays, available){
-    const range = rangeDays === 30 ? 30 : 7;
-    const days = [];
-    for (let i = range - 1; i >= 0; i--){
-      const d = new Date(now); d.setDate(d.getDate() - i);
-      days.push({ key: dayKey(d.getTime()), label: "周" + WEEKDAYS[d.getDay()], sec: 0, today: i === 0, t: d.getTime() });
-    }
-    /** @type {Record<string, any>} */
-    const byDay = {};
-    days.forEach(d => { byDay[d.key] = d; });
-    const wkStart = new Date(now);
-    wkStart.setDate(wkStart.getDate() - (wkStart.getDay() + 6) % 7);   // 周一
-    wkStart.setHours(0, 0, 0, 0);
-    /* 本期起点取 days[0] 那天**零点**（不是 days[0].t——那是"同样钟点"，会把窗口第一天的
-       前半段漏掉/多算）。日柱按日期分桶，所以两者用同一个零点才自洽 */
-    const rangeStart = new Date(days[0].t); rangeStart.setHours(0, 0, 0, 0);
-    const rangeStartMs = rangeStart.getTime();
-    let weekSec = 0, maxBpm = 0;
-    const daySet = new Set();
-    /** @type {Record<string, number>} */
-    const perPat = {};                     // 全时段：name → 最高 BPM
-    /** @type {Record<string, any>} */
-    const perPatAt = {};                   // 本期：name → {count, sec, min, max, last, bpms}
-    const seenAll = new Set();             // 全时段出现过哪些名字（区分"本期没碰"与"从没练过"）
-    list.forEach((/** @type {any} */ r) => {
-      const k = dayKey(r.t);
-      daySet.add(k);
-      if (byDay[k]) byDay[k].sec += r.sec;
-      if (r.t >= wkStart.getTime()) weekSec += r.sec;
-      if (r.bpm > maxBpm) maxBpm = r.bpm;
-      if (!r.name) return;
-      seenAll.add(r.name);
-      if (!perPat[r.name] || r.bpm > perPat[r.name]) perPat[r.name] = r.bpm;
-      if (r.t < rangeStartMs) return;
-      const a = perPatAt[r.name] || (perPatAt[r.name] = { name: r.name, count: 0, sec: 0, minBpm: 0, maxBpm: 0, lastT: 0, bpms: [] });
-      a.count++; a.sec += r.sec;
-      /* 首场直接赋值：不能用 0 当哨兵——脏数据里 bpm 可能就是 0（numOr 的回退值） */
-      a.minBpm = a.count === 1 ? r.bpm : Math.min(a.minBpm, r.bpm);
-      a.maxBpm = a.count === 1 ? r.bpm : Math.max(a.maxBpm, r.bpm);
-      if (r.t > a.lastT) a.lastT = r.t;
-      a.bpms.push(r.bpm);                  // 日志是追加写的 ⇒ 天然按时间升序
-    });
-    let streak = 0;
-    const cur = new Date(now);
-    if (!daySet.has(dayKey(cur.getTime()))) cur.setDate(cur.getDate() - 1);   // 今天还没练：从昨天数起
-    while (daySet.has(dayKey(cur.getTime()))){ streak++; cur.setDate(cur.getDate() - 1); }
-    const byPattern = Object.keys(perPat).map(name => ({ name, bpm: perPat[name] }))
-      .sort((a, b) => b.bpm - a.bpm).slice(0, 3);
-    const practice = Object.keys(perPatAt).map(k => {
-      const a = perPatAt[k];
-      return { name: a.name, count: a.count, sec: a.sec, minBpm: a.minBpm, maxBpm: a.maxBpm,
-        lastT: a.lastT, recent: a.bpms.slice(-5) };      // 最近 ≤5 场（本期之内），迷你趋势用它
-    }).sort((x, y) => y.count - x.count || y.sec - x.sec);
-    const touched = new Set(practice.map(p => p.name));
-    /** @type {string[]} */
-    const names = [];
-    (available || []).forEach((/** @type {any} */ n) => { if (n && names.indexOf(n) < 0) names.push(n); });
-    const untouched = names.filter(n => !touched.has(n)).map(n => ({ name: n, ever: seenAll.has(n) }));
-    return { weekSec, streak, maxBpm, count: list.length, days, byPattern, range, practice, untouched };
-  }
-
-  let rangeDays = 7;                     // v1.6：7/30 天视图切换（会话内状态，不持久化）
-  /* 可用于练习的节奏型清单（内置 + 自定义），「本期没碰」靠它算差集。
-     v1.11.0：这是 Stats 唯一读 customs 的地方——只取名字，不碰预设内容 */
-  const availNames = () => BUILTINS.map(p => p.name).concat(customs.map(c => c.name));
-  /* 「最后 N 天前」：按**自然日差**算，不用毫秒差除以 86400000——后者跨天会算错
-     （23:59 → 次日 00:01 明明是"昨天"，毫秒差却给出 0 天） */
-  /** @param {number} t @param {number} now */
-  function agoText(t, now){
-    const a = new Date(t), b = new Date(now);
-    a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
-    /* 显式取时间戳而不是直接相减：`Date - Date` 运行时靠 valueOf 能跑，
-       但它不是算术运算（类型检查会拦），写 getTime() 才是本意 */
-    const n = Math.round((b.getTime() - a.getTime()) / 86400000);
-    return n <= 0 ? "今天" : (n === 1 ? "昨天" : n + " 天前");
-  }
-  function statsRender(){
-    const now = Date.now();
-    const r = summarize(Store.logSessions, now, rangeDays, availNames());
-    $("statWeek").textContent = String(Math.round(r.weekSec / 60));
-    $("statStreak").textContent = String(r.streak);
-    $("statRecord").textContent = r.maxBpm > 0 ? String(r.maxBpm) : "—";
-    $("statCount").textContent = String(r.count);
-    /* 听辨战绩卡（v1.11.0）：与冷键 beatsight.ear 同源。一题都没答时显 — 而不是 0%——
-       0% 会被读成"全错"，而真相是"还没开始" */
-    const ear = Store.earStats;
-    $("statEar").textContent = ear.total ? Math.round(ear.right / ear.total * 100) + "%" : "—";
-    $("statEarLab").textContent = ear.total
-      ? `听辨正确率 · 最高连对 ${ear.best} · 共 ${ear.total} 题`
-      : "听辨正确率 · 尚未开始";
-    const wrap = $("statsBars");
-    clear(wrap);
-    const maxSec = r.days.reduce((a, d) => Math.max(a, d.sec), 0);
-    r.days.forEach(d => {
-      const col = document.createElement("div");
-      col.className = "st-col" + (d.today ? " today" : "");
-      const bw = document.createElement("div"); bw.className = "st-barwrap";
-      const bar = document.createElement("div");
-      bar.className = "st-bar" + (d.sec > 0 ? "" : " empty");
-      bar.style.height = (d.sec > 0 && maxSec > 0 ? Math.max(4, d.sec / maxSec * 100) : 2) + "%";
-      bw.appendChild(bar); col.appendChild(bw);
-      const dl = document.createElement("div"); dl.className = "st-day";
-      /* 30 天视图下标星期会挤成糊，改标日期（每 5 天一个刻度 + 今天） */
-      dl.textContent = r.range === 30
-        ? ((r.days.indexOf(d) % 5 === 0 || d.today) ? String(new Date(d.t).getDate()) : "")
-        : d.label;
-      const vl = document.createElement("div"); vl.className = "st-val";
-      vl.textContent = d.sec > 0 ? String(Math.round(d.sec / 60)) : "";
-      col.appendChild(dl); col.appendChild(vl);
-      wrap.appendChild(col);
-    });
-    /* 各节奏型本期分布（v1.11.0）。每行：名字 · 迷你趋势 · 场次 · 本期 BPM 区间 · 最后练习于
-       布局用元素拼而不是 innerHTML 拼串：测试沙箱靠 appendChild 记录子元素，
-       拼串的话这些行在断言里根本不存在（v1.6.4 buildPillRow 的同一条理由） */
-    const plist = $("statsPatList");
-    clear(plist);
-    $("statsPatHead").textContent = r.practice.length
-      ? `本期练过的节奏型（${r.practice.length} 种，按场次排序）`
-      : "";
-    r.practice.slice(0, 8).forEach(p => {
-      const row = document.createElement("div");
-      row.className = "pat-row";
-      const nm = document.createElement("div");
-      nm.className = "pat-name"; nm.textContent = p.name;      // 预设名是用户可控字符串 → textContent
-      row.appendChild(nm);
-      /* 迷你趋势：少于 3 场不画——两个点连不成趋势，画出来只是噪音 */
-      const sp = document.createElement("div");
-      sp.className = "spark";
-      if (p.recent.length >= 3){
-        const lo = Math.min.apply(null, p.recent), hi = Math.max.apply(null, p.recent);
-        p.recent.forEach((/** @type {any} */ v) => {
-          const bar = document.createElement("i");
-          bar.style.height = (hi === lo ? 60 : 25 + (v - lo) / (hi - lo) * 75) + "%";
-          sp.appendChild(bar);
-        });
-      }
-      row.appendChild(sp);
-      const meta = document.createElement("div");
-      meta.className = "pat-meta";
-      const b1 = document.createElement("b"); b1.textContent = p.count + " 场";
-      const b2 = document.createElement("span");
-      b2.textContent = p.minBpm === p.maxBpm ? p.maxBpm + " BPM" : p.minBpm + "→" + p.maxBpm + " BPM";
-      const b3 = document.createElement("span"); b3.textContent = "最后 " + agoText(p.lastT, now);
-      meta.appendChild(b1); meta.appendChild(b2); meta.appendChild(b3);
-      row.appendChild(meta);
-      plist.appendChild(row);
-    });
-    if (r.practice.length > 8)
-      $("statsPatHead").textContent += `（只列前 8 种）`;
-    /* 未碰清单：**一条记录都没有时不显示**——首屏就喊"12 种没碰"是噪音，
-       而且那种情形下 statsNote 已经说了"还没有练习记录"。
-       有历史才谈得上"本期没碰"，这也正是这条清单的意义 */
-    $("statsUntouched").textContent = (r.count && r.untouched.length)
-      ? `本期没碰的 ${r.untouched.length} 种：` +
-        r.untouched.slice(0, 6).map(u => u.ever ? u.name : u.name + "（从没练过）").join(" · ") +
-        (r.untouched.length > 6 ? " …" : "")
-      : "";
-    $("statsByPattern").textContent = r.byPattern.length
-      ? "各节奏型速度纪录：" + r.byPattern.map(p => `${p.name} · ${p.bpm} BPM`).join("　")
-      : "";
-    $("statsNote").textContent = r.count === 0
-      ? "还没有练习记录——播放 30 秒以上会自动记一场。数据只保存在本机浏览器。"
-      : "柱高 = 当天练习分钟数 · 数据只保存在本机浏览器，最多保留最近 " + CONFIG.logMax + " 场（可导出备份）";
-  }
+/* ================= Settings · 设置（v2.10.12 新增） ================= */
+/* 设置弹窗（顶栏「设置」按钮打开）。它收的是**低频的全局项**——判据见设置 overlay
+   标记处的注释：「你在练习过程中会不会去点它？」会 → 留主界面。三组：
+     外观与辅助（主题 / 弹跳球 / 六线底纹）、发声（音色）、数据与说明（四个导入导出 + 使用方法）。
+   ★ 为什么是一个**模块**而不是装配层的一段（对照诊断面板那条先例）：
+     诊断面板只**读**既有注入钩子、不引用任何模块，放装配层不引入新的依赖边；
+     设置要打开/关闭 overlay 并被 Controls 的键盘路由查询 `isOpen()` ——
+     那就必须占一个架构槽位，而 `Stats` 撤掉的正好是这个槽位（模块数因此仍是 13）。
+   ★ **被搬进来的那些控件，handler 一行都没动**：它们全是按 id 绑定的
+     （主题在装配段、弹跳球/六线在 Controls 的 `bindToggle`、音色的档位点击在 Presets、
+      四个导入导出在 Presets、使用方法在这里）——搬的是**元素**，不是**接线**。
+     所以本模块只负责开合，不碰任何业务状态。
+   ★ **被搬进来的那些控件，handler 一行都没动**：它们全是按 id 绑定的
+     （主题在装配段、弹跳球/六线在 Controls 的 `bindToggle`、音色的档位点击在 Presets、
+      四个导入导出在 Presets、使用方法在 `Help` 模块里）——搬的是**元素**，不是**接线**，
+      所以不会产生任何新的反向引用，本模块也只需要负责开合。 */
+const Settings = (() => {
   function open(){
-    rangeDays = 7;
-    setPressed("#statsRangeRow", p => +p.dataset.range === 7);
-    statsRender();
-    Modal.openOverlay("statsOverlay");   // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
+    Modal.openOverlay("settingsOverlay");   // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
-    Modal.closeOverlay("statsOverlay");  // v2.0.4：统一开合协议（解绑登记 + 归还焦点 + 摘 inert）
+    Modal.closeOverlay("settingsOverlay");  // v2.0.4：统一开合协议（解绑登记 + 归还焦点 + 摘 inert）
   }
-  const isOpen = () => $("statsOverlay").classList.contains("open");
+  const isOpen = () => $("settingsOverlay").classList.contains("open");
 
-  $("statsBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
-  $("statsClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
-  /* 近 7/30 天视图切换（v1.6）：会话内状态，不持久化——每次打开默认回 7 天 */
-  $("statsRangeRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    const btn = evTarget(e).closest("[data-range]");
-    if (!btn) return;
-    btn.blur();
-    rangeDays = +btn.dataset.range;
-    setPressed("#statsRangeRow", p => +p.dataset.range === rangeDays);
-    statsRender();
-  });
-  /* 导出练习记录（v1.6）：与预设导出同一个下载通道 */
-  $("statsExport").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    if (!Store.logSessions.length){ Modal.uiAlert("还没有练习记录可导出。"); return; }
-    /* v2.0.2：与「导出预设」共用同一个下载工具（原先这里与 Store.exportPresets 是两份复制） */
-    Store.downloadJSON("log", Store.serializeLog());
-  });
-  $("statsClear").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {
-      Store.clearLog();
-      statsRender();
-    }, { danger: true, okText: "清除" });
-  });
-  return { summarize, open, close, isOpen, agoText };
+  $("settingsBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("settingsClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+
+  return { open, close, isOpen };
 })();
 
 /* ================= Ear · 听辨训练（v1.10.0） ================= */
@@ -8265,15 +8076,10 @@ const Ear = (() => {
            对模板串不豁免（只豁免普通字符串），会当场报错。分隔一律用 " · " */
         ? `正确答案是 ${letter(question.answerIdx)} · ${question.answer.name} · 本组：${question.group.name}（${question.group.desc}）`
         : "共 3 个候选，只放 2 小节，放完自动停。听不出来就点「重听」";
-    syncMini();
   }
-  /* 主界面入口旁的一行小字：给一个"已经练了多少"的可见回报 */
-  function syncMini(){
-    const e = Store.earStats;
-    $("earMini").textContent = e.total
-      ? `正确率 ${acc()} · 最高连对 ${e.best} · 共 ${e.total} 题`
-      : "听节奏、选记谱——把「听不出附点/切分」练掉";
-  }
+  /* ★ v2.10.12：原 `syncMini()`（主界面入口旁那行"已练多少/正确率"小字，写 `#earMini`）
+     随该元素一起删除 —— 元素搬到顶栏后，那行小字按用户要求**取消**（顶栏不留状态文字）。
+     正确率仍在听辨训练 overlay 里（`#earAcc` / `#earTotal` / `#earBest`）。 */
   /* 停播 + 摘掉试听态（不动 overlay 显隐，也不还原拍号——下一题还要用新的拍号） */
   function stopAudio(){
     if (S.playing || S.preview) Controls.stop();
@@ -8336,7 +8142,6 @@ const Ear = (() => {
     Presets.updateFallbackNote();
     Viz.buildViz();
     Modal.closeOverlay("earOverlay");     // v2.0.4：统一开合协议（解绑登记 + 归还焦点 + 摘 inert）
-    syncMini();
   }
   const isOpen = () => $("earOverlay").classList.contains("open");
   /* 测试入口：题目内部状态（候选顺序、答案位置、作答与否）光看 DOM 数不全 */
@@ -8362,7 +8167,6 @@ const Ear = (() => {
       Store.resetEar(); streak = 0; earRender();
     }, { danger: true, okText: "清零" });
   });
-  syncMini();
   earRender();                                // 装配即初始化战绩显示（真实数字来自已加载的冷键）
 
   return { open, close, isOpen, next, play, answer, makeQuestion, state };
@@ -9348,10 +9152,14 @@ let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null
 })();
 
 /* ================= 初始化（装配） ================= */
-/* 版本号：三处显示全部由 VERSION 派生（唯一真相源，见「数据」区的说明） */
+/* 版本号：**两处**显示（<title> 与品牌区徽章内那个 `#brandVer`）全部由 VERSION 派生（唯一真相源，
+   见「数据」区）。
+   ★ v2.10.10：徽章里那颗保存状态点也已并进来（`#persistDot`），故写 `brandVer` 时只能用
+     `textContent` 且只能写版本号本身——**它不能是装点的容器**（点会被连同清掉）。
+     状态文案（sr-only 的 `#brandChip`）与点的 title 各自由下面两个持久化钩子维护 */
 document.title = `BeatSight 时值节拍器 v${VERSION}`;
 $("brandVer").textContent = "v" + VERSION;
-$("brandChip").textContent = "v" + VERSION + " · 稳定版";
+$("brandChip").textContent = "稳定版";
 
 /* ---------- 诊断面板（v2.0.4，审计 P1-1）：非独立模块，是装配层内部的一段子话题 ---------- */
 /* 仅在 URL 带 `?debug=1` 时于右下角挂出一行计数。要解决的是**四类静默劣化**——它们共同点是
@@ -9527,13 +9335,16 @@ window.addEventListener("error", () => { diagBump("winErr"); });
 window.addEventListener("unhandledrejection", () => { diagBump("rejection"); });
 stampCheck();   // v2.4.4：产物戳记自检（在线版核对 <meta name="beatsight-build">，详见函数注释）
 
-/* 保存失败可见化（v1.3.0，审计 P1-5）：顶栏状态点变红 + 文案改「保存失败」+ 一次性提示。
-   原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉 */
+/* 保存失败可见化（v1.3.0，审计 P1-5）：品牌区徽章里那颗**状态点变红** + sr-only 文案改「保存失败」
+   + 一次性弹窗。原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉。
+   ★ v2.10.10：点从顶栏最右的 chip 移进徽章后，可见信号只剩"颜色"这一条——故这里**同时**改
+     `title`：分不出红绿的鼠标用户悬停仍有字可看，读屏用户则由 sr-only 文案拿到状态 */
 Store.setPersistFailHandler(() => {
   diagBump("persistFail");                        // v2.0.4：诊断面板计数（只加计数，不改行为）
   try{
     $("persistDot").classList.add("bad");
-    $("brandChip").textContent = "v" + VERSION + " · 保存失败";
+    $("persistDot").title = "本地保存失败";
+    $("brandChip").textContent = "保存失败";
   }catch(e){}
   try{
     Modal.uiAlert("本地保存失败（可能是浏览器存储空间已满，或处于隐私模式）。\n"
@@ -9542,13 +9353,14 @@ Store.setPersistFailHandler(() => {
 });
 /* 保存恢复可见化（v2.0.2，审计 D5）：与失败提示配对的**出口**。
    失败标志原先一旦置位就永久锁死，用户清理存储后顶栏仍红着「保存失败」——这里是解药：
-   任何一次写成功都会走到这里，把 chip 文案与状态点复原成正常态。
+   任何一次写成功都会走到这里，把状态点、它的 title 与 sr-only 文案一起复原成正常态。
    两个动作各自包 try（与失败钩子同一条约定：DOM 写入本身也可能出问题）。 */
 Store.setPersistRecoverHandler(() => {
   diagBump("persistRecover");                     // v2.0.4：与失败计数配对，才能看出"恢复了几次"
   try{
     $("persistDot").classList.remove("bad");
-    $("brandChip").textContent = "v" + VERSION + " · 稳定版";
+    $("persistDot").title = "本地保存正常";
+    $("brandChip").textContent = "稳定版";
   }catch(e){}
   try{ announce("本地保存已恢复"); }catch(e){}
 });
@@ -9775,7 +9587,7 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 const EXPOSE_INTERNALS = diagOn
   || !!(typeof window !== "undefined" && (/** @type {any} */ (window)).BEATSIGHT_TEST);
 if (EXPOSE_INTERNALS){
-  /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Stats, Ear, KeepAlive,
+  /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Settings, Ear, KeepAlive,
     CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
@@ -9796,9 +9608,12 @@ if (EXPOSE_INTERNALS){
     diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
     arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
     arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
-    LIMIT_PRESETS, limitHit,                       // v1.9.0：练习量档位表与到点判定
+    /* v2.10.12：原 `LIMIT_PRESETS, limitHit` 与 `limitState`（练习量的档位表 / 到点判定 /
+       小节计数快照）随练习量删除 —— `limitBars` 本身仍在（听辨额度的基础设施），
+       但它已不属于"练习量的公开接口"，故不再从 `__beat` 暴露 */
+    /* v2.10.12：原 `limitState`（练习量的计数快照）删除 —— `limitBars` 仍在，但它是听辨额度的
+       基础设施，不再是练习量的公开接口；额度的读数走下面的 `quota` */
     EAR_GROUPS, EAR_BARS,                          // v1.10.0：听辨训练的易混组与每题目小节数
-    limitState: () => ({ bars: limitBars, t0: limitT0 }),   // v1.9.0：计数是原始值，需 getter 取实时快照
     quota: () => ({ bars: playQuota, hasDone: !!onQuotaDone }),   // v1.10.0：会话播放额度
     previewState: () => ({ on: S.preview, name: previewRef ? previewRef.name : null, isDraft: previewRef === draft }),
     onsetBuf: () => onsetBuf, onsetNext: () => onsetNext,   // v1.2：弹跳球 onset 表（T22 断言入口）
