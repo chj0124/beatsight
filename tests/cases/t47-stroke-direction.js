@@ -240,7 +240,7 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   eq(els["dirHint"].textContent, "先在上方选中一个音符", "未选中时提示如何操作");
 
   /* 选中第 1 小节第 1 格（民谣扫弦 48t，dir="D"）。
-     注意 render() 会重建编辑器 DOM，选中后必须重新取元素，不能复用点击前的引用 */
+     注意 editorRender() 会重建编辑器 DOM，选中后必须重新取元素，不能复用点击前的引用 */
   edCellsOf(els, 0)[0].fire("click");
   ok(els["dirRow"].children.every(b => !b.disabled), "选中非休止音符 → 三档启用");
   ok(els["dirHint"].textContent.includes("四分"), "提示语回显选中音符的时值");

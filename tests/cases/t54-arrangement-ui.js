@@ -5,7 +5,7 @@
    本组只管"编出来"这一段：CRUD、范围设置、主界面那一行、overlay 的开合与键盘。
    **播放行为本身由 T53 守**，这里不重复。
 
-   行内结构（与 Arrange.render 对应，改 UI 时这两边要一起动）：
+   行内结构（与 Arrange 的 arrangeRender 对应，改 UI 时这两边要一起动）：
      .arg-sec    → [段号, input.arg-name, .arg-blocks, .arg-ops]
      .arg-blocks → N × .arg-block + 一个「+ 块」
      .arg-block  → [预设名 span, input.arg-reps(遍数), 「换」, 「✕」]

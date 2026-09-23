@@ -106,11 +106,25 @@ const VERSION = (/const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(path.joi
                       而那正是它该拦的、也是唯一值得拦的。
    ★ 刻意**不**把这些实测数字抄进任何文档（v2.8.7）：它们由本脚本每次现场打印，
      抄进 docs/ 就变成又一个"抄一遍就等着烂"的数值，与 check-docs.js 的立身之道冲突。 */
+/* ★ domNodes 的定档逻辑与上面三项**不同**（v2.10.5 新增），理由必须写清，否则下一个人只会把红改成绿：
+     上面三项是"取实测值 × 安全倍数"，这一项是"取**已知外部警戒线之间**的位置"。
+     外部锚点（Lighthouse「避免 DOM 过大」审计）：body 节点 > ~800 警告、> ~1400 错误。
+     实测 963–975 **已经越过警告线**，所以
+       ① 预算**不能**取 800 —— 那会让它从第一次跑起就常年飘红（噪音，不是信号）；
+       ② 预算取 1200（当前值 + 约 24%，落在警告线与错误线之间），拦的是"把 DOM 推向
+          错误线"这个真正会伤到交互性的量级。
+     这一项是四个性能读数里唯一**有外部公认阈值**的，所以值得单列。
+
+   ★ 为什么必须单列 domNodes：其余四项都测不出它。DOM 规模是这类应用最容易无声增长的东西
+     ——每加一个可视化元素、每多一行网格都会推高它，而它既不体现在帧率（有巨大余量）、
+     也不体现在首屏（解析很快）上，于是可以一路涨过 1400 而整条自验链一声不吭。
+     这正是本项目一贯要堵的"隐性退化"缺口。 */
 const PERF_BUDGET = {
   bootMs: 5000,
   fps: 50,
   buildVizMs: 50,
   paintFrameMs: 1,
+  domNodes: 1200,
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -193,7 +207,7 @@ function probe(){
   const t0 = performance.now();
   while (!window.__beatBoot && performance.now() - t0 < 4000) await new Promise(r => setTimeout(r, 50));
   const boot = window.__beatBoot;
-  const out = { booted: !!boot, version: null, bpmNum: null, viz: null, storage: null, perf: null, sw: null };
+  const out = { booted: !!boot, version: null, bpmNum: null, viz: null, domNodes: null, storage: null, perf: null, sw: null };
   if (!boot) return JSON.stringify(out);
   out.version = { chip: document.getElementById("brandChip").textContent,
                   title: document.title, const: boot.version };
@@ -207,6 +221,12 @@ function probe(){
   }
   const viz = document.getElementById("viz");
   if (viz) out.viz = { ariaHidden: viz.getAttribute("aria-hidden"), children: viz.children.length };
+  /* v2.10.5：DOM 规模（性能预算的第 5 项）。口径刻意对齐 Lighthouse「避免 DOM 过大」审计——
+     它数的是 **body 内**的节点（不含 head 里的 meta/style/title/script），这样读到的数字
+     可以直接与外部公认的 800 / 1400 两条线对照，而不是一个"只有本项目自己懂"的数。
+     用 getElementsByTagName("*") 而不是 querySelectorAll("*")：前者是活集合、后者会分配数组，
+     这里是每次冒烟跑一次、差异可忽略，但活集合少一次分配也更贴合"只做便宜事"的习惯。 */
+  out.domNodes = document.body.getElementsByTagName("*").length;
   try{
     const k = "beatsight.state";
     localStorage.setItem(k, localStorage.getItem(k));
@@ -389,6 +409,11 @@ async function main(){
       ok(d.version.const === VERSION, p.label + "：页面内 VERSION 与源码一致");
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");
+      /* v2.10.5：DOM 规模断言（第 5 项性能预算）。放在这里而不是 perf 那一组里，
+         是因为它只需要 boot 成功即可测，不依赖"播放态已建立"（perf 那组的前提）。 */
+      ok(typeof d.domNodes === "number" && d.domNodes > 0 && d.domNodes <= PERF_BUDGET.domNodes,
+        p.label + "：DOM 节点数 ≤ " + PERF_BUDGET.domNodes + "（口径对齐 Lighthouse「避免 DOM 过大」审计：>800 警告 / >1400 错误）",
+        "实际 " + d.domNodes + " 个");
       if (d.bpmNum){
         ok(d.bpmNum.tag === "BUTTON", p.label + "：#bpmNum 是 <button>（键盘可达）", "实际 " + d.bpmNum.tag);
         ok(/rgba\(0, 0, 0, 0\)|transparent/.test(d.bpmNum.bg), p.label + "：#bpmNum 静止态无底色（外观未走样）",
@@ -409,6 +434,7 @@ async function main(){
           + d.perf.buildVizMs + " ms/次（预算 < " + PERF_BUDGET.buildVizMs + "）· 播放态帧率 " + d.perf.fps
           + " fps（预算 ≥ " + PERF_BUDGET.fps + "，rAF 自跑 1 秒）· 同步循环下界 " + d.perf.paintFrameMs
           + " ms/帧（预算 < " + PERF_BUDGET.paintFrameMs + "）· load 结束 " + d.perf.loadMs + " ms"
+          + " · DOM 节点 " + d.domNodes + " 个（预算 ≤ " + PERF_BUDGET.domNodes + "）"
           + "（" + (d.perf.measuredWhilePlaying ? "播放态" : "⚠ 非播放态，读数无效") + "）");
         ok(d.perf.measuredWhilePlaying === true, p.label + "：播放态已建立（性能读数的前提）");
         ok(d.perf.bootMs > 0 && d.perf.bootMs <= PERF_BUDGET.bootMs,

@@ -1417,7 +1417,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li>若自定义预设曾因<b>结构损坏</b>被隔离（<code>beatsight.quarantine</code>），它们会一直占着本地配额；
             这里可以查看条数并清理（清理不可撤销，介意的话先导出备份）</li>
         </ul>
-        <!-- v2.0.6（审计 P1-5）：隔离区原先只有写入、没有出口。默认隐藏，render() 按实际条数显隐 -->
+        <!-- v2.0.6（审计 P1-5）：隔离区原先只有写入、没有出口。默认隐藏，helpRender() 按实际条数显隐 -->
+        <!-- ★ v2.10.5：这里原写的是裸 render()——Help 模块的渲染函数已改名为 helpRender
+             （全文件曾有 5 个同名 render，检索时无法区分是哪一个）。注释跟着改名走，
+             否则它会指向一个不再存在的标识符。 -->
         <button class="pill outline" id="helpClearQuar" hidden aria-label="清理被隔离的损坏预设">清理隔离数据</button>
 
         <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
@@ -1455,22 +1458,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1486  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1977  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2944  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3590  Modal         应用内弹窗
-     L3720  Viz           时值可视化渲染与每帧动画
-     L5226  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5855  Trainer       变速训练器
-     L6073  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6573  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7388  Editor        自定义节奏型编辑器
-     L7744  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L7967  Ear           听辨训练（v1.10.0）
-     L8192  Arrange       曲式编排（v2.0.0）
-     L9015  Help          使用方法（v2.0.1）
-     L9062  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9136  初始化（装配） 各模块 hook 接线与启动
+     L1489  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1980  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2947  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3593  Modal         应用内弹窗
+     L3725  Viz           时值可视化渲染与每帧动画
+     L5305  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L5934  Trainer       变速训练器
+     L6152  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6652  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7467  Editor        自定义节奏型编辑器
+     L7823  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L8046  Ear           听辨训练（v1.10.0）
+     L8271  Arrange       曲式编排（v2.0.0）
+     L9094  Help          使用方法（v2.0.1）
+     L9141  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9215  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1490,7 +1493,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.4";
+const VERSION = "2.10.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3672,8 +3675,10 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     sc.untrap = trapFocus(el);
   }
   /* 打开期间登记监听器，关闭 / 重建时统一解绑。
-     注意：overlay 里"随内容重建"的监听器（render 出来的节点）必须在重建前先 unbindOverlay，
-     否则记录会随每次重建无界增长——那等于把泄漏换了个地方。 */
+     注意：overlay 里"随内容重建"的监听器（由各 overlay 自己的渲染函数生成的节点）
+     必须在重建前先 unbindOverlay，否则记录会随每次重建无界增长——那等于把泄漏换了个地方。
+     （v2.10.5：原写"render 出来的节点"。全文件曾有 5 个同名 render，此处本就是**泛指**
+       各 overlay 的渲染函数，改名后改为泛指写法，不再指向某个具体标识符。） */
   /** @param {string} id @param {any} target @param {string} type @param {any} fn @param {any} [opts] */
   function bindOverlay(id, target, type, fn, opts){
     let sc = overlayScopes[id];
@@ -3725,6 +3730,11 @@ const Viz = (() => {
        ├── .subs (z1)  十六分刻度线：满格高、只画内部十六分分界线（末格不画）；
        │               三连音块（t 不整除 12）不画刻度——十六分网格对三连音无意义
        └── span  (z2)  时值名称标签（t≥24，即 ≥0.5 拍才有独立标签） */
+  /* ---------- ① 几何缓存与渲染状态 ----------
+     rowGeo / cacheGeo / geoOf（行几何，只在 buildViz 与 resize 后采集一次）、
+     各逐格同构数组（rowEls / cellEls / subEls / fillEls / labelEls / strumEls / glEls /
+     zoneEls / rulerEls / strumLayers / barChordEls）、vizSig / vizBars / vizPatLen、
+     lastBar / lastStep / lastPainted 等帧间游标。本区只存状态，不做解析也不碰 DOM 结构。 */
 let rowEls = /** @type {HTMLElement[]} */ ([]), cellEls = /** @type {HTMLElement[][]} */ ([]), playheadEl = /** @type {HTMLElement|null} */ (null), trailGlowEl = /** @type {HTMLElement|null} */ (null);
 let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), fillEls = /** @type {HTMLElement[][]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
 /* v2.4.4：sub → 宿主 cell 的正查表（与 subEls 同键）。paintFrameBody 的十六分闪烁原先
@@ -3826,6 +3836,12 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /** @type {any[]|null} */
   let winPrevSteps = null;
   let winPrevName = "";
+  /* ---------- ② 窗口解析（型 ↔ 行） ----------
+     N 行窗口的全部解析：渲染层画哪个型（vizPattern）、窗口行 ↔ 型内小节号的双向映射
+     （patBarOfRow / rowOfPatBar）、"下一小节/下一行"（nextPatBarOf / nextRowOf）、
+     窗口锚点（winAnchor）、预告行（previewBarFor / resetWindow）、
+     两种窗口合成型（曲式 arrWindowPat / 预设 presetWindowPat）。
+     本区只做**纯解析**，不建 DOM、不读布局——把它想成"网格的节目单"。 */
   /** 渲染层该画哪个型（v2.10.2：两种模式都返回**窗口合成型**）。
       winPat 为 null（尚未建过网格 / 曲式合成失败）时回落 activePattern()，
       即"画当前型"的旧行为——那是降级路径，不是常态。
@@ -3975,6 +3991,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return { name: pat.name || "", desc: pat.desc || "", meter: pat.meter,
       accents: Array.isArray(pat.accents) ? pat.accents : [0], bars };
   }
+  /* ---------- ③ 可听位置与行语义 ----------
+     "现在听到的是第几小节"（曲式 audibleSongBar / 预设 audiblePatBar，★按可听位置而非调度游标）、
+     onset 端点 → 窗口行（rowOfOnset）、可听域的节目单位置（audibleArrangePos）、
+     行的视觉语义（静音行 mutedRow / 行首和弦名 chordAtRow / 时值命名 stepLabel）。
+     与 ② 的分界：② 解析"窗口里装什么"，本区解析"此刻画到哪、这一行什么含义"。 */
   /** 曲式模式：现在**听到**的是歌曲第几小节（线性号）。
       ★ 必须按可听位置、不能按调度游标：调度器提前一个前瞻窗口（默认 300ms）推进
         arrSec/arrBar，按它重建会"画面先跳、声音后到"（用户实拍过同类错位，v2.0.2）。
@@ -4096,19 +4117,46 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
   }
 
-  /** 建一小节的行（buildViz 的子工序，v2.4.4 由其体内拆出，**纯搬移**、行为等价）：
-      跑道拍点 → 六线底纹与箭头层（仅带扫弦记谱的小节）→ 拍内座次尺 → 音符格（含刻度线/标签/箭头）
-      → 短音符组标签，并把本行登记进 rowEls/cellEls/subEls/… 各同构数组
-      （"数组第 b 项 = 第 b 小节"是渲染层既有约定，paintFrame/resetForStop 都按它对齐）。
+  /* ---------- ④ 建网格（结构层，只在换型 / 翻页 / resize 时跑） ----------
+     buildBarRow 及其三段子工序（buildRowLayers 定位层 / buildRowCells 音符格 /
+     buildRowAnnotations 组标签与和弦胶囊）、buildViz（整树重建的编排者）、
+     底纹与箭头层的同步（vizHasStrum / syncTabLayer）、窄格隐藏（fitCellAnnotations）、
+     relayout。★ 本区不在每帧热路径上——R2 只约束 ⑥ 区的 paintFrame / paintFrameBody /
+     paintBall 三个函数，此处可以读布局（cacheGeo / fitCellAnnotations 就在读）。 */
+  /** 建一小节的行（buildViz 的子工序）。
+      沿革：v2.4.4 由 buildViz 体内拆出（**纯搬移**、行为等价）；v2.10.5 再按职责拆成三段子工序，
+      同样是**纯搬移**——本函数自此退化为编排者：定行容器 → 依次调用三段 → 挂载 + 登记。
+      拆分的动机是**可读性与可测性，不是性能**（实测本函数不在每帧热路径上，只在换型/翻页时跑）。
+      三段之间的调用顺序即语义，搬移时一位都不能换：
+        ① 层必须先于格存在——第 2 段建的扫弦箭头要 appendChild 进第 1 段建好的 .strums 层；
+        ② 登记进 rowEls/cellEls/subEls/… 各同构数组的时机与原来完全一致
+          （"数组第 b 项 = 第 b 小节"是渲染层既有约定，paintFrame/resetForStop 都按它对齐）。
       @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} viz 网格容器
       @returns {void} */
   function buildBarRow(b, p, barTicks, viz){
     /* v2.10.2：扫弦判据走 vizHasStrum()（预设模式问**型本身**而不是当前页的合成型），
-       否则型长于窗口时底纹会随翻页闪烁——见 vizHasStrum 的注释 */
+       否则型长于窗口时底纹会随翻页闪烁——见 vizHasStrum 的注释。
+       v2.10.5：拆段后它同时服务第 1 段（底纹与箭头层建不建）与第 2 段（逐格箭头画不画），
+       故在本函数算一次、当参数传下去——比两段各调一次 vizHasStrum() 更省，
+       也保证两处判据"逐字同源"，不会出现"层建好了但没有箭头"这类分裂。 */
     const hasStr = vizHasStrum();
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
+    buildRowLayers(b, row, hasStr);
+    const cells = buildRowCells(b, p, barTicks, row, hasStr);
+    buildRowAnnotations(b, p, barTicks, row);
+    viz.appendChild(row);
+    rowEls.push(row); cellEls.push(cells.cells); fillEls.push(cells.fills); labelEls.push(cells.labels); strumEls.push(cells.strums);
+  }
+
+  /** 第 1 段（定位层）：跑道拍点 → 六线底纹 → 扫弦箭头层 → 拍内座次尺。
+      这几层**与音符内容无关**，只回答"这一行长什么样"；内容层由 buildRowCells 建。
+      分别登记进 zoneEls / strumLayers / rulerEls（逐位同构约定同上）。
+      @param {number} b 小节序号 @param {HTMLElement} row 本行容器
+      @param {boolean} hasStr 当前型是否带扫弦记谱（决定底纹与箭头层要不要建）
+      @returns {void} */
+  function buildRowLayers(b, row, hasStr){
     // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
     const zones = [];
     for (let k = 0; k < S.sig; k++){
@@ -4165,6 +4213,17 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       }
     }
     rulerEls.push(rl);
+  }
+
+  /** 第 2 段（音符格）：逐格建 cell + fill + 十六分刻度线 + 时值标签 + 扫弦竖箭头，
+      并登记 subEls / subCellEls（以十六分位置为键）与返回的四个逐格同构数组。
+      本段是整行里唯一"随内容变化"的部分——所以它才值得与定位层分开。
+      @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
+      @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
+      @param {boolean} hasStr 当前型是否带扫弦记谱（决定逐格要不要画箭头）
+      @returns {{ cells: HTMLElement[], fills: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
+        四个逐格同构数组，由编排者登记进 cellEls / fillEls / labelEls / strumEls */
+  function buildRowCells(b, p, barTicks, row, hasStr){
     /** @type {HTMLElement[]} */
     const cells = [];
     /** @type {HTMLElement[]} */
@@ -4259,6 +4318,16 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
            现行的 zoneEls 是拍点容器，由本函数 push 填充，与色带无关。） */
       row.appendChild(c); cells.push(c);
     });
+    return { cells: cells, fills: fills, labels: labels, strums: strums };
+  }
+
+  /** 第 3 段（注释与胶囊）：短音符组合并标注 + 小节和弦名胶囊。
+      两者都是"跨格"的标注（前者要扫描连续短音符，后者整行只有一颗），
+      故与第 2 段的逐格循环分开。分别登记进 glEls / barChordEls（逐位同构约定同上）。
+      @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
+      @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
+      @returns {void} */
+  function buildRowAnnotations(b, p, barTicks, row){
     /* 短音符合并标注：连续 ≥2 个无独立标签的短音符（t<24 且非休止）共享一个组标签，
        保证最难辨认的十六分/三连音也有名称可读 */
     /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[]} */
@@ -4297,8 +4366,6 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       row.appendChild(cc);
       barChordEls.push(cc);
     } else barChordEls.push(null);
-    viz.appendChild(row);
-    rowEls.push(row); cellEls.push(cells); fillEls.push(fills); labelEls.push(labels); strumEls.push(strums);
   }
 
   function buildViz(){
@@ -4531,6 +4598,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     ], {duration:320, easing:"ease-out"});
   }
 
+  /* ---------- ⑤ 弹跳球与歌词轨 ----------
+     弹跳球（v1.2）：parkBall（停止/待命姿态）、audioPosAt（把音频时钟换算成球的位置）、
+     paintBall（落点 = 下一颗音的真实发声时刻，含 Swing；走 onset 表自己的端点，不接调度前瞻窗口）。
+     歌词轨（v2.1.0）：buildLyricLane（结构，结构与窗口同生命周期）、remeasureLyric（宽度只在结构变化后采集）、
+     paintLyric（逐帧高亮）。两者都是"结构在 ④ 建、状态在 ⑥ 刷"的中间层，故自成一段。 */
   /* 弹跳球（v1.2）：停止/待命姿态——停在第一小节第一个落点上方 */
   function parkBall(){
     const g0 = geoOf(0);
@@ -4880,6 +4952,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      这里**不碰 requestAnimationFrame** —— 保证「无论从哪条分支返回，下一帧都会被排上」
      （v1.2.4 修复：主体曾在自己内部 3 处各自续期并提前 return，一旦中途抛异常，
       下一帧再也没人注册 → 渲染循环永久死亡） */
+  /* ---------- ⑥ 逐帧渲染（热路径） ----------
+     paintBeatFlash / repaintCells / paintFrameBody / setCell / setGroup / paintFrame。
+     ★ R2 约束落在这里：paintFrame / paintFrameBody / paintBall（⑤）三个函数体内**不得引用
+       后方模块**——它们每秒跑约 60 次，只能读 ① 区状态与前方模块
+       （tools/check-module-order.js 的 HOT 名单 + R2 机器守）。
+     每帧只做便宜事：读 ① 区缓存几何、写 transform / className；需要布局信息的时刻
+     全部发生在 ④ 的结构变化之后（见 cacheGeo / fitCellAnnotations 的注释）。 */
   /** 十六分换格瞬间的副层反馈（paintFrameBody 的子工序，v2.4.4 拆出，**纯搬移**）：
       刚走完的小格闪烁（REDUCE_MOTION 下跳过）→ 座次尺高亮搬家 → 状态栏读数。
       只在「换格/换小节」时调用。它仍是每帧热路径的一部分——已登记进
@@ -7392,7 +7471,7 @@ let edSel = /** @type {null | { bar: number, idx: number }} */ (null), editBar =
 let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (false);
   /** @type {null | number} */
   let prevSigBeforeAudition = null;
-  /* 打开编辑器时的源型名（v2.6.1）：render() 要拿它拼标题，而 render 也会在"未打开"之外
+  /* 打开编辑器时的源型名（v2.6.1）：editorRender() 要拿它拼标题，而 editorRender 也会在"未打开"之外
      的各种时机被调（撤销、增删小节），不能每次都去问 curPattern()——那时用户可能已经改了选中的预设 */
   let srcName = "";
 
@@ -7409,7 +7488,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     $("editorMeter").textContent = draft.meter;
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
     $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + meterName(draft.meter) + " 拍";
-    render();
+    editorRender();
     Modal.openOverlay("editor");          // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function stopAudition(){
@@ -7438,13 +7517,13 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   function barSum(bar){ const d = draft; if (!d) return 0; return d.bars[bar].reduce((a, s) => a + s.t, 0); }
   /** @param {number} bar */
   function barValid(bar){ const d = draft; if (!d) return false; return barSum(bar) === d.meter * TPB; }   // tick 制：整数严格相等
-  function render(){
+  function editorRender(){
     const d = draft;
     if (!d) return;                       // 草稿为空（编辑器未打开）：无可渲染之物
     /* v2.6.1（第 Ⅲ 期）：**小节数会变**了，所以 `editBar` 这个"当前小节"游标必须每次渲染前收进范围。
        在此之前型恒 4 小节、游标不可能越界，故没有这道守卫；现在删小节 / 撤销（撤销只回滚 bars、
        不回滚游标）都可能把它留在数组外，而 `d.bars[editBar].push(...)`（音符块库的追加路径）
-       会直接抛 TypeError。收在这里而不是各调用点：所有会改 bars 的路径最后都要过 render()。 */
+       会直接抛 TypeError。收在这里而不是各调用点：所有会改 bars 的路径最后都要过 editorRender()。 */
     if (editBar >= patBars(d)) editBar = Math.max(0, patBars(d) - 1);
     const wrap = $("editorBars");
     clear(wrap);
@@ -7505,13 +7584,13 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           sp.textContent = Viz.stepLabel(s);
           c.appendChild(sp);
         }
-        Modal.bindOverlay("editor", c, "click", () => { edSel = {bar:b, idx:i}; editBar = b; render(); });
+        Modal.bindOverlay("editor", c, "click", () => { edSel = {bar:b, idx:i}; editBar = b; editorRender(); });
         track.appendChild(c);
       });
-      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; render(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
+      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; editorRender(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
       Modal.bindOverlay("editor", track, "keydown", (/** @type {KeyboardEvent} */ e) => {
         if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
-          e.preventDefault(); editBar = b; edSel = null; render();
+          e.preventDefault(); editBar = b; edSel = null; editorRender();
         }
       });
       row.appendChild(label); row.appendChild(track);
@@ -7574,7 +7653,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       const steps = p.grp ? Array.from({length:p.grp}, () => D(p.t, p.rest)) : [D(p.t, p.rest)];
       if (edSel){ d.bars[edSel.bar].splice(edSel.idx, 1, ...steps); }
       else { d.bars[editBar].push(...steps); }
-      render();
+      editorRender();
     });
     $("palette").appendChild(el);
   });
@@ -7592,7 +7671,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (!d || snap === undefined) return;
     d.bars = JSON.parse(snap);
     edSel = null;
-    render();
+    editorRender();
   }
   $("undoBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); undo(); });
   /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
@@ -7610,7 +7689,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if ((s.dir || "") === want) return;
     pushUndo();
     if (want) s.dir = want; else delete s.dir;
-    render();
+    editorRender();
   });
   /* 弦区（v2.2.0）：与方向行同一套纪律——pushUndo 先行、同档重按不推栈、
      空串 = 回默认（删字段）。zone 参与发声，但写入侧与 dir 一样只是数据 */
@@ -7628,7 +7707,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (cur === want) return;
     pushUndo();
     if (want === "") delete s.zone; else s.zone = +want;
-    render();
+    editorRender();
   });
   $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -7638,14 +7717,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     pushUndo();
     d.bars[edSel.bar].splice(edSel.idx, 1);
     edSel = null;
-    render();
+    editorRender();
   });
   /* ---- 增删小节（v2.6.1 第 Ⅲ 期）----
      ★ 为什么必须补这一对：型的小节数在 v2.5.1 就放开了（域 1~64），但**界面上一直没有改它的入口**
        —— 于是 1 小节的型（示例曲的节奏型 1~5 就是）在编辑器里永远只有一行、改不动。
        能力放开 ≠ 能用；这一期把入口补上，第 Ⅰ 期那条契约才算真正落地。
      ★ 两条纪律与其它草稿变更完全一致：① 先 pushUndo（Ctrl+Z 能连小节数一起回退）；
-       ② 改完一律走 render()（单一渲染入口，按钮禁用态/校验状态/标题都在那里收口）。
+       ② 改完一律走 editorRender()（单一渲染入口，按钮禁用态/校验状态/标题都在那里收口）。
      ★ 新小节的初值取**当前小节的副本**：用户按"再加一小节"时几乎总是想要"再来一遍同样的东西"，
        而且副本天然满足"每小节恰好占满 N 拍"这条硬校验（给一个空小节会让保存键立刻变灰、
        状态栏报红，用户以为坏了）。想改成别的，照旧点下方音符块库。 */
@@ -7657,7 +7736,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const at = editBar + 1;
     d.bars.splice(at, 0, (d.bars[editBar] || []).map(s => ({...s})));
     editBar = at; edSel = null;
-    render();
+    editorRender();
   }
   /** 删除当前小节。下限 1：0 小节的型没有合法解释（渲染 / 发声 / 段长都要除以它） */
   function delBarAt(){
@@ -7667,7 +7746,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     d.bars.splice(editBar, 1);
     edSel = null;
     editBar = Math.min(editBar, d.bars.length - 1);
-    render();
+    editorRender();
   }
   $("addBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); addBarAfter(); });
   /* 删小节是破坏性的（一整行手填的音符），与「清空当前小节」「复制到全部」同一口径：先确认。
@@ -7687,7 +7766,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       const src = d.bars[editBar].map(s => ({...s}));
       d.bars = d.bars.map(() => src.map(s => ({...s})));
       edSel = null;
-      render();
+      editorRender();
     }, {okText:"复制"});
   });
   $("clearBarBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -7698,7 +7777,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       pushUndo();
       d.bars[editBar] = [];
       edSel = null;
-      render();
+      editorRender();
     }, {danger:true, okText:"清空"});
   });
   $("auditionBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -7837,7 +7916,7 @@ const Stats = (() => {
     const n = Math.round((b.getTime() - a.getTime()) / 86400000);
     return n <= 0 ? "今天" : (n === 1 ? "昨天" : n + " 天前");
   }
-  function render(){
+  function statsRender(){
     const now = Date.now();
     const r = summarize(Store.logSessions, now, rangeDays, availNames());
     $("statWeek").textContent = String(Math.round(r.weekSec / 60));
@@ -7928,7 +8007,7 @@ const Stats = (() => {
   function open(){
     rangeDays = 7;
     setPressed("#statsRangeRow", p => +p.dataset.range === 7);
-    render();
+    statsRender();
     Modal.openOverlay("statsOverlay");   // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
@@ -7945,7 +8024,7 @@ const Stats = (() => {
     btn.blur();
     rangeDays = +btn.dataset.range;
     setPressed("#statsRangeRow", p => +p.dataset.range === rangeDays);
-    render();
+    statsRender();
   });
   /* 导出练习记录（v1.6）：与预设导出同一个下载通道 */
   $("statsExport").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -7958,7 +8037,7 @@ const Stats = (() => {
     evEl(e).blur();
     Modal.uiConfirm("清除全部练习记录？统计与连续天数都会归零，不可恢复。", () => {
       Store.clearLog();
-      render();
+      statsRender();
     }, { danger: true, okText: "清除" });
   });
   return { summarize, open, close, isOpen, agoText };
@@ -8042,7 +8121,7 @@ const Ear = (() => {
     });
     return strip;
   }
-  function render(){
+  function earRender(){
     const wrap = $("earCands");
     clear(wrap);
     Modal.unbindOverlay("earOverlay");    // v2.0.4：重建候选前先解绑上一轮登记
@@ -8113,9 +8192,9 @@ const Ear = (() => {
     /* 走会话播放额度自动停，不用定时器：定时器在后台标签页会被节流到 1 次/分钟，
        而额度由调度器在小节边界计数，与 BPM 无关、后台也准 */
     playQuota = EAR_BARS;
-    onQuotaDone = () => { render(); announce("放完了，请选择"); };
+    onQuotaDone = () => { earRender(); announce("放完了，请选择"); };
     Controls.start();
-    render();
+    earRender();
     announce("播放题目，共 " + question.answer.meter + " 拍 × " + EAR_BARS + " 小节");
   }
   function next(){
@@ -8126,7 +8205,7 @@ const Ear = (() => {
     for (let k = 0; k < EAR_GROUPS.length && !q; k++) q = makeQuestion(Math.random);
     question = q;
     answered = false; picked = -1;
-    render();
+    earRender();
     if (question) play(); else announce("题库不可用");
   }
   /** @param {number} i */
@@ -8137,7 +8216,7 @@ const Ear = (() => {
     const ok = i === question.answerIdx;
     streak = ok ? streak + 1 : 0;
     Store.recordEar(ok, streak);          // 冷键立即落盘，不防抖
-    render();
+    earRender();
     announce(ok ? `答对了，连对 ${streak}`
       : `答错了，正确答案是 ${letter(question.answerIdx)} ${question.answer.name}`);
   }
@@ -8180,11 +8259,11 @@ const Ear = (() => {
   $("earReset").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiConfirm("清零听辨训练战绩？累计题数、正确率与最高连对都会归零。", () => {
-      Store.resetEar(); streak = 0; render();
+      Store.resetEar(); streak = 0; earRender();
     }, { danger: true, okText: "清零" });
   });
   syncMini();
-  render();                                // 装配即初始化战绩显示（真实数字来自已加载的冷键）
+  earRender();                                // 装配即初始化战绩显示（真实数字来自已加载的冷键）
 
   return { open, close, isOpen, next, play, answer, makeQuestion, state };
 })();
@@ -8198,8 +8277,8 @@ const Arrange = (() => {
   let curId = null;
   /** @type {null | { sec: number, blk: number }} */
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
-  /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。render 重建 DOM 时拖拽必然已结束
-     （只有 pointerup 才提交，而提交才触发 render），所以不必跨渲染保持节点句柄。 */
+  /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。arrangeRender 重建 DOM 时拖拽必然已结束
+     （只有 pointerup 才提交，而提交才触发 arrangeRender），所以不必跨渲染保持节点句柄。 */
   /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
   let drag = null;
   const cur = () => curId === null ? null : Store.findArrange(curId);
@@ -8212,7 +8291,7 @@ const Arrange = (() => {
   function save(a){
     const v = Store.upsertArrange(a);      // 会重新做结构校验，不合法返回 null
     if (v) curId = v.id;
-    render(); refreshBar();
+    arrangeRender(); refreshBar();
   }
   /* 深拷贝一份草稿再改：直接改库里的对象会绕过校验（脏值会留在内存里） */
   const snapshot = () => JSON.parse(JSON.stringify(cur()));
@@ -8261,7 +8340,7 @@ const Arrange = (() => {
     const chars = d.lctx.chars.map((/** @type {any} */ c, /** @type {number} */ idx) =>
       idx === d.k ? { t: d.t, dur: d.d, ch: c.ch } : { t: c.t, dur: c.dur, ch: c.ch });
     Store.upsertLyric(d.lctx.arr, d.lctx.sec, chars);  // 归一化后一个字都不剩时保留原数据（返回 null）
-    render();
+    arrangeRender();
   }
 
   /** @param {any} target @param {any} chip @param {any} lctx @param {number} k @param {string} mode */
@@ -8285,7 +8364,7 @@ const Arrange = (() => {
   }
 
   /* 拖动期间的移动/抬手挂在 window 而不是字块上：指针移出字块（甚至移出浮层）后仍要跟随，
-     否则拖出边界就断在半路。只在模块装配时挂这一次——按字挂会在每次 render 后无界增长
+     否则拖出边界就断在半路。只在模块装配时挂这一次——按字挂会在每次 arrangeRender 后无界增长
      （v2.0.4 的 overlay 登记纪律同理）；没有 drag 时两个回调都空转。
      pointercancel 与 pointerup 同路收尾：被系统手势（来电、边缘返回）抢走指针时没有
      pointerup，不兜这一下 drag 会永久卡住，字块一直黏着指针跑。 */
@@ -8328,14 +8407,14 @@ const Arrange = (() => {
   /** @param {any} a @param {number} i @param {string} text */
   function distribute(a, i, text){
     const chars = String(text || "").replace(/\s+/g, "").split("");
-    if (!chars.length){ Store.deleteLyric(a.id, i); render(); return; }
+    if (!chars.length){ Store.deleteLyric(a.id, i); arrangeRender(); return; }
     const span = lyricSpanTicks(a.id, i);
     const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : chars.length;
-    if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); render(); return; }
+    if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); arrangeRender(); return; }
     const n = Math.min(chars.length, fit);
     Store.upsertLyric(a.id, i, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
       ({ t: k * LYRIC_BASE, dur: LYRIC_BASE, ch: ch })));
-    render();
+    arrangeRender();
   }
 
   /** @param {any} a @param {any} sec @param {number} i @returns {any} */
@@ -8359,7 +8438,7 @@ const Arrange = (() => {
       evEl(e).blur();
       S.lyricCue = !S.lyricCue;
       Store.persist();
-      render();
+      arrangeRender();
     });
     ly.appendChild(cue);
 
@@ -8373,7 +8452,7 @@ const Arrange = (() => {
       Modal.bindOverlay("arrangeOverlay", loopBtn, "click", (/** @type {any} */ e) => {
         evEl(e).blur();
         loopLyricSection(a.id, i);
-        render();
+        arrangeRender();
       });
       ly.appendChild(loopBtn);
     }
@@ -8395,7 +8474,7 @@ const Arrange = (() => {
     Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
       Store.deleteLyric(a.id, i);
-      render();
+      arrangeRender();
     });
     ly.appendChild(clr);
 
@@ -8419,7 +8498,7 @@ const Arrange = (() => {
     return ly;
   }
 
-  /** 建一个段行（render 的子工序，v2.4.4 由 forEach 回调体内拆出，**纯搬移**）：
+  /** 建一个段行（arrangeRender 的子工序，v2.4.4 由 forEach 回调体内拆出，**纯搬移**）：
       [段号, 段名, 块列, 操作钮, 歌词轨] 五件套 + 起/终范围钮 + 上移/下移/删除。
       行内所有交互经 Modal.bindOverlay 登记（重渲染前的统一解绑靠它，见 §3.10）。
       @param {any} a 当前曲式 @param {any} sec 段对象 @param {number} i 段下标
@@ -8452,7 +8531,7 @@ const Arrange = (() => {
       const pick = document.createElement("button");
       pick.className = "arg-mini"; pick.textContent = "换";
       pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
-      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; render(); });
+      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; arrangeRender(); });
       const del = document.createElement("button");
       del.className = "arg-mini"; del.textContent = "✕";
       del.setAttribute("aria-label", `删除第 ${i + 1} 段第 ${j + 1} 块`);
@@ -8494,7 +8573,7 @@ const Arrange = (() => {
         if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
         if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
         Store.persist();
-        render(); refreshBar();
+        arrangeRender(); refreshBar();
       });
       return btn;
     };
@@ -8534,7 +8613,7 @@ const Arrange = (() => {
     return row;
   }
 
-  function render(){
+  function arrangeRender(){
     const list = $("argList");
     clear(list);
     Modal.unbindOverlay("arrangeOverlay");   // v2.0.4：重建列表/段行前先解绑上一轮登记
@@ -8551,7 +8630,7 @@ const Arrange = (() => {
       const mt = document.createElement("div"); mt.className = "arg-item-meta";
       mt.textContent = `${x.sections.length} 段 · ${x.sections.reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0)} 小节`;
       b.appendChild(nm); b.appendChild(mt);
-      Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; picking = null; render(); refreshBar(); });
+      Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; picking = null; arrangeRender(); refreshBar(); });
       list.appendChild(b);
     });
 
@@ -8562,7 +8641,7 @@ const Arrange = (() => {
     $("argAddSec").disabled = !a;
     if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argRangeRow")); return; }
 
-    /* v2.4.4：段行先入 DocumentFragment、最后一次插入（同 Editor.render 的批量插入口径） */
+    /* v2.4.4：段行先入 DocumentFragment、最后一次插入（同 Editor.arrangeRender 的批量插入口径） */
     const frag = document.createDocumentFragment();
     a.sections.forEach((/** @type {any} */ sec, /** @type {number} */ i) => {
       const row = buildSecRow(a, sec, i);
@@ -8619,7 +8698,7 @@ const Arrange = (() => {
       `${a.sections.slice(f, t + 1).reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0)} 小节）`;
     const all = document.createElement("button");
     all.className = "arg-mini"; all.textContent = "全部";
-    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; S.arrangeSel.byLyric = false; Store.persist(); render(); refreshBar(); });
+    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; S.arrangeSel.byLyric = false; Store.persist(); arrangeRender(); refreshBar(); });
     rr.appendChild(info); rr.appendChild(all);
     setToggle("argLoopBtn", S.arrangeSel.loop);
 
@@ -8653,7 +8732,7 @@ const Arrange = (() => {
     }
     /* v2.5.0：侧栏范围滑块与主界面这一行**同源刷新**。放这里的理由是"所有会让
        '现在在哪一段 / 播的是整首还是某一段'改变的编排侧动作都会过 refreshBar"
-       （render、跳段、切范围循环、删曲式、开关 overlay）——一处收口，不必在五六处各补一次。
+       （arrangeRender、跳段、切范围循环、删曲式、开关 overlay）——一处收口，不必在五六处各补一次。
        方向是合法的：Arrange 声明在 Presets 之后，调它是向前引用 */
     Presets.syncDemoRange();
   }
@@ -8807,7 +8886,7 @@ const Arrange = (() => {
     Controls.stop();                                  // 进入即停（与编辑器/统计同一套）
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
     picking = null;
-    render();
+    arrangeRender();
     Modal.openOverlay("arrangeOverlay");  // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
@@ -8835,7 +8914,7 @@ const Arrange = (() => {
     const spec = demoBuildSpec();
     /* ★ v2.4.1 关键修复：导入预设后必须刷新**侧栏预设列表**。
        importPresets 只落数据（Store 不该知道列表怎么画），旧实现的 loadDemo 只调了
-       本 overlay 的 render()/refreshBar()——两者都不碰侧栏。后果：5 个节奏型进了
+       本 overlay 的 arrangeRender()/refreshBar()——两者都不碰侧栏。后果：5 个节奏型进了
        beatsight.customs（16 KB 数据确实写进去了），但侧栏列表一动不动，
        用户在预设库里根本看不到它们，"换个节奏型"变成一件做不到的事。
        这正是 importPresets 不重建列表这个老坑（v2.4.1 修复的同一类），此处收口。 */
@@ -8913,7 +8992,7 @@ const Arrange = (() => {
     const sel = Store.findArrange(r.id);
     S.arrangeSel = { id: r.id, from: 0, to: sel ? sel.sections.length - 1 : 0, loop: false, byLyric: false };
     Store.persist();
-    render(); refreshBar();
+    arrangeRender(); refreshBar();
     if (already){
       Modal.uiAlert("示例《在他乡》已在曲式库里——已在左侧列表为你选中它。");
     } else {
@@ -8933,7 +9012,7 @@ const Arrange = (() => {
     curId = v.id;
     S.arrangeSel = { id: v.id, from: 0, to: 0, loop: false, byLyric: false };
     Store.persist();
-    render(); refreshBar();
+    arrangeRender(); refreshBar();
   });
   $("argDel").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -8944,7 +9023,7 @@ const Arrange = (() => {
       curId = Store.arranges.length ? Store.arranges[0].id : null;
       if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
       Store.persist();
-      render(); refreshBar();
+      arrangeRender(); refreshBar();
       Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
     }, { danger: true, okText: "删除" });
   });
@@ -8960,7 +9039,7 @@ const Arrange = (() => {
     S.arrangeSel.loop = !S.arrangeSel.loop;
     S.arrangeSel.byLyric = false;    // 手动切范围循环 = 回到普通循环语义（审计 P1-4）
     Store.persist();
-    render(); refreshBar();
+    arrangeRender(); refreshBar();
   });
   /* 开始播放：进入曲式模式并把范围写进 S（真正的初始化在 Controls.start → arrangeStart） */
   /** @param {any} [rangeOnly] */
@@ -9005,7 +9084,7 @@ const Arrange = (() => {
     if (!on && a && S.arrangeSel.from === S.arrangeSel.to)
       S.arrangeSel.to = a.sections.length - 1;
     Store.persist();
-    render(); refreshBar();
+    arrangeRender(); refreshBar();
   });
 
   refreshBar();
@@ -9018,7 +9097,7 @@ const Arrange = (() => {
    **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
 const Help = (() => {
   let more = false;
-  function render(){
+  function helpRender(){
     $("helpMore").hidden = !more;
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
     $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
@@ -9032,7 +9111,7 @@ const Help = (() => {
   /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
      读的时候让它继续响着更有用（编辑器/曲式编排是"要动手改"，才需要停） */
   function open(){
-    render();
+    helpRender();
     Modal.openOverlay("helpOverlay");   // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
@@ -9042,7 +9121,7 @@ const Help = (() => {
 
   $("helpBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("helpClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
-  $("helpMoreBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); more = !more; render(); });
+  $("helpMoreBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); more = !more; helpRender(); });
   /* 清理前先确认（不可撤销）：用应用内弹窗，与其它破坏性操作同一套协议 */
   $("helpClearQuar").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -9050,12 +9129,12 @@ const Help = (() => {
     if (!n) return;
     Modal.uiConfirm("确定清理 " + n + " 条被隔离的损坏预设？此操作不可撤销。", () => {
       Store.clearQuarantine();
-      render();
+      helpRender();
       $("statusText").textContent = "已清理隔离数据";
       announce("已清理 " + n + " 条隔离数据");
     });
   });
-  render();
+  helpRender();
   return { open, close, isOpen, more: () => more };
 })();
 

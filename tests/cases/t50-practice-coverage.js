@@ -108,7 +108,7 @@ section("T50b 练习分布 · 面板渲染 / 趋势条 / 未碰提示 / 听辨�
 {
   const DAY = 86400000;
   const now = Date.now();
-  /* 用**真实时钟**播种（面板 render() 读 Date.now()）：三场民谣扫弦 90→96→100 形成上升趋势 */
+  /* 用**真实时钟**播种（面板 statsRender() 读 Date.now()）：三场民谣扫弦 90→96→100 形成上升趋势 */
   const seedLog = {
     v: 1, sessions: [
       /* 名字必须与 activePattern().name 逐字一致（日志存的是全名）——

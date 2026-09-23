@@ -37,11 +37,11 @@ node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时�
 sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，每次提交自动跑 --quick 快速自验
 ```
 
-**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍（Dashboard 里那行 `npm run ci`），本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变；`package.json` 与 `package-lock.json` 的 version 由 `check-version.js` 一并把关，后者跑 `npm install --package-lock-only` 即可同步）；③ 浏览与资源自验：`node tools/smoke.js` 已自动覆盖「能启动、无控制台报错、版本号一致、可视化网格渲染、关键元素样式、Service Worker 注册、播放态帧率」——**但它看不出"好不好用"**，视觉/手感类改动仍要人眼过一遍；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+**发布前清单**：① `node tools/check-all.js`（全量，不是 --quick）通过——Cloudflare 构建时会再跑一遍（Dashboard 里那行 `npm run ci`），本地过不了线上也过不了；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` / 品牌区 / chip 三处显示自动跟着变；`package.json` 与 `package-lock.json` 的 version 由 `check-version.js` 一并把关，后者跑 `npm install --package-lock-only` 即可同步）；③ 浏览与资源自验：`node tools/smoke.js` 已自动覆盖「能启动、无控制台报错、版本号一致、可视化网格渲染、关键元素样式、Service Worker 注册、播放态帧率、DOM 规模」——**但它看不出"好不好用"**，视觉/手感类改动仍要人眼过一遍；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
 
 ## 功能现状
 
-当前 `v2.10.4`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
+当前 `v2.10.5`。逐版本变更历史见 [CHANGELOG.md](CHANGELOG.md)，完整操作说明见应用内「使用方法」页。按功能域归纳：
 
 - **节拍内核**：Web Audio 时钟调度；时值可视化（音符块宽度与时值严格成正比）；BPM / 拍号 / TAP 测速；双通道音量。tick 制节奏模型（PPQN=48）支持三连音、Swing 三档、5/4 与 7/4 奇数拍
 - **节奏库与编辑器**：12 个内置预设；自定义节奏型编辑器（时值校验、试听、增删小节 1–64、本地保存）；预设导入导出 JSON
