@@ -419,6 +419,10 @@ input[type=range].vol{width:120px}
 .demo-range-track{position:relative;height:22px}
 .demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}
 .demo-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
+/* 段边界刻度线（v2.10.7）：滑块改按小节刻度后，每段**起点**的小节位置画一条小竖线，
+   让"第 X 小节落在哪一段"一眼可见。z-index 1 = 与填充条同层（画在其上）、thumb (2/3) 之下；
+   pointer-events:none 让它完全不参与命中——纯装饰，段名在读数与 aria-valuetext 里 */
+.demo-range-tick{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:12px;border-radius:1px;background:var(--t3);opacity:.55;pointer-events:none;z-index:1}
 .demo-range-track input[type=range].demo-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
 .demo-range-track input[type=range].demo-range-input::-webkit-slider-thumb{pointer-events:auto}
 .demo-range-track input[type=range].demo-range-input::-moz-range-thumb{pointer-events:auto}
@@ -1392,12 +1396,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
         <ul class="help-list">
           <li><b>整首连播</b>：预设库「示例曲」分组顶部那个按钮——一键按原曲顺序从第 1 段走到第 10 段，
-            放完自动从头再来，<b>不用打开编排面板</b>。按钮旁边的说明写着<b>现在播到第几段</b></li>
-          <li><b>播放范围滑块</b>（在「整首连播」下面）：<b>拖两个滑块自由选范围</b>——
-            比如拖成「第 3–7 段」就只练副歌到桥段，放完在区间内循环。读数行会把它翻译成
-            「第 3–7 段 · 副歌 → 桥段 · 16 小节」；<b>两个滑块拖到重合 = 只循环这一段</b>（最常用的一档）。
+            放完自动从头再来，<b>不用打开编排面板</b>。按钮旁边的说明写着<b>现在播到第几小节</b></li>
+          <li><b>播放范围滑块</b>（在「整首连播」下面）：<b>按小节拖两个滑块自由选范围</b>
+            （刻度就是小节，轨道上的细刻度线是段边界）——范围可以从段中间开始/结束，比如
+            「第 5–12 小节」就只练副歌里那几小节。读数行会把它翻译成
+            「第 5–12 小节 · 副歌 → 桥段 · 共 8 小节」；<b>两个滑块拖到重合 = 只循环这一个小节</b>
+            （磨"老是弹不顺的那一小节"），想循环一整段就拖出该段的起止小节。
             它和编排面板里的「起 / 终」是<b>同一份范围</b>，两边改哪边都同步。
-            注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几段"看上面那行说明</li>
+            注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几小节"看上面那行说明</li>
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——侧栏上的「切换节奏型」
             胶囊条已删除（它的候选与「扫弦」区里的条目完全重复）</li>
@@ -1465,22 +1471,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1496  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L1987  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L2954  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3600  Modal         应用内弹窗
-     L3732  Viz           时值可视化渲染与每帧动画
-     L5318  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L5947  Trainer       变速训练器
-     L6165  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6665  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7480  Editor        自定义节奏型编辑器
-     L7836  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
-     L8059  Ear           听辨训练（v1.10.0）
-     L8284  Arrange       曲式编排（v2.0.0）
-     L9107  Help          使用方法（v2.0.1）
-     L9154  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9228  初始化（装配） 各模块 hook 接线与启动
+     L1502  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L1993  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L2988  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3663  Modal         应用内弹窗
+     L3795  Viz           时值可视化渲染与每帧动画
+     L5383  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6012  Trainer       变速训练器
+     L6230  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L6730  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L7567  Editor        自定义节奏型编辑器
+     L7923  Stats         练习统计（v1.4：汇总计算 + 统计 overlay；记录动作在 Controls.stop 收口）
+     L8146  Ear           听辨训练（v1.10.0）
+     L8371  Arrange       曲式编排（v2.0.0）
+     L9229  Help          使用方法（v2.0.1）
+     L9276  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9350  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1500,7 +1506,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，三处显示自动跟着走 */
-const VERSION = "2.10.6";
+const VERSION = "2.10.7";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2371,16 +2377,33 @@ const Store = (() => {
     return true;
   }
 
-  /* 曲式选择（v2.0.0，热键）：playMode 二选一；arrangeSel 记"哪条曲式 + 播哪几段 + 是否循环"。
+  /* 曲式选择（v2.0.0，热键）：playMode 二选一；arrangeSel 记"哪条曲式 + 播哪段到哪段 + 是否循环"。
      id 必须真的存在于已加载的曲式库里，否则整条选择作废、回退预设模式——
      **这一项能在 Store 里判**（arranges 就在上面），它不需要 resolveRef 那种跨模块解析。
-     from/to 钳制到该曲式的段范围内：段数可能在别处被改小（改曲式后回来），
-     留着越界的 to 会让"范围循环"直接跑飞 */
+     v2.10.7 起 from/to 是**线性小节号**（0-based 含端点，可落在段中间）；
+     精确域钳制（[0, songBars-1]、from≤to）在使用点做——arrNextBar / syncDemoRange /
+     setRange 各自都有收窄，加载期只做防脏值的粗钳（段数/总小节数都可能被别处改动） */
+  /* v2.10.7：from/to 语义从「段下标」换成「线性小节号」（0-based 含端点），范围可落在段中间。
+     存储格式以 arrangeSel.v === 2 区分：有 → 新口径，直接粗钳（精确收窄在使用点——
+     songBars 依赖型长解析，加载期 patLenOf 还没注入，这里钳不了精确域，与既有
+     "加载粗钳 + 使用点收窄"的两层钳制同构）；无 → v2.10.6 及更早的旧口径（段下标），
+     原样暂存进 arrangeMig，由装配层在 patLenOf 就绪后用 migrateSecRangeToBars 换算写回
+     （T51f 的原"按段钳制"用例因此整体转型为迁移用例——旧值仍然有效，只是单位变了） */
   const arrSrc = (saved.arrangeSel && typeof saved.arrangeSel === "object") ? saved.arrangeSel : {};
   const arrTarget = findArrange(typeof arrSrc.id === "string" ? arrSrc.id : "");
-  const arrLast = arrTarget ? arrTarget.sections.length - 1 : 0;
-  const arrFrom = Math.min(arrLast, Math.max(0, Math.round(numOr(arrSrc.from, 0))));
-  const arrTo = Math.min(arrLast, Math.max(arrFrom, Math.round(numOr(arrSrc.to, arrFrom))));
+  /** @type {{id: string, from: number, to: number}|null} 旧格式（段下标）→ 装配层取走换算（takeArrangeMig） */
+  let arrangeMig = null;
+  /** @type {number} */
+  let arrFrom, arrTo;
+  if (arrSrc.v === 2){
+    const BIG = 1e6;                                // 粗钳上界：挡 NaN/负数/脏大值，精确域归使用点
+    arrFrom = Math.min(BIG, Math.max(0, Math.round(numOr(arrSrc.from, 0))));
+    arrTo = Math.min(BIG, Math.max(arrFrom, Math.round(numOr(arrSrc.to, arrFrom))));
+  } else {
+    arrangeMig = { id: typeof arrSrc.id === "string" ? arrSrc.id : "",
+      from: numOr(arrSrc.from, 0), to: numOr(arrSrc.to, 0) };
+    arrFrom = 0; arrTo = 0;                         // 占位：装配层迁移后写回真实值
+  }
   const playModeInit = (saved.playMode === "arrange" && arrTarget) ? "arrange" : "preset";
 
   /* 状态对象显式标注类型（v1.10.0 类型闸门）：S 是全应用最中心的数据结构，
@@ -2400,7 +2423,7 @@ const Store = (() => {
    *   plan: null | { baseStart: number, baseTarget: number, day: number },
    *   limit: { mode: string, n: number },
    *   playMode: string,
-   *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },
+   *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },   // v2.10.7：from/to = 线性小节号（0-based 含端点，可落在段中间）
    *   lyricCue: boolean,
    *   trainer: { on: boolean, start: number, target: number, step: number, everyN: number, last?: any }
    * }} */
@@ -2643,7 +2666,9 @@ const Store = (() => {
       limit:{ mode:S.limit.mode, n:S.limit.n },   // v1.9.0：只写这两个字段（不整包透传）
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
       lyricCue:S.lyricCue,                        // v2.1.0 F1：锚点提示音开关（热键：跟着每次点击写）
-      arrangeSel:{ id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop, byLyric:!!S.arrangeSel.byLyric } };
+      arrangeSel:{ v:2, id:S.arrangeSel.id, from:S.arrangeSel.from, to:S.arrangeSel.to, loop:S.arrangeSel.loop, byLyric:!!S.arrangeSel.byLyric } };
+      /* ↑ v:2 = 存储格式版本（v2.10.7）：from/to 已是线性小节号。加载期见到不带 v 的
+         旧值（段下标）会暂存进 arrangeMig，由装配层经 migrateSecRangeToBars 一次性换算 */
   }
   function persistHotNow(){
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); onPersistOk(); }
@@ -2929,6 +2954,10 @@ const Store = (() => {
     try{ if (v) localStorage.setItem(KEY_DEMO, "1"); else localStorage.removeItem(KEY_DEMO); return true; }
     catch(e){ return false; }
   }
+  /* v2.10.7：旧格式播放范围的一次性取走口（加载期暂存，见 arrangeSel 加载注释与返回面注释） */
+  function takeArrangeMig(){
+    const m = arrangeMig; arrangeMig = null; return m;
+  }
 
   return { S, customs, persist, persistCold, flush, setPersistFailHandler, setPersistRecoverHandler,
     downloadJSON,
@@ -2938,6 +2967,11 @@ const Store = (() => {
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
     arranges, findArrange, upsertArrange, deleteArrange, persistArranges,
+    /* v2.10.7：旧格式播放范围（段下标）的一次性迁移出口。加载期把旧值暂存进 arrangeMig，
+       装配层在 patLenOf 注入后取走（取走即清空——迁移只发生一次）并换算写回 S.arrangeSel。
+       **为什么不在加载期直接换**：换算要走 secBars → 型长解析（patLenOf），而加载期它还没注入，
+       强行换算会拿到 null 型长、算出错误的段长。 */
+    takeArrangeMig,
     lyrics, findLyric, upsertLyric, deleteLyric, persistLyrics,   // v2.1.0 F1 歌词对齐轨（冷键 beatsight.lyrics）
     demoSeeded, setDemoSeeded,                      // v2.4.1 示例曲一次性带出闩（冷键 beatsight.demoSeeded）
     /* v2.4.3：循环区间的钳制器。**为什么必须从这里出去**：clampLoop / clampRange 是 Store IIFE
@@ -3336,6 +3370,19 @@ function songBarAt(a, k){
   }
   return null;
 }
+/* 旧版播放范围（段下标）→ 线性小节区间的**一次性迁移换算**（v2.10.7）。
+   v2.10.6 及更早持久化的 S.arrangeSel.from/to 是段下标；存储格式版本 v2（见 Store.persist
+   的 arrangeSel.v）引入后，加载期见到没有 v 的旧值就把段区间换算成该段的起止小节——
+   段长可变（Σ blocks.repeats × 型长），所以必须走 secBars 而不能按常数折算。
+   迁移发生在装配层（patLenOf 注入之后）：这里只做换算，不碰 Store 与 S。
+   段下标越界/倒置先按旧加载口径钳好（末段 / 抬到 from）再换算——与 T51f 原钳制同口径。 */
+/** @param {any} a @param {number} f @param {number} t @returns {{ from: number, to: number }} */
+function migrateSecRangeToBars(a, f, t){
+  const last = a.sections.length - 1;
+  const fi = Math.min(last, Math.max(0, Math.round(f) || 0));
+  const ti = Math.min(last, Math.max(fi, Math.round(t) || 0));
+  return { from: songBarBefore(a, fi), to: songBarBefore(a, ti) + secBars(a.sections[ti]) - 1 };
+}
 /* 段内第 bar 小节落在第几个块、该块的第几个小节。块边界 = 各块 repeats × 型长的累加。
    越界（bar 不在 [0, secBars)）返回 null——**不静默钳到最后一个块**，
    那会把"游标跑飞"变成"播放错内容"，比崩溃更难查 */
@@ -3371,8 +3418,9 @@ function secChords(name){
 }
 /* 沿节目单前进一小节（**唯一的一份步进逻辑**）。
      a   曲式对象
-     sel 播放范围 {from, to, loop}（段 index，含端点）
-     sec,bar 当前位置；bar < 0 表示"尚未开始" → 返回范围起点的第 0 小节
+     sel 播放范围 {from, to, loop}（**线性小节号**，0-based 含端点——v2.10.7 起按小节调节，
+         从段下标换算而来；范围可以落在段中间，这正是本次改动的目的）
+     sec,bar 当前位置；bar < 0 表示"尚未开始" → 返回范围起点的（段, 段内小节）
    返回 { sec, bar, blockIdx, localBar, schedBar, ref, pattern, blockChanged, sectionChanged }
      · blockChanged   = **解析后的节奏型**换了（调用方据此决定要不要挂起切换）
      · sectionChanged = 跨段了
@@ -3382,37 +3430,52 @@ function secChords(name){
    两边各写一份步进逻辑的话，一旦不一致就会在段/块边界分叉——而分叉会同时打坏
    弹跳球、播放头、和待命球的交接，且极难复现（阶段一探针把这条列为 ①′ 的头号雷）。
 
+   ★ v2.10.7 步进改为在线性小节号上走：下一小节 = songBarBefore(当前段)+bar+1，用 songBarAt
+     反解回（段, 段内小节）——songBarAt 本来就会跨段，所以"段走完换段"不再需要单独写，
+     它是线性推进的自然结果。三类归位情形：
+     ① 未开始（bar<0）→ 落到范围起点（fromBar 落在段中间就从段中间播——新能力）；
+     ② 当前位置在范围外（跳段/缩范围是**即时的**，v2.0.2 语义）→ 拉回范围起点，
+        与 loop 无关——用户改了范围就该听到新范围；
+     ③ 正常推进越过范围末小节 → 循环则回起点，不循环则停（null）。
+     ② 与 ③ 的区分信号是**当前位置本身**是否在范围内：在范围内却推过了头才是"到末尾"。
+
    注意 blockChanged 比的是**解析后的型**而不是 blockIdx：段内两个块若恰好引用同一个预设，
-   就不需要挂起切换（无型可换还重置 schedBar → 画面白跳一下，见方案 R9）。 */
+   就不需要挂起切换（无型可换还重置 schedBar → 画面白跳一下，见方案 R9）。
+   停止态网格/待命球的取型（arrangeHomePattern）也走这里——它传 bar=-1，天然落到新起点。 */
 /** @param {any} a @param {any} sel @param {any} sec @param {any} bar */
 function arrNextBar(a, sel, sec, bar){
   if (!a || !Array.isArray(a.sections) || !a.sections.length) return null;
-  const to = Math.min(a.sections.length - 1, Math.max(0, sel.to | 0));
+  const total = songBars(a);
+  if (total <= 0) return null;
+  const to = Math.min(total - 1, Math.max(0, sel.to | 0));
   const from = Math.min(to, Math.max(0, sel.from | 0));
   const curBlock = (bar >= 0) ? blockAt(a.sections[sec], bar) : null;
   const curPat = curBlock ? resolveRef(curBlock.ref) : null;
 
-  /* 推进：未开始 → 落到起点；否则 +1 小节 */
-  let s = (bar >= 0) ? sec : from, b = (bar >= 0) ? bar + 1 : 0;
-  if (s < from){ s = from; b = 0; }                    // 落在范围之前：拉回起点
-  /* 落在范围之后同样拉回（v2.0.2 修）：跳段/缩范围是即时的，旧逻辑只在段走完才绕回——
-     往回跳段时当前段最长还要播完整段，用户观感是「上一段点了没反应」。
-     回卷方向与循环一致：范围从头（from）重新开始 */
-  if (s > to){ s = from; b = 0; }
-  if (b >= secBars(a.sections[s])){                    // 本段走完
-    if (s >= to){
-      if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
-      s = from;
-    } else { s++; }
-    b = 0;
+  /* 下一小节的线性号 + 归位（三类情形见函数头注释） */
+  /** @type {number} */
+  let lin;
+  if (bar < 0){
+    lin = from;
+  } else {
+    const curLin = songBarBefore(a, sec) + bar;
+    if (curLin < from || curLin > to){
+      lin = from;                                        // ② 范围外（即时拉回，v2.0.2 语义）
+    } else {
+      lin = curLin + 1;                                  // ③ 正常推进（songBarAt 自动跨段）
+      if (lin > to){
+        if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
+        lin = from;                                      // 循环回卷：回范围起点
+      }
+    }
   }
-  const blk = blockAt(a.sections[s], b);
-  if (!blk) return null;                               // 数据本身坏了：不猜，交给调用方停
-  const pat = resolveRef(blk.ref);
-  return { sec: s, bar: b, blockIdx: blk.blockIdx, localBar: blk.localBar,
-    schedBar: blk.schedBar, ref: blk.ref, pattern: pat,
+  const at = songBarAt(a, lin);
+  if (!at) return null;                                  // 数据本身坏了：不猜，交给调用方停
+  const pat = resolveRef(at.ref);
+  return { sec: at.sec, bar: at.bar, blockIdx: at.blockIdx, localBar: at.localBar,
+    schedBar: at.schedBar, ref: at.ref, pattern: pat,
     blockChanged: pat !== curPat,
-    sectionChanged: (bar < 0) || sec !== s };
+    sectionChanged: (bar < 0) || at.sec !== sec };
 }
 /* 试听对象（v1.10.0 泛化）：原先这里写死 `S.preview && draft`，只服务编辑器试听。
    听辨训练要试听的是「候选题」而不是编辑器草稿，于是把「试听谁」抽成一个引用。
@@ -4398,7 +4461,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       /* 预告行只在**播放中**存在（它由 paintFrameBody 按可听位置维护）；
          停止/未播时清掉——否则上一次播放留下的预告会粘在跳段定位后的新窗口上 */
       if (winStart < 0 || !S.playing){
-        winStart = winAnchor(songBarBefore(arr, S.arrangeSel.from));
+        /* v2.10.7：from 已是线性小节号（可落在段中间），钳到整曲域后直接锚窗口——
+           不再需要 songBarBefore 的段→线性换算（那是段下标时代的做法） */
+        winStart = winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(arr) - 1));
         winPrevBar = -1; winPrevSteps = null; winPrevName = "";
       }
       winPat = arrWindowPat(arr, winStart);
@@ -4837,7 +4902,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
     const W = winStart >= 0 ? winStart
-      : winAnchor(songBarBefore(a, Math.min(Math.max(S.arrangeSel.from, 0), a.sections.length - 1)));
+      : winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1));   // v2.10.7：from 已是线性小节号
     for (let r = 0; r < arrWinBars(); r++){
       /* 预告行（v2.7.0）：页内第 4 小节期间第 1 行 = 下一小节。歌词行跟着换内容
          （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
@@ -4911,7 +4976,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const total = songBars(a);
     if (!total) return;
     const W = winStart >= 0 ? winStart
-      : winAnchor(songBarBefore(a, Math.min(Math.max(S.arrangeSel.from, 0), a.sections.length - 1)));
+      : winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1));   // v2.10.7：from 已是线性小节号
     if (a.id + "@" + W + "#" + winPrevBar !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
     /* 当前行 = **可听**歌曲小节号所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级）：
        调度游标早一个前瞻窗口，按它着色会"词先跳、声后到"。停机/预备拍 → -1：
@@ -6330,7 +6395,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     $("statusText").textContent = "已停止";
     announce("已停止");
     Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
-    Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 S.arrangeSel.from）
+    Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 arrangeSel.from）
     Viz.resetForStop();
     Trainer.updateProg();
     syncLimitProg();                      // v1.9.0：停止即清空练习量进度（计数本身留到下轮 start 归零）
@@ -6779,22 +6844,28 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
   /* 当前"在哪一段"。播放中看**调度游标**（正在响的是哪一段），停止时看播放范围的起点。
      两者都是既有字段，不新增状态：arrSec 在共享状态区（每小节边界由节目单推进），
-     S.arrangeSel.from 就是编排面板里的「起」。 */
-  function demoCurSec(){
+     S.arrangeSel.from（范围起点的首小节，v2.10.7 按小节存）就是编排面板里的「起」。 */
+  /* 侧栏状态行的"现在在哪"读数源（v2.10.4 起；v2.10.7 改返回**线性小节号**）。
+     三个来源与 demoCurSec（v2.10.6 及更早的段号版）完全一致：
+       播放中跟**可听位置**（v2.7.1，与歌词轨/跳段行计数器同源）：调度游标 arrSec/arrBar
+       早一个前瞻窗口，读数会先于声音跳过去。取不到回退游标，再回退范围起点（fromBar）。
+     停止时"在哪"= 范围起点（下次播放从这里开始），线性号由调用方 +1 显示 */
+  /** @returns {number} 线性小节号（0-based）；曲式不匹配时 -1 */
+  function demoCurBar(){
     const a = Store.findArrange(S.arrangeSel.id);
     if (!a || !demoArrId || a.id !== demoArrId) return -1;
-    /* 播放中跟**可听位置**（v2.7.1，与歌词轨/跳段行计数器同源）：调度游标 arrSec
-       早一个前瞻窗口，段序条高亮会先于声音跳到下一段。取不到回退游标 */
     if (S.playing && S.playMode === "arrange"){
       const apos = Viz.audibleArrangePos();
-      return apos ? apos.sec : arrSec;
+      const sec = apos ? apos.sec : arrSec, bar = apos ? apos.bar : arrBar;
+      return (sec >= 0 && bar >= 0) ? songBarBefore(a, sec) + bar : S.arrangeSel.from;
     }
     return S.arrangeSel.from;
   }
-  /* 造一个范围滑块 input（v2.10.4）。**不能用 $() 取它**——它是运行期创建的动态节点
-     （check-dom-ids.js 只认标记里写死的 id），故由 buildDemoSongRow 用闭包变量持有。
-     数值域用 **1-based 段号**（min=1 / max=段数）：读屏与 aria-valuenow 都按"第 N 段"
-     理解人类，而内部的 from/to 是 0-based，换算只发生在 onRangeInput 与 syncDemoRange 两处。
+  /* 造一个范围滑块 input（v2.10.4；v2.10.7 改小节刻度）。**不能用 $() 取它**——它是运行期
+     创建的动态节点（check-dom-ids.js 只认标记里写死的 id），故由 buildDemoSongRow 用闭包变量持有。
+     数值域用 **1-based 小节号**（min=1 / max=整曲总小节数 songBars）：读屏与 aria-valuenow
+     都按"第 N 小节"理解人类，而内部的 from/to 是 0-based 线性号，换算只发生在
+     onRangeInput 与 syncDemoRange 两处。段数仍出现在读数与刻度线上（songBarAt 反解）。
      ★ **input 与 change 分两级**，这是"拖动途中不做重活"的落点：
        · `input`  —— 拖动中连续触发（每秒几十次）：只改 S、读数与填充条，落盘走既有 250ms 防抖；
        · `change` —— 松手/键盘改变提交时触发一次：才去调 onDemoRange（Arrange.setRange），
@@ -6807,20 +6878,21 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const el = document.createElement("input");
     el.type = "range";
     el.className = "demo-range-input " + cls;
-    el.min = "1"; el.max = String(a.sections.length); el.step = "1";
+    el.min = "1"; el.max = String(songBars(a)); el.step = "1";
     /* ★ 必须是字符串：lib.dom 里 HTMLInputElement.value 的类型是 string，
        写数字 1 会被类型闸门拦下（TS2322）。这类"类型闸门的正常拦截"在本仓库
        出现过多次，别当误报改类型标注，改值本身 */
     el.value = "1";
-    el.setAttribute("aria-label", label + "（共 " + a.sections.length + " 段）");
+    el.setAttribute("aria-label", label + "（共 " + songBars(a) + " 小节）");
     const isFrom = cls === "demo-range-from";
     el.addEventListener("input", () => onRangeInput(isFrom, false));
     el.addEventListener("change", () => onRangeInput(isFrom, true));
     return el;
   }
-  /* 滑块拖动（v2.10.4）。三条规矩：
+  /* 滑块拖动（v2.10.4；v2.10.7 改小节刻度）。三条规矩：
      ① **起点不得越过终点**（反之亦然）——越过时把对方一起顶走，于是"两个 thumb 拖到重合"
-        自然表达"只循环这一段"，不必再给一个"单段"开关；
+        自然表达"只循环这一个小节"（v2.10.6 及更早按段调节时重合=只循环一段），不必再给
+        一个"单小节"开关；想循环一整段就拖出该段的起止小节（读数会标出所在段名）；
      ② "进入曲式模式"只在**提交**那一步发生（见 Arrange.setRange）：与旧的"点段号"同语义
         ——拖范围 = 我要练这一段到那一段。拖动途中不动模式，免得反复切；
      ③ 范围变更**不在拖动时立刻跳段**——既有契约是下一小节边界才拉回（见 onArrangeBar 的
@@ -6832,7 +6904,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!demoArrId || !demoRangeFromEl || !demoRangeToEl) return;
     const a = Store.findArrange(demoArrId);
     if (!a) return;
-    const M = a.sections.length;
+    const M = songBars(a);
     /** @param {any} v @returns {number} */
     const clamp = v => Math.min(M, Math.max(1, Math.round(+v || 1)));
     let f = clamp(demoRangeFromEl.value);
@@ -6884,6 +6956,20 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const fromEl = makeRangeInput(a, "demo-range-from", "播放范围起点");
     const toEl = makeRangeInput(a, "demo-range-to", "播放范围终点");
     track.appendChild(fill); track.appendChild(fromEl); track.appendChild(toEl);
+    /* 段边界刻度线（v2.10.7）：轨道改按小节刻度后，"第 X 小节落在哪一段"不再一眼可见，
+       在每段**起点**的小节位置画一条小竖线补回这层信息（纯装饰，aria-hidden——
+       段名在读数与 aria-valuetext 里都有）。★ 刻度线**追加在 toEl 之后**：测试桩按
+       children[1]/[2] 定位两个 thumb（t68 的 rangeFromOf/rangeToOf），插在中间会挪动序位；
+       z 序不受影响——刻度 z-index 1，thumb z-index 2/3 恒在其上。 */
+    const totalBars0 = songBars(a);
+    for (let i = 1; i < a.sections.length; i++){
+      const tick = document.createElement("div");
+      tick.className = "demo-range-tick";
+      tick.setAttribute("aria-hidden", "true");
+      const p = songBarBefore(a, i);
+      tick.style.left = (totalBars0 > 1 ? (p / (totalBars0 - 1)) * 100 : 0) + "%";
+      track.appendChild(tick);
+    }
     wrap.appendChild(rNote); wrap.appendChild(track);
     group.appendChild(wrap);
 
@@ -6904,7 +6990,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const probs = arrangeProblems(a);
     if (probs.length){ Modal.uiAlert("这条曲式暂时不能播放：\n" + probs.join("\n")); return; }
     setMode("playMode", "arrange", "整首连播");
-    S.arrangeSel = { id: a.id, from: 0, to: a.sections.length - 1, loop: true, byLyric: false };
+    S.arrangeSel = { id: a.id, from: 0, to: songBars(a) - 1, loop: true, byLyric: false };
     Store.persist();
     Controls.stop();                 // 幂等（stop 可重入），保证"从头播"而不是从中间续
     Controls.start();
@@ -6925,10 +7011,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （元素引用也已在上游清空）。只有"整首/局部"与位置文案才需要 isMine 这个条件。 */
     const a = Store.findArrange(demoArrId);
     if (!a) return;
-    const n = a.sections.length;
-    /* 范围按当前曲式的段数再收一次。**与加载期的分工**：Store 加载时做的是绝对域钳制
-       （那时还不知道当前是哪条曲式、有几段）；换曲式后旧范围可能越界，故使用点再收窄。
-       与 loopRangeFor(按型收窄) 是同一套两层钳制思路 */
+    /* 范围按当前曲式的**总小节数**再收一次。**与加载期的分工**：Store 加载时做的是
+       粗钳（那时型长还没注入、算不出总小节数）；换曲式/改曲式后旧范围可能越界，
+       故使用点再收窄。与 loopRangeFor(按型收窄) 是同一套两层钳制思路 */
+    const n = songBars(a);
     const f = Math.min(n - 1, Math.max(0, S.arrangeSel.from));
     const t = Math.min(n - 1, Math.max(f, S.arrangeSel.to));
     demoRangeFromEl.value = String(f + 1);
@@ -6941,27 +7027,28 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       demoRangeFillEl.style.left = pct(f) + "%";
       demoRangeFillEl.style.width = (pct(t) - pct(f)) + "%";
     }
-    /* ★ 两个 thumb 重合时（from === to，即"只练这一段"）上层 input 会把下层 thumb 整个挡住，
-       必须按"哪边还有移动余地"决定谁在上：重合在最左时让**终点**在上（还能往右扩），
-       其余情况让**起点**在上（还能往左扩）。不做这一步，重合态就有一侧永远拖不动——
-       而"单段循环"恰恰是最常用的一档（旧的段号胶囊就是这个语义）。 */
+    /* ★ 两个 thumb 重合时（from === to，即"只循环这一小节"）上层 input 会把下层 thumb
+       整个挡住，必须按"哪边还有移动余地"决定谁在上：重合在最左时让**终点**在上（还能往右扩），
+       其余情况让**起点**在上（还能往左扩）。不做这一步，重合态就有一侧永远拖不动。 */
     const fromOnTop = !(f === t && f === 0);
     demoRangeFromEl.style.zIndex = fromOnTop ? "3" : "2";
     demoRangeToEl.style.zIndex = fromOnTop ? "2" : "3";
-    /* 段名上不了轨道，只能靠 aria-valuetext 与上方读数把"第 N 段"翻译成"副歌/主歌一"。
+    /* 段名上不了轨道，只能靠 aria-valuetext 与上方读数把"第 X 小节"翻译出"落在哪一段"。
+       段名经 songBarAt 从线性小节号反解（v2.10.7：小节是操作单位，段名是导航参照）。
        aria-valuenow 由浏览器按 value/min/max 自动算，是数字；valuetext 才是读屏听到的那句 */
-    /** @param {number} s @returns {string} */
-    const nm = s => (a.sections[s] ? shortSecName(a.sections[s].name) : "");
-    /** @param {number} s @returns {string} */
-    const vt = s => "第 " + (s + 1) + " 段" + (nm(s) ? " · " + nm(s) : "");
+    /** @param {number} k @returns {string} */
+    const secNameOfBar = k => {
+      const at = songBarAt(a, k);
+      return (at && a.sections[at.sec]) ? shortSecName(a.sections[at.sec].name) : "";
+    };
+    /** @param {number} k @returns {string} */
+    const vt = k => "第 " + (k + 1) + " 小节" + (secNameOfBar(k) ? " · " + secNameOfBar(k) : "");
     demoRangeFromEl.setAttribute("aria-valuetext", vt(f));
     demoRangeToEl.setAttribute("aria-valuetext", vt(t));
     if (demoRangeNoteEl){
-      const bars = a.sections.slice(f, t + 1)
-        .reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0);
       demoRangeNoteEl.textContent = (f === t)
-        ? `第 ${f + 1} 段 · ${nm(f)} · ${bars} 小节（只循环这一段）`
-        : `第 ${f + 1}–${t + 1} 段 · ${nm(f)} → ${nm(t)} · ${bars} 小节`;
+        ? `第 ${f + 1} 小节 · ${secNameOfBar(f) || "·"}（单小节循环）`
+        : `第 ${f + 1}–${t + 1} 小节 · ${secNameOfBar(f) || "·"} → ${secNameOfBar(t) || "·"} · 共 ${t - f + 1} 小节`;
     }
     /* "整首"这一态 = 当前选中的就是这条曲式 + 曲式模式 + 范围恰是整首。
        滑块取代段号后不再有"某一段"的高亮，所以这里只留整首/局部这一个视图 */
@@ -6971,17 +7058,17 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       demoPlayAllBtn.classList.toggle("active", whole);
       demoPlayAllBtn.setAttribute("aria-pressed", whole ? "true" : "false");
     }
-    /* ★ 这一行还兼着"现在播到第几段"的职责：段序条被滑块取代后逐段高亮没有了，
-       位置信息只剩这里（demoCurSec 走的是**可听位置**，与跳段行的 #argNowMeta 同源）。
+    /* ★ 这一行还兼着"现在播到第几小节"的职责：段序条被滑块取代后逐段高亮没有了，
+       位置信息只剩这里（demoCurBar 走的是**可听位置**，与跳段行的 #argNowMeta 同源）。
        T68j 就是钉这条的——别把它简化成一句静态文案。 */
     if (demoSongNote){
-      const cur = demoCurSec();
-      /* 局部范围按"单段 / 区间"分两种说法：`第 3–3 段` 这种叠加写法读起来像手误，
-         而"两个 thumb 重合 = 只循环这一段"恰是最常用的一档，值得单独说清楚 */
+      const cur = demoCurBar();
+      /* 局部范围按"单小节 / 区间"分两种说法：`第 3–3 小节` 这种叠加写法读起来像手误，
+         而"两个 thumb 重合 = 只循环这一小节"恰是精练最常用的一档，值得单独说清楚 */
       demoSongNote.textContent = (S.playing && isMine && cur >= 0)
-        ? `播放中 · 第 ${cur + 1}/${n} 段`
-        : (whole ? `整首连播 · 已就绪 · 共 ${n} 段`
-          : (f === t ? `已选第 ${f + 1} 段 · 拖滑块改范围` : `已选第 ${f + 1}–${t + 1} 段 · 拖滑块改范围`));
+        ? `播放中 · 第 ${cur + 1}/${n} 小节`
+        : (whole ? `整首连播 · 已就绪 · 共 ${n} 小节`
+          : (f === t ? `已选第 ${f + 1} 小节 · 拖滑块改范围` : `已选第 ${f + 1}–${t + 1} 小节 · 拖滑块改范围`));
     }
   }
   /* 从曲式模式回到"单练当前节奏型"（v2.5.0）。
@@ -7087,7 +7174,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoRange 仍认为"有得可刷"，
        会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
        demoArrId 一并清空：它标识"这套控件服务哪条曲式"，列表重建后由
-       buildDemoSongRow 重新写入（未渲染时保持 null，demoCurSec/syncDemoRange 据此静默跳过） */
+       buildDemoSongRow 重新写入（未渲染时保持 null，demoCurBar/syncDemoRange 据此静默跳过） */
     demoSongNote = null; demoPlayAllBtn = null;
     demoRangeWrapEl = null; demoRangeNoteEl = null; demoRangeFillEl = null;
     demoRangeFromEl = null; demoRangeToEl = null; demoArrId = null;
@@ -8573,18 +8660,25 @@ const Arrange = (() => {
     row.appendChild(blks);
 
     const ops = document.createElement("div"); ops.className = "arg-ops";
-    /* 范围起/终直接设在段行上：沙箱不支持 <select>，且这样"点哪段设哪段"更好按 */
+    /* 范围起/终直接设在段行上：沙箱不支持 <select>，且这样"点哪段设哪段"更好按。
+       v2.10.7：S.arrangeSel.from/to 已改按小节存（线性小节号）——按钮交互仍是"点哪段设哪段"，
+       写入时换算成该段的起止小节；高亮判断同理（起点=段首小节、终点=段尾小节）。 */
     /** @param {"from"|"to"} which @param {string} txt @param {string} aria */
     const mkRange = (which, txt, aria) => {
+      const secStart = songBarBefore(a, i);                       // 本段首小节（线性号）
+      const secEnd = secStart + secBars(a.sections[i]) - 1;       // 本段末小节
+      const isSel = (which === "from") ? S.arrangeSel.from === secStart : S.arrangeSel.to === secEnd;
       const btn = document.createElement("button");
-      btn.className = "arg-mini" + (S.arrangeSel[which] === i ? " sel" : "");
+      btn.className = "arg-mini" + (isSel ? " sel" : "");
       btn.textContent = txt; btn.setAttribute("aria-label", aria);
       Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
         S.arrangeSel.id = a.id;
-        S.arrangeSel[which] = i;
+        S.arrangeSel[which] = (which === "from") ? secStart : secEnd;
         S.arrangeSel.byLyric = false;   // 手设起/终 = 普通范围，非歌词行循环（审计 P1-4）
-        if (which === "from" && S.arrangeSel.to < i) S.arrangeSel.to = i;   // to 不得小于 from
-        if (which === "to" && S.arrangeSel.from > i) S.arrangeSel.from = i;
+        /* 防倒置与旧版同语义：设「起」落到早于终点的段 → 终点拖到本段末；
+           设「终」落到晚于起点的段 → 起点拖到本段首（线性号上直接比较） */
+        if (which === "from" && S.arrangeSel.to < secStart) S.arrangeSel.to = secEnd;
+        if (which === "to" && S.arrangeSel.from > secEnd) S.arrangeSel.from = secStart;
         Store.persist();
         arrangeRender(); refreshBar();
       });
@@ -8700,18 +8794,22 @@ const Arrange = (() => {
       return b;
     }
 
-    /* 播放范围的只读显示（真正的设置入口是段行上的「起 / 终」） */
+    /* 播放范围的只读显示（真正的设置入口是段行上的「起 / 终」）。
+       v2.10.7：arrangeSel.from/to 已改按小节存——这里以**小节**为主单位显示，
+       并用 songBarAt 反解出所在段，让人知道"这些小节落在歌的哪一部分" */
     const rr = $("argRangeRow");
     clear(rr);
-    const f = Math.min(S.arrangeSel.from, a.sections.length - 1);
-    const t = Math.min(S.arrangeSel.to, a.sections.length - 1);
+    const TB = songBars(a);
+    const f = Math.min(TB - 1, Math.max(0, S.arrangeSel.from));
+    const t = Math.min(TB - 1, Math.max(f, S.arrangeSel.to));
+    /* songBarAt 越界返回 null；f/t 已钳进 [0, TB-1] 理论不越界，兜底退到第 1 段挡脏数据 */
+    const fs = songBarAt(a, f) || { sec: 0, bar: 0 }, ts = songBarAt(a, t) || { sec: 0, bar: 0 };
     const info = document.createElement("span");
     info.className = "hint";
-    info.textContent = `第 ${f + 1} 段 → 第 ${t + 1} 段（共 ${a.sections.length} 段 · ` +
-      `${a.sections.slice(f, t + 1).reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0)} 小节）`;
+    info.textContent = `第 ${f + 1}–${t + 1} 小节 · 第 ${fs.sec + 1} → ${ts.sec + 1} 段（共 ${TB} 小节）`;
     const all = document.createElement("button");
     all.className = "arg-mini"; all.textContent = "全部";
-    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; S.arrangeSel.byLyric = false; Store.persist(); arrangeRender(); refreshBar(); });
+    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = songBars(a) - 1; S.arrangeSel.byLyric = false; Store.persist(); arrangeRender(); refreshBar(); });
     rr.appendChild(info); rr.appendChild(all);
     setToggle("argLoopBtn", S.arrangeSel.loop);
 
@@ -8783,7 +8881,11 @@ const Arrange = (() => {
     const a = arrangeCur() || cur();
     if (!a || a.sections.length <= 1) return;          // 单段无可跳（按钮已禁用，这里是双保险）
     const k = Math.min(a.sections.length - 1, Math.max(0, i));
-    S.arrangeSel.from = k; S.arrangeSel.to = k; S.arrangeSel.loop = true; S.arrangeSel.byLyric = false;   // 跳段是普通单段循环，非歌词行循环（审计 P1-4）
+    /* v2.10.7：范围改按小节存——跳段仍是段粒度导航（交互不变），写入时换算成该段的
+       起止小节（段首 = songBarBefore，段尾 = 段首 + 段长 - 1）。 */
+    S.arrangeSel.from = songBarBefore(a, k);
+    S.arrangeSel.to = songBarBefore(a, k) + secBars(a.sections[k]) - 1;
+    S.arrangeSel.loop = true; S.arrangeSel.byLyric = false;   // 跳段是普通单段循环，非歌词行循环（审计 P1-4）
     Store.persist();
     refreshBar();
     /* 即时反馈（v2.0.2 修）：旧实现只改范围、等小节边界拉回——停止状态/往回跳时界面
@@ -8802,11 +8904,11 @@ const Arrange = (() => {
       Presets.applyPatternChange();
     }
   }
-  /* 侧栏「播放范围」双滑块（v2.10.4）：把范围设成 [from, to]（两端都含），下一个小节边界生效。
-     ★ 与 jumpTo 的分工：jumpTo 是**单段**（from = to = i），服务主界面跳段行的
-       「◀ 上一段 / 下一段 ▶」；本函数是**任意区间**，服务侧栏那两个 thumb。
-       两者共用同一份 S.arrangeSel 与同一套"小节边界拉回"机制，jumpTo(i) 恰好等价于
-       setRange(i, i) —— 区别只在 loop 与定位文案。
+  /* 侧栏「播放范围」双滑块（v2.10.4，v2.10.7 改小节刻度）：把范围设成 [from, to]
+     （**线性小节号**，两端都含，可落在段中间），下一个小节边界生效。
+     ★ 与 jumpTo 的分工：jumpTo 是**单段**（把范围设成该段的起止小节），服务主界面跳段行的
+       「◀ 上一段 / 下一段 ▶」；本函数是**任意小节区间**，服务侧栏那两个 thumb。
+       两者共用同一份 S.arrangeSel 与同一套"小节边界拉回"机制。
      ★ 循环恒开：与 jumpTo / playArrange 同口径（"拖出范围"就是"我要练这段范围"，
        放完一遍就停不算练习闭环）。想只过一遍就停的人：按停止键，或在跳段行 / 编排面板
        关掉「范围循环」——那个开关依然是出口（v2.7.3）。
@@ -8818,8 +8920,8 @@ const Arrange = (() => {
      ★ 会跑重活（refreshBar + 停播时重建网格），所以侧栏只在**松手提交**时调它一次，
        拖动途中不调——见 Presets.makeRangeInput 的 input/change 两级说明。
      ★ 故意**不** announce：拖动会连续提交，读屏会被刷屏；范围信息由两个 thumb 的
-       aria-valuetext 承担（"第 3 段 · 副歌"）。 */
-  /** @param {number} from 起始段下标（0-based，含） @param {number} to 结束段下标（0-based，含）
+       aria-valuetext 承担（"第 5 小节 · 副歌"）。 */
+  /** @param {number} from 起点线性小节号（0-based，含） @param {number} to 终点线性小节号（0-based，含）
       @returns {void} */
   function setRange(from, to){
     /* 取曲式的顺序：正在播的 → 编辑器选中的 → **S.arrangeSel 指向的** → 库里第一条。
@@ -8832,11 +8934,11 @@ const Arrange = (() => {
          （onRangeInput 已先把渲染中那条曲式的 id 写进去）。 */
     const a = arrangeCur() || cur() || Store.findArrange(S.arrangeSel.id) || Store.arranges[0];
     if (!a) return;
-    const M = a.sections.length;
-    const f = Math.min(M - 1, Math.max(0, Math.round(from)));
+    const TB = songBars(a);
+    const f = Math.min(TB - 1, Math.max(0, Math.round(from)));
     /* 与 Store.clampLoop 同口径的**双向归一**：两个独立的钳制做不到 from <= to
        （from=3 / to=1 各自合法，合起来是空区间，调度器会算出"永远到不了 to"从而卡死） */
-    const t = Math.min(M - 1, Math.max(f, Math.round(to)));
+    const t = Math.min(TB - 1, Math.max(f, Math.round(to)));
     setMode("playMode", "arrange", "拖侧栏播放范围");
     S.arrangeSel.id = a.id;
     S.arrangeSel.from = f;
@@ -8846,17 +8948,19 @@ const Arrange = (() => {
     Store.persist();
     refreshBar();
     /* 即时反馈（与 jumpTo 同一处理，v2.0.2 那条"别让用户以为控件坏了"的结论同样适用）：
-       先把目标范围写到主界面那一行，下一小节边界 refreshNow 会用真实游标覆盖它 */
-    const nf = a.sections[f] && a.sections[f].name;
-    const nt = a.sections[t] && a.sections[t].name;
+       先把目标范围写到主界面那一行，下一小节边界 refreshNow 会用真实游标覆盖它。
+       段名从范围起止所在段反解（songBarAt）——小节是操作单位，段名是"在歌的哪里" */
+    const fst = songBarAt(a, f), tst = songBarAt(a, t);
+    const nf = (fst && a.sections[fst.sec]) ? a.sections[fst.sec].name : "";
+    const nt = (tst && a.sections[tst.sec]) ? a.sections[tst.sec].name : "";
     const span = (f === t)
       ? (nf ? " · " + nf : "")
       : ((nf || nt) ? " · " + (nf || "") + " → " + (nt || "") : "");
-    const idx = (f === t) ? `第 ${f + 1}` : `第 ${f + 1}–${t + 1}`;
+    const idx = (f === t) ? `第 ${f + 1} 小节` : `第 ${f + 1}–${t + 1} 小节`;
     $("argNowName").textContent = a.name + span;
     $("argNowMeta").textContent = S.playing
-      ? `→ ${idx} 段 · 本小节结束后进入`
-      : `已定位到 ${idx} 段 · 播放从这里开始`;
+      ? `→ ${idx} · 本小节结束后进入`
+      : `已定位到 ${idx} · 播放从这里开始`;
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（同 jumpTo） */
     if (!S.playing){
       const home = arrangeHomePattern();
@@ -8880,7 +8984,10 @@ const Arrange = (() => {
     setToggle("trainerToggle", true);                      // 训练面板与开关态同步（协议路径不经过 toggle 处理器）
     $("trainerPanel").hidden = false;
     setMode("playMode", "arrange", "歌词行循环");           // playMode 唯一写入口（t66 契约）
-    S.arrangeSel = { id: arrangeId, from: secIdx, to: secIdx, loop: true, byLyric: true };
+    /* v2.10.7：from/to 已改按小节存——歌词行循环的身份仍是"段"（byLyric），写入的是该段的
+       起止小节区间；循环边界按段内绝对 tick 计算的原口径不变（回卷只发生在段尾） */
+    S.arrangeSel = { id: arrangeId, from: songBarBefore(a, secIdx),
+      to: songBarBefore(a, secIdx) + secBars(a.sections[secIdx]) - 1, loop: true, byLyric: true };
     Trainer.reset();
     /* 播放中调用：立即生效；停机（开播前）调用：reset 会复位 loopPerSec，由 Controls.start
        按 S.arrangeSel.byLyric 重推——两条路都由同一意图源兜底（审计 P1-4） */
@@ -9003,7 +9110,7 @@ const Arrange = (() => {
     if (!r.ok){ Modal.uiAlert("示例《在他乡》载入失败：" + r.error); return; }
     curId = r.id;
     const sel = Store.findArrange(r.id);
-    S.arrangeSel = { id: r.id, from: 0, to: sel ? sel.sections.length - 1 : 0, loop: false, byLyric: false };
+    S.arrangeSel = { id: r.id, from: 0, to: sel ? songBars(sel) - 1 : 0, loop: false, byLyric: false };
     Store.persist();
     arrangeRender(); refreshBar();
     if (already){
@@ -9023,7 +9130,7 @@ const Arrange = (() => {
     const v = Store.upsertArrange({ name: "新曲式", sections: [{ name: "主歌", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 2 }] }] });
     if (!v) return;
     curId = v.id;
-    S.arrangeSel = { id: v.id, from: 0, to: 0, loop: false, byLyric: false };
+    S.arrangeSel = { id: v.id, from: 0, to: songBars(v) - 1, loop: false, byLyric: false };
     Store.persist();
     arrangeRender(); refreshBar();
   });
@@ -9064,7 +9171,7 @@ const Arrange = (() => {
     setMode("playMode", "arrange", "曲式播放");
     S.arrangeSel.id = a.id;
     S.arrangeSel.byLyric = false;    // 面板「播放」= 普通范围/整首，非歌词行循环（审计 P1-4）
-    if (!rangeOnly){ S.arrangeSel.from = 0; S.arrangeSel.to = a.sections.length - 1; }
+    if (!rangeOnly){ S.arrangeSel.from = 0; S.arrangeSel.to = songBars(a) - 1; }
     Store.persist();
     close();
     Controls.stop();
@@ -9073,19 +9180,25 @@ const Arrange = (() => {
   $("argPlay").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(false); });
   $("argPlayRange").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); play(true); });
   /* 跳段基准（v2.7.0）：**播放中**相对"正在播的段"（arrSec，与跳段行显示的「第 N 段」一致）；
-     **停止时**相对"当前定位"（arrangeSel.from，与「已定位到第 N 段」一致）。
-     原先恒用 arrSec——那是**调度游标**（上次播到哪儿），而段序条跳段只改 arrangeSel.from
+     **停止时**相对"当前定位"——v2.10.7 起 arrangeSel.from 是线性小节号，反解回所在段号，
+     与「已定位到第 N 小节 · 段名」的主界面反馈一致。
+     原先恒用 arrSec——那是**调度游标**（上次播到哪儿），而跳段只改 arrangeSel.from
      不动它：定位到第 3 段后点「下一段」= jumpTo(arrSec+1)，可能原地不动（用户实拍：
      停止 + 定位第 3 段，点「下一段」毫无反应），或在上次播完整首时被钳到末段跳飞 */
-  const jumpBase = () => (S.playing ? arrSec : S.arrangeSel.from);
+  const jumpBase = () => {
+    if (S.playing) return arrSec;
+    const a = arrangeCur();                        // 停止时的定位段 = 范围起点所在段
+    const at = a ? songBarAt(a, S.arrangeSel.from) : null;
+    return at ? at.sec : 0;
+  };
   $("argJumpPrev").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() - 1); });
   $("argJumpNext").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); jumpTo(jumpBase() + 1); });
   /* 跳段行的「范围循环」开关（v2.7.3）——跳段被困在该段的**出口**。
-     问题：jumpTo 把范围锁成单段并打开循环（from=to=k, loop=true），这是"反复磨这一段"的
-     默认；但此前整条链路没有出口——arrNextBar 走到段尾遇 loop 为真就 `s = from` 回卷、
-     永不返回 null，onArrangeEnd 也就永不触发，于是播放永远困在第 k 段（用户实拍）。
+     问题：jumpTo 把范围锁成单段并打开循环（loop=true），这是"反复磨这一段"的
+     默认；但此前整条链路没有出口——循环开着时步进永不返回 null，onArrangeEnd
+     也就永不触发，于是播放永远困在第 k 段（用户实拍）。
      开：只把 loop 置真，范围不动（跳段就是"锁本段"，与面板同一字段、同一语义）。
-     关：解除锁定——loop 置假；且若范围已被跳段收成**单段**（from===to），把 to 放开到曲末，
+     关：解除锁定——loop 置假；且若范围已被跳段收成**单段**，把 to 放开到曲末，
      变成"从当前段一路播到曲末后自然停"（用户选定：解除后继续往下走，而不是原地再放一遍就停）。
      范围本就是多段（面板设的起/终、「全部」、整首连播）时只关循环、不动用户设的 from/to。 */
   $("argJumpLoopBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -9094,8 +9207,17 @@ const Arrange = (() => {
     const on = !S.arrangeSel.loop;
     S.arrangeSel.loop = on;
     S.arrangeSel.byLyric = false;    // 手动切范围循环 = 回到普通循环语义（审计 P1-4）
-    if (!on && a && S.arrangeSel.from === S.arrangeSel.to)
-      S.arrangeSel.to = a.sections.length - 1;
+    /* "解除锁定"的判断（v2.10.7）：原判据 from === to 是段语义下的"单段锁定"；
+       范围改按小节存后，锁定态 = **范围落在同一段内**（跳段锁本段、或滑块拖出段内区间）——
+       都视为"困在这一段里"，关掉循环就把 to 放开到曲末（解除后继续往下走，用户既选口径）。
+       多段范围（面板设的起/终、「全部」、整首连播）仍只关循环、不动 from/to。 */
+    if (!on && a && songBars(a) > 0){
+      const TB = songBars(a);
+      const fc = Math.min(TB - 1, Math.max(0, S.arrangeSel.from));
+      const tc = Math.min(TB - 1, Math.max(fc, S.arrangeSel.to));
+      const fs = songBarAt(a, fc), ts = songBarAt(a, tc);
+      if (fs && ts && fs.sec === ts.sec) S.arrangeSel.to = TB - 1;
+    }
     Store.persist();
     arrangeRender(); refreshBar();
   });
@@ -9490,6 +9612,23 @@ onPlayModeChange = () => { Arrange.refreshBar(); };
    ★ 忘了注入不会崩，但段长会退回"每个型 4 小节"（= v2.5.0 的老口径）——
      所以 T51 用**示例曲的真实段长**（30 小节、段长 1/3/4/2/…）钉住它：注入漏了那一条立刻红。 */
 setPatLenOf(ref => patBars(resolveRef(ref)));
+/* v2.10.7：旧格式播放范围（段下标）的一次性迁移。此刻 patLenOf 刚注入、secBars/songBarBefore
+   已可用，而 init 的 UI 构建还没开始——迁移必须在任何 syncDemoRange/网格锚定读到
+   S.arrangeSel 之前完成。加载期的占位 {from:0,to:0} 在这里换成换算后的真实小节区间；
+   曲式已不存在时保持占位即可（playMode 已被加载期退回 preset，之后任何播放入口都会重设范围）。
+   换算结果立即落盘：下次加载读到 v:2 走快路径，不再进迁移分支。 */
+{
+  const mig = Store.takeArrangeMig();
+  if (mig){
+    const a = Store.findArrange(mig.id);
+    if (a && a.sections.length){
+      const r = migrateSecRangeToBars(a, mig.from, mig.to);
+      S.arrangeSel.from = r.from;
+      S.arrangeSel.to = r.to;
+      Store.persist();
+    }
+  }
+}
 /* 侧栏「恢复示例曲」按钮的回调（v2.4.1）：Presets 声明在 Arrange 之前，
    直接调 Arrange.loadDemo() 是反向引用 → 经钩子注入（同 onArrangeBar 那套） */
 onDemoRestore = () => Arrange.loadDemo();

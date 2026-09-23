@@ -88,7 +88,9 @@ section("T52c 节目单步进 · arrNextBar（段边界 / 块边界 / 范围 / �
     { name: "主歌", blocks: [BL(1, 2)] },                 // 8 小节（(a) 型）
     { name: "副歌", blocks: [BL(2, 1), BL(4, 1)] },       // 8 小节（(b) 型）
   ] };
-  const R = { from: 0, to: 2, loop: false };
+  /* v2.10.7：from/to 已是**线性小节号**（0-based 含端点），不再是段下标。全曲 = 0..19
+     （4+8+8 = 20 小节）。跨段推进由 songBarAt 自然产生，段边界照旧被标成 sectionChanged */
+  const R = { from: 0, to: 19, loop: false };
   /* 步进结果一律兜空对象：变异后 arrNextBar 可能返回 null（走到越界位置），
      直接读 .sec 会让**整套测试崩溃**而不是给出具名失败（反向验证 V4/V5 踩到过）。
      兜底里的 blockChanged/sectionChanged 故意取 true：null 表示"该停了"，
@@ -136,32 +138,39 @@ section("T52c 节目单步进 · arrNextBar（段边界 / 块边界 / 范围 / �
   eq(arrNextBar(a, R, 2, 7), null, "★ 走到范围末尾且不循环 → null（调用方应停止播放）");
 
   /* 循环 → 回到 from */
-  const RL = { from: 0, to: 2, loop: true };
+  const RL = { from: 0, to: 19, loop: true };
   const wrap = nx(a, RL, 2, 7);
   eq(JSON.stringify([wrap.sec, wrap.bar]), JSON.stringify([0, 0]), "循环 → 回到范围起点（第 0 段第 0 小节）");
   eq(wrap.sectionChanged, true, "回绕也算换段");
 
-  /* 单段循环（from === to）：这正是"只练副歌" */
-  const ONE = { from: 1, to: 1, loop: true };
+  /* 整段范围循环（主歌 = 小节 4..11）：这正是"只练主歌"。
+     v2.10.7 顺带支持**单小节循环**（from === to），见下面的 BAR 用例 */
+  const ONE = { from: 4, to: 11, loop: true };
   eq(JSON.stringify([nx(a, ONE, 1, 7).sec, nx(a, ONE, 1, 7).bar]), JSON.stringify([1, 0]),
-     "★ 单段循环：第 1 段走完回到它自己的第 0 小节（只练主歌）");
-  eq(arrNextBar(a, { from: 1, to: 1, loop: false }, 1, 7), null, "单段不循环 → 走完即停");
+     "★ 主歌范围循环：末小节走完回到第 1 段第 0 小节（只练主歌）");
+  eq(arrNextBar(a, { from: 4, to: 11, loop: false }, 1, 7), null, "范围末尾不循环 → 走完即停");
+
+  /* ★ v2.10.7 新能力：from === to = 单小节循环（把第 5 小节反复打磨到会为止） */
+  const BAR = { from: 5, to: 5, loop: true };
+  eq(JSON.stringify([nx(a, BAR, 0, 5).sec, nx(a, BAR, 0, 5).bar]), JSON.stringify([1, 1]),
+     "★ 单小节循环：走完第 5 小节回到它自己（线性小节 5 = 段 1 第 1 小节 [sec=1,bar=1]）");
+  eq(arrNextBar(a, { from: 5, to: 5, loop: false }, 0, 5), null, "单小节不循环 → 走完即停");
 
   /* 范围越界时钳制（S.arrangeSel 加载时已钳过一次，这里是第二道） */
-  eq(arrNextBar(a, { from: 0, to: 99, loop: false }, 2, 7), null, "to 超段数 → 钳到末段，仍会在末段末尾停");
+  eq(arrNextBar(a, { from: 0, to: 99, loop: false }, 2, 7), null, "to 超总小节数 → 钳到末小节，仍会在末尾停");
   /* ★ to 超段数且**循环**：不钳制 to 就会走进不存在的第 3 段 → 返回 null（本该回绕），
      于是"只练副歌"会莫名其妙地停在半路。这条才是能分出"钳制与否"的用例——
      上面那条 loop:false 的两种实现都返回 null，测不出差别（反向验证 V11 踩到过） */
   eq(JSON.stringify([nx(a, { from: 0, to: 99, loop: true }, 2, 7).sec,
     nx(a, { from: 0, to: 99, loop: true }, 2, 7).bar]),
     JSON.stringify([0, 0]), "★ to 超段数且循环 → 仍回绕到范围起点（不是走进不存在的段后停住）");
-  const back = nx(a, { from: 2, to: 2, loop: true }, 0, 0);
+  const back = nx(a, { from: 12, to: 19, loop: true }, 0, 0);
   eq(back.sec, 2, "★ 当前位置在范围之前 → 拉回 from（跳段后立刻生效，不会留在旧段）");
   eq(back.bar, 0, "拉回时小节归零");
 
   /* 对称拉回（v2.0.2，用户实拍 bug）：往回跳段/缩范围后当前位置在范围**之后**——
      旧实现只处理 s < from，「◀ 上一段」点了要等当前段整段播完才绕回，观感是没反应 */
-  const fwd = nx(a, { from: 0, to: 0, loop: true }, 1, 3);
+  const fwd = nx(a, { from: 0, to: 3, loop: true }, 1, 3);
   eq(fwd.sec, 0, "★ 当前位置在范围之后 → 同样立刻拉回（往回跳段下一边界即生效）");
   eq(fwd.bar, 0, "拉回后小节归零");
 
@@ -192,14 +201,15 @@ section("T52d 节目单步进 · blockChanged 比解析后的型（同型跨块�
   /* 段内两个块引用**同一个**预设 → 跨块时 blockChanged 必须为 false
      （无型可换还重置 schedBar，画面会白跳一下，方案 R9） */
   const same = { name: "S", sections: [{ name: "s", blocks: [BL(3, 1), BL(3, 1)] }] };
-  const cross = arrNextBar(same, { from: 0, to: 0, loop: false }, 0, 3);
+  /* 范围 0..7 = 该段全部 8 小节（v2.10.7 语义：线性小节号） */
+  const cross = arrNextBar(same, { from: 0, to: 7, loop: false }, 0, 3);
   eq(cross.blockIdx, 1, "确实跨到块 1 了");
   eq(cross.blockChanged, false, "★ 但两个块是同一个预设 → 不标 blockChanged（不必挂起）");
   eq(cross.schedBar, 0, "块内位置仍归零（型内的 4 小节循环照常回到第 0 小节）");
 
   /* 不同预设 → true */
   const diff = { name: "D", sections: [{ name: "s", blocks: [BL(3, 1), BL(5, 1)] }] };
-  eq(arrNextBar(diff, { from: 0, to: 0, loop: false }, 0, 3).blockChanged, true,
+  eq(arrNextBar(diff, { from: 0, to: 7, loop: false }, 0, 3).blockChanged, true,
      "不同预设跨块 → blockChanged = true");
 
   /* 引用一个已被删掉的预设：pattern 为 undefined，但仍能给出位置（调用方回退） */

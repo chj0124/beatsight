@@ -140,9 +140,10 @@ section("T53d 曲式播放 · 播放中改范围（跳段在小节边界生效�
   const { beat, ac } = startArrange(two, { from: 0, to: 1, loop: true });
   drive(ac, beat, 1.2);                      // 第 1 段第 1 小节
   eq(beat_sec({ beat }), 0, "改动前在第 1 段");
-  /* 把范围改成"只播第 2 段"——这就是跳段用的机制：
+  /* 把范围改成"只播第 2 段"（运行时直接赋值，不走加载迁移——v2.10.7 起单位是线性小节号，
+     第 2 段 = 小节 4..7）——这就是跳段用的机制：
      下一小节边界上 arrNextBar 发现当前位置在范围之前，会拉回 from 并归零小节 */
-  beat.Store.S.arrangeSel = { id: "t1", from: 1, to: 1, loop: true };
+  beat.Store.S.arrangeSel = { id: "t1", from: 4, to: 7, loop: true };
   drive(ac, beat, 1.1);                      // 越过下一个小节边界
   eq(beat.Store.S.playing, true, "跳段不中断播放");
   eq(beat_sec({ beat }), 1, "★ 下一个小节边界后已在第 2 段（跳段生效，不需要相位换算）");

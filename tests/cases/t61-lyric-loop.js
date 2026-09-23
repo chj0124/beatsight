@@ -33,8 +33,8 @@ section("T61a 歌词行循环 · 落点范围 / 爬坡开启 / 段长即一级")
   beat.Store.upsertLyric("t1", 1, [{ t: 0, dur: 24, ch: "光" }]);
   beat.Arrange.loopLyricSection("t1", 1);
   eq(beat.Store.S.playMode, "arrange", "进入曲式模式");
-  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[1,1]",
-     "★ 范围 = 只有该行（段）自己（from = to = 段下标）");
+  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[4,11]",
+     "★ 范围 = 只有该行（段）自己（v2.10.7：写入该段的起止小节，副歌 = 小节 4..11）");
   eq(beat.Store.S.arrangeSel.loop, true, "循环开");
   eq(beat.Store.S.trainer.on, true, "变速训练器被一并开启");
   eq(beat.Trainer.setLoopPerSec(true), true, "★ 爬坡粒度 = 每段一级（不是每 everyN 小节）");

@@ -181,9 +181,11 @@ section("T51e 曲式模型 · 引用存在性 / 拍号一致性（arrangeProblem
      "引用存在的自定义预设 → 无问题");
 }
 
-/* ================= 场景 T51f：S.playMode / S.arrangeSel 的加载与钳制 ================= */
-section("T51f 曲式模型 · playMode / arrangeSel 热键字段（含越界钳制）");
+/* ================= 场景 T51f：S.playMode / S.arrangeSel 的加载、迁移与钳制 ================= */
+section("T51f 曲式模型 · playMode / arrangeSel 热键字段（v2.10.7 段→小节迁移）");
 {
+  /* mk 的每段 = 1 块 × 1 遍 × 内置型 0（4 小节型）= 4 小节：
+     a3 = 3 段 = 12 小节（线性号 0..11），a1 = 1 段 = 4 小节（0..3） */
   const mk = (id, secs) => ({ id, name: id, sections: Array.from({ length: secs }, () => ({ name: "s",
     blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 1 }] })) });
   const seed = JSON.stringify({ v: 1, arranges: [mk("a3", 3), mk("a1", 1)] });
@@ -197,47 +199,54 @@ section("T51f 曲式模型 · playMode / arrangeSel 热键字段（含越界钳�
     playMode: "xyz", arrangeSel: "abc" }) }).beat.Store.S;
   eq(dirty.playMode, "preset", "playMode 脏值 → 回退 preset");
   eq(JSON.stringify(dirty.arrangeSel), JSON.stringify({ id: "", from: 0, to: 0, loop: false, byLyric: false }),
-     "arrangeSel 脏值 → 回退默认");
+     "arrangeSel 脏值 → 回退默认（占位 0/0，装配层找不到迁移目标 → 原样保留）");
 
   /* id 不存在（曲式被删了）→ 整条选择作废、回退预设模式 */
   const dead = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "nope", from: 1, to: 2, loop: true } }) }).beat.Store.S;
   eq(dead.playMode, "preset", "★ 选中的曲式不存在 → 回退预设模式（否则会停在一个不存在的曲式上）");
-  eq(dead.arrangeSel.id, "", "id 一并清空");
+  eq(dead.arrangeSel.id, "", "id 一并清空（迁移也因找不到目标而跳过，占位 0/0 保留）");
 
-  /* 存在 → 保留；from/to 钳制到该曲式的段范围（a3 有 3 段 → 合法下标 0..2） */
+  /* 存在 → 保留；v2.10.7：不带 v 的旧口径（段下标）由装配层一次性迁移为小节区间。
+     段 1 = 小节 4..7（每段 4 小节，段 0 占 0..3） */
   const okv = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a3", from: 1, to: 1, loop: true } }) }).beat.Store.S;
   eq(okv.playMode, "arrange", "选中存在的曲式 → 进曲式模式");
-  eq(JSON.stringify(okv.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 1, loop: true, byLyric: false }),
-     "from/to/loop 原样保留");
+  eq(JSON.stringify(okv.arrangeSel), JSON.stringify({ id: "a3", from: 4, to: 7, loop: true, byLyric: false }),
+     "★ 旧口径段下标 1..1 一次性迁移为该段的小节区间 4..7");
 
   const clamp = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a3", from: 5, to: 9, loop: true } }) }).beat.Store.S;
-  eq(clamp.arrangeSel.from, 2, "from 越界 → 钳到末段（段数 3 → 下标 2）");
-  eq(clamp.arrangeSel.to, 2, "to 越界 → 一并钳到末段（且不小于 from）");
+  eq(clamp.arrangeSel.from, 8, "from 越界 → 按旧口径钳到末段（2）→ 迁移为末段起点小节 8");
+  eq(clamp.arrangeSel.to, 11, "to 越界 → 一并钳到末段 → 迁移为末段末小节 11（全曲 12 小节，0..11）");
 
   const clamp2 = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a1", from: 1, to: 0, loop: false } }) }).beat.Store.S;
-  eq(clamp2.arrangeSel.from, 0, "a1 只有 1 段 → from 钳到 0");
-  eq(clamp2.arrangeSel.to, 0, "to 被抬到 ≥ from（不会出现 to < from 的空范围）");
+  eq(clamp2.arrangeSel.from, 0, "a1 只有 1 段 → from 钳到段 0 → 迁移为小节 0");
+  eq(clamp2.arrangeSel.to, 3, "to 被抬到 ≥ from → 迁移为段 0 末小节 3（不会出现 to < from 的空范围）");
 
-  /* ★ to < from 必须被抬到 from。这条**必须在多段曲式上测**：单段曲式里末段下标就是 0，
-     钳制与不钳制都得到 0，测不出区别（反向验证时踩到过）。
-     用 3 段的 a3、from=2 to=0：无守卫会得到 to=0 → 范围 [2,0] 为空 → 范围循环直接跑飞 */
+  /* ★ to < from 必须被抬到 from（迁移前按旧口径先钳好）。这条**必须在多段曲式上测**：单段曲式
+     里末段下标就是 0，钳制与不钳制都得到 0，测不出区别（反向验证时踩到过）。
+     用 3 段的 a3、from=2 to=0：无守卫会换算出 [8,3] 的空范围 → 范围循环直接跑飞 */
   const clamp3 = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a3", from: 2, to: 0, loop: true } }) }).beat.Store.S;
-  eq(clamp3.arrangeSel.from, 2, "from 合法（2 < 3 段）→ 原样保留");
-  eq(clamp3.arrangeSel.to, 2, "★ to < from → 抬到 from（无守卫会得到 0，范围变空）");
+  eq(clamp3.arrangeSel.from, 8, "from 合法（段 2）→ 迁移为小节 8");
+  eq(clamp3.arrangeSel.to, 11, "★ to < from → 抬到 from（段 2）→ 迁移为小节 11（无守卫会得到 3，范围变空）");
 
-  /* 热键落盘：两个字段都要写进去 */
+  /* ★ v:2 快路径：新口径直接粗钳保留（精确收窄在使用点），不做段→小节迁移 */
+  const nv2 = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
+    playMode: "arrange", arrangeSel: { v: 2, id: "a3", from: 5, to: 9, loop: true } }) }).beat.Store.S;
+  eq(nv2.arrangeSel.from, 5, "★ v:2 新口径 → from 原样保留（迁移只发生在旧格式上，且只发生一次）");
+  eq(nv2.arrangeSel.to, 9, "v:2 → to 原样保留（5..9 可落在段中间，这正是 v2.10.7 的意义）");
+
+  /* 热键落盘：两个字段都要写进去（迁移写回后立即落盘 → 下次加载走 v:2 快路径） */
   const app = loadApp({ "beatsight.arranges": seed, "beatsight.state": JSON.stringify({ v: 3,
     playMode: "arrange", arrangeSel: { id: "a3", from: 1, to: 2, loop: true } }) });
   app.beat.Store.flush();
   const hot = JSON.parse(app.storage.get("beatsight.state"));
   eq(hot.playMode, "arrange", "热键带 playMode");
-  eq(JSON.stringify(hot.arrangeSel), JSON.stringify({ id: "a3", from: 1, to: 2, loop: true, byLyric: false }),
-     "热键带完整 arrangeSel");
+  eq(JSON.stringify(hot.arrangeSel), JSON.stringify({ v: 2, id: "a3", from: 4, to: 11, loop: true, byLyric: false }),
+     "热键带完整 arrangeSel（段 1..2 迁移为小节 4..11，且已带 v:2 版本号）");
   ok(app.storage.get("beatsight.state").length < 1024,
      "热键仍 < 1 KB（新增字段没有破坏冷热分离，实际 " + app.storage.get("beatsight.state").length + " 字节）");
 }

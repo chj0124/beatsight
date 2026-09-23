@@ -89,11 +89,11 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   ok(/(^| )demo-range-to( |$)/.test(rTo.className), "轨道第 3 个孩子 = 终点滑块");
   eq(rFrom.type, "range", "起点是原生 range（自带键盘与读屏语义）");
   eq(rTo.type, "range", "终点也是原生 range");
-  /* 数值域用 1-based 段号：《在他乡》10 段 → min=1 / max=10 */
-  eq([rFrom.min, rFrom.max].join(), "1,10", "★ 起点滑块按 1-based 段号取值域（第 1 段 ↔ value=1）");
-  eq([rTo.min, rTo.max].join(), "1,10", "★ 终点滑块同域");
-  ok(String(rFrom.getAttribute("aria-label")).includes("共 10 段"),
-     "读屏名带上总段数（实际「" + rFrom.getAttribute("aria-label") + "」）");
+  /* 数值域用 1-based 小节号：《在他乡》30 小节 → min=1 / max=30（v2.10.7 小节口径） */
+  eq([rFrom.min, rFrom.max].join(), "1,30", "★ 起点滑块按 1-based 小节号取值域（第 1 小节 ↔ value=1）");
+  eq([rTo.min, rTo.max].join(), "1,30", "★ 终点滑块同域");
+  ok(String(rFrom.getAttribute("aria-label")).includes("共 30 小节"),
+     "读屏名带上总小节数（实际「" + rFrom.getAttribute("aria-label") + "」）");
   eq(rTrack.getAttribute("role"), "group", "轨道是控件组（与其余控件组同契约）");
 
   /* 歌词锚点抽查（段内绝对 tick = 小节×192 + 格×12，时值 = 格×12） */
@@ -168,7 +168,7 @@ section("T63d 示例载入 · 播放锚点 / 循环本行落点");
   beat.Arrange.loadDemo();
   beat.Store.S.lyricCue = true;
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 9, loop: false };
+  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 29, loop: false };
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   drive(ac, beat, 2.4);
@@ -183,10 +183,11 @@ section("T63d 示例载入 · 播放锚点 / 循环本行落点");
   near(inBar1[2].t, 2.2675, 1e-6, "「想」= 格14 × 0.15625s + 0.08s 起点");
   eq(beat.Store.S.playing, true, "示例曲正常播放中");
   beat.Controls.stop();
-  /* 循环本行：直接落到桥段段（跨小节延音「夜」所在行） */
+  /* 循环本行：直接落到桥段段（跨小节延音「夜」所在行）。v2.10.7 小节口径：
+     桥段 = 第 7 段（行 6）= 歌曲小节 16..19（0-based 含端点） */
   beat.Arrange.loopLyricSection(beat.DEMO_ID, 6);
-  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[6,6]",
-     "★ 循环本行落到桥段（与 F2 同一套机制）");
+  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[16,19]",
+     "★ 循环本行落到桥段（与 F2 同一套机制；小节口径 = 桥段起止小节）");
   const ye = charAt(beat, 6, "夜");
   eq([ye.t, ye.dur].join(), "192,144", "跨小节的「夜」：t=192（次小节首）dur=144 延至下一个「那」");
 }

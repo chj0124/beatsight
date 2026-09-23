@@ -44,7 +44,7 @@ function setup(){
   ] });
   beat.Store.upsertLyric("t79", 0, [{ t: 0, dur: 24, ch: "一" }, { t: 192, dur: 24, ch: "二" }]);
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: "t79", from: 0, to: 0, loop: true };
+  beat.Store.S.arrangeSel = { id: "t79", from: 0, to: 7, loop: true };
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();       // 停止态：applyPatternChange → buildViz
   return app;
@@ -197,7 +197,7 @@ section("T79h 曲式 + 1 行档 · 预告行不成立：行内容 = 当前小节
       { name: "B", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 4 }] },
     ] });
     beat.Store.S.playMode = "arrange";
-    beat.Store.S.arrangeSel = { id: arr.id, from: 0, to: 1, loop: true };
+    beat.Store.S.arrangeSel = { id: arr.id, from: 0, to: 5, loop: true };
     beat.Controls.setBpm(240);                     // 一小节 1s = 50 个 0.02s 驱动步
     beat.Presets.refreshAfterPatternChange();
     return { beat, els, arr };

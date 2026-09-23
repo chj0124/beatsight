@@ -173,7 +173,8 @@ section("T76c 可听域对齐 · 调度越界 ≠ 可听越界，歌词/计数�
 /* ================= 场景 T76d：停机预览不乘可听域（旧行为逐位保留） ================= */
 section("T76d 可听域对齐 · 停机预览锚到定位段所在窗口（回退路径不破）");
 {
-  /* 两段各 2 小节：A=春风 / B=秋月。停机 + 定位到段 B（from=1，起点 = 歌曲第 3 小节）
+  /* 两段各 2 小节：A=春风 / B=秋月。停机 + 定位到段 B（v2.10.7 小节口径：
+     段 B = 歌曲小节 2..3，from=2 → 起点 = 第 3 小节）
      → 窗口锚到第 3 小节所在的页（第 1 页 = 小节 1-4）→ 四行依次 春/风/秋/月 */
   const { beat } = loadStrum();
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一板", meter: 4,
@@ -186,7 +187,7 @@ section("T76d 可听域对齐 · 停机预览锚到定位段所在窗口（回�
   beat.Store.upsertLyric("t76d", 0, [{ t: 0, dur: 24, ch: "春" }, { t: 192, dur: 24, ch: "风" }]);
   beat.Store.upsertLyric("t76d", 1, [{ t: 0, dur: 24, ch: "秋" }, { t: 192, dur: 24, ch: "月" }]);
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: "t76d", from: 1, to: 1, loop: true };
+  beat.Store.S.arrangeSel = { id: "t76d", from: 2, to: 3, loop: true };
   beat.Viz.buildLyricLane();
   const rows = beat.Viz.internals().lyricRows;
   eq(beat.Viz.internals().lyricChipEls.map(c => c.children[1].textContent).join(""), "春风秋月",
@@ -209,7 +210,7 @@ section("T76e 分行歌词 · 播放中：前行已唱 / 当前行正在唱 / �
   ] });
   beat.Store.upsertLyric("t76e", 0, [{ t: 0, dur: 48, ch: "一" }, { t: 192, dur: 48, ch: "二" }]);
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: "t76e", from: 0, to: 0, loop: false };
+  beat.Store.S.arrangeSel = { id: "t76e", from: 0, to: 3, loop: false };
   beat.Controls.setBpm(240);
   beat.Controls.start();
   const ac = FakeAudioContext.last;

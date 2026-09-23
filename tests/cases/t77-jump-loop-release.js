@@ -47,10 +47,10 @@ section("T77 跳段 · 默认锁定循环 / 开关与字段同源");
   eq(els["argJumpLoopBtn"].hidden, false, "★ 跳段行的「范围循环」开关常驻（不随单段而隐藏）");
   eq(checked(els), "false", "初始未循环 → 开关 off");
 
-  /* 停止时跳段：基准 = 当前定位（from=0）→ 下一段 = 第 2 段 */
+  /* 停止时跳段：基准 = 当前定位（from=0 → 段 0）→ 下一段 = 第 2 段 */
   els["argJumpNext"].fire("click");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 1]),
-     "★ 跳段把范围锁成单段（from=to=第 2 段）");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([4, 7]),
+     "★ 跳段把范围锁成单段（第 2 段 = 小节 4..7，v2.10.7 按小节存）");
   eq(S.arrangeSel.loop, true, "★ 且默认打开循环（反复磨这一段）");
   eq(checked(els), "true", "★ 开关随之同步为 on（refreshBar 一处收口）");
   ok(isOn(els), "视觉同步（class 切到 on，与 setToggle 语义同源）");
@@ -70,18 +70,18 @@ section("T77b 跳段 · 关掉开关 = 解除锁定，单段范围放开到曲�
   const S = beat.Store.S;
   beat.Controls.stop();
   els["argJumpNext"].fire("click");                       // 锁到第 2 段
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 1]), "前提：单段锁定");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([4, 7]), "前提：单段锁定（小节 4..7）");
 
   els["argJumpLoopBtn"].fire("click");
   eq(S.arrangeSel.loop, false, "★ 关掉 = 解除循环");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 2]),
-     "★ 单段范围放开到曲末（第 2 段 → 第 3 段），继续往下播而不是原地再放一遍");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([4, 11]),
+     "★ 单段范围放开到曲末（第 2 段 → 第 3 段 = 小节 4..11），继续往下播而不是原地再放一遍");
   eq(checked(els), "false", "开关回到 off");
 
   /* 再开回来：只恢复循环，范围不再收窄（用户可继续按起/终自行设范围） */
   els["argJumpLoopBtn"].fire("click");
   eq(S.arrangeSel.loop, true, "★ 再开 = 恢复循环");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 2]),
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([4, 11]),
      "范围不动（开循环不偷偷改用户设的范围）");
   beat.Controls.stop();
 }
@@ -95,8 +95,8 @@ section("T77c 跳段 · 多段范围关循环时不改起/终");
 
   els["argJumpLoopBtn"].fire("click");
   eq(S.arrangeSel.loop, false, "★ 关掉循环");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 2]),
-     "★ 多段范围原样保留（只关循环，不把整首听变成「从当前段到曲末」）");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 11]),
+     "★ 多段范围原样保留（只关循环，不把整首听变成「从当前段到曲末」；全曲 = 小节 0..11）");
   beat.Controls.stop();
 }
 
@@ -125,9 +125,9 @@ section("T77e 跳段 · 解除后从当前段播到曲末后停（不再无限�
   eq(beat.arrangeState().sec, 0, "★ 锁定中：走完第 1 段的 4 小节后回卷到第 1 段（不自进）");
   eq(S.playing, true, "锁定中是持续循环、不收尾");
 
-  /* 解除：loop 置假、to 放开到曲末（第 3 段） */
+  /* 解除：loop 置假、to 放开到曲末（第 3 段 = 小节 11） */
   els["argJumpLoopBtn"].fire("click");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 2]), "解除后范围 = 第 1→3 段");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 11]), "解除后范围 = 第 1→3 段（小节 0..11）");
 
   const seen = new Set();
   const stopped = drive(ac, beat, 12.5, () => {

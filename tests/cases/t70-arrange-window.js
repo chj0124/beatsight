@@ -40,7 +40,7 @@ function startTwoStages(){
     { name: "A", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
     { name: "B", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 1 }] },
   ] });
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 1, loop: true };
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: true };
   beat.setMode("playMode", "arrange", "测试");
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();
@@ -179,7 +179,7 @@ section("T70d 滚动窗口 · 窗口里的小节解析不出来时回落画当�
   ] });
   ok(!!v, "前提：曲式能存进去（引用是否存在不在结构校验的职责里）");
   ok(beat.arrangeProblems(v).length > 0, "前提：arrangeProblems 确实报出了坏引用");
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 1, loop: false };
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: false };
   beat.setMode("playMode", "arrange", "测试");
   beat.Presets.refreshAfterPatternChange();          // 停止态：applyPatternChange → buildViz
   const cells = rowCells(els);
@@ -203,7 +203,7 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
       return layer ? layer.children.length : 0;
     });
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 9, loop: true };
+  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 29, loop: true };
   beat.Controls.setBpm(240);                     // 一小节 1s → 好算
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();

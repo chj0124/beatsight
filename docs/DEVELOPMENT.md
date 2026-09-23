@@ -716,7 +716,12 @@ demoBuildSpec()                    // 纯函数：谱面 → { presets, arrange,
 - **不要重新引入 4 小节的"组合型"**（旧版的「收束/收尾」就是这么来的）：
   一个段里放两块就表达了"相邻小节各用不同的型"，这才是该用模型的地方。
 
-### 3.17 侧栏「播放范围」双滑块（v2.10.4，改侧栏范围 UI 前必读）
+### 3.17 侧栏「播放范围」双滑块（v2.10.4；**v2.10.7 起按小节调节**，改侧栏范围 UI 前必读）
+
+**v2.10.7 变更**：滑块从「按段」改为「按小节」——取值域 `max` 由段数改为总小节数（`songBars`），
+内部 `S.arrangeSel.from/to` 同步改为 0-based **线性小节号**（可落在段中间）；重合 = **单小节循环**；
+旧持久化数据（无 `v` 标记的段下标口径）在加载期经 `migrateSecRangeToBars` 一次性换算并立即落盘
+（`arrangeSel.v:2` 区分新旧口径），本节契约的小节说法均已更新。
 
 **它取代了什么**：v2.5.0 的「段序条」（N 颗段号胶囊，`buildDemoSongRow` 里生成）与 v2.4.1 的
 「切换节奏型」胶囊条（`buildDemoSegRow`，已删除）。
@@ -724,16 +729,17 @@ demoBuildSpec()                    // 纯函数：谱面 → { presets, arrange,
 **为什么换（能力，不是样式）**：`Arrange.jumpTo` 把 `S.arrangeSel.from` 与 `.to` **写死成同一个值**，
 所以 N 颗胶囊只能表达 **N 种状态**（"只循环某一段"）；而 `S.arrangeSel` 本就支持任意区间
 （10 段 = **N(N+1)/2 = 55 种**）。滑块用 1 个控件解锁全部区间，**且不随段数增长**
-（`CONFIG.arrMaxSections = 24` 时同样只占一行）。"跳到单段"没丢——两个 thumb 拖到重合即 `from === to`。
+（`CONFIG.arrMaxSections = 24` 时同样只占一行）。"只循环这一段"也没丢——用滑块框住该段的
+起止小节即可；v2.10.4 时代的"拖到重合 = 单段"如今是"拖到重合 = 单小节循环"。
 
 **契约（六条）**：
 
 | # | 契约 | 说明 |
 |---|---|---|
-| 1 | 取值域 **1-based 段号** | `min=1` / `max=段数`。内部 `from`/`to` 是 0-based，换算只在 `onRangeInput` 与 `syncDemoRange` 两处。**别把 1-based 值直接写进 S** |
+| 1 | 取值域 **1-based 小节号** | `min=1` / `max=总小节数`（`songBars(a)`）。内部 `from`/`to` 是 0-based **线性小节号**（v2.10.7，可落在段中间），换算只在 `onRangeInput` 与 `syncDemoRange` 两处。**别把 1-based 值直接写进 S** |
 | 2 | 双向钳制 | 起点越过终点时把终点一起顶走，反之亦然 → 任何时刻 `from <= to`（空区间会让调度器永远到不了 `to`，见 `Store.clampLoop` 注释） |
 | 3 | **`input` / `change` 两级** | `input`（拖动中，每秒几十次）只改 S + 视觉 + 走 250ms 热键防抖；`change`（松手/键盘提交）才调 `onDemoRange`。**合成一级 = 一次拖动跑几十轮 `applyPatternChange`**，会吃掉音频排程窗口（同 `CONFIG.schedWindow` 的教训） |
-| 4 | 滑块 = **范围**，不是位置 | 播放期间两个 thumb 必须纹丝不动。"现在播到第几段"由 `.demo-play-note` 承担（`demoCurSec()` → 可听位置），**别把那行说明删掉** |
+| 4 | 滑块 = **范围**，不是位置 | 播放期间两个 thumb 必须纹丝不动。"现在播到第几小节"由 `.demo-play-note` 承担（`demoCurBar()` → 可听位置，v2.10.7 起小节口径），**别把那行说明删掉** |
 | 5 | 重合时的 z-index 翻转 | `from === to` 时上层 input 会挡住下层 thumb；重合在**最左**时让终点在上，其余让起点在上。不做这一步，重合态总有一侧拖不动（而它是最常用的一档） |
 | 6 | 注入而非直调 | `Presets` 声明在 `Arrange` 之前 → 反向调用要登记 R3 白名单。故走共享区钩子 `onDemoRange` = `Arrange.setRange`，装配层接线（与 `onDemoBar` / `onArrangeBar` 同套） |
 

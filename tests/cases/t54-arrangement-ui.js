@@ -182,19 +182,20 @@ section("T54e 曲式 UI · 播放范围：起/终 / 循环 / 全部");
   const S = beat.Store.S;
   /* 点列表 = 切"正在编辑哪条曲式"（不写播放选择） */
   els["argList"].children[0].fire("click");
-  /* 播放选择的 id 由「起 / 终」写入 */
+  /* 播放选择的 id 由「起 / 终」写入。
+     v2.10.7：写入的是该段的起止**小节**（主歌 8 小节 0..7，副歌 8 小节 8..15） */
   secRows(els)[1].children[3].children[1].fire("click");   // 终
   eq(S.arrangeSel.id, "a1", "★ 设范围时把曲式 id 一并记进 arrangeSel");
-  eq(S.arrangeSel.to, 1, "「终」设为第 2 段");
-  /* 把第 2 段设为「起」→ to 不得小于 from，所以 from=1 时 to 至少 1 */
+  eq(S.arrangeSel.to, 15, "「终」设为第 2 段（副歌末小节 = 8..15 的 15）");
+  /* 把第 2 段设为「起」→ to 不得小于 from，所以 from=8 时 to 至少 15 */
   secRows(els)[1].children[3].children[0].fire("click");   // 起
-  eq(S.arrangeSel.from, 1, "「起」设为第 2 段");
+  eq(S.arrangeSel.from, 8, "「起」设为第 2 段（副歌首小节 = 8）");
   ok(S.arrangeSel.to >= S.arrangeSel.from, "★ to 不会小于 from（范围不会变空）");
 
   /* 全部 */
   els["argRangeRow"].children[1].fire("click");            // 「全部」
   eq(S.arrangeSel.from, 0, "「全部」把起点拉回第 1 段");
-  eq(S.arrangeSel.to, 1, "终点是末段");
+  eq(S.arrangeSel.to, 15, "终点是末段末小节（全曲 16 小节，0..15）");
 
   /* 循环开关 */
   eq(els["argLoopBtn"].getAttribute("aria-checked"), "false", "循环默认关");
@@ -222,7 +223,7 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   els["argPlay"].fire("click");
   eq(beat.Arrange.isOpen(), false, "点播放会关闭 overlay");
   eq(S.playMode, "arrange", "进入曲式模式");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 1]), "「从头播」的范围是全曲");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([0, 15]), "「从头播」的范围是全曲（小节 0..15）");
   eq(S.playing, true, "且已开始播放");
   eq(els["argJump"].hidden, false, "★ 曲式模式下显示跳转行");
   beat.Controls.stop();
@@ -232,14 +233,14 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   secRows(els)[1].children[3].children[0].fire("click");   // 起 = 第 2 段
   secRows(els)[1].children[3].children[1].fire("click");   // 终 = 第 2 段
   els["argPlayRange"].fire("click");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 1]), "「播选中范围」只播第 2 段");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([8, 15]), "「播选中范围」只播第 2 段（小节 8..15）");
   eq(S.playing, true, "开始播放");
   beat.Controls.stop();
 
   /* 跳段：把范围设为"只播这一段并循环"，下一个小节边界生效 */
   els["argJumpNext"].fire("click");
   eq(S.arrangeSel.loop, true, "★ 跳段会打开循环（只练这一段）");
-  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([1, 1]), "跳到第 2 段");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([8, 15]), "跳到第 2 段（小节 8..15）");
 }
 
 /* ================= 场景 T54g：跳段的即时反馈与单段隐藏（v2.0.2） ================= */

@@ -46,7 +46,8 @@ function startTwoStages(loop){
     { name: "A", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
     { name: "B", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 1 }] },
   ] });
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 1, loop: !!loop };
+  /* v2.10.7：from/to 是线性小节号——全曲 = 小节 0..7（A 段 4 + B 段 4），不再是段下标 0..1 */
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: !!loop };
   beat.setMode("playMode", "arrange", "测试");
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();
@@ -61,7 +62,7 @@ section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一�
     { seedDemo: false });
   const boxOf = () => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   const playAllOf = () => boxOf().children.find(x => /(^| )demo-play-row( |$)/.test(x.className)).children[0];
-  /* v2.10.4：段序条已换成「播放范围」双滑块。定位第 3 段 = 把两个 thumb 拖到第 3 段重合，
+  /* v2.10.4：段序条已换成「播放范围」双滑块。定位第 3 小节 = 把两个 thumb 拖到第 3 小节重合，
      并走完 input（拖动中）+ change（提交）两级——只发 input 不会应用范围 */
   const rangeOf = () => boxOf().children.find(x => /(^| )demo-range( |$)/.test(x.className));
   const setRange = (f, t) => {
@@ -76,14 +77,14 @@ section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一�
   drive(ac, beat, 3);                              // 96BPM ≈ 1.2 小节 → 已进第 2 段（arrSec=1）
   beat.Controls.stop();
 
-  setRange(3, 3);                                  // 范围滑块定位第 3 段（两个 thumb 重合）
-  eq(beat.Store.S.arrangeSel.from, 2, "前提：已定位到第 3 段");
+  setRange(3, 3);                                  // 范围滑块定位第 3 小节（两个 thumb 重合；0-based from=2，落在段 1 内）
+  eq(beat.Store.S.arrangeSel.from, 2, "前提：已定位到第 3 小节（v2.10.7 小节口径）");
   els["argJumpNext"].fire("click");
-  eq(beat.Store.S.arrangeSel.from, 3,
-    "★ 停止时点「下一段」→ 第 4 段（旧实现 = jumpTo(arrSec+1) = 原地第 3 段，无反应）");
+  eq(beat.Store.S.arrangeSel.from, 4,
+    "★ 停止时点「下一段」→ 跳到下一段的起点（小节 2 在段 1 内 → 下一段 = 段 2 起点 = 小节 4；不再是零反馈）");
   els["argJumpPrev"].fire("click");
-  eq(beat.Store.S.arrangeSel.from, 2, "★ 再点「上一段」→ 回到第 3 段（相对定位步进）");
-  ok(/第 3 段/.test(els["argNowMeta"].textContent), "定位文案同步（实际「" + els["argNowMeta"].textContent + "」）");
+  eq(beat.Store.S.arrangeSel.from, 1, "★ 再点「上一段」→ 回到上一段起点（段 2 → 段 1 起点 = 小节 1）");
+  ok(/第 2 段/.test(els["argNowMeta"].textContent), "定位文案同步（实际「" + els["argNowMeta"].textContent + "」）");
 
   /* 播放中：基准 = 正在播的段（与跳段行显示的「第 N 段」一致） */
   beat.Controls.start();
@@ -148,7 +149,7 @@ section("T75c 预告行 · ★ 页内第 4 小节终端弧期间，待命球落�
 section("T75d 预告行边界 · ★ 范围末尾不循环：没有「下一小节」，第 1 行不替换、无预告信息");
 {
   const { beat, els, ac } = startTwoStages(false);           // loop = false
-  beat.Store.S.arrangeSel = { id: beat.Store.S.arrangeSel.id, from: 0, to: 0, loop: false };   // 只播 A 段 4 小节
+  beat.Store.S.arrangeSel = { id: beat.Store.S.arrangeSel.id, from: 0, to: 3, loop: false };   // 只播 A 段（小节 0..3）
   step(beat, ac, 160);                             // ≈3.2s → A 段第 4 小节（也是范围末小节）
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
      "★ 页内第 4 小节但**不替换**——节目单在此结束，没有「下一小节」可预告");
@@ -162,7 +163,7 @@ section("T75d 预告行边界 · ★ 范围末尾不循环：没有「下一小�
 section("T75e 预告行边界 · ★ 只循环 A 段时，页末预告的是范围起点（四音型），不是歌曲 k+1（八音型）");
 {
   const { beat, els, ac, v } = startTwoStages(true);
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 0, loop: true };   // 只循环 A 段
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 3, loop: true };   // 只循环 A 段（小节 0..3）
   step(beat, ac, 160);                             // ≈3.2s → A 段第 4 小节（页末）
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
      "★ 预告 = 范围起点（四音型）——若按歌曲 k+1 取会是八音型（8 格），立刻露馅");

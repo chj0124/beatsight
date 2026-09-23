@@ -10,8 +10,8 @@
      而 `S.arrangeSel = {id, from, to, loop, byLyric}` 本来就支持任意区间
      （10 段 = 55 种）。滑块用 **1 个控件**把这 55 种全部解锁，且不随段数增长。
 
-   本组钉住的契约：
-     · 数值域用 **1-based 段号**（min=1 / max=段数），与内部 0-based from/to 差 1，
+   本组钉住的契约（v2.10.7 起滑块按**小节**调节，原为按段）：
+     · 数值域用 **1-based 小节号**（min=1 / max=总小节数），与内部 0-based from/to 差 1，
        换算只发生在 onRangeInput 与 syncDemoRange 两处；
      · **起点不得越过终点**（反之亦然）：越过时把对方一起顶走 ——
        "两个 thumb 拖到重合"因此自然表达"只循环这一段"；
@@ -41,7 +41,7 @@ const trackOf = els => wrapOf(els).children[1];
 const fillOf = els => trackOf(els).children[0];
 const fromOf = els => trackOf(els).children[1];
 const toOf = els => trackOf(els).children[2];
-/* 整首连播那一行的状态说明（它兼着"现在播到第几段"的职责，见 syncDemoRange） */
+/* 整首连播那一行的状态说明（它兼着"现在播到第几小节"的职责，见 syncDemoRange） */
 const playNoteOf = els => boxOf(els).children[0].children[1];
 const playAllOf = els => boxOf(els).children[0].children[0];
 
@@ -67,16 +67,23 @@ section("T88a 范围滑块 · 控件形状（两个原生 range 叠层 + 填充�
   eq(wrap.children.length, 2, "容器里恰好两个孩子：读数 + 轨道");
   eq(noteOf(els).className, "demo-range-note", "第 1 个 = 读数行");
   eq(trackOf(els).className, "demo-range-track", "第 2 个 = 轨道");
-  eq(trackOf(els).children.length, 3, "轨道里恰好三个孩子：填充条 + 起点 + 终点");
+  eq(trackOf(els).children.length, 3 + 9,
+     "轨道 = 填充条 + 起点 + 终点 + 9 条段边界刻度线（v2.10.7：每段起点一条，最左的段 0 不画）");
+  const ticks = trackOf(els).children.slice(3);
+  ok(ticks.length === 9 && ticks.every(t => t.className === "demo-range-tick"
+     && t.getAttribute("aria-hidden") === "true"),
+     "★ 刻度线 = .demo-range-tick × 9（纯装饰 aria-hidden，段名在读数/valuetext 里）");
+  near(parseFloat(ticks[0].style.left), 1 / 29 * 100, 1e-6,
+     "★ 第 1 条刻度线 = 段 1 起点（0-based 小节 1 → 1/29）");
   eq(fillOf(els).className, "demo-range-fill", "第 1 个 = 区间填充条");
   ok(/(^| )demo-range-from( |$)/.test(fromOf(els).className), "第 2 个 = 起点滑块");
   ok(/(^| )demo-range-to( |$)/.test(toOf(els).className), "第 3 个 = 终点滑块");
   /* 原生 range：自带键盘（方向键）与读屏语义，不必自绘一整套 role=slider */
   eq(fromOf(els).type, "range", "起点是原生 input[type=range]");
   eq(toOf(els).type, "range", "终点是原生 input[type=range]");
-  eq([fromOf(els).min, fromOf(els).max, fromOf(els).step].join(","), "1,10,1",
-     "★ 取值域 = 1-based 段号（《在他乡》10 段 → 1..10，步长 1）");
-  eq([toOf(els).min, toOf(els).max].join(","), "1,10", "终点同域");
+  eq([fromOf(els).min, fromOf(els).max, fromOf(els).step].join(","), "1,30,1",
+     "★ 取值域 = 1-based 小节号（《在他乡》30 小节 → 1..30，步长 1）");
+  eq([toOf(els).min, toOf(els).max].join(","), "1,30", "终点同域");
   /* 一类名同时承担"提高特异性"的职责：全局 input[type=range] 与观测台主题都会命中这两个
      input，少了这一级会把 height 压回 4px（见 CSS 注释） */
   ok(/(^| )demo-range-input( |$)/.test(fromOf(els).className),
@@ -123,10 +130,10 @@ section("T88c 钳制 · 起点不得越过终点，反之亦然（越过时把�
   const fe = fromOf(els);
   fe.value = "abc"; fe.fire("input"); fe.fire("change");
   ok(Number.isFinite(beat.Store.S.arrangeSel.from) && Number.isFinite(beat.Store.S.arrangeSel.to),
-     "★ 脏值（非数字）回退到合法段号，不进 NaN",
+     "★ 脏值（非数字）回退到合法小节号，不进 NaN",
      "from=" + beat.Store.S.arrangeSel.from + " / to=" + beat.Store.S.arrangeSel.to);
   ok(beat.Store.S.arrangeSel.from >= 0 && beat.Store.S.arrangeSel.to <= 9,
-     "★ 脏值回退后仍落在 [0, 段数-1] 内");
+     "★ 脏值回退后仍落在 [0, 总小节数-1] 内");
 }
 
 /* ================= 场景 T88d：input / change 两级 ================= */
@@ -145,7 +152,7 @@ section("T88d 两级契约 · 只发 input（拖动中）不得提交：不改�
   /* 松手提交 → 模式切换 + 重活一起发生 */
   dragRange(els, 4, 6, true);
   eq(beat.Store.S.playMode, "arrange", "★ 松手提交后才切到曲式模式");
-  ok(/第 4–6 段/.test(els["argNowMeta"].textContent),
+  ok(/第 4–6 小节/.test(els["argNowMeta"].textContent),
      "★ 提交后主界面那一行给出即时反馈（实际「" + els["argNowMeta"].textContent + "」）");
 }
 
@@ -156,29 +163,32 @@ section("T88e 两个 thumb 重合 = 只循环这一段（旧段号胶囊那档�
   dragRange(els, 5, 5);
   eq([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to].join(","), "4,4",
      "★ 重合 → from === to，语义与旧「点段号只循环这一段」逐位等价");
-  ok(/第 5 段/.test(noteOf(els).textContent) && !/–/.test(noteOf(els).textContent),
-     "★ 读数用单段说法，不写「第 5–5 段」（实际「" + noteOf(els).textContent + "」）");
+  ok(/第 5 小节/.test(noteOf(els).textContent) && !/–/.test(noteOf(els).textContent),
+     "★ 读数用单小节说法（单小节循环），不写「第 5–5 小节」（实际「" + noteOf(els).textContent + "」）");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
-  /* 停止态定位必须把网格换成那一段的型，否则只有字变、画面原地不动（v2.0.2 的结论） */
-  ok(String(beat.activePattern().name).indexOf("主歌扫弦") >= 0,
-     "★ 停止时定位：生效的型已换成第 5 段引用的那个（实际「" + beat.activePattern().name + "」）");
+  /* 停止态定位必须把网格换成那一段的型，否则只有字变、画面原地不动（v2.0.2 的结论）。
+     v2.10.7 小节口径：滑块值 5 = 0-based 小节 4 = 段 2（副歌）→ 生效型 = 副歌扫弦 */
+  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
+     "★ 停止时定位：生效的型已换成第 5 小节所在段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
 /* ================= 场景 T88f：读数与读屏文案 ================= */
 section("T88f 段名翻译 · 轨道放不下段名，靠读数行与 aria-valuetext 承担");
 {
   const { els } = loadDemo();
-  dragRange(els, 3, 7);
-  ok(/第 3–7 段/.test(noteOf(els).textContent),
+  /* v2.10.7 小节口径：0-based 小节 4..19 = 段 2（副歌）→ 段 6（桥段），
+     即 1-based 滑块值 5..20——两端落在两个**不同**段名上，段名翻译断言才有区分度 */
+  dragRange(els, 5, 20);
+  ok(/第 5–20 小节/.test(noteOf(els).textContent),
      "读数给出区间（实际「" + noteOf(els).textContent + "」）");
   ok(/副歌/.test(noteOf(els).textContent) && /桥段/.test(noteOf(els).textContent),
      "★ 区间两端翻译成段名（副歌 → 桥段），轨道上放不下段名（实际「" + noteOf(els).textContent + "」）");
   ok(/\d+ 小节/.test(noteOf(els).textContent),
      "读数给出该区间的总小节数（与编排面板 argRangeRow 同一口径，实际「" + noteOf(els).textContent + "」）");
-  ok(/第 3 段/.test(String(fromOf(els).getAttribute("aria-valuetext"))), "★ 起点滑块报段号");
+  ok(/第 5 小节/.test(String(fromOf(els).getAttribute("aria-valuetext"))), "★ 起点滑块报小节号");
   ok(/副歌/.test(String(fromOf(els).getAttribute("aria-valuetext"))),
      "★ 并且带上段名（aria-valuenow 只能报数字，段名要靠 valuetext）");
-  ok(/第 7 段/.test(String(toOf(els).getAttribute("aria-valuetext"))), "终点滑块同样报段号");
+  ok(/第 20 小节/.test(String(toOf(els).getAttribute("aria-valuetext"))), "终点滑块同样报小节号");
   ok(/起点/.test(String(fromOf(els).getAttribute("aria-label")))
      && /终点/.test(String(toOf(els).getAttribute("aria-label"))),
      "两个滑块的 aria-label 区分「起点 / 终点」（读屏才能分清两个 thumb）");
@@ -188,23 +198,23 @@ section("T88f 段名翻译 · 轨道放不下段名，靠读数行与 aria-value
 section("T88g 填充条几何（百分比）+ 重合时 thumb 叠层顺序翻转");
 {
   const { els } = loadDemo();
-  /* 10 段 → 9 个间隔，第 i 段的百分比位置 = i/9×100。
+  /* 30 小节 → 29 个间隔，第 i 小节的百分比位置 = i/29×100。
      ★ 用 near 而不是 eq：填充宽度算的是 `pct(t) - pct(f)`（两个百分比相减），
-       与 `(t-f)/9*100` 在浮点末位上必然不同（实测 44.444444444444436 vs 44.44444444444444）。
-       这类"算法等价、末位不同"的断言写 eq 就是在给自己制造假红 */
+       与 `(t-f)/29*100` 在浮点末位上必然不同。这类"算法等价、末位不同"的断言写 eq
+       就是在给自己制造假红 */
   const pctOf = el => parseFloat(el.style.width) || 0;
   const leftOf = el => parseFloat(el.style.left) || 0;
   dragRange(els, 3, 7);
-  near(leftOf(fillOf(els)), 2 / 9 * 100, 1e-6, "★ 填充条左端 = 第 3 段的位置（2/9）");
-  near(pctOf(fillOf(els)), 4 / 9 * 100, 1e-6, "★ 填充条宽度 = 第 3–7 段（覆盖 2..6，宽 4/9）");
-  dragRange(els, 1, 10);
+  near(leftOf(fillOf(els)), 2 / 29 * 100, 1e-6, "★ 填充条左端 = 第 3 小节的位置（2/29）");
+  near(pctOf(fillOf(els)), 4 / 29 * 100, 1e-6, "★ 填充条宽度 = 第 3–7 小节（覆盖 2..6，宽 4/29）");
+  dragRange(els, 1, 30);
   eq([fillOf(els).style.left, fillOf(els).style.width].join("|"), "0%|100%", "★ 整首 → 填充条拉满");
   /* 单段 + 就在最左：起点已无法再左移，必须让**终点**在上层，否则这一侧永远拖不动 */
   dragRange(els, 1, 1);
   eq(fromOf(els).style.zIndex, "2", "★ 重合在最左时起点在下层（它已无移动余地）");
   eq(toOf(els).style.zIndex, "3", "★ 终点在上层（还能往右扩）");
   /* 其余重合情形（含最右）：起点在上层，还能往左扩 */
-  dragRange(els, 10, 10);
+  dragRange(els, 30, 30);
   eq(fromOf(els).style.zIndex, "3", "★ 重合在最右时起点在上层（还能往左扩）");
   eq(toOf(els).style.zIndex, "2", "★ 终点在下层（它已无移动余地）");
 }
@@ -223,7 +233,7 @@ section("T88h 滑块表达范围而非位置 · 播放期间两个 thumb 纹丝�
   eq([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to].join(","), "1,8",
      "范围字段也没被播放游标改写");
   /* 位置信息改由"整首连播"那一行的状态说明承担（段序条高亮没了，只剩它） */
-  ok(/播放中 · 第 \d+\/10 段/.test(playNoteOf(els).textContent),
+  ok(/播放中 · 第 \d+\/30 小节/.test(playNoteOf(els).textContent),
      "★ 位置读数落在状态说明上（实际「" + playNoteOf(els).textContent + "」）");
   beat.Controls.stop();
 }
@@ -233,11 +243,11 @@ section("T88i 越界范围 · 呈现时按当前段数收窄（使用期钳制�
 {
   const { beat, els } = loadDemo();
   /* 持久数据里的 to 指向不存在的段（脏数据 / 换了更短的曲式）：
-     Store 加载期只做绝对域钳制，真正按段数收窄是使用期（syncDemoRange）的事 */
+     Store 加载期只做绝对域钳制，真正按总小节数收窄是使用期（syncDemoRange）的事 */
   beat.Store.S.arrangeSel.from = 0;
   beat.Store.S.arrangeSel.to = 99;
   beat.Presets.syncDemoRange();
-  eq(toOf(els).value, "10", "★ 越界的 to 在呈现时收窄到末段（不写出一个不存在的段号）");
+  eq(toOf(els).value, "30", "★ 越界的 to 在呈现时收窄到末小节（第 30 小节，不写出一个不存在的小节号）");
   eq(fromOf(els).value, "1", "起点照常");
   /* 反向的脏区间（from > to）同样要在呈现时归一 —— 否则填充条宽度会是负数 */
   beat.Store.S.arrangeSel.from = 8;
@@ -254,13 +264,13 @@ section("T88j 「整首连播」按钮的高亮与滑块范围同源（同一份
   eq(playAllOf(els).getAttribute("aria-pressed"), "false", "前提：初始未高亮");
   playAllOf(els).fire("click");
   eq(playAllOf(els).getAttribute("aria-pressed"), "true", "点整首连播 → 按钮高亮");
-  eq([fromOf(els).value, toOf(els).value].join(","), "1,10", "★ 滑块同步拉满（范围 = 整首）");
+  eq([fromOf(els).value, toOf(els).value].join(","), "1,30", "★ 滑块同步拉满（范围 = 整首）");
   beat.Controls.stop();
   /* 拖成局部区间 → 按钮必须退出高亮（"整首"这一态的定义就是范围恰是整首） */
   dragRange(els, 2, 5);
   eq(playAllOf(els).getAttribute("aria-pressed"), "false",
      "★ 范围缩成局部后按钮退出高亮（两个视图同源，不会自相矛盾）");
-  dragRange(els, 1, 10);
+  dragRange(els, 1, 30);
   eq(playAllOf(els).getAttribute("aria-pressed"), "true", "★ 拖回整首 → 按钮重新高亮");
 }
 

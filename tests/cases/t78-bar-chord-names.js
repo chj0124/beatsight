@@ -46,7 +46,7 @@ function startTwoStages(loop){
     { name: "A · 甲 C·Am·Dm·G", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
     { name: "B · 乙 Em·F·G·Am", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 1 }] },
   ] });
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 1, loop: !!loop };
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: !!loop };
   beat.setMode("playMode", "arrange", "测试");
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();
@@ -84,7 +84,7 @@ section("T78b 示例曲 · 每段和弦数 == 段长（一小节一颗），渲�
      "★ 每段「和弦数 == 小节数」（示例曲 1/3/4/2/4/2/4/2/6/2）");
   /* 曲式模式载入示例并起播：窗口起点 = 歌曲第 1 小节 */
   beat.Store.S.playMode = "arrange";
-  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 9, loop: true };
+  beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 29, loop: true };
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
@@ -127,7 +127,7 @@ section("T78d 无和弦段 · 该段各行不挂胶囊（null 占位），不影
     { name: "A · 甲 C·Am·Dm·G", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
     { name: "B · 乙", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
   ] });
-  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 1, loop: false };
+  beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: false };
   beat.setMode("playMode", "arrange", "测试");
   beat.Controls.setBpm(240);
   beat.Presets.refreshAfterPatternChange();

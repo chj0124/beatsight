@@ -321,8 +321,8 @@ if (CASE in SIGS){
   out(!!a, "前提：三段曲式已在库里", a ? a.sections.length + " 段" : "缺失");
   if (a){
     beat.Controls.stop();                                  // 幂等：确保停止态再写脏值
-    beat.Store.S.arrangeSel.from = 2;                      // 第 3 段
-    beat.Store.S.arrangeSel.to = 0;                        // 第 1 段 —— 反向
+    beat.Store.S.arrangeSel.from = 2;                      // 第 3 小节（v2.10.7 小节口径）
+    beat.Store.S.arrangeSel.to = 0;                        // 第 1 小节 —— 反向
     beat.Controls.start();
     const err = driveFrames(FAC.last, beat, 1.5);          // 区间不归一 → 这里挂住被强杀
     out(!err, "反向区间不崩渲染帧", err || "OK");

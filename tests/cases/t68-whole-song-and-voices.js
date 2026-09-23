@@ -255,19 +255,19 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "★ 点「整首连播」切到曲式模式");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 9, loop: true, byLyric: false }),
-     "★ 范围 = 整首 10 段 + 开范围循环（放完自动从头再来，这才叫「练」）");
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 29, loop: true, byLyric: false }),
+     "★ 范围 = 整首 30 小节 + 开范围循环（放完自动从头再来，这才叫「练」；v2.10.7 小节口径）");
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
   /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表 */
   eq(playAllOf(els).getAttribute("aria-pressed"), "true", "按钮进入高亮态");
   /* v2.10.4：段序条已换成范围滑块——"整首连播"在滑块上的表现 = **两个 thumb 拉满**。
      滑块表达的是范围、不是当前位置，所以原来"第 1 段高亮 / 第 10 段不高亮"那两条
-     已随段序条一并消失；"现在在第几段"改由下面那条状态说明承担 */
-  eq(rangeFromOf(els).value, "1", "滑块起点拉满到第 1 段");
-  eq(rangeToOf(els).value, "10", "滑块终点拉满到第 10 段");
-  ok(noteOf(els).textContent.includes("第 1/10 段"),
-     "状态说明给出「播放中 · 第 1/10 段」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
+     已随段序条一并消失；"现在在第几小节"改由下面那条状态说明承担 */
+  eq(rangeFromOf(els).value, "1", "滑块起点拉满到第 1 小节");
+  eq(rangeToOf(els).value, "30", "滑块终点拉满到第 30 小节（v2.10.7：max = 总小节数）");
+  ok(noteOf(els).textContent.includes("第 1/30 小节"),
+     "状态说明给出「播放中 · 第 1/30 小节」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
   /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫 */
   ok(String(beat.activePattern().name).indexOf("十六分满扫") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
@@ -278,21 +278,23 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
 section("T68h 整首连播 · 拖范围滑块到重合 = 只循环那一段");
 {
   const { beat, els } = loadDemo();
-  /* v2.10.4：原来是点段序条第 5 颗胶囊（jumpTo → from=to=4），现在把两个 thumb 拖到第 5 段重合。
-     断言口径**逐位不变**——这正是换控件想要的结果：控件变了，数据语义一位都不该动 */
+  /* v2.10.4：原来是点段序条第 5 颗胶囊，现在把两个 thumb 拖到重合。
+     v2.10.7 小节口径：滑块值 5 = 0-based 小节 4 = 段 2（副歌，4 小节）的首小节——
+     控件换过（v2.10.4）、单位换过（v2.10.7），「重合 = 只磨这一小节」的语义一位都不该动 */
   dragRange(els, 5, 5);
   eq(beat.Store.S.playMode, "arrange", "拖滑块即进入曲式模式（否则 setRange 读不到可跳的曲式）");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
      JSON.stringify({ id: beat.DEMO_ID, from: 4, to: 4, loop: true, byLyric: false }),
-     "★ 范围收成 [第 5 段, 第 5 段] + 循环 = 只磨这一段");
+     "★ 范围收成 [第 5 小节, 第 5 小节] + 循环 = 只磨这一小节（v2.10.7：重合 = 单小节循环）");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
-  eq(rangeFromOf(els).value, "5", "起点 thumb 落在第 5 段");
-  eq(rangeToOf(els).value, "5", "终点 thumb 也落在第 5 段（重合态）");
-  ok(/第 5 段/.test(els["argNowMeta"].textContent),
+  eq(rangeFromOf(els).value, "5", "起点 thumb 落在第 5 小节");
+  eq(rangeToOf(els).value, "5", "终点 thumb 也落在第 5 小节（重合态）");
+  ok(/第 5 小节/.test(els["argNowMeta"].textContent),
      "★ 主界面那一行给出即时反馈（下一小节边界才会真的拉回）（实际「" + els["argNowMeta"].textContent + "」）");
-  /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。v2.9.0：段 5 = P3 = 主歌扫弦 */
-  ok(String(beat.activePattern().name).indexOf("主歌扫弦") >= 0,
-     "★ 停止时定位：生效的型已换成第 5 段引用的那个（实际「" + beat.activePattern().name + "」）");
+  /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。
+     小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「副歌扫弦」 */
+  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
+     "★ 停止时定位：生效的型已换成第 5 小节所在段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
 /* ================= 场景 T68i：点预设回到单型练习（曲式模式必须有主界面出口） ================= */
@@ -327,22 +329,22 @@ section("T68j 整首连播 · 位置读数随播放推进（段序条已换成�
 {
   const { beat, els } = loadDemo();
   /* 240BPM → 一小节 1s；**第 1 段 = 1 小节**（v2.6.0 起是逐小节谱，不再垫到 4 小节）= 1s。
-     v2.7.1 起"现在在第几段"跟**可听位置**（demoCurSec → Viz.audibleArrangePos，由渲染帧驱动），
+     v2.7.1 起"现在播到第几小节"跟**可听位置**（demoCurBar → Viz.audibleArrangePos，由渲染帧驱动；v2.10.7 由段号口径改为线性小节号），
      所以这里必须用 driveFrames（scheduler + paintFrame 双时钟）而不是只跑调度。
      ★ v2.10.4：段序条的逐段高亮没有了（滑块表达的是**范围**，不是当前位置），
        位置信息只剩 .demo-play-note 这一行——它成了本条唯一可断言的载体。 */
   beat.Controls.setBpm(240);
   playAllOf(els).fire("click");
   const ac = FakeAudioContext.last;
-  ok(noteOf(els).textContent.includes("第 1/10"),
-     "起播时指向第 1 段（实际「" + noteOf(els).textContent + "」）");
+  ok(noteOf(els).textContent.includes("第 1/30 小节"),
+     "起播时指向第 1 小节（实际「" + noteOf(els).textContent + "」）");
   driveFrames(ac, beat, 1.4);
-  ok(noteOf(els).textContent.includes("第 2/10"),
-     "★ 走完第 1 段后读数移到第 2 段（跟着节目单推进，不是钉在第 1 段）（实际「" + noteOf(els).textContent + "」）");
-  /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–10，不随播放跳动
+  ok(noteOf(els).textContent.includes("第 2/30 小节"),
+     "★ 走完第 1 小节后读数移到第 2 小节（跟着节目单推进，不是钉在第 1 小节）（实际「" + noteOf(els).textContent + "」）");
+  /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–30，不随播放跳动
      （"滑块自己会走"是这类控件最常见的实现错误，钉住它） */
   eq(rangeFromOf(els).value, "1", "整首连播期间起点停在 1（滑块不跟播放位置走）");
-  eq(rangeToOf(els).value, "10", "整首连播期间终点停在 10");
+  eq(rangeToOf(els).value, "30", "整首连播期间终点停在 30");
   beat.Controls.stop();
   /* 停机后回到"范围起点"口径（停止时看的不是调度游标——它不表达"下次从哪开始"）：
      范围没变，仍是从头；但读数不再写「播放中」 */
