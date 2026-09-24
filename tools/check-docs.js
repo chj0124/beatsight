@@ -11,7 +11,7 @@
         （PLAN-v1.9 / PLAN-v2-arrangement / PLAN-v2-impl 三份都缺）——读者按表点进去，
         看到的是还在写"确认后开工"的方案，无从判断该不该信。
 
-   七项都改成机器可判的规则，而不是再手写一遍数值：
+   九项都改成机器可判的规则，而不是再手写一遍数值：
 
      1) 模块索引行号 = index.html 实际 banner 行号（复用 gen-index.js 的解析，口径唯一）
      2) 不许手写耗时：这四个文件的正文里不得出现「约 N 秒」。
@@ -40,6 +40,14 @@
      7) 不许手写"当前覆盖率"（v2.8.6，审计 §F12）：与第 2 项同源同处置。
         实测证据：tests/README.md 写「当前 **99.7%**…只剩三组共 **11 行**」，
         而 v2.8.3 自验实测是 **99.4% / 36 行**——又是一个"抄一遍就等着烂"的数字。
+     8) 不许手写「文件体积」（v2.17.0）：与前两项同源同处置，但**只管 AGENTS.md**。
+        实测证据：它写「index.html ~672 KB」，而写下时（v2.10.12）实际就是那个量级，
+        此后文件长了两百多 KB 而该行没人再动（漂移 +43%）。**更关键的是它当时不在
+        任何闸门的管辖里**——七条规则全是管 README / docs / tests 的，
+        `AGENTS.md` 这个"给协作者与 AI 看的活规则"反而无人把守（grep 实测零命中）。
+        口径刻意只认「~N KB/MB」这一种形状、且只管这一份文件：
+        index.html / tests 里「约 5 MB」（localStorage 配额）「~180 KB」（壁纸档位讨论）
+        是概念说明与历史叙述，一并拦下就是假红。详见该项代码里的注释。
 
    刻意不做的事：不去校验正文里引用的**代码行号**（如"未覆盖的 L2964"）——它更适合由产出方
    （check-coverage）直接打印，让文档指过去而不是抄一遍；也不去比对"实测值"本身
@@ -303,19 +311,113 @@ const COVERAGE_CLAIM_RE = /当前[^\n]{0,40}?\d+(?:\.\d+)?\s*%/g;
   }
 }
 
+/* ---- 8) 不许手写「文件体积」声明（v2.17.0）----
+   实测证据：`AGENTS.md` L7 写「`index.html` ~672 KB」，而该文件当时已是 957,603 B（935 KiB）
+   —— **漂移 +42%**。git 追溯确认这一行**曾经是准的**：`fed5e2d`（v2.10.12）把它改成 672 KB 时
+   实际就是 673,446 B（658 KiB），此后文件长到 941 KiB 再没动过。
+   ★ 根因是**制度性盲区**，不是笔误：本文件此前只查"索引行号 / 耗时 / 归档 / 快照 / 版本 /
+     步数 / 覆盖率"这七类，而 **`AGENTS.md` 根本不在任何闸门的管辖里**
+     （实测 `grep -l AGENTS tools/*.js tests/*.js` → 零命中）。于是它漂了没人知道，
+     而它偏偏是"给协作者 / AI 看的活规则"——写错会直接误导判断（本次排查就被它带偏过）。
+   ⇒ 与规则 2（耗时）/ 7（覆盖率）同源同处置：**体积是可现算的**（`wc -c index.html`），
+     不该手写。
+   ★ 口径刻意很窄（与规则 6/7 同源的取舍）：
+     · **只管 `AGENTS.md` 这一份**。它的每个现状数字都应能被现查替代；
+       而 `index.html` / `tests/` 里那些「约 5 MB」（localStorage 配额）、「~180 KB」
+       （壁纸档位讨论）是**概念说明与历史叙述**，不是本仓库文件的体积声明 ——
+       把它们一并拦下就是假红（全仓库共 6 处这种合法写法）。
+     · 只认 `~N KB/MB` 这一种形状。**它不是万能的**：写成「index.html 现在 941 KiB」
+       就绕得过去。之所以不做宽 —— 宽口径会把上面那类概念说明全部误伤；
+       窄口径的价值是"把已经漂过的那一处钉住，并给出正确的替代写法"。 */
+const SIZE_CLAIM_FILES = ["AGENTS.md"];
+const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
+{
+  const hits = [];
+  SIZE_CLAIM_FILES.forEach(rel => {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)) return;
+    fs.readFileSync(full, "utf8").split("\n").forEach((ln, i) => {
+      for (const m of ln.matchAll(SIZE_CLAIM_RE)) hits.push(rel + ":" + (i + 1) + " 「" + m[0] + "」");
+    });
+  });
+  if (hits.length){
+    report.push("✗ 手写体积声明：" + hits.length + " 处（体积可现算，写死在文档里必烂）");
+    hits.forEach(h => problems.push("手写体积声明 —— " + h));
+  } else {
+    report.push("✓ 手写体积声明：AGENTS.md 无「~N KB/MB」（体积以 `wc -c index.html` 现查）");
+  }
+}
+
+/* ---- 9) CHANGELOG 分卷（v2.17.0）----
+   由来：`CHANGELOG.md` 长到 4,947 行 / 139 个版本条目，**没有任何切分**——
+   而 `check-docs.js` 的九条规则里原本没有一条管它的体量（它只被 check-version 盯首条版本号）。
+   于是「查一个历史版本要在几千行里翻」，且**它会无界增长**（每次发版加一段，永不减少）。
+   实测构成：v0.x 21 条 / v1.x 32 条 / v2.x 86 条——两条老线的条目早已不会再改，留着只是噪音。
+   ★ 处置：**主文件只保留当前大版本线，旧大版本各归各档**（`docs/CHANGELOG-v<N>.md`）。
+     这条口径自带"下一次翻页时会提醒你"的性质：bump 到 v3.0.0 的当天，主文件里就出现了
+     大号 ≠ 当前大号的条目 ⇒ 第 9 项变红 ⇒ 按提示把 v2 整线挪进归档即可。
+     **不需要谁去记"该归档了"**——这正是本文件九条规则共同的立身之道。
+   ★ 三条机器可判的断言：
+     ① 主文件里**每一条** `## vX.Y.Z` 的大号都等于 `index.html` 的 VERSION 大号；
+     ② 归档文件名里的大号必须**小于**当前大号（归档只装旧线）；
+     ③ 归档正文里**不得混入** ≥ 当前大号的条目（两处都留 ⇒ 迟早不一致）。 */
+{
+  const vProblems = [];
+  const curMaj = (() => {
+    const m = /const VERSION = "(\d+)\./.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"));
+    return m ? Number(m[1]) : null;
+  })();
+  /** @param {string} rel @returns {number[]|null} */
+  const verMajorsIn = rel => {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)) return null;
+    return [...fs.readFileSync(full, "utf8").matchAll(/^## v(\d+)\./gm)].map(m => Number(m[1]));
+  };
+  if (curMaj === null){
+    vProblems.push("取不到 index.html 的 VERSION（本项无法判定）");
+  } else {
+    const mainMajors = verMajorsIn("CHANGELOG.md");
+    if (!mainMajors || !mainMajors.length){
+      vProblems.push("CHANGELOG.md 里没有任何「## vX.Y.Z」条目");
+    } else {
+      const off = mainMajors.filter(m => m !== curMaj);
+      if (off.length){
+        vProblems.push("CHANGELOG.md 有 " + off.length + " 条不属于当前大版本线（v" + curMaj + ".x）的条目"
+          + "（最小 v" + Math.min(...off) + "）—— 大版本已翻页，把旧线整体挪进 docs/CHANGELOG-v<旧大号>.md");
+      }
+    }
+    const dir = path.join(ROOT, "docs");
+    if (fs.existsSync(dir)){
+      fs.readdirSync(dir).filter(f => /^CHANGELOG-v\d+\.md$/.test(f)).forEach(f => {
+        const n = Number(/^CHANGELOG-v(\d+)\.md$/.exec(f)[1]);
+        if (!(n < curMaj)) vProblems.push("docs/" + f + " 的大号不小于当前大号 v" + curMaj + "（归档只装旧线）");
+        const leak = (verMajorsIn("docs/" + f) || []).filter(m => m >= curMaj);
+        if (leak.length) vProblems.push("docs/" + f + " 混入了当前/更新大版本线的 " + leak.length + " 条（两处都留 = 迟早不一致）");
+      });
+    }
+  }
+  if (vProblems.length){
+    report.push("✗ CHANGELOG 分卷：" + vProblems.length + " 处");
+    vProblems.forEach(p => problems.push("CHANGELOG 分卷 —— " + p));
+  } else {
+    report.push("✓ CHANGELOG 分卷：主文件只含当前大版本线（v" + curMaj + ".x），旧线各在其归档文件里");
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
   console.log("  ✗ " + problems.length + " 处文档漂移：");
   problems.forEach(p => console.log("      · " + p));
   console.log("  修法：索引行号 → `node tools/gen-index.js --write`；"
-    + "耗时 / 覆盖率现状 → 删掉数字，改指命令输出（`check-all` 与 `check-coverage` 自己会打印）；"
+    + "耗时 / 覆盖率现状 / 体积声明 → 删掉数字，改指命令输出（`check-all` / `check-coverage` / `wc -c` 自己会打印）；"
     + "归档状态 → 给文档正文补一行状态横幅；"
     + "审计快照 → 给 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行；"
     + "README 版本号 → 与 index.html 的 VERSION 对齐；"
-    + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐。");
+    + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐；"
+    + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/CHANGELOG-v<旧大号>.md。");
   process.exit(1);
 }
 console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"
-  + " README 版本号 / 自验步数 / 无手写覆盖率现状）");
+  + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / CHANGELOG 分卷）");
 process.exit(0);
