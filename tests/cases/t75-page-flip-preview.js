@@ -243,3 +243,69 @@ section("T75f 反例 · 循环关闭时不许凭空造预告（没有「下一�
      "★ 不循环 ⇒ arrNextBar 返回 null ⇒ 第 1 行不许变预告行");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T75g：范围起点不在页首 / 跨页时，预告行仍只落在循环末小节（v2.16.0） =================
+   来源：v2.15.2 只补了"范围末片段也要触发"这条判据，但"页"的锚点仍是**歌曲片段的绝对编号**，
+   于是范围起点不落在页首时窗口会混进范围外的小节、预告行也会挂错行：
+     · 范围末小节恰好落在某页第 1 行（= 在播行，没有更陈旧的行能让出去）→ 漏报；
+     · 旧的"页末"判据又会在范围中间误报一次。
+   v2.16.0 把 winAnchorSeg 改成**相对播放范围起点对齐**后，第一页从范围起点开始，
+   两处残留一起消失。本组钉死它。 */
+section("T75g 跨页 · ★★ 4 行档 + 范围 2–3：预告行只落在循环末小节，且范围首小节不许误报");
+{
+  const { beat, els, ac } = startDemoRange(4, 1, 2);       // 范围 = 歌曲第 2–3 小节（0基 1..2）
+  eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行");
+  step(beat, ac, 25);                                      // 0.5s ⇒ 循环第 1 小节（= 范围起点）
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className),
+     "★ 范围第 1 小节不许预告（旧口径会在这里误报一次）");
+  step(beat, ac, 50);                                      // 1.5s ⇒ 循环第 2 小节（= 范围末小节）
+  ok(/(^| )preview-row( |$)/.test(row0(els).className),
+     "★★ 循环末小节第 1 行 = 预告行（修前：不出现——漏报）");
+  eq(badgeOf(els), "C（下一小节 · 副歌扫弦）",
+     "★ 胶囊预告的是回卷目标 = 范围起点那一小节（不是歌曲 k+1）");
+  ok(cellCls(row0(els)).every(c => !/(^| )played( |$)/.test(c)), "★ 预告行不被已弹刷白");
+  step(beat, ac, 50);                                      // 回卷到循环第 1 小节
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className), "回卷后预告标识立刻消失");
+  beat.Controls.stop();
+}
+
+section("T75g 跨页 · 2 行档同一对范围（行数与范围长度相等，钉住不许退化）");
+{
+  const { beat, els, ac } = startDemoRange(2, 1, 2);
+  eq(rowEls(els).length, 2, "前提：2 行档渲染 2 行");
+  step(beat, ac, 25);
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className), "★ 循环第 1 小节不预告");
+  step(beat, ac, 50);
+  ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 循环末小节第 1 行 = 预告行");
+  eq(badgeOf(els), "C（下一小节 · 副歌扫弦）", "胶囊一致");
+  beat.Controls.stop();
+}
+
+section("T75g 跨页 · 4 行档 + 范围 2–5（范围长于行数且跨页）：预告仍只在范围末小节");
+{
+  const { beat, els, ac } = startDemoRange(4, 1, 4);       // 范围 = 第 2–5 小节（0基 1..4）
+  step(beat, ac, 75);                                      // 1.5s ⇒ 循环第 2 小节
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className),
+     "★ 循环第 2 小节不预告（旧口径会在页末那一次误报）");
+  step(beat, ac, 100);                                     // 3.5s ⇒ 循环第 4 小节（= 范围末小节）
+  ok(/(^| )preview-row( |$)/.test(row0(els).className),
+     "★★ 范围末小节（歌曲第 5 小节）第 1 行 = 预告行（修前：被 seg<=winStart 守卫拦掉，漏报）");
+  eq(badgeOf(els), "C（下一小节 · 副歌扫弦）",
+     "★ 胶囊 =「和弦名（下一小节 · 型名）」；和弦名取的是**回卷目标那一小节**的（第 2 小节 = C）");
+  beat.Controls.stop();
+}
+
+section("T75g 页锚点副作用 · 窗口第一行 = 播放范围起点那一小节");
+{
+  /* v2.16.0 的可见行为变更：窗口起点跟着播放范围走。4 行档 + 范围 2–3 ⇒ 窗口 = 第 2–5 小节，
+     第 1 行的和弦名 = 第 2 小节的（"C"），而不是旧口径下窗口首小节（第 1 小节）的 */
+  const { beat, els, ac } = startDemoRange(4, 1, 2);
+  step(beat, ac, 25);
+  eq(badgeOf(els), "C", "★ 窗口第 1 行 = 范围起点（第 2 小节）的和弦");
+  beat.Controls.stop();
+  /* 对照：整首连播（from=0）时窗口起点仍是歌曲第 1 小节 —— 零影响 */
+  const { beat: b2, els: e2, ac: a2 } = startDemoRange(4, 0, 29);
+  step(b2, a2, 25);
+  eq(badgeOf(e2), "C", "★ 整首连播窗口仍从第 1 小节开始（from=0 时逐位等于旧口径）");
+  b2.Controls.stop();
+}

@@ -153,6 +153,11 @@ section("T88d 两级契约 · 只发 input（拖动中）不得提交：不改�
   eq(beat.Store.S.playMode, "preset", "★ 只发 input 不切模式（提交那一步才切）");
   eq([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to].join(","), "3,5",
      "拖动中 S 已就地更新（松手前视觉就要跟手）");
+  /* ★ v2.16.0：`loop` 也必须在"拖动中"这一级就写。此前它只在松手提交那步由 Arrange.setRange
+     补上，而 S.arrangeSel 的初值是 loop:false ⇒ "拖到一半关掉页面 / change 没走到"就会把
+     「有范围、没循环」持久化下来。与 setRange 同口径：拖出范围 = 我要练这段，循环恒开。 */
+  eq(beat.Store.S.arrangeSel.loop, true,
+     "★ 拖动中 loop 已置 true（不许落盘成「有范围、没循环」）");
   /* 松手提交 → 模式切换 + 重活一起发生 */
   dragRange(els, 4, 6, true);
   eq(beat.Store.S.playMode, "arrange", "★ 松手提交后才切到曲式模式");
@@ -302,4 +307,24 @@ section("T88k 曲式被删 · 滑块与 sync 的守卫路径（不崩、不往�
      "★ 曲式删掉后滑块不再渲染（不再有可点的悬空控件）");
   const t1 = (() => { try{ beat.Presets.syncDemoRange(); return null; }catch(e){ return e.message; } })();
   eq(t1, null, "★ 未渲染时 syncDemoRange 静默返回（列表重建先清空元素引用，见 buildPresetList 头部）");
+}
+
+/* ================= 场景 T88l：侧栏/浮层「范围循环」钮必须与跳段行那颗同源同步（v2.16.0） ================= */
+section("T88l 范围循环钮 · 不经过编排浮层重绘也要跟上（#argLoopBtn 的同步缺口）");
+{
+  const { beat, els } = loadDemo();
+  /* 前提：把字段置 false 并让浮层渲染一次 —— 那颗钮此刻显示「关」（新旧实现都一样） */
+  beat.Store.S.arrangeSel.loop = false;
+  beat.Arrange.open();
+  beat.Arrange.refreshBar();
+  eq(els["argLoopBtn"].getAttribute("aria-checked"), "false", "前提：浮层那颗钮此刻是关的");
+  /* 走一条**只经 refreshBar、不重绘浮层**的路径把 loop 打开：Arrange.setRange
+     （拖滑块松手提交走的就是它）。旧实现下 #argLoopBtn 只由 arrangeRender 刷，
+     于是它会停留在「关」—— 这正是"字段是 false、钮还亮着"那类外观漂移的来源。 */
+  beat.Arrange.setRange(0, 3);
+  eq(beat.Store.S.arrangeSel.loop, true, "前提：setRange 把 loop 打开了");
+  eq(els["argLoopBtn"].getAttribute("aria-checked"), "true",
+     "★ 字段变 true 后浮层那颗钮立刻跟上（旧实现只在 arrangeRender 里刷，会停在「关」）");
+  eq(els["argJumpLoopBtn"].getAttribute("aria-checked"), "true",
+     "★ 跳段行那颗同源同步（它本来就由 refreshBar 刷，此条是防回归钉子）");
 }

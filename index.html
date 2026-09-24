@@ -1752,17 +1752,17 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L3913  Modal         应用内弹窗
      L4045  Viz           时值可视化渲染与每帧动画
-     L5959  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6625  Trainer       变速训练器
-     L6763  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7242  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8096  Editor        自定义节奏型编辑器
-     L8452  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8486  Ear           听辨训练（v1.10.0）
-     L8704  Arrange       曲式编排（v2.0.0）
-     L9568  Help          使用方法（v2.0.1）
-     L9615  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9689  初始化（装配） 各模块 hook 接线与启动
+     L5995  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6661  Trainer       变速训练器
+     L6799  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7278  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8140  Editor        自定义节奏型编辑器
+     L8496  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8530  Ear           听辨训练（v1.10.0）
+     L8748  Arrange       曲式编排（v2.0.0）
+     L9620  Help          使用方法（v2.0.1）
+     L9667  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9741  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1788,7 +1788,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.15.2";
+const VERSION = "2.16.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4364,7 +4364,38 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       跟播放头滚动（旧档）→ 当前位置永远是第 1 行：Math.max(0, seg)
       ★ v2.15.0：单位从"小节"升级为"片段"——整小节档下 seg ≡ 小节号，逐位等于旧手感。 */
   /** @param {number} seg @returns {number} */
-  function winAnchorSeg(seg){ const W = arrWinBars(); return Math.max(0, Math.floor(seg / W) * W); }
+  /* 窗口起点 = 这一"页"的锚点。
+     ★★ v2.16.0（用户实拍引发的语义修正）：**曲式模式下相对播放范围起点对齐**。
+       旧口径 `floor(seg/W)*W` 拿的是**歌曲片段的绝对编号**，与 `S.arrangeSel.from` 无关；
+       于是"范围起点不落在页首"时，窗口里会混进范围之外的小节，**预告行也会挂错行**：
+         · 范围末小节恰好落在某页的**第 1 行** → 那正是在播行，没有更陈旧的行能让出去
+           （previewSegFor 的 `seg <= winStart` 守卫只能拦下）⇒ **漏报**；
+         · 而旧的"页末"判据又会在**范围中间**的某小节触发一次 ⇒ **误报**。
+       新口径 `from + floor((seg − from)/W)*W`：第一页**从范围起点开始**，
+       于是第 1 行恒等于"这轮要练的第一个小节"，预告行也就只落在循环末小节上。
+       ★ 三个"不改"的保证（这也是本改动能被收敛在"锚点取哪一页"上的原因）：
+         · `from = 0`（整首连播 / 未选范围）与**预设模式**下逐位等于旧口径 ⇒ 零影响；
+         · `seg < from`（跳段、循环回卷的过渡帧）回落旧口径 —— 否则窗口会不含当前片段，
+           而 `rowOfSongPos` / `rowOfPatSeg` / `mutedRow` / `chordAtRow` 等一大批
+           `winStart + bar` 推导**全部**依赖"窗口包含当前片段"这条前提；
+         · 锚点上限钳到最后一小节，避免歌尾越界。
+       ★ 不在这里查 `arrangeCur()`：本函数在帧热路径上被调，必须复用帧内那**唯一**一份快照
+       （v2.8.25 审计 P2-7 的约定，T24 有"中位查找 1 次"的断言守着）——
+       故快照由调用方按第二参数传入，与 `audibleSongBar` / `rowOfSongPos` 同一套写法。 */
+  /** @param {number} seg 绝对歌曲片段号（预设模式下 = 型内片段号）
+      @param {any} [arr] 本帧已取的曲式快照；不传则现查。**预设模式请显式传 null**
+      @returns {number} */
+  function winAnchorSeg(seg, arr){
+    const W = arrWinBars();
+    const s = Math.max(0, Math.floor(seg) || 0);
+    const a = (arr !== undefined) ? arr : ((S.playMode === "arrange") ? arrangeCur() : null);
+    if (a){
+      const K = subsPerBar(), total = songBars(a) * K;
+      const from = Math.min(Math.max((S.arrangeSel.from | 0) * K, 0), Math.max(0, total - 1));
+      if (s >= from) return Math.min(from + Math.floor((s - from) / W) * W, Math.max(0, total - 1));
+    }
+    return Math.max(0, Math.floor(s / W) * W);
+  }
   /* 本窗口该不该带预告行、预告哪一**片段**（v2.7.0 用户拍板的方案；v2.15.0 细化为片段）：
      严格按档位翻页后，播到页内最后一行时"下一片段"在屏外——扫弦型可能在段边界变化，
      没有提前量右手就没法准备。把整屏最陈旧的第 1 行（N-1 个片段前的历史）临时替换成
@@ -4388,10 +4419,13 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
             不会自动填满」（球走 onset 表，与"格子 class + CSS"这条链完全独立，故只有半边坏）。
        1 行档下预告没有任何信息量，直接关掉：窗口照常按每一片段翻页，格子回到正常态。 */
   /** @param {number} seg 当前**绝对歌曲片段号**（歌曲小节号 × 每小节片数 + 片内偏移）
+      @param {any} [arr] 本帧已取的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查）
       @returns {{ seg: number, steps?: any[]|null, name?: string }} */
-  function previewSegFor(seg){
+  function previewSegFor(seg, arr){
     if (arrWinBars() < 2) return { seg: -1 };          // v2.10.3：预告行要求屏内有多行可牺牲
     if (seg < 0) return { seg: -1 };
+    const a = (arr !== undefined) ? arr : arrangeCur();
+    if (!a) return { seg: -1 };
     /* ★★ v2.15.2（用户实拍）：触发条件由"**页的最后一行**"扩为"页的最后一行 **或**
        **播放范围循环的最后一片段**"。
        为什么必须补后一条：`winAnchorSeg(seg) = floor(seg/W)*W` 是拿**歌曲片段的绝对编号**
@@ -4401,21 +4435,23 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        实测：4 行档 + 范围 1–2 播到第 2 小节时第 1 行不变预告行；同范围换 2 行档就正常。
        两者的差别只在"范围末片段有没有和页末重合"，与范围本身无关 ⇒ 按**循环内位置**补这一条。
        页末那条**原样保留**（长范围靠它做翻页提前量），两条取或。
+       ★★ v2.16.0：`winAnchorSeg` 已改为**相对播放范围起点对齐**（见该函数），
+         "范围横跨页边界"时漏报 + 范围中间误报的那两类残留随之消失——
+         现在两条判据在"范围起点对齐"的坐标系里重合：范围末片段若同时是页末，两条同时成立；
+         否则由 `atRangeEnd` 兜住。**下面两道守卫的语义不变。**
        ★ 两条都必须让开"正在播的那一行"：预告行恒挂第 1 行，而在播片段的行号 = seg − winStart。
          为 0 时（W=1 的降级态，或单小节范围正好落在页首）预告行会把在播行整个让出去，
          而 isPreview 豁免令该行永远拿不到 .played/.active → 白填充画不出来
          （与 v2.10.3 消掉的那个 W=1 症状同源）。故 `seg <= winStart` 一律不预告；
          页末那条天然满足 seg = winStart + W − 1 > winStart（W ≥ 2，见上面那道守卫）。 */
     const W = arrWinBars();
-    const atPageEnd = (seg === winAnchorSeg(seg) + W - 1);
+    const atPageEnd = (seg === winAnchorSeg(seg, a) + W - 1);
     const sel = S.arrangeSel;
     /* 范围末片段 = 范围最后一小节的最后一**片**（K = 每小节片数，整小节档下 K=1 ⇒ 即该小节号） */
     const atRangeEnd = !!(sel && sel.loop === true && typeof sel.to === "number"
       && seg === (sel.to | 0) * subsPerBar() + subsPerBar() - 1);
     if (!atPageEnd && !atRangeEnd) return { seg: -1 };
     if (seg <= winStart) return { seg: -1 };
-    const a = arrangeCur();
-    if (!a) return { seg: -1 };
     const total = songBars(a);
     if (!total) return { seg: -1 };
     const K = subsPerBar(), barTicks = vizSig * TPB;
@@ -4981,7 +5017,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (winStart < 0 || !S.playing){
         /* v2.10.7：from 已是线性小节号（可落在段中间），钳到整曲域后折成**片段号**再锚窗口——
            窗口起点从此按片段对齐（v2.15.0），整小节档下逐位等于旧口径 */
-        winStart = winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(arr) - 1) * subsPerBar());
+        winStart = winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(arr) - 1) * subsPerBar(), arr);
         winPrevSeg = -1; winPrevSteps = null; winPrevName = "";
       }
       winPat = arrWindowPat(arr, winStart);
@@ -5445,7 +5481,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
     const W = winStart >= 0 ? winStart
-      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar());   // v2.10.7：from 已是线性小节号
+      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar(), a);   // v2.10.7：from 已是线性小节号
     /* v2.15.0：行 = 一小节的**一片**——歌词按 [片起点, 片终点) 切：
        越界的字被剔除、跨片延音在本行右缘截断（与"跨小节延音钳在本行右缘"同一套做法，
        只是边界从"小节"变成"片"）。整小节档下与旧行为逐位一致。 */
@@ -5531,7 +5567,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!total) return;
     const K = subsPerBar();
     const W = winStart >= 0 ? winStart
-      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * K);   // v2.10.7：from 已是线性小节号
+      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * K, a);   // v2.10.7：from 已是线性小节号
     if (a.id + "@" + W + "/" + K + "#" + winPrevSeg !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
     /* 当前行 = **可听**位置所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级；v2.15.0 起行 = 片段）：
        调度游标早一个前瞻窗口，按它着色会"词先跳、声后到"。停机/预备拍 → -1：
@@ -5742,8 +5778,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          翻页（预告随窗口换）都要重建一次。previewSegFor 只在页末才做解析，平时是算术。
          ★ v2.15.0：基准换成**可听片段号**（segNow）——翻页的真实边界是片段而不是小节 */
       const segNow = audibleSongSeg(ctx.currentTime, arrCur);
-      const ws = segNow >= 0 ? winAnchorSeg(segNow) : winStart;
-      const pv = previewSegFor(segNow);
+      const ws = segNow >= 0 ? winAnchorSeg(segNow, arrCur) : winStart;
+      const pv = previewSegFor(segNow, arrCur);
       if (segNow >= 0 && (ws !== winStart || pv.seg !== winPrevSeg)){
         winStart = ws;
         winPrevSeg = pv.seg; winPrevSteps = pv.steps || null; winPrevName = pv.name || "";
@@ -5763,7 +5799,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       /* winStart = -1 有两种来历，都必须建一次窗口：resetWindow 之后的首帧、
          以及"从未建过"。建完 winStart 即为页锚（降级时置 0），故不会每帧重建 */
       if (aps >= 0){
-        const ank = winAnchorSeg(aps);
+        const ank = winAnchorSeg(aps, null);        // v2.16.0：预设模式**显式**传 null = 走绝对分页（无播放范围可言）
         if (ank !== winStart){
           winStart = ank;
           buildViz();
@@ -7436,6 +7472,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     S.arrangeSel.from = f - 1;
     S.arrangeSel.to = t - 1;
     S.arrangeSel.byLyric = false;            // 手动拖范围 = 回到普通区间语义（与 jumpTo 同口径）
+    /* ★ v2.16.0：`loop` 必须在这里一并写。此前它只在 `change`（松手提交）那一步由
+       `Arrange.setRange` 补上，而本函数**拖动途中就把 from/to 落盘了**（含 Store.persist()）——
+       于是"拖到一半关掉页面 / change 没走到"就会把「有范围、没循环」持久化下来，
+       下次打开看到的是"范围数字设好了、循环却没开"（用户实拍排查时正是这条把人引偏）。
+       与 `setRange` 同口径：拖出范围 = "我要练这段"，**范围循环恒开**。
+       ★ 刻意**不**在这里切 `playMode`：见本函数上方规矩②（"进入曲式模式"只在提交那一步发生），
+         那条保留——`loop` 只在曲式模式下有意义，提前写它是无害的。 */
+    S.arrangeSel.loop = true;
     Store.persist();
     if (commit && onDemoRange) onDemoRange(f - 1, t - 1);
     syncDemoRange();
@@ -9177,6 +9221,14 @@ const Arrange = (() => {
        把本钮身上的 jump-btn/loop-btn 类抹掉 → 圆钮样式与双态 SVG 切换 CSS 全部失效，
        两枚图标同时显示（用户实报"还是两个单独的按钮"）。改为只写 aria-checked 与显隐 */
     $("argJumpLoopBtn").setAttribute("aria-checked", S.arrangeSel.loop ? "true" : "false");
+    /* ★ v2.16.0：**编排面板那颗 `#argLoopBtn` 也在这里同步**。
+       此前它只在 `arrangeRender()`（浮层重绘）里刷，而浮层不常开、而改 `loop` 的路径
+       （拖侧栏范围 / 跳段 / 退出曲式回单型）大多只走 `refreshBar` ⇒ 出现
+       「字段已是 false、钮还亮着」的外观漂移（用户实拍排查时被这条误导过一轮）。
+       两处入口共用 `S.arrangeSel.loop` 这**同一个字段**，理应同源同刷——
+       与下面那颗跳段行钮同一个理由，只是那颗要绕开 setToggle（applyToggle 会整写
+       className、抹掉 jump-btn/loop-btn 类），这颗是标准 toggle-pill，直接 setToggle 即可。 */
+    setToggle("argLoopBtn", S.arrangeSel.loop);
     /* v2.10.14：行常显后，「范围循环」的预设模式隐藏不再由整行 hidden 捎带——
        在这里显式写（曲式模式下常驻，t77 的"不随单段而隐藏"口径不变） */
     $("argJumpLoopBtn").hidden = (S.playMode !== "arrange");
