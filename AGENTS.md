@@ -4,7 +4,7 @@
 
 ## 0. 一句话项目画像
 
-BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` 单文件内聚全部逻辑，13 个 IIFE 模块：Store → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Settings → Ear → Arrange → Help → KeepAlive，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。★ **体积刻意不写在这里**——以 `wc -c index.html` 现查：本行曾手写一个体积数字，写下时是**准的**，此后文件长了两百多 KB 而这一行没人再动（**漂移 +43%**，具体数字见 CHANGELOG v2.17.0）；当时 `AGENTS.md` 也不在任何闸门的管辖里，属**制度性盲区**——`tools/check-docs.js` 第 8 项现已把守（故这一段刻意**不引那个形状**，免得自己撞上）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
+BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` 单文件内聚全部逻辑，14 个 IIFE 模块：Store → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Settings → Ear → Arrange → Help → KeepAlive → Diagnostics，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。★ **体积刻意不写在这里**——以 `wc -c index.html` 现查：本行曾手写一个体积数字，写下时是**准的**，此后文件长了两百多 KB 而这一行没人再动（**漂移 +43%**，具体数字见 CHANGELOG v2.17.0）；当时 `AGENTS.md` 也不在任何闸门的管辖里，属**制度性盲区**——`tools/check-docs.js` 第 8 项现已把守（故这一段刻意**不引那个形状**，免得自己撞上）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
 
 ## 1. 动手前必读（按顺序）
 

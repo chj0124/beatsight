@@ -56,14 +56,17 @@ const lines = SRC.split("\n");
 const clean = stripComments(lines);
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "Ear", "Arrange", "Help", "KeepAlive"];
+const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "Ear", "Arrange", "Help", "KeepAlive", "Diagnostics"];
 
-/* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE（目前仅初始化段的 diagOn：
-   调试开关求值，不参与模块间通信，故不进 EXPECTED_ORDER）。第 0 步的「双向 diff」要求：
-   正则命中的每个名字要么属于 EXPECTED_ORDER、要么在此显式登记并写明理由；二者之外
-   的**多出者一律报错**——这正是 P0-2 要堵的口子：旧实现把不认识的模块直接 continue 掉，
-   检查器对"没见过的新模块"完全失明，它带 TDZ 风险也能全绿通过。 */
-const NON_MODULE_IIFE = ["diagOn"];
+/* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE 的豁免清单。
+   第 0 步的「双向 diff」要求：正则命中的每个名字要么属于 EXPECTED_ORDER、要么在此显式登记
+   并写明理由；二者之外的**多出者一律报错**——这正是 P0-2 要堵的口子：旧实现把不认识的模块
+   直接 continue 掉，检查器对"没见过的新模块"完全失明，它带 TDZ 风险也能全绿通过。
+   ★ v2.19.0：本清单曾登记过一个名字（装配区里的 `diagOn` = `?debug=1` 开关求值），
+   现已随诊断代码整段抽进 `Diagnostics` 模块（进 EXPECTED_ORDER），故**清空**。
+   它是"确有非架构 IIFE 需要豁免"时才该有条目的地方，不该常年挂着历史名字——
+   实测把它留在原处，闸门会自己报"登记已失效"，这正是它该有的样子。 */
+const NON_MODULE_IIFE = [];
 
 /* R3 白名单：运行时回调对后方模块的合法调用。
    每条都要写明「为什么这里调后方模块是安全的」——安全是因为调用发生在运行时，

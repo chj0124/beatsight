@@ -1747,22 +1747,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1778  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2272  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3939  Modal         应用内弹窗
-     L4071  Viz           时值可视化渲染与每帧动画
-     L6021  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6687  Trainer       变速训练器
-     L6825  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7288  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8150  Editor        自定义节奏型编辑器
-     L8514  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8551  Ear           听辨训练（v1.10.0）
-     L8771  Arrange       曲式编排（v2.0.0）
-     L9645  Help          使用方法（v2.0.1）
-     L9694  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9768  初始化（装配） 各模块 hook 接线与启动
+     L1779  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2273  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3236  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3940  Modal         应用内弹窗
+     L4072  Viz           时值可视化渲染与每帧动画
+     L6022  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6688  Trainer       变速训练器
+     L6826  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7289  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8151  Editor        自定义节奏型编辑器
+     L8515  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8552  Ear           听辨训练（v1.10.0）
+     L8772  Arrange       曲式编排（v2.0.0）
+     L9646  Help          使用方法（v2.0.1）
+     L9695  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9769  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L9970  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1788,7 +1789,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.18.0";
+const VERSION = "2.19.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9765,6 +9766,207 @@ let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null
     state: () => ({ locked: !!lock, audio: !!audioEl }) };
 })();
 
+/* ================= Diagnostics · 诊断与产物戳记 ================= */
+/* 来源（v2.19.0）：把原先住在**装配层内部**的整段诊断代码抽出来成为独立模块。
+   ★ 为什么抽：装配层不在 `EXPECTED_ORDER` 里（它是组合根、没有下游，R1–R4 对它本就无所谓），
+     于是 R1–R4、模块地图、模块索引、覆盖率分区表**全都盖不到它**——覆盖率上它曾是最低那一档。
+     抽出来一次解决四件事：
+       ① 进 R1–R4 视野（只引用 `$` / `VERSION` / `Modal` / DOM API，全在它之前声明 ⇒ R1 天然为零）；
+       ② 进模块索引（行号由 tools/gen-index.js 自动跟随）；③ 单独进覆盖率分区表；
+       ④ 装配层那段一千多行拆成「接线」与「诊断」两件事，各自可读。
+   ★ 与装配层的分工**没变**：它只提供计数与自检，装配层负责把钩子接上去 ——
+     `onFrameError` / `onSchedError` / `onReanchor` / `onKeepAliveFail` 与 `Store` 的两个持久化钩子
+     都在装配层里调 `Diagnostics.diagBump(...)`；全局错误监听与 `stampCheck()` 的**调用**也留在
+     装配层（注册时机不变）——这正是「跨模块装配交给装配层」那条纪律。
+   ★ 反向引用：本模块在依赖链末端，没有任何模块引用它（装配层是组合根，不受 R1–R4 约束）。 */
+const Diagnostics = (() => {
+  /* ---------- 诊断面板（v2.0.4，审计 P1-1；**v2.19.0 起是独立模块 Diagnostics**）---------- */
+  /* 仅在 URL 带 `?debug=1` 时于右下角挂出一行计数。要解决的是**四类静默劣化**——它们共同点是
+     「出了事却没有任何数字可核对」：
+       · 掉帧   —— 渲染帧异常由 onFrameError 兜住（画面卡一下、声音照响，用户只当是电池没电）
+       · 调度   —— 调度异常由 onSchedError 兜住（"在播放但没声音"，最难归因的一类）
+       · 存失败 —— 只有顶栏那个 6px 小点变红，且成功恢复后连红点也一并消失
+       · 限流   —— 练习量/试听额度到点自动停播，是**正常**行为，恰恰因此无从确认它到底触发没有
+     ★ v2.19.0 订正（原话是「放在装配层而不是新开模块」，已不成立）：当时的理由是它只**读**既有
+     注入钩子（onFrameError / onSchedError / onLimitPulse / Store 的两个持久化钩子）、不引入新的
+     依赖边，因而留在装配层即可。但**留在装配层等于离开所有闸门的视野**——装配层不在
+     EXPECTED_ORDER 里，R1–R4 / 模块索引 / 覆盖率分区表一个都盖不到它，而它恰好是
+     12 个计数器 / 错误环形缓冲 / 产物戳记自检的所在地，也就是「出了事没人能核对」的那一块。
+     抽成模块后它进 R1–R4 与模块索引（它只引用 `$` / `VERSION` / `Modal` / DOM API，全在它之前
+     声明 ⇒ R1 天然为零），装配层那段一千多行也就此拆成「接线」与「诊断」两件事。
+     ★ 计数器本体（diag）**始终存在**，只有面板 DOM 受开关控制——测试因此可以无 UI 断言计数，
+     file:// 直开（没有 location.search）时也只是没有面板而已。 */
+  /** @type {Record<string, number>} */
+  const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
+    reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0,
+    keepAliveFail: 0 };
+  /** @type {null | { box: HTMLElement, line: HTMLElement }} */
+  let diagPanel = null;
+  function diagPaint(){
+    if (!diagPanel) return;
+    /* v2.0.6（审计 P1-9）两处订正：
+       ① **正名**：frameErr 统计的是"渲染帧抛异常的次数"（由 onFrameError 兜住），此前标签写作
+          "掉帧"——而真正的掉帧（rAF 没按时来）从来没有被统计过，读数名不副实；
+       ② **补计数**：新增「重锚」（调度器强行对齐时间轴的次数，>0 就意味着漏过拍；拆成饿/超两类，
+          因为处置完全不同：饿=被节流，属环境；超=数据可疑，属 bug）与「脚本错 / 未捕获」
+          （window.onerror 与 unhandledrejection，此前完全无人计数）。 */
+    diagPanel.line.textContent = "渲染异常 " + diag.frameErr + " · 调度异常 " + diag.schedErr
+      + " · 重锚 " + (diag.reanchorStarved + diag.reanchorOverflow)
+      + "(饿" + diag.reanchorStarved + "/超" + diag.reanchorOverflow + ")"
+      + " · 存失败 " + diag.persistFail + " · 存恢复 " + diag.persistRecover
+      + " · 限流 " + diag.limitPulse
+      + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection
+      /* v2.4.4：戳记计数只在出事时才占地方（正常部署恒为 0，一行读数不该为两个 0 买单） */
+      + (diag.noStamp || diag.stampMismatch
+        ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "")
+      /* v2.8.8：保活兜底失败同理——它恒 0 才是正常的（有 Wake Lock 时根本不走兜底），
+         但**一旦非 0 就是"后台播放没保住"的确证**，必须占地方。放在最后一行是刻意的：
+         它是"功能级"告警，优先级高于前面那些"计数级"读数 */
+      + (diag.keepAliveFail ? " · ⚠保活兜底失败 ×" + diag.keepAliveFail : "");
+  }
+  /** @param {string} k */
+  function diagBump(k){
+    diag[k]++;
+    diagPaint();                       // 面板未挂载时是空转（diagPaint 首句即返回）
+  }
+  /* ---- 最近错误原文的环形缓冲（v2.11.3）----
+     为什么需要它：诊断面板此前只有**计数**——"脚本错 3"能说明出了 3 次，却说不出出了什么。
+     报障时最有用的那一句（到底是哪个 undefined 读空了）恰恰只有计数里没有。
+     ★ 三条刻意的边界（都写在这里，别日后被"顺手改进"掉）：
+       ① **只在内存里，绝不落盘**。错误原文可能含用户数据（预设名、歌词、导入的文件名），
+          写进 localStorage 就等于把隐私留在下一次「导出全部数据」之外的角落里，也违反
+          README 那句"全部存本机、无上传"所暗示的最小留存原则；刷新即清空是特性不是缺陷。
+       ② **上限 20 条、超出丢最旧的**。它是"给我最近发生了什么"的窗口，不是日志系统；
+           unbounded 数组在一次死循环式的报错风暴里会自己把内存吃干（而报错风暴恰恰是
+           最需要诊断功能还活着的时刻）。
+       ③ **每条截断 200 字符**。DOM 异常里常带整段 outerHTML，原样留着既没用又占地方。 */
+  const DIAG_LAST_MAX = 20;
+  /** @type {{t:number, kind:string, msg:string}[]} */
+  const diagLast = [];
+  /**
+   * @param {string} kind 「脚本错」/「未捕获」
+   * @param {string} msg  错误原文（会被截断）
+   */
+  function diagNote(kind, msg){
+    /* `msg ?? "(无文案)"` 而不是 `msg == null ? …`：本仓库 lint 第 2 条就是 eqeqeq，
+       诊断代码自己首先得守它（本条在 v2.11.3 开发时**真的被自己的新规则拦下来过**） */
+    diagLast.push({ t: Date.now(), kind, msg: String(msg ?? "(无文案)").slice(0, 200) });
+    if (diagLast.length > DIAG_LAST_MAX) diagLast.shift();
+  }
+
+  /* 产物戳记自检（v2.4.4，堵「线上构建跑没跑自验不可知」的缺口）：
+     Workers Builds（Git 集成构建）不读仓库里 wrangler.jsonc 的 build.command——线上那次构建
+     跑什么取决于 Dashboard 里仓库外的命令。build-dist.js 装配时把「版本|时间|sha1」以
+     <meta name="beatsight-build"> 注入 dist/index.html，这里在启动时核对：
+       · 戳记缺失     → 只记 noStamp 计数（**不告警**：WorkBuddy 手动发布链是目录拷贝、
+         天然无戳记；本机/冒烟通道同理——缺席不是罪证，只是"这条路没过自验链"的读数）；
+       · 戳记版本不符 → 戳记在、版本却对不上 = 产物被手工拼过或张冠李戴，这才 console.warn。
+     file:// 与沙箱（无 location）直接不查。 */
+  function stampCheck(){
+    if (typeof location === "undefined" || !location) return;
+    if (!/^https?:$/.test(location.protocol || "")) return;           // file://：本地副本无戳记是预期
+    if (/^(localhost|127\.)/.test(location.hostname || "")) return;   // 本机开发 / smoke 通道：不查
+    const q = document.querySelector;
+    const m = (typeof q === "function") ? document.querySelector('meta[name="beatsight-build"]') : null;
+    const v = m && m.getAttribute("content");
+    if (!v){ diagBump("noStamp"); return; }
+    if (String(v).split("|")[0] !== "v" + VERSION){
+      diagBump("stampMismatch");
+      try{ console.warn("[BeatSight] 产物戳记版本不符：" + v + " ≠ v" + VERSION
+        + "（这份产物绕过了自验链，或戳记是别的版本留下的）"); }catch(e){}
+    }
+  }
+  /** 各键的占用字符数（v2.0.6，审计 P1-9）。为什么值得进诊断：localStorage 配额是**按 origin
+   *  总量**算的，出了"存不下"只能看到一句 QuotaExceeded——不知道是哪个键在膨胀就没法治
+   *  （beatsight.customs 曾出现过 715 KB 量级）。读不到（沙盒/禁用）就返回说明文字，不抛 */
+  function diagStorageUsage(){
+    try{
+      const out = [];
+      for (let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i);
+        if (k === null) continue;
+        const v = localStorage.getItem(k);
+        out.push(k + "=" + (v ? v.length : 0));
+      }
+      return out.length ? out.join(" ") : "(空)";
+    }catch(e){ return "(不可读)"; }
+  }
+  /** 生成一段可直接粘贴给别人（或贴进 issue）的现场信息 */
+  function diagReport(){
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) ? navigator.userAgent : "(未知)";
+    const url = (typeof location !== "undefined" && location.href) ? location.href : "(未知)";
+    /* v2.11.3：把最近错误原文接在计数后面。空的时候显式写「（无）」——
+       一行"最近错误"出现在报告里却什么都没有，会让人以为功能坏了 */
+    const last = diagLast.length
+      ? "\n" + diagLast.map(r => "  · [" + r.kind + "] " + r.msg).join("\n")
+      : "  （无）";
+    return [
+      "BeatSight v" + VERSION + " 诊断信息",
+      "URL: " + url,
+      "UA: " + ua,
+      "计数: " + JSON.stringify(diag),
+      "本地存储: " + diagStorageUsage(),
+      "最近错误（仅内存，刷新即清）:" + last,
+    ].join("\n");
+  }
+  /** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
+   *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应"。
+   *  ★ btn 必须标注类型：`noImplicitAny` 开着，缺标注会报 TS7006（同样是被线上构建拦下来的）
+   *  @param {HTMLElement} btn */
+  function diagCopy(btn){
+    const text = diagReport();
+    const done = () => { btn.textContent = "已复制"; };
+    const fallback = () => { Modal.uiAlert(text); };
+    try{
+      const nav = /** @type {any} */ (navigator);
+      if (nav && nav.clipboard && nav.clipboard.writeText){
+        nav.clipboard.writeText(text).then(done, fallback);
+        return;
+      }
+    }catch(e){ /* 落到下面的兜底 */ }
+    fallback();
+  }
+  function diagBuild(){
+    if (typeof document === "undefined" || !document.body) return;
+    const box = document.createElement("div");
+    box.className = "diag";
+    box.setAttribute("role", "status");     // 读屏可播报：计数变化不该只对眼睛可见
+    const head = document.createElement("b");
+    head.textContent = "诊断 · v" + VERSION;
+    const line = document.createElement("span");
+    line.className = "diag-line";
+    /* 复制按钮（v2.0.6）：面板此前只能看不能带走。用户报障时能把现场信息贴出来，
+       价值远大于让开发者隔空猜（尤其"重锚 >0"这种只有本机能观察到的读数） */
+    const copy = document.createElement("button");
+    copy.className = "pill outline diag-copy";
+    copy.textContent = "复制诊断信息";
+    copy.addEventListener("click", () => diagCopy(copy));
+    box.appendChild(head);
+    box.appendChild(line);
+    box.appendChild(copy);
+    document.body.appendChild(box);
+    diagPanel = { box, line };
+    diagPaint();
+  }
+  /* 开关求值：宿主没有 location（老用例的沙箱默认值）时静默关闭——与 PWA 注册块同一套守卫习惯。
+     ★ 刻意不用正则字面量匹配：`debug=1` 写在 /…/ 里不会被 check-lint.js 的 maskStrings 掩码
+       （它只遮字符串字面量），会被「隐式全局赋值」规则误判成对标识符 debug 赋值。
+     ★ 也不用 URLSearchParams：vm 测试沙箱未补该宿主 API（见 tests/lib/harness.js 的显式补桩），
+       会直接 ReferenceError。按 `&` 切段后与字符串字面量逐段比对最稳（字面量会被掩码，安全）。 */
+  const diagOn = (() => {
+    try{
+      if (typeof location === "undefined") return false;
+      const segs = String(location.search || "").replace(/^\?/, "").split("&");
+      for (let i = 0; i < segs.length; i++){ if (segs[i] === "debug=1") return true; }
+      return false;
+    }
+    catch(e){ return false; }
+  })();
+  if (diagOn) diagBuild();
+  return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagBuild,
+    stampCheck, diagOn, diagLast, DIAG_LAST_MAX };
+})();
+
 /* ================= 初始化（装配） ================= */
 /* 版本号：**两处**显示（<title> 与品牌区徽章内那个 `#brandVer`）全部由 VERSION 派生（唯一真相源，
    见「数据」区）。
@@ -9775,201 +9977,20 @@ document.title = `BeatSight 时值节拍器 v${VERSION}`;
 $("brandVer").textContent = "v" + VERSION;
 $("brandChip").textContent = "稳定版";
 
-/* ---------- 诊断面板（v2.0.4，审计 P1-1）：非独立模块，是装配层内部的一段子话题 ---------- */
-/* 仅在 URL 带 `?debug=1` 时于右下角挂出一行计数。要解决的是**四类静默劣化**——它们共同点是
-   「出了事却没有任何数字可核对」：
-     · 掉帧   —— 渲染帧异常由 onFrameError 兜住（画面卡一下、声音照响，用户只当是电池没电）
-     · 调度   —— 调度异常由 onSchedError 兜住（"在播放但没声音"，最难归因的一类）
-     · 存失败 —— 只有顶栏那个 6px 小点变红，且成功恢复后连红点也一并消失
-     · 限流   —— 练习量/试听额度到点自动停播，是**正常**行为，恰恰因此无从确认它到底触发没有
-   ★ 为什么放在装配层而不是新开模块：它只**读**既有注入钩子（onFrameError / onSchedError /
-   onLimitPulse / Store 的两个持久化钩子），不引入任何新的依赖边，模块地图与
-   EXPECTED_ORDER / WHITELIST 全部保持 13 条不变（DEVELOPMENT §3.0；这与 onFrameError 等
-   钩子本身"跨模块装配交给装配层"的约定同源）。
-   ★ 计数器本体（diag）**始终存在**，只有面板 DOM 受开关控制——测试因此可以无 UI 断言计数，
-   file:// 直开（没有 location.search）时也只是没有面板而已。 */
-/** @type {Record<string, number>} */
-const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
-  reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0,
-  keepAliveFail: 0 };
-/** @type {null | { box: HTMLElement, line: HTMLElement }} */
-let diagPanel = null;
-function diagPaint(){
-  if (!diagPanel) return;
-  /* v2.0.6（审计 P1-9）两处订正：
-     ① **正名**：frameErr 统计的是"渲染帧抛异常的次数"（由 onFrameError 兜住），此前标签写作
-        "掉帧"——而真正的掉帧（rAF 没按时来）从来没有被统计过，读数名不副实；
-     ② **补计数**：新增「重锚」（调度器强行对齐时间轴的次数，>0 就意味着漏过拍；拆成饿/超两类，
-        因为处置完全不同：饿=被节流，属环境；超=数据可疑，属 bug）与「脚本错 / 未捕获」
-        （window.onerror 与 unhandledrejection，此前完全无人计数）。 */
-  diagPanel.line.textContent = "渲染异常 " + diag.frameErr + " · 调度异常 " + diag.schedErr
-    + " · 重锚 " + (diag.reanchorStarved + diag.reanchorOverflow)
-    + "(饿" + diag.reanchorStarved + "/超" + diag.reanchorOverflow + ")"
-    + " · 存失败 " + diag.persistFail + " · 存恢复 " + diag.persistRecover
-    + " · 限流 " + diag.limitPulse
-    + " · 脚本错 " + diag.winErr + " · 未捕获 " + diag.rejection
-    /* v2.4.4：戳记计数只在出事时才占地方（正常部署恒为 0，一行读数不该为两个 0 买单） */
-    + (diag.noStamp || diag.stampMismatch
-      ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "")
-    /* v2.8.8：保活兜底失败同理——它恒 0 才是正常的（有 Wake Lock 时根本不走兜底），
-       但**一旦非 0 就是"后台播放没保住"的确证**，必须占地方。放在最后一行是刻意的：
-       它是"功能级"告警，优先级高于前面那些"计数级"读数 */
-    + (diag.keepAliveFail ? " · ⚠保活兜底失败 ×" + diag.keepAliveFail : "");
-}
-/** @param {string} k */
-function diagBump(k){
-  diag[k]++;
-  diagPaint();                       // 面板未挂载时是空转（diagPaint 首句即返回）
-}
-/* ---- 最近错误原文的环形缓冲（v2.11.3）----
-   为什么需要它：诊断面板此前只有**计数**——"脚本错 3"能说明出了 3 次，却说不出出了什么。
-   报障时最有用的那一句（到底是哪个 undefined 读空了）恰恰只有计数里没有。
-   ★ 三条刻意的边界（都写在这里，别日后被"顺手改进"掉）：
-     ① **只在内存里，绝不落盘**。错误原文可能含用户数据（预设名、歌词、导入的文件名），
-        写进 localStorage 就等于把隐私留在下一次「导出全部数据」之外的角落里，也违反
-        README 那句"全部存本机、无上传"所暗示的最小留存原则；刷新即清空是特性不是缺陷。
-     ② **上限 20 条、超出丢最旧的**。它是"给我最近发生了什么"的窗口，不是日志系统；
-         unbounded 数组在一次死循环式的报错风暴里会自己把内存吃干（而报错风暴恰恰是
-         最需要诊断功能还活着的时刻）。
-     ③ **每条截断 200 字符**。DOM 异常里常带整段 outerHTML，原样留着既没用又占地方。 */
-const DIAG_LAST_MAX = 20;
-/** @type {{t:number, kind:string, msg:string}[]} */
-const diagLast = [];
-/**
- * @param {string} kind 「脚本错」/「未捕获」
- * @param {string} msg  错误原文（会被截断）
- */
-function diagNote(kind, msg){
-  /* `msg ?? "(无文案)"` 而不是 `msg == null ? …`：本仓库 lint 第 2 条就是 eqeqeq，
-     诊断代码自己首先得守它（本条在 v2.11.3 开发时**真的被自己的新规则拦下来过**） */
-  diagLast.push({ t: Date.now(), kind, msg: String(msg ?? "(无文案)").slice(0, 200) });
-  if (diagLast.length > DIAG_LAST_MAX) diagLast.shift();
-}
-
-/* 产物戳记自检（v2.4.4，堵「线上构建跑没跑自验不可知」的缺口）：
-   Workers Builds（Git 集成构建）不读仓库里 wrangler.jsonc 的 build.command——线上那次构建
-   跑什么取决于 Dashboard 里仓库外的命令。build-dist.js 装配时把「版本|时间|sha1」以
-   <meta name="beatsight-build"> 注入 dist/index.html，这里在启动时核对：
-     · 戳记缺失     → 只记 noStamp 计数（**不告警**：WorkBuddy 手动发布链是目录拷贝、
-       天然无戳记；本机/冒烟通道同理——缺席不是罪证，只是"这条路没过自验链"的读数）；
-     · 戳记版本不符 → 戳记在、版本却对不上 = 产物被手工拼过或张冠李戴，这才 console.warn。
-   file:// 与沙箱（无 location）直接不查。 */
-function stampCheck(){
-  if (typeof location === "undefined" || !location) return;
-  if (!/^https?:$/.test(location.protocol || "")) return;           // file://：本地副本无戳记是预期
-  if (/^(localhost|127\.)/.test(location.hostname || "")) return;   // 本机开发 / smoke 通道：不查
-  const q = document.querySelector;
-  const m = (typeof q === "function") ? document.querySelector('meta[name="beatsight-build"]') : null;
-  const v = m && m.getAttribute("content");
-  if (!v){ diagBump("noStamp"); return; }
-  if (String(v).split("|")[0] !== "v" + VERSION){
-    diagBump("stampMismatch");
-    try{ console.warn("[BeatSight] 产物戳记版本不符：" + v + " ≠ v" + VERSION
-      + "（这份产物绕过了自验链，或戳记是别的版本留下的）"); }catch(e){}
-  }
-}
-/** 各键的占用字符数（v2.0.6，审计 P1-9）。为什么值得进诊断：localStorage 配额是**按 origin
- *  总量**算的，出了"存不下"只能看到一句 QuotaExceeded——不知道是哪个键在膨胀就没法治
- *  （beatsight.customs 曾出现过 715 KB 量级）。读不到（沙盒/禁用）就返回说明文字，不抛 */
-function diagStorageUsage(){
-  try{
-    const out = [];
-    for (let i = 0; i < localStorage.length; i++){
-      const k = localStorage.key(i);
-      if (k === null) continue;
-      const v = localStorage.getItem(k);
-      out.push(k + "=" + (v ? v.length : 0));
-    }
-    return out.length ? out.join(" ") : "(空)";
-  }catch(e){ return "(不可读)"; }
-}
-/** 生成一段可直接粘贴给别人（或贴进 issue）的现场信息 */
-function diagReport(){
-  const ua = (typeof navigator !== "undefined" && navigator.userAgent) ? navigator.userAgent : "(未知)";
-  const url = (typeof location !== "undefined" && location.href) ? location.href : "(未知)";
-  /* v2.11.3：把最近错误原文接在计数后面。空的时候显式写「（无）」——
-     一行"最近错误"出现在报告里却什么都没有，会让人以为功能坏了 */
-  const last = diagLast.length
-    ? "\n" + diagLast.map(r => "  · [" + r.kind + "] " + r.msg).join("\n")
-    : "  （无）";
-  return [
-    "BeatSight v" + VERSION + " 诊断信息",
-    "URL: " + url,
-    "UA: " + ua,
-    "计数: " + JSON.stringify(diag),
-    "本地存储: " + diagStorageUsage(),
-    "最近错误（仅内存，刷新即清）:" + last,
-  ].join("\n");
-}
-/** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
- *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应"。
- *  ★ btn 必须标注类型：`noImplicitAny` 开着，缺标注会报 TS7006（同样是被线上构建拦下来的）
- *  @param {HTMLElement} btn */
-function diagCopy(btn){
-  const text = diagReport();
-  const done = () => { btn.textContent = "已复制"; };
-  const fallback = () => { Modal.uiAlert(text); };
-  try{
-    const nav = /** @type {any} */ (navigator);
-    if (nav && nav.clipboard && nav.clipboard.writeText){
-      nav.clipboard.writeText(text).then(done, fallback);
-      return;
-    }
-  }catch(e){ /* 落到下面的兜底 */ }
-  fallback();
-}
-function diagBuild(){
-  if (typeof document === "undefined" || !document.body) return;
-  const box = document.createElement("div");
-  box.className = "diag";
-  box.setAttribute("role", "status");     // 读屏可播报：计数变化不该只对眼睛可见
-  const head = document.createElement("b");
-  head.textContent = "诊断 · v" + VERSION;
-  const line = document.createElement("span");
-  line.className = "diag-line";
-  /* 复制按钮（v2.0.6）：面板此前只能看不能带走。用户报障时能把现场信息贴出来，
-     价值远大于让开发者隔空猜（尤其"重锚 >0"这种只有本机能观察到的读数） */
-  const copy = document.createElement("button");
-  copy.className = "pill outline diag-copy";
-  copy.textContent = "复制诊断信息";
-  copy.addEventListener("click", () => diagCopy(copy));
-  box.appendChild(head);
-  box.appendChild(line);
-  box.appendChild(copy);
-  document.body.appendChild(box);
-  diagPanel = { box, line };
-  diagPaint();
-}
-/* 开关求值：宿主没有 location（老用例的沙箱默认值）时静默关闭——与 PWA 注册块同一套守卫习惯。
-   ★ 刻意不用正则字面量匹配：`debug=1` 写在 /…/ 里不会被 check-lint.js 的 maskStrings 掩码
-     （它只遮字符串字面量），会被「隐式全局赋值」规则误判成对标识符 debug 赋值。
-   ★ 也不用 URLSearchParams：vm 测试沙箱未补该宿主 API（见 tests/lib/harness.js 的显式补桩），
-     会直接 ReferenceError。按 `&` 切段后与字符串字面量逐段比对最稳（字面量会被掩码，安全）。 */
-const diagOn = (() => {
-  try{
-    if (typeof location === "undefined") return false;
-    const segs = String(location.search || "").replace(/^\?/, "").split("&");
-    for (let i = 0; i < segs.length; i++){ if (segs[i] === "debug=1") return true; }
-    return false;
-  }
-  catch(e){ return false; }
-})();
-if (diagOn) diagBuild();
-
 /* 时间轴重锚计数（v2.0.6，审计 P1-1）：AudioEngine 每执行一次 reanchor 就报一次原因。
    分成两类而不是合成一个总数——两者的处置完全不同：
      饿 starved  = 主线程/定时器被长时间节流（后台唤醒、机器卡）→ 属环境，调机器或看窗口余量；
      超 overflow = 单轮迭代触顶 → 属数据可疑，直接去查节奏型/拍号是不是坏值。
    这条读数的意义在于：重锚会**静默吞掉**那段时间本该排出的音符，此前没有任何痕迹，
    用户只能描述"好像卡了一下"。现在 0 = 从未漏拍，>0 = 有据可查 */
-onReanchor = why => { diagBump(why === "overflow" ? "reanchorOverflow" : "reanchorStarved"); };
+onReanchor = why => { Diagnostics.diagBump(why === "overflow" ? "reanchorOverflow" : "reanchorStarved"); };
 /* 后台保活兜底失败计数（v2.8.8，本轮审计「高」级项）。
    只计数 + 一条 warn，**不做任何处置**：兜底失败意味着"切到后台可能被节流"，
    但这是环境能力问题（CSP 拦了 data: 音频 / 自动播放策略拒绝 / 环境根本没有 play），
    强行弹窗只会在用户每次切后台时打扰他。让它出现在诊断面板与「复制诊断信息」里，
    用户报障时就能一句话指认"后台没保住是因为兜底音频起不来"。 */
 onKeepAliveFail = why => {
-  diagBump("keepAliveFail");
+  Diagnostics.diagBump("keepAliveFail");
   try{ console.warn("[BeatSight] 后台保活兜底失败（" + why + "）：切到后台可能被浏览器节流"); }catch(e){}
 };
 /* 脚本错误边界（v2.0.6，审计 P1-9）：此前只有各模块自己的 try/catch 与 console，
@@ -9981,25 +10002,25 @@ onKeepAliveFail = why => {
      · `unhandledrejection` 的 `e.reason` 可以是任意值（Error / 字符串 / undefined），
        `String()` 是最稳的取法（Error 会得到 "TypeError: …"） */
 window.addEventListener("error", (/** @type {any} */ e) => {
-  diagBump("winErr");
+  Diagnostics.diagBump("winErr");
   try{
-    diagNote("脚本错", (e && e.message) || ((e && e.target && e.target.tagName)
+    Diagnostics.diagNote("脚本错", (e && e.message) || ((e && e.target && e.target.tagName)
       ? "资源加载失败 <" + String(e.target.tagName).toLowerCase() + ">" : "(无文案)"));
   }catch(_){ /* 诊断自身绝不再抛 */ }
 });
 window.addEventListener("unhandledrejection", (/** @type {any} */ e) => {
-  diagBump("rejection");
-  try{ diagNote("未捕获", e && e.reason !== undefined ? String(e.reason) : "(无 reason)"); }
+  Diagnostics.diagBump("rejection");
+  try{ Diagnostics.diagNote("未捕获", e && e.reason !== undefined ? String(e.reason) : "(无 reason)"); }
   catch(_){ /* 同上 */ }
 });
-stampCheck();   // v2.4.4：产物戳记自检（在线版核对 <meta name="beatsight-build">，详见函数注释）
+Diagnostics.stampCheck();   // v2.4.4：产物戳记自检（在线版核对 <meta name="beatsight-build">，详见函数注释）
 
 /* 保存失败可见化（v1.3.0，审计 P1-5）：品牌区徽章里那颗**状态点变红** + sr-only 文案改「保存失败」
    + 一次性弹窗。原先写失败被 catch(e){} 静默吞掉，用户攒了几十个预设却存不进去时毫无察觉。
    ★ v2.10.10：点从顶栏最右的 chip 移进徽章后，可见信号只剩"颜色"这一条——故这里**同时**改
      `title`：分不出红绿的鼠标用户悬停仍有字可看，读屏用户则由 sr-only 文案拿到状态 */
 Store.setPersistFailHandler(() => {
-  diagBump("persistFail");                        // v2.0.4：诊断面板计数（只加计数，不改行为）
+  Diagnostics.diagBump("persistFail");                        // v2.0.4：诊断面板计数（只加计数，不改行为）
   try{
     $("persistDot").classList.add("bad");
     $("persistDot").title = "本地保存失败";
@@ -10015,7 +10036,7 @@ Store.setPersistFailHandler(() => {
    任何一次写成功都会走到这里，把状态点、它的 title 与 sr-only 文案一起复原成正常态。
    两个动作各自包 try（与失败钩子同一条约定：DOM 写入本身也可能出问题）。 */
 Store.setPersistRecoverHandler(() => {
-  diagBump("persistRecover");                     // v2.0.4：与失败计数配对，才能看出"恢复了几次"
+  Diagnostics.diagBump("persistRecover");                     // v2.0.4：与失败计数配对，才能看出"恢复了几次"
   try{
     $("persistDot").classList.remove("bad");
     $("persistDot").title = "本地保存正常";
@@ -10031,7 +10052,7 @@ Store.setPersistRecoverHandler(() => {
    不能让「告诉用户」这一步被前一步的异常一起带走——那正是本钩子存在的意义。
    回归：tests T23f（注入状态栏写入即抛，仍要求弹窗可见） */
 onFrameError = e => {
-  diagBump("frameErr");                           // v2.0.4：诊断面板计数（放在最前，先记数再处置）
+  Diagnostics.diagBump("frameErr");                           // v2.0.4：诊断面板计数（放在最前，先记数再处置）
   try{ Controls.stop(); }catch(e1){}
   try{
     Modal.uiAlert("画面渲染出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
@@ -10041,7 +10062,7 @@ onFrameError = e => {
    同样**两个动作各自包 try**——异常源头可能就是状态栏/弹窗这些 DOM 写入，
    不能让"告诉用户"这一步被它一起带走。 */
 onSchedError = e => {
-  diagBump("schedErr");                           // v2.0.4：与掉帧计数同构，放在最前
+  Diagnostics.diagBump("schedErr");                           // v2.0.4：与掉帧计数同构，放在最前
   try{ Controls.stop(); }catch(e1){}
   try{
     Modal.uiAlert("节拍调度出现异常，已停止播放。\n若反复出现，请先用「导出预设」备份，再清除本站数据。\n\n" + e.message);
@@ -10055,7 +10076,7 @@ onLimitPulse = () => {
      本钩子每个 25ms 调度周期都会被问一次，若按调用次数计，计数器会以 40/s 空转、
      把"到点触发了几次"这个唯一有意义的读数淹没掉。返回值原样透传，停播语义一字未改 */
   const stopped = Controls.onLimitPulse();
-  if (stopped) diagBump("limitPulse");
+  if (stopped) Diagnostics.diagBump("limitPulse");
   return stopped;
 };
 /* 曲式走到播放范围末尾且不循环（v2.0.0 S4）：经钩子停止（AudioEngine 不能反向调用 Controls，R3）。
@@ -10188,12 +10209,12 @@ Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次�
 Trainer.updateProg();                // v2.11.2：原「有训练历史时亮出继续上次」随接续记录删除
 
 /* 「复制诊断信息」按钮（v2.11.3 设置弹窗组④）：把原先只有 ?debug=1 才够得着的
-   diagCopy() 放进常规 UI。接线放在装配层而非 Settings 模块——与主题、四个导入导出
+   Diagnostics.diagCopy() 放进常规 UI。接线放在装配层而非 Settings 模块——与主题、四个导入导出
    同一条先例：**设置模块只管开合**，业务接线一律按 id 绑在装配层，不新增依赖边。
-   ★ 按钮文案的复位：diagCopy 成功后会把它改成"已复制"，下次打开设置时应回到原样，
+   ★ 按钮文案的复位：Diagnostics.diagCopy 成功后会把它改成"已复制"，下次打开设置时应回到原样，
      否则用户第二次点开看到的是一句上一次的反馈（像是卡住了）。 */
 $("diagCopyBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-  diagCopy(evEl(e));
+  Diagnostics.diagCopy(evEl(e));
 });
 $("settingsBtn").addEventListener("click", () => {
   const b = $("diagCopyBtn");
@@ -10857,7 +10878,7 @@ latWizPaint();                             // 首屏：向导面板收起（phas
    原先 smoke 等到 `window.__beat` 就算启动成功，而 `__beat` 一旦被下面的开关收起，
    这个探针就会永远等不到、把"内部句柄已收起"误判成"应用白屏"。
    用途拆开之后，"启动了吗"与"内部句柄暴露了吗"两件事不再互相冒充。 */
-/** @type {any} */ (window).__beatBoot = { version: VERSION, booted: true, diag };
+/** @type {any} */ (window).__beatBoot = { version: VERSION, booted: true, diag: Diagnostics.diag };
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言。
    ★★ v2.8.8：改为**条件挂载**（此前无条件）。
@@ -10870,7 +10891,7 @@ latWizPaint();                             // 首屏：向导面板收起（phas
        · 宿主预置了 `window.BEATSIGHT_TEST`（tests/lib/harness.js 的 vm 沙箱预置它）。
      ★ 为什么用"宿主预置标记"而不是判断 location：测试沙箱没有 location，
        且"这是不是被测环境"应当由**启动方**声明，不该由页面猜。 */
-const EXPOSE_INTERNALS = diagOn
+const EXPOSE_INTERNALS = Diagnostics.diagOn
   || !!(typeof window !== "undefined" && (/** @type {any} */ (window)).BEATSIGHT_TEST);
 if (EXPOSE_INTERNALS){
   /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Settings, Ear, KeepAlive,
@@ -10891,8 +10912,11 @@ if (EXPOSE_INTERNALS){
     demoPresetEq,                                 // v2.6.4：示例型内容级一致判定（同名不同命的旧数据只有比内容才分得出来）
     Arrange,                                        // v2.0.0：曲式编排 UI
     Help,                                           // v2.0.1：使用方法
-    diag,                                           // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
-    diagLast, diagNote, diagReport, DIAG_LAST_MAX,  // v2.11.3：最近错误原文的环形缓冲（仅内存）/ 报告生成
+    diag: Diagnostics.diag,                         // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
+    /* v2.11.3：最近错误原文的环形缓冲（仅内存）/ 报告生成。★ 键名**刻意不跟着模块改名**——
+       改成 `Diagnostics.xxx` 会让既有断言整片改写，而"纯结构调整"的证据恰恰是它们一条未动。 */
+    diagLast: Diagnostics.diagLast, diagNote: Diagnostics.diagNote,
+    diagReport: Diagnostics.diagReport, DIAG_LAST_MAX: Diagnostics.DIAG_LAST_MAX,
     /* v2.12.0：背景壁纸。暴露的是**纯逻辑**（校验 / 读档 / 落盘 / 应用到 DOM），
        canvas 降采样那几行是宿主能力，桩里拿不到 2d 上下文 → 走"直接用原图"分支。 */
     wallCheck, wallRead, wallWrite, wallClear, wallApply,
