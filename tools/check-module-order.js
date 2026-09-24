@@ -26,9 +26,9 @@
         理由；条目一旦不再被用到也会报错（防止白名单慢慢腐烂成"什么都放行"）。
 
      R4（扇出上限，告警）：一个模块直接引用的**下游模块个数**（扇出）不得超过 MAX_FANOUT。
-        它是"某模块会不会膨胀成上帝对象"的最直接指标。Controls 是 UI 中枢、当前已顶到上限
-        （指向它全部的 7 个下游），再想加一条就必须显式抬高下方 MAX_FANOUT 常量——让"中枢又
-        胖了一圈"成为一次看得见、需要理由的改动，而不是悄悄发生。
+        它是"某模块会不会膨胀成上帝对象"的最直接指标。曾经 Controls（UI 中枢）顶到上限 7；
+        v2.18.0 把那四条同形的"叠加层键盘路由"收敛成注册表后降到 2，余量回到 5。
+        真顶格时的第一反应应当是"**这几条引用是不是同一件事被抄了多遍**"，而不是抬高常量。
 
    ✅ 已修（v2.8.8，本轮审计「高」级项）：R1/R2 的"在哪一层"判定已由**缩进**换成**括号深度**
    （先 blankNonCode 抹掉注释与字符串内容，再逐字符数 `{`/`}`），与缩进、换行、是否格式化
@@ -73,20 +73,24 @@ const WHITELIST = [
   { from: "AudioEngine",    to: "Presets",  reason: "scheduler() 在小节边界调 Presets.consumePending() 消费挂起的节奏型切换——同上，每小节一次" },
   { from: "Trainer",  to: "Controls", reason: "训练到目标时调 Controls.stop()/setBpm()/syncBpmUI()——由调度周期或事件触发" },
   { from: "Controls", to: "Presets",  reason: "stop() 调 Presets.flushPending() 落定挂起切换——停止流程中执行" },
-  { from: "Controls", to: "Editor",   reason: "keydown 处理器调 Editor.tryClose()/undo()——用户按键时执行" },
-  { from: "Controls", to: "Settings", reason: "v2.10.12：keydown 处理器查 Settings.isOpen()/close()——设置 overlay 打开时键盘归它管，用户按键时执行（取代被删除的 Stats 那一条）" },
-  { from: "Controls", to: "Ear",      reason: "v1.10.0：keydown 处理器查 Ear.isOpen()/close()——同 Settings 那一套，听辨训练 overlay 打开时键盘归它管" },
-  { from: "Controls", to: "Arrange",  reason: "v2.0.0：keydown 处理器查 Arrange.isOpen()/close()——同 Ear/Settings 那一套，曲式编排 overlay 打开时键盘归它管" },
-  { from: "Controls", to: "Help",     reason: "v2.0.1：keydown 处理器查 Help.isOpen()/close()——同上一批那一套，使用方法 overlay 打开时键盘归它管" },
+  /* ★ v2.18.0：原 `Controls → Editor / Settings / Ear / Arrange / Help` 五条**已删除**。
+     它们是"某个叠加层开着就吞键、Escape 关掉它"这套同形逻辑的重复展开，曾把 Controls 的
+     扇出顶到上限（7）。现改由共享状态区的 `KEY_LAYERS` 注册表承载：**各叠加层模块在自己体内
+     登记**，Controls 只 `for (const layer of KEY_LAYERS) if (layer.handles(e)) return;` 一次 ——
+     它读的是共享状态、不再引用后方模块，故这五条白名单随之失效（闸门会自己报"应删除"，已删）。 */
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
   /* ★ v2.10.12：**没有** `Settings → Help` 这一条——设置弹窗里的「使用方法」按钮，
      其点击 handler 仍在 `Help` 模块里（按 id `#helpBtn` 绑定，元素搬进设置弹窗后照旧生效）。
      搬家式改动**只搬元素、不搬接线**，就不会产生新的反向引用（教训见 T90 的注释） */
 ];
 
-/* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。Controls 是 UI 中枢、当前已顶到 7
-   （它指向全部下游），再想加一条就必须显式抬高这个常量——让"中枢又胖一圈"成为一次看得见、
-   需要理由的改动，而不是悄悄发生。新功能的 UI 装配请内聚到各自模块内部。 */
+/* R4 扇出上限：一个模块**直接引用的下游模块个数**上限。留 7 不动 —— 它是"中枢又胖一圈"
+   的可见化闸门，不是"当前用量的记录"。
+   ★ v2.18.0 复核：**Controls 已从 7 降到 2**（只剩 Presets + KeepAlive）——
+     原来顶到 7 的五条里有四条（Settings/Ear/Arrange/Help）是同一套"叠加层键盘路由"的重复展开，
+     已改由共享状态区的 `KEY_LAYERS` 注册表承载（各模块自己登记）。余量回到 5。
+   ★ 教训：顶格不该靠"抬高常量"解决，该先看**那几条引用是不是同一件事被抄了多遍** ——
+     本例抄了四遍，收敛成一个注册表之后，新增叠加层连 Controls 都不用碰。 */
 const MAX_FANOUT = 7;
 
 /* ---- 嵌套深度（v2.8.8 起由缩进改为括号深度）----

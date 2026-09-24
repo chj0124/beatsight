@@ -1750,19 +1750,19 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L1778  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L2272  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3913  Modal         应用内弹窗
-     L4045  Viz           时值可视化渲染与每帧动画
-     L5995  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6661  Trainer       变速训练器
-     L6799  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7278  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8140  Editor        自定义节奏型编辑器
-     L8496  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8530  Ear           听辨训练（v1.10.0）
-     L8748  Arrange       曲式编排（v2.0.0）
-     L9620  Help          使用方法（v2.0.1）
-     L9667  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9741  初始化（装配） 各模块 hook 接线与启动
+     L3939  Modal         应用内弹窗
+     L4071  Viz           时值可视化渲染与每帧动画
+     L6021  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6687  Trainer       变速训练器
+     L6825  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7288  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8150  Editor        自定义节奏型编辑器
+     L8514  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8551  Ear           听辨训练（v1.10.0）
+     L8771  Arrange       曲式编排（v2.0.0）
+     L9645  Help          使用方法（v2.0.1）
+     L9694  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9768  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1788,7 +1788,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.17.0";
+const VERSION = "2.18.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3247,6 +3247,32 @@ const $ = id => document.getElementById(id);
    子节点（见 tests/lib/harness.js），换成 replaceChildren / removeChild 循环会让桩与真实行为分叉。 */
 /** @param {any} el @returns {void} */
 const clear = el => { el.innerHTML = ""; };
+
+/* ---------- 叠加层键盘层注册表（v2.18.0）----------
+   由来：`Controls` 的 keydown 里原有**五段同形的 if/return**——「某个叠加层开着就吞掉这次按键，
+   是 Escape 就关掉它」。其中四段（设置 / 听辨 / 曲式 / 使用方法）逐字同构，第五段（编辑器）
+   多一条 Ctrl+Z。
+   ★ 代价不只是重复：`Controls` 的直接下游引用因此**顶到 R4 的上限**（`MAX_FANOUT=7`），
+     每新增一个叠加层都要"在 Controls 里再抄一遍 + 抬 `MAX_FANOUT` + 往 R3 白名单加一条"。
+   ★ 改成登记制后：**模块自己登记**、`Controls` 只问注册表一次 ⇒ Controls 的下游引用降到 2；
+     新增叠加层的成本 = 在自己模块末尾调一次 `registerKeyLayer(...)`，不必碰 Controls、
+     也不必动闸门里的任何常量。
+   ★ 方向合法性：注册表在共享状态区（所有模块之前），各模块在**自己体内**调用它 = 引用前方 ✓；
+     `Controls` 读注册表 = 读共享状态，不再是"引用后方模块" ⇒ 那五条 R3 白名单随之取消。
+   ★ 顺序 = 登记顺序 = 模块声明顺序（设置 → 听辨 → 曲式 → 使用方法 → 编辑器），
+     与改造前那段 if 链的顺序**逐位相同** ⇒ 键位归属不变。
+   ★ 语义也与改造前一致：**叠加层开着时吞掉所有按键**（这正是"空格不误触播放"那条），
+     只有 Escape 会触发关闭；谁先认领谁生效。 */
+/** @type {{handles: (e: any) => boolean}[]} */
+const KEY_LAYERS = [];
+/** @param {{handles: (e: any) => boolean}} layer @returns {void} */
+function registerKeyLayer(layer){ KEY_LAYERS.push(layer); }
+/* 标准叠加层（开 → 吞键 + Escape 关）的键盘层工厂：四个模块共用同一份语义，
+   各自只需 `registerKeyLayer(overlayKeyLayer({ isOpen, close }))` 一行。 */
+/** @param {{isOpen: () => boolean, close: () => void}} mod @returns {{handles: (e: any) => boolean}} */
+function overlayKeyLayer(mod){
+  return { handles(/** @type {any} */ e){ if (!mod.isOpen()) return false; if (e.key === "Escape") mod.close(); return true; } };
+}
 
 /* 事件处理器里读「当前元素 / 事件目标」（v1.10.0 类型闸门收口）：
    DOM 类型上 EventTarget 并没有 blur / value / files / closest，而本项目的监听器一律绑在元素上、
@@ -6987,27 +7013,11 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
   };
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
-    if (Settings.isOpen()){                       // v2.10.12：设置 overlay 打开时键盘归它管（空格不误触播放）
-      if (e.key === "Escape") Settings.close();
-      return;
-    }
-    if (Ear.isOpen()){                            // v1.10.0：听辨训练同套（空格不误触播放）
-      if (e.key === "Escape") Ear.close();
-      return;
-    }
-    if (Arrange.isOpen()){                        // v2.0.0：曲式编排同套（空格不误触播放）
-      if (e.key === "Escape") Arrange.close();
-      return;
-    }
-    if (Help.isOpen()){                             // v2.0.1：使用方法同套
-      if (e.key === "Escape") Help.close();
-      return;
-    }
-    if ($("editor").classList.contains("open")){
-      if (e.key === "Escape") Editor.tryClose();
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
-      return;
-    }
+    /* 叠加层路由（v2.18.0）：由**注册表**决定归属 —— 谁先认领谁生效。
+       登记顺序 = 模块声明顺序（设置 → 听辨 → 曲式 → 使用方法 → 编辑器），
+       与改造前那五段 if 链逐位相同；语义也没变：叠加层开着就吞键（"空格不误触播放"），
+       只有 Escape 关掉它。Controls 从此**不再直接引用**那五个模块 —— 扇出从 7 降到 2。 */
+    for (const layer of KEY_LAYERS){ if (layer.handles(e)) return; }
     /* v2.13.1：空格 = 播放/暂停的**全局规则**（用户要求"始终可用"）。
        旧规则按焦点元素排除（INPUT/BUTTON/SELECT/TEXTAREA + role=button），初衷是
        "不抢控件自己的键盘契约"——但它挡不住**留焦点的控件**：滑杆（BPM / 音量 / 播放范围）
@@ -8490,6 +8500,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("editorBack").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); tryClose(); });
 
+  /* v2.18.0：编辑器也登记进键盘层注册表，但它比标准叠加层**多一条 Ctrl+Z**，
+     故手写 handles 而不用 overlayKeyLayer 工厂。判据与语义与改造前那段 if 逐位相同。 */
+  registerKeyLayer({ handles(/** @type {any} */ e){
+    if (!$("editor").classList.contains("open")) return false;
+    if (e.key === "Escape") tryClose();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
+    return true;
+  } });
   return { open, tryClose, undo, draft: () => draft };
 })();
 
@@ -8524,6 +8542,9 @@ const Settings = (() => {
     if (e.target === e.currentTarget) close();
   });
 
+  /* v2.18.0：登记进叠加层键盘层注册表（语义见共享状态区）——
+     开着就吞键、Escape 关；登记顺序即模块声明顺序 = 键位归属顺序 */
+  registerKeyLayer(overlayKeyLayer({ isOpen, close }));
   return { open, close, isOpen };
 })();
 
@@ -8742,6 +8763,8 @@ const Ear = (() => {
   });
   earRender();                                // 装配即初始化战绩显示（真实数字来自已加载的冷键）
 
+  /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
+  registerKeyLayer(overlayKeyLayer({ isOpen, close }));
   return { open, close, isOpen, next, play, answer, makeQuestion, state };
 })();
 
@@ -9614,6 +9637,8 @@ const Arrange = (() => {
   });
 
   refreshBar();
+  /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
+  registerKeyLayer(overlayKeyLayer({ isOpen, close }));
   return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）
 })();
 
@@ -9661,6 +9686,8 @@ const Help = (() => {
     });
   });
   helpRender();
+  /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
+  registerKeyLayer(overlayKeyLayer({ isOpen, close }));
   return { open, close, isOpen, more: () => more };
 })();
 

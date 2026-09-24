@@ -312,3 +312,23 @@ section("T95g 延迟补偿 · 配置 CRUD（新建/改名/删除/切换）与两
   eq(String(r.els["latMs"].value), "185", "重载后滑杆恢复");
   eq(r.els["latProfileSel"].children.length, 1, "重载后配置列表恢复");
 }
+
+/* ================= 场景 T95g：校准守卫 —— 节拍音量为 0 时不许开始校准 ================= */
+/* 来源（v2.18.0，补装配区那 38 行未覆盖里**真正该测**的两处之一）：
+   校准靠"跟着敲"测量，若「节拍」音量是 0，用户敲的是一片静默——校准必然量出一堆垃圾样本。
+   装配层（`latCalibStart`）因此在开跑前拦一道。这条守卫此前没有断言。 */
+section("T95g 校准守卫 · 节拍音量为 0 时不许开始校准（否则用户跟着一片静默敲）");
+{
+  const app = loadApp();
+  const { beat, els } = app;
+  app.setNow(1000);                       // 墙钟锚点（进入 run 后要用）
+  beat.Store.S.vol = 0;                   // 用户把「节拍」音量拉到了 0
+  els["latCalibBtn"].fire("click");
+  eq(beat.latState().wiz, "idle", "★ 音量为 0 ⇒ 校准不进入 run（守卫拦下）");
+  eq(els["latWiz"].hidden, true, "★ 面板也不展开（不是「开了但没声音」的半状态）");
+  /* 把音量拉回来 → 同一次点击立刻能进：证明守卫只挡 vol=0 那一种，不是把入口弄坏了 */
+  beat.Store.S.vol = 0.8;
+  els["latCalibBtn"].fire("click");
+  eq(beat.latState().wiz, "run", "★ 音量恢复后立刻可校准（守卫的边界是 vol > 0）");
+  eq(els["latWiz"].hidden, false, "面板展开");
+}

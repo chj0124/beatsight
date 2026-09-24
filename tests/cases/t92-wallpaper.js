@@ -366,3 +366,15 @@ section("T92h 壁纸 · 遮罩颜色随主题（经典 #121212 / 观测台 #0A0C
   els["themeToggle"].fire("click");
   ok(/rgba\(18,18,18,/.test(String(els["wallLayer"].style.backgroundImage)), "切回来 → 换回 #121212");
 }
+
+/* ================= 场景 T92m：选图按钮的转发（v2.18.0 补） ================= */
+/* 补装配区那 38 行未覆盖里**真正该测**的两处之二：`#wallPickBtn` 是一颗普通按钮，
+   真正的选图是隐藏的 `<input type=file>`；按钮点击必须**转发**过去，否则这个入口形同虚设。 */
+section("T92m 选背景图 · 按钮点击必须转发到隐藏的 file input");
+{
+  const { els } = loadApp();
+  let hit = false;
+  els["wallFile"].click = () => { hit = true; };      // 探针：替掉真实 click，只记有没有被调到
+  els["wallPickBtn"].fire("click");
+  eq(hit, true, "★「选背景图」把点击转发给了 <input type=file>（漏了这行 = 选图按钮点了没反应）");
+}
