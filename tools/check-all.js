@@ -11,7 +11,7 @@
      1) 语法校验          提取内联脚本编译（不执行）
      2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
      3) 装配完整性        注入槽（`let onXxx = null;` 约定）与 patLenOf 是否真被接上（v2.8.6 新增）
-     4) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）
+     4) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml）
      5) 版本一致性        VERSION / CHANGELOG / package.json / package-lock.json / 代码注释不得漂移
      6) 文档一致性        模块索引行号（↔ 实际 banner）· 禁手写耗时 · 归档状态 · 审计快照横幅 ·
                           README 版本号与功能清单步数 · 禁手写覆盖率现状（后三条 v2.8.6 新增）

@@ -294,10 +294,12 @@ if (CASE in SIGS){
 
 } else if (CASE === "dirty_misc"){
   const { beat } = loadApp(seed({ v:3, sig:5, accentGrp:{ "5":99, "7":"x" },
+    /* v2.11.2：起始 BPM 参数已删，探针同步改为「everyN 仍是默认 4 且 start 字段根本不存在」
+       ——原型污染想塞进来的 start 连字段都不该有（白名单抽取，不进 S.trainer）。 */
     trainer: JSON.parse('{"__proto__":{"everyN":1,"start":30}}') }));
   out(JSON.stringify(beat.curPattern().accents) === JSON.stringify([0,2]),
       "脏重拍分组被丢弃、回退默认 2+3", "accents=" + JSON.stringify(beat.curPattern().accents));
-  out(beat.Store.S.trainer.everyN === 4 && beat.Store.S.trainer.start === 70,
+  out(beat.Store.S.trainer.everyN === 4 && !("start" in beat.Store.S.trainer),
       "trainer 原型污染未生效",
       "everyN=" + beat.Store.S.trainer.everyN + " / start=" + beat.Store.S.trainer.start);
 

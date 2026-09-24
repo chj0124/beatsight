@@ -13,7 +13,9 @@ section("T1 Store · 坏 JSON 回退默认，不白屏");
   const S = beat.Store.S;
   eq(S.bpm, 96, "坏数据时 BPM 回退默认 96");
   eq(S.sig, 4, "坏数据时拍号回退 4");
-  eq(S.trainer.start, 70, "坏数据时 trainer.start 默认 70");
+  /* v2.11.2：「起始」参数已删——起点改为开启那一刻的当前 BPM（会话值，不在 S.trainer 里） */
+  ok(!("start" in S.trainer), "v2.11.2：trainer 不再有 start 字段");
+  eq(S.trainer.target, 120, "坏数据时 trainer.target 默认 120");
   eq(S.trainer.everyN, 4, "坏数据时 trainer.everyN 默认 4");
 }
 
@@ -22,7 +24,8 @@ section("T2 Store · trainer 缺项/脏项回退默认值");
 {
   const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ trainer: { start: 80, step: "x", everyN: null } }) });
   const t = beat.Store.S.trainer;
-  eq(t.start, 80, "合法 start 保留");
+  /* v2.11.2：老存档里的 start 因不在 TR_KEYS 白名单内而被自动忽略——零迁移代码 */
+  ok(!("start" in t), "v2.11.2：老存档的 start 被白名单忽略（不进 S.trainer）");
   eq(t.step, 4, "非数字 step 回退默认 4");
   eq(t.everyN, 4, "null everyN 回退默认 4");
   eq(t.target, 120, "缺失 target 回退默认 120");
@@ -30,15 +33,18 @@ section("T2 Store · trainer 缺项/脏项回退默认值");
 }
 
 /* ================= 场景 T3：变速训练爬坡序列（v0.5.0 核心回归） ================= */
-section("T3 Trainer · 爬坡序列 70→80→90→95 + 完成自动停止");
+section("T3 Trainer · 爬坡序列 70→80→90→95 + 完成自动停止（v2.11.2：起点 = 开播时的当前 BPM）");
 {
   const { beat, els } = loadApp({ "beatsight.m2": JSON.stringify({
-    trainer: { on: true, start: 70, target: 95, step: 10, everyN: 2 },
+    trainer: { on: true, target: 95, step: 10, everyN: 2 },
   })});
   const S = beat.Store.S;
+  /* v2.11.2：不再有 start 参数——"从哪爬起"就是**开播那一刻的当前速度**，
+     所以这里先把速度调到 70 再开播（此前是 start() 把 BPM 拽到存档里的起始值）。 */
+  beat.Controls.setBpm(70, false);
   beat.Controls.start();
-  ok(S.playing, "训练开启时点播放：从起始速度起步");
-  eq(S.bpm, 70, "起步 BPM = 起始 70");
+  ok(S.playing, "训练开启时点播放：从当前速度起步");
+  eq(S.bpm, 70, "起步 BPM = 开播时的当前速度 70");
   const ac = FakeAudioContext.last;   // start() 内 ensureCtx 创建的实例
   ok(!!ac, "AudioContext 已被创建");
   const seq = [S.bpm];
@@ -50,24 +56,25 @@ section("T3 Trainer · 爬坡序列 70→80→90→95 + 完成自动停止");
 }
 
 /* ================= 场景 T4：训练参数钳制 ================= */
-section("T4 Trainer · 参数钳制与目标>起始约束");
+section("T4 Trainer · 参数钳制（v2.11.2：起始参数已删，不再有「目标>起始」交叉约束）");
 {
   const { beat, els } = loadApp();
   const S = beat.Store.S;
-  els["trStart"].value = "999";
-  els["trStart"].fire("change");
-  eq(S.trainer.start, 236, "起始超上限钳到 236");
-  eq(S.trainer.target, 237, "目标被抬回 起始+1（237）");
-  eq(els["trTarget"].value, 237, "目标输入框同步 237");
-  els["trTarget"].value = "150";
+  els["trTarget"].value = "999";
   els["trTarget"].fire("change");
-  eq(S.trainer.target, 237, "目标改到低于起始再次被抬回 237");
-  els["trStart"].value = "abc";
-  els["trStart"].fire("change");
-  eq(S.trainer.start, 236, "非数字输入回退原值 236");
+  eq(S.trainer.target, 240, "目标超上限钳到 240");
+  els["trTarget"].value = "10";
+  els["trTarget"].fire("change");
+  eq(S.trainer.target, 31, "目标低于下限钳到 31（不再被起始抬着走）");
+  els["trTarget"].value = "abc";
+  els["trTarget"].fire("change");
+  eq(S.trainer.target, 31, "非数字输入回退原值 31");
   els["trEvery"].value = "0";
   els["trEvery"].fire("change");
   eq(S.trainer.everyN, 1, "每级小节数下限钳到 1");
+  els["trStepInp"].value = "0";
+  els["trStepInp"].fire("change");
+  eq(S.trainer.step, 1, "步长下限钳到 1");
 }
 
 /* ================= 场景 T5：预设导入导出（v0.7.0：tick 制 + v1 旧格式兼容） ================= */

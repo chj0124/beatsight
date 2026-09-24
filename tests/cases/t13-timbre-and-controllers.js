@@ -77,8 +77,9 @@ section("T14 预备拍 · 计数发声 + 训练器不受污染");
   /* 预备拍 + 变速训练：爬坡计数不含预备拍（everyN=1 时完成 2 级即停） */
   const { beat: b2 } = loadApp({ "beatsight.m2": JSON.stringify({
     countIn: { on: true, beats: 2 },
-    trainer: { on: true, start: 70, target: 80, step: 10, everyN: 1 },
+    trainer: { on: true, target: 80, step: 10, everyN: 1 },
   })});
+  b2.Controls.setBpm(70, false);      // v2.11.2：起点 = 开播时的当前 BPM（不再有 start 参数）
   b2.Controls.start();
   const ac2 = FakeAudioContext.last;
   const stopped = drive(ac2, b2, 30);

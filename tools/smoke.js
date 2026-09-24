@@ -241,6 +241,35 @@ function probe(){
      用 getElementsByTagName("*") 而不是 querySelectorAll("*")：前者是活集合、后者会分配数组，
      这里是每次冒烟跑一次、差异可忽略，但活集合少一次分配也更贴合"只做便宜事"的习惯。 */
   out.domNodes = document.body.getElementsByTagName("*").length;
+  /* v2.13.0：出厂默认壁纸的**真解码**。
+     为什么必须在真机做：桩里拿不到真实解码器，而"样式里挂着 data: URL"**不等于**
+     "浏览器画得出这张图"。v2.13.0 输血时正是把 data: 前缀写重了（base64 多出 15 字节），
+     桩测试全绿、而背景一片空白——只有这一条抓得到。
+     口径：从**实际生效的 background-image** 里取出 url("…") 再交给 Image 解码，
+     验的是"真的能画出来"，而不是"字符串看着像"。没有壁纸时记 present:false（断言只要求
+     "有壁纸就必须解得开"）。
+     ★ 本段在**模板字符串内**：别用反引号，也别写 $ 加大括号。 */
+  try{
+    const wl = document.getElementById("wallLayer");
+    const bg = wl ? String(wl.style.backgroundImage) : "";
+    /* ★ 刻意用 indexOf/slice 而不是正则：本段代码住在**模板字符串**里，
+       正则里的反斜杠转义（\\/ 与 \\( ）会先被模板字面量吃掉，
+       到页面里就变成 /url("(data:image/… ——一个 "Unterminated group" 的语法错误，
+       探针整体求值失败（实测踩过）。不用转义的取法在这里更稳。 */
+    const at = bg.indexOf('url("data:');
+    const endAt = at < 0 ? -1 : bg.indexOf('")', at + 5);
+    const url = (at >= 0 && endAt > at) ? bg.slice(at + 5, endAt) : "";
+    if (!url) out.wall = { present: false };
+    else {
+      const decoded = await new Promise(resolve => {
+        const im = new Image();
+        im.onload = () => resolve(im.naturalWidth + "x" + im.naturalHeight);
+        im.onerror = () => resolve("ERR");
+        im.src = url;
+      });
+      out.wall = { present: true, decoded: decoded, chars: url.length };
+    }
+  }catch(e){ out.wall = { present: false, err: String(e && e.message || e) }; }
   try{
     const k = "beatsight.state";
     localStorage.setItem(k, localStorage.getItem(k));
@@ -490,6 +519,13 @@ async function main(){
         p.label + "：顶栏 chip 只报保存状态、不重复版本号",
         "实际 " + (d.version && d.version.chip));
       ok(d.version.const === VERSION, p.label + "：页面内 VERSION 与源码一致");
+      /* v2.13.0：出厂默认壁纸**真的能被浏览器解码**（宽高是数字、不是 ERR）。
+         ★ 这条是"桩测不出、只能真机验"的典型：内联 base64 前缀写重过一次，
+         桩全绿而背景空白。冒烟用的 profile 每次都是全新的 → 必然是首次打开形态。 */
+      ok(!!d.wall && d.wall.present === true && /^\d+x\d+$/.test(String(d.wall.decoded))
+         && d.wall.chars > 1000,
+        p.label + "：出厂默认壁纸能真解码（v2.13.0）",
+        d.wall ? JSON.stringify(d.wall) : "探针未取到 #wallLayer");
       /* v2.10.10：状态点真的落在品牌区徽章矩形内、且真的被画出来（真布局，桩测不到） */
       ok(!!d.badgeDot && d.badgeDot.inside === true,
         p.label + "：保存状态点渲染在版本徽章矩形内（真布局）",

@@ -84,10 +84,10 @@ beatsight/
 `<script>` 顺序：**数据 → Store → 共享状态 → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Settings → Ear → KeepAlive → init**
 
 ```
-Store（持久化/状态创建/迁移/导入导出/练习记录）
-共享状态（S/customs 别名、draft、appliedPat、activePattern、sessStartT、UI 同步助手、音频时钟变量）
+Store（持久化/状态创建/迁移/导入导出）
+共享状态（S/customs 别名、draft、appliedPat、activePattern、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
-→ Trainer（变速训练器 + 上次训练接续）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍/练习入账；★ v2.10.14 起**没有走带卡**——BPM 在时值卡头行、Swing 在同屏行数行、播放键在跳段行中间，上/下段键常显置灰）
+→ Trainer（变速训练器；v2.11.2 起「上次训练接续 / 7 天计划」整块删除，只剩爬坡本身）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍；★ v2.10.14 起**没有走带卡**——BPM 在时值卡头行、Swing 在同屏行数行、播放键在跳段行中间，上/下段键常显置灰）
 → Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与播放范围滑块，v2.5.0 起·滑块于 v2.10.4；三区常显于 v2.9.0）→ Editor（自定义编辑器）
 → Settings（设置弹窗：浮层小窗形态、点窗外即关，主题 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出 / 使用方法入口，v2.10.12；形态改 Dialog 于 v2.10.13）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ init（装配）
@@ -312,14 +312,32 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 
 | key | 内容 | 写入时机 |
 |---|---|---|
-| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/keepAwake/migHint/plan/**limit**（**< 1 KB**，实测 328 字节） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写 |
+| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/keepAwake/migHint/**limit**（**< 1 KB**，实测 328 字节） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写。★ v2.11.2：`trainer.plan`（7 天计划）随功能删除，老存档里的 `plan` 由白名单忽略（零迁移） |
 | `beatsight.customs` | `{v:1, customs}` 预设库 | 只在预设增删改时，**立即写**（不防抖——丢掉一个手写节奏型代价太大） |
 | `beatsight.m2` | **旧键，只读的迁移来源** | 仅首次升级时读取；拆分成功且写后校验通过后**删除**（v1.3.1），备份存 `beatsight.m2.bak` |
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
-| `beatsight.log` | `{v:1, sessions:[{t, sec, bpm, name}]}` 练习记录（v1.4） | 停止一次 ≥30s 的有效练习时**立即写**（冷键语义，不进防抖）；环形截断最近 400 场 |
-| `beatsight.ear` | `{v:1, total, right, best}` 听辨训练战绩（v1.10.0） | 答完一题**立即写**（冷键同语义）；`right` 用 `min(total,…)` 夹住，防脏数据算出 >100% 正确率。v1.11.0 起同时显示在统计面板（**只是读，不新增键**） |
+| `beatsight.ear` | `{v:1, total, right, best}` 听辨训练战绩（v1.10.0） | 答完一题**立即写**（冷键同语义）；`right` 用 `min(total,…)` 夹住，防脏数据算出 >100% 正确率。★ v2.10.12：统计面板连同「练习记录」冷键 `beatsight.log` 一起删除后，战绩**只在听辨训练自己的弹窗里看**（`#earAcc` / `#earTotal` / `#earBest`），本表不再有 `beatsight.log` 一行 |
 | `beatsight.arranges` | `{v:1, arranges:[{id, name, sections:[{name, blocks:[{ref, repeats}]}]}]}` 曲式库（v2.0.0） | 增删改曲式时**立即写**（冷键语义，丢不起）。**只做结构校验**（段/块/遍数/上限/总小节数）；引用存在性与拍号一致性由共享状态区的 `arrangeProblems()` 判（要 `resolveRef`，而它在 Store 之后——这条边界别混，见 §3.9 的口径讨论） |
 | `beatsight.theme` | `"classic"` / `"obs"` 主题偏好（v1.7.0） | 点顶栏「主题」切换时立即写；**独立键**，不进上面的冷热拆分，写失败静默降级 |
+| `beatsight.wallpaper` | `{v:1, img, dim:0–80}` 背景壁纸（v2.12.0；**v2.13.0 起有三态**，见下） | 换图 / 拖完遮罩滑杆时立即写；**独立键**（与主题同判据：低频视觉偏好）。★ 刻意**不进热键**：它几百 KB，进了热键就等于每次交互都整份 stringify 它，正是本表冷热分离要防的事；也**不进「导出全部数据」**（它是这台机器的偏好，不是数据资产）。落盘上限 1200 KB（base64 字符数），写失败**必须提示**（与主题"静默降级"不同：这是用户刚做的动作） |
+
+**`beatsight.wallpaper` 的四个取值（v2.13.0 加入出厂默认图后，"没有壁纸"不再是唯一一种"空"）**：
+
+| `img` | 含义 |
+|---|---|
+| 键**不存在** | **出厂默认图**（内联常量 `WALL_DEFAULT`，Pexels 可商用素材）。用户从没做过选择 → 也**不落盘**：不该让"什么都没做"变成一个几百 KB 的存档 |
+| `"default"` | 默认图 + **用户自己调的遮罩**（落的是记号，不是那 186 KB 的副本） |
+| `null` | 用户明确点过「移除」→ **默认图不复活**（同"示例曲删不掉的东西"口径：删过的默认不该自己回来） |
+| `"data:image/…"` | 用户自己的图 |
+
+- ★ **顺序敏感**：读档必须先认 `null`（那是**有效选择**），再认记号，最后才做格式校验。反过来先跑 `wallCheck`
+  的话 `img:null` 会走进"格式不对"一路被当成脏值 → 默认图复活，用户的「移除」刷新后即失效。
+- ★ **脏值回落"出厂默认图"**（v2.12.0 时回落"没有壁纸"）：读不懂的偏好应当落回**出厂状态**，
+  而不是落回那个只有用户点过「移除」才该有的态。
+- ★ **遮罩只认数值类型**且有限（`typeof o.dim === "number" && isFinite(o.dim)`），其余回默认。
+  **别用 `isFinite(Number(x))` 一把收**：`Number(null) === 0`、`Number("") === 0`，
+  一份脏存档会把壁纸读成"完全不压暗"（默认 55 变 0，画面突然刺眼）。写盘只写 Number，故收紧不误伤真实存档。
+  （这条是 v2.13.0 的**新断言当场抓出的真 bug**。）
 
 - 为什么要拆：原实现把预设库塞进同一个 key，而 `persist()` 挂在几乎每个交互上。实测 10/100/500 个预设 = 14 KB / 143 KB / **715 KB**，每次点击都要全量 `JSON.stringify` + 同步写盘 → 5–20ms 主线程阻塞，**正好会触发音频掉音**（与 P1-3 同源）
 - **防抖窗口内不能丢**：`visibilitychange`（转为隐藏）与 `pagehide` 都会 `flush()`

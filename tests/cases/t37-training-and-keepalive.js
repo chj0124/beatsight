@@ -7,83 +7,65 @@
 "use strict";
 const { loadApp, FakeAudioContext, pill, ok, eq, near, section, drive } = require("../lib/harness");
 
-/* ================= 场景 T40：训练收成 → 上次训练（v1.4） ================= */
-section("T40 训练计划 · 完成记 done / 中途停记 reached");
+/* ================= 场景 T40：训练完成 / 中途停（v2.11.2：接续记录 last 已删） ================= */
+section("T40 训练 · 完成自动停止 / 中途手动停（v2.11.2：不再产出 last）");
 {
-  /* 完成路径：70→90，步长 10，每级 1 小节 */
+  /* 完成路径：从 70 爬到 90，步长 10，每级 1 小节 */
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 70, target: 90, step: 10, everyN: 1 } }) });
+    trainer: { on: true, target: 90, step: 10, everyN: 1 } }) });
+  beat.Controls.setBpm(70, false);          // v2.11.2：起点 = 开播时的当前 BPM
   beat.Controls.start();
   drive(FakeAudioContext.last, beat, 30);
   ok(!beat.Store.S.playing, "练到目标自动停止");
-  const last = beat.Store.S.trainer.last;
-  ok(!!last && last.done === true, "完成 → last.done=true");
-  eq(last && last.reached, 90, "完成 → reached=目标 90");
-  ok(els["trResumeBtn"].hidden === false, "「继续上次」按钮亮出");
-  ok(els["trResumeBtn"].textContent.indexOf("再来一轮") >= 0, "完成后文案 = 再来一轮 · 70→90");
+  eq(els["statusText"].textContent, "训练完成 · 达到 90 BPM", "完成提示文案");
+  /* v2.11.2：last 已删——按钮没了它就是一份没人读的存档（v2.10.12 删练习记录的同一口径） */
+  ok(!("last" in beat.Store.S.trainer), "v2.11.2：不再产出 last 接续记录");
 
-  /* 中途手动停：开训练 70→200，练 ~8s（过 ≥1 个小节边界）后停 */
+  /* 中途手动停：练 ~8s 后 stop，不停在目标 */
   const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 70, target: 200, step: 10, everyN: 4 } }) });
+    trainer: { on: true, target: 200, step: 10, everyN: 4 } }) });
+  app2.beat.Controls.setBpm(70, false);
   app2.beat.Controls.start();
   drive(FakeAudioContext.last, app2.beat, 8);
   app2.beat.Controls.stop();
-  const last2 = app2.beat.Store.S.trainer.last;
-  ok(!!last2 && last2.done === false, "中途停 → done=false");
-  eq(last2 && last2.reached, 70, "中途停 → reached=当前级别 70");
-  ok(app2.els["trResumeBtn"].textContent.indexOf("从 70 BPM 接着练") >= 0, "中途停文案 = 继续上次 · 从 70 BPM 接着练");
-
-  /* 秒停不记录：开了训练但一个小节边界都没过 → 不产出 last */
-  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 70, target: 200, step: 10, everyN: 4 } }) });
-  app3.beat.Controls.start();
-  drive(FakeAudioContext.last, app3.beat, 1);
-  app3.beat.Controls.stop();
-  ok(!app3.beat.Store.S.trainer.last, "秒停 → 不记录（防误触污染接续点）");
-
-  /* 持久化：last 随热键落盘，重启后还在 */
+  ok(!app2.beat.Store.S.playing, "中途停 → playing=false");
+  ok(!("last" in app2.beat.Store.S.trainer), "中途停也不记 last");
   app2.beat.Store.flush();
   const savedHot = JSON.parse(app2.storage.get("beatsight.state"));
-  ok(savedHot.trainer.last && savedHot.trainer.last.reached === 70, "last 随 beatsight.state 持久化");
+  ok(!savedHot.trainer.last, "热键里不再有 last 字段");
 }
 
-/* ================= 场景 T41：上次训练一键继续（v1.4） ================= */
-section("T41 训练计划 · 「继续上次」接续行为");
+/* ================= 场景 T41：起点 = 开播时的当前 BPM（v2.11.2） ================= */
+section("T41 训练 · 起点 = 当前 BPM + 速度已达标不给开");
 {
-  /* 无历史 → 按钮隐藏 */
-  const app0 = loadApp();
-  eq(app0.els["trResumeBtn"].hidden, true, "无训练历史 → 按钮不露面");
-
-  /* 未完成：从练到的级别接着练（start 被推进到 reached，训练自动开启并起播） */
+  /* 起点语义：把速度调到 100 再开播 → 从 100 开始爬（此前是 start() 拽到存档起始值） */
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: false, start: 70, target: 150, step: 4, everyN: 4,
-      last: { reached: 110, done: false, at: 1 } } }) });
-  eq(els["trResumeBtn"].hidden, false, "有历史 → 按钮显示");
-  els["trResumeBtn"].fire("click");
+    trainer: { on: true, target: 120, step: 10, everyN: 1 } }) });
   const S = beat.Store.S;
-  ok(S.trainer.on, "点击后训练开关自动打开");
-  eq(S.trainer.start, 110, "起始被推进到上次练到的 110");
-  eq(els["trStart"].value, 110, "起始输入框同步 110");
-  ok(S.playing, "点击即起播");
-  eq(S.bpm, 110, "起播速度 = 110");
+  beat.Controls.setBpm(100, false);
+  beat.Controls.start();
+  eq(S.bpm, 100, "起播速度 = 开播时的当前 BPM 100");
+  const seq = [S.bpm];
+  const stopped = drive(FakeAudioContext.last, beat, 40, () => {
+    if (S.bpm !== seq[seq.length - 1]) seq.push(S.bpm);
+  });
+  ok(stopped, "练到目标自动停止");
+  eq(JSON.stringify(seq), JSON.stringify([100, 110, 120]), "爬坡序列 100→110→120（起点即当前速度）");
   beat.Controls.stop();
 
-  /* 已完成：再来一轮 → 不动 start，按原配置起播 */
+  /* 边界（用户选 A）：当前速度已 ≥ 目标 → 点开关不给开 + 提示，参数行也保持隐藏 */
   const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4,
-      last: { reached: 120, done: true, at: 1 } } }) });
-  app2.els["trResumeBtn"].fire("click");
-  eq(app2.beat.Store.S.trainer.start, 70, "已完成 → 起始保持 70（再来一轮）");
-  ok(app2.beat.Store.S.playing, "已完成 → 点击即起播");
-  app2.beat.Controls.stop();
-
-  /* 脏 last 回退：reached 超界钳制、非数字整条丢弃 */
-  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4, last: { reached: 999, done: false, at: 1 } } }) });
-  eq(app3.beat.Store.S.trainer.last.reached, 240, "reached 超界钳到 240");
-  const app4 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: false, start: 70, target: 120, step: 4, everyN: 4, last: { reached: "x" } } }) });
-  ok(!app4.beat.Store.S.trainer.last, "reached 非数字 → last 整条丢弃");
+    trainer: { on: false, target: 90, step: 10, everyN: 1 } }) });
+  app2.beat.Controls.setBpm(96, false);     // 默认 96 已高于目标 90
+  app2.els["trainerToggle"].fire("click");
+  eq(app2.beat.Store.S.trainer.on, false, "当前速度 ≥ 目标 → 开关没被打开（选 A：不给开）");
+  eq(app2.els["trainerPanel"].hidden, true, "参数行保持隐藏");
+  /* 把目标调到高于当前速度后即可正常开启，参数行露出 */
+  app2.els["trTarget"].value = "150";
+  app2.els["trTarget"].fire("change");
+  app2.els["trainerToggle"].fire("click");
+  eq(app2.beat.Store.S.trainer.on, true, "目标调高后开关可正常开启");
+  eq(app2.els["trainerPanel"].hidden, false, "参数行露出（在开关右侧）");
 }
 
 /* ================= 场景 T42：后台保活（v1.4） ================= */
@@ -250,77 +232,13 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
   }
 }
 
-/* ================= 场景 T45：7 天爬升计划（v1.5） ================= */
-section("T45 训练计划 · 生成 / 今日参数 / 完成推进 / 顺延与收官");
-{
-  /* 生成：按当前 trainer 配置切 7 段（70→140，跨度 70，每天 10） */
-  const { beat, els, storage } = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 70, target: 140, step: 4, everyN: 1 } }) });
-  const S = beat.Store.S;
-  els["planGenBtn"].fire("click");
-  ok(!!S.plan && S.plan.day === 1, "生成计划：day=1");
-  eq(S.plan.baseStart, 70, "计划起点 = 当前起始 70");
-  eq(S.plan.baseTarget, 140, "计划终点 = 当前目标 140");
-  eq(els["planRow"].hidden, false, "今日卡显示");
-  eq(els["planGenBtn"].hidden, true, "生成入口隐藏");
-  eq(els["planInfo"].textContent, "7 天计划 · Day 1/7 · 今日 70→80 BPM", "Day1 今日段 70→80（跨度/7=10）");
-
-  /* 今日参数与起播 */
-  els["planStartBtn"].fire("click");
-  ok(S.playing, "开始今日训练 → 起播");
-  eq(S.trainer.start, 70, "今日起始写入 trainer.start");
-  eq(S.trainer.target, 80, "今日目标写入 trainer.target");
-  eq(els["trTarget"].value, 80, "目标输入框同步");
-  beat.Controls.stop();                      // 手动停：当天不算完成
-  eq(S.plan.day, 1, "中途手动停 → 当天不算完成（缺练顺延）");
-
-  /* 完成当天 → 推进到 Day 2（完成一段才算，不靠日历） */
-  els["planStartBtn"].fire("click");
-  drive(FakeAudioContext.last, beat, 60);    // 70→80 step 4 everyN 1：4 级 × 1 小节
-  ok(!S.playing, "练到当天目标自动停止");
-  eq(S.plan && S.plan.day, 2, "完成当天 → 推进到 Day 2");
-  eq(els["planInfo"].textContent, "7 天计划 · Day 2/7 · 今日 80→90 BPM", "Day2 今日段 80→90");
-  beat.Store.flush();
-  eq(JSON.parse(storage.get("beatsight.state")).plan.day, 2, "计划进度随热键持久化");
-
-  /* Day 7 完成 → 计划收官清空 + 完成提示 */
-  const app2 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 130, target: 140, step: 10, everyN: 1 },
-    plan: { baseStart: 70, baseTarget: 140, day: 7 } }) });
-  eq(app2.els["planInfo"].textContent, "7 天计划 · Day 7/7 · 今日 130→140 BPM", "Day7 今日段 130→140（收官日顶到总目标）");
-  app2.els["planStartBtn"].fire("click");
-  drive(FakeAudioContext.last, app2.beat, 60);
-  eq(app2.beat.Store.S.plan, null, "Day 7 完成 → 计划清空");
-  ok(app2.els["statusText"].textContent.indexOf("7 天计划完成") === 0, "收官提示文案");
-
-  /* 退出计划：确认后清空；无计划时点退出不弹窗 */
-  const app3 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: true, start: 70, target: 140, step: 4, everyN: 1 },
-    plan: { baseStart: 70, baseTarget: 140, day: 3 } }) });
-  app3.els["planEndBtn"].fire("click");
-  app3.els["modalOk"].fire("click");
-  eq(app3.beat.Store.S.plan, null, "确认退出 → 计划清空");
-  eq(app3.els["planRow"].hidden, true, "退出后今日卡隐藏");
-  eq(app3.els["planGenBtn"].hidden, false, "退出后生成入口回来");
-  app3.els["planEndBtn"].fire("click");
-  eq(app3.els["modalMask"].hidden, true, "无计划时点退出 → 不弹确认框");
-
-  /* 计划进行中「继续上次」隐藏（计划本身就是接续机制，两个入口不并存） */
-  const app4 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    trainer: { on: false, start: 70, target: 140, step: 4, everyN: 1,
-      last: { reached: 90, done: false, at: 1 } },
-    plan: { baseStart: 70, baseTarget: 140, day: 2 } }) });
-  eq(app4.els["trResumeBtn"].hidden, true, "计划进行中 → 继续上次隐藏");
-  eq(app4.els["trainerPanel"].hidden, false, "计划进行中即使训练开关关着，面板也显示（计划卡要在）");
-
-  /* 脏计划回退：目标≤起点 / day 越界 → 整条丢弃 */
-  const app5 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    plan: { baseStart: 140, baseTarget: 70, day: 1 } }) });
-  eq(app5.beat.Store.S.plan, null, "脏计划（目标≤起点）→ 丢弃");
-  const app6 = loadApp({ "beatsight.state": JSON.stringify({ v: 3,
-    plan: { baseStart: 70, baseTarget: 140, day: 9 } }) });
-  eq(app6.beat.Store.S.plan, null, "脏计划（day 越界）→ 丢弃");
-}
+/* ================= T45：v2.11.2 —— 7 天计划整条功能下线，本组随之下线 =================
+   v1.5 的「7 天计划」本质是「把起始/目标切成 7 段」的二次封装；v2.11.2 删掉「起始」参数
+   （起点改为当前 BPM）之后它没有了立足点，故整条删除——含 `S.plan` 字段、今日卡 UI
+   与 `planStartBtn / planEndBtn / planGenBtn` 三个入口。
+   本组原 6 个场景（生成 / 今日参数 / 完成推进 / 顺延 / 收官 / 脏数据回退）**全部删除**，
+   不留"占位断言"：断言一个已不存在的元素只会让套件虚胖。
+   ★ 与 v2.10.12 删「练习统计」时的处理保持一致：功能删了，它的用例也一并删。 */
 
 /* ================= 场景 T46b：下载通道去重（v2.0.2 审计 · 去重下载） ================= */
 section("T46b 下载通道 · 「导出预设」与「导出全部数据」共用同一个 downloadJSON（v2.0.2 审计 · 去重下载）");

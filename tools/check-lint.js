@@ -32,7 +32,22 @@
                              · 宿主/语言全局走白名单（GLOBALS）——白名单是**穷举**的，只在引入新的
                                宿主 API 时才追加，避免它退化成"什么都放行"的垃圾桶。
                              · 裸调用只认「名字紧跟 `(`」这一种形态，对象字面量方法简写（`{ foo(){} }`）
-                               这类写法没覆盖，属**已知漏报**（本项目不用方法简写）。 */
+                               这类写法没覆盖，属**已知漏报**（本项目不用方法简写）。
+     no-eval        （error）禁止 `eval(` / `new Function(`。
+                             ★ 为什么必须硬拦：**线上 CSP 是 `script-src 'self' 'unsafe-inline'`**，
+                               代码里出现 eval 在 file:// 下能跑、一上 Cloudflare 就被 CSP 静默掐死
+                               ——"本地测得好好的、线上悄悄没反应"，且没有任何报错可查。
+                               本规则让它在**提交前**就变红，而不是等到线上变哑。
+     no-innerhtml   （error）`.innerHTML =` 只允许赋 `""`（清空容器）。
+                             · 非空赋值 = 把字符串当 HTML 解析，两条危害：
+                               ① 注入面：预设名 / 自定义型名 / 歌词行 / 导入的 JSON 都是用户可控串，
+                                  一旦拼进 HTML 字符串，一个带尖括号的型名就能改页面结构；
+                               ② 桩失真：测试桩与真实 DOM 对 innerHTML 的语义并不等价，
+                                  用拼串造出来的节点在桩里查得到、在真机上未必（反之亦然）。
+                             ★ 边界（刻意不为难既有代码）：**只管 innerHTML，不管 outerHTML**。
+                               后者在本项目只有两处（`#playIcon` 播放/暂停图标切换），替换的是
+                               **代码内常量** SVG 模板，无用户数据参与；要连它一起判需要 AST，
+                               那是 ESLint（可选加强项）的活，不该堵在零依赖这道硬闸门上。 */
 
 "use strict";
 
@@ -121,6 +136,38 @@ for (let i = 1; i <= nLines; i++){
     }
   }
 
+  /* no-eval：在**遮蔽后**的行上判（字符串里的 "eval(" 不算）。
+     两个形态都拦：`eval(…)` 与 `new Function(…)` —— 后者同样会被 CSP 掐死 */
+  if (/(?<![A-Za-z0-9_$.])eval\s*\(/.test(mraw)){
+    err(i, "no-eval", "禁止 eval(：线上 CSP 为 script-src 'self' 'unsafe-inline'，"
+      + "eval 会被静默拦下且无任何报错：" + lines[i - 1].trim());
+  }
+  if (/\bnew\s+Function\s*\(/.test(mraw)){
+    err(i, "no-eval", "禁止 new Function(：与 eval 同为 CSP 禁项，且把字符串当代码解析："
+      + lines[i - 1].trim());
+  }
+
+  /* no-innerhtml：`.innerHTML =` 后面只允许 `""`（可带分号）。
+     形如 `el.innerHTML = "";` 是清空，是本项目唯一允许的形态。
+     ★ 用**遮蔽后**的行判：`el.innerHTML = ""` 的 `""` 遮蔽后仍是 `""`（长度 0 无内容可遮） */
+  {
+    /* ★ 这条必须判 **raw（未遮蔽）** 而不是 mraw：maskStrings 把字符串**连同引号一起**
+       遮成空格，于是 `= "<b>"` 与 `= ""` 在遮蔽后长得一模一样 —— 用遮蔽版判会**放行拼串**
+       （实测过：正是这条让第一版把 `el.innerHTML = ""` 误判成违规、而真拼串反而放过）。
+       判 raw 的代价只是"字符串里写着 `.innerHTML = x` 会被误报"，本项目无此写法。
+     ★ 判定单位是**语句**而不是"行尾"：`const clear = el => { el.innerHTML = ""; };`
+       行尾还有 `};` —— 按行尾匹配会假阳性。取法：从 `=` 切到第一个 `;`（或行尾）再 trim，
+       必须严格等于 `""`。 */
+    const m = /\.innerHTML\s*=/.exec(raw);
+    if (m){
+      const rest = raw.slice(m.index + m[0].length).split(";")[0].trim();
+      if (rest !== "\"\""){
+        err(i, "no-innerhtml", "innerHTML 只允许赋 \"\"（清空）；拼串会引入注入面且让测试桩失真："
+          + lines[i - 1].trim());
+      }
+    }
+  }
+
   /* function 声明：全行扫描（一行可能有多个），但要求出现在**语句位置**
      （前面只有空白 / `}` / `;`），否则那是函数表达式（名字只属于它自己），不算声明 */
   {
@@ -199,6 +246,7 @@ const GLOBALS = new Set([
   "URL", "URLSearchParams", "Blob", "File", "FileReader", "FormData", "Headers",
   "fetch", "atob", "btoa", "matchMedia", "AudioContext", "webkitAudioContext",
   "OffscreenCanvas", "Notification", "crypto", "customElements", "alert", "confirm",
+  "Image",                          // v2.12.0：壁纸解码（`new Image()`）——解码失败即走"直接用原图"分支
 ]);
 
 {
@@ -245,7 +293,7 @@ if (errors.length){
   console.log("\n  ✗ " + errors.length + " 条错误：");
   errors.forEach(e => console.log(`      L${e.ln} [${e.rule}] ${e.msg}`));
 } else {
-  console.log("\n  ✓ 五条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef）");
+  console.log("\n  ✓ 七条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml）");
 }
 console.log("──────────────────────────────────────────────────────────");
 console.log(errors.length ? "  代码卫生检查：失败" : "  代码卫生检查：通过");

@@ -62,7 +62,10 @@ const CASE_FILES = [
   "./cases/t87-preset-row-window",      // v2.10.2：预设模式的 N 行窗口（型短于 N 重复铺满 / 型长于 N 翻页 / .arg-now[hidden] 补丁）
   "./cases/t88-demo-range-slider",      // v2.10.4：侧栏「播放范围」双滑块（取代段号胶囊 / 1-based 域 / 双向钳制 / input·change 两级）
   "./cases/t89-narrow-range-next-row",  // v2.10.8：范围小节数 < 同屏行数时，待命球与 .next 预告格的落点（循环回卷 → 行号不再等于 +1）
-  "./cases/t90-control-layout",         // v2.10.11：控件搬家（拍号→同屏行数右侧；音色/音量→编辑节奏型左侧）+ 左边缘对齐的两条 CSS 契约
+  "./cases/t90-control-layout",         // v2.10.11：控件搬家
+  "./cases/t91-migration-matrix",       // v2.11.x：老数据搬家回归矩阵（旧热键 / 老数据包 / 段→小节 / 脏值 / 往返）
+  "./cases/t92-wallpaper",              // v2.12.0：背景壁纸（格式魔数 / CSS 注入面 / 体积上限 / 遮罩两级）（拍号→同屏行数右侧；音色/音量→编辑节奏型左侧）+ 左边缘对齐的两条 CSS 契约
+  "./cases/t93-first-open-defaults",    // v2.13.0：首次打开的默认状态（选中示例曲但**不自动播放** / 分区展开态 / 行数拍号 / 出厂默认壁纸）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

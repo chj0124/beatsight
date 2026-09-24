@@ -20,8 +20,10 @@ const seed = extra => ({
     ] },
   ]}),
   "beatsight.state": JSON.stringify(Object.assign(
-    { v: 3, bpm: 240, playMode: "preset",
-      trainer: { on: true, start: 60, target: 68, step: 2, everyN: 99 } },   // everyN=99：只有 loopPerSec 才升得动
+    /* v2.11.2：原 `bpm:240 + trainer.start:60`（靠 start() 把 BPM 拽到起始值）改为**直接把
+       bpm 设为 60** —— 起点现在是"开播时的当前 BPM"，不再有 start 可拽。实际播放速度不变 */
+    { v: 3, bpm: 60, playMode: "preset",
+      trainer: { on: true, target: 68, step: 2, everyN: 99 } },   // everyN=99：只有 loopPerSec 才升得动
     extra)),
 });
 const noiseCues = ac => ac.hits.filter(h => h.kind === "noise" && h.filterFreq === 2000);
@@ -63,15 +65,14 @@ section("T61b 歌词行循环 · 循环边界正确 / 每段升一级 / 到目�
   };
   driveSteps(null, beat, ac, 80);
   eq(beat.Store.S.playing, false, "★ 练到目标级并练满一段后自动停（爬坡与循环同一条边界链）");
-  /* 训练收成由 Controls.stop 写进 S.trainer.last（consumeSession），done 标记先于 stop 置位 */
-  ok(beat.Store.S.trainer.last && beat.Store.S.trainer.last.done === true, "训练收成记 done=true");
-  eq(beat.Store.S.trainer.last.reached, 68, "最终到达目标 68 BPM");
+  eq(beat.Store.S.bpm, 68, "最终到达目标 68 BPM（起点 = 开播时的当前速度 60）");
+  /* v2.11.2：原「训练收成写进 S.trainer.last」两条断言删除——按钮下线后 last 已不存在 */
 }
 
 /* ================= 场景 T61c：爬坡步进精确性（每段一级，一段不差） ================= */
 section("T61c 歌词行循环 · 爬坡步进精确（60→62→64，每级一段）");
 {
-  const { beat } = loadApp(seed({ trainer: { on: true, start: 60, target: 66, step: 2, everyN: 1 } }));
+  const { beat } = loadApp(seed({ trainer: { on: true, target: 66, step: 2, everyN: 1 } }));
   /* everyN=1 是陷阱：若 loopPerSec 没生效，每 1 小节就升一级（4 小节爬到 68 超目标）。
      正确行为 = 每 4 小节（一段）才升一级 */
   beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "夜" }]);
@@ -92,7 +93,9 @@ section("T61c 歌词行循环 · 爬坡步进精确（60→62→64，每级一�
 /* ================= 场景 T61d：跨小节的字在行循环内完整 ================= */
 section("T61d 歌词行循环 · 跨小节的字完整 / 边界回卷不切断");
 {
-  const { beat } = loadApp(seed({ trainer: { on: true, start: 60, target: 60, step: 2, everyN: 1 } }));
+  /* v2.11.2：原 `start:60, target:60` —— 旧代码会把 target 抬到「起始+1」=61，
+     从而不会一开播就判完成。现在 start 没了，直接写 target:61 复刻同一个效果 */
+  const { beat } = loadApp(seed({ trainer: { on: true, target: 61, step: 2, everyN: 1 } }));
   beat.Store.S.lyricCue = true;
   /* 「夜」从小节 4（t=576）延音 240tick（跨小节 4 与段尾）：锚点只有 t=576 一个；
      「星」在段首 t=0。60BPM 下 1 拍 = 1s、1 小节 4s、1 段 16s，锚点时刻 = 0.08 / 12.08 / 16.08 / 28.08 */
@@ -120,7 +123,7 @@ section("T61e 歌词行循环 · byLyric 意图标记 / 开播重推 / 非歌词
 {
   /* loopPerSec 无读 getter，用 bpm 的实际走向反推它的真值：
      everyN=1 陷阱下——loopPerSec 若为 true，要练满一整段（4 小节）才升一级；false 则每 1 小节升 */
-  const { beat } = loadApp(seed({ trainer: { on: true, start: 60, target: 66, step: 2, everyN: 1 } }));
+  const { beat } = loadApp(seed({ trainer: { on: true, target: 66, step: 2, everyN: 1 } }));
   const step = seconds => { const dt = 0.02, n = Math.ceil(seconds / dt);
     for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.AudioEngine.scheduler(); } };
 

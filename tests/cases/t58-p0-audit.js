@@ -36,7 +36,14 @@ section("T58 P0-1 · getItem 一律抛错（沙盒 iframe / 站点数据被禁�
     const S = beat.Store.S;
     eq(S.bpm, 96, "读盘全部失败时 BPM 回落到默认 96（而不是白屏）");
     eq(S.sig, 4, "拍号回默认 4");
-    eq(S.trainer.start, 70, "trainer 回默认值");
+    /* v2.11.2：起始 BPM 参数已删（起点改为「开开关那一瞬的当前 BPM」的会话值），
+       故这里不再断言 start，改为断言余下四个参数各自回到默认值。 */
+    const t58t = S.trainer;
+    ok(t58t.on === false && t58t.target === 120 && t58t.step === 4 && t58t.everyN === 4,
+      "trainer 回默认值（on:false / target:120 / step:4 / everyN:4）"
+      + `——实际 on=${t58t.on} target=${t58t.target} step=${t58t.step} everyN=${t58t.everyN}`);
+    ok(!("start" in t58t) && !("last" in t58t) && !("plan" in t58t),
+      "v2.11.2：start / last / plan 三个字段都不存在（起点=当前 BPM，7 天计划已删）");
     ok(!!beat.Viz && !!beat.AudioEngine && !!beat.Controls && !!beat.Trainer,
       "S 之后的模块全部可用（说明 Store 没有在求值期抛出）");
   }
@@ -50,18 +57,23 @@ section("T58b P0-2 · 加载期脏值补域钳制（step/everyN/start/target/bpm
   const S = beat.Store.S, t = S.trainer;
   eq(t.step, 1, "step:0 → 钳到下限 1（否则 total() 变 Infinity，爬坡永不升速也永不停）");
   eq(t.everyN, 1, "everyN:0 → 钳到下限 1（否则每级小节数判定失效）");
-  eq(t.start, 236, "start:900 → 钳到上限 236");
-  eq(t.target, 237, "target:5 被抬回「起始 +1」（与 UI 侧 bindTrParam 同一规则）");
+  /* v2.11.2：`start` 参数已删，老存档里的 start:900 由白名单忽略（不再进 S.trainer） */
+  ok(!("start" in t), "v2.11.2：start 字段已不存在（起点改为当前 BPM 的会话值）");
+  eq(t.target, 31, "target:5 → 钳到下限 31（不再被一个已不存在的起始值抬着走）");
   eq(S.bpm, 30, "bpm:0 → 钳到下限 30（纵深防御：装配层的 setBpm 也会钳一次）");
 }
 
-/* ================= 场景 T58c：目标 ≤ 起始的组合约束 ================= */
-section("T58c P0-2 · 目标不高于起始时抬回 起始+1");
+/* ================= 场景 T58c：v2.11.2 ——「目标 ≤ 起始」这条组合约束随 start 一并删除 ================= */
+section("T58c P0-2 · v2.11.2：无起始参数，目标不再被抬起（约束改在开开关时判）");
 {
-  /* 只钳各自的值不够：合法 start=100 + 合法 target=40 交叉后，bpmFor(0) = min(40,100) = 40，
-     而 40 >= target(40) 成立 —— 训练一开就被判「练到目标」立刻停。 */
+  /* 原场景是：合法 start=100 + 合法 target=40 交叉后 bpmFor(0)=min(40,100)=40 而 40>=target(40)，
+     训练一开就被判「练到目标」立刻停 → 故加载期把 target 抬回 start+1。
+     v2.11.2 删掉 start 之后这条交叉约束不复存在：加载期只做各自的域钳制，
+     「当前速度已 ≥ 目标」改在**开开关那一刻**判（选 A：不给开 + 提示），见 t37 的 T41。 */
   const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v:3, trainer: { start: 100, target: 40 } }) });
-  eq(beat.Store.S.trainer.target, 101, "target:40 抬回 101（起始 100 + 1）");
+  const t = beat.Store.S.trainer;
+  ok(!("start" in t), "老存档的 start:100 被白名单忽略（零迁移）");
+  eq(t.target, 40, "target:40 原样保留（不再被一个已不存在的起始值抬着走）");
 }
 
 /* ================= 场景 T58d：步长不整除时的总级数（P0-7 的核心回归） ================= */
@@ -72,13 +84,16 @@ section("T58d P0-7 · 步长不整除时也要练到目标（70→100 步长 7�
      98 >= 100 永不成立，trStepIdx 被 Math.min 钉死在 4：每 everyN 小节重复设 98 BPM，
      既不升速也永不自动停。改用 ceil 后总级数 6、末级正好落在 100。 */
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({
-    trainer: { on: true, start: 70, target: 100, step: 7, everyN: 1 } }) });
+    trainer: { on: true, target: 100, step: 7, everyN: 1 } }) });
   const S = beat.Store.S;
+  /* v2.11.2：起点 = 当前 BPM，故先把速度调到 70 再取级数（此前是 start 参数直接给定） */
+  beat.Controls.setBpm(70, false);
+  beat.Trainer.reset();              // reset() 记下起点 = 此刻的当前 BPM
   eq(beat.Trainer.total(), 6, "总级数 6（round 会算成 5，少一级就永远够不到目标）");
   eq(beat.Trainer.bpmFor(beat.Trainer.total() - 1), 100, "末级正好等于目标 100（不再停在 98）");
 
   beat.Controls.start();
-  eq(S.bpm, 70, "从起始 70 起步");
+  eq(S.bpm, 70, "从当前速度 70 起步");
   const ac = FakeAudioContext.last;
   const stopped = drive(ac, beat, 60);
   ok(stopped, "练到目标后自动停止（修之前会一直停不下来）");

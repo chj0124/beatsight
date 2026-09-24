@@ -58,14 +58,28 @@ const HTML_ATTRS = {
      （v1.3.0 P2-14 踩到）。 */
   fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
+  /* v2.12.0 背景壁纸：控件在**没有壁纸时**都是隐藏的（标记里写死 `hidden`）。
+     不复刻的话，桩里它们的初值是 false（=显示），于是"装上壁纸才露面"这条
+     在桩里恒真、测不出来。wallDim 的 min/max/value 也是标记里写死的。
+     ★ v2.13.0：出厂自带默认壁纸后，「移除」「遮罩深浅」首屏就是显示的（由 wallApply 打开），
+       但标记里的初值仍必须是 hidden —— 否则"wallApply 会把它们显出来"这条接线
+       在桩里没法被判定（初值本来就对）。「恢复默认」相反：它只在**不是默认图**时出现，
+       初值 hidden 且默认态下由 wallApply 维持 hidden。 */
+  wallFile: { hidden: true }, wallClearBtn: { hidden: true }, wallDimRow: { hidden: true },
+  wallDefaultBtn: { hidden: true },
+  wallDim: { min: "0", max: "80", value: "55" },
   modalMask: { hidden: true }, modalInput: { hidden: true },
-  trResumeBtn: { hidden: true },       // v1.4：无训练历史时「继续上次」不露面
-  planRow: { hidden: true },           // v1.5：无计划时「今日卡」不露面
+  /* v2.11.2：「继续上次训练」按钮（v1.4）与「7 天计划今日卡」（v1.5）整条下线，
+     这两个 id 在标记里已不存在——桩里也要同步摘掉，否则"标记里没有了"这件事没人拦。 */
   /* v2.0.5（审计 P0-8）：标记里承载语义、但桩不会从 HTML 读到的两处——
      #bpmNum 由 <div> 改成了真 <button>（键盘可达），#viz 加了 aria-hidden（整块对读屏隐藏）。
      不在此复刻的话，"改回 div"这类退化不会被任何断言拦下。 */
   bpmNum: { tagName: "BUTTON" },
   viz: { "aria-hidden": "true" },
+  /* v2.11.3：设置弹窗组④「复制诊断信息」按钮——它的**文案是状态**：复制成功后会被改成
+     「已复制」，再次打开设置时要复位。桩不复刻标记里那句初始文案的话，
+     「复位」这条断言无从判起（初值就是空字符串，改与不改都看不出来）。 */
+  diagCopyBtn: { textContent: "复制诊断信息" },
   /* v2.1.0（F1 歌词对齐轨）：#lyricLane 在标记里就是 `hidden` + 对读屏隐藏的卫星轨，
      初始必须是收起态——否则「预设模式/无歌词行时整轨收起」这条不变量在桩里恒真，测不到。 */
   lyricLane: { hidden: true, "aria-hidden": "true" },
@@ -321,7 +335,8 @@ function loadApp(seed, opts){
      e.target.files，导致「空格键」「Esc」「导入文件」这些接线永远不匹配而静默通过 */
   const fireAll = bag => (t, ev) => (bag[t] || []).forEach(f => f(Object.assign(
     { preventDefault(){}, stopPropagation(){}, stopImmediatePropagation(){} }, ev)));
-  let FILE_TEXT = "";             // 下一次 FileReader.readAsText 交回的内容（测导入接线用）
+  let FILE_TEXT = "";             // 下一次 FileReader.readAsText / readAsDataURL 交回的内容（测导入接线用）
+  let FILE_FAIL = false;          // v2.12.0：置 true 时 FileReader 走 onerror（测"读不出来"分支）
 
   const elFor = id => {
     if (!els[id]){
@@ -404,6 +419,10 @@ function loadApp(seed, opts){
     /* v1.4：KeepAlive 的静音 WAV 是运行时 btoa 出来的——vm 沙箱默认没有 btoa，
        不补上的话 silentWav 永远走「typeof 守卫早退」分支，生成体进不了覆盖 */
     btoa: typeof btoa === "function" ? btoa : undefined,
+    /* v2.12.0：壁纸的「魔数校验」要 atob 出文件头几个字节来判断真实格式。
+       与 btoa 对称补上——缺了它 wallHead() 拿到空串，格式校验恒失败，
+       于是"只有三种位图能过"这条规则在桩里根本测不到（假绿） */
+    atob: typeof atob === "function" ? atob : undefined,
     setInterval: (fn, ms) => { const id = timerSeq++; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id),
     /* 定时器：**记录但不自动执行**（与原行为一致——自动执行会让 tap 复位、长按连发等
@@ -425,6 +444,13 @@ function loadApp(seed, opts){
     FileReader: function(){
       const self = this;
       self.readAsText = () => { self.result = FILE_TEXT; if (self.onload) self.onload(); };
+      /* v2.12.0：壁纸走 readAsDataURL（要的是 data URL，不是文本）。
+         桩里同样把 FILE_TEXT 交出去——测试用 setFileText() 塞一个构造好的 data URL 即可。
+         另补 onerror 的触发口：解码失败那条分支不能永远测不到 */
+      self.readAsDataURL = () => {
+        if (FILE_FAIL){ if (self.onerror) self.onerror(); return; }
+        self.result = FILE_TEXT; if (self.onload) self.onload();
+      };
     },
   };
   /* v2.8.8：`window.__beat`（完整内部句柄）改为**条件挂载**——只有 `?debug=1` 或宿主预置
@@ -458,6 +484,8 @@ function loadApp(seed, opts){
     },
     firePageHide: () => { fireAll(winH)("pagehide"); fireAll(docH)("pagehide"); },
     setFileText: t => { FILE_TEXT = t; },
+    /* v2.12.0：模拟"文件读不出来"（FileReader 触发 onerror 而不是 onload） */
+    setFileFail: v => { FILE_FAIL = !!v; },
     /* 可控时钟：TAP 测速按 performance.now() 的间隔算 BPM，必须能精确摆布 */
     setNow: v => { sandbox.performance.now = () => v; },
     /* 手动冲刷已排期的 setTimeout 回调（防抖重建 / 文案复位这类路径） */

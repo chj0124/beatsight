@@ -160,11 +160,18 @@ section("T90h v2.10.15/16 · 静音拍 + 变速训练并入 .viz-toggles；训�
   ok(s.indexOf('id="countInToggle"') < s.indexOf('id="muteToggle"')
      && s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
     "行内顺序：预备拍 → 静音拍 → 变速训练");
-  /* 训练区只剩「继续上次训练」按钮与面板——标题行（02 Training 训练模式）已整行删除 */
+  /* v2.11.2：训练模式区整块删除——面板搬进本行、接续按钮与 7 天计划下线 */
   ok(!/<i>Training<\/i>/.test(html), "★ 「02 Training 训练模式」标题行已删（v2.10.16）");
-  ok(/id="trResumeBtn"/.test(html) && /id="trainerPanel"/.test(html) && /id="trStart"/.test(html)
-     && /id="planGenBtn"/.test(html),
-    "★ 训练区内容保留：继续上次训练按钮 + 变速训练面板（含 7 天计划）都在");
+  ok(!/id="trResumeBtn"/.test(html) && !/id="trStart"/.test(html) && !/id="planGenBtn"/.test(html),
+    "★ v2.11.2：继续上次按钮 / 起始输入框 / 7 天计划入口均已删除");
+  /* ★ 参数搬进**本行**：面板的 id 必须出现在 .viz-toggles 那段标记里、且在开关之后 */
+  ok(/id="trainerPanel"/.test(html), "★ 变速训练面板仍在（id 未换）");
+  {
+    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizRowsRow"'));
+    ok(seg.indexOf('id="trainerToggle"') >= 0 && seg.indexOf('id="trainerPanel"') >= 0
+       && seg.indexOf('id="trainerToggle"') < seg.indexOf('id="trainerPanel"'),
+      "★ 参数行在开关**右侧**：两者同属 .viz-toggles 段且面板在后");
+  }
   eq((html.match(/id="muteToggle"/g) || []).length, 1,
     "静音拍开关全文件恰此一处（在预备拍行，训练区已无副本）");
   ok(!/class="config"/.test(html), "★ `.config` 包裹层随开关搬家删除（本文件已无使用者）");

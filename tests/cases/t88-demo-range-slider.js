@@ -140,6 +140,11 @@ section("T88c 钳制 · 起点不得越过终点，反之亦然（越过时把�
 section("T88d 两级契约 · 只发 input（拖动中）不得提交：不改模式、不跑重活");
 {
   const { beat, els } = loadDemo();
+  /* ★ v2.13.0 前提复位：首次打开默认已选中示例曲的整首（曲式模式），而这一节要验的正是
+     "拖动中不切模式、松手才切"——起点必须回到预设模式，否则"input 不切模式"会因
+     模式本来就是 arrange 而恒真（断言还在，但已经没牙了）。
+     用 setMode 而不是点侧栏条目：这正是 exitArrangeForPreset 内部调的那个入口（同一契约）。 */
+  beat.setMode("playMode", "preset", "T88d 前提复位：首开默认是曲式态");
   eq(beat.Store.S.playMode, "preset", "前提：初始是预设模式");
   /* 只走"拖动中"那一级：S 会被就地更新（视觉要跟手），但**模式不能切**、
      Arrange.setRange（重活）也不能跑 —— 一次拖动有几十个 input，
@@ -260,9 +265,14 @@ section("T88i 越界范围 · 呈现时按当前段数收窄（使用期钳制�
 section("T88j 「整首连播」按钮的高亮与滑块范围同源（同一份 arrangeSel 推出来的两个视图）");
 {
   const { beat, els } = loadDemo();
-  eq(playAllOf(els).getAttribute("aria-pressed"), "false", "前提：初始未高亮");
+  /* ★ v2.13.0：首次打开默认选中示例曲的**整首**（选中这条曲式 + 曲式模式 + 范围恰是整首），
+     而"整首"这一态的定义正是这三条——所以进这一节时按钮**已经**是高亮的。
+     这不是瑕疵，恰恰是同源的自证：按钮高亮与滑块范围都从同一份 arrangeSel 推出来。 */
+  eq(playAllOf(els).getAttribute("aria-pressed"), "true",
+     "前提（v2.13.0）：首开已选中整首 → 按钮已高亮");
+  eq([fromOf(els).value, toOf(els).value].join(","), "1,30", "前提：滑块也是整首（两个视图同源）");
   playAllOf(els).fire("click");
-  eq(playAllOf(els).getAttribute("aria-pressed"), "true", "点整首连播 → 按钮高亮");
+  eq(playAllOf(els).getAttribute("aria-pressed"), "true", "点整首连播 → 按钮仍高亮");
   eq([fromOf(els).value, toOf(els).value].join(","), "1,30", "★ 滑块同步拉满（范围 = 整首）");
   beat.Controls.stop();
   /* 拖成局部区间 → 按钮必须退出高亮（"整首"这一态的定义就是范围恰是整首） */

@@ -249,8 +249,14 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
 {
   const { beat, els } = loadDemo();
   ok(!!boxOf(els), "前提：示例曲分组已渲染");
-  eq(beat.Store.S.playMode, "preset", "前提：初始是预设模式（单型循环）");
-  eq(beat.Store.S.playing, false, "前提：初始未播放");
+  /* ★ v2.13.0：首次打开**默认选中**示例曲，所以这里的起点不再是"预设模式、什么都没选"，
+     而是"曲式模式 + 范围=整首 + **没在播**"。这一节原本的"前提：初始是预设模式"因此改写——
+     顺便把它变成新默认值的钉子（比原来那条前提更有信息量）。 */
+  eq(beat.Store.S.playMode, "arrange", "★ 前提（v2.13.0）：首次打开默认选中示例曲 = 已在曲式模式");
+  eq(JSON.stringify(beat.Store.S.arrangeSel),
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 29, loop: false, byLyric: false }),
+     "★ 且默认范围就是整首 30 小节，**不开循环**（「为你选好了」≠「开始整首连播」）");
+  eq(beat.Store.S.playing, false, "★ 前提：初始未播放（**选中不等于起播**——这是首开默认的硬约束）");
 
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "★ 点「整首连播」切到曲式模式");

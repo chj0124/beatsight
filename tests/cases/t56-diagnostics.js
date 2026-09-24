@@ -8,7 +8,7 @@
    本组要钉住的正是「这些数字在没有 UI 的情况下也必须准确」——因为 file:// 直开
    与多数老用例的沙箱都没有 location，面板根本不会挂；不能因此让计数也跟着哑掉。 */
 "use strict";
-const { loadApp, FakeAudioContext, ok, eq, section, drive } = require("../lib/harness");
+const { loadApp, FakeAudioContext, ok, eq, section, drive, html } = require("../lib/harness");
 
 /* 面板 DOM 的探针：body 的直接子节点里 class 含 `diag` 的那个（`diag-line` 不会被误判——
    判据要求 `diag` 后紧跟空格或结尾） */
@@ -118,6 +118,88 @@ section("T56e 诊断面板 · 限流脉冲只计真停播（不被 40/s 轮询�
   eq(beat.Store.S.playing, false, "已停止");
   eq(beat.diag.limitPulse, 1, "到点停播 → limitPulse 恰计一次（不是每次轮询都计）");
   ok(!/已练满/.test(els["statusText"].textContent), "练习量的到点文案已随练习量删除");
+}
+
+/* ================= 场景 T56g：最近错误原文的环形缓冲（v2.11.3） ================= */
+section("T56g 诊断 · 最近错误原文（只留内存、有上限、进报告）");
+{
+  const { beat, fireWin, storage } = loadApp();
+  ok(Array.isArray(beat.diagLast), "diagLast 已暴露且是数组");
+  eq(beat.diagLast.length, 0, "初值为空（没出错就不该有一行'最近错误'）");
+
+  /* window error：既计数，也留一条原文 */
+  fireWin("error", { message: "Cannot read properties of undefined (reading 't')" });
+  eq(beat.diag.winErr, 1, "window error → winErr +1（计数仍在）");
+  eq(beat.diagLast.length, 1, "★ 同时留下一条原文（计数说不出出了什么，原文能）");
+  eq(beat.diagLast[0].kind, "脚本错", "标注来源为「脚本错」");
+  ok(/Cannot read properties/.test(beat.diagLast[0].msg), "原文原样保留：" + beat.diagLast[0].msg);
+
+  /* 资源加载失败形态：没有 message，只有 target —— 不得抛、不得记成 undefined */
+  fireWin("error", { target: { tagName: "IMG" } });
+  eq(beat.diag.winErr, 2, "资源加载失败同样计入 winErr");
+  ok(/资源加载失败/.test(beat.diagLast[1].msg), "拿不到 message 时给出可读占位：" + beat.diagLast[1].msg);
+
+  /* 完全无信息：极端形态下也不能让诊断自己抛异常（诊断抛异常 = 掩盖真正的故障） */
+  fireWin("error");
+  eq(beat.diag.winErr, 3, "空事件对象 → 仍计数");
+  eq(beat.diagLast[2].msg, "(无文案)", "无信息时写占位文案");
+
+  /* unhandledrejection：reason 可以是任意值 */
+  fireWin("unhandledrejection", { reason: new TypeError("boom") });
+  eq(beat.diag.rejection, 1, "unhandledrejection → rejection +1");
+  ok(/TypeError: boom/.test(beat.diagLast[3].msg), "reason 转字符串后留下：" + beat.diagLast[3].msg);
+  fireWin("unhandledrejection", {});
+  eq(beat.diagLast[4].msg, "(无 reason)", "reason 缺失时写占位文案");
+
+  /* ★ 上限 20 条、丢最旧：unbounded 数组在一轮报错风暴里会自己吃干内存，
+     而报错风暴恰恰是最需要诊断还活着的时刻 */
+  for (let i = 0; i < 40; i++) beat.diagNote("脚本错", "err-" + i);
+  eq(beat.diagLast.length, beat.DIAG_LAST_MAX, "超出上限后长度恒为 " + beat.DIAG_LAST_MAX
+    + "（不是无限增长，实际 " + beat.diagLast.length + "）");
+  ok(/err-39/.test(beat.diagLast[beat.diagLast.length - 1].msg), "留下的是最新的那条");
+  ok(!beat.diagLast.some(r => /err-19$/.test(r.msg)), "最旧的已被丢掉（环形，不是数组无限堆）");
+
+  /* 单条截断 200 字符：DOM 异常里常带整段 outerHTML */
+  beat.diagNote("脚本错", "X".repeat(500));
+  eq(beat.diagLast[beat.diagLast.length - 1].msg.length, 200, "单条截断到 200 字符");
+
+  /* ★ 绝不落盘：错误原文可能含用户数据（预设名 / 歌词 / 导入的文件名）。
+     判定口径：主动 flush 一次（把所有该写的都写下去），再逐键查一遍。 */
+  beat.Controls.setBpm(96);
+  beat.Store.flush();
+  const dumped = [...storage.keys()].map(k => String(storage.get(k))).join("\n");
+  ok(!/Cannot read properties/.test(dumped), "★ flush 后所有落盘键里都搜不到错误原文（只留内存）");
+  ok([...storage.keys()].length > 0, "前提：确实写过盘（否则上面那条是空跑）");
+
+  /* 报告里带着它，且空时显式写「（无）」 */
+  const withErr = loadApp();
+  withErr.beat.diagNote("脚本错", "报告用的一条");
+  ok(/最近错误/.test(withErr.beat.diagReport()), "报告含「最近错误」一节");
+  ok(/报告用的一条/.test(withErr.beat.diagReport()), "★ 原文进报告（报障时这才是硬证据）");
+  const empty = loadApp();
+  ok(/（无）/.test(empty.beat.diagReport()), "空缓冲时报告写「（无）」（不让人以为功能坏了）");
+}
+
+/* ================= 场景 T56h：设置里的「复制诊断信息」按钮（v2.11.3） ================= */
+section("T56h 诊断 · 设置弹窗里的复制入口（不再只有 ?debug=1 够得着）");
+{
+  const { beat, els } = loadApp();
+  ok(/id="diagCopyBtn"/.test(html), "设置弹窗里有 #diagCopyBtn（静态标记，非运行时生成）");
+  /* 反向验证锚点：把按钮的 id 改掉，DOM 引用完整性检查会当场变红 */
+  const before = beat.diag.winErr;
+  els["diagCopyBtn"].fire("click");
+  eq(beat.diag.winErr, before, "点它不会产生错误（它只读，不改状态）");
+  /* 复制：剪贴板在沙箱里不存在 → 走兜底弹窗，文案必须含版本与各条计数 */
+  const msg = els["modalMsg"] ? els["modalMsg"].textContent : "";
+  ok(/BeatSight v/.test(msg), "剪贴板不可用时兜底为弹窗，内容以版本行开头："
+    + String(msg).slice(0, 40));
+  ok(/计数:/.test(msg), "兜底内容含计数（否则报障拿不到读数）");
+  ok(/最近错误/.test(msg), "兜底内容含最近错误一节");
+  eq(els["diagCopyBtn"].textContent === "已复制" || els["diagCopyBtn"].textContent === "复制诊断信息",
+    true, "按钮文案只有这两种取值（实际：" + els["diagCopyBtn"].textContent + "）");
+  /* 再次打开设置 → 文案复位（否则第二次点开看到的是上一句反馈，像是卡住了） */
+  els["settingsBtn"].fire("click");
+  eq(els["diagCopyBtn"].textContent, "复制诊断信息", "★ 再次打开设置 → 文案复位");
 }
 
 /* ================= 场景 T56f：面板文本随计数刷新 ================= */
