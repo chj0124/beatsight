@@ -109,7 +109,7 @@ section("T58d P0-7 · 步长不整除时也要练到目标（70→100 步长 7�
 section("T58e P0-8 · BPM 大数字是按钮、可视化网格对读屏隐藏");
 {
   const { els } = loadApp();
-  eq(els["bpmNum"].tagName, "BUTTON", "#bpmNum 是真按钮（Tab 可达 / 读屏能报 / Enter-Space 可用）");
+  eq(els["bpmNum"].tagName, "BUTTON", "#bpmNum 是真按钮（Tab 可达 / 读屏能报 / Enter 可激活）");
   ok(!!els["viz"] && els["viz"].getAttribute("aria-hidden") === "true",
     "#viz 带 aria-hidden（格子里每格一个文本节点，播放时约 360 个，不该淹没读屏）");
 }

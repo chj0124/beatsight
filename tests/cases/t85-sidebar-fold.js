@@ -2,7 +2,8 @@
    T85 系列。
    ---------------------------------------------------------------------------
    契约：v2.10.0 把「节拍 / 扫弦 / 自定义」三个分区标题从纯文字改成**可折叠开关**：
-     · 标题自身即点击区（role=button + tabIndex=0 + Enter/Space 激活，键盘契约照抄 presetItemEl）
+     · 标题自身即点击区（role=button + tabIndex=0 + **Enter** 激活；★ v2.13.1 起主界面项
+       不再消费 Space——空格让给全局「播放/暂停」，见 t94）
      · v2.13.0 起出厂默认是「节拍**展开** / 扫弦收起 / 自定义**展开**」（此前是"全部收起"）；
        开合状态记忆在选择里（S.fold，跟热键走，同 showTab / vizRows）
      · ★★ 加载判据是**存在性 + 严格 true**：没存过的键走出厂默认，存过的一律尊重用户
@@ -78,13 +79,14 @@ section("T85b 分区折叠 · 点击与键盘开合，只影响本区，节点�
   ok(els["presetList"].children.every((c, i) => c === before[i]),
      "★ 节点对象身份不变（折叠没有重建列表——播放中段序条不会闪）");
 
-  /* 键盘契约：照抄 presetItemEl（Enter / Space 字符 / code=Space 三种都算激活） */
+  /* 键盘契约：Enter 激活；★ v2.13.1 起 Space **不**激活主界面项——空格让给全局
+     「播放/暂停」（用户要求"始终可用"），两种空格写法都必须是"无副作用" */
   z.secs[1].fire("keydown", { key: "Enter" });
   eq(z.secs[1].getAttribute("aria-expanded"), "false", "Enter 键收起");
   z.secs[1].fire("keydown", { code: "Space" });
-  eq(z.secs[1].getAttribute("aria-expanded"), "true", "code=Space 展开");
+  eq(z.secs[1].getAttribute("aria-expanded"), "false", "★ code=Space 不再开合（空格归播放/暂停）");
   z.secs[1].fire("keydown", { key: " " });
-  eq(z.secs[1].getAttribute("aria-expanded"), "false", "空格字符键收起");
+  eq(z.secs[1].getAttribute("aria-expanded"), "false", "空格字符键同样不开合");
   /* 非激活键无副作用（窄化：防 itemKeys 的判据被放宽成"任意键"） */
   z.secs[1].fire("keydown", { key: "a" });
   eq(z.secs[1].getAttribute("aria-expanded"), "false", "普通字母键不激活（键位判据不漂移）");

@@ -158,6 +158,12 @@ button:disabled{cursor:not-allowed}
 .cell.rest{background:transparent;border:1px dashed var(--rest-line)}
 .cell.rest.played .fill{background:var(--peak-rest)}
 .cell.rest.active .fill{background:rgba(255,255,255,.35)}
+/* ---------- 行内切分的续接片段（v2.15.0）----------
+   跨行被截断的音符在两侧各画一段：**断开的那一侧**改虚线描边 + 圆角收平——
+   语义 = "它不是完整的一颗，另一半在相邻行"（时值标签已同时被压掉，见 buildRowCells）。
+   用盒子自身的 border 而不是 ::after 新节点：格子已有 overflow:hidden，描边零额外 DOM。 */
+.cell.cutl{border-left:1px dashed var(--rest-line);border-top-left-radius:0;border-bottom-left-radius:0}
+.cell.cutr{border-right:1px dashed var(--rest-line);border-top-right-radius:0;border-bottom-right-radius:0}
 /* 十六分刻度线：满格高、只画内部十六分分界线（末格不画——格边缘即边界，右缘再画会垂出一条多余竖线） */
 .cell .subs{position:absolute;inset:0 4px;display:flex;z-index:1;pointer-events:none}
 .cell .sub{flex:1;border-right:1px solid rgba(255,255,255,.10)}
@@ -428,6 +434,16 @@ input[type=range].vol{width:120px}
 /* 7 天计划行（v1.5）：[hidden] 会被 display:flex 覆盖，必须显式写（同 .inp-with-unit 的坑） */
 .tr-plan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%}
 .tr-plan[hidden]{display:none}
+/* ---------- 音频延迟补偿 · 校准向导（v2.14.0）---------- */
+/* 本块当前没有 display 声明，理论上 UA 的 [hidden]{display:none} 就够；这条补丁仍写上：
+   将来任何一次给 .lat-wiz 加 display（例如改成 flex 排布）都会静默吃掉 [hidden]——
+   这类坑本文件已经踩过 11 次（见 .vol-row / .tr-panel / .arg-now 那一族）。 */
+.lat-wiz{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px}
+.lat-wiz[hidden]{display:none}
+.lat-wiz .wz-msg{font-size:12.5px;color:var(--t2);line-height:1.6;margin:0 0 10px}
+.lat-wiz .wz-msg b{color:var(--t1)}
+.lat-tap{width:100%;border-radius:10px;padding:16px 18px;font-size:15px;font-weight:500;background:var(--cell);color:var(--t1);border:1px solid var(--border);transition:background .12s,color .12s,border-color .12s}
+.lat-tap:active{background:var(--green);color:var(--on-green);border-color:var(--green)}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
@@ -1464,7 +1480,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
       <h2 class="card-title" style="margin:22px 0 4px">画面怎么看</h2>
       <ul class="help-list">
-        <li><b>一行 = 一小节</b>；<b>同屏画几行由「同屏行数」档位决定（1–4 行）</b>。
+        <li><b>一行 = 一小节</b>（手机竖屏等窄屏下会<b>自动拆细</b>：一行只画半小节、甚至每拍一段——
+          格子更宽更好读，拆分的边界仍落在整拍上；跨行的长音会画成两段、断开的那侧是虚线边）；
+          <b>同屏画几行由「同屏行数」档位决定（1–4 行）</b>。
           曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
           （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行），
           读到页末还会把第 1 行临时换成「下一小节 · 型名」提前备型——<b>预告行只在 2 行及以上出现</b>，
@@ -1481,8 +1499,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <h2 class="card-title" style="margin:22px 0 4px">先试这几个开关</h2>
       <ul class="help-list">
         <li><b>静音拍</b>：每 4 小节的最后一小节<b>不发声</b>，逼你靠内心数拍。练节奏不稳特别有效</li>
-        <li><b>变速训练</b>：设好起始 / 目标 BPM，自动一级级加速爬到目标（不用自己按）</li>
-        <li><b>练习量</b>：练满 N 小节或 N 分钟自动停——想练 5 分钟就练 5 分钟</li>
+        <li><b>变速训练</b>：设好目标速度与「每几小节加多少」，从<b>你现在弹的速度</b>起步自动加速，爬到目标自动停（不用自己按）</li>
         <li><b>预备拍</b>：点播放后先数几拍再进正拍</li>
       </ul>
 
@@ -1499,16 +1516,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <dt>拍号</dt><dd>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</dd>
           <dt>Swing</dt><dd>把每拍后半的八分往后推，做出摇摆感。<b>只改发声时机，不改时间轴</b></dd>
           <dt>音色 / 音量</dt><dd>电子 / 木鱼 / 鼓组（都是程序合成，不占体积）。<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）。两条<b>各调各的</b>：把「节拍」拉到 0，扫弦照样响。重拍增强 = 重拍比正拍响多少（两条声部都受影响）</dd>
+          <dt>延迟补偿</dt><dd>蓝牙耳机 / 无线音箱通常有 100–300ms 输出延迟——声音比画面晚到。补偿把所有声音<b>提前</b>相应毫秒发出（设置里调，带「跟着敲」的校准向导）；可<b>按设备存多套配置</b>，换耳机时切换、上次用的会被记住</dd>
           <dt>弹跳球</dt><dd>关掉就只剩声音；静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源</dd>
           <dt>后台保活</dt><dd>切到别的标签页或手机息屏时尽量不被系统暂停（耗电换连续，按需开）</dd>
         </dl>
 
         <h2 class="card-title" style="margin:22px 0 4px">训练模式</h2>
         <ul class="help-list">
-          <li><b>变速训练</b>：起始 / 目标 / 步长 / 每级小节数四项。练到目标自动停，也可以中途接着上次练</li>
-          <li><b>练习量</b>：按小节或按时间到点自动停。<b>和变速训练可以同时开，谁先到听谁的</b></li>
-          <li><b>听辨训练</b>：只放声音、不给谱，从三个候选里选是哪个节奏型——专治「听不出附点和切分」</li>
-          <li><b>练习统计</b>：顶栏可看本周时长、连续天数、本期练过/没碰的节奏型，以及听辨正确率</li>
+          <li><b>变速训练</b>：三项参数——目标速度 / 每级加多少 / 每几小节加一级。从<b>开播那一刻的速度</b>起步往上爬，到目标自动停</li>
+          <li><b>听辨训练</b>：先听 2 小节，再从三张<b>只给记谱、不给名字</b>的候选里选——练的是耳朵，答案作答后才揭晓。专治「听不出附点和切分」</li>
         </ul>
 
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
@@ -1556,7 +1572,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
         <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
         <dl class="help-dl">
-          <dt>空格</dt><dd>开始 / 停止播放（焦点不在输入框或按钮上时）</dd>
+          <dt>空格</dt><dd>开始 / 停止播放（页面任何位置都可用；正在输入文字时除外）</dd>
           <dt>Esc</dt><dd>关闭当前打开的面板</dd>
           <dt>Ctrl / ⌘ + Z</dt><dd>节奏型编辑器里撤销一步</dd>
         </dl>
@@ -1643,6 +1659,41 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
     </div>
 
+    <!-- 音频延迟补偿（v2.14.0）：蓝牙耳机等无线输出有 100–300ms 链路延迟——声音比画面晚到。
+         补偿 = 把每一颗音**提前**相应毫秒发出（发声侧见 AudioEngine.latOff），让"耳机里
+         听到的"与"屏幕上的落点"对齐。数据是独立键 beatsight.latency（不进热键、不进导出包，
+         理由见 DEVELOPMENT.md §3.18）；多套"设备配置"= 换耳机时在这里选一下，上次选的会被记住。
+         ★ 向导面板复用 .tr-panel 同族的 .lat-wiz（自带 [hidden] 补丁，见 CSS 区注释） -->
+    <div class="group" style="margin-top:24px">
+      <div class="group-label">音频延迟补偿（蓝牙耳机 / 无线音箱）</div>
+      <div class="bpm-row">
+        <select class="loop-sel" id="latProfileSel" style="min-width:130px" aria-label="按设备选择的延迟补偿配置"></select>
+        <button class="pill outline" id="latNewBtn">新建配置</button>
+        <button class="pill outline" id="latRenameBtn">改名</button>
+        <button class="pill outline" id="latDelBtn">删除</button>
+      </div>
+      <div class="vol-row" title="补偿值：把所有声音统一提前这么多毫秒发出，让耳机里听到的与画面落点对齐">
+        <span>补偿</span>
+        <input type="range" class="vol" id="latMs" min="0" max="500" step="5" value="0"
+               aria-label="音频延迟补偿毫秒数，0 为不补偿">
+        <span class="pct" id="latMsPct">0 ms</span>
+      </div>
+      <div class="bpm-row" style="margin-top:6px">
+        <button class="pill outline" id="latCalibBtn">校准向导</button>
+      </div>
+      <div class="lat-wiz" id="latWiz" hidden>
+        <p class="wz-msg" id="latWizMsg"></p>
+        <button class="lat-tap" id="latWizTap">跟着咔嗒声，在这里敲</button>
+        <div class="hint" id="latWizProg" style="margin:10px 0 0"></div>
+        <div class="bpm-row" style="margin-top:10px">
+          <button class="pill outline" id="latWizApply" hidden>采用这个值</button>
+          <button class="pill outline" id="latWizRetry" hidden>重测</button>
+          <button class="pill outline" id="latWizCancel">取消</button>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。点「校准向导」跟着敲八下会自动给一个建议值，再用滑杆微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重新校准）。</div>
+    </div>
+
     <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
     <h2 class="card-title" style="margin:24px 0 8px">数据与说明</h2>
     <div class="bpm-row">
@@ -1696,22 +1747,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1727  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2218  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3181  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3852  Modal         应用内弹窗
-     L3984  Viz           时值可视化渲染与每帧动画
-     L5615  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6240  Trainer       变速训练器
-     L6378  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L6823  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L7670  Editor        自定义节奏型编辑器
-     L8026  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8060  Ear           听辨训练（v1.10.0）
-     L8278  Arrange       曲式编排（v2.0.0）
-     L9142  Help          使用方法（v2.0.1）
-     L9189  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9263  初始化（装配） 各模块 hook 接线与启动
+     L1778  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2272  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3913  Modal         应用内弹窗
+     L4045  Viz           时值可视化渲染与每帧动画
+     L5935  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6601  Trainer       变速训练器
+     L6739  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7218  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8072  Editor        自定义节奏型编辑器
+     L8428  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8462  Ear           听辨训练（v1.10.0）
+     L8680  Arrange       曲式编排（v2.0.0）
+     L9544  Help          使用方法（v2.0.1）
+     L9591  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9665  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1737,7 +1788,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.13.0";
+const VERSION = "2.15.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2112,6 +2163,9 @@ const CONFIG = {
      然后整段静音」→ 必然断续。
      取 1.2s：大于节流下限且留 20% 余量。行为代价见 DEVELOPMENT.md §3.2 */
   schedWindowBg:1.2,
+  /* 跟拍校准的首声预热（v2.14.0）：排第一声之前先留这么久——给 AudioContext 起播与
+     蓝牙链路建链留时间（首声常是最不可靠的一声；配合中位数，个别异常样本不污染结果） */
+  latCalibLead:1.2,
   /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
   persistDebounce:250,
   /* ★ v2.10.12：原 `logMinSec:30, logMax:400`（练习记录的入账门槛与环形上限）随
@@ -3283,6 +3337,13 @@ const meterName = m => (/** @type {Record<number,string>} */ ({6:"6/8",5:"5/4",7
 const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
 let ctx = /** @type {AudioContext|null} */ (null), masterGain = /** @type {GainNode|null} */ (null);
 let loopStart = 0;
+/* 音频延迟补偿（v2.14.0）：所有发声统一**提前**的毫秒数（0 = 不补偿）。
+   数据源是独立键 `beatsight.latency` 的"当前配置"，由装配层在启动时写进来；
+   发声侧（AudioEngine）只读这一个数字——它不进热键、不是 S 的字段（S 是"每次交互都写"
+   的载荷，而这是低频设备配置，与主题/壁纸同族）。
+   ★ 为什么放在共享区：调度与发声在 25ms 周期上跑，读一个模块级数字零成本，
+     也不必让 AudioEngine 反复调 Store（那是 0.0x 毫秒级开销，但热路径纪律应当干净）。 */
+let latencyMs = 0;
 let nextNoteTime = 0, schedBar = 0, schedStep = 0;
 /* 已排过的小节总数（v2.5.2 第 Ⅱ 期）。**只服务静音拍**：静音拍的语义是"每 4 小节静音第 4 小节"，
    而那是**乐句位置**的概念——不是"型的最后一小节"。v2.5.1 及以前用 `schedBar === 型长-1`，
@@ -3387,8 +3448,8 @@ const arrangeCur = () => (S.playMode === "arrange" ? Store.findArrange(S.arrange
    为什么要它：待命球原先按 (bar+1) % 型长 取"下一行"，这在曲式里是错的——
    当前块若是本段最后一块，下一行属于**下一段的型**，不是当前型。
    ★ 走 arrNextBar，与排程、与落点预测共用同一份步进逻辑；预设模式下返回 null，
-   调用方回落到 Viz.nextPatBarOf（v2.6.2：循环开着时取区间起点；关着时顺序下一小节。
-   v2.10.2 起该函数返回的是**型内小节号**，由 Viz 内部再折成窗口行号——
+   调用方回落到 Viz.nextPatSeg（v2.6.2 起：循环开着时取区间起点、关着时顺序下一片段。
+   v2.10.2 起该函数返回的是**型内片段号**，由 Viz 内部再折成窗口行号——
    旧版这里传的是 loopNextBar(bar, vizBars)，那时行号恰好等于型内小节号，故为等价）。 */
 /** @param {any} [sec] @param {any} [bar]
     @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查） */
@@ -3401,7 +3462,7 @@ function arrangeNextRow(sec, bar, a){
   if (!nxt) return null;                         // 走到范围末尾：没有"下一行"
   /* lin（v2.10.8）：下一小节的**线性歌曲小节号**。渲染层要按它算"这个小节落在窗口第几行"——
      bar 那个字段是**型内小节号**（用来取那一行的音符），两者自 v2.10.2 起就不再相等，
-     混用会算出不存在的小节号。求行号见 Viz.rowOfSongBar。 */
+     混用会算出不存在的小节号。求行号见 Viz.rowOfSongPos。 */
   return { pattern: nxt.pattern || activePattern(), bar: nxt.schedBar,
     lin: songBarBefore(a, nxt.sec) + nxt.bar };
 }
@@ -4051,6 +4112,87 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        算出根本不存在的小节号（练习循环区间会因此落到区间外）。 */
   let vizBars = DEF_BARS;
   let vizPatLen = DEF_BARS;
+  /* ---------- 行内切分（v2.15.0：窄屏自适应，改渲染层前必读） ----------
+     一直以来"一行 = 一小节"。手机上竖屏时十六分型的格子会被压到十几像素、无法阅读
+     （用户实报）——现在行的粒度可以在**小节内**再切：一行 = 半小节、四分之一小节……
+     实现上把切分档收敛成一个数：**每行几拍**（`vizRowBeats`）——
+       · 候选 = 拍数的**约数**（降序）：4/4 → 4/2/1；3/4 → 3/1；5/4 → 5/1；6/8 → 6/3/2/1；
+       · 判据 = **最短那格的宽度**（内容密度相关）：宽到够读就保持整小节；
+       · 切点必落在**整拍**上（候选全是拍数的约数）——不出现"半拍"的切点；
+       · 整屏统一一个档（所有行同一跨度）——否则行与行的时值比例失去可比性。
+     ★ 档位是**派生值**：每次 buildViz 由「行宽 × 内容最短时值」现算，不持久化
+       （旋屏当帧不重建——resize 播放中"只重采几何、不重建 DOM"是既有承诺，见 relayout；
+       最迟下一次翻页/换型时按新宽度生效）。
+     ★★ **K=1 是安全边界**：每行 = 整小节时全链逐位等于分片之前的行为——切片函数直接
+        返回原数组（对象身份都保持）、行号与片段号重合、所有映射退化回旧式。
+        任何改动都必须守住这一条（t79/t87/t89 等既有契约全建立在它之上）。 */
+  const SLICE_MIN_CELL = 24;              // 最短一格至少要这么宽（px）——首版值，真机复核项
+  let vizRowBeats = 0;                    // 每行几拍（0 = 未定，按整小节兜底）
+  const rowBeats = () => (vizRowBeats > 0 ? vizRowBeats : vizSig);
+  const segTicks = () => rowBeats() * TPB;                                 // 一行的 tick 跨度
+  const subsPerBar = () => Math.max(1, Math.round(vizSig / rowBeats()));   // 每小节切几片（K）
+  const vizSegs = () => vizPatLen * subsPerBar();                          // 型的总片段数
+  /** 每行该放几拍（纯函数，供测试直测）：候选 = 拍数的约数（降序），取**第一个**满足
+      "最短格 ≥ SLICE_MIN_CELL" 的；全不满足（极窄）退到 1 拍/行。
+      @param {number} widthPx 行宽（px） @param {number} meter 拍号 @param {number} minStep 型内最短时值（tick）
+      @returns {number} */
+  function chooseRowBeats(widthPx, meter, minStep){
+    if (!(widthPx > 0) || !(meter > 0)) return meter || DEF_BARS;
+    const step = (typeof minStep === "number" && isFinite(minStep) && minStep > 0) ? minStep : TPB;
+    for (let b = meter; b >= 1; b--){
+      if (meter % b !== 0) continue;
+      if (widthPx * step / (b * TPB) >= SLICE_MIN_CELL) return b;
+    }
+    return 1;                             // 极窄：每行一拍（再细就不是"行"了）
+  }
+  /** 型内最短时值（tick）：0/脏值忽略；空型回落 TPB（不返回 0，否则判据恒真）
+      @param {any} pat @returns {number} */
+  function minStepOf(pat){
+    let m = 0;
+    const bars = pat && Array.isArray(pat.bars) ? pat.bars : [];
+    for (const bar of bars){
+      if (!Array.isArray(bar)) continue;
+      for (const s of bar){
+        const t = s && s.t;
+        if (typeof t === "number" && isFinite(t) && t > 0 && (m === 0 || t < m)) m = t;
+      }
+    }
+    return m || TPB;
+  }
+  /** 把一小节的 steps 切出第 sub 片（共 k 片）：返回**重基到片段起点**的 steps。
+      · k=1 且 sub=0：**原样返回同一个数组**（K=1 的安全边界，对象身份都保持）；
+      · 跨片的音符在两侧各成一段（t 为片段内的截断时长），带内部标记 `_cutl` / `_cutr`
+        （渲染层据此画"续接"虚边、并压制被截断的时值标签——截断后的标签是错的）；
+      · 记谱字段（dir/zone）只跟随**音符起头**的那一段：续段不是一次新的扫弦动作；
+      · 休止照样截断（两侧都画虚框）。
+      @param {any[]} steps @param {number} barTicks @param {number} k @param {number} sub
+      @returns {any[]} */
+  function sliceSteps(steps, barTicks, k, sub){
+    if (!Array.isArray(steps) || !steps.length) return steps || [];
+    if (k <= 1 && sub <= 0) return steps;
+    const span = barTicks / k, s0 = sub * span, s1 = s0 + span;
+    /** @type {any[]} */
+    const out = [];
+    let acc = 0;
+    for (const s of steps){
+      const t = (s && typeof s.t === "number" && isFinite(s.t)) ? s.t : 0;
+      const st = acc, en = acc + t; acc = en;
+      if (t <= 0 || en <= s0 || st >= s1) continue;          // 脏时长 / 完全不在本片：跳过
+      const a = Math.max(st, s0), b2 = Math.min(en, s1);
+      const cutL = st < s0, cutR = en > s1;
+      /** @type {any} */
+      const copy = { t: b2 - a };
+      if (s.rest) copy.rest = true;
+      if (cutL) copy._cutl = true;
+      else if (cutR) copy._cutr = true;
+      if (!cutL){                                             // 记谱字段只跟起头那段
+        if (s.dir !== undefined) copy.dir = s.dir;
+        if (s.zone !== undefined) copy.zone = s.zone;
+      }
+      out.push(copy);
+    }
+    return out;
+  }
 
   /* ---- 网格的「N 行窗口」（v2.5.2 第 Ⅱ 期立骨；v2.8.0 req3 窗口长度可调；v2.10.2 扩到预设模式）----
      用户要的是：网格里的 N 行 = **正在弹的那 N 个连续小节位**（N = 同屏行数档位）。做法是把
@@ -4078,30 +4220,34 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      ★ 它同时是**歌词轨的行数**：两轨共用这一档位（见 VIZ_ROW_COUNTS 的值表注释），
        行数一致才能逐行对齐。（歌词轨本身只在曲式模式出现，见 buildLyricLane） */
   function arrWinBars(){ return S.vizRows; }
-  let winStart = -1;                      // 窗口起点（曲式 = 歌曲小节号；预设 = 型内小节号）；-1 = 还没定过
+  let winStart = -1;                      // 窗口起点（曲式 = **歌曲片段号**；预设 = **型内片段号**）；-1 = 还没定过
   /** @type {any} */
   let winPat = null;                      // 当前窗口的合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
-  /* 预告行（v2.7.0）：**曲式模式独有**——页内最后一行的那个小节期间，第 1 行临时替换成
-     "下一小节"的内容。winPrevBar = 预告的歌曲小节号（-1 = 本窗口不带预告）；
+  /* 预告行（v2.7.0）：**曲式模式独有**——页内最后一行的那个片段期间，第 1 行临时替换成
+     "下一片段"的内容。winPrevSeg = 预告片段的**绝对歌曲片段号**（-1 = 本窗口不带预告）；
      winPrevSteps = 预告行的格子；winPrevName = 徽标上的型名。
      三者同生同灭（窗口同步一处写入，resetWindow 一处清）。
-     ★ 预设模式不做预告行：那里的窗口内容全部来自同一个型，(k+1) 小节在型内是确定的，
+     ★ 预设模式不做预告行：那里的窗口内容全部来自同一个型，下一片段在型内是确定的，
        不需要提前解析节目单；下一行该显示什么由 `nextRowOf()` 算术得出。
-     ★★ **要求 N ≥ 2**（v2.10.3 修）：见 previewBarFor 的注释——N = 1 时窗口恒等于当前
-       小节，"下一小节"本来就在眼前，预告没有信息量；且页末判据在 N=1 时恒成立，
+     ★ v2.15.0：单位由"小节"细化为"片段"——预告既可能是"同小节的下一片"，
+       也可能是"节目单下一小节的首片"（见 previewSegFor）；整小节档下逐位等于旧口径。
+     ★★ **要求 N ≥ 2**（v2.10.3 修）：见 previewSegFor 的注释——N = 1 时窗口恒等于当前
+       片段，"下一片段"本来就在眼前，预告没有信息量；且页末判据在 N=1 时恒成立，
        会把唯一那一行永久当成"未来"，令格子恒 upcoming → 白填充不可见。1 行档下三者恒为
-       -1 / null / ""（守卫在 previewBarFor，状态本身不需要额外分支）。 */
-  let winPrevBar = -1;
+       -1 / null / ""（守卫在 previewSegFor，状态本身不需要额外分支）。 */
+  let winPrevSeg = -1;
   /** @type {any[]|null} */
   let winPrevSteps = null;
   let winPrevName = "";
-  /* ---------- ② 窗口解析（型 ↔ 行） ----------
-     N 行窗口的全部解析：渲染层画哪个型（vizPattern）、窗口行 ↔ 型内小节号的双向映射
-     （patBarOfRow / rowOfPatBar）、"下一小节/下一行"（nextPatBarOf / nextRowOf）、
-     小节号 ↔ 行号（rowOfSongBar / arrNextRowOf，v2.10.8：范围短于窗口时"下一行"不再等于 +1）、
-     窗口锚点（winAnchor）、预告行（previewBarFor / resetWindow）、
-     两种窗口合成型（曲式 arrWindowPat / 预设 presetWindowPat）。
-     本区只做**纯解析**，不建 DOM、不读布局——把它想成"网格的节目单"。 */
+  /* ---------- ② 窗口解析（片段 ↔ 行） ----------
+     N 行窗口的全部解析：渲染层画哪个型（vizPattern）、窗口行 ↔ 型内片段/小节号的映射
+     （patSegOfRow / patBarOfRow / rowOfPatSeg）、"下一片段/下一行"
+     （nextPatSeg / nextRowOf）、片段号 ↔ 行号（rowOfSongPos / arrNextRowOf，v2.10.8 起：
+     范围短于窗口时"下一行"不再等于 +1）、窗口锚点（winAnchorSeg）、预告行
+     （previewSegFor / resetWindow）、两种窗口合成型（曲式 arrWindowPat / 预设 presetWindowPat）。
+     本区只做**纯解析**，不建 DOM、不读布局——把它想成"网格的节目单"。
+     ★ v2.15.0：单位由"小节"升级为"**片段**"（一行 = 一小节 ÷ 每小节片数 subsPerBar()）——
+       整小节档（K=1）下片段号与行号、小节号逐位重合，行为等于分片之前。 */
   /** 渲染层该画哪个型（v2.10.2：两种模式都返回**窗口合成型**）。
       winPat 为 null（尚未建过网格 / 曲式合成失败）时回落 activePattern()，
       即"画当前型"的旧行为——那是降级路径，不是常态。
@@ -4109,45 +4255,54 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   function vizPattern(){
     return winPat || activePattern();
   }
-  /** 窗口行 → **型内小节号**（内容下标）。预设模式下两者不同：窗口第 i 行装的是型的
-      第 (winStart + i) % 型长 小节（型短于窗口时绕回重复，故同一小节会出现多行）。 */
-  /** @param {number} row @returns {number} */
-  function patBarOfRow(row){
-    const len = vizPatLen;
-    if (!(len > 0) || winStart < 0) return row;
-    return ((winStart + row) % len + len) % len;
+  /** 窗口行 → **型内片段号**（内容下标）。预设模式下两者不同：窗口第 i 行装的是型的
+      第 (winStart + i) % 总片段数 片（型短于窗口时绕回重复，故同一片段会出现多行）。
+      ★ v2.15.0：单位从"小节"升级为"片段"（一行 = 一小节 ÷ 每小节片数）。
+      @param {number} row @returns {number} */
+  function patSegOfRow(row){
+    const segs = vizSegs();
+    if (!(segs > 0) || winStart < 0) return row;
+    return ((winStart + row) % segs + segs) % segs;
   }
-  /** **型内小节号** → 窗口行号；不在本窗口里返回 -1（调用方按"看不见"处理）。
-      ★ 必须走它而不是直接拿 e.bar 当行号：窗口化后行号与型内小节号不再是同一个数
+  /** 窗口行 → **型内小节号**（"按小节说事"的读数：状态栏 / 和弦名 / 静音行）
+      @param {number} row @returns {number} */
+  function patBarOfRow(row){
+    return Math.floor(patSegOfRow(row) / subsPerBar());
+  }
+  /** **型内片段号** → 窗口行号；不在本窗口里返回 -1（调用方按"看不见"处理）。
+      ★ 必须走它而不是直接拿 e.bar 当行号：窗口化后行号与内容下标不再是同一个数
         （旧实现里 vizBars 恒等于型长，两者恰好相等，所以一直是直取）。 */
-  /** @param {number} b @returns {number} */
-  function rowOfPatBar(b){
-    const len = vizPatLen, W = vizBars;
-    if (winStart < 0 || !(len > 0) || !(W > 0)) return Math.min(Math.max(0, W - 1), Math.max(0, Math.floor(b) || 0));
-    const bi = Number.isFinite(b) ? Math.floor(b) : 0;
-    const i = ((bi - winStart) % len + len) % len;
+  /** @param {number} seg @returns {number} */
+  function rowOfPatSeg(seg){
+    const segs = vizSegs(), W = vizBars;
+    if (winStart < 0 || !(segs > 0) || !(W > 0)) return Math.min(Math.max(0, W - 1), Math.max(0, Math.floor(seg) || 0));
+    const si = Number.isFinite(seg) ? Math.floor(seg) : 0;
+    const i = ((si - winStart) % segs + segs) % segs;
     return (i < W) ? i : -1;
   }
-  /** 「下一小节的型内小节号」（内容下标）：预设模式走练习循环（区间起点 / 顺序下一小节），
-      曲式模式返回 loopNextBar 的同口径值（曲式下它就是 (bar+1)%W，见 loopNextBar 的守卫）。 */
-  /** @param {number} bar 当前**行号** @returns {number} */
-  function nextPatBarOf(bar){
-    if (S.playMode === "arrange" || winStart < 0) return loopNextBar(bar, vizBars);
-    const len = vizPatLen;
-    return loopNextBar(patBarOfRow(bar), len);
+  /** 「下一片段」的**型内片段号**（内容下标）：小节内往后走一片；跨小节走练习循环口径
+      （循环区间内 = 区间起点 / 顺序下一小节——与旧 nextPatBarOf 的循环语义同源）。
+      @param {number} seg 当前型内片段号 @returns {number} */
+  function nextPatSeg(seg){
+    const K = subsPerBar(), segs = vizSegs();
+    const si = ((Math.floor(seg) % segs) + segs) % segs;
+    if (si % K < K - 1) return (si + 1) % segs;              // 同一小节的下一片
+    return loopNextBar(Math.floor(si / K), vizPatLen) * K;   // 跨小节：loopNextBar 口径
   }
-  /** 歌曲线性小节号 → 它**当前**画在窗口的第几行；不在本窗口（需要翻页）返回 -1。
+  /** 歌曲线性小节号 + 小节内**第几片** → 它**当前**画在窗口的第几行；不在本窗口（需要翻页）返回 -1。
       ★ 两处"不取模不行 / 不钳范围不行"的来历：
-        ① 行号 = 小节号 − 窗口起点，而 arrWindowPat 在**曲尾会绕回开头铺行**
-           （`songBarAt(a, (winStart + i) % total)`）——所以"减去窗口起点"这句在最后一页不成立，
-           必须按 songBars 取模，否则最后一页会算出负数行号；
-        ② 行号必须落在 [0, W)：超出即"这个小节不在本窗口里" → 交调用方决定要不要翻页。
-      v2.10.8 新增（原先没有这层映射，各处只按"位置式 +1"推）。 */
-  /** @param {number} lin @param {any} a @returns {number} */
-  function rowOfSongBar(lin, a){
-    const total = a ? songBars(a) : 0, W = vizBars;
-    if (!(total > 0) || !(W > 0) || winStart < 0 || !(lin >= 0)) return -1;
-    const i = ((lin - winStart) % total + total) % total;
+        ① 行号 = 片段号 − 窗口起点，而 arrWindowPat 在**曲尾会绕回开头铺行**
+           （`songBarAt(a, seg / K % total)`）——所以"减去窗口起点"这句在最后一页不成立，
+           必须按总片段数取模，否则最后一页会算出负数行号；
+        ② 行号必须落在 [0, W)：超出即"这一片段不在本窗口里" → 交调用方决定要不要翻页。
+      v2.10.8 新增（原先没有这层映射，各处只按"位置式 +1"推）；v2.15.0 由"小节"细化为"片段"。 */
+  /** @param {number} lin @param {number} sub @param {any} a @returns {number} */
+  function rowOfSongPos(lin, sub, a){
+    const K = subsPerBar();
+    const totalSegs = a ? songBars(a) * K : 0, W = vizBars;
+    if (!(totalSegs > 0) || !(W > 0) || winStart < 0 || !(lin >= 0)) return -1;
+    const seg = lin * K + Math.min(K - 1, Math.max(0, Math.floor(sub) || 0));
+    const i = ((seg - winStart) % totalSegs + totalSegs) % totalSegs;
     return i < W ? i : -1;
   }
   /** 「下一小节」落在窗口第几行（曲式模式，v2.10.8）。
@@ -4163,26 +4318,36 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /** @param {number} bar 当前**行号** @returns {number} */
   function arrNextRowOf(bar){
     const a = arrangeCur();
-    const total = a ? songBars(a) : 0;
+    const total = a ? songBars(a) : 0, K = subsPerBar();
     if (!(total > 0) || winStart < 0 || !(vizBars > 0)) return -1;
-    /* 行 → 歌曲线性号：同样要取模（曲尾绕回那件事，见 rowOfSongBar ①） */
-    const at = songBarAt(a, ((winStart + bar) % total + total) % total);
+    const segAbs = winStart + bar;
+    const sub = ((segAbs % K) + K) % K;
+    /* v2.15.0：当前行不是本小节的最后一片 → "下一行"就是同一小节的下一片（位置式 +1）；
+       当前行已是页内最后一行时它落在下一页，不算"本窗口里" → 交调用方回落翻页口径 */
+    if (sub < K - 1) return (bar + 1 < vizBars) ? bar + 1 : -1;
+    /* 小节的最后一片之后 = 节目单的"下一小节"（范围循环回卷已含在其中）。
+       行 → 歌曲线性号：同样要取模（曲尾绕回那件事，见 rowOfSongPos ①） */
+    const totalSegs = total * K;
+    const lin = Math.floor(((segAbs % totalSegs) + totalSegs) % totalSegs / K);
+    const at = songBarAt(a, lin);
     if (!at) return -1;
     /* 显式传可听位置（at.sec/at.bar）——**不能**让 arrangeNextRow 默认取调度游标：
        调度器早一个前瞻窗口推进，按它算会让 .next / 待命球提前指到再下一行（v2.0.2 实拍） */
     const nrow = arrangeNextRow(at.sec, at.bar, a);
     if (!nrow || typeof nrow.lin !== "number") return -1;
-    return rowOfSongBar(nrow.lin, a);
+    return rowOfSongPos(nrow.lin, 0, a);
   }
   /** 「下一行」的行号（`.next` 预告格与弹跳球待命球共用同一口径）。
       曲式（v2.10.8）：由节目单算（arrNextRowOf）——范围短于窗口时"下一小节"是范围起点，
         行号完全可能 ≤ 当前行；算不出（需翻页 / 范围播完）才回落 (bar+1)%W。
         v2.10.7 及更早一律按 (bar+1)%W，于是范围短于窗口时 `.next` 会提前指到范围外那一行。
-      预设（v2.10.2）：先求下一小节的型内小节号，再折进**翻页后**它所在的那一行——
-        `cand % W`（页锚恒为 W 的倍数，故下一小节的行号就是它在新页里的偏移）。
+      预设（v2.10.2）：先求下一片段的型内片段号，再折进**翻页后**它所在的那一行——
+        `cand % W`（页锚恒为 W 的倍数，故下一片段的行号就是它在新页里的偏移）。
       这样即使在页边界上，待命球也指向翻页后它真正落到的那一行。
       ★ v2.10.2 之前这里传的是 loopNextBar(bar, vizBars)：那时 vizBars 恰好等于型长，
-        bar（行号）也恰好等于型内小节号，所以对；现在两个前提都不成立了。 */
+        bar（行号）也恰好等于型内小节号，所以对；现在两个前提都不成立了。
+      ★ v2.15.0：单位细化为片段后本函数**形式未变**（`nextPatSeg` 内含"同小节下一片"的
+        走法）——整小节档下逐位等于旧口径，分片档下 .next/待命球落在真正的下一片段行。 */
   /** @param {number} bar @returns {number} */
   function nextRowOf(bar){
     if (winStart < 0) return loopNextBar(bar, vizBars);
@@ -4191,49 +4356,66 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       return r >= 0 ? r : loopNextBar(bar, vizBars);
     }
     const W = vizBars;
-    return ((nextPatBarOf(bar) % W) + W) % W;
+    return ((nextPatSeg(patSegOfRow(bar)) % W) + W) % W;
   }
-  /** 窗口起点该取哪个小节（**改这一行就是改手感**）：
-      按 N 小节翻页（v2.7.0 用户拍板；N = 同屏行数档位）→ 球从第 1 行逐行走到第 N 行，与预设模式同手感；
+  /** 窗口起点该取哪个**片段**（**改这一行就是改手感**）：
+      按 N 片段翻页（v2.7.0 用户拍板；N = 同屏行数档位）→ 球从第 1 行逐行走到第 N 行，与预设模式同手感；
         静音拍（每 MUTE_PERIOD 小节静一小节）恒落页内对应行，与预设模式的行位惯例对齐
-      跟播放头滚动（旧档）→ 当前小节永远是第 1 行：Math.max(0, k) */
-  /** @param {number} k @returns {number} */
-  function winAnchor(k){ const W = arrWinBars(); return Math.max(0, Math.floor(k / W) * W); }
-  /* 本窗口该不该带预告行、预告哪一小节（v2.7.0 用户拍板的方案）：
-     严格按档位翻页后，播到页内最后一行时"下一小节"在屏外——扫弦型可能在段边界变化，
-     没有提前量右手就没法准备。把整屏最陈旧的第 1 行（N-1 小节前的历史）临时替换成
-     下一小节的内容。返回 {bar, steps, name}；不带预告（不在页末 / 后面没有下一小节）
-     返回 {bar:-1}。
-     ★ 内容必须与节目单同源：走 arrNextBar——范围循环时"下一小节"是范围起点而不是
-       歌曲第 k+1 小节，跳段缩范围后亦然。
+      跟播放头滚动（旧档）→ 当前位置永远是第 1 行：Math.max(0, seg)
+      ★ v2.15.0：单位从"小节"升级为"片段"——整小节档下 seg ≡ 小节号，逐位等于旧手感。 */
+  /** @param {number} seg @returns {number} */
+  function winAnchorSeg(seg){ const W = arrWinBars(); return Math.max(0, Math.floor(seg / W) * W); }
+  /* 本窗口该不该带预告行、预告哪一**片段**（v2.7.0 用户拍板的方案；v2.15.0 细化为片段）：
+     严格按档位翻页后，播到页内最后一行时"下一片段"在屏外——扫弦型可能在段边界变化，
+     没有提前量右手就没法准备。把整屏最陈旧的第 1 行（N-1 个片段前的历史）临时替换成
+     下一片段的内容。返回 {seg, steps, name}；不带预告（不在页末 / 后面没有下一片段）
+     返回 {seg:-1}。
+     ★ 内容必须与节目单同源：跨小节的预告走 arrNextBar——范围循环时"下一小节"是范围起点
+       而不是歌曲第 k+1 小节，跳段缩范围后亦然；同小节的下一片则直接切本小节（无节目单）。
      ★ 每帧热路径上的便宜守卫在先：只在页内最后一行才做 songBarAt/arrNextBar 的解析。
 
      ★★ 前提：**N ≥ 2**（v2.10.3 修）。预告行的机制是"把**整屏最陈旧的第 1 行**让给屏外的
-       下一小节"——它要求屏内还有别的行在正常显示当前页。N = 1 时，"每 N 小节翻页"退化成
-       "跟播放头滚动"（`winAnchor(k) = floor(k/1)*1 = k`），窗口恒等于当前小节，
-       下一小节**本来就不在屏外**；而下面的判据 `k === winAnchor(k) + N - 1` 在 N=1 时
+       下一片段"——它要求屏内还有别的行在正常显示当前页。N = 1 时，"每 N 个片段翻页"退化成
+       "跟播放头滚动"（`winAnchorSeg(seg) = floor(seg/1)*1 = seg`），窗口恒等于当前片段，
+       下一片段**本来就不在屏外**；而下面的判据 `seg === winAnchorSeg(seg) + N - 1` 在 N=1 时
        **恒成立**，于是唯一那一行每帧都被当成"未来"：
-         ① 内容被换成下一小节（`winPat.bars[0] = winPrevSteps`），与球在走的当前小节错开；
+         ① 内容被换成下一片段（`winPat.bars[0] = winPrevSteps`），与球在走的当前片段错开；
          ② 整行加 `.preview-row`（opacity .55）；
          ③ `setCell` 的 `isPreview` 豁免让它**永远拿不到 `.active` / `.played`** ——
             而白色填充的底色只长在 `.cell.played .fill` / `.cell.active .fill` 上
             （`.cell .fill` 本身是 `background:transparent`），于是帧内每帧写入的
             `scaleX(进度)` 全部不可见。用户实拍症状 = 「小球正常滚动，但格子里的白色填充
             不会自动填满」（球走 onset 表，与"格子 class + CSS"这条链完全独立，故只有半边坏）。
-       1 行档下预告没有任何信息量，直接关掉：窗口照常按每一小节翻页，格子回到正常态。 */
-  /** @param {number} k @returns {{bar: number, steps?: any[]|null, name?: string}} */
-  function previewBarFor(k){
-    if (arrWinBars() < 2) return { bar: -1 };          // v2.10.3：预告行要求屏内有多行可牺牲
-    if (k < 0 || k !== winAnchor(k) + arrWinBars() - 1) return { bar: -1 };
+       1 行档下预告没有任何信息量，直接关掉：窗口照常按每一片段翻页，格子回到正常态。 */
+  /** @param {number} seg 当前**绝对歌曲片段号**（歌曲小节号 × 每小节片数 + 片内偏移）
+      @returns {{ seg: number, steps?: any[]|null, name?: string }} */
+  function previewSegFor(seg){
+    if (arrWinBars() < 2) return { seg: -1 };          // v2.10.3：预告行要求屏内有多行可牺牲
+    if (seg < 0 || seg !== winAnchorSeg(seg) + arrWinBars() - 1) return { seg: -1 };
     const a = arrangeCur();
-    if (!a) return { bar: -1 };
-    const at = songBarAt(a, k);
-    if (!at) return { bar: -1 };
-    const nxt = arrNextBar(a, S.arrangeSel, at.sec, at.bar);
-    if (!nxt) return { bar: -1 };                     // 范围播完且不循环：没有"下一小节"
-    const pat = nxt.pattern || resolveRef(nxt.ref);
-    if (!pat || !Array.isArray(pat.bars)) return { bar: -1 };
-    return { bar: k + 1, steps: pat.bars[nxt.schedBar] || [], name: pat.name || "" };
+    if (!a) return { seg: -1 };
+    const total = songBars(a);
+    if (!total) return { seg: -1 };
+    const K = subsPerBar(), barTicks = vizSig * TPB;
+    const sub = ((seg % K) + K) % K;
+    const linNow = Math.floor(seg / K) % total;
+    const at = songBarAt(a, linNow);
+    if (!at) return { seg: -1 };
+    let segNext = -1, pat = null, schedBar = -1;
+    if (sub < K - 1){
+      /* v2.15.0：同小节的下一片——内容就是本小节的后半，不必解析节目单 */
+      const p = resolveRef(at.ref);
+      if (!p || !Array.isArray(p.bars)) return { seg: -1 };
+      segNext = seg + 1; pat = p; schedBar = at.schedBar;
+    } else {
+      const nxt = arrNextBar(a, S.arrangeSel, at.sec, at.bar);
+      if (!nxt) return { seg: -1 };                    // 范围播完且不循环：没有"下一片段"
+      const p = nxt.pattern || resolveRef(nxt.ref);
+      if (!p || !Array.isArray(p.bars)) return { seg: -1 };
+      segNext = (songBarBefore(a, nxt.sec) + nxt.bar) * K;   // 下一小节的第一片
+      pat = p; schedBar = nxt.schedBar;
+    }
+    return { seg: segNext, steps: sliceSteps(pat.bars[schedBar] || [], barTicks, K, segNext % K), name: pat.name || "" };
   }
   /** 丢弃当前窗口，让下一次建网格重新锚到播放范围起点（v2.6.0 修）。
       ★ 为什么必须有它：`winStart` 是**跨播放会话**留存的状态，而"时间轴重新起一轮"的四个点
@@ -4253,51 +4435,60 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         预设同步分支下一帧就会自行重建，见那里的注释。 */
   function resetWindow(){
     if (S.playMode === "arrange"){ winStart = -1; winPat = null; }
-    winPrevBar = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2;
+    winPrevSeg = -1; winPrevSteps = null; winPrevName = ""; lastAudSongBar = -2;
   }
-  /** 把窗口里的 arrWinBars() 个小节合成为一个临时型（每小节取自它所引用的型）。
-      任一小节解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
+  /** 把窗口里的 arrWinBars() 个**片段**合成为一个临时型（每片取自它所引用的型、小节的对应切片）。
+      任一片解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
   /** @param {any} a @param {number} W @returns {any} */
   function arrWindowPat(a, W){
-    const total = songBars(a);
+    const total = songBars(a), K = subsPerBar(), totalSegs = total * K;
     if (!total) return null;
+    const barTicks = vizSig * TPB;
     const bars = [];
     let meter = S.sig, accents = null;
     for (let i = 0; i < arrWinBars(); i++){
-      const at = songBarAt(a, (W + i) % total);       // 走到曲尾就绕回开头（看清"接下来会回到哪"）
+      /* 走到曲尾就绕回开头（看清"接下来会回到哪"，与总片段数取模） */
+      const seg = ((W + i) % totalSegs + totalSegs) % totalSegs;
+      const at = songBarAt(a, Math.floor(seg / K));
       if (!at) return null;
       const p = resolveRef(at.ref);
       if (!p || !Array.isArray(p.bars)) return null;
-      bars.push(p.bars[at.schedBar] || []);
+      bars.push(sliceSteps(p.bars[at.schedBar] || [], barTicks, K, seg % K));
       if (p.meter) meter = p.meter;
       if (!accents && Array.isArray(p.accents)) accents = p.accents;
     }
     return { name: "", desc: "", meter, accents: accents || [0], bars };
   }
   /** 预设模式的窗口合成型（v2.10.2，与 arrWindowPat 同构）：把**当前型**按窗口起点 W 铺成
-      N 行，第 i 行 = pat.bars[(W + i) % 型长]。
-        · 型长 < N → 绕回重复铺满 N 行（用户拍板 Q1：1 小节的型 + 4 行档 = 同一小节铺 4 行）；
-        · 型长 > N → 只铺 W..W+N-1 这一段，随播放按 N 小节翻页（Q2）。
-      下行（格子 / 填充 / 闪烁 / 弹跳球行界）用的都是"行号"，本函数让"行号 → 小节"的映射
+      N 行，第 i 行 = 型的第 (W + i) % 总片段数 片。
+        · 总片段数 < N → 绕回重复铺满 N 行（用户拍板 Q1：1 小节的型 + 4 行档 = 同一小节铺 4 行）；
+        · 总片段数 > N → 只铺 W..W+N-1 这一段，随播放按 N 片段翻页（Q2）。
+      下行（格子 / 填充 / 闪烁 / 弹跳球行界）用的都是"行号"，本函数让"行号 → 片段"的映射
       全部收在这一处，于是它们一行都不用改——这是选合成型而不是让渲染层到处支持"窗口"的理由
       （同 arrWindowPat 的取舍）。
       ★ 行的**音符对象是原型的引用**（不是拷贝）：调用方只读（buildBarRow 只 forEach、
-      setCell 只读 st.rest），重复铺满时同一小节的多行共享同一批对象是安全的、也省内存。
+      setCell 只读 st.rest），重复铺满时同一片段的多行共享同一批对象是安全的、也省内存。
+      ★ k=1（整小节档）下 sliceSteps 原样返回原型数组——"共享引用"这条性质逐位保持。
       ★ 返回的是新对象（不是型本身）：下游有 `winPat.bars[0] = …` 这类就地改写（曲式的预告行），
       共享引用会让改写外泄回型。 */
   /** @param {any} pat @param {number} W @returns {any} */
   function presetWindowPat(pat, W){
     if (!pat || !Array.isArray(pat.bars) || !pat.bars.length) return null;
-    const len = pat.bars.length;
+    const len = pat.bars.length, K = subsPerBar(), segs = len * K;
+    const barTicks = vizSig * TPB;
     const bars = [];
-    for (let i = 0; i < arrWinBars(); i++) bars.push(pat.bars[(W + i) % len] || []);
+    for (let i = 0; i < arrWinBars(); i++){
+      const seg = ((W + i) % segs + segs) % segs;
+      bars.push(sliceSteps(pat.bars[Math.floor(seg / K)] || [], barTicks, K, seg % K));
+    }
     return { name: pat.name || "", desc: pat.desc || "", meter: pat.meter,
       accents: Array.isArray(pat.accents) ? pat.accents : [0], bars };
   }
   /* ---------- ③ 可听位置与行语义 ----------
-     "现在听到的是第几小节"（曲式 audibleSongBar / 预设 audiblePatBar，★按可听位置而非调度游标）、
-     onset 端点 → 窗口行（rowOfOnset）、可听域的节目单位置（audibleArrangePos）、
+     "现在听到的是第几片段"（曲式 audibleSongSeg / 预设 audiblePatSeg，★按可听位置而非调度游标；
+     audibleSongBar 保留小节粒度供「第 N 段 · 第 M 小节」计数器与歌词轨），
+     onset 端点 → 窗口行（rowOfOnset / onsetPos）、可听域的节目单位置（audibleArrangePos）、
      行的视觉语义（静音行 mutedRow / 行首和弦名 chordAtRow / 时值命名 stepLabel）。
      与 ② 的分界：② 解析"窗口里装什么"，本区解析"此刻画到哪、这一行什么含义"。 */
   /** 曲式模式：现在**听到**的是歌曲第几小节（线性号）。
@@ -4322,33 +4513,68 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       按它翻页会"画面先翻、声音后到"。故优先取 onset 表里**已落地**的那一条的 `e.bar`
       （端点表存的就是型内小节号，与播放头/球完全同源）；刚起播还没有落地端点时退回 schedBar。
       返回 -1 = 不在预设模式。 */
-  /** @param {number} now @returns {number} */
-  function audiblePatBar(now){
+  /* 可听位置所在的**片段号**（v2.15.0）：audibleSongBar 的片段版（预设侧对应 audiblePatSeg）
+     （窗口同步与预告行判据都要片段粒度——"播到哪一片"才是翻页的真实边界）。
+     与 bar 版同源：优先取 onset 表里已落地的那一条，用它的小节号 × 每小节片数
+     + 片内偏移（floor(cumT / 每片 tick)）；还没有落地端点时退回调度游标（片内取 0——
+     起播瞬态，随后被端点纠正）。 */
+  /** @param {number} now @param {any} [a] @returns {number} 绝对歌曲片段号（曲式） / -1 */
+  function audibleSongSeg(now, a){
+    if (a === undefined) a = arrangeCur();
+    if (!a) return -1;
+    const K = subsPerBar(), st = segTicks();
+    let hit = null;
+    for (const e of onsetBuf) if (e.t <= now && e.aBar !== undefined && e.aBar >= 0) hit = e;
+    if (hit) return (songBarBefore(a, hit.aSec) + hit.aBar) * K + Math.min(K - 1, Math.floor(hit.cumT / st));
+    if (arrBar >= 0) return (songBarBefore(a, arrSec) + arrBar) * K;
+    return -1;
+  }
+  /** @param {number} now @returns {number} 型内片段号（预设） / -1 */
+  function audiblePatSeg(now){
     if (S.playMode === "arrange") return -1;
+    const K = subsPerBar(), st = segTicks();
     let hit = null;
     for (const e of onsetBuf) if (e.t <= now && typeof e.bar === "number") hit = e;
-    if (hit) return hit.bar;
-    return schedBar;
+    if (hit) return hit.bar * K + Math.min(K - 1, Math.floor(hit.cumT / st));
+    return schedBar * K;
+  }
+  /** 端点 → 它在**片段坐标系**里的位置：{ seg, tick }——
+      seg = 绝对片段号（曲式 = 歌曲片段号；预设 = 型内片段号）；
+      tick = **片段内** tick（cumT 减去片内起点；弹跳球/播放头的行内换算全走它）。
+      端点表存的是（型内小节号, 小节内 tick），片内偏移由 tick / 每片 tick 推出——
+      这正是"行号 ≠ 小节号"之后最容易错的一处换算，集中在这里一次算清。
+      @param {any} e @param {any} [a] @returns {null | { seg: number, tick: number }} */
+  function onsetPos(e, a){
+    if (!e) return null;
+    const K = subsPerBar(), st = segTicks();
+    const cum = (typeof e.cumT === "number" && isFinite(e.cumT)) ? e.cumT : 0;
+    const sub = Math.min(K - 1, Math.max(0, Math.floor(cum / st)));
+    const tick = cum - sub * st;
+    if (S.playMode === "arrange" && e.aBar !== undefined && e.aBar >= 0){
+      if (a === undefined) a = arrangeCur();
+      if (!a) return null;
+      return { seg: (songBarBefore(a, e.aSec) + e.aBar) * K + sub, tick };
+    }
+    return { seg: (typeof e.bar === "number" ? e.bar : 0) * K + sub, tick };
   }
   /** 端点 → **窗口行**。
-      预设模式（v2.10.2）：端点带的是**型内小节号**，走 rowOfPatBar 折进行号；不在窗口返回 -1。
-      曲式模式：端点带的是节目单位置（aSec/aBar），换算成歌曲小节号后取它在窗口里的偏移；
-        不在窗口内（前瞻窗口排到了更远的小节）返回 -1，调用方不画那个端点。 */
+      预设模式（v2.10.2；v2.15.0 细分到片段）：端点带的是（型内小节号, 小节内 tick），
+        经 onsetPos 折成（型内片段号, 片内 tick）再取行；不在窗口返回 -1。
+      曲式模式：端点带的是节目单位置（aSec/aBar），同样经 onsetPos 换成歌曲片段号；
+        不在窗口内（前瞻窗口排到了更远的片段）返回 -1，调用方不画那个端点。 */
   /** @param {any} e
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数）
       @returns {number} */
   function rowOfOnset(e, a){
     if (!e) return 0;
-    if (S.playMode === "arrange" && winStart >= 0 && e.aBar !== undefined && e.aBar >= 0){
-      if (a === undefined) a = arrangeCur();
-      if (a){
-        const r = songBarBefore(a, e.aSec) + e.aBar - winStart;
-        return (r >= 0 && r < arrWinBars()) ? r : -1;
-      }
+    const p = onsetPos(e, a);
+    if (S.playMode === "arrange" && winStart >= 0 && p && e.aBar !== undefined && e.aBar >= 0){
+      const K = subsPerBar();
+      return rowOfSongPos(Math.floor(p.seg / K), p.seg % K, a === undefined ? arrangeCur() : /** @type {any} */ (a));
     }
-    /* 预设模式：型内小节号 → 窗口行。窗口未锚（winStart < 0，尚无网格）时 rowOfPatBar
+    /* 预设模式：型内片段号 → 窗口行。窗口未锚（winStart < 0，尚无网格）时 rowOfPatSeg
        自动退回"钳进行数域"的旧口径，不会给出越界行号 */
-    if (S.playMode !== "arrange") return rowOfPatBar(e.bar);
+    if (S.playMode !== "arrange") return rowOfPatSeg(p ? p.seg : 0);
     return Math.min(vizBars - 1, Math.max(0, e.bar));   // 曲式回落：窗口未锚时画当前型（原行为）
   }
   /** 可听域的节目单位置（v2.7.1）：歌词轨与「第 N 段 · 第 M 小节」计数器共用。
@@ -4380,23 +4606,32 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /** @param {number} b @returns {boolean} */
   function mutedRow(b){
     if (!S.mute) return false;
+    const K = subsPerBar();
     if (S.playMode === "arrange" && winStart >= 0)
-      return ((winStart + b) % MUTE_PERIOD) === MUTE_PERIOD - 1;
-    return vizBars === MUTE_PERIOD && b === MUTE_PERIOD - 1;
+      return (Math.floor((winStart + b) / K) % MUTE_PERIOD) === MUTE_PERIOD - 1;
+    /* 预设模式（v2.15.0 推广）：一页恰好覆盖 MUTE_PERIOD 个小节（= MUTE_PERIOD × 每小节片数
+       个片段）时才能静态标出——分片档下 W ≤ 4 恒不满足，故不标（与"档位 ≠ 4 时不标"同源，
+       到点那一刻由状态栏说明）。整小节档逐位等于旧判据。 */
+    const perPhrase = MUTE_PERIOD * K;
+    return vizBars === perPhrase && Math.floor((((winStart + b) % perPhrase) + perPhrase) % perPhrase / K) === MUTE_PERIOD - 1;
   }
-  /* 本行（窗口第 b 行）对应的**小节和弦名**（v2.7.4）。一行 = 一小节，故一行取一个和弦。
-     小节号口径与 arrWindowPat / buildLyricLane 完全同源：预告行（第 1 行）取 winPrevBar
-     （它的格子内容也已被换成那一小节），其余行取 winStart+b 并对全曲长度取模
-     （走到曲尾绕回开头——与窗口"看清接下来回到哪"的既有口径一致）。
-     取不到（非曲式模式 / 窗口未锚 / 段名无和弦序列）返回 ""，调用方不挂胶囊。 */
+  /* 本行（窗口第 b 行）对应的**小节和弦名**（v2.7.4）。一行 = 一小节（v2.15.0 起 = 一小节的
+     一片，故只在"小节的第一片"那几行上挂）。小节号口径与 arrWindowPat / buildLyricLane
+     完全同源：预告行（第 1 行）取预告片段（winPrevSeg，它的格子内容也已被换成那一片），
+     其余行取 winStart+b 并对全曲片段数取模（走到曲尾绕回开头——与窗口"看清接下来回到哪"
+     的既有口径一致）。取不到（非曲式模式 / 窗口未锚 / 段名无和弦序列）返回 ""，调用方不挂胶囊。 */
   /** @param {number} b @returns {string} */
   function chordAtRow(b){
     const a = arrangeCur();
     if (!a || winStart < 0) return "";
-    const total = songBars(a);
+    const total = songBars(a), K = subsPerBar();
     if (!total) return "";
-    const k = (b === 0 && winPrevBar >= 0) ? winPrevBar : (winStart + b) % total;
-    const at = songBarAt(a, k);
+    const totalSegs = total * K;
+    const seg = (b === 0 && winPrevSeg >= 0)
+      ? winPrevSeg
+      : (((winStart + b) % totalSegs) + totalSegs) % totalSegs;
+    if (seg % K !== 0) return "";                     // 不是小节的第一片：和弦仍然有效，只是不重复贴
+    const at = songBarAt(a, ((Math.floor(seg / K) % total) + total) % total);
     if (!at) return "";
     const cs = secChords(a.sections[at.sec].name);
     return cs[at.bar] || "";
@@ -4445,9 +4680,15 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        故在本函数算一次、当参数传下去——比两段各调一次 vizHasStrum() 更省，
        也保证两处判据"逐字同源"，不会出现"层建好了但没有箭头"这类分裂。 */
     const hasStr = vizHasStrum();
+    const K = subsPerBar();
+    /* 本行装的是小节的第几片（v2.15.0）：整小节档恒 0；预告行（第 1 行）取预告片段的
+       片号——座次尺的拍号要跟着它走（预告的是"下一片段"，拍数从它的位置数起）。 */
+    const sub = (b === 0 && winPrevSeg >= 0)
+      ? (((winPrevSeg % K) + K) % K)
+      : (winStart >= 0 ? ((((winStart + b) % K) + K) % K) : 0);
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
-    buildRowLayers(b, row, hasStr);
+    buildRowLayers(b, row, hasStr, sub);
     const cells = buildRowCells(b, p, barTicks, row, hasStr);
     buildRowAnnotations(b, p, barTicks, row);
     viz.appendChild(row);
@@ -4457,17 +4698,23 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
   /** 第 1 段（定位层）：跑道拍点 → 六线底纹 → 扫弦箭头层 → 拍内座次尺。
       这几层**与音符内容无关**，只回答"这一行长什么样"；内容层由 buildRowCells 建。
       分别登记进 zoneEls / strumLayers / rulerEls（逐位同构约定同上）。
-      @param {number} b 小节序号 @param {HTMLElement} row 本行容器
+      ★ v2.15.0：整层按**行内节奏**建——跑道与座次尺只覆盖本行跨的那几拍
+        （sub 起、rowBeats() 个），拍号标签报**小节内的全局拍号**（sub×每行拍数 + 局部拍 + 1）。
+        zoneEls / rulerEls 的下标也随之变成**行内**拍/十六分位——帧内查表（paintBeatFlash）
+        用的就是行内值，两处天然同口径。
+      @param {number} b 行序号 @param {HTMLElement} row 本行容器
       @param {boolean} hasStr 当前型是否带扫弦记谱（决定底纹与箭头层要不要建）
+      @param {number} sub 本行装的是小节的第几片（整小节档恒 0）
       @returns {void} */
-  function buildRowLayers(b, row, hasStr){
+  function buildRowLayers(b, row, hasStr, sub){
     // 拍点容器（跑道）：纯定位层垫在音符块下，任何节奏型/跨拍音符都兼容
     const zones = [];
-    for (let k = 0; k < S.sig; k++){
+    const RB = rowBeats();
+    for (let k = 0; k < RB; k++){
       const z = document.createElement("div");
       z.className = "beat-zone";
-      z.style.left = `calc(${k / S.sig * 100}% + 2px)`;
-      z.style.width = `calc(${100 / S.sig}% - 6px)`;
+      z.style.left = `calc(${k / RB * 100}% + 2px)`;
+      z.style.width = `calc(${100 / RB}% - 6px)`;
       row.appendChild(z);
       zones.push(z);
     }
@@ -4505,15 +4752,17 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     // 拍内座次尺：4/4 等每拍 4 格（1 e & a），6/8 每拍 2 格（n +）
     /** @type {Record<number, HTMLElement>} */
     const rl = {};
-    const markN = S.sig === 6 ? 2 : 4;
-    for (let k = 0; k < S.sig; k++){
+    const markN = vizSig === 6 ? 2 : 4;
+    for (let k = 0; k < RB; k++){
       for (let s = 0; s < markN; s++){
         const lb = document.createElement("div");
         lb.className = "ruler-lab" + (s === 0 ? " down" : "");
-        lb.textContent = String(s === 0 ? (k + 1) : (S.sig === 6 ? "+" : SUB_NAMES[s - 1]));
-        lb.style.left = `calc(${(k + s / markN) / S.sig * 100}% + 2px)`;
+        /* 拍号标签报**小节内的全局拍号**（v2.15.0）：本行起于第 sub 拍，
+           第 k 个局部拍就是小节的第 sub×RB + k 拍（1 基） */
+        lb.textContent = String(s === 0 ? (sub * RB + k + 1) : (vizSig === 6 ? "+" : SUB_NAMES[s - 1]));
+        lb.style.left = `calc(${(k + s / markN) / RB * 100}% + 2px)`;
         row.appendChild(lb);
-        rl[k * 4 + s * (4 / markN)] = lb;      // 以十六分位置为键
+        rl[k * 4 + s * (4 / markN)] = lb;      // 以**行内**十六分位置为键（帧内 t16 就是这个域）
       }
     }
     rulerEls.push(rl);
@@ -4546,7 +4795,10 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
       const startT = acc;
       const c = document.createElement("div");
-      c.className = "cell upcoming" + (s.rest ? " rest" : "");
+      /* cutl / cutr（v2.15.0）：这是被行边界截断的"续接片段"——左侧/右侧还有一半在
+         相邻行里。类名只作视觉提示（虚线边 + 圆角收平），语义是"它不是完整的一颗" */
+      c.className = "cell upcoming" + (s.rest ? " rest" : "")
+        + (s._cutl ? " cutl" : "") + (s._cutr ? " cutr" : "");
       c.style.left = (acc / barTicks * 100) + "%";
       c.style.width = `calc(${s.t / barTicks * 100}% - 4px)`;
       acc += s.t;
@@ -4569,7 +4821,9 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
         }
         c.appendChild(subs);
       }
-      if (s.t >= T8){                    // 时值标签移到格子下方，与小格零冲突
+      /* 时值标签（v2.15.0：被截断的续接片段**不给**标签——截断后的 t 不是真实时值，
+         照打会写成"四分"而那颗其实是"二分"的另一半；宁可无标签 + 虚线续边） */
+      if (s.t >= T8 && !s._cutl && !s._cutr){    // 时值标签移到格子下方，与小格零冲突
         const lb = document.createElement("div");
         lb.className = "cell-label";
         lb.textContent = stepLabel(s);
@@ -4660,7 +4914,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        预告行（第 1 行）把预告信息并进同一颗胶囊：文本 =「和弦名（下一小节 · 型名）」，
        该小节无和弦时只剩括号里的预告信息。无内容的不挂，保持 null 占位（与行逐位同构） */
     const chord = chordAtRow(b);
-    const pvName = (b === 0 && winPrevBar >= 0 && winPrevName) ? winPrevName : "";
+    const pvName = (b === 0 && winPrevSeg >= 0 && winPrevName) ? winPrevName : "";
     const chordText = chord ? (pvName ? `${chord}（下一小节 · ${pvName}）` : chord)
                             : (pvName ? `下一小节 · ${pvName}` : "");
     if (chordText){
@@ -4690,30 +4944,38 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        播放中沿用（由 paintFrameBody 按可听小节维护，翻页才重建）。 */
     const ap = activePattern();
     vizPatLen = patBars(ap);            // 内容模数（型长）：本帧结构生命周期内只认它
+    /* v2.15.0：**先定"每行几拍"再合成窗口**——窗口、切片、所有映射都依赖它。
+       行宽取 #viz 的当前宽度（量测只发生在这里与 relayout，不在帧内）；内容密度取
+       正在播放的型的**最短时值**：宽到够读就整小节，挤到读不清才逐级拆。 */
+    {
+      const vizEl = viz;
+      const wpx = (vizEl && typeof vizEl.offsetWidth === "number") ? vizEl.offsetWidth : 0;
+      vizRowBeats = chooseRowBeats(wpx, vizSig, minStepOf(ap));
+    }
     const arr = (S.playMode === "arrange") ? arrangeCur() : null;
     if (arr){
       /* 预告行只在**播放中**存在（它由 paintFrameBody 按可听位置维护）；
          停止/未播时清掉——否则上一次播放留下的预告会粘在跳段定位后的新窗口上 */
       if (winStart < 0 || !S.playing){
-        /* v2.10.7：from 已是线性小节号（可落在段中间），钳到整曲域后直接锚窗口——
-           不再需要 songBarBefore 的段→线性换算（那是段下标时代的做法） */
-        winStart = winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(arr) - 1));
-        winPrevBar = -1; winPrevSteps = null; winPrevName = "";
+        /* v2.10.7：from 已是线性小节号（可落在段中间），钳到整曲域后折成**片段号**再锚窗口——
+           窗口起点从此按片段对齐（v2.15.0），整小节档下逐位等于旧口径 */
+        winStart = winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(arr) - 1) * subsPerBar());
+        winPrevSeg = -1; winPrevSteps = null; winPrevName = "";
       }
       winPat = arrWindowPat(arr, winStart);
       if (!winPat) winStart = -1;          // 合成不出来（引用缺失等）：回落到"画当前型"
-      /* v2.7.0 预告行替换：本窗口带预告时，第 1 行的格子换成"下一小节"的内容。
+      /* v2.7.0 预告行替换：本窗口带预告时，第 1 行的格子换成"下一片段"的内容。
          winPat 每次现合成、改它不外泄；行的其它层（跑道/六线/座次尺）与内容无关，不用动 */
-      if (winPat && winPrevBar >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
+      if (winPat && winPrevSeg >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
     } else {
       /* 预设模式（v2.10.2）：同构的 N 行窗口。型短于 N → 绕回重复铺满；型长于 N → 按 N 翻页。
-         ★ 起点必须落在 [0, 型长-1] 且按 N 对齐：换型 / 编辑器改短 / 导入更短的型之后，
-           存下来的 winStart 可能指到不存在的小节上（localStorage / 上一次的型都不可信）。
+         ★ 起点必须落在 [0, 总片段数-1] 且按 N 对齐：换型 / 编辑器改短 / 导入更短的型之后，
+           存下来的 winStart 可能指到不存在的位置上（localStorage / 上一次的型都不可信）。
            停机时一律回到第 0 页——重新按播放键看到的就是型的开头（与曲式同一口径）。
-         ★ 预告行是曲式独有的（要解析节目单的"下一小节"），预设模式这里必须显式清掉，
+         ★ 预告行是曲式独有的（要解析节目单的"下一片段"），预设模式这里必须显式清掉，
            否则从曲式切回预设会把上一次的预告粘在第 1 行上 */
-      winPrevBar = -1; winPrevSteps = null; winPrevName = "";
-      if (winStart < 0 || winStart >= vizPatLen || !S.playing) winStart = 0;
+      winPrevSeg = -1; winPrevSteps = null; winPrevName = "";
+      if (winStart < 0 || winStart >= vizSegs() || !S.playing) winStart = 0;
       else winStart -= winStart % arrWinBars();       // 对齐到页边界（N 的整数倍）
       winPat = presetWindowPat(ap, winStart);
       /* 型结构坏了（bars 空）→ 回落到"画当前型"。起点置 0 而不是 -1：paintFrameBody
@@ -4725,18 +4987,20 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* 行数 = 窗口长度（v2.10.2 起两模式同一口径）。winPat 为 null 的降级路径下
        patBars(p) 退回型长 —— 与旧口径一致，不会画出越界的行 */
     vizBars = patBars(p);
-    const barTicks = vizSig * TPB;
-    for (let b = 0; b < vizBars; b++) buildBarRow(b, p, barTicks, viz);
+    /* 降级路径（画当前型，行 = 整小节）必须按整小节渲染——否则切片跨度与行内容错位 */
+    if (!winPat) vizRowBeats = vizSig;
+    const rowTicks = segTicks();
+    for (let b = 0; b < vizBars; b++) buildBarRow(b, p, rowTicks, viz);
     /* v2.7.0 预告行：预告行挂在第 1 行——它是"未来"，降透明与正读顺序区分开
-       （此刻 N 行 = [下一小节, 第 2 … 第 N 小节]。预告信息已并入第 1 行的和弦胶囊，
+       （此刻 N 行 = [下一片段, 第 2 … 第 N 行]。预告信息已并入第 1 行的和弦胶囊，
        见 buildBarRow；这里只负责行级标识） */
-    if (winPrevBar >= 0 && winPrevName && rowEls[0]) rowEls[0].classList.add("preview-row");
-    for (let i = 1; i < S.sig; i++){
+    if (winPrevSeg >= 0 && winPrevName && rowEls[0]) rowEls[0].classList.add("preview-row");
+    for (let i = 1; i < rowBeats(); i++){
       const gl = document.createElement("div");
       gl.className = "grid-line";
       /* 拍边界 = 下一颗格子的左边缘（格子右缩 4px 留缝），网格线需左移 2px 落在缝隙中央，
          否则会压住格子左边 1px——白格顶部 12px 无覆盖段会读作"突出一小块"（v0.4.4 修复） */
-      gl.style.left = `calc(${i / S.sig * 100}% - 2px)`;
+      gl.style.left = `calc(${i / rowBeats() * 100}% - 2px)`;
       viz.appendChild(gl);
     }
     playheadEl = document.createElement("div");
@@ -4861,7 +5125,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const pat = vizPattern();
     cellEls.forEach((cells, b) => cells.forEach((el, i) => {
       const st = (pat.bars[b] || [])[i];       // v1.2.4：快照与已渲染格子可能因瞬态长度不一，容忍之
-      el.className = "cell upcoming" + (st && st.rest ? " rest" : "");
+      /* v2.15.0：停机复位也要带回续接标记（与 buildRowCells / setCell 同一份判据） */
+      el.className = "cell upcoming" + (st && st.rest ? " rest" : "")
+        + (st && st._cutl ? " cutl" : "") + (st && st._cutr ? " cutr" : "");
       if (fillEls[b][i]) fillEls[b][i].style.transform = "scaleX(0)";
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
@@ -4947,28 +5213,35 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       /* 还没有任何已落地的端点（刚启动/预备拍）：停在下一颗的位置，与 paintBall 的 !prev 分支一致 */
       if (!nxt) return null;
       const r0 = rowOfOnset(nxt, a);
-      return { bar: r0 < 0 ? 0 : r0, tib: nxt.cumT, pb: nxt.pb };
+      const p0 = onsetPos(nxt, a);
+      return { bar: r0 < 0 ? 0 : r0, tib: p0 ? p0.tick : nxt.cumT, pb: nxt.pb };
     }
-    const barTicks = vizSig * TPB;
+    /* v2.15.0：一行的 tick 跨度（原为整小节）；端点位置经 onsetPos 折成**片内** tick——
+       行内换算是全链最容易错的一处，统一走这一个换算器，别在这里手写任何减法 */
+    const rowTicksV = segTicks();
     /* v2.5.2：行号走 rowOfOnset 换算（曲式模式下端点存的是型内小节号，行号是窗口偏移）。
-       换算出 -1 = 这个端点不在本窗口里（前瞻窗口排到了更远的小节）→ 本帧不用 onset 表，
+       换算出 -1 = 这个端点不在本窗口里（前瞻窗口排到了更远的片段）→ 本帧不用 onset 表，
        由调用方回落到时钟公式（宁可短暂用时钟，也不要拿一个窗口外的行号去索引 rowEls） */
     const bar = rowOfOnset(prev, a);
     if (bar < 0) return null;
-    /* v2.6.2 循环回卷守卫：下一端点与 prev 同row但 cumT 不增 → 它不是本小节的后续音，
-       而是循环回卷后**下一遍**的起点（时间向前、位置回退）。练习循环 [k,k] 时
-       每一遍都落在同一行，若不判这一条，inBar 成立 → tib 从行尾向行首插值，
-       播放头会倒着扫回去（用户实拍 bug）。按"行内无后续"处理：向前走到行右缘 */
-    const inBar = (nxt && rowOfOnset(nxt, a) === bar && nxt.cumT > prev.cumT) ? nxt : null;
-    /* 终端弧的终点 = 本小节右缘的音频时刻。与 paintBall 里 barEnd 的算式等价：
+    const pp = onsetPos(prev, a);
+    const np = onsetPos(nxt, a);
+    const prevTick = pp ? pp.tick : prev.cumT;      /* onsetPos 拿不到（降级）时退回 cumT：K=1 下两者恒等 */
+    /* v2.6.2 循环回卷守卫（v2.15.0 起用**片内** tick 比较，同片时与 cumT 差值等价）：
+       下一端点与 prev 同row但 tick 不增 → 它不是本行的后续音，而是循环回卷后**下一遍**的起点
+       （时间向前、位置回退）。练习循环 [k,k] 时每一遍都落在同一行，若不判这一条，
+       inBar 成立 → tib 从行尾向行首插值，播放头会倒着扫回去（用户实拍 bug）。
+       按"行内无后续"处理：向前走到行右缘 */
+    const inBar = (nxt && np && rowOfOnset(nxt, a) === bar && np.tick > prevTick) ? nxt : null;
+    /* 终端弧的终点 = 本行右缘的音频时刻。与 paintBall 里 barEnd 的算式等价：
        终端弧的 tick 速率由当前 spb 决定，两处推出来的时刻相同 */
-    const endT = inBar ? inBar.t : prev.t + (barTicks - prev.cumT) * spb() / TPB;
+    const endT = inBar ? inBar.t : prev.t + (rowTicksV - prevTick) * spb() / TPB;
     const span = endT - prev.t;
     const p = span > 0 ? Math.min(1, Math.max(0, (now - prev.t) / span)) : 0;
-    const endTicks = inBar ? inBar.cumT : barTicks;
+    const endTicks = (inBar && np) ? np.tick : rowTicksV;
     /* pb = 这一颗音发声时的**乐句相位**（见 paintFrameBody 的静音拍提示）。
        曲式模式下它由窗口起点算得更准，调用方会优先用那条路 */
-    return { bar, tib: prev.cumT + (endTicks - prev.cumT) * p, pb: prev.pb };
+    return { bar, tib: prevTick + (endTicks - prevTick) * p, pb: prev.pb };
   }
   /** @param {number} now @param {number} bar @param {number} tib
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
@@ -4981,20 +5254,27 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     ballEl.style.display = ""; shadowEl.style.display = "";
     const CB = CONFIG.bounce;
-    const barTicksV = vizSig * TPB;
-    const barEnd = now - tib * spb() / TPB + barTicksV * spb() / TPB;   // 本小节右界的音频时刻（跨循环回卷也成立）
-    /* v1.3.0：posOf / rightEdge 改读几何缓存（原先每帧 2 次 offset* 读取 → 帧中途强制同步重排） */
-    const posOf = (/** @type {number} */ barIdx, /** @type {number} */ cumT) => {
+    const rowTicksV = segTicks();                           // v2.15.0：一行的 tick 跨度（原为整小节）
+    const barEnd = now - tib * spb() / TPB + rowTicksV * spb() / TPB;   // 本行右界的音频时刻（跨循环回卷也成立）
+    /* v1.3.0：posOf / rightEdge 改读几何缓存（原先每帧 2 次 offset* 读取 → 帧中途强制同步重排）
+       v2.15.0：posOf 收的是**行内** tick（onsetPos 的 tick 域），横轴除数 = 行跨度 rowTicksV */
+    const posOf = (/** @type {number} */ barIdx, /** @type {number} */ tickInRow) => {
       const g = geoOf(barIdx) || geoOf(0);
       if (!g) return { x: 0, y: 0 };
-      return { x: g.left + (cumT / barTicksV) * g.width - 8, y: g.top - 20 };
+      return { x: g.left + (tickInRow / rowTicksV) * g.width - 8, y: g.top - 20 };
     };
     const rightEdge = () => {
       const g = geoOf(bar);
       return g ? { x: g.left + g.width - 10, y: g.top - 20 } : { x: 0, y: 0 };
     };
-    /* 本小节的球：上一颗本行 onset → 下一颗（本行 onset 或行右缘终点）。
-       小节前导休止时本行尚无已落地 onset：球停在首个 onset 处待命 */
+    /* 端点 → **行内** tick（v2.15.0）：onsetPos 拿不到（降级路径）时退回 cumT——
+       整小节档下两者恒等 */
+    const tickOf = (/** @type {any} */ e) => {
+      const q = onsetPos(e, a);
+      return q ? q.tick : ((e && typeof e.cumT === "number") ? e.cumT : 0);
+    };
+    /* 本行的球：上一颗本行 onset → 下一颗（本行 onset 或行右缘终点）。
+       行前导休止时本行尚无已落地 onset：球停在首个 onset 处待命 */
     let prev = null;
     /* v2.5.2：行号比较一律走 rowOfOnset —— 曲式模式下端点存的是**型内**小节号，
        而行号是**窗口偏移**，直接比会拿"第 0 小节"去匹配"第 1 行"（球会跳到错误的行上） */
@@ -5006,9 +5286,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        循环下一遍的起点——按终端弧处理，球向前跳完本行全程（终点 = 行右缘），
        不倒着飞回行首；行首的预备交给下面的待命球（与不循环时的接力同一套逻辑）。
        prev 为空（本行尚无端点落地）时不判 cumT——那本来就是"待命在首个 onset"分支 */
-    const nxtInBar = (nxt && rowOfOnset(nxt, a) === bar && (!prev || nxt.cumT > prev.cumT)) ? nxt : null;
+    /* v2.15.0：比较用**行内** tick（同 row 时两者必在同片，差值等价于 cumT 差值） */
+    const nxtInBar = (nxt && rowOfOnset(nxt, a) === bar && (!prev || tickOf(nxt) > tickOf(prev))) ? nxt : null;
     if (!prev){
-      const g = nxtInBar ? posOf(bar, nxtInBar.cumT) : posOf(bar, 0);
+      const g = nxtInBar ? posOf(bar, tickOf(nxtInBar)) : posOf(bar, 0);
       ballEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
       shadowEl.style.transform = `translate(${g.x - 1}px, ${g.y + 15}px)`;
       shadowEl.style.opacity = ".3";
@@ -5020,7 +5301,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const T = b2.t - s0.t;
     if (T <= 0) return;
     const p = Math.min(1, Math.max(0, (now - s0.t) / T));
-    const A = posOf(bar, s0.cumT), Bp = terminal ? rightEdge() : posOf(bar, b2.cumT);
+    const A = posOf(bar, tickOf(s0)), Bp = terminal ? rightEdge() : posOf(bar, tickOf(b2));
     const x = A.x + (Bp.x - A.x) * p;
     const yBase = A.y;                                      // 全程本行：基线恒定
     let H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
@@ -5050,39 +5331,45 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* 接力待命球：终端弧飞行期间，下一小节的球在新行首 onset 处等候（半透明确认"下一个是你"） */
     if (waitEl){
       if (terminal){
-        /* 曲式模式下"下一行"可能属于下一段的型（arrangeNextRow 走 arrNextBar 得出）；
-           预设模式下它返回 null → 回落到 nextPatBarOf（v2.6.2 起走 loopNextBar 的循环口径）：
-           循环开着时"下一行"是**区间起点**而不是顺序的下一行——循环 [k,k] 时就是本行自己
-           （待命球在本行开头起跑预备），循环 [1,2] 时是第 1 行。
-           v2.0.2：必须按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻窗口，
-           终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
-           prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿" */
-        const nrow = (prev && prev.aBar !== undefined)
-          ? arrangeNextRow(prev.aSec, prev.aBar, a) : arrangeNextRow(undefined, undefined, a);
-        /* ★ 这里有两个**不同的**下标，v2.5.2 起必须分开（曲式模式下它们不再相等；
-           v2.10.2 起预设模式窗口化后也不再相等）：
-             cand = 内容下标：下一小节的**型内**小节号（用来取那一行的音符）
-             rowNext = 行的下标：待命球画在**窗口的第几行** */
-        const cand = nrow ? nrow.bar : nextPatBarOf(bar);
-        /* v2.7.0 翻页档：页内第 N 行的"下一行"是下一页的第 1 行——曲式模式下预告行已经把
-           下一小节的内容摆在那里，待命球就落它上面（翻页瞬间内容原地转正，接力不断）。
-           页内其余行照旧 +1；没有预告（范围播完）时退回原钳制口径。
-           v2.10.2 预设模式：没有预告行，用 cand % 行数 —— 页锚恒为行数的整数倍，
-           故"下一小节在翻页后落到第几行"就是它在新页里的偏移。这样页边界上待命球
-           指向的也是它真正要去的那一行（旧写法直接拿 cand 当行号，型长 > 行数时会指向屏外） */
-        const byPos = (bar === vizBars - 1 && winPrevBar >= 0) ? 0 : Math.min(vizBars - 1, bar + 1);
-        /* ★ v2.10.8：曲式模式优先按**下一小节真正落在哪一行**算（nrow.lin 是节目单给出的
-           线性小节号，"循环回卷"已经含在其中），不再只按"位置式 +1"。
-           范围短于窗口（滑块只选 1 小节而屏内 4 行档）时，范围末小节的下一小节是**范围起点**，
-           位置式 +1 会把它画到"范围外那一行"上——用户实拍：球跑到下一小节的位置显示预备动画，
-           而那一行上的小节这一轮永远不会播。rowOfSongBar 返回 -1（下一小节不在本窗口，例如
-           需要向前/向后翻页）时回落下面那套既有口径，故翻页档与"范围播完不循环"逐位不变。 */
-        const rTrue = (S.playMode === "arrange" && nrow && typeof nrow.lin === "number")
-          ? rowOfSongBar(nrow.lin, a) : -1;
-        const rowNext = (S.playMode === "arrange")
-          ? (rTrue >= 0 ? rTrue : byPos)
-          : ((cand % vizBars) + vizBars) % vizBars;
-        const nbSteps = ((nrow ? nrow.pattern : activePattern()).bars[cand] || []);
+        /* 下一行的**内容与行号**（v2.15.0 起按**片段**算，两条路）：
+             ① 当前行不是小节的最后一片 → 下一行就是同一小节的下一片（内容取本小节下一片）；
+             ② 是最后一片 → 走节目单的"下一小节"（曲式）或练习循环的下一个片段（预设）。
+           保留 v2.0.2 的纪律：按**可听**位置算——调度游标（arrSec/arrBar）比声音早一个前瞻
+           窗口，终端弧末尾它已进到下一小节，直接读会让待命球提前指到再下一行（用户实拍错行）。
+           prev = 本行最后落地的端点，携带发声时的节目单位置（aSec/aBar），即"现在听到哪儿"。
+           ★ 既有口径全部保留：翻页档落第 1 行、范围短于窗口时按节目单落行（v2.10.8）、
+             预设模式用 `片段 % 行数`（型长 > 行数时它才是对的答案）——整小节档下逐位不变。 */
+        const K2 = subsPerBar(), barTicksV = vizSig * TPB;
+        const segAbsCur = winStart >= 0 ? winStart + bar : bar;      // 当前行的片段号（行号式）
+        const subCur = ((segAbsCur % K2) + K2) % K2;
+        const aTotal = a ? songBars(a) : 0;
+        /** @type {any[]} */
+        let nbSteps = [];
+        let rowNext = -1;
+        if (S.playMode === "arrange"){
+          if (subCur < K2 - 1 && aTotal > 0){
+            const segWrapped = ((segAbsCur % (aTotal * K2)) + aTotal * K2) % (aTotal * K2);
+            const atCur = songBarAt(a, Math.floor(segWrapped / K2));
+            const pCur = atCur ? resolveRef(atCur.ref) : null;
+            if (pCur && Array.isArray(pCur.bars)) nbSteps = sliceSteps(pCur.bars[atCur.schedBar] || [], barTicksV, K2, subCur + 1);
+            rowNext = (bar + 1 < vizBars) ? bar + 1 : -1;
+          } else {
+            const nrow = (prev && prev.aBar !== undefined)
+              ? arrangeNextRow(prev.aSec, prev.aBar, a) : arrangeNextRow(undefined, undefined, a);
+            if (nrow){
+              const pNext = nrow.pattern || activePattern();
+              nbSteps = sliceSteps((pNext.bars && pNext.bars[nrow.bar]) || [], barTicksV, K2, 0);
+              /* ★ v2.10.8：优先按"下一小节真正落在哪一行"算（rowOfSongPos 返回 -1 =
+                 需翻页 / 范围播完），回落 v2.7.0 的位置式口径（页末让给预告行 → 第 1 行） */
+              rowNext = (typeof nrow.lin === "number") ? rowOfSongPos(nrow.lin, 0, a) : -1;
+            }
+          }
+          if (rowNext < 0) rowNext = (bar === vizBars - 1 && winPrevSeg >= 0) ? 0 : Math.min(vizBars - 1, bar + 1);
+        } else {
+          const segNext = nextPatSeg(patSegOfRow(bar));
+          nbSteps = sliceSteps(activePattern().bars[Math.floor(segNext / K2)] || [], barTicksV, K2, segNext % K2);
+          rowNext = ((segNext % vizBars) + vizBars) % vizBars;
+        }
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
           const g = posOf(rowNext, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((/** @type {number} */ s2, /** @type {any} */ n2) => s2 + n2.t, 0));
@@ -5134,16 +5421,24 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
     const W = winStart >= 0 ? winStart
-      : winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1));   // v2.10.7：from 已是线性小节号
+      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar());   // v2.10.7：from 已是线性小节号
+    /* v2.15.0：行 = 一小节的**一片**——歌词按 [片起点, 片终点) 切：
+       越界的字被剔除、跨片延音在本行右缘截断（与"跨小节延音钳在本行右缘"同一套做法，
+       只是边界从"小节"变成"片"）。整小节档下与旧行为逐位一致。 */
+    const K = subsPerBar();
+    const totalSegs = total * K;
     for (let r = 0; r < arrWinBars(); r++){
-      /* 预告行（v2.7.0）：页内第 4 小节期间第 1 行 = 下一小节。歌词行跟着换内容
+      /* 预告行（v2.7.0）：页内最后一片期间第 1 行 = 下一片段。歌词行跟着换内容
          （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
-      const k = (r === 0 && winPrevBar >= 0) ? winPrevBar : (W + r) % total;
+      const seg = (r === 0 && winPrevSeg >= 0)
+        ? winPrevSeg
+        : (((W + r) % totalSegs) + totalSegs) % totalSegs;
+      const k = Math.floor(seg / K);                        // 本行的歌曲小节号
       const rowEl = document.createElement("div");
-      rowEl.className = "lyric-row" + (r === 0 && winPrevBar >= 0 ? " preview" : "");
+      rowEl.className = "lyric-row" + (r === 0 && winPrevSeg >= 0 ? " preview" : "");
       /** @type {any} */
       const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [] };
-      const at = songBarAt(a, k);
+      const at = songBarAt(a, ((k % total) + total) % total);
       if (at){
         const span = lyricSpanTicks(a.id, at.sec);
         const chars = lyricCharsAt(a.id, at.sec);
@@ -5151,21 +5446,21 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：与 span 必然同源，
              拍号取错时也不会出现轨道溢出错位 */
           const bt = span / (secBars(a.sections[at.sec]) || DEF_BARS);
-          const lo = at.bar * bt;
-          row.barTicks = bt;
+          const sub = ((seg % K) + K) % K;
+          const slice = bt / K;                              // 本行的 tick 跨度
+          const lo = at.bar * bt + sub * slice;              // 本行的段内起点
+          row.barTicks = slice;
           row.chars = chars
-            .filter(c => Math.max(0, c.t || 0) >= lo && Math.max(0, c.t || 0) < lo + bt)
+            .filter(c => Math.max(0, c.t || 0) >= lo && Math.max(0, c.t || 0) < lo + slice)
             .map(c => {
               const t = Math.max(0, c.t || 0), d = c.dur || LYRIC_BASE;
-              /* 跨小节延音字钳在本行右缘：分行后它不再有"下一行"可延伸（旧版单行横排
-                 靠 dur 自然跨过去）；数据本身不动，只是这一行的呈现截断 */
-              return { lt: t - lo, ld: Math.max(0, Math.min(d, bt - (t - lo))), ch: c.ch };
+              return { lt: t - lo, ld: Math.max(0, Math.min(d, lo + slice - t)), ch: c.ch };
             });
           for (const c of row.chars){
             const chip = document.createElement("div");
             chip.className = "lyric-chip";
-            chip.style.left = (c.lt / bt * 100) + "%";
-            chip.style.width = (c.ld / bt * 100) + "%";
+            chip.style.left = (c.lt / slice * 100) + "%";
+            chip.style.width = (c.ld / slice * 100) + "%";
             const fill = document.createElement("div");
             fill.className = "lfill";
             const label = document.createElement("span");
@@ -5190,33 +5485,42 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来 */
     if (!lyricRows.some(r => r.chars.length)){ lane.hidden = true; return; }
     lane.hidden = false;
-    lyricRunSig = a.id + "@" + W + "#" + winPrevBar;
+    lyricRunSig = a.id + "@" + W + "/" + K + "#" + winPrevSeg;
     lyricW = lane.offsetWidth;                  // 结构变化时采集一次（稳态帧绝不读）
   }
   /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
   function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
 
-  /** @param {number} tib 小节内 tick（与拍点轨同源，来自 audioPosAt）
+  /** @param {number} tib **行内** tick（与拍点轨同源，来自 audioPosAt）
       @param {number} [k] 可听歌曲小节号（paintFrameBody 每帧已算好，直接传入省一次 onset 表扫描；
         测试直调时不传，内部按可听域现算）
-      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查） */
-  function paintLyric(tib, k, a){
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；不传则现查）
+      @param {number} [rowNow] 本帧的**当前行号**（v2.15.0：片段口径下"可听小节号 → 行"不再
+        是一步减法，主循环把它直接传进来；直调不传时按"可听小节号所在的第一个片段行"折算，
+        整小节档下与旧口径逐位一致） */
+  function paintLyric(tib, k, a, rowNow){
     const lane = lyricEl;
     if (!lane || lane.hidden) return;           // 预设模式 / 无歌词行：整帧零开销（T27 走的就是这条）
     if (a === undefined) a = arrangeCur();
     if (!a) return;
     const total = songBars(a);
     if (!total) return;
+    const K = subsPerBar();
     const W = winStart >= 0 ? winStart
-      : winAnchor(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1));   // v2.10.7：from 已是线性小节号
-    if (a.id + "@" + W + "#" + winPrevBar !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
-    /* 当前行 = **可听**歌曲小节号所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级）：
+      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * K);   // v2.10.7：from 已是线性小节号
+    if (a.id + "@" + W + "/" + K + "#" + winPrevSeg !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
+    /* 当前行 = **可听**位置所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级；v2.15.0 起行 = 片段）：
        调度游标早一个前瞻窗口，按它着色会"词先跳、声后到"。停机/预备拍 → -1：
        全部保持未唱态（停机预览不点亮任何字）。
-       ★ 按**行下标**（kk − W）定位而不是按小节号匹配 row.bar：窗口走到曲尾会绕回开头
+       ★ 优先用主循环给的 rowNow（片段口径下它最准）；直调时回落"可听小节号 − 窗口首小节"
+         ——整小节档下两者逐位一致。
+       ★ 按**行下标**定位而不是按小节号匹配 row.bar：窗口走到曲尾会绕回开头
        （同一窗口里同一个小节号可能出现两次），按下标永远不会两处同时点亮 */
     const kk = (k !== undefined) ? k : ((S.playing && ctx) ? audibleSongBar(ctx.currentTime) : -1);
-    const curIdx = (kk >= W && kk < W + arrWinBars()) ? kk - W : -1;
+    const Wbar = Math.floor(W / K);
+    const curIdx = (typeof rowNow === "number")
+      ? rowNow
+      : ((kk >= Wbar && kk < Wbar + arrWinBars()) ? Math.min(arrWinBars() - 1, (kk - Wbar) * K) : -1);
     /* 行态签名：played/on/cur 任一变化才重写 className（稳态帧只动当前字的 fill 与走带线） */
     let sig = "";
     /** @type {{ row: any, i: number, st: string }[]} */
@@ -5281,8 +5585,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         变成隐式契约
       @returns {void} */
   function paintBeatFlash(bar, beat, t16, phase){
-    let fb = bar, fk = t16 - 1;                       // 同小节：闪刚走完的一格
-    if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = vizSig * 4 - 1; }  // 跨小节：闪上一小节最后一格
+    let fb = bar, fk = t16 - 1;                       // 同行：闪刚走完的一格
+    if (bar !== lastBar && lastBar >= 0){ fb = lastBar; fk = rowBeats() * 4 - 1; }  // 跨行：闪上一行最后一格（v2.15.0：行内十六分域的末位）
     const sub = subEls[fb] && subEls[fb][fk];
     /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
     if (sub && !REDUCE_MOTION){
@@ -5318,11 +5622,16 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★ 乐句相位由调用方（paintFrameBody）**显式传进来**，不在这里现算：它要读可听端点的 pb
          与窗口起点，那两样都在渲染主循环的局部作用域里；在这里偷偷读模块变量会把
          "这一帧到底按谁的时刻画"变成隐式契约（本函数也被单独调用过） */
-    const shownBar = (S.playMode === "arrange" && winStart >= 0) ? winStart + bar : patBarOfRow(bar);
+    /* 状态栏读数（v2.15.0：小节号与拍号都折回"小节内的全局口径"——行只是显示单位，
+       报给用户的心算读数必须仍是"第几小节第几拍"，否则分片档下会报出"第 1、2 拍"重复出现） */
+    const K = subsPerBar();
+    const shownBar = (S.playMode === "arrange" && winStart >= 0) ? Math.floor((winStart + bar) / K) : patBarOfRow(bar);
+    const subRow = (winStart >= 0) ? ((((winStart + bar) % K) + K) % K) : 0;
+    const shownBeat = subRow * rowBeats() + beat + 1;
     const mutedNow = S.mute && (phase % MUTE_PERIOD) === MUTE_PERIOD - 1;
     $("statusText").textContent = mutedNow
       ? `静音拍 · 第 ${shownBar + 1} 小节 · 心中默数`
-      : `播放中 · 第 ${shownBar + 1} 小节 · ${beat + 1}${sfx}`;
+      : `播放中 · 第 ${shownBar + 1} 小节 · ${shownBeat}${sfx}`;
   }
   /* paintBeatFlash 的形参说明（v2.5.2 补 phase）：
      @param {number} bar 行号（曲式模式下 = 窗口内的偏移） @param {number} beat 拍序号
@@ -5405,30 +5714,32 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         lastAudSongBar = k;
         if (k >= 0 && onAudibleBar) onAudibleBar();
       }
-      /* v2.7.0：除窗口起点外还要盯**预告行**——进入页内第 4 小节（预告生效）与
-         翻页（预告随窗口换）都要重建一次。previewBarFor 只在页末才做解析，平时是算术 */
-      const ws = k >= 0 ? winAnchor(k) : winStart;
-      const pv = previewBarFor(k);
-      if (k >= 0 && (ws !== winStart || pv.bar !== winPrevBar)){
+      /* v2.7.0：除窗口起点外还要盯**预告行**——进入页内最后一片（预告生效）与
+         翻页（预告随窗口换）都要重建一次。previewSegFor 只在页末才做解析，平时是算术。
+         ★ v2.15.0：基准换成**可听片段号**（segNow）——翻页的真实边界是片段而不是小节 */
+      const segNow = audibleSongSeg(ctx.currentTime, arrCur);
+      const ws = segNow >= 0 ? winAnchorSeg(segNow) : winStart;
+      const pv = previewSegFor(segNow);
+      if (segNow >= 0 && (ws !== winStart || pv.seg !== winPrevSeg)){
         winStart = ws;
-        winPrevBar = pv.bar; winPrevSteps = pv.steps || null; winPrevName = pv.name || "";
+        winPrevSeg = pv.seg; winPrevSteps = pv.steps || null; winPrevName = pv.name || "";
         buildViz();
         resetTracking();
       }
     } else if (ctx){
-      /* ---- 预设模式的翻页同步（v2.10.2）：与上面那段同构，只是基准换成**型内小节号** ----
-         窗口只在"页锚"变化时才重建，而页锚 = winAnchor(可听小节) = floor(k/N)*N：
-           · 型长 ≤ N（绝大多数型）→ k < N → 页锚恒为 0 → 本分支一次都不重建，
+      /* ---- 预设模式的翻页同步（v2.10.2）：与上面那段同构，只是基准换成**型内片段号** ----
+         窗口只在"页锚"变化时才重建，而页锚 = winAnchorSeg(可听片段) = floor(seg/N)*N：
+           · 型总片段数 ≤ N（1 小节的型 + 4 行档等）→ seg < N → 页锚恒为 0 → 本分支一次都不重建，
              老行为逐位不变；
-           · 型长 > N → 每走满 N 个小节翻一页（用户拍板 Q2）。
-         ★ 用 audiblePatBar 而不是 schedBar 直接算：schedBar 早一个前瞻窗口，
+           · 型总片段数 > N → 每走满 N 个片段翻一页（用户拍板 Q2）。
+         ★ 用 audiblePatSeg 而不是 schedBar 直接算：schedBar 早一个前瞻窗口，
            按它翻页会"画面先翻、声音后到"（与曲式同一类错位，见 audibleSongBar 的注释）。
-         预设模式没有预告行（winPrev* 恒为 -1），故不必像上面那样盯 pv.bar */
-      const apb = audiblePatBar(ctx.currentTime);
+         预设模式没有预告行（winPrev* 恒为 -1），故不必像上面那样盯 pv.seg */
+      const aps = audiblePatSeg(ctx.currentTime);
       /* winStart = -1 有两种来历，都必须建一次窗口：resetWindow 之后的首帧、
          以及"从未建过"。建完 winStart 即为页锚（降级时置 0），故不会每帧重建 */
-      if (apb >= 0){
-        const ank = winAnchor(apb);
+      if (aps >= 0){
+        const ank = winAnchorSeg(aps);
         if (ank !== winStart){
           winStart = ank;
           buildViz();
@@ -5441,19 +5752,20 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const c = ctx, ph = playheadEl, tg = trailGlowEl;
     if (!c || !ph || !tg) return;              // 未建上下文 / buildViz 尚未成功跑过：无可绘制之物
     /* 预备拍窗口（v0.9.0）：loopStart 之前只显示倒计时，播放头压在最左；
-       跑道拍点随计数脉冲（跨小节时按 vizSig 折行） */
+       跑道拍点随计数脉冲（跨行时按**每行拍数**折行——v2.15.0：行不再恒等于整小节） */
     if (ciBeats > 0 && c.currentTime < ciEnd){
       const idx = Math.min(ciBeats - 1, Math.floor((c.currentTime - ciStart) / spb()));
       if (idx !== lastCi){
         lastCi = idx;
-        pulseZone(zoneEls[Math.floor(idx / vizSig)] && zoneEls[Math.floor(idx / vizSig)][idx % vizSig]);
+        const RB = rowBeats();
+        pulseZone(zoneEls[Math.floor(idx / RB)] && zoneEls[Math.floor(idx / RB)][idx % RB]);
       }
       $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
       return;
     }
     lastCi = -1;
-    const barTicks = vizSig * TPB;
-    if (!isFinite(barTicks) || barTicks <= 0) return;
+    const rowTicksV = segTicks();                  // v2.15.0：一行的 tick 跨度（原为整小节 barTicks）
+    if (!isFinite(rowTicksV) || rowTicksV <= 0) return;
     /* 播放位置（v1.3.4）：优先取 onset 表（与弹跳球同源，播放中改 BPM 也不会与球分叉）；
        onset 表覆盖不到时（预备拍/刚启动）回落到时钟公式 */
     const ap = audioPosAt(c.currentTime, arrCur);
@@ -5461,23 +5773,24 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (ap){
       bar = ap.bar; tib = ap.tib; pb = (typeof ap.pb === "number") ? ap.pb : null;
     } else {
-      /* 时钟回落（v2.10.2 改模数）：位置按**型长**（内容模数）折，再换算成窗口行。
+      /* 时钟回落（v2.10.2 改模数；v2.15.0 改片段口径）：位置按**总片段数**折，再换算成窗口行。
          原先用的是 vizBars —— 那时它恰好等于型长，所以对；现在 vizBars 是行数，
          拿它当模数会让 1 小节型 + 4 行档算出"型内第 3 小节"这种不存在的位置。
-         曲式模式保持原样：窗口里的行就是歌曲小节的连续偏移，按窗口长度折即可 */
+         曲式模式保持原样：窗口里的行就是歌曲片段的连续偏移，按窗口长度折即可。
+         ★ 总 tick 数两套口径恒等（vizSig × 型长小节 = 每片 tick × 总片段数），故 modulo 值不变 */
       const arrMode = (S.playMode === "arrange");
-      const mod = arrMode ? vizBars : vizPatLen;
+      const mod = arrMode ? vizBars : vizSegs();
       if (!(mod > 0)) return;
-      const posT = Math.max(0, ((c.currentTime - loopStart) / spb() * TPB) % (vizSig * mod * TPB));
+      const posT = Math.max(0, ((c.currentTime - loopStart) / spb() * TPB) % (rowTicksV * mod));
       /* v1.2.4 边界守卫：拍号或时钟任一异常就跳过本帧（等 buildViz / setBpm 把它修正回来再画）。
          绝不让 NaN 顺着 rowEls[NaN] 这种下标访问炸进 rAF 回调 —— 那是不可恢复的 */
       if (!isFinite(posT)) return;
-      const pbIdx = Math.floor(posT / barTicks) % mod;           // 曲式 = 行偏移；预设 = 型内小节号
+      const pbIdx = Math.floor(posT / rowTicksV) % mod;          // 曲式 = 行偏移；预设 = 型内片段号
       if (arrMode) bar = pbIdx;
-      else { const r = rowOfPatBar(pbIdx); bar = r >= 0 ? r : 0; }
-      tib = posT - pbIdx * barTicks;                             // 小节内位置（tick）
+      else { const r = rowOfPatSeg(pbIdx); bar = r >= 0 ? r : 0; }
+      tib = posT - pbIdx * rowTicksV;                            // 行内位置（tick）
     }
-    const pw = tib / barTicks * 100;
+    const pw = tib / rowTicksV * 100;
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
     const gHead = geoOf(bar);
@@ -5486,7 +5799,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
     tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
-    paintLyric(tib, audK, arrCur);         // 歌词轨：与上面两行同一份 tib、同一份可听小节号，同一帧里画完（两轨共享时钟）
+    paintLyric(tib, audK, arrCur, bar);    // 歌词轨：与上面两行同一份 tib、同一份可听小节号 + 本帧行号（片段口径），同一帧里画完
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
     if (bar !== lastBar){                                       // 换小节时光晕换行
@@ -5517,11 +5830,11 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
     if (bar !== lastBar || t16 !== lastT16){
-      /* 本行的**乐句相位**（v2.5.2）：状态栏的「静音拍」提示要用它。
-         曲式模式下窗口起点是已知的歌曲小节号 → 直接用线性号算，精确；
+      /* 本行的**乐句相位**（v2.5.2；v2.15.0 按片段折算回小节）：状态栏的「静音拍」提示要用它。
+         曲式模式下窗口起点是已知的片段号 → 折算成歌曲小节号算线性相位，精确；
          预设模式下取可听端点的相位 pb（每 4 遍静一次，行标识标不出来），拿不到再用调度侧的。 */
       const phase = (S.playMode === "arrange" && winStart >= 0)
-        ? (winStart + bar) % MUTE_PERIOD
+        ? Math.floor((winStart + bar) / subsPerBar()) % MUTE_PERIOD
         : ((pb !== null ? pb : schedPlayBar) % MUTE_PERIOD);
       paintBeatFlash(bar, beat, t16, phase);
     }
@@ -5539,7 +5852,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     /* v2.7.0 预告行豁免：带预告的窗口里第 1 行画的是"下一小节"（未来），
        按"行号 < 当前行 → 已弹"刷白就把未来画成了历史——恒按未弹画（.next 预告格除外，
        那正是它该亮的一格） */
-    const isPreview = (S.playMode === "arrange" && winPrevBar >= 0 && b === 0);
+    const isPreview = (S.playMode === "arrange" && winPrevSeg >= 0 && b === 0);
     let cls = "cell ";
     if (isPreview) cls += "upcoming";
     else if (b < bar) cls += "played";
@@ -5547,6 +5860,9 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     else cls += (i < active) ? "played" : (i === active ? "active" : "upcoming");
     const st = bSteps[i];
     if (st && st.rest) cls += " rest";
+    /* 续接标记（v2.15.0）：setCell 是逐帧重绘的收口，漏掉这里虚线边会在播放中消失 */
+    if (st && st._cutl) cls += " cutl";
+    if (st && st._cutr) cls += " cutr";
     if (b === nextB && i === nextI) cls += " next";
     el.className = cls;
     const f = fillEls[b] && fillEls[b][i];
@@ -5609,7 +5925,11 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls }) };
+    internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
+      /* v2.15.0：行内切分档（每行几拍）与两层行内定位数组——分片测试要按"行内拍/十六分位"查 */
+      vizRowBeats: vizRowBeats, zoneEls: zoneEls, rulerEls: rulerEls }),
+    /* v2.15.0：每行几拍的纯决策函数（供测试直测边界） */
+    chooseRowBeats };
 })();
 
 /* ================= AudioEngine · Web Audio 前瞻调度 ================= */
@@ -5623,6 +5943,13 @@ const AudioEngine = (() => {
      故「点下即生效」在后台最多延迟一个窗口（1.2s）；回前台后立即恢复前台窗口，无延迟。
      v2.0.6（审计 P1-1）：前台窗口由 150ms 提到 300ms——见 CONFIG.schedWindow 处的取舍说明。 */
   const schedWindow = () => (document.hidden === true ? CONFIG.schedWindowBg : CONFIG.schedWindow);
+  /* 音频延迟补偿（v2.14.0）：把发声时刻统一提前的助手（值来自共享状态 latencyMs）。
+     用途：抵消蓝牙耳机等输出链路的延迟——让"耳机里听到的"重新对齐"屏幕上的落点"。
+     ★ 只动**发声时刻**：时间轴（loopStart / nextNoteTime）、onset 表、播放头与弹跳球
+       一律不碰——它们标的是"节拍器时间轴"，补偿的是"耳朵收到的那一刻"。 */
+  const latOff = () => latencyMs / 1000;
+  /* 校准期间为 true：playClick / lyricCueHit 临时不吃补偿（见 calibPlay 的注释） */
+  let calibRaw = false;
   /* 音频生命周期（v1.3.0，审计 P2-13）：原实现只认 "suspended"，漏了 iOS 的两个关键状态：
      · "interrupted" —— 通话/闹钟/其他 App 抢占音频会话后 Safari 的私有状态，恢复路径与
        suspended 不同。不认它 → 通话结束后可能**永久无声**且界面毫无异常。
@@ -5750,6 +6077,7 @@ const AudioEngine = (() => {
   }
   /** @param {number} t @param {number} stepStartBeat @param {any} isAccent @param {any} [zone] */
   function playClick(t, stepStartBeat, isAccent, zone){
+    if (!calibRaw) t -= latOff();             /* v2.14.0：延迟补偿（提前发声）；0 时为无操作 */
     const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
     const level = isAccent ? 2 : (isBeat ? 1 : 0);
     /* 重拍增强量 0% = 与正拍齐平，100% = 最大强调（accentMax）。
@@ -5827,6 +6155,8 @@ const AudioEngine = (() => {
      音量取电平档 LEVEL_BEAT 而非 accentGain：它是"提示"不是"重拍"，不该随 accentVol 一起变 */
   /** @param {number} t */
   function lyricCueHit(t){
+    if (!calibRaw) t -= latOff();             /* v2.14.0：延迟补偿（与 playClick 同口径——
+                                                  锚点音也是"用户要听到的声音"，一起提前） */
     const W = CONFIG.timbres.wood;
     const peak = Math.min(1, Math.max(0, S.vol * CONFIG.levelBeat));
     if (peak <= 0) return;                       // 音量为 0：与 playClick 同口径，不排空音
@@ -6083,6 +6413,12 @@ const AudioEngine = (() => {
   function schedulerBody(){
     /* 本轮窗口只取一次：避免调度途中 visible/hidden 翻转导致同一次调用里两个分支用不同窗口 */
     const win = schedWindow();
+    /* 排程前瞻量（v2.14.0）：窗口之外再往前加**补偿值**——所有音都要提前 offset 发出，
+       若仍按 win 卡"本轮排到哪"，靠近窗口边缘的音会落到"过去的时刻"而被 Web Audio
+       立即播放（听感就是补偿打了折扣：offset 大于窗口时甚至越补越晚）。
+       加长后最晚的发声时刻仍距 now 一个完整窗口，余量与不补偿时一致。
+       ★ 游标推进与游标本身一字未动，只放宽本轮排程的判据；重锚/饥饿判定仍按 win 口径。 */
+    const look = win + latOff();
     /* 练习量（v1.9.0）：每个 25ms 周期问一次「该不该停」。放在最前——一旦到点立刻停播，
        本周期不再排任何音符（少排一个音就少一次"停了还在响"的观感）。到点判定归共享状态区的
        limitHit()，处置归注入的 onLimitPulse（AudioEngine 不能反向调用 Controls）。
@@ -6093,7 +6429,7 @@ const AudioEngine = (() => {
     if (!c) return;
     /* 预备拍（v0.9.0）：loopStart 之前的时段调度 ciLeft 声计数（首声重拍、其余正拍）。
        独立路径：不走 swing、不受静音拍影响；正式音符的调度从 loopStart 才开始 */
-    while (ciLeft > 0 && ciNext < c.currentTime + win){
+    while (ciLeft > 0 && ciNext < c.currentTime + look){
       playClick(ciNext, 0, ciLeft === ciBeats);
       ciNext += spb(); ciLeft--;
       /* ★ v2.10.12：原「预备拍数完这一刻才取练习量计时基准」（`if (ciLeft === 0) limitT0 = loopStart;`）
@@ -6141,7 +6477,7 @@ const AudioEngine = (() => {
        正常负载远低于此上限（240BPM 三十二分在 1.2s 后台窗口内约 38 个音符） */
     const MAX_SCHED_STEPS = 512;
     let guard = 0;
-    while (nextNoteTime < c.currentTime + win){
+    while (nextNoteTime < c.currentTime + look){
       if (++guard > MAX_SCHED_STEPS){
         /* v2.0.6（审计 P1-7）：超限后**不能只是 break**——`break` 留下的是"已排了大量音符 +
            游标停在远未来（或脏数据导致的永不前进）"的混合状态：接着要么长时间静音，
@@ -6234,7 +6570,32 @@ const AudioEngine = (() => {
     onsetBuf.length = 0; onsetNext = null;
     Viz.resetTracking();
   }
-  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop };
+  /* 校准发声（v2.14.0）：以固定间隔在音频时钟上排 n 声"重拍"click，供跟拍校准测量用。
+     ★ 为什么必须**不吃补偿**（calibRaw）：要测的就是"没补偿时声音多晚到"，发出的必须是
+       原始时刻；否则测出来的只是残差，值会随当前设置漂移。
+     ★ 为什么首声留预热（CONFIG.latCalibLead）：给 AudioContext 起播与蓝牙链路建链留时间
+       ——首声常是最不可靠的一声；配合中位数，个别异常样本不会污染结果。
+     返回"锚点对"（音频时钟 ↔ 墙钟）与各声时刻：测量侧按线性关系换算出每声的墙钟预期
+     时刻、与敲击时刻相减。两套时钟的**常量起点差**会被相减消掉，秒级漂移（<1ms）可忽略。 */
+  /** @param {number} n @param {number} intervalMs
+      @returns {{ anchorCtx: number, anchorPerf: number, gapMs: number, times: number[] }} */
+  function calibPlay(n, intervalMs){
+    const c = ensureCtx();
+    const anchorCtx = c.currentTime, anchorPerf = performance.now();
+    const lead = CONFIG.latCalibLead, gap = intervalMs / 1000;
+    /** @type {number[]} */
+    const times = [];
+    calibRaw = true;
+    try{
+      for (let i = 0; i < n; i++){
+        const t = anchorCtx + lead + i * gap;
+        times.push(t);
+        playClick(t, 0, true);          // 0 = 正拍位、true = 重拍声（清脆好认，与主音色同源）
+      }
+    } finally { calibRaw = false; }
+    return { anchorCtx, anchorPerf, gapMs: intervalMs, times };
+  }
+  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop, calibPlay };
 })();
 
 /* ================= Trainer · 变速训练器 ================= */
@@ -6546,6 +6907,24 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     Store.persist();
   }
   $("playBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); S.playing ? stop() : start(); });
+  /* 判定「正在输入文字」（v2.13.1）：全局空格规则里**唯一**的例外——只有这类焦点
+     才需要独享空格键（那里空格必须是空格）。判据是反向白名单：非文本的控件类型
+     （滑杆/勾选/单选/各种按钮）不算——滑杆正是本次修复的主角（旧规则把它排除在外，
+     点过滑杆后空格就哑了）。
+     ★ type 缺失按「非文本输入」处理：真实浏览器里 input.type 永不缺失（缺省即 "text"），
+     这个分支只服务测试桩——桩里想测「文本输入不让位」必须把 type 显式摆出来，
+     正是要的失败形态（对比 t86 的教训：桩的初值与标记不同形会让整条断言被架空）。 */
+  /** @param {any} el @returns {boolean} */
+  const isTextEntry = el => {
+    if (!el || !el.tagName) return false;
+    if (el.tagName === "TEXTAREA") return true;
+    if (el.isContentEditable === true) return true;
+    if (el.tagName === "INPUT"){
+      const t = String(el.type || "").toLowerCase();
+      return t !== "" && !["range", "checkbox", "radio", "button", "submit", "reset", "color", "file"].includes(t);
+    }
+    return false;
+  };
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
     if (Settings.isOpen()){                       // v2.10.12：设置 overlay 打开时键盘归它管（空格不误触播放）
@@ -6569,9 +6948,21 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); Editor.undo(); }
       return;
     }
-    const ae = /** @type {Element} */ (document.activeElement);
-    if (e.code === "Space" && !["INPUT","BUTTON","SELECT","TEXTAREA"].includes(ae.tagName)
-        && !(ae.getAttribute && ae.getAttribute("role") === "button")){   // v2.0.2：role=button 的预设项/编辑器格自己处理 Space
+    /* v2.13.1：空格 = 播放/暂停的**全局规则**（用户要求"始终可用"）。
+       旧规则按焦点元素排除（INPUT/BUTTON/SELECT/TEXTAREA + role=button），初衷是
+       "不抢控件自己的键盘契约"——但它挡不住**留焦点的控件**：滑杆（BPM / 音量 / 播放范围）
+       与侧栏预设项点完焦点留在原地（按钮们各自 blur() 自救，它们没有），于是
+       "点过什么之后空格就哑了"（用户实报）。现在唯一例外是**正在输入文字**
+       （文本类 input / textarea / contenteditable）；其余一律 preventDefault 后切播放，
+       连按钮的原生"空格激活"也让位——按钮仍可用 **Enter** 激活
+       （主界面各处 itemKeys 已改为 enterOnly，见那边的注释）。
+       ★ 面板（overlay）打开时前面几个分支已早退（空格归面板、不误触播放）；
+       本规则只作用于主界面。
+       ★ 两处顺带收口：`e.repeat`（按住不放不再来回切）与修饰键
+       （Ctrl/Cmd/Alt+Space 有系统语义，不抢）。 */
+    const ae = /** @type {any} */ (document.activeElement);
+    if (e.code === "Space" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey
+        && !isTextEntry(ae)){
       e.preventDefault(); S.playing ? stop() : start();
     }
   });
@@ -6624,9 +7015,11 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     btn.addEventListener("pointerup", end);
     btn.addEventListener("pointerleave", end);
     btn.addEventListener("pointercancel", end);
-    /* click 兜底（v2.0.2）：键盘 Enter/Space 与读屏激活只发 click、不发 pointerdown，
-       且这类「无指针」click 的 detail 恒为 0（指针 click detail ≥ 1）——用它区分两条路径，
-       指针路径已由 pointerdown 步进过，这里只补键盘/读屏，不存在双击两步的窗口 */
+    /* click 兜底（v2.0.2；v2.13.1 更新口径）：键盘 **Enter** 与读屏激活只发 click、
+       不发 pointerdown，且这类「无指针」click 的 detail 恒为 0（指针 click detail ≥ 1）
+       ——用它区分两条路径，指针路径已由 pointerdown 步进过，这里只补键盘/读屏，
+       不存在双击两步的窗口。★ v2.13.1 起空格键走全局"播放/暂停"规则（keydown 里
+       preventDefault 让位按钮的原生空格激活），故本兜底不再覆盖 Space 路径 */
     btn.addEventListener("click", (/** @type {MouseEvent} */ e) => { if (e.detail === 0) step(); });
   }
   bindStep($("bpmMinus"), -1);
@@ -6634,8 +7027,10 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   bindStep($("bpmMinus5"), -5);                 // v1.1：±5 粗调（60→120 只需 12 次，而非 60 次）
   bindStep($("bpmPlus5"), 5);
   /* v2.0.5（审计 P0-8）：#bpmNum 改成真按钮后天然可被 Tab 聚焦，于是必须与其它按钮同一规矩
-     ——激活后 blur()。否则焦点留在按钮上，用户接着按空格会再次打开输入框，而不是播放/停止
-     （全局 Space 分支把 BUTTON 排除在外，正是为了不抢按钮自己的键盘契约） */
+     ——激活后 blur()。否则焦点留在按钮上，用户接着按空格会（在旧规则下）再次打开输入框，
+     而不是播放/停止。★ v2.13.1 起空格走全局"播放/暂停"（连按钮的原生空格激活也让位，
+     见全局分支注释），这行 blur 对空格已不再是必需——但保留：鼠标点完把焦点放回页面、
+     回车/读屏路径也更干净，并保持全项目按钮的一致习惯 */
   $("bpmNum").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     Modal.uiPrompt("输入 BPM（30–240）", S.bpm, (/** @type {string} */ v) => {
@@ -6851,10 +7246,17 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
     return item;
   }
-  /* Enter/Space 激活（v2.0.2）：role="button" 的键盘契约——与 click 走同一个处理函数 */
-  /** @param {() => void} fn @returns {(e: KeyboardEvent) => void} */
-  const itemKeys = fn => e => {
-    if (e.key === "Enter" || e.key === " " || e.code === "Space"){ e.preventDefault(); fn(); }
+  /* Enter 激活（v2.0.2 起含 Space；**v2.13.1 起主界面项不再消费 Space**）：
+     role="button" 的键盘契约——与 click 走同一个处理函数。
+     为什么收回主界面的 Space（用户要求「空格键始终 = 播放/暂停」）：侧栏的预设项 /
+     分区标题 / 曲式条点过之后焦点会留在原地（它们没有按钮那样的 blur 自救），
+     旧规则下空格会被它们抢去当"重新选中 / 开合"，于是"点过东西之后空格就哑了"（用户实报）。
+     现在主界面一律 enterOnly：空格冒泡到 Controls 的全局分支切播放，Enter 仍激活本项。
+     面板（overlay）里的同类项维持 Enter/Space 双键——面板打开时全局分支本就早退
+     （空格不误触播放），双键契约原样保留，故默认值仍是双键。 */
+  /** @param {() => void} fn @param {{enterOnly?: boolean}} [opt] @returns {(e: KeyboardEvent) => void} */
+  const itemKeys = (fn, opt) => e => {
+    if (e.key === "Enter" || (!(opt && opt.enterOnly) && (e.key === " " || e.code === "Space"))){ e.preventDefault(); fn(); }
   };
   /* 「自定义」区（v2.9.0）：只放**曲式条目**（Store.arranges，含内置示例曲《在他乡》）。
      ★ 与旧「示例曲分组」的区别：v2.9.0 把示例曲的 5 个节奏型并入了「扫弦」区（按内容认型
@@ -6891,7 +7293,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       const item = presetItemEl(a.name, `${a.sections.length} 段 · 曲式`, isActive);
       const pick = () => playArrange(a);
       item.addEventListener("click", pick);
-      item.addEventListener("keydown", itemKeys(pick));
+      item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
       group.appendChild(item);
     });
     list.appendChild(group);
@@ -7203,7 +7605,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       Store.persist();
     };
     item.addEventListener("click", pick);
-    item.addEventListener("keydown", itemKeys(pick));
+    item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     list.appendChild(item);
   }
   /* v2.10.0：分区标题从"纯文字"改成**可折叠开关**（用户要求：几个分类可折叠）。
@@ -7224,7 +7626,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     sec.setAttribute("aria-expanded", S.fold[key] ? "true" : "false");
     const act = () => { sec.blur(); toggleFold(key); };
     sec.addEventListener("click", act);
-    sec.addEventListener("keydown", itemKeys(act));
+    sec.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
     list.appendChild(sec);
   }
   /* 展开/收起一个分区：翻转状态 → 立即套用 → 落热键（记忆选择）。
@@ -7346,7 +7748,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       Store.persist();
     };
     item.addEventListener("click", pick);
-    item.addEventListener("keydown", itemKeys(pick));
+    item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     return item;
   }
   /* 示例曲还没带出来时，在列表底部给一句"怎么拿到它"的引导（v2.4.1）。
@@ -10060,6 +10462,293 @@ $("wallDim").addEventListener("change", () => {
   wallPaintDim();
 });
 
+/* ================= 音频延迟补偿（v2.14.0）=================
+   ★ 区块头刻意按"非模块分区"写法（结尾的 = 紧贴文字、不留空格）——gen-index / check-docs
+     的 BANNER_RE（`/\* ={3,} (.+?) ={3,} \*\//`）靠"两侧是否有空格"把模块 banner 与
+     普通分区区分开；写成模块格式会让"索引 16 条 vs banner 17 个"当场报红（v2.14.0 实测踩过）。
+   蓝牙耳机 / 无线音箱的输出链路有 100–300ms 延迟：节拍器的声音比画面晚到，"听着弹"与
+   "看着弹"对不上。补偿 = 把每一颗音**提前**相应毫秒发出（发声侧见 AudioEngine 的 latOff），
+   让耳机里听到的时刻回到时间轴上。
+   ★ 为什么是装配层的一段而不是一个新模块（对照壁纸 / 诊断面板两条先例）：
+     它只做三件事——接线设置里的控件、读写自己的独立键、把生效值写进共享状态 latencyMs；
+     不向外提供任何跨模块接口。占一个模块槽位只会给 EXPECTED_ORDER 与模块索引平添一条边。
+   ★ 数据模型（独立键 `beatsight.latency`；**不进热键、不进「导出全部数据」**）：
+     { v:1, profiles:[{id, name, ms}], currentId }
+     · 不进热键：热键是"每次交互都写"的载荷，而这是低频设备配置——与主题 / 壁纸同一判据。
+     · 不进导出包：它是"这台机器的这副耳机"的校准结果；换设备本来就该重新校准，
+       塞进数据包只会制造"导入了却对不上"的困惑。
+     · 键**不存在** = 从没做过选择 → 内存里用出厂「默认」（ms 0），**不落盘**（同壁纸口径）。 */
+const LAT_KEY = "beatsight.latency";
+const LAT_MAX = 500;          // 补偿上限（ms）：蓝牙实测 100–300，500 留足余量
+const LAT_STEP = 5;           // 滑杆与建议值的步长
+const LAT_MAX_PROFILES = 12;  // 配置条数上限（防脏数据把设置面板撑爆）
+const LAT_NAME_MAX = 24;      // 配置名长度上限
+/** 出厂默认（内存态）：一条 ms=0 的「默认」配置。用户首次改动后才会落盘 */
+function latSeed(){
+  return { profiles: [{ id: "p0", name: "默认", ms: 0 }], currentId: "p0" };
+}
+/** 名字净化：去首尾空白 + 截断 + 空名兜底。用户可控字符串**一律 textContent 呈现**
+    （options 用 createElement + textContent 建，不走 innerHTML 拼接）
+    @param {any} name @param {number} i @returns {string} */
+function latName(name, i){
+  const raw = (name === null || name === undefined) ? "" : String(name);
+  const s = raw.trim().slice(0, LAT_NAME_MAX);
+  return s || ("配置 " + (i + 1));
+}
+/** 补偿值收口：非法回 0、钳到 [0, LAT_MAX]、对齐步长
+    @param {any} ms @returns {number} */
+function latClamp(ms){
+  if (typeof ms !== "number" || !isFinite(ms)) return 0;
+  return Math.min(LAT_MAX, Math.max(0, Math.round(ms / LAT_STEP) * LAT_STEP));
+}
+/** 读存档。★ 脏值静默回落出厂态（配置丢了不值得弹窗，与主题同口径——写失败才提示）：
+    非对象 / profiles 非数组 / 逐条非法（无 id、重复 id、名字脏、ms 脏）→ 逐条淘汰或整体回落。
+    **淘汰项不写 quarantine**：这不是用户手写的创作数据（对照 customs 的口径），
+    一条"我的蓝牙耳机 180ms"丢了，重新校准一次就是 10 秒的事。
+    @returns {{ profiles: {id:string, name:string, ms:number}[], currentId: string }} */
+function latRead(){
+  let raw = null;
+  try{ raw = localStorage.getItem(LAT_KEY); }catch(e){ raw = null; }
+  if (!raw) return latSeed();
+  let o = null;
+  try{ o = JSON.parse(raw); }catch(e){ o = null; }
+  if (!o || typeof o !== "object" || !Array.isArray(o.profiles)) return latSeed();
+  const seen = /** @type {Set<string>} */ (new Set());
+  /** @type {{id:string, name:string, ms:number}[]} */
+  const profiles = [];
+  for (const p of o.profiles){
+    if (profiles.length >= LAT_MAX_PROFILES) break;
+    if (!p || typeof p !== "object") continue;
+    const id = (typeof p.id === "string" && p.id) ? p.id : "";
+    if (!id || seen.has(id)) continue;            // 无 id / 重复 id：淘汰这一条
+    seen.add(id);
+    profiles.push({ id, name: latName(p.name, profiles.length), ms: latClamp(p.ms) });
+  }
+  if (!profiles.length) return latSeed();
+  const cur = profiles.some(p => p.id === o.currentId) ? String(o.currentId) : profiles[0].id;
+  return { profiles, currentId: cur };
+}
+/** 落盘。返回 false = 写失败（配额/隐私模式），调用方**必须提示**——用户刚做的动作
+    @param {{ profiles: {id:string, name:string, ms:number}[], currentId: string }} st
+    @returns {boolean} */
+function latWrite(st){
+  try{
+    localStorage.setItem(LAT_KEY, JSON.stringify({ v: 1, profiles: st.profiles, currentId: st.currentId }));
+    return true;
+  }catch(e){ return false; }
+}
+/** @returns {string} */
+function latActiveName(){
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  return p ? p.name : "默认";
+}
+/** 当前生效的补偿值（ms） @returns {number} */
+function latActive(){
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  return p ? p.ms : 0;
+}
+/** 把内存态套用到：① 共享状态 latencyMs（发声侧读它）② 设置里的控件 */
+function latApply(){
+  latencyMs = latActive();
+  const sel = $("latProfileSel");
+  clear(sel);
+  latNow.profiles.forEach(p => {
+    const op = document.createElement("option");
+    op.value = p.id; op.textContent = p.name;
+    sel.appendChild(op);
+  });
+  sel.value = latNow.currentId;
+  $("latMs").value = latencyMs;
+  $("latMsPct").textContent = latencyMs + " ms";
+  /* 只剩一条时禁用删除（删除会落进"没有配置"的空态——与其为它设计一套空态 UI，
+     不如物理上不允许：想归零把滑杆拉回 0 即可） */
+  $("latDelBtn").disabled = latNow.profiles.length <= 1;
+}
+/** 改动后的统一出口：写盘失败必须提示（用户刚做的动作，与壁纸同口径；读档脏值才静默） */
+function latSave(){
+  if (!latWrite(latNow)) Modal.uiAlert("存不下延迟配置：本机给浏览器的空间（约 5 MB）已经不够了。先删掉几个不用的预设再试。");
+  latApply();
+}
+
+/** @type {{ profiles: {id:string, name:string, ms:number}[], currentId: string }} */
+let latNow = latRead();
+latApply();
+
+/* ---- 控件接线 ---- */
+$("latProfileSel").addEventListener("change", (/** @type {Event} */ e) => {
+  const id = String(evTarget(e).value || "");
+  if (!latNow.profiles.some(p => p.id === id)) return;    // 脏值：不动
+  latNow.currentId = id;
+  latSave();
+  announce("延迟补偿已切换到「" + latActiveName() + "」");
+});
+/* 补偿值滑杆：input 只改内存与读数（拖动中不写盘，同壁纸遮罩的两级口径），
+   change（松手 / 键盘提交）才落盘 */
+$("latMs").addEventListener("input", (/** @type {InputEvent} */ e) => {
+  const v = latClamp(+evTarget(e).value);
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  if (!p) return;
+  p.ms = v;
+  latencyMs = v;
+  $("latMsPct").textContent = v + " ms";
+});
+$("latMs").addEventListener("change", latSave);
+/* 新建配置：初始值取**当前生效值**——这样"新建"这个动作本身不改变听感，
+   用户是在一个不突变的起点上继续调（若种 0，新建瞬间补偿被撤掉、声音会突然变晚） */
+$("latNewBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  if (latNow.profiles.length >= LAT_MAX_PROFILES){
+    Modal.uiAlert("最多保存 " + LAT_MAX_PROFILES + " 套配置，先删掉不用的再新建。");
+    return;
+  }
+  const ms0 = latActive();
+  Modal.uiPrompt("给这套配置起个名（例如：我的蓝牙耳机）", "设备 " + (latNow.profiles.length + 1), (/** @type {string} */ v) => {
+    const name = latName(v, latNow.profiles.length);
+    const id = "p" + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36);
+    latNow.profiles.push({ id, name, ms: ms0 });
+    latNow.currentId = id;
+    latSave();
+    announce("已新建延迟配置「" + name + "」");
+  });
+});
+/* 改名：空名不改（保留原名，不落成全角空白） */
+$("latRenameBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  if (!p) return;
+  Modal.uiPrompt("修改「" + p.name + "」的名字", p.name, (/** @type {string} */ v) => {
+    const nm = ((v === null || v === undefined) ? "" : String(v)).trim().slice(0, LAT_NAME_MAX);
+    if (!nm) return;
+    p.name = nm;
+    latSave();
+  });
+});
+/* 删除（确认框；只剩一条时按钮直接禁用，不弹窗——见 latApply 的注释） */
+$("latDelBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  if (latNow.profiles.length <= 1) return;
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  if (!p) return;
+  Modal.uiConfirm("删除延迟配置「" + p.name + "」？删掉后这台设备要重新校准。", () => {
+    latNow.profiles = latNow.profiles.filter(x => x.id !== p.id);
+    if (!latNow.profiles.some(x => x.id === latNow.currentId)) latNow.currentId = latNow.profiles[0].id;
+    latSave();
+  }, { danger: true, okText: "删除" });
+});
+
+/* ---- 校准向导（跟拍法）----
+   玩法：排 8 声固定间隔的点击（**不吃补偿**，见 AudioEngine.calibPlay），用户跟着敲；
+   每次敲击与"最近的那一声"求差，全部差的中位数就是建议值。
+   ★ 数学上的诚实说明：中位数里含**人的反应时间**（约几十毫秒）——向导给的是偏大的起点，
+     刻意不做扣除（宁可稍早、不可再晚，且反应时间是因人而异的，扣一个拍脑袋的常数
+     只是把系统性偏差换成另一种系统性偏差）；最后请用滑杆微调到"声画重合"。
+   ★ 只认"能在 ±LAT_TAP_WIN 内配到某一声"的敲击：抢拍 / 杂敲配不上就被忽略，
+     样本 < LAT_MIN_TAPS 时判定为测不准，提示重测。 */
+const LAT_CALIB_N = 8;          // 每轮敲击次数
+const LAT_CALIB_GAP = 500;      // 相邻两声的间隔（ms）= 120BPM 的一拍
+const LAT_TAP_WIN = 400;        // 敲击与最近一声的配对窗口（ms）
+const LAT_MIN_TAPS = 4;         // 可用样本下限
+/** 建议值（纯函数，供测试直测）：剔非有限 → 取中位数 → 对齐步长并钳制
+    @param {number[]} diffs @returns {{ ok: boolean, ms: number, n: number }} */
+function latSuggest(diffs){
+  const ok = (diffs || []).filter(d => typeof d === "number" && isFinite(d));
+  if (ok.length < LAT_MIN_TAPS) return { ok: false, ms: 0, n: ok.length };
+  ok.sort((a, b) => a - b);
+  const mid = ok.length >> 1;
+  const med = ok.length % 2 ? ok[mid] : (ok[mid - 1] + ok[mid]) / 2;
+  return { ok: true, ms: latClamp(med), n: ok.length };
+}
+/** @type {{ phase: string, times: number[], anchorCtx: number, anchorPerf: number,
+             diffs: number[], timer: any, result: null | {ok:boolean, ms:number, n:number} }} */
+let latWiz = { phase: "idle", times: [], anchorCtx: 0, anchorPerf: 0, diffs: [], timer: null, result: null };
+function latWizPaint(){
+  $("latWiz").hidden = latWiz.phase === "idle";
+  $("latWizTap").hidden = latWiz.phase !== "run";
+  $("latWizApply").hidden = latWiz.phase !== "done";
+  $("latWizRetry").hidden = latWiz.phase !== "done";
+  if (latWiz.phase === "run"){
+    $("latWizMsg").textContent = "会连续响 8 下咔嗒（约 4 秒）。每听到一下，就在下面这颗按钮上敲一下——用平时跟节拍器的手感，不用刻意抢拍。";
+    $("latWizProg").textContent = "已记录 " + latWiz.diffs.length + " / " + LAT_CALIB_N;
+  } else if (latWiz.phase === "done"){
+    const s = latWiz.result;
+    if (s && s.ok){
+      $("latWizMsg").textContent = "测得建议值 ≈ " + s.ms + " ms（用了 " + s.n + " 下敲击）。这个值含你自己约几十毫秒的反应时间，会略偏大——先「采用」，再用上面滑杆微调到声画重合。";
+    } else {
+      $("latWizMsg").textContent = "这一轮只配到 " + (s ? s.n : 0) + " 下（至少要 " + LAT_MIN_TAPS + " 下），测不准。点「重测」再来一次，跟着声音稳稳地敲。";
+    }
+    $("latWizProg").textContent = "";
+  }
+}
+function latWizStopTimer(){
+  if (latWiz.timer !== null){ clearTimeout(latWiz.timer); latWiz.timer = null; }
+}
+function latCalibStart(){
+  if (S.playing) Controls.stop();          // 校准期间不该混着节拍器声（也让量出的差值干净）
+  if (!(S.vol > 0)){
+    Modal.uiAlert("节拍音量现在是 0，校准听不到声音——先到主界面把「节拍」音量拉起来再校准。");
+    return;
+  }
+  latWizStopTimer();
+  const out = AudioEngine.calibPlay(LAT_CALIB_N, LAT_CALIB_GAP);
+  latWiz.times = out.times;
+  latWiz.anchorCtx = out.anchorCtx;
+  latWiz.anchorPerf = out.anchorPerf;
+  latWiz.diffs = [];
+  latWiz.result = null;
+  latWiz.phase = "run";
+  /* 自动收尾：最后一响之后再等 0.9s 仍没敲满 → 按已有样本结算（漏敲几下也能给出提示） */
+  const endPerf = out.anchorPerf + (out.times[out.times.length - 1] - out.anchorCtx) * 1000;
+  const wait = Math.max(1000, endPerf - performance.now() + 900);
+  latWiz.timer = setTimeout(() => { latWiz.timer = null; if (latWiz.phase === "run") latWizFinish(); }, wait);
+  latWizPaint();
+  announce("校准开始");
+}
+function latWizFinish(){
+  latWizStopTimer();
+  latWiz.result = latSuggest(latWiz.diffs);
+  latWiz.phase = "done";
+  latWizPaint();
+  announce(latWiz.result.ok ? "校准完成，建议 " + latWiz.result.ms + " 毫秒" : "校准样本不足");
+}
+$("latCalibBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); latCalibStart(); });
+/* 敲击用 pointerdown 而不是 click（少一层合成事件，时刻更贴近手感）；
+   同一时刻多按无效——配不上任何一声的敲击会被忽略 */
+$("latWizTap").addEventListener("pointerdown", () => {
+  if (latWiz.phase !== "run") return;
+  const tapT = performance.now();
+  /** @type {null | number} */
+  let best = null;
+  for (const t of latWiz.times){
+    const exp = latWiz.anchorPerf + (t - latWiz.anchorCtx) * 1000;
+    const d = tapT - exp;
+    if (Math.abs(d) <= LAT_TAP_WIN && (best === null || Math.abs(d) < Math.abs(best))) best = d;
+  }
+  if (best === null) return;               // 抢拍 / 多余敲击：忽略
+  latWiz.diffs.push(best);
+  if (latWiz.diffs.length >= LAT_CALIB_N){ latWizFinish(); return; }   // 敲满即结算
+  latWizPaint();
+});
+$("latWizApply").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  if (latWiz.phase !== "done" || !latWiz.result || !latWiz.result.ok) return;
+  const p = latNow.profiles.find(x => x.id === latNow.currentId);
+  if (!p) return;
+  p.ms = latWiz.result.ms;
+  latSave();
+  announce("已采用校准值 " + p.ms + " 毫秒");
+  latWiz.phase = "idle";
+  latWizPaint();
+});
+$("latWizRetry").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); latCalibStart(); });
+$("latWizCancel").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  latWizStopTimer();
+  latWiz.phase = "idle";
+  latWiz.diffs = [];
+  latWizPaint();
+});
+latWizPaint();                             // 首屏：向导面板收起（phase = idle）
+
 /* 启动探针（v2.8.8）：**恒存在**，且刻意只放两个只读标量。
    它取代 `__beat` 承担"应用是否启动成功"这一个用途（tools/smoke.js 靠它判白屏）——
    原先 smoke 等到 `window.__beat` 就算启动成功，而 `__beat` 一旦被下面的开关收起，
@@ -10107,6 +10796,12 @@ if (EXPOSE_INTERNALS){
     WALL_KEY, WALL_MAX_BYTES, WALL_MAX_EDGE, WALL_DIM_MAX, WALL_DIM_DEF, WALL_SRC_MAX_BYTES,
     WALL_DEFAULT, WALL_TOKEN_DEFAULT,             // v2.13.0：出厂默认壁纸（常量）与它在存档里的记号
     wallState: () => wallNow,
+    /* v2.14.0：音频延迟补偿。暴露纯逻辑（读档校验 / 落盘 / 建议值计算）与读数；
+       向导的完整 UI 逻辑在装配层，测试走元素事件驱动（#latWizTap 的 pointerdown 等）。 */
+    latRead, latWrite, latSuggest,
+    LAT_KEY, LAT_MAX, LAT_STEP, LAT_MAX_PROFILES, LAT_CALIB_N, LAT_CALIB_GAP, LAT_TAP_WIN, LAT_MIN_TAPS,
+    latencyMs: () => latencyMs,
+    latState: () => ({ profiles: latNow.profiles, currentId: latNow.currentId, ms: latencyMs, wiz: latWiz.phase, result: latWiz.result }),
     arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
     arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
     /* v2.10.12：原 `LIMIT_PRESETS, limitHit` 与 `limitState`（练习量的档位表 / 到点判定 /

@@ -291,7 +291,9 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(S.sel.idx, 3, "点内置预设项 → 选中它");
   eq(els["patternName"].textContent, beat.BUILTINS[3].name, "标题同步为该预设名");
 
-  /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter/Space 激活 */
+  /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter 激活。
+     ★ v2.13.1：主界面项不再消费 Space（用户要求「空格键始终 = 播放/暂停」）——
+       这里断言"按下空格**不**改变选中"，空格现在归全局播放规则管（见 t94） */
   const it5 = itemByName(beat.BUILTINS[5].name);
   eq(it5.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
   eq(it5.tabIndex, 0, "预设项可 Tab 聚焦");
@@ -299,7 +301,7 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(S.sel.idx, 5, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
   eq(itemByName(beat.BUILTINS[5].name).getAttribute("aria-current"), "true", "当前项带 aria-current");
   itemByName(beat.BUILTINS[4].name).fire("keydown", { key: " ", code: "Space" });
-  eq(S.sel.idx, 4, "★ Space 同样激活（role=button 的键盘契约）");
+  eq(S.sel.idx, 5, "★ Space 不再激活预设项（v2.13.1：空格让给播放/暂停，Enter 仍是激活键）");
 
   /* 导入：走 FileReader 接线（桩的 FileReader 会把 FILE_TEXT 交给 onload） */
   app.setFileText(JSON.stringify({ presets: [{ name: "接线导入", meter: 4,
