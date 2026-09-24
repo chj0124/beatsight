@@ -1752,17 +1752,17 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L3913  Modal         应用内弹窗
      L4045  Viz           时值可视化渲染与每帧动画
-     L5935  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6601  Trainer       变速训练器
-     L6739  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7218  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8072  Editor        自定义节奏型编辑器
-     L8428  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8462  Ear           听辨训练（v1.10.0）
-     L8680  Arrange       曲式编排（v2.0.0）
-     L9544  Help          使用方法（v2.0.1）
-     L9591  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9665  初始化（装配） 各模块 hook 接线与启动
+     L5937  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6603  Trainer       变速训练器
+     L6741  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7220  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8074  Editor        自定义节奏型编辑器
+     L8430  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8464  Ear           听辨训练（v1.10.0）
+     L8682  Arrange       曲式编排（v2.0.0）
+     L9546  Help          使用方法（v2.0.1）
+     L9593  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9667  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1788,7 +1788,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.15.0";
+const VERSION = "2.15.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4401,21 +4401,21 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     const linNow = Math.floor(seg / K) % total;
     const at = songBarAt(a, linNow);
     if (!at) return { seg: -1 };
-    let segNext = -1, pat = null, schedBar = -1;
+    let segNext = -1, pat = null, barIdx = -1;
     if (sub < K - 1){
       /* v2.15.0：同小节的下一片——内容就是本小节的后半，不必解析节目单 */
       const p = resolveRef(at.ref);
       if (!p || !Array.isArray(p.bars)) return { seg: -1 };
-      segNext = seg + 1; pat = p; schedBar = at.schedBar;
+      segNext = seg + 1; pat = p; barIdx = at.schedBar;
     } else {
       const nxt = arrNextBar(a, S.arrangeSel, at.sec, at.bar);
       if (!nxt) return { seg: -1 };                    // 范围播完且不循环：没有"下一片段"
       const p = nxt.pattern || resolveRef(nxt.ref);
       if (!p || !Array.isArray(p.bars)) return { seg: -1 };
       segNext = (songBarBefore(a, nxt.sec) + nxt.bar) * K;   // 下一小节的第一片
-      pat = p; schedBar = nxt.schedBar;
+      pat = p; barIdx = nxt.schedBar;
     }
-    return { seg: segNext, steps: sliceSteps(pat.bars[schedBar] || [], barTicks, K, segNext % K), name: pat.name || "" };
+    return { seg: segNext, steps: sliceSteps(pat.bars[barIdx] || [], barTicks, K, segNext % K), name: pat.name || "" };
   }
   /** 丢弃当前窗口，让下一次建网格重新锚到播放范围起点（v2.6.0 修）。
       ★ 为什么必须有它：`winStart` 是**跨播放会话**留存的状态，而"时间轴重新起一轮"的四个点
@@ -5351,7 +5351,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const segWrapped = ((segAbsCur % (aTotal * K2)) + aTotal * K2) % (aTotal * K2);
             const atCur = songBarAt(a, Math.floor(segWrapped / K2));
             const pCur = atCur ? resolveRef(atCur.ref) : null;
-            if (pCur && Array.isArray(pCur.bars)) nbSteps = sliceSteps(pCur.bars[atCur.schedBar] || [], barTicksV, K2, subCur + 1);
+            /* atCur 判空必须与 pCur 写在**同一个条件**里：pCur 由三元的另一支得来，
+               TS 收窄不会跨"pCur 非空 ⇒ atCur 非空"这条推导（tsc 实测 TS18047） */
+            if (atCur && pCur && Array.isArray(pCur.bars)) nbSteps = sliceSteps(pCur.bars[atCur.schedBar] || [], barTicksV, K2, subCur + 1);
             rowNext = (bar + 1 < vizBars) ? bar + 1 : -1;
           } else {
             const nrow = (prev && prev.aBar !== undefined)

@@ -1,5 +1,42 @@
 # 变更记录
 
+## v2.15.1 · 修构建红灯：ESLint no-shadow + tsc 可空收窄（2026-09-24）
+
+**来源**：推 v2.15.0 到 main 后，Cloudflare 构建与仓库内 CI 的 `verify` job 双双变红
+（「真实浏览器冒烟」job 是绿的——那条路不受影响）。
+
+### 根因（两处，且**本地都没跑到**）
+
+1. **ESLint `no-shadow`**：`previewSegFor` 里 `let … schedBar = -1` 遮蔽了模块级的
+   `schedBar`（曲式会话游标）。CI 报 `index.html:4404:35`。
+2. **tsc TS18047**：`paintBall` 待命球分支里 `if (pCur && …) … atCur.schedBar`——
+   `pCur` 由 `atCur ? resolveRef(atCur.ref) : null` 的**另一支**得来，TS 不会跨
+   "pCur 非空 ⇒ atCur 非空"这条推导收窄 `atCur`。
+
+★★ **为什么本地没拦住（本轮最重要的教训）**：本机没装 `node_modules`，ESLint / tsc 作为
+"可选加强项"被标 **⊘ 跳过**——**⊘ 是"没查"，不是"查了通过"**；而构建环境 `npm ci` 装齐依赖后
+它们真跑，第一处当场红。而且 CI 在第一步（ESLint）停下后，**tsc 那颗根本没机会执行**——
+它是补装依赖、手工补跑 tsc 之后本地才抓到的第二颗雷。
+
+### 修法
+
+1. `schedBar` → `barIdx`（局部改名，语义零变化）。
+2. `if (pCur && …)` → `if (atCur && pCur && …)`（判空写进**同一个条件**，TS 才收窄得动），
+   并留注释写明这条推导的坑。
+3. 本地补装依赖：`npm install --ignore-scripts`（`--ignore-scripts` 绕过 wrangler 安装脚本
+   在本机沙箱的 `spawnSync EBUSY`），把两条加强闸门**真跑**一遍：
+   `node tools/check-eslint.js` 0 错误；`tsc -p`（手工通道，shell 直拉）exit 0。
+
+### 自验
+
+- `node tools/check-all.js`（**带 node_modules**）→ ✓12 · ⚠2（tsc / 看门狗＝本机沙箱
+  spawn 限制，两条均手工补跑：tsc exit 0、看门狗逐用例 20/20）· 实跑 12/14；
+  **ESLint 这一步终于真跑**（1.25s）；行覆盖率 98.8%；冒烟真浏览器 ✓；
+  自动化测试 2968 PASS / 0 FAIL；`npm run build` 九条目产物齐、戳记正常。
+- ★ 纪律补记（写进 DEVELOPMENT §5）：**推 main 前若动过 JS，先本地把两条加强闸门真跑**
+  （`npm install --ignore-scripts` + `node tools/check-all.js`，tsc 用 shell 直拉补跑）——
+  别把 ⊘ 当通过；CI 会在第一步就停，后面的闸门不会替你跑。
+
 ## v2.15.0 · 窄屏自适应分片：一行不再硬塞一小节（2026-09-24）
 
 **来源**：用户反馈——「手机上竖屏时，一小节都挤在一起，难以阅读。能否根据当前宽度

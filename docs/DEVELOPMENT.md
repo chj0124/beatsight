@@ -997,6 +997,16 @@ BEATSIGHT_CHROME=<路径> node tools/smoke.js   # 浏览器不在默认位置时
 缺了就直接标 ⊘ 且**不调用**；汇总多打印一行「实跑 N/M 项」。
 **别把它改回只看退出码**——那等于让汇总里的 ✓ 撒谎，而它能撒谎的话，其余 ✓ 就都不值得信了。
 
+★★ **推 main 前必须把两条加强闸门"真跑"一遍（v2.15.1 的教训）**：本机若没装 `node_modules`，
+ESLint / tsc 会被标 ⊘ **跳过**——而 ⊘ 是"没查"、不是"查了通过"；构建环境 `npm ci` 装齐依赖后
+它们真跑，护栏就是在那儿红的：v2.15.0 推上去被 CI 抓到 `no-shadow`（局部 `schedBar` 遮蔽模块级
+同名游标），而同一改动里还藏着一条 tsc 的 TS18047（`atCur` 可空收窄）——**因为 CI 在 ESLint
+那一步就停了，tsc 这颗直到补装依赖后本地手工补跑才现形**。做法：
+`npm install --ignore-scripts`（`--ignore-scripts` 绕过 wrangler 安装脚本在本机沙箱的
+`spawnSync EBUSY`）→ `node tools/check-all.js`（ESLint 会真跑）→ tsc 若仍是 ⚠（沙箱把
+"工具没起来"报成工具故障），用 shell 直拉 `tsc -p` 的手工通道补跑并如实标注。**别让 CI 当你的
+第一道闸门**——它停在第一步时，后面的闸门不会替你跑。
+
 **两类"跳过"必须分清（v2.0.6，审计 P1-10）**——多了一种可选步骤之后，这条更重要：
 - `optional`（第 6/7 步 ESLint、tsc）：缺的是**开发依赖**。`npm ci` 能装上，所以 `--strict-env`
   下要报错，逼 CI 装上而不是假装查过。
