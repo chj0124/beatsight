@@ -56,10 +56,17 @@ function labelOf(rest){
  */
 function analyze(src){
   const lines = src.split("\n");
-  /* ⚠ 本仓库的 index.html 是 **CRLF** 行尾，而正则里的 `.` 不匹配 `\r`——
-     直接把原始行喂给 /(.*)$/ 会永远匹配失败（条数一直是 0，且静默）。
-     所以匹配一律走 noCR（去掉行尾 \r），而 entries 里存的是**原始行**（含 \r），
-     回写时只替换 L 后面那个数，行尾不动。 */
+  /* ⚠ 行尾**不能假设**：本仓库没有 .gitattributes，`index.html` 的行尾取决于**签出环境**——
+     实测（v2.19.0，逐提交回查）**git 里存的一直是 LF**，本沙箱与 CI 下也是 LF；
+     但开发者的 Windows 工作区若开了 `core.autocrlf=true`，工作区文件就是 CRLF。
+     而正则里的 `.` 不匹配 `\r`——直接把原始行喂给 /(.*)$/ 会**永远匹配失败**
+     （条数一直是 0，且静默，看起来像"这个文件里没有索引"）。所以：
+       · 匹配一律走 noCR（去掉行尾 \r）；
+       · entries 里存**原始行**（含 \r），回写时只替换 L 后面那个数，行尾一个字节都不动。
+     ★ 教训（v2.19.0 实测付出过代价）：**别按"注释说它是 CRLF"去写 CRLF 专用的字符串手术**——
+       先 `python3 -c "d=open('index.html','rb').read(); print(d.count(b'\r\n'))"` 查一次。
+       本条注释原写「本仓库的 index.html 是 **CRLF** 行尾」，是一句**依赖环境**的断言被写成了
+       仓库事实，曾把一次"抽模块"的行插入带到错位置。 */
   const noCR = lines.map(l => l.replace(/\r$/, ""));
   const banners = [];
   noCR.forEach((ln, i) => {
