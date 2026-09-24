@@ -1752,17 +1752,17 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L3235  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L3913  Modal         应用内弹窗
      L4045  Viz           时值可视化渲染与每帧动画
-     L5937  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6603  Trainer       变速训练器
-     L6741  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7220  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8074  Editor        自定义节奏型编辑器
-     L8430  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8464  Ear           听辨训练（v1.10.0）
-     L8682  Arrange       曲式编排（v2.0.0）
-     L9546  Help          使用方法（v2.0.1）
-     L9593  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9667  初始化（装配） 各模块 hook 接线与启动
+     L5959  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6625  Trainer       变速训练器
+     L6763  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7242  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8096  Editor        自定义节奏型编辑器
+     L8452  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8486  Ear           听辨训练（v1.10.0）
+     L8704  Arrange       曲式编排（v2.0.0）
+     L9568  Help          使用方法（v2.0.1）
+     L9615  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9689  初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1788,7 +1788,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.15.1";
+const VERSION = "2.15.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4391,7 +4391,29 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       @returns {{ seg: number, steps?: any[]|null, name?: string }} */
   function previewSegFor(seg){
     if (arrWinBars() < 2) return { seg: -1 };          // v2.10.3：预告行要求屏内有多行可牺牲
-    if (seg < 0 || seg !== winAnchorSeg(seg) + arrWinBars() - 1) return { seg: -1 };
+    if (seg < 0) return { seg: -1 };
+    /* ★★ v2.15.2（用户实拍）：触发条件由"**页的最后一行**"扩为"页的最后一行 **或**
+       **播放范围循环的最后一片段**"。
+       为什么必须补后一条：`winAnchorSeg(seg) = floor(seg/W)*W` 是拿**歌曲片段的绝对编号**
+       分页的，与 `S.arrangeSel.from` 无关。于是"范围长度 < W"时（用户场景：只循环第 1–2 小节
+       + 同屏 4 行），范围里**没有任何一片段**能落在"页的最后一行"上 ⇒ 循环回卷前永远没有提前量；
+       而回卷恰恰最需要它——回到范围起点时型可能整个换掉，右手没有准备时间。
+       实测：4 行档 + 范围 1–2 播到第 2 小节时第 1 行不变预告行；同范围换 2 行档就正常。
+       两者的差别只在"范围末片段有没有和页末重合"，与范围本身无关 ⇒ 按**循环内位置**补这一条。
+       页末那条**原样保留**（长范围靠它做翻页提前量），两条取或。
+       ★ 两条都必须让开"正在播的那一行"：预告行恒挂第 1 行，而在播片段的行号 = seg − winStart。
+         为 0 时（W=1 的降级态，或单小节范围正好落在页首）预告行会把在播行整个让出去，
+         而 isPreview 豁免令该行永远拿不到 .played/.active → 白填充画不出来
+         （与 v2.10.3 消掉的那个 W=1 症状同源）。故 `seg <= winStart` 一律不预告；
+         页末那条天然满足 seg = winStart + W − 1 > winStart（W ≥ 2，见上面那道守卫）。 */
+    const W = arrWinBars();
+    const atPageEnd = (seg === winAnchorSeg(seg) + W - 1);
+    const sel = S.arrangeSel;
+    /* 范围末片段 = 范围最后一小节的最后一**片**（K = 每小节片数，整小节档下 K=1 ⇒ 即该小节号） */
+    const atRangeEnd = !!(sel && sel.loop === true && typeof sel.to === "number"
+      && seg === (sel.to | 0) * subsPerBar() + subsPerBar() - 1);
+    if (!atPageEnd && !atRangeEnd) return { seg: -1 };
+    if (seg <= winStart) return { seg: -1 };
     const a = arrangeCur();
     if (!a) return { seg: -1 };
     const total = songBars(a);

@@ -172,3 +172,74 @@ section("T75e 预告行边界 · ★ 只循环 A 段时，页末预告的是范�
      "★ 胶囊也是范围起点的型名（内容与节目单同源：走 arrNextBar，不走 k+1）");
   beat.Controls.stop();
 }
+
+/* ================= 场景 T75f：范围比同屏行数短时，循环回卷前也要预告（v2.15.2 修） =================
+   用户实拍：同屏 4 行 + 只循环第 1–2 小节 → 播到第 2 小节（= 范围末小节）第 1 行**没有**变成
+   预告行；把同屏行数改成 2、同一个范围就正常。
+   根因：previewSegFor 的判据是"播到的片段 == **页的最后一行**"，而分页锚点
+   winAnchorSeg(seg) = floor(seg/W)*W 用的是**歌曲片段的绝对编号**，与 S.arrangeSel.from 无关。
+   于是"范围长度 < W"（例：2 小节范围 + 4 行档）时，范围里没有任何一小节能落在页的最后一行上
+   ⇒ 循环回卷前永远没有提前量——而回卷恰恰是最需要提前量的时刻（型可能整个换掉）。
+   本组用真实示例曲《在他乡》（第 1 小节 = 十六分满扫、第 2 小节起 = 副歌扫弦）钉死这条。 */
+function startDemoRange(N, from, to){
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  beat.Arrange.ensureDemo();
+  const a = beat.Store.arranges[0];
+  beat.Store.S.arrangeSel = { id: a.id, from, to, loop: true, byLyric: false };
+  beat.setMode("playMode", "arrange", "T75f");
+  beat.Controls.setBpm(240);                       // 一小节 = 1s ⇒ 50 步
+  beat.Presets.refreshAfterPatternChange();
+  const pill = els["vizRowsRow"].children.find(c => c.dataset.rows === String(N));
+  ok(!!pill, "前提：找到 " + N + " 行档位 pill");
+  pill.fire("click");
+  beat.Controls.start();
+  return { beat, els, ac: FakeAudioContext.last };
+}
+const rowEls = els => els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className));
+const cellCls = r => r.children.filter(c => /(^| )cell( |$)/.test(c.className)).map(c => c.className);
+
+section("T75f 预告行 · ★★ 范围短于同屏行数：4 行档 + 只循环第 1–2 小节");
+{
+  const { beat, els, ac } = startDemoRange(4, 0, 1);
+  eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行（窗口 = 歌曲第 1–4 小节）");
+  step(beat, ac, 75);                              // ≈1.5s ⇒ 循环第 2 小节（= 范围末小节）
+  ok(/(^| )preview-row( |$)/.test(row0(els).className),
+     "★★ 循环第 2 小节（范围末小节）第 1 行必须是预告行（修前：不是——这就是用户实拍的那一帧）");
+  eq(badgeOf(els), "C（下一小节 · 十六分满扫）",
+     "★ 胶囊 =「和弦名（下一小节 · 型名）」；预告的是回卷目标 = 范围起点（不是歌曲 k+1）");
+  const cls0 = cellCls(row0(els));
+  ok(cls0.length > 0 && cls0.every(c => !/(^| )played( |$)/.test(c)),
+     "★ 预告行一格都没被「已弹」刷白（未来不是历史）");
+  step(beat, ac, 50);                              // 回卷到循环第 1 小节
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className), "回到循环第 1 小节后预告标识立刻消失");
+  beat.Controls.stop();
+}
+
+section("T75f 对照 · 同范围 + 2 行档（本来就正常，钉住不许退化）");
+{
+  const { beat, els, ac } = startDemoRange(2, 0, 1);
+  eq(rowEls(els).length, 2, "前提：2 行档渲染 2 行");
+  step(beat, ac, 75);
+  ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 2 行档同范围：预告行照常出现");
+  eq(badgeOf(els), "C（下一小节 · 十六分满扫）", "胶囊一致");
+  beat.Controls.stop();
+}
+
+section("T75f 对照 · 4 行档 + 范围 1–4（页末与范围末重合，原行为不许变）");
+{
+  const { beat, els, ac } = startDemoRange(4, 0, 3);
+  step(beat, ac, 175);                             // ≈3.5s ⇒ 循环第 4 小节（页末 = 范围末）
+  ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 对齐时预告行照常出现");
+  eq(badgeOf(els), "C（下一小节 · 十六分满扫）", "胶囊一致");
+  beat.Controls.stop();
+}
+
+section("T75f 反例 · 循环关闭时不许凭空造预告（没有「下一小节」可预告）");
+{
+  const { beat, els, ac } = startDemoRange(4, 0, 1);
+  beat.Store.S.arrangeSel.loop = false;
+  step(beat, ac, 75);                              // 范围末小节
+  ok(!/(^| )preview-row( |$)/.test(row0(els).className),
+     "★ 不循环 ⇒ arrNextBar 返回 null ⇒ 第 1 行不许变预告行");
+  beat.Controls.stop();
+}
