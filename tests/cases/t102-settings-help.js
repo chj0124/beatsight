@@ -59,4 +59,12 @@ section("T102b 内容契约 · ★ 新增「设置里的每一项」章节：Swi
   const iTrain = html.indexOf("训练模式</h2>"), iSet = html.indexOf("「设置」里的每一项"),
         iArr = html.indexOf("曲式编排（预设卡片里）");
   ok(iTrain >= 0 && iTrain < iSet && iSet < iArr, "★ 章节插在训练模式之后、曲式编排之前");
+  /* v2.25.2 去重契约（用户实拍"内容重复"）：设置类词条只允许在「设置里的每一项」
+     出现一次——旧「全部控制项」（已收窄为主界面控制项）里不得再有它们的 dt。
+     「主界面控制项」里也只留主界面的三条（速度/拍号/音量） */
+  eq(html.indexOf("全部控制项"), -1, "★ 旧「全部控制项」标题已更名（防两份说明并存）");
+  for (const dt of ["<dt>Swing</dt>", "<dt>延迟补偿</dt>", "<dt>后台保活</dt>", "<dt>音色 / 音量</dt>"])
+    eq(html.indexOf(dt), -1, `★ 旧一字型词条「${dt}」不再出现（详解只住在「设置里的每一项」）`);
+  const iMain = html.indexOf("主界面控制项");
+  ok(iMain >= 0 && iMain < iTrain, "★ 主界面控制项在前（速度/拍号/音量三条，指路提示指向设置章节）");
 }

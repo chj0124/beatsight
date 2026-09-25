@@ -754,14 +754,13 @@ input[type=range].vol{width:120px}
 .help-list b,.help-dl dt{color:var(--t1);font-weight:600}
 .help-tip{margin-top:10px;font-size:12px;color:var(--t3);background:var(--card2);
   border-left:2px solid var(--green);border-radius:0 6px 6px 0;padding:8px 12px;line-height:1.6}
-/* 词条式列表：控制项名与说明两列，窄屏自动堆叠（grid 而不是 float，省一份清浮动） */
-.help-dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:6px 0 0;
-  font-size:13px;line-height:1.7;color:var(--t2)}
-.help-dl dt{text-align:right}
-@media (max-width: 640px){
-  .help-dl{grid-template-columns:1fr;gap:2px}
-  .help-dl dt{text-align:left;margin-top:8px}
-}
+/* 词条式列表（v2.25.2 改版）：单列堆叠——词条一行加粗、说明缩进在下。
+   旧版是双列 grid（max-content + dt 右对齐）：词条名一长（"音频延迟补偿（蓝牙耳机 / 无线音箱）"）
+   列宽就被撑到失控、右对齐让视线来回跳（用户实拍"排版混乱"）；单列对任意长词条都稳定，
+   窄屏也天然可用，原 640px 媒体查询随之删除 */
+.help-dl{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--t2)}
+.help-dl dt{margin-top:10px}
+.help-dl dd{margin:0 0 0 2px}
 
 /* ---------- 响应式 ---------- */
 /* 窄屏（≤640px）：段行拆成三行。390px 下「段号 + 名字输入(110px) + 块列表 + 5 个操作钮」
@@ -1546,16 +1545,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <!-- 完整说明：默认收起。想一次看完的人再展开——默认全展开会让"先试这几个开关"
            那一段被埋掉，而那才是新用户真正需要先看到的 -->
       <div id="helpMore" hidden>
-        <h2 class="card-title" style="margin:22px 0 4px">全部控制项</h2>
+        <!-- v2.25.2（用户实拍"内容重复、排版混乱"）：本节收窄为**主界面**的三条控制项——
+             v2.25.1 新增「设置里的每一项」时没有同步清掉这里与它重复的五个词条
+             （Swing / 音色 / 延迟补偿 / 弹跳球 / 后台保活），两份说明背靠背出现。
+             现在分工明确：本节只讲卡片上的高频控件；设置小窗里的项一律看
+             下面「设置里的每一项」（文末给指路提示） -->
+        <h2 class="card-title" style="margin:22px 0 4px">主界面控制项</h2>
         <dl class="help-dl">
           <dt>速度 BPM</dt><dd>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120</dd>
           <dt>拍号</dt><dd>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</dd>
-          <dt>Swing</dt><dd>把每拍后半的八分往后推，做出摇摆感。<b>只改发声时机，不改时间轴</b></dd>
-          <dt>音色 / 音量</dt><dd>电子 / 木鱼 / 鼓组（都是程序合成，不占体积）。<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）。两条<b>各调各的</b>：把「节拍」拉到 0，扫弦照样响。重拍增强 = 重拍比正拍响多少（两条声部都受影响）</dd>
-          <dt>延迟补偿</dt><dd>蓝牙耳机 / 无线音箱通常有 100–300ms 输出延迟——声音比画面晚到。补偿把所有声音<b>提前</b>相应毫秒发出（设置里调，带「跟着敲」的校准向导）；可<b>按设备存多套配置</b>，换耳机时切换、上次用的会被记住</dd>
-          <dt>弹跳球</dt><dd>关掉就只剩声音；静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源</dd>
-          <dt>后台保活</dt><dd>切到别的标签页或手机息屏时尽量不被系统暂停（耗电换连续，按需开）</dd>
+          <dt>音量（三条滑杆）</dt><dd>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</dd>
         </dl>
+        <div class="help-tip" style="margin-top:10px">藏在顶栏「设置」小窗里的项——主题 / 壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断——逐条详解见下面<b>「设置里的每一项」</b>。</div>
 
         <h2 class="card-title" style="margin:22px 0 4px">训练模式</h2>
         <ul class="help-list">
@@ -1762,7 +1763,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <div class="bpm-row" style="margin-top:14px">
       <button class="pill outline" id="helpBtn">使用方法</button>
     </div>
-    <div class="hint" style="margin-top:8px">完整操作说明：全部控制项 · 训练模式 · 曲式编排 · 自己画节奏型 · 数据隐私 · 键盘快捷键。</div>
+    <div class="hint" style="margin-top:8px">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。</div>
 
     <!-- 组④ 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
          为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
@@ -1801,23 +1802,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1833  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2415  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3610  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4314  Modal         应用内弹窗
-     L4451  Viz           时值可视化渲染与每帧动画
-     L6589  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7255  Trainer       变速训练器
-     L7393  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7856  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9094  Editor        自定义节奏型编辑器
-     L9458  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9495  Ear           听辨训练（v1.10.0）
-     L9715  Arrange       曲式编排（v2.0.0）
-     L10566 Help          使用方法（v2.0.1）
-     L10619 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10693 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10894 初始化（装配） 各模块 hook 接线与启动
+     L1834  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2416  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3611  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4315  Modal         应用内弹窗
+     L4452  Viz           时值可视化渲染与每帧动画
+     L6590  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7256  Trainer       变速训练器
+     L7394  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7857  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9095  Editor        自定义节奏型编辑器
+     L9459  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9496  Ear           听辨训练（v1.10.0）
+     L9716  Arrange       曲式编排（v2.0.0）
+     L10567 Help          使用方法（v2.0.1）
+     L10620 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10694 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10895 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1843,7 +1844,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.25.1";
+const VERSION = "2.25.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
