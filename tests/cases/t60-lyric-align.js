@@ -2,7 +2,8 @@
    T60 系列。
    ---------------------------------------------------------------------------
    契约锚点（与 index.html 内注释同源，改实现时两边一起动）：
-     · 一行歌词 = { arrangeId, sec, chars:[{t, dur, ch}] }，身份 = (曲式id, 段下标)；
+     · 一行歌词 = { arrangeId, secUid, chars:[{t, dur, ch}] }，身份 = (曲式id, 段 uid)
+       （v2.26.0 G3：此前是段下标，段一挪位置整行词就串到别的段上）；
      · char.t 是**段内绝对 tick**（段首 = 0），dur 必为 LYRIC_GRID(12) 整数倍；
      · Store 只做结构校验（吸附/排序/重叠/上限），越界剔除在 lyricCharsAt 且**不写回**；
      · 锚点提示音 = wood 音色的带通噪声（bandpass / freqAccent / q / makeup），在小节起点
@@ -16,7 +17,7 @@ const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 const SPAN = 4 * 4 * 48;                       // 768：1 块 1 遍的段长（tick）
 const seedArr = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
-  { id: "t1", name: "歌词曲", sections: [{ name: "主歌", blocks: [BL(1, 1)] }] },
+  { id: "t1", name: "歌词曲", sections: [{ uid: "s1", name: "主歌", blocks: [BL(1, 1)] }] },
 ]}) });
 const seedState = extra => JSON.stringify(Object.assign(
   { v: 3, bpm: 240, playMode: "arrange", arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
@@ -36,42 +37,43 @@ section("T60a 歌词数据层 · upsert/find/delete + 吸附/重叠/截断/上�
   eq(St.lyrics.length, 0, "初始无歌词行");
 
   /* 写入即归一化：t/dur 吸附到 12tick 格、ch trim */
-  const v = St.upsertLyric("a1", 0, [{ t: 26, dur: 30, ch: " 你 " }]);
+  const v = St.upsertLyric("a1", "s1", [{ t: 26, dur: 30, ch: " 你 " }]);
   eq(v.chars[0].t, 24, "t=26 吸附到十六分格 24");
   eq(v.chars[0].dur, 36, "dur=30 吸附到 36（12 的整数倍）");
   eq(v.chars[0].ch, "你", "ch 被 trim");
-  ok(St.findLyric("a1", 0) === v, "findLyric 按 (曲式, 段) 命中且是同一行对象");
-  eq(St.findLyric("a1", 1), null, "段下标不同不命中");
-  eq(St.findLyric("zz", 0), null, "曲式 id 不同不命中");
+  ok(St.findLyric("a1", "s1") === v, "findLyric 按 (曲式, 段 uid) 命中且是同一行对象");
+  eq(St.findLyric("a1", "s2"), null, "段 uid 不同不命中");
+  eq(St.findLyric("zz", "s1"), null, "曲式 id 不同不命中");
 
-  /* 落盘形状 {v:1, lines}，存的是归一化后的值 */
+  /* 落盘形状 {v:2, lines}，存的是归一化后的值 */
   const disk = JSON.parse(storage.get("beatsight.lyrics"));
-  eq(disk.v, 1, "冷键带版本号");
+  eq(disk.v, 2, "冷键带版本号（v2.26.0：行寻址键升为段 uid）");
+  eq(disk.lines[0].secUid, "s1", "★ 落盘的是段 uid，不是段下标");
   eq(disk.lines.length, 1, "落盘一行");
   eq(disk.lines[0].chars[0].t, 24, "落盘的是归一化后的值");
 
   /* 同键再写 = 替换（换行对象），不是追加 */
-  const v2 = St.upsertLyric("a1", 0, [{ t: 0, dur: 24, ch: "好" }]);
+  const v2 = St.upsertLyric("a1", "s1", [{ t: 0, dur: 24, ch: "好" }]);
   eq(St.lyrics.length, 1, "同 (arrangeId, sec) 再写不新增行");
-  ok(St.findLyric("a1", 0) === v2 && v2 !== v, "★ 替换会换掉行对象（lyricFit 缓存失效机制依赖这一点）");
+  ok(St.findLyric("a1", "s1") === v2 && v2 !== v, "★ 替换会换掉行对象（lyricFit 缓存失效机制依赖这一点）");
 
-  St.upsertLyric("a1", 1, [{ t: 0, dur: 24, ch: "另段" }]);
+  St.upsertLyric("a1", "s2", [{ t: 0, dur: 24, ch: "另段" }]);
   eq(St.lyrics.length, 2, "同一曲式的不同段各挂一行");
-  eq(St.deleteLyric("a1", 1), true, "删除存在的行返回 true");
-  eq(St.deleteLyric("a1", 1), false, "再删返回 false");
+  eq(St.deleteLyric("a1", "s2"), true, "删除存在的行返回 true");
+  eq(St.deleteLyric("a1", "s2"), false, "再删返回 false");
   eq(St.lyrics.length, 1, "删除只动目标行");
 
   /* 结构不合法 → null，且不落盘 */
-  eq(St.upsertLyric("", 0, [{ t: 0, ch: "x" }]), null, "空 arrangeId 拒绝");
-  eq(St.upsertLyric("a1", -1, [{ t: 0, ch: "x" }]), null, "负段下标拒绝");
-  eq(St.upsertLyric("a1", 0, []), null, "空字表拒绝");
-  eq(St.upsertLyric("a1", 0, [{ t: 0, ch: "   " }]), null, "全是空字 → 整行不存");
+  eq(St.upsertLyric("", "s1", [{ t: 0, ch: "x" }]), null, "空 arrangeId 拒绝");
+  eq(St.upsertLyric("a1", "", [{ t: 0, ch: "x" }]), null, "空段 uid 拒绝（v2.26.0：寻址键是段 uid）");
+  eq(St.upsertLyric("a1", "s1", []), null, "空字表拒绝");
+  eq(St.upsertLyric("a1", "s1", [{ t: 0, ch: "   " }]), null, "全是空字 → 整行不存");
   eq(St.lyrics.length, 1, "非法写入不进内存");
   eq(JSON.parse(storage.get("beatsight.lyrics")).lines.length, 1, "非法写入不落盘");
 
   /* 乱序先排序；重叠丢靠后的字；空字丢弃；坏字计数进 warn（不整行丢） */
   const cap = captureWarn();
-  const v3 = St.upsertLyric("a2", 0, [
+  const v3 = St.upsertLyric("a2", "s1", [
     { t: 48, dur: 24, ch: "b" },
     { t: 0, dur: 48, ch: "a" },
     { t: 60, dur: 24, ch: "c" },        // 落在 b 的时值 [48,72) 里 → 丢
@@ -83,7 +85,7 @@ section("T60a 歌词数据层 · upsert/find/delete + 吸附/重叠/截断/上�
   ok(cap.list.some(s => s.includes("跳过 2 个坏字")), "坏字计数写进 Console 警告");
 
   /* dur 缺省/下限/上限；ch 截断到 lyricMaxChLen */
-  const v4 = St.upsertLyric("a3", 0, [
+  const v4 = St.upsertLyric("a3", "s1", [
     { t: 0, ch: "x" },                            // 无 dur → 基准时值
     { t: 48, dur: 0, ch: "y" },                   // → 最短时值
     { t: 96, dur: 999999, ch: "z" },              // → 上限（时值占 [96, 96+6144)）
@@ -96,19 +98,19 @@ section("T60a 歌词数据层 · upsert/find/delete + 吸附/重叠/截断/上�
 
   /* 行级上限：chars 超 lyricMaxChars 整行拒绝 */
   const big = Array.from({ length: beat.CONFIG.lyricMaxChars + 1 }, (_, k) => ({ t: k * 24, dur: 24, ch: "x" }));
-  eq(St.upsertLyric("a4", 0, big), null, "★ 单行超 " + beat.CONFIG.lyricMaxChars + " 字 → 整行拒绝");
+  eq(St.upsertLyric("a4", "s1", big), null, "★ 单行超 " + beat.CONFIG.lyricMaxChars + " 字 → 整行拒绝");
 }
 
 /* ================= 场景 T60b：加载归一化（脏行丢弃 / 同键去重 / 行数上限） ================= */
 section("T60b 歌词加载 · 坏行丢弃 + 同 (曲式,段) 去重 + 行数上限");
 {
   const cap = captureWarn();
-  const { beat } = loadApp({ "beatsight.lyrics": JSON.stringify({ v: 1, lines: [
-    { arrangeId: "g", sec: 0, chars: [{ t: 13, dur: 25, ch: "x" }] },   // 好行（t/dur 会吸附）
-    { arrangeId: "g", sec: 0, chars: [{ t: 0, dur: 24, ch: "dup" }] },  // 同键 → 丢
-    { sec: 0, chars: [{ t: 0, dur: 24, ch: "noId" }] },                 // 缺 arrangeId → 丢
-    { arrangeId: "b2", sec: 0, chars: "nope" },                         // chars 非数组 → 丢
-    { arrangeId: "b3", sec: -1, chars: [{ t: 0, dur: 24, ch: "y" }] },  // 负段 → 丢
+  const { beat } = loadApp({ "beatsight.lyrics": JSON.stringify({ v: 2, lines: [
+    { arrangeId: "g", secUid: "g1", chars: [{ t: 13, dur: 25, ch: "x" }] },   // 好行（t/dur 会吸附）
+    { arrangeId: "g", secUid: "g1", chars: [{ t: 0, dur: 24, ch: "dup" }] },  // 同键 → 丢
+    { secUid: "g1", chars: [{ t: 0, dur: 24, ch: "noId" }] },                 // 缺 arrangeId → 丢
+    { arrangeId: "b2", secUid: "b2", chars: "nope" },                         // chars 非数组 → 丢
+    { arrangeId: "b3", secUid: "", chars: [{ t: 0, dur: 24, ch: "y" }] },     // 空段 uid → 丢
   ]}) });
   cap.restore();
   eq(beat.Store.lyrics.length, 1, "只留第一条同键行，坏行全丢");
@@ -118,8 +120,8 @@ section("T60b 歌词加载 · 坏行丢弃 + 同 (曲式,段) 去重 + 行数上
 
   /* 行数上限 lyricMaxLines：超出的丢弃并记警告 */
   const cap2 = captureWarn();
-  const many = { v: 1, lines: Array.from({ length: 260 }, (_, k) =>
-    ({ arrangeId: "m" + k, sec: 0, chars: [{ t: 0, dur: 24, ch: "x" }] })) };
+  const many = { v: 2, lines: Array.from({ length: 260 }, (_, k) =>
+    ({ arrangeId: "m" + k, secUid: "m", chars: [{ t: 0, dur: 24, ch: "x" }] })) };
   const app2 = loadApp({ "beatsight.lyrics": JSON.stringify(many) });
   cap2.restore();
   eq(app2.beat.Store.lyrics.length, app2.beat.CONFIG.lyricMaxLines, "★ 行数钳到 lyricMaxLines");
@@ -130,36 +132,36 @@ section("T60b 歌词加载 · 坏行丢弃 + 同 (曲式,段) 去重 + 行数上
 section("T60c 段内解析 · 段落 tick 长度 / 越界剔除不写回 / 行身份缓存");
 {
   const { beat } = loadApp(seedArr());
-  eq(beat.lyricSpanTicks("t1", 0), SPAN, "1 块 1 遍 ×4 小节 ×4 拍 ×48 = 768 tick");
-  eq(beat.lyricSpanTicks("t1", 9), 0, "段下标越界 → 0");
-  eq(beat.lyricSpanTicks("zz", 0), 0, "曲式不存在 → 0");
-  eq(beat.lyricCharsAt("t1", 0).length, 0, "无歌词行 → 空表（LYRIC_NONE）");
+  eq(beat.lyricSpanTicks("t1", "s1"), SPAN, "1 块 1 遍 ×4 小节 ×4 拍 ×48 = 768 tick");
+  eq(beat.lyricSpanTicks("t1", "nope"), 0, "段 uid 不存在（词挂的段已被删）→ 0");
+  eq(beat.lyricSpanTicks("zz", "s1"), 0, "曲式不存在 → 0");
+  eq(beat.lyricCharsAt("t1", "s1").length, 0, "无歌词行 → 空表（LYRIC_NONE）");
 
   /* 越界字剔除（结构合法但超出段长），且**不写回** Store */
-  beat.Store.upsertLyric("t1", 0, [
+  beat.Store.upsertLyric("t1", "s1", [
     { t: 0, dur: 24, ch: "在" },
     { t: SPAN, dur: 24, ch: "界" },          // t = 段长 → 越界（定义域 [0, span)）
     { t: SPAN + 240, dur: 24, ch: "外" },
   ]);
   const cap = captureWarn();
-  const r1 = beat.lyricCharsAt("t1", 0);
+  const r1 = beat.lyricCharsAt("t1", "s1");
   cap.restore();
   eq(r1.length, 1, "★ 越界字被剔除（界/外 对渲染与发声不可见）");
   ok(cap.list.some(s => s.includes("2 个字超出段落范围")), "剔除记 Console 警告");
-  eq(beat.Store.findLyric("t1", 0).chars.length, 3, "★ 剔除不写回——段落日后加长，录入还在");
+  eq(beat.Store.findLyric("t1", "s1").chars.length, 3, "★ 剔除不写回——段落日后加长，录入还在");
 
-  ok(beat.lyricCharsAt("t1", 0) === r1, "同一行对象命中缓存（返回同一份结果）");
-  beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "换" }, { t: 24, dur: 24, ch: "行" }]);
-  const r3 = beat.lyricCharsAt("t1", 0);
+  ok(beat.lyricCharsAt("t1", "s1") === r1, "同一行对象命中缓存（返回同一份结果）");
+  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "换" }, { t: 24, dur: 24, ch: "行" }]);
+  const r3 = beat.lyricCharsAt("t1", "s1");
   ok(r3 !== r1 && r3.length === 2, "★ upsert 换掉行对象 → 缓存自然失效（无需显式清理）");
 
   /* span 解析不出（块引用已死）→ 不过滤，原样返回（坏引用由 arrangeProblems 出口报告） */
   const app2 = loadApp({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
-    { id: "t9", name: "死引用", sections: [{ name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
+    { id: "t9", name: "死引用", sections: [{ uid: "s9", name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
   ]}) });
-  app2.beat.Store.upsertLyric("t9", 0, [{ t: 0, dur: 24, ch: "a" }, { t: 99996, dur: 24, ch: "b" }]);
-  eq(app2.beat.lyricSpanTicks("t9", 0), 0, "块引用不存在 → span 0");
-  eq(app2.beat.lyricCharsAt("t9", 0).length, 2, "★ span 不可知时不过滤（不把数据误判死）");
+  app2.beat.Store.upsertLyric("t9", "s9", [{ t: 0, dur: 24, ch: "a" }, { t: 99996, dur: 24, ch: "b" }]);
+  eq(app2.beat.lyricSpanTicks("t9", "s9"), 0, "块引用不存在 → span 0");
+  eq(app2.beat.lyricCharsAt("t9", "s9").length, 2, "★ span 不可知时不过滤（不把数据误判死）");
 }
 
 /* ================= 场景 T60d：渲染层 buildLyricLane / paintLyric =================
@@ -169,7 +171,7 @@ section("T60c 段内解析 · 段落 tick 长度 / 越界剔除不写回 / 行�
 section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 / 收起不变量");
 {
   const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
-  beat.Store.upsertLyric("t1", 0, [
+  beat.Store.upsertLyric("t1", "s1", [
     { t: 0, dur: 24, ch: "你" },
     { t: 192, dur: 24, ch: "好" },       // 第 2 小节起点（192 = 4 拍 × 48）
     { t: 240, dur: 48, ch: "世" },       // 延音字：时值 2 倍基准
@@ -212,12 +214,12 @@ section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 /
   eq(app2.els["lyricLane"].hidden, true, "曲式在但无歌词行 → 收起");
   const app3 = loadApp({
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
-      { id: "t9", name: "死引用", sections: [{ name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
+      { id: "t9", name: "死引用", sections: [{ uid: "s9", name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
     ]}),
     "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange",
       arrangeSel: { id: "t9", from: 0, to: 0, loop: false } }),
   });
-  app3.beat.Store.upsertLyric("t9", 0, [{ t: 0, dur: 24, ch: "a" }]);
+  app3.beat.Store.upsertLyric("t9", "s9", [{ t: 0, dur: 24, ch: "a" }]);
   app3.beat.Viz.buildLyricLane();
   eq(app3.els["lyricLane"].hidden, true, "★ 段长不可知（死引用）→ 收起而不是画错");
 }
@@ -226,7 +228,7 @@ section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 /
 section("T60e 锚点提示音 · 时刻 / 音色参数 / 延音静默 / 幂等 / 开关与音量门");
 {
   const { beat } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ lyricCue: true }) }));
-  beat.Store.upsertLyric("t1", 0, [
+  beat.Store.upsertLyric("t1", "s1", [
     { t: 0, dur: 24, ch: "你" },
     { t: 192, dur: 24, ch: "好" },
     { t: 240, dur: 48, ch: "世" },       // 延音：时值覆盖 [240,288)，其间不得有第二声
@@ -259,7 +261,7 @@ section("T60e 锚点提示音 · 时刻 / 音色参数 / 延音静默 / 幂等 /
 
   /* 开关关（默认）→ 一个锚点都不排 */
   const off = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
-  off.beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "你" }]);
+  off.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
   off.beat.Controls.start();
   const offAc = FakeAudioContext.last;
   drive(offAc, off.beat, 1.2);
@@ -268,7 +270,7 @@ section("T60e 锚点提示音 · 时刻 / 音色参数 / 延音静默 / 幂等 /
 
   /* 音量为 0 → lyricCueHit 早退，不排空音（与 playClick 同口径） */
   const mute = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ lyricCue: true, vol: 0 }) }));
-  mute.beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "你" }]);
+  mute.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
   mute.beat.Controls.start();
   const muteAc = FakeAudioContext.last;
   drive(muteAc, mute.beat, 1.2);
@@ -300,7 +302,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* 粘贴 → 按字均分（空白符被吞），change 一次落库 */
   box.value = "你好 世界";
   box.fire("change");
-  const line = St.findLyric("t1", 0);
+  const line = St.findLyric("t1", "s1");
   eq(line.chars.length, 4, "粘贴 4 个字（空白被吞）");
   eq(JSON.stringify(line.chars.map(c => c.t)), "[0,24,48,72]", "★ 默认每字一个八分（24tick）自段首顺排");
   ok(line.chars.every(c => c.dur === beat.LYRIC_BASE), "默认时值 = 基准单位");
@@ -318,7 +320,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* 段落放不下的部分不录（768 / 24 = 32 字上限） */
   byCls(ly2, /arg-lyric-paste/).value = "字".repeat(40);
   byCls(ly2, /arg-lyric-paste/).fire("change");
-  eq(St.findLyric("t1", 0).chars.length, 32, "★ 超出段长的字不录（「界面有、听不到」是最难查的错觉）");
+  eq(St.findLyric("t1", "s1").chars.length, 32, "★ 超出段长的字不录（「界面有、听不到」是最难查的错觉）");
 
   /* 换成两个字，开始拖拽（perTick = 轨宽 600px / 768tick = 0.78125） */
   const ly3 = els["argSections"].children[0].children[4];
@@ -335,7 +337,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(chip1.style.left, "6.25%", "拖动中实时更新位置（48/768）");
   eq(chip1.getAttribute("aria-label"), "第 2 个字「好」起点 48 tick，时值 24 tick", "拖动中 aria 同步");
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", 0).chars[1].t, 48, "★ 抬手落库（归一化由 Store 收口，UI 不做第二套校验）");
+  eq(St.findLyric("t1", "s1").chars[1].t, 48, "★ 抬手落库（归一化由 Store 收口，UI 不做第二套校验）");
   ok(!chip1.className.includes("dragging"), "抬手摘掉拖拽态");
 
   /* 邻居边界：往左拖过前一个字的终点，吞不掉它 */
@@ -344,16 +346,16 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   chip1b.fire("pointerdown", { clientX: 200 });
   fireWin("pointermove", { clientX: 162.5 });       // −37.5px = −48tick → 0，但前一个字占 [0,24)
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", 0).chars[1].t, 24, "★ 拖过邻居终点被钳在 24，不会吃掉前一个字");
+  eq(St.findLyric("t1", "s1").chars[1].t, 24, "★ 拖过邻居终点被钳在 24，不会吃掉前一个字");
 
   /* 拖右缘改时值：被下一个字顶住 → 未变 → 不动库 */
   chips = laneOf().children;
-  const lineBefore = St.findLyric("t1", 0);
+  const lineBefore = St.findLyric("t1", "s1");
   const grip0 = chips[0].children[1];
   grip0.fire("pointerdown", { clientX: 300 });
   fireWin("pointermove", { clientX: 318.75 });      // +24tick，但下一个字在 24
   fireWin("pointerup", {});
-  ok(St.findLyric("t1", 0) === lineBefore, "时值被邻居顶住 → 未变 → 不动库（行对象不变）");
+  ok(St.findLyric("t1", "s1") === lineBefore, "时值被邻居顶住 → 未变 → 不动库（行对象不变）");
 
   /* 最后一个字没有右邻：时值真改 */
   const grip1 = chips[1].children[1];
@@ -361,12 +363,12 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   fireWin("pointermove", { clientX: 418.75 });      // +24tick → 48
   eq(chips[1].style.width, "6.25%", "时值拖动中宽度实时更新（48/768）");
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", 0).chars[1].dur, 48, "拖右缘改时值落库");
+  eq(St.findLyric("t1", "s1").chars[1].dur, 48, "拖右缘改时值落库");
 
   /* 清除 */
   let ly4 = els["argSections"].children[0].children[4];
   byCls(ly4, c => c.textContent === "清除").fire("click");
-  eq(St.findLyric("t1", 0), null, "「清除」删掉本段歌词行");
+  eq(St.findLyric("t1", "s1"), null, "「清除」删掉本段歌词行");
   ly4 = els["argSections"].children[0].children[4];
   eq(byCls(ly4, c => c.textContent === "清除").disabled, true, "清除后按钮回到禁用");
   eq(byCls(ly4, /arg-lyric-paste/).value, "", "框清空");
@@ -374,11 +376,11 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* 空文本 = 删行（与「清除」同一个出口） */
   byCls(ly4, /arg-lyric-paste/).value = "你好";
   byCls(ly4, /arg-lyric-paste/).fire("change");
-  ok(!!St.findLyric("t1", 0), "先录两个字");
+  ok(!!St.findLyric("t1", "s1"), "先录两个字");
   const ly5 = els["argSections"].children[0].children[4];
   byCls(ly5, /arg-lyric-paste/).value = "   ";
   byCls(ly5, /arg-lyric-paste/).fire("change");
-  eq(St.findLyric("t1", 0), null, "★ 粘贴空白 = 删行（不留空行脏数据）");
+  eq(St.findLyric("t1", "s1"), null, "★ 粘贴空白 = 删行（不留空行脏数据）");
 
   /* 锚点提示音开关：全书一个 S.lyricCue，走热键落盘 */
   const ly6 = els["argSections"].children[0].children[4];
@@ -394,7 +396,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
 
   /* 段长不可知（块引用已死）：提示指路，不留空白谜面 */
   const dead = loadApp({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
-    { id: "t9", name: "死引用", sections: [{ name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
+    { id: "t9", name: "死引用", sections: [{ uid: "s9", name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
   ]}) });
   dead.beat.Arrange.open();
   const dly = dead.els["argSections"].children[0].children[4];

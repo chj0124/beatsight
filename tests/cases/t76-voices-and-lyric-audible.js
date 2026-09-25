@@ -129,8 +129,10 @@ section("T76c 可听域对齐 · 调度越界 ≠ 可听越界，歌词/计数�
     { name: "A段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
     { name: "B段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
   ] });
-  beat.Store.upsertLyric("t76", 0, [{ t: 0, dur: 24, ch: "一" }]);
-  beat.Store.upsertLyric("t76", 1, [{ t: 0, dur: 24, ch: "二" }]);
+  /* v2.26.0：段 uid 由 normArrange 补发（动态），按位置现取 */
+  const u76 = i => beat.Store.findArrange("t76").sections[i].uid;
+  beat.Store.upsertLyric("t76", u76(0), [{ t: 0, dur: 24, ch: "一" }]);
+  beat.Store.upsertLyric("t76", u76(1), [{ t: 0, dur: 24, ch: "二" }]);
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: "t76", from: 0, to: 1, loop: false };
   beat.Controls.setBpm(240);
@@ -182,8 +184,10 @@ section("T76d 可听域对齐 · 停机预览锚到定位段所在窗口（回�
     { name: "A段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 2 }] },
     { name: "B段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 2 }] },
   ] });
-  beat.Store.upsertLyric("t76d", 0, [{ t: 0, dur: 24, ch: "春" }, { t: 192, dur: 24, ch: "风" }]);
-  beat.Store.upsertLyric("t76d", 1, [{ t: 0, dur: 24, ch: "秋" }, { t: 192, dur: 24, ch: "月" }]);
+  /* v2.26.0：段 uid 由 normArrange 补发（动态），按位置现取 */
+  const u76d = i => beat.Store.findArrange("t76d").sections[i].uid;
+  beat.Store.upsertLyric("t76d", u76d(0), [{ t: 0, dur: 24, ch: "春" }, { t: 192, dur: 24, ch: "风" }]);
+  beat.Store.upsertLyric("t76d", u76d(1), [{ t: 0, dur: 24, ch: "秋" }, { t: 192, dur: 24, ch: "月" }]);
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: "t76d", from: 2, to: 3, loop: true };
   beat.Viz.buildLyricLane();
@@ -206,7 +210,9 @@ section("T76e 分行歌词 · 播放中：前行已唱 / 当前行正在唱 / �
   beat.Store.upsertArrange({ id: "t76e", name: "一段四节", sections: [
     { name: "唯一段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 4 }] },
   ] });
-  beat.Store.upsertLyric("t76e", 0, [{ t: 0, dur: 48, ch: "一" }, { t: 192, dur: 48, ch: "二" }]);
+  /* v2.26.0：段 uid 由 normArrange 补发（动态），按位置现取 */
+  const u76e = i => beat.Store.findArrange("t76e").sections[i].uid;
+  beat.Store.upsertLyric("t76e", u76e(0), [{ t: 0, dur: 48, ch: "一" }, { t: 192, dur: 48, ch: "二" }]);
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: "t76e", from: 0, to: 3, loop: false };
   beat.Controls.setBpm(240);

@@ -1820,21 +1820,21 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1850  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L2432  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3627  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4331  Modal         应用内弹窗
-     L4468  Viz           时值可视化渲染与每帧动画
-     L6606  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7272  Trainer       变速训练器
-     L7410  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7873  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9111  Editor        自定义节奏型编辑器
-     L9475  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9512  Ear           听辨训练（v1.10.0）
-     L9732  Arrange       曲式编排（v2.0.0）
-     L10583 Help          使用方法（v2.0.1）
-     L10636 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10710 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10911 初始化（装配） 各模块 hook 接线与启动
+     L3697  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4404  Modal         应用内弹窗
+     L4541  Viz           时值可视化渲染与每帧动画
+     L6681  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7350  Trainer       变速训练器
+     L7488  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7951  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9189  Editor        自定义节奏型编辑器
+     L9553  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9590  Ear           听辨训练（v1.10.0）
+     L9810  Arrange       曲式编排（v2.0.0）
+     L10669 Help          使用方法（v2.0.1）
+     L10722 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10796 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10997 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1860,7 +1860,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.25.4";
+const VERSION = "2.26.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2692,6 +2692,14 @@ const Store = (() => {
          预设可能在曲式保存之后被删掉）
      这条边界写在 DEVELOPMENT.md §3.10，别在实现时"顺手"把解析搬进来。 */
   let arrSeq = 0;                        // 新建 id 的会话内单调序号（同 importPresets 的理由：防同毫秒撞号）
+  let secSeq = 0;                        // v2.26.0：段的会话内单调序号（同 arrSeq 的理由）
+  /* v2.26.0（G3）：段的**稳定身份**。
+     ★ 为什么要有它：歌词行此前按 (曲式id, 段下标) 寻址，于是"把第 2 段移到第 4 段的位置"
+       之后，挂在下标 2 上的那行歌词**跟着下标走**，落到了另一个段上——而用户的心智是
+       "这行词属于我写的那一段"，段挪到哪儿它就跟到哪儿。下标是**位置**，不是**身份**。
+     ★ uid 只在段被**新建**时发一次，此后随段对象一起走（上移/下移/复制都是搬对象，
+       不是重发号）。格式沿用 id 惯例 "s" + Date.now() + "-" + 序号。 */
+  const mintSecUid = () => "s" + Date.now() + "-" + (secSeq++);
   /* 型的实际小节数（v2.5.1，**加载期**的局部判据）。
      ★ 为什么这里再写一份、而不是调共享区的 patBars：本函数被 arranges 的**加载**路径调用，
        而共享区（含 patBars 的调用方）在本模块之后执行 → 顶层读它是反向引用（R1 会拦 TDZ）。
@@ -2710,12 +2718,21 @@ const Store = (() => {
     else if (ref && ref.type === "custom") p = savedCustoms.find(c => c && c.id === ref.id);
     return patBars(p);
   };
-  /** @param {any} raw */
-  function normArrange(raw){
+  /* v2.26.0：prev = 库里同 id 的**旧版本**（upsertArrange 传入），只用于 uid 继承。
+     ★ 为什么需要继承：整存整取是"用新对象替换旧对象"，而有些调用方（如示例曲重建）
+       每次都拿一份**不带 uid 的新 spec** 来存——若一律补发新号，段身份每次都变，
+       挂在它上面的歌词行当场失配。按位置继承旧号 = "这还是原来那一段"。
+     ★ 只在 raw 没带有效 uid 时才继承：深拷贝库对象再存的路径（编排面板的 save）本来
+       就带着 uid，uid 随段走、不会因为"删除某段导致后方段前移"而错位。
+     ★ 同曲式内 uid 必须唯一：重复 = 脏数据（手工改过冷键 / 外部包），后者补发新号。 */
+  /** @param {any} raw @param {any} [prev] @returns {any} */
+  function normArrange(raw, prev){
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.name !== "string" || !raw.name.trim()) return null;
     if (!Array.isArray(raw.sections) || !raw.sections.length
         || raw.sections.length > CONFIG.arrMaxSections) return null;
+    const prevSecs = (prev && Array.isArray(prev.sections)) ? prev.sections : null;
+    const seen = new Set();
     const sections = [];
     let totalBars = 0;
     for (const s of raw.sections){
@@ -2735,7 +2752,14 @@ const Store = (() => {
         blocks.push({ ref: isBuiltin ? { type:"builtin", idx:+b.ref.idx } : { type:"custom", id:b.ref.id },
           repeats: reps });
       }
-      sections.push({ name: typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 40) : "",
+      /* uid 三档判据：自带有效且未重复 → 用它；否则按位置继承旧号的段身份；都没有 → 补发 */
+      let uid = (typeof s.uid === "string" && s.uid) ? s.uid : "";
+      if (!uid || seen.has(uid)){
+        const from = prevSecs ? prevSecs[sections.length] : null;
+        uid = (from && typeof from.uid === "string" && from.uid && !seen.has(from.uid)) ? from.uid : mintSecUid();
+      }
+      seen.add(uid);
+      sections.push({ uid, name: typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 40) : "",
         blocks });
     }
     if (!totalBars || totalBars > CONFIG.arrMaxBars) return null;
@@ -2743,7 +2767,7 @@ const Store = (() => {
     return { id, name: raw.name.trim().slice(0, 40), sections };
   }
   const arrIn = readJSON(KEY_ARRANGES);
-  /** @type {{ id: string, name: string, sections: { name: string, blocks: { ref: { type: string, idx?: number, id?: string }, repeats: number }[] }[] }[]} */
+  /** @type {{ id: string, name: string, sections: { uid: string, name: string, blocks: { ref: { type: string, idx?: number, id?: string }, repeats: number }[] }[] }[]} */
   const arranges = [];
   {
     let dropped = 0;
@@ -2914,7 +2938,9 @@ const Store = (() => {
      调用方（UI）要把 null 当成"这份草稿还不能存" */
   /** @param {any} a @returns {any} */
   function upsertArrange(a){
-    const v = normArrange(a);
+    /* 段 uid 继承：把库里的旧版本递给 normArrange（详见其注释） */
+    const prev = (a && typeof a.id === "string") ? findArrange(a.id) : null;
+    const v = normArrange(a, prev);
     if (!v) return null;
     const i = arranges.findIndex(x => x && x.id === v.id);
     if (i >= 0) arranges[i] = v; else arranges.push(v);
@@ -2927,15 +2953,26 @@ const Store = (() => {
     if (i < 0) return false;
     arranges.splice(i, 1);
     groupPruneArrange(id);            // v2.25.0：组里的曲式引用同步摘除（冷键不留幽灵成员）
+    /* v2.26.0：连同它的歌词行一起清（同"不留幽灵成员"那条纪律）。
+       ★ 为什么现在必须做：歌词行按段 uid 寻址，而 uid 是**段的身份**——曲式删掉再重建
+         （如侧栏「恢复示例曲」）是全新的段、新 uid，旧行就永远找不到归属了。
+         留着它们只会白占 lyricMaxLines 配额（256 行），且永远不可见。 */
+    const before = lyrics.length;
+    for (let k = lyrics.length - 1; k >= 0; k--){
+      if (lyrics[k] && lyrics[k].arrangeId === id) lyrics.splice(k, 1);
+    }
+    if (lyrics.length !== before) persistLyrics();
     persistArranges();
     return true;
   }
 
   /* ---- 歌词对齐轨（v2.1.0 F1，冷键 beatsight.lyrics）----
-     形状：{ arrangeId, sec, chars: [ { t, dur, ch } ] }
-       · **一行歌词绑定一个曲式段落**：arrangeId = 曲式 id、sec = 段下标（0 起）。
-         同一曲式可给多个段落各挂一行，故身份 = (arrangeId, sec) 二元组（契约里的
+     形状：{ arrangeId, secUid, chars: [ { t, dur, ch } ] }
+       · **一行歌词绑定一个曲式段落**：arrangeId = 曲式 id、secUid = 段的稳定身份（v2.26.0）。
+         同一曲式可给多个段落各挂一行，故身份 = (arrangeId, secUid) 二元组（契约里的
          「曲式id#段下标」在内存里拆成两个字段，免得每条读写路径都去 split 字符串）。
+       ★ v2.26.0（G3）：寻址键从**段下标** `sec` 换成**段 uid** `secUid`。
+         理由与迁移口径见下方 lyricMigrate 的注释。
        · t   = 该字的**进场锚点**，单位 tick，坐标系是**段内绝对 tick**（段首 = 0）。
          于是"循环该段"＝"循环该句"，锚点跟着段落走、不产生绝对时间残留（验收断言 8/9
          在结构上直接成立，不需要额外补偿）。
@@ -2952,11 +2989,37 @@ const Store = (() => {
      脏字一律「跳过 + 计数 warn」，不整行丢弃（契约：「跳过坏字、Console 警告，不 crash」）——
      与 validatePreset 的"整批拒绝"刻意不同：歌词是逐字录入的长文本，
      为一个坏字废掉整句、要用户重贴一遍，代价与收益不成比例。 */
+  /* v2.26.0（G3）：旧寻址键（段下标 `sec`）→ 新寻址键（段 `secUid`）的一次性换算。
+     ★ 语义声明（CHANGELOG 与此处同源）：迁移把"当前的下标对应关系"冻结成 uid 绑定，
+       它修复的是**未来不再错位**——历史上已经错位的歌词（比如段早就挪过了、词已经挂错了）
+       机器无从判断本意，不追溯修复，那要用户人工核对。
+     ★ 四档依次试，任一命中就返回带 secUid 的副本（不改动入参）：
+       ① 已经是新键 → 直接用（幂等：重复加载同一冷键不会重复迁移）
+       ② 旧键 sec 下标 → 取曲式 sections[sec].uid
+       ③ 下标越界（段已删）→ 按段名 secName 再匹配一次（新格式的可选冗余字段）
+       ④ 都失败 → 返回 null，由调用方计入"坏行丢弃"（口径同既有的结构校验失败）
+     ★ 只在**读入**路径用（加载冷键 / 导入整包）。写库一律是新键，所以迁移只跑一次。 */
+  /** @param {any} raw @returns {any} */
+  function lyricMigrate(raw){
+    if (!raw || typeof raw !== "object") return null;
+    if (typeof raw.secUid === "string" && raw.secUid) return raw;
+    const a = (typeof raw.arrangeId === "string" && raw.arrangeId) ? findArrange(raw.arrangeId) : null;
+    if (a){
+      if (Number.isInteger(raw.sec) && raw.sec >= 0 && a.sections[raw.sec])
+        return Object.assign({}, raw, { secUid: a.sections[raw.sec].uid });
+      if (typeof raw.secName === "string" && raw.secName){
+        const hit = a.sections.find((/** @type {any} */ s) => s && s.name === raw.secName);
+        if (hit) return Object.assign({}, raw, { secUid: hit.uid });
+      }
+    }
+    return null;
+  }
+
   /** @param {any} raw @returns {any} */
   function normLyricLine(raw){
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.arrangeId !== "string" || !raw.arrangeId) return null;
-    if (!Number.isInteger(raw.sec) || raw.sec < 0) return null;
+    if (typeof raw.secUid !== "string" || !raw.secUid) return null;   // v2.26.0：寻址键是段 uid
     if (!Array.isArray(raw.chars) || !raw.chars.length
         || raw.chars.length > CONFIG.lyricMaxChars) return null;
     /* 先按 t 升序：重叠判定只在有序序列上才有意义（乱序输入不该被判成"重叠"而被丢） */
@@ -2978,13 +3041,13 @@ const Store = (() => {
     }
     if (!chars.length) return null;
     if (bad){
-      try{ console.warn("[BeatSight] 歌词行 " + raw.arrangeId + "#" + raw.sec
+      try{ console.warn("[BeatSight] 歌词行 " + raw.arrangeId + "#" + raw.secUid
         + " 跳过 " + bad + " 个坏字（越界/重叠/空字）"); }catch(e){}
     }
-    return { arrangeId: raw.arrangeId, sec: raw.sec, chars };
+    return { arrangeId: raw.arrangeId, secUid: raw.secUid, chars };
   }
   const lyrIn = readJSON(KEY_LYRICS);
-  /** @type {{ arrangeId: string, sec: number, chars: { t: number, dur: number, ch: string }[] }[]} */
+  /** @type {{ arrangeId: string, secUid: string, chars: { t: number, dur: number, ch: string }[] }[]} */
   const lyrics = [];
   {
     let dropped = 0;
@@ -2992,9 +3055,10 @@ const Store = (() => {
       /* 坏行丢弃并记 warn（口径同 beatsight.arranges）：歌词丢了只是要重录，不值得占隔离区名额 */
       /** @type {any[]} */ (lyrIn.lines).forEach(r => {
         if (lyrics.length >= CONFIG.lyricMaxLines){ dropped++; return; }
-        const v = normLyricLine(r);
+        /* v2.26.0：先过一遍寻址键迁移（旧下标 → 段 uid），再走结构校验 */
+        const v = normLyricLine(lyricMigrate(r));
         /* 同 (曲式, 段) 只留第一条：重复条目是脏数据，留第一条即可 */
-        if (v && !lyrics.some(x => x.arrangeId === v.arrangeId && x.sec === v.sec)) lyrics.push(v);
+        if (v && !lyrics.some(x => x.arrangeId === v.arrangeId && x.secUid === v.secUid)) lyrics.push(v);
         else dropped++;
       });
     }
@@ -3002,25 +3066,28 @@ const Store = (() => {
       try{ console.warn("[BeatSight] " + dropped + " 条歌词行未通过结构校验，已丢弃"); }catch(e){}
     }
   }
-  const persistLyrics = makePersister(KEY_LYRICS, () => ({ v:1, lines: lyrics }));
+  /* v2.26.0：payload 升 v:2 —— 行里的寻址键是段 uid（v:1 是段下标）。
+     落盘时机不变（增删改歌词行时），故老用户升级后**第一次改歌词**才写 v:2；
+     只读不动的话冷键一直是 v:1，每次加载都过一遍迁移（幂等，结果恒一致）。 */
+  const persistLyrics = makePersister(KEY_LYRICS, () => ({ v:2, lines: lyrics }));
   /* `x &&` 的兜底理由同 findArrange：lyrics 来自 localStorage（用户可手动改坏），
      而读取发生在渲染/调度热路径上，一旦条目是 null/undefined，`x.arrangeId` 会直接让整块挂掉 */
-  /** @param {string} arrangeId @param {number} sec @returns {any} */
-  const findLyric = (arrangeId, sec) => lyrics.find(x => x && x.arrangeId === arrangeId && x.sec === sec) || null;
-  /* 新增或更新（按 (arrangeId, sec) 判定）。返回规范化后的行；结构不合法返回 null，
+  /** @param {string} arrangeId @param {string} secUid @returns {any} */
+  const findLyric = (arrangeId, secUid) => lyrics.find(x => x && x.arrangeId === arrangeId && x.secUid === secUid) || null;
+  /* 新增或更新（按 (arrangeId, secUid) 判定）。返回规范化后的行；结构不合法返回 null，
      调用方（UI）要把 null 当成"这份录入还不能存" */
-  /** @param {string} arrangeId @param {number} sec @param {any} chars @returns {any} */
-  function upsertLyric(arrangeId, sec, chars){
-    const v = normLyricLine({ arrangeId, sec, chars });
+  /** @param {string} arrangeId @param {string} secUid @param {any} chars @returns {any} */
+  function upsertLyric(arrangeId, secUid, chars){
+    const v = normLyricLine({ arrangeId, secUid, chars });
     if (!v) return null;
-    const i = lyrics.findIndex(x => x && x.arrangeId === v.arrangeId && x.sec === v.sec);
+    const i = lyrics.findIndex(x => x && x.arrangeId === v.arrangeId && x.secUid === v.secUid);
     if (i >= 0) lyrics[i] = v; else lyrics.push(v);
     persistLyrics();
     return v;
   }
-  /** @param {string} arrangeId @param {number} sec @returns {boolean} */
-  function deleteLyric(arrangeId, sec){
-    const i = lyrics.findIndex(x => x && x.arrangeId === arrangeId && x.sec === sec);
+  /** @param {string} arrangeId @param {string} secUid @returns {boolean} */
+  function deleteLyric(arrangeId, secUid){
+    const i = lyrics.findIndex(x => x && x.arrangeId === arrangeId && x.secUid === secUid);
     if (i < 0) return false;
     lyrics.splice(i, 1);
     persistLyrics();
@@ -3539,8 +3606,11 @@ const Store = (() => {
         /* 与加载路径（本文件 lyrics 装载处）同口径：容量封顶，超出的行丢弃并计数，
            否则外部包可以顶穿 256 行上限，把内存与冷键都撑大 */
         if (lyrics.length >= CONFIG.lyricMaxLines){ lyrDrop++; return; }
-        const v = normLyricLine(r);
-        if (v && !lyrics.some(x => x && x.arrangeId === v.arrangeId && x.sec === v.sec)){ lyrics.push(v); lyrAdd++; }
+        /* v2.26.0：与加载路径同口径——先过寻址键迁移（老包里的 `sec` 下标 → 本机的段 uid），
+           再走结构校验。导入是**合并**语义（撞键以本机已有为准），新键下撞键判据同样是
+           (曲式id, 段 uid)。 */
+        const v = normLyricLine(lyricMigrate(r));
+        if (v && !lyrics.some(x => x && x.arrangeId === v.arrangeId && x.secUid === v.secUid)){ lyrics.push(v); lyrAdd++; }
         else lyrDrop++;
       });
     }
@@ -4294,10 +4364,13 @@ const LYRIC_NONE = [];
 const lyricFit = new Map();
 /* 一段的 tick 长度。解析不出拍号（引用被删）返回 0 → 调用方不判越界，
    交给 arrangeProblems 去报"引用不存在"（那才是这类坏数据的正确出口） */
-/** @param {string} arrangeId @param {number} secIdx @returns {number} */
-function lyricSpanTicks(arrangeId, secIdx){
+/* v2.26.0（G3）：第二参数是**段 uid**而不是段下标——段挪位置、段被删都不改变身份，
+   "这行词属于哪一段"因此不会跟着下标漂移。找不到该 uid 的段（词挂的段已被删掉）
+   与越界同口径返回 0：调用方不判越界，交给 arrangeProblems 去报。 */
+/** @param {string} arrangeId @param {string} secUid @returns {number} */
+function lyricSpanTicks(arrangeId, secUid){
   const a = Store.findArrange(arrangeId);
-  const sec = a ? a.sections[secIdx] : null;
+  const sec = a ? a.sections.find((/** @type {any} */ s) => s && s.uid === secUid) : null;
   if (!sec || !Array.isArray(sec.blocks) || !sec.blocks.length) return 0;
   let meter = 0;
   for (const b of sec.blocks){
@@ -4307,14 +4380,14 @@ function lyricSpanTicks(arrangeId, secIdx){
   return meter ? secBars(sec) * meter * TPB : 0;
 }
 /* 该段落可用于渲染/发声的字表（已按 t 升序、已剔除越界字）。无行 → LYRIC_NONE */
-/** @param {string} arrangeId @param {number} secIdx @returns {any[]} */
-function lyricCharsAt(arrangeId, secIdx){
-  const line = Store.findLyric(arrangeId, secIdx);
+/** @param {string} arrangeId @param {string} secUid @returns {any[]} */
+function lyricCharsAt(arrangeId, secUid){
+  const line = Store.findLyric(arrangeId, secUid);
   if (!line || !line.chars.length) return LYRIC_NONE;
-  const key = arrangeId + "#" + secIdx;
+  const key = arrangeId + "#" + secUid;
   const hit = lyricFit.get(key);
   if (hit && hit.line === line) return hit.chars;
-  const span = lyricSpanTicks(arrangeId, secIdx);
+  const span = lyricSpanTicks(arrangeId, secUid);
   let chars = line.chars;
   if (span > 0){
     const kept = line.chars.filter((/** @type {any} */ c) => c.t < span);
@@ -6055,8 +6128,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [] };
       const at = songBarAt(a, ((k % total) + total) % total);
       if (at){
-        const span = lyricSpanTicks(a.id, at.sec);
-        const chars = lyricCharsAt(a.id, at.sec);
+        /* v2.26.0：歌词按**段 uid**取（at.sec 只是位置，段挪过位置后它就指错段了） */
+        const secUid = a.sections[at.sec] ? a.sections[at.sec].uid : "";
+        const span = lyricSpanTicks(a.id, secUid);
+        const chars = lyricCharsAt(a.id, secUid);
         if (span > 0 && chars.length){
           /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：与 span 必然同源，
              拍号取错时也不会出现轨道溢出错位 */
@@ -6847,8 +6922,11 @@ const AudioEngine = (() => {
   /** @param {number} barStartT @param {number} meter */
   function emitLyricCues(barStartT, meter){
     if (!S.lyricCue || arrBar < 0) return;       // 开关关 / 游标未起步：不出声
-    if (!arrangeCur()) return;                   // 曲式已被删：不猜
-    const chars = lyricCharsAt(S.arrangeSel.id, arrSec);
+    const a = arrangeCur();
+    if (!a) return;                              // 曲式已被删：不猜
+    /* v2.26.0：曲式快照只取一次（帧内纪律），再按段 uid 取词——arrSec 是位置不是身份 */
+    const sec = a.sections[arrSec];
+    const chars = sec ? lyricCharsAt(S.arrangeSel.id, sec.uid) : LYRIC_NONE;
     if (!chars.length) return;
     const barTicks = meter * TPB, base = arrBar * barTicks;
     for (let i = 0; i < chars.length; i++){
@@ -9758,7 +9836,8 @@ const Arrange = (() => {
   const snapshot = () => JSON.parse(JSON.stringify(cur()));
 
   /* ---------- 歌词编辑轨（v2.1.0 F1） ----------
-     契约：歌词挂在**曲式的段**上，char.t 是段内绝对 tick（段首 = 0）。
+     契约：歌词挂在**曲式的段**上（v2.26.0 起按段 uid 寻址，段挪位置词跟着走），
+     char.t 是段内绝对 tick（段首 = 0）。
      本模块只负责「把用户的手势/粘贴翻译成 chars 数组」这一件事：归一化（吸附 12 tick、
      重叠跳过靠后的字、越界过滤、空字丢弃）全部由 Store.upsertLyric 完成。
      UI 不做第二套校验——否则「库里存的」与「界面上看到的」会各说各话。
@@ -9865,23 +9944,24 @@ const Arrange = (() => {
   /* 粘贴 → 按字均分落库。默认值 = 每字一个基准单位（八分 = 2 格）自段首顺排。
      段落 tick 放不下整句时只落库放得下的部分：越界字在播放侧是**静默忽略**，
      若照单全收，用户看到字块却听不到锚点，反而更难排查。 */
-  /** @param {any} a @param {number} i @param {string} text */
-  function distribute(a, i, text){
+  /** @param {any} a @param {string} secUid @param {string} text */
+  function distribute(a, secUid, text){
     const chars = String(text || "").replace(/\s+/g, "").split("");
-    if (!chars.length){ Store.deleteLyric(a.id, i); arrangeRender(); return; }
-    const span = lyricSpanTicks(a.id, i);
+    if (!chars.length){ Store.deleteLyric(a.id, secUid); arrangeRender(); return; }
+    const span = lyricSpanTicks(a.id, secUid);
     const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : chars.length;
     if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); arrangeRender(); return; }
     const n = Math.min(chars.length, fit);
-    Store.upsertLyric(a.id, i, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
+    Store.upsertLyric(a.id, secUid, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
       ({ t: k * LYRIC_BASE, dur: LYRIC_BASE, ch: ch })));
     arrangeRender();
   }
 
   /** @param {any} a @param {any} sec @param {number} i @returns {any} */
   function mkLyricRow(a, sec, i){
-    const span = lyricSpanTicks(a.id, i);
-    const line = Store.findLyric(a.id, i);
+    const uid = sec.uid;                       // v2.26.0：段身份（下标 i 只用于文案里的"第 N 段"）
+    const span = lyricSpanTicks(a.id, uid);
+    const line = Store.findLyric(a.id, uid);
     const ly = document.createElement("div");
     ly.className = "arg-lyric";
 
@@ -9912,7 +9992,7 @@ const Arrange = (() => {
       loopBtn.setAttribute("aria-label", "循环第 " + (i + 1) + " 段的歌词行（自动配变速爬坡）");
       Modal.bindOverlay("arrangeOverlay", loopBtn, "click", (/** @type {any} */ e) => {
         evEl(e).blur();
-        loopLyricSection(a.id, i);
+        loopLyricSection(a.id, uid);
         arrangeRender();
       });
       ly.appendChild(loopBtn);
@@ -9925,7 +10005,7 @@ const Arrange = (() => {
     box.type = "text";
     box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch).join("") : "";
     box.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：粘贴后回车按字均分");
-    Modal.bindOverlay("arrangeOverlay", box, "change", () => { distribute(a, i, box.value); });
+    Modal.bindOverlay("arrangeOverlay", box, "change", () => { distribute(a, uid, box.value); });
     ly.appendChild(box);
 
     const clr = document.createElement("button");
@@ -9934,14 +10014,14 @@ const Arrange = (() => {
     clr.setAttribute("aria-label", "清除第 " + (i + 1) + " 段的歌词");
     Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
-      Store.deleteLyric(a.id, i);
+      Store.deleteLyric(a.id, uid);
       arrangeRender();
     });
     ly.appendChild(clr);
 
     const lane = document.createElement("div");
     lane.className = "arg-lyric-lane";
-    const lctx = { lane: lane, arr: a.id, sec: i, chars: line ? line.chars : [], span: span };
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span };
     if (span > 0){
       /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
          两边看到的字集必须一致，否则"界面上有、听不到" */
@@ -10345,16 +10425,19 @@ const Arrange = (() => {
   }
 
   /* ---- 按歌词行循环（F2，v2.2.0）----
-     歌词行身份 = (曲式id, 段下标)，故「循环某一行」就是「只循环那一段」：
+     歌词行身份 = (曲式id, 段 uid)（v2.26.0 起；此前是段下标），故「循环某一行」就是「只循环那一段」：
      复用跳段的同一套机制（from=to=段、loop=true），循环边界按**段内绝对 tick**
      计算——跨小节的字（dur 越过小节线）完整落在段内，回卷只发生在段尾，
      不存在「字被边界切两半」的情形。
      变速训练器叠加其上：见 Trainer.onBarBoundary 的 loopPerSec 分支——
      开启时每循环一整段升一级（而不是每 everyN 小节），爬坡粒度跟句子对齐。 */
-  /** @param {string} arrangeId @param {number} secIdx */
-  function loopLyricSection(arrangeId, secIdx){
+  /** @param {string} arrangeId @param {string} secUid */
+  function loopLyricSection(arrangeId, secUid){
     const a = Store.findArrange(arrangeId);
-    if (!a || !a.sections[secIdx]) return;
+    /* v2.26.0：收段 uid，内部换算一次下标（songBarBefore / secBars 都按位置算，
+       段序改过之后这个换算结果就跟着变——正是"循环正确的那一段"想要的） */
+    const secIdx = a ? a.sections.findIndex((/** @type {any} */ s) => s && s.uid === secUid) : -1;
+    if (!a || secIdx < 0) return;
     if (!S.trainer.on){ S.trainer.on = true; }             // 歌词行循环天然配爬坡（协议默认）
     setToggle("trainerToggle", true);                      // 训练面板与开关态同步（协议路径不经过 toggle 处理器）
     $("trainerPanel").hidden = false;
@@ -10424,7 +10507,10 @@ const Arrange = (() => {
         blocks: s.blocks.map(b => ({ ref: { type: "builtin", idx: DEMO_BUILTIN_BASE + b.refIdx },
           repeats: b.repeats })) })) });
     if (!v) return { ok: false, error: "示例曲式未通过结构校验。", id: "" };
-    spec.lyrics.forEach((chars, i) => Store.upsertLyric(v.id, i, chars));
+    /* v2.26.0：歌词按段 uid 挂（原来挂段下标，段挪一次位置整首词就串段） */
+    spec.lyrics.forEach((chars, i) => {
+      if (v.sections[i]) Store.upsertLyric(v.id, v.sections[i].uid, chars);
+    });
     Store.persist();
     /* 曲式新建 / 歌词补齐都会改变「自定义」区内容与选中态/计数——统一刷一次列表，
        不分支（分支正是漏刷的来源，v2.4.1 的教训）。

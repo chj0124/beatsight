@@ -55,7 +55,11 @@ section("T82b 全量数据包 · 导入四类数据（合并语义）");
      数据包里的 `log` 字段现在被**静默忽略**，不再进内存 */
   eq(beat.Store.customs.length, before + 1, "预设真的进了库（不是只报了个数）");
   eq(beat.Store.arranges.some(a => a.id === "a-import-1"), true, "曲式按 id 进库");
-  eq(beat.Store.lyrics.some(l => l.arrangeId === "a-import-1" && l.sec === 0), true, "歌词行进库");
+  /* v2.26.0：寻址键是段 uid。包里给的是**旧格式**（sec 下标），导入路径同样过一遍迁移，
+     故这一行会被绑到曲式第 1 段的 uid 上（而不是原样留着下标） */
+  const impUid = beat.Store.findArrange("a-import-1").sections[0].uid;
+  eq(beat.Store.lyrics.some(l => l.arrangeId === "a-import-1" && l.secUid === impUid), true, "歌词行进库");
+  ok(beat.Store.lyrics.every(l => !("sec" in l)), "★ 迁移后的行里不再有旧字段 sec（落盘只写 secUid）");
   /* 听辨战绩是**累计量**：逐字段取较大值，而不是覆盖（覆盖会把本机更高的纪录抹低） */
   ok(beat.Store.earStats.best >= 4, "听辨战绩取较大值（best ≥ 4，实际 " + beat.Store.earStats.best + "）");
 }
@@ -159,8 +163,10 @@ section("T82g 全量数据包 · 听辨战绩键名白名单（垃圾键不进�
 section("T82h 全量数据包 · 歌词合并受 lyricMaxLines 总量约束（与加载路径同口径）");
 {
   const { beat } = loadApp();
+  /* v2.26.0：行按段 uid 寻址，故这里给的是**新格式**（secUid 直接给全）。
+     （旧格式 sec 下标要能解析到曲式才成立，本场景只关心容量闸门，不掺那条路） */
   const lines = Array.from({ length: 300 }, (_, i) => ({
-    arrangeId: "a-cap-" + i, sec: i, chars: [{ t: 0, dur: 24, ch: "字" }] }));
+    arrangeId: "a-cap-" + i, secUid: "u" + i, chars: [{ t: 0, dur: 24, ch: "字" }] }));
   const r = beat.Store.importAll(JSON.stringify({ kind: "all", lines }));
   ok(r.ok, "大批歌词行可导入");
   /* 反向验证锚点：合并若不受上限约束（删掉那句容量判断），这里会是 300 而非 256 */

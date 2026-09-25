@@ -21,6 +21,13 @@ const { loadApp, ok, eq, section, html } = require("../lib/harness");
 const seedState = o => ({ "beatsight.state": JSON.stringify(o) });
 const seedM2 = o => ({ "beatsight.m2": JSON.stringify(o) });
 
+/* console.warn 暂捕：沙箱与宿主共用同一个 console 对象；测试同步执行，用完即还 */
+const captureWarn = () => {
+  const list = [], orig = console.warn;
+  console.warn = (...a) => list.push(a.map(String).join(" "));
+  return { list, restore(){ console.warn = orig; } };
+};
+
 /* ================= 场景 T91：旧热键 v1（未冷热拆分）→ 现行 ================= */
 section("T91 迁移矩阵 · 旧热键 beatsight.m2（v1，冷热未拆分）→ 冷热两键");
 {
@@ -191,4 +198,47 @@ section("T91f 迁移矩阵 · 往返：老存档读进来 → 再存一次 → �
   eq(Object.keys(again.beat.Store.S.trainer).sort().join(","), "everyN,on,step,target",
     "再读一次 → 仍是四个键（往返一致，不会越迁越多）");
   eq(again.beat.Store.S.bpm, 111, "bpm 仍是 111（迁移只发生一次，值不漂）");
+}
+
+/* ================= 场景 T91g：歌词冷键 v:1（段下标）→ v:2（段 uid）（v2.26.0） ================= */
+section("T91g 迁移矩阵 · 歌词行寻址键：段下标 → 段 uid（老存档读到新版）");
+{
+  /* 老存档：曲式没有 uid 字段（v2.25.x 及更早），歌词行按 sec 下标寻址 */
+  const legacyArr = { v: 1, arranges: [
+    { id: "old-1", name: "老曲式", sections: [
+      { name: "主歌", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 }] },
+      { name: "副歌", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 2 }] },
+    ] },
+  ]};
+  const legacyLyr = { v: 1, lines: [
+    { arrangeId: "old-1", sec: 0, chars: [{ t: 0, dur: 24, ch: "春" }] },
+    { arrangeId: "old-1", sec: 1, chars: [{ t: 0, dur: 24, ch: "秋" }] },
+  ]};
+  const cap = captureWarn();
+  const { beat, storage } = loadApp({ "beatsight.arranges": JSON.stringify(legacyArr),
+    "beatsight.lyrics": JSON.stringify(legacyLyr) });
+  cap.restore();
+
+  const a = beat.Store.findArrange("old-1");
+  eq(a.sections.length, 2, "老曲式照常读回（段本身没变）");
+  ok(a.sections.every(s => typeof s.uid === "string" && s.uid),
+    "★ 老曲式的段被补发了 uid（v2.26.0 起段必带身份）");
+  eq(beat.Store.lyrics.length, 2, "★ 两行老歌词都迁进来了（没有被当成坏行整批丢掉）");
+  eq(beat.Store.lyrics.filter(l => l.secUid === a.sections[0].uid)[0].chars[0].ch, "春",
+    "★ sec:0 的那行落到了第 1 段的 uid 上");
+  eq(beat.Store.lyrics.filter(l => l.secUid === a.sections[1].uid)[0].chars[0].ch, "秋",
+    "sec:1 的那行落到第 2 段");
+  ok(beat.Store.lyrics.every(l => !("sec" in l)), "★ 内存里不再有旧字段 sec");
+  ok(!cap.list.some(s => s.includes("歌词行未通过结构校验")),
+    "★ 迁移不靠「丢弃」过关（老用户打开不该看到歌词没了）");
+
+  /* 老数据的往返：改一次触发落盘 → 冷键升 v:2，再读一次仍一致 */
+  beat.Store.upsertLyric("old-1", a.sections[0].uid, [{ t: 0, dur: 24, ch: "夏" }]);
+  const disk = JSON.parse(String(storage.get("beatsight.lyrics")));
+  eq(disk.v, 2, "★ 触发落盘后冷键升到 v:2");
+  const again = loadApp({ "beatsight.arranges": String(storage.get("beatsight.arranges")),
+    "beatsight.lyrics": String(storage.get("beatsight.lyrics")) });
+  eq(again.beat.Store.lyrics.length, 2, "再读一次：两行都在（迁移只发生一次）");
+  eq(again.beat.Store.lyrics.filter(l => l.secUid === a.sections[0].uid)[0].chars[0].ch, "夏",
+    "★ 往返一致：改过的字留住了，且仍挂在第 1 段");
 }

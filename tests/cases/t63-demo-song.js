@@ -18,7 +18,9 @@ const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../
 /* v2.20.0：示例 5 型已内置化（BUILTINS 尾部 5 项），不再落 customs——按名取型改查内置库 */
 const demoBuiltins = beat => beat.BUILTINS.slice(-5);
 const pByName = (beat, nm) => beat.BUILTINS.find(c => c.name === nm);
-const charAt = (beat, sec, ch) => beat.lyricCharsAt(beat.DEMO_ID, sec).find(c => c.ch === ch);
+/* v2.26.0：示例曲的段 uid 由 normArrange 补发（动态），按位置现取 */
+const secUid = (beat, i) => beat.Store.findArrange(beat.DEMO_ID).sections[i].uid;
+const charAt = (beat, i, ch) => beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, i)).find(c => c.ch === ch);
 /* 「带出示例」的入口：v2.4.1 无按钮，走确保函数（幂等，可重复调） */
 const bringDemo = beat => beat.Arrange.ensureDemo();
 /* 首次打开的载入（seedDemo:false 让 S.demoSeeded 为假 → 装配层真的会带出示例）。
@@ -109,8 +111,8 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   eq(charAt(beat, 1, "慰").t, 552, "副歌上末字「慰」= 第 3 小节第 14 格");
   eq(charAt(beat, 0, "我").t, 120, "★ 开头「我」从第 3 拍后半进（t=120，不是段首）");
   eq(charAt(beat, 3, "﹣").dur, 192, "收束的延音占位「﹣」独占一整小节");
-  eq(beat.lyricCharsAt(beat.DEMO_ID, 8).length, 28, "人静的雨夜 28 字全录");
-  eq(beat.lyricSpanTicks(beat.DEMO_ID, 8), 1152, "★ 六小节的行 = 6 小节 × 192（v2.6.0 起不再垫到 8）");
+  eq(beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, 8)).length, 28, "人静的雨夜 28 字全录");
+  eq(beat.lyricSpanTicks(beat.DEMO_ID, secUid(beat, 8)), 1152, "★ 六小节的行 = 6 小节 × 192（v2.6.0 起不再垫到 8）");
   eq(charAt(beat, 8, "庞").t, 1032, "「庞」= 段内第 6 小节第 6 格（1032 tick）");
   beat.Arrange.close();
 }
@@ -195,7 +197,7 @@ section("T63d 示例载入 · 播放锚点 / 循环本行落点");
   beat.Controls.stop();
   /* 循环本行：直接落到桥段段（跨小节延音「夜」所在行）。v2.10.7 小节口径：
      桥段 = 第 7 段（行 6）= 歌曲小节 16..19（0-based 含端点） */
-  beat.Arrange.loopLyricSection(beat.DEMO_ID, 6);
+  beat.Arrange.loopLyricSection(beat.DEMO_ID, secUid(beat, 6));   // v2.26.0：收段 uid
   eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[16,19]",
      "★ 循环本行落到桥段（与 F2 同一套机制；小节口径 = 桥段起止小节）");
   const ye = charAt(beat, 6, "夜");
@@ -230,14 +232,14 @@ section("T63e 示例载入 · 《在他乡》= 30 小节逐小节谱（段长 1/
      段长一旦短于词行所需，末行的字会落在段外而被剔除（共享区 lyricCharsAt 会滤掉）；
      段长一旦长于词行，末尾会出现没有词的空白小节（下面另有一条按小节数比） */
   eq(JSON.stringify(a.sections.map((s, i) => {
-    const span = beat.lyricSpanTicks(beat.DEMO_ID, i);
-    return beat.lyricCharsAt(beat.DEMO_ID, i).filter(c => c.t + c.dur > span).length;
+    const span = beat.lyricSpanTicks(beat.DEMO_ID, secUid(beat, i));
+    return beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, i)).filter(c => c.t + c.dur > span).length;
   })), JSON.stringify(a.sections.map(() => 0)),
      "★ 没有字越界：每段的词行都装得进该段的真实小节数");
 
   /* 词行数 = 段长（行=小节）。用"最后一行落在第几小节"间接钉：最后一行必须落在段内最后一小节 */
   eq(JSON.stringify(a.sections.map((s, i) => {
-    const chars = beat.lyricCharsAt(beat.DEMO_ID, i);
+    const chars = beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, i));
     if (!chars.length) return -1;
     const barTicks = 192;               // 4/4 一小节 = 4 拍 × 48 tick（与 beat.TPB 同值）
     return Math.floor(Math.max.apply(null, chars.map(c => c.t)) / barTicks);

@@ -1,7 +1,7 @@
 /* BeatSight 自动化测试 · F2 按歌词行选段循环（v2.2.0）
    T61 系列。
    ---------------------------------------------------------------------------
-   契约：歌词行身份 = (曲式id, 段下标)，故「循环本行」=「只播这一段 + 循环 + 变速爬坡」。
+   契约：歌词行身份 = (曲式id, 段 uid)（v2.26.0 起），故「循环本行」=「只播这一段 + 循环 + 变速爬坡」。
      · 爬坡粒度：loopPerSec 开启时每循环一整段升一级（每级 = secBars(当前段) 小节），
        而不是 everyN 小节——句跟句练；
      · 循环边界按段内绝对 tick：跨小节的字（dur 越过小节线）完整落在段内，
@@ -15,8 +15,8 @@ const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 const seed = extra => ({
   "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
     { id: "t1", name: "歌词曲", sections: [
-      { name: "主歌", blocks: [BL(1, 1)] },              // 4 小节
-      { name: "副歌", blocks: [BL(1, 2)] },              // 8 小节
+      { uid: "s1", name: "主歌", blocks: [BL(1, 1)] },    // 4 小节
+      { uid: "s2", name: "副歌", blocks: [BL(1, 2)] },    // 8 小节
     ] },
   ]}),
   "beatsight.state": JSON.stringify(Object.assign(
@@ -32,8 +32,8 @@ const noiseCues = ac => ac.hits.filter(h => h.kind === "noise" && h.filterFreq =
 section("T61a 歌词行循环 · 落点范围 / 爬坡开启 / 段长即一级");
 {
   const { beat } = loadApp(seed());
-  beat.Store.upsertLyric("t1", 1, [{ t: 0, dur: 24, ch: "光" }]);
-  beat.Arrange.loopLyricSection("t1", 1);
+  beat.Store.upsertLyric("t1", "s2", [{ t: 0, dur: 24, ch: "光" }]);
+  beat.Arrange.loopLyricSection("t1", "s2");
   eq(beat.Store.S.playMode, "arrange", "进入曲式模式");
   eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[4,11]",
      "★ 范围 = 只有该行（段）自己（v2.10.7：写入该段的起止小节，副歌 = 小节 4..11）");
@@ -44,7 +44,7 @@ section("T61a 歌词行循环 · 落点范围 / 爬坡开启 / 段长即一级")
 
   /* 不存在/越界段 → 静默不动作 */
   const b2 = JSON.stringify(beat.Store.S.arrangeSel);
-  beat.Arrange.loopLyricSection("t1", 9);
+  beat.Arrange.loopLyricSection("t1", "s10");
   beat.Arrange.loopLyricSection("ghost", 0);
   eq(JSON.stringify(beat.Store.S.arrangeSel), b2, "★ 段不存在/曲式不存在 → 选择不变（不猜）");
 }
@@ -53,8 +53,8 @@ section("T61a 歌词行循环 · 落点范围 / 爬坡开启 / 段长即一级")
 section("T61b 歌词行循环 · 循环边界正确 / 每段升一级 / 到目标自动停");
 {
   const { beat } = loadApp(seed());
-  beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "夜" }]);
-  beat.Arrange.loopLyricSection("t1", 0);
+  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "夜" }]);
+  beat.Arrange.loopLyricSection("t1", "s1");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   /* 段 0 = 4 小节；60→68 step2 = 5 级（60/62/64/66/68）。loopPerSec 下每级 = 4 小节。
@@ -75,8 +75,8 @@ section("T61c 歌词行循环 · 爬坡步进精确（60→62→64，每级一�
   const { beat } = loadApp(seed({ trainer: { on: true, target: 66, step: 2, everyN: 1 } }));
   /* everyN=1 是陷阱：若 loopPerSec 没生效，每 1 小节就升一级（4 小节爬到 68 超目标）。
      正确行为 = 每 4 小节（一段）才升一级 */
-  beat.Store.upsertLyric("t1", 0, [{ t: 0, dur: 24, ch: "夜" }]);
-  beat.Arrange.loopLyricSection("t1", 0);
+  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "夜" }]);
+  beat.Arrange.loopLyricSection("t1", "s1");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const step = seconds => { const dt = 0.02, n = Math.ceil(seconds / dt);
@@ -99,11 +99,11 @@ section("T61d 歌词行循环 · 跨小节的字完整 / 边界回卷不切断")
   beat.Store.S.lyricCue = true;
   /* 「夜」从小节 4（t=576）延音 240tick（跨小节 4 与段尾）：锚点只有 t=576 一个；
      「星」在段首 t=0。60BPM 下 1 拍 = 1s、1 小节 4s、1 段 16s，锚点时刻 = 0.08 / 12.08 / 16.08 / 28.08 */
-  beat.Store.upsertLyric("t1", 0, [
+  beat.Store.upsertLyric("t1", "s1", [
     { t: 576, dur: 240, ch: "夜" },
     { t: 0, dur: 24, ch: "星" },
   ]);
-  beat.Arrange.loopLyricSection("t1", 0);
+  beat.Arrange.loopLyricSection("t1", "s1");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const dt2 = 0.02; for (let i = 0; i < Math.ceil(30 / dt2); i++){ ac.currentTime += dt2; beat.AudioEngine.scheduler(); }
@@ -128,7 +128,7 @@ section("T61e 歌词行循环 · byLyric 意图标记 / 开播重推 / 非歌词
     for (let i = 0; i < n && beat.Store.S.playing; i++){ ac.currentTime += dt; beat.AudioEngine.scheduler(); } };
 
   /* 1) 歌词行落点 → byLyric 置真（意图持久化，跨停机/开播存活） */
-  beat.Arrange.loopLyricSection("t1", 0);
+  beat.Arrange.loopLyricSection("t1", "s1");
   eq(beat.Store.S.arrangeSel.byLyric, true, "★ 歌词行循环在 arrangeSel 上留 byLyric 意图标记");
 
   /* 2) 改用普通跳段 → 清标记。跳段单段循环与歌词行循环在 from/to/loop 上同形，

@@ -171,9 +171,11 @@ section("T96e 曲式模式 · 网格与歌词轨都按片切（同一小节的�
     { name: "A段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
     { name: "B段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
   ] });
+  /* v2.26.0：段 uid 由 normArrange 补发（动态），按位置现取 */
+  const u96 = i => beat.Store.findArrange("t96").sections[i].uid;
   /* A 段两个字分别落在前半（t=0）与后半（t=96）；B 段一个字在前半 */
-  beat.Store.upsertLyric("t96", 0, [{ t: 0, dur: 24, ch: "一" }, { t: 96, dur: 24, ch: "二" }]);
-  beat.Store.upsertLyric("t96", 1, [{ t: 0, dur: 24, ch: "三" }]);
+  beat.Store.upsertLyric("t96", u96(0), [{ t: 0, dur: 24, ch: "一" }, { t: 96, dur: 24, ch: "二" }]);
+  beat.Store.upsertLyric("t96", u96(1), [{ t: 0, dur: 24, ch: "三" }]);
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: "t96", from: 0, to: 1, loop: false };
   beat.Controls.setBpm(240);

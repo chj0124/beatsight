@@ -42,7 +42,9 @@ function setup(){
   beat.Store.upsertArrange({ id: "t79", name: "八小节歌", sections: [
     { name: "唯一段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 8 }] },
   ] });
-  beat.Store.upsertLyric("t79", 0, [{ t: 0, dur: 24, ch: "一" }, { t: 192, dur: 24, ch: "二" }]);
+  /* v2.26.0：段 uid 由 normArrange 补发（动态），按位置现取 */
+  const u79 = i => beat.Store.findArrange("t79").sections[i].uid;
+  beat.Store.upsertLyric("t79", u79(0), [{ t: 0, dur: 24, ch: "一" }, { t: 192, dur: 24, ch: "二" }]);
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: "t79", from: 0, to: 7, loop: true };
   beat.Controls.setBpm(240);

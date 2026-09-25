@@ -174,6 +174,21 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×N] }
     结构性损坏（时值非法、小节不完整）；箭头丢了节奏型依然完整可弹，为它弹窗报错反而更糟
 - **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`、`validatePreset`（加载/导入校验）
 - **用户可控字符串（预设名等）一律 textContent 赋值，禁止 innerHTML 拼接**
+- **★ 曲式的段带稳定身份 `uid`（v2.26.0，改段 / 改歌词寻址前必读）**：
+  ```js
+  section  = { uid: "s<ts>-<n>", name, blocks: [{ ref, repeats }] }
+  lyricLine = { arrangeId, secUid, chars: [{ t, dur, ch }] }   // v2.26.0 前是 sec（段下标）
+  ```
+  - **为什么**：歌词此前按 `(曲式id, 段下标)` 寻址，而下标是**位置**不是**身份**——
+    段上移/下移/删中间一段之后，挂在下标上的词会跟着位置落到**另一个段**上。
+  - **发放与继承**：`normArrange` 三档判据 —— 自带有效且同曲式内未重复 → 用它；
+    否则**按位置继承**库里同 id 旧版本的 uid（`upsertArrange` 传入）；都没有 → 补发。
+    继承那条是为了示例曲重建（`ensureDemo` 的 spec 恒不带 uid）不让段身份变。
+  - **冷键 `beatsight.lyrics` v:1 → v:2**：加载期与导入期都过 `lyricMigrate`
+    （已有 secUid → 直接用 / `sec` 下标 → 该段 uid / 越界 → 按 `secName` 兜底 / 都失败 → 坏行计数）。
+    迁移**幂等**（不写回、不重复迁移），但**只修复未来不再错位，不追溯修复历史上已错位的词**。
+  - **`deleteArrange` 连带清歌词行**：曲式删掉再重建是全新的段、新 uid，旧行留着只占配额且永不可见。
+  - 回归：`tests/cases/t103-lyric-sec-uid.js`（T103a–g）。
 
 ### 3.2 音频引擎（Web Audio 前瞻调度）
 
