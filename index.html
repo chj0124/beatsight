@@ -1770,18 +1770,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L3538  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L4242  Modal         应用内弹窗
      L4379  Viz           时值可视化渲染与每帧动画
-     L6434  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7100  Trainer       变速训练器
-     L7238  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7701  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8758  Editor        自定义节奏型编辑器
-     L9122  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9159  Ear           听辨训练（v1.10.0）
-     L9379  Arrange       曲式编排（v2.0.0）
-     L10230 Help          使用方法（v2.0.1）
-     L10279 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10353 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10554 初始化（装配） 各模块 hook 接线与启动
+     L6498  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7164  Trainer       变速训练器
+     L7302  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7765  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8822  Editor        自定义节奏型编辑器
+     L9186  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9223  Ear           听辨训练（v1.10.0）
+     L9443  Arrange       曲式编排（v2.0.0）
+     L10294 Help          使用方法（v2.0.1）
+     L10343 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10417 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10618 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1807,7 +1807,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.23.0";
+const VERSION = "2.24.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4823,26 +4823,60 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
      预设窗口的内容全部来自同一个型，"下一片段"由 nextPatSeg 算术得出（练习循环区间已含），
      不必解析节目单——这正是 v2.10.2 当初"预设模式不做预告行"的理由；本版把它补上，
      与曲式同一手感：球走到页内最后一行期间，第 1 行（整屏最陈旧的行）换成屏外的下一片段。
-     短型（P < W）不在此预告：窗口恒第 0 页，绕行语义下"页末"另有表达——短型走"非在播行
-     整体淡显"（paintFrameBody 的 lastWrapRow 处），两者按 P 与 W 的大小一刀切。
-     ★ P === W 时窗口恒第 0 页（winAnchorSeg 恒 0）但球会逐行走完全部行——页末判据
-       `aps === winStart + W − 1` 在走完最后一行时成立，预告 = 绕回的型开头，与长型同一机制。
-     ★ winPrevSeg 复用的是"预告片段"这个概念位：曲式存绝对歌曲片段号、预设存型内片段号，
-       两模式互斥不共享窗口（见 winAnchorSeg 的模式守卫），数值语义各自自洽。 */
-  /** @param {number} aps 当前**型内片段号** @returns {{ seg: number, steps?: any[]|null, name?: string }} */
-  function presetPreviewSeg(aps){
-    const W = arrWinBars(), P = vizSegs();
-    /* P === W 也不预告（v2.23.0 修订）：P===W 时窗口恒第 0 页、无翻页，"页外下一片段"
-       就是绕回的型开头 = 第 1 行的现内容——预告零信息量；且页末的整树重建会换掉全部
-       DOM 引用，打翻"取一次 internals() 再驱动"的整类用例（T36 探针实锤：球读数冻结，
-       偏差涨到 186 tick）与 T87b「既有行为逐位不变」契约。预告只服务**真翻页**的长型。 */
-    if (W < 2 || P <= W || aps < 0) return { seg: -1 };  // W=1 沿用 v2.10.3 口径；短型走绕行淡显
-    if (aps !== winStart + W - 1) return { seg: -1 };    // 只在页内最后一行期间预告
+     ★ v2.24.0（用户实拍两连 + 拍板）：预告扩展到 P ≤ W——示例 5 型扫弦全是 1 小节型（P<W）、
+       内置 12 型全是 rep4 4 小节（P===W），4 行档下按旧口径**永远**等不到预告行（淡显
+       替代不了它）。页末判据随之从「型内片段号 aps === winStart+W−1」改为「**可听端点
+       画在窗口最后一行**」（rowOfOnset 的圈号口径，与主球同源）——短型/等宽下型内片段号
+       永远到不了 W−1，旧判据对这两类恒假。
+     ★ 实现按"预告内容是否 = 第 1 行现内容"分两档：
+       · 相同（P===W；或 P<W 且 W 是 P 的整数倍，如 1 小节型+4 行档）→ **轻量标记**：
+         返回哨兵 seg:-2——不换格子、不整树重建，只挂 .preview-row + 「下一小节 · 型名」
+         胶囊（applyPresetPvMark）。v2.23.0 排除 P===W 的两大理由（预告零信息量 + 页末
+         整树重建打翻"取一次 internals() 再驱动"的整类用例，T36 实测球读数冻结偏差
+         186 tick）里，后者由轻量标记**从结构上根治**；前者经用户拍板接受——标记的
+         价值正是"要绕回了"这个视觉信号本身。
+       · 不同（P>W 真翻页；P<W 但 W 非P 整数倍，如 3 小节型+4 行档）→ 走既有 winPrev*
+         重建链：buildViz 把 winPat.bars[0] 换成预告片段（与曲式同款）。 */
+  /** @param {any} hit 可听域 onset 端点（onsetHitAt 的结果，调用方保证非空）
+      @returns {{ seg: number, steps?: any[]|null, name?: string }}
+      seg: -1 = 无预告 / -2 = 轻量标记 / ≥0 = 重建链（型内片段号） */
+  function presetPreviewSeg(hit){
+    const W = arrWinBars();
+    if (W < 2 || !hit) return { seg: -1 };
+    if (rowOfOnset(hit) !== W - 1) return { seg: -1 };   // 只在"球画在页内最后一行"期间预告
     const p = activePattern();
     if (!p || !Array.isArray(p.bars)) return { seg: -1 };
-    const nseg = nextPatSeg(aps);
+    const segNext = nextPatSeg(patSegOfRow(W - 1));
+    if (segNext === patSegOfRow(0)) return { seg: -2, name: p.name || "" };
     const K = subsPerBar();
-    return { seg: nseg, steps: sliceSteps(p.bars[Math.floor(nseg / K)] || [], vizSig * TPB, K, nseg % K), name: p.name || "" };
+    return { seg: segNext, steps: sliceSteps(p.bars[Math.floor(segNext / K)] || [], vizSig * TPB, K, segNext % K), name: p.name || "" };
+  }
+  /* v2.24.0：轻量预告标记的挂/摘（预设 P ≤ W 且预告内容 = 第 1 行现内容）。
+     只动第 1 行的 class 与胶囊元素，不碰格子内容、不触发重建；胶囊元素按需现建
+     （预设模式本来没有和弦胶囊，barChordEls[0] 恒 null）。
+     ★ 摘除用 hidden 而不是 remove()：元素留着复用（下一圈还要用），也避开
+       「测试桩 remove() 是空操作」的坑——hidden 在真实浏览器与桩里语义一致。 */
+  /** @type {boolean} */
+  let pvMarkOn = false;
+  /** @type {string} */
+  let pvMarkName = "";
+  /** @type {HTMLElement|null} */
+  let pvMarkEl = null;
+  function applyPresetPvMark(){
+    if (!rowEls[0]) return;
+    rowEls[0].classList.toggle("preview-row", pvMarkOn);
+    if (pvMarkOn){
+      if (!pvMarkEl){
+        pvMarkEl = document.createElement("div");
+        pvMarkEl.className = "bar-chord";
+        rowEls[0].appendChild(pvMarkEl);
+        if (barChordEls[0] === null) barChordEls[0] = pvMarkEl;
+      }
+      pvMarkEl.hidden = false;
+      pvMarkEl.textContent = pvMarkName ? `下一小节 · ${pvMarkName}` : "下一小节";
+    } else if (pvMarkEl){
+      pvMarkEl.hidden = true;
+    }
   }
   /** 丢弃当前窗口，让下一次建网格重新锚到播放范围起点（v2.6.0 修）。
       ★ 为什么必须有它：`winStart` 是**跨播放会话**留存的状态，而"时间轴重新起一轮"的四个点
@@ -4867,6 +4901,9 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        （开播 / 重锚 / 循环区间变更 / 上下文重建），重建后的首帧要重新挂淡显。
        （圈号已改为解析计算，无状态可清，见 rowOfOnset 的注释。） */
     lastWrapRow = -1;
+    /* v2.24.0：轻量标记状态随之清零——重锚后球回行 0，"页末标记"若还挂着就是
+       陈旧信号；DOM 残留由下一帧的标记块摘除（markOn=false ≠ pvMarkOn=true） */
+    pvMarkOn = false; pvMarkName = "";
   }
   /** 把窗口里的 arrWinBars() 个**片段**合成为一个临时型（每片取自它所引用的型、小节的对应切片）。
       任一片解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
@@ -5393,6 +5430,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     clear(viz);
     rowEls = []; cellEls = []; subEls = []; subCellEls = []; fillEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
+    pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
        appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
        网格与发声分裂：画面是旧预设的格子，球却按曲式的落点跳（用户实拍：音画错位）。
@@ -5589,6 +5627,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* v2.23.0：摘掉短型绕行的预告淡显（停播后"绕回的未来"不再逼近，淡显失去语义）；
        对曲式的第 1 行预告同样无害——下一次 buildViz 会按 winPrev* 重新挂 */
     rowEls.forEach(r => r.classList.remove("preview-row"));
+    /* v2.24.0：轻量预告标记的胶囊一并藏起（预设模式停播后"下一小节"失去语义；
+       曲式的和弦胶囊不受影响——只有 pvMarkEl 自己创建的那个会被动到） */
+    if (pvMarkEl) pvMarkEl.hidden = true;
+    pvMarkOn = false; pvMarkName = "";
     lastWrapRow = -1;
     /* 复位用**画面上的那个型**（vizPattern = 窗口合成型），不是 curPattern()（v2.10.2 修）。
        原先取 curPattern() 隐含了"格子 = 当前型的小节"这个前提，窗口化后不成立：
@@ -5844,7 +5886,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         } else {
           const segNext = nextPatSeg(patSegOfRow(bar));
           nbSteps = sliceSteps(activePattern().bars[Math.floor(segNext / K2)] || [], barTicksV, K2, segNext % K2);
-          rowNext = ((segNext % vizBars) + vizBars) % vizBars;
+          /* v2.24.0（用户实拍）：落行优先问 rowOfOnset——短型（P<W）绕行下 nxt 就是
+             下一圈的首个端点，行号由圈号解析给出；旧公式 `segNext % vizBars` 只在
+             型长 > 行数时是对的答案（上行注释原话），短型下 segNext 恒 < W ⇒ 待命球
+             恒钉第 1 行（示例 5 型扫弦 + 4 行档全军覆没；民谣扫弦是 rep4 4 小节型
+             P===W，旧公式恰好逐位正确，所以"只有民谣扫弦是好的"）。
+             rowOfOnset 给不出（-1：长型页末 nxt 已翻到下一页）时回落旧口径——
+             长型"页末让给预告行 → 第 1 行"的既有行为逐位不变。 */
+          const rNxt = nxt ? rowOfOnset(nxt, a) : -1;
+          rowNext = (rNxt >= 0) ? rNxt : (((segNext % vizBars) + vizBars) % vizBars);
         }
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
@@ -6216,19 +6266,33 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          以及"从未建过"。建完 winStart 即为页锚（降级时置 0），故不会每帧重建 */
       if (aps >= 0){
         /* v2.23.0：预告行与曲式分支同构——球走到页内最后一行期间 winPrev* 生效，
-           进入/离开页末、翻页都要重建一次（presetPreviewSeg 只在页末才做内容解析）。
-           ★ pv 挂 onsetHitAt 守卫：aps 在 onset 表尚未落地时走调度游标兜底
-             （audiblePatSeg 的 fallback），它比可听域早一个前瞻窗口——起播头几帧
-             会把"页末"误判成立，预告凭空亮一帧又熄灭（探针实拍 [1,2]→[4,2]→[1,2]）。
-             预告是**可听域**语义（球真的走到页末才预告），兜底口径不参与。
+           进入/离开页末、翻页都要重建一次。
+           ★ pv 挂 onsetHitAt 守卫：可听位置在 onset 表尚未落地时走调度游标兜底，
+             它比可听域早一个前瞻窗口——起播头几帧会把"页末"误判成立，预告凭空
+             亮一帧又熄灭（探针实拍 [1,2]→[4,2]→[1,2]）。预告是**可听域**语义，
+             兜底口径不参与。
+           ★ v2.24.0：presetPreviewSeg 改收**可听端点**（页末判据 = rowOfOnset(hit) ===
+             W−1，短型/等宽的型内片段号到不了 W−1）；返回 seg:-2 = 轻量标记哨兵——
+             内容与第 1 行现内容相同，**不进** winPrev* 重建链（wantSeg 折回 -1），
+             由下方 applyPresetPvMark 挂摘 .preview-row + 胶囊，零重建。
            ★ 短型绕行的圈号不在帧里维护（解析计算，见 rowOfOnset），此处无圈状态。 */
-        const pv = onsetHitAt(ctx.currentTime) ? presetPreviewSeg(aps) : { seg: -1 };
+        const hit = onsetHitAt(ctx.currentTime);
+        const pv = hit ? presetPreviewSeg(hit) : { seg: -1 };
+        const wantSeg = pv.seg >= 0 ? pv.seg : -1;
         const ank = winAnchorSeg(aps, null);        // v2.16.0：预设模式**显式**传 null = 走绝对分页（无播放范围可言）
-        if (ank !== winStart || pv.seg !== winPrevSeg){
+        if (ank !== winStart || wantSeg !== winPrevSeg){
           winStart = ank;
-          winPrevSeg = pv.seg; winPrevSteps = pv.steps || null; winPrevName = pv.name || "";
+          winPrevSeg = wantSeg; winPrevSteps = wantSeg >= 0 ? (pv.steps || null) : null; winPrevName = wantSeg >= 0 ? (pv.name || "") : "";
           buildViz();
           resetTracking();
+        }
+        /* v2.24.0：轻量预告标记（P ≤ W 且预告内容 = 第 1 行现内容）。只在**状态翻转**
+           时写 DOM（进入/离开页末行各一次，外加名字变化），帧内零布局读取。 */
+        const markOn = pv.seg === -2;
+        if (markOn !== pvMarkOn || (markOn && pv.name !== pvMarkName)){
+          pvMarkOn = markOn;
+          pvMarkName = markOn ? (pv.name || "") : "";
+          applyPresetPvMark();
         }
       }
     }

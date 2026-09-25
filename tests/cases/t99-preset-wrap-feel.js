@@ -176,33 +176,48 @@ section("T99d 预设绕行 · 2 小节的型 + 循环 [0,0] + 4 行档 ⇒ 球�
      + changes.join("→") + "）");
 }
 
-/* ================= 场景 T99e：P === W 不预告（T36 的结构性哨兵） =================
-   4 小节型 + 4 行档：窗口恒第 0 页、球逐行走完全部行、无翻页——预告内容就是第 1 行
-   的现内容（零信息量），且页末整树重建会换掉全部 DOM 引用。v2.22.1 基线里这一场景
-   全程零重建（T87b「既有行为逐位不变」契约）；初版实现让 P===W 也预告，T36 的
-   internals() 旧引用读数冻结、偏差涨到 186 tick。本组钉：全程无预告 + 引用稳定。 */
-section("T99e 预设绕行 · 4 小节的型 + 4 行档 ⇒ 全程无预告行、DOM 引用稳定（T36 哨兵）");
+/* ================= 场景 T99e：P === W 轻量预告（v2.24.0 修订的 T36 结构性哨兵） =================
+   4 小节型 + 4 行档：窗口恒第 0 页、球逐行走完全部行、无翻页。v2.23.0 判 P===W 不预告
+   （预告零信息量 + 页末整树重建打翻 internals() 旧引用，T36 实测偏差涨到 186 tick）；
+   v2.24.0 经用户拍板改为**轻量标记**预告（方案 B）——只挂 .preview-row + 「下一小节」
+   胶囊、不换格子不整树重建，两大顾虑里后者从结构上根治。本组钉：
+   标记恰好只落在球位于页末行（第 4 行）的帧 + 全程零重建（引用稳定契约保留）。 */
+section("T99e 预设绕行 · 4 小节的型 + 4 行档 ⇒ 轻量预告标记只在页末行出现 + 全程零重建（T36 哨兵）");
 {
   const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   withPattern(beat, 4);
   eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行（P === W，窗口恒第 0 页）");
+  const capsuleOf = r => {
+    const c = r.children.find(x => /(^| )bar-chord( |$)/.test(x.className));
+    return (c && !c.hidden) ? c.textContent : null;   // v2.24.0：标记胶囊用 hidden 摘显
+  };
   beat.Controls.setBpm(240);
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const iv1 = beat.Viz.internals();             // 起播即取——T36 同款"取一次再用"的用法
-  let prevSeen = 0;
-  for (let i = 0; i < 180; i++){                // 3.6s ⇒ 球走完第 4 小节（页末行）
+  let markOnLast = 0, cleanElsewhere = 0, bad = 0, sawLast = false, sawElse = false;
+  for (let i = 0; i < 240; i++){                // 4.8s ⇒ 球走完第 4 小节并绕回
     ac.currentTime += 0.02;
     beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
-    if (rowEls(els).some(hasPrev)) prevSeen++;  // 任何一行带预告淡显都算
+    const rows = rowEls(els), r = curRow(els);
+    const marked = hasPrev(rows[0]) || capsuleOf(rows[0]) !== null;
+    if (r === 3){
+      sawLast = true;
+      if (marked) markOnLast++; else bad++;     // 页末行：标记必须在
+    } else if (r >= 0 && r < 3){
+      sawElse = true;
+      if (marked) bad++; else cleanElsewhere++; // 其余行：标记必须不在（P===W 无绕行淡显）
+    }
   }
   const iv2 = beat.Viz.internals();
   beat.Controls.stop();
-  eq(prevSeen, 0,
-     "★★ P === W 全程零预告：短型淡显只服务 P < W，长型预告只服务 P > W——"
-     + "P === W 既无翻页也无绕行淡显，行为与 v2.10.2 逐位一致");
+  ok(sawLast && sawElse, "前提：球在第 4 行与其余行都驻留过（否则本组是假绿）");
+  ok(markOnLast > 10 && bad === 0,
+     "★★ 轻量预告标记（.preview-row + 「下一小节」胶囊）恰好只在球位于页末行的帧出现——"
+     + "v2.24.0 起 P===W 也有预告（用户拍板方案 B），但内容零重建（实际 标记 "
+     + markOnLast + " 帧 / 违例 " + bad + "）");
   ok(iv1.ballEl === iv2.ballEl && iv1.rowGeo === iv2.rowGeo,
-     "★★ 全程零整树重建：ballEl / rowGeo 引用恒定——「取一次 internals() 再驱动」的"
-     + "整类用例（T30/T36/T41/T72…）依赖这条结构性契约");
+     "★★ 全程零整树重建：ballEl / rowGeo 引用恒定——轻量挂法保住了「取一次 internals() "
+     + "再驱动」的整类用例（T30/T36/T41/T72…依赖这条结构性契约）");
 }
