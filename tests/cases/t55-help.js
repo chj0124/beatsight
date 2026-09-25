@@ -94,8 +94,10 @@ section("T55c 使用方法 · 内容覆盖（查标记原文）");
   ok(helpBlock.includes("先分清两个编辑入口"), "★ 讲清「编辑节奏型」vs「编排曲式」的分工");
   ok(helpBlock.includes("零件") && helpBlock.includes("装配单"),
      "★ 一句话关系：节奏型是零件、曲式是装配单（引用不是拷贝）");
-  ok(helpBlock.includes("音闷（低音弦）") && helpBlock.includes("音亮（高音弦）") && helpBlock.includes("默认（中）"),
+  ok(helpBlock.includes("音闷") && helpBlock.includes("音亮") && helpBlock.includes("默认（中）"),
      "★ 弦区四态（默认（中）/低/中/高）逐一解释");
+  ok(helpBlock.includes("④⑤⑥") && helpBlock.includes("①②③") && helpBlock.includes("音色档位"),
+     "★ 弦区说清了低/高各对应哪几根弦，且点明是音色档位而非逐弦开关");
   ok(helpBlock.includes("不改节奏与发声时刻"), "★ 弦区边界说清：只改音色明暗，不改节奏与时刻");
 }
 

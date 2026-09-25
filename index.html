@@ -744,7 +744,13 @@ input[type=range].vol{width:120px}
    本文件其余 10 处 `[hidden]{display:none}` 都是同一个坑的补丁，`.arg-now` 是漏网的那一个
    ——本行与它们同类，改动 `.arg-now` 的 display 时别忘了它。 */
 .arg-now[hidden]{display:none}
-.arg-now-name{font-size:13px;color:var(--t1)}
+/* v2.25.4：当前曲式名做成 chip 并带「当前曲式」前缀——裸文本跟在两个按钮后面，
+   用户实拍"像是多出来的 bug 文案"；它其实是「整首连播 / 范围滑块」当前服务的曲式名。
+   无曲式时（:empty）整枚 chip 藏起，不留一个空壳 */
+.arg-now-name{font-size:12px;color:var(--t2);border:1px solid var(--line);border-radius:999px;
+  padding:4px 10px;background:var(--card2);white-space:nowrap}
+.arg-now-name:empty{display:none}
+.arg-now-name::before{content:"当前曲式 · ";color:var(--t3)}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
 .arg-jump{justify-content:center;margin-top:14px}
 
@@ -1561,8 +1567,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              下面「设置里的每一项」（文末给指路提示） -->
         <h2 class="card-title" style="margin:22px 0 4px">主界面控制项</h2>
         <ul class="help-list">
-          <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120</li>
-          <li><b>拍号。</b>2/4 到 7/4。切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
+          <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120。<b>拍号。</b>2/4 到 7/4，切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
           <li><b>音量（三条滑杆）。</b>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</li>
           <li><b>其余都在顶栏「设置」小窗里</b>（主题 / 壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断）——逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
@@ -1619,8 +1624,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
           <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
-          <!-- v2.25.3（用户需求）：弦区四态的释义——与编辑器「弦区」行的按钮文案逐字对应 -->
-          <li><b>弦区（默认（中） / 低弦区 / 中弦区 / 高弦区）</b>：给扫弦选"扫哪几段弦"，同一记扫弦音色立刻不同——低弦区音闷（低音弦），高弦区音亮（高音弦），中弦区居中；<b>默认（中）</b> = 不特别标注时的中弦区（老数据与导入的 JSON 都是它，零迁移）。弦区只改<b>音色明暗</b>（滤波频率），<b>不改节奏与发声时刻</b>——同一拍换弦区，时间轴分毫不动</li>
+          <!-- v2.25.3（用户需求）：弦区四态的释义——与编辑器「弦区」行的按钮文案逐字对应；
+               v2.25.4 补"低/高弦区各代表哪几根弦"（用户追问） -->
+          <li><b>弦区（默认（中） / 低弦区 / 中弦区 / 高弦区）</b>：给扫弦选"拨片扫过哪一段弦"，同一记扫弦音色立刻不同。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>低弦区</b>偏向 ④⑤⑥ 这些较粗的低音弦，音闷；<b>高弦区</b>偏向 ①②③ 这些较细的高音弦，音亮；<b>中弦区</b>介于两者；<b>默认（中）</b> = 不特别标注时的中弦区（老数据与导入的 JSON 都是它，零迁移）。它是<b>音色档位</b>而非逐弦开关——应用里用三档滤波频率（约 1:2:4）模拟"拨弦位置偏低 / 居中 / 偏高"的明暗差异，<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
         </ul>
 
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
@@ -1639,8 +1645,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
         <ul class="help-list">
           <li><b>空格</b>：开始 / 停止播放（页面任何位置都可用；正在输入文字时除外）</li>
-          <li><b>Esc</b>：关闭当前打开的面板</li>
-          <li><b>Ctrl / ⌘ + Z</b>：节奏型编辑器里撤销一步</li>
+          <li><b>Esc</b>：关闭当前打开的面板；<b>Ctrl / ⌘ + Z</b>：节奏型编辑器里撤销一步</li>
         </ul>
       </div>
     </div>
@@ -1813,23 +1818,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1845  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2427  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3622  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4326  Modal         应用内弹窗
-     L4463  Viz           时值可视化渲染与每帧动画
-     L6601  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7267  Trainer       变速训练器
-     L7405  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7868  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9106  Editor        自定义节奏型编辑器
-     L9470  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9507  Ear           听辨训练（v1.10.0）
-     L9727  Arrange       曲式编排（v2.0.0）
-     L10578 Help          使用方法（v2.0.1）
-     L10631 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10705 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10906 初始化（装配） 各模块 hook 接线与启动
+     L1850  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2432  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3627  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4331  Modal         应用内弹窗
+     L4468  Viz           时值可视化渲染与每帧动画
+     L6606  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7272  Trainer       变速训练器
+     L7410  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7873  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9111  Editor        自定义节奏型编辑器
+     L9475  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9512  Ear           听辨训练（v1.10.0）
+     L9732  Arrange       曲式编排（v2.0.0）
+     L10583 Help          使用方法（v2.0.1）
+     L10636 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10710 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10911 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1855,7 +1860,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.25.3";
+const VERSION = "2.25.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

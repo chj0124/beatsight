@@ -1,6 +1,6 @@
 {
   "name": "beatsight",
-  "version": "2.25.3",
+  "version": "2.25.4",
   "private": true,
   "description": "开发期自验工具链（只跑本地，不进上站产物）。运行时零依赖不变：index.html 仍可 file:// 直开；上站对外资源为 index.html / sw.js / manifest.webmanifest / icon.svg / icon-192.png / icon-512.png / icon-maskable-192.png / icon-maskable-512.png。`npm run ci` 是构建/检查侧的唯一入口——Cloudflare Dashboard 的构建命令填它（见 wrangler.jsonc 头部注释，别把命令内容写进 Dashboard）",
   "engines": {
