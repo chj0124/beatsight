@@ -58,10 +58,10 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
      JSON.stringify([`节拍 · ${beatN} 个`, `扫弦 · ${strumN} 个`, `自定义 · ${beat.Store.arranges.length} 首`]),
      "★ 侧栏三区标题常显（节拍 / 扫弦 / 自定义），第一区在列表头部");
   /* 示例 5 型并入扫弦区：扫弦区至少含内置「民谣扫弦」+ 示例 5 型 */
-  ok(deepText(els["presetList"]).includes("十六分满扫"),
-     "★ 示例型「十六分满扫」在扫弦区可见（能看到才切得动）");
+  ok(deepText(els["presetList"]).includes("十六分满扫（《在他乡》前奏）"),
+     "★ 示例型「十六分满扫（《在他乡》前奏）」在扫弦区可见（能看到才切得动）");
   ok(!deepText(els["presetList"]).includes("在他乡 · 节奏型"),
-     "★ 示例型已改通用名（十六分满扫 等），不再带「在他乡 · 节奏型N」旧前缀");
+     "★ 示例型已改通用名（十六分满扫（《在他乡》前奏） 等），不再带「在他乡 · 节奏型N」旧前缀");
   const demoBox = kids.find(x => x.className === "preset-arrange-group");
   ok(!!demoBox, "★ 「自定义」区里的曲式容器已渲染");
   eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 1,
@@ -114,14 +114,14 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   const { beat, els } = firstRun();
   beat.Arrange.open();
   bringDemo(beat);
-  const p1 = pByName(beat, "十六分满扫");
+  const p1 = pByName(beat, "十六分满扫（《在他乡》前奏）");
   eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 1 }),
      "P1 格0 = 全部弦下扫（F→zone1，谱面 ↓ 存 D）");
   eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U" }),
      "P1 格1 = 空扫上扫（蓝括号：rest+dir，不带 zone）");
   eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 0 }),
      "P1 格6 = 低音弦区下扫（B→zone0）");
-  const p4 = pByName(beat, "雨夜扫弦");
+  const p4 = pByName(beat, "前密后疏扫（《在他乡》主歌二）");   // v2.19.1：P4 旧名「雨夜扫弦」改为特征名
   eq(JSON.stringify(p4.bars[0][8]), JSON.stringify({ t: 12, rest: true }),
      "★ 无动作格 = 纯休止（无 dir 无 zone，与空扫区分开）");
   ok(beat.Store.customs.every(c => c.bars.length === 1
@@ -209,10 +209,10 @@ section("T63e 示例载入 · 《在他乡》= 30 小节逐小节谱（段长 1/
   const runs = a.sections.flatMap(s => s.blocks.map(b =>
     b.repeats + "×" + String(beat.resolveRef(b.ref).name))).join(" | ");
   eq(runs,
-     "1×十六分满扫 | 3×副歌扫弦 | 4×副歌扫弦 | 1×副歌扫弦 | 1×十六分满扫"
-     + " | 4×主歌扫弦 | 2×主歌扫弦 | 4×桥段扫弦 | 2×主歌扫弦"
-     + " | 6×雨夜扫弦 | 1×雨夜扫弦 | 1×十六分满扫",
-     "★ 全曲 12 个块，逐段逐块与参考页的 30 小节表对齐（v2.9.0 型名改为通用名）");
+     "1×十六分满扫（《在他乡》前奏） | 3×下上扫 · 密（《在他乡》副歌） | 4×下上扫 · 密（《在他乡》副歌） | 1×下上扫 · 密（《在他乡》副歌） | 1×十六分满扫（《在他乡》前奏）"
+     + " | 4×下上扫 · 疏（《在他乡》主歌一） | 2×下上扫 · 疏（《在他乡》主歌一） | 4×切音满扫（《在他乡》桥段） | 2×下上扫 · 疏（《在他乡》主歌一）"
+     + " | 6×前密后疏扫（《在他乡》主歌二） | 1×前密后疏扫（《在他乡》主歌二） | 1×十六分满扫（《在他乡》前奏）",
+     "★ 全曲 12 个块，逐段逐块与参考页的 30 小节表对齐（v2.19.1 型名改为特征名）");
 
   /* ★★ 最要紧的一条：**段长与词行逐小节对齐**。
      以前段长被垫过（1→4、2→4、6→8），多出来的小节"手不停嘴休息"；

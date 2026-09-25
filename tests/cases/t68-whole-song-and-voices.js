@@ -274,8 +274,8 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   eq(rangeToOf(els).value, "30", "滑块终点拉满到第 30 小节（v2.10.7：max = 总小节数）");
   ok(noteOf(els).textContent.includes("第 1/30 小节"),
      "状态说明给出「播放中 · 第 1/30 小节」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
-  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫 */
-  ok(String(beat.activePattern().name).indexOf("十六分满扫") >= 0,
+  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫（《在他乡》前奏） */
+  ok(String(beat.activePattern().name).indexOf("十六分满扫（《在他乡》前奏）") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
   beat.Controls.stop();
 }
@@ -298,8 +298,8 @@ section("T68h 整首连播 · 拖范围滑块到重合 = 只循环那一段");
   /* v2.10.14：原 argNowMeta「第 5 小节」即时反馈断言随说明文字删除退役——
      可见反馈 = thumb 即时移动（上面两条）+ 生效型即时切换（下面一条） */
   /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。
-     小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「副歌扫弦」 */
-  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
+     小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「下上扫 · 密（《在他乡》副歌）」（v2.19.1 旧名「副歌扫弦」） */
+  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
      "★ 停止时定位：生效的型已换成第 5 小节所在段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
@@ -310,12 +310,12 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "前提：已在整首连播中");
 
-  const target = itemByName(els, "副歌扫弦");
-  ok(!!target, "前提：扫弦区里有「副歌扫弦」条目（v2.9.0 示例 5 型并入扫弦区）");
+  const target = itemByName(els, "下上扫 · 密（《在他乡》副歌）");
+  ok(!!target, "前提：扫弦区里有「下上扫 · 密（《在他乡》副歌）」条目（v2.9.0 示例 5 型并入扫弦区；v2.19.1 改特征名）");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
   eq(beat.Store.S.sel.type, "custom", "选中的就是这个自定义型");
-  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
+  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   eq(beat.Store.S.arrangeSel.loop, false, "退回单型后清掉曲式的范围循环（免得下次突然生效）");
   eq(els["loopPanel"].hidden, false, "练习循环面板重新露出（它在曲式模式下是收起的）");

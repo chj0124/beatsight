@@ -1748,22 +1748,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1779  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2273  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3236  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3940  Modal         应用内弹窗
-     L4072  Viz           时值可视化渲染与每帧动画
-     L6022  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6688  Trainer       变速训练器
-     L6826  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7289  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8151  Editor        自定义节奏型编辑器
-     L8515  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8552  Ear           听辨训练（v1.10.0）
-     L8772  Arrange       曲式编排（v2.0.0）
-     L9646  Help          使用方法（v2.0.1）
-     L9695  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9769  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L9970  初始化（装配） 各模块 hook 接线与启动
+     L2311  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3274  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L3978  Modal         应用内弹窗
+     L4110  Viz           时值可视化渲染与每帧动画
+     L6060  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6726  Trainer       变速训练器
+     L6864  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7327  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8189  Editor        自定义节奏型编辑器
+     L8553  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8590  Ear           听辨训练（v1.10.0）
+     L8810  Arrange       曲式编排（v2.0.0）
+     L9684  Help          使用方法（v2.0.1）
+     L9733  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9807  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10008 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1789,7 +1789,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.19.0";
+const VERSION = "2.19.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1957,11 +1957,25 @@ const DEMO_STRUMS = {
      demoLegacyIndex / migrateDemoPatternNames）。名字不再是这批数据的命名空间——
      曲式块的引用改按**下标**（见 demoBuildSpec 的 refIdx），识别改按**内容**（demoIndexOf）。 */
 const DEMO_PRESETS = [
-  { name: "十六分满扫", strum: "P1" },
-  { name: "副歌扫弦", strum: "P2" },
-  { name: "主歌扫弦", strum: "P3" },
-  { name: "雨夜扫弦", strum: "P4" },
-  { name: "桥段扫弦", strum: "P5" },
+  /* v2.19.1 改名（P1–P5）：旧名是《在他乡》曲内的**场景词**（副歌/主歌/雨夜/桥段），
+     没扫过这首歌的用户无从知道它是什么扫弦。新名 = **可弹特征 + 出处标注**——
+     特征部分照 BUILTINS[0]「民谣扫弦 · 下-下上-上下上」的思路用形态短语（名字即谱面的
+     第一行说明），括号标注它来自示例曲的哪个段落（音乐规范术语：前奏/副歌/主歌一/主歌二/
+     桥段）。P4 的「人静的雨夜」段有完整歌词、不是间奏，音乐上是主歌二（Verse 2），
+     故标「主歌二」与 P3 的「主歌一」区分。5 个型的共同骨架：十六分「下上交替」
+   （偶数格下、奇数格上），差异只在留白与切音：
+       P1 十六分满扫：16 格全发声（无空扫无留白）；曲中主要在前奏与收尾小节；
+       P2 下上扫 · 密：10 发声 + 4 切音，第 1 拍重扫一下、之后稳定"下…上下"律动；副歌；
+       P3 下上扫 · 疏：与 P2 仅差第 3 拍少一记上扫（9 发声）——诚实表达为密度差；主歌一；
+       P4 前密后疏扫：前两拍密 → 第 3 拍整拍休止 → 末拍"下上"收（7 发声）；主歌二；
+       P5 切音满扫：全小节连续下上、切音最多（11 发声 + 5 切音），律动最满的"下上"型；桥段。
+     旧名由一次性迁移收敛（migrateDemoPatternNames 的 v2.9.0 名映射，P1 的旧短名也在表内），
+     见下面那条。 */
+  { name: "十六分满扫（《在他乡》前奏）", strum: "P1" },
+  { name: "下上扫 · 密（《在他乡》副歌）", strum: "P2" },
+  { name: "下上扫 · 疏（《在他乡》主歌一）", strum: "P3" },
+  { name: "前密后疏扫（《在他乡》主歌二）", strum: "P4" },
+  { name: "切音满扫（《在他乡》桥段）", strum: "P5" },
 ];
 /* 段 = 词行（行=段的契约）；和弦序列写进段名（本工具无和弦轨）。
    ★★ `strums` 是**逐小节**的型 id 序列，数组长度就是这一段的小节数（v2.6.0 第 Ⅳ 期）。
@@ -2108,30 +2122,54 @@ function demoLegacyIndex(name){
   const m = name.slice(DEMO_LEGACY_PREFIX.length).match(/^\s*(\d+)/);
   return m ? Number(m[1]) - 1 : -1;
 }
+/* v2.9.0–v2.19.0 的旧通用名（v2.19.1 改名前的短名）。同样只服务老数据一次性迁移：
+   本版把 P1–P5 改成「特征名（《在他乡》段落）」，老数据在这里按名字认回下标。
+   P1 的核心名虽未变，但加了出处后缀，旧短名「十六分满扫」同样是旧名，一并入表。
+   ★ 查表必须 hasOwn：name 来自用户数据，"constructor" 这类原型键名不得误命中 */
+const DEMO_LEGACY_V2_NAMES = { "十六分满扫": 0, "副歌扫弦": 1, "主歌扫弦": 2, "雨夜扫弦": 3, "桥段扫弦": 4 };
+/** @param {any} name @returns {number} v2.9.0 旧通用名的 0 基下标，认不出 -1 */
+function demoLegacyV2Index(name){
+  return typeof name === "string" && Object.hasOwn(DEMO_LEGACY_V2_NAMES, name)
+    ? DEMO_LEGACY_V2_NAMES[name] : -1;
+}
+/** @param {any} name @returns {number} 任一批旧名的 0 基下标（前缀或 v2.9.0 名），认不出 -1 */
+function demoLegacyAnyIndex(name){
+  const a = demoLegacyIndex(name);
+  return a >= 0 ? a : demoLegacyV2Index(name);
+}
 /* 在给定库里按"内容优先、名字兜底"找第 i 个示例型（v2.9.0）。
    收成一处：ensureDemo（收敛内容）、demoStale（判落后）、一次性改名迁移
    必须看**同一份**认型规则，三处各写一遍 = 三条会漂移的边界。
    入参 customs 显式传入而非直接读 Store：本函数留在数据区，保持"纯函数可直测"。
-   ★ 三级兜底与它们的窗口（v2.9.0 修正 ordering 缺口）：
+   ★ 四级兜底与它们的窗口（v2.9.0 三级，v2.19.1 补第四级）：
      ① 内容（demoPresetEq）——稳定标识，首选；
      ② 旧名序号（demoLegacyIndex）——服务「旧名 + 4 小节旧内容」的一次性迁移窗口；
      ③ **改名后的通用名**（c.name === p.name）——服务「旧名已被 migrateDemoPatternNames
         改成通用名、但内容还没收敛」的窗口。没有它，启动期"先改名后收敛"的顺序会把旧型
         的两种标识（内容 + 旧名）一起抹掉 → ensureDemo 认不出 → 重复建 5 个型（10 个型、
         整首连播 120 小节）。代价：用户自建型若恰好叫示例通用名（十六分满扫 等）会被
-        收敛回参考谱——名字高度特异、且只在内容对不上时才命中，判为可接受（变体请另存名字） */
+        收敛回参考谱——名字高度特异、且只在内容对不上时才命中，判为可接受（变体请另存名字）；
+     ④ **v2.9.0 旧名**（DEMO_LEGACY_V2_NAMES，v2.19.1）——服务「v2.9.0 期间落盘的旧通用名」
+        的窗口：本版把 P2–P5 的场景名（副歌/主歌/雨夜/桥段）改成特征名，老数据靠这条
+        在 migrate 里收敛新名；内容对不上的旧名型由此兜底认回（语义与 ③ 完全同构）。
+        只在 ①②③ 都落空后兜底，不影响内容识别命中的用户变体。 */
 /** @param {any[]} customs @param {number} i @returns {any} */
 function demoCustomAt(customs, i){
   if (!Array.isArray(customs) || i < 0 || i >= DEMO_PRESETS.length) return undefined;
   const p = demoSpec().presets[i];
   return customs.find(c => demoPresetEq(c, p))
     || customs.find(c => demoLegacyIndex(c && c.name) === i)
-    || customs.find(c => c && c.name === p.name);
+    || customs.find(c => c && c.name === p.name)
+    || customs.find(c => demoLegacyV2Index(c && c.name) === i);
 }
-/* 老数据一次性改名（v2.9.0）：示例型旧名「在他乡 · 节奏型N…」→ 新的通用名（十六分满扫 等）。
+/* 老数据一次性改名（v2.9.0；v2.19.1 扩展）：示例型旧名 → 当前通用名。
+   两批旧名，按时间倒序各认各的：
+     · v2.9.0–v2.19.0 的场景名（副歌扫弦 等，DEMO_LEGACY_V2_NAMES）——v2.19.1 起这些名字
+       改成了特征名（下上扫 · 密 等），老数据在这里收敛，保证新老用户看到同一份列表；
+     · v2.3.0–v2.8.x 的「在他乡 · 节奏型N」前缀（demoLegacyIndex）。
    ★ 与内容收敛（ensureDemo）分开：这里只认旧名序号、只动 name，不碰内容——
      v2.6.0 之前的 4 小节型内容对不上新规范谱，改名后仍需 ensureDemo 把内容改回参考谱。
-   ★ 幂等：改完名字不再命中旧前缀，二次启动改 0 条、零写盘。
+   ★ 幂等：改完的名字不再命中任何旧名表，二次启动改 0 条、零写盘。
    返回改名的条数，供调用方决定是否落盘 */
 /** @param {any[]} customs @returns {number} */
 function migrateDemoPatternNames(customs){
@@ -2139,7 +2177,7 @@ function migrateDemoPatternNames(customs){
   let n = 0;
   customs.forEach(c => {
     if (!c) return;
-    const i = demoLegacyIndex(c.name);
+    const i = demoLegacyAnyIndex(c.name);
     if (i < 0 || i >= DEMO_PRESETS.length) return;
     if (c.name !== DEMO_PRESETS[i].name){ c.name = DEMO_PRESETS[i].name; n++; }
   });

@@ -29,7 +29,7 @@ const itemByName = (els, name) => els["presetList"].children
   .filter(x => /(^| )preset-item( |$)/.test(x.className)).find(x => deepText(x).includes(name));
 const activeItems = els => els["presetList"].children.filter(x =>
   /(^| )preset-item( |$)/.test(x.className) && /(^| )active( |$)/.test(x.className));
-/* v2.9.0：示例型已改通用名（十六分满扫 等），不能再按旧名前缀认。
+/* v2.9.0：示例型已改通用名（十六分满扫（《在他乡》前奏） 等），不能再按旧名前缀认。
    名字取自规范谱（demoBuildSpec），mangleToOld4Bar 只改内容不碰名字，故 mangle 后仍认得出 */
 const demoPats = beat => {
   const names = beat.demoBuildSpec().presets.map(p => p.name);
@@ -135,4 +135,34 @@ section("T74e 删除保护 · ★ 曲式被删 → demoStale 恒 false，启动�
   ok(!second.beat.Store.findArrange(second.beat.DEMO_ID), "★ 再启动曲式仍然不在（没偷偷补回来）");
   ok(demoPats(second.beat).length > 0 && demoPats(second.beat).every(c => c.bars.length === 4),
     "留下的示例型保持用户手里的样子，不被隔空改写");
+}
+
+/* ================= 场景 T74f：v2.9.0 旧通用名 → v2.19.1 特征名（改名迁移端到端） =================
+   v2.19.1 把 P2–P5 的场景名（副歌/主歌/雨夜/桥段扫弦）改成特征名（下上扫 · 密（《在他乡》副歌） 等）。
+   本组复刻"用户机器上是 v2.19.0 之前落盘的名字"：名字退回旧名、内容保持规范谱，
+   再启动一次——migrateDemoPatternNames 应把名字收敛、**不碰内容与 id、不重复建型**。 */
+section("T74f v2.19.1 改名迁移 · ★ 旧名「雨夜扫弦」落盘 → 启动自动收敛为「前密后疏扫（《在他乡》主歌二）」");
+{
+  const first = loadApp(undefined, { seedDemo: false });
+  eq(first.beat.Store.customs.length, 5, "前提：示例 5 型已在库");
+  /* 把 P4 改回 v2.9.0 旧名（内容保持参考谱）——正是 v2.19.1 之前用户机器上的形状 */
+  const spec = first.beat.demoBuildSpec().presets;
+  const p4old = first.beat.Store.customs.find(c => c.name === spec[3].name);
+  ok(!!p4old, "前提：P4 在库（现名「前密后疏扫（《在他乡》主歌二）」）");
+  p4old.name = "雨夜扫弦";
+  first.beat.Store.persistCold();
+
+  const seed = {};
+  first.storage.forEach((v, k) => { seed[k] = v; });
+  const second = loadApp(seed);
+  const after = second.beat.Store.customs.find(c => c.name === "前密后疏扫（《在他乡》主歌二）");
+  ok(!!after, "★ 旧名「雨夜扫弦」已在启动时收敛为「前密后疏扫（《在他乡》主歌二）」");
+  ok(!second.beat.Store.customs.some(c => c.name === "雨夜扫弦"), "★ 旧名不再存在（幂等收敛，不是并列共存）");
+  eq(second.beat.Store.customs.length, 5, "★ 没有重复建型（不是新建第 6 个）");
+  eq(after && after.id, p4old.id, "★ id 原样保住——曲式块按 id 引用，改名不能断链");
+  eq(JSON.stringify(after && after.bars), JSON.stringify(p4old.bars),
+    "★ 内容未被迁移触碰（migrate 只动 name；内容收敛是 ensureDemo 的事）");
+  eq(JSON.stringify(second.beat.Store.customs.map(c => c.name).sort()),
+    JSON.stringify(spec.map(p => p.name).sort()),
+    "★ 5 个型名与规范谱一一对应（其余 4 个名字分毫未动）");
 }

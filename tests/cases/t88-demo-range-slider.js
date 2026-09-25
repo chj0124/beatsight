@@ -176,8 +176,8 @@ section("T88e 两个 thumb 重合 = 只循环这一段（旧段号胶囊那档�
      "★ 读数用单小节说法（单小节循环），不写「第 5–5 小节」（实际「" + noteOf(els).textContent + "」）");
   eq(beat.Store.S.playing, false, "定位不等于起播（用户按播放键才开始）");
   /* 停止态定位必须把网格换成那一段的型，否则只有字变、画面原地不动（v2.0.2 的结论）。
-     v2.10.7 小节口径：滑块值 5 = 0-based 小节 4 = 段 2（副歌）→ 生效型 = 副歌扫弦 */
-  ok(String(beat.activePattern().name).indexOf("副歌扫弦") >= 0,
+     v2.10.7 小节口径：滑块值 5 = 0-based 小节 4 = 段 2（副歌）→ 生效型 = 下上扫 · 密（《在他乡》副歌）（v2.19.1 旧名「副歌扫弦」） */
+  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
      "★ 停止时定位：生效的型已换成第 5 小节所在段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
