@@ -40,8 +40,8 @@ section("T104a 移到首尾 · 一步到位 / 边界禁用 / 歌词（uid 键）
   beat.Arrange.open();
   eq(names(beat), "A段B段C段", "前提：A/B/C");
 
-  eq(opsOf(els, 0).children.length, 4, "★ ops = [起, 终, ▶, ⋯] 4 颗（重排/删除收进 ⋯ 菜单，v2.30.0 S1）");
-  eq(opsOf(els, 0).children[2].getAttribute("aria-label"), "试听第 1 段（只放这一段一遍）", "★ 下标 2 是「▶ 试听」（动作钮常显）");
+  eq(opsOf(els, 0).children.length, 2, "★ ops = [▶, ⋯] 2 颗（v2.31.0 S2：起/终退役，其余收进 ⋯ 菜单）");
+  eq(opsOf(els, 0).children[0].getAttribute("aria-label"), "试听第 1 段（只放这一段一遍）", "★ 下标 0 是「▶ 试听」（动作钮常显）");
   /* 菜单边界禁用（原 ⤒/⤓ 的 disabled 口径不变，只是从 ops 搬进了菜单） */
   const m2 = openMenu(els, 2);
   eq(menuItem(m2, /移到最前/).disabled, false, "★ 末段的「移到最前」可用（往前移总有意义）");

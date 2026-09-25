@@ -9,7 +9,8 @@
      .arg-sec    → [段号, input.arg-name, .arg-blocks, .arg-ops, 歌词轨(, ⋯ 菜单-展开时)]
      .arg-blocks → N × .arg-block + 一个「+ 块」
      .arg-block  → [预设名 span, input.arg-reps(遍数), 「换」, 「✕」]
-     .arg-ops    → [起, 终, ▶, ⋯]（v2.30.0 S1：重排/删除收进 ⋯ 菜单，菜单项按 aria 定位）
+     .arg-ops    → [▶, ⋯]（v2.31.0 S2 起：起/终随「练这段」+ 开练面板退役，
+                   ↑/↓/移到首尾/删除/练这段 在 ⋯ 菜单里，按 aria 定位）
    「沙箱不支持 <select>」是这套"小按钮直接设在段行上"的原因之一，别改成下拉。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -24,10 +25,18 @@ const seeded = () => loadApp({ "beatsight.arranges": JSON.stringify({ v: 1, arra
   A("a1", "练习曲", [SEC("主歌", BL(0, 2)), SEC("副歌", BL(2, 1), BL(4, 1))]),
 ]}) });
 /* 下标速查（改 UI 时对照）：
-     .arg-ops   = [起0, 终1, ▶2, ⋯3]（v2.30.0 S1 起；↑/↓/移到首尾/删除 在 ⋯ 菜单里，按 aria 找）
+     .arg-ops   = [▶0, ⋯1]（v2.31.0 S2 起；练这段/↑/↓/移到首尾/删除 在 ⋯ 菜单里，按 aria 找）
      .arg-block = [名0, 遍数1, 单位2, 换3, ✕4]（"单位"也是元素，所以换/✕ 都在 +1 位）
      .arg-blocks = N × .arg-block + 一个「+ 块」（在最后） */
 const secRows = els => els["argSections"].children;
+/* v2.30.0 S1 起：段操作 ⋯ 菜单的三步助手（模块级——T54c/T54e/T54f 共用）。
+   ★ 每次 fire("click") 都触发 arrangeRender、元素全部重建——"点"与"找"每步都重新取当前元素 */
+const moreBtn = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children[3].children,
+  b => /更多段操作/.test(b.getAttribute("aria-label") || ""));
+const menuOf = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children,
+  c => /(^| )arg-sec-menu( |$)/.test(c.className));
+const menuItem = (menu, re) => menu && Array.prototype.find.call(menu.children,
+  b => re.test(b.getAttribute("aria-label") || ""));
 
 /* ================= 场景 T54：overlay 开合与键盘 ================= */
 section("T54 曲式 UI · overlay 开合 / Escape / 背景 inert");
@@ -111,13 +120,8 @@ section("T54c 曲式 UI · 段落：改名 / 加段 / 上移下移 / 删除");
   /* v2.30.0（S1）：↑/↓/移到首尾/删除收进段行的 ⋯ 菜单——ops 只剩 4 颗（起/终/▶/⋯）。
      断言口径变更说明：这不是回归，是操作面板从"8 钮平铺"改成"4 钮 + ⋯ 菜单"的结构性重排
      （低频操作进菜单、动作钮常显），既有裸下标定位（children[2]=↑、children[4]=✕）同步迁到
-     「开菜单 + aria 定位」。菜单行挂段行末尾（children[5]，歌词轨 children[4] 不挪位）。 */
-  const moreBtn = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children[3].children,
-    b => /更多段操作/.test(b.getAttribute("aria-label") || ""));
-  const menuOf = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children,
-    c => /(^| )arg-sec-menu( |$)/.test(c.className));
-  const menuItem = (menu, re) => menu && Array.prototype.find.call(menu.children,
-    b => re.test(b.getAttribute("aria-label") || ""));
+     「开菜单 + aria 定位」。菜单行挂段行末尾（children[5]，歌词轨 children[4] 不挪位）。
+     （v2.31.0 S2 起 ops 再收成 [▶, ⋯]，助手已提升到模块级。） */
   moreBtn(els, 2).fire("click");                          // 展开「⋯」
   eq(menuItem(menuOf(els, 2), /下移第 3 段/).disabled, true, "★ 最后一段的「下移」禁用");
   moreBtn(els, 2).fire("click");                          // 收起（再点一次 = toggle）
@@ -211,28 +215,28 @@ section("T54e 曲式 UI · 播放范围：起/终 / 循环 / 全部");
   const S = beat.Store.S;
   /* 点列表 = 切"正在编辑哪条曲式"（不写播放选择） */
   els["argList"].children[0].fire("click");
-  /* 播放选择的 id 由「起 / 终」写入。
-     v2.10.7：写入的是该段的起止**小节**（主歌 8 小节 0..7，副歌 8 小节 8..15） */
-  secRows(els)[1].children[3].children[1].fire("click");   // 终
+  /* v2.31.0（S2）：段行「起 / 终」退役，接棒的是 ⋯ 菜单「练这段」= setRange(段起止小节)。
+     断言口径变更说明：入口从"两颗钮分设 from/to"收敛为"一键整段范围 + loop 恒开"，
+     覆盖"只练副歌"这个最高频意图；精确到小节的范围由开练面板双滑块承担（t107 守）。
+     主歌 8 小节 0..7，副歌 8 小节 8..15 */
+  moreBtn(els, 1).fire("click");
+  menuItem(menuOf(els, 1), /只练第 2 段/).fire("click");
   eq(S.arrangeSel.id, "a1", "★ 设范围时把曲式 id 一并记进 arrangeSel");
-  eq(S.arrangeSel.to, 15, "「终」设为第 2 段（副歌末小节 = 8..15 的 15）");
-  /* 把第 2 段设为「起」→ to 不得小于 from，所以 from=8 时 to 至少 15 */
-  secRows(els)[1].children[3].children[0].fire("click");   // 起
-  eq(S.arrangeSel.from, 8, "「起」设为第 2 段（副歌首小节 = 8）");
-  ok(S.arrangeSel.to >= S.arrangeSel.from, "★ to 不会小于 from（范围不会变空）");
+  eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), "[8,15]", "「练这段」= 第 2 段起止小节（8..15）");
+  eq(S.arrangeSel.loop, true, "★ 练这段 = 范围循环恒开（只反复练这一段）");
 
-  /* 全部 */
-  els["argRangeRow"].children[1].fire("click");            // 「全部」
+  /* 全部（v2.31.0 起「全部」是面板静态按钮，不再是运行时行的 children[1]） */
+  els["argAllRange"].fire("click");
   eq(S.arrangeSel.from, 0, "「全部」把起点拉回第 1 段");
   eq(S.arrangeSel.to, 15, "终点是末段末小节（全曲 16 小节，0..15）");
 
-  /* 循环开关 */
-  eq(els["argLoopBtn"].getAttribute("aria-checked"), "false", "循环默认关");
+  /* 循环开关（v2.31.0 S2：「练这段」已经把范围循环打开——先验证状态，再走一遍关/开） */
+  eq(els["argLoopBtn"].getAttribute("aria-checked"), "true", "★ 「练这段」已把范围循环打开（aria 同步）");
   els["argLoopBtn"].fire("click");
-  eq(S.arrangeSel.loop, true, "点开循环");
-  eq(els["argLoopBtn"].getAttribute("aria-checked"), "true", "aria-checked 同步（读屏能读到状态）");
+  eq(S.arrangeSel.loop, false, "再点 = 关掉");
+  eq(els["argLoopBtn"].getAttribute("aria-checked"), "false", "aria-checked 同步（读屏能读到状态）");
   els["argLoopBtn"].className = els["argLoopBtn"].className;  // 触发一次读取，无副作用
-  ok(els["argLoopBtn"].className.includes("on"), "样式切到 on（与后台保活等开关同一套 setToggle）");
+  ok(!els["argLoopBtn"].className.includes("on"), "样式切回 off（与后台保活等开关同一套 setToggle）");
   beat.Arrange.close();
 }
 
@@ -258,10 +262,10 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   eq(els["argJumpPrev"].disabled, false, "★ 曲式模式下「上一段」恢复可用");
   beat.Controls.stop();
 
-  /* 「播选中范围」：先把范围设成只播第 2 段 */
+  /* 「播选中范围」：先把范围设成只播第 2 段（v2.31.0 S2 起 = ⋯ 菜单「练这段」，loop 恒开） */
   beat.Arrange.open();
-  secRows(els)[1].children[3].children[0].fire("click");   // 起 = 第 2 段
-  secRows(els)[1].children[3].children[1].fire("click");   // 终 = 第 2 段
+  moreBtn(els, 1).fire("click");
+  menuItem(menuOf(els, 1), /只练第 2 段/).fire("click");
   els["argPlayRange"].fire("click");
   eq(JSON.stringify([S.arrangeSel.from, S.arrangeSel.to]), JSON.stringify([8, 15]), "「播选中范围」只播第 2 段（小节 8..15）");
   eq(S.playing, true, "开始播放");

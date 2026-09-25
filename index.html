@@ -763,6 +763,43 @@ input[type=range].vol{width:120px}
    新建模板菜单互斥（同一时间至多一张，见 toggleNewMenu / toggleLibMenu）。 */
 .arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
 .arg-lib-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
+/* v2.31.0（S2 重设计）：编排卡片双栏——左编排、右「开练」面板（sticky 吸视口）。
+   "设范围 → 开练"动线收进右栏，不再滚到整页底部。双滑块复用侧栏那套原生
+   input[type=range] 叠层方案（.demo-range-track 同款三规矩，类名带 .arg-range-input
+   提高特异性，理由见 L551 注释——两处结论同源，不重复抄）。 */
+.arg-work{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.arg-main{min-width:0}
+.arg-panel{position:sticky;top:0;display:flex;flex-direction:column;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:16px}
+.arg-panel-head{display:flex;align-items:center;gap:8px}
+.arg-panel-title{font-size:14px;font-weight:700;margin:0}
+.arg-map{display:flex;gap:2px;height:34px;border-radius:8px;overflow:hidden}
+.arg-map-seg{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
+.arg-map-seg:last-child{border-right:none}
+.arg-map-seg.in-range{background:rgba(30,215,96,.15);box-shadow:inset 0 0 0 1px var(--green);color:var(--t1)}
+.arg-range-track{position:relative;height:22px}
+.arg-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}
+.arg-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
+.arg-range-track input[type=range].arg-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
+.arg-range-track input[type=range].arg-range-input::-webkit-slider-thumb{pointer-events:auto}
+.arg-range-track input[type=range].arg-range-input::-moz-range-thumb{pointer-events:auto}
+/* 窄屏三档：960px 退单栏、面板提前（先定范围再编排）；640px 变底部固定条 */
+@media (max-width:960px){
+  .arg-work{grid-template-columns:1fr}
+  .arg-panel{position:static;order:-1}
+}
+@media (max-width:640px){
+  .arg-work{padding-bottom:150px}   /* 让位给固定底条，末段卡片不被盖住 */
+  .arg-panel{position:fixed;top:auto;left:0;right:0;bottom:0;z-index:5;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 10px;
+    border-radius:12px 12px 0 0;border-bottom:none;margin:0;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -8px 24px rgba(0,0,0,.5)}
+  /* ★ top:auto 必须显式写：基样式的 sticky;top:0 会跟进来，fixed + top:0 + bottom:0
+     = 高度被拉满整屏（实测首版漏了它，底条把整页盖成一面墙） */
+  .arg-panel-head,.arg-map{display:none}          /* 底条只留开练必需品：范围 + 循环 + 播放 */
+  .arg-range-track{flex:1 1 100%}
+  #argRangeRead{flex:1 1 auto;min-width:0}
+  .arg-panel .bpm-row{margin:0}
+}
 /* 歌词编辑轨（v2.1.0 F1）：每个段行下方一条。头部 = 锚点提示音开关 + 粘贴框 + 清除，
    轨道本体是绝对定位的字块（拖本体改起始 t、拖右缘抓手改时值 dur）。
    与主视图 .lyric-lane 刻意**不同构**：那边是只读放映（百分比定位 + 走带线），
@@ -1527,25 +1564,43 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill outline" id="argLibMore" disabled aria-label="曲式更多操作（复制 / 删除）">⋯</button>
       </div>
     </div>
-    <div class="card">
-      <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
-      <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
-      <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
-      <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
-      <div class="stats-head">段落结构</div>
-      <div id="argSections"></div>
-      <div class="bpm-row">
-        <button class="pill" id="argAddSec">+ 加一段</button>
-        <span class="hint" id="argHint"></span>
+    <!-- v2.31.0（S2 重设计）：编排卡片改**双栏**——左栏编排（曲式库 + 段落结构），
+         右栏「开练」面板（歌曲地图 + 范围双滑块 + 循环 + 播放 + 问题提示，sticky 吸住视口）。
+         "设范围 → 开练"不再滚到整页底部；旧「播放范围」区与段行「起 / 终」钮随
+         「练这段」（⋯ 菜单）+ 地图点击 + 双滑块退役。窄屏：≤960px 面板提前到段落结构上方，
+         ≤640px 变底部固定条（见 CSS）。 -->
+    <div class="card arg-work">
+      <div class="arg-main">
+        <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
+        <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
+        <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
+        <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
+        <div class="stats-head">段落结构</div>
+        <div id="argSections"></div>
+        <div class="bpm-row">
+          <button class="pill" id="argAddSec">+ 加一段</button>
+          <span class="hint" id="argHint"></span>
+        </div>
       </div>
-      <div class="stats-head">播放范围</div>
-      <div class="bpm-row" id="argRangeRow" role="group" aria-label="播放范围"></div>
-      <div class="bpm-row">
-        <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
-        <button class="pill active" id="argPlay">从头播</button>
-        <button class="pill" id="argPlayRange">播选中范围</button>
+      <div class="arg-panel" id="argPanel" role="group" aria-label="开练面板">
+        <div class="arg-panel-head"><span class="sec-tag"><b>▶</b><i>Practice</i></span><h3 class="arg-panel-title">开练</h3></div>
+        <div class="arg-map" id="argMap" role="group" aria-label="歌曲地图（点某段 = 只练这一段）"></div>
+        <div class="arg-range-track">
+          <input type="range" id="argRangeFrom" class="arg-range-input arg-range-from" min="1" max="1" step="1" value="1" aria-label="播放范围起点">
+          <input type="range" id="argRangeTo" class="arg-range-input arg-range-to" min="1" max="1" step="1" value="1" aria-label="播放范围终点">
+          <div class="arg-range-fill" id="argRangeFill"></div>
+        </div>
+        <div class="hint" id="argRangeRead"></div>
+        <div class="bpm-row">
+          <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
+          <button class="pill" id="argAllRange">全部</button>
+        </div>
+        <div class="bpm-row">
+          <button class="pill active" id="argPlay">从头播</button>
+          <button class="pill" id="argPlayRange">播选中范围</button>
+        </div>
+        <div class="hint" id="argProblems"></div>
       </div>
-      <div class="hint" id="argProblems" style="margin-top:10px"></div>
     </div>
   </div>
 </div>
@@ -1660,13 +1715,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             「第 5–12 小节」就只练副歌里那几小节。读数行会把它翻译成
             「第 5–12 小节 · 副歌 → 桥段 · 共 8 小节」；<b>两个滑块拖到重合 = 只循环这一个小节</b>
             （磨"老是弹不顺的那一小节"），想循环一整段就拖出该段的起止小节。
-            它和编排面板里的「起 / 终」是<b>同一份范围</b>，两边改哪边都同步。
+            它和编排面板右侧「开练」面板的双滑块是<b>同一份范围</b>，两边改哪边都同步。
             注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几小节"看上面那行说明</li>
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
           <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点「新建曲式」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.30.0 -->复制与删除也在顶栏「⋯」菜单里。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
-          <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
+          <li><!-- v2.31.0 -->编排面板右侧有「<b>开练</b>」面板：<b>歌曲地图</b>点某段 = 只循环练这一段，
+            <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
           <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
         </ul>
@@ -1875,23 +1931,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1907  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2497  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3763  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4470  Modal         应用内弹窗
-     L4607  Viz           时值可视化渲染与每帧动画
-     L6741  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7415  Trainer       变速训练器
-     L7553  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8016  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9249  Editor        自定义节奏型编辑器
-     L9616  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9653  Ear           听辨训练（v1.10.0）
-     L9873  Arrange       曲式编排（v2.0.0）
-     L11025 Help          使用方法（v2.0.1）
-     L11078 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11152 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11353 初始化（装配） 各模块 hook 接线与启动
+     L1963  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2553  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3819  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4526  Modal         应用内弹窗
+     L4663  Viz           时值可视化渲染与每帧动画
+     L6797  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7471  Trainer       变速训练器
+     L7609  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8072  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9305  Editor        自定义节奏型编辑器
+     L9672  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9709  Ear           听辨训练（v1.10.0）
+     L9929  Arrange       曲式编排（v2.0.0）
+     L11171 Help          使用方法（v2.0.1）
+     L11224 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11298 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11499 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1917,7 +1973,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.30.0";
+const VERSION = "2.31.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10168,37 +10224,16 @@ const Arrange = (() => {
     row.appendChild(blks);
 
     const ops = document.createElement("div"); ops.className = "arg-ops";
-    /* 范围起/终直接设在段行上：沙箱不支持 <select>，且这样"点哪段设哪段"更好按。
-       v2.10.7：S.arrangeSel.from/to 已改按小节存（线性小节号）——按钮交互仍是"点哪段设哪段"，
-       写入时换算成该段的起止小节；高亮判断同理（起点=段首小节、终点=段尾小节）。 */
-    /** @param {"from"|"to"} which @param {string} txt @param {string} aria */
-    const mkRange = (which, txt, aria) => {
-      const secStart = songBarBefore(a, i);                       // 本段首小节（线性号）
-      const secEnd = secStart + secBars(a.sections[i]) - 1;       // 本段末小节
-      const isSel = (which === "from") ? S.arrangeSel.from === secStart : S.arrangeSel.to === secEnd;
-      const btn = document.createElement("button");
-      btn.className = "arg-mini" + (isSel ? " sel" : "");
-      btn.textContent = txt; btn.setAttribute("aria-label", aria);
-      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
-        S.arrangeSel.id = a.id;
-        S.arrangeSel[which] = (which === "from") ? secStart : secEnd;
-        S.arrangeSel.byLyric = false;   // 手设起/终 = 普通范围，非歌词行循环（审计 P1-4）
-        /* 防倒置与旧版同语义：设「起」落到早于终点的段 → 终点拖到本段末；
-           设「终」落到晚于起点的段 → 起点拖到本段首（线性号上直接比较） */
-        if (which === "from" && S.arrangeSel.to < secStart) S.arrangeSel.to = secEnd;
-        if (which === "to" && S.arrangeSel.from > secEnd) S.arrangeSel.from = secStart;
-        Store.persist();
-        arrangeRender(); refreshBar();
-      });
-      return btn;
-    };
-    ops.appendChild(mkRange("from", "起", "把第 " + (i + 1) + " 段设为播放起点"));
-    ops.appendChild(mkRange("to", "终", "把第 " + (i + 1) + " 段设为播放终点"));
+    /* v2.31.0（S2 重设计）：段行「起 / 终」钮退役——范围入口收敛为两处：开练面板的
+       歌曲地图（点段 = 只练这段，精确到小节靠双滑块）+ ⋯ 菜单「练这段」（一键设该段范围，
+       覆盖"只练副歌"这个最高频意图）。原先 8 颗 → S1 的 4 颗 → 现在 [▶, ⋯] 两颗，
+       ops 里只剩"动作"，范围与重排全部各归其位。 */
     /* 逐段试听（v2.27.0，PLAN-v3 G4 附属项）：只放这一段一遍。
        范围设该段 + loop:false（到段尾自然停）+ **会话额度**兜一层（playQuota = 段小节数，
        复用听辨训练那套「到点停」——它是 v2.10.12 后该机制唯一的消费者，机制现成、与调度同源，
        后台标签页也准，比定时器对）。不动 loopLyricSection——那是"循环+爬坡"的另一语义。
-       v2.30.0（S1）：重排/删除收进 ⋯ 菜单后，▶ 是 ops 里唯一保留的动作钮，排 [起, 终] 之后。 */
+       v2.30.0（S1）：重排/删除收进 ⋯ 菜单后，▶ 是 ops 里唯一保留的动作钮，排 [起, 终] 之后。
+       v2.31.0（S2）：起/终退役，ops = [▶, ⋯]。 */
     const tryBtn = document.createElement("button");
     tryBtn.className = "arg-mini arg-try";
     tryBtn.textContent = "▶";
@@ -10224,7 +10259,7 @@ const Arrange = (() => {
     const more = document.createElement("button");
     more.className = "arg-mini arg-more";
     more.textContent = "⋯";
-    more.setAttribute("aria-label", "更多段操作（上移 / 下移 / 移到首尾 / 删除）");
+    more.setAttribute("aria-label", "更多段操作（练这段 / 上移 / 下移 / 移到首尾 / 删除）");
     more.setAttribute("aria-expanded", secMenuOpen === i ? "true" : "false");
     Modal.bindOverlay("arrangeOverlay", more, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
@@ -10254,6 +10289,24 @@ const Arrange = (() => {
     menu.className = "arg-sec-menu";
     menu.setAttribute("role", "group");
     menu.setAttribute("aria-label", "第 " + (i + 1) + " 段操作菜单");
+    /* 「练这段」（v2.31.0 S2）：段行「起 / 终」的接棒者——一键把范围设成本段起止小节，
+       loop 走 setRange 缺省（恒开）= "只循环练这一段"，覆盖"只练副歌"这个最高频意图。
+       排菜单第一位（ 比 上移/下移 更常按）。 */
+    const mkTryRange = () => {
+      const btn = document.createElement("button");
+      btn.className = "arg-mini";
+      btn.textContent = "练这段";
+      const secStart = songBarBefore(a, i);
+      const secEnd = secStart + secBars(a.sections[i]) - 1;
+      btn.setAttribute("aria-label", "只练第 " + (i + 1) + " 段（小节 " + (secStart + 1) + "–" + (secEnd + 1) + "，范围循环开）");
+      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
+        secMenuOpen = null;
+        setRange(secStart, secEnd);
+        arrangeRender();
+        announce("只练第 " + (i + 1) + " 段，共 " + secBars(a.sections[i]) + " 小节");
+      });
+      return btn;
+    };
     /** @param {number} dir @param {string} aria @param {boolean} dis */
     const mkMove = (dir, aria, dis) => {
       const btn = document.createElement("button");
@@ -10291,6 +10344,7 @@ const Arrange = (() => {
       if (a.sections.length <= 1){ Modal.uiAlert("一首曲式至少要有 1 段。"); return; }
       Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { secMenuOpen = null; const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
     });
+    menu.appendChild(mkTryRange());
     menu.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
     menu.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
     menu.appendChild(mkEnd("first", "移到最前", "把第 " + (i + 1) + " 段移到最前", i === 0));
@@ -10332,7 +10386,7 @@ const Arrange = (() => {
       .forEach((/** @type {any} */ m) => m.parentNode.removeChild(m));
     $("argNew").setAttribute("aria-expanded", "false");
     $("argAddSec").disabled = !a;
-    if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argRangeRow")); return; }
+    if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argMap")); return; }
 
     /* v2.4.4：段行先入 DocumentFragment、最后一次插入（同 Editor.arrangeRender 的批量插入口径） */
     const frag = document.createDocumentFragment();
@@ -10428,30 +10482,100 @@ const Arrange = (() => {
       else secMenuOpen = null;
     }
 
-    /* 播放范围的只读显示（真正的设置入口是段行上的「起 / 终」）。
-       v2.10.7：arrangeSel.from/to 已改按小节存——这里以**小节**为主单位显示，
-       并用 songBarAt 反解出所在段，让人知道"这些小节落在歌的哪一部分" */
-    const rr = $("argRangeRow");
-    clear(rr);
+    /* v2.31.0（S2）：开练面板（歌曲地图 + 双滑块 + 循环 + 播放 + 问题提示）——
+       范围设置的三个入口收敛为「地图点段 / 拖双滑块」+「⋯ 练这段」；旧「播放范围」
+       只读行与段行起/终一并退役。渲染只在此处整体重建（bindOverlay 纪律），
+       拖动中的视觉刷新走 syncPanelRead（不重建、不二次登记）。 */
+    renderPanel(a);
+    $("argHint").textContent = `每段 = 若干块，块 = 一个节奏型 × N 遍（一遍 = 该型的全部小节）`;
+  }
+
+  /* ---------- 开练面板（v2.31.0，S2）----------
+     地图条 = 按段小节数等比分宽的段胶囊，点某段 = setRange(该段起止)（=「练这段」同路）；
+     双滑块 = 侧栏 .demo-range 那套原生叠层的编排侧翻版（input 拖动中只写 S + 视觉，
+     change 提交才跑 setRange 的重活——两级分工的理由见 Presets.onRangeInput 注释，同源）。
+     ★ syncPanelRead 刻意**只改**文本/样式/类名，不增删节点——它会在拖动中高频触发，
+       而 renderPanel（整体重建 + bindOverlay 登记）只准从 arrangeRender 里调，否则
+       监听会成倍叠加（v2.0.4 的 overlay 登记纪律）。 */
+  /** @param {any} a @returns {void} */
+  function renderPanel(a){
+    const map = $("argMap");
+    clear(map);
+    a.sections.forEach((/** @type {any} */ sec, /** @type {number} */ i) => {
+      const start = songBarBefore(a, i), end = start + secBars(sec) - 1;
+      const seg = document.createElement("button");
+      seg.className = "arg-map-seg";
+      seg.style.flexGrow = String(secBars(sec));       // 宽度比例 = 段小节数（断言盯这个内联值）
+      seg.textContent = String(i + 1);
+      seg.setAttribute("aria-label", "第 " + (i + 1) + " 段（" + secBars(sec) + " 小节）· 点按只练这一段");
+      if (S.arrangeSel.from <= end && S.arrangeSel.to >= start) seg.classList.add("in-range");
+      Modal.bindOverlay("arrangeOverlay", seg, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        setRange(start, end);
+        arrangeRender();
+        announce("只练第 " + (i + 1) + " 段，共 " + secBars(sec) + " 小节");
+      });
+      map.appendChild(seg);
+    });
+    const from = $("argRangeFrom"), to = $("argRangeTo");
+    const TB = songBars(a);
+    /* 滑块按**小节**刻度（1..TB，与侧栏同口径）；from/to 写回必须字符串（lib.dom 契约） */
+    from.min = "1"; from.max = String(TB);
+    from.value = String(Math.min(TB, Math.max(1, S.arrangeSel.from + 1)));
+    to.min = "1"; to.max = String(TB);
+    to.value = String(Math.min(TB, Math.max(1, S.arrangeSel.to + 1)));
+    from.setAttribute("aria-label", "播放范围起点（共 " + TB + " 小节）");
+    to.setAttribute("aria-label", "播放范围终点（共 " + TB + " 小节）");
+    setToggle("argLoopBtn", S.arrangeSel.loop);
+    /* 引用/拍号问题：保存前与播放前各要看一次（曲式存下之后它引用的预设可能被删） */
+    const probs = arrangeProblems(a);
+    $("argProblems").textContent = probs.length ? "⚠ " + probs.join("；") : "";
+    $("argProblems").style.color = probs.length ? "var(--red)" : "";
+    syncPanelRead(a);
+  }
+  /** 读数 + 填充条 + 地图高亮的轻量同步（拖动中高频调用；只改值不改结构） @param {any} a @returns {void} */
+  function syncPanelRead(a){
     const TB = songBars(a);
     const f = Math.min(TB - 1, Math.max(0, S.arrangeSel.from));
     const t = Math.min(TB - 1, Math.max(f, S.arrangeSel.to));
     /* songBarAt 越界返回 null；f/t 已钳进 [0, TB-1] 理论不越界，兜底退到第 1 段挡脏数据 */
     const fs = songBarAt(a, f) || { sec: 0, bar: 0 }, ts = songBarAt(a, t) || { sec: 0, bar: 0 };
-    const info = document.createElement("span");
-    info.className = "hint";
-    info.textContent = `第 ${f + 1}–${t + 1} 小节 · 第 ${fs.sec + 1} → ${ts.sec + 1} 段（共 ${TB} 小节）`;
-    const all = document.createElement("button");
-    all.className = "arg-mini"; all.textContent = "全部";
-    Modal.bindOverlay("arrangeOverlay", all, "click", () => { S.arrangeSel.from = 0; S.arrangeSel.to = songBars(a) - 1; S.arrangeSel.byLyric = false; Store.persist(); arrangeRender(); refreshBar(); });
-    rr.appendChild(info); rr.appendChild(all);
-    setToggle("argLoopBtn", S.arrangeSel.loop);
-
-    /* 引用/拍号问题：保存前与播放前各要看一次（曲式存下之后它引用的预设可能被删） */
-    const probs = arrangeProblems(a);
-    $("argProblems").textContent = probs.length ? "⚠ " + probs.join("；") : "";
-    $("argProblems").style.color = probs.length ? "var(--red)" : "";
-    $("argHint").textContent = `每段 = 若干块，块 = 一个节奏型 × N 遍（一遍 = 该型的全部小节）`;
+    $("argRangeRead").textContent = "第 " + (f + 1) + "–" + (t + 1) + " 小节 · 第 " + (fs.sec + 1) + " → " + (ts.sec + 1) + " 段（共 " + TB + " 小节）";
+    const fill = $("argRangeFill");
+    fill.style.left = (f / TB * 100) + "%";
+    fill.style.width = ((t - f + 1) / TB * 100) + "%";
+    const map = $("argMap");
+    Array.prototype.forEach.call(map.children, (/** @type {any} */ seg, /** @type {number} */ i) => {
+      const start = songBarBefore(a, i), end = start + secBars(a.sections[i]) - 1;
+      const on = S.arrangeSel.from <= end && S.arrangeSel.to >= start;
+      if (on && !seg.classList.contains("in-range")) seg.classList.add("in-range");
+      if (!on && seg.classList.contains("in-range")) seg.classList.remove("in-range");
+    });
+  }
+  /** 面板双滑块的两级处理（isFrom 区分起点/终点；commit = 松手提交才跑重活）。
+      @param {boolean} isFrom @param {boolean} commit @returns {void} */
+  function onPanelRange(isFrom, commit){
+    const a = cur();
+    if (!a) return;
+    const M = songBars(a);
+    /** @param {any} v @returns {number} */
+    const clamp = v => Math.min(M, Math.max(1, Math.round(+v || 1)));
+    let f = clamp($("argRangeFrom").value);
+    let t = clamp($("argRangeTo").value);
+    if (isFrom && f > t) t = f;              // 起点越过终点：把终点顶到起点（侧栏同口径）
+    if (!isFrom && t < f) f = t;             // 反之把起点拉到终点
+    $("argRangeFrom").value = String(f);
+    $("argRangeTo").value = String(t);
+    /* 拖动途中就落 from/to + loop + persist（v2.16.0 侧栏那条"有范围没循环"的教训同源）；
+       模式切换只在提交那一步发生（setRange 内），拖动途中不反复切 */
+    S.arrangeSel.id = a.id;
+    S.arrangeSel.from = f - 1;
+    S.arrangeSel.to = t - 1;
+    S.arrangeSel.byLyric = false;
+    S.arrangeSel.loop = true;
+    Store.persist();
+    syncPanelRead(a);
+    if (commit){ setRange(f - 1, t - 1); arrangeRender(); }
   }
 
   /* 主界面那一行：曲式名 + 当前段 + 上/下段跳转 */
@@ -10573,7 +10697,11 @@ const Arrange = (() => {
        aria-valuetext 承担（"第 5 小节 · 副歌"）。 */
   /** @param {number} from 起点线性小节号（0-based，含） @param {number} to 终点线性小节号（0-based，含）
       @returns {void} */
-  function setRange(from, to){
+  /** v2.31.0（S2）：增第三参 opts（既有调用方零改动）——loop 缺省 true（"拖出范围 = 我要练
+      这段"的既有口径），显式传 {loop:false} 可得"到段尾自然停"的范围（当前无调用方，
+      为 S3/试听类入口预留同一出口，避免将来各写一份钳制）。
+      @param {number} from @param {number} to @param {{loop?:boolean}} [opts] */
+  function setRange(from, to, opts = {}){
     /* 取曲式的顺序：正在播的 → 编辑器选中的 → **S.arrangeSel 指向的** → 库里第一条。
        ★ 前两个是 jumpTo 的既有顺序，但**单靠它们不够**：`arrangeCur()` 在 playMode 不是
          "arrange" 时恒为 null（见共享状态区的定义），而侧栏拖滑块恰恰**最常在还没进曲式
@@ -10593,7 +10721,7 @@ const Arrange = (() => {
     S.arrangeSel.id = a.id;
     S.arrangeSel.from = f;
     S.arrangeSel.to = t;
-    S.arrangeSel.loop = true;
+    S.arrangeSel.loop = opts.loop !== undefined ? opts.loop : true;
     S.arrangeSel.byLyric = false;
     Store.persist();
     refreshBar();
@@ -10947,6 +11075,24 @@ const Arrange = (() => {
     if (!d) return;
     d.sections.push({ name: "", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 1 }] });
     save(d);
+  });
+  /* v2.31.0（S2）：开练面板双滑块（静态元素，静态监听——与 argLoopBtn 同一模式）。
+     input 拖动中只写 S + 视觉，change 提交才跑 setRange 重活（侧栏 onRangeInput 同款两级）。 */
+  $("argRangeFrom").addEventListener("input", () => onPanelRange(true, false));
+  $("argRangeFrom").addEventListener("change", () => onPanelRange(true, true));
+  $("argRangeTo").addEventListener("input", () => onPanelRange(false, false));
+  $("argRangeTo").addEventListener("change", () => onPanelRange(false, true));
+  /* 「全部」= 范围回整首（旧「播放范围」行里的运行时按钮转正为静态；byLyric 同口径复位） */
+  $("argAllRange").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const a = cur();
+    if (!a) return;
+    S.arrangeSel.id = a.id;
+    S.arrangeSel.from = 0;
+    S.arrangeSel.to = songBars(a) - 1;
+    S.arrangeSel.byLyric = false;
+    Store.persist();
+    arrangeRender(); refreshBar();
   });
   $("argLoopBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();

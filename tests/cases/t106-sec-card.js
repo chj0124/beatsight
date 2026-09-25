@@ -35,16 +35,14 @@ section("T106a 段菜单 · ops 四颗 / 菜单五项 / toggle 收起 / 动作�
 {
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
-  eq(opsOf(els, 0).children.length, 4, "★ ops = [起, 终, ▶, ⋯] 4 颗（重排/删除已收进菜单）");
-  eq(opsOf(els, 0).children[0].getAttribute("aria-label"), "把第 1 段设为播放起点", "下标 0 仍是「起」（t54 定位不破）");
-  eq(opsOf(els, 0).children[1].getAttribute("aria-label"), "把第 1 段设为播放终点", "下标 1 仍是「终」");
-  eq(opsOf(els, 0).children[2].getAttribute("aria-label"), "试听第 1 段（只放这一段一遍）", "下标 2 是「▶ 试听」");
-  eq(opsOf(els, 0).children[3].getAttribute("aria-label"), "更多段操作（上移 / 下移 / 移到首尾 / 删除）", "下标 3 是「⋯」");
+  eq(opsOf(els, 0).children.length, 2, "★ ops = [▶, ⋯] 2 颗（v2.31.0 S2：起/终退役，其余在菜单）");
+  eq(opsOf(els, 0).children[0].getAttribute("aria-label"), "试听第 1 段（只放这一段一遍）", "下标 0 是「▶ 试听」");
+  eq(opsOf(els, 0).children[1].getAttribute("aria-label"), "更多段操作（练这段 / 上移 / 下移 / 移到首尾 / 删除）", "下标 1 是「⋯」");
 
   moreBtn(els, 0).fire("click");
   const menu = menuOf(els, 0);
   ok(!!menu, "★ 点 ⋯ 展开菜单（挂在段行末尾）");
-  eq(menu.children.length, 5, "★ 菜单 5 项（上移/下移/移到最前/移到最后/删除段）");
+  eq(menu.children.length, 6, "★ 菜单 6 项（练这段/上移/下移/移到最前/移到最后/删除段）");
   eq(menuItem(menu, /上移第 1 段/).disabled, true, "首段「上移」禁用");
   eq(menuItem(menu, /移到最前/).disabled, true, "首段「移到最前」禁用");
   eq(menuItem(menu, /移到最后/).disabled, false, "首段「移到最后」可用");
