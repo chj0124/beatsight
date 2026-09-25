@@ -805,6 +805,13 @@ input[type=range].vol{width:120px}
    与主视图 .lyric-lane 刻意**不同构**：那边是只读放映（百分比定位 + 走带线），
    这边要能抓住字块拖动，所以是 flex 头部 + relative 轨道两条横向带 */
 .arg-lyric{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 10px}
+/* v2.32.0（S3）：折叠摘要行——状态签 + 前几字预览 + ▸；展开控件只在展开态渲染 */
+.arg-lyric-sum{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:2px 0;color:var(--t3);font-size:12px;text-align:left}
+.arg-lyric-sum:hover{color:var(--t2)}
+.arg-lyric-tag{flex:none;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--t3)}
+.arg-lyric-tag.ok{color:var(--green);border-color:rgba(30,215,96,.4);background:rgba(30,215,96,.1)}
+.arg-lyric-preview{min-width:0;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arg-lyric-arrow{flex:none;font-size:11px}
 .arg-lyric-cue{flex:none}
 .arg-lyric-paste{flex:1;min-width:120px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 .arg-lyric-lane{flex-basis:100%;position:relative;height:26px;margin-top:4px;background:var(--card2);border-radius:6px}
@@ -1594,6 +1601,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="bpm-row">
           <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
           <button class="pill" id="argAllRange">全部</button>
+          <!-- v2.32.0（S3）：锚点提示音是全局开关（S.lyricCue），从每段歌词行收进面板——
+               全书唯一一份（旧实现每段渲染一个副本，10 段 = 10 个同款开关） -->
+          <button class="toggle-pill off" id="argLyricCue" role="switch" aria-checked="false" aria-label="锚点提示音：每个字进场一声短木鱼，延音占位不触发">锚点提示音<span class="switch"></span></button>
         </div>
         <div class="bpm-row">
           <button class="pill active" id="argPlay">从头播</button>
@@ -1720,7 +1730,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
           <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点「新建曲式」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.30.0 -->复制与删除也在顶栏「⋯」菜单里。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
-          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
+          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨；<b>锚点提示音</b>开关在右侧「开练」面板里（全书一个，不再每段重复）</li>
           <li><!-- v2.31.0 -->编排面板右侧有「<b>开练</b>」面板：<b>歌曲地图</b>点某段 = 只循环练这一段，
             <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
@@ -1931,23 +1941,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1963  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2553  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3819  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4526  Modal         应用内弹窗
-     L4663  Viz           时值可视化渲染与每帧动画
-     L6797  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7471  Trainer       变速训练器
-     L7609  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8072  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9305  Editor        自定义节奏型编辑器
-     L9672  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9709  Ear           听辨训练（v1.10.0）
-     L9929  Arrange       曲式编排（v2.0.0）
-     L11171 Help          使用方法（v2.0.1）
-     L11224 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11298 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11499 初始化（装配） 各模块 hook 接线与启动
+     L1973  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2563  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3829  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4536  Modal         应用内弹窗
+     L4673  Viz           时值可视化渲染与每帧动画
+     L6807  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7481  Trainer       变速训练器
+     L7619  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8082  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9315  Editor        自定义节奏型编辑器
+     L9682  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9719  Ear           听辨训练（v1.10.0）
+     L9939  Arrange       曲式编排（v2.0.0）
+     L11218 Help          使用方法（v2.0.1）
+     L11271 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11345 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11546 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1973,7 +1983,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.31.0";
+const VERSION = "2.32.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9939,6 +9949,10 @@ const Arrange = (() => {
      「同一时间至多一处」纪律：开菜单先收候选，开候选先收菜单（互斥在两处 handler 里）。 */
   /** @type {null | number} */
   let secMenuOpen = null;
+  /* v2.32.0（S3）：处于展开态的歌词编辑区（键 = arrangeId|secUid）。纯内存浏览态：
+     不持久化（D2 拍板），open()/close() 清空——重开浮层回到默认折叠。 */
+  /** @type {Set<string>} */
+  const lyricOpen = new Set();
   /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。arrangeRender 重建 DOM 时拖拽必然已结束
      （只有 pointerup 才提交，而提交才触发 arrangeRender），所以不必跨渲染保持节点句柄。 */
   /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
@@ -10085,26 +10099,48 @@ const Arrange = (() => {
     const uid = sec.uid;                       // v2.26.0：段身份（下标 i 只用于文案里的"第 N 段"）
     const span = lyricSpanTicks(a.id, uid);
     const line = Store.findLyric(a.id, uid);
+    const expanded = lyricOpen.has(a.id + "|" + uid);   // v2.32.0（S3）：展开态（内存 Set，关浮层即重置；不叫 open——模块级有 open()，no-shadow）
     const ly = document.createElement("div");
     ly.className = "arg-lyric";
 
-    /* 锚点提示音：全书一个 S.lyricCue，每条轨头都映同一状态（改一处，各段同源） */
-    const cue = document.createElement("button");
-    cue.className = "toggle-pill";
-    cue.setAttribute("role", "switch");
-    cue.setAttribute("aria-label", "锚点提示音：每个字进场一声短木鱼，延音占位不触发");
-    cue.textContent = "锚点提示音";
-    const sw = document.createElement("span"); sw.className = "switch";
-    cue.appendChild(sw);
-    applyToggle(cue, S.lyricCue);                    // 先写三件套，再补本轨的定位类（className 会覆盖 Set）
-    cue.classList.add("arg-lyric-cue");
-    Modal.bindOverlay("arrangeOverlay", cue, "click", (/** @type {any} */ e) => {
+    /* v2.32.0（S3 重设计）：默认折叠为**摘要行**——歌词编辑（贴词 / 拖字块）是"贴词后的
+       微调"进阶操作，不该让每段常驻一整条编辑器把段高撑爆（10 段示例曲的编排页被撑到
+       3–4 屏，「开练」动线跟着遭殃）。摘要 = 状态签（歌词 ✓ N 字 / 未贴歌词）+ 前几字
+       预览 + ▸ 展开。展开态记 lyricOpen（内存 Set，键 = arrangeId|secUid），**不持久化**
+       （D2 拍板：折叠是纯浏览态，"上次展开" ≠ "这次想展开"，持久化反而违背降噪初衷）。
+       锚点提示音是全局开关（S.lyricCue），随本版移到开练面板（argLyricCue，全书唯一一份
+       ——旧实现每段渲染一个副本，10 段 = 10 个同款开关，语义误导 + 视觉噪音）。 */
+    const sum = document.createElement("button");
+    sum.className = "arg-lyric-sum";
+    sum.setAttribute("aria-expanded", expanded ? "true" : "false");
+    sum.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：" +
+      (line ? "已贴 " + line.chars.length + " 字" : "未贴") + "，点按" + (expanded ? "收起" : "展开") + "编辑");
+    const tag = document.createElement("span");
+    tag.className = "arg-lyric-tag" + (line ? " ok" : "");
+    tag.textContent = line ? "歌词 ✓ " + line.chars.length + " 字" : "未贴歌词";
+    sum.appendChild(tag);
+    if (line){
+      const prev = document.createElement("span");
+      prev.className = "arg-lyric-preview";
+      prev.textContent = line.chars.slice(0, 12).map((/** @type {any} */ c) => c.ch).join("") +
+        (line.chars.length > 12 ? "…" : "");
+      sum.appendChild(prev);
+    }
+    const arrow = document.createElement("span");
+    arrow.className = "arg-lyric-arrow";
+    arrow.textContent = expanded ? "▾ 收起" : "▸ 展开编辑";
+    sum.appendChild(arrow);
+    Modal.bindOverlay("arrangeOverlay", sum, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
-      S.lyricCue = !S.lyricCue;
-      Store.persist();
+      const key = a.id + "|" + uid;
+      if (lyricOpen.has(key)) lyricOpen.delete(key); else lyricOpen.add(key);
       arrangeRender();
     });
-    ly.appendChild(cue);
+    ly.appendChild(sum);
+
+    if (!expanded) return ly;          // 折叠态：到摘要为止（段高从 ~130px 压到 ~30px）
+
+    /* —— 以下为展开态的编辑区（原 v2.1.0–v2.27.0 的全部控件，原样收进折叠门内）—— */
 
     /* 循环本行（F2，v2.2.0）：把这句歌词设成「只播这一段 + 循环 + 变速爬坡」。
        无歌词行的段不给按钮——「循环一句还没有词的话」是个空动作 */
@@ -10527,6 +10563,7 @@ const Arrange = (() => {
     from.setAttribute("aria-label", "播放范围起点（共 " + TB + " 小节）");
     to.setAttribute("aria-label", "播放范围终点（共 " + TB + " 小节）");
     setToggle("argLoopBtn", S.arrangeSel.loop);
+    setToggle("argLyricCue", S.lyricCue);   // v2.32.0：锚点提示音全局开关在面板（唯一一份）
     /* 引用/拍号问题：保存前与播放前各要看一次（曲式存下之后它引用的预设可能被删） */
     const probs = arrangeProblems(a);
     $("argProblems").textContent = probs.length ? "⚠ " + probs.join("；") : "";
@@ -10903,12 +10940,14 @@ const Arrange = (() => {
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
     picking = null;
     secMenuOpen = null;                               // v2.30.0：进浮层不带回上次的展开态
+    lyricOpen.clear();                                // v2.32.0：歌词折叠态同上（纯浏览态）
     arrangeRender();
     Modal.openOverlay("arrangeOverlay");  // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
     picking = null;
     secMenuOpen = null;                               // v2.30.0：与 picking 同步清（重开不残留）
+    lyricOpen.clear();                                // v2.32.0：歌词折叠态同上
     /* 关闭前做一次完整性检查：编到一半的曲式（比如某段没块）不该被当成能用 */
     const a = cur();
     if (a){
@@ -11100,6 +11139,14 @@ const Arrange = (() => {
     S.arrangeSel.byLyric = false;    // 手动切范围循环 = 回到普通循环语义（审计 P1-4）
     Store.persist();
     arrangeRender(); refreshBar();
+  });
+  /* v2.32.0（S3）：锚点提示音（全局 S.lyricCue）——从每段歌词行收进开练面板（唯一一份）。
+     不触发 arrangeRender：除自身状态外没有任何 UI 依赖它（旧实现每段重渲染只为刷 10 个副本） */
+  $("argLyricCue").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    S.lyricCue = !S.lyricCue;
+    Store.persist();
+    setToggle("argLyricCue", S.lyricCue);
   });
   /* 开始播放：进入曲式模式并把范围写进 S（真正的初始化在 Controls.start → arrangeStart） */
   /** @param {any} [rangeOnly] */

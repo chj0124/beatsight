@@ -284,17 +284,29 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const { beat, els, storage, fireWin, runTimers } = loadApp(seedArr());
   const St = beat.Store;
   beat.Arrange.open();
+  /* v2.32.0（S3）：歌词编辑区默认折叠为摘要行——本组要测编辑轨内部，先展开。
+     展开态记在内存 Set，后续每次落库重渲染都保持展开（同一次 open() 会话内）。 */
+  const expand = () => {
+    const ly0 = els["argSections"].children[0].children[4];
+    const sum = ly0.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
+    ok(!!sum, "前提：摘要行在歌词行 children[0]");
+    sum.fire("click");
+  };
+  expand();
   const row0 = els["argSections"].children[0];
   const ly = row0.children[4];
   ok(/(^| )arg-lyric/.test(ly.className), "★ 歌词行在段行 children[4]（.arg-ops 之后，既有定位不挪位）");
-  /* 行内结构（v2.2.0）：[cue 锚点开关, box 粘贴框, clr 清除, lane 字块轨, tip 提示]；
-     有歌词行时 cue 后多一个「循环本行」钮（F2），之后下标 +1 —— 用类名定位而不是裸下标 */
+  /* 行内结构（v2.2.0；v2.32.0 起默认折叠，此处已展开）：[摘要, (循环本行), 粘贴框, 清除, 字块轨, 提示]；
+     有歌词行时多一个「循环本行」钮（F2）——用类名定位而不是裸下标 */
   const byCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
-  const cue = byCls(ly, /arg-lyric-cue/), box = byCls(ly, /arg-lyric-paste/),
+  /* 锚点提示音（v2.32.0 S3）：全局开关收进开练面板，段行内不再重复渲染 */
+  const cue = els["argLyricCue"];
+  ok(!byCls(ly, /arg-lyric-cue/), "★ 锚点开关已收进开练面板（段行内不再每段一个副本）");
+  ok(cue.className.includes("toggle-pill"), "锚点开关是 toggle-pill（在开练面板）");
+  eq(cue.getAttribute("aria-checked"), "false", "锚点提示音默认关");
+  const box = byCls(ly, /arg-lyric-paste/),
         clr = byCls(ly, c => c.textContent === "清除"), laneEl = byCls(ly, /arg-lyric-lane/), tip = byCls(ly, /arg-lyric-tip/);
   ok(!byCls(ly, /arg-lyric-loop/), "无歌词行时不出「循环本行」（空动作不摆出来）");
-  ok(cue.className.includes("toggle-pill"), "锚点开关是 toggle-pill");
-  eq(cue.getAttribute("aria-checked"), "false", "锚点提示音默认关");
   eq(clr.disabled, true, "无歌词行时「清除」禁用");
   eq(laneEl.children.length, 0, "无行时字块轨为空");
   ok(tip.textContent.includes("段内 4 小节 / 768 tick"), "提示给出段长（小节 / tick）");
@@ -382,15 +394,13 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   byCls(ly5, /arg-lyric-paste/).fire("change");
   eq(St.findLyric("t1", "s1"), null, "★ 粘贴空白 = 删行（不留空行脏数据）");
 
-  /* 锚点提示音开关：全书一个 S.lyricCue，走热键落盘 */
-  const ly6 = els["argSections"].children[0].children[4];
-  byCls(ly6, /arg-lyric-cue/).fire("click");
+  /* 锚点提示音开关：全书一个 S.lyricCue（v2.32.0 S3 起在开练面板），走热键落盘 */
+  els["argLyricCue"].fire("click");
   eq(St.S.lyricCue, true, "开关写入 S.lyricCue");
   runTimers();   // 热键走防抖落盘（persistDebounce），先冲刷定时器再读
   eq(JSON.parse(storage.get("beatsight.state")).lyricCue, true, "★ 开关状态持久化（热键）");
-  const ly7 = els["argSections"].children[0].children[4];
-  eq(byCls(ly7, /arg-lyric-cue/).getAttribute("aria-checked"), "true", "重渲染后开关态一致（读屏可读）");
-  byCls(ly7, /arg-lyric-cue/).fire("click");
+  eq(els["argLyricCue"].getAttribute("aria-checked"), "true", "重渲染后开关态一致（读屏可读）");
+  els["argLyricCue"].fire("click");
   eq(St.S.lyricCue, false, "再点关回");
   beat.Arrange.close();
 
@@ -399,6 +409,8 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
     { id: "t9", name: "死引用", sections: [{ uid: "s9", name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
   ]}) });
   dead.beat.Arrange.open();
+  dead.els["argSections"].children[0].children[4]
+    .children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className)).fire("click");   // v2.32.0：先展开
   const dly = dead.els["argSections"].children[0].children[4];
   const dByCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
   eq(dByCls(dly, /arg-lyric-lane/).children.length, 0, "span 不可知 → 不画字块");
