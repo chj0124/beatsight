@@ -151,13 +151,19 @@ button:disabled{cursor:not-allowed}
 .cell-label{position:absolute;top:48px;font-size:12px;font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
-.cell .fill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:transparent;pointer-events:none;z-index:0}
-.cell.played .fill{background:var(--peak)}
+/* v2.26.1（DOM 瘦身）：填充层由**每格一个 .fill 子节点**改成 .cell::before 伪元素。
+   为什么值得动：一个 4/4 小节满十六分格是 16 格，4 行窗口就有 64 个纯装饰的填充子节点，
+   而它既不被测试按类名定位、也不承载任何逐格状态（状态在 .cell 的 played/active 上）。
+   ★ 伪元素的 transform 没法用 `el.style.transform` 直接写，故改走 **CSS 变量 --f**：
+     JS 侧 `cell.style.setProperty("--f", "1")`（与 .fill 时代的 scaleX(1) 逐位等价）。
+   视觉口径完全不变（left/top/bottom/width/transform-origin/z-index 全部照搬）。 */
+.cell::before{content:"";position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(var(--f,0));transform-origin:left;background:transparent;pointer-events:none;z-index:0}
+.cell.played::before{background:var(--peak)}
 .cell.active{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
-.cell.active .fill{background:var(--peak)}
+.cell.active::before{background:var(--peak)}
 .cell.rest{background:transparent;border:1px dashed var(--rest-line)}
-.cell.rest.played .fill{background:var(--peak-rest)}
-.cell.rest.active .fill{background:rgba(255,255,255,.35)}
+.cell.rest.played::before{background:var(--peak-rest)}
+.cell.rest.active::before{background:rgba(255,255,255,.35)}
 /* ---------- 行内切分的续接片段（v2.15.0）----------
    跨行被截断的音符在两侧各画一段：**断开的那一侧**改虚线描边 + 圆角收平——
    语义 = "它不是完整的一颗，另一半在相邻行"（时值标签已同时被压掉，见 buildRowCells）。
@@ -187,8 +193,19 @@ button:disabled{cursor:not-allowed}
    v2.4.2 时是 z-index:0，被 DOM 在后的格子（半透明背景）整层压住——格内的线淡到
    几乎不可见，唯一"清晰"的第 6 线反而因为几何超界掉在格子外面，用户观感就是
    "六弦画在格子外"。它只是"纸"，pointer-events:none 不参与交互 */
-.tab{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1}
-.tab i{position:absolute;left:0;right:0;height:1px;background:currentColor;opacity:.22}
+/* v2.26.1（DOM 瘦身）：六条弦线由 6 个 <i> 子节点改成**一层背景渐变**。
+   为什么可以：这六条线是**纯静态装饰**——位置只由 --gtop / --gt 两个变量决定
+   （0/8.8/17.6/26.4/35.2/44，铺满格子），从不参与帧内更新，也没有任何测试按它定位。
+   ★ 渐变必须**限高**：repeating-linear-gradient 会一路重复到元素底部，而现在 .tab 的高度
+     是"整行"而不是 44px 的格子——不设 background-size 就会多画出第 7、8 条线。
+     限高 = 最后一条线（第 6 条，top = 5×--gt）加它自己的 1px，多 1px 也不外溢。 */
+.tab{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1;
+  opacity:.22;
+  background-image:repeating-linear-gradient(to bottom,
+    currentColor 0 1px, transparent 1px var(--gt));
+  background-position:0 var(--gtop);
+  background-size:100% calc(var(--gtop) + 5 * var(--gt) + 1px);
+  background-repeat:no-repeat}
 /* 「六线」开关关掉时整层移除（不是 opacity:0——省掉每帧一条合成层） */
 .viz.no-tab .tab{display:none}
 /* 扫弦箭头层（v2.4.3）：**必须在格子之外**，这是 v2.4.2 的 bug 修复点。
@@ -1818,23 +1835,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1850  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2432  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3697  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4404  Modal         应用内弹窗
-     L4541  Viz           时值可视化渲染与每帧动画
-     L6681  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7350  Trainer       变速训练器
-     L7488  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7951  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9189  Editor        自定义节奏型编辑器
-     L9553  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9590  Ear           听辨训练（v1.10.0）
-     L9810  Arrange       曲式编排（v2.0.0）
-     L10669 Help          使用方法（v2.0.1）
-     L10722 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10796 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10997 初始化（装配） 各模块 hook 接线与启动
+     L1867  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2449  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3714  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4421  Modal         应用内弹窗
+     L4558  Viz           时值可视化渲染与每帧动画
+     L6692  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7361  Trainer       变速训练器
+     L7499  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7962  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9200  Editor        自定义节奏型编辑器
+     L9564  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9601  Ear           听辨训练（v1.10.0）
+     L9821  Arrange       曲式编排（v2.0.0）
+     L10680 Help          使用方法（v2.0.1）
+     L10733 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10807 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11008 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1860,7 +1877,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.26.0";
+const VERSION = "2.26.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4548,11 +4565,14 @@ const Viz = (() => {
        └── span  (z2)  时值名称标签（t≥24，即 ≥0.5 拍才有独立标签） */
   /* ---------- ① 几何缓存与渲染状态 ----------
      rowGeo / cacheGeo / geoOf（行几何，只在 buildViz 与 resize 后采集一次）、
-     各逐格同构数组（rowEls / cellEls / subEls / fillEls / labelEls / strumEls / glEls /
+     各逐格同构数组（rowEls / cellEls / subEls / labelEls / strumEls / glEls /
      zoneEls / rulerEls / strumLayers / barChordEls）、vizSig / vizBars / vizPatLen、
+     ★ v2.26.1：格子的**填充层不再是节点** —— 它是 .cell::before 伪元素，
+       推进量写在格子自己的 CSS 变量 --f 上（逐格 setProperty，不是逐节点 style.transform）。
      lastBar / lastStep / lastPainted 等帧间游标。本区只存状态，不做解析也不碰 DOM 结构。 */
 let rowEls = /** @type {HTMLElement[]} */ ([]), cellEls = /** @type {HTMLElement[][]} */ ([]), playheadEl = /** @type {HTMLElement|null} */ (null), trailGlowEl = /** @type {HTMLElement|null} */ (null);
-let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), fillEls = /** @type {HTMLElement[][]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
+/* v2.26.1：fillEls 整条删除——填充层是 .cell::before 伪元素，推进量写在格子自己的 --f 上 */
+let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
 /* v2.4.4：sub → 宿主 cell 的正查表（与 subEls 同键）。paintFrameBody 的十六分闪烁原先
    靠 sub.closest(".cell") 现场上溯 DOM——帧路径上的 DOM 查询能免则免（v1.3.0 P1-4 的口径），
    建网格时顺手登记一次，帧内只读表。 */
@@ -5352,7 +5372,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
     const cells = buildRowCells(b, p, barTicks, row, hasStr);
     buildRowAnnotations(b, p, barTicks, row);
     viz.appendChild(row);
-    rowEls.push(row); cellEls.push(cells.cells); fillEls.push(cells.fills); labelEls.push(cells.labels); strumEls.push(cells.strums);
+    rowEls.push(row); cellEls.push(cells.cells); labelEls.push(cells.labels); strumEls.push(cells.strums);
   }
 
   /** 第 1 段（定位层）：跑道拍点 → 六线底纹 → 扫弦箭头层 → 拍内座次尺。
@@ -5386,17 +5406,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
        与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
        createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
     if (hasStr){
+      /* v2.26.1：六条弦线已由 CSS 背景渐变画（见 .tab 的注释）——这里只剩一个空容器。
+         原先"逐条 createElement + 写 top"的写法把同一组几何（--gtop / --gt）在 JS 里
+         又说了一遍，改弦间距要动两处；现在几何只在 CSS 变量里有一份。 */
       const tab = document.createElement("div");
       tab.className = "tab";
-      /* 六条弦线：y = 0 + li×8.8（li=0..5）→ 0/8.8/17.6/26.4/35.2/44，铺满 44px 格子
-         （一弦贴顶边、六弦贴底边）。
-         与 CSS 里 --yT1/--yT2/--yB1/--yB2 是同一组数字的两处表述，故这里直接读变量运算，
-         不写字面量——写死会让"改弦间距"变成两处改一处漏。 */
-      for (let li = 0; li < 6; li++){
-        const ln = document.createElement("i");
-        ln.style.top = `calc(var(--gtop) + ${li} * var(--gt))`;
-        tab.appendChild(ln);
-      }
       row.appendChild(tab);
     }
     /* 扫弦箭头层（v2.4.3）：**独立一层**，是 .cell 的兄弟节点而不是子节点。
@@ -5434,13 +5448,11 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
       @param {boolean} hasStr 当前型是否带扫弦记谱（决定逐格要不要画箭头）
-      @returns {{ cells: HTMLElement[], fills: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
-        四个逐格同构数组，由编排者登记进 cellEls / fillEls / labelEls / strumEls */
+      @returns {{ cells: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
+        三个逐格同构数组，由编排者登记进 cellEls / labelEls / strumEls */
   function buildRowCells(b, p, barTicks, row, hasStr){
     /** @type {HTMLElement[]} */
     const cells = [];
-    /** @type {HTMLElement[]} */
-    const fills = [];
     /** @type {(HTMLElement|null)[]} */
     const labels = [];
     /** @type {(HTMLElement|null)[]} */
@@ -5462,10 +5474,8 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
       c.style.left = (acc / barTicks * 100) + "%";
       c.style.width = `calc(${s.t / barTicks * 100}% - 4px)`;
       acc += s.t;
-      const fill = document.createElement("div");
-      fill.className = "fill";
-      c.appendChild(fill);
-      fills.push(fill);
+      /* v2.26.1：填充层不再建子节点——它是 .cell::before 伪元素，推进量走 CSS 变量 --f
+         （见 .cell::before 的注释）。每格省一个节点，4/4 满十六分的 4 行窗口省 64 个。 */
       /* 块内按十六分切成刻度线；三连音块（t 不整除 12t=十六分）不画——
          十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
       if (s.t % T16 === 0){
@@ -5536,7 +5546,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
            现行的 zoneEls 是拍点容器，由本函数 push 填充，与色带无关。） */
       row.appendChild(c); cells.push(c);
     });
-    return { cells: cells, fills: fills, labels: labels, strums: strums };
+    return { cells: cells, labels: labels, strums: strums };
   }
 
   /** 第 3 段（注释与胶囊）：短音符组合并标注 + 小节和弦名胶囊。
@@ -5590,7 +5600,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
     clear(viz);
-    rowEls = []; cellEls = []; subEls = []; subCellEls = []; fillEls = []; labelEls = []; strumEls = [];
+    rowEls = []; cellEls = []; subEls = []; subCellEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
@@ -5806,7 +5816,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       /* v2.15.0：停机复位也要带回续接标记（与 buildRowCells / setCell 同一份判据） */
       el.className = "cell upcoming" + (st && st.rest ? " rest" : "")
         + (st && st._cutl ? " cutl" : "") + (st && st._cutr ? " cutr" : "");
-      if (fillEls[b][i]) fillEls[b][i].style.transform = "scaleX(0)";
+      /* v2.26.1：填充推进量是格子上的 CSS 变量 --f（伪元素读它做 scaleX） */
+      el.style.setProperty("--f", "0");
       const lb = labelEls[b][i];
       if (lb) lb.className = "cell-label";
       /* 扫弦箭头的高亮只在播放中由 setCell 打上；停播时必须显式摘掉，
@@ -6552,7 +6563,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     // 进度条式填充：当前音符随进度从左到右填满（每帧更新）；
     // 不足半拍的窄格子（十六分/三连音等）不做过程填充——填充过程看不清，只会看到一根闪动的竖条，直接整块变白
     const t = steps[active].t || TPB;
-    fillEls[bar][active].style.transform = "scaleX(" + (t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)) + ")";
+    cellEls[bar][active].style.setProperty("--f", String(t < T8 ? 1 : Math.min(1, (tib - cum[active]) / t)));
     paintBall(c.currentTime, bar, tib, arrCur);             // 弹跳球：每帧驱动，不受下方「无变化提前返回」影响
     // 跑完一个十六分小格：该格四边亮一下（离开时刻，而非进入时刻）
     const t16 = Math.floor((tib + 1e-6) / T16);
@@ -6611,8 +6622,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     if (st && st._cutr) cls += " cutr";
     if (b === nextB && i === nextI) cls += " next";
     el.className = cls;
-    const f = fillEls[b] && fillEls[b][i];
-    if (f) f.style.transform = (!isPreview && (b < bar || (b === bar && i < active))) ? "scaleX(1)" : "scaleX(0)";
+    /* v2.26.1：填充量写格子的 --f（--f 默认 0，故只需在"填 1"时写、其余写 0 复位） */
+    el.style.setProperty("--f", (!isPreview && (b < bar || (b === bar && i < active))) ? "1" : "0");
     const lb = labelEls[b][i];
     if (lb) lb.className = "cell-label" + (b === bar && i === active ? " on" : "");
     /* 扫弦箭头高亮（v2.4.2）：与格子同一份"正在弹"判据（b===bar && i===active）。

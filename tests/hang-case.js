@@ -33,7 +33,15 @@ const SRC = scriptMatch[1];
 function makeEl(id){
   const el = {
     _id:id,_h:{},children:[],
-    style:new Proxy({},{get:(t,k)=>(k in t?t[k]:""),set:(t,k,v)=>{t[k]=v;return true;}}),
+    /* v2.26.1：与 tests/lib/harness.js 同口径补 setProperty —— 格子填充层改成 .cell::before
+       之后推进量走 CSS 变量 --f，而自定义属性只能 setProperty 写。本文件自带一份极简 DOM 桩
+       （不复用 harness），所以这里也要补，否则"播放未中断"整组会静默变红。 */
+    style:new Proxy({},{get:(t,k)=>{
+      if(k==="setProperty")return (n,v)=>{t[n]=String(v);};
+      if(k==="getPropertyValue")return n=>(n in t?t[n]:"");
+      if(k==="removeProperty")return n=>{const v=t[n];delete t[n];return v||"";};
+      return (k in t?t[k]:"");
+    },set:(t,k,v)=>{t[k]=v;return true;}}),
     classList:{_s:new Set(),add(...c){c.forEach(x=>this._s.add(x));},remove(...c){c.forEach(x=>this._s.delete(x));},
       toggle(c,f){(f===undefined?!this._s.has(c):!!f)?this._s.add(c):this._s.delete(c);},contains(c){return this._s.has(c);}},
     dataset:{},textContent:"",value:"",className:"",innerHTML:"",title:"",hidden:false,disabled:false,

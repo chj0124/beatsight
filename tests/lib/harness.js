@@ -141,7 +141,21 @@ function makeEl(id){
   const el = {
     _id: id, _h: {},
     children: [],
-    style: new Proxy({}, { get: (t, k) => (k in t ? t[k] : ""), set: (t, k, v) => { t[k] = v; return true; } }),
+    /* v2.26.1：补 CSSStyleDeclaration 的三个方法。
+       为什么现在才需要：格子的填充层从「每格一个 .fill 子节点」改成 .cell::before 伪元素，
+       推进量只能走 **CSS 自定义属性**（`--f`），而自定义属性**没有** `style.foo` 这种写法
+       —— 真实 DOM 里 `style["--f"] = 1` 是静默无效的，必须 `setProperty("--f", 1)`。
+       桩此前只模拟了属性读写，产品一用 setProperty 就抛"不是函数"。补上这三个方法后，
+       桩与浏览器在"设/读/删自定义属性"这条路上同构，断言也能按 `style["--f"]` 读回值。 */
+    style: new Proxy({}, {
+      get: (t, k) => {
+        if (k === "setProperty") return (name, val) => { t[name] = String(val); };
+        if (k === "getPropertyValue") return name => (name in t ? t[name] : "");
+        if (k === "removeProperty") return name => { const v = t[name]; delete t[name]; return v || ""; };
+        return (k in t ? t[k] : "");
+      },
+      set: (t, k, v) => { t[k] = v; return true; },
+    }),
     classList: {
       add(...c){ c.forEach(x => cls.add(x)); },
       remove(...c){ c.forEach(x => cls.delete(x)); },

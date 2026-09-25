@@ -338,6 +338,21 @@ function probe(){
       };
       requestAnimationFrame(tick);
     });
+    /* v2.26.1（DOM 瘦身）：格子的填充层从「每格一个 .fill 子节点」改成 **.cell::before
+       伪元素**，推进量走 CSS 变量 --f。这条改动**桩完全测不出来**——桩没有伪元素、
+       也不跑样式引擎，所以"填充层根本没被推进（格子永远不填白）"会是一例静默退化。
+       故在**真实播放态**读 ::before 的计算 transform：至少要有一个格子 scaleX 明显 > 0。 */
+    let fillScale = 0;
+    for (const c of document.querySelectorAll("#viz .cell")){
+      /* 用 indexOf 而不是正则：本探针是**模板字符串里的源码**，正则里的反斜杠会在
+         "模板字面量 → CDP 传参"这两层里被吃掉一层（本次实测就抛出 Unterminated group）。 */
+      const tr = getComputedStyle(c, "::before").transform || "";
+      const i = tr.indexOf("(");
+      if (tr.slice(0, 6) === "matrix" && i > 0){
+        const v = parseFloat(tr.slice(i + 1));
+        if (!isNaN(v)) fillScale = Math.max(fillScale, v);
+      }
+    }
     window.__beat.Controls.stop();
     /* 首屏耗时取自 **Navigation Timing**，不是探针自己的 performance.now()：
        探针要等 CDP 连上才注入，那时页面早启动完了，用探针的时间戳量出来的是
@@ -346,7 +361,7 @@ function probe(){
        时序下可能仍是 0，拿它做闸门会变成假红）。 */
     const nav = (performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null) || {};
     out.perf = { buildVizMs: +buildMs.toFixed(2), paintFrameMs: +frameMs.toFixed(3),
-      measuredWhilePlaying: playing, syncFrames: N, fps: fps,
+      measuredWhilePlaying: playing, syncFrames: N, fps: fps, fillScale: +fillScale.toFixed(3),
       bootMs: Math.round(nav.domContentLoadedEventEnd || 0),
       loadMs: Math.round(nav.loadEventEnd || 0) };
   }catch(e){ out.perf = { err: String(e && e.message || e) }; }
@@ -635,6 +650,11 @@ async function main(){
         ok(d.perf.paintFrameMs < PERF_BUDGET.paintFrameMs,
           p.label + "：同步循环单帧 < " + PERF_BUDGET.paintFrameMs + "ms（下界读数，只拦整树重建级退化）",
           "实际 " + d.perf.paintFrameMs + " ms/帧");
+        /* v2.26.1：填充层走 ::before + --f 之后的**防退化护栏**——桩测不到伪元素，
+           只有真机能证明"格子真的被填白了"。scaleX 恒 0 = 填充推进整条断了。 */
+        ok(d.perf.fillScale > 0.05,
+          p.label + "：★ 播放中格子填充层确实被推进（.cell::before 的 scaleX > 0）",
+          "实际最大 scaleX = " + d.perf.fillScale);
       }
     }
     ok(r.errors.length === 0, p.label + "：控制台零报错", r.errors.slice(0, 3).join(" / "));

@@ -188,11 +188,16 @@ section("T47b 扫弦方向 · 窄格自动隐藏（不裁半支箭头）/ 六线
   /* ---- v2.4.2 新增：六线底纹存在、六条线、且只在带扫弦记谱的谱上出现 ---- */
   const tab = tabOf(els, 0);
   ok(!!tab, "带扫弦记谱的谱：每行铺了一层 .tab 六线底纹");
-  eq(tab ? tab.children.length : 0, 6, "★ 底纹恰好六条弦线（不是 5 也不是 7）");
   eq(tabOf(els, 3) ? true : false, true, "四行**每行**都有底纹（逐行铺，不是只铺第一行）");
-  /* 线的 y 用 CSS 变量算出，桩不跑样式引擎，故只验证"确实按 li 递增写了 top" */
-  eq(tab.children[0].style.top, "calc(var(--gtop) + 0 * var(--gt))", "第 1 条弦线 top 由变量推出");
-  eq(tab.children[5].style.top, "calc(var(--gtop) + 5 * var(--gt))", "第 6 条弦线 top 由变量推出");
+  /* ★ v2.26.1（DOM 瘦身）：六条弦线由 **CSS 背景渐变**画，不再是 6 个 <i> 子节点。
+     护栏钉在这里：容器必须是**空的**——谁把逐条 createElement 加回来，这条当场红。
+     "恰好六条"这条语义现在由 CSS 表达（repeating-linear-gradient 的步长 = --gt，
+     限高 = --gtop + 5×--gt + 1px），故改用源码断言守住（桩不跑样式引擎，量不到画出来的线）。 */
+  eq(tab ? tab.children.length : 0, 0, "★ 六线底纹零子节点（弦线由 CSS 渐变画，不是 6 个 <i>）");
+  ok(/\.tab\{[^}]*repeating-linear-gradient\(to bottom,[\s\S]{0,160}var\(--gt\)\)/.test(html),
+    "★ 底纹渐变的步长是 --gt（弦间距仍由同一组变量表达，改一处即全改）");
+  ok(/background-size:100% calc\(var\(--gtop\) \+ 5 \* var\(--gt\) \+ 1px\)/.test(html),
+    "★ 渐变限高到第 6 条线（--gtop + 5×--gt + 1px）——不限高会一路重复画出第 7、8 条");
 
   /* ---- v2.4.2 新增：zone → 弦区跨距（这才是"照搬参考页"的核心语义） ---- */
   const zoneBars = [0,1,2,3].map(() => [

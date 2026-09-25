@@ -29,7 +29,7 @@
        扫弦型现身，恢复「手动控制底纹」该有的意义；
      · 偏好 S.showTab 与热键持久化**原样保留**：扫弦型下的开/关语义一字未改。 */
 "use strict";
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 const isBarRow = el => /(^| )bar-row( |$)/.test(el.className);
@@ -54,8 +54,12 @@ section("T86a 六线底纹 · 默认打开时 pill 为开且底纹真的可见")
   const tabs = tabsOf(els);
   ok(tabs.length > 0 && tabs.every(Boolean),
      "★ 默认型（民谣扫弦）带扫弦记谱 ⇒ 每行都建了 .tab（下面看得到线是「真有东西」，不是空跑）");
-  ok(tabs.every(t => t.children.length === 6),
-     "每层 .tab 恰好六条弦线（与 t47 同口径，此处只为证明「看得见」不是没有客体）");
+  /* v2.26.1：弦线改由 CSS 渐变画（DOM 瘦身），这里仍要证明"看得见"不是空跑——
+     只是客体从"6 个 <i>"换成"容器存在 + 层没被 no-tab 藏 + 渐变规则在"。 */
+  ok(tabs.every(t => t.children.length === 0),
+     "★ 每层 .tab 零子节点（六条线是 CSS 渐变，不是 6 个 <i>——与 t47 同口径）");
+  ok(/\.tab\{[^}]*repeating-linear-gradient/.test(html),
+     "★ .tab 的规则里确有渐变（线由它画出来，「看得见」有客体）");
   ok(!els["tabToggle"].hidden,
      "★ v2.10.6 默认型（民谣扫弦）带记谱 ⇒ 开关本体可见（扫弦型下它才该出现）");
 }

@@ -250,3 +250,34 @@ section("T79h 曲式 + 1 行档 · 预告行不成立：行内容 = 当前小节
   eq(v2.active1, v2.frames, "2 行档每帧同样恰有 1 个 .active 格（对照：这条路径本来就没坏）");
   eq(v2.mismatch, 0, "2 行档：预告行只占第 1 行，当前行的内容仍与节目单同源");
 }
+
+/* ================= 场景 T79h：填充层的推进量写在格子的 --f 上（v2.26.1 DOM 瘦身） ================= */
+section("T79h 填充层 · 推进量 = 格子上的 CSS 变量 --f（不再是每格一个 .fill 子节点）");
+{
+  /* ★ 为什么必须在**桩**里也钉一条：v2.26.1 把填充层从「每格一个 .fill 子节点」改成
+     .cell::before 伪元素之后，"推进量到底写没写进去"这件事桩测不到（桩没有伪元素），
+     真机冒烟才量得到（smoke 里有一条读 ::before 计算 transform 的断言）。
+     于是这里补上另一半：**值被写进 --f** 由桩钉（本场景），**值真的生效**由真机钉。
+     少了这一条，"整条不写 --f"会在桩里全绿（技能里的假绿纪律）。 */
+  const app = loadApp();
+  app.beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  const cellsOf = () => [].concat.apply([], app.beat.Viz.internals().cellEls);
+  const fOf = el => parseFloat(el.style["--f"] || "0");
+  ok(cellsOf().length > 0, "前提：网格里有格子");
+
+  let maxF = 0, partF = 0;
+  for (let i = 0; i < 120; i++){
+    ac.currentTime += 0.02;
+    app.beat.AudioEngine.scheduler();
+    app.beat.Viz.paintFrame();
+    const fs = cellsOf().map(fOf);
+    maxF = Math.max(maxF, Math.max.apply(null, fs.concat([0])));
+    if (fs.some(v => v > 0 && v < 1)) partF++;      // 逐帧推进的中间态（0 < scaleX < 1）
+  }
+  ok(maxF > 0, "★ 播放中确有格子被填（--f > 0）");
+  ok(partF > 0, "★★ 见过「填了一半」的中间态（逐帧推进真的在跑，不是只写了 0/1 两档）");
+
+  app.beat.Controls.stop();
+  ok(cellsOf().every(el => fOf(el) === 0), "★ 停机复位：全部格子的 --f 回到 0（不留残影）");
+}
