@@ -460,6 +460,19 @@ input[type=range].vol{width:120px}
 .preset-section:first-child{margin-top:0}
 .preset-section::after{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-section[aria-expanded="false"]::after{transform:rotate(-90deg)}
+/* v2.22.0（批次④）：区内子分组——组头比分区标题次一级（左缩进 + 绿线示意"归它管"），
+   折叠箭头走 ::before（组头右侧的 ✎/× 按钮占了 ::after 的末位，箭头挪到队首，
+   与树形控件"展开箭头在最左"的惯例一致）。折叠态同样只有 aria-expanded 一份真相 */
+.preset-group{font-size:11px;color:var(--t2);margin:10px 0 6px 10px;padding-left:8px;
+  border-left:2px solid var(--line);display:flex;align-items:center;gap:6px;
+  cursor:pointer;user-select:none}
+.preset-group:hover{color:var(--t1)}
+.preset-group::before{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
+.preset-group[aria-expanded="false"]::before{transform:rotate(-90deg)}
+.preset-group .gcount{color:var(--t3)}
+.preset-group .ren,.preset-group .del{flex:none}
+.preset-item .grp{color:var(--t3);font-size:12px;padding:2px 6px;border-radius:6px;flex:none}
+.preset-item .grp:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 /* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
    常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
@@ -906,6 +919,7 @@ body[data-theme="obs"] .preset-item{border-radius:6px;border-left:2px solid tran
 body[data-theme="obs"] .preset-item.active{background:var(--card2);border-left-color:var(--green)}
 body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
 body[data-theme="obs"] .preset-section{font-family:var(--mono);letter-spacing:.12em}
+body[data-theme="obs"] .preset-group{font-family:var(--mono);letter-spacing:.12em}
 body[data-theme="obs"] .sidebar-note{border-top:1px solid var(--line);padding-top:12px}
 
 /* ---------- 观测台 · 编辑器 ---------- */
@@ -1751,23 +1765,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1783  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2355  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3395  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4099  Modal         应用内弹窗
-     L4231  Viz           时值可视化渲染与每帧动画
-     L6181  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6847  Trainer       变速训练器
-     L6985  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7448  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8343  Editor        自定义节奏型编辑器
-     L8707  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8744  Ear           听辨训练（v1.10.0）
-     L8964  Arrange       曲式编排（v2.0.0）
-     L9815  Help          使用方法（v2.0.1）
-     L9864  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9938  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10139 初始化（装配） 各模块 hook 接线与启动
+     L1797  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2369  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3520  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4224  Modal         应用内弹窗
+     L4361  Viz           时值可视化渲染与每帧动画
+     L6311  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6977  Trainer       变速训练器
+     L7115  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7578  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8632  Editor        自定义节奏型编辑器
+     L8996  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9033  Ear           听辨训练（v1.10.0）
+     L9253  Arrange       曲式编排（v2.0.0）
+     L10104 Help          使用方法（v2.0.1）
+     L10153 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10227 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10428 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1793,7 +1807,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.21.0";
+const VERSION = "2.22.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2375,6 +2389,7 @@ const Store = (() => {
   const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
   const KEY_LYRICS = "beatsight.lyrics";       // v2.1.0 F1 歌词对齐轨（冷键：只在增删改歌词行时写）
   const KEY_BNAMES = "beatsight.builtinNames";  // v2.21.0 内置型改名覆盖（冷键：只在改名/恢复时写）
+  const KEY_GROUPS = "beatsight.groups";        // v2.22.0 区内子分组（冷键：只在组增删改/移入移出/折叠时写）
   /* v2.4.1 示例曲「已带出过」的闩。**刻意独立成一个键，不塞进热键 beatsight.state**：
      ① 语义不同——它不是"当前会话/界面状态"，而是"这台设备上的一次性安装标记"，
         与 beatsight.m2.bak 同一族（一次性动作的痕迹），不属于每次点击都要重写的热载荷；
@@ -2437,6 +2452,50 @@ const Store = (() => {
       BUILTINS[i].name = nm;
     }
   });
+  /* v2.22.0（批次④）：区内子分组（beatsight.groups）——用户把条目组织成命名的组。
+     ★ 组是**视图组织**，不是数据容器：成员是引用（builtin 下标 / custom id，与曲式块/
+       S.sel 同协议），条目本体照旧住在 BUILTINS / customs 里——删组只是散员，
+       不碰条目；自定义型被删时由 groupPruneCustom 摘除引用（加载期**不**校验
+       存在性：渲染层按 resolveRef 语义找不到就跳过，与曲式坏引用的容忍口径一致）。
+     ★ 单归属：同一 ref 同时只在一个组里（加载校验：后出现的重复 ref 丢弃；
+       groupMove 移入前先摘旧归属）。组带 zone 字段——v1 只开放节拍/扫弦两区，
+       自定义区（曲式）有自己的节目单组织，不掺和。
+     ★ 逐组白名单（同 builtinNames 口径）：缺 name / 坏 zone / members 非数组 /
+       ref 非法的组整组丢弃；组 id 重复的丢弃后者——脏冷键不污染内存。 */
+  const groups = (function(){
+    const gIn = readJSON(KEY_GROUPS);
+    const list = (gIn && Array.isArray(gIn.groups)) ? gIn.groups : [];
+    /** @type {any[]} */
+    const out = [];
+    const seenRef = new Set(), seenId = new Set();
+    list.forEach(g => {
+      if (!g || typeof g !== "object") return;
+      const name = typeof g.name === "string" ? g.name.trim().slice(0, 40) : "";
+      if (!name || (g.zone !== "beat" && g.zone !== "strum") || !Array.isArray(g.members)) return;
+      /* id 冲突整组丢弃（同脏冷键口径）：id 是改名/删组的定位主键，两个组共享一个 id
+         时"删 A 会误删 B"——换新 id 留组是在猜用户意图，丢了最干净 */
+      if (!(typeof g.id === "string" && g.id) || seenId.has(g.id)) return;
+      seenId.add(g.id);
+      /** @type {any[]} */
+      const members = [];
+      g.members.forEach(r => {
+        if (!r || typeof r !== "object") return;
+        if (r.type === "builtin"){
+          if (!Number.isInteger(r.idx) || r.idx < 0 || r.idx >= BUILTINS.length) return;
+          if (seenRef.has("b" + r.idx)) return;
+          seenRef.add("b" + r.idx);
+          members.push({ type:"builtin", idx:r.idx });
+        } else if (r.type === "custom"){
+          if (typeof r.id !== "string" || !r.id) return;
+          if (seenRef.has("c" + r.id)) return;
+          seenRef.add("c" + r.id);
+          members.push({ type:"custom", id:r.id });
+        }
+      });
+      out.push({ id: g.id, name, zone: g.zone, members, open: g.open !== false });
+    });
+    return out;
+  })();
   /* ---- 持久值校验收口（v1.2.4）----
      原则：localStorage 里的任何值都当不可信输入，先过校验器再进 S / customs。
      修复的历史缺陷（v1.2.3 及以前）：
@@ -2638,6 +2697,7 @@ const Store = (() => {
   }
   const persistArranges = makePersister(KEY_ARRANGES, () => ({ v:1, arranges }));
   const persistBNames = makePersister(KEY_BNAMES, () => ({ v:1, names: builtinNameOverrides }));
+  const persistGroups = makePersister(KEY_GROUPS, () => ({ v:1, groups }));
   /* v2.21.0：条目改名（批次③，编辑图标的两个后端）。
      ★ renameBuiltin（内置型）：改的是**覆盖**——BUILTINS[i].name 即刻生效（显示层
        十几处读取点全链路跟着变，见加载段注释），持久化只有 beatsight.builtinNames
@@ -2675,6 +2735,69 @@ const Store = (() => {
   /** @param {number} idx @returns {string} 内置型源名（改名对话框的提示/还原基准） */
   function builtinSrcName(idx){
     return (Number.isInteger(idx) && idx >= 0 && idx < BUILTIN_SRC_NAMES.length) ? BUILTIN_SRC_NAMES[idx] : "";
+  }
+  /* v2.22.0（批次④）：区内子分组的四条后端 + 一条清理口。
+     ★ groupMove 三合一：name 空 = **移出**（从任何组摘除，条目回归散员流）；
+       同名组（同区）存在则直接移入，否则新建并移入。移入前先摘旧归属
+       （单归属不变式，与加载校验的"重复 ref 丢弃"同一条规则的两端）。
+       zone 先于一切副作用校验——非法 zone 返回 false 时**什么都不该发生**。
+     ★ groupRename / groupDelete：改名（空名 false，同 renameCustom 口径）/
+       删组（成员散回 = 组对象直接消失——条目本体从未住进组里，无需逐个"搬回"）。
+     ★ groupPruneCustom：删除自定义型时的引用清理口（buildPresetItem 的删除确认里
+       调用）——摘干净随 persistGroups 落盘，冷键不留幽灵成员。
+     ★ 移出/删除后的**空组保留**：组是用户搭的架子，成员走了架子还在（还能再移入），
+       自动清空组反而制造"我建的组不见了"的惊吓。 */
+  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} ref
+      @param {string} name @param {"beat"|"strum"} zone @returns {boolean} */
+  function groupMove(ref, zone, name){
+    if (zone !== "beat" && zone !== "strum") return false;
+    if (!ref || (ref.type !== "builtin" && ref.type !== "custom")) return false;
+    if (ref.type === "builtin" && (!Number.isInteger(ref.idx) || ref.idx < 0 || ref.idx >= BUILTINS.length)) return false;
+    if (ref.type === "custom" && !(typeof ref.id === "string" && ref.id && customs.some(x => x && x.id === ref.id))) return false;
+    const nm = String(name || "").trim().slice(0, 40);
+    let moved = false;
+    groups.forEach(g => {
+      const at = g.members.findIndex(m => m.type === ref.type &&
+        (ref.type === "builtin" ? m.idx === ref.idx : m.id === ref.id));
+      if (at >= 0){ g.members.splice(at, 1); moved = true; }
+    });
+    if (!nm){ if (moved) persistGroups(); return true; }
+    let g = groups.find(x => x.name === nm && x.zone === zone);
+    if (!g){
+      g = { id: "g" + Date.now() + "-" + groups.length, name: nm, zone, members: [], open: true };
+      groups.push(g);
+    }
+    g.members.push(ref.type === "builtin" ? { type:"builtin", idx:ref.idx } : { type:"custom", id:ref.id });
+    persistGroups();
+    return true;
+  }
+  /** @param {string} id @param {string} name @returns {boolean} */
+  function groupRename(id, name){
+    const g = groups.find(x => x.id === id);
+    if (!g) return false;
+    const nm = String(name || "").trim().slice(0, 40);
+    if (!nm) return false;
+    g.name = nm;
+    persistGroups();
+    return true;
+  }
+  /** @param {string} id @returns {boolean} */
+  function groupDelete(id){
+    const at = groups.findIndex(x => x.id === id);
+    if (at < 0) return false;
+    groups.splice(at, 1);
+    persistGroups();
+    return true;
+  }
+  /** @param {string} id @returns {boolean} 摘到了至少一条引用才 true */
+  function groupPruneCustom(id){
+    let hit = false;
+    groups.forEach(g => {
+      const at = g.members.findIndex(m => m.type === "custom" && m.id === id);
+      if (at >= 0){ g.members.splice(at, 1); hit = true; }
+    });
+    if (hit) persistGroups();
+    return hit;
   }
   /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
      在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
@@ -3381,6 +3504,8 @@ const Store = (() => {
     lyrics, findLyric, upsertLyric, deleteLyric, persistLyrics,   // v2.1.0 F1 歌词对齐轨（冷键 beatsight.lyrics）
     demoSeeded, setDemoSeeded,                      // v2.4.1 示例曲一次性带出闩（冷键 beatsight.demoSeeded）
     renameBuiltin, renameCustom, builtinSrcName,    // v2.21.0 条目改名（批次③；覆盖冷键 beatsight.builtinNames）
+    groups, persistGroups,                          // v2.22.0 区内子分组（批次④；冷键 beatsight.groups）
+    groupMove, groupRename, groupDelete, groupPruneCustom,
     /* v2.4.3：循环区间的钳制器。**为什么必须从这里出去**：clampLoop / clampRange 是 Store IIFE
        内部的 const（它们是"加载时校验"这条流水线的零件），Presets 直接写 `clampLoop(...)`
        是未定义引用（tsc TS2304 抓到）。而循环区间的写入点在 Presets（用户点开关/改下拉那里，
@@ -4133,8 +4258,13 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     modalOpen = true; modalOkCb = opts.onOk || null;
     $("modalMsg").textContent = msg;
     const inp = $("modalInput");
-    inp.hidden = !opts.input;
-    if (opts.input) inp.value = opts.input;
+    /* v2.22.0：hidden 判据从 `!opts.input` 收窄为「未传 input」——空串是**合法预填值**
+       （移入分组对话框预填"当前组名"，不在任何组时就是空串，且文案承诺"清空并确定 =
+       移出分组"）。旧判据把空串当"不要输入框"→ 输入框整个隐藏 → 确认时 onOk 收到
+       undefined 而不是 ""——改名对话框的 initial 永远是当前名（非空）从未踩到，
+       移入分组是第一个"预填可为空"的调用方。 */
+    inp.hidden = !(opts.input !== undefined && opts.input !== null);
+    if (opts.input) inp.value = opts.input; else if (!inp.hidden) inp.value = "";
     $("modalOk").textContent = opts.okText || "确定";
     $("modalOk").className = "pill " + (opts.danger ? "danger" : "active");
     $("modalCancel").style.display = opts.hideCancel ? "none" : "";
@@ -7491,6 +7621,123 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     pen.addEventListener("click", e => { e.stopPropagation(); onRename(); });
     item.appendChild(pen);
   }
+  /* v2.22.0（批次④）：移入分组入口（📁 图标）。与 ✎ 同构挂载（同 pushRenameBtn 的分工：
+     按钮本体一份、动作调用方带）。对话框文案与预填值由调用方带——
+     预填当前组名（在组内时），"清空并确定 = 移出分组"的出口写在文案里。 */
+  /** @param {HTMLElement} item @param {() => void} onGroup */
+  function pushGroupBtn(item, onGroup){
+    const btn = document.createElement("button");
+    btn.className = "grp"; btn.title = "移入分组"; btn.setAttribute("aria-label", "移入分组");
+    btn.textContent = "📁";
+    btn.addEventListener("click", e => { e.stopPropagation(); onGroup(); });
+    item.appendChild(btn);
+  }
+  /* v2.22.0（批次④）：区内子分组——渲染侧三件。
+     ★ buildGroupHead：组头 = 组名 + 可见成员数 + ✎改名 + ×删组，点击折叠。
+       类名必须是 **"preset-group"** 而非 preset-section（t63 对 section 用 ===
+       严格比对、textContent 逐字；applyFold 的切段也只认 "preset-section"）。
+       箭头走 ::before（组头右侧要给 ✎/× 留位，分区标题的 ::after 尾箭头模式不适用）。
+       与组内条目同为 #presetList 的**直接子节点**（测试逐层遍历 children，
+       多一层 wrapper 全线失配——同 buildDemoSongRow 的扁平挂法）。
+       @param {any} g @param {number} count 可见成员数（跨区漂移/已删成员不计入——
+         计数与实际可见一致，不撒谎；删除确认文案同源）。
+     ★ renderZone：一区的条目流 = 各组（组头 + 组成员，按 g.members 序）在前、
+       散员（未分组条目，保持 BUILTINS/customs 原序）在后。
+       成员渲染前按**内容复检**区归属（hasStrum）：自定义型被编辑改谱后可能跨区
+       （节拍↔扫弦），与组的 zone 不符时**不进组渲染**——退回散员流（组是"区内
+       子分组"，条目漂走了就回到区里排队，比强行显示在错的区诚实）。
+       ★ 无组时与 v2.21.0 的渲染逐字节一致（回归红线）：groups 为空 → 只有散员循环。 */
+  /** @param {any} g @param {number} count @returns {HTMLElement} */
+  function buildGroupHead(g, count){
+    const head = document.createElement("div");
+    head.className = "preset-group";
+    head.dataset.gid = g.id;       // applyFold 的组开合按它与成员的 data-grp 匹配（位置无关）
+    head.setAttribute("role", "button");
+    head.tabIndex = 0;
+    head.setAttribute("aria-expanded", g.open ? "true" : "false");
+    const nm = document.createElement("span"); nm.className = "gname"; nm.textContent = g.name;
+    const cnt = document.createElement("span"); cnt.className = "gcount";
+    cnt.textContent = "· " + count + " 个";
+    head.appendChild(nm); head.appendChild(cnt);
+    const pen = document.createElement("button");
+    pen.className = "ren"; pen.title = "重命名分组"; pen.setAttribute("aria-label", "重命名分组");
+    pen.textContent = "✎";
+    pen.addEventListener("click", e => {
+      e.stopPropagation();
+      Modal.uiPrompt(`重命名分组「${g.name}」`, g.name, (/** @type {string} */ v) => {
+        if (Store.groupRename(g.id, v)) refreshAfterPatternChange();
+      });
+    });
+    head.appendChild(pen);
+    const del = document.createElement("button");
+    del.className = "del"; del.title = "删除分组"; del.setAttribute("aria-label", "删除分组");
+    del.textContent = "×";
+    del.addEventListener("click", e => {
+      e.stopPropagation();
+      Modal.uiConfirm(`删除分组「${g.name}」？组内 ${count} 个条目会移回原区，条目本身不受影响。`, () => {
+        if (Store.groupDelete(g.id)) refreshAfterPatternChange();
+      }, { okText:"删除" });
+    });
+    head.appendChild(del);
+    /* 折叠是**纯视图**动作（同分区 toggleFold 哲学）：翻转组对象上的 open →
+       只套 hidden、不重建列表；open 跟着组对象落冷键（组的属性，删除即消失） */
+    const act = () => {
+      g.open = !g.open;
+      head.setAttribute("aria-expanded", g.open ? "true" : "false");
+      applyFold();
+      Store.persistGroups();
+    };
+    head.addEventListener("click", act);
+    head.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
+    return head;
+  }
+  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} r @param {HTMLElement} list
+      @returns {HTMLElement|null} 渲染出的条目（找不到解析目标时不渲染、返回 null） */
+  function renderRef(list, r){
+    if (r.type === "builtin"){
+      if (Number.isInteger(r.idx) && r.idx >= 0 && r.idx < BUILTINS.length)
+        return pushBuiltinItem(list, BUILTINS[r.idx], r.idx);
+      return null;
+    }
+    const c = customs.find(x => x && x.id === r.id);
+    return c ? list.appendChild(buildPresetItem(c)) : null;
+  }
+  /** ref 是否已在某个组里——是则返回组名（📁 对话框的预填值），不在返回空串 */
+  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} ref @returns {string} */
+  function groupOf(ref){
+    const g = Store.groups.find(g => g.members.some(m => m.type === ref.type &&
+      (ref.type === "builtin" ? m.idx === ref.idx : m.id === ref.id)));
+    return g ? g.name : "";
+  }
+  /** @param {HTMLElement} list @param {"beat"|"strum"} zone
+      @param {any[]} builtins @param {any[]} customList @returns {void} */
+  function renderZone(list, zone, builtins, customList){
+    const zs = Store.groups.filter(g => g.zone === zone);
+    const inGroup = new Set();             // 本区实际进组的 refKey（散员流排除用）
+    /** @type {Array<{g:any, items:any[]}>} */
+    const shown = zs.map(g => ({ g, items: [] }));
+    zs.forEach((g, gi) => g.members.forEach(r => {
+      if (r.type === "builtin"){
+        if (r.idx < 0 || r.idx >= BUILTINS.length) return;
+        if (hasStrum(BUILTINS[r.idx]) !== (zone === "strum")) return;   // 内容漂移 → 散员流
+        shown[gi].items.push(r); inGroup.add("b" + r.idx);
+      } else {
+        const c = customs.find(x => x && x.id === r.id);
+        if (!c) return;                                              // 成员已删 → 渲染层跳过
+        if (hasStrum(c) !== (zone === "strum")) return;              // 跨区漂移 → 散员流
+        shown[gi].items.push(r); inGroup.add("c" + r.id);
+      }
+    }));
+    shown.forEach(({ g, items }) => {
+      list.appendChild(buildGroupHead(g, items.length));
+      items.forEach(r => {
+        const el = renderRef(list, r);
+        if (el) el.dataset.grp = g.id;   // 成员标记：applyFold 按它与组头 data-gid 匹配套组开合
+      });
+    });
+    builtins.forEach(x => { if (!inGroup.has("b" + x.i)) pushBuiltinItem(list, x.p, x.i); });
+    customList.forEach(c => { if (!inGroup.has("c" + c.id)) list.appendChild(buildPresetItem(c)); });
+  }
   /* Enter 激活（v2.0.2 起含 Space；**v2.13.1 起主界面项不再消费 Space**）：
      role="button" 的键盘契约——与 click 走同一个处理函数。
      为什么收回主界面的 Space（用户要求「空格键始终 = 播放/暂停」）：侧栏的预设项 /
@@ -7843,7 +8090,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      内置型，两处内联等于两条会漂移的渲染路径（选中态判据、键盘契约各写一遍）。
      ★ 内置项仍带**原始下标 i**：S.sel.idx 指向 BUILTINS 的下标（不是分区后的序位），
        这样过滤成两区后仍精确指回原数组。
-     @param {HTMLElement} list @param {any} p @param {number} i @returns {void} */
+     v2.22.0：返回条目元素（renderZone 给组成员打 data-grp 标记用——
+       applyFold 的组开合按标记匹配，不靠"紧跟组头"的位置猜）。
+     @param {HTMLElement} list @param {any} p @param {number} i @returns {HTMLElement} */
   function pushBuiltinItem(list, p, i){
     /* v2.6.4：曲式模式下不显示"选中高亮"——高亮的语义是"正在练这个型"，
        曲式播放由节目单唯一决定，任何高亮都在说谎（用户实拍：连播中侧栏高亮
@@ -7866,9 +8115,19 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
           if (Store.renameBuiltin(i, v)) refreshAfterPatternChange();
         });
     });
+    /* v2.22.0：📁 移入分组——组名输入式（同名组直接移入，无选择列表）；
+       预填当前组名（在组内时），清空 = 移出。zone 按内容算（本函数两区共用） */
+    pushGroupBtn(item, () => {
+      Modal.uiPrompt(`将「${p.name}」移入分组（输入组名；同名组直接移入；清空并确定 = 移出分组）`,
+        groupOf({ type:"builtin", idx:i }), (/** @type {string} */ v) => {
+          if (Store.groupMove({ type:"builtin", idx:i }, hasStrum(p) ? "strum" : "beat", v))
+            refreshAfterPatternChange();
+        });
+    });
     item.addEventListener("click", pick);
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     list.appendChild(item);
+    return item;
   }
   /* v2.10.0：分区标题从"纯文字"改成**可折叠开关**（用户要求：几个分类可折叠）。
      ★ 两条被测试钉住、不能碰的既有契约：
@@ -7900,24 +8159,45 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     applyFold();
     Store.persist();                 // 记忆选择：同 showTab / vizRows，走热键防抖
   }
-  /* 把三个分区的开合**套用到列表**上：以三个 .preset-section 为界，标题的 aria-expanded 与
-     "其后、下一个标题之前的全部孩子"的 hidden 同步（自定义区那条顺带盖住了 .preset-arrange-group
-     与可能出现的 #demoRestoreNote，无需逐个点名）。
-     为什么按位置切段、不给每区套 wrapper：条目必须是 #presetList 的**直接**子节点——
+  /* 把折叠状态**套用到列表**上（v2.22.0，两级：分区 ⊃ 组）：
+     条目的最终可见性 = 区开 && （是组成员 ? 组开 : true）；组头只受区折叠管；
+     区头永远可见。
+     ★ 归属判定靠**显式标记**而不是"紧跟组头"的位置：组头带 data-gid、组成员带
+       data-grp（renderZone 打标），applyFold 只认标记——组**之后**渲染的散员条目
+       与组成员同为 .preset-item，线性扫描按位置猜"哪些是组成员"必然把组后面的
+       散员一起藏掉（第一版就栽在这）。标记对不上的条目一律按散员处理（恒显示）——
+       fail-safe 方向是多显示而不是少显示。
+     ★ 无组时与旧实现完全等价（回归红线）：没有 .preset-group 节点 → 所有条目
+       data-grp 缺席 → hidden 只由所在区决定。
+     为什么按标记而不是套 wrapper：条目必须是 #presetList 的**直接**子节点——
      测试逐层遍历 children，多一层就全线失配（同 buildDemoSongRow 的扁平挂法注释）。
      ★ 每次 buildPresetList 重建后都要重新套用：列表是全新节点，hidden 不会自己继承过来。 */
   function applyFold(){
     const list = $("presetList");
     const kids = Array.from(list.children);
-    const heads = kids.filter(c => c.className === "preset-section");
     /** @type {Array<"beat"|"strum"|"custom">} */
     const ZONES = ["beat", "strum", "custom"];
-    heads.forEach((h, i) => {
-      const on = !!S.fold[ZONES[i]];
-      h.setAttribute("aria-expanded", on ? "true" : "false");
-      const start = kids.indexOf(h) + 1;
-      const end = (i + 1 < heads.length) ? kids.indexOf(heads[i + 1]) : kids.length;
-      for (let k = start; k < end; k++) kids[k].hidden = !on;
+    let zi = -1;                     // 当前所在分区的序号（-1：首区头之前，现状无此位置的节点）
+    let grpId = null;                // 最近一个组头的 id（组成员的 data-grp 与它比对）
+    let grpOpen = true;              // 最近一个组是否展开
+    kids.forEach(k => {
+      if (k.className === "preset-section"){
+        zi++;
+        grpId = null; grpOpen = true;  // 进新区：组上下文复位
+        const on = !!S.fold[ZONES[zi]];
+        k.setAttribute("aria-expanded", on ? "true" : "false");
+        k.hidden = false;
+        return;
+      }
+      if (k.className === "preset-group"){
+        const on = zi >= 0 && !!S.fold[ZONES[zi]];
+        k.hidden = !on;              // 区收着 → 组头跟着收（组自己的 open 原样保留）
+        grpId = k.dataset.gid || null;
+        grpOpen = k.getAttribute("aria-expanded") !== "false";
+        return;
+      }
+      const mine = !!(k.dataset && k.dataset.grp && k.dataset.grp === grpId);
+      k.hidden = !(zi >= 0 && S.fold[ZONES[zi]]) || (mine && !grpOpen);
     });
   }
   /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠。
@@ -7944,12 +8224,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     BUILTINS.forEach((p, i) => (hasStrum(p) ? strumBuiltins : beatBuiltins).push({ p, i }));
     const beatCustoms = customs.filter(c => !hasStrum(c));
     const strumCustoms = customs.filter(c => hasStrum(c));
+    /* v2.22.0：区内条目流改经 renderZone（组在前、散员在后）——无组时与旧的
+       两条 forEach 循环逐字节一致（该函数的注释与回归红线见其定义处） */
     pushSection(list, `节拍 · ${beatBuiltins.length + beatCustoms.length} 个`, "beat");
-    beatBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
-    beatCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
+    renderZone(list, "beat", beatBuiltins, beatCustoms);
     pushSection(list, `扫弦 · ${strumBuiltins.length + strumCustoms.length} 个`, "strum");
-    strumBuiltins.forEach((x) => pushBuiltinItem(list, x.p, x.i));
-    strumCustoms.forEach(c => list.appendChild(buildPresetItem(c)));
+    renderZone(list, "strum", strumBuiltins, strumCustoms);
     pushSection(list, `自定义 · ${Store.arranges.length} 首`, "custom");
     buildArrangeGroup(list);
     buildDemoNoteIfNeeded(list);
@@ -7995,6 +8275,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
         const at = customs.indexOf(c);
         if (at < 0) return;                     // 已被别处删掉：幂等退出
         customs.splice(at, 1);
+        Store.groupPruneCustom(c.id);           // v2.22.0：组里的引用同步摘除（冷键不留幽灵成员）
         if (S.sel.type === "custom" && S.sel.id === c.id) S.sel = {type:"builtin", idx:0};
         refreshAfterPatternChange();
         Store.persistCold();             // v1.3.0：预设库变更 → 冷键立即落盘
@@ -8007,6 +8288,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       Modal.uiPrompt(`重命名「${c.name}」`, c.name, (/** @type {string} */ v) => {
         if (Store.renameCustom(c.id, v)) refreshAfterPatternChange();
       });
+    });
+    /* v2.22.0：📁 移入分组——同内置条目（对话框文案/预填值按本条目算） */
+    pushGroupBtn(item, () => {
+      Modal.uiPrompt(`将「${c.name}」移入分组（输入组名；同名组直接移入；清空并确定 = 移出分组）`,
+        groupOf({ type:"custom", id:c.id }), (/** @type {string} */ v) => {
+          if (Store.groupMove({ type:"custom", id:c.id }, hasStrum(c) ? "strum" : "beat", v))
+            refreshAfterPatternChange();
+        });
     });
     item.appendChild(del);
     const pick = () => {
