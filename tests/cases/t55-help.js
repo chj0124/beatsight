@@ -90,6 +90,13 @@ section("T55c 使用方法 · 内容覆盖（查标记原文）");
   /* v2.0.0 刚做的曲式编排，说明里要能学到 */
   ok(helpBlock.includes("只反复练副歌"), "讲到了「只练副歌」这个用法");
   ok(helpBlock.includes("同一个拍号"), "讲到了整首同拍号这个约束");
+  /* v2.25.3（用户点名）：两个编辑入口的分工 + 弦区四态释义 */
+  ok(helpBlock.includes("先分清两个编辑入口"), "★ 讲清「编辑节奏型」vs「编排曲式」的分工");
+  ok(helpBlock.includes("零件") && helpBlock.includes("装配单"),
+     "★ 一句话关系：节奏型是零件、曲式是装配单（引用不是拷贝）");
+  ok(helpBlock.includes("音闷（低音弦）") && helpBlock.includes("音亮（高音弦）") && helpBlock.includes("默认（中）"),
+     "★ 弦区四态（默认（中）/低/中/高）逐一解释");
+  ok(helpBlock.includes("不改节奏与发声时刻"), "★ 弦区边界说清：只改音色明暗，不改节奏与时刻");
 }
 
 /* ================= 场景 T55d：与"版本真相源"那条纪律不冲突 ================= */
