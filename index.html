@@ -490,6 +490,10 @@ input[type=range].vol{width:120px}
 .preset-item.active .meta{color:var(--green)}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
 .preset-item .del:hover{color:var(--red);background:rgba(243,114,127,.1)}
+/* v2.21.0：改名图标（✎）。定位/内边距与 .del 同族（右侧操作组的一员），hover 用主题强调色
+   与删除的红色区分——相邻两个小图标，色相就是"哪个是危险操作"的读法 */
+.preset-item .ren{color:var(--t3);font-size:13px;padding:2px 6px;border-radius:6px;flex:none}
+.preset-item .ren:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 /* 「自定义」区（v2.9.0）：曲式条目（Store.arranges）+ 当前曲式的「整首连播」行与段序条。
    与节拍/扫弦两区用左侧一条绿色竖线区分——"这一组是曲式（整首怎么弹）"比字号更一眼可辨。
    v2.4.1 的"示例曲分组"样式（.preset-section.demo-section / .preset-badge / .preset-demo-group）
@@ -1747,23 +1751,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1779  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2345  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3324  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4028  Modal         应用内弹窗
-     L4160  Viz           时值可视化渲染与每帧动画
-     L6110  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6776  Trainer       变速训练器
-     L6914  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7377  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8242  Editor        自定义节奏型编辑器
-     L8606  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8643  Ear           听辨训练（v1.10.0）
-     L8863  Arrange       曲式编排（v2.0.0）
-     L9714  Help          使用方法（v2.0.1）
-     L9763  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9837  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10038 初始化（装配） 各模块 hook 接线与启动
+     L1783  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2355  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3395  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4099  Modal         应用内弹窗
+     L4231  Viz           时值可视化渲染与每帧动画
+     L6181  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6847  Trainer       变速训练器
+     L6985  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7448  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8343  Editor        自定义节奏型编辑器
+     L8707  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8744  Ear           听辨训练（v1.10.0）
+     L8964  Arrange       曲式编排（v2.0.0）
+     L9815  Help          使用方法（v2.0.1）
+     L9864  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9938  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10139 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1789,7 +1793,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.20.0";
+const VERSION = "2.21.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2127,6 +2131,12 @@ DEMO_PRESETS.forEach((p, i) => {
   BUILTINS.push({ name: p.name, desc: "4/4 · 《在他乡》示例 · 单小节", meter: sp.meter,
     bars: JSON.parse(JSON.stringify(sp.bars)) });
 });
+/* v2.21.0：内置型**源名**快照（17 项定稿后取，此后不再变）。
+   内置型允许用户改名（编辑图标），但改名是**覆盖**不是改源——覆盖名写进冷键
+   beatsight.builtinNames、启动时套到 BUILTINS[i].name 上（显示层全链路自动生效），
+   「恢复原名」就以这份快照为还原基准。快照必须在 Store 应用覆盖**之前**取——
+   数据区先跑，Store 在后，顺序天然成立。 */
+const BUILTIN_SRC_NAMES = BUILTINS.map(p => p.name);
 /* 内容认型（v2.9.0）：返回该自定义型对应示例规范谱的下标，认不出 -1。
    ★ 取代旧的"名字前缀"判据——名字已改成通用名（十六分满扫 等），与用户自建型可能重名，
      内容才是稳定标识（demoPresetEq 比 meter + 逐步规范化的 [t,rest,dir,zone]）
@@ -2364,6 +2374,7 @@ const Store = (() => {
   const KEY_EAR = "beatsight.ear";       // v1.10.0 听辨训练战绩（冷键：只在答完一题时写）
   const KEY_ARRANGES = "beatsight.arranges";   // v2.0.0 曲式库（冷键：只在增删改曲式时写）
   const KEY_LYRICS = "beatsight.lyrics";       // v2.1.0 F1 歌词对齐轨（冷键：只在增删改歌词行时写）
+  const KEY_BNAMES = "beatsight.builtinNames";  // v2.21.0 内置型改名覆盖（冷键：只在改名/恢复时写）
   /* v2.4.1 示例曲「已带出过」的闩。**刻意独立成一个键，不塞进热键 beatsight.state**：
      ① 语义不同——它不是"当前会话/界面状态"，而是"这台设备上的一次性安装标记"，
         与 beatsight.m2.bak 同一族（一次性动作的痕迹），不属于每次点击都要重写的热载荷；
@@ -2406,6 +2417,26 @@ const Store = (() => {
     })));
     saved.v = 3;
   }
+  /* v2.21.0：内置型改名覆盖（beatsight.builtinNames）——加载即套到 BUILTINS[i].name 上。
+     ★ 为什么改 BUILTINS 对象本身而不是在显示层包一层：读内置型名字的点散布在
+       curPattern / pushBuiltinItem / 曲式节目单 / 编辑器标题 / 待命型展示等十几处，
+       每处都插一层"查覆盖"就是十几条会漂移的边界；而 BUILTINS 元素本就是运行期可变
+       对象（挂载示例型走的就是 push），套覆盖 = 一次赋值全链路生效。
+       源数据不丢：字面量里的名字是源（BUILTIN_SRC_NAMES 快照），覆盖只发生在运行期。
+     ★ 逐条白名单校验（同曲式块 normArrange 的显式白名单口径）：下标越界/值非字符串/
+       trim 后为空的条目直接丢弃——脏冷键不污染内存，也不该让一个坏条目拖垮整份覆盖 */
+  const bnIn = readJSON(KEY_BNAMES);
+  const savedBNames = (bnIn && bnIn.names && typeof bnIn.names === "object") ? bnIn.names : {};
+  /** @type {Record<string, string>} idx(十进制字符串) → 覆盖名（trim 后 ≤40 字） */
+  const builtinNameOverrides = {};
+  Object.keys(savedBNames).forEach(k => {
+    const i = +k;
+    const nm = typeof savedBNames[k] === "string" ? savedBNames[k].trim().slice(0, 40) : "";
+    if (Number.isInteger(i) && i >= 0 && i < BUILTINS.length && i < BUILTIN_SRC_NAMES.length && nm){
+      builtinNameOverrides[k] = nm;
+      BUILTINS[i].name = nm;
+    }
+  });
   /* ---- 持久值校验收口（v1.2.4）----
      原则：localStorage 里的任何值都当不可信输入，先过校验器再进 S / customs。
      修复的历史缺陷（v1.2.3 及以前）：
@@ -2606,6 +2637,45 @@ const Store = (() => {
     };
   }
   const persistArranges = makePersister(KEY_ARRANGES, () => ({ v:1, arranges }));
+  const persistBNames = makePersister(KEY_BNAMES, () => ({ v:1, names: builtinNameOverrides }));
+  /* v2.21.0：条目改名（批次③，编辑图标的两个后端）。
+     ★ renameBuiltin（内置型）：改的是**覆盖**——BUILTINS[i].name 即刻生效（显示层
+       十几处读取点全链路跟着变，见加载段注释），持久化只有 beatsight.builtinNames
+       一个键；name 传空串 = 恢复原名（删覆盖 + 还原 BUILTIN_SRC_NAMES 快照）。
+       名字统一 trim + 40 字上限（与曲式名同口径）。不存在的下标返回 false。
+     ★ renameCustom（自定义型）：直接改 c.name（它本来就是用户数据）→ 冷键落盘。
+       曲式块按 **id** 引用，改名对曲式零影响（名字从来不是自定义型的命名空间）。
+       空名拒绝返回 false——自定义型没有"原名"概念，空 = 取消。
+     ★ 两者都**不校验重名**：显示层无唯一性约束（识别靠内容/下标/id），两个型同名
+       只影响肉眼区分，不影响任何功能语义——按"信任用户"的口径放开。 */
+  /** @param {number} idx @param {string} name @returns {boolean} */
+  function renameBuiltin(idx, name){
+    if (!Number.isInteger(idx) || idx < 0 || idx >= BUILTINS.length || idx >= BUILTIN_SRC_NAMES.length) return false;
+    const nm = String(name || "").trim().slice(0, 40);
+    if (nm){
+      BUILTINS[idx].name = nm;
+      builtinNameOverrides[String(idx)] = nm;
+    } else {
+      delete builtinNameOverrides[String(idx)];
+      BUILTINS[idx].name = BUILTIN_SRC_NAMES[idx];
+    }
+    persistBNames();
+    return true;
+  }
+  /** @param {string} id @param {string} name @returns {boolean} */
+  function renameCustom(id, name){
+    const c = customs.find(x => x && x.id === id);
+    if (!c) return false;
+    const nm = String(name || "").trim().slice(0, 40);
+    if (!nm) return false;
+    c.name = nm;
+    persistCold();
+    return true;
+  }
+  /** @param {number} idx @returns {string} 内置型源名（改名对话框的提示/还原基准） */
+  function builtinSrcName(idx){
+    return (Number.isInteger(idx) && idx >= 0 && idx < BUILTIN_SRC_NAMES.length) ? BUILTIN_SRC_NAMES[idx] : "";
+  }
   /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
      在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
      结构损坏由 normArrange 拦（那是边界），这里的 `x &&` 是"加载路径永不因脏数据崩溃"的兜底，
@@ -3310,6 +3380,7 @@ const Store = (() => {
     takeArrangeMig,
     lyrics, findLyric, upsertLyric, deleteLyric, persistLyrics,   // v2.1.0 F1 歌词对齐轨（冷键 beatsight.lyrics）
     demoSeeded, setDemoSeeded,                      // v2.4.1 示例曲一次性带出闩（冷键 beatsight.demoSeeded）
+    renameBuiltin, renameCustom, builtinSrcName,    // v2.21.0 条目改名（批次③；覆盖冷键 beatsight.builtinNames）
     /* v2.4.3：循环区间的钳制器。**为什么必须从这里出去**：clampLoop / clampRange 是 Store IIFE
        内部的 const（它们是"加载时校验"这条流水线的零件），Presets 直接写 `clampLoop(...)`
        是未定义引用（tsc TS2304 抓到）。而循环区间的写入点在 Presets（用户点开关/改下拉那里，
@@ -7405,6 +7476,21 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
     return item;
   }
+  /* v2.21.0（批次③）：改名入口（✎ 图标）。内置型与自定义型**同构挂载**——
+     按钮本体（类名/aria/stopPropagation）只有这一份；改名动作由 onRename 各自带
+     （见 pushBuiltinItem / buildPresetItem 两个调用点：对话框文案随源类型不同，
+     内置 = 空输入恢复原名，自定义 = 空输入取消）。
+     键盘可达与 .del 同契约：原生 <button> 自带 Enter/Space 激活，无需再登记。
+     改名成功后的刷新统一 refreshAfterPatternChange()：列表条目、当前型标题、
+     待命型展示全部重建——改名是显示层事件，刷一次列表就是全部 UI 义务。 */
+  /** @param {HTMLElement} item @param {() => void} onRename */
+  function pushRenameBtn(item, onRename){
+    const pen = document.createElement("button");
+    pen.className = "ren"; pen.title = "重命名"; pen.setAttribute("aria-label", "重命名");
+    pen.textContent = "✎";
+    pen.addEventListener("click", e => { e.stopPropagation(); onRename(); });
+    item.appendChild(pen);
+  }
   /* Enter 激活（v2.0.2 起含 Space；**v2.13.1 起主界面项不再消费 Space**）：
      role="button" 的键盘契约——与 click 走同一个处理函数。
      为什么收回主界面的 Space（用户要求「空格键始终 = 播放/暂停」）：侧栏的预设项 /
@@ -7772,6 +7858,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       refreshAfterPatternChange();
       Store.persist();
     };
+    /* v2.21.0：✎ 改名——覆盖 BUILTINS[i].name + 冷键 beatsight.builtinNames；
+       空输入 = 恢复源名（renameBuiltin 内处理），对话框文案明说这条出口 */
+    pushRenameBtn(item, () => {
+      Modal.uiPrompt(`重命名内置型「${Store.builtinSrcName(i)}」（清空并确定 = 恢复原名）`,
+        p.name, (/** @type {string} */ v) => {
+          if (Store.renameBuiltin(i, v)) refreshAfterPatternChange();
+        });
+    });
     item.addEventListener("click", pick);
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     list.appendChild(item);
@@ -7906,6 +8000,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
         Store.persistCold();             // v1.3.0：预设库变更 → 冷键立即落盘
         Store.persist();
       }, {danger:true, okText:"删除"});
+    });
+    /* v2.21.0：✎ 改名——自定义型直接改 c.name（用户数据）→ 冷键落盘；空输入 = 取消。
+       曲式块按 id 引用，改名对曲式零影响（名字从来不是自定义型的命名空间） */
+    pushRenameBtn(item, () => {
+      Modal.uiPrompt(`重命名「${c.name}」`, c.name, (/** @type {string} */ v) => {
+        if (Store.renameCustom(c.id, v)) refreshAfterPatternChange();
+      });
     });
     item.appendChild(del);
     const pick = () => {
