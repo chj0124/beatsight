@@ -129,8 +129,8 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   const p1 = pByName(beat, "十六分满扫（《在他乡》前奏）");
   /* ★ v2.20.0：型来自内置库（demoBar 产出的规范形）——实扫格不带 rest 键
      （undefined 与 false 在 demoPresetEq 的 canon 里同值，语义等价） */
-  eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, dir: "D", zone: 1 }),
-     "P1 格0 = 全部弦下扫（F→zone1，谱面 ↓ 存 D）");
+  eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, dir: "D" }),
+     "P1 格0 = 全部弦下扫（v2.29.0：全扫缺省不写 zone，谱面 F 当年误映射成 1 已修正）");
   eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U" }),
      "P1 格1 = 空扫上扫（蓝括号：rest+dir，不带 zone）");
   eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, dir: "D", zone: 0 }),

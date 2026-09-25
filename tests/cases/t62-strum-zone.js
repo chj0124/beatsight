@@ -1,14 +1,16 @@
 /* BeatSight 自动化测试 · 扫弦弦区（zone）行为
    T62 系列。
    ---------------------------------------------------------------------------
-   契约：
-     · zone ∈ {0,1,2} = 低/中/高弦区；省略 = 默认中弦区（老数据零迁移）；
-     · zone **参与发声**（strumZoneHit 带通三频段 700/1400/2800Hz）但不碰时间轴；
+   契约（v2.29.0 三档化）：
+     · zone ∈ {0,2} = 低(④⑤⑥)/高(①②③)弦区；**缺省 = 全扫**（六根弦全响，民谣扫弦常态）；
+       老数据里的 zone=1（当年谱面映射的"全"）**读作全扫**，零迁移；
+     · zone **参与发声**（低/高各一个带通 700/2800Hz；全扫 = 两频段**同时**各一声）
+       但不碰时间轴；
      · 空扫（rest + dir）保持静默——rest 的不发声判定在 zone 分支之前；
-     · 渲染：主视图 zone 呈现为**箭头弦区跨距** .strumv.k{0,1,2}→.kB/.kF/.kT
-       （v2.4.2 前是 .cell-zone.z{0,1,2} 色带）；编辑器仍挂 .ed-zone 文字徽标；
-     · 编辑：dirRow（方向三档）+ zoneRow（弦区四档：默认/低/中/高）同套纪律——
-       pushUndo 先行、同档重按不推栈。
+     · 渲染：主视图 zone 呈现为**箭头弦区跨距** 0→.kB / 2→.kT / 缺省或 1→.kF；
+       编辑器仍挂 .ed-zone 文字徽标（低/全/高）；
+     · 编辑：dirRow（方向三档）+ zoneRow（弦区三档：全扫/低/高）同套纪律——
+       pushUndo 先行、同档重按不推栈；老数据 zone=1 在编辑器高亮「全扫」档。
    v2.9.0：两态轨模型（普通轨 / 扫弦轨）已删除，zone 是否生效不再取决于"当前在哪条轨"，
    而取决于**谱本身**——带扫弦记谱（dir/zone）的型即走扫弦声部、按弦区发色、画箭头跨距。
    故本组不再需要"把应用切到扫弦轨"，每个场景各自导入带 zone 的谱来触发弦区分支。 */
@@ -30,10 +32,10 @@ function cellsOf(els, b){
 }
 function edCellsOf(els, b){ return els["editorBars"].children[b].children[1].children; }
 
-/* 种一个三段扫弦谱：低/中/高各一颗 + 一颗空扫（rest+dir+zone） + 一颗无 zone 对照 */
+/* 种一个三段扫弦谱：低/旧值1(=全扫)/高各一颗 + 一颗空扫（rest+dir+zone） + 一颗无 zone 对照 */
 const mkBars = () => [0,1,2,3].map(() => [
   { t: 48, dir: "D", zone: 0 },        // 低弦区下扫
-  { t: 48, dir: "D", zone: 1 },        // 中弦区下扫
+  { t: 48, dir: "D", zone: 1 },        // 旧值 1 = 全扫（老数据兼容样本，发声=低+高双频段）
   { t: 48, dir: "U", zone: 2 },        // 高弦区上扫
   { t: 48, rest: true, dir: "D", zone: 2 },  // 空扫（带 zone 数据，但不该发声）
 ]);
@@ -58,8 +60,8 @@ section("T62a 弦区 · zone 校验 / 默认省略 / 脏值降级");
   ok(/"zone": ?0/.test(ex), "导出 JSON 保留 zone");
 }
 
-/* ================= 场景 T62b：三弦区音色可区分 ================= */
-section("T62b 弦区 · 三弦区音色可区分 / 空扫静默 / 时刻不动");
+/* ================= 场景 T62b：弦区音色可区分（全扫=双频段同刻） ================= */
+section("T62b 弦区 · 低/全/高发声 / 空扫静默 / 时刻不动");
 {
   const { beat } = loadStrum();
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "弦区", meter: 4, bars: mkBars() }] }));
@@ -67,20 +69,22 @@ section("T62b 弦区 · 三弦区音色可区分 / 空扫静默 / 时刻不动")
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
   const ac = FakeAudioContext.last;
-  drive(ac, beat, 1.2);                       // 240BPM 默认 96 → 一小节 2s；走 1.2s 覆盖前三颗
+  drive(ac, beat, 1.2);                       // 96BPM 默认 → 一拍 0.625s；走 1.2s 覆盖前三颗
   beat.Controls.stop();
   const zones = ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
-    && [700, 1400, 2800].includes(h.filterFreq));
-  eq(zones.length, 3, "三颗发声音符各出一声（空扫不出声）");
+    && [700, 2800].includes(h.filterFreq));
+  eq(zones.length, 4, "三颗实扫出四声（全扫=低+高各一声；空扫不出声）");
   eq(zones[0].filterFreq, 700, "★ 低弦区 = 700Hz（闷）");
-  eq(zones[1].filterFreq, 1400, "★ 中弦区 = 1400Hz");
-  eq(zones[2].filterFreq, 2800, "★ 高弦区 = 2800Hz（亮）");
-  ok(zones[0].filterFreq < zones[1].filterFreq && zones[1].filterFreq < zones[2].filterFreq,
-     "三档频率单调可盲听区分");
+  eq(zones[1].filterFreq, 700, "★ 全扫（旧值 1 兼容）脉冲一 = 700Hz");
+  eq(zones[2].filterFreq, 2800, "★ 全扫脉冲二 = 2800Hz（亮）");
+  eq(zones[3].filterFreq, 2800, "★ 高弦区 = 2800Hz（亮）");
+  ok(zones[0].filterFreq < zones[3].filterFreq, "低/高两端频率可盲听区分");
   /* 空扫静默：第 4 颗（rest）在 hits 里无对应。默认 96BPM → 1 拍 0.625s，48tick = 1 拍 */
   const ts = zones.map(h => +h.t.toFixed(3));
   near(ts[0], 0.08, 1e-6, "时刻不漂（zone 不碰时间轴）");
+  eq(zones[1].t.toFixed(3), zones[2].t.toFixed(3), "★ 全扫的两频段**同刻**发声（不是先后两下）");
   near(ts[1], 0.705, 1e-6, "第二颗 = +0.625s（96BPM 一拍）");
+  near(ts[3], 1.33, 1e-6, "第三颗实扫 = +1.25s（高弦区单频段）");
 }
 
 /* ================= 场景 T62c：渲染层 zone → 箭头跨距 ================= */
@@ -119,7 +123,7 @@ section("T62c 弦区 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫�
   beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
   eq(zkOf(els, 0, 0), "kB", "低弦区格 → 箭头带 .kB（只跨下三线）");
-  eq(zkOf(els, 0, 1), "kF", "中弦区格 → 箭头带 .kF（贯穿六线）");
+  eq(zkOf(els, 0, 1), "kF", "旧值 1（=全扫）格 → 箭头带 .kF（贯穿六线，与缺省同形）");
   eq(zkOf(els, 0, 2), "kT", "高弦区格 → 箭头带 .kT（只跨上三线）");
   /* ★ 空扫的弦区**沿用前一记实扫**（参考页明文），而不是读自己的 zone 字段。
      mkBars() 里空扫自己带 zone:2，但前一记实扫是 zone:2 的高弦区——两值恰好相同，
@@ -167,6 +171,8 @@ section("T62c 弦区 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫�
   beat.Editor.open();
   const zb = edCellsOf(els, 0)[0].children.find(c => /(^| )ed-zone /.test(c.className));
   ok(!!zb && zb.textContent === "低", "编辑器内联出 zone 文字徽标（读屏/色弱可达）");
+  const zb1 = edCellsOf(els, 0)[1].children.find(c => /(^| )ed-zone /.test(c.className));
+  ok(!!zb1 && zb1.textContent === "全", "★ 旧值 1 的徽标读作「全」（v2.29.0：1 = 全扫别名）");
   beat.Editor.tryClose();
 
   /* 无 zone 的格不挂（老数据零迁移的直接体现）。
@@ -178,19 +184,19 @@ section("T62c 弦区 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫�
   eq(l0 ? l0.children.length : 0, 0, "无 zone/dir 预设 → 全图零箭头（且不创建箭头层）");
 }
 
-/* ================= 场景 T62d：录入 UI（zoneRow 四档） ================= */
-section("T62d 弦区 · zoneRow 写入 / 撤销 / 同档不推栈");
+/* ================= 场景 T62d：录入 UI（zoneRow 三档） ================= */
+section("T62d 弦区 · zoneRow 写入 / 撤销 / 同档不推栈 / 旧值1读全扫");
 {
   const { beat, els } = loadStrum();
   beat.Editor.open();
-  eq(els["zoneRow"].children.length, 4, "弦区四档（默认/低/中/高）");
-  ok(els["zoneRow"].children.every(b => b.disabled), "未选中音符 → 四档全禁");
+  eq(els["zoneRow"].children.length, 3, "弦区三档（全扫/低/高；v2.29.0 中弦区退役）");
+  ok(els["zoneRow"].children.every(b => b.disabled), "未选中音符 → 三档全禁");
   edCellsOf(els, 0)[0].fire("click");          // 民谣扫弦第 1 格（无 zone）
   ok(els["zoneRow"].children.every(b => !b.disabled), "选中后启用");
-  eq(els["zoneRow"].children[0].getAttribute("aria-pressed"), "true", "无 zone → 「默认」档高亮");
+  eq(els["zoneRow"].children[0].getAttribute("aria-pressed"), "true", "无 zone → 「全扫（默认）」档高亮");
   els["zoneRow"].fire("click", { target: pill({ zone: "2" }) });
   eq(beat.Editor.draft().bars[0][0].zone, 2, "点「高弦区」→ 草稿写入 zone=2");
-  eq(els["zoneRow"].children[3].getAttribute("aria-pressed"), "true", "高亮跟到「高弦区」");
+  eq(els["zoneRow"].children[2].getAttribute("aria-pressed"), "true", "高亮跟到「高弦区」");
   beat.Editor.undo();
   eq(beat.Editor.draft().bars[0][0].zone, undefined, "★ 撤销回退 zone（与方向同一套 undo 纪律）");
   /* 同档重按不推栈 */
@@ -199,10 +205,24 @@ section("T62d 弦区 · zoneRow 写入 / 撤销 / 同档不推栈");
   els["zoneRow"].fire("click", { target: pill({ zone: "0" }) });
   beat.Editor.undo();
   eq(beat.Editor.draft().bars[0][0].zone, undefined, "同档重按不污染撤销栈（撤一次回到无 zone）");
-  /* 回默认 = 删字段 */
+  /* 回全扫 = 删字段 */
   edCellsOf(els, 0)[0].fire("click");
-  els["zoneRow"].fire("click", { target: pill({ zone: "1" }) });
+  els["zoneRow"].fire("click", { target: pill({ zone: "2" }) });
   els["zoneRow"].fire("click", { target: pill({ zone: "" }) });
-  eq(beat.Editor.draft().bars[0][0].zone, undefined, "点「默认」→ 删字段（不是写 1）");
+  eq(beat.Editor.draft().bars[0][0].zone, undefined, "点「全扫」→ 删字段（缺省即全扫，不写占位值）");
+  beat.Editor.tryClose();
+
+  /* ★ v2.29.0：老数据 zone=1（当年谱面映射的"全"）在编辑器**读作全扫**——
+     高亮「全扫」档而不是孤悬在没有任何档位上；发声层同口径（见 T62b） */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "旧值1", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t: 48, dir: "D", zone: 1 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
+  beat.Editor.open();
+  edCellsOf(els, 0)[0].fire("click");
+  eq(els["zoneRow"].children[0].getAttribute("aria-pressed"), "true",
+    "★ 老数据 zone=1 → 高亮「全扫（默认）」档（读作全扫，不是无档可依）");
+  els["zoneRow"].fire("click", { target: pill({ zone: "0" }) });
+  eq(beat.Editor.draft().bars[0][0].zone, 0, "旧值格上点「低弦区」→ 正常改写（旧值不粘滞）");
   beat.Editor.tryClose();
 }

@@ -71,8 +71,10 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
      单点用例覆盖不到。这里把 9 个代表性节奏型两两对切 × 3 个点击相位全跑一遍，
      只守四条硬不变量：立即切换 / 不排到过去 / 时刻不倒退 / 播放不中断。
      v2.7.1 口径修正：「严格递增」放宽为「单调不减 + 同刻至多两声」——带扫弦记谱的谱下
-     拍点节拍音与扫弦在同一时刻叠加出声是设计语义（双声部并列），不算重复排程；
-     但同一时刻出现第 3 声仍是 bug（除了这两条声部，没有第三条发声路径）。
+     拍点节拍音与扫弦在同一时刻叠加出声是设计语义（双声部并列），不算重复排程。
+     v2.29.0 口径再修正：同刻至多**三声**——全扫 = 低+高两频段同刻发声（1 拍点 + 2 扫弦），
+     全扫的民谣扫弦谱（内置 idx 0）同刻就是 3 声；同刻出现第 4 声仍是 bug
+     （除节拍声部与扫弦两频段外，没有别的发声路径）。
 
      v1.3.0（审计 P2-17）加 FULL_SCAN 开关：全量组合是本套件最耗时的一段（每格都要新建沙箱 +
      驱动十几秒音频）。默认跑抽样 9 组，FULL_SCAN=1 跑全量——CI 跑全量，本地改代码时跑抽样。
@@ -110,8 +112,9 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
     if (els["patternName"].textContent !== toName) problems.push(tag + "：标题未立即切换");
     if (seg.some(t => t < tClick - 1e-9)) problems.push(tag + "：音符排到过去");
     for (let i = 1; i < seg.length; i++) if (!(seg[i] >= seg[i - 1])) problems.push(tag + "：时刻倒退");
-    for (let i = 2; i < seg.length; i++)
-      if (seg[i] === seg[i - 1] && seg[i] === seg[i - 2]) problems.push(tag + "：同一时刻三声（超出双声部叠加）");
+    for (let i = 3; i < seg.length; i++)
+      if (seg[i] === seg[i - 1] && seg[i] === seg[i - 2] && seg[i] === seg[i - 3])
+        problems.push(tag + "：同一时刻四声（超出拍点 + 全扫双频段）");
     if (!S.playing) problems.push(tag + "：播放被中断");
     if (seg.length < 4) problems.push(tag + "：切换后发声过少（" + seg.length + "）");
   }

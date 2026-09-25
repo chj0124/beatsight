@@ -71,7 +71,7 @@ function startWith(beat, name, bars, opts){
 const clicksOf = ac => ac.hits.filter(h => h.kind === "osc");
 /* 扫弦声 = 弦区三档带通噪声（与 t62 同一口径） */
 const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
-  && [700, 1400, 2800].includes(h.filterFreq));
+  && [700, 2800].includes(h.filterFreq));
 /* 只在 [a,b) 时间里发声的次数（用于"某小节静音"这类断言，比累计计数稳） */
 const inWindow = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 1e-6).length;
 
@@ -152,14 +152,14 @@ section("T68c 双声部 · 扫弦格叠拍点 / 普通音符仍顶掉自己那�
   const ac = startWith(beat, "带方向无弦区", mkDirNoZone());
   drive(ac, beat, 2.2);
   beat.Controls.stop();
-  eq(ac.hits.length, 8, "★ 一小节 8 声 = 4 扫弦 + 4 拍点（v2.7.1 前是 4 声：扫弦格顶掉了拍点）");
+  eq(ac.hits.length, 12, "★ 一小节 12 声 = 4 扫弦 × 全扫双频段(8) + 4 拍点（v2.7.1 前是 4 声：扫弦格顶掉了拍点）");
   eq(clicksOf(ac).length, 4, "4 声拍点网格（每一拍都出节拍音）");
-  eq(strumsOf(ac).length, 4, "4 声扫弦（dir-only → 中弦区噪声）");
+  eq(strumsOf(ac).length, 8, "8 声扫弦（dir-only → 全扫：低+高双频段成对，v2.29.0）");
   [0, 0.625, 1.25, 1.875].forEach((off, i) => {
     const at = ac.hits.filter(h => Math.abs(h.t - (0.08 + off)) < 1e-6);
-    eq(at.length, 2, `第 ${i + 1} 拍：扫弦与拍点**同刻叠加**（双声部并列）`);
-    ok(at.some(h => h.kind === "osc") && at.some(h => h.kind === "noise"),
-       `第 ${i + 1} 拍：一声节拍（osc）+ 一声扫弦（noise），不是同声部双响`);
+    eq(at.length, 3, `第 ${i + 1} 拍：扫弦双频段与拍点**同刻叠加**（三声并列）`);
+    ok(at.some(h => h.kind === "osc") && at.filter(h => h.kind === "noise").length === 2,
+       `第 ${i + 1} 拍：一声节拍（osc）+ 两声扫弦（noise 低+高），不是同声部多响`);
   });
 
   /* 混合谱：不带扫弦记谱的普通音符仍顶掉自己那一拍（网格不补双声） */
@@ -169,7 +169,7 @@ section("T68c 双声部 · 扫弦格叠拍点 / 普通音符仍顶掉自己那�
   ]));
   drive(ac2, b2, 2.2);
   b2.Controls.stop();
-  eq(ac2.hits.length, 5, "★ 混合谱 5 声 = 拍1/3/4 各 1 声（普通音符顶掉网格）+ 拍2 两声（扫弦+拍点叠加）");
+  eq(ac2.hits.length, 6, "★ 混合谱 6 声 = 拍1/3/4 各 1 声（普通音符顶掉网格）+ 拍2 三声（全扫双频段 + 拍点叠加，v2.29.0）");
   const atBeat0 = ac2.hits.filter(h => Math.abs(h.t - 0.08) < 1e-6);
   eq(atBeat0.length, 1, "★ 拍 1 只有 1 声——普通音符顶掉网格拍点（不双声）");
   eq(atBeat0[0].kind, "osc", "顶掉后留下的是节拍声部那一下");

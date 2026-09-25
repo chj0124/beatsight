@@ -1418,14 +1418,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
-      <!-- 弦区三态（v2.2.0 起）：与方向行同套交互（作用于选中音符）。
-           「默认」= 不写 zone 字段 = 中弦区——老数据与老导出 JSON 零迁移 -->
-      <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（低/中/高）">
+      <!-- 弦区（v2.2.0 起，v2.29.0 三档化）：与方向行同套交互（作用于选中音符）。
+           「全扫（默认）」= 不写 zone 字段 = 六根弦全扫——民谣扫弦的常态，新增扫弦默认就是它。
+           v2.29.0 删「中弦区」档：中弦区没有明确的弦数对应（用户校准：低=④⑤⑥、高=①②③，
+           中=无）。老数据里的 zone=1 一律**读作全扫**（当年谱面映射 1 就是"全"），零迁移 -->
+      <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（全/低/高）">
         <span class="hint">弦区</span>
-        <button class="pill" data-zone="" aria-pressed="false" disabled>默认（中）</button>
-        <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区</button>
-        <button class="pill" data-zone="1" aria-pressed="false" disabled>中弦区</button>
-        <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区</button>
+        <button class="pill" data-zone="" aria-pressed="false" disabled>全扫（默认）</button>
+        <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区 ④⑤⑥</button>
+        <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
       </div>
       <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
       <div class="palette" id="palette"></div>
@@ -1650,9 +1651,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
           <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
-          <!-- v2.25.3（用户需求）：弦区四态的释义——与编辑器「弦区」行的按钮文案逐字对应；
-               v2.25.4 补"低/高弦区各代表哪几根弦"（用户追问） -->
-          <li><b>弦区（默认（中） / 低弦区 / 中弦区 / 高弦区）</b>：给扫弦选"拨片扫过哪一段弦"，同一记扫弦音色立刻不同。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>低弦区</b>偏向 ④⑤⑥ 这些较粗的低音弦，音闷；<b>高弦区</b>偏向 ①②③ 这些较细的高音弦，音亮；<b>中弦区</b>介于两者；<b>默认（中）</b> = 不特别标注时的中弦区（老数据与导入的 JSON 都是它，零迁移）。它是<b>音色档位</b>而非逐弦开关——应用里用三档滤波频率（约 1:2:4）模拟"拨弦位置偏低 / 居中 / 偏高"的明暗差异，<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
+          <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
+               v2.25.4 补"低/高弦区各代表哪几根弦"；
+               v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
+               老数据 zone=1（当年谱面映射的"全"）读作全扫，零迁移 -->
+          <li><b>弦区（全扫（默认） / 低弦区 ④⑤⑥ / 高弦区 ①②③）</b>：给扫弦选"拨片扫过哪几根弦"。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>全扫</b> = 6 根弦都扫——民谣扫弦的常态，<b>新增的扫弦默认就是它</b>（不特别标注 = 全扫，导入的 JSON 同理）；<b>低弦区</b> = 只扫 ④⑤⑥ 这三根较粗的低音弦，音闷；<b>高弦区</b> = 只扫 ①②③ 这三根较细的高音弦，音亮。方向（↑↓）与弦区<b>互不约束</b>——下扫、上扫都可以配任一弦区。它是<b>音色档位</b>而非逐弦开关——应用里用低/高两档滤波频率模拟明暗差异（全扫 = 两档一起响），<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
         </ul>
 
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
@@ -1844,23 +1847,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1876  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2458  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3723  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4430  Modal         应用内弹窗
-     L4567  Viz           时值可视化渲染与每帧动画
-     L6701  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7370  Trainer       变速训练器
-     L7508  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7971  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9204  Editor        自定义节奏型编辑器
-     L9568  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9605  Ear           听辨训练（v1.10.0）
-     L9825  Arrange       曲式编排（v2.0.0）
-     L10887 Help          使用方法（v2.0.1）
-     L10940 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11014 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11215 初始化（装配） 各模块 hook 接线与启动
+     L1879  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2469  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3735  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4442  Modal         应用内弹窗
+     L4579  Viz           时值可视化渲染与每帧动画
+     L6713  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7387  Trainer       变速训练器
+     L7525  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7988  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9221  Editor        自定义节奏型编辑器
+     L9588  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9625  Ear           听辨训练（v1.10.0）
+     L9845  Arrange       曲式编排（v2.0.0）
+     L10907 Help          使用方法（v2.0.1）
+     L10960 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11034 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11235 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1886,7 +1889,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.28.0";
+const VERSION = "2.29.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1905,11 +1908,13 @@ const T8  = TPB / 2;                                   // 24t 八分（短音符
    按 rest 判定，与 dir 无关）。
    rep4 用 {...s} 展开，dir 自动随小节复制；编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码。
-   zone（v2.2.0 起）：弦区三态 0=低 / 1=中 / 2=高。与 dir 的关键差别——zone **参与发声**
-   （AudioEngine 按 zone 取不同滤波中心频率，低弦区闷、高弦区亮；详见 CONFIG.strumZones 与
-   scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，T62e 守这条）。
-   空扫（rest+dir）保持静默——zone 只在发声音符上有听感意义，数据上仍可与空扫共存
-   （记的是"这次空扫发生在哪片弦区"）。省略 = 默认中弦区，老数据零迁移。 */
+   zone（v2.2.0 起，v2.29.0 三档化）：弦区 0=低(④⑤⑥) / 2=高(①②③)，**全扫省略不写**。
+   与 dir 的关键差别——zone **参与发声**
+   （AudioEngine 按 zone 选频段：低弦区闷、高弦区亮，全扫=低+高双频段同时；详见
+   CONFIG.strumZones 与 scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，
+   T62e 守这条）。空扫（rest+dir）保持静默——zone 只在发声音符上有听感意义，数据上仍可
+   与空扫共存（记的是"这次空扫发生在哪片弦区"）。省略 = 默认全扫；老数据里的 zone=1
+   读作全扫（当年谱面映射 1 就是"全"），零迁移。 */
 /** @param {number} t @param {any} [rest] @param {string} [dir] @returns {any} */
 const D = (t, rest, dir) => ({t, rest: !!rest, ...(dir ? {dir} : {})});            // t 单位：tick
 /** @param {any[]} steps @returns {any[]} */
@@ -2023,7 +2028,9 @@ const LYRIC_MIN_DUR = LYRIC_GRID;   // 最短时值：1 格（再短就没有可
 /* ================= 示例曲《在他乡》谱面数据（v2.3.0）=================
    数据逐格来自参考谱面（用户填写的十六分格表），不再自行推定：
      · 扫弦格 [格0-15, 方向, 弦区, 空扫?]：方向存**手部动作**（D=下扫/U=上扫，渲染层翻转字形）；
-       弦区 0=低/1=全/2=高（谱面标记 B/F/T 的映射）；空扫 = 休止槽带 dir（蓝括号，不发声），
+       弦区 0=低/2=高；**全扫省略不写**（v2.29.0：谱面标记 F 的格当年被映射成 zone=1，
+       而工具模型把 1 当中弦区——这正是"全扫听着发闷"的根源，v2.29.0 起全扫缺省不写、
+       残留的 1 读作全扫）。空扫 = 休止槽带 dir（蓝括号，不发声），
        格里没标记 = 无动作（纯休止，连手都不动）。
      · 词行 [格, 时值格, 字]：格 × 16 分 = 段内 tick；跨小节延音靠 dur 延长，始终留在同一行内
        （桥段「夜」落在小节首并延至下一个「那」，正是这条的活样本）。
@@ -2031,15 +2038,15 @@ const LYRIC_MIN_DUR = LYRIC_GRID;   // 最短时值：1 格（再短就没有可
        按该行**最后一个节奏型**补扫（手不停、嘴休息）——歌词与扫弦数据本身一格不增删。 */
 const DEMO_ID = "demo-ztx", DEMO_SONG_NAME = "在他乡（示例）";
 const DEMO_STRUMS = {
-  P1: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",2],[5,"U",null,1],[6,"D",0],[7,"U",null,1],
+  P1: [[0,"D"],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",2],[5,"U",null,1],[6,"D",0],[7,"U",null,1],
        [8,"D",null,1],[9,"U",null,1],[10,"D",2],[11,"U",2],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
   P2: [[0,"D",0],[1,"U",null,1],[4,"D",2],[5,"U",null,1],[6,"D",2],[7,"U",2],[8,"D",2],[9,"U",2],
        [10,"D",2],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
   P3: [[0,"D",0],[1,"U",null,1],[4,"D",2],[5,"U",null,1],[6,"D",2],[7,"U",2],[8,"D",2],[9,"U",null,1],
        [10,"D",2],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
-  P4: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
+  P4: [[0,"D"],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
        [14,"D",2],[15,"U",2]],
-  P5: [[0,"D",1],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
+  P5: [[0,"D"],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",0],[5,"U",0],[6,"D",2],[7,"U",null,1],
        [8,"D",0],[9,"U",0],[10,"D",0],[11,"U",null,1],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
 };
 /* 5 个**单小节**的扫弦型（v2.6.0 第 Ⅳ 期）。
@@ -2147,7 +2154,8 @@ function demoBuildSpec(){
       const m = marks[c];
       if (!m) out.push({ t: T16, rest: true });                                  // 无动作
       else if (m[3]) out.push({ t: T16, rest: true, dir: m[1] });                // 空扫：动手不出声
-      else out.push({ t: T16, dir: m[1], zone: m[2] });                          // 实扫：方向 × 弦区
+      else out.push({ t: T16, dir: m[1],                                         // 实扫：方向 × 弦区
+        ...(m[2] !== undefined ? { zone: m[2] } : {}) });                        // 全扫缺省不写 zone
     }
     return out;
   };
@@ -2392,9 +2400,12 @@ const CONFIG = {
   /* F1 歌词对齐轨（v2.1.0）：容量与域上限。吸附/基准粒度见数据区的 LYRIC_GRID / LYRIC_BASE。
      上限的作用是让"脏数据"在加载时就有界可钳——不依赖段落长度解析（那条边界在共享状态区） */
   lyricMaxLines: 256, lyricMaxChars: 256, lyricMaxChLen: 8, lyricMaxDur: 128 * TPB,
-  /* 扫弦弦区音色（v2.2.0）：三档中心频率 = 三片弦区的亮度。带通噪声路径（同 wood 音色系），
-     zone 省略时回退 MID（1）。低弦区闷、高弦区亮，频率比 ≈ 1:2:4——比 1:1.4:2 更易盲听区分 */
-  strumZones: { LOW: 700, MID: 1400, HIGH: 2800, q: 2.5, decay: 0.07, makeup: 8 },
+  /* 扫弦弦区音色（v2.2.0，v2.29.0 两频段化）：低/高弦区各一个带通中心频率（低闷高亮，
+     频率比 1:4——比 1:1.4:2 更易盲听区分）。全扫（zone 缺省，或老数据里的 1）=
+     低+高两频段**同时**发声：六根弦全响，理应比只扫三根的单区更满，故两颗脉冲
+     各按全额 peak 发声。v2.29.0 退役 MID(1400)：中弦区没有明确的弦数对应（用户校准），
+     整档取消，老数据 zone=1 读作全扫 */
+  strumZones: { LOW: 700, HIGH: 2800, q: 2.5, decay: 0.07, makeup: 8 },
 };
 
 /* ★ v2.10.12：原「练习量档位表」`LIMIT_PRESETS`（6 档：不限 / 8·16·32 小节 / 5·10 分钟）与
@@ -2608,7 +2619,7 @@ const Store = (() => {
   const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
   const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
   const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
-  const VALID_ZONE = [0, 1, 2];                               // 合法弦区（v2.2.0）：低/中/高
+  const VALID_ZONE = [0, 1, 2];   // 合法弦区：0=低 / 2=高 / 1=全扫别名（v2.29.0 起语义，老数据零迁移）
   /** @param {any} v @returns {boolean} */
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
   /** @param {any} v @param {number} dft @returns {number} */
@@ -3508,7 +3519,8 @@ const Store = (() => {
            v2.1.0 放开休止符限制：休止槽上的 dir 是**空扫**（手在动、弦不出声），是合法记谱，
            故只校验取值本身是否在 VALID_DIR 内，不再按 rest 抹掉 */
         const dir = VALID_DIR.includes(s.dir) ? s.dir : undefined;
-        /* 弦区（v2.2.0）：与 dir 同一口径——非法值静默降级为省略（=中弦区），不牵连整条预设 */
+        /* 弦区（v2.2.0）：与 dir 同一口径——非法值静默降级为省略（=全扫），不牵连整条预设。
+           v2.29.0：1 仍合法保留（全扫别名，老数据零迁移），发声与缺省同走全扫双频段 */
         const zone = VALID_ZONE.includes(s.zone) ? s.zone : undefined;
         steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {})});
       }
@@ -5515,7 +5527,7 @@ let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLE
          v2.4.2：由「14px 方形徽标」换成**贯穿弦区的竖箭头**——
            箭头跨越的弦数表达弦区（kF 贯穿六线 / kB 低音下三线 / kT 高音上三线），
            方向由 .dn/.up 决定箭头画在哪一端；休止槽带 dir = 空扫，换成蓝色**虚线**箭头。
-           弦区取自 zone（0=低音 / 1=中=全部弦 / 2=高音）；空扫取前一记实扫的 zone
+           弦区取自 zone（0=低音 / 2=高音 / 缺省或旧值 1=全扫）；空扫取前一记实扫的 zone
            （参考页明文："弦区跟随前一记实扫"），没有前一记时落全部弦。
          ★ v2.4.3 修 bug：v2.4.2 把它 appendChild 进格子（c.appendChild(sm)），
            而格子的 `overflow:hidden` + `height:44px` 会把箭头裁掉——
@@ -6831,15 +6843,19 @@ const AudioEngine = (() => {
     osc.connect(g); g.connect(mg);
     osc.start(t); osc.stop(t + D.kickDecay + 0.01);
   }
-  /* 弦区三态（v2.2.0）：zone 参与发声但不碰时间轴。低/中/高弦区各一个带通中心频率
-     （低闷高亮，频率比 ≈ 1:2:4）。省略 zone = 中弦区（老数据零迁移、听感不变）。
+  /* 弦区（v2.2.0，v2.29.0 两频段化）：zone 参与发声但不碰时间轴。低/高弦区各一个带通
+     中心频率（低闷高亮）；全扫（缺省或旧值 1）= 低+高两频段**同时**发声——六根弦全响，
+     理应比只扫三根的单区更满，两颗脉冲各按全额 peak（700/2800Hz 分居两端不互相掩蔽）。
      ★ 与 click 音色层级的关系：zone 只改"在哪个频段响"，不改"多响"——层级仍由
      重拍/正拍/细分决定（peak 计算一字未动），两套维度正交 */
   /** @param {number} t @param {number} peak @param {any} zone */
   function strumZoneHit(t, peak, zone){
     const Z = CONFIG.strumZones;
-    const freq = zone === 0 ? Z.LOW : (zone === 2 ? Z.HIGH : Z.MID);
-    noiseHit(t, "bandpass", freq, Z.q, peak, Z.decay, Z.makeup);
+    if (zone === 0){ noiseHit(t, "bandpass", Z.LOW, Z.q, peak, Z.decay, Z.makeup); return; }
+    if (zone === 2){ noiseHit(t, "bandpass", Z.HIGH, Z.q, peak, Z.decay, Z.makeup); return; }
+    /* 全扫（zone 缺省，或老数据 zone=1——当年谱面映射的"全"）：低+高双频段同刻叠加 */
+    noiseHit(t, "bandpass", Z.LOW, Z.q, peak, Z.decay, Z.makeup);
+    noiseHit(t, "bandpass", Z.HIGH, Z.q, peak, Z.decay, Z.makeup);
   }
   /** @param {number} t @param {number} stepStartBeat @param {any} isAccent @param {any} [zone] */
   function playClick(t, stepStartBeat, isAccent, zone){
@@ -6863,7 +6879,8 @@ const AudioEngine = (() => {
        +120 dBFS，strumVol 走同一套脏值路径，理由逐字相同 */
     const tier = isAccent ? accentGain : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub);
     /* 声部判定（v2.7.1 打通）：入参 zone !== undefined 即扫弦声部——dir-only 的格
-       由调度入口补成中弦区（见 schedOneStep 的 stepZone）。v2.7.1 之前 drum 音色
+       由调度入口补成全扫（见 schedOneStep 的 stepZone；v2.29.0 起缺省即全扫）。
+       v2.7.1 之前 drum 音色
        整体除外：鼓组下 zone 被丢弃、扫弦格全走 S.vol，于是鼓组 + 带扫弦记谱的谱时
        「节拍」拉到 0 全静默、「扫弦」滑条恒无效（用户实拍）。现在鼓组下扫弦格
        仍按层级选鼓件（底鼓/军鼓/踩镲自带频段分工，不叠加弦区频段），
@@ -7094,7 +7111,7 @@ const AudioEngine = (() => {
     /* 扫弦声部入口（v2.7.1 放宽）：判据从「带 zone」放宽到「带扫弦记谱（dir 或 zone）」。
        纯方向谱（内置「民谣扫弦」只有 dir 没有 zone）此前整谱走节拍声部——
        「扫弦」滑条对它恒无效、「节拍」拉到 0 全静默（用户实拍）。dir-only 的格
-       补成中弦区（zone 1）——与数据契约「省略 zone = 中弦区」同义；时刻一字不动，
+       补成全扫（沿用旧值 1 = 全扫别名，v2.29.0 起语义定为全扫，时刻一字不动），
        zone 仍只改声部与频段、不碰时间轴（T62e 守的那条不变量不受影响）。
        v2.9.0：去掉「只认扫弦轨」的外层门控——是否走扫弦声部**只看这一格自身**是否带记谱，
        与设哪个分组无关（分组只影响列表展示）；不带记谱的格自然退回全局音色 */
@@ -7114,7 +7131,7 @@ const AudioEngine = (() => {
          算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
          提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
       onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar, pb: schedPlayBar });
-      /* zone（v2.2.0）：从音符快照透传给 playClick（dir-only 的格已在上面补成中弦区）
+      /* zone（v2.2.0）：从音符快照透传给 playClick（dir-only 的格已在上面补成全扫）
          ——空扫（rest）根本走不到这里，「空扫静默」由上面的 !rest 判定天然保证，
          无需在 zone 分支里再判一次。
          v2.9.0：门控只看**本格自身**是否带记谱——不带记谱的格 stepZone 为 undefined，
@@ -9308,12 +9325,13 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           ds.textContent = s.dir === "D" ? "↑" : "↓";
           c.appendChild(ds);
         }
-        /* 弦区（v2.2.0）：发声音符带 zone → 内联一个文字徽标（低/中/高）。
-           用字不用色点：编辑器里 zone 是**参数**不是装饰，读屏与色弱用户都得拿到 */
+        /* 弦区（v2.2.0）：发声音符带 zone → 内联一个文字徽标（低/全/高；v2.29.0 起
+           旧值 1 读作全扫）。用字不用色点：编辑器里 zone 是**参数**不是装饰，
+           读屏与色弱用户都得拿到 */
         if (s.zone !== undefined && !s.rest){
           const zb = document.createElement("span");
           zb.className = "ed-zone z" + s.zone;
-          zb.textContent = ["低", "中", "高"][s.zone];
+          zb.textContent = ["低", "全", "高"][s.zone];
           c.appendChild(zb);
         }
         if (s.t >= T8){
@@ -9363,9 +9381,11 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     $("dirHint").textContent = !selStep
       ? "先在上方选中一个音符"
       : (selStep.rest ? "休止符上标注方向 = 空扫（只动手不出声）" : "已选中「" + Viz.stepLabel(selStep) + "」");
-    /* 弦区（v2.2.0）：与方向行同源更新。「默认（中）」= 无 zone 字段，
-       高亮判据与方向行同构（dataset 空串 ↔ 字段省略） */
-    const curZone = dirUsable && selStep.zone !== undefined ? String(selStep.zone) : "";
+    /* 弦区（v2.2.0，v2.29.0 三档化）：与方向行同源更新。「全扫（默认）」= 无 zone 字段，
+       高亮判据与方向行同构（dataset 空串 ↔ 字段省略）；老数据 zone=1（全扫别名）
+       同样高亮「全扫」档——编辑器读数据与发声层同口径，不让旧值孤悬在没有任何档位上 */
+    const curZone = dirUsable && selStep.zone !== undefined
+      ? (String(selStep.zone) === "1" ? "" : String(selStep.zone)) : "";
     setPressed("#zoneRow", p => (p.dataset.zone || "") === curZone);
     document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
@@ -9428,8 +9448,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (want) s.dir = want; else delete s.dir;
     editorRender();
   });
-  /* 弦区（v2.2.0）：与方向行同一套纪律——pushUndo 先行、同档重按不推栈、
-     空串 = 回默认（删字段）。zone 参与发声，但写入侧与 dir 一样只是数据 */
+  /* 弦区（v2.2.0，v2.29.0 三档化）：与方向行同一套纪律——pushUndo 先行、同档重按不推栈、
+     空串 = 回全扫（删字段）。zone 参与发声，但写入侧与 dir 一样只是数据 */
   $("zoneRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-zone]");
     if (!btn) return;

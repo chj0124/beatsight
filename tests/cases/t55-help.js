@@ -90,14 +90,16 @@ section("T55c 使用方法 · 内容覆盖（查标记原文）");
   /* v2.0.0 刚做的曲式编排，说明里要能学到 */
   ok(helpBlock.includes("只反复练副歌"), "讲到了「只练副歌」这个用法");
   ok(helpBlock.includes("同一个拍号"), "讲到了整首同拍号这个约束");
-  /* v2.25.3（用户点名）：两个编辑入口的分工 + 弦区四态释义 */
+  /* v2.25.3（用户点名）：两个编辑入口的分工 + 弦区三档释义（v2.29.0 三档化） */
   ok(helpBlock.includes("先分清两个编辑入口"), "★ 讲清「编辑节奏型」vs「编排曲式」的分工");
   ok(helpBlock.includes("零件") && helpBlock.includes("装配单"),
      "★ 一句话关系：节奏型是零件、曲式是装配单（引用不是拷贝）");
-  ok(helpBlock.includes("音闷") && helpBlock.includes("音亮") && helpBlock.includes("默认（中）"),
-     "★ 弦区四态（默认（中）/低/中/高）逐一解释");
+  ok(helpBlock.includes("音闷") && helpBlock.includes("音亮") && helpBlock.includes("全扫（默认）"),
+     "★ 弦区三档（全扫（默认）/低/高）逐一解释（v2.29.0 三档化）");
   ok(helpBlock.includes("④⑤⑥") && helpBlock.includes("①②③") && helpBlock.includes("音色档位"),
      "★ 弦区说清了低/高各对应哪几根弦，且点明是音色档位而非逐弦开关");
+  ok(helpBlock.includes("6 根弦都扫") && helpBlock.includes("互不约束"),
+     "★ 全扫=6根弦（民谣扫弦常态、默认即是）+ 方向与弦区互不约束（v2.29.0 用户校准）");
   ok(helpBlock.includes("不改节奏与发声时刻"), "★ 弦区边界说清：只改音色明暗，不改节奏与时刻");
 
   /* v2.28.0（G1）：「整首连播」按钮已删——帮助页必须教**剩下的那个入口**（点曲式条目），

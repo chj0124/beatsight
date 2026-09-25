@@ -124,12 +124,12 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { dir: "U" } },
     { className: "pill", dataset: { dir: "" } },
   ],
-  /* v2.2.0：扫弦弦区四档。第一档 data-zone=""（默认/中）——空串与 dirRow 的「不标注」
-     同构：pill() 的 dataset.zone !== undefined 判据对它成立，「回默认」这条路测得到 */
+  /* v2.2.0：扫弦弦区档。v2.29.0 三档化（全扫/低/高，中弦区退役）。第一档 data-zone=""
+     （全扫默认）——空串与 dirRow 的「不标注」同构：pill() 的 dataset.zone !== undefined
+     判据对它成立，「回全扫」这条路测得到 */
   zoneRow: [
     { className: "pill", dataset: { zone: "" } },
     { className: "pill", dataset: { zone: "0" } },
-    { className: "pill", dataset: { zone: "1" } },
     { className: "pill", dataset: { zone: "2" } },
   ],
 };

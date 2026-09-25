@@ -7,7 +7,7 @@
      → 根因：双声部此前有两个未声明的前提——音色不是鼓组（playClick 的 zone 分支对
        drum 整体除外）、谱面带 zone 字段（内置「民谣扫弦」只有 dir 没有 zone）。
      → 契约：凡带扫弦记谱（dir 或 zone）的发声音符都归扫弦声部（S.strumVol）——
-       dir-only 的格按中弦区发声；鼓组下扫弦格仍选鼓件、但音量走 strumVol。
+       dir-only 的格按全扫（低+高双频段）发声；鼓组下扫弦格仍选鼓件、但音量走 strumVol。
        三种音色下「节拍拉 0 扫弦照响、扫弦拉 0 节拍照响」都成立。
 
    ② 「歌词都在『再回到她的』前后，小球位置却相差很多」
@@ -29,7 +29,7 @@ const loadStrum = extra => loadApp(seedState(Object.assign(
   { sel: { type: "builtin", idx: 1 } }, extra || {})));
 const clicksOf = ac => ac.hits.filter(h => h.kind === "osc");
 const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
-  && [700, 1400, 2800].includes(h.filterFreq));
+  && [700, 2800].includes(h.filterFreq));
 /* 与 t68 同一形状的对照谱：带 dir 不带 zone（= 内置「民谣扫弦」的形状），每拍一记实扫 */
 const mkDirNoZone = () => [0,1,2,3].map(() => [
   { t: 48, dir: "D" }, { t: 48, dir: "D" }, { t: 48, dir: "U" }, { t: 48, dir: "U" },
@@ -61,7 +61,8 @@ section("T76a 双声部打通 · 纯方向谱（民谣扫弦形状）归扫弦�
   beat.Controls.stop();
   const strums = strumsOf(ac);
   ok(strums.length > 0, "★ 节拍=0 时扫弦照响（v2.7.1 前：纯方向谱全走节拍声部，这里一声不出）");
-  ok(strums.every(h => h.filterFreq === 1400), "dir-only 的格按中弦区发声（1400Hz，与「省略 zone = 中弦区」同契）");
+  ok(strums.length % 2 === 0 && strums.every(h => h.filterFreq === 700 || h.filterFreq === 2800),
+    "★ dir-only 的格按全扫发声（低+高双频段成对，v2.29.0 起缺省 zone = 全扫）");
   ok(strums.every(h => h.gain > 1), "扫弦声部增益满格（strumVol=1 × tier × makeup 8）");
   ok(clicksOf(ac).every(h => h.gain < 0.001), "节拍=0 → 网格拍点静音（包络兜底 0.0001）");
 
