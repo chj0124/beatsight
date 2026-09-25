@@ -210,6 +210,14 @@ function makeEl(id){
       if (i < 0){ this.children.push(c); return c; }
       this.children.splice(i, 0, c); return c;
     },
+    /* v2.27.0：补标准方法 removeChild——「新建曲式」模板菜单的开合用
+       `bar.removeChild(menu)` 收起（运行时生成、运行时移除的节点）。
+       桩原先只有 appendChild / insertBefore，「移除」表达不出来，一调就崩。 */
+    removeChild(c){
+      const i = this.children.indexOf(c);
+      if (i >= 0) this.children.splice(i, 1);
+      return c;
+    },
     insertAdjacentElement(pos, c){
       const p = this.parentNode;
       if (pos !== "afterend" || !p){ this.children.push(c); return null; }

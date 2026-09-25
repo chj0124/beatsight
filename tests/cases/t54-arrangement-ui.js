@@ -64,15 +64,25 @@ section("T54b 曲式 UI · 曲式库列表 / 选中 / 新建");
   eq(els["argList"].children.length, 1, "空库时只有一句提示（不是空列表）");
   ok((els["argList"].children[0].textContent || "").includes("还没有曲式"), "提示文案到位");
 
+  /* v2.27.0：「新建曲式」改成**先选模板再建**（四选一菜单）。「空白」的产物与旧一键直建逐位相同。
+     菜单是运行时生成的节点（插在 #argActions 里），按类名定位——桩没有元素级 querySelector。 */
+  const menuPills = app => Array.prototype.filter.call(els["argActions"].children,
+    c => /(^| )arg-new-menu( |$)/.test(c.className))[0].children;
   els["argNew"].fire("click");
+  eq(menuPills().length, 4, "★ 新建出模板菜单（四选一）");
+  menuPills()[0].fire("click");                        // 「空白」
   eq(beat.Store.arranges.length, 1, "新建出一条曲式");
-  eq(beat.Store.arranges[0].name, "新曲式", "默认名");
+  eq(beat.Store.arranges[0].name, "新曲式", "默认名（空白模板 = 旧一键直建的同款产物）");
   eq(secRows(els).length, 1, "新建的曲式默认有 1 段");
   ok(els["argList"].children[0].className.includes("sel"), "新建后自动选中");
 
   els["argNew"].fire("click");
+  menuPills()[1].fire("click");                        // 「主副歌骨架」
   eq(beat.Store.arranges.length, 2, "再建一条");
+  eq(beat.Store.arranges[1].name, "主副歌骨架", "★ 模板名进库名");
   eq(els["argList"].children.length, 2, "列表有两条");
+  ok(Array.prototype.every.call(els["argActions"].children,
+    c => !/(^| )arg-new-menu( |$)/.test(c.className)), "★ 选中模板后菜单收起");
   /* 点第 1 条切回去 */
   els["argList"].children[0].fire("click");
   ok(els["argList"].children[0].className.includes("sel"), "点选切换选中态");
@@ -269,6 +279,7 @@ section("T54g 曲式 UI · 跳段即时生效 / 单段置灰跳段键");
   const solo = bare();
   solo.beat.Arrange.open();
   solo.els["argNew"].fire("click");
+  solo.els["argActions"].children.find(c => /arg-new-menu/.test(c.className)).children[0].fire("click");
   solo.els["argPlay"].fire("click");
   eq(solo.els["argJumpPrev"].disabled, true, "★ 单段曲式「上一段」置灰（仍可见，圆形键常显）");
   eq(solo.els["argJumpNext"].disabled, true, "★ 单段曲式「下一段」置灰");
@@ -282,6 +293,7 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   beat.Arrange.open();
   els["argList"].children[0].fire("click");
   els["argNew"].fire("click");                        // 再建一条，curId 指向新条
+  els["argActions"].children.find(c => /arg-new-menu/.test(c.className)).children[0].fire("click");
   eq(beat.Store.arranges.length, 2, "两条曲式");
   const victim = beat.Store.arranges[1].id;
 
