@@ -273,7 +273,12 @@ section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计
     const [ab, ai] = act[0];
     for (let b = 0; b < 4; b++) for (let i = 0; i < cellRows[b].length; i++){
       const cn = cellRows[b][i].className;
-      const want = (b < ab) ? "played" : (b > ab) ? "upcoming" : (i < ai) ? "played" : (i === ai) ? "active" : "upcoming";
+      /* v2.24.1：预告行（挂 .preview-row 的行）恒按未弹画——这是设计行为而非
+         "增量≠全量"：曲式预告行 v2.7.0 起就有 isPreview 豁免，预设预告行
+         （短型绕行淡显 / P===W 轻量标记 / 长型重建预告）v2.24.1 起同款豁免。
+         检查器的期望值随之升级：行上有 preview-row ⇒ 整行 upcoming。 */
+      const want = /(^| )preview-row( |$)/.test(rs[b].className) ? "upcoming"
+        : (b < ab) ? "played" : (b > ab) ? "upcoming" : (i < ai) ? "played" : (i === ai) ? "active" : "upcoming";
       if (!new RegExp("(^| )" + want + "( |$)").test(cn)) return `格[${b}][${i}] 应为 ${want}，实际「${cn}」`;
     }
     const [nb, ni] = nxt[0];

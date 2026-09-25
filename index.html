@@ -1770,18 +1770,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L3538  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L4242  Modal         应用内弹窗
      L4379  Viz           时值可视化渲染与每帧动画
-     L6498  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7164  Trainer       变速训练器
-     L7302  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7765  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8822  Editor        自定义节奏型编辑器
-     L9186  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9223  Ear           听辨训练（v1.10.0）
-     L9443  Arrange       曲式编排（v2.0.0）
-     L10294 Help          使用方法（v2.0.1）
-     L10343 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10417 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10618 初始化（装配） 各模块 hook 接线与启动
+     L6517  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7183  Trainer       变速训练器
+     L7321  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7784  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8841  Editor        自定义节奏型编辑器
+     L9205  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9242  Ear           听辨训练（v1.10.0）
+     L9462  Arrange       曲式编排（v2.0.0）
+     L10313 Help          使用方法（v2.0.1）
+     L10362 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10436 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10637 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1807,7 +1807,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.24.0";
+const VERSION = "2.24.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6408,14 +6408,33 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   }
 
   /* 单格重绘（v1.3.0）：全量与增量共用，保证两条路径产出的 DOM 完全一致 */
+  /* v2.24.1：预告行判据（setCell 的"免已弹刷白"豁免的判定收口）——预告行画的是**未来**，
+     恒按未弹画：半透明格子里六线底纹与箭头透出来（曲式预告行的既有观感，用户对比
+     预设后拍板"所有预告行都要这样"）。四类：
+     ① 曲式：带预告（winPrevSeg >= 0）的第 1 行（v2.7.0 原有）；
+     ② 预设短型（P<W）：**全部非在播行**——绕行语义下它们都是"绕回的未来"，而旧判据
+        "行号<当前行→已弹刷白"把未来画成了历史：白填充叠上预告淡显 = 一排灰色实心块，
+        盖住底纹与箭头（用户实拍：预告行"遮挡住部分内容"）；
+     ③ 预设轻量预告（P≤W 标记亮起，v2.24.0）的第 1 行；
+     ④ 预设重建预告（winPrevSeg >= 0）的第 1 行——与曲式同款豁免。
+     ★ 长型/等宽预设的**非预告**行不在豁免内：它们是本页真实弹过的小节，
+       "行号<当前行→已弹刷白"对它们依旧成立（与曲式非预告行同行为）。 */
+  /** @param {number} b @param {number} bar @returns {boolean} */
+  function isPreviewRow(b, bar){
+    if (S.playMode === "arrange") return winPrevSeg >= 0 && b === 0;   // ① 曲式
+    if (winPrevSeg >= 0 && b === 0) return true;                       // ④ 预设重建预告
+    if (pvMarkOn && b === 0) return true;                              // ③ 预设轻量预告
+    const P = vizSegs();                                               // ② 预设短型绕行
+    return P > 0 && P < arrWinBars() && b !== bar;
+  }
   /** @param {any} b @param {any} i @param {any} bar @param {any} active @param {any} nextB @param {any} nextI @param {any} bSteps */
   function setCell(b, i, bar, active, nextB, nextI, bSteps){
     const el = cellEls[b] && cellEls[b][i];
     if (!el) return;
     /* v2.7.0 预告行豁免：带预告的窗口里第 1 行画的是"下一小节"（未来），
        按"行号 < 当前行 → 已弹"刷白就把未来画成了历史——恒按未弹画（.next 预告格除外，
-       那正是它该亮的一格） */
-    const isPreview = (S.playMode === "arrange" && winPrevSeg >= 0 && b === 0);
+       那正是它该亮的一格）。v2.24.1：判定收口到 isPreviewRow（推广到预设全部预告行） */
+    const isPreview = isPreviewRow(b, bar);
     let cls = "cell ";
     if (isPreview) cls += "upcoming";
     else if (b < bar) cls += "played";

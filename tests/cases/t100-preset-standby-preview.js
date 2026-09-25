@@ -105,6 +105,11 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const iv1 = beat.Viz.internals();
+  /* v2.24.1：预告行格子必须"干净"——恒按未弹画（无已弹白填充），六线底纹与箭头
+     从半透明格子里透出来（用户对比曲式预告行后拍板：所有预告行都要这样） */
+  const cells0 = iv1.cellEls[0];
+  const cellsClean = () => cells0.every(c =>
+    /(^| )upcoming( |$)/.test(c.className) && !/(^| )played( |$)/.test(c.className));
   let onLast = 0, offElsewhere = 0, bad = 0, sawLast = false, sawElse = false;
   for (let i = 0; i < 240; i++){                // 4.8s @0.02 ⇒ 球走完第 4 小节并绕回
     ac.currentTime += 0.02;
@@ -114,7 +119,7 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
     const marked = hasPrev(rows[0]) || capsuleOf(rows[0]) !== null;
     if (r === 3){
       sawLast = true;
-      if (marked && capsuleOf(rows[0]) === "下一小节 · 四分四小节") onLast++; else bad++;
+      if (marked && capsuleOf(rows[0]) === "下一小节 · 四分四小节" && cellsClean()) onLast++; else bad++;
     } else if (r >= 0 && r < 3){
       sawElse = true;
       if (!marked) offElsewhere++; else bad++;  // P===W 无绕行淡显：非页末帧第 1 行必须干净
@@ -126,7 +131,7 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
   ok(sawLast && sawElse, "前提：球在第 4 行与其余行都驻留过（否则本组是假绿）");
   ok(onLast > 10 && bad === 0,
      "★★ 球在第 4 行（页末行）期间第 1 行 = 预告行（.preview-row + 「下一小节 · 型名」胶囊），"
-     + "离开即摘——旧口径 P===W 永不预告（实际 标记 " + onLast + " 帧 / 违例 " + bad + "）");
+     + "且格子恒按未弹画（无已弹白填充遮挡底纹）——离开即摘（实际 标记 " + onLast + " 帧 / 违例 " + bad + "）");
   ok(iv1.ballEl === iv2.ballEl && iv1.rowGeo === iv2.rowGeo,
      "★★ 全程零整树重建：轻量挂法不换行元素（T36「取一次 internals() 再驱动」契约保留）");
   ok(!hasPrev(rowsAfter[0]) && capsuleOf(rowsAfter[0]) === null,
@@ -143,6 +148,10 @@ section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const iv1 = beat.Viz.internals();
+  /* v2.24.1：短型的预告行 = 全部非在播行，格子必须恒按未弹画（无已弹白填充遮挡底纹） */
+  const cells0 = iv1.cellEls[0];
+  const cellsClean = () => cells0.every(c =>
+    /(^| )upcoming( |$)/.test(c.className) && !/(^| )played( |$)/.test(c.className));
   let capOn = 0, fadeOnly = 0, bad = 0, sawLast = false, sawMid = false, sawFirst = false;
   for (let i = 0; i < 300; i++){                // 6s ⇒ 球走完一圈多
     ac.currentTime += 0.02;
@@ -152,11 +161,12 @@ section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 
     const cap = capsuleOf(rows[0]);
     if (r === 3){
       sawLast = true;
-      if (hasPrev(rows[0]) && cap === "下一小节 · 四分一小节") capOn++; else bad++;
+      if (hasPrev(rows[0]) && cap === "下一小节 · 四分一小节" && cellsClean()) capOn++; else bad++;
     } else if (r === 1 || r === 2){
       sawMid = true;
-      /* 短型绕行淡显：非在播行全部挂 .preview-row（行 0 也在内），但**没有**胶囊 */
-      if (hasPrev(rows[0]) && cap === null) fadeOnly++; else bad++;
+      /* 短型绕行淡显：非在播行全部挂 .preview-row（行 0 也在内），但**没有**胶囊；
+         且格子干净（v2.24.1：绕行的行是未来，不刷已弹白） */
+      if (hasPrev(rows[0]) && cap === null && cellsClean()) fadeOnly++; else bad++;
     } else if (r === 0){
       sawFirst = true;
       if (!hasPrev(rows[0]) && cap === null) ; else bad++;   // 在播行自己不淡显、无胶囊
@@ -166,7 +176,8 @@ section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 
   beat.Controls.stop();
   ok(sawLast && sawMid && sawFirst, "前提：球在行 0/1/2/3 都驻留过（否则本组是假绿）");
   ok(capOn > 5 && fadeOnly > 5 && bad === 0,
-     "★★ 短型的预告 = 绕行淡显（既有）+ 页末胶囊（v2.24.0 新增）：胶囊只在球位于第 4 行时"
+     "★★ 短型的预告 = 绕行淡显（既有）+ 页末胶囊（v2.24.0 新增）+ 格子恒按未弹画"
+     + "（v2.24.1：预告行不刷已弹白，底纹与箭头透出来）：胶囊只在球位于第 4 行时"
      + "出现在第 1 行，其余帧第 1 行只有淡显（实际 胶囊 " + capOn + " 帧 / 仅淡显 " + fadeOnly
      + " 帧 / 违例 " + bad + "）");
   ok(iv1.ballEl === iv2.ballEl, "★ 全程零整树重建（短型窗口恒第 0 页，轻量标记不触发 buildViz）");
