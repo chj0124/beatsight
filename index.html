@@ -473,6 +473,24 @@ input[type=range].vol{width:120px}
 .preset-group .ren,.preset-group .del{flex:none}
 .preset-item .grp{color:var(--t3);font-size:12px;padding:2px 6px;border-radius:6px;flex:none}
 .preset-item .grp:hover{color:var(--blue);background:rgba(77,171,247,.12)}
+/* v2.25.0：区标题「新建分组」＋ 按钮——铁律：sec 的 textContent 逐字（t63/t84b），
+   故按钮**无文字节点**、字形走 ::before；margin-left:auto 推到行尾、折叠箭头（::after）仍居最右 */
+.preset-section .sec-add{margin-left:auto;flex:none;background:none;border:none;cursor:pointer;
+  color:var(--t3);font-size:13px;line-height:1;padding:2px 6px;border-radius:6px}
+.preset-section .sec-add::before{content:"＋"}
+.preset-section .sec-add:hover{color:var(--blue);background:rgba(77,171,247,.12)}
+.preset-section.drag-over,.preset-group.drag-over{outline:1.5px dashed var(--blue);outline-offset:2px;border-radius:6px}
+.preset-item.dragging{opacity:.45}
+/* v2.25.0：✎/📁 的显隐分设备——桌面（可 hover）：✎ 悬停/键盘聚焦时显示、
+   📁 收起（归组走拖拽；键盘聚焦时 .grp 回来，键盘可达性与 .del 同契约）；
+   触屏（无 hover）：两者常显——原生拖拽在触屏不可用，📁 按钮是触屏唯一归组入口。
+   断言：t101 检查这条 @media (hover: hover) 规则存在（CSS 文本级）。 */
+@media (hover: hover) and (pointer: fine){
+  .preset-item .ren{opacity:0;transition:opacity .12s}
+  .preset-item:hover .ren,.preset-item:focus-within .ren{opacity:1}
+  .preset-item .grp{display:none}
+  .preset-item:focus-within .grp{display:inline-block}
+}
 /* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
    常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
@@ -1765,23 +1783,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1797  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2379  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3538  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4242  Modal         应用内弹窗
-     L4379  Viz           时值可视化渲染与每帧动画
-     L6517  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7183  Trainer       变速训练器
-     L7321  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7784  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8841  Editor        自定义节奏型编辑器
-     L9205  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9242  Ear           听辨训练（v1.10.0）
-     L9462  Arrange       曲式编排（v2.0.0）
-     L10313 Help          使用方法（v2.0.1）
-     L10362 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L10436 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10637 初始化（装配） 各模块 hook 接线与启动
+     L1815  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2397  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3592  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4296  Modal         应用内弹窗
+     L4433  Viz           时值可视化渲染与每帧动画
+     L6571  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7237  Trainer       变速训练器
+     L7375  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7838  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9076  Editor        自定义节奏型编辑器
+     L9440  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9477  Ear           听辨训练（v1.10.0）
+     L9697  Arrange       曲式编排（v2.0.0）
+     L10548 Help          使用方法（v2.0.1）
+     L10597 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L10671 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10872 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1807,7 +1825,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.24.1";
+const VERSION = "2.25.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2463,19 +2481,20 @@ const Store = (() => {
     }
   });
   /* v2.22.0（批次④）：区内子分组（beatsight.groups）——用户把条目组织成命名的组。
-     ★ 组是**视图组织**，不是数据容器：成员是引用（builtin 下标 / custom id，与曲式块/
-       S.sel 同协议），条目本体照旧住在 BUILTINS / customs 里——删组只是散员，
-       不碰条目；自定义型被删时由 groupPruneCustom 摘除引用（加载期**不**校验
-       存在性：渲染层按 resolveRef 语义找不到就跳过，与曲式坏引用的容忍口径一致）。
+     ★ 组是**视图组织**，不是数据容器：成员是引用（builtin 下标 / custom id / v2.25.0 起
+       曲式条目 arrange id，与曲式块/S.sel 同协议），条目本体照旧住在 BUILTINS / customs /
+       arranges 里——删组只是散员，不碰条目；自定义型被删时由 groupPruneCustom 摘除引用
+       （曲式被删时由 groupPruneArrange 摘除，v2.25.0）；加载期**不**校验存在性：
+       渲染层按 resolveRef 语义找不到就跳过，与曲式坏引用的容忍口径一致。
      ★ 单归属：同一 ref 同时只在一个组里（加载校验：后出现的重复 ref 丢弃；
-       groupMove 移入前先摘旧归属）。组带 zone 字段——v1 只开放节拍/扫弦两区，
-       自定义区（曲式）有自己的节目单组织，不掺和。
+       groupMove 移入前先摘旧归属）。组带 zone 字段——v2.22.0 只开放节拍/扫弦两区，
+       v2.25.0 起三区全开放（用户拍板：自定义区也分组，组员 = 曲式条目）。
      ★ 逐组白名单（同 builtinNames 口径）：缺 name / 坏 zone / members 非数组 /
        ref 非法的组整组丢弃；组 id 重复的丢弃后者——脏冷键不污染内存。
      v2.22.1 补两个 typedef（CI tsc 首跑暴露 12 条隐式 any——组代码上线时沙箱缺
      node_modules、tsc 一直 ⊘ 没跑到）。成员引用与曲式块/S.sel 同协议。 */
-  /** @typedef {{type:"builtin", idx:number}|{type:"custom", id:string}} GrpRef */
-  /** @typedef {{id:string, name:string, zone:"beat"|"strum", members:GrpRef[], open:boolean}} Grp */
+  /** @typedef {{type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}} GrpRef */
+  /** @typedef {{id:string, name:string, zone:"beat"|"strum"|"custom", members:GrpRef[], open:boolean}} Grp */
   const groups = (function(){
     const gIn = readJSON(KEY_GROUPS);
     const list = (gIn && Array.isArray(gIn.groups)) ? gIn.groups : [];
@@ -2485,7 +2504,7 @@ const Store = (() => {
     list.forEach(/** @param {any} g */ g => {
       if (!g || typeof g !== "object") return;
       const name = typeof g.name === "string" ? g.name.trim().slice(0, 40) : "";
-      if (!name || (g.zone !== "beat" && g.zone !== "strum") || !Array.isArray(g.members)) return;
+      if (!name || (g.zone !== "beat" && g.zone !== "strum" && g.zone !== "custom") || !Array.isArray(g.members)) return;
       /* id 冲突整组丢弃（同脏冷键口径）：id 是改名/删组的定位主键，两个组共享一个 id
          时"删 A 会误删 B"——换新 id 留组是在猜用户意图，丢了最干净 */
       if (!(typeof g.id === "string" && g.id) || seenId.has(g.id)) return;
@@ -2504,6 +2523,11 @@ const Store = (() => {
           if (seenRef.has("c" + r.id)) return;
           seenRef.add("c" + r.id);
           members.push({ type:"custom", id:r.id });
+        } else if (r.type === "arrange"){
+          if (typeof r.id !== "string" || !r.id) return;
+          if (seenRef.has("a" + r.id)) return;
+          seenRef.add("a" + r.id);
+          members.push({ type:"arrange", id:r.id });
         }
       });
       out.push({ id: g.id, name, zone: g.zone, members, open: g.open !== false });
@@ -2761,22 +2785,25 @@ const Store = (() => {
        调用）——摘干净随 persistGroups 落盘，冷键不留幽灵成员。
      ★ 移出/删除后的**空组保留**：组是用户搭的架子，成员走了架子还在（还能再移入），
        自动清空组反而制造"我建的组不见了"的惊吓。 */
-  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} ref
-      @param {string} name @param {"beat"|"strum"} zone @returns {boolean} */
+  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}} ref
+      @param {string} name @param {"beat"|"strum"|"custom"} zone @returns {boolean} */
   function groupMove(ref, zone, name){
-    if (zone !== "beat" && zone !== "strum") return false;
-    if (!ref || (ref.type !== "builtin" && ref.type !== "custom")) return false;
+    if (zone !== "beat" && zone !== "strum" && zone !== "custom") return false;
+    if (!ref || (ref.type !== "builtin" && ref.type !== "custom" && ref.type !== "arrange")) return false;
     if (ref.type === "builtin" && (!Number.isInteger(ref.idx) || ref.idx < 0 || ref.idx >= BUILTINS.length)) return false;
     if (ref.type === "custom" && !(typeof ref.id === "string" && ref.id && customs.some(x => x && x.id === ref.id))) return false;
+    if (ref.type === "arrange" && !(typeof ref.id === "string" && ref.id && arranges.some(x => x && x.id === ref.id))) return false;
     const nm = String(name || "").trim().slice(0, 40);
     let moved = false;
     groups.forEach(g => {
       /* v2.22.1：判别收窄改写——原「m.type === ref.type && (ref 是 builtin ? m.idx : m.id)」
          在 tsc 眼里 m 不会被跨变量比较收窄（TS2339：GrpRef 上没有 idx/id）。按 ref 分支
-         各查各的 m.type，逐分支语义与原式完全等价，m.idx / m.id 各自在收窄后访问。 */
+         各查各的 m.type，逐分支语义与原式完全等价，m.idx / m.id 各自在收窄后访问。
+         v2.25.0：加 arrange 分支（曲式条目引用）。 */
       const at = g.members.findIndex(m =>
-        ref.type === "builtin" ? m.type === "builtin" && m.idx === ref.idx
-                               : m.type === "custom" && m.id === ref.id);
+        ref.type === "builtin" ? (m.type === "builtin" && m.idx === ref.idx)
+        : ref.type === "custom" ? (m.type === "custom" && m.id === ref.id)
+        : (m.type === "arrange" && m.id === ref.id));
       if (at >= 0){ g.members.splice(at, 1); moved = true; }
     });
     if (!nm){ if (moved) persistGroups(); return true; }
@@ -2785,7 +2812,21 @@ const Store = (() => {
       g = { id: "g" + Date.now() + "-" + groups.length, name: nm, zone, members: [], open: true };
       groups.push(g);
     }
-    g.members.push(ref.type === "builtin" ? { type:"builtin", idx:ref.idx } : { type:"custom", id:ref.id });
+    g.members.push(ref.type === "builtin" ? { type:"builtin", idx:ref.idx }
+      : ref.type === "custom" ? { type:"custom", id:ref.id }
+      : { type:"arrange", id:ref.id });
+    persistGroups();
+    return true;
+  }
+  /* v2.25.0：区标题「新建分组」的后端——建一个**空组**（成员靠拖拽归入）。
+     同名组（同区）已存在时幂等成功（不重复建——与 groupMove"同名组直接移入"同一哲学） */
+  /** @param {"beat"|"strum"|"custom"} zone @param {string} name @returns {boolean} */
+  function groupCreate(zone, name){
+    if (zone !== "beat" && zone !== "strum" && zone !== "custom") return false;
+    const nm = String(name || "").trim().slice(0, 40);
+    if (!nm) return false;
+    if (groups.some(x => x.name === nm && x.zone === zone)) return true;
+    groups.push({ id: "g" + Date.now() + "-" + groups.length, name: nm, zone, members: [], open: true });
     persistGroups();
     return true;
   }
@@ -2817,6 +2858,17 @@ const Store = (() => {
     if (hit) persistGroups();
     return hit;
   }
+  /* v2.25.0：删除曲式时的引用清理口（对称 groupPruneCustom）——deleteArrange 里挂 */
+  /** @param {string} id @returns {boolean} */
+  function groupPruneArrange(id){
+    let hit = false;
+    groups.forEach(g => {
+      const at = g.members.findIndex(m => m.type === "arrange" && m.id === id);
+      if (at >= 0){ g.members.splice(at, 1); hit = true; }
+    });
+    if (hit) persistGroups();
+    return hit;
+  }
   /* `x &&` 不是多余的防御：arranges 来自 localStorage（用户可手动改坏），而 findArrange
      在 **S 创建期间**就被调用——那时一旦条目是 null/undefined，`x.id` 会直接让整页白屏。
      结构损坏由 normArrange 拦（那是边界），这里的 `x &&` 是"加载路径永不因脏数据崩溃"的兜底，
@@ -2839,6 +2891,7 @@ const Store = (() => {
     const i = arranges.findIndex(x => x && x.id === id);
     if (i < 0) return false;
     arranges.splice(i, 1);
+    groupPruneArrange(id);            // v2.25.0：组里的曲式引用同步摘除（冷键不留幽灵成员）
     persistArranges();
     return true;
   }
@@ -3524,6 +3577,7 @@ const Store = (() => {
     renameBuiltin, renameCustom, builtinSrcName,    // v2.21.0 条目改名（批次③；覆盖冷键 beatsight.builtinNames）
     groups, persistGroups,                          // v2.22.0 区内子分组（批次④；冷键 beatsight.groups）
     groupMove, groupRename, groupDelete, groupPruneCustom,
+    groupCreate, groupPruneArrange,                  // v2.25.0：区标题新建分组 / 曲式删除清理
     /* v2.4.3：循环区间的钳制器。**为什么必须从这里出去**：clampLoop / clampRange 是 Store IIFE
        内部的 const（它们是"加载时校验"这条流水线的零件），Presets 直接写 `clampLoop(...)`
        是未定义引用（tsc TS2304 抓到）。而循环区间的写入点在 Presets（用户点开关/改下拉那里，
@@ -7838,6 +7892,64 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.addEventListener("click", e => { e.stopPropagation(); onGroup(); });
     item.appendChild(btn);
   }
+  /* v2.25.0：条目拖拽归组（原生 HTML5 DnD，零依赖铁律不动）。
+     ★ 拖拽身份不走 dataTransfer 序列化——模块级 `dragItem`（{ref, zone}）是唯一真相：
+       dragstart 记下、drop 读出。好处有二：① 测试桩不必实现 DataTransfer；
+       ② drop 处理器天然拿到带类型的 ref（builtin/custom/arrange 三态），不用反序列化猜。
+       dataTransfer 仍照常 setData（系统拖拽预览/跨窗口语义不受影响，桩上 guard 掉）。
+     ★ zone 跟着条目走：drop 目标校验 dragItem.zone === 自己的 zone，跨区拖放直接忽略
+       （组是"区内子分组"，节拍型拖到扫弦组是用户失误，不是数据操作）。
+     ★ 触屏：原生 DnD 在触屏不可用 → 📁 按钮在触屏保持常显（CSS 媒体查询分流），
+       拖拽是桌面专属增强，两条路径写同一份 groupMove。 */
+  /** @type {{ref: {type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}, zone: string}|null} */
+  let dragItem = null;
+  /** @param {HTMLElement} el @param {{type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}} ref @param {string} zone */
+  function makeDraggable(el, ref, zone){
+    el.draggable = true;
+    el.addEventListener("dragstart", e => {
+      dragItem = { ref, zone };
+      if (e.dataTransfer){
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text/plain", ref.type + ":" + (ref.type === "builtin" ? ref.idx : ref.id)); } catch (e1) {}
+      }
+      el.classList.add("dragging");
+    });
+    el.addEventListener("dragend", () => {
+      dragItem = null;
+      el.classList.remove("dragging");
+    });
+  }
+  /* 落点装配：dragenter/dragleave 用**每元素计数器**（WeakMap）——按钮等子元素会
+     反复触发 enter/leave 对，布尔位会把高亮闪没；dragover 只 preventDefault（放行 drop）；
+     drop 时先清全局 dragItem 再回调（onDrop 里的 refresh 会整树重建列表）。 */
+  const dragDepth = new WeakMap();
+  /** @param {HTMLElement} el @param {string} zone @param {(ref: {type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}) => void} onDrop */
+  function attachDropTarget(el, zone, onDrop){
+    el.addEventListener("dragenter", () => {
+      if (!dragItem || dragItem.zone !== zone) return;
+      dragDepth.set(el, (dragDepth.get(el) || 0) + 1);
+      el.classList.add("drag-over");
+    });
+    el.addEventListener("dragleave", () => {
+      if (!dragItem) return;
+      const d = (dragDepth.get(el) || 1) - 1;
+      dragDepth.set(el, Math.max(0, d));
+      if (d <= 0) el.classList.remove("drag-over");
+    });
+    el.addEventListener("dragover", e => {
+      if (!dragItem || dragItem.zone !== zone) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    el.addEventListener("drop", e => {
+      if (!dragItem || dragItem.zone !== zone) return;
+      e.preventDefault();
+      dragDepth.set(el, 0);
+      el.classList.remove("drag-over");
+      const item = dragItem; dragItem = null;
+      onDrop(item.ref);
+    });
+  }
   /* v2.22.0（批次④）：区内子分组——渲染侧三件。
      ★ buildGroupHead：组头 = 组名 + 可见成员数 + ✎改名 + ×删组，点击折叠。
        类名必须是 **"preset-group"** 而非 preset-section（t63 对 section 用 ===
@@ -7895,6 +8007,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     };
     head.addEventListener("click", act);
     head.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
+    /* v2.25.0：组头是拖拽落点——条目拖到组头松手 = 移入该组（同名即此组）；
+       折叠着的组也能接（移入后顺手展开，让用户立刻看到结果）。
+       groupMove 内部会先摘旧归属（单归属不变式），从别的组拖来 = 搬组 */
+    attachDropTarget(head, g.zone, ref => {
+      if (Store.groupMove(ref, g.zone, g.name)){
+        g.open = true;
+        refreshAfterPatternChange();
+      }
+    });
     return head;
   }
   /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} r @param {HTMLElement} list
@@ -7909,13 +8030,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     return c ? list.appendChild(buildPresetItem(c)) : null;
   }
   /** ref 是否已在某个组里——是则返回组名（📁 对话框的预填值），不在返回空串 */
-  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}} ref @returns {string} */
+  /** @param {{type:"builtin", idx:number}|{type:"custom", id:string}|{type:"arrange", id:string}} ref @returns {string} */
   function groupOf(ref){
     /* v2.22.1：内层参数从 g 改名 grp——与外层 const g 同名触发 no-shadow（CI 的
-       ESLint 加强项抓到，沙箱缺 node_modules 一直 ⊘ 没跑到它。v2.22.0 引入的）。 */
+       ESLint 加强项抓到，沙箱缺 node_modules 一直 ⊘ 没跑到它。v2.22.0 引入的）。
+       v2.25.0：加 arrange 分支（曲式条目）。 */
     const hit = Store.groups.find(grp => grp.members.some(m =>
-      ref.type === "builtin" ? m.type === "builtin" && m.idx === ref.idx
-                             : m.type === "custom" && m.id === ref.id));
+      ref.type === "builtin" ? (m.type === "builtin" && m.idx === ref.idx)
+      : ref.type === "arrange" ? (m.type === "arrange" && m.id === ref.id)
+      : (m.type === "custom" && m.id === ref.id)));
     return hit ? hit.name : "";
   }
   /** @param {HTMLElement} list @param {"beat"|"strum"} zone
@@ -7941,11 +8064,31 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       list.appendChild(buildGroupHead(g, items.length));
       items.forEach(r => {
         const el = renderRef(list, r);
-        if (el) el.dataset.grp = g.id;   // 成员标记：applyFold 按它与组头 data-gid 匹配套组开合
+        if (!el) return;
+        el.dataset.grp = g.id;   // 成员标记：applyFold 按它与组头 data-gid 匹配套组开合
+        /* v2.25.0：拖到**组成员**上 = 归入它所在的组（组头窄、成员行宽，
+           只认组头会让"往组中间那格放"没有落点——组头与成员行都算该组的领地） */
+        attachDropTarget(el, zone, ref => {
+          if (Store.groupMove(ref, zone, g.name)) refreshAfterPatternChange();
+        });
       });
     });
-    builtins.forEach(x => { if (!inGroup.has("b" + x.i)) pushBuiltinItem(list, x.p, x.i); });
-    customList.forEach(c => { if (!inGroup.has("c" + c.id)) list.appendChild(buildPresetItem(c)); });
+    builtins.forEach(x => {
+      if (inGroup.has("b" + x.i)) return;
+      const el = pushBuiltinItem(list, x.p, x.i);
+      /* v2.25.0：散员条目也是落点——拖到散员上 = 移出分组（回散员流，与区标题同语义） */
+      attachDropTarget(el, zone, ref => {
+        if (Store.groupMove(ref, zone, "")) refreshAfterPatternChange();
+      });
+    });
+    customList.forEach(c => {
+      if (inGroup.has("c" + c.id)) return;
+      const el = buildPresetItem(c);
+      attachDropTarget(el, zone, ref => {
+        if (Store.groupMove(ref, zone, "")) refreshAfterPatternChange();
+      });
+      list.appendChild(el);
+    });
   }
   /* Enter 激活（v2.0.2 起含 Space；**v2.13.1 起主界面项不再消费 Space**）：
      role="button" 的键盘契约——与 click 走同一个处理函数。
@@ -7974,6 +8117,26 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （那里本来就有内联候选行）。另注：它与本轮新加的**范围滑块语义相冲**——
        applyDemoSeg 收尾会把 S.arrangeSel 收窄成 from === to，拖好的范围会被一次换型清掉。
      ★ 范围滑块是本区**唯一**能表达"练第 3 段到第 7 段"的控件；跳到单段 = 两个 thumb 重合。 */
+  /* 一个**曲式条目**（v2.25.0 从 buildArrangeGroup 的内联循环抽出）：
+     与节奏型条目同权——可 ✎（无）、📁（触屏移入分组）、拖拽（桌面归组）。
+     点一条 = 选中并立即播放整首（含示例曲，即旧的「整首连播」语义） */
+  /** @param {any} a @returns {HTMLElement} */
+  function buildArrangeItem(a){
+    const isActive = S.arrangeSel.id === a.id;
+    const item = presetItemEl(a.name, `${a.sections.length} 段 · 曲式`, isActive);
+    const pick = () => playArrange(a);
+    item.addEventListener("click", pick);
+    item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
+    /* v2.22.0 曾把自定义区排除在分组外（v1 边界）；v2.25.0 经用户拍板三区全开放 */
+    pushGroupBtn(item, () => {
+      Modal.uiPrompt(`将「${a.name}」移入分组（输入组名；同名组直接移入；清空并确定 = 移出分组）`,
+        groupOf({ type:"arrange", id:a.id }), (/** @type {string} */ v) => {
+          if (Store.groupMove({ type:"arrange", id:a.id }, "custom", v)) refreshAfterPatternChange();
+        });
+    });
+    makeDraggable(item, { type:"arrange", id:a.id }, "custom");
+    return item;
+  }
   /** @param {HTMLElement} list */
   function buildArrangeGroup(list){
     const group = document.createElement("div");
@@ -7989,14 +8152,47 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     }
     const active = Store.findArrange(S.arrangeSel.id) || ars[0];
     if (active) buildDemoSongRow(group, active);
-    /* 曲式条目：点一条 = 选中并立即播放整首（含示例曲，即旧的「整首连播」语义） */
+    /* v2.25.0：曲式区的组（组头 + 成员）在前、散员在后——与节拍/扫弦区的 renderZone
+       同构，但容器是本 wrapper 而不是 #presetList 直接子节点：
+       t63/t68/t73/t74/t75/t88/t89/t93 一大批测试都以 .preset-arrange-group 为曲式区
+       容器契约（整首连播/滑块/曲式条目都在它里面找），扁平化会全线失配。
+       applyFold 对 wrapper 内部做同样的两级真值表（见该函数的 wrapper 分支）。
+       ★ 无组时渲染与 v2.24.x 逐字节一致（回归红线）：groups 为空 → 只有散员循环。 */
+    const zs = Store.groups.filter(g => g.zone === "custom");
+    const inGroup = new Set();             // 本区实际进组的 refKey（散员流排除用）
+    /** @type {Array<{g:any, items:any[]}>} */
+    const shown = zs.map(g => ({ g, items: [] }));
+    zs.forEach((g, gi) => g.members.forEach(r => {
+      if (r.type !== "arrange") return;                          // 脏类型引用 → 渲染层跳过
+      const a = Store.findArrange(r.id);
+      if (!a) return;                                            // 曲式已删 → 渲染层跳过
+      shown[gi].items.push(a); inGroup.add("a" + r.id);
+    }));
+    shown.forEach(({ g, items }) => {
+      const head = buildGroupHead(g, items.length);
+      attachDropTarget(head, "custom", ref => {
+        if (Store.groupMove(ref, "custom", g.name)){
+          g.open = true;
+          refreshAfterPatternChange();
+        }
+      });
+      group.appendChild(head);
+      items.forEach(a => {
+        const el = buildArrangeItem(a);
+        el.dataset.grp = g.id;             // 组成员标记：applyFold 的 wrapper 分支按它匹配
+        attachDropTarget(el, "custom", ref => {
+          if (Store.groupMove(ref, "custom", g.name)) refreshAfterPatternChange();
+        });
+        group.appendChild(el);
+      });
+    });
     ars.forEach(a => {
-      const isActive = S.arrangeSel.id === a.id;
-      const item = presetItemEl(a.name, `${a.sections.length} 段 · 曲式`, isActive);
-      const pick = () => playArrange(a);
-      item.addEventListener("click", pick);
-      item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
-      group.appendChild(item);
+      if (inGroup.has("a" + a.id)) return;
+      const el = buildArrangeItem(a);
+      attachDropTarget(el, "custom", ref => {
+        if (Store.groupMove(ref, "custom", "")) refreshAfterPatternChange();   // 散员 = 移出
+      });
+      group.appendChild(el);
     });
     list.appendChild(group);
   }
@@ -8335,6 +8531,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     });
     item.addEventListener("click", pick);
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
+    /* v2.25.0：桌面端拖拽归组（触屏走上面的 📁 按钮，CSS 媒体查询分流） */
+    makeDraggable(item, { type:"builtin", idx:i }, hasStrum(p) ? "strum" : "beat");
     list.appendChild(item);
     return item;
   }
@@ -8357,6 +8555,24 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const act = () => { sec.blur(); toggleFold(key); };
     sec.addEventListener("click", act);
     sec.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
+    /* v2.25.0：区标题「新建分组」＋ 按钮 + 拖拽移出口。
+       ★ 铁律不变：sec 的 className 恰好是 preset-section、textContent 逐字（t63/t84b）——
+         按钮不带任何文字节点（字形走 CSS ::before），不污染 textContent；
+         click stopPropagation 防止误触发折叠。
+       ★ 区标题同时是"移出分组"的落点：条目拖到标题上松手 = 移出分组回散员流
+         （等价旧 📁 对话框的"清空并确定"，用户拍板）。 */
+    const add = document.createElement("button");
+    add.className = "sec-add"; add.title = "新建分组"; add.setAttribute("aria-label", "新建分组");
+    add.addEventListener("click", e => {
+      e.stopPropagation();
+      Modal.uiPrompt(`在「${text.split(" · ")[0]}」区新建分组（输入组名）`, "", (/** @type {string} */ v) => {
+        if (Store.groupCreate(key, v)) refreshAfterPatternChange();
+      });
+    });
+    sec.appendChild(add);
+    attachDropTarget(sec, key, ref => {
+      if (Store.groupMove(ref, key, "")) refreshAfterPatternChange();   // 空 name = 移出
+    });
     list.appendChild(sec);
   }
   /* 展开/收起一个分区：翻转状态 → 立即套用 → 落热键（记忆选择）。
@@ -8407,6 +8623,23 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       }
       const mine = !!(k.dataset && k.dataset.grp && k.dataset.grp === grpId);
       k.hidden = !(zi >= 0 && S.fold[ZONES[zi]]) || (mine && !grpOpen);
+      /* v2.25.0：曲式区的组住在 .preset-arrange-group wrapper **内部**（容器契约：
+         t63/t68/t75/t88 等以 wrapper 定位曲式区，组头/成员不能提升为列表直接子节点）。
+         wrapper 自身按区折叠（上面那行已算出）；区展开时，wrapper 内部再套一遍
+         同款两级真值表：组头恒显、成员 = 组开才显。 */
+      if (zi >= 0 && !k.hidden && k.classList && k.classList.contains("preset-arrange-group")){
+        let wGid = /** @type {string|null} */ (null), wOpen = true;
+        Array.from(k.children).forEach(c => {
+          if (c.className === "preset-group"){
+            wGid = c.dataset && c.dataset.gid ? c.dataset.gid : null;
+            wOpen = c.getAttribute("aria-expanded") !== "false";
+            c.hidden = false;
+            return;
+          }
+          const cMine = !!(c.dataset && c.dataset.grp && wGid && c.dataset.grp === wGid);
+          c.hidden = cMine && !wOpen;
+        });
+      }
     });
   }
   /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠。
@@ -8516,6 +8749,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     };
     item.addEventListener("click", pick);
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
+    /* v2.25.0：桌面端拖拽归组（触屏走上面的 📁 按钮） */
+    makeDraggable(item, { type:"custom", id:c.id }, hasStrum(c) ? "strum" : "beat");
     return item;
   }
   /* 示例曲不在曲式库时，在列表底部给一句"怎么拿到它"的引导（v2.4.1；v2.20.0 改口径）。

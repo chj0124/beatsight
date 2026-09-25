@@ -11,7 +11,8 @@
    共同约束：单归属（同一 ref 同时只在一个组）；成员按内容复检区归属
    （hasStrum 漂移 → 退回散员流）；组数据落冷键 beatsight.groups，
    逐组白名单校验（缺名/坏区/坏 ref 整组丢弃）；**无组时渲染与 v2.21.0
-   逐字节一致**（回归红线）；自定义区（曲式）v1 不参与。 */
+   逐字节一致**（回归红线）。自定义区（曲式）v2.22.0 不参与，v2.25.0 起三区
+   全开放（T98i 改判 + t101 端到端）——区标题 ＋ 新建 / 拖拽归组见 t101。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
 
@@ -216,7 +217,7 @@ section("T98h 校验边界 · ★ 非法组整组丢弃 / 非法 ref 逐条丢�
   const dirty = loadApp({ "beatsight.groups": JSON.stringify({ v:1, groups: [
     { id:"g1", name:"好组", zone:"beat", members:[{ type:"builtin", idx:1 }], open:false },
     { id:"g2", name:"   ", zone:"beat", members:[] },                        // 空白名 → 丢弃
-    { id:"g3", name:"坏区", zone:"custom", members:[] },                     // v1 未开放的区 → 丢弃
+    { id:"g3", name:"坏区", zone:"foo", members:[] },                        // 非法区（v2.25.0 起 beat/strum/custom 三区全合法，"foo" 才是坏的）→ 丢弃
     { id:"g4", name:"坏ref", zone:"strum", members:[{ type:"builtin", idx:99 }] },  // 越界 ref 整组无合法成员
     { id:"g5", name:"坏类型", zone:"beat", members:[{ type:"nonsense" }] },  // 坏 ref 类型 → 整组空
     { id:"g1", name:"重id", zone:"beat", members:[] },                       // id 重复 → 丢弃后者
@@ -234,16 +235,20 @@ section("T98h 校验边界 · ★ 非法组整组丢弃 / 非法 ref 逐条丢�
     "好组渲染在节拍区（组头第一个孩子）");
 }
 
-/* ================= 场景 T98i：v1 边界（自定义区不参与 + 组不进导出） ================= */
-section("T98i v1 边界 · ★ 曲式条目无 📁（自定义区不分组）；预设备份不含组数据");
+/* ================= 场景 T98i：v2.25.0 边界（自定义区参与分组 + 组不进导出） =================
+   v2.22.0 的旧边界「曲式条目无 📁（自定义区不分组）」由 v2.25.0 推翻——用户拍板
+   三区全开放：曲式条目与节奏型同权（📁 触屏入口 + 桌面拖拽），组员 = 曲式 id。
+   不变的半条：组是本机的视图组织，**不进预设备份**（接收方自己组织）。 */
+section("T98i 边界 · ★ 曲式条目有 📁（三区全开放）；预设备份不含组数据");
 {
   const first = loadApp(undefined, { seedDemo: false });
-  /* 曲式条目（自定义区）没有 📁 */
+  /* 曲式条目（自定义区）有 📁：与节奏型条目同权 */
   const arrangeBox = first.els["presetList"].children
     .find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   ok(!!arrangeBox, "前提：自定义区有曲式容器");
-  ok(!groupBtnOf(arrangeBox) && !arrangeBox.children.some(c => /(^| )grp( |$)/.test(c.className)),
-    "★ 曲式条目没有移入分组入口（v1 自定义区不参与）");
+  const arrangeItem = arrangeBox.children.find(c => /(^| )preset-item( |$)/.test(c.className));
+  ok(!!arrangeItem && !!groupBtnOf(arrangeItem),
+    "★ 曲式条目有 📁 移入分组入口（v2.25.0 三区全开放，触屏归组与节奏型同权）");
   /* 组不进导出：预设备份是节奏型谱面数据，组是本机的视图组织 */
   first.beat.Store.importPresets(JSON.stringify([{ name: "练习型B", meter: 4,
     bars: [Array.from({ length: 4 }, () => ({ t: 48 }))] }]));
