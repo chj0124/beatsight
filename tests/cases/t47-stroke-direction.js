@@ -84,9 +84,12 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
   ok(folk.bars.every(b => b.map(s => s.dir).join("") === "DDUUDU"), "rep4 展开后 4 小节方向全同");
   ok(folk.bars[0].every(s => s.t !== undefined && s.rest === false), "带 dir 的步仍保留 t / rest 原字段（未破坏结构）");
 
-  /* ---- ② 其余 11 个内置预设一个 dir 都不带（防止误加） ---- */
-  eq(BUILTINS.slice(1).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
-     "只有民谣扫弦带方向标注，其余内置预设零 dir");
+  /* ---- ② 其余 11 个**节拍类**内置预设一个 dir 都不带（防止误加）；
+          v2.20.0 起示例曲 5 型并入内置库尾部（idx 12–16），它们**都**带方向标注 ---- */
+  eq(BUILTINS.slice(1, 12).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
+     "只有民谣扫弦 + 示例 5 型带方向标注，其余 11 个内置预设零 dir");
+  eq(BUILTINS.slice(12).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 5,
+     "示例曲 5 型全部带方向标注（扫弦型，v2.20.0 内置化后住在 BUILTINS 尾部）");
 
   /* ---- ③ 渲染：字形按**手部动作**翻转（v2.1.0 全局翻转：下扫=↑、上扫=↓） ---- */
   beat.Viz.buildViz();

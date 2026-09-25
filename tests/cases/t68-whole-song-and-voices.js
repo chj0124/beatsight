@@ -314,7 +314,7 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   ok(!!target, "前提：扫弦区里有「下上扫 · 密（《在他乡》副歌）」条目（v2.9.0 示例 5 型并入扫弦区；v2.19.1 改特征名）");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
-  eq(beat.Store.S.sel.type, "custom", "选中的就是这个自定义型");
+  eq(beat.Store.S.sel.type, "builtin", "选中的是内置型（v2.20.0 起示例 5 型住 BUILTINS 尾部）");
   ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   eq(beat.Store.S.arrangeSel.loop, false, "退回单型后清掉曲式的范围循环（免得下次突然生效）");

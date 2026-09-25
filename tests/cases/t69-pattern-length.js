@@ -71,8 +71,10 @@ section("T69b 型长自由化 · 网格行数 = 同屏行数档位，型长决�
   const def = loadStrum();
   /* 内置民谣扫弦（4 小节）——恰好铺满默认 4 行档，逐位不变 */
   eq(rowsOf(def.els).length, 4, "4 小节的型恰好铺满默认 4 行档（既有数据零变化）");
-  ok(rowsOf(def.els).length === 4 && def.beat.BUILTINS.every(p => p.bars.length === 4),
-     "全部 12 个内置型的 bars 长度都仍是 4（放开只对**新数据**生效）");
+  ok(rowsOf(def.els).length === 4
+      && def.beat.BUILTINS.slice(0, 12).every(p => p.bars.length === 4)
+      && def.beat.BUILTINS.slice(12).every(p => p.bars.length === 1),
+     "原有 12 个内置型的 bars 长度都仍是 4、示例 5 型各 1 小节（v2.20.0 内置化；放开只对**新数据**生效）");
 }
 
 /* ================= 场景 T69c：播放按型的小节数回绕 ================= */

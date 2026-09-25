@@ -1748,22 +1748,22 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L1779  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2311  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3274  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L3978  Modal         应用内弹窗
-     L4110  Viz           时值可视化渲染与每帧动画
-     L6060  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L6726  Trainer       变速训练器
-     L6864  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7327  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L8189  Editor        自定义节奏型编辑器
-     L8553  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L8590  Ear           听辨训练（v1.10.0）
-     L8810  Arrange       曲式编排（v2.0.0）
-     L9684  Help          使用方法（v2.0.1）
-     L9733  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L9807  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L10008 初始化（装配） 各模块 hook 接线与启动
+     L2345  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3324  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4028  Modal         应用内弹窗
+     L4160  Viz           时值可视化渲染与每帧动画
+     L6110  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L6776  Trainer       变速训练器
+     L6914  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7377  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L8242  Editor        自定义节奏型编辑器
+     L8606  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L8643  Ear           听辨训练（v1.10.0）
+     L8863  Arrange       曲式编排（v2.0.0）
+     L9714  Help          使用方法（v2.0.1）
+     L9763  KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L9837  Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L10038 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1789,7 +1789,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.19.1";
+const VERSION = "2.20.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -1953,9 +1953,11 @@ const DEMO_STRUMS = {
      于是《在他乡》的原子单元就是这 5 个 1 小节的型，与参考页的 STRUMS.P1~P5 一一对应。
    ★ v2.9.0 改名：这 5 个型要**并入「扫弦」分类**与内置扫弦型并列展示（不再单独挂
      "示例曲"分组），名字里带"在他乡 · 节奏型N"既长又和"分组头"重复。改成通用名后
-     它们就是 5 个可独立拿来用的扫弦型；旧数据里的旧名由一次性迁移收敛（见
-     demoLegacyIndex / migrateDemoPatternNames）。名字不再是这批数据的命名空间——
-     曲式块的引用改按**下标**（见 demoBuildSpec 的 refIdx），识别改按**内容**（demoIndexOf）。 */
+     它们就是 5 个可独立拿来用的扫弦型。名字不再是这批数据的命名空间——
+     曲式块的引用改按**下标**（见 demoBuildSpec 的 refIdx），识别改按**内容**。
+   ★ v2.20.0 内置化：这 5 个型整体并入 BUILTINS（见 DEMO_BUILTIN_BASE 挂载处）——
+     从"落库的自定义"升格为"内置只读素材"，删不掉、内容恒对；旧数据由
+     migrateDemoToBuiltins 一次性收走。 */
 const DEMO_PRESETS = [
   /* v2.19.1 改名（P1–P5）：旧名是《在他乡》曲内的**场景词**（副歌/主歌/雨夜/桥段），
      没扫过这首歌的用户无从知道它是什么扫弦。新名 = **可弹特征 + 出处标注**——
@@ -1969,8 +1971,8 @@ const DEMO_PRESETS = [
        P3 下上扫 · 疏：与 P2 仅差第 3 拍少一记上扫（9 发声）——诚实表达为密度差；主歌一；
        P4 前密后疏扫：前两拍密 → 第 3 拍整拍休止 → 末拍"下上"收（7 发声）；主歌二；
        P5 切音满扫：全小节连续下上、切音最多（11 发声 + 5 切音），律动最满的"下上"型；桥段。
-     旧名由一次性迁移收敛（migrateDemoPatternNames 的 v2.9.0 名映射，P1 的旧短名也在表内），
-     见下面那条。 */
+     旧名由一次性内置化迁移认出并收走（migrateDemoToBuiltins 的四级兜底，P1 的旧短名
+     也在表内），见下面那条。 */
   { name: "十六分满扫（《在他乡》前奏）", strum: "P1" },
   { name: "下上扫 · 密（《在他乡》副歌）", strum: "P2" },
   { name: "下上扫 · 疏（《在他乡》主歌一）", strum: "P3" },
@@ -2104,17 +2106,36 @@ function demoSpec(){
   if (!_demoSpec) _demoSpec = demoBuildSpec();
   return _demoSpec;
 }
+/* v2.20.0：示例曲 5 型**并入内置库**（下标 DEMO_BUILTIN_BASE … +4）——
+   ★ 为什么收进 BUILTINS：示例型此前落库为 customs（自定义），于是自带删除按钮——
+     用户随手一删，示例曲式的引用就断了（曲式块按 custom id 引用，id 没了即坏引用，
+     表现为"整首不能播"）。这是把**内置素材**误建模成**用户数据**的错：它们和
+     「民谣扫弦」一样只读、删不掉；想改编走编辑器（选中它 → 「编辑节奏型」→ 基于
+     curPattern() 建"-副本"另存为自定义），编辑器路径本来就支持任何选中源。
+   ★ resolveRef / normArrange / patLenOf 对 {type:"builtin", idx} 的支持是**既有的**
+     （「新曲式」默认块引用的就是 builtin）——曲式块从 custom id 换成 builtin 下标，
+     解析 / 校验 / 播放链路零改动；这也是本版敢动数据归属而不动引用协议的底气。
+   ★ 老数据迁移：customs 里已落盘的示例型（无论哪个名字世代）由 migrateDemoToBuiltins
+     一次性收走，曲式引用同步重映射（见该函数注释）。
+   ★ bars 深拷贝：demoSpec() 是全局缓存单例，BUILTINS 若直接引用它则两处共享同一数组——
+     内置型实际只读，但没有语言层保证；拷贝一份断开别名，谁也改不到谁。
+   ★ 声明位置：demoSpec 之后（依赖它）、且必须在任何运行期读 BUILTINS 的模块之前——
+     数据区同步执行，push 完成后 Presets / Viz / AudioEngine 才初始化，时序安全 */
+const DEMO_BUILTIN_BASE = BUILTINS.length;
+DEMO_PRESETS.forEach((p, i) => {
+  const sp = demoSpec().presets[i];
+  BUILTINS.push({ name: p.name, desc: "4/4 · 《在他乡》示例 · 单小节", meter: sp.meter,
+    bars: JSON.parse(JSON.stringify(sp.bars)) });
+});
 /* 内容认型（v2.9.0）：返回该自定义型对应示例规范谱的下标，认不出 -1。
    ★ 取代旧的"名字前缀"判据——名字已改成通用名（十六分满扫 等），与用户自建型可能重名，
-     内容才是稳定标识（demoPresetEq 比 meter + 逐步规范化的 [t,rest,dir,zone]） */
-/** @param {any} c @returns {number} */
-function demoIndexOf(c){
-  if (!c || !Array.isArray(c.bars)) return -1;
-  return demoSpec().presets.findIndex(p => demoPresetEq(c, p));
-}
+     内容才是稳定标识（demoPresetEq 比 meter + 逐步规范化的 [t,rest,dir,zone]）
+   ★ v2.20.0 退役：唯一消费者是 buildDemoNoteIfNeeded 的"型还在豁免"，示例型内置化后
+     该豁免对象不复存在，函数随之删除；认型需求由 demoCustomAt（含名字兜底，服务迁移）
+     与 demoPresetEq（纯内容比较，服务测试）分头承担。 */
 /* 旧示例型的名字前缀（v2.3.0–v2.8.x）。只服务**老数据一次性迁移**：
    v2.6.0 之前的示例型是 4 小节型、内容对不上现在的 1 小节规范谱，
-   只能靠旧名的序号认回来（demoIndexOf 认不出它们） */
+   只能靠旧名的序号认回来（内容判据 demoPresetEq 对它们无效） */
 const DEMO_LEGACY_PREFIX = "在他乡 · 节奏型";
 /** @param {any} name @returns {number} 旧名「在他乡 · 节奏型N…」的 0 基下标，认不出 -1 */
 function demoLegacyIndex(name){
@@ -2132,26 +2153,23 @@ function demoLegacyV2Index(name){
   return typeof name === "string" && Object.hasOwn(DEMO_LEGACY_V2_NAMES, name)
     ? DEMO_LEGACY_V2_NAMES[name] : -1;
 }
-/** @param {any} name @returns {number} 任一批旧名的 0 基下标（前缀或 v2.9.0 名），认不出 -1 */
-function demoLegacyAnyIndex(name){
-  const a = demoLegacyIndex(name);
-  return a >= 0 ? a : demoLegacyV2Index(name);
-}
+/* （v2.20.0：demoLegacyAnyIndex 随 migrateDemoPatternNames 退役删除——它的唯一消费者
+   是"任一批旧名改名"那条迁移；内置化迁移走 demoCustomAt 的四级兜底，两代旧名表
+   由 demoLegacyIndex / demoLegacyV2Index 分头喂给它，不再需要一个"任一"并集入口。） */
 /* 在给定库里按"内容优先、名字兜底"找第 i 个示例型（v2.9.0）。
-   收成一处：ensureDemo（收敛内容）、demoStale（判落后）、一次性改名迁移
-   必须看**同一份**认型规则，三处各写一遍 = 三条会漂移的边界。
+   收成一处：一次性内置化迁移（migrateDemoToBuiltins）必须看**唯一**的认型规则——
+   旧数据里示例型长什么样由它一个人说了算，调用方（Store.load）拿结果做重映射，
+   不再各写一遍认型逻辑。
    入参 customs 显式传入而非直接读 Store：本函数留在数据区，保持"纯函数可直测"。
    ★ 四级兜底与它们的窗口（v2.9.0 三级，v2.19.1 补第四级）：
      ① 内容（demoPresetEq）——稳定标识，首选；
      ② 旧名序号（demoLegacyIndex）——服务「旧名 + 4 小节旧内容」的一次性迁移窗口；
-     ③ **改名后的通用名**（c.name === p.name）——服务「旧名已被 migrateDemoPatternNames
-        改成通用名、但内容还没收敛」的窗口。没有它，启动期"先改名后收敛"的顺序会把旧型
-        的两种标识（内容 + 旧名）一起抹掉 → ensureDemo 认不出 → 重复建 5 个型（10 个型、
-        整首连播 120 小节）。代价：用户自建型若恰好叫示例通用名（十六分满扫 等）会被
-        收敛回参考谱——名字高度特异、且只在内容对不上时才命中，判为可接受（变体请另存名字）；
+     ③ **当前通用名**（c.name === p.name）——服务「型内容被用户改过但没改名」的窗口。
+        代价：用户自建型若恰好叫示例通用名（十六分满扫 等）会被一并认回收走——
+        名字高度特异、且只在内容对不上时才命中，判为可接受（变体请另存名字）；
      ④ **v2.9.0 旧名**（DEMO_LEGACY_V2_NAMES，v2.19.1）——服务「v2.9.0 期间落盘的旧通用名」
-        的窗口：本版把 P2–P5 的场景名（副歌/主歌/雨夜/桥段）改成特征名，老数据靠这条
-        在 migrate 里收敛新名；内容对不上的旧名型由此兜底认回（语义与 ③ 完全同构）。
+        的窗口：P2–P5 的场景名（副歌/主歌/雨夜/桥段）已在 v2.19.1 改成特征名，
+        内容对不上的旧名型由此兜底认回（语义与 ③ 完全同构）。
         只在 ①②③ 都落空后兜底，不影响内容识别命中的用户变体。 */
 /** @param {any[]} customs @param {number} i @returns {any} */
 function demoCustomAt(customs, i){
@@ -2162,26 +2180,42 @@ function demoCustomAt(customs, i){
     || customs.find(c => c && c.name === p.name)
     || customs.find(c => demoLegacyV2Index(c && c.name) === i);
 }
-/* 老数据一次性改名（v2.9.0；v2.19.1 扩展）：示例型旧名 → 当前通用名。
-   两批旧名，按时间倒序各认各的：
-     · v2.9.0–v2.19.0 的场景名（副歌扫弦 等，DEMO_LEGACY_V2_NAMES）——v2.19.1 起这些名字
-       改成了特征名（下上扫 · 密 等），老数据在这里收敛，保证新老用户看到同一份列表；
-     · v2.3.0–v2.8.x 的「在他乡 · 节奏型N」前缀（demoLegacyIndex）。
-   ★ 与内容收敛（ensureDemo）分开：这里只认旧名序号、只动 name，不碰内容——
-     v2.6.0 之前的 4 小节型内容对不上新规范谱，改名后仍需 ensureDemo 把内容改回参考谱。
-   ★ 幂等：改完的名字不再命中任何旧名表，二次启动改 0 条、零写盘。
-   返回改名的条数，供调用方决定是否落盘 */
-/** @param {any[]} customs @returns {number} */
-function migrateDemoPatternNames(customs){
-  if (!Array.isArray(customs)) return 0;
-  let n = 0;
-  customs.forEach(c => {
-    if (!c) return;
-    const i = demoLegacyAnyIndex(c.name);
-    if (i < 0 || i >= DEMO_PRESETS.length) return;
-    if (c.name !== DEMO_PRESETS[i].name){ c.name = DEMO_PRESETS[i].name; n++; }
-  });
-  return n;
+/* 老数据一次性**内置化迁移**（v2.20.0，取代 v2.9.0 的 migrateDemoPatternNames）：
+   示例型从"落库的自定义"改为"内置只读"后，把冷键里残留的示例型收走，三步：
+     ① 认型：demoCustomAt 的四级兜底（内容 → v2.3 旧前缀名 → 当前名 → v2.9 旧短名）
+        覆盖所有名字世代——旧名**不必先改名**，直接认出（这是本函数能取代改名迁移的原因）；
+     ② 重映射：曲式块里指向这些 custom id 的引用改成 {type:"builtin", idx}——
+        引用协议是既有的（normArrange / resolveRef 原生支持），解析链路零改动；
+     ③ 收走：customs 删除这批型——从此预设库里不再有可删的示例型，
+        "删示例型弄坏示例曲"这条 bug 链在**数据层**关死。
+   ★ 用户变体的权衡：内容对不上但恰好叫示例当前名的型会被 ③ 收走——与 v2.19.1
+     "收敛回参考谱"是同一权衡（名字高度特异、变体请另存名字），此处沿用；
+     编辑器产物带"-副本"后缀（Editor.open 草稿名），不会命中任何兜底，安然无恙。
+   ★ 幂等：收走后 customs 不再含示例型，二次启动四级兜底全落空、零改动零写盘。
+   返回 { removed, remapped, idToIdx }：removed = 收走的型数、remapped = 重映射的块数、
+   idToIdx = custom id → 示例下标 0..4（调用方用它重映射 S.sel），零改动时 removed = 0。 */
+/** @param {any[]} customs @param {any[]} arranges @returns {any} */
+function migrateDemoToBuiltins(customs, arranges){
+  const idToIdx = /** @type {Map<string, number>} */ (new Map());
+  if (!Array.isArray(customs) || !Array.isArray(arranges)) return { removed: 0, remapped: 0, idToIdx };
+  for (let i = 0; i < DEMO_PRESETS.length; i++){
+    const c = demoCustomAt(customs, i);
+    if (c) idToIdx.set(c.id, i);
+  }
+  if (!idToIdx.size) return { removed: 0, remapped: 0, idToIdx };
+  let remapped = 0;
+  arranges.forEach(a => (a && Array.isArray(a.sections) ? a.sections : []).forEach(s =>
+    (s && Array.isArray(s.blocks) ? s.blocks : []).forEach(b => {
+      const r = b && b.ref;
+      if (r && r.type === "custom" && idToIdx.has(r.id)){
+        b.ref = { type: "builtin", idx: DEMO_BUILTIN_BASE + idToIdx.get(r.id) };
+        remapped++;
+      }
+    })));
+  for (let i = customs.length - 1; i >= 0; i--){
+    if (idToIdx.has(customs[i] && customs[i].id)) customs.splice(i, 1);
+  }
+  return { removed: idToIdx.size, remapped, idToIdx };
 }
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
@@ -2989,11 +3023,27 @@ const Store = (() => {
   window.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
   window.addEventListener("pagehide", flush);
 
-  /* 老数据一次性改名（v2.9.0）：示例型旧名 → 通用名（见 migrateDemoPatternNames）。
-     放在热/冷键拆分与写路径都就绪之后：此时 persistCold 及其失败/恢复回调均已定义，
-     且这是加载期的静默收敛——失败只走 warn，不该占用「保存失败」提示名额（同拆分迁移口径）。
-     幂等：迁移后名字不再命中旧前缀，二次启动改 0 条、不写盘 */
-  if (migrateDemoPatternNames(customs)) persistCold();
+  /* 老数据一次性内置化迁移（v2.20.0）：示例型收进内置库，customs 不再保留
+     （见 migrateDemoToBuiltins）。放在热/冷键写路径都就绪之后：此时 persistCold /
+     persistArranges 已定义、S 已建成（S.sel 要跟着重映射）、customs / arranges 已从
+     冷键装满——四者齐备，缺一就要出"迁了内存丢半截"的半迁移。
+     ★ S.sel 重映射：正选中某个示例自定义型的话同步改成内置下标——否则迁移完选中悬空
+       （resolveRef 落空 → 回退基本型，体验是"升个级选择丢了"）。
+     ★ S.migHint 顺手置位：老用户的自定义库从此转空，v1.3.0 那条"库空提示跨地址不共享"
+       会因 customs.length === 0 突然弹给他们看——他们早就在用，不是新手；置位消掉这声噪音。
+       （新用户首开仍照 v1.3.0 口径提示一次——t24 的既有契约。）
+     幂等：二次启动 customs 无示例型、迁移 0 改动、不写盘（removed=0 短路） */
+  {
+    const mig = migrateDemoToBuiltins(customs, arranges);
+    if (mig.removed){
+      if (S.sel.type === "custom" && mig.idToIdx.has(S.sel.id))
+        S.sel = { type: "builtin", idx: DEMO_BUILTIN_BASE + mig.idToIdx.get(S.sel.id) };
+      S.migHint = true;
+      persistCold();                     // customs 变更 → 冷键立即落盘（同删除路径的口径）
+      persistArranges();                 // 曲式块引用的重映射也在冷键里，一并落盘
+      persistHotNow();                   // S.sel / S.migHint 变了 → 热键立即落（不靠后续交互兜）
+    }
+  }
 
   /* ---- 预设导入导出 ----
      导出格式（v0.7.0 起 v:2，tick 制）：{app:"beatsight", kind:"presets", v:2, exportedAt,
@@ -7368,8 +7418,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (e.key === "Enter" || (!(opt && opt.enterOnly) && (e.key === " " || e.code === "Space"))){ e.preventDefault(); fn(); }
   };
   /* 「自定义」区（v2.9.0）：只放**曲式条目**（Store.arranges，含内置示例曲《在他乡》）。
-     ★ 与旧「示例曲分组」的区别：v2.9.0 把示例曲的 5 个节奏型并入了「扫弦」区（按内容认型
-       demoIndexOf），这里不再列节奏型，只列"整首怎么弹"的曲式条目——点一条 = 选中并立即
+     ★ 与旧「示例曲分组」的区别：v2.9.0 把示例曲的 5 个节奏型并入了「扫弦」区（按内容
+       判据 hasStrum；v2.20.0 起它们更是直接进了内置库），这里不再列节奏型，只列
+       "整首怎么弹"的曲式条目——点一条 = 选中并立即
        播放整首（见 playArrange：对任何曲式都成立，不再写死 DEMO_ID）。
      ★ 整首连播行 + 播放范围滑块挂在**当前选中的曲式**上（缺省取第一条）：它们是
        "这首歌有哪几段 / 现在播到哪 / 练哪一段到哪一段"的视图，只对正在用的那一条有意义
@@ -7868,15 +7919,17 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     return item;
   }
-  /* 示例曲还没带出来时，在列表底部给一句"怎么拿到它"的引导（v2.4.1）。
-     正常流程下 ensureDemo() 在启动时就补齐了，这里覆盖的是"用户删掉了示例节奏型"
+  /* 示例曲不在曲式库时，在列表底部给一句"怎么拿到它"的引导（v2.4.1；v2.20.0 改口径）。
+     正常流程下 ensureDemo() 在启动时就补齐了，这里覆盖的是"用户删掉了示例曲式"
      或"跨地址/清站点数据后冷键丢失"的场景——不给路径的话用户只能猜。
-     ★ v2.9.0：不再按轨判断显隐（轨模型已删）——示例型按内容落进「扫弦」区，
-       它"在不在库里"用内容认型（demoIndexOf）判定，与分区位置无关。 */
+     ★ v2.9.0：不再按轨判断显隐（轨模型已删）。
+     ★ v2.20.0：原先还有一条"示例型还在库里 → 不提示"的豁免（demoIndexOf 认型）——
+       型已内置、恒在，豁免对象不复存在，条件整体删除。行为变化：用户主动删曲式后
+       侧栏会亮出「恢复示例曲」——恰好补上"删了想找回来"的显式入口（启动层仍不会
+       自动复活它，尊重删除的口径不变，见 demoStale 注释）。 */
   /** @param {HTMLElement} list */
   function buildDemoNoteIfNeeded(list){
     if (Store.arranges.some(x => x.id === DEMO_ID)) return;    // 已在库里：不需要提示
-    if (customs.some((/** @type {any} */ c) => demoIndexOf(c) >= 0)) return;   // 型还在（只是曲式被删）
     const note = document.createElement("div");
     note.className = "sidebar-note";
     note.id = "demoRestoreNote";
@@ -9475,86 +9528,63 @@ const Arrange = (() => {
   }
   const isOpen = () => $("arrangeOverlay").classList.contains("open");
 
-  /* 载入示例《在他乡》（v2.3.0）：一键生成 5 个节奏型预设 + 整首曲式 + 10 段歌词。
-     幂等：曲式库已有同名曲式就只提示、不重复建（预设按内容 + 下标查重，删过曲式留下预设的场景
-     也不会重复）。引用按**内容 + 下标**解成 custom id（v2.9.0：名字已通用化，不再当命名空间）。
+  /* 载入示例《在他乡》（v2.3.0）：一键带出整首曲式 + 10 段歌词。
+     幂等：曲式库已有固定 id 的示例曲式就原样覆盖（内容来自规范谱，恒一致），不重复建。
 
      v2.4.1 拆两半：ensureDemo() 只做"确保数据齐全"（无提示、无 UI 副作用、幂等），
      loadDemo() 在其上加"打开并选中它"的交互。拆的理由是自动带出（init 时静默补齐）
-     与手动重载（按钮/胶囊）要共用同一份建库逻辑——两处各写一遍必然漂移。
-     ★ 返回 {ok, id, created}：created=false 表示数据早就在（幂等命中） */
+     与手动重载（侧栏「恢复示例曲」）要共用同一份建库逻辑——两处各写一遍必然漂移。
+     ★ v2.20.0：5 个示例型已并入内置库（DEMO_BUILTIN_BASE…+4）——不再 importPresets
+       落库，也不再收敛内容：内置型内容**恒等于**规范谱，"旧型 + 新曲式"这类混杂态
+       （v2.6.4 的 120 小节）在数据层已不可能发生。老冷键里的示例 custom 由
+       migrateDemoToBuiltins 在启动期一次性收走，不经过这里。
+       本函数只剩一件事：把曲式带出来，块引用**内置下标**（normArrange / resolveRef
+       对 {type:"builtin", idx} 的支持是既有的，解析链路零改动）。
+     ★ 返回 {ok, id}（v2.20.0 起去掉 created/updated：它们描述的是"落库预设"的增减，
+       那件事已不存在；幂等与否由曲式库现状直接可见） */
   function ensureDemo(){
     const spec = demoBuildSpec();
-    /* ★ v2.4.1 关键修复：导入预设后必须刷新**侧栏预设列表**。
-       importPresets 只落数据（Store 不该知道列表怎么画），旧实现的 loadDemo 只调了
-       本 overlay 的 arrangeRender()/refreshBar()——两者都不碰侧栏。后果：5 个节奏型进了
-       beatsight.customs（16 KB 数据确实写进去了），但侧栏列表一动不动，
-       用户在预设库里根本看不到它们，"换个节奏型"变成一件做不到的事。
-       这正是 importPresets 不重建列表这个老坑（v2.4.1 修复的同一类），此处收口。 */
-    let created = false;
-    /* v2.9.0：认型改按**内容 + 下标**（demoCustomAt），不再按名字——名字已改成通用名，
-       与用户自建型可能重名；同一台机器上"旧型 + 新曲式"的混杂态也唯有比内容才分得清 */
-    const missing = spec.presets.filter((p, i) => !demoCustomAt(Store.customs, i));
-    if (missing.length){
-      const r = Store.importPresets(JSON.stringify(missing));
-      if (!r.ok) return { ok: false, error: r.error, id: "" };
-      created = true;
-    }
-    /* v2.6.4：同名还要**比内容**——名字从 v2.4.4 起没变过，内容却从「4 小节型」换成过
-       「1 小节型」（v2.6.0）。只按名查重会把"旧型 + 新曲式"的混杂态判成"数据齐全"
-       （整首连播 120 小节就是这么来的）。就地改内容而**保住 id**——曲式块按 id 引用，
-       换 id 会把整首曲式打成坏引用。用户改过的示例型同样收敛回参考谱（变体请另存名字） */
-    let updated = 0;
-    spec.presets.forEach((p, i) => {
-      const c = demoCustomAt(Store.customs, i);
-      if (c && !demoPresetEq(c, p)){
-        c.meter = p.meter;
-        c.bars = JSON.parse(JSON.stringify(p.bars));
-        updated++;
-      }
-    });
-    if (updated) Store.persistCold();            // customs 变更 → 冷键立即落盘（同删除路径的口径）
-    /* 曲式块按 **presets 下标**（b.refIdx）解成落在库里的 custom id（v2.9.0）。
-       此前按名解（b.refName）——名字已通用化，不能再当命名空间 */
-    /** @param {number} i @returns {string} */
-    const idAt = i => { const c = demoCustomAt(Store.customs, i); return c ? c.id : ""; };
-    const exist = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
     /* v2.6.0（第 Ⅳ 期）：**逐块**映射，不再只取 blocks[0]。
        示例曲改成逐小节谱之后，「收束」「收尾」两段各有 **2 个块**（P2×1 + P1×1），
        只映射第一块会把第二块整块丢掉——段长从 2 小节缩成 1 小节，而歌词还是 2 行，
-       表现为"最后一句没声音/对不上"。 */
+       表现为"最后一句没声音/对不上"。
+       块引用 = DEMO_BUILTIN_BASE + refIdx：refIdx 是规范谱 presets 的下标（0..4），
+       与内置库挂载顺序一一对应（挂载处注释），下标加法是两条常量数组的同序契约 */
     const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
       sections: spec.arrange.sections.map(s => ({ name: s.name,
-        blocks: s.blocks.map(b => ({ ref: { type: "custom", id: idAt(b.refIdx) }, repeats: b.repeats })) })) });
-    if (!v) return { ok: false, error: "示例曲式未通过结构校验——请检查示例节奏型是否都在。", id: "" };
+        blocks: s.blocks.map(b => ({ ref: { type: "builtin", idx: DEMO_BUILTIN_BASE + b.refIdx },
+          repeats: b.repeats })) })) });
+    if (!v) return { ok: false, error: "示例曲式未通过结构校验。", id: "" };
     spec.lyrics.forEach((chars, i) => Store.upsertLyric(v.id, i, chars));
     Store.persist();
-    /* 预设列表在两种情况下都要刷：新建了预设（列表多 5 项）、或只是补了曲式
-       （列表不变但选中态/计数可能变）。统一刷一次，不分支——分支正是漏刷的来源。
+    /* 曲式新建 / 歌词补齐都会改变「自定义」区内容与选中态/计数——统一刷一次列表，
+       不分支（分支正是漏刷的来源，v2.4.1 的教训）。
        Presets 是顶层 const（本模块声明顺序在其后，运行时已初始化），直接按名引用 */
     Presets.refreshAfterPatternChange();
-    return { ok: true, id: v.id, created, updated, spec };
+    return { ok: true, id: v.id };
   }
-  /* 示例数据「还在，但内容对不上谱面」检测（v2.6.4）。
+  /* 示例曲式「还在，但结构对不上谱面」检测（v2.6.4；v2.20.0 改口径）。
      ★ 为什么需要它：带出闩 beatsight.demoSeeded 记的是"建没建过"，不是"内容对不对"。
-       v2.6.0 把示例换成逐小节谱后，旧机器上能稳定存在两种落后态——
-       旧型 + 旧曲式（44 小节）、旧型 + 新曲式（30×4 = 120 小节，用户实拍核对参考页抓到）。
+       旧版要抓"型内容落后"（44 / 120 小节混杂态）；v2.20.0 示例型进内置库后型内容
+       恒对，检查收成两条——
+       ① 曲式结构：逐段的块跨度总小节数与谱面不符；
+       ② 坏引用：块引用的 custom 型不存在（v2.19.x 及之前"删示例型"留下的坏块；
+          也覆盖用户删过别的被引用自定义型的场景）。任一命中 → 侧栏亮出
+          「恢复示例曲」入口（ensureDemo 重建后引用全为内置下标，坏块一并治愈）。
      ★ 曲式被删返回 false：那是用户**主动不要它**——本函数只负责"收敛"，
        不负责"复活"（复活走侧栏「恢复示例曲」的手动入口，那才是"我要它回来"的明确意图） */
   function demoStale(){
     const spec = demoBuildSpec();
     const ar = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
     if (!ar) return false;
-    /* ① 示例型：缺型，或内容对不上（旧 4 小节型） */
-    const patBad = spec.presets.some((p, i) => {
-      const c = demoCustomAt(Store.customs, i);
-      return !c || !demoPresetEq(c, p);
-    });
-    if (patBad) return true;
-    /* ② 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓） */
+    /* ① 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓） */
     if (ar.sections.length !== spec.arrange.sections.length) return true;
-    return ar.sections.some((s, i) =>
-      secBars(s) !== spec.arrange.sections[i].blocks.reduce((n, b) => n + b.repeats, 0));
+    if (ar.sections.some((s, i) =>
+      secBars(s) !== spec.arrange.sections[i].blocks.reduce((n, b) => n + b.repeats, 0))) return true;
+    /* ② 坏引用：解析不到的 custom id（resolveRef 对 builtin 下标恒有值，custom 才可能落空；
+       内置下标越界 = 谱面/版本错位，同样按坏算——BUILTINS[idx] 为 undefined） */
+    return ar.sections.some(s => (s.blocks || []).some(b =>
+      b && b.ref && resolveRef(b.ref) === undefined));
   }
   /** 手动载入：确保数据 + 选中该曲式 + 播报。幂等命中时给一句"已在库里"的提示 */
   function loadDemo(){
@@ -9569,7 +9599,7 @@ const Arrange = (() => {
     if (already){
       Modal.uiAlert("示例《在他乡》已在曲式库里——已在左侧列表为你选中它。");
     } else {
-      announce("已载入示例《在他乡》：5 个节奏型 + 全曲 10 段歌词");
+      announce("已载入示例《在他乡》：全曲 10 段 + 逐字歌词（节奏型为内置，无需另装）");
     }
   }
   /* v2.4.1：「载入示例」按钮已删除——示例改为启动时自动带出（见装配层的 Arrange.ensureDemo()），
@@ -10202,8 +10232,9 @@ Controls.setSwing(S.swing, false);
 Controls.setTimbre(S.timbre, false);
 /* 示例曲《在他乡》首次带出（v2.4.1）：**只在第一次打开时**静默补齐 5 个节奏型 +
    整首曲式，让预设库首位恒有它——用户不必再去点一个按钮。
-   ★ 为什么加"已带出过"的闩而不无条件 ensureDemo()：示例 = 5 个节奏型 + 1 首曲式 + 10 行歌词，
-     是一份**别人的**曲目。每次启动都补齐，等于用户主动删掉后下次打开它又回来了——
+   ★ 为什么加"已带出过"的闩而不无条件 ensureDemo()：示例 = 1 首曲式 + 10 行歌词
+     （v2.20.0 起 5 个节奏型已内置、不再占自定义库），是一份**别人的**曲目。
+     每次启动都补齐，等于用户主动删掉后下次打开它又回来了——
      那不是"贴心的默认素材"，而是"删不掉的东西"。口径：首次打开静默带出一次并落闩；
      之后无论用户删不删都不再自动写（想找回来走侧栏的「恢复示例曲」手动入口）。
    ★ 必须在下面的 Presets.refreshAfterPatternChange() **之前**：首次渲染就要包含示例，

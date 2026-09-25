@@ -193,7 +193,8 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
   /* 判据用**每行的扫弦箭头数**（= 该行属于哪个型）：5 个型各是 16 格谱，
      但标记数不同 —— P1=16、P2=14、P3=14、P4=10、P5=16。于是"箭头数"就是型的指纹。 */
   const { beat, els } = loadApp(undefined, { seedDemo: false });
-  eq(beat.Store.customs.length, 5, "前提：示例曲的 5 个单小节型已带出");
+  /* ★ v2.20.0：示例 5 型已内置化（customs 恒空）——带出与否改判内置库尾部 */
+  eq(beat.BUILTINS.length, 17, "前提：示例曲的 5 个单小节型已内置（BUILTINS 12+5=17）");
   const arrowsOf = () => els["viz"].children
     .filter(el => /(^| )bar-row( |$)/.test(el.className))
     .map(r => {

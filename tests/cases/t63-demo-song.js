@@ -7,13 +7,17 @@
    逐小节谱：段长 = 该段真实小节数（v2.6.0 起不再垫到 4 的倍数）。
 
    v2.4.1 起入口变了：overlay 里的「载入示例」按钮已删，改由 init 期的
-   Arrange.ensureDemo() 自动把 5 个节奏型 + 曲式 + 歌词带出来（预设库自动带出）。
+   Arrange.ensureDemo() 自动把曲式 + 歌词带出来（预设库自动带出）。
    所以本组不再点按钮，而是直接调确保入口，并补一条"自动带出、无需手动点"的断言。
-   v2.9.0：5 个型改通用名并并入「扫弦」区，曲式条目落在「自定义」区。 */
+   v2.9.0：5 个型改通用名并并入「扫弦」区，曲式条目落在「自定义」区。
+   v2.20.0：5 个示例型并入内置库（BUILTINS 尾部 5 项）——曲式块直接引用内置下标，
+   自定义库（customs）不再容纳示例型，"删示例型弄坏示例曲"在数据层关死。 */
 "use strict";
 const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
 
-const pByName = (beat, nm) => beat.Store.customs.find(c => c.name === nm);
+/* v2.20.0：示例 5 型已内置化（BUILTINS 尾部 5 项），不再落 customs——按名取型改查内置库 */
+const demoBuiltins = beat => beat.BUILTINS.slice(-5);
+const pByName = (beat, nm) => beat.BUILTINS.find(c => c.name === nm);
 const charAt = (beat, sec, ch) => beat.lyricCharsAt(beat.DEMO_ID, sec).find(c => c.ch === ch);
 /* 「带出示例」的入口：v2.4.1 无按钮，走确保函数（幂等，可重复调） */
 const bringDemo = beat => beat.Arrange.ensureDemo();
@@ -25,15 +29,18 @@ const firstRun = () => loadApp(undefined, { seedDemo: false });
 section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
 {
   const { beat, els } = firstRun();
-  /* ★ v2.4.1：init 期就自动带出——不点任何按钮，示例已经在库里 */
-  eq(beat.Store.customs.length, 5, "★ 打开页面即自动带出 5 个示例节奏型（无需手动载入）");
+  /* ★ v2.4.1：init 期就自动带出——不点任何按钮，示例已经在库里
+     ★ v2.20.0：示例 5 型并入内置库（BUILTINS 12→17），自定义库（customs）保持空——
+       "自动带出"不再往用户的自定义库里塞 5 条可删数据 */
+  eq(beat.BUILTINS.length, 17, "★ 内置库 12 + 示例 5 = 17（示例型已并入 BUILTINS）");
+  eq(beat.Store.customs.length, 0, "★ 自定义库保持空——示例型不再是可删的自定义条目");
   ok(!!beat.Store.findArrange(beat.DEMO_ID), "★ 曲式也自动落库");
   eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 10, "★ 歌词行一并带出（10 行）");
   beat.Arrange.open();
   const r = bringDemo(beat);
-  ok(r && r.created === false, "★ 再次确保时认得已有数据（created=false，不重复建）");
+  ok(r && r.ok === true, "★ 再次确保时幂等通过（ok=true，曲式/歌词原样在库）");
   ok(beat.Store.demoSeeded(), "★ 带出后闩已落（下次启动不会再来一遍）");
-  eq(beat.Store.customs.length, 5, "生成 5 个示例节奏型（《在他乡》的 5 个单小节扫弦型）");
+  eq(beat.BUILTINS.length, 17, "示例 5 型在内置库（《在他乡》的 5 个单小节扫弦型）");
   const a = beat.Store.findArrange(beat.DEMO_ID);
   ok(!!a, "曲式落库（固定 id）");
   eq(a.sections.length, 10, "全曲 10 段（行=段）");
@@ -115,17 +122,19 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   beat.Arrange.open();
   bringDemo(beat);
   const p1 = pByName(beat, "十六分满扫（《在他乡》前奏）");
-  eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 1 }),
+  /* ★ v2.20.0：型来自内置库（demoBar 产出的规范形）——实扫格不带 rest 键
+     （undefined 与 false 在 demoPresetEq 的 canon 里同值，语义等价） */
+  eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, dir: "D", zone: 1 }),
      "P1 格0 = 全部弦下扫（F→zone1，谱面 ↓ 存 D）");
   eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U" }),
      "P1 格1 = 空扫上扫（蓝括号：rest+dir，不带 zone）");
-  eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, rest: false, dir: "D", zone: 0 }),
+  eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, dir: "D", zone: 0 }),
      "P1 格6 = 低音弦区下扫（B→zone0）");
   const p4 = pByName(beat, "前密后疏扫（《在他乡》主歌二）");   // v2.19.1：P4 旧名「雨夜扫弦」改为特征名
   eq(JSON.stringify(p4.bars[0][8]), JSON.stringify({ t: 12, rest: true }),
      "★ 无动作格 = 纯休止（无 dir 无 zone，与空扫区分开）");
-  ok(beat.Store.customs.every(c => c.bars.length === 1
-      && c.bars[0].reduce((s, x) => s + x.t, 0) === 192), "★ 5 个型各是**1 小节**、恰好 192 tick");
+  ok(demoBuiltins(beat).every(c => c.bars.length === 1
+      && c.bars[0].reduce((s, x) => s + x.t, 0) === 192), "★ 5 个示例型各是**1 小节**、恰好 192 tick");
   /* 收束不再是"组合型"：它是**两小节、两块**（v2.6.0 第 Ⅳ 期的核心改动）。
      原先那个 4 小节的「收束」型就是"把 4 小节循环硬套到逐小节谱上"的产物 */
   const a4 = beat.Store.findArrange(beat.DEMO_ID);
@@ -134,7 +143,7 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   eq(JSON.stringify(a4.sections[9].blocks.map(b => b.repeats)), JSON.stringify([1, 1]),
      "★ 「你忍不住的」段同理 = 2 块各 1 遍");
   eq(beat.secBars(a4.sections[3]), 2, "收束段长 = 2 小节（原先垫成 4）");
-  eq(beat.Store.customs.some(c => c.name.includes("收束")), false,
+  eq(beat.BUILTINS.some(c => c.name.includes("收束")), false,
      "★ 「收束」不再是独立型（它本就是两个相邻小节各用一个型）");
   beat.Arrange.close();
 }
@@ -147,15 +156,16 @@ section("T63c 示例载入 · 重复调不重复建 / 预设残留可复用");
   /* v2.4.1：init 已带出过一次，这里再调两次，验幂等 */
   const r2 = bringDemo(beat);
   const r3 = bringDemo(beat);
-  eq(r2.created, false, "★ 第二次调认得出已有数据（不是静默重复建）");
-  eq(r3.created, false, "第三次同理");
-  eq(beat.Store.customs.length, 5, "★ 预设没翻倍");
+  eq(r2.ok, true, "★ 第二次调幂等通过（不是静默重复建）");
+  eq(r3.ok, true, "第三次同理");
+  eq(beat.Store.customs.length, 0, "★ 自定义库保持空（示例型已内置，没有可翻倍的东西）");
+  eq(beat.BUILTINS.length, 17, "内置库仍是 17（内置型不可能被翻倍）");
   eq(beat.Store.arranges.length, 1, "曲式没翻倍");
   eq(beat.Store.lyrics.length, 10, "歌词行没翻倍");
-  /* 用户删了曲式但留了预设：再带出时按名复用旧预设，不新建 */
+  /* 用户删了曲式：再带出时按固定 id 重建，引用直接落内置下标 */
   beat.Store.deleteArrange(beat.DEMO_ID);
   bringDemo(beat);
-  eq(beat.Store.customs.length, 5, "★ 预设按名查重复用（仍是 5 个）");
+  eq(beat.Store.customs.length, 0, "★ 重建不往自定义库塞东西（v2.20.0 起示例型恒内置）");
   ok(!!beat.Store.findArrange(beat.DEMO_ID), "曲式重建");
   eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 10, "歌词随曲式重建");
   beat.Arrange.close();

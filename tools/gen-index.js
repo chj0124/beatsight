@@ -133,7 +133,13 @@ function rewrite(src){
     const oldTok = "L" + e.line;
     const newTok = "L" + b.line;
     const delta = newTok.length - oldTok.length;            // 位数变化 → 吃掉/补上等量空格
-    const gap = /^L\d+(\s+)/.exec(e.raw);
+    /* v2.20.0 修复：去掉 `^` 锚。索引条目行以**缩进空格**开头，`^L\d+` 从行首锚定
+       永远匹配失败 → 恒走默认 "  " 兜底 → replace(oldTok+"  ") 对"L 后只有 1 个空格"
+       的条目（目前唯一的是 5 位数行号的初始化条目——短名列对齐补偿吃掉了 1 格）
+       **静默不写**：--write 报"已回写 N 条"、诊断却原样再打印一遍（修法自指的死循环，
+       与 v2.8.8 修掉的负号死循环同族——都是"diff 报得出、rewrite 修不进"）。
+       锚定到 L 记号本身（不含行首缩进）才是 gap 的本意。 */
+    const gap = /L\d+(\s+)/.exec(e.raw);
     const spaces = gap ? gap[1] : "  ";
     const fixed = delta > 0
       ? (spaces.length > delta ? spaces.slice(delta) : "")
