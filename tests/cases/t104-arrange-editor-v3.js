@@ -2,8 +2,8 @@
    T104 系列（PLAN-v3 阶段二 S3）。
    ---------------------------------------------------------------------------
    契约锚点（与 index.html buildSecRow / arrangeRender 的注释同源）：
-     · ⤒/⤓ = splice + unshift/push（一步到首/尾）；首段的 ⤒ 与末段的 ⤓ disabled；
-       新钮**追加在 ✕ 之后**（t54 按裸下标定位 ↑/↓/✕，插前面会挪位）；测试用 aria-label 定位；
+     · v2.30.0（S1）起重排/删除收进段行的 ⋯ 菜单（.arg-sec-menu，挂段行末尾），
+       ops 常显 [起, 终, ▶, ⋯]；菜单项全文字标签，测试按 aria-label 定位；
      · 候选区：三区组织（节拍/扫弦/自定义，判据与侧栏同一份 hasStr）+ **当前型置顶**（带 ✓）；
        当前型在原分区里不再重复出现；点当前型 = 空操作（结构逐位不变）；
      · 逐段试听 ▶：范围 = 该段起止小节 + loop:false + playQuota = 段小节数（听辨训练那套
@@ -22,6 +22,12 @@ const seed3 = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
 const rows = els => els["argSections"].children;
 const opsOf = (els, i) => rows(els)[i].children[3];
 const btnByAria = (els, i, re) => Array.prototype.find.call(opsOf(els, i).children, b => re.test(b.getAttribute("aria-label") || ""));
+/* v2.30.0（S1）：重排/删除在段行的 ⋯ 菜单里——先点 ⋯ 展开（触发 arrangeRender，
+   元素全部重建，所以"点"与"找"每步都重新取当前元素），再在菜单行里按 aria 找 */
+const moreBtn = (els, i) => btnByAria(els, i, /更多段操作/);
+const menuOf = (els, i) => Array.prototype.find.call(rows(els)[i].children, c => /(^| )arg-sec-menu( |$)/.test(c.className));
+const openMenu = (els, i) => { moreBtn(els, i).fire("click"); return menuOf(els, i); };
+const menuItem = (menu, re) => menu && Array.prototype.find.call(menu.children, b => re.test(b.getAttribute("aria-label") || ""));
 const names = beat => beat.Store.findArrange("t104").sections.map(s => s.name).join("");
 
 /* ================= 场景 T104a：移到首 / 尾 ================= */
@@ -34,17 +40,24 @@ section("T104a 移到首尾 · 一步到位 / 边界禁用 / 歌词（uid 键）
   beat.Arrange.open();
   eq(names(beat), "A段B段C段", "前提：A/B/C");
 
-  eq(opsOf(els, 0).children.length, 8, "★ 操作钮 8 颗（起/终/↑/↓/✕/⤒/⤓/▶）——新钮追加在 ✕ 之后，既有下标不动");
-  eq(opsOf(els, 0).children[2].getAttribute("aria-label"), "上移第 1 段", "★ 下标 2 仍是「↑」（t54 的裸下标定位不破）");
-  eq(btnByAria(els, 2, /移到最前/).disabled, false, "★ 末段的「⤒」可用（往前移总有意义）");
-  eq(btnByAria(els, 2, /移到最后/).disabled, true, "★ 末段的「⤓」禁用（已在最后）");
-  eq(btnByAria(els, 0, /移到最前/).disabled, true, "★ 首段的「⤒」禁用（已在最前）");
+  eq(opsOf(els, 0).children.length, 4, "★ ops = [起, 终, ▶, ⋯] 4 颗（重排/删除收进 ⋯ 菜单，v2.30.0 S1）");
+  eq(opsOf(els, 0).children[2].getAttribute("aria-label"), "试听第 1 段（只放这一段一遍）", "★ 下标 2 是「▶ 试听」（动作钮常显）");
+  /* 菜单边界禁用（原 ⤒/⤓ 的 disabled 口径不变，只是从 ops 搬进了菜单） */
+  const m2 = openMenu(els, 2);
+  eq(menuItem(m2, /移到最前/).disabled, false, "★ 末段的「移到最前」可用（往前移总有意义）");
+  eq(menuItem(m2, /移到最后/).disabled, true, "★ 末段的「移到最后」禁用（已在最后）");
+  moreBtn(els, 2).fire("click");                      // 收起末段菜单
+  const m0 = openMenu(els, 0);
+  eq(menuItem(m0, /移到最前/).disabled, true, "★ 首段的「移到最前」禁用（已在最前）");
+  moreBtn(els, 0).fire("click");                      // 收起
 
-  btnByAria(els, 2, /移到最前/).fire("click");         // C 段提到最前
+  openMenu(els, 2);
+  menuItem(menuOf(els, 2), /移到最前/).fire("click"); // C 段提到最前
   eq(names(beat), "C段A段B段", "★ 一步到首（splice + unshift，不是只挪一位）");
   eq(St.findLyric("t104", "uA").chars[0].ch, "一", "A 段的词仍挂 A 段（uid 跟着段走）");
 
-  btnByAria(els, 0, /移到最后/).fire("click");         // C 段再丢到最后
+  openMenu(els, 0);
+  menuItem(menuOf(els, 0), /移到最后/).fire("click"); // C 段再丢到最后
   eq(names(beat), "A段B段C段", "一步到尾");
   eq(St.findLyric("t104", "uB").chars[0].ch, "二", "B 段的词仍挂 B 段");
   beat.Arrange.close();

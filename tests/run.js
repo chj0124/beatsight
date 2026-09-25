@@ -78,6 +78,7 @@ const CASE_FILES = [
   "./cases/t103-lyric-sec-uid",         // v2.26.0：G3 段稳定 uid（歌词按段绑定 / 段挪位词跟着走 / 旧冷键迁移）
   "./cases/t104-arrange-editor-v3",     // v2.27.0：G2/G4 编辑效率（移到首尾 / 块候选三区+置顶 / 逐段试听到点停）
   "./cases/t105-arrange-templates",     // v2.27.0：模板新建 + 复制曲式（四条路纯数据预填 / 副本深拷贝 / 不带词）
+  "./cases/t106-sec-card",              // v2.30.0：S1 骨架重排（段操作 ⋯ 菜单 / 曲式级 ⋯ 菜单 / 与候选互斥 / 残影防御）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

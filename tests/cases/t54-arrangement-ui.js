@@ -6,10 +6,10 @@
    **播放行为本身由 T53 守**，这里不重复。
 
    行内结构（与 Arrange 的 arrangeRender 对应，改 UI 时这两边要一起动）：
-     .arg-sec    → [段号, input.arg-name, .arg-blocks, .arg-ops]
+     .arg-sec    → [段号, input.arg-name, .arg-blocks, .arg-ops, 歌词轨(, ⋯ 菜单-展开时)]
      .arg-blocks → N × .arg-block + 一个「+ 块」
      .arg-block  → [预设名 span, input.arg-reps(遍数), 「换」, 「✕」]
-     .arg-ops    → [起, 终, ↑, ↓, ✕]
+     .arg-ops    → [起, 终, ▶, ⋯]（v2.30.0 S1：重排/删除收进 ⋯ 菜单，菜单项按 aria 定位）
    「沙箱不支持 <select>」是这套"小按钮直接设在段行上"的原因之一，别改成下拉。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -24,7 +24,7 @@ const seeded = () => loadApp({ "beatsight.arranges": JSON.stringify({ v: 1, arra
   A("a1", "练习曲", [SEC("主歌", BL(0, 2)), SEC("副歌", BL(2, 1), BL(4, 1))]),
 ]}) });
 /* 下标速查（改 UI 时对照）：
-     .arg-ops   = [起0, 终1, ↑2, ↓3, ✕4]
+     .arg-ops   = [起0, 终1, ▶2, ⋯3]（v2.30.0 S1 起；↑/↓/移到首尾/删除 在 ⋯ 菜单里，按 aria 找）
      .arg-block = [名0, 遍数1, 单位2, 换3, ✕4]（"单位"也是元素，所以换/✕ 都在 +1 位）
      .arg-blocks = N × .arg-block + 一个「+ 块」（在最后） */
 const secRows = els => els["argSections"].children;
@@ -108,29 +108,48 @@ section("T54c 曲式 UI · 段落：改名 / 加段 / 上移下移 / 删除");
   /* 加段 */
   els["argAddSec"].fire("click");
   eq(secRows(els).length, 3, "加了一段");
-  eq(secRows(els)[2].children[3].children[3].disabled, true, "★ 最后一段的「↓」禁用");
-  eq(secRows(els)[0].children[3].children[2].disabled, true, "★ 第一段的「↑」禁用");
+  /* v2.30.0（S1）：↑/↓/移到首尾/删除收进段行的 ⋯ 菜单——ops 只剩 4 颗（起/终/▶/⋯）。
+     断言口径变更说明：这不是回归，是操作面板从"8 钮平铺"改成"4 钮 + ⋯ 菜单"的结构性重排
+     （低频操作进菜单、动作钮常显），既有裸下标定位（children[2]=↑、children[4]=✕）同步迁到
+     「开菜单 + aria 定位」。菜单行挂段行末尾（children[5]，歌词轨 children[4] 不挪位）。 */
+  const moreBtn = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children[3].children,
+    b => /更多段操作/.test(b.getAttribute("aria-label") || ""));
+  const menuOf = (els2, i) => Array.prototype.find.call(secRows(els2)[i].children,
+    c => /(^| )arg-sec-menu( |$)/.test(c.className));
+  const menuItem = (menu, re) => menu && Array.prototype.find.call(menu.children,
+    b => re.test(b.getAttribute("aria-label") || ""));
+  moreBtn(els, 2).fire("click");                          // 展开「⋯」
+  eq(menuItem(menuOf(els, 2), /下移第 3 段/).disabled, true, "★ 最后一段的「下移」禁用");
+  moreBtn(els, 2).fire("click");                          // 收起（再点一次 = toggle）
+  ok(!menuOf(els, 2), "★ 再点 ⋯ = 菜单收起");
+  moreBtn(els, 0).fire("click");
+  eq(menuItem(menuOf(els, 0), /上移第 1 段/).disabled, true, "★ 第一段的「上移」禁用");
 
-  /* 上移：把第 3 段移到第 2 位 */
+  /* 上移：把第 3 段移到第 2 位（菜单里的「上移」） */
   const before = beat.Store.arranges[0].sections.map(s => s.name);
-  secRows(els)[2].children[3].children[2].fire("click");   // ↑（index 2；index 1 是「终」，别点错）
+  moreBtn(els, 2).fire("click");                          // 重新展开第 3 段菜单
+  menuItem(menuOf(els, 2), /上移第 3 段/).fire("click");
   const after = beat.Store.arranges[0].sections.map(s => s.name);
   eq(after[1], before[2], "上移生效（原第 3 段到第 2 位）");
   eq(after[2], before[1], "被顶下去的是原第 2 段");
   eq(after.length, 3, "段数不变（是移动不是复制）");
+  ok(!menuOf(els, 2), "★ 菜单动作后自动收起（不残留到下一次渲染）");
 
-  /* 删除：走确认弹窗 */
-  secRows(els)[0].children[3].children[4].fire("click");   // ✕
+  /* 删除：走确认弹窗（菜单里的「删除段」） */
+  moreBtn(els, 0).fire("click");
+  menuItem(menuOf(els, 0), /删除第 1 段/).fire("click");
   eq(beat.Modal.isOpen(), true, "删除要确认（不是点了就没）");
   els["modalOk"].fire("click");
   eq(secRows(els).length, 2, "确认后删掉一段");
 
   /* 只剩一段时不允许再删 */
-  secRows(els)[0].children[3].children[4].fire("click");
+  moreBtn(els, 0).fire("click");
+  menuItem(menuOf(els, 0), /删除第 1 段/).fire("click");
   eq(beat.Modal.isOpen(), true, "还能删（当前 2 段）");
   els["modalOk"].fire("click");
   eq(secRows(els).length, 1, "剩 1 段");
-  eq(secRows(els)[0].children[3].children[4].disabled, true, "★ 只剩一段时「✕」禁用（一首曲式至少 1 段）");
+  moreBtn(els, 0).fire("click");
+  eq(menuItem(menuOf(els, 0), /删除第 1 段/).disabled, true, "★ 只剩一段时「删除段」禁用（一首曲式至少 1 段）");
   beat.Arrange.close();
 }
 
@@ -297,7 +316,11 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   eq(beat.Store.arranges.length, 2, "两条曲式");
   const victim = beat.Store.arranges[1].id;
 
-  els["argDel"].fire("click");
+  /* v2.30.0（S1）：「删除」从顶栏按钮收进曲式级 ⋯ 菜单（断言口径变更说明见 T54c） */
+  els["argLibMore"].fire("click");
+  const libMenu = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
+  Array.prototype.find.call(libMenu.children,
+    b => /删除当前曲式/.test(b.getAttribute("aria-label") || "")).fire("click");
   eq(beat.Modal.isOpen(), true, "★ 删整条曲式要确认（不是点了就没）");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 1, "确认后删掉一条");
@@ -315,7 +338,10 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   beat.Controls.stop();                               // 停下但 playMode 仍是 arrange
   beat.Arrange.open();
   els["argList"].children[0].fire("click");
-  els["argDel"].fire("click");
+  els["argLibMore"].fire("click");
+  const libMenu2 = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
+  Array.prototype.find.call(libMenu2.children,
+    b => /删除当前曲式/.test(b.getAttribute("aria-label") || "")).fire("click");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 0, "库已空");
   eq(S.playMode, "preset", "★ 删掉正在播的曲式 → 回落预设模式（不会对着空 id 播）");

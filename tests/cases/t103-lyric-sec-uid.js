@@ -31,10 +31,21 @@ const seedWords = app => {
   St.upsertLyric("t103", "uB", [{ t: 0, dur: 24, ch: "二" }]);
   St.upsertLyric("t103", "uC", [{ t: 0, dur: 24, ch: "三" }]);
 };
-/* 段行结构：[段号, 段名, 块列, 操作钮, 歌词轨]；操作钮 = [起, 终, ↑, ↓, ✕] */
+/* 段行结构：[段号, 段名, 块列, 操作钮, 歌词轨(, ⋯ 菜单-展开时)]；
+   操作钮 = [起, 终, ▶, ⋯]（v2.30.0 S1：↑/↓/✕ 收进 ⋯ 菜单，按 aria 定位）。
+   断言口径变更说明：这不是回归，是操作面板"8 钮平铺 → 4 钮 + 菜单"的结构性重排；
+   本组盯的 uid 契约与操作路径无关，助手的迁移不影响断言内容。 */
 const opsOf = (app, i) => app.els["argSections"].children[i].children[3];
-const clickDown = (app, i) => opsOf(app, i).children[3].fire("click");
-const clickUp = (app, i) => opsOf(app, i).children[2].fire("click");
+const moreBtn = (app, i) => Array.prototype.find.call(opsOf(app, i).children,
+  b => /更多段操作/.test(b.getAttribute("aria-label") || ""));
+const menuOf = (app, i) => Array.prototype.find.call(app.els["argSections"].children[i].children,
+  c => /(^| )arg-sec-menu( |$)/.test(c.className));
+const menuItem = (app, i, re) => {
+  const m = menuOf(app, i);
+  return m && Array.prototype.find.call(m.children, b => re.test(b.getAttribute("aria-label") || ""));
+};
+const clickDown = (app, i) => { moreBtn(app, i).fire("click"); menuItem(app, i, /下移第 /).fire("click"); };
+const clickUp = (app, i) => { moreBtn(app, i).fire("click"); menuItem(app, i, /上移第 /).fire("click"); };
 const names = app => app.beat.Store.findArrange("t103").sections.map(s => s.name).join("");
 const uids = app => app.beat.Store.findArrange("t103").sections.map(s => s.uid).join(",");
 
@@ -93,7 +104,8 @@ section("T103b 段稳定 uid · 删中间段：被删段的词不再现身，后
   seedWords(app);
   const St = app.beat.Store;
   app.beat.Arrange.open();
-  opsOf(app, 1).children[4].fire("click");      // 删 B 段（走 uiConfirm）
+  moreBtn(app, 1).fire("click");                // 展开 B 段的 ⋯ 菜单
+  menuItem(app, 1, /删除第 2 段/).fire("click"); // 删 B 段（走 uiConfirm）
   app.els["modalOk"].fire("click");             // 确认
   eq(names(app), "A段C段", "B 段已删");
 

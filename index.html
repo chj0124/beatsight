@@ -721,22 +721,34 @@ input[type=range].vol{width:120px}
 .ear-cand.wrong{box-shadow:inset 0 0 0 1.5px var(--red)}
 .ear-cand.dim{opacity:.4}
 
-/* ---------- 曲式编排（v2.0.0） ---------- */
-.arg-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
-.arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+/* ---------- 曲式编排（v2.0.0） ----------
+   ★ v2.30.0（S1 重设计）排版契约：段行 .arg-sec 从"单行 flex + 底部分割线"改成**卡片**
+   （flex-wrap + CSS order 重排：第一行 = 段号徽章 + 段名 + 操作钮，块行与歌词行各占整行）。
+   DOM 顺序**一个不动**（[段号, 段名, 块, 操作, 歌词]）——t54/t60 按裸下标定位、
+   歌词轨钉在 children[4]，全部靠 order 在视觉层重排，测试定位零迁移。 */
+.arg-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
 .arg-item.sel{box-shadow:inset 0 0 0 1.5px var(--green)}
 .arg-item-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-item-meta{flex:none;font-size:11px;font-family:var(--mono);color:var(--t3)}
-.arg-sec{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
-.arg-sec:last-child{border-bottom:none}
-.arg-sec-label{flex:none;width:34px;font-size:11px;font-family:var(--mono);color:var(--t3)}
-.arg-name{width:110px;flex:none;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
-.arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
-.arg-block{display:flex;align-items:center;gap:6px;background:var(--card2);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--mono);color:var(--t2)}
+.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
+.arg-sec:not(:last-child){margin-bottom:10px}
+.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--green);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--green)}
+.arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
+.arg-sec>.arg-ops{order:2}
+.arg-sec>.arg-blocks{order:3;flex-basis:100%}
+.arg-sec>.arg-lyric{order:4;flex-basis:100%}
+/* 换型候选行（.arg-sec.arg-pick）不是卡片：保持旧的"标签 + 流式候选串"两栏形态，
+   候选串要 flex-wrap（三区标题 flex-basis:100% 靠它换行），别被卡片的新规矩波及 */
+.arg-sec.arg-pick{background:transparent;border:none;padding:9px 0;margin:0}
+.arg-sec.arg-pick>.arg-blocks{flex:1;flex-basis:auto;flex-wrap:wrap;overflow:visible}
+.arg-name{background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px}
+.arg-block{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
 .arg-reps{width:38px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
-.arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:4px 8px;cursor:pointer}
+.arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 /* v2.27.0（G2）：块候选的三区标题 + 当前型置顶高亮 + 「新建曲式」模板菜单。
    三区标题是纯文字小签（同侧栏分区的视觉语言：小号等宽字 + 分隔间距），不占独立行——
@@ -745,6 +757,12 @@ input[type=range].vol{width:120px}
 .arg-mini.cur{border-color:var(--green);color:var(--green)}
 .arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 .arg-ops{flex:none;display:flex;gap:4px}
+/* v2.30.0（S1 重设计）：段操作 ⋯ 菜单 + 曲式级 ⋯ 菜单——都是运行时生成的一行
+   （flex-basis:100% 独占一行，同 .arg-new-menu 的既有模式）。段菜单挂在段行末尾
+   （歌词轨之后，t60 的 children[4] 不挪位）；曲式菜单挂在 #argActions 里，与
+   新建模板菜单互斥（同一时间至多一张，见 toggleNewMenu / toggleLibMenu）。 */
+.arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
+.arg-lib-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 /* 歌词编辑轨（v2.1.0 F1）：每个段行下方一条。头部 = 锚点提示音开关 + 粘贴框 + 清除，
    轨道本体是绝对定位的字块（拖本体改起始 t、拖右缘抓手改时值 dur）。
    与主视图 .lyric-lane 刻意**不同构**：那边是只读放映（百分比定位 + 走带线），
@@ -798,6 +816,13 @@ input[type=range].vol{width:120px}
    这是设计取舍而不是渲染 bug，见方案 R6） */
 @media (max-width: 640px){
   .arg-sec{flex-wrap:wrap}
+  /* v2.30.0（S1）：顶栏窄屏不再断字——「返回练 习 / 曲式编 排 / 新建曲 式」曾整行崩坏
+     （.editor-topbar 此前没有任何窄屏规则）；收字距、缩按钮、禁收缩三件套 */
+  .editor-topbar{gap:8px}
+  .editor-title{font-size:14px}
+  .back-btn{flex:none}
+  .editor-actions{flex:none;gap:6px}
+  .editor-actions .pill{padding:7px 12px;font-size:12px}
   .arg-name{flex:1;min-width:0;width:auto}          /* 名字吃满第一行的剩余宽度 */
   /* 曲式列表那两行：名字是 flex 子项，默认 min-width:auto 会撑破容器（实测 390px 下溢出） */
   .arg-item{min-width:0}
@@ -1495,8 +1520,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
       <div class="editor-actions" id="argActions">
         <button class="pill outline" id="argNew">新建曲式</button>
-        <button class="pill outline" id="argCopy" disabled>复制</button>
-        <button class="pill outline" id="argDel">删除</button>
+        <!-- v2.30.0（S1 重设计）：「复制 / 删除」从常驻按钮收进曲式级 ⋯ 菜单——
+             「复制」与新建菜单里的「复制当前曲式」本是同一动作（applyTemplate("dup")），
+             两颗按钮摆一排是第二处"同一动作两个入口"（help 页两个编辑入口的混淆在曲式层重演）；
+             「删除」低频且危险，降级为菜单项（确认弹窗仍在）。 -->
+        <button class="pill outline" id="argLibMore" disabled aria-label="曲式更多操作（复制 / 删除）">⋯</button>
       </div>
     </div>
     <div class="card">
@@ -1636,7 +1664,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几小节"看上面那行说明</li>
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
-          <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点「新建曲式」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。段的重排：↑ / ↓ 逐位挪，<b>⤒ / ⤓ 一步到首尾</b>；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
+          <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点「新建曲式」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.30.0 -->复制与删除也在顶栏「⋯」菜单里。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍</li>
           <li>「起 / 终」定播放范围 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
@@ -1847,23 +1875,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1879  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2469  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3735  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4442  Modal         应用内弹窗
-     L4579  Viz           时值可视化渲染与每帧动画
-     L6713  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7387  Trainer       变速训练器
-     L7525  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7988  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9221  Editor        自定义节奏型编辑器
-     L9588  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9625  Ear           听辨训练（v1.10.0）
-     L9845  Arrange       曲式编排（v2.0.0）
-     L10907 Help          使用方法（v2.0.1）
-     L10960 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11034 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11235 初始化（装配） 各模块 hook 接线与启动
+     L1907  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2497  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3763  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4470  Modal         应用内弹窗
+     L4607  Viz           时值可视化渲染与每帧动画
+     L6741  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7415  Trainer       变速训练器
+     L7553  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8016  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9249  Editor        自定义节奏型编辑器
+     L9616  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9653  Ear           听辨训练（v1.10.0）
+     L9873  Arrange       曲式编排（v2.0.0）
+     L11025 Help          使用方法（v2.0.1）
+     L11078 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11152 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11353 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1889,7 +1917,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.29.0";
+const VERSION = "2.30.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9851,6 +9879,10 @@ const Arrange = (() => {
   let curId = null;
   /** @type {null | { sec: number, blk: number }} */
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
+  /* v2.30.0（S1）：正在展开「⋯」菜单的段下标（null = 没开）。与 picking 同一套
+     「同一时间至多一处」纪律：开菜单先收候选，开候选先收菜单（互斥在两处 handler 里）。 */
+  /** @type {null | number} */
+  let secMenuOpen = null;
   /* 歌词轨拖动状态（v2.1.0 F1）：null = 没在拖。arrangeRender 重建 DOM 时拖拽必然已结束
      （只有 pointerup 才提交，而提交才触发 arrangeRender），所以不必跨渲染保持节点句柄。 */
   /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number }} */
@@ -10107,7 +10139,7 @@ const Arrange = (() => {
       const pick = document.createElement("button");
       pick.className = "arg-mini"; pick.textContent = "换";
       pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
-      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; arrangeRender(); });
+      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; secMenuOpen = null; arrangeRender(); });
       const del = document.createElement("button");
       del.className = "arg-mini"; del.textContent = "✕";
       del.setAttribute("aria-label", `删除第 ${i + 1} 段第 ${j + 1} 块`);
@@ -10162,58 +10194,11 @@ const Arrange = (() => {
     };
     ops.appendChild(mkRange("from", "起", "把第 " + (i + 1) + " 段设为播放起点"));
     ops.appendChild(mkRange("to", "终", "把第 " + (i + 1) + " 段设为播放终点"));
-    /* 上移/下移做成同一个助手：原先两条各写一遍交换逻辑，而 lint 把这两个内联回调
-       当成同一作用域（报重复声明 t）。抽出来既去重，也顺带规避 */
-    /** @param {number} dir @param {string} aria @param {boolean} dis */
-    const mkMove = (dir, aria, dis) => {
-      const btn = document.createElement("button");
-      btn.className = "arg-mini"; btn.textContent = dir < 0 ? "↑" : "↓";
-      btn.disabled = dis;
-      btn.setAttribute("aria-label", aria);
-      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
-        const d = snapshot();
-        const s = d.sections[i]; d.sections[i] = d.sections[i + dir]; d.sections[i + dir] = s;
-        save(d);
-      });
-      return btn;
-    };
-    const rm = document.createElement("button");
-    rm.className = "arg-mini"; rm.textContent = "✕";
-    rm.disabled = a.sections.length <= 1;
-    rm.setAttribute("aria-label", "删除第 " + (i + 1) + " 段");
-    Modal.bindOverlay("arrangeOverlay", rm, "click", () => {
-      if (a.sections.length <= 1){ Modal.uiAlert("一首曲式至少要有 1 段。"); return; }
-      Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
-    });
-    ops.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
-    ops.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
-    ops.appendChild(rm);
-    /* 移到首/尾（v2.27.0，PLAN-v3 G2）：↑/↓ 一次动一位，要把第 3 段挪到第 1 位得连点两次；
-       ⤒/⤓ 一步到位。**不做自由拖拽**——测试桩驱动不了自绘拖拽（v2.10.4 既定结论），
-       首尾 + 相邻四钮覆盖绝大多数重排场景。
-       ★ 必须**追加在 rm 之后**：t54 按 ops.children 的裸下标定位 ↑/↓/✕（children[2]/[3]/[4]），
-         插在前面会把既有定位全部挪位（同 buildSecRow 里歌词轨"必须在 .arg-ops 之后"的理由）。
-         新钮一律用 aria-label 定位（t104 的助手），不用裸下标。 */
-    /** @param {"first"|"last"} which @param {string} txt @param {string} aria @param {boolean} dis */
-    const mkEnd = (which, txt, aria, dis) => {
-      const btn = document.createElement("button");
-      btn.className = "arg-mini"; btn.textContent = txt;
-      btn.disabled = dis;
-      btn.setAttribute("aria-label", aria);
-      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
-        const d = snapshot();
-        const s = d.sections.splice(i, 1)[0];              // 摘下本段
-        if (which === "first") d.sections.unshift(s); else d.sections.push(s);
-        save(d);
-      });
-      return btn;
-    };
-    ops.appendChild(mkEnd("first", "⤒", "把第 " + (i + 1) + " 段移到最前", i === 0));
-    ops.appendChild(mkEnd("last", "⤓", "把第 " + (i + 1) + " 段移到最后", i === a.sections.length - 1));
     /* 逐段试听（v2.27.0，PLAN-v3 G4 附属项）：只放这一段一遍。
        范围设该段 + loop:false（到段尾自然停）+ **会话额度**兜一层（playQuota = 段小节数，
        复用听辨训练那套「到点停」——它是 v2.10.12 后该机制唯一的消费者，机制现成、与调度同源，
-       后台标签页也准，比定时器对）。不动 loopLyricSection——那是"循环+爬坡"的另一语义。 */
+       后台标签页也准，比定时器对）。不动 loopLyricSection——那是"循环+爬坡"的另一语义。
+       v2.30.0（S1）：重排/删除收进 ⋯ 菜单后，▶ 是 ops 里唯一保留的动作钮，排 [起, 终] 之后。 */
     const tryBtn = document.createElement("button");
     tryBtn.className = "arg-mini arg-try";
     tryBtn.textContent = "▶";
@@ -10231,12 +10216,87 @@ const Arrange = (() => {
       arrangeRender(); refreshBar();
     });
     ops.appendChild(tryBtn);
+    /* v2.30.0（S1 重设计）：重排（↑/↓/⤒/⤓）与删除收进 ⋯ 菜单（本体 mkSecMenu）。
+       原先三种语义（范围 / 试听 / 重排删除）8 颗小钮平铺一行，文字与符号混杂、移动端折行；
+       现在常显只剩 [起, 终, ▶, ⋯] 四颗，低频的重排/删除进菜单（全文字标签 + aria 定位，
+       t54/t104 的裸下标定位已同步迁移）。菜单 = 运行时生成，挂段行末尾（歌词轨之后，
+       t60 的 children[4] 不挪位）；secMenuOpen 单例，与 picking 互斥。 */
+    const more = document.createElement("button");
+    more.className = "arg-mini arg-more";
+    more.textContent = "⋯";
+    more.setAttribute("aria-label", "更多段操作（上移 / 下移 / 移到首尾 / 删除）");
+    more.setAttribute("aria-expanded", secMenuOpen === i ? "true" : "false");
+    Modal.bindOverlay("arrangeOverlay", more, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      secMenuOpen = (secMenuOpen === i) ? null : i;      // 再点一次 = 收起
+      picking = null;                                    // 开菜单先收候选
+      arrangeRender();
+    });
+    ops.appendChild(more);
     row.appendChild(ops);
     /* 歌词轨挂在段行下方（v2.1.0 F1）：顺序是 [段号, 段名, 块, 操作, 歌词]。
        必须在 .arg-ops **之后**追加——测试按 children[2]/[3] 定位块与操作钮，
        插在前面会把既有定位全部挪位。 */
     row.appendChild(mkLyricRow(a, sec, i));
     return row;
+  }
+
+  /* v2.30.0（S1）：段操作 ⋯ 菜单的本体。原 buildSecRow 里的 mkMove/mkEnd/rm 三个助手
+     原样搬进来（闭包同样只吃 a/i），菜单项从符号换成**全文字标签**（菜单里有空间，
+     不必再用符号猜）；↑/↓ 仍一次动一位、⤒/⤓ 一步到首尾（v2.27.0 语义不变）；
+     **不做自由拖拽**——测试桩驱动不了自绘拖拽（v2.10.4 既定结论）。
+     每个动作先收菜单（secMenuOpen = null）再落库——save 触发的 arrangeRender 会重建
+     段行，菜单不残留；删除仍走确认弹窗。菜单行挂段行 children[5]（歌词轨之后，
+     t60 按 children[4] 定位歌词轨，既有定位不挪位）。 */
+  /** @param {any} a @param {number} i @returns {any} */
+  function mkSecMenu(a, i){
+    const menu = document.createElement("div");
+    menu.className = "arg-sec-menu";
+    menu.setAttribute("role", "group");
+    menu.setAttribute("aria-label", "第 " + (i + 1) + " 段操作菜单");
+    /** @param {number} dir @param {string} aria @param {boolean} dis */
+    const mkMove = (dir, aria, dis) => {
+      const btn = document.createElement("button");
+      btn.className = "arg-mini"; btn.textContent = dir < 0 ? "上移" : "下移";
+      btn.disabled = dis;
+      btn.setAttribute("aria-label", aria);
+      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
+        const d = snapshot();
+        const s = d.sections[i]; d.sections[i] = d.sections[i + dir]; d.sections[i + dir] = s;
+        secMenuOpen = null;
+        save(d);
+      });
+      return btn;
+    };
+    /** @param {"first"|"last"} which @param {string} txt @param {string} aria @param {boolean} dis */
+    const mkEnd = (which, txt, aria, dis) => {
+      const btn = document.createElement("button");
+      btn.className = "arg-mini"; btn.textContent = txt;
+      btn.disabled = dis;
+      btn.setAttribute("aria-label", aria);
+      Modal.bindOverlay("arrangeOverlay", btn, "click", () => {
+        const d = snapshot();
+        const s = d.sections.splice(i, 1)[0];              // 摘下本段
+        if (which === "first") d.sections.unshift(s); else d.sections.push(s);
+        secMenuOpen = null;
+        save(d);
+      });
+      return btn;
+    };
+    const rm = document.createElement("button");
+    rm.className = "arg-mini"; rm.textContent = "删除段";
+    rm.disabled = a.sections.length <= 1;
+    rm.setAttribute("aria-label", "删除第 " + (i + 1) + " 段");
+    Modal.bindOverlay("arrangeOverlay", rm, "click", () => {
+      if (a.sections.length <= 1){ Modal.uiAlert("一首曲式至少要有 1 段。"); return; }
+      Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { secMenuOpen = null; const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
+    });
+    menu.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
+    menu.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
+    menu.appendChild(mkEnd("first", "移到最前", "把第 " + (i + 1) + " 段移到最前", i === 0));
+    menu.appendChild(mkEnd("last", "移到最后", "把第 " + (i + 1) + " 段移到最后", i === a.sections.length - 1));
+    menu.appendChild(rm);
+    return menu;
   }
 
   function arrangeRender(){
@@ -10263,11 +10323,14 @@ const Arrange = (() => {
     const a = cur();
     const wrap = $("argSections");
     clear(wrap);
-    $("argDel").disabled = !a;
-    $("argCopy").disabled = !a;          // v2.27.0：复制与删除同一前提（得先有"当前曲式"）
-    $("argNew").setAttribute("aria-expanded",
-      Array.prototype.some.call($("argActions").children,
-        (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className)) ? "true" : "false");
+    $("argLibMore").disabled = !a;       // v2.30.0：曲式级 ⋯ 与旧「复制/删除」同一前提（得先有"当前曲式"）
+    /* 重渲染会 unbind 掉菜单按钮的监听（Modal.unbindOverlay 全量解绑）——argActions 里的
+       菜单残影留着就是"点了没反应"的死 UI，重建列表前直接摘掉（下次点 ⋯/新建 再展开）。
+       摘完 argNew 的 aria-expanded 恒为 false（展开态只在两次渲染之间存在）。 */
+    Array.prototype.filter.call($("argActions").children,
+      (/** @type {any} */ c) => /(^| )arg-(new|lib)-menu( |$)/.test(c.className))
+      .forEach((/** @type {any} */ m) => m.parentNode.removeChild(m));
+    $("argNew").setAttribute("aria-expanded", "false");
     $("argAddSec").disabled = !a;
     if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argRangeRow")); return; }
 
@@ -10354,6 +10417,15 @@ const Arrange = (() => {
       const host = wrap.children[picking.sec];
       if (host) host.insertAdjacentElement("afterend", pickRow);
       else wrap.appendChild(pickRow);
+    }
+
+    /* v2.30.0：段操作 ⋯ 菜单展开态——挂在本段行**末尾**（歌词轨之后，t60 按
+       children[4] 定位歌词轨，菜单排 children[5]，既有定位不挪位）。
+       与 picking 的互斥在两处按钮的 handler 里已保证（开一方先关另一方）。 */
+    if (secMenuOpen !== null && secMenuOpen < a.sections.length){
+      const host = wrap.children[secMenuOpen];
+      if (host) host.appendChild(mkSecMenu(a, secMenuOpen));
+      else secMenuOpen = null;
     }
 
     /* 播放范围的只读显示（真正的设置入口是段行上的「起 / 终」）。
@@ -10662,6 +10734,9 @@ const Arrange = (() => {
   /** @returns {void} */
   function toggleNewMenu(){
     const bar = $("argActions");
+    /* v2.30.0：与曲式级 ⋯ 菜单互斥——开模板菜单先收曲式菜单（同一时间至多一张） */
+    const oldLib = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
+    if (oldLib) oldLib.parentNode.removeChild(oldLib);
     /* 用 children 遍历而不是 querySelector：桩的元素级 querySelector 不存在（见 harness 注释），
        按类名过滤 children 是本项目既定的定位方式（同 buildSecRow 各处） */
     const old = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
@@ -10699,11 +10774,13 @@ const Arrange = (() => {
     Controls.stop();                                  // 进入即停（与编辑器/统计同一套）
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
     picking = null;
+    secMenuOpen = null;                               // v2.30.0：进浮层不带回上次的展开态
     arrangeRender();
     Modal.openOverlay("arrangeOverlay");  // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
     picking = null;
+    secMenuOpen = null;                               // v2.30.0：与 picking 同步清（重开不残留）
     /* 关闭前做一次完整性检查：编到一半的曲式（比如某段没块）不该被当成能用 */
     const a = cur();
     if (a){
@@ -10805,23 +10882,64 @@ const Arrange = (() => {
     evEl(e).blur();
     toggleNewMenu();
   });
-  /* v2.27.0：「复制」与「新建/删除」并列——深拷贝当前曲式 + 副本命名（重名自动加"副本 N"）。 */
-  $("argCopy").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  /* v2.30.0（S1 重设计）：曲式级 ⋯ 菜单——「复制 / 删除」从顶栏常驻按钮收进来。
+     「复制」与新建菜单里的「复制当前曲式」是同一动作（applyTemplate("dup")），
+     不再摆两颗按钮；「删除」低频且危险，降级为菜单项（确认弹窗仍在）。
+     菜单与「新建曲式」模板菜单互斥（同一时间 argActions 里至多一张，见 toggleNewMenu）；
+     arrangeRender 重建列表时会摘掉两张菜单（unbind 后的残影 = 死 UI）。 */
+  /** @returns {void} */
+  function toggleLibMenu(){
+    const bar = $("argActions");
+    const old = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
+    if (old){ old.parentNode.removeChild(old); return; }
+    const nm = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
+    if (nm) nm.parentNode.removeChild(nm);
+    const has = !!cur();
+    const menu = document.createElement("div");
+    menu.className = "arg-lib-menu";
+    menu.setAttribute("role", "group");
+    menu.setAttribute("aria-label", "曲式操作");
+    const cp = document.createElement("button");
+    cp.className = "arg-mini";
+    cp.textContent = "复制当前曲式";
+    cp.disabled = !has;
+    cp.setAttribute("aria-label", "复制当前曲式为副本" + (has ? "" : "（当前没有选中曲式）"));
+    Modal.bindOverlay("arrangeOverlay", cp, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      closeLibMenu();
+      applyTemplate("dup");
+    });
+    const del = document.createElement("button");
+    del.className = "arg-mini";
+    del.textContent = "删除当前曲式";
+    del.disabled = !has;
+    del.setAttribute("aria-label", "删除当前曲式");
+    Modal.bindOverlay("arrangeOverlay", del, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      closeLibMenu();
+      const a = cur();
+      if (!a) return;
+      Modal.uiConfirm("删除曲式「" + a.name + "」？", () => {
+        Store.deleteArrange(a.id);
+        curId = Store.arranges.length ? Store.arranges[0].id : null;
+        if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
+        Store.persist();
+        arrangeRender(); refreshBar();
+        Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
+      }, { danger: true, okText: "删除" });
+    });
+    menu.appendChild(cp); menu.appendChild(del);
+    bar.appendChild(menu);
+  }
+  /** 摘掉曲式级菜单（动作钮的 handler 与互斥逻辑共用；找不到就当已关） @returns {void} */
+  function closeLibMenu(){
+    const m = Array.prototype.find.call($("argActions").children,
+      (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
+    if (m) m.parentNode.removeChild(m);
+  }
+  $("argLibMore").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
-    applyTemplate("dup");
-  });
-  $("argDel").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    const a = cur();
-    if (!a) return;
-    Modal.uiConfirm("删除曲式「" + a.name + "」？", () => {
-      Store.deleteArrange(a.id);
-      curId = Store.arranges.length ? Store.arranges[0].id : null;
-      if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
-      Store.persist();
-      arrangeRender(); refreshBar();
-      Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
-    }, { danger: true, okText: "删除" });
+    toggleLibMenu();
   });
   $("argAddSec").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
