@@ -42,8 +42,10 @@ const fillOf = els => trackOf(els).children[0];
 const fromOf = els => trackOf(els).children[1];
 const toOf = els => trackOf(els).children[2];
 /* 整首连播那一行的状态说明（它兼着"现在播到第几小节"的职责，见 syncDemoRange） */
-const playNoteOf = els => boxOf(els).children[0].children[1];
-const playAllOf = els => boxOf(els).children[0].children[0];
+const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
+/* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
+const playAllOf = els => boxOf(els).children.find(x =>
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
 
 /* 单拇指拖动：走完 input（拖动中，只刷视觉）+ change（松手提交，跑重活并通知 Arrange）两级。
    真实浏览器就是这个顺序。commit=false 可只发 input，用于钉住"只拖不提交不生效" */
@@ -266,26 +268,35 @@ section("T88i 越界范围 · 呈现时按当前段数收窄（使用期钳制�
   eq(fillOf(els).style.width, "0%", "填充条宽度不为负");
 }
 
-/* ================= 场景 T88j：与「整首连播」的一致性 ================= */
-section("T88j 「整首连播」按钮的高亮与滑块范围同源（同一份 arrangeSel 推出来的两个视图）");
+/* ================= 场景 T88j：整首态的读数与滑块范围同源 ================= */
+section("T88j 整首态的读数与滑块范围同源（同一份 arrangeSel 推出来的两个视图）");
 {
   const { beat, els } = loadDemo();
-  /* ★ v2.13.0：首次打开默认选中示例曲的**整首**（选中这条曲式 + 曲式模式 + 范围恰是整首），
-     而"整首"这一态的定义正是这三条——所以进这一节时按钮**已经**是高亮的。
-     这不是瑕疵，恰恰是同源的自证：按钮高亮与滑块范围都从同一份 arrangeSel 推出来。 */
-  eq(playAllOf(els).getAttribute("aria-pressed"), "true",
-     "前提（v2.13.0）：首开已选中整首 → 按钮已高亮");
+  /* ★ v2.13.0：首次打开默认选中示例曲的**整首**（选中这条曲式 + 曲式模式 + 范围恰是整首），而
+     "整首"这一态的定义正是这三条——所以进这一节时读数**已经**是「整首连播 · 已就绪」。
+     这不是瑕疵，恰恰是同源的自证：读数文案与滑块范围都从同一份 arrangeSel 推出来。
+     v2.28.0：按钮已删，whole 的呈现面只剩这一行读数。 */
+  /* 守卫：行空壳（读数没建）时 playNoteOf 是 undefined——note() 返回 "" 让下面的
+     内容断言具名变红，而不是让套件崩在 null.textContent（崩溃不是证据） */
+  const note = () => { const el = playNoteOf(els); return el ? el.textContent : ""; };
+  ok(/整首连播 · 已就绪/.test(note()),
+     "前提（v2.13.0）：首开已选中整首 → 读数是「整首连播 · 已就绪」（实际「" + note() + "」）");
   eq([fromOf(els).value, toOf(els).value].join(","), "1,30", "前提：滑块也是整首（两个视图同源）");
-  playAllOf(els).fire("click");
-  eq(playAllOf(els).getAttribute("aria-pressed"), "true", "点整首连播 → 按钮仍高亮");
+  playAllOf(els).fire("click");                        // 点示例曲条目 = 整首连播（唯一入口）
+  /* 读数的"播放中"分支要求可听位置已起步（cur >= 0）——刚 start 还没驱动帧时它仍是
+     "已就绪"（原语义，非回归），先推几帧让它进入播放态再读 */
+  const ac = FakeAudioContext.last;
+  for (let i = 0; i < 10; i++){ ac.currentTime += 0.02; beat.AudioEngine.scheduler(); beat.Viz.paintFrame(); }
+  ok(note().indexOf("整首连播 · 播放中") === 0,
+     "★ 整首播放中 → 读数前缀「整首连播 · 播放中」（实际「" + note() + "」）");
   eq([fromOf(els).value, toOf(els).value].join(","), "1,30", "★ 滑块同步拉满（范围 = 整首）");
   beat.Controls.stop();
-  /* 拖成局部区间 → 按钮必须退出高亮（"整首"这一态的定义就是范围恰是整首） */
+  /* 拖成局部区间 → 读数必须退出整首态（"整首"这一态的定义就是范围恰是整首） */
   dragRange(els, 2, 5);
-  eq(playAllOf(els).getAttribute("aria-pressed"), "false",
-     "★ 范围缩成局部后按钮退出高亮（两个视图同源，不会自相矛盾）");
+  ok(!/整首连播/.test(note()) && /已选第/.test(note()),
+     "★ 范围缩成局部后读数退出整首态（两个视图同源，不会自相矛盾）");
   dragRange(els, 1, 30);
-  eq(playAllOf(els).getAttribute("aria-pressed"), "true", "★ 拖回整首 → 按钮重新高亮");
+  ok(/整首连播 · 已就绪/.test(note()), "★ 拖回整首 → 读数回到「整首连播 · 已就绪」");
 }
 
 /* ================= 场景 T88k：曲式消失后的悬空引用 ================= */

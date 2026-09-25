@@ -580,14 +580,15 @@ input[type=range].vol{width:120px}
 .demo-range-track input[type=range].demo-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
 .demo-range-track input[type=range].demo-range-input::-webkit-slider-thumb{pointer-events:auto}
 .demo-range-track input[type=range].demo-range-input::-moz-range-thumb{pointer-events:auto}
-/* 整首连播那一行（v2.5.0）：按钮 + 状态说明并排。
-   说明用 .demo-play-note（行内、与按钮同排）而不是 .demo-range-note（块级、独占一行），
-   否则会被挤到下一行去。高亮态与范围滑块同一套视觉语言（绿底黑字）。
+/* 整首连播那一行（v2.5.0）：v2.28.0 起按钮已删（条目点击 = 同一 playArrange 出口），
+   行内只剩**状态说明**这一个子节点。
+   说明用 .demo-play-note（行内）而不是 .demo-range-note（块级、独占一行）的旧理由仍在：
+   它要和分组里其它行保持同样的行高节奏。
    ★ v2.10.4：这一行的说明还兼着**报当前位置**的职责（「播放中 · 第 3/10 段」）——
-     段序条被滑块取代后，'现在播到第几段'就只剩这里能看，别把它删掉。 */
+     段序条被滑块取代后，'现在播到第几段'就只剩这里能看，别把它删掉。
+   ★ v2.28.0：它又接过了原按钮的**状态指示**职责——整首播放中带「整首连播 · 播放中」前缀、
+     停机且范围为整首时显示「整首连播 · 已就绪」（见 syncDemoRange 的 whole 分支）。 */
 .demo-play-row{display:flex;align-items:center;gap:8px;margin:2px 0 0}
-.demo-play-row .pill{padding:6px 12px;font-size:12px;flex:none}
-.demo-play-row .pill[aria-pressed="true"]{background:var(--green);color:#0A0A0A;border-color:var(--green)}
 .demo-play-note{font-size:10.5px;color:var(--t3);line-height:1.4;min-width:0}
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
 .sidebar-note[hidden]{display:none}
@@ -1622,8 +1623,9 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
         <ul class="help-list">
-          <li><b>整首连播</b>：预设库「示例曲」分组顶部那个按钮——一键按原曲顺序从第 1 段走到第 10 段，
-            放完自动从头再来，<b>不用打开编排面板</b>。按钮旁边的说明写着<b>现在播到第几小节</b></li>
+          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序从第 1 段走到
+            第 10 段，放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
+            整首播放中说明会带「<b>整首连播 · 播放中</b>」前缀，停机时显示「整首连播 · 已就绪」</li>
           <li><b>播放范围滑块</b>（在「整首连播」下面）：<b>按小节拖两个滑块自由选范围</b>
             （刻度就是小节，轨道上的细刻度线是段边界）——范围可以从段中间开始/结束，比如
             「第 5–12 小节」就只练副歌里那几小节。读数行会把它翻译成
@@ -1842,23 +1844,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1874  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2456  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3721  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4428  Modal         应用内弹窗
-     L4565  Viz           时值可视化渲染与每帧动画
-     L6699  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7368  Trainer       变速训练器
-     L7506  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L7969  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9207  Editor        自定义节奏型编辑器
-     L9571  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9608  Ear           听辨训练（v1.10.0）
-     L9828  Arrange       曲式编排（v2.0.0）
-     L10890 Help          使用方法（v2.0.1）
-     L10943 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11017 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11218 初始化（装配） 各模块 hook 接线与启动
+     L1876  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2458  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3723  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4430  Modal         应用内弹窗
+     L4567  Viz           时值可视化渲染与每帧动画
+     L6701  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7370  Trainer       变速训练器
+     L7508  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L7971  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9204  Editor        自定义节奏型编辑器
+     L9568  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9605  Ear           听辨训练（v1.10.0）
+     L9825  Arrange       曲式编排（v2.0.0）
+     L10887 Help          使用方法（v2.0.1）
+     L10940 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11014 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11215 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1884,7 +1886,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.27.0";
+const VERSION = "2.28.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8346,8 +8348,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       故 buildPresetList 每次先清空（列表重建时这些节点会被换掉，留着旧引用会让 sync
       往已脱离文档的节点上写）。
       ★ v2.10.4：段序条那组（demoSecRowEl / demoSecPills）随双滑块一起换成了下面这组。 */
-  /** @type {HTMLElement|null} */ let demoSongNote = null;
-  /** @type {HTMLElement|null} */ let demoPlayAllBtn = null;
+  /** @type {HTMLElement|null} */ let demoSongNote = null;   // v2.28.0：demoPlayAllBtn 已随按钮删除
   /** @type {HTMLElement|null} */ let demoRangeWrapEl = null;
   /** @type {HTMLElement|null} */ let demoRangeNoteEl = null;
   /** @type {HTMLElement|null} */ let demoRangeFillEl = null;
@@ -8462,15 +8463,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function buildDemoSongRow(group, a){
     const head = document.createElement("div");
     head.className = "demo-play-row";
-    const btn = document.createElement("button");
-    btn.className = "pill demo-play-all";
-    btn.textContent = "整首连播";
-    btn.title = "按原曲顺序从第 1 段播到最后一段，放完自动从头再来";
-    btn.setAttribute("aria-label", "整首连播：按原曲顺序串起全部 " + a.sections.length + " 段并循环");
-    btn.addEventListener("click", () => { btn.blur(); playArrange(a); });
+    /* v2.28.0（G1，PLAN-v3 阶段三）：「整首连播」**按钮删除**——条目点击已经等于播放整首
+       （v2.5.0 起 playArrange 是同一出口，按钮是它的第二入口），两个入口同一动作是认知负担。
+       按钮的全部用户价值 = 入口 + 状态指示：入口由条目点击承担，状态由这行**读数**承担
+       （syncDemoRange 的 whole 分支：播放中带「整首连播 · 播放中」前缀、停机带「已就绪」）。
+       ★ 行类名 demo-play-row 不变（t68/t63 按它定位）；本行只留读数一个子节点。 */
     const note = document.createElement("span");
     note.className = "demo-play-note";
-    head.appendChild(btn); head.appendChild(note);
+    head.appendChild(note);
     group.appendChild(head);
 
     /* 播放范围双滑块（v2.10.4，取代原 N 颗段号胶囊）：为什么换、为什么用两个原生 range
@@ -8505,7 +8505,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     wrap.appendChild(rNote); wrap.appendChild(track);
     group.appendChild(wrap);
 
-    demoSongNote = note; demoPlayAllBtn = btn;
+    demoSongNote = note;
     demoRangeWrapEl = wrap; demoRangeNoteEl = rNote; demoRangeFillEl = fill;
     demoRangeFromEl = fromEl; demoRangeToEl = toEl;
     demoArrId = a.id;                // 滑块/连播都按这条曲式定位，不再写死 DEMO_ID
@@ -8590,10 +8590,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        滑块取代段号后不再有"某一段"的高亮，所以这里只留整首/局部这一个视图 */
     const isMine = S.arrangeSel.id === a.id;
     const whole = isMine && S.playMode === "arrange" && f === 0 && t === n - 1;
-    if (demoPlayAllBtn){
-      demoPlayAllBtn.classList.toggle("active", whole);
-      demoPlayAllBtn.setAttribute("aria-pressed", whole ? "true" : "false");
-    }
+    /* v2.28.0：按钮删了，whole 的**唯一呈现面就是下面的读数文案**（别让这个判据变成死变量） */
     /* ★ 这一行还兼着"现在播到第几小节"的职责：段序条被滑块取代后逐段高亮没有了，
        位置信息只剩这里（demoCurBar 走的是**可听位置**；v2.10.14 起跳段行的 #argNowMeta
        已删，侧栏读数是播放位置的唯一文字面）。
@@ -8603,7 +8600,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       /* 局部范围按"单小节 / 区间"分两种说法：`第 3–3 小节` 这种叠加写法读起来像手误，
          而"两个 thumb 重合 = 只循环这一小节"恰是精练最常用的一档，值得单独说清楚 */
       demoSongNote.textContent = (S.playing && isMine && cur >= 0)
-        ? `播放中 · 第 ${cur + 1}/${n} 小节`
+        ? (whole ? `整首连播 · 播放中 · 第 ${cur + 1}/${n} 小节` : `播放中 · 第 ${cur + 1}/${n} 小节`)
         : (whole ? `整首连播 · 已就绪 · 共 ${n} 小节`
           : (f === t ? `已选第 ${f + 1} 小节 · 拖滑块改范围` : `已选第 ${f + 1}–${t + 1} 小节 · 拖滑块改范围`));
     }
@@ -8790,7 +8787,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
        demoArrId 一并清空：它标识"这套控件服务哪条曲式"，列表重建后由
        buildDemoSongRow 重新写入（未渲染时保持 null，demoCurBar/syncDemoRange 据此静默跳过） */
-    demoSongNote = null; demoPlayAllBtn = null;
+    demoSongNote = null;
     demoRangeWrapEl = null; demoRangeNoteEl = null; demoRangeFillEl = null;
     demoRangeFromEl = null; demoRangeToEl = null; demoArrId = null;
     const beatBuiltins = /** @type {any[]} */ ([]), strumBuiltins = /** @type {any[]} */ ([]);

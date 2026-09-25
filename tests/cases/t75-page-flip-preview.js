@@ -61,7 +61,9 @@ section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一�
   const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 0 } }),
     { seedDemo: false });
   const boxOf = () => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-  const playAllOf = () => boxOf().children.find(x => /(^| )demo-play-row( |$)/.test(x.className)).children[0];
+  /* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
+const playAllOf = () => boxOf().children.find(x =>
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
   /* v2.10.4：段序条已换成「播放范围」双滑块。定位第 3 小节 = 把两个 thumb 拖到第 3 小节重合，
      并走完 input（拖动中）+ change（提交）两级——只发 input 不会应用范围 */
   const rangeOf = () => boxOf().children.find(x => /(^| )demo-range( |$)/.test(x.className));

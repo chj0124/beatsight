@@ -79,8 +79,12 @@ const inWindow = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 
    **每次现取**：点击会触发列表重建，旧引用随即失效 */
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
-const playAllOf = els => playRowOf(els).children[0];               // 行内第 1 个 = 按钮
-const noteOf = els => playRowOf(els).children[1];                  // 行内第 2 个 = 状态说明
+/* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），本助手改为
+   点示例曲条目——语义一位不差，交互路径换成产品里唯一剩下的那个入口 */
+/* 曲式条目挂在**曲式分组容器**里（v2.25.0 起不是 presetList 的直接子节点），从 boxOf 里找 */
+const playAllOf = els => boxOf(els).children.find(x =>
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
+const noteOf = els => playRowOf(els).children[0];                  // 行内唯一子节点 = 状态说明
 /* 「播放范围」双滑块（v2.10.4 取代原段序条那 10 颗段号胶囊）。
    结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
    测试桩不解析 HTML，只能按 children 序位取，所以这几个 helper 与 buildDemoSongRow 的
@@ -266,7 +270,8 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
   /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表 */
-  eq(playAllOf(els).getAttribute("aria-pressed"), "true", "按钮进入高亮态");
+  ok(noteOf(els).textContent.indexOf("整首连播 · 播放中") === 0,
+    "★ 读数行接棒状态指示（按钮删了，whole 的呈现面只剩它；实际「" + noteOf(els).textContent + "」）");
   /* v2.10.4：段序条已换成范围滑块——"整首连播"在滑块上的表现 = **两个 thumb 拉满**。
      滑块表达的是范围、不是当前位置，所以原来"第 1 段高亮 / 第 10 段不高亮"那两条
      已随段序条一并消失；"现在在第几小节"改由下面那条状态说明承担 */

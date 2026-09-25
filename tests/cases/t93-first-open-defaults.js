@@ -27,7 +27,7 @@ const firstOpen = () => loadApp(undefined, { seedDemo: false });
    整首连播那一行 = 分组[0]，它的第二个孩子是状态读数 */
 const boxOf = els => els["presetList"].children
   .find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-const playNoteOf = els => boxOf(els).children[0].children[1];
+const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
 
 /* ================= 场景 T93a：首次打开 = 选中示例曲但不播 ================= */
 section("T93a 首开默认 ② · 默认选中示例曲《在他乡》——但**绝不自动播放**");

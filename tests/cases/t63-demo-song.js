@@ -80,9 +80,12 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
      按钮在「整首连播」那一行内部，两个滑块在 .demo-range 里 */
   const playRow = demoBox.children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
   ok(!!playRow, "★ 自定义区里有「整首连播」那一行");
+  /* v2.28.0：按钮已删——入口=点曲式条目，行内只剩状态读数（whole 的呈现面） */
   const playAll = playRow && playRow.children[0];
-  ok(!!playAll, "★ 自定义区里有「整首连播」按钮");
-  eq(playAll.textContent, "整首连播", "按钮文案");
+  ok(!!playAll, "★ 行内只剩状态读数（「整首连播」按钮已删，入口由条目点击承担）");
+  if (playAll){
+    eq(playAll.className, "demo-play-note", "读数行类名不变（t68 按它定位）");
+  }
   /* ★ v2.10.4：段号胶囊 → 双滑块。断言口径随之从"10 颗胶囊的影子"改成"两个 thumb 的影子" */
   const rangeWrap = demoBox.children.find(x => /(^| )demo-range( |$)/.test(x.className));
   ok(!!rangeWrap, "★ 自定义区里有「播放范围」滑块容器（取代原段序条）");
