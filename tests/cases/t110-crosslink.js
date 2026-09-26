@@ -119,12 +119,14 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★★ v2.38.0：铺满封顶已撤销——网格与歌词轨都全宽同起点（对齐恢复，用户实拍错位已修）");
   ok(src.includes("--cs") && src.includes("font-size:calc(16px * var(--cs, 1))"),
     "★ 铺满时格内字形按 --cs 等比放大（歌词字号/格标签/座次尺随网格宽缩放）");
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:auto auto auto"),
-    "★ 卡片头居中分布（2×2：r1 音量｜BPM｜三开关并列，r2 行数拍号占满整行，v2.39.0）");
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:352px repeat(2,minmax(min-content,max-content)"),
+    "★ 卡片头居中分布（2×2：r1 音量｜BPM｜三开关并列，r2 行数拍号占满整行；v2.41.0：首列钉 352px"
+    + "（min(352px,100%) 在轨道固有尺寸里百分比循环、按内容量宽多出 66px 死空间），其余列 minmax"
+    + "——空间富余贴 max、紧张先收缩不折行）");
   ok(!src.includes(".card-head-left{grid-row"),
     "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
-  ok(src.includes(".viz-rows-row{grid-column:1 / 4;grid-row:2"),
-    "★ 行数拍号行 grid-column:1/4 占满整行（v2.38 的 2/4 悬空第三列已退役）");
+  ok(src.includes(".viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}"),
+    "★ 行数拍号行 grid-column:1/4 占满整行（v2.38 的 2/4 悬空第三列已退役；v2.41.0：带前缀压过基础规则的 margin-bottom:12px）");
   ok(src.includes(".viz-head-grid .card-head-left,") && src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
     "★★ v2.39.0：四块组容器底（--card2 圆角 + 12/16 内边距）——修「散/悬空/填充感」，纯 CSS 零新增节点");
   ok(src.includes(".viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center"),
@@ -134,10 +136,27 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★ v2.40.0：型名单行省略——无 nowrap 时省略号失效、长型名折两行悬在状态行右上");
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
-  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:auto auto auto auto;justify-content:space-between"),
-    "★★ v2.40.0：宽屏铺满四块一行（音量｜BPM｜三开关｜行数拍号）+ space-between 拉开，与铺满网格同宽呼应");
+  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:352px repeat(3,minmax(min-content,max-content));\n    justify-content:space-between")
+     && src.includes("@media (min-width:1900px)"),
+    "★★ v2.40.0/v2.41.0：宽屏铺满四块一行 + space-between 拉开（≥1900 才启用：四块 max 合计"
+    + " ~1723，更窄的宽屏落回 2×2 居中而非溢出；行数拍号列 minmax——空间不足先内部折行）");
   ok(src.includes("body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}"),
     "★ v2.40.0：宽屏下行数拍号块取消 1/4 跨列（回到第 4 列）；非宽屏 ≥1280 维持 2×2 不变");
+  ok(src.includes(".viz-head-grid .viz-head{display:contents}")
+     && !/\n\s*\.viz-head\{display:contents\}/.test(src),
+    "★★ v2.41.0：壳溶解带 .viz-head-grid 前缀——裸 `.viz-head{display:contents}` 会被更靠后的"
+    + " `.card-head{display:flex}` 同特异性压掉（v2.38 起三版从未生效：音量+BPM 被装进同一网格项，"
+    + "间隙 48/14 混用、宽屏第 4 列空置）");
+  ok(src.includes(".viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}"),
+    "★★ v2.41.0：行 2 的 margin 清零同样带前缀——否则 `.viz-rows-row` 基础规则的 "
+    + "margin-bottom:12px 在其后生效，行 2 轨道虚高、底边不齐");
+  ok(src.includes("input[type=range]:not(.arg-range-input){background:linear-gradient(to right,var(--green) var(--vfill,0%),var(--line) var(--vfill,0%))"),
+    "★★ v2.41.0：滑杆已走过段绿色填充（--vfill 分段渐变）；编排页播放范围双滑块 :not 排除"
+    + "（双轨叠一轨、区间语义，各自左起填充会读错范围）");
+  ok(/function paintRange\((?:\/\*\*[^*]*\*\/ )?el\)/.test(src) && src.includes("paintRange($(\"bpmSlider\"))")
+     && src.includes("document.addEventListener(\"input\","),
+    "★★ v2.41.0：填充统一走装配区 paintRange（--vfill）——拖动 document 级 input 委托全覆盖，"
+    + "程序化改值在 setBpm / wallPaintDim / latApply 各补一发（函数声明提升，跨模块可见）");
   ok((src.match(/<template id="helpFigs/g) || []).length === 5 &&
      (src.match(/id="mountFigs/g) || []).length === 5,
     "★ 帮助示意图按章节拆 5 组 template+挂载点（归位到各节文字旁）");
