@@ -726,14 +726,24 @@ input[type=range].vol{width:120px}
    （flex-wrap + CSS order 重排：第一行 = 段号徽章 + 段名 + 操作钮，块行与歌词行各占整行）。
    DOM 顺序**一个不动**（[段号, 段名, 块, 操作, 歌词]）——t54/t60 按裸下标定位、
    歌词轨钉在 children[4]，全部靠 order 在视觉层重排，测试定位零迁移。 */
-.arg-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+/* v2.33.0：曲式库行容器（chips + 行尾「＋」+ 展开时的模板菜单同住一行流） */
+.arg-lib-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:18px}
+.arg-list{display:flex;flex-wrap:wrap;gap:8px}
 .arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
 .arg-item.sel{box-shadow:inset 0 0 0 1.5px var(--green)}
 .arg-item-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-item-meta{flex:none;font-size:11px;font-family:var(--mono);color:var(--t3)}
+/* 行尾「＋」（新建入口）：虚线胶囊；展开模板菜单时切绿（触发态可见——「点了像没点」的教训） */
+.arg-add{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 12px;border:1px dashed var(--border);border-radius:999px;background:none;color:var(--t3);font-size:14px;cursor:pointer}
+.arg-add:hover{color:var(--t1);border-color:var(--t3)}
+.arg-add.open{border-style:solid;border-color:var(--green);color:var(--green)}
 .arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
 .arg-sec:not(:last-child){margin-bottom:10px}
+/* v2.33.0：段卡片 ↔ 播放范围联动（设计原稿视觉层次 L3）——范围覆盖段绿左条，
+   未覆盖段整体降透明（dim 0.55）；类由 buildSecRow 初挂、syncPanelRead 拖动中实时切 */
+.arg-sec.play-in-range{border-left:3px solid var(--green)}
+.arg-sec.play-dim{opacity:.55}
 .arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--green);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--green)}
 .arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
 .arg-sec>.arg-ops{order:2}
@@ -1563,11 +1573,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <div class="editor-title">曲式编排</div>
       </div>
       <div class="editor-actions" id="argActions">
-        <button class="pill outline" id="argNew">新建曲式</button>
-        <!-- v2.30.0（S1 重设计）：「复制 / 删除」从常驻按钮收进曲式级 ⋯ 菜单——
-             「复制」与新建菜单里的「复制当前曲式」本是同一动作（applyTemplate("dup")），
-             两颗按钮摆一排是第二处"同一动作两个入口"（help 页两个编辑入口的混淆在曲式层重演）；
-             「删除」低频且危险，降级为菜单项（确认弹窗仍在）。 -->
+        <!-- v2.33.0：「＋ 新建曲式」从顶栏搬进曲式库 chips 行尾（id=argNew 不变，样式改 ＋chip）——
+             设计原稿的既定方案，v2.30.0 翻译成函数级清单时被静默漏掉（用户实测指出）。
+             顶栏只留曲式级 ⋯（复制 / 删除）。「复制」与新建菜单里「复制当前曲式」仍是同一动作
+             （applyTemplate("dup")）；「删除」低频且危险，降级为菜单项（确认弹窗仍在）。 -->
         <button class="pill outline" id="argLibMore" disabled aria-label="曲式更多操作（复制 / 删除）">⋯</button>
       </div>
     </div>
@@ -1581,7 +1590,12 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
         <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
         <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
-        <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
+        <!-- v2.33.0：chips 行尾「＋」＝ 新建入口（argNew 搬家至此）；模板菜单也挂在本行内
+             （argLibRow 是菜单宿主，测试按它定位），点窗外即关（装配区 pointerdown）。 -->
+        <div class="arg-lib-row" id="argLibRow">
+          <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
+          <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
+        </div>
         <div class="stats-head">段落结构</div>
         <div id="argSections"></div>
         <div class="bpm-row">
@@ -1941,23 +1955,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1973  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2563  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3829  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4536  Modal         应用内弹窗
-     L4673  Viz           时值可视化渲染与每帧动画
-     L6807  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7481  Trainer       变速训练器
-     L7619  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8082  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9315  Editor        自定义节奏型编辑器
-     L9682  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9719  Ear           听辨训练（v1.10.0）
-     L9939  Arrange       曲式编排（v2.0.0）
-     L11218 Help          使用方法（v2.0.1）
-     L11271 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11345 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11546 初始化（装配） 各模块 hook 接线与启动
+     L1987  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2577  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3843  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4550  Modal         应用内弹窗
+     L4687  Viz           时值可视化渲染与每帧动画
+     L6821  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7495  Trainer       变速训练器
+     L7633  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8096  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9329  Editor        自定义节奏型编辑器
+     L9696  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9733  Ear           听辨训练（v1.10.0）
+     L9953  Arrange       曲式编排（v2.0.0）
+     L11279 Help          使用方法（v2.0.1）
+     L11332 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11406 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11607 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1983,7 +1997,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.32.0";
+const VERSION = "2.33.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9949,6 +9963,9 @@ const Arrange = (() => {
      「同一时间至多一处」纪律：开菜单先收候选，开候选先收菜单（互斥在两处 handler 里）。 */
   /** @type {null | number} */
   let secMenuOpen = null;
+  /* v2.33.0：「＋ 新建」的模板菜单展开态（菜单挂在曲式库行 argLibRow 里）。
+     点窗外即关（装配区 pointerdown）——去掉 v2.27.0"再点一次按钮 = 收起"的反直觉 toggle。 */
+  let newMenuOpen = false;
   /* v2.32.0（S3）：处于展开态的歌词编辑区（键 = arrangeId|secUid）。纯内存浏览态：
      不持久化（D2 拍板），open()/close() 清空——重开浮层回到默认折叠。 */
   /** @type {Set<string>} */
@@ -10206,6 +10223,9 @@ const Arrange = (() => {
   function buildSecRow(a, sec, i){
     const row = document.createElement("div");
     row.className = "arg-sec";
+    /* （v2.33.0：段卡片 ↔ 范围联动的 play-in-range/play-dim 类**不在**这里挂——
+       renderPanel 尾部的 syncPanelRead 会按同一判据给所有段行补齐，这里挂是冗余且
+       会被反向验证判为死代码；联动判据只有 syncPanelRead 一处事实源） */
     const lab = document.createElement("div"); lab.className = "arg-sec-label";
     lab.textContent = "段 " + (i + 1);
     row.appendChild(lab);
@@ -10395,7 +10415,7 @@ const Arrange = (() => {
     Modal.unbindOverlay("arrangeOverlay");   // v2.0.4：重建列表/段行前先解绑上一轮登记
     if (!Store.arranges.length){
       const h = document.createElement("div");
-      h.className = "hint"; h.textContent = "还没有曲式——点右上角「新建曲式」从头编一首。";
+      h.className = "hint"; h.textContent = "还没有曲式——点曲式库行尾的「＋」从头编一首。";
       list.appendChild(h);
     }
     Store.arranges.forEach(x => {
@@ -10414,12 +10434,17 @@ const Arrange = (() => {
     const wrap = $("argSections");
     clear(wrap);
     $("argLibMore").disabled = !a;       // v2.30.0：曲式级 ⋯ 与旧「复制/删除」同一前提（得先有"当前曲式"）
-    /* 重渲染会 unbind 掉菜单按钮的监听（Modal.unbindOverlay 全量解绑）——argActions 里的
-       菜单残影留着就是"点了没反应"的死 UI，重建列表前直接摘掉（下次点 ⋯/新建 再展开）。
-       摘完 argNew 的 aria-expanded 恒为 false（展开态只在两次渲染之间存在）。 */
+    /* 重渲染会 unbind 掉菜单按钮的监听（Modal.unbindOverlay 全量解绑）——菜单残影留着就是
+       "点了没反应"的死 UI，重建列表前直接摘掉（下次点 ＋/⋯ 再展开）。
+       v2.33.0：新建菜单宿主换成曲式库行 argLibRow，两张菜单分属两个容器、都要扫。 */
     Array.prototype.filter.call($("argActions").children,
-      (/** @type {any} */ c) => /(^| )arg-(new|lib)-menu( |$)/.test(c.className))
+      (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className))
       .forEach((/** @type {any} */ m) => m.parentNode.removeChild(m));
+    Array.prototype.filter.call($("argLibRow").children,
+      (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className))
+      .forEach((/** @type {any} */ m) => m.parentNode.removeChild(m));
+    newMenuOpen = false;
+    $("argNew").classList.remove("open");
     $("argNew").setAttribute("aria-expanded", "false");
     $("argAddSec").disabled = !a;
     if (!a){ $("argHint").textContent = ""; $("argProblems").textContent = ""; clear($("argMap")); return; }
@@ -10452,7 +10477,10 @@ const Arrange = (() => {
       const pickRow = document.createElement("div");
       pickRow.className = "arg-sec arg-pick";
       pickRow.id = "argPicking";
-      const lab = document.createElement("div"); lab.className = "arg-sec-label"; lab.textContent = "选";
+      const lab = document.createElement("div"); lab.className = "arg-sec-label";
+      /* v2.33.0：标题写明给谁换型（方案 §4.4-2）——旧版只有孤零零一个「选」，
+         用户不知道在给哪个段哪个块换（原 P2-10 只修了一半） */
+      lab.textContent = "换型：第 " + (picking.sec + 1) + " 段 · 块 " + (picking.blk + 1);
       pickRow.appendChild(lab);
       const box = document.createElement("div"); box.className = "arg-blocks";
       /* 第三参取名 isCur 而不是 cur：外层作用域已有同名的当前型 pill（no-shadow） */
@@ -10587,6 +10615,21 @@ const Arrange = (() => {
       const on = S.arrangeSel.from <= end && S.arrangeSel.to >= start;
       if (on && !seg.classList.contains("in-range")) seg.classList.add("in-range");
       if (!on && seg.classList.contains("in-range")) seg.classList.remove("in-range");
+    });
+    /* v2.33.0：段卡片与范围联动（同 buildSecRow 的判据）——拖滑块时卡片绿条/dim 实时跟随。
+       候选行（arg-pick）混在 children 里但不代表段：跳过它，段下标单独计数 */
+    let si = 0;
+    Array.prototype.forEach.call($("argSections").children, (/** @type {any} */ row) => {
+      if (/(^| )arg-pick( |$)/.test(row.className)) return;
+      const start = songBarBefore(a, si), end = start + secBars(a.sections[si]) - 1;
+      const on = S.arrangeSel.from <= end && S.arrangeSel.to >= start;
+      if (on && !row.classList.contains("play-in-range")){
+        row.classList.add("play-in-range"); row.classList.remove("play-dim");
+      }
+      if (!on && !row.classList.contains("play-dim")){
+        row.classList.add("play-dim"); row.classList.remove("play-in-range");
+      }
+      si++;
     });
   }
   /** 面板双滑块的两级处理（isFrom 区分起点/终点；commit = 松手提交才跑重活）。
@@ -10894,18 +10937,24 @@ const Arrange = (() => {
     arrangeRender(); refreshBar();
     announce("已按模板创建：" + v.name + "，共 " + v.sections.length + " 段");
   }
-  /* 「新建曲式」的模板菜单：**运行时生成**的一行 pill（不占静态标记），插进顶栏动作区。
-     再点一次「新建曲式」或选中任意模板即收起——同一时间至多一处展开，无状态机。 */
+  /* 「＋ 新建」的模板菜单（v2.33.0 重做）：宿主从顶栏搬进曲式库行（argLibRow）——
+     入口就在它服务的列表边上，菜单就地展开（设计原稿既定方案）。
+     交互从"再点一次按钮 = 收起"的 toggle 改为**点窗外即关**（装配区 pointerdown，
+     触发钮与菜单内部除外）——用户实测"点完按钮还在、再点一下反而收起"的困惑根源。
+     展开时触发钮切 .open 高亮 + aria-expanded（"已展开"必须可见）。 */
+  /** @returns {void} */
+  function closeNewMenu(){
+    const m = Array.prototype.find.call($("argLibRow").children,
+      (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
+    if (m) m.parentNode.removeChild(m);
+    newMenuOpen = false;
+    $("argNew").classList.remove("open");
+    $("argNew").setAttribute("aria-expanded", "false");
+  }
   /** @returns {void} */
   function toggleNewMenu(){
-    const bar = $("argActions");
-    /* v2.30.0：与曲式级 ⋯ 菜单互斥——开模板菜单先收曲式菜单（同一时间至多一张） */
-    const oldLib = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
-    if (oldLib) oldLib.parentNode.removeChild(oldLib);
-    /* 用 children 遍历而不是 querySelector：桩的元素级 querySelector 不存在（见 harness 注释），
-       按类名过滤 children 是本项目既定的定位方式（同 buildSecRow 各处） */
-    const old = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
-    if (old){ old.parentNode.removeChild(old); return; }
+    if (newMenuOpen){ closeNewMenu(); return; }          // 防御性保留（外部点击才是主收口）
+    closeLibMenu();                                      // 与曲式级 ⋯ 菜单互斥（至多一张）
     const has = !!cur();
     const menu = document.createElement("div");
     menu.className = "arg-new-menu";
@@ -10920,19 +10969,19 @@ const Arrange = (() => {
         if (kind === "dup") b.setAttribute("aria-label", "复制当前曲式为副本" + (has ? "" : "（当前没有选中曲式）"));
         Modal.bindOverlay("arrangeOverlay", b, "click", (/** @type {any} */ e) => {
           evEl(e).blur();
-          const m = Array.prototype.find.call($("argActions").children,
-            (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
-          if (m) m.parentNode.removeChild(m);
+          closeNewMenu();
           applyTemplate(kind);
         });
         menu.appendChild(b);
       });
-    /* ★ 挂到动作区容器末尾，而不是插在「新建曲式」按钮后面：
-       菜单是 flex-basis:100% 的一行，无论在哪个位置都独占一行（视觉等价）；
+    /* ★ 挂到曲式库行容器末尾：菜单是 flex-basis:100% 的一行，独占一行（视觉等价）；
        而测试桩从标记惰性建元素、不建静态父子关系（argNew.parentNode 为 null），
        insertAdjacentElement 依赖兄弟位置，在桩里会静默落空——appendChild 到
-       #argActions 上则两条环境行为一致。 */
-    $("argActions").appendChild(menu);
+       #argLibRow 上则两条环境行为一致。 */
+    $("argLibRow").appendChild(menu);
+    newMenuOpen = true;
+    $("argNew").classList.add("open");
+    $("argNew").setAttribute("aria-expanded", "true");
   }
 
   function open(){
@@ -11049,18 +11098,30 @@ const Arrange = (() => {
     evEl(e).blur();
     toggleNewMenu();
   });
+  /* v2.33.0：模板菜单「点窗外即关」——挂在 overlay 根上（真实点击会冒泡上来；
+     桩没有冒泡，测试直接在根上 fire、target=根 → 沿 parentNode 上溯不命中菜单/触发钮 → 关）。
+     命中触发钮（走它自己的 toggle）或菜单内部（走选项自己的 handler）时不关。 */
+  $("arrangeOverlay").addEventListener("pointerdown", (/** @type {any} */ ev) => {
+    if (!newMenuOpen) return;
+    let t = ev && ev.target;
+    while (t){
+      if (t.id === "argNew" || /(^| )arg-new-menu( |$)/.test(t.className || "")) return;
+      t = t.parentNode;
+    }
+    closeNewMenu();
+  });
   /* v2.30.0（S1 重设计）：曲式级 ⋯ 菜单——「复制 / 删除」从顶栏常驻按钮收进来。
      「复制」与新建菜单里的「复制当前曲式」是同一动作（applyTemplate("dup")），
      不再摆两颗按钮；「删除」低频且危险，降级为菜单项（确认弹窗仍在）。
-     菜单与「新建曲式」模板菜单互斥（同一时间 argActions 里至多一张，见 toggleNewMenu）；
+     菜单与「＋ 新建」的模板菜单互斥（同一时间至多一张，见 toggleNewMenu / toggleLibMenu）；
      arrangeRender 重建列表时会摘掉两张菜单（unbind 后的残影 = 死 UI）。 */
   /** @returns {void} */
   function toggleLibMenu(){
+    closeNewMenu();                                      // v2.33.0：与「＋ 新建」菜单互斥（至多一张）
     const bar = $("argActions");
     const old = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
     if (old){ old.parentNode.removeChild(old); return; }
-    const nm = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className));
-    if (nm) nm.parentNode.removeChild(nm);
+    /* （新建菜单的互斥收口已在函数头的 closeNewMenu() 里——它 v2.33.0 起住在 argLibRow） */
     const has = !!cur();
     const menu = document.createElement("div");
     menu.className = "arg-lib-menu";

@@ -16,11 +16,11 @@ const { loadApp, ok, eq, section } = require("../lib/harness");
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 
 /* 打开编排面板、点开模板菜单、点第 k 个模板 pill。
-   菜单是运行时生成的节点（挂在 #argActions 里），按类名定位——桩没有元素级 querySelector。 */
+   菜单是运行时生成的节点（v2.33.0 起挂在曲式库行 #argLibRow 里），按类名定位——桩没有元素级 querySelector。 */
 function pickTemplate(beat, els, k){
   beat.Arrange.open();
   els["argNew"].fire("click");
-  const menu = els["argActions"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className));
+  const menu = els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className));
   ok(!!menu, "前提：模板菜单已展开");
   eq(menu.children.length, 4, "前提：菜单四项");
   menu.children[k].fire("click");
