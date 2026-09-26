@@ -40,6 +40,22 @@ section("T102a 层叠修复 · ★ 设置小窗里点「使用方法」⇒ 使�
 
 /* ================= 场景 T102b：使用方法的「设置里的每一项」内容契约（用户实报 ②③） ================= */
 section("T102b 内容契约 · ★ 新增「设置里的每一项」章节：Swing / 延迟补偿 / 后台保活都说人话");
+/* v2.36.0：宽屏铺满开关（用户反馈④）——设置弹窗 markup + body 类 + 主界面 CSS 三处契约（源码文本级） */
+{
+  const fs = require("fs");
+  const path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+  ok(src.includes('id="wideToggle"') && src.includes("宽屏铺满<span"), "设置弹窗有「宽屏铺满」开关");
+  ok(src.includes("body.wide-full .main{max-width:none}"), "★ 开启后主界面去掉 1440px 上限（侧栏 360 不变）");
+  /* 行为断言：点开关 → body.wide-full 切换 + 持久化（真开关不是摆设） */
+  const app = loadApp();
+  app.beat.Settings.open();
+  app.els["wideToggle"].fire("click");
+  ok(app.sandbox.document.body.classList.contains("wide-full"), "★ 点开 → body 加 wide-full（主列铺满）");
+  app.els["wideToggle"].fire("click");
+  ok(!app.sandbox.document.body.classList.contains("wide-full"), "再点 → 恢复 1440 居中");
+  app.beat.Settings.close();
+}
 {
   /* 文本级断言（同 t90 的 html 切片手法）：说明是静态标记，不该由 JS 渲染 */
   ok(html.indexOf("「设置」里的每一项") >= 0, "★ 新增「设置」里的每一项章节");

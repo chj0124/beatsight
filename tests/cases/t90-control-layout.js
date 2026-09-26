@@ -320,6 +320,8 @@ section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏、
      "★ 无曲式时 :empty 整枚 chip 藏起（不留空壳）");
   ok(css.includes(".arg-now-name{") && css.includes("border-radius:999px"),
      "★ chip 描边胶囊样式（与 pill 家族同一视觉语言）");
+  ok(/\.arg-now-name\{[^}]*max-width:100%[^}]*\}/.test(css),
+     "★★ v2.36.0：chip 内容上限 + 省略号——「当前段 → 下段」变长后不再捅出卡片（用户实拍）");
   ok(css.includes(".arg-now.single .arg-now-name{display:none}"),
      "★★ v2.35.0：单曲式时整行 .single → chip 隐藏——它只在多条曲式时才有"
      + "「防编辑/播放错位」的信息量（用户提问④；内容写入点仍零改动）");

@@ -72,7 +72,11 @@ section("T55b 使用方法 · 完整说明默认收起 / 可展开 / 可收起")
 section("T55c 使用方法 · 内容覆盖（查标记原文）");
 {
   /* 长度要有**上界**：只判 >500 的话，"切片一路切到文件末尾"这种静默错误完全过得了 */
-  ok(helpBlock.length > 2000 && helpBlock.length < 20000,
+  ok((helpBlock.match(/class="help-fig"/g) || []).length === 3,
+     "★★ v2.36.0：帮助页配了 3 幅内联 SVG 示意图（布局 / 范围滑块 / 练这段 vs 循环本行）");
+  ok(helpBlock.includes("「练这段」和「循环本行」差在哪"),
+     "★ 「练这段 vs 循环本行」对比词条到位（用户反馈看不懂）");
+  ok(helpBlock.length > 2000 && helpBlock.length < 26000,   /* v2.36.0 上限放宽：帮助页新增 3 幅内联 SVG 示意图（约 +4KB） */
      "★ 取到的确实只是帮助面板那一段（实际 " + helpBlock.length + " 字符；越界会接近整文件）");
   /* 简明版：三段都必须在，且顺序是"上手 → 看画面 → 试开关" */
   ["三步上手", "画面怎么看", "先试这几个开关"].forEach(t =>

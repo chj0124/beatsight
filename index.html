@@ -76,6 +76,9 @@ button:disabled{cursor:not-allowed}
 
 /* ---------- 主布局 ---------- */
 .main{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}   /* v2.11.1：align-items:start——侧栏按内容收高，不再被拉到与主列等高（消除侧栏下方吊着的大片空棚） */
+/* v2.36.0（用户反馈）：宽屏铺满（设置 · 外观与辅助开关，默认关）——去掉 1440px 上限，
+   主列 1fr 拉伸铺满、侧栏 360px 不变；超宽屏上视线跨度变大，故做成选项而非默认 */
+body.wide-full .main{max-width:none}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -598,6 +601,7 @@ input[type=range].vol{width:120px}
      停机且范围为整首时显示「整首连播 · 已就绪」（见 syncDemoRange 的 whole 分支）。 */
 .demo-play-row{display:flex;align-items:center;gap:8px;margin:2px 0 0}
 .demo-play-note{font-size:10.5px;color:var(--t3);line-height:1.4;min-width:0}
+.demo-play-note:empty{display:none}   /* v2.36.0：「已选…」教学文案删除后，停止+局部范围态该行留空——空即藏，不留一行空白 */
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
 .sidebar-note[hidden]{display:none}
 /* `.preset-io` 随四个导入导出按钮搬进设置弹窗而删除（v2.10.12）——现在那四个按钮用的是
@@ -855,7 +859,8 @@ input[type=range].vol{width:120px}
    用户实拍"像是多出来的 bug 文案"；它其实是「整首连播 / 范围滑块」当前服务的曲式名。
    无曲式时（:empty）整枚 chip 藏起，不留一个空壳 */
 .arg-now-name{font-size:12px;color:var(--t2);border:1px solid var(--line);border-radius:999px;
-  padding:4px 10px;background:var(--card2);white-space:nowrap}
+  padding:4px 10px;background:var(--card2);white-space:nowrap;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis}   /* v2.36.0：内容含「当前段 → 下段」后变得很长（用户实拍超出卡片）——超出即省略号，完整信息在编排页开练面板 */
 .arg-now-name:empty{display:none}
 /* v2.35.0：单曲式时整行 .single → chip 隐藏（多条曲式时它才有"防错位"的信息量） */
 .arg-now.single .arg-now-name{display:none}
@@ -876,6 +881,11 @@ input[type=range].vol{width:120px}
 .help-dl{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--t2)}
 .help-dl dt{margin-top:10px}
 .help-dl dd{margin:0 0 0 2px}
+/* v2.36.0：帮助页简易示意图（内联 SVG）——深色卡片底、文字与应用同字号体系 */
+.help-fig{margin:12px 0 4px;padding:12px;background:var(--card2);border:1px solid var(--line);border-radius:10px}
+.help-fig svg{display:block;width:100%;height:auto}
+.help-fig text{font-family:var(--sans)}
+.help-fig figcaption{font-size:11px;color:var(--t3);margin-top:8px}
 
 /* ---------- 响应式 ---------- */
 /* 窄屏（≤640px）：段行拆成三行。390px 下「段号 + 名字输入(110px) + 块列表 + 5 个操作钮」
@@ -1726,6 +1736,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <!-- v2.25.3：本节由 dl 改 ul——DOM 节点预算（smoke ≤1300）的瘦身纪律，见「先分清两个编辑入口」处的注释 -->
         <ul class="help-list">
           <li><b>主题（经典 / 观测台）。</b>两套配色，只换外观、功能完全一样：<b>经典</b> = 功能绿的练习舱（默认）；<b>观测台</b> = 深蓝的工程师仪表盘。挑顺眼的用</li>
+          <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
           <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
@@ -1746,17 +1757,74 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             「第 5–12 小节」就只练副歌里那几小节。读数行会把它翻译成
             「第 5–12 小节 · 副歌 → 桥段 · 共 8 小节」；<b>两个滑块拖到重合 = 只循环这一个小节</b>
             （磨"老是弹不顺的那一小节"），想循环一整段就拖出该段的起止小节。
-            它和编排面板右侧「开练」面板的双滑块是<b>同一份范围</b>，两边改哪边都同步。
+            它和编排页顶部「开练」走带条的双滑块是<b>同一份范围</b>，两边改哪边都同步。
             注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几小节"看上面那行说明</li>
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
-          <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点「新建曲式」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.30.0 -->复制与删除也在顶栏「⋯」菜单里。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
-          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨；<b>锚点提示音</b>开关在右侧「开练」面板里（全书一个，不再每段重复）</li>
-          <li><!-- v2.31.0 -->编排面板右侧有「<b>开练</b>」面板：<b>歌曲地图</b>点某段 = 只循环练这一段，
+          <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点曲式库行尾的「<b>＋</b>」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.36.0 -->复制只有这一个入口；删除 = 选中曲式 chip 右侧的「<b>✕</b>」（会弹确认）。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
+          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨（<!-- v2.35.0 -->字块按<b>每小节一行</b>排，与主界面歌词轨一致）；<b>锚点提示音</b>开关在顶部「开练」走带条里（全书一个，不再每段重复）</li>
+          <li><!-- v2.35.0 -->页面顶部有「<b>开练</b>」走带条（滚动时吸顶常驻）：<b>歌曲地图</b>点某段 = 只循环练这一段，
             <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
+          <li><!-- v2.36.0 --><b>「练这段」和「循环本行」差在哪</b>：两个都在"反复练一小段"，差别在<b>练什么、带不带爬坡</b>——
+            <b>练这段</b>（段行 ⋯ 菜单 / 歌曲地图点段）= 把播放范围设成这一段并循环，<b>反复弹这一段的节奏型</b>，不带爬坡；<b>循环本行</b>（展开某段歌词后出现）= 同样只播这一段，但带上<b>这一段的歌词</b>一起循环，并<b>自动配变速爬坡</b>（一级级提速）。一句话记：<b>练节奏用「练这段」，练"边弹边唱"用「循环本行」</b>。两幅示意图见本节末尾</li>
           <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
         </ul>
+
+        <!-- v2.36.0（用户反馈）：帮助页配简易示意图（内联 SVG，零依赖不变）——
+             ① 编排页布局 ② 范围滑块 ③ 练这段 vs 循环本行。深色底、功能绿点缀，与应用同风格。
+             ★ 节点预算纪律（smoke ≤1300）：三幅图控制在 ~40 个节点内（首版 45+ 把预算顶爆），
+               装饰性刻度线/重复标注一律省略，文字只保留必要的 -->
+        <div class="help-fig">
+          <svg viewBox="0 0 560 150" role="img" aria-label="编排页布局示意：顶部开练走带条、曲式库行、段卡片">
+            <rect x="8" y="6" width="544" height="42" rx="8" fill="none" stroke="#1ED760" stroke-opacity=".5"/>
+            <text x="18" y="22" font-size="10" fill="#1ED760">开练 · 走带条（吸顶常驻）</text>
+            <rect x="18" y="28" width="44" height="14" rx="3" fill="rgba(30,215,96,.15)" stroke="#1ED760" stroke-opacity=".6"/>
+            <rect x="66" y="28" width="44" height="14" rx="3" fill="rgba(30,215,96,.15)" stroke="#1ED760" stroke-opacity=".6"/>
+            <rect x="114" y="28" width="44" height="14" rx="3" fill="#232323"/>
+            <rect x="8" y="56" width="544" height="32" rx="8" fill="none" stroke="#2c2c2c"/>
+            <rect x="18" y="63" width="140" height="18" rx="9" fill="#1f1f1f" stroke="#1ED760" stroke-opacity=".7"/>
+            <text x="26" y="75" font-size="9" fill="#fff">在他乡（示例）</text>
+            <text x="180" y="75" font-size="10" fill="#6a6a6a">＋</text>
+            <text x="210" y="75" font-size="9" fill="#6a6a6a">曲式库：点 chip 切换 · ＋ 新建 · 选中后有 ✕ 删除</text>
+            <rect x="8" y="96" width="544" height="46" rx="8" fill="none" stroke="#2c2c2c"/>
+            <circle cx="28" cy="112" r="9" fill="none" stroke="#1ED760"/>
+            <text x="24" y="115" font-size="9" fill="#1ED760">1</text>
+            <text x="46" y="115" font-size="10" fill="#fff">段名</text>
+            <circle cx="520" cy="112" r="10" fill="none" stroke="#1ED760"/>
+            <text x="516" y="115" font-size="8" fill="#1ED760">▶</text>
+            <text x="46" y="134" font-size="9" fill="#6a6a6a">段卡片：块胶囊（点胶囊换型）· 歌词摘要 ▸ 展开编辑 · ⋯（练这段 / 重排 / 删除）</text>
+          </svg>
+          <figcaption>编排页一览：顶部「开练」走带条（地图 + 滑块 + 播放）→ 曲式库 → 段卡片（每段一张）</figcaption>
+        </div>
+        <div class="help-fig">
+          <svg viewBox="0 0 560 104" role="img" aria-label="播放范围双滑块示意：两个滑块之间为练习范围，重合 = 只练一小节">
+            <text x="8" y="16" font-size="10" fill="#b3b3b3">第 4–13 小节 · 副歌 → 间奏（共 30 小节）</text>
+            <rect x="30" y="44" width="500" height="6" rx="3" fill="#232323"/>
+            <rect x="110" y="44" width="180" height="6" rx="3" fill="#1ED760"/>
+            <circle cx="110" cy="47" r="11" fill="#fff"/>
+            <circle cx="290" cy="47" r="11" fill="#fff"/>
+            <text x="30" y="84" font-size="10" fill="#6a6a6a">拖两个滑块改范围（可从段中间开始 / 结束）</text>
+            <text x="330" y="84" font-size="10" fill="#6a6a6a">两个滑块拖到重合 = 只循环这 1 小节</text>
+          </svg>
+          <figcaption>播放范围：滑块 + 歌曲地图 + 「练这段」共用同一份范围，改哪边都同步</figcaption>
+        </div>
+        <div class="help-fig">
+          <svg viewBox="0 0 560 118" role="img" aria-label="练这段与循环本行的对比示意">
+            <rect x="8" y="6" width="266" height="92" rx="10" fill="none" stroke="#1ED760" stroke-opacity=".6"/>
+            <text x="24" y="28" font-size="11" fill="#1ED760">练这段（段卡片 ⋯ / 地图点段）</text>
+            <text x="24" y="50" font-size="10" fill="#b3b3b3">播放范围 = 第 N 段，范围循环：开</text>
+            <text x="24" y="68" font-size="10" fill="#b3b3b3">反复弹这一段的节奏型</text>
+            <text x="24" y="86" font-size="10" fill="#6a6a6a">不带爬坡 · 不需要歌词</text>
+            <rect x="286" y="6" width="266" height="92" rx="10" fill="none" stroke="#539df5" stroke-opacity=".6"/>
+            <text x="302" y="28" font-size="11" fill="#539df5">循环本行（展开歌词后出现）</text>
+            <text x="302" y="50" font-size="10" fill="#b3b3b3">只播这一段 + 循环</text>
+            <text x="302" y="68" font-size="10" fill="#b3b3b3">带上这段的歌词一起练</text>
+            <text x="302" y="86" font-size="10" fill="#6a6a6a">自动配变速爬坡（一级级提速）</text>
+            <text x="8" y="114" font-size="10" fill="#6a6a6a">一句话记：练节奏用「练这段」，练「边弹边唱」用「循环本行」</text>
+          </svg>
+          <figcaption>「练这段」vs「循环本行」：一个练节奏型、一个练弹唱配合</figcaption>
+        </div>
 
         <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
@@ -1827,8 +1895,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <button class="pill outline" id="themeToggle">主题 · 经典</button>
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
+      <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
+      <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px">主题（经典 / 观测台）与两个画面图层开关。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）。</div>
+    <div class="hint" style="margin-top:8px">主题（经典 / 观测台）、两个画面图层开关与<b>宽屏铺满</b>。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）；宽屏铺满去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。</div>
 
     <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
          v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
@@ -1962,23 +2032,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1994  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2584  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3850  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4557  Modal         应用内弹窗
-     L4694  Viz           时值可视化渲染与每帧动画
-     L6828  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7502  Trainer       变速训练器
-     L7640  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8103  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9336  Editor        自定义节奏型编辑器
-     L9703  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9740  Ear           听辨训练（v1.10.0）
-     L9960  Arrange       曲式编排（v2.0.0）
-     L11286 Help          使用方法（v2.0.1）
-     L11339 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11413 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11614 初始化（装配） 各模块 hook 接线与启动
+     L2064  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2654  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3923  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4630  Modal         应用内弹窗
+     L4767  Viz           时值可视化渲染与每帧动画
+     L6901  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7575  Trainer       变速训练器
+     L7713  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8188  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9423  Editor        自定义节奏型编辑器
+     L9790  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9827  Ear           听辨训练（v1.10.0）
+     L10047 Arrange       曲式编排（v2.0.0）
+     L11373 Help          使用方法（v2.0.1）
+     L11426 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11500 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11701 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2004,7 +2074,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.35.0";
+const VERSION = "2.36.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3285,6 +3355,7 @@ const Store = (() => {
    *   swing: number, accentGrp: Record<string, number>, timbre: string,
    *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
+   *   wideFull: boolean,
    *   showTab: boolean,
    *   vizRows: number,
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
@@ -3319,6 +3390,8 @@ const Store = (() => {
     playing: false,
     preview: false,
     bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
+    /* v2.36.0 宽屏铺满：默认关（主界面 1440px 居中），显式存 true 才铺满。视图偏好，进热键载荷 */
+    wideFull: saved.wideFull === true,
     /* v2.4.2 六线底纹开关：默认开（六线是扫弦谱的"纸"，第一眼就该在）。
        它只控制**底纹**显隐，不影响扫弦箭头的绘制——箭头是内容，底纹是参照物。 */
     showTab: saved.showTab !== false,
@@ -8040,6 +8113,18 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
      一条 CSS 规则就够了。箭头不受影响（它是内容，不是底纹）。 */
   bindToggle("tabToggle", () => (S.showTab = !S.showTab), () => Viz.syncTabLayer());
 
+  /* v2.36.0（用户反馈④）：宽屏铺满——去掉主页面的 1440px 宽度上限（默认关）。
+     只切 body 上的一个类（.wide-full），纯 CSS 重排、不重建 DOM。 */
+  function applyWideFull(){
+    const on = !!S.wideFull;
+    const b = document.body;
+    if (on && !b.classList.contains("wide-full")) b.classList.add("wide-full");
+    if (!on && b.classList.contains("wide-full")) b.classList.remove("wide-full");
+    setToggle("wideToggle", on);
+  }
+  bindToggle("wideToggle", () => (S.wideFull = !S.wideFull), () => applyWideFull());
+  applyWideFull();                               // 启动即恢复上次选择（冷键加载后此处 S 已就绪）
+
   /* 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**的可见行数（值表 VIZ_ROW_COUNTS）。
      与上面几个"图层开关"不同——改行数等于换掉 DOM 的行数，必须重建整棵树，所以这里不能像
      tabToggle 那样只切个类名，得走 buildPillRow 生成按钮、选中即调 Viz.buildViz()
@@ -8730,11 +8815,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (demoSongNote){
       const cur = demoCurBar();
       /* 局部范围按"单小节 / 区间"分两种说法：`第 3–3 小节` 这种叠加写法读起来像手误，
-         而"两个 thumb 重合 = 只循环这一小节"恰是精练最常用的一档，值得单独说清楚 */
+         而"两个 thumb 重合 = 只循环这一小节"恰是精练最常用的一档，值得单独说清楚。
+         v2.36.0（用户反馈）：「已选第 X–Y 小节 · 拖滑块改范围」整支**删除**——范围信息与
+         上方滑块读数完全重复，教学文案帮助页已有；播放位置三态（整首播放中 / 局部播放中 /
+         整首就绪）保留不动（它们是"现在播到第几小节"的唯一文字面，T68j 钉住） */
       demoSongNote.textContent = (S.playing && isMine && cur >= 0)
         ? (whole ? `整首连播 · 播放中 · 第 ${cur + 1}/${n} 小节` : `播放中 · 第 ${cur + 1}/${n} 小节`)
-        : (whole ? `整首连播 · 已就绪 · 共 ${n} 小节`
-          : (f === t ? `已选第 ${f + 1} 小节 · 拖滑块改范围` : `已选第 ${f + 1}–${t + 1} 小节 · 拖滑块改范围`));
+        : (whole ? `整首连播 · 已就绪 · 共 ${n} 小节` : "");
     }
   }
   /* 从曲式模式回到"单练当前节奏型"（v2.5.0）。
