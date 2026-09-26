@@ -79,6 +79,11 @@ button:disabled{cursor:not-allowed}
 /* v2.36.0（用户反馈）：宽屏铺满（设置 · 外观与辅助开关，默认关）——去掉 1440px 上限，
    主列 1fr 拉伸铺满、侧栏 360px 不变；超宽屏上视线跨度变大，故做成选项而非默认 */
 body.wide-full .main{max-width:none}
+/* v2.37.0（用户反馈，方案 B+C）：铺满时网格**密度封顶**——.viz 上限 1080px 居中
+   （1920 下每格 86px 太空旷；封顶后 ~63px，介于默认 56 与拉伸 86 之间），
+   页面与卡片仍铺满，只有网格内容收窄居中；歌词字号在封顶宽度下轻微放大填补空隙 */
+body.wide-full .viz{max-width:1080px;margin:0 auto}
+body.wide-full .lyric-char{font-size:18px}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -777,6 +782,12 @@ input[type=range].vol{width:120px}
    flex-wrap 的候选串里自然换行，串流不中断。当前型 = 绿描边（同 .cell.next 的强调色阶）。 */
 .arg-pick-zone{flex-basis:100%;font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;margin-top:2px}
 .arg-mini.cur{border-color:var(--green);color:var(--green)}
+/* v2.37.0：候选胶囊的类型徽标（扫弦 ↑↓）与 ✎ 跳编辑器（仅自定义型） */
+.arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:4px;padding:1px 3px;margin-left:2px}
+.arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:2px 3px;border-radius:4px}
+.arg-pill-edit:hover{color:var(--green);background:rgba(30,215,96,.1)}
+/* v2.37.0（c）：编辑器源型引用信息行 */
+#editorRefNote{margin:-6px 0 10px}
 .arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 .arg-ops{flex:none;display:flex;gap:4px}
 /* v2.30.0（S1）：段操作 ⋯ 菜单——运行时生成的一行（flex-basis:100% 独占一行），
@@ -1489,6 +1500,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </button>
         <div class="editor-title" id="editorTitle">自定义节奏型</div>
       </div>
+      <!-- v2.37.0（c）：源型的引用信息——把「引用不追踪」的真相在最易误解的场景讲清 -->
+      <div class="hint" id="editorRefNote"></div>
       <div class="editor-actions">
         <button class="pill outline" id="auditionBtn">试听</button>
         <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
@@ -1771,11 +1784,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li>整首必须是<b>同一个拍号</b>——混拍号会被拦下并告诉你是哪一段</li>
         </ul>
 
-        <!-- v2.36.0（用户反馈）：帮助页配简易示意图（内联 SVG，零依赖不变）——
-             ① 编排页布局 ② 范围滑块 ③ 练这段 vs 循环本行。深色底、功能绿点缀，与应用同风格。
-             ★ 节点预算纪律（smoke ≤1300）：三幅图控制在 ~40 个节点内（首版 45+ 把预算顶爆），
-               装饰性刻度线/重复标注一律省略，文字只保留必要的 -->
-        <div class="help-fig">
+        <!-- v2.36.0/2.37.0（用户反馈）：帮助页简易示意图（内联 SVG，零依赖不变）。
+             v2.37.0：① 示意图改 <template> 惰性挂载——首次展开帮助才克隆进 DOM
+             （template 内容不计入 smoke 的 DOM 预算，7 幅图 ~90 节点不再吃 1300 红线）；
+             ② 覆盖全部主要章节（主界面 / 训练 / 设置 / 曲式编排×3 / 编辑器），
+             图文占比反转：图为主、文字为辅（用户反馈③）。
+             ★ 桩没有 template.content / cloneNode，挂载逻辑有守卫跳过——图的断言全在源码级。 -->
+        <template id="helpFigsTpl">
+<div class="help-fig">
           <svg viewBox="0 0 560 150" role="img" aria-label="编排页布局示意：顶部开练走带条、曲式库行、段卡片">
             <rect x="8" y="6" width="544" height="42" rx="8" fill="none" stroke="#1ED760" stroke-opacity=".5"/>
             <text x="18" y="22" font-size="10" fill="#1ED760">开练 · 走带条（吸顶常驻）</text>
@@ -1826,6 +1842,67 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <figcaption>「练这段」vs「循环本行」：一个练节奏型、一个练弹唱配合</figcaption>
         </div>
 
+        <div class="help-fig">
+          <svg viewBox="0 0 560 118" role="img" aria-label="主界面控制项示意：状态灯与音量三条、BPM 组、编辑入口行">
+            <rect x="8" y="6" width="300" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="24" font-size="10" fill="#1ED760">● 已停止　当前型名</text>
+            <text x="20" y="44" font-size="9" fill="#b3b3b3">音量：节拍 ──○── 80%　扫弦 ───── 0%</text>
+            <text x="20" y="62" font-size="9" fill="#b3b3b3">（练习中随时调的三条滑杆）</text>
+            <rect x="320" y="6" width="232" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="332" y="24" font-size="9" fill="#b3b3b3">速度 BPM · 范围 30–240</text>
+            <text x="332" y="46" font-size="14" fill="#fff" font-weight="700">-5　-1　96　+1　+5</text>
+            <text x="332" y="64" font-size="9" fill="#6a6a6a">滑杆 · TAP 测速 · 快捷档</text>
+            <rect x="8" y="84" width="544" height="26" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="101" font-size="9" fill="#b3b3b3">编辑节奏型｜编排曲式｜当前曲式 chip（多条曲式才显示）</text>
+          </svg>
+          <figcaption>主界面：左列状态灯 + 音量三条（练习中随时调），右侧 BPM 组，下方编辑/编排入口行</figcaption>
+        </div>
+        <div class="help-fig">
+          <svg viewBox="0 0 560 96" role="img" aria-label="变速训练与听辨训练对比示意">
+            <rect x="8" y="6" width="266" height="70" rx="10" fill="none" stroke="#1ED760" stroke-opacity=".6"/>
+            <text x="24" y="28" font-size="11" fill="#1ED760">变速训练</text>
+            <text x="24" y="48" font-size="10" fill="#b3b3b3">从当前速度起步 · 每级加速 · 到目标停</text>
+            <text x="24" y="66" font-size="10" fill="#6a6a6a">练「速度耐力」</text>
+            <rect x="286" y="6" width="266" height="70" rx="10" fill="none" stroke="#539df5" stroke-opacity=".6"/>
+            <text x="302" y="28" font-size="11" fill="#539df5">听辨训练</text>
+            <text x="302" y="48" font-size="10" fill="#b3b3b3">听 2 小节 → 三选一（只给记谱）</text>
+            <text x="302" y="66" font-size="10" fill="#6a6a6a">练「听出时值」</text>
+          </svg>
+          <figcaption>两种训练：变速练耐力与爬坡，听辨练耳朵</figcaption>
+        </div>
+        <div class="help-fig">
+          <svg viewBox="0 0 560 96" role="img" aria-label="设置弹窗分组示意：外观与辅助、发声、数据与说明">
+            <rect x="8" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="22" y="28" font-size="10" fill="#fff">外观与辅助</text>
+            <text x="22" y="48" font-size="9" fill="#6a6a6a">主题 · 弹跳球 · 六线</text>
+            <text x="22" y="64" font-size="9" fill="#6a6a6a">宽屏铺满 · 壁纸</text>
+            <rect x="196" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="210" y="28" font-size="10" fill="#fff">发声</text>
+            <text x="210" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <rect x="384" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="398" y="28" font-size="10" fill="#fff">数据与说明</text>
+            <text x="398" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
+            <text x="398" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
+          </svg>
+          <figcaption>设置弹窗三组：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
+        </div>
+        <div class="help-fig">
+          <svg viewBox="0 0 560 118" role="img" aria-label="节奏型编辑器示意：小节格子、试听与保存、与编排的关系">
+            <rect x="8" y="6" width="544" height="56" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="24" font-size="10" fill="#fff">基于「民谣扫弦」创建 · 4 拍</text>
+            <rect x="20" y="32" width="60" height="22" rx="4" fill="rgba(30,215,96,.15)" stroke="#1ED760" stroke-opacity=".5"/>
+            <rect x="84" y="32" width="60" height="22" rx="4" fill="rgba(30,215,96,.15)" stroke="#1ED760" stroke-opacity=".5"/>
+            <rect x="148" y="32" width="60" height="22" rx="4" fill="#232323"/>
+            <rect x="212" y="32" width="60" height="22" rx="4" fill="#232323"/>
+            <text x="290" y="47" font-size="9" fill="#6a6a6a">每小节须恰好占满 N 拍 · Ctrl+Z 撤销</text>
+            <rect x="8" y="70" width="544" height="40" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="88" font-size="9" fill="#b3b3b3">试听 → 命名 → 保存为预设（生成新副本，原曲式仍用原版）</text>
+            <text x="20" y="106" font-size="9" fill="#6a6a6a">与编排的关系：这里是「零件工坊」，曲式编排引用这些零件装配成歌</text>
+          </svg>
+          <figcaption>节奏型编辑器：画好一个型 → 存为副本 → 回编排页换型使用（零件 ⇄ 装配单）</figcaption>
+        </div>
+        </template>
+        <div id="helpFigsMount"></div>
         <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
           <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
@@ -2032,23 +2109,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2064  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2654  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3923  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4630  Modal         应用内弹窗
-     L4767  Viz           时值可视化渲染与每帧动画
-     L6901  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7575  Trainer       变速训练器
-     L7713  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8188  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9423  Editor        自定义节奏型编辑器
-     L9790  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9827  Ear           听辨训练（v1.10.0）
-     L10047 Arrange       曲式编排（v2.0.0）
-     L11373 Help          使用方法（v2.0.1）
-     L11426 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11500 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11701 初始化（装配） 各模块 hook 接线与启动
+     L2141  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2731  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4000  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4707  Modal         应用内弹窗
+     L4844  Viz           时值可视化渲染与每帧动画
+     L6978  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7652  Trainer       变速训练器
+     L7790  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8265  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9500  Editor        自定义节奏型编辑器
+     L9890  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9927  Ear           听辨训练（v1.10.0）
+     L10147 Arrange       曲式编排（v2.0.0）
+     L11497 Help          使用方法（v2.0.1）
+     L11556 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11630 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11831 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2074,7 +2151,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.36.0";
+const VERSION = "2.37.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9431,21 +9508,44 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
      的各种时机被调（撤销、增删小节），不能每次都去问 curPattern()——那时用户可能已经改了选中的预设 */
   let srcName = "";
 
-  function open(){
+  function open(){ openWith(curPattern()); }
+  /** v2.37.0（b）：以指定型为底稿进编辑器（编排页换型候选 ✎ 的跳转目标；open() = openWith(当前型)）。
+      编辑器保存 = 生成**新副本**（不覆盖原版），故跳转语义是"造变体"而非"就地改"。 */
+  /** @param {any} src */
+  function openWith(src){
     if (S.playing) Controls.stop();
-    const src = curPattern();
     srcName = src.name;
     draft = { name: src.name + "-副本", meter: src.meter,
       accents: (src.accents || defaultAccents(src.meter)).slice(),
-      bars: src.bars.map(bar => bar.map((/** @type {any} */ s) => ({...s}))) };
+      bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
     edSel = null; editBar = 0;
     undoStack = []; dirty = false;
     $("presetNameInput").value = draft.name;
     $("editorMeter").textContent = draft.meter;
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
     $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + meterName(draft.meter) + " 拍";
+    /* v2.37.0（c）：源型引用信息——把「引用不追踪」的真相在最易误解的场景讲清：
+       编辑器保存即新增，现有曲式仍指向原版；要替换须回编排页换型 */
+    const info = srcRefs(src);
+    $("editorRefNote").textContent = info.n >= 1
+      ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型"
+      : "";
     editorRender();
     Modal.openOverlay("editor");          // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
+  }
+  /** v2.37.0（c）：统计某型被多少首曲式的段块引用（内置按 idx、自定义按 id；去重按曲式名） */
+  /** @param {any} src @returns {{n: number, names: string[]}} */
+  function srcRefs(src){
+    let n = 0;
+    /** @type {string[]} */
+    const names = [];
+    Store.arranges.forEach((/** @type {any} */ a) => (a.sections || []).forEach((/** @type {any} */ s) => (s.blocks || []).forEach((/** @type {any} */ b) => {
+      const hit = src.type === "custom"
+        ? (b.ref && b.ref.type === "custom" && b.ref.id === src.id)
+        : (b.ref && b.ref.type === "builtin" && b.ref.idx === src.idx);
+      if (hit){ n++; if (!names.includes(a.name)) names.push(a.name); }
+    })));
+    return { n: n, names: names };
   }
   function stopAudition(){
     Controls.stop();
@@ -9784,7 +9884,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
     return true;
   } });
-  return { open, tryClose, undo, draft: () => draft };
+  return { open, openWith, tryClose, undo, draft: () => draft };
 })();
 
 /* ================= Settings · 设置（v2.10.12 新增） ================= */
@@ -10628,11 +10728,35 @@ const Arrange = (() => {
       const box = document.createElement("div"); box.className = "arg-blocks";
       /* 第三参取名 isCur 而不是 cur：外层作用域已有同名的当前型 pill（no-shadow） */
       /** @param {string} text @param {any} ref @param {boolean} isCur */
-      const pickPill = (text, ref, isCur) => {
+      const pickPill = (text, ref, isCur, /** @type {any} */ srcPreset) => {
         const b = document.createElement("button");
         b.className = "arg-mini" + (isCur ? " cur" : "");
         b.textContent = isCur ? "✓ " + text : text;
         b.setAttribute("aria-label", (isCur ? "当前节奏型：" : "") + text);
+        /* v2.37.0：类型徽标——扫弦型标「↑↓」，一眼分清节拍型/扫弦型（编排页此前零可见性） */
+        if (srcPreset && hasStrum(srcPreset)){
+          const tag = document.createElement("span");
+          tag.className = "arg-pill-tag";
+          tag.textContent = "↑↓";
+          tag.setAttribute("aria-label", "带扫弦记谱");
+          b.appendChild(tag);
+        }
+        /* v2.37.0（b）：✎ = 以此型为底稿进编辑器（仅自定义型；内置型内容恒定不给）。
+           编辑器保存 = 生成新副本（不覆盖原版），现有曲式仍用原版——跳转语义如实标注 */
+        if (srcPreset && ref.type === "custom"){
+          const ed = document.createElement("span");
+          ed.className = "arg-pill-edit";
+          ed.textContent = "✎";
+          ed.setAttribute("role", "button");
+          ed.setAttribute("aria-label", "去编辑器，以「" + text + "」为底稿创建副本");
+          Modal.bindOverlay("arrangeOverlay", ed, "click", (/** @type {any} */ e) => {
+            if (e && e.stopPropagation) e.stopPropagation();   // 别触发胶囊自己的"换型"
+            picking = null;
+            /* src 带上 type/id/idx（srcRefs 引用匹配用）+ preset 本体（底稿用） */
+            Editor.openWith(Object.assign({}, srcPreset, ref));
+          });
+          b.appendChild(ed);
+        }
         Modal.bindOverlay("arrangeOverlay", b, "click", () => {
           const pk = picking;
           if (!pk) return;
@@ -10653,17 +10777,17 @@ const Arrange = (() => {
       ];
       if (curRef){
         const cp = refKey(curRef).charAt(0) === "b" ? BUILTINS[curRef.idx] : Store.customs.find((/** @type {any} */ c) => c && c.id === curRef.id);
-        zones[zoneOf(cp) === "strum" ? 1 : 0].pills.push(pickPill(cp ? cp.name : "?", curRef, true));
+        zones[zoneOf(cp) === "strum" ? 1 : 0].pills.push(pickPill(cp ? cp.name : "?", curRef, true, cp));
       }
       BUILTINS.forEach((p, idx) => {
         const ref = { type: "builtin", idx };
         if (curRef && refKey(curRef) === refKey(ref)) return;   // 当前型已置顶，原位不再重复
-        zones[zoneOf(p) === "strum" ? 1 : 0].pills.push(pickPill(p.name, ref, false));
+        zones[zoneOf(p) === "strum" ? 1 : 0].pills.push(pickPill(p.name, ref, false, p));
       });
       Store.customs.forEach(c => {
         const ref = { type: "custom", id: c.id };
         if (curRef && refKey(curRef) === refKey(ref)) return;
-        zones[2].pills.push(pickPill(c.name, ref, false));
+        zones[2].pills.push(pickPill(c.name, ref, false, c));
       });
       zones.forEach(z => {
         if (!z.pills.length) return;
@@ -11378,6 +11502,12 @@ const Help = (() => {
   let more = false;
   function helpRender(){
     $("helpMore").hidden = !more;
+    /* v2.37.0：示意图惰性挂载（首次展开克隆一次；桩无 template.content，守卫跳过） */
+    const figsTpl = $("helpFigsTpl"), figsMount = $("helpFigsMount");
+    if (more && figsMount && figsTpl && figsTpl.content && figsTpl.content.cloneNode &&
+        !figsMount.childNodes.length){
+      figsMount.appendChild(figsTpl.content.cloneNode(true));
+    }
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
     $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
     /* v2.0.6（审计 P1-5）：隔离区有内容时才露出清理入口，并带上条数——
