@@ -25,13 +25,14 @@ function pickTemplate(beat, els, k){
   eq(menu.children.length, 4, "前提：菜单四项");
   menu.children[k].fire("click");
 }
-/* v2.30.0（S1）：「复制」从顶栏常驻按钮收进曲式级 ⋯ 菜单——打开菜单、返回「复制当前曲式」按钮。
-   每次复制都会触发 arrangeRender（重建列表 + 摘掉两张菜单），所以每次复制都要重新开菜单。 */
+/* v2.35.0：「复制当前曲式」只留在 ＋ 模板菜单一处（顶栏 ⋯ 退役，两处重复的收敛）——
+   打开模板菜单、返回「复制当前曲式」按钮。
+   每次复制都会触发 arrangeRender（重建列表 + 摘掉菜单），所以每次复制都要重新开菜单。 */
 function libCopyBtn(beat, els){
   beat.Arrange.open();
-  els["argLibMore"].fire("click");
-  const menu = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
-  ok(!!menu, "前提：曲式操作菜单已展开");
+  els["argNew"].fire("click");
+  const menu = els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className));
+  ok(!!menu, "前提：模板菜单已展开");
   return Array.prototype.find.call(menu.children, b => /复制当前曲式为副本/.test(b.getAttribute("aria-label") || ""));
 }
 const secNames = (beat, id) => beat.Store.findArrange(id).sections.map(s => s.name).join("|");
@@ -128,10 +129,14 @@ section("T105b 复制曲式 · 副本独立 / 重名递增 / 歌词行不跟着�
   eq(beat.Store.arranges[2].name, "原曲 副本2", "★ 重名自动递增（副本 / 副本2 / 副本3 …）");
   beat.Arrange.close();
 
-  /* 没有当前曲式：曲式级 ⋯ 整体置灰（点了也是空动作，不建出空壳） */
+  /* 没有当前曲式：模板菜单里的「复制当前曲式」禁用（点了也是空动作，不建出空壳） */
   const solo = loadApp();
   solo.beat.Arrange.open();
-  eq(solo.els["argLibMore"].disabled, true, "★ 空库时曲式级「⋯」禁用（没有可复制的对象）");
+  solo.els["argNew"].fire("click");
+  const soloMenu = solo.els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className));
+  const soloDup = Array.prototype.find.call(soloMenu.children,
+    b => /复制当前曲式为副本/.test(b.getAttribute("aria-label") || ""));
+  eq(soloDup.disabled, true, "★ 空库时「复制当前曲式」禁用（没有可复制的对象）");
   solo.beat.Arrange.close();
 }
 

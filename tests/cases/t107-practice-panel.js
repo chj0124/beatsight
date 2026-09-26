@@ -128,18 +128,19 @@ section("T107c 起/终退役 · 练这段写范围 · 地图高亮跟随");
   beat.Arrange.close();
 }
 
-/* ================= 场景 T107d：窄屏 CSS 契约（源码文本级，同 t101 口径） ================= */
-section("T107d 窄屏 · 960 单栏面板提前 / 640 底部固定条");
+/* ================= 场景 T107d：布局 CSS 契约（源码文本级，同 t101 口径） ================= */
+section("T107d 布局 · v2.35.0 顶部走带条吸顶 / 640 底部固定条 / 双栏 grid 已删除");
 {
   const fs = require("fs");
   const path = require("path");
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(src.includes(".arg-panel{position:static;order:-1}"),
-    "★ ≤960px：面板退 static 且提前到段落结构上方（先定范围再编排）");
-  ok(src.includes(".arg-panel{position:fixed;top:auto;left:0;right:0;bottom:0"),
-    "★ ≤640px：面板变底部固定条（top:auto 显式复位——sticky 的 top:0 跟进来的话 fixed+top+bottom 会拉满整屏）");
+  ok(src.includes(".arg-transport{position:sticky;top:12px"),
+    "★ v2.35.0：「开练」是顶部全宽走带条（sticky 吸顶，替代 320px 右栏——地图不再被压扁）");
+  ok(!src.includes(".arg-work{display:grid"), "★ 双栏 grid 已随右栏布局一并删除");
+  ok(src.includes(".arg-transport{position:fixed;top:auto;left:0;right:0;bottom:0"),
+    "★ ≤640px：走带条变底部固定条（top:auto 显式复位——sticky 的 top 跟进来的话 fixed+top+bottom 会拉满整屏）");
+  ok(src.includes(".arg-transport .arg-map{display:none}"),
+    "底条隐藏地图行（窄行放不下 10 段）");
   ok(src.includes("calc(10px + env(safe-area-inset-bottom,0px)"),
     "底条带 safe-area 内边距（全面屏不被手势条压住）");
-  ok(/@media \(max-width:960px\)\{[^}]*\.arg-work\{grid-template-columns:1fr\}/.test(src),
-    "★ ≤960px：双栏退化单栏");
 }

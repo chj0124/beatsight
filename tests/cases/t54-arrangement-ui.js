@@ -321,11 +321,10 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   eq(beat.Store.arranges.length, 2, "两条曲式");
   const victim = beat.Store.arranges[1].id;
 
-  /* v2.30.0（S1）：「删除」从顶栏按钮收进曲式级 ⋯ 菜单（断言口径变更说明见 T54c） */
-  els["argLibMore"].fire("click");
-  const libMenu = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
-  Array.prototype.find.call(libMenu.children,
-    b => /删除当前曲式/.test(b.getAttribute("aria-label") || "")).fire("click");
+  /* v2.35.0：「删除」就近化为**选中 chip 上的 ✕**（顶栏 ⋯ 整个退役；确认弹窗不变）。
+     断言口径变更说明见 T54c——入口从按钮/菜单变为 chip 内删除点，语义与确认流不变。
+     新建的那条是选中态 → 它的 chip 是 children[1]，✕ 在 children[2] */
+  els["argList"].children[1].children[2].fire("click");
   eq(beat.Modal.isOpen(), true, "★ 删整条曲式要确认（不是点了就没）");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 1, "确认后删掉一条");
@@ -343,10 +342,7 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   beat.Controls.stop();                               // 停下但 playMode 仍是 arrange
   beat.Arrange.open();
   els["argList"].children[0].fire("click");
-  els["argLibMore"].fire("click");
-  const libMenu2 = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
-  Array.prototype.find.call(libMenu2.children,
-    b => /删除当前曲式/.test(b.getAttribute("aria-label") || "")).fire("click");
+  els["argList"].children[0].children[2].fire("click");   // 选中 chip 的 ✕（v2.35.0）
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 0, "库已空");
   eq(S.playMode, "preset", "★ 删掉正在播的曲式 → 回落预设模式（不会对着空 id 播）");

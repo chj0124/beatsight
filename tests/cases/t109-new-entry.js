@@ -39,8 +39,7 @@ section("T109a 入口搬家 · ＋ 在曲式库行内 / 顶栏不再有新建 / 
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   const libRow = /<div class="arg-lib-row" id="argLibRow">[\s\S]*?<\/div>\s*<div class="stats-head">/.exec(src);
   ok(!!libRow && libRow[0].includes('id="argNew"'), "★ argNew 在 argLibRow 行内（chips 行尾）");
-  const topbar = /<div class="editor-actions" id="argActions">[\s\S]*?<\/div>\s*<\/div>\s*<!--/.exec(src);
-  ok(!!topbar && !topbar[0].includes('id="argNew"'), "★ 顶栏 argActions 不再含新建钮");
+  ok(!src.includes('id="argLibMore"'), "★ 顶栏 ⋯ 已退役（v2.35.0：复制收敛 + 删除就近化）");
   ok(src.includes(".arg-add{"), "＋ 的虚线胶囊样式存在");
   ok(src.includes(".arg-add.open{"), "★ 展开高亮样式存在（触发态可见）");
 
@@ -81,15 +80,7 @@ section("T109b 菜单 · 展开=高亮 / 点窗外即关 / 触发钮内部与选
   ok(!!newMenuOf(els), "★ pointerdown 落在菜单内部（target=选项）→ 不关（选项自己的 click 接管）");
   beat.Arrange.close();
 
-  /* 与曲式级 ⋯ 的互斥在换宿主后仍然成立（双向） */
-  beat.Arrange.open();
-  els["argLibMore"].fire("click");
-  els["argNew"].fire("click");
-  ok(!els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className)),
-    "开「＋」菜单先收 ⋯ 菜单（互斥保持）");
-  els["argLibMore"].fire("click");
-  ok(!newMenuOf(els), "开 ⋯ 菜单先收「＋」菜单");
-  beat.Arrange.close();
+  /* v2.35.0：曲式级 ⋯ 退役——模板菜单成为唯一菜单，互斥对象不复存在（原断言随 ⋯ 一并删除） */
 }
 
 /* ================= 场景 T109c：段卡片 ↔ 范围联动 ================= */

@@ -82,68 +82,46 @@ section("T106b 互斥 · 开候选先收菜单 / 开菜单先收候选");
   beat.Arrange.close();
 }
 
-/* ================= 场景 T106c：曲式级 ⋯ 菜单 · 结构 / 互斥 / 删除确认流 ================= */
-section("T106c 曲式菜单 · 顶栏 ⋯ / 复制与删除 / 与「＋ 新建」菜单互斥");
+/* ================= 场景 T106c：删除就近化 · chip ✕ / 确认流 / 单曲式隐藏「当前曲式」chip ================= */
+section("T106c 删除就近化 · chip ✕ / 确认流 / 单曲式隐藏「当前曲式」chip");
 {
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
-  ok(!els["argCopy"] && !els["argDel"], "★ 顶栏「复制 / 删除」按钮已退役（v2.30.0 S1）");
-  /* 桩从标记惰性建元素、不建静态父子关系（argNew.parentNode 为 null），
-     所以静态容器的 children 在桩里是空的——构成按"元素存在性"断言，
-     子节点数留给真实浏览器的 smoke 兜（见 t106c 后半的菜单互斥流程）。
-     v2.33.0：「＋ 新建」搬进曲式库行（argLibRow），顶栏只剩 ⋯ */
-  ok(!!els["argLibMore"] && !!els["argNew"], "⋯ 在顶栏、＋ 在曲式库行（v2.33.0 搬家，id 均不变）");
-  eq(els["argLibMore"].disabled, false, "有当前曲式 → ⋯ 可用");
-
-  els["argLibMore"].fire("click");
-  const lib = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
-  ok(!!lib, "★ 曲式级菜单展开（挂在 #argActions 里）");
-  eq(lib.children.length, 2, "菜单两项（复制当前曲式 / 删除当前曲式）");
-  ok(/复制当前曲式为副本/.test(lib.children[0].getAttribute("aria-label") || ""), "复制项 aria 到位");
-
-  /* 与「＋ 新建」模板菜单互斥：开新建先收曲式菜单 */
+  ok(!els["argCopy"] && !els["argDel"] && !els["argLibMore"],
+    "★ 顶栏「复制 / 删除 / ⋯」全部退役（v2.35.0：复制只留模板菜单、删除就近化）");
+  /* 单曲式 → 「当前曲式」chip 隐藏（.single；内容写入点不动，v2.35.0 用户提问④） */
+  eq(els["argNowRow"].classList.contains("single"), true, "★ 单曲式 → 「当前曲式」chip 隐藏");
+  /* 再建一条 → ≥2 条 → chip 显示 */
   els["argNew"].fire("click");
-  ok(!els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className)),
-    "★ 开新建菜单先收曲式菜单");
-  const newMenu = els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className));
-  ok(!!newMenu, "★ 新建菜单展开（宿主 = 曲式库行 argLibRow，v2.33.0 起）");
-  /* 开曲式菜单先收新建菜单（反向同样互斥） */
-  els["argLibMore"].fire("click");
-  ok(!els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className)),
-    "★ 开曲式菜单先收新建菜单");
-  const lib2 = els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className));
-  ok(!!lib2, "曲式菜单已展开");
+  els["argLibRow"].children.find(c => /arg-new-menu/.test(c.className)).children[0].fire("click");
+  eq(els["argNowRow"].classList.contains("single"), false, "★ ≥2 条 → chip 显示（防「编辑 A 播着 B」错位）");
 
-  /* 删除当前曲式：确认弹窗流（与旧「删除」按钮同一语义） */
-  const delBtn = Array.prototype.find.call(lib2.children,
-    b => /删除当前曲式/.test(b.getAttribute("aria-label") || ""));
-  delBtn.fire("click");
+  /* 选中 chip 的 ✕：aria 到位、确认流删除 */
+  els["argList"].children[1].fire("click");            // 选中新建的那条
+  const delSpot = els["argList"].children[1].children[2];
+  /* ★ 守卫先行：变异删掉 ✕ 时 children[2] 是 undefined——必须表现为本条具名失败，
+     而不是下一行读 className 时崩溃（崩溃不是证据，DEVELOPMENT 反向验证纪律） */
+  ok(!!delSpot && /arg-item-del/.test(delSpot.className), "★ 选中 chip 右侧出现删除点（v2.35.0 就近化）");
+  ok(/删除曲式「/.test(delSpot.getAttribute("aria-label") || ""), "删除点 aria 写明曲式名");
+  delSpot.fire("click");
   eq(beat.Modal.isOpen(), true, "删除曲式要确认（不是点了就没）");
   els["modalOk"].fire("click");
-  eq(beat.Store.arranges.length, 0, "确认后曲式被删");
+  eq(beat.Store.arranges.length, 1, "确认后曲式被删");
   beat.Arrange.close();
 }
 
 /* ================= 场景 T106d：重渲染摘菜单残影（unbind 后的死 UI 防御） ================= */
-section("T106d 残影防御 · 重渲染后两个宿主容器里都不留死菜单");
+section("T106d 残影防御 · 重渲染后 argLibRow 里不留死菜单");
 {
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
-  els["argLibMore"].fire("click");
-  ok(!!els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className)), "前提：曲式菜单已展开");
-  /* 任何触发 arrangeRender 的操作（这里用曲式库重选）都该把菜单摘掉——
-     菜单按钮的监听已被 unbindOverlay 全量解绑，残影 = "点了没反应"的死 UI */
-  els["argList"].children[0].fire("click");
-  ok(!els["argActions"].children.find(c => /(^| )arg-lib-menu( |$)/.test(c.className)),
-    "★ 重渲染后 argActions 里没有菜单残影");
-  beat.Arrange.close();
-
-  /* v2.33.0：新建菜单换宿主后同样要被摘（argLibRow） */
-  beat.Arrange.open();
   els["argNew"].fire("click");
   ok(!!els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className)), "前提：新建菜单已展开");
+  /* 任何触发 arrangeRender 的操作（这里用曲式库重选）都该把菜单摘掉——
+     菜单按钮的监听已被 unbindOverlay 全量解绑，残影 = "点了没反应"的死 UI。
+     v2.35.0：曲式级 ⋯ 退役，宿主只剩 argLibRow 一个 */
   els["argList"].children[0].fire("click");
   ok(!els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className)),
-    "★ 重渲染后 argLibRow 里没有新建菜单残影");
+    "★ 重渲染后 argLibRow 里没有菜单残影");
   beat.Arrange.close();
 }

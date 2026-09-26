@@ -299,6 +299,8 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* 行内结构（v2.2.0；v2.32.0 起默认折叠，此处已展开）：[摘要, (循环本行), 粘贴框, 清除, 字块轨, 提示]；
      有歌词行时多一个「循环本行」钮（F2）——用类名定位而不是裸下标 */
   const byCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
+  /* v2.35.0：编辑轨每小节一行——字块分散在各 .arg-lyric-barrow 里，收集助手把它们拍平 */
+  const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children, r => Array.prototype.slice.call(r.children)));
   /* 锚点提示音（v2.32.0 S3）：全局开关收进开练面板，段行内不再重复渲染 */
   const cue = els["argLyricCue"];
   ok(!byCls(ly, /arg-lyric-cue/), "★ 锚点开关已收进开练面板（段行内不再每段一个副本）");
@@ -308,7 +310,8 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
         clr = byCls(ly, c => c.textContent === "清除"), laneEl = byCls(ly, /arg-lyric-lane/), tip = byCls(ly, /arg-lyric-tip/);
   ok(!byCls(ly, /arg-lyric-loop/), "无歌词行时不出「循环本行」（空动作不摆出来）");
   eq(clr.disabled, true, "无歌词行时「清除」禁用");
-  eq(laneEl.children.length, 0, "无行时字块轨为空");
+  eq(laneEl.children.length, 4, "★ 无词也画 4 行槽（每小节一行，保持节奏感；v2.35.0 分行）");
+  eq(chipsOf(laneEl).length, 0, "无行时字块轨为空（没有字块）");
   ok(tip.textContent.includes("段内 4 小节 / 768 tick"), "提示给出段长（小节 / tick）");
 
   /* 粘贴 → 按字均分（空白符被吞），change 一次落库 */
@@ -322,12 +325,14 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* render 后重取（每次落库都整行重建）；有行后 lane/tip 下标顺移一位（循环钮插在 cue 后） */
   const ly2 = els["argSections"].children[0].children[4];
   ok(!!byCls(ly2, /arg-lyric-loop/), "★ 有歌词行后出现「循环本行」钮（F2 入口）");
-  eq(byCls(ly2, /arg-lyric-lane/).children.length, 4, "均分后字块上轨");
+  const lane2 = byCls(ly2, /arg-lyric-lane/);
+  eq(lane2.children.length, 4, "★ v2.35.0：编辑轨每小节一行（段 4 小节 = 4 行槽，与主界面歌词轨同构）");
+  eq(chipsOf(lane2).length, 4, "均分后 4 字上轨（各自落进起点所在的小节行）");
   eq(byCls(ly2, /arg-lyric-paste/).value, "你好世界", "框内回显落库后的词");
   ok(byCls(ly2, /arg-lyric-tip/).textContent.includes("4 个字"), "提示同步字数");
-  eq(byCls(ly2, /arg-lyric-lane/).children[0].getAttribute("aria-label"),
+  eq(chipsOf(lane2)[0].getAttribute("aria-label"),
      "第 1 个字「你」起点 0 tick，时值 24 tick", "字块 aria 标签含位置");
-  eq(byCls(ly2, /arg-lyric-lane/).children[0].children[1].className, "arg-lyric-grip", "字块右缘有时值抓手");
+  eq(chipsOf(lane2)[0].children[1].className, "arg-lyric-grip", "字块右缘有时值抓手");
 
   /* 段落放不下的部分不录（768 / 24 = 32 字上限） */
   byCls(ly2, /arg-lyric-paste/).value = "字".repeat(40);
@@ -341,19 +346,19 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
 
   /* 拖字块本体 = 改起点：+18.75px = +24tick */
   const laneOf = () => byCls(els["argSections"].children[0].children[4], /arg-lyric-lane/);
-  let chips = laneOf().children;
+  let chips = chipsOf(laneOf());
   const chip1 = chips[1];
   chip1.fire("pointerdown", { clientX: 100 });
   ok(chip1.className.includes("dragging"), "按下进入拖拽态");
   fireWin("pointermove", { clientX: 118.75 });
-  eq(chip1.style.left, "6.25%", "拖动中实时更新位置（48/768）");
+  eq(chip1.style.left, "25%", "拖动中实时更新位置（行内 48/192，v2.35.0 分行口径）");
   eq(chip1.getAttribute("aria-label"), "第 2 个字「好」起点 48 tick，时值 24 tick", "拖动中 aria 同步");
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[1].t, 48, "★ 抬手落库（归一化由 Store 收口，UI 不做第二套校验）");
   ok(!chip1.className.includes("dragging"), "抬手摘掉拖拽态");
 
   /* 邻居边界：往左拖过前一个字的终点，吞不掉它 */
-  chips = laneOf().children;
+  chips = chipsOf(laneOf());
   const chip1b = chips[1];                          // 「好」@48
   chip1b.fire("pointerdown", { clientX: 200 });
   fireWin("pointermove", { clientX: 162.5 });       // −37.5px = −48tick → 0，但前一个字占 [0,24)
@@ -361,7 +366,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(St.findLyric("t1", "s1").chars[1].t, 24, "★ 拖过邻居终点被钳在 24，不会吃掉前一个字");
 
   /* 拖右缘改时值：被下一个字顶住 → 未变 → 不动库 */
-  chips = laneOf().children;
+  chips = chipsOf(laneOf());
   const lineBefore = St.findLyric("t1", "s1");
   const grip0 = chips[0].children[1];
   grip0.fire("pointerdown", { clientX: 300 });
@@ -373,7 +378,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const grip1 = chips[1].children[1];
   grip1.fire("pointerdown", { clientX: 400 });
   fireWin("pointermove", { clientX: 418.75 });      // +24tick → 48
-  eq(chips[1].style.width, "6.25%", "时值拖动中宽度实时更新（48/768）");
+  eq(chips[1].style.width, "25%", "时值拖动中宽度实时更新（行内 48/192，v2.35.0 分行口径）");
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[1].dur, 48, "拖右缘改时值落库");
 

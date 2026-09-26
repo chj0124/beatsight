@@ -775,21 +775,25 @@ input[type=range].vol{width:120px}
 .arg-mini.cur{border-color:var(--green);color:var(--green)}
 .arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 .arg-ops{flex:none;display:flex;gap:4px}
-/* v2.30.0（S1 重设计）：段操作 ⋯ 菜单 + 曲式级 ⋯ 菜单——都是运行时生成的一行
-   （flex-basis:100% 独占一行，同 .arg-new-menu 的既有模式）。段菜单挂在段行末尾
-   （歌词轨之后，t60 的 children[4] 不挪位）；曲式菜单挂在 #argActions 里，与
-   新建模板菜单互斥（同一时间至多一张，见 toggleNewMenu / toggleLibMenu）。 */
+/* v2.30.0（S1）：段操作 ⋯ 菜单——运行时生成的一行（flex-basis:100% 独占一行），
+   挂在段行末尾（歌词轨之后，t60 的 children[4] 不挪位）。
+   v2.35.0：曲式级 ⋯ 退役，模板菜单独住 argLibRow（见 .arg-lib-row 与「点窗外即关」）。 */
 .arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
-.arg-lib-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
-/* v2.31.0（S2 重设计）：编排卡片双栏——左编排、右「开练」面板（sticky 吸视口）。
-   "设范围 → 开练"动线收进右栏，不再滚到整页底部。双滑块复用侧栏那套原生
-   input[type=range] 叠层方案（.demo-range-track 同款三规矩，类名带 .arg-range-input
-   提高特异性，理由见 L551 注释——两处结论同源，不重复抄）。 */
-.arg-work{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
-.arg-main{min-width:0}
-.arg-panel{position:sticky;top:0;display:flex;flex-direction:column;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:16px}
-.arg-panel-head{display:flex;align-items:center;gap:8px}
-.arg-panel-title{font-size:14px;font-weight:700;margin:0}
+/* v2.35.0：曲式 chip 上的删除点（仅选中 chip 渲染；确认弹窗照旧） */
+.arg-item-del{flex:none;margin-left:2px;width:20px;height:20px;line-height:19px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
+.arg-item-del:hover{color:#f3727f;background:rgba(243,114,127,.12)}
+/* v2.35.0（用户反馈）：「开练」改**顶部全宽走带条**（sticky 吸顶）——右栏 320px 把地图压到
+   每段 ~30px（10 段示例曲段号都放不下），双栏 grid 随之删除；全宽后每段 ~90px。
+   三行：地图（全宽）→ 双滑块 + 读数 → 控件行（播放钮 margin-left:auto 靠右）。
+   ≤640px 仍变底部固定条（top:auto 必须显式写，理由同 v2.31.0 的教训）。 */
+.arg-transport{position:sticky;top:12px;z-index:4;display:flex;flex-direction:column;gap:10px;
+  background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:20px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.arg-t-row{display:flex;align-items:center;gap:14px;min-width:0}
+.arg-transport .arg-map{flex:1;min-width:0}
+#argRangeRead{flex:none;white-space:nowrap}
+.arg-t-actions{flex-wrap:wrap}
+.arg-t-actions #argPlay{margin-left:auto}
 .arg-map{display:flex;gap:2px;height:34px;border-radius:8px;overflow:hidden}
 .arg-map-seg{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
 .arg-map-seg:last-child{border-right:none}
@@ -800,23 +804,18 @@ input[type=range].vol{width:120px}
 .arg-range-track input[type=range].arg-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
 .arg-range-track input[type=range].arg-range-input::-webkit-slider-thumb{pointer-events:auto}
 .arg-range-track input[type=range].arg-range-input::-moz-range-thumb{pointer-events:auto}
-/* 窄屏三档：960px 退单栏、面板提前（先定范围再编排）；640px 变底部固定条 */
-@media (max-width:960px){
-  .arg-work{grid-template-columns:1fr}
-  .arg-panel{position:static;order:-1}
-}
+/* 窄屏：≤640px 走带条变底部固定条（地图行让位，只留范围 + 读数 + 控件；
+   960 中间档随双栏删除而不复存在——全宽条天然无断点需求） */
 @media (max-width:640px){
-  .arg-work{padding-bottom:150px}   /* 让位给固定底条，末段卡片不被盖住 */
-  .arg-panel{position:fixed;top:auto;left:0;right:0;bottom:0;z-index:5;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 10px;
+  .arg-transport{position:fixed;top:auto;left:0;right:0;bottom:0;z-index:5;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 10px;
     border-radius:12px 12px 0 0;border-bottom:none;margin:0;
     padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
     box-shadow:0 -8px 24px rgba(0,0,0,.5)}
-  /* ★ top:auto 必须显式写：基样式的 sticky;top:0 会跟进来，fixed + top:0 + bottom:0
+  /* ★ top:auto 必须显式写：基样式的 sticky;top:12px 会跟进来，fixed + top + bottom
      = 高度被拉满整屏（实测首版漏了它，底条把整页盖成一面墙） */
-  .arg-panel-head,.arg-map{display:none}          /* 底条只留开练必需品：范围 + 循环 + 播放 */
+  .arg-transport .arg-map{display:none}            /* 底条只留开练必需品：范围 + 循环 + 播放 */
   .arg-range-track{flex:1 1 100%}
   #argRangeRead{flex:1 1 auto;min-width:0}
-  .arg-panel .bpm-row{margin:0}
 }
 /* 歌词编辑轨（v2.1.0 F1）：每个段行下方一条。头部 = 锚点提示音开关 + 粘贴框 + 清除，
    轨道本体是绝对定位的字块（拖本体改起始 t、拖右缘抓手改时值 dur）。
@@ -832,7 +831,11 @@ input[type=range].vol{width:120px}
 .arg-lyric-arrow{flex:none;font-size:11px}
 .arg-lyric-cue{flex:none}
 .arg-lyric-paste{flex:1;min-width:120px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
-.arg-lyric-lane{flex-basis:100%;position:relative;height:26px;margin-top:4px;background:var(--card2);border-radius:6px}
+/* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
+   .arg-lyric-barrow 底色槽，字块 absolute 行内定位（与主界面歌词轨 v2.7.2 同构）；
+   拖动换算 perTick 不随分行改变（每行等宽 = 旧单行宽，见 mkLyricRow 注释） */
+.arg-lyric-lane{flex-basis:100%;display:flex;flex-direction:column;gap:3px;margin-top:4px}
+.arg-lyric-barrow{position:relative;height:24px;background:var(--card2);border-radius:5px}
 .arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:hidden;touch-action:none;user-select:none}
 .arg-lyric-chip.dragging{cursor:grabbing;box-shadow:0 0 0 2px var(--green)}
 .arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap}
@@ -854,6 +857,8 @@ input[type=range].vol{width:120px}
 .arg-now-name{font-size:12px;color:var(--t2);border:1px solid var(--line);border-radius:999px;
   padding:4px 10px;background:var(--card2);white-space:nowrap}
 .arg-now-name:empty{display:none}
+/* v2.35.0：单曲式时整行 .single → chip 隐藏（多条曲式时它才有"防错位"的信息量） */
+.arg-now.single .arg-now-name{display:none}
 .arg-now-name::before{content:"当前曲式 · ";color:var(--t3)}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
 .arg-jump{justify-content:center;margin-top:14px}
@@ -1436,7 +1441,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              它同样是"改播什么"，与预设 / 曲式同层；原先它在主列顶部那一行（`.pattern-head`）。
              `.arg-now` 自带 `flex-wrap`，窄屏会自动折行。`#editBtn` 仍是编辑器 overlay 的
              唯一入口（`t57` 的入口映射按 id 取，搬家不影响） -->
-      <div class="arg-now">
+      <!-- v2.35.0（用户提问）：「当前曲式 · 名字」chip 改条件显示——它指示跳段键/侧栏滑块
+           正在服务曲式库里的哪一条，只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；
+           单曲式时整行加 .single 由 CSS 隐藏 chip（内容写入点不动，id=argNowName 不变） -->
+      <div class="arg-now" id="argNowRow">
         <button class="pill outline" id="editBtn">编辑节奏型</button>
         <button class="pill outline" id="argOpen">编排曲式</button>
         <span class="arg-now-name" id="argNowName"></span>
@@ -1580,58 +1588,49 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </button>
         <div class="editor-title">曲式编排</div>
       </div>
-      <div class="editor-actions" id="argActions">
-        <!-- v2.33.0：「＋ 新建曲式」从顶栏搬进曲式库 chips 行尾（id=argNew 不变，样式改 ＋chip）——
-             设计原稿的既定方案，v2.30.0 翻译成函数级清单时被静默漏掉（用户实测指出）。
-             顶栏只留曲式级 ⋯（复制 / 删除）。「复制」与新建菜单里「复制当前曲式」仍是同一动作
-             （applyTemplate("dup")）；「删除」低频且危险，降级为菜单项（确认弹窗仍在）。 -->
-        <button class="pill outline" id="argLibMore" disabled aria-label="曲式更多操作（复制 / 删除）">⋯</button>
-      </div>
+      <!-- v2.35.0：顶栏动作区整个退役——「复制当前曲式」只留在 ＋ 模板菜单（两处重复，用户指出）；
+           「删除当前曲式」就近化为选中 chip 上的 ✕（确认弹窗不变）。顶栏只剩返回与标题。 -->
     </div>
-    <!-- v2.31.0（S2 重设计）：编排卡片改**双栏**——左栏编排（曲式库 + 段落结构），
-         右栏「开练」面板（歌曲地图 + 范围双滑块 + 循环 + 播放 + 问题提示，sticky 吸住视口）。
-         "设范围 → 开练"不再滚到整页底部；旧「播放范围」区与段行「起 / 终」钮随
-         「练这段」（⋯ 菜单）+ 地图点击 + 双滑块退役。窄屏：≤960px 面板提前到段落结构上方，
-         ≤640px 变底部固定条（见 CSS）。 -->
-    <div class="card arg-work">
-      <div class="arg-main">
-        <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
-        <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
-        <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
-        <!-- v2.33.0：chips 行尾「＋」＝ 新建入口（argNew 搬家至此）；模板菜单也挂在本行内
-             （argLibRow 是菜单宿主，测试按它定位），点窗外即关（装配区 pointerdown）。 -->
-        <div class="arg-lib-row" id="argLibRow">
-          <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
-          <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
-        </div>
-        <div class="stats-head">段落结构</div>
-        <div id="argSections"></div>
-        <div class="bpm-row">
-          <button class="pill" id="argAddSec">+ 加一段</button>
-          <span class="hint" id="argHint"></span>
-        </div>
-      </div>
-      <div class="arg-panel" id="argPanel" role="group" aria-label="开练面板">
-        <div class="arg-panel-head"><span class="sec-tag"><b>▶</b><i>Practice</i></span><h3 class="arg-panel-title">开练</h3></div>
+    <!-- v2.35.0（用户反馈）：「开练」从右栏移出，改为**顶部全宽走带条**（sticky 吸顶）——
+         右栏 320px 把歌曲地图压到每段 ~30px（10 段示例曲段号都放不下）；全宽后每段 ~90px。
+         条内三行：地图（全宽）→ 双滑块 + 读数 → 控件（循环/全部/锚点/播放，播放钮靠右）。
+         ≤640px 仍变底部固定条（内容同前）。双栏 grid 与 960 中间档随之删除。 -->
+    <div class="arg-transport" id="argPanel" role="group" aria-label="开练面板">
+      <div class="arg-t-row">
         <div class="arg-map" id="argMap" role="group" aria-label="歌曲地图（点某段 = 只练这一段）"></div>
-        <div class="arg-range-track">
-          <input type="range" id="argRangeFrom" class="arg-range-input arg-range-from" min="1" max="1" step="1" value="1" aria-label="播放范围起点">
-          <input type="range" id="argRangeTo" class="arg-range-input arg-range-to" min="1" max="1" step="1" value="1" aria-label="播放范围终点">
-          <div class="arg-range-fill" id="argRangeFill"></div>
-        </div>
         <div class="hint" id="argRangeRead"></div>
-        <div class="bpm-row">
-          <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
-          <button class="pill" id="argAllRange">全部</button>
-          <!-- v2.32.0（S3）：锚点提示音是全局开关（S.lyricCue），从每段歌词行收进面板——
-               全书唯一一份（旧实现每段渲染一个副本，10 段 = 10 个同款开关） -->
-          <button class="toggle-pill off" id="argLyricCue" role="switch" aria-checked="false" aria-label="锚点提示音：每个字进场一声短木鱼，延音占位不触发">锚点提示音<span class="switch"></span></button>
-        </div>
-        <div class="bpm-row">
-          <button class="pill active" id="argPlay">从头播</button>
-          <button class="pill" id="argPlayRange">播选中范围</button>
-        </div>
-        <div class="hint" id="argProblems"></div>
+      </div>
+      <div class="arg-range-track">
+        <input type="range" id="argRangeFrom" class="arg-range-input arg-range-from" min="1" max="1" step="1" value="1" aria-label="播放范围起点">
+        <input type="range" id="argRangeTo" class="arg-range-input arg-range-to" min="1" max="1" step="1" value="1" aria-label="播放范围终点">
+        <div class="arg-range-fill" id="argRangeFill"></div>
+      </div>
+      <div class="arg-t-row arg-t-actions">
+        <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
+        <button class="pill" id="argAllRange">全部</button>
+        <!-- v2.32.0（S3）：锚点提示音是全局开关（S.lyricCue），从每段歌词行收进面板——
+             全书唯一一份（旧实现每段渲染一个副本，10 段 = 10 个同款开关） -->
+        <button class="toggle-pill off" id="argLyricCue" role="switch" aria-checked="false" aria-label="锚点提示音：每个字进场一声短木鱼，延音占位不触发">锚点提示音<span class="switch"></span></button>
+        <button class="pill active" id="argPlay">从头播</button>
+        <button class="pill" id="argPlayRange">播选中范围</button>
+      </div>
+      <div class="hint" id="argProblems"></div>
+    </div>
+    <div class="card">
+      <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
+      <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
+      <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
+      <!-- v2.33.0：chips 行尾「＋」＝ 新建入口（argNew 搬家至此）；模板菜单也挂在本行内
+           （argLibRow 是菜单宿主，测试按它定位），点窗外即关（装配区 pointerdown）。 -->
+      <div class="arg-lib-row" id="argLibRow">
+        <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
+        <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
+      </div>
+      <div class="stats-head">段落结构</div>
+      <div id="argSections"></div>
+      <div class="bpm-row">
+        <button class="pill" id="argAddSec">+ 加一段</button>
+        <span class="hint" id="argHint"></span>
       </div>
     </div>
   </div>
@@ -1963,23 +1962,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1995  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2585  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3851  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4558  Modal         应用内弹窗
-     L4695  Viz           时值可视化渲染与每帧动画
-     L6829  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7503  Trainer       变速训练器
-     L7641  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8104  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9337  Editor        自定义节奏型编辑器
-     L9704  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9741  Ear           听辨训练（v1.10.0）
-     L9961  Arrange       曲式编排（v2.0.0）
-     L11287 Help          使用方法（v2.0.1）
-     L11340 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11414 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11615 初始化（装配） 各模块 hook 接线与启动
+     L1994  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2584  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3850  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4557  Modal         应用内弹窗
+     L4694  Viz           时值可视化渲染与每帧动画
+     L6828  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7502  Trainer       变速训练器
+     L7640  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8103  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9336  Editor        自定义节奏型编辑器
+     L9703  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9740  Ear           听辨训练（v1.10.0）
+     L9960  Arrange       曲式编排（v2.0.0）
+     L11286 Help          使用方法（v2.0.1）
+     L11339 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11413 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11614 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2005,7 +2004,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.34.0";
+const VERSION = "2.35.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10027,8 +10026,14 @@ const Arrange = (() => {
         Math.min(Math.min(CONFIG.lyricMaxDur, lim - drag.t0), drag.d0 + raw));
       drag.t = drag.t0;
     }
-    drag.chip.style.left = (drag.t / span * 100) + "%";
-    drag.chip.style.width = (drag.d / span * 100) + "%";
+    /* v2.35.0：分行渲染的行内百分比——拖动换算（perTick）零改动（每行等宽 = 旧单行宽，
+       拖 1px 的 tick 增量与单行时代逐位一致）；t 越过本行尾时视觉停在行尾、
+       松手 arrangeRender 后按新 t 归位到正确的小节行 */
+    const barTicks = lctx.barTicks || span;
+    const row = Math.min((lctx.rows || 1) - 1, Math.floor(drag.t / barTicks));
+    const rowStart = row * barTicks;
+    drag.chip.style.left = ((drag.t - rowStart) / barTicks * 100) + "%";
+    drag.chip.style.width = (Math.min(drag.d, span - drag.t, (row + 1) * barTicks - drag.t) / barTicks * 100) + "%";
     drag.chip.setAttribute("aria-label",
       `第 ${drag.k + 1} 个字「${chars[drag.k].ch}」起点 ${drag.t} tick，时值 ${drag.d} tick`);
   }
@@ -10074,13 +10079,19 @@ const Arrange = (() => {
   window.addEventListener("pointerup", onDragEnd);
   window.addEventListener("pointercancel", onDragEnd);
 
-  /** @param {any} lctx @param {number} k @returns {any} */
-  function mkLyricChip(lctx, k){
+  /** 字块（v2.35.0 分行口径）：按起点 t 落进所属**小节行**，行内百分比定位；
+      跨小节长字在本行内截断显示（数据完整，拖右缘仍可改时值；"虚线续边"留作后续）。
+      @param {any} lctx @param {number} k @param {any[]} rowEls @returns {any} */
+  function mkLyricChip(lctx, k, rowEls){
     const c = lctx.chars[k], span = lctx.span;
+    const barTicks = lctx.barTicks || span;
+    const row = Math.min((lctx.rows || 1) - 1, Math.floor(c.t / barTicks));
+    const rowStart = row * barTicks;
     const chip = document.createElement("div");
     chip.className = "arg-lyric-chip";
-    chip.style.left = (c.t / span * 100) + "%";
-    chip.style.width = (Math.min(c.dur, span - c.t) / span * 100) + "%";   // 视觉不越出轨道，数据仍原样交回 Store
+    chip.style.left = ((c.t - rowStart) / barTicks * 100) + "%";
+    /* 视觉不越出本行（跨小节长字截断），数据仍原样交回 Store */
+    chip.style.width = (Math.min(c.dur, span - c.t, (row + 1) * barTicks - c.t) / barTicks * 100) + "%";
     const txt = document.createElement("span");
     txt.className = "arg-lyric-char";                // 不复用主视图 .lyric-char：那边是灰字 16px 加粗，压在绿底字块上没法看
     txt.textContent = c.ch;                          // 边界规则 3：用户可控字符串只走 textContent
@@ -10092,6 +10103,7 @@ const Arrange = (() => {
     grip.setAttribute("aria-label", `拖动改第 ${k + 1} 个字「${c.ch}」的时值`);
     bindDrag(grip, chip, lctx, k, "dur");            // 拖右缘抓手 = 改时值 dur
     chip.appendChild(txt); chip.appendChild(grip);
+    rowEls[row].appendChild(chip);                   // v2.35.0：挂到所属小节行
     return chip;
   }
 
@@ -10205,13 +10217,28 @@ const Arrange = (() => {
 
     const lane = document.createElement("div");
     lane.className = "arg-lyric-lane";
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span };
+    /* v2.35.0（用户反馈）：编辑轨从"整段一行"改**每小节一行**——与主界面歌词轨（v2.7.2）同构，
+       28 字挤一行没法看。渲染分行，**拖动换算零改动**：perTick 仍按"行宽 px / 全段 tick"
+       （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
+       字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
+       拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1 };
     if (span > 0){
+      const barTicks = Math.max(1, Math.round(span / secBars(sec)));
+      lctx.barTicks = barTicks;
+      lctx.rows = Math.max(1, Math.ceil(span / barTicks));
+      const rowEls = [];
+      for (let r = 0; r < lctx.rows; r++){
+        const bar = document.createElement("div");
+        bar.className = "arg-lyric-barrow";
+        lane.appendChild(bar);
+        rowEls.push(bar);
+      }
       /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
          两边看到的字集必须一致，否则"界面上有、听不到" */
       for (let k = 0; k < lctx.chars.length; k++){
         if (lctx.chars[k].t >= span) continue;
-        lane.appendChild(mkLyricChip(lctx, k));
+        mkLyricChip(lctx, k, rowEls);
       }
     }
     ly.appendChild(lane);
@@ -10434,6 +10461,28 @@ const Arrange = (() => {
       const mt = document.createElement("div"); mt.className = "arg-item-meta";
       mt.textContent = `${x.sections.length} 段 · ${x.sections.reduce((/** @type {number} */ s, /** @type {any} */ y) => s + secBars(y), 0)} 小节`;
       b.appendChild(nm); b.appendChild(mt);
+      /* v2.35.0：删除就近化——选中 chip 右侧一颗 ✕（确认弹窗照旧）。
+         「复制」只留 ＋ 模板菜单一处（两处重复，用户指出）；顶栏 ⋯ 随之整个退役。
+         ★ 点 ✕ 必须拦冒泡：chip 本体是"点选切换"，不拦的话一次点击既弹确认又切了选中 */
+      if (x.id === curId){
+        const del = document.createElement("span");
+        del.className = "arg-item-del";
+        del.setAttribute("role", "button");
+        del.textContent = "✕";
+        del.setAttribute("aria-label", "删除曲式「" + x.name + "」");
+        Modal.bindOverlay("arrangeOverlay", del, "click", (/** @type {any} */ e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          Modal.uiConfirm("删除曲式「" + x.name + "」？", () => {
+            Store.deleteArrange(x.id);
+            curId = Store.arranges.length ? Store.arranges[0].id : null;
+            if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
+            Store.persist();
+            arrangeRender(); refreshBar();
+            Presets.syncLoopUI();      // v2.4.3：退回预设模式后循环面板要重新露出来
+          }, { danger: true, okText: "删除" });
+        });
+        b.appendChild(del);
+      }
       Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; picking = null; arrangeRender(); refreshBar(); });
       list.appendChild(b);
     });
@@ -10441,12 +10490,11 @@ const Arrange = (() => {
     const a = cur();
     const wrap = $("argSections");
     clear(wrap);
-    $("argLibMore").disabled = !a;       // v2.30.0：曲式级 ⋯ 与旧「复制/删除」同一前提（得先有"当前曲式"）
     /* 重渲染会 unbind 掉菜单按钮的监听（Modal.unbindOverlay 全量解绑）——菜单残影留着就是
-       "点了没反应"的死 UI，重建列表前直接摘掉（下次点 ＋/⋯ 再展开）。
-       v2.33.0：新建菜单宿主换成曲式库行 argLibRow，两张菜单分属两个容器、都要扫。 */
-    Array.prototype.filter.call($("argActions").children,
-      (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className))
+       "点了没反应"的死 UI，重建列表前直接摘掉（下次点 ＋ 再展开）。
+       v2.35.0：曲式级 ⋯ 退役，只剩新建菜单一个宿主（argLibRow）。 */
+    Array.prototype.filter.call($("argLibRow").children,
+      (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className))
       .forEach((/** @type {any} */ m) => m.parentNode.removeChild(m));
     Array.prototype.filter.call($("argLibRow").children,
       (/** @type {any} */ c) => /(^| )arg-new-menu( |$)/.test(c.className))
@@ -10670,6 +10718,14 @@ const Arrange = (() => {
   function refreshBar(){
     const a = cur();
     $("argNowName").textContent = a ? a.name : "";
+    /* v2.35.0（用户提问）：「当前曲式」chip 只在**多条曲式**时显示——它指示跳段键/侧栏滑块
+       正在服务库里哪一条，单曲式时恒是那一条、信息量为零（显得多余）。内容写入点（上面那行
+       与本文件另外三处）不动，只切整行的 .single 由 CSS 隐藏 chip——t53/t54/t73 的内容断言
+       零迁移。★ 桩不支持 classList.toggle 双参，用显式 add/remove（同 syncPanelRead 口径） */
+    const single = Store.arranges.length <= 1;
+    const nowRow = $("argNowRow");
+    if (single && !nowRow.classList.contains("single")) nowRow.classList.add("single");
+    if (!single && nowRow.classList.contains("single")) nowRow.classList.remove("single");
     /* v2.10.14（用户要求⑤）：跳段行**常显**——上/下段键不可用（非曲式模式 / 单段曲式）改**置灰**
        而不是隐藏。v2.0.2 那条「直接隐藏而不是禁用置灰」的判据作废：理由变了——播放键住进了
        本行，整行隐藏会把它一起藏掉；而 v2.0.2 嫌"禁用按钮是视觉噪音"的前提（藏起来只留中间的
@@ -10962,7 +11018,6 @@ const Arrange = (() => {
   /** @returns {void} */
   function toggleNewMenu(){
     if (newMenuOpen){ closeNewMenu(); return; }          // 防御性保留（外部点击才是主收口）
-    closeLibMenu();                                      // 与曲式级 ⋯ 菜单互斥（至多一张）
     const has = !!cur();
     const menu = document.createElement("div");
     menu.className = "arg-new-menu";
@@ -11118,65 +11173,9 @@ const Arrange = (() => {
     }
     closeNewMenu();
   });
-  /* v2.30.0（S1 重设计）：曲式级 ⋯ 菜单——「复制 / 删除」从顶栏常驻按钮收进来。
-     「复制」与新建菜单里的「复制当前曲式」是同一动作（applyTemplate("dup")），
-     不再摆两颗按钮；「删除」低频且危险，降级为菜单项（确认弹窗仍在）。
-     菜单与「＋ 新建」的模板菜单互斥（同一时间至多一张，见 toggleNewMenu / toggleLibMenu）；
-     arrangeRender 重建列表时会摘掉两张菜单（unbind 后的残影 = 死 UI）。 */
-  /** @returns {void} */
-  function toggleLibMenu(){
-    closeNewMenu();                                      // v2.33.0：与「＋ 新建」菜单互斥（至多一张）
-    const bar = $("argActions");
-    const old = Array.prototype.find.call(bar.children, (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
-    if (old){ old.parentNode.removeChild(old); return; }
-    /* （新建菜单的互斥收口已在函数头的 closeNewMenu() 里——它 v2.33.0 起住在 argLibRow） */
-    const has = !!cur();
-    const menu = document.createElement("div");
-    menu.className = "arg-lib-menu";
-    menu.setAttribute("role", "group");
-    menu.setAttribute("aria-label", "曲式操作");
-    const cp = document.createElement("button");
-    cp.className = "arg-mini";
-    cp.textContent = "复制当前曲式";
-    cp.disabled = !has;
-    cp.setAttribute("aria-label", "复制当前曲式为副本" + (has ? "" : "（当前没有选中曲式）"));
-    Modal.bindOverlay("arrangeOverlay", cp, "click", (/** @type {any} */ e) => {
-      evEl(e).blur();
-      closeLibMenu();
-      applyTemplate("dup");
-    });
-    const del = document.createElement("button");
-    del.className = "arg-mini";
-    del.textContent = "删除当前曲式";
-    del.disabled = !has;
-    del.setAttribute("aria-label", "删除当前曲式");
-    Modal.bindOverlay("arrangeOverlay", del, "click", (/** @type {any} */ e) => {
-      evEl(e).blur();
-      closeLibMenu();
-      const a = cur();
-      if (!a) return;
-      Modal.uiConfirm("删除曲式「" + a.name + "」？", () => {
-        Store.deleteArrange(a.id);
-        curId = Store.arranges.length ? Store.arranges[0].id : null;
-        if (S.playMode === "arrange"){ setMode("playMode", "preset", "曲式被删回退"); S.arrangeSel = { id: "", from: 0, to: 0, loop: false, byLyric: false }; }
-        Store.persist();
-        arrangeRender(); refreshBar();
-        Presets.syncLoopUI();          // v2.4.3：退回预设模式后循环面板要重新露出来（它是按 playMode 收起的）
-      }, { danger: true, okText: "删除" });
-    });
-    menu.appendChild(cp); menu.appendChild(del);
-    bar.appendChild(menu);
-  }
-  /** 摘掉曲式级菜单（动作钮的 handler 与互斥逻辑共用；找不到就当已关） @returns {void} */
-  function closeLibMenu(){
-    const m = Array.prototype.find.call($("argActions").children,
-      (/** @type {any} */ c) => /(^| )arg-lib-menu( |$)/.test(c.className));
-    if (m) m.parentNode.removeChild(m);
-  }
-  $("argLibMore").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    toggleLibMenu();
-  });
+  /* v2.35.0：曲式级 ⋯ 菜单整个退役——「复制当前曲式」只留 ＋ 模板菜单一处（两处重复，
+     用户指出）；「删除当前曲式」就近化为选中 chip 上的 ✕（见 arrangeRender 的 arg-item-del，
+     确认弹窗不变）。顶栏动作区清空。 */
   $("argAddSec").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     const d = snapshot();

@@ -311,7 +311,7 @@ section("T90e 回归护栏 · 搬家只动位置，id / 初始态 / 接线契约
    #argNowName 是「整首连播 / 范围滑块」当前服务的曲式名（四个状态写入点共用），
    此前是裸文本跟在两个按钮后面——看着像多出来的文案。修法是纯 CSS：chip 描边 +
    「当前曲式 · 」前缀（::before，四个写入点零改动），无曲式时 :empty 整枚藏起。 */
-section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏（CSS 契约，写入点零改动）");
+section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏、单曲式隐藏（CSS 契约，写入点零改动）");
 {
   const css = slice("css");
   ok(css.includes('.arg-now-name::before{content:"当前曲式 · "'),
@@ -320,4 +320,7 @@ section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏（
      "★ 无曲式时 :empty 整枚 chip 藏起（不留空壳）");
   ok(css.includes(".arg-now-name{") && css.includes("border-radius:999px"),
      "★ chip 描边胶囊样式（与 pill 家族同一视觉语言）");
+  ok(css.includes(".arg-now.single .arg-now-name{display:none}"),
+     "★★ v2.35.0：单曲式时整行 .single → chip 隐藏——它只在多条曲式时才有"
+     + "「防编辑/播放错位」的信息量（用户提问④；内容写入点仍零改动）");
 }
