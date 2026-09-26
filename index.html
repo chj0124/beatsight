@@ -373,6 +373,7 @@ body.wide-full .main{max-width:none}
 .group-label{font-size:11px;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
 .viz-head .bpm-row{justify-content:space-between}   /* v2.11.0（用户要求）：BPM 组两行按钮拉伸到组宽后两端对齐——-5↔60 左缘对齐、+5↔120 右缘对齐（两行同宽由列布局 stretch 保证） */
+#sigRow.sig-lock .pill{opacity:.45;cursor:not-allowed}   /* v2.42.5：曲式期间锁定拍号（α 方案）——置灰示意，拦截在点击处理器 */
 .step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono);transition:background .12s,transform .06s}   /* v2.10.19：44→40 与大数字降档配套 */
 /* v2.10.14（用户要求③）：上/下段跳段键改音乐播放器「上一首/下一首」的圆形图标键——
    与播放键同一套圆形语言（播放键是页面里唯一的绿色实心圆，跳段键用灰底深图标，
@@ -2162,23 +2163,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2194  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2781  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4050  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4757  Modal         应用内弹窗
-     L4894  Viz           时值可视化渲染与每帧动画
-     L7041  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7688  Trainer       变速训练器
-     L7826  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8312  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9547  Editor        自定义节奏型编辑器
-     L9937  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9974  Ear           听辨训练（v1.10.0）
-     L10194 Arrange       曲式编排（v2.0.0）
-     L11544 Help          使用方法（v2.0.1）
-     L11627 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11701 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11902 初始化（装配） 各模块 hook 接线与启动
+     L2195  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2782  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4051  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4758  Modal         应用内弹窗
+     L4895  Viz           时值可视化渲染与每帧动画
+     L7042  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7689  Trainer       变速训练器
+     L7827  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8325  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9560  Editor        自定义节奏型编辑器
+     L9950  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9987  Ear           听辨训练（v1.10.0）
+     L10207 Arrange       曲式编排（v2.0.0）
+     L11557 Help          使用方法（v2.0.1）
+     L11640 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11714 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11915 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2204,7 +2205,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.4";
+const VERSION = "2.42.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8152,6 +8153,18 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     const btn = evTarget(e).closest("[data-sig]");
     if (!btn) return;
     btn.blur();
+    /* ★ v2.42.5（α 方案，修"2/4、3/4 播放示例曲时格子溢出框架"，用户截图报障）：
+       曲式期间锁定拍号。《在他乡》等曲式按 4/4 逐格授权（扫弦谱 16 格/小节、歌词锚点同源），
+       播放/待机中切拍号会让渲染层拿错误的行跨度（barTicks = S.sig×TPB = 8）去切 16 tick
+       的谱面——sliceSteps 的 K=1 档原样放行全部步进，第 9–16 格的 left 落在 100%–200%，
+       格子画出网格框架叠上侧栏（2/4 溢出后 8 格、3/4 溢出后 4 格；桩实测 8 个元素 left>100%）。
+       只拦**用户点击**：程序性对齐（选型/跳段/听辨的 Controls.setSig 调用）不经过这里，
+       不受影响。置灰观感由装配层 onPlayModeChange 钩子切 sig-lock 类（同一触发源）。 */
+    if (S.playMode === "arrange"){
+      $("statusText").textContent = "整首连播中拍号跟随歌曲，退出曲式后可切换";
+      announce("整首连播中拍号跟随歌曲，点其它节奏型退出曲式后再切换");
+      return;
+    }
     setSig(+btn.dataset.sig);
     Presets.refreshAfterPatternChange();
     Store.persist();
@@ -12028,7 +12041,13 @@ onAudibleBar = Arrange.refreshNow;
    不再残留「◀ 上一段 / 第 N/M 段 / 下一段 ▶」（用户实拍）。注入而非直接调用：
    setMode 住在共享状态区，直接调 Arrange 是反向引用（同 onArrangeBar 的纪律）。
    v2.9.0：原先一并调的 Tracks.syncTrackUI 随两态轨模型一起删除。 */
-onPlayModeChange = () => { Arrange.refreshBar(); };
+onPlayModeChange = () => {
+  Arrange.refreshBar();
+  /* v2.42.5：曲式期间锁定拍号（α 方案）——pill 置灰只管观感，真正的拦截在 Controls 的
+     sigRow 点击处理器（playMode==="arrange" 早退 + 提示）。两类同步挂同一个钩子：
+     playMode 的写入口只有 setMode 一处（t66 契约），模式一变这里必跑，不可能漏。 */
+  $("sigRow").classList.toggle("sig-lock", Store.S.playMode === "arrange");
+};
 /* 「一个型有几小节」的查询注入（v2.5.1）：共享区的 secBars / blockAt / arrNextBar 是**纯函数**，
    不直接引用 resolveRef（那会让 T52 那批"纯函数可直测"的断言必须先建一份 Store）。
    这里把真正的解析注入进去——与 onArrangeBar / onLimitPulse 同一套"跨模块装配交给装配层"
