@@ -79,6 +79,10 @@ section("T55c 使用方法 · 内容覆盖（查标记原文）");
   ok((helpBlock.match(/<template id="helpFigs/g) || []).length === 5 &&
      (helpBlock.match(/id="mountFigs/g) || []).length === 5,
      "★ 示意图按章节拆成 5 组 <template>+挂载点（v2.38.0 归位到各节文字旁；惰性挂载不占 DOM 预算）");
+  ok(helpBlock.includes('<div id="helpMore" hidden></div>') &&
+     helpBlock.includes('<template id="helpMoreTpl">'),
+     "★ v2.42.3：完整说明整体 <template> 惰性挂载——#helpMore 是常驻空容器、内容在 helpMoreTpl 里，" +
+     "首次展开才克隆进 DOM（~180 节点不再常驻吃 smoke 预算；简明版三段仍为静态标记）");
   ok(helpBlock.includes("「练这段」和「循环本行」差在哪"),
      "★ 「练这段 vs 循环本行」对比词条到位（用户反馈看不懂）");
   ok(helpBlock.length > 2000 && helpBlock.length < 26000,   /* v2.36.0 上限放宽：帮助页新增 3 幅内联 SVG 示意图（约 +4KB） */

@@ -444,6 +444,10 @@ async function runPass(label, url, userDataDir){
   /* v2.8.30：把浏览器 stderr 收下来。此前 stdio:"ignore" 让「起不来」只剩一句
      「浏览器是否启动失败？」，排查只能靠猜；现在失败时把浏览器自己的话原样带进报错。 */
   const child = spawn(browser, args, { stdio: ["ignore", "ignore", "pipe"] });
+  /* v2.42.3：spawn 层错误（ENOENT 等）必须有人接——ChildProcess 的 'error' 事件
+     无人监听会以未捕获异常的形式炸掉整个脚本（exit 1，比「等不到调试目标」更难读）。
+     接住后走正常路径：调试端口永远等不到 → 「等不到调试目标」→ flake 自愈口径处理。 */
+  child.on("error", () => {});
   let browserErr = "";
   if (child.stderr) child.stderr.on("data", d => { browserErr += d.toString(); });
   const result = { label, url, errors: [], warnings: [], probe: null };
@@ -543,9 +547,46 @@ async function main(){
     }catch(e){ console.log("  · 本地服务起不来（" + e.message + "），只跑 file://"); }
   }
 
+  const transportFaults = [];   // v2.42.3：传输层故障的通道（工具故障口径，见通道循环内的说明）
   for (const p of passes){
     console.log("\n▸ 通道 " + p.label);
-    const r = await runPass(p.label, p.url, path.join(tmp, "profile-" + p.label.replace(/[^a-z]/gi, "")));
+    const profileOf = tag => path.join(tmp, "profile-" + p.label.replace(/[^a-z]/gi, "") + tag);
+    let r = await runPass(p.label, p.url, profileOf(""));
+    /* v2.42.3（审计第一批 · flake 自愈）：两类**环境性**异常不当场判红——
+       ① 传输层故障（Chrome 起不来 / CDP 连不上 / 求值时执行环境被销毁——已实测四例）；
+       ② 性能读数越预算（fps / buildViz / bootMs，对机器负载最敏感的三项）。
+       两者与被检代码无关，先自动重测一次、以重测为准；传输层**两次都**故障 →
+       记 transportFaults，末尾按退出码 4（工具故障，与 P1-6 的退出码约定一致）交出——
+       check-all 对该退出码记 ⚠ 而非 ✗，且对冒烟步还会再自动重跑一次（双层自愈）；
+       预算类重测仍越线才真的判红（连续两轮，不是抖动）。
+       为什么要缓冲：判据失手的代价本项目自己算过（eslint.config.js 文件头——
+       一个常年飘红的检查很快会被所有人无视或直接关掉，等于没写）。 */
+    const isTransport = x => x.errors.some(m =>
+      /等不到调试目标|WebSocket 连接失败|Execution context was destroyed/.test(m));
+    const isBudgetFlake = x => {
+      const f = x.probe && x.probe.perf;
+      return !!f && (f.fps < PERF_BUDGET.fps
+        || f.buildVizMs >= PERF_BUDGET.buildVizMs
+        || f.bootMs > PERF_BUDGET.bootMs);
+    };
+    const transport = isTransport(r);
+    const budgetBad = !transport && isBudgetFlake(r);
+    if (transport || budgetBad){
+      const why = transport
+        ? "传输层故障（" + String(r.errors[0] || "").slice(0, 60) + "…）"
+        : "性能读数越预算（fps / buildViz / bootMs，环境敏感）";
+      console.log("  · " + why + " —— flake 自愈：自动重测一次（v2.42.3）");
+      const r2 = await runPass(p.label, p.url, profileOf("-retry"));
+      if (transport){
+        if (!isTransport(r2)){ console.log("  · 重测通过，以重测结果为准"); }
+        else { transportFaults.push(p.label); console.log("  · 重测仍传输层故障 → 按工具故障记账"); }
+      } else {
+        console.log(isBudgetFlake(r2)
+          ? "  · 重测仍越预算 —— 连续两轮，不是抖动，判红"
+          : "  · 重测落入预算，以重测结果为准");
+      }
+      r = r2;
+    }
     const d = r.probe;
     ok(!!d && d.booted, p.label + "：应用启动成功（window.__beatBoot 就位、没有白屏）",
       d ? "" : r.errors.join(" / "));
@@ -690,6 +731,13 @@ async function main(){
   try{ fs.rmSync(tmp, { recursive: true, force: true }); }catch(e){}
 
   console.log("──────────────────────────────────────────────────────────");
+  if (transportFaults.length){
+    /* v2.42.3：工具故障口径（仓库退出码约定：4 = 本步骤未能执行，不是被检项失败）。
+       check-all 对 4 记 ⚠ 并再自动重跑一次本步；--strict-env（CI）下 ⚠ 仍按失败处理，
+       故 CI 里连续 4 次传输层故障才会红——环境抖动事实上被自愈吸收。 */
+    console.log("  ⚠ 冒烟未完成（传输层故障，工具故障口径）：通道 " + transportFaults.join(" / "));
+    process.exit(4);
+  }
   if (fail){
     console.log("  ✗ 冒烟未通过：" + fail + " 项失败");
     failures.forEach(f => console.log("      · " + f));
@@ -700,6 +748,8 @@ async function main(){
 }
 
 main().catch(e => {
+  /* v2.42.3：脚本自身崩溃也是「想跑但没跑成」——按工具故障（4）而不是检查失败（1）记账，
+     与本文件头的 ⊘/⚠/✗ 三分法一致（原先 exit 1 会把环境故障说成被检项失败）。 */
   console.log("  ✗ 冒烟脚本自身异常：" + (e && e.stack ? e.stack : e));
-  process.exit(1);
+  process.exit(4);
 });

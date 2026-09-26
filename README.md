@@ -21,7 +21,7 @@
 
 ## 功能现状
 
-当前 `v2.42.1`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v2.42.3`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 ### 节拍内核
 
@@ -80,13 +80,22 @@
 ### 改完跑一条命令
 
 ```bash
-node tools/check-all.js          # 共 14 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js          # 共 16 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → DOM 节点账本 → 测试桩能力对账 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
 node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时用）
 ```
 
 **这里刻意不写「约几秒」**（v2.0.5 起由 `tools/check-docs.js` 强制）：耗时随机器、Node 版本、跑不跑 `FULL_SCAN` 而变，写死在文档里必然过期。命令末尾自己会打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
 
-**核心闸门零依赖、零安装，Node ≥ 22 直接跑**，不装任何东西也能跑完整套。14 步里有 3 步可能标 ⊘（**未执行**，不等于通过），并另有 ⚠「工具故障」一类：
+**核心闸门零依赖、零安装，Node ≥ 22 直接跑**，不装任何东西也能跑完整套。16 步里有 3 步可能标 ⊘（**未执行**，不等于通过），并另有 ⚠「工具故障」一类：
+
+- **2 步可选加强项**（ESLint / 类型检查）：依赖 `node_modules`，没装就标 **⊘ 未安装依赖，未执行**；它们绝不会因为「没装开发依赖」堵住部署。想在本机拿到**真 16/16**（`npm ci` 卡死时的替代做法）：
+
+  ```bash
+  # 在别处装一棵同版本依赖树（eslint@^10.10.0 + typescript@^7.0.2，几十秒），软链过来：
+  ln -sfn <依赖树路径>/node_modules ./node_modules   # node_modules 已 gitignore，不算代码改动
+  node tools/check-all.js --strict-env               # → 全部通过 · 实跑 16/16 项
+  rm -f node_modules                                 # ★ 跑完务必删，免得日后 npm install 写穿到别的工作区
+  ```
 
 - **2 步可选加强项**（ESLint / 类型检查）：依赖 `node_modules`，没装就标 **⊘ 未安装依赖，未执行**；它们绝不会因为「没装开发依赖」堵住部署。
 - **1 步「环境可选」**（浏览器冒烟）：本机装了 Chrome / Edge 才跑。构建镜像里必然没有浏览器，所以 `--strict-env` 也不把它算失败。

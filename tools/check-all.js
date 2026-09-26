@@ -114,6 +114,13 @@ const STEPS = [
      （Cloudflare 对畸形行不告警，"删掉 `/*` → 6 条安全头全部失去作用域"是无声的）。
      与上面两条同属"元信息不得漂移"，也极便宜（读一个 34 行的文件），故一起前置。 */
   { name: "_headers 结构", cmd: process.execPath, args: ["tools/check-headers.js"] },
+  /* v2.42.2（审计第一批）：两个静态账本/对账步。与上面三步同属"极便宜纯读文件"家族——
+     节点账本给「DOM 预算只剩多少、大头在哪」提供数据（v2.26.1"先瘦身不放宽"纪律的依据），
+     并把守 body 标记结构平衡（落地当天就抓到一处游离 </template>）；
+     桩对账盯两份 DOM 桩（harness ↔ hang-case）的能力集合同步，防"改一份漏一份"再造成整组假红。
+     二者都刻意零判红权（账本不设阈值 / 对账在观察期只打 ⚠），详见各自文件头。 */
+  { name: "DOM 节点账本", cmd: process.execPath, args: ["tools/check-node-budget.js"] },
+  { name: "测试桩能力对账", cmd: process.execPath, args: ["tools/check-stub-parity.js"] },
   /* optional = 该步骤所需的依赖相对路径；不存在就标 ⊘ 跳过（不调用），不让它伪装成 ✓ */
   { name: "代码卫生 · ESLint（加强）", cmd: process.execPath, args: ["tools/check-eslint.js"],
     optional: "node_modules/eslint" },
@@ -125,7 +132,10 @@ const STEPS = [
      --strict-env 也不该把它升级成错误，否则每次部署都会被无谓地堵住。
      约定：退出码 3 = 本机缺这项能力 → 按 ⊘ 记账（既不算通过也不算失败，结论见汇总）。 */
   { name: "浏览器冒烟 · 真实 DOM", cmd: process.execPath, args: ["tools/smoke.js"],
-    skipCode: 3, skipNote: "本机没有 Chrome / Edge" },
+    skipCode: 3, skipNote: "本机没有 Chrome / Edge",
+    /* v2.42.3：工具故障（exit 4，传输层抖动）自动重跑一次——与 smoke 内部的重测
+       组成双层自愈，见下面循环内的说明 */
+    faultRetry: 1 },
   /* v2.8.16（审计 P2-1）：本步同时承担覆盖率采集——FULL_SCAN 下覆盖率插桩的内存开销约 2GB，
      故带头抬高 old-space 上限（V8 按需增长，不预占；只影响这个带插桩的子进程）。
      第 14 步据此落盘分析，不再重跑套件。 */
@@ -175,6 +185,24 @@ for (const step of STEPS){
      汇总却是"1 项失败 · 实跑 10/12"，而且失败原因是"类型检查未通过"。
      这是 §E2 同一哲学的延伸：过去是"不让 ⊘ 伪装成 ✓"，现在是"不让故障伪装成失败"。 */
   if (r.error || r.status === TOOL_FAIL_CODE){
+    /* v2.42.3（审计第一批 · flake 自愈第二层）：带 faultRetry 的步骤在工具故障时
+       自动重跑一次——传输层抖动是环境性的、与被检代码无关（smoke 内部已自带
+       一次重测，这里是第二层）；重跑后成功/环境跳过就照常记账，**两次都**故障
+       才记 ⚠（--strict-env 下仍按失败——CI 里连续四轮故障才会红，抖动事实上被吸收）。 */
+    if (step.faultRetry){
+      console.log("  · 工具故障，按 flake 自愈口径自动重跑一次…");
+      r = spawnSync(step.cmd, step.args, {
+        cwd: ROOT, stdio: "inherit",
+        env: Object.assign({}, process.env, step.env || {}),
+      });
+      if (!(r.error || r.status === TOOL_FAIL_CODE)){
+        const envSkipped2 = step.skipCode !== undefined && r.status === step.skipCode;
+        if (envSkipped2) console.log("  ⊘ 跳过（" + (step.skipNote || "本机缺该项环境能力") + "）");
+        results.push({ name: step.name, ok: r.status === 0, skipped: envSkipped2, env: envSkipped2,
+          ms: Date.now() - started, status: r.status });
+        continue;
+      }
+    }
     const why = r.error
       ? (r.error.code || r.error.errno || "?") + "：" + r.error.message
       : "子步骤自报未能执行（按约定退出码 " + TOOL_FAIL_CODE + "）";

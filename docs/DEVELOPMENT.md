@@ -959,8 +959,8 @@ getComputedStyle）。
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；本地自检的唯一入口，仓库内 CI 跑的也是同一条 `npm run ci`）
 node tools/check-all.js          # 顺序：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性
-                                 #       → _headers 结构 → ESLint(可选) → 类型检查(可选) → DOM 引用
-                                 #       → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 14 步）
+                                 #       → _headers 结构 → DOM 节点账本 → 测试桩能力对账 → ESLint(可选) → 类型检查(可选) → DOM 引用
+                                 #       → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 16 步）
                                  # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
 node tools/check-all.js --quick  # 跳过 T21 全量组合扫描，改代码时用

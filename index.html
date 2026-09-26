@@ -1761,8 +1761,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       </div>
 
       <!-- 完整说明：默认收起。想一次看完的人再展开——默认全展开会让"先试这几个开关"
-           那一段被埋掉，而那才是新用户真正需要先看到的 -->
-      <div id="helpMore" hidden>
+           那一段被埋掉，而那才是新用户真正需要先看到的。
+           ★ v2.42.3（DOM 预算纪律）：#helpMore 改为**常驻空容器**，原内容整体挪进
+             下面的 <template id="helpMoreTpl">，首次展开才克隆进 DOM——内容里约
+             180 个节点不再常驻吃 smoke 的 domNodes 预算（v2.37.0 示意图惰性挂载的
+             同一手法推广到整节）。首屏三段（三步上手 / 画面怎么看 / 先试这几个开关）
+             仍保持静态标记：首访者不点任何东西也能看到全部上手信息 -->
+      <div id="helpMore" hidden></div>
+      <template id="helpMoreTpl">
         <!-- v2.25.3（用户需求）：两个编辑入口的分工放在展开版第一条——这是最高频的混淆点。
              ★ 版式用 ul 而不是 dl：DOM 节点预算 ≤1300（smoke 门禁），dl 每词条两节点
                （dt+dd）会被说明文字的体量顶爆；ul 每条一个节点，粗体引导词读感等价 -->
@@ -1978,8 +1984,6 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <figcaption>节奏型编辑器：画好一个型 → 存为副本 → 回编排页换型使用（零件 ⇄ 装配单）</figcaption>
         </div>
         </template>
-        <div id="helpFigsMount"></div>
-        </template>
         <div id="mountFigsEditor"></div>
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
         <ul class="help-list">
@@ -1999,7 +2003,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>空格</b>：开始 / 停止播放（页面任何位置都可用；正在输入文字时除外）</li>
           <li><b>Esc</b>：关闭当前打开的面板；<b>Ctrl / ⌘ + Z</b>：节奏型编辑器里撤销一步</li>
         </ul>
-      </div>
+      </template>
     </div>
   </div>
 </div>
@@ -2158,23 +2162,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2190  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2777  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4046  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4753  Modal         应用内弹窗
-     L4890  Viz           时值可视化渲染与每帧动画
-     L7037  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7684  Trainer       变速训练器
-     L7822  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8298  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9533  Editor        自定义节奏型编辑器
-     L9923  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9960  Ear           听辨训练（v1.10.0）
-     L10180 Arrange       曲式编排（v2.0.0）
-     L11530 Help          使用方法（v2.0.1）
-     L11592 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11666 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11867 初始化（装配） 各模块 hook 接线与启动
+     L2194  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2781  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4050  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4757  Modal         应用内弹窗
+     L4894  Viz           时值可视化渲染与每帧动画
+     L7041  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7688  Trainer       变速训练器
+     L7826  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8302  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9537  Editor        自定义节奏型编辑器
+     L9927  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9964  Ear           听辨训练（v1.10.0）
+     L10184 Arrange       曲式编排（v2.0.0）
+     L11534 Help          使用方法（v2.0.1）
+     L11617 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11691 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11892 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2200,7 +2204,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.1";
+const VERSION = "2.42.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -11528,13 +11532,25 @@ const Arrange = (() => {
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
-/* 只有一个 overlay 的开关与"更多内容"的展开状态。内容本身是**静态标记**（不渲染、不取数据）——
+/* 快速上手三段（三步上手 / 画面怎么看 / 先试这几个开关）是**静态标记**（不渲染、不取数据）——
    好处是没有 JS 也能看到全文，且不会被 JS 故障连带弄丢一份纯说明文字。
+   「完整说明」（#helpMore）自 v2.42.3 起改为 **<template> 惰性挂载**：内容平时待在
+   helpMoreTpl 里（不计入 smoke 的 DOM 预算），首次展开才克隆进 #helpMore——
+   它本来就藏在一次点击之后，挂载时机与用户的感知零差异；5 组示意图模板随内容
+   一起进DOM，其挂载逻辑（见 helpRender）跑在整节挂载之后即可。
    **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
 const Help = (() => {
   let more = false;
   function helpRender(){
     $("helpMore").hidden = !more;
+    /* v2.42.3：整节惰性挂载——首次展开把 helpMoreTpl 克隆进 #helpMore（内容约 180 节点）。
+       ★ 必须先于示意图挂载：5 组 mountFigs* 挂载点就在克隆出来的内容里。
+       桩无 template.content，守卫跳过（与示意图挂载同一守卫形状，见 t55/t110d）。 */
+    const moreEl = $("helpMore"), tplAll = $("helpMoreTpl");
+    if (more && moreEl && tplAll && tplAll.content && tplAll.content.cloneNode &&
+        !moreEl.childNodes.length){
+      moreEl.appendChild(tplAll.content.cloneNode(true));
+    }
     /* v2.38.0：示意图惰性挂载（按章节 5 组 template，首次展开各克隆一次；
        桩无 template.content，守卫跳过——图的断言全在源码级，见 t110d/t55） */
     ["Main", "Train", "Settings", "Arrange", "Editor"].forEach(k => {
@@ -11547,11 +11563,16 @@ const Help = (() => {
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
     $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
     /* v2.0.6（审计 P1-5）：隔离区有内容时才露出清理入口，并带上条数——
-       没有损坏数据的用户不该看到一个"清理"按钮而去想「我丢了什么」 */
+       没有损坏数据的用户不该看到一个"清理"按钮而去想「我丢了什么」。
+       ★ v2.42.3：按钮随整节惰性挂载，首次展开前不在 DOM 里（getElementById 得 null），
+         这里守卫跳过；挂载后本函数在每次开合 / 清理后都会再跑，条数不会漏刷 */
     const n = Store.quarantine().length;
     const b = $("helpClearQuar");
-    b.hidden = n === 0;
-    b.textContent = "清理隔离数据（" + n + " 条）";
+    if (b){
+      b.hidden = n === 0;
+      b.textContent = "清理隔离数据（" + n + " 条）";
+      if (!quarWired){ b.addEventListener("click", onQuarClick); quarWired = true; }
+    }
   }
   /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
      读的时候让它继续响着更有用（编辑器/曲式编排是"要动手改"，才需要停） */
@@ -11571,8 +11592,11 @@ const Help = (() => {
   $("helpBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("helpClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
   $("helpMoreBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); more = !more; helpRender(); });
-  /* 清理前先确认（不可撤销）：用应用内弹窗，与其它破坏性操作同一套协议 */
-  $("helpClearQuar").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  /* 清理前先确认（不可撤销）：用应用内弹窗，与其它破坏性操作同一套协议。
+     ★ v2.42.3：按钮随整节惰性挂载（在 helpMoreTpl 里），模块 init 时它还不在 DOM，
+       原先 init 期 addEventListener 会拿到 null——接线挪进 helpRender：挂载后首次
+       渲染时补挂一次（quarWired 防重复；按钮元素随克隆持久存在，挂一次即够） */
+  function onQuarClick(/** @type {MouseEvent} */ e){
     evEl(e).blur();
     const n = Store.quarantine().length;
     if (!n) return;
@@ -11582,10 +11606,11 @@ const Help = (() => {
       $("statusText").textContent = "已清理隔离数据";
       announce("已清理 " + n + " 条隔离数据");
     });
-  });
-  helpRender();
+  }
+  let quarWired = false;
   /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
   registerKeyLayer(overlayKeyLayer({ isOpen, close }));
+  helpRender();
   return { open, close, isOpen, more: () => more };
 })();
 
