@@ -127,6 +127,17 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★ 行数拍号行 grid-column:1/4 占满整行（v2.38 的 2/4 悬空第三列已退役）");
   ok(src.includes(".viz-head-grid .card-head-left,") && src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
     "★★ v2.39.0：四块组容器底（--card2 圆角 + 12/16 内边距）——修「散/悬空/填充感」，纯 CSS 零新增节点");
+  ok(src.includes(".viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center"),
+    "★★ v2.40.0：拍号面板 flex-direction:row——.group 基础 column + align-items:center 恰成水平居中"
+    + "（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，同基线");
+  ok(/\.status \.pat-now\{[^}]*white-space:nowrap/.test(src),
+    "★ v2.40.0：型名单行省略——无 nowrap 时省略号失效、长型名折两行悬在状态行右上");
+  ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
+    "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
+  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:auto auto auto auto;justify-content:space-between"),
+    "★★ v2.40.0：宽屏铺满四块一行（音量｜BPM｜三开关｜行数拍号）+ space-between 拉开，与铺满网格同宽呼应");
+  ok(src.includes("body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}"),
+    "★ v2.40.0：宽屏下行数拍号块取消 1/4 跨列（回到第 4 列）；非宽屏 ≥1280 维持 2×2 不变");
   ok((src.match(/<template id="helpFigs/g) || []).length === 5 &&
      (src.match(/id="mountFigs/g) || []).length === 5,
     "★ 帮助示意图按章节拆 5 组 template+挂载点（归位到各节文字旁）");

@@ -84,22 +84,24 @@ body.wide-full .main{max-width:none}
    非宽屏或桩上因子恒 1，现状一像素不变）。
    ★ v2.37 的 .viz 封顶已撤销——封顶只封了网格、歌词轨没封，正是用户实拍的
    「音符格与歌词格错位」根源；两层都全宽同起点，对应关系自然恢复 */
-/* v2.39.0（用户反馈）：v2.38.0 把居中分布执行错了——加了「音量列竖跨两行」，BPM 被挤到
-   右侧列，与确认稿（音量/BPM/三开关**同一行并列**、行数拍号单独最后一行）不符。修正：
-   r1 = 音量列｜BPM 组｜三开关组（auto-placement 自然成行，删竖跨）
-   r2 = 同屏行数 + 拍号（grid-column:1/4 占满整行）。
-   同时修掉截图评审列出的四条：① 控制块散而非组 ② 填充感差 ③ 型名悬空 ④ 窄窗更明显
-   ——根源同一条（四块之间没有视觉边界）。给四块统一加**组容器底**（--card2 圆角 +
-   12/16 内边距，与设置弹窗分组条同一观感语言）：控制块读作「一组控件」、状态灯行
-   （含节奏型名）与音量组连成一块不再悬空；列间距 48→14、宽屏铺满 120→32（有底色后
-   不再需要大间隙防粘连）。组底全端生效——窄窗回退左贴折行，但「散」窄窗同样解决。
-   纯 CSS 重排，壳内元素 id/接线一行不碰。 */
+/* v2.40.0（用户反馈）：三处修正——
+   ① 拍号面板在行 2 盒内「标签悬空居中 + 按钮下沉」：.group 基础是 column、v2.38 加的
+      align-items:center 在 column 下恰成水平居中。补 flex-direction:row——与行数面板
+      同款「标签左、按钮右」，两面板回到同一基线（窄屏照旧折行）。
+   ② 节奏型名折两行悬在状态行右上：.pat-now 无 white-space:nowrap，省略号失效改折行。
+      补 nowrap——单行省略（P2 A 案）。
+   ③ 组内两层底色：开关胶囊自带 --card 底（宽随文案参差）叠在组容器底上显乱。
+      组内开关胶囊透明化，每组只留组底一层；行内开关行左缘对齐。
+   宽屏铺满（新）：行 2 并入行 1——四块一行（音量｜BPM｜三开关｜行数拍号）+
+   space-between 拉开与下方铺满网格同宽呼应；非宽屏（≥1280）维持 2×2 居中。
+   组底/窄窗回退等 v2.39 语义不变。壳内元素 id/接线一行不碰。 */
 .viz-head-grid{display:block}
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
 .viz-head-grid .viz-toggles,
 .viz-head-grid .viz-rows-row{
   background:var(--card2);border-radius:10px;padding:12px 16px}   /* v2.39.0：组容器底（全端） */
+.viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}   /* v2.40.0：开关胶囊去自带底色——组内只留一层组底（观测台主题的描边一并去） */
 .viz-head{column-gap:16px}   /* v2.39.0：两块组底相邻后原 48px 裸间隙反而脱节（窄窗折行语义不变） */
 @media (min-width:1280px){
   .viz-head-grid{display:grid;grid-template-columns:auto auto auto;justify-content:center;
@@ -108,7 +110,10 @@ body.wide-full .main{max-width:none}
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
   .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}
 }
-body.wide-full .viz-head-grid{column-gap:32px}
+/* v2.40.0：宽屏铺满——行 2 并入行 1，四块一行并 space-between 拉开（贴左右缘、
+   与下方铺满网格同宽呼应）；行数拍号块放不下时在块内折行兜底（flex-wrap 已有） */
+body.wide-full .viz-head-grid{grid-template-columns:auto auto auto auto;justify-content:space-between;column-gap:32px}
+body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -126,7 +131,7 @@ body.wide-full .viz-head-grid{column-gap:32px}
 .card-title{font-size:14px;font-weight:600}
 .status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3);width:100%}   /* v2.11.0：撑满左列宽（列是 align-items:flex-start，子项默认不拉伸） */
 .status #statusText{min-width:16em;margin-right:auto}   /* v2.10.17 固定宽度防抖；v2.11.0 加 margin-right:auto——把节奏型名推到行尾，与音量行的百分号列**同一右缘**对齐（用户要求③） */
-.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis}   /* v2.10.18：允许收缩（列宽已固定，长名字省略号，不再撑宽列） */
+.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* v2.40.0：补 nowrap——无它省略号失效、长型名折两行悬在状态行右上（与状态灯脱基线）；now 后单行省略 */
 .status:has(.dot.live){color:var(--green)}
 .status .dot{width:8px;height:8px;background:var(--t3)}
 .status .dot.live{background:var(--green)}
@@ -460,7 +465,7 @@ input[type=range].vol{width:120px}
    `.viz-rows-panel` 自己那 12px 下边距在这里归零：本行已经给了间距，叠加会变成 24px */
 .viz-rows-row{display:flex;align-items:flex-start;gap:16px 28px;flex-wrap:wrap;margin-bottom:12px}   /* v2.10.17：行内折行行距 28→16（纵向间隔统一 16px），横向 28 保留 */
 .viz-rows-row > .viz-rows-panel{margin-bottom:0}
-.viz-rows-row .group{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}   /* v2.38.0：拍号面板同款标签同行自适应；#accGroup 整体折到下一行 */
+.viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 16px}   /* v2.38.0：拍号面板同款标签同行自适应；#accGroup 整体折到下一行。v2.40.0：补 flex-direction:row——.group 基础是 column、align-items:center 在 column 下恰成水平居中（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，两面板同基线 */
 .viz-rows-row #accGroup{flex-basis:100%}
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 /* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:7px 14px;font-size:12px}` 缩小规则删除——
@@ -2157,23 +2162,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2189  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2779  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4048  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4755  Modal         应用内弹窗
-     L4892  Viz           时值可视化渲染与每帧动画
-     L7039  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7713  Trainer       变速训练器
-     L7851  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8326  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9561  Editor        自定义节奏型编辑器
-     L9951  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9988  Ear           听辨训练（v1.10.0）
-     L10208 Arrange       曲式编排（v2.0.0）
-     L11558 Help          使用方法（v2.0.1）
-     L11620 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11694 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11895 初始化（装配） 各模块 hook 接线与启动
+     L2194  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2784  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4053  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4760  Modal         应用内弹窗
+     L4897  Viz           时值可视化渲染与每帧动画
+     L7044  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7718  Trainer       变速训练器
+     L7856  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8331  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9566  Editor        自定义节奏型编辑器
+     L9956  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9993  Ear           听辨训练（v1.10.0）
+     L10213 Arrange       曲式编排（v2.0.0）
+     L11563 Help          使用方法（v2.0.1）
+     L11625 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11699 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11900 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2199,7 +2204,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.39.0";
+const VERSION = "2.40.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
