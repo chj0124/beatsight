@@ -363,6 +363,14 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(
 input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(30,215,96,.55),0 2px 6px rgba(0,0,0,.4)}
 input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--thumb);border:none;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
 input[type=range].vol{width:120px}
+/* v2.34.0：时值可视化卡左列的三条音量滑杆吃满行内剩余宽度——% 列右缘才能贴到列右缘，
+   与上方节奏型名（.pat-now，margin-right:auto 推到行尾）恢复 v2.10.17 立的
+   「同一右缘对齐」契约（实测 % 右缘 278 vs 名字右缘 368，差 90px 全是行尾死空间）。
+   ★ 作用域限定在 .card-head-left：设置弹窗里的同款 .vol 滑杆（壁纸遮罩 / 延迟补偿）
+     保持 120px 定宽不受影响。
+   ★ 不波及 BPM：左列 320px 定宽（v2.10.18）不变，BPM 组是头行 flex 的独立子项，
+     列内宽度重排在数学上推不动它的 x 坐标（改动前后实测 416 逐位相同）。 */
+.card-head-left .vol-row input[type=range].vol{flex:1;width:auto}
 .pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
 .pill:hover:not(:disabled):not(.active){background:var(--line);color:var(--t1)}
 .pill.active:hover:not(:disabled){filter:brightness(1.12)}
@@ -1955,23 +1963,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L1987  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2577  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L3843  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4550  Modal         应用内弹窗
-     L4687  Viz           时值可视化渲染与每帧动画
-     L6821  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7495  Trainer       变速训练器
-     L7633  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8096  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9329  Editor        自定义节奏型编辑器
-     L9696  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9733  Ear           听辨训练（v1.10.0）
-     L9953  Arrange       曲式编排（v2.0.0）
-     L11279 Help          使用方法（v2.0.1）
-     L11332 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11406 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11607 初始化（装配） 各模块 hook 接线与启动
+     L1995  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2585  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L3851  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4558  Modal         应用内弹窗
+     L4695  Viz           时值可视化渲染与每帧动画
+     L6829  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7503  Trainer       变速训练器
+     L7641  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8104  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9337  Editor        自定义节奏型编辑器
+     L9704  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9741  Ear           听辨训练（v1.10.0）
+     L9961  Arrange       曲式编排（v2.0.0）
+     L11287 Help          使用方法（v2.0.1）
+     L11340 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11414 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11615 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -1997,7 +2005,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.33.0";
+const VERSION = "2.34.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

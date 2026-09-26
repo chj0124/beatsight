@@ -204,6 +204,10 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ v2.10.15：`.card-head-left` 竖排（角标+标题在上行、音量三条在标题正下方）");
   ok(/\.card-head-left \.vol-row\{width:100%\}/.test(css),
     "★ 音量滑杆在列内占满宽度（列内没有横向约束可依，须显式给宽）");
+  ok(/\.card-head-left \.vol-row input\[type=range\]\.vol\{flex:1;width:auto\}/.test(css),
+    "★★ v2.34.0：左列音量滑杆吃满行内剩余宽度——% 列右缘贴列右缘，"
+    + "与节奏型名（pat-now 行尾）恢复 v2.10.17 的「同一右缘对齐」契约"
+    + "（120px 定宽时 % 右缘 278 vs 名字 368，差 90px 死空间；设置弹窗同款滑杆不受影响）");
   ok(/\.viz-rows-panel\{[^}]*gap:10px/.test(css),
     "★ v2.10.17：`.viz-rows-panel` 的 label→内容间距与 .group 同值（10px）——修「行数与拍号差 3px 没对齐」");
   ok(/\.viz-toggles\{[^}]*margin-bottom:16px/.test(css) && /\.viz-rows-row\{[^}]*gap:16px 28px/.test(css),
