@@ -1,7 +1,7 @@
 {
   "name": "BeatSight 时值节拍器",
   "short_name": "BeatSight",
-  "description": "吉他练习用的节奏可视化节拍器 —— 把抽象的「时值」翻译成「长度」。",
+  "description": "BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象的「时值」翻译成「长度」；单文件零依赖，可离线使用。",
   "start_url": "./",
   "scope": "./",
   "id": "./",

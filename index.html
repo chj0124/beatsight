@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#121212">
-<meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象时值翻译成一眼看懂的长度。">
+<meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象的「时值」翻译成「长度」；单文件零依赖，可离线使用。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M9 3h10l4 22H5L9 3z' fill='%231ED760'/%3E%3Cline x1='13' y1='21' x2='18.5' y2='7' stroke='%230A0A0A' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='17' cy='10.5' r='2.1' fill='%230A0A0A'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1478,7 +1478,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
       <div class="card-head">
         <span class="sec-tag"><b>02</b><i>Library</i></span>
         <h2 class="card-title">节奏型预设库</h2>
-        <div class="chip" id="presetCount">8 内置</div>
+        <div class="chip" id="presetCount"></div>
       </div>
       <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
            但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
@@ -1735,7 +1735,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
 
       <h2 class="card-title" style="margin-bottom:4px">三步上手</h2>
       <ol class="help-list">
-        <li>右侧「节奏型」里选一个（或点「编辑节奏型」自己画一个）</li>
+        <li>右侧「节奏型预设库」里选一个（或点「编辑节奏型」自己画一个）</li>
         <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
         <li>按播放（或空格键）开始——浏览器的首次点击是在解锁音频，属正常现象</li>
       </ol>
@@ -1789,9 +1789,10 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              下面「设置里的每一项」（文末给指路提示） -->
         <h2 class="card-title" style="margin:22px 0 4px">主界面控制项</h2>
         <ul class="help-list">
-          <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120。<b>拍号。</b>2/4 到 7/4，切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
+          <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120。</li>
+          <li><b>拍号。</b>2/4 到 7/4，切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
           <li><b>音量（三条滑杆）。</b>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</li>
-          <li><b>其余都在顶栏「设置」小窗里</b>（主题 / 壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断）——逐条详解见下面<b>「设置里的每一项」</b></li>
+          <li><b>其余低频项都收在顶栏「设置」小窗里</b>（主题 / 壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / 导入导出 / 诊断）；<b>「后台保活」是顶栏右侧的常驻开关</b>，不在这个小窗里。逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
 
         <template id="helpFigsMain">
@@ -1848,7 +1849,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：点「校准向导」→ 跟着咔嗒声敲八下 → 自动算出建议值 → 滑杆微调到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。有线耳机 / 手机外放延迟接近零，保持 0 即可。只存本机、不进「导出全部数据」（换设备本来就要重新校准）</li>
-          <li><b>后台保活（顶栏开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（顶栏设置 → 复制诊断信息里能看到）</li>
+          <li><b>后台保活（顶栏开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
           <li><b>导出 / 导入预设；导出 / 导入全部数据。</b>「预设」只带走节奏型；「全部数据」整包带走预设 + 曲式编排 + 歌词对齐 + 听辨战绩（详见下面「数据与隐私」）</li>
           <li><b>复制诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）复制成一段文本贴给开发者。只写剪贴板、不上传、不联网</li>
         </ul>
@@ -1872,12 +1873,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </div>
         </template>
         <div id="mountFigsSettings"></div>
-        <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
+        <h2 class="card-title" style="margin:22px 0 4px">曲式编排</h2>
         <ul class="help-list">
-          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序从第 1 段走到
-            第 10 段，放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
+          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序播完整首（示例曲《在他乡》共 10 段），放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
             整首播放中说明会带「<b>整首连播 · 播放中</b>」前缀，停机时显示「整首连播 · 已就绪」</li>
-          <li><b>播放范围滑块</b>（在「整首连播」下面）：<b>按小节拖两个滑块自由选范围</b>
+          <li><b>播放范围滑块</b>（在曲式条目上方）：<b>按小节拖两个滑块自由选范围</b>
             （刻度就是小节，轨道上的细刻度线是段边界）——范围可以从段中间开始/结束，比如
             「第 5–12 小节」就只练副歌里那几小节。读数行会把它翻译成
             「第 5–12 小节 · 副歌 → 桥段 · 共 8 小节」；<b>两个滑块拖到重合 = 只循环这一个小节</b>
@@ -1994,7 +1994,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
         <ul class="help-list">
           <li>所有数据只存在<b>这台设备的浏览器里</b>，不上传任何服务器</li>
-          <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出预设」存一份 JSON 备份</li>
+          <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出全部数据」存一份 JSON 备份（「导出预设」只带走节奏型）</li>
           <li>若自定义预设曾因<b>结构损坏</b>被隔离（<code>beatsight.quarantine</code>），它们会一直占着本地配额；
             这里可以查看条数并清理（清理不可撤销，介意的话先导出备份）</li>
         </ul>
@@ -2224,7 +2224,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.41.0";
+const VERSION = "2.42.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
