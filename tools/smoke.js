@@ -400,6 +400,14 @@ function layoutProbe(){
   if (!card) return JSON.stringify(out);
   const cr = card.getBoundingClientRect();
   out.cardTextLeft = round(cr.left + parseFloat(getComputedStyle(card).paddingLeft));
+  /* v2.39.0：组容器底上线——控制列有了 16px 内边距，左缘基准改为「组容器内容边缘」
+     （卡片内容边缘 + padding）。旧口径 cardTextLeft 保留，容器缺失时回退 */
+  const headLeft = q(".card-head-left");
+  out.headContentLeft = (() => {
+    if (!headLeft) return null;
+    const hr = headLeft.getBoundingClientRect();
+    return hr ? round(hr.left + parseFloat(getComputedStyle(headLeft).paddingLeft)) : null;
+  })();
   /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
   out.title = textLeft(q(".card-head-left .group-label"));
@@ -577,19 +585,26 @@ async function main(){
           continue;
         }
         const base = m.title;
-        ok(sameLine(m.cardTextLeft, base),
-          p.label + "·" + label + "：前提——标题文字就在卡片内容边缘上（基准可信）",
-          "内容边缘 " + m.cardTextLeft + " vs 标题 " + base + "（视口 " + m.w + "）");
+        /* v2.39.0：组容器底上线——控制列有了 16px 内边距，基准从「卡片内容边缘」
+           改为「组容器内容边缘」（恒差一个 padding；容器缺失时回退旧口径） */
+        const baseEdge = (typeof m.headContentLeft === "number") ? m.headContentLeft : m.cardTextLeft;
+        ok(sameLine(baseEdge, base),
+          p.label + "·" + label + "：前提——标题文字就在控制列内容边缘上（基准可信）",
+          "内容边缘 " + baseEdge + " vs 标题 " + base + "（视口 " + m.w + "）");
         /* v2.38.0（用户反馈）：卡片头改居中分布——桌面（≥1280px）走 grid 居中（三块各归其列，
-           不再左贴）；窄屏（<1280px）回退现状左贴（同一套断言保留）。两种口径按 label 分派 */
+           不再左贴）；窄屏（<1280px）回退现状左贴（同一套断言保留）。两种口径按 label 分派。
+           v2.39.0：竖跨执行错误已修——r1 = 音量｜BPM｜三开关并列，r2 = 行数拍号 1/4 占满整行，
+           故行数行的左缘从「右移」改回「与音量列同缘」（都从第一列的内容缘起步） */
         if (label === "桌面"){
           ok(m.toggle > base + 40,
             p.label + "·" + label + "：★ 开关行已右移离标题（居中分布，不再左贴）",
             "标题 " + base + " vs 开关 " + m.toggle);
-          ok(m.rowsLabel > base + 40,
-            p.label + "·" + label + "：行数标签同样右移（居中列内）", "标题 " + base + " vs 标签 " + m.rowsLabel);
-          ok(m.rowsPillBox > base + 40,
-            p.label + "·" + label + "：行数 pill 盒子同步右移", "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
+          ok(sameLine(m.rowsLabel, base),
+            p.label + "·" + label + "：行数标签与音量列同缘（v2.39.0：整行占满，从第一列起步）",
+            "标题 " + base + " vs 标签 " + m.rowsLabel);
+          ok(m.rowsPillBox > base,
+            p.label + "·" + label + "：行数 pill 盒子跟在同屏行数标签右侧（标签与按钮同行自适应）",
+            "标签 " + m.rowsLabel + " vs pill 盒子 " + m.rowsPillBox);
         } else {
           ok(sameLine(m.toggle, base),
             p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",

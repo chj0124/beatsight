@@ -8,8 +8,9 @@
      · Editor.openWith(src)：open() 的参数化（open() = openWith(curPattern())）；
        源型被引用时编辑器显示「被 N 首曲式引用…保存会生成新副本」提示（引用不追踪的
        真相在最易误解场景讲清）；未被引用 → 提示留空；
-     · 宽屏铺满适配（B+C）：body.wide-full .viz 上限 1080px 居中（密度封顶，每格 ~63px）、
-       歌词字号 18px 微调（源码文本级断言，同 t101/t107d 口径）；
+     · 宽屏铺满适配（v2.38 起）：封顶撤销（网格与歌词轨都全宽同起点）、格内字形按 --cs
+       等比放大；卡片头居中分布 2×2（v2.39：r1 音量｜BPM｜三开关并列、r2 行数拍号占满、
+       四块组容器底）——均为源码文本级断言（同 t101/t107d 口径）；
      · 帮助示意图：<template> 惰性挂载（不占 DOM 预算），覆盖 7 幅（源码文本级，t55 守）。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -119,7 +120,13 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   ok(src.includes("--cs") && src.includes("font-size:calc(16px * var(--cs, 1))"),
     "★ 铺满时格内字形按 --cs 等比放大（歌词字号/格标签/座次尺随网格宽缩放）");
   ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:auto auto auto"),
-    "★ 卡片头居中分布（2×2：左列竖跨｜BPM｜三开关 / 行数拍号居中，v2.38.0）");
+    "★ 卡片头居中分布（2×2：r1 音量｜BPM｜三开关并列，r2 行数拍号占满整行，v2.39.0）");
+  ok(!src.includes(".card-head-left{grid-row"),
+    "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
+  ok(src.includes(".viz-rows-row{grid-column:1 / 4;grid-row:2"),
+    "★ 行数拍号行 grid-column:1/4 占满整行（v2.38 的 2/4 悬空第三列已退役）");
+  ok(src.includes(".viz-head-grid .card-head-left,") && src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
+    "★★ v2.39.0：四块组容器底（--card2 圆角 + 12/16 内边距）——修「散/悬空/填充感」，纯 CSS 零新增节点");
   ok((src.match(/<template id="helpFigs/g) || []).length === 5 &&
      (src.match(/id="mountFigs/g) || []).length === 5,
     "★ 帮助示意图按章节拆 5 组 template+挂载点（归位到各节文字旁）");

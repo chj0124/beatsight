@@ -224,8 +224,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★★ v2.11.0：循环钮零背景图层（含 hover 与开启态）——图标直接浮在页面背景上");
   ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),
     "★★ v2.11.0：BPM 组两行按钮两端对齐（-5↔60 左缘、+5↔120 右缘）");
-  ok(/\.card-head-left\{[^}]*width:min\(320px,100%\)/.test(css),
-    "★★ v2.10.18：左列固定 320px——宽度原先由内容（含节奏型名）驱动，名字变短列变窄、BPM 组跟着左移");
+  ok(/\.card-head-left\{[^}]*width:min\(352px,100%\)/.test(css),
+    "★★ v2.10.18：左列固定宽——宽度原先由内容（含节奏型名）驱动，名字变短列变窄、BPM 组跟着左移"
+    + "（v2.39.0：320→352，组容器底吃掉 32px 内边距后型名可读宽度分毫不变）");
   ok(/\.card-head-left \.group\{width:100%;flex:1;justify-content:space-evenly\}/.test(css),
     "★★ v2.10.20：音量组撑满列内剩余高度、滑杆行距均摊——死空间从「状态灯↔音量标签」"
     + "转移进组内行距（用户反馈该处仍太大，要求增大音量条间隙）");
