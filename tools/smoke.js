@@ -421,6 +421,20 @@ function layoutProbe(){
   out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
   out.volGroup = vol ? boxLeft(vol.parentElement) : null;
   out.editBtn = boxLeft(q("#editBtn"));
+  /* v2.42.7：四张组容器卡宽度（窄屏等宽回归断言的数据源） */
+  out.grpWidths = (() => {
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
+    return els.map(el => { const r = el && el.getBoundingClientRect(); return r ? round(r.width) : null; });
+  })();
+  /* v2.42.7 追加：相邻组容器卡的垂直间隙（等距回归断言的数据源——三处来源曾各给各的：
+     row-gap 6/12 / head margin-bottom 16 / toggles margin-bottom 16） */
+  out.grpGaps = (() => {
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
+    const rs = els.map(el => el && el.getBoundingClientRect());
+    const gaps = [];
+    for (let i = 1; i < rs.length; i++) if (rs[i] && rs[i-1]) gaps.push(round(rs[i].top - rs[i-1].bottom));
+    return gaps;
+  })();
   return JSON.stringify(out);
 })()`;
 }
@@ -673,6 +687,21 @@ async function main(){
           "行数 " + lay.narrow.vizRowsPanel + " vs 拍号 " + lay.narrow.sigGroup);
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
+      }
+      /* v2.42.7：窄屏四张组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
+         BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏 2×2 与四块一行
+         有自己的列宽设计，本断言只认窄屏） */
+      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 4){
+        const gws = lay.narrow.grpWidths;
+        ok(Math.max(...gws) - Math.min(...gws) <= 1,
+          "窄屏：★ 四张组容器卡等宽（宽度策略分裂回归闸门）",
+          "宽度 " + JSON.stringify(gws));
+      }
+      if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 3){
+        const ggs = lay.narrow.grpGaps;
+        ok(Math.max(...ggs) - Math.min(...ggs) <= 1,
+          "窄屏：★ 四张组容器卡等距（间距来源分裂回归闸门）",
+          "间隙 " + JSON.stringify(ggs));
       }
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");
