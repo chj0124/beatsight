@@ -72,8 +72,12 @@ section("T55b 使用方法 · 完整说明默认收起 / 可展开 / 可收起")
 section("T55c 使用方法 · 内容覆盖（查标记原文）");
 {
   /* 长度要有**上界**：只判 >500 的话，"切片一路切到文件末尾"这种静默错误完全过得了 */
-  ok((helpBlock.match(/class="help-fig"/g) || []).length === 3,
-     "★★ v2.36.0：帮助页配了 3 幅内联 SVG 示意图（布局 / 范围滑块 / 练这段 vs 循环本行）");
+  /* v2.37.0：图覆盖全部主要章节（3 → 7 幅），图文占比反转：图为主、文字为辅（用户反馈③）
+     ★ 图改 <template> 惰性挂载——不占 smoke DOM 预算；断言按源码文本（切片含 template） */
+  ok((helpBlock.match(/class="help-fig"/g) || []).length === 7,
+     "★★ v2.37.0：帮助页 7 幅内联 SVG 示意图（主界面 / 训练 / 设置 / 布局 / 范围滑块 / 两循环对比 / 编辑器）");
+  ok(helpBlock.includes('id="helpFigsTpl"') && helpBlock.includes('id="helpFigsMount"'),
+     "★ 示意图走 <template> 惰性挂载（不占 DOM 预算，展开帮助才进 DOM）");
   ok(helpBlock.includes("「练这段」和「循环本行」差在哪"),
      "★ 「练这段 vs 循环本行」对比词条到位（用户反馈看不懂）");
   ok(helpBlock.length > 2000 && helpBlock.length < 26000,   /* v2.36.0 上限放宽：帮助页新增 3 幅内联 SVG 示意图（约 +4KB） */
