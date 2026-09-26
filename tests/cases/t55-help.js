@@ -76,8 +76,9 @@ section("T55c 使用方法 · 内容覆盖（查标记原文）");
      ★ 图改 <template> 惰性挂载——不占 smoke DOM 预算；断言按源码文本（切片含 template） */
   ok((helpBlock.match(/class="help-fig"/g) || []).length === 7,
      "★★ v2.37.0：帮助页 7 幅内联 SVG 示意图（主界面 / 训练 / 设置 / 布局 / 范围滑块 / 两循环对比 / 编辑器）");
-  ok(helpBlock.includes('id="helpFigsTpl"') && helpBlock.includes('id="helpFigsMount"'),
-     "★ 示意图走 <template> 惰性挂载（不占 DOM 预算，展开帮助才进 DOM）");
+  ok((helpBlock.match(/<template id="helpFigs/g) || []).length === 5 &&
+     (helpBlock.match(/id="mountFigs/g) || []).length === 5,
+     "★ 示意图按章节拆成 5 组 <template>+挂载点（v2.38.0 归位到各节文字旁；惰性挂载不占 DOM 预算）");
   ok(helpBlock.includes("「练这段」和「循环本行」差在哪"),
      "★ 「练这段 vs 循环本行」对比词条到位（用户反馈看不懂）");
   ok(helpBlock.length > 2000 && helpBlock.length < 26000,   /* v2.36.0 上限放宽：帮助页新增 3 幅内联 SVG 示意图（约 +4KB） */

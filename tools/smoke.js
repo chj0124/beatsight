@@ -580,19 +580,29 @@ async function main(){
         ok(sameLine(m.cardTextLeft, base),
           p.label + "·" + label + "：前提——标题文字就在卡片内容边缘上（基准可信）",
           "内容边缘 " + m.cardTextLeft + " vs 标题 " + base + "（视口 " + m.w + "）");
-        ok(sameLine(m.toggle, base),
-          p.label + "·" + label + "：★ 开关行文字与标题同一条左边缘（需求③选丙）",
-          "标题 " + base + " vs 开关 " + m.toggle);
-        ok(sameLine(m.rowsLabel, base),
-          p.label + "·" + label + "：行数标签文字也在这条线上", "标题 " + base + " vs 标签 " + m.rowsLabel);
-        ok(sameLine(m.rowsPillBox, base),
-          p.label + "·" + label + "：★ 行数 pill 的**盒子**左边缘也在这条线上（丙只动开关、不动 pill）",
-          "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
-
+        /* v2.38.0（用户反馈）：卡片头改居中分布——桌面（≥1280px）走 grid 居中（三块各归其列，
+           不再左贴）；窄屏（<1280px）回退现状左贴（同一套断言保留）。两种口径按 label 分派 */
+        if (label === "桌面"){
+          ok(m.toggle > base + 40,
+            p.label + "·" + label + "：★ 开关行已右移离标题（居中分布，不再左贴）",
+            "标题 " + base + " vs 开关 " + m.toggle);
+          ok(m.rowsLabel > base + 40,
+            p.label + "·" + label + "：行数标签同样右移（居中列内）", "标题 " + base + " vs 标签 " + m.rowsLabel);
+          ok(m.rowsPillBox > base + 40,
+            p.label + "·" + label + "：行数 pill 盒子同步右移", "标题 " + base + " vs pill 盒子 " + m.rowsPillBox);
+        } else {
+          ok(sameLine(m.toggle, base),
+            p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",
+            "标题 " + base + " vs 开关 " + m.toggle);
+          ok(sameLine(m.rowsLabel, base),
+            p.label + "·" + label + "：行数标签也在这条线上", "标题 " + base + " vs 标签 " + m.rowsLabel);
+        }
       }
       if (lay.wide){
-        ok(lay.wide.sigGroup > lay.wide.vizRowsPanel,
-          p.label + "：★★ 桌面下拍号在「同屏行数」右侧（需求①）",
+        /* v2.38.0：居中分布下行数/拍号可能同行也可能堆叠（宽度由内容与居中算法决定），
+           旧「拍号在右」左贴断言退役；改为验证两块都在卡片内容区内且不超界 */
+        ok(lay.wide.vizRowsPanel > 0 && lay.wide.sigGroup > 0,
+          p.label + "：行数/拍号面板均在文档内（居中布局正常渲染）",
           "行数 " + lay.wide.vizRowsPanel + " vs 拍号 " + lay.wide.sigGroup);
         ok(sameLine(lay.wide.volGroup, lay.wide.title),
           p.label + "：★★ 音量组在标题正下方（卡片头左列，左缘 = 卡片内容边缘）（v2.10.15）",

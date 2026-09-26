@@ -79,11 +79,26 @@ button:disabled{cursor:not-allowed}
 /* v2.36.0（用户反馈）：宽屏铺满（设置 · 外观与辅助开关，默认关）——去掉 1440px 上限，
    主列 1fr 拉伸铺满、侧栏 360px 不变；超宽屏上视线跨度变大，故做成选项而非默认 */
 body.wide-full .main{max-width:none}
-/* v2.37.0（用户反馈，方案 B+C）：铺满时网格**密度封顶**——.viz 上限 1080px 居中
-   （1920 下每格 86px 太空旷；封顶后 ~63px，介于默认 56 与拉伸 86 之间），
-   页面与卡片仍铺满，只有网格内容收窄居中；歌词字号在封顶宽度下轻微放大填补空隙 */
-body.wide-full .viz{max-width:1080px;margin:0 auto}
-body.wide-full .lyric-char{font-size:18px}
+/* v2.38.0（用户反馈，替代 v2.37 的 B+C 封顶）：铺满时网格**真铺满**（每格 ~86px），
+   格内字形按 --cs 等比放大（--cs = 网格宽 / 960 基准，由 Viz 的 ResizeObserver 写入 :root；
+   非宽屏或桩上因子恒 1，现状一像素不变）。
+   ★ v2.37 的 .viz 封顶已撤销——封顶只封了网格、歌词轨没封，正是用户实拍的
+   「音符格与歌词格错位」根源；两层都全宽同起点，对应关系自然恢复 */
+/* v2.38.0（用户反馈）：卡片头居中分布——两种模式同一套 2×2 结构：
+   r1 = 音量左列（竖跨两行）｜BPM 组｜预备拍/静音拍/变速三开关（竖排）
+   r2 = 同屏行数 + 拍号（整组居中）。
+   默认档限宽居中（≥1280px 才启用，空间不够的窄窗回退现状左贴）；
+   宽屏铺满下块间距拉伸。壳内元素 id/接线一行不碰。 */
+.viz-head-grid{display:block}
+@media (min-width:1280px){
+  .viz-head-grid{display:grid;grid-template-columns:auto auto auto;justify-content:center;
+    align-items:stretch;column-gap:48px;row-gap:12px;margin-bottom:16px}
+  .viz-head{display:contents}                       /* 头行壳溶解：左列与 BPM 成为独立 item */
+  .viz-head-grid .card-head-left{grid-row:1 / 3}    /* 音量列竖跨两行（音量组沉底保持） */
+  .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
+  .viz-rows-row{grid-column:2 / 4;grid-row:2;margin-bottom:0}
+}
+body.wide-full .viz-head-grid{column-gap:120px}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -149,14 +164,14 @@ body.wide-full .lyric-char{font-size:18px}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
-.ruler-lab{position:absolute;top:67px;font-size:10px;font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
+.ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
 .ruler-lab.on{color:var(--green);font-weight:700}
 /* 下一颗音符预亮 */
 .cell.next{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.45);animation:nextGlow .7s ease-in-out infinite}
 @keyframes nextGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.15)}}
 .cell{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.14);overflow:hidden}
-.cell-label{position:absolute;top:48px;font-size:12px;font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
+.cell-label{position:absolute;top:48px;font-size:calc(12px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
 /* v2.26.1（DOM 瘦身）：填充层由**每格一个 .fill 子节点**改成 .cell::before 伪元素。
@@ -305,7 +320,7 @@ body.wide-full .lyric-char{font-size:18px}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:relative;z-index:1;font-size:16px;font-weight:700;color:var(--t2);white-space:nowrap}
+.lyric-char{position:relative;z-index:1;font-size:calc(16px * var(--cs, 1));font-weight:700;color:var(--t2);white-space:nowrap}
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 .lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
@@ -428,13 +443,15 @@ input[type=range].vol{width:120px}
    flex + gap + 下方留白（原先这句写的是"与 .limit-panel 同一套写法"，
    那个类随练习量一起删了，v2.10.12 起改为自述）；
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
-.viz-rows-panel{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}   /* v2.10.17：7px→10px，与 .group 的 gap 同值——修「行数与拍号没对齐」（实测差 3px） */
+.viz-rows-panel{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:12px}   /* v2.38.0（用户反馈）：标签与按钮**同行**自适应——空间够同行（紧凑），窄了自动折行回两层；替换原 column 竖排（居中分布后间隙拉大会显空旷）。v2.10.17 的对齐修法由 align-items:center + gap 承接 */
 /* v2.10.11（用户要求①）：「同屏行数」与「拍号」并排一行（拍号从走带卡搬来、紧邻其右）。
    `flex-wrap:wrap` 是必需的——实测 390px 下卡片内容可用宽仅 326px，而拍号那 6 颗 pill
    单行需要约 384px（原本就在折行），并排必然折行 → 窄屏下自动退回"上下两行"的观感。
    `.viz-rows-panel` 自己那 12px 下边距在这里归零：本行已经给了间距，叠加会变成 24px */
 .viz-rows-row{display:flex;align-items:flex-start;gap:16px 28px;flex-wrap:wrap;margin-bottom:12px}   /* v2.10.17：行内折行行距 28→16（纵向间隔统一 16px），横向 28 保留 */
 .viz-rows-row > .viz-rows-panel{margin-bottom:0}
+.viz-rows-row .group{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}   /* v2.38.0：拍号面板同款标签同行自适应；#accGroup 整体折到下一行 */
+.viz-rows-row #accGroup{flex-basis:100%}
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 /* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:7px 14px;font-size:12px}` 缩小规则删除——
    它让「同屏行数」的 pill（实测 31px 高）与旁边「拍号」的默认 .pill（36px 高）大小不一，
@@ -1197,7 +1214,11 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            与右侧 BPM 组的高块同高呼应。当前节奏型行只剩名字与 meta。
            ★「音量」是**故意留在主界面**的：练习过程中会实时调它，属高频控件（v2.10.12 判据）；
            三个 input 的 id / aria-label / 行内说明（title）一律未动，接线（input/change）不变 -->
-      <div class="card-head viz-head">
+      <!-- v2.38.0（用户反馈）：卡片头 + 两行控制包进 grid 壳——默认（<1280px）display:block
+         完全维持现状；≥1280px 重排为居中分布的 2×2（r1 = 音量左列｜BPM｜三开关竖排，
+         r2 = 同屏行数＋拍号居中）；宽屏铺满下块间距拉伸。纯 CSS 重排，壳内 id/接线不动 -->
+    <div class="viz-head-grid">
+    <div class="card-head viz-head">
         <!-- v2.10.16：左列改三行——角标 → 状态灯 → 音量组。
              ★ 标题（原 #vizTitle「时值可视化 · 4/4 · 歌曲第…」）整块删除：播放位置与状态灯
                文案重复、拍号与拍号 pill / 节奏型名重复，卡片以角标「01 Rhythm Map」为名；
@@ -1339,6 +1360,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
            符合「练习过程中会不会去点它」的低频判据；本行回到「同屏行数 + 拍号」两块（折行问题随之消失）。
            #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
     </div>
+    </div><!-- /viz-head-grid -->
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
          语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
@@ -1735,12 +1757,46 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>其余都在顶栏「设置」小窗里</b>（主题 / 壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断）——逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
 
+        <template id="helpFigsMain">
+        <div class="help-fig">
+          <svg viewBox="0 0 560 118" role="img" aria-label="主界面控制项示意：状态灯与音量三条、BPM 组、编辑入口行">
+            <rect x="8" y="6" width="300" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="24" font-size="10" fill="#1ED760">● 已停止　当前型名</text>
+            <text x="20" y="44" font-size="9" fill="#b3b3b3">音量：节拍 ──○── 80%　扫弦 ───── 0%</text>
+            <text x="20" y="62" font-size="9" fill="#b3b3b3">（练习中随时调的三条滑杆）</text>
+            <rect x="320" y="6" width="232" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="332" y="24" font-size="9" fill="#b3b3b3">速度 BPM · 范围 30–240</text>
+            <text x="332" y="46" font-size="14" fill="#fff" font-weight="700">-5　-1　96　+1　+5</text>
+            <text x="332" y="64" font-size="9" fill="#6a6a6a">滑杆 · TAP 测速 · 快捷档</text>
+            <rect x="8" y="84" width="544" height="26" rx="8" fill="none" stroke="#2c2c2c"/>
+            <text x="20" y="101" font-size="9" fill="#b3b3b3">编辑节奏型｜编排曲式｜当前曲式 chip（多条曲式才显示）</text>
+          </svg>
+          <figcaption>主界面：左列状态灯 + 音量三条（练习中随时调），右侧 BPM 组，下方编辑/编排入口行</figcaption>
+        </div>
+        </template>
+        <div id="mountFigsMain"></div>
         <h2 class="card-title" style="margin:22px 0 4px">训练模式</h2>
         <ul class="help-list">
           <li><b>变速训练</b>：三项参数——目标速度 / 每级加多少 / 每几小节加一级。从<b>开播那一刻的速度</b>起步往上爬，到目标自动停</li>
           <li><b>听辨训练</b>：先听 2 小节，再从三张<b>只给记谱、不给名字</b>的候选里选——练的是耳朵，答案作答后才揭晓。专治「听不出附点和切分」</li>
         </ul>
 
+        <template id="helpFigsTrain">
+        <div class="help-fig">
+          <svg viewBox="0 0 560 96" role="img" aria-label="变速训练与听辨训练对比示意">
+            <rect x="8" y="6" width="266" height="70" rx="10" fill="none" stroke="#1ED760" stroke-opacity=".6"/>
+            <text x="24" y="28" font-size="11" fill="#1ED760">变速训练</text>
+            <text x="24" y="48" font-size="10" fill="#b3b3b3">从当前速度起步 · 每级加速 · 到目标停</text>
+            <text x="24" y="66" font-size="10" fill="#6a6a6a">练「速度耐力」</text>
+            <rect x="286" y="6" width="266" height="70" rx="10" fill="none" stroke="#539df5" stroke-opacity=".6"/>
+            <text x="302" y="28" font-size="11" fill="#539df5">听辨训练</text>
+            <text x="302" y="48" font-size="10" fill="#b3b3b3">听 2 小节 → 三选一（只给记谱）</text>
+            <text x="302" y="66" font-size="10" fill="#6a6a6a">练「听出时值」</text>
+          </svg>
+          <figcaption>两种训练：变速练耐力与爬坡，听辨练耳朵</figcaption>
+        </div>
+        </template>
+        <div id="mountFigsTrain"></div>
         <!-- v2.25.1（用户需求）：设置小窗里每个选项的逐项详解——尤其是最容易被问
              「这是啥」的 Swing 与延迟补偿，以及只在一行提示里说不清的后台保活。
              位置放在「训练模式」之后：读者已经知道主界面怎么玩，接下来自然轮到
@@ -1760,6 +1816,25 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>复制诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）复制成一段文本贴给开发者。只写剪贴板、不上传、不联网</li>
         </ul>
 
+        <template id="helpFigsSettings">
+        <div class="help-fig">
+          <svg viewBox="0 0 560 96" role="img" aria-label="设置弹窗分组示意：外观与辅助、发声、数据与说明">
+            <rect x="8" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="22" y="28" font-size="10" fill="#fff">外观与辅助</text>
+            <text x="22" y="48" font-size="9" fill="#6a6a6a">主题 · 弹跳球 · 六线</text>
+            <text x="22" y="64" font-size="9" fill="#6a6a6a">宽屏铺满 · 壁纸</text>
+            <rect x="196" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="210" y="28" font-size="10" fill="#fff">发声</text>
+            <text x="210" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <rect x="384" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="398" y="28" font-size="10" fill="#fff">数据与说明</text>
+            <text x="398" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
+            <text x="398" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
+          </svg>
+          <figcaption>设置弹窗三组：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
+        </div>
+        </template>
+        <div id="mountFigsSettings"></div>
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排（预设卡片里）</h2>
         <ul class="help-list">
           <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序从第 1 段走到
@@ -1790,7 +1865,6 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
              ② 覆盖全部主要章节（主界面 / 训练 / 设置 / 曲式编排×3 / 编辑器），
              图文占比反转：图为主、文字为辅（用户反馈③）。
              ★ 桩没有 template.content / cloneNode，挂载逻辑有守卫跳过——图的断言全在源码级。 -->
-        <template id="helpFigsTpl">
 <div class="help-fig">
           <svg viewBox="0 0 560 150" role="img" aria-label="编排页布局示意：顶部开练走带条、曲式库行、段卡片">
             <rect x="8" y="6" width="544" height="42" rx="8" fill="none" stroke="#1ED760" stroke-opacity=".5"/>
@@ -1812,7 +1886,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             <text x="46" y="134" font-size="9" fill="#6a6a6a">段卡片：块胶囊（点胶囊换型）· 歌词摘要 ▸ 展开编辑 · ⋯（练这段 / 重排 / 删除）</text>
           </svg>
           <figcaption>编排页一览：顶部「开练」走带条（地图 + 滑块 + 播放）→ 曲式库 → 段卡片（每段一张）</figcaption>
-        </div>
+        </div>        <template id="helpFigsArrange">
+
         <div class="help-fig">
           <svg viewBox="0 0 560 104" role="img" aria-label="播放范围双滑块示意：两个滑块之间为练习范围，重合 = 只练一小节">
             <text x="8" y="16" font-size="10" fill="#b3b3b3">第 4–13 小节 · 副歌 → 间奏（共 30 小节）</text>
@@ -1842,50 +1917,24 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <figcaption>「练这段」vs「循环本行」：一个练节奏型、一个练弹唱配合</figcaption>
         </div>
 
-        <div class="help-fig">
-          <svg viewBox="0 0 560 118" role="img" aria-label="主界面控制项示意：状态灯与音量三条、BPM 组、编辑入口行">
-            <rect x="8" y="6" width="300" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
-            <text x="20" y="24" font-size="10" fill="#1ED760">● 已停止　当前型名</text>
-            <text x="20" y="44" font-size="9" fill="#b3b3b3">音量：节拍 ──○── 80%　扫弦 ───── 0%</text>
-            <text x="20" y="62" font-size="9" fill="#b3b3b3">（练习中随时调的三条滑杆）</text>
-            <rect x="320" y="6" width="232" height="70" rx="8" fill="none" stroke="#2c2c2c"/>
-            <text x="332" y="24" font-size="9" fill="#b3b3b3">速度 BPM · 范围 30–240</text>
-            <text x="332" y="46" font-size="14" fill="#fff" font-weight="700">-5　-1　96　+1　+5</text>
-            <text x="332" y="64" font-size="9" fill="#6a6a6a">滑杆 · TAP 测速 · 快捷档</text>
-            <rect x="8" y="84" width="544" height="26" rx="8" fill="none" stroke="#2c2c2c"/>
-            <text x="20" y="101" font-size="9" fill="#b3b3b3">编辑节奏型｜编排曲式｜当前曲式 chip（多条曲式才显示）</text>
-          </svg>
-          <figcaption>主界面：左列状态灯 + 音量三条（练习中随时调），右侧 BPM 组，下方编辑/编排入口行</figcaption>
-        </div>
-        <div class="help-fig">
-          <svg viewBox="0 0 560 96" role="img" aria-label="变速训练与听辨训练对比示意">
-            <rect x="8" y="6" width="266" height="70" rx="10" fill="none" stroke="#1ED760" stroke-opacity=".6"/>
-            <text x="24" y="28" font-size="11" fill="#1ED760">变速训练</text>
-            <text x="24" y="48" font-size="10" fill="#b3b3b3">从当前速度起步 · 每级加速 · 到目标停</text>
-            <text x="24" y="66" font-size="10" fill="#6a6a6a">练「速度耐力」</text>
-            <rect x="286" y="6" width="266" height="70" rx="10" fill="none" stroke="#539df5" stroke-opacity=".6"/>
-            <text x="302" y="28" font-size="11" fill="#539df5">听辨训练</text>
-            <text x="302" y="48" font-size="10" fill="#b3b3b3">听 2 小节 → 三选一（只给记谱）</text>
-            <text x="302" y="66" font-size="10" fill="#6a6a6a">练「听出时值」</text>
-          </svg>
-          <figcaption>两种训练：变速练耐力与爬坡，听辨练耳朵</figcaption>
-        </div>
-        <div class="help-fig">
-          <svg viewBox="0 0 560 96" role="img" aria-label="设置弹窗分组示意：外观与辅助、发声、数据与说明">
-            <rect x="8" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="22" y="28" font-size="10" fill="#fff">外观与辅助</text>
-            <text x="22" y="48" font-size="9" fill="#6a6a6a">主题 · 弹跳球 · 六线</text>
-            <text x="22" y="64" font-size="9" fill="#6a6a6a">宽屏铺满 · 壁纸</text>
-            <rect x="196" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="210" y="28" font-size="10" fill="#fff">发声</text>
-            <text x="210" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
-            <rect x="384" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="398" y="28" font-size="10" fill="#fff">数据与说明</text>
-            <text x="398" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
-            <text x="398" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
-          </svg>
-          <figcaption>设置弹窗三组：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
-        </div>
+        </template>
+        <div id="mountFigsArrange"></div>
+        <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
+        <ul class="help-list">
+          <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
+          <li><b>一个小节不够用就加</b>：「＋ 在其后加一小节」会在当前小节后面插一节，内容先复制当前小节
+            （再点音符块库改成你要的）；「− 删当前小节」删掉它，<b>最少留 1 小节</b>
+            ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
+          <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
+          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
+          <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
+               v2.25.4 补"低/高弦区各代表哪几根弦"；
+               v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
+               老数据 zone=1（当年谱面映射的"全"）读作全扫，零迁移 -->
+          <li><b>弦区（全扫（默认） / 低弦区 ④⑤⑥ / 高弦区 ①②③）</b>：给扫弦选"拨片扫过哪几根弦"。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>全扫</b> = 6 根弦都扫——民谣扫弦的常态，<b>新增的扫弦默认就是它</b>（不特别标注 = 全扫，导入的 JSON 同理）；<b>低弦区</b> = 只扫 ④⑤⑥ 这三根较粗的低音弦，音闷；<b>高弦区</b> = 只扫 ①②③ 这三根较细的高音弦，音亮。方向（↑↓）与弦区<b>互不约束</b>——下扫、上扫都可以配任一弦区。它是<b>音色档位</b>而非逐弦开关——应用里用低/高两档滤波频率模拟明暗差异（全扫 = 两档一起响），<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
+        </ul>
+
+        <template id="helpFigsEditor">
         <div class="help-fig">
           <svg viewBox="0 0 560 118" role="img" aria-label="节奏型编辑器示意：小节格子、试听与保存、与编排的关系">
             <rect x="8" y="6" width="544" height="56" rx="8" fill="none" stroke="#2c2c2c"/>
@@ -1903,21 +1952,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         </div>
         </template>
         <div id="helpFigsMount"></div>
-        <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
-        <ul class="help-list">
-          <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
-          <li><b>一个小节不够用就加</b>：「＋ 在其后加一小节」会在当前小节后面插一节，内容先复制当前小节
-            （再点音符块库改成你要的）；「− 删当前小节」删掉它，<b>最少留 1 小节</b>
-            ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
-          <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
-          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
-          <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
-               v2.25.4 补"低/高弦区各代表哪几根弦"；
-               v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
-               老数据 zone=1（当年谱面映射的"全"）读作全扫，零迁移 -->
-          <li><b>弦区（全扫（默认） / 低弦区 ④⑤⑥ / 高弦区 ①②③）</b>：给扫弦选"拨片扫过哪几根弦"。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>全扫</b> = 6 根弦都扫——民谣扫弦的常态，<b>新增的扫弦默认就是它</b>（不特别标注 = 全扫，导入的 JSON 同理）；<b>低弦区</b> = 只扫 ④⑤⑥ 这三根较粗的低音弦，音闷；<b>高弦区</b> = 只扫 ①②③ 这三根较细的高音弦，音亮。方向（↑↓）与弦区<b>互不约束</b>——下扫、上扫都可以配任一弦区。它是<b>音色档位</b>而非逐弦开关——应用里用低/高两档滤波频率模拟明暗差异（全扫 = 两档一起响），<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
-        </ul>
-
+        </template>
+        <div id="mountFigsEditor"></div>
         <h2 class="card-title" style="margin:22px 0 4px">数据与隐私</h2>
         <ul class="help-list">
           <li>所有数据只存在<b>这台设备的浏览器里</b>，不上传任何服务器</li>
@@ -2109,23 +2145,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2141  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2731  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4000  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4707  Modal         应用内弹窗
-     L4844  Viz           时值可视化渲染与每帧动画
-     L6978  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7652  Trainer       变速训练器
-     L7790  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8265  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9500  Editor        自定义节奏型编辑器
-     L9890  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9927  Ear           听辨训练（v1.10.0）
-     L10147 Arrange       曲式编排（v2.0.0）
-     L11497 Help          使用方法（v2.0.1）
-     L11556 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11630 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11831 初始化（装配） 各模块 hook 接线与启动
+     L2177  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2767  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4743  Modal         应用内弹窗
+     L4880  Viz           时值可视化渲染与每帧动画
+     L7027  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7701  Trainer       变速训练器
+     L7839  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8314  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9549  Editor        自定义节奏型编辑器
+     L9939  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9976  Ear           听辨训练（v1.10.0）
+     L10196 Arrange       曲式编排（v2.0.0）
+     L11546 Help          使用方法（v2.0.1）
+     L11608 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11682 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11883 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2151,7 +2187,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.37.0";
+const VERSION = "2.38.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5880,6 +5916,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       row.appendChild(cc);
       barChordEls.push(cc);
     } else barChordEls.push(null);
+  }
+
+  /* v2.38.0：--cs 等比缩放因子（= 网格宽 / 960 基准宽，写入 :root 供格内字号 calc）。
+     宽屏铺满下网格拉伸（每格 56→86px），格内字形若不跟放就会空旷（用户实拍）。
+     ResizeObserver 在真实浏览器随窗口/布局变化自动刷新；测试桩没有该 API，
+     守卫跳过（桩上 --cs 恒为缺省 1，所有 calc 退回原值，现状一像素不变）。 */
+  if (typeof ResizeObserver !== "undefined"){
+    const vizEl = $("viz");
+    new ResizeObserver(entries => {
+      const w = entries[0] && entries[0].contentRect ? entries[0].contentRect.width : 0;
+      if (w > 0) document.documentElement.style.setProperty("--cs",
+        String(Math.max(1, Math.round(w / 960 * 100) / 100)));
+    }).observe(vizEl);
   }
 
   function buildViz(){
@@ -11502,12 +11551,15 @@ const Help = (() => {
   let more = false;
   function helpRender(){
     $("helpMore").hidden = !more;
-    /* v2.37.0：示意图惰性挂载（首次展开克隆一次；桩无 template.content，守卫跳过） */
-    const figsTpl = $("helpFigsTpl"), figsMount = $("helpFigsMount");
-    if (more && figsMount && figsTpl && figsTpl.content && figsTpl.content.cloneNode &&
-        !figsMount.childNodes.length){
-      figsMount.appendChild(figsTpl.content.cloneNode(true));
-    }
+    /* v2.38.0：示意图惰性挂载（按章节 5 组 template，首次展开各克隆一次；
+       桩无 template.content，守卫跳过——图的断言全在源码级，见 t110d/t55） */
+    ["Main", "Train", "Settings", "Arrange", "Editor"].forEach(k => {
+      const tpl = $("helpFigs" + k), mount = $("mountFigs" + k);
+      if (more && mount && tpl && tpl.content && tpl.content.cloneNode &&
+          !mount.childNodes.length){
+        mount.appendChild(tpl.content.cloneNode(true));
+      }
+    });
     $("helpMoreBtn").textContent = more ? "收起完整说明" : "展开完整说明";
     $("helpMoreBtn").setAttribute("aria-expanded", more ? "true" : "false");
     /* v2.0.6（审计 P1-5）：隔离区有内容时才露出清理入口，并带上条数——

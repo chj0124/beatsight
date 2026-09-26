@@ -114,12 +114,13 @@ section("T110c 引用提示 · 被 N 首曲式引用 / 未引用留空（引用�
 section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示意图 template 惰性挂载");
 {
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(src.includes("body.wide-full .viz{max-width:1080px;margin:0 auto}"),
-    "★ 铺满时网格密度封顶：.viz 上限 1080px 居中（每格 ~63px，不再 86px 空旷）");
-  ok(src.includes("body.wide-full .lyric-char{font-size:18px}"),
-    "★ 封顶宽度下歌词字号 18px 微调（填补空隙感）");
-  ok(src.includes('<template id="helpFigsTpl">') && src.includes('id="helpFigsMount"'),
-    "★ 帮助示意图走 template 惰性挂载（不占 DOM 预算）");
-  ok((src.match(/class="help-fig"/g) || []).length === 7,
-    "示意图 7 幅覆盖全部主要章节（图文占比反转）");
+  ok(!src.includes("body.wide-full .viz{max-width"),
+    "★★ v2.38.0：铺满封顶已撤销——网格与歌词轨都全宽同起点（对齐恢复，用户实拍错位已修）");
+  ok(src.includes("--cs") && src.includes("font-size:calc(16px * var(--cs, 1))"),
+    "★ 铺满时格内字形按 --cs 等比放大（歌词字号/格标签/座次尺随网格宽缩放）");
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:auto auto auto"),
+    "★ 卡片头居中分布（2×2：左列竖跨｜BPM｜三开关 / 行数拍号居中，v2.38.0）");
+  ok((src.match(/<template id="helpFigs/g) || []).length === 5 &&
+     (src.match(/id="mountFigs/g) || []).length === 5,
+    "★ 帮助示意图按章节拆 5 组 template+挂载点（归位到各节文字旁）");
 }

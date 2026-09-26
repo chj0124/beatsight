@@ -208,8 +208,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★★ v2.34.0：左列音量滑杆吃满行内剩余宽度——% 列右缘贴列右缘，"
     + "与节奏型名（pat-now 行尾）恢复 v2.10.17 的「同一右缘对齐」契约"
     + "（120px 定宽时 % 右缘 278 vs 名字 368，差 90px 死空间；设置弹窗同款滑杆不受影响）");
-  ok(/\.viz-rows-panel\{[^}]*gap:10px/.test(css),
-    "★ v2.10.17：`.viz-rows-panel` 的 label→内容间距与 .group 同值（10px）——修「行数与拍号差 3px 没对齐」");
+  ok(/\.viz-rows-panel\{display:flex;flex-wrap:wrap;align-items:center/.test(css),
+    "★★ v2.38.0：行数/拍号面板改 flex-wrap——标签与按钮**同行自适应**（空间够同行、窄了自动"
+    + "折回两层，用户反馈居中后间隙空旷的问题）；对齐由 align-items:center + gap 承接");
   ok(/\.viz-toggles\{[^}]*margin-bottom:16px/.test(css) && /\.viz-rows-row\{[^}]*gap:16px 28px/.test(css),
     "★★ v2.10.17：块间纵向间隔统一 16px（预备拍行下边距、行内折行行距；横向 28 保留）");
   ok(/\.viz-head\{[^}]*justify-content:flex-start[^}]*column-gap:48px/.test(css),
