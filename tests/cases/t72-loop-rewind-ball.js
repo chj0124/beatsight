@@ -142,3 +142,82 @@ section("T72b 循环 [1,2] · ★ 第 2 小节末尾待命球在第 1 行开头�
   ok(n3 === 0, `★ .next 预告**不**落在区间外的第 3 行（旧实现会）`);
   beat.Controls.stop();
 }
+
+/* ================= 场景 T72e：起播预备动画 · 预备拍跟跳 / 待命呼吸（v2.42.6） =================
+   需求（用户）：起播后到第一拍之间球是“死”的——预备拍期间给球编排动作：
+   预备拍 = 一支幽灵小节，球按正式弹跳的方式走第一窗口的拍位（每声预备拍“哒”落地一个
+   拍位，数完 ciEnd 回卷接第一拍）；无预备拍时（窗口仅 0.08s+补偿）只做呼吸亮度脉冲。
+   硬约束：第一拍落地时刻分毫不动（onset 端点不动，动画只发生在第一拍之前）。
+   REDUCE_MOTION：去动作、留位置——球停在首拍位。 */
+section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2.42.6）");
+{
+  const spb96 = 0.625;                                   // 96BPM → 每拍 0.625s
+
+  /* ① 有预备拍：第 2 声“哒”落地时，球在拍位 1（行宽 1/4 处，96BPM） */
+  const app1 = loadApp();
+  const beat1 = app1.beat;
+  beat1.Store.S.countIn = { on: true, beats: 4 };
+  beat1.Controls.setBpm(96);
+  beat1.Controls.start();
+  const ac1 = FakeAudioContext.last;
+  const iv1 = beat1.Viz.internals();
+  const ciStart1 = iv1.rowGeo[0] ? beat1.clock().loopStart - 4 * spb96 : 0;
+  ac1.currentTime = ciStart1 + 1 * spb96 + 0.002;        // 第 2 声落地后一小步
+  beat1.Viz.paintFrame();
+  const bx = (String(iv1.ballEl.style.transform).match(/-?\d+(?:\.\d+)?/g) || [])[0];
+  const g1 = iv1.rowGeo[0];
+  ok(bx !== undefined && Math.abs(Number(bx) - (g1.left + g1.width * 0.25 - 8)) < 4,
+    "★ 预备拍第 2 声落地：球在拍位 1（x=" + Number(bx).toFixed(1) +
+    " ≈ 行宽 1/4 处；修复前预备拍期间球保持陈旧位置不动）");
+
+  /* ② REDUCE_MOTION：去动作留位置——同一时刻球贴在基线上（h=0） */
+  const app2 = loadApp({}, { reduceMotion: true });
+  const beat2 = app2.beat;
+  beat2.Store.S.countIn = { on: true, beats: 4 };
+  beat2.Controls.setBpm(96);
+  beat2.Controls.start();
+  const ac2 = FakeAudioContext.last;
+  const iv2 = beat2.Viz.internals();
+  ac2.currentTime = ciStart1 + 1 * spb96 + 0.002;
+  beat2.Viz.paintFrame();
+  const nums2 = (String(iv2.ballEl.style.transform).match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  const g2 = iv2.rowGeo[0];
+  ok(nums2[0] !== undefined && Math.abs(nums2[0] - (g2.left + g2.width * 0.25 - 8)) < 4 &&
+     nums2[1] !== undefined && Math.abs(nums2[1] - (g2.top - 20)) < 0.5,
+    "★ REDUCE_MOTION：去动作、留位置——球仍走到拍位 1（x=" + (nums2[0] === undefined ? "无" : nums2[0].toFixed(1)) +
+    " ≈ 行宽 1/4）但贴基线（y=" + (nums2[1] === undefined ? "无" : nums2[1].toFixed(1)) + " = top−20，不跳）");
+
+  /* ③ 无预备拍：待命呼吸——起播窗口内球挂 breath 类（亮度脉冲，非运动） */
+  const app3 = loadApp();
+  const beat3 = app3.beat;
+  beat3.Controls.start();
+  const ac3 = FakeAudioContext.last;
+  ac3.currentTime = 0.04;                                // 第一拍（0.08）之前的窗口内
+  beat3.AudioEngine.scheduler();
+  beat3.Viz.paintFrame();
+  const ball3 = beat3.Viz.internals().ballEl;
+  ok(/breath/.test(String(ball3.className || "")),
+    "★ 无预备拍：待命球挂 breath 类（亮度呼吸脉冲，0.08s 窗口也有“活着”的预告）");
+
+  /* ④ 回卷前行首先有球等着：预备拍最后一拍期间，接力待命球已在行首（用户截图对比项） */
+  const app4 = loadApp();
+  const beat4 = app4.beat;
+  beat4.Store.S.countIn = { on: true, beats: 4 };
+  beat4.Controls.setBpm(96);
+  beat4.Controls.start();
+  const ac4 = FakeAudioContext.last;
+  const iv4 = beat4.Viz.internals();
+  const ciStart4 = beat4.clock().loopStart - 4 * spb96;
+  ac4.currentTime = ciStart4 + 3 * spb96 + 0.1;          // 最后一拍的前 0.1s（p=0.16，跳入中段）
+  beat4.AudioEngine.scheduler();
+  beat4.Viz.paintFrame();
+  const numsW = (String(iv4.waitEl.style.transform).match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  const gW = iv4.rowGeo[0], hopSpan = gW.width * 0.2, p4 = 0.1 / spb96;
+  const lx = gW.left - 8, ly = gW.top - 20;
+  const expX = lx - hopSpan * (1 - p4), expY = ly - 48 * 0.75 * 4 * p4 * (1 - p4);
+  ok(iv4.waitEl.style.display !== "none" && numsW[0] !== undefined &&
+     Math.abs(numsW[0] - expX) < 4 && Math.abs(numsW[1] - expY) < 4,
+    "★ 预备拍最后一拍：待命球沿抛物线跳向行首拍位（x=" + (numsW[0] === undefined ? "无" : numsW[0].toFixed(1)) +
+    " 期望 " + expX.toFixed(1) + " · y=" + (numsW[1] === undefined ? "无" : numsW[1].toFixed(1)) +
+    " 在基线上方=空中；p=1 时落地行首，与正常接力待命球同一套跳入数学）");
+}

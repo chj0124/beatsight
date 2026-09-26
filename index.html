@@ -359,6 +359,8 @@ body.wide-full .main{max-width:none}
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
    按弧起算的角度会在接缝回卷（demo 实测伪影）。跨弧状态量必须连续 */
 .bounce-ball{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);pointer-events:none;z-index:7;transform-origin:50% 100%}
+.bounce-ball.breath{animation:ball-breath 1.2s ease-in-out infinite}   /* v2.42.6：待命呼吸（C）——只动亮度不动 transform，与逐帧定位不冲突 */
+@keyframes ball-breath{0%,100%{filter:brightness(1)}50%{filter:brightness(1.55)}}
 .bounce-wait{opacity:.45;box-shadow:none}   /* 接力待命球：半透明，下一小节交接时转正式 */
 .bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
 
@@ -2163,23 +2165,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2195  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2782  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4051  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4758  Modal         应用内弹窗
-     L4895  Viz           时值可视化渲染与每帧动画
-     L7042  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7689  Trainer       变速训练器
-     L7827  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8325  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9560  Editor        自定义节奏型编辑器
-     L9950  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9987  Ear           听辨训练（v1.10.0）
-     L10207 Arrange       曲式编排（v2.0.0）
-     L11557 Help          使用方法（v2.0.1）
-     L11640 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11714 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11915 初始化（装配） 各模块 hook 接线与启动
+     L2197  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2784  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4053  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4760  Modal         应用内弹窗
+     L4897  Viz           时值可视化渲染与每帧动画
+     L7100  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7747  Trainer       变速训练器
+     L7885  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8383  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9618  Editor        自定义节奏型编辑器
+     L10008 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10045 Ear           听辨训练（v1.10.0）
+     L10265 Arrange       曲式编排（v2.0.0）
+     L11615 Help          使用方法（v2.0.1）
+     L11698 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11772 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11973 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2205,7 +2207,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.5";
+const VERSION = "2.42.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4948,6 +4950,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
 let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球
+let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
      paintFrame 必须全程用 vizSig，否则播放头按新拍号提前回卷、高亮错行（用户实拍 bug） */
@@ -6289,6 +6292,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!S.bounce){
       ballEl.style.display = "none"; shadowEl.style.display = "none";
       if (waitEl) waitEl.style.display = "none";
+      if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
       return;
     }
     ballEl.style.display = ""; shadowEl.style.display = "";
@@ -6332,9 +6336,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       ballEl.style.transform = `translate(${g.x}px, ${g.y}px)`;
       shadowEl.style.transform = `translate(${g.x - 1}px, ${g.y + 15}px)`;
       shadowEl.style.opacity = ".3";
+      /* v2.42.6：待命呼吸（C 方案）——球在起点等着没动作时给一个亮度脉冲，
+         提示“活着、马上开始”；只动 filter 不动 transform（逐帧定位不冲突），
+         挂/摘走状态翻转标志，不做逐帧 class 写入 */
+      if (!ballBreathOn){ ballEl.classList.add("breath"); ballBreathOn = true; }
       if (waitEl) waitEl.style.display = "none";
       return;
     }
+    if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
     const terminal = !nxtInBar;                             // 终端弧：终点 = 本行右缘
     const s0 = prev, b2 = nxtInBar || /** @type {any} */ ({ t: barEnd, terminal: true });
     const T = b2.t - s0.t;
@@ -6835,6 +6844,55 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         pulseZone(zoneEls[Math.floor(idx / RB)] && zoneEls[Math.floor(idx / RB)][idx % RB]);
       }
       $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
+      /* ★ v2.42.6（用户需求）：预备拍 = 一支“幽灵小节”，球按正式弹跳的方式走第一窗口的
+         拍位——每声预备拍“哒”落地一个拍位（pos 的整数部分），拍间是空中弧线（与正式弹跳
+         同形的抛物线）；数完 ciEnd 回卷，正式弹跳路径无缝接管（onset 端点已就位，落点 =
+         第一拍位，与“小节间回卷”同一套视觉）。几何与 pulseZone 同源（geoOf + rowBeats），
+         跨行时按窗口行折算（与网格行一一对应）。REDUCE_MOTION：去动作、留位置——球停在
+         首拍位待命（与既有“降形变保留位置”纪律同向）。 */
+      if (S.bounce && ballEl && shadowEl){
+        const RBc = rowBeats();
+        const pos = Math.max(0, Math.min(ciBeats, (c.currentTime - ciStart) / spb()));
+        const row = Math.floor(pos / RBc) % Math.max(1, rowGeo.length);
+        const g = geoOf(row) || geoOf(0);
+        if (g){
+          const frac = pos - Math.floor(pos);
+          const inRow = pos - row * RBc;
+          const x = g.left + (inRow / RBc) * g.width - 8;
+          const yB = g.top - 20;
+          const h = REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * frac * (1 - frac);
+          const hN = Math.min(1, h / CONFIG.bounce.max);
+          ballEl.style.display = ""; shadowEl.style.display = "";
+          ballEl.style.transform = `translate(${x.toFixed(1)}px, ${(yB - h).toFixed(1)}px)`;
+          shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yB + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
+          shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
+          if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
+          /* v2.42.6 追加（用户确认）：回卷前行首先有球等着——走位进入最后一拍（pos 到达
+             倒数第二拍位之后）时，接力待命球落到首拍位（onsetBuf 已有首音则落在首音处，
+             否则行 0 起点），带 0.25s 的落下动作（半透明 = bounce-wait 既有视觉）；
+             主球回卷落位后由正常路径接管（待命球隐去）。REDUCE_MOTION：不做落下动作。 */
+          if (waitEl){
+            if (pos >= ciBeats - 1){
+              const first = onsetBuf.length ? onsetBuf[0] : null;
+              const q = first ? onsetPos(first, arrCur) : null;
+              const gw = geoOf(0) || g;
+              const lx = gw.left + ((q ? q.tick : 0) / (segTicks() || 1)) * gw.width - 8;
+              const ly = gw.top - 20;
+              /* 跳入动作与正常接力待命球同一套数学（见 paintBall 终端弧段）：
+                 从落点左侧 hopSpan 处起跳，沿抛物线前进，落地时刻 = 音乐第一拍（ciEnd）——
+                 p 沿最后一拍推进：p=0 起跳、p=0.5 弧顶、p=1 落地。REDUCE_MOTION：p 恒 1，
+                 直接在场不做动作。 */
+              const hopSpan = gw.width * 0.2;
+              const p = REDUCE_MOTION ? 1 : Math.min(1, Math.max(0, (c.currentTime - (ciStart + (ciBeats - 1) * spb())) / spb()));
+              const wx = lx - hopSpan * (1 - p);
+              const wy = ly - (REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * p * (1 - p));
+              waitEl.style.display = "";
+              waitEl.style.opacity = "";
+              waitEl.style.transform = `translate(${wx.toFixed(1)}px, ${wy.toFixed(1)}px)`;
+            } else waitEl.style.display = "none";
+          }
+        }
+      }
       return;
     }
     lastCi = -1;
