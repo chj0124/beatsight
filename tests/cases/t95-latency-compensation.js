@@ -6,12 +6,18 @@
    契约：
      · 数据 = 独立键 `beatsight.latency`：{v:1, profiles:[{id,name,ms}], currentId}；
        不进热键、不进「导出全部数据」（理由见 index.html 装配层那段与 DEVELOPMENT §3.18）。
-     · 生效 = 所有发声统一提前 latencyMs（playClick / lyricCueHit 出口收口）；
-       时间轴（loopStart / nextNoteTime）、onset 表、播放头与弹跳球**一字不动**。
-     · 排程前瞻量 = schedWindow + 补偿（否则靠近窗口边缘的音会"排到过去"被立即播放）。
+     · 生效 = 所有发声统一提前 latencyMs（playClick / lyricCueHit 出口收口）。
+     · ★ v2.42.4 起锚点契约（修订 v2.14.0 原契约）：**起播 / ctx 重建重锚时，时间轴锚点
+       （loopStart）整体顺延补偿量**——否则首颗音的发声时刻落在 ctx.currentTime 之前，
+       Web Audio 把整包过去的包络钳到当下 → 首拍完全无声（v2.14.0 原判"只是晚一点"
+       是错误的表现模型）。顺延后：发声时刻与不补偿时逐位相同，补偿改变的是
+       「耳机听到的那一刻」（= 发声 + 链路延迟 = 画面落点）；稳态相对关系不变。
+       onset 表与 loopStart 随锚点整体顺延（T95b 逐位断言）。
+     · 排程前瞻量 = schedWindow + 补偿（否则稳态时靠近窗口边缘的音会被排到过去）。
    v2.42.1：校准向导（跟拍法）整包退役——原 T95d（建议值）/ T95e（校准发声不吃
    补偿）/ T95f（向导端到端）/ 校准守卫四个场景随之删除；保留路径（滑杆微调 +
-   多设备配置）由 T95a/b/c/g 覆盖，手动校准的参考起步值走纯文案、由 t102 断言。 */
+   多设备配置）由 T95a/b/c/g 覆盖，手动校准的参考起步值走纯文案、由 t102 断言。
+   v2.42.4：新增 T95h（首声必须排在未来，start 与 ctx 重建两条路径）。 */
 "use strict";
 const { loadApp, FakeAudioContext, ok, eq, near, section, drive } = require("../lib/harness");
 
@@ -91,7 +97,7 @@ section("T95a 延迟补偿 · 读档校验（无键不落盘 / 脏值回落 / �
 }
 
 /* ================= 场景 T95b：生效 —— 所有发声统一提前 ================= */
-section("T95b 延迟补偿 · 生效：发声统一提前 offset；时间轴与 onset 表一字不动");
+section("T95b 延迟补偿 · 生效：锚点顺延补偿量，发声不落过去、节奏关系不变");
 {
   /** 同一套驱动跑两次（0 / 200ms）比对 @param {number} ms */
   const run = ms => {
@@ -107,25 +113,31 @@ section("T95b 延迟补偿 · 生效：发声统一提前 offset；时间轴与 
   const base = run(0);
   const comp = run(200);
   ok(base.osc.length >= 2, "基线发声 " + base.osc.length + " 声（120BPM 跑 0.6s）");
-  /* ★ 不是"个数相同"：补偿把前瞻量加大（窗口 + 补偿），同一驱动窗口里会多排到
-     后面的音——这正是扩容生效的证据之一（第一版按"个数相等"写，当场被这条差异打红） */
+  /* ★ v2.42.4 契约：锚点顺延补偿量后，发声时刻 = (原锚点 + 补偿) + k·spb − 补偿，
+     与不补偿时**逐位相同**——补偿改变的是「耳机听到的那一刻」（= 发声 + 链路延迟
+     = 画面落点），不是发声时刻本身。若前瞻量忘了含补偿，这里的逐位相同会破
+     （补偿场景的发声会被窗口边缘钳住、滞后于基线）——所以它同时是前瞻量的守卫。 */
   ok(comp.osc.length >= base.osc.length,
-    "补偿让单轮排得更远：基线 " + base.osc.length + " 声 / 补偿 " + comp.osc.length + " 声");
+    "补偿让单轮排得不比基线少：基线 " + base.osc.length + " 声 / 补偿 " + comp.osc.length + " 声");
   for (let i = 0; i < base.osc.length; i++){
-    near(comp.osc[i], base.osc[i] - 0.2, 1e-9, "第 " + (i + 1) + " 声恰好前移 200ms");
+    near(comp.osc[i], base.osc[i], 1e-9, "第 " + (i + 1) + " 声发声时刻与不补偿时逐位相同（顺延的是锚点）");
   }
+  ok(comp.osc.length > 0 && comp.osc[0] > 0.02,
+    "★ 首颗音排在未来（修复前 t=−0.12 排进过去，包络被钳没 = 首拍无声）");
   if (comp.osc.length > base.osc.length){
     near(comp.osc[base.osc.length] - comp.osc[base.osc.length - 1], 0.5, 1e-9,
-      "★ 多排的那颗与上一颗仍相隔 500ms（平移不改变节奏关系）");
+      "★ 多排的那颗与上一颗仍相隔 500ms（顺延不改变节奏关系）");
   }
-  /* onset 表（弹跳球口径）与时间轴读数不动——它们标的是"节拍器时间轴" */
-  near(comp.beat.onsetBuf()[0].t, base.beat.onsetBuf()[0].t, 1e-9,
-    "★ onset 表第一颗的**时间轴**时刻不变（补偿只动「耳朵收到的那一刻」）");
-  near(comp.beat.clock().loopStart, base.beat.clock().loopStart, 1e-9, "loopStart 不动");
+  /* onset 表与 loopStart：随锚点整体顺延补偿量（原契约「一字不动」在起播时刻物理上
+     不可满足——锚点不动则首声必落过去；v2.42.4 起改为「顺延补偿量」，稳态相对关系不变） */
+  near(comp.beat.onsetBuf()[0].t, base.beat.onsetBuf()[0].t + 0.2, 1e-9,
+    "★ onset 表整体顺延补偿量（+200ms）");
+  near(comp.beat.clock().loopStart, base.beat.clock().loopStart + 0.2, 1e-9,
+    "★ loopStart 顺延补偿量（+200ms）");
 }
 
 /* ================= 场景 T95c：排程前瞻量随补偿加长 ================= */
-section("T95c 延迟补偿 · 单轮就排到「窗口 + 补偿」处（否则边缘音符会被排到过去）");
+section("T95c 排程前瞻量 = 窗口 + 补偿（网格触达越过普通窗口）");
 {
   /** 只跑**第一轮**调度 @param {number} ms */
   const one = ms => {
@@ -137,12 +149,20 @@ section("T95c 延迟补偿 · 单轮就排到「窗口 + 补偿」处（否则�
     ac.hits.length = 0;
     ac.currentTime = 0.02;
     beat.AudioEngine.scheduler();
-    return ac.hits.filter(h => h.kind === "osc").map(h => h.t);
+    const emitted = ac.hits.filter(h => h.kind === "osc").map(h => h.t);
+    return { emitted, now: ac.currentTime, last: emitted.length ? emitted[emitted.length - 1] : 0 };
   };
-  const has = (arr, v) => arr.some(t => Math.abs(t - v) < 1e-9);
-  const b = one(0), c = one(300);
-  ok(!has(b, 0.58), "基线：单轮只排到窗口内（0.58s 那颗还没排）");
-  ok(has(c, 0.28), "★ 带 300ms 补偿：单轮就排到 0.58s 那颗，且发声音频时刻 = 0.58 − 0.3 = 0.28");
+  const b = one(0), c = one(500);
+  ok(b.last > 0 && b.last <= b.now + 0.3 + 1e-9,
+    "基线：单轮网格触达 ≤ now+窗口0.3（最后一颗发声音频时刻 " + b.last.toFixed(2) + "）");
+  ok(c.last > c.now,
+    "★ 500ms 补偿：首颗音的发声时刻排在未来（锚点 0.58 − 补偿 0.5 = 0.08）");
+  /* 网格触达 = 发声音频时刻 + 补偿：500ms 下首颗的网格时刻 0.58 已越过基线的窗口边界
+     0.32 —— 发声时刻却与基线同处一个窗口内。这正是「look = win + 补偿」在起播时刻的体现：
+     没有加长的话，顺延后的网格（0.58 起）在普通窗口里一颗都排不到，首声会被推迟到
+     首个调度周期能追上的时刻（听感 = 起播明显空拍） */
+  ok(c.last + 0.5 > c.now + 0.3 + 1e-9,
+    "★ 单轮网格触达（发声音频时刻 + 补偿）越过 now+窗口——前瞻量确实含补偿");
 }
 
 /* ================= 场景 T95g：每设备一套配置 ================= */
@@ -211,4 +231,36 @@ section("T95g 延迟补偿 · 配置 CRUD（新建/改名/删除/切换）与两
   eq(r.beat.latencyMs(), 185, "重载后补偿值恢复");
   eq(String(r.els["latMs"].value), "185", "重载后滑杆恢复");
   eq(r.els["latProfileSel"].children.length, 1, "重载后配置列表恢复");
+}
+
+/* ================= 场景 T95h：首声必须排在未来（v2.42.4，start 与 ctx 重建两条路径） =================
+   缺陷（用户实测报障）：设置补偿后第一拍的节拍声消失——起播锚点只预留 0.08s，补偿 >80ms 时
+   首颗音的发声时刻（锚点 − 补偿）落在 ctx.currentTime 之前，Web Audio 把整包过去的包络
+   钳到当下 → 零长度发声。修复 = 锚点整体顺延补偿量（start() 与 watchCtx 重锚两处同改）。
+   反向验证：回退两处锚点 → 本场景全部变红。 */
+section("T95h 首声排在未来 · start 与 ctx 重建重锚（修复首拍静默）");
+{
+  /* 路径一：start() 起播 */
+  const app = loadApp({ "beatsight.latency": latStore([{ id: "p0", name: "TWS", ms: 200 }], "p0") });
+  const { beat } = app;
+  beat.Controls.start();
+  const ac = /** @type {any} */ (FakeAudioContext.last);
+  ac.hits.length = 0;
+  beat.AudioEngine.scheduler();
+  const first = ac.hits.filter(h => h.kind === "osc").map(h => h.t)[0];
+  ok(first !== undefined, "起播第一轮就排出了首颗节拍音");
+  ok(first > ac.currentTime,
+    "★ start()：200ms 补偿下首颗音排在未来（t=" + (first === undefined ? "无" : first.toFixed(3)) +
+    " > currentTime=" + ac.currentTime.toFixed(3) + "；修复前 t=−0.12 被钳没 = 无声）");
+
+  /* 路径二：ctx 被系统关闭后的重锚（watchCtx 的 closed 分支）——同款锚点，同款修复 */
+  ac.state = "closed";
+  ac.onstatechange();
+  const ac2 = /** @type {any} */ (FakeAudioContext.last);
+  ok(ac2 !== ac, "ctx 被关闭后已重建新上下文");
+  ac2.hits.length = 0;
+  beat.AudioEngine.scheduler();
+  const first2 = ac2.hits.filter(h => h.kind === "osc").map(h => h.t)[0];
+  ok(first2 !== undefined && first2 > ac2.currentTime,
+    "★ ctx 重建重锚：首颗音同样排在未来（同款锚点同款修复，别只修 start 漏了这里）");
 }

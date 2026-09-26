@@ -2170,15 +2170,15 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L7041  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
      L7688  Trainer       变速训练器
      L7826  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8302  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9537  Editor        自定义节奏型编辑器
-     L9927  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L9964  Ear           听辨训练（v1.10.0）
-     L10184 Arrange       曲式编排（v2.0.0）
-     L11534 Help          使用方法（v2.0.1）
-     L11617 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11691 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11892 初始化（装配） 各模块 hook 接线与启动
+     L8312  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9547  Editor        自定义节奏型编辑器
+     L9937  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9974  Ear           听辨训练（v1.10.0）
+     L10194 Arrange       曲式编排（v2.0.0）
+     L11544 Help          使用方法（v2.0.1）
+     L11627 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11701 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11902 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2204,7 +2204,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.3";
+const VERSION = "2.42.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7070,7 +7070,7 @@ const AudioEngine = (() => {
         ctx = null; masterGain = null;
         noiseBuf = null;      // 旧上下文生成的噪声 buffer 一并废弃：跨上下文复用是否可用依赖浏览器实现
         const c = ensureCtx();          // 重建后的上下文（同步返回，闭包内收窄才保得住）
-        loopStart = c.currentTime + 0.08;
+        loopStart = c.currentTime + 0.08 + latOff();   // v2.42.4：同 start()——锚点顺延补偿量，首声不许排进过去
         nextNoteTime = loopStart;
         schedBar = loopStartBar(patBars(activePattern())); schedStep = 0; schedPlayBar = 0; Viz.resetWindow();
         onsetBuf.length = 0; onsetNext = null;
@@ -7931,7 +7931,17 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     const arrProbs = arrangeStart();
     if (arrProbs) Modal.uiAlert("这首曲式暂时不能播放，已切换到预设模式：\n" + arrProbs.join("\n"));
     onsetBuf.length = 0; onsetNext = null;          // 弹跳球：清 onset 表，从第一拍重新建立
-    loopStart = c.currentTime + 0.08;
+    /* ★ v2.42.4（修复首拍静默，用户实测报障）：锚点整体顺延补偿量——发声时刻 = 锚点 − 补偿，
+       原先锚点只预留 0.08s，补偿 >80ms 时第一颗音的发声时刻落在 ctx.currentTime **之前**；
+       Web Audio 对过去的调度一律钳到当下：setValueAtTime / 两段 exponentialRamp 瞬间走完归零、
+       osc.stop 也在过去 → 零长度发声 = 首拍无声（桩实测：200ms 补偿下首颗排程 t=−0.12）。
+       顺延后发声时刻回到 now+0.08，预备拍（ciStart/ciNext）与 ciEnd 自动跟随；
+       「耳机听到 = 发声 + 链路延迟 = 画面落点」的对齐关系不变，补偿 0 时与本行原行为逐位相同。
+       ★ 本函数在 Controls 里（latOff 是 AudioEngine 内部闭包），补偿值直读共享状态
+       latencyMs——与 latOff 同一份源（AudioEngine.latOff 就是 latencyMs/1000 的封装）。
+       §3.18 原「首声限制」一段随之作废：它预测的表现是"晚一点"，实测是"消失"——
+       错误的表现模型导致 v2.14.0 当时的"整体延后"方案被错误否决。 */
+    loopStart = c.currentTime + 0.08 + latencyMs / 1000;
     /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
     if (S.countIn.on && S.countIn.beats > 0){
       ciBeats = S.countIn.beats; ciLeft = ciBeats;
