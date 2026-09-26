@@ -519,16 +519,6 @@ input[type=range].vol{width:120px}
 /* 7 天计划行（v1.5）：[hidden] 会被 display:flex 覆盖，必须显式写（同 .inp-with-unit 的坑） */
 .tr-plan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%}
 .tr-plan[hidden]{display:none}
-/* ---------- 音频延迟补偿 · 校准向导（v2.14.0）---------- */
-/* 本块当前没有 display 声明，理论上 UA 的 [hidden]{display:none} 就够；这条补丁仍写上：
-   将来任何一次给 .lat-wiz 加 display（例如改成 flex 排布）都会静默吃掉 [hidden]——
-   这类坑本文件已经踩过 11 次（见 .vol-row / .tr-panel / .arg-now 那一族）。 */
-.lat-wiz{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px}
-.lat-wiz[hidden]{display:none}
-.lat-wiz .wz-msg{font-size:12.5px;color:var(--t2);line-height:1.6;margin:0 0 10px}
-.lat-wiz .wz-msg b{color:var(--t1)}
-.lat-tap{width:100%;border-radius:10px;padding:16px 18px;font-size:15px;font-weight:500;background:var(--cell);color:var(--t1);border:1px solid var(--border);transition:background .12s,color .12s,border-color .12s}
-.lat-tap:active{background:var(--green);color:var(--on-green);border-color:var(--green)}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
@@ -1848,7 +1838,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
-          <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：点「校准向导」→ 跟着咔嗒声敲八下 → 自动算出建议值 → 滑杆微调到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。有线耳机 / 手机外放延迟接近零，保持 0 即可。只存本机、不进「导出全部数据」（换设备本来就要重新校准）</li>
+          <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
           <li><b>后台保活（顶栏开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
           <li><b>导出 / 导入预设；导出 / 导入全部数据。</b>「预设」只带走节奏型；「全部数据」整包带走预设 + 曲式编排 + 歌词对齐 + 听辨战绩（详见下面「数据与隐私」）</li>
           <li><b>复制诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）复制成一段文本贴给开发者。只写剪贴板、不上传、不联网</li>
@@ -2097,8 +2087,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
     <!-- 音频延迟补偿（v2.14.0）：蓝牙耳机等无线输出有 100–300ms 链路延迟——声音比画面晚到。
          补偿 = 把每一颗音**提前**相应毫秒发出（发声侧见 AudioEngine.latOff），让"耳机里
          听到的"与"屏幕上的落点"对齐。数据是独立键 beatsight.latency（不进热键、不进导出包，
-         理由见 DEVELOPMENT.md §3.18）；多套"设备配置"= 换耳机时在这里选一下，上次选的会被记住。
-         ★ 向导面板复用 .tr-panel 同族的 .lat-wiz（自带 [hidden] 补丁，见 CSS 区注释） -->
+         理由见 DEVELOPMENT.md §3.18）；多套"设备配置"= 换耳机时在这里选一下，上次选的会被记住。 -->
     <div class="group" style="margin-top:24px">
       <div class="group-label">音频延迟补偿（蓝牙耳机 / 无线音箱）</div>
       <div class="bpm-row">
@@ -2113,20 +2102,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
                aria-label="音频延迟补偿毫秒数，0 为不补偿">
         <span class="pct" id="latMsPct">0 ms</span>
       </div>
-      <div class="bpm-row" style="margin-top:6px">
-        <button class="pill outline" id="latCalibBtn">校准向导</button>
-      </div>
-      <div class="lat-wiz" id="latWiz" hidden>
-        <p class="wz-msg" id="latWizMsg"></p>
-        <button class="lat-tap" id="latWizTap">跟着咔嗒声，在这里敲</button>
-        <div class="hint" id="latWizProg" style="margin:10px 0 0"></div>
-        <div class="bpm-row" style="margin-top:10px">
-          <button class="pill outline" id="latWizApply" hidden>采用这个值</button>
-          <button class="pill outline" id="latWizRetry" hidden>重测</button>
-          <button class="pill outline" id="latWizCancel">取消</button>
-        </div>
-      </div>
-      <div class="hint" style="margin-top:8px">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。点「校准向导」跟着敲八下会自动给一个建议值，再用滑杆微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重新校准）。</div>
+      <div class="hint" style="margin-top:8px">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。手动校准参考起步值：真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机与外放保持 <b>0</b>。定好起步值后边放节拍边对：声音比画面<b>晚</b>就把值调大、比画面<b>早</b>就调小，每次 ±20ms 微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重调）。</div>
     </div>
 
     <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
@@ -2182,23 +2158,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2214  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2804  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4073  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4780  Modal         应用内弹窗
-     L4917  Viz           时值可视化渲染与每帧动画
-     L7064  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7738  Trainer       变速训练器
-     L7876  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8352  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9587  Editor        自定义节奏型编辑器
-     L9977  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10014 Ear           听辨训练（v1.10.0）
-     L10234 Arrange       曲式编排（v2.0.0）
-     L11584 Help          使用方法（v2.0.1）
-     L11646 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11720 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11921 初始化（装配） 各模块 hook 接线与启动
+     L2190  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2777  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4046  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4753  Modal         应用内弹窗
+     L4890  Viz           时值可视化渲染与每帧动画
+     L7037  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7684  Trainer       变速训练器
+     L7822  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8298  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9533  Editor        自定义节奏型编辑器
+     L9923  Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L9960  Ear           听辨训练（v1.10.0）
+     L10180 Arrange       曲式编排（v2.0.0）
+     L11530 Help          使用方法（v2.0.1）
+     L11592 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11666 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L11867 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2224,7 +2200,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.0";
+const VERSION = "2.42.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2692,9 +2668,6 @@ const CONFIG = {
      然后整段静音」→ 必然断续。
      取 1.2s：大于节流下限且留 20% 余量。行为代价见 DEVELOPMENT.md §3.2 */
   schedWindowBg:1.2,
-  /* 跟拍校准的首声预热（v2.14.0）：排第一声之前先留这么久——给 AudioContext 起播与
-     蓝牙链路建链留时间（首声常是最不可靠的一声；配合中位数，个别异常样本不污染结果） */
-  latCalibLead:1.2,
   /* 热数据落盘防抖窗口（v1.3.0，审计 P1-5）：合并 TAP 连点 / ±1 长按连发这类突发写入 */
   persistDebounce:250,
   /* ★ v2.10.12：原 `logMinSec:30, logMax:400`（练习记录的入账门槛与环形上限）随
@@ -7077,8 +7050,6 @@ const AudioEngine = (() => {
      ★ 只动**发声时刻**：时间轴（loopStart / nextNoteTime）、onset 表、播放头与弹跳球
        一律不碰——它们标的是"节拍器时间轴"，补偿的是"耳朵收到的那一刻"。 */
   const latOff = () => latencyMs / 1000;
-  /* 校准期间为 true：playClick / lyricCueHit 临时不吃补偿（见 calibPlay 的注释） */
-  let calibRaw = false;
   /* 音频生命周期（v1.3.0，审计 P2-13）：原实现只认 "suspended"，漏了 iOS 的两个关键状态：
      · "interrupted" —— 通话/闹钟/其他 App 抢占音频会话后 Safari 的私有状态，恢复路径与
        suspended 不同。不认它 → 通话结束后可能**永久无声**且界面毫无异常。
@@ -7210,7 +7181,7 @@ const AudioEngine = (() => {
   }
   /** @param {number} t @param {number} stepStartBeat @param {any} isAccent @param {any} [zone] */
   function playClick(t, stepStartBeat, isAccent, zone){
-    if (!calibRaw) t -= latOff();             /* v2.14.0：延迟补偿（提前发声）；0 时为无操作 */
+    t -= latOff();                            /* 延迟补偿（提前发声）；0 时为无操作 */
     const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
     const level = isAccent ? 2 : (isBeat ? 1 : 0);
     /* 重拍增强量 0% = 与正拍齐平，100% = 最大强调（accentMax）。
@@ -7289,8 +7260,8 @@ const AudioEngine = (() => {
      音量取电平档 LEVEL_BEAT 而非 accentGain：它是"提示"不是"重拍"，不该随 accentVol 一起变 */
   /** @param {number} t */
   function lyricCueHit(t){
-    if (!calibRaw) t -= latOff();             /* v2.14.0：延迟补偿（与 playClick 同口径——
-                                                  锚点音也是"用户要听到的声音"，一起提前） */
+    t -= latOff();                            /* 延迟补偿（与 playClick 同口径——
+                                                 锚点音也是"用户要听到的声音"，一起提前） */
     const W = CONFIG.timbres.wood;
     const peak = Math.min(1, Math.max(0, S.vol * CONFIG.levelBeat));
     if (peak <= 0) return;                       // 音量为 0：与 playClick 同口径，不排空音
@@ -7707,32 +7678,7 @@ const AudioEngine = (() => {
     onsetBuf.length = 0; onsetNext = null;
     Viz.resetTracking();
   }
-  /* 校准发声（v2.14.0）：以固定间隔在音频时钟上排 n 声"重拍"click，供跟拍校准测量用。
-     ★ 为什么必须**不吃补偿**（calibRaw）：要测的就是"没补偿时声音多晚到"，发出的必须是
-       原始时刻；否则测出来的只是残差，值会随当前设置漂移。
-     ★ 为什么首声留预热（CONFIG.latCalibLead）：给 AudioContext 起播与蓝牙链路建链留时间
-       ——首声常是最不可靠的一声；配合中位数，个别异常样本不会污染结果。
-     返回"锚点对"（音频时钟 ↔ 墙钟）与各声时刻：测量侧按线性关系换算出每声的墙钟预期
-     时刻、与敲击时刻相减。两套时钟的**常量起点差**会被相减消掉，秒级漂移（<1ms）可忽略。 */
-  /** @param {number} n @param {number} intervalMs
-      @returns {{ anchorCtx: number, anchorPerf: number, gapMs: number, times: number[] }} */
-  function calibPlay(n, intervalMs){
-    const c = ensureCtx();
-    const anchorCtx = c.currentTime, anchorPerf = performance.now();
-    const lead = CONFIG.latCalibLead, gap = intervalMs / 1000;
-    /** @type {number[]} */
-    const times = [];
-    calibRaw = true;
-    try{
-      for (let i = 0; i < n; i++){
-        const t = anchorCtx + lead + i * gap;
-        times.push(t);
-        playClick(t, 0, true);          // 0 = 正拍位、true = 重拍声（清脆好认，与主音色同源）
-      }
-    } finally { calibRaw = false; }
-    return { anchorCtx, anchorPerf, gapMs: intervalMs, times };
-  }
-  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop, calibPlay };
+  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop };
 })();
 
 /* ================= Trainer · 变速训练器 ================= */
@@ -12725,119 +12671,6 @@ $("latDelBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   }, { danger: true, okText: "删除" });
 });
 
-/* ---- 校准向导（跟拍法）----
-   玩法：排 8 声固定间隔的点击（**不吃补偿**，见 AudioEngine.calibPlay），用户跟着敲；
-   每次敲击与"最近的那一声"求差，全部差的中位数就是建议值。
-   ★ 数学上的诚实说明：中位数里含**人的反应时间**（约几十毫秒）——向导给的是偏大的起点，
-     刻意不做扣除（宁可稍早、不可再晚，且反应时间是因人而异的，扣一个拍脑袋的常数
-     只是把系统性偏差换成另一种系统性偏差）；最后请用滑杆微调到"声画重合"。
-   ★ 只认"能在 ±LAT_TAP_WIN 内配到某一声"的敲击：抢拍 / 杂敲配不上就被忽略，
-     样本 < LAT_MIN_TAPS 时判定为测不准，提示重测。 */
-const LAT_CALIB_N = 8;          // 每轮敲击次数
-const LAT_CALIB_GAP = 500;      // 相邻两声的间隔（ms）= 120BPM 的一拍
-const LAT_TAP_WIN = 400;        // 敲击与最近一声的配对窗口（ms）
-const LAT_MIN_TAPS = 4;         // 可用样本下限
-/** 建议值（纯函数，供测试直测）：剔非有限 → 取中位数 → 对齐步长并钳制
-    @param {number[]} diffs @returns {{ ok: boolean, ms: number, n: number }} */
-function latSuggest(diffs){
-  const ok = (diffs || []).filter(d => typeof d === "number" && isFinite(d));
-  if (ok.length < LAT_MIN_TAPS) return { ok: false, ms: 0, n: ok.length };
-  ok.sort((a, b) => a - b);
-  const mid = ok.length >> 1;
-  const med = ok.length % 2 ? ok[mid] : (ok[mid - 1] + ok[mid]) / 2;
-  return { ok: true, ms: latClamp(med), n: ok.length };
-}
-/** @type {{ phase: string, times: number[], anchorCtx: number, anchorPerf: number,
-             diffs: number[], timer: any, result: null | {ok:boolean, ms:number, n:number} }} */
-let latWiz = { phase: "idle", times: [], anchorCtx: 0, anchorPerf: 0, diffs: [], timer: null, result: null };
-function latWizPaint(){
-  $("latWiz").hidden = latWiz.phase === "idle";
-  $("latWizTap").hidden = latWiz.phase !== "run";
-  $("latWizApply").hidden = latWiz.phase !== "done";
-  $("latWizRetry").hidden = latWiz.phase !== "done";
-  if (latWiz.phase === "run"){
-    $("latWizMsg").textContent = "会连续响 8 下咔嗒（约 4 秒）。每听到一下，就在下面这颗按钮上敲一下——用平时跟节拍器的手感，不用刻意抢拍。";
-    $("latWizProg").textContent = "已记录 " + latWiz.diffs.length + " / " + LAT_CALIB_N;
-  } else if (latWiz.phase === "done"){
-    const s = latWiz.result;
-    if (s && s.ok){
-      $("latWizMsg").textContent = "测得建议值 ≈ " + s.ms + " ms（用了 " + s.n + " 下敲击）。这个值含你自己约几十毫秒的反应时间，会略偏大——先「采用」，再用上面滑杆微调到声画重合。";
-    } else {
-      $("latWizMsg").textContent = "这一轮只配到 " + (s ? s.n : 0) + " 下（至少要 " + LAT_MIN_TAPS + " 下），测不准。点「重测」再来一次，跟着声音稳稳地敲。";
-    }
-    $("latWizProg").textContent = "";
-  }
-}
-function latWizStopTimer(){
-  if (latWiz.timer !== null){ clearTimeout(latWiz.timer); latWiz.timer = null; }
-}
-function latCalibStart(){
-  if (S.playing) Controls.stop();          // 校准期间不该混着节拍器声（也让量出的差值干净）
-  if (!(S.vol > 0)){
-    Modal.uiAlert("节拍音量现在是 0，校准听不到声音——先到主界面把「节拍」音量拉起来再校准。");
-    return;
-  }
-  latWizStopTimer();
-  const out = AudioEngine.calibPlay(LAT_CALIB_N, LAT_CALIB_GAP);
-  latWiz.times = out.times;
-  latWiz.anchorCtx = out.anchorCtx;
-  latWiz.anchorPerf = out.anchorPerf;
-  latWiz.diffs = [];
-  latWiz.result = null;
-  latWiz.phase = "run";
-  /* 自动收尾：最后一响之后再等 0.9s 仍没敲满 → 按已有样本结算（漏敲几下也能给出提示） */
-  const endPerf = out.anchorPerf + (out.times[out.times.length - 1] - out.anchorCtx) * 1000;
-  const wait = Math.max(1000, endPerf - performance.now() + 900);
-  latWiz.timer = setTimeout(() => { latWiz.timer = null; if (latWiz.phase === "run") latWizFinish(); }, wait);
-  latWizPaint();
-  announce("校准开始");
-}
-function latWizFinish(){
-  latWizStopTimer();
-  latWiz.result = latSuggest(latWiz.diffs);
-  latWiz.phase = "done";
-  latWizPaint();
-  announce(latWiz.result.ok ? "校准完成，建议 " + latWiz.result.ms + " 毫秒" : "校准样本不足");
-}
-$("latCalibBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); latCalibStart(); });
-/* 敲击用 pointerdown 而不是 click（少一层合成事件，时刻更贴近手感）；
-   同一时刻多按无效——配不上任何一声的敲击会被忽略 */
-$("latWizTap").addEventListener("pointerdown", () => {
-  if (latWiz.phase !== "run") return;
-  const tapT = performance.now();
-  /** @type {null | number} */
-  let best = null;
-  for (const t of latWiz.times){
-    const exp = latWiz.anchorPerf + (t - latWiz.anchorCtx) * 1000;
-    const d = tapT - exp;
-    if (Math.abs(d) <= LAT_TAP_WIN && (best === null || Math.abs(d) < Math.abs(best))) best = d;
-  }
-  if (best === null) return;               // 抢拍 / 多余敲击：忽略
-  latWiz.diffs.push(best);
-  if (latWiz.diffs.length >= LAT_CALIB_N){ latWizFinish(); return; }   // 敲满即结算
-  latWizPaint();
-});
-$("latWizApply").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-  evEl(e).blur();
-  if (latWiz.phase !== "done" || !latWiz.result || !latWiz.result.ok) return;
-  const p = latNow.profiles.find(x => x.id === latNow.currentId);
-  if (!p) return;
-  p.ms = latWiz.result.ms;
-  latSave();
-  announce("已采用校准值 " + p.ms + " 毫秒");
-  latWiz.phase = "idle";
-  latWizPaint();
-});
-$("latWizRetry").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); latCalibStart(); });
-$("latWizCancel").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-  evEl(e).blur();
-  latWizStopTimer();
-  latWiz.phase = "idle";
-  latWiz.diffs = [];
-  latWizPaint();
-});
-latWizPaint();                             // 首屏：向导面板收起（phase = idle）
-
 /* 启动探针（v2.8.8）：**恒存在**，且刻意只放两个只读标量。
    它取代 `__beat` 承担"应用是否启动成功"这一个用途（tools/smoke.js 靠它判白屏）——
    原先 smoke 等到 `window.__beat` 就算启动成功，而 `__beat` 一旦被下面的开关收起，
@@ -12888,12 +12721,11 @@ if (EXPOSE_INTERNALS){
     WALL_KEY, WALL_MAX_BYTES, WALL_MAX_EDGE, WALL_DIM_MAX, WALL_DIM_DEF, WALL_SRC_MAX_BYTES,
     WALL_DEFAULT, WALL_TOKEN_DEFAULT,             // v2.13.0：出厂默认壁纸（常量）与它在存档里的记号
     wallState: () => wallNow,
-    /* v2.14.0：音频延迟补偿。暴露纯逻辑（读档校验 / 落盘 / 建议值计算）与读数；
-       向导的完整 UI 逻辑在装配层，测试走元素事件驱动（#latWizTap 的 pointerdown 等）。 */
-    latRead, latWrite, latSuggest,
-    LAT_KEY, LAT_MAX, LAT_STEP, LAT_MAX_PROFILES, LAT_CALIB_N, LAT_CALIB_GAP, LAT_TAP_WIN, LAT_MIN_TAPS,
+    /* v2.14.0：音频延迟补偿。暴露纯逻辑（读档校验 / 落盘）与读数；UI 接线全在装配层。 */
+    latRead, latWrite,
+    LAT_KEY, LAT_MAX, LAT_STEP, LAT_MAX_PROFILES,
     latencyMs: () => latencyMs,
-    latState: () => ({ profiles: latNow.profiles, currentId: latNow.currentId, ms: latencyMs, wiz: latWiz.phase, result: latWiz.result }),
+    latState: () => ({ profiles: latNow.profiles, currentId: latNow.currentId, ms: latencyMs }),
     arrangeNextRow,                               // v2.0.0：待命球"下一行"该看哪个型（走 arrNextBar）
     arrangePlayPattern,                           // v2.6.3：曲式播放中取型的唯一来源（节目单游标处的型）
     /* v2.10.12：原 `LIMIT_PRESETS, limitHit` 与 `limitState`（练习量的档位表 / 到点判定 /

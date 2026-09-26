@@ -62,11 +62,30 @@ section("T102b 内容契约 · ★ 新增「设置里的每一项」章节：Swi
   /* Swing：说清"前长后短"的直觉 + 三档含义 + "只改耳朵不改画面"的边界 */
   ok(/前长后短/.test(html) && /重 Swing/.test(html) && /只改耳朵听到的时机，不改画面/.test(html),
      "★ Swing：直觉（前长后短）+ 三档（直 / Swing / 重 Swing）+ 边界（不改画面）都说清");
-  /* 延迟补偿：为什么（蓝牙 100–300ms）+ 怎么调（校准向导敲八下）+ 多设备配置 + 有线不用调 */
-  ok(/100–300ms/.test(html) && /校准向导/.test(html) && /敲八下/.test(html)
-     && /按设备存配置/.test(html)
-     && html.includes("有线耳机 / 手机外放延迟接近零，保持 0"),
-     "★ 延迟补偿：成因 / 校准手法 / 多设备配置 / 何时该保持 0 全覆盖");
+  /* 延迟补偿：为什么（蓝牙 100–300ms）+ 怎么调（滑杆 + 三类设备参考起步值 + ±20ms 微调法）+ 多设备配置。
+     ★ 两处文案（「使用方法」条目 + 设置页 hint）各自**切片独立断言**——harness 的 html 是整个
+     index.html 原文，不切片的话一处漏改会被另一处掩盖（变异反向验证实测踩过：只删一处
+     参考值，全文件级正则仍绿）。 */
+  const helpLat = (() => {
+    const a = html.indexOf("音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢");
+    return a < 0 ? "" : html.slice(a, html.indexOf("</li>", a));
+  })();
+  const setLatHint = (() => {
+    const a = html.indexOf("蓝牙耳机通常有 <b>100–300ms</b> 延迟");
+    return a < 0 ? "" : html.slice(a, html.indexOf("</div>", a));
+  })();
+  ok(/100–300ms/.test(helpLat)
+     && /真无线耳机（TWS）<b>约 200ms<\/b>/.test(helpLat)
+     && /蓝牙耳机 \/ 音箱<b>约 150ms<\/b>/.test(helpLat)
+     && /有线耳机 \/ 手机外放保持 <b>0<\/b>/.test(helpLat)
+     && /每次 ±20ms/.test(helpLat)
+     && /按设备存配置/.test(helpLat),
+     "★ 延迟补偿（使用方法条目）：成因 / 滑杆手法 + 三类设备起步值 / ±20ms 微调法 / 多设备配置全覆盖");
+  ok(/真无线耳机（TWS）<b>约 200ms<\/b>/.test(setLatHint)
+     && /蓝牙耳机 \/ 音箱<b>约 150ms<\/b>/.test(setLatHint)
+     && /有线耳机与外放保持 <b>0<\/b>/.test(setLatHint)
+     && /每次 ±20ms 微调到声画重合/.test(setLatHint),
+     "★ 延迟补偿（设置 hint）：三类设备起步值 + ±20ms 微调法全覆盖");
   /* 后台保活：症状（系统暂停网页声音）+ 两级手段（屏幕不熄灭 / iOS 静音音频）+ 代价（耗电）+ 默认关 */
   ok(/暂停网页的声音/.test(html) && /不自动熄灭/.test(html) && /静音音频/.test(html)
      && /代价是耗电/.test(html) && /默认关/.test(html),
