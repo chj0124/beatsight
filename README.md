@@ -21,7 +21,7 @@
 
 ## 功能现状
 
-当前 `v2.44.2`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v2.45.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 ### 节拍内核
 

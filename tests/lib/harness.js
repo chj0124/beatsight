@@ -129,6 +129,10 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { zone: "0" } },
     { className: "pill", dataset: { zone: "2" } },
   ],
+  /* v2.45.0：编辑器「发声开关」。单 pill toggle——dataset.rest 恒 "on"（toggle 不分档，
+     点了就翻转），当前态由 aria-pressed/.active 表达 = 选中音符的 rest；
+     没有 dirRow 第三档那种空串档位，也就没有「dataset 判 undefined」的坑 */
+  restRow: [{ className: "pill", dataset: { rest: "on" } }],
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。

@@ -1623,6 +1623,17 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区 ④⑤⑥</button>
         <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
       </div>
+      <!-- 发声开关（v2.45.0）：翻转选中音符的 rest（发声 ↔ 休止）。实扫 ↔ 空扫此前没有直达路径：
+           调色板替换会破坏小节时值（休止块只有四分一种）且抹掉 dir/zone，非四分时长的互换实际做不到。
+           ★ 只翻 rest 一位、dir/zone 原样保留（用户拍板 a 方案：不替用户补默认方向）——
+             已有方向的音符翻过去即成空扫（休止槽带方向 = 空扫，v2.1.0 口径）；
+             无方向的翻过去是普通休止，要空扫再点「扫弦标注」选方向。可逆：再点一次翻回来。
+           rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响 -->
+      <div class="ed-dir" id="restRow" role="group" aria-label="发声开关（发声/休止）">
+        <span class="hint">发声</span>
+        <button class="pill" data-rest="on" aria-pressed="false" disabled>休止</button>
+        <span class="hint" id="restHint">先在上方选中一个音符</span>
+      </div>
       <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
       <div class="palette" id="palette"></div>
       <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
@@ -1987,7 +1998,8 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
             （再点音符块库改成你要的）；「− 删当前小节」删掉它，<b>最少留 1 小节</b>
             ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
-          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来</li>
+          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来。
+            选中音符后用「发声」开关可直接翻转<b>发声 ↔ 休止</b>：已有方向的音符翻过去即成空扫，再点一次翻回来；开关不改动方向与弦区，时长（占位）也不变</li>
           <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
                v2.25.4 补"低/高弦区各代表哪几根弦"；
                v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
@@ -2190,23 +2202,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2222  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2809  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4078  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4785  Modal         应用内弹窗
-     L4922  Viz           时值可视化渲染与每帧动画
-     L7193  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7840  Trainer       变速训练器
-     L7978  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8476  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9722  Editor        自定义节奏型编辑器
-     L10112 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10149 Ear           听辨训练（v1.10.0）
-     L10369 Arrange       曲式编排（v2.0.0）
-     L11719 Help          使用方法（v2.0.1）
-     L11802 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11876 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L12077 初始化（装配） 各模块 hook 接线与启动
+     L2234  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2821  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4090  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4797  Modal         应用内弹窗
+     L4934  Viz           时值可视化渲染与每帧动画
+     L7205  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7852  Trainer       变速训练器
+     L7990  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8488  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9734  Editor        自定义节奏型编辑器
+     L10154 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10191 Ear           听辨训练（v1.10.0）
+     L10411 Arrange       曲式编排（v2.0.0）
+     L11761 Help          使用方法（v2.0.1）
+     L11844 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11918 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L12119 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2232,7 +2244,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.44.2";
+const VERSION = "2.45.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9912,6 +9924,16 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       ? (String(selStep.zone) === "1" ? "" : String(selStep.zone)) : "";
     setPressed("#zoneRow", p => (p.dataset.zone || "") === curZone);
     document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
+    /* 发声开关（v2.45.0）：与方向/弦区行同源更新（「开关三件套」同一套纪律——
+       高亮、aria-pressed、disabled 三件事收在一处，分散写必然漂移）。
+       单 toggle：pressed = 选中音符当前 rest（休止/空扫），不再有第二档可比 */
+    setPressed("#restRow", () => !!(dirUsable && selStep.rest));
+    document.querySelectorAll("#restRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
+    $("restHint").textContent = !selStep
+      ? "先在上方选中一个音符"
+      : (selStep.rest
+          ? (selStep.dir ? "休止 + 方向 = 空扫 · 点击翻为发声" : "休止中 · 点击翻为发声")
+          : (selStep.dir ? "发声中 · 点击翻为休止（已有方向即成空扫）" : "发声中 · 点击翻为休止（方向与弦区保留）"));
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -9988,6 +10010,26 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (cur === want) return;
     pushUndo();
     if (want === "") delete s.zone; else s.zone = +want;
+    editorRender();
+  });
+  /* 发声开关（v2.45.0）：翻转选中音符的 rest——发声 ↔ 休止/空扫。与方向/弦区行同一套纪律：
+     pushUndo 先行、未选中/无草稿直接返回、改完 editorRender 一处刷新。
+     ★ 语义收口（用户拍板 a 方案）：只翻 rest 一位，dir/zone 一字不动、不补默认方向——
+       「休止」与「空扫」是两个既有合法状态（空扫 = 休止 + 方向），路径交给用户自己接：
+       实扫 → 空扫 = 翻开关 + （无方向时）点方向档；空扫 → 实扫 = 翻开关即可。
+     rest 是占位字段不是时值：翻转后 barSum 不变，小节校验/保存可用性不受影响。
+     toggle 无「同档重按」分支——单 pill 每次点击必然翻转，与三档行不同 */
+  $("restRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const btn = evTarget(e).closest("[data-rest]");
+    if (!btn) return;
+    btn.blur();
+    if (!edSel) return;
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
+    if (!s) return;
+    pushUndo();
+    s.rest = !s.rest;
     editorRender();
   });
   $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
