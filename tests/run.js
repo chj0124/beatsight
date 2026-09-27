@@ -87,6 +87,9 @@ const CASE_FILES = [
   "./cases/t112-playhead-gap-sweep",    // v2.43.0：跨行缺口播放杆扫入（下一行左缘线性扫到发声点 / 与待命球同步 / 正常接力对照 / 多行缺口逐行推进）
   "./cases/t113-rename-btn-clickable",  // v2.44.2：✎ 改名按钮必须可点（mousedown 掐聚焦防布局抖动 / 不误伤 📁 / click 仍停冒泡弹框 / 全条目一致挂载）
   "./cases/t114-rest-toggle",           // v2.45.0：编辑器「发声开关」（翻转不碰 t 与 dir/zone / 无方向不补默认 / 空扫静默 + 时间轴不变量）
+  "./cases/t115-lyric-rhythm-align",    // v2.46.0：歌词「按节奏对齐」（锚点口径 / 确认闸门 / 键盘微调 / 节奏参考层）
+  "./cases/t116-arrange-rename-drag",   // v2.47.0：曲式改名 + 拖动新语义（现值快照 / 跟手吸附 / 钳住红边 / 半程换位）
+  "./cases/t117-tap-magnet",            // v2.48.0：磁吸锚点 + 引导线 / 跟播打轴（端到端起播敲击 / 键盘层拦截）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

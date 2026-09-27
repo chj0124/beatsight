@@ -300,7 +300,9 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
      有歌词行时多一个「循环本行」钮（F2）——用类名定位而不是裸下标 */
   const byCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
   /* v2.35.0：编辑轨每小节一行——字块分散在各 .arg-lyric-barrow 里，收集助手把它们拍平 */
-  const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children, r => Array.prototype.slice.call(r.children)));
+  /* v2.46.0：小节行里多了节奏参考层（拍线 / 起点刻度，aria-hidden），不再只有字块——
+     chipsOf 收窄为按 .arg-lyric-chip 过滤（原「行的孩子 = 字块」的假设已不成立） */
+  const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children, r => Array.prototype.slice.call(r.children).filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))));
   /* 锚点提示音（v2.32.0 S3）：全局开关收进开练面板，段行内不再重复渲染 */
   const cue = els["argLyricCue"];
   ok(!byCls(ly, /arg-lyric-cue/), "★ 锚点开关已收进开练面板（段行内不再每段一个副本）");
@@ -357,22 +359,35 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(St.findLyric("t1", "s1").chars[1].t, 48, "★ 抬手落库（归一化由 Store 收口，UI 不做第二套校验）");
   ok(!chip1.className.includes("dragging"), "抬手摘掉拖拽态");
 
-  /* 邻居边界：往左拖过前一个字的终点，吞不掉它 */
+  /* 邻居边界（v2.47.0 改口径）：拖动中连续跟手、松手吸附；被钳住不再静默——
+     推过邻字「半程」松手 = 换位（F4 甲），未过半程仍是钳制移动 */
   chips = chipsOf(laneOf());
   const chip1b = chips[1];                          // 「好」@48
   chip1b.fire("pointerdown", { clientX: 200 });
-  fireWin("pointermove", { clientX: 162.5 });       // −37.5px = −48tick → 0，但前一个字占 [0,24)
+  fireWin("pointermove", { clientX: 175 });         // −32tick → 16，越过前字终点但未过半程（12）
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", "s1").chars[1].t, 24, "★ 拖过邻居终点被钳在 24，不会吃掉前一个字");
-
-  /* 拖右缘改时值：被下一个字顶住 → 未变 → 不动库 */
+  eq(St.findLyric("t1", "s1").chars[1].t, 24, "★ 未过邻字半程 → 钳在 24，不会吃掉前一个字（也不换位）");
   chips = chipsOf(laneOf());
-  const lineBefore = St.findLyric("t1", "s1");
+  const chip1c = chips[1];                          // 「好」@24，前字「你」@0(24)
+  chip1c.fire("pointerdown", { clientX: 200 });
+  fireWin("pointermove", { clientX: 162.5 });       // −48tick → tc=0，推过邻字半程（overL=24 ≥ 12）
+  fireWin("pointerup", {});
+  const swapped = St.findLyric("t1", "s1").chars;
+  eq(swapped[0].ch + swapped[1].ch, "好你", "★ 推过邻字半程松手 = 换位（F4 甲）：好 换到 0");
+  eq(swapped[1].t, 24, "换位 = 时序互换：你 接到 好 的原位（24）");
+
+  /* 拖右缘改时值：连续跟手，松手吸附；向左收到下限（12t）落库 */
+  chips = chipsOf(laneOf());                        // 好@0(24) / 你@24(24) —— 满铺，时值只能向内收
   const grip0 = chips[0].children[1];
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 318.75 });      // +24tick，但下一个字在 24
+  fireWin("pointermove", { clientX: 281.25 });      // −24tick → 期望 0，被最短时值（12t）钳住
   fireWin("pointerup", {});
-  ok(St.findLyric("t1", "s1") === lineBefore, "时值被邻居顶住 → 未变 → 不动库（行对象不变）");
+  eq(St.findLyric("t1", "s1").chars[0].dur, 12, "★ 时值收到下限 12t 落库（连续跟手 + 松手吸附）");
+  const lineAfter = St.findLyric("t1", "s1");
+  grip0.fire("pointerdown", { clientX: 300 });
+  fireWin("pointermove", { clientX: 302.34 });      // +3tick < 半格 → 吸附回原时值
+  fireWin("pointerup", {});
+  ok(St.findLyric("t1", "s1") === lineAfter, "吸附回原值 → 不动库（行对象不变，v2.1.0 同口径）");
 
   /* 最后一个字没有右邻：时值真改 */
   const grip1 = chips[1].children[1];

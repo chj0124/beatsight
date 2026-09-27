@@ -912,6 +912,42 @@ bullet，回归见 `t89`。
   （"窄行宽 ≠ 窄格子"——要造 <14px 的格子得用 96px 行宽）。反向验证三轮变异：
   永不切分 35 红 / 关标签压制 2 红 / 退回片内折算 1 红。
 
+### 3.20 歌词按节奏对齐与参考层（v2.46.0，改锚点口径 / 字块轨前必读）
+
+编排页字块轨（`mkLyricRow` 展开态）的三件套，全部收在 Arrange 模块内：
+
+- **锚点口径（`secOnsetTicks`）**：段内发声音符起点（逐块 × 遍数展开，`blockAt` 解析第 r 小节
+  归属）。空扫（rest+dir）**不作锚点**；纯节拍型（hasStrum 假）退回拍点；三连音位（16t/8t/6t）
+  经 `LYRIC_GRID` 整除过滤——`normLyricLine` 把 t 吸附到十六分格（v2.1.0 契约），三连位对上去
+  必被吸附走样。**要"对到空扫/三连音"得先改吸附契约**，属架构级变更。
+- **一键对齐（`alignLyricToRhythm`）**：第 k 字 → 第 k 锚点，dur = 到下一字距离；余字自最后
+  锚点按八分顺排、越界即丢（同 distribute）。覆盖手动位置且歌词无撤销栈 → **必经
+  `Modal.uiConfirm`**（原生 confirm 在沙盒 iframe 被静默拦截，v0.4.6）。
+- **参考层（`mkLyricRefs`）与键盘（`moveChipKey`）**：小节行画拍线 + 全部音符起点刻度（含
+  三连位——可视化看真相，吸附归吸附，两层刻意分开）；纯节拍型不叠点。字块 tabIndex 可聚焦，
+  ←/→ 移一格、Shift 一拍；**原位更新不 arrangeRender**（焦点不能丢），边界读 `findLyric` 现值
+  而非闭包 `lctx.chars`（落库换行对象，闭包值过期）。
+- **回归**：`tests/cases/t115-lyric-rhythm-align.js`（T115a–e）。t60 的 `chipsOf` 已随参考层
+  收窄为按 `.arg-lyric-chip` 过滤——小节行的孩子不再只有字块。
+- **v2.47.0 拖动语义重写（用户报"拖不动/拖了没反应"）**：① 拖动中**连续跟手**、松手才吸附
+  12t（旧实现拖动中量化，小拖动静默不动）；② 被邻字钳住还在推 → `.blocked` 红边可见反馈；
+  ③ **换位制（F4 甲，用户拍板）**：越过量 ≥ 邻字 dur/2 松手 = 与邻字交换时序（t/dur 互换）——
+  粘贴/按节奏对齐的产物都是字距 = dur 的满铺，旧钳制公式下 min == max，**每个字都锁死**，
+  换位是满铺的唯一出路；越过量取**末态**（推过去又拉回 = 不换）。④ 拖动的边界与提交读
+  pointerdown 时的 **Store 现值快照**（`drag.chars`）——v2.46.0 键盘移动会换行对象，
+  旧实现读闭包 `lctx.chars` 会把键盘修改静默回滚。⑤ 曲式改名：库行 ✎ → `renameArrange`
+  （空名拒绝 / 40 上限 / 立即落盘）；**示例曲锁定**（id === DEMO_ID 拒绝 + pen 无 handler）。
+  回归：`tests/cases/t116-arrange-rename-drag.js`（T116a–d）。
+- **v2.48.0 磁吸 + 打轴（开源范式落地：KaddaOK tap-to-time / lrc-maker 键盘流 / interact.js
+  snap 思想——范式自写实现，零依赖红线不动）**：① **磁吸**：拖动中半拍内最近发声锚点
+  （secOnsetTicks）优先于格吸附 + `.arg-lyric-guide` 引导线；**起点锚排除**（原地小拖会被
+  吸回起点）；锚点只在自由域内参与。② **跟播打轴**：`startTap` 关浮层 + 单段循环起播
+  （自写 arrangeSel 装配，**不复用 loopLyricSection——它硬配变速爬坡**）；空格 = 当前字 t =
+  onset 端点插值的可听位置（tapPosTicks，~1 tick 精度）吸附 12t 且 ≥ 前字 + 1 格；
+  **未打字顺移让位 + dur 收口**（否则归一化「重叠丢弃」会吃字——首跑实证）；
+  ↓ 跳过 / Esc / 打完自动收；tap 期 Space 改投打轴机（键盘层，输入框聚焦时打字优先）；
+  重开编排页作废未完成打轴（open 守卫）。回归：`tests/cases/t117-tap-magnet.js`（T117a–c）。
+
 ## 4. 设计规范（视觉 tokens）
 
 | 用途 | 值 |
