@@ -952,6 +952,10 @@ input[type=range].vol{width:120px}
 .arg-lyric-bubble[hidden]{display:none}
 /* 打轴上下文（v2.50.0 R4）：悬浮条里当前字 ±2 字预览，当前字包【】 */
 .tapbar-ctx{font-size:13px;color:var(--t1);font-weight:600;letter-spacing:.05em;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 试听游标（v2.51.0 R3）：随播放走的小节行内蓝竖线；当前字加 .cur（亮描边）。纯视觉 → aria-hidden */
+.arg-lyric-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--blue);opacity:.9;pointer-events:none;z-index:3}
+.arg-lyric-cursor[hidden]{display:none}
+.arg-lyric-chip.cur{box-shadow:0 0 0 2px var(--blue);filter:brightness(1.15)}
 /* 跟播打轴悬浮条（v2.48.0①）：主视图顶部居中，置 hidden 时不占位 */
 .tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .tapbar[hidden]{display:none}
@@ -1965,7 +1969,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
           <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
           <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
           <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点曲式库行尾的「<b>＋</b>」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.36.0 -->复制只有这一个入口；删除 = 选中曲式 chip 右侧的「<b>✕</b>」（会弹确认）。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
-          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨（<!-- v2.35.0 -->字块按<b>每小节一行</b>排，与主界面歌词轨一致；<!-- v2.46.0 -->行内有<b>拍线与音符起点刻度</b>做参照）；<b>按节奏对齐</b>一键把字逐一对到发声点上（空扫与三连音位不作落点，纯节拍型对到拍点，覆盖手动位置前会先确认）；选中字块后 <b>←/→</b> 微调一格、<b>Shift+←/→</b> 移一拍；拖动中<b>跟手不吸附</b>、松手落到格上或最近的<b>音符锚点</b>（蓝线指引），被邻字顶住会红边提示，<b>顶着邻字推过半程松手 = 与它换位</b>（拖动中有<b>绿框预览</b>落点、邻字脉冲提示换位，另有读数气泡报<b>小节 / 拍 / 相对原位格数</b>）；点按字块 = <b>选中</b>（蓝描边，重渲染不丢）；粘贴 / 拖动 / 微调 / 对齐 / 清除的每一步都可反悔——行内 <b>↩ 撤销 / ↪ 重做</b>，或 <b>Ctrl/⌘+Z</b> / <b>Ctrl/⌘+Shift+Z</b>（整段打轴算一步，会话内有效、刷新即清）；<b>跟播打轴</b> = 播放本段（单段循环），每听到一个字按一次<b>空格</b>落时刻（<b>↓</b> 跳过，Esc 结束）——唱/弹一遍的节奏感比拖拽准得多；悬浮条实时显示<b>当前字上下文</b>，选中字块后可<b>从第 k 字开打</b>（播放仍从段首起）；<b>锚点提示音</b>开关在顶部「开练」走带条里（全书一个，不再每段重复）；曲式在库里的 <b>✎</b> 可改名（示例曲除外）</li>
+          <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨（<!-- v2.35.0 -->字块按<b>每小节一行</b>排，与主界面歌词轨一致；<!-- v2.46.0 -->行内有<b>拍线与音符起点刻度</b>做参照）；<b>按节奏对齐</b>一键把字逐一对到发声点上（空扫与三连音位不作落点，纯节拍型对到拍点，覆盖手动位置前会先确认）；选中字块后 <b>←/→</b> 微调一格、<b>Shift+←/→</b> 移一拍；拖动中<b>跟手不吸附</b>、松手落到格上或最近的<b>音符锚点</b>（蓝线指引），被邻字顶住会红边提示，<b>顶着邻字推过半程松手 = 与它换位</b>（拖动中有<b>绿框预览</b>落点、邻字脉冲提示换位，另有读数气泡报<b>小节 / 拍 / 相对原位格数</b>）；点按字块 = <b>选中</b>（蓝描边，重渲染不丢）；粘贴 / 拖动 / 微调 / 对齐 / 清除的每一步都可反悔——行内 <b>↩ 撤销 / ↪ 重做</b>，或 <b>Ctrl/⌘+Z</b> / <b>Ctrl/⌘+Shift+Z</b>（整段打轴算一步，会话内有效、刷新即清）；<b>跟播打轴</b> = 播放本段（单段循环），每听到一个字按一次<b>空格</b>落时刻（<b>↓</b> 跳过，Esc 结束）——唱/弹一遍的节奏感比拖拽准得多；悬浮条实时显示<b>当前字上下文</b>，选中字块后可<b>从第 k 字开打</b>（播放仍从段首起）；<b>▶ 试听本段</b> = 原速循环播放本段（不动变速训练），游标随播放走、当前字亮描边，对完位置马上听效果，另有<b>▶ 从选中字</b>从选中字所在小节起播；拖动/微调<b>松手即响</b>一声锚点音（可随锚点提示音开关关闭）；<b>锚点提示音</b>开关在顶部「开练」走带条里（全书一个，不再每段重复）；曲式在库里的 <b>✎</b> 可改名（示例曲除外）</li>
           <li><!-- v2.35.0 -->页面顶部有「<b>开练</b>」走带条（滚动时吸顶常驻）：<b>歌曲地图</b>点某段 = 只循环练这一段，
             <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
@@ -2245,23 +2249,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2277  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2864  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4148  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4855  Modal         应用内弹窗
-     L4992  Viz           时值可视化渲染与每帧动画
-     L7263  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7910  Trainer       变速训练器
-     L8048  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8546  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9792  Editor        自定义节奏型编辑器
-     L10212 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10249 Ear           听辨训练（v1.10.0）
-     L10469 Arrange       曲式编排（v2.0.0）
-     L12549 Help          使用方法（v2.0.1）
-     L12632 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L12706 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L12907 初始化（装配） 各模块 hook 接线与启动
+     L2281  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2868  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4152  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4859  Modal         应用内弹窗
+     L4996  Viz           时值可视化渲染与每帧动画
+     L7267  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7923  Trainer       变速训练器
+     L8061  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8559  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9805  Editor        自定义节奏型编辑器
+     L10225 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10262 Ear           听辨训练（v1.10.0）
+     L10482 Arrange       曲式编排（v2.0.0）
+     L12706 Help          使用方法（v2.0.1）
+     L12789 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L12863 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13064 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2287,7 +2291,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.50.0";
+const VERSION = "2.51.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7493,6 +7497,15 @@ const AudioEngine = (() => {
     if (peak <= 0) return;                       // 音量为 0：与 playClick 同口径，不排空音
     noiseHit(t, "bandpass", W.freqAccent, W.q, peak, W.decay, W.makeup);
   }
+  /* 松手即时音（v2.51.0 R3）：歌词拖动/键盘微调提交后，给刚落位的字补一声锚点音。
+     复用 lyricCueHit 的发声体，包一层「取当前音频时刻 + 发声」；受同一开关 S.lyricCue
+     管辖（锚点提示音语义，v2.32.0 起全书唯一一份开关）。无音频上下文静默跳过
+     （未起播过 = ctx 不存在；Arrange 侧向前引用本模块合法）。 */
+  /** @param {number} _tick 字的段内 tick（语义占位：发声即在"现在"，不按 tick 排程） */
+  function lyricCueNow(_tick){
+    if (!S.lyricCue || !ctx) return;
+    lyricCueHit(ctx.currentTime + 0.03);      // +30ms：给音频线程一点余量，听感即"松手就响"
+  }
   /* 把本小节覆盖到的歌词锚点排进音频时钟（v2.1.0 F1）。
      · 坐标系：char.t 是**段内绝对 tick**（段首 = 0，见第 0 轮契约），
        故段内第 arrBar 小节覆盖 [arrBar×小节tick, (arrBar+1)×小节tick)，小节tick = meter×TPB
@@ -7904,7 +7917,7 @@ const AudioEngine = (() => {
     onsetBuf.length = 0; onsetNext = null;
     Viz.resetTracking();
   }
-  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop };
+  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop, lyricCueNow };   // v2.51.0：lyricCueNow = 松手即时音（R3）
 })();
 
 /* ================= Trainer · 变速训练器 ================= */
@@ -10704,7 +10717,7 @@ const Arrange = (() => {
     /* 只是点了一下 / 吸附回原位：不动库、不重绘（v2.1.0 同口径；改用快照全量对比——
        换位/移动后「看起来没动」的形态不再只有一种） */
     if (JSON.stringify(chars) === d.orig) return;
-    lyricCommit(d.lctx.arr, d.lctx.sec, chars);  // v2.49.0（R1）：撤销栈同步（no-op 早退上行保留，双保险）
+    lyricCommit(d.lctx.arr, d.lctx.sec, chars, { cue: true });  // v2.49.0（R1）：撤销栈同步；v2.51.0（R3）：松手即时音
     arrangeRender();
   }
 
@@ -10840,8 +10853,10 @@ const Arrange = (() => {
   }
 
   /** 歌词唯一写入口（拖动提交 / 键盘微调 / 按节奏对齐 / 粘贴 / 清除共用）。
-      @param {string} arrId @param {string} secUid @param {any[]} chars */
-  function lyricCommit(arrId, secUid, chars){
+      v2.51.0（R3）：opts.cue = 松手即时音（拖动/键盘来源传 true；粘贴/清除不响）——
+      取提交后末字的段内 tick 补一声锚点音（AudioEngine.lyricCueNow，复用锚点提示音发声体）。
+      @param {string} arrId @param {string} secUid @param {any[]} chars @param {{cue?: boolean}} [opts] */
+  function lyricCommit(arrId, secUid, chars, opts){
     const snap = lyricSnap(arrId, secUid);
     if (snap === JSON.stringify(chars)) return;      // no-op：不压栈、不落库（内层双保险）
     const h = histGet(arrId, secUid);
@@ -10851,6 +10866,7 @@ const Arrange = (() => {
     lastLyricKey = { arrId: arrId, secUid: secUid };
     if (chars.length) Store.upsertLyric(arrId, secUid, chars);
     else Store.deleteLyric(arrId, secUid);           // 清除与删除走同一门
+    if (opts && opts.cue && chars.length) AudioEngine.lyricCueNow(chars[chars.length - 1].t);
   }
 
   /** 打轴事务入口（V3）：整段打轴 = 一步——startTap 调一次压快照，tapNow 的逐敲落库
@@ -11070,10 +11086,11 @@ const Arrange = (() => {
     const max = Math.max(min, cap);
     const t = Math.max(min, Math.min(max, c.t + delta));
     if (t === c.t) return;
-    /* v2.49.0（R1/V2）：每击键 = 一步撤销（不做时间窗合并，拍板 V2） */
+    /* v2.49.0（R1/V2）：每击键 = 一步撤销（不做时间窗合并，拍板 V2）；v2.51.0（R3）：松手即时音 */
     lyricCommit(lctx.arr, lctx.sec,
       chars.map((/** @type {any} */ x, /** @type {number} */ i) =>
-        i === k ? { t, dur: c.dur, ch: x.ch } : { t: x.t, dur: x.dur, ch: x.ch }));
+        i === k ? { t, dur: c.dur, ch: x.ch } : { t: x.t, dur: x.dur, ch: x.ch }),
+      { cue: true });
     const barTicks = lctx.barTicks || span;
     const row = Math.min((lctx.rows || 1) - 1, Math.floor(t / barTicks));
     const rowStart = row * barTicks;
@@ -11129,14 +11146,21 @@ const Arrange = (() => {
      （预备拍 / 刚起播一瞬 / 不在播放），此时敲击被忽略。
      @param {any} sec @returns {number|null} */
   function tapPosTicks(sec){
-    if (!tap || !S.playing || !ctx) return null;
-    const T = tap;
+    if (!tap) return null;
+    return sectionPosTicks(tap.arrId, tap.secUid, sec);   // v2.51.0（R3）：委托参数化原语——打轴与试听游标同一位置源
+  }
+
+  /** 段内可听位置原语（v2.51.0 R3 自 tapPosTicks 参数化：去掉 tap 依赖，打轴与
+     试听游标共用——游标另写一套插值就是两份真相，t122 钉着同源断言）。
+     @param {string} arrId @param {string} secUid @param {any} sec @returns {number|null} */
+  function sectionPosTicks(arrId, secUid, sec){
+    if (!S.playing || !ctx) return null;
     let hit = null;
     for (const e of onsetBuf){
       if (e.t <= ctx.currentTime && e.aBar !== undefined && e.aBar >= 0) hit = e;
     }
     if (!hit) return null;
-    const span = lyricSpanTicks(T.arrId, T.secUid);
+    const span = lyricSpanTicks(arrId, secUid);
     const barTicks = span / (secBars(sec) || 1);
     const elapsed = (ctx.currentTime - hit.t) * TPB / spb();
     return hit.aBar * barTicks + hit.cumT + elapsed;
@@ -11232,6 +11256,101 @@ const Arrange = (() => {
       ctxParts.push(j === tap.k ? "【" + tap.chars[j].ch + "】" : tap.chars[j].ch);
     }
     $("tapCtx").textContent = ctxParts.join("");
+  }
+
+  /* ---------- 原速就地试听（v2.51.0 R3，V6 拍板）----------
+     与「跟播打轴」的差异：打轴要关浮层回主视图、悬浮条引导逐字敲；试听留在编排页，
+     游标在歌词轨上走——目的是"对完位置马上听一遍效果"的验证闭环。
+     V6：单段循环 + 原速 + **不动 S.trainer**（与「循环本行」的变速爬坡并存，语义分开）；
+     浮层保持打开。游标与当前字高亮由 syncPreviewCursor 逐帧驱动（rAF 自续，桩环境直接调）。 */
+  /** @type {null | { arrId: string, secUid: string }} */
+  let preview = null;
+  /** @type {any} */
+  let cursorEl = null;                 // 试听游标（拖动/试听期临时节点，建-摘同 guide 模式）
+  /** @type {any} */
+  let curEl = null;                    // 当前高亮（.cur）的字块元素
+  /* secUid → { lane, chipEls }（每次 arrangeRender 重建——元素引用随渲染走，Map 只做查表） */
+  /** @type {Map<string, { lane: any, chipEls: any[] }>} */
+  const laneBySec = new Map();
+
+  /** 试听本段（relBar = 段内起始小节偏移，「从选中字」粗到小节——V8 同口径；缺省 0 = 段首）。
+     @param {any} a @param {number} secIdx @param {any} sec @param {number} [relBar] */
+  function previewSection(a, secIdx, sec, relBar){
+    if (tap) return;                              // 打轴互斥（tap 期浮层已关，防御）
+    const span = lyricSpanTicks(a.id, sec.uid);
+    if (!(span > 0)) return;
+    if (preview){ preview = null; Controls.stop(); }   // 再点 = 停止/换段（互斥纪律）
+    const from0 = songBarBefore(a, secIdx);
+    const rb = typeof relBar === "number" ? relBar : 0;
+    const from = Math.min(from0 + Math.max(0, rb | 0), from0 + secBars(sec) - 1);
+    S.arrangeSel = { id: a.id, from: from, to: from0 + secBars(sec) - 1, loop: true, byLyric: false };
+    setMode("playMode", "arrange", "歌词试听");
+    const home = arrangeHomePattern();
+    if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+    Presets.applyPatternChange();
+    Store.persist();
+    refreshBar();
+    Controls.stop();                              // 从头起播（重复试听同一段从段首/选中小节起）
+    Controls.start();
+    preview = { arrId: a.id, secUid: sec.uid };
+    arrangeRender();                              // 钮态（▶/■）与游标宿主 lane 重建
+    syncPreviewCursor();
+    announce("试听本段：原速循环。再点一次或关闭浮层停止");
+  }
+
+  /** 停止试听：停播 + 游标/高亮摘除 + 钮态还原。close()/open()/startTap 入口各调一次（互斥纪律）。 */
+  function previewStop(){
+    if (!preview) return;
+    preview = null;
+    Controls.stop();
+    if (curEl){ curEl.classList.remove("cur"); curEl = null; }
+    if (cursorEl) cursorEl.hidden = true;
+    arrangeRender();
+  }
+
+  /** 试听游标：preview 非空时把游标摆到段内当前位置 + 高亮当前字（判据 t ∈ [c.t, c.t+dur)，
+     与主视图播放头同构）。位置一律走 sectionPosTicks（与打轴同一位置源）。
+     rAF 自续驱动；桩环境无 rAF，测试直接调本函数。段不在展开态（无 lane）时空转。 */
+  function syncPreviewCursor(){
+    const pv = preview;                           // 回调/闭包内不可依赖模块级 let 的收窄
+    if (!pv) return;
+    const a = Store.findArrange(pv.arrId);
+    const sec = a ? a.sections.find((/** @type {any} */ x) => x && x.uid === pv.secUid) : null;
+    const reg = laneBySec.get(pv.secUid);
+    const pos = sec ? sectionPosTicks(pv.arrId, pv.secUid, sec) : null;
+    if (sec && reg && pos !== null && S.playing){
+      const barTicks = lyricSpanTicks(pv.arrId, pv.secUid) / (secBars(sec) || 1);
+      if (!cursorEl){
+        cursorEl = document.createElement("i");
+        cursorEl.className = "arg-lyric-cursor";
+        cursorEl.setAttribute("aria-hidden", "true");
+      }
+      cursorEl.hidden = false;
+      const row = Math.max(0, Math.min(secBars(sec) - 1, Math.floor(pos / barTicks)));
+      const host = reg.lane.children[row] || reg.lane;
+      if (cursorEl.parentNode !== host) host.appendChild(cursorEl);   // 跨行跳行
+      cursorEl.style.left = ((pos - row * barTicks) / barTicks * 100) + "%";
+      const line = Store.findLyric(pv.arrId, pv.secUid);
+      let hitK = -1;
+      if (line){
+        for (let k = 0; k < line.chars.length; k++){
+          const c = line.chars[k];
+          if (pos >= c.t && pos < c.t + c.dur){ hitK = k; break; }
+        }
+      }
+      const hitEl = hitK >= 0 && reg.chipEls[hitK] ? reg.chipEls[hitK] : null;
+      if (hitEl !== curEl){
+        if (curEl) curEl.classList.remove("cur");
+        curEl = hitEl;
+        if (curEl) curEl.classList.add("cur");
+      }
+    } else {
+      if (cursorEl) cursorEl.hidden = true;
+      if (curEl){ curEl.classList.remove("cur"); curEl = null; }
+    }
+    if (window.requestAnimationFrame){
+      window.requestAnimationFrame(() => { if (preview) syncPreviewCursor(); });
+    }
   }
 
   /** @param {any} a @param {any} sec @param {number} i @returns {any} */
@@ -11386,6 +11505,40 @@ const Arrange = (() => {
     });
     ly.appendChild(tapBtn);
 
+    /* 原速试听（v2.51.0 R3，V6）：单段循环 + 原速 + 不动变速训练；浮层保持打开，
+       游标在歌词轨上走——「对完位置马上听效果」的验证闭环。与打轴互斥（浮层开合保证）。 */
+    const isPrev = preview && preview.arrId === a.id && preview.secUid === uid;
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "arg-mini";
+    prevBtn.textContent = isPrev ? "■ 停止试听" : "▶ 试听本段";
+    prevBtn.disabled = !(span > 0);
+    prevBtn.title = "原速循环播放本段（不动变速训练），游标随播放走；再点一次停止";
+    prevBtn.setAttribute("aria-label", (isPrev ? "停止试听第 " : "试听第 ") + (i + 1) + " 段歌词");
+    Modal.bindOverlay("arrangeOverlay", prevBtn, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      if (isPrev) previewStop();
+      else previewSection(a, i, sec, 0);
+    });
+    ly.appendChild(prevBtn);
+
+    /* 从选中字起播（v2.51.0 R3）：selChip 属本段 → 从该字所在小节起播（粗到小节，V8 同口径）。
+       可用性不按 selChip 渲染期判定（点按选中不重渲染，disabled 会陈旧）——点击时现判。 */
+    const fromBtn = document.createElement("button");
+    fromBtn.className = "arg-mini";
+    fromBtn.textContent = "▶ 从选中字";
+    fromBtn.disabled = !(span > 0);
+    fromBtn.title = "先点按选中一个字块，再从这里原速循环播到段尾（粗到小节）";
+    fromBtn.setAttribute("aria-label", "从选中的字起播第 " + (i + 1) + " 段歌词");
+    Modal.bindOverlay("arrangeOverlay", fromBtn, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      const fresh = Store.findLyric(a.id, uid);
+      const c = selChip && selChip.arrId === a.id && selChip.secUid === uid &&
+        fresh && selChip.k < fresh.chars.length ? fresh.chars[selChip.k] : null;
+      if (!c){ announce("先点按选中一个字块，再从它起播"); return; }
+      previewSection(a, i, sec, Math.floor(c.t / (span / (secBars(sec) || 1))));
+    });
+    ly.appendChild(fromBtn);
+
     const lane = document.createElement("div");
     lane.className = "arg-lyric-lane";
     /* v2.35.0（用户反馈）：编辑轨从"整段一行"改**每小节一行**——与主界面歌词轨（v2.7.2）同构，
@@ -11414,6 +11567,7 @@ const Arrange = (() => {
       }
     }
     ly.appendChild(lane);
+    laneBySec.set(uid, { lane: lane, chipEls: lctx.chipEls });   // v2.51.0（R3）：试听游标查表（随渲染重建）
 
     const tip = document.createElement("div");
     tip.className = "arg-lyric-tip";
@@ -11623,6 +11777,7 @@ const Arrange = (() => {
       const ln = Store.findLyric(selChip.arrId, selChip.secUid);
       if (!ln || ln.chars.length < selChip.k + 1){ selChip = null; selChipEl = null; }
     }
+    laneBySec.clear();                 // v2.51.0（R3）：lane/chipEls 引用随渲染重建，旧句柄即弃
     const list = $("argList");
     clear(list);
     Modal.unbindOverlay("arrangeOverlay");   // v2.0.4：重建列表/段行前先解绑上一轮登记
@@ -12277,6 +12432,7 @@ const Arrange = (() => {
   function open(){
     Controls.stop();                                  // 进入即停（与编辑器/统计同一套）
     if (tap) endTap();                                // v2.48.0①：重开编排页 = 打轴作废（tapBar 一并收起）
+    previewStop();                                    // v2.51.0（R3）：重开编排页 = 试听停止（互斥纪律）
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
     picking = null;
     secMenuOpen = null;                               // v2.30.0：进浮层不带回上次的展开态
@@ -12288,6 +12444,7 @@ const Arrange = (() => {
     picking = null;
     secMenuOpen = null;                               // v2.30.0：与 picking 同步清（重开不残留）
     lyricOpen.clear();                                // v2.32.0：歌词折叠态同上
+    previewStop();                                    // v2.51.0（R3）：关浮层 = 试听停止（互斥纪律）
     /* 关闭前做一次完整性检查：编到一半的曲式（比如某段没块）不该被当成能用 */
     const a = cur();
     if (a){
@@ -12543,7 +12700,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
