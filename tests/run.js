@@ -96,6 +96,7 @@ const CASE_FILES = [
   "./cases/t121-tap-context",           // v2.50.0：打轴上下文（tapCtx 当前字窗口 / startTap(k0) 从第 k 字开打 / 前 k 字保留 / 钮文案随 selChip 派生）
   "./cases/t122-preview",               // v2.51.0：原速试听（装配不动 trainer / 打轴互斥 / 游标同源一致性 / close 收尾 / 位置原语同源）
   "./cases/t123-batch-shift",           // v2.52.0：批量平移（纯函数钳制 / 一步撤销 / 范围二选一 / ⇄ 与拖拽换位同函数 / 时值±1格）
+  "./cases/t124-drag-2d",               // v2.53.0：拖动二维跟手（perTick 1:1 / 跨行就地搬行 / 不吃邻居跨行成立 / 上浮仅触屏 / 行序号 CSS）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

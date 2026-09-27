@@ -343,7 +343,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   byCls(ly2, /arg-lyric-paste/).fire("change");
   eq(St.findLyric("t1", "s1").chars.length, 32, "★ 超出段长的字不录（「界面有、听不到」是最难查的错觉）");
 
-  /* 换成两个字，开始拖拽（perTick = 轨宽 600px / 768tick = 0.78125） */
+  /* 换成两个字，开始拖拽（perTick = 行宽 600px / 每行 192tick = 3.125，v2.53 口径） */
   const ly3 = els["argSections"].children[0].children[4];
   byCls(ly3, /arg-lyric-paste/).value = "你好";
   byCls(ly3, /arg-lyric-paste/).fire("change");
@@ -356,7 +356,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   /* v2.49.0（D2）改写口径——这不是回归：拖拽改两段式，pointerdown 只记待转正 pend
      （竖向滚动先归还浏览器），位移过阈（触屏 8px/鼠标 5px）才转正进拖拽态 */
   ok(!chip1.className.includes("dragging"), "按下只记待转正，不立即进拖拽态（D2）");
-  fireWin("pointermove", { clientX: 118.75 });
+  fireWin("pointermove", { clientX: 175 });
   ok(chip1.className.includes("dragging"), "★ 位移过阈转正进入拖拽态");
   eq(chip1.style.left, "25%", "拖动中实时更新位置（行内 48/192，v2.35.0 分行口径）");
   eq(chip1.getAttribute("aria-label"), "第 2 个字「好」起点 48 tick，时值 24 tick", "拖动中 aria 同步");
@@ -369,13 +369,13 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   chips = chipsOf(laneOf());
   const chip1b = chips[1];                          // 「好」@48
   chip1b.fire("pointerdown", { clientX: 200 });
-  fireWin("pointermove", { clientX: 175 });         // −32tick → 16，越过前字终点但未过半程（12）
+  fireWin("pointermove", { clientX: 100 });         // −32tick → 16，越过前字终点但未过半程（12）
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[1].t, 24, "★ 未过邻字半程 → 钳在 24，不会吃掉前一个字（也不换位）");
   chips = chipsOf(laneOf());
   const chip1c = chips[1];                          // 「好」@24，前字「你」@0(24)
   chip1c.fire("pointerdown", { clientX: 200 });
-  fireWin("pointermove", { clientX: 162.5 });       // −48tick → tc=0，推过邻字半程（overL=24 ≥ 12）
+  fireWin("pointermove", { clientX: 50 });          // −48tick → tc=0，推过邻字半程（overL=24 ≥ 12）
   fireWin("pointerup", {});
   const swapped = St.findLyric("t1", "s1").chars;
   eq(swapped[0].ch + swapped[1].ch, "好你", "★ 推过邻字半程松手 = 换位（F4 甲）：好 换到 0");
@@ -391,7 +391,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const grip0 = chips[0].children[1];
   ok(!!grip0 && grip0.className === "arg-lyric-grip", "宽块（48t ≥ 2.5 格）右缘有抓手（D5 对照）");
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 262.5 });       // −48tick → 期望 0，被最短时值（12t）钳住
+  fireWin("pointermove", { clientX: 150 });         // −48tick → 期望 0，被最短时值（12t）钳住
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[0].dur, 12, "★ 时值收到下限 12t 落库（连续跟手 + 松手吸附）");
 
@@ -399,7 +399,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   chips = chipsOf(laneOf());                        // 提交后重渲染，现取
   const grip1 = chips[1].children[1];
   grip1.fire("pointerdown", { clientX: 400 });
-  fireWin("pointermove", { clientX: 418.75 });      // +24tick → 72
+  fireWin("pointermove", { clientX: 475 });         // +24tick → 72
   eq(chips[1].style.width, "37.5%", "时值拖动中宽度实时更新（行内 72/192，v2.35.0 分行口径）");
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[1].dur, 72, "拖右缘改时值落库");
