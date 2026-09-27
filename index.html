@@ -2195,18 +2195,18 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L4078  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L4785  Modal         应用内弹窗
      L4922  Viz           时值可视化渲染与每帧动画
-     L7125  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7772  Trainer       变速训练器
-     L7910  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8408  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9643  Editor        自定义节奏型编辑器
-     L10033 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10070 Ear           听辨训练（v1.10.0）
-     L10290 Arrange       曲式编排（v2.0.0）
-     L11640 Help          使用方法（v2.0.1）
-     L11723 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11797 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L11998 初始化（装配） 各模块 hook 接线与启动
+     L7193  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7840  Trainer       变速训练器
+     L7978  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8476  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9711  Editor        自定义节奏型编辑器
+     L10101 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10138 Ear           听辨训练（v1.10.0）
+     L10358 Arrange       曲式编排（v2.0.0）
+     L11708 Help          使用方法（v2.0.1）
+     L11791 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11865 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L12066 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2232,7 +2232,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.42.8";
+const VERSION = "2.43.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4953,6 +4953,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
      与 rowEls/cellEls 同一生命周期——由 buildBarRow 逐行 append、buildViz 清空 */
   let barChordEls = /** @type {(HTMLElement|null)[]} */ ([]);
   let lastBar = -1, lastStep = -1;
+  let lastHeadBar = -1;                                 // v2.43.0：播放杆所在行（缺口扫入期间 ≠ bar），尾迹几何跟随它
   /* 上一帧的可听歌曲小节号（v2.7.1）：onAudibleBar 钩子的变化检测基准。
      只在 paintFrameBody 的曲式分支里写；时间轴重锚/窗口丢弃时随 resetTracking 归零 */
   let lastAudSongBar = -2;
@@ -6165,7 +6166,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
      lastPainted 一并清空——网格可能整片重建（格子数、拍号都会变），
      此时增量重绘的前提（同一套 cellEls、同一个小节）已经不成立，必须走全量 */
-  function resetTracking(){ lastBar = -1; lastStep = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricStates = ""; lastAudSongBar = -2; }
+  function resetTracking(){ lastBar = -1; lastStep = -1; lastHeadBar = -1; lastT16 = -1; lastBeat = -1; lastPainted = null; lastLyricStates = ""; lastAudSongBar = -2; }
 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
@@ -6308,7 +6309,23 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const endTicks = (inBar && np) ? np.tick : rowTicksV;
     /* pb = 这一颗音发声时的**乐句相位**（见 paintFrameBody 的静音拍提示）。
        曲式模式下它由窗口起点算得更准，调用方会优先用那条路 */
-    return { bar, tib: prevTick + (endTicks - prevTick) * p, pb: prev.pb };
+    /* v2.43.0（Q1 A 方案）：跨行缺口期间给播放杆一份「下一行扫入」依据——时间轴越过
+       行边界后，杆从下一行左缘按 onset 时间插值扫到下一颗发声的位置。行边界时刻
+       （endT）与发声时刻都来自端点表，仍纯端点驱动，不重新引入 v1.3.4 的时钟分叉；
+       与待命球的水平推进同一时间基、同一线性插值，视觉上同步进场。
+       落点行是端点表行归属的翻转点（发声落地那一刻），扫入恰好终止于转正时刻；
+       多行缺口按同一公式逐行推进（每行 0 → 行尾）。
+       ★ 扫入行超出窗口（页末 / 缺口跨出可视域）时不扫，回落既有钉行口径。 */
+    let sweep = null;
+    if (!inBar && nxt && now > endT){
+      const rowDur = rowTicksV * spb() / TPB;
+      const rowsIn = Math.floor((now - endT) / rowDur);
+      const sBar = bar + 1 + rowsIn;
+      if (sBar <= vizBars - 1){
+        sweep = { bar: sBar, tick: ((now - endT) - rowsIn * rowDur) / rowDur * rowTicksV };
+      }
+    }
+    return { bar, tib: prevTick + (endTicks - prevTick) * p, pb: prev.pb, sweep };
   }
   /** @param {number} now @param {number} bar @param {number} tib
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
@@ -6369,13 +6386,26 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       return;
     }
     if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
-    const terminal = !nxtInBar;                             // 终端弧：终点 = 本行右缘
-    const s0 = prev, b2 = nxtInBar || /** @type {any} */ ({ t: barEnd, terminal: true });
+    const terminal = !nxtInBar;                             // 终端弧：本行内已无后续音
+    /* v2.42.9：终端弧的落点从「行右缘」改为**下一颗发声的真实位置**——它可能在后面第 d 行
+       （行尾 + 行首连续空格，如《在他乡》第 1 小节 = P1：第 6 格起跳、第 10 格才发声，
+       中间隔着跨行边界的第 7、8、9 三格）。整根「大抛物线」跨行拆两半：
+       前半段留在本行——主球飞到行右缘时**仍在空中**，不再落地；
+       后半段由下一行的待命球按行平移接续（见下方 waitEl 块），发声时刻触地转正。
+       下一颗发声恰在行边界（正常接力）时 T 与旧终端弧时长相等，全部数学逐位退化回旧口径。
+       ★ 行边界时刻不能用 barEnd 推：越界后 audioPosAt 把 tib 钉在行尾，
+         barEnd = now − tib·spb/TPB + rowTicks·spb/TPB 会塌缩成 now——
+         必须从 s0 的行内 tick 直接推（s0.t + 行内剩余 tick × 每拍秒数）。 */
+    const s0 = prev, b2 = nxtInBar || nxt || /** @type {any} */ ({ t: barEnd, terminal: true });
     const T = b2.t - s0.t;
     if (T <= 0) return;
-    const p = Math.min(1, Math.max(0, (now - s0.t) / T));
+    const p = Math.min(1, Math.max(0, (now - s0.t) / T));   // 大抛物线相位（0 = 起跳，1 = 发声落地）
+    const boundaryT = terminal ? s0.t + (rowTicksV - tickOf(s0)) * spb() / TPB : b2.t;
+    const pRow = Math.min(1, (now - s0.t) / Math.max(1e-6, boundaryT - s0.t));  // 行内推进（x 用）
+    const cross = terminal && !!nxt && nxt.t > boundaryT + 0.002;   // 下一颗发声越过行边界
+    const inGap = terminal && now > boundaryT;              // 已越界未落地：主球在本行坐标系画不下，让位
     const A = posOf(bar, tickOf(s0)), Bp = terminal ? rightEdge() : posOf(bar, tickOf(b2));
-    const x = A.x + (Bp.x - A.x) * p;
+    const x = A.x + (Bp.x - A.x) * pRow;
     const yBase = A.y;                                      // 全程本行：基线恒定
     let H = Math.max(CB.min, Math.min(CB.max, CB.k * T * T));
     /* 跳高钳制（注释与实现对齐，v2.0.2 修正表述）：钳的是「长弧飞进卡片头」——
@@ -6396,11 +6426,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* 动效降级（v1.3.0，审计 P2-11）：把挤压/拉伸置为无形变。
        只降形变、保留位置——球在哪儿、什么时候落地是本应用的核心功能提示，不能去掉 */
     if (REDUCE_MOTION){ sx = 1; sy = 1; }
-    ballEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
-    /* 地面投影：球越高影子越小越淡（人眼靠影子判断弹跳高度，没有影子的球像浮着的圆点） */
-    const hN = Math.min(1, (yBase - y) / CB.max);
-    shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yBase + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
-    shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
+    if (inGap){
+      /* v2.42.9：越界后主球在本行坐标系里已飞出行右缘——本行画不下它，
+         隐藏主球与投影，下降段交给下一行的待命球（waitEl 块）；
+         下一颗发声落地后行号翻转，主球在落点以挤压回弹转正归队 */
+      ballEl.style.display = "none";
+      shadowEl.style.display = "none";
+    } else {
+      ballEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
+      /* 地面投影：球越高影子越小越淡（人眼靠影子判断弹跳高度，没有影子的球像浮着的圆点） */
+      const hN = Math.min(1, (yBase - y) / CB.max);
+      shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yBase + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
+      shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
+    }
     /* 接力待命球：终端弧飞行期间，下一小节的球在新行首 onset 处等候（半透明确认"下一个是你"） */
     if (waitEl){
       if (terminal){
@@ -6455,25 +6493,43 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         }
         const first = nbSteps.find((/** @type {any} */ s2) => !s2.rest);
         if (first){
-          const g = posOf(rowNext, nbSteps.indexOf(first) === 0 ? 0 : nbSteps.slice(0, nbSteps.indexOf(first)).reduce((/** @type {number} */ s2, /** @type {any} */ n2) => s2 + n2.t, 0));
-          /* 起跑预备（v1.8.0）：把终端弧**整条抛物线**（起跳 + 下落，含水平分量）平行复制到
-             下一行——待命球从新行首 onset 左侧起跳，与主球同相位 p、同高度 H、同形变，
-             小节边界同时触地（落点 = 新行首 onset），交接后正式球在同一点落地挤压接管，
-             「斜入 → 触地 → 挤压 → 回弹 → 第一跳」速度连续，接力变成双重奏。
-             水平跨距 = 终端弧跨距、封顶行宽 20%：长弧（如慢速 6/8）或窄屏不至于飞出视口。
-             只动待命球，交接时刻（= b2.t）分毫不动；
-             REDUCE_MOTION 下保持贴地停泊位不跳（纯装饰降级） */
-          let wx = 0, wy = 0, wsx = 1, wsy = 1;
+          const fi = nbSteps.indexOf(first);
+          const landTick = fi === 0 ? 0 : nbSteps.slice(0, fi).reduce((/** @type {number} */ s2, /** @type {any} */ n2) => s2 + n2.t, 0);
+          const g = posOf(rowNext, landTick);
+          /* 待命球三姿态（v2.42.9）：
+             ① 跨行大抛物线（cross）：越界前不出现——主球还在前行飞前半段，行内没有它的位置；
+                越界后从行首左缘、以主球离场高度（同一条抛物线同相位）接住，水平按
+                「行首 0 → 落点」线性推进（= 大抛物线水平分量按行平移，与时间线性同构），
+                发声时刻（b2.t）触地，落地转正交接给实心球——
+                「斜入 → 触地 → 挤压 → 回弹 → 第一跳」速度连续，接力仍是双重奏；
+             ② 正常接力（下一颗发声恰在行边界）：既有「起跑预备」（v1.8.0）逐位保留；
+             ③ REDUCE_MOTION：去动作留位置，贴在落点（既有降级纪律）。
+             ①的水平跨距 = 行首到落点、天然不出行；②的起跳跨距封顶行宽 20%（hopSpan）：
+             长弧（如慢速 6/8）或窄屏不至于飞出视口 */
+          let show = true, gx = g.x, gy = g.y, wx = 0, wy = 0, wsx = 1, wsy = 1;
           if (!REDUCE_MOTION){
-            const gRow = geoOf(rowNext) || geoOf(0);
-            const hopSpan = Math.min(Bp.x - A.x, (gRow ? gRow.width : 0) * 0.2);
-            wx = -hopSpan * (1 - p);                             // 起跳点在落点左侧，触地归零
-            wy = H * 4 * p * (1 - p);                            // 与主球同一条抛物线、同一相位
-            wsx = sx; wsy = sy;                                  // 同弧同相位 → 直接复用本帧形变
+            if (cross){
+              if (now > boundaryT){
+                const pB = (boundaryT - s0.t) / T;                   // 行边界相位（cross 保证 < 1）
+                const q = Math.min(1, Math.max(0, (p - pB) / (1 - pB)));
+                const gd = posOf(rowNext, landTick * q);
+                gx = gd.x; gy = gd.y;
+                wy = H * 4 * p * (1 - p);                            // 与主球同一条抛物线、同一相位
+                wsx = sx; wsy = sy;                                  // 同弧同相位 → 直接复用本帧形变
+              } else show = false;
+            } else {
+              const gRow = geoOf(rowNext) || geoOf(0);
+              const hopSpan = Math.min(Bp.x - A.x, (gRow ? gRow.width : 0) * 0.2);
+              wx = -hopSpan * (1 - p);                             // 起跳点在落点左侧，触地归零
+              wy = H * 4 * p * (1 - p);                            // 与主球同一条抛物线、同一相位
+              wsx = sx; wsy = sy;                                  // 同弧同相位 → 直接复用本帧形变
+            }
           }
-          waitEl.style.display = "";
-          waitEl.style.opacity = "";
-          waitEl.style.transform = `translate(${(g.x + wx).toFixed(1)}px, ${(g.y - wy).toFixed(1)}px) scale(${wsx.toFixed(3)},${wsy.toFixed(3)})`;
+          if (show){
+            waitEl.style.display = "";
+            waitEl.style.opacity = "";
+            waitEl.style.transform = `translate(${(gx + wx).toFixed(1)}px, ${(gy - wy).toFixed(1)}px) scale(${wsx.toFixed(3)},${wsy.toFixed(3)})`;
+          } else waitEl.style.display = "none";
         } else waitEl.style.display = "none";
       } else waitEl.style.display = "none";
     }
@@ -6947,15 +7003,30 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       else { const r = rowOfPatSeg(pbIdx); bar = r >= 0 ? r : 0; }
       tib = posT - pbIdx * rowTicksV;                            // 行内位置（tick）
     }
-    const pw = tib / rowTicksV * 100;
+    /* v2.43.0（Q1 A 方案）：跨行缺口期间播放杆跟随待命球在下一行扫入——
+       headBar/headTick 在缺口期间指向下一行的插值位置，其余时刻与 bar/tib 相同。
+       格子填充 / 歌词 / 球的行归属维持端点落地翻转的旧口径（球在缺口期间
+       走自己的终端弧分支，不受此影响）。 */
+    let headBar = bar, headTick = tib;
+    if (ap && ap.sweep){ headBar = ap.sweep.bar; headTick = ap.sweep.tick; }
+    const pw = headTick / rowTicksV * 100;
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
-    const gHead = geoOf(bar);
+    const gHead = geoOf(headBar);
     const headPx = gHead ? gHead.left + pw / 100 * gHead.width : 0;
     ph.style.transform = `translateX(${headPx.toFixed(1)}px)`;
     const tail = Math.min(pw, 10);                              // 短尾迹：只跟在播放头身后，不污染已弹白块
     const trailW = gHead ? gHead.width * 0.1 : 0;
     tg.style.transform = `translateX(${(headPx - trailW).toFixed(1)}px) scaleX(${(tail / 10).toFixed(3)})`;
+    /* 尾迹竖直位置跟随播放杆所在行（v2.43.0：缺口期间 = 扫入行）——headBar 变化时
+       一次性写 top/height/width（低频），帧内仍零布局读取；原按 bar 翻转的逻辑
+       由 headBar 收编（无扫入时两者恒等，行为逐位不变） */
+    if (headBar !== lastHeadBar){
+      const gT = geoOf(headBar);
+      if (gT){ tg.style.top = gT.top + "px"; tg.style.height = gT.height + "px";
+        tg.style.width = (gT.width * 0.1) + "px"; }
+      lastHeadBar = headBar;
+    }
     paintLyric(tib, audK, arrCur, bar);    // 歌词轨：与上面两行同一份 tib、同一份可听小节号 + 本帧行号（片段口径），同一帧里画完
     /* v2.23.0：短型绕行——非在播行都是"绕回的未来"，整体挂预告淡显（opacity .55）；
        W=2 时即用户实拍的「播放到第 2 行时，第 1 行为预告行」。只在球换行时写 class
@@ -6973,11 +7044,6 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     const row = rowEls[bar], rowCells = cellEls[bar];
     if (!row || !rowCells || !rowCells.length) return;          // 本行没渲染出格子：留播放头即可，不做音符相关逻辑
-    if (bar !== lastBar){                                       // 换小节时光晕换行
-      const g = geoOf(bar);
-      if (g){ tg.style.top = g.top + "px"; tg.style.height = g.height + "px";
-        tg.style.width = (g.width * 0.1) + "px"; }
-    }
     const steps = vizPattern().bars[bar] || [];
     /* 空小节安全跳过（与 scheduler 的同名守卫对齐）。v1.2.3 此处直接 steps[active].t → TypeError。
        这条路径**不需要损坏数据就能触发**：编辑器「清空当前小节」时若正在试听，curPattern() 返回
@@ -7116,6 +7182,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
     internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
+      /* v2.43.0：播放杆与尾迹元素（跨行扫入测试的读数口） */
+      ph: playheadEl, tg: trailGlowEl,
       /* v2.15.0：行内切分档（每行几拍）与两层行内定位数组——分片测试要按"行内拍/十六分位"查 */
       vizRowBeats: vizRowBeats, zoneEls: zoneEls, rulerEls: rulerEls }),
     /* v2.15.0：每行几拍的纯决策函数（供测试直测边界） */
