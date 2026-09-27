@@ -883,11 +883,13 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
 
 
 /* ================================================================================
-   场景 T38：主题切换 · 观测台主题（v1.7.0）
-   经典 ↔ 观测台：body[data-theme] 落位、切换钮文案、独立冷键 beatsight.theme 持久化、
+   场景 T38：主题切换 · 日间主题（v1.7.0「观测台」，v2.54.0 由深蓝暗色改版为浅色）
+   经典 ↔ 日间：body[data-theme] 落位、切换钮文案、独立冷键 beatsight.theme 持久化、
    重载恢复、闪烁配色查表随主题。纪律断言：切换主题不得顺手写任何现有持久键。
+   ★ v2.54.0 迁移：只换**配色值**——内部标识 data-theme="obs" 与冷键取值原样保留
+     （老存档无缝继承新外观，切换流程与布局尺度一行不动），故这里改的只有文案与色值。
    ================================================================================ */
-section("T38 主题切换 · 观测台主题（v1.7.0）");
+section("T38 主题切换 · 日间主题（v1.7.0 观测台 / v2.54.0 改浅色）");
 {
   const app = loadApp();
   const body = app.sandbox.document.body;
@@ -897,10 +899,10 @@ section("T38 主题切换 · 观测台主题（v1.7.0）");
 
   const before = new Set([...app.storage.keys()]);
   app.els["themeToggle"].fire("click", {});
-  eq(body.getAttribute("data-theme"), "obs", "点击后切到观测台");
-  eq(app.els["themeToggle"].textContent, "主题 · 观测台", "切换钮文案同步");
+  eq(body.getAttribute("data-theme"), "obs", "点击后切到日间（内部标识仍是 obs）");
+  eq(app.els["themeToggle"].textContent, "主题 · 日间", "切换钮文案同步（v2.54.0 改称「日间」）");
   eq(app.storage.get("beatsight.theme"), "obs", "偏好写入独立冷键 beatsight.theme");
-  eq(app.beat.flashTheme().edge, "#3B82F6", "观测台下闪烁配色为电光蓝");
+  eq(app.beat.flashTheme().edge, "#2563EB", "日间下闪烁配色为深蓝（白底 AA 达标）");
   const added = [...app.storage.keys()].filter(k => !before.has(k));
   eq(added.join(","), "beatsight.theme", "切换主题只新增独立冷键——现有 5 个持久键一个不碰");
 
@@ -910,14 +912,14 @@ section("T38 主题切换 · 观测台主题（v1.7.0）");
 
   /* 重载恢复：种子冷键 obs → 加载即观测台 */
   const app2 = loadApp({ "beatsight.theme": "obs" });
-  eq(app2.sandbox.document.body.getAttribute("data-theme"), "obs", "冷键 obs 重载后恢复观测台");
-  eq(app2.els["themeToggle"].textContent, "主题 · 观测台", "重载后切换钮文案跟随");
-  eq(app2.beat.flashTheme().edge, "#3B82F6", "重载后闪烁配色跟随主题");
+  eq(app2.sandbox.document.body.getAttribute("data-theme"), "obs", "冷键 obs 重载后恢复日间");
+  eq(app2.els["themeToggle"].textContent, "主题 · 日间", "重载后切换钮文案跟随");
+  eq(app2.beat.flashTheme().edge, "#2563EB", "重载后闪烁配色跟随主题");
 
   /* 反向验证锚点：flashTheme 查的是 body 属性而不是别处的缓存——
      直接改属性而不走切换钮，配色也必须立刻跟上 */
   body.setAttribute("data-theme", "obs");
-  eq(app.beat.flashTheme().edge, "#3B82F6", "flashTheme 直读 body[data-theme]，无缓存分叉");
+  eq(app.beat.flashTheme().edge, "#2563EB", "flashTheme 直读 body[data-theme]，无缓存分叉");
 }
 
 /* ================================================================================

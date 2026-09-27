@@ -3,14 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#121212">
+<meta id="themeColorMeta" name="theme-color" content="#121212">
 <!-- v2.42.8：向浏览器声明「本页自己就是深色」。手机自带浏览器的「深色/夜间模式」是
      Force Dark 强制反色算法（不是 prefers-color-scheme 媒体查询），它区别对待角色：
      文字（color）受保护保持浅色，而**伪元素的 background** 会被反成近黑——
      白色扫弦箭杆（.strumv::before 的 background:#FFF）落在深色格子上就此消失
      （用户真机报障：箭杆看不清、蓝色虚线空扫反而清晰）。声明 color-scheme=dark 后
-     强制深色算法豁免本页；页面自身颜色一个不改，浅色模式/未开深色的设备渲染逐位不变。 -->
-<meta name="color-scheme" content="dark">
+     强制深色算法豁免本页；页面自身颜色一个不改，浅色模式/未开深色的设备渲染逐位不变。
+     ★ v2.54.0：日间主题（data-theme="obs"）下这一条由 applyTheme 改成 light——
+       那本就是为**暗色**页面立的规矩，浅色主题继续声明 dark 会把滚动条与原生控件
+       按深色渲染。经典主题下仍是 dark，逐位不变。 -->
+<meta id="colorSchemeMeta" name="color-scheme" content="dark">
 <meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象的「时值」翻译成「长度」；单文件零依赖，可离线使用。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M9 3h10l4 22H5L9 3z' fill='%231ED760'/%3E%3Cline x1='13' y1='21' x2='18.5' y2='7' stroke='%230A0A0A' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='17' cy='10.5' r='2.1' fill='%230A0A0A'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,6 +33,14 @@
   --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
   --peak-rest:#4D4D4D;   /* 休止格的已弹填充：降一档，不抢发声格 */
   --thumb:#FFFFFF;       /* 滑杆 / 开关圆点 */
+  /* 叠加色 token（v2.54.0 收口）：暗色底上「白 = 提亮、黑 = 压暗」，浅色底必须整条翻转。
+     ★ 存的是 RGB 三元组而非完整颜色：各处保留自己原本的 alpha（.05/.06/.08/.10/.14/.16/.28…），
+       展开后经典视觉**逐位不变**（rgba(var(--veil),.06) 恒等于 rgba(255,255,255,.06)）；
+       obs 块只需把三元组换成墨蓝，散落在经典基座里的十余处叠加色一次性翻转，
+       不必逐条补覆盖（逐条补既啰嗦又必漏）。
+     ★ 只可与 rgba(var(--x), a) 合用——单独当颜色用会解析失败。 */
+  --veil:255,255,255;    /* 亮纱：暗底上的提亮叠加（白） */
+  --well:0,0,0;          /* 暗槽：暗底上的压暗叠加（黑） */
   /* 六线谱几何（v2.4.2 立变量，v2.4.3 收进格子，v2.8.0 铺满格子）：六条弦线必须整体
      落在 44px 的 .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
      （用户观感"六弦画在格子外面"）。v2.4.3~v2.7.x 用 7px 间距 + 5px 顶端留白
@@ -217,7 +228,7 @@ body.wide-full .main{max-width:none}
      两侧均衡、不挤上一行座次尺，也不压本行格子。 */
 .bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
-.beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+.beat-zone{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(var(--veil),.06);box-shadow:inset 0 0 0 1px rgba(var(--veil),.10);pointer-events:none}
 /* 拍内座次尺：1 e & a */
 .ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
@@ -225,7 +236,7 @@ body.wide-full .main{max-width:none}
 /* 下一颗音符预亮 */
 .cell.next{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.45);animation:nextGlow .7s ease-in-out infinite}
 @keyframes nextGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.15)}}
-.cell{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(255,255,255,.14);overflow:hidden}
+.cell{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(var(--veil),.14);overflow:hidden}
 .cell-label{position:absolute;top:48px;font-size:calc(12px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
@@ -241,7 +252,7 @@ body.wide-full .main{max-width:none}
 .cell.active::before{background:var(--peak)}
 .cell.rest{background:transparent;border:1px dashed var(--rest-line)}
 .cell.rest.played::before{background:var(--peak-rest)}
-.cell.rest.active::before{background:rgba(255,255,255,.35)}
+.cell.rest.active::before{background:rgba(var(--veil),.35)}
 /* ---------- 行内切分的续接片段（v2.15.0）----------
    跨行被截断的音符在两侧各画一段：**断开的那一侧**改虚线描边 + 圆角收平——
    语义 = "它不是完整的一颗，另一半在相邻行"（时值标签已同时被压掉，见 buildRowCells）。
@@ -250,7 +261,7 @@ body.wide-full .main{max-width:none}
 .cell.cutr{border-right:1px dashed var(--rest-line);border-top-right-radius:0;border-bottom-right-radius:0}
 /* 十六分刻度线：满格高、只画内部十六分分界线（末格不画——格边缘即边界，右缘再画会垂出一条多余竖线） */
 .cell .subs{position:absolute;inset:0 4px;display:flex;z-index:1;pointer-events:none}
-.cell .sub{flex:1;border-right:1px solid rgba(255,255,255,.10)}
+.cell .sub{flex:1;border-right:1px solid rgba(var(--veil),.10)}
 .cell .sub:last-child{border-right:none}
 .cell.played .sub,.cell.active .sub{border-right-color:rgba(0,0,0,.18)}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
@@ -368,9 +379,9 @@ body.wide-full .main{max-width:none}
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
 .lyric-row{position:relative;height:28px;border-radius:6px}
-.lyric-row.cur{background:rgba(255,255,255,.05)}
+.lyric-row.cur{background:rgba(var(--veil),.05)}
 .lyric-row.preview{opacity:.55}                     /* 预告行的歌词 = 未来，与 .preview-row 同一份降权 */
-.lyric-chip{position:absolute;top:1px;height:26px;border-radius:5px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
+.lyric-chip{position:absolute;top:1px;height:26px;border-radius:5px;background:rgba(var(--veil),.14);display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
 .lyric-chip .lfill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:left;background:var(--peak);pointer-events:none;z-index:0}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
@@ -462,7 +473,7 @@ input[type=range].vol{width:120px}
 .pill.active:hover:not(:disabled){filter:brightness(1.12)}
 .pill.active{background:var(--green);color:var(--on-green);font-weight:700}
 .pill.outline{background:transparent;border:1px solid var(--border);color:var(--t1)}
-.pill.outline:hover:not(:disabled){background:rgba(255,255,255,.06)}
+.pill.outline:hover:not(:disabled){background:rgba(var(--veil),.06)}
 .pill.flash{background:var(--green);color:var(--on-green)}
 .pill:disabled{background:var(--card2);color:var(--t3)}
 .vdivider{width:1px;height:90px;background:var(--line);flex:none}
@@ -802,7 +813,7 @@ input[type=range].vol{width:120px}
 .ear-cand:disabled{cursor:default}
 .ear-cand-lab{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t2);flex:none}
 .ear-strip{position:relative;flex:1;height:36px;min-width:0}
-.ear-block{position:absolute;top:0;height:100%;border-radius:6px;background:rgba(255,255,255,.16)}
+.ear-block{position:absolute;top:0;height:100%;border-radius:6px;background:rgba(var(--veil),.16)}
 .ear-block.rest{background:transparent;border:1px dashed var(--rest-line)}
 .ear-cand.right{box-shadow:inset 0 0 0 1.5px var(--green)}
 .ear-cand.wrong{box-shadow:inset 0 0 0 1.5px var(--red)}
@@ -840,11 +851,11 @@ input[type=range].vol{width:120px}
    候选串要 flex-wrap（三区标题 flex-basis:100% 靠它换行），别被卡片的新规矩波及 */
 .arg-sec.arg-pick{background:transparent;border:none;padding:9px 0;margin:0}
 .arg-sec.arg-pick>.arg-blocks{flex:1;flex-basis:auto;flex-wrap:wrap;overflow:visible}
-.arg-name{background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-name{background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 .arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px}
-.arg-block{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
+.arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
-.arg-reps{width:38px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
+.arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 /* v2.27.0（G2）：块候选的三区标题 + 当前型置顶高亮 + 「新建曲式」模板菜单。
@@ -869,7 +880,7 @@ input[type=range].vol{width:120px}
 .arg-item-del:hover{color:#f3727f;background:rgba(243,114,127,.12)}
 /* v2.47.0（1A）：曲式 ✎ 改名——形制与 ✕ 同源（同一 chip 内的两颗动作钮） */
 .arg-item-ren{flex:none;margin-left:2px;width:20px;height:20px;line-height:19px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
-.arg-item-ren:hover{color:var(--t1);background:rgba(255,255,255,.08)}
+.arg-item-ren:hover{color:var(--t1);background:rgba(var(--veil),.08)}
 .arg-item-ren[aria-disabled="true"]{opacity:.4;cursor:default}
 .arg-item-ren[aria-disabled="true"]:hover{color:var(--t3);background:none}
 /* v2.35.0（用户反馈）：「开练」改**顶部全宽走带条**（sticky 吸顶）——右栏 320px 把地图压到
@@ -885,7 +896,7 @@ input[type=range].vol{width:120px}
 .arg-t-actions{flex-wrap:wrap}
 .arg-t-actions #argPlay{margin-left:auto}
 .arg-map{display:flex;gap:2px;height:34px;border-radius:8px;overflow:hidden}
-.arg-map-seg{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
+.arg-map-seg{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--well),.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
 .arg-map-seg:last-child{border-right:none}
 .arg-map-seg.in-range{background:rgba(30,215,96,.15);box-shadow:inset 0 0 0 1px var(--green);color:var(--t1)}
 .arg-range-track{position:relative;height:22px}
@@ -920,7 +931,7 @@ input[type=range].vol{width:120px}
 .arg-lyric-preview{min-width:0;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-lyric-arrow{flex:none;font-size:11px}
 .arg-lyric-cue{flex:none}
-.arg-lyric-paste{flex:1;min-width:120px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-lyric-paste{flex:1;min-width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 /* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
    .arg-lyric-barrow 底色槽，字块 absolute 行内定位（与主界面歌词轨 v2.7.2 同构）；
    拖动换算 perTick 不随分行改变（每行等宽 = 旧单行宽，见 mkLyricRow 注释） */
@@ -955,7 +966,7 @@ input[type=range].vol{width:120px}
 .arg-lyric-guide{position:absolute;top:0;bottom:0;width:2px;background:var(--blue);opacity:.75;pointer-events:none}
 /* 落点预览 ghost（v2.50.0 D1）：拖动中与提交共用 getDropTarget 摆到预测落点（绿虚线框），
    预览与提交永远同一套数学；swap ≠ 0 时邻字挂 .swap-hint 脉冲（换位的预览） */
-.arg-lyric-ghost{position:absolute;top:2px;bottom:2px;border:1px dashed var(--green);background:rgba(30,215,96,.18);border-radius:4px;pointer-events:none}
+.arg-lyric-ghost{position:absolute;top:2px;bottom:2px;border:1px dashed var(--green);background:color-mix(in srgb, var(--green) 18%, transparent);border-radius:4px;pointer-events:none}
 @keyframes argSwapPulse{from{box-shadow:0 0 0 2px var(--blue)}to{box-shadow:0 0 0 2px transparent}}
 .arg-lyric-chip.swap-hint{animation:argSwapPulse .5s ease infinite alternate}
 /* 读数气泡（v2.50.0 D3）：拖动中挂当前行上方（小节/拍/相对原位格数），aria-hidden 纯视觉 */
@@ -1101,15 +1112,17 @@ input[type=range].vol{width:120px}
 .sec-tag{display:none}
 
 /* ================================================================================
-   主题 · 数据观测台（v1.7.0 新增；经典为默认主题，本块全部为增量覆盖）
+   主题 · 日间（v1.7.0 新增，原名「数据观测台」；v2.54.0 由深蓝暗色改版为浅色。
+   经典为默认主题，本块全部为增量覆盖）
    --------------------------------------------------------------------------------
    设计规范（简短版）：
-   · 气质：克制的工程师深色仪表盘。时值块 + 弹跳球的主可视化区是视觉中心，
-     控制区退居次要层级；信息密度高但不拥挤。
-   · 配色：近黑深蓝底 #0A0C12，面板 #11141C 拉开级差；分层靠 1px 半透明白描边
-     （rgba 白 6%~16%）而非底色差。主强调 = 电光蓝 #3B82F6（高光 #60A5FA），
-     仅用于当前播放状态、主按钮、关键数据；青绿 #2DD4A8 只做进行/成功点缀
+   · 气质：克制的工程师浅色仪表盘（v2.54.0 起——此前是深色，改版只换配色值）。时值块 +
+     弹跳球的主可视化区是视觉中心，控制区退居次要层级；信息密度高但不拥挤。
+   · 配色：浅灰底 #F2F4F8，面板 #FFFFFF 与卡片级 #EDF0F5 拉开级差；分层靠 1px 墨蓝描边
+     （rgba(15,23,42) 9%~18%）而非底色差。主强调 = 深蓝 #2563EB（高光 #1D4ED8），
+     仅用于当前播放状态、主按钮、关键数据；青绿 #0D9488 只做进行/成功点缀
      （训练中进度、校验通过、今日柱）；琥珀保留「非错误提示」语义；功能色不做装饰。
+     ★ 全部文字色与强调色按白底预核 WCAG AA 4.5:1+（换色表见变量块内注释）。
    · 排版：分区标题 = 大号编号（01/02/03…）+ 小号大写英文标签 + 中文标题三件套；
      数字一律等宽 + tabular-nums；关键指标 = 大号 KPI 数字 + 小字标注。
    · 组件：圆角克制（卡片 8px、控件 6px、音符块 6px）；pill 由胶囊收敛为分段矩形；
@@ -1118,15 +1131,35 @@ input[type=range].vol{width:120px}
    · 实现纪律：只新增、不改名——现有 id/class 与经典主题样式全部保留；
      本块规则一律以 body[data-theme="obs"] 起头。
    ================================================================================ */
+/* v2.54.0：本主题由「深蓝暗色仪表盘」改版为「浅色日间仪表盘」——
+   ★ 换的只是配色值：内部标识 data-theme="obs"、冷键 beatsight.theme、切换流程、
+     布局尺度（topbar 56px / 卡片 padding / 圆角档位）、组件形态（矩形化、sec-tag 三件套、
+     等宽数字）**一行不动**；经典主题的视觉也一行不动（见 :root 的等值改写说明）。
+   ★ 浅底的对比度口径：全部文字色与强调色按白底预核 WCAG AA 4.5:1+（见下表注释）。
+   ★ P-b（v2.54.0）：color-scheme 必须随主题翻成 light——v2.42.8 为防安卓 Force Dark
+     声明「本页永远深色」，那是为**暗色**页面立的；日间模式下它仍会把滚动条与原生控件
+     按深色渲染（meta 那份由 applyTheme 同步改写，见装配层）。 */
 body[data-theme="obs"]{
-  --bg:#0A0C12; --card:#11141C; --card2:#171B27; --cell:#1E2434;
-  --line:rgba(255,255,255,.07); --border:rgba(255,255,255,.16);
-  --green:#3B82F6; --red:#F87171;
-  /* --t3 原值 #5F6B7E 在 --card 上只有 ≈3.5:1，不达 WCAG AA 4.5:1（v2.0.2 提到 ≈6.3:1） */
-  --t1:#E8ECF5; --t2:#97A1B5; --t3:#8A97AC; --on-green:#FFFFFF;
-  --rest-line:rgba(255,255,255,.22);
-  --teal:#2DD4A8; --accent-hi:#60A5FA;
-  background:radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.06), transparent 60%), var(--bg);
+  --bg:#F2F4F8; --card:#FFFFFF; --card2:#EDF0F5; --cell:#E3E8F0;
+  --line:rgba(15,23,42,.09); --border:rgba(15,23,42,.18);
+  --green:#2563EB; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标） */
+  /* 文字三级按白底重核：16.1:1 / 7.5:1 / 4.8:1——守住上面那条注释立的 AA 线
+     （旧注释里的 #5F6B7E / ≈6.3:1 是暗底时代的口径，值已随底色一并换掉） */
+  --t1:#0F172A; --t2:#475569; --t3:#64748B; --on-green:#FFFFFF;
+  --rest-line:rgba(15,23,42,.25);
+  --teal:#0D9488; --accent-hi:#1D4ED8;  /* 4.5:1 / 6.2:1 */
+  /* P-c（v2.54.0）：--blue 此前只在 :root 定义、obs 从未覆盖（暗底上够用）。
+     浅底上原值 #4FA3E3 只有 ≈2.5:1，而它的职责在 PLAN-v5 后变重了——字块选中框、
+     播放游标、换位脉冲、空扫括号都吃它，故一并提到 #1D4ED8（≈6.2:1）。 */
+  --blue:#1D4ED8;
+  /* P-d（v2.54.0）：--peak / --peak-rest 是「已弹 / 正在弹」的填充与扫弦箭头的墨色。
+     经典与暗色下都取白（在深色格子上最亮 = 最强对比）；浅底上白填充落在 #E3E8F0 格子上
+     等于隐形，故翻成墨色——填充仍保持**中性**，强调色只留给状态描边（同原设计分工）。 */
+  --peak:#0F172A; --peak-rest:#94A3B8;
+  /* 叠加色翻转：暗底上的白纱 / 黑槽在浅底上同归于墨蓝（三元组口径见 :root 的注释） */
+  --veil:15,23,42; --well:15,23,42;
+  color-scheme:light;                 /* P-b：与 meta[name=color-scheme] 同源同义 */
+  background:radial-gradient(1200px 600px at 80% -10%, rgba(37,99,235,.05), transparent 60%), var(--bg);
 }
 
 /* ---------- 观测台 · 顶栏与品牌 ---------- */
@@ -1137,7 +1170,10 @@ body[data-theme="obs"] .brand svg line{stroke:var(--bg)}
 body[data-theme="obs"] .brand svg circle{fill:var(--bg)}
 body[data-theme="obs"] .brand .ver{background:transparent;border:1px solid var(--line);border-radius:6px;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .chip{background:transparent;border:1px solid var(--line);border-radius:6px}
-body[data-theme="obs"] .dot.live{box-shadow:0 0 8px rgba(59,130,246,.6)}
+/* 四枚返回箭头（编辑器 / 听辨 / 编排 / 帮助）的 stroke 在标记里写死 #B3B3B3：
+   浅底上它只有 ≈2.2:1。遵守「经典一行不改」的纪律——不动标记，用 CSS 覆盖表现属性 */
+body[data-theme="obs"] .back-btn svg path{stroke:var(--t2)}
+body[data-theme="obs"] .dot.live{box-shadow:0 0 8px rgba(37,99,235,.5)}
 body[data-theme="obs"] .status.ok{color:var(--teal)} body[data-theme="obs"] .status.ok .dot{background:var(--teal)}
 
 /* ---------- 观测台 · 卡片与分区标题三件套 ---------- */
@@ -1155,28 +1191,28 @@ body[data-theme="obs"] .caption{border-top:1px solid var(--line);padding-top:12p
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
 
 /* ---------- 观测台 · 时值可视化（视觉中心） ---------- */
-body[data-theme="obs"] .bar-row.current{background:rgba(59,130,246,.05);box-shadow:inset 0 0 0 1px rgba(59,130,246,.22)}
-body[data-theme="obs"] .beat-zone{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);border-radius:8px}
+body[data-theme="obs"] .bar-row.current{background:rgba(37,99,235,.05);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}
+body[data-theme="obs"] .beat-zone{background:rgba(var(--veil),.05);box-shadow:inset 0 0 0 1px rgba(var(--veil),.10);border-radius:8px}
 body[data-theme="obs"] .cell{background:var(--cell);border-radius:6px}
-body[data-theme="obs"] .cell.active{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.9), 0 0 10px rgba(59,130,246,.28)}
-body[data-theme="obs"] .cell.next{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.4);animation:nextGlowObs .7s ease-in-out infinite}
-@keyframes nextGlowObs{50%{box-shadow:inset 0 0 0 1.5px rgba(59,130,246,.14)}}
-body[data-theme="obs"] .trail-glow{background:linear-gradient(90deg,rgba(59,130,246,.08),rgba(59,130,246,.3) 55%,rgba(59,130,246,.55))}
-body[data-theme="obs"] .bounce-ball{box-shadow:0 0 8px rgba(59,130,246,.4)}
-body[data-theme="obs"] .grid-line{background:rgba(255,255,255,.06)}
-body[data-theme="obs"] .cell.played .sub,body[data-theme="obs"] .cell.active .sub{border-right-color:rgba(10,12,18,.25)}
+body[data-theme="obs"] .cell.active{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.9), 0 0 10px rgba(37,99,235,.22)}
+body[data-theme="obs"] .cell.next{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.32);animation:nextGlowObs .7s ease-in-out infinite}
+@keyframes nextGlowObs{50%{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.12)}}
+body[data-theme="obs"] .trail-glow{background:linear-gradient(90deg,rgba(37,99,235,.06),rgba(37,99,235,.22) 55%,rgba(37,99,235,.40))}
+body[data-theme="obs"] .bounce-ball{box-shadow:0 0 8px rgba(37,99,235,.30)}
+body[data-theme="obs"] .grid-line{background:rgba(var(--veil),.07)}
+body[data-theme="obs"] .cell.played .sub,body[data-theme="obs"] .cell.active .sub{border-right-color:rgba(255,255,255,.35)}
 
 /* ---------- 观测台 · 走带控制 ---------- */
-body[data-theme="obs"] .play-btn{background:var(--green);box-shadow:0 4px 16px rgba(59,130,246,.3)}
+body[data-theme="obs"] .play-btn{background:var(--green);box-shadow:0 4px 16px rgba(37,99,235,.28)}
 body[data-theme="obs"] .play-btn svg path,body[data-theme="obs"] .play-btn svg rect{fill:#fff}
 body[data-theme="obs"] .step-btn{border-radius:6px;background:var(--card2);border:1px solid var(--line);transition:border-color .12s}
 body[data-theme="obs"] .jump-btn{border-radius:50%;background:var(--card2);border:1px solid var(--line);transition:border-color .12s,opacity .12s}
 body[data-theme="obs"] .step-btn:hover{border-color:var(--border)}
 body[data-theme="obs"] .bpm-num{font-size:48px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}   /* v2.10.19：56→48 同步降档 */
 body[data-theme="obs"] .vdivider{background:var(--line)}
-body[data-theme="obs"] input[type=range]{background:rgba(255,255,255,.10);height:4px}
-body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(59,130,246,.35)}
-body[data-theme="obs"] .bpm-ticks i{background:rgba(255,255,255,.14)}
+body[data-theme="obs"] input[type=range]{background:rgba(var(--well),.18);height:4px}   /* 墨色轨道：白圆点才浮得出来 */
+body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(37,99,235,.28), inset 0 0 0 1px rgba(15,23,42,.28)}
+body[data-theme="obs"] .bpm-ticks i{background:rgba(var(--well),.16)}
 
 /* ---------- 观测台 · 分段控件（pill 收敛为矩形） ---------- */
 body[data-theme="obs"] .pill{border-radius:6px;background:var(--card2);border:1px solid var(--line);color:var(--t2);font-family:var(--mono);font-variant-numeric:tabular-nums;padding:8px 14px;font-size:12px;transition:border-color .12s,color .12s,background .12s}
@@ -1189,7 +1225,7 @@ body[data-theme="obs"] .pill:disabled{background:var(--card2);color:var(--t3)}
 
 /* ---------- 观测台 · 配置开关与训练面板 ---------- */
 body[data-theme="obs"] .toggle-pill{background:var(--card);border:1px solid var(--line);border-radius:8px}
-body[data-theme="obs"] .switch{background:rgba(255,255,255,.14)}
+body[data-theme="obs"] .switch{background:rgba(var(--well),.22)}
 body[data-theme="obs"] .tr-panel{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 body[data-theme="obs"] .tr-inp{background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .tr-inp:focus{border-color:var(--green)}
@@ -1202,28 +1238,43 @@ body[data-theme="obs"] .preset-item.active{background:var(--card2);border-left-c
 body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
 body[data-theme="obs"] .preset-section{font-family:var(--mono);letter-spacing:.12em}
 body[data-theme="obs"] .preset-group{font-family:var(--mono);letter-spacing:.12em}
+/* 侧栏三处 hover 底写死 rgba(77,171,247,.12)（浅蓝）——浅底上几乎看不出反馈，按主色重给一档 */
+body[data-theme="obs"] .preset-item .grp:hover,body[data-theme="obs"] .preset-item .ren:hover,body[data-theme="obs"] .preset-section .sec-add:hover{background:rgba(37,99,235,.10)}
 body[data-theme="obs"] .sidebar-note{border-top:1px solid var(--line);padding-top:12px}
 
 /* ---------- 观测台 · 编辑器 ---------- */
 body[data-theme="obs"] .edcell{border-radius:4px}
-body[data-theme="obs"] .edcell.sel{background:rgba(59,130,246,.14);box-shadow:0 0 0 1.5px var(--green)}
+body[data-theme="obs"] .edcell.sel{background:rgba(37,99,235,.12);box-shadow:0 0 0 1.5px var(--green)}
 body[data-theme="obs"] .edbar-label.editing .n{color:var(--accent-hi)}
 body[data-theme="obs"] .pal-item{border:1px solid var(--line);border-radius:6px}
 body[data-theme="obs"] .check-dot{background:var(--teal)}
 body[data-theme="obs"] .check-row.bad .check-dot{background:var(--red)}
 body[data-theme="obs"] .name-input{background:var(--card2);border-radius:6px}
 body[data-theme="obs"] .name-input:focus{border-color:var(--green)}
+/* 歌词字块：chip 底是 var(--green)（浅主题下为深蓝 #2563EB），而字色在经典基座里写死
+   #0B0B0B——深蓝底上的黑字几乎糊成一片。同样不动经典写法，只在 obs 下翻成 on-green */
+body[data-theme="obs"] .arg-lyric-chip{color:var(--on-green)}
 
 /* ---------- 观测台 · 练习统计 ---------- */
 body[data-theme="obs"] .stat-card{background:var(--card2);border:1px solid var(--line);border-radius:8px}
 body[data-theme="obs"] .stat-num{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .st-bar{border-radius:3px 3px 1px 1px;opacity:.9}
-body[data-theme="obs"] .st-col.today .st-bar{background:var(--teal);box-shadow:0 0 8px rgba(45,212,168,.35)}
+body[data-theme="obs"] .st-col.today .st-bar{background:var(--teal);box-shadow:0 0 8px rgba(13,148,136,.30)}
 body[data-theme="obs"] .st-col.today .st-day{color:var(--teal)}
 body[data-theme="obs"] .st-val{font-variant-numeric:tabular-nums}
 
 /* ---------- 观测台 · 弹窗 ---------- */
 body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
+
+/* ---------- 观测台 · 帮助页示意图（T7） ----------
+   三张示意图是内联 SVG，颜色写在 fill / stroke 表现属性上（#2c2c2c 框、#1ED760 绿标题、
+   #fff 白字、#b3b3b3 / #6a6a6a 灰字）。表现属性可以被 CSS 覆盖，故这里一条不动标记、
+   只在 obs 作用域里按语义重着色：框 → --border，正文 → --t2，标题 → 主色，白字 → --t1。 */
+body[data-theme="obs"] .help-fig rect{stroke:var(--border)}
+body[data-theme="obs"] .help-fig text{fill:var(--t2)}
+body[data-theme="obs"] .help-fig rect[stroke="#1ED760"],body[data-theme="obs"] .help-fig rect[stroke="#539df5"]{stroke:var(--green)}
+body[data-theme="obs"] .help-fig text[fill="#1ED760"],body[data-theme="obs"] .help-fig text[fill="#539df5"]{fill:var(--green)}
+body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
 
 /* ---------- 观测台 · 窄屏修正（优先级高于经典媒体查询里的同名规则） ---------- */
 @media (max-width:960px){
@@ -1938,7 +1989,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
         <h2 class="card-title" style="margin:22px 0 4px">「设置」里的每一项</h2>
         <!-- v2.25.3：本节由 dl 改 ul——DOM 节点预算（smoke ≤1300）的瘦身纪律，见「先分清两个编辑入口」处的注释 -->
         <ul class="help-list">
-          <li><b>主题（经典 / 观测台）。</b>两套配色，只换外观、功能完全一样：<b>经典</b> = 功能绿的练习舱（默认）；<b>观测台</b> = 深蓝的工程师仪表盘。挑顺眼的用</li>
+          <li><b>主题（经典 / 日间）。</b>两套配色，只换外观、功能完全一样：<b>经典</b> = 功能绿的练习舱（默认，深色底）；<b>日间</b> = 浅色仪表盘，白天或亮处练琴看得清。挑顺眼的用</li>
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
           <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
@@ -2263,23 +2314,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2295  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2882  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4166  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4873  Modal         应用内弹窗
-     L5010  Viz           时值可视化渲染与每帧动画
-     L7281  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7937  Trainer       变速训练器
-     L8075  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8573  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9819  Editor        自定义节奏型编辑器
-     L10239 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10276 Ear           听辨训练（v1.10.0）
-     L10496 Arrange       曲式编排（v2.0.0）
-     L12921 Help          使用方法（v2.0.1）
-     L13004 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13078 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13279 初始化（装配） 各模块 hook 接线与启动
+     L2346  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2935  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4219  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4926  Modal         应用内弹窗
+     L5063  Viz           时值可视化渲染与每帧动画
+     L7334  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7990  Trainer       变速训练器
+     L8128  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8626  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9872  Editor        自定义节奏型编辑器
+     L10292 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10329 Ear           听辨训练（v1.10.0）
+     L10549 Arrange       曲式编排（v2.0.0）
+     L12974 Help          使用方法（v2.0.1）
+     L13057 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13131 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13332 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2305,7 +2356,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.53.0";
+const VERSION = "2.54.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2866,15 +2917,17 @@ const EAR_GROUPS = [
 const EAR_BARS = 2;
 
 /* 主题化闪烁配色（v1.7.0 观测台主题）：换拍脉冲与十六分闪烁的 WAAPI 取色按 body[data-theme]
-   查表——观测台把功能绿换成电光蓝。读 DOM 属性而非 getComputedStyle：后者在渲染热路径
+   查表——观测台把功能绿换成蓝（v2.54.0 起为深蓝 #2563EB）。读 DOM 属性而非 getComputedStyle：后者在渲染热路径
    属布局读取，是性能禁区（v1.3.0 P1-4）。主题切换本身见装配区末尾的主题逻辑 */
 const FLASH_THEME = {
   classic:{ zoneOn:"inset 0 0 0 1.5px rgba(30,215,96,.75), 0 0 18px rgba(30,215,96,.35)",
             zoneOff:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(30,215,96,0)",
             edge:"#1ED760", glow:"rgba(30,215,96,.85)", strong:"rgba(30,215,96,.4)", soft:"rgba(30,215,96,.28)" },
-  obs:{     zoneOn:"inset 0 0 0 1.5px rgba(59,130,246,.75), 0 0 14px rgba(59,130,246,.30)",
-            zoneOff:"inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 rgba(59,130,246,0)",
-            edge:"#3B82F6", glow:"rgba(59,130,246,.85)", strong:"rgba(59,130,246,.4)", soft:"rgba(59,130,246,.28)" },
+  /* v2.54.0：日间主题——换 37,99,235 系，且各档 alpha 再降一级
+     （浅底上的光晕比深底更显眼，同 alpha 会过曝；zoneOff 的白描边翻成墨描边） */
+  obs:{     zoneOn:"inset 0 0 0 1.5px rgba(37,99,235,.70), 0 0 12px rgba(37,99,235,.24)",
+            zoneOff:"inset 0 0 0 1px rgba(15,23,42,.10), 0 0 0 rgba(37,99,235,0)",
+            edge:"#2563EB", glow:"rgba(37,99,235,.70)", strong:"rgba(37,99,235,.32)", soft:"rgba(37,99,235,.22)" },
 };
 const flashTheme = () => (document.body.getAttribute("data-theme") === "obs" ? FLASH_THEME.obs : FLASH_THEME.classic);
 
@@ -13576,12 +13629,28 @@ try{
   }
 }catch(e){}
 
-/* 主题切换（v1.7.0）：「经典 / 观测台」双主题。
+/* 主题切换（v1.7.0）：「经典 / 日间」双主题（日间原名「数据观测台」，v2.54.0 由暗色改版为浅色）。
    持久化用**独立冷键** beatsight.theme——主题只是视觉偏好，不进 beatsight.state 热键，
    现有 5 个持久键的键名与数据结构零改动（审计 P1-5 的冷热分离纪律原样适用）。
    应用方式只写 body 的 data-theme 属性，全部样式差异由 CSS 作用域覆盖完成（无属性 = 经典）；
    写失败静默降级：视觉偏好丢失不值得惊动用户（不触发 persistFail 那套上报） */
 const THEME_KEY = "beatsight.theme";
+/* v2.54.0：两个 <meta> 是**静态**的（浏览器 UI 读的是它们），CSS 作用域覆盖管不到，只能由 JS 同步。
+   · theme-color：手机浏览器的地址栏染色——此前写死 #121212，观测台（暗）下本就一直是错的。
+   · color-scheme：v2.42.8 为防安卓 Force Dark 声明「本页永远深色」；日间模式下必须改口，
+     否则滚动条与原生控件仍按深色渲染（与 obs 块里的 color-scheme:light 同源同义）。
+   ★ 走 id 而不是 querySelector：桩里没有 querySelector，走 id 才能让这条同步进测试覆盖。
+   ★ 显式标注 Record：t 是 string，不标的话 tsc 认不出按键索引（TS7053）。 */
+/** @type {Record<string, { themeColor: string, colorScheme: string }>} */
+const THEME_META = { classic:{ themeColor:"#121212", colorScheme:"dark" },
+                     obs:{     themeColor:"#F2F4F8", colorScheme:"light" } };
+/** @param {string} t */
+const syncThemeMeta = t => {
+  const m = THEME_META[t] || THEME_META.classic;
+  const tc = $("themeColorMeta"), cs = $("colorSchemeMeta");
+  if (tc) tc.setAttribute("content", m.themeColor);
+  if (cs) cs.setAttribute("content", m.colorScheme);
+};
 /** @param {string} t */
 const applyTheme = t => {
   /* v2.0.5（审计 P0-3）：主题是**布局尺度**的变更（topbar 高 64→56px、卡片与节奏型头部的
@@ -13592,9 +13661,12 @@ const applyTheme = t => {
      那次首屏几何本来是按经典算的，属同一个 bug 的静止态（不播放时看不出，一播放就偏） */
   const prev = document.body.getAttribute("data-theme") || "classic";
   document.body.setAttribute("data-theme", t);
-  $("themeToggle").textContent = "主题 · " + (t === "obs" ? "观测台" : "经典");
+  /* v2.54.0（T2）：界面名称改「日间」——主题已由深蓝暗色改版为浅色，名字要说真话；
+     内部标识 data-theme="obs" 与冷键取值保持原样（老存档无缝继承新外观） */
+  $("themeToggle").textContent = "主题 · " + (t === "obs" ? "日间" : "经典");
   /* v2.0.2：开关态对读屏可见（按钮文案只报当前主题，不报「按下去会怎样」） */
   $("themeToggle").setAttribute("aria-pressed", t === "obs" ? "true" : "false");
+  syncThemeMeta(t);
   if (prev !== t) Viz.relayout();
 };
 let themeNow = "classic";
@@ -13605,7 +13677,7 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   themeNow = themeNow === "obs" ? "classic" : "obs";
   applyTheme(themeNow);
   try{ localStorage.setItem(THEME_KEY, themeNow); }catch(e2){}
-  /* 遮罩颜色随主题走（经典压 #121212、观测台压 #0A0C12），换主题要重画壁纸层。
+  /* 遮罩颜色随主题走（经典压 #121212 系、日间压 #F2F4F8 系，见 WALL_TINT），换主题要重画壁纸层。
      ★ 不能把这句挪进 applyTheme：后者在 `wallNow` 初始化**之前**就会被首屏调用一次，
        那时读 wallNow 会撞 TDZ（let 的暂时性死区）——首屏直接白屏。 */
   wallApply();
@@ -13768,7 +13840,13 @@ function wallWrite(img, dim){
 function wallClear(){
   try{ localStorage.removeItem(WALL_KEY); }catch(e){}
 }
-/** 把当前壁纸画到那一层（遮罩颜色随主题走：经典 #121212 / 观测台 #0A0C12） */
+/* v2.54.0（T5）：遮罩色随主题查表——经典压 #121212 系、日间压 #F2F4F8 系。
+   浅色遮罩在浅主题下的方向同样是「数值越大压得越净」（把背景洗白、让前景字更清楚），
+   滑杆语义与取值域零改动；此前是一个写死的三元表达式，主题一多就得改代码。
+   ★ 显式标注 Record：themeNow 是 string，不标的话 tsc 认不出按键索引（TS7053）。 */
+/** @type {Record<string, string>} */
+const WALL_TINT = { classic:"18,18,18", obs:"244,246,250" };
+/** 把当前壁纸画到那一层（遮罩颜色随主题走：经典 #121212 系 / 日间 #F2F4F8 系，见 WALL_TINT） */
 function wallApply(){
   const el = $("wallLayer");
   if (!el) return;
@@ -13784,7 +13862,7 @@ function wallApply(){
   if (!wallNow){ el.hidden = true; el.style.backgroundImage = ""; return; }
   el.hidden = false;
   const a = wallNow.dim / 100;
-  const tint = themeNow === "obs" ? "10,12,18" : "18,18,18";
+  const tint = WALL_TINT[themeNow] || WALL_TINT.classic;
   el.style.backgroundImage = "linear-gradient(rgba(" + tint + "," + a + "), rgba(" + tint + "," + a
     + ")), url(\"" + wallNow.img + "\")";
 }

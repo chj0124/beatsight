@@ -355,14 +355,16 @@ section("T92g 壁纸 · 选图的几种失败都要有话说（不能点了没�
   eq(e.els["wallFile"].value, "", "★ 选完把 input.value 清空（否则第二次选同一个文件不派发 change）");
 }
 
-/* ================= 场景 T92h：换主题时遮罩颜色跟着换 ================= */
-section("T92h 壁纸 · 遮罩颜色随主题（经典 #121212 / 观测台 #0A0C12）");
+/* ================= 场景 T92h：换主题时遮罩颜色跟着换 =================
+   v2.54.0 迁移：日间主题是**浅色**，遮罩方向随之翻成浅色（#F2F4F8 系）——
+   滑杆语义仍是「数值越大压得越净」，变的是压上去的那层颜色（见 WALL_TINT）。 */
+section("T92h 壁纸 · 遮罩颜色随主题（经典 #121212 / 日间 #F2F4F8）");
 {
   const { beat, els } = loadApp({ "beatsight.wallpaper": JSON.stringify({ v:1, img: mk("png"), dim: 55 }) });
   ok(/rgba\(18,18,18,/.test(String(els["wallLayer"].style.backgroundImage)), "经典主题 → 遮罩 #121212");
   els["themeToggle"].fire("click");
-  ok(/rgba\(10,12,18,/.test(String(els["wallLayer"].style.backgroundImage)),
-    "★ 切到观测台 → 遮罩换成 #0A0C12（否则深色主题下压暗用的是浅色，壁纸会发灰）");
+  ok(/rgba\(244,246,250,/.test(String(els["wallLayer"].style.backgroundImage)),
+    "★ 切到日间 → 遮罩换成 #F2F4F8（浅色主题下压暗要用浅色遮罩，否则壁纸会发灰）");
   els["themeToggle"].fire("click");
   ok(/rgba\(18,18,18,/.test(String(els["wallLayer"].style.backgroundImage)), "切回来 → 换回 #121212");
 }
