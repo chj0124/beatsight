@@ -9,6 +9,22 @@
 
 ---
 
+## v2.49.0 · 新增+修复：歌词撤销/重做 + 拖拽阈值分流——点按不再是微拖（PLAN-v5 期 1，2026-09-28）
+
+**根因**（PLAN-v5 歌词对齐重设计期 1）：① 歌词的全部写路径（粘贴/拖动/键盘微调/按节奏对齐/清除/打轴）都**没有撤销**，「按节奏对齐覆盖手动微调」此前要靠确认弹窗硬挡，失手即不可恢复；② 字块拖拽 `pointerdown` 即建 drag 且 `preventDefault` + `touch-action:none`——手机上想**滚动**歌词区却被拖拽吞掉，想**点按选中**一个字也没有这个语义。
+
+**修法**（全在 Arrange 模块 + 少量 CSS，数据模型/调度零改动）：
+
+- **R1 歌词撤销/重做**：唯一写入口 `lyricCommit`——写库前快照现值压 undo 栈（no-op 不压栈、新提交清空 redo、上限 50 与 Editor undoStack 同口径），粘贴/拖动/键盘/对齐/清除五个写路径全部改道，`Store.upsertLyric/deleteLyric` 归一化口径一行未改。**打轴是事务**（V3）：`startTap` 压一次快照、`tapNow` 逐敲落库不压栈——整段打轴 = 一步撤销，50 步额度不被逐敲打空。粒度（V2）：每击键 = 一步。生命周期（V1）：会话内存栈，关浮层/切段不清、刷新清空、不落盘。入口：展开区 ↩/↪ 两颗按钮（栈空置灰）+ 键盘层 Ctrl/⌘+Z / Ctrl/⌘+Shift+Z / Ctrl+Y（路由到末次触碰段，输入框聚焦时打字优先）。选中态（V5）：`selChip` 是模块态，重渲染按 (arr, sec, k) 回挂 `.sel`，字数变少时越界自动清空。
+- **D2 拖拽阈值分流**：`bindDrag` 重写为两段式——pointerdown 只记待转正 `pendDrag`（不 preventDefault / 不建 drag / 不加 dragging 类）；位移过阈（触屏 8px / 鼠标 5px）在 `onDragMove` 转正（原初始化原样搬入 `activateDrag`）；未转正的 up = **点按选中**（Store 零变化），pointercancel 未转正 = 丢弃。
+- **D4/D6 手感**：`.arg-lyric-chip` 的 `touch-action` none→**pan-y**（竖滚归还浏览器，横拖转正后 preventDefault 接管）；转正时 `setPointerCapture`（防御包裹，window 监听兜底保留）；窄屏（≤640px）字块行高 24→36px（触屏可达性）。
+
+**取舍**：连按 10 次方向键要撤 10 次（时间窗合并留观察项）；打轴播放起点仍从段首（按字 seek 留观察项）；既有拖拽用例位移全部 ≥ 阈值，仅 t60 一条「按下即拖拽态」断言按新口径改写（注释已说明为何不是回归）。
+
+**自验**：新增 `tests/cases/t118-lyric-undo.js`（T118a–g：粘贴撤销 / no-op 不压栈 / V2 键盘粒度 / V3 打轴事务 / 清除恢复 / 栈上限裁头 / redo 清场）与 `tests/cases/t119-drag-threshold.js`（T119a–e：点按选中零变化 / 阈值分流 / 触屏 8px 档 / cancel 丢弃 / CSS 契约），全套 `node tests/run.js` **3811 PASS / 0 FAIL**。反向验证五变异全数命中目标断言：删压栈（18 红）/ 删 redo 清场（2 红）/ 打轴逐敲压栈（1 红）/ pointerdown 即建 drag（5 红）/ touch-action 回退（2 红）。
+
+---
+
 ## v2.48.0 · 新增：歌词「跟播打轴」+ 拖动磁性吸附锚点（开源范式落地，2026-09-27）
 
 **根因**（用户反馈）：拖动对齐"还是太粗糙、不够精准"。开源调研（KaddaOK Tools / lrc-maker / interact.js / wavesurfer.js Regions，详见仓库外调研记录）指向两个共识解：**打轴（tap-to-time）**——人在节奏现场逐字敲时刻，精度天然高于事后拖拽；**磁性吸附**——拖动目标不该是盲格，而是"那颗音符"。范式拿来、实现自写（运行时零依赖红线不动：interact.js 整库内联会污染 16 步检查链与体积，明确不做）。

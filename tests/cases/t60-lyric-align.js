@@ -351,8 +351,11 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   let chips = chipsOf(laneOf());
   const chip1 = chips[1];
   chip1.fire("pointerdown", { clientX: 100 });
-  ok(chip1.className.includes("dragging"), "按下进入拖拽态");
+  /* v2.49.0（D2）改写口径——这不是回归：拖拽改两段式，pointerdown 只记待转正 pend
+     （竖向滚动先归还浏览器），位移过阈（触屏 8px/鼠标 5px）才转正进拖拽态 */
+  ok(!chip1.className.includes("dragging"), "按下只记待转正，不立即进拖拽态（D2）");
   fireWin("pointermove", { clientX: 118.75 });
+  ok(chip1.className.includes("dragging"), "★ 位移过阈转正进入拖拽态");
   eq(chip1.style.left, "25%", "拖动中实时更新位置（行内 48/192，v2.35.0 分行口径）");
   eq(chip1.getAttribute("aria-label"), "第 2 个字「好」起点 48 tick，时值 24 tick", "拖动中 aria 同步");
   fireWin("pointerup", {});

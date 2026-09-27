@@ -90,6 +90,8 @@ const CASE_FILES = [
   "./cases/t115-lyric-rhythm-align",    // v2.46.0：歌词「按节奏对齐」（锚点口径 / 确认闸门 / 键盘微调 / 节奏参考层）
   "./cases/t116-arrange-rename-drag",   // v2.47.0：曲式改名 + 拖动新语义（现值快照 / 跟手吸附 / 钳住红边 / 半程换位）
   "./cases/t117-tap-magnet",            // v2.48.0：磁吸锚点 + 引导线 / 跟播打轴（端到端起播敲击 / 键盘层拦截）
+  "./cases/t118-lyric-undo",            // v2.49.0：歌词撤销/重做（唯一写入口 lyricCommit / no-op 不压栈 / V2 键盘粒度 / V3 打轴事务 / 栈上限 / redo 清场）
+  "./cases/t119-drag-threshold",        // v2.49.0：拖拽阈值分流（点按选中 / 8px/5px 阈 / cancel 丢弃 / touch-action:pan-y CSS 契约）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
