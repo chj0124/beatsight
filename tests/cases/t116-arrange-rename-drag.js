@@ -152,7 +152,9 @@ section("T116d 时值抓手 · 顶住红边 / 松手吸附 / 小抖动不动库"
 {
   const { beat, els, fireWin, arr, id, sec } = setup();
   const uid = sec.uid;
-  beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "你" }, { t: 24, dur: 24, ch: "好" }]);
+  /* v2.52.0（D5）：窄块（dur < 30）不渲染抓手——抓手路径改用宽块（dur 48）夹具；
+     邻字紧贴（t=48）保持「顶住 → 回原值」的原语义 */
+  beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 48, ch: "你" }, { t: 48, dur: 48, ch: "好" }]);
   beat.Store.deleteArrange(beat.DEMO_ID);
   beat.Arrange.open();
   sumOf(lyOf(els, 0)).fire("click");
@@ -161,15 +163,15 @@ section("T116d 时值抓手 · 顶住红边 / 松手吸附 / 小抖动不动库"
   const grip0 = chips[0].children[1];
 
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 300 + px(200) });      // 顶住邻字起点（24）还想加长
+  fireWin("pointermove", { clientX: 300 + px(200) });      // 顶住邻字起点（96）还想加长
   eq(/blocked/.test(chips[0].className), true, "★ 时值被顶住 → 红边反馈");
   fireWin("pointerup", {});
-  eq(beat.Store.findLyric(id, uid).chars[0].dur, 24, "顶住 → 吸附回原时值 → 不动库");
+  eq(beat.Store.findLyric(id, uid).chars[0].dur, 48, "顶住 → 吸附回原时值 → 不动库");
   ok(!/blocked/.test(chips[0].className), "抬手摘掉红边");
 
   const lineBefore = beat.Store.findLyric(id, uid);
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 300 - px(24) });       // 向左收 24t → 期望 0 → 钳在最短 12t
+  fireWin("pointermove", { clientX: 300 - px(48) });       // 向左收 48t → 期望 0 → 钳在最短 12t
   fireWin("pointerup", {});
   eq(beat.Store.findLyric(id, uid).chars[0].dur, 12, "★ 向左收到下限 12t 落库");
   eq(beat.Store.findLyric(id, uid) === lineBefore, false, "有变更 → 行对象更新");

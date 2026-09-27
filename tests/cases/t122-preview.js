@@ -90,7 +90,7 @@ section("T122b 互斥 · 试听中打轴先停试听 / 打轴期试听被拒");
 /* ================= 场景 T122c：游标与当前字高亮（同源一致性） ================= */
 section("T122c 游标 · 位置走 sectionPosTicks / left 与 .cur 同源 / 从选中字起播");
 {
-  const { beat, els, arr, id, uid } = setup();
+  const { beat, els, fireWin, arr, id, uid } = setup();
   const sec = arr.sections[0];
   beat.Arrange.previewSection(arr, 0, sec, 0);
   drive(FakeAudioContext.last, beat, 0.6);                // 推进：onset 端点落地 + 时钟前进
@@ -116,7 +116,7 @@ section("T122c 游标 · 位置走 sectionPosTicks / left 与 .cur 同源 / 从�
 
   /* 从选中字起播：点按选中第 2 字（t=48 → 段内 0 小节）→ 单小节段落点仍是段首 */
   chips[1].fire("pointerdown", { clientX: 100 });
-  els["arrangeOverlay"].fire("pointerup", {});
+  fireWin("pointerup", {});
   miniByAria(lyOf(els, 0), "从选中的字起播第 1 段").fire("click");
   eq(beat.Store.S.arrangeSel.from, 0, "从选中字起播 = 段首 + ⌊t/barTicks⌋（粗到小节）");
   beat.Arrange.close();

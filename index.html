@@ -927,12 +927,17 @@ input[type=range].vol{width:120px}
 .arg-lyric-lane{flex-basis:100%;display:flex;flex-direction:column;gap:3px;margin-top:4px}
 .arg-lyric-barrow{position:relative;height:24px;background:var(--card2);border-radius:5px}
 /* v2.49.0（D4）：touch-action none→pan-y——竖向滚动归还浏览器（横拖在阈值转正后
-   preventDefault 接管，见 bindDrag/activateDrag）；overflow 裁剪保留（期 4 D5 再议职责转移） */
-.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:hidden;touch-action:pan-y;user-select:none}
+   preventDefault 接管，见 bindDrag/activateDrag）。
+   v2.52.0（V9/D5）：overflow 裁剪职责移给 .arg-lyric-char——grip 的 ::after 热区要向右
+   外扩 10px，chip 自身裁剪会把热区剪掉（热区 = 视觉外、命中区在） */
+.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none}
 .arg-lyric-chip.dragging{cursor:grabbing;box-shadow:0 0 0 2px var(--green);transform:translateY(-22px) scale(1.06)}   /* v2.50.0（D3）：上浮——视觉位移，tick 换算只认 pointer 坐标，零换算改动 */
 .arg-lyric-chip.blocked{box-shadow:0 0 0 2px var(--red)}   /* v2.47.0（F2）：被邻居钳住还在推 → 红边可见反馈，不再静默 */
-.arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap}
+.arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap;overflow:hidden;max-width:100%}   /* v2.52.0（V9）：跨小节长字的裁剪职责自 chip 移来 */
 .arg-lyric-grip{position:absolute;top:0;right:0;width:10px;height:100%;cursor:ew-resize}   /* v2.47.0（F3）：6→10px——想移动误抓时值的头号来源就是它太窄 */
+/* v2.52.0（D5/V9）：grip 热区向右外扩 10px（视觉 10px、命中 20px）——F3 的继续加码：
+   热区贴边仍难命中，外扩半格才顺手；chip overflow 改 visible 后热区不再被裁 */
+.arg-lyric-grip::after{content:"";position:absolute;top:0;bottom:0;right:-10px;width:20px}
 /* 节奏参考层（v2.46.0）：拍线 + 音符起点刻度，画在小节行里、字块之下（DOM 顺序天然分层）。
    拖动/键盘对齐从此有参照物，不再纯肉眼；刻度是纯装饰 → aria-hidden，读屏读字块自己的 aria-label */
 .arg-lyric-beat{position:absolute;top:0;bottom:0;width:1px;background:var(--line);pointer-events:none}
@@ -960,6 +965,9 @@ input[type=range].vol{width:120px}
 .tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .tapbar[hidden]{display:none}
 .arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
+/* v2.52.0（R5）：流水线组头——flex-basis:100% 强制换行分段（不包容器，扁平契约）；
+   复用 .arg-pick-zone 的三区标题视觉语言 */
+.arg-lyric-head{flex-basis:100%;font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;margin-top:2px}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .arg-jump{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}   /* v2.10.23：三列 Grid——三键组**精确居中**（中列 auto），循环钮在右列贴着三键组排（用户要求：居中不考虑循环钮，循环顺着排）；循环隐藏时右列空置，三键组仍居中 */
@@ -2249,23 +2257,23 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2281  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2868  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4152  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4859  Modal         应用内弹窗
-     L4996  Viz           时值可视化渲染与每帧动画
-     L7267  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7923  Trainer       变速训练器
-     L8061  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8559  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9805  Editor        自定义节奏型编辑器
-     L10225 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10262 Ear           听辨训练（v1.10.0）
-     L10482 Arrange       曲式编排（v2.0.0）
-     L12706 Help          使用方法（v2.0.1）
-     L12789 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L12863 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13064 初始化（装配） 各模块 hook 接线与启动
+     L2289  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2876  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4160  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4867  Modal         应用内弹窗
+     L5004  Viz           时值可视化渲染与每帧动画
+     L7275  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7931  Trainer       变速训练器
+     L8069  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8567  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9813  Editor        自定义节奏型编辑器
+     L10233 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10270 Ear           听辨训练（v1.10.0）
+     L10490 Arrange       曲式编排（v2.0.0）
+     L12867 Help          使用方法（v2.0.1）
+     L12950 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13024 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13225 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2291,7 +2299,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.51.0";
+const VERSION = "2.52.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10518,6 +10526,8 @@ const Arrange = (() => {
   let lastLyricKey = null;             // Ctrl/⌘+Z 的路由目标（末次触碰段；为空则键盘撤销忽略）
   /** @type {null | { arrId: string, secUid: string, k: number }} */
   let selChip = null;                  // 选中字块（V5：模块态，重渲染按它回挂 .sel；期 4 批量用，期 1 先立态）
+  /* v2.52.0（R2）：批量平移范围（"全部字" / "从选中字"）。会话内存态，跨渲染存活、不落盘。 */
+  let shiftScope = "all";
   /** @type {any} */
   let selChipEl = null;                // 选中字块的元素句柄（点按选中就地摘/挂 .sel，不进 arrangeRender）
   /* v2.49.0（D2）：两段式拖拽的待转正记录。pointerdown 只记 pend 不建 drag——
@@ -10691,6 +10701,35 @@ const Arrange = (() => {
       Math.min(Math.min(CONFIG.lyricMaxDur, lim - d.t0), dur)), swap: 0, magnet: -1 };
   }
 
+  /** 显性换位助手（v2.52.0 D5）：k 与 k+1 交换时序（t/dur 互换，字各随索引位）——
+      与拖拽换位（onDragEnd 的 swap 分支）殊途同归**同一函数**，拖拽侧已改为调用它。
+      @param {any[]} chars @param {number} k @returns {any[]|null} 越界返回 null */
+  function swapChars(chars, k){
+    if (k < 0 || k + 1 >= chars.length) return null;
+    const a = chars[k], b = chars[k + 1];
+    const out = chars.slice();
+    out[k] = { t: b.t, dur: b.dur, ch: a.ch };
+    out[k + 1] = { t: a.t, dur: a.dur, ch: b.ch };
+    return out;
+  }
+
+  /** 整体平移（v2.52.0 R2 纯函数）：fromK 起（含）所有字 t += delta；整组钳制
+     （首字不早于 0、末字 t+dur 不越段长），钳后位移为 0 → 返回 null（调用方
+     announce「到头了」，不落库不动撤销栈）。dur/ch 原样保留。
+     @param {any[]} chars @param {number} fromK @param {number} delta @param {number} span @returns {any[]|null} */
+  function shiftLyricChars(chars, fromK, delta, span){
+    if (!chars.length || !delta) return null;
+    const from = Math.max(0, Math.min(fromK, chars.length - 1));
+    const tail = chars.slice(from);
+    const dMin = -tail[0].t;                                    // 首字不早于 0
+    const last = tail[tail.length - 1];
+    const dMax = span - (last.t + last.dur);                    // 末字 t+dur 不越段长
+    const d = Math.max(dMin, Math.min(dMax, delta));
+    if (d === 0) return null;
+    return chars.slice(0, from).concat(tail.map((/** @type {any} */ c) =>
+      ({ t: c.t + d, dur: c.dur, ch: c.ch })));
+  }
+
   function onDragEnd(){
     if (!drag) return;
     const d = drag;
@@ -10705,12 +10744,10 @@ const Arrange = (() => {
     const me = chars[d.k];
     if (!me) return;
     const r = getDropTarget(d);                          // v2.50.0（D1）：提交走唯一事实源
-    if (r.swap === 1){
-      chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch };
-      chars[d.k + 1] = { t: me.t, dur: me.dur, ch: chars[d.k + 1].ch };
-    } else if (r.swap === -1){
-      chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch };
-      chars[d.k - 1] = { t: me.t, dur: me.dur, ch: chars[d.k - 1].ch };
+    if (r.swap !== 0){
+      /* v2.52.0（D5）：换位走 swapChars——与「⇄ 与后字换位」按钮同一函数，殊途同归 */
+      const out = swapChars(chars, r.swap === 1 ? d.k : d.k - 1);
+      if (out) for (let i = 0; i < out.length; i++) chars[i] = out[i];
     } else {
       chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch };
     }
@@ -10962,11 +10999,6 @@ const Arrange = (() => {
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick`);
     bindDrag(chip, chip, lctx, k, "move");           // 拖本体 = 改起点 t
-    const grip = document.createElement("div");
-    grip.className = "arg-lyric-grip";
-    grip.title = "拖右缘改时值（拖字块本体 = 移动；顶着邻字推过去 = 换位）";
-    grip.setAttribute("aria-label", `拖动改第 ${k + 1} 个字「${c.ch}」的时值`);
-    bindDrag(grip, chip, lctx, k, "dur");            // 拖右缘抓手 = 改时值 dur
     /* 键盘微调（v2.46.0）：←/→ 移一格，Shift 移一拍。字块可聚焦（tabIndex），
        焦点态 = .arg-lyric-chip:focus-visible 蓝描边；原位更新不重渲染（见 moveChipKey） */
     chip.tabIndex = 0;
@@ -10976,7 +11008,18 @@ const Arrange = (() => {
       ev.preventDefault();
       moveChipKey(lctx, k, chip, d * (ev.shiftKey ? TPB : LYRIC_GRID));
     });
-    chip.appendChild(txt); chip.appendChild(grip);
+    chip.appendChild(txt);
+    /* v2.52.0（D5）：窄块（dur < 30 = 2.5 格）不渲染右缘抓手——10px 热区塞进 < 20px 的块里
+       「想移动误抓时值」必复发；窄块的时值改走精修行「时值±1格」按钮。
+       ★ append 顺序保持 [txt, grip]（t60 按 children[1] 定位抓手，v2.47.0 起） */
+    if (c.dur >= 30){
+      const grip = document.createElement("div");
+      grip.className = "arg-lyric-grip";
+      grip.title = "拖右缘改时值（拖字块本体 = 移动；顶着邻字推过去 = 换位）";
+      grip.setAttribute("aria-label", `拖动改第 ${k + 1} 个字「${c.ch}」的时值`);
+      bindDrag(grip, chip, lctx, k, "dur");            // 拖右缘抓手 = 改时值 dur
+      chip.appendChild(grip);
+    }
     rowEls[row].appendChild(chip);                   // v2.35.0：挂到所属小节行
     lctx.chipEls[k] = chip;                          // v2.50.0（D1）：swap-hint / 显性换位按 k 定位字块
     return chip;
@@ -11387,7 +11430,9 @@ const Arrange = (() => {
     }
     const arrow = document.createElement("span");
     arrow.className = "arg-lyric-arrow";
-    arrow.textContent = expanded ? "▾ 收起" : "▸ 展开编辑";
+    /* v2.52.0（R5）：摘要行预告展开后的流水线（贴词 → 粗对齐 → 打轴 → 精修 → 试听） */
+    arrow.textContent = expanded ? "▾ 收起"
+      : (line ? "贴词 / 对齐 / 打轴 / 微调 ▸" : "▸ 展开编辑");
     sum.appendChild(arrow);
     Modal.bindOverlay("arrangeOverlay", sum, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
@@ -11399,7 +11444,89 @@ const Arrange = (() => {
 
     if (!expanded) return ly;          // 折叠态：到摘要为止（段高从 ~130px 压到 ~30px）
 
-    /* —— 以下为展开态的编辑区（原 v2.1.0–v2.27.0 的全部控件，原样收进折叠门内）—— */
+    /* —— 以下为展开态的编辑区（原 v2.1.0–v2.27.0 的全部控件，原样收进折叠门内）——
+       v2.52.0（R5 流水线重排）：按操作顺序分四段——①贴词 → ②粗对齐 → ③精修 → 字块轨 → 试听行。
+       组头 = flex-basis:100% 的小标（**不包容器**，按钮仍是 ly 的直接子节点：
+       t60/t108 的定位零迁移，侧栏"扁平是硬约束"同一纪律）。 */
+
+    /* ① 贴词：粘贴框 + 清除 */
+    /** @param {string} text @returns {any} */
+    const head = text => {
+      const h = document.createElement("span");
+      h.className = "arg-lyric-head";
+      h.textContent = text;
+      h.setAttribute("aria-hidden", "true");       // 组头纯装饰，读屏走各钮自己的 aria-label
+      return h;
+    };
+    ly.appendChild(head("① 贴词"));
+
+    /* 粘贴框：change（回车/失焦）即按字均分落库，不做逐键重排——否则每敲一个字就把
+       手动微调过的位置冲掉，而"贴一整句"恰恰是先贴再拖的用法 */
+    const box = document.createElement("input");
+    box.className = "arg-lyric-paste";
+    box.type = "text";
+    box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch).join("") : "";
+    box.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：粘贴后回车按字均分");
+    Modal.bindOverlay("arrangeOverlay", box, "change", () => { distribute(a, uid, box.value); });
+    ly.appendChild(box);
+
+    const clr = document.createElement("button");
+    clr.className = "arg-mini"; clr.textContent = "清除";
+    clr.disabled = !line;
+    clr.setAttribute("aria-label", "清除第 " + (i + 1) + " 段的歌词");
+    Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      lyricCommit(a.id, uid, []);               // v2.49.0（R1）：清除 = 空数组提交（可撤销）
+      arrangeRender();
+    });
+    ly.appendChild(clr);
+
+    /* ② 粗对齐：按节奏对齐 + 跟播打轴 */
+    ly.appendChild(head("② 粗对齐"));
+
+    /* 按节奏对齐（v2.46.0；v2.52.0 V4 降级确认弹窗）：歌词有撤销栈了（v2.49.0），
+       「覆盖手动位置」不再需要弹窗硬挡——直接对齐 + announce 指路撤销（一次 = 一步） */
+    const aln = document.createElement("button");
+    aln.className = "arg-mini"; aln.textContent = "按节奏对齐";
+    aln.disabled = !line || !(span > 0);
+    aln.setAttribute("aria-label", "按节奏对齐第 " + (i + 1) + " 段歌词（覆盖手动位置，可撤销）");
+    Modal.bindOverlay("arrangeOverlay", aln, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      if (!line) return;
+      const onsets = secOnsetTicks(sec);
+      if (!onsets.length){
+        Modal.uiAlert("这一段的节奏型还不可用——先给块选一个节奏型，再按节奏对齐。");
+        return;
+      }
+      const n = Math.min(onsets.length, line.chars.length);
+      alignLyricToRhythm(a, sec, line);
+      arrangeRender();
+      announce("已对齐 " + n + " 字，可 Ctrl+Z 撤销");
+    });
+    ly.appendChild(aln);
+
+    /* 跟播打轴（v2.48.0①）：播放本段（单段循环），空格逐字落时刻——
+       拖拽是"事后对位置"，打轴是"人在节奏现场"，精度来自节奏感本身。
+       startTap 会关浮层回主视图（tapBar 悬浮条接引导）。
+       v2.50.0（R4/V8）：点按选中的字块属于本段 → 文案改「从第 k 字开打」，
+       startTap 从该字起（播放起点仍是段首——V8 拍板） */
+    const tapFrom = selChip && selChip.arrId === a.id && selChip.secUid === uid &&
+      line && selChip.k < line.chars.length ? selChip.k : 0;
+    const tapBtn = document.createElement("button");
+    tapBtn.className = "arg-mini";
+    tapBtn.textContent = tapBtnText(tapFrom);
+    tapBtn.disabled = !line || !(span > 0);
+    tapBtn.title = tapBtnTip(tapFrom);
+    tapBtn.setAttribute("aria-label", "跟播打轴第 " + (i + 1) + " 段歌词" +
+      (tapFrom > 0 ? "（从第 " + (tapFrom + 1) + " 字起）" : ""));
+    Modal.bindOverlay("arrangeOverlay", tapBtn, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      startTap(a, sec, line, tapFrom);
+    });
+    ly.appendChild(tapBtn);
+
+    /* ③ 精修：撤销/重做 + 批量平移 + 显性换位 + 时值微调 */
+    ly.appendChild(head("③ 精修"));
 
     /* 撤销/重做（v2.49.0 R1）：作用域 = 本段歌词。置灰由栈长决定；undo/redo 内部
        applyLyricSnap 自带 arrangeRender，无需再调 */
@@ -11425,88 +11552,137 @@ const Arrange = (() => {
     });
     ly.appendChild(redoBtn);
 
-    /* 循环本行（F2，v2.2.0）：把这句歌词设成「只播这一段 + 循环 + 变速爬坡」。
-       无歌词行的段不给按钮——「循环一句还没有词的话」是个空动作 */
-    if (line){
-      const loopBtn = document.createElement("button");
-      loopBtn.className = "arg-mini arg-lyric-loop";
-      loopBtn.textContent = "循环本行";
-      loopBtn.setAttribute("aria-label", "循环第 " + (i + 1) + " 段的歌词行（自动配变速爬坡）");
-      Modal.bindOverlay("arrangeOverlay", loopBtn, "click", (/** @type {any} */ e) => {
+    /* 批量平移（v2.52.0 R2）：六颗 arg-mini（∓1拍 / ∓半拍 / ∓1格）+ 范围二选一。
+       一次点击 = shiftLyricChars 整组平移 = 一步撤销（R2 核心断言）；
+       范围「从选中字」= selChip 起（含）之后的字整体动、前面的字不动。
+       到头（钳后位移 0）→ announce 指路、不落库。 */
+    /** @param {string} label @param {boolean} isAll @returns {any} */
+    const mkScope = (label, isAll) => {
+      const b = document.createElement("button");
+      b.className = "arg-mini" + ((shiftScope === "all") === isAll ? " cur" : "");
+      b.textContent = ((shiftScope === "all") === isAll ? "✓ " : "") + label;
+      b.setAttribute("aria-label", "批量平移范围：" + label + (shiftScope === "all" === isAll ? "（当前）" : ""));
+      Modal.bindOverlay("arrangeOverlay", b, "click", (/** @type {any} */ e) => {
         evEl(e).blur();
-        loopLyricSection(a.id, uid);
+        shiftScope = isAll ? "all" : "sel";
         arrangeRender();
       });
-      ly.appendChild(loopBtn);
-    }
+      return b;
+    };
+    ly.appendChild(mkScope("全部字", true));
+    ly.appendChild(mkScope("从选中字", false));
+    /** @param {string} label @param {number} delta @param {string} aria @returns {any} */
+    const mkShift = (label, delta, aria) => {
+      const b = document.createElement("button");
+      b.className = "arg-mini";
+      b.textContent = label;
+      b.disabled = !line || !(span > 0);
+      b.title = aria;
+      b.setAttribute("aria-label", aria + "（第 " + (i + 1) + " 段）");
+      Modal.bindOverlay("arrangeOverlay", b, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        const fresh = Store.findLyric(a.id, uid);
+        if (!fresh || !fresh.chars.length) return;
+        const fromK = shiftScope === "sel" && selChip && selChip.arrId === a.id &&
+          selChip.secUid === uid && selChip.k < fresh.chars.length ? selChip.k : 0;
+        const out = shiftLyricChars(fresh.chars, fromK, delta, span);
+        if (!out){ announce("已经到头了，移不动"); return; }
+        lyricCommit(a.id, uid, out);
+        arrangeRender();
+      });
+      return b;
+    };
+    ly.appendChild(mkShift("◀1拍", -TPB, "整段左移一拍"));
+    ly.appendChild(mkShift("◀半拍", -LYRIC_BASE, "整段左移半拍"));
+    ly.appendChild(mkShift("◀1格", -LYRIC_GRID, "整段左移一格（十六分）"));
+    ly.appendChild(mkShift("1格▶", LYRIC_GRID, "整段右移一格（十六分）"));
+    ly.appendChild(mkShift("半拍▶", LYRIC_BASE, "整段右移半拍"));
+    ly.appendChild(mkShift("1拍▶", TPB, "整段右移一拍"));
 
-    /* 粘贴框：change（回车/失焦）即按字均分落库，不做逐键重排——否则每敲一个字就把
-       手动微调过的位置冲掉，而"贴一整句"恰恰是先贴再拖的用法 */
-    const box = document.createElement("input");
-    box.className = "arg-lyric-paste";
-    box.type = "text";
-    box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch).join("") : "";
-    box.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：粘贴后回车按字均分");
-    Modal.bindOverlay("arrangeOverlay", box, "change", () => { distribute(a, uid, box.value); });
-    ly.appendChild(box);
-
-    const clr = document.createElement("button");
-    clr.className = "arg-mini"; clr.textContent = "清除";
-    clr.disabled = !line;
-    clr.setAttribute("aria-label", "清除第 " + (i + 1) + " 段的歌词");
-    Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
+    /* 显性换位（v2.52.0 D5）：选中字与后字交换时序——与拖拽换位走同一 swapChars，
+       殊途同归。可用性点击时现判（点按选中不重渲染，disabled 会陈旧）。 */
+    const swapBtn = document.createElement("button");
+    swapBtn.className = "arg-mini";
+    swapBtn.textContent = "⇄ 与后字换位";
+    swapBtn.disabled = !line;
+    swapBtn.title = "选中的字与它的后一个字交换时序（同拖拽换位）";
+    swapBtn.setAttribute("aria-label", "选中的字与后字换位（第 " + (i + 1) + " 段）");
+    Modal.bindOverlay("arrangeOverlay", swapBtn, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
-      lyricCommit(a.id, uid, []);               // v2.49.0（R1）：清除 = 空数组提交（可撤销）
+      const fresh = Store.findLyric(a.id, uid);
+      const k = selChip && selChip.arrId === a.id && selChip.secUid === uid &&
+        fresh && selChip.k < fresh.chars.length ? selChip.k : -1;
+      const out = k >= 0 ? swapChars(fresh.chars, k) : null;
+      if (!out){ announce("先点按选中一个字块（且它后面还有字），再换位"); return; }
+      lyricCommit(a.id, uid, out);
       arrangeRender();
     });
-    ly.appendChild(clr);
+    ly.appendChild(swapBtn);
 
-    /* 按节奏对齐（v2.46.0）：把现有字逐一对到段内发声锚点。覆盖手动微调且歌词无撤销栈
-       → 先 uiConfirm（沙盒里原生 confirm 被静默拦截，v0.4.6 起一律走应用内弹窗）；
-       无字或无坐标系时禁用，锚点为空（型不可解析）给 uiAlert 指路 */
-    const aln = document.createElement("button");
-    aln.className = "arg-mini"; aln.textContent = "按节奏对齐";
-    aln.disabled = !line || !(span > 0);
-    aln.setAttribute("aria-label", "按节奏对齐第 " + (i + 1) + " 段歌词（覆盖手动位置）");
-    Modal.bindOverlay("arrangeOverlay", aln, "click", (/** @type {any} */ e) => {
-      evEl(e).blur();
-      if (!line) return;
-      const onsets = secOnsetTicks(sec);
-      if (!onsets.length){
-        Modal.uiAlert("这一段的节奏型还不可用——先给块选一个节奏型，再按节奏对齐。");
-        return;
+    /* 窄块时值微调（v2.52.0 D5）：dur < 30（2.5 格）的窄块不渲染 grip，拖不了右缘——
+       两颗按钮补上这条路径（dur 钳制与拖右缘同一口径）。常驻渲染、点击时校验选中
+       （点按选中不重渲染，渲染期 disabled 会陈旧）。 */
+    /** @param {string} label @param {number} sign @param {string} aria @returns {any} */
+    const mkDur = (label, sign, aria) => {
+      const b = document.createElement("button");
+      b.className = "arg-mini";
+      b.textContent = label;
+      b.disabled = !line;
+      b.title = aria;
+      b.setAttribute("aria-label", aria + "（第 " + (i + 1) + " 段）");
+      Modal.bindOverlay("arrangeOverlay", b, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        const fresh = Store.findLyric(a.id, uid);
+        const k = selChip && selChip.arrId === a.id && selChip.secUid === uid &&
+          fresh && selChip.k < fresh.chars.length ? selChip.k : -1;
+        if (k < 0){ announce("先点按选中一个字块，再调它的时值"); return; }
+        const cs = fresh.chars, c = cs[k];
+        const lim = Math.min(span, k + 1 < cs.length ? cs[k + 1].t : span);
+        const dur = Math.round((c.dur + sign * LYRIC_GRID) / LYRIC_GRID) * LYRIC_GRID;
+        const out = cs.map((/** @type {any} */ x, /** @type {number} */ idx) =>
+          idx === k ? { t: c.t,
+            dur: Math.max(LYRIC_MIN_DUR, Math.min(Math.min(CONFIG.lyricMaxDur, lim - c.t), dur)),
+            ch: c.ch } : { t: x.t, dur: x.dur, ch: x.ch });
+        lyricCommit(a.id, uid, out, { cue: true });
+        arrangeRender();
+      });
+      return b;
+    };
+    ly.appendChild(mkDur("时值−1格", -1, "选中字的时值缩一格（十六分）"));
+    ly.appendChild(mkDur("时值+1格", 1, "选中字的时值延一格（十六分）"));
+
+    const lane = document.createElement("div");
+    lane.className = "arg-lyric-lane";
+    /* v2.35.0（用户反馈）：编辑轨从"整段一行"改**每小节一行**——与主界面歌词轨（v2.7.2）同构，
+       28 字挤一行没法看。渲染分行，**拖动换算零改动**：perTick 仍按"行宽 px / 全段 tick"
+       （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
+       字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
+       拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [] };
+    if (span > 0){
+      const barTicks = Math.max(1, Math.round(span / secBars(sec)));
+      lctx.barTicks = barTicks;
+      lctx.rows = Math.max(1, Math.ceil(span / barTicks));
+      const rowEls = [];
+      for (let r = 0; r < lctx.rows; r++){
+        const bar = document.createElement("div");
+        bar.className = "arg-lyric-barrow";
+        lane.appendChild(bar);
+        rowEls.push(bar);
+        mkLyricRefs(bar, sec, r, lctx.barTicks);   // v2.46.0：参考层先画（DOM 顺序 = 字块压在刻度之上）
       }
-      const n = Math.min(onsets.length, line.chars.length);
-      Modal.uiConfirm(
-        "按节奏对齐会把本段 " + line.chars.length + " 个字逐一对到 " + n +
-        " 个发声点上（空扫与三连音位不作落点），覆盖现在的手动位置。继续？",
-        () => { alignLyricToRhythm(a, sec, line); arrangeRender(); },
-        { okText: "对齐" });
-    });
-    ly.appendChild(aln);
+      /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
+         两边看到的字集必须一致，否则"界面上有、听不到" */
+      for (let k = 0; k < lctx.chars.length; k++){
+        if (lctx.chars[k].t >= span) continue;
+        mkLyricChip(lctx, k, rowEls);
+      }
+    }
+    ly.appendChild(lane);
+    laneBySec.set(uid, { lane: lane, chipEls: lctx.chipEls });   // v2.51.0（R3）：试听游标查表（随渲染重建）
 
-    /* 跟播打轴（v2.48.0①）：播放本段（单段循环），空格逐字落时刻——
-       拖拽是"事后对位置"，打轴是"人在节奏现场"，精度来自节奏感本身。
-       startTap 会关浮层回主视图（tapBar 悬浮条接引导）。
-       v2.50.0（R4/V8）：点按选中的字块属于本段 → 文案改「从第 k 字开打」，
-       startTap 从该字起（播放起点仍是段首——V8 拍板） */
-    const tapFrom = selChip && selChip.arrId === a.id && selChip.secUid === uid &&
-      line && selChip.k < line.chars.length ? selChip.k : 0;
-    const tapBtn = document.createElement("button");
-    tapBtn.className = "arg-mini";
-    tapBtn.textContent = tapBtnText(tapFrom);
-    tapBtn.disabled = !line || !(span > 0);
-    tapBtn.title = tapBtnTip(tapFrom);
-    tapBtn.setAttribute("aria-label", "跟播打轴第 " + (i + 1) + " 段歌词" +
-      (tapFrom > 0 ? "（从第 " + (tapFrom + 1) + " 字起）" : ""));
-    Modal.bindOverlay("arrangeOverlay", tapBtn, "click", (/** @type {any} */ e) => {
-      evEl(e).blur();
-      startTap(a, sec, line, tapFrom);
-    });
-    ly.appendChild(tapBtn);
-
-    /* 原速试听（v2.51.0 R3，V6）：单段循环 + 原速 + 不动变速训练；浮层保持打开，
-       游标在歌词轨上走——「对完位置马上听效果」的验证闭环。与打轴互斥（浮层开合保证）。 */
+    /* 试听行（v2.52.0 R5）：▶ 试听本段 / ▶ 从选中字 / 变速练唱（爬坡）——
+       「循环本行」更名「变速练唱（爬坡）」（R5 语义如实：它本来就是循环 + 爬坡） */
     const isPrev = preview && preview.arrId === a.id && preview.secUid === uid;
     const prevBtn = document.createElement("button");
     prevBtn.className = "arg-mini";
@@ -11539,35 +11715,20 @@ const Arrange = (() => {
     });
     ly.appendChild(fromBtn);
 
-    const lane = document.createElement("div");
-    lane.className = "arg-lyric-lane";
-    /* v2.35.0（用户反馈）：编辑轨从"整段一行"改**每小节一行**——与主界面歌词轨（v2.7.2）同构，
-       28 字挤一行没法看。渲染分行，**拖动换算零改动**：perTick 仍按"行宽 px / 全段 tick"
-       （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
-       字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
-       拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [] };
-    if (span > 0){
-      const barTicks = Math.max(1, Math.round(span / secBars(sec)));
-      lctx.barTicks = barTicks;
-      lctx.rows = Math.max(1, Math.ceil(span / barTicks));
-      const rowEls = [];
-      for (let r = 0; r < lctx.rows; r++){
-        const bar = document.createElement("div");
-        bar.className = "arg-lyric-barrow";
-        lane.appendChild(bar);
-        rowEls.push(bar);
-        mkLyricRefs(bar, sec, r, lctx.barTicks);   // v2.46.0：参考层先画（DOM 顺序 = 字块压在刻度之上）
-      }
-      /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
-         两边看到的字集必须一致，否则"界面上有、听不到" */
-      for (let k = 0; k < lctx.chars.length; k++){
-        if (lctx.chars[k].t >= span) continue;
-        mkLyricChip(lctx, k, rowEls);
-      }
+    /* 变速练唱（原「循环本行」，F2，v2.2.0；v2.52.0 更名）：循环本段 + 变速爬坡。
+       无歌词行的段不给按钮——「循环一句还没有词的话」是个空动作 */
+    if (line){
+      const loopBtn = document.createElement("button");
+      loopBtn.className = "arg-mini arg-lyric-loop";
+      loopBtn.textContent = "变速练唱（爬坡）";
+      loopBtn.setAttribute("aria-label", "变速练唱：循环第 " + (i + 1) + " 段的歌词行（自动配变速爬坡）");
+      Modal.bindOverlay("arrangeOverlay", loopBtn, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        loopLyricSection(a.id, uid);
+        arrangeRender();
+      });
+      ly.appendChild(loopBtn);
     }
-    ly.appendChild(lane);
-    laneBySec.set(uid, { lane: lane, chipEls: lctx.chipEls });   // v2.51.0（R3）：试听游标查表（随渲染重建）
 
     const tip = document.createElement("div");
     tip.className = "arg-lyric-tip";
@@ -12700,7 +12861,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */

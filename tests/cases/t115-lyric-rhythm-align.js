@@ -97,8 +97,10 @@ section("T115b alignLyricToRhythm · 逐字对锚点 / dur=到下一字 / 余字
   eq(got.map(c => c.ch).join(""), "一二三四五", "丢的是排不下的尾字，字序不乱");
 }
 
-/* ================= 场景 T115c：按钮 → uiConfirm → 生效 / 取消不动库 ================= */
-section("T115c 按节奏对齐 · 确认弹窗闸门（覆盖手动位置前先问）");
+/* ================= 场景 T115c：一键对齐（v2.52.0 V4：确认弹窗降级为 announce） =================
+   v2.49.0 歌词有了撤销栈，「覆盖手动位置」不再需要弹窗硬挡——点击即对齐，
+   announce 指路 Ctrl+Z；误触 = 一步撤销（原确认弹窗断言随语义退役，这不是回归）。 */
+section("T115c 按节奏对齐 · 点击即生效 / announce 指路撤销 / 可撤销");
 {
   const { beat, els, arr, sec } = setup();
   const uid0 = sec(0).uid;
@@ -112,18 +114,15 @@ section("T115c 按节奏对齐 · 确认弹窗闸门（覆盖手动位置前先�
   const ly2 = lyOf(els, 0);
   const aln = findBtn(ly2, "按节奏对齐");
   ok(!!aln, "展开态出现「按节奏对齐」按钮");
-  const t0 = beat.Store.findLyric(arr.id, uid0).chars.map(c => c.t).join(",");
   aln.fire("click");
-  eq(beat.Store.findLyric(arr.id, uid0).chars.map(c => c.t).join(","), t0,
-     "★ 弹确认前不动库（覆盖手动位置必须先过用户）");
-  ok((els["modalMsg"].textContent || "").includes("按节奏对齐") &&
-     (els["modalMsg"].textContent || "").includes("覆盖"), "确认弹窗说清后果（覆盖手动位置）");
-  els["modalCancel"].fire("click");
-  eq(beat.Store.findLyric(arr.id, uid0).chars.map(c => c.t).join(","), t0, "取消 → 数据分毫未动");
-  aln.fire("click");
-  els["modalOk"].fire("click");
   eq(beat.Store.findLyric(arr.id, uid0).chars.map(c => c.t).join(","), "0,48,72,96,144",
-     "确认 → 5 字逐一对到 5 个锚点");
+     "★ 点击即对齐：5 字逐一对到 5 个锚点（V4：不再弹确认）");
+  ok((els["srAnnounce"].textContent || "").indexOf("已对齐 5 字") === 0 &&
+     (els["srAnnounce"].textContent || "").indexOf("Ctrl+Z") > 0,
+     "★ announce 说清结果与撤销出路");
+  ok(beat.Arrange.lyricUndo(arr.id, uid0) === true, "对齐可撤销（一步）");
+  eq(beat.Store.findLyric(arr.id, uid0).chars.map(c => c.t).join(","), "0,24,48,72,96",
+     "撤销 → 回到对齐前的手动位置");
   beat.Arrange.close();
 }
 

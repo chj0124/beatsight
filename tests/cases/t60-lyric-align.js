@@ -334,7 +334,9 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   ok(byCls(ly2, /arg-lyric-tip/).textContent.includes("4 个字"), "提示同步字数");
   eq(chipsOf(lane2)[0].getAttribute("aria-label"),
      "第 1 个字「你」起点 0 tick，时值 24 tick", "字块 aria 标签含位置");
-  eq(chipsOf(lane2)[0].children[1].className, "arg-lyric-grip", "字块右缘有时值抓手");
+  /* v2.52.0（D5）：窄块（dur 24 < 30 = 2.5 格）不渲染抓手——时值改走精修行「时值±1格」；
+     抓手路径的回归改用宽块（下方 dur 48 夹具） */
+  eq(chipsOf(lane2)[0].children.length, 1, "★ 窄块只有字文本、无抓手（D5 降级）");
 
   /* 段落放不下的部分不录（768 / 24 = 32 字上限） */
   byCls(ly2, /arg-lyric-paste/).value = "字".repeat(40);
@@ -379,26 +381,28 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   eq(swapped[0].ch + swapped[1].ch, "好你", "★ 推过邻字半程松手 = 换位（F4 甲）：好 换到 0");
   eq(swapped[1].t, 24, "换位 = 时序互换：你 接到 好 的原位（24）");
 
-  /* 拖右缘改时值：连续跟手，松手吸附；向左收到下限（12t）落库 */
-  chips = chipsOf(laneOf());                        // 好@0(24) / 你@24(24) —— 满铺，时值只能向内收
+  /* v2.52.0（D5）：窄块无抓手 → 时值抓手路径改用**宽块**（dur 48 ≥ 2.5 格）走。
+     「吸附回原值不动库」用例随本次迁移删除（v2.49.0 起拖拽提交的 no-op 早退已由
+     t118b「原地松手不压栈」覆盖，此处保留会因元素重建而空转） */
+  St.upsertLyric("t1", "s1", [{ t: 0, dur: 48, ch: "你" }, { t: 96, dur: 48, ch: "好" }]);
+  const sumEl = () => byCls(els["argSections"].children[0].children[4], /arg-lyric-sum/);
+  sumEl().fire("click"); sumEl().fire("click");     // 收起再展开：按新词重渲染
+  chips = chipsOf(laneOf());                        // 你@0(48) / 好@96(48)
   const grip0 = chips[0].children[1];
+  ok(!!grip0 && grip0.className === "arg-lyric-grip", "宽块（48t ≥ 2.5 格）右缘有抓手（D5 对照）");
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 281.25 });      // −24tick → 期望 0，被最短时值（12t）钳住
+  fireWin("pointermove", { clientX: 262.5 });       // −48tick → 期望 0，被最短时值（12t）钳住
   fireWin("pointerup", {});
   eq(St.findLyric("t1", "s1").chars[0].dur, 12, "★ 时值收到下限 12t 落库（连续跟手 + 松手吸附）");
-  const lineAfter = St.findLyric("t1", "s1");
-  grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 302.34 });      // +3tick < 半格 → 吸附回原时值
-  fireWin("pointerup", {});
-  ok(St.findLyric("t1", "s1") === lineAfter, "吸附回原值 → 不动库（行对象不变，v2.1.0 同口径）");
 
   /* 最后一个字没有右邻：时值真改 */
+  chips = chipsOf(laneOf());                        // 提交后重渲染，现取
   const grip1 = chips[1].children[1];
   grip1.fire("pointerdown", { clientX: 400 });
-  fireWin("pointermove", { clientX: 418.75 });      // +24tick → 48
-  eq(chips[1].style.width, "25%", "时值拖动中宽度实时更新（行内 48/192，v2.35.0 分行口径）");
+  fireWin("pointermove", { clientX: 418.75 });      // +24tick → 72
+  eq(chips[1].style.width, "37.5%", "时值拖动中宽度实时更新（行内 72/192，v2.35.0 分行口径）");
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", "s1").chars[1].dur, 48, "拖右缘改时值落库");
+  eq(St.findLyric("t1", "s1").chars[1].dur, 72, "拖右缘改时值落库");
 
   /* 清除 */
   let ly4 = els["argSections"].children[0].children[4];
