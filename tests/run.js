@@ -85,6 +85,7 @@ const CASE_FILES = [
   "./cases/t110-crosslink",             // v2.37.0：编排↔编辑器双向关联（候选徽标+✎跳转 / 编辑器引用提示 / 宽屏封顶 / 帮助图 template 化）
   "./cases/t111-cross-row-ball",        // v2.42.9：跨行大抛物线（终端弧落点 = 下一颗发声 / 待命球跨行下降段 / 正常接力对照 / REDUCE_MOTION）
   "./cases/t112-playhead-gap-sweep",    // v2.43.0：跨行缺口播放杆扫入（下一行左缘线性扫到发声点 / 与待命球同步 / 正常接力对照 / 多行缺口逐行推进）
+  "./cases/t113-rename-btn-clickable",  // v2.44.2：✎ 改名按钮必须可点（mousedown 掐聚焦防布局抖动 / 不误伤 📁 / click 仍停冒泡弹框 / 全条目一致挂载）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

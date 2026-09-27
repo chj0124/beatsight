@@ -2199,14 +2199,14 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
      L7840  Trainer       变速训练器
      L7978  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      L8476  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9711  Editor        自定义节奏型编辑器
-     L10101 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10138 Ear           听辨训练（v1.10.0）
-     L10358 Arrange       曲式编排（v2.0.0）
-     L11708 Help          使用方法（v2.0.1）
-     L11791 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L11865 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L12066 初始化（装配） 各模块 hook 接线与启动
+     L9722  Editor        自定义节奏型编辑器
+     L10112 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10149 Ear           听辨训练（v1.10.0）
+     L10369 Arrange       曲式编排（v2.0.0）
+     L11719 Help          使用方法（v2.0.1）
+     L11802 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L11876 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L12077 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2232,7 +2232,7 @@ body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.43.0";
+const VERSION = "2.44.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8510,12 +8510,23 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      内置 = 空输入恢复原名，自定义 = 空输入取消）。
      键盘可达与 .del 同契约：原生 <button> 自带 Enter/Space 激活，无需再登记。
      改名成功后的刷新统一 refreshAfterPatternChange()：列表条目、当前型标题、
-     待命型展示全部重建——改名是显示层事件，刷一次列表就是全部 UI 义务。 */
+     待命型展示全部重建——改名是显示层事件，刷一次列表就是全部 UI 义务。
+     ★ v2.44.2：按下时不要抢焦点，否则桌面 hover 设备上 ✎ 点不动（见下 mousedown 注）。 */
   /** @param {HTMLElement} item @param {() => void} onRename */
   function pushRenameBtn(item, onRename){
     const pen = document.createElement("button");
     pen.className = "ren"; pen.title = "重命名"; pen.setAttribute("aria-label", "重命名");
     pen.textContent = "✎";
+    /* ★ 为什么掐掉 <button> 的"按下即聚焦"默认行为（v2.44.2 修的 P0）：
+       hover 设备上 `.preset-item:focus-within .grp` 会让 📁 在聚焦的**那一刻**从
+       display:none 拉成 inline-block，条目整行变宽、✎ 被向左挤走（实测左移 85.7px）。
+       于是鼠标按下时命中 ✎、松开时底下已经换成了 📁——两者不是同一元素，
+       浏览器**不派发 click**：改名框永远弹不出来，用户看到的就是"点了没反应"。
+       而那次兜底派发出来的 click 还会冒到条目本体，顺手把该节奏型选中播了。
+       preventDefault 只影响鼠标按下这一个入口：Tab 聚焦与 :focus-within 那条
+       「键盘可达性」分支毫发无损（Tab 不经过 mousedown），鼠标用户点完弹窗关闭后
+       焦点依旧归位到原触发元素。 */
+    pen.addEventListener("mousedown", e => e.preventDefault());
     pen.addEventListener("click", e => { e.stopPropagation(); onRename(); });
     item.appendChild(pen);
   }

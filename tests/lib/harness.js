@@ -228,12 +228,21 @@ function makeEl(id){
     /* 真实 DOM 的 click() 会触发自身 click 处理器（导出预设里的 <a download> 就是靠它） */
     click(){ this.fire("click", {}); },
     closest(){ return makeEl("closest-proxy"); },   // 近似真实 DOM：返回带 classList 的祖先代理
-    /* 测试辅助：触发已绑定的事件 */
+    /* 测试辅助：触发已绑定的事件。
+       ★ v2.44.2：preventDefault / stopPropagation 现在**真做事**（置 defaultPrevented /
+       stopped / stoppedImmediate 并回传给调用方），不再是一对空函数——留空会让"按下时
+       掐掉默认聚焦"这类修复变成测不出来的橡皮图章。调用方显式传同名键时以其为准
+       （Object.assign 在后覆盖），语义与真实 DOM 一致。返回事件对象，断言可读回。 */
     fire(t, ev){
-      (this._h[t] || []).forEach(f => f(Object.assign({
+      const base = {
         currentTarget: el, target: el,
-        preventDefault(){}, stopPropagation(){}, stopImmediatePropagation(){},
-      }, ev)));
+        preventDefault(){ base.defaultPrevented = true; },
+        stopPropagation(){ base.stopped = true; },
+        stopImmediatePropagation(){ base.stoppedImmediate = true; },
+      };
+      const e = Object.assign(base, ev);
+      (this._h[t] || []).forEach(f => f(e));
+      return e;
     },
   };
   /* className 与 classList 共享同一份 Set；写入计数用于断言增量重绘的收益。

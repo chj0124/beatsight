@@ -9,6 +9,40 @@
 
 ---
 
+## v2.44.2 · 修复：预设库 ✎ 改名图标点了没反应（P0，桌面 hover 设备专属）（2026-09-27）
+
+**根因**（用户实测报障：「点击节奏型预设库里节奏型旁边的编辑图标，没有反应」）：
+不是 handler 丢了，而是 **click 事件压根没派发**。真浏览器逐帧取证（CDP）时间线：
+
+```
+mousedown → BUTTON.ren        鼠标按下，命中 ✎ 自己
+   └─ 按下瞬间 <button> 获得焦点 → .preset-item 进入 :focus-within
+      └─ CSS `.preset-item:focus-within .grp{display:inline-block}` 把旁边的 📁
+         从 display:none 拉出来 → 条目整行变宽 → ✎ 被向左挤走（实测 x 1197.8 → 1112.1，位移 85.7px）
+mouseup   → BUTTON.grp        鼠标坐标底下已经换成 📁
+```
+
+两者不是同一元素 ⇒ 浏览器不派发 click ⇒ 改名框永远弹不出来。更糟的是兜底派发到共同祖先
+的那个 click 会冒到条目本体，**顺手把该节奏型选中播了**。
+
+**为什么这么久没被发现**：只伤桌面 hover 设备（`@media (hover:hover) and (pointer:fine)`
+命中）；触屏上 📁 本就常显、布局不跳，所以手机上完全正常。而测试桩**没有布局引擎**，
+`.grp` 的 display 切换不会挪动 ✎ 的位置——「点了没反应」在桩上**根本复现不出来**。
+
+**修法**：✎ 的 `mousedown` 默认行为掐掉（`<button>` 的「按下即聚焦」）——聚焦不发生、
+布局不抖。改在 `pushRenameBtn` 一处，内置型与自定义型两个挂载点一起覆盖。
+
+**取舍**：只影响鼠标按下这一个入口。Tab 聚焦与 `:focus-within` 那条「键盘可达性」分支毫发
+无损（Tab 不经过 mousedown）；鼠标用户点完弹窗关闭后焦点依旧归位到原触发元素。
+★ 没有动 CSS 的 `:focus-visible` 方案：那要依赖 `:has()`（Chrome 105+/Safari 15.4+），
+本项目对浏览器下限没有明确保证，而这一行 JS 是零兼容性风险的。
+
+**自验**：新增 `tests/cases/t113-rename-btn-clickable`（T113a–T113c，10 条断言）；
+`tests/lib/harness.js` 的桩事件 `preventDefault` / `stopPropagation` 由空函数改为**真做事**
+并回传给调用方（否则这类修复在桩上是测不出来的橡皮图章）。
+`tests/run.js` 3577 PASS / 0 FAIL（+10）。**反向验证**：删掉 `mousedown` 拦截后恰好 2 条
+具名断言转红（T113a 的 preventDefault / T113c 的「漏挂」），其余 3575 条一条不动。
+
 ## v2.43.0 · 新增：跨行缺口期间播放杆跟随待命球扫入下一行（用户追问驱动，A 方案）（2026-09-27）
 
 **根因**（v2.42.9 交付后用户追问：待命球转正那一刻，播放杆才从上一行行尾瞬移到下一行的
