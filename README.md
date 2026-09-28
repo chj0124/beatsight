@@ -21,7 +21,7 @@
 
 ## 功能现状
 
-当前 `v2.75.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v2.75.1`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 ### 节拍内核
 
@@ -112,7 +112,7 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 
 **发布前清单**：① `node tools/check-all.js`（全量）通过 —— Cloudflare 构建时会再跑一遍；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` 与品牌区徽章两处显示自动跟着变）；③ 视觉 / 手感类改动人眼过一遍——`node tools/smoke.js` 能验「能启动、无控制台报错、版本号一致、网格渲染、关键样式、Service Worker、帧率」，但看不出「好不好用」；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
 
-### 双渠道部署对账（v2.75.0）
+### 双渠道部署对账（v2.75.1）
 
 BeatSight 有两条对外渠道，但共用同一份源码真相：
 

@@ -125,9 +125,9 @@ body.wide-full .main{max-width:none}
 .viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}   /* v2.40.0：开关胶囊去自带底色——组内只留一层组底（观测台主题的描边一并去） */
 @media (max-width:1439.9px){
   /* v2.42.7（用户截图报障）：窄屏（纵向堆叠布局）四张组容器卡统一撑满列宽——
-     此前三种宽度策略并存：音量卡钉死 352px（v2.10.18 为宽屏防抖设计）、BPM 卡
+     此前三种宽度策略并存：音量卡钉死 312px（v2.10.18 固定宽防抖；v2.75.1 缩 40px 让给 BPM 卡）、BPM 卡
      内容自适应、开关/行数卡撑满 → 右缘参差（568px 实测 352/310/489/489，三种宽度）。
-     ≥1440 的 2×2 网格与 ≥1900 的四块一行不受影响（352px 首列等既有规则保留）。 */
+     ≥1440 的 2×2 网格与 ≥1900 的四块一行同批缩窄（312px 首列）。 */
   .viz-head-grid .card-head-left,
   .viz-head-grid .viz-head > .group,
   .viz-head-grid .viz-toggles,
@@ -168,8 +168,8 @@ body.wide-full .main{max-width:none}
      418（盒 352，留 66px 死空间）、BPM 列被压到 294（内容 340，快捷档折行把行 1 撑高到 281）。
      max-content 严格贴内容：间隙恒等 14、三块等高由 stretch 保证。断点 1280→1440：
      三块一行 min 合计 ~925，容器（视口−480）到 ~1420 才装得下，不足则回退窄窗左贴 */
-  .viz-head-grid{display:grid;grid-template-columns:352px repeat(2,minmax(min-content,max-content));justify-content:center;
-    align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:16px}
+  .viz-head-grid{display:grid;grid-template-columns:312px minmax(min-content, 1fr) max-content;align-items:stretch;
+    column-gap:14px;row-gap:12px;margin-bottom:16px}   /* v2.75.1：BPM 列 minmax 上限 480——音量卡缩 40px 的空间归 BPM（justify-content:center 退役：它会把这个空间留在栏外而不是给 BPM 列） */
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
   .viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}
@@ -180,7 +180,7 @@ body.wide-full .main{max-width:none}
    行数拍号列用 minmax(min-content,max-content)——空间不足时**先内部折行**（两层面板）
    而不是溢出，~1900 起稳定一行；不足 1900 的宽屏落回上面 ≥1440 的 2×2 居中） */
 @media (min-width:1900px){
-  body.wide-full .viz-head-grid{grid-template-columns:352px repeat(3,minmax(min-content,max-content));
+  body.wide-full .viz-head-grid{grid-template-columns:312px repeat(3,minmax(min-content,max-content));
     justify-content:space-between;column-gap:32px}
   body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}
 }
@@ -195,7 +195,7 @@ body.wide-full .main{max-width:none}
    左列（与角标/音量同列上下分布），列内 gap 统一对齐，不再需要行内微调 */
 /* v2.10.15：左块**竖排**。v2.10.16：上行只剩角标（标题 #vizTitle 删除），
    状态灯成为左列第二行（用户要求：与标题同列上下分布） */
-.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(352px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
+.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(312px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
 .card-head-left .group{width:100%;flex:1;justify-content:space-evenly}   /* v2.10.20：音量组撑满列内剩余高度、三条滑杆行距均摊（v2.10.18 的 margin-top:auto 把剩余空间全堆在状态灯↔音量标签之间——用户反馈仍太大；现在死空间转移进组内，音量条间隙变大、标签紧贴状态灯下方） */
 .card-head-left .vol-row{width:100%}
 .card-title{font-size:14px;font-weight:600}
@@ -2440,7 +2440,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.75.0";
+const VERSION = "2.75.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
