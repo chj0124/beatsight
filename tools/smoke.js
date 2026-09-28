@@ -728,7 +728,7 @@ async function main(){
           "实际 background=" + d.bpmNum.bg);
         ok(d.bpmNum.outline === "none", p.label + "：#bpmNum 静止态无 outline（绿框只在聚焦时出现）",
           "实际 outline=" + d.bpmNum.outline);
-        ok(d.bpmNum.font === "40px" && d.bpmNum.w === 80, p.label + "：#bpmNum 尺寸字号与设计一致（80×48 / 40px，v2.10.19 降档）",
+        ok(d.bpmNum.font === "40px" && d.bpmNum.w === 64, p.label + "：#bpmNum 尺寸字号与设计一致（64×46 / 40px，v2.75.0 重排等宽压缩行）",
           "实际 " + d.bpmNum.w + "×" + d.bpmNum.h + " / " + d.bpmNum.font);
       } else ok(false, p.label + "：#bpmNum 存在");
       if (p.label.startsWith("http")){

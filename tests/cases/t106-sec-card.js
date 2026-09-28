@@ -71,7 +71,7 @@ section("T106b 互斥 · 开候选先收菜单 / 开菜单先收候选");
   ok(!!menuOf(els, 0), "前提：菜单已展开");
 
   /* 开候选（点块上的「换」）→ 菜单先收 */
-  rows(els)[0].children[2].children[0].children[3].fire("click");
+  rows(els)[0].children[2].children[0].children[4].fire("click");
   ok(!menuOf(els, 0), "★ 开候选先收菜单（picking 与 secMenuOpen 互斥）");
   ok(/(^| )arg-pick( |$)/.test(rows(els)[1].className), "候选行就在触点正下方（既有契约不破）");
 

@@ -144,8 +144,15 @@ body.wide-full .main{max-width:none}
    死空间摊进行距而不是全堆在一侧。变速参数行出现时压 BPM 组的行距（12→8）防 +5 折行。 */
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
-.viz-head-grid .viz-toggles{display:flex;flex-direction:column;justify-content:space-evenly}
-.viz-head-grid .viz-head > .group:has(#trainerPanel:not([hidden])){gap:8px}
+.viz-head-grid .viz-toggles{display:flex;flex-direction:column;gap:8px;justify-content:flex-start}
+/* v2.75.0（2.10 重排）：BPM 卡两行按钮带**不折行**——转盘行与快捷档行
+   flex-wrap:nowrap + 每颗 flex:1 min-width:0 等宽压缩：卡多窄都不折行，只压按钮。
+   组内间距 12→6（"内容显示混乱"的另一半根因：间距过大 + space-evenly 摊行距——
+   2.10 的 space-evenly 随本条一并退役，改紧凑固定间距 + 网格默认拉伸等高）。 */
+.viz-head .group .bpm-row{flex-wrap:nowrap;gap:6px}
+.viz-head .group .bpm-row .step-btn{flex:1 1 0;min-width:0;padding:6px 2px}
+.viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
+#bpmPresetRow .pill{flex:1 1 0;min-width:0;padding:7px 2px;text-align:center}
 /* v2.74.0（2.8）：段落列表 ↔ 按钮行的间距收口——按钮行显式 margin-top:16px
    （与卡片内行距同档），末段底距清零（间距单一来源，不再随段数漂移） */
 #argSections + .bpm-row{margin-top:16px}
@@ -494,7 +501,10 @@ input[type=range].vol{width:120px}
    ★ v2.69.0 返工修 bug：显隐由**按钮类 .day** 驱动（经典=月亮、日间=太阳）——
    不用 svg 的 hidden 属性：hidden 是 HTMLElement 的 IDL 属性，SVGElement 没有它，
    `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
-.topbar .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 11px}
+/* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
+   （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
+.topbar .pill, .topbar .icon-btn, .topbar .lat-read{height:36px;box-sizing:border-box;display:inline-flex;align-items:center}
+.topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
 .topbar .icon-btn.day .ico-moon{display:none}
@@ -866,6 +876,8 @@ input[type=range].vol{width:120px}
 .arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
 .arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
+/* v2.75.0：块级和弦输入——与 .arg-reps 同族；| 分段按块内小节均分 */
+.arg-chords{width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;padding:3px 6px}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 /* v2.27.0（G2）：块候选的三区标题 + 当前型置顶高亮 + 「新建曲式」模板菜单。
@@ -2386,23 +2398,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2418  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3026  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4551  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5346  Modal         应用内弹窗
-     L5484  Viz           时值可视化渲染与每帧动画
-     L7801  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8458  Trainer       变速训练器
-     L8639  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9207  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10491 Editor        自定义节奏型编辑器
-     L10924 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10971 Ear           听辨训练（v1.10.0）
-     L11191 Arrange       曲式编排（v2.0.0）
-     L13875 Help          使用方法（v2.0.1）
-     L14004 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14078 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14321 初始化（装配） 各模块 hook 接线与启动
+     L2430  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3038  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4567  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5362  Modal         应用内弹窗
+     L5500  Viz           时值可视化渲染与每帧动画
+     L7835  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8492  Trainer       变速训练器
+     L8673  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9241  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10525 Editor        自定义节奏型编辑器
+     L10958 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11005 Ear           听辨训练（v1.10.0）
+     L11225 Arrange       曲式编排（v2.0.0）
+     L13925 Help          使用方法（v2.0.1）
+     L14054 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14128 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14371 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2428,7 +2440,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.74.0";
+const VERSION = "2.75.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3349,8 +3361,12 @@ const Store = (() => {
         if (reps < 1 || reps > CONFIG.arrMaxRepeats) return null;
         totalBars += reps * patLenOf(b.ref);   // v2.5.1：按**型实际小节数**累加（原为恒 4）
         /* 只留白名单字段：脏数据不带着意外字段漏进内存（同听辨战绩等其它冷键的显式白名单口径） */
+        /* v2.75.0：块级和弦（可选）——「|」分段按块内小节均分（复用型级 label 语法）。
+           脏值静默降级为省略（同 dir/zone 口径）；和弦跟块走不跟型走（用户场景） */
+        const blockChords = (typeof b.chords === "string" && b.chords.trim())
+          ? b.chords.trim().slice(0, 80) : undefined;
         blocks.push({ ref: isBuiltin ? { type:"builtin", idx:+b.ref.idx } : { type:"custom", id:b.ref.id },
-          repeats: reps });
+          repeats: reps, ...(blockChords ? {chords: blockChords} : {}) });
       }
       /* uid 三档判据：自带有效且未重复 → 用它；否则按位置继承旧号的段身份；都没有 → 补发 */
       let uid = (typeof s.uid === "string" && s.uid) ? s.uid : "";
@@ -6237,7 +6253,25 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     if (seg % K !== 0) return "";                     // 不是小节的第一片：和弦仍然有效，只是不重复贴
     const at = songBarAt(a, ((Math.floor(seg / K) % total) + total) % total);
     if (!at) return "";
-    const cs = secChords(a.sections[at.sec].name);
+    /* v2.75.0：块级和弦优先——块（型 × repeats）可带 chords（「|」分段按**块内小节**均分，
+       复用型级 label 的语法）。同一节奏型重复多遍、每遍不同和弦 = 和弦跟块走，不跟型走
+       （用户场景：型级标注绑型，无法表达"每遍不同和弦"的结构性错位）。
+       无块级 chords → 回落段名解析（secChords 路径一字未动）。 */
+    const secBlk = a.sections[at.sec];
+    let barIn = at.bar, hitBlk = null, hitLen = 0;
+    for (const bl of secBlk.blocks){
+      const len = bl.repeats * (patLenOf(bl.ref) || 0);
+      if (barIn < len){ hitBlk = bl; hitLen = len; break; }
+      barIn -= len;
+    }
+    if (hitBlk && hitBlk.chords){
+      const segs = hitBlk.chords.split("|").map(s => s.trim()).filter(s2 => s2);
+      if (segs.length){
+        const idx = Math.min(segs.length - 1, Math.floor(barIn * segs.length / hitLen));
+        return segs[idx] || "";
+      }
+    }
+    const cs = secChords(secBlk.name);
     return cs[at.bar] || "";
   }
 
@@ -12661,6 +12695,21 @@ const Arrange = (() => {
         d.sections[i].blocks[j].repeats = Math.min(CONFIG.arrMaxRepeats, Math.max(1, Math.round(+reps.value) || 1));
         save(d);
       });
+      /* v2.75.0：块级和弦输入（可选）——「|」分段按**块内小节**均分（复用型级 label 语法）。
+         同一节奏型重复多遍、每遍不同和弦 = 和弦跟块走，不跟型走（用户场景）。
+         留空删除字段（形状与老数据一致，零迁移）。 */
+      const chd = document.createElement("input");
+      chd.className = "arg-chords"; chd.type = "text"; chd.maxLength = 80;
+      chd.placeholder = "和弦 | 分段";
+      chd.value = b.chords || "";
+      chd.setAttribute("aria-label", `第 ${i + 1} 段第 ${j + 1} 块的和弦标注（用 | 分段按小节均分，可留空）`);
+      Modal.bindOverlay("arrangeOverlay", chd, "change", () => {
+        const d = snapshot();
+        const v = String(chd.value).trim().slice(0, 80);
+        if (v) d.sections[i].blocks[j].chords = v;
+        else delete d.sections[i].blocks[j].chords;
+        save(d);
+      });
       const pick = document.createElement("button");
       pick.className = "arg-mini"; pick.textContent = "换";
       pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
@@ -12679,6 +12728,7 @@ const Arrange = (() => {
       const unit = document.createElement("span"); unit.textContent = " 遍";
       chip.appendChild(nmb); chip.appendChild(reps);
       chip.appendChild(unit);
+      chip.appendChild(chd);           // v2.75.0：块级和弦输入（跟块走，不跟型走）
       chip.appendChild(pick); chip.appendChild(del);
       /* v2.55.0（C2）：块级操作 ⋯ 菜单——左移 / 右移 / 复制 / 删除（复用 mkSecMenu 的
          全文字标签 + aria 形态；菜单以整行形式挂在段行尾，与段菜单同款，避免被

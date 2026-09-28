@@ -176,7 +176,7 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, 1, "★ 低于下限夹到 1（不会出现 0 遍的段）");
 
   /* 换预设：点「换」→ 下方出现候选 → 点一个 */
-  const pickBtn = sec1.children[2].children[0].children[3];   // 换（单位 span 占了 index 2）
+  const pickBtn = sec1.children[2].children[0].children[4];   // 换（单位 span 占了 index 2）
   pickBtn.fire("click");
   eq(secRows(els).length, 3, "★ 出现了一行候选预设（不是弹窗、不切走）");
   const pickRow = secRows(els)[2];
@@ -193,7 +193,7 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
 
   /* 删块：最后一块不许删 */
   const sec0 = secRows(els)[0];                       // 主歌：1 块
-  sec0.children[2].children[0].children[4].fire("click");     // ✕
+  sec0.children[2].children[0].children[5].fire("click");     // ✕
   eq(beat.Modal.isOpen(), true, "★ 只剩一块时删会被告知（不是静默删掉导致段变空）");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges[0].sections[0].blocks.length, 1, "块没被删");
@@ -201,7 +201,7 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
   /* 删块真实路径：上面那条守的是"最后一块不许删"，这条守"能删时真删掉、且删对了那块" */
   const idxBefore = beat.Store.arranges[0].sections[1].blocks.map(b => b.ref.idx);
   eq(idxBefore.length, 3, "副歌此时 3 块（前面加过一块）");
-  secRows(els)[1].children[2].children[0].children[4].fire("click");   // 第 1 块的 ✕
+  secRows(els)[1].children[2].children[0].children[5].fire("click");   // 第 1 块的 ✕
   eq(beat.Store.arranges[0].sections[1].blocks.length, 2, "★ 非最后一块可以删（3 → 2）");
   eq(beat.Store.arranges[0].sections[1].blocks[0].ref.idx, idxBefore[1], "删的是第 1 块（后面的顶上来）");
   eq(secRows(els)[1].children[2].children.length, 3, "重渲染后 2 块 + 「+ 块」");

@@ -115,7 +115,7 @@ section("T109d 候选标题 · 「换型：第 N 段 · 块 M」（P2-10 的另�
 {
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
-  rows(els)[1].children[2].children[0].children[3].fire("click");   // 第 2 段第 1 块的「换」
+  rows(els)[1].children[2].children[0].children[4].fire("click");   // 第 2 段第 1 块的「换」
   const pick = rows(els)[2];             // 候选行插在触发段行（第 2 段）之后 → 下标 2
   ok(/(^| )arg-pick( |$)/.test(pick.className), "前提：候选行就地展开（在触发段行正下方）");
   const lab = pick.children[0];

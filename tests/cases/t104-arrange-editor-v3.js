@@ -70,7 +70,7 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   beat.Arrange.open();
   /* A 段的块引用 BUILTINS[1]（四分基础，无扫弦记谱 → 「节拍」区）。
      「换」在**块 chip**里（不是段操作钮）：chip.children = [型名, 遍数, 单位, 换, ✕] */
-  rows(els)[0].children[2].children[0].children[3].fire("click");
+  rows(els)[0].children[2].children[0].children[4].fire("click");
   const pick = rows(els)[1];                           // 候选行插在触发段行的**正下方**
   ok(/(^| )arg-pick( |$)/.test(pick.className), "★ 候选就在触点正下方（就地选择，v2.4.1 的既定结论）");
   const zones = pick.children[1].children.filter(c => /(^| )arg-pick-zone( |$)/.test(c.className)).map(z => z.textContent);
@@ -98,7 +98,7 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   app2.beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "我的型", meter: 4, bars: [[{ t: 192 }]] }] }));
   app2.beat.Arrange.open();
-  rows(app2.els)[0].children[2].children[0].children[3].fire("click");
+  rows(app2.els)[0].children[2].children[0].children[4].fire("click");
   const pick2 = rows(app2.els)[1];
   const zones2 = pick2.children[1].children.filter(c => /(^| )arg-pick-zone( |$)/.test(c.className)).map(z => z.textContent);
   eq(zones2.join(","), "节拍,扫弦,自定义", "★ 库里有自定义型 → 三区齐（与侧栏三区同构）");
