@@ -12,12 +12,18 @@
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
 
-const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
+/* v2.73.0：内置型 1 小节化——本组全部断言依赖「1 遍 = 4 小节」的载体语义，
+   改用 5 个 4 小节自定义型当载体（id t52c0..t52c4，随 loadApp 种入冷键），
+   断言数字逐位不变；「换块」类断言改比 ref.id（builtin idx 语义退役） */
+const t52bars = [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]);
+const T52_SEED = { "beatsight.customs": JSON.stringify({ customs:
+  [0,1,2,3,4].map(i => ({ id: "t52c" + i, name: "t52 载体 " + i, meter: 4, bars: t52bars })) }) };
+const BL = (idx, reps) => ({ ref: { type: "custom", id: "t52c" + idx }, repeats: reps });
 
 /* ================= 场景 T52：secBars（段长由数据派生） ================= */
 section("T52 节目单步进 · secBars（段长 = Σ遍数 × 4，不存字段）");
 {
-  const { beat } = loadApp();
+  const { beat } = loadApp(T52_SEED);
   const { secBars } = beat;
   eq(secBars({ blocks: [BL(0, 1)] }), 4, "1 块 × 1 遍 = 4 小节（(a) 型最小段）");
   eq(secBars({ blocks: [BL(0, 2)] }), 8, "1 块 × 2 遍 = 8 小节（(a) 型的主歌/副歌）");
@@ -34,7 +40,7 @@ section("T52 节目单步进 · secBars（段长 = Σ遍数 × 4，不存字段�
 /* ================= 场景 T52b：blockAt（段内小节 → 块 + 块内小节） ================= */
 section("T52b 节目单步进 · blockAt（块边界 / schedBar 回绕 / 越界）");
 {
-  const { beat } = loadApp();
+  const { beat } = loadApp(T52_SEED);
   const { blockAt } = beat;
 
   /* (a) 型：1 块 × 2 遍 = 8 小节，型内的 4 小节循环要自然回绕两次 */
@@ -57,7 +63,7 @@ section("T52b 节目单步进 · blockAt（块边界 / schedBar 回绕 / 越界�
   eq(blockAt(b, 4).localBar, 0, "换块时块内位置归零");
   eq(blockAt(b, 4).schedBar, 0, "换块时型内游标也归零（新块从它自己的第 0 小节开始）");
   eq(blockAt(b, 7).blockIdx, 1, "第 7 小节仍在块 1");
-  eq(blockAt(b, 4).ref.idx, 2, "换块后拿到的是新块的 ref（不是沿用块 0）");
+  eq(blockAt(b, 4).ref.id, "t52c2", "换块后拿到的是新块的 ref（不是沿用块 0）");
 
   /* ★ 两个块**遍数不同**时，块边界必须按"累加"算而不是"每 4 小节一换"。
      [2 遍, 1 遍]：第 0–7 小节在块 0，第 8 小节才换块 1。
@@ -80,7 +86,7 @@ section("T52b 节目单步进 · blockAt（块边界 / schedBar 回绕 / 越界�
 /* ================= 场景 T52c：arrNextBar 的推进与边界 ================= */
 section("T52c 节目单步进 · arrNextBar（段边界 / 块边界 / 范围 / 循环）");
 {
-  const { beat } = loadApp();
+  const { beat } = loadApp(T52_SEED);
   const { arrNextBar, secBars } = beat;
   /* 3 段：4 / 8 / 8 小节，第 3 段是 (b) 型（两块，不同预设） */
   const a = { name: "T", sections: [
@@ -103,7 +109,7 @@ section("T52c 节目单步进 · arrNextBar（段边界 / 块边界 / 范围 / �
   eq(JSON.stringify([s0.sec, s0.bar, s0.localBar, s0.schedBar]), JSON.stringify([0, 0, 0, 0]),
      "未开始（bar<0）→ 落到首段第 0 小节");
   eq(s0.sectionChanged, true, "起点算作「进入新段」（调用方据此初始化显示）");
-  ok(s0.pattern && s0.pattern.name === beat.BUILTINS[0].name, "起点就带出解析后的节奏型对象");
+  ok(s0.pattern && s0.pattern.bars.length === 4 && s0.pattern.name === "t52 载体 0", "起点就带出解析后的节奏型对象");
 
   /* 段内推进 */
   const s1 = nx(a, R, 0, 0);
@@ -196,7 +202,7 @@ section("T52c 节目单步进 · arrNextBar（段边界 / 块边界 / 范围 / �
 /* ================= 场景 T52d：blockChanged 比的是"解析后的型" ================= */
 section("T52d 节目单步进 · blockChanged 比解析后的型（同型跨块不挂起）");
 {
-  const { beat } = loadApp();
+  const { beat } = loadApp(T52_SEED);
   const { arrNextBar } = beat;
   /* 段内两个块引用**同一个**预设 → 跨块时 blockChanged 必须为 false
      （无型可换还重置 schedBar，画面会白跳一下，方案 R9） */
@@ -222,7 +228,7 @@ section("T52d 节目单步进 · blockChanged 比解析后的型（同型跨块�
 /* ================= 场景 T52e：坏数据不猜 ================= */
 section("T52e 节目单步进 · 坏数据返回 null 而不是硬撑");
 {
-  const { beat } = loadApp();
+  const { beat } = loadApp(T52_SEED);
   const { arrNextBar } = beat;
   eq(arrNextBar(null, { from: 0, to: 0, loop: true }, 0, -1), null, "曲式为 null → null");
   eq(arrNextBar({ sections: [] }, { from: 0, to: 0, loop: true }, 0, -1), null, "空曲式 → null");

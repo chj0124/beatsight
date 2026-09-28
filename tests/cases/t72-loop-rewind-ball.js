@@ -49,8 +49,21 @@ function run(beat, ac, iv, seconds, probe){
 
 /* ================= 场景 T72a：循环 [0,0] —— 球跳完全程不倒退 + 行首预备动画 ================= */
 section("T72a 循环 [0,0] · ★ 球不倒着返回：终端弧跳完本行全程，待命球在本行开头预备");
+/* v2.73.0：内置型 1 小节化——多小节循环回绕语义改用 4 小节自定义型当载体；
+   loopRange 在载体就位后再种（加载期会被当时的 1 小节内置型钳到 [0,0]） */
+const CARRIER = { presets: [{ name: "四小节载体", meter: 4,
+  bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] };
+const withCarrier = (seed, loopRange) => {
+  /* demoSeeded 闩预置：否则 start() 时应用会走"首次带出演示曲"分支，把选中切走 */
+  const h = loadApp(Object.assign({ "beatsight.demoSeeded": "1" }, seed), { seedDemo: false });
+  h.beat.Store.importPresets(JSON.stringify(CARRIER));
+  h.beat.Store.S.sel = { type: "custom", id: h.beat.Store.customs[h.beat.Store.customs.length - 1].id };
+  h.beat.Presets.refreshAfterPatternChange();
+  if (loopRange) h.beat.Store.S.loopRange = { ...loopRange };
+  return h;
+};
 {
-  const app = loadApp(seedState({ loopRange: { on: true, from: 0, to: 0 } }));
+  const app = withCarrier(seedState({}), { on: true, from: 0, to: 0 });
   const beat = app.beat;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -99,7 +112,7 @@ section("T72a 循环 [0,0] · ★ 球不倒着返回：终端弧跳完本行全�
 /* ================= 场景 T72b：循环 [1,2] —— 待命球指向区间起点，不是顺序下一行 ================= */
 section("T72b 循环 [1,2] · ★ 第 2 小节末尾待命球在第 1 行开头预备（区间起点），不是第 3 行");
 {
-  const app = loadApp(seedState({ loopRange: { on: true, from: 1, to: 2 } }));
+  const app = withCarrier(seedState({}), { on: true, from: 1, to: 2 });
   const beat = app.beat;
   beat.Controls.start();
   const ac = FakeAudioContext.last;

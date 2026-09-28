@@ -69,12 +69,12 @@ section("T69b 型长自由化 · 网格行数 = 同屏行数档位，型长决�
   const six = withPattern(6);
   eq(rowsOf(six.els).length, 4, "★ 6 小节的型 + 默认 4 行档 → 4 行（第一页的 4 个小节）");
   const def = loadStrum();
-  /* 内置民谣扫弦（4 小节）——恰好铺满默认 4 行档，逐位不变 */
-  eq(rowsOf(def.els).length, 4, "4 小节的型恰好铺满默认 4 行档（既有数据零变化）");
+  /* v2.73.0：内置民谣扫弦 1 小节——由窗口「型短于行数绕回铺满」的既有机制兜住，仍是 4 行 */
+  eq(rowsOf(def.els).length, 4, "1 小节的型由窗口绕回铺满 4 行（既有机制兜住）");
   ok(rowsOf(def.els).length === 4
-      && def.beat.BUILTINS.slice(0, 12).every(p => p.bars.length === 4)
+      && def.beat.BUILTINS.slice(0, 12).every(p => p.bars.length === 1)
       && def.beat.BUILTINS.slice(12).every(p => p.bars.length === 1),
-     "原有 12 个内置型的 bars 长度都仍是 4、示例 5 型各 1 小节（v2.20.0 内置化；放开只对**新数据**生效）");
+     "v2.73.0：12 个内置型与示例 5 型全部 1 小节（内置化时的 4 小节口径退役）");
 }
 
 /* ================= 场景 T69c：播放按型的小节数回绕 ================= */
@@ -155,5 +155,5 @@ section("T69f 型长自由化 · 练习循环下拉项数随型走 / 一键「�
      "提示文案跟着型走（实际「" + six.els["loopHint"].textContent + "」）");
 
   const def = loadStrum();
-  eq(def.els["loopFrom"].options.length, 4, "4 小节的型仍是 4 项（既有行为零变化）");
+  eq(def.els["loopFrom"].options.length, 1, "v2.73.0：1 小节的型 → 下拉 1 项（选项数跟随型长）");
 }

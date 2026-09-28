@@ -229,6 +229,11 @@ section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计
 {
   const app = loadApp();
   const beat = app.beat;
+  /* v2.73.0：内置型 1 小节化——增量重绘的 4 行不变量改用 4 小节自定义型当载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   driveFrames(ac, beat, 1);                       // 进入稳定播放态

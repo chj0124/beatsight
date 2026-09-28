@@ -244,3 +244,25 @@ section("T91g 迁移矩阵 · 歌词行寻址键：段下标 → 段 uid（老�
   eq(again.beat.Store.lyrics.filter(l => l.secUid === a.sections[0].uid)[0].chars[0].ch, "夏",
     "★ 往返一致：改过的字留住了，且仍挂在第 1 段");
 }
+
+/* ================= 场景 T91h：v2.73.0 内置型 1 小节化 → 曲式块遍数 ×4 ================= */
+section("T91h 迁移矩阵 · 曲式块（builtin）repeats ×4，段长逐小节不变；幂等（再加载不再 ×4）");
+{
+  /* 老存档：builtin 块按旧口径写（1 遍 = 4 小节）。四分基础 ×1 + 八分摇滚 ×1 = 8 小节 */
+  const legacy = { v: 1, arranges: [{ id: "m73", name: "迁移曲", sections: [
+    { name: "s", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 },
+                          { ref: { type: "builtin", idx: 2 }, repeats: 1 }] }] }] };
+  const { beat, storage } = loadApp({ "beatsight.arranges": JSON.stringify(legacy) });
+  const a = beat.Store.findArrange("m73");
+  ok(!!a, "老曲式读回");
+  eq(JSON.stringify(a.sections[0].blocks.map(b => b.repeats)), JSON.stringify([4, 4]),
+    "★ builtin 块 repeats ×4（1/1 → 4/4）；custom 块不动");
+  /* 段长不变的反向验证：迁移前 8 小节（2×4）→ 迁移后 4×1 + 4×1 = 8 小节 */
+  eq(beat.songBars(a), 8, "★ 迁移前后段长逐小节不变（8 小节）");
+  /* 幂等：把迁移后的形状写回再加载（带迁移戳，模拟真实 localStorage 的跨启动持久化）→ 不再 ×4 */
+  beat.Store.persistArranges();
+  const again = loadApp({ "beatsight.arranges": storage.get("beatsight.arranges"),
+    "beatsight.arrmig73": "1" });
+  eq(JSON.stringify(again.beat.Store.arranges[0].sections[0].blocks.map(b => b.repeats)),
+     JSON.stringify([4, 4]), "★ 迁移幂等：二次加载不再 ×4");
+}

@@ -139,8 +139,14 @@ section("T65a 练习循环 · 默认关 / clampLoop 归一（from<=to）/ 脏值
 
 /* ================= 场景 T65b：两个下拉的生成 / 灰显 / 联动 ================= */
 section("T65b 练习循环 · 下拉生成 4 项（1 基）/ 关闭时灰显 / 改动顺手开启");
+/* v2.73.0：内置型 1 小节化——下拉选项数 = 当前型的小节数，改用 4 小节自定义型当载体 */
+const T65_SEED = { "beatsight.customs": JSON.stringify({ customs: [{
+  id: "t65c4", name: "t65 四小节载体", meter: 4,
+  bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }) };
 {
-  const { beat, els } = loadApp();
+  const { beat, els } = loadApp(T65_SEED);
+  beat.Store.S.sel = { type: "custom", id: "t65c4" };
+  beat.Presets.applyPatternChange();
   const S = beat.Store.S;
   const from = els["loopFrom"], to = els["loopTo"];
 
@@ -170,7 +176,9 @@ section("T65b 练习循环 · 下拉生成 4 项（1 基）/ 关闭时灰显 / �
 /* ================= 场景 T65c：「循环本段」按钮的开关与归位 ================= */
 section("T65c 练习循环 · 「循环本段」= 整段开关（点一次开、再点关、带归位）");
 {
-  const { beat, els } = loadApp();
+  const { beat, els } = loadApp(T65_SEED);
+  beat.Store.S.sel = { type: "custom", id: "t65c4" };
+  beat.Presets.applyPatternChange();
   const S = beat.Store.S;
   const btn = els["loopToggle"];
 
@@ -204,12 +212,14 @@ section("T65d 练习循环 · 调度回绕（★ 核心：响过的小节恒在�
      本组第一版就是这样误判成"功能没生效"的（见 barsScheduled 的注释）。 */
   const seedFp = obj => seedState(obj);
   const loadFp = (lr) => {
-    const h = loadApp(seedFp({ loopRange: lr }), {});
+    const h = loadApp(seedFp({}), {});
     h.beat.Store.importPresets(JSON.stringify({
       presets: [{ name: "指纹型", meter: 4, bars: mkFingerprintBars() }],
     }));
     h.beat.Store.S.sel = { type: "custom", id: h.beat.Store.customs[h.beat.Store.customs.length - 1].id };
     h.beat.Presets.refreshAfterPatternChange();
+    /* v2.73.0：循环区间在**载体型就位后**再种——加载期会被当时的 1 小节内置型钳到 [0,0] */
+    if (lr) h.beat.Store.S.loopRange = { ...lr };
     return h;
   };
 
@@ -266,7 +276,9 @@ section("T65e 练习循环 · ★ 开播即落在 from（第一遍不白弹）")
 /* ================= 场景 T65f：持久化（热键 250ms 防抖） ================= */
 section("T65f 练习循环 · 写进热键 beatsight.state（练习偏好）");
 {
-  const { beat, els, storage } = loadApp();
+  const { beat, els, storage } = loadApp(T65_SEED);
+  beat.Store.S.sel = { type: "custom", id: "t65c4" };
+  beat.Presets.applyPatternChange();
   els["loopToggle"].fire("click");                 // → 开，[0,3]
   els["loopFrom"].value = "1"; els["loopFrom"].fire("change");
   els["loopTo"].value = "2"; els["loopTo"].fire("change");

@@ -54,7 +54,7 @@ section("T59c P1-5 · 导入总量闸门（不只是单份文件的条数）");
 {
   const { beat } = loadApp();
   const proto = JSON.parse(JSON.stringify(beat.BUILTINS[0]));
-  eq(proto.bars.length, 4, "内置预设可作为导入模板（4 小节）");
+  eq(proto.bars.length, 1, "v2.73.0：内置预设 1 小节（导入模板随数据模型走）");
   const list = [];
   for (let i = 0; i < 500; i++) list.push(Object.assign({}, proto, { name: "导入" + i }));
   const r1 = beat.Store.importPresets(JSON.stringify({ presets: list }));

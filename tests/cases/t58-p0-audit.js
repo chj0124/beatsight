@@ -39,8 +39,8 @@ section("T58 P0-1 · getItem 一律抛错（沙盒 iframe / 站点数据被禁�
     /* v2.11.2：起始 BPM 参数已删（起点改为「开开关那一瞬的当前 BPM」的会话值），
        故这里不再断言 start，改为断言余下四个参数各自回到默认值。 */
     const t58t = S.trainer;
-    ok(t58t.on === false && t58t.target === 120 && t58t.step === 4 && t58t.everyN === 4,
-      "trainer 回默认值（on:false / target:120 / step:4 / everyN:4）"
+    ok(t58t.on === false && t58t.target === null && t58t.step === 4 && t58t.everyN === 4,
+      "v2.73.0：trainer 回默认值（on:false / target:null 不设目标 / step:4 / everyN:4）"
       + `——实际 on=${t58t.on} target=${t58t.target} step=${t58t.step} everyN=${t58t.everyN}`);
     ok(!("start" in t58t) && !("last" in t58t) && !("plan" in t58t),
       "v2.11.2：start / last / plan 三个字段都不存在（起点=当前 BPM，7 天计划已删）");

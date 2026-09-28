@@ -17,6 +17,11 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
 {
   const app = loadApp();
   const beat = app.beat;
+  /* v2.73.0：内置型 1 小节化——多小节播放/落点语义改用 4 小节自定义型当载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   const iv = beat.Viz.internals();
@@ -323,7 +328,13 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(beat.Store.customs.length, 0, "确认后预设被删除");
   ok(app.storage.has("beatsight.customs"), "删除后冷键已落盘");
 
-  /* 编辑器：动态调色板项、删除/复制/清空、撤销、返回 */
+  /* 编辑器：动态调色板项、删除/复制/清空、撤销、返回
+     v2.73.0：内置型改为 1 小节——「复制到全部 / bars[3]」这些多小节行为
+     改用 4 小节自定义型当载体（语义依赖多小节，不为保绿改行为） */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.applyPatternChange();
   beat.Editor.open();
   eq(els["editor"].classList.contains("open"), true, "点「编辑节奏型」→ 编辑器打开");
   const palette = els["palette"].children;
@@ -456,7 +467,7 @@ section("T31c 焦点陷阱 · 弹窗叠层 inert 与语义化标记（v2.0.2，P
 
 section("T32 旧键清理 · 冷热拆分后删除 beatsight.m2（v1.3.1）");
 {
-  const mkPat = (id, name) => ({ id, name, meter: 4, bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) });
+  const mkPat = (id, name) => ({ id, name, meter: 4, bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) });
   const legacy = { v: 3, bpm: 111, sig: 5, customs: [mkPat("L1", "老预设")] };
 
   const app = loadApp({ "beatsight.m2": JSON.stringify(legacy) });
@@ -556,6 +567,11 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
           buildViz 时才更新；标题已删）——改用 PROBE.layoutReads（buildViz 重建必读布局）。 */
   const app = loadApp();
   const beat = app.beat, els = app.els, S = beat.Store.S;
+  /* v2.73.0：内置型 1 小节化——「清空第 1 小节、其余 3 小节有音」的前提需要 4 小节载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
   els["clearBarBtn"].fire("click"); els["modalOk"].fire("click");     // 清空第 1 小节（editBar 默认 0）
   eq(beat.Editor.draft().bars[0].length, 0, "草稿第 1 小节已清空");
@@ -627,7 +643,12 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
   ok(inputOk, "有输入框的弹窗：在输入框里按 Enter → 确认并把输入值交给回调");
   eq(els["modalMask"].hidden, true, "确认后关闭");
 
-  /* 编辑器：选中音符块 → 库标题变成「点击替换」→ 删除选中 */
+  /* 编辑器：选中音符块 → 库标题变成「点击替换」→ 删除选中
+     v2.73.0：同前——多小节编辑行为改用 4 小节自定义型当载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体2", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.applyPatternChange();
   beat.Editor.open();
   const rowTrack = () => els["editorBars"].children[0].children[1];
   const cells = () => rowTrack().children;
@@ -671,7 +692,7 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
 
   /* v0.4.0 老数据：sel 用数组下标引用自定义预设，加载时应升级为 id 引用 */
   const legacySel = { v: 3, sel: { type: "custom", idx: 0 },
-    customs: [{ name: "下标引用", meter: 4, bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] };
+    customs: [{ name: "下标引用", meter: 4, bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] };
   const old = loadApp({ "beatsight.m2": JSON.stringify(legacySel) });
   eq(old.beat.Store.S.sel.type, "custom", "老数据的 sel.type 保留");
   eq(old.beat.Store.S.sel.idx, undefined, "数值下标已移除（升级为 id 引用）");
@@ -728,6 +749,11 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
   {
     const app2 = loadApp();
     const b4 = app2.beat;
+    /* v2.73.0：内置型 1 小节——「扫全部小节」需要 4 小节载体（clearBar 1..3 + 休止填充） */
+    b4.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体3", meter: 4,
+      bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+    b4.Store.S.sel = { type: "custom", id: b4.Store.customs[b4.Store.customs.length - 1].id };
+    b4.Presets.applyPatternChange();
     const trackOf = b => app2.els["editorBars"].children[b].children[1];
     b4.Editor.open();
     for (const b of [1, 2, 3]){
@@ -804,6 +830,11 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
      修法：播放头位置改由 onset 表插值（与球同源），分叉从结构上消失（见 audioPosAt）。 */
   const app = loadApp();
   const beat = app.beat, els = app.els, S = beat.Store.S;
+  /* v2.73.0：内置型 1 小节化——改速不变量的多小节播放语义改用 4 小节自定义型当载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{t:48,dir:"D"},{t:24,dir:"D"},{t:24,dir:"U"},{t:36,dir:"U"},{t:12,dir:"D"},{t:48,dir:"U"}]) }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
   const TPBv = 48;
   beat.Controls.start();
   const ac = FakeAudioContext.last;

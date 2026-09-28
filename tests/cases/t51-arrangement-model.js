@@ -36,7 +36,7 @@ section("T51 曲式模型 · 结构校验（脏结构不得进内存）");
     [A("x", [{ name: "s", blocks: [] }]), "某段没有块"],
     [A("x", [{ name: "s", blocks: Array.from({ length: 9 }, () => B(0, 1)) }]), "9 块（超上限 8）"],
     [A("x", [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 0 }] }]), "repeats = 0"],
-    [A("x", [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 17 }] }]), "repeats = 17（超上限 16）"],
+    [A("x", [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 65 }] }]), "repeats = 65（超上限 64）"],
     [A("x", [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: "abc" }] }]), "repeats 非数字"],
     [A("x", [{ name: "s", blocks: [{ ref: { type: "weird", idx: 0 }, repeats: 1 }] }]), "ref.type 未知"],
     [A("x", [{ name: "s", blocks: [{ ref: { type: "builtin" }, repeats: 1 }] }]), "builtin 缺 idx"],
@@ -58,11 +58,12 @@ section("T51 曲式模型 · 结构校验（脏结构不得进内存）");
   ok(S.upsertArrange(A("边界遍", [SEC(B(0, 16))])) !== null, "16 遍（恰好在上限）可保存");
   S.arranges.length = 0;
 
-  /* 总小节数：16 段 × 4 块 × 1 遍 × 4 小节 = 256（恰好上限）→ 过；17 段 → 272 → 拒 */
-  ok(S.upsertArrange(A("满上限", Array.from({ length: 16 }, () => SEC(...Array.from({ length: 4 }, () => B(0, 1)))))) !== null,
+  /* 总小节数：16 段 × 4 块 × 4 遍 × 1 小节（v2.73.0 内置型 1 小节）= 256（恰好上限）→ 过；
+     17 段 → 272 → 拒。等效小节上限不变（旧口径 1 遍 × 4 小节）。 */
+  ok(S.upsertArrange(A("满上限", Array.from({ length: 16 }, () => SEC(...Array.from({ length: 4 }, () => B(0, 4)))))) !== null,
      "总 256 小节（恰好上限）可保存");
   S.arranges.length = 0;
-  eq(S.upsertArrange(A("超长", Array.from({ length: 17 }, () => SEC(...Array.from({ length: 4 }, () => B(0, 1)))))), null,
+  eq(S.upsertArrange(A("超长", Array.from({ length: 17 }, () => SEC(...Array.from({ length: 4 }, () => B(0, 4)))))), null,
      "总 272 小节（超上限 256）被拒");
 
   /* name 超长是**截断**而不是拒绝（与 presetNameInput 的 slice(0,40) 同口径） */
@@ -143,8 +144,15 @@ section("T51d 曲式模型 · 冷键加载（坏条目丢弃）/ 落盘 / 写失
   ok(!!b4.storage.get("beatsight.arranges"), "upsert 后冷键已落盘");
   const b5 = loadApp({ "beatsight.arranges": b4.storage.get("beatsight.arranges") });
   eq(b5.beat.Store.arranges.length, 1, "重新加载读回 1 条");
-  eq(JSON.stringify(b5.beat.Store.arranges[0]), JSON.stringify(saved),
-     "★ 往返后逐字段一致（两块的段也完整保留）");
+  /* v2.73.0（2.5）：重载会触发曲式 ×4 一次性迁移（builtin 块 2/1 → 8/4）——
+     迁移后的形状才是新基线；两块的段结构完整保留 */
+  const mig = b5.beat.Store.arranges[0];
+  eq(JSON.stringify(mig.sections[0].blocks.map(b => b.repeats)), JSON.stringify([8, 4]),
+     "★ 往返 + 一次性迁移：builtin 块 ×4（2/1 → 8/4），两块的段完整保留");
+  const b5b = loadApp({ "beatsight.arranges": b5.storage.get("beatsight.arranges"),
+    "beatsight.arrmig73": "1" });   // 带戳：跳过迁移（幂等的对象是被迁移一次后的形状）
+  eq(JSON.stringify(b5b.beat.Store.arranges[0]), JSON.stringify(b5.beat.Store.arranges[0]),
+     "★ 迁移幂等：迁移后再次加载，repeats 不再 ×4");
 
   /* 写失败要走既有的一次性提示（不静默） */
   const b6 = loadApp({}, { throwOnWrite: true });

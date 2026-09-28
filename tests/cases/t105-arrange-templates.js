@@ -43,7 +43,7 @@ section("T105a 模板 · 空白 = 旧默认 / 骨架与完整流行按当前型�
 {
   const { beat, els } = loadApp();
   beat.Store.S.sel = { type: "builtin", idx: 1 };      // 四分基础（4 小节）——遍数折算可心算
-  eq(beat.patBars(beat.BUILTINS[1]), 4, "前提：BUILTINS[1] 是 4 小节型");
+  eq(beat.patBars(beat.BUILTINS[1]), 1, "v2.73.0：前提：BUILTINS[1] 是 1 小节型");
   beat.Arrange.close();
 
   pickTemplate(beat, els, 0);                          // 空白
@@ -58,7 +58,7 @@ section("T105a 模板 · 空白 = 旧默认 / 骨架与完整流行按当前型�
   eq(a1.name, "主副歌骨架", "骨架：模板名进库名");
   eq(a1.sections.length, 2, "骨架：两段");
   eq(secNames(beat, a1.id), "主歌|副歌", "骨架：主歌 + 副歌");
-  eq(rep0(beat, a1.id), 2, "★ 目标 8 小节 ÷ 型 4 小节 = 2 遍（ceil 折算）");
+  eq(rep0(beat, a1.id), 8, "★ 目标 8 小节 ÷ 型 1 小节 = 8 遍（ceil 折算）");
   eq(JSON.stringify(a1.sections[0].blocks[0].ref), JSON.stringify({ type: "builtin", idx: 1 }),
     "★ 块引用 = 当前选中的型（预填不是写死 BUILTINS[0]）");
   beat.Arrange.close();
@@ -67,8 +67,8 @@ section("T105a 模板 · 空白 = 旧默认 / 骨架与完整流行按当前型�
   const a2 = beat.Store.arranges[2];
   eq(a2.sections.length, 6, "完整流行：六段");
   eq(secNames(beat, a2.id), "前奏|主歌|副歌|间奏|主歌二|副歌二", "完整流行：段序固定");
-  eq(a2.sections[0].blocks[0].repeats, 1, "前奏 4 小节 ÷ 4 = 1 遍");
-  eq(a2.sections[1].blocks[0].repeats, 2, "主歌 8 小节 ÷ 4 = 2 遍");
+  eq(a2.sections[0].blocks[0].repeats, 4, "前奏 4 小节 ÷ 1 = 4 遍");
+  eq(a2.sections[1].blocks[0].repeats, 8, "主歌 8 小节 ÷ 1 = 8 遍");
   beat.Arrange.close();
 
   /* 1 小节型折算：目标 8 小节 = 8 遍（ceil 方向不能反——少了凑不满目标小节数）。
@@ -94,7 +94,7 @@ section("T105b 复制曲式 · 副本独立 / 重名递增 / 歌词行不跟着�
     ] },
   ]}), "beatsight.lyrics": JSON.stringify({ v: 2, lines: [
     { arrangeId: "src", secUid: "u1", chars: [{ t: 0, dur: 24, ch: "春" }] },
-  ]}) };
+  ]}), "beatsight.arrmig73": "1" };   // v2.73.0：迁移戳置位——本组测深拷贝，不受曲式 ×4 迁移影响
   const { beat, els } = loadApp(seed);
   beat.Store.S.sel = { type: "builtin", idx: 1 };
   beat.Arrange.open();

@@ -300,7 +300,9 @@ section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰")
   eq(S.bpm, 60, "播放中点 60 档生效");
   ok(S.playing, "播放未被打断");
 
-  /* 训练模式：BPM 归训练器阶梯管，快捷档与 ±5 置灰；关闭后恢复 */
+  /* 训练模式：BPM 归训练器阶梯管，快捷档与 ±5 置灰；关闭后恢复
+     v2.73.0：目标可空（null 默认不给开）——先置一个合法目标再开 */
+  S.trainer.target = 200;
   els["trainerToggle"].fire("click");
   ok(S.trainer.on, "训练已开启");
   ok(pills.every(b => b.disabled), "训练开启 → 快捷档全部置灰");

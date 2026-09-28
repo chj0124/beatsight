@@ -183,7 +183,7 @@ section("T70d 滚动窗口 · 窗口里的小节解析不出来时回落画当�
   const cells = rowCells(els);
   ok(cells.length > 0, "★ 网格照常渲染出内容（不是空白页）");
   ok(cells.every(n => n > 0), "★ 每一行都有格子（没有半屏空行）");
-  eq(cells.length, 4, "回落到「画当前型」：行数 = 当前型的小节数（内置四分基础 = 4）");
+  eq(cells.length, 1, "v2.73.0：回落到「画当前型」：行数 = 当前型的小节数（内置四分基础 = 1）");
   beat.Controls.stop();
 }
 

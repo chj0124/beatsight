@@ -25,11 +25,15 @@ section("T20 播放中切节奏型 · 点下即生效（不再等小节边界）
   const nBefore = ac.hits.length;
   eq(els["patternName"].textContent, "三连音基础", "开播时标题为三连音基础");
 
-  S.sel = { type: "builtin", idx: 1 };              // 四分基础（同为 4/4）
+  /* v2.73.0：内置型 1 小节化——本场景的「四分密度 + 跨小节不跳针」语义需要 4 小节载体
+     （1 小节型的 pattern 回绕频率 ×4，resync 行为另查），改用 4 小节自定义四分载体 */
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四分载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }));
+  S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
 
   /* 核心断言：不等小节边界，点完标题就换 */
-  eq(els["patternName"].textContent, "四分基础", "点下立刻换型（标题即变，不再等小节边界）");
+  eq(els["patternName"].textContent, "四分载体", "点下立刻换型（标题即变，不再等小节边界）");
   eq(beat.activePattern().meter, 4, "发声快照同步切到新节奏型");
   eq(beat.Presets.consumePending(1).applied, false, "立即生效路径不留挂起");
 
@@ -163,10 +167,13 @@ section("T22 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / �
      "Swing 67%：落点间距一长一短（实测 " + gaps.slice(0, 4).join(",") + "）");
   ok(gaps.every((g, i) => i === 0 || Math.abs(g - gaps[i - 1]) > 0.1), "Swing 落点严格长短交替（球的运动跟随律动）");
 
-  /* 静音拍：第 4 小节不发声但端点照记（视觉照常——静音小节里球是唯一节拍来源） */
+  /* 静音拍：第 4 小节不发声但端点照记（视觉照常——静音小节里球是唯一节拍来源）
+     v2.73.0：bar===3 需要 4 小节载体（1 小节型的 schedBar 恒 0） */
   const m3 = loadApp();
   const S3 = m3.beat.Store.S;
-  S3.sel = { type: "builtin", idx: 1 };
+  m3.beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四分载体3", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }));
+  S3.sel = { type: "custom", id: m3.beat.Store.customs[m3.beat.Store.customs.length - 1].id };
   m3.beat.Presets.refreshAfterPatternChange();
   S3.mute = true;
   m3.beat.Controls.start();

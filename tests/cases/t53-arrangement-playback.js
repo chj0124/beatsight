@@ -9,7 +9,9 @@
 "use strict";
 const { loadApp, FakeAudioContext, drive, ok, eq, section } = require("../lib/harness");
 
-const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
+/* v2.73.0：内置型 1 小节化——1 遍旧语义 = 4 小节 = 新语义 4 遍，BL 内 ×4 保长度；
+   例外的 t53k 需要「块 0 内 schedBar 0..3 回绕」，改用 4 小节自定义载体（见该场景） */
+const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps * 4 });
 const A = (name, sections) => ({ name, sections });
 /* 一条 4/4 自定义节奏型：每小节 = [16 分, 8 分, 8 分, 附点 4 分]，音符起始位置 cum = {0, 24, 72, 120}。
    与四分基础（idx 1，cum = {0, 48, 96, 144}）只在 0 处重合——这样"预测用的是哪个型的音符位置"
@@ -21,8 +23,15 @@ const OFFBEAT = { name: "细分型", meter: 4,
 function startArrange(raw, sel){
   const app = loadApp({ "beatsight.arranges": JSON.stringify({ v: 1,
     arranges: [Object.assign({ id: "t1" }, raw)] }),
+    /* v2.73.0：4 小节自定义载体（t53k4 等）——schedBar 0..3 回绕语义依赖 4 小节型 */
+    "beatsight.customs": JSON.stringify({ customs: [
+      { id: "t53k4", name: "t53k 四小节载体", meter: 4,
+        bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }),
+    /* demoSeeded 闩预置：防止 start() 走首开带出演示曲分支把选中切走 */
+    "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
-      arrangeSel: Object.assign({ id: "t1", from: 0, to: 0, loop: false }, sel) }) });
+      arrangeSel: Object.assign({ id: "t1", from: 0, to: 0, loop: false }, sel) }),
+    "beatsight.arrmig73": "1" });   /* v2.73.0：BL 已按新语义 ×4，迁移戳置位防二次作用 */
   app.beat.Controls.start();
   return { app, beat: app.beat, els: app.els, ac: FakeAudioContext.last };
 }
@@ -67,7 +76,9 @@ section("T53b 曲式播放 · 落点预测走节目单（新块的第 1 拍是�
   const app2 = loadApp({
     "beatsight.customs": JSON.stringify({ v: 1, customs: [Object.assign({ id: "cx" }, OFFBEAT)] }),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "t2", name: "跨块",
-      sections: [{ name: "s", blocks: [BL(1, 1), { ref: { type: "custom", id: "cx" }, repeats: 1 }] }] }] }),
+      sections: [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 4 }, { ref: { type: "custom", id: "cx" }, repeats: 1 }] }] }] }),
+    /* v2.73.0：四分基础 1 小节化 → 块 1 用 repeats 4 凑 4 小节；迁移戳置位防二次 ×4 */
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
       arrangeSel: { id: "t2", from: 0, to: 0, loop: false } }) });
   const b2 = app2.beat;
@@ -189,7 +200,8 @@ section("T53g 曲式播放 · 中间夹一个全休止的块（预测与待命�
         BL(2, 1),                                          // 8–11 小节：八分摇滚
       ] }] }] }),
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
-      arrangeSel: { id: "t3", from: 0, to: 0, loop: false } }) });
+      arrangeSel: { id: "t3", from: 0, to: 0, loop: false } }),
+    "beatsight.arrmig73": "1" });   /* v2.73.0：迁移戳置位——本组的块遍数已按新语义手写 */
   const b = app.beat;
   b.Controls.start();
   const ac = FakeAudioContext.last;                        // ★ 必须在 start() 之后取
@@ -303,7 +315,7 @@ section("T53k 曲式播放 · 页末待命球落在**预告行**（v2.0.2 回归
        （交接语义见 T75c）。于是正确值 = 第 1 行。
        这条断言**仍然抓得住回退**：若有人丢掉预告分支、退回 `Math.min(vizBars-1, bar+1)`
        的纯钳制写法，页末待命球会原地不动（第 4 行，地线 296），离第 1 行（38）远着呢，当场红。 */
-  const one = A("单段两块", [{ name: "A", blocks: [BL(1, 1), BL(2, 1)] }]);
+  const one = A("单段两块", [{ name: "A", blocks: [{ ref: { type: "custom", id: "t53k4" }, repeats: 1 }, { ref: { type: "builtin", idx: 2 }, repeats: 4 }] }]);
   const { beat, ac } = startArrange(one, { from: 0, to: 0, loop: true });
   /* internals() 每轮重取：块边界调度时 buildViz 会重建球元素，缓存的引用会脱节 */
   let caught = null;

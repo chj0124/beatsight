@@ -166,12 +166,12 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
   const sec1 = secRows(els)[1];                       // 副歌：2 块
   eq(sec1.children[2].children.length, 3, "2 个块 + 1 个「+ 块」");
 
-  /* 遍数：夹到 1..16 */
+  /* 遍数：夹到 1..64（v2.73.0 上限随内置型 1 小节化 ×4：16→64，等效小节上限不变） */
   const reps = sec1.children[2].children[0].children[1];
   reps.value = "3"; reps.fire("change");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, 3, "遍数改为 3");
   reps.value = "99"; reps.fire("change");
-  eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, beat.CONFIG ? 16 : 16, "★ 超上限夹到 16");
+  eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, beat.CONFIG ? 64 : 64, "★ 超上限夹到 64");
   reps.value = "0"; reps.fire("change");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, 1, "★ 低于下限夹到 1（不会出现 0 遍的段）");
 

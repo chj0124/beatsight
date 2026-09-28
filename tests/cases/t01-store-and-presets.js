@@ -15,7 +15,7 @@ section("T1 Store · 坏 JSON 回退默认，不白屏");
   eq(S.sig, 4, "坏数据时拍号回退 4");
   /* v2.11.2：「起始」参数已删——起点改为开启那一刻的当前 BPM（会话值，不在 S.trainer 里） */
   ok(!("start" in S.trainer), "v2.11.2：trainer 不再有 start 字段");
-  eq(S.trainer.target, 120, "坏数据时 trainer.target 默认 120");
+  eq(S.trainer.target, null, "v2.73.0：坏数据时 trainer.target 默认 null（不设目标）");
   eq(S.trainer.everyN, 4, "坏数据时 trainer.everyN 默认 4");
 }
 
@@ -28,7 +28,7 @@ section("T2 Store · trainer 缺项/脏项回退默认值");
   ok(!("start" in t), "v2.11.2：老存档的 start 被白名单忽略（不进 S.trainer）");
   eq(t.step, 4, "非数字 step 回退默认 4");
   eq(t.everyN, 4, "null everyN 回退默认 4");
-  eq(t.target, 120, "缺失 target 回退默认 120");
+  eq(t.target, null, "v2.73.0：缺失 target 回退默认 null（不设目标）");
   eq(t.on, false, "缺失 on 回退 false");
 }
 
@@ -60,15 +60,19 @@ section("T4 Trainer · 参数钳制（v2.11.2：起始参数已删，不再有�
 {
   const { beat, els } = loadApp();
   const S = beat.Store.S;
+  /* v2.73.0（2.3）：target 语义改「可空 + 拒收」——空 = 不设目标；低于当前 BPM(96) 拒收不落盘 */
   els["trTarget"].value = "999";
   els["trTarget"].fire("change");
   eq(S.trainer.target, 240, "目标超上限钳到 240");
   els["trTarget"].value = "10";
   els["trTarget"].fire("change");
-  eq(S.trainer.target, 31, "目标低于下限钳到 31（不再被起始抬着走）");
+  eq(S.trainer.target, 240, "★ 目标 10 ≤ 当前 BPM 96 → 拒收，保持原值 240（不落盘）");
+  els["trTarget"].value = "";
+  els["trTarget"].fire("change");
+  eq(S.trainer.target, null, "★ 清空 → target = null（不设目标，允许）");
   els["trTarget"].value = "abc";
   els["trTarget"].fire("change");
-  eq(S.trainer.target, 31, "非数字输入回退原值 31");
+  eq(S.trainer.target, null, "非数字输入回退 null");
   els["trEvery"].value = "0";
   els["trEvery"].fire("change");
   eq(S.trainer.everyN, 1, "每级小节数下限钳到 1");
