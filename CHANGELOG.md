@@ -9,6 +9,26 @@
 
 ---
 
+## v2.62.0 · 代码质量：CSS 孤儿清理（审计 Q5）（2026-09-28）
+
+**根因**：审计 §2.1 Q5（`tools/check-orphan-css.js` 的延伸）指出主文件里残留一批历史死样式——多次重构删了元素却忘了删对应的 `.class` 规则，静默赖在 1.2MB 单文件里。根源是孤儿扫描出于「动态拼 class 会误报」的考量长期只警告不阻断，没有硬闸门拦回潮。
+
+**修法**：
+- **静态对账 + 逐条零引用核验**：跑 `node tools/check-orphan-css.js` 拿到 70 个疑似孤儿，再用「注释剥离后的样式表」+「全代码域（`class=` / `classList` / `className` / `setAttribute` / `innerHTML` 拼法）零命中」双重判据，筛出 19 个确死 class，删掉它们**全部规则**（含观测台 `body[data-theme="obs"]` 覆盖、以及藏在 `@media` 响应式块内的副本，共 33 条）。
+- **清掉的 19 个**：已删 `Stats` 模块的 `.st-bar`/`.st-barwrap`/`.st-col`/`.st-day`/`.st-val`/`.stats-bars`/`.spark`/`.today`；已删 pattern-head 的 `.pat-row`/`.pat-name`/`.pat-meta`；训练组壳 `.tr-dock`/`.tr-plan`；走带/配置残余 `.vdivider`；文案区 `.caption`；歌词锚点 `.arg-lyric-cue`；检查行 `.check-dot`/`.check-row`；空态 `.empty`。这批 class 在 JS 里**零赋值、零拼接、零 innerHTML 引用**，删除对渲染零影响（已用「元素从不挂此类」核验）。
+- **去除保护性断言**：旧 `t90` 有一条断言 `.tr-dock{display:contents}`「存在」——等于用测试保护死样式。清理后翻转成「断言其不再出现」，并新增 `t131` 把 19 个确死 class 钉成「样式表绝不允许再出现」的硬护栏。
+
+**取舍**：
+- 只删「确死」规则；动态拼出的 class（如 `arg-pill-` 前缀基、`kB`/`kF`/`kT` 键位提示、`cutl`/`cutr` 裁剪标记等其余 51 个仍被引用的 class）一律保留，宁可不删也不造假红。
+- 不升 `check-orphan-css` 为严格模式——动态 class 误报率仍高，硬拦会制造噪音；改由 `t131` 这道针对性硬闸门守这批确死项。
+
+**自验**：
+- 新增 `tests/cases/t131-css-orphan-cleanup.js`：断言注释剥离后样式表里 19 个确死 class 不再作为任何规则选择器出现（残留 0），并用 `.pill`/`.viz`/`.bpm-num`/`.cell`/`.sec-tag`/`.arg-jump`/`.loop-btn`/`.tr-panel` 等在用 class 做正向 sanity（防「样式表被清空」假绿）。20 条断言全绿。
+- 翻转 `t90` 的 `.tr-dock` 断言为反向（防回潮）；原 `.caption` 断言此前已因 `.caption` 规则残留而红、清理后转绿。
+- `node tools/check-orphan-css.js` 现报孤儿由 70 降到 51（剩的全是动态拼出或注释误抓，非确死）。
+- **删除用安全解析器逐规则判定**：只删「选择器里每个 `.class` 都是确死类或 CSS 状态修饰（`bad`/`:disabled`/`[hidden]` 等）」的规则；任何含在用 class 的规则一律保留。再用「HEAD 样式 ↔ 当前样式 逐规则 diff + 全代码域 class 引用对账」核验，**零在用规则被误删**（初版手写删除曾因花括号横跨误吞 `.vol-row[hidden]`/`.pal-item .du`/`.stat-lab`/`.stats-head`/`.stat-num`/`.arg-lyric-arrow`/`.pill:disabled`/`.tr-panel .lab` 等在用规则，已作废重做）。
+- `node tools/check-all.js --quick` 18/18 绿。
+
 ## v2.61.0 · 代码质量：播放范围落盘去重（审计 Q3）（2026-09-28）
 
 **根因**：审计 §2.1 Q3 指出两处「拖播放范围」入口——预设区 `Presets.onRangeInput`（L9103）与曲式侧栏 `Arrange.onPanelRange`（L12596）——各自内联写了同一组 `S.arrangeSel` 的 5 个字段（`id / from / to / byLyric / loop`），是复制粘贴债、语义易漂。历史上 v2.16.0 就因其中一处漏写 `loop` 出了「有范围没循环」的真缺陷（拖动途中落盘、change 没走到就持久化下「有范围没循环」），修复时只在 `onRangeInput` 一处补了 `loop`，同源的另一处靠注释约定同步、没有结构保障。

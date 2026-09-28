@@ -20,6 +20,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>BeatSight 时值节拍器</title>
 <style>
+
 :root{
   color-scheme:dark;     /* v2.42.8：与 <meta name="color-scheme"> 同源同义（CSS 侧声明，
                             覆盖不读 meta 的场景）；本页永远深色，声明如实 */
@@ -476,7 +477,6 @@ input[type=range].vol{width:120px}
 .pill.outline:hover:not(:disabled){background:rgba(var(--veil),.06)}
 .pill.flash{background:var(--green);color:var(--on-green)}
 .pill:disabled{background:var(--card2);color:var(--t3)}
-.vdivider{width:1px;height:90px;background:var(--line);flex:none}
 .vol-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}
 .vol-row>span:first-child{min-width:52px}     /* 标签定宽：否则「节拍」2字 与「重拍增强」4字 使整组错位（v2.5.0 加了「扫弦」后仍是三条同宽） */
 .vol-row .pct{font-family:var(--mono);min-width:38px;text-align:right}
@@ -485,15 +485,6 @@ input[type=range].vol{width:120px}
    （最难查的那种"看着对"）。v2.9.0 起「扫弦」条改为常显、不再按轨收放，但这条规则
    作为 .vol-row 的通用显隐兜底保留 */
 .vol-row[hidden]{display:none}
-
-/* ---------- 配置开关 ---------- */
-/* v2.10.15：`.config` 随「静音拍 / 变速训练」开关搬去 .viz-toggles 而删除——
-   本文件已无使用者（原训练模式区的开关行） */
-/* v2.10.18：训练组壳子 display:contents——「继续上次训练」与变速面板都隐藏时，
-   壳子高度为 0 但作为 flex 子项仍占一个 20px 间隔槽（单列布局下预设库上方间隔
-   44px = 这 20 + 栅格 24 的元凶）。contents 让壳子退出布局：子元素隐藏时不占槽，
-   显示时自然加入主列流（与 .col 的其余块同距） */
-.tr-dock{display:contents}
 /* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
 .viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}   /* v2.10.17：12→16，与卡片头下边距统一 */
@@ -555,9 +546,6 @@ input[type=range].vol{width:120px}
 .tr-panel{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:12px}
 .tr-panel[hidden]{display:none}
 .tr-panel .lab{font-size:12px;color:var(--t2)}
-/* 7 天计划行（v1.5）：[hidden] 会被 display:flex 覆盖，必须显式写（同 .inp-with-unit 的坑） */
-.tr-plan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%}
-.tr-plan[hidden]{display:none}
 .tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
@@ -752,10 +740,6 @@ input[type=range].vol{width:120px}
 .pal-item .bar.rest{background:transparent;border:1px solid var(--t3)}
 .pal-item .nm{font-size:12px;font-weight:500}
 .pal-item .du{font-size:11px;color:var(--t3)}
-.check-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);padding:3px 0}
-.check-row.bad{color:var(--red)}
-.check-dot{width:6px;height:6px;border-radius:99px;background:var(--green);flex:none}
-.check-row.bad .check-dot{background:var(--red)}
 .name-input{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;padding:10px 14px;width:280px;font-family:inherit;outline:none}
 .name-input:focus{border-color:var(--border)}
 
@@ -778,30 +762,8 @@ input[type=range].vol{width:120px}
 .stat-card{background:var(--card2);border-radius:8px;padding:16px}
 .stat-num{font-size:28px;font-weight:700;font-family:var(--mono)}
 .stat-lab{font-size:12px;color:var(--t3);margin-top:4px}
-.stats-bars{display:flex;gap:10px;align-items:flex-end;margin-top:8px}
 /* ---------- 练习分布（v1.11.0） ---------- */
 .stats-head{font-size:12px;color:var(--t3);margin:22px 0 4px}
-.pat-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
-.pat-row:last-child{border-bottom:none}
-/* 名称可能很长（自定义预设）：省略号而不是把后面几列挤走 */
-.pat-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 迷你趋势：最多 5 根竖条，高度按**该节奏型本期**的 BPM 区间归一。
-   少于 3 场不画——两个点连不成趋势，画出来只是噪音 */
-.spark{display:flex;align-items:flex-end;gap:3px;height:22px;width:44px;flex:none}
-.spark i{flex:1;display:block;background:var(--green);border-radius:2px;min-height:3px;opacity:.85}
-/* 三段文字（场次 / BPM 区间 / 最后练习于）做成 flex 子项而不是拼成一串——
-   拼串的话没有间距，渲染出来是「3 场90→100 BPM最后 今天」。
-   也正因为是三个独立子元素，测试才能逐项断言而不是去正则拆一行文字 */
-.pat-meta{flex:none;display:flex;gap:12px;align-items:baseline;font-size:11px;font-family:var(--mono);color:var(--t3)}
-.pat-meta b{color:var(--t2);font-weight:600}
-.st-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
-.st-barwrap{height:100px;width:100%;display:flex;align-items:flex-end}
-.st-bar{width:100%;border-radius:6px 6px 2px 2px;background:var(--green);min-height:2px;opacity:.85}
-.st-bar.empty{background:var(--line);opacity:.6}
-.st-col.today .st-bar{box-shadow:0 0 10px rgba(30,215,96,.4)}
-.st-day{font-size:11px;color:var(--t3)}
-.st-col.today .st-day{color:var(--green);font-weight:600}
-.st-val{font-size:11px;font-family:var(--mono);color:var(--t2)}
 
 /* ---------- 听辨训练（v1.10.0） ---------- */
 /* 候选卡片：只画记谱、不给名字——给名字就变成「读名字猜」，练不到耳朵。
@@ -932,7 +894,6 @@ input[type=range].vol{width:120px}
 .arg-lyric-tag.ok{color:var(--green);border-color:rgba(30,215,96,.4);background:rgba(30,215,96,.1)}
 .arg-lyric-preview{min-width:0;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-lyric-arrow{flex:none;font-size:11px}
-.arg-lyric-cue{flex:none}
 .arg-lyric-paste{flex:1;min-width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 /* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
    .arg-lyric-barrow 底色槽，字块 absolute 行内定位（与主界面歌词轨 v2.7.2 同构）；
@@ -1062,7 +1023,6 @@ input[type=range].vol{width:120px}
   .topbar .chip{display:none}
   .main{grid-template-columns:1fr;padding:16px}
   .card{padding:16px}
-  .vdivider{display:none}
   .bpm-num{font-size:34px;min-width:70px}   /* v2.10.19：随桌面档同步下调 */
   .bar-row{height:66px;margin-bottom:10px}
   .viz{padding-top:50px}              /* 窄屏球域略降：跳高上限仍 48px，贴边但不裁切 */
@@ -1188,7 +1148,6 @@ body[data-theme="obs"] .sec-tag i{font:500 10px/1 var(--mono);font-style:normal;
 /* 训练模式：角标内联在 group-label 里，不收成整行 */
 body[data-theme="obs"] .group-label .sec-tag{display:inline-flex;width:auto;margin:0 10px 0 0}
 body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
-body[data-theme="obs"] .caption{border-top:1px solid var(--line);padding-top:12px}
 
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
 
@@ -1210,8 +1169,7 @@ body[data-theme="obs"] .play-btn svg path,body[data-theme="obs"] .play-btn svg r
 body[data-theme="obs"] .step-btn{border-radius:6px;background:var(--card2);border:1px solid var(--line);transition:border-color .12s}
 body[data-theme="obs"] .jump-btn{border-radius:50%;background:var(--card2);border:1px solid var(--line);transition:border-color .12s,opacity .12s}
 body[data-theme="obs"] .step-btn:hover{border-color:var(--border)}
-body[data-theme="obs"] .bpm-num{font-size:48px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}   /* v2.10.19：56→48 同步降档 */
-body[data-theme="obs"] .vdivider{background:var(--line)}
+body[data-theme="obs"] .bpm-num{font-size:48px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] input[type=range]{background:rgba(var(--well),.18);height:4px}   /* 墨色轨道：白圆点才浮得出来 */
 body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(37,99,235,.28), inset 0 0 0 1px rgba(15,23,42,.28)}
 body[data-theme="obs"] .bpm-ticks i{background:rgba(var(--well),.16)}
@@ -1249,8 +1207,6 @@ body[data-theme="obs"] .edcell{border-radius:4px}
 body[data-theme="obs"] .edcell.sel{background:rgba(37,99,235,.12);box-shadow:0 0 0 1.5px var(--green)}
 body[data-theme="obs"] .edbar-label.editing .n{color:var(--accent-hi)}
 body[data-theme="obs"] .pal-item{border:1px solid var(--line);border-radius:6px}
-body[data-theme="obs"] .check-dot{background:var(--teal)}
-body[data-theme="obs"] .check-row.bad .check-dot{background:var(--red)}
 body[data-theme="obs"] .name-input{background:var(--card2);border-radius:6px}
 body[data-theme="obs"] .name-input:focus{border-color:var(--green)}
 /* 歌词字块：chip 底是 var(--green)（浅主题下为深蓝 #2563EB），而字色在经典基座里写死
@@ -1260,10 +1216,6 @@ body[data-theme="obs"] .arg-lyric-chip{color:var(--on-green)}
 /* ---------- 观测台 · 练习统计 ---------- */
 body[data-theme="obs"] .stat-card{background:var(--card2);border:1px solid var(--line);border-radius:8px}
 body[data-theme="obs"] .stat-num{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums}
-body[data-theme="obs"] .st-bar{border-radius:3px 3px 1px 1px;opacity:.9}
-body[data-theme="obs"] .st-col.today .st-bar{background:var(--teal);box-shadow:0 0 8px rgba(13,148,136,.30)}
-body[data-theme="obs"] .st-col.today .st-day{color:var(--teal)}
-body[data-theme="obs"] .st-val{font-variant-numeric:tabular-nums}
 
 /* ---------- 观测台 · 弹窗 ---------- */
 body[data-theme="obs"] .modal{border-radius:8px;border:1px solid var(--border)}
@@ -1291,6 +1243,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
 /* 复制按钮（v2.0.6，审计 P1-9）：面板本身 pointer-events:none（不想挡住底下的画面），
    所以要单独把按钮放回可点。字号比面板正文再小一档，避免抢占视觉重心 */
 .diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px 10px;font:600 10px/1.4 var(--mono)}
+
 </style>
 </head>
 <body>
@@ -2318,23 +2271,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2350  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2939  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4228  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4956  Modal         应用内弹窗
-     L5093  Viz           时值可视化渲染与每帧动画
-     L7364  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8020  Trainer       变速训练器
-     L8158  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8658  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9895  Editor        自定义节奏型编辑器
-     L10315 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10352 Ear           听辨训练（v1.10.0）
-     L10572 Arrange       曲式编排（v2.0.0）
-     L13256 Help          使用方法（v2.0.1）
-     L13339 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13413 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13629 初始化（装配） 各模块 hook 接线与启动
+     L2303  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2892  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4181  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4909  Modal         应用内弹窗
+     L5046  Viz           时值可视化渲染与每帧动画
+     L7317  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7973  Trainer       变速训练器
+     L8111  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8611  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9848  Editor        自定义节奏型编辑器
+     L10268 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10305 Ear           听辨训练（v1.10.0）
+     L10525 Arrange       曲式编排（v2.0.0）
+     L13209 Help          使用方法（v2.0.1）
+     L13292 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13366 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13582 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2360,7 +2313,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.61.0";
+const VERSION = "2.62.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

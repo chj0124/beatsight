@@ -230,8 +230,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.card-head-left \.group\{width:100%;flex:1;justify-content:space-evenly\}/.test(css),
     "★★ v2.10.20：音量组撑满列内剩余高度、滑杆行距均摊——死空间从「状态灯↔音量标签」"
     + "转移进组内行距（用户反馈该处仍太大，要求增大音量条间隙）");
-  ok(/\.tr-dock\{display:contents\}/.test(css),
-    "★★ v2.10.18：训练组壳子 display:contents——隐藏时不占 20px 间隔槽（预设库上方 44→24px）");
+  ok(!/\.tr-dock\{/m.test(css),
+    "★ Q5（v2.62.0）：`.tr-dock` 死样式随训练组壳重构一并清理（本文件已无元素挂此类，规则无使用者）；"
+    + "此前这条断言是「保护」死样式的，清理后改为反向断言防回潮");
   ok(/\.bpm-num\{font-size:40px[^}]*min-width:80px/.test(css) && /\.step-btn\{width:40px;height:40px/.test(css)
      && /#bpmPresetRow \.pill\{padding:7px 14px;font-size:12px\}/.test(css),
     "★★ v2.10.19：BPM 组降一档（大数字 40px/80、步进键 40px、快捷档 32px）——"
