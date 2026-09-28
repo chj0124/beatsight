@@ -2303,22 +2303,22 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L2334  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2923  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4388  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5131  Modal         应用内弹窗
-     L5269  Viz           时值可视化渲染与每帧动画
-     L7540  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8196  Trainer       变速训练器
-     L8334  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8850  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10124 Editor        自定义节奏型编辑器
-     L10544 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10581 Ear           听辨训练（v1.10.0）
-     L10801 Arrange       曲式编排（v2.0.0）
-     L13485 Help          使用方法（v2.0.1）
-     L13617 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13691 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13934 初始化（装配） 各模块 hook 接线与启动
+     L2937  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4405  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5152  Modal         应用内弹窗
+     L5290  Viz           时值可视化渲染与每帧动画
+     L7561  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8217  Trainer       变速训练器
+     L8355  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8871  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10145 Editor        自定义节奏型编辑器
+     L10565 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10602 Ear           听辨训练（v1.10.0）
+     L10822 Arrange       曲式编排（v2.0.0）
+     L13506 Help          使用方法（v2.0.1）
+     L13638 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13712 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13955 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2344,7 +2344,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.65.0";
+const VERSION = "2.66.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2793,6 +2793,20 @@ function migrateDemoToBuiltins(customs, arranges){
   }
   return { removed: idToIdx.size, remapped, idToIdx };
 }
+
+/* v2.66.0（Q2/A2 收口）：核心数据形状的 JSDoc typedef 集中声明——此前只有 GrpRef/Grp 两组，
+   歌词行 / 曲式 / 预设 / 听辨战绩这些高频数据形状全靠内联 @type 或裸 any，tsc 守不住结构漂移。
+   这里收口成可复用的命名类型，供 Store 归一化出口、import/export、共享区 tick/字查询函数共用。
+   ★ 纯类型声明，零运行时影响；R1 不受影响（typedef 不产生模块间引用）。 */
+/** @typedef {{ t: number, dur: number, ch: string }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断） */
+/** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid） */
+/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number }} Step 一小节的单步（时值槽；dir/zone 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]） */
+/** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][] }} Preset 归一化后的节奏型（id 在落库时补） */
+/** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
+/** @typedef {{ uid: string, name: string, blocks: Block[] }} Section 曲式的一段（uid 是稳定身份，段挪位/被删不改变） */
+/** @typedef {{ id: string, name: string, sections: Section[] }} ArrangeData 一份曲式（Arrange 已被模块 const 占用，故加 Data 后缀） */
+/** @typedef {{ total: number, right: number, best: number }} EarStats 听辨战绩：累计题数 / 正确数 / 最高连对 */
+
 /* 全局可调参数：与 DEVELOPMENT.md 的硬约束一一对应 */
 const CONFIG = {
   freqAccent:1568, freqBeat:1046.5, freqSub:784,    // 重拍/正拍/细分音色 (Hz)（click 音色）
@@ -3217,6 +3231,7 @@ const Store = (() => {
        就带着 uid，uid 随段走、不会因为"删除某段导致后方段前移"而错位。
      ★ 同曲式内 uid 必须唯一：重复 = 脏数据（手工改过冷键 / 外部包），后者补发新号。 */
   /** @param {any} raw @param {any} [prev] @returns {any} */
+  /** @param {any} raw @param {any} [prev] @returns {ArrangeData | null} */
   function normArrange(raw, prev){
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.name !== "string" || !raw.name.trim()) return null;
@@ -3258,7 +3273,7 @@ const Store = (() => {
     return { id, name: raw.name.trim().slice(0, 40), sections };
   }
   const arrIn = readJSON(KEY_ARRANGES);
-  /** @type {{ id: string, name: string, sections: { uid: string, name: string, blocks: { ref: { type: string, idx?: number, id?: string }, repeats: number }[] }[] }[]} */
+  /** @type {ArrangeData[]} */
   const arranges = [];
   {
     let dropped = 0;
@@ -3525,7 +3540,7 @@ const Store = (() => {
     return null;
   }
 
-  /** @param {any} raw @returns {any} */
+  /** @param {any} raw @returns {LyricLine | null} */
   function normLyricLine(raw){
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.arrangeId !== "string" || !raw.arrangeId) return null;
@@ -3557,7 +3572,7 @@ const Store = (() => {
     return { arrangeId: raw.arrangeId, secUid: raw.secUid, chars };
   }
   const lyrIn = readJSON(KEY_LYRICS);
-  /** @type {{ arrangeId: string, secUid: string, chars: { t: number, dur: number, ch: string }[] }[]} */
+  /** @type {LyricLine[]} */
   const lyrics = [];
   {
     let dropped = 0;
@@ -3734,6 +3749,7 @@ const Store = (() => {
      这类数字是攒出来的，防抖丢一次会让用户觉得数据在漂。
      right 用 min(total, …) 夹住：脏数据里 right > total 会算出 >100% 的正确率。 */
   const earIn = readJSON(KEY_EAR);
+  /** @type {EarStats} */
   const ear = { total: 0, right: 0, best: 0 };
   if (earIn && typeof earIn === "object"){
     ear.total = Math.max(0, Math.floor(numOr(earIn.total, 0)));
@@ -3966,6 +3982,7 @@ const Store = (() => {
   }
 
   /** @param {any} p @returns {any} */
+  /** @param {any} p @returns {Preset | null} */
   function validatePreset(p){
     if (!p || typeof p.name !== "string" || !p.name.trim()) return null;
     const meter = +p.meter;
@@ -4706,6 +4723,10 @@ const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当�
 /** @param {any} ref */
 const resolveRef = ref => (!ref ? undefined
   : (ref.type === "custom" ? customs.find(c => c.id === ref.id) : BUILTINS[ref.idx]));
+/* v2.66.0（Q2/A2 收口）：refName 从 Arrange 内提取到共享作用域——它只是 resolveRef 的薄封装
+   （取解析到的型/曲式名，解析不到回「（已删除）」），原在 Arrange 里重复定义一次，归位后全仓唯一 */
+/** @param {any} ref */
+const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
 /* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
    fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处 */
 const selectedPreset = () => resolveRef(S.sel);
@@ -4838,7 +4859,7 @@ function migrateSecRangeToBars(a, f, t){
 /* 段内第 bar 小节落在第几个块、该块的第几个小节。块边界 = 各块 repeats × 型长的累加。
    越界（bar 不在 [0, secBars)）返回 null——**不静默钳到最后一个块**，
    那会把"游标跑飞"变成"播放错内容"，比崩溃更难查 */
-/** @param {any} sec @param {any} bar */
+/** @param {Section} sec @param {any} bar */
 function blockAt(sec, bar){
   if (!sec || !Array.isArray(sec.blocks)) return null;
   let acc = 0;
@@ -10850,7 +10871,7 @@ const Arrange = (() => {
   let pendDrag = null;
   const cur = () => curId === null ? null : Store.findArrange(curId);
   /** @param {any} ref */
-  const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
+  /* v2.66.0：refName 已提取到共享作用域（见 resolveRef 同区），此处不再重复定义 */
   /** @param {any} ref */
   const refDead = ref => !resolveRef(ref);
 

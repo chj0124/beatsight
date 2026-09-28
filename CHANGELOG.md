@@ -9,6 +9,19 @@
 
 ---
 
+## v2.66.0 · 架构收口：核心数据形状 typedef + refName 提取（Q2/A2）（2026-09-28）
+
+- **根因**：审计报告「代码质量·架构清理」把 Q2/A2 列为收口项；当前核心数据形状（歌词行 / 曲式 / 预设 / 听辨战绩）只有 GrpRef/Grp 两组命名类型，其余全靠内联 `@type` 或裸 `any`，tsc 守不住结构漂移；且 `refName`（resolveRef 的薄封装）在 Arrange 内重复定义一次。
+- **修法**：
+  - 共享作用域新增 8 组 JSDoc `@typedef`：`LyricChar` / `LyricLine` / `Step` / `Preset` / `Block` / `Section` / `ArrangeData` / `EarStats`（注：`Arrange` 已被模块 `const` 占用，故曲式形状取名 `ArrangeData`），收口此前散落的内联 `@type`（`arranges` / `lyrics` 两个冷键数组改为 `@type {ArrangeData[]}` / `@type {LyricLine[]}`）。
+  - 中枢归一化出口接上类型：`normLyricLine` → `@returns {LyricLine}`、`validatePreset` → `@returns {Preset}`、`normArrange` → `@returns {ArrangeData}`、共享区 `blockAt` 的 `sec` 参数 → `@param {Section}`、`ear` 冷键 → `@type {EarStats}`。
+  - **纯搬移**：`refName` 从 Arrange IIFE 内提取到共享作用域（紧贴 `resolveRef`），全仓唯一；Arrange 的歌词摘要渲染改调共享 `refName`。
+  - ★ 经核查：歌词域纯 helper（`blockAt` / `lyricSpanTicks` / `lyricCharsAt` / `resolveRef`）**早已正确归位在共享作用域**，摘要里计划迁移的 `mkLyricRow` 在歌词对齐重写后已废弃、无后继者需提取，故仅做上述 typedef 收口 + `refName` 归位，未强行搬移任何 UI 绑定函数。
+- **取舍**：typedef 仅为类型声明，零运行时影响；不改动任何持久化/导入导出结构（PACK_V 仍为 2）。`refName` 归位属同语义等价替换，无行为变化。
+- **自验**：`node tools/check-all.js` 18/18 全绿（tsc 加强闸门验证 8 组类型与全部接线一致；架构约束 R1 未引入反向边——`refName` 由共享作用域提调 `resolveRef`，Arrange 仅向上引用共享区）；DOM 节点预算、行覆盖率维持阈值内（行为零变更，覆盖无回退）。
+
+---
+
 ## v2.65.0 · 选择性导入/导出（X1）（2026-09-28）
 
 - **根因**：此前只有「导出全部数据」（整包：预设+曲式+歌词+听辨战绩），换设备/分享只想搬某类数据时只能整包导、整包回；且「设置」（分组 / 内置型改名覆盖）一直没进导出，换设备会丢视图组织。审计「第 2 批·业务功能」把 X1 列为要补的缺口。
