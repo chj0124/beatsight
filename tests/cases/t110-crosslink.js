@@ -119,9 +119,9 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★★ v2.38.0：铺满封顶已撤销——网格与歌词轨都全宽同起点（对齐恢复，用户实拍错位已修）");
   ok(src.includes("--cs") && src.includes("font-size:calc(16px * var(--cs, 1))"),
     "★ 铺满时格内字形按 --cs 等比放大（歌词字号/格标签/座次尺随网格宽缩放）");
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:352px repeat(2,minmax(min-content,max-content)"),
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:312px minmax(min-content, 1fr) max-content"),
     "★ 卡片头居中分布（2×2：r1 音量｜BPM｜三开关并列，r2 行数拍号占满整行；v2.41.0：首列钉 352px"
-    + "（min(352px,100%) 在轨道固有尺寸里百分比循环、按内容量宽多出 66px 死空间），其余列 minmax"
+    + "（v2.75.1 音量条缩 40px 让给 BPM 卡：BPM 列 1fr 吸收自由空间）"
     + "——空间富余贴 max、紧张先收缩不折行）");
   ok(!src.includes(".card-head-left{grid-row"),
     "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
@@ -136,7 +136,7 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★ v2.40.0：型名单行省略——无 nowrap 时省略号失效、长型名折两行悬在状态行右上");
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
-  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:352px repeat(3,minmax(min-content,max-content));\n    justify-content:space-between")
+  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:312px repeat(3,minmax(min-content,max-content));\n    justify-content:space-between")
      && src.includes("@media (min-width:1900px)"),
     "★★ v2.40.0/v2.41.0：宽屏铺满四块一行 + space-between 拉开（≥1900 才启用：四块 max 合计"
     + " ~1723，更窄的宽屏落回 2×2 居中而非溢出；行数拍号列 minmax——空间不足先内部折行）");

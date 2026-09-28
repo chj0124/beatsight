@@ -414,7 +414,7 @@ function layoutProbe(){
   /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
   out.title = textLeft(q(".card-head-left .group-label"));
-  out.toggle = textLeft(q(".viz-toggles > .toggle-pill"));
+  out.toggle = textLeft(q(".viz-toggles .tg-row .toggle-pill"));   // v2.76.0：开关移入 .tg-row 行容器
   out.rowsLabel = textLeft(q(".viz-rows-panel > .group-label"));
   out.rowsPillBox = boxLeft(q("#vizRowsRow > .pill"));
 

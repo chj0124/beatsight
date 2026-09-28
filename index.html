@@ -139,15 +139,27 @@ body.wide-full .main{max-width:none}
      margin-bottom:16px → 首间隙只有其余的一半。统一 row-gap:16px（(0,2,0) 特异性
      盖过 ≤560 的 gap 简写；≥1440 网格模式不受影响——display:contents 下 row-gap 无意义）。 */
 }
-/* v2.74.0（2.10）：三张组容器卡（音量 / BPM / 开关）的重心统一——
-   列布局 + 内容 space-evenly 均布：卡片高度不一致时（变速参数行出现、预备拍隐藏），
-   死空间摊进行距而不是全堆在一侧。变速参数行出现时压 BPM 组的行距（12→8）防 +5 折行。 */
+/* v2.76.0（2.10 重排 + 用户验收微调）：三张组容器卡统一骨架——
+   [标签/开关行（固定卡顶）] + [内容区 flex:1 space-evenly]：
+   · 内容随卡高均布（v2.75.2 用户要求的均布观感）；
+   · 标签/开关行不参与均布 ⇒ 「速度 BPM」与「音量」标签精确同线，
+     且不随参数行开合漂移（space-evenly 只作用于内容区，不作用于标签）；
+   · gap:8px 为最小行距；
+   · 左卡前置（角标 01 + 状态行）高 48px（量测值）⇒ BPM/开关两卡加同高
+     顶部占位（padding-top 60 = 12 卡内边距 + 48），改左卡头部结构须同步此值。 */
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
-.viz-head-grid .viz-toggles{display:flex;flex-direction:column;gap:8px;justify-content:space-evenly}
-/* v2.75.2（用户验收）：三卡内容纵向**均布**（跟音量卡同款）——行内容已是整齐的
-   nowrap 按钮带（v2.75.0），均布把卡高不一致的死空间摊进行距，不再堆在底部。
-   gap:8px 保留为最小行距（space-evenly 在其上分配）。 */
+.viz-head-grid .viz-toggles{display:flex;flex-direction:column;gap:8px;margin-bottom:0}   /* v2.76.0：底距清零（行数拍号行的间距单一来源） */
+.viz-head-grid .viz-head > .group,
+.viz-head-grid .viz-toggles{padding-top:53px}
+.viz-head-grid .card-head-left .group{flex:1;justify-content:space-evenly}
+.viz-head-grid .tg-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:8px}
+/* v2.76.0（items 2/3/4）：右卡行容器——开关与紧随其后的参数**同行不折行** */
+.viz-toggles .tg-row{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.viz-toggles .tg-row .toggle-pill{flex:none}
+/* v2.76.0 溢出防护（上次 v2.75.1 的教训）：参数行允许折行——min-content 降到
+   最宽单元素，开关卡的列宽才不会被不折行的参数行撑爆（网格溢出的根因） */
+.viz-head-grid .viz-toggles .tr-panel{flex-wrap:wrap}
 /* v2.75.0（2.10 重排）：BPM 卡两行按钮带**不折行**——转盘行与快捷档行
    flex-wrap:nowrap + 每颗 flex:1 min-width:0 等宽压缩：卡多窄都不折行，只压按钮。
    组内间距 12→6（"内容显示混乱"的另一半根因：间距过大 + space-evenly 摊行距——
@@ -171,7 +183,7 @@ body.wide-full .main{max-width:none}
      418（盒 352，留 66px 死空间）、BPM 列被压到 294（内容 340，快捷档折行把行 1 撑高到 281）。
      max-content 严格贴内容：间隙恒等 14、三块等高由 stretch 保证。断点 1280→1440：
      三块一行 min 合计 ~925，容器（视口−480）到 ~1420 才装得下，不足则回退窄窗左贴 */
-  .viz-head-grid{display:grid;grid-template-columns:352px repeat(2,minmax(min-content,max-content));justify-content:center;
+  .viz-head-grid{display:grid;grid-template-columns:312px minmax(min-content, 1fr) max-content;justify-content:center;
     align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:16px}
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
@@ -183,7 +195,7 @@ body.wide-full .main{max-width:none}
    行数拍号列用 minmax(min-content,max-content)——空间不足时**先内部折行**（两层面板）
    而不是溢出，~1900 起稳定一行；不足 1900 的宽屏落回上面 ≥1440 的 2×2 居中） */
 @media (min-width:1900px){
-  body.wide-full .viz-head-grid{grid-template-columns:352px repeat(3,minmax(min-content,max-content));
+  body.wide-full .viz-head-grid{grid-template-columns:312px repeat(3,minmax(min-content,max-content));
     justify-content:space-between;column-gap:32px}
   body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}
 }
@@ -198,7 +210,7 @@ body.wide-full .main{max-width:none}
    左列（与角标/音量同列上下分布），列内 gap 统一对齐，不再需要行内微调 */
 /* v2.10.15：左块**竖排**。v2.10.16：上行只剩角标（标题 #vizTitle 删除），
    状态灯成为左列第二行（用户要求：与标题同列上下分布） */
-.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(352px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
+.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(312px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
 .card-head-left .group{width:100%;flex:1;justify-content:space-evenly}   /* v2.10.20：音量组撑满列内剩余高度、三条滑杆行距均摊（v2.10.18 的 margin-top:auto 把剩余空间全堆在状态灯↔音量标签之间——用户反馈仍太大；现在死空间转移进组内，音量条间隙变大、标签紧贴状态灯下方） */
 .card-head-left .vol-row{width:100%}
 .card-title{font-size:14px;font-weight:600}
@@ -1444,6 +1456,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
              #bpmTicks 是滑杆的刻度层，必须与滑块同处 .slider-wrap（绝对定位对齐圆钮行程） -->
         <div class="group">
           <div class="group-label">速度 BPM · 范围 30–240</div>
+          <!-- v2.76.0：标签之下的内容包进 .tg-body（flex:1 + space-evenly）——
+               标签行固定在卡顶，内容随卡高均布；三卡骨架统一（音量卡同款：
+               前置[角标+状态行] + 组[flex:1 space-evenly]），标签水平对齐且
+               不随参数行开合漂移（space-evenly 只作用于内容区） -->
+          <div class="tg-body">
           <div class="bpm-row">
             <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
             <button class="step-btn" id="bpmMinus" aria-label="减 1 BPM">-1</button>
@@ -1490,35 +1507,43 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          ★ `.viz-toggles .toggle-pill{padding-left:0}` 对本行全部开关生效——
            三个开关的文字都落到卡片内容边缘（v2.10.11 ③选丙的同一口径） -->
     <div class="viz-toggles">
-      <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
-      <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
-      <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍<span class="switch"></span></button>
+      <div class="tg-body">
+      <!-- v2.76.0（item 2）：预备拍开关与拍数输入**同行**（.tg-row 包裹，不折行） -->
+      <div class="tg-row">
+        <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
+        <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
+      </div>
+      <div class="tg-row">
+        <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍<span class="switch"></span></button>
+        <!-- v2.76.0（item 3）：随机子开关上移与静音拍同行；显隐跟静音拍开关（开才显示）。
+             参数「每 N · 静 M」仍在下方参数行 -->
+        <button class="toggle-pill off" id="muteRandomToggle" role="switch" aria-checked="false" hidden>随机<span class="switch"></span></button>
+      </div>
       <!-- v2.71.0（1.5）：静音拍参数行（照 #trainerPanel 模式：开关开着才露面、
-           .viz-toggles 作用域内 margin 归零）。每 [N] 小节一组 · 静 [M] 小节 · [随机]——
+           .viz-toggles 作用域内 margin 归零）。每 [N] 小节 · 静 [M] 小节——
            M 的选项随 N 联动重建（1 ≤ M ≤ N−1）；random = 组内随机挑 M 位
            （种子=组号 ⇒ 确定性，发声/视觉/状态栏三处问同一判据函数必然一致） -->
       <div class="tr-panel" id="muteCfgPanel" hidden>
         <span class="lab">每</span><select class="loop-sel" id="muteEvery" aria-label="每几小节一组"></select>
         <span class="lab">小节 · 静</span><select class="loop-sel" id="muteCount" aria-label="静几小节"></select>
         <span class="lab">小节</span>
-        <button class="toggle-pill off" id="muteRandomToggle" role="switch" aria-checked="false">随机<span class="switch"></span></button>
       </div>
-      <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练 · 自动爬坡<span class="switch"></span></button>
-      <!-- v2.11.2（用户要求②③）：变速训练的参数搬到开关**右边**、同一行内（此前隔着整个
-           可视化网格放在下面，开了开关要跑很远才能调）。
-           ★ 搬块不换 id（#trainerPanel / #trTarget / #trStepInp / #trEvery / #trainerProg
-             全部沿用旧 id），接线与既有断言一行都不用改。
-           ★ 只在开关打开时露面（hidden 由 Trainer.updateProg 控制）；`.tr-panel` 自带
-             的 `margin-top:12px` 是"独占一行"时期留的，进了本行会和 gap 叠成 24px，
-             故在 `.viz-toggles` 作用域内归零（只改这一行，不动全局）。
-           ★ 窄屏由 `.viz-toggles` 既有的 `flex-wrap:wrap` 自动折行，不改断点的既有行为。 -->
+      <div class="tg-row">
+        <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练<span class="switch"></span></button>
+        <!-- v2.76.0（item 4）：「· 自动爬坡」后缀去除；目标框上移与开关**常显同行**——
+             目标是开训练的前提（空目标拒开），藏起来会死锁。爬坡语义不变。 -->
+        <span class="inp-with-unit" id="trTargetWrap"><span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="需大于当前 BPM" aria-label="目标 BPM，可留空表示不设目标"></span>
+      </div>
+      <!-- v2.11.2：变速训练参数行（开关打开才露面；v2.76.0 目标框上移后只剩步长/等级/小节）。
+           ★ 搬块不换 id（#trainerPanel / #trStepInp / #trEvery / #trainerProg 全部沿用）；
+           ★ 窄屏由 .viz-toggles 既有的 flex-wrap:wrap 自动折行，不改断点的既有行为。 -->
       <div class="tr-panel" id="trainerPanel" hidden>
-        <span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="需大于当前 BPM" aria-label="目标 BPM，可留空表示不设目标">
         <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
         <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
         <div class="tr-prog" id="trainerProg"></div>
       </div>
-    </div>
+          </div>
+        </div>
     <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
          一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
          上下两层，共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
@@ -2401,23 +2426,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2433  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3041  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4570  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5365  Modal         应用内弹窗
-     L5503  Viz           时值可视化渲染与每帧动画
-     L7838  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8495  Trainer       变速训练器
-     L8676  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9244  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10528 Editor        自定义节奏型编辑器
-     L10961 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11008 Ear           听辨训练（v1.10.0）
-     L11228 Arrange       曲式编排（v2.0.0）
-     L13928 Help          使用方法（v2.0.1）
-     L14057 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14131 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14374 初始化（装配） 各模块 hook 接线与启动
+     L2458  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3066  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4595  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5390  Modal         应用内弹窗
+     L5528  Viz           时值可视化渲染与每帧动画
+     L7863  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8520  Trainer       变速训练器
+     L8701  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9270  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10554 Editor        自定义节奏型编辑器
+     L10987 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11034 Ear           听辨训练（v1.10.0）
+     L11254 Arrange       曲式编排（v2.0.0）
+     L13954 Help          使用方法（v2.0.1）
+     L14083 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14157 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14400 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2443,7 +2468,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.75.2";
+const VERSION = "2.76.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9110,6 +9135,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   bindToggle("muteToggle", () => (S.mute = !S.mute), () => {
     Viz.syncMuteBars();
     $("muteCfgPanel").hidden = !S.mute;   // v2.71.0（1.5）：参数行只在开关开着时露面
+    $("muteRandomToggle").hidden = !S.mute;   // v2.76.0（item 3）：随机子开关跟静音拍开关同进退
   });
 
   /* 静音拍参数行（v2.71.0，1.5）：每 [N] 小节 · 静 [M] 小节 · [随机]。
@@ -14565,6 +14591,7 @@ paintRange($("volMaster")); paintRange($("volStrum")); paintRange($("volAccent")
    v1.3.0 之前这里是三行手写的 className，加无障碍语义时极易漏改其中一处 */
 setToggle("muteToggle", S.mute);
 $("muteCfgPanel").hidden = !S.mute;                        // v2.71.0：参数行随开关收敛（开着才露面）
+$("muteRandomToggle").hidden = !S.mute;                    // v2.76.0：随机子开关同款启动收敛
 setToggle("muteRandomToggle", S.muteCfg.random);           // v2.71.0：随机子开关同款启动收敛
 setToggle("bounceToggle", S.bounce);
 setToggle("trainerToggle", S.trainer.on);
