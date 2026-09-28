@@ -21,7 +21,7 @@
 
 ## 功能现状
 
-当前 `v2.67.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v2.68.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/CHANGELOG-v0.md](docs/CHANGELOG-v0.md) 与 [docs/CHANGELOG-v1.md](docs/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 ### 节拍内核
 
@@ -111,6 +111,18 @@ sh tools/install-hooks.sh   # 可选但推荐：装一次 pre-commit 钩子，�
 ```
 
 **发布前清单**：① `node tools/check-all.js`（全量）通过 —— Cloudflare 构建时会再跑一遍；② 把 `index.html` 的 `const VERSION` bump 到本次版本号（**每次发版都要 bump，工程版也不例外**；唯一真相源，`<title>` 与品牌区徽章两处显示自动跟着变）；③ 视觉 / 手感类改动人眼过一遍——`node tools/smoke.js` 能验「能启动、无控制台报错、版本号一致、网格渲染、关键样式、Service Worker、帧率」，但看不出「好不好用」；④ 涉及后台播放的改动另需真人验收（见 docs/DEVELOPMENT.md §5）。
+
+### 双渠道部署对账（v2.68.0）
+
+BeatSight 有两条对外渠道，但共用同一份源码真相：
+
+- **`file://` 直开渠道**：仓库根的 `index.html`（开发版，不带产物戳记）。
+- **Cloudflare Workers 在线渠道**：`npm run build`（即 `tools/build-dist.js`）装配出的 `dist/`，其中 `dist/index.html` 与根 `index.html` 是同一份代码（只多注入一个 `<meta name="beatsight-build">` 产物戳记，不改版本语义）。
+
+⚠️ **`_headers` 里的 6 条安全响应头（CSP / X-Frame-Options / HSTS 等）只在 Cloudflare 渠道生效**——`file://` 直开时浏览器不读 `_headers`，属单文件架构的既定取舍（详见 `_headers` 文件头注释）。也就是说：在线版有这层防护，本地双击版没有；别因为「本地打开没看到头」以为配置丢了。
+
+**对账工具**：`node tools/check-deploy-parity.js`（= `npm run verify:parity`）做只读对账，不进 `check-all` 的 18 步门禁（避免新增阻塞阈值），按 T1「先做成只读报告」的同款纪律落地。它核对：① 本地版本对齐（index.html = package.json = lock = README = CHANGELOG 首条）；② **当且仅当 `dist/` 已构建时**，再核对 `dist/index.html` 版本 == 源码、`dist/` 产物集 == 恰好 9 个条目（无残留/无缺失）、`dist/_headers` 含 6 条安全头。③ `dist/` 不存在时优雅降级，仅做本地版本对账（说明性结论，退出 0）。CI 应在 `npm run build` 之后跑它，拦住「线上到底是哪一版」这类不可知。
+
 
 ## 文档
 

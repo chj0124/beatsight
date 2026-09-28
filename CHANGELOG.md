@@ -9,6 +9,21 @@
 
 ---
 
+## v2.68.0 · 双渠道部署对账工具 + 安全头澄清（剩余基建·部署对账：T4/E4/S1 收尾）（2026-09-28）
+
+- **根因（范围重建说明）**：本批「剩余基建·部署对账（T4/E4/S1）」在审计报告与执行计划清单里的实际定义与摘要里的概括对不上，按用户「三版都按最佳理解交付再审」的指令重建如下：
+  - **T4**（docs/ 目录索引页）：降低接手者认知成本（活文档 vs 历史快照一眼分清）——**已在 #18 完成**（docs/README.md 索引页），本版仅确认、无新增。
+  - **S1**（审计字面）：壁纸/大数据写入 localStorage 的「**写入前 size 预检 + 主动提示**」。经核查**已被既有代码完整覆盖**，再加是冗余：`wallCheck` 已对 `img.length > WALL_MAX_BYTES`(1200KB) 预拒并给文案；源体积 `file.size > WALL_SRC_MAX_BYTES`(24MB) 在选图入口即弹窗拦截；`wallWrite` 失败分支弹「存不下」提示（非静默）。本版**不重复实现**，仅标注此结论，避免制造与既有逻辑分叉的死代码。
+  - **E4**：审计报告与执行计划清单中**均无 E4 条目**（工程化能力只到 E3），属摘要重建时的误标；「双渠道部署对账」实为按部署形态推导出的真实缺口，本版以 `tools/check-deploy-parity.js` 补齐。
+- **修法（真实增量）**：
+  - 新增 `tools/check-deploy-parity.js`：**双渠道部署对账**（只读、不改文件）。① 本地版本对齐：index.html VERSION == package.json == package-lock.json（含 `packages[""]`）== README「当前 vX.Y.Z」== CHANGELOG 首条；② **当且仅当 `dist/` 已构建时**再核对 `dist/index.html` 版本 == 源码、`dist/` 产物集 == 恰好 9 个条目（5 拷贝 + 4 生成，与 `build-dist.js` 的 FILES/GENERATED 同源）、`dist/_headers` 含 6 条安全响应头；③ `dist/` 不存在时优雅降级，仅做本地版本对账（说明性结论、退出 0）。
+  - **不进 `check-all` 的 18 步门禁**：遵循 T1「先做成只读报告不设阈值、避免假红」的同款纪律，作为「`npm run build` 之后」的独立校验（CI 接 `npm run verify:parity`），避免引入新的阻塞阈值与改动「实跑 18/18」既有契约。
+  - `package.json` 加 `verify:parity` 脚本；README 增「双渠道部署对账」小节，明确 **`_headers` 安全头仅 Cloudflare 渠道生效**（file:// 直开忽略，属既定取舍），并删除了工作树里一份遗忘的陈旧 `dist/`（版本 2.45.0）——本工具当场抓出「线上/源码版本不一致」，正是它要防的「线上到底是哪一版不可知」。
+- **取舍**：对账工具只比「集合」与「版本字符串」，不做字节级 diff（build-dist 已逐文件断言非空 + 打字节数，分工不重叠）；dist 路径仅在部署/CI 上下文触发，本地开发不强制构建即可绿。
+- **自验**：`node tools/check-deploy-parity.js` 在删陈旧 dist 后降级绿（exit 0）；人造陈旧 `dist/index.html=2.45.0` 时正确报 1 处不一致并退出 1（已验证抓得到）；`node tools/check-all.js` 18/18 全绿（新增工具零依赖、ESLint/tsc 合规，未改变既有门禁项数与行为零变更）；行覆盖率维持阈值内。
+
+---
+
 ## v2.67.0 · 持久化三连收尾：补齐 groupMove / deleteArrange / deleteLyric 写路径护栏（T1）（2026-09-28）
 
 - **根因**：审计报告「剩余基建·部署对账」的 T1 是「DOM 节点账本工具」，但其更核心的诉求是「改了哪个数组就要写进那个数组对应的键」——而 t126 既有覆盖只到 `rename*` / `groupRename` / `upsertLyric` 五条，写路径清单里 `group*`（`groupMove`）与 `delete*`（`deleteArrange` / `deleteLyric`）的「三连」护栏仍缺位：覆盖率守不住、它才防得住（v2.54.1 修的正是改名写错键、刷新回退）。
