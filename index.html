@@ -2107,6 +2107,19 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
              否则它会指向一个不再存在的标识符。 -->
         <button class="pill outline" id="helpClearQuar" hidden aria-label="清理被隔离的损坏预设">清理隔离数据</button>
 
+        <!-- v2.63.0（X3 安装引导 + X4 诊断导出）：把"怎么装到本机"与"怎么把现场诊断带走"
+             收进「使用方法」这个人人都会翻的地方——报错时用户第一反应是来这里看，而不是去翻代码。
+             · 安装按钮默认 hidden：beforeinstallprompt 真触发（即当前确为可安装的安全上下文）才露；
+               没触发就只留说明文字，告诉用户 file:// 直开无法安装、要走 https 部署地址。
+             · 诊断导出按钮常驻：任何环境都能把 diagReport 落成本地文件，不依赖 ?debug=1。 -->
+        <h2 class="card-title" style="margin:22px 0 4px">安装到本机 · 诊断导出</h2>
+        <ul class="help-list">
+          <li><b>安装到本机</b>：用 <b>https 部署地址</b>（如 Cloudflare Workers 托管）打开时，浏览器会提示「安装到应用 / 主屏」；下方按钮也能主动唤起。用 <code>file://</code> 直接双击打开的单文件副本<b>无法安装</b>——PWA 要求安全上下文 + 线上托管。</li>
+          <li><b>导出诊断信息</b>：遇到异常（卡顿、没声音、后台断音）时点下方按钮，生成一份现场诊断 .txt 文件，连同「右下角 ?debug=1 实时计数」一并贴给开发者，能省掉一整轮隔空猜。</li>
+        </ul>
+        <button class="pill outline" id="helpInstallBtn" hidden aria-label="安装 BeatSight 到本机">安装到本机</button>
+        <button class="pill outline" id="helpDiagExport" aria-label="导出诊断信息为本地文件">导出诊断信息</button>
+
         <h2 class="card-title" style="margin:22px 0 4px">键盘</h2>
         <ul class="help-list">
           <li><b>空格</b>：开始 / 停止播放（页面任何位置都可用；正在输入文字时除外）</li>
@@ -2271,23 +2284,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2303  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2892  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4181  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4909  Modal         应用内弹窗
-     L5046  Viz           时值可视化渲染与每帧动画
-     L7317  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7973  Trainer       变速训练器
-     L8111  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8611  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9848  Editor        自定义节奏型编辑器
-     L10268 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10305 Ear           听辨训练（v1.10.0）
-     L10525 Arrange       曲式编排（v2.0.0）
-     L13209 Help          使用方法（v2.0.1）
-     L13292 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13366 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13582 初始化（装配） 各模块 hook 接线与启动
+     L2316  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2905  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4194  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4928  Modal         应用内弹窗
+     L5065  Viz           时值可视化渲染与每帧动画
+     L7336  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7992  Trainer       变速训练器
+     L8130  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8630  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9867  Editor        自定义节奏型编辑器
+     L10287 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10324 Ear           听辨训练（v1.10.0）
+     L10544 Arrange       曲式编排（v2.0.0）
+     L13228 Help          使用方法（v2.0.1）
+     L13352 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13426 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13669 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2313,7 +2326,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.62.0";
+const VERSION = "2.63.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4230,6 +4243,12 @@ function overlayKeyLayer(mod){
 const evEl = ev => ev.currentTarget;
 /** @type {(ev: Event) => any} */
 const evTarget = ev => ev.target;
+
+/* v2.63.0（X4）：把诊断导出能力透出给上游模块（Help 等）而不引入「Help → Diagnostics」反向边——
+   Diagnostics 是依赖链末端，上游模块不得直接引用它。这里在共享作用域转一道，调用时 Diagnostics 已就绪。
+   本函数不在 EXPECTED_ORDER 里，故不算模块边；Help 调它也只是引用共享助手。 */
+/** @param {HTMLElement} [btn] @returns {boolean|void} */
+function exportDiagnostics(btn){ return Diagnostics.diagExport(btn); }
 /* 把 querySelectorAll 拿到的 Element 当 HTMLElement 用（v1.10.0 类型闸门）：
    静态类型上 querySelectorAll 给的是 Element，而 .inert / .disabled 在 lib.dom 上属
    HTMLElement / 表单元素。本项目这两处运行时拿到的确实是 HTMLElement，故收口一次并注明。
@@ -13216,6 +13235,19 @@ const Arrange = (() => {
    **不自动弹窗**：顶栏常驻按钮，想看再看。首访弹窗对老用户是打扰，对这台设备也未必是"首访"。 */
 const Help = (() => {
   let more = false;
+  /* v2.63.0（X3 安装引导）：捕获 beforeinstallprompt 事件（只在该上下文确实可安装时浏览器才派发，
+     file:// 直开不会触发）。捕获后拦掉默认迷你条、存起来，等用户在「使用方法」里主动点按钮再 prompt()。
+     ★ 守卫：宿主无 window（沙箱老默认值）时静默跳过——与 Diagnostics 的 diagOn 同一套习惯。 */
+  /** @type {any} */
+  let deferredPrompt = null;
+  try{
+    if (typeof window !== "undefined" && window.addEventListener){
+      window.addEventListener("beforeinstallprompt", (/** @type {any} */ e) => {
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        deferredPrompt = e;
+      });
+    }
+  }catch(e){ /* 极老环境：不装也罢 */ }
   function helpRender(){
     $("helpMore").hidden = !more;
     /* v2.42.3：整节惰性挂载——首次展开把 helpMoreTpl 克隆进 #helpMore（内容约 180 节点）。
@@ -13247,6 +13279,32 @@ const Help = (() => {
       b.hidden = n === 0;
       b.textContent = "清理隔离数据（" + n + " 条）";
       if (!quarWired){ b.addEventListener("click", onQuarClick); quarWired = true; }
+    }
+    /* v2.63.0（X3 安装引导 + X4 诊断导出）：两按钮随整节惰性挂载（在 helpMoreTpl 里），
+       模块 init 时还不在 DOM——接线挪进 helpRender，首展后补挂一次（*Wired 防重复）。
+       · 安装按钮：deferredPrompt 未捕获（多因 file:// 非安全上下文）则保持隐藏，只留说明文字；
+         捕获到就显形，点击主动 prompt()；用户抉择后清空并隐藏。
+       · 诊断导出：常驻可见，点一下掉一份现场 .txt（Diagnostics.diagExport 内部已含下载失败兜底）。 */
+    const ib = $("helpInstallBtn");
+    if (ib){
+      ib.hidden = !deferredPrompt;
+      if (!installWired){
+        ib.addEventListener("click", (/** @type {MouseEvent} */ e) => {
+          evEl(e).blur();
+          if (!deferredPrompt) return;
+          const p = deferredPrompt;
+          try{ if (typeof p.prompt === "function") p.prompt(); }catch(_){}
+          if (p.userChoice && typeof p.userChoice.then === "function"){
+            p.userChoice.then(() => { deferredPrompt = null; ib.hidden = true; }).catch(() => { deferredPrompt = null; });
+          } else { deferredPrompt = null; ib.hidden = true; }
+        });
+        installWired = true;
+      }
+    }
+    const eb = $("helpDiagExport");
+    if (eb && !diagExpWired){
+      eb.addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); exportDiagnostics(eb); });
+      diagExpWired = true;
     }
   }
   /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
@@ -13283,6 +13341,8 @@ const Help = (() => {
     });
   }
   let quarWired = false;
+  let installWired = false;
+  let diagExpWired = false;
   /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
   registerKeyLayer(overlayKeyLayer({ isOpen, close }));
   helpRender();
@@ -13508,11 +13568,12 @@ const Diagnostics = (() => {
   }
   /** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
    *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应"。
-   *  ★ btn 必须标注类型：`noImplicitAny` 开着，缺标注会报 TS7006（同样是被线上构建拦下来的）
-   *  @param {HTMLElement} btn */
+   *  ★ btn 标注可选类型：`noImplicitAny` 开着，缺标注会报 TS7006；diagExport 在无按钮时也会调它，
+   *     故允许 undefined（此时只弹窗、不回显文案）。
+   *  @param {HTMLElement} [btn] */
   function diagCopy(btn){
     const text = diagReport();
-    const done = () => { btn.textContent = "已复制"; };
+    const done = () => { if (btn) btn.textContent = "已复制"; };
     const fallback = () => { Modal.uiAlert(text); };
     try{
       const nav = /** @type {any} */ (navigator);
@@ -13522,6 +13583,32 @@ const Diagnostics = (() => {
       }
     }catch(e){ /* 落到下面的兜底 */ }
     fallback();
+  }
+  /** 导出诊断信息为本地文件（v2.63.0，X4）：生成一份 .txt 现场诊断供用户贴给开发者 / 进 issue。
+   *  ★ 优先 Blob 下载；下载能力缺失（极老环境 / 测试桩无 URL）就退回复制——与 diagCopy 同一兜底哲学，
+   *     绝不"点了没反应"。btn 标注类型（noImplicitAny 开着，缺标注会被线上构建拦）。
+   *  @param {HTMLElement} [btn] */
+  function diagExport(btn){
+    const text = diagReport();
+    try{
+      if (typeof document === "undefined" || !document.createElement) return diagCopy(btn);
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = (typeof URL !== "undefined" && URL.createObjectURL) ? URL.createObjectURL(blob) : "";
+      a.download = "beatsight-diagnostics-v" + VERSION + ".txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if (typeof setTimeout === "function"){
+        setTimeout(() => { try{ if (a.href && URL && URL.revokeObjectURL) URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+      }
+      if (btn) btn.textContent = "已导出";
+      return true;
+    }catch(e){
+      if (btn) btn.textContent = "改复制";
+      diagCopy(btn);
+      return false;
+    }
   }
   function diagBuild(){
     if (typeof document === "undefined" || !document.body) return;
@@ -13575,7 +13662,7 @@ const Diagnostics = (() => {
     }catch(e){ return null; }
   }
   if (diagOn) diagBuild();
-  return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagBuild,
+  return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagExport, diagBuild,
     diagStorageTop, stampCheck, diagOn, diagLast, DIAG_LAST_MAX };
 })();
 
@@ -14458,6 +14545,7 @@ if (EXPOSE_INTERNALS){
     demoPresetEq,                                 // v2.6.4：示例型内容级一致判定（同名不同命的旧数据只有比内容才分得出来）
     Arrange,                                        // v2.0.0：曲式编排 UI
     Help,                                           // v2.0.1：使用方法
+    Diagnostics,                                    // v2.63.0：诊断模块（X4 diagExport 等需经 __beat 断言）
     diag: Diagnostics.diag,                         // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
     /* v2.11.3：最近错误原文的环形缓冲（仅内存）/ 报告生成。★ 键名**刻意不跟着模块改名**——
        改成 `Diagnostics.xxx` 会让既有断言整片改写，而"纯结构调整"的证据恰恰是它们一条未动。 */

@@ -104,6 +104,7 @@ const CASE_FILES = [
   "./cases/t129-candidate-preview",     // v2.57.0：换型候选就地试听（▶ 出现 + stopPropagation 不换型；内存临时换型可还原；不污染落库；再点停止；换型前清试听；关浮层还原）
   "./cases/t130-range-dedup",           // v2.61.0：播放范围落盘去重（审计 Q3：writeArrangeRange 唯一写入口 + 侧栏入口行为）
   "./cases/t131-css-orphan-cleanup",    // v2.62.0：CSS 孤儿清理（审计 Q5：19 个确死 class 不再作为规则出现）
+  "./cases/t132-experience-efficiency", // v2.63.0：体验效率小包（X3 PWA 安装引导 + X4 诊断导出文件）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

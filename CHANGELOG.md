@@ -9,6 +9,22 @@
 
 ---
 
+## v2.63.0 · 体验效率小包（X3 PWA 安装引导 + X4 诊断导出）（2026-09-28）
+
+**根因**：审计「体验效率」小包里两件长期缺口——①X4 诊断导出：诊断面板只能「复制」（且 ?debug=1 才挂），普通用户报障够不着；②X3 安装引导：BeatSight 是 PWA 却从没主动提示安装。
+
+**修法**：
+- **X4 诊断导出文件**：`Diagnostics` 新增 `diagExport()`——把 `diagReport()` 文本用 Blob 触发 `<a download>` 下载为 `beatsight-diagnostics-vX.Y.Z.txt`；下载能力缺失（极老环境 / 测试桩）自动退回 `diagCopy`（复制兜底），绝不「点了没反应」。
+- **X3 PWA 安装引导**：`Help` 模块捕获 `beforeinstallprompt`（仅可安装安全上下文才派发），存入 `deferredPrompt`；「使用方法 → 安装到本机 · 诊断导出」新增「安装到本机」按钮，捕获到才显形、点击主动 `prompt()`，用户抉择后自清；未捕获（多因 file:// 直开）保持隐藏，仅留说明文字「file:// 无法安装、要走 https 部署地址」。
+
+**取舍**：
+- 安装按钮默认 hidden，不制造「点了没反应」——file:// 非安全上下文本就装不了，说明文字比一个必败按钮更诚实。
+- 诊断导出按钮常驻「使用方法」（不等 ?debug=1），任何人都能一键带走现场信息。
+
+**自验**：
+- 新增 `tests/cases/t132-experience-efficiency.js`：断言 `diagExport` 已挂出、走 Blob 下载（文件名带版本、触发 a.click、返回 true、按钮回显「已导出」）；断言未捕获安装事件时安装按钮隐藏、捕获后显形且点击唤起 `prompt()`。
+- `node tools/check-all.js` 18/18 绿（含 R1 架构约束：经共享作用域 `exportDiagnostics` 透出诊断能力，避免「Help → Diagnostics」反向边）。
+
 ## v2.62.0 · 代码质量：CSS 孤儿清理（审计 Q5）（2026-09-28）
 
 **根因**：审计 §2.1 Q5（`tools/check-orphan-css.js` 的延伸）指出主文件里残留一批历史死样式——多次重构删了元素却忘了删对应的 `.class` 规则，静默赖在 1.2MB 单文件里。根源是孤儿扫描出于「动态拼 class 会误报」的考量长期只警告不阻断，没有硬闸门拦回潮。
