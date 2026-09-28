@@ -33,6 +33,7 @@
 | [PLAN-v3-arrange-redesign.md](PLAN-v3-arrange-redesign.md) | 编排重设计（v3 线）方案 | 已全部交付，转历史记录 |
 | [PLAN-v4-arrange-ui-rework.md](PLAN-v4-arrange-ui-rework.md) | 编排 UI 重做（v4 线）方案 | 已全部闭环 |
 | [PLAN-v5-lyric-align-rework.md](PLAN-v5-lyric-align-rework.md) | 歌词对齐交互重设计 + 字块拖拽改进（函数级实施清单） | 实施完成，仅剩真机 390px 冒烟 + V9 截图复核（验收项） |
+| [PLAN-v6-ux-and-viz-rework.md](PLAN-v6-ux-and-viz-rework.md) | 顶栏/设置收口 · 可视化标注 · 静音拍参数化 · 段标注 · 预设与视觉打磨（v2.69–v2.74 分批可执行实施文件） | 执行中（方案 + 变更协议已确认，待开工，批 A–F） |
 | [CHANGELOG-v0.md](CHANGELOG-v0.md) / [CHANGELOG-v1.md](CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](prd.html) | 早期产品需求稿 | 历史草稿 |
 
