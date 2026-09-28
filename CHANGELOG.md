@@ -9,6 +9,18 @@
 
 ---
 
+## v2.67.0 · 持久化三连收尾：补齐 groupMove / deleteArrange / deleteLyric 写路径护栏（T1）（2026-09-28）
+
+- **根因**：审计报告「剩余基建·部署对账」的 T1 是「DOM 节点账本工具」，但其更核心的诉求是「改了哪个数组就要写进那个数组对应的键」——而 t126 既有覆盖只到 `rename*` / `groupRename` / `upsertLyric` 五条，写路径清单里 `group*`（`groupMove`）与 `delete*`（`deleteArrange` / `deleteLyric`）的「三连」护栏仍缺位：覆盖率守不住、它才防得住（v2.54.1 修的正是改名写错键、刷新回退）。
+- **修法**：纯测试增量，零运行时改动。在 `tests/cases/t126-persist-target.js` 补三条三连：
+  - **T126f** `groupMove(ref, zone, name)` → `beatsight.groups`：①内存移入组含该成员 ②冷键已写分组键 ③重载后成员仍在；反证：没误写进预设键、且非法 `zone` 返回 `false` 且**什么都不发生**（不建组、不污染冷键）。
+  - **T126g** `deleteArrange(id)` → `beatsight.arranges`：①内存 `findArrange` 返回 `null` ②曲式冷键已不含该名（删除落盘）③重载后仍在删除态；反证：没误写进预设键，且连带清掉的歌词随 `persistLyrics` 落盘（无幽灵行）。
+  - **T126h** `deleteLyric(arrangeId, secUid)` → `beatsight.lyrics`：①内存 `findLyric` 返回 `null` ②歌词冷键已不含该字 ③重载后仍在删除态；反证：没误写进曲式键。
+- **取舍**：三连格式与 t126a–e 完全对齐（内存 → 正确冷键 → 重载 + 反证），新增任何 `group*` / `delete*` 写路径都沿用此骨架。无 index.html 行号变动，故无需 `gen-index` 重写模块索引。
+- **自验**：`node tools/check-all.js` 18/18 全绿（新增 T126f/g/h 共 16 条断言全过；tsc 加强 / 架构约束 R1 / 行覆盖率维持阈值内——纯测试、行为零变更）；门禁覆盖率 97.9%，无回退。
+
+---
+
 ## v2.66.0 · 架构收口：核心数据形状 typedef + refName 提取（Q2/A2）（2026-09-28）
 
 - **根因**：审计报告「代码质量·架构清理」把 Q2/A2 列为收口项；当前核心数据形状（歌词行 / 曲式 / 预设 / 听辨战绩）只有 GrpRef/Grp 两组命名类型，其余全靠内联 `@type` 或裸 `any`，tsc 守不住结构漂移；且 `refName`（resolveRef 的薄封装）在 Arrange 内重复定义一次。

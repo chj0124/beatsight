@@ -98,3 +98,57 @@ section("T126e 歌词写入 · 三连：内存 → beatsight.lyrics → 重载")
   const re = loadApp(dump(storage));
   eq(re.beat.Store.findLyric(a.id, uid).chars[0].ch, "春", "③ 重载后仍在");
 }
+
+/* ================= 场景 T126f：分组移入 → beatsight.groups（groupMove 三连） ================= */
+section("T126f 分组移入 · 三连：内存 → beatsight.groups → 重载（+ 非法 zone 不落盘）");
+{
+  const { beat, storage } = loadApp();
+  const ref = { type: "builtin", idx: 0 };
+  eq(beat.Store.groupMove(ref, "beat", "移入组"), true, "移入返回 true");
+  const g0 = beat.Store.groups.find(x => x.name === "移入组" && x.zone === "beat");
+  ok(g0 && g0.members.some(m => m.type === "builtin" && m.idx === 0), "① 内存：移入组含该 builtin 成员");
+  ok(has(storage, KEY.groups, "移入组"), "② 写进了分组冷键 beatsight.groups");
+  ok(!has(storage, KEY.customs, "移入组"), "② 反证：没被误写进预设冷键 beatsight.customs");
+  const re = loadApp(dump(storage));
+  const rg = re.beat.Store.groups.find(x => x.name === "移入组" && x.zone === "beat");
+  ok(rg && rg.members.some(m => m.type === "builtin" && m.idx === 0), "③ 重载后成员仍在");
+  /* 非法 zone：返回 false 且**什么都不该发生**（不建组、不污染冷键） */
+  eq(beat.Store.groupMove(ref, "WRONG", "错区组"), false, "非法 zone 返回 false");
+  ok(!beat.Store.groups.some(x => x.name === "错区组"), "反证：非法 zone 没在内存建组");
+  ok(!has(storage, KEY.groups, "错区组"), "反证：非法 zone 没写进冷键");
+}
+
+/* ================= 场景 T126g：删除曲式 → beatsight.arranges（deleteArrange 三连） ================= */
+section("T126g 删除曲式 · 三连：内存 → beatsight.arranges → 重载（+ 没写进预设键）");
+{
+  const { beat, storage } = loadApp();
+  const a = newArrange(beat, "要删的曲");
+  eq(beat.Store.deleteArrange(a.id), true, "删除返回 true");
+  eq(beat.Store.findArrange(a.id), null, "① 内存已删（findArrange 返回 null）");
+  ok(!has(storage, KEY.arranges, "要删的曲"), "② 已从曲式冷键 beatsight.arranges 消失（删除已落盘）");
+  ok(!has(storage, KEY.customs, "要删的曲"), "② 反证：没被误写进预设冷键 beatsight.customs");
+  const re = loadApp(dump(storage));
+  eq(re.beat.Store.findArrange(a.id), null, "③ 重载后仍在删除态（刷新不回生）");
+  /* 顺带验证：删除曲式连带清掉的歌词也随 persistLyrics 落盘（无幽灵行） */
+  const a2 = newArrange(beat, "带词待删");
+  const uid2 = a2.sections[0].uid;
+  beat.Store.upsertLyric(a2.id, uid2, [{ t: 0, dur: 24, ch: "删" }]);
+  ok(has(storage, KEY.lyrics, "删"), "前置：歌词已写进冷键");
+  beat.Store.deleteArrange(a2.id);
+  ok(!has(storage, KEY.lyrics, "删"), "② 曲式删除连带清歌词并落盘（歌词冷键已不含该行）");
+}
+
+/* ================= 场景 T126h：删除歌词行 → beatsight.lyrics（deleteLyric 三连） ================= */
+section("T126h 删除歌词行 · 三连：内存 → beatsight.lyrics → 重载");
+{
+  const { beat, storage } = loadApp();
+  const a = newArrange(beat, "删词曲");
+  const uid = a.sections[0].uid;
+  beat.Store.upsertLyric(a.id, uid, [{ t: 0, dur: 24, ch: "留" }]);
+  eq(beat.Store.deleteLyric(a.id, uid), true, "删除歌词行返回 true");
+  eq(beat.Store.findLyric(a.id, uid), null, "① 内存已删（findLyric 返回 null）");
+  ok(!has(storage, KEY.lyrics, "留"), "② 已从歌词冷键 beatsight.lyrics 消失（删除已落盘）");
+  ok(!has(storage, KEY.arranges, "留"), "② 反证：没被误写进曲式冷键 beatsight.arranges");
+  const re = loadApp(dump(storage));
+  eq(re.beat.Store.findLyric(a.id, uid), null, "③ 重载后仍在删除态（刷新不回生）");
+}
