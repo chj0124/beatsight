@@ -395,11 +395,14 @@ function layoutProbe(){
   const boxLeft = el => { const r = el && el.getBoundingClientRect(); return r ? round(r.left) : null; };
   const q = s => document.querySelector(s);
   const out = { w: window.innerWidth };
+  out.scrollW = document.documentElement.scrollWidth;
   const vizEl = q("#viz");
   const card = vizEl && vizEl.closest(".card");
   if (!card) return JSON.stringify(out);
   const cr = card.getBoundingClientRect();
   out.cardTextLeft = round(cr.left + parseFloat(getComputedStyle(card).paddingLeft));
+  out.cardRight = round(cr.right);
+  out.vizRight = (() => { const v = q("#viz"); const r = v && v.getBoundingClientRect(); return r ? round(r.right) : null; })();
   /* v2.39.0：组容器底上线——控制列有了 16px 内边距，左缘基准改为「组容器内容边缘」
      （卡片内容边缘 + padding）。旧口径 cardTextLeft 保留，容器缺失时回退 */
   const headLeft = q(".card-head-left");
@@ -685,6 +688,15 @@ async function main(){
         ok(lay.narrow.sigGroup <= lay.narrow.vizRowsPanel + 0.51,
           p.label + "：★ 窄屏下拍号折到下一行（左边缘回到卡片内容列，没被裁）",
           "行数 " + lay.narrow.vizRowsPanel + " vs 拍号 " + lay.narrow.sigGroup);
+        /* v2.59.0（Infra B · 390px 几何回归扩展）：窄屏最静默的退化是「内容比视口宽、
+           被 body 的 overflow-x:hidden 静默裁掉」——用户看不到滚动条，但右侧控件被吃掉。
+           这两条专门拦它：整页无横向滚动条 + #viz 网格不超出卡片右缘。 */
+        ok(lay.narrow.scrollW <= lay.narrow.w + 1,
+          p.label + "：★ 窄屏390 无横向溢出（scrollWidth ≤ innerWidth）",
+          "scrollW " + lay.narrow.scrollW + " vs innerWidth " + lay.narrow.w);
+        ok(lay.narrow.vizRight !== null && lay.narrow.vizRight <= lay.narrow.cardRight + 1,
+          p.label + "：窄屏390 #viz 网格不溢出卡片（无内部横向溢出）",
+          "vizRight " + lay.narrow.vizRight + " vs cardRight " + lay.narrow.cardRight);
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }
