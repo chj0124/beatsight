@@ -42,7 +42,7 @@ section("T106a 段菜单 · ops 四颗 / 菜单五项 / toggle 收起 / 动作�
   moreBtn(els, 0).fire("click");
   const menu = menuOf(els, 0);
   ok(!!menu, "★ 点 ⋯ 展开菜单（挂在段行末尾）");
-  eq(menu.children.length, 6, "★ 菜单 6 项（练这段/上移/下移/移到最前/移到最后/删除段）");
+  eq(menu.children.length, 7, "★ 菜单 7 项（练这段/上移/下移/移到最前/移到最后/移到第 N 段/删除段）");
   eq(menuItem(menu, /上移第 1 段/).disabled, true, "首段「上移」禁用");
   eq(menuItem(menu, /移到最前/).disabled, true, "首段「移到最前」禁用");
   eq(menuItem(menu, /移到最后/).disabled, false, "首段「移到最后」可用");
