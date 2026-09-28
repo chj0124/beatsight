@@ -111,6 +111,7 @@ const CASE_FILES = [
   "./cases/t137-loop-panel-compact",    // v2.69.0：循环本段行精简（关时整段隐藏 / 注脚连根删 / 往返可逆 / 注释同步）
   "./cases/t138-viz-label-toggles",     // v2.70.0：座次尺/时值标注两开关（CSS 类驱动 / 启动收敛 / 双关 chord-xl / !important 源码钉死）
   "./cases/t140-mute-cfg",              // v2.71.0：静音拍参数化（N/M 判据 / 随机确定性 / 存储钳制 / UI 联动 / 行标识任意档位精确）
+  "./cases/t141-pattern-label",         // v2.72.0：型级标注（预设模式行首胶囊 / 白名单往返 / 编辑器回填与副本继承 / 留空零迁移）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

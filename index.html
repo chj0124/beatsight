@@ -1764,6 +1764,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <span style="font-size:12px;color:var(--t2)">预设名称</span>
         <input class="name-input" id="presetNameInput" value="我的节奏型" aria-label="节奏型名称">
         <span class="hint">保存后可在主界面「我的预设」中找到</span>
+        <!-- v2.72.0（1.3）：型级标注（可选）——和弦名或自由备忘，保存后显示在
+             可视化区域每小节行首（同曲式和弦胶囊位）。留空 = 不挂胶囊（现状）。 -->
+        <span style="font-size:12px;color:var(--t2)">标注</span>
+        <input class="name-input" id="patLabelInput" placeholder="和弦名或备忘（可留空）" aria-label="节奏型标注：和弦名或自由备注，可留空" maxlength="40">
       </div>
     </div>
   </div>
@@ -2368,23 +2372,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2400  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3003  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4490  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5285  Modal         应用内弹窗
-     L5423  Viz           时值可视化渲染与每帧动画
-     L7691  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8348  Trainer       变速训练器
-     L8486  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9054  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10338 Editor        自定义节奏型编辑器
-     L10758 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10805 Ear           听辨训练（v1.10.0）
-     L11025 Arrange       曲式编排（v2.0.0）
-     L13709 Help          使用方法（v2.0.1）
-     L13838 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13912 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14155 初始化（装配） 各模块 hook 接线与启动
+     L2404  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3007  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4497  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5292  Modal         应用内弹窗
+     L5430  Viz           时值可视化渲染与每帧动画
+     L7708  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8365  Trainer       变速训练器
+     L8503  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9071  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10355 Editor        自定义节奏型编辑器
+     L10778 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10825 Ear           听辨训练（v1.10.0）
+     L11045 Arrange       曲式编排（v2.0.0）
+     L13729 Help          使用方法（v2.0.1）
+     L13858 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13932 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14175 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2410,7 +2414,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.71.0";
+const VERSION = "2.72.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4037,7 +4041,7 @@ const Store = (() => {
   function serializePresets(){
     return JSON.stringify({
       app:"beatsight", kind:"presets", v:2, exportedAt:new Date().toISOString(),
-      presets: customs.map(c => ({name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars}))
+      presets: customs.map(c => ({name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars, ...(c.label ? {label:c.label} : {})})) // v2.72.0：label 随导出往返（留空不写字段）
     }, null, 2);
   }
 
@@ -4111,7 +4115,10 @@ const Store = (() => {
           p.accents.some((/** @type {number} */ a) => typeof a !== "number" || a < 0 || a >= meter)) return null;
       accents = [...new Set(p.accents)].sort((a, b) => a - b);   // v0.9.1：去重 + 升序归一，防脏数据乱重拍
     }
-    return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars};
+    /* v2.72.0（1.3）：标注（可选）——和弦名或自由备忘，一小节一条纯展示文本。
+       脏值静默降级为省略（同 dir/zone 口径：丢了不牵连整条预设）；导入/导出经本白名单自然往返。 */
+    const label = (typeof p.label === "string" && p.label.trim()) ? p.label.trim().slice(0, 40) : undefined;
+    return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars, ...(label ? {label} : {})};
   }
 
   /* 返回 {ok:true, count} 或 {ok:false, error}；错误文案供弹窗展示（一律 textContent） */
@@ -6163,7 +6170,17 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   /** @param {number} b @returns {string} */
   function chordAtRow(b){
     const a = arrangeCur();
-    if (!a || winStart < 0) return "";
+    /* v2.72.0（1.3）：预设模式分支——贴当前型的**标注**（pattern.label，可选字段；
+       塞在白名单 validatePreset 里，导入导出自然往返）。口径与曲式同构：
+       只在每小节的第一片行贴一次（1 小节型 = 每行贴）；无标注 ⇒ 空串（现状不挂胶囊）。
+       用 curPattern()：读的是**当前选中型**（含试听候选），与预设列表所见一致。 */
+    if (!a){
+      if (winStart < 0) return "";
+      const label = curPattern().label;
+      if (!label) return "";
+      return (b % subsPerBar() === 0) ? label : "";
+    }
+    if (winStart < 0) return "";
     const total = songBars(a), K = subsPerBar();
     if (!total) return "";
     const totalSegs = total * K;
@@ -10353,12 +10370,13 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   function openWith(src){
     if (S.playing) Controls.stop();
     srcName = src.name;
-    draft = { name: src.name + "-副本", meter: src.meter,
+    draft = { name: src.name + "-副本", meter: src.meter, label: src.label || "",
       accents: (src.accents || defaultAccents(src.meter)).slice(),
       bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
     edSel = null; editBar = 0;
     undoStack = []; dirty = false;
     $("presetNameInput").value = draft.name;
+    $("patLabelInput").value = draft.label;
     $("editorMeter").textContent = draft.meter;
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
     $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + meterName(draft.meter) + " 拍";
@@ -10729,9 +10747,11 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const d = draft;
     if (!d) return;
     const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
+    /* v2.72.0（1.3）：标注（可选）——留空不写字段（与老存档对象形状一致，零迁移） */
+    const label = $("patLabelInput").value.trim().slice(0, 40);
     const id = "c" + Date.now();
     customs.push({ id, name, meter: d.meter, accents: (d.accents || []).slice(),
-      bars: d.bars.map(bar => bar.map(s => ({...s}))) });
+      bars: d.bars.map(bar => bar.map(s => ({...s}))), ...(label ? {label} : {}) });
     S.sel = {type:"custom", id};
     dirty = false;
     if (S.preview) stopAudition();
