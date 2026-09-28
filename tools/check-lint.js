@@ -247,6 +247,7 @@ const GLOBALS = new Set([
   "fetch", "atob", "btoa", "matchMedia", "AudioContext", "webkitAudioContext",
   "OffscreenCanvas", "Notification", "crypto", "customElements", "alert", "confirm",
   "Image",                          // v2.12.0：壁纸解码（`new Image()`）——解码失败即走"直接用原图"分支
+  "ResizeObserver",                 // v2.38.0：Viz 用 --cs 等比缩放因子；调用点有 `typeof` 守卫（桩无此 API 跳过）；审计 E2 消噪
 ]);
 
 {

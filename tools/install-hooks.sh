@@ -8,14 +8,6 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-mkdir -p hooks
-cat > hooks/pre-commit <<'EOF'
-#!/bin/sh
-# BeatSight 提交前门禁：快速自验。跳过 T21 全组合扫描（那是发布前全量检查的事）。
-# 想绕过（不该是常态）：git commit --no-verify
-exec node tools/check-all.js --quick
-EOF
-chmod +x hooks/pre-commit
-
-git config core.hooksPath hooks
-echo "已安装 pre-commit 钩子（core.hooksPath=hooks）：提交时将自动跑 node tools/check-all.js --quick"
+# v2.60.0（审计 Q4）：钩子内容只有**一份事实来源**——tools/install-hooks.js 生成并写入
+# hooks/pre-commit。本 POSIX 脚本直接转调它，避免两份钩子文本再次分叉（需 node，本项目本就依赖）。
+exec node "$(dirname "$0")/install-hooks.js"

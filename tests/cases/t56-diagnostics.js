@@ -212,3 +212,17 @@ section("T56f 诊断面板 · 计数变化即时反映到面板文本");
   ok(lineOf(app).indexOf("存失败 1") >= 0, "写失败后计数行同步更新：" + lineOf(app));
   ok(lineOf(app).indexOf("渲染异常 0") >= 0, "未触发的维度保持 0（读数可对照）");
 }
+
+/* ================= 场景 T56i：保存失败弹窗指出占用最多的键（v2.60.0，审计 S3） ================= */
+section("T56i 诊断 · 保存失败弹窗指出占用最多的本地键（审计 S3）");
+{
+  const app = loadApp({}, { throwOnWrite: true });
+  /* 制造一个明显最大的键，模拟「预设库膨胀占满配额」 */
+  app.storage.set("beatsight.customs", "x".repeat(6000));
+  app.storage.set("beatsight.arranges", "y".repeat(800));
+  app.beat.Controls.setBpm(150);
+  app.beat.Store.flush();                                   // 触发持久化失败
+  const msg = app.els["modalMsg"] ? app.els["modalMsg"].textContent : "";
+  ok(/占用最多的本地数据/.test(msg), "失败弹窗点出「占用最多的本地数据」：" + String(msg).slice(0, 50));
+  ok(/beatsight\.customs/.test(msg), "指出了最大键 beatsight.customs（约 8 KB）：" + String(msg).slice(0, 90));
+}

@@ -9,6 +9,26 @@
 
 ---
 
+## v2.60.0 · 代码质量小修包（Q4 / E2 / S3 / A3）（2026-09-28）
+
+**根因**：审计 §2.1/§2.4/§2.5 的四处低到中危技术债——复制粘贴债、lint 良性噪音、保存失败无分键指引、装配区非模块子系统未登记——都不影响运行，但持续误导维护者、浪费调试时间。
+
+**修法**：
+- **Q4 删重复清理块**（`arrangeRender`）：原先连调两遍同样的 `arg-new-menu` 清理（`Array.prototype.filter.call(...).forEach(removeChild)`），第二遍在第一遍已摘空后恒为空操作，是复制粘贴债；删掉重复，保留单遍。
+- **Q4 安装器转单源**（`tools/install-hooks.sh`）：原 `.sh` 内嵌一份与 `install-hooks.js` 逐字相同的 `hooks/pre-commit` 文本（靠注释要求人工同步，必漂）；改为 `exec node install-hooks.js` 直接转调，钩子文本只剩 `install-hooks.js` 一份事实来源。同步更新 `.js` 头注释。
+- **E2 lint 消噪**（`tools/check-lint.js`）：`ResizeObserver` 加入宿主全局 `GLOBALS` 白名单。`Viz` 的 `--cs` 等比缩放因子调用点本就有 `typeof` 守卫、桩上跳过，此前每次 lint 稳定报一条"未声明"良性警告，现消除。
+- **S3 保存失败指向最大键**（`Diagnostics.diagStorageTop` + 保存失败弹窗）：新增 `diagStorageTop()` 返回占用最多的本地键（约 KB），保存失败弹窗从"只说满了"升级为"该清哪个键"，复用既有 `diagStorageUsage` 同款守卫。
+- **A3 装配区登记**（`docs/DEVELOPMENT.md` §3.0）：显式登记壁纸（`WALL_*` / `wallWrite` / `wallClear`）与延迟补偿（`LAT_*` / `latWrite`）两个非模块子系统，并规定"新增第三个同量级子系统必须抽成独立模块、不再堆进装配区"。
+
+**取舍**：
+- Q4 安装器转调要求环境有 node（本项目本就依赖 `node` 跑 `check-all`），可接受；`.sh` 仍保留供习惯显式 `sh` 调用的人。
+- S3 的体积估算沿用 `base64 后 ×4/3` 口径（与 `WALL_MAX_BYTES` 注释一致），只给"约 KB"量级提示，不追求精确。
+
+**自验**：
+- `node tools/check-lint.js` 不再报 `ResizeObserver` 警告（GLOBALS 已含）；`check-all --quick` 18/18 绿。
+- 新增 `tests/cases/t56-diagnostics.js` T56i：触发持久化失败 → 弹窗含"占用最多的本地数据"且点出 `beatsight.customs`（约 8 KB）；端到端覆盖 S3。
+- 全量测试 0 FAIL（含既有编排/持久化/诊断组，确认 Q4 删重复块、E2 白名单无回归）。
+
 ## v2.59.0 · 基建：T4 docs 索引页补全 + 390px 窄屏几何回归扩展（2026-09-26）
 
 **根因**：并行基建批的剩余两项在源审计里定义清晰、但此前一直挂着——

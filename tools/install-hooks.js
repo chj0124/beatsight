@@ -10,9 +10,9 @@
    挂在 npm 的 `prepare` 生命周期上就同时解决两条：clone 后**任何** `npm install`
    都会自动装好钩子，且 Node 脚本在三个平台上行为一致。
 
-   与 tools/install-hooks.sh 的关系：脚本保留（有人更习惯显式 sh 调用），
-   两者产出完全相同的 hooks/pre-commit 与 core.hooksPath 配置——
-   **钩子内容只有一份事实来源**：这里生成，脚本里那份与之逐字相同（改动请同步两边）。 */
+   与 tools/install-hooks.sh 的关系（v2.60.0 审计 Q4 更新）：脚本保留（有人更习惯显式 sh 调用），
+   但**不再内嵌钩子文本**——它直接 `exec node install-hooks.js` 转调本文件，
+   钩子内容只有**这一份事实来源**（本文件生成），不再有两份需同步。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
