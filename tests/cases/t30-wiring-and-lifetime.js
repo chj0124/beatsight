@@ -895,16 +895,16 @@ section("T38 主题切换 · 日间主题（v1.7.0 观测台 / v2.54.0 改浅色
   const body = app.sandbox.document.body;
   eq(body.getAttribute("data-theme"), "classic", "默认经典主题（无偏好时落 classic）");
   /* v2.69.0（1.1）：主题钮上顶栏改图标态——经典=月亮可见/太阳藏，读屏走 aria-label */
-  eq(app.els["themeIcoMoon"].hidden, false, "初始图标态：月亮可见（经典）");
-  eq(app.els["themeIcoSun"].hidden, true, "初始图标态：太阳隐藏");
+  eq(app.els["themeToggle"].classList.contains("day"), false, "初始图标态：月亮可见（经典，按钮无 .day 类）");
+  eq(app.els["themeToggle"].classList.contains("day"), false, "初始图标态：太阳隐藏（:not(.day) 规则）");
   eq(app.els["themeToggle"].getAttribute("aria-label"), "切换到日间主题", "读屏文案：切换到日间主题");
   eq(app.beat.flashTheme().edge, "#1ED760", "经典主题下闪烁配色为功能绿");
 
   const before = new Set([...app.storage.keys()]);
   app.els["themeToggle"].fire("click", {});
   eq(body.getAttribute("data-theme"), "obs", "点击后切到日间（内部标识仍是 obs）");
-  eq(app.els["themeIcoSun"].hidden, false, "切日间后太阳可见");
-  eq(app.els["themeIcoMoon"].hidden, true, "切日间后月亮隐藏");
+  eq(app.els["themeToggle"].classList.contains("day"), true, "切日间后太阳可见（.day 类）");
+  eq(app.els["themeToggle"].classList.contains("day"), true, "切日间后月亮隐藏（.day .ico-moon{display:none}）");
   eq(app.els["themeToggle"].getAttribute("aria-label"), "切换到经典主题", "读屏文案跟随（切换到经典主题）");
   eq(app.storage.get("beatsight.theme"), "obs", "偏好写入独立冷键 beatsight.theme");
   eq(app.beat.flashTheme().edge, "#2563EB", "日间下闪烁配色为深蓝（白底 AA 达标）");
@@ -918,7 +918,7 @@ section("T38 主题切换 · 日间主题（v1.7.0 观测台 / v2.54.0 改浅色
   /* 重载恢复：种子冷键 obs → 加载即观测台 */
   const app2 = loadApp({ "beatsight.theme": "obs" });
   eq(app2.sandbox.document.body.getAttribute("data-theme"), "obs", "冷键 obs 重载后恢复日间");
-  eq(app2.els["themeIcoSun"].hidden, false, "重载后图标态跟随（太阳可见）");
+  eq(app2.els["themeToggle"].classList.contains("day"), true, "重载后图标态跟随（.day 类，太阳可见）");
   eq(app2.els["themeToggle"].getAttribute("aria-label"), "切换到经典主题", "重载后读屏文案跟随");
   eq(app2.beat.flashTheme().edge, "#2563EB", "重载后闪烁配色跟随主题");
 

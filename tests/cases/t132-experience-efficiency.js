@@ -72,12 +72,14 @@ section("T132 · X3 PWA 安装引导（v2.63.0）");
     "★ v2.69.0：使用方法页不再有安装/导出按钮（已迁设置，防双入口漂移）");
 
   $("settingsBtn").click();   // 打开设置：接线链 = 开 overlay + 复位诊断文案 + refreshInstall
+  /* v2.69.0 返工（用户拍板「常显」）：不可安装环境按钮置灰而非隐藏——
+     原方案在 file:// 下永远不可见，用户实报"找不到按钮" */
   const installBtn0 = $("helpInstallBtn");
-  ok(installBtn0 && installBtn0.hidden === true,
-    "★ X3：未捕获安装事件时，设置里的「安装到本机」默认隐藏（file:// 直开无法安装）");
+  ok(installBtn0 && installBtn0.hidden === false && installBtn0.disabled === true,
+    "★ X3：未捕获安装事件时，设置里的「安装到本机」常显但置灰（file:// 直开无法安装）");
   ok(!!$("helpDiagExport"), "★ X4：导出诊断按钮常驻（设置 · 诊断与自验组）");
 
-  /* 捕获 beforeinstallprompt 后：重新打开设置（refreshInstall 刷显隐）→ 安装钮显形且点击主动 prompt() */
+  /* 捕获 beforeinstallprompt 后：重新打开设置（refreshInstall 刷置灰态）→ 安装钮解禁且点击主动 prompt() */
   let prompted = false;
   const fakeEv = {
     preventDefault(){},
@@ -85,9 +87,9 @@ section("T132 · X3 PWA 安装引导（v2.63.0）");
     userChoice: { then(cb){ try{ cb({ outcome: "accepted" }); }catch(e){} return { catch(){} }; } },
   };
   app.fireWin("beforeinstallprompt", fakeEv);
-  $("settingsBtn").click();   // v2.69.0：显隐在 Settings.open 路径上刷新（原为 helpRender）
+  $("settingsBtn").click();   // v2.69.0：置灰态在 Settings.open 路径上刷新（原为 helpRender）
   const installBtn1 = $("helpInstallBtn");
-  ok(installBtn1 && installBtn1.hidden === false, "★ X3：捕获安装事件后，设置里的「安装到本机」显形");
+  ok(installBtn1 && installBtn1.disabled === false, "★ X3：捕获安装事件后，设置里的「安装到本机」解禁");
   if (installBtn1) installBtn1.click();
   ok(prompted === true, "★ X3：点击按钮主动唤起安装 prompt()");
 

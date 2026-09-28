@@ -137,14 +137,14 @@ section("T125e 行为 · 切换 / 文案 / 两个 meta 随主题（含老存档�
   const body = app.sandbox.document.body;
   eq(body.getAttribute("data-theme"), "classic", "默认仍是经典（无偏好落 classic）");
   /* v2.69.0（1.1）：按钮上顶栏改图标态，文案断言换 aria-label */
-  eq(app.els["themeIcoMoon"].hidden, false, "初始图标态：月亮可见（经典）");
+  eq(app.els["themeToggle"].classList.contains("day"), false, "初始图标态：月亮可见（经典，按钮无 .day 类）");
   eq(app.els["themeToggle"].getAttribute("aria-label"), "切换到日间主题", "初始读屏文案：切换到日间主题");
   eq(metaOf(app, "themeColorMeta").content, "#121212", "★ 经典下 meta theme-color = #121212（首屏即同步）");
   eq(metaOf(app, "colorSchemeMeta").content, "dark", "★ 经典下 meta color-scheme = dark（v2.42.8 防 Force Dark 的原值）");
 
   app.els["themeToggle"].fire("click", {});
   eq(body.getAttribute("data-theme"), "obs", "点击后切到日间（内部标识仍是 obs）");
-  eq(app.els["themeIcoSun"].hidden, false, "★ 切日间后太阳可见");
+  eq(app.els["themeToggle"].classList.contains("day"), true, "★ 切日间后太阳可见（.day 类）");
   eq(app.els["themeToggle"].getAttribute("aria-label"), "切换到经典主题", "★ 读屏文案跟随（切换到经典主题）");
   eq(app.els["themeToggle"]["aria-pressed"], "true", "读屏开关态同步（v2.0.2 的那条没被带坏）");
   eq(app.beat.flashTheme().edge, "#2563EB", "★ 闪烁配色随主题查表");
@@ -155,11 +155,11 @@ section("T125e 行为 · 切换 / 文案 / 两个 meta 随主题（含老存档�
   app.els["themeToggle"].fire("click", {});
   eq(metaOf(app, "themeColorMeta").content, "#121212", "切回经典 → theme-color 回 #121212");
   eq(metaOf(app, "colorSchemeMeta").content, "dark", "切回经典 → color-scheme 回 dark");
-  eq(app.els["themeIcoMoon"].hidden, false, "切回经典 → 月亮可见");
+  eq(app.els["themeToggle"].classList.contains("day"), false, "切回经典 → 月亮可见（.day 类移除）");
 
   /* 老用户：存档里存的是 obs（深蓝暗色时代的偏好），升级后应无缝拿到新外观而不是报错/回退 */
   const old = loadApp({ "beatsight.theme": "obs" });
   eq(old.sandbox.document.body.getAttribute("data-theme"), "obs", "★ 老存档 obs 直接继承日间外观");
-  eq(old.els["themeIcoSun"].hidden, false, "★ 老存档重载后图标态正确（太阳可见）");
+  eq(old.els["themeToggle"].classList.contains("day"), true, "★ 老存档重载后图标态正确（.day 类，太阳可见）");
   eq(metaOf(old, "colorSchemeMeta").content, "light", "★ 老存档重载后 meta 也是 light（不走点击也同步）");
 }

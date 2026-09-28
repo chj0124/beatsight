@@ -240,18 +240,23 @@ section("T49f 听辨训练 · 脏战绩回退 / 清零");
   eq(et.txt("earAcc"), "—", "无题时正确率显示 —（而不是 NaN）");
 }
 
-/* ================= 场景 T49g：入口已迁顶栏 + 额度是唯一判据（v2.10.12） ================= */
-section("T49g 听辨训练 · 入口迁顶栏（原「练习统计」那一格）；练习量删除后额度是唯一判据");
+/* ================= 场景 T49g：入口已迁预设卡编排行 + 额度是唯一判据（v2.10.12 → v2.69.0 返工） ================= */
+section("T49g 听辨训练 · 入口在预设卡「编辑节奏型/编排曲式」行最左（v2.69.0 返工：顶栏只留全局件）；练习量删除后额度是唯一判据");
 {
   const app = loadApp();
   const els = app.els, S = app.beat.Store.S;
-  /* 入口搬家（用户要求③）：元素在顶栏里；原先旁边那行正确率小字（#earMini）按用户要求取消
-     ——正确率在听辨训练自己的 overlay 里能看（#earAcc / #earTotal / #earBest） */
-  const topbar = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
-  ok(/id="earBtn"/.test(topbar), "★ 「听辨训练」入口已在顶栏（原「练习统计」那一格）");
+  /* 入口搬家（v2.69.0 返工，用户拍板）：元素在预设卡 #argNowRow 行、排在「编辑节奏型」左边；
+     原先旁边那行正确率小字（#earMini）按用户要求取消——正确率在听辨训练自己的
+     overlay 里能看（#earAcc / #earTotal / #earBest） */
+  const nowRow = html.slice(html.indexOf('<div class="arg-now" id="argNowRow">'), html.indexOf("</div>", html.indexOf('id="argNowName"')));
+  ok(/id="earBtn"/.test(nowRow), "★ 「听辨训练」入口在预设卡编排行（v2.69.0 从顶栏迁入）");
+  ok(nowRow.indexOf('id="earBtn"') < nowRow.indexOf('id="editBtn"'),
+    "★ 排在「编辑节奏型」**左边**（用户拍板：本行最左）");
   ok(!/id="earMini"/.test(html), "★ 入口旁的正确率小字已取消（正确率在听辨 overlay 里看）");
-  ok(/<button class="pill outline" id="earBtn">听辨训练<\/button>/.test(topbar),
-     "文案也从「听辨训练 · 练耳朵」收成「听辨训练」（顶栏不是吆喝的地方）");
+  ok(!/id="earBtn"/.test(html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"))),
+    "★ 顶栏不再有听辨训练入口（顶栏只留延迟读数/设置/主题钮）");
+  ok(/<button class="pill outline" id="earBtn">听辨训练<\/button>/.test(html),
+     "文案仍是「听辨训练」（不带吆喝式后缀）");
   /* ★ v2.10.12：练习量删除后，`S.limit` 字段本身也删了（不留空壳）；
      「本次只放 2 小节」的判定只剩 `limitBars`（与听辨额度 playQuota 比较）——
      这条口径由 T49c 覆盖（进入即自动放 2 小节后停），这里只钉"字段不留"这一件 */

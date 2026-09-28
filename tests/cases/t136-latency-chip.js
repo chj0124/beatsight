@@ -2,17 +2,20 @@
    T136 系列。
    ---------------------------------------------------------------------------
    用户要求（1.2）：顶栏「设置」左侧显示音频延迟补偿数值，点击直达设置的
-   「音频延迟补偿」组。拍板 D2：**为 0 时整个隐藏**（顶栏不堆无信息元素）。
+   「音频延迟补偿」组。
+   v2.69.0 返工（用户拍板，推翻批 A 的 D2）：**常显**——0ms 也显示「补偿 0ms」，
+   且**不做按钮样式**：裸文案（类游戏 HUD 的延迟显示），无边框无底色、小号灰字、
+   等宽数字防抖动（CSS .lat-read）；保留 button 元素维持键盘可达，仍可点击直达设置。
 
    机理与契约：
      · 数据源 = 共享 latencyMs（latActive()），同步出口 latChipSync()。
        ★ 必须两处调用：latApply（init / 配置切换 / 保存后）与 latMs 的 input 处理器
          （拖动滑杆只走 input、不触发 latApply——漏一处就是"拖动时顶栏读数不动"）。
-     · 显隐 = latencyMs > 0；为 0 → hidden（无「补偿 0ms」的占位）。
+     · 常显：textContent 恒为「补偿 Xms」（X 含 0），无显隐分支。
      · 点击 = Help.refreshInstall() + Settings.open("latGroup")：
        设置弹窗打开（Modal 统一协议）且面板滚到延迟组。Settings.open 的锚点定位
        用 panel.scrollTop 增量，不用 scrollIntoView（避免连带滚动底层页面）。
-     · 类名 lat-chip 刻意避开 t24 钉死的 `chip`（顶栏禁 `class="chip"`）。 */
+     · 类名 lat-read 刻意避开 t24 钉死的 `chip`（顶栏禁 `class="chip"`）。 */
 "use strict";
 const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
@@ -22,29 +25,31 @@ const seedLat = ms => ({ [LAT_KEY]: JSON.stringify({
   currentId: "p1",
 }) });
 
-/* ================= 场景 T136a：0ms ⇒ 顶栏读数整个隐藏（D2） ================= */
-section("T136a 延迟读数 · 默认 0ms ⇒ 隐藏（不占顶栏一格）");
+/* ================= 场景 T136a：0ms ⇒ 常显「补偿 0ms」（返工口径） ================= */
+section("T136a 延迟读数 · 默认 0ms ⇒ 常显裸文案（不隐藏）");
 {
-  const { beat, els } = loadApp();
-  eq(beat.Store.S ? "ok" : "ok", "ok", "前提：应用加载成功");   // 加载 smoke
-  ok(els["latChip"] && els["latChip"].hidden === true,
-    "★ 默认（无延迟配置 = 0ms）latChip 整个隐藏（hidden，不是灰显）");
+  const { els } = loadApp();
+  ok(els["latChip"] && els["latChip"].hidden === false,
+    "★ 默认（0ms）latChip 常显（返工推翻批 A 的 hidden 方案）");
+  eq(els["latChip"].textContent, "补偿 0ms", "★ 0ms 也报数：「补偿 0ms」");
   /* 双调用点守门：latApply 与 latMs input 处理器各有一处 latChipSync()
      （源码级断言，t86 对 .tab 渐变的同口径） */
   const calls = (html.match(/latChipSync\(\)/g) || []).length;
   ok(calls >= 2, "★ latChipSync() 至少两处调用（latApply + latMs input）——实际 " + calls + " 处");
+  /* 裸文案形态：无 hidden 分支残留（latChipSync 内不得再出现显隐逻辑） */
+  const fn = html.slice(html.indexOf("function latChipSync"), html.indexOf("function latApply"));
+  ok(/textContent/.test(fn) && !/\.hidden/.test(fn),
+    "★ latChipSync 只写文案、无显隐分支（常显语义钉死）");
 }
 
 /* ================= 场景 T136b：存档 150ms ⇒ 显示「补偿 150ms」 ================= */
-section("T136b 延迟读数 · 有补偿值 ⇒ 顶栏显示，文案与存档值一致");
+section("T136b 延迟读数 · 有补偿值 ⇒ 文案与存档值一致");
 {
   const { els } = loadApp(seedLat(150));
-  ok(els["latChip"] && els["latChip"].hidden === false,
-    "★ 存档 150ms ⇒ latChip 可见（latApply 启动即同步）");
   eq(els["latChip"].textContent, "补偿 150ms", "★ 文案 = 「补偿 150ms」（等宽数字防抖动在 CSS）");
-  ok(/lat-chip/.test(html) && !/class="chip"/.test(
+  ok(/lat-read/.test(html) && !/class="chip"/.test(
     html.slice(html.indexOf('<header class="topbar"'), html.indexOf("</header>"))
-  ), "★ 类名走 lat-chip，顶栏块内不出现 t24 禁用的 `chip` 类");
+  ), "★ 类名走 lat-read（裸文案），顶栏块内不出现 t24 禁用的 `chip` 类");
 }
 
 /* ================= 场景 T136c：点击读数 ⇒ 打开设置并落到延迟组 ================= */

@@ -470,10 +470,22 @@ input[type=range].vol{width:120px}
      列内宽度重排在数学上推不动它的 x 坐标（改动前后实测 416 逐位相同）。 */
 .card-head-left .vol-row input[type=range].vol{flex:1;width:auto}
 .pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
-/* 顶栏图标钮（v2.69.0 主题切换）：图标走 currentColor 随按钮色，经典/日间两主题自动正确 */
+/* 顶栏图标钮（v2.69.0 主题切换）：图标走 currentColor 随按钮色，经典/日间两主题自动正确。
+   ★ v2.69.0 返工修 bug：显隐由**按钮类 .day** 驱动（经典=月亮、日间=太阳）——
+   不用 svg 的 hidden 属性：hidden 是 HTMLElement 的 IDL 属性，SVGElement 没有它，
+   `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
 .topbar .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 11px}
-/* 延迟读数（v2.69.0）：等宽数字防抖动；类名 lat-chip 刻意避开 t24 钉死的 `chip` */
-.lat-chip{font-variant-numeric:tabular-nums}
+.topbar .icon-btn .ico-moon,
+.topbar .icon-btn .ico-sun{display:block}
+.topbar .icon-btn.day .ico-moon{display:none}
+.topbar .icon-btn:not(.day) .ico-sun{display:none}
+/* 兜底：hidden 对 SVG 在真浏览器本就不生效，这里显式补上（防未来其他 svg 复用 hidden） */
+.topbar svg[hidden]{display:none}
+/* 延迟读数（v2.69.0 返工，用户拍板）：**裸文案常显**（含 0ms）——类游戏 HUD 的延迟显示，
+   无边框无底色、小号灰字、等宽数字防抖动；保留 button 元素维持键盘可达，hover 微亮示意可点 */
+.lat-read{background:none;border:none;padding:0;font-size:12px;font-weight:500;color:var(--t3);
+  font-variant-numeric:tabular-nums;cursor:pointer;transition:color .12s}
+.lat-read:hover{color:var(--t2)}
 .pill:hover:not(:disabled):not(.active){background:var(--line);color:var(--t1)}
 .pill.active:hover:not(:disabled){filter:brightness(1.12)}
 .pill.active{background:var(--green);color:var(--on-green);font-weight:700}
@@ -1292,25 +1304,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          低频的全局项（使用方法 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出）
          全部收进设置弹窗；「练习统计」与「练习量」整块删除。
          ★ 判据是"你在练习过程中会不会去点它"：调音量会、切主题不会、导出数据更不会。
-         ★ v2.69.0 顶栏加两员（用户要求）：
-           · 延迟补偿读数（settingsBtn 左侧，0ms 整个隐藏）——它是**控件**（点击直达设置
-             的「音频延迟补偿」组），不是状态/版本类元素，不违反下方 t24 的约束；
-             类名 lat-chip 刻意避开 t24 钉死的 `chip`。
-           · 主题切换图标钮（后台保活右侧）：月亮=当前经典、太阳=当前日间 -->
-    <button class="pill outline lat-chip" id="latChip" hidden aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
+         ★ v2.69.0 顶栏加延迟读数与主题图标钮；v2.69.0 返工（用户拍板）：
+           · 延迟读数改**裸文案常显**（含 0ms）——类游戏 HUD 的延迟显示，无按钮外观
+             （类名 lat-read，仍可点击直达设置延迟组，保留 button 元素维持键盘可达）；
+           · 「听辨训练」迁出顶栏 → 预设卡「编辑节奏型/编排曲式」行最左；
+           · 「后台保活」迁出顶栏 → 设置·外观与辅助（环境开关归环境组）；
+           顶栏自此只剩：延迟读数 / 设置 / 主题图标钮 -->
+    <button class="lat-read" id="latChip" aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
     <button class="pill outline" id="settingsBtn">设置</button>
-    <!-- 听辨训练入口（v1.10.0；v2.10.12 从训练模式区迁到顶栏，占原「练习统计」那一格）。
-         它原来那句注释写着"顶栏已有主题 + 练习统计、再加一个在 390px 上会挤"——
-         现在那两项都走了，顶栏反而更空，正好把它接上来；而且它本身就是一种训练模式，
-         比"设置"更该常驻。
-         ★ 原先旁边的正确率小字（`#earMini`）按用户要求**取消**：正确率在听辨训练自己的
-           overlay 里能看（`#earAcc`），顶栏不必再占一格；文案也从「听辨训练 · 练耳朵」
-           收成「听辨训练」（顶栏不是吆喝的地方） -->
-    <button class="pill outline" id="earBtn">听辨训练</button>
-    <!-- 后台保活（v1.4；v2.6.2 从「训练模式」区迁到顶栏）：wakeLock 防息屏 + iOS 静音循环
-         音频兜底，开关持久化。它是"这台设备别睡"的应用级环境开关，与版本状态同属顶栏一区，
-         不属于任何一个训练功能 -->
-    <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
     <!-- 主题切换（v2.69.0，1.1）：搬块不换 id（#themeToggle）——冷键、点击回调、aria-pressed
          接线全部不动；原先的「主题 · 经典/日间」文字改双图标：月亮=当前经典（点击去日间）、
          太阳=当前日间（点击回经典），显隐由 applyTheme 同步。
@@ -1318,7 +1319,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            本条注释就是教训）；开关态走 aria-pressed -->
     <button class="pill outline icon-btn" id="themeToggle" aria-pressed="false">
       <svg class="ico-moon" id="themeIcoMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.6 13.4A8.4 8.4 0 1 1 10.6 3.4a6.6 6.6 0 0 0 10 10z" fill="currentColor"/></svg>
-      <svg class="ico-sun" id="themeIcoSun" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" hidden><circle cx="12" cy="12" r="4.4" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.4"/><line x1="12" y1="19.6" x2="12" y2="22"/><line x1="2" y1="12" x2="4.4" y2="12"/><line x1="19.6" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></g></svg>
+      <svg class="ico-sun" id="themeIcoSun" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.4"/><line x1="12" y1="19.6" x2="12" y2="22"/><line x1="2" y1="12" x2="4.4" y2="12"/><line x1="19.6" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></g></svg>
     </button>
     <!-- ★ 这里原先有个 `.chip`（保存状态点 + 「稳定版」文案），v2.10.10 整块取消：
          点已移进品牌区徽章、文案退成 sr-only（见 h1.brand 上方那段注释）。
@@ -1645,6 +1646,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            正在服务曲式库里的哪一条，只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；
            单曲式时整行加 .single 由 CSS 隐藏 chip（内容写入点不动，id=argNowName 不变） -->
       <div class="arg-now" id="argNowRow">
+        <!-- 听辨训练（v2.69.0 返工：从顶栏迁来本行最左——它与编辑/编排同为"换着练"的入口，
+             顶栏只留全局件。搬块不换 id：Ear 模块接线与 t57 入口映射按 id 取，搬家不影响） -->
+        <button class="pill outline" id="earBtn">听辨训练</button>
         <button class="pill outline" id="editBtn">编辑节奏型</button>
         <button class="pill outline" id="argOpen">编排曲式</button>
         <span class="arg-now-name" id="argNowName"></span>
@@ -1931,7 +1935,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120。</li>
           <li><b>拍号。</b>2/4 到 7/4，切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
           <li><b>音量（三条滑杆）。</b>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</li>
-          <li><b>其余低频项都收在顶栏「设置」小窗里</b>（壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / 导入导出 / 诊断 / 安装）；<b>「后台保活」与「主题切换」（月亮 / 太阳图标钮）都是顶栏右侧的常驻控件</b>，不在这个小窗里。逐条详解见下面<b>「设置里的每一项」</b></li>
+          <li><b>其余低频项都收在顶栏「设置」小窗里</b>（壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断 / 安装）；<b>顶栏常驻的只有三样</b>：延迟补偿读数（裸文案，点击直达设置）、「设置」按钮、主题切换（月亮 / 太阳图标钮）；「听辨训练」在预设卡的「编辑节奏型 / 编排曲式」行最左。逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
 
         <template id="helpFigsMain">
@@ -1988,7 +1992,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
-          <li><b>后台保活（顶栏开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
+          <li><b>后台保活（设置 · 外观与辅助里的开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
           <li><b>导出 / 导入预设；导出 / 导入全部数据。</b>「预设」只带走节奏型；「全部数据」整包带走预设 + 曲式编排 + 歌词对齐 + 听辨战绩（详见下面「数据与隐私」）</li>
           <li><b>复制 / 导出诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）做成一段文本贴给开发者——复制成剪贴板，或导出成 .txt 文件（下载不可用时自动退回复制）。不上传、不联网</li>
         </ul>
@@ -2195,6 +2199,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
     <div class="bpm-row">
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
+      <!-- v2.69.0 返工（用户拍板）：后台保活从顶栏迁入本组——环境开关归环境组。搬块不换 id，
+           wakeLock/静音循环接线（KeepAlive 模块）与 t86e 启动收敛断言按 id 取，搬家不影响 -->
+      <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
       <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
       <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
     </div>
@@ -2289,11 +2296,13 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
     <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
     <div class="bpm-row" style="margin-top:14px">
       <button class="pill outline" id="helpBtn">使用方法</button>
-      <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。显隐由 Help.refreshInstall()
-           在设置打开时刷新——beforeinstallprompt 未捕获（多因 file:// 非安全上下文）则保持隐藏 -->
-      <button class="pill outline" id="helpInstallBtn" hidden>安装到本机</button>
+      <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。
+           v2.69.0 返工（用户拍板）：改**常显**——不可安装环境置灰（原 hidden 方案在
+           file:// 下永远不可见，用户实报"找不到按钮"）；置灰原因写进 title 悬停可见。
+           置灰态由 Help.refreshInstall() 在设置打开时刷新 -->
+      <button class="pill outline" id="helpInstallBtn" disabled>安装到本机</button>
     </div>
-    <div class="hint" style="margin-top:8px">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>只在 https 部署地址（可安装的安全上下文）下出现；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管）。</div>
+    <div class="hint" style="margin-top:8px">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
 
     <!-- 组④ 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
          为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
@@ -2336,23 +2345,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2368  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2971  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4439  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5186  Modal         应用内弹窗
-     L5324  Viz           时值可视化渲染与每帧动画
-     L7595  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8251  Trainer       变速训练器
-     L8389  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8905  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10189 Editor        自定义节奏型编辑器
-     L10609 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10656 Ear           听辨训练（v1.10.0）
-     L10876 Arrange       曲式编排（v2.0.0）
-     L13560 Help          使用方法（v2.0.1）
-     L13685 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13759 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14002 初始化（装配） 各模块 hook 接线与启动
+     L2377  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2980  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4448  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5195  Modal         应用内弹窗
+     L5333  Viz           时值可视化渲染与每帧动画
+     L7604  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8260  Trainer       变速训练器
+     L8398  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8914  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10198 Editor        自定义节奏型编辑器
+     L10618 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10665 Ear           听辨训练（v1.10.0）
+     L10885 Arrange       曲式编排（v2.0.0）
+     L13569 Help          使用方法（v2.0.1）
+     L13698 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13772 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14015 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -13613,15 +13622,19 @@ const Help = (() => {
       if (!quarWired){ b.addEventListener("click", onQuarClick); quarWired = true; }
     }
     /* v2.69.0（2.2）：安装/导出两枚按钮移入设置弹窗（静态元素，常驻 DOM，不再随 helpMoreTpl
-       惰性挂载）。· 安装：deferredPrompt 仍由本模块捕获；显隐刷新走 refreshInstall()
+       惰性挂载）。· 安装：deferredPrompt 仍由本模块捕获；置灰态刷新走 refreshInstall()
        （装配层在 Settings.open 时调用），点击接线移到本模块 init。· 导出：接线移到装配层
        （紧挨 diagCopyBtn，同一先例：设置业务接线归装配层）。 */
     refreshInstall();
   }
-  /* 安装按钮显隐刷新（v2.69.0）：deferredPrompt 未捕获（多因 file:// 非安全上下文）⇒ 隐藏 */
+  /* 安装按钮置灰刷新（v2.69.0 返工，用户拍板「常显」）：deferredPrompt 未捕获
+     （多因 file:// 非安全上下文）⇒ 置灰 + title 说明原因（不再 hidden——
+     那会让用户在不可安装环境里"找不到按钮"）。捕获到 ⇒ 解禁，点击主动 prompt() */
   function refreshInstall(){
     const ib = $("helpInstallBtn");
-    if (ib) ib.hidden = !deferredPrompt;
+    if (!ib) return;
+    ib.disabled = !deferredPrompt;
+    ib.title = deferredPrompt ? "" : "当前环境不可安装：PWA 需 https 部署地址（file:// 直开装不了）";
   }
   /* 刻意**不停播**：说明里提到弹跳球、静音拍这些"正在响的时候才看得懂"的东西，
      读的时候让它继续响着更有用（编辑器/曲式编排是"要动手改"，才需要停） */
@@ -14351,12 +14364,13 @@ const applyTheme = t => {
   /* v2.54.0（T2）：界面名称改「日间」——主题已由深蓝暗色改版为浅色，名字要说真话；
      内部标识 data-theme="obs" 与冷键取值保持原样（老存档无缝继承新外观）。
      v2.69.0（1.1）：按钮上顶栏后改**图标钮**——月亮=经典、太阳=日间（点击即切换到另一侧），
-     读屏文案走 aria-label；图标 hidden 切换而非替换 innerHTML（避免每次重解析） */
+     读屏文案走 aria-label。
+     ★ v2.69.0 返工修 bug：显隐改**按钮类驱动**（.day）——原用 `svg.hidden = …`，
+       但 `hidden` 是 HTMLElement 的 IDL 属性、SVGElement 上根本没有，赋值只是写了
+       JS expando、不碰 DOM 属性 ⇒ 真浏览器里两枚图标曾并排可见（用户实报）。
+       类旋钮一处切换，桩（classList）与真浏览器（CSS）行为一致。 */
   const tt = $("themeToggle");
-  /* 图标用 id 定位（桩环境元素是孤立桩，无 querySelector/children 遍历能力） */
-  const moon = $("themeIcoMoon"), sun = $("themeIcoSun");
-  if (moon) moon.hidden = t === "obs";
-  if (sun) sun.hidden = t !== "obs";
+  tt.classList.toggle("day", t === "obs");
   tt.setAttribute("aria-label", t === "obs" ? "切换到经典主题" : "切换到日间主题");
   /* v2.0.2：开关态对读屏可见（按钮文案只报当前主题，不报「按下去会怎样」） */
   $("themeToggle").setAttribute("aria-pressed", t === "obs" ? "true" : "false");
@@ -14771,14 +14785,13 @@ function latActive(){
   const p = latNow.profiles.find(x => x.id === latNow.currentId);
   return p ? p.ms : 0;
 }
-/* 顶栏延迟读数（v2.69.0，1.2）：latencyMs > 0 才显示「补偿 Xms」，为 0 整个隐藏（用户拍板）。
-   等宽数字在 CSS（.lat-chip）。★ 必须在 latApply **与** latMs 的 input 处理器两处调用——
+/* 顶栏延迟读数（v2.69.0 返工，用户拍板）：**常显**（含 0ms，推翻批 A 的"为 0 隐藏"）。
+   ★ 必须在 latApply **与** latMs 的 input 处理器两处调用——
    拖动滑杆只走 input、不触发 latApply，漏一处就是"拖动时顶栏读数不动" */
 function latChipSync(){
   const chip = $("latChip");
   if (!chip) return;
-  chip.hidden = !(latencyMs > 0);
-  if (!chip.hidden) chip.textContent = "补偿 " + latencyMs + "ms";
+  chip.textContent = "补偿 " + latencyMs + "ms";
 }
 /** 把内存态套用到：① 共享状态 latencyMs（发声侧读它）② 设置里的控件 */
 function latApply(){
