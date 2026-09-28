@@ -23,7 +23,7 @@ section("T132 · X4 诊断信息导出文件（v2.63.0）");
     "★ X4（v2.63.0）：Diagnostics.diagExport 已挂出（导出诊断为本地文件的能力存在）");
 
   const rep = beat.Diagnostics.diagReport();
-  ok(/BeatSight v2\.63\.0 诊断信息/.test(rep), "★ X4：诊断报告含版本标题（v2.63.0）");
+  ok(new RegExp("BeatSight v" + beat.VERSION + " 诊断信息").test(rep), "★ X4：诊断报告含版本标题（v" + beat.VERSION + "）");
   ok(/计数: /.test(rep) && /最近错误/.test(rep), "★ X4：诊断报告含计数段与最近错误段");
 
   /* 间谍：截 URL.createObjectURL 拿到 Blob，截 <a>.click 确认触发了下载 */
@@ -44,7 +44,7 @@ section("T132 · X4 诊断信息导出文件（v2.63.0）");
   sandbox.document.createElement = realCreateEl;
 
   ok(blobSeen && (blobSeen instanceof sandbox.Blob), "★ X4：用 Blob 包裹诊断文本触发下载");
-  ok(anchorSeen && /^beatsight-diagnostics-v2\.63\.0\.txt$/.test(anchorSeen.download || ""),
+  ok(anchorSeen && new RegExp("^beatsight-diagnostics-v" + beat.VERSION + "\\.txt$").test(anchorSeen.download || ""),
     "★ X4：导出文件名带版本前缀（" + (anchorSeen && anchorSeen.download) + "）");
   ok(clicked === true, "★ X4：触发了下载点击（a.click）");
   ok(ret === true, "★ X4：下载路径返回 true");
