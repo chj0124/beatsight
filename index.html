@@ -2316,21 +2316,21 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L2346  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L2935  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4219  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4926  Modal         应用内弹窗
-     L5063  Viz           时值可视化渲染与每帧动画
-     L7334  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7990  Trainer       变速训练器
-     L8128  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8626  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9872  Editor        自定义节奏型编辑器
-     L10292 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10329 Ear           听辨训练（v1.10.0）
-     L10549 Arrange       曲式编排（v2.0.0）
-     L12974 Help          使用方法（v2.0.1）
-     L13057 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13131 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13332 初始化（装配） 各模块 hook 接线与启动
+     L4224  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4931  Modal         应用内弹窗
+     L5068  Viz           时值可视化渲染与每帧动画
+     L7339  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7995  Trainer       变速训练器
+     L8133  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8631  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9877  Editor        自定义节奏型编辑器
+     L10297 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10334 Ear           听辨训练（v1.10.0）
+     L10554 Arrange       曲式编排（v2.0.0）
+     L12979 Help          使用方法（v2.0.1）
+     L13062 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13136 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13337 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2356,7 +2356,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.54.0";
+const VERSION = "2.54.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3335,7 +3335,12 @@ const Store = (() => {
   /* v2.47.0（1A）：曲式改名——与 renameCustom 同口径（空名拒绝 / trim / 40 上限 / 立即落盘）。
      ★ 示例曲锁定改名（用户拍板）：它带「示例」语义且「恢复示例曲」按 id 管理——
        要改就先复制一份（＋ 模板菜单「复制当前曲式」）。名字从不参与引用（段按 uid、
-       块按节奏型 id），改名对数据零影响 */
+       块按节奏型 id），改名对数据零影响
+     ★★ v2.54.1（真缺陷修复）：这里原本误调 persistCold()——那只写 beatsight.customs，
+       于是改名只改了内存、刷新即回退「原名」，而既有断言只看内存数组，4,022 条全绿照样漏。
+       曲式住在 beatsight.arranges，必须走 persistArranges()。
+       口径（同类写路径一律按它自查）：**改了哪个数组，就要写那个数组对应的键**，
+       不能因为"反正都叫冷键"就近挑一个。t126 用「内存 → 目标键 → 重载」三连把这条钉住。 */
   /** @param {string} id @param {string} name @returns {boolean} */
   function renameArrange(id, name){
     const a = arranges.find(x => x && x.id === id);
@@ -3343,7 +3348,7 @@ const Store = (() => {
     const nm = String(name || "").trim().slice(0, 40);
     if (!nm) return false;
     a.name = nm;
-    persistCold();
+    persistArranges();
     return true;
   }
   /** @param {number} idx @returns {string} 内置型源名（改名对话框的提示/还原基准） */

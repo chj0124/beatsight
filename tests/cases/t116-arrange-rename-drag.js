@@ -25,7 +25,7 @@ const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.cal
    桩内 perTick = 600/192 = 3.125，即 1 tick = 3.125px。
    withDemo=true 时走「首次打开带出示例曲」分支（seedDemo:false = 闩缺位）——测示例曲锁定用 */
 function setup(withDemo){
-  const { beat, els, fireWin } = loadApp(undefined, withDemo ? { seedDemo: false } : {});
+  const { beat, els, fireWin, storage } = loadApp(undefined, withDemo ? { seedDemo: false } : {});
   ok(beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "素材S", meter: 4, bars: [[{ t:48, dir:"D" }, { t:24, dir:"U" }, { t:24, dir:"D" }, { t:48, dir:"U" }, { t:48 }]] },
   ] })).ok, "素材导入");
@@ -34,7 +34,7 @@ function setup(withDemo){
     { name: "A", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
   ] }), "曲式落库");
   const arr = beat.Store.arranges[beat.Store.arranges.length - 1];
-  return { beat, els, fireWin, arr, id: arr.id, sec: arr.sections[0] };
+  return { beat, els, fireWin, storage, arr, id: arr.id, sec: arr.sections[0] };
 }
 const PER_TICK = 600 / 192;
 const px = ticks => ticks * PER_TICK;
@@ -42,7 +42,7 @@ const px = ticks => ticks * PER_TICK;
 /* ================= 场景 T116a：曲式改名（1A） ================= */
 section("T116a 曲式改名 · ✎ → uiPrompt → 落盘 / 空名拒绝 / 示例曲锁定");
 {
-  const { beat, els, arr, id } = setup(true);
+  const { beat, els, arr, id, storage } = setup(true);
   beat.Arrange.open();
   const items = els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
   eq(items.length, 2, "曲式库两行（示例曲 + 素材）");
@@ -62,7 +62,18 @@ section("T116a 曲式改名 · ✎ → uiPrompt → 落盘 / 空名拒绝 / 示�
   els["modalInput"].value = "我的第一首歌";
   els["modalOk"].fire("click");
   eq(beat.Store.findArrange(id).name, "我的第一首歌", "★ 确认 → 名字落库");
-  ok(JSON.stringify(beat.Store.arranges).includes("我的第一首歌"), "内存库已更新（冷键由 persistCold 同步落盘）");
+  /* ★★ v2.54.1：这里原本只断言内存数组，于是「写错冷键」这类缺陷全绿漏过——
+     曲式住在 beatsight.arranges，而 renameArrange 当时误调了只写 beatsight.customs 的 persistCold()，
+     表现为"改完看起来成功了、刷新回退原名"。补上「目标冷键 + 重载」两连。 */
+  ok(String(storage.get("beatsight.arranges") || "").includes("我的第一首歌"),
+    "★ 曲式冷键 beatsight.arranges 真的写了（不是只改内存）");
+  ok(!String(storage.get("beatsight.customs") || "").includes("我的第一首歌"),
+    "★ 反证：没被误写进预设冷键 beatsight.customs");
+  {
+    const seed = {}; storage.forEach((v, k) => { seed[k] = v; });
+    eq(loadApp(seed, { seedDemo: false }).beat.Store.findArrange(id).name, "我的第一首歌",
+      "★★ 重载后仍是新名（刷新不回退——v2.54.1 修的就是这条）");
+  }
 
   penMine.fire("click");
   els["modalInput"].value = "   ";
