@@ -33,7 +33,7 @@ section("T82 全量数据包 · 导出把四类冷数据都带走（此前只有
   const { beat } = loadApp();
   const pack = JSON.parse(beat.Store.serializeAll());
   eq(pack.kind, "all", "kind=all（与预设包 kind=presets 可区分）");
-  eq(pack.v, 1, "带 schema 版本字段（日后改形状时导入侧能分派，见审计 §4.5）");
+  eq(pack.v, 2, "带 schema 版本字段（v2.65.0 X1 升到 2：导出新增 settings 部件、pack 记入 parts 清单）");
   ["presets", "arranges", "lines", "ear"].forEach(k => {
     ok(Array.isArray(pack[k]) || (k === "ear" && pack[k] && typeof pack[k] === "object"),
       "包含 " + k + " 段");

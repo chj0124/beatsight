@@ -748,6 +748,9 @@ input[type=range].vol{width:120px}
 .modal-mask[hidden]{display:none}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:340px;max-width:calc(100vw - 48px);animation:modalPop .15s ease-out}
 .modal-msg{font-size:14px;line-height:1.7;margin-bottom:18px}
+.modal-list{margin:0 0 14px;padding-left:18px;max-height:38vh;overflow:auto;text-align:left;font-size:13px;line-height:1.7;color:var(--t1)}
+.modal-list li{margin:2px 0}
+.exp-chk{display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap;cursor:pointer}
 .modal-input{width:100%;margin:-6px 0 18px}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px}
 .pill.danger{background:var(--red);color:var(--on-green);font-weight:700}
@@ -2244,7 +2247,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <button class="pill outline" id="importAllBtn">导入全部数据</button>
       <input type="file" id="importAllFile" accept="application/json,.json" hidden>
     </div>
-    <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包：预设 + 曲式编排 + 歌词对齐 + 听辨战绩。导入按<b>合并</b>语义写回，不会覆盖本机已有的。</div>
+    <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
+    <div class="exp-parts" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 14px">
+      <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
+      <label class="exp-chk"><input type="checkbox" id="expArranges" checked> 曲式</label>
+      <label class="exp-chk"><input type="checkbox" id="expLyrics" checked> 歌词</label>
+      <label class="exp-chk"><input type="checkbox" id="expEar" checked> 听辨战绩</label>
+      <label class="exp-chk"><input type="checkbox" id="expSettings" checked> 设置(分组/改名)</label>
+    </div>
+    <div class="bpm-row" style="margin-top:8px">
+      <button class="pill outline" id="exportSelBtn">导出选中数据</button>
+    </div>
+    <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
     <div class="bpm-row" style="margin-top:14px">
       <button class="pill outline" id="helpBtn">使用方法</button>
     </div>
@@ -2267,6 +2281,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
     <div class="modal-msg" id="modalMsg"></div>
+    <ul class="modal-list" id="importPreviewList" hidden></ul>
     <input class="name-input modal-input" id="modalInput" hidden aria-labelledby="modalMsg">
     <div class="modal-actions">
       <button class="pill outline" id="modalCancel">取消</button>
@@ -2287,23 +2302,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2319  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2908  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4197  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4940  Modal         应用内弹窗
-     L5077  Viz           时值可视化渲染与每帧动画
-     L7348  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8004  Trainer       变速训练器
-     L8142  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8658  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9895  Editor        自定义节奏型编辑器
-     L10315 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10352 Ear           听辨训练（v1.10.0）
-     L10572 Arrange       曲式编排（v2.0.0）
-     L13256 Help          使用方法（v2.0.1）
-     L13388 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13462 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13705 初始化（装配） 各模块 hook 接线与启动
+     L2334  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2923  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4388  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5131  Modal         应用内弹窗
+     L5269  Viz           时值可视化渲染与每帧动画
+     L7540  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8196  Trainer       变速训练器
+     L8334  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8850  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10124 Editor        自定义节奏型编辑器
+     L10544 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10581 Ear           听辨训练（v1.10.0）
+     L10801 Arrange       曲式编排（v2.0.0）
+     L13485 Help          使用方法（v2.0.1）
+     L13617 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13691 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13934 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2329,7 +2344,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.64.0";
+const VERSION = "2.65.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4046,17 +4061,79 @@ const Store = (() => {
        · 练习记录 / 听辨战绩：纯数值，取合并（记录取并集后按 logMax 截断、战绩取逐字段较大值）。
      ★ 合并而不是替换：导入通常在"已有数据"的机器上发生，替换会静默抹掉本机那一份，
        而这类数据丢了没法撤销（与预设的"追加"语义同源）。 */
-  const PACK_V = 1;
-  function serializeAll(){
-    return JSON.stringify({
-      app:"beatsight", kind:"all", v:PACK_V, version:VERSION, exportedAt:new Date().toISOString(),
-      presets: customs.map(c => ({ name:c.name, meter:c.meter,
-        ...(c.accents ? {accents:c.accents} : {}), bars:c.bars })),
-      /* ★ v2.10.12：原 `log: sessions`（练习记录）随练习统计删除——它不再有消费者。
-         旧数据包里若带 `log` 字段，导入时会被**静默忽略**（下面 importAll 已不再读它），
-         这是刻意的：为一条没人看的字段把整包判为"格式不对"没有道理 */
-      arranges, lines: lyrics, ear,
-    }, null, 2);
+  /* v2.65.0（X1）：导入侧「设置」部件的分组归一化。与加载期 groups IIFE 同口径，
+     但**不复用**那段（它是加载期一次性求值的闭包，改它风险高）；这里独立一份，
+     由 t134 往返测试反向验证两路产出一致。脏组（缺名 / 坏 zone / 成员非法 / id 冲突）
+     整组丢弃，与加载期口径一致——导入不该让一个坏组污染本机分组。 */
+  /** @param {any[]} raw @returns {any[]} */
+  function normImportGroups(raw){
+    if (!Array.isArray(raw)) return [];
+    /** @type {any[]} */
+    const out = [];
+    const seenRef = new Set(), seenId = new Set();
+    raw.forEach((/** @type {any} */ g) => {
+      if (!g || typeof g !== "object") return;
+      const name = typeof g.name === "string" ? g.name.trim().slice(0, 40) : "";
+      if (!name || (g.zone !== "beat" && g.zone !== "strum" && g.zone !== "custom") || !Array.isArray(g.members)) return;
+      if (!(typeof g.id === "string" && g.id) || seenId.has(g.id)) return;
+      seenId.add(g.id);
+      /** @type {any[]} */
+      const members = [];
+      (g.members || []).forEach((/** @type {any} */ r) => {
+        if (!r || typeof r !== "object") return;
+        if (r.type === "builtin"){
+          if (!Number.isInteger(r.idx) || r.idx < 0 || r.idx >= BUILTINS.length) return;
+          if (seenRef.has("b" + r.idx)) return;
+          seenRef.add("b" + r.idx);
+          members.push({ type:"builtin", idx:r.idx });
+        } else if (r.type === "custom"){
+          if (typeof r.id !== "string" || !r.id) return;
+          if (seenRef.has("c" + r.id)) return;
+          seenRef.add("c" + r.id);
+          members.push({ type:"custom", id:r.id });
+        } else if (r.type === "arrange"){
+          if (typeof r.id !== "string" || !r.id) return;
+          if (seenRef.has("a" + r.id)) return;
+          seenRef.add("a" + r.id);
+          members.push({ type:"arrange", id:r.id });
+        }
+      });
+      out.push({ id: g.id, name, zone: g.zone, members, open: g.open !== false });
+    });
+    return out;
+  }
+
+  const PACK_V = 2;
+  /* v2.65.0（X1 选择性导入/导出）：序列化支持「按部件」过滤。
+     parts 不传 = 全部（向后兼容「导出全部数据」按钮语义）；传数组则只含选中部件。
+     部件：presets 预设 / arranges 曲式 / lyrics 歌词 / ear 听辨战绩 / settings 设置（分组+改名覆盖）。
+     ★ 壁纸不进：用户拍板不进「导出全部」（t92 仍断言 serializeAll 不含 wallpaper），
+       且壁纸是视觉偏好非数据资产。★ settings 进「全部」：分组 / 改名覆盖是真实用户数据，
+       换设备应一起带走（此前漏带）。pack 末尾附 `parts` 字段，供导入预览标注类别。 */
+  /** @param {{parts?: string[]}} [opts] */
+  function serializeAll(opts){
+    const parts = opts && Array.isArray(opts.parts) ? opts.parts : null;
+    const want = (/** @type {string} */ p) => !parts || parts.indexOf(p) >= 0;
+    /** @type {any} */
+    const obj = { app:"beatsight", kind:"all", v:PACK_V, version:VERSION,
+      exportedAt:new Date().toISOString() };
+    /** @type {string[]} */
+    const included = [];
+    if (want("presets")){ obj.presets = customs.map(c => ({ name:c.name, meter:c.meter,
+      ...(c.accents ? {accents:c.accents} : {}), bars:c.bars })); included.push("presets"); }
+    if (want("arranges")){ obj.arranges = arranges; included.push("arranges"); }
+    if (want("lyrics")){ obj.lines = lyrics; included.push("lyrics"); }
+    if (want("ear")){ obj.ear = ear; included.push("ear"); }
+    if (want("settings")){ obj.settings = { groups, builtinNames: builtinNameOverrides }; included.push("settings"); }
+    obj.parts = included;
+    return JSON.stringify(obj, null, 2);
+  }
+  /* v2.65.0（X1）：选择性导出入口——只带勾选的部件。文件名 kind 用 "sel" 便于辨识。 */
+  /** @param {string[]} parts @returns {boolean} */
+  function exportAllSel(parts){
+    if (!parts || !parts.length) return false;
+    downloadJSON("sel", serializeAll({ parts }));
+    return true;
   }
   function exportAll(){ downloadJSON("all", serializeAll()); return true; }
 
@@ -4128,6 +4205,34 @@ const Store = (() => {
         if (isNum(inc) && (!isNum(cur) || inc > cur)){ (/** @type {any} */ (ear))[k] = inc; earMerge++; }
       });
     }
+    /* ---- 设置（v2.65.0 X1）：分组整包替换 + 内置型改名覆盖合并 ----
+       ★ 分组是「视图组织」不是数据容器（见加载注释）：导入即把本机分组状态恢复为用户导出的那份，
+         故整包替换（与「导出设置 = 带走我的分组」对称）；成员引用按白名单归一（normImportGroups）。
+       ★ 改名覆盖按 builtin 下标合并：导入覆盖本机同一下标（显示层十几处读取点全链路生效）；
+         脏下标 / 空名直接丢弃，与加载期 builtinNameOverrides 口径一致。 */
+    let setGrp = 0, setBnm = 0;
+    if (data.settings && typeof data.settings === "object"){
+      if (Array.isArray(data.settings.groups)){
+        const ng = normImportGroups(data.settings.groups);
+        groups.length = 0;
+        ng.forEach((/** @type {any} */ g) => groups.push(g));
+        setGrp = ng.length;
+        persistGroups();
+      }
+      if (data.settings.builtinNames && typeof data.settings.builtinNames === "object"){
+        Object.keys(data.settings.builtinNames).forEach((/** @type {any} */ k) => {
+          const i = +k;
+          const nm = typeof data.settings.builtinNames[k] === "string"
+            ? String(data.settings.builtinNames[k]).trim().slice(0, 40) : "";
+          if (Number.isInteger(i) && i >= 0 && i < BUILTINS.length && i < BUILTIN_SRC_NAMES.length && nm){
+            builtinNameOverrides[String(i)] = nm;
+            BUILTINS[i].name = nm;
+            setBnm++;
+          }
+        });
+        if (setBnm) persistBNames();
+      }
+    }
     if (arrDrop || lyrDrop){
       try{ console.warn("[BeatSight] 全量导入跳过 " + arrDrop + " 条曲式 / " + lyrDrop
         + " 条歌词行（未通过结构校验或与本机已有条目重复）"); }catch(e){}
@@ -4142,7 +4247,93 @@ const Store = (() => {
     if (earMerge) persistEar();
     persist();
     return { ok:true, added: { presets:okPresets.length, arranges:arrAdd, lyrics:lyrAdd, ear:earMerge },
+      settings: { groups:setGrp, builtinNames:setBnm },
       skipped: { arranges:arrDrop, lyrics:lyrDrop } };
+  }
+
+  /* v2.65.0（X1）：导入冲突预览——**纯只读** dry-run，不落盘、不改内存，只算每类会怎样。
+     与 importAll 共用同一套校验/归一助手（validatePreset / normArrange / normLyricLine /
+     lyricMigrate），计数口径逐字对齐 importAll；t134 断言 previewImport 计数 == importAll 实际落盘数。
+     ★ 预设是「整批」语义：任一坏条目 → 直接返回 error（与 importAll 同口径，不进入预览）。
+     ★ 返回 parts：[{kind, action, count}]，供 UI 在确认框里逐类列出「新增 / 合并 / 替换 / 跳过」。 */
+  /** @param {string} text @returns {any} */
+  function previewImport(text){
+    if (typeof text === "string" && text.length > CONFIG.importMaxBytes)
+      return { ok:false, error:"文件过大（超过 2 MB），不像是 BeatSight 数据包" };
+    let data;
+    try { data = JSON.parse(text); } catch(e){ return { ok:false, error:"文件不是有效的 JSON" }; }
+    if (!data || typeof data !== "object") return { ok:false, error:"数据包格式不正确" };
+    const kind = typeof data.kind === "string" ? data.kind : "all";
+    if (kind !== "all" && kind !== "presets")
+      return { ok:false, error:"这不是 BeatSight 的数据包（kind=" + String(data.kind).slice(0, 20) + "）" };
+    /** @type {Array<{kind:string, action:string, count:number}>} */
+    const parts = [];
+    /* ---- 预设：严格、整批 ---- */
+    const inPresets = Array.isArray(data.presets) ? data.presets
+                    : (Array.isArray(data) ? data : []);
+    if (inPresets.length){
+      if (inPresets.length > CONFIG.importMaxCount)
+        return { ok:false, error:"预设数量过多（" + inPresets.length + " 个，上限 " + CONFIG.importMaxCount + " 个）" };
+      if (customs.length + inPresets.length > CONFIG.importMaxCount)
+        return { ok:false, error:"库里已有 " + customs.length + " 个，再加本次 " + inPresets.length
+          + " 个会超过上限 " + CONFIG.importMaxCount + " 个——请先删掉一些再导入" };
+      for (const p of inPresets){
+        if (!validatePreset(p)) return { ok:false, error:"预设「" + (p && p.name ? String(p.name).slice(0, 40) : "?")
+          + "」格式不正确（拍号 / 时值 / 小节完整性校验失败）" };
+      }
+      parts.push({ kind:"节奏型", action:"新增", count: inPresets.length });
+    }
+    /* ---- 曲式 / 歌词：逐条归一计数（与 importAll 同序：先落曲式再归歌词，
+        否则歌词的 sec→secUid 迁移找不到所属曲式会被判「跳过」，计数与真实导入对不上）----
+       ★ previewImport 是只读 dry-run：先把归一后的曲式暂挂进全局 arranges（与 importAll
+        同一动作）供歌词迁移寻址，返回前把 arranges 长度还原——全程不落盘、不改持久态 */
+    const arrSavedLen = arranges.length;
+    let arrAdd = 0, arrDrop = 0;
+    if (Array.isArray(data.arranges)){
+      data.arranges.forEach((/** @type {any} */ r) => {
+        const v = normArrange(r);
+        if (v && !arranges.some(a => a && a.id === v.id)){ arranges.push(v); arrAdd++; } else arrDrop++;
+      });
+    }
+    if (arrAdd) parts.push({ kind:"曲式", action:"新增", count: arrAdd });
+    if (arrDrop) parts.push({ kind:"曲式", action:"跳过", count: arrDrop });
+    let lyrAdd = 0, lyrDrop = 0;
+    if (Array.isArray(data.lines)){
+      data.lines.forEach((/** @type {any} */ r) => {
+        if (lyrics.length + lyrAdd >= CONFIG.lyricMaxLines){ lyrDrop++; return; }
+        const v = normLyricLine(lyricMigrate(r));
+        if (v && !lyrics.some(x => x.arrangeId === v.arrangeId && x.secUid === v.secUid)) lyrAdd++;
+        else lyrDrop++;
+      });
+    }
+    if (lyrAdd) parts.push({ kind:"歌词", action:"新增", count: lyrAdd });
+    if (lyrDrop) parts.push({ kind:"歌词", action:"跳过", count: lyrDrop });
+    arranges.length = arrSavedLen;   // 只读：还原全局曲式数组
+    /* ---- 听辨战绩：逐字段较大值计数 ---- */
+    let earMerge = 0;
+    if (data.ear && typeof data.ear === "object"){
+      ["total", "right", "best"].forEach(k => {
+        const inc = data.ear[k], cur = (/** @type {any} */ (ear))[k];
+        if (isNum(inc) && (!isNum(cur) || inc > cur)) earMerge++;
+      });
+    }
+    if (earMerge) parts.push({ kind:"听辨战绩", action:"合并", count: earMerge });
+    /* ---- 设置：分组替换 + 改名覆盖合并 ---- */
+    if (data.settings && typeof data.settings === "object"){
+      if (Array.isArray(data.settings.groups))
+        parts.push({ kind:"分组", action:"替换", count: normImportGroups(data.settings.groups).length });
+      if (data.settings.builtinNames && typeof data.settings.builtinNames === "object"){
+        let n = 0;
+        Object.keys(data.settings.builtinNames).forEach((/** @type {any} */ k) => {
+          const i = +k;
+          const nm = typeof data.settings.builtinNames[k] === "string"
+            ? String(data.settings.builtinNames[k]).trim().slice(0, 40) : "";
+          if (Number.isInteger(i) && i >= 0 && i < BUILTINS.length && i < BUILTIN_SRC_NAMES.length && nm) n++;
+        });
+        if (n) parts.push({ kind:"改名覆盖", action:"合并", count: n });
+      }
+    }
+    return { ok:true, parts };
   }
 
   /* ---- 示例曲「已带出过」的闩（v2.4.1，独立冷键 beatsight.demoSeeded）----
@@ -4165,7 +4356,7 @@ const Store = (() => {
   return { S, customs, persist, persistCold, flush, setPersistFailHandler, setPersistRecoverHandler,
     downloadJSON,
     serializePresets, exportPresets, importPresets,
-    serializeAll, exportAll, importAll,          // v2.8.8：全量数据包（曲式/歌词/记录/战绩的跨设备迁移）
+    serializeAll, exportAll, exportAllSel, importAll, previewImport,  // v2.8.8 全量数据包；v2.65.0（X1）选择性导出 + 导入冲突预览
     /* v2.10.12：`logSessions` / `appendSession` / `clearLog` / `serializeLog`
        （练习记录的四个出口）随练习统计一起删除 —— 现在没有任何调用方 */
     earStats: ear, recordEar, resetEar,
@@ -4999,6 +5190,7 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     if (!modalOpen) return;
     modalOpen = false;
     $("modalMask").hidden = true;
+    const pl = $("importPreviewList"); if (pl) pl.hidden = true;   // v2.65.0（X1）：导入预览清单随弹窗关闭一起收起
     const cb = modalOkCb; modalOkCb = null;
     if (ok && cb) cb($("modalInput").hidden ? undefined : $("modalInput").value);
     refreshInert();
@@ -9734,30 +9926,67 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     evEl(e).blur();
     Store.exportAll();
     /* v2.11.3：「练习记录」这一类随练习统计一起删了（v2.10.12），播报文案里却还挂着它
-       ——读屏用户听到的内容与包里真正装的东西对不上。四类改三类。 */
-    announce("已导出全部数据（预设 / 曲式 / 歌词 / 听辨战绩）");
+       ——读屏用户听到的内容与包里真正装的东西对不上。四类改三类。
+       v2.65.0（X1）：现在「全部」还含设置（分组 / 改名覆盖），播报补上。 */
+    announce("已导出全部数据（预设 / 曲式 / 歌词 / 听辨战绩 / 设置）");
+  });
+  /* v2.65.0（X1）：选择性导出——读勾选项，只带这些部件 */
+  $("exportSelBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    /** @type {string[]} */
+    const parts = [];
+    if ($("expPresets").checked) parts.push("presets");
+    if ($("expArranges").checked) parts.push("arranges");
+    if ($("expLyrics").checked) parts.push("lyrics");
+    if ($("expEar").checked) parts.push("ear");
+    if ($("expSettings").checked) parts.push("settings");
+    if (!parts.length){ Modal.uiAlert("请至少勾选一类要导出的数据"); return; }
+    Store.exportAllSel(parts);
+    announce("已导出选中数据（" + parts.length + " 类）");
   });
   $("importAllBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     $("importAllFile").click();
   });
+  /* v2.65.0（X1）：导入前先 dry-run 出冲突预览，确认后再真正写回（合并语义） */
   bindImport("importAllFile", "导入失败：文件过大（超过 2 MB），不像是 BeatSight 数据包。", (text) => {
-    const res = Store.importAll(text);
-    if (!res.ok){ Modal.uiAlert("导入失败：" + res.error); return; }
-    buildPresetList();
-    /* 曲式 / 歌词各自的界面（编排面板 / 歌词轨）都在打开时按库重建，故这里不需要也不该
-       Presets 去调用 Arrange（那是反向引用）。只需把"这份数据已经进来了"告知读屏用户 */
-    const a = res.added;
-    /* v2.11.3：`added` 里早就**没有** `log` 字段（随练习记录一起删），这里却还读它 ——
-       导入成功弹窗实际会显示「练习记录 undefined 场」。改成读 `ear`（战绩合并项数），
-       且只在真合并了的时候才出现这一截，避免每次都挂一句"0 项"。 */
-    Modal.uiAlert("已导入：预设 " + a.presets + " 个 · 曲式 " + a.arranges + " 条 · 歌词 "
-      + a.lyrics + " 行"
-      + (a.ear ? " · 听辨战绩已按更高值更新（" + a.ear + " 项）" : "")
-      + (res.skipped.arranges || res.skipped.lyrics
-        ? "\n（跳过 " + res.skipped.arranges + " 条曲式 / " + res.skipped.lyrics
-          + " 条歌词行：未通过结构校验，或与本机已有的重复）" : ""));
+    const pv = Store.previewImport(text);
+    if (!pv.ok){ Modal.uiAlert("导入失败：" + pv.error); return; }
+    if (!pv.parts.length){ Modal.uiAlert("这份文件里没有可导入的数据。"); return; }
+    showImportPreview(text, pv.parts);
   });
+  /* 导入预览确认框：把 parts 渲染成清单，确认 → importAll 真正写回。
+     ★ 用原生 DOM 构建清单项（textContent，不碰 innerHTML）——与全局 no-innerHTML 纪律一致。 */
+  /** @param {string} text @param {Array<{kind:string, action:string, count:number}>} parts */
+  function showImportPreview(text, parts){
+    const list = $("importPreviewList");
+    while (list.firstChild) list.removeChild(list.firstChild);
+    parts.forEach((/** @type {any} */ p) => {
+      const li = document.createElement("li");
+      li.textContent = "· " + p.kind + "：" + p.action + " " + p.count + " 项";
+      list.appendChild(li);
+    });
+    list.hidden = false;
+    Modal.uiConfirm("即将导入以下数据（按「合并」语义写回，不会删除本机已有内容）：", () => {
+      list.hidden = true;
+      const res = Store.importAll(text);
+      if (!res.ok){ Modal.uiAlert("导入失败：" + res.error); return; }
+      buildPresetList();
+      /* 曲式 / 歌词各自的界面（编排面板 / 歌词轨）都在打开时按库重建，故这里不需要也不该
+         Presets 去调用 Arrange（那是反向引用）。只需把"这份数据已经进来了"告知读屏用户 */
+      const a = res.added;
+      let msg = "已导入：预设 " + a.presets + " 个 · 曲式 " + a.arranges + " 条 · 歌词 " + a.lyrics + " 行";
+      if (a.ear) msg += " · 听辨战绩已按更高值更新（" + a.ear + " 项）";
+      if (res.settings && (res.settings.groups || res.settings.builtinNames)){
+        msg += "\n设置：分组 " + (res.settings.groups || 0) + " 个";
+        if (res.settings.builtinNames) msg += " · 改名覆盖 " + res.settings.builtinNames + " 个";
+      }
+      if (res.skipped.arranges || res.skipped.lyrics)
+        msg += "\n（跳过 " + res.skipped.arranges + " 条曲式 / " + res.skipped.lyrics
+          + " 条歌词行：未通过结构校验，或与本机已有的重复）";
+      Modal.uiAlert(msg);
+    });
+  }
 
   /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）：只在「预设库为空 + 从未确认过」时露一次。
      迁移逻辑本身不需要这里做——导入导出已经够了，缺的只是"告诉用户有这么个坑" */

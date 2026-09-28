@@ -110,6 +110,8 @@ section("T91c 迁移矩阵 · 老数据包带 log（练习记录）→ 静默忽
   const app2 = loadApp();
   app2.setFileText(pack);
   app2.els["importAllFile"].fire("change", { target: { files: [{ size: 100 }], value: "" } });
+  /* v2.65.0（X1）：导入现在先弹「冲突预览」再确认——点「确定」才走真实写回路径 */
+  app2.els["modalOk"].fire("click", {});
   const said = String(app2.els["modalMsg"].textContent || "");
   ok(/已导入/.test(said), "走真实导入路径成功（实际：" + said.slice(0, 80) + "）");
   ok(!/练习记录/.test(said), "★★ 用户看到的弹窗里不再提「练习记录」");
