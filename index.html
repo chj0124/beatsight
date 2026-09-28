@@ -867,6 +867,8 @@ input[type=range].vol{width:120px}
 .arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:4px;padding:1px 3px;margin-left:2px}
 .arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:2px 3px;border-radius:4px}
 .arg-pill-edit:hover{color:var(--green);background:rgba(30,215,96,.1)}
+.arg-pill-play{flex:none;margin-right:4px;font-size:11px;line-height:1;color:var(--t3);cursor:pointer;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.04)}
+.arg-pill-play:hover{color:var(--accent);border-color:var(--accent);background:rgba(255,255,255,.1)}
 /* v2.37.0（c）：编辑器源型引用信息行 */
 #editorRefNote{margin:-6px 0 10px}
 .arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
@@ -2316,23 +2318,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2348  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2937  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4226  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4933  Modal         应用内弹窗
-     L5070  Viz           时值可视化渲染与每帧动画
-     L7341  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7997  Trainer       变速训练器
-     L8135  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8633  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9879  Editor        自定义节奏型编辑器
-     L10299 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10336 Ear           听辨训练（v1.10.0）
-     L10556 Arrange       曲式编排（v2.0.0）
-     L13157 Help          使用方法（v2.0.1）
-     L13240 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13314 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13515 初始化（装配） 各模块 hook 接线与启动
+     L2350  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2939  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4228  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4935  Modal         应用内弹窗
+     L5072  Viz           时值可视化渲染与每帧动画
+     L7343  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7999  Trainer       变速训练器
+     L8137  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8635  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9881  Editor        自定义节奏型编辑器
+     L10301 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10338 Ear           听辨训练（v1.10.0）
+     L10558 Arrange       曲式编排（v2.0.0）
+     L13246 Help          使用方法（v2.0.1）
+     L13329 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13403 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13604 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2358,7 +2360,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.56.0";
+const VERSION = "2.57.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10611,6 +10613,19 @@ const Arrange = (() => {
 
   /** @param {any} a */
   function save(a){
+    /* v2.57.0（C3）：候选试听把目标块 ref 临时换在【内存】——包括传入的快照 a（a 多从
+       snapshot() 现场拷自已被临时换型的活对象）。若此刻仍在试听，先把它剥掉：既还原 Store
+       活对象，也把 a 里那份临时 ref 还原成原值，避免被当成真改动落库（审计 P1-4 的「无意义
+       冷键写入」正是这么来的）。★ 换型那一下由胶囊 handler 先 candPreview=null 再 save，故
+       此处 candPreview 已空、不会误剥——用户点的就是「换到这个型」，ref 照常提交。 */
+    if (candPreview){
+      const cv = candPreview;
+      const live = cur();
+      if (live && live.sections[cv.sec] && live.sections[cv.sec].blocks[cv.blk]) live.sections[cv.sec].blocks[cv.blk].ref = cv.origRef;
+      if (a && a.sections && a.sections[cv.sec] && a.sections[cv.sec].blocks[cv.blk]) a.sections[cv.sec].blocks[cv.blk].ref = cv.origRef;
+      candPreview = null; playQuota = 0; onQuotaDone = null;
+      if (S.playing) Controls.stop();
+    }
     /* v2.56.0（C1）：落库前记下「当前正编辑的是哪条」与「改前态」。
        cur() 在 upsertArrange 覆盖 Store 里的旧对象之前，仍是改前快照——
        用它做 undo 栈的「前一张」，整份深拷、secUid 原样保留（歌词按 secUid 寻址，
@@ -11541,6 +11556,59 @@ const Arrange = (() => {
     arrangeRender();
   }
 
+  /* v2.57.0（C3）：换型候选就地试听。点候选 pill 上的 ▶ 只播该型一遍——**不触发换型、不落库、
+     不入撤销历史**（审计 P1-4：比较多个型时被迫反复改回、产生无意义冷键写入）。
+     实现：把目标块的 ref 在【内存】里临时换成候选型（绝不经 Arrange.save，故不污染 Store/历史），
+     用 S.arrangeSel 走主引擎放该段一遍（playQuota = patBars，到量自动停），
+     到量 / 再次点击 / 关浮层 / 任何结构写（save 顶部的保险）时把 ref 还原。
+     ★ 与 previewSection 的区别：previewSection 是「循环试听当前段」（loop:true、preview 态互斥）；
+     候选试听是「一次性试听某个假想型」（loop:false、candPreview 态）——两者共用同一发声通道，互不新增。 */
+  /** @type {null | { sec: number, blk: number, origRef: any }} */
+  let candPreview = null;
+  /** @param {any} ref @param {any} srcPreset @returns {void} */
+  function previewCandidate(ref, srcPreset){
+    const a = cur();
+    if (!a || !picking) return;
+    const pk = picking;
+    const sec = a.sections[pk.sec], blk = sec && sec.blocks[pk.blk];
+    if (!blk) return;
+    /* 先停掉任何进行中的候选试听 / 其它播放（还原旧 ref，避免串味） */
+    stopCandPreview(true);
+    if (S.playing || playQuota > 0) Controls.stop();
+    const origRef = blk.ref;
+    blk.ref = ref;                              // 内存临时换型（不落库、不入历史）
+    candPreview = { sec: pk.sec, blk: pk.blk, origRef };
+    const span = lyricSpanTicks(a.id, sec.uid);
+    if (!(span > 0)){ stopCandPreview(false); return; }
+    const from0 = songBarBefore(a, pk.sec);
+    S.arrangeSel = { id: a.id, from: from0, to: from0 + secBars(sec) - 1, loop: false, byLyric: false };
+    setMode("playMode", "arrange", "候选试听");
+    const home = arrangeHomePattern();
+    if (home && home.meter !== S.sig) Controls.setSig(home.meter);
+    Presets.applyPatternChange();
+    playQuota = patBars(srcPreset);             // 放该型的小节数一遍，到量自动停
+    onQuotaDone = () => { stopCandPreview(false); announce("候选试听结束，未改动曲式"); };
+    Controls.stop();                            // 从头起播
+    Controls.start();
+    arrangeRender();                            // 段行暂时高亮候选型 + ▶ 切 ■
+    announce("试听候选节奏型：" + (srcPreset ? srcPreset.name : "（未知）") + "，放一遍自动停；再点 ▶ 或关闭停止");
+  }
+  /** @param {boolean} silent @returns {void} */
+  function stopCandPreview(silent){
+    if (!candPreview) return;                   // 没在候选试听就什么都不动（不动 playQuota/onQuotaDone，避免误伤听辨训练的额度）
+    const a = cur();
+    if (a && a.sections[candPreview.sec] && a.sections[candPreview.sec].blocks[candPreview.blk]){
+      a.sections[candPreview.sec].blocks[candPreview.blk].ref = candPreview.origRef;   // 内存还原
+    }
+    candPreview = null;
+    playQuota = 0; onQuotaDone = null;
+    if (S.playing) Controls.stop();
+    arrangeRender();
+    if (!silent) announce("已停止候选试听");
+  }
+  /** 仅供测试断言当前候选试听态（反向验证用）。@returns {any} */
+  function candPreviewState(){ return candPreview; }
+
   /** 试听游标：preview 非空时把游标摆到段内当前位置 + 高亮当前字（判据 t ∈ [c.t, c.t+dur)，
      与主视图播放头同构）。位置一律走 sectionPosTicks（与打轴同一位置源）。
      rAF 自续驱动；桩环境无 rAF，测试直接调本函数。段不在展开态（无 lane）时空转。 */
@@ -11963,7 +12031,7 @@ const Arrange = (() => {
       const pick = document.createElement("button");
       pick.className = "arg-mini"; pick.textContent = "换";
       pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
-      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { picking = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; secMenuOpen = null; blockMenuOpen = null; arrangeRender(); });
+      Modal.bindOverlay("arrangeOverlay", pick, "click", () => { const np = (picking && picking.sec === i && picking.blk === j) ? null : { sec: i, blk: j }; if (np === null) stopCandPreview(true); picking = np; secMenuOpen = null; blockMenuOpen = null; arrangeRender(); });
       const del = document.createElement("button");
       del.className = "arg-mini"; del.textContent = "✕";
       del.setAttribute("aria-label", `删除第 ${i + 1} 段第 ${j + 1} 块`);
@@ -11989,7 +12057,7 @@ const Arrange = (() => {
       Modal.bindOverlay("arrangeOverlay", bmore, "click", (/** @type {any} */ e) => {
         evEl(e).blur();
         blockMenuOpen = (blockMenuOpen && blockMenuOpen.sec === i && blockMenuOpen.blk === j) ? null : { sec: i, blk: j };
-        secMenuOpen = null; picking = null;
+        secMenuOpen = null; stopCandPreview(true); picking = null;
         arrangeRender();
       });
       chip.appendChild(bmore);
@@ -12268,7 +12336,7 @@ const Arrange = (() => {
         }
         b.appendChild(pen);
       }
-      Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; picking = null; arrangeRender(); refreshBar(); });
+      Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; stopCandPreview(true); picking = null; arrangeRender(); refreshBar(); });
       list.appendChild(b);
     });
 
@@ -12349,15 +12417,36 @@ const Arrange = (() => {
           ed.setAttribute("aria-label", "去编辑器，以「" + text + "」为底稿创建副本");
           Modal.bindOverlay("arrangeOverlay", ed, "click", (/** @type {any} */ e) => {
             if (e && e.stopPropagation) e.stopPropagation();   // 别触发胶囊自己的"换型"
-            picking = null;
+            stopCandPreview(true); picking = null;
             /* src 带上 type/id/idx（srcRefs 引用匹配用）+ preset 本体（底稿用） */
             Editor.openWith(Object.assign({}, srcPreset, ref));
           });
           b.appendChild(ed);
         }
+        /* v2.57.0（C3）：候选 pill 上的 ▶ = 就地试听该型一遍（不换型、不落库）。
+           点击 stopPropagation 防触发胶囊本身的"换型"；再次点 ▶（当前正在试听这个型）则停止。 */
+        const playBtn = document.createElement("span");
+        playBtn.className = "arg-pill-play";
+        playBtn.setAttribute("role", "button");
+        playBtn.setAttribute("aria-label", "试听候选节奏型：" + text);
+        const isCandActive = () => {
+          const cv = candPreview;
+          if (!cv) return false;
+          const a0 = cur();
+          const b0 = a0 && a0.sections[cv.sec] && a0.sections[cv.sec].blocks[cv.blk];
+          return !!(b0 && b0.ref && b0.ref.type === ref.type && (ref.type === "builtin" ? b0.ref.idx === ref.idx : b0.ref.id === ref.id));
+        };
+        playBtn.textContent = isCandActive() ? "■" : "▶";
+        Modal.bindOverlay("arrangeOverlay", playBtn, "click", (/** @type {any} */ e) => {
+          if (e && e.stopPropagation) e.stopPropagation();   // 别触发胶囊自己的"换型"
+          if (isCandActive()) stopCandPreview(true);
+          else previewCandidate(ref, srcPreset);
+        });
+        b.insertBefore(playBtn, b.firstChild);
         Modal.bindOverlay("arrangeOverlay", b, "click", () => {
           const pk = picking;
           if (!pk) return;
+          if (candPreview){ candPreview = null; playQuota = 0; onQuotaDone = null; if (S.playing) Controls.stop(); }  // v2.57.0（C3）：换型前先清候选试听（ref 即变永久，无需还原）
           const d = snapshot();
           d.sections[pk.sec].blocks[pk.blk].ref = ref;
           picking = null;
@@ -12870,7 +12959,7 @@ const Arrange = (() => {
     if (tap) endTap();                                // v2.48.0①：重开编排页 = 打轴作废（tapBar 一并收起）
     previewStop();                                    // v2.51.0（R3）：重开编排页 = 试听停止（互斥纪律）
     if (!curId && Store.arranges.length) curId = Store.arranges[0].id;
-    picking = null;
+    stopCandPreview(true); picking = null;
     secMenuOpen = null;                               // v2.30.0：进浮层不带回上次的展开态
     blockMenuOpen = null;                             // v2.55.0：块菜单同上
     lyricOpen.clear();                                // v2.32.0：歌词折叠态同上（纯浏览态）
@@ -12878,7 +12967,7 @@ const Arrange = (() => {
     Modal.openOverlay("arrangeOverlay");  // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   function close(){
-    picking = null;
+    stopCandPreview(true); picking = null;
     secMenuOpen = null;                               // v2.30.0：与 picking 同步清（重开不残留）
     blockMenuOpen = null;                             // v2.55.0：块菜单同上
     lyricOpen.clear();                                // v2.32.0：歌词折叠态同上
@@ -13151,7 +13240,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
