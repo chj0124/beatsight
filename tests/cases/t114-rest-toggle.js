@@ -76,8 +76,9 @@ section("T114b 发声开关 · 发声翻休止：dir/zone 保留、时长不动�
   ok(st.hint.includes("空扫"), "休止 + 方向 → 提示语点明它已是空扫");
   const cellCls = " " + edCellsOf(els, 0)[0].className + " ";
   ok(/ rest /.test(cellCls), "编辑器格子挂上 .rest（灰底休止样式）");
-  const airs = edCellsOf(els, 0)[0].children.filter(c => c.className === "ed-air");
-  eq(airs.length, 1, "休止槽带方向 → 内联 .ed-air 蓝括号（空扫字形），不是 .ed-strum");
+  /* v2.74.0（2.7）：空扫字形改 .strumv.ghost 蓝虚线（ed-air 退役，主视图同款） */
+  const ghosts = edCellsOf(els, 0)[0].children.filter(c => /(^| )ghost( |$)/.test(c.className));
+  eq(ghosts.length, 1, "★ 休止槽带方向 → 内联 .strumv.ghost 蓝虚线，不是 .ed-strum");
 
   beat.Editor.undo();
   const back = beat.Editor.draft().bars[0][0];

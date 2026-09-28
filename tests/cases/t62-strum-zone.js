@@ -168,11 +168,15 @@ section("T62c 弦区 · 主视图箭头弦区跨距 / 编辑器徽标 / 空扫�
      ★ 编辑器里 zone **仍是文字徽标**（低/中/高），不跟着换成箭头跨距：
      编辑器是"改参数"的地方，箭头是大屏上的读谱速记；文字对读屏与色弱可达，
      在小尺寸的 edcell 里也比"跨几毫米的一段线"更明确。两处不同形是刻意的。 */
+  /* 编辑器徽标（Editor.open 基于当前选中预设的副本，故在切走之前看）。
+     ★ v2.74.0（2.7，用户拍板）：编辑器 zone 改用**主视图同款箭头跨距**（.strumv kB/kF）——
+     旧口径"编辑器仍是文字徽标、两处不同形是刻意的"被推翻：两处同形消除
+     "编辑器里看到的跨距和大屏不一样"的认知分叉；读屏信息移入 aria-label。 */
   beat.Editor.open();
-  const zb = edCellsOf(els, 0)[0].children.find(c => /(^| )ed-zone /.test(c.className));
-  ok(!!zb && zb.textContent === "低", "编辑器内联出 zone 文字徽标（读屏/色弱可达）");
-  const zb1 = edCellsOf(els, 0)[1].children.find(c => /(^| )ed-zone /.test(c.className));
-  ok(!!zb1 && zb1.textContent === "全", "★ 旧值 1 的徽标读作「全」（v2.29.0：1 = 全扫别名）");
+  const kz0 = edCellsOf(els, 0)[0].children.find(c => /(^| )strumv kB( |$)/.test(c.className));
+  ok(!!kz0, "编辑器内联出 kB 跨距箭头（zone 0 = 低音区）");
+  const kz1 = edCellsOf(els, 0)[1].children.find(c => /(^| )strumv kF( |$)/.test(c.className));
+  ok(!!kz1, "★ 旧值 1 读作全扫 → kF 跨距（v2.29.0：1 = 全扫别名）");
   beat.Editor.tryClose();
 
   /* 无 zone 的格不挂（老数据零迁移的直接体现）。

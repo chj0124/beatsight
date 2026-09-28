@@ -302,9 +302,10 @@ section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
   ok(els["dirHint"].textContent.includes("空扫"), "提示语点明语义（不是「不可标注」了）");
   els["dirRow"].fire("click", { target: pill({ dir: "D" }) });
   eq(beat.Editor.draft().bars[0][3].dir, "D", "休止槽上写入 dir（空扫）");
-  const airs = edCellsOf(els, 0)[3].children.filter(c => c.className === "ed-air");
-  eq(airs.length, 1, "编辑器内联出 .ed-air（蓝括号），不是 .ed-strum");
-  eq((airs[0] || {}).textContent, "↑", "空扫字形同样翻转：dir=\"D\" → ↑");
+  /* v2.74.0（2.7）：空扫字形从 ed-air 蓝括号改为 .strumv.ghost 蓝虚线（主视图同款） */
+  const ghosts = edCellsOf(els, 0)[3].children.filter(c => /(^| )ghost( |$)/.test(c.className));
+  eq(ghosts.length, 1, "★ 空扫编辑器内联 .strumv.ghost 蓝虚线（ed-air 括号字形退役）");
+  ok(ghosts.every(c => /(^| )dn( |$)/.test(c.className)), "方向类跟随（dir=D → dn；↑↓ 文字语义移入 aria-label）");
   eq(edCellsOf(els, 0)[3].children.filter(c => c.className === "ed-strum").length, 0,
      "空扫格不出现实心徽标（两变体互斥）");
   beat.Editor.undo();
