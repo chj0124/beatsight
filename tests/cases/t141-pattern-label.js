@@ -99,3 +99,38 @@ section("T141d 白名单 · 非字符串/纯空白省略，超长截 40（同 di
   const round = JSON.parse(beat.Store.serializePresets()).presets.filter(p => p.name === "练习C" && "label" in p);
   ok(round.length >= 1 && round.every(p => p.label === "X".repeat(40)), "★ 导出→导入往返，标注不丢");
 }
+
+/* ================= 场景 T141e：「|」分段（v2.72.1，方案丙） =================
+   桩环境 K=1（每行 = 整小节，无真实宽度不分片）——桌面语义下：
+   · 每段占小节的 1/段数 横向区间，**同行并排多颗**，frac 定位（style.left 百分比）；
+   · 1 小节型「C | Am」→ 4 行 × 每行 2 颗（C@0%、Am@50%）——用户原需求；
+   · 4 小节型「C | G | Am | F」→ 4 行 × 每行 4 颗（C,G,Am,F）；
+   · 无「|」⇒ 每行单颗行首（批 D 逐位不变）。 */
+section("T141e 分段标注 · 同行多颗按比例定位；首颗恒第一段；无「|」逐位不变");
+{
+  const { beat, els, storage } = loadApp(seedCold([{ name: "分段1", meter: 4, bars: [bar4()], label: "C | Am" }]));
+  selCustom(beat, storage, 0);
+  const chips = chordsIn(els);
+  eq(chips.length, 8, "★ 1 小节型 × 4 行 × 每行 2 颗 = 8（前半 C 后半 Am 在同一行并排）");
+  eq(chips.filter(t => t === "C").length, 4, "每行首颗 = C");
+  eq(chips.filter(t => t === "Am").length, 4, "每行次颗 = Am");
+  const firstRow = els["viz"].children.filter(c => /bar-row/.test(c.className))[0]
+    .children.filter(c => /bar-chord/.test(c.className));
+  eq(firstRow[0].style.left, "calc(0.00% + 6px)", "★ 首颗定位 0%（前半）");
+  eq(firstRow[1].style.left, "calc(50.00% + 6px)", "★ 次颗定位 50%（后半）");
+}
+
+section("T141e-2 分段 4 段 · 每行 4 颗按序；无「|」逐位不变");
+{
+  const { beat, els, storage } = loadApp(seedCold([{ name: "分段4", meter: 4,
+    bars: [bar4(), bar4(), bar4(), bar4()], label: "C | G | Am | F" }]));
+  selCustom(beat, storage, 0);
+  const chips = chordsIn(els);
+  eq(chips.length, 16, "4 小节型 × 4 行 × 每行 4 颗 = 16");
+  eq(chips.slice(0, 4).join(","), "C,G,Am,F", "★ 每行 4 颗按序 C,G,Am,F（每拍一个和弦）");
+  /* 无「|」⇒ 批 D 现状逐位不变 */
+  const c = loadApp(seedCold([withLabel("C")]));
+  selCustom(c.beat, c.storage, 0);
+  const chips2 = chordsIn(c.els);
+  ok(chips2.length === 4 && chips2.every(t => t === "C"), "无「|」单段 ⇒ 每行单颗行首（批 D 行为不变）");
+}
