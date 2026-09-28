@@ -85,10 +85,12 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
   for (const g of ["外观与辅助", "发声", "数据与说明"]){
     ok(st.includes(g), "★ 设置弹窗分三组之一：「" + g + "」");
   }
-  /* v2.69.0（1.1）：themeToggle 上顶栏，从设置弹窗 id 清单移除（剩 9 项） */
+  /* v2.69.0（1.1）：themeToggle 上顶栏，从设置弹窗 id 清单移除；
+     v2.70.0（1.4）：新增座次尺/时值标注两开关（9 → 11 项） */
   for (const id of ["bounceToggle", "tabToggle", "timbreRow", "swingRow",
-                    "exportBtn", "importBtn", "exportAllBtn", "importAllBtn", "helpBtn"]){
-    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 9 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : ""));
+                    "exportBtn", "importBtn", "exportAllBtn", "importAllBtn", "helpBtn",
+                    "rulerLabToggle", "durLabelToggle"]){
+    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 11 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : ""));
   }
   eq((st.match(/data-swing="/g) || []).length, 3, "★ Swing 3 档已进设置弹窗");
   ok(/class="dialog-panel"/.test(st) && /id="settingsClose"/.test(st), "浮层小窗面板与 ✕ 关闭钮在位");
