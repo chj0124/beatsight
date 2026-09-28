@@ -355,6 +355,15 @@ if (r2Hits.length){
   } else {
     pass(`R4 模块扇出均在上限内（MAX_FANOUT=${MAX_FANOUT}）：${summary}`);
   }
+  /* v2.58.0（T2 观察期）：打印完整模块引用矩阵 + 总出度——让「某模块是不是在膨胀成上帝对象」
+     一眼可见。纯观察，不判红（R4 的 MAX_FANOUT 才是硬闸门；这里先读一段时间再决定要不要加阈值）。 */
+  console.log("  ┌─ 模块引用矩阵（v2.58.0 观察期 · 仅打印不判红）");
+  modules.forEach(mod => {
+    const outs = [...(fanout.get(mod.name) || new Set())].sort().join(" → ") || "（无下游）";
+    console.log("  │ " + mod.name.padEnd(12) + " → " + outs);
+  });
+  const totalOut = [...fanout.values()].reduce((s, set) => s + set.size, 0);
+  console.log("  └─ 总出度：" + totalOut + "（模块数 " + modules.length + "，平均出度 " + (totalOut / modules.length).toFixed(2) + "）");
 }
 
 console.log("──────────────────────────────────────────────────────────");

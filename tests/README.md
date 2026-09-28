@@ -98,7 +98,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Stats / Ear / Arrange（v2.0.0）/ Help（v2.0.1）/ KeepAlive，共 13 个模块，以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
+（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Settings / Ear / Arrange（v2.0.0）/ Help（v2.0.1）/ KeepAlive / Diagnostics，共 14 个模块，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`；以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
 
 **注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
 每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**
