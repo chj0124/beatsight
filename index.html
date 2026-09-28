@@ -1853,6 +1853,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <div id="argSections"></div>
       <div class="bpm-row">
         <button class="pill" id="argAddSec">+ 加一段</button>
+        <button class="pill outline" id="argUndo" disabled aria-label="撤销上一步曲式结构修改（Ctrl+Z）">↩ 撤销</button>
+        <button class="pill outline" id="argRedo" disabled aria-label="重做上一步曲式结构修改（Ctrl+Shift+Z）">↪ 重做</button>
         <span class="hint" id="argHint"></span>
       </div>
     </div>
@@ -2314,23 +2316,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2346  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L2935  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4224  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4931  Modal         应用内弹窗
-     L5068  Viz           时值可视化渲染与每帧动画
-     L7339  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7995  Trainer       变速训练器
-     L8133  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8631  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9877  Editor        自定义节奏型编辑器
-     L10297 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10334 Ear           听辨训练（v1.10.0）
-     L10554 Arrange       曲式编排（v2.0.0）
-     L13066 Help          使用方法（v2.0.1）
-     L13149 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13223 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13424 初始化（装配） 各模块 hook 接线与启动
+     L2348  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L2937  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4226  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L4933  Modal         应用内弹窗
+     L5070  Viz           时值可视化渲染与每帧动画
+     L7341  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L7997  Trainer       变速训练器
+     L8135  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8633  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9879  Editor        自定义节奏型编辑器
+     L10299 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10336 Ear           听辨训练（v1.10.0）
+     L10556 Arrange       曲式编排（v2.0.0）
+     L13157 Help          使用方法（v2.0.1）
+     L13240 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13314 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13515 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2356,7 +2358,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.55.0";
+const VERSION = "2.56.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10609,12 +10611,86 @@ const Arrange = (() => {
 
   /** @param {any} a */
   function save(a){
+    /* v2.56.0（C1）：落库前记下「当前正编辑的是哪条」与「改前态」。
+       cur() 在 upsertArrange 覆盖 Store 里的旧对象之前，仍是改前快照——
+       用它做 undo 栈的「前一张」，整份深拷、secUid 原样保留（歌词按 secUid 寻址，
+       撤销段/块不丢词）。 */
+    const prevId = curId;
+    const prev = prevId === null ? null : Store.findArrange(prevId);
+    const oldSnap = prev ? JSON.stringify(prev) : null;
+    const newSnap = JSON.stringify(a);
     const v = Store.upsertArrange(a);      // 会重新做结构校验，不合法返回 null
-    if (v) curId = v.id;
-    arrangeRender(); refreshBar();
+    if (v){
+      curId = v.id;
+      /* 仅当「编辑的是当前已打开的曲式」且「确有变化」才压栈——
+         新建曲式（prevId !== v.id）与空操作（前后快照相同）不污染历史。 */
+      if (prevId === v.id && oldSnap && newSnap !== oldSnap){
+        const h = histGetArr(v.id);
+        h.redo.length = 0;                  // 新动作使重做历史失效
+        h.undo.push(oldSnap);
+        if (h.undo.length > HIST_MAX) h.undo.shift();
+      }
+      arrangeRender(); refreshBar();
+    }
   }
   /* 深拷贝一份草稿再改：直接改库里的对象会绕过校验（脏值会留在内存里） */
   const snapshot = () => JSON.parse(JSON.stringify(cur()));
+
+  /* v2.56.0（C1）：曲式结构撤销/重做。键 = arrangeId；**会话内存栈**（与 lyricHist 同纪律，
+     不落盘、刷新清空）；以 Arrange.save() 为唯一结构写入口。历史按 arrangeId 各自独立——
+     切到另一条曲式，它的撤销栈不会被另一条污染。整份 arrange 深拷快照，secUid 原样保留。 */
+  /** @type {Map<string, { undo: string[], redo: string[] }>} */
+  const arrHist = new Map();
+  /** @param {string} id @returns {{ undo: string[], redo: string[] }} */
+  function histGetArr(id){
+    let h = arrHist.get(id);
+    if (!h){ h = { undo: [], redo: [] }; arrHist.set(id, h); }
+    return h;
+  }
+  /** @param {string|null} id @returns {boolean} */
+  function arrCanUndo(id){ const h = id === null ? undefined : arrHist.get(id); return !!(h && h.undo.length); }
+  /** @param {string|null} id @returns {boolean} */
+  function arrCanRedo(id){ const h = id === null ? undefined : arrHist.get(id); return !!(h && h.redo.length); }
+  /** @param {string} snap 回贴一份快照为当前曲式（不压栈、不清 redo——由调用方决定）。 */
+  function arrApplySnap(snap){
+    const restored = JSON.parse(snap);
+    const v = Store.upsertArrange(restored);
+    if (v) curId = v.id;
+  }
+  /** @param {string|null} id @returns {boolean} */
+  function arrUndo(id){
+    if (id === null) return false;
+    const h = arrHist.get(id);
+    if (!h || !h.undo.length) return false;
+    const a = Store.findArrange(id);
+    const curSnap = a ? JSON.stringify(a) : null;
+    const snap = h.undo.pop();
+    if (snap === undefined) return false;   // 理论上不会到这（上面已查 .undo.length）
+    arrApplySnap(snap);                     // 回贴改前态
+    if (curSnap){ h.redo.push(curSnap); if (h.redo.length > HIST_MAX) h.redo.shift(); }
+    arrangeRender(); refreshBar();
+    return true;
+  }
+  /** @param {string|null} id @returns {boolean} */
+  function arrRedo(id){
+    if (id === null) return false;
+    const h = arrHist.get(id);
+    if (!h || !h.redo.length) return false;
+    const a = Store.findArrange(id);
+    const curSnap = a ? JSON.stringify(a) : null;
+    const snap = h.redo.pop();
+    if (snap === undefined) return false;   // 同上
+    arrApplySnap(snap);                     // 回贴被撤销的那张
+    if (curSnap){ h.undo.push(curSnap); if (h.undo.length > HIST_MAX) h.undo.shift(); }
+    arrangeRender(); refreshBar();
+    return true;
+  }
+  /* 同步撤销/重做按钮的禁用态（每次 save / undo / redo 都会过 refreshBar）。 */
+  function syncArrUndoBtns(){
+    const u = $("argUndo"), r = $("argRedo");
+    if (u) u.disabled = !arrCanUndo(curId);
+    if (r) r.disabled = !arrCanRedo(curId);
+  }
 
   /* ---------- 歌词编辑轨（v2.1.0 F1） ----------
      契约：歌词挂在**曲式的段**上（v2.26.0 起按段 uid 寻址，段挪位置词跟着走），
@@ -12501,6 +12577,8 @@ const Arrange = (() => {
       const cls = arrangeProblems(a);
       if (cls.length){ $("argProblems").textContent = "⚠ " + cls.join("；"); }
     }
+    /* v2.56.0（C1）：撤销/重做按钮的禁用态随每次 save / undo / redo 同刷 */
+    syncArrUndoBtns();
     /* v2.5.0：侧栏范围滑块与主界面这一行**同源刷新**。放这里的理由是"所有会让
        '现在在哪一段 / 播的是整首还是某一段'改变的编排侧动作都会过 refreshBar"
        （arrangeRender、跳段、切范围循环、删曲式、开关 overlay）——一处收口，不必在五六处各补一次。
@@ -12928,6 +13006,10 @@ const Arrange = (() => {
     d.sections.push({ name: "", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 1 }] });
     save(d);
   });
+  /* v2.56.0（C1）：曲式结构撤销/重做按钮（静态监听，与 argAddSec 同模式）。
+     路由到当前打开曲式（curId）的栈；键盘层另在 registerKeyLayer 里接管 Ctrl/⌘+Z。 */
+  $("argUndo").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); arrUndo(curId); });
+  $("argRedo").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); arrRedo(curId); });
   /* v2.31.0（S2）：开练面板双滑块（静态元素，静态监听——与 argLoopBtn 同一模式）。
      input 拖动中只写 S + 视觉，change 提交才跑 setRange 重活（侧栏 onRangeInput 同款两级）。 */
   $("argRangeFrom").addEventListener("input", () => onPanelRange(true, false));
@@ -13043,24 +13125,33 @@ const Arrange = (() => {
        （lastLyricKey 为空则忽略）；输入框聚焦时打字优先（与打轴分支同口径） */
     const onInput = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA");
     if (!onInput && (e.ctrlKey || e.metaKey) && !e.altKey){
+      /* v2.56.0（C1）：结构撤销/重做优先接 Ctrl/⌘+Z。歌词撤销仍保留——若末次触碰段
+         确有歌词撤销历史，则先撤歌词；否则撤曲式结构（按钮是该意图的无歧义主入口，
+         键盘作补充）。redo 同理：Shift+Z / Ctrl+Y。 */
+      const lyh = lastLyricKey ? lyricHist.get(histKey(lastLyricKey.arrId, lastLyricKey.secUid)) : null;
       if (e.key === "z" || e.key === "Z"){
         e.preventDefault();
-        if (lastLyricKey){
+        if (lastLyricKey && lyh && lyh.undo.length){
           if (e.shiftKey) lyricRedo(lastLyricKey.arrId, lastLyricKey.secUid);
           else lyricUndo(lastLyricKey.arrId, lastLyricKey.secUid);
+        } else if (e.shiftKey){
+          arrRedo(curId);
+        } else {
+          arrUndo(curId);
         }
         return true;
       }
       if ((e.key === "y" || e.key === "Y") && !e.shiftKey){
         e.preventDefault();
-        if (lastLyricKey) lyricRedo(lastLyricKey.arrId, lastLyricKey.secUid);
+        if (lastLyricKey && lyh && lyh.redo.length) lyricRedo(lastLyricKey.arrId, lastLyricKey.secUid);
+        else arrRedo(curId);
         return true;
       }
     }
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
