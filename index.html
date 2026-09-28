@@ -2321,20 +2321,20 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L2350  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L2939  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L4228  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L4935  Modal         应用内弹窗
-     L5072  Viz           时值可视化渲染与每帧动画
-     L7343  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L7999  Trainer       变速训练器
-     L8137  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L8635  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L9881  Editor        自定义节奏型编辑器
-     L10301 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L10338 Ear           听辨训练（v1.10.0）
-     L10558 Arrange       曲式编排（v2.0.0）
-     L13244 Help          使用方法（v2.0.1）
-     L13327 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L13401 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L13617 初始化（装配） 各模块 hook 接线与启动
+     L4956  Modal         应用内弹窗
+     L5093  Viz           时值可视化渲染与每帧动画
+     L7364  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8020  Trainer       变速训练器
+     L8158  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L8658  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L9895  Editor        自定义节奏型编辑器
+     L10315 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L10352 Ear           听辨训练（v1.10.0）
+     L10572 Arrange       曲式编排（v2.0.0）
+     L13256 Help          使用方法（v2.0.1）
+     L13339 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L13413 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L13629 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2360,7 +2360,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.60.0";
+const VERSION = "2.61.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4930,6 +4930,27 @@ function lyricCharsAt(arrangeId, secUid){
   }
   lyricFit.set(key, { line, chars });
   return chars;
+}
+
+/* ================= 共享纯函数：播放范围落盘（审计 Q3，v2.61.0） =================
+   ★ 位于**模块 IIFE 之外的共享作用域**（与 S 同级），故所有模块（Presets / Arrange …）
+     都能直接调用。两处「拖播放范围」入口（预设区 onRangeInput / 曲式侧栏 onPanelRange）
+     原先各自内联写了同一组 S.arrangeSel 的 5 个字段（id/from/to/byLyric/loop），复制粘贴债、
+     易漂（历史上 v2.16.0 就因其中一处漏写 loop 出了"有范围没循环"的坑）。抽到这里做**唯一
+     写入口**：f/t 是 1-based 小节读数（与滑块同口径），内部转 0-based 线性下标；两个调用方
+     保留各自的 DOM 读数与 UI 尾巴（syncDemoRange / syncPanelRead / setRange…），只把「落状态」
+     这一步交给本函数——改范围语义只需动这一处。 */
+/** 把「范围」写入共享状态 S.arrangeSel（审计 Q3 去重，唯一写入口）。
+    @param {any} a 当前曲式（需有 id）
+    @param {number} f 起点小节（1-based，与滑块读数同口径）
+    @param {number} t 终点小节（1-based，调用方已与 f 交叉对齐）
+    @returns {void} */
+function writeArrangeRange(a, f, t){
+  S.arrangeSel.id = a.id;
+  S.arrangeSel.from = f - 1;
+  S.arrangeSel.to = t - 1;
+  S.arrangeSel.byLyric = false;   // 手动拖范围 = 回到普通区间语义（与 jumpTo 同口径）
+  S.arrangeSel.loop = true;       // 拖出范围 = "我要练这段"，范围循环恒开（v2.16.0 教训）
 }
 
 /* ================= Modal · 应用内弹窗 ================= */
@@ -8188,6 +8209,8 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
      发现坏引用或拍号不一致时同样退回预设模式，并把问题清单**返回给调用方**去提示用户。
      为什么返回值而不是在这里弹窗：本函数只管"落到起点"这一件事，弹窗是 start() 的职责；
      返回值也让这条判定能被测试直接断言。返回 null = 正常（或本就不是曲式模式） */
+
+
   function arrangeStart(){
     if (S.playMode !== "arrange") return null;
     const a = arrangeCur();
@@ -9113,18 +9136,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (!isFrom && t < f) f = t;             // 反之把起点拉到终点
     demoRangeFromEl.value = String(f);
     demoRangeToEl.value = String(t);
-    S.arrangeSel.id = a.id;
-    S.arrangeSel.from = f - 1;
-    S.arrangeSel.to = t - 1;
-    S.arrangeSel.byLyric = false;            // 手动拖范围 = 回到普通区间语义（与 jumpTo 同口径）
-    /* ★ v2.16.0：`loop` 必须在这里一并写。此前它只在 `change`（松手提交）那一步由
-       `Arrange.setRange` 补上，而本函数**拖动途中就把 from/to 落盘了**（含 Store.persist()）——
-       于是"拖到一半关掉页面 / change 没走到"就会把「有范围、没循环」持久化下来，
-       下次打开看到的是"范围数字设好了、循环却没开"（用户实拍排查时正是这条把人引偏）。
-       与 `setRange` 同口径：拖出范围 = "我要练这段"，**范围循环恒开**。
-       ★ 刻意**不**在这里切 `playMode`：见本函数上方规矩②（"进入曲式模式"只在提交那一步发生），
-         那条保留——`loop` 只在曲式模式下有意义，提前写它是无害的。 */
-    S.arrangeSel.loop = true;
+    /* 审计 Q3（v2.61.0）：落状态交给共享纯函数 writeArrangeRange（与 onPanelRange 同源，
+       loop 恒开 / byLyric 复位的理由见其定义，不再在此复制那段 v2.16.0 教训注释）。 */
+    writeArrangeRange(a, f, t);
     Store.persist();
     if (commit && onDemoRange) onDemoRange(f - 1, t - 1);
     syncDemoRange();
@@ -12606,12 +12620,10 @@ const Arrange = (() => {
     $("argRangeFrom").value = String(f);
     $("argRangeTo").value = String(t);
     /* 拖动途中就落 from/to + loop + persist（v2.16.0 侧栏那条"有范围没循环"的教训同源）；
-       模式切换只在提交那一步发生（setRange 内），拖动途中不反复切 */
-    S.arrangeSel.id = a.id;
-    S.arrangeSel.from = f - 1;
-    S.arrangeSel.to = t - 1;
-    S.arrangeSel.byLyric = false;
-    S.arrangeSel.loop = true;
+       模式切换只在提交那一步发生（setRange 内），拖动途中不反复切。
+       审计 Q3（v2.61.0）：落状态交给共享纯函数 writeArrangeRange（与 onRangeInput 同源，
+       两处不再各自内联同一组字段） */
+    writeArrangeRange(a, f, t);
     Store.persist();
     syncPanelRead(a);
     if (commit){ setRange(f - 1, t - 1); arrangeRender(); }

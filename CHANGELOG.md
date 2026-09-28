@@ -9,6 +9,22 @@
 
 ---
 
+## v2.61.0 · 代码质量：播放范围落盘去重（审计 Q3）（2026-09-28）
+
+**根因**：审计 §2.1 Q3 指出两处「拖播放范围」入口——预设区 `Presets.onRangeInput`（L9103）与曲式侧栏 `Arrange.onPanelRange`（L12596）——各自内联写了同一组 `S.arrangeSel` 的 5 个字段（`id / from / to / byLyric / loop`），是复制粘贴债、语义易漂。历史上 v2.16.0 就因其中一处漏写 `loop` 出了「有范围没循环」的真缺陷（拖动途中落盘、change 没走到就持久化下「有范围没循环」），修复时只在 `onRangeInput` 一处补了 `loop`，同源的另一处靠注释约定同步、没有结构保障。
+
+**修法**：
+- **抽出唯一写入口 `writeArrangeRange(a, f, t)`**：放在模块 IIFE 之外的**共享作用域**（与 `S` 同级，紧邻 Modal 模块之前），`f/t` 是 1-based 小节读数（与滑块同口径），函数内转 0-based 线性下标并写齐 5 个字段（`byLyric=false` 复位、`loop=true` 恒开）。两个调用方 `onRangeInput` / `onPanelRange` 删掉各自内联的 5 行，改成调 `writeArrangeRange(a, f, t)`；各自的 DOM 读数、交叉对齐、`syncDemoRange` / `syncPanelRead` / `setRange` 等 UI 尾巴原样保留。
+- **关键摆位**：初版误把函数插在 `arrangeStart` 之前，而 `arrangeStart` 处在 `Controls` 模块 IIFE 内，导致 `Arrange` / `Presets` 看不到它（运行时 `ReferenceError: writeArrangeRange is not defined`）。改为放在共享作用域后，所有模块均可调用，与 `S` 同级。
+
+**取舍**：
+- 只去重「落状态」这一步；`clamp` 与交叉对齐逻辑两处本就一致但各自贴着 DOM，未强行合并（保持可读、调用方易改）。审计要的是「同源写状态」，已达成。
+- 预设区入口 `onRangeInput` 在桩里不挂 id（用 `createElement` 生成、无 `getElementById` 句柄），无法按事件直接触发；其行为正确性改由「源级契约（T130a）+ 可驱动的侧栏入口（T130b）覆盖共享函数本身」共同保证。
+
+**自验**：
+- 新增 `tests/cases/t130-range-dedup.js`：T130a 源级断言 `writeArrangeRange` 仅定义一次、`S.arrangeSel.from = f - 1` / `to = t - 1` 各只出现一次（无第二处内联复制）、两个入口都调用它；T130b 驱动 `onPanelRange`（经 `beat.Arrange.open` 设 `curId`）验证 1-based 读数→0-based 下标、byLyric 复位、loop 恒开、以及「起点越过终点」交叉对齐。13 条断言全绿。
+- `node tools/check-all.js --quick` 18/18 绿（含既有编排/持久化/诊断组，确认去重无回归）。
+
 ## v2.60.0 · 代码质量小修包（Q4 / E2 / S3 / A3）（2026-09-28）
 
 **根因**：审计 §2.1/§2.4/§2.5 的四处低到中危技术债——复制粘贴债、lint 良性噪音、保存失败无分键指引、装配区非模块子系统未登记——都不影响运行，但持续误导维护者、浪费调试时间。

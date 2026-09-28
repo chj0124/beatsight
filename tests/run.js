@@ -102,6 +102,7 @@ const CASE_FILES = [
   "./cases/t127-block-ops-move-n",      // v2.55.0：块级操作（左移/右移/复制/删除 + ＋块沿用上一次型）与段「移到第 N 段」（含越界/取消无操作）
   "./cases/t128-arrange-undo-redo",     // v2.56.0：曲式结构撤销/重做（段/块增删、重排、换型、改遍数可撤销；redo；空操作不压栈；按曲式隔离；secUid 保留）
   "./cases/t129-candidate-preview",     // v2.57.0：换型候选就地试听（▶ 出现 + stopPropagation 不换型；内存临时换型可还原；不污染落库；再点停止；换型前清试听；关浮层还原）
+  "./cases/t130-range-dedup",           // v2.61.0：播放范围落盘去重（审计 Q3：writeArrangeRange 唯一写入口 + 侧栏入口行为）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
