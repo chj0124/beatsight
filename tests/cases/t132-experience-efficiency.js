@@ -13,7 +13,7 @@
      ① X4：diagExport 走 Blob 下载、文件名带版本、触发 a.click，且下载能力缺失时退回复制不抛；
      ② X3：beforeinstallprompt 被捕获后安装按钮显形并可主动 prompt()；未捕获时保持隐藏。 */
 "use strict";
-const { loadApp, ok, section } = require("../lib/harness");
+const { loadApp, ok, section, html } = require("../lib/harness");
 
 section("T132 · X4 诊断信息导出文件（v2.63.0）");
 {
@@ -57,16 +57,27 @@ section("T132 · X3 PWA 安装引导（v2.63.0）");
   const { beat, sandbox } = app;
   const $ = (id) => sandbox.document.getElementById(id);
 
-  /* 默认（未捕获安装事件，多因 file:// 非安全上下文）：安装按钮隐藏，诊断导出按钮常驻 */
+  /* v2.69.0（2.2）：安装/导出两按钮迁入设置弹窗（静态元素、常驻 DOM），使用方法页只留指路。
+     默认（未捕获安装事件，多因 file:// 非安全上下文）：安装按钮隐藏；
+     打开设置（经 settingsBtn 接线链）触发 Help.refreshInstall() 刷显隐。 */
   beat.Help.open();
   const moreBtn = $("helpMoreBtn");
   if (moreBtn && moreBtn.textContent.indexOf("展开") >= 0) moreBtn.click();  // 首次展开克隆模板
-  const installBtn0 = $("helpInstallBtn");
-  ok(installBtn0 ? installBtn0.hidden === true : true,
-    "★ X3：未捕获安装事件时，「安装到本机」按钮默认隐藏（file:// 直开无法安装）");
-  ok(!!$("helpDiagExport"), "★ X4：诊断导出按钮常驻可见（已挂载）");
+  /* 桩 DOM 是平的（getElementById 无视位置），「按钮不在使用方法页」只能走源码级断言：
+     helpMoreTpl 模板块内不得再出现两枚按钮的 id */
+  const tplAt = html.indexOf('<template id="helpMoreTpl"');
+  const tplEnd = html.indexOf("</template>", tplAt);
+  const tpl = html.slice(tplAt, tplEnd);
+  ok(tpl.indexOf('id="helpInstallBtn"') === -1 && tpl.indexOf('id="helpDiagExport"') === -1,
+    "★ v2.69.0：使用方法页不再有安装/导出按钮（已迁设置，防双入口漂移）");
 
-  /* 捕获 beforeinstallprompt 后：安装按钮显形且点击主动 prompt() */
+  $("settingsBtn").click();   // 打开设置：接线链 = 开 overlay + 复位诊断文案 + refreshInstall
+  const installBtn0 = $("helpInstallBtn");
+  ok(installBtn0 && installBtn0.hidden === true,
+    "★ X3：未捕获安装事件时，设置里的「安装到本机」默认隐藏（file:// 直开无法安装）");
+  ok(!!$("helpDiagExport"), "★ X4：导出诊断按钮常驻（设置 · 诊断与自验组）");
+
+  /* 捕获 beforeinstallprompt 后：重新打开设置（refreshInstall 刷显隐）→ 安装钮显形且点击主动 prompt() */
   let prompted = false;
   const fakeEv = {
     preventDefault(){},
@@ -74,20 +85,17 @@ section("T132 · X3 PWA 安装引导（v2.63.0）");
     userChoice: { then(cb){ try{ cb({ outcome: "accepted" }); }catch(e){} return { catch(){} }; } },
   };
   app.fireWin("beforeinstallprompt", fakeEv);
-  beat.Help.open();   // more 已为 true，open 再次 helpRender 刷新显隐
+  $("settingsBtn").click();   // v2.69.0：显隐在 Settings.open 路径上刷新（原为 helpRender）
   const installBtn1 = $("helpInstallBtn");
-  ok(installBtn1 && installBtn1.hidden === false, "★ X3：捕获安装事件后，「安装到本机」按钮显形");
+  ok(installBtn1 && installBtn1.hidden === false, "★ X3：捕获安装事件后，设置里的「安装到本机」显形");
   if (installBtn1) installBtn1.click();
   ok(prompted === true, "★ X3：点击按钮主动唤起安装 prompt()");
 
-  /* X4：诊断导出按钮经「共享助手 exportDiagnostics」调起 diagExport——
-     验证 Help 不直接引用 Diagnostics（R1 反向边约束），而是借共享作用域转一道 */
-  const diagExpBtn = $("helpDiagExport");
-  ok(!!diagExpBtn, "★ X4：诊断导出按钮已挂载");
+  /* X4：导出按钮经共享助手 exportDiagnostics 调起 diagExport（装配层接线，与 diagCopyBtn 同列） */
   let diagExportCalled = false;
   const realDiagExport = beat.Diagnostics.diagExport;
   beat.Diagnostics.diagExport = (b) => { diagExportCalled = true; return realDiagExport(b); };
-  diagExpBtn.click();
-  ok(diagExportCalled === true, "★ X4：点击「导出诊断」按钮经共享助手 exportDiagnostics 调起 diagExport（无 Help→Diagnostics 反向边）");
+  $("helpDiagExport").click();
+  ok(diagExportCalled === true, "★ X4：点击设置里的「导出诊断」经 exportDiagnostics 调起 diagExport（无直呼边）");
   beat.Diagnostics.diagExport = realDiagExport;
 }

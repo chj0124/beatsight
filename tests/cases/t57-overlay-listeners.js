@@ -203,11 +203,11 @@ section("T57f 设置浮层小窗 · 点窗外即关、点窗内不关、Esc 仍�
     els["settingsOverlay"].fire("click");
     ok(!els["settingsOverlay"].classList.contains("open"),
       "★ 点窗外（target === currentTarget）→ 直接关闭");
-    /* 点窗内（面板里的按钮冒泡上来）→ 不关 */
+    /* 点窗内（面板里的按钮冒泡上来）→ 不关（v2.69.0：主题钮已上顶栏，target 换弹窗内的弹跳球开关） */
     beat.Settings.open();
-    els["settingsOverlay"].fire("click", { target: els["themeToggle"] });
+    els["settingsOverlay"].fire("click", { target: els["bounceToggle"] });
     ok(els["settingsOverlay"].classList.contains("open"),
-      "★ 点窗内（target ≠ currentTarget，如主题按钮）→ 不关闭");
+      "★ 点窗内（target ≠ currentTarget，如弹跳球开关）→ 不关闭");
     /* ✕ 关闭钮（id 不变）仍可关 */
     els["settingsClose"].fire("click");
     ok(!els["settingsOverlay"].classList.contains("open"), "右上角 ✕（#settingsClose）仍可关闭");

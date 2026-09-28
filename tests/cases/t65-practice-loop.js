@@ -148,7 +148,7 @@ section("T65b 练习循环 · 下拉生成 4 项（1 基）/ 关闭时灰显 / �
   eq(to.options.length, 4, "结束下拉生成 4 项");
   eq(from.options.map(o => o.textContent).join(","), "1,2,3,4", "选项文案是 1 基（用户数小节从 1 起）");
   eq(from.options.map(o => o.value).join(","), "0,1,2,3", "选项值是 0 基（与 S.loopRange 同口径）");
-  ok(from.disabled === true && to.disabled === true, "循环关闭时两个下拉灰显（位置稳定，不藏起来）");
+  ok(from.disabled === true && to.disabled === true, "循环关闭时两个下拉灰显（v2.69.0：整行隐藏，disabled 留作兜底）");
   eq(els["loopToggle"].getAttribute("aria-checked"), "false", "开关 aria-checked=false");
 
   /* 改下拉 → 顺手开启循环（用户意图已明确，不该再要求点一次开关） */

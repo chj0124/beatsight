@@ -107,6 +107,8 @@ const CASE_FILES = [
   "./cases/t132-experience-efficiency", // v2.63.0：体验效率小包（X3 PWA 安装引导 + X4 诊断导出文件）
   "./cases/t133-experience-keyboard",   // v2.64.0：练习键盘快捷键体系（X2：↑↓ BPM / ←→ 跳段 / E/H/? 开面板）
   "./cases/t134-selective-import-export", // v2.65.0：选择性导入/导出（X1：parts 过滤 / previewImport / 设置导入）
+  "./cases/t136-latency-chip",          // v2.69.0：顶栏延迟补偿读数（0 隐藏 / 文案同步 / 点击直达 latGroup；双刷新点守门）
+  "./cases/t137-loop-panel-compact",    // v2.69.0：循环本段行精简（关时整段隐藏 / 注脚连根删 / 往返可逆 / 注释同步）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
