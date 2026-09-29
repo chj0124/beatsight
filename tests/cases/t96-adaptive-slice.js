@@ -199,10 +199,11 @@ section("T96e 曲式模式 · 网格与歌词轨都按片切（同一小节的�
   eq(lr[1].chars[0].lt, 0, "「二」在它所在行的行内偏移为 0（重基到片起点——不是 96）");
 }
 
-/* ================= 场景 T96f：贴满几何 + 分隔缝（v2.78.0） ================= */
-section("T96f 贴满几何（v2.78.0）· 格子/跑道零留白，1px 缝只在拍内、休止不叠缝");
+/* ================= 场景 T96f：贴满几何 + 骑缝交界线（v2.78.0 / v2.78.2） ================= */
+section("T96f 贴满几何 · 格子/跑道零留白；交界线骑缝（左右各 0.5px）、只在拍内、拍边界归网格线");
 {
   const app = loadApp(undefined, { rowW: 600 });
+  const seamsOf = r => r.children.filter(el => /(^| )seams( |$)/.test(el.className));
   pickBuiltin(app, 1);                                   // 内置 1 = 四分基础（4 颗四分音，无休止；BUILTINS[0] 是民谣扫弦）
   {
     const rs = rowsOf(app.els);
@@ -210,19 +211,27 @@ section("T96f 贴满几何（v2.78.0）· 格子/跑道零留白，1px 缝只在
     eq(cs[0].style.left, "0%", "★ 首格左缘 = 0%（旧口径 calc(0% + 2px)）");
     eq(cs[0].style.width, "25%", "★ 格宽 = 纯时长占比（旧口径 calc(25% - 4px)：从每颗音里固定扣 4px）");
     eq(cs[3].style.left, "75%", "末格左缘 75%（严格线性）");
-    ok(cs.every(c => cls(c).indexOf("sep") < 0), "四分型：每颗都落在拍点上 → 全行无分隔缝（拍边界由拍网格线承担）");
+    eq(seamsOf(rs[0]).length, 0, "四分型：接缝全在拍点上 → 不挂交界线层（拍边界由拍网格线承担）");
     const zs = zonesOf(rs[0]);
     eq(zs[0].style.left + " / " + zs[0].style.width, "0% / 25%", "★ 跑道同样贴满（与格子同口径）");
     eq(zs[1].style.left, "25%", "跑道第 2 段左缘 25%（无 +2px）");
   }
   pickBuiltin(app, 2);                                   // 内置 2 = 八分摇滚（8 颗八分音，无休止）
   {
-    const cs = cellsOf(rowsOf(app.els)[0]);
+    const row = rowsOf(app.els)[0];
+    const cs = cellsOf(row);
     eq(cs.length, 8, "八分型 8 格");
-    const seps = cs.map(c => /(^| )sep( |$)/.test(cls(c)) ? "1" : "0").join("");
-    eq(seps, "01010101", "★ 分隔缝只在拍内接缝（第 1/3/5/7 格）；拍边界（第 2/4/6 格）不画");
-    /* sq-l / sq-r（v2.78.1）：拍内接缝侧圆角收平——sql 与 sep 同图样（缝侧即左接缝侧），
-       sqr 是其镜像（右侧有拍内邻居的格：0/2/4/6）；拍边界与行两端保圆角 */
+    ok(cs.every(c => cls(c).indexOf("sep") < 0), "★ 格子不再自带缝（v2.78.1 的 .sep::after 退役——它跨不出 overflow:hidden，会整段吃进后一格）");
+    /* 交界线层（v2.78.2）：一条渐变画全部拍内接缝，位置骑缝（calc(x% ± .5px)） */
+    const sl = seamsOf(row);
+    eq(sl.length, 1, "交界线层每行恰好一层（DOM 代价 1 节点/行）");
+    const bg = sl.length ? String(sl[0].style.background) : "（无层）";   /* 缺层时降级为断言红，别让读取抛错炸掉 runner */
+    ["12.5", "37.5", "62.5", "87.5"].forEach(x =>
+      ok(bg.indexOf("calc(" + x + "% - .5px)") >= 0 && bg.indexOf("calc(" + x + "% + .5px)") >= 0,
+        "★ 接缝骑在 " + x + "% 边界上（左右各 0.5px，两格对称不让）"));
+    ["25", "50", "75"].forEach(x =>
+      ok(bg.indexOf("calc(" + x + "%") < 0, "拍边界 " + x + "% 不画交界线（归拍网格线，层级高于格内分隔）"));
+    /* sq-l / sq-r（v2.78.1）：拍内接缝侧圆角收平；拍边界与行两端保圆角 */
     const sqls = cs.map(c => /(^| )sq-l( |$)/.test(cls(c)) ? "1" : "0").join("");
     const sqrs = cs.map(c => /(^| )sq-r( |$)/.test(cls(c)) ? "1" : "0").join("");
     eq(sqls, "01010101", "★ sq-l：左缘在拍内接缝的格收平左圆角");
@@ -236,8 +245,9 @@ section("T96f 贴满几何（v2.78.0）· 格子/跑道零留白，1px 缝只在
     const cs = cellsOf(rowsOf(app.els)[0]);
     ok(cs.every(c => cls(c).indexOf("sq-") < 0), "四分型：全行无 sq-l/sq-r（拍级圆角全部保留）");
   }
-  /* 源码级：分隔缝规则双端各一份（主视图 .cell / 编辑器 .edcell），缝色 = 纸色（v2.78.1） */
+  /* 源码级：交界线层双端各一份（主视图 .seams / 编辑器 .edseams），共用 seamGradient，线色 = 纸色 */
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(src.includes(".cell.sep::after") && src.includes(".edcell.sep::after"), "分隔缝规则：主视图与编辑器各一条");
-  ok(/\.cell\.sep::after\{[^}]*background:var\(--card\)/.test(src), "★ 缝色 = var(--card) 纸色（不是 --well 阴影色——暗缝读作叠压投影）");
+  ok(src.includes(".seams{") && src.includes(".edseams{"), "交界线层：主视图与编辑器各一条规则");
+  ok(!src.includes(".cell.sep::after") && !src.includes(".edcell.sep::after"), "★ 旧 .sep::after 方案已退役（防复活）");
+  ok(/seamGradient[\s\S]{0,300}var\(--card\)/.test(src), "★ 交界线色 = var(--card) 纸色（不是 --well 阴影色——暗线读作叠压投影）");
 }
