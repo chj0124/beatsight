@@ -64,10 +64,12 @@ section("T125b 语义变量 · --veil / --well 收口，经典视觉逐位不变
   ok(/--well:0,0,0;/.test(ROOT), "★ :root 的 --well 是经典现值（黑）——暗槽");
   ok(/--veil:15,23,42;/.test(OBSVARS) && /--well:15,23,42;/.test(OBSVARS),
      "★ obs 块把两个三元组一并翻成墨蓝（一处改写，十余处叠加色跟随）");
-  /* 等值改写抽查：值必须是 rgba(var(--veil),原alpha) / rgba(var(--well),原alpha) */
+  /* 等值改写抽查：值必须是 rgba(var(--veil),原alpha) / rgba(var(--well),原alpha)。
+     v2.79.0：.beat-zone 的 .10 自画 ring 退役（拍分组改由 .seams 2px 强缝表达），
+     只剩 .06 跑道垫色 */
   const bz = ruleOf(html, ".beat-zone{");
-  ok(/background:rgba\(var\(--veil\),\.06\)/.test(bz) && /rgba\(var\(--veil\),\.10\)/.test(bz),
-     "★ .beat-zone 的白纱等值改写（.06 / .10，展开后逐位不变）");
+  ok(/background:rgba\(var\(--veil\),\.06\)/.test(bz) && !/box-shadow/.test(bz),
+     "★ .beat-zone 的白纱等值改写（.06 垫色保留；v2.79.0 ring 退役，无 box-shadow）");
   const cell = ruleOf(html, ".cell{position:absolute;top:0;height:44px");
   ok(/background:rgba\(var\(--veil\),\.14\)/.test(cell), "★ .cell 的底色等值改写（.14）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-block{")), "★ .arg-block 暗槽等值改写（.28）");

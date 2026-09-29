@@ -271,8 +271,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(!/^\.page-foot/m.test(css) && !/^\.caption\{/m.test(css) && !/\.page-foot\{/m.test(css),
     "★ v2.11.1：`.page-foot` 与 `.caption` 的**规则**随文案区删除一并清理（内容移入使用方法；"
     + "清理注释里保留名字作纪念不算违规）");
-  ok(/--gt:6\.8px;--gtop:0px;--yT1:0px;--yT2:13\.6px;--yB1:20\.4px;--yB2:34px/.test(css),
-    "★★ v2.10.16：窄屏六线几何改为「铺满」——34/5=6.8px 弦距、线落 0..34 上下零留白"
+  ok(/--gt:6\.6px;--gtop:0px;--yT1:0px;--yT2:13\.2px;--yB1:19\.8px;--yB2:33px/.test(css),
+    "★★ v2.10.16 立口径、v2.79.1 修正：窄屏六线几何「铺满」——(34−1)/5=6.6px 弦距、"
+    + "线落 0..33（第六弦 33~34 从内侧贴底边，线体不再悬出格外）"
     + "（修复 v2.8.0 只改桌面档、窄屏仍留 v2.4.3 上下留白导致的「底纹铺不满」）");
   ok(/\.viz-rows-row > \.viz-rows-panel\{margin-bottom:0\}/.test(css),
     "★ 行内 `.viz-rows-panel` 的下边距归零（否则行距叠加成 24px）");

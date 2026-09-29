@@ -200,7 +200,7 @@ section("T96e 曲式模式 · 网格与歌词轨都按片切（同一小节的�
 }
 
 /* ================= 场景 T96f：贴满几何 + 骑缝交界线（v2.78.0 / v2.78.2） ================= */
-section("T96f 贴满几何 · 格子/跑道零留白；交界线骑缝（左右各 0.5px）、只在拍内、拍边界归网格线");
+section("T96f 贴满几何 · 格子/跑道零留白；交界统一「切开」语汇：拍内缝 1px 纸色、拍边界 2px 强缝（v2.79.0）");
 {
   const app = loadApp(undefined, { rowW: 600 });
   const seamsOf = r => r.children.filter(el => /(^| )seams( |$)/.test(el.className));
@@ -211,7 +211,15 @@ section("T96f 贴满几何 · 格子/跑道零留白；交界线骑缝（左右�
     eq(cs[0].style.left, "0%", "★ 首格左缘 = 0%（旧口径 calc(0% + 2px)）");
     eq(cs[0].style.width, "25%", "★ 格宽 = 纯时长占比（旧口径 calc(25% - 4px)：从每颗音里固定扣 4px）");
     eq(cs[3].style.left, "75%", "末格左缘 75%（严格线性）");
-    eq(seamsOf(rs[0]).length, 0, "四分型：接缝全在拍点上 → 不挂交界线层（拍边界由拍网格线承担）");
+    eq(seamsOf(rs[0]).length, 1, "★ 四分型（每颗都在拍点上）：恰一层交界线层——v2.79.0 拍边界也画强缝（旧口径整行零缝，v2.78.2 回归陷阱）");
+    {
+      /* 缺层时降级为断言红，别让读取抛错炸掉 runner（v2.78.2 首轮回退实测踩过） */
+      const sl4 = seamsOf(rs[0]);
+      const bg4 = sl4.length ? String(sl4[0].style.background) : "（无层）";
+      ["25", "50", "75"].forEach(x =>
+        ok(bg4.indexOf("calc(" + x + "% - 1px)") >= 0 && bg4.indexOf("calc(" + x + "% + 1px)") >= 0 && bg4.indexOf("var(--seam-strong)") >= 0,
+          "★ 四分型拍边界 " + x + "% = 2px 骑缝强缝（左右各 1px，var(--seam-strong)）"));
+    }
     const zs = zonesOf(rs[0]);
     eq(zs[0].style.left + " / " + zs[0].style.width, "0% / 25%", "★ 跑道同样贴满（与格子同口径）");
     eq(zs[1].style.left, "25%", "跑道第 2 段左缘 25%（无 +2px）");
@@ -230,24 +238,52 @@ section("T96f 贴满几何 · 格子/跑道零留白；交界线骑缝（左右�
       ok(bg.indexOf("calc(" + x + "% - .5px)") >= 0 && bg.indexOf("calc(" + x + "% + .5px)") >= 0,
         "★ 接缝骑在 " + x + "% 边界上（左右各 0.5px，两格对称不让）"));
     ["25", "50", "75"].forEach(x =>
-      ok(bg.indexOf("calc(" + x + "%") < 0, "拍边界 " + x + "% 不画交界线（归拍网格线，层级高于格内分隔）"));
-    /* sq-l / sq-r（v2.78.1）：拍内接缝侧圆角收平；拍边界与行两端保圆角 */
+      ok(bg.indexOf("calc(" + x + "% - 1px)") >= 0 && bg.indexOf("calc(" + x + "% + 1px)") >= 0,
+        "★ 拍边界 " + x + "% 画 2px 强缝（拍分组层级 = 线更强，v2.79.0）"));
+    /* sq-l / sq-r（v2.79.0 扩到全部内缘）：交界两侧圆角一律收平；行两端保圆角 */
     const sqls = cs.map(c => /(^| )sq-l( |$)/.test(cls(c)) ? "1" : "0").join("");
     const sqrs = cs.map(c => /(^| )sq-r( |$)/.test(cls(c)) ? "1" : "0").join("");
-    eq(sqls, "01010101", "★ sq-l：左缘在拍内接缝的格收平左圆角");
-    eq(sqrs, "10101010", "★ sq-r：右缘在拍内接缝的格收平右圆角（与 sq-l 镜像错一位）");
+    eq(sqls, "01111111", "★ sq-l：首格左缘 = 行端保圆角，其余全收平（旧口径 01010101 拍边界留凹槽已退役）");
+    eq(sqrs, "11111110", "★ sq-r：末格右缘 = 行端保圆角，其余全收平（与 sq-l 镜像）");
     eq(cs[1].style.left, "12.5%", "八分第 2 格左缘 = 12.5%（严格线性）");
     eq(cs[1].style.width, "12.5%", "八分格宽 = 12.5%（不再 −4px）");
   }
-  /* 四分型对照：每颗都在拍点上 → 无 sq-l/sq-r（拍边界与行两端全部保圆角） */
+  /* 四分型对照：首/末格保行端圆角，中间格两侧全平方角（拍边界凹槽退役） */
   pickBuiltin(app, 1);
   {
     const cs = cellsOf(rowsOf(app.els)[0]);
-    ok(cs.every(c => cls(c).indexOf("sq-") < 0), "四分型：全行无 sq-l/sq-r（拍级圆角全部保留）");
+    const sqls4 = cs.map(c => /(^| )sq-l( |$)/.test(cls(c)) ? "1" : "0").join("");
+    const sqrs4 = cs.map(c => /(^| )sq-r( |$)/.test(cls(c)) ? "1" : "0").join("");
+    eq(sqls4, "0111", "四分型 sq-l：仅首格保左圆角");
+    eq(sqrs4, "1110", "四分型 sq-r：仅末格保右圆角");
   }
-  /* 源码级：交界线层双端各一份（主视图 .seams / 编辑器 .edseams），共用 seamGradient，线色 = 纸色 */
+  /* 源码级：交界线层双端各一份（主视图 .seams / 编辑器 .edseams），共用 seamGradient，弱缝落墨 */
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "index.html"), "utf8");
   ok(src.includes(".seams{") && src.includes(".edseams{"), "交界线层：主视图与编辑器各一条规则");
   ok(!src.includes(".cell.sep::after") && !src.includes(".edcell.sep::after"), "★ 旧 .sep::after 方案已退役（防复活）");
-  ok(/seamGradient[\s\S]{0,300}var\(--card\)/.test(src), "★ 交界线色 = var(--card) 纸色（不是 --well 阴影色——暗线读作叠压投影）");
+  ok(/seamGradient[\s\S]{0,300}rgba\(var\(--veil\),\.18\)/.test(src),
+    "★ v2.79.0：拍内缝色 = rgba(var(--veil),.18) 墨色（落墨不露底——旧口径 var(--card) 与底色同源，任一主题都读作裂缝，用户两轮实拍确认）");
+  ok(!/seamGradient[\s\S]{0,600}var\(--card\)/.test(src.replace(/rgba\(var\(--veil\),\.18\)/g, "")),
+    "★ seamGradient 不再引用 var(--card)（露底策略退役，防复活）");
+  ok(/seamGradient[\s\S]{0,600}var\(--seam-strong\)/.test(src), "★ v2.79.0：seamGradient 含强缝分支 var(--seam-strong)（拍边界 2px）");
+  ok(/--seam-strong:#8a8b90/.test(src), "★ 主题变量 --seam-strong 存在（两主题同值落地）");
+  ok(/\.cell \.subs\{position:absolute;inset:0;/.test(src),
+    "★ v2.79.0：.subs inset:0（刻度线锚定绝对十六分网格——旧口径 inset:0 4px + flex 均分偏差 4−8(k+1)/n px，n=3 时 ±1.33px，拍内四分段不等宽，用户实拍实测）");
+  ok(![...src.matchAll(/\.subs\{[^}]*\}/g)].some(m => m[0].indexOf("4px") >= 0),
+    "★ .subs 规则体 4px 内缩清零（含窄屏媒体查询覆盖，防复活——注释里的旧值引用不算）");
+  {
+    const bzRule = src.match(/\.beat-zone\{[^}]*\}/);
+    ok(bzRule && bzRule[0].indexOf("box-shadow") < 0, "★ .beat-zone 自画 inset ring 已退役（防复活——叠板语汇是「前拍压后拍」错觉残留源）");
+  }
+  ok(/gl\.style\.left = `calc\(\$\{i \/ rowBeats\(\) \* 100\}% - \.5px\)/.test(src),
+    "★ v2.79.0：grid-line 骑缝居中（left = 边界 − .5px，与强缝同中心——左缘对齐会整体偏右 0.5px，用户实拍拍板修掉）");
+  /* v2.79.1：六弦出界修正——弦距改 (格高−1px 线宽)/5，第六弦线体收进格内（防复活） */
+  ok(src.includes("--gt:8.6px") && src.includes("--gt:6.6px"),
+    "★ v2.79.1：弦距 = (格高−1px 线宽)/5（桌面 8.6 / 窄屏 6.6——第六弦线体落在格内、从内侧贴底边）");
+  ok(!src.includes("--gt:8.8px") && !src.includes("--gt:6.8px"),
+    "★ v2.79.1：旧弦距 8.8/6.8 防复活（第六弦 top 恰在格底、1px 线体整条悬出格外——砖底下拖全宽唇线，缝脚读作够不到底，用户第三轮实拍圈出）");
+  ok(src.includes("--yB2:43px") && src.includes("--yB2:33px"),
+    "★ v2.79.1：弦区跨距端点跟随弦距（--yB2 = 5×--gt = 43/33，箭头端点压在第六弦线上）");
+  ok(/background-size:100% calc\(var\(--gtop\) \+ 5 \* var\(--gt\) \+ 1px\)/.test(src),
+    "★ v2.79.1：.tab 限高公式保持 gtop + 5×gt + 1px（新弦距下恰等于格高，外溢归零）");
 }

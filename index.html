@@ -24,7 +24,7 @@
 :root{
   color-scheme:dark;     /* v2.42.8：与 <meta name="color-scheme"> 同源同义（CSS 侧声明，
                             覆盖不读 meta 的场景）；本页永远深色，声明如实 */
-  --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
+  --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525; --seam-strong:#8a8b90;
   --line:#2A2A2A; --border:#4D4D4D;
   --green:#1ED760; --red:#F3727F;
   --t1:#FFFFFF; --t2:#B3B3B3; --t3:#8C8C8C; --on-green:#0A0A0A;
@@ -46,17 +46,19 @@
      落在 44px 的 .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
      （用户观感"六弦画在格子外面"）。v2.4.3~v2.7.x 用 7px 间距 + 5px 顶端留白
      （线落 5/12/19/26/33/40）。v2.8.0 改为**铺满**（用户要求）：一弦贴格子顶边、
-     六弦贴格子底边，故 --gtop 归零、--gt = 44/5 = 8.8px，
-     线落 0/8.8/17.6/26.4/35.2/44（上下零留白）。
+     六弦贴格子底边。v2.79.1 修正弦距公式：旧口径 --gt = 44/5 = 8.8px 使第六弦的
+     top 恰等于格高 44，1px 线体整条悬在格外——砖底下多出一条全宽「唇线」（用户第三轮
+     实拍圈出）。现按 (44 − 1px 线宽)/5 = 8.6px，线落 0/8.6/17.2/25.8/34.4/43——
+     第六弦 43~44 从内侧贴底边，铺满语义不变、外溢归零。
      抽成变量是因为竖箭头的三种弦区跨距（kF/kB/kT）各要引用其中两个端点，
      写死数字会让"改一处忘三处"。 */
-  --gt:8.8px;            /* 弦间距 = 44px / 5 段 */
+  --gt:8.6px;            /* 弦间距 = (44px 格高 − 1px 线宽) / 5 段（v2.79.1：第六弦线体必须落在格内） */
   --gtop:0px;            /* 第一条弦线（一弦）贴格子顶边。★ 单位不能省：buildBarRow 的
                             线 top 走 calc(var(--gtop) + N*var(--gt))，calc 里「无单位 0」
                             是 <number>，不能与 <length> 相加 → 六条线的 top 全部失效、
                             退回 auto 叠在同一处，观感就是"六线底纹不见了"（v2.8.0 回归点） */
-  --yT1:0px;  --yT2:17.6px; /* 上三线（高音区 1-3 弦）首/末 */
-  --yB1:26.4px; --yB2:44px; /* 下三线（低音区 4-6 弦）首/末 */
+  --yT1:0px;  --yT2:17.2px; /* 上三线（高音区 1-3 弦）首/末（= 2×--gt，随 v2.79.1 弦距走） */
+  --yB1:25.8px; --yB2:43px; /* 下三线（低音区 4-6 弦）首/末（= 3×--gt / 5×--gt） */
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
      「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
@@ -272,7 +274,11 @@ body.wide-full .main{max-width:none}
      两侧均衡、不挤上一行座次尺，也不压本行格子。 */
 .bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
-.beat-zone{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.06);box-shadow:inset 0 0 0 1px rgba(var(--veil),.10);pointer-events:none}
+/* v2.79.0：自画 inset ring 退役——拍分组层级改由 .seams 的 2px 强缝表达（同一「切开」
+   语汇，线更强）；自画描边 + 圆角凹槽读作"两片板材相叠"，正是「前拍压后拍」错觉的
+   残留源。背景垫色（跑道）保留。pulseZone 的运行时脉冲与本静态样式解耦（动画自带
+   boxShadow 关键帧，结束落回无环态）。 */
+.beat-zone{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.06);pointer-events:none}
 /* 拍内座次尺：1 e & a */
 .ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
@@ -281,18 +287,19 @@ body.wide-full .main{max-width:none}
 .cell.next{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.45);animation:nextGlow .7s ease-in-out infinite}
 @keyframes nextGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.15)}}
 .cell{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.14);overflow:hidden}
-/* 交界线层（v2.78.2，用户拍板"两格共用一条交界线"）：贴满几何后相邻音的分界由这层
-   的 1px 竖线表达——线**骑在边界上**（左右各 0.5px），两格对称各让半像素，谁也不压谁。
-   为什么不在格子里画（v2.78.0/2.78.1 的 .sep::after 已退役）：.cell 有 overflow:hidden，
-   伪元素跨不出格子边界，缝只能整个吃进后一格——后一格亮起来时亮面晚开始 1px，读作
-   "亮的压在暗的上面"（叠压感的真根因，缝色改纸色只缓解了它）。行级覆盖层不受裁切，
-   每层一条 linear-gradient 画出全部接缝，DOM 代价每行仅 1 个节点（沿用 .strums 的
-   层模式）。拍边界不画：拍分组由 .grid-line + beat-zone 承担，层级高于格内分隔。
-   线色 var(--card)（纸色）：读作"一刀切到纸面"，不是阴影。 */
+/* 交界线层（v2.78.2 立，v2.79.0 两级线）：贴满几何后相邻音的分界由这层的骑缝竖线
+   表达——线**骑在边界上**，两格对称各让半像素，谁也不压谁。为什么不在格子里画
+   （v2.78.0/2.78.1 的 .sep::after 已退役）：.cell 有 overflow:hidden，伪元素跨不出
+   格子边界，缝只能整个吃进后一格——后一格亮起来时亮面晚开始 1px，读作"亮的压在
+   暗的上面"（叠压感的真根因）。行级覆盖层不受裁切，每层一条 linear-gradient 画出
+   全部接缝，DOM 代价每行仅 1 个节点（沿用 .strums 的层模式）。
+   v2.79.0 两级线：拍内缝 1px 墨色 rgba(var(--veil),.18)；拍边界缝 2px 提一档灰
+   var(--seam-strong)——交界统一「切开」语汇，层级用线的强度表达（beat-zone 自画
+   描边 + 圆角凹槽的「叠板」语汇退役）。 */
 .seams{position:absolute;left:0;right:0;top:0;height:44px;pointer-events:none;z-index:2}
-/* 接缝直角（v2.78.1）：贴满后两格各带圆角会在接缝上下咬出凹槽缺口，读作"两片板材
-   相叠"。拍内接缝两侧收平为直角（行两端、拍边界保留圆角——拍级的小凹槽与拍网格线
-   同位，正是拍分组该有的视觉层级） */
+/* 接缝直角（v2.78.1 立口径；v2.79.0 扩到全部内缘）：贴满后两格各带圆角会在接缝上下
+   咬出凹槽缺口，读作"两片板材相叠"。交界两侧一律收平为直角（行两端保留圆角——
+   行级圆角条的语义）；拍分组层级由 2px 强缝表达，不再靠凹槽 */
 .cell.sq-l{border-top-left-radius:0;border-bottom-left-radius:0}
 .cell.sq-r{border-top-right-radius:0;border-bottom-right-radius:0}
 .cell-label{position:absolute;top:48px;font-size:calc(12px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
@@ -325,18 +332,24 @@ body.wide-full .main{max-width:none}
    用盒子自身的 border 而不是 ::after 新节点：格子已有 overflow:hidden，描边零额外 DOM。 */
 .cell.cutl{border-left:1px dashed var(--rest-line);border-top-left-radius:0;border-bottom-left-radius:0}
 .cell.cutr{border-right:1px dashed var(--rest-line);border-top-right-radius:0;border-bottom-right-radius:0}
-/* 十六分刻度线：满格高、只画内部十六分分界线（末格不画——格边缘即边界，右缘再画会垂出一条多余竖线） */
-.cell .subs{position:absolute;inset:0 4px;display:flex;z-index:1;pointer-events:none}
+/* 十六分刻度线：满格高、只画内部十六分分界线（末格不画——格边缘即边界，右缘再画会垂出一条多余竖线）。
+   ★ v2.79.0：inset 必须为 0（防复活）——刻度线要锚定**绝对十六分网格**。旧口径 inset:0 4px
+   （给已退役的圆角凹槽让位）+ flex 均分会让刻度 k 落在 4+(k+1)(W−8)/n，与真实网格
+   (k+1)W/n 系统性偏差 4−8(k+1)/n px：n=3 时 ±1.33px、n=4 时 +2/0/−2——方向恒为「向中心挤」，
+   拍内四分段读作不等宽（用户实拍实测：附点八分块内 ±1.1px，两端宽中间窄）。全局已是
+   border-box，inset:0 后 flex 均分天然精确，无需逐根绝对定位。 */
+.cell .subs{position:absolute;inset:0;display:flex;z-index:1;pointer-events:none}
 .cell .sub{flex:1;border-right:1px solid rgba(var(--veil),.10)}
 .cell .sub:last-child{border-right:none}
 .cell.played .sub,.cell.active .sub{border-right-color:rgba(0,0,0,.18)}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
-   几何常量（v2.4.3 起）：--gt 弦间距 8.8px、--gtop 顶端留白 0，六线落在
-   0/8.8/17.6/26.4/35.2/44——v2.8.0 起**铺满格子**：一弦贴格子顶边、六弦贴底边
+   几何常量（v2.4.3 起）：--gt 弦间距 8.6px（v2.79.1 前 8.8）、--gtop 顶端留白 0，六线落在
+   0/8.6/17.2/25.8/34.4/43——v2.8.0 起**铺满格子**：一弦贴格子顶边、六弦贴底边
    （用户要求；v2.4.3~v2.7.x 为 7px 间距留白 5px 的 5/12/19/26/33/40）。全部收在
-   44px 的格子高度内（参考页的 9px×6=53px 超出格子，v2.4.2 照搬后正是用户报的"六弦画在格子外面"）。
+   44px 的格子高度内（参考页的 9px×6=53px 超出格子，v2.4.2 照搬后正是用户报的"六弦画在格子外面"；
+   v2.79.1：弦距改 (格高−1px 线宽)/5——旧 44/5=8.8 使第六弦线体整条悬出格底外，同一类病根）。
    与旧版「14px 方形徽标 + 2px 色带」的关系：**结构不动**（仍挂在各自格子内部，
    仍由 fitCellAnnotations 按格宽整体隐藏），只把字形换成贯穿弦区的竖箭头、并补六线底纹。
    ★ 弦区与 zone 的对应：zone 0=低音 / 1=中（全部）/ 2=高音。
@@ -353,7 +366,9 @@ body.wide-full .main{max-width:none}
    （0/8.8/17.6/26.4/35.2/44，铺满格子），从不参与帧内更新，也没有任何测试按它定位。
    ★ 渐变必须**限高**：repeating-linear-gradient 会一路重复到元素底部，而现在 .tab 的高度
      是"整行"而不是 44px 的格子——不设 background-size 就会多画出第 7、8 条线。
-     限高 = 最后一条线（第 6 条，top = 5×--gt）加它自己的 1px，多 1px 也不外溢。 */
+     限高 = --gtop + 5×--gt + 1px（v2.79.1 起恰等于格高，第六弦线体整体落在格内）。
+     ★ v2.79.1 修正：旧口径 --gt = H/5 时第六弦 top 恰在格底、1px 线体整条悬在格外——
+     砖底下多出一条全宽"唇线"，缝线的脚也因此读作"够不到底"（用户第三轮实拍圈出）。 */
 .tab{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:1;
   opacity:.22;
   background-image:repeating-linear-gradient(to bottom,
@@ -1135,16 +1150,18 @@ input[type=range].vol{width:120px}
   .viz{padding-top:50px}              /* 窄屏球域略降：跳高上限仍 48px，贴边但不裁切 */
   .cell{height:34px}
   .beat-zone{height:34px}
+  .seams{height:34px}   /* v2.79.0 连带修正（v2.78.x 遗留）：格子窄屏缩到 34px，线层仍 44px——缝线超出格子下缘 10px */
   .ruler-lab{top:52px;font-size:9px}
   .cell-label{top:38px;font-size:10px}
   /* 六线谱几何缩到窄屏版：格子 34px 高。★ v2.10.16 修复「窄屏底纹铺不满」（用户实报）：
      v2.8.0 把六线改成「铺满格子」（一弦贴顶、六弦贴底）时**只改了桌面那一档**（--gtop:0、
      --gt:8.8），本档还留着 v2.4.3「整体在格子内部」的老几何（--gtop:5px → 顶空 5px、
-     底空 4px），窄屏下底纹缩在水中间。现按同一契约重算：34/5 = 6.8px 弦距，
-     线落 0/6.8/13.6/20.4/27.2/34（上下零留白）；扫弦箭头的跨距 calc 引用同一组变量，
+     底空 4px），窄屏下底纹缩在水中间。现按同一契约重算：(34 − 1px 线宽)/5 = 6.6px 弦距
+     （v2.79.1：旧 34/5 = 6.8 使第六弦线体整条悬出格底外，同桌面病根），
+     线落 0/6.6/13.2/19.8/26.4/33（上下零留白）；扫弦箭头的跨距 calc 引用同一组变量，
      改一处两边同时跟着走。座次尺（52px，在格子外的 .viz 顶部）不受影响。 */
-  :root{--gt:6.8px;--gtop:0px;--yT1:0px;--yT2:13.6px;--yB1:20.4px;--yB2:34px}
-  .cell .subs{inset:0 4px}
+  :root{--gt:6.6px;--gtop:0px;--yT1:0px;--yT2:13.2px;--yB1:19.8px;--yB2:33px}
+  /* v2.79.0：.subs 的 inset:0 4px 覆盖删除——刻度线锚定绝对十六分网格（见 .cell .subs 主规则） */
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
   input[type=range]::-webkit-slider-thumb{width:22px;height:22px}
@@ -1209,7 +1226,7 @@ input[type=range].vol{width:120px}
      声明「本页永远深色」，那是为**暗色**页面立的；日间模式下它仍会把滚动条与原生控件
      按深色渲染（meta 那份由 applyTheme 同步改写，见装配层）。 */
 body[data-theme="obs"]{
-  --bg:#F2F4F8; --card:#FFFFFF; --card2:#EDF0F5; --cell:#E3E8F0;
+  --bg:#F2F4F8; --card:#FFFFFF; --card2:#EDF0F5; --cell:#E3E8F0; --seam-strong:#8a8b90;
   --line:rgba(15,23,42,.09); --border:rgba(15,23,42,.18);
   --green:#2563EB; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标） */
   /* 文字三级按白底重核：16.1:1 / 7.5:1 / 4.8:1——守住上面那条注释立的 AA 线
@@ -1265,7 +1282,7 @@ body[data-theme="obs"] .viz-head-grid .viz-toggles{padding-top:44px}
 
 /* ---------- 观测台 · 时值可视化（视觉中心） ---------- */
 body[data-theme="obs"] .bar-row.current{background:rgba(37,99,235,.05);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}
-body[data-theme="obs"] .beat-zone{background:rgba(var(--veil),.05);box-shadow:inset 0 0 0 1px rgba(var(--veil),.10);border-radius:3px}
+body[data-theme="obs"] .beat-zone{background:rgba(var(--veil),.05);border-radius:3px}   /* v2.79.0：inset ring 同口径退役 */
 body[data-theme="obs"] .cell{background:var(--cell);border-radius:3px}
 body[data-theme="obs"] .cell.active{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.9), 0 0 10px rgba(37,99,235,.22)}
 body[data-theme="obs"] .cell.next{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.32);animation:nextGlowObs .7s ease-in-out infinite}
@@ -2475,23 +2492,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2507  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3131  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4712  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5507  Modal         应用内弹窗
-     L5645  Viz           时值可视化渲染与每帧动画
-     L8013  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8670  Trainer       变速训练器
-     L8862  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9431  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10715 Editor        自定义节奏型编辑器
-     L11160 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11207 Ear           听辨训练（v1.10.0）
-     L11427 Arrange       曲式编排（v2.0.0）
-     L14174 Help          使用方法（v2.0.1）
-     L14303 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14377 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14620 初始化（装配） 各模块 hook 接线与启动
+     L2524  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3148  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4729  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5524  Modal         应用内弹窗
+     L5662  Viz           时值可视化渲染与每帧动画
+     L8043  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8700  Trainer       变速训练器
+     L8892  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9461  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10745 Editor        自定义节奏型编辑器
+     L11191 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11238 Ear           听辨训练（v1.10.0）
+     L11458 Arrange       曲式编排（v2.0.0）
+     L14205 Help          使用方法（v2.0.1）
+     L14334 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14408 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14651 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2517,7 +2534,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.78.2";
+const VERSION = "2.79.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6528,7 +6545,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     /* 六线谱底纹（v2.4.2，照搬参考页）：每条小节行铺一层六条等距弦线当"纸"。
        v2.9.0：改按**当前型**是否带扫弦记谱（hasStr）决定——不带记谱的型没有扫弦箭头，
        留一层无解释的横线纯属噪音（原为 v2.4.0 的「只挂扫弦轨」门控）。
-       六条线的 y 由 CSS 变量 --gtop / --gt 推出（0/8.8/17.6/26.4/35.2/44，铺满格子），
+       六条线的 y 由 CSS 变量 --gtop / --gt 推出（0/8.6/17.2/25.8/34.4/43，v2.79.1 起第六弦收进格内），
        与 .strumv 的弦区跨距共用同一组变量，保证"箭头端点压在弦线上"这件事不会因改一处而错位。
        createElement 9 次/行（6 线 + 包装）在 buildViz 里可忽略——它本就不在渲染热路径上 */
     if (hasStr){
@@ -6568,15 +6585,24 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     rulerEls.push(rl);
   }
 
-  /** 把一组接缝位置（行宽百分比）编成一条 90° 渐变：每条缝 = 骑边界的 1px 竖线
-      （±0.5px 各吃相邻两格半像素，v2.78.2）。编辑器复用同一函数（.edseams 层）。
-      @param {number[]} xs @returns {string} */
+  /** 把一组接缝（行宽百分比 + 强弱）编成一条 90° 渐变：每条缝骑在边界上——
+      拍内缝 1px（±0.5px，墨色 rgba(var(--veil),.18)）；拍边界缝 2px（±1px，var(--seam-strong)，
+      提一档灰，线更强 = 拍分组层级更高，v2.79.0 取代 beat-zone 自画描边 + 圆角的
+      「叠板」语汇）。
+      ★ v2.79.0 弱缝改「落墨」不「露底」：旧口径纸色 var(--card) 与页面/卡片底色同源，
+      任何主题下都读作「砖块断裂透底」的裂缝（暗主题黑缝、亮主题白缝，用户两轮实拍
+      确认）。改用与 .subs 刻度线同一套 --veil 墨水系统（.10 → .18 → 强缝实色，
+      三级墨色递进），弱缝与刻度线语义可分（音符起点 vs 格纹）而视觉同族。暗主题渲染
+      ≈ 89（亮于砖 53），亮主题 ≈ 183（深于砖 220）。编辑器复用同一函数（.edseams 层）。
+      @param {{x:number, strong:boolean}[]} xs @returns {string} */
   function seamGradient(xs){
     /** @type {string[]} */
     const stops = [];
-    xs.forEach(x => {
-      stops.push(`transparent calc(${x}% - .5px)`, `var(--card) calc(${x}% - .5px)`,
-        `var(--card) calc(${x}% + .5px)`, `transparent calc(${x}% + .5px)`);
+    xs.forEach((/** @type {{x:number, strong:boolean}} */ s) => {
+      const half = s.strong ? 1 : ".5";
+      const col = s.strong ? "var(--seam-strong)" : "rgba(var(--veil),.18)";
+      stops.push(`transparent calc(${s.x}% - ${half}px)`, `${col} calc(${s.x}% - ${half}px)`,
+        `${col} calc(${s.x}% + ${half}px)`, `transparent calc(${s.x}% + ${half}px)`);
     });
     return `linear-gradient(90deg, ${stops.join(",")})`;
   }
@@ -6596,7 +6622,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const labels = [];
     /** @type {(HTMLElement|null)[]} */
     const strums = [];                       // v1.9.0：与 labels 同构，每格一个槽位（无标注为 null）
-    /** @type {number[]} 拍内接缝位置（行宽百分比，骑缝线的落点；v2.78.2） */
+    /** @type {{x:number, strong:boolean}[]} 交界缝落点（行宽百分比 + 强弱；v2.78.2 收集、v2.79.0 加 strong） */
     const seamX = [];
     subEls.push({});
     subCellEls.push({});
@@ -6609,25 +6635,26 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
       const startT = acc;
       const c = document.createElement("div");
-      /* v2.78.0：贴满 + 1px 分隔缝（用户拍板）。理论口径：块宽 = 这颗音到下一颗音的
+      /* v2.78.0：贴满 + 分隔缝（用户拍板）。理论口径：块宽 = 这颗音到下一颗音的
          距离，间隙不属于任何一颗音的时值；旧口径（v2.74.0）每格左右各收 2px，等于从
          每颗音里固定扣 4px——对十六分格是 ~7% 的系统性偏短，"块宽与时值严格成正比"
-         在短音上不再严格。现在几何贴满，分界由 .sep::after 的 1px 缝表达（不占几何）。
-         拍边界**不**画缝：拍的分组由拍网格线（.grid-line）与 beat-zone 边缘承担，
-         层级要高于格内分隔。休止格自带虚线描边、续接片段（cutl）在行首，都不叠缝。 */
+         在短音上不再严格。现在几何贴满，分界由行级 .seams 覆盖层的骑缝线表达（不占几何）。
+         v2.79.0：交界统一「切开」语汇——拍内缝 1px 墨色（同 --veil 墨水系统，落墨不露底）；拍边界升级 2px 强缝
+         （线更强 = 拍分组层级更高），beat-zone 自画描边 + 圆角凹槽的「叠板」语汇退役。
+         休止格自带虚线描边、续接片段（cutl）在行首，都不叠缝。 */
       const tpbRow = barTicks / rowBeats();
       const atBeatL = startT > 0 && (startT % tpbRow === 0);
       const nextT = startT + s.t;
-      const atBeatR = nextT >= barTicks || (nextT % tpbRow === 0);
-      /* v2.78.2：拍内接缝的位置只**收集**（seamX），由行尾统一挂 .seams 覆盖层画骑缝线；
-         不再给格子挂 .sep（伪元素跨不出 overflow:hidden，缝会整个吃进后一格） */
-      if (startT > 0 && !s.rest && !atBeatL) seamX.push(startT / barTicks * 100);
+      /* v2.78.2：缝的位置只**收集**（seamX），由行尾统一挂 .seams 覆盖层画骑缝线；
+         不再给格子挂 .sep（伪元素跨不出 overflow:hidden，缝会整个吃进后一格）。
+         v2.79.0：strong = 右格起点正落拍点（atBeatL）——该交界画 2px 强缝 */
+      if (startT > 0 && !s.rest) seamX.push({x: startT / barTicks * 100, strong: atBeatL});
       /* cutl / cutr（v2.15.0）：这是被行边界截断的"续接片段"——左侧/右侧还有一半在
          相邻行里。类名只作视觉提示（虚线边 + 圆角收平），语义是"它不是完整的一颗"
-         sq-l / sq-r（v2.78.1）：拍内接缝侧圆角收平（含休止格——物理上同样相贴），
-         拍边界与行两端保留圆角作为拍级分组记号 */
+         sq-l / sq-r（v2.78.1 立口径；v2.79.0 扩到全部内缘）：交界两侧圆角一律收平，
+         凹槽缺口会读作"两片板材相叠"；行两端保留圆角（行级圆角条的语义） */
       c.className = "cell upcoming"
-        + (startT > 0 && !atBeatL ? " sq-l" : "") + (!atBeatR ? " sq-r" : "")
+        + (startT > 0 ? " sq-l" : "") + (nextT < barTicks ? " sq-r" : "")
         + (s.rest ? " rest" : "")
         + (s._cutl ? " cutl" : "") + (s._cutr ? " cutr" : "");
       c.style.left = `${acc / barTicks * 100}%`;
@@ -6874,8 +6901,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const gl = document.createElement("div");
       gl.className = "grid-line";
       /* v2.78.0：格子贴满后拍边界就是 x% 本点，网格线落在其上（旧 −2px 是往 4px 缝隙
-         中央凑——缝隙退役，偏移一并退役） */
-      gl.style.left = `${i / rowBeats() * 100}%`;
+         中央凑——缝隙退役，偏移一并退役）。
+         v2.79.0：改骑缝居中（left = 边界 − .5px，1px 线宽中心对齐边界）——与 .seams
+         强缝（±1px 骑缝）同口径。左缘对齐会让线体整体偏在边界右侧，中心错开 0.5px；
+         拍边界行内本无别的线时无从对照，强缝居中后两线同框即显形（用户实拍拍板）。 */
+      gl.style.left = `calc(${i / rowBeats() * 100}% - .5px)`;
       viz.appendChild(gl);
     }
     playheadEl = document.createElement("div");
@@ -10825,14 +10855,15 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       track.setAttribute("aria-label", "选中小节 " + (b + 1));
       let acc = 0;
       let prevZone = 1;   // v2.74.0：空扫弦区跟随前一记实扫（与主视图 buildRowCells 同口径）
-      /** @type {number[]} 接缝位置（v2.78.2：与主视图同款的骑缝交界线） */
+      /** @type {{x:number, strong:boolean}[]} 接缝落点（v2.78.2 骑缝交界线；v2.79.0 加 strong——拍边界 2px 强缝，与主视图同口径） */
       const seamX = [];
       d.bars[b].forEach((s, i) => {
         /* 音符格用真 <button>（v2.0.2）：选中/替换/删除/扫弦标注全依赖先选中它，
            div + click 对键盘与读屏用户是死路。button 原生处理 Enter/Space → click */
         const c = document.createElement("button");
         const isSel = edSel && edSel.bar === b && edSel.idx === i;
-        if (acc > 0 && !s.rest) seamX.push(acc / (d.meter * TPB) * 100);
+        /* v2.79.0：strong = 起点整除一拍（TPB）——该交界画 2px 强缝 */
+        if (acc > 0 && !s.rest) seamX.push({x: acc / (d.meter * TPB) * 100, strong: acc % TPB === 0});
         c.className = "edcell"
           + (acc > 0 ? " sq-l" : "") + (acc + s.t < d.meter * TPB ? " sq-r" : "")   /* v2.78.1：接缝直角 */
           + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
