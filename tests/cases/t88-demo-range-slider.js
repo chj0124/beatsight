@@ -41,6 +41,9 @@ const trackOf = els => wrapOf(els).children[1];
 const fillOf = els => trackOf(els).children[0];
 const fromOf = els => trackOf(els).children[1];
 const toOf = els => trackOf(els).children[2];
+/* v2.82.0：填充条 style 是 calc 字符串，取出其中的百分比项与拇指宽校正系数分别断言 */
+const pctPart = v => { const m = /calc\((-?[0-9.]+)%/.exec(String(v)); return m ? parseFloat(m[1]) : NaN; };
+const kPart = v => { const m = /([-0-9.]+) \* var\(--thumb-w\)/.exec(String(v)); return m ? parseFloat(m[1]) : NaN; };
 /* 整首连播那一行的状态说明（它兼着"现在播到第几小节"的职责，见 syncDemoRange） */
 const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
 /* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
@@ -213,13 +216,21 @@ section("T88g 填充条几何（百分比）+ 重合时 thumb 叠层顺序翻转
      ★ 用 near 而不是 eq：填充宽度算的是 `pct(t) - pct(f)`（两个百分比相减），
        与 `(t-f)/29*100` 在浮点末位上必然不同。这类"算法等价、末位不同"的断言写 eq
        就是在给自己制造假红 */
-  const pctOf = el => parseFloat(el.style.width) || 0;
-  const leftOf = el => parseFloat(el.style.left) || 0;
+  /* v2.82.0：填充条 = **拇指中心**口径（rangeFillStyle）——style 是 calc 字符串
+     「calc(P% + K * var(--thumb-w))」：P = 值占比 ×100（与拇指同一映射基），
+     K = 内缩轨道补偿系数（浏览器把拇指中心压进 (W−tW) 的内缩轨道里，px 项把它顶回来；
+     拇指宽 16/22px 随档位走，经 var(--thumb-w) 在 CSS 落地，桩只断系数）。
+     旧口径（小节格子 f/n）与拇指映射不同基，段 3 范围右端凸出拇指 ~22px（用户实测）。 */
   dragRange(els, 3, 7);
-  near(leftOf(fillOf(els)), 2 / 29 * 100, 1e-6, "★ 填充条左端 = 第 3 小节的位置（2/29）");
-  near(pctOf(fillOf(els)), 4 / 29 * 100, 1e-6, "★ 填充条宽度 = 第 3–7 小节（覆盖 2..6，宽 4/29）");
+  near(pctPart(fillOf(els).style.left), 2 / 29 * 100, 1e-3, "★ 填充条左端百分比 = 值占比（2/29，与拇指同基）");
+  near(kPart(fillOf(els).style.left), 0.5 - 2 / 29, 1e-3, "★ 左端校正系数 = 0.5−p（把端点从内缩轨道顶回拇指中心）");
+  near(pctPart(fillOf(els).style.width), 4 / 29 * 100, 1e-3, "★ 宽度百分比 = 覆盖 2..6（4/29）");
+  near(kPart(fillOf(els).style.width), -(4 / 29), 1e-3, "★ 宽度校正系数 = −span（两端各收回半拇指，绿条端点 = 拇指中心）");
   dragRange(els, 1, 30);
-  eq([fillOf(els).style.left, fillOf(els).style.width].join("|"), "0%|100%", "★ 整首 → 填充条拉满");
+  near(pctPart(fillOf(els).style.left), 0, 1e-6, "整首 → 左端 0%");
+  near(pctPart(fillOf(els).style.width), 100, 1e-6, "★ 整首 → 宽度 100%");
+  near(kPart(fillOf(els).style.left), 0.5, 1e-6, "整首 → 左端校正 = +半拇指（拇指中心缩进 8px，绿条从那里起）");
+  near(kPart(fillOf(els).style.width), -1, 1e-6, "整首 → 宽度校正 = −1 拇指（右端同样收回到拇指中心）");
   /* 单段 + 就在最左：起点已无法再左移，必须让**终点**在上层，否则这一侧永远拖不动 */
   dragRange(els, 1, 1);
   eq(fromOf(els).style.zIndex, "2", "★ 重合在最左时起点在下层（它已无移动余地）");
@@ -265,7 +276,7 @@ section("T88i 越界范围 · 呈现时按当前段数收窄（使用期钳制�
   beat.Store.S.arrangeSel.to = 2;
   beat.Presets.syncDemoRange();
   eq([fromOf(els).value, toOf(els).value].join(","), "9,9", "★ 反向区间归一后呈现（to 被抬到 from）");
-  eq(fillOf(els).style.width, "0%", "填充条宽度不为负");
+  eq(pctPart(fillOf(els).style.width), 0, "填充条宽度不为负（重合 = 零跨度）");
 }
 
 /* ================= 场景 T88j：整首态的读数与滑块范围同源 ================= */

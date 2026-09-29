@@ -304,6 +304,8 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
      chipsOf 收窄为按 .arg-lyric-chip 过滤（原「行的孩子 = 字块」的假设已不成立）；
      v2.77.0：行容器包 [和弦格][字块行]，字块再深一层——改深遍历（DOM 序 = 视觉序不变） */
   const chipsOf = lane => { const out = []; const walk = el => (el.children || []).forEach(c => { if (/(^| )arg-lyric-chip( |$)/.test(c.className)) out.push(c); walk(c); }); walk(lane); return out; };
+  /* v2.80.0：lane 里混进了块头节奏型行（.arg-pat-row）——"行槽数"要按 .arg-lyric-row 过滤计数 */
+  const rowsOf = lane => lane.children.filter(c => /(^| )arg-lyric-row( |$)/.test(c.className));
   /* 锚点提示音（v2.32.0 S3）：全局开关收进开练面板，段行内不再重复渲染 */
   const cue = els["argLyricCue"];
   ok(!byCls(ly, /arg-lyric-cue/), "★ 锚点开关已收进开练面板（段行内不再每段一个副本）");
@@ -313,7 +315,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
         clr = byCls(ly, c => c.textContent === "清除"), laneEl = byCls(ly, /arg-lyric-lane/), tip = byCls(ly, /arg-lyric-tip/);
   ok(!byCls(ly, /arg-lyric-loop/), "无歌词行时不出「循环本行」（空动作不摆出来）");
   eq(clr.disabled, true, "无歌词行时「清除」禁用");
-  eq(laneEl.children.length, 4, "★ 无词也画 4 行槽（每小节一行，保持节奏感；v2.35.0 分行）");
+  eq(rowsOf(laneEl).length, 4, "★ 无词也画 4 行槽（每小节一行，保持节奏感；v2.35.0 分行）");
   eq(chipsOf(laneEl).length, 0, "无行时字块轨为空（没有字块）");
   ok(tip.textContent.includes("段内 4 小节 / 768 tick"), "提示给出段长（小节 / tick）");
 
@@ -329,7 +331,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const ly2 = els["argSections"].children[0].children[4];
   ok(!!byCls(ly2, /arg-lyric-loop/), "★ 有歌词行后出现「循环本行」钮（F2 入口）");
   const lane2 = byCls(ly2, /arg-lyric-lane/);
-  eq(lane2.children.length, 4, "★ v2.35.0：编辑轨每小节一行（段 4 小节 = 4 行槽，与主界面歌词轨同构）");
+  eq(rowsOf(lane2).length, 4, "★ v2.35.0：编辑轨每小节一行（段 4 小节 = 4 行槽，与主界面歌词轨同构）");
   eq(chipsOf(lane2).length, 4, "均分后 4 字上轨（各自落进起点所在的小节行）");
   eq(byCls(ly2, /arg-lyric-paste/).value, "你好世界", "框内回显落库后的词");
   ok(byCls(ly2, /arg-lyric-tip/).textContent.includes("4 个字"), "提示同步字数");

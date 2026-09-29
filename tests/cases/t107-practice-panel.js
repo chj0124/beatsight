@@ -91,7 +91,8 @@ section("T107b 双滑块 · input 只写 S / change 提交 / 越过顶走 / 读�
   te.value = "12"; te.fire("input"); te.fire("change");
   ok(/第 3–12 小节 · 第 1 → 3 段/.test(els["argRangeRead"].textContent || ""),
     "★ 读数翻译成小节 + 段（songBarAt 反解）");
-  ok((els["argRangeFill"].style.width || "").includes("83.3"), "★ 填充条宽度 = 范围占比（10/12）");
+  ok(/calc\(81\.8182%/.test(els["argRangeFill"].style.width || ""),
+     "★ 填充条宽度百分比 = 值占比（9/11，v2.82.0 拇指中心口径；px 校正项交给 var(--thumb-w)）");
 
   /* 「全部」回整首 */
   els["argAllRange"].fire("click");

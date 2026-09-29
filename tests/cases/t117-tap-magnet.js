@@ -18,6 +18,8 @@ const lyOf = (els, i) => els["argSections"].children[i].children
   .find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
+/* v2.80.0：lane 里混进了块头节奏型行（.arg-pat-row）——取"第 N 小节行"要按类过滤（不再按下标） */
+const rowOf = (lane, i) => lane.children.filter(c => /(^| )arg-lyric-row( |$)/.test(c.className))[i];
 /* v2.77.0：行容器包 [和弦格][字块行]——字块取行容器里的 barrow 孩子 */
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
   r => { const b = Array.prototype.find.call(r.children || [],
@@ -56,7 +58,7 @@ section("T117a 磁吸 · 半程内贴锚点 / 起点锚不回吸 / 引导线行�
   chips[0].fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 + px(41) });
   eq(chips[0].style.left, "25%", "拖动中 chip 已被磁到锚点 48（48/192 = 25%）");
-  const bar0 = lane.children[0];
+  const bar0 = rowOf(lane, 0);
   const guide = bar0.children.find(c => /arg-lyric-guide/.test(c.className));
   ok(!!guide, "★ 引导线画在锚点所在的小节行内");
   eq(guide && guide.style.left, "25%", "引导线与锚点同位");

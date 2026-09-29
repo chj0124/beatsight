@@ -131,8 +131,8 @@ section("T119e CSS 契约 · touch-action:pan-y / .sel 选中态 / 窄屏行高 
      "★ .arg-lyric-chip 含 touch-action:pan-y（D4：竖滚归还浏览器）");
   ok(!/\.arg-lyric-chip\{[^}]*touch-action:none/.test(html),
      "旧值 touch-action:none 已从 chip 规则移除");
-  ok(html.indexOf(".arg-lyric-chip.sel{box-shadow:0 0 0 2px var(--blue)}") >= 0,
-     "★ .sel 点按选中态规则存在（与 focus-visible 同色系）");
+  ok(html.indexOf(".arg-lyric-chip.sel{box-shadow:inset 0 0 0 2px var(--blue)}") >= 0,
+     "★ .sel 点按选中态规则存在（inset 环：v2.82.0 起字块有 2px 透明内缩边，外环会悬在缝上）");
   ok(/@media \(max-width: 640px\)\{[\s\S]*?\.arg-lyric-barrow\{height:36px\}/.test(html),
      "★ 窄屏（≤640px）字块行高 36px（D4 触屏可达性）");
 }

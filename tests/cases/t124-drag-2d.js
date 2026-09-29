@@ -20,6 +20,9 @@ const lyOf = (els, i) => els["argSections"].children[i].children
   .find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
+/* v2.80.0：lane 里混进了块头节奏型行（.arg-pat-row）——取"第 N 小节行"要按类过滤（不再按下标） */
+const rowsOf = lane => lane.children.filter(c => /(^| )arg-lyric-row( |$)/.test(c.className));
+const rowOf = (lane, i) => rowsOf(lane)[i];
 /* v2.77.0：行容器包 [和弦格][字块行]——字块取行容器里的 barrow 孩子 */
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
   r => { const b = Array.prototype.find.call(r.children || [],
@@ -56,18 +59,18 @@ section("T124a 二维跟手 · 行内 1:1（300px = 50%）/ 拖过行边界字�
     [{ t: 0, dur: 24, ch: "春" }, { t: 300, dur: 24, ch: "眠" }]);   // 眠 在第 2 行
   sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
-  eq(lane.children.length, 2, "两小节 = 两行");
+  eq(rowsOf(lane).length, 2, "两小节 = 两歌词行（块头行不计入行槽）");
   const chip0 = chipsOf(lane)[0];
   const barrowOf = lane2row => lane2row.children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
-  ok(chip0.parentNode === barrowOf(lane.children[0]), "起点在第 1 行（恒等比较：parentNode 与 children 循环引用，不走 eq 的 JSON 序列化）");
+  ok(chip0.parentNode === barrowOf(rowOf(lane, 0)), "起点在第 1 行（恒等比较：parentNode 与 children 循环引用，不走 eq 的 JSON 序列化）");
 
   chip0.fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 + 300 });         // +300px = 96 tick（行宽一半）
   eq(chip0.style.left, "50%", "★ 行内 1:1：300px → 行内 50%（旧口径会 ×2 飞到 100%）");
-  ok(chip0.parentNode === barrowOf(lane.children[0]), "96 tick 仍在第 1 行");
+  ok(chip0.parentNode === barrowOf(rowOf(lane, 0)), "96 tick 仍在第 1 行");
 
   fireWin("pointermove", { clientX: 100 + 600 });         // +600px = 192 tick → 越过行边界
-  ok(chip0.parentNode === barrowOf(lane.children[1]), "★ 跨过行边界：字块就地搬进第 2 行（不再滑出行外）");
+  ok(chip0.parentNode === barrowOf(rowOf(lane, 1)), "★ 跨过行边界：字块就地搬进第 2 行（不再滑出行外）");
   eq(chip0.style.left, "0%", "第 2 行行首");
   fireWin("pointerup", {});
   eq(chars(beat, id, uid)[0].t, 192, "★ 松手落 192（磁吸 192 = 第 2 行首个锚点，与预览同源）");
@@ -77,7 +80,7 @@ section("T124a 二维跟手 · 行内 1:1（300px = 50%）/ 拖过行边界字�
   const chip = chipsOf(lane2)[0];                          // 春@192 在第 2 行
   chip.fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 - 300 });          // −300px = −96 tick → 96（第 1 行）
-  ok(chip.parentNode === barrowOf(lane2.children[0]), "★ 反向跨行：字块搬回第 1 行");
+  ok(chip.parentNode === barrowOf(rowOf(lane2, 0)), "★ 反向跨行：字块搬回第 1 行");
   fireWin("pointerup", {});
   eq(chars(beat, id, uid)[0].t, 96, "落 96（磁吸 96）");
   beat.Arrange.close();

@@ -25,6 +25,7 @@
   color-scheme:dark;     /* v2.42.8：与 <meta name="color-scheme"> 同源同义（CSS 侧声明，
                             覆盖不读 meta 的场景）；本页永远深色，声明如实 */
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525; --seam-strong:#8a8b90;
+  --thumb-w:16px;        /* range 拇指宽（v2.82.0 立变量）：填充条端点要对齐拇指中心，px 校正项必须与它同源 */
   --line:#2A2A2A; --border:#4D4D4D;
   --green:#1ED760; --red:#F3727F;
   --t1:#FFFFFF; --t2:#B3B3B3; --t3:#8C8C8C; --on-green:#0A0A0A;
@@ -918,7 +919,13 @@ input[type=range].vol{width:120px}
 /* v2.33.0：段卡片 ↔ 播放范围联动（设计原稿视觉层次 L3）——范围覆盖段绿左条，
    未覆盖段整体降透明（dim 0.55）；类由 buildSecRow 初挂、syncPanelRead 拖动中实时切 */
 .arg-sec.play-in-range{border-left:3px solid var(--green)}
-.arg-sec.play-dim{opacity:.55}
+/* 当前编辑段（v2.81.0）：★ 与 .play-in-range 是**两件事**——
+   「我正在编哪一段」（本规则，蓝内环 + 底色提一档，用户动作驱动）
+   vs「这一段在不在播放范围里」（绿左条，播放范围驱动，常是历史残影）。
+   在此之前界面只有后者，于是绿左条被读成"选中的段"，点进别的段却不见高亮跟着走
+   （用户实测反馈，2026-09-30）。物理形态取 .arg-item.sel 同一套「inset 环」——
+   box-shadow 不占布局，卡片不会因为状态切换抖一行。 */
+.arg-sec.cur-sec{background:var(--cell);box-shadow:inset 0 0 0 1.5px var(--blue)}
 .arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--green);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--green)}
 .arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
 .arg-sec>.arg-ops{order:2}
@@ -1029,24 +1036,54 @@ input[type=range].vol{width:120px}
    preventDefault 接管，见 bindDrag/activateDrag）。
    v2.52.0（V9/D5）：overflow 裁剪职责移给 .arg-lyric-char——grip 的 ::after 热区要向右
    外扩 10px，chip 自身裁剪会把热区剪掉（热区 = 视觉外、命中区在） */
-.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border-radius:4px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none}
-.arg-lyric-chip.dragging{cursor:grabbing;box-shadow:0 0 0 2px var(--green)}
+/* v2.82.0（用户参考样式）：字块 = 落在时值槽里的**胶囊**——四周 2px 透明边 +
+   background-clip:padding-box，让相邻字块之间出现 4px 视觉缝（缝里露出下层时值轮廓的边线），
+   一行字不再糊成一条绿带。★ 外几何零改动：left/width 仍是 tick 百分比（拖拽换算契约不动），
+   视觉内缩全靠 border-box 内的 padding-box 裁切。圆角 4→6px（胶囊语汇）。
+   `.sm` = 窄格降级（dur ≤ T16）：内缩降为 1px，不然十六分格放不下字。 */
+.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border:2px solid transparent;background-clip:padding-box;border-radius:6px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none;box-sizing:border-box}
+.arg-lyric-chip.sm{border-width:1px}
+.arg-lyric-chip.dragging{cursor:grabbing;box-shadow:inset 0 0 0 2px var(--green)}
 /* v2.53（C）：上浮 -22px 仅触屏（防指腹遮挡，iOS 拖拽范式）——鼠标拖动字块贴指针，
    不再恒定悬空（用户实测「字块偏离鼠标」的观感成分） */
 .arg-lyric-chip.dragging.touch{transform:translateY(-22px) scale(1.06)}
-.arg-lyric-chip.blocked{box-shadow:0 0 0 2px var(--red)}   /* v2.47.0（F2）：被邻居钳住还在推 → 红边可见反馈，不再静默 */
+.arg-lyric-chip.blocked{box-shadow:inset 0 0 0 2px var(--red)}   /* v2.47.0（F2）：被邻居钳住还在推 → 红边可见反馈，不再静默 */
 .arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap;overflow:hidden;max-width:100%}   /* v2.52.0（V9）：跨小节长字的裁剪职责自 chip 移来 */
 .arg-lyric-grip{position:absolute;top:0;right:0;width:10px;height:100%;cursor:ew-resize}   /* v2.47.0（F3）：6→10px——想移动误抓时值的头号来源就是它太窄 */
 /* v2.52.0（D5/V9）：grip 热区向右外扩 10px（视觉 10px、命中 20px）——F3 的继续加码：
    热区贴边仍难命中，外扩半格才顺手；chip overflow 改 visible 后热区不再被裁 */
 .arg-lyric-grip::after{content:"";position:absolute;top:0;bottom:0;right:-10px;width:20px}
-/* 节奏参考层（v2.46.0）：拍线 + 音符起点刻度，画在小节行里、字块之下（DOM 顺序天然分层）。
-   拖动/键盘对齐从此有参照物，不再纯肉眼；刻度是纯装饰 → aria-hidden，读屏读字块自己的 aria-label */
+/* 节奏参考层（v2.46.0）：拍线 + 音符时值轮廓，画在小节行里、字块之下（DOM 顺序天然分层）。
+   拖动/键盘对齐从此有参照物，不再纯肉眼；参考层是纯装饰 → aria-hidden，读屏读字块自己的 aria-label
+   ★ v2.80.0（乙）：起点圆点那条分支整段退役（类与本文件的生成点一并删除，防复活由 t145 钉住），
+     改画**时值块轮廓**——
+     圆点只说"这颗音从这里起"，说不出"它占多久"；而"字块该对哪颗音"恰恰要靠"这块地板有多宽"回答
+     （附点/切分/长音的非均分，只有铺满的轮廓看得出来）。轮廓几何贴满（左缘 = 起点、
+     宽 = 时值，与主界面 v2.78.0 同口径，间隙不属于任何一颗音），起点信息由左缘天然承载，
+     不再是第二份标记。纯节拍型也画——它此刻等于"拍分组框"，非均分时值正是对齐参照。 */
 .arg-lyric-beat{position:absolute;top:0;bottom:0;width:1px;background:var(--line);pointer-events:none}
 .arg-lyric-beat.dn{width:2px;background:var(--border)}      /* 小节首拍加重 */
-.arg-lyric-onset{position:absolute;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:var(--green);opacity:.5;pointer-events:none}
-.arg-lyric-chip:focus-visible{box-shadow:0 0 0 2px var(--blue);outline:none}   /* 键盘选中态（v2.46.0） */
-.arg-lyric-chip.sel{box-shadow:0 0 0 2px var(--blue)}   /* 点按选中态（v2.49.0 D2/V5）：与 focus-visible 同色系 */
+/* 时值轮廓：全部走 --veil 三元组（v2.54.0 收口），日间/夜间主题自动翻转，零 obs 特判 */
+.arg-lyric-note{position:absolute;top:0;bottom:0;border:1px solid rgba(var(--veil),.18);background:rgba(var(--veil),.05);border-radius:3px;pointer-events:none}
+.arg-lyric-note.rest{border-style:dashed;background:transparent}   /* 休止：虚线空框（与块头行、主界面同语汇） */
+/* —— 块头节奏型行（v2.80.0 · 甲）——
+   乙的行内轮廓是**逐小节**的局部参照，块头行回答的是"这一段整体在打什么节奏"：
+   型名 + ×N 遍 + 一遍长什么样（含扫弦箭头与骑缝线）。每个块一条（A×3 → B×2 → A×1 = 三条）。
+   ★★ 刻意不叫 .arg-lyric-row：那行带 counter-increment（左侧小节序号），CSS counter 只看
+   元素个数不看语义，块头行一旦蹭上这个类，它之后所有小节的序号集体 +1。独立类 = 序号安全。
+   ★ 左列宽度直接写 46px 与 .arg-chd-cell 对齐（和弦格与字块行两列要对在同一条竖线上）；
+     gap 4px 同 .arg-lyric-row，于是 pat-bar 与 barrow 左右缘严格同列。 */
+.arg-pat-row{display:flex;align-items:center;gap:4px;flex-basis:100%}
+.arg-pat-name{flex:none;width:46px;min-width:0;font-size:11px;font-family:var(--mono);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.arg-pat-bar{position:relative;flex:1;min-width:0;height:30px;background:var(--card2);border-radius:5px;
+  /* 行内重定义弦区变量（照 .edcell 先例）：kT 0→0.4H / kB 0.6H→H / kF 0→H，H = 本行 30px */
+  --yT1:0px;--yT2:12px;--yB1:18px;--yB2:30px}
+.arg-pat-cell{position:absolute;top:3px;bottom:3px;background-color:rgba(var(--veil),.07);border:1px solid rgba(var(--veil),.22);border-radius:3px;pointer-events:none}
+.arg-pat-cell.rest{border-style:dashed;background-color:transparent}
+.arg-pat-sub{position:absolute;top:0;bottom:0;width:1px;background:rgba(var(--veil),.10);pointer-events:none}   /* 块内十六分刻度（含块左缘，与主界面 .sub 同口径） */
+.arg-pat-bar .seams{height:100%}   /* 主视图 .seams 写死 44px（网格行高），本处按行高 100% 覆盖 */
+.arg-lyric-chip:focus-visible{box-shadow:inset 0 0 0 2px var(--blue);outline:none}   /* 键盘选中态（v2.46.0） */
+.arg-lyric-chip.sel{box-shadow:inset 0 0 0 2px var(--blue)}   /* 点按选中态（v2.49.0 D2/V5）：与 focus-visible 同色系 */
 /* 磁吸引导线（v2.48.0②）：拖动中命中锚点时画在锚点所在小节行内（蓝竖线），指哪落哪 */
 .arg-lyric-guide{position:absolute;top:0;bottom:0;width:2px;background:var(--blue);opacity:.75;pointer-events:none}
 /* 落点预览 ghost（v2.50.0 D1）：拖动中与提交共用 getDropTarget 摆到预测落点（绿虚线框），
@@ -1062,7 +1099,7 @@ input[type=range].vol{width:120px}
 /* 试听游标（v2.51.0 R3）：随播放走的小节行内蓝竖线；当前字加 .cur（亮描边）。纯视觉 → aria-hidden */
 .arg-lyric-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--blue);opacity:.9;pointer-events:none;z-index:3}
 .arg-lyric-cursor[hidden]{display:none}
-.arg-lyric-chip.cur{box-shadow:0 0 0 2px var(--blue);filter:brightness(1.15)}
+.arg-lyric-chip.cur{box-shadow:inset 0 0 0 2px var(--blue);filter:brightness(1.15)}
 /* 跟播打轴悬浮条（v2.48.0①）：主视图顶部居中，置 hidden 时不占位 */
 .tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .tapbar[hidden]{display:none}
@@ -1137,6 +1174,8 @@ input[type=range].vol{width:120px}
   /* v2.49.0（D4）：窄屏字块行加高——24px 塞不下手指点按目标，触屏最小 44px 惯例下
      36px 是行距与可达性的折中（字块 top/bottom:2px 随行加高） */
   .arg-lyric-barrow{height:36px}
+  /* v2.80.0（甲）：块头行跟随字块行加高一档（36px），弦区变量同比例换算（0.4 / 0.6） */
+  .arg-pat-bar{height:36px;--yT2:14.4px;--yB1:21.6px;--yB2:36px}
 }
 @media (max-width:960px){
   body{overflow-x:hidden}
@@ -1165,6 +1204,7 @@ input[type=range].vol{width:120px}
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
   input[type=range]::-webkit-slider-thumb{width:22px;height:22px}
+  :root{--thumb-w:22px}   /* v2.82.0：拇指宽随档位走，填充条 px 校正项经 var() 自动跟随 */
   .slider-wrap{--thumb-r:11px}   /* 圆钮在窄屏放大到 22px，刻度内缩同步改为半径 11px，否则刻度会与圆钮错位 */
   .slider-row{width:100%}
   .editor-inner{padding:0 16px 40px}
@@ -2492,23 +2532,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2524  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3148  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4729  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5524  Modal         应用内弹窗
-     L5662  Viz           时值可视化渲染与每帧动画
-     L8043  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8700  Trainer       变速训练器
-     L8892  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9461  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10745 Editor        自定义节奏型编辑器
-     L11191 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11238 Ear           听辨训练（v1.10.0）
-     L11458 Arrange       曲式编排（v2.0.0）
-     L14205 Help          使用方法（v2.0.1）
-     L14334 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14408 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14651 初始化（装配） 各模块 hook 接线与启动
+     L2564  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3188  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4769  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5585  Modal         应用内弹窗
+     L5723  Viz           时值可视化渲染与每帧动画
+     L8104  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8761  Trainer       变速训练器
+     L8953  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9522  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10806 Editor        自定义节奏型编辑器
+     L11252 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11299 Ear           听辨训练（v1.10.0）
+     L11519 Arrange       曲式编排（v2.0.0）
+     L14417 Help          使用方法（v2.0.1）
+     L14546 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14620 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14863 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2534,7 +2574,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.79.1";
+const VERSION = "2.82.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5227,6 +5267,27 @@ function migrateSecRangeToBars(a, f, t){
   const fi = Math.min(last, Math.max(0, Math.round(f) || 0));
   const ti = Math.min(last, Math.max(fi, Math.round(t) || 0));
   return { from: songBarBefore(a, fi), to: songBarBefore(a, ti) + secBars(a.sections[ti]) - 1 };
+}
+/* 双滑块填充条的几何（v2.82.0 统一口径）：两端 = 两个拇指的**中心**。
+   为什么不是"小节格子百分比"：原生 range 的拇指中心落在**内缩轨道**上——
+   center = tW/2 + (v−min)/(max−min)·(W−tW)。旧面板口径（left=f/n、width=(t−f+1)/n）
+   与它差出一个随位置变化的量：30 小节曲子取段 3（5–8）时绿条右端凸出拇指 ~22px
+   （用户实测"绿色细条凸出一截"，像素取证 2026-09-30）；侧栏旧口径用值占比（i/(n−1)）
+   但没有 px 校正项，极端位置残留 ±半拇指。本函数一处算清，面板与侧栏两处滑块共用。
+   ★ px 校正项经 var(--thumb-w) 进 calc（拇指宽 16px / 窄屏 22px 随档位自动跟随），
+   所以这里只出**百分比系数**，不写死 px。n≤1（单曲一小节）没有映射可言，整条填充。
+   纯函数（同 blockAt/secChords 一族）：不碰 Store、不碰 DOM，可直测。
+   @param {number} v0 起点小节（1 基，= from input 的 value） @param {number} v1 终点小节（1 基） @param {number} n 总小节数
+   @returns {{left: string, width: string}} 直接可赋给 style 的 calc 字符串 */
+function rangeFillStyle(/** @type {number} */ v0, /** @type {number} */ v1, /** @type {number} */ n){
+  if (!(n > 1)) return { left: "0%", width: "100%" };
+  /** @param {number} v */
+  const p = v => (v - 1) / (n - 1);
+  const p0 = p(v0), p1 = p(v1), span = p1 - p0;
+  /* left = p0·W + (0.5−p0)·tW；width = span·W − span·tW（右端点减左端点，px 项相消）。
+     两式统一用「+ 系数」形态（width 的系数 = −span），测试的正则只认一种形状 */
+  return { left: `calc(${(p0 * 100).toFixed(4)}% + ${(0.5 - p0).toFixed(4)} * var(--thumb-w))`,
+    width: `calc(${(span * 100).toFixed(4)}% + ${(-span).toFixed(4)} * var(--thumb-w))` };
 }
 /* 段内第 bar 小节落在第几个块、该块的第几个小节。块边界 = 各块 repeats × 型长的累加。
    越界（bar 不在 [0, secBars)）返回 null——**不静默钳到最后一个块**，
@@ -10047,13 +10108,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const t = Math.min(n - 1, Math.max(f, S.arrangeSel.to));
     demoRangeFromEl.value = String(f + 1);
     demoRangeToEl.value = String(t + 1);
-    /* 填充条用百分比定位（与既有网格/歌词轨同口径）：桩里 offsetLeft 正是按 style.left
-       的百分比反解出来的，所以几何在测试里也可断言 */
-    /** @param {number} i @returns {number} */
-    const pct = i => (n > 1 ? (i / (n - 1)) * 100 : 0);
+    /* v2.82.0：填充条与面板滑块统一走 rangeFillStyle（拇指中心口径 + var(--thumb-w) px 校正）——
+       旧口径 pct=i/(n−1) 没有校正项，极端位置残留 ±半拇指。顺带消掉"两个滑块两套公式"的分叉。
+       （桩里 offsetLeft 按 style.left 百分比反解的口径不变，几何在测试里仍可断言） */
     if (demoRangeFillEl){
-      demoRangeFillEl.style.left = pct(f) + "%";
-      demoRangeFillEl.style.width = (pct(t) - pct(f)) + "%";
+      const geo = rangeFillStyle(f + 1, t + 1, n);
+      demoRangeFillEl.style.left = geo.left;
+      demoRangeFillEl.style.width = geo.width;
     }
     /* ★ 两个 thumb 重合时（from === to，即"只循环这一小节"）上层 input 会把下层 thumb
        整个挡住，必须按"哪边还有移动余地"决定谁在上：重合在最左时让**终点**在上（还能往右扩），
@@ -11462,6 +11523,14 @@ const Ear = (() => {
 const Arrange = (() => {
   /** @type {string | null} */
   let curId = null;
+  /* v2.81.0：「当前编辑段」的段身份（uid，不是下标——段挪位/重排不改变身份）。
+     为什么需要它：界面此前只有「在不在播放范围」（.play-in-range，由 S.arrangeSel 驱动、
+     且是**落盘**状态），于是用户点进段 4 编辑时，绿左条仍留在上次试听过的段上，
+     被读成"高亮没跟着走"。这里补的正是"我正在编哪一段"这一层：由用户动作驱动、
+     **只在内存**（纯浏览态，与 lyricOpen 同口径：关浮层即弃，不落盘、不入脏键）。
+     注意它**不改播放范围**——"编辑哪段"与"放哪段"是两件事，不互相绑架。 */
+  /** @type {string | null} */
+  let curSecUid = null;
   /** @type {null | { sec: number, blk: number }} */
   let picking = null;                      // {sec, blk}：正在为哪个块挑预设（null = 没在挑）
   /* v2.30.0（S1）：正在展开「⋯」菜单的段下标（null = 没开）。与 picking 同一套
@@ -11690,7 +11759,7 @@ const Arrange = (() => {
           drag.t = best;
           const row2 = Math.min((lctx.rows || 1) - 1, Math.floor(best / barTicks));
           if (drag.guideRow !== row2){
-            (lctx.lane.children[row2] || lctx.lane).appendChild(drag.guide);
+            ((lctx.rowWrapEls && lctx.rowWrapEls[row2]) || lctx.lane).appendChild(drag.guide);   // v2.80.0：同上（原 lane.children[row2]）
             drag.guideRow = row2;
           }
           drag.guide.style.left = ((best - row2 * barTicks) / barTicks * 100) + "%";
@@ -11726,7 +11795,7 @@ const Arrange = (() => {
     const gRow = Math.min((lctx.rows || 1) - 1, Math.floor(r.t / barTicks));
     const gStart = gRow * barTicks;
     if (drag.ghostRow !== gRow){
-      (lctx.lane.children[gRow] || lctx.lane).appendChild(drag.ghost);
+      ((lctx.rowWrapEls && lctx.rowWrapEls[gRow]) || lctx.lane).appendChild(drag.ghost);   // v2.80.0：同上（原 lane.children[gRow]）
       drag.ghostRow = gRow;
     }
     drag.ghost.style.left = ((r.t - gStart) / barTicks * 100) + "%";
@@ -11738,7 +11807,7 @@ const Arrange = (() => {
       drag.hintEl = hintEl;
     }
     if (drag.bubbleRow !== row){
-      (lctx.lane.children[row] || lctx.lane).appendChild(drag.bubble);
+      ((lctx.rowWrapEls && lctx.rowWrapEls[row]) || lctx.lane).appendChild(drag.bubble);   // v2.80.0：同上（原 lane.children[row]）
       drag.bubbleRow = row;
     }
     drag.bubble.style.left = drag.chip.style.left;
@@ -12094,7 +12163,7 @@ const Arrange = (() => {
     const row = Math.min((lctx.rows || 1) - 1, Math.floor(c.t / barTicks));
     const rowStart = row * barTicks;
     const chip = document.createElement("div");
-    chip.className = "arg-lyric-chip";
+    chip.className = "arg-lyric-chip" + (c.dur <= T16 ? " sm" : "");   // v2.82.0：窄格（≤十六分）内缩降为 1px，不然格子里放不下字
     chip.style.left = ((c.t - rowStart) / barTicks * 100) + "%";
     /* 视觉不越出本行（跨小节长字截断），数据仍原样交回 Store */
     chip.style.width = (Math.min(c.dur, span - c.t, (row + 1) * barTicks - c.t) / barTicks * 100) + "%";
@@ -12253,34 +12322,120 @@ const Arrange = (() => {
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${t} tick，时值 ${c.dur} tick`);
   }
 
-  /** 节奏参考层（v2.46.0）：小节行内画拍线（小节首加重）+ 该小节的音符起点刻度。
+  /** 块头节律条（v2.80.0 甲）：把一个**型**的第 1 小节画成一条独立小轨——块的"节奏书签"。
+      只画第 1 小节（拍板：同一块的每一遍完全相同，画两遍是重复信息；多小节型在名字里补注
+      「· 共N小节」防误读）。几何口径全部照主界面 buildRowCells：时值块贴满（left = 起点占比、
+      width = 时值占比，间隙不属于任何一颗音）+ 休止虚线 + 块内十六分刻度 + 行级骑缝线
+      （Viz.seamGradient：拍内 1px 墨缝 / 拍边界 2px 强缝，v2.79.0 语汇原样）。
+      ★ 扫弦箭头零新 CSS：直接复用 .strumv 类体系，弦区由 .arg-pat-bar 行内重定义的那组
+      变量给出（照 .edcell 先例）；空扫 = .ghost 蓝虚线，弦区跟随小节内前一记实扫。
+      @param {any} pat @param {boolean} hasStr @returns {any} */
+  function mkPatBar(pat, hasStr){
+    const barEl = document.createElement("div");
+    barEl.className = "arg-pat-bar";
+    barEl.setAttribute("aria-hidden", "true");
+    const notes = pat.bars[0];
+    let total = 0;
+    for (const s of notes) total += s.t;
+    if (!total) return barEl;
+    const pct = (/** @type {number} */ t) => (t / total * 100) + "%";
+    /** @type {{x:number, strong:boolean}[]} */
+    const seamX = [];
+    let acc = 0;
+    let prevZone = 1;                     // 空扫沿用前一记实扫的弦区（小节内携带，不跨小节）
+    for (const s of notes){
+      const startT = acc;
+      const c = document.createElement("div");
+      c.className = "arg-pat-cell" + (s.rest ? " rest" : "");
+      c.style.left = pct(startT);
+      c.style.width = pct(s.t);
+      barEl.appendChild(c);
+      if (startT > 0 && !s.rest) seamX.push({ x: startT / total * 100, strong: startT % TPB === 0 });
+      /* 块内十六分刻度（三连音块 t 不整除 T16 → 不画，与主界面同口径）。
+         ★ left 是**格内**占比：刻度节点挂在 cell 里，分母是这一格自己的时值 s.t，
+         不能用小节总额 total（写成 total 会让四条刻度全挤在块的头 1/16 上）。 */
+      if (s.t % T16 === 0){
+        const nSub = s.t / T16;
+        for (let u = 0; u < nSub; u++){
+          const sub = document.createElement("i");
+          sub.className = "arg-pat-sub";
+          sub.style.left = (u * T16 / s.t * 100) + "%";
+          c.appendChild(sub);
+        }
+      }
+      if (s.dir && hasStr){
+        const sm = document.createElement("div");
+        const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
+        const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
+        sm.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
+        sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
+        barEl.appendChild(sm);
+        if (!s.rest) prevZone = z;
+      }
+      acc += s.t;
+    }
+    if (seamX.length){
+      const sl = document.createElement("div");
+      sl.className = "seams";
+      sl.style.background = Viz.seamGradient(seamX);
+      barEl.appendChild(sl);
+    }
+    return barEl;
+  }
+
+  /** 块头行（v2.80.0 甲）：插在该块第 1 小节**之前**的一条书签名。
+      左列 = 型名 +「×N 遍」（多小节型追加「· 共N 小节」——因为右列只画了一小节，
+      不注会被读成"这个块就这么一小节"）；右列 = mkPatBar 画出的那一份型。
+      整行纯视觉（aria-hidden、无交互）：它与"可拖的歌词行"是两种东西，掺进交互会让
+      "这个靠得到吗"变成"这一次点中的是字块还是块头"的不确定回答。
+      脏数据（引用失效、解不出型）与 mkLyricRefs 同口径早退：**不插行**，而不是插个空壳占位。
+      @param {any} blk @returns {HTMLElement | null} */
+  function mkPatHeadRow(blk){
+    const pat = blk && resolveRef(blk.ref);
+    if (!pat || !Array.isArray(pat.bars) || !pat.bars.length) return null;
+    const row = document.createElement("div");
+    row.className = "arg-pat-row";
+    const nm = document.createElement("span");
+    nm.className = "arg-pat-name";
+    const reps = (blk.repeats | 0) || 1;
+    nm.textContent = pat.name + " ×" + reps + " 遍" +
+      (pat.bars.length > 1 ? " · 共" + pat.bars.length + " 小节" : "");
+    nm.setAttribute("aria-hidden", "true");
+    row.appendChild(nm);
+    row.appendChild(mkPatBar(pat, hasStrum(pat)));
+    return row;
+  }
+
+  /** 节奏参考层（v2.46.0；v2.80.0 乙：起点圆点退役，改画时值轮廓）：
+      小节行内画**时值块轮廓** + 拍线（小节首加重）。轮廓先挂、拍线后挂（DOM 序 = 轮廓在底）；
+      字块 chip 由 mkLyricChip 最后 append，天然压顶三层顺序不用 z-index 表达。
+      为什么要从圆点换成轮廓：圆点只答"这颗音从哪起"，答不了"它占多久"；而"这个字该对哪颗音"
+      恰是**宽度**问题（附点/切分/长音的非均分，只有铺满的轮廓看得出来）。起点信息由轮廓左缘
+      天然承载，不再是第二份标记（旧 onset 点与轮廓共存 = 同一件事画两遍的噪音）。
       纯装饰 → aria-hidden，读屏用户走字块自己的 aria-label；引用已失效的块静默不画
-      （与字块轨"没有坐标系就不画"同一口径）。**全部**音符起点都画（含三连音位）：
-      看的是节奏真相，落不落得上格是「按节奏对齐」/拖动吸附的事，两层刻意分开。
+      （与字块轨"没有坐标系就不画"同一口径）。**全部**音符都画（含休止、含三连音位、
+      含纯节拍型）：看的是节奏真相，落不落得上格是「按节奏对齐」/拖动吸附的事，两层刻意分开。
       @param {any} barEl @param {any} sec @param {number} r @param {number} barTicks */
   function mkLyricRefs(barEl, sec, r, barTicks){
     const blk = blockAt(sec, r);
     const pat = blk && resolveRef(blk.ref);
     if (!pat || !Array.isArray(pat.bars) || !pat.bars[blk.schedBar]) return;
+    let acc = 0;
+    for (const s of pat.bars[blk.schedBar]){
+      const n = document.createElement("i");
+      n.className = "arg-lyric-note" + (s.rest ? " rest" : "");
+      n.style.left = (acc / barTicks * 100) + "%";
+      n.style.width = (s.t / barTicks * 100) + "%";
+      n.setAttribute("aria-hidden", "true");
+      barEl.appendChild(n);
+      acc += s.t;
+    }
     for (let b = 0; b < pat.meter; b++){
       const v = document.createElement("i");
       v.className = "arg-lyric-beat" + (b === 0 ? " dn" : "");
       v.style.left = (b * TPB / barTicks * 100) + "%";
       v.setAttribute("aria-hidden", "true");
       barEl.appendChild(v);
-    }
-    if (hasStrum(pat)){        // 纯节拍型：拍线本身就是音符参照（每拍都有音），不叠点
-      let cum = 0;
-      for (const s of pat.bars[blk.schedBar]){
-        if (!s.rest){
-          const m = document.createElement("i");
-          m.className = "arg-lyric-onset";
-          m.style.left = (cum / barTicks * 100) + "%";
-          m.setAttribute("aria-hidden", "true");
-          barEl.appendChild(m);
-        }
-        cum += s.t;
-      }
     }
   }
 
@@ -12423,8 +12578,9 @@ const Arrange = (() => {
   let cursorEl = null;                 // 试听游标（拖动/试听期临时节点，建-摘同 guide 模式）
   /** @type {any} */
   let curEl = null;                    // 当前高亮（.cur）的字块元素
-  /* secUid → { lane, chipEls }（每次 arrangeRender 重建——元素引用随渲染走，Map 只做查表） */
-  /** @type {Map<string, { lane: any, chipEls: any[] }>} */
+  /* secUid → { lane, chipEls, rowWrapEls }（每次 arrangeRender 重建——元素引用随渲染走，Map 只做查表）
+     v2.80.0：+ rowWrapEls（行容器数组）——行级挂载点不再靠 lane.children[row] 的位置巧合 */
+  /** @type {Map<string, { lane: any, chipEls: any[], rowWrapEls: HTMLElement[] }>} */
   const laneBySec = new Map();
 
   /** 试听本段（relBar = 段内起始小节偏移，「从选中字」粗到小节——V8 同口径；缺省 0 = 段首）。
@@ -12534,7 +12690,9 @@ const Arrange = (() => {
       }
       cursorEl.hidden = false;
       const row = Math.max(0, Math.min(secBars(sec) - 1, Math.floor(pos / barTicks)));
-      const host = reg.lane.children[row] || reg.lane;
+      /* v2.80.0：宿主取显式行容器数组（与拖动的引导线/ghost/气泡同一口径）——
+         lane.children[row] 在块头行插入后会把游标挂到块头行或错的小节行上。 */
+      const host = (reg.rowWrapEls && reg.rowWrapEls[row]) || reg.lane;
       if (cursorEl.parentNode !== host) host.appendChild(cursorEl);   // 跨行跳行
       cursorEl.style.left = ((pos - row * barTicks) / barTicks * 100) + "%";
       const line = Store.findLyric(pv.arrId, pv.secUid);
@@ -12866,13 +13024,24 @@ const Arrange = (() => {
        （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
        字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
        拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [], barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]) };
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [], barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]), rowWrapEls: /** @type {HTMLElement[]} */ ([]) };
     if (span > 0){
       const barTicks = Math.max(1, Math.round(span / secBars(sec)));
       lctx.barTicks = barTicks;
       lctx.rows = Math.max(1, Math.ceil(span / barTicks));
       const rowEls = [];
+      const wrapEls = [];                        // v2.80.0（★）：行容器数组 = 行级挂载点的真相源（见下方说明）
       for (let r = 0; r < lctx.rows; r++){
+        /* v2.80.0（甲）：块的第 1 小节之前插一条**块头节奏型行**——行内轮廓是逐小节的局部参照，
+           它回答"这一段整体在打什么"。判据 = blockAt(...).localBar === 0（块的第一小节）；
+           按块计数不按型去重（A×3 → B×2 → A×1 = 三条，同型出现两次就是两条）。
+           ★ 只在**贴了词**的段插（2026-09-30 定案）：块头行是给"贴词对齐"当参照物的，
+           没贴词的段插它纯占位；折叠态本就不走到这里，折叠视图逐位不变。 */
+        const at = line ? blockAt(sec, r) : null;
+        if (at && at.localBar === 0){
+          const ph = mkPatHeadRow(sec.blocks[at.blockIdx]);
+          if (ph) lane.appendChild(ph);
+        }
         /* v2.77.0：行容器包 [和弦格][字块行]——块级和弦「按小节一格」的编辑入口
            （原块行「和弦 | 分段」文本框退役）。序号 counter 随行容器走（原 barrow ::before） */
         const row = document.createElement("div");
@@ -12883,10 +13052,17 @@ const Arrange = (() => {
         row.appendChild(bar);
         lane.appendChild(row);
         rowEls.push(bar);
+        wrapEls.push(row);
         mkLyricRefs(bar, sec, r, lctx.barTicks);   // v2.46.0：参考层先画（DOM 顺序 = 字块压在刻度之上）
       }
       lctx.barrow0 = rowEls[0] || null;   // v2.77.0：拖拽 perTick/行高的行宽基准改指 barrow（行容器含和弦格，宽 ≠ 行宽）
       lctx.barrowEls = rowEls;            // v2.77.0：跨行搬迁的挂载点也改指 barrow（原 lane.children[row] 是行容器）
+      lctx.rowWrapEls = wrapEls;          // v2.80.0：见下方「★ 行级挂载点一律走 rowWrapEls」
+      /* ★ v2.80.0：行级挂载点（游标 / 磁吸引导线 / 落点 ghost / 读数气泡）一律改走 rowWrapEls。
+         它们此前都用 `lane.children[row]` 取"第 row 行的容器"——在块头行插入 lane 之后，
+         children 里混进了不是歌词行的兄弟，按位置取必然错位（插一条块头行 = 之后全部 +1）。
+         显式收集的行容器数组才是"第 row 小节那一行"这件事的真相源；顺带把 v2.77.0 那次
+         解耦漏下的四处补上（那次只改了 chip，因为当时 children 恰好等于行容器数组）。 */
       /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
          两边看到的字集必须一致，否则"界面上有、听不到" */
       for (let k = 0; k < lctx.chars.length; k++){
@@ -12895,7 +13071,7 @@ const Arrange = (() => {
       }
     }
     ly.appendChild(lane);
-    laneBySec.set(uid, { lane: lane, chipEls: lctx.chipEls });   // v2.51.0（R3）：试听游标查表（随渲染重建）
+    laneBySec.set(uid, { lane: lane, chipEls: lctx.chipEls, rowWrapEls: lctx.rowWrapEls });   // v2.51.0（R3）：试听游标查表（随渲染重建）；v2.80.0：带上行容器数组——游标要挂的是"第 N 小节那一行"，不再依赖 children 的位置巧合
 
     /* 试听行（v2.52.0 R5）：▶ 试听本段 / ▶ 从选中字 / 变速练唱（爬坡）——
        「循环本行」更名「变速练唱（爬坡）」（R5 语义如实：它本来就是循环 + 爬坡） */
@@ -12961,7 +13137,17 @@ const Arrange = (() => {
   function buildSecRow(a, sec, i){
     const row = document.createElement("div");
     row.className = "arg-sec";
-    /* （v2.33.0：段卡片 ↔ 范围联动的 play-in-range/play-dim 类**不在**这里挂——
+    /* v2.81.0：点卡片任意处（含卡片内所有控件，事件在真实 DOM 里冒泡上来）= 把
+       「当前编辑段」置为本段；键盘把焦点移进来（Tab / 读屏）走 focusin 同一入口。
+       ★ 为什么挂 pointerdown 而不是 click：段内一批控件在自己的 click 里就 arrangeRender
+       了（换型、展开歌词、⋯ 菜单…）。pointerdown 先于它们发生，等重建出来的卡片**已经**
+       带着新的 cur-sec；若挂 click，要么先渲染后置状态（高亮慢一拍），要么被迫再渲一遍。
+       ★ 桩没有冒泡（tests/lib/harness.js 的 fire 只打本元素），所以"点段内控件也生效"
+       这条由真机验收（CDP 实测：点第 N 段段名输入框/换型钮后，cur-sec 落在第 N 段）。 */
+    const markCur = () => { if (curSecUid !== sec.uid){ curSecUid = sec.uid; syncCurSec(a); } };
+    Modal.bindOverlay("arrangeOverlay", row, "pointerdown", markCur);
+    Modal.bindOverlay("arrangeOverlay", row, "focusin", markCur);
+    /* （v2.33.0：段卡片 ↔ 范围联动的 play-in-range 类**不在**这里挂——
        renderPanel 尾部的 syncPanelRead 会按同一判据给所有段行补齐，这里挂是冗余且
        会被反向验证判为死代码；联动判据只有 syncPanelRead 一处事实源） */
     const lab = document.createElement("div"); lab.className = "arg-sec-label";
@@ -13471,6 +13657,7 @@ const Arrange = (() => {
        只读行与段行起/终一并退役。渲染只在此处整体重建（bindOverlay 纪律），
        拖动中的视觉刷新走 syncPanelRead（不重建、不二次登记）。 */
     renderPanel(a);
+    syncCurSec(a);                        // v2.81.0：重建后把「当前编辑段」重新挂上（状态在内存，不靠焦点）
     $("argHint").textContent = `每段 = 若干块，块 = 一个节奏型 × N 遍（一遍 = 该型的全部小节）`;
   }
 
@@ -13527,8 +13714,11 @@ const Arrange = (() => {
     const fs = songBarAt(a, f) || { sec: 0, bar: 0 }, ts = songBarAt(a, t) || { sec: 0, bar: 0 };
     $("argRangeRead").textContent = "第 " + (f + 1) + "–" + (t + 1) + " 小节 · 第 " + (fs.sec + 1) + " → " + (ts.sec + 1) + " 段（共 " + TB + " 小节）";
     const fill = $("argRangeFill");
-    fill.style.left = (f / TB * 100) + "%";
-    fill.style.width = ((t - f + 1) / TB * 100) + "%";
+    /* v2.82.0：填充条两端 = 两个拇指中心（rangeFillStyle 统一口径）——
+       旧口径（小节格子百分比）与拇指的内缩轨道映射不一致，段 3 范围右端凸出 ~22px（用户实测） */
+    const geo = rangeFillStyle(f + 1, t + 1, TB);
+    fill.style.left = geo.left;
+    fill.style.width = geo.width;
     const map = $("argMap");
     Array.prototype.forEach.call(map.children, (/** @type {any} */ seg, /** @type {number} */ i) => {
       const start = songBarBefore(a, i), end = start + secBars(a.sections[i]) - 1;
@@ -13536,19 +13726,38 @@ const Arrange = (() => {
       if (on && !seg.classList.contains("in-range")) seg.classList.add("in-range");
       if (!on && seg.classList.contains("in-range")) seg.classList.remove("in-range");
     });
-    /* v2.33.0：段卡片与范围联动（同 buildSecRow 的判据）——拖滑块时卡片绿条/dim 实时跟随。
+    /* v2.33.0：段卡片与范围联动（同 buildSecRow 的判据）——拖滑块时卡片绿条实时跟随。
+       v2.81.0：★ 旧口径（未覆盖段整卡 opacity .55 压暗）**退役**——它压暗的是整张**可编辑**卡片
+       （点击/输入/按钮全都正常可用），"看起来被禁用"是纯误导；且用户实测把它读成"未选中"。
+       范围外的段现在零弱化：范围内 = 绿左条，范围外 = 什么也不加（区分只靠一个信号）。
        候选行（arg-pick）混在 children 里但不代表段：跳过它，段下标单独计数 */
     let si = 0;
     Array.prototype.forEach.call($("argSections").children, (/** @type {any} */ row) => {
       if (/(^| )arg-pick( |$)/.test(row.className)) return;
       const start = songBarBefore(a, si), end = start + secBars(a.sections[si]) - 1;
       const on = S.arrangeSel.from <= end && S.arrangeSel.to >= start;
-      if (on && !row.classList.contains("play-in-range")){
-        row.classList.add("play-in-range"); row.classList.remove("play-dim");
-      }
-      if (!on && !row.classList.contains("play-dim")){
-        row.classList.add("play-dim"); row.classList.remove("play-in-range");
-      }
+      const has = row.classList.contains("play-in-range");
+      if (on && !has) row.classList.add("play-in-range");
+      if (!on && has) row.classList.remove("play-in-range");
+      si++;
+    });
+  }
+  /** 「当前编辑段」的轻量同步（v2.81.0）：只切类、不重建（与 syncPanelRead 同一套
+      「高频路径不重渲染」纪律）。比对用**段 uid** 而不是下标——重排/插入会让下标挪位，
+      uid 才是"同一段"的身份（同 Store 侧 v2.26.0 的口径）。
+      调用点两处：① 卡片上的 pointerdown / focusin（用户动作，实时）；② renderPanel 尾部
+      （重建后把状态重新挂上——状态在内存里，不依赖焦点是否还在，所以重渲染不会"熄灭"）。
+      候选行（.arg-pick）不是段，跳过且不占段下标。 */
+  /** @param {any} a @returns {void} */
+  function syncCurSec(a){
+    if (!a) return;
+    let si = 0;
+    Array.prototype.forEach.call($("argSections").children, (/** @type {any} */ row) => {
+      if (/(^| )arg-pick( |$)/.test(row.className)) return;
+      const sec = a.sections[si];
+      const on = !!(sec && sec.uid === curSecUid);
+      if (on && !row.classList.contains("cur-sec")) row.classList.add("cur-sec");
+      if (!on && row.classList.contains("cur-sec")) row.classList.remove("cur-sec");
       si++;
     });
   }
@@ -13928,6 +14137,9 @@ const Arrange = (() => {
     secMenuOpen = null;                               // v2.30.0：与 picking 同步清（重开不残留）
     blockMenuOpen = null;                             // v2.55.0：块菜单同上
     lyricOpen.clear();                                // v2.32.0：歌词折叠态同上
+    curSecUid = null;                                // v2.81.0：「当前编辑段」同上（纯浏览态）
+    syncCurSec(cur());                                // v2.81.0：把隐藏卡片上的 cur-sec 摘掉（close 只隐藏不重建，
+                                                      // 类不清就会留到下一次 open；t146c 就地断言钉住这条）
     previewStop();                                    // v2.51.0（R3）：关浮层 = 试听停止（互斥纪律）
     /* 关闭前做一次完整性检查：编到一半的曲式（比如某段没块）不该被当成能用 */
     const a = cur();

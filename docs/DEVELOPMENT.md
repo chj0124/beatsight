@@ -925,12 +925,26 @@ bullet，回归见 `t89`。
 - **一键对齐（`alignLyricToRhythm`）**：第 k 字 → 第 k 锚点，dur = 到下一字距离；余字自最后
   锚点按八分顺排、越界即丢（同 distribute）。覆盖手动位置且歌词无撤销栈 → **必经
   `Modal.uiConfirm`**（原生 confirm 在沙盒 iframe 被静默拦截，v0.4.6）。
-- **参考层（`mkLyricRefs`）与键盘（`moveChipKey`）**：小节行画拍线 + 全部音符起点刻度（含
-  三连位——可视化看真相，吸附归吸附，两层刻意分开）；纯节拍型不叠点。字块 tabIndex 可聚焦，
+- **参考层（`mkLyricRefs`）与键盘（`moveChipKey`）**：★ **v2.80.0（乙）起点刻度退役，改画贴满的
+  时值块轮廓**（`left` = 起点占比、`width` = 时值占比，与 v2.78.0 主界面同口径）：圆点只答
+  "这颗音从哪起"，答不出"它占多久"，而"字该对哪颗音"是**宽度**问题；起点信息由轮廓左缘承载，
+  不再画第二份标记。**全部**音符都画（含休止 = 虚线框、含三连位——可视化看真相，吸附归吸附，
+  两层刻意分开），**纯节拍型也画**（旧 `hasStrum` 门槛会让均分型掉到 0 块）。旧类名
+  `.arg-lyric-onset` 已从源码与 DOM 双端删除（t145 钉着防复活）。字块 tabIndex 可聚焦，
   ←/→ 移一格、Shift 一拍；**原位更新不 arrangeRender**（焦点不能丢），边界读 `findLyric` 现值
   而非闭包 `lctx.chars`（落库换行对象，闭包值过期）。
-- **回归**：`tests/cases/t115-lyric-rhythm-align.js`（T115a–e）。t60 的 `chipsOf` 已随参考层
-  收窄为按 `.arg-lyric-chip` 过滤——小节行的孩子不再只有字块。
+- **块头节奏型行（v2.80.0 甲，`mkPatBar` / `mkPatHeadRow`）**：每个**块**一条，插在该块第 1 小节
+  **之前**（`blockAt(...).localBar === 0`，按块计数不去重）；只在**贴了词**的展开态出现。
+  左列「型名 ×N 遍〔· 共N 小节〕」+ 右列该型第 1 小节的完整图谱（时值块 + 休止虚线 + 十六分刻度
+  + `.seams` 骑缝线 + `.strumv` 箭头/空扫 ghost，弦区变量由 `.arg-pat-bar` 行内重定义）。
+  ★★ 两条硬约束：① **类名不得带 `arg-lyric-row`**——那行有 `counter-increment:argbar`，
+  CSS counter 只数元素个数，蹭上就让之后所有小节序号集体 +1；② 行级挂载点（试听游标 / 磁吸
+  引导线 / 落点 ghost / 读数气泡，共 5 处）一律走 `lctx.rowWrapEls`（显式行容器数组），
+  **不许再用 `lane.children[row]`**——插进块头行后那个位置巧合就破了（v2.77.0 只改了 chip 一处）。
+- **回归**：`tests/cases/t115-lyric-rhythm-align.js`（T115a–e，`T115e` 已按 v2.80.0 新口径改写）
+  与 `tests/cases/t145-pat-viz.js`（T145a–e）。t60 的 `chipsOf` 已随参考层
+  收窄为按 `.arg-lyric-chip` 过滤——小节行的孩子不再只有字块；**t60/t115/t117/t124 里
+  `lane.children[N]` 的写法已迁为按 `.arg-lyric-row` 过滤后取**（行容器取法换了，不是回归）。
 - **v2.47.0 拖动语义重写（用户报"拖不动/拖了没反应"）**：① 拖动中**连续跟手**、松手才吸附
   12t（旧实现拖动中量化，小拖动静默不动）；② 被邻字钳住还在推 → `.blocked` 红边可见反馈；
   ③ **换位制（F4 甲，用户拍板）**：越过量 ≥ 邻字 dur/2 松手 = 与邻字交换时序（t/dur 互换）——
@@ -949,6 +963,29 @@ bullet，回归见 `t89`。
   **未打字顺移让位 + dur 收口**（否则归一化「重叠丢弃」会吃字——首跑实证）；
   ↓ 跳过 / Esc / 打完自动收；tap 期 Space 改投打轴机（键盘层，输入框聚焦时打字优先）；
   重开编排页作废未完成打轴（open 守卫）。回归：`tests/cases/t117-tap-magnet.js`（T117a–c）。
+
+- **v2.81.0 段卡片的两种状态语义（改段卡片视觉前必读）**：① **当前编辑段**（`.cur-sec`，
+  蓝内环 1.5px + 底色提一档到 `--cell`）——回答"我正在编哪一段"，由用户动作驱动：卡片上的
+  `pointerdown`（真实 DOM 冒泡，段内任何控件都算）或 `focusin`（键盘/读屏同待遇）置
+  `curSecUid`（内存态、**段 uid** 不是下标、不落盘）；**close() 是唯一清空点**（清状态后立刻
+  `syncCurSec` 摘类——close 只隐藏不重建，类不摘会留到下次 open）。物理形态取 `.arg-item.sel`
+  同款 inset 环（box-shadow 不占布局，状态切换不抖行）。② **在播放范围里**（`.play-in-range`，
+  绿左条 3px）——由 `S.arrangeSel` 驱动，判据单一事实源在 `syncPanelRead`。两者**语义正交、可叠加**。
+  ★ 同版把「未覆盖段整卡 opacity .55」退役：压暗的是可编辑卡片，被读作"被禁用/未选中"（用户实测）；
+  范围外现在零弱化。★ 历史教训：v2.33.0 起绿左条是界面里唯一的"段级高亮"，用户自然读成"选中"——
+  一种颜色只该背一个语义；发现"高亮不跟手"先查它到底是什么状态，再决定是补状态还是拆颜色。
+  回归：`tests/cases/t146-cur-sec.js`（T146a–d；桩无冒泡，"点段内控件也生效"由真机 CDP 验收）。
+- **v2.82.0 两条视觉真值收敛（改滑块/字块前必读）**：
+  ① **双滑块填充条 = 拇指中心口径**（共享区纯函数 `rangeFillStyle(v0,v1,n)`，面板与侧栏两处
+  滑块共用一处事实源）。背景：原生 range 拇指中心在 **(W−tW) 的内缩轨道**上，任何"纯百分比"
+  定位都会与拇指错位——旧面板口径（小节格子 f/n）在 30 小节曲子上右端凸出拇指 ~22px（用户实测）。
+  新口径 `calc(P% + K·var(--thumb-w))` 的 px 项经 **`--thumb-w`**（16px/窄屏 22px）随档位走；
+  断言 style 时要拆「百分比项 + 系数项」两截（见 t88g 的 pctPart/kPart）。
+  ② **编排字块胶囊化**：`.arg-lyric-chip` 用 `border:2px solid transparent` +
+  `background-clip:padding-box` + `box-sizing:border-box` 做视觉内缩——**外几何 left/width
+  仍是 tick 百分比，拖拽换算契约逐位不动**（改字块观感的唯一安全姿势：动绘制层，不动几何层）。
+  状态环一律 inset（外环画在透明缝上=视觉断裂）；窄格（dur≤T16）`.sm` 内缩减半。
+  回归：`tests/cases/t147-range-fill.js`（T147a–c）、`tests/cases/t148-chip-capsule.js`（T148a–b）。
 
 ## 4. 设计规范（视觉 tokens）
 

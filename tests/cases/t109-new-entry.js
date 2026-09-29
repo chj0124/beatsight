@@ -8,8 +8,9 @@
        上溯：命中触发钮 argNew 或菜单本体 arg-new-menu 则不关）——替代 v2.27.0 的
        "再点一次按钮 = 收起"toggle（用户实测"点了像没点、再点反而收起"的困惑）；
      · 展开时触发钮切 .open 高亮 + aria-expanded=true（"已展开"必须可见）；
-     · 段卡片 ↔ 播放范围联动：范围覆盖段 .play-in-range（绿左条）、未覆盖段 .play-dim
-       （降透明）；初挂在 buildSecRow、拖动中由 syncPanelRead 实时切（同一判据两处）；
+     · 段卡片 ↔ 播放范围联动：范围覆盖段 .play-in-range（绿左条）、**未覆盖段零弱化**
+       （v2.81.0：play-dim 整体退役——它压暗的是可编辑卡片，读作"被禁用"，用户实测误解）；
+       判据单一事实源在 syncPanelRead（初挂与拖动中同一处，同判据两用）；
      · 换型候选标题写明上下文：「换型：第 N 段 · 块 M」（原 P2-10 的另一半）。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -83,21 +84,29 @@ section("T109b 菜单 · 展开=高亮 / 点窗外即关 / 触发钮内部与选
   /* v2.35.0：曲式级 ⋯ 退役——模板菜单成为唯一菜单，互斥对象不复存在（原断言随 ⋯ 一并删除） */
 }
 
-/* ================= 场景 T109c：段卡片 ↔ 范围联动 ================= */
-section("T109c 联动 · 范围覆盖段绿左条 / 未覆盖段 dim / 拖滑块实时跟随");
+/* ================= 场景 T109c：段卡片 ↔ 范围联动 =================
+   ★ v2.81.0 断言口径改写（**不是回归**）：`play-dim`（未覆盖段 opacity .55）已整体退役——
+   它压暗的是整张**可编辑**卡片（点击/输入/按钮全都正常），"看起来被禁用"纯属误导，
+   且被用户实测读成"未选中的段"。现在的口径：**范围内 = 绿左条，范围外 = 什么也不加**
+   （区分只用一个信号）。所以原来的「未覆盖 → dim」断言，改成「未覆盖 → 不得弱化、
+   也不得混进范围标记」——原来钉的是"有没有压暗"，现在钉的是"有没有越界加类"。 */
+section("T109c 联动 · 范围覆盖段绿左条 / 未覆盖段零弱化 / 拖滑块实时跟随");
 {
   const { beat, els } = loadApp(seed3());
   const S = beat.Store.S;
+  /** 范围外的段：既不进范围、也不得有任何弱化类（v2.81.0 起 dim 退役） */
+  const outside = row => !/(^| )play-in-range( |$)/.test(row.className)
+    && !/(^| )play-dim( |$)/.test(row.className);
   beat.Arrange.open();
-  /* 初始 arrangeSel=[0,0]（第 1 小节）→ 段1 in-range、段2/3 dim */
+  /* 初始 arrangeSel=[0,0]（第 1 小节）→ 段1 in-range、段2/3 零标记 */
   eq(rows(els)[0].className.includes("play-in-range"), true, "段1 覆盖 → 绿左条");
-  eq(rows(els)[1].className.includes("play-dim"), true, "★ 段2 未覆盖 → 降透明");
-  eq(rows(els)[2].className.includes("play-dim"), true, "段3 未覆盖 → 降透明");
+  eq(rows(els)[1].className, "arg-sec", "★ 段2 未覆盖 → 类名就是 arg-sec（零弱化、零范围标记）");
+  eq(outside(rows(els)[2]), true, "段3 未覆盖 → 零弱化");
 
   /* ⋯「练这段」（第 2 段）→ 联动翻转 */
   moreBtn(els, 1).fire("click");
   menuItem(menuOf(els, 1), /只练第 2 段/).fire("click");
-  eq(rows(els)[0].className.includes("play-dim"), true, "段1 退出范围 → dim");
+  eq(outside(rows(els)[0]), true, "段1 退出范围 → 回到零弱化");
   eq(rows(els)[1].className.includes("play-in-range"), true, "★ 段2 进入范围 → 绿左条");
 
   /* 拖滑块（不落库重渲染路径）→ syncPanelRead 实时切类：范围改成小节 1..4（0 基 0..3）→ 段1 独占 */
@@ -105,7 +114,7 @@ section("T109c 联动 · 范围覆盖段绿左条 / 未覆盖段 dim / 拖滑块
   fe.value = "1"; fe.fire("input");
   te.value = "4"; te.fire("input");
   eq(rows(els)[0].className.includes("play-in-range"), true, "★ 拖动中卡片类实时跟随（不点提交）");
-  eq(rows(els)[1].className.includes("play-dim"), true, "段2 回到 dim");
+  eq(outside(rows(els)[1]), true, "段2 回到零弱化");
   beat.Controls.stop();
   beat.Arrange.close();
 }

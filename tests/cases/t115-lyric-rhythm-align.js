@@ -20,6 +20,10 @@ const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.class
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
 const findBtn = (ly, text) => ly.children.find(c => c.textContent === text);
 const walk = (el, out) => { out.push(el); (el.children || []).forEach(c => walk(c, out)); return out; };
+/* v2.80.0：lane 里混进了块头节奏型行（.arg-pat-row）——"第 N 小节那一行"必须**按类过滤**后取，
+   lane.children[N] 这个写法在块头行插入后会把下标整体带偏（不是回归，是行容器的取法换了） */
+const rowOf = (lane, i) => lane.children
+  .filter(c => /(^| )arg-lyric-row( |$)/.test(c.className))[i];
 
 /* 四个一平方块素材：S=带扫弦 / R=空扫开头 / P=纯节拍 / T=三连音开头 */
 const P_S = [{ t:48, dir:"D" }, { t:24, dir:"U" }, { t:24, dir:"D" }, { t:48, dir:"U" }, { t:48 }];
@@ -140,8 +144,8 @@ section("T115d 键盘 · ←/→ 一格 / Shift 一拍 / 邻居边界钳制 / �
   sumOf(lyOf(els, 0)).fire("click");
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
   ok(!!lane, "展开态有字块轨");
-  /* v2.77.0：行容器包 [和弦格][字块行]——字块行取行容器的 barrow 孩子 */
-  const barrow0 = lane.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+  /* v2.77.0：行容器包 [和弦格][字块行]——字块行取行容器的 barrow 孩子；v2.80.0：行容器按类取 */
+  const barrow0 = rowOf(lane, 0).children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
   const chips = barrow0.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className));
   eq(chips.length, 3, "第一小节行：3 个字块");
   const chip1 = chips[1];                                  // 「眠」t=48，两侧有空隙
@@ -162,30 +166,48 @@ section("T115d 键盘 · ←/→ 一格 / Shift 一拍 / 邻居边界钳制 / �
   beat.Arrange.close();
 }
 
-/* ================= 场景 T115e：节奏参考层（拍线 + 音符起点刻度） ================= */
-section("T115e 参考层 · 拍线数 / 起点刻度数与位置 / 纯节拍不叠点");
+/* ================= 场景 T115e：节奏参考层（拍线 + 时值块轮廓） =================
+   ★ v2.80.0（乙）断言口径改写，这不是回归：旧的 `.arg-lyric-onset` 起点圆点退役，
+   换成**贴满的时值块轮廓**（.arg-lyric-note）——圆点只答"从哪起"，答不出"占多久"，
+   而"字该对哪颗音"是宽度问题。起点信息由轮廓左缘承载，故：
+     · 数量口径 5 → 仍为音符**总数**（备注：含休止的型轮廓数量 = 含休止颗数，见 R 段）；
+     · 「纯节拍型不叠点」这条旧断言的方向反了——现在纯节拍型**照样画**轮廓
+       （4 个均分块），因为它此刻就是"拍分组框"，非均分时值正要靠它看出来。 */
+section("T115e 参考层 · 拍线数 / 时值轮廓数与几何 / 纯节拍与休止");
 {
   const { beat, els, arr, sec } = setup();
   beat.Store.deleteArrange(beat.DEMO_ID);
   beat.Arrange.open();
   sumOf(lyOf(els, 0)).fire("click");                      // S×2 段
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
-  const bar0 = lane.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
+  const bar0 = rowOf(lane, 0).children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
   const beats = bar0.children.filter(c => /(^| )arg-lyric-beat( |$)/.test(c.className));
   eq(beats.length, 4, "拍线 = 段拍号 4 条");
   eq(/ dn /.test(" " + beats[0].className + " "), true, "小节首拍加重（.dn）");
-  const onsets = bar0.children.filter(c => /(^| )arg-lyric-onset( |$)/.test(c.className));
-  eq(onsets.length, 5, "音符起点刻度 = 该小节 5 颗发声音（空扫会被排除，本型无空扫）");
-  eq(onsets[1].style.left, "25%", "刻度按 tick 换算行内百分比（48t/192t = 25%）");
+  const notes = bar0.children.filter(c => /(^| )arg-lyric-note( |$)/.test(c.className));
+  eq(notes.length, 5, "时值轮廓 = 该小节 5 颗音（贴满，一颗一块）");
+  eq(notes.map(n => n.style.left).join(","), "0%,25%,37.5%,50%,75%",
+     "★ 轮廓左缘 = 音符起点占比（0/48/72/96/144 ÷ 192）");
+  eq(notes.map(n => n.style.width).join(","), "25%,12.5%,12.5%,25%,25%",
+     "★ 轮廓宽度 = 时值占比（48/24/24/48/48 ÷ 192，间隙不属于任何一颗音）");
+  ok(bar0.children.indexOf(notes[0]) < bar0.children.indexOf(beats[0]),
+     "轮廓先于拍线挂载（DOM 序 = 轮廓在底、拍线在面）");
   ok(beats.every(b => b.getAttribute("aria-hidden") === "true") &&
-     onsets.every(m => m.getAttribute("aria-hidden") === "true"),
-     "刻度层整体 aria-hidden（读屏走字块自己的 aria-label）");
-  sumOf(lyOf(els, 0)).fire("click");                      // 收起，换纯节拍段
-  sumOf(lyOf(els, 2)).fire("click");                      // P 段
+     notes.every(n => n.getAttribute("aria-hidden") === "true"),
+     "参考层整体 aria-hidden（读屏走字块自己的 aria-label）");
+  sumOf(lyOf(els, 0)).fire("click");                      // 收起，换另外两段
+  sumOf(lyOf(els, 2)).fire("click");                      // P 段（纯节拍）
   const laneP = byCls(lyOf(els, 2), "arg-lyric-lane");
-  const barP = laneP.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
-  eq(barP.children.filter(c => /(^| )arg-lyric-onset( |$)/.test(c.className)).length, 0,
-     "★ 纯节拍型不叠起点刻度（拍线本身就是音符参照）");
+  const barP = rowOf(laneP, 0).children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+  const notesP = barP.children.filter(c => /(^| )arg-lyric-note( |$)/.test(c.className));
+  eq(notesP.length, 4, "★ 纯节拍型也画轮廓（4 个均分块：拍线答层级，轮廓答时值）");
   eq(barP.children.filter(c => /(^| )arg-lyric-beat( |$)/.test(c.className)).length, 4, "拍线照画");
+  sumOf(lyOf(els, 2)).fire("click");
+  sumOf(lyOf(els, 1)).fire("click");                      // R 段（首颗空扫 rest+dir）
+  const laneR = byCls(lyOf(els, 1), "arg-lyric-lane");
+  const barR = rowOf(laneR, 0).children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+  const notesR = barR.children.filter(c => /(^| )arg-lyric-note( |$)/.test(c.className));
+  eq(notesR.length, 4, "含休止型：轮廓数 = 音符总数（含休止）");
+  eq(notesR.filter(n => /(^| )rest( |$)/.test(n.className)).length, 1, "★ 休止画虚线空框（.rest）");
   beat.Arrange.close();
 }
