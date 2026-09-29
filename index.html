@@ -2480,18 +2480,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L4712  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5507  Modal         应用内弹窗
      L5645  Viz           时值可视化渲染与每帧动画
-     L8012  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8669  Trainer       变速训练器
-     L8861  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9430  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10714 Editor        自定义节奏型编辑器
-     L11159 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11206 Ear           听辨训练（v1.10.0）
-     L11426 Arrange       曲式编排（v2.0.0）
-     L14173 Help          使用方法（v2.0.1）
-     L14302 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14376 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14619 初始化（装配） 各模块 hook 接线与启动
+     L8013  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8670  Trainer       变速训练器
+     L8862  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9431  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10715 Editor        自定义节奏型编辑器
+     L11160 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11207 Ear           听辨训练（v1.10.0）
+     L11427 Arrange       曲式编排（v2.0.0）
+     L14174 Help          使用方法（v2.0.1）
+     L14303 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14377 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14620 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -6572,6 +6572,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       （±0.5px 各吃相邻两格半像素，v2.78.2）。编辑器复用同一函数（.edseams 层）。
       @param {number[]} xs @returns {string} */
   function seamGradient(xs){
+    /** @type {string[]} */
     const stops = [];
     xs.forEach(x => {
       stops.push(`transparent calc(${x}% - .5px)`, `var(--card) calc(${x}% - .5px)`,
