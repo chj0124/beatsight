@@ -2460,21 +2460,21 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L2490  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L3114  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4692  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5487  Modal         应用内弹窗
-     L5625  Viz           时值可视化渲染与每帧动画
-     L7956  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8613  Trainer       变速训练器
-     L8794  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9363  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10647 Editor        自定义节奏型编辑器
-     L11080 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11127 Ear           听辨训练（v1.10.0）
-     L11347 Arrange       曲式编排（v2.0.0）
-     L14094 Help          使用方法（v2.0.1）
-     L14223 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14297 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14540 初始化（装配） 各模块 hook 接线与启动
+     L4695  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5490  Modal         应用内弹窗
+     L5628  Viz           时值可视化渲染与每帧动画
+     L7959  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8616  Trainer       变速训练器
+     L8808  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9377  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10661 Editor        自定义节奏型编辑器
+     L11094 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11141 Ear           听辨训练（v1.10.0）
+     L11361 Arrange       曲式编排（v2.0.0）
+     L14108 Help          使用方法（v2.0.1）
+     L14237 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14311 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14554 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2784,9 +2784,9 @@ function demoBuildSpec(){
   /* 逐小节的型 id → 块：**相邻同型合成一块**（块 = 型 × N 遍）。
      这样"段 4 = P2 一小节 + P1 一小节"自然落成两块，不需要再为它造一个组合型。
      顺序与相邻关系都保持不变，所以块的展开结果与逐小节序列逐一对应 */
-  /** @param {string[]} seq @returns {{ refIdx: number, repeats: number }[]} */
+  /** @param {string[]} seq @returns {{ refIdx: number, repeats: number, chords?: string }[]} */
   const toBlocks = seq => {
-    /** @type {{ refIdx: number, repeats: number }[]} */
+    /** @type {{ refIdx: number, repeats: number, chords?: string }[]} */
     const out = [];
       /* v2.73.0 复核：示例曲引用的是**自带的 5 个 1 小节 demo 型**（DEMO_PRESETS），
          与内置型长度无关——条目 = 1 小节，toBlocks 保持 repeats:1 不变。
@@ -2978,8 +2978,8 @@ function migrateDemoToBuiltins(customs, arranges){
 /** @typedef {{ t: number, dur: number, ch: string }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断） */
 /** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid） */
 /** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number }} Step 一小节的单步（时值槽；dir/zone 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]） */
-/** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][] }} Preset 归一化后的节奏型（id 在落库时补） */
-/** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
+/** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][], label?: string }} Preset 归一化后的节奏型（id 在落库时补） */
+/** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number, chords?: string }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
 /** @typedef {{ uid: string, name: string, blocks: Block[] }} Section 曲式的一段（uid 是稳定身份，段挪位/被删不改变） */
 /** @typedef {{ id: string, name: string, sections: Section[] }} ArrangeData 一份曲式（Arrange 已被模块 const 占用，故加 Data 后缀） */
 /** @typedef {{ total: number, right: number, best: number }} EarStats 听辨战绩：累计题数 / 正确数 / 最高连对 */
@@ -3460,6 +3460,7 @@ const Store = (() => {
     const id = (typeof raw.id === "string" && raw.id) ? raw.id : "a" + Date.now() + "-" + (arrSeq++);
     return { id, name: raw.name.trim().slice(0, 40), sections };
   }
+  /** @type {{ arranges: ArrangeData[] } | null} */
   const arrIn = readJSON(KEY_ARRANGES);
   /* v2.73.0（2.5）一次性迁移：内置型从 4 小节改为 1 小节 ⇒ 所有已存曲式里
      ref.type==="builtin" 的块 repeats ×4，段长 = Σ repeats × 型长 **逐小节不变**。
@@ -3505,7 +3506,7 @@ const Store = (() => {
     try{ stamped = localStorage.getItem(CHD_MIG_KEY) === "1"; }catch(e){}
     if (!stamped){
       let wrote = true;
-      const nameChords = (s) => {
+      const nameChords = (/** @type {Section} */ s) => {
         if (!s || typeof s.name !== "string") return null;
         const sp = s.name.lastIndexOf(" ");
         if (sp < 0) return null;
@@ -3919,19 +3920,21 @@ const Store = (() => {
      注意：这是**类型声明**，不是运行时校验——脏值的钳制仍由上面那些 numOr/clamp01 负责 */
   /** @type {{
    *   bpm: number, vol: number, accentVol: number, strumVol: number, mute: boolean, sig: number,
+   *   muteCfg: { period: number, count: number, random: boolean },
    *   sel: { type: string, idx?: number, id?: string },
    *   swing: number, accentGrp: Record<string, number>, timbre: string,
    *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
    *   wideFull: boolean,
    *   showTab: boolean,
+   *   showRuler: boolean, showDurLabel: boolean,
    *   vizRows: number,
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   playMode: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },   // v2.10.7：from/to = 线性小节号（0-based 含端点，可落在段中间）
    *   lyricCue: boolean,
-   *   trainer: { on: boolean, target: number, step: number, everyN: number }
+   *   trainer: { on: boolean, target: number | null, step: number, everyN: number }
    * }} */
   const S = {
     /* v2.0.5（审计 P0-2）：本字段此前是 S 里**唯一**没有域钳制的数值（vol/accentVol 有 clamp01、
@@ -4050,7 +4053,7 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
-  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }[]} */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string }[]} */
   const customs = [];
   /** @type {any[]} */
   const rejectedCustoms = [];
@@ -4873,9 +4876,9 @@ function mulberry32(seed){
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-/** 组 g（0 基）内被静音的组内偏移集合（带缓存：同参恒同结果，帧内反复查询零重算）。
-    @param {number} period @param {number} count @param {number} g @returns {Set<number>} */
+/* 组 g（0 基）内被静音的组内偏移集合（带缓存：同参恒同结果，帧内反复查询零重算）。 */
 const MUTE_RND_CACHE = new Map();
+/** @param {number} period @param {number} count @param {number} g @returns {Set<number>} */
 function muteRandSet(period, count, g){
   const key = period + ":" + count + ":" + g;
   let set = MUTE_RND_CACHE.get(key);
@@ -5292,7 +5295,7 @@ function arrNextBar(a, sel, sec, bar){
    S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
 /** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let previewRef = null;
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string }} */
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
 /** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
@@ -6396,7 +6399,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     return "";
   }
 
-  /* v2.72.1（1.3 增强，用户拍板方案丙）：预设模式的**标注胶囊**（含「|」分段）。
+  /** v2.72.1（1.3 增强，用户拍板方案丙）：预设模式的**标注胶囊**（含「|」分段）。
      返回本行的胶囊列表 [{frac, text}]——frac = 胶囊在小节内的横向起点（0..1），
      挂到行上时 style.left = calc(frac×100% + 6px)。
      · 无「|」⇒ 单颗行首（frac 0）——批 D 现状逐位不变；
@@ -6408,7 +6411,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
      @param {number} b @returns {{frac:number, text:string}[]} */
   function labelChipsAtRow(b){
     if (S.playMode === "arrange") return [];
-    const label = curPattern().label;
+    const label = (/** @type {{ label?: string }} */ (curPattern())).label;
     if (!label) return [];
     const segs = label.split("|").map(s => s.trim()).filter(s => s);
     if (!segs.length) return [];
@@ -8642,9 +8645,17 @@ const Trainer = (() => {
      （70→80/步4 的 2.5 进位、70→120/步4 的 12.5 进位、70→140/步4 的 17.5 进位都取 3/13/18），
      所以这是"只修坏点、不动好点"的替换。step 的 Math.max(1, …) 是第二道防线
      （主防线在 TR_RANGE：脏 step:0 已在校验期被钳成 1） */
-  const total = () => Math.max(1, Math.ceil((S.trainer.target - trBaseBpm) / Math.max(1, S.trainer.step)) + 1);
+  const total = () => {
+    const goal = S.trainer.target;            // number | null；on 态必非空（不变式见下），此处兜底
+    if (goal === null) return 1;               // 理论不可达：无目标时 total 退化为 1 级（不爬坡）
+    return Math.max(1, Math.ceil((goal - trBaseBpm) / Math.max(1, S.trainer.step)) + 1);
+  };
   /** @param {number} k */
-  const bpmFor = k => Math.min(S.trainer.target, trBaseBpm + k * S.trainer.step);
+  const bpmFor = k => {
+    const goal = S.trainer.target;            // 同上：on 态必非空，兜底处理
+    if (goal === null) return trBaseBpm;       // 无目标兜底：不爬坡（返回起点速度）
+    return Math.min(goal, trBaseBpm + k * S.trainer.step);
+  };
   /* ★ v2.73.0（2.3）不变式：S.trainer.on === true ⇒ target 为非空数字。
      两道闸保证：①开开关时空目标拒开（上方 toggle 闸）；②输入期非法值拒收不落盘。
      因此 total()/bpmFor() 直接读 target 不判空——on 状态下它不可能为 null。 */
@@ -8677,6 +8688,7 @@ const Trainer = (() => {
      trBarCnt 数到段长 = 练完一句 = 升一级。 */
   function onBarBoundary(){
     const t = S.trainer;
+    const goal = t.target; if (goal === null) return false;   // on 态必非空；兜底：无目标不自动停
     trBarCnt++;
     /* 每级目标数：loopPerSec 时读当前段的实际小节数；否则读配置的 everyN。
        读不到段（预设模式/曲式已删）时回退 everyN——爬坡语义不能凭空消失 */
@@ -8688,7 +8700,7 @@ const Trainer = (() => {
     }
     if (trBarCnt < need){ updateProg(); return false; }
     trBarCnt = 0;
-    if (bpmFor(trStepIdx) >= t.target){          // 目标速度已练满一级 → 完成
+    if (bpmFor(trStepIdx) >= goal){          // 目标速度已练满一级 → 完成
       trDone = true;
       Controls.stop();
       /* v2.11.2：原「7 天计划推进」分支整块删除，这里只剩训练完成这一条路 */
@@ -8709,20 +8721,22 @@ const Trainer = (() => {
        表现是"刚打开就报训练完成"（Store 那段注释里点名的那个坑）。
        ★ 选 A 而不选"自动把速度压下去"：不偷偷改用户的速度，改什么由用户自己决定。
        ★ 只在**开启**方向判；关闭永远允许（否则会把用户锁在训练里）。 */
-    if (!S.trainer.on && S.trainer.target === null){
-      /* v2.73.0（2.3）：目标留空（null）⇒ 没有爬坡终点，不给开并指路参数行 */
-      Modal.uiAlert("还没设目标 BPM。\n在右侧参数行的「目标」里填一个大于当前速度的数（留空 = 只循环不爬坡），再开变速训练。");
-      return;
-    }
-    if (!S.trainer.on && S.bpm >= S.trainer.target){
-      /* v2.11.2 边界（用户选 **A · 不给开并提示**）：起点 = 当前 BPM，所以"当前速度已 ≥ 目标"
-         时爬坡无从谈起——若不拦，total() 会算出 1 级、bpmFor(0) 立刻 ≥ 目标，
-         表现是"刚打开就报训练完成"（Store 那段注释里点名的那个坑）。
-         ★ 选 A 而不选"自动把速度压下去"：不偷偷改用户的速度，改什么由用户自己决定。
-         ★ 只在**开启**方向判；关闭永远允许（否则会把用户锁在训练里）。
-         ★ v2.73.0：文案指路右侧参数行（2.3 起目标就在那里改）。 */
-      Modal.uiAlert(`当前速度 ${S.bpm} 已经不低于目标 ${S.trainer.target} 了，没法往上爬。\n先把速度调低一点，或在右侧参数行把「目标」调高一点，再开变速训练。`);
-      return;
+    if (!S.trainer.on){
+      if (S.trainer.target === null){
+        /* v2.73.0（2.3）：目标留空（null）⇒ 没有爬坡终点，不给开并指路参数行 */
+        Modal.uiAlert("还没设目标 BPM。\n在右侧参数行的「目标」里填一个大于当前速度的数（留空 = 只循环不爬坡），再开变速训练。");
+        return;
+      }
+      if (S.bpm >= S.trainer.target){
+        /* v2.11.2 边界（用户选 **A · 不给开并提示**）：起点 = 当前 BPM，所以"当前速度已 ≥ 目标"
+           时爬坡无从谈起——若不拦，total() 会算出 1 级、bpmFor(0) 立刻 ≥ 目标，
+           表现是"刚打开就报训练完成"（Store 那段注释里点名的那个坑）。
+           ★ 选 A 而不选"自动把速度压下去"：不偷偷改用户的速度，改什么由用户自己决定。
+           ★ 只在**开启**方向判；关闭永远允许（否则会把用户锁在训练里）。
+           ★ v2.73.0：文案指路右侧参数行（2.3 起目标就在那里改）。 */
+        Modal.uiAlert(`当前速度 ${S.bpm} 已经不低于目标 ${S.trainer.target} 了，没法往上爬。\n先把速度调低一点，或在右侧参数行把「目标」调高一点，再开变速训练。`);
+        return;
+      }
     }
     S.trainer.on = !S.trainer.on;
     setToggle("trainerToggle", S.trainer.on);
@@ -12476,14 +12490,14 @@ const Arrange = (() => {
       while (cur2.length < at.localBar) cur2.push("");
       cur2[at.localBar] = v;
       while (cur2.length && !cur2[cur2.length - 1]) cur2.pop();
-      if (cur2.some(t => t)) blk.chords = cur2.join("|");
+      if (cur2.some((/** @type {string} */ t) => t)) blk.chords = cur2.join("|");
       else delete blk.chords;
       save(d);
     });
     return cell;
   }
 
-  /** @param {any} a @param {any} sec @param {number} i @returns {any} */
+  /** @param {any} a @param {Section} sec @param {number} i @returns {any} */
   function mkLyricRow(a, sec, i){
     const uid = sec.uid;                       // v2.26.0：段身份（下标 i 只用于文案里的"第 N 段"）
     const span = lyricSpanTicks(a.id, uid);
@@ -12519,7 +12533,7 @@ const Arrange = (() => {
        折叠态靠这里可见「和弦已填」） */
     const chdBlk = sec.blocks.find(b => b && typeof b.chords === "string" && b.chords.trim());
     if (chdBlk){
-      const segs = chdBlk.chords.split("|").map(t => t.trim()).filter(Boolean);
+      const segs = (/** @type {string} */ (chdBlk.chords)).split("|").map(t => t.trim()).filter(Boolean);
       const prev = document.createElement("span");
       prev.className = "arg-lyric-preview";
       prev.textContent = "和弦 " + segs.slice(0, 8).join("·") + (segs.length > 8 ? "…" : "");
@@ -12755,7 +12769,7 @@ const Arrange = (() => {
        （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
        字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
        拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [] };
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [], barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]) };
     if (span > 0){
       const barTicks = Math.max(1, Math.round(span / secBars(sec)));
       lctx.barTicks = barTicks;
