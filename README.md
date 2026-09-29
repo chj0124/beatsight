@@ -27,8 +27,6 @@
   <a href="#文档">文档</a>
 </p>
 
-<br>
-
 ## 这是什么
 
 BeatSight 是给吉他自学者做的节拍器。练琴时最劝退的不是「跟不上」，而是**听不出**——附点到底长了多少？切分到底错在哪？光靠耳朵，很多人练很久也建立不起这个直觉。
@@ -45,8 +43,8 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
     <td width="50%"><b>曲式模式</b> ·《在他乡》整首连播中</td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png"><img src="docs/assets/shot-main-light.png" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-arrange-dark.png"><img src="docs/assets/shot-arrange-light.png" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></picture></td>
+    <td><img src="docs/assets/shot-main-dark.png" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></td>
+    <td><img src="docs/assets/shot-arrange-dark.png" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
   </tr>
   <tr>
     <td><b>曲式编排</b> · 歌曲地图 + 段落卡片 + 歌词对齐</td>
@@ -59,11 +57,8 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 </table>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-mobile-dark.png">
-    <img src="docs/assets/shot-mobile-light.png" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见">
-  </picture><br>
-  <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面，深浅两版分别对应应用内「经典」与「日间」主题。</sub>
+  <img src="docs/assets/shot-mobile-dark.png" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
+  <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面（应用内「经典」主题）。</sub>
 </p>
 
 ## 它是怎么工作的
