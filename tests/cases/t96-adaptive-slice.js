@@ -221,10 +221,23 @@ section("T96f 贴满几何（v2.78.0）· 格子/跑道零留白，1px 缝只在
     eq(cs.length, 8, "八分型 8 格");
     const seps = cs.map(c => /(^| )sep( |$)/.test(cls(c)) ? "1" : "0").join("");
     eq(seps, "01010101", "★ 分隔缝只在拍内接缝（第 1/3/5/7 格）；拍边界（第 2/4/6 格）不画");
+    /* sq-l / sq-r（v2.78.1）：拍内接缝侧圆角收平——sql 与 sep 同图样（缝侧即左接缝侧），
+       sqr 是其镜像（右侧有拍内邻居的格：0/2/4/6）；拍边界与行两端保圆角 */
+    const sqls = cs.map(c => /(^| )sq-l( |$)/.test(cls(c)) ? "1" : "0").join("");
+    const sqrs = cs.map(c => /(^| )sq-r( |$)/.test(cls(c)) ? "1" : "0").join("");
+    eq(sqls, "01010101", "★ sq-l：左缘在拍内接缝的格收平左圆角");
+    eq(sqrs, "10101010", "★ sq-r：右缘在拍内接缝的格收平右圆角（与 sq-l 镜像错一位）");
     eq(cs[1].style.left, "12.5%", "八分第 2 格左缘 = 12.5%（严格线性）");
     eq(cs[1].style.width, "12.5%", "八分格宽 = 12.5%（不再 −4px）");
   }
-  /* 源码级：分隔缝规则双端各一份（主视图 .cell / 编辑器 .edcell） */
+  /* 四分型对照：每颗都在拍点上 → 无 sq-l/sq-r（拍边界与行两端全部保圆角） */
+  pickBuiltin(app, 1);
+  {
+    const cs = cellsOf(rowsOf(app.els)[0]);
+    ok(cs.every(c => cls(c).indexOf("sq-") < 0), "四分型：全行无 sq-l/sq-r（拍级圆角全部保留）");
+  }
+  /* 源码级：分隔缝规则双端各一份（主视图 .cell / 编辑器 .edcell），缝色 = 纸色（v2.78.1） */
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "index.html"), "utf8");
   ok(src.includes(".cell.sep::after") && src.includes(".edcell.sep::after"), "分隔缝规则：主视图与编辑器各一条");
+  ok(/\.cell\.sep::after\{[^}]*background:var\(--card\)/.test(src), "★ 缝色 = var(--card) 纸色（不是 --well 阴影色——暗缝读作叠压投影）");
 }
