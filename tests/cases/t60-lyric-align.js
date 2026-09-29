@@ -301,8 +301,9 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   const byCls = (row, pred) => row.children.find(c => (pred instanceof RegExp ? pred.test(c.className) : pred(c)));
   /* v2.35.0：编辑轨每小节一行——字块分散在各 .arg-lyric-barrow 里，收集助手把它们拍平 */
   /* v2.46.0：小节行里多了节奏参考层（拍线 / 起点刻度，aria-hidden），不再只有字块——
-     chipsOf 收窄为按 .arg-lyric-chip 过滤（原「行的孩子 = 字块」的假设已不成立） */
-  const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children, r => Array.prototype.slice.call(r.children).filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))));
+     chipsOf 收窄为按 .arg-lyric-chip 过滤（原「行的孩子 = 字块」的假设已不成立）；
+     v2.77.0：行容器包 [和弦格][字块行]，字块再深一层——改深遍历（DOM 序 = 视觉序不变） */
+  const chipsOf = lane => { const out = []; const walk = el => (el.children || []).forEach(c => { if (/(^| )arg-lyric-chip( |$)/.test(c.className)) out.push(c); walk(c); }); walk(lane); return out; };
   /* 锚点提示音（v2.32.0 S3）：全局开关收进开练面板，段行内不再重复渲染 */
   const cue = els["argLyricCue"];
   ok(!byCls(ly, /arg-lyric-cue/), "★ 锚点开关已收进开练面板（段行内不再每段一个副本）");

@@ -55,9 +55,10 @@ section("T141b 无标注 ⇒ 不挂胶囊；曲式模式判据一字未动");
   const { beat, els, storage } = loadApp(seedCold([withLabel(undefined)]));
   selCustom(beat, storage, 0);
   eq(chordsIn(els).length, 0, "★ 无标注 ⇒ 预设模式零胶囊（老用户所见不变）");
-  /* 曲式分支源码级钉死：secChords 路径仍在（t78 全量照跑即回归） */
-  ok(/const cs = secChords\(secBlk\.name\);/.test(html),
-    "★ 曲式和弦路径原样保留（段名解析未动；v2.75.0 起块级 chords 优先于它）");
+  /* 曲式分支源码级钉死：v2.77.0 起路径 = 块级 per-bar 取值，段名解析回落已退役 */
+  ok(/segs\[barIn\]/.test(html) && !/const cs = secChonds?\(secBlk\.name\);/.test(html) &&
+     !/const cs = secChords\(secBlk\.name\);/.test(html),
+    "★ 曲式和弦路径 = 块级 per-bar（段名解析回落退役；存量由加载期迁移搬进块）");
 }
 
 /* ================= 场景 T141c：编辑器 · 回填 / 保存 / 副本继承 ================= */

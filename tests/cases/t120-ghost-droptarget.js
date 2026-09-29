@@ -17,8 +17,11 @@ const lyOf = (els, i) => els["argSections"].children[i].children
   .find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
+/* v2.77.0：行容器包 [和弦格][字块行]——字块取行容器里的 barrow 孩子 */
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
-  r => r.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))));
+  r => { const b = Array.prototype.find.call(r.children || [],
+    c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+    return (b || r).children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className)); }));
 const ofCls = (root, cls) => root.children.filter(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
 /* ghost/bubble 挂在小节行（barrow）内，不在 lane 直接子级——逐行收集 */
 const inLane = (lane, cls) => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,

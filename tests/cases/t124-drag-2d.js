@@ -20,8 +20,11 @@ const lyOf = (els, i) => els["argSections"].children[i].children
   .find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
+/* v2.77.0：行容器包 [和弦格][字块行]——字块取行容器里的 barrow 孩子 */
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
-  r => r.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))));
+  r => { const b = Array.prototype.find.call(r.children || [],
+    c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+    return (b || r).children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className)); }));
 
 function setup(){
   const { beat, els, fireWin } = loadApp();
@@ -55,15 +58,16 @@ section("T124a 二维跟手 · 行内 1:1（300px = 50%）/ 拖过行边界字�
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
   eq(lane.children.length, 2, "两小节 = 两行");
   const chip0 = chipsOf(lane)[0];
-  ok(chip0.parentNode === lane.children[0], "起点在第 1 行（恒等比较：parentNode 与 children 循环引用，不走 eq 的 JSON 序列化）");
+  const barrowOf = lane2row => lane2row.children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
+  ok(chip0.parentNode === barrowOf(lane.children[0]), "起点在第 1 行（恒等比较：parentNode 与 children 循环引用，不走 eq 的 JSON 序列化）");
 
   chip0.fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 + 300 });         // +300px = 96 tick（行宽一半）
   eq(chip0.style.left, "50%", "★ 行内 1:1：300px → 行内 50%（旧口径会 ×2 飞到 100%）");
-  ok(chip0.parentNode === lane.children[0], "96 tick 仍在第 1 行");
+  ok(chip0.parentNode === barrowOf(lane.children[0]), "96 tick 仍在第 1 行");
 
   fireWin("pointermove", { clientX: 100 + 600 });         // +600px = 192 tick → 越过行边界
-  ok(chip0.parentNode === lane.children[1], "★ 跨过行边界：字块就地搬进第 2 行（不再滑出行外）");
+  ok(chip0.parentNode === barrowOf(lane.children[1]), "★ 跨过行边界：字块就地搬进第 2 行（不再滑出行外）");
   eq(chip0.style.left, "0%", "第 2 行行首");
   fireWin("pointerup", {});
   eq(chars(beat, id, uid)[0].t, 192, "★ 松手落 192（磁吸 192 = 第 2 行首个锚点，与预览同源）");
@@ -73,7 +77,7 @@ section("T124a 二维跟手 · 行内 1:1（300px = 50%）/ 拖过行边界字�
   const chip = chipsOf(lane2)[0];                          // 春@192 在第 2 行
   chip.fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 - 300 });          // −300px = −96 tick → 96（第 1 行）
-  ok(chip.parentNode === lane2.children[0], "★ 反向跨行：字块搬回第 1 行");
+  ok(chip.parentNode === barrowOf(lane2.children[0]), "★ 反向跨行：字块搬回第 1 行");
   fireWin("pointerup", {});
   eq(chars(beat, id, uid)[0].t, 96, "落 96（磁吸 96）");
   beat.Arrange.close();
@@ -125,10 +129,11 @@ section("T124c 触屏标记 · touch 才挂 .touch（上浮），鼠标不浮");
 /* ================= 场景 T124d：CSS 契约（t101 同口径） ================= */
 section("T124d CSS 契约 · 行序号伪元素 / lane 序号位 / 上浮规则仅 .touch");
 {
-  ok(/\.arg-lyric-barrow::before\{content:counter\(argbar\)/.test(html),
-     "★ 行序号 = 伪元素 + counter（零 DOM 节点）");
+  /* v2.77.0：序号伪元素挪到 .arg-lyric-row（行容器包 [和弦格][字块行]） */
+  ok(/\.arg-lyric-row::before\{content:counter\(argbar\)/.test(html),
+     "★ 行序号 = 伪元素 + counter（零 DOM 节点；挂在行容器上）");
   ok(/\.arg-lyric-lane\{[^}]*counter-reset:argbar/.test(html) &&
-     /\.arg-lyric-lane\{[^}]*padding-left:18px/.test(html),
+     /\.arg-lyric-lane\{[^}]*padding-left:20px/.test(html),
      "★ lane 计数复位 + 左内边距让出序号位");
   ok(/\.arg-lyric-chip\.dragging\.touch\{transform:translateY\(-22px\)/.test(html) &&
      !/\.arg-lyric-chip\.dragging\{[^}]*transform/.test(html),

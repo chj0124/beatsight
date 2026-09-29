@@ -140,7 +140,9 @@ section("T115d 键盘 · ←/→ 一格 / Shift 一拍 / 邻居边界钳制 / �
   sumOf(lyOf(els, 0)).fire("click");
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
   ok(!!lane, "展开态有字块轨");
-  const chips = lane.children[0].children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className));
+  /* v2.77.0：行容器包 [和弦格][字块行]——字块行取行容器的 barrow 孩子 */
+  const barrow0 = lane.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+  const chips = barrow0.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className));
   eq(chips.length, 3, "第一小节行：3 个字块");
   const chip1 = chips[1];                                  // 「眠」t=48，两侧有空隙
   chip1.fire("keydown", { key: "ArrowRight" });
@@ -168,7 +170,7 @@ section("T115e 参考层 · 拍线数 / 起点刻度数与位置 / 纯节拍不�
   beat.Arrange.open();
   sumOf(lyOf(els, 0)).fire("click");                      // S×2 段
   const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
-  const bar0 = lane.children[0];
+  const bar0 = lane.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
   const beats = bar0.children.filter(c => /(^| )arg-lyric-beat( |$)/.test(c.className));
   eq(beats.length, 4, "拍线 = 段拍号 4 条");
   eq(/ dn /.test(" " + beats[0].className + " "), true, "小节首拍加重（.dn）");
@@ -181,7 +183,7 @@ section("T115e 参考层 · 拍线数 / 起点刻度数与位置 / 纯节拍不�
   sumOf(lyOf(els, 0)).fire("click");                      // 收起，换纯节拍段
   sumOf(lyOf(els, 2)).fire("click");                      // P 段
   const laneP = byCls(lyOf(els, 2), "arg-lyric-lane");
-  const barP = laneP.children[0];
+  const barP = laneP.children[0].children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));   // v2.77.0：行容器内的字块行
   eq(barP.children.filter(c => /(^| )arg-lyric-onset( |$)/.test(c.className)).length, 0,
      "★ 纯节拍型不叠起点刻度（拍线本身就是音符参照）");
   eq(barP.children.filter(c => /(^| )arg-lyric-beat( |$)/.test(c.className)).length, 4, "拍线照画");

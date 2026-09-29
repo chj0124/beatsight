@@ -18,8 +18,11 @@ const rows = els => els["argSections"].children;
 const lyOf = (els, i) => rows(els)[i].children.find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const sumOf = ly => ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className));
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
+/* v2.77.0：行容器包 [和弦格][字块行]——字块取行容器里的 barrow 孩子 */
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
-  r => r.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))));
+  r => { const b = Array.prototype.find.call(r.children || [],
+    c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
+    return (b || r).children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className)); }));
 
 /* S 型一平方（5 颗发声，锚点 0/48/72/96/144）；span = 1 小节 × 192t = 192；
    桩内 perTick = 600/192 = 3.125，即 1 tick = 3.125px。

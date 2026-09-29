@@ -36,7 +36,7 @@ const mkCase = () => {
 };
 /* 候选/编辑器定位助手 */
 const rows = els => els["argSections"].children;
-const openPick = (els, i, blk) => { rows(els)[i].children[2].children[blk].children[4].fire("click"); };
+const openPick = (els, i, blk) => { rows(els)[i].children[2].children[blk].children[3].fire("click"); };   // v2.77.0：和弦输入框退役，换钮下标 4→3
 const pickRowOf = els => Array.prototype.find.call(rows(els), r => /(^| )arg-pick( |$)/.test(r.className));
 const pillBy = (pick, re) => Array.prototype.find.call(pick.children[1].children,
   c => re.test(c.textContent || ""));

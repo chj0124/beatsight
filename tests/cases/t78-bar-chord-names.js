@@ -5,11 +5,12 @@
    显示在对应的小节上方。」——原先把和弦只写进段名，只出现在远端侧栏的「曲名 · 段名」
    里，弹唱时眼睛得在侧栏与扫弦/歌词区之间来回跳。
 
-   契约：本工具**无和弦轨**，和弦寄生于段名（见 DEMO_SONG 注释）——
-   段名格式 = 「<结构名> · <歌词首句> <和弦1>[·<和弦2>…]」，**一小节一个和弦**，
-   和弦数 == secBars(段)。secChords 纯函数取段名尾部那一段记号，渲染层逐行把它挂到
-   对应小节行上方（一行 = 一小节，故一行一颗）。窗口口径与 arrWindowPat/buildLyricLane
-   同源：预告行（第 1 行）取 winPrevBar，其余行取 winStart+b。
+   契约（v2.77.0 重制）：「段名猜和弦」退役——和弦来源 = 编排块级 chords，
+   **按小节存储**（「|」分隔、每段 = 该块内一小节的和弦，可留空 = 不贴）；编辑入口 =
+   段编辑视图歌词网格每行左端的和弦格。渲染层逐行把它挂到对应小节行上方
+   （一行 = 一小节，故一行一颗）。窗口口径与 arrWindowPat/buildLyricLane 同源：
+   预告行（第 1 行）取 winPrevBar，其余行取 winStart+b。secChords 纯函数保留
+   （加载期迁移用它解析老段名，见 beatsight.chdmig）。
 
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。 */
 "use strict";
@@ -43,8 +44,9 @@ function startTwoStages(loop){
   ] }));
   const [p4, p8] = beat.Store.customs.slice(-2);
   const v = beat.Store.upsertArrange({ name: "和弦预告测试", sections: [
-    { name: "A · 甲 C·Am·Dm·G", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
-    { name: "B · 乙 Em·F·G·Am", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 1 }] },
+    /* v2.77.0：和弦进块级 per-bar（段名后缀退役）——A 四音型（4 小节）×1，B 八音型（4 小节）×1 */
+    { name: "A · 甲", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1, chords: "C|Am|Dm|G" }] },
+    { name: "B · 乙", blocks: [{ ref: { type: "custom", id: p8.id }, repeats: 1, chords: "Em|F|G|Am" }] },
   ] });
   beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: !!loop };
   beat.setMode("playMode", "arrange", "测试");
@@ -78,10 +80,11 @@ section("T78b 示例曲 · 每段和弦数 == 段长（一小节一颗），渲�
 {
   const { beat, els } = loadApp(undefined, { seedDemo: false });
   const a = beat.Store.findArrange(beat.DEMO_ID);
-  /* 契约的硬约束（段名里的和弦数必须与段的小节数吻合），任何一处错位都会在这里现形 */
-  eq(JSON.stringify(a.sections.map(s => beat.secChords(s.name).length)),
+  /* v2.77.0：契约的硬约束换成块级 per-bar 覆盖——和弦格数必须与段的小节数吻合 */
+  eq(JSON.stringify(a.sections.map(s => s.blocks.reduce((n, b) =>
+    n + (typeof b.chords === "string" ? b.chords.split("|").length : 0), 0))),
      JSON.stringify(a.sections.map(s => beat.secBars(s))),
-     "★ 每段「和弦数 == 小节数」（示例曲 1/3/4/2/4/2/4/2/6/2）");
+     "★ 每段「和弦格数 == 小节数」（示例曲 1/3/4/2/4/2/4/2/6/2）");
   /* 曲式模式载入示例并起播：窗口起点 = 歌曲第 1 小节 */
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 29, loop: true };
@@ -124,7 +127,7 @@ section("T78d 无和弦段 · 该段各行不挂胶囊（null 占位），不影
   ] }));
   const p4 = beat.Store.customs.slice(-1)[0];
   const v = beat.Store.upsertArrange({ name: "半和弦测试", sections: [
-    { name: "A · 甲 C·Am·Dm·G", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
+    { name: "A · 甲", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1, chords: "C|Am|Dm|G" }] },
     { name: "B · 乙", blocks: [{ ref: { type: "custom", id: p4.id }, repeats: 1 }] },
   ] });
   beat.Store.S.arrangeSel = { id: v.id, from: 0, to: 7, loop: false };

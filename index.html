@@ -901,8 +901,10 @@ input[type=range].vol{width:120px}
 .arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
 .arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
-/* v2.75.0：块级和弦输入——与 .arg-reps 同族；| 分段按块内小节均分 */
-.arg-chords{width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;padding:3px 6px}
+/* v2.77.0：块级和弦「按小节一格」——歌词网格每行左端的和弦格（v2.75.0 的块行
+   「和弦 | 分段」文本框 .arg-chords 退役删除）。与 .arg-reps 同族的格样式 */
+.arg-chd-cell{flex:none;width:46px;height:24px;box-sizing:border-box;text-align:center;font-size:11px;font-family:var(--mono);background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);padding:0 3px}
+.arg-chd-cell:focus{border-color:var(--green);outline:none}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 /* v2.27.0（G2）：块候选的三区标题 + 当前型置顶高亮 + 「新建曲式」模板菜单。
@@ -983,11 +985,14 @@ input[type=range].vol{width:120px}
 /* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
    .arg-lyric-barrow 底色槽，字块 absolute 行内定位（与主界面歌词轨 v2.7.2 同构）；
    拖动换算 perTick 不随分行改变（每行等宽 = 旧单行宽，见 mkLyricRow 注释） */
-.arg-lyric-lane{flex-basis:100%;display:flex;flex-direction:column;gap:3px;margin-top:4px;counter-reset:argbar;padding-left:18px}
+.arg-lyric-lane{flex-basis:100%;display:flex;flex-direction:column;gap:3px;margin-top:4px;counter-reset:argbar;padding-left:20px}
+/* v2.77.0：行容器包 [和弦格][字块行]——序号 counter 从 barrow 挪到行容器
+   （barrow 让位 flex:1，宽度 = 行容器宽 − 和弦格；字块/参考层的百分比定位基准不变） */
+.arg-lyric-row{display:flex;align-items:center;gap:4px;flex-basis:100%;position:relative;counter-increment:argbar}
+.arg-lyric-row::before{content:counter(argbar);position:absolute;left:-16px;top:50%;transform:translateY(-50%);min-width:12px;text-align:right;font-size:10px;font-family:var(--mono);color:var(--t3);pointer-events:none}
 /* v2.53：行序号（每行 = 一小节）——伪元素 + counter，零 DOM 节点（v2.26.1 伪元素先例）；
-   lane 左内边距让出序号位，字块/参考层/引导线的百分比定位不受影响（都相对 barrow） */
-.arg-lyric-barrow{position:relative;height:24px;background:var(--card2);border-radius:5px}
-.arg-lyric-barrow::before{content:counter(argbar);counter-increment:argbar;position:absolute;left:-14px;top:50%;transform:translateY(-50%);min-width:12px;text-align:right;font-size:10px;font-family:var(--mono);color:var(--t3);pointer-events:none}
+   v2.77.0：序号伪元素挪到 .arg-lyric-row（见上），barrow 只剩字块行本体 */
+.arg-lyric-barrow{position:relative;height:24px;background:var(--card2);border-radius:5px;flex:1;min-width:0}
 /* v2.49.0（D4）：touch-action none→pan-y——竖向滚动归还浏览器（横拖在阈值转正后
    preventDefault 接管，见 bindDrag/activateDrag）。
    v2.52.0（V9/D5）：overflow 裁剪职责移给 .arg-lyric-char——grip 的 ::after 热区要向右
@@ -2453,23 +2458,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2485  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3093  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4622  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5417  Modal         应用内弹窗
-     L5555  Viz           时值可视化渲染与每帧动画
-     L7890  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8547  Trainer       变速训练器
-     L8728  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9297  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10581 Editor        自定义节奏型编辑器
-     L11014 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11061 Ear           听辨训练（v1.10.0）
-     L11281 Arrange       曲式编排（v2.0.0）
-     L13981 Help          使用方法（v2.0.1）
-     L14110 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14184 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14427 初始化（装配） 各模块 hook 接线与启动
+     L2490  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3114  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4692  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5487  Modal         应用内弹窗
+     L5625  Viz           时值可视化渲染与每帧动画
+     L7956  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8613  Trainer       变速训练器
+     L8794  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9363  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10647 Editor        自定义节奏型编辑器
+     L11080 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11127 Ear           听辨训练（v1.10.0）
+     L11347 Arrange       曲式编排（v2.0.0）
+     L14094 Help          使用方法（v2.0.1）
+     L14223 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14297 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14540 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2495,7 +2500,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.76.3";
+const VERSION = "2.77.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2691,7 +2696,10 @@ const DEMO_PRESETS = [
   { name: "前密后疏扫（《在他乡》主歌二）", strum: "P4" },
   { name: "切音满扫（《在他乡》桥段）", strum: "P5" },
 ];
-/* 段 = 词行（行=段的契约）；和弦序列写进段名（本工具无和弦轨）。
+/* 段 = 词行（行=段的契约）。
+   ★ v2.77.0：和弦序列不再写进段名（「段名猜和弦」secChords 回落退役）——
+     每段新增 chords 数组（一小节一个，与 strums 等长），demoBuildSpec 按块切分进
+     块级 per-bar chords；段名只留「结构名 · 歌词首句」。
    ★★ `strums` 是**逐小节**的型 id 序列，数组长度就是这一段的小节数（v2.6.0 第 Ⅳ 期）。
       逐格来自你给的参考页 `var BARS`（那一页每一小节都带自己的 strum 字段），
       **不再是"每段一个 4 小节型、不足 4 的倍数就补齐"的垫法**——那正是"4 小节都是同一节奏型"
@@ -2699,39 +2707,39 @@ const DEMO_PRESETS = [
       全曲 30 小节，段长依次 1 / 3 / 4 / 2 / 4 / 2 / 4 / 2 / 6 / 2。
       相邻同型的连续小节在 demoBuildSpec 里会被合成一个块（块 = 型 × N 遍）。 */
 const DEMO_SONG = [
-  { name: "开头 · 我多想 C", strums: ["P1"], words: [
+  { name: "开头 · 我多想", chords: ["C"], strums: ["P1"], words: [
     [[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
-  { name: "副歌 · 上 C·Am·Dm", strums: ["P2","P2","P2"], words: [
+  { name: "副歌 · 上", chords: ["C","Am","Dm"], strums: ["P2","P2","P2"], words: [
     [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
     [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
     [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
-  { name: "副歌 · 下 G·C·Am·Dm", strums: ["P2","P2","P2","P2"], words: [
+  { name: "副歌 · 下", chords: ["G","C","Am","Dm"], strums: ["P2","P2","P2","P2"], words: [
     [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
     [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
     [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
     [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
   /* 收束 = 第 9 小节用 P2、第 10 小节用 P1（参考页原文："节奏型 2 前四格 + 节奏型 1"）。
      这一段就是"逐小节不同"的活样本：窗口滚到这里时，四行会同时出现两种型 */
-  { name: "收束 · 我的心伤 G·G", strums: ["P2","P1"], words: [
+  { name: "收束 · 我的心伤", chords: ["G","G"], strums: ["P2","P1"], words: [
     [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,10,"伤"]],
     [[0,16,"﹣"]]] },
-  { name: "主歌一 · 那年你踏上 C·Dm·F·C", strums: ["P3","P3","P3","P3"], words: [
+  { name: "主歌一 · 那年你踏上", chords: ["C","Dm","F","C"], strums: ["P3","P3","P3","P3"], words: [
     [[0,2,"那"],[2,1,"年"],[3,1,"你"],[4,2,"踏"],[6,4,"上"],[10,2,"暮"],[12,2,"色"],[14,2,"他"]],
     [[0,16,"乡"]],
     [[0,2,"你"],[2,1,"以"],[3,1,"为"],[4,2,"那"],[6,4,"里"],[10,2,"有"],[12,2,"你"],[14,2,"的"]],
     [[0,2,"理"],[2,14,"想"]]] },
-  { name: "主歌一 · 你看着周围 C·Dm", strums: ["P3","P3"], words: [
+  { name: "主歌一 · 你看着周围", chords: ["C","Dm"], strums: ["P3","P3"], words: [
     [[0,2,"你"],[2,1,"看"],[3,1,"着"],[4,2,"周"],[6,4,"围"],[10,2,"陌"],[12,2,"生"],[14,2,"目"]],
     [[0,16,"光"]]] },
-  { name: "桥段 · 那一夜 G·C·Dm·C", strums: ["P5","P5","P5","P5"], words: [
+  { name: "桥段 · 那一夜", chords: ["G","C","Dm","C"], strums: ["P5","P5","P5","P5"], words: [
     [[12,2,"那"],[14,2,"一"]],
     [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
     [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
     [[0,16,"夜"]]] },
-  { name: "主歌二 · 清晨醒来 F·C", strums: ["P3","P3"], words: [
+  { name: "主歌二 · 清晨醒来", chords: ["F","C"], strums: ["P3","P3"], words: [
     [[0,2,"清"],[2,1,"晨"],[3,1,"醒"],[4,2,"来"],[6,4,"却"],[10,2,"没"],[12,2,"人"],[14,2,"在"]],
     [[0,2,"身"],[2,14,"旁"]]] },
-  { name: "主歌二 · 人静的雨夜 Am·Em·F·C·Am·Em", strums: ["P4","P4","P4","P4","P4","P4"], words: [
+  { name: "主歌二 · 人静的雨夜", chords: ["Am","Em","F","C","Am","Em"], strums: ["P4","P4","P4","P4","P4","P4"], words: [
     [[2,2,"人"],[4,2,"静"],[6,2,"的"],[8,2,"雨"],[10,6,"夜"]],
     [[0,2,"想"],[2,2,"起"],[4,2,"了"],[6,10,"她"]],
     [[2,2,"她"],[4,2,"的"],[6,2,"挽"],[8,2,"留"],[10,6,"还"]],
@@ -2739,7 +2747,7 @@ const DEMO_SONG = [
     [[2,2,"想"],[4,2,"起"],[6,2,"离"],[8,2,"别"],[10,6,"她"]],
     [[0,2,"带"],[2,1,"泪"],[3,1,"的"],[4,2,"脸"],[6,10,"庞"]]] },
   /* 收尾 = 第 29 小节 P4、第 30 小节 P1（原先那个 4 小节的「收尾」型同理取消） */
-  { name: "主歌二 · 你忍不住的 F·G", strums: ["P4","P1"], words: [
+  { name: "主歌二 · 你忍不住的", chords: ["F","G"], strums: ["P4","P1"], words: [
     [[2,2,"你"],[4,2,"忍"],[6,2,"不"],[8,2,"住"],[10,6,"的"]],
     [[0,2,"哭"],[2,2,"出"],[4,2,"声"],[6,4,"响"],[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
 ];
@@ -2791,7 +2799,20 @@ function demoBuildSpec(){
     return out;
   };
   const arrange = { id: DEMO_ID, name: DEMO_SONG_NAME,
-    sections: DEMO_SONG.map(s => ({ name: s.name, blocks: toBlocks(s.strums) })) };
+    sections: DEMO_SONG.map(s => {
+      const blocks = toBlocks(s.strums);
+      /* v2.77.0：段名寄生时代结束——逐小节和弦进 s.chords 数组，这里按块的小节区间
+         切成块的 per-bar chords（「|」连接，一格一小节）。demo 型全是 1 小节，
+         块小节数 = repeats；切分与 chordAtRow 的旧 floor 口径逐位一致（零显示变化） */
+      const chords = s.chords || [];
+      let acc = 0;
+      blocks.forEach(b => {
+        const slice = chords.slice(acc, acc + b.repeats);
+        if (slice.some(t => t)) b.chords = slice.join("|");
+        acc += b.repeats;
+      });
+      return { name: s.name, blocks };
+    }) };
   const lyrics = DEMO_SONG.map(s => {
     /** @type {any[]} */
     const out = [];
@@ -3416,10 +3437,12 @@ const Store = (() => {
         if (reps < 1 || reps > CONFIG.arrMaxRepeats) return null;
         totalBars += reps * patLenOf(b.ref);   // v2.5.1：按**型实际小节数**累加（原为恒 4）
         /* 只留白名单字段：脏数据不带着意外字段漏进内存（同听辨战绩等其它冷键的显式白名单口径） */
-        /* v2.75.0：块级和弦（可选）——「|」分段按块内小节均分（复用型级 label 语法）。
-           脏值静默降级为省略（同 dir/zone 口径）；和弦跟块走不跟型走（用户场景） */
+        /* v2.75.0：块级和弦（可选）——和弦跟块走不跟型走（用户场景）。
+           v2.77.0：语义升级为**按小节存储**——「|」分隔、每段 = 该块内一小节的和弦
+           （可留空 = 该小节不贴），不再均分；cap 80→200（长块逐小节串更长，
+           64 小节块全填 ≈ 250 上不封顶的极端按 200 截）。脏值静默降级为省略（同 dir/zone 口径） */
         const blockChords = (typeof b.chords === "string" && b.chords.trim())
-          ? b.chords.trim().slice(0, 80) : undefined;
+          ? b.chords.trim().slice(0, 200) : undefined;
         blocks.push({ ref: isBuiltin ? { type:"builtin", idx:+b.ref.idx } : { type:"custom", id:b.ref.id },
           repeats: reps, ...(blockChords ? {chords: blockChords} : {}) });
       }
@@ -3466,6 +3489,53 @@ const Store = (() => {
         try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); }catch(e){ wrote = false; }
       }
       if (wrote){ try{ localStorage.setItem(ARR_MIG_KEY, "1"); }catch(e){} }
+    }
+  }
+  /* v2.77.0（3.1）一次性迁移：「段名猜和弦」退役——段名末尾的和弦序列（v2.7.4 契约
+     「<结构名> · <歌词首句> <和弦1>·…」）按一小节一个搬进各块的 per-bar chords，
+     再把后缀从段名剥掉。**必须在 arrmig73 之后**（块的 repeats 已校正，块跨度才对）。
+     · 幂等靠戳键 beatsight.chdmig：置位后不再执行；冷键回写成功才置戳（同上纪律）。
+     · 只填**没有** chords 的块（用户已显式填的块不覆盖——旧显示口径里块级本来就更优先）。
+     · 后缀判定与 secChords 同一正则（A–G 开头、· 分隔），但**剥名**要求整段记号
+       全部是和弦——「歌词 尾字·标点」之类的名字不误伤。
+     · 段名剥空（理论上不可能：有后缀必有前缀空格）时保原名，normArrange 兜底。 */
+  {
+    const CHD_MIG_KEY = "beatsight.chdmig";
+    let stamped = false;
+    try{ stamped = localStorage.getItem(CHD_MIG_KEY) === "1"; }catch(e){}
+    if (!stamped){
+      let wrote = true;
+      const nameChords = (s) => {
+        if (!s || typeof s.name !== "string") return null;
+        const sp = s.name.lastIndexOf(" ");
+        if (sp < 0) return null;
+        const parts = s.name.slice(sp + 1).split("·").map(t => t.trim()).filter(Boolean);
+        if (!parts.length || !parts.every(t => /^[A-G][#b]?/.test(t))) return null;
+        return parts;
+      };
+      if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
+        arrIn.arranges.forEach(r => {
+          if (!r || !Array.isArray(r.sections)) return;
+          r.sections.forEach(s => {
+            const chords = nameChords(s);
+            if (!chords || !Array.isArray(s.blocks)) return;
+            let acc = 0;
+            s.blocks.forEach(b => {
+              if (!b || !b.ref || typeof b.repeats !== "number" || !(+b.repeats > 0)) return;
+              const len = Math.max(1, Math.round(+b.repeats)) * (patLenOf(b.ref) || 0);
+              if (!(len > 0)) return;
+              if (!(typeof b.chords === "string" && b.chords.trim())){
+                const slice = chords.slice(acc, acc + len);
+                if (slice.some(t => t)) b.chords = slice.join("|");
+              }
+              acc += len;
+            });
+            s.name = s.name.slice(0, s.name.lastIndexOf(" ")).trim() || s.name;
+          });
+        });
+        try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); }catch(e){ wrote = false; }
+      }
+      if (wrote){ try{ localStorage.setItem(CHD_MIG_KEY, "1"); }catch(e){} }
     }
   }
   /** @type {ArrangeData[]} */
@@ -6308,26 +6378,22 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     if (seg % K !== 0) return "";                     // 不是小节的第一片：和弦仍然有效，只是不重复贴
     const at = songBarAt(a, ((Math.floor(seg / K) % total) + total) % total);
     if (!at) return "";
-    /* v2.75.0：块级和弦优先——块（型 × repeats）可带 chords（「|」分段按**块内小节**均分，
-       复用型级 label 的语法）。同一节奏型重复多遍、每遍不同和弦 = 和弦跟块走，不跟型走
-       （用户场景：型级标注绑型，无法表达"每遍不同和弦"的结构性错位）。
-       无块级 chords → 回落段名解析（secChords 路径一字未动）。 */
+    /* v2.75.0：块级和弦优先——块（型 × repeats）可带 chords。
+       v2.77.0：语义升级为**按小节存储**——「|」分隔的第 localBar 段 = 该小节的和弦
+       （一格一个，可留空 = 该小节不贴）；「段名猜和弦」回落退役——和弦来源只剩
+       块级数据，存量段名后缀由加载期迁移（beatsight.chdmig）搬进块。 */
     const secBlk = a.sections[at.sec];
-    let barIn = at.bar, hitBlk = null, hitLen = 0;
+    let barIn = at.bar, hitBlk = null;
     for (const bl of secBlk.blocks){
       const len = bl.repeats * (patLenOf(bl.ref) || 0);
-      if (barIn < len){ hitBlk = bl; hitLen = len; break; }
+      if (barIn < len){ hitBlk = bl; break; }
       barIn -= len;
     }
     if (hitBlk && hitBlk.chords){
-      const segs = hitBlk.chords.split("|").map(s => s.trim()).filter(s2 => s2);
-      if (segs.length){
-        const idx = Math.min(segs.length - 1, Math.floor(barIn * segs.length / hitLen));
-        return segs[idx] || "";
-      }
+      const segs = hitBlk.chords.split("|");
+      return (segs[barIn] || "").trim() || "";
     }
-    const cs = secChords(secBlk.name);
-    return cs[at.bar] || "";
+    return "";
   }
 
   /* v2.72.1（1.3 增强，用户拍板方案丙）：预设模式的**标注胶囊**（含「|」分段）。
@@ -11532,7 +11598,9 @@ const Arrange = (() => {
        旧注释「视觉停在行尾」实际从未实现（left% 超 100 会滑出行外），本版一并修正。 */
     row = Math.max(0, Math.min((lctx.rows || 1) - 1, Math.floor(drag.t / barTicks)));
     if (row !== drag.chipRow){
-      (lctx.lane.children[row] || lctx.lane).appendChild(drag.chip);
+      /* v2.77.0：挂载点改指 barrow（lane.children[row] 现在是行容器，chip 挂容器会变成
+         和弦格的兄弟、脱离字块行的百分比定位基准） */
+      ((lctx.barrowEls && lctx.barrowEls[row]) || lctx.lane).appendChild(drag.chip);
       drag.chipRow = row;
     }
     const rowStart = row * barTicks;
@@ -11688,8 +11756,10 @@ const Arrange = (() => {
     /* v2.53（A）：perTick 口径修正——分行后每行只显示「一节 tick」，旧口径（行宽 ÷ 全段 tick）
        会让字块视觉速度 = 鼠标速度 × 行数（「字块偏离鼠标」的根因）。改按「行宽 ÷ 每行 tick」，
        拖 1px 字块走 1px。行宽取第一条 barrow 的 offsetWidth（lane 即将让出序号位内边距，
-       行宽 ≠ lane 宽）；桩无子元素宽度时回退 lane.offsetWidth（既有测试口径不变）。 */
-    const rowW = (lctx.lane.children[0] && lctx.lane.children[0].offsetWidth) ||
+       行宽 ≠ lane 宽）；桩无子元素宽度时回退 lane.offsetWidth（既有测试口径不变）。
+       v2.77.0：lane.children[0] 变成行容器（含和弦格，宽 ≠ 行宽）——基准改指
+       lctx.barrow0（构建期记下的第一条 barrow）。 */
+    const rowW = (lctx.barrow0 && lctx.barrow0.offsetWidth) ||
       lctx.lane.offsetWidth || 1;
     const barTicks = lctx.barTicks || lctx.span;
     /* v2.53（B）：行归属三件套。row0 = 抓取时的行（纵向搬行时行内偏移以此为基准）；
@@ -11698,11 +11768,11 @@ const Arrange = (() => {
        自动退回「t 越过行边界即换行」的横向口径）。 */
     const rowNow = Math.max(0, Math.min((lctx.rows || 1) - 1, Math.floor(c.t / barTicks)));
     let geo = null;
-    if ((lctx.rows || 1) > 1 && lctx.lane.getBoundingClientRect && lctx.lane.children.length){
+    if ((lctx.rows || 1) > 1 && lctx.lane.getBoundingClientRect && lctx.barrow0){
       try{
         const lr = lctx.lane.getBoundingClientRect();
-        const rr = lctx.lane.children[0].getBoundingClientRect
-          ? lctx.lane.children[0].getBoundingClientRect() : null;
+        const rr = lctx.barrow0.getBoundingClientRect
+          ? lctx.barrow0.getBoundingClientRect() : null;
         if (lr && rr && rr.height > 0 && lr.height >= rr.height){
           geo = { top: lr.top, rowH: rr.height };
         }
@@ -11787,9 +11857,11 @@ const Arrange = (() => {
     if (selChipEl && selChipEl.classList) selChipEl.classList.remove("sel");
     selChipEl = p.chip;
     selChipEl.classList.add("sel");
-    /* 打轴钮文案跟上（chip → barrow → lane → ly 三级上溯；桩与真实 DOM 的 appendChild 都回填 parentNode） */
-    const laneEl = selChipEl.parentNode && selChipEl.parentNode.parentNode;
-    if (laneEl) syncTapBtn(laneEl.parentNode, p.k);
+    /* 打轴钮文案跟上（chip → barrow → lane → ly 上溯；v2.77.0 起中间多一层行容器
+       [和弦格][字块行]——改为向上走到 arg-lyric-lane 为止，不数层级，对桩与真实 DOM 都稳） */
+    let up = selChipEl.parentNode;
+    while (up && !(up.className && /(^| )arg-lyric-lane( |$)/.test(up.className))) up = up.parentNode;
+    if (up) syncTapBtn(up.parentNode, p.k);
     if (doFocus && p.chip.focus){ try{ p.chip.focus(); }catch(_){ /* 桩防御 */ } }
   }
 
@@ -12377,6 +12449,40 @@ const Arrange = (() => {
     }
   }
 
+  /* v2.77.0（3.3）：块级和弦「按小节一格」——歌词网格每行左端一颗格，一行 = 一小节。
+     编辑第 r 小节 → blockAt 定位拥有块，改写块 chords 的第 localBar 段（数据格式 =
+     「|」分隔的逐小节串，可留空 = 该小节不贴；normArrange cap 200）。
+     · 格内禁「|」（一小节一个和弦；小节内切分是「标注」框的职责——跟型走）；
+     · 全部格留空 ⇒ 字段删除（形状与老数据一致）；
+     · 与段名/遍数输入同款 change 提交（snapshot → save，不 arrangeRender——
+       与块行既有输入一致，重渲染会打断连续编辑）。 */
+  /** @param {any} a @param {any} sec @param {number} r @param {number} i @returns {any} */
+  function mkChordCell(a, sec, r, i){
+    const cell = document.createElement("input");
+    cell.className = "arg-chd-cell"; cell.type = "text"; cell.maxLength = 12;
+    cell.placeholder = "和弦";
+    cell.title = "这一小节的和弦（留空 = 该小节不贴和弦）";
+    cell.setAttribute("aria-label", `第 ${i + 1} 段第 ${r + 1} 小节的和弦（可留空）`);
+    const at = blockAt(sec, r);
+    const own = at ? sec.blocks[at.blockIdx] : null;
+    const segs = (own && typeof own.chords === "string") ? own.chords.split("|") : [];
+    cell.value = at ? (segs[at.localBar] || "").trim() : "";
+    Modal.bindOverlay("arrangeOverlay", cell, "change", () => {
+      if (!at) return;
+      const v = String(cell.value || "").trim().replace(/\|/g, " ").slice(0, 12);
+      const d = snapshot();
+      const blk = d.sections[i].blocks[at.blockIdx];
+      const cur2 = (typeof blk.chords === "string" && blk.chords) ? blk.chords.split("|") : [];
+      while (cur2.length < at.localBar) cur2.push("");
+      cur2[at.localBar] = v;
+      while (cur2.length && !cur2[cur2.length - 1]) cur2.pop();
+      if (cur2.some(t => t)) blk.chords = cur2.join("|");
+      else delete blk.chords;
+      save(d);
+    });
+    return cell;
+  }
+
   /** @param {any} a @param {any} sec @param {number} i @returns {any} */
   function mkLyricRow(a, sec, i){
     const uid = sec.uid;                       // v2.26.0：段身份（下标 i 只用于文案里的"第 N 段"）
@@ -12407,6 +12513,16 @@ const Arrange = (() => {
       prev.className = "arg-lyric-preview";
       prev.textContent = line.chars.slice(0, 12).map((/** @type {any} */ c) => c.ch).join("") +
         (line.chars.length > 12 ? "…" : "");
+      sum.appendChild(prev);
+    }
+    /* v2.77.0：摘要行预告和弦——段内任一块填了和弦就摘一段预览（编辑格在展开态，
+       折叠态靠这里可见「和弦已填」） */
+    const chdBlk = sec.blocks.find(b => b && typeof b.chords === "string" && b.chords.trim());
+    if (chdBlk){
+      const segs = chdBlk.chords.split("|").map(t => t.trim()).filter(Boolean);
+      const prev = document.createElement("span");
+      prev.className = "arg-lyric-preview";
+      prev.textContent = "和弦 " + segs.slice(0, 8).join("·") + (segs.length > 8 ? "…" : "");
       sum.appendChild(prev);
     }
     const arrow = document.createElement("span");
@@ -12646,12 +12762,20 @@ const Arrange = (() => {
       lctx.rows = Math.max(1, Math.ceil(span / barTicks));
       const rowEls = [];
       for (let r = 0; r < lctx.rows; r++){
+        /* v2.77.0：行容器包 [和弦格][字块行]——块级和弦「按小节一格」的编辑入口
+           （原块行「和弦 | 分段」文本框退役）。序号 counter 随行容器走（原 barrow ::before） */
+        const row = document.createElement("div");
+        row.className = "arg-lyric-row";
+        row.appendChild(mkChordCell(a, sec, r, i));
         const bar = document.createElement("div");
         bar.className = "arg-lyric-barrow";
-        lane.appendChild(bar);
+        row.appendChild(bar);
+        lane.appendChild(row);
         rowEls.push(bar);
         mkLyricRefs(bar, sec, r, lctx.barTicks);   // v2.46.0：参考层先画（DOM 顺序 = 字块压在刻度之上）
       }
+      lctx.barrow0 = rowEls[0] || null;   // v2.77.0：拖拽 perTick/行高的行宽基准改指 barrow（行容器含和弦格，宽 ≠ 行宽）
+      lctx.barrowEls = rowEls;            // v2.77.0：跨行搬迁的挂载点也改指 barrow（原 lane.children[row] 是行容器）
       /* 越界字（t 超出段长）不画：与播放侧 lyricCharsAt 的过滤同一口径，
          两边看到的字集必须一致，否则"界面上有、听不到" */
       for (let k = 0; k < lctx.chars.length; k++){
@@ -12751,21 +12875,9 @@ const Arrange = (() => {
         d.sections[i].blocks[j].repeats = Math.min(CONFIG.arrMaxRepeats, Math.max(1, Math.round(+reps.value) || 1));
         save(d);
       });
-      /* v2.75.0：块级和弦输入（可选）——「|」分段按**块内小节**均分（复用型级 label 语法）。
-         同一节奏型重复多遍、每遍不同和弦 = 和弦跟块走，不跟型走（用户场景）。
-         留空删除字段（形状与老数据一致，零迁移）。 */
-      const chd = document.createElement("input");
-      chd.className = "arg-chords"; chd.type = "text"; chd.maxLength = 80;
-      chd.placeholder = "和弦 | 分段";
-      chd.value = b.chords || "";
-      chd.setAttribute("aria-label", `第 ${i + 1} 段第 ${j + 1} 块的和弦标注（用 | 分段按小节均分，可留空）`);
-      Modal.bindOverlay("arrangeOverlay", chd, "change", () => {
-        const d = snapshot();
-        const v = String(chd.value).trim().slice(0, 80);
-        if (v) d.sections[i].blocks[j].chords = v;
-        else delete d.sections[i].blocks[j].chords;
-        save(d);
-      });
+      /* v2.75.0：块级和弦输入（可选）——和弦跟块走不跟型走（用户场景）。
+         v2.77.0：输入形态升级——文本框退役，编辑搬进段编辑视图歌词网格每行左端的
+         「按小节一格」和弦格（见 mkChordCell）；此处不再建输入。 */
       const pick = document.createElement("button");
       pick.className = "arg-mini"; pick.textContent = "换";
       pick.setAttribute("aria-label", `换第 ${i + 1} 段第 ${j + 1} 块的节奏型`);
@@ -12784,7 +12896,6 @@ const Arrange = (() => {
       const unit = document.createElement("span"); unit.textContent = " 遍";
       chip.appendChild(nmb); chip.appendChild(reps);
       chip.appendChild(unit);
-      chip.appendChild(chd);           // v2.75.0：块级和弦输入（跟块走，不跟型走）
       chip.appendChild(pick); chip.appendChild(del);
       /* v2.55.0（C2）：块级操作 ⋯ 菜单——左移 / 右移 / 复制 / 删除（复用 mkSecMenu 的
          全文字标签 + aria 形态；菜单以整行形式挂在段行尾，与段菜单同款，避免被
@@ -13743,7 +13854,9 @@ const Arrange = (() => {
     const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
       sections: spec.arrange.sections.map(s => ({ name: s.name,
         blocks: s.blocks.map(b => ({ ref: { type: "builtin", idx: DEMO_BUILTIN_BASE + b.refIdx },
-          repeats: b.repeats })) })) });
+          repeats: b.repeats,
+          /* v2.77.0：块级 per-bar 和弦随谱面带出（demoBuildSpec 已按块切分） */
+          ...(b.chords ? { chords: b.chords } : {}) })) })) });
     if (!v) return { ok: false, error: "示例曲式未通过结构校验。", id: "" };
     /* v2.26.0：歌词按段 uid 挂（原来挂段下标，段挪一次位置整首词就串段） */
     spec.lyrics.forEach((chars, i) => {

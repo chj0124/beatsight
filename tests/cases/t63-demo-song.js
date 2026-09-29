@@ -46,8 +46,10 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   const a = beat.Store.findArrange(beat.DEMO_ID);
   ok(!!a, "曲式落库（固定 id）");
   eq(a.sections.length, 10, "全曲 10 段（行=段）");
-  ok(a.sections[1].name.includes("C·Am·Dm"), "★ 和弦序列写进段名（无和弦轨的落点）");
-  ok(a.sections[8].name.includes("Am·Em·F·C·Am·Em"), "六和弦行完整进段名");
+  /* v2.77.0：段名猜和弦退役——和弦进块级 per-bar chords（一小节一格），段名剥后缀 */
+  eq(a.sections[1].name, "副歌 · 上", "★ 段名剥后缀（和弦不再寄生在段名里）");
+  eq(a.sections[1].blocks[0].chords, "C|Am|Dm", "★ 和弦进块级 per-bar（一小节一格）");
+  eq(a.sections[8].blocks[0].chords, "Am|Em|F|C|Am|Em", "六和弦行完整进块级 chords");
   eq(JSON.stringify(beat.arrangeProblems(a)), "[]", "曲式无引用/拍号问题");
   /* ★ v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区（常显，两态切换条已删）。
      示例曲的 5 个型按**内容**（hasStrum）落进「扫弦」区，与内置「民谣扫弦」并列；
