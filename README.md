@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1ED760?style=flat-square" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/%E8%BF%90%E8%A1%8C%E6%97%B6%E4%BE%9D%E8%B5%96-0-1ED760?style=flat-square" alt="运行时零依赖">
-  <img src="https://img.shields.io/badge/PWA-%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-1ED760?style=flat-square" alt="PWA 离线可用">
-  <a href="https://beatsight.chenhuajian1995.workers.dev/"><img src="https://img.shields.io/badge/demo-%E5%9C%A8%E7%BA%BF%E5%BC%80%E7%BB%83-0d3b21?style=flat-square" alt="在线 demo"></a>
+  <a href="https://github.com/chj0124/beatsight/actions"><img src="https://github.com/chj0124/beatsight/actions/workflows/ci.yml/badge.svg" alt="CI 状态"></a>
+  <a href="https://beatsight.chenhuajian1995.workers.dev/"><img src="https://img.shields.io/badge/Cloudflare-%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2-1ED760?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare 在线版 · 自动部署"></a>
+  <a href="https://beatsight.app.workbuddy.host/"><img src="https://img.shields.io/badge/WorkBuddy-%E6%89%8B%E5%8A%A8%E5%8F%91%E5%B8%83-8a8a8a?style=flat-square" alt="WorkBuddy 在线版 · 手动发布（可能滞后）"></a>
 </p>
 
 <p align="center">
@@ -59,7 +59,10 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 </table>
 
 <p align="center">
-  <img src="docs/assets/shot-mobile-dark.png" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-mobile-dark.png">
+    <img src="docs/assets/shot-mobile-light.png" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见">
+  </picture><br>
   <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面，深浅两版分别对应应用内「经典」与「日间」主题。</sub>
 </p>
 
