@@ -27,7 +27,8 @@ const { loadApp, ok, eq, section, pill, html } = require("../lib/harness");
 /* 三段切片的两端标记。★ 切片前必须确认**两端都在**：`indexOf` 给 -1 时会切出"到文件末尾"
    的超长片段，让那些"不该包含 X"的断言侥幸通过（比失败更危险）。 */
 const M = {
-  vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（标题+音量+BPM+状态灯）"],
+  topbar: ['<header class="topbar">', '<!-- 分级播报', "顶栏（品牌 + 状态行 + 补偿 + 设置/主题）"],
+  vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（音量+BPM）"],
   togglesRow: ['<div class="viz-toggles">', '<!-- 同屏行数档位', "预备拍 + 训练开关行"],
   rowsRow: ['<div class="viz-rows-row">', '<div class="viz" id="viz"', "同屏行数 + 拍号 + Swing 的并排行"],
   jumpRow: ['<div class="arg-now arg-jump" id="argJump">', "</section>", "跳段 + 播放行"],
@@ -67,17 +68,22 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
   /* ① 「当前节奏型」裸行整块删除（名字搬进跳段行、meta 删除） */
   ok(!/class="pattern-head"/.test(html), "★ `.pattern-head` 裸行已整块删除（名字去跳段行、meta 删）");
   ok(!/id="patternMeta"/.test(html), "★ #patternMeta（4/4 拍 · N BPM）已删——拍号看 pill、速度看 BPM 大字");
-  ok(html.indexOf('id="patternName"') > html.indexOf('id="statusText"'),
-    "★ #patternName 在状态灯行内、状态文案之后（「● 已停止　十六分满扫」，用户要求④）");
+  ok(html.indexOf('id="patternName"') < html.indexOf('id="statusText"'),
+    "★ v2.76.3：#patternName 在状态文案**之前**（顶栏「型名 · ● 状态 · 补偿」三读数带，用户要求）");
   /* ② 标题 #vizTitle 整块删除（含「· 4/4」——用户拍板连它一起删），JS 写入点不复存在 */
   ok(!/id="vizTitle"/.test(html), "★ #vizTitle 已整块删除（与状态灯重复；卡片以角标 01 Rhythm Map 为名）");
-  /* ③ 状态灯入左列：角标 → 状态灯 → 音量（与标题同列上下分布） */
+  /* ③ v2.76.3：状态灯行搬进顶栏——时值卡左列只剩角标（经典主题 display:none）+ 音量组 */
+  const tb = slice("topbar");
+  ok(/class="status"/.test(tb) && /id="statusDot"/.test(tb) && /id="statusText"/.test(tb)
+     && /id="patternName"/.test(tb),
+    "★★ v2.76.3：状态灯行（型名/#statusDot/#statusText）整体在顶栏");
+  ok(tb.indexOf('id="patternName"') < tb.indexOf('class="lat-read"'),
+    "★★ v2.76.3：顶栏顺序——型名/状态在「补偿 0ms」左侧（三读数同一行）");
   const h = slice("vizHead");
-  ok(/class="sec-tag"/.test(h) && /class="status"/.test(h) && /id="statusDot"/.test(h) && /id="statusText"/.test(h),
-    "★ 状态灯（#statusDot/#statusText）搬进卡片头左列");
-  ok(h.indexOf("sec-tag") < h.indexOf('class="status"')
-     && h.indexOf('class="status"') < h.indexOf('id="volMaster"'),
-    "★★ 左列顺序：角标 → 状态灯 → 音量（状态灯在标题位、音量之上）");
+  ok(!/class="status"/.test(h) && !/id="statusDot"/.test(h),
+    "★★ v2.76.3：时值卡左列不再有状态灯行（顶部 53px 对齐占位随之退役）");
+  ok(h.indexOf("sec-tag") < h.indexOf('id="volMaster"'),
+    "★ 左列顺序：角标 → 音量（状态灯已迁顶栏）");
   ok(h.indexOf('id="volMaster"') < h.indexOf('id="bpmNum"'), "左列（音量）在源码序上先于右列（BPM）");
   ok(/id="volStrumRow"/.test(h), "音量三条（含扫弦行 id）都在左列");
   /* ④ 设置弹窗结构与 v2.10.13 一致 */
@@ -218,11 +224,15 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★★ v2.10.17：块间纵向间隔统一 16px（预备拍行下边距、行内折行行距；横向 28 保留）");
   ok(/\.viz-head\{[^}]*justify-content:flex-start[^}]*column-gap:48px/.test(css),
     "★ v2.10.17：卡片头紧凑排列——BPM 组紧随音量列 48px（原 space-between 中间空 239px）");
-  ok(/\.status #statusText\{min-width:16em;margin-right:auto\}/.test(css),
-    "★★ v2.10.17+11.0：状态文案固定最小宽度防抖 + margin-right:auto 把节奏型名推到行尾，"
-    + "与音量行的百分号列同一右缘对齐");
-  ok(/\.status\{[^}]*width:100%\}/.test(css),
-    "★ v2.11.0：状态行撑满左列宽（列是 flex-start，子项不自动拉伸）");
+  ok(/\.status\{display:inline-flex;align-items:center;gap:8px/.test(css)
+     && !/\.status\{[^}]*width:100%\}/.test(css)
+     && !/min-width:16em/.test(css),
+    "★★ v2.76.3：状态行改顶栏原生——inline-flex、左列时代的 width:100% 与"
+    + "#statusText 16em 定宽/margin-right:auto 退役（不再有「推到行尾对右缘」的场景）");
+  ok(/\.status \.pat-now\{[^}]*max-width:18em[^}]*white-space:nowrap/.test(css),
+    "★★ v2.76.3：型名顶栏截断——max-width:18em + 单行省略（顶栏空间有限，不把设置钮挤出窗）");
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:36px/.test(css),
+    "★ v2.76.3：状态行入顶栏 36px 等高带（与补偿读数/设置/主题钮同高）");
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent\}/.test(css),
     "★★ v2.11.0：循环钮零背景图层（含 hover 与开启态）——图标直接浮在页面背景上");
   ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),

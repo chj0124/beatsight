@@ -142,16 +142,14 @@ body.wide-full .main{max-width:none}
 /* v2.76.0（2.10 重排 + 用户验收微调）：三张组容器卡统一骨架——
    [标签/开关行（固定卡顶）] + [内容区 flex:1 space-evenly]：
    · 内容随卡高均布（v2.75.2 用户要求的均布观感）；
-   · 标签/开关行不参与均布 ⇒ 「速度 BPM」与「音量」标签精确同线，
-     且不随参数行开合漂移（space-evenly 只作用于内容区，不作用于标签）；
-   · gap:8px 为最小行距；
-   · 左卡前置（角标 01 + 状态行）高 48px（量测值）⇒ BPM/开关两卡加同高
-     顶部占位（padding-top 60 = 12 卡内边距 + 48），改左卡头部结构须同步此值。 */
+   · 标签/开关行不参与均布 ⇒ 「速度 BPM」与「音量」标签精确同线，且不随参数行开合漂移
+     （space-evenly 只作用于内容区，不作用于标签）；gap:8px 为最小行距；
+   · v2.76.0 曾给 BPM/开关两卡加 53px 顶部占位（对齐左卡的角标+状态行头部）——
+     v2.76.3 状态行搬进顶栏后左卡头部不复存在，占位随之退役：
+     三卡内容统一从卡顶起步，「音量 / 速度 BPM / 预备拍」标签天然同线。 */
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
 .viz-head-grid .viz-toggles{display:flex;flex-direction:column;gap:8px}   /* v2.76.0：底距清零（行数拍号行的间距单一来源） */
-.viz-head-grid .viz-head > .group,
-.viz-head-grid .viz-toggles{padding-top:53px}
 .viz-head-grid .card-head-left .group{flex:1;justify-content:space-evenly}
 .viz-head-grid .tg-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:8px}
 /* v2.76.0（items 2/3/4）：右卡行容器——开关与紧随其后的参数**同行不折行** */
@@ -222,9 +220,13 @@ body.wide-full .main{max-width:none}
 .card-head-left .group{width:100%;flex:1;justify-content:space-evenly}   /* v2.10.20：音量组撑满列内剩余高度、三条滑杆行距均摊（v2.10.18 的 margin-top:auto 把剩余空间全堆在状态灯↔音量标签之间——用户反馈仍太大；现在死空间转移进组内，音量条间隙变大、标签紧贴状态灯下方） */
 .card-head-left .vol-row{width:100%}
 .card-title{font-size:14px;font-weight:600}
-.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3);width:100%}   /* v2.11.0：撑满左列宽（列是 align-items:flex-start，子项默认不拉伸） */
-.status #statusText{min-width:16em;margin-right:auto}   /* v2.10.17 固定宽度防抖；v2.11.0 加 margin-right:auto——把节奏型名推到行尾，与音量行的百分号列**同一右缘**对齐（用户要求③） */
-.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* v2.40.0：补 nowrap——无它省略号失效、长型名折两行悬在状态行右上（与状态灯脱基线）；now 后单行省略 */
+/* v2.76.3：状态行搬进顶栏（原时值卡左列顶部）——.status 现在只有顶栏一个使用者，
+   左列时代的 width:100%（撑满列宽）、#statusText 的 16em 定宽防抖与
+   margin-right:auto（把型名推到行尾跟 % 列对右缘）随场景一起退役；
+   型名改 max-width 截断（顶栏空间有限），状态色语义（live/ok/bad）不变。
+   高度 36px 由下方 .topbar 等高规则统一供给 */
+.status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3)}
+.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;max-width:18em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* 顶栏截断：超长型名省略号，不把设置钮挤出窗 */
 .status:has(.dot.live){color:var(--green)}
 .status .dot{width:8px;height:8px;background:var(--t3)}
 .status .dot.live{background:var(--green)}
@@ -526,7 +528,7 @@ input[type=range].vol{width:120px}
    `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
 /* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
    （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
-.topbar .pill, .topbar .icon-btn, .topbar .lat-read{height:36px;box-sizing:border-box;display:inline-flex;align-items:center}
+.topbar .pill, .topbar .icon-btn, .topbar .lat-read, .topbar .status{height:36px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：状态行入列等高带 */
 .topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
@@ -1231,6 +1233,11 @@ body[data-theme="obs"] .sec-tag i{font:500 10px/1 var(--mono);font-style:normal;
 /* 训练模式：角标内联在 group-label 里，不收成整行 */
 body[data-theme="obs"] .group-label .sec-tag{display:inline-flex;width:auto;margin:0 10px 0 0}
 body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
+/* v2.76.3：状态行搬顶栏后 53px 占位退役——观测台左卡仍有角标整行，BPM/开关两卡补回
+   等高占位：卡内边距 12 + 角标行 18 + 角标下距 6 + 左列行距 8 = 44px（量测校准，
+   实测角标主题 vol/bpm 标签同线），经典主题无角标行故无此规则 */
+body[data-theme="obs"] .viz-head-grid .viz-head > .group,
+body[data-theme="obs"] .viz-head-grid .viz-toggles{padding-top:44px}
 
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
 
@@ -1364,6 +1371,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            · 「听辨训练」迁出顶栏 → 预设卡「编辑节奏型/编排曲式」行最左；
            · 「后台保活」迁出顶栏 → 设置·外观与辅助（环境开关归环境组）；
            顶栏自此只剩：延迟读数 / 设置 / 主题图标钮 -->
+    <!-- v2.76.3（用户要求）：状态行搬进顶栏——原在时值卡左列顶部，与「补偿 0ms」同行组成
+         「型名 · ● 状态 · 补偿」三读数带：练习中三个高频读数一眼齐读，且三卡顶部 53px
+         对齐占位（为与左卡头部对齐而生）随之退役。#patternName/#statusDot/#statusText
+         的 id 与刷新接线全部不动（搬块不换 id）；.status 样式改顶栏原生（见样式表） -->
+    <div class="status"><span class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</span><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     <button class="lat-read" id="latChip" aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
     <button class="pill outline" id="settingsBtn">设置</button>
     <!-- 主题切换（v2.69.0，1.1）：搬块不换 id（#themeToggle）——冷键、点击回调、aria-pressed
@@ -1436,7 +1448,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
              ★ `.viz-head .status{margin-top:4px}` 基线补丁随之删除（列内 gap 已对齐） -->
         <div class="card-head-left">
           <span class="sec-tag"><b>01</b><i>Rhythm Map</i></span>
-          <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span><span class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</span></div>
+          <!-- v2.76.3：状态灯行（#statusDot/#statusText/#patternName）整行搬进顶栏（与补偿读数
+               同行）——左列自此只剩角标（经典主题 display:none）+ 音量组，内容从卡顶起步 -->
           <div class="group">
             <div class="group-label">音量</div>
             <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
@@ -1455,9 +1468,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
                  title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
                  供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl）。
                  ★ 本行文字缩短成「音量」后，这三条的区分**全靠**这里的 title / aria-label 与行内标签 -->
+            <!-- v2.76.3：音量卡补齐三卡统一骨架——标签钉卡顶，三条滑杆进 .tg-body（flex:1
+                 space-evenly）。此前标签在均布组内部，均布的首项前空隙把「音量」标签压低
+                 11px、与「速度 BPM」错线；状态行迁顶栏后左卡头部消失，失准显形 -->
+            <div class="tg-body">
             <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
             <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
             <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
+            </div>
           </div>
         </div>
         <!-- 速度 BPM：标签 + 步进行 + 滑杆 + TAP + 快捷档，四层一个不少。
@@ -2435,23 +2453,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2467  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3075  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4604  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5399  Modal         应用内弹窗
-     L5537  Viz           时值可视化渲染与每帧动画
-     L7872  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8529  Trainer       变速训练器
-     L8710  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9279  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10563 Editor        自定义节奏型编辑器
-     L10996 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11043 Ear           听辨训练（v1.10.0）
-     L11263 Arrange       曲式编排（v2.0.0）
-     L13963 Help          使用方法（v2.0.1）
-     L14092 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14166 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14409 初始化（装配） 各模块 hook 接线与启动
+     L2485  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3093  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4622  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5417  Modal         应用内弹窗
+     L5555  Viz           时值可视化渲染与每帧动画
+     L7890  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8547  Trainer       变速训练器
+     L8728  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9297  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10581 Editor        自定义节奏型编辑器
+     L11014 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11061 Ear           听辨训练（v1.10.0）
+     L11281 Arrange       曲式编排（v2.0.0）
+     L13981 Help          使用方法（v2.0.1）
+     L14110 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14184 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14427 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2477,7 +2495,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.76.2";
+const VERSION = "2.76.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
