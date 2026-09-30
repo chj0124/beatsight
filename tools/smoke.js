@@ -374,6 +374,168 @@ function probe(){
     宽度下成立（例：窄屏 `.bpm-num` 会缩到 38px）。桩给不出真实布局——
     「几行文案的左边缘是否真的落在同一条线上」只能这样验（尺寸靠"行距远大于跳高上限"那种
     数值推断不算验证；这里是直接量像素） */
+/* v3.0.0（PLAN-v9 批 0）预设库抽屉探针：收起 → 点开 → 再点收起，量真几何。
+   抽屉是**内联**的（不是浮层），所以开合只改栅格行号与 hidden，读 rect 强制回流即可量到终态，
+   不需要等动画（caret 的 transition 是纯装饰，不影响布局）。 */
+function drawerProbe(){
+  return `(() => {
+  const round = v => Math.round(v * 10) / 10;
+  const q = s => document.querySelector(s);
+  const rect = el => { const r = el && el.getBoundingClientRect(); return r ? { l:round(r.left), r:round(r.right), t:round(r.top), b:round(r.bottom), w:round(r.width) } : null; };
+  const out = { w: window.innerWidth };
+  const btn = q("#presetLibCard"), dr = q("#presetDrawer"), viz = q("#viz");
+  out.hasBtn = !!btn; out.hasDrawer = !!dr;
+  out.vizInCard = !!(viz && viz.closest(".card"));
+  /* v3.0.0 批 5：预设库卡片内部 —— 6 个入口（左列三分区 / 右列三入口）+ 循环本段 */
+  const plbCard = q("#presetLibCard");
+  out.plbSecs = plbCard ? Array.from(plbCard.querySelectorAll("[data-sec]")).map(b => b.dataset.sec).join(",") : null;
+  out.plbHasEar = !!(plbCard && plbCard.querySelector("#earBtn"));
+  out.plbHasLoop = !!(plbCard && plbCard.querySelector("#loopToggle"));
+  out.plbInDrawer = !!(plbCard && dr && dr.contains(plbCard));
+  const card = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
+  out.cardInnerW = card ? round(card.getBoundingClientRect().width - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight)) : null;
+  if (!btn || !dr) return JSON.stringify(out);
+  /* ① 收起态 */
+  out.btn = rect(btn);
+  out.rowsClosed = rect(q(".viz-rows-row"));
+  out.closedHidden = !!dr.hidden;
+  out.ariaClosed = btn.getAttribute("aria-expanded");
+  /* ② 点开：v3.0.0 批 5 起卡片不再自己开合，改由左列「分区」按钮触发 */
+  const secBtn = q('#presetLibCard [data-sec="beat"]');
+  (secBtn || btn).click();
+  out.openHidden = !!dr.hidden;
+  out.ariaOpen = btn.getAttribute("aria-expanded");
+  out.drawer = rect(dr);
+  out.rowsOpen = rect(q(".viz-rows-row"));
+  out.btnOpen = rect(btn);
+  /* ③ 复原 */
+  q("#presetDrawerClose").click();
+  out.reclosed = !!dr.hidden;
+  return JSON.stringify(out);
+})()`;
+}
+/* v3.0.0（PLAN-v9 批 2/3）连续滚动探针：**走真实 UI 路径**（设置弹窗 → 点开关 → 点播放），
+   量真几何。桩里 t155 已覆盖数据/结构层，这里补的是桩永远测不到的那半——
+   「播放头钉在行中央」在**真实布局**下成立：判据全部来自 getBoundingClientRect，
+   不读任何内部变量（读内部变量等于与实现共用同一个来源，那是橡皮图章）。
+   ★ 采样 150 帧（≈2.5s）是刻意的：默认 96BPM/4-4 一小节正好 2.5s，
+     只采一瞬会漏掉"最后一拍里的垂直登场"，把 dy 断言变成假绿。 */
+function scrollProbe(){
+  return `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const round = v => Math.round(v * 10) / 10;
+  const out = { w: window.innerWidth };
+  const viz = document.getElementById("viz");
+  if (!viz) return JSON.stringify({ err: "no #viz" });
+  out.baseRows = viz.querySelectorAll(".bar-row").length;
+  out.baseScroll = viz.classList.contains("scroll-mode");
+  /* v3.0.0 批 4：「同屏行数」档位随模式重列（滚动 1/3 ↔ 翻页 1/2/3/4）——同一个控件，
+     不再多一个"窗口行数"、也不再把它置灰（用户拍板）。档位串是这条契约的可观测面。 */
+  const rowPills = () => Array.from(document.querySelectorAll("#vizRowsRow .pill")).map(b => b.dataset.rows).join(",");
+  const st = document.getElementById("settingsBtn");
+  const tg = document.getElementById("scrollModeToggle");
+  out.hasToggle = !!tg;
+  if (!st || !tg) return JSON.stringify(out);
+  /* 批 6：造一句词并开歌词 —— 出厂曲式若无词，歌词轨隐藏，「歌词跟不跟行走」就无从断言。
+     ★ 这条必须在真机钉：桩里 arrangeCur() 为 null、paintLyric 早退，
+       「两处 W 分叉 → 每帧整轨重建」在桩里根本不发作（批 6 实测）。 */
+  try {
+    __beat.Store.S.showLyric = true; __beat.Store.S.lyricPos = "follow";
+    __beat.Store.upsertLyric("smoke", "smoke", [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }]);
+    __beat.Viz.reloadScroll();
+  } catch (e) {}
+  out.rowsPaged = rowPills();
+  /* ① 开：设置弹窗 → 点「连续滚动」 → 关弹窗 */
+  st.click();
+  tg.click();
+  out.onAria = tg.getAttribute("aria-checked");
+  const sc = document.getElementById("settingsClose"); if (sc) sc.click();
+  await sleep(150);
+  out.rowsScroll = rowPills();
+  out.scrollClass = viz.classList.contains("scroll-mode");
+  out.ovX = getComputedStyle(viz).overflowX;
+  out.clip = getComputedStyle(viz).clipPath;
+  out.bodyOx = getComputedStyle(document.body).overflowX;
+  out.nRows = viz.querySelectorAll(".bar-row").length;
+  out.cssH = viz.style.height;
+  const lane = document.getElementById("lyricLane");
+  out.laneClip = lane ? lane.classList.contains("scroll-clip") : null;
+  /* ② 播放并逐帧采样 */
+  document.getElementById("playBtn").click();
+  const parse = s => {
+    const a = s ? s.indexOf("(") : -1, b = s ? s.indexOf(")") : -1;
+    if (a < 0 || b < 0) return null;
+    const p = s.slice(a + 1, b).split(",");
+    return p.length >= 2 ? [parseFloat(p[0]), parseFloat(p[1])] : null;
+  };
+  const samples = [];
+  let lyricSameEarly = null;   // 批 6 回归钉：第 12 帧（≈0.2s，不可能跨小节）时元素必须还是同一个
+  await new Promise(res => {
+    let n = 0;
+    const tick = () => {
+      /* 第 2 帧才打标记（播放开始那次 scrollCur 初始化重建是合法的）、第 12 帧核对——
+         中间 10 帧不可能跨小节，元素若换了就是「每帧重建」复发 */
+      if (n === 2){
+        const lr = document.querySelector("#lyricLane .lyric-row");
+        if (lr) lr.dataset.smokeTag = "1";
+      }
+      if (n === 12){
+        const lr = document.querySelector("#lyricLane .lyric-row");
+        lyricSameEarly = !!(lr && lr.dataset && lr.dataset.smokeTag === "1");
+      }
+      const vr = viz.getBoundingClientRect();
+      const ph = viz.querySelector(".playhead");
+      const pr = ph ? ph.getBoundingClientRect() : null;
+      const dxs = [], dys = [];
+      viz.querySelectorAll(".bar-row").forEach(r => {
+        const t = parse(r.style.transform);
+        if (t && isFinite(t[0])) { dxs.push(round(t[0])); dys.push(round(t[1])); }
+      });
+      samples.push({ off: pr ? round((pr.left - vr.left) - vr.width / 2) : null, dxs: dxs, dys: dys });
+      if (++n < 150) requestAnimationFrame(tick); else res();
+    };
+    requestAnimationFrame(tick);
+  });
+  document.getElementById("playBtn").click();
+  const offs = samples.map(s => s.off).filter(v => v !== null);
+  out.nSamples = samples.length;
+  out.nOff = offs.length;
+  out.headMaxAbsOff = offs.length ? Math.max.apply(null, offs.map(Math.abs)) : null;
+  const allDx = samples.reduce((a, s) => a.concat(s.dxs), []);
+  out.dxSpread = allDx.length ? round(Math.max.apply(null, allDx) - Math.min.apply(null, allDx)) : null;
+  const allDy = samples.reduce((a, s) => a.concat(s.dys), []);
+  out.dyMaxAbs = allDy.length ? Math.max.apply(null, allDy.map(Math.abs)) : null;
+  /* 批 6 回归钉的读数：采样结束后歌词行还是不是开头那个、transform 带不带横移 */
+  out.lyricSameEl = lyricSameEarly;
+  const lrEnd = document.querySelector("#lyricLane .lyric-row");
+  out.lyricTf = lrEnd ? lrEnd.style.transform : "";
+  /* ★ 不能用正则：本探针是模板字符串里的源码，反斜杠会被吃掉一层（perf 探针注释同款坑，
+     实测 /translate\\(/ 传到页面变成 /translate(/ → Unterminated group）。用 indexOf。 */
+  out.lyricHasDx = out.lyricTf.indexOf("translate(") === 0 && out.lyricTf.indexOf("px,") > 0;
+  /* ③ 复位：再点一次开关 */
+  st.click();
+  tg.click();
+  const sc2 = document.getElementById("settingsClose"); if (sc2) sc2.click();
+  await sleep(150);
+  out.offScroll = viz.classList.contains("scroll-mode");
+  out.offRows = viz.querySelectorAll(".bar-row").length;
+  out.offCssH = viz.style.height;
+  out.rowsPagedBack = rowPills();
+  /* 静止态（v3.0.0 批 4）：关掉之后必须已回到分页样子；再开一次、**不播放**，
+     行槽就该是滚动模式的静止态（当前点在行中央），而不是"行从左侧铺满"的旧样子 */
+  st.click(); tg.click(); const sc3 = document.getElementById("settingsClose"); if (sc3) sc3.click();
+  await sleep(200);
+  const restVr = viz.getBoundingClientRect();
+  const restPh = viz.querySelector(".playhead");
+  const restRows = Array.from(viz.querySelectorAll(".bar-row"));
+  out.restHeadOff = restPh ? round((restPh.getBoundingClientRect().left - restVr.left) - restVr.width / 2) : null;
+  out.restRowW = restRows.length ? round(restRows[0].getBoundingClientRect().width) : null;
+  out.restRowDxs = restRows.map(r => { const t = r.style.transform || ""; const i = t.indexOf("("); return i >= 0 ? round(parseFloat(t.slice(i + 1))) : null; });
+  st.click(); tg.click(); const sc4 = document.getElementById("settingsClose"); if (sc4) sc4.click();
+  await sleep(150);
+  return JSON.stringify(out);
+})()`;
+}
 function layoutProbe(){
   return `(() => {
   const round = v => Math.round(v * 10) / 10;
@@ -397,11 +559,22 @@ function layoutProbe(){
   const out = { w: window.innerWidth };
   out.scrollW = document.documentElement.scrollWidth;
   const vizEl = q("#viz");
-  const card = vizEl && vizEl.closest(".card");
+  /* v3.0.0：#viz 已随 #vizBand 迁出卡片（可视化区不带卡片背景）——基准卡片改为**控制卡**
+     （.viz-head-grid 所在的 .card），四块组容器与左缘断言的语义不变；
+     网格右缘的参照物从「卡片右缘」换成「主列内容右缘」（见 out.mainRight）。 */
+  const card = (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")) || (vizEl && vizEl.closest(".card"));
   if (!card) return JSON.stringify(out);
   const cr = card.getBoundingClientRect();
   out.cardTextLeft = round(cr.left + parseFloat(getComputedStyle(card).paddingLeft));
   out.cardRight = round(cr.right);
+  /* v3.0.0：主列内容右缘（.main 盒 − 右内边距）= 网格不溢出的新参照物 */
+  out.mainRight = (() => {
+    const mn = q(".main");
+    if (!mn) return null;
+    const mr = mn.getBoundingClientRect();
+    return round(mr.right - parseFloat(getComputedStyle(mn).paddingRight));
+  })();
+  out.vizInCard = !!(vizEl && vizEl.closest(".card"));   // v3.0.0：断言"确实已迁出卡片"
   out.vizRight = (() => { const v = q("#viz"); const r = v && v.getBoundingClientRect(); return r ? round(r.right) : null; })();
   /* v2.39.0：组容器底上线——控制列有了 16px 内边距，左缘基准改为「组容器内容边缘」
      （卡片内容边缘 + padding）。旧口径 cardTextLeft 保留，容器缺失时回退 */
@@ -424,15 +597,17 @@ function layoutProbe(){
   out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
   out.volGroup = vol ? boxLeft(vol.parentElement) : null;
   out.editBtn = boxLeft(q("#editBtn"));
-  /* v2.42.7：四张组容器卡宽度（窄屏等宽回归断言的数据源） */
+  /* v2.42.7：组容器卡宽度（窄屏等宽回归断言的数据源）
+     v3.0.0：**五块**——预设库块 #presetLibBtn 插在开关与行数之间（抽屉收起时不占位、展开时
+     也只占它自己的行，故不进本表：抽屉不是"组容器卡"） */
   out.grpWidths = (() => {
-    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q("#presetLibCard"), q(".viz-rows-row")];
     return els.map(el => { const r = el && el.getBoundingClientRect(); return r ? round(r.width) : null; });
   })();
   /* v2.42.7 追加：相邻组容器卡的垂直间隙（等距回归断言的数据源——三处来源曾各给各的：
      row-gap 6/12 / head margin-bottom 16 / toggles margin-bottom 16） */
   out.grpGaps = (() => {
-    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q("#presetLibCard"), q(".viz-rows-row")];
     const rs = els.map(el => el && el.getBoundingClientRect());
     const gaps = [];
     for (let i = 1; i < rs.length; i++) if (rs[i] && rs[i-1]) gaps.push(round(rs[i].top - rs[i-1].bottom));
@@ -502,6 +677,10 @@ async function runPass(label, url, userDataDir){
         { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
+      /* v3.0.0：抽屉探针在桌面宽度（≥1280 栅格生效）跑一遍，量收起/展开两态的真几何 */
+      const drawer = JSON.parse(await evaluate(cdp, drawerProbe()));
+      /* v3.0.0：连续滚动探针（同上，桌面宽度、真实 UI 路径、约 2.5s 采样） */
+      const scroll = JSON.parse(await evaluate(cdp, scrollProbe()));
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
@@ -509,6 +688,8 @@ async function runPass(label, url, userDataDir){
       await cdp.send("Emulation.clearDeviceMetricsOverride");
       await sleep(150);
       result.layout = { wide, narrow };
+      result.drawer = drawer;
+      result.scroll = scroll;
     }catch(e){
       result.layout = null;
       console.log("  ! 布局探针未取到（只影响本轮新增的对齐断言）：" + (e && e.message ? e.message : e));
@@ -702,26 +883,127 @@ async function main(){
         ok(lay.narrow.scrollW <= lay.narrow.w + 1,
           p.label + "：★ 窄屏390 无横向溢出（scrollWidth ≤ innerWidth）",
           "scrollW " + lay.narrow.scrollW + " vs innerWidth " + lay.narrow.w);
-        ok(lay.narrow.vizRight !== null && lay.narrow.vizRight <= lay.narrow.cardRight + 1,
-          p.label + "：窄屏390 #viz 网格不溢出卡片（无内部横向溢出）",
-          "vizRight " + lay.narrow.vizRight + " vs cardRight " + lay.narrow.cardRight);
+        /* v3.0.0：#viz 迁出卡片后参照物换成主列内容右缘（可视化带全宽落在页面背景上） */
+        ok(lay.narrow.vizRight !== null && lay.narrow.mainRight !== null
+           && lay.narrow.vizRight <= lay.narrow.mainRight + 1,
+          p.label + "：窄屏390 #viz 网格不溢出主列内容区（无内部横向溢出）",
+          "vizRight " + lay.narrow.vizRight + " vs mainRight " + lay.narrow.mainRight);
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }
       /* v2.42.7：窄屏四张组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
          BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏 2×2 与四块一行
          有自己的列宽设计，本断言只认窄屏） */
-      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 4){
+      /* v3.0.0：四块 → **五块**（新增预设库块），长度门槛与文案同步 */
+      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 5){
         const gws = lay.narrow.grpWidths;
         ok(Math.max(...gws) - Math.min(...gws) <= 1,
-          "窄屏：★ 四张组容器卡等宽（宽度策略分裂回归闸门）",
+          "窄屏：★ 五张组容器卡等宽（宽度策略分裂回归闸门）",
           "宽度 " + JSON.stringify(gws));
       }
-      if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 3){
+      if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 4){
         const ggs = lay.narrow.grpGaps;
         ok(Math.max(...ggs) - Math.min(...ggs) <= 1,
-          "窄屏：★ 四张组容器卡等距（间距来源分裂回归闸门）",
+          "窄屏：★ 五张组容器卡等距（间距来源分裂回归闸门）",
           "间隙 " + JSON.stringify(ggs));
+      }
+      /* ---- v3.0.0（PLAN-v9 批 0）：可视化带去卡片 + 预设库抽屉（真几何，桩测不到）---- */
+      const dw = r.drawer;
+      if (dw && dw.hasBtn && dw.hasDrawer){
+        /* v3.0.0 批 5：预设库卡片 = 6 个入口（左列三分区 / 右列三入口）+ 循环本段，
+           且它在**卡片区**、不在抽屉里（抽屉只放列表与提示） */
+        ok(dw.plbSecs === "beat,strum,custom", p.label + "：★ 预设库卡片左列 = 三个分区按钮",
+          "实际 " + dw.plbSecs);
+        ok(dw.plbHasEar === true && dw.plbHasLoop === true,
+          p.label + "：★ 听辨训练入口与「循环本段」都在卡片里（v3.0.0 批 5 从抽屉搬出）");
+        ok(dw.plbInDrawer === false, p.label + "：★ 卡片本身不在抽屉内（它是控制行第 4 块）");
+        ok(dw.vizInCard === false,
+          p.label + "：★ v3.0.0 可视化区已迁出卡片（#viz 不在任何 .card 内）",
+          "vizInCard=" + dw.vizInCard);
+        ok(dw.closedHidden === true && dw.ariaClosed === "false",
+          p.label + "：★ 抽屉默认收起（hidden + aria-expanded=false）",
+          "hidden=" + dw.closedHidden + " aria-expanded=" + dw.ariaClosed);
+        ok(dw.openHidden === false && dw.ariaOpen === "true",
+          p.label + "：★ 点预设库块 → 抽屉展开（hidden 摘掉 + aria-expanded=true）",
+          "hidden=" + dw.openHidden + " aria-expanded=" + dw.ariaOpen);
+        /* 抽屉必须**紧贴行 1 之下**、在「同屏行数与拍号」之上——这是用户拍板的位置，
+           不是"排在最末"即可（同屏行数行要被它推到第 3 行） */
+        ok(!!dw.drawer && !!dw.btnOpen && dw.drawer.t >= dw.btnOpen.b - 0.51,
+          p.label + "：★★ 抽屉紧贴第 1 行之下（在预设库块下沿之后）",
+          "块底 " + (dw.btnOpen && dw.btnOpen.b) + " vs 抽屉顶 " + (dw.drawer && dw.drawer.t));
+        ok(!!dw.drawer && !!dw.rowsOpen && dw.drawer.b <= dw.rowsOpen.t + 0.51,
+          p.label + "：★★ 抽屉排在「同屏行数与拍号」**之上**（不是排在最末）",
+          "抽屉底 " + (dw.drawer && dw.drawer.b) + " vs 行数行顶 " + (dw.rowsOpen && dw.rowsOpen.t));
+        ok(!!dw.rowsOpen && !!dw.rowsClosed && dw.rowsOpen.t > dw.rowsClosed.t + 1,
+          p.label + "：★ 展开后「同屏行数与拍号」被下推（栅格行号真的换了）",
+          "收起 " + (dw.rowsClosed && dw.rowsClosed.t) + " → 展开 " + (dw.rowsOpen && dw.rowsOpen.t));
+        ok(!!dw.drawer && dw.cardInnerW !== null && dw.drawer.w >= dw.cardInnerW - 1,
+          p.label + "：★ 抽屉占满控制卡内容宽（全宽内联，不是浮层）",
+          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽 " + dw.cardInnerW);
+        ok(dw.reclosed === true,
+          p.label + "：★ 再点一次 → 收起（选中/关闭路径同款）", "hidden=" + dw.reclosed);
+      } else {
+        ok(false, p.label + "：v3.0.0 抽屉探针未取到（开合两态本项未验证）", JSON.stringify(dw || {}));
+      }
+      /* v3.0.0（PLAN-v9）：连续滚动 —— 真实 UI 路径 + 真实几何。
+         ★ 核心那条是 headMaxAbsOff：「播放头钉在行中央」此前只有桩断言，
+           而桩的行宽是写死的 600、几何是伪造的 —— 钉不钉得中在桩里无从谈起。 */
+      const sr = r.scroll;
+      if (sr && !sr.err){
+        ok(sr.hasToggle === true, p.label + "：设置弹窗里有「连续滚动」开关");
+        ok(sr.baseScroll === false, p.label + "：★ 默认仍是分页（#viz 不带 .scroll-mode）");
+        ok(sr.onAria === "true", p.label + "：点开关后 aria-checked=true（语义跟状态走）", "实际 " + sr.onAria);
+        ok(sr.scrollClass === true, p.label + "：★ 开关真的挂了 .scroll-mode 类");
+        /* v3.0.0 批 5（用户拍板选 B）：**不限制每条带的边界**——不再用 overflow 裁剪，
+           改成 clip-path 只裁上下、左右放开（inset(0 -2000px)），溢出由 body 的
+           `overflow-x:clip` 兜在视口边缘。所以这里断言的是"裁剪方式变了"，而不是"没有裁剪"。 */
+        ok(typeof sr.clip === "string" && /inset\(/.test(sr.clip),
+          p.label + "：★ scroll 下 #viz 用 clip-path 只裁上下（上下裁到盒子、左右放开）", "实际 " + sr.clip);
+        ok(sr.clip.indexOf("-2000px") >= 0,
+          p.label + "：★ 左右方向是**外扩**（不裁）——「不限制每条带的边界」的落点", "实际 " + sr.clip);
+        ok(sr.bodyOx === "hidden",
+          p.label + "：★ 横向溢出由 body 的 overflow-x:hidden 兜住（clip 不传播到视口，实测仍能横拖）",
+          "实际 body overflow-x=" + sr.bodyOx);
+        ok(sr.rowsPaged === "1,2,3,4" && sr.rowsScroll === "1,3",
+          p.label + "：★★ 「同屏行数」档位随模式重列（分页 1/2/3/4 ↔ 滚动 1/3，同一个控件）",
+          "分页 " + sr.rowsPaged + " → 滚动 " + sr.rowsScroll);
+        ok(sr.rowsPagedBack === "1,2,3,4", p.label + "：★ 关掉后档位回到 1/2/3/4", "实际 " + sr.rowsPagedBack);
+        /* 静止态：**不播放**时也该是滚动模式的样子（用户实报：打开后首屏仍是旧样子） */
+        /* 静止态的签名：**当前行**右移半行宽（当前点落中央）、**上一行**冻结在左半屏。
+           两件事都要，只看一个会漏 —— 比如"所有行都没平移"时，当前行那半句也过不了，
+           但"只平移了当前行、邻行忘了冻结"会让带子间露出错位。 */
+        const rdx = sr.restRowDxs || [], half = (sr.restRowW || 0) / 2;
+        ok(rdx.length >= 2 && half > 0 &&
+           Math.abs(Math.max.apply(null, rdx) - half) <= 1.5 &&
+           Math.abs(Math.min.apply(null, rdx) + half) <= 1.5,
+          p.label + "：★★ 未播放时行槽已是静止态（当前行右移半行宽 + 上一行冻结在左半屏）",
+          "各行 dx=" + JSON.stringify(rdx) + " / 行宽 " + sr.restRowW);
+        ok(typeof sr.restHeadOff === "number" && Math.abs(sr.restHeadOff) <= 1.5,
+          p.label + "：★ 未播放时播放头已在行中央（不必等播放）", "偏心 " + sr.restHeadOff + "px");
+        ok(typeof sr.nRows === "number" && sr.nRows >= 2 && sr.nRows > sr.baseRows - 1,
+          p.label + "：★ scroll 下建 " + sr.nRows + " 行（= 可见行数 + 1 个进场行）", "paged 基线 " + sr.baseRows);
+        ok(typeof sr.cssH === "string" && /^\d+px$/.test(sr.cssH),
+          p.label + "：★ #viz 高度被裁到可见行（inline height 已设）", "实际 " + sr.cssH);
+        ok(sr.laneClip !== false, p.label + "：歌词覆盖层带 .scroll-clip（它是 #viz 兄弟节点，须自带裁剪）",
+          "实际 " + sr.laneClip);
+        ok(sr.nOff === sr.nSamples && sr.nSamples >= 100,
+          p.label + "：播放采样满帧（" + sr.nOff + "/" + sr.nSamples + "）—— 读数有效的前提");
+        ok(typeof sr.headMaxAbsOff === "number" && sr.headMaxAbsOff <= 1.5,
+          p.label + "：★★ 播放全程播放头钉在行水平中央（真实 rect 实测，最大偏心 " + sr.headMaxAbsOff + "px ≤ 1.5）");
+        ok(typeof sr.dxSpread === "number" && sr.dxSpread >= 100,
+          p.label + "：★ 行槽横向连续推移（150 帧内位移跨度 " + sr.dxSpread + "px）");
+        ok(typeof sr.dyMaxAbs === "number" && sr.dyMaxAbs > 0.5,
+          p.label + "：★ rows=3 有垂直登场（帧内 |dy| 峰值 " + sr.dyMaxAbs + "px > 0）");
+        ok(sr.lyricSameEl === true,
+          p.label + "：★★ 播放中歌词行元素**不被重建**（批 6：两处 W 分叉曾致每帧整轨重建 → 歌词脱节）");
+        ok(sr.lyricHasDx === true,
+          p.label + "：★★ 播放中歌词行 transform 带横移（与网格行同组走，而不是只剩 translateY）",
+          "实际 " + sr.lyricTf);
+        ok(sr.offScroll === false, p.label + "：★ 再点一次 → 回到分页（.scroll-mode 已摘）");
+        ok(sr.offRows === sr.baseRows, p.label + "：★ 回到分页后行数复原", sr.offRows + " vs " + sr.baseRows);
+        ok(sr.offCssH === "", p.label + "：★ 回到分页后 #viz 的裁剪高度已交还内容", "实际 " + JSON.stringify(sr.offCssH));
+      } else {
+        ok(false, p.label + "：v3.0.0 连续滚动探针未取到（本项未验证）", JSON.stringify(sr || {}));
       }
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");

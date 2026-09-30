@@ -124,6 +124,7 @@ const CASE_FILES = [
   "./cases/t151-settings-groups",         // v2.85.0（②）：设置弹窗六组顺序 + 14 项归组 + ③a/③b 两按钮落位
   "./cases/t152-demo-reset",              // v2.85.0（③a）：恢复示例曲按钮 → 确认 → 重建《在他乡》幂等
   "./cases/t153-factory-reset",           // v2.85.0（③b）：恢复出厂设置双确认 → 清空全部 beatsight.* 键
+  "./cases/t155-scroll-mode",             // v3.0.0（PLAN-v9）：连续滚动六场景（布局/时序/两播放模式/歌词/球/loopRange 回卷）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

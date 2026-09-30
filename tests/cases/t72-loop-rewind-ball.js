@@ -212,7 +212,11 @@ section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2
   ok(/breath/.test(String(ball3.className || "")),
     "★ 无预备拍：待命球挂 breath 类（亮度呼吸脉冲，0.08s 窗口也有“活着”的预告）");
 
-  /* ④ 回卷前行首先有球等着：预备拍最后一拍期间，接力待命球已在行首（用户截图对比项） */
+  /* ④ 预备拍全程**只出主球一颗**（v3.0.0 批 8，用户实拍推翻 v2.42.6）：
+     v2.42.6 让待命球在预备拍最后一拍落到行首"预告下一个是正式第一拍"，但用户实拍
+     预备拍 4/4 时主球 + 待命球同框（"出现两个小球"）——它的语义只在**小节间回卷**
+     （paintBall 终端弧段）成立，预备拍这处写点已删。对照：上一小节回卷场景（本用例开头）
+     的待命球不受影响。 */
   const app4 = loadApp();
   const beat4 = app4.beat;
   beat4.Store.S.countIn = { on: true, beats: 4 };
@@ -221,16 +225,23 @@ section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2
   const ac4 = FakeAudioContext.last;
   const iv4 = beat4.Viz.internals();
   const ciStart4 = beat4.clock().loopStart - 4 * spb96;
-  ac4.currentTime = ciStart4 + 3 * spb96 + 0.1;          // 最后一拍的前 0.1s（p=0.16，跳入中段）
+  ac4.currentTime = ciStart4 + 3 * spb96 + 0.1;          // 最后一拍的前 0.1s（旧设计里待命球应在场）
   beat4.AudioEngine.scheduler();
   beat4.Viz.paintFrame();
-  const numsW = (String(iv4.waitEl.style.transform).match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-  const gW = iv4.rowGeo[0], hopSpan = gW.width * 0.2, p4 = 0.1 / spb96;
-  const lx = gW.left - 8, ly = gW.top - 20;
-  const expX = lx - hopSpan * (1 - p4), expY = ly - 48 * 0.75 * 4 * p4 * (1 - p4);
-  ok(iv4.waitEl.style.display !== "none" && numsW[0] !== undefined &&
-     Math.abs(numsW[0] - expX) < 4 && Math.abs(numsW[1] - expY) < 4,
-    "★ 预备拍最后一拍：待命球沿抛物线跳向行首拍位（x=" + (numsW[0] === undefined ? "无" : numsW[0].toFixed(1)) +
-    " 期望 " + expX.toFixed(1) + " · y=" + (numsW[1] === undefined ? "无" : numsW[1].toFixed(1)) +
-    " 在基线上方=空中；p=1 时落地行首，与正常接力待命球同一套跳入数学）");
+  ok(iv4.waitEl.style.display === "none",
+    "★ 预备拍最后一拍：待命球**不再出现**（预备拍全程只出主球一颗，批 8）");
+  const app5 = loadApp();
+  const beat5 = app5.beat;
+  beat5.Store.S.countIn = { on: true, beats: 4 };
+  beat5.Controls.start();
+  const ac5 = FakeAudioContext.last;
+  const iv5 = beat5.Viz.internals();
+  let ciBalls = 0;
+  for (let i = 0; i < 4; i++){
+    ac5.currentTime = beat5.clock().loopStart - (4 - i) * spb96 + 0.1;
+    beat5.AudioEngine.scheduler();
+    beat5.Viz.paintFrame();
+    if (iv5.waitEl.style.display !== "none") ciBalls++;
+  }
+  ok(ciBalls === 0, "★ 预备拍四拍逐拍核对：待命球零出场（单球贯穿整个预备拍）", "出场帧数 " + ciBalls);
 }

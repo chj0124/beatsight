@@ -43,6 +43,10 @@
      ★ 只可与 rgba(var(--x), a) 合用——单独当颜色用会解析失败。 */
   --veil:255,255,255;    /* 亮纱：暗底上的提亮叠加（白） */
   --well:0,0,0;          /* 暗槽：暗底上的压暗叠加（黑） */
+  /* v3.0.0 曾在此定义 `--band`（行带/歌词行的深色底），批 4 按用户要求**整层撤掉**：
+     座次尺 / 时值标注 / 歌词正下方那一整条深底都不要了，内容直接落在页面背景上。
+     实测三处的底就是它（elementsFromPoint 栈顶 = .bar-row / .lyric-row，bg rgba(0,0,0,.62)）。
+     格子自带 rgba(var(--veil),.14) 的淡底仍在，可读性由格子自己承担。 */
   /* 六线谱几何（v2.4.2 立变量，v2.4.3 收进格子，v2.8.0 铺满格子）：六条弦线必须整体
      落在 44px 的 .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
      （用户观感"六弦画在格子外面"）。v2.4.3~v2.7.x 用 7px 间距 + 5px 顶端留白
@@ -66,7 +70,13 @@
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+/* ★ v3.0.0（批 5）：横向兜底裁在 **body**（= 视口边缘），而不是每个盒子各裁各的。
+   来由：连续滚动改成"不限制每条带的边界"后，行槽会横向伸出 #viz —— 那些溢出若不兜住，
+   transform 造成的溢出会计入滚动区域、冒出横向滚动条（可以左右拖，非常难受）。
+   裁在 body 上，效果正好是"内容一直延伸到屏幕边缘、由屏幕自己切断"，也就没有"带子的边界"了。
+   ★ 必须用 `hidden` 而不是 `clip`：`clip` 的 overflow **不会从 body 传播到视口**（实测桌面上
+     仍能横向拖动 300px），而 `hidden` 会——窄屏档本来就是 `overflow-x:hidden`，这里与它统一。 */
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 button:disabled{cursor:not-allowed}
 /* 焦点可见性（v2.0.2）：全局重置抹掉了浏览器默认焦点框，键盘用户 Tab 不到位置——
@@ -99,9 +109,13 @@ button:disabled{cursor:not-allowed}
 @keyframes pulse{50%{opacity:.4}}
 
 /* ---------- 主布局 ---------- */
-.main{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}   /* v2.11.1：align-items:start——侧栏按内容收高，不再被拉到与主列等高（消除侧栏下方吊着的大片空棚） */
+/* v3.0.0（PLAN-v9 批 0）：右侧竖栏（aside 360px）取消——预设库缩小成控制行第 4 块 + 全宽抽屉，
+   主布局收敛为**单栏**。可视化区因此从 ~960px 拿到 ~1344px（1440 满宽），为连续滚动模式的
+   「播放头钉中央」留出两侧余量（上一次实施「后半小节被侧栏盖住」的根因面从布局上消除）。
+   ★ 单栏后 gap:24px 只剩一个孩子、无列可隔，一并去掉（主列内部间距由 .col 的 gap:20px 管） */
+.main{display:grid;grid-template-columns:1fr;align-items:start;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}   /* v2.11.1：align-items:start */
 /* v2.36.0（用户反馈）：宽屏铺满（设置 · 外观与辅助开关，默认关）——去掉 1440px 上限，
-   主列 1fr 拉伸铺满、侧栏 360px 不变；超宽屏上视线跨度变大，故做成选项而非默认 */
+   主列 1fr 拉伸铺满；超宽屏上视线跨度变大，故做成选项而非默认 */
 body.wide-full .main{max-width:none}
 /* v2.38.0（用户反馈，替代 v2.37 的 B+C 封顶）：铺满时网格**真铺满**（每格 ~86px），
    格内字形按 --cs 等比放大（--cs = 网格宽 / 960 基准，由 Viz 的 ResizeObserver 写入 :root；
@@ -125,6 +139,11 @@ body.wide-full .main{max-width:none}
 .viz-head-grid .viz-toggles,
 .viz-head-grid .viz-rows-row{
   background:var(--card2);border-radius:10px;padding:12px 16px}   /* v2.39.0：组容器底（全端） */
+/* ★ v3.0.0（批 5，用户要求）：**最后一块（同屏行数与拍号）去掉组容器底**。
+   用户实测看出它上下留空不对称（上方 12px = 栅格 row-gap，下方 16px = 网格的 margin-bottom），
+   并质疑"卡片已经有一层色，这一块再铺一层有没有必要"。去掉底之后它与其他块的留白口径
+   交还给同一个栅格，那 4px 的差也随之消失（见下方 margin 收口）。 */
+.viz-head-grid .viz-rows-row{background:transparent}
 .viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}   /* v2.40.0：开关胶囊去自带底色——组内只留一层组底（观测台主题的描边一并去） */
 @media (max-width:1439.9px){
   /* v2.42.7（用户截图报障）：窄屏（纵向堆叠布局）四张组容器卡统一撑满列宽——
@@ -136,6 +155,12 @@ body.wide-full .main{max-width:none}
   .viz-head-grid .viz-toggles,
   .viz-head-grid .viz-rows-row{width:100%}
   .viz-head-grid .card-head{row-gap:16px}
+  /* v3.0.0：预设库块补进「纵向堆叠」这一档——button 不自动撑满列宽（原生 button 是
+     inline-block 且 width 由内容定，实测只有 89.4px），也没有组容器卡的 margin-bottom，
+     于是窄屏五块里它既不等宽也不等距（v2.42.7 那条回归闸门的同一口径）。
+     ★ 只给 <1280（栅格未生效的堆叠档）：≥1280 走 grid，块宽由第 4 轨给、间距由 row-gap 给，
+       再叠 margin-bottom 会双计。 */
+  .viz-head-grid #presetLibCard{width:100%;margin-bottom:16px}
   /* v2.42.7 追加（用户截图报障"卡片的间距又出问题"）：纵向堆叠的四卡间隙也要统一——
      此前三处来源各给各的：卡1↔卡2 = flex row-gap（≤560 被 .card-head{gap:6px} 压成 6px、
      其余 12px），卡2↔卡3 = .card-head 的 margin-bottom:16px，卡3↔卡4 = .viz-toggles 的
@@ -179,11 +204,14 @@ body.wide-full .main{max-width:none}
    壳溶解自 v2.38 起从未生效（音量+BPM 被装进同一个 flex 网格项 → 间隙 48/14 混用不等、
    宽屏第 4 列空置）、margin 清零失效（音量/BPM 盒底边短 16px）——用户截图实锤后修 */
 .viz-head-grid .viz-head{column-gap:16px}   /* 窄窗头行 flex 间隙 48→16（组底相邻后大间隙脱节） */
-@media (min-width:1440px){
+/* v3.0.0（PLAN-v9 批 0）：断点 1440 → **1280**。侧栏取消后主列多出 384px（卡片内容宽
+   视口−96），1280 视口下四块 min 合计 ~870 < 可用 ~1184，一行装得下；再窄则回退纵向堆叠
+   （既有 max-width:1439.9 的撑满规则继续生效）。 */
+@media (min-width:1280px){
   /* ★ 轨道用 max-content 不用 auto：auto 会把容器剩余空间按比例摊进各列——音量列被撑到
      418（盒 352，留 66px 死空间）、BPM 列被压到 294（内容 340，快捷档折行把行 1 撑高到 281）。
-     max-content 严格贴内容：间隙恒等 14、三块等高由 stretch 保证。断点 1280→1440：
-     三块一行 min 合计 ~925，容器（视口−480）到 ~1420 才装得下，不足则回退窄窗左贴 */
+     max-content 严格贴内容：间隙恒等 14、三块等高由 stretch 保证。
+     ★ v3.0.0：第 4 轨 168px = 预设库块（右列窄块，收起态跨两行） */
   /* ★ v2.76.2（用户实拍报障：Windows + 页面缩放下三卡被压扁、开关卡出窗）：
      首列 312px 与开关列 max-content 都是刚性轨道——内容度量一变宽（Windows 字体 /
      浏览器缩放），三列 min 合计就顶穿容器上限 960（.col 封顶 1008−48 内边距），
@@ -192,11 +220,24 @@ body.wide-full .main{max-width:none}
      nowrap 行在 min-content 下仍可压）——Σmin 870→785，Windows 度量 ~850 仍有余量；
      空间充裕时轨道解析与旧值逐像素一致（312 / 1fr / 250）。justify-content 加 safe
      回退：极端窄容器溢出时对齐退化为 start，只向右溢出（可滚动），不再两侧都出窗。 */
-  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content, 1fr) minmax(min-content,max-content);justify-content:center;justify-content:safe center;
-    align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:16px}
+  /* ★ v3.0.0（批 5）：① 末轨 168px → **413px**（预设库成为含 6 个按钮的卡片）；
+     ② 第 2 轨（BPM）由 `1fr` 改为 `minmax(min-content,312px)` —— 用户要求 BPM 卡宽度
+        与音量卡一致，把腾出的 245px 让给预设库。BPM 卡在 312px 下不折行、只压按钮
+        （v2.75.0 的既有设计，当年它的列宽就是这个量级）。
+     ③ `margin-bottom:16px` 去掉：它让卡片内容区下方比上方多 16px（用户实测出的"上下留白
+        不对称"）。去掉后上下都只剩卡片自己的 padding 24px，对称。 */
+  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,312px) minmax(min-content,max-content) 413px;justify-content:center;justify-content:safe center;
+    align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:0}
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
+  /* 收起态：行 1 = 音量｜BPM｜开关｜预设库（右列窄块跨两行）；行 2 左三列 = 同屏行数与拍号 */
+  .viz-head-grid #presetLibBtn{grid-column:4;grid-row:1 / span 2}
   .viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}
+  /* 展开态：抽屉**紧贴行 1 之下**占满全宽（在「同屏行数与拍号」之上），行数行被下推到第 3 行
+     并占满全宽；预设库块退回只占行 1 */
+  .viz-head-grid.lib-open #presetLibBtn{grid-row:1}
+  .viz-head-grid.lib-open #presetDrawer{grid-column:1 / 5;grid-row:2}
+  .viz-head-grid.lib-open .viz-rows-row{grid-column:1 / 5;grid-row:3}
 }
 /* v2.40.0：宽屏铺满——行 2 并入行 1，四块一行并 space-between 拉开（贴左右缘、
    与下方铺满网格同宽呼应）。
@@ -204,10 +245,62 @@ body.wide-full .main{max-width:none}
    行数拍号列用 minmax(min-content,max-content)——空间不足时**先内部折行**（两层面板）
    而不是溢出，~1900 起稳定一行；不足 1900 的宽屏落回上面 ≥1440 的 2×2 居中） */
 @media (min-width:1900px){
-  body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(3,minmax(min-content,max-content));
+  /* v3.0.0：五轨——末轨 168px 给预设库块（右列），「同屏行数与拍号」仍并入行 1（第 4 轨）。
+     抽屉展开态不在此特化：走上面 ≥1280 的 lib-open 规则（抽屉行 2 满宽、行数行下推行 3）。 */
+  body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(3,minmax(min-content,max-content)) 413px;
     justify-content:space-between;justify-content:safe space-between;column-gap:32px}
   body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}
+  body.wide-full .viz-head-grid #presetLibBtn{grid-column:5;grid-row:1 / span 2}
 }
+/* ================= v3.0.0（PLAN-v9 批 0）：可视化带 + 预设库块/抽屉 =================
+   可视化带 `#vizBand`：#viz / #lyricLane / 跳段播放行从时值卡片里**迁出**，不带卡片背景，
+   内容直接落在页面背景（壁纸）上、水平居中（.main 单栏 + max-width 已经保证居中）。
+   ★ 教训：上一次实施把「钉中央的播放头」建立在"卡片中央"这个错误基准上，后半小节溢出卡片
+     被侧栏盖住。去卡片 + 单栏后，可视化带的宽度就是行矩形宽度，基准唯一（geoOf）。 */
+.viz-band{display:flex;flex-direction:column;gap:16px}
+/* v3.0.0 批 4（用户要求）：行带 / 歌词行**不再有底色**。
+   批 0 曾给它们铺一层 --band 深底（去卡片后防壁纸从行缝透出），但用户指出
+   「座次尺 / 时值标注 / 歌词正下方那一整条深底」都要去掉 —— 即这层。
+   现在内容直接落在页面背景上，行内的格子自带 rgba(var(--veil),.14) 淡底兜住可读性。 */
+/* ★★ v3.0.0（批 5，用户拍板选 B）：**不限制每条带的边界**——去掉 #viz 的裁剪。
+   批 1 用 `overflow:hidden` 把横滚内容裁在 #viz 盒子里，于是每条带的内容都在距视口 24px 处
+   被"切断"，看起来像"一条只有半截的带子"。现在行槽可以一直伸到**屏幕边缘之外**，
+   由视口自己裁——带子不再有可见的左右边界（与用户给的参考文件同一做法）。
+   ★ 但**垂直方向必须继续裁**：#viz 的高度是裁到可见行数的，而行槽建了 rows+1 行
+     （末行是进场行），不裁的话它会溢出到下方的歌词轨/跳段行上。
+   ⇒ 不能用 `overflow`（一轴 hidden 会把另一轴也算成 auto），改用 `clip-path`：
+     inset(0 -2000px) = 上下裁到盒子、左右各向外扩 2000px（等于不裁）。 */
+.viz.scroll-mode{clip-path:inset(0 -2000px)}
+/* scroll 下**整条网格线**不能留：线是相对 #viz 定位的（top/bottom 撑满整个 viz），
+   而行槽各自横移不同的距离——一条静止的线对不上任何一行（行内的拍边界由格子自身描边给出）。
+   批 2 若要把线跟着行走，需改成"每行一组"，那是行内 DOM，届时再议 */
+.viz.scroll-mode .grid-line{display:none}
+/* 歌词覆盖层在 scroll 下同样**只裁上下、不裁左右**（它是 #viz 的兄弟节点，不吃 #viz 的裁剪）。
+   与 .viz.scroll-mode 同一口径：上下靠自身 height，左右靠 clip-path 外扩放开。 */
+.lyric-lane.overlay.scroll-clip{clip-path:inset(0 -2000px)}
+/* v3.0.0 批 4：`.viz-rows-panel.off` 与 `#scrollRowsGroup.disabled` 两条规则随
+   "合并成一个同屏行数控件"一并退役（档位控件不再有禁用态，它随模式重列档位）。 */
+/* ★ v3.0.0（批 5，用户要求）：预设库从"一个按钮"改成**一张卡片**，与音量/BPM/开关同款形态，
+   内部 = 标题行 + 6 个入口（两列：左列三分区 / 右列三入口）+ 循环本段。
+   它在栅格里仍跨两行（右列通高），所以高度天然够放这 7 件东西。 */
+.preset-lib-block{display:flex;flex-direction:column;gap:8px;
+  background:var(--card2);border-radius:10px;padding:12px 14px;color:var(--t1)}
+.preset-lib-block .plb-head{display:flex;align-items:center;gap:8px}
+.preset-lib-block .plb-label{font-size:12px;font-weight:500;line-height:1.4}
+/* 六格按钮：两列等宽。左列 = 三分区（打开抽屉并定位），右列 = 三入口 */
+.plb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.plb-grid .pill{font-size:11px;padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 循环本段搬进卡片后要压紧（原来在抽屉里是独占一行的宽松布局） */
+.preset-lib-block .loop-panel{margin:0;padding:0;border:0;background:none}
+.preset-lib-block .loop-panel .loop-row{flex-wrap:wrap;gap:6px}
+.preset-lib-block .loop-panel .loop-sel{font-size:11px}
+.preset-lib-block .loop-panel .hint{margin-top:4px;font-size:11px;line-height:1.35}
+/* 预设库抽屉：全宽内联（非浮层）——不占 z-index、不用管焦点与外点关闭，窄屏天然成立 */
+.preset-drawer{display:flex;flex-direction:column;gap:10px;background:var(--card2);
+  border-radius:10px;padding:12px 16px;max-height:min(60vh,520px);overflow-y:auto}
+.preset-drawer[hidden]{display:none}
+.pd-head{display:flex;align-items:center;gap:10px}
+.pd-head .pd-title{font-size:13px;font-weight:500;flex:1}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -1313,6 +1406,7 @@ body[data-theme="obs"]{
   --peak:#0F172A; --peak-rest:#94A3B8;
   /* 叠加色翻转：暗底上的白纱 / 黑槽在浅底上同归于墨蓝（三元组口径见 :root 的注释） */
   --veil:15,23,42; --well:15,23,42;
+  /* v3.0.0 批 4：日间档的 --band 一并撤掉（行带/歌词行的底整层去掉，两档行为一致） */
   color-scheme:light;                 /* P-b：与 meta[name=color-scheme] 同源同义 */
   background:radial-gradient(1200px 600px at 80% -10%, rgba(37,99,235,.05), transparent 60%), var(--bg);
 }
@@ -1679,6 +1773,67 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       </div>
           </div>
         </div>
+    <!-- v3.0.0：预设库从 360px 通高侧栏**缩小**为控制行第 4 块 + 全宽内联抽屉。
+         收起态 = 右列窄块（跨两行）；展开态 = 抽屉紧贴行 1 之下、占满全宽，选中即收起。
+         ★ 原侧栏卡内容整组搬进来，**id 与接线一个不改**（搬块不换 id，v2.10.11 纪律）→
+           t57 入口映射 / 编辑·编排·听辨三条接线 / Presets 模块零改动。
+         ★ 展开态会话级，不进热键载荷（练习界面默认收起）。 -->
+    <!-- ★ v3.0.0（批 5，用户要求）：预设库 = **一张卡片**（不再是"一个按钮"），内部 6 个入口：
+           左列三分区（节拍 / 扫弦 / 自定义）——点它展开抽屉并定位到该分区；
+           右列三入口（听辨训练 / 编辑节奏型 / 编排曲式）——从抽屉搬回来，**id 一个不改**。
+           下面再放「循环本段」（同样从抽屉搬出来：它作用的对象是"当前选中的那个型"，
+           属预设库这一层，留在抽屉里反而与"库"离得远）。
+           卡片本身不再开合抽屉——开合交给左列三个分区按钮（用户拍板）。 -->
+    <div class="preset-lib-block" id="presetLibCard">
+      <div class="plb-head">
+        <span class="plb-label">预设库</span>
+        <span class="chip" id="presetCount"></span>
+      </div>
+      <div class="plb-grid">
+        <button class="pill outline" data-sec="beat">节拍</button>
+        <button class="pill outline" id="earBtn">听辨训练</button>
+        <button class="pill outline" data-sec="strum">扫弦</button>
+        <button class="pill outline" id="editBtn">编辑节奏型</button>
+        <button class="pill outline" data-sec="custom">自定义</button>
+        <button class="pill outline" id="argOpen">编排曲式</button>
+      </div>
+      <!-- ↓ 循环本段整块从抽屉搬来（id 与接线未动） -->
+      <div class="loop-panel" id="loopPanel">
+        <div class="loop-row">
+          <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环本段<span class="switch"></span></button>
+          <span class="loop-sep" id="loopSep" aria-hidden="true" hidden>·</span>
+          <span class="loop-range" id="loopRange" hidden><span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
+          <span class="lab">到</span><select class="loop-sel" id="loopTo" aria-label="循环结束小节"></select>
+          <span class="lab">小节</span></span>
+        </div>
+        <div class="hint" id="loopHint"></div>
+      </div>
+    </div>
+    <div class="preset-drawer" id="presetDrawer" hidden>
+      <div class="pd-head">
+        <!-- 角标 02 随预设库一起搬（角标连续性契约：01–07 恰好各一次、无空号无重号） -->
+        <span class="sec-tag"><b>02</b><i>Library</i></span>
+        <span class="pd-title">节奏型预设库</span>
+        <button class="pill outline" id="presetDrawerClose">收起</button>
+      </div>
+      <!-- ↓ 以下四块从原侧栏卡整组搬来（v3.0.0），id 与接线未动 -->
+      <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
+           但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
+           而且收不到任何提示。预设库为空时提示一次，确认后不再出现 -->
+      <div class="fallback-note" id="migHint" hidden>
+        <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
+        <button class="pill outline" id="migHintBtn">知道了</button>
+      </div>
+      <div id="presetList"></div>
+      <!-- 「当前曲式 · 名字」chip（v2.35.0）：它指示跳段键/弹层范围滑块正在服务曲式库里的哪一条，
+           只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；单曲式时整行加 .single
+           由 CSS 隐藏 chip（内容写入点不动，id=argNowName 不变）。
+           ★ v3.0.0 批 5：原先同在这行的三个入口（听辨训练/编辑节奏型/编排曲式）
+             已搬进上方的预设库卡片（id 未动）；循环本段同理搬走。此处只留曲式名。 -->
+      <div class="arg-now" id="argNowRow">
+        <span class="arg-now-name" id="argNowName"></span>
+      </div>
+    </div>
     <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
          一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
          上下两层，共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
@@ -1720,6 +1875,13 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
     </div>
     </div><!-- /viz-head-grid -->
+    </section><!-- /控制卡：可视化内容自此迁出，不再共享卡片外壳（v3.0.0） -->
+    <!-- v3.0.0：可视化带——#viz / #lyricLane / 跳段播放行整组**迁出卡片**，全宽落在页面背景上
+         （.main 单栏已保证居中）；三者仍是同一视线区（播放键贴着网格与球，v2.10.14 规矩）。
+         ★ id 一个不改（#viz / #lyricLane / #argJump / #playBtn / …），接线与测试零改动。
+         ★ 基准统一：可视化带的宽度就是行矩形宽度（geoOf），不再有「卡片中央 vs 内容中央」两套
+           基准——上一次实施「后半小节溢出卡片、被侧栏盖住」正是栽在这两套基准上 -->
+    <div class="viz-band" id="vizBand">
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
          语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
@@ -1744,7 +1906,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            与 BPM 步进键同规格），aria-label 保留文字语义。
          ★「第 N 段 · 第 M 小节」说明文字（#argNowMeta）按用户要求**删除**——
            它原先承担的四处反馈（播放位置 / 跳段定位 / 范围拖动回显 / 模式残留清空）一并下线，
-           跳段的可见反馈只剩侧栏范围滑块即时移动（syncDemoRange 同源刷新）。
+           跳段的可见反馈只剩**编排弹层**里的范围滑块即时移动（syncDemoRange 同源刷新）。
+           （v3.0.0 订正：本条原写「侧栏范围滑块」——那是 v2.10.4 时代的站位，v2.11.0 界面重塑后
+             侧栏只剩预设库、v3.0.0 连侧栏一并取消，双滑块一直在 #arrangeOverlay 内。）
          ★ v2.7.3 的「范围循环」开关保留：跳段=锁当前段反复磨，开关就是出口——关掉即解除锁定，
            从当前段一路播到曲末后停（详见 Arrange.jumpTo / refreshBar 的注释）。
            预设模式下它仍隐藏（没有"当前段"可言） -->
@@ -1772,7 +1936,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <svg class="ico-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11.4 11.6l1.2-.9v4.6"/></svg>
       </button>
     </div>
-    </section>
+    </div><!-- /vizBand -->
 
     <!-- v2.10.14：走带卡（原 02 Transport）整卡删除——BPM 与 Swing v2.10.13 搬去时值可视化卡、
          音色/音量 v2.10.11 搬去当前节奏型行、拍号 v2.10.11 搬去 .viz-rows-row，本卡只剩播放键；
@@ -1794,78 +1958,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            详见共享状态区的注释 -->
   </div>
 
-  <!-- 侧栏：预设库 -->
-  <aside class="col">
-    <section class="card">
-      <div class="card-head">
-        <span class="sec-tag"><b>02</b><i>Library</i></span>
-        <h2 class="card-title">节奏型预设库</h2>
-        <div class="chip" id="presetCount"></div>
-      </div>
-      <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
-           但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
-           而且收不到任何提示。预设库为空时提示一次，确认后不再出现 -->
-      <div class="fallback-note" id="migHint" hidden>
-        <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
-        <button class="pill outline" id="migHintBtn">知道了</button>
-      </div>
-      <!-- 练习循环（v2.4.3）：只反复磨第 X 到第 Y 小节。
-           ★ 为什么放在预设列表上面：它作用的对象是"当前选中的那个型"，
-             而不是列表里的某一项——放进条目里会变成 N 份互相打架的开关（同一个时刻
-             只可能有一个型在响，却允许 N 个地方都显示"循环中"）。放在列表之上的
-             常驻区，语义就是"对下面这个库的当前选择生效"。
-           ★ 两处入口互斥（见 setLoopRange / armLoopRow 的注释）：
-             「循环本段」= 把区间设成当前型的全部 4 小节（语义上等价于"老老实实循环它"），
-             下拉区间 = 精确到某一两小节。两者说的是同一件事（循环区间的范围），
-             所以共用 S.loopRange 一份数据、由一个开关控制，不存在两个真相 -->
-      <div class="loop-panel" id="loopPanel">
-        <!-- v2.10.0：原来「练习循环 · 只反复磨这几小节」独占一行（.group-label），
-             白白吃掉一行高度；改为缩短成「只反复磨这几小节」并入开关同一行、
-             贴在该行末尾作灰度注脚。开关自身已写明「循环本段」，故去掉冗余的「练习循环」。
-             v2.69.0（2.6）：注脚整句删除（信息由 loopHint 承担）；范围段（第 X 到 Y 小节）
-             改为**开关开着才显示**——关着时它没有可解释的状态，占位反而让人猜
-             （原设计「关时灰掉不藏起（位置稳定）」由用户拍板推翻，syncLoopUI 注释已同步改写） -->
-        <div class="loop-row">
-          <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环本段<span class="switch"></span></button>
-          <span class="loop-sep" id="loopSep" aria-hidden="true" hidden>·</span>
-          <!-- 「第 X 到 Y 小节」包成**一个** flex item（v2.6.2）：5 个零件散着排时，
-               窄屏会把末尾的「小节」二字单独挤到下一行（用户实拍反馈）。包成一个
-               nowrap 单元后，放不下就整体折行，绝不落单。v2.69.0：加 id（桩环境无
-               querySelector，显隐同步走 getElementById——仓库桩环境的既有约束） -->
-          <span class="loop-range" id="loopRange" hidden><span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
-          <span class="lab">到</span><select class="loop-sel" id="loopTo" aria-label="循环结束小节"></select>
-          <span class="lab">小节</span></span>
-        </div>
-        <div class="hint" id="loopHint"></div>
-      </div>
-      <div id="presetList"></div>
-      <!-- 曲式编排（v2.0.0）：入口放在预设卡片里——曲式与预设是**同一层概念**
-           （都是"播放什么"），放一起用户不用找；放训练模式区会让人以为它是个训练功能。
-           跳段行不在这里（v2.0.2 挪到时值可视化正下方），这里只留入口与曲式名。
-           ★ v2.10.12（用户要求）：「编辑节奏型」搬来本行、排在「编排曲式」**左边**——
-             它同样是"改播什么"，与预设 / 曲式同层；原先它在主列顶部那一行（`.pattern-head`）。
-             `.arg-now` 自带 `flex-wrap`，窄屏会自动折行。`#editBtn` 仍是编辑器 overlay 的
-             唯一入口（`t57` 的入口映射按 id 取，搬家不影响） -->
-      <!-- v2.35.0（用户提问）：「当前曲式 · 名字」chip 改条件显示——它指示跳段键/侧栏滑块
-           正在服务曲式库里的哪一条，只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；
-           单曲式时整行加 .single 由 CSS 隐藏 chip（内容写入点不动，id=argNowName 不变） -->
-      <div class="arg-now" id="argNowRow">
-        <!-- 听辨训练（v2.69.0 返工：从顶栏迁来本行最左——它与编辑/编排同为"换着练"的入口，
-             顶栏只留全局件。搬块不换 id：Ear 模块接线与 t57 入口映射按 id 取，搬家不影响） -->
-        <button class="pill outline" id="earBtn">听辨训练</button>
-        <button class="pill outline" id="editBtn">编辑节奏型</button>
-        <button class="pill outline" id="argOpen">编排曲式</button>
-        <span class="arg-now-name" id="argNowName"></span>
-      </div>
-      <!-- v2.10.12（用户要求）：原 `.preset-io` 整行（导出预设 / 导入预设 / 导出全部数据 /
-           导入全部数据 + 两个隐藏的 file input）**搬进设置弹窗**——它们是"换设备 / 换通道
-           才用一次"的数据管理项，不该占着练习界面。id 全未改动，所以 `exportBtn.disabled`
-           的联动逻辑照旧生效（它设的是一个隐藏元素的 disabled，无副作用） -->
-      <!-- v2.11.1（用户要求）：原「自定义节奏型保存在本机浏览器中…」的长段说明整段删除——
-           数据备份的入口就在同卡的导入导出按钮上，长文案与设置弹窗「数据与说明」组重复，
-           且「变速训练器在『训练模式』区」的提法已过期（标题行 v2.10.16 已删） -->
-    </section>
-  </aside>
+  <!-- v3.0.0（PLAN-v9 批 0）：右侧竖栏（<aside class="col">）整块删除——
+       预设库不再占 360px 通高侧栏，改为「控制行第 4 块 + 全宽内联抽屉」（见 .viz-head-grid 内
+       #presetLibBtn / #presetDrawer）。原卡内容（#migHint / #loopPanel / #presetList /
+       #argNowRow / #presetCount）**按 id 原样搬入抽屉**，接线一行没动。
+       ★ 编排弹层（#arrangeOverlay）里的整首范围滑块与曲式列表不受影响，仍在弹层内 -->
 </main>
 
 <!-- v2.10.16（用户要求）：快捷键/音频解锁提示移到**页面最底部**——原先在主列末尾
@@ -2200,6 +2297,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
           <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
+          <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时顶部「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
@@ -2427,8 +2525,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <button class="pill" data-pos="follow" aria-pressed="false">贴在每行小节下</button>
         <button class="pill" data-pos="bottom" aria-pressed="false">集中在底部</button>
       </div>
+      <!-- v3.0.0（PLAN-v9）：连续滚动——行槽横向连续推移，替代"整页翻页"。
+           播放头钉在行中央，内容从右向左连续滚过（不再"走到行末整页跳变"）。
+           ★ 批 4 起**没有配套的档位控件**：「同屏行数」那一个控件随模式重列档位——
+             连续滚动时它是 1 / 3 两档（滚动窗口），关掉时回到 1 / 2 / 3 / 4（翻页页长）。
+             这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
+      <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。</div>
+    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时顶部的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
 
     <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
     <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
@@ -2592,23 +2696,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2624  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3248  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4835  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5651  Modal         应用内弹窗
-     L5789  Viz           时值可视化渲染与每帧动画
-     L8278  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8935  Trainer       变速训练器
-     L9127  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9728  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11012 Editor        自定义节奏型编辑器
-     L11458 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11505 Ear           听辨训练（v1.10.0）
-     L11725 Arrange       曲式编排（v2.0.0）
-     L14623 Help          使用方法（v2.0.1）
-     L14752 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14826 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15069 初始化（装配） 各模块 hook 接线与启动
+     L2728  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3357  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4954  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5770  Modal         应用内弹窗
+     L5908  Viz           时值可视化渲染与每帧动画
+     L8776  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9433  Trainer       变速训练器
+     L9625  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10234 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11521 Editor        自定义节奏型编辑器
+     L11967 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12014 Ear           听辨训练（v1.10.0）
+     L12234 Arrange       曲式编排（v2.0.0）
+     L15132 Help          使用方法（v2.0.1）
+     L15261 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15335 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15578 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2634,7 +2738,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.87.0";
+const VERSION = "3.0.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -2766,6 +2870,11 @@ const SWINGS = [50, 67, 75];
      v2.8.0~v2.10.1 只对曲式窗口与歌词轨生效，预设模式画"型的全部小节"
      ——那让档位按钮在预设模式下点下去毫无反应（用户实拍：「行数按钮在一些情形中无效」）。 */
 const VIZ_ROW_COUNTS = [1, 2, 3, 4];
+/* v3.0.0（批 4）：连续滚动的窗口行数档位。**与 VIZ_ROW_COUNTS 共用一个控件**（「同屏行数」），
+   只是档位表随模式换——参考页里那个控件就叫「同屏行数」、两档 1/3，不该为此多造一个名字。
+   为什么只有 1 与 3：滚动的窗口是"当前行 + 前后各若干"，偶数档没有"正中间那一行"；
+   3 是"上下各留一行（刚唱过 / 即将播放）"的最小完整形态。 */
+const SCROLL_ROW_COUNTS = [1, 3];
 /* F1 歌词对齐轨（v2.1.0）的粒度与基准（第 0 轮契约）：1 格 = 十六分 = 12t（拖动吸附单位），
    基准时值 = 八分 = 2 格 = 24t（粘贴歌词后按字均分的默认值）。
    两者都由 TPB 派生、不写死 12/24——改 PPQN 时跟着变，与全文件"单一来源"的口径一致 */
@@ -4063,6 +4172,7 @@ const Store = (() => {
    *   showTab: boolean,
    *   showRuler: boolean, showDurLabel: boolean, showLyric: boolean, lyricPos: ("auto"|"follow"|"bottom"),
    *   vizRows: number,
+   *   scrollMode: boolean, scrollRows: (1|3),   // v3.0.0（PLAN-v9）：连续滚动模式 + 它的窗口行数档位
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   playMode: string,
@@ -4129,6 +4239,14 @@ const Store = (() => {
        变成"4 行一页"，那是本次的行为变更）。
        加载校验用白名单（VIZ_ROW_COUNTS.includes）：脏值/越界一律回落到 4，不信存储。 */
     vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 4,
+    /* v3.0.0（PLAN-v9 批 1）：连续滚动模式——行槽横向连续推移替代"整页翻页"。
+       ★ 默认**关**：老用户升级后看到的仍是既有 paged 口径，零迁移（同 wideFull 的口径）。
+       scrollRows = 滚动窗口的行数档位，只认 1 与 3：
+         · 1 = 单行横滚（与演示一致，无垂直滚动）；
+         · 3 = 上下各留一行、强拍从下方登场（批 2 落地）。
+       脏值（含 0/2/"1"/null）一律回落 3——不信存储，与 vizRows 同一条纪律。 */
+    scrollMode: saved.scrollMode === true,
+    scrollRows: saved.scrollRows === 1 ? 1 : 3,
     /* v2.10.0 预设库分区折叠：三区标题可点开/收起（true = 展开）。
        ★ v2.13.0 出厂默认 {节拍:展开, 扫弦:收起, 自定义:展开}（见 foldInit 的长注释：
          "没存过"走出厂值、"存过 false"尊重用户——两者必须分开判）。 */
@@ -4311,6 +4429,7 @@ const Store = (() => {
       showRuler:S.showRuler, showDurLabel:S.showDurLabel, // v2.70.0：座次尺/时值标注（显示偏好，跟热键走）
       showLyric:S.showLyric, lyricPos:S.lyricPos, // v2.86.0：歌词显示开关 + 位置（显示偏好，跟热键走）
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
+      scrollMode:S.scrollMode, scrollRows:S.scrollRows, // v3.0.0：连续滚动模式 + 窗口行数（显示偏好，跟热键走）
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint,
@@ -5840,6 +5959,12 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
       height: (cellEls[i] && cellEls[i][0]) ? cellEls[i][0].offsetHeight : 44,
     }));
     vizRowBoxH = (rowEls[0] && rowEls[0].offsetHeight) ? rowEls[0].offsetHeight : 86;  // 行盒高（含内容，仅 86px 不含行距）
+    /* v3.0.0（PLAN-v9 批 2）：槽距 = **相邻行矩形 top 差**（不写死 106）。
+       ★ 为什么必须现采：行距随歌词行位置模式变（.lyric-inline-on 把 20 抬到 52、xl 放大再抬到 70），
+         写死 106 会在 follow + xl 下让"垂直登场一行"只挪了 86/106，进场行与可视区错位。
+       只有一行时（rows=1 且无进场行备份）退回 行盒高+20 的旧常量，只为不让 0 参与运算。 */
+    scrollSlotH = (rowGeo.length > 1 && rowGeo[1].top > rowGeo[0].top)
+      ? (rowGeo[1].top - rowGeo[0].top) : (vizRowBoxH + 20);
   }
   /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
@@ -5969,8 +6094,91 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        行界判据还按旧行数"的错行窗口（这正是 vizSig/vizBars 要锁的同类风险，此处靠"同步重建"消掉）。
      ★ 它同时是**歌词轨的行数**：两轨共用这一档位（见 VIZ_ROW_COUNTS 的值表注释），
        行数一致才能逐行对齐。（歌词轨本身只在曲式模式出现，见 buildLyricLane） */
-  function arrWinBars(){ return S.vizRows; }
+  /* ★ v3.0.0（PLAN-v9）：连续滚动下窗口长度改由「窗口行数」S.scrollRows 给——
+     paged 的窗口 = 一页 N 行（按页锚翻页），scroll 的窗口 = 以当前小节为中心的一段连续节目单，
+     两者语义不同、行数来源也不同，但**占用的是同一个"可见行数"位**（下游一律读本函数）。
+     scrollMode 关时逐位返回旧值 S.vizRows，paged 行为零变化。 */
+  function arrWinBars(){ return S.scrollMode ? scrollRows() : S.vizRows; }
+  /* ---- v3.0.0 连续滚动槽状态（PLAN-v9 批 1）----
+     scrollCur   = 当前小节的**节目单绝对位置**（曲式 = 歌曲小节号；预设 = 型内片段号，
+                   整小节档下即型内小节号）。-1 = 还没锚过（首帧 / 刚复位）。
+     scrollCenter= 当前小节落在**第几行**（槽索引）。批 1 与演示一致：rows=1 → 恒 0；
+                   rows=3 → floor(3/2)=1；曲式开头几小节因"没有上一小节可画"被顶到上边界。
+     ★ 这两个数只由 paintFrameBody 的 scroll 分支写，buildViz 只读——单向，不产生回环。 */
+  let scrollCur = -1;
+  let scrollCenter = 0;
+  /** 窗口行数档位（1 / 3）。脏值由 Store 加载侧兜成 3，这里再收一次口（渲染层不信存储） */
+  function scrollRows(){ return (S.scrollRows === 1) ? 1 : 3; }
+  /** 强拍登场的时长：占**一拍**（4/4 下 = 小节的 1/4）。
+      ★ 与演示同参（演示 `const d=1/4`），且随拍号自动伸缩——用 rowTicks 的分数表达，
+        于是 3/4 与 6/8 下登场时长同样是"一拍"，不是死板的 1/4 小节。 */
+  const SCROLL_ENTRY = 0.25;
+  /** @param {number} t @returns {number} */
+  function smooth01(t){ return t * t * (3 - 2 * t); }   // 与演示同一个 smoothstep（两端一阶导为 0，进场/落位都不顿）
+  /* 静止态（v3.0.0 批 4）：把行槽与播放头摆成"p = 0 那一刻"的样子——播放头钉在行中央，
+     当前槽的当前点正落在其上。
+     ★★ 为什么必须在**结构层**就写一次：行槽的横移只在帧内（paintFrameBody）写，而不播放时
+       没有帧路径走到那一段 —— 于是切模式后画面还停在"行从左侧铺满"的旧样子，要等按下播放
+       才变（用户实报：打开连续滚动后，刚开始的画面仍是旧模式那种样子）。
+     ★ 同一个函数也服务 Controls.stop：resetForStop 原先把播放头复位成 translateX(0)（行左缘），
+       在 scroll 下那是"停止后又退回旧样子"。 */
+  function applyScrollRest(){
+    if (!S.scrollMode) return;
+    const gc = geoOf(scrollCenter) || geoOf(0);
+    if (!gc) return;
+    const W = gc.width, C = gc.left + W / 2;
+    if (playheadEl) playheadEl.style.transform = `translateX(${C.toFixed(1)}px)`;
+    scrollDx = C - gc.left;                                   // p = 0 时的当前槽横移
+    scrollDy = 0;
+    /** @param {HTMLElement} el @param {{left:number,width:number}} g
+        @param {number} ph @param {number} dy */
+    const put = (el, g, ph, dy) => {
+      el.style.transform = `translate(${(C - g.left - ph * g.width).toFixed(1)}px, ${dy.toFixed(1)}px)`;
+    };
+    /* ★ 批 6：rows=1（传送带）静止态 = p=0 的传送带 —— 当前槽（center）dx=C、
+       上一槽 dx=C−W、下一槽 dx=C+W（首尾相接），三行 dy 叠置到行 0 的位置。 */
+    const belt = scrollRows() === 1;
+    const beltDy0 = belt && geoOf(0) ? geoOf(0).top : 0;
+    for (let i = 0; i < rowEls.length; i++){
+      const g = geoOf(i);
+      if (!g || !rowEls[i]) continue;
+      const off = i - scrollCenter;
+      const ph = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
+      put(rowEls[i], g, ph, belt ? (beltDy0 - g.top) : 0);
+    }
+    /* 歌词轨是 #viz 的兄弟节点、各自持有一份行位移，必须与网格**同帧同式**地摆好。
+       ★ 批 8：传送带下歌词行 i 各随各槽（gi = i），y 校正与帧内同一套（叠回行 0 的水平线）。 */
+    if (S.showLyric && lyricEl && !lyricEl.hidden && lyricEl.classList.contains("overlay")){
+      for (let i = 0; i < lyricRows.length; i++){
+        const g = geoOf(i);
+        if (!g) continue;
+        const off = i - scrollCenter;
+        const ph = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
+        put(lyricRows[i].el, g, ph, (lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0));
+      }
+    }
+  }
+  /** 本帧当前槽的横移量：{ dx, dy }。批 1 只有 dx（dy 恒 0，垂直登场在批 2）。
+      paged 下恒 {0,0}——paintBall 的 2 处写点机械相加，不加分支判据。 */
+  function slotShift(){
+    if (!S.scrollMode) return { dx: 0, dy: 0 };
+    return { dx: scrollDx, dy: 0 };
+  }
+  /* 本帧横移量（由 paintFrameBody 算好，供 slotShift 与歌词叠加读取；帧内纯数值，零布局读取） */
+  let scrollDx = 0;
+  /* 本帧纵移量（批 2：强拍登场的平滑上移）。与 scrollDx 同一纪律：帧内纯数值 */
+  let scrollDy = 0;
+  /* 槽距（相邻行矩形 top 差，cacheGeo 采集；PLAN §3.2 明确"不写死"） */
+  let scrollSlotH = 106;
   let winStart = -1;                      // 窗口起点（曲式 = **歌曲片段号**；预设 = **型内片段号**）；-1 = 还没定过
+  /* ★ v3.0.0（批 4）：**窗口是否已锚定**。
+     从前这条判据就是 `winStart >= 0`（本模块至少 8 处依赖它）。但连续滚动下"当前小节恒居中"
+     要求窗口起点**允许为负**——第 0 小节时上边界天然越出节目单开头（起点 = 0 − floor(rows/2)）。
+     若继续拿 `winStart < 0` 当"未锚"哨兵，这些判据会集体走降级路径（其中 paintFrameBody 的
+     「winStart < 0 → 重建」更会每帧重建整棵网格）。
+     故把两件事拆开：winStart 只表示**位置**（可负），"锚没锚"由本函数单独回答。
+     paged 下两者恒等价（paged 的页锚不会为负），行为零变化。 */
+  function anchored(){ return S.scrollMode ? rowEls.length > 0 : winStart >= 0; }
   /** @type {any} */
   let winPat = null;                      // 当前窗口的合成型（buildViz 时算好并缓存，热路径 O(1) 取用）
   /* 预告行（v2.7.0）：**曲式模式独有**——页内最后一行的那个片段期间，第 1 行临时替换成
@@ -6021,7 +6229,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       @param {number} row @returns {number} */
   function patSegOfRow(row){
     const segs = vizSegs();
-    if (!(segs > 0) || winStart < 0) return row;
+    if (!(segs > 0) || !anchored()) return row;
     return ((winStart + row) % segs + segs) % segs;
   }
   /** 窗口行 → **型内小节号**（"按小节说事"的读数：状态栏 / 和弦名 / 静音行）
@@ -6035,7 +6243,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   /** @param {number} seg @returns {number} */
   function rowOfPatSeg(seg){
     const segs = vizSegs(), W = vizBars;
-    if (winStart < 0 || !(segs > 0) || !(W > 0)) return Math.min(Math.max(0, W - 1), Math.max(0, Math.floor(seg) || 0));
+    if (!anchored() || !(segs > 0) || !(W > 0)) return Math.min(Math.max(0, W - 1), Math.max(0, Math.floor(seg) || 0));
     const si = Number.isFinite(seg) ? Math.floor(seg) : 0;
     const i = ((si - winStart) % segs + segs) % segs;
     return (i < W) ? i : -1;
@@ -6060,7 +6268,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function rowOfSongPos(lin, sub, a){
     const K = subsPerBar();
     const totalSegs = a ? songBars(a) * K : 0, W = vizBars;
-    if (!(totalSegs > 0) || !(W > 0) || winStart < 0 || !(lin >= 0)) return -1;
+    if (!(totalSegs > 0) || !(W > 0) || !anchored() || !(lin >= 0)) return -1;
     const seg = lin * K + Math.min(K - 1, Math.max(0, Math.floor(sub) || 0));
     const i = ((seg - winStart) % totalSegs + totalSegs) % totalSegs;
     return i < W ? i : -1;
@@ -6079,7 +6287,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function arrNextRowOf(bar){
     const a = arrangeCur();
     const total = a ? songBars(a) : 0, K = subsPerBar();
-    if (!(total > 0) || winStart < 0 || !(vizBars > 0)) return -1;
+    if (!(total > 0) || !anchored() || !(vizBars > 0)) return -1;
     const segAbs = winStart + bar;
     const sub = ((segAbs % K) + K) % K;
     /* v2.15.0：当前行不是本小节的最后一片 → "下一行"就是同一小节的下一片（位置式 +1）；
@@ -6324,16 +6532,44 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   /** 把窗口里的 arrWinBars() 个**片段**合成为一个临时型（每片取自它所引用的型、小节的对应切片）。
       任一片解析不出来（引用被删 / 结构坏了）就返回 null —— 调用方回落到"画当前型"，
       **绝不画半屏错内容**。 */
-  /** @param {any} a @param {number} W @returns {any} */
-  function arrWindowPat(a, W){
+  /* v3.0.0（PLAN-v9 批 2 · D18 的落地）：**节目单范围回卷**。
+     窗口里第 i 行的内容取哪个片段？两种口径：
+       · 无 wrap（paged，以及 scroll 不设范围时）→ 与**全曲/型全长**取模（走到末尾绕回开头）；
+       · 有 wrap → 与**播放范围长度**取模（范围末之后回到范围起点）。
+     ★ 为什么 scroll 必须有 wrap：scroll 的槽是"连续的下一小节"（没有预告行那种"这是未来"的
+       降权语义），若按全曲取模，范围循环 [0,1] 下"第 1 小节的下槽"会显示第 2 小节——
+       而实际播放会回卷到第 0 小节。用户看到的是**误导性的下一小节**。
+       paged 侧不存在这个问题：那里的"未来"由预告行（previewSegFor，本身按节目单迭代）承担。 */
+  /** @param {number} pos 绝对片段号 @param {number} span 全曲/型全长
+      @param {{from:number,len:number}|undefined} wrap @returns {number} */
+  function foldSeg(pos, span, wrap){
+    if (wrap && wrap.len > 0){
+      const d = pos - wrap.from;
+      return wrap.from + ((d % wrap.len) + wrap.len) % wrap.len;
+    }
+    return ((pos % span) + span) % span;
+  }
+  /* ★ v3.0.0（PLAN-v9 批 2）：第三参 n = **建成几行**。不传时走 arrWinBars()（= 可见行数），
+     paged 与批 1 的 scroll 逐位不变；scroll 传 scrollRows()+1 —— 多出来的那一行是**进场行**，
+     它在垂直登场期间从下方（裁剪区外）滑进可视区（D19：让进场的那一行滑进来而不是闪一下）。 */
+  /**      @param {any} a @param {number} W @param {number} [n] @param {{from:number,len:number}} [wrap] @returns {any} */
+  function arrWindowPat(a, W, n, wrap){
     const total = songBars(a), K = subsPerBar(), totalSegs = total * K;
     if (!total) return null;
     const barTicks = vizSig * TPB;
     const bars = [];
     let meter = S.sig, accents = null;
-    for (let i = 0; i < arrWinBars(); i++){
-      /* 走到曲尾就绕回开头（看清"接下来会回到哪"，与总片段数取模） */
-      const seg = ((W + i) % totalSegs + totalSegs) % totalSegs;
+    const cnt = (typeof n === "number" && n > 0) ? n : arrWinBars();
+    for (let i = 0; i < cnt; i++){
+      const pos = W + i;
+      /* ★ v3.0.0（批 7，用户实拍）：曲式是**线性**的——曲首之上 / 曲尾之下没有内容 → **空槽**。
+         批 4 让 winStart 可为负后，负位置会走下面的取模折回、折到**曲尾**——第一次播放时
+         上方就挂着曲尾的格子与歌词（用户实拍：还没循环过，上方歌词却是曲尾的"出声响"，
+         看起来像刚播过这句）。只有循环**真的开着**（wrap）时，"上方 = 上一圈的末尾"才成立。
+         与参考文件同款：bars.push([]) 留空（跑道仍在、格子无）。
+         ★ 必须拦在 songBarAt 之前：负 seg 会让它返回 null ⇒ 整个窗口合成失败回落。 */
+      if (S.scrollMode && !wrap && (pos < 0 || pos >= totalSegs)){ bars.push([]); continue; }
+      const seg = foldSeg(pos, totalSegs, wrap);
       const at = songBarAt(a, Math.floor(seg / K));
       if (!at) return null;
       const p = resolveRef(at.ref);
@@ -6356,14 +6592,18 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       ★ k=1（整小节档）下 sliceSteps 原样返回原型数组——"共享引用"这条性质逐位保持。
       ★ 返回的是新对象（不是型本身）：下游有 `winPat.bars[0] = …` 这类就地改写（曲式的预告行），
       共享引用会让改写外泄回型。 */
-  /** @param {any} pat @param {number} W @returns {any} */
-  function presetWindowPat(pat, W){
+  /* v3.0.0 批 2：① 第三参 n 同 arrWindowPat（不传 = arrWinBars()）；
+     ② 第四参 wrap = 播放范围 {from, len}（片段号口径），见 foldSeg。 */
+  /** @param {any} pat @param {number} W @param {number} [n]
+      @param {{from:number,len:number}} [wrap] @returns {any} */
+  function presetWindowPat(pat, W, n, wrap){
     if (!pat || !Array.isArray(pat.bars) || !pat.bars.length) return null;
     const len = pat.bars.length, K = subsPerBar(), segs = len * K;
     const barTicks = vizSig * TPB;
     const bars = [];
-    for (let i = 0; i < arrWinBars(); i++){
-      const seg = ((W + i) % segs + segs) % segs;
+    const cnt = (typeof n === "number" && n > 0) ? n : arrWinBars();
+    for (let i = 0; i < cnt; i++){
+      const seg = foldSeg(W + i, segs, wrap);
       bars.push(sliceSteps(pat.bars[Math.floor(seg / K)] || [], barTicks, K, seg % K));
     }
     return { name: pat.name || "", desc: pat.desc || "", meter: pat.meter,
@@ -6459,7 +6699,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function rowOfOnset(e, a){
     if (!e) return 0;
     const p = onsetPos(e, a);
-    if (S.playMode === "arrange" && winStart >= 0 && p && e.aBar !== undefined && e.aBar >= 0){
+    if (S.playMode === "arrange" && anchored() && p && e.aBar !== undefined && e.aBar >= 0){
       const K = subsPerBar();
       return rowOfSongPos(Math.floor(p.seg / K), p.seg % K, a === undefined ? arrangeCur() : /** @type {any} */ (a));
     }
@@ -6518,7 +6758,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function mutedRow(b){
     if (!S.mute) return false;
     const K = subsPerBar();
-    return (S.playMode === "arrange" && winStart >= 0)
+    return (S.playMode === "arrange" && anchored())
       ? muteBarMuted(Math.floor((winStart + b) / K))
       : muteBarMuted(winStart + b);
   }
@@ -6532,11 +6772,13 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     /* v2.72.1：预设模式返回 ""——标注胶囊改走 labelChipsAtRow（见下，支持「|」分段
        与同行按比例定位）；曲式模式仍走段名解析（secChords 路径一字未动）。 */
     const a = arrangeCur();
-    if (!a || winStart < 0) return "";
-    if (winStart < 0) return "";
+    if (!a || !anchored()) return "";
     const total = songBars(a), K = subsPerBar();
     if (!total) return "";
     const totalSegs = total * K;
+    /* ★ v3.0.0（批 7）：与 arrWindowPat 同一副判据——无循环时曲首之上/曲尾之下没有内容，
+       空槽上**不贴和弦胶囊**（否则空行上会挂曲尾的和弦名，与"留空"自相矛盾）。 */
+    if (S.scrollMode && !loopWrapActive() && (winStart + b < 0 || winStart + b >= totalSegs)) return "";
     const seg = (b === 0 && winPrevSeg >= 0)
       ? winPrevSeg
       : (((winStart + b) % totalSegs) + totalSegs) % totalSegs;
@@ -6596,7 +6838,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
      lyricChipEls / lyricFillEls 保留**跨行平铺**视图（resetForStop 与测试按平铺下标读） */
   let lyricEl = /** @type {HTMLElement|null} */ (null);
   let lyricChipEls = /** @type {HTMLElement[]} */ ([]), lyricFillEls = /** @type {HTMLElement[]} */ ([]);
-  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number, ch: string }[], chipEls: HTMLElement[], fillEls: HTMLElement[] }[]} */
+  /* v3.0.0（批 2）：y = 覆盖层下本行的 translateY 锚点（placeLaneOverlay 写，帧内叠加 dy 时复用） */
+  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number, ch: string }[], chipEls: HTMLElement[], fillEls: HTMLElement[], y: number }[]} */
   let lyricRows = [];
   let lyricRunSig = /** @type {string} */ ("");
   let lyricW = 0;
@@ -6619,6 +6862,11 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const v = $("viz"); return !!v && v.offsetWidth <= 960;
   }
   function effectiveLyricPos(){
+    /* ★ v3.0.0（PLAN-v9 批 2）：scroll 下歌词**恒锚在行下方**（follow）——
+       批 2 已给歌词行加上同组 (dx,dy) 叠加（见 paintFrameBody 的 scroll 分支），
+       它随自己那一槽一起横滑，与网格严格同帧，不再有批 1 那种"行滑走、歌词留在原地"的错位。
+       ★ 批 1 曾在此恒返回 bottom 作为临时降级，叠加落地后撤掉。 */
+    if (S.scrollMode) return "follow";
     if (S.lyricPos === "auto") return narrow() ? "bottom" : "follow";
     return S.lyricPos;
   }
@@ -6657,7 +6905,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        片号——座次尺的拍号要跟着它走（预告的是"下一片段"，拍数从它的位置数起）。 */
     const sub = (b === 0 && winPrevSeg >= 0)
       ? (((winPrevSeg % K) + K) % K)
-      : (winStart >= 0 ? ((((winStart + b) % K) + K) % K) : 0);
+      : (anchored() ? ((((winStart + b) % K) + K) % K) : 0);
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
     buildRowLayers(b, row, hasStr, sub);
@@ -6971,6 +7219,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
     clear(viz);
+    /* v3.0.0：scroll-mode 只在这里挂摘（随模式切换，与网格重建同一处，不会两处打架）。
+       它带来 overflow:hidden —— 横滚的裁剪边界就是 #viz 的盒子 */
+    if (viz) viz.classList.toggle("scroll-mode", !!S.scrollMode);
     rowEls = []; cellEls = []; subEls = []; subCellEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
@@ -6994,8 +7245,63 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const wpx = (vizEl && typeof vizEl.offsetWidth === "number") ? vizEl.offsetWidth : 0;
       vizRowBeats = chooseRowBeats(wpx, vizSig, minStepOf(ap));
     }
+    /* ★ v3.0.0（PLAN-v9 D6）：scroll 下**一行恒等于整小节**——不进 chooseRowBeats。
+       理由：横滚的相位是「一小节 = 一格宽度」的连续量，若行被切成半小节／四分之一小节，
+       行宽与"一小节"就不再是同一个单位，dx 的换算会从"减 p·W"变成"减 p·W·k"（k=每行拍数/拍号），
+       而上面那条 chooseRowBeats 的判据（窄格读不清才切）在横滚下同样不成立——
+       横滚时格子随行一起移出视野，切分只会让"当前拍"更频繁地掠过中央。 */
+    if (S.scrollMode) vizRowBeats = vizSig;
     const arr = (S.playMode === "arrange") ? arrangeCur() : null;
-    if (arr){
+    if (S.scrollMode){
+      /* ---- 连续滚动：窗口 = 以当前小节为中心的一段连续节目单 ----
+         行 i 的节目单位置 = winStart + i，当前小节落在第 scrollCenter 行。
+         ★ 复用既有的两个窗口合成器（arrWindowPat / presetWindowPat），因此
+           「行号 → 节目单位置」的映射仍只有一个真相源，下游一行都不用改。
+         ★★ 起点**可以且必须为负**，当前行**恒**在中央（center = floor(rows/2)）。
+           批 1–3 曾把起点钳到 0、让当前行在开头几小节前移到上边界——那会引入一次额外的
+           垂直位移：第 0 小节时 center=0、第 1 小节时 center=1，于是"最后一拍登场 + beat0
+           复位"之外又多出一格跳动，用户实拍症状就是「**第一小节播完后先向上滚、又弹回来**」。
+           正解即 PLAN 原文：中心行恒定，上边界越出节目单开头时**上槽留空/绕回**。
+           （"未锚"哨兵已由 anchored() 接管，winStart 得以合法为负——见该函数注释。） */
+      /* ★ v3.0.0（批 6）：rows=1 走**传送带**（用户拍板）——当前行不再"冻结在半屏"，
+         而是小节首尾相连成一条线、整条向左滑。布局上体现为：中心行取 **1**、槽建 **3** 个
+         （上一 / 当前 / 下一，相邻槽水平相接），相位**不做 clamp**（见 paintFrameBody）。
+         rows=3 维持现状（每行一个小节、上下各留一条）。 */
+      const belt = scrollRows() === 1;
+      const c = belt ? 1 : Math.floor(scrollRows() / 2);
+      const cur = (scrollCur >= 0) ? scrollCur : 0;
+      winStart = cur - c;
+      scrollCenter = cur - winStart;                       // 恒 = c（winStart 与 cur 差一个常数）
+      winPrevSeg = -1; winPrevSteps = null; winPrevName = "";   // D20：scroll 无预告行
+      /* 播放范围（片段号口径）——槽内容按**它**回卷，而不是按全曲/型全长（见 foldSeg）。
+         ★ scroll 下 vizRowBeats = vizSig ⇒ subsPerBar() = 1 ⇒ 片段号 ≡ 小节号，
+           故这里可以直接用 rangeFor 给出的小节号，不必再乘 K。
+         ★ 范围只在**循环真的开着**时才算数——与调度侧同一判据（loopNextBar：
+           预设看 S.loopRange.on、曲式看 arrangeSel.loop），否则按全曲/型全长取模。
+           两边判据若分叉，会出现"调度回卷了、画面还在往下走"的音画分裂。 */
+      const K1 = subsPerBar();
+      const wrap = (() => {
+        if (S.playMode === "arrange"){
+          if (S.arrangeSel.loop !== true) return undefined;
+          const total = songBars(arr);
+          if (!(total > 0)) return undefined;
+          const from = Math.min(total - 1, Math.max(0, Math.round(S.arrangeSel.from)));
+          const to = Math.min(total - 1, Math.max(from, Math.round(S.arrangeSel.to)));
+          return { from: from * K1, len: (to - from + 1) * K1 };
+        }
+        const L = loopRangeFor(vizPatLen);
+        if (!L.on) return undefined;
+        return { from: L.from * K1, len: (L.to - L.from + 1) * K1 };
+      })();
+      /* ★ 批 2（D19）：建 **rows+1** 行——最后一行是进场行，垂直登场期间它从裁剪区外滑进来。
+         若只建 rows 行，登场动画的后半段底部会露出空白（"闪一下"的根源）。
+         ★ 批 6：rows=1（传送带）改建 **3** 行——上一 / 当前 / 下一，相位不 clamp 时相邻槽
+           水平首尾相接，看起来就是一条连续的带（见 paintFrameBody 的 belt 分支）。 */
+      const slotN = (scrollRows() === 1) ? 3 : scrollRows() + 1;
+      winPat = arr ? arrWindowPat(arr, winStart, slotN, wrap)
+                   : presetWindowPat(ap, winStart, slotN, wrap);
+      if (!winPat) winStart = 0;
+    } else if (arr){
       /* 预告行只在**播放中**存在（它由 paintFrameBody 按可听位置维护）；
          停止/未播时清掉——否则上一次播放留下的预告会粘在跳段定位后的新窗口上 */
       if (winStart < 0 || !S.playing){
@@ -7069,10 +7375,32 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     ballEl = document.createElement("div"); ballEl.className = "bounce-ball";
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
-    cacheGeo();                      // v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）
+    /* v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）。
+       ★★ v3.0.0 批 4：scroll 下**必须采两次**（第二次在设完 #viz 高度之后）。
+          缘由是一条隐蔽的耦合：`#viz` 的高度由本函数设（裁到 rows 行），而高度会改变**页面
+          总高** → 页面纵向滚动条可能因此消失/出现 → 视口宽度差 15px → `#viz` 行宽跟着变。
+          第一次采到的是"改高度之前"的宽度（实测 1377），而设完高度后真实宽度是 1392 ——
+          于是行槽按旧宽摆位，当前点偏 (1392−1377)/2 = 7.5px 不在正中。
+          （只在"改高度后跨过滚动条阈值"时发作，所以时对时错、极易漏。）
+          第一次采的 slotH / 行盒高都是**垂直**量、与宽度无关，够用来算高度。 */
+    cacheGeo();                      // ① 先拿垂直量（槽距、行盒高），用来算裁剪高度
     const g0 = geoOf(0);             // 尾迹宽度 = 行宽 10%（定死，帧内只写 transform；v2.0.2）
     if (g0) trailGlowEl.style.width = (g0.width * 0.1) + "px";
-    parkBall();
+    /* v3.0.0（PLAN-v9）：scroll 三处门——都在**建网格时**设一次，不进帧内（D12/D9 的同款纪律）
+       · 尾迹光晕：它是"播放头身后的已弹痕迹"，而 scroll 下播放头钉在中央不动、内容在动，
+         尾迹会变成一根永远贴在中央的短条（语义丢失）→ 关（用户已拍板）。
+       · 待命球：scroll 下没有"下一行左缘"这个落点（下一小节是从右缘滚进来的）→ 整个 scroll 不画。
+       · 播放头：钉在**当前槽的水平中央**（paged 是随 tib 扫过整行）。 */
+    if (S.scrollMode){
+      if (trailGlowEl) trailGlowEl.style.display = "none";
+      if (waitEl) waitEl.style.display = "none";
+      /* ★ 高度裁剪：建了 rows+1 行，但只让 rows 行可见——进场行平时在裁剪区外。
+         高度 = 首行顶 + (rows−1)×槽距 + 行盒高（末行底），与 slotH 同源，不写死。 */
+      const r0 = geoOf(0);
+      if (r0 && viz) viz.style.height = Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) + "px";
+    } else if (viz){
+      viz.style.height = "";                  // 回 paged：交还给内容高度（滚动模式的裁剪不能留下）
+    }
     /* v2.10.16：卡片标题（原 #vizTitle，曾按模式报「歌曲第 X–Y 小节 / 同屏 N 小节」）整块删除
        （用户要求：与状态灯文案重复）——播放位置看状态灯（左列）、拍号看拍号 pill。
        窗口口径的自动化观察面改由网格内容断言承担（T70/T79 本就逐行断言格子）。
@@ -7082,6 +7410,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     syncTabLayer();
     fitCellAnnotations();
     buildLyricLane();                // v2.1.0 F1：网格重建时同步重建歌词轨（两轨同一份 tick 基准）
+    /* ★★ v3.0.0 批 4：scroll 的几何与静止态在**这里**统一收口，不能提前到上面的 cacheGeo。
+       缘由是一条隐蔽的耦合：行宽取决于视口宽，而视口宽取决于**页面是否有纵向滚动条**（差 15px）；
+       而页面总高在本次重建过程中会被改两次 —— ① `#viz` 的裁剪高度、② 歌词轨切覆盖层/改自身高度。
+       实测：在 ① 之后、② 之前采几何，拿到的还是"有滚动条"时的 1377，而真实行宽已是 1392，
+       于是行槽按旧宽摆位、当前点偏 (1392−1377)/2 = 7.5px 不在正中（且只在跨过滚动条阈值时发作）。
+       ⇒ 先把所有会改高度的动作做完，再采一次几何、按最终行宽摆静止态。 */
+    if (S.scrollMode){
+      cacheGeo();
+      applyScrollRest();
+    }
+    parkBall();
   }
   /* 「这个型带不带扫弦记谱」在**窗口化之后**该问谁（v2.10.2）。
      ★ 为什么不能一律问 vizPattern()：窗口合成型只含**当前页**的小节。型长于窗口时，
@@ -7166,7 +7505,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 停止时的视觉复位（Controls.stop 调用） */
   function resetForStop(){
     if (!playheadEl || !trailGlowEl) return;   // v1.2.4：buildViz 尚未成功跑过时无可复位之物
-    playheadEl.style.transform = "translateX(0px)";
+    /* ★ v3.0.0（批 4）：scroll 下"复位"= 回到**静止态**（播放头钉行中央 + 行槽摆成 p=0），
+       而不是 translateX(0)（行左缘）——后者会让停止后的画面退回旧模式那种样子。 */
+    if (S.scrollMode) applyScrollRest();
+    else playheadEl.style.transform = "translateX(0px)";
     trailGlowEl.style.transform = "translateX(0px) scaleX(0)";
     parkBall();
     rowEls.forEach(r => r.classList.remove("current"));
@@ -7235,9 +7577,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      paintLyric（逐帧高亮）。两者都是"结构在 ④ 建、状态在 ⑥ 刷"的中间层，故自成一段。 */
   /* 弹跳球（v1.2）：停止/待命姿态——停在第一小节第一个落点上方 */
   function parkBall(){
-    const g0 = geoOf(0);
+    /* v3.0.0：scroll 下待命位 = 当前槽的**水平中央**（不是行左缘——内容从右滚进来，
+       行左缘是"刚滚出去的上一小节"） */
+    const g0 = geoOf(S.scrollMode ? scrollCenter : 0);
     if (!ballEl || !shadowEl || !g0) return;
-    const x = g0.left - 8, y = g0.top - 20;
+    const x = (S.scrollMode ? (g0.left + g0.width / 2) : g0.left) - 8, y = g0.top - 20;
     ballEl.style.transform = `translate(${x}px, ${y}px)`;
     shadowEl.style.transform = `translate(${x - 1}px, ${y + 15}px)`;
     shadowEl.style.opacity = ".3";
@@ -7333,6 +7677,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       return;
     }
     ballEl.style.display = ""; shadowEl.style.display = "";
+    /* v3.0.0：scroll 整个不画待命球（用户拍板）——它的语义是"在下一行左缘等着接棒"，
+       而 scroll 的下一小节是从右缘滚进来的，左缘是刚滚出去的上一小节，落点不存在。
+       ★ 这里只设**初始态**：真正需要守卫的是下面那两处"设回可见"的写点
+         （接力段 与 paintFrameBody 的预备拍段），门开在本行会被它们同帧覆盖。 */
+    if (S.scrollMode && waitEl) waitEl.style.display = "none";
     const CB = CONFIG.bounce;
     const rowTicksV = segTicks();                           // v2.15.0：一行的 tick 跨度（原为整小节）
     const barEnd = now - tib * spb() / TPB + rowTicksV * spb() / TPB;   // 本行右界的音频时刻（跨循环回卷也成立）
@@ -7341,11 +7690,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const posOf = (/** @type {number} */ barIdx, /** @type {number} */ tickInRow) => {
       const g = geoOf(barIdx) || geoOf(0);
       if (!g) return { x: 0, y: 0 };
-      return { x: g.left + (tickInRow / rowTicksV) * g.width - 8, y: g.top - 20 };
+      /* v3.0.0（D9）：scroll 下主球随它所属的槽一起横移——落点 = 槽内 tick 位置 + 槽的 dx。
+         于是"当前点恒在中央"这条对球同样成立（x = left + p·W − 8 + (C − left − p·W) = C − 8）。
+         paged 下 slotShift 恒 {0,0}，本行与旧代码逐位等价。 */
+      const sh = slotShift();
+      return { x: g.left + (tickInRow / rowTicksV) * g.width - 8 + sh.dx, y: g.top - 20 + sh.dy };
     };
     const rightEdge = () => {
       const g = geoOf(bar);
-      return g ? { x: g.left + g.width - 10, y: g.top - 20 } : { x: 0, y: 0 };
+      if (!g) return { x: 0, y: 0 };
+      const sh = slotShift();                       // v3.0.0（D9）：终端弧终点同样随槽横移
+      return { x: g.left + g.width - 10 + sh.dx, y: g.top - 20 + sh.dy };
     };
     /* 端点 → **行内** tick（v2.15.0）：onsetPos 拿不到（降级路径）时退回 cumT——
        整小节档下两者恒等 */
@@ -7434,8 +7789,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yBase + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
       shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
     }
-    /* 接力待命球：终端弧飞行期间，下一小节的球在新行首 onset 处等候（半透明确认"下一个是你"） */
-    if (waitEl){
+    /* 接力待命球：终端弧飞行期间，下一小节的球在新行首 onset 处等候（半透明确认"下一个是你"）
+       ★ v3.0.0（批 2）：`!S.scrollMode` 加在这里、而不是加在 paintBall 开头——
+         本块是**唯一**把 waitEl 设回可见（display=""）的地方，在别处先设 none 会被它同帧覆盖。
+         反向验证实测：把门开在函数开头时，"scroll 全程不出现"这条断言照样红（末态是 ""）。 */
+    if (waitEl && !S.scrollMode){
       if (terminal){
         /* 下一行的**内容与行号**（v2.15.0 起按**片段**算，两条路）：
              ① 当前行不是小节的最后一片 → 下一行就是同一小节的下一片（内容取本小节下一片）；
@@ -7559,16 +7917,31 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* 窗口起点与网格同源：播放中沿用 winStart（paintFrameBody 按可听位置维护，本函数
        由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
-    const W = winStart >= 0 ? winStart
-      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar(), a);   // v2.10.7：from 已是线性小节号
+    /* ★ v3.0.0（批 6）：W 一律走 lyricWinBase()——**这个值同时出现在本函数与 paintLyric
+       的重建签名里，两处必须逐位同源**。批 4 只改了这里、漏了 paintLyric，两处 W 分叉
+       （scroll 下这里给 −1、那边回落锚到 0）→ 签名永不相等 → **每帧整轨重建**，
+       重建里 placeLaneOverlay 写下的 translateY 同帧覆盖掉 scroll 的行横移——
+       用户实拍「播放时歌词不跟行走、错开半行」，且每帧重建歌词 DOM 本身就是一笔帧开销。 */
+    const W = lyricWinBase(a);
     /* v2.15.0：行 = 一小节的**一片**——歌词按 [片起点, 片终点) 切：
        越界的字被剔除、跨片延音在本行右缘截断（与"跨小节延音钳在本行右缘"同一套做法，
        只是边界从"小节"变成"片"）。整小节档下与旧行为逐位一致。 */
     const K = subsPerBar();
     const totalSegs = total * K;
-    for (let r = 0; r < arrWinBars(); r++){
+    /* ★ v3.0.0（批 8）：传送带（rows=1）下歌词行**同样建 3 条**、与三个槽一一对应——
+       帧内各随各槽的 dx、y 叠置校正后**水平拼成一条连续的歌词线**（与格子带同构）。
+       批 6 曾只建 1 条、锚当前槽：一是"可见小节的词只显当前小节"（用户要求全显），
+       二是取字位置用了 winStart（= cur−1）而不是当前槽的位置（= cur），**歌词错后一小节**
+       ——用户实拍：第 0 小节上方本该空，却挂着"我多想"（第 1 小节格子的词）。 */
+    const laneRows = (S.scrollMode && scrollRows() === 1) ? 3 : arrWinBars();
+    for (let r = 0; r < laneRows; r++){
       /* 预告行（v2.7.0）：页内最后一片期间第 1 行 = 下一片段。歌词行跟着换内容
          （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
+      const pos0 = W + r;
+      /* ★ v3.0.0（批 7）：与 arrWindowPat 同一副判据——曲式**无循环**时，曲首之上/曲尾之下
+         没有内容，歌词行**留空**（不折回曲尾；用户实拍：第一次播放，上方歌词是曲尾的
+         "出声响"，像刚播过）。空行照建（placeLaneOverlay 的 y 锚点按行号对齐），只是无字。 */
+      const empty = S.scrollMode && !loopWrapActive() && (pos0 < 0 || pos0 >= totalSegs);
       const seg = (r === 0 && winPrevSeg >= 0)
         ? winPrevSeg
         : (((W + r) % totalSegs) + totalSegs) % totalSegs;
@@ -7576,8 +7949,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const rowEl = document.createElement("div");
       rowEl.className = "lyric-row" + (r === 0 && winPrevSeg >= 0 ? " preview" : "");
       /** @type {any} */
-      const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [] };
-      const at = songBarAt(a, ((k % total) + total) % total);
+      /* y：覆盖层下本行的 translateY 锚点（placeLaneOverlay 写；v3.0.0 批 2 帧内要复用它叠加 dy） */
+      const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [], y: 0 };
+      const at = empty ? null : songBarAt(a, ((k % total) + total) % total);
       if (at){
         /* v2.26.0：歌词按**段 uid**取（at.sec 只是位置，段挪过位置后它就指错段了） */
         const secUid = a.sections[at.sec] ? a.sections[at.sec].uid : "";
@@ -7683,8 +8057,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          现移植回：bothOff ⇒ translateY = 行顶 + (桌面 50 / 窄屏 36)；窄屏标注带仅 32px，行高维持 28 才塞得下。
          普通（标注开着）仍锚行盒底 +2，行为不变。 */
       const y = g ? (bothOff ? (g.top + (narrow() ? 36 : 50)) : (g.top + vizRowBoxH + 2)) : (i * 32);
+      /* v3.0.0（批 2）：把 y **记在行对象上**——scroll 下帧内要写 `translate(dx, y+dy)`，
+         而帧内绝不许再算一遍 y（那要读 rowGeo 之外的东西且重复一套分支）。 */
+      lyricRows[i].y = y;
       lyricRows[i].el.style.transform = "translateY(" + y + "px)";
     }
+    /* v3.0.0（批 2）：scroll 下歌词轨也要裁剪 —— 它是 `#viz` 的**兄弟节点**（叠在上面同宽同高），
+       不受 `#viz` 的 overflow 约束，歌词行横滑会直接溢出到可视化区外。故与 #viz 用同一个裁剪高度。 */
+    if (S.scrollMode){
+      lane.classList.add("scroll-clip");
+      const r0 = rowGeo[0];
+      if (r0) lane.style.height = Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) + "px";
+    } else { lane.classList.remove("scroll-clip"); lane.style.height = ""; }
     /* 覆盖层自身定位：优先 getBoundingClientRect 像素对齐；环境不支持（如测试桩缺该方法）
        则跳过——由 CSS 兜底（#lyricLane 已是 #viz 兄弟节点，absolute 定位在父容器内），
        不影响 per-row translateY 的断言稳定性。仅结构层调用，不进帧。 */
@@ -7702,6 +8086,21 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
   function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
 
+  /** 歌词轨的窗口起点基（**单一来源**）：buildLyricLane 与 paintLyric 的重建签名都用它，
+      两处必须逐位同源——见 buildLyricLane 内那段批 6 注释（分叉 = 每帧重建 = 歌词脱节）。 */
+  function lyricWinBase(/** @type {any} */ a){
+    return S.scrollMode ? winStart
+      : (winStart >= 0 ? winStart
+        : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar(), a));   // v2.10.7：from 已是线性小节号
+  }
+  /** 循环现在是否**真的开着**（批 7）：与 buildViz 里 wrap 的判据同源（曲式看 arrangeSel.loop、
+      预设看 loopRangeFor）。开着 ⇒ 负位置折回"上一圈"语义成立；没开 ⇒ 曲首之上是空的，
+      留空而不是折回曲尾（用户实拍：第一次播放，上方歌词是曲尾的"出声响"，像刚播过）。 */
+  function loopWrapActive(){
+    if (S.playMode === "arrange") return S.arrangeSel.loop === true;
+    return loopRangeFor(vizPatLen).on === true;
+  }
+
   /** @param {number} tib **行内** tick（与拍点轨同源，来自 audioPosAt）
       @param {number} [k] 可听歌曲小节号（paintFrameBody 每帧已算好，直接传入省一次 onset 表扫描；
         测试直调时不传，内部按可听域现算）
@@ -7717,8 +8116,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const total = songBars(a);
     if (!total) return;
     const K = subsPerBar();
-    const W = winStart >= 0 ? winStart
-      : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * K, a);   // v2.10.7：from 已是线性小节号
+    /* ★ v3.0.0（批 6）：W 走 lyricWinBase()——与 buildLyricLane 同一来源。批 4 曾漏改这里，
+       两处 W 分叉 → 签名永不相等 → 每帧整轨重建 → placeLaneOverlay 的 translateY 同帧
+       覆盖掉 scroll 的行横移（歌词不跟行走）。 */
+    const W = lyricWinBase(a);
     if (a.id + "@" + W + "/" + K + "#" + winPrevSeg !== lyricRunSig){ buildLyricLane(); return; }   // 窗口变了：本帧重建，下一帧起走稳态
     /* 当前行 = **可听**位置所在的行（v2.7.1 的原则，v2.7.2 分行后落在行级；v2.15.0 起行 = 片段）：
        调度游标早一个前瞻窗口，按它着色会"词先跳、声后到"。停机/预备拍 → -1：
@@ -7916,7 +8317,25 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        帧内 S.playMode / S.arrangeSel.id 不变（中间只读状态、不切选择），故快照与现查等价。 */
     const arrCur = arrangeCur();
     let audK = -1;                            // 本帧的可听歌曲小节号（末尾传给 paintLyric，省一次 onset 表扫描）
-    if (S.playMode === "arrange" && ctx){
+    if (S.scrollMode && ctx){
+      /* ---- 连续滚动的窗口同步（PLAN-v9 §3.4）：两播放模式共用一条分支 ----
+         判据是**当前小节的节目单绝对位置变了**（不是页锚变了）：scroll 的窗口没有"页"，
+         只有"当前小节 + 前后各几小节"，小节一变就整体重解析一次（≈ 每小节一次 buildViz，
+         与 T27「帧内零布局读取」的承诺同档——240BPM 也才每秒一次）。
+         ★ 曲式 = 歌曲小节号、预设 = 型内片段号（整小节档下即小节号），与下面 paged 两条
+           分支各自的基准同源，不新造口径。 */
+      const cur = (S.playMode === "arrange")
+        ? audibleSongBar(ctx.currentTime, arrCur)
+        : audiblePatSeg(ctx.currentTime);
+      /* 判据只看**当前小节变了没有**（scrollCur 初值 −1 ⇒ 首帧必然重建一次）。
+         ★ 不能写成 `|| winStart < 0` 兜底：scroll 的 winStart 被钳成非负后这个条件恒假，
+           留着只会误导后来者以为它还在起作用（批 1 的写法在这里已失效）。 */
+      if (cur >= 0 && cur !== scrollCur){
+        scrollCur = cur;
+        buildViz();
+        resetTracking();
+      }
+    } else if (S.playMode === "arrange" && ctx){
       const k = audibleSongBar(ctx.currentTime, arrCur);
       audK = k;
       /* 可听小节变化 → 通知「第 N 段 · 第 M 小节」计数器与段序条（v2.7.1）。
@@ -8025,26 +8444,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              倒数第二拍位之后）时，接力待命球落到首拍位（onsetBuf 已有首音则落在首音处，
              否则行 0 起点），带 0.25s 的落下动作（半透明 = bounce-wait 既有视觉）；
              主球回卷落位后由正常路径接管（待命球隐去）。REDUCE_MOTION：不做落下动作。 */
-          if (waitEl){
-            if (pos >= ciBeats - 1){
-              const first = onsetBuf.length ? onsetBuf[0] : null;
-              const q = first ? onsetPos(first, arrCur) : null;
-              const gw = geoOf(0) || g;
-              const lx = gw.left + ((q ? q.tick : 0) / (segTicks() || 1)) * gw.width - 8;
-              const ly = gw.top - 20;
-              /* 跳入动作与正常接力待命球同一套数学（见 paintBall 终端弧段）：
-                 从落点左侧 hopSpan 处起跳，沿抛物线前进，落地时刻 = 音乐第一拍（ciEnd）——
-                 p 沿最后一拍推进：p=0 起跳、p=0.5 弧顶、p=1 落地。REDUCE_MOTION：p 恒 1，
-                 直接在场不做动作。 */
-              const hopSpan = gw.width * 0.2;
-              const p = REDUCE_MOTION ? 1 : Math.min(1, Math.max(0, (c.currentTime - (ciStart + (ciBeats - 1) * spb())) / spb()));
-              const wx = lx - hopSpan * (1 - p);
-              const wy = ly - (REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * p * (1 - p));
-              waitEl.style.display = "";
-              waitEl.style.opacity = "";
-              waitEl.style.transform = `translate(${wx.toFixed(1)}px, ${wy.toFixed(1)}px)`;
-            } else               waitEl.style.display = "none";
-          }
+          /* ★ v3.0.0（批 8，用户实拍）：预备拍**全程只出主球一颗**——待命球退役。
+             v2.42.6 让它"走位进入最后一拍就落到首拍位"，本意是预告"下一个是正式第一拍"；
+             但用户实拍预备拍 4/4 时主球 + 待命球同时在场（paged/scroll 各测过：scroll 下
+             批 2 的守卫挡住了它，paged 下两球同框），观感就是"出现两个小球"。
+             "小节间回卷"的接力待命球（paintBall 终端弧段那处写点）不受影响——那里才是
+             它语义成立的地方。 */
+          if (waitEl) waitEl.style.display = "none";
         }
       }
       /* v2.86.0（PLAN-v7）：预备拍期间歌词轨始终可见——底部模式底部轨恒显、
@@ -8087,9 +8493,77 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        走自己的终端弧分支，不受此影响）。 */
     let headBar = bar, headTick = tib;
     if (ap && ap.sweep){ headBar = ap.sweep.bar; headTick = ap.sweep.tick; }
+    /* ★ v3.0.0（PLAN-v9）：scroll 下"当前行"恒等于中央槽——paged 的行号是"页内偏移"，
+       而 scroll 的窗口是围着当前小节建的，当前小节就在第 scrollCenter 行。
+       （端点表/时钟回落算出的行号在 scroll 下没有意义，一律以 scrollCenter 为准。） */
+    if (S.scrollMode){
+      bar = scrollCenter; headBar = scrollCenter; headTick = tib;
+      if (!(tib >= 0 && tib <= rowTicksV)) tib = 0;
+    }
     const pw = headTick / rowTicksV * 100;
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
+    if (S.scrollMode){
+      /* 播放头钉在**当前槽的水平中央**（不再随 tib 扫过整行——内容在动、头不动）；
+         行槽按各自相位横移：dx_i = C − left_i − phase_i·W，phase_i = clamp(p − off_i, 0, 1)
+         （p = 小节内进度；off_i = i − scrollCenter）。
+         ★ 与演示逐位同式（演示：translateX(W/2 − phase*W)，行 left 恒 0）；这里显式带上
+           left_i，是因为 BeatSight 的行矩形由 cacheGeo 采集、不再假设恒为 0。
+         ★ 当前点恒在中央：屏幕 x = left + p·W + (C − left − p·W) = C —— 与 tib 无关。
+         ★ 邻槽被 clamp 冻结在 ±W/2（相位 ≤0 / ≥1）：上一小节留它的尾巴在左半屏、
+           下一小节留它的开头在右半屏，这正是"刚唱过 / 即将播放"两行的观感来源。 */
+      const gc = geoOf(scrollCenter);
+      if (gc){
+        const W = gc.width, C = gc.left + W / 2;
+        const p = Math.min(1, Math.max(0, tib / rowTicksV));
+        ph.style.transform = `translateX(${C.toFixed(1)}px)`;
+        scrollDx = C - gc.left - p * W;                    // 供 slotShift（球）/ 歌词叠加读取
+        /* ★ 批 2：垂直登场（rows=3 才有；rows=1 与演示一致不做垂直滚动）。
+           最后一拍内整组平滑上移一行（dy: 0 → −slotH），beat0 时槽序列前移一格、dy 同帧复位 0
+           —— 复位前后的视觉坐标一致，所以小节切换处没有跳变。
+           ★ REDUCE_MOTION：dy 恒 0（登场是纯装饰性动作，"去动作、留位置"的既有纪律；
+             位置语义由 dx 承载，dx 不能砍——砍了"当前点恒在中央"就没了）。 */
+        if (scrollRows() > 1 && !REDUCE_MOTION){
+          const s = Math.min(1, Math.max(0, (p - (1 - SCROLL_ENTRY)) / SCROLL_ENTRY));
+          scrollDy = -smooth01(s) * scrollSlotH;
+        } else scrollDy = 0;
+        /* ★ 批 6：rows=1 = **传送带**。相位**不做 clamp**：phase_i = p − (i − center) 可越出 [0,1]，
+           于是相邻槽的 dx 恒差一个行宽 —— 槽首尾**水平相接**，看起来就是一条连续的带：
+           播放头左侧永远露出上一小节的尾巴、右侧永远是下一小节的开头（"半满"就此消失）。
+           跨小节瞬间 p:1→0、winStart:+1，槽 i 的内容换成原槽 i+1 的、dx 跳 +W —— 内容与位置
+           同时接上，视觉零跳变（这正是传送带比"clamp + beat0 复位"干净的地方：没有接缝）。
+           ★ 垂直方向：三行用 dy **叠置到第一行的位置**（geoOf(0).top − g.top），否则它们按
+             文档流垂直堆叠、可见的只有中间那条——叠置后 #viz 的裁剪高度仍是"一行"。 */
+        const belt = scrollRows() === 1;
+        const beltDy0 = belt ? (geoOf(0) ? geoOf(0).top : 0) : 0;
+        for (let i = 0; i < rowEls.length; i++){
+          const g = geoOf(i), r = rowEls[i];
+          if (!g || !r) continue;
+          const phase = belt ? (p - (i - scrollCenter)) : Math.min(1, Math.max(0, p - (i - scrollCenter)));
+          const dxi = C - g.left - phase * g.width;
+          const dyi = belt ? (beltDy0 - g.top) : scrollDy;
+          r.style.transform = `translate(${dxi.toFixed(1)}px, ${dyi.toFixed(1)}px)`;
+        }
+        /* 歌词轨叠加（批 2）：歌词行锚在网格行下方，行横滑时它必须同组 (dx,dy) 跟着走。
+           ★ 只读结构层记好的 y（placeLaneOverlay 写入 lyricRows[i].y），帧内零布局读取。
+           ★ 批 6：传送带下三行被 dy 叠到同一位置，歌词若三条全显会互相叠字 —— 只亮**当前槽**
+             那一条（它的词随带连续滚动），其余隐藏。 */
+        if (S.showLyric && lyricEl && !lyricEl.hidden && lyricEl.classList.contains("overlay")){
+          for (let i = 0; i < lyricRows.length; i++){
+            /* 歌词行 i 对应网格行 i（两种模式同构：rows=3 各三行；传送带各三槽）。
+               ★ 传送带：三条歌词行的 y 锚原本按 rowGeo[i] 各不相同，但三行网格已被 dy 叠置到
+                 行 0 的位置 —— 校正量 (beltDy0 − g.top) 把歌词也拉回同一条水平线，
+                 于是三条歌词随各自槽的 dx **水平拼成一条连续的歌词线**（与格子带同构）。 */
+            const g = geoOf(i);
+            if (!g) continue;
+            const ph2 = belt ? (p - (i - scrollCenter)) : Math.min(1, Math.max(0, p - (i - scrollCenter)));
+            const dyL = belt ? (beltDy0 - g.top) : scrollDy;
+            lyricRows[i].el.style.transform =
+              `translate(${(C - g.left - ph2 * g.width).toFixed(1)}px, ${((lyricRows[i].y || 0) + dyL).toFixed(1)}px)`;
+          }
+        }
+      }
+    } else {
     const gHead = geoOf(headBar);
     const headPx = gHead ? gHead.left + pw / 100 * gHead.width : 0;
     ph.style.transform = `translateX(${headPx.toFixed(1)}px)`;
@@ -8105,6 +8579,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         tg.style.width = (gT.width * 0.1) + "px"; }
       lastHeadBar = headBar;
     }
+    }
     paintLyric(tib, audK, arrCur, bar);    // 歌词轨：与上面两行同一份 tib、同一份可听小节号 + 本帧行号（片段口径），同一帧里画完
     /* v2.23.0：短型绕行——非在播行都是"绕回的未来"，整体挂预告淡显（opacity .55）；
        W=2 时即用户实拍的「播放到第 2 行时，第 1 行为预告行」。只在球换行时写 class
@@ -8114,7 +8589,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          不是窗口合成型的）——曲式"1 小节型 + 4 行档"是常态，没有守卫就会把曲式
          非在播行挂上 preview-row，污染曲式预告链的判定（T75f 反例探针实锤：
          lastWrapRow 与 row0 的 preview-row 完全同步点亮）。 */
-    if (S.playing && S.playMode !== "arrange" && winPat && vizSegs() > 0 && vizSegs() < arrWinBars() && bar < rowEls.length){
+    if (!S.scrollMode && S.playing && S.playMode !== "arrange" && winPat && vizSegs() > 0 && vizSegs() < arrWinBars() && bar < rowEls.length){
       if (bar !== lastWrapRow){
         rowEls.forEach((r, i) => { if (r) r.classList.toggle("preview-row", i !== bar); });
         lastWrapRow = bar;
@@ -8175,6 +8650,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        "行号<当前行→已弹刷白"对它们依旧成立（与曲式非预告行同行为）。 */
   /** @param {number} b @param {number} bar @returns {boolean} */
   function isPreviewRow(b, bar){
+    if (S.scrollMode) return false;                                    // ⓪ v3.0.0：scroll 无预告行（D20）
     if (S.playMode === "arrange") return winPrevSeg >= 0 && b === 0;   // ① 曲式
     if (winPrevSeg >= 0 && b === 0) return true;                       // ④ 预设重建预告
     if (pvMarkOn && b === 0) return true;                              // ③ 预设轻量预告
@@ -8241,11 +8717,28 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     rafId = requestAnimationFrame(paintFrame);
   }
 
+  /* v3.0.0（PLAN-v9 批 1）：连续滚动的模式/档位切换（见出口面 reloadScroll 的注释）。
+     ★ 顺序是硬约束：先丢弃窗口锚，再 resetWindow，最后重建——
+       反过来会让 buildViz 读到一个"锚已重算、但预告/绕行状态还是旧的"混合态。 */
+  function reloadScroll(){
+    scrollCur = -1;
+    scrollDx = 0;
+    resetWindow();
+    buildViz();
+    buildLyricLane();
+  }
   return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
     /* v2.4.2：六线底纹开关的处理器长在 Controls 段（那里才有 $ 与 setToggle），
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
        由 Controls 单向调用。Controls 声明在 Viz 之后，不构成反向引用。 */
     syncTabLayer,
+    /* v3.0.0（PLAN-v9 批 1）：连续滚动的**模式/档位切换**收口。
+       切模式或切行数 = 窗口语义整体换掉（行数、当前行、行内容映射全变）→ 必须
+       ① 丢弃窗口锚（scrollCur = -1，让下一帧重新解析）、② resetWindow（清预告/绕行等
+       paged 侧的残留状态，两模式共用同一份状态，不请自会）、③ 重建网格 + 歌词轨。
+       ★ 音频不中断（D21）：这里一行都不碰 ctx / 调度器。
+       ★ 暴露给 Controls（设置弹窗的两个处理器）单向调用——Controls 声明在 Viz 之后。 */
+    reloadScroll,
     /* v2.86.0（PLAN-v7）：歌词显示位置解析辅助——effectiveLyricPos 把 auto 按窄屏解析为
        bottom/follow；narrow 复用 viz 紧凑断点（≤960px）。出口面暴露给测试与设置 UI 单向调用。 */
     effectiveLyricPos, narrow,
@@ -8270,7 +8763,12 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
       /* v2.43.0：播放杆与尾迹元素（跨行扫入测试的读数口） */
       ph: playheadEl, tg: trailGlowEl,
       /* v2.15.0：行内切分档（每行几拍）与两层行内定位数组——分片测试要按"行内拍/十六分位"查 */
-      vizRowBeats: vizRowBeats, zoneEls: zoneEls, rulerEls: rulerEls }),
+      vizRowBeats: vizRowBeats, zoneEls: zoneEls, rulerEls: rulerEls,
+      /* ★ v3.0.0（PLAN-v9 批 2）：连续滚动读数（T155 用）。
+         用 **getter** 而不是快照值——这几个都是 let，帧内每帧都在改，快照式暴露会拿到上一次
+         调 internals() 那一刻的陈旧值（rowEls / rowGeo 这类数组引用可以快照，标量不行）。 */
+      get scroll(){ return { cur: scrollCur, center: scrollCenter, dx: scrollDx, dy: scrollDy,
+        slotH: scrollSlotH, rows: scrollRows(), entry: SCROLL_ENTRY, winStart, winPrevSeg }; } }),
     /* v2.15.0：每行几拍的纯决策函数（供测试直测边界） */
     chooseRowBeats };
 })();
@@ -9641,14 +10139,22 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
        同一同步 tick 内完成，才不存在"网格已按新行数重建、行界判据还按旧行数"的错行窗口
        （这正是 Viz.arrWinBars 注释里说的、靠"同步重建"消掉的那类风险）。 */
   function syncRowsUI(){
-    buildPillRow($("vizRowsRow"), VIZ_ROW_COUNTS, {
+    /* ★ v3.0.0（批 4）：档位**随模式重列**，一个控件两套档位表——
+       连续滚动 = 1 / 3 行窗口（写 S.scrollRows，走 reloadScroll：窗口语义整体换掉），
+       分页静止 = 1 / 2 / 3 / 4 行页长（写 S.vizRows，走 buildViz）。
+       用户拍板：参考页里这个控件就叫「同屏行数」，不该在滚动模式下把它置灰、
+       再另造一个"窗口行数"（那正是"为什么不能选同屏行数为 1"的由来）。
+       底层仍是两个字段——值域不同，混存会让切模式后的档位落空。
+       两处写入都在**同一同步 tick** 内完成，不存在"网格已按新行数重建、判据还按旧行数"的窗口。 */
+    const scroll = !!S.scrollMode;
+    buildPillRow($("vizRowsRow"), scroll ? SCROLL_ROW_COUNTS : VIZ_ROW_COUNTS, {
       key: "rows",                        // 按钮带 data-rows=N：测试与样式都能按档位定位
       text: n => n + " 行",
-      label: n => "同屏 " + n + " 行",
-      isOn: n => n === S.vizRows,
+      label: n => (scroll ? "滚动窗口 " : "同屏 ") + n + " 行",
+      isOn: n => scroll ? (n === S.scrollRows) : (n === S.vizRows),
       onPick: n => {
-        S.vizRows = n;
-        Viz.buildViz();                 // 先按新行数重建网格（含歌词轨），再刷档位高亮
+        if (scroll){ S.scrollRows = (n === 1) ? 1 : 3; Viz.reloadScroll(); }
+        else { S.vizRows = n; Viz.buildViz(); }
         syncRowsUI();
         Store.persist();
       },
@@ -10437,6 +10943,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function pushSection(list, text, key){
     const sec = document.createElement("div");
     sec.className = "preset-section";
+    /* v3.0.0（批 5）：带上是哪一区——预设库卡片左列的三个分区按钮靠它定位到这一行
+       （className 必须逐字 "preset-section"、textContent 逐字，故走 dataset） */
+    sec.dataset.sec = key;
     sec.textContent = text;
     sec.setAttribute("role", "button");
     sec.tabIndex = 0;
@@ -15332,6 +15841,63 @@ if (!Store.demoSeeded()){
    Presets.refreshAfterPatternChange()（= 首次 buildViz）之后，于是首屏歌词行按普通模式锚 +88，
    随后类挂上、行距与胶囊尺寸都变了，却没人重排 → 歌词带压在下一行和弦胶囊上（用户实拍，
    点播放触发重建才自愈）。挪到首次 buildViz 之前，两个消费者读到的是同一份事实。 */
+/* ============================================================
+   v3.0.0：预设库抽屉——控制行第 4 块（右列窄块）+ 全宽内联抽屉
+   ------------------------------------------------------------
+   侧栏取消后预设库不再有通高位置，改为「收起 = 右列窄块 / 展开 = 全宽抽屉」。
+   ★ 抽屉**不是叠加层**：不占 z-index、不用管焦点陷阱与"点窗外即关"，窄屏天然成立
+     （与编辑/编排弹层那套 fixed overlay 刻意区分）。
+   ★ 展开态**会话级**、不进热键载荷：练习界面默认收起（预设库属低频）。
+   ★ 初始化排在**首次 buildViz 之前**（启动顺序铁律 v2.87.0）：抽屉开合改变控制栅格行号
+     （收起态预设库跨两行 / 展开态抽屉占第 2 行并把「同屏行数与拍号」推到第 3 行），
+     属于会被 cacheGeo 读到的布局事实，必须先收敛再让 Viz 采几何。 */
+function setPresetDrawer(/** @type {boolean} */ open){
+  const card = $("presetLibCard"), dr = $("presetDrawer");
+  if (!card || !dr) return;
+  card.setAttribute("aria-expanded", open ? "true" : "false");
+  dr.hidden = !open;
+  const grid = /** @type {HTMLElement} */ (card.parentNode);
+  if (grid) grid.classList.toggle("lib-open", !!open);
+  /* ★ v3.0.0（批 4）：抽屉是**内联**展开的——它把控制卡撑高、`#viz` 整体下移。
+     而歌词轨是 `position:absolute` 叠在 `#viz` 上的**兄弟节点**，它的 top/left 与逐行
+     translateY 只在结构层（buildViz / relayout）算 ⇒ 不重算就会停在旧位置：
+     用户实拍症状是「点开预设库后，歌词压在抽屉上、还和网格错位」。
+     调一次 relayout（它正是"几何/位置重算"的既有入口：未播放走 buildViz、播放中走
+     cacheGeo + 歌词重定位）即可，不必新造一条路径。 */
+  Viz.relayout();
+}
+/* ★ v3.0.0（批 5，用户拍板）：卡片本身不再开合抽屉——改由**左列三个分区按钮**触发：
+   点「节拍 / 扫弦 / 自定义」= 展开抽屉 + 确保该分区是展开态 + 把它滚进视野。
+   ★ 展开分区不另开出口：直接**点那一行的分区标题**（它就是折叠开关），
+     先看 aria-expanded 再决定点不点——已展开时再点会把它折起来（那是相反的效果）。
+   ★ 定位用 scrollIntoView(block:"nearest")：抽屉是内联的、滚动发生在页面上，
+     "nearest" 不会把已经很靠上的分区硬拽到顶部（REDUCE_MOTION 下不做平滑滚动）。 */
+[...document.querySelectorAll("#presetLibCard [data-sec]")].forEach(btn => {
+  const b = /** @type {HTMLElement} */ (btn);
+  b.addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const sec = String(b.dataset.sec || "beat");
+    setPresetDrawer(true);
+    const head = /** @type {HTMLElement|null} */ (document.querySelector(`#presetList .preset-section[data-sec="${sec}"]`));
+    if (!head) return;
+    if (head.getAttribute("aria-expanded") === "false") head.click();   // 折叠着才展开（点它是唯一入口）
+    if (typeof head.scrollIntoView === "function") head.scrollIntoView({ block: "nearest", behavior: REDUCE_MOTION ? "auto" : "smooth" });
+  });
+});
+$("presetDrawerClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  setPresetDrawer(false);
+});
+/* 选中型即收起：委托到 #presetList（条目由 JS 动态创建，逐条挂会漏新条目；
+   closest 在桩环境不保证存在，故沿 parentNode 上溯——与 #arrangeOverlay「点窗外即关」同一手写法） */
+$("presetList").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  let t = /** @type {any} */ (e && e.target);
+  while (t){
+    if (/(^| )preset-item( |$)/.test(t.className || "")){ setPresetDrawer(false); return; }
+    t = t.parentNode;
+  }
+});
+setPresetDrawer(false);
 syncVizLabelToggles();
 Presets.refreshAfterPatternChange();
 Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次「跨地址不共享预设」
@@ -15431,6 +15997,29 @@ pills.forEach(b => {
     Viz.buildLyricLane();                     // 重排歌词轨（bottom ↔ follow 切换）
     Store.persist();
   });
+});
+
+/* 连续滚动开关 + 窗口行数两档（v3.0.0，PLAN-v9 批 1）：
+   与上面「显示歌词 / 显示位置」同构——一个总开关（role=switch）+ 一个分段组（关时 .disabled）。
+   ★ 切换必须**重建网格并复位窗口**：scroll 与 paged 的行语义完全不同
+     （paged 的行 = 窗口内的页内偏移，scroll 的行 = 以当前小节为中心的连续节目单），
+     沿用旧的 winStart 会让两边互相污染（这是 v2.10.x 反复踩过的坑，见 resetWindow 的注释）。
+   ★ 音频不中断（D21）：这里只动网格与窗口状态，不碰 ctx / 调度器。 */
+function syncScrollToggles(){
+  setToggle("scrollModeToggle", S.scrollMode);
+  /* ★ v3.0.0（批 4）：档位控件随模式**重列**（滚动 1/3 ↔ 翻页 1/2/3/4）——
+     同一个「同屏行数」控件，不再置灰、也不再有第二个"窗口行数"控件。
+     ★ 必须经 Controls 出口面调用：档位控件的生成器长在 Controls 模块里，
+       而本段在初始化模块——直接写函数名会 ReferenceError（实测踩到）。 */
+  Controls.syncRowsUI();
+}
+syncScrollToggles();
+$("scrollModeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  S.scrollMode = !S.scrollMode;
+  syncScrollToggles();
+  Viz.reloadScroll();
+  Store.persist();
 });
 
 /* PWA 离线安装（v1.4）：仅在线版注册。

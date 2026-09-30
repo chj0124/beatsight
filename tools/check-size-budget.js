@@ -34,8 +34,36 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    + 分组示意 SVG 图 + figcaption；② ③a/③b 两按钮（恢复示例曲/恢复出厂设置）+ 接线 + 二次确认文案；
    ③ 预备拍歌词跟随条预览（paintFollow 预览判定 + paintFrameBody 驱动 paintLyric 调用 + 注释），
    净增 ~5.3KB 必要功能代码（标记重组 + 新控件 + 新分支，均为用户拍板的功能本体）。
-   上调到 1320KB，留约 6.9KB 余量拦回归；非无脑抬常数——体积增量经 git diff 确认为功能本体。 */
-const BUDGET_BYTES = 1320 * 1024;
+   上调到 1320KB，留约 6.9KB 余量拦回归；非无脑抬常数——体积增量经 git diff 确认为功能本体。
+   v3.0.0 批 0（PLAN-v9 布局重构）：单栏改造（.main 1fr、aside 整节点删除）+ 预设库块
+   #presetLibBtn / 抽屉 #presetDrawer（原侧栏卡内容按 id 整组搬入）+ 可视化带 #vizBand
+   （#viz/#lyricLane/#argJump 迁出卡片）+ 行带淡底色 + 栅格断点 1440→1280 与第 4 轨 168px
+   + 抽屉开合接线（含「选中即收起」委托）。git diff 实测 196 增 / 99 删 —— 侧栏删除回收约
+   4KB 后仍**净增 8.4KB**（注释已计入、非冗余：这批注释记的是「为什么这么摆」，删了下次
+   还会踩同一个坑）。上调到 1332KB，留约 5.6KB 余量拦回归；批 1–3（连续滚动模式）各自
+   按同一口径自带 git diff 证据再调，不预先透支。
+   v3.0.0 批 1（连续滚动骨架）：数据层两字段（S.scrollMode / S.scrollRows + typedef + 热键
+   载荷）、设置弹窗一枚开关 + 一行两档分段 + 同构接线、Viz 的 scrollRows/scrollCenter/
+   slotShift/reloadScroll、buildViz 的 scroll 窗口分支、paintFrameBody 的 scroll 同步 +
+   播放头钉中央 + 行槽横移、paintBall 的 slotShift 叠加与待命球门、isPreviewRow /
+   effectiveLyricPos 两处守卫、t24 开关计数 15→16。git diff 实测 422 增 / 108 删（批 0+批 1
+   合计），净增约 19KB —— 其中约六成是注释，但记的都是「为什么这么定」（槽相位为什么
+   clamp、为什么一行恒等于整小节、为什么同屏行数在 scroll 下要置灰），删了下次还会踩。
+   上调到 1348KB，留约 5KB 余量拦回归；批 2/3 按同一口径自带 git diff 证据再调。
+   v3.0.0 批 2（强拍登场 + 歌词叠加）：两个窗口合成器加可选行数参（建 rows+1 行，末行是进场行）、
+   cacheGeo 采集槽距 slotH（不写死 106）、#viz 与歌词覆盖层的同源高度裁剪、scrollBvis/smooth01、
+   dy 同帧复位、REDUCE_MOTION 降级、歌词行 y 锚点复用与同组 (dx,dy) 叠加。批 0+1+2 累计
+   git diff 497 增 / 116 删。   上调到 1356KB（把 1348 那次的余量一并重算），留约 7KB 拦回归。
+   v3.0.0 批 4（用户实报五问）：窗口起点改为**可为负**（当前行恒居中，修「第一小节播完先上滚
+   又弹回」）+ `anchored()` 接管"未锚"判据 + 静止态 `applyScrollRest`（修「打开后首屏还是旧样子」）
+   + 两档行数控件合并成「同屏行数」（不再多一个"窗口行数"）+ 撤掉 `--band` 深色底 + 抽屉开合
+   触发 relayout。净增约 2KB（有增有删：删掉 --band 两处定义与一个控件，新增 anchored/静态态/注释）。
+   上调到 1364KB，留约 6KB 拦回归。
+   v3.0.0 批 6：① 修「播放时歌词不跟行走」——歌词窗口起点抽 `lyricWinBase()` 单一来源
+   （批 4 两处手写公式分叉 → 每帧整轨重建 → translateY 同帧覆盖横移）；② rows=1 改**传送带**
+   （3 槽、相位去 clamp 首尾相接、三行 dy 叠置、歌词只跟当前槽）。净增约 1.5KB（多为注释）。
+   上调到 1372KB，留约 6KB 拦回归。 */
+const BUDGET_BYTES = 1372 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

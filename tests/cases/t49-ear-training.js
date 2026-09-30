@@ -240,18 +240,22 @@ section("T49f 听辨训练 · 脏战绩回退 / 清零");
   eq(et.txt("earAcc"), "—", "无题时正确率显示 —（而不是 NaN）");
 }
 
-/* ================= 场景 T49g：入口已迁预设卡编排行 + 额度是唯一判据（v2.10.12 → v2.69.0 返工） ================= */
-section("T49g 听辨训练 · 入口在预设卡「编辑节奏型/编排曲式」行最左（v2.69.0 返工：顶栏只留全局件）；练习量删除后额度是唯一判据");
+/* ================= 场景 T49g：入口在预设库卡片（v2.10.12 → v2.69.0 → v3.0.0 批 5 三次搬家） ================= */
+section("T49g 听辨训练 · 入口在预设库卡片上（v3.0.0 批 5：预设库从「一个按钮」改回卡片后搬进去）；练习量删除后额度是唯一判据");
 {
   const app = loadApp();
   const els = app.els, S = app.beat.Store.S;
-  /* 入口搬家（v2.69.0 返工，用户拍板）：元素在预设卡 #argNowRow 行、排在「编辑节奏型」左边；
-     原先旁边那行正确率小字（#earMini）按用户要求取消——正确率在听辨训练自己的
-     overlay 里能看（#earAcc / #earTotal / #earBest） */
-  const nowRow = html.slice(html.indexOf('<div class="arg-now" id="argNowRow">'), html.indexOf("</div>", html.indexOf('id="argNowName"')));
-  ok(/id="earBtn"/.test(nowRow), "★ 「听辨训练」入口在预设卡编排行（v2.69.0 从顶栏迁入）");
-  ok(nowRow.indexOf('id="earBtn"') < nowRow.indexOf('id="editBtn"'),
-    "★ 排在「编辑节奏型」**左边**（用户拍板：本行最左）");
+  /* 入口三次搬家（每次都是"搬块不换 id"，接线零改动）：
+       v2.69.0 顶栏 → 预设卡 #argNowRow 行最左
+       v3.0.0 批 0 侧栏 → 抽屉
+       v3.0.0 批 5 抽屉 → 预设库卡片右列（左列是三分区，右列是三个入口）
+     ★ 判据改成"在 #presetLibCard 内"，不再绑某一行——位置再挪一次也不必重写这条。 */
+  const card = html.slice(html.indexOf('id="presetLibCard"'), html.indexOf('id="presetDrawer"'));
+  ok(/id="earBtn"/.test(card), "★ 「听辨训练」入口在预设库卡片内");
+  ok(card.indexOf('id="earBtn"') < card.indexOf('id="editBtn"'),
+    "★ 排在「编辑节奏型」**左边**（用户拍板：右列自上而下 = 听辨 / 编辑 / 编排）");
+  ok(html.indexOf('id="earBtn"') > html.indexOf('id="presetLibCard"'),
+    "★ 不在抽屉里（抽屉从 #presetDrawer 起算）");
   ok(!/id="earMini"/.test(html), "★ 入口旁的正确率小字已取消（正确率在听辨 overlay 里看）");
   ok(!/id="earBtn"/.test(html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"))),
     "★ 顶栏不再有听辨训练入口（顶栏只留延迟读数/设置/主题钮）");
