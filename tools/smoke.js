@@ -490,9 +490,17 @@ async function runPass(label, url, userDataDir){
     await cdp.send("Log.enable").catch(() => {});
     const raw = await evaluate(cdp, probe());
     result.probe = JSON.parse(raw);
-    /* v2.10.11：布局探针跑两遍——默认（桌面）宽度一遍，再切到 390px 一遍，量完恢复视口。
-       失败只标记 result.layout = null（对应的几条断言会报"未验证"），不影响其它断言。 */
+    /* v2.10.11：布局探针跑两遍——桌面宽度一遍，再切到 390px 一遍，量完恢复视口。
+       失败只标记 result.layout = null（对应的几条断言会报"未验证"），不影响其它断言。
+       ★ 桌面遍也走 setDeviceMetricsOverride（不再依赖 --window-size 的实际视口）：
+       --window-size=1440 在 Windows 经典滚动条下 innerWidth 只有 ~1424（被吃掉 ~16px），
+       而网格居中的媒体查询是 min-width:1440px——视口差 1px 不到断点，桌面网格整个不激活，
+       「开关行右移」断言在本机必红、CI（Linux 无经典滚动条）却绿。用 deviceMetrics 钉死
+       1440 后，三平台探针基线一致（与下方 390 窄屏同一机制）。 */
     try{
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
