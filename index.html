@@ -473,6 +473,22 @@ body.wide-full .main{max-width:none}
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 .lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
+/* 歌词跟随条（方案乙，v2.83.0）：曲式模式播放时，把「当前行」那一小节的歌词以单行字块条
+   贴到当前网格行正下方、换行跟随。复用 .lyric-chip/.lfill/.lyric-char 全套着色语义（played/on
+   与底部轨一致），只收尺寸。定位全靠 transform: translateY（top 恒 0），帧内零 layout。
+   行距冲突：下一行和弦胶囊挂 top:-18px、占掉 20px 行距上部 2–15px，故本窗口有歌词时
+   给 #viz 加 .lyric-follow-on（行距 20→48，数值经截图实测微调），跟随条落进胶囊下方空带，
+   与胶囊垂直错开 ≥4px；预设模式 / 无歌词窗口行距一字不动 */
+.lyric-follow{position:absolute;left:0;right:0;top:0;height:22px;pointer-events:none;z-index:5;will-change:transform}
+.lyric-follow[hidden]{display:none}
+.lyric-follow .lyric-chip{top:1px;height:20px}
+.lyric-follow .lyric-char{font-size:calc(13px * var(--cs, 1))}
+#viz.lyric-follow-on .bar-row{margin-bottom:48px}
+/* v2.84.0 双关放大：座次尺 + 时值标注都关 ⇒ 跟随条移入行内原两标注占用的竖向带、
+   增高到 32px、字增大加粗（行距补偿 .lyric-follow-on 仍保留，护住下行 .chord-xl 胶囊 ≥32px 净空） */
+#viz.no-ruler.no-durlab .lyric-follow{height:32px}
+#viz.no-ruler.no-durlab .lyric-follow .lyric-chip{top:1px;height:30px}
+#viz.no-ruler.no-durlab .lyric-follow .lyric-char{font-size:calc(17px * var(--cs, 1));font-weight:800}
 
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
@@ -2391,8 +2407,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            两开关都关 ⇒ 加 .chord-xl，行首和弦胶囊放大一倍（2.1，用户拍板） -->
       <button class="toggle-pill on" id="rulerLabToggle" role="switch" aria-checked="true">座次尺 · 1 e &amp; a<span class="switch"></span></button>
       <button class="toggle-pill on" id="durLabelToggle" role="switch" aria-checked="true">时值标注 · 四分/八分/×n<span class="switch"></span></button>
+      <!-- v2.84.0（⑥）：歌词跟随条显隐开关。默认开（与座次尺/时值标注同属可视化辅助层）。
+           关掉即退回纯底部轨现状。两个标注都关时，跟随条会自动移入行内原标注带并增高增大（见 .no-ruler.no-durlab 规则） -->
+      <button class="toggle-pill on" id="lyricFollowToggle" role="switch" aria-checked="true">歌词跟随条 · 当前行贴边<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px">两个画面图层开关与<b>宽屏铺满</b>（主题切换已上**顶栏**月亮/太阳图标钮，本组不再有主题项）。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）；宽屏铺满去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。</div>
+    <div class="hint" style="margin-top:8px">两个画面图层开关与<b>宽屏铺满</b>（主题切换已上**顶栏**月亮/太阳图标钮，本组不再有主题项）。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）；宽屏铺满去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚；同时<b>歌词跟随条</b>会自动移入这两组标注腾出的行内空带、增高增大，弹唱时视线更聚拢（上面的「歌词跟随条」开关可整体关掉它，退回纯底部轨）。</div>
 
     <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
          v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
@@ -2532,23 +2551,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2564  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3188  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4769  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5585  Modal         应用内弹窗
-     L5723  Viz           时值可视化渲染与每帧动画
-     L8104  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8761  Trainer       变速训练器
-     L8953  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9522  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10806 Editor        自定义节奏型编辑器
-     L11252 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11299 Ear           听辨训练（v1.10.0）
-     L11519 Arrange       曲式编排（v2.0.0）
-     L14417 Help          使用方法（v2.0.1）
-     L14546 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14620 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14863 初始化（装配） 各模块 hook 接线与启动
+     L2583  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3207  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4792  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5608  Modal         应用内弹窗
+     L5746  Viz           时值可视化渲染与每帧动画
+     L8216  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8873  Trainer       变速训练器
+     L9065  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9634  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10918 Editor        自定义节奏型编辑器
+     L11364 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11411 Ear           听辨训练（v1.10.0）
+     L11631 Arrange       曲式编排（v2.0.0）
+     L14529 Help          使用方法（v2.0.1）
+     L14658 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14732 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14975 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2574,7 +2593,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.82.0";
+const VERSION = "2.84.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4001,7 +4020,7 @@ const Store = (() => {
    *   bounce: boolean, keepAwake: boolean, migHint: boolean,
    *   wideFull: boolean,
    *   showTab: boolean,
-   *   showRuler: boolean, showDurLabel: boolean,
+   *   showRuler: boolean, showDurLabel: boolean, lyricFollow: boolean,
    *   vizRows: number,
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
@@ -4057,6 +4076,9 @@ const Store = (() => {
        显隐走 CSS 类（.viz.no-ruler / .no-durlab），DOM 照建——文本断言与读屏不受影响。 */
     showRuler: saved.showRuler !== false,
     showDurLabel: saved.showDurLabel !== false,
+    /* v2.84.0（⑥）：歌词跟随条显隐开关。默认开（与 showRuler/showDurLabel 同类——都是可视化辅助层显隐），
+       老用户升级后逐位不变。关掉即退回纯底部轨现状（hideFollow）。 */
+    lyricFollow: saved.lyricFollow !== false,
     /* v2.8.0 req3 同屏行数档位：扫弦网格窗口与歌词轨**共用**（见 VIZ_ROW_COUNTS 的值表注释）。
        它是用户的**视图偏好**，跟 showTab 同类——下次打开还要看同样的行数，所以进热键载荷。
        默认 4 = 旧口径「同屏 4 小节」：v2.10.2 起两种模式都窗口化，默认档下
@@ -4244,6 +4266,7 @@ const Store = (() => {
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
       showTab:S.showTab,                          // v2.4.2：六线底纹开关（显示偏好，跟热键走）
       showRuler:S.showRuler, showDurLabel:S.showDurLabel, // v2.70.0：座次尺/时值标注（显示偏好，跟热键走）
+      lyricFollow:S.lyricFollow,                  // v2.84.0：歌词跟随条显隐（显示偏好，跟热键走）
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
@@ -5773,6 +5796,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
       left: r.offsetLeft, top: r.offsetTop, width: r.offsetWidth,
       height: (cellEls[i] && cellEls[i][0]) ? cellEls[i][0].offsetHeight : 44,
     }));
+    vizRowBoxH = (rowEls[0] && rowEls[0].offsetHeight) ? rowEls[0].offsetHeight : 86;  // 行盒高（含内容，仅 86px 不含行距）
   }
   /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
@@ -6534,6 +6558,13 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   let lyricRunSig = /** @type {string} */ ("");
   let lyricW = 0;
   let lastLyricStates = "";                   // 行态签名（played/on/cur 集合）：变了才重写 className
+  /* 歌词跟随条（方案乙，v2.83.0）：#viz 内绝对定位的单行字块条，translateY 贴当前行下缘。
+     followRow = 当前行号（= 已建字块的行）；-2 = 未初始化（强制首帧重建）；-1 = 隐藏 */
+  let lyricFollowEl = /** @type {HTMLElement|null} */ (null);
+  let followRow = -2;
+  let followChipEls = /** @type {HTMLElement[]} */ ([]), followFillEls = /** @type {HTMLElement[]} */ ([]);
+  let vizRowBoxH = 86;                         // 行盒高（.bar-row 86px），cacheGeo 采；跟随条 Y 用
+  const FOLLOW_INSET_Y = 50;                   // v2.84.0 双关放大：跟随条移入行内原标注带的竖向偏移（cell 44 + label 带起点 48 略下，落在 50..82，避开下一行 .chord-xl 胶囊）
 
   /** @param {any} s */
   function stepLabel(s){
@@ -7453,6 +7484,80 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      与正上方那一行网格共用同一根时间轴（v2.7.1 起行列定位全部走可听域，
      见 audibleArrangePos 的注释）。旧版"整段一条横排"在段长 >1 小节时，歌词位置与
      小球/网格行的对应关系要靠心算，分行后第几小节的歌词就在第几行。 */
+  /* 歌词跟随条支撑（方案乙，v2.83.0）：#lyricFollow 是 #viz 内绝对定位单行条，复用 lyricRows
+     数据，零新数据层。hideFollow/showFollow 在结构层（buildLyricLane）调用——它们会按需要
+     增删 #viz 的 .lyric-follow-on（行距 20→48）并连带 cacheGeo() 重采，结构时刻读 offset 合法；
+     paintFollow 在帧层（paintLyric 尾部）调用，只写 transform/className、零布局读取（T27 纪律） */
+  function ensureLyricFollow(viz){
+    if (!lyricFollowEl){
+      lyricFollowEl = document.createElement("div");
+      lyricFollowEl.id = "lyricFollow";
+      lyricFollowEl.className = "lyric-follow";
+      lyricFollowEl.hidden = true;
+    }
+    if (lyricFollowEl.parentElement !== viz) viz.appendChild(lyricFollowEl);   // buildViz 会 clear(#viz)，故每次都确保挂上
+  }
+  /* 收起跟随条 + 还原行距（无歌词 / 设置关 / 停机预备） */
+  function hideFollow(){
+    if (lyricFollowEl) lyricFollowEl.hidden = true;
+    followRow = -2;
+    const viz = $("viz");
+    if (viz && viz.classList.contains("lyric-follow-on")){ viz.classList.remove("lyric-follow-on"); cacheGeo(); }
+  }
+  /* 跟随条显隐 + 双关放大外框决策（v2.84.0）。仅管 #viz 类的增删与 followRow 失效，
+     像素位移留给 paintFollow（帧层）。当「座次尺」「时值标注」都关 ⇒ 行内原两标注占用的竖向带
+     空出，跟随条应移入其中、增高增大（由 CSS `.no-ruler.no-durlab .lyric-follow` 承担）；
+     行距补偿 `.lyric-follow-on` 仍保留——下行和弦胶囊（.chord-xl 时刻顶到 -36px）需要 ≥32px
+     净空，48px 余量最稳，不冒险收紧。结构层调用（buildLyricLane / 设置开关收敛），读 offset 合法。 */
+  function syncFollowChrome(){
+    const viz = $("viz");
+    if (!viz) return;
+    if (S.lyricFollow === false){ hideFollow(); return; }   // 设置关闭：退回纯底部轨现状
+    ensureLyricFollow(viz);
+    if (!viz.classList.contains("lyric-follow-on")){ viz.classList.add("lyric-follow-on"); cacheGeo(); }
+    followRow = -2;   // 强制下一帧按当前模式（普通 / 双关放大）重算位移与字块
+  }
+  /* 结构层入口：有词窗口挂载跟随条时调用，决策收口到 syncFollowChrome */
+  function showFollow(){ syncFollowChrome(); }
+  /* 帧层：把当前行字块贴到当前行正下方、随播放走 */
+  function paintFollow(tib, curIdx){
+    const el = lyricFollowEl;
+    if (!el) return;
+    if (S.lyricFollow === false){ if (!el.hidden) el.hidden = true; followRow = -2; return; }   // v2.84.0（⑥）：设置关 → 整帧不显示
+    const row = (curIdx >= 0 && lyricRows[curIdx]) ? lyricRows[curIdx] : null;
+    if (!row || !row.chars.length){ if (!el.hidden) el.hidden = true; followRow = curIdx; return; }
+    if (el.hidden) el.hidden = false;
+    const span = row.barTicks || 1;
+    /* 换行：重建当前行字块（数据取自 lyricRows[curIdx]，与底部轨同一份切分） */
+    if (curIdx !== followRow){
+      clear(el); followChipEls = []; followFillEls = [];
+      for (const c of row.chars){
+        const chip = document.createElement("div");
+        chip.className = "lyric-chip";
+        chip.style.left = (c.lt / span * 100) + "%";
+        chip.style.width = (Math.max(0, Math.min(c.ld, span - c.lt)) / span * 100) + "%";
+        const fill = document.createElement("div"); fill.className = "lfill";
+        const label = document.createElement("span"); label.className = "lyric-char";
+        label.textContent = c.ch;            // 边界规则 3：用户可控字符串只走 textContent
+        chip.appendChild(fill); chip.appendChild(label);
+        el.appendChild(chip);
+        followChipEls.push(chip); followFillEls.push(fill);
+      }
+      const bothOff = !S.showRuler && !S.showDurLabel;   // 双关放大：座次尺 + 时值标注都关
+      const gy = (rowGeo[curIdx] ? rowGeo[curIdx].top : 0)
+        + (bothOff ? FOLLOW_INSET_Y : vizRowBoxH + 2);   // 双关 ⇒ 移入行内原标注带；否则贴行下缘
+      el.style.transform = "translateY(" + gy + "px)";
+      followRow = curIdx;
+    }
+    /* 每帧：当前行字块状态（同底部轨同一套 tib 换算；当前行字少，逐帧写亦廉价） */
+    for (let i = 0; i < row.chars.length; i++){
+      const c = row.chars[i];
+      const st = (tib >= c.lt + c.ld) ? "p" : (tib >= c.lt ? "o" : "-");
+      followChipEls[i].className = "lyric-chip" + (st === "p" ? " played" : (st === "o" ? " on" : ""));
+      followFillEls[i].style.transform = (st === "p") ? "scaleX(1)"
+        : "scaleX(" + (st === "o" ? Math.min(1, (tib - c.lt) / c.ld).toFixed(3) : 0) + ")";
+    }
+  }
   function buildLyricLane(){
     const lane = $("lyricLane");
     if (!lane) return;
@@ -7460,9 +7565,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     lyricRunSig = ""; lyricW = 0; lastLyricStates = "";
     clear(lane);
     const a = arrangeCur();
-    if (!a || !a.sections.length){ lane.hidden = true; return; }   // 预设模式 / 曲式已删：整轨收起，不占位
+    if (!a || !a.sections.length){ lane.hidden = true; hideFollow(); return; }   // 预设模式 / 曲式已删：整轨收起，不占位
     const total = songBars(a);
-    if (!total){ lane.hidden = true; return; }
+    if (!total){ lane.hidden = true; hideFollow(); return; }
     /* 窗口起点与网格同源：播放中沿用 winStart（paintFrameBody 按可听位置维护，本函数
        由 buildViz 末尾调用、那一刻它已是最新）；停机预览锚到播放范围起点所在窗口——
        与 buildViz 里「停止/未播时锚到播放范围起点」同一口径 */
@@ -7531,10 +7636,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     /* 窗口里一个小节的歌词都没有 → 整轨收起不占位（与旧版"当前段无歌词行即收起"同义）。
        窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来 */
-    if (!lyricRows.some(r => r.chars.length)){ lane.hidden = true; return; }
+    if (!lyricRows.some(r => r.chars.length)){ lane.hidden = true; hideFollow(); return; }
     lane.hidden = false;
     lyricRunSig = a.id + "@" + W + "/" + K + "#" + winPrevSeg;
     lyricW = lane.offsetWidth;                  // 结构变化时采集一次（稳态帧绝不读）
+    showFollow();                               // 方案乙：有歌词 → 触发跟随条挂载 + 行距补偿
   }
   /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
   function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
@@ -7608,6 +7714,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (cur && cur.barTicks > 0)
         cur.head.style.transform = `translateX(${(lyricW * Math.min(1, tib / cur.barTicks)).toFixed(1)}px)`;
     }
+    paintFollow(tib, curIdx);   // 方案乙：当前行歌词跟随条（帧层，零布局读取）
   }
 
   /* 每帧主体：只做便宜事。rafId 的续期统一交给外层 paintFrame()，
@@ -8077,6 +8184,9 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
        由 Controls 单向调用。Controls 声明在 Viz 之后，不构成反向引用。 */
     syncTabLayer,
+    /* v2.84.0：歌词跟随条的「显隐 + 双关放大外框」决策（与 syncTabLayer 同构：设置开关在
+       Controls 段，Viz 才掌握跟随条领域知识——出口面暴露、Controls 单向调用）。 */
+    syncFollowChrome,
     /* v2.8.0 req3：曲式滚动窗口的长度（= 同屏行数档位 S.vizRows）——网格与歌词轨共用的那一个数。
        暴露出来给测试与「两轨共用同一档位」的调用方一个单一真相源
        （值表 VIZ_ROW_COUNTS 的注释里「见 Viz.arrWinBars」指的就是这里）。 */
@@ -8093,6 +8203,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
     internals: () => ({ ballEl, shadowEl, waitEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
+      /* v2.83.0：歌词跟随条（方案乙）元素与状态，供断言 translateY/显隐/字块 */
+      lyricFollowEl, followRow, followChipEls,
       /* v2.43.0：播放杆与尾迹元素（跨行扫入测试的读数口） */
       ph: playheadEl, tg: trailGlowEl,
       /* v2.15.0：行内切分档（每行几拍）与两层行内定位数组——分片测试要按"行内拍/十六分位"查 */
@@ -15173,18 +15285,30 @@ function syncVizLabelToggles(){
   viz.classList.toggle("chord-xl", !S.showRuler && !S.showDurLabel);
   setToggle("rulerLabToggle", S.showRuler);
   setToggle("durLabelToggle", S.showDurLabel);
+  setToggle("lyricFollowToggle", S.lyricFollow);   // v2.84.0：收敛新开关（启动 + 运行时都走这里）
 }
 syncVizLabelToggles();
 $("rulerLabToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   S.showRuler = !S.showRuler;
   syncVizLabelToggles();
+  Viz.syncFollowChrome();   // v2.84.0：刷新跟随条外框（双关放大模式按此重算位移）
   Store.persist();
 });
 $("durLabelToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   S.showDurLabel = !S.showDurLabel;
   syncVizLabelToggles();
+  Viz.syncFollowChrome();   // v2.84.0：刷新跟随条外框（双关放大模式按此重算位移）
+  Store.persist();
+});
+/* 歌词跟随条显隐开关（v2.84.0，⑥）：默认开。关掉即 hideFollow（退回纯底部轨）。
+   处理器长在 Controls（这里才有 $ 与 setToggle），显隐决策收口到 Viz.syncFollowChrome，单向调用 */
+$("lyricFollowToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  S.lyricFollow = !S.lyricFollow;
+  setToggle("lyricFollowToggle", S.lyricFollow);
+  Viz.syncFollowChrome();
   Store.persist();
 });
 

@@ -24,10 +24,14 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const HTML = process.argv[2] || path.join(ROOT, "index.html");
 
-/* 预算：当前 index.html ≈ 1.23MB；给约 5% 余量作为回归缓冲。
-   调大它前先回答「这多出来的体积从哪来」——禁止无脑抬常数（与 check-module-order 的
-   MAX_FANOUT 同一纪律）。 */
-const BUDGET_BYTES = 1300 * 1024;
+/* 预算：原 1300KB（v2.82.0 实测 ≈1.27MB）。v2.83.0 新增「歌词跟随条（方案乙）」——
+   纯增量：CSS（.lyric-follow / .lyric-follow-on）+ 状态变量 + cacheGeo 采行盒高 +
+   4 个支撑函数（ensureLyricFollow / hideFollow / showFollow / paintFollow）+ paintLyric
+   尾部接线 + internals 暴露，净增 ~87 行 / ~4KB 必要功能代码（注释已计入，非冗余）。
+   v2.84.0 加「设置开关 + 双关放大模式」：syncFollowChrome 函数 + paintFollow 双关分支 +
+   S.lyricFollow 状态/typedef/载荷 + 设置 pill + 两处理器接线，净增 ~2KB 必要功能代码。
+   上调到 1308KB，留约 2KB 余量拦回归；非无脑抬常数——体积增量经 git diff 确认为功能本体。 */
+const BUDGET_BYTES = 1308 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

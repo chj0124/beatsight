@@ -122,7 +122,7 @@ const STEPS = [
   { name: "DOM 节点账本", cmd: process.execPath, args: ["tools/check-node-budget.js"] },
   { name: "测试桩能力对账", cmd: process.execPath, args: ["tools/check-stub-parity.js"] },
   /* v2.58.0（基建 T3）：两个"零依赖纯读文件"家族的新账本，与上面同属极便宜家族，故一并前置。
-     资源体积预算守"单文件 PWA 不得膨胀越过 1300KB"的硬上限（越界即红，逼着以后每次加功能都先瘦身）；
+     资源体积预算守"单文件 PWA 不得膨胀越过 1308KB"的硬上限（越界即红，逼着以后每次加功能都先瘦身）；
      CSS 孤儿扫描是观察期账本——只打印疑似孤儿 class、默认不判红（exit 0），确认删除前先核对动态拼法，
      避免误删运行期才拼出来的样式。详见各自文件头注释。 */
   { name: "资源体积预算", cmd: process.execPath, args: ["tools/check-size-budget.js"] },

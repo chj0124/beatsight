@@ -9,6 +9,34 @@
 
 ---
 
+## v2.84.0 · 歌词跟随条：设置开关 + 双关放大模式（2026-09-30）
+
+- **需求来源**：v2.83.0 已交付「方案乙（单行跟随条）」——把当前行歌词贴到网格行下缘。本次补两件事：① 加设置开关「歌词跟随条」（⑥，可整体关掉退回纯底部轨）；② 当「座次尺 · 1 e & a」与「时值标注 · 四分/八分/×n」都关时，释放出的行内竖向带自动被跟随条接管——它移入其中、增高到 32px、字增大到 17px/800，弹唱时视线更聚拢。
+- **① 根因**：① 跟随条在 v2.83.0 是“默认常开、无开关”的——`showFollow` 读 `S.lyricFollow` 的钩子已预留但 `S` 里没有这个字段、设置 UI 也没有入口，违反“显示偏好跟 showTab 同类、应可关”的既定纪律。② 双关语境下，座次尺（top:67px）与时值标注（top:48px）占用的行内竖向带（约 48–77px）被整片释放，而跟随条原本贴在行下缘（行盒高 86 + 2 = +88），与这片空带隔着 48px 行距——正好可上移复用，无需新增任何数据层。
+- **② 修法**：
+  - 新增 `S.lyricFollow`（默认 `saved.lyricFollow !== false`，与 showRuler/showDurLabel 同构）；typedef、热键载荷（`lyricFollow:S.lyricFollow`）同步登记；设置 UI 组①「外观与辅助」新增 `lyricFollowToggle` pill（默认 on）+ 收敛进 `syncVizLabelToggles()`。
+  - 显隐决策收口到 Viz 内新增的 `syncFollowChrome()`（与 `syncTabLayer` 同构：开关在 Controls 段、Viz 掌握跟随条领域知识，出口面暴露、单向调用）；`showFollow` 退化为它的薄包装。`buildLyricLane` 调用点不变。
+  - 双关放大：CSS 加 `#viz.no-ruler.no-durlab .lyric-follow{height:32px}` / `.lyric-chip{height:30px}` / `.lyric-char{font-size:calc(17px*var(--cs,1));font-weight:800}`；`paintFollow` 加 `bothOff = !S.showRuler && !S.showDurLabel` 分支，位移由 `行顶 + 行盒高 + 2`（+88）改为 `行顶 + FOLLOW_INSET_Y`（+50，落进行内原标注带 50–82px）。
+  - 行距守恒：双关时**仍保留** `.lyric-follow-on`（行距 20→48），因为下行 `.chord-xl` 胶囊顶到 -36px，需要 ≥32px 净空才能不压字；48px 余量最稳，不冒险收紧。
+  - 运行时联动：两座次尺/时值标注点击处理器在 `syncVizLabelToggles()` 后追加 `Viz.syncFollowChrome()`（强制 `followRow=-2` 让下一帧按新模式重算位移）；新 `lyricFollowToggle` 处理器自管 `setToggle` + `syncFollowChrome` + `Store.persist`。
+- **③ 取舍**：双关放大**不新增模式类**——直接复用既有的 `.no-ruler.no-durlab` 选择器（座次尺/时值标注双关语义天然就是这个），零新增 CSS 命名面；跟随条增高只发生在“两标注都关”的窄语境，常规模式行距/位移一字未动。设置开关默认开，升级用户逐位不变。
+- **④ 自验**：`node tests/run.js`（目标全绿，含新增 t149d/e/f 三场景：双关放大 translateY=行顶+50 + CSS 增高规则就位 / 设置关→隐藏+行距类零残留 / 双关↔普通↔关 往返无残留）；`node tools/check-all.js` 全绿（含 check-version 五处一致、模块顺序 R2、资源体积预算上调 1306→1308KB）；t24 角色声明数 14→15、t90 控件组清单 11→12。
+- 改动文件：`index.html`（CSS 双关放大三条规则 + `FOLLOW_INSET_Y` 常量 + `S.lyricFollow` 默认/typedef/载荷 + 设置 pill/hint + `syncFollowChrome` + `paintFollow` 双关分支 + 出口暴露 + `syncVizLabelToggles`/两处理器接线）、`tests/cases/t149-lyric-follow.js`（扩 T149d/e/f）、`tests/cases/t24-audit-hardening.js`（14→15）、`tests/cases/t90-control-layout.js`（11→12）、版本号五处对齐 2.84.0、预算 1306→1308KB。
+
+## v2.83.0 · 歌词跟随条：当前行歌词贴到网格行下缘（方案乙·单行跟随条）（2026-09-30）
+
+- **需求来源**：曲式模式可视化区，歌词轨（`#lyricLane`，`#viz` 兄弟节点，整轨躺在 N 行网格之下）离正在播放的网格行太远，弹唱时眼睛要在「当前行」与「底部歌词」之间来回跳，无法实现辅助弹唱的设想。四方案示意后选定**方案乙（单行跟随条）**：只把当前行的歌词以一条单行字块条贴到当前网格行正下方，换行时跟随。
+- **① 根因**：歌词数据本是按窗口行分行组织的（`buildLyricLane` 为每行建 `.lyric-row`，字块按行内 tick % 定位，`paintLyric` 每帧已算好当前行号），"远"纯粹是**显示位置**问题——数据层零缺失，只需把"当前行那条"换个贴行位置。
+- **② 修法**：
+  - 新增 `#lyricFollow`（`#viz` 内末尾绝对定位条，`transform: translateY()` 贴 `rowGeo[curIdx].top + 行盒高 + 2`，`top` 恒 0，帧内零布局读取）。
+  - 字块数据**直接复用** `lyricRows[curIdx].chars`（与底部轨同一份切分），不重复切词；着色语义（played/on）与底部轨一致，逐帧只写 fill `scaleX` 与 className。
+  - 行距冲突：下一行和弦胶囊挂 `top:-18px`、占掉 20px 行距上部 2–15px——故本窗口有歌词时给 `#viz` 加 `.lyric-follow-on`（行距 20→48，数值经截图实测微调），跟随条落进胶囊下方空带，垂直错开 ≥4px；预设/无词窗口行距一字不动。
+  - 结构/帧两级纪律守住：`showFollow/hideFollow` 在结构层（buildLyricLane）按需增删行距类并连带 `cacheGeo()` 重采（结构时刻读 offset 合法）；`paintFollow` 在帧层（paintLyric 尾部）调用，只写 transform/className。
+  - 不破 T27 不变量：测试按 `.bar-row` class 过滤行，跟随条不带该 class、不含 `.active` 格，不进计数。
+- **③ 取舍**：行距 +28px ×（行数−1）是"贴行"的必然成本（4 行窗口约 +84px），只在有词可唱时付；底部整轨歌词保留作总览。默认开，无设置开关（如需关闭可在 buildLyricLane 的 `showFollow` 读 `S.lyricFollow` 处接设置）。
+- **④ 自验**：`node tests/run.js` **4642 PASS / 0 FAIL**（新增 t149 三场景：结构挂载+行距补偿+不破 bar-row 不变量 / 帧层跟随当前行+换行下移+字块着色+停机隐藏 / 预设模式隐藏+行距还原零残留）；`node tools/check-all.js` 全绿（含模块顺序 R2 机器守——paintFollow 在 HOT 路径不得引用后方模块，已核对）；t24 角色声明数、t90 控件组清单未受新增元素影响。
+- 改动文件：`index.html`（CSS `.lyric-follow`/`.lyric-follow-on` + 状态变量 + `cacheGeo` 采行盒高 + `buildLyricLane` 接入 + 新增 `ensureLyricFollow/hideFollow/showFollow/paintFollow` + `paintLyric` 尾部调用 + `internals` 暴露）、`tests/cases/t149-lyric-follow.js`（新）、`tests/run.js`（登记）、版本号三处对齐 2.83.0。
+
 ## v2.82.0 · 开练面板填充条对齐拇指中心 + 编排字块「胶囊槽位」化（2026-09-30）
 
 - **① 滑块"绿色细条凸出一截"（用户报，定性为真 bug——视觉真值冲突）**：
