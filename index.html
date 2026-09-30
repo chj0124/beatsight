@@ -2556,18 +2556,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L4792  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5608  Modal         应用内弹窗
      L5746  Viz           时值可视化渲染与每帧动画
-     L8216  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8873  Trainer       变速训练器
-     L9065  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9634  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10918 Editor        自定义节奏型编辑器
-     L11364 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11411 Ear           听辨训练（v1.10.0）
-     L11631 Arrange       曲式编排（v2.0.0）
-     L14529 Help          使用方法（v2.0.1）
-     L14658 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14732 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14975 初始化（装配） 各模块 hook 接线与启动
+     L8218  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8875  Trainer       变速训练器
+     L9067  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9636  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10920 Editor        自定义节奏型编辑器
+     L11366 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11413 Ear           听辨训练（v1.10.0）
+     L11633 Arrange       曲式编排（v2.0.0）
+     L14531 Help          使用方法（v2.0.1）
+     L14660 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14734 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L14977 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -6553,7 +6553,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
      lyricChipEls / lyricFillEls 保留**跨行平铺**视图（resetForStop 与测试按平铺下标读） */
   let lyricEl = /** @type {HTMLElement|null} */ (null);
   let lyricChipEls = /** @type {HTMLElement[]} */ ([]), lyricFillEls = /** @type {HTMLElement[]} */ ([]);
-  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number }[], chipEls: HTMLElement[], fillEls: HTMLElement[] }[]} */
+  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number, ch: string }[], chipEls: HTMLElement[], fillEls: HTMLElement[] }[]} */
   let lyricRows = [];
   let lyricRunSig = /** @type {string} */ ("");
   let lyricW = 0;
@@ -7488,6 +7488,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      数据，零新数据层。hideFollow/showFollow 在结构层（buildLyricLane）调用——它们会按需要
      增删 #viz 的 .lyric-follow-on（行距 20→48）并连带 cacheGeo() 重采，结构时刻读 offset 合法；
      paintFollow 在帧层（paintLyric 尾部）调用，只写 transform/className、零布局读取（T27 纪律） */
+  /** @param {HTMLElement} viz */
   function ensureLyricFollow(viz){
     if (!lyricFollowEl){
       lyricFollowEl = document.createElement("div");
@@ -7520,6 +7521,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 结构层入口：有词窗口挂载跟随条时调用，决策收口到 syncFollowChrome */
   function showFollow(){ syncFollowChrome(); }
   /* 帧层：把当前行字块贴到当前行正下方、随播放走 */
+  /** @param {number} tib @param {number} curIdx */
   function paintFollow(tib, curIdx){
     const el = lyricFollowEl;
     if (!el) return;
