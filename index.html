@@ -7640,7 +7640,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      rowGeo）。状态没翻转则不重采，省一次强制重排。xl 开/关若发生在 follow 期间会改行距与
      translateY 锚点（52/48 + 行顶+88 ↔ 行顶+50），由两开关的点击路径按需 Viz.relayout() 重采
      （见下方 rulerLab/durLabel 接线）。 */
-  function setLyricInlineOn(on){
+  function setLyricInlineOn(/** @type {boolean} */ on){
     const viz = $("viz");
     if (!viz) return;
     const has = viz.classList.contains("lyric-inline-on");
@@ -7670,7 +7670,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      逐行 translateY 到自己小节行正下方（rowGeo 为 #viz 内 bar-row 的 offsetTop，
      覆盖层起点与 #viz 同顶，故直接相加）。getBoundingClientRect 相对 offsetParent 求值，
      仅结构层调用（buildViz / relayout），不进帧；pointer-events:none（R3）。 */
-  function placeLaneOverlay(lane){
+  function placeLaneOverlay(/** @type {HTMLElement} */ lane){
     const viz = $("viz");
     if (!viz) return;
     /* 逐行 translateY 先写：只依赖 rowGeo / vizRowBoxH，与 getBoundingClientRect 解耦，
@@ -15413,7 +15413,8 @@ $("showLyricToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => 
   Viz.buildLyricLane();   // 重排歌词轨（显示/隐藏 + 位置都随此重建）
   Store.persist();
 });
-[...document.querySelectorAll("#lyricPosGroup .pill")].forEach(b => {
+const pills = /** @type {HTMLElement[]} */ ([...document.querySelectorAll("#lyricPosGroup .pill")]);
+pills.forEach(b => {
   b.addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!S.showLyric) return;                 // 位置组禁用态：点击无效
