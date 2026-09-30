@@ -34,9 +34,12 @@ function groupOf(id){
 
 section("T151a 画面图层组（②）应含 5 个可视化开关");
 {
-  for (const id of ["bounceToggle", "tabToggle", "rulerLabToggle", "durLabelToggle", "lyricFollowToggle"]){
+  for (const id of ["bounceToggle", "tabToggle", "rulerLabToggle", "durLabelToggle", "showLyricToggle"]){
     eq(groupOf(id), "画面图层", "★ #" + id + " 落在「画面图层」组（而非旧的「外观与辅助」）");
   }
+  /* v2.86.0（PLAN-v7）：显示位置三档 pill 组（#lyricPosGroup）也落在画面图层组，
+     与「显示歌词」开关同组——取代旧的「歌词跟随条」开关 */
+  eq(groupOf("lyricPosGroup"), "画面图层", "★ #lyricPosGroup 落在「画面图层」组（显示位置三档，与显示歌词同组）");
 }
 
 section("T151b 环境组（②）应含 keepAwake / wide");

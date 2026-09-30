@@ -36,6 +36,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v4-arrange-ui-rework.md](archive/PLAN-v4-arrange-ui-rework.md) | 编排 UI 重做（v4 线）方案 | 已落地 · 全部闭环 |
 | [PLAN-v5-lyric-align-rework.md](archive/PLAN-v5-lyric-align-rework.md) | 歌词对齐交互重设计 + 字块拖拽改进（函数级实施清单） | 已落地 · 四期完成，仅剩真机 390px 冒烟 + V9 截图复核（验收项） |
 | [PLAN-v6-pat-viz.md](archive/PLAN-v6-pat-viz.md) | 歌词区节奏型可视化（甲+乙）实施方案 | 已落地（v2.80.0 交付） |
+| [PLAN-v7-lyric-inline.md](archive/PLAN-v7-lyric-inline.md) | 歌词显示位置重设计（显示歌词开关 + 自动/伴随节奏/底部三态；伴随节奏走覆盖层+逐行 translateY，文字格内居左，退役旧浮动跟随条） | 已落地（v2.86.0 交付） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 |
 

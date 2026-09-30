@@ -118,8 +118,9 @@ const CASE_FILES = [
   "./cases/t146-cur-sec",              // v2.81.0：段卡片「当前编辑段」高亮（点卡即置 / 独占 / 重建存活 / 范围正交 / dim 退役双端零残留）
   "./cases/t147-range-fill",           // v2.82.0：开练面板填充条 = 拇指中心口径（calc 两件套 / 整首半拇指补偿 / n=1 守卫）
   "./cases/t148-chip-capsule",         // v2.82.0：编排字块胶囊化（2px 内缩边 / 圆角 6 / 状态环 inset / 窄格 sm 降级 / 外几何零改动）
-  "./cases/t149-lyric-follow",         // v2.83.0：歌词跟随条（方案乙·贴当前行下缘 / 换行跟随 / 行距补偿 / 不破 bar-row 不变量）
-  "./cases/t150-follow-countin-preview",  // v2.85.0（①）：预备拍期间歌词跟随条随节奏条同显（preview 分支 + paintFrameBody 驱动 paintLyric）
+  "./cases/t149-lyric-follow",         // v2.86.0（PLAN-v7）：歌词显示位置·伴随节奏/底部两模式基础（覆盖层+translateY / 流式 / 总开关 / 退役护栏）
+  "./cases/t150-follow-countin-preview",  // v2.86.0（PLAN-v7）：预备拍期间歌词轨（follow 覆盖层 / bottom 底部轨）随节奏条同显（删旧 paintFollow 特判后需求不回退）
+  "./cases/t154-lyric-position",          // v2.86.0（PLAN-v7）：歌词显示位置六场景反向验证（关/贴行/底部/auto 响应式/居左/空行位）
   "./cases/t151-settings-groups",         // v2.85.0（②）：设置弹窗六组顺序 + 14 项归组 + ③a/③b 两按钮落位
   "./cases/t152-demo-reset",              // v2.85.0（③a）：恢复示例曲按钮 → 确认 → 重建《在他乡》幂等
   "./cases/t153-factory-reset",           // v2.85.0（③b）：恢复出厂设置双确认 → 清空全部 beatsight.* 键

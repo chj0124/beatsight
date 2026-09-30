@@ -74,7 +74,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 ## 功能一览
 
-当前 `v2.85.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md) 与 [docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v2.86.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 两条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md) 与 [docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|
@@ -147,6 +147,7 @@ node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时�
 | [docs/archive/PLAN-v4-arrange-ui-rework.md](docs/archive/PLAN-v4-arrange-ui-rework.md) | 编排 UI 重设计 S1–S3（**已落地**：全部闭环） |
 | [docs/archive/PLAN-v5-lyric-align-rework.md](docs/archive/PLAN-v5-lyric-align-rework.md) | 歌词对齐交互重设计 + 字块拖拽（**已落地**：四期全部完成；仅剩真机 390px 冒烟 + V9 截图复核两项验收） |
 | [docs/archive/PLAN-v6-pat-viz.md](docs/archive/PLAN-v6-pat-viz.md) | 歌词区节奏型可视化（甲·块头节奏型行 + 乙·行内时值轮廓，**已落地**：v2.80.0 交付） |
+| [docs/archive/PLAN-v7-lyric-inline.md](docs/archive/PLAN-v7-lyric-inline.md) | 歌词显示位置重设计（显示歌词开关 + 自动/伴随节奏/底部三态，**已落地**：v2.86.0 交付） |
 | [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md) | 大版本 v0.x 版本记录（分卷，**已归档**） |
 | [docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) | 大版本 v1.x 版本记录（分卷，**已归档**） |
 | [docs/archive/tasks.md](docs/archive/tasks.md) | 审计落地任务清单（**历史快照 · 已归档**：耗时 / 步数 / 覆盖率 / 行号均为当时实测值） |

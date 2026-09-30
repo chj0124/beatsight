@@ -355,6 +355,10 @@ function loadApp(seed, opts){
   /* v2.4.2：行宽可覆盖（默认 600）。见 ROW_W 的说明——窄格隐藏的临界点随
      STRUM_MIN_W 变化后，只有压缩行宽才能把那条分支重新走到 */
   ROW_W = typeof o.rowW === "number" && o.rowW > 0 ? o.rowW : 600;
+  /* v2.86.0：视口宽（独立于行宽）。窄屏口径与 CSS @media (max-width:960px) 同口径（视口），
+     而 #viz 在双栏布局下比视口窄多——桩用 viewportW 单独模拟「视口宽 ≠ 行宽」的错位场景，
+     以锁定「视口 961–1392px 时歌词带压格子底」的回归。缺省 = ROW_W（等价旧行为）。 */
+  const vw = typeof o.viewportW === "number" && o.viewportW > 0 ? o.viewportW : ROW_W;
   const seedObj = { ...(seed || {}) };
   /* 默认置闩（视为已带出）；seedDemo:false 时保持键缺失 → 应用走"首次带出"分支 */
   if (o.seedDemo !== false && seedObj["beatsight.demoSeeded"] === undefined){
@@ -476,7 +480,12 @@ function loadApp(seed, opts){
     Blob,
     /* 动效降级（P2-11）：REDUCE_MOTION 在加载期求值，故必须能注入。
        默认 matches=false（同真实浏览器未声明偏好时） */
-    matchMedia: q => ({ matches: !!(opts && opts.reduceMotion) && /reduce/.test(q), media: q, addEventListener(){}, addListener(){} }),
+    matchMedia: q => {
+      let matches;
+      if (/reduce/.test(q)) matches = !!(opts && opts.reduceMotion);
+      else { const m = /max-width:\s*([\d.]+)px/.exec(q); matches = m ? vw <= +m[1] : false; }
+      return { matches, media: q, addEventListener(){}, addListener(){} };
+    },
     /* FileReader：真实实现至少要能把内容交给 onload，否则「导入预设」的接线永远跑不到
        （原桩是空构造函数，r.readAsText 是 undefined → 一调就 TypeError） */
     FileReader: function(){

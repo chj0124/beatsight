@@ -1,12 +1,13 @@
-/* BeatSight 自动化测试 · 歌词跟随条（方案乙，v2.83.0）
-   T149 系列。
+/* BeatSight 自动化测试 · 歌词显示位置（PLAN-v7，v2.86.0）
+   T149 系列 —— 伴随节奏 / 底部 两模式基础断言（取代旧「歌词跟随条」测试）。
    ---------------------------------------------------------------------------
    契约锚点（与 index.html 内注释同源）：
-     · 跟随条 #lyricFollow 是 #viz 内绝对定位单行条，复用 lyricRows[curIdx] 数据，
-       零新数据层；定位全靠 transform: translateY（top 恒 0），帧内零 layout 读取。
-     · 有词窗口给 #viz 加 .lyric-follow-on（行距 20→48）以腾出胶囊下方空带；
-       预设/无词/停机 → 跟随条隐藏且行距类移除。
-     · 不破 T27 不变量：#viz 内 .bar-row 数量与"不含 follow"（follow 不带 bar-row class）。
+     · 总开关 S.showLyric（取代 v2.84.0 lyricFollow）；关 ⇒ 任何位置都不画歌词。
+     · 位置 S.lyricPos（auto / follow / bottom）：auto 按窄屏（≤960px）解析为 bottom，
+       否则 follow；follow = 歌词轨切覆盖层叠到 #viz 上、逐行 translateY 贴自己小节行下缘；
+       bottom = 底部整块歌词轨（现状）。
+     · 两种位置模式共用同一套 .lyric-chip 字块着色；字以绝对定位落 clamp(10px,25%,32px)（落法B）。
+     · #viz 的 DOM 与网格不变量零改动（R1）：歌词行都在 #lyricLane（#viz 兄弟），从不插进 #viz。
    基准段落：BUILTINS[1]（四分基础，4/4）× 1 遍 = 4 小节。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -19,137 +20,190 @@ const seedState = extra => JSON.stringify(Object.assign(
   { v: 3, bpm: 240, playMode: "arrange", arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
 
 const numOf = s => { const m = /translateY\(([-0-9.]+)px\)/.exec(s || ""); return m ? parseFloat(m[1]) : NaN; };
+/* jsdom 下 offsetHeight/offsetTop 全为 0，cacheGeo 的 vizRowBoxH 回落常量 86；故覆盖层公式
+   在桩里解析为 rowGeo[i].top(=0) + 86 + 2。boxH 从真实量取、取不到回退 86，与 cacheGeo 同口径。 */
+function boxH(beat){ const r0 = beat.Viz.internals().rowEls[0]; return (r0 && r0.offsetHeight) ? r0.offsetHeight : 86; }
 
-section("T149a 结构层 · 有词挂载跟随条 + 行距补偿 + 不破 bar-row 不变量");
+section("T149a 结构层 · follow 模式 → 覆盖层 + 逐行 translateY 贴自己小节下缘");
 {
-  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
+  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow" }) }));
   beat.Store.upsertLyric("t1", "s1", [
     { t: 0, dur: 24, ch: "你" },
     { t: 192, dur: 24, ch: "好" },
   ]);
   beat.Viz.buildViz();
+  const lane = els["lyricLane"];
+  const int = beat.Viz.internals();
+  ok(!lane.hidden, "follow 模式 + 有词 → 歌词轨显示");
+  ok(lane.classList.contains("overlay"), "★ follow 模式 → #lyricLane 加 .overlay（覆盖层定位）");
+  ok(int.lyricRows.length === 4, "窗口 4 行歌词行（与网格 4 行一一对应）");
+  const bh = boxH(beat);
+  for (let i = 0; i < int.lyricRows.length; i++){
+    const tr = int.lyricRows[i].el.style.transform;
+    ok(/translateY\(/.test(tr), "★ 行 " + i + " 有 translateY（叠到对应小节下缘）");
+    eq(numOf(tr), int.rowGeo[i].top + bh + 2, "★ 行 " + i + " 位移 = rowGeo[" + i + "].top + 行盒高 + 2（贴行下缘）");
+  }
+  // 行序校验：用 rowGeo 模拟真实落差（桩里 top 全 0，无法区分行序 → 直接改 rowGeo 验证公式按行取）
+  int.rowGeo[3].top = 300;
+  beat.Viz.buildLyricLane();   // 重建（不重采 rowGeo，沿用刚改的落差）
+  const lane2 = els["lyricLane"];
+  ok(numOf(lane2.children[3].style.transform) > numOf(lane2.children[0].style.transform),
+    "★ 行 3 的 translateY 明显大于行 0（覆盖层按行贴合各自小节，非整块堆叠）");
+  // 网格不变量不破：#viz 内仍恰 4 个 .bar-row，且歌词行从不插进 #viz
   const viz = els["viz"];
-  const follow = beat.Viz.internals().lyricFollowEl;
-  ok(follow, "跟随条元素存在");
-  ok([...viz.children].some(c => c.id === "lyricFollow"), "跟随条挂在 #viz 内（绝对定位层）");
-  eq([...viz.children].filter(c => c.id === "lyricFollow").length, 1, "#viz 内恰 1 个 .lyric-follow");
-  ok(viz.classList.contains("lyric-follow-on"), "有词窗口给 #viz 加 .lyric-follow-on（行距 20→48）");
-  ok(follow.hidden, "停机（未播放）→ 跟随条隐藏");
-  const barRows = viz.children.filter(c => /(^| )bar-row( |$)/.test(c.className));
-  eq(barRows.length, 4, "★ 不破 T27 不变量：#viz 内仍恰 4 个 .bar-row");
-  ok(!barRows.some(r => /(^| )lyric-follow( |$)/.test(r.className)), "跟随条不带 bar-row class（不被误算作网格行）");
+  eq(viz.children.filter(c => /(^| )bar-row( |$)/.test(c.className)).length, 4, "★ 不破 R1：#viz 内仍恰 4 个 .bar-row");
+  ok(![/lyric-row/, /lyric-lane/].some(re => viz.children.some(c => re.test(c.className))),
+    "★ 歌词行不在 #viz 内（覆盖层是 #viz 的兄弟节点）");
 }
 
-section("T149b 帧层 · 跟随当前行 + 换行跟随 + 字块着色");
+section("T149b 结构层 · bottom 模式 → 底部流式堆叠（现状回归护栏）");
 {
-  const { beat } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
+  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "bottom" }) }));
   beat.Store.upsertLyric("t1", "s1", [
-    { t: 0, dur: 24, ch: "你" },     // 第 1 小节 → 行 0
-    { t: 192, dur: 24, ch: "好" },   // 第 2 小节 → 行 1
+    { t: 0, dur: 24, ch: "你" },
+    { t: 192, dur: 24, ch: "好" },
   ]);
   beat.Viz.buildViz();
-  const int = beat.Viz.internals();
-  beat.Viz.paintLyric(0, 0, undefined, 0);   // 强制当前行 = 0（a 走内部 arrangeCur）
-  const follow = int.lyricFollowEl;
-  ok(!follow.hidden, "当前行有词 → 跟随条显示");
-  eq(beat.Viz.internals().followRow, 0, "followRow = 0");
-  const chips = follow.children.filter(c => /(^| )lyric-chip/.test(c.className));
-  eq(chips.length, 1, "行 0 字块 = 1（你）");
-  eq(chips[0].children[1].textContent, "你", "字块文字复用 lyricRows[0]");
-  ok(/translateY\(/.test(follow.style.transform), "translateY 已设置（贴当前行下缘）");
-  const y0 = numOf(follow.style.transform);
-  ok(y0 > 0, "translateY 在行下缘（>0）");
-
-  beat.Viz.paintLyric(0, 1, undefined, 1);    // 当前行 → 1
-  eq(beat.Viz.internals().followRow, 1, "换行 → followRow = 1");
-  const chips1 = follow.children.filter(c => /(^| )lyric-chip/.test(c.className));
-  eq(chips1.length, 1, "行 1 字块 = 1（好）");
-  eq(chips1[0].children[1].textContent, "好", "字块文字随行切换");
-  const y1 = numOf(follow.style.transform);
-  ok(y1 > y0, "★ translateY 随当前行下移（换行跟随）");
-
-  beat.Viz.paintLyric(0, -1, undefined, -1);  // 停机/预备 → 隐藏
-  ok(follow.hidden, "当前行 = -1 → 跟随条隐藏");
+  const lane = els["lyricLane"];
+  ok(!lane.hidden, "bottom 模式 + 有词 → 歌词轨显示");
+  ok(!lane.classList.contains("overlay"), "bottom 模式 → 无 .overlay（保持底部流式，现状行为）");
+  ok(lane.children.every(r => !/translateY\(/.test(r.style.transform || "")),
+    "bottom 模式 → 行无内联 translateY（纯流式堆叠）");
 }
 
-section("T149c 收起不变量 · 预设模式/无词 → 跟随条隐藏 + 行距还原");
+section("T149c 总开关 · 显示歌词关 ⇒ 两种位置模式都不画歌词");
 {
-  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
+  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: false, lyricPos: "follow" }) }));
   beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
   beat.Viz.buildViz();
-  ok(beat.Viz.internals().lyricFollowEl.hidden, "曲式有词 → 跟随条已建但停机隐藏");
-  ok(els["viz"].classList.contains("lyric-follow-on"), "曲式有词 → 行距类在");
-
-  beat.Store.S.playMode = "preset";
+  ok(els["lyricLane"].hidden, "follow 模式 + 显示歌词关 → 歌词轨隐藏");
+  // 切到 bottom 仍隐藏
+  beat.Store.S.lyricPos = "bottom";
   beat.Viz.buildViz();
-  ok(beat.Viz.internals().lyricFollowEl.hidden, "预设模式 → 跟随条隐藏");
-  ok(!els["viz"].classList.contains("lyric-follow-on"), "预设模式 → 行距类移除（行距还原，零残留）");
+  ok(els["lyricLane"].hidden, "bottom 模式 + 显示歌词关 → 同样隐藏（总开关优先级最高）");
 }
 
-section("T149d 双关放大 · 座次尺+时值标注都关 ⇒ 跟随条移入行内（translateY 用行内偏移 + CSS 增高增大）");
+section("T149d 无词窗口 · 整轨收起不占位（与旧版同义）");
 {
-  const { beat } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
-  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
-  beat.Store.S.showRuler = false;
-  beat.Store.S.showDurLabel = false;
-  beat.Viz.buildViz();
-  const follow = beat.Viz.internals().lyricFollowEl;
-  beat.Viz.paintLyric(0, 0, undefined, 0);
-  ok(!follow.hidden, "双关模式 → 跟随条仍显示");
-  const topIn = beat.Viz.internals().rowGeo[0].top;   // 每次 buildViz 后重新取（cacheGeo 会重排数组，旧引用失效）
-  eq(numOf(follow.style.transform) - topIn, 50, "★ 双关 ⇒ 位移 = FOLLOW_INSET_Y(50)，即移入行内原标注带（对照普通模式 +88）");
-  // 对照普通模式：把两开关打开后应回到 +88 口径
-  beat.Store.S.showRuler = true;
-  beat.Store.S.showDurLabel = true;
-  beat.Viz.buildViz();
-  beat.Viz.paintLyric(0, 0, undefined, 0);
-  const topOut = beat.Viz.internals().rowGeo[0].top;
-  const barH = beat.Viz.internals().rowEls[0].offsetHeight;   // 行盒高（真实浏览器 86；jsdom 下回退值，环境无关地用真实量）
-  eq(numOf(follow.style.transform) - topOut, barH + 2, "普通模式 ⇒ 位移 = 行盒高 + 2（贴行下缘，与双关的 50 明显不同）");
-  // CSS 放大规则存在（增高 32px / 字 17px 800）——jsdom 不解析 class 计算样式，故直接查源
+  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow" }) }));
+  beat.Viz.buildViz();   // 曲式有词但本用例未 upsert 歌词 → 窗口无词行
+  ok(els["lyricLane"].hidden, "无词窗口 → 歌词轨隐藏（不占位）");
+  ok(!els["lyricLane"].classList.contains("overlay"), "无词窗口 → 不进覆盖层");
+}
+
+section("T149e 文字对齐 · 字在各自节奏 chip 内靠左（D2）");
+{
   const fs = require("fs"), path = require("path");
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(/#viz\.no-ruler\.no-durlab \.lyric-follow\{height:32px\}/.test(src), "CSS：双关放大 .lyric-follow{height:32px} 已就位");
-  ok(/#viz\.no-ruler\.no-durlab \.lyric-follow \.lyric-char\{font-size:calc\(17px \* var\(--cs, 1\)\);font-weight:800\}/.test(src), "CSS：双关放大 .lyric-char{font-size:17px;font-weight:800} 已就位");
+  ok(/\.lyric-char\{[^}]*left:clamp\(10px,\s*25%,\s*32px\)/.test(src),
+    "★ CSS：字心落 clamp(10px,25%,32px)（落法B：短音按比例、长音封顶32px、极短格不裁字）");
 }
 
-section("T149e 设置开关 · 歌词跟随条关 ⇒ 隐藏并退回纯底部轨（行距类零残留）");
+section("T149f 旧跟随条已退役 · 无 lyric-follow 元素 / 无 .lyric-follow-on 行距类 / 双关放大清理");
 {
-  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
+  const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow" }) }));
   beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
   beat.Viz.buildViz();
-  ok(els["viz"].classList.contains("lyric-follow-on"), "默认开 → 行距类在、跟随条挂上");
-  beat.Store.S.lyricFollow = false;
-  beat.Viz.buildViz();   // buildLyricLane → showFollow → syncFollowChrome → hideFollow
-  ok(beat.Viz.internals().lyricFollowEl.hidden, "设置关 → 跟随条隐藏");
-  ok(!els["viz"].classList.contains("lyric-follow-on"), "设置关 → 行距类移除（行距还原，零残留）");
-  beat.Viz.paintLyric(0, 0, undefined, 0);   // 播放路径也不应冒出来
-  ok(beat.Viz.internals().lyricFollowEl.hidden, "设置关 + 播放 → 跟随条仍隐藏");
+  ok(![...els["viz"].children].some(c => c.id === "lyricFollow"), "★ #viz 内无 #lyricFollow 浮动元素");
+  ok(!els["viz"].classList.contains("lyric-follow-on"), "★ #viz 无 .lyric-follow-on 行距补偿类（已清理）");
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+  ok(!/\.lyric-follow\{/.test(src), "★ CSS：.lyric-follow 规则已删（无死样式）");
+  ok(!/#viz\.no-ruler\.no-durlab \.lyric-follow/.test(src), "★ CSS：双关放大 .lyric-follow 规则已删");
+  // 旧接口退役：出口面不再暴露 syncFollowChrome / paintFollow 相关内部件
+  const int = beat.Viz.internals();
+  ok(int.lyricFollowEl === undefined && int.followRow === undefined,
+    "★ internals 不再暴露 lyricFollowEl / followRow（旧跟随条状态已移除）");
 }
 
-section("T149f 双关放大往返 · 模式切换无残留、位移正确跟随");
+section("T149g 行距补偿 · follow 挂 .lyric-inline-on / bottom·off 摘类（PLAN-v7 修复重叠）");
 {
-  const { beat } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
-  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
-  beat.Viz.buildViz();
-  const follow = beat.Viz.internals().lyricFollowEl;
-  // 普通 → 双关
-  beat.Store.S.showRuler = false; beat.Store.S.showDurLabel = false;
-  beat.Viz.buildViz(); beat.Viz.paintLyric(0, 0, undefined, 0);
-  eq(numOf(follow.style.transform) - beat.Viz.internals().rowGeo[0].top, 50, "双关 ⇒ 行内偏移 50");
-  ok(!follow.hidden, "双关 ⇒ 显示");
-  // 双关 → 普通
-  beat.Store.S.showRuler = true; beat.Store.S.showDurLabel = true;
-  beat.Viz.buildViz(); beat.Viz.paintLyric(0, 0, undefined, 0);
-  const barH = beat.Viz.internals().rowEls[0].offsetHeight;
-  eq(numOf(follow.style.transform) - beat.Viz.internals().rowGeo[0].top, barH + 2, "普通 ⇒ 贴行下缘（行盒高 + 2）");
-  ok(!follow.hidden, "普通 ⇒ 显示");
-  // 普通 → 关跟随条
-  beat.Store.S.lyricFollow = false;
-  beat.Viz.buildViz();
-  ok(follow.hidden, "关跟随条 ⇒ 隐藏");
-  // 关 → 开（行距类应复挂）
-  beat.Store.S.lyricFollow = true;
-  beat.Viz.buildViz(); beat.Viz.paintLyric(0, 0, undefined, 0);
-  ok(!follow.hidden, "再开 ⇒ 显示（行距类复挂，零残留）");
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+  // CSS 值锁定：空带里住两个——歌词行（普通 28px 锚行盒底+2 / xl 双关进标注带 行高 32 锚 行顶+50）
+  // + 下一行的行首和弦胶囊（普通 top:-18px 高 13px / xl 放大 top:-36px 高 24px）。
+  // 行距：普通 52px（清开歌词带+胶囊带）；xl 双关时歌词进标注带（v2.84.0 守恒值）→ 行距 48px 即清开。
+  ok(/#viz\.lyric-inline-on \.bar-row\{margin-bottom:52px\}/.test(src),
+    "★ CSS：桌面行距补偿 20→52px（#viz.lyric-inline-on .bar-row，普通：清开歌词带+胶囊带）");
+  ok(/#viz\.lyric-inline-on\.chord-xl \.bar-row\{margin-bottom:48px\}/.test(src),
+    "★ CSS：xl 双关行距 48px（v2.86.0 移植 v2.84.0 守恒值：歌词进标注带后 xl 不需 70）");
+  ok(/#viz\.no-ruler\.no-durlab \.lyric-row\{height:32px\}/.test(src),
+    "★ CSS：xl 双关歌词行高 32px（v2.84.0 跟随条同口径，进释放出的标注带）");
+  ok(/#viz\.no-ruler\.no-durlab \.lyric-row \.lyric-chip\{height:30px\}/.test(src),
+    "★ CSS：xl 双关字块高 30px");
+  ok(/#viz\.no-ruler\.no-durlab \.lyric-row \.lyric-char\{font-size:calc\(17px \* var\(--cs, 1\)\);font-weight:800\}/.test(src),
+    "★ CSS：xl 双关字 17px·800");
+  ok(/@media[\s\S]*#viz\.lyric-inline-on \.bar-row\{margin-bottom:52px\}/.test(src),
+    "★ CSS：窄屏行距补偿 10→52px（媒体查询内与桌面同值）");
+  ok(/@media[\s\S]*#viz\.lyric-inline-on\.chord-xl \.bar-row\{margin-bottom:48px\}/.test(src),
+    "★ CSS：窄屏 xl 联动规则同 48px");
+  ok(/@media[\s\S]*#viz\.no-ruler\.no-durlab \.lyric-row\{height:28px\}/.test(src),
+    "★ CSS：窄屏 xl 行高回落 28px（窄屏标注带仅 32px，与 translateY(+36) 配套）");
+  ok(/\.lyric-char\{[^}]*left:clamp\(10px,\s*25%,\s*32px\)/.test(src),
+    "★ CSS：字心落 clamp(10px,25%,32px)（落法B：短音按比例、长音封顶32px、极短格不裁字）");
+  ok(/S\.showLyric && Viz\.effectiveLyricPos\(\) === "follow"\) Viz\.relayout\(\)/.test(src),
+    "★ JS：follow 期间切座次尺/时值标注（xl 开/关改行距）→ Viz.relayout() 重采 rowGeo");
+  // JS：follow → 挂类（腾出歌词带）；切 bottom / 关总开关 → 摘类
+  const f = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow" }) }));
+  f.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
+  f.beat.Viz.buildViz();
+  ok(f.els["viz"].classList.contains("lyric-inline-on"), "★ follow → #viz 挂 .lyric-inline-on（腾出歌词带）");
+  f.beat.Store.S.lyricPos = "bottom";
+  f.beat.Viz.buildViz();
+  ok(!f.els["viz"].classList.contains("lyric-inline-on"), "切 bottom → 摘类（正常流式，不需补偿）");
+  const off = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: false, lyricPos: "follow" }) }));
+  off.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
+  off.beat.Viz.buildViz();
+  ok(!off.els["viz"].classList.contains("lyric-inline-on"), "显示歌词关 + follow → 仍摘类（总开关优先）");
+}
+
+section("T149h 双关放大（两标注都关）· 歌词行上移进释放标注带（移植 v2.84.0，修 v2.86 空带回归）");
+{
+  const bothOff = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow", showRuler: false, showDurLabel: false }) }));
+  bothOff.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
+  bothOff.beat.Viz.buildViz();
+  ok(bothOff.els["viz"].classList.contains("chord-xl"), "★ 两标注都关 ⇒ #viz 挂 .chord-xl（双关放大）");
+  ok(bothOff.els["viz"].classList.contains("lyric-inline-on"), "★ follow + 双关 ⇒ 仍挂 .lyric-inline-on（行距补偿照旧）");
+  const int = bothOff.beat.Viz.internals();
+  const w = bothOff.els["viz"].offsetWidth;
+  const expect = w <= 960 ? 36 : 50;        // 窄屏标注带仅 32px → +36；桌面进 50–82px 释放带 → +50
+  const laneEl = bothOff.els["lyricLane"];
+  for (let i = 0; i < laneEl.children.length; i++){
+    const tr = laneEl.children[i].style.transform || "";
+    if (!/translateY/.test(tr)) continue;
+    eq(numOf(tr), int.rowGeo[i].top + expect,
+      "行 " + i + " 位移 = rowGeo[" + i + "].top + " + expect + "（进释放出的标注带，非行盒底+2）");
+  }
+  // 反向：双关时若 translateY 仍用 行盒底+2（被删的跟随条回归点）→ 上方空 44px，断言应逐行不成立
+  const bad = laneEl.children[0].style.transform || "";
+  ok(numOf(bad) !== (int.rowGeo[0].top + 86 + 2), "★ 双关行 0 不再锚行盒底（+88）→ 空带复用语生效");
+}
+
+section("T149i 窄屏口径 = CSS 视口断点（修 961–1392px 视口歌词带压格子底重叠）");
+{
+  // 错位场景：viz 行宽 600（旧逻辑判窄屏 → +36）但视口 1200（CSS 桌面、格 44px、应 +50）
+  const mis = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow", showRuler: false, showDurLabel: false }) }), { rowW: 600, viewportW: 1200 });
+  mis.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
+  mis.beat.Viz.buildViz();
+  const int = mis.beat.Viz.internals();
+  const laneEl = mis.els["lyricLane"];
+  for (let i = 0; i < laneEl.children.length; i++){
+    const tr = laneEl.children[i].style.transform || "";
+    if (!/translateY/.test(tr)) continue;
+    eq(numOf(tr), int.rowGeo[i].top + 50,
+      "错位场景（viz600/视口1200）：双关行 " + i + " 用桌面 +50，歌词带不再压格子底（修复前误算 +36）");
+  }
+  const first = laneEl.children[0].style.transform || "";
+  ok(numOf(first) !== (int.rowGeo[0].top + 36), "★ 错位场景不再误用窄屏 +36（本 bug 回归点）");
+
+  // 等宽口径回归：viewport 缺省 = ROW_W，600 仍判窄屏 +36（存量行为不变）
+  const same = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow", showRuler: false, showDurLabel: false }) }), { rowW: 600 });
+  same.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "你" }]);
+  same.beat.Viz.buildViz();
+  const int2 = same.beat.Viz.internals();
+  for (let i = 0; i < same.els["lyricLane"].children.length; i++){
+    const tr = same.els["lyricLane"].children[i].style.transform || "";
+    if (!/translateY/.test(tr)) continue;
+    eq(numOf(tr), int2.rowGeo[i].top + 36, "缺省口径（viz600=视口600）：仍 +36（存量行为锁定）");
+  }
 }

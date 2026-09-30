@@ -16,7 +16,7 @@ const { loadApp, ok, eq, section } = require("../lib/harness");
 function seed(){
   return {
     "beatsight.demoSeeded": "1",
-    "beatsight.state": JSON.stringify({ v: 3, bpm: 120, lyricFollow: true }),
+    "beatsight.state": JSON.stringify({ v: 3, bpm: 120, showLyric: true, lyricPos: "auto" }),
     "beatsight.customs": JSON.stringify([{ id: "c1", name: "我的型", bars: [[{ t: 12 }]] }]),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "a1", name: "我的曲", sections: [] }] }),
     "beatsight.hot": JSON.stringify({ k: "v" }),

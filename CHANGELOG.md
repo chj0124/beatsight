@@ -9,6 +9,39 @@
 
 ---
 
+## v2.86.0 · 歌词显示位置重设计：显示歌词开关 + 自动/伴随节奏/底部三态（2026-09-30）
+
+- **需求来源**：用户实测指出 v2.85.0 的「预备拍歌词跟随条」只解决第 1 小节的起手空窗，第 2 小节起仍存在「猝不及防」——跟随条是单行浮动元素，无法逐行贴合各自小节。拍板后按 PLAN-v7（D1–D9）三批一次性落地，改动留本地待确认提交。
+
+- **根因**：原跟随条是「贴在 #viz 底部、单行跟随当前行」的浮动元素（`#lyricFollow` + `paintFollow`/`syncFollowChrome`），视觉上只有一条、永远只贴当前行——所以第 2+ 小节没有预备歌词行，起手空窗问题没被根除。要「每行小节下都有自己的歌词行」，必须把歌词行移到对应小节节奏型之下，而非用一条浮动条跟随。
+
+- **修法（PLAN-v7 三批）**：
+  - **批1（数据层 + 设置 UI + 底部模式接通）**：`S.lyricFollow` 迁移为 `S.showLyric`（默认开）+ `S.lyricPos`（默认 `"auto"`）；设置弹窗新增「显示歌词」`role="switch"` 开关 + 「显示位置」三档 pill 组（自动（窄屏底部）/ 贴在每行小节下 / 集中在底部一整块）；底部模式 = 现状流式行为，零改动迁移。
+  - **批2（核心：伴随节奏覆盖层 + 文字居左 + 退役跟随条）**：
+    - 伴随节奏（`follow`）模式：`#lyricLane` 切 `position:absolute` 覆盖层叠到 `#viz` 上（`layoutLyricLane`/`placeLaneOverlay`），逐行 `translateY(rowGeo[i].top + 行盒高 + 2)` 贴到自己小节行正下方——**按行贴合各自小节，根除第 2+ 小节空窗**；覆盖层自身像素对齐走 `getBoundingClientRect`（环境不支持时跳过、CSS 兜底）。
+    - **行距补偿（视觉验收补丁 · 三次修订：修复歌词压下一行 + 与和弦胶囊同行 + 空带回归）**：伴随节奏模式给 `#viz` 挂 `.lyric-inline-on`，行间空带里住着两个——歌词行（28px，贴上一行底 +2）+ 下一行的行首和弦胶囊（`.bar-chord` 挂本行顶上方：普通 top:-18px 高 13px / xl 放大 top:-36px 高 24px），行距必须同时清开两者：**普通 20/10→52px**。xl（两标注都关）时歌词行**上移进释放出的行内标注带**（位移 `行顶+50` 桌面 / `行顶+36` 窄屏，行高 32 / 字块 30 / 字 17px·800，与 v2.84.0 跟随条同口径）、**行距 48px** 即清开（v2.84.0 守恒值；首版只按歌词带算 44/34px，xl 时胶囊整个压在歌词行上——用户实拍 Am 徽标与「回到家乡」同行）。**空带回归根因**：v2.84.0 双关时跟随条上移复用标注带，v2.86.0 退役跟随条时把 `FOLLOW_INSET_Y` / 双关放大 CSS 整批删掉、逐行歌词轨退回锚行盒底（+88），空带复用语丢失、歌词上方空 44px——本次把 v2.84.0 方案移植回逐行轨。挂/摘类由 `setLyricInlineOn` 处理（follow 挂、bottom/关摘），摘类后 `cacheGeo()` 重采 `rowGeo`；双关位移分支在 `placeLaneOverlay` 读 `#viz.chord-xl`。follow 期间切座次尺/时值标注（xl 开/关改行距+锚点 52/48 + 行顶+88↔+50）→ 两开关点击路径按需 `Viz.relayout()` 重采。
+    - 文字居左（D2 初版，已被**四次修订·落法B**替换）：初版 `.lyric-chip` `justify-content:center → flex-start` + `padding-left:8px`；用户实测仍嫌太靠左，四次修订改用 `.lyric-char` 绝对定位 `clamp(10px,25%,32px)` 锚定字心（见「四次修订」）。
+    - 退役旧跟随条：`#lyricFollow` 浮动元素 + `ensureLyricFollow`/`hideFollow`/`showFollow`/`syncFollowChrome`/`paintFollow` 整条 + 双关放大 CSS（`.lyric-follow*`、`#viz.lyric-follow-on`、跟随条专用 `.lyric-chip`/`.lyric-char` 规则）+ 预备拍预览特判全部删除；其「逐字 karaoke 文字效果」已完整移植到歌词行（`paintLyric` 同一套着色）。
+    - auto 响应式默认：`effectiveLyricPos()` 把 `auto` 按 `narrow()` 解析为 `bottom`/`follow`；`narrow()` 现优先 `matchMedia("(max-width:960px)")`（**视口断点**，与 CSS `@media` 同口径），拿不到再回退 `#viz.offsetWidth ≤ 960`（可测，见「四次修订」）。
+  - **批3（收尾）**：测试改造（t149/t150/t90/t24 改写 + 新增 t154 六场景）+ 反向验证 + 全量自验 + 本条目 + 文档登记（PLAN-v7 转「已落地」）。
+
+  - **四次修订（视觉验收补丁 · 落法B 字位 + 窄屏口径对齐 CSS 视口断点）**：
+    - ★ **字位 落法B（用户拍板，替换 D2 的 +8px 内边距方案）**：`.lyric-chip` 退回纯容器（`position:absolute;top:1px;height:26px;overflow:hidden`，不再 flex 居左 + padding-left）；字心改由 `.lyric-char` 绝对定位 `left:clamp(10px,25%,32px);top:50%;transform:translate(-50%,-50%)` 落位——**25% = 以 50% 为居中的「半格的一半」**，短音按比例靠左（字心在格宽 1/4 处）、长音封顶 32px（保住「起唱点 = 格子左缘」语义，字心不越出格宽、仍可视作对齐格子左缘）、极短格 `overflow:hidden` 不裁字。根因：D2 的 `+8px 内边距` 仍是「整体右移一点」，用户实测仍嫌太靠左；落法B 直接以百分比锚定字心，且 `clamp` 在长格封顶避免右飘。
+    - ★ **窄屏口径对齐 CSS 视口断点（修 961–1392px 视口下歌词带压格子底 7px 重叠）**：旧 `narrow()` 读 `#viz.offsetWidth ≤ 960` = **网格宽**，但 CSS `@media (max-width:960px)` 断的是 **视口宽**；本页双栏（`.main{grid-template-columns:1fr 360px;gap:24px;padding:24px}`）→ viz 宽 ≈ min(视口,1440) − 432。视口 961–1392px 时 CSS 走桌面几何（格 44px、行盒 86px），但 `narrow()` 误判窄屏 → `placeLaneOverlay` 双关位移用 `+36`（标注带仅 32px）而非 `+50` → 歌词带顶 = 行顶+37 < 格子底 行顶+44 → **带压格子底 7px**；1280/1366 笔记本宽度正落此窗，Win11 125% 缩放下更明显。**修法**：`narrow()` 优先 `matchMedia("(max-width:960px)")`（真实浏览器读视口，与 CSS 同口径），拿不到再回退 `offsetWidth`；测试桩 `matchMedia` 扩展应答 `max-width` 查询（由 harness `viewportW ?? ROW_W` 控制），新增 **T149i** 断言「viz600/视口1200 错位场景用桌面 +50、且不再误判 +36」+「缺省口径 viz600=视口600 仍 +36」锁定存量行为。
+
+- **取舍**：
+  - 走「覆盖层重定位」而非「把歌词行插进 #viz」——保住网格不变量 R1（`#viz` DOM 零改动，歌词行全在 `#viz` 兄弟 `#lyricLane`，t149a 明确断言无 `.lyric-row`/`.lyric-lane` 落入 `#viz`）。
+  - 伴随节奏模式下网格整体变高（普通每行空带 20→52px ≈ +32，xl 双关 48px ≈ +28；窄屏 10→52）——这是为「歌词带 + 和弦胶囊带」两个住户腾空间的代价；**双关时歌词进标注带、网格高度与 v2.84.0 持平**，不再叠加额外空带。底部模式与关歌词时行距复原（类摘掉 + `cacheGeo()` 重采）。
+  - 不做无词小节折叠/特殊 UI（D6：空行位即可，用户嫌空可关「显示歌词」）；不做自动紧凑（D7：靠位置自选 + 响应式默认）。
+  - 总开关 `showLyric` 优先级最高：关 ⇒ 两种位置模式都不画歌词（T149c/T154a）。
+  - `role="switch"` 计数仍 15（新「显示歌词」是 switch，旧「歌词跟随条」switch 被删，一进一出；t24 不受影响）。
+
+- **自验**：`node tests/run.js` → **4759 PASS / 0 FAIL**（较 v2.85.0 的 4712 净增 47 条断言：含视觉补丁 T149g 13 项 + T149h 双关位移 4 项 + 四次修订 T149i 窄屏口径 9 项）；`node tools/check-all.js` → **18 项全绿**（语法 / 架构约束 / 装配完整性 / 零依赖 lint / 版本一致性 / 文档一致性 / _headers / DOM 账本 / 测试桩能力对账 / 资源体积预算 / CSS 孤儿扫描 / ESLint / 类型检查 / DOM 引用 / 浏览器冒烟 / 全量测试 / 死循环看门狗 / 行覆盖率）。净减约 2.0KB（资源体积预算充裕）。
+  - **反向验证**（与 PLAN-v7 §7 变异清单逐项对账，全绿）：① 拔掉总开关 → T149c/T154a 红；② 拔掉覆盖层 translateY 写入 → T149a/T154b 红；③ auto 窄宽解析写反（窄→follow）→ T154d 红；④ chip 居左改回 center → T149e/T154e 红；⑤ 删跟随条漏删 `.lyric-follow-on` → 行距异常（grep 全仓零残留已验证）；⑥ follow 预告行不带 `.preview` → T154b 红；⑦ 删 `setLyricInlineOn` 挂类逻辑 → T149g 红（follow 时 `#viz` 不挂 `.lyric-inline-on`，歌词压下一行回归）；⑧ **落法B 字心改回 `justify-content:flex-start` + `padding-left`**（撤销 clamp）→ T149e/T154e 红（断言已改为锁 `.lyric-char{left:clamp(10px,25%,32px)}`）；⑨ **`narrow()` 误读回 `offsetWidth` 视口口径**（同旧 bug 回归）→ T149i 红（错位场景 viz600/视口1200 误用 +36）。还原均 0 红。
+  - **桩环境适配**：`placeLaneOverlay` 的逐行 translateY 先写（只依赖 `rowGeo`/`vizRowBoxH`，与 `getBoundingClientRect` 解耦），覆盖层像素对齐定位在桩缺该方法时跳过、由 CSS 兜底，保证断言稳定性，真实浏览器仍走像素对齐路径。
+- ★ **视觉/交互改动，需人眼验收**：① 窄屏默认「显示位置=自动」表现底部整块、宽屏表现逐行贴在各自小节下；② 伴随节奏模式下歌词是否真的逐行贴合各自小节、且**既不压下一行节奏格、也不与下一行的和弦胶囊（C/Am）同行**——开 xl 放大（两标注都关）时歌词进标注带、行距 48px 是否清开、上方不再空 44px；③ 「显示歌词」开关与「显示位置」三档联动是否顺手，follow 期间切座次尺/时值标注歌词行是否仍对位；④ **落法B 字心观感**：字心落 `clamp(10px,25%,32px)`（短音在格宽 1/4 处、长音封顶 32px、极短格不裁字），相对 D2 的 +8px 内边距是否更不显「太靠左」；⑤ follow 模式网格整体变高（普通每行 52px 空带 / xl 双关 48px）是否可接受；⑥ **窄屏口径修复观感**：在 961–1392px 视口（1280/1366 笔记本、Win11 125% 缩放尤甚）下，双关位移改用桌面 +50，歌词带不再压格子底 7px——需真实浏览器确认重叠消失。
+- 改动文件：`index.html`（数据层 `S.showLyric`/`S.lyricPos` + 设置 UI 开关/pill 组 + **四次修订：`.lyric-chip` 退回纯容器 + `.lyric-char` 绝对定位 `clamp(10px,25%,32px)`（落法B，替换 D2 +8px 内边距）** + `layoutLyricLane`/`placeLaneOverlay`（双关 bothOff 分支：`#viz.chord-xl` 时位移 `行顶+50` 桌面/`+36` 窄屏、行高 32/字块 30/字 17·800）/`setLyricInlineOn`（`.lyric-inline-on` 行距补偿 52 / xl 联动 48 + chord-xl 联动）/`effectiveLyricPos`/**`narrow` 改 `matchMedia("(max-width:960px)")` 视口口径（修 961–1392px 压格 7px 重叠）** + rulerLab/durLabel follow 重采接线 + 退役跟随条整条 + `relayout`/`paintLyric`/`Controls` 接线 + VERSION 2.86.0）、`tests/cases/t149-lyric-follow.js`（改写 + 新增 T149g 行距补偿 13 项 + T149h 双关位移 4 项 + **T149i 窄屏口径 9 项**）、`tests/cases/t150-follow-countin-preview.js`（改写）、`tests/cases/t154-lyric-position.js`（新）、`tests/cases/t151-settings-groups.js`、`tests/cases/t153-factory-reset.js`、`tests/cases/t90-control-layout.js`、`tests/cases/t24-audit-hardening.js`、`tests/lib/harness.js`（扩展 `matchMedia` 应答 `max-width` 查询 + `viewportW` 控制）、`tests/run.js`（登记 t154）、`docs/archive/PLAN-v7-lyric-inline.md`（转已落地）、`docs/README.md`/`README.md`（登记 PLAN-v7）、`package.json`/`package-lock.json`（2.86.0）。
+
 ## v2.85.0 · 设置弹窗重分组 + 预备拍歌词跟随条预览 + 恢复示例曲/出厂设置（2026-09-30）
 
 - **需求来源**：用户开播实测三处痛点，拍板后按 ①→②→③ 顺序落地，改动留本地待确认提交：

@@ -1,13 +1,11 @@
-/* BeatSight 自动化测试 · 歌词跟随条预备拍预览（v2.85.0，fix ①）
-   T150 系列。
+/* BeatSight 自动化测试 · 预备拍期间歌词可见（PLAN-v7，v2.86.0）
+   T150 系列 —— 取代旧「歌词跟随条预备拍预览」（v2.85.0 ①）。
    ---------------------------------------------------------------------------
-   契约（与 index.html paintFollow / paintFrameBody 注释同源）：
-     · 原 bug：开播后预备拍动画期间（curIdx=-1），歌词跟随条不显示，
-       要等正式开唱（curIdx 翻 0）才出现——与节奏条不同步。
-     · v2.85.0（①）：paintFollow 在预备拍窗（ciBeats>0 && ctx.currentTime<ciEnd）内
-       对 curIdx=-1 强制 previewing=true，借第 0 行字块渲染（全「-」未唱态），
-       让跟随条与节奏条同时出现；同时在 paintFrameBody 的预备拍分支里**驱动 paintLyric**，
-       否则该分支早退、paintFollow 永远到不了（这是上一轮实现漏掉的关键一环）。
+   契约（与 index.html paintFrameBody 注释同源）：
+     · 旧 bug（v2.85.0 修的）：开播预备拍期间跟随条不显。新模型下「开局猝不及防」由
+       位置模式本身覆盖——follow 模式小节 1 歌词恒在小节 1 下（含预备拍），bottom 模式
+       底部轨恒显；删掉旧的 paintFollow 预览特判后该需求不回退。
+     · 此用例只验「预备拍期间歌词轨确实在、且第 1 行有内容」，不依赖任何跟随条特判。
    基准：自定义「歌词曲」（1 段 2 字），与 T149 同一套种子。 */
 "use strict";
 const { loadApp, FakeAudioContext, ok, eq, section } = require("../lib/harness");
@@ -18,61 +16,67 @@ const seedArr = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: 
 ]}) });
 const seedState = ci => JSON.stringify(
   { v: 3, bpm: 240, playMode: "arrange", arrangeSel: { id: "t1", from: 0, to: 0, loop: true },
-    countIn: { on: ci, beats: 4 }, lyricFollow: true });
+    countIn: { on: ci, beats: 4 }, showLyric: true, lyricPos: "follow" });
 
-function app(countInOn){
+function app(countInOn, pos){
   const a = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState(countInOn) }));
   const beat = a.beat;
   beat.Store.upsertLyric("t1", "s1", [
     { t: 0, dur: 24, ch: "你" },
     { t: 192, dur: 24, ch: "好" },
   ]);
-  beat.Store.S.lyricFollow = true;
+  beat.Store.S.lyricPos = pos;
   beat.Viz.buildViz();
   return a;
 }
 
-section("T150a 预备拍预览 · curIdx=-1 时跟随条显示第 0 行（fix ① 正向）");
+section("T150a 伴随模式 · 预备拍前（构建即显）小节 1 歌词就在小节 1 下");
 {
-  const { beat } = app(true);
-  beat.Controls.start();                       // 开预备拍 → ciBeats=4, ciEnd=第一可听小节
-  const follow = beat.Viz.internals().lyricFollowEl;
-  beat.Viz.paintLyric(0, -1, undefined, -1);   // 复刻预备拍帧（可听位置 = -1）
-  ok(!follow.hidden, "★ 预备拍中（curIdx=-1）→ 跟随条已显示（与节奏条同时出现）");
-  eq(beat.Viz.internals().followRow, 0, "★ 预览锁定到当前行 0（借第 0 行字块）");
-  const chips = follow.children.filter(c => /(^| )lyric-chip( |$)/.test(c.className));
-  eq(chips.length, 1, "★ 预览渲染出第 0 行字块（你）");
-  ok(chips.every(c => !/(^| )played( |$)/.test(c.className) && !/(^| )on( |$)/.test(c.className)),
-    "★ 预览态字块全未唱（无 played/on，不抢跑）");
-  beat.Controls.stop();
+  const { beat, els } = app(true, "follow");
+  const lane = els["lyricLane"];
+  ok(!lane.hidden, "★ follow 模式构建后歌词轨即显示（含预备拍窗口）");
+  ok(lane.classList.contains("overlay"), "follow 模式 → 覆盖层");
+  const row0 = lane.children[0];
+  const chips0 = row0.children.filter(c => /(^| )lyric-chip( |$)/.test(c.className));
+  eq(chips0.length, 1, "★ 行 0（小节 1）字块 = 1（你）——预备拍即见，不待正式开唱");
+  ok(/translateY\(/.test(row0.style.transform), "行 0 已贴到小节 1 下缘（覆盖层定位生效）");
 }
 
-section("T150b 对照 · 无预备拍时 curIdx=-1 不预览（不抢跑，回归护栏）");
+section("T150b 底部模式 · 预备拍前底部轨即显（现状回归护栏）");
 {
-  const { beat } = app(false);
-  beat.Store.S.countIn = { on: false, beats: 0 };   // 关预备拍 → ciBeats=0
-  beat.Viz.buildViz();
-  beat.Controls.start();
-  const follow = beat.Viz.internals().lyricFollowEl;
-  beat.Viz.paintLyric(0, -1, undefined, -1);
-  ok(follow.hidden, "★ 无预备拍时 curIdx=-1 → 跟随条仍隐藏（不提前冒出）");
-  beat.Controls.stop();
+  const { beat, els } = app(true, "bottom");
+  const lane = els["lyricLane"];
+  ok(!lane.hidden, "★ bottom 模式构建后底部轨即显示（含预备拍窗口）");
+  ok(!lane.classList.contains("overlay"), "bottom 模式 → 仍底部流式");
+  const row0 = lane.children[0];
+  const chips0 = row0.children.filter(c => /(^| )lyric-chip( |$)/.test(c.className));
+  eq(chips0.length, 1, "★ 底部轨行 0 字块 = 1（你）——底部轨预备拍恒显");
 }
 
-section("T150c 端到端 · 真实帧驱动下预备拍期间跟随条也出现（paintFrameBody 已驱动 paintLyric）");
+section("T150c 端到端 · 真实帧驱动下预备拍期间歌词轨保持可见（覆盖层不丢）");
 {
-  const { beat } = app(true);
-  beat.Controls.start();
+  const { beat, els } = app(true, "follow");
+  beat.Controls.start();                       // 开预备拍 → ciBeats=4
   const ac = FakeAudioContext.last;
-  const follow = beat.Viz.internals().lyricFollowEl;
-  let seen = false;
+  const lane = els["lyricLane"];
+  let seen = false, row0HasChip = false;
   const dt = 0.02;
   for (let i = 0; i < 12; i++){           // ~0.24s，远在 4 拍预备拍（1s @240BPM）内
     ac.currentTime += dt;
     beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
-    if (!follow.hidden) seen = true;
+    if (!lane.hidden) seen = true;
+    if (lane.children[0] && lane.children[0].children.some(c => /(^| )lyric-chip( |$)/.test(c.className))) row0HasChip = true;
   }
-  ok(seen, "★ 真实帧驱动下，预备拍期间跟随条由 paintFrame 渲染出来（fix ① 端到端）");
+  ok(seen, "★ 真实帧驱动下，预备拍期间歌词覆盖层由 paintFrame 维持可见");
+  ok(row0HasChip, "★ 预备拍期间小节 1 字块始终在（与节奏条同时出现）");
   beat.Controls.stop();
+}
+
+section("T150d 对照 · 显示歌词关时预备拍也不画（总开关优先）");
+{
+  const { beat, els } = app(true, "follow");
+  beat.Store.S.showLyric = false;
+  beat.Viz.buildViz();
+  ok(els["lyricLane"].hidden, "显示歌词关 + 预备拍 → 歌词轨仍隐藏（总开关优先级最高）");
 }
