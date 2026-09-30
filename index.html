@@ -2634,7 +2634,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.86.0";
+const VERSION = "2.87.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -15326,6 +15326,13 @@ if (!Store.demoSeeded()){
      不做"复活"：曲式被用户删掉的，demoStale 恒为 false，绝不补回来 */
   Arrange.ensureDemo();
 }
+/* ★★ 启动顺序铁律（v2.87.0 修冷启动重叠 bug 时立）：**凡是会被 buildViz / cacheGeo 读到的
+   状态或类，必须在首次 buildViz 之前收敛完**。本处两开关收敛出的 .chord-xl 就是 placeLaneOverlay
+   的输入（双关 ⇒ 歌词行锚点 行顶+50，否则 行顶+88，且 CSS 行距 48 ↔ 52）；原先它排在
+   Presets.refreshAfterPatternChange()（= 首次 buildViz）之后，于是首屏歌词行按普通模式锚 +88，
+   随后类挂上、行距与胶囊尺寸都变了，却没人重排 → 歌词带压在下一行和弦胶囊上（用户实拍，
+   点播放触发重建才自愈）。挪到首次 buildViz 之前，两个消费者读到的是同一份事实。 */
+syncVizLabelToggles();
 Presets.refreshAfterPatternChange();
 Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次「跨地址不共享预设」
 Trainer.updateProg();                // v2.11.2：原「有训练历史时亮出继续上次」随接续记录删除
@@ -15380,7 +15387,8 @@ function syncVizLabelToggles(){
   setToggle("rulerLabToggle", S.showRuler);
   setToggle("durLabelToggle", S.showDurLabel);
 }
-syncVizLabelToggles();
+/* ★ 启动调用点已上移到首次 buildViz 之前（见上方「启动顺序铁律」）——此处只留点击处理器的接线。
+   别再在这里补一次调用：两个收敛点会让反向验证哑火（改坏了也测不出来），且第二次调用纯属空转。 */
 syncLyricToggles();   // v2.86.0：收敛歌词显示开关 + 显示位置三档（启动 + 运行时都走这里）
 $("rulerLabToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();

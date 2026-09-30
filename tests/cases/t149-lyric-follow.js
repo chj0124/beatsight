@@ -207,3 +207,42 @@ section("T149i 窄屏口径 = CSS 视口断点（修 961–1392px 视口歌词�
     eq(numOf(tr), int2.rowGeo[i].top + 36, "缺省口径（viz600=视口600）：仍 +36（存量行为锁定）");
   }
 }
+
+section("T149j 冷启动 · 双关类必须在首次 buildViz 之前就位（v2.87.0 修首屏歌词压和弦胶囊）");
+{
+  /* ★ 与 T149h 的关键差别：这里**不调用任何 buildViz / relayout**——断言的是「页面加载完成的那一刻」。
+     T149h 走的是"类已挂好之后再重建"的路径，所以本版之前它一直绿；缺口正在冷启动这一格：
+     装配区曾把 syncVizLabelToggles() 排在首次 buildViz（Presets.refreshAfterPatternChange）之后，
+     于是首屏 placeLaneOverlay 读到 bothOff=false → 歌词行按普通模式锚 行盒底+2（+88），
+     类随后才挂上、行距 52→48 与胶囊尺寸都变了，却没人重排 → 歌词带压在下一行和弦胶囊上
+     （用户实拍重叠），点播放触发重建才自愈。 */
+  const cold = loadApp(Object.assign(seedArr(), {
+    "beatsight.state": seedState({ showLyric: true, lyricPos: "follow", showRuler: false, showDurLabel: false }),
+    "beatsight.lyrics": JSON.stringify({ v: 2, lines: [
+      { arrangeId: "t1", secUid: "s1", chars: [{ t: 0, dur: 24, ch: "你" }, { t: 192, dur: 24, ch: "好" }] },
+    ]}),
+  }), { viewportW: 1200 });
+  ok(cold.els["viz"].classList.contains("chord-xl"), "★ 冷启动（零重建）：#viz 已挂 .chord-xl");
+  ok(cold.els["viz"].classList.contains("lyric-inline-on"), "★ 冷启动：已挂 .lyric-inline-on（行距补偿随 follow）");
+  const int = cold.beat.Viz.internals();
+  const bh = boxH(cold.beat);
+  let seen = 0;
+  for (let i = 0; i < cold.els["lyricLane"].children.length; i++){
+    const tr = cold.els["lyricLane"].children[i].style.transform || "";
+    if (!/translateY/.test(tr)) continue;
+    seen++;
+    eq(numOf(tr), int.rowGeo[i].top + 50,
+      "★ 冷启动双关行 " + i + " 锚 行顶+50（修复前 = 行盒底+2 的 +" + (bh + 2) + "，压下一行和弦胶囊）");
+  }
+  ok(seen > 0, "★ 冷启动确有歌词行被定位（否则上面的逐行断言是空转）");
+  /* 源码顺序钉：这条规则本身要可执行——否则下次有人把调用挪回去，只有上面那条断言在红，
+     而"该挪到哪一行"没人拦。同时锁「只允许一个启动调用点」：补第二处会让变异反向验证哑火。 */
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+  const iSync = src.indexOf("\nsyncVizLabelToggles();");
+  const iFirstViz = src.indexOf("\nPresets.refreshAfterPatternChange();");
+  ok(iSync > 0 && iFirstViz > 0 && iSync < iFirstViz,
+    "★ 源码顺序：启动期 syncVizLabelToggles() 早于首次 buildViz（Presets.refreshAfterPatternChange）");
+  eq(src.split("\nsyncVizLabelToggles();").length - 1, 1,
+    "★ 启动调用点只有一个（补第二处收敛点会让反向验证哑火）");
+}
