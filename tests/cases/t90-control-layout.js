@@ -86,19 +86,25 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
     "★ 左列顺序：角标 → 音量（状态灯已迁顶栏）");
   ok(h.indexOf('id="volMaster"') < h.indexOf('id="bpmNum"'), "左列（音量）在源码序上先于右列（BPM）");
   ok(/id="volStrumRow"/.test(h), "音量三条（含扫弦行 id）都在左列");
-  /* ④ 设置弹窗结构与 v2.10.13 一致 */
+  /* ④ 设置弹窗结构（v2.85.0 起：四组——画面图层 / 环境 / 发声 / 数据与说明；
+     原「外观与辅助」拆为「画面图层」(5) +「环境」(2 keepAwake/wide)） */
   const st = slice("settingsOverlay");
-  for (const g of ["外观与辅助", "发声", "数据与说明"]){
-    ok(st.includes(g), "★ 设置弹窗分三组之一：「" + g + "」");
+  for (const g of ["画面图层", "环境", "发声", "数据与说明"]){
+    ok(st.includes(g), "★ 设置弹窗分四组之一：「" + g + "」");
   }
   /* v2.69.0（1.1）：themeToggle 上顶栏，从设置弹窗 id 清单移除；
      v2.70.0（1.4）：新增座次尺/时值标注两开关（9 → 11 项）；
-     v2.84.0（⑥）：新增歌词跟随条开关（11 → 12 项） */
+     v2.84.0（⑥）：新增歌词跟随条开关（11 → 12 项）；
+     v2.85.0（②）：「外观与辅助」拆为「画面图层」(5) +「环境」(2)，并新增 ③a 恢复示例曲 / ③b 危险区 */
   for (const id of ["bounceToggle", "tabToggle", "timbreRow", "swingRow",
                     "exportBtn", "importBtn", "exportAllBtn", "importAllBtn", "helpBtn",
-                    "rulerLabToggle", "durLabelToggle", "lyricFollowToggle"]){
-    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 12 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : (id === "lyricFollowToggle" ? "（v2.84.0 歌词跟随条）" : "")));
+                    "rulerLabToggle", "durLabelToggle", "lyricFollowToggle",
+                    "keepAwakeToggle", "wideToggle"]){
+    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 14 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : (id === "lyricFollowToggle" ? "（v2.84.0 歌词跟随条·画面图层组）" : (id === "keepAwakeToggle" || id === "wideToggle" ? "（v2.85.0 环境组·从外观与辅助拆出）" : ""))));
   }
+  /* v2.85.0（③a/③b）：数据与说明组新增「恢复示例曲」、危险区新增「恢复出厂设置」 */
+  ok(/id="demoRebuildBtn"/.test(st), "★ v2.85.0（③a）：恢复示例曲按钮在数据组");
+  ok(/id="factoryResetBtn"/.test(st), "★ v2.85.0（③b）：恢复出厂设置按钮在危险区");
   eq((st.match(/data-swing="/g) || []).length, 3, "★ Swing 3 档已进设置弹窗");
   ok(/class="dialog-panel"/.test(st) && /id="settingsClose"/.test(st), "浮层小窗面板与 ✕ 关闭钮在位");
 }

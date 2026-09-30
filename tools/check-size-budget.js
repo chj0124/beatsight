@@ -30,8 +30,12 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    尾部接线 + internals 暴露，净增 ~87 行 / ~4KB 必要功能代码（注释已计入，非冗余）。
    v2.84.0 加「设置开关 + 双关放大模式」：syncFollowChrome 函数 + paintFollow 双关分支 +
    S.lyricFollow 状态/typedef/载荷 + 设置 pill + 两处理器接线，净增 ~2KB 必要功能代码。
-   上调到 1308KB，留约 2KB 余量拦回归；非无脑抬常数——体积增量经 git diff 确认为功能本体。 */
-const BUDGET_BYTES = 1308 * 1024;
+   v2.85.0 三处改动：① 设置弹窗六组重分组（画面图层/环境/发声/数据与说明/危险区/诊断与自验）
+   + 分组示意 SVG 图 + figcaption；② ③a/③b 两按钮（恢复示例曲/恢复出厂设置）+ 接线 + 二次确认文案；
+   ③ 预备拍歌词跟随条预览（paintFollow 预览判定 + paintFrameBody 驱动 paintLyric 调用 + 注释），
+   净增 ~5.3KB 必要功能代码（标记重组 + 新控件 + 新分支，均为用户拍板的功能本体）。
+   上调到 1320KB，留约 6.9KB 余量拦回归；非无脑抬常数——体积增量经 git diff 确认为功能本体。 */
+const BUDGET_BYTES = 1320 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

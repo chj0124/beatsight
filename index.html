@@ -2190,27 +2190,30 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
-          <li><b>后台保活（设置 · 外观与辅助里的开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
+          <li><b>后台保活（设置 · 环境里的开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
           <li><b>导出 / 导入预设；导出 / 导入全部数据。</b>「预设」只带走节奏型；「全部数据」整包带走预设 + 曲式编排 + 歌词对齐 + 听辨战绩（详见下面「数据与隐私」）</li>
           <li><b>复制 / 导出诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）做成一段文本贴给开发者——复制成剪贴板，或导出成 .txt 文件（下载不可用时自动退回复制）。不上传、不联网</li>
         </ul>
 
         <template id="helpFigsSettings">
         <div class="help-fig">
-          <svg viewBox="0 0 560 96" role="img" aria-label="设置弹窗分组示意：外观与辅助、发声、数据与说明">
+          <svg viewBox="0 0 744 96" role="img" aria-label="设置弹窗分组示意：画面图层、环境、发声、数据与说明">
             <rect x="8" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="22" y="28" font-size="10" fill="#fff">外观与辅助</text>
-            <text x="22" y="48" font-size="9" fill="#6a6a6a">主题 · 弹跳球 · 六线</text>
-            <text x="22" y="64" font-size="9" fill="#6a6a6a">宽屏铺满 · 壁纸</text>
+            <text x="22" y="28" font-size="10" fill="#fff">画面图层</text>
+            <text x="22" y="48" font-size="9" fill="#6a6a6a">弹跳球 · 六线 · 标注</text>
+            <text x="22" y="64" font-size="9" fill="#6a6a6a">歌词跟随条</text>
             <rect x="196" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="210" y="28" font-size="10" fill="#fff">发声</text>
-            <text x="210" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <text x="210" y="28" font-size="10" fill="#fff">环境</text>
+            <text x="210" y="48" font-size="9" fill="#6a6a6a">后台保活 · 宽屏铺满</text>
             <rect x="384" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="398" y="28" font-size="10" fill="#fff">数据与说明</text>
-            <text x="398" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
-            <text x="398" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
+            <text x="398" y="28" font-size="10" fill="#fff">发声</text>
+            <text x="398" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <rect x="572" y="6" width="164" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
+            <text x="586" y="28" font-size="10" fill="#fff">数据与说明</text>
+            <text x="586" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
+            <text x="586" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
           </svg>
-          <figcaption>设置弹窗三组：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
+          <figcaption>设置弹窗分组（画面图层 / 环境 / 发声 / 数据与说明）：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
         </div>
         </template>
         <div id="mountFigsSettings"></div>
@@ -2392,16 +2395,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       </button>
     </div>
 
-    <!-- 组① 外观与辅助（v2.10.12 从顶栏与 .viz-toggles 收进来） -->
-    <h2 class="card-title" style="margin-bottom:8px">外观与辅助</h2>
+    <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v2.85.0 与「环境」拆成两组） -->
+    <h2 class="card-title" style="margin-bottom:8px">画面图层</h2>
     <div class="bpm-row">
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
-      <!-- v2.69.0 返工（用户拍板）：后台保活从顶栏迁入本组——环境开关归环境组。搬块不换 id，
-           wakeLock/静音循环接线（KeepAlive 模块）与 t86e 启动收敛断言按 id 取，搬家不影响 -->
-      <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
-      <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
-      <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
       <!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
            显隐走 #viz 上的 CSS 类（.no-ruler / .no-durlab），DOM 照建；
            两开关都关 ⇒ 加 .chord-xl，行首和弦胶囊放大一倍（2.1，用户拍板） -->
@@ -2411,7 +2409,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            关掉即退回纯底部轨现状。两个标注都关时，跟随条会自动移入行内原标注带并增高增大（见 .no-ruler.no-durlab 规则） -->
       <button class="toggle-pill on" id="lyricFollowToggle" role="switch" aria-checked="true">歌词跟随条 · 当前行贴边<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px">两个画面图层开关与<b>宽屏铺满</b>（主题切换已上**顶栏**月亮/太阳图标钮，本组不再有主题项）。弹跳球预告「何时」落拍，关掉就只剩声音；六线底纹只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）；宽屏铺满去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚；同时<b>歌词跟随条</b>会自动移入这两组标注腾出的行内空带、增高增大，弹唱时视线更聚拢（上面的「歌词跟随条」开关可整体关掉它，退回纯底部轨）。</div>
+    <div class="hint" style="margin-top:8px">五个都是<b>画面图层</b>开关：<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义——不带记谱的型本来就不画六线也不画箭头，所以那个开关在那些型下会自动隐藏（点了没反应比没有还糟）。<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚；同时<b>歌词跟随条</b>会自动移入这两组标注腾出的行内空带、增高增大，弹唱时视线更聚拢（上面的「歌词跟随条」开关可整体关掉它，退回纯底部轨）。</div>
+
+    <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
+    <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
+    <div class="bpm-row">
+      <!-- v2.69.0 返工（用户拍板）：后台保活从顶栏迁入本组——环境开关归环境组。搬块不换 id，
+           wakeLock/静音循环接线（KeepAlive 模块）与 t86e 启动收敛断言按 id 取，搬家不影响 -->
+      <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
+      <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
+      <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
+    </div>
+    <div class="hint" style="margin-top:8px"><b>后台保活</b>让屏幕不自动熄灭、手机切后台时也不断声（代价是耗电，默认关）；<b>宽屏铺满</b>去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。主题切换已上<b>顶栏</b>月亮/太阳图标钮，本组不再有主题项。</div>
 
     <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
          v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
@@ -2488,6 +2497,12 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <button class="pill outline" id="importAllBtn">导入全部数据</button>
       <input type="file" id="importAllFile" accept="application/json,.json" hidden>
     </div>
+    <!-- v2.85.0（③a）：恢复示例曲——设置里常显入口。哪怕示例曲被改过/已删，点这里都按出厂规格重建并选中。
+         复用 Arrange.loadDemo()（与侧栏「恢复示例曲」同一出口）。先确认，避免误触覆盖用户改过的示例。 -->
+    <div class="bpm-row" style="margin-top:10px">
+      <button class="pill outline" id="demoRebuildBtn">恢复示例曲（重建《在他乡》）</button>
+    </div>
+    <div class="hint" style="margin-top:8px">示例曲《在他乡》是内置练习样板——哪怕你改过它的曲式或歌词、或它已不在库里，点这里都会按出厂规格<b>重建并选中</b>它（不会删你自己的其他曲式）。</div>
     <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
     <div class="exp-parts" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 14px">
       <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
@@ -2509,6 +2524,13 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <button class="pill outline" id="helpInstallBtn" disabled>安装到本机</button>
     </div>
     <div class="hint" style="margin-top:8px">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
+
+    <!-- 危险区（v2.85.0 ③b）：恢复出厂设置——清掉本机全部 beatsight.* 数据后重载 -->
+    <h2 class="card-title" style="margin:24px 0 8px">危险区</h2>
+    <div class="bpm-row">
+      <button class="pill danger" id="factoryResetBtn">恢复出厂设置</button>
+    </div>
+    <div class="hint" style="margin-top:8px">⚠️ 这会<b>永久删除本机全部数据</b>：节奏型、曲式编排、歌词对齐、听辨战绩与所有设置，且<b>不可恢复</b>。建议先用上方「导出全部数据」备份。操作需两次确认，确认后会停止播放并重新载入应用。</div>
 
     <!-- 组④ 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
          为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
@@ -2551,23 +2573,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2583  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3207  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4792  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5608  Modal         应用内弹窗
-     L5746  Viz           时值可视化渲染与每帧动画
-     L8218  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L8875  Trainer       变速训练器
-     L9067  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L9636  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L10920 Editor        自定义节奏型编辑器
-     L11366 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L11413 Ear           听辨训练（v1.10.0）
-     L11633 Arrange       曲式编排（v2.0.0）
-     L14531 Help          使用方法（v2.0.1）
-     L14660 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L14734 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L14977 初始化（装配） 各模块 hook 接线与启动
+     L2605  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3229  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L4814  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5630  Modal         应用内弹窗
+     L5768  Viz           时值可视化渲染与每帧动画
+     L8252  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L8909  Trainer       变速训练器
+     L9101  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L9702  Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L10986 Editor        自定义节奏型编辑器
+     L11432 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L11479 Ear           听辨训练（v1.10.0）
+     L11699 Arrange       曲式编排（v2.0.0）
+     L14597 Help          使用方法（v2.0.1）
+     L14726 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L14800 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15043 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2593,7 +2615,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "2.84.0";
+const VERSION = "2.85.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7526,6 +7548,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const el = lyricFollowEl;
     if (!el) return;
     if (S.lyricFollow === false){ if (!el.hidden) el.hidden = true; followRow = -2; return; }   // v2.84.0（⑥）：设置关 → 整帧不显示
+    /* v2.85.0（①）：预备拍预览——正式开唱前先把第 0 行字块摆出来（全「-」未唱态），
+       让歌词跟随条与节奏条同时出现（用户实报：开播后预备拍动画期间跟随条不显示）。
+       门控与 paintFrameBody 的预备拍窗完全一致（ciBeats>0 && now<ciEnd）：
+       ciEnd 恰为第一可听小节起点，落点即 curIdx 翻 0，无缝接管、无闪烁。
+       借第 0 行的布局与字块，但着色阶段强制全「-」（不抢跑成已唱）。 */
+    const previewing = curIdx < 0 && ciBeats > 0 && ctx && ctx.currentTime < ciEnd;
+    if (previewing) curIdx = 0;
     const row = (curIdx >= 0 && lyricRows[curIdx]) ? lyricRows[curIdx] : null;
     if (!row || !row.chars.length){ if (!el.hidden) el.hidden = true; followRow = curIdx; return; }
     if (el.hidden) el.hidden = false;
@@ -7554,7 +7583,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* 每帧：当前行字块状态（同底部轨同一套 tib 换算；当前行字少，逐帧写亦廉价） */
     for (let i = 0; i < row.chars.length; i++){
       const c = row.chars[i];
-      const st = (tib >= c.lt + c.ld) ? "p" : (tib >= c.lt ? "o" : "-");
+      const st = previewing ? "-" : (tib >= c.lt + c.ld) ? "p" : (tib >= c.lt ? "o" : "-");
       followChipEls[i].className = "lyric-chip" + (st === "p" ? " played" : (st === "o" ? " on" : ""));
       followFillEls[i].style.transform = (st === "p") ? "scaleX(1)"
         : "scaleX(" + (st === "o" ? Math.min(1, (tib - c.lt) / c.ld).toFixed(3) : 0) + ")";
@@ -7988,10 +8017,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
               waitEl.style.display = "";
               waitEl.style.opacity = "";
               waitEl.style.transform = `translate(${wx.toFixed(1)}px, ${wy.toFixed(1)}px)`;
-            } else waitEl.style.display = "none";
+            } else               waitEl.style.display = "none";
           }
         }
       }
+      /* v2.85.0（①）：预备拍期间也驱动歌词跟随条就位——借第 0 行字块、全未唱态，
+         与节奏条同时出现（用户实报：开播后预备拍动画期间跟随条不显示，要等正式开唱）。
+         paintLyric 在 curIdx=-1 的 count-in 分支会经 paintFollow 的预览逻辑摆出第 0 行；
+         lane.hidden（预设/无词）时 paintLyric 自行早退，零副作用。 */
+      paintLyric(0, -1, arrCur, -1);
       return;
     }
     lastCi = -1;
@@ -9604,6 +9638,38 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     v = Math.min(8, Math.max(1, v));
     S.countIn.beats = v; evTarget(e).value = v;
     Store.persist();
+  });
+
+  /* v2.85.0（③a）：设置里「恢复示例曲」常显入口——哪怕示例曲已改过/已删也能一键按出厂规格重建。
+     复用 Arrange.loadDemo()（与侧栏「恢复示例曲」同一出口：ensureDemo 重建 + 选中 + 播报）。
+     先确认，避免误触把用户改过的示例覆盖掉。 */
+  const demoRebuildBtn = $("demoRebuildBtn");
+  if (demoRebuildBtn) demoRebuildBtn.addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    Modal.uiConfirm("确定按出厂规格重建示例曲《在他乡》？\n你改过的曲式/歌词会被覆盖（不影响其他曲式）。",
+      () => { if (onDemoRestore) onDemoRestore(); });   // v2.85.0（③a）：经 onDemoRestore 钩子回调 Arrange.loadDemo()
+                                                        // （与侧栏 demoRestoreBtn 同一出口；避免 Controls→Arrange 反向引用，R3 会拦）
+  });
+
+  /* v2.85.0（③b）：危险区「恢复出厂设置」——清掉本机全部 beatsight.* 数据后重载。
+     两步确认（第二次 danger 红钮）；先停播放避免音频上下文悬空；清完即重载，
+     应用会从默认值重新初始化并重新带出示例曲。 */
+  const factoryResetBtn = $("factoryResetBtn");
+  if (factoryResetBtn) factoryResetBtn.addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    Modal.uiConfirm("⚠️ 恢复出厂设置会永久删除本机全部数据（预设/曲式/歌词/设置/战绩），且不可恢复。\n建议先「导出全部数据」备份。确定继续？",
+      () => Modal.uiConfirm("最后确认：所有本地数据将被永久删除，应用将重新载入。",
+        () => {
+          try { if (S.playing || S.preview) Controls.stop(); } catch (_) {}
+          const keys = [];
+          for (let i = 0; i < localStorage.length; i++){
+            const k = localStorage.key(i);
+            if (k && k.indexOf("beatsight.") === 0) keys.push(k);
+          }
+          keys.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+          if (typeof location !== "undefined" && location && typeof location.reload === "function") location.reload();
+        }, { danger: true, okText: "确认删除" }),
+      { okText: "继续" });
   });
 
   /* ================= 会话额度（原练习量区；v2.10.12 起**只剩听辨训练的额度**） =================
