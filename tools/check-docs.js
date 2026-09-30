@@ -11,7 +11,7 @@
         （PLAN-v1.9 / PLAN-v2-arrangement / PLAN-v2-impl 三份都缺）——读者按表点进去，
         看到的是还在写"确认后开工"的方案，无从判断该不该信。
 
-   九项都改成机器可判的规则，而不是再手写一遍数值：
+   十项都改成机器可判的规则，而不是再手写一遍数值：
 
      1) 模块索引行号 = index.html 实际 banner 行号（复用 gen-index.js 的解析，口径唯一）
      2) 不许手写耗时：这四个文件的正文里不得出现「约 N 秒」。
@@ -48,6 +48,11 @@
         口径刻意只认「~N KB/MB」这一种形状、且只管这一份文件：
         index.html / tests 里「约 5 MB」（localStorage 配额）「~180 KB」（壁纸档位讨论）
         是概念说明与历史叙述，一并拦下就是假红。详见该项代码里的注释。
+     9) CHANGELOG 分卷（v2.17.0）：主文件只留当前大版本线，旧线归 docs/archive/CHANGELOG-v<N>.md
+        （自带"翻页时变红提醒"的性质，详见该规则注释）。
+    10) docs/ 第一层只许活文档白名单（DEVELOPMENT.md / README.md）：方案 / 审计 / 快照一律进
+        docs/archive/。由来与第 9 项同源——分类约定写在 docs/README.md 里只能靠自觉，
+        而 vibe coding 的 Agent 不读那份索引就等于没有约定；落错位置直接红，不需要谁记得。
 
    刻意不做的事：不去校验正文里引用的**代码行号**（如"未覆盖的 L2964"）——它更适合由产出方
    （check-coverage）直接打印，让文档指过去而不是抄一遍；也不去比对"实测值"本身
@@ -404,6 +409,32 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
   }
 }
 
+/* ---- 10) docs/ 第一层只许活文档白名单（快照一律进 archive/）----
+   由来：「活文档 vs 快照」的分类约定写在 docs/README.md 里，但约定靠自觉就会漂移——
+   vibe coding 的 Agent 不读那份索引，新增方案/审计随手就落在 docs/ 第一层，混排再次发生。
+   与规则 9（CHANGELOG 分卷）同一思路：**落错位置直接红，不需要谁记得**。
+   口径刻意只认「docs/ 第一层的 .md 文件」这一种形状：
+   · archive/ 内部不查（那里就是快照的家）；assets/ 等子目录不查（只看文件）；
+   · 确属活文档的新 .md（如将来的模块地图）→ 加进白名单并登记 docs/README.md 活文档表，
+     两处都有机器盯着，不会静默。 */
+const DOCS_LIVING_WHITELIST = ["DEVELOPMENT.md", "README.md"];
+{
+  const dir = path.join(ROOT, "docs");
+  const stray = [];
+  if (fs.existsSync(dir)){
+    fs.readdirSync(dir).filter(f => f.endsWith(".md")).forEach(f => {
+      if (!DOCS_LIVING_WHITELIST.includes(f)) stray.push("docs/" + f);
+    });
+  }
+  if (stray.length){
+    report.push("✗ docs/ 第一层混放：" + stray.length + " 份白名单外 Markdown（快照/方案/审计应进 docs/archive/）");
+    stray.forEach(s => problems.push("docs/ 第一层 —— " + s
+      + "：快照/方案/审计一律挪进 docs/archive/ 并带状态横幅；确属活文档则加进 DOCS_LIVING_WHITELIST 并登记 docs/README.md 活文档表"));
+  } else {
+    report.push("✓ docs/ 第一层：仅 " + DOCS_LIVING_WHITELIST.length + " 份活文档白名单（快照均在 archive/）");
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
@@ -415,9 +446,10 @@ if (problems.length){
     + "审计快照 → 给 docs/archive/ 下的 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行；"
     + "README 版本号 → 与 index.html 的 VERSION 对齐；"
     + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐；"
-    + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/archive/CHANGELOG-v<旧大号>.md。");
+    + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/archive/CHANGELOG-v<旧大号>.md；"
+    + "docs 第一层 → 快照/方案/审计挪进 docs/archive/，活文档加 DOCS_LIVING_WHITELIST 并登记索引。");
   process.exit(1);
 }
 console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"
-  + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / CHANGELOG 分卷）");
+  + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / CHANGELOG 分卷 / docs 第一层白名单）");
 process.exit(0);

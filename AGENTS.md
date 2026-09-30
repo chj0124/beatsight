@@ -23,6 +23,7 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 - **功能变更必须带测试**：`tests/` 增补用例（沿用现有命名风格，如 `t80-countin-arrange-no-reenter`）；缺陷修复类须做**反向验证**——回退修复后目标断言应变红。行覆盖率分节不低于 90%、总体不低于 97%。
 - **发版必 bump 版本号，工程版也不例外**：`index.html` 的 `const VERSION` 是唯一真相源，`package.json` / `package-lock.json`（`npm install --package-lock-only` 同步）/ `CHANGELOG.md` 首条 `## vX.Y.Z` 由 `check-version.js` 强制一致。
 - **能现算的数字不写进文档**：耗时、测试数、覆盖率等以命令输出为准，不要手抄进 README / docs（`check-docs.js` 会强制）。
+- **新增文档先判类**：活文档（随代码更新）放根目录或 docs/ 第一层，并登记 `docs/README.md` 活文档表；方案 / 审计 / 快照一律进 `docs/archive/`，头部带「历史快照 · 已归档 / 已落地」横幅并登记快照表。docs/ 第一层新增白名单外的 `.md` 会被 `check-docs.js` 第 10 项当场拦红——落错位置的文档活不过自验。
 
 ## 3. 提交与推送
 
