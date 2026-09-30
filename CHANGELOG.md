@@ -1,10 +1,10 @@
 # 变更记录
 
 > ★ **分卷口径（v2.17.0 起）**：本文件**只保留当前大版本线（v2.x）的记录**。
-> 旧大版本各归各档：[`docs/CHANGELOG-v1.md`](docs/CHANGELOG-v1.md) · [`docs/CHANGELOG-v0.md`](docs/CHANGELOG-v0.md)。
+> 旧大版本各归各档：[`docs/archive/CHANGELOG-v1.md`](docs/archive/CHANGELOG-v1.md) · [`docs/archive/CHANGELOG-v0.md`](docs/archive/CHANGELOG-v0.md)。
 > **为什么分**：主文件一度长到近 5000 行、139 个版本条目，「查一个历史版本要在几千行里翻」——
 > 而 v0/v1 两条老线的条目早就不会再改，留着只是噪音。
-> **什么时候再分**：下一次 bump 到新的大版本号时，把刚过去的那条线整体挪进 `docs/CHANGELOG-v<旧大号>.md`（`tools/check-docs.js` 的第 9 项会把这事变红提醒你，不用记）。
+> **什么时候再分**：下一次 bump 到新的大版本号时，把刚过去的那条线整体挪进 `docs/archive/CHANGELOG-v<旧大号>.md`（`tools/check-docs.js` 的第 9 项会把这事变红提醒你，不用记）。
 > **条目格式不变**：每条仍是「## vX.Y.Z · 标题（日期）」+ 根因 / 取舍 / 自验数字。
 
 ---

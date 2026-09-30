@@ -2,7 +2,7 @@
 
 > ⚠️ **本文档已归档 · 历史记录**：D1–D8 决策点均已随 v2.0.0 发布闭环，**不再有待拍板项**；
 > 正文里的行号与假设清单是立项当时（v1.9.x）的快照、**不再维护**。
-> 现行功能与开发约定请以 [CHANGELOG.md](../CHANGELOG.md) 与 [DEVELOPMENT.md](DEVELOPMENT.md) 为准；
+> 现行功能与开发约定请以 [CHANGELOG.md](../../CHANGELOG.md) 与 [DEVELOPMENT.md](../DEVELOPMENT.md) 为准；
 > 保留本文档仅为追溯「为什么把严格 4 小节循环改成曲式、付了什么代价」。
 > （v2.0.5 补此横幅：此前 README 已把它标为"已归档"，文档本身却没有状态标记。）
 

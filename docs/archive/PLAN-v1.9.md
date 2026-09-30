@@ -2,7 +2,7 @@
 
 > ⚠️ **本文档已归档（历史存档）**：表中四批（P0 工程债 / P1 扫弦方向 / P1 练习量 / P2 听辨训练）
 > 均已落地并发布，v1.9 / v1.10 / v1.11 / v2.0 已上线，正文里的行号与清单都是当年的快照、**不再维护**。
-> 现行功能与开发约定请以 [CHANGELOG.md](../CHANGELOG.md) 与 [DEVELOPMENT.md](DEVELOPMENT.md) 为准；
+> 现行功能与开发约定请以 [CHANGELOG.md](../../CHANGELOG.md) 与 [DEVELOPMENT.md](../DEVELOPMENT.md) 为准；
 > 保留本文档仅为追溯「当初为什么这样排期、怎么取舍」。
 > （v2.0.5 补此横幅：此前 README 已把它标为"已归档"，文档本身却没有状态标记，
 > 读者按 README 点进来会以为还是一份待办方案。）

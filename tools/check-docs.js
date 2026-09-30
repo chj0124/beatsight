@@ -20,7 +20,7 @@
         ——命令自己会在末尾打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。文档只描述"怎么用、为什么"。
      3) 归档状态一致：README 文档表里标了「已归档 / 已落地」的 Markdown 文档，
         正文开头必须有同一状态词（写清"已归档/已落地 + 以什么为准"）。
-     4) 审计快照横幅：spec.md / tasks.md / checklist.md 是 2026-09-17 那次审计（基线 v2.0.2）的
+     4) 审计快照横幅：docs/archive/ 下的 spec.md / tasks.md / checklist.md 是 2026-09-17 那次审计（基线 v2.0.2）的
         产物，里面的数字必然随代码演进漂移。它们因此被排除在"手写耗时"规则之外（见 TIMING_FILES），
         但正文开头必须各自带一行统一横幅「历史快照 · 已归档」——否则读者会拿旧数字当现状。
      5) README 的版本声明必须等于 VERSION（v2.8.6，审计 §Q1）。README 正文那句
@@ -66,7 +66,7 @@ const genIndex = require("./gen-index.js");
 const ROOT = path.join(__dirname, "..");
 
 /* 手写耗时的禁区（相对路径）。刻意排除：CHANGELOG（历史记录，改了反而失真）、
-   docs/PLAN-*.md（归档方案，是当年的快照）、spec.md / checklist.md / tasks.md（审计产物，
+   docs/archive/PLAN-*.md（归档方案，是当年的快照）、docs/archive/ 下的 spec.md / checklist.md / tasks.md（审计产物，
    由下面的第 4 项快照横幅规则单独管） */
 const TIMING_FILES = [
   "README.md",
@@ -78,7 +78,7 @@ const TIMING_RE = /约\s*\d+(?:\.\d+)?\s*秒/g;
 
 /* 审计产物必须带统一快照横幅：这三份是 2026-09-17 审计（基线 v2.0.2）的产物，数字会随代码演进
    漂移。它们不适用"手写耗时"规则，但正文开头必须有「历史快照 · 已归档」这行，读者才不会被旧数字误导。 */
-const SNAPSHOT_FILES = ["spec.md", "tasks.md", "checklist.md"];
+const SNAPSHOT_FILES = ["docs/archive/spec.md", "docs/archive/tasks.md", "docs/archive/checklist.md"];
 const SNAPSHOT_MARKER = "历史快照 · 已归档";
 const SNAPSHOT_HEAD_LINES = 20;
 
@@ -171,7 +171,7 @@ console.log("══════════════════════�
     }
   });
   if (missing.length){
-    report.push(`✗ 审计快照：${missing.length} 处缺失（spec.md / tasks.md / checklist.md）`);
+    report.push(`✗ 审计快照：${missing.length} 处缺失（docs/archive/ 下的 spec.md / tasks.md / checklist.md）`);
     missing.forEach(x => problems.push("审计快照 —— " + x));
   } else {
     report.push(`✓ 审计快照：${SNAPSHOT_FILES.length} 份审计产物均带「${SNAPSHOT_MARKER}」横幅`);
@@ -353,7 +353,7 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
    而 `check-docs.js` 的九条规则里原本没有一条管它的体量（它只被 check-version 盯首条版本号）。
    于是「查一个历史版本要在几千行里翻」，且**它会无界增长**（每次发版加一段，永不减少）。
    实测构成：v0.x 21 条 / v1.x 32 条 / v2.x 86 条——两条老线的条目早已不会再改，留着只是噪音。
-   ★ 处置：**主文件只保留当前大版本线，旧大版本各归各档**（`docs/CHANGELOG-v<N>.md`）。
+   ★ 处置：**主文件只保留当前大版本线，旧大版本各归各档**（`docs/archive/CHANGELOG-v<N>.md`）。
      这条口径自带"下一次翻页时会提醒你"的性质：bump 到 v3.0.0 的当天，主文件里就出现了
      大号 ≠ 当前大号的条目 ⇒ 第 9 项变红 ⇒ 按提示把 v2 整线挪进归档即可。
      **不需要谁去记"该归档了"**——这正是本文件九条规则共同的立身之道。
@@ -383,16 +383,16 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
       const off = mainMajors.filter(m => m !== curMaj);
       if (off.length){
         vProblems.push("CHANGELOG.md 有 " + off.length + " 条不属于当前大版本线（v" + curMaj + ".x）的条目"
-          + "（最小 v" + Math.min(...off) + "）—— 大版本已翻页，把旧线整体挪进 docs/CHANGELOG-v<旧大号>.md");
+          + "（最小 v" + Math.min(...off) + "）—— 大版本已翻页，把旧线整体挪进 docs/archive/CHANGELOG-v<旧大号>.md");
       }
     }
-    const dir = path.join(ROOT, "docs");
+    const dir = path.join(ROOT, "docs", "archive");
     if (fs.existsSync(dir)){
       fs.readdirSync(dir).filter(f => /^CHANGELOG-v\d+\.md$/.test(f)).forEach(f => {
         const n = Number(/^CHANGELOG-v(\d+)\.md$/.exec(f)[1]);
-        if (!(n < curMaj)) vProblems.push("docs/" + f + " 的大号不小于当前大号 v" + curMaj + "（归档只装旧线）");
-        const leak = (verMajorsIn("docs/" + f) || []).filter(m => m >= curMaj);
-        if (leak.length) vProblems.push("docs/" + f + " 混入了当前/更新大版本线的 " + leak.length + " 条（两处都留 = 迟早不一致）");
+        if (!(n < curMaj)) vProblems.push("docs/archive/" + f + " 的大号不小于当前大号 v" + curMaj + "（归档只装旧线）");
+        const leak = (verMajorsIn("docs/archive/" + f) || []).filter(m => m >= curMaj);
+        if (leak.length) vProblems.push("docs/archive/" + f + " 混入了当前/更新大版本线的 " + leak.length + " 条（两处都留 = 迟早不一致）");
       });
     }
   }
@@ -412,10 +412,10 @@ if (problems.length){
   console.log("  修法：索引行号 → `node tools/gen-index.js --write`；"
     + "耗时 / 覆盖率现状 / 体积声明 → 删掉数字，改指命令输出（`check-all` / `check-coverage` / `wc -c` 自己会打印）；"
     + "归档状态 → 给文档正文补一行状态横幅；"
-    + "审计快照 → 给 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行；"
+    + "审计快照 → 给 docs/archive/ 下的 spec.md / tasks.md / checklist.md 补「" + SNAPSHOT_MARKER + "」一行；"
     + "README 版本号 → 与 index.html 的 VERSION 对齐；"
     + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐；"
-    + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/CHANGELOG-v<旧大号>.md。");
+    + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/archive/CHANGELOG-v<旧大号>.md。");
   process.exit(1);
 }
 console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"

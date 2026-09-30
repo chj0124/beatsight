@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------------
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。
 
-   背景（spec.md 内存泄漏段）：Modal/Editor 动态生成节点时若绑定匿名监听器、却不在
+   背景（docs/archive/spec.md 内存泄漏段）：Modal/Editor 动态生成节点时若绑定匿名监听器、却不在
    关闭时解绑，可能随开合次数累积。v2.0.4 把 5 个 overlay（编辑 / 统计 / 听辨 / 曲式 /
    说明）的开合收敛成 Modal.openOverlay / closeOverlay 一对原语，打开期间要绑的监听器
    统一走 Modal.bindOverlay / unbindOverlay（登记与解绑共用同一份记录）。
