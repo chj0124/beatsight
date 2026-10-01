@@ -49,7 +49,7 @@ function fold(seq){
 /* ================= 场景 T99a：★ 用户实拍场景——1 小节型 + 2 行档，球逐行绕行 ================= */
 section("T99a 预设绕行 · 1 小节的型 + 2 行档 ⇒ 球逐行走满 2 行再绕回（用户实拍场景）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 1);
   rowsPill(els, 2).fire("click");
   eq(rowEls(els).length, 2, "前提：2 行档渲染 2 行（同 T87a 的铺满口径，1 小节内容两行都有）");
@@ -79,7 +79,7 @@ section("T99a 预设绕行 · 1 小节的型 + 2 行档 ⇒ 球逐行走满 2 �
 /* ================= 场景 T99b：非在播行 = 淡显的预告行（用户要的手感） ================= */
 section("T99b 预设绕行 · 球所在行之外的全部行挂 .preview-row（W=2 时即「第 1 行为预告行」）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 1);
   rowsPill(els, 2).fire("click");
   beat.Controls.setBpm(240);
@@ -115,7 +115,7 @@ section("T99b 预设绕行 · 球所在行之外的全部行挂 .preview-row（W
    (e.t − loopStart)/圈长 连续，圈号不可能因变速抖动。本组钉死它。 */
 section("T99c 预设绕行 · 播放中 setBpm ⇒ 球行序列不重复、不跳变、驻留不塌缩");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 1);
   rowsPill(els, 2).fire("click");
   beat.Controls.setBpm(240);
@@ -152,7 +152,7 @@ section("T99c 预设绕行 · 播放中 setBpm ⇒ 球行序列不重复、不�
    2 小节型把它们区分开。 */
 section("T99d 预设绕行 · 2 小节的型 + 循环 [0,0] + 4 行档 ⇒ 球每小节进 1 行（0→1→2→3）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 2);
   beat.Store.S.loopRange = { on: true, from: 0, to: 0 };
   rowsPill(els, 4).fire("click");
@@ -184,7 +184,7 @@ section("T99d 预设绕行 · 2 小节的型 + 循环 [0,0] + 4 行档 ⇒ 球�
    标记恰好只落在球位于页末行（第 4 行）的帧 + 全程零重建（引用稳定契约保留）。 */
 section("T99e 预设绕行 · 4 小节的型 + 4 行档 ⇒ 轻量预告标记只在页末行出现 + 全程零重建（T36 哨兵）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 4);
   eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行（P === W，窗口恒第 0 页）");
   const capsuleOf = r => {

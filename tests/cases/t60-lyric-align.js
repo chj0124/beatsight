@@ -20,7 +20,8 @@ const seedArr = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: 
   { id: "t1", name: "歌词曲", sections: [{ uid: "s1", name: "主歌", blocks: [BL(1, 1)] }] },
 ]}) });
 const seedState = extra => JSON.stringify(Object.assign(
-  { v: 3, bpm: 240, playMode: "arrange", arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
+  { v: 3, bpm: 240, playMode: "arrange", vizRows: 4,   /* v3.1.0：歌词轨窗口几何断言按 4 行档写（出厂默认已改 2），显式钉住 */
+    arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
 
 /* console.warn 暂捕：沙箱与宿主共用同一个 console 对象；测试同步执行，用完即还 */
 const captureWarn = () => {

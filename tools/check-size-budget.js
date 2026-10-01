@@ -68,8 +68,16 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    第一圈判据 + 歌词取字改 foldSeg + 重建影子 scrollWrappedSeen + T156 注释。git diff 实测
    161 增 / 52 删（含 CHANGELOG 56 行），index.html 净增约 6.7KB —— 增量大头是注释
    （为什么通用回跳判定只在预设模式置位、为什么末尾之后照折不空），删了下次还会踩。
-   上调到 1380KB，留约 7.8KB 拦回归。 */
-const BUDGET_BYTES = 1380 * 1024;
+   上调到 1380KB，留约 7.8KB 拦回归。
+   v3.1.0（预设库改造整批）：卡片重排（plb-main 主钮 + 当前型名读数 + CSS）、抽屉交互
+   （搜索过滤三 Map + zoneHas、Esc 键盘层、焦点管理、选中不收起退役、migHint 空态降级 +
+   摘回静态位修复 + .ren/.grp/.aud 常驻低对比 CSS）、分区并列（#presetList grid 三档）、
+   首用图例条（标记 + CSS + S.vizLegend 全链路 + 接线）、出厂行数 4→2（注释翻倍）、
+   条目 ▶ 试听（toggleAudition/pushAuditionBtn/syncAuditionBtns + 两个条目挂载点 +
+   sig 临时对齐恢复 + updateFallbackNote 搭车同步 + CSS）。git diff 实测约 17.7KB 净增，
+   增量大头是「为什么」注释（migHint 销毁根因、试听语义边界、默认值纪律），删了下次还会踩。
+   上调到 1400KB，留约 10.5KB 拦回归。 */
+const BUDGET_BYTES = 1400 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

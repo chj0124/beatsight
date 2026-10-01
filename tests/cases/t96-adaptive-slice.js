@@ -57,7 +57,7 @@ section("T96a 分片判据 · 每行几拍 = f(行宽, 拍号, 最短时值)");
 section("T96b 同一十六分型 · 600px 整小节 vs 300px 半小节（格数 / 座次尺 / 跑道都跟着分片）");
 {
   /* 宽屏：整小节（K=1）——与分片之前逐位相同 */
-  const wide = loadApp(undefined, { rowW: 600 });
+  const wide = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
   pickBuiltin(wide, 5);                                  // 内置 5 = Funk 十六分（16 格 × 4 小节）
   {
     const rs = rowsOf(wide.els);
@@ -69,7 +69,7 @@ section("T96b 同一十六分型 · 600px 整小节 vs 300px 半小节（格数 
        "600px：没有续接片段（行 = 完整小节）");
   }
   /* 窄屏：半小节（K=2）——同一份数据，只因为宽度就换了粒度 */
-  const narrow = loadApp(undefined, { rowW: 300 });
+  const narrow = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
   pickBuiltin(narrow, 5);
   {
     const rs = rowsOf(narrow.els);
@@ -95,7 +95,7 @@ section("T96c 跨行长音 · 两侧各成一段（虚线续边）/ 截断片段
     [{ t:12 },{ t:12 },{ t:12 },{ t:12 },{ t:96 },{ t:36 },{ t:12 }],
   ] }] });
   /* 窄屏：切分生效 */
-  const narrow = loadApp(undefined, { rowW: 300 });
+  const narrow = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
   const imp1 = narrow.beat.Store.importPresets(JSON.stringify(mk()));
   ok(imp1.ok, "跨行长音预设导入成功" + (imp1.ok ? "" : "（原因：" + imp1.why + "）"));
   narrow.beat.Store.S.sel = { type:"custom", id: narrow.beat.Store.customs[narrow.beat.Store.customs.length - 1].id };
@@ -122,7 +122,7 @@ section("T96c 跨行长音 · 两侧各成一段（虚线续边）/ 截断片段
     ok(!/二分/.test(labelsOf(rs[1]).map(l => l.textContent).join(",")), "★ 全文没有「二分」——被切开的 96t 从未以完整时值示人");
   }
   /* 宽屏对照：整小节 → 长音完整、有标签、无续接片段 */
-  const wide = loadApp(undefined, { rowW: 600 });
+  const wide = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
   ok(wide.beat.Store.importPresets(JSON.stringify(mk())).ok, "（宽屏）预设导入成功");
   wide.beat.Store.S.sel = { type:"custom", id: wide.beat.Store.customs[wide.beat.Store.customs.length - 1].id };
   wide.beat.Presets.refreshAfterPatternChange();
@@ -137,7 +137,7 @@ section("T96c 跨行长音 · 两侧各成一段（虚线续边）/ 截断片段
 /* ================= 场景 T96d：帧路径 —— 播到第 2 片时换行 + 状态栏读数折回小节口径 ================= */
 section("T96d 帧路径 · 播过第 2 拍翻到第 2 行；状态栏仍报「第几小节 · 第几拍」的小节口径");
 {
-  const app = loadApp(undefined, { rowW: 300 });
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
   const { beat, els } = app;
   pickBuiltin(app, 5);                                   // Funk 十六分
   beat.Controls.setBpm(120);                             // 1 拍 = 0.5s → 第 2 片从 0.5s 起
@@ -161,7 +161,7 @@ section("T96d 帧路径 · 播过第 2 拍翻到第 2 行；状态栏仍报「�
 /* ================= 场景 T96e：曲式模式 + 歌词轨的片段口径 ================= */
 section("T96e 曲式模式 · 网格与歌词轨都按片切（同一小节的后半在下一行）");
 {
-  const { beat, els } = loadApp(undefined, { rowW: 300 });
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
   /* 两段歌，每段 1 小节；型是十六分（minStep 12 → 300px 下 K=2） */
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "十六", meter: 4,
     bars: [[{ t:12 },{ t:12 },{ t:12 },{ t:12 },{ t:12 },{ t:12 },{ t:12 },{ t:12 },
@@ -202,7 +202,7 @@ section("T96e 曲式模式 · 网格与歌词轨都按片切（同一小节的�
 /* ================= 场景 T96f：贴满几何 + 骑缝交界线（v2.78.0 / v2.78.2） ================= */
 section("T96f 贴满几何 · 格子/跑道零留白；交界统一「切开」语汇：拍内缝 1px 纸色、拍边界 2px 强缝（v2.79.0）");
 {
-  const app = loadApp(undefined, { rowW: 600 });
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
   const seamsOf = r => r.children.filter(el => /(^| )seams( |$)/.test(el.className));
   pickBuiltin(app, 1);                                   // 内置 1 = 四分基础（4 颗四分音，无休止；BUILTINS[0] 是民谣扫弦）
   {

@@ -30,7 +30,7 @@ const rowCells = els => els["viz"].children
 /* 起一个曲式：段 A 用「四音型」（4 格/小节）×1 遍，段 B 用「八音型」（8 格/小节）×1 遍。
    → 全曲 8 小节：0-3 = 四音型，4-7 = 八音型。BPM 240 下一小节 1s（50 个 0.02s 驱动步）。 */
 function startTwoStages(){
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   const r = beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "四音型", meter: 4, bars: mkBars(4, 4) },
     { name: "八音型", meter: 4, bars: mkBars(4, 8) },
@@ -104,7 +104,7 @@ section("T70b 滚动窗口 · 状态栏报歌曲小节号（不是「第几行�
 /* ================= 场景 T70c：预设模式也是「N 行窗口」（v2.10.2） ================= */
 section("T70c 滚动窗口 · 预设模式同样是 N 行窗口（内容取当前型，不跨型）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   eq(beat.Store.S.playMode, "preset", "前提：预设模式（默认）");
   /* 内置四分基础：4 小节 × 4 格 —— 恰好铺满默认 4 行档 */
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]), "4 小节的型 → 4 行、每行 4 格");
@@ -141,7 +141,7 @@ section("T70f 滚动窗口 · 静音拍按乐句位置（每 4 小节静第 4 �
 {
   /* 1 小节的型：旧判据（schedBar === 型长-1）会把它**每个小节**都判成最后一小节 → 整段静音。
      新判据按线性乐句位置，1 小节的型每 4 遍静一次 —— 这才是"每 4 小节静音第 4 小节"。 */
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一小节", meter: 4, bars: mkBars(1, 4) }] }));
   beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Store.S.mute = true;
@@ -168,7 +168,7 @@ section("T70f 滚动窗口 · 静音拍按乐句位置（每 4 小节静第 4 �
 /* ================= 场景 T70d：窗口合成不出来时回落画当前型 ================= */
 section("T70d 滚动窗口 · 窗口里的小节解析不出来时回落画当前型（不崩、不画半屏错内容）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   /* 段 B 引用一个**不存在**的型（结构校验拦不住：id 非空、类型合法，只有解析才知道它没了）。
      窗口合成时会撞上它 → 必须整体回落到"画当前型"，而不是画半屏或抛异常 */
   const v = beat.Store.upsertArrange({ name: "坏引用", sections: [
@@ -192,7 +192,7 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
 {
   /* 判据用**每行的扫弦箭头数**（= 该行属于哪个型）：5 个型各是 16 格谱，
      但标记数不同 —— P1=16、P2=14、P3=14、P4=10、P5=16。于是"箭头数"就是型的指纹。 */
-  const { beat, els } = loadApp(undefined, { seedDemo: false });
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { seedDemo: false });   /* v3.1.0：四行断言显式钉 4 行档（出厂默认已改 2） */
   /* ★ v2.20.0：示例 5 型已内置化（customs 恒空）——带出与否改判内置库尾部 */
   eq(beat.BUILTINS.length, 17, "前提：示例曲的 5 个单小节型已内置（BUILTINS 12+5=17）");
   const arrowsOf = () => els["viz"].children

@@ -36,7 +36,7 @@ function step(beat, ac, n){
 /* 两段曲式：A = 四音型（4 格/小节）4 小节，B = 八音型（8 格/小节）4 小节。
    240BPM 下一小节 1s。返回 {beat, els, ac, idA, idB} */
 function startTwoStages(loop){
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "四音型", meter: 4, bars: mkBars(4, 4) },
     { name: "八音型", meter: 4, bars: mkBars(4, 8) },
@@ -58,7 +58,7 @@ function startTwoStages(loop){
 /* ================= 场景 T75a：跳段按钮基准分语境 ================= */
 section("T75a 跳段基准 · ★ 停止时相对当前定位（实拍「下一段无反应」），播放中相对正在播的段");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 0 } }),
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 0 }, vizRows: 4 }),
     { seedDemo: false });
   const boxOf = () => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   /* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
@@ -184,7 +184,7 @@ section("T75e 预告行边界 · ★ 只循环 A 段时，页末预告的是范�
    ⇒ 循环回卷前永远没有提前量——而回卷恰恰是最需要提前量的时刻（型可能整个换掉）。
    本组用真实示例曲《在他乡》（第 1 小节 = 十六分满扫（《在他乡》前奏）、第 2 小节起 = 下上扫 · 密（《在他乡》副歌））钉死这条。 */
 function startDemoRange(N, from, to){
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   beat.Arrange.ensureDemo();
   const a = beat.Store.arranges[0];
   beat.Store.S.arrangeSel = { id: a.id, from, to, loop: true, byLyric: false };

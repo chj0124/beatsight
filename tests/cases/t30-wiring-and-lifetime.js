@@ -15,7 +15,7 @@ const { loadApp, FakeAudioContext, pill, driveFrames, ok, eq, near, section, PRO
 
 section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
 {
-  const app = loadApp();
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   const beat = app.beat;
   /* v2.73.0：内置型 1 小节化——多小节播放/落点语义改用 4 小节自定义型当载体 */
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
@@ -604,7 +604,7 @@ section("T34 挂起兜底路径 · 就地接续失败时的降级（v1.3.1）");
 
 section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移 / 编辑器选中与删除（v1.3.1）");
 {
-  const app = loadApp();
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   const beat = app.beat, els = app.els, S = beat.Store.S;
 
   /* 窗口 resize：防抖 200ms 后重建（未播放）或只重采几何缓存（播放中，不打断动画） */
@@ -828,7 +828,7 @@ section("T36 播放中改 BPM · 播放头与弹跳球不得分叉（v1.3.4）")
        96→200 BPM 实测固定偏 −49.82 tick（≈1.04 拍，球在播放头后方），
        连续 20 次改速后偏 −37.26 tick。改速前是 0.00 tick。
      修法：播放头位置改由 onset 表插值（与球同源），分叉从结构上消失（见 audioPosAt）。 */
-  const app = loadApp();
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   const beat = app.beat, els = app.els, S = beat.Store.S;
   /* v2.73.0：内置型 1 小节化——改速不变量的多小节播放语义改用 4 小节自定义型当载体 */
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,

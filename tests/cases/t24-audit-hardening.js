@@ -227,7 +227,11 @@ section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜
 
 section("T27 渲染性能 · 帧内零布局读取 + 增量重绘等价（审计 P1-4）");
 {
-  const app = loadApp();
+  /* v3.1.0 显式钉 4 行（出厂默认已改 2）：本节的不变量口径是"4 行档"——
+     4 小节型在 W=4 时 P===W 无页末预告重建，帧内零 offset 才成立；W=2 时
+     P>W 会在小节边界走一次设计内的预告整树重建（cacheGeo 随重建读几何，
+     建完读不触发强制重排），那是既有机制不是回归。4 行仍是用户可选档。 */
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   const beat = app.beat;
   /* v2.73.0：内置型 1 小节化——增量重绘的 4 行不变量改用 4 小节自定义型当载体 */
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四小节载体", meter: 4,
@@ -475,10 +479,13 @@ section("T29 音频生命周期 + 跨 origin 迁移提示（审计 P2-13 / P2-14
   app2.firePageHide();
   ok(!app2.beat.Store.S.playing, "pagehide → 自动停播");
 
-  /* 跨 origin 提示：README 同时推荐「双击 index.html」与在线版，但两者 origin 不同、
-     localStorage 不共享，用户看不到任何提示。预设库为空时露一次。 */
+  /* 跨 origin 提示（v1.3.0 立；v3.1.0 降级）：不再是抽屉顶部的琥珀警告——
+     挂进自定义区末尾（自定义区出厂默认展开，随折叠显隐），样式降为安静的灰虚线空态；
+     确认一次（S.migHint）后永不再挂出。 */
   const fresh = loadApp();
-  eq(fresh.els["migHint"].hidden, false, "预设库为空 → 提示跨地址不共享预设");
+  ok(Array.from(fresh.els["presetList"].children).indexOf(fresh.els["migHint"]) >= 0,
+    "★ 空库：迁移提示挂进列表的自定义区末尾（v3.1.0 位置降级，不再是抽屉顶部）");
+  eq(fresh.els["migHint"].hidden, false, "自定义区出厂展开 + 库为空 → 提示在该区末尾现身");
   fresh.els["migHintBtn"].fire("click");
   eq(fresh.els["migHint"].hidden, true, "确认后关闭");
   ok(fresh.beat.Store.S.migHint, "确认状态记入内存");
@@ -486,6 +493,7 @@ section("T29 音频生命周期 + 跨 origin 迁移提示（审计 P2-13 / P2-14
   eq(JSON.parse(fresh.storage.get("beatsight.state")).migHint, true, "确认状态已持久化（不再重复打扰）");
   const withPresets = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, customs: [{ id: "x", name: "已有", meter: 4,
     bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }) });
-  eq(withPresets.els["migHint"].hidden, true, "已有预设的用户不显示该提示");
+  ok(Array.from(withPresets.els["presetList"].children).indexOf(withPresets.els["migHint"]) < 0,
+    "已有预设的用户：提示不再挂入列表");
 }
 

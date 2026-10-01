@@ -30,6 +30,7 @@ function startArrange(raw, sel){
     /* demoSeeded 闩预置：防止 start() 走首开带出演示曲分支把选中切走 */
     "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
+      vizRows: 4,   /* v3.1.0：出厂默认 2 → 本文件的窗口断言按 4 行档写，显式钉住 */
       arrangeSel: Object.assign({ id: "t1", from: 0, to: 0, loop: false }, sel) }),
     "beatsight.arrmig73": "1" });   /* v2.73.0：BL 已按新语义 ×4，迁移戳置位防二次作用 */
   app.beat.Controls.start();
@@ -74,6 +75,7 @@ section("T53b 曲式播放 · 落点预测走节目单（新块的第 1 拍是�
   /* 自定义预设必须与曲式在**同一个沙箱实例**里——建在另一个实例里的话，
      这条曲式里的引用是死的（引到一个不存在的 id），测的就不是想测的东西了 */
   const app2 = loadApp({
+    "beatsight.state": JSON.stringify({ vizRows: 4 }),
     "beatsight.customs": JSON.stringify({ v: 1, customs: [Object.assign({ id: "cx" }, OFFBEAT)] }),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "t2", name: "跨块",
       sections: [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 4 }, { ref: { type: "custom", id: "cx" }, repeats: 1 }] }] }] }),
@@ -192,6 +194,7 @@ section("T53g 曲式播放 · 中间夹一个全休止的块（预测与待命�
   const ALLREST = { id: "rx", name: "全休止", meter: 4,
     bars: [0, 1, 2, 3].map(() => [{ rest: true, t: 192 }]) };
   const app = loadApp({
+    "beatsight.state": JSON.stringify({ vizRows: 4 }),
     "beatsight.customs": JSON.stringify({ v: 1, customs: [ALLREST] }),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "t3", name: "夹休止",
       sections: [{ name: "s", blocks: [

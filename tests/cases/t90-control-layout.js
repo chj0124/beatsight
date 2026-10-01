@@ -136,9 +136,9 @@ section("T90g 跳段行 · 播放键居三键中间、圆形键常显置灰、�
      && s.indexOf('id="playBtn"') < s.indexOf('id="argJumpNext"'),
     "★★ 播放键在「上一段」与「下一段」**中间**");
   eq((s.match(/class="jump-btn loop-btn"/g) || []).length, 1,
-    "范围循环 = jump-btn 同款圆钮（v2.10.22 双态图标）");
-  ok(/aria-label="上一段"/.test(s) && /aria-label="下一段"/.test(s) && /aria-label="范围循环"/.test(s),
-    "图标化后 aria-label 是唯一名字，三枚都要保留");
+    "循环段 = jump-btn 同款圆钮（v2.10.22 双态图标；v3.1.0 术语从「范围循环」改「循环段」）");
+  ok(/aria-label="上一段"/.test(s) && /aria-label="下一段"/.test(s) && /aria-label="循环段"/.test(s),
+    "图标化后 aria-label 是唯一名字，三枚都要保留（v3.1.0 术语分离：预设库侧叫「循环小节」）");
   ok(!/<div class="arg-now arg-jump" id="argJump" hidden/.test(s),
     "★ 行本身不再带 hidden（常显；置灰交给 .jump-btn:disabled）");
   ok(/id="argJumpPrev"[^>]*disabled/.test(s) && /id="argJumpNext"[^>]*disabled/.test(s),

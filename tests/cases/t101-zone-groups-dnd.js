@@ -172,12 +172,13 @@ section("T101e 显隐分流 · ★ 桌面 ✎ 悬停显示/📁 收起（CSS 媒
   const mi = html.indexOf("@media (hover: hover) and (pointer: fine)");
   ok(mi >= 0, "★ 存在 hover 环境媒体查询块（桌面分流的前提）");
   const block = html.slice(mi, html.indexOf("\n}", mi) + 2);
-  ok(block.includes(".preset-item .grp{display:none}"),
-     "★ 桌面（可 hover）：📁 收起——归组走拖拽，条目行不再常驻按钮");
-  ok(block.includes(".preset-item:hover .ren") && block.includes(".preset-item .ren{opacity:0"),
-     "★ 桌面：✎ 平时透明、悬停显示（用户需求 1 的本体）");
-  ok(block.includes(".preset-item:focus-within .grp{display:inline-block}"),
-     "★ 键盘可达性：聚焦条目时 📁/✎ 回来（键盘用户不因悬停分流失去入口）");
+  ok(block.includes(".preset-item .grp{display:none}") === false
+     && block.includes(".preset-item .grp{opacity:.45"),
+     "★ 桌面（可 hover）：📁 常驻低对比（v3.1.0 从 display:none 收起改为 .45——可发现性，触屏口径统一）");
+  ok(block.includes(".preset-item:hover .ren") && block.includes(".preset-item .ren{opacity:.45"),
+     "★ 桌面：✎ 常驻低对比、悬停增强（v3.1.0 从 opacity:0 憋显改为 .45，A7）");
+  ok(block.includes(".preset-item:focus-within .grp{opacity:1}"),
+     "★ 键盘可达性：聚焦条目时 📁/✎ 提到全对比（v3.1.0 常驻低对比口径下，聚焦=增强而非「回来」）");
   /* 无条件规则里不得藏 display:none（触屏默认常显的保证） */
   const before = html.slice(0, mi);
   ok(!/\.preset-item \.grp\{[^}]*display:\s*none/.test(before),

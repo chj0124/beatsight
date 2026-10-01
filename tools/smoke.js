@@ -386,9 +386,10 @@ function drawerProbe(){
   const btn = q("#presetLibCard"), dr = q("#presetDrawer"), viz = q("#viz");
   out.hasBtn = !!btn; out.hasDrawer = !!dr;
   out.vizInCard = !!(viz && viz.closest(".card"));
-  /* v3.0.0 批 5：预设库卡片内部 —— 6 个入口（左列三分区 / 右列三入口）+ 循环本段 */
+  /* v3.1.0：预设库卡片内部 —— 1 主钮（浏览节奏型 ▾）+ 3 次级入口 + 循环小节行
+     （v3.0.0 批 5 的 6 颗同貌 pill 与 data-sec 分区按钮已退役） */
   const plbCard = q("#presetLibCard");
-  out.plbSecs = plbCard ? Array.from(plbCard.querySelectorAll("[data-sec]")).map(b => b.dataset.sec).join(",") : null;
+  out.plbMainBtn = !!(plbCard && plbCard.querySelector("#presetLibBtn"));
   out.plbHasEar = !!(plbCard && plbCard.querySelector("#earBtn"));
   out.plbHasLoop = !!(plbCard && plbCard.querySelector("#loopToggle"));
   out.plbInDrawer = !!(plbCard && dr && dr.contains(plbCard));
@@ -400,17 +401,41 @@ function drawerProbe(){
   out.rowsClosed = rect(q(".viz-rows-row"));
   out.closedHidden = !!dr.hidden;
   out.ariaClosed = btn.getAttribute("aria-expanded");
-  /* ② 点开：v3.0.0 批 5 起卡片不再自己开合，改由左列「分区」按钮触发 */
-  const secBtn = q('#presetLibCard [data-sec="beat"]');
-  (secBtn || btn).click();
+  /* ② 点开：v3.1.0 起主钮「浏览节奏型 ▾」开合抽屉（批 5 的分区按钮已退役） */
+  const mainBtn = q("#presetLibBtn");
+  (mainBtn || btn).click();
   out.openHidden = !!dr.hidden;
   out.ariaOpen = btn.getAttribute("aria-expanded");
   out.drawer = rect(dr);
   out.rowsOpen = rect(q(".viz-rows-row"));
   out.btnOpen = rect(btn);
-  /* ③ 复原 */
+  /* v3.1.0：卡内容宽补测**展开态**——开抽屉会让页面长出滚动条（macOS/Windows 经典
+     滚动条 15px），收起态量的卡宽与展开态量的抽屉宽差出这 15px 是平台现象不是回归；
+     宽度断言改用同状态的两次测量（Linux overlay 滚动条两态相等，本口也成立） */
+  out.cardInnerOpenW = card ? round(card.getBoundingClientRect().width - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight)) : null;
+  /* ③ v3.1.0：点条目**不再收起**（选型与看型不分离）——真点一条验证 */
+  const firstItem = q("#presetList .preset-item");
+  if (firstItem) firstItem.click();
+  out.selKeptOpen = !dr.hidden;
+  /* ④ 复原 */
   q("#presetDrawerClose").click();
   out.reclosed = !!dr.hidden;
+  /* v3.1.0：③ 的真点条目把模式切回了预设（exitArrangeForPreset）——后续滚动探针的
+     歌词轨依赖曲式模式（arrangeCur()），不还原就整轨隐藏。纯 UI 复原：点示例曲条目
+     回到曲式（playArrange 会开播）、再点播放键停住——回到「曲式选中示例曲、未播放」
+     的出厂态，探针之间互不污染 */
+  const demoItem = q("#presetList .preset-arrange-group .preset-item");
+  if (demoItem){
+    demoItem.click();
+    const stTxt = q("#statusText");
+    if (stTxt && /播放中/.test(stTxt.textContent)){
+      const pb = q("#playBtn");
+      if (pb) pb.click();                      // 停住（回到未播放态）
+    }
+  }
+  /* v3.1.0：就地接续会让"停在哪"影响后续滚动探针的垂直登场采样——主流程在
+     本探针之后重载一次页面，滚动探针拿到与 v3.0.1 相同的全新播放起点 */
+  location.reload();
   return JSON.stringify(out);
 })()`;
 }
@@ -418,8 +443,9 @@ function drawerProbe(){
    量真几何。桩里 t155 已覆盖数据/结构层，这里补的是桩永远测不到的那半——
    「播放头钉在行中央」在**真实布局**下成立：判据全部来自 getBoundingClientRect，
    不读任何内部变量（读内部变量等于与实现共用同一个来源，那是橡皮图章）。
-   ★ 采样 150 帧（≈2.5s）是刻意的：默认 96BPM/4-4 一小节正好 2.5s，
-     只采一瞬会漏掉"最后一拍里的垂直登场"，把 dy 断言变成假绿。 */
+   ★ 采样 200 帧（≈3.3s ≈ 1.3 小节）是刻意的：默认 96BPM/4-4 一小节正好 2.5s——
+     采 150 帧时边界恰好压在采样窗末沿（v3.1.0 前的探针序列相位恰好偏进窗内，纯 luck），
+     "最后一拍里的垂直登场"会随机漏采。多采 0.8s 把整个边界包进窗内，dy 断言不再靠相位。 */
 function scrollProbe(){
   return `(async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -492,7 +518,7 @@ function scrollProbe(){
         if (t && isFinite(t[0])) { dxs.push(round(t[0])); dys.push(round(t[1])); }
       });
       samples.push({ off: pr ? round((pr.left - vr.left) - vr.width / 2) : null, dxs: dxs, dys: dys });
-      if (++n < 150) requestAnimationFrame(tick); else res();
+      if (++n < 200) requestAnimationFrame(tick); else res();
     };
     requestAnimationFrame(tick);
   });
@@ -679,7 +705,10 @@ async function runPass(label, url, userDataDir){
       const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
       /* v3.0.0：抽屉探针在桌面宽度（≥1280 栅格生效）跑一遍，量收起/展开两态的真几何 */
       const drawer = JSON.parse(await evaluate(cdp, drawerProbe()));
-      /* v3.0.0：连续滚动探针（同上，桌面宽度、真实 UI 路径、约 2.5s 采样） */
+      /* v3.1.0：drawerProbe 末尾 location.reload()——等页面重新起完再跑滚动探针
+         （playMode 已被本探针复原为曲式；重载顺带把"就地接续"的播放位置归零） */
+      await sleep(1500);
+      /* v3.0.0：连续滚动探针（同上，桌面宽度、真实 UI 路径、约 3.3s 采样） */
       const scroll = JSON.parse(await evaluate(cdp, scrollProbe()));
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
@@ -910,10 +939,10 @@ async function main(){
       /* ---- v3.0.0（PLAN-v9 批 0）：可视化带去卡片 + 预设库抽屉（真几何，桩测不到）---- */
       const dw = r.drawer;
       if (dw && dw.hasBtn && dw.hasDrawer){
-        /* v3.0.0 批 5：预设库卡片 = 6 个入口（左列三分区 / 右列三入口）+ 循环本段，
+        /* v3.1.0：预设库卡片 = 1 主钮（浏览节奏型 ▾）+ 3 次级入口 + 循环小节行，
            且它在**卡片区**、不在抽屉里（抽屉只放列表与提示） */
-        ok(dw.plbSecs === "beat,strum,custom", p.label + "：★ 预设库卡片左列 = 三个分区按钮",
-          "实际 " + dw.plbSecs);
+        ok(dw.plbMainBtn === true, p.label + "：★ 预设库卡片主钮「浏览节奏型 ▾」在卡片内",
+          "实际 plbMainBtn=" + dw.plbMainBtn);
         ok(dw.plbHasEar === true && dw.plbHasLoop === true,
           p.label + "：★ 听辨训练入口与「循环本段」都在卡片里（v3.0.0 批 5 从抽屉搬出）");
         ok(dw.plbInDrawer === false, p.label + "：★ 卡片本身不在抽屉内（它是控制行第 4 块）");
@@ -926,6 +955,10 @@ async function main(){
         ok(dw.openHidden === false && dw.ariaOpen === "true",
           p.label + "：★ 点预设库块 → 抽屉展开（hidden 摘掉 + aria-expanded=true）",
           "hidden=" + dw.openHidden + " aria-expanded=" + dw.ariaOpen);
+        /* v3.1.0：选型不收起——点条目后抽屉仍开（真点击路径，桩测不到的语义） */
+        ok(dw.selKeptOpen === true,
+          p.label + "：★★ 点条目后抽屉仍开（v3.1.0 选型不收起，比较多个型不必反复开合）",
+          "selKeptOpen=" + dw.selKeptOpen);
         /* 抽屉必须**紧贴行 1 之下**、在「同屏行数与拍号」之上——这是用户拍板的位置，
            不是"排在最末"即可（同屏行数行要被它推到第 3 行） */
         ok(!!dw.drawer && !!dw.btnOpen && dw.drawer.t >= dw.btnOpen.b - 0.51,
@@ -937,9 +970,9 @@ async function main(){
         ok(!!dw.rowsOpen && !!dw.rowsClosed && dw.rowsOpen.t > dw.rowsClosed.t + 1,
           p.label + "：★ 展开后「同屏行数与拍号」被下推（栅格行号真的换了）",
           "收起 " + (dw.rowsClosed && dw.rowsClosed.t) + " → 展开 " + (dw.rowsOpen && dw.rowsOpen.t));
-        ok(!!dw.drawer && dw.cardInnerW !== null && dw.drawer.w >= dw.cardInnerW - 1,
+        ok(!!dw.drawer && dw.cardInnerOpenW !== null && dw.drawer.w >= dw.cardInnerOpenW - 1,
           p.label + "：★ 抽屉占满控制卡内容宽（全宽内联，不是浮层）",
-          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽 " + dw.cardInnerW);
+          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽(展开态同测) " + dw.cardInnerOpenW);
         ok(dw.reclosed === true,
           p.label + "：★ 再点一次 → 收起（选中/关闭路径同款）", "hidden=" + dw.reclosed);
       } else {

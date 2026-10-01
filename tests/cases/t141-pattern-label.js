@@ -22,7 +22,8 @@ const withLabel = label => ({ name: "练习C", meter: 4, bars: [bar4(), bar4(), 
 /* 冷键预置（beatsight.customs = {customs:[…]}，validatePreset 在加载期归一）。
    ★ 必须带 id：真实应用的 customs 全都有 id（保存/导入路径生成）；无 id 的种子
    会让 selectedPreset 解析不到（S.sel.id=undefined）——测试种子要贴真形状 */
-const seedCold = list => ({ "beatsight.customs": JSON.stringify({ customs: list.map((p, i) => ({ ...p, id: "c141-" + i })) }) });
+const seedCold = list => ({ "beatsight.state": JSON.stringify({ vizRows: 4 }),   /* v3.1.0：出厂默认 2，本文件按 4 行档断言 */
+  "beatsight.customs": JSON.stringify({ customs: list.map((p, i) => ({ ...p, id: "c141-" + i })) }) });
 const chordsIn = els => {
   const out = [];
   const walk = el => (el.children || []).forEach(c => {
@@ -41,7 +42,7 @@ const selCustom = (beat, storage, i) => {
 /* ================= 场景 T141a：预设模式 · 有标注 ⇒ 每小节行首贴胶囊 ================= */
 section("T141a 标注显示 · 预设模式每小节行首一颗胶囊（首片行才贴）");
 {
-  const { beat, els, storage } = loadApp();
+  const { beat, els, storage } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });   /* v3.1.0：4 小节型进 4 行窗口才 4 颗 */
   eq(beat.Store.importPresets(JSON.stringify([withLabel("C")])).ok, true, "导入带标注的型成功");
   selCustom(beat, storage, 0);
   const chips = chordsIn(els);

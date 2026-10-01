@@ -35,7 +35,7 @@ const rowsPill = (els, n) => rowsPills(els).find(c => c.dataset.rows === String(
    —— 歌词轨因此每屏都有字（否则整轨收起，行数断言无从谈起）。
    BPM 240 → 一小节 1s（50 个 0.02s 驱动步）。 */
 function setup(){
-  const app = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const app = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   const { beat } = app;
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一板", meter: 4, bars: mkBars(1, 4) }] }));
   const pid = beat.Store.customs[beat.Store.customs.length - 1].id;
@@ -61,13 +61,15 @@ function step(beat, ac, n){
 }
 
 /* ================= 场景 T79a：档位 = 窗口长度，arrWinBars 现读 S.vizRows ================= */
-section("T79a 档位即窗口长度 · arrWinBars() 与 S.vizRows 同一真相源，默认 4");
+/* v3.1.0：出厂默认 4 → 2（A5，用户定稿：首用 2 行格子更大更易读）——这不是回归，
+   是默认值变更；老用户存档带显式 vizRows 仍照读（白名单内即用），行为不变。 */
+section("T79a 档位即窗口长度 · arrWinBars() 与 S.vizRows 同一真相源，默认 2");
 {
   const { beat } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
-  eq(beat.Store.S.vizRows, 4, "默认档 = 4（旧口径「同屏 4 小节」，老用户升级后逐位不变）");
-  eq(beat.Viz.arrWinBars(), 4, "arrWinBars() 现读 S.vizRows（不是写死的常量）");
-  beat.Store.S.vizRows = 2;
-  eq(beat.Viz.arrWinBars(), 2, "★ 改 S.vizRows → arrWinBars 立刻跟着变（运行期可调的前提）");
+  eq(beat.Store.S.vizRows, 2, "默认档 = 2（v3.1.0 起；老用户存档显式存过 4 仍读 4）");
+  eq(beat.Viz.arrWinBars(), 2, "arrWinBars() 现读 S.vizRows（不是写死的常量）");
+  beat.Store.S.vizRows = 4;
+  eq(beat.Viz.arrWinBars(), 4, "★ 改 S.vizRows → arrWinBars 立刻跟着变（运行期可调的前提）");
 }
 
 /* ================= 场景 T79b：档位选择器（值表生成的 pill 行） ================= */
@@ -78,21 +80,21 @@ section("T79b 档位选择器 · 一行 pill 由 VIZ_ROW_COUNTS 生成、带 dat
   eq(pills.length, 4, "四个档位按钮（值域 1-4 由值表生成，不在标记里写死）");
   eq(pills.map(p => p.dataset.rows).join(","), "1,2,3,4", "每个按钮带 data-rows=N（测试与样式按档位定位）");
   eq(pills.map(p => p.textContent).join(","), "1 行,2 行,3 行,4 行", "文案 = 「N 行」（含单位，读写都不歧义）");
-  eq(pills.filter(p => p.classList.contains("active")).map(p => p.dataset.rows).join(","), "4",
-     "默认档 4 高亮（初始选中态来自已加载的 S.vizRows）");
-  eq(rowsPill(els, 2).getAttribute("aria-pressed"), "false", "未选中档 aria-pressed=false（无障碍）");
-  rowsPill(els, 2).fire("click");
-  eq(beat.Store.S.vizRows, 2, "★ 点「2 行」→ S.vizRows = 2");
-  eq(rowsPill(els, 2).getAttribute("aria-pressed"), "true", "★ 选中态立刻刷新到「2 行」");
-  eq(rowsPill(els, 4).getAttribute("aria-pressed"), "false", "旧档取消选中");
+  eq(pills.filter(p => p.classList.contains("active")).map(p => p.dataset.rows).join(","), "2",
+     "默认档 2 高亮（初始选中态来自已加载的 S.vizRows）");
+  eq(rowsPill(els, 4).getAttribute("aria-pressed"), "false", "未选中档 aria-pressed=false（无障碍）");
+  rowsPill(els, 4).fire("click");
+  eq(beat.Store.S.vizRows, 4, "★ 点「4 行」→ S.vizRows = 4");
+  eq(rowsPill(els, 4).getAttribute("aria-pressed"), "true", "★ 选中态立刻刷新到「4 行」");
+  eq(rowsPill(els, 2).getAttribute("aria-pressed"), "false", "旧档取消选中");
 }
 
 /* ================= 场景 T79c：加载校验（白名单，脏值一律不可信） ================= */
-section("T79c 加载校验 · 脏值 / 越界走白名单回落到默认 4");
+section("T79c 加载校验 · 脏值 / 越界走白名单回落到默认 2（v3.1.0 起）");
 {
-  eq(loadApp(seedState({ vizRows: 9 })).beat.Store.S.vizRows, 4, "越界 9 → 4");
-  eq(loadApp(seedState({ vizRows: 0 })).beat.Store.S.vizRows, 4, "0（不在白名单）→ 4");
-  eq(loadApp(seedState({ vizRows: "x" })).beat.Store.S.vizRows, 4, "非数脏值 → 4");
+  eq(loadApp(seedState({ vizRows: 9 })).beat.Store.S.vizRows, 2, "越界 9 → 2");
+  eq(loadApp(seedState({ vizRows: 0 })).beat.Store.S.vizRows, 2, "0（不在白名单）→ 2");
+  eq(loadApp(seedState({ vizRows: "x" })).beat.Store.S.vizRows, 2, "非数脏值 → 2");
   eq(loadApp(seedState({ vizRows: 3 })).beat.Store.S.vizRows, 3, "合法非默认档 3 → 3（照读）");
   eq(loadApp(seedState({ vizRows: 1 })).beat.Store.S.vizRows, 1, "下限档 1 → 1");
 }

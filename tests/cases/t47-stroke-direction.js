@@ -165,7 +165,7 @@ section("T47b 扫弦方向 · 窄格自动隐藏（不裁半支箭头）/ 六线
           行0 = [48t(箭头可见)]；行1 = [6t(★隐藏), 96t 的截尾 42t(无 dir)];
           行2 = [96t 截头 48t]；行3 = [96t 尾 6t, 36t, 6t(★隐藏)]。
         被测规则一个字没变（"格宽 < 阈值就整体隐藏"），变的是"怎么把 6t 格造出来"。 */
-  const { beat, els } = loadApp(undefined, { rowW: 96 });
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 96 });   /* v3.1.0：断言按 4 行档写（"第 4 行"），出厂默认已改 2，显式钉住 */
   const bars = [0,1,2,3].map(() => [
     { t:48, dir:"D" }, { t:6, dir:"U" }, { t:96 }, { t:36 }, { t:6, dir:"D" },
   ]);
@@ -248,7 +248,7 @@ section("T47b 扫弦方向 · 窄格自动隐藏（不裁半支箭头）/ 六线
 /* ================= 场景 T47c：编辑器三档（民谣扫弦，全为非休止） ================= */
 section("T47c 扫弦方向 · 编辑器三档可用性与写入");
 {
-  const { beat, els } = loadApp();
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   beat.Editor.open();
   eq(els["dirRow"].children.length, 3, "方向三档（↓ / ↑ / 不标注）");
   ok(els["dirRow"].children.every(b => b.disabled), "未选中音符 → 三档全部禁用");
@@ -292,7 +292,7 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
 /* ================= 场景 T47d：编辑器 · 休止槽 = 空扫（v2.1.0 放开） ================= */
 section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
 {
-  const { beat, els } = loadApp();
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
   beat.Store.S.sel = { type:"builtin", idx: 5 };       // Funk 十六分：idx 3 / 6 / 11 为休止符
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();

@@ -63,7 +63,7 @@ const withCarrier = (seed, loopRange) => {
   return h;
 };
 {
-  const app = withCarrier(seedState({}), { on: true, from: 0, to: 0 });
+  const app = withCarrier(seedState({ vizRows: 4 }), { on: true, from: 0, to: 0 });
   const beat = app.beat;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -112,7 +112,7 @@ const withCarrier = (seed, loopRange) => {
 /* ================= 场景 T72b：循环 [1,2] —— 待命球指向区间起点，不是顺序下一行 ================= */
 section("T72b 循环 [1,2] · ★ 第 2 小节末尾待命球在第 1 行开头预备（区间起点），不是第 3 行");
 {
-  const app = withCarrier(seedState({}), { on: true, from: 1, to: 2 });
+  const app = withCarrier(seedState({ vizRows: 4 }), { on: true, from: 1, to: 2 });
   const beat = app.beat;
   beat.Controls.start();
   const ac = FakeAudioContext.last;

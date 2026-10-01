@@ -26,7 +26,7 @@ const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 /* 无扫弦记谱的基底选择（idx 1 四分基础）——场景里再 import 自己的谱。
    v2.9.0：轨模型已删，起跑型与"在哪条轨"无关，双声部判据只看**谱的内容** */
 const loadStrum = extra => loadApp(seedState(Object.assign(
-  { sel: { type: "builtin", idx: 1 } }, extra || {})));
+  { sel: { type: "builtin", idx: 1 }, vizRows: 4 }, extra || {})));   /* v3.1.0：出厂默认 2，本文件按 4 行档断言 */
 const clicksOf = ac => ac.hits.filter(h => h.kind === "osc");
 const strumsOf = ac => ac.hits.filter(h => h.kind === "noise" && h.filterType === "bandpass"
   && [700, 2800].includes(h.filterFreq));

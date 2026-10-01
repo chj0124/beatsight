@@ -230,12 +230,11 @@ body.wide-full .main{max-width:none}
     align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:0}
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
-  /* 收起态：行 1 = 音量｜BPM｜开关｜预设库（右列窄块跨两行）；行 2 左三列 = 同屏行数与拍号 */
-  .viz-head-grid #presetLibBtn{grid-column:4;grid-row:1 / span 2}
+  /* 收起态：行 1 = 音量｜BPM｜开关｜预设库卡片（自动落第 4 轨）；行 2 左三列 = 同屏行数与拍号
+     （v3.1.0：v3.0.0 批 5 起第 4 块就是 #presetLibCard 整卡，旧 #presetLibBtn 三条死规则随之清理） */
   .viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}
   /* 展开态：抽屉**紧贴行 1 之下**占满全宽（在「同屏行数与拍号」之上），行数行被下推到第 3 行
-     并占满全宽；预设库块退回只占行 1 */
-  .viz-head-grid.lib-open #presetLibBtn{grid-row:1}
+     并占满全宽 */
   .viz-head-grid.lib-open #presetDrawer{grid-column:1 / 5;grid-row:2}
   .viz-head-grid.lib-open .viz-rows-row{grid-column:1 / 5;grid-row:3}
 }
@@ -250,7 +249,6 @@ body.wide-full .main{max-width:none}
   body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(3,minmax(min-content,max-content)) 413px;
     justify-content:space-between;justify-content:safe space-between;column-gap:32px}
   body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}
-  body.wide-full .viz-head-grid #presetLibBtn{grid-column:5;grid-row:1 / span 2}
 }
 /* ================= v3.0.0（PLAN-v9 批 0）：可视化带 + 预设库块/抽屉 =================
    可视化带 `#vizBand`：#viz / #lyricLane / 跳段播放行从时值卡片里**迁出**，不带卡片背景，
@@ -258,6 +256,15 @@ body.wide-full .main{max-width:none}
    ★ 教训：上一次实施把「钉中央的播放头」建立在"卡片中央"这个错误基准上，后半小节溢出卡片
      被侧栏盖住。去卡片 + 单栏后，可视化带的宽度就是行矩形宽度，基准唯一（geoOf）。 */
 .viz-band{display:flex;flex-direction:column;gap:16px}
+/* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；关闭后由 S.vizLegend 记忆 */
+.viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
+  color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:10px}
+.viz-legend .vl-item{display:inline-flex;align-items:center;gap:6px}
+.viz-legend .vl-swatch{display:inline-block;width:18px;height:12px;border-radius:3px;
+  background:var(--peak)}
+.viz-legend .vl-swatch.vl-rest{background:var(--cell);border:1px solid var(--rest-line)}
+.viz-legend .pill{margin-left:auto;padding:4px 12px;font-size:12px}
+.viz-legend[hidden]{display:none}
 /* v3.0.0 批 4（用户要求）：行带 / 歌词行**不再有底色**。
    批 0 曾给它们铺一层 --band 深底（去卡片后防壁纸从行缝透出），但用户指出
    「座次尺 / 时值标注 / 歌词正下方那一整条深底」都要去掉 —— 即这层。
@@ -283,13 +290,21 @@ body.wide-full .main{max-width:none}
 /* ★ v3.0.0（批 5，用户要求）：预设库从"一个按钮"改成**一张卡片**，与音量/BPM/开关同款形态，
    内部 = 标题行 + 6 个入口（两列：左列三分区 / 右列三入口）+ 循环本段。
    它在栅格里仍跨两行（右列通高），所以高度天然够放这 7 件东西。 */
-.preset-lib-block{display:flex;flex-direction:column;gap:8px;
-  background:var(--card2);border-radius:10px;padding:12px 14px;color:var(--t1)}
-.preset-lib-block .plb-head{display:flex;align-items:center;gap:8px}
-.preset-lib-block .plb-label{font-size:12px;font-weight:500;line-height:1.4}
-/* 六格按钮：两列等宽。左列 = 三分区（打开抽屉并定位），右列 = 三入口 */
-.plb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.plb-grid .pill{font-size:11px;padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ★ v3.1.0（用户定稿）：预设库卡片与音量/BPM/开关同款形态——圆角 12px、padding 14/16，
+   pill 回归全站 13px 规格（v3.0.0 批 5 的 11px/5px6px 是全应用最小按钮，触达目标贴 WCAG 下限）。
+   内部 = 标题行（预设库 + 当前型名）+ 1 主 3 次 + 循环小节。 */
+.preset-lib-block{display:flex;flex-direction:column;gap:10px;
+  background:var(--card2);border-radius:12px;padding:14px 16px;color:var(--t1)}
+.preset-lib-block .plb-head{display:flex;align-items:baseline;gap:10px;min-width:0}
+.preset-lib-block .plb-label{font-size:13px;font-weight:500;line-height:1.4;flex:none}
+.plb-cur{font-size:12px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.plb-cur b{color:var(--t1);font-weight:500}
+/* 1 主 3 次：主钮开抽屉（▾ 表达下展），次级 outline 跳页面——层级即说明，
+   取代 v3.0.0 批 5 的六颗同貌 pill（左列开抽屉 / 右列跳页面混排，A1） */
+.plb-main{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.plb-main .pill{font-size:13px}
+.plb-main #presetLibBtn{flex:none}
+.plb-main .grow,.plb-head .grow{flex:1}
 /* 循环本段搬进卡片后要压紧（原来在抽屉里是独占一行的宽松布局） */
 .preset-lib-block .loop-panel{margin:0;padding:0;border:0;background:none}
 .preset-lib-block .loop-panel .loop-row{flex-wrap:wrap;gap:6px}
@@ -297,10 +312,19 @@ body.wide-full .main{max-width:none}
 .preset-lib-block .loop-panel .hint{margin-top:4px;font-size:11px;line-height:1.35}
 /* 预设库抽屉：全宽内联（非浮层）——不占 z-index、不用管焦点与外点关闭，窄屏天然成立 */
 .preset-drawer{display:flex;flex-direction:column;gap:10px;background:var(--card2);
-  border-radius:10px;padding:12px 16px;max-height:min(60vh,520px);overflow-y:auto}
+  border-radius:10px;padding:12px 16px;max-height:min(60vh,520px);overflow-y:auto;
+  scrollbar-gutter:stable}   /* v3.1.0：滚动条出现/消失不再让抽屉宽度跳 15px（auto 轨道下尤为明显） */
 .preset-drawer[hidden]{display:none}
 .pd-head{display:flex;align-items:center;gap:10px}
 .pd-head .pd-title{font-size:13px;font-weight:500;flex:1}
+/* v3.1.0（A9）：抽屉搜索框——与 .search 系控件同款（cell 底 + 细边），≤420px 不抢全宽 */
+.pd-search{display:flex;align-items:center;gap:8px;background:var(--cell);
+  border:1px solid var(--line);border-radius:8px;padding:7px 12px;max-width:420px}
+.pd-search:focus-within{border-color:var(--border)}
+.pd-search-ico{color:var(--t3);font-size:13px}
+.pd-search input{background:transparent;border:0;outline:0;color:var(--t1);
+  font-size:13px;flex:1;min-width:0}
+.pd-search input::placeholder{color:var(--t3)}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .card{background:var(--card);border-radius:12px;padding:24px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -343,6 +367,10 @@ body.wide-full .main{max-width:none}
 .fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12px}
 .fallback-note[hidden]{display:none}
 .fallback-note span{flex:1;min-width:0}
+/* v3.1.0（A8，用户定稿）：迁移提示降级为**安静的空态提示**——它挂在新用户的自定义区末尾，
+   此刻用户没有任何东西要迁移，琥珀警告只制造焦虑。灰虚线空态 + 常规字号，语气从"警告"回到"说明"；
+   挂载位置仍在自定义区末尾（buildPresetList 挂入，applyFold 按区折叠接管显隐）。 */
+.mig-quiet{background:none;border:1px dashed var(--line);color:var(--t3)}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
@@ -778,6 +806,14 @@ input[type=range].vol{width:120px}
    不给折叠态另加类名（类名空间已被测试逐字占用）。 */
 .preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
 .preset-section:hover{color:var(--t2)}
+/* v3.1.0（批 3，用户定稿 4a 案）：三区并列消空白——#presetList 改自适应网格。
+   ★ 条目仍是 #presetList 的**直接子节点**（扁平契约不动，16 个遍历测试零波及）；
+   区头/组头/曲式 wrapper 通栏（grid-column:1/-1）保住"区"的层级读感；
+   条目按 ≥340px 一列自动铺满：1440 抽屉 ≈ 3 列、1100 ≈ 2 列、窄屏 auto-fill 自动回落单列
+   = 原观感，无需媒体查询。
+   ★ 不用 CSS 多列（columns）：分栏点按高度算，区头会被劈在栏底；不拆 wrapper（那是 4b 独立批）。 */
+#presetList{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:4px 24px;align-items:start}
+#presetList .preset-section,#presetList .preset-group,#presetList .preset-arrange-group{grid-column:1 / -1}
 .preset-section:first-child{margin-top:0}
 .preset-section::after{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-section[aria-expanded="false"]::after{transform:rotate(-90deg)}
@@ -809,16 +845,26 @@ input[type=range].vol{width:120px}
 .preset-section .sec-add:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 .preset-section.drag-over,.preset-group.drag-over{outline:1.5px dashed var(--blue);outline-offset:2px;border-radius:6px}
 .preset-item.dragging{opacity:.45}
-/* v2.25.0：✎/📁 的显隐分设备——桌面（可 hover）：✎ 悬停/键盘聚焦时显示、
-   📁 收起（归组走拖拽；键盘聚焦时 .grp 回来，键盘可达性与 .del 同契约）；
-   触屏（无 hover）：两者常显——原生拖拽在触屏不可用，📁 按钮是触屏唯一归组入口。
-   断言：t101 检查这条 @media (hover: hover) 规则存在（CSS 文本级）。 */
+/* v2.25.0：✎/📁 的显隐分设备——桌面（可 hover）与触屏（无 hover）两套口径。
+   ★ v3.1.0（A7，用户定稿）：桌面从「悬停才显示（opacity 0→1）」改为**常驻低对比
+   （.45→1）**——hover 憋显的可发现性差，改现有型/归组的入口新用户根本找不到；
+   触屏本就常显，两档口径就此统一（触屏仍靠 📁 按钮归组，桌面仍走拖拽，行为不分叉）。
+   断言：t101 检查这条 @media (hover: hover) 规则存在（CSS 文本级，已随 .45 同步）。 */
 @media (hover: hover) and (pointer: fine){
-  .preset-item .ren{opacity:0;transition:opacity .12s}
+  .preset-item .ren{opacity:.45;transition:opacity .12s}
   .preset-item:hover .ren,.preset-item:focus-within .ren{opacity:1}
-  .preset-item .grp{display:none}
-  .preset-item:focus-within .grp{display:inline-block}
+  .preset-item .grp{opacity:.45;transition:opacity .12s}
+  .preset-item:hover .grp,.preset-item:focus-within .grp{opacity:1}
+  /* v3.1.0（4.3）：▶ 试听钮与 ✎/📁 同一套常驻低对比口径；试听中（.aud-on）恒高亮绿色 */
+  .preset-item .aud{opacity:.45;transition:opacity .12s}
+  .preset-item:hover .aud,.preset-item:focus-within .aud{opacity:1}
+  .preset-item .aud.aud-on{opacity:1;color:var(--green)}
 }
+/* ▶/■ 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
+.preset-item .aud{flex:none;background:none;border:none;cursor:pointer;
+  color:var(--t2);font-size:13px;line-height:1;padding:4px 6px;border-radius:6px}
+.preset-item .aud.aud-on{color:var(--green)}
+.preset-group .aud{flex:none}
 /* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
    常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
@@ -850,6 +896,9 @@ input[type=range].vol{width:120px}
 .preset-item .name{font-size:13px;font-weight:500}
 .preset-item .meta{font-size:11px;color:var(--t3);margin-top:3px}
 .preset-item.active .meta{color:var(--green)}
+/* v3.1.0（A7）：✕ 与 📁 拉开 10px 间距——误触删除的入口排列风险（有确认弹窗兜底，
+   但入口排列不该鼓励误触）；✕ 独占条目右角，✎/📁 成组在左 */
+.preset-item .del,.preset-group .del{margin-left:10px}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
 .preset-item .del:hover{color:var(--red);background:rgba(243,114,127,.1)}
 /* v2.21.0：改名图标（✎）。定位/内边距与 .del 同族（右侧操作组的一员），hover 用主题强调色
@@ -1787,20 +1836,25 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
     <div class="preset-lib-block" id="presetLibCard">
       <div class="plb-head">
         <span class="plb-label">预设库</span>
-        <span class="chip" id="presetCount"></span>
+        <!-- v3.1.0（用户定稿）：「17 内置」chip 降为 sr-only（信息与抽屉分区计数重复），
+             原位改显**当前型名**——比数量更有信息量；文案与顶栏 #patternName 同源（见其写点）。
+             #presetCount 的 id 与写点一个不改（计数断言不受影响）。 -->
+        <span class="plb-cur">当前 <b id="plbCurName"></b></span>
+        <span class="chip sr-only" id="presetCount"></span>
       </div>
-      <div class="plb-grid">
-        <button class="pill outline" data-sec="beat">节拍</button>
+      <!-- v3.1.0：六颗同貌 pill（左列开抽屉 / 右列跳页面混排，新用户无法预测点击结果）
+           改为「1 主 + 3 次」——主钮开抽屉（▾ 表达下展），次级跳页面；pill 回归全站 13px 规格。
+           data-sec 三颗退役（装配区接线随之删）；earBtn/editBtn/argOpen 三个 id 与接线原样保留。 -->
+      <div class="plb-main">
+        <button class="pill" id="presetLibBtn">浏览节奏型 ▾</button>
         <button class="pill outline" id="earBtn">听辨训练</button>
-        <button class="pill outline" data-sec="strum">扫弦</button>
-        <button class="pill outline" id="editBtn">编辑节奏型</button>
-        <button class="pill outline" data-sec="custom">自定义</button>
-        <button class="pill outline" id="argOpen">编排曲式</button>
+        <button class="pill outline" id="editBtn">编辑</button>
+        <button class="pill outline" id="argOpen">编排</button>
       </div>
-      <!-- ↓ 循环本段整块从抽屉搬来（id 与接线未动） -->
+      <!-- ↓ 循环本段整块从抽屉搬来（id 与接线未动）；v3.1.0 文案改「循环小节」与播放行「循环段」分离 -->
       <div class="loop-panel" id="loopPanel">
         <div class="loop-row">
-          <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环本段<span class="switch"></span></button>
+          <button class="toggle-pill off" id="loopToggle" role="switch" aria-checked="false">循环小节<span class="switch"></span></button>
           <span class="loop-sep" id="loopSep" aria-hidden="true" hidden>·</span>
           <span class="loop-range" id="loopRange" hidden><span class="lab">第</span><select class="loop-sel" id="loopFrom" aria-label="循环起始小节"></select>
           <span class="lab">到</span><select class="loop-sel" id="loopTo" aria-label="循环结束小节"></select>
@@ -1816,11 +1870,17 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <span class="pd-title">节奏型预设库</span>
         <button class="pill outline" id="presetDrawerClose">收起</button>
       </div>
+      <!-- v3.1.0（A9）：抽屉搜索过滤——21+ 条目（内置 + 曲式 + 自定义）全量滚动不可扫读。
+           纯前端 contains；命中区若折叠自动展开（输入即见，不必先找区头）。 -->
+      <div class="pd-search">
+        <span class="pd-search-ico" aria-hidden="true">⌕</span>
+        <input type="text" id="presetSearch" placeholder="搜索节奏型…" aria-label="搜索节奏型">
+      </div>
       <!-- ↓ 以下四块从原侧栏卡整组搬来（v3.0.0），id 与接线未动 -->
       <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
            但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
            而且收不到任何提示。预设库为空时提示一次，确认后不再出现 -->
-      <div class="fallback-note" id="migHint" hidden>
+      <div class="fallback-note mig-quiet" id="migHint" hidden>
         <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
         <button class="pill outline" id="migHintBtn">知道了</button>
       </div>
@@ -1882,6 +1942,16 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          ★ 基准统一：可视化带的宽度就是行矩形宽度（geoOf），不再有「卡片中央 vs 内容中央」两套
            基准——上一次实施「后半小节溢出卡片、被侧栏盖住」正是栽在这两套基准上 -->
     <div class="viz-band" id="vizBand">
+    <!-- v3.1.0（A1，方案 3.2①b）：首用图例条——一行轻量读法说明，可关闭、记忆。
+         「首屏无锚点」的最轻解法：不造浮层、不加引导流程，一行字交代三种视觉编码。
+         开关状态 S.vizLegend（默认显示；关一次永不再出），走 Store 热键全链路（禁裸 localStorage）。
+         ★ aria-hidden 的例外：这一行是给"看不懂网格"的人读的正文，必须进无障碍树 -->
+    <div class="viz-legend" id="vizLegend">
+      <span class="vl-item"><i class="vl-swatch" aria-hidden="true"></i>格宽 = 时值</span>
+      <span class="vl-item">↑↓ = 扫弦方向</span>
+      <span class="vl-item"><i class="vl-swatch vl-rest" aria-hidden="true"></i>灰格 = 休止</span>
+      <button class="pill outline" id="vizLegendClose" aria-label="关闭图例">知道了</button>
+    </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
          "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
          语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
@@ -1914,14 +1984,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            预设模式下它仍隐藏（没有"当前段"可言） -->
     <div class="arg-now arg-jump" id="argJump">
       <div class="trio">
-      <button class="jump-btn" id="argJumpPrev" aria-label="上一段" disabled>
+      <button class="jump-btn" id="argJumpPrev" aria-label="上一段" disabled title="切到曲式编排后可跳段">
         <!-- v2.10.21（用户选 C）：单三角——跳段是单步动作，比 ⏮/⏭ 的"快进快退"隐喻更准 -->
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16.5 5.5v13L6.5 12l10-6.5z" fill="currentColor"/></svg>
       </button>
       <button class="play-btn" id="playBtn" aria-label="播放">
         <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
       </button>
-      <button class="jump-btn" id="argJumpNext" aria-label="下一段" disabled>
+      <button class="jump-btn" id="argJumpNext" aria-label="下一段" disabled title="切到曲式编排后可跳段">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7.5 5.5v13l10-6.5-10-6.5z" fill="currentColor"/></svg>
       </button>
       </div>
@@ -1931,7 +2001,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            关 = 顺序循环图案（放行到曲末）；开 = 单曲循环图案 + 数字 1（锁定范围反复磨），绿色点亮。
            两枚 SVG 并存、按 aria-checked 由 CSS 切换显隐；role=switch / aria-checked / 接线
            （setToggle → S.arrangeSel.loop）与预设模式隐藏规则全部不变 -->
-      <button class="jump-btn loop-btn" id="argJumpLoopBtn" role="switch" aria-checked="false" aria-label="范围循环" hidden>
+      <!-- v3.1.0（术语分离）：「范围循环」→「循环段」，与预设库侧「循环小节」在用语上
+           彻底分开（A10：两个"循环"概念并存是新用户混淆源）；title 把作用域讲穿。 -->
+      <button class="jump-btn loop-btn" id="argJumpLoopBtn" role="switch" aria-checked="false" aria-label="循环段" title="循环段：锁定曲式的当前段反复磨" hidden>
         <svg class="ico-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
         <svg class="ico-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11.4 11.6l1.2-.9v4.6"/></svg>
       </button>
@@ -2130,7 +2202,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <div class="arg-range-fill" id="argRangeFill"></div>
       </div>
       <div class="arg-t-row arg-t-actions">
-        <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">范围循环<span class="switch"></span></button>
+        <!-- v3.1.0（术语分离）：「范围循环」→「循环段」，与跳段行圆钮同词（预设库侧叫「循环小节」） -->
+        <button class="toggle-pill off" id="argLoopBtn" role="switch" aria-checked="false">循环段<span class="switch"></span></button>
         <button class="pill" id="argAllRange">全部</button>
         <!-- v2.32.0（S3）：锚点提示音是全局开关（S.lyricCue），从每段歌词行收进面板——
              全书唯一一份（旧实现每段渲染一个副本，10 段 = 10 个同款开关） -->
@@ -2196,7 +2269,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           1 行档就是干净的一行 = 正在弹的这一个小节；
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
-        <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）</li>
+        <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
+          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 灰格 = 休止），
+          点「知道了」收起后就不再出现</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -2344,7 +2419,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点曲式库行尾的「<b>＋</b>」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.36.0 -->复制只有这一个入口；删除 = 选中曲式 chip 右侧的「<b>✕</b>」（会弹确认）。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨（<!-- v2.35.0 -->字块按<b>每小节一行</b>排，与主界面歌词轨一致；<!-- v2.46.0 -->行内有<b>拍线与音符起点刻度</b>做参照）；<b>按节奏对齐</b>一键把字逐一对到发声点上（空扫与三连音位不作落点，纯节拍型对到拍点，覆盖手动位置前会先确认）；选中字块后 <b>←/→</b> 微调一格、<b>Shift+←/→</b> 移一拍；拖动中<b>跟手不吸附</b>、松手落到格上或最近的<b>音符锚点</b>（蓝线指引），被邻字顶住会红边提示，<b>顶着邻字推过半程松手 = 与它换位</b>（拖动中有<b>绿框预览</b>落点、邻字脉冲提示换位，另有读数气泡报<b>小节 / 拍 / 相对原位格数</b>）；点按字块 = <b>选中</b>（蓝描边，重渲染不丢）；粘贴 / 拖动 / 微调 / 对齐 / 清除的每一步都可反悔——行内 <b>↩ 撤销 / ↪ 重做</b>，或 <b>Ctrl/⌘+Z</b> / <b>Ctrl/⌘+Shift+Z</b>（整段打轴算一步，会话内有效、刷新即清）；<b>跟播打轴</b> = 播放本段（单段循环），每听到一个字按一次<b>空格</b>落时刻（<b>↓</b> 跳过，Esc 结束）——唱/弹一遍的节奏感比拖拽准得多；悬浮条实时显示<b>当前字上下文</b>，选中字块后可<b>从第 k 字开打</b>（播放仍从段首起）；<b>▶ 试听本段</b> = 原速循环播放本段（不动变速训练），游标随播放走、当前字亮描边，对完位置马上听效果，另有<b>▶ 从选中字</b>从选中字所在小节起播；精修行还有<b>整段平移</b>（◀1拍 … 1格▶，范围可选「全部字」或「从选中字」）、<b>⇄ 与后字换位</b>、<b>时值±1格</b>（窄块没有右缘抓手，用按钮改时值）；字块拖动<b>二维跟手</b>——拖到别的行 = 换小节，行首有小节序号；拖动/微调<b>松手即响</b>一声锚点音（可随锚点提示音开关关闭）；<b>锚点提示音</b>开关在顶部「开练」走带条里（全书一个，不再每段重复）；曲式在库里的 <b>✎</b> 可改名（示例曲除外）</li>
           <li><!-- v2.35.0 -->页面顶部有「<b>开练</b>」走带条（滚动时吸顶常驻）：<b>歌曲地图</b>点某段 = 只循环练这一段，
-            <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「范围循环」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
+            <b>双滑块</b>精确到小节，<b>段行 ⋯ 菜单的「练这段」</b>一键只循环这一段 +「循环段」= <b>只反复练副歌</b>；「◀ 上一段 / 下一段 ▶」跳段：
             播放中<u>本小节播完即进入目标段</u>；停止时点 = 改下一次播放的起点，网格与标题会立即换成那一段的节奏型</li>
           <li><!-- v2.36.0 --><b>「练这段」和「循环本行」差在哪</b>：两个都在"反复练一小段"，差别在<b>练什么、带不带爬坡</b>——
             <b>练这段</b>（段行 ⋯ 菜单 / 歌曲地图点段）= 把播放范围设成这一段并循环，<b>反复弹这一段的节奏型</b>，不带爬坡；<b>循环本行</b>（展开某段歌词后出现）= 同样只播这一段，但带上<b>这一段的歌词</b>一起循环，并<b>自动配变速爬坡</b>（一级级提速）。一句话记：<b>练节奏用「练这段」，练"边弹边唱"用「循环本行」</b>。两幅示意图见本节末尾</li>
@@ -2696,23 +2771,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2728  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3357  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L4954  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5781  Modal         应用内弹窗
-     L5919  Viz           时值可视化渲染与每帧动画
-     L8816  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9483  Trainer       变速训练器
-     L9675  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10286 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11573 Editor        自定义节奏型编辑器
-     L12019 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12066 Ear           听辨训练（v1.10.0）
-     L12286 Arrange       曲式编排（v2.0.0）
-     L15184 Help          使用方法（v2.0.1）
-     L15313 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15387 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15630 初始化（装配） 各模块 hook 接线与启动
+     L2803  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3432  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5863  Modal         应用内弹窗
+     L6001  Viz           时值可视化渲染与每帧动画
+     L8898  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9565  Trainer       变速训练器
+     L9757  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10368 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11735 Editor        自定义节奏型编辑器
+     L12181 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12228 Ear           听辨训练（v1.10.0）
+     L12448 Arrange       曲式编排（v2.0.0）
+     L15346 Help          使用方法（v2.0.1）
+     L15475 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15549 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15792 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2738,7 +2813,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.0.1";
+const VERSION = "3.1.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4173,6 +4248,7 @@ const Store = (() => {
    *   showRuler: boolean, showDurLabel: boolean, showLyric: boolean, lyricPos: ("auto"|"follow"|"bottom"),
    *   vizRows: number,
    *   scrollMode: boolean, scrollRows: (1|3),   // v3.0.0（PLAN-v9）：连续滚动模式 + 它的窗口行数档位
+   *   vizLegend: boolean,   // v3.1.0（A1）：首用图例条开关（默认显示；关一次永不再出）
    *   fold: { beat: boolean, strum: boolean, custom: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   playMode: string,
@@ -4237,8 +4313,10 @@ const Store = (() => {
        默认 4 = 旧口径「同屏 4 小节」：v2.10.2 起两种模式都窗口化，默认档下
        **4 小节及更短的型**看到的行数与升级前逐位不变（型长 > 4 的型才从"型多长画多行"
        变成"4 行一页"，那是本次的行为变更）。
-       加载校验用白名单（VIZ_ROW_COUNTS.includes）：脏值/越界一律回落到 4，不信存储。 */
-    vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 4,
+       ★ v3.1.0 出厂默认 4 → 2（A5，用户定稿）：首用 4 行时每行格子过小、时值标签难辨读，
+       2 行观感更好且对新手更直观。仅默认值：saved.vizRows 存在即用（白名单校验），
+       老用户存档不受影响、逐位不变。脏值/越界回落到 2，不信存储。 */
+    vizRows: VIZ_ROW_COUNTS.includes(+saved.vizRows) ? +saved.vizRows : 2,
     /* v3.0.0（PLAN-v9 批 1）：连续滚动模式——行槽横向连续推移替代"整页翻页"。
        ★ 默认**关**：老用户升级后看到的仍是既有 paged 口径，零迁移（同 wideFull 的口径）。
        scrollRows = 滚动窗口的行数档位，只认 1 与 3：
@@ -4247,6 +4325,9 @@ const Store = (() => {
        脏值（含 0/2/"1"/null）一律回落 3——不信存储，与 vizRows 同一条纪律。 */
     scrollMode: saved.scrollMode === true,
     scrollRows: saved.scrollRows === 1 ? 1 : 3,
+    /* v3.1.0（A1）图例条开关：默认**显示**（新用户第一分钟有锚点）；显式 false 尊重用户
+       —— 关一次落盘，之后不再出（与"没存过"和"存过 false"分开判同一条纪律）。 */
+    vizLegend: saved.vizLegend !== false,
     /* v2.10.0 预设库分区折叠：三区标题可点开/收起（true = 展开）。
        ★ v2.13.0 出厂默认 {节拍:展开, 扫弦:收起, 自定义:展开}（见 foldInit 的长注释：
          "没存过"走出厂值、"存过 false"尊重用户——两者必须分开判）。 */
@@ -4430,6 +4511,7 @@ const Store = (() => {
       showLyric:S.showLyric, lyricPos:S.lyricPos, // v2.86.0：歌词显示开关 + 位置（显示偏好，跟热键走）
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
       scrollMode:S.scrollMode, scrollRows:S.scrollRows, // v3.0.0：连续滚动模式 + 窗口行数（显示偏好，跟热键走）
+      vizLegend:S.vizLegend,                      // v3.1.0：图例条开关（显示偏好，跟热键走）
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint,
@@ -10351,6 +10433,57 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.addEventListener("click", e => { e.stopPropagation(); onGroup(); });
     item.appendChild(btn);
   }
+  /* v3.1.0（4.3，A11）：条目级 ▶ 试听——复用编辑器/听辨的**同一条预览通道**
+     （previewRef / setMode("preview") 是共享状态区既有设施，只有一个音频引擎，绝不另起调度）。
+     语义：试听 ≠ 选中——不动 S.sel（选中态仍由条目点击承担）；点同一条 = 停；点别条 = 换对象。
+     拍号：试听的型与当前拍号不同时临时 setSig 对齐（照抄编辑器试听的写法），停止即恢复——
+     试听不该改用户的拍号偏好。与主播放互斥：S.playing 时先 stop（编辑器进试听同口径）；
+     与编辑器试听天然互斥（同一 S.preview 位）。 */
+  let prevSigBeforeAud = /** @type {number|null} */ (null);
+  /** @type {{btn: HTMLElement, pat: any}[]} */
+  let audBtns = [];                          // 随列表重建而重建（buildPresetList 开头清空）
+  /** @param {any} pat @returns {boolean} true = 已进入试听态 */
+  function toggleAudition(pat){
+    if (S.preview && previewRef === pat){    // 再点同一条 = 停止试听
+      Controls.stop();
+      setMode("preview", false, "停止试听");
+      previewRef = null;
+      if (prevSigBeforeAud !== null){ Controls.setSig(prevSigBeforeAud); prevSigBeforeAud = null; }
+      updateFallbackNote();
+      Viz.buildViz();
+      syncAuditionBtns();
+      return false;
+    }
+    if (S.playing || S.preview) Controls.stop();     // 主播放/他条试听一律先停
+    if (S.preview){ setMode("preview", false, "停止试听"); previewRef = null; }
+    prevSigBeforeAud = (pat.meter !== S.sig) ? S.sig : null;
+    if (prevSigBeforeAud !== null) Controls.setSig(pat.meter);
+    setMode("preview", true, "预设试听");
+    previewRef = pat;
+    Viz.buildViz();
+    Controls.start();
+    syncAuditionBtns();
+    return true;
+  }
+  /** @param {HTMLElement} item @param {any} pat pat 必须是 BUILTINS/customs 里的**对象本体**
+      （previewRef 按对象身份比对，不能传拷贝——拷贝会让「再点同一条 = 停」失灵） */
+  function pushAuditionBtn(item, pat){
+    const btn = document.createElement("button");
+    btn.className = "aud"; btn.title = "试听"; btn.setAttribute("aria-label", "试听");
+    btn.textContent = "▶";
+    btn.addEventListener("mousedown", e => e.preventDefault());   // 同 ✎：不抢焦点挤走兄弟按钮（v2.44.2）
+    btn.addEventListener("click", e => { e.stopPropagation(); toggleAudition(pat); });
+    audBtns.push({ btn, pat });
+    item.appendChild(btn);
+  }
+  function syncAuditionBtns(){
+    audBtns.forEach((/** @type {{btn: HTMLElement, pat: any}} */ e) => {
+      const on = S.preview && previewRef === e.pat;
+      e.btn.textContent = on ? "■" : "▶";
+      e.btn.setAttribute("aria-label", on ? "停止试听" : "试听");
+      e.btn.classList.toggle("aud-on", on);
+    });
+  }
   /* v2.25.0：条目拖拽归组（原生 HTML5 DnD，零依赖铁律不动）。
      ★ 拖拽身份不走 dataTransfer 序列化——模块级 `dragItem`（{ref, zone}）是唯一真相：
        dragstart 记下、drop 读出。好处有二：① 测试桩不必实现 DataTransfer；
@@ -10959,6 +11092,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       refreshAfterPatternChange();
       Store.persist();
     };
+    /* v3.1.0（4.3）：▶ 试听——先于 ✎/📁（动作钮里最高频），传对象本体（身份比对见上） */
+    pushAuditionBtn(item, p);
     /* v2.21.0：✎ 改名——覆盖 BUILTINS[i].name + 冷键 beatsight.builtinNames；
        空输入 = 恢复源名（renameBuiltin 内处理），对话框文案明说这条出口 */
     pushRenameBtn(item, () => {
@@ -11105,7 +11240,18 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      ★ 示例曲 5 型不再单独挂"示例曲"分组：它们按内容落进扫弦区，与内置扫弦型并列。 */
   function buildPresetList(){
     const list = $("presetList");
+    /* v3.1.0 修复：migHint 是静态单例节点，一旦 append 进列表就随列表生死——
+       下一次重建的 clear(list)（innerHTML=""）会把它连坐销毁，此后 $("migHint")
+       恒为 null、空态提示永久消失（桩的 innerHTML 不真删节点所以测试全绿；
+       真机 fresh load 开机连建两次列表，CDP 实测节点整个不在 DOM）。
+       先摘回标记里的原位（抽屉内 #presetList 之前）再清列表，末尾按条件重新挂载。
+       用 parentNode 不用 parentElement：桩只记 parentNode；list.parentNode 为 null
+       （桩的静态元素是孤儿）时跳过摘回——桩上 clear 不销毁节点，跳过无害 */
+    const mig = $("migHint");
+    if (mig && mig.parentNode === list && list.parentNode)
+      list.parentNode.insertBefore(mig, list);
     clear(list);
+    audBtns = [];                          // v3.1.0：▶ 按钮随列表重建（旧引用一律作废）
     /* v2.5.0：整首连播 / 范围滑块的元素引用随列表重建而失效——每次重建先清空。
        不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoRange 仍认为"有得可刷"，
        会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
@@ -11129,6 +11275,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     buildDemoNoteIfNeeded(list);
     $("presetCount").textContent = `${BUILTINS.length} 内置`
       + (customs.length ? ` + ${customs.length} 自定义` : "");
+    /* v3.1.0：迁移提示降级为「自定义区空态」——空库且未确认过才挂进列表末尾
+       （applyFold 会按自定义区折叠态接管它的显隐；确认过 / 已有预设就保持游离，
+       摘回静态位时显式收起，防止上一轮的可见态漏到抽屉里）。
+       ★ 摘回/挂载配对见本函数开头那段注释（单例节点不能留在会被 clear 的容器里） */
+    if (mig && !S.migHint && !customs.length) list.appendChild(mig);
+    else if (mig) mig.hidden = true;
     $("exportBtn").disabled = !customs.length;
     syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/开播都经这里兜住）
     /* v2.5.0：范围滑块也一样——它随列表重建而重建，新造的 input 默认 value=1、
@@ -11139,6 +11291,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （元素是新的、范围是旧的）。与上面一条是同一个道理：列表重建的收尾处必须把
        所有"由列表承载的状态"各同步一次 */
     syncDemoRange();
+    syncAuditionBtns();                // v3.1.0：▶ 按钮态也是"由列表承载的状态"——重建后必须重刷
     applyFold();                       // v2.10.0：折叠态也是"由列表承载的状态"——新建的条目默认 hidden=false，必须重新套用
   }
   /* 一个**自定义型**条目（含删除按钮 + 选中态 + 键盘契约）。v2.4.1 抽出：
@@ -11176,6 +11329,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
         Store.persist();
       }, {danger:true, okText:"删除"});
     });
+    /* v3.1.0（4.3）：▶ 试听——同内置条目（c 是 customs 里的对象本体，身份比对成立） */
+    pushAuditionBtn(item, c);
     /* v2.21.0：✎ 改名——自定义型直接改 c.name（用户数据）→ 冷键落盘；空输入 = 取消。
        曲式块按 id 引用，改名对曲式零影响（名字从来不是自定义型的命名空间） */
     pushRenameBtn(item, () => {
@@ -11241,6 +11396,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       $("fallbackBtn").textContent = "切回 " + mL;
       note.hidden = false;
     } else note.hidden = true;
+    /* v3.1.0：搭车同步 ▶ 按钮态——Editor.stopAudition 会走到这里（编辑器试听
+       与条目试听共用 S.preview，对方停了我们的按钮不能还亮着 ■） */
+    syncAuditionBtns();
   }
   $("fallbackBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -11301,6 +11459,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
+    /* v3.1.0：预设库卡片头部的「当前型名」与状态灯同源同帧（同一写点，避免两处分叉） */
+    const plbCur = $("plbCurName");
+    if (plbCur) plbCur.textContent = p.name;
     buildPresetList();
     /* v2.0.5（审计 P0-4）：先定 #fallbackNote 的显隐，再建网格——顺序不能反。
        buildViz 末尾会 cacheGeo() 采集行几何，而这条回退提示带（约 44px 高）就夹在
@@ -11429,13 +11590,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     });
   }
 
-  /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）：只在「预设库为空 + 从未确认过」时露一次。
-     迁移逻辑本身不需要这里做——导入导出已经够了，缺的只是"告诉用户有这么个坑" */
-  function maybeShowMigHint(){
-    const el = $("migHint");
-    if (!el || S.migHint || customs.length) return;
-    el.hidden = false;
-  }
+  /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）。
+     ★ v3.1.0 降级（A8，用户定稿）：不再**开机即示**——新用户第一次打开抽屉就收到琥珀警告，
+       此刻他还没有任何自定义预设，警告没有对象，只制造焦虑。改为「自定义区展开且仍为空」
+       时出现在该区末尾：挂载/摘回都在 buildPresetList（节点原在抽屉标记里，append 进列表后
+       由 applyFold 按"自定义区折叠态"接管显隐——区收着它就藏着）。确认一次（S.migHint）
+       后永不再挂出。迁移逻辑本身不需要这里做——导入导出已经够了。
+     ★ v3.1.0 修复：原 maybeShowMigHint()（开机解 hidden）已随"开机即示"退役删除——
+       挂载路径的 clear 连坐销毁问题与摘回修法见 buildPresetList 开头注释。 */
   $("migHintBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.migHint = true;
@@ -11566,8 +11728,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   bindLoopSel("loopFrom", true);
   bindLoopSel("loopTo", false);
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, maybeShowMigHint, syncLoopUI, setLoopRange,
-    syncDemoRange };                              // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）
+  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
+    syncDemoRange, applyFold };                    // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -15910,6 +16072,11 @@ function setPresetDrawer(/** @type {boolean} */ open){
   dr.hidden = !open;
   const grid = /** @type {HTMLElement} */ (card.parentNode);
   if (grid) grid.classList.toggle("lib-open", !!open);
+  /* ★ v3.1.0（A11）：键盘可达——打开把焦点送进搜索框（顺手就能过滤），关闭归还主钮
+     （"从哪来回哪去"，与 Modal 的 prevFocus 归还同一心智模型）。
+       typeof 守卫：桩环境元素没有 focus 方法。 */
+  const focusTarget = open ? $("presetSearch") : $("presetLibBtn");
+  if (focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
   /* ★ v3.0.0（批 4）：抽屉是**内联**展开的——它把控制卡撑高、`#viz` 整体下移。
      而歌词轨是 `position:absolute` 叠在 `#viz` 上的**兄弟节点**，它的 top/left 与逐行
      translateY 只在结构层（buildViz / relayout）算 ⇒ 不重算就会停在旧位置：
@@ -15918,41 +16085,132 @@ function setPresetDrawer(/** @type {boolean} */ open){
      cacheGeo + 歌词重定位）即可，不必新造一条路径。 */
   Viz.relayout();
 }
-/* ★ v3.0.0（批 5，用户拍板）：卡片本身不再开合抽屉——改由**左列三个分区按钮**触发：
-   点「节拍 / 扫弦 / 自定义」= 展开抽屉 + 确保该分区是展开态 + 把它滚进视野。
-   ★ 展开分区不另开出口：直接**点那一行的分区标题**（它就是折叠开关），
-     先看 aria-expanded 再决定点不点——已展开时再点会把它折起来（那是相反的效果）。
-   ★ 定位用 scrollIntoView(block:"nearest")：抽屉是内联的、滚动发生在页面上，
-     "nearest" 不会把已经很靠上的分区硬拽到顶部（REDUCE_MOTION 下不做平滑滚动）。 */
-[...document.querySelectorAll("#presetLibCard [data-sec]")].forEach(btn => {
-  const b = /** @type {HTMLElement} */ (btn);
-  b.addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    const sec = String(b.dataset.sec || "beat");
-    setPresetDrawer(true);
-    const head = /** @type {HTMLElement|null} */ (document.querySelector(`#presetList .preset-section[data-sec="${sec}"]`));
-    if (!head) return;
-    if (head.getAttribute("aria-expanded") === "false") head.click();   // 折叠着才展开（点它是唯一入口）
-    if (typeof head.scrollIntoView === "function") head.scrollIntoView({ block: "nearest", behavior: REDUCE_MOTION ? "auto" : "smooth" });
-  });
+/* ★ v3.1.0（用户定稿）：卡片主钮「浏览节奏型 ▾」开合抽屉——v3.0.0 批 5 的「左列三个分区按钮
+   定位分区」交互随六颗同貌 pill 一并退役（新用户分不清"开抽屉"与"跳页面"）。
+   展开态保持上次分区折叠状态（折叠记忆在 S.fold，本来就会跨开合存活）。 */
+$("presetLibBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  /* 目标开态 = 当前的 hidden 取反的取反：hidden=true（收着）→ open=true（打开）。
+     ★ 反着写 setPresetDrawer(!hidden) 会在收起态传 false（越点越关）——
+       CDP 真机一把抓出（桩里 init 后状态恒定测不出 toggle 方向）。 */
+  setPresetDrawer($("presetDrawer").hidden);
 });
 $("presetDrawerClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   setPresetDrawer(false);
 });
-/* 选中型即收起：委托到 #presetList（条目由 JS 动态创建，逐条挂会漏新条目；
-   closest 在桩环境不保证存在，故沿 parentNode 上溯——与 #arrangeOverlay「点窗外即关」同一手写法） */
-$("presetList").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-  let t = /** @type {any} */ (e && e.target);
-  while (t){
-    if (/(^| )preset-item( |$)/.test(t.className || "")){ setPresetDrawer(false); return; }
-    t = t.parentNode;
+/* ★ v3.1.0（A11）：抽屉的键盘契约——Esc 关抽屉。内联抽屉不是 overlay、不进 Modal 协议，
+   但"Esc 关掉眼前这层"是同一心智模型。注册成 keyLayer（装配区最后注册 ⇒ 排在编辑/
+   设置/听辨/编排/帮助各层之后：overlay 开着时轮不到它，不会跟它们抢 Esc）。
+   关闭后焦点归还主钮（setPresetDrawer 内已做，这里只消费 Esc）。 */
+registerKeyLayer({
+  handles(/** @type {any} */ e){
+    const dr = $("presetDrawer");
+    if (!dr || dr.hidden || e.key !== "Escape") return false;
+    setPresetDrawer(false);
+    return true;
   }
 });
+/* ★ v3.1.0（A9）：抽屉搜索过滤——纯前端 contains，不套 wrapper（#presetList 直接子节点契约不动）。
+   过滤与折叠是两层显隐：输入非空时按"命中"接管条目/组头/区头的 hidden；
+   清空即交还给 applyFold（折叠记忆原样回来）。命中区若折叠自动展开（S.fold 置位 + applyFold）。
+   列表重建（选中/增删触发）后过滤不保留——输入框的值还在，但用户意图已随选择变化，
+   回到全量列表更符合直觉（buildPresetList 收尾的 applyFold 会重置显隐）。 */
+$("presetSearch").addEventListener("input", (/** @type {Event} */ e) => {
+  const inp = /** @type {HTMLInputElement} */ (e.target);
+  const q = (inp.value || "").trim().toLowerCase();
+  const list = $("presetList");
+  if (!list) return;
+  if (!q){ Presets.applyFold(); return; }
+  /** @param {any} el @returns {string} */
+  const nameOf = (el) => {
+    let t = "";
+    if (el.querySelector){
+      const n = el.querySelector(".name");
+      if (n) t = n.textContent;
+    }
+    /* 桩没有 querySelector 且 textContent 不聚合子节点 → 兜底走条目结构
+       （presetItemEl：box > .name）。真实 DOM 永远命中 querySelector 分支 */
+    if (!t && el.children && el.children.length){
+      const box = el.children[0];
+      const nm = box && box.children && box.children[0];
+      t = (nm ? nm.textContent : "") || "";
+    }
+    return (t || "").toLowerCase();
+  };
+  const kids = Array.from(list.children);
+  /* 条目级命中（含曲式 wrapper 内部与散员）；组头按成员命中；区头按区内任一命中 */
+  const hit = new Map();               // 条目节点 → boolean
+  const groupHas = new Map();          // 组头节点 → boolean
+  const wrapperHas = new Map();        // .preset-arrange-group → boolean
+  kids.forEach(k => {
+    if (k.className === "preset-section" || k.className === "preset-group") return;
+    if (k.classList && k.classList.contains("preset-arrange-group")){
+      let any = false;
+      Array.from(k.children).forEach(c => {
+        if (c.className === "preset-group"){
+          let gAny = false;
+          Array.from(c.children ? c.children : []).forEach(m => {
+            const h = nameOf(m).indexOf(q) >= 0;
+            hit.set(m, h); if (h) gAny = true;
+          });
+          groupHas.set(c, gAny); if (gAny) any = true;
+          return;
+        }
+        const h = nameOf(c).indexOf(q) >= 0;
+        hit.set(c, h); if (h) any = true;
+      });
+      wrapperHas.set(k, any);
+      return;
+    }
+    hit.set(k, nameOf(k).indexOf(q) >= 0);
+  });
+  /* 区命中 = 该区内任一条目命中：区内节点 = 本区头之后、下一区头之前的所有条目 */
+  let zi = -1;
+  const zoneHas = [false, false, false];
+  kids.forEach(k => {
+    if (k.className === "preset-section"){ zi++; return; }
+    if (hit.get(k)) zoneHas[zi] = true;
+    if (wrapperHas.get(k)) zoneHas[zi] = true;
+  });
+  zi = -1;
+  kids.forEach(k => {
+    if (k.className === "preset-section"){
+      zi++;
+      k.hidden = !zoneHas[zi];
+      return;
+    }
+    if (k.className === "preset-group"){ k.hidden = !groupHas.get(k); return; }
+    if (k.classList && k.classList.contains("preset-arrange-group")){
+      k.hidden = !wrapperHas.get(k);
+      if (!k.hidden){
+        Array.from(k.children).forEach(c => {
+          if (c.className === "preset-group"){ c.hidden = !groupHas.get(c); return; }
+          c.hidden = !hit.get(c);
+        });
+      }
+      return;
+    }
+    k.hidden = !hit.get(k);
+  });
+  /* 折叠着的命中区自动展开（记忆落回 S.fold——清空搜索后它保持展开，符合直觉）。
+   ★ 不在此处调 applyFold：过滤态的 hidden 由上面的"命中"口径接管，再跑一遍折叠真值表
+     会把"未命中但折叠着"的区重新藏回去或翻出来（口径打架）。清空输入时才交还折叠语义。 */
+  /** @type {Array<"beat"|"strum"|"custom">} */
+  const ZONE_KEYS = ["beat", "strum", "custom"];
+  ZONE_KEYS.forEach((sec, i) => {
+    if (zoneHas[i]) S.fold[sec] = true;
+  });
+});
+/* ★ v3.1.0（用户定稿）：「选中型即收起」退役——选型恰恰是最需要边看网格边决定的操作，
+   收起等于逼用户"开→选→看→再开"三次往返（A6）。选中反馈由条目自身的 .active 高亮承担，
+   关闭走 收起钮 / Esc（见下方键盘接线）/ 再点主钮。
+   （原委托监听随语义一并删除；smoke drawerProbe 已同步改判「选中后抽屉仍开」。） */
 setPresetDrawer(false);
 syncVizLabelToggles();
 Presets.refreshAfterPatternChange();
-Presets.maybeShowMigHint();          // v1.3.0：预设库为空时提示一次「跨地址不共享预设」
+/* v3.1.0：maybeShowMigHint 的开机调用退役——迁移提示改为「自定义区空态」按需现身
+   （挂载在 buildPresetList，显隐由 applyFold 按自定义区折叠态接管），不再开机打扰新用户 */
 Trainer.updateProg();                // v2.11.2：原「有训练历史时亮出继续上次」随接续记录删除
 
 /* 「复制诊断信息」按钮（v2.11.3 设置弹窗组④）：把原先只有 ?debug=1 才够得着的
@@ -15981,6 +16239,16 @@ $("latChip").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   Help.refreshInstall();
   Settings.open("latGroup");
+});
+
+/* v3.1.0（A1）：首用图例条——boot 按存档显隐；「知道了」关闭一次并落盘
+   （S.vizLegend 走热键全链路；关一次显式 persist：用户可能关完直接走） */
+$("vizLegend").hidden = !S.vizLegend;
+$("vizLegendClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+  evEl(e).blur();
+  S.vizLegend = false;
+  $("vizLegend").hidden = true;
+  Store.persist();
 });
 
 /* 后台保活开关（v1.4）：扳动即刻生效（播放中打开立即申请，关闭立即释放） */

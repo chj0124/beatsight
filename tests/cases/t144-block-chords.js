@@ -25,7 +25,7 @@ const seedT144 = (blocks, secName, extra) => Object.assign({
   "beatsight.arrmig73": "1",        // 迁移戳：本组只测块级 chords，不受曲式 ×4 迁移干扰
   "beatsight.chdmig": "1",          // 迁移戳：隔离段名和弦迁移（迁移本身在 T144f/g 单测）
   "beatsight.demoSeeded": "1",      // demo 闩：防止 start() 首开带出演示曲把选中切走
-  "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange",
+  "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange", vizRows: 4,
     arrangeSel: { id: "t144", from: 0, to: 0, loop: false } }),
 }, extra || {});
 const blk = (chords, repeats) => ({ ref: { type: "custom", id: "c4b" }, repeats: repeats || 1,
@@ -156,7 +156,7 @@ section("T144g 幂等 · 迁移后的冷键再进（无戳）不再二次加工"
     "beatsight.arranges": String(first.storage.get("beatsight.arranges")),
     "beatsight.arrmig73": "1",
     "beatsight.demoSeeded": "1",
-    "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange",
+    "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange", vizRows: 4,
       arrangeSel: { id: "t144", from: 0, to: 0, loop: false } }),
   });
   const sec = again.beat.Store.findArrange("t144").sections[0];

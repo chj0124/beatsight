@@ -17,7 +17,8 @@ const seedArr = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: 
   { id: "t1", name: "歌词曲", sections: [{ uid: "s1", name: "主歌", blocks: [BL(1, 1)] }] },
 ]}) });
 const seedState = extra => JSON.stringify(Object.assign(
-  { v: 3, bpm: 240, playMode: "arrange", arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
+  { v: 3, bpm: 240, playMode: "arrange", vizRows: 4,   /* v3.1.0：出厂默认 2，本文件按 4 行档断言 */
+    arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }, extra));
 
 const numOf = s => { const m = /translateY\(([-0-9.]+)px\)/.exec(s || ""); return m ? parseFloat(m[1]) : NaN; };
 /* jsdom 下 offsetHeight/offsetTop 全为 0，cacheGeo 的 vizRowBoxH 回落常量 86；故覆盖层公式

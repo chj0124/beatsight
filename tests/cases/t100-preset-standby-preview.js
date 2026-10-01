@@ -61,7 +61,7 @@ function drive(beat, ac, seconds, probe){
 /* ================= 场景 T100a：★ 用户实拍 ①——短型待命球逐行接力 ================= */
 section("T100a 待命球绕行 · 1 小节型 + 4 行档 ⇒ 第 k 圈的终端弧里待命球备在行 (k+1)%4，不再恒钉第 1 行");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withQuarters(beat, 1, "四分一小节");
   rowsPill(els, 4).fire("click");
   eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行（P=1 < W=4，短型）");
@@ -97,7 +97,7 @@ section("T100a 待命球绕行 · 1 小节型 + 4 行档 ⇒ 第 k 圈的终端�
 /* ================= 场景 T100b：★ 用户实拍 ②——P===W 轻量预告行（民谣扫弦场景） ================= */
 section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间第 1 行挂 .preview-row + 「下一小节」胶囊，零重建");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withQuarters(beat, 4, "四分四小节");
   rowsPill(els, 4).fire("click");
   eq(rowEls(els).length, 4, "前提：4 行档渲染 4 行（P === W = 4，窗口恒第 0 页）");
@@ -141,7 +141,7 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
 /* ================= 场景 T100c：短型（P<W）轻量预告行 + 与绕行淡显共存 ================= */
 section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 1 行多挂胶囊；其余行只有绕行淡显");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withQuarters(beat, 1, "四分一小节");
   rowsPill(els, 4).fire("click");
   beat.Controls.setBpm(240);
@@ -186,7 +186,7 @@ section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 
 /* ================= 场景 T100d：长型（P>W）走既有重建链——v2.23.0 行为回归 ================= */
 section("T100d 长型回归 · 8 小节型 + 4 行档 ⇒ 页末预告仍走 winPrev* 重建链（真翻页口径不变）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withQuarters(beat, 8, "四分八小节");
   rowsPill(els, 4).fire("click");
   beat.Controls.setBpm(240);
@@ -222,7 +222,7 @@ section("T100d 长型回归 · 8 小节型 + 4 行档 ⇒ 页末预告仍走 win
 /* ================= 场景 T100e：长型页末待命球仍回落旧口径（让给预告行 → 第 1 行） ================= */
 section("T100e 待命球回落 · 8 小节型 + 4 行档 ⇒ 页末终端弧里待命球落在第 1 行（翻页预告位）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withQuarters(beat, 8, "四分八小节");
   rowsPill(els, 4).fire("click");
   beat.Controls.setBpm(240);

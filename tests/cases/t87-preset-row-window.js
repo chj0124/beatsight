@@ -87,7 +87,7 @@ function driveSigs(beat, els, ac, n){
 /* ================= 场景 T87a：型长 < N → 绕回重复铺满 N 行（用户拍板 Q1） ================= */
 section("T87a 预设窗口 · 1 小节的型 + 4 行档 ⇒ 同一小节铺满 4 行（Q1）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   eq(beat.Store.S.playMode, "preset", "前提：预设模式（默认）");
   withPattern(beat, 1, "一小节指纹型");     // 该小节 1 颗音 → 每行 1 格
   eq(beat.patBars(beat.curPattern()), 1, "前提：型确实只有 1 小节");
@@ -98,7 +98,7 @@ section("T87a 预设窗口 · 1 小节的型 + 4 行档 ⇒ 同一小节铺满 4
 /* ================= 场景 T87b：型长 == N → 恰好铺满一页（既有数据零变化） ================= */
 section("T87b 预设窗口 · 4 小节的型 + 4 行档 ⇒ 恰好铺满、内容按顺序（既有行为逐位不变）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 4);
   eq(JSON.stringify(rowCells(els)), JSON.stringify([1, 2, 4, 8]),
      "★ 4 小节的型 + 4 行档 → 行 i 装第 i 小节（指纹：第 i 小节指定位数）");
@@ -107,7 +107,7 @@ section("T87b 预设窗口 · 4 小节的型 + 4 行档 ⇒ 恰好铺满、内�
 /* ================= 场景 T87c：型长 > N → 按 N 行翻页，随播放滚动（用户拍板 Q2） ================= */
 section("T87c 预设窗口 · 4 小节的型 + 2 行档 ⇒ 每 2 小节翻一页（Q2）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 4);
   eq(JSON.stringify(rowCells(els)), JSON.stringify([1, 2, 4, 8]), "起始（停机）：4 行档看满 4 小节");
   rowsPill(els, 2).fire("click");
@@ -148,7 +148,7 @@ section("T87c 预设窗口 · 4 小节的型 + 2 行档 ⇒ 每 2 小节翻一�
 /* ================= 场景 T87d：型长 > N 且走到尾部 → 窗口绕回开头 ================= */
 section("T87d 预设窗口 · 6 小节的型 + 4 行档 ⇒ 走到尾部绕回开头（同 arrWindowPat 口径）");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 6);
   eq(JSON.stringify(rowCells(els)), JSON.stringify([1, 2, 4, 8]), "停机：第 0 页 = 第 1-4 小节");
   beat.Controls.setBpm(240);
@@ -176,7 +176,7 @@ section("T87d 预设窗口 · 6 小节的型 + 4 行档 ⇒ 走到尾部绕回�
 /* ================= 场景 T87e：档位是预设模式网格行数的唯一真相源（用户报的原始症状） ================= */
 section("T87e 预设窗口 · 点档位 → 画面行数真的变（修复前恒为型长，用户报「按钮无效」）");
 {
-  const { beat, els, storage } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els, storage } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 4);
   eq(rowCells(els).length, 4, "对照：默认档 4 与型长 4 恰好相等——所以修复前最难察觉档位没生效");
   rowsPill(els, 1).fire("click");
@@ -206,7 +206,7 @@ section("T87f 底部「范围循环」开关 · .arg-now 显式 [hidden]{display
      "对照：既有补丁 .vol-row[hidden] 仍在（本行照抄同一套约定，便于统一维护）");
   ok(!/id="argJump"[^>]*\shidden/.test(html),
      "★ 标记里 #argJump 不再带 hidden（v2.10.14：行常显，收口改为上/下段键置灰）");
-  const { els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   eq(els["argJumpPrev"].disabled, true, "预设模式下「上一段」置灰（新的收口呈现面）");
   eq(els["argJumpNext"].disabled, true, "预设模式下「下一段」置灰");
 }
@@ -217,7 +217,7 @@ section("T87g 预设窗口 · 1 小节的型 + 循环 [0,0] ⇒ 待命球与 .ne
   /* 窗口化后「行号」与「型内小节号」不再是同一个数，而 S.loopRange 是**型内小节号**口径。
      若把窗口行数当型长传进 loopNextBar，1 小节的型 + 4 行档就会算出区间外的行号
      （本组是这条语义边界的哨兵；完整的手感回归仍在 t72-loop-rewind-ball）。 */
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 1, "一小节指纹型");
   beat.Store.S.loopRange = { on: true, from: 0, to: 0 };
   beat.Controls.setBpm(240);
@@ -251,7 +251,7 @@ section("T87h 预设窗口 · 循环型内第 3-4 小节 + 2 行档 ⇒ .next �
      S.loopRange 是**型内小节号**口径（此处 [2,3]，0 基），而 .next 要画在**行**上。
      旧写法 loopNextBar(bar, vizBars) 把"行号 1"当"型内第 2 小节"用 → 区间被 loopRangeFor(2)
      二次收窄成 [1,1]，.next 落在第 1 行（自己这一行）；正确结果应落在翻页后的第 0 行。 */
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   const flat4 = () => Array.from({ length: 4 }, () => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]);
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "四平小节", meter: 4, bars: flat4() }] }));
   beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
@@ -290,7 +290,7 @@ section("T87i 预设窗口 · 停机复位按窗口合成型取 rest（1 小节�
 {
   /* resetForStop 原先取 curPattern() 并按行号索引小节 —— 窗口化后第 b 行装的不再是
      型的第 b 小节，1 小节的型在 b=1..3 上会取到 undefined → 那几行丢掉休止虚框。 */
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   beat.Store.importPresets(JSON.stringify({ presets: [{ name: "一小节带休止", meter: 4,
     bars: [[{ t: 96 }, { t: 96, rest: true }]] }] }));
   beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
@@ -335,6 +335,6 @@ section("T87j 预设窗口 · 静音拍标识 = 乐句相位（档位 4 时与�
      "★ 4 小节的型 + 4 行档 → 第 4 行（既有行为逐位不变）");
   eq(JSON.stringify(mutedRows(build(4, 2).els)), JSON.stringify([]),
      "★ 档位 2 ≠ 乐句周期 4 → 一页只覆盖乐句的一段，静态标不出（一行都不标）");
-  const off = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));   // 静音拍关着
+  const off = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));   // 静音拍关着
   eq(JSON.stringify(mutedRows(off.els)), JSON.stringify([]), "静音拍关着 → 一行都不标");
 }

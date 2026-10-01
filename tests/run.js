@@ -126,6 +126,9 @@ const CASE_FILES = [
   "./cases/t153-factory-reset",           // v2.85.0（③b）：恢复出厂设置双确认 → 清空全部 beatsight.* 键
   "./cases/t155-scroll-mode",             // v3.0.0（PLAN-v9）：连续滚动六场景（布局/时序/两播放模式/歌词/球/loopRange 回卷）
   "./cases/t156-loopwrap-firstlap",       // v3.0.1：滚动「第一圈语义」——循环开着但未真回卷时曲首之上留空（网格/歌词同判据）
+  "./cases/t157-viz-legend",              // v3.1.0（A1）：首用图例条——显示/关闭/记忆/老用户不复活（S.vizLegend 热键全链路）
+  "./cases/t158-preset-audition",         // v3.1.0（4.3）：条目 ▶ 试听——进/出/换/主播放互斥/拍号恢复
+  "./cases/t159-assembly-wiring",         // v3.1.0：装配区接线——搜索过滤 / Esc 键盘层 / 主钮 toggle
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

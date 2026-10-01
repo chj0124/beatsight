@@ -18,7 +18,7 @@ const rowsOf = els => els["editorBars"].children.length;
 /* 打开编辑器：导入一个 n 小节的型并选中（v2.73.0：内置型全部 1 小节，
    不再有「n=4 用内置」的特例——统一用自定义载体，语义与旧断言一致） */
 function openOn(n){
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }), { seedDemo: false });
+  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }), { seedDemo: false });
   {
     beat.Store.importPresets(JSON.stringify({ presets: [{ name: n + "小节型", meter: 4, bars: mkBars(n) }] }));
     beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };

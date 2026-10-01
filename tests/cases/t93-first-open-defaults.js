@@ -118,24 +118,26 @@ section("T93c 首开默认 ② · 闩已落（老用户）→ 不自动选中，
     "★ 他自己的选择一位不动");
 }
 
-/* ================= 场景 T93d：同屏行数 4 / 拍号 4/4 ================= */
-section("T93d 首开默认 ③ · 同屏行数 4 行、拍号 4/4（状态与控件两边都钉）");
+/* ================= 场景 T93d：同屏行数 2 / 拍号 4/4 ================= */
+/* v3.1.0：出厂行数 4 → 2（A5，用户定稿）。默认值变更不是回归；老用户存档
+   显式存过 4 仍读 4（白名单内即用），机制口径见 T79a 头注。 */
+section("T93d 首开默认 ③ · 同屏行数 2 行、拍号 4/4（状态与控件两边都钉）");
 {
   const { beat, els } = firstOpen();
-  eq(beat.Store.S.vizRows, 4, "★ 同屏行数默认 4");
+  eq(beat.Store.S.vizRows, 2, "★ 同屏行数默认 2（v3.1.0 起）");
   eq(beat.Store.S.sig, 4, "★ 拍号默认 4（= 4/4）");
 
   /* 控件面：档位 pill 的选中态必须与默认值一致（状态对了但按钮高亮在别处 = 用户不知道该信谁） */
   const rowPills = els["vizRowsRow"].children.filter(c => c.dataset.rows !== undefined);
   const activeRows = rowPills.filter(c => c.classList.contains("active")).map(c => c.dataset.rows);
-  eq(JSON.stringify(activeRows), JSON.stringify(["4"]), "★ 「同屏行数」4 那一档高亮（且只有它）");
+  eq(JSON.stringify(activeRows), JSON.stringify(["2"]), "★ 「同屏行数」2 那一档高亮（且只有它）");
   const sigPills = els["sigRow"].children.filter(c => c.dataset.sig !== undefined);
   const activeSig = sigPills.filter(c => c.classList.contains("active")).map(c => c.dataset.sig);
   eq(JSON.stringify(activeSig), JSON.stringify(["4"]), "★ 「拍号」4 那一档高亮");
 
   /* 脏值口径顺带复钉一次：这两项都是"用户视图偏好"，脏值必须回落到同一个默认 */
   const dirty = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 999, sig: 5 }) });
-  eq(dirty.beat.Store.S.vizRows, 4, "vizRows 脏值（999）→ 回落 4");
+  eq(dirty.beat.Store.S.vizRows, 2, "vizRows 脏值（999）→ 回落 2");
   eq(dirty.beat.Store.S.sig, 5, "★ 而 sig=5 是**合法档位**，照读（白名单是 6 档，不是只有 4）");
 }
 
@@ -148,7 +150,7 @@ section("T93e 首开默认 ①③④ · 分区展开态 / 行数拍号 / 默认�
   eq(JSON.stringify(secs.map(h => h.getAttribute("aria-expanded"))), JSON.stringify(["true", "false", "true"]),
     "★ ① 分区：节拍+自定义展开、扫弦收起");
   /* ③ 行数 / 拍号（机制在 T79 / T13） */
-  eq(beat.Store.S.vizRows + "/" + beat.Store.S.sig, "4/4", "★ ③ 同屏行数 4 / 拍号 4/4");
+  eq(beat.Store.S.vizRows + "/" + beat.Store.S.sig, "2/4", "★ ③ 同屏行数 2 / 拍号 4/4");
   /* ④ 默认壁纸（机制与三态在 T92）：出厂就有，但**不占** localStorage */
   ok(beat.wallState() && beat.wallState().img === beat.WALL_DEFAULT, "★ ④ 出厂默认壁纸已应用");
   eq(storage.get(beat.WALL_KEY), undefined, "★ ④ 且「什么都没做」时它不落盘（用户不该为此付几百 KB）");

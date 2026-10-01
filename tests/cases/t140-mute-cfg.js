@@ -113,7 +113,7 @@ section("T140d 参数行 · 开关开着才露面；N 变 M 重建并钳制；�
 /* ================= 场景 T140e：视觉行标识 · 任意档位精确（老限制根治） ================= */
 section("T140e 行标识 · 预设模式任意 period 都精确标出（旧「档位≠4 标不出」退役）");
 {
-  const { beat, els } = loadApp();
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });   /* v3.1.0：按 4 行档断言 */
   beat.Store.S.mute = true;
   beat.Store.S.muteCfg = { period: 4, count: 1, random: false };
   beat.Viz.syncMuteBars();
