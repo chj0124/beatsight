@@ -2781,18 +2781,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5041  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5868  Modal         应用内弹窗
      L6006  Viz           时值可视化渲染与每帧动画
-     L9020  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9687  Trainer       变速训练器
-     L9879  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10490 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11857 Editor        自定义节奏型编辑器
-     L12303 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12350 Ear           听辨训练（v1.10.0）
-     L12570 Arrange       曲式编排（v2.0.0）
-     L15468 Help          使用方法（v2.0.1）
-     L15597 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15671 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15914 初始化（装配） 各模块 hook 接线与启动
+     L9081  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9748  Trainer       变速训练器
+     L9940  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10551 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11918 Editor        自定义节奏型编辑器
+     L12364 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12411 Ear           听辨训练（v1.10.0）
+     L12631 Arrange       曲式编排（v2.0.0）
+     L15529 Help          使用方法（v2.0.1）
+     L15658 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15732 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15975 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2818,7 +2818,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.2.2";
+const VERSION = "3.2.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6066,7 +6066,9 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   }
   /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
-let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countLaneEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍条（v3.1.7）
+let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countLaneEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍道（v3.2.2）
+let countLaneSession = false;
+let countLaneLastCur = -1;                           // 可听小节/片段号镜像（预备拍道守卫用，v3.2.3）
 let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
@@ -6223,11 +6225,22 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        才变（用户实报：打开连续滚动后，刚开始的画面仍是旧模式那种样子）。
      ★ 同一个函数也服务 Controls.stop：resetForStop 原先把播放头复位成 translateX(0)（行左缘），
        在 scroll 下那是"停止后又退回旧样子"。 */
-  function applyScrollRest(){
+  function applyScrollRest(keepCountLane){
     if (!S.scrollMode) return;
+    /* ★ v3.2.3 方案 A：buildViz 重建时的复位调用传 keepCountLane=true——
+       预备拍道与 row0 的 hidden 保持不动（预备拍道由 paintBall 会话维持），
+       撤除只发生在停止（resetForStop）与切模式。 */
     /* v3.1.7：预备拍条随停止/切模式撤除，第一道行复位（与交接写点对称） */
-    if (countLaneEl) countLaneEl.style.display = "none";
-    if (rowEls[0]) rowEls[0].style.visibility = "";
+    if (!keepCountLane){
+      countLaneSession = false;                        // v3.2.3：会话结束（停止/切模式撤预备拍道）
+      if (countLaneEl) countLaneEl.style.display = "none";
+      if (rowEls[0]) rowEls[0].style.visibility = "";
+    }
+    /* v3.2.3：滚动停止/切模式——三球一并隐藏（分页播放残留的球无人清理会
+       停在停止态；分页不受影响：paintBall 每帧 display="" 恢复） */
+    if (ballEl) ballEl.style.display = "none";
+    if (shadowEl) shadowEl.style.display = "none";
+    if (waitEl) waitEl.style.display = "none";
     const gc = geoOf(scrollCenter) || geoOf(0);
     if (!gc) return;
     const W = gc.width, C = gc.left + W / 2;
@@ -7479,6 +7492,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     shadowEl = document.createElement("div"); shadowEl.className = "bounce-shadow";
     ballEl = document.createElement("div"); ballEl.className = "bounce-ball";
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
+    /* v3.2.3：初始隐藏——滚动停止态的球残留修复（球元素默认可见，加载即滚动模式时
+       无人隐藏它；分页不受影响：paintBall 每帧 display="" 恢复，首帧即正常显示） */
+    shadowEl.style.display = "none"; ballEl.style.display = "none"; waitEl.style.display = "none";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
     /* 预备拍道（v3.2.2，方案一·用户拍板）：**与真实跑道同构**的真行——
        同款 .bar-row/.beat-zone/.tab/.ruler-lab 结构（buildRowLayers 直接构建），
@@ -7538,7 +7554,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ⇒ 先把所有会改高度的动作做完，再采一次几何、按最终行宽摆静止态。 */
     if (S.scrollMode){
       cacheGeo();
-      applyScrollRest();
+      applyScrollRest(true);   // 方案 A：重建时的复位不撤预备拍道（会话维持，paintBall 下一帧恢复显示）
     }
     parkBall();
   }
@@ -7788,6 +7804,45 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
   /** @param {number} now @param {number} bar @param {number} tib
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
+  /* 预备拍道结构重建（v3.2.2/v3.2.3）：拍区/弦线/竖线/拍号按 ciBeats 对齐
+     buildRowLayers 的层序；判据 children.length（桩元素无 querySelectorAll）；
+     清空用 removeChild 循环（桩的 textContent 赋值不清 children） */
+  function rebuildCountLaneInto(el, ciBeats, hasStr){
+    const want = ciBeats * 2 + (hasStr ? 2 : 0);
+    if (el.children.length === want) return;
+    while (el.children.length) el.removeChild(el.children[0]);
+    for (let k = 0; k < ciBeats; k++){
+      const z = document.createElement("div");
+      z.className = "beat-zone";
+      z.style.left = `${k / ciBeats * 100}%`;
+      z.style.width = `${100 / ciBeats}%`;
+      el.appendChild(z);
+    }
+    if (hasStr){
+      const tab = document.createElement("div");
+      tab.className = "tab";
+      el.appendChild(tab);
+      const sl = document.createElement("div");
+      sl.className = "strums";
+      el.appendChild(sl);
+    }
+    /* v3.2.3 竖线划分（用户拍板）：内部竖线 = 拍数 − 1，.grid-line 同款
+       （骑缝 −0.5px、1px、同色）——与内容道拍边界纵向对齐 */
+    for (let k = 1; k < ciBeats; k++){
+      const gl = document.createElement("div");
+      gl.className = "grid-line";
+      gl.style.left = `calc(${k / ciBeats * 100}% - .5px)`;
+      el.appendChild(gl);
+    }
+    for (let k = 0; k < ciBeats; k++){
+      const lb = document.createElement("div");
+      lb.className = "ruler-lab down";
+      lb.textContent = String(k + 1);
+      lb.style.left = `calc(${k / ciBeats * 100}% + 2px)`;
+      el.appendChild(lb);
+    }
+  }
+
   function paintBall(now, bar, tib, a){
     if (!ballEl || !shadowEl) return;
     /* ★★ v3.1.3（用户拍板）：滚动模式**全程不画球**（主球/影子/待命球三样）——
@@ -7798,6 +7853,27 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          分支之前——scroll 下即使开关关着也要走同一套隐藏（幂等，写点归一）。
        ★ 恢复：切回分页后本函数自然走原路径，display="" 每帧重写，无永久关闭。 */
     if (S.scrollMode){
+      /* v3.2.3 方案 A：预备拍道会话维持——预备拍开启后，播放期间预备拍道以
+         "刚播完的道"（甲终点静止态：右缘贴播放杆）持续显示，随 row0 传送带移动；
+         跨过每小节的网格重建（重建创建新道默认隐藏，本守卫下一帧即恢复显示）。
+         结构重建提炼为 rebuildCountLaneInto（拍区/弦线/竖线/拍号随 ciBeats）。 */
+      if (typeof console !== 'undefined') console.log('[diag] paintBall guard: session =', countLaneSession, '| laneD =', countLaneEl.style.display);
+      // [diag-off] session =', countLaneSession, '| laneD =', countLaneEl.style.display, '| playing =', S.playing);
+      if (countLaneSession && countLaneEl){
+        const gL0 = geoOf(0);
+        const gLc = geoOf(scrollCenter);
+        const perBeat = gLc ? gLc.width / rowBeats() : 0;
+        const laneW = (S.countIn && S.countIn.beats ? S.countIn.beats : 0) * perBeat;
+        rebuildCountLaneInto(countLaneEl, S.countIn.beats || 0, vizHasStrum());
+        countLaneEl.style.display = "block";
+        countLaneEl.style.visibility = "visible";
+        countLaneEl.style.left = "0";
+        countLaneEl.style.width = `${laneW.toFixed(1)}px`;
+        /* 甲终点静止态：右缘贴播放杆（row0 内坐标 = 行宽 − 道宽） */
+        countLaneEl.style.transform = `translate(${((gL0 ? gL0.width : 0) - laneW).toFixed(1)}px, 0px)`;
+      } else if (countLaneEl && countLaneEl.style.display !== "none"){
+        countLaneEl.style.display = "none";
+      }
       ballEl.style.display = "none"; shadowEl.style.display = "none";
       if (waitEl) waitEl.style.display = "none";
       if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
@@ -8489,6 +8565,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            留着只会误导后来者以为它还在起作用（批 1 的写法在这里已失效）。
          ★ v3.0.1：+ loopWrapped 影子——1 小节范围循环（cur 恒不变）与重锚清零这两类
            "回卷标记翻了但当前小节没变"的情形，槽内容判据已变、必须照样重建一次。 */
+      countLaneLastCur = cur;   // v3.2.3：镜像给预备拍道守卫（cur 局部不可出块）
       if (cur >= 0 && (cur !== scrollCur || loopWrapped !== scrollWrappedSeen)){
         scrollCur = cur;
         scrollWrappedSeen = loopWrapped;
@@ -8655,32 +8732,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              真实第一道（填充行）复位。不再是虚线空框。 */
           if (!belt && countLaneEl){
             const g0 = geoOf(0) || gc;
-            /* 拍区/拍号随 ciBeats 重建：预备拍几拍就几格，拍号即计数数字 1..N。
-               结构对齐 buildRowLayers：zones… → .tab（弦线）→ .strums（空层）→ labels…。
-               判据用 children.length（桩元素无 querySelectorAll，全量重建保桩/真机同路） */
-            if (countLaneEl.children.length !== ciBeats * 2 + 2){
-              while (countLaneEl.children.length) countLaneEl.removeChild(countLaneEl.children[0]);   // 桩/真机通用清空（textContent 不清 children）
-              for (let k = 0; k < ciBeats; k++){
-                const z = document.createElement("div");
-                z.className = "beat-zone";
-                z.style.left = `${k / ciBeats * 100}%`;
-                z.style.width = `${100 / ciBeats}%`;
-                countLaneEl.appendChild(z);
-              }
-              const tab = document.createElement("div");
-              tab.className = "tab";
-              countLaneEl.appendChild(tab);
-              const sl = document.createElement("div");
-              sl.className = "strums";
-              countLaneEl.appendChild(sl);
-              for (let k = 0; k < ciBeats; k++){
-                const lb = document.createElement("div");
-                lb.className = "ruler-lab down";
-                lb.textContent = String(k + 1);
-                lb.style.left = `calc(${k / ciBeats * 100}% + 2px)`;
-                countLaneEl.appendChild(lb);
-              }
-            }
+            /* 拍区/拍号随 ciBeats 重建（结构函数 rebuildCountLaneInto） */
+            rebuildCountLaneInto(countLaneEl, ciBeats, vizHasStrum());
+            countLaneSession = true;   // 会话开启：播放期间预备拍道持续显示（方案 A）
             countLaneEl.style.display = "block";
             countLaneEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
             countLaneEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
@@ -8742,10 +8796,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
     if (S.scrollMode){
-      /* v3.1.7：预备拍条只在预备拍期间存在——交接第一帧撤条并复位第一道行
-         （对称写点：预备拍分支每帧显示条/隐藏行；此守卫让后续帧零开销） */
-      if (countLaneEl && countLaneEl.style.display !== "none"){
+      /* ★ v3.2.3 方案 A（用户拍板）：预备拍道播完**不撤**——它挂在 row0 内随传送带
+         同步移动，以"刚播完的道"身份停在播放杆左侧紧贴处。
+         撤除时机 = **首次回卷**（调度域 loopWrapped 标记：循环回卷/曲末回卷都置位）——
+         回卷时左半槽位需要显示真实上一小节，预备拍道让位、row0 复位。 */
+      /* 撤除时机：回卷（loopWrapped）或第一轮播完（可听小节/片段号 cur ≥ 窗口行数）——
+         左半槽位此后需要显示真实上一小节，预备拍道让位、row0 复位 */
+      if (countLaneEl && countLaneEl.style.display === "block" &&
+          (loopWrapped || (countLaneLastCur >= 0 && countLaneLastCur >= rowEls.length))){
+        countLaneSession = false;   // 会话随撤除结束（否则守卫下一帧又恢复显示）
         countLaneEl.style.display = "none";
+        countLaneEl.dataset.sig = "";
         if (rowEls[0]) rowEls[0].style.visibility = "";
       }
       /* 播放头钉在**当前槽的水平中央**（不再随 tib 扫过整行——内容在动、头不动）；
@@ -9001,7 +9062,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, countLaneEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
+    internals: () => ({ ballEl, shadowEl, waitEl, countLaneEl, applyScrollRest, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
       /* v2.86.0（PLAN-v7）：歌词显示位置解析（供断言 auto→bottom/follow 的窄屏默认） */
       effectiveLyricPos, narrow,
       /* v2.43.0：播放杆与尾迹元素（跨行扫入测试的读数口） */

@@ -1,9 +1,10 @@
-/* T160 滚动模式预备拍 · v3.2.2 同构预备拍道。
+/* T160 滚动模式预备拍 · v3.2.3 同构预备拍道 + 方案 A + 竖线 + 停止态球残留。
    演进：v3.1.2 整组预滚（列车串，否决）→ v3.1.3 scroll 无球 →
    v3.1.4~v3.1.9 合成条（虚线框/拍格盒，用户实拍"不是同一类东西"，否决）→
-   v3.2.2 方案一：预备拍道 = **与真实跑道同构的真行**（.bar-row + buildRowLayers：
-   beat-zone 拍区 + .tab 弦线 + ruler-lab 座次尺拍号——拍号即计数数字 1..N），
+   v3.2.2/v3.2.3 方案一：预备拍道 = **与真实跑道同构的真行**（.bar-row +
+   buildRowLayers：beat-zone 拍区 + .tab 弦线 + ruler-lab 座次尺拍号 1..N），
    甲轨迹（左缘从播放杆出发逐拍左移，开播瞬间停在播放杆左侧紧贴处），
+   方案 A（播完不撤，随 row0 传送带停播放杆左侧，首次回卷让位），
    挂 rowEls[0] 内（visibility 逐层覆盖：行 hidden、道 visible）。
    断言口径：display+visibility 双口径（v3.1.9 教训）；内容道**绝对位置**钉播放杆
    （v3.1.6 教训）；布局塌陷真机侧验证（v3.1.8 教训：桩不模拟文档流回流）。 */
@@ -11,7 +12,7 @@ const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform || ""); return m2 ? +m2[1] : null; };
 
-section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播放杆 + 交接复位");
+section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播放杆 + 方案A 不撤");
 {
   const app = loadApp(seedState({
     scrollMode: true, scrollRows: 3,
@@ -48,21 +49,25 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
     laneFirst + " → " + laneLast);
   eq(row0VisOK, true, "★ 真实第一道全程 visibility:hidden（预备拍道挂在其中、逐层覆盖显示）");
 
-  /* ② 同构断言：预备拍道内 = ciBeats 个拍区 + ciBeats 个拍号标签（首标签 = "1"） */
+  /* ② 同构断言：预备拍道内 = ciBeats 个拍区 + ciBeats 个拍号标签（首标签 = "1"）
+     + 竖线划分（拍数 − 1 条内部竖线，.grid-line 同款） */
   const iv1 = beat.Viz.internals();
-  /* 桩元素无 querySelectorAll——用 children 过滤（同构断言口径） */
   const kids = Array.from(iv1.countLaneEl.children);
   const zones = kids.filter(k => k.className === "beat-zone");
   const labs = kids.filter(k => k.className.indexOf("ruler-lab") >= 0);   // 每拍一个计数数字（down 样式）
+  const lines4 = kids.filter(k => k.className === "grid-line");
   eq(zones.length, 4, "★ 预备拍道拍区数 = 4（同构 .beat-zone）");
   eq(labs.length, 4, "★ 预备拍道座次尺标签数 = 4");
   eq(labs[0].textContent, "1", "★ 首拍号 = 1（计数数字）");
+  eq(lines4.length, 3, "★ 预备拍道内部竖线 = 拍数 − 1（4 拍 → 3 条）");
+  ok(lines4[0].style.left.indexOf("25%") >= 0, "★ 竖线骑缝定位（第 1 条 @ 25%−.5px）",
+    "left=" + lines4[0].style.left);
 
   /* ③ 内容道：绝对位置 = 播放杆处（C − left），全程不动（v3.1.6 教训） */
   near(txOf(iv1.rowEls[1]), C - g0.left, 2, "★ 内容道 tx = C − left（贴播放杆右侧）");
   near(txOf(iv1.rowEls[2]), C - g0.left, 2, "★ 内容道（第 3 条）同位");
 
-  /* ④ 交接：道隐藏 + row0 复位 + 内容道开始滚动 */
+  /* ④ 方案 A：交接后预备拍道不撤（row0 保持 hidden 由道顶替） */
   let handoverSeen = false, laneAfterHandover = null, row0AfterHandover = null, contentDrift = 0, contentPrev = null;
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
@@ -78,8 +83,8 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
     contentPrev = t1;
   });
   ok(handoverSeen, "前提：跨过预备拍进入播放");
-  eq(laneAfterHandover, "none", "★ 开播后预备拍道撤除");
-  eq(row0AfterHandover, "", "★ 开播后真实第一道 visibility 复位");
+  eq(laneAfterHandover, "block", "★ 方案A：开播后预备拍道不撤（以刚播完的道停播放杆左侧）");
+  eq(row0AfterHandover, "hidden", "★ 方案A：row0 保持隐藏（预备拍道顶替显示）");
   ok(contentDrift > 0, "★ 开播后内容道开始正常滚动（接管预滚）");
 }
 
@@ -107,7 +112,7 @@ section("T160b 分页预备拍球 · 幽灵步回归（scroll 改造不影响 pa
 }
 
 /* ================= T160c 预备拍拍数自适应 ================= */
-section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变，交接复位");
+section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变");
 {
   for (const beats of [3, 2, 1, 8]){
     const app = loadApp(seedState({
@@ -139,6 +144,60 @@ section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变，�
       `★ ${beats} 拍：道长 = ${beats}×每拍像素（几拍就多长）`, "width=" + widthSeen);
     eq(zonesSeen, beats, `★ ${beats} 拍：预备拍道拍区数 = ${beats}（几拍就几格）`);
     eq(row0Hidden, true, `★ ${beats} 拍：预备拍期间真实第一道保持 visibility:hidden`);
-    eq(handoverRow0, "", `★ ${beats} 拍：开播后真实第一道复位`);
+    eq(handoverRow0, "hidden", `★ ${beats} 拍：方案A——播放期间 row0 保持隐藏（预备拍道顶替显示）`);
   }
+}
+
+/* ================= T160d 方案A · 循环场景跨小节重建持续显示 =================
+   循环场景（loop 2 小节）：跨小节网格重建后预备拍道持续显示（会话维持）。
+   回卷撤除判据（loopWrapped / cur ≥ 行数）依赖 paintFrameBody 的窗口同步段
+  （ctx 存在时才执行），**桩内 ctx 缺失、该段不跑**——撤除行为由真机 CDP 专项
+   验证（v3.1.8 布局塌陷同款桩局限）。 */
+section("T160d 方案A · 循环场景跨小节重建持续显示（桩内口径）");
+{
+  const app = loadApp(seedState({
+    scrollMode: true, scrollRows: 3,
+    countIn: { on: true, beats: 1 },
+    loopRange: { on: true, from: 1, to: 2 },   // 2 小节循环：cur 每小节变化 → 每小节重建
+    sel: { type: "builtin", idx: 1 },
+  }));
+  const { beat, els } = app;
+  beat.Controls.start();
+  const ac = FakeAudioContext.last;
+  // 预备拍 1 拍（0.625s）+ 2 小节循环（5s）——跨小节重建
+  drive(ac, beat, 1.1, () => beat.Viz.paintFrame());
+  const iv1 = beat.Viz.internals();
+  eq(iv1.countLaneEl.style.display, "block", "★ 开播后预备拍道仍在（方案A 不撤）");
+  eq(iv1.rowEls[0].style.visibility, "hidden", "★ row0 仍由预备拍道顶替");
+  drive(ac, beat, 6.0, () => beat.Viz.paintFrame());
+  const iv2 = beat.Viz.internals();
+  eq(iv2.countLaneEl.style.display, "block", "★ 循环场景：跨小节重建预备拍道持续显示（会话维持）");
+  eq(Array.from(iv2.countLaneEl.children).filter(k => k.className === "beat-zone").length, 1,
+    "★ 循环场景：预备拍道仍为 1 拍（长度不回跳）");
+  eq(iv2.rowEls[0].style.visibility, "hidden", "★ 循环场景：row0 保持由预备拍道顶替");
+}
+
+/* ================= T160e 滚动停止态无球（v3.2.3） =================
+   路径 A：加载即滚动（球元素默认可见、无人隐藏）；路径 B：分页播放残留球
+   → 切滚动（applyScrollRest 清理，internals 导出）。 */
+section("T160e 滚动停止态无球 · 路径 A/B");
+{
+  // 路径 A：加载即滚动（停止态，从未播放）
+  const a = loadApp(seedState({ scrollMode: true, scrollRows: 3, countIn: { on: false }, sel: { type: "builtin", idx: 1 } }));
+  const ia = a.beat.Viz.internals();
+  eq(ia.ballEl.style.display, "none", "★ 路径A：加载即滚动，球初始隐藏");
+  // 路径 B：分页播放中（球可见）→ 切滚动
+  const b = loadApp(seedState({ scrollMode: false, scrollRows: 3, sel: { type: "builtin", idx: 1 } }));
+  const bb = b.beat;
+  bb.Controls.start();
+  const ac = FakeAudioContext.last;
+  drive(ac, bb, 0.5, () => bb.Viz.paintFrame());
+  eq(b.beat.Viz.internals().ballEl.style.display, "", "前提B：分页播放中球可见（常态）");
+  /* 切模式路径：S.scrollMode 翻转（开关 handler 同款）+ applyScrollRest——
+     滚动停止态清理三球（球残留修复的目标路径） */
+  bb.Store.S.scrollMode = true;
+  bb.Viz.internals().applyScrollRest();
+  const ivb = bb.Viz.internals();
+  eq(ivb.ballEl.style.display, "none", "★ 路径B：切滚动后球隐藏");
+  eq(ivb.shadowEl.style.display, "none", "★ 路径B：影子隐藏");
 }

@@ -76,8 +76,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    条目 ▶ 试听（toggleAudition/pushAuditionBtn/syncAuditionBtns + 两个条目挂载点 +
    sig 临时对齐恢复 + updateFallbackNote 搭车同步 + CSS）。git diff 实测约 17.7KB 净增，
    增量大头是「为什么」注释（migHint 销毁根因、试听语义边界、默认值纪律），删了下次还会踩。
-   上调到 1400KB，留约 10.5KB 拦回归。 */
-const BUDGET_BYTES = 1400 * 1024;
+   上调到 1400KB，留约 10.5KB 拦回归。
+   v3.2.2/v3.2.3（滚动预备拍道系列，用户多轮实拍迭代）：同构预备拍道（buildRowLayers
+   构建的 .bar-row + 拍区/弦线/座次尺，拍号 = 计数数字 1..N）+ 会话化方案 A（预备拍道
+   播完不撤、随传送带停播放杆左侧，回卷让位）+ 竖线划分（.grid-line 同款拍边界线）+
+   滚动停止态球残留修复（三球初始隐藏 + applyScrollRest 补隐藏）。净增约 4KB 必要功能
+   代码与状态机（注释已精简两轮，非冗余）。上调到 1408KB，留约 4KB 拦回归。 */
+const BUDGET_BYTES = 1408 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
