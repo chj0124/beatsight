@@ -35,7 +35,7 @@ section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播�
       trackLast = tx;
       widthSeen = t.style.width;
     }
-    if (iv.rowEls[0].style.display !== "none") row0SeenVisible = true;
+    if (iv.rowEls[0].style.visibility !== "hidden") row0SeenVisible = true;
   });
   ok(trackFirst !== null, "前提：预备拍条已显示");
   near(parseFloat(widthSeen), perBeat * 4, 2,
@@ -44,6 +44,11 @@ section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播�
     "★ 预备拍条随计数左移（1 秒内 ≥ 1 格，每声计数一格过播放杆）",
     trackFirst + " → " + trackLast);
   eq(row0SeenVisible, false, "★ 真实第一道整行隐藏（由预备拍条接管）");
+  /* ★ v3.1.8 布局塌陷守卫（真机侧验证）：第一道必须 visibility（占位保留）而不是
+     display——display 会让行脱离文档流、整列上移一槽（预备拍条压在内容上，用户实拍）。
+     ★ 桩测不了塌陷：桩的 offsetTop 按创建序固定、不模拟文档流回流（display:none
+       不改变其他元素 offsetTop）——这里断言会假绿。塌陷由真机 CDP 探针验证
+       （预备拍期间内容道 rect.top 不得上移）。 */
 
   /* ② 内容道：绝对位置 = 播放杆处（C − left），全程不动
      ★ v3.1.6 教训：只验"不动"不验"在哪"，恒定在错误位置照样绿 */
@@ -122,11 +127,11 @@ section("T160c 预备拍拍数自适应 · 条长随拍数变，交接复位");
       if (counting){
         const t = iv2.countTrackEl;
         if (t.style.display !== "none") widthSeen = t.style.width;
-        if (iv2.rowEls[0].style.display !== "none") row0Hidden = false;
+        if (iv2.rowEls[0].style.visibility !== "hidden") row0Hidden = false;
         if (contentRef === null) contentRef = t1;
         if (t1 !== contentRef) contentSteady = false;
       } else if (handoverRow0 === null){
-        handoverRow0 = iv2.rowEls[0].style.display;   // 开播第一帧
+        handoverRow0 = iv2.rowEls[0].style.visibility;   // 开播第一帧
       }
       if (prevContent !== null) maxContentJump = Math.max(maxContentJump, Math.abs(t1 - prevContent));
       prevContent = t1;
@@ -138,6 +143,6 @@ section("T160c 预备拍拍数自适应 · 条长随拍数变，交接复位");
     ok(contentSteady, `★ ${beats} 拍：内容道全程钉在播放杆处`);
     ok(maxContentJump < 40, `★ ${beats} 拍：预备拍→播放衔接零跳变（内容道逐帧连续）`,
       "最大帧间差 " + maxContentJump + "px");
-    eq(handoverRow0, "", `★ ${beats} 拍：开播后真实第一道复位`);
+    eq(handoverRow0, "", `★ ${beats} 拍：开播后真实第一道复位（visibility 恢复）`);
   }
 }
