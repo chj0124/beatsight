@@ -625,14 +625,16 @@ body.wide-full .main{max-width:none}
    按弧起算的角度会在接缝回卷（demo 实测伪影）。跨弧状态量必须连续 */
 .bounce-ball{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);pointer-events:none;z-index:7;transform-origin:50% 100%}
 .bounce-ball.breath{animation:ball-breath 1.2s ease-in-out infinite}   /* v2.42.6：待命呼吸（C）——只动亮度不动 transform，与逐帧定位不冲突 */
-/* 预备拍条（v3.1.7）：scroll 预备拍专用的第一道。长度/格距/位置全由 JS 逐帧写
-   （width = 预备拍拍数×每拍像素、background-size = 每拍像素、transform = 滑移），
-   CSS 只管静态外观：半透明底 + 每拍一条竖向格线（background-image 画线、
-   background-size 控格距——格距随每拍像素变，不能写死在 CSS）。 */
+/* 预备拍道（v3.2.0 定稿，用户指出"跑道消失只剩虚线框、虚线框大小还不对"）：
+   scroll 预备拍专用的第一道——**实体跑道**（与真实跑道同款观感：行底 + 拍格盒子），
+   长度 = 预备拍拍数 × 每拍像素（几拍就几格），格内格子由 JS 按 ciBeats 动态填充
+   （.count-track-cell），左缘从播放杆处随计数逐拍左移（每声计数一格过杆）。
+   不再是虚线空框——跑道本体可见、长度即预备拍拍数。 */
 .count-track{position:absolute;left:0;top:0;height:100%;display:none;visibility:visible;pointer-events:none;
-  border:1px dashed var(--green);border-radius:8px;box-sizing:border-box;
-  background-image:linear-gradient(to right, var(--border) 1px, transparent 1px);
-  background-repeat:repeat-x;z-index:3}
+  box-sizing:border-box;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg-elev, rgba(255,255,255,.03));overflow:hidden;
+  flex-direction:row;gap:4px;padding:4px;align-items:stretch;z-index:3}
+.count-track-cell{flex:1 1 0;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.04)}
 @keyframes ball-breath{0%,100%{filter:brightness(1)}50%{filter:brightness(1.55)}}
 .bounce-wait{opacity:.45;box-shadow:none}   /* 接力待命球：半透明，下一小节交接时转正式 */
 .bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
@@ -2779,23 +2781,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2811  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3440  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5044  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5871  Modal         应用内弹窗
-     L6009  Viz           时值可视化渲染与每帧动画
-     L8989  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9656  Trainer       变速训练器
-     L9848  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10459 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11826 Editor        自定义节奏型编辑器
-     L12272 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12319 Ear           听辨训练（v1.10.0）
-     L12539 Arrange       曲式编排（v2.0.0）
-     L15437 Help          使用方法（v2.0.1）
-     L15566 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15640 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15883 初始化（装配） 各模块 hook 接线与启动
+     L2813  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3442  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5046  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5873  Modal         应用内弹窗
+     L6011  Viz           时值可视化渲染与每帧动画
+     L9002  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9669  Trainer       变速训练器
+     L9861  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10472 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11839 Editor        自定义节奏型编辑器
+     L12285 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12332 Ear           听辨训练（v1.10.0）
+     L12552 Arrange       曲式编排（v2.0.0）
+     L15450 Help          使用方法（v2.0.1）
+     L15579 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15653 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15896 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2821,7 +2823,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.9";
+const VERSION = "3.2.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8646,16 +8648,27 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
             r.style.transform = `translate(${(C - g.left - restPh * W).toFixed(1)}px, ${(belt ? (beltDy0 - g.top) : 0).toFixed(1)}px)`;
           }
-          /* 预备拍条：左缘从播放杆出发随计数左移（每声计数一格过杆），
-             条长 = ciBeats×每拍像素（几拍就多长）；格距 = 每拍像素（background-size） */
+          /* ★★ v3.2.0 定稿（用户指出"跑道消失只剩虚线框、虚线框大小还不对"）：
+             预备拍道 = **实体跑道**（与真实跑道同款观感：行底 + 拍格盒子），
+             长度 = 预备拍拍数 × 每拍像素（几拍就几格），左缘从播放杆出发随计数
+             逐拍左移（每声计数一格过杆），数完整条退出到播放杆左侧、交接撤除、
+             真实第一道（填充行）复位。不再是虚线空框。 */
           if (!belt && countTrackEl){
             const g0 = geoOf(0) || gc;
-            countTrackEl.style.display = "block";
+            /* 拍格数 = 预备拍拍数（几拍就几格），格子在道长内均分 */
+            if (countTrackEl.children.length !== ciBeats){
+              countTrackEl.textContent = "";
+              for (let k = 0; k < ciBeats; k++){
+                const c = document.createElement("div");
+                c.className = "count-track-cell";
+                countTrackEl.appendChild(c);
+              }
+            }
+            countTrackEl.style.display = "flex";
             countTrackEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
+            countTrackEl.style.left = `${g0.width.toFixed(1)}px`;   // 行右缘 = 播放杆
             countTrackEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
-            countTrackEl.style.backgroundSize = `${perBeat.toFixed(1)}px 100%`;
-            /* 行内坐标：行右缘（= 播放杆，W）减去已过拍数——条左缘从播放杆出发逐拍左移 */
-            countTrackEl.style.transform = `translate(${(g0.width - pos * perBeat).toFixed(1)}px, 0px)`;
+            countTrackEl.style.transform = `translate(${(-pos * perBeat).toFixed(1)}px, 0px)`;
           }
         }
       }

@@ -25,9 +25,11 @@ section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播�
 
   /* ① 预备拍条：显示、条长 = ciBeats×每拍像素（几拍就多长）、随计数左移 */
   let trackFirst = null, trackLast = null, widthSeen = null, row0SeenVisible = false;
+  let ivT = null;
   drive(ac, beat, 1.0, () => {
     beat.Viz.paintFrame();
     const iv = beat.Viz.internals();
+    ivT = iv;
     const t = iv.countTrackEl;
     /* ★ 双口径：display=block 且 visibility≠hidden 才算"看得见"
        （v3.1.9 教训：条挂在 visibility:hidden 的行内时，只查 display 会假绿） */
@@ -46,6 +48,11 @@ section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播�
     "★ 预备拍条随计数左移（1 秒内 ≥ 1 格，每声计数一格过播放杆）",
     trackFirst + " → " + trackLast);
   eq(row0SeenVisible, false, "★ 真实第一道整行隐藏（由预备拍条接管）");
+  /* ★ v3.2.0：预备拍条 = **实体跑道**（与真实跑道同款观感），不再是虚线空框——
+     拍格盒子数 = 预备拍拍数（几拍就几格），用户实拍否决过"跑道消失只剩虚线框" */
+  eq(ivT.countTrackEl.children.length, 4, "★ 预备拍条内实体拍格数 = 4（几拍就几格）");
+  ok(ivT.countTrackEl.children[0].className.indexOf("count-track-cell") >= 0,
+    "★ 拍格为实体盒（.count-track-cell，非虚线空框）");
   /* ★ v3.1.8 布局塌陷守卫（真机侧验证）：第一道必须 visibility（占位保留）而不是
      display——display 会让行脱离文档流、整列上移一槽（预备拍条压在内容上，用户实拍）。
      ★ 桩测不了塌陷：桩的 offsetTop 按创建序固定、不模拟文档流回流（display:none
@@ -140,6 +147,8 @@ section("T160c 预备拍拍数自适应 · 条长随拍数变，交接复位");
     });
     ok(widthSeen !== null && Math.abs(parseFloat(widthSeen) - beats * perBeat) < 2,
       `★ ${beats} 拍：条长 = ${beats}×每拍像素（几拍就多长）`, "width=" + widthSeen);
+    ok(beat.Viz.internals().countTrackEl.children.length === beats,
+      `★ ${beats} 拍：预备拍条内实体拍格数 = ${beats}（几拍就几格）`);
     eq(row0Hidden, true, `★ ${beats} 拍：预备拍期间真实第一道保持隐藏`);
     near(contentRef, C - g0.left, 2, `★ ${beats} 拍：内容道绝对位置 = 播放杆处`);
     ok(contentSteady, `★ ${beats} 拍：内容道全程钉在播放杆处`);
