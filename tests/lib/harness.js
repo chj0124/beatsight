@@ -58,6 +58,10 @@ const HTML_ATTRS = {
      （v1.3.0 P2-14 踩到）。 */
   fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
+  /* v3.1.1：countInBeats 的 value="4" 是标记里写死的默认值（真实浏览器 boot 后显示 4，
+     无论存档是什么）。不复刻的话，桩里读 value 得 ""，"boot 同步存档值"的回归断言
+     会恒真（输入框显示什么都没人验）——那正是预备拍拍数显示/实际脱节的假绿温床 */
+  countInBeats: { value: "4" },
   /* v2.12.0 背景壁纸：控件在**没有壁纸时**都是隐藏的（标记里写死 `hidden`）。
      不复刻的话，桩里它们的初值是 false（=显示），于是"装上壁纸才露面"这条
      在桩里恒真、测不出来。wallDim 的 min/max/value 也是标记里写死的。

@@ -94,6 +94,42 @@ section("T14 预备拍 · 计数发声 + 训练器不受污染");
   near(ac3.hits[0].t, 0.08, 1e-6, "预备拍关闭：第 1 声即正式节奏型");
 }
 
+/* ================= 场景 T14b：拍数输入框显示 = 存档值（v3.1.1 修复） ================= */
+/* 用户实报：预备拍设 4 拍只播 1 拍。根因：countInBeats 输入框的 value 是标记里写死的
+   "4"，boot 从不把存档的 S.countIn.beats 同步进输入框——存档是 1 拍时界面显示"4拍"、
+   实际播 1 拍，输入框在说谎。回归钉两条：boot 同步显示 + 改输入即写回存档。 */
+section("T14b 拍数输入框 · boot 同步存档值，显示与实际一致");
+{
+  /* 存档 beats=1：修复前输入框显示标记默认"4"（桩已按标记复刻 value="4"），实际播 1 拍 */
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ countIn: { on: true, beats: 1 } }) });
+  eq(beat.Store.S.countIn.beats, 1, "前提：存档拍数 = 1");
+  eq(els["countInBeats"].value, "1", "★ 输入框显示存档值 1（不再显示标记默认 4）");
+
+  /* 改输入 = 写回存档（change 路径既有的正向行为，顺带复钉） */
+  els["countInBeats"].value = "4";
+  els["countInBeats"].fire("change");
+  eq(beat.Store.S.countIn.beats, 4, "★ 输入 4 → S.countIn.beats = 4");
+  eq(els["countInBeats"].value, "4", "显示与状态一致");
+
+  /* 端到端：曲式模式（《在他乡》）+ 4 拍预备 → 真数出 4 声（用户路径，T14 只覆盖预设模式） */
+  beat.Store.S.playMode = "arrange";
+  if (!beat.Store.findArrange("demo-ztx")){
+    beat.Store.upsertArrange({ id: "demo-ztx", name: "在他乡（示例）", sections: [
+      { name: "A", blocks: [{ ref: { type: "builtin", idx: 16 }, repeats: 30 }] },
+    ] });
+  }
+  beat.Store.S.arrangeSel = { id: "demo-ztx", from: 0, to: 29, loop: false };
+  beat.Controls.start();
+  const ac4 = FakeAudioContext.last;
+  drive(ac4, beat, 3.4);                       // 4 拍 × 0.625s + 起始 0.08 → 3.4s 内 4 声必须全到
+  const ci = ac4.hits.filter(h => h.kind === "osc" && h.t >= 0.07 && h.t < 0.08 + 4 * 0.625 - 0.001);
+  eq(ci.length, 4, "★ 曲式模式播放《在他乡》：预备拍 4 拍 = 4 声（声数 = 显示的拍数）");
+  eq(ci[0].freq, 1568, "首声重拍");
+  eq(ci[3].freq, 1046.5, "末声正拍");
+  const firstSong = ac4.hits.filter(h => h.t >= 0.08 + 4 * 0.625 - 0.001).sort((a, b) => a.t - b.t)[0];
+  near(firstSong.t, 0.08 + 4 * 0.625, 0.02, "预备拍数完才进正式第 1 小节（整段 4 拍不被截短）");
+}
+
 /* ================= 场景 T15：播放中切拍号立即生效 + 渲染不脱轨（v1.1.1 改契约） ================= */
 section("T15 播放中切拍号 · 立即生效，且 viz 按新拍号渲染不脱轨");
 {
