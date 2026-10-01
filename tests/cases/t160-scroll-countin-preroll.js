@@ -1,13 +1,15 @@
-/* T160 滚动模式预备拍：预滚 + 球钉播放头（v3.1.2，用户实拍两连报）。
-   报障一：scroll 下预备拍球沿用 paged 静态 geoOf 幽灵步，行被传送带位移推走后
-   球悬在行外（截图：球 (523,25)，行在别处）→ 修复 = scroll 改球钉播放头（球钉在
-   scrollCenter 槽的顶带上方，x 恒 = 槽中央 − 8）。
-   报障二：预备拍期间条纹丝不动"直接出现在左边" → 新交互 = 预滚：条以播放速度
-   从右滑入，开播瞬间第 1 小节起点恰好抵达播放头（shift 线性收到 0，零跳变）。 */
+/* T160 滚动模式预备拍 · v3.1.7 专用预备拍条。
+   演进：v3.1.2 整组预滚（列车串，用户否决）→ v3.1.3 scroll 无球 →
+   v3.1.4/5 复用整宽填充行滑距自适应（道长恒 RBc 格，长度对不上，用户指出）→
+   v3.1.7 专用预备拍条：条长 = ciBeats×每拍像素（几拍就多长），内嵌每拍一格的
+   格线，从播放杆处随计数逐拍左移；真实第一道整行隐藏，交接撤条复位；
+   内容道全程钉在播放杆处（绝对位置断言——v3.1.6 教训：只验"不动"不验"在哪"
+   会漏掉甩出布局的回归）。 */
 const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
+const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform || ""); return m2 ? +m2[1] : null; };
 
-section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳变");
+section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播放杆 + 交接复位");
 {
   const app = loadApp(seedState({
     scrollMode: true, scrollRows: 3,
@@ -17,74 +19,60 @@ section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳�
   const { beat, els } = app;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
-  let iv = beat.Viz.internals();
-  const geo0 = iv.rowGeo[0];
-  const rest = iv.scroll.dx;                       // 开播对齐位 = C − left（静止态）
-  ok(rest > 0, "前提：静止态 dx > 0（当前行右移半行宽）", "rest=" + rest);
-  const center = iv.scroll.center;
-  const geoC = iv.rowGeo[center];                  // 球钉的槽 = scrollCenter 槽
-  const C = geoC.left + geoC.width / 2;
+  const g0 = beat.Viz.internals().rowGeo[0];
+  const C = g0.left + g0.width / 2;
+  const perBeat = g0.width / 4;
 
-  /* ① v3.1.4：预滚 = 第一道专用——第一道随预备拍左移（驮拍格过播放杆），
-     内容道（第 2/3 条）钉在静止态不动（全程贴播放杆） */
-  const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform); return m2 ? +m2[1] : null; };
-  let lane0First = null, lane0Last = null, contentFirst = null, contentLast = null;
-  drive(ac, beat, 1.0, () => {
-    beat.Viz.paintFrame();                         // 预滚位移发生在渲染帧（drive 只跑调度）
-    const iv2 = beat.Viz.internals();
-    const t0 = txOf(iv2.rowEls[0]), t1 = txOf(iv2.rowEls[1]);
-    if (lane0First === null){ lane0First = t0; contentFirst = t1; }
-    lane0Last = t0; contentLast = t1;
-  });
-  ok(lane0First - lane0Last > geo0.width * 0.15 && lane0First > lane0Last,
-    "★ 第一道在预滚（1 秒内左移，驮预备拍拍格过播放杆）",
-    "第一道 " + lane0First + " → " + lane0Last);
-  ok(contentFirst === contentLast,
-    "★ 内容道（第 2/3 条）钉住不动（全程贴播放杆）",
-    "contentFirst=" + contentFirst + " contentLast=" + contentLast);
-  /* ★ v3.1.6 补绝对位置断言：v3.1.5 曾把内容道甩到播放杆左侧一整个行宽
-     （"不动"断言照样绿——只验了不动、没验在哪），必须钉死数值。 */
-  near(contentFirst, geo0.width / 2, 2,
-    "★ 内容道绝对位置 = 播放杆处（C − left，贴播放杆右侧）",
-    "contentFirst=" + contentFirst);
-
-  /* ② v3.1.3（用户拍板）：滚动预备拍**不画球**——预滚期间播放头处是第一圈留空的填充槽，
-     球钉在那里 = 浮在空地上、与滑入的条脱开（v3.1.2 的球钉播放头方案退役）。
-     ★ 逐帧断言"全程从未出现"，不只看末态（T155e 同款口径：隐藏写点只在每帧发生）。 */
-  let ballSeen = null;
+  /* ① 预备拍条：显示、条长 = ciBeats×每拍像素（几拍就多长）、随计数左移 */
+  let trackFirst = null, trackLast = null, widthSeen = null, row0SeenVisible = false;
   drive(ac, beat, 1.0, () => {
     beat.Viz.paintFrame();
-    const iv2 = beat.Viz.internals();
-    const d = iv2.ballEl.style.display, sd = iv2.shadowEl.style.display;
-    if (ballSeen === null && (d !== "none" || sd !== "none")) ballSeen = { d, sd };
+    const iv = beat.Viz.internals();
+    const t = iv.countTrackEl;
+    if (t.style.display !== "none"){
+      const tx = txOf(t);
+      if (trackFirst === null) trackFirst = tx;
+      trackLast = tx;
+      widthSeen = t.style.width;
+    }
+    if (iv.rowEls[0].style.display !== "none") row0SeenVisible = true;
   });
-  eq(ballSeen, null, "★ 滚动预备拍：球与影子全程隐藏（逐帧检查，非只看末态）");
+  ok(trackFirst !== null, "前提：预备拍条已显示");
+  near(parseFloat(widthSeen), perBeat * 4, 2,
+    "★ 条长 = 预备拍拍数 × 每拍像素（4 拍 = 一个行宽）", "width=" + widthSeen);
+  ok(trackFirst - trackLast > perBeat && trackFirst > trackLast,
+    "★ 预备拍条随计数左移（1 秒内 ≥ 1 格，每声计数一格过播放杆）",
+    trackFirst + " → " + trackLast);
+  eq(row0SeenVisible, false, "★ 真实第一道整行隐藏（由预备拍条接管）");
 
-  /* ③ 预滚收尾零跳变：预备拍→播放的过渡帧，dx 差恒为一帧的正常位移（≤40px），
-     且跨过过渡后 dx 继续同向递减（速度无突变） */
-  let prevLane0 = null, maxJumpLane0 = 0, handoverLane0 = null, ballSeenInPlay = null;
+  /* ② 内容道：绝对位置 = 播放杆处（C − left），全程不动
+     ★ v3.1.6 教训：只验"不动"不验"在哪"，恒定在错误位置照样绿 */
+  const iv1 = beat.Viz.internals();
+  near(txOf(iv1.rowEls[1]), C - g0.left, 2, "★ 内容道 tx = C − left（贴播放杆右侧）");
+  near(txOf(iv1.rowEls[2]), C - g0.left, 2, "★ 内容道（第 3 条）同位");
+
+  /* ③ 交接：撤条 + 复位第一道 + 内容道开始滚动 */
+  let handoverSeen = false, trackAfterHandover = null, row0Restored = null, contentDrift = 0, contentPrev = null;
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
     const iv3 = beat.Viz.internals();
     const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
-    const t0 = txOf(iv3.rowEls[0]);
-    if (prevLane0 !== null) maxJumpLane0 = Math.max(maxJumpLane0, Math.abs(t0 - prevLane0));
-    prevLane0 = t0;
-    const counting_now = els["statusText"].textContent.indexOf("预备拍") >= 0;
-    if (!counting_now && handoverLane0 === null) handoverLane0 = t0;   // 开播第一帧
-    /* v3.1.3：滚动全程无球——预备拍隐藏要延续到正式播放段（paintBall 守卫） */
-    const bd = iv3.ballEl.style.display, sd = iv3.shadowEl.style.display;
-    if (!counting_now && ballSeenInPlay === null && (bd !== "none" || sd !== "none")) ballSeenInPlay = { bd, sd };
+    if (!counting && !handoverSeen){
+      handoverSeen = true;
+      trackAfterHandover = iv3.countTrackEl.style.display;
+      row0Restored = iv3.rowEls[0].style.display;
+    }
+    const t1 = txOf(iv3.rowEls[1]);
+    if (handoverSeen && contentPrev !== null) contentDrift = Math.max(contentDrift, Math.abs(t1 - contentPrev));
+    contentPrev = t1;
   });
-  ok(maxJumpLane0 < 40, "★ 预滚 → 播放衔接零跳变（第一道相邻帧位移恒为一帧的正常量）",
-    "最大帧间差 " + maxJumpLane0 + "px");
-  near(handoverLane0, (geo0.left + geo0.width / 2) - geo0.left - geo0.width, 2,
-    "★ 开播第一帧第一道 = 静止态（C − left − W，预滚恰好收完，第 1 小节起点正对播放杆）",
-    "交接 tx=" + handoverLane0);
-  eq(ballSeenInPlay, null, "★ 开播后（正式播放段）球与影子仍全程隐藏（paintBall 守卫）");
+  ok(handoverSeen, "前提：跨过预备拍进入播放");
+  eq(trackAfterHandover, "none", "★ 开播后预备拍条撤除");
+  eq(row0Restored, "", "★ 开播后真实第一道复位（display 恢复）");
+  ok(contentDrift > 0, "★ 开播后内容道开始正常滚动（接管预滚）");
 }
 
-section("T160b 分页预备拍球 · 幽灵步回归（拆分后 paged 路径不变）");
+section("T160b 分页预备拍球 · 幽灵步回归（scroll 改造不影响 paged）");
 {
   const app = loadApp(seedState({ countIn: { on: true, beats: 4 }, sel: { type: "builtin", idx: 1 } }));
   const { beat } = app;
@@ -97,22 +85,20 @@ section("T160b 分页预备拍球 · 幽灵步回归（拆分后 paged 路径不
   drive(ac, beat, 1.2, () => {
     beat.Viz.paintFrame();
     const b = beat.Viz.internals().ballEl;
-    const m = /translate\(([-\d.]+)px/.exec(b.style.transform);
+    const m = /translate\(([-\d.]+)px/.exec(b.style.transform || "");
     if (m) xs.push(+m[1]);
   });
   ok(xs.length >= 3, "前提：采样到球的多个位置", "样本 " + xs.length);
   ok(xs[xs.length - 1] > xs[0] + geo0.width / 4,
-    "★ 分页预备拍：球沿行向右走幽灵步（未受 scroll 拆分影响）",
-    "x " + xs[0] + " → " + xs[xs.length - 1]);
+    "★ 分页预备拍：球沿行向右走幽灵步", "x " + xs[0] + " → " + xs[xs.length - 1]);
   ok(xs.every(x => x >= geo0.left - 20 && x <= geo0.left + geo0.width + 20),
-    "★ 分页预备拍：球始终在行 0 的 x 范围内（不再悬到行外）");
+    "★ 分页预备拍：球始终在行 0 的 x 范围内");
 }
 
-/* ================= T160c 预备拍拍数自适应（v3.1.5） =================
-   v3.1.4 原版把滑距钳在一个行宽（道恒为 4 拍长）：预备拍 3/2/1 拍时第一道滑不到位，
-   开播瞬间跳 (RBc−ciBeats) 个拍格。改判：第一道起点 = 静止态 + ciBeats×每拍像素，
-   每声计数滑一格，数完恰好归静止态——任意拍数（1–8）零跳变。 */
-section("T160c 预备拍拍数自适应 · 几拍就滑几格，归位零跳变");
+/* ================= T160c 预备拍拍数自适应（v3.1.7 的核心诉求） =================
+   条长 = ciBeats×每拍像素：预备拍 3/2/1 拍时条就只有 3/2/1 格长（v3.1.4/5 的
+   道长恒 RBc 格问题就此根治）；交接后条撤、真实行复位。 */
+section("T160c 预备拍拍数自适应 · 条长随拍数变，交接复位");
 {
   for (const beats of [3, 2, 1, 8]){
     const app = loadApp(seedState({
@@ -121,34 +107,37 @@ section("T160c 预备拍拍数自适应 · 几拍就滑几格，归位零跳变"
       sel: { type: "builtin", idx: 1 },
     }));
     const { beat, els } = app;
-    const g0 = beat.Viz.internals().rowGeo[0];    // 每个 app 现取几何（块间不共享变量）
-    const perBeat = g0.width / 4;                 // 桩：RBc=4（整小节一道）
-    const rest0 = (g0.left + g0.width / 2) - g0.left - g0.width;
+    const g0 = beat.Viz.internals().rowGeo[0];
+    const perBeat = g0.width / 4;
+    const C = g0.left + g0.width / 2;
     beat.Controls.start();
     const ac = FakeAudioContext.last;
-    const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform); return m2 ? +m2[1] : null; };
-    let startTx = null, handoverTx = null, contentSteady = true, contentRef = null;
-    drive(ac, beat, 0.2, () => {                   // 开局采样（预备拍进行中）
+    let widthSeen = null, row0Hidden = true, handoverRow0 = null, contentRef = null, contentSteady = true;
+    let prevContent = null, maxContentJump = 0;
+    drive(ac, beat, beats * 0.625 + 0.4, () => {
       beat.Viz.paintFrame();
       const iv2 = beat.Viz.internals();
-      if (startTx === null){ startTx = txOf(iv2.rowEls[0]); contentRef = txOf(iv2.rowEls[1]); }
-      if (txOf(iv2.rowEls[1]) !== contentRef) contentSteady = false;
-    });
-    drive(ac, beat, beats * 0.625 + 0.4, () => {   // 跨过该拍数的预备拍全程 → 开播
-      beat.Viz.paintFrame();
-      const iv3 = beat.Viz.internals();
       const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
-      if (!counting && handoverTx === null) handoverTx = txOf(iv3.rowEls[0]);
+      const t1 = txOf(iv2.rowEls[1]);
+      if (counting){
+        const t = iv2.countTrackEl;
+        if (t.style.display !== "none") widthSeen = t.style.width;
+        if (iv2.rowEls[0].style.display !== "none") row0Hidden = false;
+        if (contentRef === null) contentRef = t1;
+        if (t1 !== contentRef) contentSteady = false;
+      } else if (handoverRow0 === null){
+        handoverRow0 = iv2.rowEls[0].style.display;   // 开播第一帧
+      }
+      if (prevContent !== null) maxContentJump = Math.max(maxContentJump, Math.abs(t1 - prevContent));
+      prevContent = t1;
     });
-    near(startTx, rest0 + beats * perBeat, 3,
-      `★ ${beats} 拍：第一道起点 = 静止态 + ${beats}×每拍像素（几拍就摆几格）`,
-      "startTx=" + startTx);
-    near(handoverTx, rest0, 3,
-      `★ ${beats} 拍：开播第一帧第一道归静止态（零跳变）`,
-      "handoverTx=" + handoverTx);
-    ok(contentSteady, `★ ${beats} 拍：内容道全程钉在静止态`);
-    near(contentRef, g0.width / 2, 2,
-      `★ ${beats} 拍：内容道绝对位置 = 播放杆处（贴播放杆右侧）`,
-      "contentRef=" + contentRef);
+    ok(widthSeen !== null && Math.abs(parseFloat(widthSeen) - beats * perBeat) < 2,
+      `★ ${beats} 拍：条长 = ${beats}×每拍像素（几拍就多长）`, "width=" + widthSeen);
+    eq(row0Hidden, true, `★ ${beats} 拍：预备拍期间真实第一道保持隐藏`);
+    near(contentRef, C - g0.left, 2, `★ ${beats} 拍：内容道绝对位置 = 播放杆处`);
+    ok(contentSteady, `★ ${beats} 拍：内容道全程钉在播放杆处`);
+    ok(maxContentJump < 40, `★ ${beats} 拍：预备拍→播放衔接零跳变（内容道逐帧连续）`,
+      "最大帧间差 " + maxContentJump + "px");
+    eq(handoverRow0, "", `★ ${beats} 拍：开播后真实第一道复位`);
   }
 }
