@@ -25,17 +25,23 @@ section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳�
   const geoC = iv.rowGeo[center];                  // 球钉的槽 = scrollCenter 槽
   const C = geoC.left + geoC.width / 2;
 
-  /* ① 预滚：预备拍期间条以播放速度左移。1 秒 = 1.6 拍 × 每拍 W/RBc；
-     RBc=2 时 = 0.8 个行宽。断言用相对量：滑距 > 0.5 个行宽（1.6 拍 ≥ 0.8 行 × 富余） */
-  let first = null, last = null;
+  /* ① v3.1.4：预滚 = 第一道专用——第一道随预备拍左移（驮拍格过播放杆），
+     内容道（第 2/3 条）钉在静止态不动（全程贴播放杆） */
+  const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform); return m2 ? +m2[1] : null; };
+  let lane0First = null, lane0Last = null, contentFirst = null, contentLast = null;
   drive(ac, beat, 1.0, () => {
     beat.Viz.paintFrame();                         // 预滚位移发生在渲染帧（drive 只跑调度）
-    const d = beat.Viz.internals().scroll.dx;
-    if (first === null) first = d; last = d;
+    const iv2 = beat.Viz.internals();
+    const t0 = txOf(iv2.rowEls[0]), t1 = txOf(iv2.rowEls[1]);
+    if (lane0First === null){ lane0First = t0; contentFirst = t1; }
+    lane0Last = t0; contentLast = t1;
   });
-  ok(first - last > geo0.width * 0.2 && first > last,
-    "★ 预备拍期间条在预滚（1 秒内左移 ≥ 0.2 个行宽，速度 = 播放速度）",
-    "first=" + first + " last=" + last);
+  ok(lane0First - lane0Last > geo0.width * 0.15 && lane0First > lane0Last,
+    "★ 第一道在预滚（1 秒内左移，驮预备拍拍格过播放杆）",
+    "第一道 " + lane0First + " → " + lane0Last);
+  ok(contentFirst === contentLast,
+    "★ 内容道（第 2/3 条）钉在静止态不动（全程贴播放杆）",
+    "contentFirst=" + contentFirst + " contentLast=" + contentLast);
 
   /* ② v3.1.3（用户拍板）：滚动预备拍**不画球**——预滚期间播放头处是第一圈留空的填充槽，
      球钉在那里 = 浮在空地上、与滑入的条脱开（v3.1.2 的球钉播放头方案退役）。
@@ -51,27 +57,26 @@ section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳�
 
   /* ③ 预滚收尾零跳变：预备拍→播放的过渡帧，dx 差恒为一帧的正常位移（≤40px），
      且跨过过渡后 dx 继续同向递减（速度无突变） */
-  let prev = null, maxJump = 0, dxAtHandover = null, ballSeenInPlay = null;
+  let prevLane0 = null, maxJumpLane0 = 0, handoverLane0 = null, ballSeenInPlay = null;
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
     const iv3 = beat.Viz.internals();
-    const d = iv3.scroll.dx;
     const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
-    if (!counting){
-      if (dxAtHandover === null) dxAtHandover = d;            // 开播第一帧
-      /* v3.1.3：滚动全程无球——预备拍隐藏要延续到正式播放段（paintBall 守卫） */
-      const bd = iv3.ballEl.style.display, sd = iv3.shadowEl.style.display;
-      if (ballSeenInPlay === null && (bd !== "none" || sd !== "none")) ballSeenInPlay = { bd, sd };
-    }
-    if (prev !== null) maxJump = Math.max(maxJump, Math.abs(d - prev));
-    prev = d;
+    const t0 = txOf(iv3.rowEls[0]);
+    if (prevLane0 !== null) maxJumpLane0 = Math.max(maxJumpLane0, Math.abs(t0 - prevLane0));
+    prevLane0 = t0;
+    const counting_now = els["statusText"].textContent.indexOf("预备拍") >= 0;
+    if (!counting_now && handoverLane0 === null) handoverLane0 = t0;   // 开播第一帧
+    /* v3.1.3：滚动全程无球——预备拍隐藏要延续到正式播放段（paintBall 守卫） */
+    const bd = iv3.ballEl.style.display, sd = iv3.shadowEl.style.display;
+    if (!counting_now && ballSeenInPlay === null && (bd !== "none" || sd !== "none")) ballSeenInPlay = { bd, sd };
   });
-  ok(maxJump < 40, "★ 预滚 → 播放衔接零跳变（相邻帧 dx 差恒为一帧的正常位移）",
-    "最大帧间差 " + maxJump + "px");
+  ok(maxJumpLane0 < 40, "★ 预滚 → 播放衔接零跳变（第一道相邻帧位移恒为一帧的正常量）",
+    "最大帧间差 " + maxJumpLane0 + "px");
+  near(handoverLane0, (geo0.left + geo0.width / 2) - geo0.left - geo0.width, 2,
+    "★ 开播第一帧第一道 = 静止态（C − left − W，预滚恰好收完，第 1 小节起点正对播放杆）",
+    "交接 tx=" + handoverLane0);
   eq(ballSeenInPlay, null, "★ 开播后（正式播放段）球与影子仍全程隐藏（paintBall 守卫）");
-  near(dxAtHandover, rest, 30,
-    "★ 开播第一帧 dx = 静止态（第 1 小节起点正对播放头，预滚恰好收完）",
-    "交接 dx=" + dxAtHandover);
 }
 
 section("T160b 分页预备拍球 · 幽灵步回归（拆分后 paged 路径不变）");
