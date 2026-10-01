@@ -2776,18 +2776,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5863  Modal         应用内弹窗
      L6001  Viz           时值可视化渲染与每帧动画
-     L8962  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9629  Trainer       变速训练器
-     L9821  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10432 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11799 Editor        自定义节奏型编辑器
-     L12245 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12292 Ear           听辨训练（v1.10.0）
-     L12512 Arrange       曲式编排（v2.0.0）
-     L15410 Help          使用方法（v2.0.1）
-     L15539 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15613 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15856 初始化（装配） 各模块 hook 接线与启动
+     L8965  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9632  Trainer       变速训练器
+     L9824  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10435 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11802 Editor        自定义节奏型编辑器
+     L12248 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12295 Ear           听辨训练（v1.10.0）
+     L12515 Arrange       曲式编排（v2.0.0）
+     L15413 Help          使用方法（v2.0.1）
+     L15542 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15616 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15859 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2813,7 +2813,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.4";
+const VERSION = "3.1.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8599,9 +8599,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          贴着播放杆（第 1 小节起点 = 播放杆，后续道紧随其右）——三道全程在播放杆
          右侧、开播瞬间逐位相接、零跳变。v3.1.2 的整组位移会把内容道一起甩到右边，
          形成空档 + 列车串（用户实拍否决）。
-         ★ 滑距钳一个行宽：RBc < 预备拍拍数的配置（如 2 拍/道 × 4 拍预备拍）下，
-           第一道滑完一个行宽就停住，剩余拍数只走声与跑道脉冲（空道多滑会甩出左缘
-           再在开播时跳回，白跳）。
+         ★ 滑距 = 剩余预备拍拍数 × 每拍像素：预备拍几拍，第一道就滑几格（每声计数
+           恰好一格过播放杆），数完恰好归静止态——任意拍数（1–8）下开播零跳变。
          ★ rows=1（传送带）不预滚：三槽首尾相接，第一道独立滑动会破坏链式咬合，
            回到静止态（预备拍反馈仍由声/状态栏/跑道脉冲承担）。
          ★ REDUCE_MOTION：滑行是位置语义，保留；球已随 v3.1.3 在 scroll 全程移除。 */
@@ -8613,7 +8612,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           scrollDx = C - gc.left; scrollDy = 0;
           const belt = scrollRows() === 1;
           const beltDy0 = belt && geoOf(0) ? geoOf(0).top : 0;
-          const laneSlide = Math.min(pos * (W / RBc), W);   // 第一道已滑距离（钳一个行宽）
+          /* 第一道已滑距离 = 剩余预备拍拍数 × 每拍像素：起点 = 静止态 + ciBeats×每拍像素
+             （预备拍几拍就滑几格），数完恰好落回静止态——任意拍数下开播零跳变。
+             （v3.1.4 原版钳一个行宽，是按"道恒为 4 拍长"写死的：预备拍 3/2/1 拍时
+             道滑不到位，开播瞬间跳 (RBc−ciBeats) 个拍格——用户指出后改为按剩余拍数计。） */
+          const laneSlide = (ciBeats - pos) * (W / RBc);
           for (let i = 0; i < rowEls.length; i++){
             const g = geoOf(i), r = rowEls[i];
             if (!g || !r) continue;
@@ -8621,7 +8624,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
             /* 内容道（off ≥ 0）钉静止态；第一道（off = −1）从播放杆处（C−left）出发
                随预备拍左移（驮拍格逐拍过杆），滑距钳一个行宽——数完恰好落在静止态 */
-            const dxi = (C - g.left) - (!belt && off === -1 ? laneSlide : 0);
+            const dxi = (C - g.left - W) + (!belt && off === -1 ? laneSlide : 0);   // 静止态 + 剩余预备拍 × 每拍像素
             const dyi = belt ? (beltDy0 - g.top) : 0;
             r.style.transform = `translate(${dxi.toFixed(1)}px, ${dyi.toFixed(1)}px)`;
           }
@@ -8632,7 +8635,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
               if (!g) continue;
               const off = i - scrollCenter;
               const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
-              const dxL = (C - g.left) - (!belt && off === -1 ? laneSlide : 0);
+              const dxL = (C - g.left - W) + (!belt && off === -1 ? laneSlide : 0);
               lyricRows[i].el.style.transform =
                 `translate(${dxL.toFixed(1)}px, ${((lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0)).toFixed(1)}px)`;
             }

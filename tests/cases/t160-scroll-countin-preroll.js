@@ -102,3 +102,45 @@ section("T160b 分页预备拍球 · 幽灵步回归（拆分后 paged 路径不
   ok(xs.every(x => x >= geo0.left - 20 && x <= geo0.left + geo0.width + 20),
     "★ 分页预备拍：球始终在行 0 的 x 范围内（不再悬到行外）");
 }
+
+/* ================= T160c 预备拍拍数自适应（v3.1.5） =================
+   v3.1.4 原版把滑距钳在一个行宽（道恒为 4 拍长）：预备拍 3/2/1 拍时第一道滑不到位，
+   开播瞬间跳 (RBc−ciBeats) 个拍格。改判：第一道起点 = 静止态 + ciBeats×每拍像素，
+   每声计数滑一格，数完恰好归静止态——任意拍数（1–8）零跳变。 */
+section("T160c 预备拍拍数自适应 · 几拍就滑几格，归位零跳变");
+{
+  for (const beats of [3, 2, 1, 8]){
+    const app = loadApp(seedState({
+      scrollMode: true, scrollRows: 3,
+      countIn: { on: true, beats },
+      sel: { type: "builtin", idx: 1 },
+    }));
+    const { beat, els } = app;
+    const g0 = beat.Viz.internals().rowGeo[0];    // 每个 app 现取几何（块间不共享变量）
+    const perBeat = g0.width / 4;                 // 桩：RBc=4（整小节一道）
+    const rest0 = (g0.left + g0.width / 2) - g0.left - g0.width;
+    beat.Controls.start();
+    const ac = FakeAudioContext.last;
+    const txOf = r => { const m2 = /translate\(([-\d.]+)px/.exec(r.style.transform); return m2 ? +m2[1] : null; };
+    let startTx = null, handoverTx = null, contentSteady = true, contentRef = null;
+    drive(ac, beat, 0.2, () => {                   // 开局采样（预备拍进行中）
+      beat.Viz.paintFrame();
+      const iv2 = beat.Viz.internals();
+      if (startTx === null){ startTx = txOf(iv2.rowEls[0]); contentRef = txOf(iv2.rowEls[1]); }
+      if (txOf(iv2.rowEls[1]) !== contentRef) contentSteady = false;
+    });
+    drive(ac, beat, beats * 0.625 + 0.4, () => {   // 跨过该拍数的预备拍全程 → 开播
+      beat.Viz.paintFrame();
+      const iv3 = beat.Viz.internals();
+      const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
+      if (!counting && handoverTx === null) handoverTx = txOf(iv3.rowEls[0]);
+    });
+    near(startTx, rest0 + beats * perBeat, 3,
+      `★ ${beats} 拍：第一道起点 = 静止态 + ${beats}×每拍像素（几拍就摆几格）`,
+      "startTx=" + startTx);
+    near(handoverTx, rest0, 3,
+      `★ ${beats} 拍：开播第一帧第一道归静止态（零跳变）`,
+      "handoverTx=" + handoverTx);
+    ok(contentSteady, `★ ${beats} 拍：内容道全程钉在静止态`);
+  }
+}
