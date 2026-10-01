@@ -6225,6 +6225,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        才变（用户实报：打开连续滚动后，刚开始的画面仍是旧模式那种样子）。
      ★ 同一个函数也服务 Controls.stop：resetForStop 原先把播放头复位成 translateX(0)（行左缘），
        在 scroll 下那是"停止后又退回旧样子"。 */
+  /** @param {boolean} [keepCountLane] 重建时的复位不撤预备拍道（方案 A） */
   function applyScrollRest(keepCountLane){
     if (!S.scrollMode) return;
     /* ★ v3.2.3 方案 A：buildViz 重建时的复位调用传 keepCountLane=true——
@@ -7802,20 +7803,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     return { bar, tib: prevTick + (endTicks - prevTick) * p, pb: prev.pb, sweep };
   }
-  /** @param {number} now @param {number} bar @param {number} tib
-      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
   /* 预备拍道结构重建（v3.2.2/v3.2.3）：拍区/弦线/竖线/拍号按 ciBeats 对齐
      buildRowLayers 的层序；判据 children.length（桩元素无 querySelectorAll）；
      清空用 removeChild 循环（桩的 textContent 赋值不清 children） */
-  function rebuildCountLaneInto(el, ciBeats, hasStr){
-    const want = ciBeats * 2 + (hasStr ? 2 : 0);
+  /** @param {HTMLElement} el @param {number} nBeats @param {boolean} hasStr */
+  function rebuildCountLaneInto(el, nBeats, hasStr){
+    const want = nBeats * 2 + (hasStr ? 2 : 0);
     if (el.children.length === want) return;
     while (el.children.length) el.removeChild(el.children[0]);
-    for (let k = 0; k < ciBeats; k++){
+    for (let k = 0; k < nBeats; k++){
       const z = document.createElement("div");
       z.className = "beat-zone";
-      z.style.left = `${k / ciBeats * 100}%`;
-      z.style.width = `${100 / ciBeats}%`;
+      z.style.left = `${k / nBeats * 100}%`;
+      z.style.width = `${100 / nBeats}%`;
       el.appendChild(z);
     }
     if (hasStr){
@@ -7828,21 +7828,23 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     /* v3.2.3 竖线划分（用户拍板）：内部竖线 = 拍数 − 1，.grid-line 同款
        （骑缝 −0.5px、1px、同色）——与内容道拍边界纵向对齐 */
-    for (let k = 1; k < ciBeats; k++){
+    for (let k = 1; k < nBeats; k++){
       const gl = document.createElement("div");
       gl.className = "grid-line";
-      gl.style.left = `calc(${k / ciBeats * 100}% - .5px)`;
+      gl.style.left = `calc(${k / nBeats * 100}% - .5px)`;
       el.appendChild(gl);
     }
-    for (let k = 0; k < ciBeats; k++){
+    for (let k = 0; k < nBeats; k++){
       const lb = document.createElement("div");
       lb.className = "ruler-lab down";
       lb.textContent = String(k + 1);
-      lb.style.left = `calc(${k / ciBeats * 100}% + 2px)`;
+      lb.style.left = `calc(${k / nBeats * 100}% + 2px)`;
       el.appendChild(lb);
     }
   }
 
+  /** @param {number} now @param {number} bar @param {number} tib
+      @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
   function paintBall(now, bar, tib, a){
     if (!ballEl || !shadowEl) return;
     /* ★★ v3.1.3（用户拍板）：滚动模式**全程不画球**（主球/影子/待命球三样）——
@@ -7857,8 +7859,6 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          "刚播完的道"（甲终点静止态：右缘贴播放杆）持续显示，随 row0 传送带移动；
          跨过每小节的网格重建（重建创建新道默认隐藏，本守卫下一帧即恢复显示）。
          结构重建提炼为 rebuildCountLaneInto（拍区/弦线/竖线/拍号随 ciBeats）。 */
-      if (typeof console !== 'undefined') console.log('[diag] paintBall guard: session =', countLaneSession, '| laneD =', countLaneEl.style.display);
-      // [diag-off] session =', countLaneSession, '| laneD =', countLaneEl.style.display, '| playing =', S.playing);
       if (countLaneSession && countLaneEl){
         const gL0 = geoOf(0);
         const gLc = geoOf(scrollCenter);
