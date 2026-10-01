@@ -37,29 +37,38 @@ section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳�
     "★ 预备拍期间条在预滚（1 秒内左移 ≥ 0.2 个行宽，速度 = 播放速度）",
     "first=" + first + " last=" + last);
 
-  /* ② 球钉播放头：x 恒 = scrollCenter 槽中央 − 8，不随条走；y 在该槽顶带上方
-     ★ 球引用 drive 后现取（buildViz 若重建，旧引用脱节——§4.17.2） */
-  const b = beat.Viz.internals().ballEl;
-  const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(b.style.transform);
-  ok(!!m, "前提：球 transform 可解析", b.style.transform);
-  near(+m[1], C - 8, 2, "★ 预备拍球 x 钉在播放头（scrollCenter 槽中央 − 8）");
-  ok(+m[2] <= geoC.top - 20 + 1 && +m[2] >= geoC.top - 20 - 120,
-    "★ 预备拍球 y 在 scrollCenter 槽顶带上（抛物线弧内）",
-    "y=" + m[2] + " 基准=" + (geoC.top - 20));
+  /* ② v3.1.3（用户拍板）：滚动预备拍**不画球**——预滚期间播放头处是第一圈留空的填充槽，
+     球钉在那里 = 浮在空地上、与滑入的条脱开（v3.1.2 的球钉播放头方案退役）。
+     ★ 逐帧断言"全程从未出现"，不只看末态（T155e 同款口径：隐藏写点只在每帧发生）。 */
+  let ballSeen = null;
+  drive(ac, beat, 1.0, () => {
+    beat.Viz.paintFrame();
+    const iv2 = beat.Viz.internals();
+    const d = iv2.ballEl.style.display, sd = iv2.shadowEl.style.display;
+    if (ballSeen === null && (d !== "none" || sd !== "none")) ballSeen = { d, sd };
+  });
+  eq(ballSeen, null, "★ 滚动预备拍：球与影子全程隐藏（逐帧检查，非只看末态）");
 
   /* ③ 预滚收尾零跳变：预备拍→播放的过渡帧，dx 差恒为一帧的正常位移（≤40px），
      且跨过过渡后 dx 继续同向递减（速度无突变） */
-  let prev = null, maxJump = 0, dxAtHandover = null;
+  let prev = null, maxJump = 0, dxAtHandover = null, ballSeenInPlay = null;
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
-    const d = beat.Viz.internals().scroll.dx;
+    const iv3 = beat.Viz.internals();
+    const d = iv3.scroll.dx;
     const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
-    if (!counting && dxAtHandover === null) dxAtHandover = d;   // 开播第一帧
+    if (!counting){
+      if (dxAtHandover === null) dxAtHandover = d;            // 开播第一帧
+      /* v3.1.3：滚动全程无球——预备拍隐藏要延续到正式播放段（paintBall 守卫） */
+      const bd = iv3.ballEl.style.display, sd = iv3.shadowEl.style.display;
+      if (ballSeenInPlay === null && (bd !== "none" || sd !== "none")) ballSeenInPlay = { bd, sd };
+    }
     if (prev !== null) maxJump = Math.max(maxJump, Math.abs(d - prev));
     prev = d;
   });
   ok(maxJump < 40, "★ 预滚 → 播放衔接零跳变（相邻帧 dx 差恒为一帧的正常位移）",
     "最大帧间差 " + maxJump + "px");
+  eq(ballSeenInPlay, null, "★ 开播后（正式播放段）球与影子仍全程隐藏（paintBall 守卫）");
   near(dxAtHandover, rest, 30,
     "★ 开播第一帧 dx = 静止态（第 1 小节起点正对播放头，预滚恰好收完）",
     "交接 dx=" + dxAtHandover);

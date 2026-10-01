@@ -2273,7 +2273,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 灰格 = 休止），
           点「知道了」收起后就不再出现</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
-        <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上</li>
+        <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
         <li>画面动画由<b>音频时钟</b>驱动——以声音为准对齐画面，声画偏差 &lt; 16ms</li>
       </ul>
@@ -2607,7 +2607,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
              这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
       <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时顶部的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
+    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音（弹跳球<b>仅在分页模式</b>显示，连续滚动模式下不出现）；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时顶部的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
 
     <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
     <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
@@ -2776,18 +2776,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5863  Modal         应用内弹窗
      L6001  Viz           时值可视化渲染与每帧动画
-     L8944  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9611  Trainer       变速训练器
-     L9803  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10414 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11781 Editor        自定义节奏型编辑器
-     L12227 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12274 Ear           听辨训练（v1.10.0）
-     L12494 Arrange       曲式编排（v2.0.0）
-     L15392 Help          使用方法（v2.0.1）
-     L15521 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15595 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15838 初始化（装配） 各模块 hook 接线与启动
+     L8952  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9619  Trainer       变速训练器
+     L9811  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10422 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11789 Editor        自定义节奏型编辑器
+     L12235 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12282 Ear           听辨训练（v1.10.0）
+     L12502 Arrange       曲式编排（v2.0.0）
+     L15400 Help          使用方法（v2.0.1）
+     L15529 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15603 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15846 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2813,7 +2813,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.2";
+const VERSION = "3.1.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7767,6 +7767,19 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
   function paintBall(now, bar, tib, a){
     if (!ballEl || !shadowEl) return;
+    /* ★★ v3.1.3（用户拍板）：滚动模式**全程不画球**（主球/影子/待命球三样）——
+       此前的口径是"待命球不画、主球钉行中央"，但用户实拍预备拍 + v3.1.2 预滚后确认：
+       滚动模式的落点感由播放头（钉中央）+ 内容滚动 + 声音承担，球在这个模式下
+       没有可靠的落点参照（预备拍处是留空槽、播放中随内容滚过），一律取消。
+       ★ S.bounce（弹跳球开关）自此仅对分页模式生效；本守卫必须放在 !S.bounce
+         分支之前——scroll 下即使开关关着也要走同一套隐藏（幂等，写点归一）。
+       ★ 恢复：切回分页后本函数自然走原路径，display="" 每帧重写，无永久关闭。 */
+    if (S.scrollMode){
+      ballEl.style.display = "none"; shadowEl.style.display = "none";
+      if (waitEl) waitEl.style.display = "none";
+      if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
+      return;
+    }
     if (!S.bounce){
       ballEl.style.display = "none"; shadowEl.style.display = "none";
       if (waitEl) waitEl.style.display = "none";
@@ -7777,7 +7790,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* v3.0.0：scroll 整个不画待命球（用户拍板）——它的语义是"在下一行左缘等着接棒"，
        而 scroll 的下一小节是从右缘滚进来的，左缘是刚滚出去的上一小节，落点不存在。
        ★ 这里只设**初始态**：真正需要守卫的是下面那两处"设回可见"的写点
-         （接力段 与 paintFrameBody 的预备拍段），门开在本行会被它们同帧覆盖。 */
+         （接力段 与 paintFrameBody 的预备拍段），门开在本行会被它们同帧覆盖。
+       ★ v3.1.3：预备拍段的写点已被 paintBall 顶部的 scroll 守卫前置遮蔽
+         （paintFrameBody 的 count-in 分支同步隐藏，双保险），本守卫降级为兜底。 */
     if (S.scrollMode && waitEl) waitEl.style.display = "none";
     const CB = CONFIG.bounce;
     const rowTicksV = segTicks();                           // v2.15.0：一行的 tick 跨度（原为整小节）
@@ -8548,24 +8563,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const RBc = rowBeats();
       const pos = Math.max(0, Math.min(ciBeats, (c.currentTime - ciStart) / spb()));
       if (S.bounce && ballEl && shadowEl){
-        /* ★★ v3.1.2（用户实拍）滚动模式下 paged 幽灵步**不能沿用**：scroll 的行被传送带
-           位移推着走（实测 dx=689 时行 0 已滚出左缘），静态 geoOf 画出的球悬在行外
-           （用户截图：球在 (523,25)，行在别处）。scroll 改为**球钉播放头**：预滚期间条以
-           播放速度从右滑入（见下方预滚块），第 1 小节起点在开播瞬间抵达播放头，球在
-           播放头上按计数拍弹跳——开播瞬间与正式球的落点/相位无缝衔接。 */
+        /* ★★ v3.1.3（用户拍板）：滚动预备拍**不画球**——v3.1.2 的"球钉播放头"方案退役。
+           缘由：预滚期间播放头处是第一圈留空的填充槽（没有内容），球钉在那里 = 浮在空地上，
+           与右侧正在滑入的节奏型条视觉脱开，观感仍是"错位"（用户实拍第二张截图）。
+           预备拍的计数反馈已足够：计数声 + 状态栏计数 + 跑道拍点脉冲 + 预滚滑入的条。
+           ★ 与 v3.0.0 批 8"scroll 整个不画待命球"同一拍板口径（T155e 有逐帧守卫）。
+           ★ 只隐藏不变形：正式播放的球由 paintBall 每帧 display="" 接管，无状态泄漏；
+             paged 分支的幽灵步不受影响（预备拍在 paged 下语义成立：条是静态的，球走的是
+             眼前看得见的第一个窗口）。 */
         if (S.scrollMode){
-          const gcB = geoOf(scrollCenter) || geoOf(0);
-          if (gcB){
-            const frac = pos - Math.floor(pos);
-            const h = REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * frac * (1 - frac);
-            const hN = Math.min(1, h / CONFIG.bounce.max);
-            const CB = gcB.left + gcB.width / 2;
-            ballEl.style.display = ""; shadowEl.style.display = "";
-            ballEl.style.transform = `translate(${(CB - 8).toFixed(1)}px, ${(gcB.top - 20 - h).toFixed(1)}px)`;
-            shadowEl.style.transform = `translate(${(CB - 1).toFixed(1)}px, ${(gcB.top + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
-            shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
-            if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
-          }
+          ballEl.style.display = "none"; shadowEl.style.display = "none";
+          if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
         } else {
         const row = Math.floor(pos / RBc) % Math.max(1, rowGeo.length);
         const g = geoOf(row) || geoOf(0);

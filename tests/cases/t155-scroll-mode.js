@@ -15,7 +15,7 @@
    桩的几何：rowGeo[i].top = 58 + i×86（ROW_TOP0/ROW_H，跨用例累加故只断言**差值**），
    行宽 ROW_W = 600 ⇒ C = 300；vizRowBoxH = offsetHeight = 44。 */
 "use strict";
-const { loadApp, FakeAudioContext, driveFrames, ok, eq, near, section } = require("../lib/harness");
+const { loadApp, FakeAudioContext, driveFrames, drive, ok, eq, near, section } = require("../lib/harness");
 
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 /* 4 小节曲式（内置型 1 = 四分基础 4/4，1 遍 = 4 小节） */
@@ -272,7 +272,7 @@ section("T155d 歌词 · scroll 下恒 follow 且随槽同组 (dx,dy)");
   eq(barRows(els.viz).length, beat.Store.S.vizRows, "★ 关 scroll 后行数回到 S.vizRows（无 rows+1 残留）");
 }
 
-section("T155e 球 · 主球钉在行中央；scroll 下无待命球、切回复原");
+section("T155e 球 · v3.1.3 起 scroll 全程无球（主球/影子/待命球）；切回分页复原");
 {
   const { beat } = loadApp(arrSeed({ scrollMode: true, scrollRows: 3 }));
   beat.Controls.start();
@@ -292,8 +292,16 @@ section("T155e 球 · 主球钉在行中央；scroll 下无待命球、切回复
   eq(seen, null, "★ scroll 下待命球**全程**不出现（逐帧检查，非只看末态）");
   const int = beat.Viz.internals();
   eq(int.waitEl.style.display, "none", "★ scroll 下待命球隐藏（整个模式不画）");
-  const bx = /translate\((-?[\d.]+)px/.exec(int.ballEl.style.transform || "");
-  ok(bx, "主球有 transform（照常逐帧驱动）");
+  /* v3.1.3（用户拍板）：主球与影子同样**全程不画**——滚动模式的落点感由播放头 +
+     内容滚动 + 声音承担，球没有可靠的落点参照。逐帧口径同待命球（隐藏写点每帧发生）。 */
+  let ballSeen = null;
+  drive(ac, beat, 1.0, () => {
+    beat.Viz.paintFrame();
+    const iv2 = beat.Viz.internals();
+    const d = iv2.ballEl.style.display, sd = iv2.shadowEl.style.display;
+    if (ballSeen === null && (d !== "none" || sd !== "none")) ballSeen = { d, sd };
+  });
+  eq(ballSeen, null, "★ scroll 播放中主球与影子**全程**不出现（逐帧检查，非只看末态）");
   eq(beat.Viz.internals().tg.style.display, "none", "尾迹同样关闭");
 }
 {
