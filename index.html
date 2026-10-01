@@ -630,11 +630,6 @@ body.wide-full .main{max-width:none}
    长度 = 预备拍拍数 × 每拍像素（几拍就几格），格内格子由 JS 按 ciBeats 动态填充
    （.count-track-cell），左缘从播放杆处随计数逐拍左移（每声计数一格过杆）。
    不再是虚线空框——跑道本体可见、长度即预备拍拍数。 */
-.count-track{position:absolute;left:0;top:0;height:100%;display:none;visibility:visible;pointer-events:none;
-  box-sizing:border-box;border:1px solid var(--border);border-radius:8px;
-  background:var(--bg-elev, rgba(255,255,255,.03));overflow:hidden;
-  flex-direction:row;gap:4px;padding:4px;align-items:stretch;z-index:3}
-.count-track-cell{flex:1 1 0;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.04)}
 @keyframes ball-breath{0%,100%{filter:brightness(1)}50%{filter:brightness(1.55)}}
 .bounce-wait{opacity:.45;box-shadow:none}   /* 接力待命球：半透明，下一小节交接时转正式 */
 .bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
@@ -2781,23 +2776,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2813  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3442  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5046  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5873  Modal         应用内弹窗
-     L6011  Viz           时值可视化渲染与每帧动画
-     L9007  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9674  Trainer       变速训练器
-     L9866  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10477 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11844 Editor        自定义节奏型编辑器
-     L12290 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12337 Ear           听辨训练（v1.10.0）
-     L12557 Arrange       曲式编排（v2.0.0）
-     L15455 Help          使用方法（v2.0.1）
-     L15584 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15658 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15901 初始化（装配） 各模块 hook 接线与启动
+     L2808  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3437  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5041  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L5868  Modal         应用内弹窗
+     L6006  Viz           时值可视化渲染与每帧动画
+     L9020  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9687  Trainer       变速训练器
+     L9879  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10490 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11857 Editor        自定义节奏型编辑器
+     L12303 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12350 Ear           听辨训练（v1.10.0）
+     L12570 Arrange       曲式编排（v2.0.0）
+     L15468 Help          使用方法（v2.0.1）
+     L15597 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15671 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15914 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2823,7 +2818,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.2.1";
+const VERSION = "3.2.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6071,7 +6066,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   }
   /** @param {number} i */
   const geoOf = i => rowGeo[i] || null;
-let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countTrackEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍条（v3.1.7）
+let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countLaneEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍条（v3.1.7）
 let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
@@ -6231,7 +6226,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function applyScrollRest(){
     if (!S.scrollMode) return;
     /* v3.1.7：预备拍条随停止/切模式撤除，第一道行复位（与交接写点对称） */
-    if (countTrackEl) countTrackEl.style.display = "none";
+    if (countLaneEl) countLaneEl.style.display = "none";
     if (rowEls[0]) rowEls[0].style.visibility = "";
     const gc = geoOf(scrollCenter) || geoOf(0);
     if (!gc) return;
@@ -7485,16 +7480,21 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     ballEl = document.createElement("div"); ballEl.className = "bounce-ball";
     waitEl = document.createElement("div"); waitEl.className = "bounce-ball bounce-wait";
     viz.appendChild(shadowEl); viz.appendChild(ballEl); viz.appendChild(waitEl);
-    /* 预备拍条（v3.1.7，用户需求"预备拍几拍、预滚道就多长"）：scroll 预备拍专用
-       的第一道——长度 = ciBeats×每拍像素（几拍就多长），内嵌拍格线，从播放杆处
-       随计数逐拍左移过杆。复用填充行做不了这件事：行宽是行结构（RBc 格），
-       改宽度会把格挤变形，且会泄漏到开播后的"上一小节"槽。真实行在预备拍期间
-       整行隐藏，开播第一帧恢复（见 paintFrameBody 预备拍分支与正常分支的交接）。 */
-    countTrackEl = document.createElement("div"); countTrackEl.className = "count-track";
-    /* ★ v3.1.9：挂在**第一道行自身**（而不是 viz）——visibility 可逐层覆盖
-       （行 hidden、条 visible），条天然跟随行的实时位置（含歌词内联塌缩等
-       流式变化），不再依赖 buildViz 时缓存的行带坐标（窄幅行距下会脱节）。 */
-    rowEls[0].appendChild(countTrackEl);
+    /* 预备拍道（v3.2.2，方案一·用户拍板）：**与真实跑道同构**的真行——
+       同款 .bar-row/.beat-zone/.tab/.ruler-lab 结构（buildRowLayers 直接构建），
+       预备拍期间显示一条**空拍格道**（每拍一格 + 座次尺拍号 = 计数数字 1..N），
+       甲轨迹：左缘从播放杆出发随计数逐拍左移，开播瞬间恰好停在播放杆左侧紧贴处。
+       挂在 rowEls[0] 内（visibility 逐层覆盖：行 hidden、道 visible），
+       天然跟随行的实时位置。交接/恢复：道隐藏、row0 复位（对称写点见
+       paintFrameBody 正常分支与 applyScrollRest）。 */
+    countLaneEl = document.createElement("div");
+    countLaneEl.className = "bar-row";
+    countLaneEl.style.position = "absolute";
+    countLaneEl.style.top = "0"; countLaneEl.style.left = "0"; countLaneEl.style.margin = "0";
+    countLaneEl.style.display = "none"; countLaneEl.style.zIndex = "3";
+    rowEls[0].appendChild(countLaneEl);
+    buildRowLayers(0, countLaneEl, vizHasStrum(), 0);   // 数据区函数（hasStr 是行循环局部，此处不可见）
+    zoneEls.pop(); strumLayers.pop(); rulerEls.pop();   // 预备拍道不进逐帧行注册表
     /* v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）。
        ★★ v3.0.0 批 4：scroll 下**必须采两次**（第二次在设完 #viz 高度之后）。
           缘由是一条隐蔽的耦合：`#viz` 的高度由本函数设（裁到 rows 行），而高度会改变**页面
@@ -8653,27 +8653,40 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              长度 = 预备拍拍数 × 每拍像素（几拍就几格），左缘从播放杆出发随计数
              逐拍左移（每声计数一格过杆），数完整条退出到播放杆左侧、交接撤除、
              真实第一道（填充行）复位。不再是虚线空框。 */
-          if (!belt && countTrackEl){
+          if (!belt && countLaneEl){
             const g0 = geoOf(0) || gc;
-            /* 拍格数 = 预备拍拍数（几拍就几格），格子在道长内均分 */
-            if (countTrackEl.children.length !== ciBeats){
-              countTrackEl.textContent = "";
+            /* 拍区/拍号随 ciBeats 重建：预备拍几拍就几格，拍号即计数数字 1..N。
+               结构对齐 buildRowLayers：zones… → .tab（弦线）→ .strums（空层）→ labels…。
+               判据用 children.length（桩元素无 querySelectorAll，全量重建保桩/真机同路） */
+            if (countLaneEl.children.length !== ciBeats * 2 + 2){
+              while (countLaneEl.children.length) countLaneEl.removeChild(countLaneEl.children[0]);   // 桩/真机通用清空（textContent 不清 children）
               for (let k = 0; k < ciBeats; k++){
-                const cell = document.createElement("div");
-                cell.className = "count-track-cell";
-                countTrackEl.appendChild(cell);
+                const z = document.createElement("div");
+                z.className = "beat-zone";
+                z.style.left = `${k / ciBeats * 100}%`;
+                z.style.width = `${100 / ciBeats}%`;
+                countLaneEl.appendChild(z);
+              }
+              const tab = document.createElement("div");
+              tab.className = "tab";
+              countLaneEl.appendChild(tab);
+              const sl = document.createElement("div");
+              sl.className = "strums";
+              countLaneEl.appendChild(sl);
+              for (let k = 0; k < ciBeats; k++){
+                const lb = document.createElement("div");
+                lb.className = "ruler-lab down";
+                lb.textContent = String(k + 1);
+                lb.style.left = `calc(${k / ciBeats * 100}% + 2px)`;
+                countLaneEl.appendChild(lb);
               }
             }
-            countTrackEl.style.display = "flex";
-            countTrackEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
-            countTrackEl.style.left = `${g0.width.toFixed(1)}px`;   // 行右缘 = 播放杆
-            countTrackEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
-            /* ★ v3.2.1 轨迹修正（用户多次实拍否决）：跑道**从右侧滑入、逼近播放杆，
-               开播瞬间左缘恰好停在播放杆——全程不越到播放杆左侧**。
-               此前起点定在播放杆处向左滑（横跨/越过播放杆伸进左半区），方向做反。 */
-            /* 甲轨迹（用户拍板）：左缘从播放杆（行内 W）出发随计数逐拍左移、穿过播放杆，
-               开播瞬间右缘恰好停在播放杆左侧紧贴处（= 一条刚播完的道） */
-            countTrackEl.style.transform = `translate(${(g0.width - pos * perBeat).toFixed(1)}px, 0px)`;
+            countLaneEl.style.display = "block";
+            countLaneEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
+            countLaneEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
+            /* 甲轨迹：左缘从播放杆（行内 W）出发随计数逐拍左移，开播瞬间恰好
+               停在行左缘（= 播放杆左侧紧贴处，即该道的静止态） */
+            countLaneEl.style.transform = `translate(${(g0.width - pos * perBeat).toFixed(1)}px, 0px)`;
           }
         }
       }
@@ -8731,8 +8744,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (S.scrollMode){
       /* v3.1.7：预备拍条只在预备拍期间存在——交接第一帧撤条并复位第一道行
          （对称写点：预备拍分支每帧显示条/隐藏行；此守卫让后续帧零开销） */
-      if (countTrackEl && countTrackEl.style.display !== "none"){
-        countTrackEl.style.display = "none";
+      if (countLaneEl && countLaneEl.style.display !== "none"){
+        countLaneEl.style.display = "none";
         if (rowEls[0]) rowEls[0].style.visibility = "";
       }
       /* 播放头钉在**当前槽的水平中央**（不再随 tib 扫过整行——内容在动、头不动）；
@@ -8988,7 +9001,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
        之所以要暴露：paintBall 的抛物线/挤压/投影此前完全没有数值断言——审计把
        「399 行 Viz 零覆盖」列为最大长期风险，而球体物理是其中最容易悄悄改坏的部分
        （它有真实的手感迭代历史，改一个系数人眼很难发现）。 */
-    internals: () => ({ ballEl, shadowEl, waitEl, countTrackEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
+    internals: () => ({ ballEl, shadowEl, waitEl, countLaneEl, cellEls, rowEls, rowGeo, lyricEl, lyricRows, lyricChipEls, lyricFillEls, barChordEls,
       /* v2.86.0（PLAN-v7）：歌词显示位置解析（供断言 auto→bottom/follow 的窄屏默认） */
       effectiveLyricPos, narrow,
       /* v2.43.0：播放杆与尾迹元素（跨行扫入测试的读数口） */
