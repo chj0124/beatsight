@@ -62,8 +62,14 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.0.0 批 6：① 修「播放时歌词不跟行走」——歌词窗口起点抽 `lyricWinBase()` 单一来源
    （批 4 两处手写公式分叉 → 每帧整轨重建 → translateY 同帧覆盖横移）；② rows=1 改**传送带**
    （3 槽、相位去 clamp 首尾相接、三行 dy 叠置、歌词只跟当前槽）。净增约 1.5KB（多为注释）。
-   上调到 1372KB，留约 6KB 拦回归。 */
-const BUDGET_BYTES = 1372 * 1024;
+   上调到 1372KB，留约 6KB 拦回归。
+   v3.0.1（滚动「第一圈语义」）：loopWrapped 会话标记（共享区声明 + 调度曲式/预设两条置位
+   + 四处清零）+ scrollWrapRange() 判据收口（loopWrapActive 退役）+ 网格/歌词/和弦三处
+   第一圈判据 + 歌词取字改 foldSeg + 重建影子 scrollWrappedSeen + T156 注释。git diff 实测
+   161 增 / 52 删（含 CHANGELOG 56 行），index.html 净增约 6.7KB —— 增量大头是注释
+   （为什么通用回跳判定只在预设模式置位、为什么末尾之后照折不空），删了下次还会踩。
+   上调到 1380KB，留约 7.8KB 拦回归。 */
+const BUDGET_BYTES = 1380 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

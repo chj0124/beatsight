@@ -2699,20 +2699,20 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L2728  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L3357  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L4954  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L5770  Modal         应用内弹窗
-     L5908  Viz           时值可视化渲染与每帧动画
-     L8776  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9433  Trainer       变速训练器
-     L9625  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10234 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11521 Editor        自定义节奏型编辑器
-     L11967 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12014 Ear           听辨训练（v1.10.0）
-     L12234 Arrange       曲式编排（v2.0.0）
-     L15132 Help          使用方法（v2.0.1）
-     L15261 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15335 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15578 初始化（装配） 各模块 hook 接线与启动
+     L5781  Modal         应用内弹窗
+     L5919  Viz           时值可视化渲染与每帧动画
+     L8816  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9483  Trainer       变速训练器
+     L9675  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10286 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11573 Editor        自定义节奏型编辑器
+     L12019 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12066 Ear           听辨训练（v1.10.0）
+     L12286 Arrange       曲式编排（v2.0.0）
+     L15184 Help          使用方法（v2.0.1）
+     L15313 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15387 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15630 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2738,7 +2738,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.0.0";
+const VERSION = "3.0.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5300,6 +5300,14 @@ let onsetBuf = /** @type {{ t: number, bar: number, cumT: number, aSec: number, 
      整首连播跨段时就会把那个未来时刻误判成"又进了预备拍"，于是小球被门控挡住、藏掉该小节末尾几拍。
      这也是为什么 ciBeats 不能在预备拍数完后清零（调度侧仍要靠它置首声重拍，见 schedulerBody）。 */
 let ciStart = 0, ciBeats = 0, ciNext = 0, ciLeft = 0, ciEnd = 0;
+/* 回卷标记（v3.0.1，用户拍板「未回卷前留空」）：连续滚动 + 循环开着时，曲首之上
+   （范围起点之前）的槽按"上一圈末尾"折回；但本次连续播放**还没真正回卷过**时，
+   那份内容其实"还没播过"——挂上就是"像刚播过"的错觉（与批 7 修掉的观感同源，
+   只是触发条件从「无循环」换成「循环开着的第一圈」）。
+   置 true 的唯一来源 = 调度侧真的从范围末回卷到起点（arrNextBar 的 wrapped 字段 /
+   预设侧 loopNextBar 的回跳）；时间轴重新起一轮的四处清零：
+   开播 start() / 停止 stop() / 调度重锚 reanchor / 音频上下文重建（watchCtx closed 分支）。 */
+let loopWrapped = false;
 /* 默认重拍分组（v1.3.0 抽取）：基本回退节奏与编辑器新建草稿共用同一条阶梯。
    原先两处各写一遍（basicPattern 与 Editor），将来改分组规则必然漏一处 */
 /** @param {number} meter */
@@ -5546,6 +5554,7 @@ function arrNextBar(a, sel, sec, bar){
   /* 下一小节的线性号 + 归位（三类情形见函数头注释） */
   /** @type {number} */
   let lin;
+  let wrapped = false;   // v3.0.1：③的「循环回卷」子分支才置位（②的拉回不算"回卷过"）
   if (bar < 0){
     lin = from;
   } else {
@@ -5557,6 +5566,7 @@ function arrNextBar(a, sel, sec, bar){
       if (lin > to){
         if (!sel.loop) return null;                      // 范围末尾且不循环 → 停
         lin = from;                                      // 循环回卷：回范围起点
+        wrapped = true;
       }
     }
   }
@@ -5566,6 +5576,7 @@ function arrNextBar(a, sel, sec, bar){
   return { sec: at.sec, bar: at.bar, blockIdx: at.blockIdx, localBar: at.localBar,
     schedBar: at.schedBar, ref: at.ref, pattern: pat,
     blockChanged: pat !== curPat,
+    wrapped,                                             // v3.0.1：真回卷（loopWrapped 的唯一曲式来源）
     sectionChanged: (bar < 0) || at.sec !== sec };
 }
 /* 试听对象（v1.10.0 泛化）：原先这里写死 `S.preview && draft`，只服务编辑器试听。
@@ -6107,6 +6118,9 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
      ★ 这两个数只由 paintFrameBody 的 scroll 分支写，buildViz 只读——单向，不产生回环。 */
   let scrollCur = -1;
   let scrollCenter = 0;
+  /* v3.0.1：loopWrapped 的已重建影子（paintFrameBody 的 scroll 重建判据用——
+     回卷标记翻转但当前小节没变时，靠它补一次重建；初值与 loopWrapped 的静止态一致） */
+  let scrollWrappedSeen = false;
   /** 窗口行数档位（1 / 3）。脏值由 Store 加载侧兜成 3，这里再收一次口（渲染层不信存储） */
   function scrollRows(){ return (S.scrollRows === 1) ? 1 : 3; }
   /** 强拍登场的时长：占**一拍**（4/4 下 = 小节的 1/4）。
@@ -6567,8 +6581,12 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
          上方就挂着曲尾的格子与歌词（用户实拍：还没循环过，上方歌词却是曲尾的"出声响"，
          看起来像刚播过这句）。只有循环**真的开着**（wrap）时，"上方 = 上一圈的末尾"才成立。
          与参考文件同款：bars.push([]) 留空（跑道仍在、格子无）。
-         ★ 必须拦在 songBarAt 之前：负 seg 会让它返回 null ⇒ 整个窗口合成失败回落。 */
-      if (S.scrollMode && !wrap && (pos < 0 || pos >= totalSegs)){ bars.push([]); continue; }
+         ★ 必须拦在 songBarAt 之前：负 seg 会让它返回 null ⇒ 整个窗口合成失败回落。
+         ★ v3.0.1（用户拍板「未回卷前留空」）：循环开着时再加**第一圈**判据——
+           范围起点**之前**（= 上一圈末尾）在本次播放真回卷过（loopWrapped）之前照样留空；
+           范围末**之后**（= 下一圈开头）照常折回——那是几秒后就要发生的未来，预告比空白顺。 */
+      if (S.scrollMode && (wrap ? (pos < wrap.from && !loopWrapped)
+                                : (pos < 0 || pos >= totalSegs))){ bars.push([]); continue; }
       const seg = foldSeg(pos, totalSegs, wrap);
       const at = songBarAt(a, Math.floor(seg / K));
       if (!at) return null;
@@ -6603,7 +6621,12 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const bars = [];
     const cnt = (typeof n === "number" && n > 0) ? n : arrWinBars();
     for (let i = 0; i < cnt; i++){
-      const seg = foldSeg(W + i, segs, wrap);
+      const pos = W + i;
+      /* v3.0.1（第一圈语义，与 arrWindowPat 同判据）：预设 + 范围循环时，范围起点之前
+         （= 上一圈末尾）在本次播放真回卷过之前留空；无 wrap 时预设本就是无限循环的，
+         圆形语义不变（不设边界）。 */
+      if (S.scrollMode && wrap && pos < wrap.from && !loopWrapped){ bars.push([]); continue; }
+      const seg = foldSeg(pos, segs, wrap);
       bars.push(sliceSteps(pat.bars[Math.floor(seg / K)] || [], barTicks, K, seg % K));
     }
     return { name: pat.name || "", desc: pat.desc || "", meter: pat.meter,
@@ -6777,11 +6800,15 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     if (!total) return "";
     const totalSegs = total * K;
     /* ★ v3.0.0（批 7）：与 arrWindowPat 同一副判据——无循环时曲首之上/曲尾之下没有内容，
-       空槽上**不贴和弦胶囊**（否则空行上会挂曲尾的和弦名，与"留空"自相矛盾）。 */
-    if (S.scrollMode && !loopWrapActive() && (winStart + b < 0 || winStart + b >= totalSegs)) return "";
+       空槽上**不贴和弦胶囊**（否则空行上会挂曲尾的和弦名，与"留空"自相矛盾）。
+       ★ v3.0.1：判据与取位同 buildLyricLane——第一圈语义（loopWrapped 前范围起点之前留空）
+         + foldSeg（范围循环下与网格同一折回口径）。 */
+    const chWrap = S.scrollMode ? scrollWrapRange() : undefined;
+    if (S.scrollMode && (chWrap ? (winStart + b < chWrap.from && !loopWrapped)
+                                : (winStart + b < 0 || winStart + b >= totalSegs))) return "";
     const seg = (b === 0 && winPrevSeg >= 0)
       ? winPrevSeg
-      : (((winStart + b) % totalSegs) + totalSegs) % totalSegs;
+      : foldSeg(winStart + b, totalSegs, chWrap);
     if (seg % K !== 0) return "";                     // 不是小节的第一片：和弦仍然有效，只是不重复贴
     const at = songBarAt(a, ((Math.floor(seg / K) % total) + total) % total);
     if (!at) return "";
@@ -7278,21 +7305,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            故这里可以直接用 rangeFor 给出的小节号，不必再乘 K。
          ★ 范围只在**循环真的开着**时才算数——与调度侧同一判据（loopNextBar：
            预设看 S.loopRange.on、曲式看 arrangeSel.loop），否则按全曲/型全长取模。
-           两边判据若分叉，会出现"调度回卷了、画面还在往下走"的音画分裂。 */
-      const K1 = subsPerBar();
-      const wrap = (() => {
-        if (S.playMode === "arrange"){
-          if (S.arrangeSel.loop !== true) return undefined;
-          const total = songBars(arr);
-          if (!(total > 0)) return undefined;
-          const from = Math.min(total - 1, Math.max(0, Math.round(S.arrangeSel.from)));
-          const to = Math.min(total - 1, Math.max(from, Math.round(S.arrangeSel.to)));
-          return { from: from * K1, len: (to - from + 1) * K1 };
-        }
-        const L = loopRangeFor(vizPatLen);
-        if (!L.on) return undefined;
-        return { from: L.from * K1, len: (L.to - L.from + 1) * K1 };
-      })();
+           两边判据若分叉，会出现"调度回卷了、画面还在往下走"的音画分裂。
+         ★ v3.0.1：判据收进 scrollWrapRange()（歌词轨 / 和弦胶囊同一来源），本处不再各写一份。 */
+      const wrap = scrollWrapRange();
       /* ★ 批 2（D19）：建 **rows+1** 行——最后一行是进场行，垂直登场期间它从裁剪区外滑进来。
          若只建 rows 行，登场动画的后半段底部会露出空白（"闪一下"的根源）。
          ★ 批 6：rows=1（传送带）改建 **3** 行——上一 / 当前 / 下一，相位不 clamp 时相邻槽
@@ -7934,17 +7949,25 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        二是取字位置用了 winStart（= cur−1）而不是当前槽的位置（= cur），**歌词错后一小节**
        ——用户实拍：第 0 小节上方本该空，却挂着"我多想"（第 1 小节格子的词）。 */
     const laneRows = (S.scrollMode && scrollRows() === 1) ? 3 : arrWinBars();
+    /* v3.0.1：回卷范围走 scrollWrapRange()——与 buildViz / arrWindowPat 同一来源（批 7 立训：
+       判据各写一份必分叉）。取字位置随之改走 foldSeg：范围循环（如 [5,10]）下原先这里按
+       **全曲**取模、网格按**范围**折回——同一槽歌词与格子对不上（潜在分叉，本次顺手收口）；
+       wrap 为 undefined 时 foldSeg 退化为全曲取模，与旧行为逐位一致。 */
+    const laneWrap = S.scrollMode ? scrollWrapRange() : undefined;
     for (let r = 0; r < laneRows; r++){
       /* 预告行（v2.7.0）：页内最后一片期间第 1 行 = 下一片段。歌词行跟着换内容
          （它是"未来"，标记 .preview 降权，与网格行同一份视觉语义） */
       const pos0 = W + r;
       /* ★ v3.0.0（批 7）：与 arrWindowPat 同一副判据——曲式**无循环**时，曲首之上/曲尾之下
          没有内容，歌词行**留空**（不折回曲尾；用户实拍：第一次播放，上方歌词是曲尾的
-         "出声响"，像刚播过）。空行照建（placeLaneOverlay 的 y 锚点按行号对齐），只是无字。 */
-      const empty = S.scrollMode && !loopWrapActive() && (pos0 < 0 || pos0 >= totalSegs);
+         "出声响"，像刚播过）。空行照建（placeLaneOverlay 的 y 锚点按行号对齐），只是无字。
+         ★ v3.0.1（第一圈语义）：循环开着时，范围起点**之前**（上一圈末尾）在本次播放
+           真回卷过（loopWrapped）之前同样留空；范围末之后（下一圈开头）照常折回预告。 */
+      const empty = S.scrollMode && (laneWrap ? (pos0 < laneWrap.from && !loopWrapped)
+                                              : (pos0 < 0 || pos0 >= totalSegs));
       const seg = (r === 0 && winPrevSeg >= 0)
         ? winPrevSeg
-        : (((W + r) % totalSegs) + totalSegs) % totalSegs;
+        : foldSeg(pos0, totalSegs, laneWrap);
       const k = Math.floor(seg / K);                        // 本行的歌曲小节号
       const rowEl = document.createElement("div");
       rowEl.className = "lyric-row" + (r === 0 && winPrevSeg >= 0 ? " preview" : "");
@@ -8093,13 +8116,27 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       : (winStart >= 0 ? winStart
         : winAnchorSeg(Math.min(Math.max(S.arrangeSel.from, 0), songBars(a) - 1) * subsPerBar(), a));   // v2.10.7：from 已是线性小节号
   }
-  /** 循环现在是否**真的开着**（批 7）：与 buildViz 里 wrap 的判据同源（曲式看 arrangeSel.loop、
-      预设看 loopRangeFor）。开着 ⇒ 负位置折回"上一圈"语义成立；没开 ⇒ 曲首之上是空的，
-      留空而不是折回曲尾（用户实拍：第一次播放，上方歌词是曲尾的"出声响"，像刚播过）。 */
-  function loopWrapActive(){
-    if (S.playMode === "arrange") return S.arrangeSel.loop === true;
-    return loopRangeFor(vizPatLen).on === true;
+  /** 循环的**回卷范围**（批 7 判据 + v3.0.1 抽成单一来源）：曲式看 arrangeSel.loop、
+     预设看 loopRangeFor。返回 {from, len}（片段号口径，scroll 下 ≡ 小节号）或 undefined。
+     ★ buildViz 的窗口合成、buildLyricLane 的取字、chordAtRow 的胶囊三处共用本函数——
+     判据若各写一份，"网格折回而歌词留空"这类分裂必然重演（批 7 立训）。 */
+  function scrollWrapRange(){
+    const K1 = subsPerBar();
+    if (S.playMode === "arrange"){
+      if (S.arrangeSel.loop !== true) return undefined;
+      const a = arrangeCur();
+      const total = a ? songBars(a) : 0;
+      if (!(total > 0)) return undefined;
+      const from = Math.min(total - 1, Math.max(0, Math.round(S.arrangeSel.from)));
+      const to = Math.min(total - 1, Math.max(from, Math.round(S.arrangeSel.to)));
+      return { from: from * K1, len: (to - from + 1) * K1 };
+    }
+    const L = loopRangeFor(vizPatLen);
+    if (!L.on) return undefined;
+    return { from: L.from * K1, len: (L.to - L.from + 1) * K1 };
   }
+  /* v3.0.1：原 loopWrapActive()（批 7 的布尔判据）随第一圈语义退役——消费点都需要
+     {from,len} 做"范围起点之前"判定，布尔不够用了；批 7 的判据语义由 scrollWrapRange() 继承。 */
 
   /** @param {number} tib **行内** tick（与拍点轨同源，来自 audioPosAt）
       @param {number} [k] 可听歌曲小节号（paintFrameBody 每帧已算好，直接传入省一次 onset 表扫描；
@@ -8327,11 +8364,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const cur = (S.playMode === "arrange")
         ? audibleSongBar(ctx.currentTime, arrCur)
         : audiblePatSeg(ctx.currentTime);
-      /* 判据只看**当前小节变了没有**（scrollCur 初值 −1 ⇒ 首帧必然重建一次）。
+      /* 判据看**当前小节变了没有**（scrollCur 初值 −1 ⇒ 首帧必然重建一次）。
          ★ 不能写成 `|| winStart < 0` 兜底：scroll 的 winStart 被钳成非负后这个条件恒假，
-           留着只会误导后来者以为它还在起作用（批 1 的写法在这里已失效）。 */
-      if (cur >= 0 && cur !== scrollCur){
+           留着只会误导后来者以为它还在起作用（批 1 的写法在这里已失效）。
+         ★ v3.0.1：+ loopWrapped 影子——1 小节范围循环（cur 恒不变）与重锚清零这两类
+           "回卷标记翻了但当前小节没变"的情形，槽内容判据已变、必须照样重建一次。 */
+      if (cur >= 0 && (cur !== scrollCur || loopWrapped !== scrollWrappedSeen)){
         scrollCur = cur;
+        scrollWrappedSeen = loopWrapped;
         buildViz();
         resetTracking();
       }
@@ -8809,6 +8849,7 @@ const AudioEngine = (() => {
         nextNoteTime = loopStart;
         schedBar = loopStartBar(patBars(activePattern())); schedStep = 0; schedPlayBar = 0; Viz.resetWindow();
         onsetBuf.length = 0; onsetNext = null;
+        loopWrapped = false;                 // v3.0.1：新时钟重新起一轮，"上一圈"不作数
         Viz.resetTracking();                 // Viz 在 AudioEngine 之前声明：向前引用，方向安全
         watchCtx();
       }
@@ -9155,7 +9196,12 @@ const AudioEngine = (() => {
     if (!steps || steps.length === 0){                  // 空小节：安全跳过（用快照拍号，挂起窗口内 S.sig 可能已变）
       const adv = pat.meter * spb();                    // v1.2.4：强制正向推进，脏拍号不得让进度倒退
       nextNoteTime += (isFinite(adv) && adv > 0) ? adv : 0.5;
+      const prevBar0 = schedBar;
       schedBar = loopNextBar(schedBar, barCount); schedPlayBar++;
+      /* v3.0.1：游标回跳 = 真回卷过一次。★ 只在预设模式置位——曲式的"回卷"是节目单概念
+         （arrNextBar 的 wrapped 字段），型内游标在**换段/换型**时同样回跳，在此处无差别置位
+         会把正常的段推进误判成回卷（语义假阳性，虽因窗口位置巧合当前不可见，但判据必须诚实） */
+      if (S.playMode !== "arrange" && schedBar < prevBar0) loopWrapped = true;
       limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
       return false;   // 空小节跳过：主循环继续下一步
     }
@@ -9237,7 +9283,9 @@ const AudioEngine = (() => {
     nextNoteTime += step.t * spb() / TPB;
     schedStep++;
     if (schedStep >= steps.length){
+      const prevBar1 = schedBar;
       schedStep = 0; schedBar = loopNextBar(schedBar, barCount); schedPlayBar++;
+      if (S.playMode !== "arrange" && schedBar < prevBar1) loopWrapped = true;   // v3.0.1：同上空小节分支的说明
       limitBars++;                                     // v1.9.0：练习量按小节累计（本处与空小节跳过是仅有的两个小节边界出口，共用 loopNextBar）
       /* 变速训练：小节边界计数爬坡；返回 true 表示已练到目标并自动停止，本次调度立即退出 */
       if (S.trainer.on && Trainer.onBarBoundary()) return true;
@@ -9250,6 +9298,7 @@ const AudioEngine = (() => {
       if (S.playMode === "arrange"){
         const nxt = arrNextBar(arrangeCur(), S.arrangeSel, arrSec, arrBar);
         if (!nxt){ if (onArrangeEnd) onArrangeEnd(); return true; }
+        if (nxt.wrapped) loopWrapped = true;            // v3.0.1：真回卷过一次，曲首之上才放折回内容
         arrSec = nxt.sec; arrBar = nxt.bar;
         schedBar = nxt.schedBar;                        // 节目单是型内游标的唯一来源
         if (nxt.blockChanged) Presets.scheduleRef(nxt.ref);
@@ -9317,6 +9366,7 @@ const AudioEngine = (() => {
       loopStart = nextNoteTime;                        // 时间轴与游标对齐 = 从循环起点重新开始
       schedBar = loopStartBar(patBars(pat)); schedStep = 0; schedPlayBar = 0; Viz.resetWindow();
       onsetBuf.length = 0; onsetNext = null;           // 旧端点全部过期，弹跳球按新游标重建
+      loopWrapped = false;                             // v3.0.1：时间轴重新起一轮，"上一圈"不作数
       Viz.resetTracking();
       if (onReanchor) onReanchor(why);
     };
@@ -9755,6 +9805,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     /* 会话额度（v1.10.0）：每次开始都从零起算——limitBars 是小节计数，听辨训练的
        「每次只放 2 小节」靠它判定到点（详见共享状态区 playQuota 的注释） */
     limitBars = 0;
+    loopWrapped = false;                      // v3.0.1：新一轮播放还没回卷过——曲首之上留空
     /* v2.10.12：原 `limitT0 = …`（min 模式的计时基准）与 `syncLimitProg()`（练习量进度文案）
        随练习量删除。额度只用 limitBars 数小节，不需要计时基准；进度文案也没有了承载元素 */
     KeepAlive.sync();                          // v1.4：后台保活随播放状态生效
@@ -9774,6 +9825,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     /* 预备拍会话状态：ciLeft=0 已足以让调度侧的预备拍循环不再进入；ciNext/ciStart 一并归零
        是为了不给"句柄型状态"留下需要靠下一次 start() 覆盖的残值（v2.0.6，审计 P1-3） */
     ciLeft = 0; ciBeats = 0; ciNext = 0; ciStart = 0; ciEnd = 0;
+    loopWrapped = false;                      // v3.0.1：停止 = 回到"第一圈还没开始"的静止态
     /* 会话播放额度一并作废（v1.10.0）：不清的话，中途手动停一次，
        下次普通播放会带着上一轮的额度"放两小节就停"——那是最难查的那类残留 bug。
        听辨训练那条路径是「先清零再 stop」，所以不受这行影响 */
