@@ -129,6 +129,7 @@ const CASE_FILES = [
   "./cases/t157-viz-legend",              // v3.1.0（A1）：首用图例条——显示/关闭/记忆/老用户不复活（S.vizLegend 热键全链路）
   "./cases/t158-preset-audition",         // v3.1.0（4.3）：条目 ▶ 试听——进/出/换/主播放互斥/拍号恢复
   "./cases/t159-assembly-wiring",         // v3.1.0：装配区接线——搜索过滤 / Esc 键盘层 / 主钮 toggle
+  "./cases/t160-scroll-countin-preroll",  // v3.1.2：滚动预备拍——预滚滑入 + 球钉播放头 + 开播零跳变 + 分页幽灵步回归
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

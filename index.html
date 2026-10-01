@@ -2776,18 +2776,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5863  Modal         应用内弹窗
      L6001  Viz           时值可视化渲染与每帧动画
-     L8898  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9565  Trainer       变速训练器
-     L9757  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10368 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11735 Editor        自定义节奏型编辑器
-     L12181 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12228 Ear           听辨训练（v1.10.0）
-     L12448 Arrange       曲式编排（v2.0.0）
-     L15346 Help          使用方法（v2.0.1）
-     L15475 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15549 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15792 初始化（装配） 各模块 hook 接线与启动
+     L8944  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9611  Trainer       变速训练器
+     L9803  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10414 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11781 Editor        自定义节奏型编辑器
+     L12227 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12274 Ear           听辨训练（v1.10.0）
+     L12494 Arrange       曲式编排（v2.0.0）
+     L15392 Help          使用方法（v2.0.1）
+     L15521 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15595 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15838 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2813,7 +2813,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.1";
+const VERSION = "3.1.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8545,9 +8545,28 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          第一拍位，与“小节间回卷”同一套视觉）。几何与 pulseZone 同源（geoOf + rowBeats），
          跨行时按窗口行折算（与网格行一一对应）。REDUCE_MOTION：去动作、留位置——球停在
          首拍位待命（与既有“降形变保留位置”纪律同向）。 */
+      const RBc = rowBeats();
+      const pos = Math.max(0, Math.min(ciBeats, (c.currentTime - ciStart) / spb()));
       if (S.bounce && ballEl && shadowEl){
-        const RBc = rowBeats();
-        const pos = Math.max(0, Math.min(ciBeats, (c.currentTime - ciStart) / spb()));
+        /* ★★ v3.1.2（用户实拍）滚动模式下 paged 幽灵步**不能沿用**：scroll 的行被传送带
+           位移推着走（实测 dx=689 时行 0 已滚出左缘），静态 geoOf 画出的球悬在行外
+           （用户截图：球在 (523,25)，行在别处）。scroll 改为**球钉播放头**：预滚期间条以
+           播放速度从右滑入（见下方预滚块），第 1 小节起点在开播瞬间抵达播放头，球在
+           播放头上按计数拍弹跳——开播瞬间与正式球的落点/相位无缝衔接。 */
+        if (S.scrollMode){
+          const gcB = geoOf(scrollCenter) || geoOf(0);
+          if (gcB){
+            const frac = pos - Math.floor(pos);
+            const h = REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * frac * (1 - frac);
+            const hN = Math.min(1, h / CONFIG.bounce.max);
+            const CB = gcB.left + gcB.width / 2;
+            ballEl.style.display = ""; shadowEl.style.display = "";
+            ballEl.style.transform = `translate(${(CB - 8).toFixed(1)}px, ${(gcB.top - 20 - h).toFixed(1)}px)`;
+            shadowEl.style.transform = `translate(${(CB - 1).toFixed(1)}px, ${(gcB.top + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
+            shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
+            if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
+          }
+        } else {
         const row = Math.floor(pos / RBc) % Math.max(1, rowGeo.length);
         const g = geoOf(row) || geoOf(0);
         if (g){
@@ -8562,17 +8581,44 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           shadowEl.style.transform = `translate(${(x - 1).toFixed(1)}px, ${(yB + 15).toFixed(1)}px) scale(${(1 - 0.45 * hN).toFixed(3)},1)`;
           shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
           if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
-          /* v2.42.6 追加（用户确认）：回卷前行首先有球等着——走位进入最后一拍（pos 到达
-             倒数第二拍位之后）时，接力待命球落到首拍位（onsetBuf 已有首音则落在首音处，
-             否则行 0 起点），带 0.25s 的落下动作（半透明 = bounce-wait 既有视觉）；
-             主球回卷落位后由正常路径接管（待命球隐去）。REDUCE_MOTION：不做落下动作。 */
-          /* ★ v3.0.0（批 8，用户实拍）：预备拍**全程只出主球一颗**——待命球退役。
-             v2.42.6 让它"走位进入最后一拍就落到首拍位"，本意是预告"下一个是正式第一拍"；
-             但用户实拍预备拍 4/4 时主球 + 待命球同时在场（paged/scroll 各测过：scroll 下
-             批 2 的守卫挡住了它，paged 下两球同框），观感就是"出现两个小球"。
-             "小节间回卷"的接力待命球（paintBall 终端弧段那处写点）不受影响——那里才是
-             它语义成立的地方。 */
-          if (waitEl) waitEl.style.display = "none";
+        }
+        if (waitEl) waitEl.style.display = "none";
+        }                                  // ← else（paged 幽灵步）
+      }
+      /* ★★ v3.1.2（用户确认）：滚动模式预备拍**预滚**——条以播放速度从右滑入，
+         shift 从 ciBeats×每拍位移线性收到 0，开播瞬间第 1 小节起点恰好抵达播放头
+         （= 静止态 dx），与正式播放的第一帧逐位相接、零跳变。滑行速度与播放中的
+         行槽完全一致（每拍 W/RBc 像素），无速度突变。分页模式窗口是静态的、无此段。
+         ★ REDUCE_MOTION：shift 是**位置语义**（与播放中 dx 同一纪律，不能砍）；
+           球的抛物线已在上面按 REDUCE_MOTION 归零。
+         ★ 待命球退役口径不变（v3.0.0 批 8）：预备拍全程只出主球一颗。 */
+      if (S.scrollMode){
+        const gc = geoOf(scrollCenter) || geoOf(0);
+        if (gc){
+          const W = gc.width, C = gc.left + W / 2;
+          const shift = (ciBeats - pos) * (W / RBc);
+          ph.style.transform = `translateX(${C.toFixed(1)}px)`;
+          scrollDx = C - gc.left + shift; scrollDy = 0;
+          const belt = scrollRows() === 1;
+          const beltDy0 = belt && geoOf(0) ? geoOf(0).top : 0;
+          for (let i = 0; i < rowEls.length; i++){
+            const g = geoOf(i), r = rowEls[i];
+            if (!g || !r) continue;
+            const off = i - scrollCenter;
+            const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
+            r.style.transform = `translate(${(C - g.left - restPh * W + shift).toFixed(1)}px, ${(belt ? (beltDy0 - g.top) : 0).toFixed(1)}px)`;
+          }
+          /* 歌词轨与网格同组 (dx,dy)（批 2 既有纪律），预滚位移必须同样叠加 */
+          if (S.showLyric && lyricEl && !lyricEl.hidden && lyricEl.classList.contains("overlay")){
+            for (let i = 0; i < lyricRows.length; i++){
+              const g = geoOf(i);
+              if (!g) continue;
+              const off = i - scrollCenter;
+              const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
+              lyricRows[i].el.style.transform =
+                `translate(${(C - g.left - restPh * W + shift).toFixed(1)}px, ${((lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0)).toFixed(1)}px)`;
+            }
+          }
         }
       }
       /* v2.86.0（PLAN-v7）：预备拍期间歌词轨始终可见——底部模式底部轨恒显、
