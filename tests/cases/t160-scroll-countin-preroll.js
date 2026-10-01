@@ -29,7 +29,9 @@ section("T160 滚动预备拍（4 拍）· 专用预备拍条 + 内容道钉播�
     beat.Viz.paintFrame();
     const iv = beat.Viz.internals();
     const t = iv.countTrackEl;
-    if (t.style.display !== "none"){
+    /* ★ 双口径：display=block 且 visibility≠hidden 才算"看得见"
+       （v3.1.9 教训：条挂在 visibility:hidden 的行内时，只查 display 会假绿） */
+    if (t.style.display !== "none" && t.style.visibility !== "hidden"){
       const tx = txOf(t);
       if (trackFirst === null) trackFirst = tx;
       trackLast = tx;

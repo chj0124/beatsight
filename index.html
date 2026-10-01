@@ -629,7 +629,7 @@ body.wide-full .main{max-width:none}
    （width = 预备拍拍数×每拍像素、background-size = 每拍像素、transform = 滑移），
    CSS 只管静态外观：半透明底 + 每拍一条竖向格线（background-image 画线、
    background-size 控格距——格距随每拍像素变，不能写死在 CSS）。 */
-.count-track{position:absolute;left:0;top:0;height:86px;display:none;pointer-events:none;
+.count-track{position:absolute;left:0;top:0;height:100%;display:none;visibility:visible;pointer-events:none;
   border:1px dashed var(--green);border-radius:8px;box-sizing:border-box;
   background-image:linear-gradient(to right, var(--border) 1px, transparent 1px);
   background-repeat:repeat-x;z-index:3}
@@ -2784,18 +2784,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5044  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5871  Modal         应用内弹窗
      L6009  Viz           时值可视化渲染与每帧动画
-     L8985  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9652  Trainer       变速训练器
-     L9844  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10455 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11822 Editor        自定义节奏型编辑器
-     L12268 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12315 Ear           听辨训练（v1.10.0）
-     L12535 Arrange       曲式编排（v2.0.0）
-     L15433 Help          使用方法（v2.0.1）
-     L15562 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15636 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15879 初始化（装配） 各模块 hook 接线与启动
+     L8989  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9656  Trainer       变速训练器
+     L9848  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10459 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11826 Editor        自定义节奏型编辑器
+     L12272 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12319 Ear           听辨训练（v1.10.0）
+     L12539 Arrange       曲式编排（v2.0.0）
+     L15437 Help          使用方法（v2.0.1）
+     L15566 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15640 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15883 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2821,7 +2821,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.8";
+const VERSION = "3.1.9";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7489,7 +7489,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        改宽度会把格挤变形，且会泄漏到开播后的"上一小节"槽。真实行在预备拍期间
        整行隐藏，开播第一帧恢复（见 paintFrameBody 预备拍分支与正常分支的交接）。 */
     countTrackEl = document.createElement("div"); countTrackEl.className = "count-track";
-    viz.appendChild(countTrackEl);
+    /* ★ v3.1.9：挂在**第一道行自身**（而不是 viz）——visibility 可逐层覆盖
+       （行 hidden、条 visible），条天然跟随行的实时位置（含歌词内联塌缩等
+       流式变化），不再依赖 buildViz 时缓存的行带坐标（窄幅行距下会脱节）。 */
+    rowEls[0].appendChild(countTrackEl);
     /* v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）。
        ★★ v3.0.0 批 4：scroll 下**必须采两次**（第二次在设完 #viz 高度之后）。
           缘由是一条隐蔽的耦合：`#viz` 的高度由本函数设（裁到 rows 行），而高度会改变**页面
@@ -8648,10 +8651,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           if (!belt && countTrackEl){
             const g0 = geoOf(0) || gc;
             countTrackEl.style.display = "block";
-            countTrackEl.style.top = `${g0.top.toFixed(1)}px`;
+            countTrackEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
             countTrackEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
             countTrackEl.style.backgroundSize = `${perBeat.toFixed(1)}px 100%`;
-            countTrackEl.style.transform = `translate(${(C - pos * perBeat).toFixed(1)}px, 0px)`;
+            /* 行内坐标：行右缘（= 播放杆，W）减去已过拍数——条左缘从播放杆出发逐拍左移 */
+            countTrackEl.style.transform = `translate(${(g0.width - pos * perBeat).toFixed(1)}px, 0px)`;
           }
         }
       }
