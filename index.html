@@ -2776,18 +2776,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5036  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L5863  Modal         应用内弹窗
      L6001  Viz           时值可视化渲染与每帧动画
-     L8965  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9632  Trainer       变速训练器
-     L9824  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10435 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L11802 Editor        自定义节奏型编辑器
-     L12248 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12295 Ear           听辨训练（v1.10.0）
-     L12515 Arrange       曲式编排（v2.0.0）
-     L15413 Help          使用方法（v2.0.1）
-     L15542 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15616 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L15859 初始化（装配） 各模块 hook 接线与启动
+     L8969  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9636  Trainer       变速训练器
+     L9828  Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10439 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L11806 Editor        自定义节奏型编辑器
+     L12252 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12299 Ear           听辨训练（v1.10.0）
+     L12519 Arrange       曲式编排（v2.0.0）
+     L15417 Help          使用方法（v2.0.1）
+     L15546 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15620 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L15863 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2813,7 +2813,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.1.5";
+const VERSION = "3.1.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8624,7 +8624,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
             /* 内容道（off ≥ 0）钉静止态；第一道（off = −1）从播放杆处（C−left）出发
                随预备拍左移（驮拍格逐拍过杆），滑距钳一个行宽——数完恰好落在静止态 */
-            const dxi = (C - g.left - W) + (!belt && off === -1 ? laneSlide : 0);   // 静止态 + 剩余预备拍 × 每拍像素
+            /* 内容道（off ≥ 0）= C−left−restPh×W（restPh=0 → 贴播放杆右侧）；
+               第一道（off = −1）= 静止态（C−left−W）+ 剩余预备拍 × 每拍像素。
+               ★ v3.1.6 修复：v3.1.5 修符号时把 −W 写成了**无条件**，内容道被甩到
+                 播放杆左侧一整个行宽（用户截图：内容全在播放杆左边）。 */
+            const dxi = (C - g.left - restPh * W) + (!belt && off === -1 ? laneSlide : 0);
             const dyi = belt ? (beltDy0 - g.top) : 0;
             r.style.transform = `translate(${dxi.toFixed(1)}px, ${dyi.toFixed(1)}px)`;
           }
@@ -8635,7 +8639,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
               if (!g) continue;
               const off = i - scrollCenter;
               const restPh = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
-              const dxL = (C - g.left - W) + (!belt && off === -1 ? laneSlide : 0);
+              const dxL = (C - g.left - restPh * W) + (!belt && off === -1 ? laneSlide : 0);
               lyricRows[i].el.style.transform =
                 `translate(${dxL.toFixed(1)}px, ${((lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0)).toFixed(1)}px)`;
             }

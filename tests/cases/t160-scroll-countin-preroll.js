@@ -40,8 +40,13 @@ section("T160 滚动预备拍 · 预滚滑入 + 球钉播放头 + 开播零跳�
     "★ 第一道在预滚（1 秒内左移，驮预备拍拍格过播放杆）",
     "第一道 " + lane0First + " → " + lane0Last);
   ok(contentFirst === contentLast,
-    "★ 内容道（第 2/3 条）钉在静止态不动（全程贴播放杆）",
+    "★ 内容道（第 2/3 条）钉住不动（全程贴播放杆）",
     "contentFirst=" + contentFirst + " contentLast=" + contentLast);
+  /* ★ v3.1.6 补绝对位置断言：v3.1.5 曾把内容道甩到播放杆左侧一整个行宽
+     （"不动"断言照样绿——只验了不动、没验在哪），必须钉死数值。 */
+  near(contentFirst, geo0.width / 2, 2,
+    "★ 内容道绝对位置 = 播放杆处（C − left，贴播放杆右侧）",
+    "contentFirst=" + contentFirst);
 
   /* ② v3.1.3（用户拍板）：滚动预备拍**不画球**——预滚期间播放头处是第一圈留空的填充槽，
      球钉在那里 = 浮在空地上、与滑入的条脱开（v3.1.2 的球钉播放头方案退役）。
@@ -142,5 +147,8 @@ section("T160c 预备拍拍数自适应 · 几拍就滑几格，归位零跳变"
       `★ ${beats} 拍：开播第一帧第一道归静止态（零跳变）`,
       "handoverTx=" + handoverTx);
     ok(contentSteady, `★ ${beats} 拍：内容道全程钉在静止态`);
+    near(contentRef, g0.width / 2, 2,
+      `★ ${beats} 拍：内容道绝对位置 = 播放杆处（贴播放杆右侧）`,
+      "contentRef=" + contentRef);
   }
 }
