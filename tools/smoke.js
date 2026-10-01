@@ -413,6 +413,7 @@ function drawerProbe(){
      滚动条 15px），收起态量的卡宽与展开态量的抽屉宽差出这 15px 是平台现象不是回归；
      宽度断言改用同状态的两次测量（Linux overlay 滚动条两态相等，本口也成立） */
   out.cardInnerOpenW = card ? round(card.getBoundingClientRect().width - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight)) : null;
+  out.scrollbarW = window.innerWidth - document.documentElement.clientWidth;   // CI Linux 经典滚动条 20px（抽屉与卡内容宽差的平台现象）
   /* ③ v3.1.0：点条目**不再收起**（选型与看型不分离）——真点一条验证 */
   const firstItem = q("#presetList .preset-item");
   if (firstItem) firstItem.click();
@@ -970,9 +971,10 @@ async function main(){
         ok(!!dw.rowsOpen && !!dw.rowsClosed && dw.rowsOpen.t > dw.rowsClosed.t + 1,
           p.label + "：★ 展开后「同屏行数与拍号」被下推（栅格行号真的换了）",
           "收起 " + (dw.rowsClosed && dw.rowsClosed.t) + " → 展开 " + (dw.rowsOpen && dw.rowsOpen.t));
-        ok(!!dw.drawer && dw.cardInnerOpenW !== null && dw.drawer.w >= dw.cardInnerOpenW - 1,
+        const sbW = dw.scrollbarW || 0;
+        ok(!!dw.drawer && dw.cardInnerOpenW !== null && dw.drawer.w >= dw.cardInnerOpenW - 1 - sbW,
           p.label + "：★ 抽屉占满控制卡内容宽（全宽内联，不是浮层）",
-          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽(展开态同测) " + dw.cardInnerOpenW);
+          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽(展开态同测) " + dw.cardInnerOpenW + "（滚动条 " + sbW + "）");
         ok(dw.reclosed === true,
           p.label + "：★ 再点一次 → 收起（选中/关闭路径同款）", "hidden=" + dw.reclosed);
       } else {
