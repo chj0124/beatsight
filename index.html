@@ -8659,9 +8659,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             if (countTrackEl.children.length !== ciBeats){
               countTrackEl.textContent = "";
               for (let k = 0; k < ciBeats; k++){
-                const c = document.createElement("div");
-                c.className = "count-track-cell";
-                countTrackEl.appendChild(c);
+                const cell = document.createElement("div");
+                cell.className = "count-track-cell";
+                countTrackEl.appendChild(cell);
               }
             }
             countTrackEl.style.display = "flex";
