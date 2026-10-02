@@ -74,11 +74,11 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 ## 功能一览
 
-当前 `v3.11.2`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.12.0`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|
-| **节拍内核** | Web Audio 时钟调度，tick 制节奏模型（每拍 48 tick）；时值可视化（格子宽度与音符时值严格成正比）；BPM 30–240（数字输入 / 滑杆 / TAP 测速 / 常用档快捷键）；拍号 2/4–7/4，奇数拍可选重拍分组；三条独立音量（节拍 / 扫弦 / 重拍增强）；音频延迟补偿 |
+| **节拍内核** | Web Audio 时钟调度，tick 制节奏模型（每拍 48 tick）；时值可视化（格子宽度与音符时值严格成正比）；BPM 30–240（数字输入 / 滑杆 / TAP 测速 / 常用档快捷键）；拍号随节奏型自动切换（2/4–7/4，奇数拍按内置重拍分组）；三条独立音量（节拍 / 扫弦 / 重拍增强）；音频延迟补偿 |
 | **节奏库与编辑器** | 17 个内置预设（12 条通用型 + 5 条《在他乡》示例型），按「节拍 / 扫弦 / 自定义」三区堆叠（宽屏三列并列）；抽屉搜索过滤、条目 ▶ 试听；自定义编辑器（时值校验、试听、增删小节 1–64、发声开关、本地保存）；预设导入导出 JSON |
 | **记谱与训练** | 扫弦方向标注 ↑↓、空扫、弦区三档（全扫 / 低 / 高）；和弦标注（块级逐小节、型级整段备忘）；预备拍、静音拍（N/M 或随机）；三套程序合成音色（电子 / 木鱼 / 鼓组）；Swing 三档 |
 | **可视化** | 弹跳球预判落点、十六分小格 `1 e & a`、当前高亮、同屏 1–4 行窗口（出厂 2 行）、首用图例条（可关）、双主题（经典深色 / 日间浅色）、自选背景壁纸、窄屏自动分片 |

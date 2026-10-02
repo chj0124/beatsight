@@ -122,37 +122,33 @@ section("T73c 曲式播放中点预设 · 退回单练它（对等入口契约�
   beat.Controls.stop();
 }
 
-/* ================= 场景 T73d：曲式期间锁定拍号（v2.42.5，α 方案） =================
-   缺陷（用户截图报障）：整首连播《在他乡》时切 2/4/3/4，音符格子画出网格框架叠上侧栏——
+/* ================= 场景 T73d（v3.12.0 重写）：拍号控件删除后的语义 =================
+   原始缺陷（v2.42.5 修）：整首连播《在他乡》时点 2/4/3/4，音符格子画出网格框架叠上侧栏——
    曲式按 4/4 逐格授权（扫弦谱 16 格/小节、歌词锚点同源），切拍号后渲染层拿 2/4 的行跨度
    （barTicks = vizSig×TPB = 8）去切 16 tick 的谱面，sliceSteps 的 K=1 档原样放行全部步进，
    第 9–16 格的 left 落在 100%–200%（桩实测 8 个元素 left>100%）。
-   修法（α）：曲式期间点击拍号直接拦截 + 提示；pill 置灰示意（sig-lock 类，装配层钩子切换）；
-   程序性对齐（选型/跳段/听辨的 Controls.setSig 调用）不经过点击处理器、不受影响。
-   反向验证：删掉点击处理器里的守卫 → 本场景"拦截/提示"两条变红。 */
-section("T73d 曲式期间锁定拍号 · 点击拦截 + 置灰示意（v2.42.5）");
+   v2.42.5 的修法是**拦截用户点击 + sig-lock 置灰**（治症状）；
+   ★ v3.12.0 的修法是**拔掉那个入口**（治根因）：手动拍号控件整块删除，
+   界面不再存在任何"把拍号切到与当前型/歌曲不一致"的路径——原缺陷随之无从复发。
+   本场景改钉三件事：① 控件确已删除；② 曲式起播仍会把拍号对齐到歌曲（那条对齐守卫还在）；
+   ③ 程序性 setSig 出口仍可用（选型/跳段/听辨/试听恢复都靠它）。 */
+section("T73d 拍号控件删除 · 曲式起播对齐仍在 + 程序性出口仍可用（v3.12.0）");
 {
   const { beat, els } = loadDemo();
+  ok(!els["sigRow"], "★★ 前提：拍号控件已删除（桩里取不到 #sigRow）");
   playAllOf(els).fire("click");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   drive(ac, beat, 1);
   eq(beat.Store.S.playMode, "arrange", "前提：整首连播中");
-  eq(beat.Store.S.sig, 4, "前提：起播对齐守卫已把拍号切回歌曲的 4/4");
-  ok(/sig-lock/.test(els["sigRow"].className), "★ 曲式期间拍号行带 sig-lock（pill 置灰示意）");
-
-  els["sigRow"].fire("click");                         // 用户点拍号（stub 的 target = 行本身）
-  eq(beat.Store.S.sig, 4, "★ 曲式期间点拍号被拦截：S.sig 纹丝不动（修复前会变 2，格子溢出框架）");
-  ok(/跟随歌曲/.test(String(els["statusText"].textContent)), "拦截时给出提示（statusText）");
-
-  /* 对照：程序性对齐路径不受影响（选型/跳段/听辨的对齐都走 Controls.setSig 出口） */
+  eq(beat.Store.S.sig, 4, "★★ 曲式起播仍把拍号对齐到歌曲的 4/4（原 v2.42.5 的起播对齐守卫还在）");
+  /* 对照：程序性对齐路径仍放行（选型/跳段/听辨/试听恢复的对齐都走 Controls.setSig 出口） */
   beat.Controls.setSig(2);
-  eq(beat.Store.S.sig, 2, "程序性 setSig（选型/跳段对齐）仍放行——守卫只拦用户点击");
+  eq(beat.Store.S.sig, 2, "程序性 setSig 仍可用（控件删除只拔掉 UI 入口，不动状态出口）");
   beat.Controls.setSig(4);
-
-  /* 退出曲式（点预设）→ 解锁 */
+  /* 退出曲式（点预设）→ 选型自动对齐拍号 */
   itemByName(els, "四分基础").fire("click");
   eq(beat.Store.S.playMode, "preset", "点预设退回预设模式");
-  ok(!/sig-lock/.test(els["sigRow"].className), "★ 退出曲式后拍号行解锁（sig-lock 移除）");
+  eq(beat.Store.S.sig, 4, "★ 退回预设后拍号由选中型决定（四分基础 = 4/4）");
   beat.Controls.stop();
 }

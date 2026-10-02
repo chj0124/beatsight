@@ -59,3 +59,18 @@ ok(/<div class="pd-search">/.test(src) && /id="presetSearch"/.test(src),
   "★ 搜索框随面板一起搬（v3.1.0 A9 的过滤逻辑零改动）");
 ok(/<div id="presetList"><\/div>/.test(src),
   "★★ #presetList 仍是**空容器**（条目由 JS 渲染、必须保持「列表直接子节点」契约——过滤用 hidden 不套 wrapper）");
+
+section("T162e 日间主题面板头：角标不吃整行（标题逐字竖排防回潮，v3.12.0）");
+{
+  /* 用户实拍：日间（obs）主题下预设库面板标题「节奏型预设库」逐字竖排。
+     根因：.pd-head 是 flex 行（角标 + 标题 + 收起按钮），而 obs 的卡片角标规则
+     .sec-tag{width:100%} 在行内吃掉全部宽度 → 标题被挤到一字宽、逐字换行。
+     修法与 .group-label .sec-tag 同款先例：行内容器里角标收成内容宽。 */
+  ok(/body\[data-theme="obs"\] \.pd-head \.sec-tag\{display:inline-flex;width:auto;margin:0;flex:none\}/.test(src),
+    "★★ obs 下 .pd-head 的角标收成内容宽（width:auto + flex:none）——"
+    + "否则 width:100% 吃掉整行、标题逐字竖排");
+  ok(/body\[data-theme="obs"\] \.sec-tag\{display:flex;align-items:baseline;gap:10px;width:100%/.test(src),
+    "★ 卡片角标整行规则原样在位（它服务卡片头部，不许动；只在 .pd-head 作用域收宽）");
+  ok(/<span class="sec-tag"><b>02<\/b><i>Library<\/i><\/span>\s*<span class="pd-title">节奏型预设库<\/span>/.test(src.replace(/\n\s*/g, " ")),
+    "★ 面板头结构前提：角标与标题同处一行容器（.pd-head）");
+}

@@ -203,23 +203,29 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   const app = loadApp();
   const beat = app.beat, els = app.els, S = beat.Store.S;
 
-  /* 三组 pill 的真实点击路径（handler 里读 btn.dataset；桩里 pill() 提供 closest） */
-  els["sigRow"].fire("click", { target: pill({ sig: "6" }) });
-  eq(S.sig, 6, "点 6/8 → 拍号生效");
-  eq(els["sigRow"].children[4].getAttribute("aria-pressed"), "true", "同一路径上 aria-pressed 也同步");
-  els["sigRow"].fire("click", { target: pill({}) });
-  eq(S.sig, 6, "点到行空白处（closest 返回 null）→ 提前返回，不改拍号");
+  /* 三组 pill 的真实点击路径（handler 里读 btn.dataset；桩里 pill() 提供 closest）
+     ★ v3.12.0：拍号 pill 组已删除——「切拍号」改由选型的程序性对齐承担，
+     本组改为验 Swing / 音色两族点击路径 + setSig 状态出口仍可用。 */
+  beat.Controls.setSig(6);
+  eq(S.sig, 6, "程序性 setSig 仍可用（拍号控件删除后这是唯一写入口）");
   els["swingRow"].fire("click", { target: pill({ swing: "67" }) });
   eq(S.swing, 67, "点 Swing 档 → 生效");
   els["timbreRow"].fire("click", { target: pill({ timbre: "wood" }) });
   eq(S.timbre, "wood", "点音色档 → 生效");
+  beat.Controls.setSig(4);
+  eq(S.sig, 4, "复位到 4/4");
 
-  /* 奇数拍重拍分组行（按钮是动态生成的，直接触发它的 click） */
+  /* 奇数拍重拍分组行（v3.12.0 起界面已删——数据层 ACC_GROUPS 仍在，
+     回退节奏恒用第 0 组；此处改钉"界面入口确已退役、数据层仍可读可写"） */
   beat.Controls.setSig(5);
-  const accBtns = els["accRow"].children;
-  eq(accBtns.length, 2, "5/4 → 生成 2 个重拍分组档");
-  accBtns[1].fire("click");
-  eq(S.accentGrp[5], 1, "点第二个分组档 → accentGrp 更新为 3+2");
+  ok(!els["accRow"], "★★ 重拍分组行已随拍号控件退役（界面不再有 #accRow）");
+  eq(JSON.stringify(beat.defaultAccents(5)), JSON.stringify([0, 2]),
+    "★ 数据层保留（5/4 默认分组 2+3）——回退节奏仍按第 0 组走");
+  S.accentGrp[5] = 1;                                   // 数据层仍可写（旧存档兼容）
+  eq(JSON.stringify(beat.defaultAccents(5)), JSON.stringify([0, 3]),
+    "★ accentGrp 字段仍生效（旧存档里选了第 2 组的老用户，音型不静默改变）");
+  S.accentGrp[5] = 0;
+  beat.Controls.setSig(4);
 
   /* 音量滑杆：input 只改状态与文案（拖动过程不落盘），change 才落盘 */
   els["volMaster"].value = "45"; els["volMaster"].fire("input");
@@ -523,24 +529,23 @@ section("T33 Presets 接线补完 · 自定义项 / 一键切回 / 导入失败�
   els["importFile"].fire("change", { target: { files: [{}], value: "" } });
   els["modalOk"].fire("click");
   eq(beat.Store.customs.length, 1, "5/4 自定义预设导入成功（小节和 = 5×48 = 240）");
-  beat.Controls.setSig(4);                                   // 先切到 4/4，制造"预设拍号 ≠ 当前拍号"
   const customItem = byName("五拍自定义");
   ok(!!customItem, "自定义预设项已渲染（按名称定位）");
   customItem.fire("click");
   eq(S.sel.id, beat.Store.customs[0].id, "点自定义项 → 选中它");
-  eq(S.sig, 5, "预设拍号与当前不符时自动切到 5/4");
+  eq(S.sig, 5, "★★ 选 5/4 的自定义型 → 拍号自动对齐到 5/4（v3.12.0 起这是唯一入口）");
 
-  /* 一键切回（fallbackBtn）：拍号不匹配时把拍号切回去。
-     注意：回退提示条只在 refreshAfterPatternChange 里刷新，而真实 UI 是 pill 点击处理器
-     把 setSig 与 refreshAfterPatternChange 成对调用的——所以这里必须走真实点击，
-     直接调 setSig(4) 不会让提示条出现（这也解释了为什么该处理器里必须成对写） */
-  els["sigRow"].fire("click", { target: pill({ sig: "4" }) });   // 切回 4/4 → 选中项与拍号不匹配
-  eq(S.sig, 4, "真实点击切到 4/4");
-  eq(els["fallbackNote"].hidden, false, "拍号不匹配 → 显示回退提示条");
-  ok(/五拍自定义/.test(els["fallbackText"].textContent), "提示文案点名被回退的预设");
-  els["fallbackBtn"].fire("click");
-  eq(S.sig, 5, "点「切回」→ 拍号切回预设自身的 5/4");
-  eq(els["fallbackNote"].hidden, true, "切回后提示条收起");
+  /* v3.12.0：拍号回退提示条（#fallbackNote）与其「切回」按钮（#fallbackBtn）已随拍号控件退役——
+     它服务的是"手动切拍号 → 与选中型不匹配"这条路径，而那条路径已不存在。
+     本组改钉「错配无从产生」：选中型换了，拍号必然跟着换。 */
+  ok(!els["fallbackNote"] && !els["fallbackBtn"],
+    "★★ 拍号回退提示条与「切回」按钮均已退役（标记里不再有这两个元素）");
+  {
+    const other = byName("四分基础");
+    ok(!!other, "前提：列表里有 4/4 的型");
+    other.fire("click");
+    eq(S.sig, 4, "★★ 改选 4/4 的型 → 拍号自动对齐（不存在「选中 4/4 而拍号还是 5/4」的中间态）");
+  }
 
   /* 导入失败要给出原因（不是静默失败） */
   app.setFileText('{"presets":[{"name":"坏预设","meter":4,"bars":[[{"t":48}]]}]}');

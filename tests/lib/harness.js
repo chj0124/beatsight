@@ -56,7 +56,9 @@ const HTML_ATTRS = {
   /* 标记里声明了 `hidden` 的元素：真实 DOM 加载后它们就是隐藏的，stub 必须同样如此。
      不做的话「预设库为空才提示跨地址迁移」这类依赖初始隐藏状态的逻辑会被误判为通过/失败
      （v1.3.0 P2-14 踩到）。 */
-  fallbackNote: { hidden: true }, accGroup: { hidden: true }, countInBeatsWrap: { hidden: true },
+  /* v3.12.0：`fallbackNote`（拍号回退提示条）与 `accGroup`（重拍分组壳）随拍号控件
+     整块从标记里删除——桩里同步摘掉，否则"标记里没有了"这件事没人拦。 */
+  countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
   /* v3.1.1：countInBeats 的 value="4" 是标记里写死的默认值（真实浏览器 boot 后显示 4，
      无论存档是什么）。不复刻的话，桩里读 value 得 ""，"boot 同步存档值"的回归断言
@@ -110,10 +112,10 @@ const HTML_ATTRS = {
   volStrumRow: { },
 };
 /* 静态标记里的「pill 组」：真实 HTML 里这些按钮是写死的，stub 不解析 HTML，
-   所以在此复刻。不做的话 `document.querySelectorAll("#sigRow .pill")` 拿到空集合，
-   `setPressed()` 变成空转 —— aria-pressed 这类无障碍断言根本跑不起来（v1.3.0 为 P2-11 而加）。 */
+   所以在此复刻。不做的话 `document.querySelectorAll("#swingRow .pill")` 拿到空集合，
+   `setPressed()` 变成空转 —— aria-pressed 这类无障碍断言根本跑不起来（v1.3.0 为 P2-11 而加）。
+   ★ v3.12.0：`sigRow`（拍号 6 档）已随手动拍号控件从标记里删除，此处同步摘掉。 */
 const HTML_CHILDREN = {
-  sigRow:    [2, 3, 4, 5, 6, 7].map(n => ({ className: "pill" + (n === 4 ? " active" : ""), dataset: { sig: String(n) } })),
   swingRow:  [50, 67, 75].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { swing: String(n) } })),
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
   /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */

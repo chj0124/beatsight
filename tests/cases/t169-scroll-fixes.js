@@ -30,53 +30,53 @@ section("T169a 预备拍道按预备拍拍数构建（4 拍闪变根除）");
   ok(/rebuildCountLaneInto\(countLaneEl, S\.countIn\.beats \|\| rowBeats\(\), vizHasStrum\(\)\)/.test(buildSeg),
     "★★ 建完立刻按预备拍拍数重塑——4/4 拍号的 4 拍结构在 DOM 里从头就不存在，"
     + "重建与帧守卫之间的竞态窗口无从发作（用户实拍的「一瞬间 4 拍」根除）");
-  /* want 公式：拍区 n + 竖线 n−1 + 拍号 n + 弦线 2（hasStr）= 3n−1+2·hasStr。
-     旧式 2n+2·hasStr 少算竖线 → 判据永不成立 → 守卫每帧整拆重建（白耗 + 结构常驻抖动）。 */
-  ok(/const want = nBeats \* 3 - 1 \+ \(hasStr \? 2 : 0\);/.test(html),
-    "★★ rebuildCountLaneInto 的 want 公式计入竖线（3n−1+2·hasStr）——"
-    + "旧式 2n+2 少算竖线，判据永不成立、守卫每帧整拆重建整条道");
-  ok(!/const want = nBeats \* 2 \+ \(hasStr \? 2 : 0\);/.test(html),
-    "★ 旧 want 公式（少算竖线的写法）已退役");
+  /* want 公式（v3.12.0）：拍区 n + 接缝层 1 + 拍号 n + 弦线 2（hasStr）= 2n+1+2·hasStr。
+     教训同 v3.9.0：每加/换一层都要同步公式——漏改 = 判据永不成立、守卫每帧整拆重建。 */
+  ok(/const want = nBeats \* 2 \+ 1 \+ \(hasStr \? 2 : 0\);/.test(html),
+    "★★ rebuildCountLaneInto 的 want 公式 = 2n+1+2·hasStr（拍区 + 接缝层 + 拍号 + 弦线）");
+  ok(!/const want = nBeats \* 3 - 1 \+ \(hasStr \? 2 : 0\);/.test(html),
+    "★ 旧 want 公式（.grid-line 竖线时代）已退役");
 }
 
-section("T169b 预备拍道内竖线放行（scroll 豁免）");
+section("T169b 预备拍道拍边界 = .seams 同款强缝（v3.12.0，用户拍板「与正常跑道完全同款」）");
 {
+  /* 演进：v3.2.3 .grid-line 竖线（1px、top:12/bottom:12、var(--line)）→ v3.9.0 补
+     scroll 豁免放行 → **v3.12.0 改挂 .seams 覆盖层**：正常跑道的拍边界 = .seams 的
+     2px 强缝（top:0、高 44/窄屏 34、骑缝 ±1px、var(--seam-strong)），由同一个
+     seamGradient 生成——旧 .grid-line 短一截、细一档、色不同（用户实拍「竖线有问题」）。 */
   ok(/countLaneEl\.className = "bar-row count-lane"/.test(html),
-    "★★ 道挂 count-lane 专用类——豁免规则的挂点（没有类名就没法只放行道内竖线）");
+    "★ 道挂 count-lane 专用类（道的标识，保留）");
+  const fnSeg = html.slice(html.indexOf("function rebuildCountLaneInto"),
+                           html.indexOf("function paintBall"));
+  ok(/sm\.className = "seams"/.test(fnSeg) && /sm\.style\.background = seamGradient\(xs\)/.test(fnSeg),
+    "★★ 道内拍边界 = .seams 层 + 同一个 seamGradient——与正常跑道逐位同款");
+  ok(/xs\.push\(\{ x: k \/ nBeats \* 100, strong: true \}\)/.test(fnSeg),
+    "★ 每条内部拍边界都是 strong 强缝（2px、var(--seam-strong)、骑缝 ±1px）");
+  ok(!/gl\.className = "grid-line"/.test(fnSeg),
+    "★ 道内不再建 .grid-line（旧竖线退役）");
+  ok(!/\.viz\.scroll-mode \.count-lane \.grid-line\{display:block\}/.test(CSS_CODE),
+    "★ scroll 豁免规则随 .grid-line 退役（道内没有 .grid-line 可豁免了）");
   ok(/\.viz\.scroll-mode \.grid-line\{display:none\}/.test(CSS_CODE),
     "★ 原规则原样在位（静止网格线对不上横移行槽的理由仍成立，不许动它）");
-  ok(/\.viz\.scroll-mode \.count-lane \.grid-line\{display:block\}/.test(CSS_CODE),
-    "★★ 道内竖线豁免放行——竖线是行内 DOM、随道移动，不受原规则理由约束；"
-    + "v3.2.3 的竖线代码自此真正可见（用户实拍「Agent 说实现了但看不见」的根因）");
 }
 
-section("T169e 撤道交叉淡出（宽度突变硬切根除）");
+section("T169e 撤道机制演进史（v3.11.x 交叉淡出 → v3.12.0 自然退场，旧机制整体退役）");
 {
-  /* 用户实拍二连（预备拍=1/2 拍，两种触发：单小节循环每轮回卷 / 首轮窗口播完）：
-     撤道瞬间道（N 拍短条）隐、row0（4 拍通宽内容行）显，同帧一隐一显 =
-     "跑道一瞬间变成 4 拍长"。修法：row0 先复位显形，道 opacity 180ms 淡出后再
-     display:none——硬切变交叉淡出；REDUCE_MOTION 跳过；淡出窗口内守卫不得抢隐藏。 */
-  const at = html.indexOf("countLaneLastCur >= rowEls.length");
-  const seg = html.slice(html.lastIndexOf("if (countLaneEl &&", at), at + 900);
-  ok(/countLaneFading = true/.test(seg) && /transition = "opacity \.18s linear"/.test(seg)
-     && /dyingLane\.style\.display = "none"/.test(seg),
-    "★★ 撤道 = row0 先复位 + 道 opacity .18s 淡出后再 display:none（交叉淡出；"
-    + "闭包锁局部引用 dyingLane，不锁会被 buildViz 重指向的模块级变量）");
-  ok(/REDUCE_MOTION/.test(seg),
-    "★ REDUCE_MOTION 用户跳过淡出（既有降级纪律）");
-  ok(/!countLaneFading/.test(html.slice(html.indexOf('} else if (countLaneEl && countLaneEl.style.display !== "none"'),
-    html.indexOf('} else if (countLaneEl && countLaneEl.style.display !== "none"') + 140)),
-    "★★ 淡出窗口内 paintBall 守卫不得抢着 display:none（!countLaneFading 闸——"
-    + "否则下一帧就把淡出中的道藏掉，交叉淡出退化回硬切）");
-  ok(/let countLaneFading = false/.test(html),
-    "★ countLaneFading 旗有声明（默认 false）");
-  /* ★★ v3.11.2（用户三轮实拍裁决，推翻 v3.11.0/v3.11.1 的交叉淡出思路）：
-     撤道后 **row0 不复位显形，槽位留空**——预备拍≠4 时道是 N 拍短条，撤道后顶上来的
-     真实上一小节是 4 拍通宽，无论怎么过渡，"跑道一瞬间变成 4 拍长"的观感都在。
-     内容由下一次网格重建（翻页/回卷/段变化）自然回填，不再是孤立的突现。 */
-  ok(!/rowEls\[0\]\.style\.visibility = ""/.test(seg),
-    "★★★ 撤道块内不得复位 row0（visibility 置空 = 通宽内容行瞬间显形 = "
-    + "「变成 4 拍长」的观感本体；槽位留空、由下一次网格重建自然回填）");
+  /* 演进：v3.2.3 方案 A（播完不撤、钉播放杆左侧）→ v3.11.0 交叉淡出 → v3.11.2 槽位留空
+     → **v3.12.0（用户拍板）：道 = 传送带「第 −1 小节」，随整组 dy 滑出裁剪区自然退场，
+     判据改相对锚点（cur > 首个可听小节 || 回卷）**。
+     退役理由：三版旧机制都在"道该何时消失"上做文章——绝对判据对范围播放起点在中段
+     开播即成立（预备拍播完道立刻消失），撤除/回填又制造"通宽 4 拍内容行突现"
+     （"变成 4 拍长"）；用户要的是"道像其他跑道一样滚出去"，锚点口径一立，
+     淡出/留空两套机制同时退役。行为断言归 t171（DOM 级，含范围起点在中段的回归）。 */
+  ok(!/countLaneLastCur >= rowEls\.length/.test(html),
+    "★★ 旧绝对判据 cur ≥ rowEls.length 已退役（范围播放开播即撤的根因，t171a 钉行为）");
+  ok(!/countLaneFading/.test(html),
+    "★ 交叉淡出机制整体退役（countLaneFading 旗 + opacity .18s 淡出 + dyingLane 闭包）");
+  ok(!/dyingLane/.test(html),
+    "★ dyingLane 局部引用闭包随淡出机制一并退役");
+  ok(/countLaneLastCur > countLaneStartCur \|\| loopWrapped/.test(html),
+    "★★ 新判据在位：相对锚点（首个可听小节）+ 回卷收尾（单小节循环 cur 恒不变只能靠它）");
 }
 
 section("T169c 图例关闭重采几何（错位根除）");

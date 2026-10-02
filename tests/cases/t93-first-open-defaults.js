@@ -125,20 +125,22 @@ section("T93d 首开默认 ③ · 同屏行数 2 行、拍号 4/4（状态与控
 {
   const { beat, els } = firstOpen();
   eq(beat.Store.S.vizRows, 2, "★ 同屏行数默认 2（v3.1.0 起）");
-  eq(beat.Store.S.sig, 4, "★ 拍号默认 4（= 4/4）");
+  eq(beat.Store.S.sig, 4, "★ 拍号默认 4（= 4/4，恒跟随默认选中的型）");
 
-  /* 控件面：档位 pill 的选中态必须与默认值一致（状态对了但按钮高亮在别处 = 用户不知道该信谁） */
+  /* 控件面：档位 pill 的选中态必须与默认值一致（状态对了但按钮高亮在别处 = 用户不知道该信谁）
+     ★ v3.12.0：拍号 pill 组已删除——它不再有"高亮对不对"的问题（没有控件）；
+     控件面只剩同屏行数档位（已搬进设置弹窗，id 未换）。 */
   const rowPills = els["vizRowsRow"].children.filter(c => c.dataset.rows !== undefined);
   const activeRows = rowPills.filter(c => c.classList.contains("active")).map(c => c.dataset.rows);
   eq(JSON.stringify(activeRows), JSON.stringify(["2"]), "★ 「同屏行数」2 那一档高亮（且只有它）");
-  const sigPills = els["sigRow"].children.filter(c => c.dataset.sig !== undefined);
-  const activeSig = sigPills.filter(c => c.classList.contains("active")).map(c => c.dataset.sig);
-  eq(JSON.stringify(activeSig), JSON.stringify(["4"]), "★ 「拍号」4 那一档高亮");
+  ok(!els["sigRow"], "★★ 拍号 pill 组已从标记删除（无控件则无高亮可错）");
 
   /* 脏值口径顺带复钉一次：这两项都是"用户视图偏好"，脏值必须回落到同一个默认 */
   const dirty = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 999, sig: 5 }) });
   eq(dirty.beat.Store.S.vizRows, 2, "vizRows 脏值（999）→ 回落 2");
-  eq(dirty.beat.Store.S.sig, 5, "★ 而 sig=5 是**合法档位**，照读（白名单是 6 档，不是只有 4）");
+  eq(dirty.beat.Store.S.sig, 4,
+    "★★ sig 脏值（5，与默认选中的 4/4 型不符）→ 启动归一拉回 4（v3.12.0："
+    + "拍号恒跟随当前型，「旧存档里手动切过的拍号」必须被这一条纠正，否则首屏按错拍号切谱面且无从修复）");
 }
 
 /* ================= 场景 T93e：首开四件套一起看（验收面） ================= */

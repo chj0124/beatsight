@@ -82,11 +82,17 @@ section("T11 奇数拍 · 重拍分组发音");
   eq(hits[3].freq, 1568, "第 4 颗（第 4 拍 = 3+2 分组点）重拍音");
   eq(hits[4].freq, 784, "第 5 颗（后半拍八分 = 细分位）细分音 784Hz");
 
-  /* 基本回退节奏 5/4 默认 2+3 分组（D4 决策） */
-  const { beat: b2 } = loadApp({ "beatsight.m2": JSON.stringify({ sig: 5 }) });
-  eq(JSON.stringify(b2.curPattern().accents), JSON.stringify([0, 2]), "5/4 回退节奏默认重拍分组 2+3");
-  const { beat: b3 } = loadApp({ "beatsight.m2": JSON.stringify({ sig: 7 }) });
-  eq(JSON.stringify(b3.curPattern().accents), JSON.stringify([0, 3, 5]), "7/4 回退节奏默认重拍分组 3+2+2");
+  /* 基本回退节奏 5/4 默认 2+3 分组（D4 决策）
+     ★ v3.12.0：拍号控件删除后，"选中型与拍号不匹配 → 回退基础节奏"这条路径已无从经由
+     用户操作产生（拍号恒跟随选中型），故本组直接问**基本回退节奏**本身（basicPattern）
+     ——它才是"D4 决策"的落点；经 curPattern 迂回反而依赖那条已退役的错配路径。 */
+  const b2 = loadApp();
+  eq(JSON.stringify(b2.beat.basicPattern(5).accents), JSON.stringify([0, 2]),
+    "5/4 回退节奏默认重拍分组 2+3");
+  eq(JSON.stringify(b2.beat.basicPattern(7).accents), JSON.stringify([0, 3, 5]),
+    "7/4 回退节奏默认重拍分组 3+2+2");
+  eq(JSON.stringify(b2.beat.basicPattern(3).accents), JSON.stringify([0]),
+    "3/4 无分组表（ACC_GROUPS 只有 5/7）→ 单重拍 [0]");
 }
 
 /* ================= 场景 T12：播放中切拍号无缝生效（v0.4.0 机制 tick 制回归） ================= */

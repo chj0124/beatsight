@@ -6,6 +6,9 @@
    甲轨迹（左缘从播放杆出发逐拍左移，开播瞬间停在播放杆左侧紧贴处），
    方案 A（播完不撤，随 row0 传送带停播放杆左侧，首次回卷让位），
    挂 rowEls[0] 内（visibility 逐层覆盖：行 hidden、道 visible）。
+   ★ v3.12.0 修订：方案 A 的"不撤"收口为**仅首个可听小节**——道在该小节最后一拍
+   随整组 dy 滑出裁剪区、与其他跑道同款退场（判据 = 相对锚点，行为断言归 t171）；
+   本文件的交接断言不受影响（交接帧 = 首个可听小节，道本就该在）。
    断言口径：display+visibility 双口径（v3.1.9 教训）；内容道**绝对位置**钉播放杆
    （v3.1.6 教训）；布局塌陷真机侧验证（v3.1.8 教训：桩不模拟文档流回流）。 */
 const { loadApp, FakeAudioContext, drive, ok, eq, near, section } = require("../lib/harness");
@@ -50,24 +53,30 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
   eq(row0VisOK, true, "★ 真实第一道全程 visibility:hidden（预备拍道挂在其中、逐层覆盖显示）");
 
   /* ② 同构断言：预备拍道内 = ciBeats 个拍区 + ciBeats 个拍号标签（首标签 = "1"）
-     + 竖线划分（拍数 − 1 条内部竖线，.grid-line 同款） */
+     + 拍边界接缝层（v3.12.0 起 = .seams 同款强缝，与正常跑道逐位一致） */
   const iv1 = beat.Viz.internals();
   const kids = Array.from(iv1.countLaneEl.children);
   const zones = kids.filter(k => k.className === "beat-zone");
   const labs = kids.filter(k => k.className.indexOf("ruler-lab") >= 0);   // 每拍一个计数数字（down 样式）
-  const lines4 = kids.filter(k => k.className === "grid-line");
+  const seams = kids.filter(k => k.className === "seams");
   eq(zones.length, 4, "★ 预备拍道拍区数 = 4（同构 .beat-zone）");
   eq(labs.length, 4, "★ 预备拍道座次尺标签数 = 4");
   eq(labs[0].textContent, "1", "★ 首拍号 = 1（计数数字）");
-  eq(lines4.length, 3, "★ 预备拍道内部竖线 = 拍数 − 1（4 拍 → 3 条）");
-  ok(lines4[0].style.left.indexOf("25%") >= 0, "★ 竖线骑缝定位（第 1 条 @ 25%−.5px）",
-    "left=" + lines4[0].style.left);
+  eq(seams.length, 1, "★ 预备拍道挂行级 .seams 覆盖层（与正常跑道同一类元素）");
+  const smBg = seams[0].style.background;
+  eq((smBg.match(/var\(--seam-strong\)/g) || []).length, 6,
+    "★ 拍边界 = 拍数 − 1 条强缝（4 拍 → 3 条 × 每条 2 个色标 = 6 处 seam-strong）");
+  ok(smBg.indexOf("25%") >= 0 && smBg.indexOf("50%") >= 0 && smBg.indexOf("75%") >= 0,
+    "★ 强缝骑缝定位（25% / 50% / 75% 拍边界）", "background=" + smBg.slice(0, 80));
+  eq(kids.filter(k => k.className === "grid-line").length, 0,
+    "★ 旧 .grid-line 竖线已退役（短一截、细一档、色不同——用户实拍的「竖线有问题」根因）");
 
   /* ③ 内容道：绝对位置 = 播放杆处（C − left），全程不动（v3.1.6 教训） */
   near(txOf(iv1.rowEls[1]), C - g0.left, 2, "★ 内容道 tx = C − left（贴播放杆右侧）");
   near(txOf(iv1.rowEls[2]), C - g0.left, 2, "★ 内容道（第 3 条）同位");
 
-  /* ④ 方案 A：交接后预备拍道不撤（row0 保持 hidden 由道顶替） */
+  /* ④ 交接后首个可听小节内：预备拍道不撤（row0 保持 hidden 由道顶替）——
+     v3.12.0 起道的退场推迟到第二个可听小节（随 dy 滑出，归 t171），交接帧本就该在 */
   let handoverSeen = false, laneAfterHandover = null, row0AfterHandover = null, contentDrift = 0, contentPrev = null;
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
@@ -83,8 +92,8 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
     contentPrev = t1;
   });
   ok(handoverSeen, "前提：跨过预备拍进入播放");
-  eq(laneAfterHandover, "block", "★ 方案A：开播后预备拍道不撤（以刚播完的道停播放杆左侧）");
-  eq(row0AfterHandover, "hidden", "★ 方案A：row0 保持隐藏（预备拍道顶替显示）");
+  eq(laneAfterHandover, "block", "★ 交接后首个可听小节内预备拍道不撤（以刚播完的道停播放杆左侧）");
+  eq(row0AfterHandover, "hidden", "★ 交接后 row0 保持隐藏（预备拍道顶替显示；第二小节的退场归 t171）");
   ok(contentDrift > 0, "★ 开播后内容道开始正常滚动（接管预滚）");
 }
 
@@ -144,16 +153,16 @@ section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变");
       `★ ${beats} 拍：道长 = ${beats}×每拍像素（几拍就多长）`, "width=" + widthSeen);
     eq(zonesSeen, beats, `★ ${beats} 拍：预备拍道拍区数 = ${beats}（几拍就几格）`);
     eq(row0Hidden, true, `★ ${beats} 拍：预备拍期间真实第一道保持 visibility:hidden`);
-    eq(handoverRow0, "hidden", `★ ${beats} 拍：方案A——播放期间 row0 保持隐藏（预备拍道顶替显示）`);
+    eq(handoverRow0, "hidden", `★ ${beats} 拍：交接后首个可听小节内 row0 保持隐藏（预备拍道顶替显示）`);
   }
 }
 
-/* ================= T160d 方案A · 循环场景跨小节重建持续显示 =================
-   循环场景（loop 2 小节）：跨小节网格重建后预备拍道持续显示（会话维持）。
-   回卷撤除判据（loopWrapped / cur ≥ 行数）依赖 paintFrameBody 的窗口同步段
-  （ctx 存在时才执行），**桩内 ctx 缺失、该段不跑**——撤除行为由真机 CDP 专项
-   验证（v3.1.8 布局塌陷同款桩局限）。 */
-section("T160d 方案A · 循环场景跨小节重建持续显示（桩内口径）");
+/* ================= T160d 预设 2 小节循环 · 首小节维持、第二小节退场 =================
+   循环场景（loopRange 2 小节）：首个可听小节内跨网格重建道仍在（会话维持）；
+   播到第二个可听小节（cur 1→2 推进）会话结束、道撤、row0 显形、跨回卷不复活。
+   ★ 本组曾是"方案A 播完不撤"的断言——v3.12.0 用户拍板"退场与其他跑道一样"，
+     方案 A 收口为"仅首个可听小节维持"：这不是回归，是语义按新口径重写（t171 同族）。 */
+section("T160d 预设 2 小节循环 · 首小节维持、第二小节退场（v3.12.0 新口径）");
 {
   const app = loadApp(seedState({
     scrollMode: true, scrollRows: 3,
@@ -164,17 +173,19 @@ section("T160d 方案A · 循环场景跨小节重建持续显示（桩内口径
   const { beat, els } = app;
   beat.Controls.start();
   const ac = FakeAudioContext.last;
-  // 预备拍 1 拍（0.625s）+ 2 小节循环（5s）——跨小节重建
+  // 预备拍 1 拍（0.625s）+ 首小节内 0.475s（96BPM 一小节 2.5s）——仍在首个可听小节
   drive(ac, beat, 1.1, () => beat.Viz.paintFrame());
   const iv1 = beat.Viz.internals();
-  eq(iv1.countLaneEl.style.display, "block", "★ 开播后预备拍道仍在（方案A 不撤）");
-  eq(iv1.rowEls[0].style.visibility, "hidden", "★ row0 仍由预备拍道顶替");
+  eq(iv1.countLaneEl.style.display, "block", "★ 首个可听小节内预备拍道在（会话维持，跨重建不误伤）");
+  eq(iv1.rowEls[0].style.visibility, "hidden", "★ 首小节内 row0 由道顶替");
+  eq(Array.from(iv1.countLaneEl.children).filter(k => k.className === "beat-zone").length, 1,
+    "★ 首小节内预备拍道为 1 拍（长度 = 预备拍拍数）");
+  // 越过首个可听小节（再 2s，累计可听 > 1 小节）+ 跨多轮回卷（共 6s）
   drive(ac, beat, 6.0, () => beat.Viz.paintFrame());
   const iv2 = beat.Viz.internals();
-  eq(iv2.countLaneEl.style.display, "block", "★ 循环场景：跨小节重建预备拍道持续显示（会话维持）");
-  eq(Array.from(iv2.countLaneEl.children).filter(k => k.className === "beat-zone").length, 1,
-    "★ 循环场景：预备拍道仍为 1 拍（长度不回跳）");
-  eq(iv2.rowEls[0].style.visibility, "hidden", "★ 循环场景：row0 保持由预备拍道顶替");
+  eq(iv2.countLaneEl.style.display, "none", "★ 第二可听小节起道已退场（v3.12.0：随 dy 滑出、跨回卷不复活）");
+  eq(iv2.rowEls[0].style.visibility, "", "★ row0 显形 = 真实上一小节内容就位（不再留空槽）");
+  eq(iv2.countLane.session, false, "★ 会话已结束（不再维持）");
 }
 
 /* ================= T160e 滚动停止态无球（v3.2.3） =================

@@ -171,11 +171,21 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
   eq(JSON.stringify(b.beat.defaultAccents(5)), "[0,2]", "5/4 默认档 2+3 → [0,2]");
   eq(JSON.stringify(b.beat.defaultAccents(7)), "[0,3,5]", "7/4 默认档 3+2+2 → [0,3,5]");
 
-  const b2 = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, sig: 5, accentGrp: { "5": 1 } }) });
+  const b2 = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, accentGrp: { "5": 1 } }) });
   eq(JSON.stringify(b2.beat.defaultAccents(5)), "[0,3]", "5/4 切到 3+2 档 → [0,3]（accentGrp 被遵从）");
-  b2.beat.Editor.open();
-  eq(JSON.stringify(b2.beat.Editor.draft().accents), JSON.stringify(b2.beat.defaultAccents(5)),
-    "编辑器草稿的默认重拍分组与 defaultAccents 同源（抽取前的重复点）");
+  /* ★ v3.12.0：原写法靠"sig=5 而选中型是 4/4"制造错配、经 curPattern 回退到 5/4 基础节奏——
+     那条错配路径已随拍号控件退役（拍号恒跟随选中型）。改为**直接选中一个 5/4 型**
+     （Take Five 律动）再开编辑器：这才是真实用户路径，且同样验"草稿分组与 defaultAccents 同源"。 */
+  {
+    const idx5 = b2.beat.BUILTINS.findIndex(p => p.meter === 5);
+    ok(idx5 >= 0, "前提：存在 5/4 内置型（Take Five 律动）");
+    b2.beat.Store.S.sel = { type: "builtin", idx: idx5 };
+    b2.beat.Presets.alignSigToPattern();
+    eq(b2.beat.Store.S.sig, 5, "★ 选中 5/4 型 → 拍号自动跟随（控件删除后的唯一路径）");
+    b2.beat.Editor.open();
+    eq(JSON.stringify(b2.beat.Editor.draft().accents), JSON.stringify(b2.beat.defaultAccents(5)),
+      "编辑器草稿的默认重拍分组与 defaultAccents 同源（抽取前的重复点）");
+  }
 }
 
 section("T26 后台播放 · 自适应前瞻窗口 + 回前台补排 + 饥饿兜底（审计 P1-3）");
@@ -368,14 +378,14 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   els["countInToggle"].fire("click");
   eq(els["countInToggle"].getAttribute("aria-checked"), "true", "预备拍开关 → aria-checked=true");
 
-  /* 三选一 pill 组：aria-pressed 与 .active 同源 */
+  /* 三选一 pill 组：aria-pressed 与 .active 同源
+     ★ v3.12.0：拍号 pill 组已删除（手动拍号控件退役）——本组只留 Swing / 音色两族。
+     拍号状态出口（Controls.setSig）仍可用，但已无对应控件可同步。 */
   const pills = sel => els[sel].children;
-  eq(pills("sigRow")[2].getAttribute("aria-pressed"), "true", "4/4 初始 aria-pressed=true");
+  ok(!els["sigRow"], "★★ 拍号 pill 组已从标记删除（v3.12.0）");
   beat.Controls.setSig(6);
-  eq(pills("sigRow")[2].getAttribute("aria-pressed"), "false", "切到 6/8 后 4/4 的 aria-pressed 复位");
-  eq(pills("sigRow")[4].getAttribute("aria-pressed"), "true", "6/8 的 aria-pressed 置位");
-  ok(!/(^| )active( |$)/.test(pills("sigRow")[2].className) && /(^| )active( |$)/.test(pills("sigRow")[4].className),
-    "视觉高亮与 aria-pressed 一致（原先只改 classList）");
+  eq(beat.Store.S.sig, 6, "状态出口仍在（程序性对齐路径不受控件删除影响）");
+  beat.Controls.setSig(4);
   beat.Controls.setSwing(67);
   eq(pills("swingRow")[1].getAttribute("aria-pressed"), "true", "Swing 档位 aria-pressed 同步");
   beat.Controls.setTimbre("drum");

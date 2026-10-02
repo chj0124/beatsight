@@ -51,13 +51,15 @@ ok(/\.play-bar\{[^}]*padding:0 [^;]*calc\(14px \+ env\(safe-area-inset-bottom, 0
   "★ 下内边距 14px：按钮居中的余量与它相加 = 距视口底 19px");
 ok(/\.main\{[^}]*calc\(var\(--bar-h\) \+ 24px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★★ 主列补 padding-bottom（var(--bar-h) + 24）：fixed 底栏不占流，不补则最后一小节被压住");
-ok(/@media \(max-width:640px\)\{[\s\S]{0,900}body \.main\{padding-bottom:calc\(var\(--bar-h\) \+ 24px/.test(src),
+/* ★ v3.12.0：窗口 900 → 1600——窄屏档里新增了预备拍搬入后的右区换行规则，
+   原窗口够不到后面的 body .main 让位断言（会静默恒假，比失败更危险）。 */
+ok(/@media \(max-width:640px\)\{[\s\S]{0,1600}body \.main\{padding-bottom:calc\(var\(--bar-h\) \+ 24px/.test(src),
   "★ ≤640 的让位跟着同一个变量走（不会再出现「改了高度忘了让位」）");
 /* ★★ 这条是实战换来的：窄屏档里另有一条 `.main{grid-template-columns:1fr;padding:16px}`（简写）
    排在本文之后，同特异性下会把 padding-bottom 重置回 16px——让位静默失效。
    第一版就是 `.main{padding-bottom:...}`，被**真机冒烟**抓到（桩里没有布局引擎，测不出）。
    故这里同时钉住：① 抬到 `body .main`；② 不得退回裸 `.main` 写法。 */
-ok(/@media \(max-width:640px\)\{[\s\S]{0,900}(^|\n)  \.main\{padding-bottom:calc\(var\(--bar-h\)/.test(src) === false,
+ok(/@media \(max-width:640px\)\{[\s\S]{0,1600}(^|\n)  \.main\{padding-bottom:calc\(var\(--bar-h\)/.test(src) === false,
   "★★ 让位不得用裸 `.main`（窄屏后续的 `padding:16px` 简写会把它重置——真机冒烟抓到的实际缺陷）");
 ok(/\.diag\{[^}]*bottom:calc\(var\(--bar-h\) \+ 12px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★★ 底部诊断条避让也走 var(--bar-h)（fixed 同层、不参与让位，必须显式上移）");
@@ -83,3 +85,23 @@ ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
   "★★ 四块的共用选择器仍在，背景改为 transparent（圆角/内边距口径不变 → 块内间距不受影响）");
 ok(!src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
   "★★ 组容器底（--card2）已从控制行彻底移除（防回潮）");
+
+section("T161d 控制键比例（v3.12.0，用户反馈：播放键过大 / 跳段箭头过小 / 圆存在感弱）");
+{
+  ok(/\.play-btn\{width:62px;height:62px/.test(src),
+    "★★ 播放键 72→62（仍是行内最大 = 主操作地位不变，与 52 跳段键差距收敛）");
+  ok(!/\.play-btn\{width:72px;height:72px/.test(src), "★ 旧 72px 播放键退役");
+  ok(/\.jump-btn\{width:52px;height:52px[^}]*border:1px solid var\(--line\)/.test(src),
+    "★★ 跳段键圆 52px 不变 + 补 1px 描边（--card2 与底栏底色太近；日间主题本有同款，两主题拉齐）");
+  ok(/<button class="jump-btn" id="argJumpPrev"[\s\S]{0,200}svg width="24" height="24"/.test(src)
+     && /<button class="jump-btn" id="argJumpNext"[\s\S]{0,200}svg width="24" height="24"/.test(src),
+    "★★ 跳段箭头图标 20→24（圆大小不变、箭头过小的问题收敛）");
+  ok(/<svg id="playIcon" width="24" height="24"/.test(src), "★ 播放图标随档 26→24");
+  /* ★★ 回填源必须与标记同步：Controls 的 SVG_PLAY / SVG_PAUSE 是停止/播放时 outerHTML
+     回填 #playIcon 用的 SVG 源——只改标记不改这里，表现就是"停一次播放键图标就变大 2px"。 */
+  ok(/const SVG_PLAY = '<svg width="24" height="24"/.test(src) && /const SVG_PAUSE = '<svg width="24" height="24"/.test(src),
+    "★★ 图标回填源 SVG_PLAY / SVG_PAUSE 也是 24（与标记同步；改了标记忘了它 = 停一次就变大）");
+  ok(!/SVG_(PLAY|PAUSE) = '<svg width="26"/.test(src), "★ 旧 26px 回填源已退役");
+  ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent;border:none\}/.test(src),
+    "★ 循环段钮保持无背景图层（基座补描边后这里显式去掉，v2.11.0 的既定口径不破）");
+}

@@ -294,15 +294,31 @@ function collectDeclarations(src){
   /* 对象字面量方法简写：`{ foo(){} }` / `{ get x(){} }` / `{ async foo(){} }` / `{ *gen(){} }`
      （主循环认不出它，单独扫一遍。触发条件：`(` 前的名字，且名字前一个非空字符是 `{` 或 `,`。
        这样 `foo(` 的调用不会命中（调用前面是 `=`/`(`/`return`/行首等），不会误收。
-       `get`/`set`/`async`/`static` 是修饰位，真正的名字在它们之后，故一并作为关键字跳过。） */
+       `get`/`set`/`async`/`static` 是修饰位，真正的名字在它们之后，故一并作为关键字跳过。）
+     ★ v3.12.0 修：上面那句"真正的名字在它们之后"此前只是**排除了修饰词本身**，修饰位后面的
+       真名仍按"名字前一个非空字符"判——`{ get countLane(){…} }` 里 countLane 前面是 `get`，
+       于是被判成"未声明的宿主 API"报 no-undef 假阳性（v3.12.0 的 internals().countLane 首次
+       触发；同一对象里既有的 `get scroll()` 只是因为 scroll 恰在 GLOBALS 白名单里才没暴露）。
+       现在真的**退过修饰位**（并顺带补上生成器星号 `*gen(){}` 这一形状）再判字面量位置。 */
   for (const m of src.matchAll(/(?<![A-Za-z0-9_$.])([A-Za-z_$][\w$]*)\s*\(/g)){
     const n = m[1];
-    let k = m.index - 1;
-    while (k >= 0 && isWs(src[k])) k--;              // 跳过名字与前置标点之间的空白
-    if (k < 0) continue;
-    const prev = src[k];
-    if (prev !== "{" && prev !== ",") continue;      // 只在对象字面量位置命中
     if (n === "get" || n === "set" || n === "async" || n === "static" || n === "yield") continue;
+    let k = m.index - 1;
+    const backWs = () => { while (k >= 0 && isWs(src[k])) k--; };
+    backWs();
+    if (k < 0) continue;
+    if (src[k] === "*"){ backWs(); if (k < 0) continue; }        // 生成器位：`{ *gen(){} }`
+    if (isPart(src[k])){                                        // 访问器 / 修饰位
+      let q = k;
+      while (q >= 0 && isPart(src[q])) q--;
+      const mod = src.slice(q + 1, k + 1);
+      if (mod === "get" || mod === "set" || mod === "async" || mod === "static"){
+        k = q; backWs();
+        if (k >= 0 && src[k] === "*"){ backWs(); }              // `{ *[Symbol.iterator]` 一族的口径
+      }
+    }
+    if (k < 0) continue;
+    if (src[k] !== "{" && src[k] !== ",") continue;             // 只在对象字面量位置命中
     add(n, m.index);
   }
 

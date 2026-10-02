@@ -49,10 +49,25 @@ section("T170b 播放头游标改粗竖线");
     "★ 游标仍不可交互（不吃任何拖动，与两个可拖 thumb 的性质分界不变）");
 }
 
-section("T170c 窄屏右区两行（状态灯在上、进度条在下）");
+section("T170c 窄屏右区两行（预备拍独占一行；状态灯与进度条合一行）");
 {
-  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{flex-direction:column;align-items:flex-end;gap:2px\}/.test(CSS_CODE),
-    "★ ≤640：右区改上下两行都右对齐——一行硬塞状态灯+轨道会把轨道压穿 min-width");
+  /* ★ v3.12.0（用户反馈后实测修正）：v3.10.0 的「纵排三件、都右对齐」在预备拍搬入后失效——
+     右列被顶到 110px（超 96px 底栏内容区 82px），网格行随之被撑高、中列的播放键被推低，
+     真机实测**距视口底只剩 9px**（门槛 16px）。改成「换行 + 预备拍 flex-basis:100%」：
+     预备拍独占一行、状态灯与进度条合为第二行，右列回落到 ~58px，底栏高度契约不动。
+     ★ 为什么不能继续纵排：三件纵排的高度与底栏高度是耦合的，加一件就顶穿；
+       分行之后"再加一件"最多再占一行，且每行都远低于内容区。 */
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:2px 10px\}/.test(CSS_CODE),
+    "★★ ≤640：右区改**换行式**（换行 + 右对齐 + gap 2px 10px）——状态灯与进度条同处第二行");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right \.pb-countin\{flex-basis:100%;justify-content:flex-end\}/.test(CSS_CODE),
+    "★★ ≤640：预备拍**独占一行**（flex-basis:100%）——它与状态灯挤一行会把右列顶穿底栏");
+  ok(!/\.pb-right\{flex-direction:column/.test(CSS_CODE),
+    "★★ 旧的纵排写法已退役（三件纵排顶穿底栏、播放键贴底，真机 9px 实测）");
   ok(/@media \(max-width:640px\)[\s\S]*?\.pb-progress\{width:100%;max-width:none;min-width:96px\}/.test(CSS_CODE),
     "★ ≤640：进度条保底 96px（旧 64px 口径 + 状态灯占位的补偿）");
+  /* 标签不得折行：窄屏右列被挤到几十像素时，折成三行会把底栏顶穿（实测 67px 高的单枚开关） */
+  ok(/\.pb-countin \.toggle-pill\{[^}]*white-space:nowrap\}/.test(CSS_CODE),
+    "★★ 预备拍开关标签 nowrap（不折行——折行会把整个开关撑到 67px）");
+  ok(/\.pb-countin\{flex:none;display:flex;align-items:center;gap:8px\}/.test(CSS_CODE),
+    "★ 预备拍组 flex:none（不被进度条挤压）");
 }

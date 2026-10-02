@@ -29,8 +29,9 @@ const { loadApp, ok, eq, section, pill, html } = require("../lib/harness");
 const M = {
   topbar: ['<header class="topbar">', '<!-- 分级播报', "顶栏（品牌 + 状态行 + 补偿 + 设置/主题）"],
   vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（音量+BPM）"],
-  togglesRow: ['<div class="viz-toggles">', '<!-- 同屏行数档位', "预备拍 + 训练开关行"],
-  rowsRow: ['<div class="viz-rows-row">', '<div class="viz" id="viz"', "同屏行数 + 拍号 + Swing 的并排行"],
+  togglesRow: ['<div class="viz-toggles">', '<!-- ★ v3.12.0（用户拍板）：本行整块退役', "静音拍 + 变速训练开关行（预备拍已搬底栏）"],
+  /* v3.12.0：`rowsRow` 切片随原并排行整块退役删除——那一行不再存在，
+     遗留切片标记会让 indexOf 恒 -1、切片静默变成"到文件末尾"（比失败更危险）。 */
   /* v3.3.0：跳段行整组搬进页面底部的固定播放条 #playBar（在 </main> 之后），
      止标记随之从 `</div><!-- /vizBand -->` 改成其后第一个区块注释（自定义节奏型编辑器）。
      起止标记都必须真实存在，否则 slice 会静默切出"到文件末尾"，让"不该包含 X"的断言
@@ -50,21 +51,35 @@ function slice(which){
   return html.slice(a, b);
 }
 
-/* ================= 场景 T90a：拍号并入「同屏行数」右侧 ================= */
-section("T90a 需求① · 拍号整块搬进时值可视化卡，与「同屏行数」同处 .viz-rows-row 且在其后");
+/* ================= 场景 T90a（v3.12.0 重写）：原「行数 + 拍号」并排行整块退役 ================= */
+section("T90a v3.12.0 · 原 .viz-rows-row 整块退役（同屏行数 → 设置弹窗 / 拍号 → 删除）");
 {
-  const s = slice("rowsRow");
-  ok(/id="vizRowsRow"/.test(s), "同屏行数档位 `#vizRowsRow` 在新容器内");
-  ok(/id="sigRow"/.test(s), "★ 拍号 `#sigRow` 也搬进来了");
-  ok(s.indexOf('id="vizRowsRow"') < s.indexOf('id="sigRow"'),
-    "★★ 拍号排在「同屏行数」**之后**（即其右侧，与「紧邻右侧」的要求一致）");
-  /* 奇数拍才出现的「重拍分组」是拍号的语义附属物，必须跟着搬——留在走带卡里就没人能触发它 */
-  ok(/id="accGroup"/.test(s) && /id="accRow"/.test(s),
-    "★ `#accGroup` / `#accRow`（重拍分组）跟着拍号一起搬（它是拍号的语义附属物）");
-  /* 搬块不换内容：6 档拍号都在；行数档位仍由值表在运行期生成 */
-  eq((s.match(/data-sig="/g) || []).length, 6, "拍号 6 档无一丢失");
-  ok(/data-sig="7"/.test(s), "最高档 7/4 在位");
-  eq((s.match(/data-rows="/g) || []).length, 0,
+  /* 用户拍板：① 同屏行数搬进设置弹窗「画面图层」组（判据同 Swing）；② 拍号整块删除。
+     本组断言"两边都搬全了、原址清干净了"，防半搬（浮层/卡片两边都留一半）。 */
+  ok(!/class="viz-rows-row"/.test(html), "★★ 原并排行容器 `.viz-rows-row` 已从标记里退役");
+  ok(!/class="viz-rows-panel"/.test(html), "★ `.viz-rows-panel` 旧面板壳一并退役（设置里改由 .group 承担）");
+  ok(!/id="sigRow"/.test(html), "★★ 拍号 `#sigRow` 已删除（手动拍号控件退役）");
+  ok(!/id="accGroup"/.test(html) && !/id="accRow"/.test(html),
+    "★★ `#accGroup` / `#accRow` 随拍号一并删除（重拍分组界面退役；数据层 ACC_GROUPS 仍在，回退节奏恒用第 0 组）");
+  ok(!/id="fallbackNote"/.test(html) && !/id="fallbackBtn"/.test(html),
+    "★★ 拍号回退提示条（#fallbackNote / #fallbackBtn）一并退役——它的触发条件已无从产生");
+  ok(!/data-sig="/.test(html), "★ 标记里不再有拍号 pill（6 档全删）");
+  {
+    /* 取设置弹窗整段（用既有的切片标记；注意 helpOverlay 在文件中**早于** settingsOverlay，
+       拿它当止标记会切出空串——那正是"断言静默恒假"的坑，故用 slice() 的成对标记） */
+    const setOverlay = slice("settingsOverlay");
+    ok(/id="vizRowsRow"/.test(setOverlay),
+      "★★ 同屏行数档位 `#vizRowsRow` 搬进设置弹窗（id 不换）");
+    ok(setOverlay.indexOf('id="scrollModeToggle"') < setOverlay.indexOf('id="vizRowsRow"'),
+      "★ 排在「连续滚动」开关之后（两者共用同一档位语义，放一起最好懂）");
+    ok(/class="viz-rows" id="vizRowsRow"/.test(setOverlay), "★ 档位行容器 `.viz-rows` 随块同搬（生成逻辑不动）");
+    /* 设置里是 .group 形态（标签左、按钮右），不再是 .viz-rows-panel */
+    const seg = setOverlay.slice(setOverlay.indexOf('id="vizRowsRow"') - 400, setOverlay.indexOf('id="vizRowsRow"'));
+    ok(/class="group"/.test(seg) && /class="group-label"/.test(seg),
+      "★ 设置里用 .group + .group-label 骨架（同 Swing 组的先例）");
+  }
+  /* 旧档位语义仍由 VIZ_ROW_COUNTS 运行期生成（不写死，单一数据源不破） */
+  eq((html.match(/data-rows="/g) || []).length, 0,
     "同屏行数档位仍由 VIZ_ROW_COUNTS 运行期生成（标记里不写死，单一数据源不破）");
 }
 
@@ -175,37 +190,49 @@ section("T90f v2.10.14/16 · BPM 组占卡片头右列；Swing 与同屏行数�
     "★ 头行两个孩子：左列（角标/状态灯/音量）在前、BPM 在后（源码序即左右序）");
   ok(/class="card-head-left"/.test(h), "左块包 .card-head-left（v2.10.16 起头行只有两个孩子）");
   ok(!/id="swingRow"/.test(h), "Swing 不在头行（已下移）");
-  const r = slice("rowsRow");
-  ok(/id="vizRowsRow"/.test(r) && /id="sigRow"/.test(r),
-    "★ 同屏行数 + 拍号两块同处一行");
-  ok(!/id="swingRow"/.test(r), "★ Swing 已不在本行（v2.10.17 进设置弹窗——折行问题随之消失）");
-  ok(!/id="bpmNum"/.test(r), "BPM 组不在本行（已上移卡片头）");
+  /* v3.12.0：原「行数 + 拍号」并排行整块退役——头行之外不再有那个容器 */
+  ok(!/class="viz-rows-row"/.test(html) && !/id="sigRow"/.test(html),
+    "★ 原「同屏行数 + 拍号」并排行已整块退役（行数去设置弹窗、拍号删除）");
+  ok(!/id="bpmNum"/.test(html.slice(html.indexOf("viz-head-grid"), html.indexOf("viz-head-grid") + 60)),
+    "★ BPM 组已上移卡片头（并排行里没有它）");
 }
 
-/* ================= 场景 T90h：训练开关并入预备拍行 ================= */
-section("T90h v2.10.15/16 · 静音拍 + 变速训练并入 .viz-toggles；训练区标题行删除、只剩按钮与面板");
+/* ================= 场景 T90h（v3.12.0 修订）：开关行剩两枚；预备拍整组进底栏 ================= */
+section("T90h v3.12.0 · 开关行只剩静音拍 + 变速训练；预备拍整组搬进底栏右区");
 {
   const s = slice("togglesRow");
-  for (const id of ["countInToggle", "countInBeatsWrap", "muteToggle", "trainerToggle"]){
-    ok(new RegExp('id="' + id + '"').test(s), "★ 预备拍行的四件之一：#" + id + "（训练两开关已并入）");
+  for (const id of ["muteToggle", "trainerToggle"]){
+    ok(new RegExp('id="' + id + '"').test(s), "★ 开关行的两件之一：#" + id);
   }
-  ok(s.indexOf('id="countInToggle"') < s.indexOf('id="muteToggle"')
-     && s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
-    "行内顺序：预备拍 → 静音拍 → 变速训练");
+  ok(!/id="countInToggle"/.test(s), "★★ 预备拍开关已不在开关行（v3.12.0 搬进底栏）");
+  ok(!/id="countInBeatsWrap"/.test(s), "★★ 拍数输入随开关同搬（它必须紧跟所属开关，v1.3.3 教训）");
+  ok(!/id="countInPanel"/.test(s), "★★ 空出来的参数面板 #countInPanel 已删除（不再占槽位）");
+  ok(s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
+    "行内顺序：静音拍 → 变速训练");
+  /* 预备拍整组在底栏 */
+  {
+    const pb = slice("playBar");
+    ok(/id="countInToggle"/.test(pb), "★★ 预备拍开关 `#countInToggle` 在底栏（id 不换）");
+    ok(/id="countInBeatsWrap"/.test(pb) && /id="countInBeats"/.test(pb),
+      "★★ 拍数输入 `#countInBeatsWrap` / `#countInBeats` 随组同搬（id 不换）");
+    ok(pb.indexOf('id="countInToggle"') < pb.indexOf('id="countInBeatsWrap"'),
+      "★ 顺序仍是「开关 → 拍数」（拍数紧跟其所属开关）");
+    ok(/class="pb-countin"/.test(pb), "★ 外层 .pb-countin 承载（flex:none，不被进度条挤压）");
+  }
   /* v2.11.2：训练模式区整块删除——面板搬进本行、接续按钮与 7 天计划下线 */
   ok(!/<i>Training<\/i>/.test(html), "★ 「02 Training 训练模式」标题行已删（v2.10.16）");
   ok(!/id="trResumeBtn"/.test(html) && !/id="trStart"/.test(html) && !/id="planGenBtn"/.test(html),
     "★ v2.11.2：继续上次按钮 / 起始输入框 / 7 天计划入口均已删除");
-  /* ★ 参数搬进**本行**：面板的 id 必须出现在 .viz-toggles 那段标记里、且在开关之后 */
+  /* ★ 参数与自己的开关同处 .viz-toggles 段、面板在后 */
   ok(/id="trainerPanel"/.test(html), "★ 变速训练面板仍在（id 未换）");
   {
-    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizRowsRow"'));
+    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizBand"'));
     ok(seg.indexOf('id="trainerToggle"') >= 0 && seg.indexOf('id="trainerPanel"') >= 0
        && seg.indexOf('id="trainerToggle"') < seg.indexOf('id="trainerPanel"'),
       "★ 参数行在开关**右侧**：两者同属 .viz-toggles 段且面板在后");
   }
   eq((html.match(/id="muteToggle"/g) || []).length, 1,
-    "静音拍开关全文件恰此一处（在预备拍行，训练区已无副本）");
+    "静音拍开关全文件恰此一处（训练区已无副本）");
   ok(!/class="config"/.test(html), "★ `.config` 包裹层随开关搬家删除（本文件已无使用者）");
 }
 
@@ -220,8 +247,10 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ 且没顺手把全局 `.toggle-pill` 也改掉（那是全站开关，不在本次范围）");
   ok(!/^\.pattern-head\{/m.test(css),
     "★ v2.10.16：`.pattern-head` 规则随裸行删除一并清理（v2.10.11 的 (ii) 内边距契约退役）");
-  ok(/\.viz-rows-row\{[^}]*flex-wrap:wrap[^}]*\}/.test(css),
-    "★ `.viz-rows-row` 必须 flex-wrap：否则窄屏下拍号不折行会溢出（被 body 的 overflow-x:hidden 裁掉）");
+  /* v3.12.0：旧并排行整块退役——`.viz-rows-row` 的 flex-wrap 兜底随之无对象；
+     同屏行数住进设置弹窗后，折行由 `.viz-rows` 自己的 flex-wrap 承担（见 T90d）。 */
+  ok(/\{display:flex;align-items:center;gap:8px;flex-wrap:wrap\}/.test(css),
+    "★ `.viz-rows` 仍带 flex-wrap（档位多时折行，不被 overflow-x:hidden 裁掉）");
   /* v2.10.14：行数 pill 的缩小规则删除（与拍号统一大小）；Swing 进本行后同款 wrap 兜底不变。
      ★ v3.6.0（B4）订正：该决定的口径是「统一为默认 .pill 规格」，不是「钉死 36px」——
        默认规格本身可以被整体抬高（B4 就是给它加 min-height:40px）。故本断言仍成立。 */
@@ -242,11 +271,14 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★★ v2.34.0：左列音量滑杆吃满行内剩余宽度——% 列右缘贴列右缘，"
     + "与节奏型名（pat-now 行尾）恢复 v2.10.17 的「同一右缘对齐」契约"
     + "（120px 定宽时 % 右缘 278 vs 名字 368，差 90px 死空间；设置弹窗同款滑杆不受影响）");
-  ok(/\.viz-rows-panel\{display:flex;flex-wrap:wrap;align-items:center/.test(css),
-    "★★ v2.38.0：行数/拍号面板改 flex-wrap——标签与按钮**同行自适应**（空间够同行、窄了自动"
-    + "折回两层，用户反馈居中后间隙空旷的问题）；对齐由 align-items:center + gap 承接");
-  ok(/\.viz-toggles\{[^}]*margin-bottom:16px/.test(css) && /\.viz-rows-row\{[^}]*gap:16px 28px/.test(css),
-    "★★ v2.10.17：块间纵向间隔统一 16px（预备拍行下边距、行内折行行距；横向 28 保留）");
+  /* 注释里留作纪念的名字不算违规（仓内 `.page-foot` 同款口径）——断言前先剥块注释 */
+  const cssNoCmt = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  ok(!/\.viz-rows-panel/.test(cssNoCmt),
+    "★★ v3.12.0：`.viz-rows-panel` 旧面板壳已随并排行整块退役（设置里用 .group 骨架）；"
+    + "v2.38.0 那条「标签与按钮同行自适应」的 flex-wrap 口径由 .group 承担，本断言改为防回潮");
+  ok(/\.viz-toggles\{[^}]*margin-bottom:16px/.test(css),
+    "★★ v2.10.17：块间纵向间隔 16px（开关行下边距仍在；行内折行行距随旧容器退役，"
+    + "设置里的同屏行数块由 .group 的 gap 承担）；横向 28 保留在旧容器上已无对象");
   ok(/\.viz-head\{[^}]*justify-content:flex-start[^}]*column-gap:48px/.test(css),
     "★ v2.10.17：卡片头紧凑排列——BPM 组紧随音量列 48px（原 space-between 中间空 239px）");
   ok(/\.status\{display:inline-flex;align-items:center;gap:8px/.test(css)
@@ -265,8 +297,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:40px/.test(css),
     "★★ 顶栏**等高带**仍在（补偿读数/设置/主题钮同高共一条规则；取值 40px 是 v3.6.0"
     + "与全站触控下限对齐）；v3.10.0 起带内不再有 .status（已搬去底栏右区）");
-  ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent\}/.test(css),
-    "★★ v2.11.0：循环钮零背景图层（含 hover 与开启态）——图标直接浮在页面背景上");
+  ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent;border:none\}/.test(css),
+    "★★ v2.11.0（v3.12.0 补 border:none）：循环钮零背景图层（含 hover 与开启态）——"
+    + "图标直接浮在页面背景上；基座 .jump-btn 补 1px 描边后这里必须显式去掉，否则循环钮会长出圆框");
   ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),
     "★★ v2.11.0：BPM 组两行按钮两端对齐（-5↔60 左缘、+5↔120 右缘）");
   ok(/\.card-head-left\{[^}]*width:min\(312px,100%\)/.test(css),
@@ -307,8 +340,10 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★★ v2.10.16 立口径、v2.79.1 修正：窄屏六线几何「铺满」——(34−1)/5=6.6px 弦距、"
     + "线落 0..33（第六弦 33~34 从内侧贴底边，线体不再悬出格外）"
     + "（修复 v2.8.0 只改桌面档、窄屏仍留 v2.4.3 上下留白导致的「底纹铺不满」）");
-  ok(/\.viz-rows-row > \.viz-rows-panel\{margin-bottom:0\}/.test(css),
-    "★ 行内 `.viz-rows-panel` 的下边距归零（否则行距叠加成 24px）");
+  ok(/\.viz-rows\{display:flex;align-items:center;gap:8px;flex-wrap:wrap\}/.test(css),
+    "★ 档位行容器 `.viz-rows` 规则保留（住在设置弹窗里，布局口径未变）");
+  ok(!/\.viz-rows-row/.test(cssNoCmt),
+    "★★ 退役容器的 CSS 一并清干净（`.viz-rows-row` / `.viz-rows-panel` 不留死规则）");
 }
 
 /* ================= 场景 T90e：搬家不得改变控件自身的行为契约 ================= */
@@ -316,11 +351,8 @@ section("T90e 回归护栏 · 搬家只动位置，id / 初始态 / 接线契约
 {
   const { beat, els } = loadApp();
   /* 挂载点与 id 未变 —— 这是"既有断言一行不用改"的前提，也是本组要守的东西 */
-  ok(!!els["sigRow"] && !!els["timbreRow"] && !!els["volMaster"],
-    "三个容器的 id 仍能取到（未被改名）");
-  eq(els["sigRow"].children.length, 6, "拍号 6 颗 pill 仍挂在 #sigRow 上（按钮由 syncSigUI 生成，未散落）");
-  eq(els["sigRow"].children[2].getAttribute("aria-pressed"), "true", "拍号初始仍是 4/4 选中");
-  eq(els["accGroup"].hidden, true, "★ 重拍分组默认隐藏（跟随拍号搬走后 hidden 初值必须保留）");
+  ok(!!els["timbreRow"] && !!els["volMaster"] && !!els["vizRowsRow"],
+    "三个容器的 id 仍能取到（未被改名；#vizRowsRow 换了位置但 id 未换）");
   eq(String(els["volMaster"].value), "80", "节拍音量初始 80%（桩里初值是数字，故并成字符串比对）");
   eq(els["volMasterPct"].textContent, "80%", "百分比文案与滑杆一致");
   eq(els["timbreRow"].children[0].getAttribute("aria-pressed"), "true", "音色初始仍是电子");
@@ -328,21 +360,24 @@ section("T90e 回归护栏 · 搬家只动位置，id / 初始态 / 接线契约
   els["timbreRow"].fire("click", { target: pill({ timbre: "drum" }) });
   eq(beat.Store.S.timbre, "drum", "★ 搬家后音色档位点击仍生效");
   eq(els["timbreRow"].children[2].getAttribute("aria-pressed"), "true", "且高亮同步到鼓组");
-  els["sigRow"].fire("click", { target: pill({ sig: "6" }) });
-  eq(beat.Store.S.sig, 6, "★ 搬家后拍号切换仍生效");
-  eq(els["sigRow"].children[4].getAttribute("aria-pressed"), "true", "6/8 高亮置位");
-  /* 门控条件别写错：`ACC_GROUPS` **只有 5 与 7**（6/8 没有重拍分组）——
-     所以 6/8 下必须仍然隐藏，拿 6/8 去验"现身"是假期望（本用例第一版就错在这里） */
-  eq(els["accGroup"].hidden, true, "6/8 无重拍分组（ACC_GROUPS 只有 5/7）→ 仍隐藏");
-  els["sigRow"].fire("click", { target: pill({ sig: "7" }) });
-  eq(beat.Store.S.sig, 7, "切到 7/4");
-  eq(els["sigRow"].children[5].getAttribute("aria-pressed"), "true", "7/4 高亮置位");
-  eq(els["accGroup"].hidden, false, "★ 7/4 下重拍分组现身（搬走后门控仍接得上）");
-  /* `#accRow` 由桩按需惰性创建（`refreshAccRow` 在 sig 非 5/7 时提前 return，不会碰到它），
-     所以这一步同时验"按钮宿主没搬丢"——搬丢了这里会取不到或个数为 0 */
-  ok(!!els["accRow"] && els["accRow"].children.length === 2,
-    "且重拍分组 2 档已生成（`buildPillRow` 的宿主 `#accRow` 没搬丢）",
-    "children=" + (els["accRow"] ? els["accRow"].children.length : "无此元素"));
+  /* v3.12.0：拍号控件删除后，「切拍号」的唯一途径是**程序性对齐**（选型/跳段/听辨）。
+     本组改为验那条路径仍然接得上 + 新增的启动归一（alignSigToPattern）真的起作用。 */
+  {
+    const idx6 = beat.BUILTINS.findIndex(p => p.meter === 6);
+    ok(idx6 >= 0, "前提：存在 6/8 的内置型");
+    beat.Store.S.sel = { type: "builtin", idx: idx6 };
+    beat.Presets.alignSigToPattern();
+    eq(beat.Store.S.sig, 6, "★★ 选 6/8 型 → 拍号自动对齐（控件删除后这条路径是唯一入口）");
+    const idx4 = beat.BUILTINS.findIndex(p => p.meter === 4);
+    beat.Store.S.sel = { type: "builtin", idx: idx4 };
+    beat.Presets.alignSigToPattern();
+    eq(beat.Store.S.sig, 4, "★ 切回 4/4 型 → 拍号跟着回 4（不会卡在上一个）");
+    /* 手动拍号控件没了 → 界面不再有任何入口能把 sig 改到与选中型不一致 */
+    ok(!els["sigRow"], "★★ 桩里 `#sigRow` 已不存在（控件删除）");
+  }
+  /* v2.10.13：BPM 组进时值卡、v2.10.14 再进卡片头——接线（bindStep / 档位点击）必须跟着走。
+     ★ bindStep 的 click 兜底只认 `e.detail === 0`（键盘/读屏激活；指针路径由 pointerdown
+       步进、detail ≥ 1）——桩的 fire 不带 detail，必须显式传 0 模拟键盘激活。 */
   /* v2.10.13：BPM 组进时值卡、v2.10.14 再进卡片头——接线（bindStep / 档位点击）必须跟着走。
      ★ bindStep 的 click 兜底只认 `e.detail === 0`（键盘/读屏激活；指针路径由 pointerdown
        步进、detail ≥ 1）——桩的 fire 不带 detail，必须显式传 0 模拟键盘激活。 */

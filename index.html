@@ -153,23 +153,23 @@ body.wide-full .main{max-width:none}
 .viz-head-grid{display:block}
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
-.viz-head-grid .viz-toggles,
-.viz-head-grid .viz-rows-row{
+.viz-head-grid .viz-toggles{
   background:transparent;border-radius:10px;padding:12px 16px}   /* v3.3.0：组容器底整条去掉——四块统一无底，靠 .group-label 与栅格间距分组；圆角与内边距保留（块内间距口径不变） */
 /* ★ v3.0.0（批 5，用户要求）：**最后一块（同屏行数与拍号）去掉组容器底**。
    用户实测看出它上下留空不对称（上方 12px = 栅格 row-gap，下方 16px = 网格的 margin-bottom），
    并质疑"卡片已经有一层色，这一块再铺一层有没有必要"。去掉底之后它与其他块的留白口径
-   交还给同一个栅格，那 4px 的差也随之消失（见下方 margin 收口）。 */
+   交还给同一个栅格，那 4px 的差也随之消失（见下方 margin 收口）。
+   ★ v3.12.0：该块整体退役（同屏行数 → 设置弹窗、拍号 → 删除），本条规则随之无对象。 */
 .viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}   /* v2.40.0：开关胶囊去自带底色——组内只留一层组底（观测台主题的描边一并去） */
 @media (max-width:1439.9px){
   /* v2.42.7（用户截图报障）：窄屏（纵向堆叠布局）四张组容器卡统一撑满列宽——
      此前三种宽度策略并存：音量卡钉死 352px（v2.10.18 为宽屏防抖设计）、BPM 卡
      内容自适应、开关/行数卡撑满 → 右缘参差（568px 实测 352/310/489/489，三种宽度）。
-     ≥1440 的 2×2 网格与 ≥1900 的四块一行不受影响（352px 首列等既有规则保留）。 */
+     ≥1440 的 2×2 网格与 ≥1900 的四块一行不受影响（352px 首列等既有规则保留）。
+     ★ v3.12.0：块数由四降为三（行数拍号块退役）。 */
   .viz-head-grid .card-head-left,
   .viz-head-grid .viz-head > .group,
-  .viz-head-grid .viz-toggles,
-  .viz-head-grid .viz-rows-row{width:100%}
+  .viz-head-grid .viz-toggles{width:100%}
   .viz-head-grid .card-head{row-gap:16px}
   /* v3.0.0：预设库块补进「纵向堆叠」这一档——button 不自动撑满列宽（原生 button 是
      inline-block 且 width 由内容定，实测只有 89.4px），也没有组容器卡的 margin-bottom，
@@ -313,12 +313,9 @@ body.wide-full .main{max-width:none}
    而行槽各自横移不同的距离——一条静止的线对不上任何一行（行内的拍边界由格子自身描边给出）。
    批 2 若要把线跟着行走，需改成"每行一组"，那是行内 DOM，届时再议 */
 .viz.scroll-mode .grid-line{display:none}
-/* v3.9.0（用户反馈"预备拍道的竖线 Agent 说实现了但看不见"）：上面的豁免放行预备拍道内部的
-   竖线。竖线代码 v3.2.3 就在（rebuildCountLaneInto 建拍数−1 条 .grid-line），但被本条
-   display:none 连坐隐藏了——那条规则的理由（"线相对 #viz 定位、对不上横移的行槽"）对道内
-   竖线不成立：它们是**行内 DOM**、相对道自身定位、随道一起移动（正是当年设想的"每行一组"）。
-   预备拍道自此与内容道同款拍边界划分（骑缝 −0.5px、1px、同色）。 */
-.viz.scroll-mode .count-lane .grid-line{display:block}
+/* （v3.9.0~v3.11.x 曾在此放行 `.count-lane .grid-line`——v3.12.0 起预备拍道的拍边界
+   改挂 .seams 覆盖层（与正常跑道同一个 seamGradient 强缝），道内不再有 .grid-line，
+   豁免规则随之退役。） */
 /* 歌词覆盖层在 scroll 下同样**只裁上下、不裁左右**（它是 #viz 的兄弟节点，不吃 #viz 的裁剪）。
    与 .viz.scroll-mode 同一口径：上下靠自身 height，左右靠 clip-path 外扩放开。 */
 .lyric-lane.overlay.scroll-clip{clip-path:inset(0 -2000px)}
@@ -710,23 +707,28 @@ body.wide-full .main{max-width:none}
    去当前节奏型行）、拍号（v2.10.11 去 .viz-rows-row）相继搬走后只剩播放键，而播放键也搬进了
    主界面跳段行（#argJump，与上/下段键同排），本卡再无内容。`.transport` 与观测台的两条
    覆盖一并删除；`.play-btn` 留下（跟着播放键搬了家） */
-.play-btn{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(30,215,96,.35);flex:none}
+/* v3.12.0（用户反馈：播放键相对两侧跳段键过大）：72→62——仍是行内最大
+   （主操作地位不变），但与 52px 跳段键的差距收敛；图标随档 26→24。 */
+.play-btn{width:62px;height:62px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 20px rgba(30,215,96,.32);flex:none}
 .play-btn:active{transform:scale(.96)}
 .group{display:flex;flex-direction:column;gap:10px}
 /* v3.4.1（P4 字体层级）：组标签 11px→12.5px + 字重 500 + .04em 字距。原 11px 与顶栏
    `.brand .ver`、`.ruler-lab` 那类**装饰性微标**同号，层级被抹平——组标签是「这一组是什么」
    的导航锚点，该重一档；12.5px 取自既定阶梯（11/12.5/14/16/40）。装饰性微标一律不动。 */
 .group-label{font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--t3)}
-.bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
+.bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5 在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
 .viz-head .bpm-row{justify-content:space-between}   /* v2.11.0（用户要求）：BPM 组两行按钮拉伸到组宽后两端对齐——-5↔60 左缘对齐、+5↔120 右缘对齐（两行同宽由列布局 stretch 保证） */
-#sigRow.sig-lock .pill{opacity:.45;cursor:not-allowed}   /* v2.42.5：曲式期间锁定拍号（α 方案）——置灰示意，拦截在点击处理器 */
+/* （v2.42.5 的 `#sigRow.sig-lock` 置灰规则随拍号控件于 v3.12.0 删除——
+   曲式期间"拍号跟随歌曲"的语义由拍号恒跟随当前型承担，不再需要对用户置灰什么东西） */
 .step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card2);color:var(--t1);font-size:14px;font-weight:500;font-family:var(--mono);transition:background .12s,transform .06s}   /* v2.10.19：44→40 与大数字降档配套 */
 /* v2.10.14（用户要求③）：上/下段跳段键改音乐播放器「上一首/下一首」的圆形图标键——
    与播放键同一套圆形语言（播放键是页面里唯一的绿色实心圆，跳段键用灰底深图标，
    与 .step-btn 同规格 44px）。常显；不可用（非曲式模式 / 单段曲式）置灰而不是隐藏——
    v2.0.2 那条「隐藏而不是禁用」的判据随播放键进本行作废：整行隐藏会连播放键一起藏掉 */
-.jump-btn{width:52px;height:52px;border-radius:50%;background:var(--card2);color:var(--t1);display:flex;align-items:center;justify-content:center;flex:none;transition:background .12s,opacity .12s}
-.jump-btn:hover{background:var(--line)}
+/* v3.12.0（用户拍板）：背景圆补 1px 描边——--card2 与底栏底色太近、圆存在感弱
+   （日间主题本就有同款描边，两主题拉齐；border-box 下外径 52 不变）。图标 20→24。 */
+.jump-btn{width:52px;height:52px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--t1);display:flex;align-items:center;justify-content:center;flex:none;transition:background .12s,border-color .12s,opacity .12s}
+.jump-btn:hover{background:var(--line);border-color:var(--border)}
 .jump-btn:active{transform:scale(.94)}
 .jump-btn:disabled{opacity:.35;cursor:default}
 /* v2.10.22：范围循环钮的双态图案切换与点亮态（aria-checked 由 setToggle 驱动） */
@@ -738,9 +740,9 @@ body.wide-full .main{max-width:none}
 .loop-btn[aria-checked="true"]{color:var(--green)}
 /* v2.11.0（用户要求）：循环钮**不要任何背景图层**——图标直接浮在页面背景上（含 hover）；
    开启态的点亮只靠图标变绿（+ 数字 1），不靠底色；观测台主题的边框覆盖一并去除 */
-.loop-btn, .loop-btn:hover, .loop-btn[aria-checked="true"]{background:transparent}
+.loop-btn, .loop-btn:hover, .loop-btn[aria-checked="true"]{background:transparent;border:none}   /* v3.12.0：基座补描边后这里一并去——循环钮保持无背景图层 */
 body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked="true"]{background:transparent;border:none}
-.jump-btn:disabled:hover{background:var(--card2)}
+.jump-btn:disabled:hover{background:var(--card2);border-color:var(--line)}
 /* 右区进度条（v3.3.0）：容器只负责排布，条本体是 JS 挂进来的 .demo-range（双原生 range 叠层）。
    ★ 横向化：曲式区那版是纵向（读数在上、轨道在下），底栏里读数挪到轨道右侧，省一行高度。
    ★ v3.10.0：外层改由 .pb-right 包裹（状态灯 + 进度条）——网格第 3 列的落位与宽度契约
@@ -748,6 +750,15 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
    在其中 flex:1。状态灯 flex:none（不被挤压），文案不折行。 */
 .pb-right{justify-self:end;display:flex;align-items:center;gap:12px;width:100%;max-width:640px;min-width:0}
 .pb-right .status{flex:none;white-space:nowrap}
+/* 预备拍（v3.12.0 从时值卡开关行搬进底栏右区）：flex:none 不被进度条挤压；
+   输入框常显与否由 #countInBeatsWrap 的 hidden 驱动（与开关同步，装配区收敛）。 */
+.pb-countin{flex:none;display:flex;align-items:center;gap:8px}
+/* ★ nowrap 必需：窄屏右列被挤到约 78px 时，标签会折成三行、把底栏顶穿（实测 67px 高） */
+.pb-countin .toggle-pill{padding:8px 12px 8px 14px;font-size:12px;white-space:nowrap}
+.pb-countin .switch{width:30px;height:18px}
+.pb-countin .switch::after{width:14px;height:14px}
+.pb-countin .inp-with-unit{display:flex;align-items:center;gap:4px}
+.pb-countin .tr-inp{width:40px;padding:3px 4px;font-size:12px}
 .pb-progress{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
@@ -782,8 +793,12 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
      （实测真机 `#pbProgress` 宽度 0 —— 桩测不出，是冒烟的宽度断言抓到的）。
      改为给 .pb-right 与 .demo-range-track 确定下限；胶囊同步收窄，让位次序 = 先让读数、再让"当前"前缀、最后压胶囊。
      ★ v3.10.0：状态灯入列右区后，窄屏改为**上下两行**（状态灯在上、进度条在下，都右对齐）——
-       一行硬塞 [● 播放中 · 第 N 小节][range] 会把轨道压穿 min-width。 */
-  .pb-right{flex-direction:column;align-items:flex-end;gap:2px}
+       一行硬塞 [● 播放中 · 第 N 小节][range] 会把轨道压穿 min-width。
+     ★ v3.12.0：预备拍搬进右区后纵排三件会把右列顶到 110px（超 96px 底栏），中列随之被撑高、
+       播放键贴底（真机实测距底 9px，冒烟拦下）→ 窄屏右区改**「预备拍独占一行 + 状态灯与进度条
+       合一行」**的两行布局（换行 + flex-basis:100%），右列回落到 ~58px，底栏高度契约不动。 */
+  .pb-right{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:2px 10px}
+  .pb-right .pb-countin{flex-basis:100%;justify-content:flex-end}
   .pb-right .status{font-size:11px}
   .pb-progress{width:100%;max-width:none;min-width:96px}
   .pb-progress .demo-range-note{display:none}
@@ -899,24 +914,23 @@ input[type=range].vol{width:120px}
 .viz-toggles .tr-panel{margin-top:0}
 /* ★★ v3.9.0（用户裁决）：**共槽退役，三列固定槽位**——"三组参数共用一行槽、谁最后激活谁显示"
    在实车上不好用（想同时看两组参数做不到、切开关时参数跳来跳去），且控制区空间足够。
-   新形状：tg-row / tg-slot 两层壳 **display:contents 溶解**进 tg-body 的同一张三列网格——
-   上行三枚开关、下行三组参数，列宽 = max(开关, 参数) 内容自适应，每组参数永远落在
-   自己开关正下方那列（同一张网格 → 列对齐是结构保证，不靠两行轨道凑数）。
+   新形状：tg-row / tg-slot 两层壳 **display:contents 溶解**进 tg-body 的同一张网格——
+   上行开关、下行参数，列宽 = max(开关, 参数) 内容自适应，每组参数永远落在自己开关正下方那列
+   （同一张网格 → 列对齐是结构保证，不靠两行轨道凑数）。
+   ★ v3.12.0：列数 3 → 2（预备拍整组搬进底栏，其开关与参数输入同去）。
    ★ 显式 grid-area 钉位：display:none 的面板不占格，不钉位的话剩下的面板会被
      auto-placement 挪进第 1 列、列对齐就散了。
    ★ 参数行高度钉死 76px（grid-template-rows 第二轨，按最满那组 = 变速训练
-     "一行输入 + 两行拒开原因" 的实测高度预留）：三开关开合时块内高度一字不变，
+     "一行输入 + 两行拒开原因" 的实测高度预留）：开关开合时块内高度一字不变，
      v3.3.1 的零跳动契约原样保留。 */
-.viz-head-grid .viz-toggles .tg-body{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto 76px;gap:10px 24px;justify-content:start}   /* ★ 作用域必须钉在 .viz-toggles 内——.tg-body 这个类名在音量组与 BPM 组里也在用（各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车） */
+.viz-head-grid .viz-toggles .tg-body{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 76px;gap:10px 24px;justify-content:start}   /* ★ 作用域必须钉在 .viz-toggles 内——.tg-body 这个类名在音量组与 BPM 组里也在用（各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车） */
 .viz-toggles .tg-row{display:contents}
 .viz-toggles .tg-slot{display:contents}
-.viz-toggles .tg-row .toggle-pill#countInToggle{grid-area:1/1}
-.viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:1/2}
-.viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:1/3}
+.viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:1/1}
+.viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:1/2}
 .viz-toggles .tg-slot .tr-panel{margin:0;flex-wrap:wrap;min-width:0;align-content:center}
-.viz-toggles .tg-slot .tr-panel#countInPanel{grid-area:2/1}
-.viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:2/2}
-.viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:2/3}
+.viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:2/1}
+.viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:2/2}
 .viz-toggles .tg-slot .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-slot .lab{font-size:11px;white-space:nowrap}
 /* v3.9.0：进度/拒开文案封顶——列宽 = 列内 max-content，文案一变长整列就变宽、
@@ -929,12 +943,10 @@ input[type=range].vol{width:120px}
    开合时后面的组顺移（标准手风琴行为）；零跳动钉死只在桌面档承诺。 */
 @media (max-width:759.9px){
   .viz-head-grid .viz-toggles .tg-body{grid-template-columns:minmax(0,1fr);grid-template-rows:none;justify-items:start}
-  .viz-toggles .tg-row .toggle-pill#countInToggle{grid-area:1/1}
-  .viz-toggles .tg-slot .tr-panel#countInPanel{grid-area:2/1}
-  .viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:3/1}
-  .viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:4/1}
-  .viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:5/1}
-  .viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:6/1}
+  .viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:1/1}
+  .viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:2/1}
+  .viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:3/1}
+  .viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:4/1}
 }
 /* 同行参数要能塞进开关那一行：下拉收窄、字号降一档、字距压紧——否则它会折到第二行，
    那样"同行"就白搬了（实测桌面 312px 列宽下会折行） */
@@ -946,19 +958,11 @@ input[type=range].vol{width:120px}
    ★ v3.9.0：gap 收口到 24px 列距（本条 (0,3,0) 特异性高于 .tg-body 基础规则，
      不改这里列距会被压回 8px——三列布局的列距单一来源在此） */
 .viz-head-grid .viz-toggles .tg-body{justify-content:flex-start;gap:10px 24px}
-/* 同屏行数档位（v2.8.0 req3）：时值可视化卡片顶部、开关行之下、网格之上。
-   flex + gap + 下方留白（原先这句写的是"与 .limit-panel 同一套写法"，
-   那个类随练习量一起删了，v2.10.12 起改为自述）；
-   档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死 */
-.viz-rows-panel{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:12px}   /* v2.38.0（用户反馈）：标签与按钮**同行**自适应——空间够同行（紧凑），窄了自动折行回两层；替换原 column 竖排（居中分布后间隙拉大会显空旷）。v2.10.17 的对齐修法由 align-items:center + gap 承接 */
-/* v2.10.11（用户要求①）：「同屏行数」与「拍号」并排一行（拍号从走带卡搬来、紧邻其右）。
-   `flex-wrap:wrap` 是必需的——实测 390px 下卡片内容可用宽仅 326px，而拍号那 6 颗 pill
-   单行需要约 384px（原本就在折行），并排必然折行 → 窄屏下自动退回"上下两行"的观感。
-   `.viz-rows-panel` 自己那 12px 下边距在这里归零：本行已经给了间距，叠加会变成 24px */
-.viz-rows-row{display:flex;align-items:flex-start;gap:16px 28px;flex-wrap:wrap;margin-bottom:12px}   /* v2.10.17：行内折行行距 28→16（纵向间隔统一 16px），横向 28 保留 */
-.viz-rows-row > .viz-rows-panel{margin-bottom:0}
-.viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 16px}   /* v2.38.0：拍号面板同款标签同行自适应；#accGroup 整体折到下一行。v2.40.0：补 flex-direction:row——.group 基础是 column、align-items:center 在 column 下恰成水平居中（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，两面板同基线 */
-.viz-rows-row #accGroup{flex-basis:100%}
+/* 同屏行数档位（v2.8.0 req3；v3.12.0 从「时值可视化卡顶部」搬进设置弹窗「画面图层」组）。
+   档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死。
+   ★ v3.12.0 退役的兄弟规则：`.viz-rows-panel` / `.viz-rows-row` / `.viz-rows-row .group` /
+     `.viz-rows-row #accGroup` —— 前者是"标签与按钮同行"的旧面板壳（设置里改由 .group 承担），
+     后三条随「行数 + 拍号」并排行整块退役（拍号已删）。 */
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 /* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:7px 14px;font-size:12px}` 缩小规则删除——
    它让「同屏行数」的 pill（实测 31px 高）与旁边「拍号」的默认 .pill（36px 高）大小不一，
@@ -1692,6 +1696,11 @@ body[data-theme="obs"] .sec-tag i{font:500 10px/1 var(--mono);font-style:normal;
 /* 训练模式：角标内联在 group-label 里，不收成整行 */
 body[data-theme="obs"] .group-label .sec-tag{display:inline-flex;width:auto;margin:0 10px 0 0}
 body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
+/* v3.12.0（用户实拍：日间模式预设库标题「节奏型预设库」逐字竖排）：.pd-head 是 flex 行
+   （角标 + 标题 + 收起按钮），角标的 width:100% 在行内吃掉全部宽度、把标题挤到只剩
+   一个字宽 → 逐字换行成竖排。照 .group-label .sec-tag 同款先例：行内容器里角标收成
+   内容宽。 */
+body[data-theme="obs"] .pd-head .sec-tag{display:inline-flex;width:auto;margin:0;flex:none}
 /* v2.76.3：状态行搬顶栏后 53px 占位退役——观测台左卡仍有角标整行，BPM/开关两卡补回
    等高占位：卡内边距 12 + 角标行 18 + 角标下距 6 + 左列行距 8 = 44px（量测校准，
    实测角标主题 vol/bpm 标签同线），经典主题无角标行故无此规则 */
@@ -1869,11 +1878,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          （v2.10.11 ii）随之退役。搬迁史：音色 v2.10.12 进设置弹窗、编辑节奏型 v2.10.12 去侧栏、
          音量 v2.10.15 去时值卡、名字+meta v2.10.16 去跳段行 -->
 
-    <!-- 拍号回退提示：选中节奏型与当前拍号不匹配时显示 -->
-    <div class="fallback-note" id="fallbackNote" hidden>
-      <span id="fallbackText"></span>
-      <button class="pill outline" id="fallbackBtn">切回</button>
-    </div>
+    <!-- ★ v3.12.0：拍号回退提示条（#fallbackNote）整块退役——它服务的是"手动切拍号 → 与选中型
+         不匹配 → 已回退为基础节奏"这条路径；拍号控件已删、拍号恒跟随当前型，错配无从发生
+         （`updateFallbackNote` 与「切回」按钮一并下线）。提示条的样式类 `.fallback-note`
+         保留——预设库的跨地址迁移提示（#migHint）仍用它。 -->
 
     <!-- 跟播打轴悬浮条（v2.48.0①）：打轴在主视图进行（编排页在 startTap 时关闭），
          空格逐字落时刻、↓ 跳过。进度读数由 Arrange 模块的 updateTapBar 维护 -->
@@ -2002,21 +2010,21 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            ★ v3.9.0：本行与下面的参数槽改为**同款三等列网格**——每组参数永远落在
              自己开关正下方那列，显隐各管各（syncParamSlots 只看本组开关）。 -->
       <div class="tg-row" id="tgSwitchRow">
-        <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
+        <!-- ★ v3.12.0（用户拍板）：预备拍开关 + 拍数输入从本行搬进**底部播放条右区**
+             （#countInToggle / #countInBeatsWrap，id 与接线一行不动）——它是"开播前数几拍"，
+             与播放键／时间轴是同一组语义，贴着底栏最好找；本行自此只剩两枚开关。 -->
         <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练<span class="switch"></span></button>
       </div>
       <!-- ★ v3.9.0：**三列固定槽位**（原 v3.3.1 共槽仲裁退役——用户实测"想同时看两组做不到、
            切开关参数跳来跳去"，且控制区空间足够不再需要省地）。
-           三列 1fr 轨道与本行开关列一一同轴；面板显式 grid-column 钉位（display:none 不占格，
-           不钉位剩下的面板会被 auto-placement 挪进第 1 列）。槽高仍恒定（按最满那组预留），
-           三开关开合时块内高度一字不变——v3.3.1 的零跳动契约原样保留。
+           v3.12.0：列数 3 → 2（预备拍整组搬走），每列 1fr 轨道与本行开关列一一同轴；
+           面板仍显式 grid-column 钉位（display:none 不占格，不钉位剩下的面板会被
+           auto-placement 挪进第 1 列）。槽高仍恒定（按最满那组预留），
+           开关开合时块内高度一字不变——v3.3.1 的零跳动契约原样保留。
            ★ 空目标不弹窗拒开（方案甲，v3.3.1 立）：点变速训练时若目标为空，openParamSlot
              把这一列参数摆出来、焦点送进目标框（见 trainerToggle 处理器）。 -->
       <div class="tg-slot" id="tgSlot">
-        <div class="tr-panel" id="countInPanel" hidden>
-          <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
-        </div>
         <div class="tr-panel" id="muteCfgPanel" hidden>
           <!-- v2.76.0（item 3）：随机子开关与参数同组（它决定"怎么静"，属于这一组参数） -->
           <button class="toggle-pill off" id="muteRandomToggle" role="switch" aria-checked="false" hidden>随机<span class="switch"></span></button>
@@ -2102,46 +2110,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <span class="arg-now-name" id="argNowName"></span>
       </div>
     </div>
-    <!-- 同屏行数档位（v2.8.0 req3；v2.10.2 起两种模式都生效）：扫弦网格窗口与歌词轨**共用**
-         一档可见行数。用户明确要「可调整歌词两行、扫弦两行」——两轨是同一根时间轴上的
-         上下两层，共用一个档位才能逐行对齐（若各设一档，两轨行数一不一致就立刻错行）。
-         值域 1–4，默认 4（= 旧口径「同屏 4 小节」，老用户升级后逐位不变）。
-         ★ N = **网格行数**，两种模式下都是「N 行窗口」：曲式模式下窗口 = 歌曲的 N 个连续小节；
-           预设模式下窗口 = 当前型的 N 个连续小节位——型短于 N 绕回重复铺满 N 行，
-           型长于 N 按 N 行翻页（v2.10.2 行为变更；此前预设模式画「型的全部小节」，
-           档位点下去毫无反应）。
-         按钮由 VIZ_ROW_COUNTS 在 Controls.syncRowsUI 里生成，不在标记里写死——
-         与练习量档位 / 轨切换条同一套「一行 pill 由值表生成」的纪律（单一数据源） -->
-    <!-- v2.10.11（用户要求①）：本行改为「同屏行数 + 拍号」并排——拍号**整块**从走带卡搬到这里、
-         紧邻同屏行数右侧。窄屏放不下时自动折回上下两行（实测 390px 下拍号 6 颗 pill 单行需
-         384px > 可用 326px，见 .viz-rows-row 的 CSS 注释） -->
-    <!-- v2.10.14（用户要求②）：Swing 下移进本行、排最右——「与同屏行数平齐」。
-         1280px 视口下三块合计约 892px > 卡片内容宽 785px，Swing 会自动折到拍号下方
-         （flex-wrap 兜底）；更宽的屏幕一行放下。id 与接线不动（#swingRow） -->
-    <div class="viz-rows-row">
-      <div class="viz-rows-panel">
-        <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
-        <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
-      </div>
-      <!-- 拍号（v2.10.11 从走带卡整块搬来）：`.group-label` + `#sigRow`（6 档）+ `#accGroup`
-           （奇数拍时才出现的「重拍分组」，默认 hidden）——`accGroup` 必须跟着搬，
-           它是拍号的语义附属物，留在走带卡里就没人能触发它了 -->
-      <div class="group">
-        <div class="group-label">拍号 · 奇数拍可选重拍分组</div>
-        <div class="bpm-row" id="sigRow">
-          <button class="pill" data-sig="2" aria-pressed="false">2/4</button>
-          <button class="pill" data-sig="3" aria-pressed="false">3/4</button>
-          <button class="pill active" data-sig="4" aria-pressed="true">4/4</button>
-          <button class="pill" data-sig="5" aria-pressed="false">5/4</button>
-          <button class="pill" data-sig="6" aria-pressed="false">6/8</button>
-          <button class="pill" data-sig="7" aria-pressed="false">7/4</button>
-        </div>
-        <div id="accGroup" hidden><div class="bpm-row" id="accRow" style="margin-top:8px"></div></div>
-      </div>
-      <!-- v2.10.17（用户确认）：Swing 三档搬进设置弹窗「发声」组——设定型参数（定了整首不变），
-           符合「练习过程中会不会去点它」的低频判据；本行回到「同屏行数 + 拍号」两块（折行问题随之消失）。
-           #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
-    </div>
+    <!-- ★ v3.12.0（用户拍板）：本行整块退役——它曾住两块：
+         ① 「同屏行数 · 扫弦与歌词共用」档位（#vizRowsRow）→ 搬进**设置弹窗「画面图层」组**
+            （判据同 Swing：练习过程中不会去点的显示偏好；id 与档位接线一行不动）。
+         ② 「拍号 · 奇数拍可选重拍分组」（#sigRow / #accGroup）→ **整块删除**（用户判定：
+            每个节奏型自带拍号，选型时自动对齐、曲式期间还锁定，手动切只会制造"错配→回退"
+            的死回路，于实践无用）。连带退役：`.sig-lock` 置灰、拍号回退提示条、
+            `refreshAccRow`、`#sigRow` 点击拦截。
+         详见 CHANGELOG v3.12.0 与 tests/cases/t90/t168/t172 的口径修订。 -->
     </div><!-- /viz-head-grid -->
     </section><!-- /控制卡：可视化内容自此迁出，不再共享卡片外壳（v3.0.0） -->
     <!-- v3.0.0：可视化带——#viz / #lyricLane / 跳段播放行整组**迁出卡片**，全宽落在页面背景上
@@ -2234,13 +2210,13 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <div class="trio">
         <button class="jump-btn" id="argJumpPrev" aria-label="上一段" disabled title="切到曲式编排后可跳段">
           <!-- v2.10.21（用户选 C）：单三角——跳段是单步动作，比 ⏮/⏭ 的"快进快退"隐喻更准 -->
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16.5 5.5v13L6.5 12l10-6.5z" fill="currentColor"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M16.5 5.5v13L6.5 12l10-6.5z" fill="currentColor"/></svg>
         </button>
         <button class="play-btn" id="playBtn" aria-label="播放">
-          <svg id="playIcon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
+          <svg id="playIcon" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>
         </button>
         <button class="jump-btn" id="argJumpNext" aria-label="下一段" disabled title="切到曲式编排后可跳段">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7.5 5.5v13l10-6.5-10-6.5z" fill="currentColor"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7.5 5.5v13l10-6.5-10-6.5z" fill="currentColor"/></svg>
         </button>
         </div>
         <!-- v2.10.17：原这里的「当前节奏型名」搬去左列状态灯行（名字跟在 ● 后面更顺，
@@ -2260,8 +2236,17 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
        原生 range 叠层整组挂进来；空容器 = 预设模式暂无进度）。
        ★ v3.10.0（用户要求）：右区改为 .pb-right 包裹【状态灯 + 进度条】——「播到哪」的两路
          读数团圆。状态灯必须是 #pbProgress 的**兄弟**而不是子节点：buildDemoSongRow
-         挂载前会清空 #pbProgress（曲式列表重建即再挂一次），静态子节点会被连坐销毁。 -->
+         挂载前会清空 #pbProgress（曲式列表重建即再挂一次），静态子节点会被连坐销毁。
+       ★ v3.12.0（用户拍板）：**预备拍**整组从时值卡开关行搬进本区（判据见 .pb-countin 注释）；
+         id（#countInToggle / #countInBeatsWrap / #countInBeats）与接线一行不动。 -->
   <div class="pb-right">
+    <!-- 预备拍：开关 + 拍数输入。它是"开播前数几拍"，与播放键/时间轴同组语义，
+         放在播放控制的常驻底栏里随时够得着（此前在时值卡的开关行，视线要离开时间轴）。
+         ★ 拍数输入必须紧跟它所属的开关（v1.3.3 教训：排在别处会像别的开关的参数）。 -->
+    <div class="pb-countin">
+      <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
+      <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
+    </div>
     <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
   </div>
@@ -2492,7 +2477,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <ul class="help-list">
         <li><b>一行 = 一小节</b>（手机竖屏等窄屏下会<b>自动拆细</b>：一行只画半小节、甚至每拍一段——
           格子更宽更好读，拆分的边界仍落在整拍上；跨行的长音会画成两段、断开的那侧是虚线边）；
-          <b>同屏画几行由「同屏行数」档位决定（1–4 行）</b>。
+          <b>同屏画几行由「同屏行数」档位决定（1–4 行；在设置小窗的「画面图层」里）</b>。
           曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
           （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行），
           读到页末还会把第 1 行临时换成「下一小节 · 型名」提前备型——<b>预告行只在 2 行及以上出现</b>，
@@ -2513,7 +2498,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <li><b>静音拍</b>：周期性把一组小节的末尾<b>静音</b>，逼你靠内心数拍。练节奏不稳特别有效。参数在开关右侧：<b>每 N 小节 · 静 M 小节</b>（默认每 4 静 1），还有<b>随机</b>模式——每组随机挑 M 位静音（确定性随机：翻页/循环后同一小节的判定不变）</li>
         <li><b>型级标注</b>：编辑器「标注」框里填的和弦/备忘，会贴在预设模式<b>每小节行首</b>（曲式模式的和弦仍来自段名，互不影响）。用「|」可分段：<b>C | Am</b> = 前半小节 C、后半小节 Am（按片段均分，需分片档 ≥2）；<b>C | G | Am | F</b> 配 4 小节型 = 每小节一个</li>
         <li><b>变速训练</b>：设好目标速度与「每几小节加多少」，从<b>你现在弹的速度</b>起步自动加速，爬到目标自动停（不用自己按）</li>
-        <li><b>预备拍</b>：点播放后先数几拍再进正拍</li>
+        <li><b>预备拍</b>：点播放后先数几拍再进正拍（开关与拍数在底部播放条右侧）</li>
       </ul>
 
       <div class="bpm-row" style="margin-top:18px">
@@ -2546,7 +2531,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <h2 class="card-title" style="margin:22px 0 4px">主界面控制项</h2>
         <ul class="help-list">
           <li><b>速度 BPM。</b>30–240。滑杆下面的常用档是 60 / 72 / 84 / 96 / 120。</li>
-          <li><b>拍号。</b>2/4 到 7/4，切到奇数拍（5/4、7/4）会多出一行「重拍分组」，选 2+3 还是 3+2</li>
+          <li><b>拍号。</b>不用自己设——每个节奏型自带拍号（2/4 到 7/4），选中它就自动切过去；奇数拍（5/4、7/4）按内置的重拍分组数（5/4 = 2+3，7/4 = 3+2+2）</li>
+          <li><b>预备拍。</b>在底部播放条右侧：打开开关后点播放，先数几拍再进正拍；旁边的数字框填几拍（1–8）</li>
           <li><b>音量（三条滑杆）。</b>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</li>
           <li><b>其余低频项都收在顶栏「设置」小窗里</b>（壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断 / 安装）；<b>顶栏常驻的只有三样</b>：延迟补偿读数（裸文案，点击直达设置）、「设置」按钮、主题切换（月亮 / 太阳图标钮）；「听辨训练」在预设卡的「编辑节奏型 / 编排曲式」行最左。逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
@@ -2602,7 +2588,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
           <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（静音拍训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
-          <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时顶部「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
+          <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时本节下方的「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦 / 重拍增强三条滑杆在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
@@ -2837,7 +2823,15 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
              这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
       <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音（弹跳球<b>仅在分页模式</b>显示，连续滚动模式下不出现）；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时顶部的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
+    <!-- ★ v3.12.0（用户拍板）：同屏行数档位从「时值可视化卡顶部」搬进本组——判据同 Swing
+         （「练习过程中会不会去点它」的低频判据）：它是显示偏好，定了就不动；且它与紧邻的
+         「连续滚动」共用同一个档位语义（滚动时 1/3 两档、翻页时 1/2/3/4），放一起最好懂。
+         #vizRowsRow 的 id 与档位生成/接线一行不动（搬块不换 id）。 -->
+    <div class="group" style="margin-top:16px">
+      <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
+      <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
+    </div>
+    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音（弹跳球<b>仅在分页模式</b>显示，连续滚动模式下不出现）；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时上面的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
 
     <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
     <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
@@ -3001,23 +2995,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3033  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3662  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5266  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6123  Modal         应用内弹窗
-     L6261  Viz           时值可视化渲染与每帧动画
-     L9383  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10050 Trainer       变速训练器
-     L10252 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10866 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12264 Editor        自定义节奏型编辑器
-     L12710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12757 Ear           听辨训练（v1.10.0）
-     L12977 Arrange       曲式编排（v2.0.0）
-     L15875 Help          使用方法（v2.0.1）
-     L16004 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16078 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16321 初始化（装配） 各模块 hook 接线与启动
+     L3027  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3658  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5262  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6122  Modal         应用内弹窗
+     L6260  Viz           时值可视化渲染与每帧动画
+     L9384  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10051 Trainer       变速训练器
+     L10253 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10836 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12225 Editor        自定义节奏型编辑器
+     L12671 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12718 Ear           听辨训练（v1.10.0）
+     L12937 Arrange       曲式编排（v2.0.0）
+     L15835 Help          使用方法（v2.0.1）
+     L15964 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16038 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16281 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3043,7 +3037,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.11.2";
+const VERSION = "3.12.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3156,11 +3150,13 @@ function hasStrum(pat){
   return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
     && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined)));
 }
-/* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2） */
+/* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2）
+   ★ v3.12.0：兄弟表 ACC_LABELS（`{5:["2+3","3+2"], …}`）已删除——它只服务界面上那个
+     "重拍分组"选择行（refreshAccRow），随拍号控件一并退役。ACC_GROUPS 保留：
+     defaultAccents 仍按 `S.accentGrp[meter] || 0` 取分组，旧存档里选过第 2 组的老用户
+     音型不静默改变（界面不再有换组入口，故永远取第 0 组）。 */
 /** @type {Record<number, number[][]>} */
 const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
-/** @type {Record<number, string[]>} */
-const ACC_LABELS = {5: ["2+3","3+2"], 7: ["3+2+2","2+2+3"]};
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
 /* 同屏行数档位（v2.8.0 req3；v2.10.2 起**两种模式都生效**）：扫弦网格窗口与歌词轨**共用**的
@@ -5272,12 +5268,15 @@ const customs = Store.customs;
 /** @type {(id: string) => any} */
 const $ = id => document.getElementById(id);
 
-/* v3.3.1 → v3.9.0：开关参数区从「共槽仲裁」改为**三列固定槽位、各管各**。
+/* v3.3.1 → v3.9.0：开关参数区从「共槽仲裁」改为**固定槽位、各管各**。
    v3.3.1 的形状是三组共用一行槽（#tgSlot）、syncParamSlots 仲裁"谁最后激活谁显示"；
    用户实测裁决退役：想同时看两组参数做不到、切开关时参数跳来跳去，不好用——
-   且控制区空间足够，不再需要靠共槽省地（布局见样式表 .tg-slot 的三列网格）。
+   且控制区空间足够，不再需要靠共槽省地（布局见样式表 .tg-slot 的列网格）。
    ★ 不做互斥的纪律原样保留（L5748）：三个功能照常共存，本函数只让每组参数
      跟随**自己的开关**显隐，组与组零干扰。
+   ★ v3.12.0：参数组 3 → 2——预备拍整组（开关 + 拍数输入）搬进底栏，
+     其拍数输入的显隐由 countInToggle 处理器直接写 #countInBeatsWrap.hidden
+     （它不再是"槽里的参数面板"，不归本函数管），故本表随之收成两组。
    ★ "最后激活占槽"的记账（旧名 paramSlotActive）随仲裁一并退役；paramSlotForce 保留——
      它服务的是"点变速训练但目标为空"的开槽待填路径（openParamSlot），
      对应开关一旦真的打开，force 使命完成、就地解除。 */
@@ -5288,9 +5287,9 @@ function syncParamSlots(){
   /* ★ 类型闸门（CI 的 tsc）要求：用字符串变量索引字面量对象必须给索引签名，
      否则报 TS7053（本地 node_modules 缺失时 tsc 是 ⊘，只有 CI 能拦）。 */
   /** @type {Record<string, boolean>} */
-  const on = { countIn: !!S.countIn.on, mute: !!S.mute, trainer: !!S.trainer.on };
+  const on = { mute: !!S.mute, trainer: !!S.trainer.on };
   /** @type {Record<string, string>} */
-  const map = { countIn: "countInPanel", mute: "muteCfgPanel", trainer: "trainerPanel" };
+  const map = { mute: "muteCfgPanel", trainer: "trainerPanel" };
   for (const k of Object.keys(map)){
     if (on[k] && paramSlotForce === k) paramSlotForce = "";
     const el = $(map[k]);
@@ -5400,7 +5399,7 @@ function setPressed(sel, on){
   });
 }
 /* 通用预设行组件（v1.6.4）：把「一行 pill 由值表生成」收成一处。
-   BPM 快捷档（CONFIG.speedPresets）与奇数拍重拍分组（ACC_LABELS）本是同一形态：
+   BPM 快捷档（CONFIG.speedPresets）与（v3.12.0 前的）奇数拍重拍分组本是同一形态：
    清空容器 → 逐值建 button → 写 aria-pressed / aria-label（需要时加 data-*）→ 绑点击。
    原先两处各写一遍，日后音量、拍号再加常用值就会变成第三、四份（DEVELOPMENT §6 记的债）。
    用 createElement + appendChild 而非 innerHTML 拼串：测试沙箱靠 appendChild 记录子元素，
@@ -6323,8 +6322,9 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   const geoOf = i => rowGeo[i] || null;
 let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countLaneEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍道（v3.2.2）
 let countLaneSession = false;
-let countLaneFading = false;                         // 撤道交叉淡出进行中（v3.11.0）：窗口内守卫不得抢着隐藏道
+let countLaneStartCur = -1;                          // 本会话首个可听小节/片段号（v3.12.0 退场锚点；−1 = 待锚/无会话）
 let countLaneLastCur = -1;                           // 可听小节/片段号镜像（预备拍道守卫用，v3.2.3）
+let countLanePrevP = -1;                             // 上一帧小节内相位（v3.12.0：相位回退 = 首小节播完的通用信号；−1 = 未采样）
 let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
@@ -6490,6 +6490,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     /* v3.1.7：预备拍条随停止/切模式撤除，第一道行复位（与交接写点对称） */
     if (!keepCountLane){
       countLaneSession = false;                        // v3.2.3：会话结束（停止/切模式撤预备拍道）
+      countLaneStartCur = -1;                          // v3.12.0：退场锚点随会话一并失效
+      countLanePrevP = -1;                             // v3.12.0：相位采样一并复位（否则下次开播首帧误判回退）
       if (countLaneEl) countLaneEl.style.display = "none";
       if (rowEls[0]) rowEls[0].style.visibility = "";
     }
@@ -8068,15 +8070,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     return { bar, tib: prevTick + (endTicks - prevTick) * p, pb: prev.pb, sweep };
   }
-  /* 预备拍道结构重建（v3.2.2/v3.2.3）：拍区/弦线/竖线/拍号按 ciBeats 对齐
-     buildRowLayers 的层序；判据 children.length（桩元素无 querySelectorAll）；
+  /* 预备拍道结构重建（v3.2.2/v3.2.3；v3.12.0 竖线改 .seams 同款）：拍区/弦线/接缝层/拍号
+     按 ciBeats 对齐 buildRowLayers 的层序；判据 children.length（桩元素无 querySelectorAll）；
      清空用 removeChild 循环（桩的 textContent 赋值不清 children）
-     ★ v3.9.0 修 want 公式：实际子元素 = 拍区 n + 竖线 n−1 + 拍号 n + 弦线 2（hasStr）
-       = 3n−1+2·hasStr，旧式 2n+2·hasStr 少算了 v3.2.3 加的竖线——后果是判据永不成立、
-       守卫**每一帧**都在拆了重建整条道（白耗且让道结构常驻抖动）。 */
+     ★ 子元素 = 拍区 n + 接缝层 1 + 拍号 n + 弦线 2（hasStr）= 2n+1+2·hasStr。
+       （v3.9.0 的教训：want 公式每加一层都要跟着改——漏改 = 判据永不成立、
+       守卫**每一帧**都在拆了重建整条道。） */
   /** @param {HTMLElement} el @param {number} nBeats @param {boolean} hasStr */
   function rebuildCountLaneInto(el, nBeats, hasStr){
-    const want = nBeats * 3 - 1 + (hasStr ? 2 : 0);
+    const want = nBeats * 2 + 1 + (hasStr ? 2 : 0);
     if (el.children.length === want) return;
     while (el.children.length) el.removeChild(el.children[0]);
     for (let k = 0; k < nBeats; k++){
@@ -8094,14 +8096,20 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       sl.className = "strums";
       el.appendChild(sl);
     }
-    /* v3.2.3 竖线划分（用户拍板）：内部竖线 = 拍数 − 1，.grid-line 同款
-       （骑缝 −0.5px、1px、同色）——与内容道拍边界纵向对齐 */
-    for (let k = 1; k < nBeats; k++){
-      const gl = document.createElement("div");
-      gl.className = "grid-line";
-      gl.style.left = `calc(${k / nBeats * 100}% - .5px)`;
-      el.appendChild(gl);
+    /* ★ v3.12.0（用户拍板"与正常跑道竖线完全同款"）：拍边界改挂**行级 .seams 覆盖层**——
+       正常跑道的拍边界 = .seams 的 2px 强缝（top:0、高 44/窄屏 34、骑缝 ±1px、
+       var(--seam-strong)），由同一个 seamGradient 生成，几何/线宽/墨色逐位一致。
+       旧实现 .grid-line（1px、top:12/bottom:12、var(--line)）短一截、细一档、色也不同，
+       且 .viz.scroll-mode 下还需专用豁免规则才看得见——换层后该豁免随之退役。 */
+    const sm = document.createElement("div");
+    sm.className = "seams";
+    if (nBeats > 1){
+      /** @type {{x:number, strong:boolean}[]} */
+      const xs = [];
+      for (let k = 1; k < nBeats; k++) xs.push({ x: k / nBeats * 100, strong: true });
+      sm.style.background = seamGradient(xs);
     }
+    el.appendChild(sm);
     for (let k = 0; k < nBeats; k++){
       const lb = document.createElement("div");
       lb.className = "ruler-lab down";
@@ -8123,10 +8131,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          分支之前——scroll 下即使开关关着也要走同一套隐藏（幂等，写点归一）。
        ★ 恢复：切回分页后本函数自然走原路径，display="" 每帧重写，无永久关闭。 */
     if (S.scrollMode){
-      /* v3.2.3 方案 A：预备拍道会话维持——预备拍开启后，播放期间预备拍道以
-         "刚播完的道"（甲终点静止态：右缘贴播放杆）持续显示，随 row0 传送带移动；
-         跨过每小节的网格重建（重建创建新道默认隐藏，本守卫下一帧即恢复显示）。
-         结构重建提炼为 rebuildCountLaneInto（拍区/弦线/竖线/拍号随 ciBeats）。 */
+      /* v3.2.3 方案 A（v3.12.0 收口）：预备拍道会话维持——预备拍开启后，首个可听
+         小节内预备拍道以"刚播完的道"（甲终点静止态：右缘贴播放杆）持续显示，
+         随 row0 传送带移动；跨过网格重建（重建创建新道默认隐藏，本守卫同帧恢复显示）。
+         ★ v3.12.0：维持范围**仅限首个可听小节**——道的退场由上方的三路信号分支
+           结束会话（countLaneSession=false）并撤道；本守卫只认 **countLaneSession**
+           这一个开关（撤除分支与它同帧先跑，故此处无需再比小节号——多写一条
+           "lastCur ≤ 锚点" 是**冗余条件**，留着就是没人能触发的死代码）。
+         结构重建提炼为 rebuildCountLaneInto（拍区/弦线/拍号随 ciBeats）。 */
       if (countLaneSession && countLaneEl){
         const gL0 = geoOf(0);
         const gLc = geoOf(scrollCenter);
@@ -8139,8 +8151,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         countLaneEl.style.width = `${laneW.toFixed(1)}px`;
         /* 甲终点静止态：右缘贴播放杆（row0 内坐标 = 行宽 − 道宽） */
         countLaneEl.style.transform = `translate(${((gL0 ? gL0.width : 0) - laneW).toFixed(1)}px, 0px)`;
-      } else if (countLaneEl && countLaneEl.style.display !== "none" && !countLaneFading){
-        /* v3.11.0：淡出窗口内不抢着隐藏（撤道的 opacity 淡出还没走完） */
+      } else if (countLaneEl && countLaneEl.style.display !== "none"){
         countLaneEl.style.display = "none";
       }
       ballEl.style.display = "none"; shadowEl.style.display = "none";
@@ -9003,7 +9014,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const g0 = geoOf(0) || gc;
             /* 拍区/拍号随 ciBeats 重建（结构函数 rebuildCountLaneInto） */
             rebuildCountLaneInto(countLaneEl, ciBeats, vizHasStrum());
-            countLaneSession = true;   // 会话开启：播放期间预备拍道持续显示（方案 A）
+            countLaneSession = true;   // 会话开启：首个可听小节内预备拍道持续显示（v3.12.0）
+            countLaneStartCur = -1;    // 退场锚点待锚：首个正常帧以当时可听小节/片段号为锚
+            countLanePrevP = -1;       // 相位采样重置：交接首帧只采样不判回退
             countLaneEl.style.display = "block";
             countLaneEl.style.visibility = "visible";   // 覆盖行的 hidden（visibility 可逐层覆盖）
             countLaneEl.style.width = `${(ciBeats * perBeat).toFixed(1)}px`;
@@ -9065,50 +9078,36 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* transform 化（v2.0.2）：帧内只写 translateX/scaleX（合成层），不再碰 left/width%（布局）。
        位移基准用 rowGeo 缓存的行宽——帧内读 offset* 仍是一次不读（P1-4 承诺不破） */
     if (S.scrollMode){
-      /* ★ v3.2.3 方案 A（用户拍板）：预备拍道播完**不撤**——它挂在 row0 内随传送带
-         同步移动，以"刚播完的道"身份停在播放杆左侧紧贴处。
-         撤除时机 = **首次回卷**（调度域 loopWrapped 标记：循环回卷/曲末回卷都置位）——
-         回卷时左半槽位需要显示真实上一小节，预备拍道让位、row0 复位。 */
-      /* 撤除时机：回卷（loopWrapped）或第一轮播完（可听小节/片段号 cur ≥ 窗口行数）——
-         预备拍道让位；★ v3.11.2：row0 不再复位显形（通宽内容行的突现 = "变成 4 拍长"
-         的观感本体，用户三轮实拍裁决），槽位留空、由下一次网格重建自然回填。
-         ★★ v3.11.0（用户实拍二连："预备拍播完立刻 / 道上滚接近上限时，一瞬间变成 4 拍长"）：
-           撤除从「硬切」改**交叉淡出**。根因不在道的结构（v3.9.0 已让道按预备拍拍数构建），
-         而在撤除瞬间的**宽度突变**：预备拍≠4 时道是 N 拍短条，row0 复位显形的是 4 拍通宽
-         内容行——同帧一隐一显，感知就是"跑道一瞬间变成 4 拍长"（单小节循环每轮回卷触发 =
-         情形 2 的"立刻"；首轮窗口播完 cur≥行数触发 = 情形 1 的"接近上限时"）。
-         改法：row0 先复位显形（真实内容在道背后就位），道以 180ms opacity 淡出后再
-         display:none——硬切变交叉淡出。REDUCE_MOTION 用户跳过淡出（既有降级纪律）。
-         ★ 期间防抖：淡出窗口内 paintBall 守卫不得抢着把道 display:none（countLaneFading
-           旗），淡出完成回调收尾（display:none + 清 transition/opacity + 落旗）。
-         ★ 闭包必须锁**局部引用**（countLaneEl 是会被 buildViz 重建重指向的模块级变量，
-           锁变量会在重建后误杀新道）。 */
-      if (countLaneEl && countLaneEl.style.display === "block" &&
-          (loopWrapped || (countLaneLastCur >= 0 && countLaneLastCur >= rowEls.length))){
-        countLaneSession = false;   // 会话随撤除结束（否则守卫下一帧又恢复显示）
-        countLaneEl.dataset.sig = "";
-        /* ★★ v3.11.2（用户三轮实拍裁决，推翻 v3.11.0/v3.11.1 的交叉淡出思路）：
-           **row0 不复位显形，槽位留空**。三版尝试（硬切 → 道淡出 → 道淡出+内容淡入）
-           都没治住，因为用户 objections 的从来不是"切换快慢"，而是**通宽内容行的出现
-           本身**——预备拍≠4 时道是 N 拍短条，撤道后顶上来的真实上一小节是 4 拍通宽，
-           无论怎么过渡，"跑道一瞬间变成 4 拍长"的观感都在。
-           新口径：撤道 = 道淡出、row0 保持 hidden，槽位留空；内容由下一次网格重建
-           （翻页/回卷/段变化都会触发）自然回填——内容出现在布局整体重锚的时刻，
-           不再是孤立的突现。停止/切模式路径的 row0 复位保持原样（静止态本就该显示
-           真实内容，且无道在场，无宽度突变）。 */
-        const dyingLane = countLaneEl;
-        if (REDUCE_MOTION){
-          dyingLane.style.display = "none";
+      /* ★★ v3.12.0（用户拍板，推翻 v3.2.3 方案 A 与 v3.11.x 的全部撤除思路）：
+         预备拍道 = 传送带上的「第 −1 小节」，**退场与其他正常跑道同款**——首个可听小节的
+         最后一拍，整组行槽上移一行（既有 scrollDy），道随 row0 滑出 #viz 顶部裁剪区，
+         不靠任何专门的撤除动画。会话收尾只是"结束会话、防守卫复活"（该帧必已重建过网格）。
+         ★ 判据 = 「首个可听小节播完」三路信号**任一**（幂等，先到先收）：
+           ① cur > 锚点（多小节节目单）；② loopWrapped（曲式单小节循环，cur 恒不变）；
+           ③ **小节内相位回退**（p 由 >0.75 落到 <0.25）——①② 的共同盲区是"预设单小节型
+           或单小节范围循环"：cur 恒 0、schedBar 回跳目标等于前值（0<0 不成立）连
+           loopWrapped 也不置位，只有相位必然回退（实测：预设 1 小节型下道永不退场）。
+           相位取与播放头同源的 tib，可听同步、两模式通用。
+         ★ 用**相对锚点**（首个可听小节号）而非旧式 cur ≥ rowEls.length（绝对号）——
+           旧式对"范围播放起点在歌曲/型中段"开播即成立，预备拍一结束道立刻消失
+           （v3.11.x 引入的新问题）；也道不出"范围起点后第 1 小节就退"的语义。
+         ★ REDUCE_MOTION：无 dy 滑行，道在小节边界随重建硬切消失（既有降级纪律：去动作、
+           留位置）。历史：方案 A（播完不撤）→ v3.11.0 交叉淡出 → v3.11.2 槽位留空，
+           三版都在"道该何时消失"上做文章；用户要的是"道像其他跑道一样滚出去"。 */
+      if (countLaneEl && countLaneSession){
+        if (countLaneStartCur < 0) countLaneStartCur = countLaneLastCur;   // 锚定首个可听小节/片段
+        const laneP = Math.min(1, Math.max(0, tib / rowTicksV));           // 与播放头同源的小节内相位
+        const lanePWrapped = countLanePrevP > 0.75 && laneP < 0.25;        // 相位回退 = 首小节播完
+        if (countLaneLastCur > countLaneStartCur || loopWrapped || lanePWrapped){
+          countLaneSession = false;   // 会话结束（防 paintBall 守卫复活）
+          countLaneStartCur = -1;
+          countLanePrevP = -1;
+          /* 保险：本帧必已重建（cur 变/回卷都触发），新道本就 display:none、row0 本就
+             显形；下面两行只兜"无重建却走到这里"的理论路径，幂等无副作用 */
+          if (countLaneEl.style.display !== "none") countLaneEl.style.display = "none";
+          if (rowEls[0]) rowEls[0].style.visibility = "";
         } else {
-          countLaneFading = true;
-          dyingLane.style.transition = "opacity .18s linear";
-          dyingLane.style.opacity = "0";
-          setTimeout(() => {
-            dyingLane.style.display = "none";
-            dyingLane.style.transition = "";
-            dyingLane.style.opacity = "";
-            countLaneFading = false;
-          }, 190);
+          countLanePrevP = laneP;     // 会话内存帧推进相位采样
         }
       }
       /* 播放头钉在**当前槽的水平中央**（不再随 tib 扫过整行——内容在动、头不动）；
@@ -9375,7 +9374,9 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
          用 **getter** 而不是快照值——这几个都是 let，帧内每帧都在改，快照式暴露会拿到上一次
          调 internals() 那一刻的陈旧值（rowEls / rowGeo 这类数组引用可以快照，标量不行）。 */
       get scroll(){ return { cur: scrollCur, center: scrollCenter, dx: scrollDx, dy: scrollDy,
-        slotH: scrollSlotH, rows: scrollRows(), entry: SCROLL_ENTRY, winStart, winPrevSeg }; } }),
+        slotH: scrollSlotH, rows: scrollRows(), entry: SCROLL_ENTRY, winStart, winPrevSeg }; },
+      /* v3.12.0：预备拍道退场读数（仅供测试断言：session/锚点/镜像） */
+      get countLane(){ return { session: countLaneSession, startCur: countLaneStartCur, lastCur: countLaneLastCur }; } }),
     /* v2.15.0：每行几拍的纯决策函数（供测试直测边界） */
     chooseRowBeats };
 })();
@@ -10249,10 +10250,12 @@ const Trainer = (() => {
     setLoopPerSec(v){ loopPerSec = !!v; return loopPerSec; } };
 })();
 
-/* ================= Controls · 播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍 ================= */
+/* ================= Controls · 播放控制 / BPM / 拍号（仅程序性 setSig） / Swing / 音量 / 静音拍 / 预备拍 ================= */
 const Controls = (() => {
-  const SVG_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
-  const SVG_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
+  /* ★ v3.12.0：这两个常量是**停止/播放时回填 #playIcon 的 SVG 源**——尺寸必须与标记里的
+     初始图标（现 24）一致，否则"停一次播放键图标就变大 2px"（本轮把标记 26→24 时同步改）。 */
+  const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 12.9c.8-.5.8-1.6 0-2L8.8 3.9c-.8-.5-1.8 0-1.8.9z" fill="#0A0A0A"/></svg>';
+  const SVG_PAUSE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" fill="#0A0A0A"/></svg>';
   /** @type {null | ReturnType<typeof setInterval>} */
   let timer = null;
 let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnType<typeof setTimeout>} */ (null);
@@ -10587,33 +10590,19 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 120);
   });
 
-  /* 拍号切换统一入口：状态 + pill 高亮 + aria-pressed 一处维护 */
+  /* 拍号（v3.12.0 起为**程序性入口**，界面上的手动拍号控件已删除）：
+     每个节奏型自带拍号，选型时由下方各调用点自动对齐（selectPattern / 跳段 / 听辨 /
+     试听恢复 / 曲式归属…）。界面不再有"切到别的拍号"的入口——用户实测判定那只会制造
+     "与选中型错配 → 回退为基础节奏"的死回路，于实践无用。
+     ★ 保留的语义：`S.sig` 仍是唯一的"当前拍号"状态源（渲染/调度都读它），
+       本函数仍是唯一的写入点（含"拍号变化等到循环起点才生效"的挂起机制，
+       见 consumePending 与 sigChgPending）。
+     ★ 随控件退役的：`#sigRow` 高亮同步、`.sig-lock` 置灰、`refreshAccRow`
+       （奇数拍重拍分组选择——分组本身仍在数据层，回退节奏恒用第 0 组）。 */
   /** @param {number} n */
   function setSig(n){
     S.sig = n;
-    setPressed("#sigRow", p => +p.dataset.sig === n);
-    refreshAccRow();
   }
-  $("sigRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    const btn = evTarget(e).closest("[data-sig]");
-    if (!btn) return;
-    btn.blur();
-    /* ★ v2.42.5（α 方案，修"2/4、3/4 播放示例曲时格子溢出框架"，用户截图报障）：
-       曲式期间锁定拍号。《在他乡》等曲式按 4/4 逐格授权（扫弦谱 16 格/小节、歌词锚点同源），
-       播放/待机中切拍号会让渲染层拿错误的行跨度（barTicks = S.sig×TPB = 8）去切 16 tick
-       的谱面——sliceSteps 的 K=1 档原样放行全部步进，第 9–16 格的 left 落在 100%–200%，
-       格子画出网格框架叠上侧栏（2/4 溢出后 8 格、3/4 溢出后 4 格；桩实测 8 个元素 left>100%）。
-       只拦**用户点击**：程序性对齐（选型/跳段/听辨的 Controls.setSig 调用）不经过这里，
-       不受影响。置灰观感由装配层 onPlayModeChange 钩子切 sig-lock 类（同一触发源）。 */
-    if (S.playMode === "arrange"){
-      $("statusText").textContent = "整首连播中拍号跟随歌曲，退出曲式后可切换";
-      announce("整首连播中拍号跟随歌曲，点其它节奏型退出曲式后再切换");
-      return;
-    }
-    setSig(+btn.dataset.sig);
-    Presets.refreshAfterPatternChange();
-    Store.persist();
-  });
 
   /* Swing（v0.7.0）：演奏参数，只影响发声时机与播放头——音符块宽度始终按记谱时值，
      否则块宽随 swing 扭动会破坏「时值=长度」的核心认知翻译 */
@@ -10629,26 +10618,6 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     btn.blur();
     setSwing(+btn.dataset.swing);
   });
-
-  /* 奇数拍重拍分组（v0.7.0）：作用于基本回退节奏与新建自定义的默认分组；
-     内置/已存预设自带 accents，不受此开关影响 */
-  function refreshAccRow(){
-    const wrap = $("accGroup");
-    const groups = ACC_GROUPS[S.sig];
-    wrap.hidden = !groups;
-    if (!groups) return;
-    const row = $("accRow");
-    buildPillRow(row, ACC_LABELS[S.sig], {
-      text: lb => lb,
-      label: lb => `重拍分组 ${lb}`,
-      isOn: (lb, i) => (S.accentGrp[S.sig] || 0) === i,
-      onPick: (lb, i) => {
-        S.accentGrp[S.sig] = i;
-        refreshAccRow();
-        Store.persist();
-      },
-    });
-  }
 
   /* 音色（v0.8.0）：整体三选一，变更即时生效（下一发音符即新音色，不打断播放） */
   /** @param {any} v @param {any} [save] */
@@ -10793,8 +10762,9 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
   bindToggle("countInToggle", () => (S.countIn.on = !S.countIn.on),
     () => {
+      /* v3.12.0：拍数输入仍在底栏（同组），显隐仍随本开关；它已不在参数槽里，
+         故不再调 syncParamSlots（那一族的对象只剩静音拍/变速训练两组） */
       $("countInBeatsWrap").hidden = !S.countIn.on;   // 拍数输入随开关显隐（t30 的判据不变）
-      syncParamSlots();                      // v3.9.0：预备拍参数跟随本开关显隐
     });
   $("countInBeats").addEventListener("change", (/** @type {Event} */ e) => {
     let v = Math.round(+evTarget(e).value);
@@ -10947,7 +10917,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       setMode("preview", false, "停止试听");
       previewRef = null;
       if (prevSigBeforeAud !== null){ Controls.setSig(prevSigBeforeAud); prevSigBeforeAud = null; }
-      updateFallbackNote();
+      /* v3.12.0：原调 updateFallbackNote()（拍号回退提示条）——提示条随拍号控件退役，
+         按钮态由下方 syncAuditionBtns() 亲自收口。 */
       Viz.buildViz();
       syncAuditionBtns();
       return false;
@@ -11915,33 +11886,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     note.appendChild(btn);
     list.appendChild(note);
   }
-  /* 拍号回退提示：选中节奏型与当前拍号不匹配时，告知用户并提供一键切回 */
-  function updateFallbackNote(){
-    const note = $("fallbackNote");
-    const selP = selectedPreset();
-    const isFallback = !S.preview && selP && selP.meter !== S.sig;
-    if (isFallback){
-      const mL = meterName(selP.meter);
-      $("fallbackText").textContent = `「${selP.name}」是 ${mL} 节奏型，当前 ${meterName(S.sig)} 拍下已回退为基础节奏`;
-      $("fallbackBtn").textContent = "切回 " + mL;
-      note.hidden = false;
-    } else note.hidden = true;
-    /* v3.1.0：搭车同步 ▶ 按钮态——Editor.stopAudition 会走到这里（编辑器试听
-       与条目试听共用 S.preview，对方停了我们的按钮不能还亮着 ■） */
-    syncAuditionBtns();
-  }
-  $("fallbackBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    const selP = selectedPreset();
-    if (!selP) return;
-    Controls.setSig(selP.meter);
-    refreshAfterPatternChange();
-    Store.persist();
-  });
+  /* ★ v3.12.0：`updateFallbackNote`（拍号回退提示条）已随拍号控件整块退役——
+     那个"选中型与当前拍号不匹配"的状态自此无从产生（拍号恒跟随选中型）。
+     它原先搭车做的那件事（同步预设列表的 ▶ 试听按钮态）改由 **syncAuditionBtns** 直呼。
+     ★ 历史：那三处调用点（applyPatternChange / Editor.stopAudition / Ear.close）曾带着
+     "先定提示带显隐、再建网格"的顺序约束（提示带 44px 会改行几何）——提示条没了，
+     顺序约束的对象也不存在，调用点只剩"重刷 ▶ 按钮态"这一个理由。 */
   function refreshAfterPatternChange(){
     /* v2.9.0：删掉了旧的「当前型在当前轨站不站得住」守卫（ensureValidForTrack）——
-       两态轨模型已取消，节拍/扫弦型在侧栏始终可见可选，"列表里没有却被播着"不再可能。
-       拍号不匹配的提示仍由 updateFallbackNote 负责。 */
+       两态轨模型已取消，节拍/扫弦型在侧栏始终可见可选，"列表里没有却被播着"不再可能。 */
     if (S.playing){
       /* v1.1.1：先试「就地接续」——点下即生效，不再等一个小节。
          （用户 bug：播放中从三连音基础切四分基础，第 1 小节仍走三连音，要等小节边界才换）
@@ -11962,7 +11915,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       pendingPattern = true;
       sigChgPending = (S.sig !== appliedSig);
       buildPresetList();
-      updateFallbackNote();
+      syncAuditionBtns();
       return;
     }
     applyPatternChange();
@@ -11992,12 +11945,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     /* v3.4.1：v3.1.0 那条同源同帧的第二写点（#plbCurName）随 P3 去重删除——型名全页面只剩
        底栏胶囊里这一处，本写点即权威 */
     buildPresetList();
-    /* v2.0.5（审计 P0-4）：先定 #fallbackNote 的显隐，再建网格——顺序不能反。
-       buildViz 末尾会 cacheGeo() 采集行几何，而这条回退提示带（约 44px 高）就夹在
-       节奏型头部与可视化卡片之间：先采集再显隐，等于"采完几何再改布局"，
-       弹跳球与播放头会整体偏 44px，直到底盘被下一次重建才纠正。
-       三处同构调用点（本处 / Editor.stopAudition / Ear.close）一并改 */
-    updateFallbackNote();
+    /* v3.12.0：原此处调 updateFallbackNote()（拍号回退提示条 + 搭车刷 ▶ 按钮态）——
+       提示条随拍号控件退役，只剩按钮态同步。 */
+    syncAuditionBtns();
     Viz.buildViz();
   }
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
@@ -12257,8 +12207,19 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   bindLoopSel("loopFrom", true);
   bindLoopSel("loopTo", false);
 
-  return { buildPresetList, updateFallbackNote, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
-    syncDemoRange, applyFold };                    // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）
+  /* ★ v3.12.0：拍号恒跟随当前型——启动/载入后把 `S.sig` 归一。
+     手动拍号控件删除后，"选中型与拍号不一致"这件事已无从产生（选型路径各自 setSig 对齐），
+     唯一残留来源是**旧存档**（v3.12.0 之前的用户可能把拍号手动切成了别的值）。
+     不归一的话，首次渲染会拿旧拍号去切当前型的谱面（4/4 的 16 格谱按 3 拍切），
+     而界面上已没有"切回去"的入口——用户会看到一个不知道怎么修的错误画面。
+     ★ 放在 refreshAfterPatternChange 之前（装配区），与"首次 buildViz 之前必须收敛"同一纪律。 */
+  function alignSigToPattern(){
+    const p = selectedPreset();
+    if (p && p.meter !== S.sig) Controls.setSig(p.meter);
+  }
+
+  return { buildPresetList, syncAuditionBtns, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
+    syncDemoRange, applyFold, alignSigToPattern };   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -12317,9 +12278,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     setMode("preview", false, "停止试听");
     previewRef = null;                    // v1.10.0：试听对象一并摘掉（curPattern 靠它判断试听谁）
     if (prevSigBeforeAudition !== null){ Controls.setSig(prevSigBeforeAudition); prevSigBeforeAudition = null; }
-    /* v2.0.5（审计 P0-4）：顺序同 applyPatternChange——提示带显隐会改变行几何，
-       必须在 buildViz 采几何之前定下来 */
-    Presets.updateFallbackNote();
+    /* v3.12.0：原调 Presets.updateFallbackNote()（含"先定提示带显隐再建网格"的顺序约束）——
+       提示条随拍号控件退役，此处只剩"同步列表 ▶ 试听按钮态"。 */
+    Presets.syncAuditionBtns();
     Viz.buildViz();
     $("auditionBtn").textContent = "试听";
   }
@@ -12936,10 +12897,9 @@ const Ear = (() => {
   function close(){
     stopAudio();
     if (enterSig !== null){ Controls.setSig(enterSig); enterSig = null; }
-    /* v2.0.5（审计 P0-4）：顺序同 applyPatternChange——提示带显隐会改变行几何，
-       必须在 buildViz 采几何之前定下来（原先那行注释"试听期间改过视图与拍号，恢复"
-       意思没变，只是把同一件事摆到正确的先后） */
-    Presets.updateFallbackNote();
+    /* v3.12.0：原调 Presets.updateFallbackNote()——拍号回退提示条已退役，
+       此处只剩"同步列表 ▶ 试听按钮态"（顺序约束的对象随提示条一起消失）。 */
+    Presets.syncAuditionBtns();
     Viz.buildViz();
     Modal.closeOverlay("earOverlay");     // v2.0.4：统一开合协议（解绑登记 + 归还焦点 + 摘 inert）
   }
@@ -16451,10 +16411,9 @@ onAudibleBar = Arrange.refreshNow;
    v2.9.0：原先一并调的 Tracks.syncTrackUI 随两态轨模型一起删除。 */
 onPlayModeChange = () => {
   Arrange.refreshBar();
-  /* v2.42.5：曲式期间锁定拍号（α 方案）——pill 置灰只管观感，真正的拦截在 Controls 的
-     sigRow 点击处理器（playMode==="arrange" 早退 + 提示）。两类同步挂同一个钩子：
-     playMode 的写入口只有 setMode 一处（t66 契约），模式一变这里必跑，不可能漏。 */
-  $("sigRow").classList.toggle("sig-lock", Store.S.playMode === "arrange");
+  /* v3.12.0：原此处切 `#sigRow` 的 `.sig-lock` 置灰类（v2.42.5 的"曲式期间锁定拍号"，
+     α 方案）——拍号控件已删除，无需置灰任何东西：拍号恒跟随当前型/歌曲，无"可切错的入口"。
+     playMode 的写入口仍只有 setMode 一处（t66 契约），本钩子保留给 Arrangement 的读数刷新。 */
 };
 /* 「一个型有几小节」的查询注入（v2.5.1）：共享区的 secBars / blockAt / arrNextBar 是**纯函数**，
    不直接引用 resolveRef（那会让 T52 那批"纯函数可直测"的断言必须先建一份 Store）。
@@ -16751,6 +16710,9 @@ $("presetSearch").addEventListener("input", (/** @type {Event} */ e) => {
    （原委托监听随语义一并删除；smoke drawerProbe 已同步改判「选中后抽屉仍开」。） */
 setPresetDrawer(false);
 syncVizLabelToggles();
+/* v3.12.0：拍号归一必须在首次 buildViz 之前——旧存档里"手动切过的拍号"要在这里
+   对齐回当前型的拍号，否则首屏会按错误拍号切谱面（且界面上已无手动切回的入口）。 */
+Presets.alignSigToPattern();
 Presets.refreshAfterPatternChange();
 /* v3.1.0：maybeShowMigHint 的开机调用退役——迁移提示改为「自定义区空态」按需现身
    （挂载在 buildPresetList，显隐由 applyFold 按自定义区折叠态接管），不再开机打扰新用户 */

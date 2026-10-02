@@ -86,7 +86,7 @@ beatsight/
 Store（持久化/状态创建/迁移/导入导出）
 共享状态（S/customs 别名、draft、appliedPat、activePattern、UI 同步助手、音频时钟变量）
 → Modal（应用内弹窗）→ Viz（时值可视化）→ AudioEngine（Web Audio 前瞻调度）
-→ Trainer（变速训练器；v2.11.2 起「上次训练接续 / 7 天计划」整块删除，只剩爬坡本身）→ Controls（播放控制/BPM/拍号/Swing/音色/预备拍/静音拍；★ v2.10.14 起**没有走带卡**——BPM 在时值卡头行、Swing 在同屏行数行、播放键在跳段行中间，上/下段键常显置灰）
+→ Trainer（变速训练器；v2.11.2 起「上次训练接续 / 7 天计划」整块删除，只剩爬坡本身）→ Controls（播放控制/BPM/拍号（**v3.12.0 起仅剩程序性入口 `setSig`**：界面上的手动拍号控件已删，拍号恒跟随当前节奏型）/Swing/音色/预备拍/静音拍；★ v2.10.14 起**没有走带卡**——BPM 在时值卡头行、Swing 在设置弹窗、播放键在跳段行中间，上/下段键常显置灰。★ v3.12.0 控件搬家：预备拍（开关 + 拍数）进**底栏右区**、同屏行数进**设置弹窗「画面图层」**）
 → Presets（预设库三区「节拍 / 扫弦 / 自定义」/回退提示/播放中切换挂起/整首连播与播放范围滑块，v2.5.0 起·滑块于 v2.10.4；三区常显于 v2.9.0）→ Editor（自定义编辑器）
 → Settings（设置弹窗：浮层小窗形态、点窗外即关，主题 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出 / 使用方法入口，v2.10.12；形态改 Dialog 于 v2.10.13）→ Ear（听辨训练：出题/判分/战绩，v1.10.0）→ Arrange（曲式编排 UI，v2.0.0）→ Help（使用方法页，v2.0.1）
 → KeepAlive（后台保活：wakeLock + 静音音频兜底）→ Diagnostics（诊断与产物戳记：计数器 / 错误原文环形缓冲 / 产物戳记自检 / `?debug=1` 面板，**v2.19.0 由装配层抽出**）→ init（装配）
@@ -164,7 +164,10 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×N] }
 - **预备拍（v0.9.0）**：`S.countIn = {on, beats(1–8)}` 持久化；会话游标 ciStart/ciBeats/ciNext/ciLeft 在共享状态区，start() 时 loopStart 顺延 N 拍，scheduler 在 loopStart 之前独立调度计数音（不走 swing/静音拍），paintFrame 在此期间只显示「预备拍 · n / N」+ 跑道脉冲
 - **变速训练器配置 `S.trainer = {on, start, target, step, everyN}`**：与 mute/bpm/swing 一并持久化在 beatsight.m2；会话状态 `trStepIdx`/`trBarCnt` 不持久化，`start()` 时重置
 - **自定义预设以 `id` 引用**：`S.sel = {type:"builtin", idx}` 或 `{type:"custom", id}`
-- 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`，同时 `updateFallbackNote()` 显示琥珀色提示条（含一键切回）
+- 当前选择与拍号不匹配时 `curPattern()` 回退为 `basicPattern(sig)`（**保留为安全网**）。
+  ★ v3.12.0：`updateFallbackNote()` 与那条琥珀色"已回退"提示条已整块删除——拍号控件退役后
+  「选中型与拍号不匹配」这条状态无从产生（拍号恒跟随选中型，装配区启动时还会
+  `Presets.alignSigToPattern()` 把**旧存档里手动切过的拍号**归一）。
 - **扫弦方向 `dir`（v1.9.0，可选字段）**：步对象上可挂 `dir: "D"|"U"`（下扫/上扫），省略即不标注。
   **它是纯记谱层字段——`scheduler` 一行都不读**（与 Swing「演奏参数不入时值」同类先例），
   所以老数据零迁移、老 JSON 导入后就是"无箭头"。内置民谣扫弦带 `DDUUDU`，与其名称逐字对应。
@@ -230,7 +233,9 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
 - 空小节（编辑器草稿）安全跳过。**跳过时空小节也强制正向推进 `nextNoteTime += pat.meter * spb()`**（`adv > 0 && isFinite(adv)` 兜底 0.5s），并有一层 `MAX_SCHED_STEPS = 512` 硬上限——脏拍号（`-3` / `0` / `"abc"`）曾让这个分支永不推进 → 主线程死循环（v1.2.4 修）
 - **持久值收口（v1.2.4）**：`Store` 加载路径与编辑器共用**同一份**校验（`VALID_T` / `VALID_METER` 已上移到 `S` 创建之前，`validatePreset()` 复用）。`bpm`/`vol`/`accentVol`/`sig` 一律经 `numOr`/`clamp01`/白名单取值；`customs` 逐项校验，**淘汰项不静默丢弃**而是写入 `beatsight.quarantine` + `console.warn`，用户可人工找回。trainer / accents 用**显式白名单抽取**，不用 `Object.assign` 整包（消除对「`Object.assign` 只拷自有属性」的侥幸依赖）
 - **发声末级钳制**：`playClick` 送出增益前过 `Math.min(1, Math.max(0, …))`。对合法输入是**无操作**（合法上界本就是 1），只在持久值被改坏时兜住 `vol:1e6 → +120 dBFS` 这类削波爆音
-- 拍号/音量的 UI 入口统一走 `setSig()` / `setBpm()`，不要新写并行的 pill 高亮逻辑
+- 拍号/音量的状态入口统一走 `setSig()` / `setBpm()`。★ v3.12.0：`setSig` 已是**纯程序性出口**
+  （只写 `S.sig`，不再同步任何 pill 高亮——手动拍号控件已删）；调用点只剩"选型/跳段/听辨/
+  试听恢复"这几条对齐路径，新增对齐一律走它，别再新写并行的高亮逻辑
 - **弹跳球 onset 表（v1.2）**：排程每个非休止音符时（含静音小节）顺手 `onsetBuf.push({t, bar, cumT})`，时刻含 `swingShift()` 偏移；每轮调度末尾 `onsetNext = predictNext(pat)` 预测游标处下一发声点（与排程同源，值严格相等）；修剪保留最近 1s 已落地端点。Swing 偏移公式共享为 `swingShift()`——改 Swing 只改这一处，否则球与声音会分叉
   - **v2.5.0 边界**：节拍器网格补出的拍点**不写 onsetBuf**。球跟的是"你要弹的那条声部"
     （扫弦声部）的落点，节拍层是参照网格——两套语义混进同一张表会让球的落点序列
@@ -1061,7 +1066,11 @@ getComputedStyle）。
   它的**盒子**本来就在内容边缘上，去贴文字会把盒子拉进卡片内边距（只剩 2px 余量），更难看。
 - **不变量由 `tools/smoke.js` 的 `layoutProbe()` 在真浏览器里守着**（桌面 + 390px 各跑一遍）：
   开关文字 / 组标签 / pill 盒子 / 说明行 / 当前节奏型名称，五者必须与卡片标题文字**同一条左边缘**
-  （容差 0.5px），外加"拍号在行数右侧""音色 → 音量 → 编辑节奏型"两条相对位置。
+  （容差 0.5px），外加"音色 → 音量 → 编辑节奏型"一条相对位置。
+  ★ v3.12.0：原"拍号在行数右侧"随「行数 + 拍号」并排行整块退役（行数进设置弹窗、拍号删除）
+  ——`tools/smoke.js` 的布局探针改为**结构断言**（`rowsHome` = 行数档位的归属容器、
+  `sigExists` = 拍号控件不得复活、`countInInBar` = 预备拍在底栏），并新增
+  "窄屏底栏右区不得顶穿底栏"的几何闸门。
   ★ 桩测不到这一层（不解析 HTML、也没有真实布局）——往 `.col` 里加裸块、或给某行加内边距，
   只有冒烟会拦。
 
@@ -1229,7 +1238,9 @@ ESLint / tsc 会被标 ⊘ **跳过**——而 ⊘ 是"没查"、不是"查了�
 > 漂移（它管"手写数字"，管不了"**语义已经过期但看起来还在生效**"的章节），只能靠本节自己声明。
 
 ### 已埋的技术债 / 后续要盯
-- ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制
+- ~~快捷档值 `CONFIG.speedPresets` 目前只服务 BPM；若日后音量、拍号也要常用值，考虑抽成通用 preset row 组件，别复制三份~~ **已完成（v1.6.4）**：共享区（`setPressed` 旁）抽出 `buildPillRow(host, items, opt)`，BPM 快捷档与奇数拍重拍分组两处改为复用；`CONFIG.speedPresets` 仍是唯一数据源，日后音量/拍号要常用档位直接复用组件，不必再复制。
+  ★ v3.12.0：`buildPillRow` 的第二个使用方（重拍分组 `#accRow`）已随拍号控件退役，
+  组件本身与 BPM 快捷档照旧保留（它仍是"一行 pill 由值表生成"的唯一写法）。
 - 滑杆刻度是手绘层，`--thumb-r` 必须与实际 `::-webkit-slider-thumb` 尺寸同步；再改圆钮大小记得同改 `.slider-wrap` 的内缩变量
 - ~~静态检查仍是自写的窄规则集~~ **已补（v1.6.5）**：原话是"架构约束 / 五项 lint / DOM 引用 / 覆盖率都已就位，但覆盖面小于 ESLint 生态（无类型检查）。要更全套就加 `package.json` + ESLint devDependency——只用于本地自验，不进产物"。现已落地：加 `package.json` + `package-lock.json`（唯一 devDependency `eslint`）+ `eslint.config.js`（flat config）+ `tools/check-eslint.js`（抽内联脚本、把 ESLint 行号回映射到 `index.html`），作为 `tools/check-all.js` 的一个可选加强项（该链现共 14 步；步数以 `node tools/check-all.js` 的输出为准，文件里不留会漂移的旧数字）。**它仍是可选加强项**：缺 `node_modules` 时自动跳过并 `exit 0`，绝不会因为"没装开发依赖"堵住 Cloudflare 部署；"零依赖"约束针对的始终是 `file://` 直开的运行时产物（上站仍只有 4 个文件）。规则集与 `check-lint.js` 刻意不重叠，取舍理由见 `eslint.config.js` 文件头。~~**仍未做类型检查**（无 TS/JSDoc 类型校验）~~ **已补（v1.9.1）**：`tools/check-tsc.js` + `tools/tsconfig.typecheck.json` + `typescript` devDependency，按同一套"可选加强项、缺依赖标 ⊘ 跳过"模式接入（同属该链的一个可选加强项）。落地时实测抓到 6 类真问题（46 处 EventTarget 取值、22 处 `$` 元素类型、`textContent` 被赋数字、`onLimitPulse` 名字遮蔽等，全部已修），并给最中心的 `S` 补了显式类型标注——那是闸门真正长牙的地方。**严格模式已扩面（2026-09-16）**：TS 7.0.2 下实测，**8 项严格检查打开后 0 报错**，故已直接开（strict 家族 6 项：`strictFunctionTypes` / `strictBindCallApply` / `noImplicitThis` / `alwaysStrict` / `useUnknownInCatchVariables` / `strictBuiltinIteratorReturn`；另加非 strict 家族、但同样只抓真错的 2 项：`noImplicitReturns` / `noFallthroughCasesInSwitch`；均写在 tools/tsconfig.typecheck.json 的 `compilerOptions` 里）。**只剩两笔已量化的债**：~~`noImplicitAny` 打开会得到 **727 条**（TS7005 337 / TS7006 291 / TS7034 74 / TS7053 24 / TS18047 1）~~ **`noImplicitAny` 已清零并打开（2026-09-17）**——按"逐块补标注、逐块开开关"的路径分两批（727 → 282 → 0）补完全量前置 `@param` / `@returns` 与内联 `@type`，全文件 0 报错后把开关由 `false` 改为 `true`（改的是 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物）。**只剩一笔债**：~~`strictNullChecks` 打开会得到 **96 条**（TS18047 74 / TS2345 10 / TS2322 4 / TS18048 4 / TS2769 3 / TS2531 1）~~ **`strictNullChecks` 已清零并打开（2026-09-17）收官**——那 96 条（比原记的 **251** 降下来，因为大量隐式 any 消失后，原先被 any 传染出来的空值报错一并消失）按模块分七块逐块消化：Trainer 6（`S.plan`）→ 小尾 9（Arrange 4 + Ear 3 + Store 1 + Modal 1）→ Controls 11 → AudioEngine 20（`ctx`）→ Viz 25（缓存 DOM 引用）→ Editor 25（`draft`），统一用「取本地别名 + 判空守卫」补上（模块级可空 `let` 在函数顶部取别名并早返回，定时器句柄先判 `!== null` 再 `clearTimeout`，`.closest()` 补 `!!` 守卫），全文件 0 报错后把开关由 `false` 改为 `true`。**至此 strict 家族 8 项与两项额外严格检查全部打开且全绿，类型闸门扩面收官**。改动仍只在 `tools/tsconfig.typecheck.json` 的 `compilerOptions`，不动 `index.html`、不动产物。
 - **检查没有"必经之路"，全靠钩子 / 自觉**（v2.0.5 修正，原写的是"Cloudflare 构建时必定跑一次全量检查，失败即不部署"）：Cloudflare 的**线上**构建跑什么，取决于 Dashboard 里那串构建命令——**Workers Builds（Git 集成构建）不读仓库里 `wrangler.jsonc` 的 `build.command`**（Cloudflare 官方既有行为），所以仓库里那份配置只约束本地与命令行的 `wrangler deploy`。换句话说，**没有任何一道闸门是"推上去就一定过不去"的**；**提交时**这一环已由仓库自带的 `hooks/pre-commit` + `tools/install-hooks.sh` 补上——`core.hooksPath` 是本机配置、不随仓库走，故**每个 clone 各自跑一次** `sh tools/install-hooks.sh`，此后每次 `git commit` 自动跑 `node tools/check-all.js --quick`（跳过 T21 全组合扫描；想绕过是不该常态的 `--no-verify`）；**WorkBuddy 手动发布时**仍没有任何机制拦你，发布前务必手动跑一次全量 `node tools/check-all.js`。别拿"Cloudflare 会拦"当借口跳过本地那一遍——它只拦得住上 Cloudflare 这一条路。

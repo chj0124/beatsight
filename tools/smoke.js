@@ -398,7 +398,10 @@ function drawerProbe(){
   if (!btn || !dr) return JSON.stringify(out);
   /* ① 收起态 */
   out.btn = rect(btn);
-  out.rowsClosed = rect(q(".viz-rows-row"));
+  /* ★ v3.12.0：参照物从「同屏行数 + 拍号」并排行换成**可视化带**（#vizBand）——
+     那一行已整块退役（行数进设置弹窗、拍号删除）。#vizBand 是"覆盖式不推挤"更直接的
+     验收对象：面板压上来时网格与歌词带的绝对位置必须一动不动。 */
+  out.rowsClosed = rect(q("#vizBand"));
   out.closedHidden = !!dr.hidden;
   out.ariaClosed = btn.getAttribute("aria-expanded");
   /* ② 点开：v3.3.0 起由**底栏左区胶囊**开合面板（主钮与卡片都已退役） */
@@ -410,7 +413,7 @@ function drawerProbe(){
   out.ariaOpen = btn.getAttribute("aria-expanded");
   out.drawer = rect(dr);
   out.maskOpen = rect(q("#presetMask"));
-  out.rowsOpen = rect(q(".viz-rows-row"));
+  out.rowsOpen = rect(q("#vizBand"));   // v3.12.0：同 out.rowsClosed（参照物换成可视化带）
   out.btnOpen = rect(btn);
   out.focusAfterOpen = document.activeElement && document.activeElement.id;   // v3.3.0：焦点进了哪
   /* v3.1.0：卡内容宽补测**展开态**——开抽屉会让页面长出滚动条（macOS/Windows 经典
@@ -708,6 +711,19 @@ function layoutProbe(){
       vpCenter: round(document.documentElement.clientWidth / 2),
       gapBottom: round(window.innerHeight - kr.bottom) };
   })();
+  /* ★ v3.12.0：底栏右区（#pb-right）的实高 vs 底栏**内容区**实高——
+     右列一旦比内容区高，网格行被撑大 → 中列的播放键随之被推低、贴到底栏下沿
+     （v3.12.0 预备拍搬入后真机实测距底 9px）。这条把"右列不得顶穿"变成可断言的几何。 */
+  out.barContentH = (() => {
+    const bar = q("#playBar");
+    if (!bar) return null;
+    const cs = getComputedStyle(bar);
+    return round(bar.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
+  })();
+  out.pbRightH = (() => {
+    const r = q(".pb-right");
+    return r ? round(r.getBoundingClientRect().height) : null;
+  })();
   /* v3.3.1：同屏行数 = 1 时，可视化带是否在"控制卡之下、底栏之上"的剩余空间里**居中**
      （量上下两段留白，而不是量绝对位置——跟着内容高度变化的断言迟早会漂） */
   out.vizCenter = (() => {
@@ -741,13 +757,33 @@ function layoutProbe(){
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
   out.title = textLeft(q(".card-head-left .group-label"));
   out.toggle = textLeft(q(".viz-toggles .tg-row .toggle-pill"));   // v2.76.0：开关移入 .tg-row 行容器
-  out.rowsLabel = textLeft(q(".viz-rows-panel > .group-label"));
-  out.rowsPillBox = boxLeft(q("#vizRowsRow > .pill"));
+  /* ★ v3.12.0：「同屏行数 + 拍号」并排行整块退役——
+     行数档位搬进**设置弹窗**（隐藏态，无几何可言）；拍号控件直接删除。
+     故几何字段全部退役，改钉**结构事实**（槽位归属与存在性），防"搬一半"：
+       · rowsHome  = 行数档位现在住在哪个容器（应为设置浮层）
+       · sigExists = 拍号控件是否还在（应为 false）
+       · countInInBar = 预备拍开关是否在底栏内（应为 true） */
+  out.rowsHome = (() => {
+    const r = q("#vizRowsRow");
+    if (!r) return "missing";
+    if (q("#settingsOverlay") && q("#settingsOverlay").contains(r)) return "settings";
+    if (q(".viz-head-grid") && q(".viz-head-grid").contains(r)) return "head-grid";
+    return "elsewhere";
+  })();
+  out.sigExists = !!q("#sigRow") || !!q("#accGroup") || !!q("#fallbackNote");
+  out.countInInBar = (() => {
+    const c = q("#countInToggle"), bar = q("#playBar");
+    return !!(c && bar && bar.contains(c));
+  })();
+  out.countInWrapInBar = (() => {
+    const c = q("#countInBeatsWrap"), bar = q("#playBar");
+    return !!(c && bar && bar.contains(c));
+  })();
 
-  out.vizRowsPanel = boxLeft(q(".viz-rows-panel"));
-  const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
   /* v3.3.0：四块的完整矩形（诊断 + 等宽等距断言的数据源）——
-     第 4 轨换人后，"行数块在开关右侧"这类断言靠它才看得出真实落位 */
+     第 4 轨换人后，"行数块在开关右侧"这类断言靠它才看得出真实落位。
+     v3.12.0：第 4 块（行数拍号行）退役 → 剩三块；数组保留第 4 位为 null 以便
+     "不得再有第 4 块"能被断言正面表达。 */
   out.blockRects = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")]
     .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
   /* v3.9.0：行 2 同轴居中断言的数据源——开关参数块中心相对头部栅格中心的偏移（0 = 同轴） */
@@ -757,6 +793,10 @@ function layoutProbe(){
     const tr = t.getBoundingClientRect(), gr = g.getBoundingClientRect();
     return round((tr.left + tr.width / 2) - (gr.left + gr.width / 2));
   })();
+  /* v3.12.0：#sigRow 已删除（手动拍号控件退役）→ sig 恒 null、sigGroup 恒 null；
+     保留该字段以便"拍号控件不得复活"能被正面断言。timbreRow 仍在（音色未动）。
+     ★ 本段住在**模板字符串**内：注释里不许出现反引号（会把模板串提前闭合）。 */
+  const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
   out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
   out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
   out.volGroup = vol ? boxLeft(vol.parentElement) : null;
@@ -1010,11 +1050,13 @@ async function main(){
            故行数行的左缘从「右移」改回「与音量列同缘」（都从第一列的内容缘起步） */
         if (label === "桌面"){
           /* ★ v3.3.1（用户澄清后的新形态）：控制行拆成两行 ——
-               第一行 = 音量 ｜ BPM ｜ 同屏行数与拍号；第二行 = 三开关 + 参数槽（跨满全宽）。
-             于是判据换成三条：① 开关行**另起一行**；② 它与内容边缘同缘（不再"右移居中"）；
-             ③ 行数拍号块回到第一行右侧。 */
+               第一行 = 音量 ｜ BPM ｜（v3.12.0 前是「同屏行数与拍号」，现已退役）；
+               第二行 = 开关 + 参数槽（跨满全宽）。
+             ★ v3.12.0：原三条里与"行数拍号块"有关的两条（pill 盒子在标签右侧 /
+               行数块在第一行右侧）随该块退役删除，替换为**槽位归属**断言：
+               行数档位住在设置弹窗、拍号控件确认不存在。 */
           ok(m.grpGaps && m.grpGaps[1] > 0,
-            p.label + "·" + label + "：★★ 三开关块**独占一行**（与上一行的间隙为正 = 换了行，不再与其他块同排）",
+            p.label + "·" + label + "：★★ 开关块**独占一行**（与上一行的间隙为正 = 换了行，不再与其他块同排）",
             "块间间隙 " + JSON.stringify(m.grpGaps));
           /* ★★ v3.9.0：行 2 从"跨满全宽、与内容边缘同缘"改为**与行 1 同轴居中**——
              用户拍板的聚拢方案（A + 32px）的组成部分。旧断言"开关行与标题同缘"随
@@ -1022,26 +1064,36 @@ async function main(){
           ok(m.togCenterOffset !== null && Math.abs(m.togCenterOffset) <= 2,
             p.label + "·" + label + "：★★ 开关参数块与头部栅格**同轴居中**（v3.9.0 聚拢方案）",
             "块中心偏移 " + m.togCenterOffset + "px（0 = 同轴）");
-          ok(m.rowsPillBox > m.rowsLabel - 1,
-            p.label + "·" + label + "：行数 pill 盒子在标签右侧（块内自适应，同行或折行都一样）",
-            "标签 " + m.rowsLabel + " vs pill 盒子 " + m.rowsPillBox);
-          ok(m.rowsLabel > m.toggle,
-            p.label + "·" + label + "：行数拍号块在第一行右侧（开关块已让出这一行）",
-            "开关 " + m.toggle + " vs 行数块标签 " + m.rowsLabel);
+          ok(m.rowsHome === "settings",
+            p.label + "·" + label + "：★★ 同屏行数档位住在**设置弹窗**（v3.12.0 搬移，且不在控制行里）",
+            "归属 " + m.rowsHome);
+          ok(m.sigExists === false,
+            p.label + "·" + label + "：★★ 拍号控件确已删除（#sigRow / #accGroup / #fallbackNote 均不存在）",
+            "sigExists=" + m.sigExists);
+          ok(m.countInInBar === true && m.countInWrapInBar === true,
+            p.label + "·" + label + "：★★ 预备拍开关与拍数输入都在**底栏**内（v3.12.0 搬移）",
+            "toggle=" + m.countInInBar + " wrap=" + m.countInWrapInBar);
         } else {
           ok(sameLine(m.toggle, base),
             p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",
             "标题 " + base + " vs 开关 " + m.toggle);
-          ok(sameLine(m.rowsLabel, base),
-            p.label + "·" + label + "：行数标签也在这条线上", "标题 " + base + " vs 标签 " + m.rowsLabel);
+          ok(m.rowsHome === "settings",
+            p.label + "·" + label + "：★ 窄屏下同屏行数同样只住设置弹窗（搬移与断点无关）",
+            "归属 " + m.rowsHome);
         }
       }
       if (lay.wide){
         /* v2.38.0：居中分布下行数/拍号可能同行也可能堆叠（宽度由内容与居中算法决定），
-           旧「拍号在右」左贴断言退役；改为验证两块都在卡片内容区内且不超界 */
-        ok(lay.wide.vizRowsPanel > 0 && lay.wide.sigGroup > 0,
-          p.label + "：行数/拍号面板均在文档内（居中布局正常渲染）",
-          "行数 " + lay.wide.vizRowsPanel + " vs 拍号 " + lay.wide.sigGroup);
+           旧「拍号在右」左贴断言退役；改为验证两块都在卡片内容区内且不超界。
+           ★ v3.12.0：两块均不在控制行了 → 改为"控制行恰三块、第 4 轨确已空出" +
+           行数档位住在设置弹窗（防"搬了一半、旧槽位还留着"）。 */
+        const br = lay.wide.blockRects || [];
+        ok(!!br[0] && !!br[1] && !!br[2] && !br[3],
+          p.label + "：★★ 控制行恰**三块**（音量｜BPM｜开关），第 4 块（行数拍号行）确已退役",
+          "块矩形 " + JSON.stringify(br));
+        ok(lay.wide.rowsHome === "settings",
+          p.label + "：★★ 同屏行数档位在设置弹窗内（且不在控制行），拍号控件已删除",
+          "归属 " + lay.wide.rowsHome + " · sigGroup=" + lay.wide.sigGroup);
         ok(sameLine(lay.wide.volGroup, lay.wide.title),
           p.label + "：★★ 音量组在标题正下方（卡片头左列，左缘 = 卡片内容边缘）（v2.10.15）",
           "标题 " + lay.wide.title + " vs 音量组 " + lay.wide.volGroup);
@@ -1148,10 +1200,17 @@ async function main(){
       });
 
       if (lay.narrow){
-        /* 窄屏下这两块放不下，必须**折行**而不是溢出（body 有 overflow-x:hidden，溢出会被静默裁掉） */
-        ok(lay.narrow.sigGroup <= lay.narrow.vizRowsPanel + 0.51,
-          p.label + "：★ 窄屏下拍号折到下一行（左边缘回到卡片内容列，没被裁）",
-          "行数 " + lay.narrow.vizRowsPanel + " vs 拍号 " + lay.narrow.sigGroup);
+        /* ★ v3.12.0：原「拍号折到下一行」断言随拍号控件删除退役，换成搬移后的归属断言 +
+           底栏右区在窄屏下的高度不得顶穿底栏（那正是本轮真机抓到的 9px 贴底根因）。 */
+        ok(lay.narrow.rowsHome === "settings" && lay.narrow.sigExists === false,
+          p.label + "：★ 窄屏：行数档位只在设置弹窗、拍号控件已删（与桌面同口径）",
+          "归属 " + lay.narrow.rowsHome + " · sigExists=" + lay.narrow.sigExists);
+        if (lay.narrow.pbRightH !== null && lay.narrow.pbRightH !== undefined){
+          ok(lay.narrow.pbRightH <= lay.narrow.barContentH + 1,
+            p.label + "：★★★ 窄屏底栏右区不顶穿底栏（右列高 ≤ 底栏内容区高）——"
+            + "超出会把中列一起撑高、播放键贴底（v3.12.0 真机实测距底 9px 的根因）",
+            "右列 " + lay.narrow.pbRightH + " vs 内容区 " + lay.narrow.barContentH);
+        }
         /* v2.59.0（Infra B · 390px 几何回归扩展）：窄屏最静默的退化是「内容比视口宽、
            被 body 的 overflow-x:hidden 静默裁掉」——用户看不到滚动条，但右侧控件被吃掉。
            这两条专门拦它：整页无横向滚动条 + #viz 网格不超出卡片右缘。 */
@@ -1166,14 +1225,15 @@ async function main(){
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }
-      /* v2.42.7：窄屏四张组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
-         BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏 2×2 与四块一行
-         有自己的列宽设计，本断言只认窄屏） */
-      /* v3.0.0：四块 → **五块**（新增预设库块），长度门槛与文案同步 */
-      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 4){
+      /* v2.42.7：窄屏组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
+         BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏 2×2 或三块一行
+         有自己的列宽设计，本断言只认窄屏）。
+         ★ v3.12.0：块数 4 → **3**（「同屏行数与拍号」并排行退役）——门槛与文案同步，
+         否则断言因长度不符被静默跳过（假绿）。 */
+      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 3){
         const gws = lay.narrow.grpWidths;
         ok(Math.max(...gws) - Math.min(...gws) <= 1,
-          "窄屏：★ 四张组容器卡等宽（宽度策略分裂回归闸门）",
+          "窄屏：★ 三张组容器卡等宽（宽度策略分裂回归闸门）",
           "宽度 " + JSON.stringify(gws));
       }
       if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 3){

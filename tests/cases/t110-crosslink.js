@@ -139,10 +139,17 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   ok(!src.includes("grid-column:1 / 4;grid-row:2"),
     "★★ v3.3.0：行数拍号行不再显式占 r2——自动落第 4 轨（与音量/BPM/开关同一行），跨列与行号特化全部退役");
   ok(src.includes(".viz-head-grid .card-head-left,"),
-    "★★ v2.39.0 遗留：四块的共用选择器仍在（v3.3.0 起背景改 transparent，圆角/内边距口径不变）");
-  ok(src.includes(".viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center"),
-    "★★ v2.40.0：拍号面板 flex-direction:row——.group 基础 column + align-items:center 恰成水平居中"
-    + "（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，同基线");
+    "★★ v2.39.0 遗留：各块的共用选择器仍在（v3.3.0 起背景改 transparent，圆角/内边距口径不变）");
+  /* ★ v3.12.0：`.viz-rows-row .group{flex-direction:row…}` 随并排行整块退役——
+     那条规则服务的是"同屏行数面板 + 拍号面板并列"，两者一搬一删后已无对象；
+     同屏行数在设置里改用 `.group` 默认 column 骨架（标签在上、档位在下，与 Swing 组同款）。
+     ★ 断言前剥注释："留名字作纪念"不算违规（仓内 `.page-foot` 同款口径）。 */
+  const srcNoCmt = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+  ok(!srcNoCmt.includes(".viz-rows-row"),
+    "★★ v3.12.0：`.viz-rows-row` 相关规则全部退役（搬块之后不留死规则）");
+  ok(src.includes('<div class="group" style="margin-top:16px">')
+     && /class="viz-rows" id="vizRowsRow"/.test(src),
+    "★★ v3.12.0：同屏行数住进设置弹窗的 .group 骨架（与 Swing 组同款：标签在上、档位在下）");
   ok(/\.pb-ctx \.pat-now\{[^}]*white-space:nowrap/.test(src),
     "★ 型名单行省略——无 nowrap 时省略号失效、长型名折两行撑破底栏胶囊（同 v2.40.0 原意，"
     + "v3.4.1 起宿主为底栏胶囊 .pb-ctx）");

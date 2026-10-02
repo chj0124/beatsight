@@ -312,8 +312,15 @@ if (CASE in SIGS){
     /* v2.11.2：起始 BPM 参数已删，探针同步改为「everyN 仍是默认 4 且 start 字段根本不存在」
        ——原型污染想塞进来的 start 连字段都不该有（白名单抽取，不进 S.trainer）。 */
     trainer: JSON.parse('{"__proto__":{"everyN":1,"start":30}}') }));
-  out(JSON.stringify(beat.curPattern().accents) === JSON.stringify([0,2]),
-      "脏重拍分组被丢弃、回退默认 2+3", "accents=" + JSON.stringify(beat.curPattern().accents));
+  /* ★ v3.12.0：原断言经由 curPattern() 迂回——它靠"S.sig=5 而选中型是 4/4"制造错配、
+     让 curPattern 回退到 5/4 基础节奏，从而读到 [0,2]。拍号控件删除后 S.sig 恒跟随选中型
+     （启动归一），那条错配路径不复存在。改为**直问数据层**：defaultAccents(5) 是"D4 决策"
+     的落点，dirty 值丢弃后应回退第 0 档 2+3。 */
+  out(JSON.stringify(beat.defaultAccents(5)) === JSON.stringify([0,2]),
+      "脏重拍分组被丢弃、回退默认 2+3", "accents=" + JSON.stringify(beat.defaultAccents(5)));
+  out(JSON.stringify(beat.Store.S.accentGrp) === JSON.stringify({}),
+      "脏下标（99 / \"x\"）根本不进 S.accentGrp（加载期白名单只收 0/1）",
+      JSON.stringify(beat.Store.S.accentGrp));
   out(beat.Store.S.trainer.everyN === 4 && !("start" in beat.Store.S.trainer),
       "trainer 原型污染未生效",
       "everyN=" + beat.Store.S.trainer.everyN + " / start=" + beat.Store.S.trainer.start);
