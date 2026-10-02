@@ -2894,20 +2894,20 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L2923  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L3552  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L5156  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6020  Modal         应用内弹窗
-     L6158  Viz           时值可视化渲染与每帧动画
-     L9233  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9900  Trainer       变速训练器
-     L10102 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10716 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12115 Editor        自定义节奏型编辑器
-     L12561 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12608 Ear           听辨训练（v1.10.0）
-     L12828 Arrange       曲式编排（v2.0.0）
-     L15726 Help          使用方法（v2.0.1）
-     L15855 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15929 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16172 初始化（装配） 各模块 hook 接线与启动
+     L6025  Modal         应用内弹窗
+     L6163  Viz           时值可视化渲染与每帧动画
+     L9238  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9905  Trainer       变速训练器
+     L10107 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10721 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12120 Editor        自定义节奏型编辑器
+     L12566 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12613 Ear           听辨训练（v1.10.0）
+     L12833 Arrange       曲式编排（v2.0.0）
+     L15731 Help          使用方法（v2.0.1）
+     L15860 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15934 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16177 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5173,12 +5173,16 @@ let paramSlotActive = "";
 /* "只读展示"：某开关**没开**也要把它的参数摆出来（目前只有一处——点变速训练但目标为空时，
    把槽打开让用户就地填目标；见 trainerToggle 处理器）。值为某一组名时该组强制显示。 */
 let paramSlotForce = "";
-function syncParamSlots(/** @type {string} */ activate){
+function syncParamSlots(/** @type {string} */ activate = ""){
   if (activate){
     paramSlotActive = activate;
     if (activate !== paramSlotForce) paramSlotForce = "";   // 用户主动切了槽 → 解除只读展示
   }
+  /* ★ 类型闸门（CI 的 tsc）要求：用字符串变量索引字面量对象必须给索引签名，
+     否则报 TS7053（本地 node_modules 缺失时 tsc 是 ⊘，只有 CI 能拦——本处就是被 CI 抓出来的）。 */
+  /** @type {Record<string, boolean>} */
   const on = { countIn: !!S.countIn.on, mute: !!S.mute, trainer: !!S.trainer.on };
+  /** @type {string[]} */
   const order = ["countIn", "mute", "trainer"];
   /** @type {string} */
   let show = "";
@@ -5188,6 +5192,7 @@ function syncParamSlots(/** @type {string} */ activate){
     const open = order.filter(k => on[k]);
     if (open.length) show = (open.indexOf(paramSlotActive) >= 0) ? paramSlotActive : open[open.length - 1];
   }
+  /** @type {Record<string, string>} */
   const map = { countIn: "countInPanel", mute: "muteCfgPanel", trainer: "trainerPanel" };
   for (const k of order){
     const el = $(map[k]);
