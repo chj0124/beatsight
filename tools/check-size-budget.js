@@ -118,9 +118,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      终值 1435KB。v3.10.0（状态灯搬底栏 + 游标粗竖线）：净增约 0.8KB，全为搬家注释
      （#pbProgress 清空连坐红线、等高带收缩依据）与 .pb-right 契约，上调到 1436KB。
      v3.11.0（撤道交叉淡出）：净增约 1.7KB——根因链注释（"撤道瞬间的宽度突变才是
-     闪变本体，结构修复必要不充分"）+ T169e 四条断言 + 淡出实现，上调到 1438KB，
-     留约 0.3KB 拦回归。 */
-const BUDGET_BYTES = 1438 * 1024;
+     闪变本体，结构修复必要不充分"）+ T169e 四条断言 + 淡出实现，上调到 1438KB。
+     v3.11.1（交叉淡出补全：row0 淡入）：净增 ~0.4KB（"只淡道不淡内容，内容的瞬时
+     通宽显形仍是硬切"的复盘注释 + 第五条断言），上调到 1439KB，留约 1KB 拦回归。 */
+const BUDGET_BYTES = 1439 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

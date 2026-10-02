@@ -70,6 +70,9 @@ section("T169e 撤道交叉淡出（宽度突变硬切根除）");
     + "否则下一帧就把淡出中的道藏掉，交叉淡出退化回硬切）");
   ok(/let countLaneFading = false/.test(html),
     "★ countLaneFading 旗有声明（默认 false）");
+  ok(/r0\.animate\(\[\{ opacity: 0 \}, \{ opacity: 1 \}\], \{ duration: 180/.test(seg),
+    "★★ 交叉淡出的另一半：row0 显形也要 opacity 淡入（v3.11.1）——只淡道不淡内容时，"
+    + "内容的瞬时通宽显形仍是硬切（用户复测情形 1「还没修复」的残余即此）");
 }
 
 section("T169c 图例关闭重采几何（错位根除）");

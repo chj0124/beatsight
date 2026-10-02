@@ -3006,18 +3006,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5266  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6123  Modal         应用内弹窗
      L6261  Viz           时值可视化渲染与每帧动画
-     L9374  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10041 Trainer       变速训练器
-     L10243 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10857 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12255 Editor        自定义节奏型编辑器
-     L12701 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12748 Ear           听辨训练（v1.10.0）
-     L12968 Arrange       曲式编排（v2.0.0）
-     L15866 Help          使用方法（v2.0.1）
-     L15995 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16069 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16312 初始化（装配） 各模块 hook 接线与启动
+     L9384  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10051 Trainer       变速训练器
+     L10253 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10867 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12265 Editor        自定义节奏型编辑器
+     L12711 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12758 Ear           听辨训练（v1.10.0）
+     L12978 Arrange       曲式编排（v2.0.0）
+     L15876 Help          使用方法（v2.0.1）
+     L16005 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16079 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16322 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3043,7 +3043,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.11.0";
+const VERSION = "3.11.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9086,7 +9086,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           (loopWrapped || (countLaneLastCur >= 0 && countLaneLastCur >= rowEls.length))){
         countLaneSession = false;   // 会话随撤除结束（否则守卫下一帧又恢复显示）
         countLaneEl.dataset.sig = "";
-        if (rowEls[0]) rowEls[0].style.visibility = "";
+        /* ★ v3.11.1：交叉淡出的**另一半**——v3.11.0 只淡了道的退场，row0 的显形仍是
+           visibility="" 瞬间硬切（用户复测情形 1 "还没修复"的残余即此：道的 180ms 淡出
+           蒙不住内容行的瞬时通宽显形）。补 row0 opacity 淡入（Web Animations，帧后自动
+           清理、不占 transition 槽；桩的 animate 是 no-op、REDUCE_MOTION 跳过）。 */
+        if (rowEls[0]){
+          const r0 = rowEls[0];
+          r0.style.visibility = "";
+          if (!REDUCE_MOTION && typeof r0.animate === "function"){
+            r0.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "linear" });
+          }
+        }
         const dyingLane = countLaneEl;
         if (REDUCE_MOTION){
           dyingLane.style.display = "none";
