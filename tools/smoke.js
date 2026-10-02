@@ -1208,8 +1208,8 @@ async function main(){
               "关 " + L.tgBody.txC + " · 静音拍 " + L.tgBody.txM + " · 都开 " + L.tgBody.txB
               + " · 复原 " + L.tgBody.txR);
             /* ★ v3.13.0：常驻预留 56px（最满面板实测 43px + 30% 余量）四态一字不变 */
-            ok(xEq([L.tgBody.padC, L.tgBody.padM, L.tgBody.padB, L.tgBody.padR]) && L.tgBody.padC === 56,
-              p.label + "·" + vp + "：★★ 参数槽常驻预留恒 56px（四态一字不变——零跳动承重墙）",
+            ok(xEq([L.tgBody.padC, L.tgBody.padM, L.tgBody.padB, L.tgBody.padR]) && L.tgBody.padC === 50,
+              p.label + "·" + vp + "：★★ 参数槽常驻预留恒 50px（最满面板 40 + 悬浮间距 8 = 48，+2 余量；四态一字不变）",
               "关 " + L.tgBody.padC + " · 静音拍 " + L.tgBody.padM + " · 都开 " + L.tgBody.padB
               + " · 复原 " + L.tgBody.padR);
             /* ★ v3.13.0：悬浮面板收容——打开的面板底缘不得越过 .tg-body 底缘（56px 装得下） */
