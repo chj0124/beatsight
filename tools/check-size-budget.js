@@ -145,8 +145,12 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      注释（v3.1.3 不画球 → 预备拍道承担落点）+ 点亮实现（children 切片避桩选择器坑）；
      ②雾化条毛玻璃 + 渐变 mask 的壁纸论证；③补偿圆钮三位数不溢出的宽度推导 +
      Feather 齿轮 SVG；④setPresetDrawer opts 三选项与 hover 会话/热区边界注释；
-     上调到 **1456KB**，留约 0.5KB——下次再贴近应先瘦身。 */
-const BUDGET_BYTES = 1456 * 1024;
+     上调到 **1456KB**，留约 0.5KB——下次再贴近应先瘦身。
+   v3.15.0（验收修正批）：净增约 2.2KB（实测 1458.2KB）——雾化贴屏缘的 calc 几何
+     注释 + ≤640 禁用判据；落拍光斑拍板沿革（甲/乙对比）；预备拍搬回卡片的三步
+     搬移注释与窄屏 1/3、2/3、5/1、6/1 网格钉；字号分档位数推导。↑ **1459KB**，
+     留约 0.8KB。⚠ 连续三轮贴线：下轮改动前先做一轮注释/死规则瘦身。 */
+const BUDGET_BYTES = 1459 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

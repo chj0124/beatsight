@@ -41,15 +41,16 @@ section("T153b 两列网格的钉位齐全、作用域不误伤");
 {
   /* 显式 grid-area：display:none 的面板不占格，不钉位的话剩下的面板会被
      auto-placement 挪进第 1 列——症状是"只开变速时参数出现在静音拍下面"。 */
-  const AREAS = [["muteToggle", "1/1"], ["trainerToggle", "1/2"],
-                 ["muteCfgPanel", "2/1"], ["trainerPanel", "2/2"]];
+  const AREAS = [["muteToggle", "1/1"], ["trainerToggle", "1/2"], ["countInToggle", "1/3"],
+                 ["muteCfgPanel", "2/1"], ["trainerPanel", "2/2"], ["countInBeatsWrap", "2/3"]];
   for (const [id, area] of AREAS) {
     const re = new RegExp("\\#" + id + "\\{grid-area:" + area.replace(/\//g, "\\/") + "\\}");
     ok(re.test(CSS_CODE),
       "★★ " + id + " 钉在 grid-area:" + area + "——开关在上排、自己的参数在正下方同列");
   }
-  ok(!/#countInToggle\{grid-area/.test(CSS_CODE) && !/#countInPanel\{grid-area/.test(CSS_CODE),
-    "★★ 预备拍的两条钉位已随搬移退役（留在网格规则里既是死规则，也会让后人以为它还在网格里）");
+  ok(/#countInToggle\{grid-area:1\/3\}/.test(CSS_CODE) && /#countInBeatsWrap\{grid-area:2\/3\}/.test(CSS_CODE)
+     && !/#countInPanel\{grid-area/.test(CSS_CODE),
+    "★★ v3.15.0：预备拍钉位随搬回归位（1/3 与 2/3，第三列）——#countInPanel 空壳仍不存在");
   /* 作用域必须钉在 .viz-toggles 内：.tg-body 类名在音量组与 BPM 组里也在用
      （各自的行包装层）——宽选择器会把音量三条滑杆排成三列（v3.9.0 实拍翻过车）。 */
   ok(/\.viz-head-grid \.viz-toggles \.tg-body\{/.test(CSS_CODE)
@@ -66,8 +67,9 @@ section("T153b 两列网格的钉位齐全、作用域不误伤");
   ok(/@media \(max-width:759\.9px\)[\s\S]*?\.viz-toggles \.tg-row \.toggle-pill#muteToggle\{grid-area:1\/1\}[\s\S]*?\.viz-toggles \.tg-slot \.tr-panel#muteCfgPanel\{grid-area:2\/1\}[\s\S]*?\.viz-toggles \.tg-row \.toggle-pill#trainerToggle\{grid-area:3\/1\}[\s\S]*?\.viz-toggles \.tg-slot \.tr-panel#trainerPanel\{grid-area:4\/1\}/.test(CSS_CODE),
     "★★ 窄屏显式钉行（1/2/3/4 连续无空行）：每组（开关, 参数）占相邻两行——"
     + "隐藏面板的行自动塌缩，组与组不错位；三组时代的 5/6 行号已退役（留着会出现空行）");
-  ok(!/grid-area:5\/1/.test(CSS_CODE) && !/grid-area:6\/1/.test(CSS_CODE),
-    "★ 窄屏 5/6 行号已清干净（三列时代残留）");
+  ok(/\.viz-toggles \.tg-row \.toggle-pill#countInToggle\{grid-area:5\/1\}/.test(CSS_CODE)
+     && /\.viz-toggles \.tg-slot \.inp-with-unit#countInBeatsWrap\{grid-area:6\/1\}/.test(CSS_CODE),
+    "★ v3.15.0：窄屏手风琴扩到 6 行（预备拍 5、拍数 6——三组时代曾用 5/6，现由预备拍复用）");
 }
 
 /* ================= T153c：不互斥 + force 开槽 + 显隐收口 ================= */

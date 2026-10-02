@@ -481,6 +481,9 @@ function loadApp(seed, opts){
     clearTimeout: id => timeouts.delete(id),
     requestAnimationFrame: () => 0, // paintFrame 不运行：测试只断言引擎与状态层
     cancelAnimationFrame(){},
+    /* v3.15.0：窗口几何——依赖 innerWidth 的显隐逻辑（雾化条 ≤640 禁用）在桩里需要
+       一个确定值；取可配置的 vw（默认 ROW_W=600，需桌面行为时用 viewportW 覆盖） */
+    innerWidth: vw, innerHeight: Math.round(vw * 0.5625),
     performance: { now: () => Date.now() },
     URL: { createObjectURL: () => "blob:mock", revokeObjectURL(){} },
     Blob,

@@ -26,8 +26,10 @@ section("T173a 底栏右区两行化（结构红线 + 解耦落点）");
   ok(/<div class="pb-progress" id="pbProgress"[^>]*><\/div>\s*<div class="pb-sub">/.test(PLAYBAR),
     "★★ 行 1 = #pbProgress 独占、行 2 = .pb-sub（两行 DOM 的源码序）");
   ok(PLAYBAR.indexOf('id="pbProgress"') < PLAYBAR.indexOf('<div class="pb-sub">')
-     && /<div class="pb-sub">[\s\S]*?id="countInToggle"[\s\S]*?id="statusDot"/.test(PLAYBAR),
-    "★★ .pb-sub（行 2）= 预备拍组（左）+ 状态灯（右），且整体在进度条之下");
+     && /<div class="pb-sub">[\s\S]*?id="statusDot"/.test(PLAYBAR)
+     && !/id="countInToggle"/.test(PLAYBAR),
+    "★★ v3.15.0：.pb-sub（行 2）只剩状态灯（预备拍搬回卡片开关行、拍数输入走悬浮槽）；"
+    + "整体仍在进度条之下");
   /* 结构红线（t170 立）：#pbProgress 挂载前会被 buildDemoSongRow 清空——
      状态灯不得是它的子节点。两行化后隔了一层 .pb-sub，仍是兄弟。 */
   const pbOpen = PLAYBAR.indexOf('id="pbProgress"');
@@ -36,8 +38,8 @@ section("T173a 底栏右区两行化（结构红线 + 解耦落点）");
     "★★★ 状态灯仍不是 #pbProgress 的子节点（buildDemoSongRow 清空容器时不得连坐销毁）");
   ok(/\.pb-right\{justify-self:end;display:flex;flex-direction:column;/.test(CSS_CODE),
     "★★ .pb-right 纵排两行（行 1 宽度只随容器——解耦的结构前提）");
-  ok(/\.pb-sub\{display:flex;justify-content:space-between;/.test(CSS_CODE),
-    "★★ .pb-sub 两端对齐（两个可变宽度源只挤压行 2 中缝）");
+  ok(/\.pb-sub\{display:flex;justify-content:flex-end;/.test(CSS_CODE),
+    "★★ v3.15.0：.pb-sub 右对齐单状态（预备拍已离开底栏——可变宽度源只剩状态文案）");
 }
 
 section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档）");

@@ -31,11 +31,9 @@ const rowStart = src.indexOf('<div class="tg-row" id="tgSwitchRow">');
 const rowEnd = src.indexOf("</div>", rowStart);
 ok(rowStart > 0 && rowEnd > rowStart, "★★ 存在开关行容器 #tgSwitchRow");
 const row = src.slice(rowStart, rowEnd);
-["muteToggle", "trainerToggle"].forEach(id => {
-  ok(row.includes('id="' + id + '"'), "★ 两枚开关同在**一行**之内：" + id);
+["muteToggle", "trainerToggle", "countInToggle"].forEach(id => {
+  ok(row.includes('id="' + id + '"'), "★ v3.15.0 三枚开关同在**一行**之内：" + id);
 });
-ok(!row.includes('id="countInToggle"'),
-  "★★ 预备拍开关已不在本行（v3.12.0 搬进底栏右区）——本行自此只剩「静音拍 / 变速训练」");
 /* 网格钉在 .viz-toggles 作用域内——.tg-body 这个类名在音量组与 BPM 组里也在用
    （各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车）。 */
 ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 76px/.test(src),
@@ -54,7 +52,9 @@ ok(slotStart > 0, "找到参数槽（壳）");
   ok(slot.includes('id="' + id + '"'), "★ 两组参数面板都在槽内：" + id);
 });
 ok(!slot.includes('id="countInPanel"'),
-  "★★ 预备拍参数面板 #countInPanel 已删除（开关与拍数输入同去底栏，槽里不留空壳）");
+  "★ 空参数面板 #countInPanel 仍不存在（拍数输入走 #countInBeatsWrap 裸 span，不造面板壳）");
+ok(slot.includes('id="countInBeatsWrap"'),
+  "★★ v3.15.0：拍数输入 #countInBeatsWrap 在槽内（预备拍参数与两组参数同走悬浮槽）");
 ["muteRandomToggle", "trTargetWrap"].forEach(id => {
   ok(slot.includes('id="' + id + '"'),
     "★★ 小参数搬进槽（" + id + "）——开关行只剩开关，行宽不再随开合变化");
@@ -67,14 +67,15 @@ ok(slot.includes('id="trainerProg"'), "★ 训练进度行随整组参数搬进�
   ok(new RegExp("\\#" + id + "\\{grid-area:" + area.replace(/\//g, "\\/") + "\\}").test(src),
     "★★ " + id + " 显式钉位 grid-area:" + area + "（不钉位则 display:none 一变，列对齐就散）");
 });
-ok(!/#countInToggle\{grid-area/.test(src) && !/#countInPanel\{grid-area/.test(src),
-  "★★ 预备拍两条钉位随搬移一并退役（留在网格规则里是死规则，还会误导后来者）");
+ok(/#countInToggle\{grid-area:1\/3\}/.test(src) && /#countInBeatsWrap\{grid-area:2\/3\}/.test(src),
+  "★★ v3.15.0：预备拍钉位随搬回归位（1/3 与 2/3）——#countInPanel 空壳仍不存在");
 /* 窄屏手风琴档：行号同样要收成 1..4（不重排 = 第 1、3 行空缺，观感是"开关下面凭空一段空"） */
 ok(/\.viz-toggles \.tg-row \.toggle-pill#trainerToggle\{grid-area:3\/1\}/.test(src)
    && /\.viz-toggles \.tg-slot \.tr-panel#trainerPanel\{grid-area:4\/1\}/.test(src),
   "★ 窄屏手风琴档行号已收口（mute 1/2、trainer 3/4，无空行）");
-ok(!/grid-area:5\/1/.test(src) && !/grid-area:6\/1/.test(src),
-  "★ 窄屏里 5/6 行号已退役（那是三组时代的残留）");
+ok(/\.viz-toggles \.tg-row \.toggle-pill#countInToggle\{grid-area:5\/1\}/.test(src)
+   && /\.viz-toggles \.tg-slot \.inp-with-unit#countInBeatsWrap\{grid-area:6\/1\}/.test(src),
+  "★ v3.15.0：窄屏 5/6 行号由预备拍复用（手风琴扩到 6 行）");
 
 section("T163b 显隐 · 各管各（共槽仲裁退役，不互斥纪律保留）");
 

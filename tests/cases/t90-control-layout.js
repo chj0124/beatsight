@@ -197,27 +197,30 @@ section("T90f v2.10.14/16 · BPM 组占卡片头右列；Swing 与同屏行数�
     "★ BPM 组已上移卡片头（并排行里没有它）");
 }
 
-/* ================= 场景 T90h（v3.12.0 修订）：开关行剩两枚；预备拍整组进底栏 ================= */
-section("T90h v3.12.0 · 开关行只剩静音拍 + 变速训练；预备拍整组搬进底栏右区");
+/* ================= 场景 T90h（v3.15.0 修订）：开关行三枚；预备拍搬回、拍数输入走悬浮槽 ================= */
+section("T90h v3.15.0 · 开关行 = 静音拍 + 变速训练 + 预备拍；拍数输入与两组参数同走悬浮槽");
 {
   const s = slice("togglesRow");
-  for (const id of ["muteToggle", "trainerToggle"]){
-    ok(new RegExp('id="' + id + '"').test(s), "★ 开关行的两件之一：#" + id);
+  for (const id of ["muteToggle", "trainerToggle", "countInToggle"]){
+    ok(new RegExp('id="' + id + '"').test(s), "★ 开关行的三件之一：#" + id);
   }
-  ok(!/id="countInToggle"/.test(s), "★★ 预备拍开关已不在开关行（v3.12.0 搬进底栏）");
-  ok(!/id="countInBeatsWrap"/.test(s), "★★ 拍数输入随开关同搬（它必须紧跟所属开关，v1.3.3 教训）");
-  ok(!/id="countInPanel"/.test(s), "★★ 空出来的参数面板 #countInPanel 已删除（不再占槽位）");
-  ok(s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
-    "行内顺序：静音拍 → 变速训练");
-  /* 预备拍整组在底栏 */
+  ok(!/id="countInPanel"/.test(s), "★★ 空参数面板 #countInPanel 仍不存在（拍数输入走 #countInBeatsWrap，不再造面板壳）");
+  ok(s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"')
+     && s.indexOf('id="trainerToggle"') < s.indexOf('id="countInToggle"'),
+    "行内顺序：静音拍 → 变速训练 → 预备拍");
+  /* 预备拍已离开底栏（v3.15.0 搬回卡片） */
   {
     const pb = slice("playBar");
-    ok(/id="countInToggle"/.test(pb), "★★ 预备拍开关 `#countInToggle` 在底栏（id 不换）");
-    ok(/id="countInBeatsWrap"/.test(pb) && /id="countInBeats"/.test(pb),
-      "★★ 拍数输入 `#countInBeatsWrap` / `#countInBeats` 随组同搬（id 不换）");
-    ok(pb.indexOf('id="countInToggle"') < pb.indexOf('id="countInBeatsWrap"'),
-      "★ 顺序仍是「开关 → 拍数」（拍数紧跟其所属开关）");
-    ok(/class="pb-countin"/.test(pb), "★ 外层 .pb-countin 承载（flex:none，不被进度条挤压）");
+    ok(!/id="countInToggle"/.test(pb) && !/id="countInBeatsWrap"/.test(pb),
+      "★★ 预备拍开关与拍数输入都已离开底栏（v3.15.0 搬回卡片开关行/悬浮槽）");
+    ok(!/class="pb-countin"/.test(pb), "★ .pb-countin 承载层已退役（.pb-sub 只剩状态灯）");
+  }
+  /* 拍数输入在 .viz-toggles 段内、位于预备拍开关之后（悬浮槽第三项） */
+  {
+    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizBand"'));
+    ok(seg.indexOf('id="countInToggle"') >= 0 && seg.indexOf('id="countInBeatsWrap"') >= 0
+       && seg.indexOf('id="countInToggle"') < seg.indexOf('id="countInBeatsWrap"'),
+      "★ 拍数输入在 .viz-toggles 段内、位于预备拍开关之后（悬浮槽第三项，顺序「开关 → 拍数」不变）");
   }
   /* v2.11.2：训练模式区整块删除——面板搬进本行、接续按钮与 7 天计划下线 */
   ok(!/<i>Training<\/i>/.test(html), "★ 「02 Training 训练模式」标题行已删（v2.10.16）");

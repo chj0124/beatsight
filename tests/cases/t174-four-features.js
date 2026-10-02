@@ -57,6 +57,11 @@ section("T174a 滚动预备拍特效：预备拍道逐拍点亮（幂等重挂 +
   } else {
     ok(true, "重建后道不在显示窗口（时序浮动），恢复路径由源码钉兜底");
   }
+  /* 源码钉：落拍光斑 = 每声计数在拍区上炸一次圆环（flashTheme 配色 + 420ms 回弹）。
+     桩里 animate 是 no-op，动效本身测不到——钉实现存在性，防整段被静默拆掉。 */
+  ok(/countLaneLitIdx/.test(html) && /fc\.zoneOn, transform: "scale\(1\.12\)"/.test(html)
+     && /duration: 420/.test(html),
+    "★★ 落拍光斑实现在位（每声计数圆环脉冲 420ms，flashTheme 配色；REDUCE_MOTION 降级留标记）");
   /* 交接（v3.12.0 语义）：道在**首个可听小节内持续显示**（会话保持），
      第二个可听小节起退场——驱动到撤除为止（BPM 无关的循环，封顶 12s）再断言 */
   let exited = false;
@@ -82,7 +87,8 @@ function drive0(beat, ac, seconds, onFrame){
 
 section("T174b 雾化条：显隐跟随滚动模式 + CSS 三要素");
 {
-  const { els } = loadApp(seedState({ scrollMode: true, scrollRows: 3 }));
+  /* viewportW 1440：雾化条 v3.15.0 起在 ≤640 手机竖屏禁用——桌面行为用可配置视口表达 */
+  const { els } = loadApp(seedState({ scrollMode: true, scrollRows: 3 }), { viewportW: 1440 });
   /* 元素存在性并入断言：同步被拆（变异）时 app 从不触碰该元素 → els 为 undefined，
      此时是"具名红"而不是 TypeError 崩溃（变异反向验证的可读性要求） */
   ok(!!els["scrollFogL"] && !!els["scrollFogR"] && els["scrollFogL"].hidden === false
@@ -94,10 +100,11 @@ section("T174b 雾化条：显隐跟随滚动模式 + CSS 三要素");
     "★ 分页模式：雾化条隐藏（显隐跟随 scrollMode）",
     "L=" + (elsPaged["scrollFogL"] && elsPaged["scrollFogL"].hidden));
   ok(/\.scroll-fog\{[^}]*backdrop-filter:blur\(6px\)/.test(cssNoCmt)
-     && /\.scroll-fog\{[^}]*width:112px/.test(cssNoCmt)
-     && /\.scroll-fog\.left\{left:0;mask-image:linear-gradient\(90deg,#000,transparent\)/.test(cssNoCmt)
-     && /\.scroll-fog\.right\{right:0;mask-image:linear-gradient\(270deg,#000,transparent\)/.test(cssNoCmt),
-    "★★ CSS 三要素：毛玻璃 blur(6px)（透壁纸无色块）+ 112px 缓冲带 + 左右镜像渐变 mask");
+     && /left:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt)
+     && /width:calc\(\(100vw - 100%\) \/ 2 \+ clamp\(64px, 10vw, 112px\)\)/.test(cssNoCmt)
+     && /\.scroll-fog\.right\{left:auto;right:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt),
+    "★★ v3.15.0 CSS：毛玻璃 blur(6px) + 贴屏幕两缘（calc 从视口边铺到卡片缘内"
+    + " clamp(64,10vw,112)px）+ 左右镜像渐变 mask");
   ok(/\.viz-band\{display:flex;flex-direction:column;gap:16px;margin-block:auto;position:relative\}/.test(cssNoCmt),
     "★ .viz-band 补 position:relative（雾化条 absolute 的定位上下文）");
 }
@@ -112,9 +119,11 @@ section("T174c 顶栏圆钮化：结构 + 圆内数值载体");
      && /aria-hidden="true"><circle cx="12" cy="12" r="3\.1"/.test(topbar),
     "★★ 设置圆钮：icon-btn + 齿轮 SVG（aria-label 承接原文字语义）");
   ok(/\.lat-btn\{min-width:40px;justify-content:center;padding:0 10px\}/.test(cssNoCmt)
-     && /\.lat-btn \.lat-num\{[^}]*font-size:11px/.test(cssNoCmt)
+     && /\.lat-btn \.lat-num\.n1\{font-size:16px\}/.test(cssNoCmt)
+     && /\.lat-btn \.lat-num\.n2\{font-size:13px\}/.test(cssNoCmt)
+     && /\.lat-btn \.lat-num\.n3\{font-size:11px\}/.test(cssNoCmt)
      && /\.lat-btn \.lat-num\{[^}]*font-variant-numeric:tabular-nums/.test(cssNoCmt),
-    "★★ 圆内数值 11px 等宽 tabular-nums（三位 ~20px，min-width 40 保正圆不溢出）");
+    "★★ v3.15.0：数值字号按位数分档（1 位 16 / 2 位 13 / 3 位 11，圆钮 40px 恒定不溢出）");
 }
 
 section("T174d 抽屉左缘自动浮出：hover 无遮罩 / 显式带遮罩 / 400ms 收回");

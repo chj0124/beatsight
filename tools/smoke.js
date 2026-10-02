@@ -798,13 +798,15 @@ function layoutProbe(){
     return "elsewhere";
   })();
   out.sigExists = !!q("#sigRow") || !!q("#accGroup") || !!q("#fallbackNote");
-  out.countInInBar = (() => {
-    const c = q("#countInToggle"), bar = q("#playBar");
-    return !!(c && bar && bar.contains(c));
+  /* ★ v3.15.0：预备拍搬回控制卡片开关行——判据改为"在 .viz-head-grid 内"（字段名
+     countInInBar 保留以免牵动断言编号，语义 = 在卡片开关行；底栏路径同步查反）。 */
+  out.countInInCard = (() => {
+    const c = q("#countInToggle"), bar = q("#playBar"), grid = q(".viz-head-grid");
+    return !!(c && grid && grid.contains(c) && !(bar && bar.contains(c)));
   })();
-  out.countInWrapInBar = (() => {
-    const c = q("#countInBeatsWrap"), bar = q("#playBar");
-    return !!(c && bar && bar.contains(c));
+  out.countInWrapInCard = (() => {
+    const c = q("#countInBeatsWrap"), bar = q("#playBar"), grid = q(".viz-head-grid");
+    return !!(c && grid && grid.contains(c) && !(bar && bar.contains(c)));
   })();
 
   /* v3.3.0：四块的完整矩形（诊断 + 等宽等距断言的数据源）——
@@ -1112,9 +1114,9 @@ async function main(){
           ok(m.sigExists === false,
             p.label + "·" + label + "：★★ 拍号控件确已删除（#sigRow / #accGroup / #fallbackNote 均不存在）",
             "sigExists=" + m.sigExists);
-          ok(m.countInInBar === true && m.countInWrapInBar === true,
-            p.label + "·" + label + "：★★ 预备拍开关与拍数输入都在**底栏**内（v3.12.0 搬移）",
-            "toggle=" + m.countInInBar + " wrap=" + m.countInWrapInBar);
+          ok(m.countInInCard === true && m.countInWrapInCard === true,
+            p.label + "·" + label + "：★★ 预备拍开关与拍数输入都在**控制卡片开关行/悬浮槽**内（v3.15.0 搬回）",
+            "toggle=" + m.countInInCard + " wrap=" + m.countInWrapInCard);
         } else {
           ok(sameLine(m.toggle, base),
             p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",
