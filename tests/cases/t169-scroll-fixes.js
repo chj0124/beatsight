@@ -50,6 +50,28 @@ section("T169b 预备拍道内竖线放行（scroll 豁免）");
     + "v3.2.3 的竖线代码自此真正可见（用户实拍「Agent 说实现了但看不见」的根因）");
 }
 
+section("T169e 撤道交叉淡出（宽度突变硬切根除）");
+{
+  /* 用户实拍二连（预备拍=1/2 拍，两种触发：单小节循环每轮回卷 / 首轮窗口播完）：
+     撤道瞬间道（N 拍短条）隐、row0（4 拍通宽内容行）显，同帧一隐一显 =
+     "跑道一瞬间变成 4 拍长"。修法：row0 先复位显形，道 opacity 180ms 淡出后再
+     display:none——硬切变交叉淡出；REDUCE_MOTION 跳过；淡出窗口内守卫不得抢隐藏。 */
+  const at = html.indexOf("countLaneLastCur >= rowEls.length");
+  const seg = html.slice(html.lastIndexOf("if (countLaneEl &&", at), at + 900);
+  ok(/countLaneFading = true/.test(seg) && /transition = "opacity \.18s linear"/.test(seg)
+     && /dyingLane\.style\.display = "none"/.test(seg),
+    "★★ 撤道 = row0 先复位 + 道 opacity .18s 淡出后再 display:none（交叉淡出；"
+    + "闭包锁局部引用 dyingLane，不锁会被 buildViz 重指向的模块级变量）");
+  ok(/REDUCE_MOTION/.test(seg),
+    "★ REDUCE_MOTION 用户跳过淡出（既有降级纪律）");
+  ok(/!countLaneFading/.test(html.slice(html.indexOf('} else if (countLaneEl && countLaneEl.style.display !== "none"'),
+    html.indexOf('} else if (countLaneEl && countLaneEl.style.display !== "none"') + 140)),
+    "★★ 淡出窗口内 paintBall 守卫不得抢着 display:none（!countLaneFading 闸——"
+    + "否则下一帧就把淡出中的道藏掉，交叉淡出退化回硬切）");
+  ok(/let countLaneFading = false/.test(html),
+    "★ countLaneFading 旗有声明（默认 false）");
+}
+
 section("T169c 图例关闭重采几何（错位根除）");
 {
   const h = html.indexOf('vizLegendClose").addEventListener');

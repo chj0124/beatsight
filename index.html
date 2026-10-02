@@ -3006,18 +3006,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5266  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6123  Modal         应用内弹窗
      L6261  Viz           时值可视化渲染与每帧动画
-     L9348  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10015 Trainer       变速训练器
-     L10217 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10831 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12229 Editor        自定义节奏型编辑器
-     L12675 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12722 Ear           听辨训练（v1.10.0）
-     L12942 Arrange       曲式编排（v2.0.0）
-     L15840 Help          使用方法（v2.0.1）
-     L15969 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16043 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16286 初始化（装配） 各模块 hook 接线与启动
+     L9374  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10041 Trainer       变速训练器
+     L10243 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10857 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12255 Editor        自定义节奏型编辑器
+     L12701 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12748 Ear           听辨训练（v1.10.0）
+     L12968 Arrange       曲式编排（v2.0.0）
+     L15866 Help          使用方法（v2.0.1）
+     L15995 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16069 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16312 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3043,7 +3043,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.10.0";
+const VERSION = "3.11.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6323,6 +6323,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
   const geoOf = i => rowGeo[i] || null;
 let ballEl = /** @type {HTMLElement|null} */ (null), shadowEl = /** @type {HTMLElement|null} */ (null), waitEl = /** @type {HTMLElement|null} */ (null), countLaneEl = /** @type {HTMLElement|null} */ (null);           // 弹跳球（v1.2）：当前球/影子/接力待命球；预备拍道（v3.2.2）
 let countLaneSession = false;
+let countLaneFading = false;                         // 撤道交叉淡出进行中（v3.11.0）：窗口内守卫不得抢着隐藏道
 let countLaneLastCur = -1;                           // 可听小节/片段号镜像（预备拍道守卫用，v3.2.3）
 let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
@@ -8138,7 +8139,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         countLaneEl.style.width = `${laneW.toFixed(1)}px`;
         /* 甲终点静止态：右缘贴播放杆（row0 内坐标 = 行宽 − 道宽） */
         countLaneEl.style.transform = `translate(${((gL0 ? gL0.width : 0) - laneW).toFixed(1)}px, 0px)`;
-      } else if (countLaneEl && countLaneEl.style.display !== "none"){
+      } else if (countLaneEl && countLaneEl.style.display !== "none" && !countLaneFading){
+        /* v3.11.0：淡出窗口内不抢着隐藏（撤道的 opacity 淡出还没走完） */
         countLaneEl.style.display = "none";
       }
       ballEl.style.display = "none"; shadowEl.style.display = "none";
@@ -9068,13 +9070,37 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          撤除时机 = **首次回卷**（调度域 loopWrapped 标记：循环回卷/曲末回卷都置位）——
          回卷时左半槽位需要显示真实上一小节，预备拍道让位、row0 复位。 */
       /* 撤除时机：回卷（loopWrapped）或第一轮播完（可听小节/片段号 cur ≥ 窗口行数）——
-         左半槽位此后需要显示真实上一小节，预备拍道让位、row0 复位 */
+         左半槽位此后需要显示真实上一小节，预备拍道让位、row0 复位。
+         ★★ v3.11.0（用户实拍二连："预备拍播完立刻 / 道上滚接近上限时，一瞬间变成 4 拍长"）：
+           撤除从「硬切」改**交叉淡出**。根因不在道的结构（v3.9.0 已让道按预备拍拍数构建），
+         而在撤除瞬间的**宽度突变**：预备拍≠4 时道是 N 拍短条，row0 复位显形的是 4 拍通宽
+         内容行——同帧一隐一显，感知就是"跑道一瞬间变成 4 拍长"（单小节循环每轮回卷触发 =
+         情形 2 的"立刻"；首轮窗口播完 cur≥行数触发 = 情形 1 的"接近上限时"）。
+         改法：row0 先复位显形（真实内容在道背后就位），道以 180ms opacity 淡出后再
+         display:none——硬切变交叉淡出。REDUCE_MOTION 用户跳过淡出（既有降级纪律）。
+         ★ 期间防抖：淡出窗口内 paintBall 守卫不得抢着把道 display:none（countLaneFading
+           旗），淡出完成回调收尾（display:none + 清 transition/opacity + 落旗）。
+         ★ 闭包必须锁**局部引用**（countLaneEl 是会被 buildViz 重建重指向的模块级变量，
+           锁变量会在重建后误杀新道）。 */
       if (countLaneEl && countLaneEl.style.display === "block" &&
           (loopWrapped || (countLaneLastCur >= 0 && countLaneLastCur >= rowEls.length))){
         countLaneSession = false;   // 会话随撤除结束（否则守卫下一帧又恢复显示）
-        countLaneEl.style.display = "none";
         countLaneEl.dataset.sig = "";
         if (rowEls[0]) rowEls[0].style.visibility = "";
+        const dyingLane = countLaneEl;
+        if (REDUCE_MOTION){
+          dyingLane.style.display = "none";
+        } else {
+          countLaneFading = true;
+          dyingLane.style.transition = "opacity .18s linear";
+          dyingLane.style.opacity = "0";
+          setTimeout(() => {
+            dyingLane.style.display = "none";
+            dyingLane.style.transition = "";
+            dyingLane.style.opacity = "";
+            countLaneFading = false;
+          }, 190);
+        }
       }
       /* 播放头钉在**当前槽的水平中央**（不再随 tib 扫过整行——内容在动、头不动）；
          行槽按各自相位横移：dx_i = C − left_i − phase_i·W，phase_i = clamp(p − off_i, 0, 1)
