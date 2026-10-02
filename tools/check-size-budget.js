@@ -95,8 +95,14 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    恒显的兜底）；② 底栏三段改三列网格 + 高度提成 --bar-h 变量 + 抬高到 96px；
    ③ 同屏行数=1 时整条可视化带居中；④ **三开关合并一行 + 恒定高度的公共参数槽**（含空目标
    由弹窗拒开改为"开槽待填"）。净增 ~6.1KB（删除侧是 tr-inline 样式、min-height 那套与
-   两条 Modal 提示），全为功能本体与"为什么"注释。上调到 1426KB，留约 4.4KB 拦回归。 */
-const BUDGET_BYTES = 1426 * 1024;
+   两条 Modal 提示），全为功能本体与"为什么"注释。上调到 1426KB，留约 4.4KB 拦回归。
+   v3.4.1 + v3.5.0（视觉重设计批次）：功能本体净增极小——v3.4.1 是搬一个元素 + 删一个写点，
+   v3.5.0 只有两条 CSS 声明（.main 的 min-height 双写、.bar-row.current 的 inset 第三参数）。
+   两批体积几乎全在注释上，且这些注释是**不可删的防坑知识**：v3.5.0 记的是「grid 下
+   margin-block:auto 恒为 0px」这条机制（v3.3.1 立错了近一年，t166 T151a–c 逐条钉死），
+   删了下一个人会照 v3.3.1 的注释再犯一次。已做过两轮压缩（3623 → 现值，信息一条不丢）
+   仍差 0.6KB，故上调到 1427KB，留约 3.4KB 拦回归。 */
+const BUDGET_BYTES = 1427 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

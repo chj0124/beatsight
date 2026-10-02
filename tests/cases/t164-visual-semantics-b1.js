@@ -63,8 +63,9 @@ section("T149e .bar-row.current 底纹提到 .12 并加左缘绿条");
 {
   const rule = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
   ok(/rgba\(30,215,96,\.12\)/.test(rule), "★ 底纹 .07 → .12（壁纸上不再被稀释到不可见）");
-  ok(/box-shadow:inset 3px 0 0 var\(--green\)/.test(rule),
-    "★ 左缘 3px 绿条：位置对比兜底，弱光/自定义壁墙上仍可辨当前行");
+  ok(/box-shadow:inset 3px 24px 0 0 var\(--green\)|box-shadow:inset 3px 0 0 var\(--green\)/.test(rule),
+    "★ 左缘 3px 绿条：位置对比兜底，弱光/自定义壁墙上仍可辨当前行"
+    + "（v3.5.0/B3 起为 `inset 3px 24px 0` 的行首短标，通高写法一并认作通过）");
 }
 
 /* ================= T149f：和弦名改琥珀（P2） ================= */

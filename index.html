@@ -125,6 +125,12 @@ button:disabled{cursor:not-allowed}
    「播放头钉中央」留出两侧余量（上一次实施「后半小节被侧栏盖住」的根因面从布局上消除）。
    ★ 单栏后 gap:24px 只剩一个孩子、无列可隔，一并去掉（主列内部间距由 .col 的 gap:20px 管） */
 .main{display:grid;grid-template-columns:1fr;align-items:start;max-width:1440px;margin:0 auto;padding:24px calc(24px + env(safe-area-inset-right, 0px)) calc(var(--bar-h) + 24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}   /* v3.3.1：底部让位给 fixed 播放底栏——高度走 --bar-h（96 / ≤640 为 84），三处同源 */   /* v2.11.1：align-items:start */
+/* ★ v3.5.0（B3）：给 .main 一条一屏下限，让 #vizBand 的 `margin-block:auto` 真能分配剩余
+   空间——v3.3.1 立这条 auto 边距想做的「1 行档垂直居中」，在 grid 下恒为 0px、从未生效。
+   双写且 vh 在前 = 渐进增强（旧浏览器落 vh 而非失去下限）；用 dvh 是为跟移动端动态视口。
+   不改 align-items：stretch 虽同样有效，但会拉高 .card、破坏卡内对齐契约（t90 有断言）。
+   高于一屏时 auto 自行归零、正常滚动。证据链见 CHANGELOG v3.5.0。 */
+.main{min-height:calc(100vh - var(--bar-h) - 24px);min-height:calc(100dvh - var(--bar-h) - 24px)}
 /* v2.36.0（用户反馈）：宽屏铺满（设置 · 外观与辅助开关，默认关）——去掉 1440px 上限，
    主列 1fr 拉伸铺满；超宽屏上视线跨度变大，故做成选项而非默认 */
 body.wide-full .main{max-width:none}
@@ -274,7 +280,9 @@ body.wide-full .main{max-width:none}
      被侧栏盖住。去卡片 + 单栏后，可视化带的宽度就是行矩形宽度，基准唯一（geoOf）。 */
 /* ★ v3.3.1（用户反馈）：同屏行数 = 1 时页面太空旷——整条可视化带（图例 + 网格 + 歌词带）
    在"控制卡之下、底栏之上"的剩余空间里**垂直居中**。行数多到撑满时 auto 边距自动归零，
-   不影响满屏观感（这也是选 auto 边距而非固定偏移的原因）。 */
+   不影响满屏观感（这也是选 auto 边距而非固定偏移的原因）。
+   ★ v3.5.0 订正（B3 实测：这个居中**从未生效**——grid 下 auto 边距要求行内有剩余高度，
+     而 align-items:start 让 .main 全链只包住内容 → 恒 0px。修法见 .main 的 min-height。 */
 .viz-band{display:flex;flex-direction:column;gap:16px;margin-block:auto}
 /* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；关闭后由 S.vizLegend 记忆 */
 .viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
@@ -422,8 +430,11 @@ body.wide-full .main{max-width:none}
 .bar-row{position:relative;height:86px;margin-bottom:20px}   /* 行距 20px：给行顶的「和弦胶囊」条带腾竖向空间（v2.8.0 由 14px 加大） */
 .bar-row:last-child{margin-bottom:0}
 /* v3.4.0（B1/P8）：当前行底纹由 .07 提到 .12 并加 1px 左缘绿条——底纹是「面积对比」，
-   叠在自定义壁纸上会被进一步稀释；左缘条是「位置对比」，弱光/壁纸上仍可辨。 */
-.bar-row.current{background:rgba(30,215,96,.12);box-shadow:inset 3px 0 0 var(--green);border-radius:8px}
+   叠在自定义壁纸上会被进一步稀释；左缘条是「位置对比」，弱光/壁纸上仍可辨。
+   ★ v3.5.0（B3）：左缘条由**通高**（inset 3px 0 0 → 86px 满高）改为**行首短标**
+     （inset 3px 24px 0 0 → 只点 24px = 半个行高）。通高绿条在 4~5 行档会连成贯顶立柱，
+     把"当前行"读成"当前这一列"；短标只标"从这一行开始"，配合底纹后强度不变而噪声大降。 */
+.bar-row.current{background:rgba(30,215,96,.12);box-shadow:inset 3px 24px 0 0 var(--green);border-radius:8px}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
 /* 预告行（v2.7.0；v2.8.0 预告信息并入和弦胶囊，不再单独挂徽标）：
@@ -2914,23 +2925,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2946  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3575  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5179  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6048  Modal         应用内弹窗
-     L6186  Viz           时值可视化渲染与每帧动画
-     L9261  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9928  Trainer       变速训练器
-     L10130 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10744 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12142 Editor        自定义节奏型编辑器
-     L12588 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12635 Ear           听辨训练（v1.10.0）
-     L12855 Arrange       曲式编排（v2.0.0）
-     L15753 Help          使用方法（v2.0.1）
-     L15882 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15956 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16199 初始化（装配） 各模块 hook 接线与启动
+     L2957  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3586  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5190  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6059  Modal         应用内弹窗
+     L6197  Viz           时值可视化渲染与每帧动画
+     L9272  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9939  Trainer       变速训练器
+     L10141 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10755 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12153 Editor        自定义节奏型编辑器
+     L12599 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12646 Ear           听辨训练（v1.10.0）
+     L12866 Arrange       曲式编排（v2.0.0）
+     L15764 Help          使用方法（v2.0.1）
+     L15893 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15967 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16210 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2956,7 +2967,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.4.1";
+const VERSION = "3.5.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
