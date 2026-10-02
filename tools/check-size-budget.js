@@ -137,8 +137,11 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      根因链注释（−64/−134px 实测）与 .pb-sub 结构、参数槽通栏悬浮的三段推导
      （auto 列撑宽实测 +114/−148px、两列悬浮面板同开重叠 89px、Chrome 对折行弹性
      容器固有宽度的 543.9px 误算）、丁方案限宽 1000 的空白实测（336/368px）、
-     v2.10.18 钉宽/三轨特化退役说明；上调到 **1445KB**，留约 1.1KB 拦回归。 */
-const BUDGET_BYTES = 1445 * 1024;
+     v2.10.18 钉宽/三轨特化退役说明；上调到 **1445KB**，留约 1.1KB 拦回归。
+   v3.13.1（开关行下移微调）：净增约 0.3KB——`.tg-body` padding-top:16px 的实测绘据
+     注释（原视觉间距 24px = 12 行距 + 12 组内边距，+16 → 40px 与卡内边距/列距同档）；
+     上调到 **1446KB**。 */
+const BUDGET_BYTES = 1446 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

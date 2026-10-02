@@ -51,8 +51,9 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
      常驻预留 56px（最满面板实测 43px + 30% 余量）。行首锚定——被注释的残行不算。 */
   ok(/\n  \.viz-toggles \.tg-slot\{position:absolute;top:calc\(100% \+ 8px\);/.test(html),
     "★★ 悬浮槽 absolute + 锚开关行底（top:calc(100%+8px)）——开合零横移的结构前提");
-  ok(/padding-bottom:56px/.test(CSS_CODE),
-    "★★ 常驻预留 56px（76px 是 v3.3.1 三列折行时代数值；面板自然高实测 24/40/43）");
+  ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:block;position:relative;padding:16px 0 56px\}/.test(CSS_CODE),
+    "★★ 常驻预留 56px（76px 是 v3.3.1 三列折行时代数值；面板自然高实测 24/40/43；"
+    + "v3.13.1 顶部 +16px = 开关行下移，四态仍一字不变）");
   ok(/\.viz-toggles \.tg-slot \.tr-panel\{width:max-content;flex:none;flex-wrap:nowrap\}/.test(CSS_CODE),
     "★★ 面板锁自然宽单行（Chrome 对折行弹性容器的固有宽度算错：380→543.9 并折成两行"
     + "61px 超预留——实测抓到的第二个根因）");
