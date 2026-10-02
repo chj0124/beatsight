@@ -153,8 +153,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.16.0（验收修正批 2）：净增约 2.8KB（实测 1460.9KB）——歌词错位根因链注释
      （结构层一次性采样 vs 播放逐帧重定位）+ 双路径重采样守卫；参数槽两行化的
      用户需求映射注释；[hidden] 配套坑（L1062 教训第二例）。↑ **1462KB**，
-     留约 1.1KB。 */
-const BUDGET_BYTES = 1462 * 1024;
+     留约 1.1KB。
+   v3.17.0（移动端修正）：净增约 1.9KB（实测 1463.9KB）——底栏两行化的实测根因
+     （右列 6px / 溢出 66px）与显示位置 max-content 收缩坑注释。↑ **1465KB**。 */
+const BUDGET_BYTES = 1465 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

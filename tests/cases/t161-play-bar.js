@@ -53,8 +53,9 @@ ok(/\.main\{[^}]*calc\(var\(--bar-h\) \+ 24px \+ env\(safe-area-inset-bottom, 0p
   "★★ 主列补 padding-bottom（var(--bar-h) + 24）：fixed 底栏不占流，不补则最后一小节被压住");
 /* ★ v3.12.0：窗口 900 → 1600——窄屏档里新增了预备拍搬入后的右区换行规则，
    原窗口够不到后面的 body .main 让位断言（会静默恒假，比失败更危险）。 */
-ok(/@media \(max-width:640px\)\{[\s\S]{0,1600}body \.main\{padding-bottom:calc\(var\(--bar-h\) \+ 24px/.test(src),
-  "★ ≤640 的让位跟着同一个变量走（不会再出现「改了高度忘了让位」）");
+ok(/@media \(max-width:640px\)\{[\s\S]{0,2600}body \.main\{padding-bottom:calc\(var\(--bar-h\) \+ 24px/.test(src),
+  "★ ≤640 的让位跟着同一个变量走（不会再出现「改了高度忘了让位」）——"
+  + "v3.17.0 窗口 1600→2600（底栏两行化 + 显示位置网格的新规则加长了 ≤640 块，近邻口径同步）");
 /* ★★ 这条是实战换来的：窄屏档里另有一条 `.main{grid-template-columns:1fr;padding:16px}`（简写）
    排在本文之后，同特异性下会把 padding-bottom 重置回 16px——让位静默失效。
    第一版就是 `.main{padding-bottom:...}`，被**真机冒烟**抓到（桩里没有布局引擎，测不出）。

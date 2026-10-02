@@ -759,6 +759,18 @@ function layoutProbe(){
     const r = q(".pb-right");
     return r ? round(r.getBoundingClientRect().height) : null;
   })();
+  /* ★ v3.17.0：底栏内部**零视口溢出**计数（390 窄屏右列曾被压到 6px、进度条
+     min-width 96 溢出视口 66px 被裁——这条把"任何底栏子元素不得超出视口"钉死） */
+  out.barOverflow = (() => {
+    const bar = q("#playBar");
+    if (!bar) return null;
+    let n = 0;
+    bar.querySelectorAll("*").forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1)) n++;
+    });
+    return n;
+  })();
   /* v3.3.1：同屏行数 = 1 时，可视化带是否在"控制卡之下、底栏之上"的剩余空间里**居中**
      （量上下两段留白，而不是量绝对位置——跟着内容高度变化的断言迟早会漂） */
   out.vizCenter = (() => {
@@ -1261,18 +1273,23 @@ async function main(){
           ok(L.pbProgress.w > minW,
             p.label + "·" + vp + "：★ 进度条有实际宽度（不被胶囊/控制键挤成 0，阈值 " + minW + "）",
             "宽度 " + L.pbProgress.w);
-          /* ★★ v3.13.0：进度条宽度**不敏感**——预备拍开合（拍数输入显形）与状态文案跳变
-             都不得改变进度条宽度（真机实测旧单行布局下分别为 −64px / −134px，即用户投诉的
-             "进度条随文案变动而变动"）。两行化解耦（进度条独占行 1）的验收点。 */
-          if (L.pbProgress.wCnt !== null){
-            ok(Math.abs(L.pbProgress.wCnt - L.pbProgress.wBase) <= 1,
-              p.label + "·" + vp + "：★★★ 预备拍开合**不改进度条宽度**（解耦验收点）",
-              "关 " + L.pbProgress.wBase + " vs 开 " + L.pbProgress.wCnt);
-          }
-          if (L.pbProgress.wLong !== null){
-            ok(Math.abs(L.pbProgress.wLong - L.pbProgress.wBase) <= 1,
-              p.label + "·" + vp + "：★★★ 状态文案跳变**不改进度条宽度**（长文案 −134px 根因的解耦验收点）",
-              "常规 " + L.pbProgress.wBase + " vs 长文案 " + L.pbProgress.wLong);
+          /* ★★ v3.13.0（桌面档）：进度条宽度**不敏感**——预备拍开合（拍数输入显形）与
+             状态文案跳变都不得改变进度条宽度（真机实测旧单行布局下 −64px / −134px）。
+             两行化解耦（进度条独占行 1）的验收点。
+             ★ v3.17.0：断言收敛到**桌面档**——≤640 手机档行 2 内进度条与状态文案
+             天然共享宽度（空间稀缺下的标准取舍），改由零溢出断言（barOverflow=0）
+             + 进度条 ≥96 底线守门。 */
+          if (vp === "桌面"){
+            if (L.pbProgress.wCnt !== null){
+              ok(Math.abs(L.pbProgress.wCnt - L.pbProgress.wBase) <= 1,
+                p.label + "·" + vp + "：★★★ 预备拍开合**不改进度条宽度**（解耦验收点）",
+                "关 " + L.pbProgress.wBase + " vs 开 " + L.pbProgress.wCnt);
+            }
+            if (L.pbProgress.wLong !== null){
+              ok(Math.abs(L.pbProgress.wLong - L.pbProgress.wBase) <= 1,
+                p.label + "·" + vp + "：★★★ 状态文案跳变**不改进度条宽度**（长文案 −134px 根因的解耦验收点）",
+                "常规 " + L.pbProgress.wBase + " vs 长文案 " + L.pbProgress.wLong);
+            }
           }
           if (L.pbProgress.statusBelow !== null){
             ok(L.pbProgress.statusBelow === true,
@@ -1317,6 +1334,12 @@ async function main(){
             p.label + "：★★★ 窄屏底栏右区不顶穿底栏（右列高 ≤ 底栏内容区高）——"
             + "超出会把中列一起撑高、播放键贴底（v3.12.0 真机实测距底 9px 的根因）",
             "右列 " + lay.narrow.pbRightH + " vs 内容区 " + lay.narrow.barContentH);
+        }
+        if (lay.narrow.barOverflow !== null && lay.narrow.barOverflow !== undefined){
+          ok(lay.narrow.barOverflow === 0,
+            p.label + "：★★★ 窄屏底栏**零视口溢出**（任何子元素不得超出视口——"
+            + "v3.15.0 回归：三列网格把右列压到 6px、进度条溢出 66px 被裁）",
+            "溢出元素 " + lay.narrow.barOverflow);
         }
         /* v2.59.0（Infra B · 390px 几何回归扩展）：窄屏最静默的退化是「内容比视口宽、
            被 body 的 overflow-x:hidden 静默裁掉」——用户看不到滚动条，但右侧控件被吃掉。

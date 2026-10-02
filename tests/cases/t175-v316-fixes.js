@@ -69,3 +69,18 @@ section("T175c boot 后布局就绪重采样（用户反馈'刚打开歌词错�
   ok(/typeof document !== "undefined" && document\.fonts/.test(bootSeg),
     "★ typeof 守卫（桩环境无 fonts——真机生效，桩不炸）");
 }
+
+section("T175d ≤640 移动端修正（用户截图两例）");
+{
+  /* 底栏两行化：pb-right 跨三列第二行——390 实测旧三列网格把右列压到 6px、
+     进度条 min-width 96 溢出视口 66px 被裁（真机探针抓到，冒烟 barOverflow 钉死）。 */
+  ok(/@media \(max-width:640px\)[\s\S]*?\.play-bar\{grid-template-rows:auto auto;row-gap:4px\}/.test(CSS_CODE),
+    "★★ ≤640：底栏改两行（行 1 = 胶囊｜播放键｜循环；行 2 = 右区跨三列）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{grid-column:1 \/ -1;grid-row:2;flex-direction:row/.test(CSS_CODE),
+    "★★ ≤640：pb-right 跨全宽行内排布（进度条 flex:1 + 状态灯右侧）");
+  /* 显示位置三档两列网格（390 实测旧 flex-wrap 换行参差 2+1；组缺省按 max-content
+     收缩到 202.8px——flex:1 1 100% 占满整行后两列各 ~151 放得下 nowrap 文案） */
+  ok(/@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group\{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%\}/.test(CSS_CODE)
+     && /@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group \.pill\{justify-content:center;text-align:center/.test(CSS_CODE),
+    "★★ ≤640：显示位置三档改两列等宽网格（flex:1 1 100% 占满整行——max-content 收缩坑实测堵上）");
+}
