@@ -3006,18 +3006,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5266  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6123  Modal         应用内弹窗
      L6261  Viz           时值可视化渲染与每帧动画
-     L9384  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10051 Trainer       变速训练器
-     L10253 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10867 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12265 Editor        自定义节奏型编辑器
-     L12711 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12758 Ear           听辨训练（v1.10.0）
-     L12978 Arrange       曲式编排（v2.0.0）
-     L15876 Help          使用方法（v2.0.1）
-     L16005 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16079 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16322 初始化（装配） 各模块 hook 接线与启动
+     L9383  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10050 Trainer       变速训练器
+     L10252 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10866 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12264 Editor        自定义节奏型编辑器
+     L12710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12757 Ear           听辨训练（v1.10.0）
+     L12977 Arrange       曲式编排（v2.0.0）
+     L15875 Help          使用方法（v2.0.1）
+     L16004 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16078 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16321 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3043,7 +3043,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.11.1";
+const VERSION = "3.11.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9070,7 +9070,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          撤除时机 = **首次回卷**（调度域 loopWrapped 标记：循环回卷/曲末回卷都置位）——
          回卷时左半槽位需要显示真实上一小节，预备拍道让位、row0 复位。 */
       /* 撤除时机：回卷（loopWrapped）或第一轮播完（可听小节/片段号 cur ≥ 窗口行数）——
-         左半槽位此后需要显示真实上一小节，预备拍道让位、row0 复位。
+         预备拍道让位；★ v3.11.2：row0 不再复位显形（通宽内容行的突现 = "变成 4 拍长"
+         的观感本体，用户三轮实拍裁决），槽位留空、由下一次网格重建自然回填。
          ★★ v3.11.0（用户实拍二连："预备拍播完立刻 / 道上滚接近上限时，一瞬间变成 4 拍长"）：
            撤除从「硬切」改**交叉淡出**。根因不在道的结构（v3.9.0 已让道按预备拍拍数构建），
          而在撤除瞬间的**宽度突变**：预备拍≠4 时道是 N 拍短条，row0 复位显形的是 4 拍通宽
@@ -9086,17 +9087,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           (loopWrapped || (countLaneLastCur >= 0 && countLaneLastCur >= rowEls.length))){
         countLaneSession = false;   // 会话随撤除结束（否则守卫下一帧又恢复显示）
         countLaneEl.dataset.sig = "";
-        /* ★ v3.11.1：交叉淡出的**另一半**——v3.11.0 只淡了道的退场，row0 的显形仍是
-           visibility="" 瞬间硬切（用户复测情形 1 "还没修复"的残余即此：道的 180ms 淡出
-           蒙不住内容行的瞬时通宽显形）。补 row0 opacity 淡入（Web Animations，帧后自动
-           清理、不占 transition 槽；桩的 animate 是 no-op、REDUCE_MOTION 跳过）。 */
-        if (rowEls[0]){
-          const r0 = rowEls[0];
-          r0.style.visibility = "";
-          if (!REDUCE_MOTION && typeof r0.animate === "function"){
-            r0.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "linear" });
-          }
-        }
+        /* ★★ v3.11.2（用户三轮实拍裁决，推翻 v3.11.0/v3.11.1 的交叉淡出思路）：
+           **row0 不复位显形，槽位留空**。三版尝试（硬切 → 道淡出 → 道淡出+内容淡入）
+           都没治住，因为用户 objections 的从来不是"切换快慢"，而是**通宽内容行的出现
+           本身**——预备拍≠4 时道是 N 拍短条，撤道后顶上来的真实上一小节是 4 拍通宽，
+           无论怎么过渡，"跑道一瞬间变成 4 拍长"的观感都在。
+           新口径：撤道 = 道淡出、row0 保持 hidden，槽位留空；内容由下一次网格重建
+           （翻页/回卷/段变化都会触发）自然回填——内容出现在布局整体重锚的时刻，
+           不再是孤立的突现。停止/切模式路径的 row0 复位保持原样（静止态本就该显示
+           真实内容，且无道在场，无宽度突变）。 */
         const dyingLane = countLaneEl;
         if (REDUCE_MOTION){
           dyingLane.style.display = "none";
