@@ -32,8 +32,9 @@ ok(src.includes('$("presetMask").addEventListener("click", () => setPresetDrawer
   "★★ 点遮罩关闭：覆盖式浮层的必备退出路径（v3.0.0 判内联时省掉的那件）");
 ok(src.indexOf('const btn = $("presetLibBtn"), dr = $("presetDrawer"), mask = $("presetMask");') >= 0
    && src.indexOf("dr.hidden = !open;") >= 0
-   && src.indexOf("if (mask) mask.hidden = !open;") > src.indexOf("dr.hidden = !open;"),
-  "★★ 开合时遮罩与面板**同显隐**（漏一个就会留下吃掉点击的孤影）");
+   && src.indexOf("if (mask) mask.hidden = !(open && withMask);") > src.indexOf("dr.hidden = !open;"),
+  "★★ 开合时遮罩与面板**同显隐**（漏一个就会留下吃掉点击的孤影）——"
+  + "v3.14.0 口径细化：mask = open && withMask（hover 自动浮出恒无遮罩，显式开保留遮罩）");
 ok(/\.preset-drawer\[hidden\]\{display:none\}/.test(src) && /\.pd-mask\[hidden\]\{display:none\}/.test(src),
   "★ 两者都尊重 hidden（display:none 兜底）");
 
@@ -50,8 +51,9 @@ section("T162c 键盘契约 · Esc 关面板");
 
 ok(/registerKeyLayer\(\{[\s\S]{0,300}const dr = \$\(\"presetDrawer\"\);\s*if \(!dr \|\| dr\.hidden \|\| e\.key !== \"Escape\"\) return false;\s*setPresetDrawer\(false\);/.test(src),
   "★★ Esc 关面板（registeredKeyLayer：面板收起时不消费 Esc，不跟编辑/编排等层抢键）");
-ok(/const focusTarget = open \? \$\(\"presetSearch\"\) : \$\(\"presetLibBtn\"\);/.test(src),
-  "★ 焦点进出：打开进搜索框、关闭归还主钮（「从哪来回哪去」）");
+ok(/const focusTarget = open \? \(opts\.focus === false \? null : \$\("presetSearch"\)\) : \$\("presetLibBtn"\);/.test(src),
+  "★ 焦点进出：打开进搜索框、关闭归还主钮（「从哪来回哪去」）——"
+  + "v3.14.0：hover 自动浮出 opts.focus=false 不抢焦点（显式开不变）");
 
 section("T162d 搜索框与列表契约未受改造影响");
 

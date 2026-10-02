@@ -56,7 +56,7 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
      + 拍边界接缝层（v3.12.0 起 = .seams 同款强缝，与正常跑道逐位一致） */
   const iv1 = beat.Viz.internals();
   const kids = Array.from(iv1.countLaneEl.children);
-  const zones = kids.filter(k => k.className === "beat-zone");
+  const zones = kids.filter(k => k.className.indexOf("beat-zone") >= 0);
   const labs = kids.filter(k => k.className.indexOf("ruler-lab") >= 0);   // 每拍一个计数数字（down 样式）
   const seams = kids.filter(k => k.className === "seams");
   eq(zones.length, 4, "★ 预备拍道拍区数 = 4（同构 .beat-zone）");
@@ -142,7 +142,7 @@ section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变");
       if (counting){
         const t = iv2.countLaneEl;
         if (t.style.display === "block") widthSeen = t.style.width;
-        const zn = Array.from(t.children).filter(k => k.className === "beat-zone").length;
+        const zn = Array.from(t.children).filter(k => k.className.indexOf("beat-zone") >= 0).length;
         if (zn) zonesSeen = zn;
         if (iv2.rowEls[0].style.visibility !== "hidden") row0Hidden = false;
       } else if (handoverRow0 === null){
@@ -178,7 +178,7 @@ section("T160d 预设 2 小节循环 · 首小节维持、第二小节退场（v
   const iv1 = beat.Viz.internals();
   eq(iv1.countLaneEl.style.display, "block", "★ 首个可听小节内预备拍道在（会话维持，跨重建不误伤）");
   eq(iv1.rowEls[0].style.visibility, "hidden", "★ 首小节内 row0 由道顶替");
-  eq(Array.from(iv1.countLaneEl.children).filter(k => k.className === "beat-zone").length, 1,
+  eq(Array.from(iv1.countLaneEl.children).filter(k => k.className.indexOf("beat-zone") >= 0).length, 1,
     "★ 首小节内预备拍道为 1 拍（长度 = 预备拍拍数）");
   // 越过首个可听小节（再 2s，累计可听 > 1 小节）+ 跨多轮回卷（共 6s）
   drive(ac, beat, 6.0, () => beat.Viz.paintFrame());

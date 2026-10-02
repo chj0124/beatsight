@@ -288,7 +288,13 @@ body.wide-full .main{max-width:none}
    不影响满屏观感（这也是选 auto 边距而非固定偏移的原因）。
    ★ v3.5.0 订正（B3 实测：这个居中**从未生效**——grid 下 auto 边距要求行内有剩余高度，
      而 align-items:start 让 .main 全链只包住内容 → 恒 0px。修法见 .main 的 min-height。 */
-.viz-band{display:flex;flex-direction:column;gap:16px;margin-block:auto}
+.viz-band{display:flex;flex-direction:column;gap:16px;margin-block:auto;position:relative}
+/* v3.14.0：滚动模式左右雾化条——毛玻璃 + 透明度渐变（mask：靠屏幕边全虚 → 内侧全透），
+   只在滚动模式显形（buildViz scroll-mode 写点同步）。112px 宽度 = 一拍滑入的缓冲带。 */
+.scroll-fog{position:absolute;top:0;bottom:0;width:112px;pointer-events:none;z-index:20;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.scroll-fog.left{left:0;mask-image:linear-gradient(90deg,#000,transparent);-webkit-mask-image:linear-gradient(90deg,#000,transparent)}
+.scroll-fog.right{right:0;mask-image:linear-gradient(270deg,#000,transparent);-webkit-mask-image:linear-gradient(270deg,#000,transparent)}
 /* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；关闭后由 S.vizLegend 记忆 */
 .viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
   color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:10px}
@@ -359,6 +365,10 @@ body.wide-full .main{max-width:none}
 /* 遮罩（v3.3.0）：z-index 45 = 面板(50)之下、播放底栏(40)之上——底栏也被压暗，
    与"整页被盖住"的语义一致；点击即关。 */
 .pd-mask{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.55)}
+/* v3.14.0：左缘热区——invisible 纯热区（无背景无边框不拦视觉），只在主界面生效；
+   z-index 44：低于抽屉 50 / 遮罩 45（它们开着时热区被盖住，天然不重复触发），
+   高于普通内容。40px 高度断言无关（top:0 bottom:0 全高）。 */
+.drawer-hotzone{position:fixed;left:0;top:0;bottom:0;width:24px;z-index:44;pointer-events:auto}
 .pd-mask[hidden]{display:none}
 .pd-head{display:flex;align-items:center;gap:10px}
 .pd-head .pd-title{font-size:13px;font-weight:500;flex:1}
@@ -471,6 +481,10 @@ body.wide-full .main{max-width:none}
    残留源。背景垫色（跑道）保留。pulseZone 的运行时脉冲与本静态样式解耦（动画自带
    boxShadow 关键帧，结束落回无环态）。 */
 .beat-zone{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.06);pointer-events:none}
+/* v3.14.0：滚动预备拍特效——预备拍道逐拍点亮（已数的拍格 = 已弹格同款 peak 语言）。
+   lit 由 count-in 分支幂等重挂（0..idx 亮）；transition 让点亮有 0.15s 渐入不突兀。 */
+.count-lane .beat-zone{transition:background .15s ease-out,opacity .15s ease-out}
+.count-lane .beat-zone.lit{background:var(--peak);opacity:.3}
 /* 拍内座次尺：1 e & a */
 .ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
 .ruler-lab.down{color:var(--t2);font-weight:600}
@@ -869,7 +883,7 @@ input[type=range].vol{width:120px}
    `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
 /* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
    （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
-.topbar .pill, .topbar .icon-btn, .topbar .lat-read{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，top 收敛为单值 [12]（等高带反而更齐） ★ v3.10.0：.status 移出等高带（状态灯已随用户要求搬去底栏右区，见 .pb-right） */
+.topbar .pill, .topbar .icon-btn, .topbar .lat-btn{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，top 收敛为单值 [12]（等高带反而更齐） ★ v3.10.0：.status 移出等高带（状态灯已随用户要求搬去底栏右区，见 .pb-right） */
 .topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
@@ -879,9 +893,11 @@ input[type=range].vol{width:120px}
 .topbar svg[hidden]{display:none}
 /* 延迟读数（v2.69.0 返工，用户拍板）：**裸文案常显**（含 0ms）——类游戏 HUD 的延迟显示，
    无边框无底色、小号灰字、等宽数字防抖动；保留 button 元素维持键盘可达，hover 微亮示意可点 */
-.lat-read{background:none;border:none;padding:0;font-size:12px;font-weight:500;color:var(--t3);
-  font-variant-numeric:tabular-nums;cursor:pointer;transition:color .12s}
-.lat-read:hover{color:var(--t2)}
+/* v3.14.0：延迟读数圆钮化（替代 v2.69.0 的裸文案 .lat-read）——与主题钮同规格
+   40px 胶囊圆；圆内 11px 等宽 tabular-nums（三位 ~20px，min-width 40 保证一位数
+   也是正圆、三位不溢出）；hover 提亮走 .pill.outline 既有惯例 */
+.lat-btn{min-width:40px;justify-content:center;padding:0 10px}
+.lat-btn .lat-num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11px;font-weight:600;color:var(--t2)}
 .pill:hover:not(:disabled):not(.active){background:var(--line);color:var(--t1)}
 .pill.active:hover:not(:disabled){filter:brightness(1.12)}
 /* v3.4.0（B1/P2+P7）：单选选中态**不再用功能绿**——绿只保留「正在发声/进行中」。
@@ -1883,7 +1899,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          ★ 判据是"你在练习过程中会不会去点它"：调音量会、切主题不会、导出数据更不会。
          ★ v2.69.0 顶栏加延迟读数与主题图标钮；v2.69.0 返工（用户拍板）：
            · 延迟读数改**裸文案常显**（含 0ms）——类游戏 HUD 的延迟显示，无按钮外观
-             （类名 lat-read，仍可点击直达设置延迟组，保留 button 元素维持键盘可达）；
+             v3.14.0 起为 40px 圆钮（.lat-btn，圆内数值 11px 等宽），点击仍直达设置延迟组）；
            · 「听辨训练」迁出顶栏 → 预设卡「编辑节奏型/编排曲式」行最左；
            · 「后台保活」迁出顶栏 → 设置·外观与辅助（环境开关归环境组）；
            顶栏自此只剩：延迟读数 / 设置 / 主题图标钮 -->
@@ -1895,8 +1911,17 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          ★ v3.10.0（用户要求）：状态灯（● + 播放文案）也搬去底栏——与底栏右区的
            「第 N–M 小节」范围读数团圆（v2.76.3 搬进顶栏是三读数带时代的设计，
            型名走后顶栏这份状态行成了孤儿）；等高带规则与断言同步收缩（见样式表）。 -->
-    <button class="lat-read" id="latChip" aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
-    <button class="pill outline" id="settingsBtn">设置</button>
+    <!-- v3.14.0：补偿圆钮化（用户需求）——与主题钮同规格 40px 胶囊圆，圆内只显示
+         数值（延迟域 0–500 最多三位；11px 等宽 tabular-nums，三位 ~20px 恰好占满
+         min-width 40 的内容区不溢出）；完整语义进 title/aria-label 随值同步。
+         id 与两个同步调用点（latApply / latMs input）、点击接线一行不动。 -->
+    <button class="pill outline lat-btn" id="latChip" aria-label="音频延迟补偿 0ms，点击打开设置" title="音频延迟补偿 0ms"><span class="lat-num" id="latChipVal">0</span></button>
+    <!-- v3.14.0：圆钮化（用户需求）——与主题钮同规格（40px 高胶囊圆 + 16px 图标），
+         齿轮图标走 Feather settings 同款描边；id 与点击接线一行不动，"设置"文案进
+         aria-label/title。跟随后面的主题钮、补偿钮构成三枚同规格圆钮。 -->
+    <button class="pill outline icon-btn" id="settingsBtn" aria-label="设置" title="设置">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <!-- 主题切换（v2.69.0，1.1）：搬块不换 id（#themeToggle）——冷键、点击回调、aria-pressed
          接线全部不动；原先的「主题 · 经典/日间」文字改双图标：月亮=当前经典（点击去日间）、
          太阳=当前日间（点击回经典），显隐由 applyTheme 同步。
@@ -2109,6 +2134,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            搬到入口胶囊之后，控制行只剩四块纯参数，入口跟着"当前上下文"走（预设=型名 / 曲式=段名）。 -->
     <!-- v3.3.0：遮罩与面板同为浮层兄弟节点（固定定位，脱离栅格），层级见 .pd-mask / .preset-drawer -->
     <div class="pd-mask" id="presetMask" hidden></div>
+    <!-- v3.14.0：左缘热区——鼠标移到屏幕左缘 24px 内自动浮出预设库抽屉（无遮罩）。
+         invisible（无背景无边框）纯热区；z-index 44 低于抽屉 50 与遮罩 45——
+         抽屉/遮罩开着时热区被天然盖住，不会重复触发。触屏无 hover，胶囊入口不变。 -->
+    <div class="drawer-hotzone" id="drawerHotzone" aria-hidden="true"></div>
     <div class="preset-drawer" id="presetDrawer" hidden>
       <div class="pd-head">
         <!-- 角标 02 随预设库一起搬（角标连续性契约：01–07 恰好各一次、无空号无重号） -->
@@ -2201,6 +2230,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          半透明）作回看。行走带线只出现在可听域当前行。无歌词行时整块 hidden，不占位。
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
+    <!-- v3.14.0：滚动模式左右雾化条（用户需求）——跑道内容滑入滑出的边缘渐隐。
+         毛玻璃（backdrop-filter blur）而非纯色渐变：页面有壁纸，纯色条会露色块，
+         blur 条透壁纸无边界感。罩满整条带（跑道 + 歌词轨，用户拍板）——当前唱到的字
+         恒在中央播放头附近，边缘滑过的只有余光内容，虚化不损失"当前信息"。
+         pointer-events:none 不挡操作；显隐跟随滚动模式（buildViz 的 scroll-mode
+         同一写点同步）。z-index 20：高于带内内容（格/歌词/播放头），低于浮层。 -->
+    <div class="scroll-fog left" id="scrollFogL" hidden aria-hidden="true"></div>
+    <div class="scroll-fog right" id="scrollFogR" hidden aria-hidden="true"></div>
     <!-- v3.3.0：跳段播放行（#argJump）整组搬进页面底部的固定播放条 #playBar（在主列收尾标签之后，见文件下方）—— id 与接线一行未动，这里只保留"它原来贴着可视化区"的历史说明。 -->
     </div><!-- /vizBand -->
 
@@ -3054,23 +3091,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3086  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3717  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5321  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6181  Modal         应用内弹窗
-     L6319  Viz           时值可视化渲染与每帧动画
-     L9454  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10121 Trainer       变速训练器
-     L10323 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10906 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12295 Editor        自定义节奏型编辑器
-     L12741 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12788 Ear           听辨训练（v1.10.0）
-     L13007 Arrange       曲式编排（v2.0.0）
-     L15905 Help          使用方法（v2.0.1）
-     L16034 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16108 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16351 初始化（装配） 各模块 hook 接线与启动
+     L3123  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3754  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5358  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6218  Modal         应用内弹窗
+     L6356  Viz           时值可视化渲染与每帧动画
+     L9517  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10184 Trainer       变速训练器
+     L10386 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10969 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12358 Editor        自定义节奏型编辑器
+     L12804 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12851 Ear           听辨训练（v1.10.0）
+     L13070 Arrange       曲式编排（v2.0.0）
+     L15968 Help          使用方法（v2.0.1）
+     L16097 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16171 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16414 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3096,7 +3133,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.13.2";
+const VERSION = "3.14.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6384,6 +6421,7 @@ let countLaneSession = false;
 let countLaneStartCur = -1;                          // 本会话首个可听小节/片段号（v3.12.0 退场锚点；−1 = 待锚/无会话）
 let countLaneLastCur = -1;                           // 可听小节/片段号镜像（预备拍道守卫用，v3.2.3）
 let countLanePrevP = -1;                             // 上一帧小节内相位（v3.12.0：相位回退 = 首小节播完的通用信号；−1 = 未采样）
+let countLaneLitIdx = -1;                            // 已点亮到的拍位游标（v3.14.0 滚动预备拍特效；−1 = 待点亮/道已重建）
 let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂（挂/摘只在状态翻转时写 class，不做逐帧 class 写入）
   /* vizSig（v0.9.0）：当前画面渲染所用的拍号，buildViz 时锁定。
      播放中切拍号有一段挂起窗口（新节奏型要等循环起点），窗口内 S.sig 已变但画面还是旧的——
@@ -7670,6 +7708,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* v3.0.0：scroll-mode 只在这里挂摘（随模式切换，与网格重建同一处，不会两处打架）。
        它带来 overflow:hidden —— 横滚的裁剪边界就是 #viz 的盒子 */
     if (viz) viz.classList.toggle("scroll-mode", !!S.scrollMode);
+    /* v3.14.0：雾化条显隐与 scroll-mode 同一写点（模式切换必经 buildViz；启动收敛也走这里） */
+    const fogL = document.getElementById("scrollFogL"), fogR = document.getElementById("scrollFogR");
+    if (fogL) fogL.hidden = !S.scrollMode;
+    if (fogR) fogR.hidden = !S.scrollMode;
     rowEls = []; cellEls = []; subEls = []; subCellEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
@@ -8150,6 +8192,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   function rebuildCountLaneInto(el, nBeats, hasStr){
     const want = nBeats * 2 + 1 + (hasStr ? 2 : 0);
     if (el.children.length === want) return;
+    countLaneLitIdx = -1;   // v3.14.0：真重建 = 点亮态清零，下一帧整道按当前 idx 重挂
     while (el.children.length) el.removeChild(el.children[0]);
     for (let k = 0; k < nBeats; k++){
       const z = document.createElement("div");
@@ -9002,6 +9045,26 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         lastCi = idx;
         const RB = rowBeats();
         pulseZone(zoneEls[Math.floor(idx / RB)] && zoneEls[Math.floor(idx / RB)][idx % RB]);
+      }
+      /* ★★ v3.14.0（用户需求）：滚动模式预备拍特效——预备拍道逐拍点亮 + 播放头脉冲。
+         分页模式有幽灵小节球（v2.42.6）；滚动模式 v3.1.3 拍板不画球（正式播放也无球），
+         落点反馈由预备拍道（v3.12.0）承担：每声计数点亮第 idx 格（幂等重算 0..idx 亮、
+         其后灭——用独立游标 countLaneLitIdx 而非 lastCi：rebuildCountLaneInto 真重建时
+         游标归 −1，下一帧整道重挂，跨网格重建不残留/不缺格）。播放头同拍呼吸一次。
+         REDUCE_MOTION：跳过两处脉冲动画、保留稳定填充（去动作、留位置）。 */
+      if (S.scrollMode && countLaneEl && idx !== countLaneLitIdx){
+        countLaneLitIdx = idx;
+        /* 拍区 = 道内**前 ciBeats 个子节点**（rebuildCountLaneInto 先建拍区再建接缝/拍号）——
+           刻意不用 querySelectorAll：桩元素不支持任意选择器（宽选择器契约），children 切片
+           在真 DOM 与桩里语义一致（t160 的 zones 过滤同款口径）。 */
+        const cz = Array.from(countLaneEl.children).slice(0, ciBeats);
+        cz.forEach((z, k) => { if (k <= idx) z.classList.add("lit"); else z.classList.remove("lit"); });
+        if (!REDUCE_MOTION){
+          if (cz[idx]) cz[idx].animate(
+            [{ opacity: .35, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }],
+            { duration: 220, easing: "ease-out" });
+          if (ph) ph.animate([{ opacity: .5 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+        }
       }
       $("statusText").textContent = `预备拍 · ${idx + 1} / ${ciBeats}`;
       /* ★ v2.42.6（用户需求）：预备拍 = 一支“幽灵小节”，球按正式弹跳的方式走第一窗口的
@@ -16627,21 +16690,32 @@ if (!Store.demoSeeded()){
    ★ 初始化排在**首次 buildViz 之前**（启动顺序铁律 v2.87.0）：抽屉开合改变控制栅格行号
      （收起态预设库跨两行 / 展开态抽屉占第 2 行并把「同屏行数与拍号」推到第 3 行），
      属于会被 cacheGeo 读到的布局事实，必须先收敛再让 Viz 采几何。 */
-function setPresetDrawer(/** @type {boolean} */ open){
-  /* v3.3.0：入口从控制行第 4 块（#presetLibCard）改为**底栏左区胶囊**（#presetLibBtn 本身）。
-     aria-expanded 挂回按钮自身——语义比挂在容器上更准（"这个按钮控制的面板是否展开"）。 */
+function setPresetDrawer(/** @type {boolean} */ open, /** @type {{mask?:boolean, hover?:boolean, focus?:boolean}} */ opts = {}){
+  /* ★ v3.14.0（用户需求）：第二参 opts = { mask, hover, focus }（全部带默认，既有调用点零适配）——
+     · mask（默认 true）：hover 自动浮出**不带遮罩**（55% 黑闪一下很难受；抽屉自身边框阴影
+       足以划边界），点胶囊显式打开保留遮罩（"我要认真挑"的语境）；
+     · hover（默认 false）：true = 本会话由左缘热区触发——挂 drawerHoverOpen 标志，
+       mouseleave 的 400ms 自动收回**只作用于 hover 会话**（显式开的要显式关）；
+     · focus（默认 true）：hover 浮出**不抢焦点**（mouseenter 抢焦点是敌意行为），
+       显式打开仍把焦点送进搜索框。 */
+  const withMask = opts.mask !== false;
+  const hoverSession = opts.hover === true;
   const btn = $("presetLibBtn"), dr = $("presetDrawer"), mask = $("presetMask");
   if (!btn || !dr) return;
   btn.setAttribute("aria-expanded", open ? "true" : "false");
+  drawerHoverOpen = open ? hoverSession : false;
+  if (!open && hoverTimer !== null){ clearTimeout(hoverTimer); hoverTimer = null; }
   dr.hidden = !open;
   /* v3.3.0：覆盖式——面板 + 遮罩同时显隐。原先把一个 lib-open 类挂在栅格上（供"展开态
      占第 2 行 / 行数行下推第 3 行"用），随该机制退役一并删除：栅格不再需要知道面板开关，
-     行数行位置与开合无关（v3.3.0 起它自动落第 4 轨）。 */
-  if (mask) mask.hidden = !open;
+     行数行位置与开合无关（v3.3.0 起它自动落第 4 轨）。
+     ★ v3.14.0：mask 显隐带 opts 开关（hover 会话恒 hidden）。 */
+  if (mask) mask.hidden = !(open && withMask);
   /* ★ v3.1.0（A11）：键盘可达——打开把焦点送进搜索框（顺手就能过滤），关闭归还主钮
      （"从哪来回哪去"，与 Modal 的 prevFocus 归还同一心智模型）。
-       typeof 守卫：桩环境元素没有 focus 方法。 */
-  const focusTarget = open ? $("presetSearch") : $("presetLibBtn");
+       typeof 守卫：桩环境元素没有 focus 方法。
+     ★ v3.14.0：hover 会话跳过焦点搬运（focus:false）。 */
+  const focusTarget = open ? (opts.focus === false ? null : $("presetSearch")) : $("presetLibBtn");
   if (focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
   /* ★ v3.0.0（批 4）：抽屉是**内联**展开的——它把控制卡撑高、`#viz` 整体下移。
      而歌词轨是 `position:absolute` 叠在 `#viz` 上的**兄弟节点**，它的 top/left 与逐行
@@ -16658,9 +16732,31 @@ $("presetLibBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   /* 目标开态 = 当前的 hidden 取反的取反：hidden=true（收着）→ open=true（打开）。
      ★ 反着写 setPresetDrawer(!hidden) 会在收起态传 false（越点越关）——
-       CDP 真机一把抓出（桩里 init 后状态恒定测不出 toggle 方向）。 */
-  setPresetDrawer($("presetDrawer").hidden);
+       CDP 真机一把抓出（桩里 init 后状态恒定测不出 toggle 方向）。
+     ★ v3.14.0：显式开 = 带遮罩 + 非 hover 会话（mousemove 离开不自动收）。 */
+  setPresetDrawer($("presetDrawer").hidden, { mask: true, hover: false, focus: true });
 });
+/* ★★ v3.14.0（用户需求）：左缘热区自动浮出——鼠标移到屏幕左缘 24px 内，抽屉无遮罩滑出；
+   离开抽屉（含热区）~400ms 后自动收回。三条边界：
+   ① 自动收回**只作用于 hover 会话**（显式开的要显式关——点胶囊/收起钮/Esc/选中照旧）；
+   ② 编辑器/编排/听辨/设置任一全屏浮层打开时热区忽略（不与浮层抢地盘）；
+   ③ 抽屉或热区上 mouseenter 取消挂起的收回定时（在抽屉与热区之间移动不算"离开"）。 */
+let drawerHoverOpen = false;
+/** @type {number|null} */ let hoverTimer = null;   // v3.14.0：hover 会话的收回定时器句柄
+const OVERLAY_OPEN = () => ["editor", "earOverlay", "arrangeOverlay", "settingsOverlay"]
+  .some(id => { const el = $(id); return !!el && el.classList.contains("open"); });
+$("drawerHotzone").addEventListener("mouseenter", () => {
+  if (OVERLAY_OPEN() || !$("presetDrawer").hidden) return;
+  setPresetDrawer(true, { mask: false, hover: true, focus: false });
+});
+const hoverClose = () => {
+  if (!drawerHoverOpen || hoverTimer !== null) return;
+  hoverTimer = setTimeout(() => { hoverTimer = null; setPresetDrawer(false); }, 400);
+};
+const hoverKeep = () => { if (hoverTimer !== null){ clearTimeout(hoverTimer); hoverTimer = null; } };
+$("drawerHotzone").addEventListener("mouseleave", hoverClose);
+$("presetDrawer").addEventListener("mouseenter", hoverKeep);
+$("presetDrawer").addEventListener("mouseleave", hoverClose);
 $("presetDrawerClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   setPresetDrawer(false);
@@ -17401,9 +17497,16 @@ function latActive(){
    ★ 必须在 latApply **与** latMs 的 input 处理器两处调用——
    拖动滑杆只走 input、不触发 latApply，漏一处就是"拖动时顶栏读数不动" */
 function latChipSync(){
-  const chip = $("latChip");
+  const chip = $("latChip"), val = $("latChipVal");
   if (!chip) return;
-  chip.textContent = "补偿 " + latencyMs + "ms";
+  /* v3.14.0：圆钮化——圆内只写数值（延迟域 0–500 最多三位，11px 等宽放得下）；
+     完整语义（"补偿 Xms"）挪进 title/aria-label 随值同步。仍只写文案、无显隐分支
+     （t136 的常显语义钉死不变）。 */
+  const n = String(latencyMs);
+  if (val) val.textContent = n;
+  const label = "音频延迟补偿 " + n + "ms，点击打开设置";
+  chip.title = label;
+  chip.setAttribute("aria-label", label);
 }
 /** 把内存态套用到：① 共享状态 latencyMs（发声侧读它）② 设置里的控件 */
 function latApply(){

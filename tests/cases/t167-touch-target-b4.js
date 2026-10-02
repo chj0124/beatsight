@@ -92,12 +92,12 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
      实测抬到 40 后：.topbar 容器高 64px 与 .main 起点都不变、零横向溢出，
      且四者 top 由 [14,12] 收敛为单值 [12]——等高带反而更齐，不是妥协。
      ★ v3.10.0：.status 移出等高带（状态灯已搬去底栏右区），带收缩为三项；高度契约不变。 */
-  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:40px/.test(CSS_CODE),
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-btn\{height:40px/.test(CSS_CODE),
     "★★ 顶栏等高带也抬到 40px——这条显式 height 会盖住 .pill 的 min-height，"
     + "不改则顶栏元素仍是 36px（B4 漏掉顶栏）；v3.10.0 起带内不再有 .status");
-  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:/.test(CSS_CODE),
+  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-btn, \.topbar \.status\{height:/.test(CSS_CODE),
     "★ 等高带里不再有 .topbar .status（旧四项写法已随状态灯搬家退役）");
-  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:(?:[1-3][0-9])px/.test(CSS_CODE),
+  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-btn\{height:(?:[1-3][0-9])px/.test(CSS_CODE),
     "★ 顶栏等高带不得被调回 30~39px（与全站触控下限同源，别只改 .pill 忘了这条显式 height）");
   ok(/:root\{[^}]*--bar-h:\s*96px|--bar-h:\s*96px/.test(CSS_CODE)
     && !/--bar-h:\s*(?:8[0-9]|9[0-5]|9[7-9]|1\d\d)px/.test(CSS_CODE),

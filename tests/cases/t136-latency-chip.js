@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------------
    用户要求（1.2）：顶栏「设置」左侧显示音频延迟补偿数值，点击直达设置的
    「音频延迟补偿」组。
-   v2.69.0 返工（用户拍板，推翻批 A 的 D2）：**常显**——0ms 也显示「补偿 0ms」，
+   v2.69.0 返工（用户拍板，推翻批 A 的 D2）：**常显**——0ms 也显示（v3.14.0 圆钮化后圆内只写数值），
    且**不做按钮样式**：裸文案（类游戏 HUD 的延迟显示），无边框无底色、小号灰字、
    等宽数字防抖动（CSS .lat-read）；保留 button 元素维持键盘可达，仍可点击直达设置。
 
@@ -25,13 +25,16 @@ const seedLat = ms => ({ [LAT_KEY]: JSON.stringify({
   currentId: "p1",
 }) });
 
-/* ================= 场景 T136a：0ms ⇒ 常显「补偿 0ms」（返工口径） ================= */
-section("T136a 延迟读数 · 默认 0ms ⇒ 常显裸文案（不隐藏）");
+/* ================= 场景 T136a：0ms ⇒ 圆内常显「0」（v3.14.0 圆钮化口径） ================= */
+section("T136a 延迟读数 · 默认 0ms ⇒ 圆内常显数值（不隐藏）");
 {
   const { els } = loadApp();
   ok(els["latChip"] && els["latChip"].hidden === false,
-    "★ 默认（0ms）latChip 常显（返工推翻批 A 的 hidden 方案）");
-  eq(els["latChip"].textContent, "补偿 0ms", "★ 0ms 也报数：「补偿 0ms」");
+    "★ 默认（0ms）latChip 常显（圆钮化不改变常显语义）");
+  eq(els["latChipVal"].textContent, "0", "★★ v3.14.0 圆钮化：圆内数值 = 0（不带单位/ms，11px 等宽在 CSS）");
+  ok(els["latChip"].title === "音频延迟补偿 0ms，点击打开设置"
+     && /aria-label="音频延迟补偿 0ms/.test(html),
+    "★★ 完整语义在 title/aria-label 随值同步（圆内放不下「补偿 Xms」全句）");
   /* 双调用点守门：latApply 与 latMs input 处理器各有一处 latChipSync()
      （源码级断言，t86 对 .tab 渐变的同口径） */
   const calls = (html.match(/latChipSync\(\)/g) || []).length;
@@ -46,10 +49,13 @@ section("T136a 延迟读数 · 默认 0ms ⇒ 常显裸文案（不隐藏）");
 section("T136b 延迟读数 · 有补偿值 ⇒ 文案与存档值一致");
 {
   const { els } = loadApp(seedLat(150));
-  eq(els["latChip"].textContent, "补偿 150ms", "★ 文案 = 「补偿 150ms」（等宽数字防抖动在 CSS）");
-  ok(/lat-read/.test(html) && !/class="chip"/.test(
-    html.slice(html.indexOf('<header class="topbar"'), html.indexOf("</header>"))
-  ), "★ 类名走 lat-read（裸文案），顶栏块内不出现 t24 禁用的 `chip` 类");
+  eq(els["latChipVal"].textContent, "150", "★★ 圆内数值 = 150（三位数 11px 等宽 ~20px，min-width 40 圆内不溢出）");
+  const topbar = html.slice(html.indexOf('<header class="topbar"'), html.indexOf("</header>"));
+  ok(/class="pill outline lat-btn" id="latChip"/.test(html) && /id="latChipVal"/.test(topbar)
+     && !/lat-read/.test(topbar),
+    "★★ v3.14.0 圆钮化：latChip = .pill.outline.lat-btn + 内嵌 #latChipVal 数值 span"
+    + "（旧裸文案 .lat-read 在顶栏已退役——CSS 注释里的纪念性提及不算，t163 口径；"
+    + "顶栏块内不出现 t24 禁用的 `chip` 类口径不变）");
 }
 
 /* ================= 场景 T136c：点击读数 ⇒ 打开设置并落到延迟组 ================= */

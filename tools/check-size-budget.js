@@ -140,8 +140,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      v2.10.18 钉宽/三轨特化退役说明；上调到 **1445KB**，留约 1.1KB 拦回归。
    v3.13.1（开关行下移微调）：净增约 0.3KB——`.tg-body` padding-top:16px 的实测绘据
      注释（原视觉间距 24px = 12 行距 + 12 组内边距，+16 → 40px 与卡内边距/列距同档）；
-     上调到 **1446KB**。 */
-const BUDGET_BYTES = 1446 * 1024;
+     上调到 **1446KB**。
+   v3.14.0（四项交互批）：净增约 9.5KB（实测 1455.5KB）——①滚动预备拍特效的拍板沿革
+     注释（v3.1.3 不画球 → 预备拍道承担落点）+ 点亮实现（children 切片避桩选择器坑）；
+     ②雾化条毛玻璃 + 渐变 mask 的壁纸论证；③补偿圆钮三位数不溢出的宽度推导 +
+     Feather 齿轮 SVG；④setPresetDrawer opts 三选项与 hover 会话/热区边界注释；
+     上调到 **1456KB**，留约 0.5KB——下次再贴近应先瘦身。 */
+const BUDGET_BYTES = 1456 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

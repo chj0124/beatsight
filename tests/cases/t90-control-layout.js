@@ -294,7 +294,7 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
      等高带仍在（四者同一条规则），故按最新决定改写断言值而非删除断言。 */
   /* ★ v3.10.0：状态行整体搬去底栏右区（.pb-right，用户要求"与第 N–M 小节读数放一起"）——
      顶栏等高带收缩为三项，高度契约 40px 不变；状态行的新契约归 t170。 */
-  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:40px/.test(css),
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-btn\{height:40px/.test(css),
     "★★ 顶栏**等高带**仍在（补偿读数/设置/主题钮同高共一条规则；取值 40px 是 v3.6.0"
     + "与全站触控下限对齐）；v3.10.0 起带内不再有 .status（已搬去底栏右区）");
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent;border:none\}/.test(css),
