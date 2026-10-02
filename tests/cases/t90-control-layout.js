@@ -222,9 +222,11 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ v2.10.16：`.pattern-head` 规则随裸行删除一并清理（v2.10.11 的 (ii) 内边距契约退役）");
   ok(/\.viz-rows-row\{[^}]*flex-wrap:wrap[^}]*\}/.test(css),
     "★ `.viz-rows-row` 必须 flex-wrap：否则窄屏下拍号不折行会溢出（被 body 的 overflow-x:hidden 裁掉）");
-  /* v2.10.14：行数 pill 的缩小规则删除（与拍号统一大小）；Swing 进本行后同款 wrap 兜底不变 */
+  /* v2.10.14：行数 pill 的缩小规则删除（与拍号统一大小）；Swing 进本行后同款 wrap 兜底不变。
+     ★ v3.6.0（B4）订正：该决定的口径是「统一为默认 .pill 规格」，不是「钉死 36px」——
+       默认规格本身可以被整体抬高（B4 就是给它加 min-height:40px）。故本断言仍成立。 */
   ok(!/^\.viz-rows \.pill\{/m.test(css),
-    "★★ 用户要求④：`.viz-rows .pill{padding:7px 14px…}` 缩小规则已删——同屏行数与拍号的按钮统一为默认 .pill 规格（实测 31px → 36px）");
+    "★★ 用户要求④：`.viz-rows .pill{padding:7px 14px…}` 缩小规则仍不存在——同屏行数与拍号共用默认 .pill 规格（v3.6.0 起默认规格含 min-height:40px），两者仍无局部差异");
   ok(/\.viz-head\{[^}]*align-items:stretch[^}]*\}/.test(css),
     "★ v2.10.18：`.viz-head` 改 stretch（左列撑满头行高、音量组沉底）；顶对齐意图由左列自身"
     + "的 flex-start 起步保留——BPM 组标签与左列首行仍同一行起步");
@@ -255,8 +257,12 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.pb-ctx \.pat-now\{[^}]*max-width:22em[^}]*white-space:nowrap/.test(css),
     "★★ 型名胶囊截断——max-width:22em + 单行省略（胶囊可用宽比顶栏充裕，故 18em→22em；"
     + "nowrap 必需：少了它省略号失效、长型名折两行撑破 fixed 底栏高度）");
-  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:36px/.test(css),
-    "★ v2.76.3：状态行入顶栏 36px 等高带（与补偿读数/设置/主题钮同高）");
+  /* v2.76.3 决定的是「状态行要与补偿读数/设置/主题钮**同高**」这件事，
+     36px 只是当时的取值。v3.6.0（B4）把它抬到 40px 与全站触控下限对齐——
+     等高带仍在（四者同一条规则），故按最新决定改写断言值而非删除断言。 */
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:40px/.test(css),
+    "★★ 状态行仍在顶栏**等高带**里（与补偿读数/设置/主题钮同高，四者共一条规则）；"
+    + "取值 36px → 40px 是 v3.6.0（B4）与全站触控下限对齐，等高这件事本身没变");
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent\}/.test(css),
     "★★ v2.11.0：循环钮零背景图层（含 hover 与开启态）——图标直接浮在页面背景上");
   ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),

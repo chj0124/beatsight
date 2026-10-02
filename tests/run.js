@@ -136,6 +136,7 @@ const CASE_FILES = [
   "./cases/t164-visual-semantics-b1",      // v3.4.0（B1）：语义分色——选中态中性化 + 和弦改琥珀 + --t3 提亮（绿只留进行中）
   "./cases/t165-info-arch-b2",              // v3.4.1（B2）：信息架构去重（型名只留底栏胶囊）+ 组标签字号升档
   "./cases/t166-viz-band-centering-b3",      // v3.5.0（B3）：可视化带垂直居中真正生效 + 左缘绿条改行首短标
+  "./cases/t167-touch-target-b4",             // v3.6.0（B4）：全站 pill 统一触控下限 min-height:40px
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

@@ -806,14 +806,25 @@ input[type=range].vol{width:120px}
    ★ 不波及 BPM：左列 320px 定宽（v2.10.18）不变，BPM 组是头行 flex 的独立子项，
      列内宽度重排在数学上推不动它的 x 坐标（改动前后实测 416 逐位相同）。 */
 .card-head-left .vol-row input[type=range].vol{flex:1;width:auto}
-.pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
+/* ★ v3.6.0（B4）：补 min-height:40px —— 全站可点元素的**统一触控下限**。
+   改前实测 38 个可点元素里 25 个 <40px（pill 家族 19 个：36~38px 主体 + 5 个 31px BPM 快捷档
+   + 图例关闭钮 27px）。取 40px 而非 44px：WCAG 2.5.5 的 44 是 AAA 级，2.5.8 的 AA 门槛只有
+   24px——现状 36px 本已过 AA，故这不是合规缺陷而是移动端体验问题（练琴常在手机 PWA 上打开，
+   这是本应用真实的主场景）；实测主列只 +25px 而 44 要 +41px。
+   ★ 为什么加在 .pill 本身而非补局部规则：`.viz-rows .pill`（同屏行数）与拍号共用同一批元素，
+     v2.10.14 已按用户要求④把两者的缩小差异删掉、"统一为默认规格"——那是**统一方向**，不是
+     "钉死在 36px"；加局部规则会重新造出第三套缩小差异，与该决定相反。
+   ★ 实测影响面（1440×900 / 390 / 360 / 640 四档，无头 Chrome）：零横向溢出；底栏 --bar-h 96px
+     与参数槽 #tgSlot 44px **均不变**（各有契约）；窄屏 .viz-rows-row 166→174px（在 flex-wrap
+     余量内，未增折行）。顶栏那条显式 height 会**盖住**本条 min-height，须同步抬（见下）。 */
+.pill{border-radius:9999px;padding:9px 16px;font-size:13px;font-weight:500;min-height:40px;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
 /* 顶栏图标钮（v2.69.0 主题切换）：图标走 currentColor 随按钮色，经典/日间两主题自动正确。
    ★ v2.69.0 返工修 bug：显隐由**按钮类 .day** 驱动（经典=月亮、日间=太阳）——
    不用 svg 的 hidden 属性：hidden 是 HTMLElement 的 IDL 属性，SVGElement 没有它，
    `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
 /* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
    （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
-.topbar .pill, .topbar .icon-btn, .topbar .lat-read, .topbar .status{height:36px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：状态行入列等高带 */
+.topbar .pill, .topbar .icon-btn, .topbar .lat-read, .topbar .status{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：状态行入列等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏四元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，四者 top 由 [14,12] 收敛为单值 [12]（等高带反而更齐） */
 .topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
@@ -2925,23 +2936,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2957  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3586  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5190  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6059  Modal         应用内弹窗
-     L6197  Viz           时值可视化渲染与每帧动画
-     L9272  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9939  Trainer       变速训练器
-     L10141 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10755 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12153 Editor        自定义节奏型编辑器
-     L12599 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12646 Ear           听辨训练（v1.10.0）
-     L12866 Arrange       曲式编排（v2.0.0）
-     L15764 Help          使用方法（v2.0.1）
-     L15893 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15967 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16210 初始化（装配） 各模块 hook 接线与启动
+     L2968  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3597  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5201  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6070  Modal         应用内弹窗
+     L6208  Viz           时值可视化渲染与每帧动画
+     L9283  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9950  Trainer       变速训练器
+     L10152 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10766 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12164 Editor        自定义节奏型编辑器
+     L12610 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12657 Ear           听辨训练（v1.10.0）
+     L12877 Arrange       曲式编排（v2.0.0）
+     L15775 Help          使用方法（v2.0.1）
+     L15904 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15978 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16221 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2967,7 +2978,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.5.0";
+const VERSION = "3.6.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

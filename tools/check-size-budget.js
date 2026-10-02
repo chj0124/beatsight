@@ -101,8 +101,15 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    两批体积几乎全在注释上，且这些注释是**不可删的防坑知识**：v3.5.0 记的是「grid 下
    margin-block:auto 恒为 0px」这条机制（v3.3.1 立错了近一年，t166 T151a–c 逐条钉死），
    删了下一个人会照 v3.3.1 的注释再犯一次。已做过两轮压缩（3623 → 现值，信息一条不丢）
-   仍差 0.6KB，故上调到 1427KB，留约 3.4KB 拦回归。 */
-const BUDGET_BYTES = 1427 * 1024;
+   仍差 0.6KB，故上调到 1427KB，留约 3.4KB 拦回归。
+   v3.6.0（B4 触控下限）：同样两行 CSS（.pill 加 min-height、顶栏等高带 36→40），
+   两轮压缩后仍差 1.2KB，故一次性上调到 1429KB，留约 0.8KB 拦回归。
+   ★ 为何这两批选择上调而非死压注释：它们承载的是**两条反直觉的机制知识**——
+     v3.5.0 是「grid 下 margin-block:auto 恒为 0px」（v3.3.1 立错了近三个版本），
+     v3.6.0 是「显式 height 会盖住 min-height，只改 .pill 会漏掉顶栏」（本批真踩到了）。
+     这类知识删了下一个人会照着旧注释再犯一次，而代价只是几 KB。
+     留 1.8KB（1430）与历次 4–10KB 的余量口径同量级——预算的意义是拦回归，不是给功能加杠杆。 */
+const BUDGET_BYTES = 1430 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
