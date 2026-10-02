@@ -141,6 +141,7 @@ const CASE_FILES = [
   "./cases/t169-scroll-fixes",                // v3.9.0：预备拍道按拍数构建（4 拍闪变根除）+ 道内竖线放行 + 图例关闭重采几何
   "./cases/t170-status-pb",                   // v3.10.0：状态灯搬底栏右区（.pb-right）+ 播放头游标改粗竖线
   "./cases/t171-count-lane-exit",             // v3.12.0：预备拍道退场改「传送带第 −1 小节」——相对锚点判据 + 随 dy 自然滑出（范围播放即撤/变 4 拍长双修复）
+  "./cases/t172-countlane-rebuild-hide",      // v3.12.1：会话期间换型重建（调度器前瞻）后 row0 恒 hidden——「道变 4 拍长」残影的根因修复
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

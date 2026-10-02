@@ -128,8 +128,12 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      ★ 本轮增量的性质：几乎全在**六项用户反馈各自"为什么"的注释**（三路退场信号的
        盲区推导、竖线为何要换 .seams 层、拍号为何是死回路、窄屏右列顶穿底栏的实测
        9px）与退役标记——功能本体新增极少（净减 33 行），且删掉的旧机制（交叉淡出、
-       sigRow/accGroup/fallbackNote、list 更新）远多于新增。 */
-const BUDGET_BYTES = 1440 * 1024;
+       sigRow/accGroup/fallbackNote、list 更新）远多于新增。
+   v3.12.1（「道变 4 拍长」残影根因修复）：净增约 0.7KB——全部是 buildViz 内那行
+     一行式修复的**根因链注释**（row0 hidden 只在预备拍分支写、调度器前瞻换型重建
+     比可听边界早一个前瞻窗、不变量必须钉在断裂点），功能本体 1 行；上调到 1441KB，
+     留约 1KB 拦回归。 */
+const BUDGET_BYTES = 1441 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
