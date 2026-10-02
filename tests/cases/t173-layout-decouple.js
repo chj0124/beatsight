@@ -57,7 +57,7 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
      && /\.viz-head-grid \.viz-toggles\{padding-bottom:0\}/.test(CSS_CODE),
     "★★ 常驻预留 50px + 组底边距归零（v3.13.2：面板最满 40 + 悬浮间距 8 = 48，"
     + "原 76px 是三列折行时代数值、56px 留了 16px 死空白；行底→卡底 92 → 74px）");
-  ok(/\.viz-toggles \.tg-slot \.tr-panel\{width:max-content;flex:none;flex-wrap:nowrap\}/.test(CSS_CODE),
+  ok(/\.viz-toggles \.tg-slot \.tr-panel\{width:max-content;flex:none;flex-wrap:nowrap;gap:8px 12px\}/.test(CSS_CODE),
     "★★ 面板锁自然宽单行（Chrome 对折行弹性容器的固有宽度算错：380→543.9 并折成两行"
     + "61px 超预留——实测抓到的第二个根因）");
   ok(TOGGLES.indexOf('id="tgSwitchRow"') < TOGGLES.indexOf('id="tgSlot"')

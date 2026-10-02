@@ -144,6 +144,7 @@ const CASE_FILES = [
   "./cases/t172-countlane-rebuild-hide",      // v3.12.1：会话期间换型重建（调度器前瞻）后 row0 恒 hidden——「道变 4 拍长」残影的根因修复
   "./cases/t173-layout-decouple",             // v3.13.0：底栏两行化 + 控制区限宽 1000 + 参数槽通栏悬浮（进度条/开关零耦合的结构与行为契约）
   "./cases/t174-four-features",               // v3.14.0：预备拍道逐拍点亮 + 雾化条显隐 + 顶栏圆钮 + 抽屉左缘自动浮出（hover 无遮罩/显式带遮罩/400ms 收回）
+  "./cases/t175-v316-fixes",                  // v3.16.0：参数槽两行化+分组（文字行槽下居中）/ [hidden] 配套修复 / boot 布局就绪重采样
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

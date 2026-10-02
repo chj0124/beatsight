@@ -646,6 +646,11 @@ function layoutProbe(){
   out.tgBody = (() => {
     const body = q(".viz-toggles .tg-body");
     if (!body) return null;
+    /* v3.16.0：面板收容口径放宽到**卡片底缘**——预留 50px 是记账线，真正的视觉边界
+       是卡片底（预留 50 + 卡片内边距 24 = 行下 74px）；两行化后最满内容允许用内边距
+       的空白（用户确认过：预留空间足够，不需要调高度）。 */
+    const cardEl = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
+    const cardBottom = () => (cardEl ? round(cardEl.getBoundingClientRect().bottom) : null);
     const h = () => round(body.getBoundingClientRect().height);
     const slotEl = q("#tgSlot");
     const mt = q("#muteToggle"), tt = q("#trainerToggle");
@@ -670,6 +675,7 @@ function layoutProbe(){
     const mp = q("#muteCfgPanel");
     const muteBottom = (mp && !mp.hidden) ? round(mp.getBoundingClientRect().bottom) : null;
     const bodyBottomM = round(body.getBoundingClientRect().bottom);
+    const cardBottomM = cardBottom();
     const slotCxM = (() => { const r = slotEl && slotEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; })();
     /* ★ 点变速训练开关前必须**先填目标**：目标为空时应用按"空目标拒开"弹模态框，
@@ -689,10 +695,12 @@ function layoutProbe(){
     const tp = q("#trainerPanel");
     const trainerBottom = (tp && !tp.hidden) ? round(tp.getBoundingClientRect().bottom) : null;
     const bodyBottomB = round(body.getBoundingClientRect().bottom);
+    const cardBottomB = cardBottom();
     if (tt) tt.click();      // trainer 关
     if (tgt && tgtBak !== null) tgt.value = tgtBak;
     if (mt) mt.click();      // mute 关 → 复原
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
+      cardBottomM: cardBottomM, cardBottomB: cardBottomB,
       mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
       txC: txC, txM: txM, txB: txB, txR: tx(),
       padC: padC, padM: padM, padB: padB, padR: pad(),
@@ -1215,15 +1223,15 @@ async function main(){
               "关 " + L.tgBody.padC + " · 静音拍 " + L.tgBody.padM + " · 都开 " + L.tgBody.padB
               + " · 复原 " + L.tgBody.padR);
             /* ★ v3.13.0：悬浮面板收容——打开的面板底缘不得越过 .tg-body 底缘（56px 装得下） */
-            if (L.tgBody.muteBottom !== null){
-              ok(L.tgBody.muteBottom <= L.tgBody.bodyBottomM + 1,
-                p.label + "·" + vp + "：★★ 静音拍悬浮面板收在预留内（底缘 ≤ 块底缘）",
-                "面板底 " + L.tgBody.muteBottom + " vs 块底 " + L.tgBody.bodyBottomM);
+            if (L.tgBody.muteBottom !== null && L.tgBody.cardBottomM !== null){
+              ok(L.tgBody.muteBottom <= L.tgBody.cardBottomM + 1,
+                p.label + "·" + vp + "：★★ 静音拍悬浮面板收在**卡片**内（v3.16.0 口径：预留是记账线，卡底才是视觉边界）",
+                "面板底 " + L.tgBody.muteBottom + " vs 卡底 " + L.tgBody.cardBottomM);
             }
-            if (L.tgBody.trainerBottom !== null){
-              ok(L.tgBody.trainerBottom <= L.tgBody.bodyBottomB + 1,
-                p.label + "·" + vp + "：★★ 变速训练悬浮面板收在预留内（最满面板 43px ≤ 56px）",
-                "面板底 " + L.tgBody.trainerBottom + " vs 块底 " + L.tgBody.bodyBottomB);
+            if (L.tgBody.trainerBottom !== null && L.tgBody.cardBottomB !== null){
+              ok(L.tgBody.trainerBottom <= L.tgBody.cardBottomB + 1,
+                p.label + "·" + vp + "：★★ 变速训练悬浮面板（含槽下文字行）收在**卡片**内",
+                "面板底 " + L.tgBody.trainerBottom + " vs 卡底 " + L.tgBody.cardBottomB);
             }
             /* ★ v3.13.0：悬浮槽以开关行中线水平居中（通栏并排的落位契约） */
             if (L.tgBody.slotCxM !== null && L.tgBody.rowCxC !== null){
