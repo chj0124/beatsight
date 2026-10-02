@@ -648,26 +648,34 @@ function layoutProbe(){
     if (!body) return null;
     const h = () => round(body.getBoundingClientRect().height);
     const slotEl = q("#tgSlot");
-    const slotH = () => (slotEl ? round(slotEl.getBoundingClientRect().height) : null);
-    const mt = q("#muteToggle"), tt = q("#trainerToggle"), tgt = q("#trTarget");
-    /* v3.9.0：#tgSwitchRow 壳已 display:contents（三列网格的溶解层），rect 恒 0×0——
-       再量它就是"0===0"的橡皮图章。改量真实的开关胶囊（#countInToggle）。 */
-    const rowEl = q("#countInToggle");
-    const rowTop = () => (rowEl ? round(rowEl.getBoundingClientRect().top) : null);
-    const closed = h();
-    const rowClosed = rowTop();
-    /* v3.9.0：零跳动的承重墙从"槽高 44px"换成 tg-body 网格第二轨（参数行）76px——
-       读 computed grid-template-rows 的第二个轨道值，三态必须一字不变。 */
+    const mt = q("#muteToggle"), tt = q("#trainerToggle");
+    /* v3.13.0：零横移的验收读数 = 两枚开关的盒左缘（x）在四种开合组合下逐像素相同——
+       这才是"元素不挪窝"的本体（旧口径量 #countInToggle 的 top，而它 v3.12.0 已搬进
+       底栏、与本块开合完全无关，四态恒等是橡皮图章）。 */
+    const mx = () => (mt ? round(mt.getBoundingClientRect().left) : null);
+    const tx = () => (tt ? round(tt.getBoundingClientRect().left) : null);
+    /* v3.13.0：桌面档零跳动承重墙 = .tg-body 的 padding-bottom 56px（通栏悬浮槽的常驻
+       预留，实测最满面板 43px + 30% 余量）；窄屏档仍是流内网格（第二轨 76px）。
+       两种口径都读出，断言按档分派。 */
+    const pad = () => round(parseFloat(getComputedStyle(body).paddingBottom));
     const row2 = () => { const t = getComputedStyle(body).gridTemplateRows.split(" ");
       return round(parseFloat(t[1]) || 0); };
-    const r2Closed = row2();
+    const rowEl = q(".viz-toggles .tg-row");
+    const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
+      return r ? round(r.left + r.width / 2) : null; };
+    const closed = h(), mxC = mx(), txC = tx(), padC = pad(), r2C = row2(), rowCxC = rowCx();
     if (mt) mt.click();
-    const muteOnly = h();
-    const rowMute = rowTop();
-    const r2Mute = row2();
+    const muteOnly = h(), mxM = mx(), txM = tx(), padM = pad(), r2M = row2();
+    /* 悬浮面板收容：打开的面板底缘不得越过 .tg-body 底缘（56px 预留装得下最满面板） */
+    const mp = q("#muteCfgPanel");
+    const muteBottom = (mp && !mp.hidden) ? round(mp.getBoundingClientRect().bottom) : null;
+    const bodyBottomM = round(body.getBoundingClientRect().bottom);
+    const slotCxM = (() => { const r = slotEl && slotEl.getBoundingClientRect();
+      return r ? round(r.left + r.width / 2) : null; })();
     /* ★ 点变速训练开关前必须**先填目标**：目标为空时应用按"空目标拒开"弹模态框，
        而模态会抢走焦点并留在页面上，把后续探针（抽屉焦点断言）一起带崩。
        这正是本轮实测踩到的：一条探针的副作用污染了下一条不相关的断言。 */
+    const tgt = q("#trTarget");
     const tgtBak = tgt ? tgt.value : null;
     /* ★ 光改 value 不够：应用的"空目标拒开"读的是 **S.trainer.target**，
        而它由目标输入的 input/change 事件写入——必须走完两级事件，否则照样弹模态。 */
@@ -677,17 +685,21 @@ function layoutProbe(){
       tgt.dispatchEvent(new Event("change", { bubbles: true }));
     }
     if (tt) tt.click();
-    const both = h();
-    const rowBoth = rowTop();
-    const r2Both = row2();
-    const slotOpenH = slotH();
+    const both = h(), mxB = mx(), txB = tx(), padB = pad(), r2B = row2();
+    const tp = q("#trainerPanel");
+    const trainerBottom = (tp && !tp.hidden) ? round(tp.getBoundingClientRect().bottom) : null;
+    const bodyBottomB = round(body.getBoundingClientRect().bottom);
     if (tt) tt.click();      // trainer 关
     if (tgt && tgtBak !== null) tgt.value = tgtBak;
     if (mt) mt.click();      // mute 关 → 复原
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
-      slotH: slotH(), slotClosed: slotEl ? slotH() : null, slotOpen: slotOpenH,
-      rowClosed: rowClosed, rowMute: rowMute, rowBoth: rowBoth, rowRestored: rowTop(),
-      r2Closed: r2Closed, r2Mute: r2Mute, r2Both: r2Both, r2Restored: row2() };
+      mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
+      txC: txC, txM: txM, txB: txB, txR: tx(),
+      padC: padC, padM: padM, padB: padB, padR: pad(),
+      r2Closed: r2C, r2Mute: r2M, r2Both: r2B, r2Restored: row2(),
+      muteBottom: muteBottom, bodyBottomM: bodyBottomM,
+      trainerBottom: trainerBottom, bodyBottomB: bodyBottomB,
+      rowCxC: rowCxC, slotCxM: slotCxM };
   })();
   out.pbProgress = (() => {
     const host = q("#pbProgress"), bar = q("#playBar");
@@ -696,8 +708,23 @@ function layoutProbe(){
     const wrap = host.querySelector(".demo-range");
     const head = host.querySelector(".demo-range-head");
     const fromEl = host.querySelector(".demo-range-from");
+    /* v3.13.0：进度条宽度**不敏感**扫描——预备拍开合（拍数输入显形，实测 −64px）与
+       状态文案跳变（每十六分更新，长文案实测 −134px）都不得改变进度条宽度。
+       两行化解耦（进度条独占行 1）的验收点；量完立刻复原，探针之间不污染。 */
+    const w = () => round(host.getBoundingClientRect().width);
+    const wBase = w();
+    const cnt = q("#countInToggle"), st = q("#statusText");
+    let wCnt = null, wLong = null;
+    if (cnt){ cnt.click(); wCnt = w(); }
+    if (st){ const bak = st.textContent; st.textContent = "静音拍 · 第 44 小节 · 心中默数";
+      wLong = w(); st.textContent = bak; }
+    if (cnt) cnt.click();      // 复原
+    /* 行序：进度条（行 1）在 .pb-sub（行 2 = 预备拍+状态）之上 */
+    const sub = q(".pb-sub");
+    const statusBelow = sub ? round(sub.getBoundingClientRect().top) > round(r.top) : null;
     return { w: round(r.width), inBar: !!(bar && bar.contains(host)), hasRange: !!wrap,
-      hasHead: !!head, hasFrom: !!fromEl };
+      hasHead: !!head, hasFrom: !!fromEl,
+      wBase: wBase, wCnt: wCnt, wLong: wLong, statusBelow: statusBelow };
   })();
   /* v3.3.1：播放键的**水平居中**与"离底距离"——两条都是用户直接看到的观感，只能在真机量。
      居中那条是本轮的实际故障：flex space-between 下左右两段宽差把中列挤偏。 */
@@ -786,6 +813,21 @@ function layoutProbe(){
      "不得再有第 4 块"能被断言正面表达。 */
   out.blockRects = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")]
     .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
+  /* v3.13.0（丁方案）：控制区**限宽 1000 居中 + 两列 1fr** 的几何读数——
+     gridW ≤ 1000；两块等宽（1fr）；网格盒在卡片内容区内水平居中（两侧空白对称）。
+     空白 = (容器−1000)/2，随窗口变大是**设计内**行为（恒定的是"盒宽"与"对称性"）。 */
+  out.row1 = (() => {
+    const g = q(".viz-head-grid"), card = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
+    const left = q(".card-head-left"), bpm = q(".viz-head > .group");
+    if (!g || !card || !left || !bpm) return null;
+    const gr = g.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    const cs = getComputedStyle(card);
+    const innerL = round(cr.left + parseFloat(cs.paddingLeft));
+    const innerR = round(cr.right - parseFloat(cs.paddingRight));
+    const lr = left.getBoundingClientRect(), br = bpm.getBoundingClientRect();
+    return { w: round(gr.width), leftW: round(lr.width), bpmW: round(br.width),
+      blankL: round(gr.left - innerL), blankR: round(innerR - gr.right) };
+  })();
   /* v3.9.0：行 2 同轴居中断言的数据源——开关参数块中心相对头部栅格中心的偏移（0 = 同轴） */
   out.togCenterOffset = (() => {
     const t = q(".viz-toggles"), g = q(".viz-head-grid");
@@ -1097,6 +1139,24 @@ async function main(){
         ok(sameLine(lay.wide.volGroup, lay.wide.title),
           p.label + "：★★ 音量组在标题正下方（卡片头左列，左缘 = 卡片内容边缘）（v2.10.15）",
           "标题 " + lay.wide.title + " vs 音量组 " + lay.wide.volGroup);
+        /* ★★ v3.13.0（丁方案）：控制区限宽 1000 居中 + 两列 1fr——
+           盒宽 ≤1000、两块等宽、两侧空白对称（空白 =(容器−1000)/2，随窗口变大是设计内行为，
+           钉的是"盒宽"与"对称性"两个不变量，不是具体像素）。 */
+        if (lay.wide.row1){
+          ok(lay.wide.row1.w <= 1001,
+            p.label + "：★★ 控制区限宽 1000px（.viz-head-grid max-width，恒定紧凑不随窗口稀释）",
+            "盒宽 " + lay.wide.row1.w);
+          ok(Math.abs(lay.wide.row1.leftW - lay.wide.row1.bpmW) <= 2,
+            p.label + "：★★ 行 1 两列 1fr 等宽（音量 ≈ BPM，1fr 拉满吃掉固定内容宽差）",
+            "音量 " + lay.wide.row1.leftW + " vs BPM " + lay.wide.row1.bpmW);
+          if (lay.wide.row1.blankL !== null && lay.wide.row1.blankR !== null){
+            ok(Math.abs(lay.wide.row1.blankL - lay.wide.row1.blankR) <= 2,
+              p.label + "：★ 控制区两侧空白对称（限宽盒在卡片内居中）",
+              "左 " + lay.wide.row1.blankL + " vs 右 " + lay.wide.row1.blankR);
+          }
+        } else {
+          ok(false, p.label + "：行 1 几何未取到（丁方案断言未验证）", "");
+        }
       } else {
         ok(false, p.label + "：桌面布局未取到（需求①②的相对位置本项未验证）", "");
       }
@@ -1133,32 +1193,52 @@ async function main(){
               p.label + "·" + vp + "：★★★ 开关开合**不改卡片高度**（关 / 只动静音拍 / 两个都开 三态等高）",
               "关 " + L.tgBody.closed + " · 静音拍 " + L.tgBody.muteOnly + " · 都开 " + L.tgBody.both
               + " · 复原 " + L.tgBody.restored);
-            /* ★★ v3.3.1（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
-               必须断言**开关行本身的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。
-               v3.9.0 起量真实开关胶囊（#tgSwitchRow 壳已 display:contents，rect 恒 0）。 */
-            ok(L.tgBody.rowClosed === L.tgBody.rowMute && L.tgBody.rowMute === L.tgBody.rowBoth
-               && L.tgBody.rowBoth === L.tgBody.rowRestored,
-              p.label + "·" + vp + "：★★★ 开关行位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 top）",
-              "关 " + L.tgBody.rowClosed + " · 静音拍 " + L.tgBody.rowMute + " · 都开 " + L.tgBody.rowBoth
-              + " · 复原 " + L.tgBody.rowRestored);
+            /* ★★ v3.13.0（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
+               必须断言**两枚开关的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。
+               （旧口径量 #countInToggle 的 top，而它 v3.12.0 已搬进底栏、与本块开合无关，
+               四态恒等成了橡皮图章；v3.13.0 改量 #muteToggle / #trainerToggle 的盒左缘——
+               悬浮槽脱离布局流后它们在关 / 只静音拍 / 都开 / 复原 四态必须逐像素不动。） */
+            const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
+            ok(xEq([L.tgBody.mxC, L.tgBody.mxM, L.tgBody.mxB, L.tgBody.mxR]),
+              p.label + "·" + vp + "：★★★ 静音拍开关位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 x）",
+              "关 " + L.tgBody.mxC + " · 静音拍 " + L.tgBody.mxM + " · 都开 " + L.tgBody.mxB
+              + " · 复原 " + L.tgBody.mxR);
+            ok(xEq([L.tgBody.txC, L.tgBody.txM, L.tgBody.txB, L.tgBody.txR]),
+              p.label + "·" + vp + "：★★★ 变速训练开关位置**逐像素不动**（四态同 x——悬浮槽脱离布局流的验收点）",
+              "关 " + L.tgBody.txC + " · 静音拍 " + L.tgBody.txM + " · 都开 " + L.tgBody.txB
+              + " · 复原 " + L.tgBody.txR);
+            /* ★ v3.13.0：常驻预留 56px（最满面板实测 43px + 30% 余量）四态一字不变 */
+            ok(xEq([L.tgBody.padC, L.tgBody.padM, L.tgBody.padB, L.tgBody.padR]) && L.tgBody.padC === 56,
+              p.label + "·" + vp + "：★★ 参数槽常驻预留恒 56px（四态一字不变——零跳动承重墙）",
+              "关 " + L.tgBody.padC + " · 静音拍 " + L.tgBody.padM + " · 都开 " + L.tgBody.padB
+              + " · 复原 " + L.tgBody.padR);
+            /* ★ v3.13.0：悬浮面板收容——打开的面板底缘不得越过 .tg-body 底缘（56px 装得下） */
+            if (L.tgBody.muteBottom !== null){
+              ok(L.tgBody.muteBottom <= L.tgBody.bodyBottomM + 1,
+                p.label + "·" + vp + "：★★ 静音拍悬浮面板收在预留内（底缘 ≤ 块底缘）",
+                "面板底 " + L.tgBody.muteBottom + " vs 块底 " + L.tgBody.bodyBottomM);
+            }
+            if (L.tgBody.trainerBottom !== null){
+              ok(L.tgBody.trainerBottom <= L.tgBody.bodyBottomB + 1,
+                p.label + "·" + vp + "：★★ 变速训练悬浮面板收在预留内（最满面板 43px ≤ 56px）",
+                "面板底 " + L.tgBody.trainerBottom + " vs 块底 " + L.tgBody.bodyBottomB);
+            }
+            /* ★ v3.13.0：悬浮槽以开关行中线水平居中（通栏并排的落位契约） */
+            if (L.tgBody.slotCxM !== null && L.tgBody.rowCxC !== null){
+              ok(Math.abs(L.tgBody.slotCxM - L.tgBody.rowCxC) <= 2,
+                p.label + "·" + vp + "：★ 参数槽以开关行中线居中（悬浮落位）",
+                "槽心 " + L.tgBody.slotCxM + " vs 行心 " + L.tgBody.rowCxC);
+            }
           } else {
             /* v3.9.0：窄屏改手风琴式单列（每组参数紧跟自己的开关，三列 118px 装不下任何一组）——
                开合时后面的组顺移是预期行为，零跳动只在桌面档承诺；窄屏钉「复原无残留」：
-               开了再全关，块高与首枚开关 top 必须回到初始值（状态无残留）。 */
-            ok(L.tgBody.restored === L.tgBody.closed && L.tgBody.rowRestored === L.tgBody.rowClosed,
-              p.label + "·" + vp + "：★★ 窄屏手风琴：开合后**复原无残留**（块高与开关 top 回到初始值）",
-              "块高 " + L.tgBody.closed + " → " + L.tgBody.restored + " · 开关 top " + L.tgBody.rowClosed
-              + " → " + L.tgBody.rowRestored);
-          }
-          /* v3.9.0：零跳动承重墙 = tg-body 网格第二轨（参数行）76px——桌面档钉死；
-             窄屏（≤759.9）行高放开随内容走，不做断言。#tgSlot 壳已 display:contents，
-             旧的"槽自身高度"口径随之退役（rect 恒 0，量了等于没量）。 */
-          if (vp === "桌面"){
-            ok(L.tgBody.r2Closed === 76 && L.tgBody.r2Closed === L.tgBody.r2Mute
-               && L.tgBody.r2Mute === L.tgBody.r2Both && L.tgBody.r2Both === L.tgBody.r2Restored,
-              p.label + "·" + vp + "：★★ 参数行轨道恒 76px（关/只静音拍/都开/复原 四态一字不变——零跳动承重墙）",
-              "关 " + L.tgBody.r2Closed + " · 静音拍 " + L.tgBody.r2Mute + " · 都开 " + L.tgBody.r2Both
-              + " · 复原 " + L.tgBody.r2Restored);
+               开了再全关，块高与两枚开关的 x 必须回到初始值（状态无残留）。 */
+            ok(L.tgBody.restored === L.tgBody.closed && L.tgBody.mxR === L.tgBody.mxC
+               && L.tgBody.txR === L.tgBody.txC,
+              p.label + "·" + vp + "：★★ 窄屏手风琴：开合后**复原无残留**（块高与两枚开关 x 回到初始值）",
+              "块高 " + L.tgBody.closed + " → " + L.tgBody.restored
+              + " · 静音拍 x " + L.tgBody.mxC + " → " + L.tgBody.mxR
+              + " · 变速训练 x " + L.tgBody.txC + " → " + L.tgBody.txR);
           }
         } else {
           ok(false, p.label + "·" + vp + "：参数槽容器未取到（本项未验证）", "");
@@ -1171,6 +1251,23 @@ async function main(){
           ok(L.pbProgress.w > minW,
             p.label + "·" + vp + "：★ 进度条有实际宽度（不被胶囊/控制键挤成 0，阈值 " + minW + "）",
             "宽度 " + L.pbProgress.w);
+          /* ★★ v3.13.0：进度条宽度**不敏感**——预备拍开合（拍数输入显形）与状态文案跳变
+             都不得改变进度条宽度（真机实测旧单行布局下分别为 −64px / −134px，即用户投诉的
+             "进度条随文案变动而变动"）。两行化解耦（进度条独占行 1）的验收点。 */
+          if (L.pbProgress.wCnt !== null){
+            ok(Math.abs(L.pbProgress.wCnt - L.pbProgress.wBase) <= 1,
+              p.label + "·" + vp + "：★★★ 预备拍开合**不改进度条宽度**（解耦验收点）",
+              "关 " + L.pbProgress.wBase + " vs 开 " + L.pbProgress.wCnt);
+          }
+          if (L.pbProgress.wLong !== null){
+            ok(Math.abs(L.pbProgress.wLong - L.pbProgress.wBase) <= 1,
+              p.label + "·" + vp + "：★★★ 状态文案跳变**不改进度条宽度**（长文案 −134px 根因的解耦验收点）",
+              "常规 " + L.pbProgress.wBase + " vs 长文案 " + L.pbProgress.wLong);
+          }
+          if (L.pbProgress.statusBelow !== null){
+            ok(L.pbProgress.statusBelow === true,
+              p.label + "·" + vp + "：★ 状态灯行在进度条**下方**（.pb-sub 行 2，v3.13.0 两行化）", "");
+          }
           /* 范围滑块是**曲式模式**下才挂进来的（预设模式没有"整首"可言）——
              没挂时不判假，只在挂了的时候验"整组都在、播放头也在" */
           /* ★ v3.3.1（用户反馈）：播放键必须**水平居中**且不贴底——两条都是真机才看得出的观感，

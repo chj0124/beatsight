@@ -132,8 +132,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.12.1（「道变 4 拍长」残影根因修复）：净增约 0.7KB——全部是 buildViz 内那行
      一行式修复的**根因链注释**（row0 hidden 只在预备拍分支写、调度器前瞻换型重建
      比可听边界早一个前瞻窗、不变量必须钉在断裂点），功能本体 1 行；上调到 1441KB，
-     留约 1KB 拦回归。 */
-const BUDGET_BYTES = 1441 * 1024;
+     留约 1KB 拦回归。
+   v3.13.0（布局解耦批）：净增约 3.8KB（1440 实测 1479.4KB）——底栏右区两行化的
+     根因链注释（−64/−134px 实测）与 .pb-sub 结构、参数槽通栏悬浮的三段推导
+     （auto 列撑宽实测 +114/−148px、两列悬浮面板同开重叠 89px、Chrome 对折行弹性
+     容器固有宽度的 543.9px 误算）、丁方案限宽 1000 的空白实测（336/368px）、
+     v2.10.18 钉宽/三轨特化退役说明；上调到 **1445KB**，留约 1.1KB 拦回归。 */
+const BUDGET_BYTES = 1445 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

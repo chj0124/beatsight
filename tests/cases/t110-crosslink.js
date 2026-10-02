@@ -125,11 +125,12 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   /* v3.0.0 批 5：第 2 轨（BPM）从 `1fr` 改成 `minmax(min-content,312px)`、末轨 168 → 413px——
      用户要求"BPM 卡宽度与音量卡一致，腾出的空间给预设库（它要放 6 个入口按钮）"。
      两条刚性轨都保留 min-content 下限（v2.76.2 的 Windows 度量结论不变）。 */
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,max-content) minmax(min-content,max-content);justify-content:center;justify-content:safe center;"),
-    "★★ v3.9.0（用户裁决，取代 v3.3.1 的 space-between 形态）：控制行仍是两行 —— 第一行三块"
-    + "（音量｜BPM｜同屏行数与拍号）**居中聚拢、列距 32px**，第二行 = 三开关 + 参数槽（同轴居中）；"
-    + "断点 1280；后两轨保留 min-content 下限（BPM 组内行最宽 ~610px，压到 312 会与邻组重叠），"
-    + "safe center 溢出回退 start");
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(min-content,1fr);justify-content:center;justify-content:safe center;"),
+    "★★ v3.13.0（用户拍板丁）：控制行两行 —— 第一行两块（音量｜BPM）**1fr 拉满、限宽 1000 居中**，"
+    + "第二行 = 开关 + 悬浮参数槽；断点 1280；两侧空白恒定 ≈(容器−1000)/2（真机实测旧三轨口径下"
+    + "空白 336/368px 且随窗口变大，固定内容居中无解）；safe center 溢出回退 start");
+  ok(src.includes("max-width:1000px"),
+    "★★ v3.13.0：控制区限宽 1000px（1440 实测两块各 ~484、两侧各 ~165 恒定）");
   ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
     "★ v3.3.0：行数拍号行的单独去底补丁已删（四块统一无底后它成了死规则）");
   ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
@@ -155,11 +156,10 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     + "v3.4.1 起宿主为底栏胶囊 .pb-ctx）");
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
-  /* v3.0.0：末轨 168px 给预设库块（右列窄块），「行数拍号」仍并入行 1 占第 4 轨 */
-  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));\n    justify-content:center;justify-content:safe center")
-     && src.includes("@media (min-width:1900px)"),
-    "★★ 宽屏铺满（≥1900）：第一行三轨随 v3.9.0 改居中聚拢（列距 32px）、轨道下限仍保留"
-    + " minmax(min-content)——空间不足时先内部折行而不是溢出（v2.76.2 的 Windows 度量结论不变）");
+  /* v3.13.0：`body.wide-full .viz-head-grid` 的三轨特化整块退役——第 3 块 v3.12.0 已退、
+     且宽屏满幅下控制区按丁方案恒定 1000 居中（base ≥1280 规则原样生效），不再另立轨道。 */
+  ok(!/body\.wide-full \.viz-head-grid\{grid-template-columns/.test(src),
+    "★★ v3.13.0：宽屏满幅的三轨特化已退役（跑道拉满、控制区恒定 1000 居中——两套轨道口径并一处）");
 ok(src.includes(".viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}"),
     "★★★ v3.3.1 立「三开关块独占第二行」+ v3.9.0 改**同轴居中**（justify-self:center + "
     + "fit-content，随头部聚拢方案一起落位；不再跨满全宽）");

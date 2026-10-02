@@ -254,8 +254,14 @@ body.wide-full .main{max-width:none}
        "拉开贴边与满宽网格呼应"以三块之间的大缝为代价（屏越宽缝越大，用户实拍判不可接受）；
        聚拢后两侧对称留白按"工具栏"读法处理，不填充（刚在 v3.8.x 拆过大绿带，不再造填充物）。
        行 2（开关+参数槽）同轴居中，与行 1 共用一条中轴线。 */
-  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,max-content) minmax(min-content,max-content);justify-content:center;justify-content:safe center;
-    align-items:stretch;column-gap:32px;row-gap:12px;margin-bottom:0}   /* ★ v3.9.0：后两轨保持 min-content 兜底（BPM 组内行最宽 ~610px、压到 312 会与邻组重叠——实拍抓过），上限放开让轨道随内容走；聚拢 = center + 32px 列距。1440 实测 312+610+~460+64 ≈ 1446 ≈ 满宽，恰好自然聚拢 */
+  /* ★ v3.13.0（用户拍板"丁"）：**限宽 1000px 居中 + 两列 1fr 拉满**。根因（真机实测 1440）：
+     行 1 内容只有 624px（音量 312 + 缝 32 + BPM 280），居中在 1329px 容器里 → 两侧空白
+     336/368px，且随窗口变宽线性变大（"缩短固定数值"治不了——空白 = 余量）。限宽后：
+     两侧空白恒定 ≈ (容器−1000)/2（1440 → ~165/侧），两列 1fr 把 1000 吃满（各 ~484），
+     内层控件全是 flex:1 弹性（音量滑杆 / BPM 步进钮 / 快捷档 / 滑杆自然跟长）。
+     v3.3.1 的刚性首列 minmax(280,312) 与 BPM max-content 轨道是三列时代口径，随之退役。 */
+  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(min-content,1fr);justify-content:center;justify-content:safe center;
+    align-items:stretch;column-gap:32px;row-gap:12px;margin:0 auto;margin-bottom:0;max-width:1000px}   /* 1440 实测：1000 盒居中、两块各 ~484、两侧各 ~165 恒定 */
   .viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
@@ -268,14 +274,10 @@ body.wide-full .main{max-width:none}
    与下方铺满网格同宽呼应）。
    ★ v2.41.0：断点 1900（四块 max 合计 ~1723，容器 视口−480，~2200 才放得下最宽形态；
    行数拍号列用 minmax(min-content,max-content)——空间不足时**先内部折行**（两层面板）
-   而不是溢出，~1900 起稳定一行；不足 1900 的宽屏落回上面 ≥1440 的 2×2 居中） */
-@media (min-width:1900px){
-  /* v3.0.0：五轨——末轨 168px 给预设库块（右列），「同屏行数与拍号」仍并入行 1（第 4 轨）。
-     抽屉展开态不在此特化：v3.3.0 起预设库是左侧覆盖浮层，不再参与栅格（原"展开态行 2 满宽 /
-     行数行下推行 3"的特化已随覆盖式改造删除）。 */
-  body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));
-    justify-content:center;justify-content:safe center;column-gap:32px}   /* v3.9.0：space-between → 居中聚拢（与 1280 档同口径；轨道保留 min-content 兜底，理由同上） */
-}
+   而不是溢出，~1900 起稳定一行；不足 1900 的宽屏落回上面 ≥1440 的 2×2 居中）
+   ★ v3.13.0：`body.wide-full .viz-head-grid` 的三轨特化**整块退役**——它的第 3 块
+   （同屏行数拍号）v3.12.0 已退役，三轨口径失去对象；且宽屏满幅（跑道拉满）下控制区
+   仍按丁方案恒定 1000 居中（base ≥1280 规则原样生效），不再另立轨道。 */
 /* ================= v3.0.0（PLAN-v9 批 0）：可视化带 + 预设库块/抽屉 =================
    可视化带 `#vizBand`：#viz / #lyricLane / 跳段播放行从时值卡片里**迁出**，不带卡片背景，
    内容直接落在页面背景（壁纸）上、水平居中（.main 单栏 + max-width 已经保证居中）。
@@ -748,7 +750,15 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
    ★ v3.10.0：外层改由 .pb-right 包裹（状态灯 + 进度条）——网格第 3 列的落位与宽度契约
    （justify-self:end / max-width:640 / min-width:0）整体上移给 .pb-right；.pb-progress
    在其中 flex:1。状态灯 flex:none（不被挤压），文案不折行。 */
-.pb-right{justify-self:end;display:flex;align-items:center;gap:12px;width:100%;max-width:640px;min-width:0}
+/* v3.13.0：右区改**两行**（用户需求：进度条长度必须与预备拍/状态文案解耦——
+   真机实测 1440：预备拍开合 −64px、长状态文案 −134px，旧单行 flex 里它们全压在
+   flex:1 的进度条上）。行 1 = 进度条独占（宽度只随容器）；行 2 = .pb-sub
+   （预备拍组靠左 + 状态灯靠右，space-between——两个可变源只挤压行 2 中缝）。
+   高度核算：22(轨道) + 5(gap) + 33(胶囊) ≈ 60px < 底栏内容区 82px ✓。
+   ★ 落位与宽度契约（justify-self:end / max-width:640 / min-width:0）原样保留。 */
+.pb-right{justify-self:end;display:flex;flex-direction:column;gap:5px;width:100%;max-width:640px;min-width:0}
+.pb-progress{display:flex;align-items:center;gap:10px;min-width:0}
+.pb-sub{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
 .pb-right .status{flex:none;white-space:nowrap}
 /* 预备拍（v3.12.0 从时值卡开关行搬进底栏右区）：flex:none 不被进度条挤压；
    输入框常显与否由 #countInBeatsWrap 的 hidden 驱动（与开关同步，装配区收敛）。 */
@@ -759,7 +769,6 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
 .pb-countin .switch::after{width:14px;height:14px}
 .pb-countin .inp-with-unit{display:flex;align-items:center;gap:4px}
 .pb-countin .tr-inp{width:40px;padding:3px 4px;font-size:12px}
-.pb-progress{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
 .pb-progress .demo-range-note{white-space:nowrap;flex:none}
@@ -791,16 +800,14 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
   /* 窄屏：读数先让位（条本身是主要信息），条宽压到 26vw 免得把胶囊与控制键挤没 */
   /* ★ 窄屏必须给"确定宽度"而不是 flex:1 + max-width：一行放不下时 flex 会把可收缩项压到 0
      （实测真机 `#pbProgress` 宽度 0 —— 桩测不出，是冒烟的宽度断言抓到的）。
-     改为给 .pb-right 与 .demo-range-track 确定下限；胶囊同步收窄，让位次序 = 先让读数、再让"当前"前缀、最后压胶囊。
-     ★ v3.10.0：状态灯入列右区后，窄屏改为**上下两行**（状态灯在上、进度条在下，都右对齐）——
-       一行硬塞 [● 播放中 · 第 N 小节][range] 会把轨道压穿 min-width。
-     ★ v3.12.0：预备拍搬进右区后纵排三件会把右列顶到 110px（超 96px 底栏），中列随之被撑高、
-       播放键贴底（真机实测距底 9px，冒烟拦下）→ 窄屏右区改**「预备拍独占一行 + 状态灯与进度条
-       合一行」**的两行布局（换行 + flex-basis:100%），右列回落到 ~58px，底栏高度契约不动。 */
-  .pb-right{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:2px 10px}
-  .pb-right .pb-countin{flex-basis:100%;justify-content:flex-end}
+     改为给 .demo-range-track 确定下限；胶囊同步收窄，让位次序 = 先让读数、再让"当前"前缀、最后压胶囊。
+     ★ v3.13.0：右区桌面档已两行化（进度条独占行 1；.pb-sub = 预备拍+状态），窄屏沿用同一
+     DOM 结构，只把 .pb-sub 改**换行右对齐**（390px 下预备拍与状态文案放不进一行，各自成行、
+     都贴右）——实测右列 ≈ 22+2+33+2+16 ≈ 75px，仍低于底栏内容区 82px，高度契约不动。
+     （旧「预备拍 flex-basis:100% 独占一行」的特化随结构统一退役。） */
+  .pb-sub{flex-wrap:wrap;justify-content:flex-end;row-gap:2px}
   .pb-right .status{font-size:11px}
-  .pb-progress{width:100%;max-width:none;min-width:96px}
+  .pb-progress{min-width:96px}
   .pb-progress .demo-range-note{display:none}
   .pb-ctx{max-width:30vw}
   .pb-ctx .pb-ctx-lab{display:none}   /* 窄屏省掉「当前」前缀，把宽度让给进度条 */
@@ -958,6 +965,36 @@ input[type=range].vol{width:120px}
    ★ v3.9.0：gap 收口到 24px 列距（本条 (0,3,0) 特异性高于 .tg-body 基础规则，
      不改这里列距会被压回 8px——三列布局的列距单一来源在此） */
 .viz-head-grid .viz-toggles .tg-body{justify-content:flex-start;gap:10px 24px}
+/* ★★ v3.13.0（用户拍板）：桌面档（≥1280）参数槽改**通栏悬浮**——根因（真机实测 1440）：
+   旧同轴网格列宽 = max(开关, 面板)（auto 轨），面板一显形所在列被撑大（实测 静音面板 222px /
+   变速面板 380px vs 开关 99/112px），叠加 .viz-toggles 的 fit-content + 居中，开任一开关
+   另一枚就横移（实测 变速训练 +114px / 静音拍 −148px）。修法：tg-slot 改 absolute 悬浮在
+   开关行正下方（top:calc(100%+8px) 水平居中）——**脱离布局流 → 不参与任何宽度/高度计算**：
+   开合零横移、块高零变化。
+   ★ 面板改**通栏并排**（静音左、变速右，同开并排 626px），不再逐列对齐——"各自归列"与
+   "面板不影响列宽"不可兼得（实测同开时两列悬浮面板会重叠 89px）；归属靠面板自带文字标签
+   （每/静/目标/步长）+ 左右顺序表达。
+   ★ 常驻预留 76 → **56px**：面板自然高实测 静音 24 / 带随机 40 / 变速 43，76px 是
+   v3.3.1 三列折行时代的数值；56 = 43 + 30% 余量（防 Windows 字体度量差折行）。
+   窄屏（<1280）不吃本块：仍走上方流内网格（手风琴/双列），行为一字不变。 */
+@media (min-width:1280px){
+  .viz-head-grid .viz-toggles .tg-body{display:block;position:relative;padding-bottom:56px}
+  .viz-toggles .tg-row{display:flex;align-items:center;justify-content:center;gap:24px;position:relative}
+  .viz-toggles .tg-slot{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:24px;z-index:5;width:max-content;max-width:980px}
+  /* ★ 面板显式 max-content + flex:none + **转单行**：悬浮槽是 flex 行，折行弹性容器
+     （.tr-panel flex-wrap:wrap）作为 flex 项的固有宽度会被 Chrome 算错（实测 380 自然宽
+     被解析成 543.9 且折成两行 61px——超出预留的根因；.tr-prog 的 width:100% 百分比在
+     固有宽度链里参与得也不干净）。桌面档改：面板不折行、进度条定宽 312 与参数同行
+     （单行总宽：静音 222.8 / 变速 ~692 / 同开 ~939 ≤ 980 上限），面板高 ~26px
+     收在 56px 预留内。 */
+  .viz-toggles .tg-slot .tr-panel{width:max-content;flex:none;flex-wrap:nowrap}
+  .viz-toggles .tg-slot .tr-prog{width:312px;flex:none}
+  /* ★ v2.10.18 的 .card-head-left{width:min(312px,100%)} 钉宽在桌面档退役——
+     丁方案下音量列吃满 1fr 轨道（~484px，滑杆自然跟长）；钉宽的原始理由（型名长度
+     抖动）随型名 v3.4.1 搬进底栏胶囊而消失。窄屏档不受影响（≤1439.9 媒体本就 100%）。 */
+  .viz-head-grid .card-head-left{width:100%}
+}
 /* 同屏行数档位（v2.8.0 req3；v3.12.0 从「时值可视化卡顶部」搬进设置弹窗「画面图层」组）。
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死。
    ★ v3.12.0 退役的兄弟规则：`.viz-rows-panel` / `.viz-rows-row` / `.viz-rows-row .group` /
@@ -2007,23 +2044,25 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <div class="tg-body">
       <!-- ★ v3.3.1（用户拍板）：三个开关**合并为一行**（它们都是"这一遍怎么练"的开算子，
            原来各占一行显得散）。
-           ★ v3.9.0：本行与下面的参数槽改为**同款三等列网格**——每组参数永远落在
-             自己开关正下方那列，显隐各管各（syncParamSlots 只看本组开关）。 -->
+           ★ v3.9.0：本行与参数槽改为**同轴网格**——每组参数落在自己开关正下方那列（v3.13.0
+             桌面档改通栏悬浮，见样式表；窄屏档仍走网格，此注释保留窄屏口径）。 -->
       <div class="tg-row" id="tgSwitchRow">
         <!-- ★ v3.12.0（用户拍板）：预备拍开关 + 拍数输入从本行搬进**底部播放条右区**
              （#countInToggle / #countInBeatsWrap，id 与接线一行不动）——它是"开播前数几拍"，
              与播放键／时间轴是同一组语义，贴着底栏最好找；本行自此只剩两枚开关。 -->
+        <!-- ★ v3.13.0：参数槽（#tgSlot）挪进本行内部——桌面档（≥1280）它要 absolute
+             悬浮在**本行正下方**（top:calc(100%+8px)，锚点 = 本行的盒底，行高变化也不脱锚）；
+             窄屏档它仍 display:contents 溶解进既有网格（行为一字不变）。 -->
         <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练<span class="switch"></span></button>
-      </div>
-      <!-- ★ v3.9.0：**三列固定槽位**（原 v3.3.1 共槽仲裁退役——用户实测"想同时看两组做不到、
-           切开关参数跳来跳去"，且控制区空间足够不再需要省地）。
-           v3.12.0：列数 3 → 2（预备拍整组搬走），每列 1fr 轨道与本行开关列一一同轴；
-           面板仍显式 grid-column 钉位（display:none 不占格，不钉位剩下的面板会被
-           auto-placement 挪进第 1 列）。槽高仍恒定（按最满那组预留），
-           开关开合时块内高度一字不变——v3.3.1 的零跳动契约原样保留。
+      <!-- ★ v3.9.0：**固定槽位**（原 v3.3.1 共槽仲裁退役——用户实测"想同时看两组做不到、
+           切开关参数跳来跳去"）。
+           v3.12.0：列数 3 → 2（预备拍整组搬走）。
+           ★ v3.13.0（桌面档）：本槽改 absolute **通栏悬浮**在开关行正下方（见样式表
+           ≥1280 块）——开合零横移、零高度变化；面板并排显隐各管各（syncParamSlots 只看
+           本组开关）。窄屏档仍是流内网格、面板逐列归位（行为不变）。
            ★ 空目标不弹窗拒开（方案甲，v3.3.1 立）：点变速训练时若目标为空，openParamSlot
-             把这一列参数摆出来、焦点送进目标框（见 trainerToggle 处理器）。 -->
+             把这一组参数摆出来、焦点送进目标框（见 trainerToggle 处理器）。 -->
       <div class="tg-slot" id="tgSlot">
         <div class="tr-panel" id="muteCfgPanel" hidden>
           <!-- v2.76.0（item 3）：随机子开关与参数同组（它决定"怎么静"，属于这一组参数） -->
@@ -2041,6 +2080,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
           <div class="tr-prog" id="trainerProg"></div>
         </div>
+      </div>
       </div>
           </div>
         </div>
@@ -2240,15 +2280,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
        ★ v3.12.0（用户拍板）：**预备拍**整组从时值卡开关行搬进本区（判据见 .pb-countin 注释）；
          id（#countInToggle / #countInBeatsWrap / #countInBeats）与接线一行不动。 -->
   <div class="pb-right">
-    <!-- 预备拍：开关 + 拍数输入。它是"开播前数几拍"，与播放键/时间轴同组语义，
-         放在播放控制的常驻底栏里随时够得着（此前在时值卡的开关行，视线要离开时间轴）。
-         ★ 拍数输入必须紧跟它所属的开关（v1.3.3 教训：排在别处会像别的开关的参数）。 -->
+    <!-- v3.13.0：右区改两行——行 1 = 进度条**独占**（宽度只随容器，与下方一切解耦）；
+         行 2 = 预备拍组（左）与状态灯（右）space-between。根因（真机实测 1440）：
+         旧单行 flex 里进度条 flex:1 吃剩余空间，右邻的预备拍开合（拍数输入显形 −64px）
+         与每十六分更新的状态文案（长文案 −134px）都会拽着进度条左右跳。
+         ★ 行 2 的两个可变源只挤压行 2 的中间空隙（space-between 两端钉死）。
+         ★ #statusText / #countInToggle 的 id 与接线一行不动；.pb-sub 只是壳。
+         ★ 结构红线不变：状态灯必须是 #pbProgress 的**兄弟**（buildDemoSongRow
+           挂载前清空该容器，静态子节点会被连坐销毁）——现在隔了一层 .pb-sub，
+           仍是兄弟（且 t170 的结构钉同步改写）。 -->
+    <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
+    <div class="pb-sub">
     <div class="pb-countin">
       <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
       <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
     </div>
     <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
-    <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
+    </div>
   </div>
 </div>
 
@@ -2995,23 +3043,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3027  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3658  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5262  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6122  Modal         应用内弹窗
-     L6260  Viz           时值可视化渲染与每帧动画
-     L9395  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10062 Trainer       变速训练器
-     L10264 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10847 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12236 Editor        自定义节奏型编辑器
-     L12682 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12729 Ear           听辨训练（v1.10.0）
-     L12948 Arrange       曲式编排（v2.0.0）
-     L15846 Help          使用方法（v2.0.1）
-     L15975 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16049 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16292 初始化（装配） 各模块 hook 接线与启动
+     L3075  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3706  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5310  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6170  Modal         应用内弹窗
+     L6308  Viz           时值可视化渲染与每帧动画
+     L9443  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10110 Trainer       变速训练器
+     L10312 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10895 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12284 Editor        自定义节奏型编辑器
+     L12730 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12777 Ear           听辨训练（v1.10.0）
+     L12996 Arrange       曲式编排（v2.0.0）
+     L15894 Help          使用方法（v2.0.1）
+     L16023 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16097 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16340 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3037,7 +3085,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.12.1";
+const VERSION = "3.13.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

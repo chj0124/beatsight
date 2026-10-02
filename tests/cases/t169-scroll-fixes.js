@@ -93,11 +93,15 @@ section("T169c 图例关闭重采几何（错位根除）");
 
 section("T169d 头部聚拢与参数区列对齐（源码级契约，真几何归 smoke）");
 {
-  ok(/\.viz-head-grid\{display:grid;grid-template-columns:minmax\(280px,312px\) minmax\(min-content,max-content\) minmax\(min-content,max-content\);justify-content:center/.test(CSS_CODE),
-    "★★ 头部三块居中聚拢（推翻 v3.3.1 的 space-between：屏越宽缝越大，用户实拍判不可接受）；"
-    + "后两轨保留 min-content 兜底（BPM 组内行最宽 ~610px，压到 312 会与邻组重叠）");
+  /* ★ v3.13.0（用户拍板丁）：三轨 max-content 口径退役（第 3 块 v3.12.0 已退、行 1 内容
+     624px 居中出 336/368px 空白且随窗口变大）——改两列 1fr + 限宽 1000 居中，真几何由
+     smoke 的 row1 断言（盒宽/等宽/对称）钉死。 */
+  ok(/\.viz-head-grid\{display:grid;grid-template-columns:minmax\(280px,1fr\) minmax\(min-content,1fr\);justify-content:center/.test(CSS_CODE),
+    "★★ 行 1 两列 1fr 拉满（丁方案：空白不再随窗口稀释内容，滑杆/按钮自然跟长）");
+  ok(/max-width:1000px/.test(CSS_CODE),
+    "★★ 控制区限宽 1000px 居中（两侧空白恒定 ≈(容器−1000)/2）");
   ok(/column-gap:32px/.test(CSS_CODE),
-    "★ 列距 32px（用户拍板的聚拢间距）");
+    "★ 列距 32px（v3.9.0 拍板的聚拢间距，口径不变）");
   ok(/\.viz-head-grid \.viz-toggles\{grid-column:1 \/ -1;grid-row:2;justify-self:center;width:fit-content\}/.test(CSS_CODE),
     "★★ 开关参数块与行 1 同轴居中（fit-content + justify-self:center）");
 }

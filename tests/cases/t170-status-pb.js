@@ -24,8 +24,9 @@ section("T170a 状态灯落户底栏右区（.pb-right）");
      html.indexOf("</header>"))) ,
     "★★ 顶栏不再有状态灯（v2.76.3 的顶栏 .status 容器整体退役）");
   ok(/<div class="pb-right">/.test(PLAYBAR)
-     && PLAYBAR.indexOf('id="statusDot"') < PLAYBAR.indexOf('id="pbProgress"'),
-    "★★ 状态灯在 .pb-right 内、位于进度条之前（右区两读数从左到右：状态 → 进度）");
+     && PLAYBAR.indexOf('id="pbProgress"') < PLAYBAR.indexOf('id="statusDot"'),
+    "★★ v3.13.0 两行化：进度条（行 1）在上、状态灯（行 2 .pb-sub）在下——"
+    + "进度条宽度与预备拍/状态文案彻底解耦（真机实测旧单行下 −64px / −134px 的两处横跳根因）");
   /* 结构红线：#pbProgress 挂载前会被 buildDemoSongRow 清空——状态灯若是它的子节点，
      曲式列表一重建就被连坐销毁（症状：状态灯偶尔消失，极难复现）。 */
   const pbOpen = PLAYBAR.indexOf('id="pbProgress"');
@@ -33,8 +34,11 @@ section("T170a 状态灯落户底栏右区（.pb-right）");
   ok(PLAYBAR.indexOf('id="statusDot"') < pbOpen || PLAYBAR.indexOf('id="statusDot"') > pbClose + 6,
     "★★★ 状态灯不是 #pbProgress 的子节点——buildDemoSongRow 挂载前清空该容器，"
     + "静态子节点会被连坐销毁（曲式列表一重建状态灯就消失）");
-  ok(/\.pb-right\{justify-self:end;display:flex;align-items:center;gap:12px;width:100%;max-width:640px;min-width:0\}/.test(CSS_CODE),
-    "★★ .pb-right 承接原 .pb-progress 的落位与宽度契约（网格第 3 列右对齐 / max-width 640）");
+  ok(/\.pb-right\{justify-self:end;display:flex;flex-direction:column;gap:5px;width:100%;max-width:640px;min-width:0\}/.test(CSS_CODE),
+    "★★ .pb-right 承接落位与宽度契约（网格第 3 列右对齐 / max-width 640），v3.13.0 改**两行纵排**"
+    + "（行 1 进度条独占、行 2 = .pb-sub 预备拍+状态；高度 ~60px < 底栏内容区 82px）");
+  ok(/\.pb-sub\{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0\}/.test(CSS_CODE),
+    "★★ .pb-sub 两端对齐——预备拍钉左、状态灯钉右，两个可变宽度源只挤压行 2 中缝");
   ok(/\.pb-right \.status\{flex:none;white-space:nowrap\}/.test(CSS_CODE),
     "★ 状态灯不被挤压、文案不折行");
 }
@@ -49,25 +53,21 @@ section("T170b 播放头游标改粗竖线");
     "★ 游标仍不可交互（不吃任何拖动，与两个可拖 thumb 的性质分界不变）");
 }
 
-section("T170c 窄屏右区两行（预备拍独占一行；状态灯与进度条合一行）");
+section("T170c 窄屏右区（v3.13.0：与桌面同一套两行 DOM，.pb-sub 换行右对齐）");
 {
-  /* ★ v3.12.0（用户反馈后实测修正）：v3.10.0 的「纵排三件、都右对齐」在预备拍搬入后失效——
-     右列被顶到 110px（超 96px 底栏内容区 82px），网格行随之被撑高、中列的播放键被推低，
-     真机实测**距视口底只剩 9px**（门槛 16px）。改成「换行 + 预备拍 flex-basis:100%」：
-     预备拍独占一行、状态灯与进度条合为第二行，右列回落到 ~58px，底栏高度契约不动。
-     ★ 为什么不能继续纵排：三件纵排的高度与底栏高度是耦合的，加一件就顶穿；
-       分行之后"再加一件"最多再占一行，且每行都远低于内容区。 */
-  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:2px 10px\}/.test(CSS_CODE),
-    "★★ ≤640：右区改**换行式**（换行 + 右对齐 + gap 2px 10px）——状态灯与进度条同处第二行");
-  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right \.pb-countin\{flex-basis:100%;justify-content:flex-end\}/.test(CSS_CODE),
-    "★★ ≤640：预备拍**独占一行**（flex-basis:100%）——它与状态灯挤一行会把右列顶穿底栏");
-  ok(!/\.pb-right\{flex-direction:column/.test(CSS_CODE),
-    "★★ 旧的纵排写法已退役（三件纵排顶穿底栏、播放键贴底，真机 9px 实测）");
-  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-progress\{width:100%;max-width:none;min-width:96px\}/.test(CSS_CODE),
-    "★ ≤640：进度条保底 96px（旧 64px 口径 + 状态灯占位的补偿）");
+  /* ★ v3.13.0：桌面档先两行化（进度条独占行 1、.pb-sub = 预备拍+状态），窄屏沿用同一
+     DOM 结构只换排布——390px 下预备拍与状态文案放不进一行，.pb-sub 换行、各自贴右。
+     实测右列 ≈ 22+2+33+2+16 ≈ 75px，仍低于底栏内容区 82px。
+     ★ 旧「预备拍 flex-basis:100% 独占一行」的特化随结构统一退役；旧「不得纵排」红线
+     （三件纵排顶穿 110px、真机 9px 贴底）的继任闸门 = smoke 的 pbRightH ≤ barContentH
+     （v3.12.0 立，本轮继续生效）。 */
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-sub\{flex-wrap:wrap;justify-content:flex-end;row-gap:2px\}/.test(CSS_CODE),
+    "★★ ≤640：.pb-sub 换行右对齐（预备拍与状态文案各自成行，都贴右）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-progress\{min-width:96px\}/.test(CSS_CODE),
+    "★ ≤640：进度条保底 96px（行 1 宽度 = 容器宽，min-width 是防挤压的兜底）");
   /* 标签不得折行：窄屏右列被挤到几十像素时，折成三行会把底栏顶穿（实测 67px 高的单枚开关） */
   ok(/\.pb-countin \.toggle-pill\{[^}]*white-space:nowrap\}/.test(CSS_CODE),
     "★★ 预备拍开关标签 nowrap（不折行——折行会把整个开关撑到 67px）");
   ok(/\.pb-countin\{flex:none;display:flex;align-items:center;gap:8px\}/.test(CSS_CODE),
-    "★ 预备拍组 flex:none（不被进度条挤压）");
+    "★ 预备拍组 flex:none（不被挤压）");
 }
