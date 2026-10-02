@@ -27,13 +27,20 @@
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525; --seam-strong:#8a8b90;
   --thumb-w:16px;        /* range 拇指宽（v2.82.0 立变量）：填充条端点要对齐拇指中心，px 校正项必须与它同源 */
   --line:#2A2A2A; --border:#4D4D4D;
+  /* v3.4.0（B1 语义分色）：单选「选中态」专用色。选中是**静态选择**，与「正在发声」是两件事，
+     此前两者共用 --green（一色六用：选中/发声/和弦/开关/播放键/聚焦环），用户分不清
+     「我选中了它」还是「它正在响」。绿从此只留给进行中语义。 */
+  --sel-bg:#2E2E2E; --sel-line:#6A6A6A;
   --green:#1ED760; --red:#F3727F;
   --bar-h:96px;          /* v3.3.1：播放底栏高度。**三处消费者必须同源**——
                             .main 的下内边距（内容让位）、.diag 的 bottom（避让）、
                             .col 的最小高度（可视化带居中的计算基准）；
                             ≤640 档在媒体查询里改这一个变量，三处自动跟随。 */
-  --t1:#FFFFFF; --t2:#B3B3B3; --t3:#8C8C8C; --on-green:#0A0A0A;
-  --amber:#E3B341; --rest-line:#5A5A5A;
+  --t1:#FFFFFF; --t2:#B3B3B3; --t3:#9E9E9E; --on-green:#0A0A0A;   /* v3.4.0：--t3 由 #8C8C8C 提亮（B8/P8）——
+                                                              在 #121212 上对比 5.6:1 → 6.9:1，
+                                                              10~11px 的座次尺/组标签不再贴 AA 下限 */
+  --amber:#E3B341; --rest-line:#5A5A5A;   /* v3.4.0 起琥珀**兼作乐谱标记色**（和弦名/型名胶囊）：
+                                             绿=进行中，琥珀=乐谱语义，两者互不干扰 */
   --blue:#4FA3E3;        /* 空扫括号（v2.1.0）：只动手不出声的标记色，刻意区别于绿色主题 */
   /* 强调色 token（v2.0.2 收口）：「最高强调用近白」是规范，此前 #FFFFFF/#4D4D4D/#fff 散落多处 */
   --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
@@ -408,7 +415,9 @@ body.wide-full .main{max-width:none}
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
 .bar-row{position:relative;height:86px;margin-bottom:20px}   /* 行距 20px：给行顶的「和弦胶囊」条带腾竖向空间（v2.8.0 由 14px 加大） */
 .bar-row:last-child{margin-bottom:0}
-.bar-row.current{background:rgba(30,215,96,.07);border-radius:8px}
+/* v3.4.0（B1/P8）：当前行底纹由 .07 提到 .12 并加 1px 左缘绿条——底纹是「面积对比」，
+   叠在自定义壁纸上会被进一步稀释；左缘条是「位置对比」，弱光/壁纸上仍可辨。 */
+.bar-row.current{background:rgba(30,215,96,.12);box-shadow:inset 3px 0 0 var(--green);border-radius:8px}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
 /* 预告行（v2.7.0；v2.8.0 预告信息并入和弦胶囊，不再单独挂徽标）：
@@ -426,7 +435,7 @@ body.wide-full .main{max-width:none}
      （用户报"贴在格子上"）。行高收到 1 后盒高 13px，盒底落到 -5px：与格子顶边留 ~5px、
      与上一行内容底（86px 行高只用到 ~82px，再叠 20px 行距 ⇒ 约 24px 带宽）留 ~6px，
      两侧均衡、不挤上一行座次尺，也不压本行格子。 */
-.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--green);pointer-events:none;white-space:nowrap}
+.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--amber);pointer-events:none;white-space:nowrap}   /* v3.4.0（B1/P2）：和弦名由 --green 改 --amber——它是乐谱标记不是「正在发声」，继续用绿会与播放头/当前行抢同一语义 */
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 /* v2.79.0：自画 inset ring 退役——拍分组层级改由 .seams 的 2px 强缝表达（同一「切开」
    语汇，线更强）；自画描边 + 圆角凹槽读作"两片板材相叠"，正是「前拍压后拍」错觉的
@@ -799,7 +808,10 @@ input[type=range].vol{width:120px}
 .lat-read:hover{color:var(--t2)}
 .pill:hover:not(:disabled):not(.active){background:var(--line);color:var(--t1)}
 .pill.active:hover:not(:disabled){filter:brightness(1.12)}
-.pill.active{background:var(--green);color:var(--on-green);font-weight:700}
+/* v3.4.0（B1/P2+P7）：单选选中态**不再用功能绿**——绿只保留「正在发声/进行中」。
+   描边走 inset box-shadow 而非 border：.pill 基座无边框，加 border 会让全部 pill 高 +2px
+   （几何位移会波及布局断言），inset 不改外几何。 */
+.pill.active{background:var(--sel-bg);color:var(--t1);font-weight:700;box-shadow:inset 0 0 0 1px var(--sel-line)}
 .pill.outline{background:transparent;border:1px solid var(--border);color:var(--t1)}
 .pill.outline:hover:not(:disabled){background:rgba(var(--veil),.06)}
 .pill.flash{background:var(--green);color:var(--on-green)}
@@ -1627,7 +1639,7 @@ body[data-theme="obs"] .bpm-ticks i{background:rgba(var(--well),.16)}
 /* ---------- 观测台 · 分段控件（pill 收敛为矩形） ---------- */
 body[data-theme="obs"] .pill{border-radius:6px;background:var(--card2);border:1px solid var(--line);color:var(--t2);font-family:var(--mono);font-variant-numeric:tabular-nums;padding:8px 14px;font-size:12px;transition:border-color .12s,color .12s,background .12s}
 body[data-theme="obs"] .pill:hover{border-color:var(--border);color:var(--t1)}
-body[data-theme="obs"] .pill.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+body[data-theme="obs"] .pill.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--t1);font-weight:600}   /* v3.4.0：日间主题同步改中性选中态（经典/日间两主题必须同语义） */
 body[data-theme="obs"] .pill.outline{background:transparent}
 body[data-theme="obs"] .pill.flash{background:var(--green);color:#fff}
 body[data-theme="obs"] .pill.danger{background:var(--red);border-color:var(--red);color:#fff}
@@ -2891,23 +2903,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2923  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3552  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5156  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6025  Modal         应用内弹窗
-     L6163  Viz           时值可视化渲染与每帧动画
-     L9238  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9905  Trainer       变速训练器
-     L10107 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10721 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12120 Editor        自定义节奏型编辑器
-     L12566 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12613 Ear           听辨训练（v1.10.0）
-     L12833 Arrange       曲式编排（v2.0.0）
-     L15731 Help          使用方法（v2.0.1）
-     L15860 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15934 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16177 初始化（装配） 各模块 hook 接线与启动
+     L2935  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3564  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5168  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6037  Modal         应用内弹窗
+     L6175  Viz           时值可视化渲染与每帧动画
+     L9250  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9917  Trainer       变速训练器
+     L10119 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10733 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12132 Editor        自定义节奏型编辑器
+     L12578 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12625 Ear           听辨训练（v1.10.0）
+     L12845 Arrange       曲式编排（v2.0.0）
+     L15743 Help          使用方法（v2.0.1）
+     L15872 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15946 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16189 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2933,7 +2945,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.3.1";
+const VERSION = "3.4.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
