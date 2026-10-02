@@ -36,6 +36,8 @@ const M = {
      起止标记都必须真实存在，否则 slice 会静默切出"到文件末尾"，让"不该包含 X"的断言
      侥幸通过（比失败更危险——v3.0.0 立此规矩时的同一口径）。 */
   jumpRow: ['<div class="arg-now arg-jump" id="argJump">', "<!-- ================= 自定义节奏型编辑器", "跳段 + 播放行（v3.3.0：已在 #playBar 内）"],
+  /* v3.4.1：整条固定播放条（型名胶囊在左区）——P3 去重的断言要在这里做 */
+  playBar: ['<div class="play-bar" id="playBar"', "<!-- ================= 自定义节奏型编辑器", "底部固定播放条（左区型名胶囊 + 跳段播放 + 右区进度）"],
   settingsOverlay: ['<div class="dialog" id="settingsOverlay"', "<!-- ================= 应用内弹窗", "设置浮层小窗"],
   css: ["<style>", "</style>", "样式表"],
 };
@@ -72,17 +74,27 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
   /* ① 「当前节奏型」裸行整块删除（名字搬进跳段行、meta 删除） */
   ok(!/class="pattern-head"/.test(html), "★ `.pattern-head` 裸行已整块删除（名字去跳段行、meta 删）");
   ok(!/id="patternMeta"/.test(html), "★ #patternMeta（4/4 拍 · N BPM）已删——拍号看 pill、速度看 BPM 大字");
-  ok(html.indexOf('id="patternName"') < html.indexOf('id="statusText"'),
-    "★ v2.76.3：#patternName 在状态文案**之前**（顶栏「型名 · ● 状态 · 补偿」三读数带，用户要求）");
+  ok(html.indexOf('id="statusText"') < html.indexOf('id="patternName"'),
+    "★ v3.4.1（P3 去重）：型名只在底栏胶囊里（#patternName 随元素搬进 #presetLibBtn），"
+    + "顶栏状态行只剩「● 状态」两枚——两处同帧同值的重复面已消除");
   /* ② 标题 #vizTitle 整块删除（含「· 4/4」——用户拍板连它一起删），JS 写入点不复存在 */
   ok(!/id="vizTitle"/.test(html), "★ #vizTitle 已整块删除（与状态灯重复；卡片以角标 01 Rhythm Map 为名）");
-  /* ③ v2.76.3：状态灯行搬进顶栏——时值卡左列只剩角标（经典主题 display:none）+ 音量组 */
+  /* ③ v2.76.3：状态灯行搬进顶栏——时值卡左列只剩角标（经典主题 display:none）+ 音量组
+     ★ v3.4.1（P3 去重）：顶栏状态行退化为「● 状态」两枚，型名搬去底栏常驻胶囊。 */
   const tb = slice("topbar");
-  ok(/class="status"/.test(tb) && /id="statusDot"/.test(tb) && /id="statusText"/.test(tb)
-     && /id="patternName"/.test(tb),
-    "★★ v2.76.3：状态灯行（型名/#statusDot/#statusText）整体在顶栏");
-  ok(tb.indexOf('id="patternName"') < tb.indexOf('class="lat-read"'),
-    "★★ v2.76.3：顶栏顺序——型名/状态在「补偿 0ms」左侧（三读数同一行）");
+  ok(/class="status"/.test(tb) && /id="statusDot"/.test(tb) && /id="statusText"/.test(tb),
+    "★★ 状态灯行（#statusDot/#statusText）在顶栏");
+  ok(!/id="patternName"/.test(tb),
+    "★★ v3.4.1（P3 去重）：顶栏**不再**有型名——原先与底栏胶囊同帧同值的重复面已消除");
+  ok(tb.indexOf('id="statusText"') < tb.indexOf('class="lat-read"'),
+    "★★ 顶栏顺序——状态在「补偿 0ms」左侧（同读数带）");
+  /* ★ v3.4.1：型名的唯一权威面 = 底栏胶囊（在 #presetLibBtn 内，fixed 常驻不随页面滚走） */
+  const bar = slice("playBar");
+  ok(/<button class="pb-ctx" id="presetLibBtn"/.test(bar)
+     && /<b class="pat-now" id="patternName">/.test(bar),
+    "★★ v3.4.1：#patternName 在底栏胶囊内（.pb-ctx > b.pat-now）——全页面唯一型名展示位");
+  ok(!/id="plbCurName"/.test(html),
+    "★★ v3.4.1：#plbCurName（v3.1.0 加的同源第二写点）已随去重一并删除");
   const h = slice("vizHead");
   ok(!/class="status"/.test(h) && !/id="statusDot"/.test(h),
     "★★ v2.76.3：时值卡左列不再有状态灯行（顶部 53px 对齐占位随之退役）");
@@ -240,8 +252,9 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
      && !/min-width:16em/.test(css),
     "★★ v2.76.3：状态行改顶栏原生——inline-flex、左列时代的 width:100% 与"
     + "#statusText 16em 定宽/margin-right:auto 退役（不再有「推到行尾对右缘」的场景）");
-  ok(/\.status \.pat-now\{[^}]*max-width:18em[^}]*white-space:nowrap/.test(css),
-    "★★ v2.76.3：型名顶栏截断——max-width:18em + 单行省略（顶栏空间有限，不把设置钮挤出窗）");
+  ok(/\.pb-ctx \.pat-now\{[^}]*max-width:22em[^}]*white-space:nowrap/.test(css),
+    "★★ 型名胶囊截断——max-width:22em + 单行省略（胶囊可用宽比顶栏充裕，故 18em→22em；"
+    + "nowrap 必需：少了它省略号失效、长型名折两行撑破 fixed 底栏高度）");
   ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:36px/.test(css),
     "★ v2.76.3：状态行入顶栏 36px 等高带（与补偿读数/设置/主题钮同高）");
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent\}/.test(css),
@@ -277,8 +290,8 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ v2.10.15：`.config` 规则随训练开关搬家一并清理（本文件已无使用者）");
   ok(!/^\.card-head-left-top/m.test(css),
     "★ v2.10.16：`.card-head-left-top` 上行包裹随标题删除一并清理");
-  ok(/^\.status \.pat-now\{/m.test(css),
-    "★ v2.10.17：`.status .pat-now`（状态灯行里的当前节奏型名）样式在位");
+  ok(/^\.pb-ctx \.pat-now\{/m.test(css) && !/^\.status \.pat-now\{/m.test(css),
+    "★ 型名样式在位且宿主已换——`.pb-ctx .pat-now`（底栏胶囊），`.status .pat-now` 旧规则不留死样式");
   ok(!/^\.page-foot/m.test(css) && !/^\.caption\{/m.test(css) && !/\.page-foot\{/m.test(css),
     "★ v2.11.1：`.page-foot` 与 `.caption` 的**规则**随文案区删除一并清理（内容移入使用方法；"
     + "清理注释里保留名字作纪念不算违规）");

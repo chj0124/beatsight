@@ -384,8 +384,12 @@ body.wide-full .main{max-width:none}
    margin-right:auto（把型名推到行尾跟 % 列对右缘）随场景一起退役；
    型名改 max-width 截断（顶栏空间有限），状态色语义（live/ok/bad）不变。
    高度 36px 由下方 .topbar 等高规则统一供给 */
+/* v3.4.1（P3 去重）：型名不再两处同帧同值，顶栏状态行只剩「● 状态」两枚（状态色语义不变） */
 .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--t3)}
-.status .pat-now{font-size:12px;font-weight:500;color:var(--t1);min-width:0;max-width:18em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* 顶栏截断：超长型名省略号，不把设置钮挤出窗 */
+/* v3.4.1：宿主从 .status 换成底栏胶囊 .pb-ctx。截断上限 18em→22em（胶囊独占一列、可用宽
+   比顶栏充裕）；nowrap 仍必需——少了它省略号失效、长型名折两行撑破 fixed 底栏栏高。
+   字号 12→13px 与胶囊其余文字对齐，同一枚钮内不再两级字号。 */
+.pb-ctx .pat-now{font-size:13px;font-weight:500;color:var(--t1);min-width:0;max-width:22em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* 胶囊截断：超长型名省略号，不把 ▾ 挤出钮 */
 .status:has(.dot.live){color:var(--green)}
 .status .dot{width:8px;height:8px;background:var(--t3)}
 .status .dot.live{background:var(--green)}
@@ -397,7 +401,9 @@ body.wide-full .main{max-width:none}
    meta（「4/4 拍 · N BPM」）删除（拍号/速度各有自己的显示面）。
    原 .pattern-head 三条规则、窄屏两条、观测台三条随元素一并清理，不留死样式。
    .pat-now：跳段行里的名字（两枚圆形键的右侧，行高由播放键撑起，垂直居中即可） */
-/* v2.10.17：.pat-now 从跳段行搬进状态灯行（「● 已停止　十六分满扫」），样式见 .status .pat-now */
+/* v2.10.17：.pat-now 从跳段行搬进状态灯行（「● 已停止　十六分满扫」） */
+/* v3.4.1：.pat-now 再从状态灯行搬进底栏常驻胶囊（#presetLibBtn）——P3 去重，
+   顶栏那份与胶囊那份曾同帧同值；样式见 .pb-ctx .pat-now */
 /* 页面底部提示行（v2.10.16）：与 .main 同源的左右内边距（桌面 24px + 安全区、窄屏 16px），
    上下各留一拍呼吸空间 */
 /* v2.11.1：页底文案区（.page-foot）整块删除——图例与快捷键提示移入「使用方法」；
@@ -683,7 +689,10 @@ body.wide-full .main{max-width:none}
 .play-btn{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(30,215,96,.35);flex:none}
 .play-btn:active{transform:scale(.96)}
 .group{display:flex;flex-direction:column;gap:10px}
-.group-label{font-size:11px;color:var(--t3)}
+/* v3.4.1（P4 字体层级）：组标签 11px→12.5px + 字重 500 + .04em 字距。原 11px 与顶栏
+   `.brand .ver`、`.ruler-lab` 那类**装饰性微标**同号，层级被抹平——组标签是「这一组是什么」
+   的导航锚点，该重一档；12.5px 取自既定阶梯（11/12.5/14/16/40）。装饰性微标一律不动。 */
+.group-label{font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：快捷档/±5/拍号在窄屏换行，而非溢出被 overflow-x:hidden 裁掉 */
 .viz-head .bpm-row{justify-content:space-between}   /* v2.11.0（用户要求）：BPM 组两行按钮拉伸到组宽后两端对齐——-5↔60 左缘对齐、+5↔120 右缘对齐（两行同宽由列布局 stretch 保证） */
 #sigRow.sig-lock .pill{opacity:.45;cursor:not-allowed}   /* v2.42.5：曲式期间锁定拍号（α 方案）——置灰示意，拦截在点击处理器 */
@@ -1743,11 +1752,12 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            · 「听辨训练」迁出顶栏 → 预设卡「编辑节奏型/编排曲式」行最左；
            · 「后台保活」迁出顶栏 → 设置·外观与辅助（环境开关归环境组）；
            顶栏自此只剩：延迟读数 / 设置 / 主题图标钮 -->
-    <!-- v2.76.3（用户要求）：状态行搬进顶栏——原在时值卡左列顶部，与「补偿 0ms」同行组成
-         「型名 · ● 状态 · 补偿」三读数带：练习中三个高频读数一眼齐读，且三卡顶部 53px
-         对齐占位（为与左卡头部对齐而生）随之退役。#patternName/#statusDot/#statusText
-         的 id 与刷新接线全部不动（搬块不换 id）；.status 样式改顶栏原生（见样式表） -->
-    <div class="status"><span class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</span><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+    <!-- v3.4.1（P3 去重）：型名从顶栏退役，只留在底栏常驻胶囊。原先顶栏 .status 与胶囊
+         **同帧写同值**（都是 p.name），两处一样的文字把「当前型名」劈成两处，无从判断哪处
+         权威；底栏 fixed 不随页面滚走，且胶囊本身就是预设库入口、名字是它的内容。
+         ★ #patternName 元素整体搬进胶囊（**不换 id**：8 个测试文件约 20 条断言拿它当锚点，
+           退役的只是容器）；#plbCurName 那个第二写点一并删除。 -->
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     <button class="lat-read" id="latChip" aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
     <button class="pill outline" id="settingsBtn">设置</button>
     <!-- 主题切换（v2.69.0，1.1）：搬块不换 id（#themeToggle）——冷键、点击回调、aria-pressed
@@ -1951,7 +1961,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            t57 入口映射 / 编辑·编排·听辨三条接线 / Presets 模块零改动。
          ★ 展开态会话级，不进热键载荷（练习界面默认收起）。 -->
     <!-- v3.3.0：控制行第 4 块整块退役——原「预设库卡片」的内容拆成三处：
-         ① #presetLibBtn + #plbCurName → 底栏左区上下文胶囊（入口，id 不变）；
+         ① #presetLibBtn（+ 当时的 #plbCurName）→ 底栏左区上下文胶囊（入口，id 不变）；
+            ★ v3.4.1：#plbCurName 已随 P3 去重退役，胶囊内型名改由顶栏搬来的 #patternName 承担。
          ② #argOpen / #editBtn / #earBtn + #loopPanel + #presetCount → 左侧面板顶部（id 不变）；
          ③ 卡片壳与 .plb-* 样式删除（第四格由「同屏行数 + 拍号」占据，见 .viz-rows-row）。
          ★ 为什么合并：预设库是"选型"，与"这一遍怎么练"的开关混在一张控制行里本来就是两件事；
@@ -2119,9 +2130,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      ★ 左区（上下文胶囊）与右区（进度条）在后续批次接入，本批只落容器与控制键。 -->
 <div class="play-bar" id="playBar" role="group" aria-label="播放控制">
   <!-- v3.3.0：左区 = 上下文入口胶囊（预设模式显示当前型名 / 曲式模式显示当前段名）。
-       ★ #presetLibBtn 与 #plbCurName 两个 id 从控制行第 4 块原样搬来：
-         接线（click → setPresetDrawer）、aria-expanded 写点、型名写点全部零改动。 -->
-  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false"><span class="pb-ctx-lab">当前</span><b id="plbCurName"></b><span class="pb-caret" aria-hidden="true">▾</span></button>
+       ★ v3.4.1（P3 去重）：#plbCurName 退役，#patternName 从顶栏原样搬进这里（不换 id）——
+         从此「当前型名」全页面只有这一处，且常驻底栏，正是这个读数该待的位置。 -->
+  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false"><span class="pb-ctx-lab">当前</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b><span class="pb-caret" aria-hidden="true">▾</span></button>
       <!-- 跳段 + 播放（v2.0.2 立；v2.10.14 大改）：贴在时值可视化正下方——播放中对着球与格子调段，
            视线不离开演奏区。
            ★ v2.10.14（用户要求③）：播放键从走带卡搬进本行、居「上一段 / 下一段」中间——
@@ -2903,23 +2914,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2935  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3564  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5168  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6037  Modal         应用内弹窗
-     L6175  Viz           时值可视化渲染与每帧动画
-     L9250  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9917  Trainer       变速训练器
-     L10119 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10733 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12132 Editor        自定义节奏型编辑器
-     L12578 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12625 Ear           听辨训练（v1.10.0）
-     L12845 Arrange       曲式编排（v2.0.0）
-     L15743 Help          使用方法（v2.0.1）
-     L15872 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15946 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16189 初始化（装配） 各模块 hook 接线与启动
+     L2946  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3575  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5179  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6048  Modal         应用内弹窗
+     L6186  Viz           时值可视化渲染与每帧动画
+     L9261  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9928  Trainer       变速训练器
+     L10130 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10744 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12142 Editor        自定义节奏型编辑器
+     L12588 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12635 Ear           听辨训练（v1.10.0）
+     L12855 Arrange       曲式编排（v2.0.0）
+     L15753 Help          使用方法（v2.0.1）
+     L15882 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L15956 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16199 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2945,7 +2956,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.4.0";
+const VERSION = "3.4.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -11856,9 +11867,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
     $("patternName").textContent = p.name;
-    /* v3.1.0：预设库卡片头部的「当前型名」与状态灯同源同帧（同一写点，避免两处分叉） */
-    const plbCur = $("plbCurName");
-    if (plbCur) plbCur.textContent = p.name;
+    /* v3.4.1：v3.1.0 那条同源同帧的第二写点（#plbCurName）随 P3 去重删除——型名全页面只剩
+       底栏胶囊里这一处，本写点即权威 */
     buildPresetList();
     /* v2.0.5（审计 P0-4）：先定 #fallbackNote 的显隐，再建网格——顺序不能反。
        buildViz 末尾会 cacheGeo() 采集行几何，而这条回退提示带（约 44px 高）就夹在

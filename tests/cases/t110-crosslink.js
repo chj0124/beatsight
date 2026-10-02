@@ -143,8 +143,9 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   ok(src.includes(".viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center"),
     "★★ v2.40.0：拍号面板 flex-direction:row——.group 基础 column + align-items:center 恰成水平居中"
     + "（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，同基线");
-  ok(/\.status \.pat-now\{[^}]*white-space:nowrap/.test(src),
-    "★ v2.40.0：型名单行省略——无 nowrap 时省略号失效、长型名折两行悬在状态行右上");
+  ok(/\.pb-ctx \.pat-now\{[^}]*white-space:nowrap/.test(src),
+    "★ 型名单行省略——无 nowrap 时省略号失效、长型名折两行撑破底栏胶囊（同 v2.40.0 原意，"
+    + "v3.4.1 起宿主为底栏胶囊 .pb-ctx）");
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
   /* v3.0.0：末轨 168px 给预设库块（右列窄块），「行数拍号」仍并入行 1 占第 4 轨 */
