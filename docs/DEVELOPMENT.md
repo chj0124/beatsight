@@ -1005,6 +1005,7 @@ bullet，回归见 `t89`。
 | 垂直剩余空间 | `margin-block:auto` 在 grid 下要求所在行**有剩余高度**才能分配；`.main` 因 `align-items:start` 全链无剩余高度时 auto 边距**恒为 0px**。v3.5.0 给 `.main` 补 `min-height: calc(100vh - var(--bar-h) - 24px)` + 同值 `100dvh` 双写（`vh` 在前作旧浏览器兜底 = 渐进增强）才让居中真正生效；减 `--bar-h` 是因底栏 fixed 不占流，内容高于一屏时 auto 自行归零、页面正常滚动 |
 | 可视化带几何 | `.bar-row` 高 `86px`、`.cell` 高 `44px`、弦距 `--gt:8.6px` 是**硬编码固定值，与同屏行数无关**（v3.5.0 逐档实测：1/2/3/4 档行高恒 86、格高恒 44、格宽只随视口宽变，1440 宽下格宽 87px ≈ 1.98:1）。**没有"按可用高度分配行高"这条路径**，改自适应即为回归——t166 T151d 把它钉成反向不变量 |
 | 触控下限 | 全站可点元素 **40px**（v3.6.0）。两条定义处必须同步：① `.pill{min-height:40px}`（pill 家族唯一定义）；② `.topbar .pill/.icon-btn/.lat-read/.status{height:40px}`——这条是**显式 height，会盖住 min-height**，只改 ① 会漏掉顶栏。取 40 而非 WCAG 2.5.5 的 44：AA 门槛（2.5.8）本已过，44 是 AAA 级，实测主列 +41px 而 40 只 +25px |
+| 开关参数槽 | `.viz-toggles .tg-slot{height:44px}` **固定** height（非 auto / 非 min-height），三开关开合时槽高与头区高度恒定（v3.3.1，v3.7.0 实测复核 8 组合：槽高恒 44 / 开关行 top 恒 374 / 头区高恒 366）。**三组共用一槽、`syncParamSlots` 仲裁**："谁最后被激活就显示谁"，故多开时槽内只显示一组——这是设计决定不是缺陷（L5748 反对臆造互斥）。三映射 `countIn→countInPanel` / `mute→muteCfgPanel` / `trainer→trainerPanel` 必须**逐个配对正确**，显隐只许仲裁写 |
 
 设计稿（可继续改）：`https://ardot.tencent.com/file/721823967024298`
 
