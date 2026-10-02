@@ -125,11 +125,11 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   /* v3.0.0 批 5：第 2 轨（BPM）从 `1fr` 改成 `minmax(min-content,312px)`、末轨 168 → 413px——
      用户要求"BPM 卡宽度与音量卡一致，腾出的空间给预设库（它要放 6 个入口按钮）"。
      两条刚性轨都保留 min-content 下限（v2.76.2 的 Windows 度量结论不变）。 */
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,312px) minmax(min-content,312px);justify-content:space-between;justify-content:safe space-between;"),
-    "★★ v3.3.1（用户澄清后定形）：控制行**拆成两行** —— 第一行三块（音量｜BPM｜同屏行数与拍号，"
-    + "三轨各 312px + space-between 拉开铺满），第二行 = 三开关 + 参数槽（跨满全宽，见下一条）；断点 1280；"
-    + "BPM 列与音量列同宽 312px；v2.76.2：首列/开关列改可收缩轨道（Windows 度量下"
-    + "刚性 312px+max-content 会顶穿容器 960 上限，用户实拍三卡压扁），safe center 溢出回退 start");
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,max-content) minmax(min-content,max-content);justify-content:center;justify-content:safe center;"),
+    "★★ v3.9.0（用户裁决，取代 v3.3.1 的 space-between 形态）：控制行仍是两行 —— 第一行三块"
+    + "（音量｜BPM｜同屏行数与拍号）**居中聚拢、列距 32px**，第二行 = 三开关 + 参数槽（同轴居中）；"
+    + "断点 1280；后两轨保留 min-content 下限（BPM 组内行最宽 ~610px，压到 312 会与邻组重叠），"
+    + "safe center 溢出回退 start");
   ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
     "★ v3.3.0：行数拍号行的单独去底补丁已删（四块统一无底后它成了死规则）");
   ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
@@ -149,13 +149,13 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
   /* v3.0.0：末轨 168px 给预设库块（右列窄块），「行数拍号」仍并入行 1 占第 4 轨 */
-  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));\n    justify-content:space-between;justify-content:safe space-between")
+  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));\n    justify-content:center;justify-content:safe center")
      && src.includes("@media (min-width:1900px)"),
-    "★★ 宽屏铺满（≥1900）：第一行三轨仍走 space-between 拉开、轨道下限仍保留 minmax(min-content)——"
-    + "空间不足时先内部折行而不是溢出（v2.76.2 的 Windows 度量结论不变）");
-ok(src.includes(".viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2}"),
-    "★★★ v3.3.1：三开关块 `grid-column:1 / -1` + `grid-row:2` —— **独占第二行、跨满全宽**"
-    + "（用户澄清：不是「块内三行合成一行」，而是这一块要自己占一行）");
+    "★★ 宽屏铺满（≥1900）：第一行三轨随 v3.9.0 改居中聚拢（列距 32px）、轨道下限仍保留"
+    + " minmax(min-content)——空间不足时先内部折行而不是溢出（v2.76.2 的 Windows 度量结论不变）");
+ok(src.includes(".viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}"),
+    "★★★ v3.3.1 立「三开关块独占第二行」+ v3.9.0 改**同轴居中**（justify-self:center + "
+    + "fit-content，随头部聚拢方案一起落位；不再跨满全宽）");
   ok(!src.includes("body.wide-full .viz-head-grid .viz-rows-row"),
     "★ v3.3.0：宽屏下「行数拍号复位」规则随显式占位一并删除（它原本就是为抵消 r2 跨列而写，现在没有可抵消的东西）");
   ok(src.includes(".viz-head-grid .viz-head{display:contents}")

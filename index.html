@@ -250,10 +250,13 @@ body.wide-full .main{max-width:none}
      合成一行，用户看到的仍是"开关和其他卡片内容同一行"。现改为两行：
        第一行 = 音量 ｜ BPM ｜ 同屏行数与拍号（三块，space-between 拉开铺满）
        第二行 = 三开关 + 参数槽（`grid-column:1 / -1` 跨满全宽，自己一行）
-     ★ space-between 而不是 center：三块居中会留下两侧大空白；拉开后左右贴边、与下方满宽行呼应。 */
-  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,312px) minmax(min-content,312px);justify-content:space-between;justify-content:safe space-between;
-    align-items:stretch;column-gap:14px;row-gap:12px;margin-bottom:0}
-  .viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2}
+     ★ v3.9.0（用户裁决，推翻上一行的 space-between 理由）：三块**居中聚拢、列距 32px**——
+       "拉开贴边与满宽网格呼应"以三块之间的大缝为代价（屏越宽缝越大，用户实拍判不可接受）；
+       聚拢后两侧对称留白按"工具栏"读法处理，不填充（刚在 v3.8.x 拆过大绿带，不再造填充物）。
+       行 2（开关+参数槽）同轴居中，与行 1 共用一条中轴线。 */
+  .viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,max-content) minmax(min-content,max-content);justify-content:center;justify-content:safe center;
+    align-items:stretch;column-gap:32px;row-gap:12px;margin-bottom:0}   /* ★ v3.9.0：后两轨保持 min-content 兜底（BPM 组内行最宽 ~610px、压到 312 会与邻组重叠——实拍抓过），上限放开让轨道随内容走；聚拢 = center + 32px 列距。1440 实测 312+610+~460+64 ≈ 1446 ≈ 满宽，恰好自然聚拢 */
+  .viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}
   .viz-head-grid .viz-head{display:contents}        /* 头行壳溶解：音量列与 BPM 成为独立网格项（v2.41.0 起真正生效） */
   .viz-head-grid .viz-toggles{flex-direction:column;align-items:flex-start;margin-bottom:0}
   /* 收起态：行 1 = 音量｜BPM｜开关｜预设库卡片（自动落第 4 轨）；行 2 左三列 = 同屏行数与拍号
@@ -271,7 +274,7 @@ body.wide-full .main{max-width:none}
      抽屉展开态不在此特化：v3.3.0 起预设库是左侧覆盖浮层，不再参与栅格（原"展开态行 2 满宽 /
      行数行下推行 3"的特化已随覆盖式改造删除）。 */
   body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));
-    justify-content:space-between;justify-content:safe space-between;column-gap:32px}
+    justify-content:center;justify-content:safe center;column-gap:32px}   /* v3.9.0：space-between → 居中聚拢（与 1280 档同口径；轨道保留 min-content 兜底，理由同上） */
 }
 /* ================= v3.0.0（PLAN-v9 批 0）：可视化带 + 预设库块/抽屉 =================
    可视化带 `#vizBand`：#viz / #lyricLane / 跳段播放行从时值卡片里**迁出**，不带卡片背景，
@@ -310,6 +313,12 @@ body.wide-full .main{max-width:none}
    而行槽各自横移不同的距离——一条静止的线对不上任何一行（行内的拍边界由格子自身描边给出）。
    批 2 若要把线跟着行走，需改成"每行一组"，那是行内 DOM，届时再议 */
 .viz.scroll-mode .grid-line{display:none}
+/* v3.9.0（用户反馈"预备拍道的竖线 Agent 说实现了但看不见"）：上面的豁免放行预备拍道内部的
+   竖线。竖线代码 v3.2.3 就在（rebuildCountLaneInto 建拍数−1 条 .grid-line），但被本条
+   display:none 连坐隐藏了——那条规则的理由（"线相对 #viz 定位、对不上横移的行槽"）对道内
+   竖线不成立：它们是**行内 DOM**、相对道自身定位、随道一起移动（正是当年设想的"每行一组"）。
+   预备拍道自此与内容道同款拍边界划分（骑缝 −0.5px、1px、同色）。 */
+.viz.scroll-mode .count-lane .grid-line{display:block}
 /* 歌词覆盖层在 scroll 下同样**只裁上下、不裁左右**（它是 #viz 的兄弟节点，不吃 #viz 的裁剪）。
    与 .viz.scroll-mode 同一口径：上下靠自身 height，左右靠 clip-path 外扩放开。 */
 .lyric-lane.overlay.scroll-clip{clip-path:inset(0 -2000px)}
@@ -878,22 +887,55 @@ input[type=range].vol{width:120px}
    进了 flex 行会和 gap 叠成 24px、看着又离开关远了 —— 在本行作用域内归零。
    ★ 同样只改这一行，不动全局 `.tr-panel`（将来若摆回独占位置，那份间距仍要留着） */
 .viz-toggles .tr-panel{margin-top:0}
-/* ★ v3.3.1：**公共参数槽**——恒存在、高度固定，三组参数共用（仲裁决定显示哪组）。
-   高度按"最满那一组"预留（见下方注释里的实测值）；单组内容在槽内垂直居中。 */
-.viz-toggles .tg-slot{height:44px;display:flex;align-items:center;min-width:0}
-.viz-toggles .tg-slot .tr-panel{margin:0;flex-wrap:nowrap;min-width:0}
+/* ★★ v3.9.0（用户裁决）：**共槽退役，三列固定槽位**——"三组参数共用一行槽、谁最后激活谁显示"
+   在实车上不好用（想同时看两组参数做不到、切开关时参数跳来跳去），且控制区空间足够。
+   新形状：tg-row / tg-slot 两层壳 **display:contents 溶解**进 tg-body 的同一张三列网格——
+   上行三枚开关、下行三组参数，列宽 = max(开关, 参数) 内容自适应，每组参数永远落在
+   自己开关正下方那列（同一张网格 → 列对齐是结构保证，不靠两行轨道凑数）。
+   ★ 显式 grid-area 钉位：display:none 的面板不占格，不钉位的话剩下的面板会被
+     auto-placement 挪进第 1 列、列对齐就散了。
+   ★ 参数行高度钉死 76px（grid-template-rows 第二轨，按最满那组 = 变速训练
+     "一行输入 + 两行拒开原因" 的实测高度预留）：三开关开合时块内高度一字不变，
+     v3.3.1 的零跳动契约原样保留。 */
+.viz-head-grid .viz-toggles .tg-body{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto 76px;gap:10px 24px;justify-content:start}   /* ★ 作用域必须钉在 .viz-toggles 内——.tg-body 这个类名在音量组与 BPM 组里也在用（各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车） */
+.viz-toggles .tg-row{display:contents}
+.viz-toggles .tg-slot{display:contents}
+.viz-toggles .tg-row .toggle-pill#countInToggle{grid-area:1/1}
+.viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:1/2}
+.viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:1/3}
+.viz-toggles .tg-slot .tr-panel{margin:0;flex-wrap:wrap;min-width:0;align-content:center}
+.viz-toggles .tg-slot .tr-panel#countInPanel{grid-area:2/1}
+.viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:2/2}
+.viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:2/3}
 .viz-toggles .tg-slot .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-slot .lab{font-size:11px;white-space:nowrap}
-/* 开关行：三枚开关同行，行距固定（不再让 space-evenly 把自由空间摊到行距上） */
-.viz-toggles .tg-row#tgSwitchRow{gap:8px}
+/* v3.9.0：进度/拒开文案封顶——列宽 = 列内 max-content，文案一变长整列就变宽、
+   居中的整块随之横移（练琴中途开关左右跳，不可接受）。封顶后文案在列内换行，
+   列宽恒定，76px 行高足够容纳两行文案（实测 "先填一个大于当前速度的目标 BPM…" = 2 行）。 */
+.viz-toggles .tg-slot .tr-prog{max-width:312px}
+/* 窄屏（≤759.9）：**手风琴式单列**——三列 118px 装不下任何一组参数（换行爆高，实拍翻过车）。
+   改为每组一对纵排：开关在上、参数紧跟其下（显式钉行，隐藏面板的行自动塌缩归零）；
+   justify-items:start 防 pill 被拉伸后文字居中（左贴契约，偏 4.5px 实测翻过车）。
+   开合时后面的组顺移（标准手风琴行为）；零跳动钉死只在桌面档承诺。 */
+@media (max-width:759.9px){
+  .viz-head-grid .viz-toggles .tg-body{grid-template-columns:minmax(0,1fr);grid-template-rows:none;justify-items:start}
+  .viz-toggles .tg-row .toggle-pill#countInToggle{grid-area:1/1}
+  .viz-toggles .tg-slot .tr-panel#countInPanel{grid-area:2/1}
+  .viz-toggles .tg-row .toggle-pill#muteToggle{grid-area:3/1}
+  .viz-toggles .tg-slot .tr-panel#muteCfgPanel{grid-area:4/1}
+  .viz-toggles .tg-row .toggle-pill#trainerToggle{grid-area:5/1}
+  .viz-toggles .tg-slot .tr-panel#trainerPanel{grid-area:6/1}
+}
 /* 同行参数要能塞进开关那一行：下拉收窄、字号降一档、字距压紧——否则它会折到第二行，
    那样"同行"就白搬了（实测桌面 312px 列宽下会折行） */
 .viz-toggles .tg-row .tr-inline .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-row .tr-inline .lab{font-size:11px;white-space:nowrap}
-/* ★ v3.3.1 起容器不再需要 min-height：块内高度由**固定高度的参数槽**天然保证
+/* ★ v3.3.1 起容器不再需要 min-height：块内高度由**参数行的 min-height 钉死**天然保证
    （v3.3.0 用过 `.tg-body{min-height:244px}`，它只稳住了容器总高，没稳住里面的行——
-    space-evenly 会把变化的自由空间摊成行距，开关照样上下跳；真机实测 197/241 两态）。 */
-.viz-head-grid .viz-toggles .tg-body{justify-content:flex-start;gap:8px}
+    space-evenly 会把变化的自由空间摊成行距，开关照样上下跳；真机实测 197/241 两态）。
+   ★ v3.9.0：gap 收口到 24px 列距（本条 (0,3,0) 特异性高于 .tg-body 基础规则，
+     不改这里列距会被压回 8px——三列布局的列距单一来源在此） */
+.viz-head-grid .viz-toggles .tg-body{justify-content:flex-start;gap:10px 24px}
 /* 同屏行数档位（v2.8.0 req3）：时值可视化卡片顶部、开关行之下、网格之上。
    flex + gap + 下方留白（原先这句写的是"与 .limit-panel 同一套写法"，
    那个类随练习量一起删了，v2.10.12 起改为自述）；
@@ -1944,20 +1986,21 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
     <div class="viz-toggles">
       <div class="tg-body">
       <!-- ★ v3.3.1（用户拍板）：三个开关**合并为一行**（它们都是"这一遍怎么练"的开算子，
-           原来各占一行显得散），各自的参数下沉到下面那个**恒定高度的公共参数槽**里。 -->
+           原来各占一行显得散）。
+           ★ v3.9.0：本行与下面的参数槽改为**同款三等列网格**——每组参数永远落在
+             自己开关正下方那列，显隐各管各（syncParamSlots 只看本组开关）。 -->
       <div class="tg-row" id="tgSwitchRow">
         <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备拍<span class="switch"></span></button>
         <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音拍<span class="switch"></span></button>
         <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练<span class="switch"></span></button>
       </div>
-      <!-- ★ v3.3.1：**公共参数槽**——恒存在、高度固定（按最满那一组预留）。
-           三组参数（预备拍拍数 / 静音拍每N·静M+随机 / 变速训练目标+步长+等级+进度）
-           共用这一行，由 syncParamSlots 仲裁"最后激活的那一组显示"。
-           ★ 为什么槽要"恒存在"：v3.3.0 只给容器加了 min-height，容器高度稳了、但
-             里面三行开关仍被 space-evenly 把变化的自由空间摊到行距上 → 开关位置照旧上下跳。
-             固定高度的槽让块内内容高度**天然恒定**，行距不再有"可摊的自由空间"。
-           ★ 空目标不再弹窗拒开（方案甲）：点变速训练时若目标为空，就**把槽打开、焦点送进目标框**
-             （见 trainerToggle 处理器）——否则目标搬进槽后，点开关没反应又找不到输入框，就是死锁。 -->
+      <!-- ★ v3.9.0：**三列固定槽位**（原 v3.3.1 共槽仲裁退役——用户实测"想同时看两组做不到、
+           切开关参数跳来跳去"，且控制区空间足够不再需要省地）。
+           三列 1fr 轨道与本行开关列一一同轴；面板显式 grid-column 钉位（display:none 不占格，
+           不钉位剩下的面板会被 auto-placement 挪进第 1 列）。槽高仍恒定（按最满那组预留），
+           三开关开合时块内高度一字不变——v3.3.1 的零跳动契约原样保留。
+           ★ 空目标不弹窗拒开（方案甲，v3.3.1 立）：点变速训练时若目标为空，openParamSlot
+             把这一列参数摆出来、焦点送进目标框（见 trainerToggle 处理器）。 -->
       <div class="tg-slot" id="tgSlot">
         <div class="tr-panel" id="countInPanel" hidden>
           <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍拍数"><span class="hint">拍</span></span>
@@ -2940,23 +2983,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L2972  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3601  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5205  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6074  Modal         应用内弹窗
-     L6212  Viz           时值可视化渲染与每帧动画
-     L9287  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9954  Trainer       变速训练器
-     L10156 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10770 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12168 Editor        自定义节奏型编辑器
-     L12614 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12661 Ear           听辨训练（v1.10.0）
-     L12881 Arrange       曲式编排（v2.0.0）
-     L15779 Help          使用方法（v2.0.1）
-     L15908 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L15982 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16225 初始化（装配） 各模块 hook 接线与启动
+     L3015  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3644  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5248  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6105  Modal         应用内弹窗
+     L6243  Viz           时值可视化渲染与每帧动画
+     L9330  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L9997  Trainer       变速训练器
+     L10199 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10813 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12211 Editor        自定义节奏型编辑器
+     L12657 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12704 Ear           听辨训练（v1.10.0）
+     L12924 Arrange       曲式编排（v2.0.0）
+     L15822 Help          使用方法（v2.0.1）
+     L15951 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16025 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16268 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -2982,7 +3025,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.8.0";
+const VERSION = "3.9.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5211,46 +5254,34 @@ const customs = Store.customs;
 /** @type {(id: string) => any} */
 const $ = id => document.getElementById(id);
 
-/* v3.3.1：**开关参数槽仲裁**——预备拍 / 静音拍 / 变速训练各带一组参数（拍数 / 每N·静M+随机 /
-   目标+步长+等级+进度），三组**共用卡片底部同一行槽**（#tgSlot）：谁最后被激活就显示谁。
-   ★ 不做互斥：L5748 明确反对臆造互斥（"试听/播放两态合法共存"同一条纪律）——三个功能照常
-     生效，本函数只决定"哪一组参数占着槽"，不改任何开关语义。
-   ★ 切换路径：点另一枚开关（各自回调里调本函数切槽）。
-   ★ 各自的开关仍决定"自己的参数能否显示"——开关关掉时它那一组必然不显示（force 除外）。
-   @param {string} [activate] 传入则把槽切给这一组（"countIn" / "mute" / "trainer"） */
-let paramSlotActive = "";
+/* v3.3.1 → v3.9.0：开关参数区从「共槽仲裁」改为**三列固定槽位、各管各**。
+   v3.3.1 的形状是三组共用一行槽（#tgSlot）、syncParamSlots 仲裁"谁最后激活谁显示"；
+   用户实测裁决退役：想同时看两组参数做不到、切开关时参数跳来跳去，不好用——
+   且控制区空间足够，不再需要靠共槽省地（布局见样式表 .tg-slot 的三列网格）。
+   ★ 不做互斥的纪律原样保留（L5748）：三个功能照常共存，本函数只让每组参数
+     跟随**自己的开关**显隐，组与组零干扰。
+   ★ "最后激活占槽"的记账（旧名 paramSlotActive）随仲裁一并退役；paramSlotForce 保留——
+     它服务的是"点变速训练但目标为空"的开槽待填路径（openParamSlot），
+     对应开关一旦真的打开，force 使命完成、就地解除。 */
 /* "只读展示"：某开关**没开**也要把它的参数摆出来（目前只有一处——点变速训练但目标为空时，
    把槽打开让用户就地填目标；见 trainerToggle 处理器）。值为某一组名时该组强制显示。 */
 let paramSlotForce = "";
-function syncParamSlots(/** @type {string} */ activate = ""){
-  if (activate){
-    paramSlotActive = activate;
-    if (activate !== paramSlotForce) paramSlotForce = "";   // 用户主动切了槽 → 解除只读展示
-  }
+function syncParamSlots(){
   /* ★ 类型闸门（CI 的 tsc）要求：用字符串变量索引字面量对象必须给索引签名，
-     否则报 TS7053（本地 node_modules 缺失时 tsc 是 ⊘，只有 CI 能拦——本处就是被 CI 抓出来的）。 */
+     否则报 TS7053（本地 node_modules 缺失时 tsc 是 ⊘，只有 CI 能拦）。 */
   /** @type {Record<string, boolean>} */
   const on = { countIn: !!S.countIn.on, mute: !!S.mute, trainer: !!S.trainer.on };
-  /** @type {string[]} */
-  const order = ["countIn", "mute", "trainer"];
-  /** @type {string} */
-  let show = "";
-  if (paramSlotForce && !on[paramSlotForce]){
-    show = paramSlotForce;
-  } else {
-    const open = order.filter(k => on[k]);
-    if (open.length) show = (open.indexOf(paramSlotActive) >= 0) ? paramSlotActive : open[open.length - 1];
-  }
   /** @type {Record<string, string>} */
   const map = { countIn: "countInPanel", mute: "muteCfgPanel", trainer: "trainerPanel" };
-  for (const k of order){
+  for (const k of Object.keys(map)){
+    if (on[k] && paramSlotForce === k) paramSlotForce = "";
     const el = $(map[k]);
-    if (el) el.hidden = (show !== k);
+    if (el) el.hidden = !(on[k] || paramSlotForce === k);
   }
 }
-/* 把槽打开给某一组看（不依赖它的开关是否开着）——空目标拒开的替代路径 */
+/* 把某一组的参数摆出来（不依赖它的开关是否开着）——空目标拒开的替代路径 */
 function openParamSlot(/** @type {string} */ name){
-  paramSlotForce = name; paramSlotActive = name; syncParamSlots();
+  paramSlotForce = name; syncParamSlots();
 }
 
 /* 清空容器（v2.0.3 审计 C1）：全文件 11 处「先清空、再逐个 appendChild」的渲染函数，
@@ -7711,12 +7742,21 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        天然跟随行的实时位置。交接/恢复：道隐藏、row0 复位（对称写点见
        paintFrameBody 正常分支与 applyScrollRest）。 */
     countLaneEl = document.createElement("div");
-    countLaneEl.className = "bar-row";
+    /* v3.9.0：补 count-lane 专用类——道内竖线（rebuildCountLaneInto 的 .grid-line）需要一条
+       豁免规则（见样式表 .viz.scroll-mode .count-lane .grid-line），没有类名就没挂点。 */
+    countLaneEl.className = "bar-row count-lane";
     countLaneEl.style.position = "absolute";
     countLaneEl.style.top = "0"; countLaneEl.style.left = "0"; countLaneEl.style.margin = "0";
     countLaneEl.style.display = "none"; countLaneEl.style.zIndex = "3";
     rowEls[0].appendChild(countLaneEl);
     buildRowLayers(0, countLaneEl, vizHasStrum(), 0);   // 数据区函数（hasStr 是行循环局部，此处不可见）
+    /* ★★ v3.9.0（用户实拍"预备拍≠4 时跑道一瞬间变成 4 拍长"）：buildRowLayers 按**拍号**建道
+       （4/4 → 4 拍结构），而道应在的长度是**预备拍拍数**。重建（每小节/翻页都会走）与
+       下一帧 paintBall 守卫的重塑之间存在竞态窗口——窗口里道是 4 拍结构，任何一条把
+       新道提前示出的路径都会让用户看到"一瞬间的 4 拍"。修法：**建完立刻按预备拍拍数
+       重塑**，让 4 拍结构从头就不存在（竞态无从谈起）；播放中 ciBeats 恒等于
+       S.countIn.beats，未播放时道恒 display:none、结构无观感。 */
+    rebuildCountLaneInto(countLaneEl, S.countIn.beats || rowBeats(), vizHasStrum());
     zoneEls.pop(); strumLayers.pop(); rulerEls.pop();   // 预备拍道不进逐帧行注册表
     /* v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）。
        ★★ v3.0.0 批 4：scroll 下**必须采两次**（第二次在设完 #viz 高度之后）。
@@ -8011,10 +8051,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
   /* 预备拍道结构重建（v3.2.2/v3.2.3）：拍区/弦线/竖线/拍号按 ciBeats 对齐
      buildRowLayers 的层序；判据 children.length（桩元素无 querySelectorAll）；
-     清空用 removeChild 循环（桩的 textContent 赋值不清 children） */
+     清空用 removeChild 循环（桩的 textContent 赋值不清 children）
+     ★ v3.9.0 修 want 公式：实际子元素 = 拍区 n + 竖线 n−1 + 拍号 n + 弦线 2（hasStr）
+       = 3n−1+2·hasStr，旧式 2n+2·hasStr 少算了 v3.2.3 加的竖线——后果是判据永不成立、
+       守卫**每一帧**都在拆了重建整条道（白耗且让道结构常驻抖动）。 */
   /** @param {HTMLElement} el @param {number} nBeats @param {boolean} hasStr */
   function rebuildCountLaneInto(el, nBeats, hasStr){
-    const want = nBeats * 2 + (hasStr ? 2 : 0);
+    const want = nBeats * 3 - 1 + (hasStr ? 2 : 0);
     if (el.children.length === want) return;
     while (el.children.length) el.removeChild(el.children[0]);
     for (let k = 0; k < nBeats; k++){
@@ -10088,7 +10131,7 @@ const Trainer = (() => {
     }
     S.trainer.on = !S.trainer.on;
     setToggle("trainerToggle", S.trainer.on);
-    syncParamSlots("trainer");   // v3.3.0：点开关即把参数槽切给自己（用户拍板的"两条切换路"之一）
+    syncParamSlots();   // v3.9.0：显隐各管各，本组参数跟随本开关（共槽仲裁已退役）
     /* 开启 → 记下起点（= 此刻的当前 BPM）。★ 不再跳速度：起点就是当前速度，
        开开关这件事本身不该改变你正在弹的速度 */
     if (S.trainer.on) reset();
@@ -10591,7 +10634,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
 
   bindToggle("muteToggle", () => (S.mute = !S.mute), () => {
     Viz.syncMuteBars();
-    syncParamSlots("mute");   // v3.3.0：切槽 + 显隐统一由仲裁决定（原本直接写 hidden）
+    syncParamSlots();   // v3.9.0：显隐各管各（共槽仲裁已退役）
     $("muteRandomToggle").hidden = !S.mute;   // v2.76.0（item 3）：随机子开关跟静音拍开关同进退
   });
 
@@ -10698,7 +10741,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   bindToggle("countInToggle", () => (S.countIn.on = !S.countIn.on),
     () => {
       $("countInBeatsWrap").hidden = !S.countIn.on;   // 拍数输入随开关显隐（t30 的判据不变）
-      syncParamSlots("countIn");                      // v3.3.1：参数槽切给预备拍那一组
+      syncParamSlots();                      // v3.9.0：预备拍参数跟随本开关显隐
     });
   $("countInBeats").addEventListener("change", (/** @type {Event} */ e) => {
     let v = Math.round(+evTarget(e).value);
@@ -15340,7 +15383,7 @@ const Arrange = (() => {
     if (!a || secIdx < 0) return;
     if (!S.trainer.on){ S.trainer.on = true; }             // 歌词行循环天然配爬坡（协议默认）
     setToggle("trainerToggle", true);                      // 训练面板与开关态同步（协议路径不经过 toggle 处理器）
-    syncParamSlots("trainer");                             // v3.3.0：协议路径也走槽仲裁（不直接写 hidden）
+    syncParamSlots();                             // v3.9.0：协议路径同样走统一收敛（不直接写 hidden）
     setMode("playMode", "arrange", "歌词行循环");           // playMode 唯一写入口（t66 契约）
     /* v2.10.7：from/to 已改按小节存——歌词行循环的身份仍是"段"（byLyric），写入的是该段的
        起止小节区间；循环边界按段内绝对 tick 计算的原口径不变（回卷只发生在段尾） */
@@ -16696,6 +16739,11 @@ $("vizLegendClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   S.vizLegend = false;
   $("vizLegend").hidden = true;
   Store.persist();
+  /* v3.9.0（用户实拍"关掉图例后跑道错位、开播才恢复"）：图例条占的高度一消失，
+     每条跑道的真实 top 都上移了，但逐帧定位读的是 cacheGeo 的**旧 top** —— 不重采就错位。
+     与 rulerLabToggle / durLabelToggle 同一条纪律（改了布局高度就 Viz.relayout()）：
+     停止态走 buildViz 全量重摆、播放态下一帧用新几何重写。 */
+  Viz.relayout();
 });
 
 /* 后台保活开关（v1.4）：扳动即刻生效（播放中打开立即申请，关闭立即释放） */

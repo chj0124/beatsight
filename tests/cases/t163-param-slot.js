@@ -1,33 +1,27 @@
-/* BeatSight 自动化测试 · 开关参数槽（v3.3.1 定稿形状）
+/* BeatSight 自动化测试 · 开关参数区（v3.9.0 三列固定槽位定稿形状）
    T163 系列。
    ---------------------------------------------------------------------------
-   用户第二轮实测反馈："卡片变形问题虽然解决了，但随着静音拍或者变速训练的打开或关闭，
-   卡片内部的元素**依然会大幅度移动**。"
+   ★ v3.9.0 形状变更（用户裁决）：v3.3.1 的「三组参数共用一行槽 + 谁最后激活谁显示」
+     退役——用户实测"想同时看两组参数做不到、切开关时参数跳来跳去，不好用"，
+     且控制区空间足够，不再需要靠共槽省地。
+   新形状：
+     · tg-body = 一张三列网格（auto auto auto，列宽 = 列内 max-content），
+       上行三枚开关、下行三组参数（tg-row / tg-slot 两层壳 display:contents 溶解进来）；
+       每组参数永远落在自己开关正下方那列，显隐各管各（syncParamSlots 只看本组开关）。
+     · 显式 grid-area 钉位：display:none 的面板不占格，不钉位的话剩下的面板会被
+       auto-placement 挪进第 1 列、列对齐就散了。
+     · 零跳动契约原样保留，落点换成网格第二轨（参数行）恒 76px——
+       三开关任一开合，块内高度一字不变（真机几何由 tools/smoke.js 复核）。
+   ★ 本文件钉结构与源码级契约。 */
 
-   根因是两层，v3.3.0 只解决了第一层：
-     ① **容器总高**：靠 `.tg-body{min-height:244px}` 稳住 —— 高度确实不抖了；
-     ② **行位置**：三个开关各占一行 + `justify-content:space-evenly`，而 space-evenly 会把
-        **变化的自由空间摊到行距上** —— 内容一高，自由空间变小，三行整体上移
-        （真机实测：全关 197px / 变速训练参数占一行 241px，两态行位置整体平移）。
-   本轮的正面解（用户拍板）：
-     · 三个开关**合并为一行**（`#tgSwitchRow`）——它们都是"这一遍怎么练"的开算子，原来各占一行；
-     · 参数下沉到**恒定高度的公共参数槽**（`#tgSlot`）——块内内容高度天然恒定，
-       行距不再有"可摊的自由空间"，故开关位置与四块宽度逐像素不动；
-     · 三组参数（拍数 / 每N·静M+随机 / 目标+步长+等级+进度）共用槽，`syncParamSlots` 仲裁
-       "最后激活的那一组显示"；**不做互斥**（与"试听/播放两态合法共存"同一条纪律，见 L5748）。
-     · 空目标不再弹窗拒开（方案甲）：目标搬进槽后弹窗会**死锁**（点开关没反应、又看不到输入框），
-       改成"把槽打开 + 焦点送进目标框 + 原因就地写在进度行"。
-
-   ★ 本文件钉结构与源码级契约；"四态下开关位置逐像素相同"这条要真实几何，由 tools/smoke.js 复核。 */
-
-const { section, ok, eq } = require("../lib/harness");
+const { section, ok } = require("../lib/harness");
 const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..", "..");
 const src = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
-section("T163a 结构 · 三开关一行 + 恒定高度参数槽");
+section("T163a 结构 · 三开关一行 + 参数行三列网格");
 
 const rowStart = src.indexOf('<div class="tg-row" id="tgSwitchRow">');
 const rowEnd = src.indexOf("</div>", rowStart);
@@ -36,15 +30,18 @@ const row = src.slice(rowStart, rowEnd);
 ["countInToggle", "muteToggle", "trainerToggle"].forEach(id => {
   ok(row.includes('id="' + id + '"'), "★ 三枚开关同在**一行**之内：" + id);
 });
-ok(/\.viz-toggles \.tg-slot\{height:\d+px;display:flex;align-items:center/.test(src),
-  "★★ 参数槽 #tgSlot 用**固定 height**（不是 min-height）——块内高度天然恒定，"
-  + "行距不再有可摊的自由空间（这正是 v3.3.0 用 min-height 没解决的那一半）");
-ok(!/\.viz-head-grid \.viz-toggles \.tg-body\{min-height:/.test(src),
-  "★ 容器上的 min-height 已撤（槽接手了这件事；两层机制并存既是双保险也是双借口）");
+/* 三列网格钉在 .viz-toggles 作用域内——.tg-body 这个类名在音量组与 BPM 组里也在用
+   （各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车）。 */
+ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto 76px/.test(src),
+  "★★ tg-body（开关块）= 三列网格 + 参数行第二轨恒 76px（零跳动承重墙；"
+  + "作用域钉在 .viz-toggles 内，不误伤音量/BPM 组的同名包装层）");
+ok(/\.viz-toggles \.tg-row\{display:contents\}/.test(src) && /\.viz-toggles \.tg-slot\{display:contents\}/.test(src),
+  "★★ tg-row / tg-slot 两层壳 display:contents 溶解进同一张网格（开关与参数同格共轨，"
+  + "列对齐是结构保证，不靠两行轨道凑数）");
 
 const slotStart = src.indexOf('<div class="tg-slot" id="tgSlot">');
 const slot = slotStart > 0 ? src.slice(slotStart, slotStart + 4000) : "";
-ok(slotStart > 0, "找到参数槽");
+ok(slotStart > 0, "找到参数槽（壳）");
 ["countInPanel", "muteCfgPanel", "trainerPanel"].forEach(id => {
   ok(slot.includes('id="' + id + '"'), "★ 三组参数面板都在槽内：" + id);
 });
@@ -53,33 +50,64 @@ ok(slotStart > 0, "找到参数槽");
     "★★ 小参数也搬进槽（" + id + "）——开关行只剩三枚开关，行宽不再随开合变化");
 });
 ok(slot.includes('id="trainerProg"'), "★ 训练进度行随整组参数搬进槽（就地读进度 / 读拒开原因）");
+/* 显式钉位：display:none 的面板不占格，不钉位的话剩下的面板会被 auto-placement 挪位 */
+["countInToggle|1/1", "muteToggle|1/2", "trainerToggle|1/3",
+ "countInPanel|2/1", "muteCfgPanel|2/2", "trainerPanel|2/3"].forEach(pair => {
+  const [id, area] = pair.split("|");
+  ok(new RegExp("\\#" + id + "\\{grid-area:" + area.replace(/\//g, "\\/") + "\\}").test(src),
+    "★★ " + id + " 显式钉位 grid-area:" + area + "（不钉位则 display:none 一变，列对齐就散）");
+});
 
-section("T163b 仲裁 · 三组共用一个槽（不互斥）");
+section("T163b 显隐 · 各管各（共槽仲裁退役，不互斥纪律保留）");
 
-ok(/function syncParamSlots\(/.test(src), "★ syncParamSlots 存在");
+ok(/function syncParamSlots\(\)/.test(src), "★ syncParamSlots 存在（无参收敛形态）");
+ok(!/let paramSlotActive|paramSlotActive\s*=/.test(src),
+  "★★ 「最后激活占槽」的记账变量（paramSlotActive）已随仲裁一并退役——留着没人写它就是死状态"
+  + "（断言钉变量声明与赋值，注释里的历史名不判红）");
+ok(/el\.hidden = !\(on\[k\] \|\| paramSlotForce === k\)/.test(src),
+  "★★ 每组参数的显隐 = 自己的开关（+force 例外）——组与组零干扰，同时可看任意几组");
 ok(/countIn: !!S\.countIn\.on, mute: !!S\.mute, trainer: !!S\.trainer\.on/.test(src),
-  "★★ 三个开关都是判据的一部分（不是两两互斥，也不是只看两组）");
-ok(/if \(paramSlotForce && !on\[paramSlotForce\]\)/.test(src),
-  "★★ force 分支：某组开关**没开**也能把它的参数摆出来（空目标那条路径靠它）");
+  "★★ on 逐项来自真实开关状态（!!S.countIn.on / !!S.mute / !!S.trainer.on）——"
+  + "出现任何常量 true/false 都是互斥退化");
+ok(!/show !== k/.test(src),
+  "★★ 旧的“show 仲裁”写法已退役（el.hidden = (show !== k) 不应再出现）");
 ok(/function openParamSlot\(/.test(src), "★ openParamSlot 存在（只读展示的入口）");
 {
   const fnBody = src.slice(src.indexOf("function syncParamSlots"), src.indexOf("function openParamSlot"));
   ok(!/S\.(mute|trainer|countIn)\s*=/.test(fnBody),
-    "★★ 仲裁**不改开关状态**——只决定显示哪组参数，三个功能照常生效");
+    "★★ 显隐函数**不改开关状态**——只决定参数跟不跟随开关显示，三个功能照常生效");
 }
-["countIn", "mute", "trainer"].forEach(k => {
-  ok(src.includes('syncParamSlots("' + k + '")'),
-    "★ 点对应开关即把槽切给自己：" + k);
+ok((src.match(/syncParamSlots\("/g) || []).length === 0,
+  "★★ 全部调用点已改为无参收敛（旧的 syncParamSlots(\"countIn\") 切槽语义不存在了）");
+/* 三面板的 hidden 只由 syncParamSlots 写（散在各处的直接赋值会与统一显隐打架） */
+const PANELS = ["countInPanel", "muteCfgPanel", "trainerPanel"];
+const directWrites = [];
+for (const p of PANELS) {
+  const re = new RegExp("\\$\\(\\s*[\"']" + p + "[\"']\\s*\\)\\s*\\.hidden\\s*=\\s*(?!=)[^;\\n]+", "g");
+  const hits = src.match(re) || [];
+  for (const h of hits) directWrites.push(p + ": " + h.trim());
+}
+ok(directWrites.length === 0,
+  "★★ 三个参数面板不得在 syncParamSlots 之外被直接写 .hidden（实测 " + directWrites.length + " 处）"
+  + (directWrites.length ? "：" + directWrites.join(" | ").slice(0, 140) : ""));
+/* 面板映射仍须逐个正确（面板 id ↔ 开关组） */
+const PAIRS = [["countIn", "countInPanel"], ["mute", "muteCfgPanel"], ["trainer", "trainerPanel"]];
+const mapSeg = src.slice(src.indexOf("function syncParamSlots"), src.indexOf("function openParamSlot"));
+const wrongPairs = PAIRS.filter(([k, v]) => {
+  const re = new RegExp(k + ':\\s*"(\\w+)"');
+  const m = re.exec(mapSeg);
+  return !m || m[1] !== v;
 });
-ok((src.match(/\.hidden = \(show !== k\)/g) || []).length > 0,
-  "★★ 三组面板的 hidden 只由仲裁函数写（散在各处的直接赋值已全部收口）");
+ok(wrongPairs.length === 0,
+  "★★ 三组配对必须逐个正确：countIn→countInPanel、mute→muteCfgPanel、trainer→trainerPanel"
+  + (wrongPairs.length ? "（错配：" + wrongPairs.map(([k]) => k).join(",") + "）" : ""));
 
 section("T163c 空目标 · 不再弹窗拒开（改为开槽 + 就地提示）");
 
 ok(!src.includes('Modal.uiAlert("还没设目标'),
-  "★★ 空目标的弹窗拒开已删除——目标搬进槽后弹窗会死锁（点开关没反应又找不到输入框）");
+  "★★ 空目标的弹窗拒开已删除——目标搬进参数区后弹窗会死锁（点开关没反应又找不到输入框）");
 ok(src.includes("openSlotForTarget") && src.includes('openParamSlot("trainer")'),
-  "★★ 改为把槽打开（openParamSlot）——目标框摆到用户眼前");
+  "★★ 改为把参数区打开（openParamSlot）——目标框摆到用户眼前");
 ok(/if \(t && typeof t\.focus === "function"\) t\.focus\(\);/.test(src),
   "★ 并把焦点送进目标框（少点一次、也不用猜该去哪儿填）");
 ok(/prog\.textContent = why;/.test(src),

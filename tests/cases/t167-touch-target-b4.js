@@ -74,23 +74,18 @@ section("T152b 没有把高度压回 40px 以下的局部覆盖");
 }
 
 /* ================= T152c：有高度契约的两处不被牵动 ================= */
-section("T152c 底栏 --bar-h 与参数槽 #tgSlot 不受本批影响");
+section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
 {
   ok(/:root\{[^}]*--bar-h:\s*96px/.test(CSS) || /--bar-h:\s*96px/.test(CSS),
     "★★ 底栏 --bar-h 仍是 96px（实测加 min-height 后底栏高不变，此值不得被 pill 改动牵动）");
-  /* 参数槽恒高：v3.3.1「三开关任一开合时头区高度不变」全靠这条。
-     实测 8 种组合槽高恒 44px——它若被 pill 顶高，那条稳定性就破了。
-     ★ M8 变异（把某处 44px 改成 48px）曾放过这条断言：第一版写的是宽泛的
-       /height:44px/，而文件里 44px 有好几处（`.tg-slot .loop-sel` 的 min-width、
-       `#bpmPresetRow .pill` 的 min-width 等），改一处不影响"44px 这个字符串还在不在"。
-       教训与上面同源：**锚在真实选择器上**，不是锚在数值上。
-       另：真实选择器是 `.viz-toggles .tg-slot`（不是 `#tgSlot`——那是 DOM id，
-       CSS 里没有 `#tgSlot` 规则，最初查源码时按 id 找会扑空）。 */
-  ok(/\.viz-toggles \.tg-slot\{height:44px/.test(CSS_CODE),
-    "★★ 参数槽 `.viz-toggles .tg-slot` 仍是 height:44px 恒高——三开关开合时槽高不变是"
-    + "v3.3.1 核心契约，B4 若把它顶高，8 种开关组合的头区高度稳定性就破了");
-  ok(!/\.viz-toggles \.tg-slot\{height:(?!44px)\d+px/.test(CSS_CODE),
-    "★★ 参数槽高度不得被改成 44px 以外的值（本批最危险的连带面，必须钉死）");
+  /* v3.9.0 订正：参数槽 #tgSlot 已 display:contents（三列固定槽位改造，共槽退役），
+     "恒定高度"的承重墙换成 tg-body 网格的**第二轨 76px**（参数行）——
+     零跳动契约不变，只是落点从槽高换成轨道高。锚真实选择器（教训沿用旧注释）。 */
+  ok(/\.viz-head-grid \.viz-toggles \.tg-body\{[^}]*grid-template-rows:auto 76px/.test(CSS_CODE),
+    "★★ 参数行轨道仍是 grid-template-rows:auto 76px 恒高——三开关开合时参数行高度不变"
+    + "是 v3.3.1 零跳动契约的现行落点，B4 若把它顶高，稳定性就破了");
+  ok(!/\.viz-head-grid \.viz-toggles \.tg-body\{[^}]*grid-template-rows:auto (?!76px)\d+px/.test(CSS_CODE),
+    "★★ 参数行轨道不得被改成 76px 以外的值（本批最危险的连带面，必须钉死）");
 
   /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏四个元素
      （状态行 / 补偿读数 / 设置钮 / 主题钮）就仍是 36px，B4 等于漏了顶栏。

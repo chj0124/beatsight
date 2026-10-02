@@ -58,7 +58,14 @@ function makeEl(id){
       /* v2.4.4：DocumentFragment 语义同 harness——append 片段 = 子节点摊平搬家 */
       if(c&&c._isFragment){const kids=c.children.slice();c.children.length=0;kids.forEach(k=>this.appendChild(k));return c;}
       this.children.push(c);return c;
-    },setAttribute(k,v){this[k]=v;},
+    },
+    /* v3.9.0：补标准方法 removeChild（同 harness.js v2.27.0 口径）——buildViz 建完预备拍道
+       后立刻按预备拍拍数重塑（rebuildCountLaneInto 的清空走 removeChild 循环），
+       私有桩缺这个方法时**每个看门狗用例一建网格就崩**（表现"无输出（进程异常退出）"，
+       看门狗 0/20 全红）。教训重申本文件既有的那条：多份 stub 共存时，改默认行为要把
+       所有 stub 过一遍——判断依据是"谁构造了沙箱"。 */
+    removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);return c;},
+    setAttribute(k,v){this[k]=v;},
     getAttribute(k){return this[k]===undefined?null:this[k];},
     remove(){},blur(){},focus(){},animate(){},closest(){return makeEl("p");},
     fire(t,ev){(this._h[t]||[]).forEach(f=>f(Object.assign({currentTarget:el,target:el,

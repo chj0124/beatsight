@@ -647,13 +647,21 @@ function layoutProbe(){
     const slotEl = q("#tgSlot");
     const slotH = () => (slotEl ? round(slotEl.getBoundingClientRect().height) : null);
     const mt = q("#muteToggle"), tt = q("#trainerToggle"), tgt = q("#trTarget");
-    const rowEl = q("#tgSwitchRow");
+    /* v3.9.0：#tgSwitchRow 壳已 display:contents（三列网格的溶解层），rect 恒 0×0——
+       再量它就是"0===0"的橡皮图章。改量真实的开关胶囊（#countInToggle）。 */
+    const rowEl = q("#countInToggle");
     const rowTop = () => (rowEl ? round(rowEl.getBoundingClientRect().top) : null);
     const closed = h();
     const rowClosed = rowTop();
+    /* v3.9.0：零跳动的承重墙从"槽高 44px"换成 tg-body 网格第二轨（参数行）76px——
+       读 computed grid-template-rows 的第二个轨道值，三态必须一字不变。 */
+    const row2 = () => { const t = getComputedStyle(body).gridTemplateRows.split(" ");
+      return round(parseFloat(t[1]) || 0); };
+    const r2Closed = row2();
     if (mt) mt.click();
     const muteOnly = h();
     const rowMute = rowTop();
+    const r2Mute = row2();
     /* ★ 点变速训练开关前必须**先填目标**：目标为空时应用按"空目标拒开"弹模态框，
        而模态会抢走焦点并留在页面上，把后续探针（抽屉焦点断言）一起带崩。
        这正是本轮实测踩到的：一条探针的副作用污染了下一条不相关的断言。 */
@@ -668,13 +676,15 @@ function layoutProbe(){
     if (tt) tt.click();
     const both = h();
     const rowBoth = rowTop();
+    const r2Both = row2();
     const slotOpenH = slotH();
     if (tt) tt.click();      // trainer 关
     if (tgt && tgtBak !== null) tgt.value = tgtBak;
     if (mt) mt.click();      // mute 关 → 复原
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
       slotH: slotH(), slotClosed: slotEl ? slotH() : null, slotOpen: slotOpenH,
-      rowClosed: rowClosed, rowMute: rowMute, rowBoth: rowBoth, rowRestored: rowTop() };
+      rowClosed: rowClosed, rowMute: rowMute, rowBoth: rowBoth, rowRestored: rowTop(),
+      r2Closed: r2Closed, r2Mute: r2Mute, r2Both: r2Both, r2Restored: row2() };
   })();
   out.pbProgress = (() => {
     const host = q("#pbProgress"), bar = q("#playBar");
@@ -740,6 +750,13 @@ function layoutProbe(){
      第 4 轨换人后，"行数块在开关右侧"这类断言靠它才看得出真实落位 */
   out.blockRects = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")]
     .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
+  /* v3.9.0：行 2 同轴居中断言的数据源——开关参数块中心相对头部栅格中心的偏移（0 = 同轴） */
+  out.togCenterOffset = (() => {
+    const t = q(".viz-toggles"), g = q(".viz-head-grid");
+    if (!t || !g) return null;
+    const tr = t.getBoundingClientRect(), gr = g.getBoundingClientRect();
+    return round((tr.left + tr.width / 2) - (gr.left + gr.width / 2));
+  })();
   out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
   out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
   out.volGroup = vol ? boxLeft(vol.parentElement) : null;
@@ -999,9 +1016,12 @@ async function main(){
           ok(m.grpGaps && m.grpGaps[1] > 0,
             p.label + "·" + label + "：★★ 三开关块**独占一行**（与上一行的间隙为正 = 换了行，不再与其他块同排）",
             "块间间隙 " + JSON.stringify(m.grpGaps));
-          ok(sameLine(m.toggle, base),
-            p.label + "·" + label + "：★ 开关行与标题同缘（独占一行后不再右移居中）",
-            "标题 " + base + " vs 开关 " + m.toggle);
+          /* ★★ v3.9.0：行 2 从"跨满全宽、与内容边缘同缘"改为**与行 1 同轴居中**——
+             用户拍板的聚拢方案（A + 32px）的组成部分。旧断言"开关行与标题同缘"随
+             space-between 一并退役。容差 2px（取整误差）。 */
+          ok(m.togCenterOffset !== null && Math.abs(m.togCenterOffset) <= 2,
+            p.label + "·" + label + "：★★ 开关参数块与头部栅格**同轴居中**（v3.9.0 聚拢方案）",
+            "块中心偏移 " + m.togCenterOffset + "px（0 = 同轴）");
           ok(m.rowsPillBox > m.rowsLabel - 1,
             p.label + "·" + label + "：行数 pill 盒子在标签右侧（块内自适应，同行或折行都一样）",
             "标签 " + m.rowsLabel + " vs pill 盒子 " + m.rowsPillBox);
@@ -1055,24 +1075,39 @@ async function main(){
             "diag.bottom " + L.diagBottom + " vs " + want);
         }
         if (L.tgBody){
-          ok(L.tgBody.closed === L.tgBody.muteOnly && L.tgBody.muteOnly === L.tgBody.both
-             && L.tgBody.both === L.tgBody.restored,
-            p.label + "·" + vp + "：★★★ 开关开合**不改卡片高度**（关 / 只动静音拍 / 两个都开 三态等高）",
-            "关 " + L.tgBody.closed + " · 静音拍 " + L.tgBody.muteOnly + " · 都开 " + L.tgBody.both
-            + " · 复原 " + L.tgBody.restored);
-          /* ★★ v3.3.1（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
-             必须断言**开关行本身的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。 */
-          ok(L.tgBody.rowClosed === L.tgBody.rowMute && L.tgBody.rowMute === L.tgBody.rowBoth
-             && L.tgBody.rowBoth === L.tgBody.rowRestored,
-            p.label + "·" + vp + "：★★★ 开关行位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 top）",
-            "关 " + L.tgBody.rowClosed + " · 静音拍 " + L.tgBody.rowMute + " · 都开 " + L.tgBody.rowBoth
-            + " · 复原 " + L.tgBody.rowRestored);
-          /* v3.3.1：改用"槽自身高度"——桌面下 .tg-body 会被栅格 stretch 到与别的块等高，
-             拿它当"预留量"的判据是 v3.3.0（min-height）时代的口径，现在不适用。 */
-          ok(L.tgBody.slotH !== null && L.tgBody.slotH >= 30
-             && L.tgBody.slotClosed === L.tgBody.slotOpen,
-            p.label + "·" + vp + "：★ 参数槽**自身**高度固定（≥30px，且三态不变）",
-            "关 " + L.tgBody.slotClosed + " / 开 " + L.tgBody.slotOpen);
+          if (vp === "桌面"){
+            ok(L.tgBody.closed === L.tgBody.muteOnly && L.tgBody.muteOnly === L.tgBody.both
+               && L.tgBody.both === L.tgBody.restored,
+              p.label + "·" + vp + "：★★★ 开关开合**不改卡片高度**（关 / 只动静音拍 / 两个都开 三态等高）",
+              "关 " + L.tgBody.closed + " · 静音拍 " + L.tgBody.muteOnly + " · 都开 " + L.tgBody.both
+              + " · 复原 " + L.tgBody.restored);
+            /* ★★ v3.3.1（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
+               必须断言**开关行本身的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。
+               v3.9.0 起量真实开关胶囊（#tgSwitchRow 壳已 display:contents，rect 恒 0）。 */
+            ok(L.tgBody.rowClosed === L.tgBody.rowMute && L.tgBody.rowMute === L.tgBody.rowBoth
+               && L.tgBody.rowBoth === L.tgBody.rowRestored,
+              p.label + "·" + vp + "：★★★ 开关行位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 top）",
+              "关 " + L.tgBody.rowClosed + " · 静音拍 " + L.tgBody.rowMute + " · 都开 " + L.tgBody.rowBoth
+              + " · 复原 " + L.tgBody.rowRestored);
+          } else {
+            /* v3.9.0：窄屏改手风琴式单列（每组参数紧跟自己的开关，三列 118px 装不下任何一组）——
+               开合时后面的组顺移是预期行为，零跳动只在桌面档承诺；窄屏钉「复原无残留」：
+               开了再全关，块高与首枚开关 top 必须回到初始值（状态无残留）。 */
+            ok(L.tgBody.restored === L.tgBody.closed && L.tgBody.rowRestored === L.tgBody.rowClosed,
+              p.label + "·" + vp + "：★★ 窄屏手风琴：开合后**复原无残留**（块高与开关 top 回到初始值）",
+              "块高 " + L.tgBody.closed + " → " + L.tgBody.restored + " · 开关 top " + L.tgBody.rowClosed
+              + " → " + L.tgBody.rowRestored);
+          }
+          /* v3.9.0：零跳动承重墙 = tg-body 网格第二轨（参数行）76px——桌面档钉死；
+             窄屏（≤759.9）行高放开随内容走，不做断言。#tgSlot 壳已 display:contents，
+             旧的"槽自身高度"口径随之退役（rect 恒 0，量了等于没量）。 */
+          if (vp === "桌面"){
+            ok(L.tgBody.r2Closed === 76 && L.tgBody.r2Closed === L.tgBody.r2Mute
+               && L.tgBody.r2Mute === L.tgBody.r2Both && L.tgBody.r2Both === L.tgBody.r2Restored,
+              p.label + "·" + vp + "：★★ 参数行轨道恒 76px（关/只静音拍/都开/复原 四态一字不变——零跳动承重墙）",
+              "关 " + L.tgBody.r2Closed + " · 静音拍 " + L.tgBody.r2Mute + " · 都开 " + L.tgBody.r2Both
+              + " · 复原 " + L.tgBody.r2Restored);
+          }
         } else {
           ok(false, p.label + "·" + vp + "：参数槽容器未取到（本项未验证）", "");
         }
