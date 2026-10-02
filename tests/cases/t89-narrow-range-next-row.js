@@ -194,7 +194,7 @@ section("T89d 端到端 · 用户实报路径：拖侧栏「播放范围」滑�
   const { beat, els } = loadDemo(4);
   const box = els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   ok(!!box, "前提：侧栏「自定义」区里有曲式分组（含播放范围滑块）");
-  const range = box.children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  const range = els["pbProgress"].children.find(x => /(^| )demo-range( |$)/.test(x.className));   // v3.3.0：滑块已搬到底栏
   const track = range.children[1];
   const fromEl = track.children[1], toEl = track.children[2];
   /* 两个 thumb 拖到重合 = 只循环这一个小节（v2.10.7 小节口径）。必须同时发 input 与 change：

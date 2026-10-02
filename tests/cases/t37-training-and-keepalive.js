@@ -59,7 +59,8 @@ section("T41 训练 · 起点 = 当前 BPM + 速度已达标不给开");
   app2.beat.Controls.setBpm(96, false);     // 默认 96 已高于目标 90
   app2.els["trainerToggle"].fire("click");
   eq(app2.beat.Store.S.trainer.on, false, "当前速度 ≥ 目标 → 开关没被打开（选 A：不给开）");
-  eq(app2.els["trainerPanel"].hidden, true, "参数行保持隐藏");
+  /* ★ v3.3.1：拒开时**参数槽是打开的**——目标框就在里面，用户不必猜"该去哪儿改" */
+  eq(app2.els["trainerPanel"].hidden, false, "拒开时把参数槽打开（v3.3.1：由弹窗改成就地）");
   /* 把目标调到高于当前速度后即可正常开启，参数行露出 */
   app2.els["trTarget"].value = "150";
   app2.els["trTarget"].fire("change");

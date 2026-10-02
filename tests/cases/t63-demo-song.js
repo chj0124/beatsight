@@ -89,8 +89,14 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
     eq(playAll.className, "demo-play-note", "读数行类名不变（t68 按它定位）");
   }
   /* ★ v2.10.4：段号胶囊 → 双滑块。断言口径随之从"10 颗胶囊的影子"改成"两个 thumb 的影子" */
-  const rangeWrap = demoBox.children.find(x => /(^| )demo-range( |$)/.test(x.className));
-  ok(!!rangeWrap, "★ 自定义区里有「播放范围」滑块容器（取代原段序条）");
+  /* v3.3.0：滑块已搬到底栏右区（#pbProgress），不再是曲式区的孩子——
+     判据随之改成「在底栏容器内」，位置再挪一次也不必重写。 */
+  const pbHost = els["pbProgress"];
+  ok(!!pbHost, "★ 底栏右区容器 #pbProgress 存在（v3.3.0 新增）");
+  const rangeWrap = pbHost && pbHost.children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  ok(!!rangeWrap, "★ 播放范围滑块挂在底栏右区（从曲式区搬来，不再需要开面板才能调）");
+  ok(!demoBox.children.find(x => /(^| )demo-range( |$)/.test(x.className)),
+    "★ 曲式区里不再留滑块（搬干净，不是两处并存）");
   const rNote = rangeWrap.children[0], rTrack = rangeWrap.children[1];
   eq(rNote.className, "demo-range-note", "第 1 个孩子 = 读数行");
   eq(rTrack.className, "demo-range-track", "第 2 个孩子 = 轨道");

@@ -383,16 +383,16 @@ function drawerProbe(){
   const q = s => document.querySelector(s);
   const rect = el => { const r = el && el.getBoundingClientRect(); return r ? { l:round(r.left), r:round(r.right), t:round(r.top), b:round(r.bottom), w:round(r.width) } : null; };
   const out = { w: window.innerWidth };
-  const btn = q("#presetLibCard"), dr = q("#presetDrawer"), viz = q("#viz");
+  const btn = q("#presetLibBtn"), dr = q("#presetDrawer"), viz = q("#viz");
   out.hasBtn = !!btn; out.hasDrawer = !!dr;
   out.vizInCard = !!(viz && viz.closest(".card"));
-  /* v3.1.0：预设库卡片内部 —— 1 主钮（浏览节奏型 ▾）+ 3 次级入口 + 循环小节行
-     （v3.0.0 批 5 的 6 颗同貌 pill 与 data-sec 分区按钮已退役） */
-  const plbCard = q("#presetLibCard");
-  out.plbMainBtn = !!(plbCard && plbCard.querySelector("#presetLibBtn"));
-  out.plbHasEar = !!(plbCard && plbCard.querySelector("#earBtn"));
-  out.plbHasLoop = !!(plbCard && plbCard.querySelector("#loopToggle"));
-  out.plbInDrawer = !!(plbCard && dr && dr.contains(plbCard));
+  /* v3.3.0：入口与内容分家——入口 = 底栏左区上下文胶囊（#presetLibBtn），
+     内容（动作区三行 + 循环小节 + 搜索 + 列表）全在左侧面板里。
+     判据随之改成「入口在底栏内 / 内容在面板内」，位置再挪一次也不必重写。 */
+  const cap = q("#presetLibBtn"), pb2 = q("#playBar");
+  out.ctxInBar = !!(pb2 && cap && pb2.contains(cap));
+  out.actionsInDrawer = !!(dr && dr.querySelector("#pdActions") && dr.querySelector("#earBtn"));
+  out.loopInDrawer = !!(dr && dr.querySelector("#loopToggle"));
   const card = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
   out.cardInnerW = card ? round(card.getBoundingClientRect().width - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight)) : null;
   if (!btn || !dr) return JSON.stringify(out);
@@ -401,14 +401,18 @@ function drawerProbe(){
   out.rowsClosed = rect(q(".viz-rows-row"));
   out.closedHidden = !!dr.hidden;
   out.ariaClosed = btn.getAttribute("aria-expanded");
-  /* ② 点开：v3.1.0 起主钮「浏览节奏型 ▾」开合抽屉（批 5 的分区按钮已退役） */
-  const mainBtn = q("#presetLibBtn");
-  (mainBtn || btn).click();
+  /* ② 点开：v3.3.0 起由**底栏左区胶囊**开合面板（主钮与卡片都已退役） */
+  out.maskHiddenClosed = !!(q("#presetMask") && q("#presetMask").hidden);   // v3.3.0：收起态遮罩也须隐藏
+  out.viewportH = window.innerHeight;
+  out.clientW = document.documentElement.clientWidth;   // ★ fixed 元素按客户区算宽：滚动条会让它比 innerWidth 少 15px
+  btn.click();
   out.openHidden = !!dr.hidden;
   out.ariaOpen = btn.getAttribute("aria-expanded");
   out.drawer = rect(dr);
+  out.maskOpen = rect(q("#presetMask"));
   out.rowsOpen = rect(q(".viz-rows-row"));
   out.btnOpen = rect(btn);
+  out.focusAfterOpen = document.activeElement && document.activeElement.id;   // v3.3.0：焦点进了哪
   /* v3.1.0：卡内容宽补测**展开态**——开抽屉会让页面长出滚动条（macOS/Windows 经典
      滚动条 15px），收起态量的卡宽与展开态量的抽屉宽差出这 15px 是平台现象不是回归；
      宽度断言改用同状态的两次测量（Linux overlay 滚动条两态相等，本口也成立） */
@@ -418,9 +422,16 @@ function drawerProbe(){
   const firstItem = q("#presetList .preset-item");
   if (firstItem) firstItem.click();
   out.selKeptOpen = !dr.hidden;
-  /* ④ 复原 */
+  /* ④ v3.3.0：点遮罩关闭——覆盖式面板的必备路径（v3.0.0 判"内联"时省掉的那件成本） */
+  const maskEl = q("#presetMask");
+  if (maskEl) maskEl.click();
+  out.maskClickClosed = !!dr.hidden;
+  /* ⑤ 再开一次，用关闭钮收起并检查焦点归还（"从哪来回哪去"） */
+  btn.click();
+  out.reopened = !dr.hidden;
   q("#presetDrawerClose").click();
   out.reclosed = !!dr.hidden;
+  out.focusAfterClose = document.activeElement && document.activeElement.id;
   /* v3.1.0：③ 的真点条目把模式切回了预设（exitArrangeForPreset）——后续滚动探针的
      歌词轨依赖曲式模式（arrangeCur()），不还原就整轨隐藏。纯 UI 复原：点示例曲条目
      回到曲式（playArrange 会开播）、再点播放键停住——回到「曲式选中示例曲、未播放」
@@ -583,7 +594,7 @@ function layoutProbe(){
   };
   const boxLeft = el => { const r = el && el.getBoundingClientRect(); return r ? round(r.left) : null; };
   const q = s => document.querySelector(s);
-  const out = { w: window.innerWidth };
+  const out = { w: window.innerWidth, h: window.innerHeight };   // v3.3.0：h 供固定底栏「贴底」断言用
   out.scrollW = document.documentElement.scrollWidth;
   const vizEl = q("#viz");
   /* v3.0.0：#viz 已随 #vizBand 迁出卡片（可视化区不带卡片背景）——基准卡片改为**控制卡**
@@ -602,6 +613,111 @@ function layoutProbe(){
     return round(mr.right - parseFloat(getComputedStyle(mn).paddingRight));
   })();
   out.vizInCard = !!(vizEl && vizEl.closest(".card"));   // v3.0.0：断言"确实已迁出卡片"
+  /* v3.3.0：底部播放条——fixed 元素的位置/让位在桩里完全测不出（桩无布局引擎），
+     故由真实浏览器复核三件事：① 贴住视口底；② 高度符合断点（88 / 76）；
+     ③ 不压住底部诊断条（.diag 与它同层且不参与让位，靠 bottom 上移避让）。 */
+  out.playBar = (() => {
+    const pb = q("#playBar");
+    if (!pb) return null;
+    const r = pb.getBoundingClientRect();
+    const key = q("#playBtn");
+    const kr = key && key.getBoundingClientRect();
+    const aj = q("#argJump");
+    return { top: round(r.top), bottom: round(r.bottom), h: round(r.height),
+      inBar: !!(key && pb.contains(key)),
+      playBtnTop: kr ? round(kr.top) : null,
+      playBtnH: kr ? round(kr.height) : null,
+      argJumpH: aj ? round(aj.getBoundingClientRect().height) : null,
+      padBottom: round(parseFloat(getComputedStyle(pb).paddingBottom)),
+      padTop: round(parseFloat(getComputedStyle(pb).paddingTop)),
+      innerH: window.innerHeight };
+  })();
+  out.mainPadBottom = (() => {
+    const mn = q(".main");
+    return mn ? round(parseFloat(getComputedStyle(mn).paddingBottom)) : null;
+  })();
+  /* v3.3.0：底栏右区进度条——范围滑块从曲式区搬到这里（桩测不出落位，只能真机量） */
+  /* v3.3.0：参数槽"恒定高度"的真实几何——桩里没有布局引擎，这条只能在真机量。
+     量法：全关 → 点开两枚开关 → 全开，两次高度必须相等（这就是"卡片不变形"的定义）。
+     ★ 量完立刻点回去复原（探针之间不污染）。 */
+  out.tgBody = (() => {
+    const body = q(".viz-toggles .tg-body");
+    if (!body) return null;
+    const h = () => round(body.getBoundingClientRect().height);
+    const slotEl = q("#tgSlot");
+    const slotH = () => (slotEl ? round(slotEl.getBoundingClientRect().height) : null);
+    const mt = q("#muteToggle"), tt = q("#trainerToggle"), tgt = q("#trTarget");
+    const rowEl = q("#tgSwitchRow");
+    const rowTop = () => (rowEl ? round(rowEl.getBoundingClientRect().top) : null);
+    const closed = h();
+    const rowClosed = rowTop();
+    if (mt) mt.click();
+    const muteOnly = h();
+    const rowMute = rowTop();
+    /* ★ 点变速训练开关前必须**先填目标**：目标为空时应用按"空目标拒开"弹模态框，
+       而模态会抢走焦点并留在页面上，把后续探针（抽屉焦点断言）一起带崩。
+       这正是本轮实测踩到的：一条探针的副作用污染了下一条不相关的断言。 */
+    const tgtBak = tgt ? tgt.value : null;
+    /* ★ 光改 value 不够：应用的"空目标拒开"读的是 **S.trainer.target**，
+       而它由目标输入的 input/change 事件写入——必须走完两级事件，否则照样弹模态。 */
+    if (tgt){
+      tgt.value = "240";
+      tgt.dispatchEvent(new Event("input", { bubbles: true }));
+      tgt.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    if (tt) tt.click();
+    const both = h();
+    const rowBoth = rowTop();
+    const slotOpenH = slotH();
+    if (tt) tt.click();      // trainer 关
+    if (tgt && tgtBak !== null) tgt.value = tgtBak;
+    if (mt) mt.click();      // mute 关 → 复原
+    return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
+      slotH: slotH(), slotClosed: slotEl ? slotH() : null, slotOpen: slotOpenH,
+      rowClosed: rowClosed, rowMute: rowMute, rowBoth: rowBoth, rowRestored: rowTop() };
+  })();
+  out.pbProgress = (() => {
+    const host = q("#pbProgress"), bar = q("#playBar");
+    if (!host) return null;
+    const r = host.getBoundingClientRect();
+    const wrap = host.querySelector(".demo-range");
+    const head = host.querySelector(".demo-range-head");
+    const fromEl = host.querySelector(".demo-range-from");
+    return { w: round(r.width), inBar: !!(bar && bar.contains(host)), hasRange: !!wrap,
+      hasHead: !!head, hasFrom: !!fromEl };
+  })();
+  /* v3.3.1：播放键的**水平居中**与"离底距离"——两条都是用户直接看到的观感，只能在真机量。
+     居中那条是本轮的实际故障：flex space-between 下左右两段宽差把中列挤偏。 */
+  out.center = (() => {
+    const key = q("#playBtn"), bar = q("#playBar");
+    if (!key || !bar) return null;
+    const kr = key.getBoundingClientRect();
+    /* ★ 居中的参照必须是**客户区**（clientWidth）不是 innerWidth：底栏是 fixed，
+       它的包含块就是客户区宽度；页面出现纵向滚动条时两者差 15px，用 innerWidth 判会误报偏心 7.5px。 */
+    return { keyCenter: round(kr.left + kr.width / 2),
+      vpCenter: round(document.documentElement.clientWidth / 2),
+      gapBottom: round(window.innerHeight - kr.bottom) };
+  })();
+  /* v3.3.1：同屏行数 = 1 时，可视化带是否在"控制卡之下、底栏之上"的剩余空间里**居中**
+     （量上下两段留白，而不是量绝对位置——跟着内容高度变化的断言迟早会漂） */
+  out.vizCenter = (() => {
+    const rows = q("#vizRowsRow"), band = q("#vizBand"), bar = q("#playBar");
+    const card = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
+    if (!rows || !band || !card || !bar) return null;
+    const pill = [...rows.children].find(b => (b.textContent || "").trim() === "1");
+    if (!pill) return null;
+    const wasActive = rows.querySelector(".pill.active");
+    pill.click();
+    const br = band.getBoundingClientRect();
+    const topGap = round(br.top - card.getBoundingClientRect().bottom);
+    const botGap = round(bar.getBoundingClientRect().top - br.bottom);
+    if (wasActive) wasActive.click();          // 复原行数档位（探针之间不污染）
+    return { topGap: topGap, botGap: botGap };
+  })();
+  out.diagBottom = (() => {
+    const dg = q(".diag");
+    return dg ? round(parseFloat(getComputedStyle(dg).bottom)) : null;
+  })();
   out.vizRight = (() => { const v = q("#viz"); const r = v && v.getBoundingClientRect(); return r ? round(r.right) : null; })();
   /* v2.39.0：组容器底上线——控制列有了 16px 内边距，左缘基准改为「组容器内容边缘」
      （卡片内容边缘 + padding）。旧口径 cardTextLeft 保留，容器缺失时回退 */
@@ -620,21 +736,24 @@ function layoutProbe(){
 
   out.vizRowsPanel = boxLeft(q(".viz-rows-panel"));
   const sig = q("#sigRow"), timbre = q("#timbreRow"), vol = q(".vol-row");
+  /* v3.3.0：四块的完整矩形（诊断 + 等宽等距断言的数据源）——
+     第 4 轨换人后，"行数块在开关右侧"这类断言靠它才看得出真实落位 */
+  out.blockRects = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")]
+    .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
   out.sigGroup = sig ? boxLeft(sig.parentElement) : null;
   out.timbreGroup = timbre ? boxLeft(timbre.parentElement) : null;
   out.volGroup = vol ? boxLeft(vol.parentElement) : null;
   out.editBtn = boxLeft(q("#editBtn"));
   /* v2.42.7：组容器卡宽度（窄屏等宽回归断言的数据源）
-     v3.0.0：**五块**——预设库块 #presetLibBtn 插在开关与行数之间（抽屉收起时不占位、展开时
-     也只占它自己的行，故不进本表：抽屉不是"组容器卡"） */
+     v3.3.0：**四块**——预设库块退役，「同屏行数与拍号」接替第 4 轨（不再是横跨整行的 r2） */
   out.grpWidths = (() => {
-    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q("#presetLibCard"), q(".viz-rows-row")];
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
     return els.map(el => { const r = el && el.getBoundingClientRect(); return r ? round(r.width) : null; });
   })();
   /* v2.42.7 追加：相邻组容器卡的垂直间隙（等距回归断言的数据源——三处来源曾各给各的：
      row-gap 6/12 / head margin-bottom 16 / toggles margin-bottom 16） */
   out.grpGaps = (() => {
-    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q("#presetLibCard"), q(".viz-rows-row")];
+    const els = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles"), q(".viz-rows-row")];
     const rs = els.map(el => el && el.getBoundingClientRect());
     const gaps = [];
     for (let i = 1; i < rs.length; i++) if (rs[i] && rs[i-1]) gaps.push(round(rs[i].top - rs[i-1].bottom));
@@ -873,15 +992,22 @@ async function main(){
            v2.39.0：竖跨执行错误已修——r1 = 音量｜BPM｜三开关并列，r2 = 行数拍号 1/4 占满整行，
            故行数行的左缘从「右移」改回「与音量列同缘」（都从第一列的内容缘起步） */
         if (label === "桌面"){
-          ok(m.toggle > base + 40,
-            p.label + "·" + label + "：★ 开关行已右移离标题（居中分布，不再左贴）",
+          /* ★ v3.3.1（用户澄清后的新形态）：控制行拆成两行 ——
+               第一行 = 音量 ｜ BPM ｜ 同屏行数与拍号；第二行 = 三开关 + 参数槽（跨满全宽）。
+             于是判据换成三条：① 开关行**另起一行**；② 它与内容边缘同缘（不再"右移居中"）；
+             ③ 行数拍号块回到第一行右侧。 */
+          ok(m.grpGaps && m.grpGaps[1] > 0,
+            p.label + "·" + label + "：★★ 三开关块**独占一行**（与上一行的间隙为正 = 换了行，不再与其他块同排）",
+            "块间间隙 " + JSON.stringify(m.grpGaps));
+          ok(sameLine(m.toggle, base),
+            p.label + "·" + label + "：★ 开关行与标题同缘（独占一行后不再右移居中）",
             "标题 " + base + " vs 开关 " + m.toggle);
-          ok(sameLine(m.rowsLabel, base),
-            p.label + "·" + label + "：行数标签与音量列同缘（v2.39.0：整行占满，从第一列起步）",
-            "标题 " + base + " vs 标签 " + m.rowsLabel);
-          ok(m.rowsPillBox > base,
-            p.label + "·" + label + "：行数 pill 盒子跟在同屏行数标签右侧（标签与按钮同行自适应）",
+          ok(m.rowsPillBox > m.rowsLabel - 1,
+            p.label + "·" + label + "：行数 pill 盒子在标签右侧（块内自适应，同行或折行都一样）",
             "标签 " + m.rowsLabel + " vs pill 盒子 " + m.rowsPillBox);
+          ok(m.rowsLabel > m.toggle,
+            p.label + "·" + label + "：行数拍号块在第一行右侧（开关块已让出这一行）",
+            "开关 " + m.toggle + " vs 行数块标签 " + m.rowsLabel);
         } else {
           ok(sameLine(m.toggle, base),
             p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",
@@ -902,6 +1028,90 @@ async function main(){
       } else {
         ok(false, p.label + "：桌面布局未取到（需求①②的相对位置本项未验证）", "");
       }
+      /* v3.3.0：底部播放条（#playBar）——fixed 元素的位置与让位是**桩里完全测不出**的那部分
+         （桩无布局引擎）。三条一起验：贴底、高度符合断点、主列已让位；诊断条存在时才验避让。 */
+      /* v3.3.1：底栏抬高到 96（全档统一），内容随之上移，播放键不再贴底 */
+      [[lay.wide, "桌面", 96], [lay.narrow, "窄屏390", 96]].forEach(function(pair){
+        const L = pair[0], vp = pair[1], want = pair[2];
+        if (!L) return;
+        if (!L.playBar){
+          ok(false, p.label + "·" + vp + "：底栏 #playBar 未取到（搬块未生效？）", "");
+          return;
+        }
+        ok(Math.abs(L.playBar.h - want) <= 1,
+          p.label + "·" + vp + "：★ 底栏高度 " + want + "px（var(--bar-h)，全档统一）",
+          "实测 " + L.playBar.h);
+        ok(Math.abs(L.playBar.bottom - L.h) <= 1,
+          p.label + "·" + vp + "：★★ 底栏贴住视口底（fixed bottom:0，不随滚动跑）",
+          "bottom " + L.playBar.bottom + " vs 视口高 " + L.h);
+        ok(L.playBar.inBar === true,
+          p.label + "·" + vp + "：★ 播放键在底栏内（搬块完整、无半搬状态）", "");
+        ok(L.mainPadBottom !== null && L.mainPadBottom >= want,
+          p.label + "·" + vp + "：★★ 主列已让位（padding-bottom ≥ 底栏高，否则最后一小节被压住）",
+          "padding " + L.mainPadBottom + " vs " + want);
+        if (L.diagBottom !== null){
+          ok(L.diagBottom >= want,
+            p.label + "·" + vp + "：★ 诊断条已避让（bottom ≥ 底栏高，二者同为 fixed 且互不让位）",
+            "diag.bottom " + L.diagBottom + " vs " + want);
+        }
+        if (L.tgBody){
+          ok(L.tgBody.closed === L.tgBody.muteOnly && L.tgBody.muteOnly === L.tgBody.both
+             && L.tgBody.both === L.tgBody.restored,
+            p.label + "·" + vp + "：★★★ 开关开合**不改卡片高度**（关 / 只动静音拍 / 两个都开 三态等高）",
+            "关 " + L.tgBody.closed + " · 静音拍 " + L.tgBody.muteOnly + " · 都开 " + L.tgBody.both
+            + " · 复原 " + L.tgBody.restored);
+          /* ★★ v3.3.1（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
+             必须断言**开关行本身的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。 */
+          ok(L.tgBody.rowClosed === L.tgBody.rowMute && L.tgBody.rowMute === L.tgBody.rowBoth
+             && L.tgBody.rowBoth === L.tgBody.rowRestored,
+            p.label + "·" + vp + "：★★★ 开关行位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 top）",
+            "关 " + L.tgBody.rowClosed + " · 静音拍 " + L.tgBody.rowMute + " · 都开 " + L.tgBody.rowBoth
+            + " · 复原 " + L.tgBody.rowRestored);
+          /* v3.3.1：改用"槽自身高度"——桌面下 .tg-body 会被栅格 stretch 到与别的块等高，
+             拿它当"预留量"的判据是 v3.3.0（min-height）时代的口径，现在不适用。 */
+          ok(L.tgBody.slotH !== null && L.tgBody.slotH >= 30
+             && L.tgBody.slotClosed === L.tgBody.slotOpen,
+            p.label + "·" + vp + "：★ 参数槽**自身**高度固定（≥30px，且三态不变）",
+            "关 " + L.tgBody.slotClosed + " / 开 " + L.tgBody.slotOpen);
+        } else {
+          ok(false, p.label + "·" + vp + "：参数槽容器未取到（本项未验证）", "");
+        }
+        if (L.pbProgress){
+          ok(L.pbProgress.inBar === true,
+            p.label + "·" + vp + "：★★ 进度条在底栏内（#pbProgress，v3.3.0 新增的右区）", "");
+          /* 阈值按视口分档：桌面给得宽（>200），窄屏 390 三条东西挤一行，>60 即可用 */
+          const minW = vp === "桌面" ? 200 : 60;
+          ok(L.pbProgress.w > minW,
+            p.label + "·" + vp + "：★ 进度条有实际宽度（不被胶囊/控制键挤成 0，阈值 " + minW + "）",
+            "宽度 " + L.pbProgress.w);
+          /* 范围滑块是**曲式模式**下才挂进来的（预设模式没有"整首"可言）——
+             没挂时不判假，只在挂了的时候验"整组都在、播放头也在" */
+          /* ★ v3.3.1（用户反馈）：播放键必须**水平居中**且不贴底——两条都是真机才看得出的观感，
+             也是本轮的实际故障（space-between 下中列被左右不等宽挤偏）。 */
+          if (L.center){
+            ok(Math.abs(L.center.keyCenter - L.center.vpCenter) <= 1,
+              p.label + "·" + vp + "：★★★ 播放键**水平居中**（与视口中心差 ≤1px）",
+              "键中心 " + L.center.keyCenter + " vs 视口中心 " + L.center.vpCenter);
+            ok(L.center.gapBottom >= 16,
+              p.label + "·" + vp + "：★★ 播放键不贴底（底缘距视口底 ≥16px）",
+              "距底 " + L.center.gapBottom);
+          }
+          /* ★ v3.3.1（用户反馈）：同屏行数 = 1 时整条可视化带在剩余空间里垂直居中 */
+          if (L.vizCenter){
+            ok(Math.abs(L.vizCenter.topGap - L.vizCenter.botGap) <= 2,
+              p.label + "·" + vp + "：★★ 行数=1 时可视化带垂直居中（上下留白差 ≤2px）",
+              "上留白 " + L.vizCenter.topGap + " vs 下留白 " + L.vizCenter.botGap);
+          }
+          if (L.pbProgress.hasRange){
+            ok(L.pbProgress.hasFrom === true && L.pbProgress.hasHead === true,
+              p.label + "·" + vp + "：★★ 范围滑块整组在底栏（双 range + 播放头），且未在曲式区留副本",
+              "from=" + L.pbProgress.hasFrom + " head=" + L.pbProgress.hasHead);
+          }
+        } else {
+          ok(false, p.label + "·" + vp + "：底栏右区容器 #pbProgress 未取到", "");
+        }
+      });
+
       if (lay.narrow){
         /* 窄屏下这两块放不下，必须**折行**而不是溢出（body 有 overflow-x:hidden，溢出会被静默裁掉） */
         ok(lay.narrow.sigGroup <= lay.narrow.vizRowsPanel + 0.51,
@@ -925,28 +1135,27 @@ async function main(){
          BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏 2×2 与四块一行
          有自己的列宽设计，本断言只认窄屏） */
       /* v3.0.0：四块 → **五块**（新增预设库块），长度门槛与文案同步 */
-      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 5){
+      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 4){
         const gws = lay.narrow.grpWidths;
         ok(Math.max(...gws) - Math.min(...gws) <= 1,
-          "窄屏：★ 五张组容器卡等宽（宽度策略分裂回归闸门）",
+          "窄屏：★ 四张组容器卡等宽（宽度策略分裂回归闸门）",
           "宽度 " + JSON.stringify(gws));
       }
-      if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 4){
+      if (lay.narrow && Array.isArray(lay.narrow.grpGaps) && lay.narrow.grpGaps.length === 3){
         const ggs = lay.narrow.grpGaps;
         ok(Math.max(...ggs) - Math.min(...ggs) <= 1,
-          "窄屏：★ 五张组容器卡等距（间距来源分裂回归闸门）",
+          "窄屏：★ 四张组容器卡等距（间距来源分裂回归闸门）",
           "间隙 " + JSON.stringify(ggs));
       }
       /* ---- v3.0.0（PLAN-v9 批 0）：可视化带去卡片 + 预设库抽屉（真几何，桩测不到）---- */
       const dw = r.drawer;
       if (dw && dw.hasBtn && dw.hasDrawer){
-        /* v3.1.0：预设库卡片 = 1 主钮（浏览节奏型 ▾）+ 3 次级入口 + 循环小节行，
-           且它在**卡片区**、不在抽屉里（抽屉只放列表与提示） */
-        ok(dw.plbMainBtn === true, p.label + "：★ 预设库卡片主钮「浏览节奏型 ▾」在卡片内",
-          "实际 plbMainBtn=" + dw.plbMainBtn);
-        ok(dw.plbHasEar === true && dw.plbHasLoop === true,
-          p.label + "：★ 听辨训练入口与「循环本段」都在卡片里（v3.0.0 批 5 从抽屉搬出）");
-        ok(dw.plbInDrawer === false, p.label + "：★ 卡片本身不在抽屉内（它是控制行第 4 块）");
+        /* v3.3.0：入口与内容分家——入口 = 底栏左区胶囊；动作区三行 + 循环小节住面板内 */
+        ok(dw.ctxInBar === true,
+          p.label + "：★★ 入口胶囊在底栏内（#presetLibBtn 随左区搬到播放条）", "ctxInBar=" + dw.ctxInBar);
+        ok(dw.actionsInDrawer === true && dw.loopInDrawer === true,
+          p.label + "：★★ 动作区（编排/听辨/新建）与「循环小节」都在面板内",
+          "actions=" + dw.actionsInDrawer + " loop=" + dw.loopInDrawer);
         ok(dw.vizInCard === false,
           p.label + "：★ v3.0.0 可视化区已迁出卡片（#viz 不在任何 .card 内）",
           "vizInCard=" + dw.vizInCard);
@@ -960,24 +1169,38 @@ async function main(){
         ok(dw.selKeptOpen === true,
           p.label + "：★★ 点条目后抽屉仍开（v3.1.0 选型不收起，比较多个型不必反复开合）",
           "selKeptOpen=" + dw.selKeptOpen);
-        /* 抽屉必须**紧贴行 1 之下**、在「同屏行数与拍号」之上——这是用户拍板的位置，
-           不是"排在最末"即可（同屏行数行要被它推到第 3 行） */
-        ok(!!dw.drawer && !!dw.btnOpen && dw.drawer.t >= dw.btnOpen.b - 0.51,
-          p.label + "：★★ 抽屉紧贴第 1 行之下（在预设库块下沿之后）",
-          "块底 " + (dw.btnOpen && dw.btnOpen.b) + " vs 抽屉顶 " + (dw.drawer && dw.drawer.t));
-        ok(!!dw.drawer && !!dw.rowsOpen && dw.drawer.b <= dw.rowsOpen.t + 0.51,
-          p.label + "：★★ 抽屉排在「同屏行数与拍号」**之上**（不是排在最末）",
-          "抽屉底 " + (dw.drawer && dw.drawer.b) + " vs 行数行顶 " + (dw.rowsOpen && dw.rowsOpen.t));
-        ok(!!dw.rowsOpen && !!dw.rowsClosed && dw.rowsOpen.t > dw.rowsClosed.t + 1,
-          p.label + "：★ 展开后「同屏行数与拍号」被下推（栅格行号真的换了）",
-          "收起 " + (dw.rowsClosed && dw.rowsClosed.t) + " → 展开 " + (dw.rowsOpen && dw.rowsOpen.t));
-        /* CI Linux headless Chrome 实测：滚动条 15 + 抽屉嵌套层结构差 5 = 总差 20（平台现象） */
-        const slack = 1 + (dw.scrollbarW || 0) + 25;
-        ok(!!dw.drawer && dw.cardInnerOpenW !== null && dw.drawer.w >= dw.cardInnerOpenW - slack,
-          p.label + "：★ 抽屉接近控制卡内容宽（全宽内联，不是浮层）",
-          "抽屉宽 " + (dw.drawer && dw.drawer.w) + " vs 卡内容宽(展开态同测) " + dw.cardInnerOpenW + "（容差 " + slack + "）");
+        /* ★★★ v3.3.0：预设库改「左侧覆盖面板」——旧的三条内联断言（紧贴行 1 之下 /
+           排在行数行之上 / 行数行被下推）已随改造退役，换成本组"覆盖式"断言。
+           其中"不推挤"那条是本轮的核心验收点（用户要求①：压在原页面上、不改动原页面）。 */
+        const wantW = Math.min(392, Math.round(dw.w * 0.88));   // rect() 只回 l/r/t/b/w，高度用 b−t 算
+        const dwH = dw.drawer ? Math.round(dw.drawer.b - dw.drawer.t) : null;
+        ok(!!dw.drawer && dw.drawer.l <= 0.51 && dwH !== null && Math.abs(dwH - dw.viewportH) <= 1,
+          p.label + "：★★ 面板贴左缘、满视口高（从左侧滑出的浮层）",
+          "left " + (dw.drawer && dw.drawer.l) + " · 高 " + dwH + " vs 视口 " + dw.viewportH);
+        ok(!!dw.drawer && Math.abs(dw.drawer.w - wantW) <= 1,
+          p.label + "：★ 面板宽 min(392, 88vw)（窄屏自适应）",
+          "实测 " + (dw.drawer && dw.drawer.w) + " vs 期望 " + wantW);
+        ok(!!dw.maskOpen && dw.maskOpen.l <= 0.51 && dw.maskOpen.w >= (dw.clientW || dw.w) - 1,
+          p.label + "：★ 遮罩满视口（盖住整页，含 fixed 播放底栏）",
+          "遮罩宽 " + (dw.maskOpen && dw.maskOpen.w) + " vs 客户区 " + (dw.clientW || dw.w));
+        ok(!!dw.rowsOpen && !!dw.rowsClosed && Math.abs(dw.rowsOpen.t - dw.rowsClosed.t) <= 0.51
+           && Math.abs(dw.rowsOpen.l - dw.rowsClosed.l) <= 0.51,
+          p.label + "：★★★ 展开面板**不推挤**页面——「同屏行数与拍号」位置一动不动（覆盖式的核心验收）",
+          "收起 " + (dw.rowsClosed && (dw.rowsClosed.t + "/" + dw.rowsClosed.l))
+          + " → 展开 " + (dw.rowsOpen && (dw.rowsOpen.t + "/" + dw.rowsOpen.l)));
+        ok(!!dw.drawer && !!dw.rowsOpen && dw.drawer.b > dw.rowsOpen.t,
+          p.label + "：★★ 面板**压在**原页面之上（与内容区重叠，而不是排在其上方）",
+          "面板底 " + (dw.drawer && dw.drawer.b) + " vs 行数行顶 " + (dw.rowsOpen && dw.rowsOpen.t));
+        ok(dw.maskHiddenClosed === true,
+          p.label + "：★ 收起态遮罩一并隐藏（不留一层孤影吃掉点击）", "maskHidden=" + dw.maskHiddenClosed);
+        ok(dw.maskClickClosed === true,
+          p.label + "：★★ 点遮罩 → 关闭（覆盖式面板的必备退出路径）", "hidden=" + dw.maskClickClosed);
+        ok(dw.focusAfterOpen === "presetSearch",
+          p.label + "：★ 打开后焦点进搜索框（顺手就能过滤）", "focus=" + dw.focusAfterOpen);
         ok(dw.reclosed === true,
-          p.label + "：★ 再点一次 → 收起（选中/关闭路径同款）", "hidden=" + dw.reclosed);
+          p.label + "：★ 关闭钮 → 收起", "hidden=" + dw.reclosed);
+        ok(dw.focusAfterClose === "presetLibBtn",
+          p.label + "：★ 关闭后焦点归还主钮（从哪来回哪去）", "focus=" + dw.focusAfterClose);
       } else {
         ok(false, p.label + "：v3.0.0 抽屉探针未取到（开合两态本项未验证）", JSON.stringify(dw || {}));
       }

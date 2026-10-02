@@ -245,21 +245,21 @@ section("T49g 听辨训练 · 入口在预设库卡片上（v3.0.0 批 5：预�
 {
   const app = loadApp();
   const els = app.els, S = app.beat.Store.S;
-  /* 入口三次搬家（每次都是"搬块不换 id"，接线零改动）：
+  /* 入口搬家史（每次都是「搬块不换 id」，接线零改动）：
        v2.69.0 顶栏 → 预设卡 #argNowRow 行最左
        v3.0.0 批 0 侧栏 → 抽屉
-       v3.0.0 批 5 抽屉 → 预设库卡片右列（左列是三分区，右列是三个入口）
-     ★ 判据改成"在 #presetLibCard 内"，不再绑某一行——位置再挪一次也不必重写这条。 */
-  const card = html.slice(html.indexOf('id="presetLibCard"'), html.indexOf('id="presetDrawer"'));
-  ok(/id="earBtn"/.test(card), "★ 「听辨训练」入口在预设库卡片内");
-  ok(card.indexOf('id="earBtn"') < card.indexOf('id="editBtn"'),
-    "★ 排在「编辑节奏型」**左边**（用户拍板：右列自上而下 = 听辨 / 编辑 / 编排）");
-  ok(html.indexOf('id="earBtn"') > html.indexOf('id="presetLibCard"'),
-    "★ 不在抽屉里（抽屉从 #presetDrawer 起算）");
+       v3.0.0 批 5 抽屉 → 预设库卡片右列
+       v3.3.0 预设库卡片整块退役 → 左侧面板顶部**动作区** #pdActions（与「编排曲式」「新建节奏型」同组）
+     ★ 判据改成「在动作区内」，不再绑某一行/某个容器——位置再挪一次也不必重写这条。 */
+  const acts = html.slice(html.indexOf('id="pdActions"'), html.indexOf('id="presetList"'));
+  ok(/id="earBtn"/.test(acts), "★ 「听辨训练」入口在面板动作区内");
+  ok(acts.indexOf('id="argOpen"') < acts.indexOf('id="earBtn"')
+     && acts.indexOf('id="earBtn"') < acts.indexOf('id="editBtn"'),
+    "★ 顺序 = 编排曲式 → 听辨训练 → 新建节奏型（两个「跳转」同类相邻在前，创建类在后）");
   ok(!/id="earMini"/.test(html), "★ 入口旁的正确率小字已取消（正确率在听辨 overlay 里看）");
   ok(!/id="earBtn"/.test(html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"))),
     "★ 顶栏不再有听辨训练入口（顶栏只留延迟读数/设置/主题钮）");
-  ok(/<button class="pill outline" id="earBtn">听辨训练<\/button>/.test(html),
+  ok(/<span class="pd-act-t">听辨训练<\/span>/.test(html),
      "文案仍是「听辨训练」（不带吆喝式后缀）");
   /* ★ v2.10.12：练习量删除后，`S.limit` 字段本身也删了（不留空壳）；
      「本次只放 2 小节」的判定只剩 `limitBars`（与听辨额度 playQuota 比较）——

@@ -172,13 +172,17 @@ section("T101e 显隐分流 · ★ 桌面 ✎ 悬停显示/📁 收起（CSS 媒
   const mi = html.indexOf("@media (hover: hover) and (pointer: fine)");
   ok(mi >= 0, "★ 存在 hover 环境媒体查询块（桌面分流的前提）");
   const block = html.slice(mi, html.indexOf("\n}", mi) + 2);
-  ok(block.includes(".preset-item .grp{display:none}") === false
-     && block.includes(".preset-item .grp{opacity:.45"),
-     "★ 桌面（可 hover）：📁 常驻低对比（v3.1.0 从 display:none 收起改为 .45——可发现性，触屏口径统一）");
-  ok(block.includes(".preset-item:hover .ren") && block.includes(".preset-item .ren{opacity:.45"),
-     "★ 桌面：✎ 常驻低对比、悬停增强（v3.1.0 从 opacity:0 憋显改为 .45，A7）");
-  ok(block.includes(".preset-item:focus-within .grp{opacity:1}"),
-     "★ 键盘可达性：聚焦条目时 📁/✎ 提到全对比（v3.1.0 常驻低对比口径下，聚焦=增强而非「回来」）");
+  /* ★ v3.3.1（用户定稿，方案 B）：口径再次翻转——「常驻低对比 .45」→「默认隐形 0、悬停才出」。
+     v3.1.0（A7）当时的理由是"hover 憋显可发现性差"，本轮用户看到真实列表后判定"太吵"，
+     并以**选中行 + 试听中恒显**作兜底。判据随之改成下面三条。 */
+  ok(block.includes(".preset-item .grp,") && block.includes("opacity:0;pointer-events:none"),
+     "★★ 桌面（可 hover）：📁/✎/▶/删除默认**隐形**（opacity:0），且 pointer-events:none");
+  ok(block.includes(".preset-item:hover .grp") && block.includes(".preset-item:focus-within .grp"),
+     "★ 鼠标悬浮 / 键盘聚焦 → 图标回来（opacity:1 + pointer-events:auto）");
+  ok(block.includes(".preset-item.active .grp") && block.includes(".preset-item.active .aud"),
+     "★★ 方案 B 的兜底：**当前选中行**图标恒显（选中行 = 你正要操作的对象），试听中（.aud-on）也恒显");
+  ok(block.includes("pointer-events:auto"),
+     "★★ 显形时必须把 pointer-events 放回 auto——否则图标可见却点不动（隐形可点是 bug，显形不可点也是）");
   /* 无条件规则里不得藏 display:none（触屏默认常显的保证） */
   const before = html.slice(0, mi);
   ok(!/\.preset-item \.grp\{[^}]*display:\s*none/.test(before),

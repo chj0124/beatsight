@@ -35,7 +35,13 @@ const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }), 
 
 /* 曲式容器 → 范围控件 → 轨道（每次现取，见文件头） */
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-const wrapOf = els => boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
+/* v3.3.0：范围滑块已从曲式区搬到**底栏右区**（#pbProgress），故从那里取；
+   取不到再回退曲式区（兜底路径与 buildDemoSongRow 的 pbHost||group 一致）。 */
+const wrapOf = els => {
+  const host = els["pbProgress"];
+  const w = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  return w || boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
+};
 const noteOf = els => wrapOf(els).children[0];
 const trackOf = els => wrapOf(els).children[1];
 const fillOf = els => trackOf(els).children[0];
@@ -72,14 +78,26 @@ section("T88a 范围滑块 · 控件形状（两个原生 range 叠层 + 填充�
   eq(wrap.children.length, 2, "容器里恰好两个孩子：读数 + 轨道");
   eq(noteOf(els).className, "demo-range-note", "第 1 个 = 读数行");
   eq(trackOf(els).className, "demo-range-track", "第 2 个 = 轨道");
-  eq(trackOf(els).children.length, 3 + 9,
-     "轨道 = 填充条 + 起点 + 终点 + 9 条段边界刻度线（v2.10.7：每段起点一条，最左的段 0 不画）");
-  const ticks = trackOf(els).children.slice(3);
+  /* v3.3.0：轨道末尾多了**播放头**（纯指示、不可拖）——故 3 + 9 + 1。
+     ★ 它追加在刻度线**之后**：children[1]/[2] 仍是两个 thumb，t68 的定位契约不受影响 */
+  eq(trackOf(els).children.length, 3 + 9 + 1,
+     "轨道 = 填充条 + 起点 + 终点 + 9 条段边界刻度线 + 播放头（v3.3.0 新增播放头，追加在最后）");
+  const ticks = trackOf(els).children.slice(3, 12);
   ok(ticks.length === 9 && ticks.every(t => t.className === "demo-range-tick"
      && t.getAttribute("aria-hidden") === "true"),
      "★ 刻度线 = .demo-range-tick × 9（纯装饰 aria-hidden，段名在读数/valuetext 里）");
   near(parseFloat(ticks[0].style.left), 1 / 29 * 100, 1e-6,
      "★ 第 1 条刻度线 = 段 1 起点（0-based 小节 1 → 1/29）");
+  /* v3.3.0：播放头紧跟在刻度线之后，且必须是**不可拖**的纯指示（pointer-events 由 CSS 关掉） */
+  const head = trackOf(els).children[12];
+  eq(head.className, "demo-range-head", "轨道最后一个孩子 = 播放头（v3.3.0）");
+  ok(head.getAttribute("aria-hidden") === "true", "★ 播放头纯装饰（aria-hidden，位置信息在读数里）");
+  {
+    const fs2 = require("fs"), path2 = require("path");
+    const css2 = fs2.readFileSync(path2.join(__dirname, "..", "..", "index.html"), "utf8");
+    ok(css2.includes(".demo-range-head{position:absolute") && css2.includes("pointer-events:none"),
+       "★★ 播放头不可拖：CSS 明确 pointer-events:none（与两个可拖 thumb 性质区分）");
+  }
   eq(fillOf(els).className, "demo-range-fill", "第 1 个 = 区间填充条");
   ok(/(^| )demo-range-from( |$)/.test(fromOf(els).className), "第 2 个 = 起点滑块");
   ok(/(^| )demo-range-to( |$)/.test(toOf(els).className), "第 3 个 = 终点滑块");
@@ -317,7 +335,7 @@ section("T88k 曲式被删 · 滑块与 sync 的守卫路径（不崩、不往�
 {
   const { beat, els } = loadDemo();
   dragRange(els, 3, 7);
-  ok(!!boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className)), "前提：滑块已渲染");
+  ok(!!wrapOf(els), "前提：滑块已渲染（v3.3.0：在底栏右区 #pbProgress 内）");
   /* 先测「元素引用还在、曲式已不在库里」——这条守卫（onRangeInput 里的 !a）只有
      不重建列表才走得到；若在这一步之前重建，第一道守卫就把它挡掉了 */
   beat.Store.deleteArrange(beat.DEMO_ID);

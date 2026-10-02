@@ -130,6 +130,9 @@ const CASE_FILES = [
   "./cases/t158-preset-audition",         // v3.1.0（4.3）：条目 ▶ 试听——进/出/换/主播放互斥/拍号恢复
   "./cases/t159-assembly-wiring",         // v3.1.0：装配区接线——搜索过滤 / Esc 键盘层 / 主钮 toggle
   "./cases/t160-scroll-countin-preroll",  // v3.1.2：滚动预备拍——预滚滑入 + 球钉播放头 + 开播零跳变 + 分页幽灵步回归
+  "./cases/t161-play-bar",                // v3.3.0：底部播放条——搬块不换 id + 主列让位 + 诊断条避让 + 四块去组容器底
+  "./cases/t162-preset-panel",          // v3.3.0：预设库左侧覆盖面板——fixed 浮层 + 遮罩点关 + Esc + 不占栅格行防回潮
+  "./cases/t163-param-slot",              // v3.3.0：开关参数槽——同行参数 + 恒定槽高 + 只显示最后激活的一组（不互斥）
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

@@ -89,7 +89,14 @@ const noteOf = els => playRowOf(els).children[0];                  // 行内唯�
    结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
    测试桩不解析 HTML，只能按 children 序位取，所以这几个 helper 与 buildDemoSongRow 的
    挂法是一对——改挂法就要同步改这里。**每次现取**：点击会触发列表重建，旧引用随即失效 */
-const rangeOf = els => boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
+/* v3.3.0：范围滑块已从曲式区搬到**底栏右区**（#pbProgress），故从那里取；
+   取不到再回退曲式区（兜底路径与 buildDemoSongRow 的 pbHost||group 一致）。 */
+const rangeWrapOf = els => {
+  const host = els["pbProgress"];
+  const w = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
+  return w || boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
+};
+const rangeOf = rangeWrapOf;
 const rangeTrackOf = els => rangeOf(els).children[1];
 const rangeFromOf = els => rangeTrackOf(els).children[1];
 const rangeToOf = els => rangeTrackOf(els).children[2];

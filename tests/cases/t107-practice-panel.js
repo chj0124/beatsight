@@ -138,10 +138,12 @@ section("T107d 布局 · v2.35.0 顶部走带条吸顶 / 640 底部固定条 / �
   ok(src.includes(".arg-transport{position:sticky;top:12px"),
     "★ v2.35.0：「开练」是顶部全宽走带条（sticky 吸顶，替代 320px 右栏——地图不再被压扁）");
   ok(!src.includes(".arg-work{display:grid"), "★ 双栏 grid 已随右栏布局一并删除");
-  ok(src.includes(".arg-transport{position:fixed;top:auto;left:0;right:0;bottom:0"),
-    "★ ≤640px：走带条变底部固定条（top:auto 显式复位——sticky 的 top 跟进来的话 fixed+top+bottom 会拉满整屏）");
-  ok(src.includes(".arg-transport .arg-map{display:none}"),
-    "底条隐藏地图行（窄行放不下 10 段）");
-  ok(src.includes("calc(10px + env(safe-area-inset-bottom,0px)"),
-    "底条带 safe-area 内边距（全面屏不被手势条压住）");
+  /* ★ v3.3.0（D-7）：窄屏不再把走带条钉成底部固定条——屏幕底部只留给播放底栏 #playBar。
+     三条旧断言（fixed 复位 / 隐藏地图 / safe-area 内边距）随之退役，改为反向断言 + 新分工。 */
+  ok(!src.includes(".arg-transport{position:fixed"),
+    "★★ ≤640px：走带条**不再**是底部固定条（两条 fixed 底条会互相吃掉点击区；底部归播放底栏）");
+  ok(src.includes("#playBar") && src.includes(".play-bar{position:fixed") ,
+    "★★ 屏幕底部的 fixed 位由播放底栏独占（v3.3.0）");
+  ok(/@media \(max-width:640px\)\{[\s\S]{0,200}\.arg-transport\{padding:10px 12px\}/.test(src),
+    "★ ≤640 的走带条只压紧内边距（在弹层内 sticky 吸顶，靠减少高度换取空间）");
 }

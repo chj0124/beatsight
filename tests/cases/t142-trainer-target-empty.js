@@ -15,8 +15,13 @@ section("T142a 空目标 · 开开关 → 拒开 + 弹窗");
   eq(beat.Store.S.trainer.target, null, "前提：默认 target = null");
   els["trainerToggle"].fire("click");
   eq(beat.Store.S.trainer.on, false, "★ 空目标 ⇒ 开关拒开（on 仍 false）");
-  ok(els["modalMask"].hidden === false, "★ 弹窗出现（指路右侧参数行）");
-  els["modalOk"].fire("click");
+  /* ★ v3.3.1（用户拍板的方案甲）：目标搬进参数槽后，弹窗拒开会**死锁**（点开关没反应、
+     又看不到目标框）。改为"把槽打开 + 焦点送进目标框 + 就地写原因"，故这里三条一起钉：
+     ① 不再弹窗；② 槽（#trainerPanel）被打开；③ 原因写在 #trainerProg 那一行。 */
+  ok(els["modalMask"].hidden === true, "★★ 不再弹窗拒开（v3.3.1 改口径；弹窗会让「目标在槽里」变成死锁）");
+  eq(els["trainerPanel"].hidden, false, "★★ 改为把参数槽打开——目标框摆到眼前");
+  ok(/目标 BPM|先填/.test(els["trainerProg"].textContent), "★ 原因就地写在进度行（不靠弹窗）",
+    "实际：" + els["trainerProg"].textContent);
 }
 
 /* ================= 场景 T142b：设合法目标 → 能开；爬坡到点自动停 ================= */

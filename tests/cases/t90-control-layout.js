@@ -31,10 +31,11 @@ const M = {
   vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（音量+BPM）"],
   togglesRow: ['<div class="viz-toggles">', '<!-- 同屏行数档位', "预备拍 + 训练开关行"],
   rowsRow: ['<div class="viz-rows-row">', '<div class="viz" id="viz"', "同屏行数 + 拍号 + Swing 的并排行"],
-  /* v3.0.0：跳段行随 #vizBand 迁出时值卡片（可视化区不带卡片背景），止标记随之从
-     `</section>` 改成 `</div><!-- /vizBand -->`——起止标记都必须真实存在，否则 slice 会
-     静默切出"到文件末尾"，让"不该包含 X"的断言侥幸通过（比失败更危险）。 */
-  jumpRow: ['<div class="arg-now arg-jump" id="argJump">', "</div><!-- /vizBand -->", "跳段 + 播放行"],
+  /* v3.3.0：跳段行整组搬进页面底部的固定播放条 #playBar（在 </main> 之后），
+     止标记随之从 `</div><!-- /vizBand -->` 改成其后第一个区块注释（自定义节奏型编辑器）。
+     起止标记都必须真实存在，否则 slice 会静默切出"到文件末尾"，让"不该包含 X"的断言
+     侥幸通过（比失败更危险——v3.0.0 立此规矩时的同一口径）。 */
+  jumpRow: ['<div class="arg-now arg-jump" id="argJump">', "<!-- ================= 自定义节奏型编辑器", "跳段 + 播放行（v3.3.0：已在 #playBar 内）"],
   settingsOverlay: ['<div class="dialog" id="settingsOverlay"', "<!-- ================= 应用内弹窗", "设置浮层小窗"],
   css: ["<style>", "</style>", "样式表"],
 };

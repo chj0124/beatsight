@@ -125,19 +125,21 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   /* v3.0.0 批 5：第 2 轨（BPM）从 `1fr` 改成 `minmax(min-content,312px)`、末轨 168 → 413px——
      用户要求"BPM 卡宽度与音量卡一致，腾出的空间给预设库（它要放 6 个入口按钮）"。
      两条刚性轨都保留 min-content 下限（v2.76.2 的 Windows 度量结论不变）。 */
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,312px) minmax(min-content,max-content) 413px;justify-content:center;justify-content:safe center"),
-    "★ 卡片头居中分布（v3.0.0 批 5：r1 音量｜BPM｜三开关｜预设库(413px)，r2 行数拍号占左三列；断点 1280；"
+  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,312px) minmax(min-content,312px) minmax(min-content,312px);justify-content:space-between;justify-content:safe space-between;"),
+    "★★ v3.3.1（用户澄清后定形）：控制行**拆成两行** —— 第一行三块（音量｜BPM｜同屏行数与拍号，"
+    + "三轨各 312px + space-between 拉开铺满），第二行 = 三开关 + 参数槽（跨满全宽，见下一条）；断点 1280；"
     + "BPM 列与音量列同宽 312px；v2.76.2：首列/开关列改可收缩轨道（Windows 度量下"
     + "刚性 312px+max-content 会顶穿容器 960 上限，用户实拍三卡压扁），safe center 溢出回退 start");
-  ok(src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
-    "★ v3.0.0 批 5：最后一块「同屏行数与拍号」去掉组容器底（用户实测它上下留空 12/16 不对称，"
-    + "并质疑卡片已有底色、这一块再铺一层是否必要）");
+  ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
+    "★ v3.3.0：行数拍号行的单独去底补丁已删（四块统一无底后它成了死规则）");
+  ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
+    "★ v3.3.0：组容器底整条去掉（四块统一 transparent，圆角与 12/16 内边距保留）");
   ok(!src.includes(".card-head-left{grid-row"),
     "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
-  ok(src.includes(".viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}"),
-    "★ 行数拍号行 grid-column:1/4 占满整行（v2.38 的 2/4 悬空第三列已退役；v2.41.0：带前缀压过基础规则的 margin-bottom:12px）");
-  ok(src.includes(".viz-head-grid .card-head-left,") && src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
-    "★★ v2.39.0：四块组容器底（--card2 圆角 + 12/16 内边距）——修「散/悬空/填充感」，纯 CSS 零新增节点");
+  ok(!src.includes("grid-column:1 / 4;grid-row:2"),
+    "★★ v3.3.0：行数拍号行不再显式占 r2——自动落第 4 轨（与音量/BPM/开关同一行），跨列与行号特化全部退役");
+  ok(src.includes(".viz-head-grid .card-head-left,"),
+    "★★ v2.39.0 遗留：四块的共用选择器仍在（v3.3.0 起背景改 transparent，圆角/内边距口径不变）");
   ok(src.includes(".viz-rows-row .group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center"),
     "★★ v2.40.0：拍号面板 flex-direction:row——.group 基础 column + align-items:center 恰成水平居中"
     + "（标签悬空、按钮下沉一行）；row 后与行数面板同款「标签左、按钮右」，同基线");
@@ -146,20 +148,22 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   ok(src.includes(".viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}"),
     "★★ v2.40.0：组内开关胶囊去自带底色（--card 深、宽随文案参差）——每组只留组底一层");
   /* v3.0.0：末轨 168px 给预设库块（右列窄块），「行数拍号」仍并入行 1 占第 4 轨 */
-  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(3,minmax(min-content,max-content)) 413px;\n    justify-content:space-between;justify-content:safe space-between")
+  ok(src.includes("body.wide-full .viz-head-grid{grid-template-columns:minmax(280px,312px) repeat(2,minmax(min-content,max-content));\n    justify-content:space-between;justify-content:safe space-between")
      && src.includes("@media (min-width:1900px)"),
-    "★★ v2.40.0/v2.41.0：宽屏铺满四块一行 + space-between 拉开（≥1900 才启用：四块 max 合计"
-    + " ~1723，更窄的宽屏落回 2×2 居中而非溢出；行数拍号列 minmax——空间不足先内部折行）");
-  ok(src.includes("body.wide-full .viz-head-grid .viz-rows-row{grid-column:auto;grid-row:auto}"),
-    "★ v2.40.0：宽屏下行数拍号块取消 1/4 跨列（回到第 4 列）；非宽屏 ≥1280 维持 2×2 不变");
+    "★★ 宽屏铺满（≥1900）：第一行三轨仍走 space-between 拉开、轨道下限仍保留 minmax(min-content)——"
+    + "空间不足时先内部折行而不是溢出（v2.76.2 的 Windows 度量结论不变）");
+ok(src.includes(".viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2}"),
+    "★★★ v3.3.1：三开关块 `grid-column:1 / -1` + `grid-row:2` —— **独占第二行、跨满全宽**"
+    + "（用户澄清：不是「块内三行合成一行」，而是这一块要自己占一行）");
+  ok(!src.includes("body.wide-full .viz-head-grid .viz-rows-row"),
+    "★ v3.3.0：宽屏下「行数拍号复位」规则随显式占位一并删除（它原本就是为抵消 r2 跨列而写，现在没有可抵消的东西）");
   ok(src.includes(".viz-head-grid .viz-head{display:contents}")
      && !/\n\s*\.viz-head\{display:contents\}/.test(src),
     "★★ v2.41.0：壳溶解带 .viz-head-grid 前缀——裸 `.viz-head{display:contents}` 会被更靠后的"
     + " `.card-head{display:flex}` 同特异性压掉（v2.38 起三版从未生效：音量+BPM 被装进同一网格项，"
     + "间隙 48/14 混用、宽屏第 4 列空置）");
-  ok(src.includes(".viz-head-grid .viz-rows-row{grid-column:1 / 4;grid-row:2;margin-bottom:0}"),
-    "★★ v2.41.0：行 2 的 margin 清零同样带前缀——否则 `.viz-rows-row` 基础规则的 "
-    + "margin-bottom:12px 在其后生效，行 2 轨道虚高、底边不齐");
+  ok(!/.viz-head-grid .viz-rows-row\{[^}]*margin-bottom:\s*0/.test(src),
+    "★★ v3.3.0：行 2 的 margin 清零规则已删（它服务的 r2 轨道不存在了）；行距由栅格 row-gap 统一管");
   ok(src.includes("input[type=range]:not(.arg-range-input){background:linear-gradient(to right,var(--green) var(--vfill,0%),var(--line) var(--vfill,0%))"),
     "★★ v2.41.0：滑杆已走过段绿色填充（--vfill 分段渐变）；编排页播放范围双滑块 :not 排除"
     + "（双轨叠一轨、区间语义，各自左起填充会读错范围）");
