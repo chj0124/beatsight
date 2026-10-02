@@ -74,20 +74,20 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
   /* ① 「当前节奏型」裸行整块删除（名字搬进跳段行、meta 删除） */
   ok(!/class="pattern-head"/.test(html), "★ `.pattern-head` 裸行已整块删除（名字去跳段行、meta 删）");
   ok(!/id="patternMeta"/.test(html), "★ #patternMeta（4/4 拍 · N BPM）已删——拍号看 pill、速度看 BPM 大字");
-  ok(html.indexOf('id="statusText"') < html.indexOf('id="patternName"'),
+  /* v3.10.0：状态灯搬进底栏右区后，#statusText（.pb-right 内）与 #patternName（胶囊内）
+     都在 play-bar 里，文档序随各自落位——原「statusText 在 patternName 之前」的序断言退役。 */
+  ok(!/id="patternName"/.test(slice("topbar")),
     "★ v3.4.1（P3 去重）：型名只在底栏胶囊里（#patternName 随元素搬进 #presetLibBtn），"
-    + "顶栏状态行只剩「● 状态」两枚——两处同帧同值的重复面已消除");
+    + "顶栏零读数");
   /* ② 标题 #vizTitle 整块删除（含「· 4/4」——用户拍板连它一起删），JS 写入点不复存在 */
   ok(!/id="vizTitle"/.test(html), "★ #vizTitle 已整块删除（与状态灯重复；卡片以角标 01 Rhythm Map 为名）");
-  /* ③ v2.76.3：状态灯行搬进顶栏——时值卡左列只剩角标（经典主题 display:none）+ 音量组
-     ★ v3.4.1（P3 去重）：顶栏状态行退化为「● 状态」两枚，型名搬去底栏常驻胶囊。 */
+  /* ③ v2.76.3：状态灯行曾搬进顶栏；★ v3.10.0：整体搬去底栏右区 .pb-right（用户要求
+     "与第 N–M 小节读数放一起"）——顶栏自此零读数，契约归 t170。 */
   const tb = slice("topbar");
-  ok(/class="status"/.test(tb) && /id="statusDot"/.test(tb) && /id="statusText"/.test(tb),
-    "★★ 状态灯行（#statusDot/#statusText）在顶栏");
+  ok(!/class="status"/.test(tb) && !/id="statusDot"/.test(tb),
+    "★★ v3.10.0：顶栏不再有状态灯行（已整体搬去底栏右区，契约归 t170）");
   ok(!/id="patternName"/.test(tb),
     "★★ v3.4.1（P3 去重）：顶栏**不再**有型名——原先与底栏胶囊同帧同值的重复面已消除");
-  ok(tb.indexOf('id="statusText"') < tb.indexOf('class="lat-read"'),
-    "★★ 顶栏顺序——状态在「补偿 0ms」左侧（同读数带）");
   /* ★ v3.4.1：型名的唯一权威面 = 底栏胶囊（在 #presetLibBtn 内，fixed 常驻不随页面滚走） */
   const bar = slice("playBar");
   ok(/<button class="pb-ctx" id="presetLibBtn"/.test(bar)
@@ -260,9 +260,11 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   /* v2.76.3 决定的是「状态行要与补偿读数/设置/主题钮**同高**」这件事，
      36px 只是当时的取值。v3.6.0（B4）把它抬到 40px 与全站触控下限对齐——
      等高带仍在（四者同一条规则），故按最新决定改写断言值而非删除断言。 */
-  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:40px/.test(css),
-    "★★ 状态行仍在顶栏**等高带**里（与补偿读数/设置/主题钮同高，四者共一条规则）；"
-    + "取值 36px → 40px 是 v3.6.0（B4）与全站触控下限对齐，等高这件事本身没变");
+  /* ★ v3.10.0：状态行整体搬去底栏右区（.pb-right，用户要求"与第 N–M 小节读数放一起"）——
+     顶栏等高带收缩为三项，高度契约 40px 不变；状态行的新契约归 t170。 */
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:40px/.test(css),
+    "★★ 顶栏**等高带**仍在（补偿读数/设置/主题钮同高共一条规则；取值 40px 是 v3.6.0"
+    + "与全站触控下限对齐）；v3.10.0 起带内不再有 .status（已搬去底栏右区）");
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent\}/.test(css),
     "★★ v2.11.0：循环钮零背景图层（含 hover 与开启态）——图标直接浮在页面背景上");
   ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),

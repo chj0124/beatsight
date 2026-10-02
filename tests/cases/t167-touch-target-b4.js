@@ -87,14 +87,17 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
   ok(!/\.viz-head-grid \.viz-toggles \.tg-body\{[^}]*grid-template-rows:auto (?!76px)\d+px/.test(CSS_CODE),
     "★★ 参数行轨道不得被改成 76px 以外的值（本批最危险的连带面，必须钉死）");
 
-  /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏四个元素
-     （状态行 / 补偿读数 / 设置钮 / 主题钮）就仍是 36px，B4 等于漏了顶栏。
+  /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏的元素
+     （补偿读数 / 设置钮 / 主题钮）就仍是 36px，B4 等于漏了顶栏。
      实测抬到 40 后：.topbar 容器高 64px 与 .main 起点都不变、零横向溢出，
-     且四者 top 由 [14,12] 收敛为单值 [12]——等高带反而更齐，不是妥协。 */
-  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:40px/.test(CSS_CODE),
+     且四者 top 由 [14,12] 收敛为单值 [12]——等高带反而更齐，不是妥协。
+     ★ v3.10.0：.status 移出等高带（状态灯已搬去底栏右区），带收缩为三项；高度契约不变。 */
+  ok(/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:40px/.test(CSS_CODE),
     "★★ 顶栏等高带也抬到 40px——这条显式 height 会盖住 .pill 的 min-height，"
-    + "不改则顶栏四元素仍是 36px（B4 漏掉顶栏）；t90 的 v2.76.3 等高带断言同步改写");
-  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:(?:[1-3][0-9])px/.test(CSS_CODE),
+    + "不改则顶栏元素仍是 36px（B4 漏掉顶栏）；v3.10.0 起带内不再有 .status");
+  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read, \.topbar \.status\{height:/.test(CSS_CODE),
+    "★ 等高带里不再有 .topbar .status（旧四项写法已随状态灯搬家退役）");
+  ok(!/\.topbar \.pill, \.topbar \.icon-btn, \.topbar \.lat-read\{height:(?:[1-3][0-9])px/.test(CSS_CODE),
     "★ 顶栏等高带不得被调回 30~39px（与全站触控下限同源，别只改 .pill 忘了这条显式 height）");
   ok(/:root\{[^}]*--bar-h:\s*96px|--bar-h:\s*96px/.test(CSS_CODE)
     && !/--bar-h:\s*(?:8[0-9]|9[0-5]|9[7-9]|1\d\d)px/.test(CSS_CODE),

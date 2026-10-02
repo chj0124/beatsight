@@ -139,6 +139,7 @@ const CASE_FILES = [
   "./cases/t167-touch-target-b4",             // v3.6.0（B4）：全站 pill 统一触控下限 min-height:40px
   "./cases/t168-toggle-slot-b5",              // v3.7.0（B5）：三开关参数槽恒高契约固化（实测已满足，仅补断言不改码）→ v3.9.0 随共槽退役重写为三列固定槽位契约
   "./cases/t169-scroll-fixes",                // v3.9.0：预备拍道按拍数构建（4 拍闪变根除）+ 道内竖线放行 + 图例关闭重采几何
+  "./cases/t170-status-pb",                   // v3.10.0：状态灯搬底栏右区（.pb-right）+ 播放头游标改粗竖线
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组

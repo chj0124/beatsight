@@ -742,17 +742,23 @@ body.wide-full .main{max-width:none}
 body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked="true"]{background:transparent;border:none}
 .jump-btn:disabled:hover{background:var(--card2)}
 /* 右区进度条（v3.3.0）：容器只负责排布，条本体是 JS 挂进来的 .demo-range（双原生 range 叠层）。
-   ★ 横向化：曲式区那版是纵向（读数在上、轨道在下），底栏里读数挪到轨道右侧，省一行高度。 */
-.pb-progress{justify-self:end;display:flex;align-items:center;gap:10px;width:100%;max-width:640px;min-width:0}
+   ★ 横向化：曲式区那版是纵向（读数在上、轨道在下），底栏里读数挪到轨道右侧，省一行高度。
+   ★ v3.10.0：外层改由 .pb-right 包裹（状态灯 + 进度条）——网格第 3 列的落位与宽度契约
+   （justify-self:end / max-width:640 / min-width:0）整体上移给 .pb-right；.pb-progress
+   在其中 flex:1。状态灯 flex:none（不被挤压），文案不折行。 */
+.pb-right{justify-self:end;display:flex;align-items:center;gap:12px;width:100%;max-width:640px;min-width:0}
+.pb-right .status{flex:none;white-space:nowrap}
+.pb-progress{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
 .pb-progress .demo-range-note{white-space:nowrap;flex:none}
-/* 播放头（v3.3.0）：纯指示、不可拖 —— 与两个可拖 thumb 是**两种性质**，故用明显不同的形状
-   （细竖线 + 顶部小三角），而不是第三个圆点；pointer-events:none 保证它不吃任何拖动。
-   ★ 追加在刻度线之后：children[1]/[2] 仍是两个 thumb（t68 的定位契约不变）。 */
-.demo-range-head{position:absolute;top:1px;bottom:1px;width:2px;background:var(--t1);pointer-events:none;z-index:4}
-.demo-range-head::before{content:"";position:absolute;left:-3px;top:0;width:8px;height:0;
-  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--t1)}
+/* 播放头（v3.3.0）：纯指示、不可拖 —— 与两个可拖 thumb 是**两种性质**，故用明显不同的形状；
+   pointer-events:none 保证它不吃任何拖动。
+   ★ 追加在刻度线之后：children[1]/[2] 仍是两个 thumb（t68 的定位契约不变）。
+   ★ v3.10.0（用户要求）：「细竖线 + 顶部小三角」改**粗竖线（4px 圆角）**——三角在 22px 高的
+   轨道里读起来像"快进"图标，表意不清（用户实拍看不懂那个符号是什么）；加粗 + 圆角后与
+   两个圆形 thumb 仍有形状区分。::before 三角整块退役。 */
+.demo-range-head{position:absolute;top:1px;bottom:1px;width:4px;border-radius:2px;background:var(--t1);pointer-events:none;z-index:4}
 .demo-range-head[hidden]{display:none}
 /* ---------- 播放控制底栏（v3.3.0）----------
    z-index 40：低于模态遮罩（200）/ TAP 条与诊断条（60），高于普通内容。
@@ -774,8 +780,12 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
   /* 窄屏：读数先让位（条本身是主要信息），条宽压到 26vw 免得把胶囊与控制键挤没 */
   /* ★ 窄屏必须给"确定宽度"而不是 flex:1 + max-width：一行放不下时 flex 会把可收缩项压到 0
      （实测真机 `#pbProgress` 宽度 0 —— 桩测不出，是冒烟的宽度断言抓到的）。
-     改为 flex:0 0 30vw + min-width 兜底；胶囊同步收窄，让位次序 = 先让读数、再让"当前"前缀、最后压胶囊。 */
-  .pb-progress{width:100%;max-width:none;min-width:64px}
+     改为给 .pb-right 与 .demo-range-track 确定下限；胶囊同步收窄，让位次序 = 先让读数、再让"当前"前缀、最后压胶囊。
+     ★ v3.10.0：状态灯入列右区后，窄屏改为**上下两行**（状态灯在上、进度条在下，都右对齐）——
+       一行硬塞 [● 播放中 · 第 N 小节][range] 会把轨道压穿 min-width。 */
+  .pb-right{flex-direction:column;align-items:flex-end;gap:2px}
+  .pb-right .status{font-size:11px}
+  .pb-progress{width:100%;max-width:none;min-width:96px}
   .pb-progress .demo-range-note{display:none}
   .pb-ctx{max-width:30vw}
   .pb-ctx .pb-ctx-lab{display:none}   /* 窄屏省掉「当前」前缀，把宽度让给进度条 */
@@ -837,7 +847,7 @@ input[type=range].vol{width:120px}
    `svg.hidden = true` 只写 JS expando 不动 DOM，两枚图标曾因此并排可见（用户实报） */
 /* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
    （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
-.topbar .pill, .topbar .icon-btn, .topbar .lat-read, .topbar .status{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：状态行入列等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏四元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，四者 top 由 [14,12] 收敛为单值 [12]（等高带反而更齐） */
+.topbar .pill, .topbar .icon-btn, .topbar .lat-read{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，top 收敛为单值 [12]（等高带反而更齐） ★ v3.10.0：.status 移出等高带（状态灯已随用户要求搬去底栏右区，见 .pb-right） */
 .topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
@@ -1824,8 +1834,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          **同帧写同值**（都是 p.name），两处一样的文字把「当前型名」劈成两处，无从判断哪处
          权威；底栏 fixed 不随页面滚走，且胶囊本身就是预设库入口、名字是它的内容。
          ★ #patternName 元素整体搬进胶囊（**不换 id**：8 个测试文件约 20 条断言拿它当锚点，
-           退役的只是容器）；#plbCurName 那个第二写点一并删除。 -->
-    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+           退役的只是容器）；#plbCurName 那个第二写点一并删除。
+         ★ v3.10.0（用户要求）：状态灯（● + 播放文案）也搬去底栏——与底栏右区的
+           「第 N–M 小节」范围读数团圆（v2.76.3 搬进顶栏是三读数带时代的设计，
+           型名走后顶栏这份状态行成了孤儿）；等高带规则与断言同步收缩（见样式表）。 -->
     <button class="lat-read" id="latChip" aria-label="音频延迟补偿，点击打开设置">补偿 0ms</button>
     <button class="pill outline" id="settingsBtn">设置</button>
     <!-- 主题切换（v2.69.0，1.1）：搬块不换 id（#themeToggle）——冷键、点击回调、aria-pressed
@@ -2245,8 +2257,14 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         </button>
       </div>
   <!-- v3.3.0：右区 = 播放进度条（曲式模式下由 Presets.buildDemoSongRow 把那一组
-       原生 range 叠层整组挂进来；空容器 = 预设模式暂无进度）。 -->
-  <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
+       原生 range 叠层整组挂进来；空容器 = 预设模式暂无进度）。
+       ★ v3.10.0（用户要求）：右区改为 .pb-right 包裹【状态灯 + 进度条】——「播到哪」的两路
+         读数团圆。状态灯必须是 #pbProgress 的**兄弟**而不是子节点：buildDemoSongRow
+         挂载前会清空 #pbProgress（曲式列表重建即再挂一次），静态子节点会被连坐销毁。 -->
+  <div class="pb-right">
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
+    <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
+  </div>
 </div>
 
 <!-- v2.10.16（用户要求）：快捷键/音频解锁提示移到**页面最底部**——原先在主列末尾
@@ -2983,23 +3001,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3015  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3644  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5248  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6105  Modal         应用内弹窗
-     L6243  Viz           时值可视化渲染与每帧动画
-     L9330  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L9997  Trainer       变速训练器
-     L10199 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10813 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
-     L12211 Editor        自定义节奏型编辑器
-     L12657 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12704 Ear           听辨训练（v1.10.0）
-     L12924 Arrange       曲式编排（v2.0.0）
-     L15822 Help          使用方法（v2.0.1）
-     L15951 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16025 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16268 初始化（装配） 各模块 hook 接线与启动
+     L3033  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3662  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5266  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6123  Modal         应用内弹窗
+     L6261  Viz           时值可视化渲染与每帧动画
+     L9348  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10015 Trainer       变速训练器
+     L10217 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10831 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 回退提示 / 播放中切换挂起
+     L12229 Editor        自定义节奏型编辑器
+     L12675 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12722 Ear           听辨训练（v1.10.0）
+     L12942 Arrange       曲式编排（v2.0.0）
+     L15840 Help          使用方法（v2.0.1）
+     L15969 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16043 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16286 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3025,7 +3043,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.9.0";
+const VERSION = "3.10.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

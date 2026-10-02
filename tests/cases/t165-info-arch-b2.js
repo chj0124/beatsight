@@ -39,8 +39,11 @@ section("T150a #patternName 在底栏胶囊内，页面别处无第二处型名"
   ok(/<button class="pb-ctx" id="presetLibBtn"/.test(PLAYBAR)
      && /<b class="pat-now" id="patternName">/.test(PLAYBAR),
     "★★ P3：型名在底栏胶囊 .pb-ctx > b.pat-now 内——全页面唯一展示位，且随 fixed 底栏常驻");
-  ok(/id="statusDot"/.test(TOPBAR) && /id="statusText"/.test(TOPBAR),
-    "★ 状态灯两枚仍留在顶栏（去重的是型名，不是把状态读数一起砍掉）");
+  ok(!/id="statusDot"/.test(TOPBAR) && !/id="statusText"/.test(TOPBAR),
+    "★ v3.10.0：状态灯两枚已随用户要求搬去底栏（v2.76.3 搬进顶栏是三读数带时代的设计，"
+    + "型名 P3 走后这份状态行成了孤儿；顶栏不再有 statusDot/statusText）");
+  ok(/id="statusDot"/.test(PLAYBAR) && /id="statusText"/.test(PLAYBAR),
+    "★★ v3.10.0：状态灯在底栏右区 .pb-right 内，与「第 N–M 小节」范围读数同区");
   /* 全页只允许一个 id="patternName"（重复 id 会让 $() 命中首个，语义反而更坏） */
   ok((html.match(/id="patternName"/g) || []).length === 1,
     "★★ P3：id=\"patternName\" 全页面恰好出现 1 次（无重复 id）");

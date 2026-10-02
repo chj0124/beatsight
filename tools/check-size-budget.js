@@ -115,8 +115,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      少算竖线 → 判据永不成立 → 守卫每帧整拆重建」；④「布局高度一变就重采几何」纪律的
      第三个挂点；⑤ 参数区三列固定槽位 + 头部聚拢（用户裁决的布局改造本体 + 契约注释）。
      已做两轮压缩仍超 3.6KB，故上调到 1434KB；gen-index 回写四位数行号又净增 0.2KB，
-     终值 1435KB，留约 0.8KB 拦回归。 */
-const BUDGET_BYTES = 1435 * 1024;
+     终值 1435KB。v3.10.0（状态灯搬底栏 + 游标粗竖线）：净增约 0.8KB，全为搬家注释
+     （#pbProgress 清空连坐红线、等高带收缩依据）与 .pb-right 契约，上调到 1436KB，
+     留约 0.2KB 拦回归。 */
+const BUDGET_BYTES = 1436 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
