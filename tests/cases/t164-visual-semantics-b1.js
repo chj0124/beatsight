@@ -58,14 +58,18 @@ section("T149d 日间主题（obs）的 pill.active 同步改中性");
   ok(!/var\(--green\)/.test(rule), "★★ obs 主题选中态也不留绿（否则两主题语义分叉）");
 }
 
-/* ================= T149e：当前行靠位置对比（P8） ================= */
-section("T149e .bar-row.current 底纹提到 .12 并加左缘绿条");
+/* ================= T149e：当前行高亮（v3.8.0 裁决后） ================= */
+section("T149e .bar-row.current 回 .07 淡底 + 真 24px 行首短标（渐变实现）");
 {
   const rule = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
-  ok(/rgba\(30,215,96,\.12\)/.test(rule), "★ 底纹 .07 → .12（壁纸上不再被稀释到不可见）");
-  ok(/box-shadow:inset 3px 24px 0 0 var\(--green\)|box-shadow:inset 3px 0 0 var\(--green\)/.test(rule),
-    "★ 左缘 3px 绿条：位置对比兜底，弱光/自定义壁墙上仍可辨当前行"
-    + "（v3.5.0/B3 起为 `inset 3px 24px 0` 的行首短标，通高写法一并认作通过）");
+  ok(/rgba\(30,215,96,\.07\)/.test(rule),
+    "★ 底纹回 .07（v3.8.0 用户实拍裁决：.12 亮带压住未弹格子的扫弦箭头/六线底纹，读谱优先）");
+  ok(!/rgba\(30,215,96,\.12\)/.test(rule), "★ .12 写法已退役（真回退，不是被覆盖）");
+  ok(/linear-gradient\(var\(--green\),var\(--green\)\) left top\/3px 24px no-repeat/.test(rule),
+    "★ 真·24px 行首短标走单层渐变背景（3px×24px 贴左上）");
+  ok(!/box-shadow/.test(rule),
+    "★★ 不再用 inset box-shadow——它画的是「盒差集」，inset 3px 24px 0 0 实为 L 形通宽带"
+    + "（B3 的几何 bug，v3.8.0 修复）；单侧短标只能靠渐变/伪元素");
 }
 
 /* ================= T149f：和弦名改琥珀（P2） ================= */

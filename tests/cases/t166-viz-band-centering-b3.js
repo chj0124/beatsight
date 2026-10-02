@@ -24,6 +24,9 @@
      ② 下限必须扣掉 --bar-h 与 24px——否则内容会被 fixed 底栏压住（尾行遮挡）；
      ③ 不得改 .main 的 align-items：stretch 会波及卡内对齐契约（t90 有断言）；
      ④ 左缘绿条由通高（inset 3px 0 0）改行首短标（inset 3px 24px 0），底纹 .12 不变；
+        ★ v3.8.0 订正：④ 的实现是几何 bug——inset 3px 24px 0 0 渲染为 L 形通宽带而非短标
+        （断言只比 CSS 字符串所致）；v3.8.0 改单层渐变背景实现真短标、底纹随用户裁决回 .07，
+        T151c 已同步改写；
      ⑤ 行高/格高**一个字都不许动**（本批最大的风险是把 86px 改坏，故钉死为反向不变量）。 */
 "use strict";
 const { ok, section, html } = require("../lib/harness");
@@ -65,20 +68,19 @@ section("T151b .main 保持 align-items:start，不靠 stretch 改居中");
     + "卡内对齐（音量组沉底，t90 有断言）随之改变，属波及面大得多的改法");
 }
 
-/* ================= T151c：左缘绿条改行首短标 ================= */
-section("T151c .bar-row.current 左缘绿条为 24px 短标，不再通高");
+/* ================= T151c：行首短标（v3.8.0 改写：修 B3 几何 bug） ================= */
+section("T151c .bar-row.current 为真·24px 行首短标（渐变实现），底纹回 .07");
 {
   const rule = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
   ok(!!rule, "★ 规则在位");
-  ok(/box-shadow:inset 3px 24px 0 0 var\(--green\)/.test(rule)
-     || /box-shadow:inset 3px 24px 0 var\(--green\)/.test(rule),
-    "★★ 左缘条为行首短标（inset 3px 24px 0）——通高绿条在 4~5 行档会连成一道"
-    + "贯穿立柱，把「当前行」误读成「当前这一列」");
-  ok(!/box-shadow:inset 3px 0 0/.test(rule),
-    "★ 旧的通高写法已不在本规则里（真替换，不是被后面覆盖）");
-  ok(/rgba\(30,215,96,\.12\)/.test(rule),
-    "★ 底纹 .12 不变（短标只改位置对比那一半，面积对比那一半保持 B1 的成果）");
-  ok(/border-radius:8px/.test(rule), "★ 圆角保留（短标贴着左缘圆角，不圆会露出方角）");
+  ok(/linear-gradient\(var\(--green\),var\(--green\)\) left top\/3px 24px no-repeat/.test(rule),
+    "★★ 短标 = 单层渐变 3px×24px 贴左上不重复——B3 原意图的真正落地");
+  ok(!/box-shadow/.test(rule),
+    "★★ 无 box-shadow：inset 阴影画的是盒差集，3px 24px 偏移实为 L 形（左缘通高条 ∪ 顶部"
+    + "通宽带）——这正是用户实拍里那条压暗读谱区的大绿带的来源（B3 几何 bug，v3.8.0 修）");
+  ok(/rgba\(30,215,96,\.07\)/.test(rule),
+    "★ 底纹 .07（v3.8.0 用户裁决退回 v3.3.1 强度：.12 亮带牺牲未弹格读谱对比度，不值）");
+  ok(/border-radius:8px/.test(rule), "★ 圆角保留（短标贴左缘，背景随圆角自然收角）");
 }
 
 /* ================= T151d：反向不变量——行高与格高一个字都不许动 ================= */
