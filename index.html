@@ -155,6 +155,9 @@ body.wide-full .main{max-width:none}
 .viz-head-grid .viz-head > .group,
 .viz-head-grid .viz-toggles{
   background:transparent;border-radius:10px;padding:12px 16px}   /* v3.3.0：组容器底整条去掉——四块统一无底，靠 .group-label 与栅格间距分组；圆角与内边距保留（块内间距口径不变） */
+/* ★ v3.24.0（行高恒定方案的保险）：开关列纵向内边距 12→8——全开态 tg 盒 191 贴着
+   BPM 列高 192.8（余量 1.8px），Windows 字体度量差会击穿；压缩到 183，余量 ~10px */
+.viz-head-grid .viz-toggles{padding-top:8px;padding-bottom:8px}
 /* ★ v3.0.0（批 5，用户要求）：**最后一块（同屏行数与拍号）去掉组容器底**。
    用户实测看出它上下留空不对称（上方 12px = 栅格 row-gap，下方 16px = 网格的 margin-bottom），
    并质疑"卡片已经有一层色，这一块再铺一层有没有必要"。去掉底之后它与其他块的留白口径
@@ -193,11 +196,10 @@ body.wide-full .main{max-width:none}
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
 .viz-head-grid .viz-toggles{display:flex;flex-direction:column;gap:8px}   /* v2.76.0：底距清零（行数拍号行的间距单一来源） */
-/* ★ v3.22.0（用户需求"打开变速训练没必要变形"）：音量组改**顶对齐固定间距**——
-   v3.21 的 space-between 会随行高重新分布（开面板 → 滑杆移位 = 变形）；固定 gap 后
-   行高变化时滑杆纹丝不动（组盒底边透明延伸，不可见）。gap 29 使基态列高 ≈ BPM 列
-   （v3.21 的等高观感保留）。 */
-.viz-head-grid .card-head-left .group{flex:1;justify-content:flex-start;gap:29px}
+/* ★★ v3.24.0（用户方案）：开关列压缩 + 行高恒定（由 BPM 列决定）——音量组
+   space-between 在恒定行高下精确底对齐 BPM（v3.21 等高诉求回归且更稳：位置恒定，
+   不再随面板开合重新分布）。v3.22 的固定 gap 顶对齐（估算误差 51px）退役。 */
+.viz-head-grid .card-head-left .group{flex:1;justify-content:space-between}
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
 /* ★ v3.22.0：① 作用域收窄到 .viz-head 内（BPM 内容区）——裸 .tg-body 会命中开关列的
      同名包装层；② space-evenly → flex-start：行高随开关列生长时，BPM 内容**重分布**
@@ -974,6 +976,7 @@ input[type=range].vol{width:120px}
    ★ 只去左边、保留右边：右侧留着才不至于让文字贴住开关本体。
    ★ 作用域限定在 `.viz-toggles` 内——别顺手改成全局 `.toggle-pill`（那是全站开关的观感变更） */
 .viz-toggles .toggle-pill{padding-left:0}
+.viz-head-grid .viz-toggles .toggle-pill{padding-top:8px;padding-bottom:8px}   /* v3.24.0：10→8 胶囊 40→36（压缩配额） */
 /* v2.11.2：变速训练参数搬进本行后，`.tr-panel` 自带的 `margin-top:12px` 是"独占一行"时期留的，
    进了 flex 行会和 gap 叠成 24px、看着又离开关远了 —— 在本行作用域内归零。
    ★ 同样只改这一行，不动全局 `.tr-panel`（将来若摆回独占位置，那份间距仍要留着） */
@@ -990,12 +993,12 @@ input[type=range].vol{width:120px}
    面板成为 #tgSwitchRow 的流内子节点（DOM 已交错排列，搬块不换 id）。
    ★ 全宽度档（≥760 与 <760）都是同一套纵排流内结构——v3.9/v3.12 时代的
    "同轴网格 / 手风琴网格 / 悬浮槽"三套模型收敛为一份。 */
-.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
-.viz-toggles .tg-row .tr-panel{width:100%;margin:0}
+.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px}   /* v3.24.0：8→2 三组间距压缩（行高恒定方案：全开 ≤ BPM 列高 192.8） */
+.viz-toggles .tg-row .tr-panel{width:100%;margin:0}   /* v3.24.0：参数行 padding 清零（压缩配额） */
 .viz-toggles .tg-row .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-row .tr-panel .lab{font-size:11px;white-space:nowrap}
 .viz-toggles .tg-row .tr-prog{width:100%;text-align:left}
-.viz-toggles .countin-line,.viz-toggles .sw-line{display:flex;align-items:center;gap:10px;width:100%}   /* v3.22.0：三组统一"开关行 = 开关 + 主参数 inline 右"（预备拍+拍数 / 静音拍+随机 / 变速训练+目标） */
+.viz-toggles .countin-line,.viz-toggles .sw-line{display:flex;align-items:center;gap:8px;width:100%}   /* v3.22.0：三组统一"开关行 = 开关 + 主参数 inline 右"（预备拍+拍数 / 静音拍+随机 / 变速训练+目标） */
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
    均分宽度）——开关列作为第 3 列与音量/BPM 同行顶部对齐；<900 保持纵向堆叠。 */
 @media (min-width:900px){
@@ -3078,23 +3081,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3110  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3741  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5345  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6209  Modal         应用内弹窗
-     L6347  Viz           时值可视化渲染与每帧动画
-     L9508  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10175 Trainer       变速训练器
-     L10377 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10961 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12350 Editor        自定义节奏型编辑器
-     L12796 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12843 Ear           听辨训练（v1.10.0）
-     L13062 Arrange       曲式编排（v2.0.0）
-     L15960 Help          使用方法（v2.0.1）
-     L16089 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16163 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16406 初始化（装配） 各模块 hook 接线与启动
+     L3113  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3744  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5348  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6212  Modal         应用内弹窗
+     L6350  Viz           时值可视化渲染与每帧动画
+     L9511  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10178 Trainer       变速训练器
+     L10380 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10964 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12353 Editor        自定义节奏型编辑器
+     L12799 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12846 Ear           听辨训练（v1.10.0）
+     L13065 Arrange       曲式编排（v2.0.0）
+     L15963 Help          使用方法（v2.0.1）
+     L16092 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16166 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16409 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3120,7 +3123,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.23.0";
+const VERSION = "3.24.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

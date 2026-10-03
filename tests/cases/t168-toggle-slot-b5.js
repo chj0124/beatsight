@@ -21,9 +21,8 @@ section("T153a v3.19.0 开关列纵排 —— 面板在流内挂各自开关下�
 {
   ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ tg-body = 纵排 flex 列 + width:100%（v3.19.0 新骨架；v3.13 的 display:block+padding 预留口径退役）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:8px\}/.test(CSS_CODE),
-    "★★ tg-row 纵排、顶部对齐——面板打开时开关列纵向生长（用户接受下移），"
-    + "音量/BPM 两列与开关列顶对齐不受影响");
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:2px\}/.test(CSS_CODE),
+    "★★ v3.24.0：tg-row 纵排 + 间距压缩——行高恒定（由 BPM 列决定），面板在列内空余区显隐");
   ok(!/\.viz-toggles \.tg-slot\{position:absolute/.test(CSS_CODE)
      && !/tg-slot\{display:contents\}/.test(CSS_CODE),
     "★★ 悬浮槽规则整体退役（无 absolute 槽、无 display:contents 壳）");
@@ -41,9 +40,9 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
      交错钉（源码序）在 t163；这里钉 CSS 侧的面板满列宽与预备拍同行。 */
   ok(/\.viz-toggles \.tg-row \.tr-panel\{width:100%;margin:0\}/.test(CSS_CODE),
     "★★ 面板 width:100%（吃满开关列宽 ~312px；v3.13 的 max-content 定宽退役）");
-  ok(/\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex;align-items:center;gap:10px;width:100%\}/.test(CSS_CODE),
+  ok(/\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex;align-items:center;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ 三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧、吃满列宽"
-    + "（预备拍+拍数 / 静音拍+随机 / 变速训练+目标——v3.22.0）");
+    + "（预备拍+拍数 / 静音拍+随机 / 变速训练+目标——v3.22.0；v3.24.0 gap 10→8 压缩）");
   ok(/\.viz-toggles \.tg-row \.tr-prog\{width:100%;text-align:left\}/.test(CSS_CODE),
     "★ 训练进度/拒开原因 = 变速参数末行（流内，v3.16 的 absolute 悬浮口径退役）");
   ok(!/grid-area:\d\/\d/.test(CSS_CODE),

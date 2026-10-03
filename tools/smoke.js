@@ -1241,11 +1241,16 @@ async function main(){
              预备拍行 = 开关 + 拍数输入同行右侧；复原无残留。
              （悬浮槽时代断言——四态等高 / 50px 预留 / 槽心对齐 / 卡底收容——整体退役。） */
           const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
-          ok(L.tgBody.cardHB > L.tgBody.cardHC && L.tgBody.cardHR === L.tgBody.cardHC,
-            p.label + "·" + vp + "：★★★ 面板打开 → 开关列**纵向生长**、复原**无残留**"
-            + "（v3.19.0 下移契约：卡片高 关 " + L.tgBody.cardHC + " → 静音拍 " + L.tgBody.cardHM
-            + " → 都开 " + L.tgBody.cardHB + " → 复原 " + L.tgBody.cardHR + "）",
-            "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.cardHR);
+          /* ★★★ v3.24.0（用户方案）：**单开任一开关 → 卡高恒定**（面板在列内空余区显隐，
+             不改变整体高度——用户投诉"打开变速训练影响整体高度"的正解）；
+             都开（两组参数同时可见）允许有限生长 ≤20px（两组面板同显的固有成本）。 */
+          if (vp === "桌面"){
+            ok(L.tgBody.cardHM === L.tgBody.cardHC && L.tgBody.cardHR === L.tgBody.cardHC
+               && L.tgBody.cardHB <= L.tgBody.cardHC + 20,
+              p.label + "·" + vp + "：★★★ 单开开关**不改卡片高度**、复原无残留、都开 ≤20px"
+              + "（<900 纵向堆叠档开面板必下推，无此承诺）",
+              "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.cardHR);
+          }
           ok(L.tgBody.colLC === L.tgBody.colLM && L.tgBody.colLM === L.tgBody.colLB
              && L.tgBody.colBC === L.tgBody.colBM && L.tgBody.colBM === L.tgBody.colBB,
             p.label + "·" + vp + "：★★★ 音量/BPM 两列 left/top/width **逐像素不动**"

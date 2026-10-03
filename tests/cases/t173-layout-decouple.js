@@ -50,8 +50,9 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
     "★★ v3.19.0：三列均分取代两列（音量 | BPM | 开关列，用户需求同排均分宽度）");
   /* ★ v3.22.0：音量组固定间距顶对齐（零变形机制源码钉）——行高随开关列生长时滑杆
      纹丝不动；回退 space-between/evenly 会重新引入内容重分布（变异 M18 实证）。 */
-  ok(/\.viz-head-grid \.card-head-left \.group\{flex:1;justify-content:flex-start;gap:29px\}/.test(CSS_CODE),
-    "★★ v3.22.0：音量组 = 顶对齐固定间距 29px（零变形机制；基态列高 ≈ BPM 列）");
+  ok(/\.viz-head-grid \.card-head-left \.group\{flex:1;justify-content:space-between\}/.test(CSS_CODE),
+    "★★ v3.24.0：音量组 = space-between（行高恒定后滑杆精确铺满列高、底对齐 BPM——"
+    + "v3.22 固定 gap 顶对齐退役：行高不再变化，重分布随之消失）");
   /* 悬浮槽三件套：absolute（脱离布局流 → 零横移/零高度变化）、锚在开关行下方、
      常驻预留 56px（最满面板实测 43px + 30% 余量）。行首锚定——被注释的残行不算。 */
   /* ★ v3.19.0：悬浮槽（absolute 锚定 + 50px 预留 + max-content 锁宽）整体退役——
