@@ -827,6 +827,11 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
   /* ★ 两侧必须 minmax(0,1fr)：裸 1fr 的最小值是 min-content，左胶囊一宽就把中列推离中心
      （窄屏实测：键中心 259 vs 视口中心 195） */
   grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:18px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.5);padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
+/* ★ v3.28.0（恢复 v3.26 机制）：桌面档底栏内容缘 = 卡片内容缘（--pb-inset 由
+   syncPbInset 量测写入；var 回退 = (100%−1000px)/2 公式）。≤640 移动端不吃本条。 */
+@media (min-width:760px){
+  .play-bar{padding-left:max(calc(24px + env(safe-area-inset-left, 0px)), var(--pb-inset-l, calc((100% - 1000px) / 2)));padding-right:max(calc(24px + env(safe-area-inset-right, 0px)), var(--pb-inset-r, calc((100% - 1000px) / 2)))}
+}
 @media (max-width:640px){
   .play-bar{column-gap:10px}
   /* 窄屏：读数先让位（条本身是主要信息），条宽压到 26vw 免得把胶囊与控制键挤没 */
@@ -3087,23 +3092,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3119  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3750  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5354  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6218  Modal         应用内弹窗
-     L6356  Viz           时值可视化渲染与每帧动画
-     L9517  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10184 Trainer       变速训练器
-     L10386 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10970 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12359 Editor        自定义节奏型编辑器
-     L12805 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12852 Ear           听辨训练（v1.10.0）
-     L13071 Arrange       曲式编排（v2.0.0）
-     L15969 Help          使用方法（v2.0.1）
-     L16098 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16172 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16415 初始化（装配） 各模块 hook 接线与启动
+     L3124  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3755  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5359  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6223  Modal         应用内弹窗
+     L6361  Viz           时值可视化渲染与每帧动画
+     L9534  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10201 Trainer       变速训练器
+     L10403 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10987 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12376 Editor        自定义节奏型编辑器
+     L12822 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12869 Ear           听辨训练（v1.10.0）
+     L13088 Arrange       曲式编排（v2.0.0）
+     L15986 Help          使用方法（v2.0.1）
+     L16115 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16189 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16432 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3129,7 +3134,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.27.0";
+const VERSION = "3.28.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8000,6 +8005,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        · 停机时：整树重建（顺便把标注与哨兵一次算准）
      约定：谁在布局上动手脚，谁就有责任调它。当前调用方 = resize 与主题切换两个。
      注：本函数不在渲染热路径上（帧内绝不调），所以这里读 offset* 是安全的。 */
+  /* ★ v3.28.0（恢复 v3.26 机制，用户确认）：底栏内容缘对齐卡片内容缘——量
+     .viz-head-grid 盒缘写入 CSS 变量，底栏 padding 消费（boot 双 rAF / fonts.ready /
+     resize 防抖各调一次）。幂等只写变量。 */
+  function syncPbInset(){
+    /* 桩环境守卫：桩 document 无 querySelector（真机才量测；桩里 CSS 变量本就无意义） */
+    if (typeof document === "undefined" || typeof document.querySelector !== "function") return;
+    const g = document.querySelector(".viz-head-grid");
+    if (!g || typeof document.documentElement === "undefined" || !document.documentElement.style) return;
+    const r = g.getBoundingClientRect();
+    document.documentElement.style.setProperty("--pb-inset-l", r.left.toFixed(2) + "px");
+    document.documentElement.style.setProperty("--pb-inset-r", (window.innerWidth - r.right).toFixed(2) + "px");
+  }
   function relayout(){
     if (S.playing){ cacheGeo(); fitCellAnnotations(); remeasureLyric(); layoutLyricLane(); }
     else buildViz();
@@ -8008,7 +8025,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     if (resizeTimer !== null) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(relayout, 200);
+    resizeTimer = setTimeout(() => { relayout(); syncPbInset(); }, 200);
   });
 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
@@ -9466,7 +9483,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     buildViz();
     buildLyricLane();
   }
-  return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
+  return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, syncPbInset, resetWindow,
     /* v2.4.2：六线底纹开关的处理器长在 Controls 段（那里才有 $ 与 setToggle），
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
        由 Controls 单向调用。Controls 声明在 Viz 之后，不构成反向引用。 */
@@ -16640,12 +16657,14 @@ syncParamSlots();   // v3.3.0：启动时统一收敛两个参数面板（槽只
 requestAnimationFrame(() => requestAnimationFrame(() => {
   Viz.relayout();
   if (typeof Viz.paintFrame === "function") Viz.paintFrame();
+  if (typeof Viz.syncPbInset === "function") Viz.syncPbInset();
 }));
 if (typeof document !== "undefined" && document.fonts && document.fonts.ready
     && typeof document.fonts.ready.then === "function"){
   document.fonts.ready.then(() => {
     Viz.relayout();
     if (typeof Viz.paintFrame === "function") Viz.paintFrame();
+    if (typeof Viz.syncPbInset === "function") Viz.syncPbInset();
   }).catch(() => {});
 }
 /* v2.11.2：`trStart` 输入框随「起始」参数一并删除，此处不再有它 */

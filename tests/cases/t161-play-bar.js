@@ -52,12 +52,11 @@ ok(/\.play-bar\{[^}]*padding:0 [^;]*calc\(14px \+ env\(safe-area-inset-bottom, 0
 /* ★ v3.25.0（用户需求）：桌面档左右内边距 24→96——左胶囊（底栏左块，可打开预设抽屉）
    远离左缘 72px 自动浮出热区（原位置与热区功能重叠）、右区向中间靠拢更贴近可视化区；
    ≤640 移动端两行布局不吃本条 */
-/* ★ v3.27.0（用户裁决）：底栏内容缘对齐**跑道本身的可见宽度**——跑道盒 #viz =
-   24..视口−24（实测 1440：#viz 24..1416），与底栏 base padding 24 的内容缘天然
-   逐像素一致 ⇒ v3.25 内移 96 / v3.26 var 量测对齐两套机制整体退役，回归 base。 */
-ok(!/padding-left:max\(calc\(24px \+ env\(safe-area-inset-left/.test(src)
-   && !/--pb-inset/.test(src),
-  "★★ v3.27.0：内移与量测对齐机制退役（底栏内容缘 = 跑道盒缘，base padding 24）");
+  /* ★ v3.28.0（用户最终确认的方案，v3.25 内移/v3.26 量测/v3.27 退役三易其稿后落定）：
+     底栏内容缘 = **卡片内容缘**（syncPbInset 量测 .viz-head-grid 盒缘写入
+     --pb-inset-*，底栏 padding 消费）——与音量/BPM 列左缘逐像素对齐。 */
+  ok(/@media \(min-width:760px\)\{[\s\S]*?\.play-bar\{padding-left:max\(calc\(24px \+ env\(safe-area-inset-left, 0px\)\), var\(--pb-inset-l/.test(src),
+    "★★ v3.28.0：≥760 底栏内容缘 = 卡片内容缘（量测对齐机制恢复，smoke 有对齐断言）");
 ok(/\.main\{[^}]*calc\(var\(--bar-h\) \+ 24px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★★ 主列补 padding-bottom（var(--bar-h) + 24）：fixed 底栏不占流，不补则最后一小节被压住");
 /* ★ v3.12.0：窗口 900 → 1600——窄屏档里新增了预备拍搬入后的右区换行规则，

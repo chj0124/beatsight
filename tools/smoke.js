@@ -690,6 +690,8 @@ function layoutProbe(){
     const rowEl = q(".viz-toggles .tg-row");
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
+    const ctxEl = q(".pb-ctx");
+    const ctxL = ctxEl ? round(ctxEl.getBoundingClientRect().left) : null;
     const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), colBC = colBR(), rowWC = wrapRow();
     const vol1C = vol1R(), bpmC = bpmR();
     const volHC = colLH(), bpmHC = colBH();
@@ -731,7 +733,7 @@ function layoutProbe(){
     const cardHR = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
       cardHC: cardHC, cardHM: cardHM, cardHB: cardHB, cardHR: cardHR,
-      colLC: colLC, colLM: colLM, colLB: colLB,
+      ctxL: ctxL, colLC: colLC, colLM: colLM, colLB: colLB,
       colBC: colBC, colBM: colBM, colBB: colBB,
       volHC: volHC, bpmHC: bpmHC,
       vol1C: vol1C, vol1M: vol1M, vol1B: vol1B,
@@ -1279,6 +1281,13 @@ async function main(){
               + "（v3.22.0 固定间距顶对齐的核心承诺）",
               "音量行 " + L.tgBody.vol1C + " → " + L.tgBody.vol1M + " → " + L.tgBody.vol1B
               + " BPM数字 " + L.tgBody.bpmC + " → " + L.tgBody.bpmM + " → " + L.tgBody.bpmB);
+          }
+          /* ★★★ v3.28.0：底栏内容缘 = 卡片内容缘（syncPbInset 量测对齐）——
+             底栏左块左缘与音量列左缘逐像素一致（用户需求"对齐"的正体） */
+          if (vp === "桌面" && L.tgBody.ctxL !== null && L.tgBody.colLC !== null){
+            ok(Math.abs(L.tgBody.ctxL - JSON.parse(L.tgBody.colLC)[0]) <= 2,
+              p.label + "·" + vp + "：★★★ 底栏左块左缘 = 音量列左缘（内容列逐像素对齐，v3.28.0）",
+              "底栏左块 " + L.tgBody.ctxL + " vs 音量列 " + JSON.parse(L.tgBody.colLC)[0]);
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,
