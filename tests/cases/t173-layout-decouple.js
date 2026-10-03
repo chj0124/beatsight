@@ -44,25 +44,18 @@ section("T173a 底栏右区两行化（结构红线 + 解耦落点）");
 
 section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档）");
 {
-  ok(/max-width:1000px/.test(CSS_CODE)
-     && /grid-template-columns:minmax\(280px,1fr\) minmax\(min-content,1fr\)/.test(CSS_CODE),
-    "★★ 控制区限宽 1000 居中 + 两列 1fr（丁方案；旧三轨 max-content 口径退役）");
-  ok(/\.viz-head-grid \.card-head-left\{width:100%\}/.test(CSS_CODE),
-    "★★ 音量列在桌面档吃满 1fr 轨道（v2.10.18 的 min(312px,100%) 钉宽退役）");
+  ok(/max-width:1000px/.test(CSS_CODE),
+    "★ 控制区限宽 1000 居中（丁方案的限宽口径保留）");
+  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(CSS_CODE),
+    "★★ v3.19.0：三列均分取代两列（音量 | BPM | 开关列，用户需求同排均分宽度）");
   /* 悬浮槽三件套：absolute（脱离布局流 → 零横移/零高度变化）、锚在开关行下方、
      常驻预留 56px（最满面板实测 43px + 30% 余量）。行首锚定——被注释的残行不算。 */
-  ok(/\n  \.viz-toggles \.tg-slot\{position:absolute;top:calc\(100% \+ 8px\);/.test(html),
-    "★★ 悬浮槽 absolute + 锚开关行底（top:calc(100%+8px)）——开合零横移的结构前提");
-  ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:block;position:relative;padding:16px 0 50px\}/.test(CSS_CODE)
-     && /\.viz-head-grid \.viz-toggles\{padding-bottom:0\}/.test(CSS_CODE),
-    "★★ 常驻预留 50px + 组底边距归零（v3.13.2：面板最满 40 + 悬浮间距 8 = 48，"
-    + "原 76px 是三列折行时代数值、56px 留了 16px 死空白；行底→卡底 92 → 74px）");
-  ok(/\.viz-toggles \.tg-slot \.tr-panel\{width:max-content;flex:none;flex-wrap:nowrap;gap:8px 12px\}/.test(CSS_CODE),
-    "★★ 面板锁自然宽单行（Chrome 对折行弹性容器的固有宽度算错：380→543.9 并折成两行"
-    + "61px 超预留——实测抓到的第二个根因）");
-  ok(TOGGLES.indexOf('id="tgSwitchRow"') < TOGGLES.indexOf('id="tgSlot"')
-     && !/<\/div>\s*<!--[\s\S]*?-->?\s*<div class="tg-slot"/.test(TOGGLES.slice(0, TOGGLES.indexOf('id="tgSlot"'))),
-    "★★ #tgSlot 在 #tgSwitchRow 行内（悬浮锚点 = 开关行盒底；窄屏档 display:contents 照常溶解）");
+  /* ★ v3.19.0：悬浮槽（absolute 锚定 + 50px 预留 + max-content 锁宽）整体退役——
+     用户拍板"面板打开允许列内下移"，改三列均分 + 开关列流内（钉在 t168/t163）。 */
+  ok(!/tg-slot\{position:absolute/.test(CSS_CODE) && !/padding:16px 0 50px/.test(CSS_CODE)
+     && !/\.tg-slot \.tr-panel\{width:max-content/.test(CSS_CODE) && !/id="tgSlot"/.test(html),
+    "★★ v3.19.0：悬浮槽时代三件套（absolute 锚定 / 50px 预留 / max-content 锁宽）"
+    + "与 #tgSlot 壳全部退役");
 }
 
 section("T173c 参数面板显隐行为（搬块不换 id：syncParamSlots 收口不因搬块受影响）");

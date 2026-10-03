@@ -160,9 +160,10 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
      且宽屏满幅下控制区按丁方案恒定 1000 居中（base ≥1280 规则原样生效），不再另立轨道。 */
   ok(!/body\.wide-full \.viz-head-grid\{grid-template-columns/.test(src),
     "★★ v3.13.0：宽屏满幅的三轨特化已退役（跑道拉满、控制区恒定 1000 居中——两套轨道口径并一处）");
-ok(src.includes(".viz-head-grid .viz-toggles{grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}"),
-    "★★★ v3.3.1 立「三开关块独占第二行」+ v3.9.0 改**同轴居中**（justify-self:center + "
-    + "fit-content，随头部聚拢方案一起落位；不再跨满全宽）");
+  /* ★ v3.19.0：「三开关块独占第二行 + fit-content」退役——三列均分后开关列 = col 3
+     （width:100% 吃满列宽），钉位移交 t168（开关列纵排）与 t175（交错顺序）。 */
+  ok(!src.includes('grid-column:1 / -1;grid-row:2;justify-self:center;width:fit-content}'),
+    "★★★ v3.19.0：开关块独占第二行的落位规则已退役（三列均分，开关列 = col 3）");
   ok(!src.includes("body.wide-full .viz-head-grid .viz-rows-row"),
     "★ v3.3.0：宽屏下「行数拍号复位」规则随显式占位一并删除（它原本就是为抵消 r2 跨列而写，现在没有可抵消的东西）");
   ok(src.includes(".viz-head-grid .viz-head{display:contents}")

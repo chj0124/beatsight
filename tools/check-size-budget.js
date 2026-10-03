@@ -157,8 +157,11 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.17.0（移动端修正）：净增约 1.9KB（实测 1463.9KB）——底栏两行化的实测根因
      （右列 6px / 溢出 66px）与显示位置 max-content 收缩坑注释。↑ **1465KB**。
    v3.18.0（移动端修正 2）：净增约 2.0KB（实测 1466.1KB）——胶囊溢出根因（30vw vs
-     minmax(0,1fr) 列宽 28px）与状态定宽 96 的解耦注释。↑ **1468KB**。 */
-const BUDGET_BYTES = 1468 * 1024;
+     minmax(0,1fr) 列宽 28px）与状态定宽 96 的解耦注释。↑ **1468KB**。
+   v3.19.0（三列重排）：净减约 3.5KB（实测 1462.6KB）——悬浮槽时代 CSS（absolute 槽 /
+     预留 / 锁宽 / 手风琴特化 ≈5.6KB）整体退役，新增三列 + 纵排流内 CSS ~2.1KB；
+     滚动 boot 双 rAF + 雾化 14。↑ **1465KB**。 */
+const BUDGET_BYTES = 1465 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

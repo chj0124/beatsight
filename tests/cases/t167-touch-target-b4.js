@@ -81,11 +81,10 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
   /* v3.9.0 订正：参数槽 #tgSlot 已 display:contents（三列固定槽位改造，共槽退役），
      "恒定高度"的承重墙换成 tg-body 网格的**第二轨 76px**（参数行）——
      零跳动契约不变，只是落点从槽高换成轨道高。锚真实选择器（教训沿用旧注释）。 */
-  ok(/\.viz-head-grid \.viz-toggles \.tg-body\{[^}]*grid-template-rows:auto 76px/.test(CSS_CODE),
-    "★★ 参数行轨道仍是 grid-template-rows:auto 76px 恒高——三开关开合时参数行高度不变"
-    + "是 v3.3.1 零跳动契约的现行落点，B4 若把它顶高，稳定性就破了");
-  ok(!/\.viz-head-grid \.viz-toggles \.tg-body\{[^}]*grid-template-rows:auto (?!76px)\d+px/.test(CSS_CODE),
-    "★★ 参数行轨道不得被改成 76px 以外的值（本批最危险的连带面，必须钉死）");
+  /* v3.19.0：76px 轨道随同轴网格退役（用户拍板：面板打开允许列内下移）——
+     触控目标尺寸的连带面（B4）转移到开关/按钮本身的尺寸钉上。 */
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:8px\}/.test(CSS_CODE),
+    "★★ v3.19.0：开关列纵排（触控目标 40px 开关/按钮的排布容器，尺寸钉不变）");
 
   /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏的元素
      （补偿读数 / 设置钮 / 主题钮）就仍是 36px，B4 等于漏了顶栏。

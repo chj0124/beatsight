@@ -99,11 +99,11 @@ section("T174b 雾化条：显隐跟随滚动模式 + CSS 三要素");
   ok(!!elsPaged["scrollFogL"] && elsPaged["scrollFogL"].hidden === true,
     "★ 分页模式：雾化条隐藏（显隐跟随 scrollMode）",
     "L=" + (elsPaged["scrollFogL"] && elsPaged["scrollFogL"].hidden));
-  ok(/\.scroll-fog\{[^}]*backdrop-filter:blur\(6px\)/.test(cssNoCmt)
+  ok(/\.scroll-fog\{[^}]*backdrop-filter:blur\(14px\)/.test(cssNoCmt)
      && /left:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt)
      && /width:calc\(\(100vw - 100%\) \/ 2 \+ clamp\(64px, 10vw, 112px\)\)/.test(cssNoCmt)
      && /\.scroll-fog\.right\{left:auto;right:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt),
-    "★★ v3.15.0 CSS：毛玻璃 blur(6px) + 贴屏幕两缘（calc 从视口边铺到卡片缘内"
+    "★★ v3.15.0 CSS：毛玻璃 blur(14px) + 贴屏幕两缘（calc 从视口边铺到卡片缘内"
     + " clamp(64,10vw,112)px）+ 左右镜像渐变 mask");
   ok(/\.viz-band\{display:flex;flex-direction:column;gap:16px;margin-block:auto;position:relative\}/.test(cssNoCmt),
     "★ .viz-band 补 position:relative（雾化条 absolute 的定位上下文）");

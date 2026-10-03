@@ -102,6 +102,7 @@ section("T169d 头部聚拢与参数区列对齐（源码级契约，真几何�
     "★★ 控制区限宽 1000px 居中（两侧空白恒定 ≈(容器−1000)/2）");
   ok(/column-gap:32px/.test(CSS_CODE),
     "★ 列距 32px（v3.9.0 拍板的聚拢间距，口径不变）");
-  ok(/\.viz-head-grid \.viz-toggles\{grid-column:1 \/ -1;grid-row:2;justify-self:center;width:fit-content\}/.test(CSS_CODE),
-    "★★ 开关参数块与行 1 同轴居中（fit-content + justify-self:center）");
+  /* ★ v3.19.0：同轴居中钉退役（三列均分后开关列 = col 3，钉移 t168）。 */
+  ok(!/grid-column:1 \/ -1;grid-row:2;justify-self:center;width:fit-content/.test(CSS_CODE),
+    "★★ v3.19.0：开关块同轴居中落位退役（三列均分）");
 }

@@ -28,54 +28,20 @@ const src = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 section("T163a 结构 · 开关一行 + 参数行两列网格");
 
 const rowStart = src.indexOf('<div class="tg-row" id="tgSwitchRow">');
-const rowEnd = src.indexOf("</div>", rowStart);
+const rowEnd = src.indexOf("id=\"vizBand\"");
 ok(rowStart > 0 && rowEnd > rowStart, "★★ 存在开关行容器 #tgSwitchRow");
 const row = src.slice(rowStart, rowEnd);
 ["muteToggle", "trainerToggle", "countInToggle"].forEach(id => {
-  ok(row.includes('id="' + id + '"'), "★ v3.15.0 三枚开关同在**一行**之内：" + id);
+  ok(row.includes('id="' + id + '"'), "★ 三枚开关都在开关列（#tgSwitchRow）内：" + id);
 });
 /* 网格钉在 .viz-toggles 作用域内——.tg-body 这个类名在音量组与 BPM 组里也在用
    （各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车）。 */
-ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 76px/.test(src),
-  "★★ tg-body（开关块）= 两列网格 + 参数行第二轨恒 76px（零跳动承重墙；"
-  + "作用域钉在 .viz-toggles 内，不误伤音量/BPM 组的同名包装层）");
-ok(!/\.viz-toggles \.tg-body\{display:grid;grid-template-columns:auto auto auto/.test(src),
-  "★★ 三列写法已退役（列数必须与开关数一致，否则参数列会与开关列错位）");
-ok(/\.viz-toggles \.tg-row\{display:contents\}/.test(src) && /\.viz-toggles \.tg-slot\{display:contents\}/.test(src),
-  "★★ tg-row / tg-slot 两层壳 display:contents 溶解进同一张网格（开关与参数同格共轨，"
-  + "列对齐是结构保证，不靠两行轨道凑数）");
-
-const slotStart = src.indexOf('<div class="tg-slot" id="tgSlot">');
-const slot = slotStart > 0 ? src.slice(slotStart, slotStart + 4000) : "";
-ok(slotStart > 0, "找到参数槽（壳）");
-["muteCfgPanel", "trainerPanel"].forEach(id => {
-  ok(slot.includes('id="' + id + '"'), "★ 两组参数面板都在槽内：" + id);
-});
-ok(!slot.includes('id="countInPanel"'),
-  "★ 空参数面板 #countInPanel 仍不存在（拍数输入走 #countInBeatsWrap 裸 span，不造面板壳）");
-ok(slot.includes('id="countInBeatsWrap"'),
-  "★★ v3.15.0：拍数输入 #countInBeatsWrap 在槽内（预备拍参数与两组参数同走悬浮槽）");
-["muteRandomToggle", "trTargetWrap"].forEach(id => {
-  ok(slot.includes('id="' + id + '"'),
-    "★★ 小参数搬进槽（" + id + "）——开关行只剩开关，行宽不再随开合变化");
-});
-ok(slot.includes('id="trainerProg"'), "★ 训练进度行随整组参数搬进槽（就地读进度 / 读拒开原因）");
-/* 显式钉位：display:none 的面板不占格，不钉位的话剩下的面板会被 auto-placement 挪位 */
-["muteToggle|1/1", "trainerToggle|1/2",
- "muteCfgPanel|2/1", "trainerPanel|2/2"].forEach(pair => {
-  const [id, area] = pair.split("|");
-  ok(new RegExp("\\#" + id + "\\{grid-area:" + area.replace(/\//g, "\\/") + "\\}").test(src),
-    "★★ " + id + " 显式钉位 grid-area:" + area + "（不钉位则 display:none 一变，列对齐就散）");
-});
-ok(/#countInToggle\{grid-area:1\/3\}/.test(src) && /#countInBeatsWrap\{grid-area:2\/3\}/.test(src),
-  "★★ v3.15.0：预备拍钉位随搬回归位（1/3 与 2/3）——#countInPanel 空壳仍不存在");
-/* 窄屏手风琴档：行号同样要收成 1..4（不重排 = 第 1、3 行空缺，观感是"开关下面凭空一段空"） */
-ok(/\.viz-toggles \.tg-row \.toggle-pill#trainerToggle\{grid-area:3\/1\}/.test(src)
-   && /\.viz-toggles \.tg-slot \.tr-panel#trainerPanel\{grid-area:4\/1\}/.test(src),
-  "★ 窄屏手风琴档行号已收口（mute 1/2、trainer 3/4，无空行）");
-ok(/\.viz-toggles \.tg-row \.toggle-pill#countInToggle\{grid-area:5\/1\}/.test(src)
-   && /\.viz-toggles \.tg-slot \.inp-with-unit#countInBeatsWrap\{grid-area:6\/1\}/.test(src),
-  "★ v3.15.0：窄屏 5/6 行号由预备拍复用（手风琴扩到 6 行）");
+ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;gap:8px;width:100%\}/.test(src),
+  "★★ v3.19.0：tg-body 纵排流内 + width:100%（悬浮槽/同轴网格时代的两列网格 + 76px 轨道 + 手风琴特化全部退役）");
+/* 显式 grid-area 钉位随同轴网格整体退役：面板是 #tgSwitchRow 的流内子节点，
+   DOM 交错顺序即视觉顺序（顺序钉见下方 v3.19.0 段）。 */
+ok(!/grid-area:\d\/\d/.test(src),
+  "★★ v3.19.0：全文件不再有 grid-area 钉位（DOM 顺序即布局）");
 
 section("T163b 显隐 · 各管各（共槽仲裁退役，不互斥纪律保留）");
 

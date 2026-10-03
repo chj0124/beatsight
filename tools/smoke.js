@@ -646,6 +646,17 @@ function layoutProbe(){
   out.tgBody = (() => {
     const body = q(".viz-toggles .tg-body");
     if (!body) return null;
+    /* ★ v3.19.0 探针（三列均分 + 开关列流内）：开合只让**开关列**纵向生长——
+       音量/BPM 两列 rect 逐像素不动；开关/面板 x 恒定（列内零横移）；
+       预备拍行 = 开关 + 拍数输入同行右侧。 */
+    const colL = q(".viz-head-grid .card-head-left");
+    const colB = q(".viz-head-grid .viz-head > .group");
+    const colLR = () => (colL ? JSON.stringify([round(colL.getBoundingClientRect().left), round(colL.getBoundingClientRect().top), round(colL.getBoundingClientRect().width), round(colL.getBoundingClientRect().height)]) : null);
+    const colBR = () => (colB ? JSON.stringify([round(colB.getBoundingClientRect().left), round(colB.getBoundingClientRect().top), round(colB.getBoundingClientRect().width), round(colB.getBoundingClientRect().height)]) : null);
+    const wrapEl = q("#countInBeatsWrap"), ct = q("#countInToggle");
+    const wrapRow = () => { if (!wrapEl || !ct) return null;
+      const a = ct.getBoundingClientRect(), b = wrapEl.getBoundingClientRect();
+      return (wrapEl.hidden) ? "hidden" : JSON.stringify([round(a.top) === round(b.top), round(b.left) > round(a.right - 4)]); };
     /* v3.16.0：面板收容口径放宽到**卡片底缘**——预留 50px 是记账线，真正的视觉边界
        是卡片底（预留 50 + 卡片内边距 24 = 行下 74px）；两行化后最满内容允许用内边距
        的空白（用户确认过：预留空间足够，不需要调高度）。 */
@@ -668,9 +679,11 @@ function layoutProbe(){
     const rowEl = q(".viz-toggles .tg-row");
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
-    const closed = h(), mxC = mx(), txC = tx(), padC = pad(), r2C = row2(), rowCxC = rowCx();
+    const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), colBC = colBR(), rowWC = wrapRow();
+    const cardHC = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     if (mt) mt.click();
-    const muteOnly = h(), mxM = mx(), txM = tx(), padM = pad(), r2M = row2();
+    const muteOnly = h(), mxM = mx(), txM = tx(), colLM = colLR(), colBM = colBR(), rowWM = wrapRow();
+    const cardHM = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     /* 悬浮面板收容：打开的面板底缘不得越过 .tg-body 底缘（56px 预留装得下最满面板） */
     const mp = q("#muteCfgPanel");
     const muteBottom = (mp && !mp.hidden) ? round(mp.getBoundingClientRect().bottom) : null;
@@ -691,7 +704,8 @@ function layoutProbe(){
       tgt.dispatchEvent(new Event("change", { bubbles: true }));
     }
     if (tt) tt.click();
-    const both = h(), mxB = mx(), txB = tx(), padB = pad(), r2B = row2();
+    const both = h(), mxB = mx(), txB = tx(), colLB = colLR(), colBB = colBR(), rowWB = wrapRow();
+    const cardHB = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     const tp = q("#trainerPanel");
     const trainerBottom = (tp && !tp.hidden) ? round(tp.getBoundingClientRect().bottom) : null;
     const bodyBottomB = round(body.getBoundingClientRect().bottom);
@@ -700,14 +714,13 @@ function layoutProbe(){
     if (tgt && tgtBak !== null) tgt.value = tgtBak;
     if (mt) mt.click();      // mute 关 → 复原
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
-      cardBottomM: cardBottomM, cardBottomB: cardBottomB,
+      cardHC: cardHC, cardHM: cardHM, cardHB: cardHB,
+      colLC: colLC, colLM: colLM, colLB: colLB,
+      colBC: colBC, colBM: colBM, colBB: colBB,
+      rowWC: rowWC, rowWM: rowWM, rowWB: rowWB,
       mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
       txC: txC, txM: txM, txB: txB, txR: tx(),
-      padC: padC, padM: padM, padB: padB, padR: pad(),
-      r2Closed: r2C, r2Mute: r2M, r2Both: r2B, r2Restored: row2(),
-      muteBottom: muteBottom, bodyBottomM: bodyBottomM,
-      trainerBottom: trainerBottom, bodyBottomB: bodyBottomB,
-      rowCxC: rowCxC, slotCxM: slotCxM };
+      muteBottom: muteBottom, trainerBottom: trainerBottom };
   })();
   out.pbProgress = (() => {
     const host = q("#pbProgress"), bar = q("#playBar");
@@ -1119,15 +1132,9 @@ async function main(){
              ★ v3.12.0：原三条里与"行数拍号块"有关的两条（pill 盒子在标签右侧 /
                行数块在第一行右侧）随该块退役删除，替换为**槽位归属**断言：
                行数档位住在设置弹窗、拍号控件确认不存在。 */
-          ok(m.grpGaps && m.grpGaps[1] > 0,
-            p.label + "·" + label + "：★★ 开关块**独占一行**（与上一行的间隙为正 = 换了行，不再与其他块同排）",
-            "块间间隙 " + JSON.stringify(m.grpGaps));
-          /* ★★ v3.9.0：行 2 从"跨满全宽、与内容边缘同缘"改为**与行 1 同轴居中**——
-             用户拍板的聚拢方案（A + 32px）的组成部分。旧断言"开关行与标题同缘"随
-             space-between 一并退役。容差 2px（取整误差）。 */
-          ok(m.togCenterOffset !== null && Math.abs(m.togCenterOffset) <= 2,
-            p.label + "·" + label + "：★★ 开关参数块与头部栅格**同轴居中**（v3.9.0 聚拢方案）",
-            "块中心偏移 " + m.togCenterOffset + "px（0 = 同轴）");
+          /* ★★ v3.19.0：三列均分后"开关块独占一行/同轴居中"两断言退役——
+             开关列 = 第 3 列与音量/BPM 同排（同排/等宽/顶对齐由 layoutProbe 的
+             三列断言钉死，见 tgBody 段 colLC/colBC 与 gridCols 检查）。 */
           ok(m.rowsHome === "settings",
             p.label + "·" + label + "：★★ 同屏行数档位住在**设置弹窗**（v3.12.0 搬移，且不在控制行里）",
             "归属 " + m.rowsHome);
@@ -1209,58 +1216,32 @@ async function main(){
             "diag.bottom " + L.diagBottom + " vs " + want);
         }
         if (L.tgBody){
-          if (vp === "桌面"){
-            ok(L.tgBody.closed === L.tgBody.muteOnly && L.tgBody.muteOnly === L.tgBody.both
-               && L.tgBody.both === L.tgBody.restored,
-              p.label + "·" + vp + "：★★★ 开关开合**不改卡片高度**（关 / 只动静音拍 / 两个都开 三态等高）",
-              "关 " + L.tgBody.closed + " · 静音拍 " + L.tgBody.muteOnly + " · 都开 " + L.tgBody.both
-              + " · 复原 " + L.tgBody.restored);
-            /* ★★ v3.13.0（用户第二轮投诉的原话就是"元素依然会大幅度移动"）：只断言"等高"不够，
-               必须断言**两枚开关的位置在任何开合组合下逐像素相同**——这是本轮真正要交付的东西。
-               （旧口径量 #countInToggle 的 top，而它 v3.12.0 已搬进底栏、与本块开合无关，
-               四态恒等成了橡皮图章；v3.13.0 改量 #muteToggle / #trainerToggle 的盒左缘——
-               悬浮槽脱离布局流后它们在关 / 只静音拍 / 都开 / 复原 四态必须逐像素不动。） */
-            const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
-            ok(xEq([L.tgBody.mxC, L.tgBody.mxM, L.tgBody.mxB, L.tgBody.mxR]),
-              p.label + "·" + vp + "：★★★ 静音拍开关位置**逐像素不动**（关 / 只静音拍 / 都开 / 复原 四态同 x）",
-              "关 " + L.tgBody.mxC + " · 静音拍 " + L.tgBody.mxM + " · 都开 " + L.tgBody.mxB
-              + " · 复原 " + L.tgBody.mxR);
-            ok(xEq([L.tgBody.txC, L.tgBody.txM, L.tgBody.txB, L.tgBody.txR]),
-              p.label + "·" + vp + "：★★★ 变速训练开关位置**逐像素不动**（四态同 x——悬浮槽脱离布局流的验收点）",
-              "关 " + L.tgBody.txC + " · 静音拍 " + L.tgBody.txM + " · 都开 " + L.tgBody.txB
-              + " · 复原 " + L.tgBody.txR);
-            /* ★ v3.13.0：常驻预留 56px（最满面板实测 43px + 30% 余量）四态一字不变 */
-            ok(xEq([L.tgBody.padC, L.tgBody.padM, L.tgBody.padB, L.tgBody.padR]) && L.tgBody.padC === 50,
-              p.label + "·" + vp + "：★★ 参数槽常驻预留恒 50px（最满面板 40 + 悬浮间距 8 = 48，+2 余量；四态一字不变）",
-              "关 " + L.tgBody.padC + " · 静音拍 " + L.tgBody.padM + " · 都开 " + L.tgBody.padB
-              + " · 复原 " + L.tgBody.padR);
-            /* ★ v3.13.0：悬浮面板收容——打开的面板底缘不得越过 .tg-body 底缘（56px 装得下） */
-            if (L.tgBody.muteBottom !== null && L.tgBody.cardBottomM !== null){
-              ok(L.tgBody.muteBottom <= L.tgBody.cardBottomM + 1,
-                p.label + "·" + vp + "：★★ 静音拍悬浮面板收在**卡片**内（v3.16.0 口径：预留是记账线，卡底才是视觉边界）",
-                "面板底 " + L.tgBody.muteBottom + " vs 卡底 " + L.tgBody.cardBottomM);
-            }
-            if (L.tgBody.trainerBottom !== null && L.tgBody.cardBottomB !== null){
-              ok(L.tgBody.trainerBottom <= L.tgBody.cardBottomB + 1,
-                p.label + "·" + vp + "：★★ 变速训练悬浮面板（含槽下文字行）收在**卡片**内",
-                "面板底 " + L.tgBody.trainerBottom + " vs 卡底 " + L.tgBody.cardBottomB);
-            }
-            /* ★ v3.13.0：悬浮槽以开关行中线水平居中（通栏并排的落位契约） */
-            if (L.tgBody.slotCxM !== null && L.tgBody.rowCxC !== null){
-              ok(Math.abs(L.tgBody.slotCxM - L.tgBody.rowCxC) <= 2,
-                p.label + "·" + vp + "：★ 参数槽以开关行中线居中（悬浮落位）",
-                "槽心 " + L.tgBody.slotCxM + " vs 行心 " + L.tgBody.rowCxC);
-            }
-          } else {
-            /* v3.9.0：窄屏改手风琴式单列（每组参数紧跟自己的开关，三列 118px 装不下任何一组）——
-               开合时后面的组顺移是预期行为，零跳动只在桌面档承诺；窄屏钉「复原无残留」：
-               开了再全关，块高与两枚开关的 x 必须回到初始值（状态无残留）。 */
-            ok(L.tgBody.restored === L.tgBody.closed && L.tgBody.mxR === L.tgBody.mxC
-               && L.tgBody.txR === L.tgBody.txC,
-              p.label + "·" + vp + "：★★ 窄屏手风琴：开合后**复原无残留**（块高与两枚开关 x 回到初始值）",
-              "块高 " + L.tgBody.closed + " → " + L.tgBody.restored
-              + " · 静音拍 x " + L.tgBody.mxC + " → " + L.tgBody.mxR
-              + " · 变速训练 x " + L.tgBody.txC + " → " + L.tgBody.txR);
+          /* ★★★ v3.19.0（用户拍板的新契约，取代 v3.13 的零位移/零高度）：开关列**流内**——
+             面板打开 → 开关列纵向生长（卡片变高、下方内容顺移 = 用户接受的下移）；
+             **音量/BPM 两列 rect 逐像素不动**（列内生长不外溢）；开关/面板 x 恒定（零横移）；
+             预备拍行 = 开关 + 拍数输入同行右侧；复原无残留。
+             （悬浮槽时代断言——四态等高 / 50px 预留 / 槽心对齐 / 卡底收容——整体退役。） */
+          const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
+          ok(L.tgBody.cardHM > L.tgBody.cardHC && L.tgBody.cardHB > L.tgBody.cardHM
+             && L.tgBody.restored === L.tgBody.closed,
+            p.label + "·" + vp + "：★★★ 面板打开 → 开关列**纵向生长**、复原**无残留**"
+            + "（v3.19.0 下移契约：卡片高 关 " + L.tgBody.cardHC + " → 静音拍 " + L.tgBody.cardHM
+            + " → 都开 " + L.tgBody.cardHB + " → 复原 " + L.tgBody.restored + "）",
+            "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.restored);
+          ok(L.tgBody.colLC === L.tgBody.colLM && L.tgBody.colLM === L.tgBody.colLB
+             && L.tgBody.colBC === L.tgBody.colBM && L.tgBody.colBM === L.tgBody.colBB,
+            p.label + "·" + vp + "：★★★ 音量/BPM 两列 rect **逐像素不动**（列内生长不外溢——"
+            + "v3.19.0 的核心承诺）",
+            "音量 " + L.tgBody.colLC + " → " + L.tgBody.colLM + " → " + L.tgBody.colLB);
+          ok(xEq([L.tgBody.mxC, L.tgBody.mxM, L.tgBody.mxB, L.tgBody.mxR])
+             && xEq([L.tgBody.txC, L.tgBody.txM, L.tgBody.txB, L.tgBody.txR]),
+            p.label + "·" + vp + "：★★★ 开关/面板 x **逐像素不动**（列内零横移）",
+            "静音拍 " + L.tgBody.mxC + "/" + L.tgBody.mxM + "/" + L.tgBody.mxB + "/" + L.tgBody.mxR
+            + " 变速 " + L.tgBody.txC + "/" + L.tgBody.txM + "/" + L.tgBody.txB + "/" + L.tgBody.txR);
+          if (L.tgBody.rowWC !== null && L.tgBody.rowWC !== "hidden"){
+            ok(L.tgBody.rowWC === "[true,true]" || L.tgBody.rowWM === "[true,true]" || L.tgBody.rowWB === "[true,true]",
+              p.label + "·" + vp + "：★★ 预备拍行 = 开关 + 拍数输入**同行右侧**（打开时 y 同行、x 在开关右）",
+              "三态 " + L.tgBody.rowWC + "/" + L.tgBody.rowWM + "/" + L.tgBody.rowWB);
           }
         } else {
           ok(false, p.label + "·" + vp + "：参数槽容器未取到（本项未验证）", "");
