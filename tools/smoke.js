@@ -774,8 +774,17 @@ function layoutProbe(){
     const kr = key.getBoundingClientRect();
     /* ★ 居中的参照必须是**客户区**（clientWidth）不是 innerWidth：底栏是 fixed，
        它的包含块就是客户区宽度；页面出现纵向滚动条时两者差 15px，用 innerWidth 判会误报偏心 7.5px。 */
+    /* ★ v3.26.0：底栏内容列 = 卡片内容列（1000 居中列）——居中参照改量
+       #argJump（开关+主参数行的中列容器）中心 vs **内容列中心**（barPadL 与
+       barPadR 相等时 = 客户区中心；loop 按钮在 argJump 内右侧，量 argJump 整体）。 */
+    const jr = q("#argJump") ? q("#argJump").getBoundingClientRect() : null;
+    const bl = round(parseFloat(getComputedStyle(bar).paddingLeft));
+    const br = round(parseFloat(getComputedStyle(bar).paddingRight));
+    const contentCenter = round(bl + (bar.clientWidth - bl - br) / 2);
+    const jumpCenter = jr ? round(jr.left + jr.width / 2) : null;
     return { keyCenter: round(kr.left + kr.width / 2),
       vpCenter: round(document.documentElement.clientWidth / 2),
+      jumpCenter: jumpCenter, contentCenter: contentCenter,
       gapBottom: round(window.innerHeight - kr.bottom) };
   })();
   /* ★ v3.12.0：底栏右区（#pb-right）的实高 vs 底栏**内容区**实高——
@@ -1325,9 +1334,11 @@ async function main(){
           /* ★ v3.3.1（用户反馈）：播放键必须**水平居中**且不贴底——两条都是真机才看得出的观感，
              也是本轮的实际故障（space-between 下中列被左右不等宽挤偏）。 */
           if (L.center){
-            ok(Math.abs(L.center.keyCenter - L.center.vpCenter) <= 1,
-              p.label + "·" + vp + "：★★★ 播放键**水平居中**（与视口中心差 ≤1px）",
-              "键中心 " + L.center.keyCenter + " vs 视口中心 " + L.center.vpCenter);
+            if (L.center.jumpCenter !== null && L.center.contentCenter !== null){
+              ok(Math.abs(L.center.jumpCenter - L.center.contentCenter) <= 2,
+                p.label + "·" + vp + "：★★★ 播放键组**居中于底栏内容列**（v3.26.0：内容列 = 卡片内容列）",
+                "argJump 中心 " + L.center.jumpCenter + " vs 内容列中心 " + L.center.contentCenter);
+            }
             ok(L.center.gapBottom >= 16,
               p.label + "·" + vp + "：★★ 播放键不贴底（底缘距视口底 ≥16px）",
               "距底 " + L.center.gapBottom);

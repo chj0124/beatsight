@@ -172,8 +172,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.24.0（开关列压缩）：净增约 0.4KB（实测 1463.5KB）——行高恒定方案的量化目标
      （全开 227 ≤ 192.8 需压 34px）与逐项压缩清单注释。↑ **1466KB**。
    v3.25.0（底栏内移）：净增约 0.3KB（实测 1463.8KB）——≥760 内边距 96 的需求映射
-     注释（热区重叠 / 阅读距离）。预算维持 **1466KB**。 */
-const BUDGET_BYTES = 1466 * 1024;
+     注释（热区重叠 / 阅读距离）。预算维持 **1466KB**。
+   v3.26.0（内容列对齐）：净增约 1.2KB（实测 1465.0KB）——syncPbInset 量测对齐机制
+     （ICB vs html 内容区基准差滚动条槽，纯 CSS 公式差 7.5px）+ 96px 方案替换。↑ **1467KB**。 */
+const BUDGET_BYTES = 1467 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
