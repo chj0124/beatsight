@@ -22,6 +22,7 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 - **动了 `index.html` 的模块结构**（新增/移动模块、新增跨模块回调）：`tools/check-module-order.js` 的 R1–R4 必须全绿；新回调须在 WHITELIST 登记原因，扇出超限须显式抬高 `MAX_FANOUT` 并写明理由。
 - **功能变更必须带测试**：`tests/` 增补用例（沿用现有命名风格，如 `t80-countin-arrange-no-reenter`）；缺陷修复类须做**反向验证**——回退修复后目标断言应变红。行覆盖率分节不低于 90%、总体不低于 97%。
 - **发版必 bump 版本号，工程版也不例外**：`index.html` 的 `const VERSION` 是唯一真相源，`package.json` / `package-lock.json`（`npm install --package-lock-only` 同步）/ `CHANGELOG.md` 首条 `## vX.Y.Z` 由 `check-version.js` 强制一致。
+- **提交 / 发版前必须 `git status --porcelain` 复核**：改过测试却漏 `git add` 时，**本地自验全绿、CI 却在跑旧断言**——历史事故：本地"3 幅图"断言通过，而 CI 上实际已 7 幅，直接红。多文件批次收尾要对一遍 add 清单，提交后 `git status` 必须干净。
 - **能现算的数字不写进文档**：耗时、测试数、覆盖率等以命令输出为准，不要手抄进 README / docs（`check-docs.js` 会强制）。
 - **新增文档先判类**：活文档（随代码更新）放根目录或 docs/ 第一层，并登记 `docs/README.md` 活文档表；方案 / 审计 / 快照一律进 `docs/archive/`，头部带「历史快照 · 已归档 / 已落地」横幅并登记快照表。docs/ 第一层新增白名单外的 `.md` 会被 `check-docs.js` 第 10 项当场拦红——落错位置的文档活不过自验。
 

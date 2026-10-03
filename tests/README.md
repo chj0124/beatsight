@@ -89,6 +89,18 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
     （真实 DOM 如此）。只推片段壳进 children 的话，所有按 `children[i]` 定位的断言会整体错位。
     ★ 两份桩都要改：`lib/harness.js` 与 `hang-case.js` 的私有沙箱各有一份——改默认行为时
     以「谁构造了沙箱」为准过一遍所有桩，别只看谁在用它
+  - **`el.remove()` 是空操作**（2026-10-04 实测复核）：`appendChild` 上去的节点 `parentNode`
+    是**正常的**，但 `remove()` 不会真把它摘掉（`children.length` 纹丝不动）——于是**依赖
+    `remove()` 清理的代码在桩里静默堆积**，真浏览器里却正常。对策：要摘就**持有父节点调
+    `removeChild(el)`**（实测真摘除），或把开合改成 `hidden` 切换（桩上语义与真浏览器一致）。
+    ★ 顺手纠正一条流传的旧说法：**「桩没有 removeChild」已过期**（v2.27.0 已补，实测真摘除）；
+    `insertAdjacentElement` 也**实测真插入**，不是静默落空。
+  - **父节点的 `textContent` 不聚合子节点**（它是普通 own 属性，不是 getter）：
+    `par.appendChild(span)` 之后 `par.textContent` 仍是 `""`。**组合控件的文案断言必须逐个
+    span 找**，否则永远读到空串。
+  - **未登记进 `HTML_ATTRS` / `HTML_CHILDREN` 的静态元素，`className` 恒为 `""`**
+    （实测 `#vizBand` 即如此）：这类元素的"样式族"断言只能走**源码文本**
+    （`readFileSync("index.html")` + 字面量 `includes`）；要按运行时读，得先把它登记进那两张表。
 - **sw.js 也进测试了**（v2.4.4，`t67-service-worker.js`）：vm 沙箱 + `self/caches/fetch` 桩 +
   **同步 Promise（SP）**。★ SP 有个时序修正必须知道：真实浏览器里 revalidate 的 `cache.put`
   落在之后的微任务，`caches.match` 先读到事件前的旧值；SP 是立即执行的，put 会抢先落盘
