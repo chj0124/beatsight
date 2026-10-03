@@ -160,8 +160,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      minmax(0,1fr) 列宽 28px）与状态定宽 96 的解耦注释。↑ **1468KB**。
    v3.19.0（三列重排）：净减约 3.5KB（实测 1462.6KB）——悬浮槽时代 CSS（absolute 槽 /
      预留 / 锁宽 / 手风琴特化 ≈5.6KB）整体退役，新增三列 + 纵排流内 CSS ~2.1KB；
-     滚动 boot 双 rAF + 雾化 14。↑ **1465KB**。 */
-const BUDGET_BYTES = 1465 * 1024;
+     滚动 boot 双 rAF + 雾化 14。↑ **1465KB**。
+   v3.20.0（边缘渐隐方案 A）：净减约 1.3KB（实测 1461.3KB）——雾化条 DOM/CSS/JS 同步块
+     退役（-2.1KB），内容渐隐 mask +4 钉（+0.8KB）。↓ **1463KB**。 */
+const BUDGET_BYTES = 1463 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

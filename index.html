@@ -290,20 +290,18 @@ body.wide-full .main{max-width:none}
    ★ v3.5.0 订正（B3 实测：这个居中**从未生效**——grid 下 auto 边距要求行内有剩余高度，
      而 align-items:start 让 .main 全链只包住内容 → 恒 0px。修法见 .main 的 min-height。 */
 .viz-band{display:flex;flex-direction:column;gap:16px;margin-block:auto;position:relative}
-/* v3.14.0：滚动模式左右雾化条——毛玻璃 + 透明度渐变（mask：靠屏幕边全虚 → 内侧全透），
-   只在滚动模式显形（buildViz scroll-mode 写点同步）。112px 宽度 = 一拍滑入的缓冲带。 */
-/* v3.15.0（用户反馈"加错位置"）：雾化条改贴**屏幕两缘**——滚动内容的实际进出/被裁边界
-   是视口边缘（跑道行可伸出主列、被视口裁剪），不是卡片边缘。几何：
-   左条 left = (100% − 100vw)/2（负值 = 从卡片左缘向左伸到视口左缘），
-   宽 = 卡外距离 + clamp(64px,10vw,112px)（向内盖到卡片边缘内 112px；窄窗口自适应收缩）。
-   渐变方向不变：靠屏幕边全虚 → 内侧全清。≤640px（手机竖屏档）禁用（buildViz 同步处），
-   两侧 112px 会吃掉竖屏过半视野。 */
-.scroll-fog{position:absolute;top:0;bottom:0;pointer-events:none;z-index:20;
-  left:calc((100% - 100vw) / 2);
-  width:calc((100vw - 100%) / 2 + clamp(64px, 10vw, 112px));
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}   /* v3.19.0：6→14（用户反馈"应该再模糊一点"） */
-.scroll-fog.left{mask-image:linear-gradient(90deg,#000,transparent);-webkit-mask-image:linear-gradient(90deg,#000,transparent)}
-.scroll-fog.right{left:auto;right:calc((100% - 100vw) / 2);mask-image:linear-gradient(270deg,#000,transparent);-webkit-mask-image:linear-gradient(270deg,#000,transparent)}
+/* ★★ v3.20.0（用户拍板方案 A）：**内容自身渐隐**取代雾化条——滚动模式下给 .viz 与
+   .lyric-lane 加线性渐变 mask：内容在视口两缘 ~140px 内 alpha 平滑降为 0，"溶进背景"。
+   对比雾化条（backdrop-filter blur）：无拖影/无色块/与壁纸无关，纯合成层性能最优。
+   mask 加在不滚动的外层容器上（.viz 本体不 translate，渐隐位置恒在视口两缘）；
+   ≤640 手机档不渐隐（140px 会吃掉竖屏过半视野）；预备拍道在 .viz 内一并渐隐。 */
+.viz.scroll-mode{mask-image:linear-gradient(90deg,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%)}
+.viz.scroll-mode ~ .lyric-lane{mask-image:linear-gradient(90deg,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%)}
+@media (max-width:640px){
+  .viz.scroll-mode,.viz.scroll-mode ~ .lyric-lane{mask-image:none;-webkit-mask-image:none}
+}
 /* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；关闭后由 S.vizLegend 记忆 */
 .viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
   color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:10px}
@@ -2205,14 +2203,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
          半透明）作回看。行走带线只出现在可听域当前行。无歌词行时整块 hidden，不占位。
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
-    <!-- v3.14.0：滚动模式左右雾化条（用户需求）——跑道内容滑入滑出的边缘渐隐。
-         毛玻璃（backdrop-filter blur）而非纯色渐变：页面有壁纸，纯色条会露色块，
-         blur 条透壁纸无边界感。罩满整条带（跑道 + 歌词轨，用户拍板）——当前唱到的字
-         恒在中央播放头附近，边缘滑过的只有余光内容，虚化不损失"当前信息"。
-         pointer-events:none 不挡操作；显隐跟随滚动模式（buildViz 的 scroll-mode
-         同一写点同步）。z-index 20：高于带内内容（格/歌词/播放头），低于浮层。 -->
-    <div class="scroll-fog left" id="scrollFogL" hidden aria-hidden="true"></div>
-    <div class="scroll-fog right" id="scrollFogR" hidden aria-hidden="true"></div>
+    <!-- ★ v3.20.0（用户拍板方案 A）：雾化条退役——毛玻璃的 blur 拖影（smear）观感粗糙，
+         改为**内容自身渐隐**：滚动模式下给 .viz / .lyric-lane 加线性渐变 mask（见样式表
+         .viz.scroll-mode 段），内容在视口两缘 ~140px 内 alpha 平滑降为 0——"溶进背景"。
+         零模糊伪影、零色块、与壁纸无关、纯合成层性能最优。≤640 手机档不渐隐
+         （140px 会吃掉竖屏过半视野），滚动条槽恒定预留（v3.19.0）保证渐隐位置稳定。 -->
     <!-- v3.3.0：跳段播放行（#argJump）整组搬进页面底部的固定播放条 #playBar（在主列收尾标签之后，见文件下方）—— id 与接线一行未动，这里只保留"它原来贴着可视化区"的历史说明。 -->
     </div><!-- /vizBand -->
 
@@ -3063,23 +3058,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3095  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3726  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5330  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6194  Modal         应用内弹窗
-     L6332  Viz           时值可视化渲染与每帧动画
-     L9498  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10165 Trainer       变速训练器
-     L10367 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10950 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12339 Editor        自定义节奏型编辑器
-     L12785 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12832 Ear           听辨训练（v1.10.0）
-     L13051 Arrange       曲式编排（v2.0.0）
-     L15949 Help          使用方法（v2.0.1）
-     L16078 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16152 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16395 初始化（装配） 各模块 hook 接线与启动
+     L3090  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3721  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5325  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6189  Modal         应用内弹窗
+     L6327  Viz           时值可视化渲染与每帧动画
+     L9488  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10155 Trainer       变速训练器
+     L10357 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10940 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12329 Editor        自定义节奏型编辑器
+     L12775 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12822 Ear           听辨训练（v1.10.0）
+     L13041 Arrange       曲式编排（v2.0.0）
+     L15939 Help          使用方法（v2.0.1）
+     L16068 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16142 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16385 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3105,7 +3100,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.19.0";
+const VERSION = "3.20.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7684,13 +7679,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* v3.0.0：scroll-mode 只在这里挂摘（随模式切换，与网格重建同一处，不会两处打架）。
        它带来 overflow:hidden —— 横滚的裁剪边界就是 #viz 的盒子 */
     if (viz) viz.classList.toggle("scroll-mode", !!S.scrollMode);
-    /* v3.14.0→v3.15.0：雾化条显隐与 scroll-mode 同一写点；v3.15.0 加 ≤640 手机竖屏禁用
-       （两侧雾化会吃掉竖屏过半视野）+ 窄窗口宽度自适应（CSS clamp）。窗口 resize 跨断点
-       时经既有防抖重建路径回到这里收敛。 */
-    const fogL = document.getElementById("scrollFogL"), fogR = document.getElementById("scrollFogR");
-    const fogOn = !!S.scrollMode && window.innerWidth > 640;
-    if (fogL) fogL.hidden = !fogOn;
-    if (fogR) fogR.hidden = !fogOn;
+    /* ★ v3.20.0：雾化条退役（内容自身渐隐 mask，纯 CSS 随 .scroll-mode 类生效）——
+       本写点不再需要 JS 同步；≤640 禁用由媒体查询承担。 */
     rowEls = []; cellEls = []; subEls = []; subCellEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）

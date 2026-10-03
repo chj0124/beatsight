@@ -85,28 +85,25 @@ function drive0(beat, ac, seconds, onFrame){
   }
 }
 
-section("T174b 雾化条：显隐跟随滚动模式 + CSS 三要素");
+section("T174b 边缘渐隐（v3.20.0 方案 A：内容自身 mask，雾化条退役）");
 {
-  /* viewportW 1440：雾化条 v3.15.0 起在 ≤640 手机竖屏禁用——桌面行为用可配置视口表达 */
-  const { els } = loadApp(seedState({ scrollMode: true, scrollRows: 3 }), { viewportW: 1440 });
-  /* 元素存在性并入断言：同步被拆（变异）时 app 从不触碰该元素 → els 为 undefined，
-     此时是"具名红"而不是 TypeError 崩溃（变异反向验证的可读性要求） */
-  ok(!!els["scrollFogL"] && !!els["scrollFogR"] && els["scrollFogL"].hidden === false
-     && els["scrollFogR"].hidden === false,
-    "★★ 滚动模式：左右雾化条显形（元素存在且 hidden=false）",
-    "L=" + (els["scrollFogL"] && els["scrollFogL"].hidden) + " R=" + (els["scrollFogR"] && els["scrollFogR"].hidden));
-  const { els: elsPaged } = loadApp(seedState({ scrollMode: false }));
-  ok(!!elsPaged["scrollFogL"] && elsPaged["scrollFogL"].hidden === true,
-    "★ 分页模式：雾化条隐藏（显隐跟随 scrollMode）",
-    "L=" + (elsPaged["scrollFogL"] && elsPaged["scrollFogL"].hidden));
-  ok(/\.scroll-fog\{[^}]*backdrop-filter:blur\(14px\)/.test(cssNoCmt)
-     && /left:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt)
-     && /width:calc\(\(100vw - 100%\) \/ 2 \+ clamp\(64px, 10vw, 112px\)\)/.test(cssNoCmt)
-     && /\.scroll-fog\.right\{left:auto;right:calc\(\(100% - 100vw\) \/ 2\)/.test(cssNoCmt),
-    "★★ v3.15.0 CSS：毛玻璃 blur(14px) + 贴屏幕两缘（calc 从视口边铺到卡片缘内"
-    + " clamp(64,10vw,112)px）+ 左右镜像渐变 mask");
-  ok(/\.viz-band\{display:flex;flex-direction:column;gap:16px;margin-block:auto;position:relative\}/.test(cssNoCmt),
-    "★ .viz-band 补 position:relative（雾化条 absolute 的定位上下文）");
+  /* viewportW 1440：渐隐在 ≤640 手机竖屏禁用——桌面行为用可配置视口表达 */
+  loadApp(seedState({ scrollMode: true, scrollRows: 3 }), { viewportW: 1440 });
+  ok(!/scroll-fog/.test(cssNoCmt) && !/scrollFog/.test(html),
+    "★★★ v3.20.0：雾化条（backdrop-filter blur 玻璃条）整体退役——拖影/色块/壁纸耦合"
+    + "三大观感问题连根移除");
+  ok(/\.viz\.scroll-mode\{mask-image:linear-gradient\(90deg,transparent 0,#000 140px,#000 calc\(100% - 140px\),transparent 100%\)/.test(cssNoCmt)
+     && /-webkit-mask-image:linear-gradient\(90deg,transparent 0,#000 140px/.test(cssNoCmt),
+    "★★★ 内容自身渐隐：.viz.scroll-mode 两缘 ~140px 线性 alpha 渐隐（内容溶进背景，"
+    + "无玻璃无拖影；-webkit 前缀齐备）");
+  ok(/\.viz\.scroll-mode ~ \.lyric-lane\{mask-image:/.test(cssNoCmt),
+    "★ 歌词轨同款渐隐（.viz.scroll-mode ~ .lyric-lane 兄弟选择器——歌词与跑道共享时间轴）");
+  ok(/@media \(max-width:640px\)\{[^}]*\.viz\.scroll-mode,\.viz\.scroll-mode ~ \.lyric-lane\{mask-image:none/.test(cssNoCmt.replace(/\n/g, "")),
+    "★ ≤640 手机竖屏：渐隐关闭（140px 会吃掉竖屏过半视野，沿用雾化条时代的禁用口径）");
+  /* 分页模式：无 scroll-mode 类 → 无 mask（分页格子与带同宽，渐隐会吃掉首尾格） */
+  const vizScrollScoped = !/\.viz\{[^}]*mask-image/.test(cssNoCmt);
+  ok(vizScrollScoped,
+    "★ mask 作用域钉在 .scroll-mode 上（分页模式无渐隐——首尾格不被吃掉）");
 }
 
 section("T174c 顶栏圆钮化：结构 + 圆内数值载体");
