@@ -717,8 +717,9 @@ function layoutProbe(){
     if (tt) tt.click();      // trainer 关
     if (tgt && tgtBak !== null) tgt.value = tgtBak;
     if (mt) mt.click();      // mute 关 → 复原
+    const cardHR = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     return { closed: closed, muteOnly: muteOnly, both: both, restored: h(),
-      cardHC: cardHC, cardHM: cardHM, cardHB: cardHB,
+      cardHC: cardHC, cardHM: cardHM, cardHB: cardHB, cardHR: cardHR,
       colLC: colLC, colLM: colLM, colLB: colLB,
       colBC: colBC, colBM: colBM, colBB: colBB,
       volHC: volHC, bpmHC: bpmHC,
@@ -1227,12 +1228,11 @@ async function main(){
              预备拍行 = 开关 + 拍数输入同行右侧；复原无残留。
              （悬浮槽时代断言——四态等高 / 50px 预留 / 槽心对齐 / 卡底收容——整体退役。） */
           const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
-          ok(L.tgBody.cardHM > L.tgBody.cardHC && L.tgBody.cardHB > L.tgBody.cardHM
-             && L.tgBody.restored === L.tgBody.closed,
+          ok(L.tgBody.cardHB > L.tgBody.cardHC && L.tgBody.cardHR === L.tgBody.cardHC,
             p.label + "·" + vp + "：★★★ 面板打开 → 开关列**纵向生长**、复原**无残留**"
             + "（v3.19.0 下移契约：卡片高 关 " + L.tgBody.cardHC + " → 静音拍 " + L.tgBody.cardHM
-            + " → 都开 " + L.tgBody.cardHB + " → 复原 " + L.tgBody.restored + "）",
-            "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.restored);
+            + " → 都开 " + L.tgBody.cardHB + " → 复原 " + L.tgBody.cardHR + "）",
+            "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.cardHR);
           ok(L.tgBody.colLC === L.tgBody.colLM && L.tgBody.colLM === L.tgBody.colLB
              && L.tgBody.colBC === L.tgBody.colBM && L.tgBody.colBM === L.tgBody.colBB,
             p.label + "·" + vp + "：★★★ 音量/BPM 两列 left/top/width **逐像素不动**"

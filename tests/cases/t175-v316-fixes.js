@@ -24,14 +24,17 @@ section("T175a v3.19.0 参数面板流内（悬浮槽退役，面板挂各自开
 {
   /* ★ v3.19.0：悬浮槽退役、面板流内挂各自开关下（DOM 交错）——
      本段按新结构重钉：七件套交错顺序 + countin-line 同行 + tr-prog 变速参数末行。 */
-  const ORDER = ["muteToggle", "muteCfgPanel", "trainerToggle", "trainerPanel",
-                 "countInToggle", "countInBeatsWrap", "trainerProg"].map(id => html.indexOf('id="' + id + '"'));
+  const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "muteRandomToggle",
+                 "muteCfgPanel", "trainerToggle", "trTargetWrap", "trainerPanel", "trainerProg"]
+    .map(id => html.indexOf('id="' + id + '"'));
   ok(ORDER.every(i => i > 0) && ORDER.every((v, i) => i === 0 || v > ORDER[i - 1]),
-    "★★ v3.19.0：七件套交错排列（每个参数面板紧跟自己的开关下方——流内纵排源码序）");
+    "★★ v3.22.0：九件套交错排列（预备拍提前到最上；每组开关+主参数同行、"
+    + "剩余参数紧跟其下——训练进度紧跟变速参数、不再落到预备拍下面）");
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
-  ok(/<div class="countin-line">/.test(html) && /\.viz-toggles \.countin-line\{display:flex/.test(CSS_CODE),
-    "★ 预备拍行 = 开关 + 拍数输入同行右侧（不换行，用户需求）");
+  ok(/<div class="countin-line">/.test(html)
+     && /\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex/.test(CSS_CODE),
+    "★★ v3.22.0：三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧（不换行）");
   ok(/\.viz-toggles \.tg-row \.tr-prog\{width:100%;text-align:left\}/.test(CSS_CODE),
     "★ 训练进度/拒开原因 = 变速参数末行（流内，v3.16 的 absolute 悬浮口径退役）");
   /* 显隐跟随面板：syncParamSlots 末尾同步 trainerProg.hidden = trainerPanel.hidden */

@@ -164,8 +164,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.20.0（边缘渐隐方案 A）：净减约 1.3KB（实测 1461.3KB）——雾化条 DOM/CSS/JS 同步块
      退役（-2.1KB），内容渐隐 mask +4 钉（+0.8KB）。↓ **1463KB**。
    v3.21.0（音量/BPM 等高）：净增约 0.7KB（实测 1462.0KB）——stretch/space-between/
-     align-self 三条注释（含 evenly 错位标签的取舍说明）。↑ **1464KB**。 */
-const BUDGET_BYTES = 1464 * 1024;
+     align-self 三条注释（含 evenly 错位标签的取舍说明）。↑ **1464KB**。
+   v3.22.0（开关列重排）：净增约 0.6KB（实测 1462.6KB）——列序重排 + 每组两行制的
+     注释与 .sw-line 统一样式。↑ **1465KB**。 */
+const BUDGET_BYTES = 1465 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

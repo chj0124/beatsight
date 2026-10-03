@@ -41,8 +41,9 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
      交错钉（源码序）在 t163；这里钉 CSS 侧的面板满列宽与预备拍同行。 */
   ok(/\.viz-toggles \.tg-row \.tr-panel\{width:100%;margin:0\}/.test(CSS_CODE),
     "★★ 面板 width:100%（吃满开关列宽 ~312px；v3.13 的 max-content 定宽退役）");
-  ok(/\.viz-toggles \.countin-line\{display:flex;align-items:center;gap:10px\}/.test(CSS_CODE),
-    "★★ 预备拍行 = 开关 + 拍数输入同行右侧（.countin-line，用户需求不换行）");
+  ok(/\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex;align-items:center;gap:10px;width:100%\}/.test(CSS_CODE),
+    "★★ 三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧、吃满列宽"
+    + "（预备拍+拍数 / 静音拍+随机 / 变速训练+目标——v3.22.0）");
   ok(/\.viz-toggles \.tg-row \.tr-prog\{width:100%;text-align:left\}/.test(CSS_CODE),
     "★ 训练进度/拒开原因 = 变速参数末行（流内，v3.16 的 absolute 悬浮口径退役）");
   ok(!/grid-area:\d\/\d/.test(CSS_CODE),

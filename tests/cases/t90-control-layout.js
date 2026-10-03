@@ -205,9 +205,10 @@ section("T90h v3.15.0 · 开关行 = 静音拍 + 变速训练 + 预备拍；拍�
     ok(new RegExp('id="' + id + '"').test(s), "★ 开关行的三件之一：#" + id);
   }
   ok(!/id="countInPanel"/.test(s), "★★ 空参数面板 #countInPanel 仍不存在（拍数输入走 #countInBeatsWrap，不再造面板壳）");
-  ok(s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"')
-     && s.indexOf('id="trainerToggle"') < s.indexOf('id="countInToggle"'),
-    "行内顺序：静音拍 → 变速训练 → 预备拍");
+  ok(s.indexOf('id="countInToggle"') < s.indexOf('id="muteToggle"')
+     && s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
+    "★ v3.22.0 列内顺序：预备拍 → 静音拍 → 变速训练（用户需求：预备拍提前，"
+    + "让训练进度文字紧跟变速参数、不再落到预备拍下面）");
   /* 预备拍已离开底栏（v3.15.0 搬回卡片） */
   {
     const pb = slice("playBar");
