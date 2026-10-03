@@ -19,7 +19,7 @@ const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 /* ================= T153a：开关列纵排（流内参数的骨架） ================= */
 section("T153a v3.19.0 开关列纵排 —— 面板在流内挂各自开关下方");
 {
-  ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;gap:8px;width:100%\}/.test(CSS_CODE),
+  ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ tg-body = 纵排 flex 列 + width:100%（v3.19.0 新骨架；v3.13 的 display:block+padding 预留口径退役）");
   ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:8px\}/.test(CSS_CODE),
     "★★ tg-row 纵排、顶部对齐——面板打开时开关列纵向生长（用户接受下移），"

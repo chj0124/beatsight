@@ -36,7 +36,7 @@ const row = src.slice(rowStart, rowEnd);
 });
 /* 网格钉在 .viz-toggles 作用域内——.tg-body 这个类名在音量组与 BPM 组里也在用
    （各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车）。 */
-ok(/\.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;gap:8px;width:100%\}/.test(src),
+ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(src),
   "★★ v3.19.0：tg-body 纵排流内 + width:100%（悬浮槽/同轴网格时代的两列网格 + 76px 轨道 + 手风琴特化全部退役）");
 /* 显式 grid-area 钉位随同轴网格整体退役：面板是 #tgSwitchRow 的流内子节点，
    DOM 交错顺序即视觉顺序（顺序钉见下方 v3.19.0 段）。 */

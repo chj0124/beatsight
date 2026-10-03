@@ -166,8 +166,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    v3.21.0（音量/BPM 等高）：净增约 0.7KB（实测 1462.0KB）——stretch/space-between/
      align-self 三条注释（含 evenly 错位标签的取舍说明）。↑ **1464KB**。
    v3.22.0（开关列重排）：净增约 0.6KB（实测 1462.6KB）——列序重排 + 每组两行制的
-     注释与 .sw-line 统一样式。↑ **1465KB**。 */
-const BUDGET_BYTES = 1465 * 1024;
+     注释与 .sw-line 统一样式。↑ **1465KB**。
+   v3.23.0（零变形+常显）：净增约 0.5KB（实测 1463.1KB）——固定间距/常显的取舍注释
+     与内容级断言说明。↑ **1466KB**。 */
+const BUDGET_BYTES = 1466 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

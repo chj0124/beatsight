@@ -46,16 +46,13 @@ section("T175a v3.19.0 参数面板流内（悬浮槽退役，面板挂各自开
 section("T175b [hidden] 配套修复（v3.15.0 搬块漏项，用户反馈'预备拍关闭参数槽仍显示'）");
 {
   ok(/\.inp-with-unit\[hidden\]\{display:none\}/.test(CSS_CODE) && !/\.tg-slot/.test(CSS_CODE),
-    "★★★ 拍数输入的显隐靠 .inp-with-unit[hidden] 全局配套（v3.15.0 的槽链特化"
-    + "随悬浮槽退役一并消失——base 配对继续生效，预备拍关闭时'2 拍'不显示）");
-  /* 行为：预备拍关 → 拍数输入 hidden；开 → 显形（既有接线，搬块后 id 不变） */
-  const app = loadApp({ "beatsight.state": JSON.stringify({ countIn: { on: false, beats: 2 } }) });
-  const { els } = app;
-  eq(els["countInBeatsWrap"].hidden, true, "★ 前提：预备拍关 → 拍数输入 hidden（标记级）");
-  els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, false, "★ 打开预备拍 → 拍数输入显形");
-  els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, true, "★ 关闭 → 复归 hidden（CSS 配套让它真正从视觉上消失）");
+    "★ .inp-with-unit[hidden] 全局配套保留（通用显隐兜底；v3.22.0 起拍数输入常显，"
+    + "不再依赖该链做开关联动）");
+  /* ★ v3.22.0：拍数输入**常显**——预备拍关也显示上次设置的拍数（用户需求），
+     处理器不再翻显隐；标记层亦无 hidden（变异抓手：恢复 hidden 翻转会破坏常显） */
+  ok(!/countInBeatsWrap"\)\.hidden/.test(html)
+     && !/<span class="inp-with-unit" id="countInBeatsWrap" hidden/.test(html),
+    "★★ 拍数输入常显：标记层无 hidden、处理器无显隐翻转");
 }
 
 section("T175c boot 后布局就绪重采样（用户反馈'刚打开歌词错位、播放后恢复'）");

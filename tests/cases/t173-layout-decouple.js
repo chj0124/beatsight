@@ -48,6 +48,10 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
     "★ 控制区限宽 1000 居中（丁方案的限宽口径保留）");
   ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(CSS_CODE),
     "★★ v3.19.0：三列均分取代两列（音量 | BPM | 开关列，用户需求同排均分宽度）");
+  /* ★ v3.22.0：音量组固定间距顶对齐（零变形机制源码钉）——行高随开关列生长时滑杆
+     纹丝不动；回退 space-between/evenly 会重新引入内容重分布（变异 M18 实证）。 */
+  ok(/\.viz-head-grid \.card-head-left \.group\{flex:1;justify-content:flex-start;gap:29px\}/.test(CSS_CODE),
+    "★★ v3.22.0：音量组 = 顶对齐固定间距 29px（零变形机制；基态列高 ≈ BPM 列）");
   /* 悬浮槽三件套：absolute（脱离布局流 → 零横移/零高度变化）、锚在开关行下方、
      常驻预留 56px（最满面板实测 43px + 30% 余量）。行首锚定——被注释的残行不算。 */
   /* ★ v3.19.0：悬浮槽（absolute 锚定 + 50px 预留 + max-content 锁宽）整体退役——
@@ -79,14 +83,15 @@ section("T173c 参数面板显隐行为（搬块不换 id：syncParamSlots 收�
   void beat;
 }
 
-section("T173d 底栏预备拍显隐（两行化后接线一行未动的行为验证）");
+section("T173d 拍数输入常显（v3.22.0：显隐翻转退役，值同步保留）");
 {
-  const { els } = loadApp({
+  const { beat, els, html } = loadApp({
     "beatsight.state": JSON.stringify({ countIn: { on: false, beats: 2 } }),
   }, { seedDemo: false });
-  eq(els["countInBeatsWrap"].hidden, true, "前提：预备拍关 → 拍数输入隐藏（标记级 hidden）");
+  ok(!/countInBeatsWrap"\)\.hidden/.test(html),
+    "★★ v3.22.0：处理器不再翻转拍数输入显隐（常显契约，用户需求）");
   els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, false, "★ 打开预备拍 → 拍数输入出现（显形只影响行 2）");
+  eq(beat.Store.S.countIn.on, true, "★ 打开预备拍 → 状态开（拍数输入本来就显示着）");
   els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, true, "★ 关闭预备拍 → 拍数输入隐藏");
+  eq(beat.Store.S.countIn.on, false, "★ 关闭预备拍 → 状态关（拍数输入仍显示上次值）");
 }

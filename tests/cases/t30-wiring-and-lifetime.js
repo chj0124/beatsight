@@ -285,10 +285,14 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   ok(/id="countInBeatsWrap"/.test(seg),
     "拍数输入在标记里夹在「预备拍」与「弹跳球」之间（不再隔着弹跳球）");
   ok(/<span class="hint">拍<\/span>/.test(html), "拍数带可见单位「拍」（原先只有 aria-label，肉眼无从判断）");
+  /* ★ v3.22.0（用户需求）：拍数输入**常显**——关闭预备拍也显示上次设置的拍数，
+     显隐翻转移除（处理里不再写 #countInBeatsWrap.hidden），值同步与钳制路径保留 */
+  ok(!/countInBeatsWrap"\)\.hidden/.test(html),
+    "★★ 处理器不再翻转拍数输入显隐（常显契约）");
   els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, false, "打开预备拍 → 拍数输入出现");
+  eq(S.countIn.on, true, "打开预备拍 → 状态开（拍数输入本来就显示着）");
   els["countInToggle"].fire("click");
-  eq(els["countInBeatsWrap"].hidden, true, "关闭预备拍 → 拍数输入隐藏");
+  eq(S.countIn.on, false, "关闭预备拍 → 状态关（拍数输入仍显示上次值）");
 
   /* 预设列表：点内置项 / 点自定义项的删除按钮 / 调色板的回退提示 */
   const listItems = () => els["presetList"].children.filter(c => c._h && c._h.click);

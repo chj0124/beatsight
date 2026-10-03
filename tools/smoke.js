@@ -657,9 +657,17 @@ function layoutProbe(){
     const colLH = () => (colL ? round(colL.getBoundingClientRect().height) : null);
     const colBH = () => (colB ? round(colB.getBoundingClientRect().height) : null);
     const wrapEl = q("#countInBeatsWrap"), ct = q("#countInToggle");
+    /* ★ v3.22.0：内容级零变形读数——音量第一条滑杆行 / BPM 大数字，在开关列开合前后
+       rect 逐像素不动（用户验收点"打开变速训练没必要变形"的正体；盒子高度随行变化
+       不算变形——组盒透明无边框）。 */
+    const volRows = document.querySelectorAll(".viz-head-grid .vol-row");
+    const vol1 = volRows[1], bpmNum = q(".viz-head-grid .bpm-num");   /* 量中间行：space-between 重分布时中行位移最大（首行被顶对齐钉住） */
+    const vol1R = () => (vol1 ? JSON.stringify([round(vol1.getBoundingClientRect().left), round(vol1.getBoundingClientRect().top)]) : null);
+    const bpmR = () => (bpmNum ? JSON.stringify([round(bpmNum.getBoundingClientRect().left), round(bpmNum.getBoundingClientRect().top)]) : null);
     const wrapRow = () => { if (!wrapEl || !ct) return null;
       const a = ct.getBoundingClientRect(), b = wrapEl.getBoundingClientRect();
-      return (wrapEl.hidden) ? "hidden" : JSON.stringify([round(a.top) === round(b.top), round(b.left) > round(a.right - 4)]); };
+      const cyOK = Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) <= 2;   /* 垂直中轴对齐（align-items:center） */
+      return JSON.stringify([cyOK, round(b.left) > round(a.right - 4)]); };
     /* v3.16.0：面板收容口径放宽到**卡片底缘**——预留 50px 是记账线，真正的视觉边界
        是卡片底（预留 50 + 卡片内边距 24 = 行下 74px）；两行化后最满内容允许用内边距
        的空白（用户确认过：预留空间足够，不需要调高度）。 */
@@ -683,10 +691,12 @@ function layoutProbe(){
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
     const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), colBC = colBR(), rowWC = wrapRow();
+    const vol1C = vol1R(), bpmC = bpmR();
     const volHC = colLH(), bpmHC = colBH();
     const cardHC = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     if (mt) mt.click();
     const muteOnly = h(), mxM = mx(), txM = tx(), colLM = colLR(), colBM = colBR(), rowWM = wrapRow();
+    const vol1M = vol1R(), bpmM = bpmR();
     const cardHM = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     /* 悬浮面板收容：打开的面板底缘不得越过 .tg-body 底缘（56px 预留装得下最满面板） */
     const mp = q("#muteCfgPanel");
@@ -709,6 +719,7 @@ function layoutProbe(){
     }
     if (tt) tt.click();
     const both = h(), mxB = mx(), txB = tx(), colLB = colLR(), colBB = colBR(), rowWB = wrapRow();
+    const vol1B = vol1R(), bpmB = bpmR();
     const cardHB = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     const tp = q("#trainerPanel");
     const trainerBottom = (tp && !tp.hidden) ? round(tp.getBoundingClientRect().bottom) : null;
@@ -723,6 +734,8 @@ function layoutProbe(){
       colLC: colLC, colLM: colLM, colLB: colLB,
       colBC: colBC, colBM: colBM, colBB: colBB,
       volHC: volHC, bpmHC: bpmHC,
+      vol1C: vol1C, vol1M: vol1M, vol1B: vol1B,
+      bpmC: bpmC, bpmM: bpmM, bpmB: bpmB,
       rowWC: rowWC, rowWM: rowWM, rowWB: rowWB,
       mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
       txC: txC, txM: txM, txB: txB, txR: tx(),
@@ -1238,6 +1251,16 @@ async function main(){
             p.label + "·" + vp + "：★★★ 音量/BPM 两列 left/top/width **逐像素不动**"
             + "（v3.21.0：高度随行高铺开是用户需求，横移/顶移仍为零）",
             "音量 " + L.tgBody.colLC + " → " + L.tgBody.colLM + " → " + L.tgBody.colLB);
+          /* ★★★ v3.22.0：内容级**零变形**——开合开关列前后，音量滑杆行与 BPM 大数字
+             的位置逐像素不动（用户验收点"打开变速训练没必要变形"的正体）。 */
+          if (vp === "桌面"){
+            ok(L.tgBody.vol1C === L.tgBody.vol1M && L.tgBody.vol1M === L.tgBody.vol1B
+               && L.tgBody.bpmC === L.tgBody.bpmM && L.tgBody.bpmM === L.tgBody.bpmB,
+              p.label + "·" + vp + "：★★★ 音量滑杆/BPM 数字**逐像素不动**（内容级零变形——"
+              + "v3.22.0 固定间距顶对齐的核心承诺）",
+              "音量行 " + L.tgBody.vol1C + " → " + L.tgBody.vol1M + " → " + L.tgBody.vol1B
+              + " BPM数字 " + L.tgBody.bpmC + " → " + L.tgBody.bpmM + " → " + L.tgBody.bpmB);
+          }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,
               p.label + "·" + vp + "：★★ 音量列与 BPM 列**等高**（≥900 三列等高 + space-between 铺满，"
