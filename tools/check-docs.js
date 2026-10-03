@@ -136,14 +136,17 @@ console.log("══════════════════════�
   let m;
   while ((m = tableRe.exec(readme))){
     const label = m[1].trim();
+    const href = m[2].trim();
     const desc = m[3];
-    if (!/\.md$/.test(label)) continue;                 // 只看 Markdown（prd.html 这类不查，见文件头）
+    /* v3.31.x（落地审计 E17-①）：判**href** 而不是链接文本——此前两处碰巧相等才成立，
+       文本换成别名（如 [规格](docs/archive/spec.md)）就会误报文件不存在。 */
+    if (!/\.md$/.test(href)) continue;                 // 只看 Markdown（prd.html 这类不查，见文件头）
     const status = /已归档/.test(desc) ? "已归档" : (/已落地/.test(desc) ? "已落地" : null);
     if (!status) continue;
     checked++;
-    const full = path.join(ROOT, label);
+    const full = path.join(ROOT, href);
     if (!fs.existsSync(full)){
-      missing.push(`${label} 在 README 里被标为「${status}」，但文件不存在`);
+      missing.push(`${href} 在 README 里被标为「${status}」，但文件不存在`);
       continue;
     }
     const head = fs.readFileSync(full, "utf8").split("\n").slice(0, 20).join("\n");
@@ -157,6 +160,55 @@ console.log("══════════════════════�
     missing.forEach(x => problems.push("归档状态 —— " + x));
   } else {
     report.push(`✓ 归档状态：README 文档表中 ${checked} 份带状态的文档，正文均有同名横幅`);
+  }
+}
+
+/* ---- 3b) docs/README.md 快照登记表（v3.31.x，落地审计 E16）----
+   由来：该索引自称「状态横幅由 check-docs.js 第 3、4 项把守」，而第 3 项只读根 README、
+   第 4 项只查三份审计产物——登记表本身**没有任何机器规则读取**，状态格漂移静默累积
+   （此前 PLAN-v3「已全部交付，转历史记录」、AUDIT「P0–P3 已逐条闭环」等状态词不含任何
+   横幅词，与表头承诺不符）。
+   规则：快照表每一行的状态格必须含横幅词（已归档 / 已落地 / 历史）；表内链接的文件
+   必须存在；.md 条目的正文前 20 行必须出现同族横幅词。 */
+{
+  const docsIdx = path.join(ROOT, "docs", "README.md");
+  const misses = [];
+  if (fs.existsSync(docsIdx)){
+    const txt = fs.readFileSync(docsIdx, "utf8");
+    const start = txt.indexOf("## 历史快照");
+    const region = start >= 0 ? txt.slice(start) : "";
+    region.split("\n").forEach((ln, i) => {
+      if (!ln.trim().startsWith("|")) return;
+      const cells = ln.split("|");
+      if (cells.length < 5) return;
+      const status = cells[cells.length - 2].trim();
+      const hrefs = [...ln.matchAll(/\]\(([^)]+)\)/g)].map(x => x[1].trim());
+      if (!hrefs.length) return;
+      if (!/(?:已归档|已落地|历史)/.test(status)){
+        misses.push(`docs/README.md L${txt.slice(0, txt.indexOf(ln)).split("\n").length} 快照行状态格「${status || "(空)"}」不含横幅词`
+          + "——与表头「带横幅」承诺不符，请补 已归档 / 已落地 / 历史 之一");
+      }
+      hrefs.forEach(href => {
+        const full = path.join(ROOT, "docs", href);
+        if (!fs.existsSync(full)){
+          misses.push(`docs/README.md 登记「${href}」但文件不存在`);
+          return;
+        }
+        if (/\.md$/.test(href)){
+          const head = fs.readFileSync(full, "utf8").split("\n").slice(0, 20).join("\n");
+          if (!/(?:已归档|已落地|历史)/.test(head))
+            misses.push(`docs/${href}：登记表状态格带横幅词，但正文前 20 行无同族横幅词`);
+        }
+      });
+    });
+  } else {
+    misses.push("docs/README.md 不存在（索引是活文档表与快照表的分界线，缺失即盲区）");
+  }
+  if (misses.length){
+    report.push(`✗ docs/README 登记表：${misses.length} 处（此前该表声称被把守、实际无人读取）`);
+    misses.forEach(x => problems.push("docs/README 登记表 —— " + x));
+  } else {
+    report.push("✓ docs/README 登记表：快照行均带横幅词、链接文件均在且正文有同族横幅");
   }
 }
 
@@ -239,6 +291,16 @@ const STEP_COUNT_FILES = ["README.md", "docs/DEVELOPMENT.md"];
       + "——要么 STEPS 的写法变了，要么正则该改；本条不能「猜一个数」继续");
   } else {
     const hits = [];
+    /* v3.31.x（落地审计 E3）：check-all.js 自己头注释里的编号列表也曾漂移
+       （14 步 vs 实际 18 步）——闸门体系的中心不该有"抄一遍就等着烂"的清单。
+       这里数它头注释块里的 `N)` 编号行，与 STEPS 实际条目数对账。 */
+    {
+      const head = all.slice(0, all.indexOf("\"use strict\""));
+      const numbered = [...head.matchAll(/^\s*\d+\)/gm)].length;
+      if (numbered && numbered !== actual)
+        hits.push("tools/check-all.js:1 头注释编号列表有 " + numbered + " 条，而 STEPS 实为 " + actual
+          + " 条——改 STEPS 请同步改头注释列表（或以 STEPS 为准删掉编号）");
+    }
     STEP_COUNT_FILES.forEach(rel => {
       const full = path.join(ROOT, rel);
       if (!fs.existsSync(full)) return;
@@ -331,11 +393,17 @@ const COVERAGE_CLAIM_RE = /当前[^\n]{0,40}?\d+(?:\.\d+)?\s*%/g;
        而 `index.html` / `tests/` 里那些「约 5 MB」（localStorage 配额）、「~180 KB」
        （壁纸档位讨论）是**概念说明与历史叙述**，不是本仓库文件的体积声明 ——
        把它们一并拦下就是假红（全仓库共 6 处这种合法写法）。
-     · 只认 `~N KB/MB` 这一种形状。**它不是万能的**：写成「index.html 现在 941 KiB」
-       就绕得过去。之所以不做宽 —— 宽口径会把上面那类概念说明全部误伤；
-       窄口径的价值是"把已经漂过的那一处钉住，并给出正确的替代写法"。 */
-const SIZE_CLAIM_FILES = ["AGENTS.md"];
-const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
+     · 形状自 v3.31.x 起扩为「裸数字 + KB/MB/KiB/MiB 单位」也拦（此前的 `[~约]N KB` 形状
+       被 AGENTS.md 里裸写「102 KB」实证绕过——漂移 +53% 而闸门全绿）。之所以敢放宽：
+       本清单只管这两份"给 AI 看的活规则"，其中的现状数字都该由命令现查替代；
+       概念说明（localStorage 配额、壁纸档位）不在这两份文件里，不会误伤。 */
+const SIZE_CLAIM_FILES = ["AGENTS.md", ".trae/rules/project_rules.md"];
+/* v3.31.x（落地审计 E17-②/P3-9）：旧形状只认 `[~约]N KB/MB`，而 AGENTS.md 曾写裸数字
+   「102 KB」（docs/DEVELOPMENT.md 的体积声明）漂移 +53% 却恰好绕开——窄形状被绕的事实
+   已经发生了一次。现将形状扩为「裸数字 + 单位」也拦；这两个文件是"给协作者/AI 看的活规则"，
+   里面的现状数字都该由命令现查替代，不存在需要豁免的概念说明（概念说明都住在 index.html /
+   tests/ 里，不在本清单管辖范围）。 */
+const SIZE_CLAIM_RE = /(?:[~约]\s*)?\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
 {
   const hits = [];
   SIZE_CLAIM_FILES.forEach(rel => {
@@ -349,7 +417,7 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
     report.push("✗ 手写体积声明：" + hits.length + " 处（体积可现算，写死在文档里必烂）");
     hits.forEach(h => problems.push("手写体积声明 —— " + h));
   } else {
-    report.push("✓ 手写体积声明：AGENTS.md 无「~N KB/MB」（体积以 `wc -c index.html` 现查）");
+    report.push("✓ 手写体积声明：AGENTS.md / .trae 规则无手写 N KB/MB（体积以 `wc -c` 现查）");
   }
 }
 
@@ -398,6 +466,10 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
         if (!(n < curMaj)) vProblems.push("docs/archive/" + f + " 的大号不小于当前大号 v" + curMaj + "（归档只装旧线）");
         const leak = (verMajorsIn("docs/archive/" + f) || []).filter(m => m >= curMaj);
         if (leak.length) vProblems.push("docs/archive/" + f + " 混入了当前/更新大版本线的 " + leak.length + " 条（两处都留 = 迟早不一致）");
+        /* v3.31.x（落地审计 E17-③）：归档**归属**断言——文件名叫 vN，正文每一条也必须是大号 N。
+           此前只查"别混入当前线"，v1 条目整段落进 CHANGELOG-v0.md 会全绿，历史检索质量无保障。 */
+        const wrongOwn = (verMajorsIn("docs/archive/" + f) || []).filter(m => m !== n);
+        if (wrongOwn.length) vProblems.push("docs/archive/" + f + " 有 " + wrongOwn.length + " 条大号不是 v" + n + " 的条目（最小 v" + Math.min(...wrongOwn) + "）——每条大号必须等于文件名大号");
       });
     }
   }
@@ -413,25 +485,42 @@ const SIZE_CLAIM_RE = /[~约]\s*\d+(?:\.\d+)?\s*(?:KB|MB|KiB|MiB)/g;
    由来：「活文档 vs 快照」的分类约定写在 docs/README.md 里，但约定靠自觉就会漂移——
    vibe coding 的 Agent 不读那份索引，新增方案/审计随手就落在 docs/ 第一层，混排再次发生。
    与规则 9（CHANGELOG 分卷）同一思路：**落错位置直接红，不需要谁记得**。
-   口径刻意只认「docs/ 第一层的 .md 文件」这一种形状：
-   · archive/ 内部不查（那里就是快照的家）；assets/ 等子目录不查（只看文件）；
-   · 确属活文档的新 .md（如将来的模块地图）→ 加进白名单并登记 docs/README.md 活文档表，
-     两处都有机器盯着，不会静默。 */
+   v3.31.x（落地审计 E16/E17-④）扩三个方向：
+   · 后缀从 .md 扩到**全部文件**（.html/.pdf 快照落错位置同样拦）；
+   · 白名单条目必须**存在**且**出现在 docs/README.md 活文档表**（此前只查 stray 一个方向，
+     "白名单加了、登记表漏登"没有任何闸门）；
+   · archive/ 内部不查（那里就是快照的家）；assets/ 等子目录不查（只看文件）。 */
 const DOCS_LIVING_WHITELIST = ["DEVELOPMENT.md", "README.md"];
 {
   const dir = path.join(ROOT, "docs");
   const stray = [];
   if (fs.existsSync(dir)){
-    fs.readdirSync(dir).filter(f => f.endsWith(".md")).forEach(f => {
-      if (!DOCS_LIVING_WHITELIST.includes(f)) stray.push("docs/" + f);
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(ent => {
+      if (ent.isDirectory()) return;                    // 只看文件：archive/assets 是快照与资源之家
+      const name = ent.name;
+      if (!DOCS_LIVING_WHITELIST.includes(name)) stray.push("docs/" + name);
     });
   }
+  /* 白名单存在性 + 活文档表反向断言 */
+  DOCS_LIVING_WHITELIST.forEach(name => {
+    if (!fs.existsSync(path.join(dir, name))){
+      problems.push("docs/ 第一层 —— 白名单「" + name + "」不存在（登记腐烂，应从 DOCS_LIVING_WHITELIST 移除）");
+      return;
+    }
+    const idx = path.join(ROOT, "docs", "README.md");
+    if (!fs.existsSync(idx)) return;
+    const txt = fs.readFileSync(idx, "utf8");
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp("\\]\\([^)\\n]*" + esc + "\\)").test(txt))
+      problems.push("docs/ 第一层 —— 白名单「" + name + "」未出现在 docs/README.md 活文档表"
+        + "（白名单加了、索引漏登——两处必须有机器盯着，这是 E16 补的反向断言）");
+  });
   if (stray.length){
-    report.push("✗ docs/ 第一层混放：" + stray.length + " 份白名单外 Markdown（快照/方案/审计应进 docs/archive/）");
+    report.push("✗ docs/ 第一层混放：" + stray.length + " 份白名单外文件（快照/方案/审计应进 docs/archive/）");
     stray.forEach(s => problems.push("docs/ 第一层 —— " + s
       + "：快照/方案/审计一律挪进 docs/archive/ 并带状态横幅；确属活文档则加进 DOCS_LIVING_WHITELIST 并登记 docs/README.md 活文档表"));
   } else {
-    report.push("✓ docs/ 第一层：仅 " + DOCS_LIVING_WHITELIST.length + " 份活文档白名单（快照均在 archive/）");
+    report.push("✓ docs/ 第一层：仅 " + DOCS_LIVING_WHITELIST.length + " 份活文档白名单（快照均在 archive/，且均登记在册）");
   }
 }
 

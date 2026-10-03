@@ -3255,22 +3255,22 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L3286  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3917  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5521  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6385  Modal         应用内弹窗
-     L6523  Viz           时值可视化渲染与每帧动画
-     L9764  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10431 Trainer       变速训练器
-     L10633 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11237 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12654 Editor        自定义节奏型编辑器
-     L13100 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13147 Ear           听辨训练（v1.10.0）
-     L13366 Arrange       曲式编排（v2.0.0）
-     L16264 Help          使用方法（v2.0.1）
-     L16393 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16467 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16710 初始化（装配） 各模块 hook 接线与启动
+     L3922  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5617  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6506  Modal         应用内弹窗
+     L6651  Viz           时值可视化渲染与每帧动画
+     L9897  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10567 Trainer       变速训练器
+     L10775 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11399 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12827 Editor        自定义节奏型编辑器
+     L13328 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13375 Ear           听辨训练（v1.10.0）
+     L13603 Arrange       曲式编排（v2.0.0）
+     L16516 Help          使用方法（v2.0.1）
+     L16645 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16719 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16962 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3296,7 +3296,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.31.4";
+const VERSION = "3.31.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3635,7 +3635,9 @@ function demoBuildSpec(){
 function demoPresetEq(stored, spec){
   if (!stored || !spec || stored.meter !== spec.meter) return false;
   const canon = (/** @type {any[]} */ bars) => JSON.stringify((bars || []).map(bar => (bar || []).map(/** @param {any} s */ s =>
-    [s.t, s.rest ? 1 : 0, s.dir || "", s.zone === undefined ? "" : s.zone])));
+    /* v3.31.x（审计 P3-7）：zone 把 null 与缺省折叠为同一记号（DEMO_STRUMS 写显式 null、
+       validatePreset 归一为省略），此前两侧 canon 永不相等、内容认型首选腿恒不成立。 */
+    [s.t, s.rest ? 1 : 0, s.dir || "", (s.zone === undefined || s.zone === null) ? "" : s.zone])));
   return canon(stored.bars) === canon(spec.bars);
 }
 /* 示例曲 5 个型的**规范谱**（缓存：demoBuildSpec 是纯函数，结果恒定）。
@@ -3894,6 +3896,9 @@ const EAR_GROUPS = [
   { name:"拍号辨识 3/4 · 5/4 · 7/4", desc:"靠数拍子分辨小节长度",
     keys:["华尔兹分解", "Take Five 律动 · 5/4", "Money 型 · 7/4"] },
 ];
+/* v3.31.x（审计 P1-4）：keys 表用源名写（表可读、T49 照旧钉源名），出题改按稳定下标
+   解析——此前按显示名匹配，renameBuiltin 改名后题组失效（概率性「题库不可用」）。 */
+const EAR_GROUP_IDXS = EAR_GROUPS.map(g => ({ ...g, idxs: g.keys.map(k => BUILTIN_SRC_NAMES.indexOf(k)) }));
 /* 每题放几小节。内置预设 1 小节（v2.73.0 起），2 小节 = 这段节奏听两遍，
    足够辨认又不拖沓。走 Controls 的「会话播放额度」自动停，不用定时器（定时器在后台会被节流） */
 const EAR_BARS = 2;
@@ -3975,9 +3980,14 @@ const Store = (() => {
   /* v0.7.0 迁移：旧浮点拍数 d → tick（×48）。迁移前整包备份到 beatsight.m2.bak */
   if (rawSaved && legacy.v !== 3){
     try{ localStorage.setItem(KEY_BAK, rawSaved); }catch(e){}
-    savedCustoms.forEach(c => (c.bars || []).forEach((/** @type {any} */ bar) => bar.forEach((/** @type {any} */ s) => {
-      if (typeof s.d === "number" && s.t === undefined){ s.t = Math.round(s.d * TPB); delete s.d; }
-    })));
+    savedCustoms.forEach(c => {
+      /* v3.31.x（审计 P1-7）：条目级防御——脏旧键 customs 含 null 条目时，此处曾在任何校验
+         之前读 c.bars 抛 TypeError（S 缺失、全站白屏）。坏条目跳过即可。 */
+      if (!c || typeof c !== "object" || !Array.isArray(c.bars)) return;
+      c.bars.forEach((/** @type {any} */ bar) => bar.forEach((/** @type {any} */ s) => {
+        if (typeof s.d === "number" && s.t === undefined){ s.t = Math.round(s.d * TPB); delete s.d; }
+      }));
+    });
     saved.v = 3;
   }
   /* v2.21.0：内置型改名覆盖（beatsight.builtinNames）——加载即套到 BUILTINS[i].name 上。
@@ -4201,11 +4211,17 @@ const Store = (() => {
        （那是这类坏数据的正确出口，见上方那段边界说明）。
      ★ 判据（读 bars.length）必须与共享区 patBars 逐字一致：两处漂移的表现是
        "段长按 4 算、播放却按实际小节数走"，只有 T51 的段长断言能同时钉住两边。 */
+  /* v3.31.x（审计 P1-9）：custom 分支先查运行期 customs、再回落快照——否则「本会话刚导入
+     的型」在 normArrange 里按 DEF_BARS 计段长、护栏失效。用 customsRef 而非直接读 customs：
+     本函数在加载期（曲式装载）就被调用，彼时 const customs 未初始化（TDZ）。 */
+  /** @type {any[]|null} */
+  let customsRef = null;
   /** @param {any} ref @returns {number} */
   const patLenOf = ref => {
     let p = null;
     if (ref && ref.type === "builtin" && Number.isInteger(+ref.idx)) p = BUILTINS[+ref.idx];
-    else if (ref && ref.type === "custom") p = savedCustoms.find(c => c && c.id === ref.id);
+    else if (ref && ref.type === "custom") p = (customsRef && customsRef.find(c => c && c.id === ref.id))
+      || savedCustoms.find(c => c && c.id === ref.id);
     return patBars(p);
   };
   /* v2.26.0：prev = 库里同 id 的**旧版本**（upsertArrange 传入），只用于 uid 继承。
@@ -4367,7 +4383,19 @@ const Store = (() => {
       catch(e){ onPersistFail(e); }
     };
   }
-  const persistArranges = makePersister(KEY_ARRANGES, () => ({ v:1, arranges }));
+  /* v3.31.x（审计 P0-3）：曲式冷键前置守卫——候选试听的「内存换型」必须在任何
+     persistArranges 序列化前还原，否则试听的型被静默落库。Arrange 注入（同 setPersistFailHandler
+     槽）；不叫 onXxx = 不进 check-wiring 的钩子收列（本槽由 Arrange 在自身 IIFE 内注入）。 */
+  let arrPersistGuard = /** @type {(() => void)|null} */ (null);
+  /** @param {(() => void)|null} fn */
+  function setArrPersistGuard(fn){ arrPersistGuard = typeof fn === "function" ? fn : null; }
+  const persistArranges = (() => {
+    const raw = makePersister(KEY_ARRANGES, () => ({ v:1, arranges }));
+    return function(){
+      if (arrPersistGuard){ try{ arrPersistGuard(); }catch(e){} }
+      raw();
+    };
+  })();
   const persistBNames = makePersister(KEY_BNAMES, () => ({ v:1, names: builtinNameOverrides }));
   const persistGroups = makePersister(KEY_GROUPS, () => ({ v:1, groups }));
   /* v2.21.0：条目改名（批次③，编辑图标的两个后端）。
@@ -4474,12 +4502,16 @@ const Store = (() => {
   /* v2.25.0：区标题「新建分组」的后端——建一个**空组**（成员靠拖拽归入）。
      同名组（同区）已存在时幂等成功（不重复建——与 groupMove"同名组直接移入"同一哲学） */
   /** @param {"beat"|"strum"|"custom"} zone @param {string} name @returns {boolean} */
+  /* v3.31.x（审计 P3-8）：组 id 后缀改会话单调计数器——length 删除后回退，同毫秒建删建可
+     撞号，而加载校验对重复 id 整组丢弃。与 customs/曲式/段三处 id 铸造同口径。 */
+  let grpSeq = 0;
+  /** @param {"beat"|"strum"|"custom"} zone @param {string} name @returns {boolean} */
   function groupCreate(zone, name){
     if (zone !== "beat" && zone !== "strum" && zone !== "custom") return false;
     const nm = String(name || "").trim().slice(0, 40);
     if (!nm) return false;
     if (groups.some(x => x.name === nm && x.zone === zone)) return true;
-    groups.push({ id: "g" + Date.now() + "-" + groups.length, name: nm, zone, members: [], open: true });
+    groups.push({ id: "g" + Date.now() + "-" + (grpSeq++), name: nm, zone, members: [], open: true });
     persistGroups();
     return true;
   }
@@ -4878,6 +4910,7 @@ const Store = (() => {
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
   /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string }[]} */
   const customs = [];
+  customsRef = customs;    // v3.31.x（审计 P1-9）：patLenOf 的运行期路径接上 live 数组（见其定义处注释）
   /** @type {any[]} */
   const rejectedCustoms = [];
   savedCustoms.forEach((c, i) => {
@@ -5253,7 +5286,9 @@ const Store = (() => {
     /** @type {string[]} */
     const included = [];
     if (want("presets")){ obj.presets = customs.map(c => ({ name:c.name, meter:c.meter,
-      ...(c.accents ? {accents:c.accents} : {}), bars:c.bars })); included.push("presets"); }
+      ...(c.accents ? {accents:c.accents} : {}), bars:c.bars,
+      ...(c.label ? {label:c.label} : {}),    // v3.31.x（审计 P1-3）：label 随全量包往返——此前只有预设包带、全量包静默丢失
+      id:c.id })); included.push("presets"); }   // v3.31.x（审计 P0-2）：带原 id 供包内引用重映射（导入恒换新 id，旧 id 只作对账键，不进落库结果）
     if (want("arranges")){ obj.arranges = arranges; included.push("arranges"); }
     if (want("lyrics")){ obj.lines = lyrics; included.push("lyrics"); }
     if (want("ear")){ obj.ear = ear; included.push("ear"); }
@@ -5287,6 +5322,9 @@ const Store = (() => {
     const inPresets = Array.isArray(data.presets) ? data.presets
                     : (Array.isArray(data) ? data : []);
     const okPresets = [];
+    /** @type {(string|null)[]} 与 okPresets 平行的**包内原 id**——validatePreset 的白名单会剥掉
+        id，而引用重映射的键必须来自原始包条目（v3.31.x 审计 P0-2 的映射键）。 */
+    const okPkgIds = [];
     if (inPresets.length){
       if (inPresets.length > CONFIG.importMaxCount)
         return { ok:false, error:"预设数量过多（" + inPresets.length + " 个，上限 " + CONFIG.importMaxCount + " 个）" };
@@ -5298,13 +5336,38 @@ const Store = (() => {
         if (!v) return { ok:false, error:"预设「" + (p && p.name ? String(p.name).slice(0, 40) : "?")
           + "」格式不正确（拍号 / 时值 / 小节完整性校验失败）" };
         okPresets.push(v);
+        okPkgIds.push((p && typeof p.id === "string" && p.id) ? p.id : null);
       }
     }
+    /* v3.31.x（审计 P0-2 + P1-9）：预设先入 live 数组并建 oldId→newId 映射——曲式块引用
+       按映射重写后 normArrange 才能解析真实段长；无 id 的旧包不映射（悬空引用仍可见）。 */
+    const base = Date.now();
+    /** @type {Map<string,string>} */
+    const refMap = new Map();
+    okPresets.forEach((v, i) => {
+      const oldId = okPkgIds[i];
+      const newId = "c" + base + "-" + (idSeq++);
+      if (oldId) refMap.set(oldId, newId);
+      customs.push({ id:newId, ...v });
+    });
+    /** 包内引用重映射（data 是刚解析的瞬时对象，就地改 ref 无副作用） */
+    const remapRefs = (/** @type {any} */ r) => {
+      if (!r || !Array.isArray(r.sections)) return r;
+      r.sections.forEach((/** @type {any} */ s) => {
+        if (!s || !Array.isArray(s.blocks)) return;
+        s.blocks.forEach((/** @type {any} */ b) => {
+          if (b && b.ref && b.ref.type === "custom" && typeof b.ref.id === "string" && refMap.has(b.ref.id)){
+            b.ref = { type:"custom", id: /** @type {string} */ (refMap.get(b.ref.id)) };
+          }
+        });
+      });
+      return r;
+    };
     /* ---- 曲式 / 歌词：逐条归一，坏条目丢弃并计数 ---- */
     let arrAdd = 0, arrDrop = 0;
     if (Array.isArray(data.arranges)){
       data.arranges.forEach((/** @type {any} */ r) => {
-        const v = normArrange(r);
+        const v = normArrange(remapRefs(r));
         /* 同 id 只留一条：导入是**合并**，撞 id 时以本机已有为准（不动用户正在用的那份） */
         if (v && !arranges.some(a => a && a.id === v.id)){ arranges.push(v); arrAdd++; } else arrDrop++;
       });
@@ -5335,7 +5398,14 @@ const Store = (() => {
     if (data.ear && typeof data.ear === "object"){
       EAR_KEYS.forEach(k => {
         const inc = data.ear[k], cur = (/** @type {any} */ (ear))[k];
-        if (isNum(inc) && (!isNum(cur) || inc > cur)){ (/** @type {any} */ (ear))[k] = inc; earMerge++; }
+        if (isNum(inc) && (!isNum(cur) || inc > cur)){
+          /* v3.31.x（审计 P1-8）：与加载路径同口径归一化（地板取整 + right≤total 夹制）——
+             此前脏包 right>total/小数 原样写进冷键（界面短暂显示 1429% 正确率）。 */
+          let nv = Math.max(0, Math.floor(inc));
+          if (k === "right") nv = Math.min(ear.total, nv);
+          (/** @type {any} */ (ear))[k] = nv;
+          earMerge++;
+        }
       });
     }
     /* ---- 设置（v2.65.0 X1）：分组整包替换 + 内置型改名覆盖合并 ----
@@ -5370,9 +5440,7 @@ const Store = (() => {
       try{ console.warn("[BeatSight] 全量导入跳过 " + arrDrop + " 条曲式 / " + lyrDrop
         + " 条歌词行（未通过结构校验或与本机已有条目重复）"); }catch(e){}
     }
-    /* 预设先落：它是最贵的一份，先写下去再动其余冷键（与 importPresets 的顺序同源） */
-    const base = Date.now();
-    okPresets.forEach(v => customs.push({ id:"c" + base + "-" + (idSeq++), ...v }));
+    /* 预设已在校验后即入 live 数组（P0-2 的引用重映射需要它先在场）；落盘顺序不变：预设最贵先写 */
     if (okPresets.length) persistCold();
     if (arrAdd) persistArranges();
     if (lyrAdd) persistLyrics();
@@ -5401,6 +5469,12 @@ const Store = (() => {
       return { ok:false, error:"这不是 BeatSight 的数据包（kind=" + String(data.kind).slice(0, 20) + "）" };
     /** @type {Array<{kind:string, action:string, count:number}>} */
     const parts = [];
+    /* v3.31.x（审计 P0-2）：dry-run 按包内映射解析引用（与 importAll 计数对齐）。
+       pvRefMap = 包预设 oldId→虚拟 newId；savedCRef = 原 customsRef，计数后还原。 */
+    /** @type {Map<string,string>} */
+    let pvRefMap = new Map();
+    /** @type {any[]|null} */
+    let savedCRef = null;
     /* ---- 预设：严格、整批 ---- */
     const inPresets = Array.isArray(data.presets) ? data.presets
                     : (Array.isArray(data) ? data : []);
@@ -5414,6 +5488,18 @@ const Store = (() => {
         if (!validatePreset(p)) return { ok:false, error:"预设「" + (p && p.name ? String(p.name).slice(0, 40) : "?")
           + "」格式不正确（拍号 / 时值 / 小节完整性校验失败）" };
       }
+      /* 虚拟导入：把「现有 + 本次导入」挂进 customsRef（不碰本体），normArrange 经
+         patLenOf 即能解析包内引用——与 importAll 同口径。 */
+      const pvBase = Date.now();
+      const virtual = /** @type {any[]} */ (customs.slice());
+      inPresets.forEach((/** @type {any} */ p, /** @type {number} */ pi) => {
+        const oldId = (p && typeof p.id === "string" && p.id) ? p.id : null;
+        const nid = "c" + pvBase + "-pv" + pi;
+        virtual.push({ id:nid, ...validatePreset(p) });
+        if (oldId) pvRefMap.set(oldId, nid);
+      });
+      savedCRef = customsRef;
+      customsRef = virtual;
       parts.push({ kind:"节奏型", action:"新增", count: inPresets.length });
     }
     /* ---- 曲式 / 歌词：逐条归一计数（与 importAll 同序：先落曲式再归歌词，
@@ -5424,6 +5510,14 @@ const Store = (() => {
     let arrAdd = 0, arrDrop = 0;
     if (Array.isArray(data.arranges)){
       data.arranges.forEach((/** @type {any} */ r) => {
+        /* P0-2：包内 custom 引用重映射（与 importAll 的 remapRefs 同口径） */
+        if (r && Array.isArray(r.sections)) r.sections.forEach((/** @type {any} */ s) => {
+          if (s && Array.isArray(s.blocks)) s.blocks.forEach((/** @type {any} */ b) => {
+            if (b && b.ref && b.ref.type === "custom" && typeof b.ref.id === "string" && pvRefMap.has(b.ref.id)){
+              b.ref = { type:"custom", id: /** @type {string} */ (pvRefMap.get(b.ref.id)) };
+            }
+          });
+        });
         const v = normArrange(r);
         if (v && !arranges.some(a => a && a.id === v.id)){ arranges.push(v); arrAdd++; } else arrDrop++;
       });
@@ -5442,6 +5536,7 @@ const Store = (() => {
     if (lyrAdd) parts.push({ kind:"歌词", action:"新增", count: lyrAdd });
     if (lyrDrop) parts.push({ kind:"歌词", action:"跳过", count: lyrDrop });
     arranges.length = arrSavedLen;   // 只读：还原全局曲式数组
+    if (savedCRef !== null) customsRef = savedCRef;   // v3.31.x（审计 P0-2）：还原 patLenOf 的运行期指向
     /* ---- 听辨战绩：逐字段较大值计数 ---- */
     let earMerge = 0;
     if (data.ear && typeof data.ear === "object"){
@@ -5504,6 +5599,7 @@ const Store = (() => {
     demoSeeded, setDemoSeeded,                      // v2.4.1 示例曲一次性带出闩（冷键 beatsight.demoSeeded）
     renameBuiltin, renameCustom, builtinSrcName,    // v2.21.0 条目改名（批次③；覆盖冷键 beatsight.builtinNames）
     renameArrange,                                  // v2.47.0：曲式改名（示例曲拒绝，见函数注释）
+    setArrPersistGuard,                             // v3.31.x（审计 P0-3）：曲式冷键前置守卫（Arrange 注入候选试听还原）
     groups, persistGroups,                          // v2.22.0 区内子分组（批次④；冷键 beatsight.groups）
     groupMove, groupRename, groupDelete, groupPruneCustom,
     groupCreate, groupPruneArrange,                  // v2.25.0：区标题新建分组 / 曲式删除清理
@@ -5753,6 +5849,9 @@ function muteRandSet(period, count, g){
     const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
   }
   set = new Set(arr.slice(0, count));
+  /* v3.31.x（审计 P2-1）：封顶——键内 g 随 schedPlayBar 单调无界（约 450 条/小时），后台
+     保活挂机多天缓慢无界增长且旧键永不再读。2048 封顶远大于实际查询面，溢出即清空。 */
+  if (MUTE_RND_CACHE.size > 2048) MUTE_RND_CACHE.clear();
   MUTE_RND_CACHE.set(key, set);
   return set;
 }
@@ -6018,21 +6117,43 @@ function secBars(sec){
    曲式模式下"同屏 4 行"要显示**歌曲正在弹的那几个小节**，而行可能来自不同的段、不同的型，
    所以需要一个把 (段, 段内小节) 摊平成一维"歌曲小节号"的口径。三个纯函数，
    与 secBars/blockAt 同族（同样只通过注入的 patLenOf 问型长）。 */
+/* v3.31.x（审计 P2-2）：全曲累计小节数的前缀缓存——此前每帧按 onsetBuf 元素数反复重算
+   O(段数×块数) 累计。失效口径：paintFrameBody 每帧 cumBump()；候选试听就地换型前后也
+   cumBump()（其余编辑路径整存整取换新对象，身份一变即重建）。 */
+let cumFrameNo = 0;
+/** @type {any|null} */
+let cumArr = null;
+/** @type {number} */
+let cumArrFrame = -1;
+/** @type {number[]|null} */
+let cumPrefix = null;
+/** 使前缀缓存失效（帧首 / 就地换型前后调用）。 */
+function cumBump(){ cumFrameNo++; }
+/** 前缀表：cumPrefix[i] = 第 i 段首小节的线性号，末项 = 全曲小节数；无曲式返回 null。
+ *  @param {any} a @returns {number[]|null} */
+function cumTable(a){
+  if (a === cumArr && cumArrFrame === cumFrameNo) return cumPrefix;
+  cumArr = a; cumArrFrame = cumFrameNo;
+  if (!a || !Array.isArray(a.sections)){ cumPrefix = null; return null; }
+  const pf = [0];
+  a.sections.forEach((/** @type {any} */ sec) => pf.push(pf[pf.length - 1] + secBars(sec)));
+  cumPrefix = pf;
+  return cumPrefix;
+}
 /** 全曲小节数 @param {any} a @returns {number} */
 function songBars(a){
-  if (!a || !Array.isArray(a.sections)) return 0;
-  return a.sections.reduce((/** @type {number} */ s, /** @type {any} */ sec) => s + secBars(sec), 0);
+  const pf = cumTable(a);
+  return pf ? pf[pf.length - 1] : 0;
 }
 /** 第 secIdx 段**之前**共有多少小节（= 该段首小节的线性号）。
  *  越界的 secIdx 钳到 [0, sections.length]：调用方拿着"上一轮算出来的段号"来算很常见，
  *  这里宁可按边界解释，也不返回 NaN 让下游 indexOf 出怪事。
  *  @param {any} a @param {number} secIdx @returns {number} */
 function songBarBefore(a, secIdx){
-  if (!a || !Array.isArray(a.sections)) return 0;
-  const stop = Math.min(a.sections.length, Math.max(0, secIdx));
-  let s = 0;
-  for (let i = 0; i < stop; i++) s += secBars(a.sections[i]);
-  return s;
+  const pf = cumTable(a);
+  if (!pf) return 0;
+  const stop = Math.min((a && a.sections) ? a.sections.length : 0, Math.max(0, secIdx));
+  return pf[stop];
 }
 /** 线性小节号 → 它属于哪一段的哪一小节（含该小节的型与型内小节号）。
  *  越界返回 null（与 blockAt 同一口径：不静默钳到末尾——那会把"游标跑飞"变成"显示错内容"）。
@@ -6431,7 +6552,8 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     $("modalCancel").style.display = opts.hideCancel ? "none" : "";
     $("modalMask").hidden = false;
     refreshInert();
-    (opts.input ? inp : $("modalOk")).focus();
+    /* v3.31.x（审计 P3-1）：焦点判据与显隐判据同口径（空串是合法预填，此前焦点落到确定键）。 */
+    (!inp.hidden ? inp : $("modalOk")).focus();
   }
   /** @param {any} msg @param {any} onOk @param {any} [opts] */
   function uiConfirm(msg, onOk, opts){ uiModal(msg, Object.assign({onOk:onOk}, opts)); }
@@ -6514,7 +6636,13 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
   window.addEventListener("keydown", e => {
     if (!modalOpen) return;
     if (e.key === "Escape"){ e.stopImmediatePropagation(); closeModal(false); }
-    if (e.key === "Enter" && $("modalInput").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeModal(true); }
+    if (e.key === "Enter" && $("modalInput").hidden){
+      /* v3.31.x（审计 P1-1）：焦点在「取消」上按 Enter 必须走取消——此前只判输入框显隐，
+         捕获阶段抢先执行 closeModal(true)，danger 弹窗（删预设/清空小节/删段/恢复出厂
+         双确认）可被键盘误触成破坏性确认。Space/点击仍可取消，本修只补键盘语义。 */
+      e.preventDefault(); e.stopImmediatePropagation();
+      closeModal(document.activeElement !== $("modalCancel"));
+    }
   }, true);
   return { uiConfirm, uiPrompt, uiAlert, isOpen: () => modalOpen, refreshInert, trapFocus,
            openOverlay, closeOverlay, bindOverlay, unbindOverlay, overlayListenerCount };
@@ -7681,7 +7809,11 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        跨小节不延续：新小节从全部弦重起——小节是扫弦谱的语义单位，跨小节沿用上一小节
        末格的弦区会让新小节首格凭空落在低音区，读谱时无从解释。 */
     let prevZone = 1;
-    if (!Array.isArray(p.bars[b])) { try{ console.error("DBG buildRowCells", JSON.stringify({name: p.name, b, len: p.bars.length, t0: JSON.stringify(p.bars[0]).slice(0,60), t1: JSON.stringify(p.bars[1]).slice(0,60)})); }catch(e){} }
+    /* v3.31.x（审计 P3-2）：守卫从「只打日志」改为真防御（此前命中后下一行仍抛 TypeError）。 */
+    if (!Array.isArray(p.bars[b])){
+      try{ console.warn("[BeatSight] 非数组小节已按空小节渲染：", p && p.name, "第", b + 1, "小节"); }catch(e){}
+      p.bars[b] = [];
+    }
     p.bars[b].forEach((/** @type {any} */ s, /** @type {number} */ i) => {
       const startT = acc;
       const c = document.createElement("div");
@@ -9120,6 +9252,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   }
 
   function paintFrameBody(){
+    cumBump();                               // v3.31.x（审计 P2-2）：帧首使累计前缀缓存失效（帧纪律见 cumTable 注释）
     /* ---- 窗口先同步，再取元素别名（v2.5.2 第 Ⅱ 期；v2.10.2 补预设模式那条同构分支）----
        顺序是硬约束：重建网格会换掉 playheadEl / trailGlowEl 这两个元素，别名在下面两行才取，
        重建放在别名之后就会整帧拿着一对已被丢弃的节点写样式（画面完全不动，最难查的那种）。
@@ -9787,6 +9920,9 @@ const AudioEngine = (() => {
     ctx.onstatechange = () => {
       if (!ctx) return;
       if (ctx.state === "interrupted" && S.playing) resumeCtx();
+      /* v3.31.x（审计 S-2）：补 suspended 分支——此前若中断结束落在 suspended 态，恢复链无
+         入口：调度以冻结 currentTime 空转、UI 播放态却永久无声。resume 幂等、失败被吞。 */
+      if (ctx.state === "suspended" && S.playing) resumeCtx();
       if (ctx.state === "closed" && S.playing){
         /* 旧时钟已随上下文一起失效：不重新锚定相位的话，nextNoteTime 还停在旧时间轴上
            （可能领先新时钟几分钟），表现为"在播放但一直不出声"。这里按新时钟重新起一节 */
@@ -10518,6 +10654,12 @@ const Trainer = (() => {
     if (bpmFor(trStepIdx) >= goal){          // 目标速度已练满一级 → 完成
       trDone = true;
       Controls.stop();
+      /* v3.31.x（审计 P1-2）：完成态复位开关——此前 on 恒 true 且 BPM 停在目标值，重播时
+         reset() 后首个边界再次命中完成分支（每次播放都被强制停播），且进热键、重载依旧。 */
+      S.trainer.on = false;
+      setToggle("trainerToggle", false);
+      syncParamSlots();
+      Controls.syncBpmUI();   // 经模块出口调（syncBpmUI 是 Controls 内部函数，Trainer→Controls 已在 R3 白名单）
       /* v2.11.2：原「7 天计划推进」分支整块删除，这里只剩训练完成这一条路 */
       $("statusText").textContent = `训练完成 · 达到 ${t.target} BPM`;
       announce(`训练完成，已达到 ${t.target} BPM`);
@@ -10673,6 +10815,9 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     });
     $("bpmMinus5").disabled = locked;
     $("bpmPlus5").disabled = locked;
+    /* v3.31.x（审计 S-3）：滑杆与 ±5 同口径锁定（此前漏锁：拖滑杆临时生效、到边界被阶梯
+       静默覆盖）。锁定时值仍随阶梯同步显示。 */
+    $("bpmSlider").disabled = locked;
   }
 
   /* 曲式模式：把"要播的型"与节目单游标落到播放范围起点（v2.0.0 S4）。
@@ -10857,7 +11002,12 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     const ae = /** @type {any} */ (document.activeElement);
     if (e.code === "Space" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey
         && !isTextEntry(ae)){
-      e.preventDefault(); S.playing ? stop() : start();
+      e.preventDefault();
+      if (S.playing){
+        stop();
+        /* v3.31.x（审计 P0-4）：空格停掉预设试听时经唯一出口还原拍号（此前试听态残留）。 */
+        if (S.preview) Presets.stopAudition();
+      } else start();
     }
     /* v2.64.0（X2）：练习键盘快捷键——本段在「无叠加层打开」（KEY_LAYERS 循环已早退）
        且非文本输入的语境下执行。↑↓ 调 BPM；←→ 曲式模式跳段；E/H/? 开编排/帮助/键位表。
@@ -10888,7 +11038,12 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
        BPM 只有这一个入口，在此收口比在每个调用点各防一次省事 */
     v = Math.round(+v);
     if (!isFinite(v)) v = isFinite(S.bpm) ? S.bpm : 96;
-    v = Math.min(240, Math.max(30, v));
+    /* v3.31.x（审计 P3-5）：BPM 域与滑杆属性同源（刻度生成本就读属性；此前硬编码 30/240，
+       调域时钳制静默回旧域）。读不到回落旧域（仅桩环境）。 */
+    const bpmSlider = $("bpmSlider");
+    const lo = (bpmSlider && isFinite(+bpmSlider.min)) ? +bpmSlider.min : 30;
+    const hi = (bpmSlider && isFinite(+bpmSlider.max)) ? +bpmSlider.max : 240;
+    v = Math.min(hi, Math.max(lo, v));
     if (S.playing){
       /* v1.3.4：锚在**排程游标**（nextNoteTime）而不是 ctx.currentTime。
          游标处的 tick 位置在旧时间基下是已知的，且**等于那颗音符真实的 cumT** —— 也就是
@@ -10899,6 +11054,13 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       const tickAtCursor = (nextNoteTime - loopStart) / spb() * TPB;
       S.bpm = v;
       loopStart = nextNoteTime - tickAtCursor * spb() / TPB;
+      /* v3.31.x（审计 S-4）：预备拍进行中改速——剩余拍按新 tempo 重排、末拍恒落 loopStart−1
+         拍（此前 ci* 按旧 spb 锚定、新旧混用错位）。ciEnd 恒等于 loopStart 不动；ciStart
+         回推到新 tempo 的虚拟起点（仅视觉）。 */
+      if (ciLeft > 0){
+        ciNext = loopStart - ciLeft * spb();
+        ciStart = ciNext - (ciBeats - ciLeft) * spb();
+      }
     } else S.bpm = v;
     $("bpmNum").textContent = v;
     $("bpmSlider").value = v;
@@ -11311,21 +11473,26 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   let prevSigBeforeAud = /** @type {number|null} */ (null);
   /** @type {{btn: HTMLElement, pat: any}[]} */
   let audBtns = [];                          // 随列表重建而重建（buildPresetList 开头清空）
+  /* v3.31.x（审计 P0-4）：「停止试听」唯一出口——换对象/Editor/Ear/空格停播一律经它还原
+     拍号。此前还原只在「再点同一条」分支，换对象时旧拍号被覆盖 → 停止后错配回退 basicPattern。 */
+  function stopAudition(){
+    Controls.stop();
+    setMode("preview", false, "停止试听");
+    previewRef = null;
+    if (prevSigBeforeAud !== null){ Controls.setSig(prevSigBeforeAud); prevSigBeforeAud = null; }
+    Viz.buildViz();
+  }
   /** @param {any} pat @returns {boolean} true = 已进入试听态 */
   function toggleAudition(pat){
     if (S.preview && previewRef === pat){    // 再点同一条 = 停止试听
-      Controls.stop();
-      setMode("preview", false, "停止试听");
-      previewRef = null;
-      if (prevSigBeforeAud !== null){ Controls.setSig(prevSigBeforeAud); prevSigBeforeAud = null; }
+      stopAudition();
       /* v3.12.0：原调 updateFallbackNote()（拍号回退提示条）——提示条随拍号控件退役，
          按钮态由下方 syncAuditionBtns() 亲自收口。 */
-      Viz.buildViz();
       syncAuditionBtns();
       return false;
     }
     if (S.playing || S.preview) Controls.stop();     // 主播放/他条试听一律先停
-    if (S.preview){ setMode("preview", false, "停止试听"); previewRef = null; }
+    if (S.preview) stopAudition();                  // v3.31.x（审计 P0-4）：换对象先经唯一出口还原
     prevSigBeforeAud = (pat.meter !== S.sig) ? S.sig : null;
     if (prevSigBeforeAud !== null) Controls.setSig(pat.meter);
     setMode("preview", true, "预设试听");
@@ -11605,6 +11772,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     group.className = "preset-arrange-group";
     const ars = Store.arranges;
     if (!ars.length){
+      /* v3.31.x（审计 P3-3）：曲式库清空时把底栏范围控件的 DOM 一并清掉——此前的清理只存在于
+         buildDemoSongRow（空库分支不进它），删光曲式后 #pbProgress/#pbSub 滞留一套指向已删
+         曲式的死滑块（值定格、控件死寂），直到库再次非空才被换掉。 */
+      const pb = $("pbProgress"), ps = $("pbSub");
+      if (pb) pb.innerHTML = "";
+      if (ps) ps.innerHTML = "";
       const h = document.createElement("div");
       h.className = "hint";
       h.textContent = "还没有曲式——点下方「编排曲式」从头编一首。";
@@ -12647,7 +12820,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (p && p.meter !== S.sig) Controls.setSig(p.meter);
   }
 
-  return { buildPresetList, syncAuditionBtns, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
+  return { buildPresetList, syncAuditionBtns, stopAudition, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
     syncDemoRange, applyFold, alignSigToPattern };   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一
 })();
 
@@ -12662,7 +12835,16 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
      的各种时机被调（撤销、增删小节），不能每次都去问 curPattern()——那时用户可能已经改了选中的预设 */
   let srcName = "";
 
-  function open(){ openWith(curPattern()); }
+  /* v3.31.x（审计 P3-4）：名称/标注输入挂进草稿状态机——此前两输入无任何监听，dirty 只由
+     pushUndo（音符级变更）置位：只改名字/标注后关闭编辑器会被**静默丢弃**且无确认，
+     与音符编辑的丢弃保护不一致（用户以为已改）。 */
+  $("presetNameInput").addEventListener("input", () => { dirty = true; });
+  $("patLabelInput").addEventListener("input", () => { dirty = true; });
+  function open(){
+    /* v3.31.x（审计 P0-4）：预设试听中打开编辑器 → 经唯一出口停试听并还原拍号。 */
+    if (S.preview) Presets.stopAudition();
+    openWith(curPattern());
+  }
   /** v2.37.0（b）：以指定型为底稿进编辑器（编排页换型候选 ✎ 的跳转目标；open() = openWith(当前型)）。
       编辑器保存 = 生成**新副本**（不覆盖原版），故跳转语义是"造变体"而非"就地改"。 */
   /** @param {any} src */
@@ -12674,6 +12856,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
     edSel = null; editBar = 0;
     undoStack = []; dirty = false;
+    edRowCache.clear();                  // v3.31.x（审计 P2-3）：换草稿 = 换内容，旧行缓存全部作废
     $("presetNameInput").value = draft.name;
     $("patLabelInput").value = draft.label;
     $("editorMeter").textContent = draft.meter;
@@ -12695,9 +12878,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     /** @type {string[]} */
     const names = [];
     Store.arranges.forEach((/** @type {any} */ a) => (a.sections || []).forEach((/** @type {any} */ s) => (s.blocks || []).forEach((/** @type {any} */ b) => {
-      const hit = src.type === "custom"
-        ? (b.ref && b.ref.type === "custom" && b.ref.id === src.id)
-        : (b.ref && b.ref.type === "builtin" && b.ref.idx === src.idx);
+      /* v3.31.x（审计 P1-5）：按内容判身份——主入口传的是 BUILTINS/customs 原始对象
+         （无 type/idx），此前两分支恒 false、「被 N 首曲式引用」提示恒空。内置型按对象
+         身份取下标（改名也稳）；曲式面板 ✎ 带 type/idx 的拷贝走 src.idx 分支照旧。 */
+      const bi = (b.ref && b.ref.type === "builtin") ? b.ref.idx : null;
+      const hit = (b.ref && b.ref.type === "custom" && typeof src.id === "string" && b.ref.id === src.id)
+        || (bi !== null && (src.idx !== undefined ? bi === src.idx : BUILTINS.indexOf(src) === bi));
       if (hit){ n++; if (!names.includes(a.name)) names.push(a.name); }
     })));
     return { n: n, names: names };
@@ -12728,6 +12914,38 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   function barSum(bar){ const d = draft; if (!d) return 0; return d.bars[bar].reduce((a, s) => a + s.t, 0); }
   /** @param {number} bar */
   function barValid(bar){ const d = draft; if (!d) return false; return barSum(bar) === d.meter * TPB; }   // tick 制：整数严格相等
+  /* v3.31.x（审计 P2-3）：行级复用缓存——编辑器每次交互全量重建 1024+ 按钮是编辑卡顿/
+     试听中掉音的头号来源。键 = 行号+选中格+编辑小节+内容指纹；命中即复用节点、只重绑监听
+     （unbindOverlay 每轮已解绑）；增删小节改变行号 → 自然失效重建。 */
+  /** @type {Map<string, HTMLElement>} */
+  const edRowCache = new Map();
+  /** @param {number} b @returns {string} */
+  function barFinger(b){
+    const d = draft; if (!d || !Array.isArray(d.bars[b])) return "";
+    let s = "";
+    d.bars[b].forEach((/** @type {any} */ x) => {
+      s += x.t + "," + (x.rest ? 1 : 0) + "," + (x.dir || "") + ","
+        + ((x.zone === undefined || x.zone === null) ? "" : x.zone) + ";";
+    });
+    return s;
+  }
+  /** @param {HTMLElement} row @param {number} b @returns {void} */
+  function bindEdRow(row, b){
+    const cells = (/** @type {any} */ (row))._edCells || [];
+    for (let i = 0; i < cells.length; i++){
+      const c = cells[i];
+      Modal.bindOverlay("editor", c, "click", () => { edSel = {bar:b, idx:i}; editBar = b; editorRender(); });
+    }
+    const track = (/** @type {any} */ (row))._edTrack;
+    if (track){
+      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; editorRender(); } });
+      Modal.bindOverlay("editor", track, "keydown", (/** @type {KeyboardEvent} */ e) => {
+        if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
+          e.preventDefault(); editBar = b; edSel = null; editorRender();
+        }
+      });
+    }
+  }
   function editorRender(){
     const d = draft;
     if (!d) return;                       // 草稿为空（编辑器未打开）：无可渲染之物
@@ -12746,6 +12964,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     for (let b = 0; b < patBars(d); b++){
       const ok = barValid(b);
       if (!ok) allValid = false;
+      /* v3.31.x（审计 P2-3）：命中缓存 → 复用节点、只重绑监听（见 edRowCache 注释） */
+      const ck = editBar + "|" + (edSel && edSel.bar === b ? edSel.idx : -1) + "|" + b + "|" + barFinger(b);
+      const cached = edRowCache.get(ck);
+      if (cached){
+        bindEdRow(cached, b);
+        frag.appendChild(cached);
+        continue;
+      }
       const row = document.createElement("div");
       row.className = "edbar";
       const label = document.createElement("div");
@@ -12757,6 +12983,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       label.appendChild(labN); label.appendChild(labS);
       const track = document.createElement("div");
       track.className = "edtrack" + (ok ? "" : " bad");
+      /** @type {HTMLElement[]} */
+      const rowCells = [];               // v3.31.x（审计 P2-3）：供缓存复用重绑监听
       /* 轨道本身也是「选中小节 N」的按钮（v2.0.2）：点空白区换目标小节——
          原先只绑 click，键盘用户无法选中音符也无法换小节，编辑器整条链路对他们不可用 */
       track.setAttribute("role", "button");
@@ -12812,7 +13040,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           sp.textContent = Viz.stepLabel(s);
           c.appendChild(sp);
         }
-        Modal.bindOverlay("editor", c, "click", () => { edSel = {bar:b, idx:i}; editBar = b; editorRender(); });
+        rowCells.push(c);                 // v3.31.x（审计 P2-3）：登记进行（绑定移交给 bindEdRow）
         track.appendChild(c);
       });
       /* 交界线层（v2.78.2）：与主视图 .seams 同款——一条渐变画全部接缝，骑缝不压格 */
@@ -12822,13 +13050,12 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
         sl.style.background = Viz.seamGradient(seamX);
         track.appendChild(sl);
       }
-      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; editorRender(); } });   // 切换目标小节后立即刷新「· 编辑中」与库标题
-      Modal.bindOverlay("editor", track, "keydown", (/** @type {KeyboardEvent} */ e) => {
-        if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
-          e.preventDefault(); editBar = b; edSel = null; editorRender();
-        }
-      });
       row.appendChild(label); row.appendChild(track);
+      (/** @type {any} */ (row))._edCells = rowCells;   // v3.31.x（审计 P2-3）：bindEdRow 的重绑依据
+      (/** @type {any} */ (row))._edTrack = track;
+      bindEdRow(row, b);
+      if (edRowCache.size > 4000) edRowCache.clear();   // 封顶：旧指纹条目随撤销栈新旧更替累积，设硬上限
+      edRowCache.set(ck, row);
       frag.appendChild(row);
     }
     wrap.appendChild(frag);               // 一次插入（DocumentFragment 语义：子节点整体搬家）
@@ -13068,7 +13295,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if ($("savePresetBtn").disabled) return;
     const d = draft;
     if (!d) return;
-    const name = $("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1));
+    /* v3.31.x（审计 P3-4）：40 字截断与全仓命名口径一致（此前编辑器保存是唯一不限长的入口） */
+    const name = ($("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1))).slice(0, 40);
     /* v2.72.0（1.3）：标注（可选）——留空不写字段（与老存档对象形状一致，零迁移） */
     const label = $("patLabelInput").value.trim().slice(0, 40);
     const id = "c" + Date.now();
@@ -13175,11 +13403,17 @@ const Ear = (() => {
   /* 出题（纯函数，rand 可注入——测试用固定序列断言「答案必在候选内」与「打乱真的发生」）。
      返回 null 表示该组不可用（表里名字写错）：调用方换一组重试，绝不把坏题交给用户。 */
   /** @param {() => number} rand */
-  function makeQuestion(rand){
-    const gi = Math.min(EAR_GROUPS.length - 1, Math.floor(rand() * EAR_GROUPS.length));
-    const g = EAR_GROUPS[gi];
+  /** @param {() => number} rand
+      @param {number} [gi] 指定组下标——next() 逐组试（表里某组被改名/写坏时换下一组，
+      不把坏题交给用户；表完整性由 T49 断言，那是开发期错误）。不传则随机抽组。 */
+  function makeQuestion(rand, gi){
+    const gIdx = gi !== undefined
+      ? Math.min(EAR_GROUPS.length - 1, Math.max(0, Math.floor(gi)))
+      : Math.min(EAR_GROUPS.length - 1, Math.floor(rand() * EAR_GROUPS.length));
+    const g = EAR_GROUPS[gIdx];
     /** @type {any[]} */
-    const cands = g.keys.map(k => BUILTINS.find(p => p.name === k)).filter(Boolean);
+    /* v3.31.x（审计 P1-4）：按下标取型（见 EAR_GROUP_IDXS 注释），改名免疫 */
+    const cands = EAR_GROUP_IDXS[gIdx].idxs.map(i => (i >= 0 ? BUILTINS[i] : null)).filter(Boolean);
     if (cands.length < 2) return null;
     /* Fisher–Yates：答案位置必须随机，否则用户会学出「总选 A」的歪策略 */
     for (let i = cands.length - 1; i > 0; i--){
@@ -13187,7 +13421,7 @@ const Ear = (() => {
       const t = cands[i]; cands[i] = cands[j]; cands[j] = t;
     }
     const answerIdx = Math.floor(rand() * cands.length);
-    return { group: g, groupIdx: gi, cands, answerIdx, answer: cands[answerIdx] };
+    return { group: g, groupIdx: gIdx, cands, answerIdx, answer: cands[answerIdx] };
   }
   /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），休止符画虚线框 */
   /* 时值文字等价（v2.0.2）：候选记谱是纯图形，读屏此前只能听到孤零零一个「A」。
@@ -13296,9 +13530,9 @@ const Ear = (() => {
   function next(){
     stopAudio();
     let q = null;
-    /* 每组试一次：表里若有个名字写错（该组凑不够 2 个候选），换下一组，不把坏题交给用户。
-       表本身的完整性由 tests T49 断言——那是开发期错误，应该在测试里立刻炸 */
-    for (let k = 0; k < EAR_GROUPS.length && !q; k++) q = makeQuestion(Math.random);
+    /* 每组试一次（审计 P1-4 后名副其实：此前注释这么说、实现却是随机抽组重试 N 次）。
+       按组序各试一次：某组凑不够候选就换下一组；表完整性由 T49 断言（开发期错误）。 */
+    for (let k = 0; k < EAR_GROUPS.length && !q; k++) q = makeQuestion(Math.random, k);
     question = q;
     answered = false; picked = -1;
     earRender();
@@ -13317,6 +13551,9 @@ const Ear = (() => {
       : `答错了，正确答案是 ${letter(question.answerIdx)} ${question.answer.name}`);
   }
   function open(){
+    /* v3.31.x（审计 P0-4）：预设试听中打开听辨 → 经唯一出口停试听并还原拍号（否则 enterSig
+       记的是试听改过的拍号）。 */
+    if (S.preview) Presets.stopAudition();
     if (S.playing && !S.preview) Controls.stop();   // 进入即停主播放，否则两路声音叠在一起
     enterSig = S.sig;
     streak = 0;
@@ -13867,7 +14104,9 @@ const Arrange = (() => {
       @param {any} lyEl @param {number} fromK */
   function syncTapBtn(lyEl, fromK){
     if (!lyEl || !lyEl.children) return;
-    const btn = lyEl.children.find((/** @type {any} */ c) => c.classList && c.classList.contains("arg-mini") &&
+    /* v3.31.x（审计 P0-1）：真机 children 是 HTMLCollection、没有 .find（桩是数组，故此处
+     曾在桩里恒绿、真机必抛）。与本文件其余三处同口径，并由 check-lint 新规把守。 */
+    const btn = Array.prototype.find.call(lyEl.children, (/** @type {any} */ c) => c.classList && c.classList.contains("arg-mini") &&
       c.getAttribute && c.getAttribute("aria-label") &&
       c.getAttribute("aria-label").indexOf("跟播打轴") === 0);
     if (!btn) return;
@@ -14070,7 +14309,10 @@ const Arrange = (() => {
     /* v2.49.0（R1）：落库走 lyricCommit 唯一写入口（空数组 = 删除分支，撤销栈同步） */
     if (!chars.length){ lyricCommit(a.id, secUid, []); arrangeRender(); return; }
     const span = lyricSpanTicks(a.id, secUid);
-    const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : chars.length;
+    /* v3.31.x（审计 P2-4）：span=0（段内块引用已失效）时 fit 必须为 0——此前取
+       chars.length 绕过紧随其后的 !fit 提示分支，词被静默存进不可见轨道，换型后才突然
+       整体出现；现在 span=0 与「短到放不下一字」同走「先选节奏型」弹窗。 */
+    const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : 0;
     if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); arrangeRender(); return; }
     const n = Math.min(chars.length, fit);
     lyricCommit(a.id, secUid, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
@@ -14164,6 +14406,10 @@ const Arrange = (() => {
     const barTicks = lctx.barTicks || span;
     const row = Math.min((lctx.rows || 1) - 1, Math.floor(t / barTicks));
     const rowStart = row * barTicks;
+    /* v3.31.x（审计 P1-6）：跨小节移动就地搬行（与 onDragMove 同口径）——此前字块留在旧行
+       按新行坐标定位，边界上的字（均分/对齐产物大量落 t=k×24）按一次 ←/→ 就错位一整行。 */
+    const host = (lctx.barrowEls && lctx.barrowEls[row]) || lctx.lane;
+    if (host && chip.parentNode !== host) host.appendChild(chip);
     chip.style.left = ((t - rowStart) / barTicks * 100) + "%";
     chip.style.width = (Math.min(c.dur, span - t, (row + 1) * barTicks - t) / barTicks * 100) + "%";
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${t} tick，时值 ${c.dur} tick`);
@@ -14486,6 +14732,7 @@ const Arrange = (() => {
     if (S.playing || playQuota > 0) Controls.stop();
     const origRef = blk.ref;
     blk.ref = ref;                              // 内存临时换型（不落库、不入历史）
+    cumBump();                                  // v3.31.x（审计 P2-2）：就地换型使前缀缓存失效
     candPreview = { sec: pk.sec, blk: pk.blk, origRef };
     const span = lyricSpanTicks(a.id, sec.uid);
     if (!(span > 0)){ stopCandPreview(false); return; }
@@ -14508,6 +14755,7 @@ const Arrange = (() => {
     const a = cur();
     if (a && a.sections[candPreview.sec] && a.sections[candPreview.sec].blocks[candPreview.blk]){
       a.sections[candPreview.sec].blocks[candPreview.blk].ref = candPreview.origRef;   // 内存还原
+      cumBump();                              // v3.31.x（审计 P2-2）：还原后前缀缓存失效
     }
     candPreview = null;
     playQuota = 0; onQuotaDone = null;
@@ -14517,6 +14765,10 @@ const Arrange = (() => {
   }
   /** 仅供测试断言当前候选试听态（反向验证用）。@returns {any} */
   function candPreviewState(){ return candPreview; }
+  /* v3.31.x（审计 P0-3）：给曲式冷键写路径装上**前置守卫**——任何 persistArranges 调用
+     在序列化前先还原候选试听的内存换型（此前只有 save() 自觉还原，renameArrange /
+     upsertArrange / deleteArrange / importAll 都会把「只试听过、从未确认」的型落库）。 */
+  Store.setArrPersistGuard(() => { if (candPreview) stopCandPreview(true); });
 
   /** 试听游标：preview 非空时把游标摆到段内当前位置 + 高亮当前字（判据 t ∈ [c.t, c.t+dur)，
      与主视图播放头同构）。位置一律走 sectionPosTicks（与打轴同一位置源）。
@@ -17192,7 +17444,7 @@ $("presetSearch").addEventListener("input", (/** @type {Event} */ e) => {
    收起等于逼用户"开→选→看→再开"三次往返（A6）。选中反馈由条目自身的 .active 高亮承担，
    关闭走 收起钮 / Esc（见下方键盘接线）/ 再点主钮。
    （原委托监听随语义一并删除；smoke drawerProbe 已同步改判「选中后抽屉仍开」。） */
-setPresetDrawer(false);
+setPresetDrawer(false, { focus:false });  // v3.31.x（审计 P3-6）：启动初始化不抢焦点
 syncVizLabelToggles();
 /* v3.12.0：拍号归一必须在首次 buildViz 之前——旧存档里"手动切过的拍号"要在这里
    对齐回当前型的拍号，否则首屏会按错误拍号切谱面（且界面上已无手动切回的入口）。 */
@@ -17950,6 +18202,8 @@ if (EXPOSE_INTERNALS){
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
     muteBarMuted,                                  // v2.71.0：静音拍唯一判据（线性小节号 → 是否被静；纯函数供测试直断言）
+    muteCacheSize: () => MUTE_RND_CACHE.size,      // v3.31.x（审计 P2-1）：随机静音缓存尺寸（封顶断言用）
+    ciState: () => ({ left: ciLeft, next: ciNext, start: ciStart, end: ciEnd, loop: loopStart }),  // v3.31.x（审计 S-4）：预备拍改速重排断言用
     setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）
     arrangeProblems,                              // v2.0.0：曲式的引用/拍号检查（需解析，故在共享区）
     secBars, blockAt, arrNextBar,                 // v2.0.0：节目单步进的三个纯函数（scheduler 与 predictNext 共用）

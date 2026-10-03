@@ -7,28 +7,36 @@
 
    顺序是刻意排的：**先便宜后昂贵**。语法错误会让后面所有检查都白跑，
    所以放第一位；覆盖率最贵（要跑一遍完整套件），放最后。
+    ★ 步骤清单与顺序的**唯一真相源是下方 STEPS 数组**；本注释的编号列表由
+      tools/check-docs.js 第 6 项校验「数量必须与 STEPS 一致」（落地审计 E3）——
+      改 STEPS 请同步改本列表，漏改会当场红。
 
-     1) 语法校验          提取内联脚本编译（不执行）
-     2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
-     3) 装配完整性        注入槽（`let onXxx = null;` 约定）与 patLenOf 是否真被接上（v2.8.6 新增）
-     4) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml）
-     5) 版本一致性        VERSION / CHANGELOG / package.json / package-lock.json / 代码注释不得漂移
-     6) 文档一致性        模块索引行号（↔ 实际 banner）· 禁手写耗时 · 归档状态 · 审计快照横幅 ·
-                          README 版本号与功能清单步数 · 禁手写覆盖率现状（后三条 v2.8.6 新增）
-     7) _headers 结构      `/*` 全路径 glob 恰好一行 · 6 个安全头齐全且缩进 · 无 BOM / 无孤立收尾
-                          （v2.8.7 新增；它是唯一"写错了不报错、只会静默失效"的配置文件）
-     8) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
-     9) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
-    10) DOM 引用完整性    $("x") 不得悬空
-    11) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
-    12) 自动化测试        FULL_SCAN=1 全量组合扫描
-    13) 死循环看门狗      每用例独立子进程 + 超时强杀
-    14) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+      1) 语法校验          提取内联脚本编译（不执行）
+      2) 架构约束          模块不得反向引用（R1/R2 零例外，R3 白名单）
+      3) 装配完整性        注入槽（`let onXxx = null;` 约定）与 patLenOf 是否真被接上（v2.8.6 新增）
+      4) 代码卫生          零依赖 lint（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef /
+                           no-eval / no-innerhtml / no-children-array-method）
+      5) 版本一致性        VERSION / CHANGELOG / package.json / package-lock.json / 代码注释不得漂移
+      6) 文档一致性        模块索引行号（↔ 实际 banner）· 禁手写耗时 · 归档状态 · 审计快照横幅 ·
+                           README 版本号与功能清单步数 · 禁手写覆盖率现状（后三条 v2.8.6 新增）
+      7) _headers 结构      `/*` 全路径 glob 恰好一行 · 6 个安全头齐全且缩进 · 无 BOM / 无孤立收尾
+                           （v2.8.7 新增；它是唯一"写错了不报错、只会静默失效"的配置文件）
+      8) DOM 节点账本       body 内节点数与标记结构平衡（零判红权账本，观察预算趋势）
+      9) 测试桩能力对账     harness ↔ hang-case 能力键集合 + 差异白名单（--strict 判红，v3.31.x 升级）
+     10) 资源体积预算       index.html ≤ 预算字节数（硬线，越界即红）
+     11) CSS 孤儿扫描      疑似孤儿 class 清单（观察期：打 ⚠ 不判红，警告数单列进汇总）
+     12) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
+     13) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
+     14) DOM 引用完整性    $("x") 不得悬空
+     15) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
+     16) 自动化测试        FULL_SCAN=1 全量组合扫描
+     17) 死循环看门狗      每用例独立子进程 + 超时强杀
+     18) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
    ★ 三种"没跑到"必须分清（v2.0.6 起为两类，v2.8.6 补第三类）：
-     · 第 8、9 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
+     · 第 12、13 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
        逼 CI 装上而不是假装查过；
-     · 第 11 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
+     · 第 15 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
        把它算失败会无谓地堵住部署，所以 --strict-env 也不升级。它靠退出码 3 表达"本机缺能力"。
      · **工具故障**（任意步骤）——子进程**压根没起来**（spawnSync 报错），
        或子步骤按约定以退出码 4 自报"我未能执行"。它与前两类的区别是：
@@ -38,6 +46,8 @@
      ⚠ 本地（非 --strict-env）工具故障**不**让退出码变 1：它的成因在环境（权限/沙箱/资源），
        不是被检代码；把它算失败等于"因为尺子坏了就宣布测量结果不合格"。但它会**响亮地**
        印在汇总里，且 --strict-env（CI）下按失败处理——CI 里工具起不来是真的问题。
+      另有第 11 项（CSS 孤儿扫描）的**观察期警告**：它 exit 0 不判红，但 ⚠ 条数会被
+      本文件捕获并单列进汇总（落地审计 E2）——「打印即忘」不再成立。
 
    第 6 项（文档一致性，v2.0.5）是这一轮审计的产物：闸门把**代码**盘得很干净，却没有任何
    检查器会核对注释与文档里的数字——模块索引 16 条行号全错、自验耗时被"修"过又歪、
@@ -45,7 +55,7 @@
    正文里没有快照横幅，四件都是这么漏掉的。它不做别的，只把"抄进文档的数值"这一类漂移
    变成机器可判。
 
-   第 8、9 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖、
+   第 12、13 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖、
    Cloudflare 的发布链路不保证跑过 install。所以缺依赖时它们主动 exit 0 并打印"跳过"，
    绝不因为"没装开发依赖"把上线堵死。规则集与 check-lint.js 刻意不重叠，详见 eslint.config.js
    与 tools/tsconfig.typecheck.json。
@@ -93,9 +103,9 @@ const SYNTAX = "const fs=require('fs');const m=fs.readFileSync('index.html','utf
   + "new Function(m[1]);console.log('inline script 编译通过')";
 
 /* v2.8.16（审计 P2-1）：全量模式下最贵的那一遍（FULL_SCAN=1 组合扫描）此前被**跑两次**——
-   第 12 步自己跑一次，第 14 步 check-coverage.js --full 内部又 spawn 一次同一套件。
-   现在第 12 步带着 NODE_V8_COVERAGE 跑（同一遍既出测试结论、又把 V8 区间落盘到本目录），
-   第 14 步 check-coverage 用 `--reuse=<本目录>` 直接分析这份落盘、**跳过重跑**。
+   第 16 步自己跑一次，第 18 步 check-coverage.js --full 内部又 spawn 一次同一套件。
+   现在第 16 步带着 NODE_V8_COVERAGE 跑（同一遍既出测试结论、又把 V8 区间落盘到本目录），
+   第 18 步 check-coverage 用 `--reuse=<本目录>` 直接分析这份落盘、**跳过重跑**。
    目录在整套检查跑完后清理（见循环之后）。 */
 const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 
@@ -118,15 +128,18 @@ const STEPS = [
      节点账本给「DOM 预算只剩多少、大头在哪」提供数据（v2.26.1"先瘦身不放宽"纪律的依据），
      并把守 body 标记结构平衡（落地当天就抓到一处游离 </template>）；
      桩对账盯两份 DOM 桩（harness ↔ hang-case）的能力集合同步，防"改一份漏一份"再造成整组假红。
-     二者都刻意零判红权（账本不设阈值 / 对账在观察期只打 ⚠），详见各自文件头。 */
+     桩对账自 v3.31.x（落地审计 E2）起带 --strict 判红——它落地至今一直 0 违规，观察期结束；
+     节点账本仍零判红权（预算趋势由人看）。详见各自文件头。 */
   { name: "DOM 节点账本", cmd: process.execPath, args: ["tools/check-node-budget.js"] },
-  { name: "测试桩能力对账", cmd: process.execPath, args: ["tools/check-stub-parity.js"] },
+  { name: "测试桩能力对账", cmd: process.execPath, args: ["tools/check-stub-parity.js", "--strict"] },
   /* v2.58.0（基建 T3）：两个"零依赖纯读文件"家族的新账本，与上面同属极便宜家族，故一并前置。
-     资源体积预算守"单文件 PWA 不得膨胀越过 1320KB"的硬上限（越界即红，逼着以后每次加功能都先瘦身）；
+     资源体积预算守"单文件 PWA 不得膨胀越过预算"的硬上限（越界即红，逼着以后每次加功能都先瘦身）；
      CSS 孤儿扫描是观察期账本——只打印疑似孤儿 class、默认不判红（exit 0），确认删除前先核对动态拼法，
-     避免误删运行期才拼出来的样式。详见各自文件头注释。 */
+     避免误删运行期才拼出来的样式。它带 warnScan 标记：本编排器会捕获它打印的 ⚠ 条数并单列进汇总
+     （v3.31.x，落地审计 E2）——不判红，但「有 N 个疑似孤儿」从此在总览里可见。 */
   { name: "资源体积预算", cmd: process.execPath, args: ["tools/check-size-budget.js"] },
-  { name: "CSS 孤儿扫描", cmd: process.execPath, args: ["tools/check-orphan-css.js"] },
+  { name: "CSS 孤儿扫描", cmd: process.execPath, args: ["tools/check-orphan-css.js"],
+    warnScan: /^\s*⚠\s*/ },
   /* optional = 该步骤所需的依赖相对路径；不存在就标 ⊘ 跳过（不调用），不让它伪装成 ✓ */
   { name: "代码卫生 · ESLint（加强）", cmd: process.execPath, args: ["tools/check-eslint.js"],
     optional: "node_modules/eslint" },
@@ -144,12 +157,12 @@ const STEPS = [
     faultRetry: 1 },
   /* v2.8.16（审计 P2-1）：本步同时承担覆盖率采集——FULL_SCAN 下覆盖率插桩的内存开销约 2GB，
      故带头抬高 old-space 上限（V8 按需增长，不预占；只影响这个带插桩的子进程）。
-     第 14 步据此落盘分析，不再重跑套件。 */
+     第 18 步据此落盘分析，不再重跑套件。 */
   { name: "自动化测试" + (QUICK ? "（抽样）" : "（FULL_SCAN 全量）"), cmd: process.execPath,
     args: ["--max-old-space-size=4096", "tests/run.js"],
     env: { FULL_SCAN: QUICK ? "" : "1", NODE_V8_COVERAGE: COV_DIR } },
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
-  /* v2.8.16（审计 P2-1）：--reuse 复用第 12 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
+  /* v2.8.16（审计 P2-1）：--reuse 复用第 16 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
   { name: "行覆盖率", cmd: process.execPath,
     args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]) },
 ];
@@ -177,11 +190,21 @@ for (const step of STEPS){
   }
   process.stdout.write("\n▸ " + step.name + "\n");
   const started = Date.now();
-  const r = spawnSync(step.cmd, step.args, {
+  /* warnScan（v3.31.x，落地审计 E2）：观察期步骤（如 CSS 孤儿扫描）exit 0 不判红，
+     但其 stdout 里的 ⚠ 行被捕获：原文照常回显，条数记进 step 结果、单列进汇总——
+     「打 ⚠ 不判红」不再等于「总览里看不见」。 */
+  const stdio = step.warnScan ? ["inherit", "pipe", "inherit"] : "inherit";
+  const spawnOnce = () => spawnSync(step.cmd, step.args, {
     cwd: ROOT,
-    stdio: "inherit",
+    stdio,
     env: Object.assign({}, process.env, step.env || {}),
   });
+  let r = spawnOnce();
+  if (step.warnScan && r.stdout){
+    process.stdout.write(r.stdout);
+    const warnCount = String(r.stdout).split("\n").filter(l => step.warnScan.test(l)).length;
+    r = Object.assign({}, r, { warnCount });
+  }
   const ms = Date.now() - started;
   /* ---- 工具故障 ≠ 检查失败（v2.8.6，审计 §E2/§E5）----
      spawnSync **失败**时 `r.status === null` 且 `r.error` 有值。此前这里只看 `r.status === 0`，
@@ -197,15 +220,24 @@ for (const step of STEPS){
        才记 ⚠（--strict-env 下仍按失败——CI 里连续四轮故障才会红，抖动事实上被吸收）。 */
     if (step.faultRetry){
       console.log("  · 工具故障，按 flake 自愈口径自动重跑一次…");
-      r = spawnSync(step.cmd, step.args, {
-        cwd: ROOT, stdio: "inherit",
-        env: Object.assign({}, process.env, step.env || {}),
-      });
+      r = spawnOnce();
+      if (step.warnScan && r.stdout){
+        process.stdout.write(r.stdout);
+        const warnCount = String(r.stdout).split("\n").filter(l => step.warnScan.test(l)).length;
+        r = Object.assign({}, r, { warnCount });
+      }
       if (!(r.error || r.status === TOOL_FAIL_CODE)){
         const envSkipped2 = step.skipCode !== undefined && r.status === step.skipCode;
         if (envSkipped2) console.log("  ⊘ 跳过（" + (step.skipNote || "本机缺该项环境能力") + "）");
         results.push({ name: step.name, ok: r.status === 0, skipped: envSkipped2, env: envSkipped2,
-          ms: Date.now() - started, status: r.status });
+          ms: Date.now() - started, status: r.status, warnCount: r.warnCount || 0 });
+        /* v3.31.x（落地审计 E4）：重试后**真实断言失败**（exit 1）与正常路径同权——失败就停。
+           此前这里无条件 continue，冒烟真实失败时最贵的三步仍会跑完、输出噪音大，
+           与"失败就停"的语义不一致（正常路径 break，重试路径反而继续）。 */
+        if (!envSkipped2 && r.status !== 0){
+          console.log("\n  ✗ 「" + step.name + "」未通过（退出码 " + r.status + "），后续检查已跳过。");
+          break;
+        }
         continue;
       }
     }
@@ -227,7 +259,8 @@ for (const step of STEPS){
   const envSkipped = step.skipCode !== undefined && r.status === step.skipCode;
   if (envSkipped) console.log("  ⊘ 跳过（" + (step.skipNote || "本机缺该项环境能力") + "）");
   const okStep = r.status === 0;
-  results.push({ name: step.name, ok: okStep, skipped: envSkipped, env: envSkipped, ms, status: r.status });
+  results.push({ name: step.name, ok: okStep, skipped: envSkipped, env: envSkipped, ms, status: r.status,
+    warnCount: r.warnCount || 0 });
   if (!okStep && !envSkipped){
     /* 失败就停：后面的检查建立在"前面是对的"之上，继续跑只会刷屏 */
     console.log("\n  ✗ 「" + step.name + "」未通过（退出码 " + r.status + "），后续检查已跳过。");
@@ -236,7 +269,7 @@ for (const step of STEPS){
 }
 
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-/* v2.8.16（审计 P2-1）：第 12/14 步共享的覆盖率落盘目录，检查跑完后清理（无论成败） */
+/* v2.8.16（审计 P2-1）：第 16/18 步共享的覆盖率落盘目录，检查跑完后清理（无论成败） */
 fs.rmSync(COV_DIR, { recursive: true, force: true });
 console.log("\n══════════════════════════════════════════════════════════");
 console.log("  结果汇总");
@@ -272,6 +305,7 @@ const toolErr    = results.filter(r => r.toolError).length;
 const failed     = results.filter(r => !r.ok && !r.env && !r.toolError).length;
 const ran        = results.filter(r => !r.skipped && !r.toolError).length;
 const notRun     = STEPS.length - results.length;          // 前面有真失败 → 后面的根本没轮到
+const warnCount  = results.reduce((s, r) => s + (r.warnCount || 0), 0);   // 观察期 ⚠（v3.31.x，审计 E2）
 const parts = [];
 /* 有工具故障时**不再说「全部通过」**：本次确实有 N 项没被验证，说"全部通过"就是在撒谎 */
 parts.push(failed ? "✗ " + failed + " 项失败"
@@ -279,6 +313,7 @@ parts.push(failed ? "✗ " + failed + " 项失败"
 if (skippedOpt) parts.push("⊘ " + skippedOpt + " 项未执行（可选加强项，缺 node_modules）");
 if (skippedEnv) parts.push("⊘ " + skippedEnv + " 项环境缺失未执行");
 if (toolErr)    parts.push("⚠ " + toolErr + " 项工具故障（未被验证，不是被检项失败）");
+if (warnCount)  parts.push("⚠ " + warnCount + " 条观察期警告（不判红，见对应步骤）");
 if (notRun)     parts.push("— " + notRun + " 项因前面失败未执行");
 parts.push("实跑 " + ran + "/" + STEPS.length + " 项");
 parts.push("用时 " + elapsed + "s");

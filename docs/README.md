@@ -24,7 +24,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 
 | 文件 | 内容 | 状态 |
 |---|---|---|
-| [AUDIT-2026-09-21.md](archive/AUDIT-2026-09-21.md) | 全库审计报告（基线 v2.8.9） | P0–P3 已逐条闭环 |
+| [AUDIT-2026-09-21.md](archive/AUDIT-2026-09-21.md) | 全库审计报告（基线 v2.8.9） | 历史快照 · 已归档（P0–P3 已逐条闭环） |
 | [spec.md](archive/spec.md) | 全维度代码审计与迭代规划（大文件） | 历史快照 · 已归档 |
 | [tasks.md](archive/tasks.md) | 审计落地任务清单 | 历史快照 · 已归档 |
 | [checklist.md](archive/checklist.md) | 审计评审检查清单 | 历史快照 · 已归档 |
@@ -32,13 +32,13 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v1.9.md](archive/PLAN-v1.9.md) | v1.9 扫弦方向 / 听辨训练 / 类型检查闸门方案 | 已归档（条目全部落地） |
 | [PLAN-v2-arrangement.md](archive/PLAN-v2-arrangement.md) | 曲式编排探针（18 条假设盘点） | 已归档 · 历史记录 |
 | [PLAN-v2-impl.md](archive/PLAN-v2-impl.md) | 曲式编排（v2.0.0）落地施工记录 | 已落地 |
-| [PLAN-v3-arrange-redesign.md](archive/PLAN-v3-arrange-redesign.md) | 编排重设计（v3 线）方案 | 已全部交付，转历史记录 |
+| [PLAN-v3-arrange-redesign.md](archive/PLAN-v3-arrange-redesign.md) | 编排重设计（v3 线）方案 | 已落地 · 已归档（全部交付，转历史记录） |
 | [PLAN-v4-arrange-ui-rework.md](archive/PLAN-v4-arrange-ui-rework.md) | 编排 UI 重做（v4 线）方案 | 已落地 · 全部闭环 |
 | [PLAN-v5-lyric-align-rework.md](archive/PLAN-v5-lyric-align-rework.md) | 歌词对齐交互重设计 + 字块拖拽改进（函数级实施清单） | 已落地 · 四期完成，仅剩真机 390px 冒烟 + V9 截图复核（验收项） |
 | [PLAN-v6-pat-viz.md](archive/PLAN-v6-pat-viz.md) | 歌词区节奏型可视化（甲+乙）实施方案 | 已落地（v2.80.0 交付） |
 | [PLAN-v7-lyric-inline.md](archive/PLAN-v7-lyric-inline.md) | 歌词显示位置重设计（显示歌词开关 + 自动/伴随节奏/底部三态；伴随节奏走覆盖层+逐行 translateY，文字格内居左，退役旧浮动跟随条） | 已落地（v2.86.0 交付） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
-| [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 |
+| [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
 
 > 约定：新增一份文档时，**先想清楚它是活文档还是快照**——活文档进上面那张表、快照进下面那张表
 > 并带上对应状态横幅，别让「哪份算数」再次变成要靠猜的事（这正是本索引要消除的盲区）。

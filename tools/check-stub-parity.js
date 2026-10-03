@@ -19,15 +19,23 @@
    另盯一个已文档化的坑：BEATSIGHT_TEST 沙箱标记必须在两份文件里**各自**落位
    （hang-case 是私有沙箱，harness 里的那份覆盖不到它——见 hang-case.js 注释）。
 
+   ★ 行为分叉台账（v3.31.x，落地审计 E8）：键集合对账只能发现"键漏了"，管不住
+     "键在、行为不同"——v3.31.4 审计 P0-1（children 是数组 vs 真机 HTMLCollection）
+     正是这一族的产物（该坑现由 check-lint 的 no-children-array-method 把守）。
+     已知的**刻意分叉**在下方 KNOWN_BEHAVIOR_GAPS 逐条登记：
+       · presentIn 正则必须在对应文件命中——登记腐烂（源码变了）即报；
+       · absentIn 正则必须**不**在对应文件命中——分叉被收敛时登记失效，同样报。
+     与 R3 白名单同一条纪律：台账不是博物馆，两条正则任一失配都意味着"人该看一眼"。
+
    观察期口径（v2.42.2 落地时定）：发现差异**先打 ⚠ 不阻断**（exit 0），观察两周
    无噪音后再升级为失败（去掉 --warn-only 或加 --strict）。为什么要缓冲：键抽取是
    正则/扫描，第一版可能有误报；假红的代价见 eslint.config.js 文件头。
-   ★ 当前实测两份桩的键集合恰好满足全部规则（差异全部在白名单内），所以本工具
-     今天接进 check-all 就是绿的；⚠ 只会在**未来漂移**时出现。
+   ★ 观察期已结束（v3.31.x，落地审计 E2）：本工具现以 --strict 接入 check-all，
+     差异按失败处理。
 
    用法：node tools/check-stub-parity.js [--strict]
-     --strict：差异按失败处理（exit 1）。缺省观察期口径：差异打 ⚠、exit 0。
-   退出码 0 = 对账通过（或观察期内的 ⚠）；1 = --strict 下有差异；4 = 工具故障
+     --strict：差异按失败处理（exit 1）。check-all 现恒传 --strict。
+   退出码 0 = 对账通过；1 = 有差异（--strict 下）或登记失配；4 = 工具故障
    （文件读不到 / makeEl 或 el 对象定位失败——抽取器失明时宁可报故障，不猜）。 */
 "use strict";
 const fs = require("fs");
@@ -188,6 +196,38 @@ for (const f of FILES){
   if (!/\bBEATSIGHT_TEST\s*=\s*true/.test(body))
     issues.push(f.label + " 缺 BEATSIGHT_TEST=true 沙箱标记 —— window.__beat 会是 undefined，"
       + "该文件的全部用例将静默崩掉（v2.8.8 的坑，别重新踩）");
+}
+
+/* 行为分叉台账（v3.31.x，落地审计 E8）：
+   「键在、行为不同」的已知分叉逐条登记——presentIn 必须命中（防登记腐烂），
+   absentIn 必须不命中（分叉收敛时提醒删登记）。为什么登记而不合并：hang-case 是
+   看门狗专用极简桩（几何模型、事件副作用都不需要），硬并进 harness 反而给
+   死循环用例引入 harness 语义、让"会不会卡死"的判定掺进无关行为。 */
+const KNOWN_BEHAVIOR_GAPS = [
+  { label: "appendChild 不写 parentNode（hang-case 无链式摘除路径，不需要）",
+    presentIn: ["tests/hang-case.js", /appendChild\(c\)/],
+    absentIn: ["tests/hang-case.js", /parentNode\s*=/] },
+  { label: "offsetWidth/offsetLeft/offsetTop 恒 0（hang-case 无几何模型，几何反解是 run.js 专用）",
+    presentIn: ["tests/hang-case.js", /offsetWidth:0,offsetHeight:0,offsetLeft:0,offsetTop:0/],
+    absentIn: ["tests/hang-case.js", /get offsetWidth/] },
+  { label: "fire() 的 preventDefault/stopPropagation 是空函数（看门狗不验事件副作用）",
+    presentIn: ["tests/hang-case.js", /preventDefault\(\)\{\},stopPropagation\(\)\{\}/],
+    absentIn: ["tests/lib/harness.js", /preventDefault\(\)\{\},stopPropagation\(\)\{\}/] },
+  { label: "classList 存储结构不同（hang `_s` Set vs harness `cls` Set，语义等价）",
+    presentIn: ["tests/hang-case.js", /classList:\{_s:new Set/],
+    absentIn: ["tests/hang-case.js", /classList:\{cls:/] },
+];
+{
+  const bodies = {};
+  for (const f of FILES) bodies[f.rel] = fs.readFileSync(path.join(ROOT, f.rel), "utf8");
+  KNOWN_BEHAVIOR_GAPS.forEach(g => {
+    const [pr, re] = g.presentIn;
+    if (!re.test(bodies[pr]))
+      issues.push("行为台账「" + g.label + "」presentIn 失配 —— 源码已变，登记腐烂，请更新或删除本条目");
+    const [ar, are] = g.absentIn;
+    if (are.test(bodies[ar]))
+      issues.push("行为台账「" + g.label + "」absentIn 命中 —— 分叉已收敛，请删除本条目并确认两份桩语义对齐");
+  });
 }
 
 if (!issues.length){

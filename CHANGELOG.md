@@ -9,6 +9,64 @@
 
 ---
 
+## v3.31.5 · 落地 v3.31.x 审计①②批次：23 项缺陷修复 + 13 项自验体系收口（2026-10-04）
+
+### 根因（只读审计，四条 P0 概览）
+
+- **P0-2 导入引用悬空**：「导出全部数据」剥掉预设 id，importAll 又给预设换新 id——曲式块对
+  自定义型的引用跨设备导入后全部悬空，迁移主路径静默失效（arrangeProblems 报不存在）。
+- **P0-3 试听换型落库污染**：候选试听把目标块 ref 临时换在内存，还原只靠 save() 自觉；
+  renameArrange / upsertArrange / deleteArrange 都会把「只试听过、从未确认」的型静默持久化。
+- **P0-4 试听拍号错配**：拍号还原只存在于「再点同一条」分支；换对象 / Editor / Ear / 空格停播
+  四条拆除路径都会让 S.sig 与选中型错配，curPattern() 静默回退 basicPattern（静默错型播放）。
+- **P0-1 children.find 真机必抛**：真实 DOM 的 children 是 HTMLCollection（无 .find），测试桩把
+  它实现成数组——点选歌词字块真机每次抛 TypeError，而 5,484 条断言全绿测不出（桩比真机宽松）。
+
+另：P1×9（Modal Enter 键盘误触破坏性确认 / 训练完成态残留致每次重播自动停 / serializeAll 丢
+label / 听辨按显示名匹配被改名破坏 / srcRefs 提示恒空 / 键盘移字不搬行 / 旧键 null 条目白屏 /
+ear 导入脏值直写 / patLenOf 快照致导入护栏失效）；P2×4（随机静音缓存无界 / 每帧重算全曲累计 /
+编辑器全量重建 / 无拍号段贴词静默入不可见轨道）；P3×9（含 AGENTS.md 体积声明漂移 +53%）。
+
+### 修法（全部守约束：单文件、零依赖、file:// 直开不变）
+
+- Store：importAll 建 oldId→newId 映射（预设先入 live 数组），serializeAll 带 id + label；
+  patLenOf 经 customsRef 查运行期 customs（加载期回落快照避 TDZ）；ear 导入与加载同口径归一化；
+  旧键迁移条目级防御；组 id 会话单调计数器。
+- Arrange：曲式冷键**前置守卫**（persistArranges 序列化前还原候选试听，注入槽式、Arrange 自注册）；
+  歌词键盘移字搬行；贴词 fit=0 走「先选节奏型」提示。
+- Presets / Editor / Ear / Modal / Trainer：试听停止收敛为唯一出口（四条拆除路径统一还原拍号）；
+  训练完成态复位开关；听辨题组按稳定下标出题且「每组试一次」名副其实；srcRefs 按内容判身份；
+  Modal Enter 焦点感知；编辑器行级复用缓存（1024+ 按钮只重建改动小节）；名称/标注进草稿状态机；
+  BPM 域与滑杆属性同源；启动初始化不抢焦点。
+- 性能：全曲累计前缀缓存（帧纪律 + 候选试听就地换型双失效）；随机静音缓存 2048 封顶。
+- 自验体系：deploy-parity 接进 `npm run ci`；桩对账升级 --strict；孤儿扫描 ⚠ 单列汇总；
+  check-all 头注释 18 步 + check-docs 对账；CI 两 job `timeout-minutes`；smoke `--print-browser`
+  收敛探测；check-lint 新增 `no-children-array-method`；smoke 增真 DOM children 形状探针；
+  check-docs 新增 docs/README 登记表校验、体积声明裸数字形状、归档归属断言、docs 全后缀白名单；
+  AGENTS.md / .trae push 口径统一；CASE_FILES 只留路径清单。
+
+### 取舍
+
+- 体积预算 1488→1508KB：本批净增约 22KB（+371/−71 行），先做约 8KB 注释精修，余 5KB 余量；
+  理由随 BUDGET_BYTES 写入 tools/check-size-budget.js。
+- 候选试听守卫用「注入槽 + Arrange 自注册」而非在 persistArranges 各调用点逐一还原：一处注册覆盖
+  全部写路径，且不进 check-wiring 的 on* 钩子收列（不经装配层）。
+- 编辑器复用缓存键含内容指纹 + 选中格 + 行号（原位 splice/push 修改下身份键会误命中；指纹
+  O(格数) 计算、零 DOM 工作）；命中只重绑监听（unbindOverlay 每轮已解绑，无重复）。
+- 孤儿扫描维持观察期不判红（68 个候选需人工核对动态拼法），但 ⚠ 条数单列进 check-all 汇总。
+- S-1（滚动掉帧长跑）/ S-5（wakeLock release 契约）需真机，标注待验（验证步骤见审计报告）。
+
+### 自验
+
+- `node tools/check-all.js` 18/18 全绿（49.5s，ESLint / tsc / 冒烟 / FULL_SCAN 全实跑）；
+- `tests/run.js` **5624 PASS / 0 FAIL**（新增 t179 / t180 两文件 140 条断言）；
+- 行覆盖率 97.8%（总体 97% / 分区 90% 阈值不降）；`smoke` **269 项**；
+- 反向变异 20 组：19 具名红 + 1 崩溃型（P1-7 堆栈人工确认指向迁移循环）；
+  脚本留档 `tools/reverse-verify-v331x.py`；
+- `npm run build` + `check-deploy-parity` 双渠道对账通过（产物集 9 条目、版本五源一致、安全头 6 条）。
+
+---
+
 ## v3.31.4 · 当前行**取消行首短标**，底纹 .07 → .10（2026-10-04）
 
 用户第一轮报障原话："想要干净的 24px 直条。"；看过修复实拍后第二轮："决定还是把这个直条去掉。"

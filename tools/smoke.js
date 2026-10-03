@@ -69,6 +69,14 @@ const CANDIDATES = [
 ];
 const browser = CANDIDATES.find(p => p && fs.existsSync(p));
 
+/* --print-browser（v3.31.x，落地审计 E20）：只探测并打印浏览器路径，不做冒烟。
+   CI 的「准备浏览器」job 靠它拿到路径，探测清单（CANDIDATES）只在这里维护一份，
+   不再与 .github/workflows/ci.yml 手抄第二份。找不到时打印空行并 exit 3（同冒烟口径）。 */
+if (process.argv.includes("--print-browser")){
+  console.log(browser || "");
+  process.exit(browser ? 0 : 3);
+}
+
 console.log("══════════════════════════════════════════════════════════");
 console.log("  真实浏览器冒烟（CDP）");
 console.log("══════════════════════════════════════════════════════════");
@@ -1104,6 +1112,12 @@ function wideFullProbe(){
       const lvRaw = await cdp.send("Runtime.evaluate",
         { expression: cellLevelsProbe(), returnByValue: true });
       result.cellLevels = JSON.parse(lvRaw.result.value);
+      /* v3.31.x（落地审计 P0-1）：children 形状哨兵——真机 children 是 HTMLCollection、
+         没有数组方法，而测试桩把它实现成数组；产品代码一旦直接调 .find/.map 之类，
+         桩里恒绿、真机必抛。这条把「桩与真机的分叉」钉成一条会红的断言。 */
+      const csRaw = await cdp.send("Runtime.evaluate",
+        { expression: childrenShapeProbe(), returnByValue: true });
+      result.childrenShape = JSON.parse(csRaw.result.value);
       /* ★★★ v3.31.1：连续滚动的静止态落位（与视口无关，在 1920 顺带量） */
       const srRaw = await cdp.send("Runtime.evaluate",
         { expression: scrollRestProbe(), awaitPromise: true, returnByValue: true });
@@ -1180,6 +1194,22 @@ function scrollRestProbe(){
      ② 首版是把格子浮在页面上截图采样，而**透明格会透出背后的 app 内容**，
      把休止格读成了纯绿（假的）——canvas 合成从根上避开这类污染。
    判据：正在弹·实扫 与 空扫/休止 的亮度差必须够大（修前实测仅 −1.2＝无法区分）。 */
+/* v3.31.x（落地审计 P0-1）：children 形状哨兵——真机 HTMLCollection 没有数组方法，
+   测试桩是数组。探针在页内造一个真元素读它 children 的形状，断言放在桌面趟。 */
+function childrenShapeProbe(){
+  return `(function(){
+    var el = document.createElement("div");
+    el.appendChild(document.createElement("button"));
+    var c = el.children;
+    return JSON.stringify({
+      isArray: Array.isArray(c),
+      hasFind: typeof c.find === "function",
+      hasItem: typeof c.item === "function",
+      length: c.length
+    });
+  })()`;
+}
+
 function cellLevelsProbe(){
   return `(function(){
     function lum(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
@@ -1599,6 +1629,15 @@ async function main(){
               + "即「空扫不会被染成跟实扫一样」这条不回潮）",
               "空扫·正在弹 rgb " + JSON.stringify(C.restActive.rgb)
               + " 彩度 " + chroma(C.restActive.rgb));
+          }
+          if (vp === "桌面" && r.childrenShape){
+            const CS = r.childrenShape;
+            ok(!CS.isArray && !CS.hasFind && CS.hasItem === true && CS.length === 1,
+              p.label + "·" + vp + "：真机 children 是 HTMLCollection（无数组方法）——"
+              + "桩是数组，产品代码依赖数组方法会「桩绿真机红」（审计 P0-1 哨兵）",
+              JSON.stringify(CS));
+          } else if (vp === "桌面"){
+            ok(false, p.label + "·" + vp + "：children 形状探针未取到（probe 缺失，属冒烟自身故障）", "");
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,

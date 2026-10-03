@@ -9,7 +9,7 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 ## 1. 动手前必读（按顺序）
 
 1. `README.md` —— 功能现状、发布渠道、快速自验入口
-2. `docs/DEVELOPMENT.md` —— 架构、数据模型、自验方法（交接文档，102 KB，按需查节）
+2. `docs/DEVELOPMENT.md` —— 架构、数据模型、自验方法（交接文档；**体积以 `wc -c docs/DEVELOPMENT.md` 现查**，按需查节）
 3. `CHANGELOG.md` 最近 3–5 条 —— 当前演进方向与最近修过什么
 4. `docs/archive/tasks.md` —— 历史审计清单（已完成项标 `[x]`；注意其头部声明：行号/耗时是历史快照，不作实时依据）
 5. `docs/archive/spec.md` —— 全维度审计与迭代规划（大文件，按需查节）
@@ -22,6 +22,7 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 - **动了 `index.html` 的模块结构**（新增/移动模块、新增跨模块回调）：`tools/check-module-order.js` 的 R1–R4 必须全绿；新回调须在 WHITELIST 登记原因，扇出超限须显式抬高 `MAX_FANOUT` 并写明理由。
 - **功能变更必须带测试**：`tests/` 增补用例（沿用现有命名风格，如 `t80-countin-arrange-no-reenter`）；缺陷修复类须做**反向验证**——回退修复后目标断言应变红。行覆盖率分节不低于 90%、总体不低于 97%。
 - **发版必 bump 版本号，工程版也不例外**：`index.html` 的 `const VERSION` 是唯一真相源，`package.json` / `package-lock.json`（`npm install --package-lock-only` 同步）/ `CHANGELOG.md` 首条 `## vX.Y.Z` 由 `check-version.js` 强制一致。
+- **CHANGELOG 写作判据**（控制每条成本、保住历史价值）：行为/数据/安全相关改动必须写根因 → 修法 → 取舍 → 自验数字；纯视觉/文案微调可压缩为「改了什么 + 人眼验收结论」。实测数值表与变异记录继续要求——那是本项目 CHANGELOG 区别于流水账的资产。
 - **提交 / 发版前必须 `git status --porcelain` 复核**：改过测试却漏 `git add` 时，**本地自验全绿、CI 却在跑旧断言**——历史事故：本地"3 幅图"断言通过，而 CI 上实际已 7 幅，直接红。多文件批次收尾要对一遍 add 清单，提交后 `git status` 必须干净。
 - **能现算的数字不写进文档**：耗时、测试数、覆盖率等以命令输出为准，不要手抄进 README / docs（`check-docs.js` 会强制）。
 - **新增文档先判类**：活文档（随代码更新）放根目录或 docs/ 第一层，并登记 `docs/README.md` 活文档表；方案 / 审计 / 快照一律进 `docs/archive/`，头部带「历史快照 · 已归档 / 已落地」横幅并登记快照表。docs/ 第一层新增白名单外的 `.md` 会被 `check-docs.js` 第 10 项当场拦红——落错位置的文档活不过自验。
@@ -29,8 +30,10 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 ## 3. 提交与推送
 
 - **默认不 push、不建分支、不开 PR**（仓库既定工作流是直提 `main` 由本人执行）；改动留在本地，向本人报告后由其决定提交时机。
+  ★ **跨 harness 口径唯一**（v3.31.x 落地审计 E11）：`.trae/rules/project_rules.md` 曾自带「直接提交并推送到 main」的口径，与本条冲突——两份规则会让不同 Agent 做出相反动作。现该文件已收敛为指向本文件的指针；任何 harness 的规则都以本节为准。
 - 如被要求代为提交：commit message 按仓库风格写——根因 → 修法 → 取舍（含实测代价）→ 自验数字（PASS/FAIL 数、覆盖率、冒烟断言数），中文，结构化长文。
 - 仓库已接 GitHub Actions（`npm run ci`）：推 `main` 即触发 Cloudflare 自动构建部署，**任何 push 都有线上后果**，须再次确认。
+- **手动发布（WorkBuddy）后对账**（v3.31.x 落地审计 E18）：该渠道零自动拦截，发布后跑一次 `node tools/check-deploy-parity.js` 只读核对线上版本（版本对齐 + dist 产物集 + 安全头）——这是手动通道唯一的事后核对。
 
 ## 3.5 禁区与敏感区
 

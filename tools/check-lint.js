@@ -1,11 +1,11 @@
 /* 代码卫生检查（审计 P1-7，零依赖，可本地验证）
    ---------------------------------------------------------------------------
-   为什么这五条不交给 ESLint（注意：ESLint 现在**已经装了**，见 tools/check-eslint.js）：
+   为什么这六条不交给 ESLint（注意：ESLint 现在**已经装了**，见 tools/check-eslint.js）：
    本仓库的硬约束是**运行时零依赖**（index.html 必须能 file:// 直开），而发布链路（Cloudflare 自动
    跑 tools/check-all.js）**不保证**先 npm install。所以"硬闸门"必须零依赖——本文件就是那道闸门，
-   用「正则 + 逐行剥注释 + 花括号作用域」实现五条规则，装不装依赖都能跑。
+   用「正则 + 逐行剥注释 + 花括号作用域」实现六条规则，装不装依赖都能跑。
    ESLint 是并排的**可选加强项**（AST/控制流能力），缺依赖就自动跳过；两者刻意**不重叠**：
-   本文件负责的五条在 ESLint 侧全部关闭，ESLint 只补"需要真解析器才看得见"的那部分
+   本文件负责的六条在 ESLint 侧全部关闭，ESLint 只补"需要真解析器才看得见"的那部分
    （死代码、重复键、switch 穿透、恒真条件、遮蔽……），分工理由见 eslint.config.js 文件头。
    保留本文件而不是全用 ESLint 的原因：ESLint 缺席时仍需有 lint，且这几条是按本项目口径手写的
    （例如 no-undef 的 GLOBALS 穷举白名单），比通用规则更贴合。
@@ -47,7 +47,21 @@
                              ★ 边界（刻意不为难既有代码）：**只管 innerHTML，不管 outerHTML**。
                                后者在本项目只有两处（`#playIcon` 播放/暂停图标切换），替换的是
                                **代码内常量** SVG 模板，无用户数据参与；要连它一起判需要 AST，
-                               那是 ESLint（可选加强项）的活，不该堵在零依赖这道硬闸门上。 */
+                               那是 ESLint（可选加强项）的活，不该堵在零依赖这道硬闸门上。
+     no-children-array-method （error）禁止 `el.children.` 后直接调用数组方法
+                             （find/filter/map/forEach/some/every/slice/reduce/indexOf/
+                              includes/concat/push/pop/splice/shift/unshift/sort/reverse/join）。
+                             · 为什么必须硬拦：真实 DOM 的 `children` 是 **HTMLCollection**，
+                               只有 item/namedItem/length 与下标访问，**没有**数组方法；
+                               而测试桩（tests/lib/harness.js）把它实现成普通数组——桩比真机宽松。
+                               于是 `.children.find(...)` 在桩里恒绿、真机上每次执行必抛
+                               TypeError（v3.31.4 审计 P0-1：歌词打轴按钮文案同步真机全挂）。
+                               正确写法：`Array.prototype.find.call(el.children, ...)` 或
+                               `Array.from(el.children)`——两种形态都不触发本规则。
+                             · 下标访问 `.children[i]`、`.children.length`、`.children.item(i)`
+                               是 HTMLCollection 原生能力，放行。
+                             · 判据在**遮蔽后**的行上跑（字符串里的字样不误报），
+                               与 no-var / eqeqeq 同一底座。 */
 
 "use strict";
 
@@ -165,6 +179,17 @@ for (let i = 1; i <= nLines; i++){
         err(i, "no-innerhtml", "innerHTML 只允许赋 \"\"（清空）；拼串会引入注入面且让测试桩失真："
           + lines[i - 1].trim());
       }
+    }
+  }
+
+  /* no-children-array-method（v3.31.x，落地审计 E8/P0-1）：真机 HTMLCollection 没有数组方法，
+     桩却是数组——直接调用在桩里恒绿、真机必抛。在**遮蔽后**的行上判（字符串字样不误报）。 */
+  {
+    const re = /\.children\s*\.\s*(?:find|filter|map|forEach|some|every|slice|reduce|indexOf|includes|concat|push|pop|splice|shift|unshift|sort|reverse|join)\s*\(/g;
+    let mm;
+    while ((mm = re.exec(mraw))){
+      err(i, "no-children-array-method", "children 是 HTMLCollection，没有数组方法（桩是数组所以测试测不出，真机必抛）："
+        + lines[i - 1].trim() + "　→ 用 Array.prototype." + mm[0].replace(/\.children\./, "").replace(/\s*\($/, "") + ".call(...) 或 Array.from(...)");
     }
   }
 
@@ -294,7 +319,7 @@ if (errors.length){
   console.log("\n  ✗ " + errors.length + " 条错误：");
   errors.forEach(e => console.log(`      L${e.ln} [${e.rule}] ${e.msg}`));
 } else {
-  console.log("\n  ✓ 七条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml）");
+  console.log("\n  ✓ 八条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml / no-children-array-method）");
 }
 console.log("──────────────────────────────────────────────────────────");
 console.log(errors.length ? "  代码卫生检查：失败" : "  代码卫生检查：通过");

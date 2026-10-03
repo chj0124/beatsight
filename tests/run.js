@@ -13,6 +13,12 @@ const path = require("path");
 const h = require("./lib/harness");
 
 /* 场景组装配顺序 = 执行顺序。新增文件请追加到末尾，保持既有用例的报错定位稳定。 */
+/* 场景组装配顺序 = 执行顺序（v3.31.x 落地审计 E7 起只留路径清单）。
+   ★ 顺序敏感、禁止重排：用例共享模块级状态（PROBE/ROW_W 等），执行顺序即 require 顺序；
+     清单里的乱序（如 t154 在 t150 与 t151 之间）是历史既成事实，不要"顺手理顺"。
+   ★ 版本号与主题自述不再写在这里（曾腐坏：t154 插队违反"追加末尾"、一行挤三个注释）——
+     每个 case 文件的版本归属看文件内注释与 CHANGELOG；本清单只承担"执行哪些、以何顺序"。
+   ★ 新增文件请追加到末尾，保持既有用例的报错定位稳定。 */
 const CASE_FILES = [
   "./cases/t01-store-and-presets",
   "./cases/t08-beat-model",
@@ -31,123 +37,125 @@ const CASE_FILES = [
   "./cases/t55-help",
   "./cases/t56-diagnostics",
   "./cases/t57-overlay-listeners",
-  "./cases/t58-p0-audit",              // v2.0.5：审计 P0 批次（抛错读盘 / 脏值域 / 级数 / 无障碍）
-  "./cases/t59-p1-audit",              // v2.0.6：审计 P1 批次（句柄重入 / ctx 重建 / 数据边界 / 重锚计数）
-  "./cases/t60-lyric-align",           // v2.1.0：F1 歌词对齐轨（数据层 / 段内解析 / 渲染 / 锚点音 / 编辑轨）
-  "./cases/t61-lyric-loop",            // v2.2.0：F2 按歌词行选段循环（落点 / 爬坡粒度 / 跨小节延音完整）
-  "./cases/t62-strum-zone",            // v2.2.0：扫弦弦区（zone 三态音色 / 空扫静默 / 录入 UI）
-  "./cases/t63-demo-song",             // v2.3.0：示例曲《在他乡》载入（谱面映射 / 幂等 / 播放冒烟）
-  "./cases/t65-practice-loop",         // v2.4.3：练习循环（区间归一 / 下拉 / 调度回绕 / 起始游标 / 曲式收起）
-  "./cases/t66-mode-contract",         // v2.4.4：模式字段契约（setMode 值域 / 幂等 / 迁移轨迹 / 无互斥）
-  "./cases/t67-service-worker",        // v2.4.4：sw.js 缓存策略（预缓存 / 清旧 / network-first / SWR / 不接管三类）
-  "./cases/t68-whole-song-and-voices", // v2.5.0：整首连播入口 + 扫弦/节拍双声部（每拍出声 / 独立音量 / 脏值）
-  "./cases/t69-pattern-length",        // v2.5.1：型的小节数自由化（校验域 / 网格行数 / 回绕 / 段长 / 循环下拉）
-  "./cases/t70-arrange-window",        // v2.5.2：网格 = 歌曲小节上的滚动窗口（跨段取行 / 状态栏口径 / 回落）
-  "./cases/t71-editor-bars",           // v2.6.1：编辑器增删小节（复制当前小节 / 下限 1 / 上限 64 / 撤销回退）
-  "./cases/t72-loop-rewind-ball",       // v2.6.2：练习循环的渲染层回卷（球不倒退 / 待命球指向区间起点 / .next 同口径）
-  "./cases/t73-arrange-mode-exit",      // v2.6.3：曲式模式的主界面收口（退出后跳段行不残留 / 播放中切轨不分裂）
-  "./cases/t74-demo-version-migration", // v2.6.4：切轨假选中去除 + 示例曲版本迁移（120 小节混杂态收敛 / 删除不复活）
-  "./cases/t75-page-flip-preview",      // v2.7.0：跳段基准分语境 + 翻页档预告行（替换 / 徽标 / 已弹豁免 / 待命球落点 / 边界）
-  "./cases/t76-voices-and-lyric-audible", // v2.7.1：双声部打通（dir-only/鼓组）+ 歌词轨与计数器可听域对齐
-  "./cases/t77-jump-loop-release",      // v2.7.3：跳段的「范围循环」解除开关（同源字段 / 单段放行到曲末）
-  "./cases/t78-bar-chord-names",    // v2.7.4：小节上方的和弦名（段名解析 / 逐行渲染 / 预告行 / 无和弦段 / 预设模式）
-  "./cases/t79-viz-rows",           // v2.8.0：同屏行数档位（扫弦窗口与歌词轨共用 / 脏值白名单 / 预设模式不受影响）
-  "./cases/t80-countin-arrange-no-reenter", // v2.8.2：整首连播 + 预备拍不再重入门控（小球跳过首小节末拍）
-  "./cases/t81-wiring-slots",       // v2.8.6：注入槽装配（钩子被接上 / patLenOf 未注入必须抛错，审计 A1）
-  "./cases/t82-keepalive-fallback",     // v2.8.8：后台保活兜底失败可见化（成功恒 0 / 被拒与无能力均留痕 / 面板只在非 0 时占位）
-  "./cases/t83-full-data-pack",         // v2.8.8：全量数据包导出导入（四类冷数据 / 合并语义 / 三种校验口径 / 体量护栏）
-  "./cases/t84-sidebar-zones",          // v2.9.0：侧栏三区分类（hasStrum 判据 / 按内容分区 / 分区下按对象删除）
-  "./cases/t85-sidebar-fold",           // v2.10.0：侧栏分区折叠（默认全收起 / 记忆选择 / 只隐藏不删节点 / 重建重新套用）
-  "./cases/t86-tab-toggle-boot-sync",   // v2.10.1：六线底纹开关的启动收敛（默认/重载两条路径下 pill 恒等于 S.showTab；同族 keepAwake）
-  "./cases/t87-preset-row-window",      // v2.10.2：预设模式的 N 行窗口（型短于 N 重复铺满 / 型长于 N 翻页 / .arg-now[hidden] 补丁）
-  "./cases/t88-demo-range-slider",      // v2.10.4：侧栏「播放范围」双滑块（取代段号胶囊 / 1-based 域 / 双向钳制 / input·change 两级）
-  "./cases/t89-narrow-range-next-row",  // v2.10.8：范围小节数 < 同屏行数时，待命球与 .next 预告格的落点（循环回卷 → 行号不再等于 +1）
-  "./cases/t90-control-layout",         // v2.10.11：控件搬家
-  "./cases/t91-migration-matrix",       // v2.11.x：老数据搬家回归矩阵（旧热键 / 老数据包 / 段→小节 / 脏值 / 往返）
-  "./cases/t92-wallpaper",              // v2.12.0：背景壁纸（格式魔数 / CSS 注入面 / 体积上限 / 遮罩两级）（拍号→同屏行数右侧；音色/音量→编辑节奏型左侧）+ 左边缘对齐的两条 CSS 契约
-  "./cases/t93-first-open-defaults",    // v2.13.0：首次打开的默认状态（选中示例曲但**不自动播放** / 分区展开态 / 行数拍号 / 出厂默认壁纸）
-  "./cases/t94-space-global",           // v2.13.1：空格键全局 = 播放/暂停（滑杆与预设项不再拦空格 / 唯一例外 = 正在输入文字 / 修饰键与 repeat 不抢）
-  "./cases/t95-latency-compensation",   // v2.14.0：音频延迟补偿（发声统一提前 / 前瞻量随补偿加长 / 每设备一套配置；v2.42.1 起向导已删）
-  "./cases/t96-adaptive-slice",         // v2.15.0：窄屏自适应分片（每行几拍的自适应 / 跨行续接片段 / 曲式与歌词轨的片段口径）
-  "./cases/t97-builtin-rename",         // v2.21.0：条目改名（内置 = 冷键覆盖 + 清空恢复源名 / 自定义 = 直改 c.name / 校验与脏冷键白名单 / 与示例迁移共存）
-  "./cases/t98-sidebar-groups",         // v2.22.0：区内子分组（📁 移入三合一 / 组折叠两级真值表 / 改名删组散员 / 联动清理 / 脏冷键白名单 / v1 边界）
-  "./cases/t99-preset-wrap-feel",       // v2.23.0：预设窗口手感对齐曲式（短型球逐行绕行 / 非在播行淡显 / 改速不跳行 / 循环区间每圈片段数 / P===W 零重建哨兵）
-  "./cases/t100-preset-standby-preview", // v2.24.0：待命球绕行落行（修恒钉第 1 行）+ P≤W 轻量预告行（短型与 P===W；长型重建链回归）
-  "./cases/t101-zone-groups-dnd",       // v2.25.0：区标题新建分组 + 条目拖拽归组（三区全开放 / 移出与跨区忽略 / 自定义区与删除清理 / ✎📁 设备分流）
-  "./cases/t102-settings-help",         // v2.25.1：设置→使用方法的层叠修复（设置自动关）+ 「设置里的每一项」内容契约
-  "./cases/t103-lyric-sec-uid",         // v2.26.0：G3 段稳定 uid（歌词按段绑定 / 段挪位词跟着走 / 旧冷键迁移）
-  "./cases/t104-arrange-editor-v3",     // v2.27.0：G2/G4 编辑效率（移到首尾 / 块候选三区+置顶 / 逐段试听到点停）
-  "./cases/t105-arrange-templates",     // v2.27.0：模板新建 + 复制曲式（四条路纯数据预填 / 副本深拷贝 / 不带词）
-  "./cases/t106-sec-card",              // v2.30.0：S1 骨架重排（段操作 ⋯ 菜单 / 曲式级 ⋯ 菜单 / 与候选互斥 / 残影防御）
-  "./cases/t107-practice-panel",        // v2.31.0：S2 开练面板（歌曲地图 / 双滑块两级处理 / 练这段 / 起/终退役）
-  "./cases/t108-lyric-collapse",        // v2.32.0：S3 歌词折叠（摘要行 / 展开态内存记忆不持久化 / 锚点提示音全局唯一）
-  "./cases/t109-new-entry",             // v2.33.0：设计稿遗漏补齐（＋搬家曲式库行 / 菜单点窗外即关 / 段卡片范围联动 / 候选标题）
-  "./cases/t110-crosslink",             // v2.37.0：编排↔编辑器双向关联（候选徽标+✎跳转 / 编辑器引用提示 / 宽屏封顶 / 帮助图 template 化）
-  "./cases/t111-cross-row-ball",        // v2.42.9：跨行大抛物线（终端弧落点 = 下一颗发声 / 待命球跨行下降段 / 正常接力对照 / REDUCE_MOTION）
-  "./cases/t112-playhead-gap-sweep",    // v2.43.0：跨行缺口播放杆扫入（下一行左缘线性扫到发声点 / 与待命球同步 / 正常接力对照 / 多行缺口逐行推进）
-  "./cases/t113-rename-btn-clickable",  // v2.44.2：✎ 改名按钮必须可点（mousedown 掐聚焦防布局抖动 / 不误伤 📁 / click 仍停冒泡弹框 / 全条目一致挂载）
-  "./cases/t114-rest-toggle",           // v2.45.0：编辑器「发声开关」（翻转不碰 t 与 dir/zone / 无方向不补默认 / 空扫静默 + 时间轴不变量）
-  "./cases/t115-lyric-rhythm-align",    // v2.46.0：歌词「按节奏对齐」（锚点口径 / 确认闸门 / 键盘微调 / 节奏参考层）
-  "./cases/t116-arrange-rename-drag",   // v2.47.0：曲式改名 + 拖动新语义（现值快照 / 跟手吸附 / 钳住红边 / 半程换位）
-  "./cases/t117-tap-magnet",            // v2.48.0：磁吸锚点 + 引导线 / 跟播打轴（端到端起播敲击 / 键盘层拦截）
-  "./cases/t118-lyric-undo",            // v2.49.0：歌词撤销/重做（唯一写入口 lyricCommit / no-op 不压栈 / V2 键盘粒度 / V3 打轴事务 / 栈上限 / redo 清场）
-  "./cases/t119-drag-threshold",        // v2.49.0：拖拽阈值分流（点按选中 / 8px/5px 阈 / cancel 丢弃 / touch-action:pan-y CSS 契约）
-  "./cases/t120-ghost-droptarget",      // v2.50.0：落点单一事实源 getDropTarget（四分支单测 / ghost 预览-提交一致性 / 建摘对称 / 气泡格式与换位脉冲）
-  "./cases/t121-tap-context",           // v2.50.0：打轴上下文（tapCtx 当前字窗口 / startTap(k0) 从第 k 字开打 / 前 k 字保留 / 钮文案随 selChip 派生）
-  "./cases/t122-preview",               // v2.51.0：原速试听（装配不动 trainer / 打轴互斥 / 游标同源一致性 / close 收尾 / 位置原语同源）
-  "./cases/t123-batch-shift",           // v2.52.0：批量平移（纯函数钳制 / 一步撤销 / 范围二选一 / ⇄ 与拖拽换位同函数 / 时值±1格）
-  "./cases/t124-drag-2d",               // v2.53.0：拖动二维跟手（perTick 1:1 / 跨行就地搬行 / 不吃邻居跨行成立 / 上浮仅触屏 / 行序号 CSS）
-  "./cases/t125-theme-day",             // v2.54.0：日间主题（浅色板落位 / --veil·--well 收口且经典逐位不变 / 组件覆盖降档 / P-a~P-d / JS 三处 / 老存档继承）
-  "./cases/t126-persist-target",        // v2.54.1：持久化目标一致性（改名/分组/歌词各写路径的「内存 → 对应冷键 → 重载」三连，防写错键）
-  "./cases/t127-block-ops-move-n",      // v2.55.0：块级操作（左移/右移/复制/删除 + ＋块沿用上一次型）与段「移到第 N 段」（含越界/取消无操作）
-  "./cases/t128-arrange-undo-redo",     // v2.56.0：曲式结构撤销/重做（段/块增删、重排、换型、改遍数可撤销；redo；空操作不压栈；按曲式隔离；secUid 保留）
-  "./cases/t129-candidate-preview",     // v2.57.0：换型候选就地试听（▶ 出现 + stopPropagation 不换型；内存临时换型可还原；不污染落库；再点停止；换型前清试听；关浮层还原）
-  "./cases/t130-range-dedup",           // v2.61.0：播放范围落盘去重（审计 Q3：writeArrangeRange 唯一写入口 + 侧栏入口行为）
-  "./cases/t131-css-orphan-cleanup",    // v2.62.0：CSS 孤儿清理（审计 Q5：19 个确死 class 不再作为规则出现）
-  "./cases/t132-experience-efficiency", // v2.63.0：体验效率小包（X3 PWA 安装引导 + X4 诊断导出文件）
-  "./cases/t133-experience-keyboard",   // v2.64.0：练习键盘快捷键体系（X2：↑↓ BPM / ←→ 跳段 / E/H/? 开面板）
-  "./cases/t134-selective-import-export", // v2.65.0：选择性导入/导出（X1：parts 过滤 / previewImport / 设置导入）
-  "./cases/t136-latency-chip",          // v2.69.0：顶栏延迟补偿读数（0 隐藏 / 文案同步 / 点击直达 latGroup；双刷新点守门）
-  "./cases/t137-loop-panel-compact",    // v2.69.0：循环本段行精简（关时整段隐藏 / 注脚连根删 / 往返可逆 / 注释同步）
-  "./cases/t138-viz-label-toggles",     // v2.70.0：座次尺/时值标注两开关（CSS 类驱动 / 启动收敛 / 双关 chord-xl / !important 源码钉死）
-  "./cases/t140-mute-cfg",              // v2.71.0：静音拍参数化（N/M 判据 / 随机确定性 / 存储钳制 / UI 联动 / 行标识任意档位精确）
+  "./cases/t58-p0-audit",
+  "./cases/t59-p1-audit",
+  "./cases/t60-lyric-align",
+  "./cases/t61-lyric-loop",
+  "./cases/t62-strum-zone",
+  "./cases/t63-demo-song",
+  "./cases/t65-practice-loop",
+  "./cases/t66-mode-contract",
+  "./cases/t67-service-worker",
+  "./cases/t68-whole-song-and-voices",
+  "./cases/t69-pattern-length",
+  "./cases/t70-arrange-window",
+  "./cases/t71-editor-bars",
+  "./cases/t72-loop-rewind-ball",
+  "./cases/t73-arrange-mode-exit",
+  "./cases/t74-demo-version-migration",
+  "./cases/t75-page-flip-preview",
+  "./cases/t76-voices-and-lyric-audible",
+  "./cases/t77-jump-loop-release",
+  "./cases/t78-bar-chord-names",
+  "./cases/t79-viz-rows",
+  "./cases/t80-countin-arrange-no-reenter",
+  "./cases/t81-wiring-slots",
+  "./cases/t82-keepalive-fallback",
+  "./cases/t83-full-data-pack",
+  "./cases/t84-sidebar-zones",
+  "./cases/t85-sidebar-fold",
+  "./cases/t86-tab-toggle-boot-sync",
+  "./cases/t87-preset-row-window",
+  "./cases/t88-demo-range-slider",
+  "./cases/t89-narrow-range-next-row",
+  "./cases/t90-control-layout",
+  "./cases/t91-migration-matrix",
+  "./cases/t92-wallpaper",
+  "./cases/t93-first-open-defaults",
+  "./cases/t94-space-global",
+  "./cases/t95-latency-compensation",
+  "./cases/t96-adaptive-slice",
+  "./cases/t97-builtin-rename",
+  "./cases/t98-sidebar-groups",
+  "./cases/t99-preset-wrap-feel",
+  "./cases/t100-preset-standby-preview",
+  "./cases/t101-zone-groups-dnd",
+  "./cases/t102-settings-help",
+  "./cases/t103-lyric-sec-uid",
+  "./cases/t104-arrange-editor-v3",
+  "./cases/t105-arrange-templates",
+  "./cases/t106-sec-card",
+  "./cases/t107-practice-panel",
+  "./cases/t108-lyric-collapse",
+  "./cases/t109-new-entry",
+  "./cases/t110-crosslink",
+  "./cases/t111-cross-row-ball",
+  "./cases/t112-playhead-gap-sweep",
+  "./cases/t113-rename-btn-clickable",
+  "./cases/t114-rest-toggle",
+  "./cases/t115-lyric-rhythm-align",
+  "./cases/t116-arrange-rename-drag",
+  "./cases/t117-tap-magnet",
+  "./cases/t118-lyric-undo",
+  "./cases/t119-drag-threshold",
+  "./cases/t120-ghost-droptarget",
+  "./cases/t121-tap-context",
+  "./cases/t122-preview",
+  "./cases/t123-batch-shift",
+  "./cases/t124-drag-2d",
+  "./cases/t125-theme-day",
+  "./cases/t126-persist-target",
+  "./cases/t127-block-ops-move-n",
+  "./cases/t128-arrange-undo-redo",
+  "./cases/t129-candidate-preview",
+  "./cases/t130-range-dedup",
+  "./cases/t131-css-orphan-cleanup",
+  "./cases/t132-experience-efficiency",
+  "./cases/t133-experience-keyboard",
+  "./cases/t134-selective-import-export",
+  "./cases/t136-latency-chip",
+  "./cases/t137-loop-panel-compact",
+  "./cases/t138-viz-label-toggles",
+  "./cases/t140-mute-cfg",
   "./cases/t141-pattern-label",
   "./cases/t142-trainer-target-empty",
-  "./cases/t144-block-chords",             // v2.75.0：块级和弦（跟块走不跟型走 / 均分显示 / 优先级 / 白名单 / UI）   // v2.73.0：变速目标留空（空目标拒开 / 合法能开 / 老存档零迁移）         // v2.72.0：型级标注（预设模式行首胶囊 / 白名单往返 / 编辑器回填与副本继承 / 留空零迁移）
-  "./cases/t145-pat-viz",              // v2.80.0：歌词区节奏型可视化（乙·行内时值轮廓 / 甲·块头节奏型行 / counter 安全 / 游标挂载点回归）
-  "./cases/t146-cur-sec",              // v2.81.0：段卡片「当前编辑段」高亮（点卡即置 / 独占 / 重建存活 / 范围正交 / dim 退役双端零残留）
-  "./cases/t147-range-fill",           // v2.82.0：开练面板填充条 = 拇指中心口径（calc 两件套 / 整首半拇指补偿 / n=1 守卫）
-  "./cases/t148-chip-capsule",         // v2.82.0：编排字块胶囊化（2px 内缩边 / 圆角 6 / 状态环 inset / 窄格 sm 降级 / 外几何零改动）
-  "./cases/t149-lyric-follow",         // v2.86.0（PLAN-v7）：歌词显示位置·伴随节奏/底部两模式基础（覆盖层+translateY / 流式 / 总开关 / 退役护栏）
-  "./cases/t150-follow-countin-preview",  // v2.86.0（PLAN-v7）：预备拍期间歌词轨（follow 覆盖层 / bottom 底部轨）随节奏条同显（删旧 paintFollow 特判后需求不回退）
-  "./cases/t154-lyric-position",          // v2.86.0（PLAN-v7）：歌词显示位置六场景反向验证（关/贴行/底部/auto 响应式/居左/空行位）
-  "./cases/t151-settings-groups",         // v2.85.0（②）：设置弹窗六组顺序 + 14 项归组 + ③a/③b 两按钮落位
-  "./cases/t152-demo-reset",              // v2.85.0（③a）：恢复示例曲按钮 → 确认 → 重建《在他乡》幂等
-  "./cases/t153-factory-reset",           // v2.85.0（③b）：恢复出厂设置双确认 → 清空全部 beatsight.* 键
-  "./cases/t155-scroll-mode",             // v3.0.0（PLAN-v9）：连续滚动六场景（布局/时序/两播放模式/歌词/球/loopRange 回卷）
-  "./cases/t156-loopwrap-firstlap",       // v3.0.1：滚动「第一圈语义」——循环开着但未真回卷时曲首之上留空（网格/歌词同判据）
-  "./cases/t157-viz-legend",              // v3.1.0（A1）：首用图例条——显示/关闭/记忆/老用户不复活（S.vizLegend 热键全链路）
-  "./cases/t158-preset-audition",         // v3.1.0（4.3）：条目 ▶ 试听——进/出/换/主播放互斥/拍号恢复
-  "./cases/t159-assembly-wiring",         // v3.1.0：装配区接线——搜索过滤 / Esc 键盘层 / 主钮 toggle
-  "./cases/t160-scroll-countin-preroll",  // v3.1.2：滚动预备拍——预滚滑入 + 球钉播放头 + 开播零跳变 + 分页幽灵步回归
-  "./cases/t161-play-bar",                // v3.3.0：底部播放条——搬块不换 id + 主列让位 + 诊断条避让 + 四块去组容器底
-  "./cases/t162-preset-panel",          // v3.3.0：预设库左侧覆盖面板——fixed 浮层 + 遮罩点关 + Esc + 不占栅格行防回潮
-  "./cases/t163-param-slot",              // v3.3.0：开关参数槽——同行参数 + 恒定槽高 + 只显示最后激活的一组（不互斥）
-  "./cases/t164-visual-semantics-b1",      // v3.4.0（B1）：语义分色——选中态中性化 + 和弦改琥珀 + --t3 提亮（绿只留进行中）
-  "./cases/t165-info-arch-b2",              // v3.4.1（B2）：信息架构去重（型名只留底栏胶囊）+ 组标签字号升档
-  "./cases/t166-viz-band-centering-b3",      // v3.5.0（B3）：可视化带垂直居中真正生效 + 左缘绿条改行首短标
-  "./cases/t167-touch-target-b4",             // v3.6.0（B4）：全站 pill 统一触控下限 min-height:40px
-  "./cases/t168-toggle-slot-b5",              // v3.7.0（B5）：三开关参数槽恒高契约固化（实测已满足，仅补断言不改码）→ v3.9.0 随共槽退役重写为三列固定槽位契约
-  "./cases/t169-scroll-fixes",                // v3.9.0：预备拍道按拍数构建（4 拍闪变根除）+ 道内竖线放行 + 图例关闭重采几何
-  "./cases/t170-status-pb",                   // v3.10.0：状态灯搬底栏右区（.pb-right）+ 播放头游标改粗竖线
-  "./cases/t171-count-lane-exit",             // v3.12.0：预备拍道退场改「传送带第 −1 小节」——相对锚点判据 + 随 dy 自然滑出（范围播放即撤/变 4 拍长双修复）
-  "./cases/t172-countlane-rebuild-hide",      // v3.12.1：会话期间换型重建（调度器前瞻）后 row0 恒 hidden——「道变 4 拍长」残影的根因修复
-  "./cases/t173-layout-decouple",             // v3.13.0：底栏两行化 + 控制区限宽 1000 + 参数槽通栏悬浮（进度条/开关零耦合的结构与行为契约）
-  "./cases/t174-four-features",               // v3.14.0：预备拍道逐拍点亮 + 雾化条显隐 + 顶栏圆钮 + 抽屉左缘自动浮出（hover 无遮罩/显式带遮罩/400ms 收回）
-  "./cases/t175-v316-fixes",                  // v3.16.0：参数槽两行化+分组（文字行槽下居中）/ [hidden] 配套修复 / boot 布局就绪重采样
-  "./cases/t176-countin-entrance",            // v3.29.0：恢复预备拍入场动画（v2.42.6 抛物线跳入，批 8 误删）+ 幽灵步飞缘修复（行号取模/行内位置口径一致）
-  "./cases/t177-headgrid-align",              // v3.30.0：控制卡片三列横向对齐体系（音量/BPM/开关三行同线）+ 底栏贴跑道缘（跟随主列公式/等宽/读数 D 案）
-  "./cases/t178-lane-effect-and-widefull",    // v3.31.0：跑道特效重构思（已弹＝压暗，填充与记号墨色分离）+ 宽屏铺满歌词错位/字号上限
+  "./cases/t144-block-chords",
+  "./cases/t145-pat-viz",
+  "./cases/t146-cur-sec",
+  "./cases/t147-range-fill",
+  "./cases/t148-chip-capsule",
+  "./cases/t149-lyric-follow",
+  "./cases/t150-follow-countin-preview",
+  "./cases/t154-lyric-position",
+  "./cases/t151-settings-groups",
+  "./cases/t152-demo-reset",
+  "./cases/t153-factory-reset",
+  "./cases/t155-scroll-mode",
+  "./cases/t156-loopwrap-firstlap",
+  "./cases/t157-viz-legend",
+  "./cases/t158-preset-audition",
+  "./cases/t159-assembly-wiring",
+  "./cases/t160-scroll-countin-preroll",
+  "./cases/t161-play-bar",
+  "./cases/t162-preset-panel",
+  "./cases/t163-param-slot",
+  "./cases/t164-visual-semantics-b1",
+  "./cases/t165-info-arch-b2",
+  "./cases/t166-viz-band-centering-b3",
+  "./cases/t167-touch-target-b4",
+  "./cases/t168-toggle-slot-b5",
+  "./cases/t169-scroll-fixes",
+  "./cases/t170-status-pb",
+  "./cases/t171-count-lane-exit",
+  "./cases/t172-countlane-rebuild-hide",
+  "./cases/t173-layout-decouple",
+  "./cases/t174-four-features",
+  "./cases/t175-v316-fixes",
+  "./cases/t176-countin-entrance",
+  "./cases/t177-headgrid-align",
+  "./cases/t178-lane-effect-and-widefull",
+  "./cases/t179-import-ref-remap",
+  "./cases/t180-audit-v331x",
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
