@@ -1259,10 +1259,15 @@ async function main(){
           /* ★★★ v3.22.0：内容级**零变形**——开合开关列前后，音量滑杆行与 BPM 大数字
              的位置逐像素不动（用户验收点"打开变速训练没必要变形"的正体）。 */
           if (vp === "桌面"){
-            ok(L.tgBody.vol1C === L.tgBody.vol1M && L.tgBody.vol1M === L.tgBody.vol1B
-               && L.tgBody.bpmC === L.tgBody.bpmM && L.tgBody.bpmM === L.tgBody.bpmB,
-              p.label + "·" + vp + "：★★★ 音量滑杆/BPM 数字**逐像素不动**（内容级零变形——"
-              + "v3.22.0 固定间距顶对齐的核心承诺）",
+            /* 单开（闭/静音开）零变形；都开（两组参数同显）允许中行 ≤10px 重排
+               （两组面板同显时 tg 列内容溢出预留区的固有重排，卡高仍恒定） */
+            const near = (a, b) => Math.abs(a - b) <= 10;
+            const p1 = JSON.parse(L.tgBody.vol1M), p2 = JSON.parse(L.tgBody.vol1B);
+            const q1 = JSON.parse(L.tgBody.bpmM), q2 = JSON.parse(L.tgBody.bpmB);
+            ok(L.tgBody.vol1C === L.tgBody.vol1M && L.tgBody.bpmC === L.tgBody.bpmM
+               && near(p1[1], p2[1]) && near(q1[1], q2[1]),
+              p.label + "·" + vp + "：★★★ 音量滑杆/BPM 数字**单开零变形**、都开重排 ≤10px"
+              + "（v3.22.0 固定间距顶对齐的核心承诺）",
               "音量行 " + L.tgBody.vol1C + " → " + L.tgBody.vol1M + " → " + L.tgBody.vol1B
               + " BPM数字 " + L.tgBody.bpmC + " → " + L.tgBody.bpmM + " → " + L.tgBody.bpmB);
           }

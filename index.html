@@ -200,6 +200,12 @@ body.wide-full .main{max-width:none}
    space-between 在恒定行高下精确底对齐 BPM（v3.21 等高诉求回归且更稳：位置恒定，
    不再随面板开合重新分布）。v3.22 的固定 gap 顶对齐（估算误差 51px）退役。 */
 .viz-head-grid .card-head-left .group{flex:1;justify-content:space-between}
+/* ★★ v3.24.0 修正（用户反馈"音量并没有跟 BPM 相同高度"）：音量滑杆住在
+   .card-head-left > .group > .tg-body（v2.76.3 设计：滑杆进 tg-body 靠 flex:1+
+   space-evenly 铺满列高）——v3.23 把 L201 的宽作用域收窄到 .viz-head 时把音量列的
+   tg-body 漏掉了（flex:1 丢失 → tg-body 塌缩到内容高 → 滑杆挤在顶部）。
+   补回专属规则（作用域钉 card-head-left，不误伤开关列的同名包装层）。 */
+.viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:8px}   /* space-between：首行钉顶、末行钉底 = 与 BPM 列内容底缘精确对齐（实测差 0） */
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
 /* ★ v3.22.0：① 作用域收窄到 .viz-head 内（BPM 内容区）——裸 .tg-body 会命中开关列的
      同名包装层；② space-evenly → flex-start：行高随开关列生长时，BPM 内容**重分布**
@@ -3081,23 +3087,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3113  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3744  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5348  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6212  Modal         应用内弹窗
-     L6350  Viz           时值可视化渲染与每帧动画
-     L9511  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10178 Trainer       变速训练器
-     L10380 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10964 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12353 Editor        自定义节奏型编辑器
-     L12799 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12846 Ear           听辨训练（v1.10.0）
-     L13065 Arrange       曲式编排（v2.0.0）
-     L15963 Help          使用方法（v2.0.1）
-     L16092 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16166 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16409 初始化（装配） 各模块 hook 接线与启动
+     L3119  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3750  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5354  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6218  Modal         应用内弹窗
+     L6356  Viz           时值可视化渲染与每帧动画
+     L9517  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10184 Trainer       变速训练器
+     L10386 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L10970 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12359 Editor        自定义节奏型编辑器
+     L12805 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12852 Ear           听辨训练（v1.10.0）
+     L13071 Arrange       曲式编排（v2.0.0）
+     L15969 Help          使用方法（v2.0.1）
+     L16098 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16172 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16415 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3123,7 +3129,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.24.0";
+const VERSION = "3.24.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
