@@ -74,10 +74,15 @@ section("T175d ≤640 移动端修正（用户截图两例）");
 {
   /* 底栏两行化：pb-right 跨三列第二行——390 实测旧三列网格把右列压到 6px、
      进度条 min-width 96 溢出视口 66px 被裁（真机探针抓到，冒烟 barOverflow 钉死）。 */
-  ok(/@media \(max-width:640px\)[\s\S]*?\.play-bar\{grid-template-rows:auto auto;row-gap:4px\}/.test(CSS_CODE),
-    "★★ ≤640：底栏改两行（行 1 = 胶囊｜播放键｜循环；行 2 = 右区跨三列）");
-  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{grid-column:1 \/ -1;grid-row:2;flex-direction:row/.test(CSS_CODE),
-    "★★ ≤640：pb-right 跨全宽行内排布（进度条 flex:1 + 状态灯右侧）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.play-bar\{grid-template-rows:auto auto;row-gap:4px/.test(CSS_CODE),
+    "★★ ≤640：底栏改两行（v3.18.0：行 1 = 播放键组跨三列居中；行 2 = 胶囊 + 右区）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-right\{grid-column:2 \/ -1;grid-row:2;flex-direction:row/.test(CSS_CODE)
+     && /@media \(max-width:640px\)[\s\S]*?#argJump\{grid-column:1 \/ -1;grid-row:1;justify-self:center\}/.test(CSS_CODE)
+     && /@media \(max-width:640px\)[\s\S]*?\.pb-right \.status\{width:96px;flex:none;overflow:hidden\}/.test(CSS_CODE)
+     && /@media \(max-width:640px\)[\s\S]*?\.pb-ctx\{grid-row:2;grid-column:1/.test(CSS_CODE),
+    "★★ v3.18.0：行 1 = 播放键组跨三列居中；行 2 = 型名胶囊（col 1 省略号，"
+    + "不再溢出被 ⏮ 压住）+ 右区（col 2-3）；状态灯**定宽 96px** 省略号——"
+    + "进度条长度不随文案变化（用户需求）；按钮缩小（play 48 / jump 40）");
   /* 显示位置三档两列网格（390 实测旧 flex-wrap 换行参差 2+1；组缺省按 max-content
      收缩到 202.8px——flex:1 1 100% 占满整行后两列各 ~151 放得下 nowrap 文案） */
   ok(/@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group\{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%\}/.test(CSS_CODE)

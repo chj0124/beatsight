@@ -155,8 +155,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      用户需求映射注释；[hidden] 配套坑（L1062 教训第二例）。↑ **1462KB**，
      留约 1.1KB。
    v3.17.0（移动端修正）：净增约 1.9KB（实测 1463.9KB）——底栏两行化的实测根因
-     （右列 6px / 溢出 66px）与显示位置 max-content 收缩坑注释。↑ **1465KB**。 */
-const BUDGET_BYTES = 1465 * 1024;
+     （右列 6px / 溢出 66px）与显示位置 max-content 收缩坑注释。↑ **1465KB**。
+   v3.18.0（移动端修正 2）：净增约 2.0KB（实测 1466.1KB）——胶囊溢出根因（30vw vs
+     minmax(0,1fr) 列宽 28px）与状态定宽 96 的解耦注释。↑ **1468KB**。 */
+const BUDGET_BYTES = 1468 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
