@@ -49,6 +49,11 @@ ok(/\.play-bar\{[^}]*height:var\(--bar-h\)/.test(src) && /--bar-h:96px/.test(src
   + "距底只剩 12px，真机实测没过「不贴底」的门槛）");
 ok(/\.play-bar\{[^}]*padding:0 [^;]*calc\(14px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★ 下内边距 14px：按钮居中的余量与它相加 = 距视口底 19px");
+/* ★ v3.25.0（用户需求）：桌面档左右内边距 24→96——左胶囊（底栏左块，可打开预设抽屉）
+   远离左缘 72px 自动浮出热区（原位置与热区功能重叠）、右区向中间靠拢更贴近可视化区；
+   ≤640 移动端两行布局不吃本条 */
+ok(/@media \(min-width:760px\)\{[\s\S]*?\.play-bar\{padding-left:calc\(96px \+ env\(safe-area-inset-left, 0px\)\);padding-right:calc\(96px \+ env\(safe-area-inset-right, 0px\)\)\}/.test(src),
+  "★★ ≥760：底栏左右内边距 96px（左右两块向中间靠拢 ~72px；移动端 ≤640 原样）");
 ok(/\.main\{[^}]*calc\(var\(--bar-h\) \+ 24px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★★ 主列补 padding-bottom（var(--bar-h) + 24）：fixed 底栏不占流，不补则最后一小节被压住");
 /* ★ v3.12.0：窗口 900 → 1600——窄屏档里新增了预备拍搬入后的右区换行规则，
