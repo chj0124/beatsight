@@ -97,9 +97,14 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   ok(!!rangeWrap, "★ 播放范围滑块挂在底栏右区（从曲式区搬来，不再需要开面板才能调）");
   ok(!demoBox.children.find(x => /(^| )demo-range( |$)/.test(x.className)),
     "★ 曲式区里不再留滑块（搬干净，不是两处并存）");
-  const rNote = rangeWrap.children[0], rTrack = rangeWrap.children[1];
-  eq(rNote.className, "demo-range-note", "第 1 个孩子 = 读数行");
-  eq(rTrack.className, "demo-range-track", "第 2 个孩子 = 轨道");
+  /* ★ v3.30.0（用户拍板 D 案）：读数行挪到行 2 .pb-sub（#pbSub）左端，wrap 只剩轨道。
+     桩按 id 懒创建元素（无 querySelector），故读数经 #pbSub 首位定位。 */
+  const pbSub = els["pbSub"];
+  ok(!!pbSub, "★ v3.30.0：行 2 容器 .pb-sub 带 id（读数行的挂点，桩里可定位）");
+  const rNote = pbSub && pbSub.children[0], rTrack = rangeWrap.children[0];
+  eq(rNote.className, "demo-range-note", "行 2 首位 = 读数行（v3.30.0 从行 1 挪来）");
+  eq(rTrack.className, "demo-range-track", "wrap 首位 = 轨道（行 1 独占全宽）");
+  eq(rangeWrap.children.length, 1, "wrap 只剩轨道一个孩子（读数已挪走）");
   ok(!!demoBox.children.find(x => /(^| )demo-sec-row( |$)/.test(x.className)) === false,
      "★ 旧的段序条（.demo-sec-row）已不存在——不是与新控件并存");
   /* 轨道里 = 填充条 + 起点滑块 + 终点滑块（顺序即 DOM 顺序，测试桩不解析 HTML，只能按序取） */

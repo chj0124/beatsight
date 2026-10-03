@@ -52,11 +52,19 @@ ok(/\.play-bar\{[^}]*padding:0 [^;]*calc\(14px \+ env\(safe-area-inset-bottom, 0
 /* ★ v3.25.0（用户需求）：桌面档左右内边距 24→96——左胶囊（底栏左块，可打开预设抽屉）
    远离左缘 72px 自动浮出热区（原位置与热区功能重叠）、右区向中间靠拢更贴近可视化区；
    ≤640 移动端两行布局不吃本条 */
-  /* ★ v3.28.0（用户最终确认的方案，v3.25 内移/v3.26 量测/v3.27 退役三易其稿后落定）：
-     底栏内容缘 = **卡片内容缘**（syncPbInset 量测 .viz-head-grid 盒缘写入
-     --pb-inset-*，底栏 padding 消费）——与音量/BPM 列左缘逐像素对齐。 */
-  ok(/@media \(min-width:760px\)\{[\s\S]*?\.play-bar\{padding-left:max\(calc\(24px \+ env\(safe-area-inset-left, 0px\)\), var\(--pb-inset-l/.test(src),
-    "★★ v3.28.0：≥760 底栏内容缘 = 卡片内容缘（量测对齐机制恢复，smoke 有对齐断言）");
+  /* ★★★ v3.30.0（用户最终拍板）：底栏内容缘 = **跑道/歌词行盒缘**（= `.main` 内容缘）。
+     对齐参照物在 v3.25/v3.26/v3.27/v3.28 四易其稿后由用户以截图红线亲手钉死：
+     红线纵贯「音量条左边的卡片空白 → 跑道/歌词行 → 底栏」，即跑道左缘那条竖线。
+     纯 CSS 公式逐像素表达（`.play-bar` 的 100% 与 `.main` 居中基准同为 ICB），
+     syncPbInset 量测机制随之整体退役（它把参照物当成了卡片控制网格缘，差 188.5px）。 */
+  ok(/@media \(min-width:961px\)\{[\s\S]*?\.play-bar\{padding-left:max\(calc\(24px \+ env\(safe-area-inset-left, 0px\)\), calc\(\(100% - 1440px\) \/ 2 \+ 24px\)\)/.test(src),
+    "★★ v3.30.0：≥961 底栏内容缘 = 主列内容缘（= 跑道缘；居中公式，宽屏自动跟随）");
+  ok(/@media \(max-width:960px\)\{[\s\S]*?\.play-bar\{padding-left:calc\(16px \+ env\(safe-area-inset-left, 0px\)\)/.test(src),
+    "★★ v3.30.0：≤960 底栏边距 16 = 该档 `.main{padding:16px}`（此前 24 与跑道差 8px）");
+  ok(/body\.wide-full \.play-bar\{padding-left:calc\(24px \+ env\(safe-area-inset-left, 0px\)\)/.test(src),
+    "★★ v3.30.0：宽屏铺满档主列不限宽 → 跑道缘恒 24，整档覆盖（否则居中公式会算成 264）");
+  ok(!/syncPbInset/.test(src.replace(/\/\*[\s\S]*?\*\//g, "")) && !/__pb-inset|--pb-inset-/.test(src),
+    "★★★ v3.30.0：syncPbInset 量测机制整体退役（函数/API/boot/fonts.ready/resize/CSS var 消费全清）");
 ok(/\.main\{[^}]*calc\(var\(--bar-h\) \+ 24px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(src),
   "★★ 主列补 padding-bottom（var(--bar-h) + 24）：fixed 底栏不占流，不补则最后一小节被压住");
 /* ★ v3.12.0：窗口 900 → 1600——窄屏档里新增了预备拍搬入后的右区换行规则，

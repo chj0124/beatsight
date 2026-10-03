@@ -97,7 +97,8 @@ const rangeWrapOf = els => {
   return w || boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
 };
 const rangeOf = rangeWrapOf;
-const rangeTrackOf = els => rangeOf(els).children[1];
+/* ★ v3.30.0（D 案）：读数行挪进行 2（#pbSub），wrap 只剩轨道 → 轨道索引 1 → 0。 */
+const rangeTrackOf = els => rangeOf(els).children[0];
 const rangeFromOf = els => rangeTrackOf(els).children[1];
 const rangeToOf = els => rangeTrackOf(els).children[2];
 /* 拖一次滑块 = 走完 input（拖动中，只刷视觉）+ change（松手提交，跑重活并通知 Arrange）两级。

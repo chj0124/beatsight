@@ -42,8 +42,16 @@ const wrapOf = els => {
   const w = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
   return w || boxOf(els).children.find(x => /(^| )demo-range( |$)/.test(x.className));
 };
-const noteOf = els => wrapOf(els).children[0];
-const trackOf = els => wrapOf(els).children[1];
+/* ★ v3.30.0（用户拍板 D 案）：读数行从行 1（.demo-range 内）挪到**行 2 .pb-sub（#pbSub）**
+   左端——行 1 让给轨道独占全宽。故 wrap 的子节点由 [note, track] 变为 **[track]**，
+   读数改经 #pbSub 定位（桩按 id 懒创建元素、无 querySelector，故必须有 id）。
+   noteOf 保留"行 2 首位"的语义（缺 pbSub 时回退 wrap 首位，与 buildDemoSongRow 的兜底一致）。 */
+const noteOf = els => {
+  const sub = els["pbSub"];
+  if (sub && sub.children.length) return sub.children[0];
+  return wrapOf(els).children[0];
+};
+const trackOf = els => wrapOf(els).children[0];
 const fillOf = els => trackOf(els).children[0];
 const fromOf = els => trackOf(els).children[1];
 const toOf = els => trackOf(els).children[2];
@@ -74,10 +82,11 @@ section("T88a 范围滑块 · 控件形状（两个原生 range 叠层 + 填充�
 {
   const { beat, els } = loadDemo();
   const wrap = wrapOf(els);
-  ok(!!wrap, "★ 自定义区里有 .demo-range 容器");
-  eq(wrap.children.length, 2, "容器里恰好两个孩子：读数 + 轨道");
-  eq(noteOf(els).className, "demo-range-note", "第 1 个 = 读数行");
-  eq(trackOf(els).className, "demo-range-track", "第 2 个 = 轨道");
+  ok(!!wrap, "★ 底栏右区里有 .demo-range 容器");
+  /* ★ v3.30.0：读数行挪进行 2（#pbSub）→ wrap 只剩轨道一个孩子 */
+  eq(wrap.children.length, 1, "容器里恰好一个孩子：轨道（读数已挪进行 2 .pb-sub，v3.30.0 D 案）");
+  eq(noteOf(els).className, "demo-range-note", "行 2 首位 = 读数行（v3.30.0 挪位后）");
+  eq(trackOf(els).className, "demo-range-track", "wrap 首位 = 轨道");
   /* v3.3.0：轨道末尾多了**播放头**（纯指示、不可拖）——故 3 + 9 + 1。
      ★ 它追加在刻度线**之后**：children[1]/[2] 仍是两个 thumb，t68 的定位契约不受影响 */
   eq(trackOf(els).children.length, 3 + 9 + 1,

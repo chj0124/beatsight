@@ -23,13 +23,15 @@ const PLAYBAR = html.slice(html.indexOf('<div class="play-bar" id="playBar"'),
 
 section("T173a 底栏右区两行化（结构红线 + 解耦落点）");
 {
-  ok(/<div class="pb-progress" id="pbProgress"[^>]*><\/div>\s*<div class="pb-sub">/.test(PLAYBAR),
-    "★★ 行 1 = #pbProgress 独占、行 2 = .pb-sub（两行 DOM 的源码序）");
-  ok(PLAYBAR.indexOf('id="pbProgress"') < PLAYBAR.indexOf('<div class="pb-sub">')
-     && /<div class="pb-sub">[\s\S]*?id="statusDot"/.test(PLAYBAR)
+  /* ★ v3.30.0：.pb-sub 补 id（读数行的挂点——桩按 id 懒创建、无 querySelector），
+     故源码钉按带 id 的写法匹配；两者之间允许夹注释（本轮在此补了 id 的说明注释）。 */
+  ok(/<div class="pb-progress" id="pbProgress"[^>]*><\/div>(\s*<!--[\s\S]*?-->)*\s*<div class="pb-sub" id="pbSub">/.test(PLAYBAR),
+    "★★ 行 1 = #pbProgress 独占、行 2 = .pb-sub#pbSub（两行 DOM 的源码序；v3.30.0 补 id）");
+  ok(PLAYBAR.indexOf('id="pbProgress"') < PLAYBAR.indexOf('id="pbSub"')
+     && /<div class="pb-sub" id="pbSub">[\s\S]*?id="statusDot"/.test(PLAYBAR)
      && !/id="countInToggle"/.test(PLAYBAR),
-    "★★ v3.15.0：.pb-sub（行 2）只剩状态灯（预备拍搬回卡片开关行、拍数输入走悬浮槽）；"
-    + "整体仍在进度条之下");
+    "★★ v3.30.0：.pb-sub（行 2）= [读数行（运行时挂入） …… 状态灯]；"
+    + "整体仍在进度条之下（预备拍仍住卡片开关行、拍数输入已无悬浮槽）");
   /* 结构红线（t170 立）：#pbProgress 挂载前会被 buildDemoSongRow 清空——
      状态灯不得是它的子节点。两行化后隔了一层 .pb-sub，仍是兄弟。 */
   const pbOpen = PLAYBAR.indexOf('id="pbProgress"');
@@ -38,8 +40,10 @@ section("T173a 底栏右区两行化（结构红线 + 解耦落点）");
     "★★★ 状态灯仍不是 #pbProgress 的子节点（buildDemoSongRow 清空容器时不得连坐销毁）");
   ok(/\.pb-right\{justify-self:end;display:flex;flex-direction:column;/.test(CSS_CODE),
     "★★ .pb-right 纵排两行（行 1 宽度只随容器——解耦的结构前提）");
-  ok(/\.pb-sub\{display:flex;justify-content:flex-end;/.test(CSS_CODE),
-    "★★ v3.15.0：.pb-sub 右对齐单状态（预备拍已离开底栏——可变宽度源只剩状态文案）");
+  /* ★ v3.30.0（用户拍板 D 案）：.pb-sub 由「右对齐单状态」改「两端对齐」——
+     左端接范围读数、右端仍是状态灯；读数长短不再推挤进度条（读数已移出行 1）。 */
+  ok(/\.pb-sub\{display:flex;justify-content:space-between;/.test(CSS_CODE),
+    "★★ v3.30.0：.pb-sub = space-between（读数左 / 状态灯右，两端钉死不互推）");
 }
 
 section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档）");
@@ -50,9 +54,13 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
     "★★ v3.19.0：三列均分取代两列（音量 | BPM | 开关列，用户需求同排均分宽度）");
   /* ★ v3.22.0：音量组固定间距顶对齐（零变形机制源码钉）——行高随开关列生长时滑杆
      纹丝不动；回退 space-between/evenly 会重新引入内容重分布（变异 M18 实证）。 */
-  ok(/\.viz-head-grid \.card-head-left \.group\{flex:1;justify-content:space-between\}/.test(CSS_CODE),
-    "★★ v3.24.0：音量组 = space-between（行高恒定后滑杆精确铺满列高、底对齐 BPM——"
-    + "v3.22 固定 gap 顶对齐退役：行高不再变化，重分布随之消失）");
+  /* ★ v3.30.0：音量列的零变形承重墙从 `.group` 的 space-between 换成**其内 tg-body
+     的顶锚定距**（flex-start + gap:10）——开关列抬高后关闭态即贴近 BPM 列高，开面板会
+     顶破行高、若仍用 space-between/evenly 就会重分布（v3.22/3.23 的「单开零变形」契约
+     靠顶锚保住）。.group 的 space-between 对单一弹性子项是空操作（保留但不再是机制）。 */
+  ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
+    "★★ v3.30.0：音量列 tg-body = 顶锚定距（flex-start + gap:10px）——行心对齐 L1/L2/L3，"
+    + "且开关列开合时音量行纹丝不动（单开零变形的承重墙）");
   /* 悬浮槽三件套：absolute（脱离布局流 → 零横移/零高度变化）、锚在开关行下方、
      常驻预留 56px（最满面板实测 43px + 30% 余量）。行首锚定——被注释的残行不算。 */
   /* ★ v3.19.0：悬浮槽（absolute 锚定 + 50px 预留 + max-content 锁宽）整体退役——

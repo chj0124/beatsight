@@ -44,11 +44,14 @@ const FILES = [
 const WHITE_LIST = {
   parentNode: "harness 需要它定位兄弟（insertAdjacentElement 的 afterend 语义）；hang-case 用例不触达兄弟插入",
   inert: "焦点管理字段；hang-case 的脏数据用例不触达",
-  insertBefore: "兄弟插入（v2.4.1 为 Arrange 候选行定位补）；hang-case 用例不触达",
   /* ★ v3.12.0：`removeChild` 项已删除——v3.9.0 给 hang-case 补了标准 removeChild
      （buildViz 建预备拍道要清空既有子元素），这一项早已不再"harness 独有"，
      留着会被本工具自己报"白名单已失效"。白名单不是历史博物馆。 */
-  insertAdjacentElement: "同 insertBefore，兄弟插入家族；hang-case 用例不触达",
+  /* ★ v3.30.0：`insertBefore` / `firstChild` / `lastChild` 三项**同理由删除**——底栏范围
+     读数行改挂 .pb-sub 首位（`pbSub.insertBefore(rNote, pbSub.firstChild)`），这三样真实
+     DOM 的既有接口 hang-case 用例现在会触达，桩因此补齐（tests/hang-case.js 同批）。
+     判据与上条一致：能力一旦被用例触达，就该进桩，而不是继续登记豁免。 */
+  insertAdjacentElement: "同 insertBefore，兄弟插入家族（afterend 语义）；hang-case 用例不触达",
   click: "真实 DOM 的 click() 会触发 click 处理器（导出预设 <a download> 靠它）；hang-case 用例不触达",
 };
 

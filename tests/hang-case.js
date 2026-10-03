@@ -65,6 +65,21 @@ function makeEl(id){
        看门狗 0/20 全红）。教训重申本文件既有的那条：多份 stub 共存时，改默认行为要把
        所有 stub 过一遍——判断依据是"谁构造了沙箱"。 */
     removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);return c;},
+    /* ★ v3.30.0：补 firstChild / lastChild / insertBefore（同 harness.js 口径）——
+       底栏范围读数行改挂 .pb-sub 首位（`pbSub.insertBefore(rNote, pbSub.firstChild)`），
+       私有桩缺这两样时**每个用例一建列表就崩**（同 v3.9.0 removeChild 的剧本：
+       表现"无输出（进程异常退出）"、看门狗 2 项红）。
+       教训第三次重申：多份 stub 共存，**真实 DOM 的既有接口面**必须逐份对齐——
+       这次漏的是"与 children 同一份数据的另两个视图"（首/末子节点）与兄弟插入。 */
+    get firstChild(){return this.children.length?this.children[0]:null;},
+    get lastChild(){return this.children.length?this.children[this.children.length-1]:null;},
+    insertBefore(c,ref){
+      const i=ref?this.children.indexOf(ref):-1;
+      if(c&&c._isFragment){const kids=c.children.slice();c.children.length=0;
+        kids.forEach(k=>i<0?el.appendChild(k):el.insertBefore(k,ref));return c;}
+      if(i<0){this.children.push(c);return c;}
+      this.children.splice(i,0,c);return c;
+    },
     setAttribute(k,v){this[k]=v;},
     getAttribute(k){return this[k]===undefined?null:this[k];},
     remove(){},blur(){},focus(){},animate(){},closest(){return makeEl("p");},

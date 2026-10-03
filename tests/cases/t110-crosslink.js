@@ -117,8 +117,11 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   ok(!src.includes("body.wide-full .viz{max-width"),
     "★★ v2.38.0：铺满封顶已撤销——网格与歌词轨都全宽同起点（对齐恢复，用户实拍错位已修）");
-  ok(src.includes("--cs") && src.includes("font-size:calc(16px * var(--cs, 1))"),
-    "★ 铺满时格内字形按 --cs 等比放大（歌词字号/格标签/座次尺随网格宽缩放）");
+  /* ★ v3.31.0：歌词字号加了 min(..., 24px) 上限（铺满档 --cs 无界增长会把字撑出固定行高，
+     实测 1920 铺满 = 30.9px 塞进 26px 字块）。故钉"按 --cs 缩放"时一并钉住上限。 */
+  ok(src.includes("--cs") && src.includes("font-size:min(calc(16px * var(--cs, 1)), 24px)"),
+    "★ 铺满时格内字形按 --cs 等比放大（歌词字号随网格宽缩放；v3.31.0 起带上限 24px，"
+    + "上限 ≥ 正常档的 23.2px 故不影响非铺满观感）");
   /* v3.0.0（PLAN-v9 批 0）：断点 1440→1280 + 第 4 轨 168px（预设库块，收起态跨两行）；
      r1 = 音量｜BPM｜三开关｜预设库，r2 左三列 = 行数拍号（展开抽屉时抽屉占 r2、行数行下推 r3）。
      其余轨道语义（首列可收缩 / safe center 溢出回退）逐字沿用 v2.76.2 的结论。 */

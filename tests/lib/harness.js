@@ -171,6 +171,14 @@ function makeEl(id){
     },
     dataset: {},
     parentNode: null,                            // v2.4.1：insertAdjacentElement 要靠它找到兄弟位置
+    /* ★ v3.30.0：补 firstChild / lastChild——真实 DOM 里它们恒与 children 同步（同一份数据的
+       两个视图）。桩此前没有，"把节点插到某容器首位"这类代码（`insertBefore(x, box.firstChild)`）
+       在桩里会退化成 append 到末尾，断言读到的是**错误的位置**而不是报错——比缺 API 更危险。
+       ★ 同批修正 insertBefore：真实 DOM 里插入**必然**给新节点写上 parentNode，
+       桩原先只 appendChild 写、insertBefore 不写，于是"移除旧节点"的防累积代码
+       （`if (el.parentNode) el.parentNode.removeChild(el)`）在桩里恒不执行 → 节点悄悄堆积。 */
+    get firstChild(){ return el.children.length ? el.children[0] : null; },
+    get lastChild(){ return el.children.length ? el.children[el.children.length - 1] : null; },
     textContent: "", value: "", title: "",
     hidden: false, disabled: false, inert: false,
     /* 布局属性做成**计数的 getter**：这里要断言的是"读了几次"，不是读到了多少；
@@ -214,8 +222,16 @@ function makeEl(id){
        补上这两个方法后，测试才能守住"候选行就在触点正下方"这条 UI 事实。 */
     insertBefore(c, ref){
       const i = ref ? this.children.indexOf(ref) : -1;
-      if (i < 0){ this.children.push(c); return c; }
-      this.children.splice(i, 0, c); return c;
+      if (c && c._isFragment){                      // v3.30.0：片段语义与 appendChild 同款
+        const kids = c.children.slice(); c.children.length = 0;
+        if (i < 0){ kids.forEach(k => el.appendChild(k)); }
+        else kids.slice().reverse().forEach(k => { el.insertBefore(k, ref); });
+        return c;
+      }
+      /* ★ v3.30.0：真实 DOM 里插入必然给新节点写 parentNode（appendChild 那条已写）——
+         不写的后果是"靠 parentNode 找回去移除旧节点"的代码在桩里静默失效、节点堆积。 */
+      if (i < 0){ this.children.push(c); if (c) c.parentNode = el; return c; }
+      this.children.splice(i, 0, c); if (c) c.parentNode = el; return c;
     },
     /* v2.27.0：补标准方法 removeChild——「新建曲式」模板菜单的开合用
        `bar.removeChild(menu)` 收起（运行时生成、运行时移除的节点）。
@@ -223,6 +239,7 @@ function makeEl(id){
     removeChild(c){
       const i = this.children.indexOf(c);
       if (i >= 0) this.children.splice(i, 1);
+      if (c) c.parentNode = null;                   // v3.30.0：真实 DOM 同步断链
       return c;
     },
     insertAdjacentElement(pos, c){

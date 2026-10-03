@@ -75,9 +75,11 @@ section("T125b 语义变量 · --veil / --well 收口，经典视觉逐位不变
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-block{")), "★ .arg-block 暗槽等值改写（.28）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-map-seg{")), "★ .arg-map-seg 暗槽等值改写（.28）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-lyric-paste{")), "★ .arg-lyric-paste 暗槽等值改写（.28）");
-  /* 刻意**不**变量化的那一处：已弹格子的分割线，靠 obs 覆盖整条翻转 */
-  ok(/rgba\(0,0,0,\.18\)/.test(ruleOf(html, ".cell.played .sub,")),
-     "★ 经典基座 .cell.played .sub 保持原值（它不走变量，由 obs 覆盖翻转）");
+  /* ★ v3.31.0：已弹格子的分割线**改走 --veil**——原文案"刻意不变量化"的前提（已弹=白填充）
+     已被推翻：已弹格改成压暗后，深色分割线会整条消失，故改为亮纱 .20（与基座 .10 同色系）。
+     观测台的既有覆盖（白 .35）口径相同，两主题就此收敛。 */
+  ok(/rgba\(var\(--veil\),\.20\)/.test(ruleOf(html, ".cell.played .sub,")),
+     "★ 经典基座 .cell.played .sub = 亮纱 .20（v3.31.0：已弹改压暗后，深色分割线会消失）");
   ok(/border-right-color:rgba\(255,255,255,\.35\)/.test(OBS),
      "★ obs 下已弹格子的分割线翻成白色（--peak 已翻墨色，深填充上才看得见）");
   /* 主题无关的硬编码必须**留在原地**（遮罩与阴影本来就该是暗的） */

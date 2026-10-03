@@ -205,7 +205,19 @@ body.wide-full .main{max-width:none}
    space-evenly 铺满列高）——v3.23 把 L201 的宽作用域收窄到 .viz-head 时把音量列的
    tg-body 漏掉了（flex:1 丢失 → tg-body 塌缩到内容高 → 滑杆挤在顶部）。
    补回专属规则（作用域钉 card-head-left，不误伤开关列的同名包装层）。 */
-.viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:8px}   /* space-between：首行钉顶、末行钉底 = 与 BPM 列内容底缘精确对齐（实测差 0） */
+/* ★★ v3.30.0（用户拍板）：**控制卡片三列横向对齐体系**——三列的内容行落在同三条
+   水平线上（音量第 1 根｜BPM 步进行｜预备拍 = L1；第 2 根｜滑杆+TAP｜静音拍 = L2；
+   第 3 根｜快捷档｜变速训练 = L3）。实测中线：L1 173.8 / L2 224.8 / L3 272.8。
+   ★ v3.30.0 设计修订（重锚时发现，取代 v3.24 的 space-between 末行钉底）：
+   音量列改**顶锚定距**（flex-start + gap:10px）——关闭态几何与均摊方案逐像素一致
+   （3×40 行盒 + 2×10 = 140 = tg-body 高，行心 172.8/222.8/272.8），但开关列生长
+   （开参数面板顶破 BPM 列高）时音量行顶锚不动、死空间沉底，保住 v3.22/3.23 的
+   「单开零变形」契约（smoke 有断言）。故 v3.24「末行钉底」被更强的「行心对齐」取代。 */
+.viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}
+/* v3.30.0：音量行盒 18px → 40px（滑杆在行内垂直居中）——行距由 43px 收紧到 10px，
+   **滑杆粗细不变**（轨道 4px / 圆钮 16px 一律不动），变高的只是行盒（点击热区顺带变大）。
+   独立新增规则，不改既有 `.card-head-left .vol-row{width:100%}`（t90 有源码钉）。 */
+.viz-head-grid .card-head-left .vol-row{min-height:40px}
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
 /* ★ v3.22.0：① 作用域收窄到 .viz-head 内（BPM 内容区）——裸 .tg-body 会命中开关列的
      同名包装层；② space-evenly → flex-start：行高随开关列生长时，BPM 内容**重分布**
@@ -415,6 +427,17 @@ body.wide-full .main{max-width:none}
        （正好是滚动条宽的一半）。**布局高度里没有可以忽略的 1px。** */
   min-height:calc(100vh - 65px - var(--bar-h) - 72px)}
 .card{background:var(--card);border-radius:12px;padding:24px}
+/* ★ v3.30.0（用户拍板）：**控制卡片盒收窄**——卡片盒原与跑道同宽（`.main` 内容缘），
+   而卡内控制区限宽 1000px 居中 → 盒内两侧死空间随窗口变宽（1920 实测 ~172px/侧）。
+   收窄到 1048（= 控制区 1000 + 两侧 24 内边距）抱住控制区，死空间消除。
+   ★ 两个实现要点（画布实测抓出）：
+     ① 必须 `width` 定宽 + `max-width:100%` —— 若用 max-width/fit-content 收缩，
+        网格内容为自适应宽，会被连带压窄（实测塌成 904、三列 280）；
+     ② 居中用 `margin-inline:auto`（section 父级 .main 是块容器，justify-self 无效）。
+   ★ 卡内控制网格逐像素不动（1440 实测 212.5..1212.5 与收窄前一致，三列 312 不变）。
+   ★ 与底栏对齐**解耦**：底栏对齐目标 = `.main` 内容缘（跑道/歌词行），从来不是卡片盒缘
+     ——「卡片盒 = 跑道盒缘」的旧一致关系自本轮起主动解除（用户明确要求）。 */
+section.card{width:1048px;max-width:100%;margin-inline:auto}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 /* v2.10.14（用户要求①）：时值可视化卡的卡片头改为顶对齐（.viz-head）——BPM 组住进头行后，
    「平齐」= BPM 的组标签与标题**同一行起步**；center 对齐会让标题垂直悬在 BPM 组中间。
@@ -549,12 +572,46 @@ body.wide-full .main{max-width:none}
      JS 侧 `cell.style.setProperty("--f", "1")`（与 .fill 时代的 scaleX(1) 逐位等价）。
    视觉口径完全不变（left/top/bottom/width/transform-origin/z-index 全部照搬）。 */
 .cell::before{content:"";position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(var(--f,0));transform-origin:left;background:transparent;pointer-events:none;z-index:0}
-.cell.played::before{background:var(--peak)}
-.cell.active{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
-.cell.active::before{background:var(--peak)}
+/* ★★★ v3.31.0（用户拍板）：**「已弹」从「整格刷白」改成「压暗」**——根因与取舍：
+   ① **记号消失**：扫弦箭杆/箭头也吃 `--peak`（L652/668/669），与格子填充**同源**——
+      经典主题 = 白底白记号（实测像素 Δ=0，记号彻底不可见）、观测台主题 = 墨底墨记号，
+      两个主题都中招。用户实拍原话："用高亮把格子覆盖住，用户就看不了"。
+   ② **容错**：白块把格子盖住后，比播放慢的用户回头就看不清那一格；且整片白亮场会抢走
+      对下一格的注意力（用户原话"对用户看下一格也会造成干扰"）。
+   ③ 修法 = 填充改 `rgba(var(--well), α)`：`--well` 是本仓既有的「压暗叠加」token
+      （:root 注释：暗色底上「白=提亮、黑=压暗」，浅色底整条翻转）——自带主题翻转，
+      不必另立变量。压暗后白色记号恢复满对比（实测 Δ=219 vs 原 0），
+      且已弹区**退到背景里**，最亮的自然变成"还没弹"的格子。
+   ★ 实测（同一格前后，排除壁纸位置干扰）：未弹亮度 59 → 已弹 36（压暗 −23，用户选 38%）。
+   ★ 与 v2.26.1 的 `--f` 机制完全不冲突：扫过的方式没变（仍是 scaleX 吃时值），
+     只是"扫过之后留下的"由白块变成暗块——半程时是半暗，正好对上"正在弹"。
+   ★ `.cell.active` 的绿描边不动（状态色仍只留给"正在发声"，v3.4 语义）。 */
+.cell.played::before{background:rgba(var(--well),.38)}
+/* ★★★ v3.31.3（用户报障）：**正在弹的实扫格改用「绿意洗底」，且保留纸面底**。
+   用户原话："播放到实扫的格子时，会把这个格子的背景做成和空扫格子的背景一样。"
+   ★ 根因（实测六态亮度）：「正在弹·实扫格」原为 `background:transparent` + `--well .38`，
+     而 `.cell.active{background:transparent}` 把它**原有的纸面底**（`.cell` 的 `rgba(--veil,.14)`）
+     一并去掉了 ⇒ 亮度掉到 **15.0**，与「空扫/休止格」的 **16–24** 几乎同亮，
+     与休止格的分离度仅 **−1.2**（＝无法区分）。
+   ★ 修法两处：
+     ① `background` 从 `transparent` 改为**继承纸面底** `rgba(var(--veil),.14)`（恢复它的"纸"身份）；
+     ② 填充改 `color-mix(in srgb, var(--green) 22%, transparent)` —— 实测亮度 **71.1**，
+        与休止 **+60.7**、与未弹 **+28**、与已弹 **+44**，四档全部拉开；
+        绿箭头在该底色上的对比仍 **69.5**（≥60 清晰）。
+   ★ 为什么用 `color-mix(var(--green))` 而不是写死 `rgba(30,215,96,.22)`：
+     `--green` 在观测台主题下翻成 `#2563EB`（L1858），写死会让该主题下"正在发声"变成绿而非蓝。
+     写法照搬本仓既有先例 `.arg-lyric-ghost`（`color-mix(in srgb, var(--green) 18%, transparent)`）。
+   ★ 为什么**休止格不受影响**：`.cell.rest.active::before`（0,3,**1**）特异性压过
+     `.cell.active::before`（0,2,**1**）⇒ 空扫/休止格仍走 `--well .32` 中性压暗（实测非绿）。
+     叠加 v3.31.2 的 `.strumv.hit.ghost` 例外，空扫箭头也仍是蓝虚线——
+     绿只出现在"发声格"，与"空扫（只动手不出声）"语义互斥，不构成新的混淆。 */
+.cell.active{background:rgba(var(--veil),.14);box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
+.cell.active::before{background:color-mix(in srgb, var(--green) 22%, transparent)}
 .cell.rest{background:transparent;border:1px dashed var(--rest-line)}
-.cell.rest.played::before{background:var(--peak-rest)}
-.cell.rest.active::before{background:rgba(var(--veil),.35)}
+/* 休止格：底色本就是透明的（露出壁纸），压得轻一档即可——它的身份主要靠虚线边框，
+   压太重会在深壁纸上"糊成黑洞"。 */
+.cell.rest.played::before{background:rgba(var(--well),.28)}
+.cell.rest.active::before{background:rgba(var(--well),.32)}
 /* ---------- 行内切分的续接片段（v2.15.0）----------
    跨行被截断的音符在两侧各画一段：**断开的那一侧**改虚线描边 + 圆角收平——
    语义 = "它不是完整的一颗，另一半在相邻行"（时值标签已同时被压掉，见 buildRowCells）。
@@ -570,7 +627,11 @@ body.wide-full .main{max-width:none}
 .cell .subs{position:absolute;inset:0;display:flex;z-index:1;pointer-events:none}
 .cell .sub{flex:1;border-right:1px solid rgba(var(--veil),.10)}
 .cell .sub:last-child{border-right:none}
-.cell.played .sub,.cell.active .sub{border-right-color:rgba(0,0,0,.18)}
+/* ★ v3.31.0：已弹格的细分线**由深转浅**——原来（0,0,0,.18）是为"白色填充"配的，
+   在压暗后的暗底上会整条消失。现在用亮纱 .20（与基座 .10 同色系、略强以保分隔感）。
+   ★ 观测台的既有覆盖（rgba(255,255,255,.35)，见 body[data-theme="obs"] 块）口径相同、无需改动
+     ——两个主题在这一点上就此收敛。 */
+.cell.played .sub,.cell.active .sub{border-right-color:rgba(var(--veil),.20)}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
@@ -662,6 +723,23 @@ body.wide-full .main{max-width:none}
 .strumv.hit::before{background:var(--green)}
 .strumv.hit::after{border-bottom-color:var(--green)}
 .strumv.hit.up::after{border-top-color:var(--green);border-bottom-color:transparent}
+/* ★★★ v3.31.2（用户报障）：**空扫（.ghost）不得被 .hit 染成实线**。
+   根因是一条**特异性打平、靠源序决胜负**的覆盖：
+     · `.strumv.ghost::before{background:none;border-left:2px dashed var(--blue)}`（空扫＝蓝虚线）
+     · `.strumv.hit::before{background:var(--green)}`（正在弹＝绿色实底）
+   两者特异性都是 (0,2,0)，而 `.hit` 在样式表里更靠后 ⇒ 空扫的 `background:none` 被覆盖，
+   虚线杆身底下**铺满绿色实底**（宽度 0 的盒 + 2px 左虚线边框，背景默认按 border-box 铺到边框下）
+   —— 视觉上虚线消失、读成一根绿色实线。用户原话：
+   "把空扫的虚线也染得跟实线差不多，这会造成用户误判"。
+   ⇒ 修法：空扫在播放中**保持蓝虚线、且不加发声光晕**。依据是本仓既有的两处语义分色：
+     · v3.4.0：**绿只保留"正在发声/进行中"**，而空扫（air sweep）只动手不出声；
+     · `--blue` 的既有职责就是"空扫括号标记色，刻意区别于绿色主题"（:root 注释）。
+   当前所在位置由 `.cell.active` 的绿色描边独立表达，不需要箭头再抢一层绿。
+   作用域 `.strumv.hit.ghost`（0,3,0）胜过 `.strumv.hit`（0,2,0），不依赖源序。 */
+.strumv.hit.ghost{filter:none}
+.strumv.hit.ghost::before{background:none;border-left-color:var(--blue)}
+.strumv.hit.ghost::after{border-bottom-color:var(--blue)}
+.strumv.hit.ghost.up::after{border-top-color:var(--blue);border-bottom-color:transparent}
 /* 弦区色带（v2.2.0）已由 v2.4.2 的贯穿式竖箭头取代——弦区表达为"箭头跨哪几条弦"，
    .cell-zone / .cell-zone.z* 两条规则随之删除（不再有任何生成点） */
 /* 编辑器内联徽标（v2.2.0）：与主视图同一套类名语义（ed-* 前缀），字号沿用 .ed-strum */
@@ -713,15 +791,27 @@ body.wide-full .main{max-width:none}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:absolute;left:clamp(10px,25%,32px);top:50%;transform:translate(-50%,-50%);z-index:1;font-size:calc(16px * var(--cs, 1));font-weight:700;color:var(--t2);white-space:nowrap}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中） */
+.lyric-char{position:absolute;left:clamp(10px,25%,32px);top:50%;transform:translate(-50%,-50%);z-index:1;font-size:min(calc(16px * var(--cs, 1)), 24px);font-weight:700;color:var(--t2);white-space:nowrap}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 /* v2.86.0 移植 v2.84.0 双关放大：两标注都关（座次尺/时值标注）⇒ .lyric-row 进释放出的行内标注带、
    行高 32 / 字块 30 / 字 17px·800（与 v2.84 跟随条同口径，字更大更聚拢）；窄屏标注带仅 32px 塞不下 32px 行，
    故窄屏在媒体查询里回落 28/26（translateY 同步用 36 而非 50）。 */
+/* ★★ v3.31.0（用户报障「宽屏铺满后歌词大小超出格子」）：**给歌词字号加上限**。
+   根因：`--cs`（= #viz 宽 / 960）会等比放大歌词字号，但歌词的行高/字块高是**固定**的
+   （.lyric-row 28 / .lyric-chip 26；双关放大档 32/30）——字号涨、容器不涨，字就被裁。
+   ★ 为什么平时看不见：**非铺满档 `#viz` 被主列 max-width:1440 封顶**（实测 1392），
+     所以 `--cs` 封顶 1.45、字号封顶 23.2px（= 16 × 1.45），刚好塞得下；
+     铺满档解除了主列上限，`--cs` 便随窗口无界增长（1920→1.93=30.9px；3840 会到 63px）——
+     这时才炸。所以这是"铺满档独有的"缺陷，不是普遍的。
+   ★ 上限取值的硬约束：**必须 ≥ 23.2px**，否则会把正常档（非铺满）已经认可的观感也改小。
+     取 24px：正常档 23.2 不受影响；铺满档 30.9 被压回 24，26px 字块里放得下。
+   ★ 为什么不动行高去做"真等比"：行高牵动 v2.86 调过的覆盖层偏移（空带复用 桌面+50/窄屏+36）、
+     双关放大档 32/30 与窄屏回落 28/26 一整套，回归面远大于收益。 */
 #viz.no-ruler.no-durlab .lyric-row{height:32px}
 #viz.no-ruler.no-durlab .lyric-row .lyric-chip{height:30px}
-#viz.no-ruler.no-durlab .lyric-row .lyric-char{font-size:calc(17px * var(--cs, 1));font-weight:800}
+/* 双关放大档字号 17px：正常档上限 24.65px（17×1.45），故卡在 25px（同样"不改变正常档"） */
+#viz.no-ruler.no-durlab .lyric-row .lyric-char{font-size:min(calc(17px * var(--cs, 1)), 25px);font-weight:800}
 .lyric-head{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
 /* v2.86.0：旧的「歌词跟随条」（方案乙，v2.83.0–v2.85.0）整条退役——浮动元素、双关放大、
    行距补偿 .lyric-follow-on、预备拍预览特判一并删除；其逐字 karaoke 文字语义完整移植到
@@ -795,15 +885,23 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
    ★ 落位与宽度契约（justify-self:end / max-width:640 / min-width:0）原样保留。 */
 .pb-right{justify-self:end;display:flex;flex-direction:column;gap:5px;width:100%;max-width:640px;min-width:0}
 .pb-progress{display:flex;align-items:center;gap:10px;min-width:0}
-.pb-sub{display:flex;justify-content:flex-end;align-items:center;gap:10px;min-width:0}
+.pb-sub{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
 .pb-right .status{flex:none;white-space:nowrap}
 /* v3.15.0：预备拍搬回控制卡片开关行（底栏右区太容易被忽略）——.pb-countin 规则族
-   随之退役；拍数输入 #countInBeatsWrap 走悬浮槽（样式见 .viz-toggles .tg-slot 段）。
-   .pb-sub 只剩状态灯一行，右对齐。 */
-.pb-sub{justify-content:flex-end}
+   随之退役；拍数输入 #countInBeatsWrap 走悬浮槽（样式见 .viz-toggles .tg-slot 段）。 */
+/* ★★ v3.30.0（用户拍板 D 案）：**范围读数行从行 1 挪到行 2 左端**，行 1 让给轨道独占。
+   根因（实测）：读数与轨道同行时读数固定 ~210px，把双滑块轨道挤到只剩 100px——
+   用户实拍判"读数太长、进度条太憋"。挪位后：行 1 = 轨道独占全宽（~320），
+   行 2 = [读数 …… 状态灯] 两端钉死（space-between），读数长短不再推挤进度条。
+   ★ 判据钩子：.pb-sub 自带 id="pbSub"（测试桩按 id 懒创建、无 querySelector，
+     读数挂点必须有 id 才能在桩里定位——syncPbInset 当年踩过同一个坑）。 */
+.pb-sub{justify-content:space-between}
+.pb-sub .demo-range-note{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 「整首」时读数由 JS 置 visibility:hidden（占位隐藏、布局零跳动）——
+   整首范围（第 1–3 节 · 共 30 小节）在默认态没有信息量，拖动端点变局部范围时才显示。 */
+.pb-sub .demo-range-note[hidden]{display:none}
 .pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
-.pb-progress .demo-range-note{white-space:nowrap;flex:none}
 /* 播放头（v3.3.0）：纯指示、不可拖 —— 与两个可拖 thumb 是**两种性质**，故用明显不同的形状；
    pointer-events:none 保证它不吃任何拖动。
    ★ 追加在刻度线之后：children[1]/[2] 仍是两个 thumb（t68 的定位契约不变）。
@@ -827,10 +925,45 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
   /* ★ 两侧必须 minmax(0,1fr)：裸 1fr 的最小值是 min-content，左胶囊一宽就把中列推离中心
      （窄屏实测：键中心 259 vs 视口中心 195） */
   grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:18px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.5);padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
-/* ★ v3.28.0（恢复 v3.26 机制）：桌面档底栏内容缘 = 卡片内容缘（--pb-inset 由
-   syncPbInset 量测写入；var 回退 = (100%−1000px)/2 公式）。≤640 移动端不吃本条。 */
-@media (min-width:760px){
-  .play-bar{padding-left:max(calc(24px + env(safe-area-inset-left, 0px)), var(--pb-inset-l, calc((100% - 1000px) / 2)));padding-right:max(calc(24px + env(safe-area-inset-right, 0px)), var(--pb-inset-r, calc((100% - 1000px) / 2)))}
+/* ★★★ v3.30.0（用户拍板）：**底栏内容缘 = 跑道/歌词行盒缘**（= `.main` 内容缘）。
+   ★ 本轮把对齐目标从「卡片控制网格缘」（v3.26/v3.28 口径，1440 下 212.5）改回
+     **跑道缘**（1440 下 24）——用户多轮标注后确认的红线位置就在跑道左缘那条竖线上
+     （它纵贯「音量条左边的卡片空白 → 跑道/歌词行 → 底栏」）。
+   ★ 纯 CSS 公式即可逐像素精确，**syncPbInset 量测机制整体退役**（见 JS 侧注释）：
+     `.main` 居中基准与 fixed 元素的 `100%` 基准同为 ICB（实测 1920 视口下 ICB=1905，
+     故 (100%−1440)/2+24 = 256.5 = #viz 左缘，差 0）——纯公式自动跟随任意滚动条宽。
+   ★ 断点口径与 `.main` 逐档同源：≥961 用居中公式；≤960 用 16px（该档 main padding 16）；
+     wide-full 档主列不限宽 → 恒 24。
+   ★ 为什么不能只写一个固定值：窗口 >1440 时主列封顶 1440 居中，跑道两侧留白
+     (ICB−1440)/2 随窗口变宽——写死 24 会在宽屏上与跑道错开（用户实拍正是如此）。 */
+@media (min-width:961px){
+  .play-bar{padding-left:max(calc(24px + env(safe-area-inset-left, 0px)), calc((100% - 1440px) / 2 + 24px));padding-right:max(calc(24px + env(safe-area-inset-right, 0px)), calc((100% - 1440px) / 2 + 24px))}
+}
+@media (max-width:960px){
+  .play-bar{padding-left:calc(16px + env(safe-area-inset-left, 0px));padding-right:calc(16px + env(safe-area-inset-right, 0px))}
+}
+/* ★ v3.30.0：宽屏铺满档主列不限宽（`.main{max-width:none}`）→ 跑道缘恒为 24，
+   居中公式在该档会算错（1920 下会算出 264），故整档覆盖回 24。 */
+body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px));padding-right:calc(24px + env(safe-area-inset-right, 0px))}
+/* ★★ v3.30.0（用户拍板）：**底栏左右两块等宽**——右侧进度组原本可长到 ~523px
+   （max-width:640 的上限形同虚设），比左胶囊长一截，用户实拍判"进度条太长"。
+   收进共享变量后两块等宽，与播放键组的左右空隙天然相等（≠ 靠 space-between 凑）。
+   ≤640 两行布局豁免（右区改为跨列拉伸 justify-self:stretch，见该档规则）。 */
+:root{--pb-side-w:320px}
+@media (min-width:641px){
+  .pb-ctx{width:var(--pb-side-w)}
+  /* ★★★ v3.30.1（用户需求）：**进度条轨道的中线 = 胶囊中线 = 播放键中心**。
+     根因（真机实测 1440/1920/834 三档一致）：右块是**两行纵排**（轨道 22 + gap 5 +
+     状态行 18 = 45），而底栏 `align-items:center` 居中的是**整块**——于是住在块内首行的
+     轨道天然比行心高 (45−22)/2 = **11.5px**（实测轨道中心 934 vs 胶囊/播放键 945.5）。
+     修法：整块下移 11.5px，让**轨道**（而非整块）成为居中基准；状态行随之下移，
+     块底距内容区底 6.5px，仍在栏内（实测无溢出、不遮挡）。
+     ★ 为什么用 `position:relative;top` 而不是 margin：相对偏移**保留 grid 的居中参与**，
+     故该对齐对底栏任意高度恒成立（块心 = 内容区心 ⇒ 轨道心 = 块心 − 11.5 + 11.5 = 内容区心，
+     与容器高无关）；若改用 align-self:start + 固定 margin，则锚在栏顶、栏高一变就失准。
+     ★ `.pb-right` 内没有以它为包含块的绝对定位后代（轨道自己 position:relative 兜住了
+     填充条/刻度/播放头/两个 input），故相对定位不改变任何既有落位。 */
+  .pb-right{max-width:var(--pb-side-w);position:relative;top:11.5px}
 }
 @media (max-width:640px){
   .play-bar{column-gap:10px}
@@ -842,7 +975,7 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
      DOM 结构，只把 .pb-sub 改**换行右对齐**（390px 下预备拍与状态文案放不进一行，各自成行、
      都贴右）——实测右列 ≈ 22+2+33+2+16 ≈ 75px，仍低于底栏内容区 82px，高度契约不动。
      （旧「预备拍 flex-basis:100% 独占一行」的特化随结构统一退役。） */
-  .pb-sub{flex-wrap:wrap;justify-content:flex-end;row-gap:2px}
+  .pb-sub{flex-wrap:wrap;justify-content:space-between;row-gap:2px}   /* v3.30.0：读数行挪进行 2 后仍两端钉死（≤640 读数 display:none，此处只兜底不出错） */
   .pb-right .status{font-size:11px}
   /* ★★ v3.17.0（用户截图 bug）：显示位置三档胶囊在窄面板换行参差（2+1 不对齐）——
      改两列等宽网格（第三枚与上行同宽，格感规整）；字号 11.5、缩 padding。 */
@@ -850,7 +983,9 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
   .lyric-pos-group .pill{justify-content:center;text-align:center;padding:8px;font-size:11.5px;
     white-space:nowrap;min-width:0}
   .pb-progress{min-width:96px}
-  .pb-progress .demo-range-note{display:none}
+  /* ★ v3.30.0：读数行已挪进 .pb-sub（行 2）——窄屏隐藏规则同步改作用域，
+     否则它在手机上会跑出来跟状态灯挤同一行（旧规则锚在 .pb-progress 下，已失对象）。 */
+  .pb-sub .demo-range-note{display:none}
   /* ★★ v3.17.0（用户截图 bug）：三列网格在手机把右列压到 6px、进度条 min-width 96
      溢出视口 66px 被裁（实测 390：pb-right w=6 / pbProgress right=456）——底栏改
      **两行**：行 1 = 胶囊｜播放键｜循环；行 2 = pb-right 跨三列（进度条 flex:1 +
@@ -1004,12 +1139,23 @@ input[type=range].vol{width:120px}
    面板成为 #tgSwitchRow 的流内子节点（DOM 已交错排列，搬块不换 id）。
    ★ 全宽度档（≥760 与 <760）都是同一套纵排流内结构——v3.9/v3.12 时代的
    "同轴网格 / 手风琴网格 / 悬浮槽"三套模型收敛为一份。 */
-.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px}   /* v3.24.0：8→2 三组间距压缩（行高恒定方案：全开 ≤ BPM 列高 192.8） */
+.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:14px}   /* ★ v3.30.0：2→14 三组行距（原 v3.24 的 2px 是"行高恒定"压缩配额，该契约已退役）——三行行心 174/224/274 = 与 BPM 三行同线（L1/L2/L3，偏差 <1.2px） */
 .viz-toggles .tg-row .tr-panel{width:100%;margin:0}   /* v3.24.0：参数行 padding 清零（压缩配额） */
 .viz-toggles .tg-row .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-row .tr-panel .lab{font-size:11px;white-space:nowrap}
 .viz-toggles .tg-row .tr-prog{width:100%;text-align:left}
 .viz-toggles .countin-line,.viz-toggles .sw-line{display:flex;align-items:center;gap:8px;width:100%}   /* v3.22.0：三组统一"开关行 = 开关 + 主参数 inline 右"（预备拍+拍数 / 静音拍+随机 / 变速训练+目标） */
+/* ★★ v3.30.0（用户拍板）：**从属参数统一降级**——每行的视觉主体是主开关（36px 不变），
+   紧随其后的从属参数（拍数框 / 随机开关 / 目标框）一律降一级，纠正此前"参数比开关还高大"
+   的层级倒挂（用户实拍指出：拍数框比预备拍开关还大）。
+   作用域钉在 .viz-toggles 内——设置弹窗里的同款 .tr-inp（壁纸遮罩 / 延迟补偿）不受影响。 */
+.viz-toggles .tr-inp{padding:4px 8px;font-size:12px}
+.viz-toggles #muteRandomToggle{padding:6px 10px;font-size:12px}
+/* ★ v3.30.0：number 框的上下小箭头在桌面 Chrome 会**预留 ~14px 宽度**——目标框 64px
+   放不下「如 120」（实拍为「如 12」）。隐藏箭头后占满显示；方向键步进/手输不受影响。 */
+.viz-toggles .tr-inp::-webkit-outer-spin-button,
+.viz-toggles .tr-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.viz-toggles .tr-inp[type=number]{-moz-appearance:textfield;appearance:textfield}
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
    均分宽度）——开关列作为第 3 列与音量/BPM 同行顶部对齐；<900 保持纵向堆叠。 */
 @media (min-width:900px){
@@ -1023,8 +1169,17 @@ input[type=range].vol{width:120px}
      三列均分就被打破。压到 0 后轨道恒 1fr、列内内容自行换行。 */
   /* display:contents 的 .viz-head 让 .group 成为真正的 grid item（孙级）——两条都要压 */
   .viz-head-grid > *, .viz-head-grid .viz-head > *{min-width:0}
-  .viz-head-grid .viz-toggles{grid-column:3;grid-row:1;align-self:start}
+  /* ★★ v3.30.0（用户拍板）：开关列 padding-top 8 → **44px** ——「预备拍」行心
+     138 → 174，与 BPM 步进行（-5 -1 96 +1 +5）行心 173.8 同线（L1）。
+     只在本档生效：<900 纵向堆叠无 BPM 列可对，不加偏移。 */
+  .viz-head-grid .viz-toggles{padding-top:44px;grid-column:3;grid-row:1;align-self:start}
   .viz-head-grid .viz-head{display:contents}
+}
+/* ★ v3.30.0：≤900 纵向堆叠档——BPM 卡内容区限宽 **520px** 居左（与音量卡左缘同线）。
+   步进钮/快捷档是 flex:1 弹性项，堆叠档列宽 = 整行（平板实测曾被拉成 ~150px/颗）；
+   限宽后按钮回到桌面档的量级。手机 390（内容 326）低于 520，不受影响。 */
+@media (max-width:899.9px){
+  .viz-head-grid .viz-head > .group .tg-body{max-width:520px}
 }/* 同屏行数档位（v2.8.0 req3；v3.12.0 从「时值可视化卡顶部」搬进设置弹窗「画面图层」组）。
    档位按钮由 VIZ_ROW_COUNTS 生成（Controls.syncRowsUI），不在标记里写死。
    ★ v3.12.0 退役的兄弟规则：`.viz-rows-panel` / `.viz-rows-row` / `.viz-rows-row .group` /
@@ -2117,7 +2272,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <div class="sw-line">
           <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速训练<span class="switch"></span></button>
           <!-- v3.3.1：目标框随整组参数走（id 与接线不动）；空目标时由开关处理器就地给出原因 -->
-          <span class="inp-with-unit" id="trTargetWrap"><span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="需大于当前 BPM" aria-label="目标 BPM，可留空表示不设目标"></span>
+          <span class="inp-with-unit" id="trTargetWrap"><span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="如 120" aria-label="目标 BPM，可留空表示不设目标"></span>
         </div>
         <div class="tr-panel" id="trainerPanel" hidden>
           <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
@@ -2343,7 +2498,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            挂载前清空该容器，静态子节点会被连坐销毁）——现在隔了一层 .pb-sub，
            仍是兄弟（且 t170 的结构钉同步改写）。 -->
     <div class="pb-progress" id="pbProgress" role="group" aria-label="播放进度与范围"></div>
-    <div class="pb-sub">
+    <!-- ★ v3.30.0：.pb-sub 补 id="pbSub"——范围读数行（.demo-range-note）从行 1 挪进来
+         （行 1 让给轨道独占全宽）；测试桩按 id 懒创建元素、没有 querySelector，
+         读数挂点必须有 id 才能在桩里定位（t170/t173 的结构钉按此改写）。 -->
+    <div class="pb-sub" id="pbSub">
     <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">已停止</span></div>
     </div>
   </div>
@@ -3092,23 +3250,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3124  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3755  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5359  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6223  Modal         应用内弹窗
-     L6361  Viz           时值可视化渲染与每帧动画
-     L9576  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10243 Trainer       变速训练器
-     L10445 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11029 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12418 Editor        自定义节奏型编辑器
-     L12864 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12911 Ear           听辨训练（v1.10.0）
-     L13130 Arrange       曲式编排（v2.0.0）
-     L16028 Help          使用方法（v2.0.1）
-     L16157 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16231 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16474 初始化（装配） 各模块 hook 接线与启动
+     L3282  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L3913  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5517  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6381  Modal         应用内弹窗
+     L6519  Viz           时值可视化渲染与每帧动画
+     L9760  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10427 Trainer       变速训练器
+     L10629 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11233 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12650 Editor        自定义节奏型编辑器
+     L13096 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13143 Ear           听辨训练（v1.10.0）
+     L13362 Arrange       曲式编排（v2.0.0）
+     L16260 Help          使用方法（v2.0.1）
+     L16389 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16463 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16706 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3134,7 +3292,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.29.0";
+const VERSION = "3.31.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6377,9 +6535,10 @@ let rowEls = /** @type {HTMLElement[]} */ ([]), cellEls = /** @type {HTMLElement
 /* v2.26.1：fillEls 整条删除——填充层是 .cell::before 伪元素，推进量写在格子自己的 --f 上 */
 let subEls = /** @type {Record<number, HTMLElement>[]} */ ([]), labelEls = /** @type {(HTMLElement|null)[][]} */ ([]), lastT16 = /** @type {number} */ (-1);
 /* v2.4.4：sub → 宿主 cell 的正查表（与 subEls 同键）。paintFrameBody 的十六分闪烁原先
-   靠 sub.closest(".cell") 现场上溯 DOM——帧路径上的 DOM 查询能免则免（v1.3.0 P1-4 的口径），
-   建网格时顺手登记一次，帧内只读表。 */
-let subCellEls = /** @type {Record<number, HTMLElement>[]} */ ([]);
+   ★ v3.31.1：与它配套的 `subCellEls`（十六分 → 宿主 cell 的查表）**整条退役**——
+     它唯一的消费者是 paintBeatFlash 里"按类名猜底色明暗"那个判据，而那个判据自
+     填充改压暗后语义反转、已删除（详见 paintBeatFlash 的注释）。
+     登记表没人读就是纯负担（建网格时每格多写一次对象属性），故一并清掉，不留死代码。 */
   /** @type {(HTMLElement|null)[][]} */
   let strumEls = [];                                         // 扫弦方向徽标（v1.9.0），与 labelEls 同构：无徽标处存 null
   /** @type {{ i0: number, i1: number, tick: number, nm: string, el?: HTMLElement }[][]} */
@@ -7496,7 +7655,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   }
 
   /** 第 2 段（音符格）：逐格建 cell + fill + 十六分刻度线 + 时值标签 + 扫弦竖箭头，
-      并登记 subEls / subCellEls（以十六分位置为键）与返回的四个逐格同构数组。
+      并登记 subEls（以十六分位置为键）与返回的四个逐格同构数组。
       本段是整行里唯一"随内容变化"的部分——所以它才值得与定位层分开。
       @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
@@ -7513,7 +7672,6 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     /** @type {{x:number, strong:boolean}[]} 交界缝落点（行宽百分比 + 强弱；v2.78.2 收集、v2.79.0 加 strong） */
     const seamX = [];
     subEls.push({});
-    subCellEls.push({});
     let acc = 0;
     /* 空扫的弦区要"跟随前一记实扫"（参考页明文），故在本小节内自上而下逐格携带。
        跨小节不延续：新小节从全部弦重起——小节是扫弦谱的语义单位，跨小节沿用上一小节
@@ -7561,7 +7719,6 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
           sub.className = "sub";
           subs.appendChild(sub);
           subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
-          subCellEls[b][startT / T16 + u] = c;   // v2.4.4：同键登记宿主 cell，供 paintBeatFlash 判 onWhite 免 DOM 上溯
         }
         c.appendChild(subs);
       }
@@ -7715,7 +7872,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (viz) viz.classList.toggle("scroll-mode", !!S.scrollMode);
     /* ★ v3.20.0：雾化条退役（内容自身渐隐 mask，纯 CSS 随 .scroll-mode 类生效）——
        本写点不再需要 JS 同步；≤640 禁用由媒体查询承担。 */
-    rowEls = []; cellEls = []; subEls = []; subCellEls = []; labelEls = []; strumEls = [];
+    rowEls = []; cellEls = []; subEls = []; labelEls = []; strumEls = [];
     zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
@@ -8005,18 +8162,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        · 停机时：整树重建（顺便把标注与哨兵一次算准）
      约定：谁在布局上动手脚，谁就有责任调它。当前调用方 = resize 与主题切换两个。
      注：本函数不在渲染热路径上（帧内绝不调），所以这里读 offset* 是安全的。 */
-  /* ★ v3.28.0（恢复 v3.26 机制，用户确认）：底栏内容缘对齐卡片内容缘——量
-     .viz-head-grid 盒缘写入 CSS 变量，底栏 padding 消费（boot 双 rAF / fonts.ready /
-     resize 防抖各调一次）。幂等只写变量。 */
-  function syncPbInset(){
-    /* 桩环境守卫：桩 document 无 querySelector（真机才量测；桩里 CSS 变量本就无意义） */
-    if (typeof document === "undefined" || typeof document.querySelector !== "function") return;
-    const g = document.querySelector(".viz-head-grid");
-    if (!g || typeof document.documentElement === "undefined" || !document.documentElement.style) return;
-    const r = g.getBoundingClientRect();
-    document.documentElement.style.setProperty("--pb-inset-l", r.left.toFixed(2) + "px");
-    document.documentElement.style.setProperty("--pb-inset-r", (window.innerWidth - r.right).toFixed(2) + "px");
-  }
+  /* ★ v3.30.0：`syncPbInset()` 量测机制**整体退役**（原 v3.26 引入、v3.27 撤、v3.28 恢复）。
+     退役理由：对齐目标本轮改为「跑道/歌词行盒缘 = `.main` 内容缘」，而该几何可由纯 CSS
+     公式逐像素表达（`.play-bar` 的 `100%` 与 `.main` 的居中基准同为 ICB，实测 1920 视口下
+     (100%−1440)/2+24 = 256.5 = #viz 左缘，差 0），不需要 JS 量测介入。
+     顺带消掉一个真实缺陷：量测把"卡片控制网格缘"当作参照物，而用户要的是**跑道缘**，
+     两者在 1440 下相差 188.5px（212.5 vs 24）。守卫注释里的桩环境约束仍然有效，
+     故留档于此：**桩 document 没有 querySelector**，任何新机制都不得假设它存在。 */
   function relayout(){
     if (S.playing){ cacheGeo(); fitCellAnnotations(); remeasureLyric(); layoutLyricLane(); }
     else buildViz();
@@ -8025,7 +8177,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     if (resizeTimer !== null) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { relayout(); syncPbInset(); }, 200);
+    resizeTimer = setTimeout(() => { relayout(); }, 200);
   });
 
   /* 追踪变量复位：start()、播放中小节边界应用新节奏型后调用。
@@ -8710,6 +8862,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     lane.style.width = vr.width + "px";
     lane.style.height = viz.offsetHeight + "px";
   }
+  /* ★★★ v3.31.1：**带静止态重落的歌词轨重建**——外部（Controls / 装配层）改歌词显隐或
+     位置时必须走这个，**不要直接 buildLyricLane()**。
+     根因同 reloadScroll 那条注释：buildLyricLane 是**结构层**，产出的是新元素、位移只有
+     placeLaneOverlay 写的 translateY(y)；而 scroll 静止态的横向位移（"当前行右移半行宽、
+     上一行冻结在左半屏"）由 applyScrollRest 写在**元素 style** 上——重建后必须重落一次，
+     否则歌词停在视口正中（实测与网格差 696px），要等按下播放才被帧循环纠正。
+     播放中不必（也不该）重落：帧循环每帧按 scrollDx 摆位，重落只会多写一次 DOM。 */
+  function rebuildLyricLane(){
+    buildLyricLane();
+    if (S.scrollMode && !S.playing) applyScrollRest(true);
+  }
   /* 窗口尺寸 / 主题切换后重采轨道宽（relayout 调用，不在帧内） */
   function remeasureLyric(){ if (lyricEl && !lyricEl.hidden) lyricW = lyricEl.offsetWidth; }
 
@@ -8845,13 +9008,22 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const sub = subEls[fb] && subEls[fb][fk];
     /* v2.0.2：十六分闪烁是纯装饰光效，REDUCE_MOTION 下跳过（座次尺 .on 高亮保留，位置信息不丢） */
     if (sub && !REDUCE_MOTION){
-      // 配色随底色反转：白块（已弹/正在弹）上闪强调色光，暗块上同（规范：功能强调色，最高强调用近白）
-      const cellNode = subCellEls[fb] && subCellEls[fb][fk];   // v2.4.4：查表代替 closest() 上溯
-      const onWhite = !!cellNode && (cellNode.classList.contains("played") || cellNode.classList.contains("active"));   // 正在弹的块也是白填充
+      /* ★★★ v3.31.1（用户报障「播放后当前小节第一个格子左边多出一块东西」）：**这里原先是
+         「按类名猜底色明暗」**——`onWhite = cellNode 有 played/active 类`，注释写着
+         「正在弹的块也是白填充」。v3.31.0 把已弹/正在弹的填充从**纯白**改成**压暗**
+         （`rgba(var(--well),.38)`）之后，这个判据的语义**反转**了：它仍然给"近黑底"挑
+         为白底调的那一档 `strong`（绿 40%）。
+         ★ 为什么看起来是"常驻的一块"而不是一闪：闪烁时长 260ms，而 96 BPM 的十六分只有
+         156ms —— 动画首尾相接、几乎常亮；叠加暗底上 40% 的绿，就是暗格里炸出一块明显的绿块。
+         白底时代它是"白上的一层淡绿"（几乎看不出），底色一翻就显形了。
+         ⇒ 修正：**亮度档跟着填充的实际明暗走**。填充自 v3.31.0 起恒为压暗
+         （`--well` 在 classic=黑 / obs=墨蓝，两个主题都是深色），故恒取 `soft`
+         （28% 绿）——它落在暗底上仍是清晰的一层绿，但不再炸成块。
+         ★ 不改成"运行时读 getComputedStyle"：那是渲染热路径里的布局读取，违反 P1-4 性能纪律。 */
       const fc = flashTheme();   // v1.7.0：闪烁配色随主题（观测台 = 电光蓝）
       const edge = fc.edge;
       const glow = fc.glow;
-      const fillFlash = onWhite ? fc.strong : fc.soft;
+      const fillFlash = fc.soft;
       const base = "none";   // 刻度线无盒阴影，闪烁结束后还原为无
       sub.animate([
         {boxShadow:`inset 0 0 0 2px ${edge}, 0 0 14px ${glow}`, backgroundColor: fillFlash},
@@ -9517,15 +9689,27 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
 
   /* v3.0.0（PLAN-v9 批 1）：连续滚动的模式/档位切换（见出口面 reloadScroll 的注释）。
      ★ 顺序是硬约束：先丢弃窗口锚，再 resetWindow，最后重建——
-       反过来会让 buildViz 读到一个"锚已重算、但预告/绕行状态还是旧的"混合态。 */
+       反过来会让 buildViz 读到一个"锚已重算、但预告/绕行状态还是旧的"混合态。
+     ★★★ v3.31.1（用户报障「切连续滚动后歌词错位，按播放又恢复正常」）：**这里原先还有一次
+       buildLyricLane()，它是多余的、且是那个 bug 的根因**。
+       实测（1440×1000，切到滚动、未播放）：网格行在 x=24 / 1416（静止态正确），
+       而歌词行**停在视口正中 720**——差 696px；按播放后帧循环补上横向位移才恢复。
+       时序：buildViz 内部已经 ① buildLyricLane()（L8054）② 再 cacheGeo() + applyScrollRest(true)
+       （L8062-8065，静止态落位）——**那次重复的 buildLyricLane 把①换成了新元素**，
+       而新元素的位移只有 placeLaneOverlay 写的 translateY(y)，静止态的横向位移随之丢失。
+       ⇒ 删掉它：buildViz 已经负责重建歌词轨（v2.1.0 F1 的"网格重建时同步重建歌词轨"）。
+       实测删掉后四态全对齐（含来回切两趟），而 paintFrame() 补不回来
+       （停机态 paintFrame 不重排歌词行，实测仍 720）。 */
   function reloadScroll(){
     scrollCur = -1;
     scrollDx = 0;
     resetWindow();
-    buildViz();
-    buildLyricLane();
+    buildViz();          // 内部已重建歌词轨 + （scroll 下）重落静止态
   }
-  return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, syncPbInset, resetWindow,
+  return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
+    /* ★ v3.31.1：外部（Controls）重建歌词轨的唯一入口——见 rebuildLyricLane 的注释。
+       直接 buildLyricLane() 会让 scroll 静止态下的歌词丢横向位移（用户报障的那个错位）。 */
+    rebuildLyricLane,
     /* v2.4.2：六线底纹开关的处理器长在 Controls 段（那里才有 $ 与 setToggle），
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
        由 Controls 单向调用。Controls 声明在 Viz 之后，不构成反向引用。 */
@@ -10910,7 +11094,18 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   bindToggle("tabToggle", () => (S.showTab = !S.showTab), () => Viz.syncTabLayer());
 
   /* v2.36.0（用户反馈④）：宽屏铺满——去掉主页面的 1440px 宽度上限（默认关）。
-     只切 body 上的一个类（.wide-full），纯 CSS 重排、不重建 DOM。 */
+     只切 body 上的一个类（.wide-full），纯 CSS 重排、不重建 DOM。
+     ★★ v3.31.0（用户报障「切换宽屏模式时歌词会错位、字号超格，点播放后位置恢复」）：
+     "纯 CSS 重排"只对**网格自己的**几何成立——歌词轨是**独立元素**，它的落位/宽度由
+     `placeLaneOverlay` 写成 inline（left/top/width/height），且 `lyricW` 是缓存值。
+     `#viz` 一变宽，这两处都不会自己更新：实测（1920）铺满后 `#viz` 1392→1857，
+     而歌词轨宽**停在 1392**、歌词块宽停在 174（应为 232）→ 歌词整体错位。
+     点播放能"恢复"是因为逐帧路径重新读了宽度——但那只是掩盖，静止态一直错着。
+     ★ 修法 = 切换时补一次 `Viz.relayout()`：本仓既有纪律「谁在布局上动手脚，谁就有责任调它」，
+     主题切换（themeToggle）、rulerLab/durLabel、chord-xl 开关全都这么做，
+     **唯独宽屏开关漏了**——这正是它成为唯一漏网者的原因。
+     relayout 两条分支都正确：停机时 buildViz 整树重建（歌词轨一并重建）；
+     播放中只重采几何 + 重排覆盖层（不重建 DOM、不打断动画）。 */
   function applyWideFull(){
     const on = !!S.wideFull;
     const b = document.body;
@@ -10918,7 +11113,16 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     if (!on && b.classList.contains("wide-full")) b.classList.remove("wide-full");
     setToggle("wideToggle", on);
   }
-  bindToggle("wideToggle", () => (S.wideFull = !S.wideFull), () => applyWideFull());
+  bindToggle("wideToggle", () => (S.wideFull = !S.wideFull), () => { applyWideFull(); relayoutAfterWideFull(); });
+  /* ★ v3.31.0：重排**只挂用户切换路径**，不放进 applyWideFull——
+     ① 启动恢复也会调 applyWideFull，而那时装配层还没注入 patLenOf
+        （:5964 patLenNotInjected 会抛错，实测踩到）；且启动路径随后本就会走一遍完整
+        buildViz，不需要额外重排；
+     ② 两条分支都正确：停机时 buildViz 整树重建（歌词轨一并重建）；播放中只重采几何
+        + 重排覆盖层（不重建 DOM、不打断动画）。 */
+  function relayoutAfterWideFull(){
+    if (typeof Viz !== "undefined" && Viz && typeof Viz.relayout === "function") Viz.relayout();
+  }
   applyWideFull();                               // 启动即恢复上次选择（冷键加载后此处 S 已就绪）
 
   /* 同屏行数档位（v2.8.0 req3）：扫弦网格窗口与歌词轨**共用**的可见行数（值表 VIZ_ROW_COUNTS）。
@@ -11623,12 +11827,16 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     headEl.hidden = true;
     track.appendChild(headEl);
 
-    wrap.appendChild(rNote); wrap.appendChild(track);
+    wrap.appendChild(track);
     /* v3.3.0：挂载点从「预设库曲式区」改到**底栏右区**（#pbProgress）——范围滑块是"播放中
        随时要调"的控件，藏在面板里等于每次都得先开面板。段边界刻度随组一起走。
        ★ 仍走扁平挂法（不套 wrapper）：测试按 children[1]/[2] 定位两个 thumb。
+       ★ v3.30.0：**读数行改挂 .pb-sub（#pbSub）**——行 1 让给轨道独占全宽，读数与状态灯
+         同处行 2 两端（用户拍板 D 案）。故 wrap 的子节点由 [note, track] 变为 **[track]**，
+         children[1]/[2] 仍是两个 thumb（t68 的定位契约不受影响）。
        ★ 兜底：目标容器缺失时退回原 group，滑块不至于彻底消失（面板结构再变也不至于全丢）。 */
     const pbHost = document.getElementById("pbProgress");
+    const pbSub = document.getElementById("pbSub");
     if (pbHost){
       /* ★ 挂载前必须先清空：曲式列表重建会**再次**调用本函数，而 #pbProgress 是常驻容器——
          旧滑块不清掉就会累积，按 children 序位取到的会是**已脱离文档的旧节点**（拖它毫无反应）。
@@ -11636,8 +11844,25 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
          innerHTML = "" 在桩与真机语义一致（忠实清空子节点），且不引入额外 wrapper。 */
       pbHost.innerHTML = "";
       pbHost.appendChild(wrap);
+      /* ★★ v3.30.0：读数行改挂行 2（#pbSub）后，**防累积不能再靠清空宿主**——
+         旧实现清的是 #pbProgress，读数在里面所以顺带清掉了；现在宿主换成 .pb-sub，
+         而它不参与 innerHTML 清空。两条死路都排掉：
+           ① querySelector 不可用（桩无此 API）；
+           ② 靠 demoRangeNoteEl 摘除**也不行**——buildPresetList 在每次重建前就把
+              demoRangeNoteEl/demoRangeWrapEl 一律置 null（"引用随列表重建失效"的既有设计），
+              到本函数时它已是 null，旧读数会原地堆积（实测：首屏就叠出两个）。
+         可行解 = 按**类名扫描子节点**摘掉上一次的读数行（children 视图在桩与真机同构）。 */
+      if (pbSub){
+        Array.from(pbSub.children).forEach(c => {
+          if (c !== rNote && /(^| )demo-range-note( |$)/.test(c.className)) pbSub.removeChild(c);
+        });
+        pbSub.insertBefore(rNote, pbSub.firstChild);
+      } else {
+        wrap.insertBefore(rNote, wrap.firstChild);   // 兜底：行 2 缺失时退回行内（读数不丢）
+      }
     } else {
       group.appendChild(wrap);   // 兜底：容器缺失时退回曲式区，滑块不至于消失
+      wrap.insertBefore(rNote, wrap.firstChild);
     }
 
     demoSongNote = note;
@@ -11729,6 +11954,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       demoRangeNoteEl.textContent = (f === t)
         ? `第 ${f + 1} 小节 · ${secNameOfBar(f) || "·"}（单小节循环）`
         : `第 ${f + 1}–${t + 1} 小节 · ${secNameOfBar(f) || "·"} → ${secNameOfBar(t) || "·"} · 共 ${t - f + 1} 小节`;
+      /* ★★ v3.30.0（用户拍板 D 案）：**范围为整首时读数隐藏**（visibility，非 display——
+         占位隐藏则行 2 的布局零跳动，状态灯位置恒定）。
+         判据只看范围两端是否覆盖整曲（f===0 ∧ t===n−1），**不看 playMode**：
+         默认停机态 playMode 并非 arrange，沿用下面的 whole 判据会藏不掉。
+         "整首"在默认态本就没有信息量（不写也知道是从头练到尾），拖出局部范围才出现，
+         而那正是最需要它的时候。 */
+      demoRangeNoteEl.style.visibility = (f === 0 && t === n - 1) ? "hidden" : "";
     }
     /* "整首"这一态 = 当前选中的就是这条曲式 + 曲式模式 + 范围恰是整首。
        滑块取代段号后不再有"某一段"的高亮，所以这里只留整首/局部这一个视图 */
@@ -16699,14 +16931,12 @@ syncParamSlots();   // v3.3.0：启动时统一收敛两个参数面板（槽只
 requestAnimationFrame(() => requestAnimationFrame(() => {
   Viz.relayout();
   if (typeof Viz.paintFrame === "function") Viz.paintFrame();
-  if (typeof Viz.syncPbInset === "function") Viz.syncPbInset();
 }));
 if (typeof document !== "undefined" && document.fonts && document.fonts.ready
     && typeof document.fonts.ready.then === "function"){
   document.fonts.ready.then(() => {
     Viz.relayout();
     if (typeof Viz.paintFrame === "function") Viz.paintFrame();
-    if (typeof Viz.syncPbInset === "function") Viz.syncPbInset();
   }).catch(() => {});
 }
 /* v2.11.2：`trStart` 输入框随「起始」参数一并删除，此处不再有它 */
@@ -17064,7 +17294,7 @@ $("showLyricToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => 
   evEl(e).blur();
   S.showLyric = !S.showLyric;
   syncLyricToggles();
-  Viz.buildLyricLane();   // 重排歌词轨（显示/隐藏 + 位置都随此重建）
+  Viz.rebuildLyricLane();   // 重排歌词轨（显示/隐藏 + 位置都随此重建；★ v3.31.1：走带静止态重落的入口）
   Store.persist();
 });
 const pills = /** @type {HTMLElement[]} */ ([...document.querySelectorAll("#lyricPosGroup .pill")]);
@@ -17074,7 +17304,7 @@ pills.forEach(b => {
     if (!S.showLyric) return;                 // 位置组禁用态：点击无效
     S.lyricPos = /** @type {"auto"|"follow"|"bottom"} */ (b.dataset.pos || "auto");
     syncLyricToggles();
-    Viz.buildLyricLane();                     // 重排歌词轨（bottom ↔ follow 切换）
+    Viz.rebuildLyricLane();                   // 重排歌词轨（bottom ↔ follow 切换；★ v3.31.1 同上）
     Store.persist();
   });
 });

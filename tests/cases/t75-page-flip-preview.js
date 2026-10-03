@@ -68,7 +68,7 @@ const playAllOf = () => boxOf().children.find(x =>
      并走完 input（拖动中）+ change（提交）两级——只发 input 不会应用范围 */
   const rangeOf = () => els["pbProgress"].children.find(x => /(^| )demo-range( |$)/.test(x.className));   // v3.3.0：滑块已搬到底栏
   const setRange = (f, t) => {
-    const track = rangeOf().children[1];
+    const track = rangeOf().children[0];   // ★ v3.30.0：读数行挪进行 2（#pbSub），wrap 首位即轨道
     const fromEl = track.children[1], toEl = track.children[2];
     fromEl.value = String(f); toEl.value = String(t);
     fromEl.fire("input"); toEl.fire("input");

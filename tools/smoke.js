@@ -802,6 +802,62 @@ function layoutProbe(){
     const r = q(".pb-right");
     return r ? round(r.getBoundingClientRect().height) : null;
   })();
+  /* ★★★ v3.31.0（用户报障）两组真机断言的数据源：
+     ① 跑道特效——「已弹格填充」与「扫弦记号码色」必须**不同色**（同色即记号被抹平：
+        经典主题白底白记号、观测台墨底墨记号，两个主题都中过招）。停机态没有 played 格子，
+        故临时挂一个 .cell.played 探针读出 ::before 的解析值（走同一条级联），量完移除。
+     ② 宽屏铺满——歌词轨的 inline 宽度由 JS 写死、不会随 #viz 自己更新，切换必须重排。
+        真机点一次开关，量 #viz 与 #lyricLane 的宽度是否一致（并读歌词字号），量完切回。 */
+  out.laneAndWide = (() => {
+    const viz = q("#viz");
+    if (!viz) return null;
+    const res = {};
+    const lumOf = (c) => { const m = /rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/.exec(c || ""); return m ? Math.round(0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) : null; };
+    /* ① 填充 vs 记号 */
+    const probe = document.createElement("div");
+    probe.className = "cell played";
+    viz.appendChild(probe);
+    res.cellFill = getComputedStyle(probe, "::before").backgroundColor;
+    viz.removeChild(probe);
+    const strum = q("#viz .strumv");
+    res.strumInk = strum ? getComputedStyle(strum, "::before").backgroundColor : null;
+    res.strumHeadInk = strum ? getComputedStyle(strum, "::after").borderBottomColor : null;
+    res.fillL = lumOf(res.cellFill); res.inkL = lumOf(res.strumInk);
+    /* ★ 宽屏铺满那半**不在这里量**：本探针的视口是 1440，而主列 max-width 本就 1440——
+       铺满开关在该视口下不改变 #viz 宽，硬写就是空转的假绿。它由 wideFullProbe()
+       在 1920 视口单独量（见 result.wideFull）。 */
+    return res;
+  })();
+  /* ★★★ v3.30.0（用户拍板）：底栏内容缘 = **跑道/歌词行盒缘**（= .main 内容缘）。
+     参照物由用户以截图红线亲手钉死（红线纵贯「音量条左边的卡片空白 → 跑道/歌词行 → 底栏」）——
+     本轮把它变成可断言的几何：左块左缘 = #viz 左缘、右块右缘 = #viz 右缘、
+     两块等宽（--pb-side-w）。旧口径（v3.28 "= 音量列左缘"）整体退役：那是**卡片控制
+     网格缘**，与跑道缘在 1440 下相差 188.5px（212.5 vs 24）——正是用户反复说
+     "没对齐"的根源。 */
+  out.pbAlign = (() => {
+    const viz = q("#viz"), ctx = q(".pb-ctx"), right = q(".pb-right"), lyric = q("#lyricLane");
+    if (!viz || !ctx || !right) return null;
+    const v = viz.getBoundingClientRect(), c = ctx.getBoundingClientRect(), r = right.getBoundingClientRect();
+    /* 歌词行若在场，一并读它的缘（用户明确说"跟跑道和歌词行对齐"——两者同宽同起点，
+       读它是为了在歌词行缺席时也能解释差异，不是另立一套基准） */
+    const l = lyric ? lyric.getBoundingClientRect() : null;
+    /* ★★★ v3.30.1（用户需求）：**进度条轨道的中线 = 胶囊中线 = 播放键中心**——
+       三者同线这条只能在真机量（桩无布局引擎）。读的必须是**轨道**中心（.demo-range-track），
+       不是右块中心：右块是两行纵排，整块居中时轨道天然高出 11.5px，那正是本轮的病灶。 */
+    const track = q(".demo-range-track"), key = q("#playBtn"), bar = q("#playBar");
+    const t = track ? track.getBoundingClientRect() : null;
+    const k = key ? key.getBoundingClientRect() : null;
+    /* 栏内容区底缘（栏底 − 下内边距）——用来确认右块下移后仍收在栏内 */
+    const bc = bar ? (() => { const b = bar.getBoundingClientRect(), cs = getComputedStyle(bar);
+      return b.bottom - parseFloat(cs.paddingBottom); })() : null;
+    return { vizL: round(v.left), vizR: round(v.right),
+      lyricL: l ? round(l.left) : null, lyricR: l ? round(l.right) : null,
+      ctxL: round(c.left), ctxW: round(c.width),
+      rightR: round(r.right), rightW: round(r.width),
+      ctxC: round(c.top + c.height / 2), trackC: t ? round(t.top + t.height / 2) : null,
+      keyC: k ? round(k.top + k.height / 2) : null,
+      rightBot: round(r.bottom), barInnerBot: bc === null ? null : round(bc) };
+  })();
   /* ★ v3.17.0：底栏内部**零视口溢出**计数（390 窄屏右列曾被压到 6px、进度条
      min-width 96 溢出视口 66px 被裁——这条把"任何底栏子元素不得超出视口"钉死） */
   out.barOverflow = (() => {
@@ -880,7 +936,9 @@ function layoutProbe(){
     .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
   /* v3.13.0（丁方案）：控制区**限宽 1000 居中 + 两列 1fr** 的几何读数——
      gridW ≤ 1000；两块等宽（1fr）；网格盒在卡片内容区内水平居中（两侧空白对称）。
-     空白 = (容器−1000)/2，随窗口变大是**设计内**行为（恒定的是"盒宽"与"对称性"）。 */
+     空白 = (容器−1000)/2，随窗口变大是**设计内**行为（恒定的是"盒宽"与"对称性"）。
+     ★ v3.30.0：卡片盒收窄到 1048（抱控制区）后，"容器"不再是跑道宽，而是卡片内容区
+     （1048−48=1000）——两侧空白恒 0，blankL/blankR 随之失去区分度，但断言仍成立。 */
   out.row1 = (() => {
     const g = q(".viz-head-grid"), card = q(".viz-head-grid") && q(".viz-head-grid").closest(".card");
     const left = q(".card-head-left"), bpm = q(".viz-head > .group");
@@ -891,6 +949,7 @@ function layoutProbe(){
     const innerR = round(cr.right - parseFloat(cs.paddingRight));
     const lr = left.getBoundingClientRect(), br = bpm.getBoundingClientRect();
     return { w: round(gr.width), leftW: round(lr.width), bpmW: round(br.width),
+      cardW: round(cr.width), cardL: round(cr.left), cardR: round(cr.right),
       blankL: round(gr.left - innerL), blankR: round(innerR - gr.right) };
   })();
   /* v3.9.0：行 2 同轴居中断言的数据源——开关参数块中心相对头部栅格中心的偏移（0 = 同轴） */
@@ -982,6 +1041,41 @@ async function runPass(label, url, userDataDir){
        而网格居中的媒体查询是 min-width:1440px——视口差 1px 不到断点，桌面网格整个不激活，
        「开关行右移」断言在本机必红、CI（Linux 无经典滚动条）却绿。用 deviceMetrics 钉死
        1440 后，三平台探针基线一致（与下方 390 窄屏同一机制）。 */
+/* ★★★ v3.31.0：宽屏铺满专用探针——**必须 >1440 才有意义**。
+   主列 `max-width:1440` 在 1440 视口下已把 #viz 钉在 1392，铺满开关不改变它的宽，
+   在桌面趟里量等于空转的假绿（首版就这么写的，跑出来"前提：切换确实改变了 #viz 宽"直接红，
+   反倒暴露了问题）。用户报障的场景正是宽屏，故单独切到 1920 量：切换前后 #viz 宽、
+   歌词轨宽（JS 写的 inline 值）、歌词字号与字块高。 */
+function wideFullProbe(){
+  return `(async function(){
+    var q = s => document.querySelector(s);
+    var rd = n => Math.round(n);
+    var viz = q("#viz"), lane = q("#lyricLane"), tog = q("#wideToggle");
+    if (!viz || !lane || !tog) return JSON.stringify({ err: "缺元素" });
+    var w = el => rd(el.getBoundingClientRect().width);
+    /* ★ 必须等两帧：--cs（字号缩放因子）由 #viz 上的 **ResizeObserver 异步**写入，
+       点完开关在同一 tick 读 getComputedStyle 拿到的是**旧字号**——
+       首版就是这么写的，于是"字号 ≤ 字块高"这条空转变绿（M3 变异实证：撤销上限后它仍是绿的）。 */
+    var frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    var res = { vw: window.innerWidth };
+    var wasOn = document.body.classList.contains("wide-full");
+    res.wasOn = wasOn;
+    res.beforeViz = w(viz); res.beforeLane = w(lane);
+    res.beforeFs = (() => { var c = lane.querySelector(".lyric-char"); return c ? Math.round(parseFloat(getComputedStyle(c).fontSize) * 10) / 10 : null; })();
+    tog.click();
+    await frame();
+    res.on = document.body.classList.contains("wide-full");
+    res.afterViz = w(viz); res.afterLane = w(lane);
+    var ch = lane.querySelector(".lyric-char"), cp = lane.querySelector(".lyric-chip");
+    res.charFs = ch ? Math.round(parseFloat(getComputedStyle(ch).fontSize) * 10) / 10 : null;
+    res.chipH = cp ? rd(cp.getBoundingClientRect().height) : null;
+    tog.click();
+    await frame();
+    res.restored = (document.body.classList.contains("wide-full") === wasOn);
+    res.backViz = w(viz); res.backLane = w(lane);
+    return JSON.stringify(res);
+  })()`;
+}
     try{
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
@@ -998,9 +1092,27 @@ async function runPass(label, url, userDataDir){
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const narrow = JSON.parse(await evaluate(cdp, layoutProbe()));
+      /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);
+      /* 探针是 async（要等 ResizeObserver 写 --cs），故用 awaitPromise */
+      const wfRaw = await cdp.send("Runtime.evaluate",
+        { expression: wideFullProbe(), awaitPromise: true, returnByValue: true });
+      const wideFull = JSON.parse(wfRaw.result.value);
+      /* ★★★ v3.31.3：格子四档亮度分离度（与视口无关，在 1920 顺带量） */
+      const lvRaw = await cdp.send("Runtime.evaluate",
+        { expression: cellLevelsProbe(), returnByValue: true });
+      result.cellLevels = JSON.parse(lvRaw.result.value);
+      /* ★★★ v3.31.1：连续滚动的静止态落位（与视口无关，在 1920 顺带量） */
+      const srRaw = await cdp.send("Runtime.evaluate",
+        { expression: scrollRestProbe(), awaitPromise: true, returnByValue: true });
+      const scrollRest = JSON.parse(srRaw.result.value);
       await cdp.send("Emulation.clearDeviceMetricsOverride");
       await sleep(150);
       result.layout = { wide, narrow };
+      result.wideFull = wideFull;
+      result.scrollRest = scrollRest;
       result.drawer = drawer;
       result.scroll = scroll;
     }catch(e){
@@ -1035,6 +1147,82 @@ function ok(cond, name, detail){
   else { fail++; failures.push(name); console.log("  ✗ " + name + (detail ? "（" + detail + "）" : "")); }
 }
 
+/* ★★★ v3.31.1：**连续滚动的静止态落位探针**（用户报障「切换连续滚动模式后歌词错位，按播放又恢复正常」）。
+   量法：走真实 UI 路径切到滚动 → 等两帧（等重排与静止态落位跑完）→ 逐个比对
+   「歌词行中心 x」与「同索引网格行中心 x」。停机态下两者必须一致
+   （静止态 = 当前行右移半行宽、上一行冻结在左半屏）；播放中才由帧循环按 scrollDx 接管。
+   修前实测：网格行在 24 / 1416，而歌词行停在视口正中 720（差 696px）。 */
+function scrollRestProbe(){
+  return `(async function(){
+    var q = s => document.querySelector(s);
+    var viz = q("#viz"), lane = q("#lyricLane"), tog = q("#scrollModeToggle");
+    if (!viz || !lane || !tog) return JSON.stringify({ err: "缺元素" });
+    var frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    var wasOn = viz.classList.contains("scroll-mode");
+    if (!wasOn){ tog.click(); await frame(); await new Promise(r => setTimeout(r, 300)); }
+    var g = Array.from(viz.querySelectorAll(".bar-row")).map(function(e){
+      var b = e.getBoundingClientRect(); return Math.round(b.left + b.width / 2); });
+    var l = Array.from(lane.querySelectorAll(".lyric-row")).map(function(e){
+      var b = e.getBoundingClientRect(); return Math.round(b.left + b.width / 2); });
+    var pairs = [];
+    for (var i = 0; i < Math.min(g.length, l.length); i++){
+      if (g[i] > 1 && l[i] > 1) pairs.push({ i: i, grid: g[i], lyric: l[i], dx: l[i] - g[i] });
+    }
+    if (!wasOn){ tog.click(); await frame(); }
+    return JSON.stringify({ wasOn: wasOn, gridN: g.length, lyricN: l.length, pairs: pairs });
+  })()`;
+}
+/* ★★★ v3.31.3：**格子四档亮度分离度探针**（用户报障「正在弹的实扫格背景变得和空扫格一样」）。
+   做法：离屏合成五种格子状态（未弹/已弹/正在弹·实扫 + 空扫·未弹/正在弹），
+   用 `getComputedStyle` 读「格底」与「填充层(::before)」两层颜色，再用**页内 canvas**
+   把它们按序叠在主题底色 `var(--bg)` 上 —— 让**浏览器自己合成**，取最终 RGB 算亮度。
+   ★ 为什么用 canvas 而不是截图采样：① smoke 端没有 PNG 解码器；
+     ② 首版是把格子浮在页面上截图采样，而**透明格会透出背后的 app 内容**，
+     把休止格读成了纯绿（假的）——canvas 合成从根上避开这类污染。
+   判据：正在弹·实扫 与 空扫/休止 的亮度差必须够大（修前实测仅 −1.2＝无法区分）。 */
+function cellLevelsProbe(){
+  return `(function(){
+    function lum(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
+    function parse(c){
+      var m = /rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([0-9.]+))?\\)/.exec(c || "");
+      if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+      m = /color\\(srgb ([0-9.]+) ([0-9.]+) ([0-9.]+)(?: \\/ ([0-9.]+))?\\)/.exec(c || "");
+      if (m) return [Math.round(+m[1]*255), Math.round(+m[2]*255), Math.round(+m[3]*255), m[4] === undefined ? 1 : +m[4]];
+      return null;
+    }
+    var host = document.createElement("div");
+    host.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.body.appendChild(host);
+    var cv = document.createElement("canvas"); cv.width = 1; cv.height = 1;
+    var ctx = cv.getContext("2d");
+    var bg = parse(getComputedStyle(document.body).backgroundColor) || [18,18,18,1];
+    function measure(cls){
+      var d = document.createElement("div");
+      d.className = cls; d.style.width = "40px"; d.style.height = "20px";
+      d.style.setProperty("--f", /upcoming/.test(cls) ? "0" : "1");
+      host.appendChild(d);
+      var cell = parse(getComputedStyle(d).backgroundColor);
+      var fillRaw = getComputedStyle(d, "::before").backgroundColor;   // 必须在移除前读（移除后恒为空串）
+      var fill = parse(fillRaw);
+      ctx.clearRect(0,0,1,1);
+      [bg, cell, fill].forEach(function(c){ if (c){ ctx.fillStyle = "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + c[3] + ")"; ctx.fillRect(0,0,1,1); } });
+      var px = ctx.getImageData(0,0,1,1).data;
+      host.removeChild(d);
+      return { rgb:[px[0],px[1],px[2]], lum: Math.round(lum(px[0],px[1],px[2]) * 10) / 10,
+               cell: cell, fill: fill, fillRaw: fillRaw };
+    }
+    var out = {
+      upSolid:      measure("cell upcoming"),
+      playedSolid:  measure("cell played"),
+      activeSolid:  measure("cell active"),
+      restUp:       measure("cell rest upcoming"),
+      restActive:   measure("cell rest active")
+    };
+    host.remove();
+    out.fillRawOfActive = out.activeSolid.fillRaw;
+    return JSON.stringify(out);
+  })()`;
+}
 async function main(){
   /* ★ CDP 端口被占时必须走 ⊘（退出码 3），不能硬跑：
      若 8791 已被**另一个**浏览器/调试实例监听，本脚本 spawn 的那个实例会因端口冲突起不来，
@@ -1252,15 +1440,23 @@ async function main(){
              预备拍行 = 开关 + 拍数输入同行右侧；复原无残留。
              （悬浮槽时代断言——四态等高 / 50px 预留 / 槽心对齐 / 卡底收容——整体退役。） */
           const xEq = a => (a[0] === a[1] && a[1] === a[2] && a[2] === a[3]);
-          /* ★★★ v3.24.0（用户方案）：**单开任一开关 → 卡高恒定**（面板在列内空余区显隐，
-             不改变整体高度——用户投诉"打开变速训练影响整体高度"的正解）；
-             都开（两组参数同时可见）允许有限生长 ≤20px（两组面板同显的固有成本）。 */
+          /* ★★★ v3.30.0（契约换轨，实测换来的界限）：**内容零变形 + 卡片向下生长**。
+             v3.24「单开卡高恒定」随三列行心对齐退役——开关列关闭态被 44px 偏移抬到
+             ~188px（正是"预备拍行心 = BPM 步进行"的代价），开面板必然纵向生长；
+             实测四态：关 240.8 / 单开静音拍 290.8 / 全开 344 / 复原 240.8。
+             用户真正在意的"打开开关内容乱窜"由**内容零变形**守住（下面的 vol1/bpm 断言：
+             四条音量滑杆与 BPM 大数字逐像素不动，卡片只向下长、不重新分布内容）。
+             界限取 110（实测 103.2 + 余量）：钉的是"不得出现量级失控的生长"，
+             不是精确值——字体度量差会让它浮动几像素。 */
           if (vp === "桌面"){
-            ok(L.tgBody.cardHM === L.tgBody.cardHC && L.tgBody.cardHR === L.tgBody.cardHC
-               && L.tgBody.cardHB <= L.tgBody.cardHC + 20,
-              p.label + "·" + vp + "：★★★ 单开开关**不改卡片高度**、复原无残留、都开 ≤20px"
-              + "（<900 纵向堆叠档开面板必下推，无此承诺）",
-              "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.cardHR);
+            ok(L.tgBody.cardHR === L.tgBody.cardHC,
+              p.label + "·" + vp + "：★★★ 开关全部复原后**卡片高度无残留**（四态回原点）",
+              "关 " + L.tgBody.cardHC + " vs 复原 " + L.tgBody.cardHR);
+            ok(L.tgBody.cardHB - L.tgBody.cardHC <= 110,
+              p.label + "·" + vp + "：★★ 全开态卡片生长有界（≤110px：两组参数面板在列内的固有成本）"
+              + "——v3.30.0 行心对齐与 v3.24 卡高恒定不可兼得，取舍 = 卡片向下长、内容不重分布",
+              "关 " + L.tgBody.cardHC + " / 单开 " + L.tgBody.cardHM
+              + " / 全开 " + L.tgBody.cardHB + " / 复原 " + L.tgBody.cardHR);
           }
           ok(L.tgBody.colLC === L.tgBody.colLM && L.tgBody.colLM === L.tgBody.colLB
              && L.tgBody.colBC === L.tgBody.colBM && L.tgBody.colBM === L.tgBody.colBB,
@@ -1282,12 +1478,127 @@ async function main(){
               "音量行 " + L.tgBody.vol1C + " → " + L.tgBody.vol1M + " → " + L.tgBody.vol1B
               + " BPM数字 " + L.tgBody.bpmC + " → " + L.tgBody.bpmM + " → " + L.tgBody.bpmB);
           }
-          /* ★★★ v3.28.0：底栏内容缘 = 卡片内容缘（syncPbInset 量测对齐）——
-             底栏左块左缘与音量列左缘逐像素一致（用户需求"对齐"的正体） */
-          if (vp === "桌面" && L.tgBody.ctxL !== null && L.tgBody.colLC !== null){
-            ok(Math.abs(L.tgBody.ctxL - JSON.parse(L.tgBody.colLC)[0]) <= 2,
-              p.label + "·" + vp + "：★★★ 底栏左块左缘 = 音量列左缘（内容列逐像素对齐，v3.28.0）",
-              "底栏左块 " + L.tgBody.ctxL + " vs 音量列 " + JSON.parse(L.tgBody.colLC)[0]);
+          /* ★★★ v3.30.0（用户拍板）：底栏左块左缘 = **跑道左缘**、右块右缘 = 跑道右缘、
+             两块等宽——对齐参照物 = 跑道/歌词行盒缘（= .main 内容缘），不是卡片控制网格缘
+             （v3.28 口径，1440 下相差 188.5px）。这是本轮用户反复标注后钉死的正体。 */
+          if (vp === "桌面" && L.pbAlign){
+            const A = L.pbAlign;
+            ok(Math.abs(A.ctxL - A.vizL) <= 2,
+              p.label + "·" + vp + "：★★★ 底栏左块左缘 = 跑道左缘（贴跑道缘，v3.30.0）",
+              "左块 " + A.ctxL + " vs 跑道 " + A.vizL);
+            ok(Math.abs(A.rightR - A.vizR) <= 2,
+              p.label + "·" + vp + "：★★★ 底栏右块右缘 = 跑道右缘（右侧对称）",
+              "右块 " + A.rightR + " vs 跑道 " + A.vizR);
+            ok(Math.abs(A.ctxW - A.rightW) <= 2,
+              p.label + "·" + vp + "：★★ 底栏左右两块**等宽**（--pb-side-w 共享变量）",
+              "左 " + A.ctxW + " vs 右 " + A.rightW);
+            if (A.lyricL !== null){
+              ok(Math.abs(A.lyricL - A.vizL) <= 2 && Math.abs(A.lyricR - A.vizR) <= 2,
+                p.label + "·" + vp + "：★★ 跑道与歌词行同缘（用户口径「跟跑道和歌词行对齐」的两者一致）",
+                "跑道 " + A.vizL + "/" + A.vizR + " vs 歌词行 " + A.lyricL + "/" + A.lyricR);
+            }
+            /* ★★★ v3.30.1（用户需求，截图圈出）：进度条轨道的中线 = 胶囊中线 = 播放键中心。
+               量的必须是**轨道**（.demo-range-track）而非右块——右块两行纵排，整块居中时
+               轨道天然高出 (45−22)/2 = 11.5px，正是本轮修的病灶。 */
+            if (A.trackC !== null && A.keyC !== null){
+              ok(Math.abs(A.trackC - A.ctxC) <= 2 && Math.abs(A.trackC - A.keyC) <= 2,
+                p.label + "·" + vp + "：★★★ 进度条轨道中线 = 胶囊中线 = 播放键中心（三者同线，v3.30.1）"
+                + "——右块下移 11.5px 使**轨道**（而非整块）成为居中基准",
+                "轨道 " + A.trackC + " / 胶囊 " + A.ctxC + " / 播放键 " + A.keyC);
+            }
+            if (A.rightBot !== null && A.barInnerBot !== null){
+              ok(A.rightBot <= A.barInnerBot + 1,
+                p.label + "·" + vp + "：★★ 右块下移后仍收在栏内（块底 ≤ 栏内容区底，不溢出/不遮挡）",
+                "块底 " + A.rightBot + " vs 栏内底 " + A.barInnerBot);
+            }
+          }
+          /* ★★★ v3.31.0（用户报障）①：跑道特效——已弹格填充与扫弦记号码色**必须不同**。
+             同色就是"记号被抹平"（经典＝白底白记号，观测台＝墨底墨记号，两主题都中过招）。
+             停机态没有 played 格子，探针临时挂一个 .cell.played 读 ::before 的解析值。 */
+          if (vp === "桌面" && L.laneAndWide && L.laneAndWide.fillL !== null && L.laneAndWide.inkL !== null){
+            const W = L.laneAndWide;
+            ok(Math.abs(W.fillL - W.inkL) >= 60,
+              p.label + "·" + vp + "：★★★ 已弹格填充「" + W.cellFill + "」与记号码色「" + W.strumInk + "」"
+              + "亮度差 ≥60 —— 同色即记号被抹平（v3.31.0 改为填充压暗 / 记号仍取 --peak）",
+              "填充 L=" + W.fillL + " vs 记号 L=" + W.inkL + "（差 " + Math.abs(W.fillL - W.inkL) + "）");
+            ok(W.strumHeadInk !== null && /^rgb/.test(W.strumHeadInk),
+              p.label + "·" + vp + "：★ 箭头三角也取到实色（杆与头同源，不能只改一头）",
+              "箭头 " + W.strumHeadInk);
+          }
+          /* ★★★ v3.31.0（用户报障）②：宽屏铺满切换后，歌词轨宽度必须跟随 #viz。
+             歌词轨的 inline 宽度由 placeLaneOverlay 写死，不重排就停在旧值
+             （实测 1920：切换后 #viz 1392→1857 而歌词轨仍是 1392 → 整体错位）。
+             ★ 数据来自 **1920 专用探针**（r.wideFull）：在 1440 视口下主列本就封顶 1440，
+             铺满开关不改变 #viz 宽——在那里量是空转的假绿。 */
+          if (vp === "桌面" && r.wideFull && !r.wideFull.err){
+            const W = r.wideFull;
+            ok(W.afterViz !== W.beforeViz,
+              p.label + "·" + vp + "：★ 前提：切换确实改变了 #viz 宽（否则本项无意义）",
+              "切换前 " + W.beforeViz + " → 后 " + W.afterViz);
+            ok(Math.abs(W.afterLane - W.afterViz) <= 2,
+              p.label + "·" + vp + "：★★★ 铺满后歌词轨宽 = #viz 宽（v3.31.0：切换补 relayout）"
+              + "——修前此处停在旧值（1440×900 实测差 465px）",
+              "歌词轨 " + W.afterLane + " vs #viz " + W.afterViz);
+            ok(W.restored === true,
+              p.label + "·" + vp + "：★ 探针已复原（切回后 wide-full 类摘除，不污染后续）", "");
+            if (W.charFs !== null && W.chipH !== null){
+              ok(W.afterViz === W.afterLane,
+                p.label + "·" + vp + "：★ 前提：歌词轨已跟上（否则下面量的是错位的字体环境）", "");
+              ok(W.charFs <= W.chipH,
+                p.label + "·" + vp + "：★★ 歌词字号 ≤ 字块高（v3.31.0 加上限 24px；"
+                + "铺满档 --cs 无界增长会把字撑出固定行高，实测无上限时 31.2px in 26px 字块）",
+                "字号 " + W.charFs + "px vs 字块高 " + W.chipH + "px"
+                + "（非铺满 " + W.beforeFs + "px）");
+              /* 钉**上限值本身**（24px）：铺满后字号必须收敛到上限，而不是随窗口无界增长。
+                 ★ 别钉成"≤ 非铺满档"——上限 24 略高于非铺满上限 23.2，那正是"不改小已认可观感"
+                 的必然结果（铺满后允许到 24，比非铺满大 0.8px）。首版就这么写错过，直接红。 */
+              ok(W.charFs <= 24.05,
+                p.label + "·" + vp + "：★★ 上限生效——铺满后字号收敛到 24px 上限"
+                + "（无上限时 1920 下是 30.9px；非铺满档 23.2px 不受影响）",
+                "非铺满 " + W.beforeFs + "px → 铺满 " + W.charFs + "px（上限 24）");
+            }
+          }
+          /* ★★★ v3.31.1：切到连续滚动（未播放）后，歌词行必须落在**静止态**位置
+             （与同索引网格行同中心）。修前歌词停在视口正中、差 696px，按播放才恢复。 */
+          if (vp === "桌面" && r.scrollRest && !r.scrollRest.err){
+            const S2 = r.scrollRest;
+            ok(S2.pairs.length >= 2,
+              p.label + "·" + vp + "：★ 前提：切滚动后有 ≥2 组可见的「网格行 ↔ 歌词行」可对比",
+              "组数 " + S2.pairs.length + "（网格行 " + S2.gridN + " / 歌词行 " + S2.lyricN + "）");
+            const bad = S2.pairs.filter(x => Math.abs(x.dx) > 2);
+            ok(S2.pairs.length >= 2 && bad.length === 0,
+              p.label + "·" + vp + "：★★★ 切滚动（未播放）后歌词行中心 = 同索引网格行中心"
+              + "（静止态落位；v3.31.1 修掉「切完错位、按播放才恢复」）",
+              "各对偏差 " + JSON.stringify(S2.pairs.map(x => x.dx))
+              + "（修前实测 +696）");
+          }
+          /* ★★★ v3.31.3：格子四档亮度**必须互相可区分**（用户报障「正在弹的实扫格背景
+             变得和空扫/休止格一样」）。修前实测：正在弹 15.0 vs 休止 16–24（分离 −1.2）。
+             用页内 canvas 合成取真实像素亮度（透明格截图采样会透出背后内容，读数不可信）。 */
+          if (vp === "桌面" && r.cellLevels){
+            const C = r.cellLevels;
+            const diff = (a, b) => Math.round((a.lum - b.lum) * 10) / 10;
+            const chroma = p => Math.max(p[0], p[1], p[2]) - Math.min(p[0], p[1], p[2]);
+            ok(diff(C.activeSolid, C.restActive) >= 25 && diff(C.activeSolid, C.restUp) >= 25,
+              p.label + "·" + vp + "：★★★ 正在弹·实扫格 与 空扫/休止格 亮度分离 ≥25"
+              + "（修前 −1.2＝无法区分，用户报障的正体）",
+              "正在弹 " + C.activeSolid.lum + " vs 空扫·正在弹 " + C.restActive.lum
+              + " / 空扫·未弹 " + C.restUp.lum + "（Δ " + diff(C.activeSolid, C.restActive) + "）");
+            ok(diff(C.activeSolid, C.playedSolid) >= 15,
+              p.label + "·" + vp + "：★★ 正在弹 与 已弹 也要能区分（不能两档同亮）",
+              "正在弹 " + C.activeSolid.lum + " vs 已弹 " + C.playedSolid.lum);
+            ok(diff(C.upSolid, C.playedSolid) >= 8,
+              p.label + "·" + vp + "：★★ 未弹 与 已弹 可区分（已弹＝退到背景里）",
+              "未弹 " + C.upSolid.lum + " vs 已弹 " + C.playedSolid.lum);
+            ok(chroma(C.activeSolid.rgb) >= 20,
+              p.label + "·" + vp + "：★★★ 正在弹格填充**有色**（随主题的绿/蓝调）——"
+              + "这是它区别于「中性压暗」的休止格的关键线索",
+              "正在弹 rgb " + JSON.stringify(C.activeSolid.rgb) + " 彩度 " + chroma(C.activeSolid.rgb));
+            ok(chroma(C.restActive.rgb) <= 10 && chroma(C.restUp.rgb) <= 10,
+              p.label + "·" + vp + "：★★★ 空扫/休止格保持**中性**（不得被染成主题色——"
+              + "即「空扫不会被染成跟实扫一样」这条不回潮）",
+              "空扫·正在弹 rgb " + JSON.stringify(C.restActive.rgb)
+              + " 彩度 " + chroma(C.restActive.rgb));
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,

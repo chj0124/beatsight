@@ -132,8 +132,9 @@ section("T149g 行距补偿 · follow 挂 .lyric-inline-on / bottom·off 摘类�
     "★ CSS：xl 双关歌词行高 32px（v2.84.0 跟随条同口径，进释放出的标注带）");
   ok(/#viz\.no-ruler\.no-durlab \.lyric-row \.lyric-chip\{height:30px\}/.test(src),
     "★ CSS：xl 双关字块高 30px");
-  ok(/#viz\.no-ruler\.no-durlab \.lyric-row \.lyric-char\{font-size:calc\(17px \* var\(--cs, 1\)\);font-weight:800\}/.test(src),
-    "★ CSS：xl 双关字 17px·800");
+  /* ★ v3.31.0：同 .lyric-char，加上限（双关档正常上限 24.65px，故卡 25px） */
+  ok(/#viz\.no-ruler\.no-durlab \.lyric-row \.lyric-char\{font-size:min\(calc\(17px \* var\(--cs, 1\)\), 25px\);font-weight:800\}/.test(src),
+    "★ CSS：xl 双关字 17px·800（v3.31.0 起带上限 25px）");
   ok(/@media[\s\S]*#viz\.lyric-inline-on \.bar-row\{margin-bottom:52px\}/.test(src),
     "★ CSS：窄屏行距补偿 10→52px（媒体查询内与桌面同值）");
   ok(/@media[\s\S]*#viz\.lyric-inline-on\.chord-xl \.bar-row\{margin-bottom:48px\}/.test(src),

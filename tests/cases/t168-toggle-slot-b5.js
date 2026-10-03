@@ -21,8 +21,9 @@ section("T153a v3.19.0 开关列纵排 —— 面板在流内挂各自开关下�
 {
   ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ tg-body = 纵排 flex 列 + width:100%（v3.19.0 新骨架；v3.13 的 display:block+padding 预留口径退役）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:2px\}/.test(CSS_CODE),
-    "★★ v3.24.0：tg-row 纵排 + 间距压缩——行高恒定（由 BPM 列决定），面板在列内空余区显隐");
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:14px\}/.test(CSS_CODE),
+    "★★ v3.30.0：tg-row 纵排 + 行距 14px（三行行心与 BPM 三行横向对齐；原 v3.24 的 2px 压缩"
+    + "是'行高恒定'方案的配额，该契约随行心对齐一并退役）");
   ok(!/\.viz-toggles \.tg-slot\{position:absolute/.test(CSS_CODE)
      && !/tg-slot\{display:contents\}/.test(CSS_CODE),
     "★★ 悬浮槽规则整体退役（无 absolute 槽、无 display:contents 壳）");
@@ -52,8 +53,9 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
   /* ≥900：控制卡片三列均分（用户需求：音量 | BPM | 三开关同排） */
   ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(CSS_CODE),
     "★★ ≥900：控制卡片三列均分（音量 | BPM | 开关列，各 ~1fr）");
-  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
-    "★ 开关列 = 第 3 列、与音量/BPM 同行");
+  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{padding-top:44px;grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
+    "★ 开关列 = 第 3 列、与音量/BPM 同行；v3.30.0 起 padding-top 44px 让「预备拍」行心"
+    + "与 BPM 步进行同线（L1，实测 174 vs 173.8）");
   ok(!/@media \(max-width:759\.9px\)\{[^}]*tg-body\{grid-template/.test(CSS_CODE.replace(/\n/g, "")),
     "★ ≤759.9 手风琴网格特化退役（全宽度统一纵排流内，无网格可特化）");
 }
