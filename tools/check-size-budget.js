@@ -162,8 +162,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      预留 / 锁宽 / 手风琴特化 ≈5.6KB）整体退役，新增三列 + 纵排流内 CSS ~2.1KB；
      滚动 boot 双 rAF + 雾化 14。↑ **1465KB**。
    v3.20.0（边缘渐隐方案 A）：净减约 1.3KB（实测 1461.3KB）——雾化条 DOM/CSS/JS 同步块
-     退役（-2.1KB），内容渐隐 mask +4 钉（+0.8KB）。↓ **1463KB**。 */
-const BUDGET_BYTES = 1463 * 1024;
+     退役（-2.1KB），内容渐隐 mask +4 钉（+0.8KB）。↓ **1463KB**。
+   v3.21.0（音量/BPM 等高）：净增约 0.7KB（实测 1462.0KB）——stretch/space-between/
+     align-self 三条注释（含 evenly 错位标签的取舍说明）。↑ **1464KB**。 */
+const BUDGET_BYTES = 1464 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

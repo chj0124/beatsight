@@ -651,8 +651,11 @@ function layoutProbe(){
        预备拍行 = 开关 + 拍数输入同行右侧。 */
     const colL = q(".viz-head-grid .card-head-left");
     const colB = q(".viz-head-grid .viz-head > .group");
-    const colLR = () => (colL ? JSON.stringify([round(colL.getBoundingClientRect().left), round(colL.getBoundingClientRect().top), round(colL.getBoundingClientRect().width), round(colL.getBoundingClientRect().height)]) : null);
-    const colBR = () => (colB ? JSON.stringify([round(colB.getBoundingClientRect().left), round(colB.getBoundingClientRect().top), round(colB.getBoundingClientRect().width), round(colB.getBoundingClientRect().height)]) : null);
+    /* v3.21.0：不移动承诺 = left/top/width（音量列高度随行高铺开是用户需求，不入此列） */
+    const colLR = () => (colL ? JSON.stringify([round(colL.getBoundingClientRect().left), round(colL.getBoundingClientRect().top), round(colL.getBoundingClientRect().width)]) : null);
+    const colBR = () => (colB ? JSON.stringify([round(colB.getBoundingClientRect().left), round(colB.getBoundingClientRect().top), round(colB.getBoundingClientRect().width)]) : null);
+    const colLH = () => (colL ? round(colL.getBoundingClientRect().height) : null);
+    const colBH = () => (colB ? round(colB.getBoundingClientRect().height) : null);
     const wrapEl = q("#countInBeatsWrap"), ct = q("#countInToggle");
     const wrapRow = () => { if (!wrapEl || !ct) return null;
       const a = ct.getBoundingClientRect(), b = wrapEl.getBoundingClientRect();
@@ -680,6 +683,7 @@ function layoutProbe(){
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
     const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), colBC = colBR(), rowWC = wrapRow();
+    const volHC = colLH(), bpmHC = colBH();
     const cardHC = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     if (mt) mt.click();
     const muteOnly = h(), mxM = mx(), txM = tx(), colLM = colLR(), colBM = colBR(), rowWM = wrapRow();
@@ -717,6 +721,7 @@ function layoutProbe(){
       cardHC: cardHC, cardHM: cardHM, cardHB: cardHB,
       colLC: colLC, colLM: colLM, colLB: colLB,
       colBC: colBC, colBM: colBM, colBB: colBB,
+      volHC: volHC, bpmHC: bpmHC,
       rowWC: rowWC, rowWM: rowWM, rowWB: rowWB,
       mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
       txC: txC, txM: txM, txB: txB, txR: tx(),
@@ -1230,9 +1235,15 @@ async function main(){
             "卡高四态 " + L.tgBody.cardHC + "/" + L.tgBody.cardHM + "/" + L.tgBody.cardHB + "/" + L.tgBody.restored);
           ok(L.tgBody.colLC === L.tgBody.colLM && L.tgBody.colLM === L.tgBody.colLB
              && L.tgBody.colBC === L.tgBody.colBM && L.tgBody.colBM === L.tgBody.colBB,
-            p.label + "·" + vp + "：★★★ 音量/BPM 两列 rect **逐像素不动**（列内生长不外溢——"
-            + "v3.19.0 的核心承诺）",
+            p.label + "·" + vp + "：★★★ 音量/BPM 两列 left/top/width **逐像素不动**"
+            + "（v3.21.0：高度随行高铺开是用户需求，横移/顶移仍为零）",
             "音量 " + L.tgBody.colLC + " → " + L.tgBody.colLM + " → " + L.tgBody.colLB);
+          if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
+            ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,
+              p.label + "·" + vp + "：★★ 音量列与 BPM 列**等高**（≥900 三列等高 + space-between 铺满，"
+              + "用户需求；<900 纵向堆叠无此承诺）",
+              "音量 " + L.tgBody.volHC + " vs BPM " + L.tgBody.bpmHC);
+          }
           ok(xEq([L.tgBody.mxC, L.tgBody.mxM, L.tgBody.mxB, L.tgBody.mxR])
              && xEq([L.tgBody.txC, L.tgBody.txM, L.tgBody.txB, L.tgBody.txR]),
             p.label + "·" + vp + "：★★★ 开关/面板 x **逐像素不动**（列内零横移）",

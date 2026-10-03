@@ -52,7 +52,7 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
   /* ≥900：控制卡片三列均分（用户需求：音量 | BPM | 三开关同排） */
   ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(CSS_CODE),
     "★★ ≥900：控制卡片三列均分（音量 | BPM | 开关列，各 ~1fr）");
-  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{grid-column:3;grid-row:1\}/.test(CSS_CODE),
+  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
     "★ 开关列 = 第 3 列、与音量/BPM 同行");
   ok(!/@media \(max-width:759\.9px\)\{[^}]*tg-body\{grid-template/.test(CSS_CODE.replace(/\n/g, "")),
     "★ ≤759.9 手风琴网格特化退役（全宽度统一纵排流内，无网格可特化）");
