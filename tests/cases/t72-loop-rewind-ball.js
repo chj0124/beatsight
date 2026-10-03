@@ -212,11 +212,13 @@ section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2
   ok(/breath/.test(String(ball3.className || "")),
     "★ 无预备拍：待命球挂 breath 类（亮度呼吸脉冲，0.08s 窗口也有“活着”的预告）");
 
-  /* ④ 预备拍全程**只出主球一颗**（v3.0.0 批 8，用户实拍推翻 v2.42.6）：
-     v2.42.6 让待命球在预备拍最后一拍落到行首"预告下一个是正式第一拍"，但用户实拍
-     预备拍 4/4 时主球 + 待命球同框（"出现两个小球"）——它的语义只在**小节间回卷**
-     （paintBall 终端弧段）成立，预备拍这处写点已删。对照：上一小节回卷场景（本用例开头）
-     的待命球不受影响。 */
+  /* ④ 预备拍最后一拍：待命球**进场**（v3.29.0 恢复 v2.42.6 原设计；批 8 的「零出场」是误诊）。
+     批 8 把"预备拍 4/4 时主球 + 待命球同框"当 bug 删掉了这条写点——但同框（双重奏）本来就是
+     全 app **每一次行交接**的既有交接语言（接力写点至今健在、从未被投诉）。用户当年在手机
+     上的真身观感是"凭空出现一颗静止的球"，那是「行边界 + 下一行开头空拍」的双静止
+     （窄屏拆行 K=2 让行边界落进小节内部，而球是 onset 驱动的），与同框无关。
+     ⇒ 本组断言的**新口径**：最后一拍可见 + 逐帧真的在动；前 ciBeats−1 拍仍然单球。
+     对照：上一小节回卷场景（本用例开头）的待命球不受影响。 */
   const app4 = loadApp();
   const beat4 = app4.beat;
   beat4.Store.S.countIn = { on: true, beats: 4 };
@@ -225,11 +227,22 @@ section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2
   const ac4 = FakeAudioContext.last;
   const iv4 = beat4.Viz.internals();
   const ciStart4 = beat4.clock().loopStart - 4 * spb96;
-  ac4.currentTime = ciStart4 + 3 * spb96 + 0.1;          // 最后一拍的前 0.1s（旧设计里待命球应在场）
+  ac4.currentTime = ciStart4 + 3 * spb96 + 0.1;          // 最后一拍的前 0.1s
   beat4.AudioEngine.scheduler();
   beat4.Viz.paintFrame();
-  ok(iv4.waitEl.style.display === "none",
-    "★ 预备拍最后一拍：待命球**不再出现**（预备拍全程只出主球一颗，批 8）");
+  ok(iv4.waitEl.style.display !== "none",
+    "★ 预备拍最后一拍：待命球**进场**（v3.29.0 恢复 v2.42.6「回卷前行首先有球等着」）");
+  /* ★★ 逐帧位移：只断言"可见"会漏掉"在但没动"那一类回归（批 0–7 的病态形态），
+     故这里钉"整段最后一拍里 transform 必须持续变化" */
+  const tf4 = new Set();
+  for (let i = 0; i < 20; i++){
+    ac4.currentTime = ciStart4 + 3 * spb96 + (i / 19) * spb96 * 0.92;
+    beat4.AudioEngine.scheduler();
+    beat4.Viz.paintFrame();
+    if (iv4.waitEl.style.display !== "none") tf4.add(iv4.waitEl.style.transform);
+  }
+  ok(tf4.size >= 10, "★ 预备拍最后一拍待命球**逐帧在动**（≥10 种 transform，防「在但没动」）",
+    "不同 transform 种数 " + tf4.size);
   const app5 = loadApp();
   const beat5 = app5.beat;
   beat5.Store.S.countIn = { on: true, beats: 4 };
@@ -243,5 +256,6 @@ section("T72e 起播预备动画 · 预备拍跟跳 / 待命呼吸 / 降级（v2
     beat5.Viz.paintFrame();
     if (iv5.waitEl.style.display !== "none") ciBalls++;
   }
-  ok(ciBalls === 0, "★ 预备拍四拍逐拍核对：待命球零出场（单球贯穿整个预备拍）", "出场帧数 " + ciBalls);
+  ok(ciBalls === 1, "★ 预备拍四拍逐拍核对：仅**最后一拍**进场（前三拍仍单球）",
+    "出场帧数 " + ciBalls + "（预期 1）");
 }

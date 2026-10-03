@@ -3097,18 +3097,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5359  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6223  Modal         应用内弹窗
      L6361  Viz           时值可视化渲染与每帧动画
-     L9534  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10201 Trainer       变速训练器
-     L10403 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L10987 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12376 Editor        自定义节奏型编辑器
-     L12822 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L12869 Ear           听辨训练（v1.10.0）
-     L13088 Arrange       曲式编排（v2.0.0）
-     L15986 Help          使用方法（v2.0.1）
-     L16115 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16189 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16432 初始化（装配） 各模块 hook 接线与启动
+     L9576  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10243 Trainer       变速训练器
+     L10445 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11029 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12418 Editor        自定义节奏型编辑器
+     L12864 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L12911 Ear           听辨训练（v1.10.0）
+     L13130 Arrange       曲式编排（v2.0.0）
+     L16028 Help          使用方法（v2.0.1）
+     L16157 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16231 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L16474 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3134,7 +3134,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.28.0";
+const VERSION = "3.29.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9105,11 +9105,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           ballEl.style.display = "none"; shadowEl.style.display = "none";
           if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
         } else {
-        const row = Math.floor(pos / RBc) % Math.max(1, rowGeo.length);
+        /* ★ v3.29.0：**行号取模、行内位置取未取模的行号**（两者口径必须一致）。
+           预备拍占的行数 > 显示行数时（1 行档 + 窄屏 2 拍/行 = 4 拍占两行），row 被模回 0
+           而 inRow 仍带着第二行的量 ⇒ x 冲到 679（行宽才 358）**飞出跑道右缘**。
+           修后主球在最后一可见行重新走一遍（与"幽灵小节借用可见跑道"语义自洽）；
+           vizRows ≥ 2 时 rowIdx < rowGeo.length、行为与修复前逐位相同。
+           PC 端 K=1（4 拍正好一行）永不触发——这是窄屏拆行专有的边缘组合。 */
+        const rowIdx = Math.floor(pos / RBc);
+        const row = rowIdx % Math.max(1, rowGeo.length);
         const g = geoOf(row) || geoOf(0);
         if (g){
           const frac = pos - Math.floor(pos);
-          const inRow = pos - row * RBc;
+          const inRow = pos - rowIdx * RBc;
           const x = g.left + (inRow / RBc) * g.width - 8;
           const yB = g.top - 20;
           const h = REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * frac * (1 - frac);
@@ -9120,7 +9127,42 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           shadowEl.style.opacity = (0.32 - 0.2 * hN).toFixed(3);
           if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
         }
-        if (waitEl) waitEl.style.display = "none";
+        /* ★★ v3.29.0（用户拍板"原样恢复"）：**回卷前行首先有球等着**——走位进入最后一拍
+           （pos ≥ ciBeats−1）时，接力待命球从落点左侧 hopSpan 处起跳、沿抛物线跳入
+           第一行**行首**，**落地时刻 = 音乐第一拍（ciEnd）**，随即由 paintBall 正常路径
+           接管转正（本分支之外的既有写点自然兜底，不新增写点）。与"小节间回卷"的接力
+           待命球**同一套数学**（见 paintBall 终端弧段）。
+           ★ 恢复缘由（v3.0.0 批 8 的误诊）：批 8 把"预备拍 4/4 时主球 + 待命球同框"
+             当 bug 删掉了这条写点。但**同框（双重奏）本来就是全 app 每一次行交接的既有
+             交接语言**（接力写点至今健在、从未被投诉）。用户当年在手机上的实际观感是
+             "凭空出现一颗静止的球"——那是「行边界 + 下一行开头空拍」的**双静止**：窄屏
+             拆行（K=2）让行边界落进小节内部，而球是 onset 驱动的，空拍期间主球钉在旧行
+             右缘、待命球已提前落到下一个**发声音**处，两球面对面站住约 0.3s。那是设计
+             语义的固有形态（落点=首个发声音），与"同框"无关，本次**不动**它。
+           ★ 落点 = 第一行**行首**（端点锚：onsetBuf 首条是 cumT=0 的窗口锚 ⇒ tick 0
+             ⇒ x = 行左缘 − 8）——**不是**"首个发声音"，那是**接力**（paintBall 终端弧段）
+             的语义。两者在《在他乡》恰好同值（首音在 tick 0），但**不能照"首个发声音"改**：
+             onsetBuf 要到 ciEnd 前 ~0.35s 才进端点，空缓冲时回退同样取 tick 0 ⇒ 与锚同值
+             ⇒ 现行为**全程无中途跳变**；改成"首个发声音"反而会让落点在飞行中途突然跳变。
+             分页 .viz 无横向裁剪（clip-path 只在 scroll 模式），起跳点在跑道外是
+             v2.42.6 验收过的原样。
+           REDUCE_MOTION：p 恒 1——静止在场、不做落下动作（与既有"降形变保留位置"同向）。 */
+        if (waitEl){
+          if (pos >= ciBeats - 1){
+            const first = onsetBuf.length ? onsetBuf[0] : null;
+            const q = first ? onsetPos(first, arrCur) : null;
+            const gw = geoOf(0) || g;
+            const lx = gw.left + ((q ? q.tick : 0) / (segTicks() || 1)) * gw.width - 8;
+            const ly = gw.top - 20;
+            const hopSpan = gw.width * 0.2;
+            const p = REDUCE_MOTION ? 1 : Math.min(1, Math.max(0, (c.currentTime - (ciStart + (ciBeats - 1) * spb())) / spb()));
+            const wx = lx - hopSpan * (1 - p);
+            const wy = ly - (REDUCE_MOTION ? 0 : CONFIG.bounce.max * 0.75 * 4 * p * (1 - p));
+            waitEl.style.display = "";
+            waitEl.style.opacity = "";
+            waitEl.style.transform = `translate(${wx.toFixed(1)}px, ${wy.toFixed(1)}px)`;
+          } else waitEl.style.display = "none";
+        }
         }                                  // ← else（paged 幽灵步）
       }
       /* ★★ v3.1.7（用户需求"预备拍几拍、预滚道就多长"）：预备拍 = **专用预备拍条**——
