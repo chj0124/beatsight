@@ -149,6 +149,9 @@ const PERF_BUDGET = {
   fps: 50,
   buildVizMs: 50,
   paintFrameMs: 1,
+  /* v3.31.6（审计 S-3）：歌词轨在场时的逐帧下界预算——paintLyric 每帧建 states 数组+签名串，
+     长句时按字数放大；初值 2ms（实测校准后收紧/放宽）。 */
+  lyricFrameMs: 2,
   domNodes: 1300,
 };
 
@@ -361,6 +364,27 @@ function probe(){
         if (!isNaN(v)) fillScale = Math.max(fillScale, v);
       }
     }
+    /* ★ S-3（v3.31.6）：歌词轨在场时的逐帧成本——paintLyric 每帧建 states 数组 + 签名串，
+       桩测不出（桩 rAF 空函数、无真实字块）。切到示例曲 + 显示歌词再量一遍，量完还原
+       页面状态（后续探针依赖各自的初始态）。 */
+    let lyricFrameMs = null;
+    try{
+      const St = window.__beat.Store.S;
+      const prev = { mode: St.playMode, sel: St.arrangeSel, show: St.showLyric };
+      St.playMode = "arrange";
+      St.showLyric = true;
+      St.arrangeSel = { id: window.__beat.DEMO_ID, from: 0, to: 99, loop: true, byLyric: false };
+      window.__beat.Viz.buildViz();
+      window.__beat.Controls.start();
+      await new Promise(r => setTimeout(r, 400));
+      const t3 = performance.now();
+      const NL = 200;
+      for (let i = 0; i < NL; i++) window.__beat.Viz.paintFrame();
+      lyricFrameMs = (performance.now() - t3) / NL;
+      window.__beat.Controls.stop();
+      St.playMode = prev.mode; St.showLyric = prev.show; St.arrangeSel = prev.sel;
+      window.__beat.Viz.buildViz();
+    }catch(e){ lyricFrameMs = null; }
     window.__beat.Controls.stop();
     /* 首屏耗时取自 **Navigation Timing**，不是探针自己的 performance.now()：
        探针要等 CDP 连上才注入，那时页面早启动完了，用探针的时间戳量出来的是
@@ -369,6 +393,7 @@ function probe(){
        时序下可能仍是 0，拿它做闸门会变成假红）。 */
     const nav = (performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null) || {};
     out.perf = { buildVizMs: +buildMs.toFixed(2), paintFrameMs: +frameMs.toFixed(3),
+      lyricFrameMs: lyricFrameMs === null ? null : +lyricFrameMs.toFixed(3),
       measuredWhilePlaying: playing, syncFrames: N, fps: fps, fillScale: +fillScale.toFixed(3),
       bootMs: Math.round(nav.domContentLoadedEventEnd || 0),
       loadMs: Math.round(nav.loadEventEnd || 0) };
@@ -1926,6 +1951,13 @@ async function main(){
         ok(d.perf.paintFrameMs < PERF_BUDGET.paintFrameMs,
           p.label + "：同步循环单帧 < " + PERF_BUDGET.paintFrameMs + "ms（下界读数，只拦整树重建级退化）",
           "实际 " + d.perf.paintFrameMs + " ms/帧");
+        if (d.perf.lyricFrameMs !== null && d.perf.lyricFrameMs !== undefined){
+          ok(d.perf.lyricFrameMs < PERF_BUDGET.lyricFrameMs,
+            p.label + "：歌词轨在场单帧 < " + PERF_BUDGET.lyricFrameMs + "ms（paintLyric 逐帧分配的下界——S-3 实测收口）",
+            "实际 " + d.perf.lyricFrameMs + " ms");
+        } else {
+          ok(false, p.label + "：歌词轨帧成本未取到（探针自身问题，需排查）", "");
+        }
         /* v2.26.1：填充层走 ::before + --f 之后的**防退化护栏**——桩测不到伪元素，
            只有真机能证明"格子真的被填白了"。scaleX 恒 0 = 填充推进整条断了。 */
         ok(d.perf.fillScale > 0.05,

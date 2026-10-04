@@ -143,17 +143,47 @@ if (!fs.existsSync(DIST)){
   }
 }
 
-/* ---- 汇总 ---- */
-console.log("──────────────────────────────────────────────────────────");
-for (const n of notes) console.log("  ℹ " + n);
-if (okLines.length) console.log(okLines.join("\n"));
-if (problems.length){
-  console.log("  ✗ 发现 " + problems.length + " 处不一致：");
-  problems.forEach(p => console.log("    - " + p));
+/* ---- ③ 线上实际版本（v3.31.6，审计⑤）：信息性核对，**不判红**——CI 里跑在本批 push 的
+   部署完成之前，线上落后属预期（Cloudflare 自动构建要几十秒到几分钟）；它把「线上到底
+   是哪一版」从人肉看徽章变成每次对账打印一行。无网络（本地离线）标 ⊘ 跳过。
+   CJS 无顶层 await：核对与汇总整体收进 async IIFE。 */
+(async () => {
+  const ONLINE_URL = "https://beatsight.chenhuajian1995.workers.dev/";
+  const online = await new Promise(resolve => {
+    const req = require("https").get(ONLINE_URL, { timeout: 8000 }, res => {
+      if (res.statusCode !== 200){ res.resume(); resolve({ err: "HTTP " + res.statusCode }); return; }
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", c => { if (body.length < 3 * 1024 * 1024) body += c; });
+      res.on("end", () => resolve({ body }));
+    });
+    req.on("timeout", () => { req.destroy(); resolve({ err: "timeout" }); });
+    req.on("error", e => resolve({ err: e && e.code ? e.code : String(e) }));
+  });
+  if (online.err){
+    notes.push("线上版本核对 ⊘ 跳过（无网络/超时：" + online.err + "）——本地对账结论不受影响");
+  } else {
+    const om = /const\s+VERSION\s*=\s*"([^"]+)"/.exec(online.body || "");
+    if (!om){
+      notes.push("线上页面读不到 VERSION（结构与预期不符，可能服务异常或页面改版）");
+    } else {
+      const same = om[1] === VERSION;
+      notes.push("线上（Cloudflare）= v" + om[1] + "，" + (same ? "与本地一致" : "与本地 v" + VERSION + " 不一致——部署可能尚未完成（信息性，不判红）"));
+    }
+  }
+
+  /* ---- 汇总 ---- */
+  console.log("──────────────────────────────────────────────────────────");
+  for (const n of notes) console.log("  ℹ " + n);
+  if (okLines.length) console.log(okLines.join("\n"));
+  if (problems.length){
+    console.log("  ✗ 发现 " + problems.length + " 处不一致：");
+    problems.forEach(p => console.log("    - " + p));
+    console.log("══════════════════════════════════════════════════════════");
+    console.log("  对账失败 · 退出 1");
+    process.exit(1);
+  }
+  console.log("  对账通过 · 双渠道版本一致" + (notes.length ? "（见上方 ℹ 说明）" : ""));
   console.log("══════════════════════════════════════════════════════════");
-  console.log("  对账失败 · 退出 1");
-  process.exit(1);
-}
-console.log("  对账通过 · 双渠道版本一致" + (notes.length ? "（dist 未构建，仅本地）" : ""));
-console.log("══════════════════════════════════════════════════════════");
-process.exit(0);
+  process.exit(0);
+})();

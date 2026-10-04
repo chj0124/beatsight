@@ -74,7 +74,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 ## 功能一览
 
-当前 `v3.31.5`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.31.6`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|
@@ -138,7 +138,7 @@ node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时�
 | [AGENTS.md](AGENTS.md) | 开发协作约定：改动纪律、任务分流、禁区（面向 AI 编码助手） |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发交接文档：架构、数据模型、设计规范、自验方法、路线图与技术债 |
 | [docs/README.md](docs/README.md) | docs/ 目录索引：活文档与历史快照的分界线 |
-| [CHANGELOG.md](CHANGELOG.md) | 当前大版本线（v2.x）版本记录 |
+| [CHANGELOG.md](CHANGELOG.md) | 当前大版本线（v3.x）版本记录 |
 | [docs/archive/prd.html](docs/archive/prd.html) | 产品需求文档 v1.0（原始 PRD，**已归档**：现行功能以 CHANGELOG 为准） |
 | [docs/archive/spec.md](docs/archive/spec.md) | 全维度代码审计与迭代规划（2026-09-17 审计，**已归档**：历史快照，按需查节） |
 | [docs/archive/AUDIT-2026-09-21.md](docs/archive/AUDIT-2026-09-21.md) | 2026-09-21 诊断报告（基线 v2.8.9）：P0–P3 分级，P0/P1 已逐条处置 |

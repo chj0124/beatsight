@@ -274,6 +274,36 @@ console.log("══════════════════════�
   }
 }
 
+/* ---- 5b) README 里「当前大版本线（vX.x）」必须等于当前大号（v3.31.6，审计 P3-B）----
+   由来：docs/README.md 的活文档表写「CHANGELOG.md …当前大版本线（v2.x）」，实际已是 v3.x
+   且没有任何规则覆盖这一句（第 5 项只查「当前 `vX.Y.Z`」形状）。 */
+{
+  const docsIdx2 = fs.readFileSync(path.join(ROOT, "docs", "README.md"), "utf8");
+  const vm2 = /const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"));
+  const curMajor = vm2 ? +vm2[1].split(".")[0] : null;
+  const claim2 = /当前大版本线（v(\d+)\.x）/.exec(docsIdx2);
+  if (claim2){
+    if (curMajor !== null && +claim2[1] !== curMajor){
+      problems.push("docs/README.md 写「当前大版本线（v" + claim2[1] + ".x）」，实际当前大号是 v"
+        + curMajor + "——CHANGELOG 分卷后这一句也要跟着翻页");
+    } else {
+      report.push("✓ README 大版本线声明：v" + claim2[1] + ".x（与 VERSION 大号对齐）");
+    }
+  }
+}
+
+/* ---- 5c) CHANGELOG 软阈值提醒（v3.31.6，审计④）：分卷机制靠「bump 大版本」这一人工动作触发，
+   主文件仍会随版本条目线性膨胀——过阈值只打提醒不判红，让分卷成为持续动作而非一次性大手术。 */
+{
+  const cl = fs.readFileSync(path.join(ROOT, "CHANGELOG.md"), "utf8");
+  const entries = (cl.match(/^## v/g) || []).length;
+  const bytes = Buffer.byteLength(cl);
+  if (entries > 80 || bytes > 240 * 1024){
+    report.push("ℹ CHANGELOG 软阈值提醒：" + entries + " 条 / " + Math.round(bytes / 1024) + " KB"
+      + "（超 80 条或 240KB）——考虑按头部口径把老条目分卷归档（提醒不判红）");
+  }
+}
+
 /* ---- 6) 自验步数：文档里的步数声明必须与 check-all.js 的 STEPS 实际结构一致 ---- */
 const STEP_COUNT_FILES = ["README.md", "docs/DEVELOPMENT.md"];
 {

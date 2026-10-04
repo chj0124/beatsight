@@ -269,6 +269,17 @@ for (const step of STEPS){
 }
 
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+/* v3.31.6（审计①）：机器可读的自验报告（.gitignore 忽略）——「哪些步骤被验证 / 哪些 ⊘/⚠」
+   从此可 diff：改完代码跑一遍，对比上一份就知道哪一步从 ✓ 变成 ⊘/⚠。 */
+try{
+  const ver = (/const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")) || [])[1] || "";
+  fs.writeFileSync(path.join(ROOT, ".verify-report.json"), JSON.stringify({
+    ts: new Date().toISOString(), version: ver, quick: !!QUICK, strictEnv: !!STRICT_ENV,
+    elapsedS: +elapsed,
+    steps: results.map(r => ({ name: r.name, ok: !!r.ok, skipped: !!r.skipped, env: !!r.env,
+      toolError: !!r.toolError, warnCount: r.warnCount || 0, ms: r.ms })),
+  }, null, 2));
+}catch(e){}
 /* v2.8.16（审计 P2-1）：第 16/18 步共享的覆盖率落盘目录，检查跑完后清理（无论成败） */
 fs.rmSync(COV_DIR, { recursive: true, force: true });
 console.log("\n══════════════════════════════════════════════════════════");

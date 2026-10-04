@@ -26,6 +26,7 @@ _cdpdbg-*.json
 _serve.js
 NVIDIA Corporation/
 dist/
+.verify-report.json
 
 # 开发期自验工具链的依赖树（只跑本地，不进上站产物）
 # 上站产物清单由 tools/build-dist.js 决定：5 个拷贝条目（index.html / sw.js / manifest.webmanifest / icon.svg / _headers）

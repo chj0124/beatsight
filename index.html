@@ -3256,21 +3256,21 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L3286  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L3922  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5617  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6506  Modal         应用内弹窗
-     L6651  Viz           时值可视化渲染与每帧动画
-     L9897  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10567 Trainer       变速训练器
-     L10775 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11399 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12827 Editor        自定义节奏型编辑器
-     L13328 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13375 Ear           听辨训练（v1.10.0）
-     L13603 Arrange       曲式编排（v2.0.0）
-     L16516 Help          使用方法（v2.0.1）
-     L16645 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16719 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L16962 初始化（装配） 各模块 hook 接线与启动
+     L5635  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6527  Modal         应用内弹窗
+     L6672  Viz           时值可视化渲染与每帧动画
+     L9921  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10602 Trainer       变速训练器
+     L10810 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11434 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L12862 Editor        自定义节奏型编辑器
+     L13363 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13410 Ear           听辨训练（v1.10.0）
+     L13638 Arrange       曲式编排（v2.0.0）
+     L16565 Help          使用方法（v2.0.1）
+     L16694 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L16768 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17011 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3296,7 +3296,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.31.5";
+const VERSION = "3.31.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3963,7 +3963,10 @@ const Store = (() => {
      与本模块其余每一处访问同一口径兜住 */
   let rawSaved = null;
   try{ rawSaved = localStorage.getItem(KEY_LEGACY); }catch(e){}
-  const legacy = readJSON(KEY_LEGACY) || {};
+  /* v3.31.6（审计 P0-A）：旧键是**非对象原始值**时 `|| {}` 兜不住——迁移分支 `saved.v = 3`
+     在 "use strict" 下对原始值赋属性抛 TypeError（S 缺失、白屏）。此前漏堵「整包不是对象」。 */
+  const legacyRaw = readJSON(KEY_LEGACY);
+  const legacy = (legacyRaw && typeof legacyRaw === "object") ? legacyRaw : {};
   const hotIn = readJSON(KEY_HOT);
   const coldIn = readJSON(KEY_COLD);
   /* 新键存在（读得出对象）即以其为准；否则用旧键——首次升级与全新用户都走这条。
@@ -4490,7 +4493,7 @@ const Store = (() => {
     if (!nm){ if (moved) persistGroups(); return true; }
     let g = groups.find(x => x.name === nm && x.zone === zone);
     if (!g){
-      g = { id: "g" + Date.now() + "-" + groups.length, name: nm, zone, members: [], open: true };
+      g = { id: "g" + Date.now() + "-" + (grpSeq++), name: nm, zone, members: [], open: true };   // v3.31.6（审计 P3-D）：与 groupCreate 同口径单调
       groups.push(g);
     }
     g.members.push(ref.type === "builtin" ? { type:"builtin", idx:ref.idx }
@@ -4703,12 +4706,15 @@ const Store = (() => {
   /* 新增或更新（按 (arrangeId, secUid) 判定）。返回规范化后的行；结构不合法返回 null，
      调用方（UI）要把 null 当成"这份录入还不能存" */
   /** @param {string} arrangeId @param {string} secUid @param {any} chars @returns {any} */
-  function upsertLyric(arrangeId, secUid, chars){
+  /** @param {string} arrangeId @param {string} secUid @param {any} chars
+      @param {{deferPersist?: boolean}} [opt] deferPersist=true 时不落盘——批量带出（示例曲）
+      由调用方收口一次 persistLyrics，与 importAll 同口径（v3.31.6 审计 P2-C）。 */
+  function upsertLyric(arrangeId, secUid, chars, opt){
     const v = normLyricLine({ arrangeId, secUid, chars });
     if (!v) return null;
     const i = lyrics.findIndex(x => x && x.arrangeId === v.arrangeId && x.secUid === v.secUid);
     if (i >= 0) lyrics[i] = v; else lyrics.push(v);
-    persistLyrics();
+    if (!(opt && opt.deferPersist)) persistLyrics();
     return v;
   }
   /** @param {string} arrangeId @param {string} secUid @returns {boolean} */
@@ -4924,7 +4930,14 @@ const Store = (() => {
        于是每次启动都要白付一次同步写（脏预设可能很大）。与已存内容完全一致就跳过。
        这里必须自己读原始串：KEY_QUAR 全文件只在此处写、别处不读——"隔离了但用户拿不回"
        正是审计点出的问题，配套补了下面的 quarantine() / clearQuarantine() 出口 */
-    const payload = JSON.stringify(rejectedCustoms);
+    /* v3.31.6（审计 P2-B）：隔离区封顶——脏 customs 多大就抄多大进 quarantine 会挤占配额
+       （隔离区是找回口不是镜像仓库）。超 100 条截断；仍超 200K 字符则折半直到容下。 */
+    if (rejectedCustoms.length > 100) rejectedCustoms.length = 100;
+    let payload = JSON.stringify(rejectedCustoms);
+    while (payload.length > 200000 && rejectedCustoms.length > 1){
+      rejectedCustoms.length = Math.floor(rejectedCustoms.length / 2);
+      payload = JSON.stringify(rejectedCustoms);
+    }
     let prev = null;
     try{ prev = localStorage.getItem(KEY_QUAR); }catch(e){}
     if (prev !== payload){
@@ -5232,7 +5245,10 @@ const Store = (() => {
      由 t134 往返测试反向验证两路产出一致。脏组（缺名 / 坏 zone / 成员非法 / id 冲突）
      整组丢弃，与加载期口径一致——导入不该让一个坏组污染本机分组。 */
   /** @param {any[]} raw @returns {any[]} */
-  function normImportGroups(raw){
+  /** v3.31.6（审计 P0-B）：refMap = 包内 oldId→newId 映射——组员 custom 引用跨设备导入必须
+      重映射（否则指向已不存在的旧 id、成员静默消失）。无映射保留原 id（渲染层容忍口径）。
+      @param {any} raw @param {Map<string,string>} [refMap] */
+  function normImportGroups(raw, refMap){
     if (!Array.isArray(raw)) return [];
     /** @type {any[]} */
     const out = [];
@@ -5254,9 +5270,10 @@ const Store = (() => {
           members.push({ type:"builtin", idx:r.idx });
         } else if (r.type === "custom"){
           if (typeof r.id !== "string" || !r.id) return;
-          if (seenRef.has("c" + r.id)) return;
-          seenRef.add("c" + r.id);
-          members.push({ type:"custom", id:r.id });
+          const nid = (refMap && refMap.get(r.id)) || r.id;   // v3.31.6（审计 P0-B）：随包内映射重写
+          if (seenRef.has("c" + nid)) return;
+          seenRef.add("c" + nid);
+          members.push({ type:"custom", id:nid });
         } else if (r.type === "arrange"){
           if (typeof r.id !== "string" || !r.id) return;
           if (seenRef.has("a" + r.id)) return;
@@ -5416,7 +5433,7 @@ const Store = (() => {
     let setGrp = 0, setBnm = 0;
     if (data.settings && typeof data.settings === "object"){
       if (Array.isArray(data.settings.groups)){
-        const ng = normImportGroups(data.settings.groups);
+        const ng = normImportGroups(data.settings.groups, refMap);   // v3.31.6（审计 P0-B）：组员随包内映射重写
         groups.length = 0;
         ng.forEach((/** @type {any} */ g) => groups.push(g));
         setGrp = ng.length;
@@ -5440,7 +5457,8 @@ const Store = (() => {
       try{ console.warn("[BeatSight] 全量导入跳过 " + arrDrop + " 条曲式 / " + lyrDrop
         + " 条歌词行（未通过结构校验或与本机已有条目重复）"); }catch(e){}
     }
-    /* 预设已在校验后即入 live 数组（P0-2 的引用重映射需要它先在场）；落盘顺序不变：预设最贵先写 */
+    /* 预设已在校验后即入 live 数组（P0-2 的引用重映射需要它先在场）；落盘顺序：settings 段
+       （分组/改名覆盖）先行，随后按「预设最贵先写」排 customs → arranges → lyrics → ear。 */
     if (okPresets.length) persistCold();
     if (arrAdd) persistArranges();
     if (lyrAdd) persistLyrics();
@@ -5549,7 +5567,7 @@ const Store = (() => {
     /* ---- 设置：分组替换 + 改名覆盖合并 ---- */
     if (data.settings && typeof data.settings === "object"){
       if (Array.isArray(data.settings.groups))
-        parts.push({ kind:"分组", action:"替换", count: normImportGroups(data.settings.groups).length });
+        parts.push({ kind:"分组", action:"替换", count: normImportGroups(data.settings.groups, pvRefMap).length });
       if (data.settings.builtinNames && typeof data.settings.builtinNames === "object"){
         let n = 0;
         Object.keys(data.settings.builtinNames).forEach((/** @type {any} */ k) => {
@@ -6478,6 +6496,9 @@ function lyricCharsAt(arrangeId, secUid){
         + " 个字超出段落范围，已忽略"); }catch(e){}
     }
   }
+  /* v3.31.6（审计 P2-A）：无上限缓存 + 失效只覆盖「改」（行对象替换），删曲式/删段留死条目。
+     封顶 512 条溢出清空（同 MUTE_RND_CACHE 口径）——反复删建曲式不再累积。 */
+  if (lyricFit.size > 512) lyricFit.clear();
   lyricFit.set(key, { line, chars });
   return chars;
 }
@@ -8085,7 +8106,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         winPrevSeg = -1; winPrevSteps = null; winPrevName = "";
       }
       winPat = arrWindowPat(arr, winStart);
-      if (!winPat) winStart = -1;          // 合成不出来（引用缺失等）：回落到"画当前型"
+      /* v3.31.6（审计 S-1）：合成失败**保留页锚**而非写回 -1——winAnchorSeg 恒 ≥0，-1 会让
+         帧循环 ws(≥0)≠-1 恒真 → 每帧 buildViz（注释 L6944 自述过该风险）。保留锚点后帧循环
+         稳定、anchored() 为真，引用修复后下次翻页/UI 重建自然恢复（同预设分支 winStart=0 降级）。
       /* v2.7.0 预告行替换：本窗口带预告时，第 1 行的格子换成"下一片段"的内容。
          winPat 每次现合成、改它不外泄；行的其它层（跑道/六线/座次尺）与内容无关，不用动 */
       if (winPat && winPrevSeg >= 0 && winPrevSteps) winPat.bars[0] = winPrevSteps;
@@ -9846,6 +9869,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
   return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
     /* ★ v3.31.1：外部（Controls）重建歌词轨的唯一入口——见 rebuildLyricLane 的注释。
        直接 buildLyricLane() 会让 scroll 静止态下的歌词丢横向位移（用户报障的那个错位）。 */
+    winStartState: () => ({ start: winStart, pat: !!winPat }),   // v3.31.6（审计 S-1）：反向变异/回归断言用
     rebuildLyricLane,
     /* v2.4.2：六线底纹开关的处理器长在 Controls 段（那里才有 $ 与 setToggle），
        而 .tab 层的显隐是 Viz 的领域（它才知道轨与底纹的对应关系）——故从 Viz 的出口面暴露，
@@ -10287,6 +10311,17 @@ const AudioEngine = (() => {
          会把正常的段推进误判成回卷（语义假阳性，虽因窗口位置巧合当前不可见，但判据必须诚实） */
       if (S.playMode !== "arrange" && schedBar < prevBar0) loopWrapped = true;
       limitBars++;                                      // v1.9.0：空小节也走完了一小节（保持「计数 = 小节边界数」）
+      /* v3.31.6（审计 P1-B）：空小节也是小节边界——补变速训练 + 挂起消费（此前漏接：试听含空
+         小节的草稿时爬坡少计、换型多等一小节）。曲式推进不补：validatePreset 拒空小节（实测），
+         本分支在曲式模式不可达；未来放开校验时需同步补 arrNextBar 段。 */
+      if (S.trainer.on && Trainer.onBarBoundary()) return true;
+      const pendE = Presets.consumePending(schedBar);
+      if (pendE.applied){
+        schedBar = pendE.resetBar;
+        loopStart = nextNoteTime - schedBar * S.sig * spb();
+        Viz.resetTracking();
+        return true;
+      }
       return false;   // 空小节跳过：主循环继续下一步
     }
     /* 歌词锚点提示音（v2.1.0 F1）：在小节起点把本小节覆盖到的字锚点排进音频时钟。
@@ -14671,6 +14706,10 @@ const Arrange = (() => {
   let cursorEl = null;                 // 试听游标（拖动/试听期临时节点，建-摘同 guide 模式）
   /** @type {any} */
   let curEl = null;                    // 当前高亮（.cur）的字块元素
+  /* v3.31.6（审计 P1-A）：试听游标 rAF 自续链的句柄与世代号——此前句柄从不保存，换段重进
+     旧链见新 preview 继续自续 + 新链再起，链数 = 重进次数（帧率只降不升）。cancel + 世代自断。 */
+  let pvRaf = 0;
+  let pvGen = 0;
   /* secUid → { lane, chipEls, rowWrapEls }（每次 arrangeRender 重建——元素引用随渲染走，Map 只做查表）
      v2.80.0：+ rowWrapEls（行容器数组）——行级挂载点不再靠 lane.children[row] 的位置巧合 */
   /** @type {Map<string, { lane: any, chipEls: any[], rowWrapEls: HTMLElement[] }>} */
@@ -14683,6 +14722,8 @@ const Arrange = (() => {
     const span = lyricSpanTicks(a.id, sec.uid);
     if (!(span > 0)) return;
     if (preview){ preview = null; Controls.stop(); }   // 再点 = 停止/换段（互斥纪律）
+    pvGen++;                                            // v3.31.6（审计 P1-A）：旧链世代作废
+    if (pvRaf){ if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(pvRaf); pvRaf = 0; }
     const from0 = songBarBefore(a, secIdx);
     const rb = typeof relBar === "number" ? relBar : 0;
     const from = Math.min(from0 + Math.max(0, rb | 0), from0 + secBars(sec) - 1);
@@ -14705,6 +14746,8 @@ const Arrange = (() => {
   function previewStop(){
     if (!preview) return;
     preview = null;
+    pvGen++;                                            // v3.31.6（审计 P1-A）：与重进同口径
+    if (pvRaf){ if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(pvRaf); pvRaf = 0; }
     Controls.stop();
     if (curEl){ curEl.classList.remove("cur"); curEl = null; }
     if (cursorEl) cursorEl.hidden = true;
@@ -14763,8 +14806,6 @@ const Arrange = (() => {
     arrangeRender();
     if (!silent) announce("已停止候选试听");
   }
-  /** 仅供测试断言当前候选试听态（反向验证用）。@returns {any} */
-  function candPreviewState(){ return candPreview; }
   /* v3.31.x（审计 P0-3）：给曲式冷键写路径装上**前置守卫**——任何 persistArranges 调用
      在序列化前先还原候选试听的内存换型（此前只有 save() 自觉还原，renameArrange /
      upsertArrange / deleteArrange / importAll 都会把「只试听过、从未确认」的型落库）。 */
@@ -14813,7 +14854,12 @@ const Arrange = (() => {
       if (curEl){ curEl.classList.remove("cur"); curEl = null; }
     }
     if (window.requestAnimationFrame){
-      window.requestAnimationFrame(() => { if (preview) syncPreviewCursor(); });
+      /* v3.31.6（审计 P1-A）：注册句柄可取消；回调先按世代自断（旧链）再自续。 */
+      const gen = pvGen;
+      pvRaf = window.requestAnimationFrame(() => {
+        pvRaf = 0;
+        if (gen === pvGen && preview) syncPreviewCursor();
+      });
     }
   }
 
@@ -16281,9 +16327,12 @@ const Arrange = (() => {
           ...(b.chords ? { chords: b.chords } : {}) })) })) });
     if (!v) return { ok: false, error: "示例曲式未通过结构校验。", id: "" };
     /* v2.26.0：歌词按段 uid 挂（原来挂段下标，段挪一次位置整首词就串段） */
+    /* v3.31.6（审计 P2-C）：批量带出与 importAll 同口径——先入数组、最后一次 persistLyrics。
+       此前逐行 upsertLyric 每次全量 stringify 落盘（N 行 = N 次整键写）。 */
     spec.lyrics.forEach((chars, i) => {
-      if (v.sections[i]) Store.upsertLyric(v.id, v.sections[i].uid, chars);
+      if (v.sections[i]) Store.upsertLyric(v.id, v.sections[i].uid, chars, { deferPersist: true });
     });
+    Store.persistLyrics();
     Store.persist();
     /* 曲式新建 / 歌词补齐都会改变「自定义」区内容与选中态/计数——统一刷一次列表，
        不分支（分支正是漏刷的来源，v2.4.1 的教训）。
@@ -17686,6 +17735,8 @@ $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 */
 const WALL_KEY = "beatsight.wallpaper";
 /** 落盘上限（**base64 之后**的字符数，约等于字节数 × 4/3），与预设共用那 5 MB 配额 */
+/* v3.31.6（审计 S-2 备注）：上限按 JS 字符串字符数计，浏览器配额按 UTF-16 字节计，极限壁纸
+   约占 5MB 配额近半。属设计口径非缺陷：wallWrite 有 try + 写失败必须提示，不引入 quota 预检。 */
 const WALL_MAX_BYTES = 1200 * 1024;
 /** 降采样后的长边上限：1080p 足够铺满，再大只是白占配额 */
 const WALL_MAX_EDGE = 1600;
@@ -18212,6 +18263,7 @@ if (EXPOSE_INTERNALS){
     patBars, setPatLenOf, loopRangeFor,           // v2.5.1：型长查询（唯一真相源）/ 注入点 / 循环区间按型收窄
     DEF_BARS, MAX_PAT_BARS,                       // v2.5.1：型的默认与上限小节数
     lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
+    lyricFitSize: () => lyricFit.size,             // v3.31.6（审计 P2-A）：歌词缓存尺寸（封顶断言用）
     LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
     demoBuildSpec, DEMO_ID,                       // v2.3.0：示例曲《在他乡》谱面 → 数据模型的纯转换
     demoPresetEq,                                 // v2.6.4：示例型内容级一致判定（同名不同命的旧数据只有比内容才分得出来）

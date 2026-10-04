@@ -9,6 +9,71 @@
 
 ---
 
+## v3.31.6 · 落地他方审计复核批：2 条 P0 + 3 条 P1 + 一批 P2/P3 收口（2026-10-04）
+
+### 根因（另一 Agent 对 v3.31.5 的复核报告，逐条本地复现确认后落地）
+
+- **P0-A**：旧键 `beatsight.m2` 是**非对象原始值**（数字/字符串/布尔）时，迁移分支
+  `saved.v = 3` 在 "use strict" 下对原始值赋属性抛 TypeError → Store IIFE 失败 → 整页白屏
+  （v3.31.5 的 P1-7 只堵了 customs 脏条目，漏了「整包不是对象」）。
+- **P0-B**：全量包跨设备导入时，**分组 members 的 custom 引用**不随 oldId→newId 重映射
+  （v3.31.5 的 P0-2 只覆盖曲式 blocks）→ 组员指向已不存在的旧 id、静默消失。
+- **P1-A**：歌词试听游标 rAF 自续链无句柄无世代——换段重进旧链看到新 preview 继续自续，
+  链数 = 重进次数，编排页帧率只降不升。
+- **P1-B**：schedOneStep 空小节分支漏接变速训练与挂起消费（常规出口有、空小节出口没有）——
+  试听含空小节草稿时爬坡少计、换型多等一小节。③曲式推进经实测**不可达**（validatePreset
+  拒空小节），按数据模型依据不补、注释写明。
+- **S-1**：buildViz 合成失败写回 `winStart = -1`，而 winAnchorSeg 恒 ≥0 → 帧循环
+  `ws !== winStart` 恒真 → 每帧全量重建网格（代码注释自述过该风险）。机制确认级缺陷。
+
+另落地：P3-D（groupMove 漏用 grpSeq，同毫秒建删建撞号——v3.31.5 的 P3-8 只改了一半）、
+P3-B（README v2.x 漂移，两处）、P3-A（candPreviewState 死函数）、P3-C（落盘顺序注释）、
+P2-A（lyricFit 缓存无界）、P2-B（隔离区无界）、P2-C（示例曲带出逐行落盘 O(n²)）、
+S-2（壁纸字符数口径，仅注释）、S-3（paintLyric 逐帧分配，真机实测收口）。
+
+### 修法（全部守约束）
+
+- Store：legacy 类型守卫；normImportGroups 接 refMap（含 previewImport 同口径）；
+  upsertLyric 增 deferPersist（示例曲批量落盘）；隔离区 100 条/200K 字符封顶；
+  groupMove 与 groupCreate 共用 grpSeq；lyricFit 512 封顶。
+- Arrange/AudioEngine：试听游标 pvRaf 句柄 + pvGen 世代自断；空小节分支补
+  Trainer.onBarBoundary + consumePending。
+- Viz：合成失败保留页锚（与预设分支 `winStart = 0` 降级、L9326「建完即页锚」不变量同口径），
+  并暴露 winStartState 测试读数。
+- 桩（tests/lib/harness.js）：opt-in rAF 队列（flushRaf/rafPending，服务 P1-A 与 B4
+  「渲染循环死亡」回归防线）；scrollWidth 经 opts 注入（B1 隐藏分支可测）；
+  lyricPosGroup 三 pill 补登记（B3：三档点击接线从零覆盖变可测）。
+- 闸门与文档：check-wiring 增 EXTRA_SLOTS 登记表（arrPersistGuard/customsRef 入管，
+  登记腐烂即报）；check-deploy-parity 增线上实际版本核对（信息性不判红，部署滞后属预期）；
+  check-all 落盘 `.verify-report.json`（gitignore）；check-docs 增「当前大版本线（vX.x）」
+  大号断言与 CHANGELOG 软阈值提醒；smoke 增歌词轨在场单帧预算（S-3 实测收口）；
+  AGENTS.md 增 shell 已知差异小节（grep 交替 / 无 timeout / 取证前核对远端 HEAD），
+  WorkBuddy 发布补前置 `--quick`。
+
+### 取舍
+
+- S-1 采用「合成失败保留页锚」而非「-1 + 节流重试」或「合成降级窗」：保留锚点让
+  帧循环稳定、anchored() 为真，引用修复后下一次翻页/UI 重建自然恢复；牺牲的「每帧
+  重试自动恢复」正是缺陷本身。桩内无法构造可听域跨窗复现（如实记录），验证落在
+  winStartState 状态断言 + 真机 Performance 采样配方。
+- 线上版本核对**不判红**：CI 跑在部署完成前，线上落后是时序问题不是缺陷；把「线上到底
+  是哪一版」从人肉看徽章变成每次对账一行 ℹ。
+- B4 只做 opt-in rAF 队列（手动冲刷），不做完整真排帧模式——一个桩能力同时喂 P1-A
+  链断言与渲染循环死亡回归，完整自动排帧留待真需要时再扩。
+
+### 自验
+
+- `node tests/run.js` **5663 PASS / 0 FAIL**（新增 t181/t182 两文件 39 条断言）；
+- `node tools/smoke.js` **271 项**（+2：歌词轨在场单帧预算，实测 0.03ms 级 << 2ms 预算）；
+- 反向变异 29 组全跑：**28 具名红 + 1 崩溃型**（M20 P1-7，堆栈已人工确认指向迁移循环；
+  本批 9 组 P0-A/B、P1-A/B、P3-D、S-1、P2-A/B/C 全部具名红，P0-A 已改具名断言、不再以
+  崩溃形式被拦）；
+- 桩侧反向验证（手工）：摘掉 lyricPosGroup 登记 → T181e「三 pill 已登记」红；
+  摘掉 scrollWidth 注入 → T181f「宽标注被隐藏」红；恢复后全绿；
+- `node tools/check-all.js` 18/18 全绿（ESLint/tsc/冒烟/FULL_SCAN 全实跑）；覆盖率 97.8% 不降。
+
+---
+
 ## v3.31.5 · 落地 v3.31.x 审计①②批次：23 项缺陷修复 + 13 项自验体系收口（2026-10-04）
 
 ### 根因（只读审计，四条 P0 概览）

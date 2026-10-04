@@ -47,6 +47,9 @@ let rowSeq = 0;
    改小阈值（假的，改了就不是在测产品）或改小行宽（真的，行宽本来就是外部条件）。
    故开成可覆盖量，默认仍是 600，只有需要压缩几何的用例才传 opts.rowW。 */
 let ROW_W = 600;
+/* v3.31.6（审计 B1）：scrollWidth 恒 0 使「标注比格子宽就隐藏」分支在桩里一次没执行过
+   （判据 offsetWidth < scrollWidth + 10 恒 false）；经 opts.scrollW 注入后该分支可测。 */
+let SCROLL_W = 0;
 const rowW = () => ROW_W;
 
 /* index.html 里靠 attribute 承载初值的元素：stub 不解析 HTML，需在此复刻，否则读到 undefined。
@@ -116,6 +119,10 @@ const HTML_ATTRS = {
    `setPressed()` 变成空转 —— aria-pressed 这类无障碍断言根本跑不起来（v1.3.0 为 P2-11 而加）。
    ★ v3.12.0：`sigRow`（拍号 6 档）已随手动拍号控件从标记里删除，此处同步摘掉。 */
 const HTML_CHILDREN = {
+  /* v3.31.6（审计 B3）：歌词显示位置三档——此前未登记，三个 pill 在桩里不存在（元素在、
+     children 空、querySelectorAll 命中 0），装配层那段三档点击接线整块零覆盖
+     （t149 只断言数据层、走 seed 与直接赋值）。登记后点击链路可测。 */
+  lyricPosGroup: ["auto", "follow", "bottom"].map(p => ({ className: "pill", dataset: { pos: p } })),
   swingRow:  [50, 67, 75].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { swing: String(n) } })),
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
   /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */
@@ -202,7 +209,7 @@ function makeEl(id){
     get options(){
       return el.children.filter(c => c.tagName === "OPTION");
     },
-    scrollWidth: 0,
+    get scrollWidth(){ return SCROLL_W; },   // v3.31.6（审计 B1）：opts.scrollW 可注入（缺省 0 = 旧行为）
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
     removeEventListener(){},
     appendChild(c){
@@ -378,6 +385,7 @@ function loadApp(seed, opts){
   /* v2.4.2：行宽可覆盖（默认 600）。见 ROW_W 的说明——窄格隐藏的临界点随
      STRUM_MIN_W 变化后，只有压缩行宽才能把那条分支重新走到 */
   ROW_W = typeof o.rowW === "number" && o.rowW > 0 ? o.rowW : 600;
+  SCROLL_W = typeof o.scrollW === "number" ? o.scrollW : 0;
   /* v2.86.0：视口宽（独立于行宽）。窄屏口径与 CSS @media (max-width:960px) 同口径（视口），
      而 #viz 在双栏布局下比视口窄多——桩用 viewportW 单独模拟「视口宽 ≠ 行宽」的错位场景，
      以锁定「视口 961–1392px 时歌词带压格子底」的回归。缺省 = ROW_W（等价旧行为）。 */
@@ -392,6 +400,9 @@ function loadApp(seed, opts){
   const intervals = new Map();
   const timeouts = new Map();
   let timerSeq = 1;
+  /* v3.31.6（审计 P1-A/B4）：rAF 队列（opts.rafQueue 时启用；见 sandbox 内 requestAnimationFrame） */
+  const rafQ = o.rafQueue ? [] : null;
+  let rafSeq = 0;
   /* v1.3.0（审计 P1-3/P2-13）：document / window 级监听器要能被测试触发，
      否则「回前台补排」「pagehide 停播」这类生命周期行为完全无法断言（原先 addEventListener 是空函数） */
   const docH = {}, winH = {};
@@ -496,8 +507,19 @@ function loadApp(seed, opts){
        TAP 文案复位、导出后 revokeObjectURL…… 原先它们永远跑不到。 */
     setTimeout: fn => { const id = timerSeq++; timeouts.set(id, fn); return id; },
     clearTimeout: id => timeouts.delete(id),
-    requestAnimationFrame: () => 0, // paintFrame 不运行：测试只断言引擎与状态层
-    cancelAnimationFrame(){},
+    /* v3.31.6（审计 P1-A/B4）：opt-in 的 rAF 队列——缺省仍是空函数（引擎/状态层用例不受扰）。
+       opts.rafQueue=true 时：requestAnimationFrame 记录回调不执行、cancel 按 id 摘除，
+       用例用 app.flushRaf() 手动冲刷一轮、app.rafPending() 数挂起数。 */
+    requestAnimationFrame: fn => {
+      if (!rafQ) return 0;
+      rafQ.push({ id: ++rafSeq, fn });
+      return rafSeq;
+    },
+    cancelAnimationFrame: id => {
+      if (!rafQ) return;
+      const i = rafQ.findIndex(x => x.id === id);
+      if (i >= 0) rafQ.splice(i, 1);
+    },
     /* v3.15.0：窗口几何——依赖 innerWidth 的显隐逻辑（雾化条 ≤640 禁用）在桩里需要
        一个确定值；取可配置的 vw（默认 ROW_W=600，需桌面行为时用 viewportW 覆盖） */
     innerWidth: vw, innerHeight: Math.round(vw * 0.5625),
@@ -546,6 +568,15 @@ function loadApp(seed, opts){
   return {
     beat, els, sandbox, storage: store,
     fireDoc: fireAll(docH), fireWin: fireAll(winH),
+    /* v3.31.6（审计 P1-A/B4）：手动冲刷 rAF 队列一轮（执行前清空，回调内再注册进下一轮）；
+       不吞异常——产品 paintFrame 自带边界，其余回调抛错就是用例要看的。 */
+    flushRaf: () => {
+      if (!rafQ) return 0;
+      const q = rafQ.splice(0);
+      q.forEach(x => x.fn());
+      return q.length;
+    },
+    rafPending: () => (rafQ ? rafQ.length : 0),
     /* 切前台/后台：改 document.hidden 后触发 visibilitychange。
        注意**两个 bag 都要发**：真实浏览器里该事件在 document 上派发并冒泡到 window，
        所以 `document.addEventListener` 与 `window.addEventListener` 两种写法都会收到

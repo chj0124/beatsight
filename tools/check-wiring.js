@@ -96,6 +96,28 @@ maskedLines.forEach((ln, i) => {
   }
 });
 
+/* v3.31.6（审计 P1-C）：命名约定收列的补充——onXxx 之外还有两个**同构注入槽**，
+   名字刻意不叫 on*（见 index.html 各自注释），此前完全在闸门管辖外。
+   登记表与 R3 白名单同一条纪律：条目必须真实存在（声明 + 装配齐全），腐烂即报。 */
+const EXTRA_SLOTS = ["arrPersistGuard", "customsRef"];
+EXTRA_SLOTS.forEach(name => {
+  const declRe = new RegExp("^\\s*let\\s+" + name + "\\s*=\\s*(?:/\\*\\* @type \\{[^}]*\\} \\*/\\s*)?\\(?null\\)?;?\\s*$");
+  const declIdx = maskedLines.findIndex(ln => declRe.test(ln));
+  if (declIdx < 0){
+    problems.push("EXTRA_SLOTS 登记「" + name + "」在 index.html 里找不到 `let " + name
+      + " = null` 声明——源码已变，请更新或删除本条目");
+    return;
+  }
+  const assignRe = new RegExp("(?:^|[^.\\w$])" + name + "\\s*=\\s*(?!=)(.*)$");
+  let assigned = false;
+  for (let i = 0; i < lines.length; i++){
+    if (i === declIdx) continue;
+    if (assignRe.test(maskedLines[i])){ assigned = true; break; }
+  }
+  if (assigned) wiring.push(name + " 注入于 L" + fileLine(declIdx + 1) + "（EXTRA_SLOTS 登记槽）");
+  else problems.push("EXTRA_SLOTS 登记槽「" + name + "」只有声明、从未被赋值——与 on* 钩子同一故障模式（漏装配 = 静默失效）");
+});
+
 /* ---- 规则 1：每个钩子必须被赋过非 null 值 ---- */
 slots.forEach(slot => {
   /* 左侧不能是标识符/属性的一部分（防 `xonAudibleBar` / `obj.onAudibleBar` 误命中）；
@@ -147,7 +169,7 @@ slots.forEach(slot => {
   }
 }
 
-console.log("  · 自动收列 " + slots.length + " 个钩子注入槽（约定：`let onXxx = null;`，新增钩子自动纳入）");
+console.log("  · 自动收列 " + slots.length + " 个钩子注入槽（约定：`let onXxx = null;`，新增钩子自动纳入）· 登记槽 " + EXTRA_SLOTS.join(" / "));
 wiring.forEach(w => console.log("      ✓ " + w));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
@@ -157,5 +179,5 @@ if (problems.length){
     + "（例：`onAudibleBar = Arrange.refreshNow;` / `setPatLenOf(ref => patBars(resolveRef(ref)));`）。");
   process.exit(1);
 }
-console.log("  ✓ 装配完整（" + slots.length + " 个钩子注入槽 + patLenOf 注入点全部接上）");
+console.log("  ✓ 装配完整（" + slots.length + " 个钩子注入槽 + " + EXTRA_SLOTS.length + " 个登记槽 + patLenOf 注入点全部接上）");
 process.exit(0);
