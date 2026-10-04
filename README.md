@@ -43,21 +43,21 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
     <td width="50%"><b>曲式模式</b> ·《在他乡》整首连播中</td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png"><img src="docs/assets/shot-main-light.png" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
-    <td><img src="docs/assets/shot-arrange-dark.png" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png?v=2701c52"><img src="docs/assets/shot-main-light.png?v=2701c52" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
+    <td><img src="docs/assets/shot-arrange-dark.png?v=2701c52" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
   </tr>
   <tr>
     <td><b>曲式编排</b> · 歌曲地图 + 段落卡片 + 歌词对齐</td>
     <td><b>自定义编辑器</b> · 音符块库画自己的节奏型</td>
   </tr>
   <tr>
-    <td><img src="docs/assets/shot-panel-dark.png" alt="曲式编排面板：歌曲地图、段卡片、每段的歌词摘要与和弦"></td>
-    <td><img src="docs/assets/shot-editor-dark.png" alt="节奏型编辑器：音符块库任选时值，逐小节编辑，时值校验通过才能保存"></td>
+    <td><img src="docs/assets/shot-panel-dark.png?v=2701c52" alt="曲式编排面板：歌曲地图、段卡片、每段的歌词摘要与和弦"></td>
+    <td><img src="docs/assets/shot-editor-dark.png?v=2701c52" alt="节奏型编辑器：音符块库任选时值，逐小节编辑，时值校验通过才能保存"></td>
   </tr>
 </table>
 
 <p align="center">
-  <img src="docs/assets/shot-mobile-dark.png" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
+  <img src="docs/assets/shot-mobile-dark.png?v=2701c52" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
   <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面（应用内「经典」主题）。</sub>
 </p>
 
