@@ -3346,18 +3346,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5790  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6724  Modal         应用内弹窗
      L6869  Viz           时值可视化渲染与每帧动画
-     L10130 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10811 Trainer       变速训练器
-     L11019 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11661 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13257 Editor        自定义节奏型编辑器
-     L13801 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13848 Ear           听辨训练（v1.10.0）
-     L14076 Arrange       曲式编排（v2.0.0）
-     L17005 Help          使用方法（v2.0.1）
-     L17134 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17208 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17451 初始化（装配） 各模块 hook 接线与启动
+     L10150 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10831 Trainer       变速训练器
+     L11039 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11681 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13277 Editor        自定义节奏型编辑器
+     L13821 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13868 Ear           听辨训练（v1.10.0）
+     L14096 Arrange       曲式编排（v2.0.0）
+     L17025 Help          使用方法（v2.0.1）
+     L17154 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17228 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17471 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3383,7 +3383,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.2";
+const VERSION = "3.33.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9210,10 +9210,28 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     /* v3.0.0（批 2）：scroll 下歌词轨也要裁剪 —— 它是 `#viz` 的**兄弟节点**（叠在上面同宽同高），
        不受 `#viz` 的 overflow 约束，歌词行横滑会直接溢出到可视化区外。故与 #viz 用同一个裁剪高度。 */
+    /* ★★ v3.33.3（用户实拍「第三跑道歌词错位」的真根因）：歌词轨的盒高**不能等于 #viz 高**。
+       滚动下#viz 与歌词轨都带**横向 mask**（`.viz.scroll-mode ~ .lyric-lane`，内容在视口两缘渐隐），
+       而 `mask-clip` 的缺省值是 **border-box** ⇒ mask 会把**盒子之外**的渲染一并裁掉——
+       这才是"上下裁到盒子"的真正实现（不是 `clip-path`，也不是 `overflow`）。
+       原实现把本盒高设成与 #viz 逐位同高（只到"行盒底"），而歌词行的锚点是「行盒底 + 2」
+       ⇒ **最下那条可见跑道**（index = scrollRows()−1）的歌词（行盒底 +2 ~ +2+行高）
+       整行落在盒外、被 mask 裁掉；等窗口推进一格、它成为中间那条（锚点上移一槽）才重新出现
+       ——用户实拍「一直持续到第二跑道开始播放才恢复」，时机完全吻合。
+       修法：盒高 = #viz 高 + 末行歌词所需（锚点偏移 2 + 行高 + 6px 余量）；
+       进场行（再下一槽）的歌词底远在此之上（实测 588 ≫ 456）⇒ 仍被裁，不会多出一行。
+       ★ 只算这一次（overlayH），下面 getBoundingClientRect 分支复用（那里原是无条件写
+         viz.offsetHeight，与这里各写一份——同一类"两处口径"结构，一并收口）。 */
+    const vizClipH = rowGeo[0]
+      ? Math.round(rowGeo[0].top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) : 0;
+    let overlayH = 0;                                  // scroll 下生效的盒高（0 = 用 viz 的）
     if (S.scrollMode){
       lane.classList.add("scroll-clip");
-      const r0 = rowGeo[0];
-      if (r0) lane.style.height = Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) + "px";
+      if (vizClipH){
+        const rowH = (lyricRows[0] && lyricRows[0].el) ? (lyricRows[0].el.offsetHeight || 28) : 28;
+        overlayH = vizClipH + 2 + rowH + 6;
+        lane.style.height = overlayH + "px";
+      }
     } else { lane.classList.remove("scroll-clip"); lane.style.height = ""; }
     /* 覆盖层自身定位：优先 getBoundingClientRect 像素对齐；环境不支持（如测试桩缺该方法）
        则跳过——由 CSS 兜底（#lyricLane 已是 #viz 兄弟节点，absolute 定位在父容器内），
@@ -9227,7 +9245,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     lane.style.left = (vr.left - pr.left + (parent ? parent.clientLeft : 0)) + "px";
     lane.style.top = (vr.top - pr.top + (parent ? parent.clientTop : 0)) + "px";
     lane.style.width = vr.width + "px";
-    lane.style.height = viz.offsetHeight + "px";
+    /* v3.33.3：scroll 复用上面的 overlayH（含末行歌词所需），不再无条件改成 viz 高度；
+       非 scroll（分页 follow）维持原口径：覆盖层与 #viz 同高。 */
+    lane.style.height = ((S.scrollMode && overlayH) ? overlayH : viz.offsetHeight) + "px";
   }
   /* ★★★ v3.31.1：**带静止态重落的歌词轨重建**——外部（Controls / 装配层）改歌词显隐或
      位置时必须走这个，**不要直接 buildLyricLane()**。
