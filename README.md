@@ -43,7 +43,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
     <td width="50%"><b>曲式模式</b> ·《在他乡》整首连播中</td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png?v=20261005c"><img src="docs/assets/shot-main-light.png?v=20261005c" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png?v=20261005d"><img src="docs/assets/shot-main-light.png?v=20261005d" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
     <td><img src="docs/assets/shot-arrange-dark.png?v=20261005c" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
   </tr>
   <tr>
@@ -57,7 +57,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 </table>
 
 <p align="center">
-  <img src="docs/assets/shot-mobile-dark.png?v=20261005c" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
+  <img src="docs/assets/shot-mobile-dark.png?v=20261005e" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
   <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面（应用内「经典」主题）。</sub>
 </p>
 
@@ -74,7 +74,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 ## 功能一览
 
-当前 `v3.33.10`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.33.11`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|
