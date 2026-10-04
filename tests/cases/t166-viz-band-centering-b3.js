@@ -73,33 +73,34 @@ section("T151b .main 保持 align-items:start，不靠 stretch 改居中");
 }
 
 /* ==== T151c：当前行只留底纹（v3.31.4 用户裁决：行首短标整条取消，底纹 .07 → .10） ==== */
-section("T151c .bar-row.current 只留底纹 .10，行首绿条不得复活");
+section("T151c .bar-row.current 只留底纹 .10（v3.33.8：挂在 ::before 的 44px 格子带上），行首绿条不得复活");
 {
-  const rule = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
-  ok(!!rule, "★ .bar-row.current 规则在位");
-  ok(/rgba\(30,215,96,\.10\)/.test(rule),
+  const base = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
+  const pseudo = (html.match(/^\.bar-row\.current::before\{[^}]*\}/m) || [""])[0];
+  const band = base + pseudo;
+  ok(!!base && !!pseudo, "★ .bar-row.current（含 ::before 格子带）规则在位");
+  ok(/rgba\(30,215,96,\.10\)/.test(pseudo),
     "★★ 底纹提到 .10（v3.31.4 用户裁决）：短标那条 5.67:1 的线索取消后，.07 实测对非当前行只有"
     + " 1.14:1——不补粗一档，整行级的线索就等于没有");
-  ok(!/rgba\(30,215,96,\.07\)/.test(rule), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
-  ok(!/rgba\(30,215,96,\.12\)/.test(rule),
-    "★★ 不得直接取 .12——v3.8.0 已明确否决过（压住未弹格子的扫弦箭头与六线底纹，读谱优先）；"
-    + ".10 是没验过的中间档，须人眼验收");
-  /* 反向不变量：短标不得复活。三条通道全堵——伪元素 / 背景图 / inset 阴影 */
-  ok(!/\.bar-row\.current::before/.test(html),
-    "★★ 行首绿条不得复活：v3.5.0 立、v3.8.0 改渐变、v3.31.4 修成真直条后被用户整条去掉。"
-    + "播放中真正的锚是 .cell.active 的绿描边；本条连 obs 那条 ::before{display:none} 残留一起堵"
-    + "（短标没了它就是死规则）");
-  ok(!/linear-gradient|background-image/.test(rule),
-    "★★ .bar-row.current 不得扛背景图：本行 radius(8px) 大于任何贴边小段的宽度，背景图必被圆角"
+  ok(!/rgba\(30,215,96,\.07\)/.test(band), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
+  ok(!/rgba\(30,215,96,\.12\)/.test(band),
+    "★★ 不得直接取 .12——v3.8.0 已明确否决过（压住未弹格子的扫弦箭头与六线底纹，读谱优先）");
+  /* 反向不变量：行首短标不得复活。三条通道（伪元素 / 背景图 / inset 阴影）在 v3.33.8 **精确化**：
+     伪元素不再一律禁止，而是必须是**整条格子带**（left/right:0 + height:44px）。 */
+  ok(/left:0;right:0/.test(pseudo) && /height:44px/.test(pseudo) && !/(?:^|[;{])\s*(?:width|max-width|min-width):/.test(pseudo),
+    "★★ 行首绿条不得复活：伪元素只能是**整条格子带**（left:0;right:0 + height:44px，不得声明窄宽）。"
+    + "播放中真正的锚是 .cell.active 的绿描边；历史那条 5.67:1 的行首短标仍被本条拦下");
+  ok(!/linear-gradient|background-image/.test(band),
+    "★★ 不得扛背景图：本行 radius(8px) 大于任何贴边小段的宽度，背景图必被圆角"
     + "裁切——v3.8.0~v3.31.3 那条「叶片」就是这么来的");
-  ok(!/box-shadow/.test(rule),
-    "★★ 不得用 inset box-shadow：它画的是盒差集，inset 3px 24px 0 0 实为 L 形通宽带"
+  ok(!/box-shadow/.test(base),
+    "★★ 不得在**行盒**上用 inset box-shadow：它画的是盒差集，inset 3px 24px 0 0 实为 L 形通宽带"
     + "（B3 几何 bug，v3.8.0 修）。凡「贴边的一小段」都别走上面这两条路");
-  ok(/border-radius:8px/.test(rule), "★ 行圆角 8px 保留（底纹与 obs 描边款都要它）");
-  /* obs 主题：它的位置对比由 1px inset 环承担，故底纹不跟着提到 .10 */
-  const obs = (html.match(/body\[data-theme="obs"\] \.bar-row\.current\{[^}]*\}/) || [""])[0];
+  ok(/border-radius:8px/.test(pseudo), "★ 行圆角 8px 保留（底纹与 obs 描边款都要它）");
+  /* obs 主题：它的位置对比由 1px inset 环承担，故底纹不跟着提到 .10；v3.33.8 起该环挂在 ::before 上 */
+  const obs = (html.match(/body\[data-theme="obs"\] \.bar-row\.current::before\{[^}]*\}/) || [""])[0];
   ok(/inset 0 0 0 1px/.test(obs),
-    "★ obs 的「位置对比」仍是那条 1px inset 环（它不需要跟经典主题一起提底纹）");
+    "★ obs 的「位置对比」仍是那条 1px inset 环（挂在 ::before 的格子带上，经典主题不跟着提底纹）");
 }
 
 /* ================= T151d：反向不变量——行高与格高一个字都不许动 ================= */

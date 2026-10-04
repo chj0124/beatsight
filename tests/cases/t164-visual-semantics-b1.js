@@ -43,7 +43,11 @@ section("T149c .pill.active 不再用功能绿，且描边走 inset 不改外几
   ok(rule.length > 0, "★ 经典 .pill.active 规则存在");
   ok(/background:var\(--sel-bg\)/.test(rule), "★ 选中底色走 --sel-bg");
   ok(!/var\(--green\)/.test(rule), "★★ 选中态里**不再有绿色**（语义分色的核心断言）");
-  ok(/color:var\(--t1\)/.test(rule), "★ 选中文字为 --t1（白），不再是绿底黑字");
+  /* ★★ v3.33.8：选中态文字色单列成 --sel-fg——此前写的是 --t1，经典主题下恰好等于白
+     （故经典零变化），但日间主题的 --t1 是墨蓝 ⇒ 深底墨蓝字 1.31:1（用户实拍"文字与底色融为一体"）。
+     断言意图不变（选中文字必须是白/浅色，不能是绿底黑字），改为钉 token + 钉经典取值仍为白。 */
+  ok(/color:var\(--sel-fg\)/.test(rule), "★ 选中文字走 --sel-fg（不再直接取 --t1——那是日间撞色的根因）");
+  ok(/--sel-fg:#FFFFFF;/.test(ROOT), "★★ 经典主题的 --sel-fg 仍是 #FFFFFF（与改前 --t1 逐位同值 ⇒ 零像素变化）");
   ok(/box-shadow:inset 0 0 0 1px var\(--sel-line\)/.test(rule),
     "★ 描边用 inset box-shadow（.pill 无边框；走 border 会让 pill 高 +2px 破布局）");
   ok(!/border:/.test(rule), "★★ 不得引入 border——外几何必须零位移");
@@ -60,19 +64,25 @@ section("T149d 日间主题（obs）的 pill.active 同步改中性");
 }
 
 /* ========== T149e：当前行高亮（v3.8.0 裁决；v3.31.4 取消短标、底纹提 .10） ========== */
-section("T149e .bar-row.current 只留 .10 淡底，行首短标已整条取消");
+section("T149e .bar-row.current 只留 .10 淡底（v3.33.8 起挂在 ::before 的 44px 格子带上），行首短标仍不得复活");
 {
-  const rule = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
-  ok(/rgba\(30,215,96,\.10\)/.test(rule),
+  const base = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
+  const pseudo = (html.match(/^\.bar-row\.current::before\{[^}]*\}/m) || [""])[0];
+  const band = base + pseudo;
+  ok(/rgba\(30,215,96,\.10\)/.test(pseudo),
     "★ 底纹 .10（v3.31.4 用户裁决）：短标那条 5.67:1 的线索取消后，靠底纹补回面积对比");
-  ok(!/rgba\(30,215,96,\.07\)/.test(rule), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
-  ok(!/rgba\(30,215,96,\.12\)/.test(rule),
+  ok(!/rgba\(30,215,96,\.07\)/.test(band), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
+  ok(!/rgba\(30,215,96,\.12\)/.test(band),
     "★★ 也不取 .12——v3.8.0 用户实拍已否决（.12 亮带压住未弹格子的扫弦箭头/六线底纹，读谱优先）");
-  ok(!/\.bar-row\.current::before/.test(html),
-    "★★ 行首短标不得复活（v3.31.4 用户裁决；通道与理由见 t166 T151c）");
-  ok(!/box-shadow/.test(rule),
-    "★★ 不用 inset box-shadow——它画的是「盒差集」，inset 3px 24px 0 0 实为 L 形通宽带"
-    + "（B3 的几何 bug，v3.8.0 修复）");
+  /* ★★ v3.33.8：本条从"禁止任何 ::before"**精确化**为"禁止**行首窄短标**"——
+     用户裁决 A：底纹可以走伪元素，但必须是**整条格子带**（left/right:0 + height:44px = .cell 同高）；
+     任何窄宽/贴边形态（width/max-width/min-width 收窄）仍被拦下，历史教训一字不丢。 */
+  ok(/left:0;right:0/.test(pseudo) && /height:44px/.test(pseudo),
+    "★★ 伪元素必须是整条格子带（left:0;right:0 + height:44px = 格子高），不是行首窄短标");
+  ok(!/(?:^|[;{])\s*(?:width|max-width|min-width):/.test(pseudo),
+    "★★ 伪元素不得声明窄宽——行首短标正是靠 width 收窄贴边复活的唯一通道");
+  ok(!/box-shadow/.test(band),
+    "★★ 不用 inset box-shadow——它画的是「盒差集」，inset 3px 24px 0 0 实为 L 形通宽带（B3 的几何 bug，v3.8.0 修）");
 }
 
 /* ================= T149f：和弦名改琥珀（P2） ================= */

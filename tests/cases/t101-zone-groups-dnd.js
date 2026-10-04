@@ -25,7 +25,13 @@ const renBtnOf = item => item && item.children.find(c => /(^| )ren( |$)/.test(c.
 const groupsOf = storage => JSON.parse(storage.get("beatsight.groups") || "null");
 const sectionEl = (els, prefix) => els["presetList"].children
   .find(x => x.className === "preset-section" && String(x.textContent).startsWith(prefix));
-const addBtnOf = sec => sec.children.find(c => c.className === "sec-add");
+/* ★ v3.33.8：区标题的「＋ 新建分组」按钮已下线。测试里造**空组**改用最短真实路径：
+   Store.groupCreate（按钮当初就是调它）+ 区标题折叠/展开一次（走真实的 toggleFold 重渲染）。 */
+const SECTION_KEY = { 节拍: "beat", 扫弦: "strum", 自定义: "custom" };
+const addEmptyGroup = (app, prefix, name) => {
+  app.beat.Store.groupCreate(SECTION_KEY[prefix], name);
+  app.beat.Presets.refreshAfterPatternChange();      // 按钮当初就是走这条重渲染
+};
 const fakeDT = () => ({ setData(){}, effectAllowed: "", dropEffect: "" });
 /* 在桩上走一遍完整的拖放序列：dragstart（源）→ dragover + drop（目标）。
    与真实浏览器的事件序一致（dragover 必须先于 drop，应用在 dragover 里 preventDefault 放行） */
@@ -35,35 +41,37 @@ const dragTo = (src, dst) => {
   dst.fire("drop", { dataTransfer: fakeDT() });
 };
 
-/* ================= 场景 T101a：区标题 ＋ 新建分组（空组架子 + 冷键 + 重启） ================= */
-section("T101a 新建分组 · ★ 区标题 ＋ → 输组名 → 空组头出现在标题下一级（冷键落盘 / 重启稳定）");
+/* ================= 场景 T101a：区标题「＋ 新建分组」已下线（v3.33.8） ================= */
+section("T101a 区标题「＋ 新建分组」已下线 · 建组只走条目 📁「移入分组」（输入新组名即建组）");
 {
   const first = loadApp(undefined, { seedDemo: false });
   eq(groupHeadsCount(first.els), 0, "前提：初始无组");
-  const sec = sectionEl(first.els, "节拍");
-  ok(!!addBtnOf(sec), "★ 区标题带「新建分组」＋ 按钮（节拍区）");
-  ok(!!addBtnOf(sectionEl(first.els, "扫弦")) && !!addBtnOf(sectionEl(first.els, "自定义")),
-     "★ 扫弦/自定义区标题同样带 ＋（三区全开放）");
-  addBtnOf(sec).fire("click");
-  eq(first.els["modalInput"].value, "", "新建分组对话框输入框为空（不预填）");
+  const secs = ["节拍", "扫弦", "自定义"].map(p => sectionEl(first.els, p));
+  ok(secs.every(s => !!s), "前提：三个区标题都在");
+  ok(secs.every(s => !s.children.some(c => /(^| )sec-add( |$)/.test(c.className))),
+     "★★ 三个区标题都不再挂「新建分组」＋ 按钮（DOM 级下线，不是 CSS 藏起来）");
+  ok(secs.every(s => !/新建分组/.test(String(s.textContent)) && !/＋/.test(String(s.textContent))),
+     "★ 标题 textContent 无残留（t63/t84b 的逐字契约从「按钮不污染」变成「本就没有按钮」）");
+  /* 建组功能仍在：条目 📁 → 输入一个不存在的组名（同名直接移入，新名即建组） */
+  const item = items(first.els)[0];
+  groupBtnOf(item).fire("click");
   first.els["modalInput"].value = "热身组";
   first.els["modalOk"].fire("click");
-  const heads = groupHeadsCount(first.els);
-  eq(heads, 1, "空组头出现在节拍区（组头在标题下一级，架子先搭好）");
+  eq(groupHeadsCount(first.els), 1, "★ 走 📁「移入分组」输入新组名 → 新组头出现（功能没丢）");
   const g = (groupsOf(first.storage) || { groups: [] }).groups[0];
-  ok(g && g.zone === "beat" && g.name === "热身组" && g.members.length === 0 && g.open === true,
-     "★ 冷键落盘：zone/name/空 members/open 全部就位");
-  /* 同名幂等：再建同名组不产生第二条 */
-  addBtnOf(sectionEl(first.els, "节拍")).fire("click");
+  ok(g && g.zone === "beat" && g.name === "热身组" && g.members.length === 1,
+     "★ 冷键落盘：zone/name/成员就位");
+  /* 同名幂等（📁 路径）：另一个条目移入同名组 → 不产生第二条组 */
+  const item2 = items(first.els)[0];
+  groupBtnOf(item2).fire("click");
   first.els["modalInput"].value = "热身组";
   first.els["modalOk"].fire("click");
   eq(groupHeadsCount(first.els), 1, "同名组幂等（不重复建，与 groupMove 同名移入同一哲学）");
   /* 重启稳定（storage 是 Map → 展开成 seed 对象喂给新实例） */
   const second = loadApp(Object.fromEntries(first.storage), { seedDemo: false });
-  eq(groupHeadsCount(second.els), 1, "重启后空组架子还在（组不随条目存在与否消失）");
-  /* 标题文案逐字不差：＋ 按钮无文字节点，textContent 铁律不破（t63/t84 的契约） */
+  eq(groupHeadsCount(second.els), 1, "重启后组还在");
   eq(String(sectionEl(first.els, "节拍").textContent), "节拍 · 11 个",
-     "★ ＋ 按钮不污染标题 textContent（逐字契约保持）");
+     "★ 标题文案逐字不差（＋ 下线后这条契约更硬）");
 }
 function groupHeadsCount(els){
   return els["presetList"].children.filter(x => x.className === "preset-group").length;
@@ -74,9 +82,7 @@ section("T101b 拖拽归组 · ★ 条目拖到组头松手 = 移入（data-grp 
 {
   const app = loadApp(undefined, { seedDemo: false });
   const { els, storage } = app;
-  addBtnOf(sectionEl(els, "节拍")).fire("click");
-  els["modalInput"].value = "热身组";
-  els["modalOk"].fire("click");
+  addEmptyGroup(app, "节拍", "热身组");
   const item = itemByName(els, "四分基础");
   ok(!item.dataset.grp, "前提：条目还没进组（无 data-grp）");
   const head = els["presetList"].children.find(x => x.className === "preset-group");
@@ -101,9 +107,7 @@ section("T101c 移出与跨区 · ★ 条目拖到区标题松手 = 移出回散
 {
   const app = loadApp(undefined, { seedDemo: false });
   const { els, storage } = app;
-  addBtnOf(sectionEl(els, "节拍")).fire("click");
-  els["modalInput"].value = "热身组";
-  els["modalOk"].fire("click");
+  addEmptyGroup(app, "节拍", "热身组");
   dragTo(itemByName(els, "四分基础"),
          els["presetList"].children.find(x => x.className === "preset-group"));
   eq((groupsOf(storage) || { groups: [] }).groups[0].members.length, 1, "前提：四分基础已在组里");
@@ -116,9 +120,7 @@ section("T101c 移出与跨区 · ★ 条目拖到区标题松手 = 移出回散
   /* 跨区拖放忽略：beat 条目拖到扫弦区的组头/标题上，什么也不该发生。
      先给扫弦区建一个组作落点；组头必须取**扫弦区**那个——beat 区的热身组空组
      也在列表里，无脑 find 第一个 .preset-group 会拿到它（那是一次合法落点） */
-  addBtnOf(sectionEl(els, "扫弦")).fire("click");
-  els["modalInput"].value = "扫弦组";
-  els["modalOk"].fire("click");
+  addEmptyGroup(app, "扫弦", "扫弦组");
   const strumHead = els["presetList"].children
     .filter(x => x.className === "preset-group")[1];   // [0]=节拍·热身组，[1]=扫弦·扫弦组
   dragTo(itemByName(els, "四分基础"), strumHead);
@@ -135,9 +137,7 @@ section("T101d 自定义区 · ★ 曲式条目拖进自定义区的组；删除
      （loadApp() 默认 demoSeeded=1，自定义区是空的） */
   const app = loadApp(undefined, { seedDemo: false });
   const { els, storage, beat } = app;
-  addBtnOf(sectionEl(els, "自定义")).fire("click");
-  els["modalInput"].value = "练习歌单";
-  els["modalOk"].fire("click");
+  addEmptyGroup(app, "自定义", "练习歌单");
   const wrapper = els["presetList"].children
     .find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
   const head = wrapper.children.find(x => x.className === "preset-group");

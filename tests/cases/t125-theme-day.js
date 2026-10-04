@@ -49,8 +49,26 @@ section("T125a 日间主题 · 浅色板落位（§2.1 换色表）");
   ok(/--green:#2563EB;/.test(OBSVARS), "★ 主强调保留蓝色基因并深档化 #2563EB（白底 4.9:1，AA 达标）");
   ok(/--accent-hi:#1D4ED8;/.test(OBSVARS) && /--teal:#0D9488;/.test(OBSVARS) && /--red:#DC2626;/.test(OBSVARS),
      "★ 高光 / 青绿 / 红同步换浅底达标值");
-  ok(/--t1:#0F172A;/.test(OBSVARS) && /--t2:#475569;/.test(OBSVARS) && /--t3:#64748B;/.test(OBSVARS),
-     "★ 文字三级按白底重核（16.1 / 7.5 / 4.8:1，守住 AA 线）");
+  ok(/--t1:#0F172A;/.test(OBSVARS) && /--t2:#475569;/.test(OBSVARS) && /--t3:#556577;/.test(OBSVARS),
+     "★ 文字三级按白底重核（16.1 / 7.5 / 5.98:1，守住 AA 线）");
+  /* ★★ v3.33.8：只钉字面值不够——旧钉法认的是 #64748B（白底 4.8:1 达标），却漏掉
+     "落到浅色分层底（--card2 / --cell）上只剩 4.17 / 3.87:1"这一层：日间大量 11–14px 小字
+     （座次尺刻度、抽屉动作说明、分组按钮、底栏「当前」）正是坐在那些分层底上。
+     故这里改成**算式断言**：三级文字在两处分层底上都必须 ≥ 4.5:1。 */
+  {
+    const hex = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+    const lum = h => hex(h).map(v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); })
+      .reduce((a, v, i) => a + [0.2126, 0.7152, 0.0722][i] * v, 0);
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const pick = nm => (new RegExp("--" + nm + ":(#[0-9A-Fa-f]{6})").exec(OBSVARS) || [])[1];
+    const surf = { card2: pick("card2"), cell: pick("cell") };
+    ["t1", "t2", "t3"].forEach(nm => {
+      const v = pick(nm);
+      const worst = Math.min(ratio(v, surf.card2), ratio(v, surf.cell));
+      ok(!!v && worst >= 4.5,
+        "★★ 日间 --" + nm + " 在 --card2/--cell 上均 ≥ 4.5:1（实测最差 " + (v ? worst.toFixed(2) : "取不到") + ":1）");
+    });
+  }
   ok(/--line:rgba\(15,23,42,\.09\);/.test(OBSVARS) && /--border:rgba\(15,23,42,\.18\);/.test(OBSVARS)
      && /--rest-line:rgba\(15,23,42,\.25\);/.test(OBSVARS),
      "★ 描边由「半透明白」翻成「墨蓝」");

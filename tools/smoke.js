@@ -1147,6 +1147,15 @@ function wideFullProbe(){
       const srRaw = await cdp.send("Runtime.evaluate",
         { expression: scrollRestProbe(), awaitPromise: true, returnByValue: true });
       const scrollRest = JSON.parse(srRaw.result.value);
+      /* ★★★ v3.33.8：文字对比度审计（两主题各一遍）。放在最后——它会把所有 [hidden] 面板
+         展开再收起，属于"改页面状态"的重探针，跑在布局/滚动/铺满等几何探针之后才不会互相污染。 */
+      const ctRaw = await cdp.send("Runtime.evaluate",
+        { expression: contrastProbe(), awaitPromise: true, returnByValue: true });
+      result.contrast = JSON.parse(ctRaw.result.value);
+      /* ★★★ v3.33.8：版面审计（折行/挤压/两走道对齐）——同样放在最后（会开关浮层） */
+      const laRaw = await cdp.send("Runtime.evaluate",
+        { expression: layoutAuditProbe(), awaitPromise: true, returnByValue: true });
+      result.layoutAudit = JSON.parse(laRaw.result.value);
       await cdp.send("Emulation.clearDeviceMetricsOverride");
       await sleep(150);
       result.layout = { wide, narrow };
@@ -1221,6 +1230,191 @@ function scrollRestProbe(){
    判据：正在弹·实扫 与 空扫/休止 的亮度差必须够大（修前实测仅 −1.2＝无法区分）。 */
 /* v3.31.x（落地审计 P0-1）：children 形状哨兵——真机 HTMLCollection 没有数组方法，
    测试桩是数组。探针在页内造一个真元素读它 children 的形状，断言放在桌面趟。 */
+/* ★★★ v3.33.8：**文字对比度审计**（用户报障「日间模式下部分按钮的字体和背景色几乎融为一体」）。
+   量法：日间/经典两主题各扫一遍——枚举所有**可见且自带文本**的元素，按 WCAG 相对亮度算
+   「文字色 vs 有效背景色」（背景沿祖先链做 alpha 合成，不把 transparent 当底色），
+   阈值取 AA：正文 4.5:1、大字号（≥24px 或 ≥18.66px 粗体）3:1。
+   ★ 为什么必须真机：撞色来自 CSS 变量的级联（日间主题漏覆盖 --sel-bg ⇒ 选中胶囊是深底墨蓝字
+     1.31:1；--amber 未覆盖 ⇒ 和弦胶囊白底 1.95:1；--t3 在浅色分层底上 3.87:1），
+     测试桩没有样式引擎，量不出这一类。改前实测：日间 **44 处**不合格、经典 0 处。
+   ★ 扫描范围：先把所有 [hidden] 展开（面板/抽屉/编辑器都算进去），再把弹窗**单独**量一遍——
+     弹窗遮罩是 position:fixed 的整屏暗纱，混在一起会把页面其它元素的有效背景算暗、产出假失败。 */
+function contrastProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    /* ★ 必须等**过渡动画**跑完再采样：.pill 有 transition:background .12s，切主题后只等两帧
+       会量到深→浅的中间灰（实测 fg/bg 双灰 1.07:1 的假失败）；同理 --t3 的字色也在过渡。
+       200ms 覆盖 .12s/.15s 两档过渡并留余量。 */
+    var settle = function(){ return new Promise(function(r){ setTimeout(r, 220); }); };
+    function lum(c){ var f=function(v){ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }; return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]); }
+    function parse(c){ var m=/rgba?\\(([^)]+)\\)/.exec(c||""); if(!m) return null; var p=m[1].split(",").map(parseFloat); return [p[0],p[1],p[2],p.length>3?p[3]:1]; }
+    function over(f,b){ var a=f[3]; return [f[0]*a+b[0]*(1-a), f[1]*a+b[1]*(1-a), f[2]*a+b[2]*(1-a), 1]; }
+    function effBg(el){ var st=[],n=el; while(n&&n.nodeType===1){ var c=parse(getComputedStyle(n).backgroundColor); if(c&&c[3]>0.001) st.push(c); n=n.parentElement; } var base=[255,255,255,1]; for(var i=st.length-1;i>=0;i--) base=over(st[i],base); return base; }
+    function ownText(el){ var s=""; for(var i=0;i<el.childNodes.length;i++){ var n=el.childNodes[i]; if(n.nodeType===3) s+=n.textContent; } return s.trim(); }
+    function sweep(scope){
+      var out=[], n=0, root = scope ? document.querySelector(scope) : document;
+      if(!root) return { n:0, fails:out };
+      var all = root.querySelectorAll("*");
+      for(var i=0;i<all.length;i++){
+        var el=all[i], cs=getComputedStyle(el);
+        if(cs.display==="none"||cs.visibility==="hidden"||parseFloat(cs.opacity)<0.15) continue;
+        var r=el.getBoundingClientRect(); if(r.width<6||r.height<6) continue;
+        var tx=ownText(el); if(!tx) continue;
+        n++;
+        var bg=effBg(el), fgR=parse(cs.color); if(!fgR) continue;
+        var fg=fgR[3]>=0.999?fgR:over(fgR,bg);
+        var L1=lum(fg),L2=lum(bg), cr=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);
+        var px=parseFloat(cs.fontSize), bold=parseInt(cs.fontWeight,10)>=700;
+        var need=(px>=24||(bold&&px>=18.66))?3:4.5;
+        if(cr<need){
+          var ch=[], m=el;
+          while(m&&m.nodeType===1&&ch.length<4){ var mcs=getComputedStyle(m); ch.push(m.tagName.toLowerCase()+(m.id?"#"+m.id:"")+"("+mcs.backgroundColor+","+mcs.opacity+")"); m=m.parentElement; }
+          out.push({ cls:(el.tagName.toLowerCase()+(el.id?"#"+el.id:"")+"."+String(el.className||"").split(" ").slice(0,3).join(".")).slice(0,52), t:tx.slice(0,10), cr:Math.round(cr*100)/100, need:need, px:px, fg:cs.color, bg:"rgb("+bg.map(Math.round).join(",")+")", chain:ch.join(" < ") });
+        }
+      }
+      return { n:n, fails:out.sort(function(a,b){return a.cr-b.cr;}) };
+    }
+    var tt=document.getElementById("themeToggle");
+    if(!tt) return JSON.stringify({ err:"no themeToggle" });
+    var before=document.body.dataset.theme||"classic";
+    var hidden=[].slice.call(document.querySelectorAll("[hidden]"));
+    var mask=document.getElementById("modalMask");
+    var res={};
+    for(var k=0;k<2;k++){
+      var th = k===0 ? "classic" : "obs";
+      if((document.body.dataset.theme||"classic")!==th){ tt.click(); await frame(); await settle(); }
+      hidden.forEach(function(e){ e.hidden=false; });
+      if(mask) mask.hidden=true;
+      await frame(); await settle();
+      var a=sweep(null);
+      if(mask){ mask.hidden=false; await frame(); await settle(); }
+      var b=sweep(".modal");
+      if(mask) mask.hidden=true;
+      res[th]={ n:a.n+b.n, fails:a.fails.concat(b.fails).sort(function(x,y){return x.cr-y.cr;}) };
+    }
+    hidden.forEach(function(e){ e.hidden=true; });
+    if((document.body.dataset.theme||"classic")!==before){ tt.click(); await frame(); await settle(); }
+    return JSON.stringify(res);
+  })()`;
+}
+
+/* ★★★ v3.33.8：**版面审计**（用户实拍两例：① 日间下「预备拍」开关对齐到了 BPM 标题行而不是
+   BPM 的 +5；② 设置弹窗标题「设置」被挤成一字宽、逐字竖排）。
+   量法：① 折行——短文本（≤10 字、块级、非 inline）用 Range 的**行框数**判（按钮的 min-height/
+   padding 不会被误判）；② 挤压——.sec-tag 在同 flex/grid 行里吃掉 ≥80% 宽、且同行兄弟被压到
+   <40px；③ 对齐——「预备拍开关首行」与 BPM 的「+5」按钮 top 差（仅 ≥961 栅格才是左右两列）。
+   覆盖三个界面（主界面 / 设置弹窗 / 预设侧栏）× 两主题；跑完把浮层关回去（不污染后续）。 */
+function layoutAuditProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var settle = function(){ return new Promise(function(r){ setTimeout(r, 220); }); };
+    function ownText(el){ var s=""; for(var i=0;i<el.childNodes.length;i++){ var n=el.childNodes[i]; if(n.nodeType===3) s+=n.textContent; } return s.trim(); }
+    function lines(el){ try{ var rng=document.createRange(); rng.selectNodeContents(el); var rs=rng.getClientRects(), tops={}; for(var i=0;i<rs.length;i++){ if(rs[i].width<1||rs[i].height<1) continue; tops[Math.round(rs[i].top)]=1; } return Object.keys(tops).length; }catch(e){ return 0; } }
+    function sweep(){
+      var wrapped=[], squeezed=[], n=0, all=document.querySelectorAll("*");
+      for (var i=0;i<all.length;i++){
+        var el=all[i], cs=getComputedStyle(el);
+        if(cs.display==="none"||cs.visibility==="hidden"||parseFloat(cs.opacity)<0.15) continue;
+        var b=el.getBoundingClientRect(); if(b.width<4||b.height<4) continue;
+        n++;
+        var tx=ownText(el);
+        if (tx && tx.length<=10 && el.children.length===0 && cs.display!=="inline" && !cs.whiteSpace.startsWith("pre")){
+          var ln=lines(el);
+          if (ln>=2) wrapped.push({ cls:(el.tagName.toLowerCase()+(el.id?"#"+el.id:"")+"."+String(el.className||"").split(" ").slice(0,2).join(".")).slice(0,40), t:tx.slice(0,10), w:Math.round(b.width), lines:ln });
+        }
+        if (el.classList && el.classList.contains("sec-tag") && el.parentElement){
+          var ps=getComputedStyle(el.parentElement);
+          if (ps.display==="flex"||ps.display==="grid"){
+            var sibs=el.parentElement.children, bad=null, k;
+            for (k=0;k<sibs.length;k++){ if (sibs[k]===el) continue; var stx=sibs[k].textContent.trim(); if(stx && sibs[k].getBoundingClientRect().width<40) bad=Math.round(sibs[k].getBoundingClientRect().width); }
+            var pw=el.parentElement.getBoundingClientRect().width;
+            if (bad!==null && pw>0 && b.width/pw>=0.8) squeezed.push({ parent:(el.parentElement.tagName.toLowerCase()+"."+String(el.parentElement.className||"").split(" ").slice(0,2).join(".")).slice(0,36), tagW:Math.round(b.width), parentW:Math.round(pw), sibW:bad, t:el.textContent.trim().slice(0,10) });
+          }
+        }
+      }
+      /* ★ v3.33.8：**参数行整行不换行**判据。用户实拍：参数框过宽把「小节」顶到下一行。
+         此前只判"元素自身的行框数"抓不到（每个元素仍是 1 行，是**容器换行**把子项折下去）。
+         精确口径：变速训练 / 静音配置面板里的「标签 + 参数框」必须同处一行——
+         排除按设计独占整行的进度行（宽度 ≥ 容器 90% 的子项），只在 ≥961 栅格下判
+         （窄屏这些行本来就允许换行）。 */
+      if (innerWidth >= 961){
+        var PANELS = ["trainerPanel", "muteCfgPanel"];
+        for (var pi=0; pi<PANELS.length; pi++){
+          var pan = document.getElementById(PANELS[pi]);
+          if (!pan || pan.hidden || getComputedStyle(pan).display === "none") continue;
+          var cw = pan.getBoundingClientRect().width;
+          var kids = pan.children, ptops = {}, pn = 0;
+          for (var ki=0; ki<kids.length; ki++){
+            var kb = kids[ki].getBoundingClientRect();
+            if (kb.width < 1 || kb.height < 1) continue;
+            if (cw > 0 && kb.width / cw >= 0.9) continue;      // 进度行/整行元素按设计独占一行
+            /* 按**垂直中心**归并（6px 桶）：.tr-panel 是 align-items:center，
+               标签(17px) 与输入框(24px) 顶端天然差 4px、中心相同——按 top 判会假红。 */
+            pn++; ptops[Math.round(((kb.top + kb.bottom) / 2) / 6) * 6] = 1;
+          }
+          if (pn >= 3 && Object.keys(ptops).length >= 2){
+            wrapped.push({ cls: "参数行 " + PANELS[pi], t: PANELS[pi], w: Math.round(cw), lines: Object.keys(ptops).length });
+          }
+        }
+      }
+      return { n:n, wrapped:wrapped, squeezed:squeezed };
+    }
+    function byOwn(sel,txt){ var a=document.querySelectorAll(sel); for(var i=0;i<a.length;i++) if(a[i].textContent.trim()===txt) return a[i]; return null; }
+    function alignCheck(){
+      if (innerWidth < 961) return null;
+      var ci=document.getElementById("countInToggle"), p5=byOwn("button","+5");
+      if(!ci||!p5||ci.getBoundingClientRect().width<=0||p5.getBoundingClientRect().width<=0) return null;
+      return { countInTop:Math.round(ci.getBoundingClientRect().top), plus5Top:Math.round(p5.getBoundingClientRect().top), delta:Math.round(ci.getBoundingClientRect().top-p5.getBoundingClientRect().top) };
+    }
+    function dialogTitleLines(){
+      var t=document.querySelector("#settingsOverlay .dialog-title");
+      if(!t) return null;
+      var o=document.getElementById("settingsOverlay"); if(o) o.classList.add("open");
+      var r=t.getBoundingClientRect();
+      return { lines:lines(t), w:Math.round(r.width), h:Math.round(r.height), text:t.textContent.trim() };
+    }
+    var tt=document.getElementById("themeToggle");
+    var before=document.body.dataset.theme||"classic";
+    var res={};
+    for (var k=0;k<2;k++){
+      var th = k===0 ? "classic" : "obs";
+      if((document.body.dataset.theme||"classic")!==th){ tt.click(); await frame(); await settle(); }
+      /* ① 主界面 —— ★ v3.33.8：**先把参数面板显形**（变速训练 / 静音拍 / 随机 / 预备拍 开关打开、
+          静音配置面板展开）。上一轮这条审计漏掉的就是这里：面板 hidden 时扫不到，
+          "参数框过宽把小节标签顶到下一行"因此没被拦住。 */
+      var toggleIds = ["trainerToggle","muteToggle","randomToggle","countInToggle"];
+      var toggled = [];
+      for (var ti=0; ti<toggleIds.length; ti++){
+        var tg = document.getElementById(toggleIds[ti]);
+        if (tg && tg.getAttribute("aria-checked") !== "true"){ tg.click(); toggled.push(toggleIds[ti]); }
+      }
+      var muteCfg = document.getElementById("muteCfgPanel");
+      var muteWasHidden = muteCfg ? muteCfg.hidden : null;
+      if (muteCfg) muteCfg.hidden = false;
+      await settle();
+      var main = sweep();
+      /* 复原（不影响后续界面/主题轮次） */
+      for (var ri=0; ri<toggled.length; ri++){ var tb = document.getElementById(toggled[ri]); if (tb) tb.click(); }
+      if (muteCfg && muteWasHidden !== null) muteCfg.hidden = muteWasHidden;
+      main.align = alignCheck();
+      /* ② 设置弹窗（含标题行数） */
+      var so = document.getElementById("settingsOverlay"); if(so) so.classList.add("open");
+      await settle();
+      var dlg = sweep();
+      dlg.title = dialogTitleLines();
+      if(so) so.classList.remove("open");
+      /* ③ 预设侧栏 */
+      var dr = document.getElementById("presetDrawer"); if(dr) dr.hidden=false;
+      await settle();
+      var drawer = sweep();
+      if(dr) dr.hidden=true;
+      res[th] = { main:main, dlg:dlg, drawer:drawer };
+    }
+    if((document.body.dataset.theme||"classic")!==before){ tt.click(); await frame(); await settle(); }
+    return JSON.stringify(res);
+  })()`;
+}
+
 function childrenShapeProbe(){
   return `(function(){
     var el = document.createElement("div");
@@ -1663,6 +1857,61 @@ async function main(){
               JSON.stringify(CS));
           } else if (vp === "桌面"){
             ok(false, p.label + "·" + vp + "：children 形状探针未取到（probe 缺失，属冒烟自身故障）", "");
+          }
+          /* ★★★ v3.33.8：文字对比度（两主题）。用户报障「日间模式下部分按钮的字体和背景色几乎
+             融为一体，看不清」——根因是日间主题漏覆盖 --sel-bg/--sel-line（选中胶囊深底墨蓝字
+             1.31:1），另有 --amber（和弦胶囊 1.95:1）与 --t3 在浅色分层底上 3.87:1。
+             改前实测日间 44 处不合格；本条把「所有可见文字 ≥ AA」钉成闸门，防回潮。
+             ★ 断言分两层：先钉"确实扫到了足够多的带字元素"（防探针自身失效时的假绿），再钉零不合格。 */
+          if (vp === "桌面" && r.contrast && !r.contrast.err){
+            const CT = r.contrast;
+            [["classic", "经典"], ["obs", "日间"]].forEach(function(pair){
+              const d = CT[pair[0]] || { n: 0, fails: [] };
+              ok(d.n >= 120,
+                p.label + "·" + vp + "：★ 前提：对比度审计扫到足量带字元素（" + pair[1] + " " + d.n + " 个）",
+                "只有 " + d.n + " 个（探针失效？）");
+              ok(d.fails.length === 0,
+                p.label + "·" + vp + "：★★ " + pair[1] + "主题下所有可见文字对比度 ≥ AA（正文 4.5:1 / 大字号 3:1）",
+                d.fails.slice(0, 4).map(function(x){
+                  return x.cr + ":1 " + x.cls + " fg=" + x.fg + " bg=" + x.bg + " 「" + x.t + "」\n       链：" + x.chain;
+                }).join(" ／ ") + (d.fails.length > 4 ? " …共 " + d.fails.length + " 处" : ""));
+            });
+          } else if (vp === "桌面"){
+            ok(false, p.label + "·" + vp + "：对比度审计未取到（probe 缺失，属冒烟自身故障）", "");
+          }
+          /* ★★★ v3.33.8：版面审计（两主题 × 主界面/设置弹窗/预设侧栏）——见 layoutAuditProbe 的注释：
+             ① 短块级文本不得逐字竖排；② .sec-tag 不得把同行兄弟挤到 <40px；③ 日间/经典都必须
+             「预备拍开关首行 = BPM 的 +5」（用户实拍：日间对齐到了标题行）。 */
+          if (vp === "桌面" && r.layoutAudit && !r.layoutAudit.err){
+            const LA = r.layoutAudit;
+            [["classic", "经典"], ["obs", "日间"]].forEach(function(pair){
+              const D = LA[pair[0]] || { main: { n: 0, wrapped: [], squeezed: [] }, dlg: { n: 0, wrapped: [], squeezed: [], title: null }, drawer: { n: 0, wrapped: [], squeezed: [] } };
+              const wraps = [].concat(D.main.wrapped, D.dlg.wrapped, D.drawer.wrapped);
+              const sqz = [].concat(D.main.squeezed, D.dlg.squeezed, D.drawer.squeezed);
+              ok(D.main.n >= 150,
+                p.label + "·" + vp + "：★ 前提：版面审计扫到足量元素（" + pair[1] + " 主界面 " + D.main.n + " 个）", "");
+              ok(wraps.length === 0,
+                p.label + "·" + vp + "：★★ " + pair[1] + "主题下没有短文本被排成竖排/异常折行（v3.33.8 修「设置」逐字竖排）",
+                wraps.slice(0, 3).map(function(x){ return "「" + x.t + "」 " + x.cls + " w=" + x.w + " 行数=" + x.lines; }).join(" ／ "));
+              ok(sqz.length === 0,
+                p.label + "·" + vp + "：★★ " + pair[1] + "主题下 .sec-tag 没有把同行兄弟挤到 <40px（设置弹窗头部那条）",
+                sqz.slice(0, 3).map(function(x){ return x.parent + " 角标 " + x.tagW + "/" + x.parentW + " 兄弟仅 " + x.sibW + "px"; }).join(" ／ "));
+              if (D.dlg.title){
+                ok(D.dlg.title.lines === 1 && D.dlg.title.w >= 20,
+                  p.label + "·" + vp + "：★★ 设置弹窗标题「" + D.dlg.title.text + "」单行且未被挤（实测宽 " + D.dlg.title.w + " / " + D.dlg.title.lines + " 行）", "");
+              }
+              if (D.main.align){
+                ok(Math.abs(D.main.align.delta) <= 3,
+                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下「预备拍开关」与 BPM 的「+5」同高"
+                  + "（用户实拍：日间对齐到了标题行）",
+                  "预备拍 top=" + D.main.align.countInTop + " vs +5 top=" + D.main.align.plus5Top
+                  + "（差 " + D.main.align.delta + "px）");
+              } else {
+                ok(false, p.label + "·" + vp + "：" + pair[1] + "主题下两走道对齐未取到（探针故障）", "");
+              }
+            });
+          } else if (vp === "桌面"){
+            ok(false, p.label + "·" + vp + "：版面审计未取到（probe 缺失，属冒烟自身故障）", "");
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,

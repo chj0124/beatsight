@@ -30,7 +30,12 @@
   /* v3.4.0（B1 语义分色）：单选「选中态」专用色。选中是**静态选择**，与「正在发声」是两件事，
      此前两者共用 --green（一色六用：选中/发声/和弦/开关/播放键/聚焦环），用户分不清
      「我选中了它」还是「它正在响」。绿从此只留给进行中语义。 */
-  --sel-bg:#2E2E2E; --sel-line:#6A6A6A;
+  --sel-bg:#2E2E2E; --sel-line:#6A6A6A; --sel-fg:#FFFFFF;   /* v3.33.8：选中态的**文字色**单列成 token——
+      ★ 缺陷：日间主题只覆盖了 --sel-bg 家族里的**背景/描边**两枚（且当时连这两枚都漏了，见 obs 块），
+        而 .pill.active 的文字取 --t1；日间 --t1 = #0F172A（墨蓝）落在深底上只有 1.31:1 ⇒
+        用户实拍「日间模式下部分按钮文字与底色几乎融为一体」（BPM 预设选中项 60/96…、弹窗「确定」）。
+      ★ 为什么经典主题取 #FFFFFF：与改动前 .pill.active 的 color:var(--t1) 在经典下逐位同值，
+        故经典主题零像素变化（日间由 obs 块给 --sel-fg 另一枚值）。 */
   --green:#1ED760; --red:#F3727F;
   --bar-h:96px;          /* v3.3.1：播放底栏高度。**三处消费者必须同源**——
                             .main 的下内边距（内容让位）、.diag 的 bottom（避让）、
@@ -506,7 +511,17 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    ★ 历史教训（本仓同型三次，留档）：**半径大于元素尺寸的圆角 = 裁切**——v3.3.1 的
      `inset 3px 24px 0 0` 画出的是 L 形；v3.8.0 的渐变背景图被本行 8px 圆角斜切顶部 8px。
      两回都是"断言只比对 CSS 字符串、没人验渲染几何"。凡"贴边的一小段"，别让它做被裁元素的背景。 */
-.bar-row.current{background:rgba(30,215,96,.10);border-radius:8px}
+.bar-row.current{background:none}
+/* ★★ v3.33.8：当前小节行的底纹**只铺格子带（44px）**，不再铺满整行（86px）。
+   ★ 为何：`.cell{height:44px}` 只占行盒顶部，余下约 42px 是歌词/标注带 ⇒ 底纹铺满整行时，
+     格子下方会露出一条圆角空条——用户实拍"没有歌词的情形下跑道下面依然渲染"说的就是它
+     （日间蓝底面白底显眼、经典绿底在暗底上含蓄，故此前只在日间被注意到；与有没有歌词无关）。
+   ★ 用户裁决（v3.33.8）：底纹与 obs 那圈 1px 内环都搬到 ::before，高度锁 44px（= 格子高）。
+     三条历史不变量（行首短标不得复活 / 不得扛背景图 / 不得用 inset 阴影画盒差集）**原意不变**，
+     但判据从"禁止任何 ::before"精确化为"**禁止行首窄短标**"：伪元素必须 left/right:0、
+     height:44px（整条格子带），任何窄宽/贴边/背景图形态仍被拦下。 */
+.bar-row.current::before{content:"";position:absolute;left:0;right:0;top:0;height:44px;border-radius:8px;
+  background:rgba(30,215,96,.10);pointer-events:none}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
 /* 预告行（v2.7.0；v2.8.0 预告信息并入和弦胶囊，不再单独挂徽标）：
@@ -787,6 +802,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 #viz.lyric-inline-on.chord-xl .bar-row{margin-bottom:48px}   /* v2.86.0 移植 v2.84.0 行距守恒：歌词进标注带后 xl 行距 48 即清开（原首版 70 过剩） */
 .lyric-row{position:relative;height:28px;border-radius:6px}
 .lyric-row.cur{background:rgba(var(--veil),.05)}
+.lyric-row.cur.lyr-empty{background:none}   /* v3.33.8：空歌词行（无 chip）不画底纹——无词却渲染出空条 */
 .lyric-row.preview{opacity:.55}                     /* 预告行的歌词 = 未来，与 .preview-row 同一份降权 */
 /* v2.86.0（D2）：字在各自节奏 chip 内靠左（justify-content:center → flex-start），
    字仍按节奏位置铺开——逐字对格、起唱点 = 格子左缘；两种位置模式同一套 */
@@ -1098,7 +1114,7 @@ input[type=range].vol{width:120px}
 /* v3.4.0（B1/P2+P7）：单选选中态**不再用功能绿**——绿只保留「正在发声/进行中」。
    描边走 inset box-shadow 而非 border：.pill 基座无边框，加 border 会让全部 pill 高 +2px
    （几何位移会波及布局断言），inset 不改外几何。 */
-.pill.active{background:var(--sel-bg);color:var(--t1);font-weight:700;box-shadow:inset 0 0 0 1px var(--sel-line)}
+.pill.active{background:var(--sel-bg);color:var(--sel-fg);font-weight:700;box-shadow:inset 0 0 0 1px var(--sel-line)}   /* v3.33.8：选中态文字走 --sel-fg（经典下与旧值 --t1 逐位同值；日间要白字，见 :root 注释） */
 .pill.outline{background:transparent;border:1px solid var(--border);color:var(--t1)}
 .pill.outline:hover:not(:disabled){background:rgba(var(--veil),.06)}
 .pill.flash{background:var(--green);color:var(--on-green)}
@@ -1218,7 +1234,13 @@ input[type=range].vol{width:120px}
 .tr-panel{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:12px}
 .tr-panel[hidden]{display:none}
 .tr-panel .lab{font-size:12px;color:var(--t2)}
-.tr-inp{width:64px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
+.tr-inp{width:56px;min-width:44px;flex:0 1 auto;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px;outline:none}
+/* ★★ v3.33.8：参数框由 64px 收窄到 56px 并给出 **min-width:44px**——两件事：
+   ① 用户实拍「参数框长度偏大，把小节文案顶到下一行」；日间主题还给 .tr-panel 加了
+      内边距（14px 16px）+ 边框，行内可用宽再少 32px ⇒ 同一行必然折行（实测 1440：
+      经典单行 ✓ / 日间「小节」落到下一行 ✗）。夜间在更窄的容器（窄屏/设置弹窗内）同样会挤。
+   ② `min-width` 让参数框**在空间不足时先收缩**（默认 flex 自动最小尺寸＝width，收不动就换行）
+      ⇒ 从此不再靠 flex-wrap 兜底，标签永远不会被挤成两行（44px 仍放得下 3 位数字）。 */
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
 .tr-prog.live{color:var(--green)}
@@ -1255,19 +1277,8 @@ input[type=range].vol{width:120px}
 .preset-group .ren,.preset-group .del{flex:none}
 .preset-item .grp{color:var(--t3);font-size:12px;padding:2px 6px;border-radius:6px;flex:none}
 .preset-item .grp:hover{color:var(--blue);background:rgba(77,171,247,.12)}
-/* v2.25.0：区标题「新建分组」＋ 按钮——铁律：sec 的 textContent 逐字（t63/t84b），
-   故按钮**无文字节点**、字形走 ::before；margin-left:auto 推到行尾、折叠箭头（::after）仍居最右 */
-.preset-section .sec-add{margin-left:auto;flex:none;background:none;border:none;cursor:pointer;
-  color:var(--t3);font-size:13px;line-height:1;padding:2px 6px;border-radius:6px}
-/* v2.69.0（2.4）：全角「＋」字形天生扁宽（横粗竖细、重心偏），换**半角 + 套圆圈**：
-   ::before 画一个 1.5px 描边的正圆、内部放等宽笔画的半角「+」——纯 CSS、零 JS、
-   跨平台字形一致（不依赖字体的全角加号形态）；hover 变色规则原样生效 */
-.preset-section .sec-add::before{
-  content:"+";display:block;box-sizing:border-box;
-  width:15px;height:15px;border:1.5px solid currentColor;border-radius:50%;
-  font-size:11px;font-weight:700;line-height:12px;text-align:center;font-family:var(--mono)
-}
-.preset-section .sec-add:hover{color:var(--blue);background:rgba(77,171,247,.12)}
+/* v3.33.8：区标题「新建分组」＋ 按钮的样式整段删除（按钮已下线，见列表生成处的注释）。
+   留档：该按钮 v2.25.0 引入、v2.69.0 换过字形（半角 + 套圆圈），v3.33.8 按用户要求移除。 */
 .preset-section.drag-over,.preset-group.drag-over{outline:1.5px dashed var(--blue);outline-offset:2px;border-radius:6px}
 /* ★ v3.33.0：基础节奏区（预设库列表的「第 0 区」，静态挂在 #presetList 之前）。
    区头复用 .preset-section（与节拍/扫弦/自定义三区同一视觉语言：▾ 箭头 + 折叠记忆），
@@ -1920,8 +1931,23 @@ body[data-theme="obs"]{
   --green:#2563EB; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标） */
   /* 文字三级按白底重核：16.1:1 / 7.5:1 / 4.8:1——守住上面那条注释立的 AA 线
      （旧注释里的 #5F6B7E / ≈6.3:1 是暗底时代的口径，值已随底色一并换掉） */
-  --t1:#0F172A; --t2:#475569; --t3:#64748B; --on-green:#FFFFFF;
+  /* ★ v3.33.8：--t3 由 #64748B 改 #556577——旧值只在**纯白**上够 4.8:1，落到浅色分层底上就掉线：
+     实测 #64748B 在 --card2(#EDF0F5) 4.17:1、--cell(#E3E8F0) 3.87:1、--bg 4.32:1 ⇒ 座次尺刻度、
+     抽屉动作说明（.pd-act-d）、分组按钮（.grp）、底栏「当前」标签等 11~14px 小字在日间普遍糊。
+     新值在同样四处为 5.98 / 5.23 / **4.86** / 5.43:1，全部 ≥4.5:1，且仍比 --t2(#475569) 浅
+     ⇒ t1 > t2 > t3 的层级不变。 */
+  --t1:#0F172A; --t2:#475569; --t3:#556577; --on-green:#FFFFFF;
   --rest-line:rgba(15,23,42,.25);
+  /* ★★ v3.33.8：**选中态三件套**（用户实拍缺陷的根因）——:root 只定义了 --sel-bg/--sel-line，
+     本块此前**一枚都没覆盖**，于是日间下选中胶囊仍是暗色底 #2E2E2E，而 .pill.active 的文字
+     取 --t1 = #0F172A（墨蓝）⇒ **1.31:1**，用户拍的「BPM 预设选中项」「弹窗确定」就是这么糊的。
+     修法：日间把选中态定为「深底 + 白字」（与经典主题同语义：选中 = 中性深色块，绿仍只表进行中），
+     并把文字色单列 --sel-fg 带到 :root（经典取白 = 与旧值逐位同值，零像素变化）。 */
+  --sel-bg:#1F2937; --sel-line:#334155; --sel-fg:#FFFFFF;   /* 白字 14.7:1（原 1.31:1） */
+  /* ★ v3.33.8：--amber 此前只有 :root 的 #E3B341（暗底口径），日间白底上仅 **1.95:1** ⇒
+     和弦名/型名胶囊（.bar-chord）在日间几乎看不见。深琥珀 #8A5A00 在白 / --card2 / --cell 上
+     为 5.93 / 5.19 / 4.82:1，全部 ≥4.5:1，且保持"琥珀 = 乐谱标记"的语义色相不变。 */
+  --amber:#8A5A00;
   --teal:#0D9488; --accent-hi:#1D4ED8;  /* 4.5:1 / 6.2:1 */
   /* P-c（v2.54.0）：--blue 此前只在 :root 定义、obs 从未覆盖（暗底上够用）。
      浅底上原值 #4FA3E3 只有 ≈2.5:1，而它的职责在 PLAN-v5 后变重了——字块选中框、
@@ -1967,16 +1993,27 @@ body[data-theme="obs"] .group-label .sec-tag b{font-size:14px}
    一个字宽 → 逐字换行成竖排。照 .group-label .sec-tag 同款先例：行内容器里角标收成
    内容宽。 */
 body[data-theme="obs"] .pd-head .sec-tag{display:inline-flex;width:auto;margin:0;flex:none}
+/* ★★ v3.33.8：设置弹窗头部（'04 Settings' + 中文标题）是**同一个 flex 行**，而上面的
+   .sec-tag 基础规则带 width:100% ⇒ 角标独占整行、把「设置」挤成**一个字宽 → 逐字竖排**
+   （用户实拍）。与 .group-label / .pd-head 同款先例：行内容器里角标收成 inline-flex + 宽度自适应；
+   标题侧再钉 nowrap，避免任何容器里被挤成竖排。 */
+body[data-theme="obs"] .dialog-head .sec-tag{display:inline-flex;width:auto;margin:0;flex:none}
+body[data-theme="obs"] .dialog-title{white-space:nowrap;flex:none}
 /* v2.76.3：状态行搬顶栏后 53px 占位退役——观测台左卡仍有角标整行，BPM/开关两卡补回
    等高占位：卡内边距 12 + 角标行 18 + 角标下距 6 + 左列行距 8 = 44px（量测校准，
    实测角标主题 vol/bpm 标签同线），经典主题无角标行故无此规则 */
-body[data-theme="obs"] .viz-head-grid .viz-head > .group,
-body[data-theme="obs"] .viz-head-grid .viz-toggles{padding-top:44px}
+/* ★★ v3.33.8：日间下 .sec-tag 由 display:none 变成可见（占 44px 一行），左列内容因此整体下移；
+   右列若仍用经典那档 44px，其首个开关就会对齐到**左列标题行**而不是控制行——用户实拍：
+   「夜里预备拍开关与 BPM 的 +5 同高，日间却与 BPM 标题同高」。
+   实测（1440 视口）：经典 标题 124 / +5 154 / 开关 156（开关对控制行 ✓）；
+   日间 标题 147 / +5 182 ⇒ 开关须落 182 ⇒ 右列内边距 = 182 − 列顶 103 = **79px**（左列保留 44 让角标有位）。 */
+body[data-theme="obs"] .viz-head-grid .viz-head > .group{padding-top:44px}
+body[data-theme="obs"] .viz-head-grid .viz-toggles{padding-top:79px}
 
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
 
 /* ---------- 观测台 · 时值可视化（视觉中心） ---------- */
-body[data-theme="obs"] .bar-row.current{background:rgba(37,99,235,.05);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}   /* v3.31.4：obs 的「位置对比」由这条 1px inset 环承担，故底纹不随经典主题提到 .10 */
+body[data-theme="obs"] .bar-row.current::before{background:rgba(37,99,235,.05);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}   /* v3.31.4：obs 的「位置对比」由这条 1px inset 环承担，故底纹不随经典主题提到 .10 · v3.33.8：随 ::before 收到格子带（44px） */
 body[data-theme="obs"] .beat-zone{background:rgba(var(--veil),.05);border-radius:3px}   /* v2.79.0：inset ring 同口径退役 */
 body[data-theme="obs"] .cell{background:var(--cell);border-radius:3px}
 body[data-theme="obs"] .cell.active{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.9), 0 0 10px rgba(37,99,235,.22)}
@@ -2001,7 +2038,7 @@ body[data-theme="obs"] .bpm-ticks i{background:rgba(var(--well),.16)}
 /* ---------- 观测台 · 分段控件（pill 收敛为矩形） ---------- */
 body[data-theme="obs"] .pill{border-radius:6px;background:var(--card2);border:1px solid var(--line);color:var(--t2);font-family:var(--mono);font-variant-numeric:tabular-nums;padding:8px 14px;font-size:12px;transition:border-color .12s,color .12s,background .12s}
 body[data-theme="obs"] .pill:hover{border-color:var(--border);color:var(--t1)}
-body[data-theme="obs"] .pill.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--t1);font-weight:600}   /* v3.4.0：日间主题同步改中性选中态（经典/日间两主题必须同语义） */
+body[data-theme="obs"] .pill.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--sel-fg);font-weight:600}   /* v3.4.0：日间主题同步改中性选中态（经典/日间两主题必须同语义）· v3.33.8：文字改 --sel-fg（此处原先写死 var(--t1)，把上面那条改回白字的效果又盖回墨蓝） */
 body[data-theme="obs"] .pill.outline{background:transparent}
 body[data-theme="obs"] .pill.flash{background:var(--green);color:#fff}
 body[data-theme="obs"] .pill.danger{background:var(--red);border-color:var(--red);color:#fff}
@@ -2023,7 +2060,7 @@ body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
 body[data-theme="obs"] .preset-section{font-family:var(--mono);letter-spacing:.12em}
 body[data-theme="obs"] .preset-group{font-family:var(--mono);letter-spacing:.12em}
 /* 侧栏三处 hover 底写死 rgba(77,171,247,.12)（浅蓝）——浅底上几乎看不出反馈，按主色重给一档 */
-body[data-theme="obs"] .preset-item .grp:hover,body[data-theme="obs"] .preset-item .ren:hover,body[data-theme="obs"] .preset-section .sec-add:hover{background:rgba(37,99,235,.10)}
+body[data-theme="obs"] .preset-item .grp:hover,body[data-theme="obs"] .preset-item .ren:hover{background:rgba(37,99,235,.10)}
 body[data-theme="obs"] .sidebar-note{border-top:1px solid var(--line);padding-top:12px}
 
 /* ---------- 观测台 · 编辑器 ---------- */
@@ -3341,23 +3378,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3373  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4058  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5790  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6724  Modal         应用内弹窗
-     L6869  Viz           时值可视化渲染与每帧动画
-     L10237 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10918 Trainer       变速训练器
-     L11126 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11768 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13364 Editor        自定义节奏型编辑器
-     L13908 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13955 Ear           听辨训练（v1.10.0）
-     L14183 Arrange       曲式编排（v2.0.0）
-     L17112 Help          使用方法（v2.0.1）
-     L17241 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17315 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17558 初始化（装配） 各模块 hook 接线与启动
+     L3410  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4095  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5827  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6761  Modal         应用内弹窗
+     L6906  Viz           时值可视化渲染与每帧动画
+     L10282 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10963 Trainer       变速训练器
+     L11171 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11813 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13404 Editor        自定义节奏型编辑器
+     L13948 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13995 Ear           听辨训练（v1.10.0）
+     L14223 Arrange       曲式编排（v2.0.0）
+     L17152 Help          使用方法（v2.0.1）
+     L17281 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17355 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17598 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3383,7 +3420,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.7";
+const VERSION = "3.33.8";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9173,6 +9210,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       row.head = head;
       lane.appendChild(rowEl);
       lyricRows.push(row);
+      /* ★★ v3.33.8：**建行时就标出"没有歌词"**（无 chip）——不依赖帧内的状态同步
+         （那条在 sig 未变时会跳过），保证空行在任何时刻都带 .empty ⇒ 底纹不画。 */
+      row.el.classList.toggle("lyr-empty", !(row.chipEls && row.chipEls.length));
     }
     /* 窗口里一个小节的歌词都没有 → 整轨收起不占位（与旧版"当前段无歌词行即收起"同义）。
        窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来 */
@@ -9431,6 +9471,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       lastLyricStates = sig;
       lyricRows.forEach((row, ri) => {
         row.el.classList.toggle("cur", ri === curIdx);
+        /* ★★ v3.33.8：标出**没有歌词**的行。用户实拍："没有歌词的情形下，跑道下面依然渲染"——
+           底下那条浅色空条就是当前槽的 .lyric-row.cur 底纹（rgba(--veil,.05)）；该槽没有词时
+           行里一个 chip 都没有，底纹却照画 ⇒ 看起来像"凭空多出一条歌词带"。
+           底纹只表"这一行是当前正在唱的那行"，没有词就无从谈起，故空行不画（见样式区）。 */
+        row.el.classList.toggle("lyr-empty", !(row.chipEls && row.chipEls.length));
         row.head.style.display = ri === curIdx ? "" : "none";
       });
       for (const s of states){
@@ -12618,17 +12663,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
          click stopPropagation 防止误触发折叠。
        ★ 区标题同时是"移出分组"的落点：条目拖到标题上松手 = 移出分组回散员流
          （等价旧 📁 对话框的"清空并确定"，用户拍板）。 */
-    const add = document.createElement("button");
-    add.className = "sec-add"; add.title = "新建分组"; add.setAttribute("aria-label", "新建分组");
-    /* v2.69.0（2.4）：字形仍走 CSS ::before（见样式区的说明）——零 JS、桩安全、
-       sec 的 textContent 铁律（t63/t84b）不受影响 */
-    add.addEventListener("click", e => {
-      e.stopPropagation();
-      Modal.uiPrompt(`在「${text.split(" · ")[0]}」区新建分组（输入组名）`, "", (/** @type {string} */ v) => {
-        if (Store.groupCreate(key, v)) refreshAfterPatternChange();
-      });
-    });
-    sec.appendChild(add);
+    /* ★★ v3.33.8：区标题的「＋ 新建分组」按钮**下线**（用户要求"把它去掉"）。
+       功能不丢：建组仍走条目上的 📁「移入分组」——输入一个不存在的组名即建组
+       （Modal 的提示文案本就是"输入组名；同名组直接移入"），那条路径同时是 v2.25.0 起
+       的主入口；空组"先搭架子"的快捷方式随之取消。
+       顺带消掉一处 textContent 契约风险：标题不再挂无文字节点的按钮（t63/t84b 的逐字断言
+       从"按钮不污染"变成"本就没有按钮"，契约更硬）。 */
     attachDropTarget(sec, key, ref => {
       if (Store.groupMove(ref, key, "")) refreshAfterPatternChange();   // 空 name = 移出
     });
