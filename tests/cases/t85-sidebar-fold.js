@@ -113,8 +113,9 @@ section("T85c 分区折叠 · 开合记忆在热键，重载恢复，没存过�
   z.secs[1].fire("click");
   beat.Store.flush();                                  // 热键是防抖的，flush 立即落盘
   const raw = JSON.parse(storage.get("beatsight.state"));
-  eq(JSON.stringify(raw.fold), JSON.stringify({ beat: true, strum: true, custom: false }),
-     "★ 热键载荷含 fold（显示偏好，跟热键走）——值 = **展开**布尔");
+  eq(JSON.stringify(raw.fold), JSON.stringify({ beat: true, strum: true, custom: false, basic: true }),
+     "★ 热键载荷含 fold（显示偏好，跟热键走）——值 = **展开**布尔"
+     + "（v3.33.0：+ basic = 预设库第 0 区「基础节奏 · 拍数与细分」的开合，出厂默认展开）");
 
   const r1 = loadApp({ "beatsight.state": storage.get("beatsight.state") });
   eq(JSON.stringify(expanded(r1.els)), JSON.stringify(["true", "true", "false"]),

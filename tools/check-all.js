@@ -158,9 +158,17 @@ const STEPS = [
     faultRetry: 1 },
   /* v2.8.16（审计 P2-1）：本步同时承担覆盖率采集——FULL_SCAN 下覆盖率插桩的内存开销约 2GB，
      故带头抬高 old-space 上限（V8 按需增长，不预占；只影响这个带插桩的子进程）。
-     第 18 步据此落盘分析，不再重跑套件。 */
+     第 18 步据此落盘分析，不再重跑套件。
+     ★ v3.33.0：上限 4096 → 6144，依据是**实测**而非估算——套件已长到 186 个用例文件，
+       v3.31.8 基线在 4096 下峰值 RSS 已达 3.727GB（贴着上限跑完，无余量），
+       v3.33.0（+12 次 loadApp）峰值 3.754GB 即 OOM（exit 134）。
+       对照实验排除"泄漏"：单次 loadApp 的内存增量两侧几乎相同（2438KB → 2464KB，+1%），
+       即这 27MB 差额正是新增用例的 12 次装载本身，不是新代码的泄漏。
+       本机物理内存 16GB，6GB 上限安全（插桩进程峰值约 4GB）。
+       为什么是抬上限而不是砍用例数：上限卡在两版都顶到的位置 ⇒ 这是**套件增长**问题，
+       砍自己那 12 次装载只是把同一颗雷留给下一个功能分支。 */
   { name: "自动化测试" + (QUICK ? "（抽样）" : "（FULL_SCAN 全量）"), cmd: process.execPath,
-    args: ["--max-old-space-size=4096", "tests/run.js"],
+    args: ["--max-old-space-size=6144", "tests/run.js"],
     env: { FULL_SCAN: QUICK ? "" : "1", NODE_V8_COVERAGE: COV_DIR } },
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
   /* v2.8.16（审计 P2-1）：--reuse 复用第 16 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */

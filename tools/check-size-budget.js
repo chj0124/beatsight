@@ -226,8 +226,22 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      逐段试听入口收口候选试听（还原内存换型、摘回调）+ previewCandidate 额度修序
      （stop 先于设额度，此前额度被自己的 stop 清零）；附共享状态区一次性契约注释；
      .help-dl 死规则清理净 -0.1KB。新增注释已两轮压缩至最小；上调到 1509KB，
-     留约 1.1KB 拦回归。 */
-const BUDGET_BYTES = 1509 * 1024;
+     留约 1.1KB 拦回归。
+   v3.33.0（「拍数 × 节奏类型」新功能本体）：净增约 27.6KB（+435/−32 行），
+     全部为**功能本体 + 决策注释**，逐块可对账：
+       · 顶层 RHY_STEPS / VALID_RHY / RHY_NAME / RHY_SIG_CHOICES + VALID_METER 上移；
+       · basicPattern 二参化（生成器）与 curPattern 接线；
+       · Store 两个新字段（rhy / noAccent）+ fold.basic + 载荷与加载校验；
+       · 预设库「基础节奏区」：DOM 搭的 9 枚记谱图标（rhyIcon）+ 拍数下拉 + 交互接线
+         + 卡片区样式与折叠；
+       · 编辑器拍数下拉 + 换拍数重建骨架 + 撤销栈快照扩为 {meter, bars}；
+       · 三处混用边界（曲式拍号还原 / alignSigToPattern 不覆盖 / 混用说明注释）。
+     注释里含**证据链**（TERENCE DM1 说明书 + KORG MA-2 规格的 9 种成分定案）与逐条取舍，
+     已做一轮精修（-1.4KB 冗余散文），余下为"为什么这样做"的必需记录（本仓库惯例：
+     注释随实现一起落，不留"待补"）。
+     上调到 1540KB：实测 1534.8KB + 约 5KB 余量拦回归（余量口径与既往各批次一致），
+     不是无脑抬常数——增量经 git diff 逐块核对确认为功能本体。 */
+const BUDGET_BYTES = 1540 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

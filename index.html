@@ -1269,6 +1269,34 @@ input[type=range].vol{width:120px}
 }
 .preset-section .sec-add:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 .preset-section.drag-over,.preset-group.drag-over{outline:1.5px dashed var(--blue);outline-offset:2px;border-radius:6px}
+/* ★ v3.33.0：基础节奏区（预设库列表的「第 0 区」，静态挂在 #presetList 之前）。
+   区头复用 .preset-section（与节拍/扫弦/自定义三区同一视觉语言：▾ 箭头 + 折叠记忆），
+   实体态在这里收紧——拍数下拉一行、9 枚纯图标 pill 一行（392px 抽屉里放得下）。
+   图标是内联 SVG、fill 走 currentColor ⇒ 自动跟随主题文字色，
+   故深色 / 观测台主题**不需要**任何额外规则（与 .hint 同源做法）。 */
+#rhyBeatBox{padding:0 2px 2px}
+#rhyBeatBox .bpm-row{align-items:center;flex-wrap:wrap;gap:6px}
+#rhyBeatBox .hint{margin-top:6px}
+/* 图标 pill：用户拍板「图标下不写文案」（名称走 title 悬浮 + aria-label 读屏），
+   故水平内边距收紧、行高归零（否则图标块的基线会在胶囊里造成偏移）。
+   ★ 刻意**不写 min-height**——全站 40px 触控下限由 .pill 主规则统一把守，本处不得局部下调
+     （t167/T152b 是专门盯这条的闸门：任何选择器命中 .pill 的规则都不许出现 <40px 的高度声明）。
+   ★ 图标几何规则写在 .rh* 上（选择器不含 .pill），既避开上面那条闸门的误伤，
+     也让"字形的形状"与"胶囊的尺寸"两件事分开。 */
+#rhyPillRow .pill{padding:6px 8px;line-height:0;display:inline-flex;align-items:center;justify-content:center}
+/* 记谱图标（v3.33.0）：一组绝对定位的小块拼出符头/符干/符杠/休止/三连音数字
+   （DOM 搭建见 Presets.rhyIcon——本仓库禁止 innerHTML 拼串）。
+   颜色一律 currentColor ⇒ 深色与观测台主题自动跟随文字色，无需另写规则。 */
+.rh{position:relative;display:block;height:22px}
+.rh > span{position:absolute;display:block;background:currentColor}
+.rh-h{border-radius:50%;transform:rotate(-18deg)}      /* 符头（椭圆感靠圆角 + 轻微旋转） */
+.rh-b{border-radius:1px}                                /* 符杠 */
+.rh-r{border-radius:1px;transform:rotate(20deg)}        /* 休止斜杠 */
+.rh-rd{border-radius:50%}                               /* 休止旗点 */
+/* 三连音数字：选择器写到 `.rh > span.rh-3`（比上面那条多一个类 ⇒ 稳定压过它的 background）
+   —— 用纯 .rh-3 与 `.rh > span` 同特异性，只靠源码顺序决胜，太脆。 */
+.rh > span.rh-3{background:none;font-size:9px;font-style:italic;font-weight:700;
+  font-family:Georgia,serif;line-height:1}
 .preset-item.dragging{opacity:.45}
 /* v2.25.0：✎/📁 的显隐分设备——桌面（可 hover）与触屏（无 hover）两套口径。
    ★ v3.1.0（A7，用户定稿）：桌面从「悬停才显示（opacity 0→1）」改为**常驻低对比
@@ -2344,6 +2372,24 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
         <button class="pill outline" id="migHintBtn">知道了</button>
       </div>
+      <!-- ★★ v3.33.0（用户拍板）：基础节奏区 =「节奏类型 × 拍数」两个独立选项
+           （复刻实体节拍器的 RHY / BEAT 双旋钮；参照 TERENCE DM1 说明书截图的形式）。
+           位置是预设库列表的**第 0 区**：静态挂在 #presetList **之前**——不能放进列表里，
+           buildPresetList 每次重建都 clear(list)（innerHTML=""），静态节点会被连坐销毁
+           （同 #migHint 在 v3.1.0 踩过的坑）。
+           它不参与 applyFold 的三区切段（那只认 #presetList.children），开合自理（S.fold.basic）。
+           控件形态：拍数 = 下拉框（省占位）、节奏类型 = 纯图标 + 悬浮/读屏名称
+           （用户拍板：图标下不写文案）。两者都由 JS 从 RHY_STEPS / VALID_RHY 生成——
+           9 个 SVG 图标若写死在标记里，既不省体积也没法保证与数据表同源。 -->
+      <div class="preset-section" id="basicSecHead" role="button" tabindex="0" aria-expanded="true">基础节奏 · 拍数与细分</div>
+      <div id="rhyBeatBox">
+        <div class="bpm-row">
+          <span class="lab">拍数</span>
+          <select class="loop-sel" id="sigSel" aria-label="拍数：基础节奏每小节几拍（0 为每拍均等、不分重拍）"></select>
+        </div>
+        <div class="bpm-row" id="rhyPillRow" role="group" aria-label="节奏类型：一拍之内的细分"></div>
+        <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称</div>
+      </div>
       <div id="presetList"></div>
       <!-- 「当前曲式 · 名字」chip（v2.35.0）：它指示跳段键/弹层范围滑块正在服务曲式库里的哪一条，
            只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；单曲式时整行加 .single
@@ -2552,6 +2598,12 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <button class="pill outline" id="delBarBtn">− 删当前小节</button>
         <button class="pill" id="copyBarBtn">复制小节到全部</button>
         <button class="pill outline" id="clearBarBtn">清空当前小节</button>
+        <!-- ★ v3.33.0（用户拍板）：本型的**拍数**可改（下拉框：与基础节奏区同款控件，
+             同一概念不搞两种形态）。换拍数 = 按新拍数重建草稿骨架（见 Editor 的 meter 分支），
+             因为旧小节的时值和与新拍数必然对不上，无法保留内容。
+             选项由 VALID_METER 生成（导入校验用的是同一份白名单，不会出现"选得出来存不进去"）。 -->
+        <span class="lab">拍数</span>
+        <select class="loop-sel" id="editorMeterSel" aria-label="拍数：本型每小节几拍，切换将按新拍数重建草稿"></select>
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · 一个节奏型 1–<span id="editorMaxBars">64</span> 小节 · Ctrl+Z 撤销</span>
       </div>
       <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时三个按钮禁用
@@ -3252,23 +3304,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3284  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L3920  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5633  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6526  Modal         应用内弹窗
-     L6671  Viz           时值可视化渲染与每帧动画
-     L9920  AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10601 Trainer       变速训练器
-     L10809 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11433 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L12861 Editor        自定义节奏型编辑器
-     L13362 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13409 Ear           听辨训练（v1.10.0）
-     L13637 Arrange       曲式编排（v2.0.0）
-     L16566 Help          使用方法（v2.0.1）
-     L16695 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L16769 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17012 初始化（装配） 各模块 hook 接线与启动
+     L3336  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4021  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5753  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6683  Modal         应用内弹窗
+     L6828  Viz           时值可视化渲染与每帧动画
+     L10077 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10758 Trainer       变速训练器
+     L10966 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11608 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13204 Editor        自定义节奏型编辑器
+     L13748 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13795 Ear           听辨训练（v1.10.0）
+     L14023 Arrange       曲式编排（v2.0.0）
+     L16952 Help          使用方法（v2.0.1）
+     L17081 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17155 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17398 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3294,7 +3346,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.31.8";
+const VERSION = "3.33.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3414,6 +3466,55 @@ function hasStrum(pat){
      音型不静默改变（界面不再有换组入口，故永远取第 0 组）。 */
 /** @type {Record<number, number[][]>} */
 const ACC_GROUPS = {5: [[0,2],[0,3]], 7: [[0,3,5],[0,2,4]]};
+/* ===================== 细分节奏表（v3.33.0・「拍数 × 节奏类型」） =====================
+   一拍之内的步进序列，单位 tick（TPB=48/拍）。**9 种细分与全站唯一的这份数据源**：
+   控件图标、生成的小节、校验、测试断言都从它派生。
+
+   步形 = `[dur, rest?]`：rest 为 1 即该步是休止（产物走 `D(dur, true)`，与编辑器手画的
+   休止同构 ⇒ 渲染/发声/试听零改动）。每拍之和恒 48 ⇒ 平铺 meter 次后每小节和恒 =
+   meter×TPB，天然满足 validatePreset / barValid 的整数严格相等，无需容差。
+   顺序 = 参照设备说明书截图从左到右（声明序即 UI 顺序）。
+
+   ★ 9 种的来历（双重证据定案，2026-10-04）：参照设备 = TERENCE DM1 电子节拍器
+     （说明书原文与用户截图逐字一致：「短按 RHY…共有 9 种类型」「短按 BEAT…拍数 0-9」），
+     符号逐个放大 8 倍核对；交叉验证 = KORG MA-2 官方规格（含三连音「中抜き / 省略第三音」
+     与十六分「省略中间 / 省略第三四音」——休止型与 TERENCE 同源，是同类机器标配）。
+     该机**无附点、无切分**（初稿猜测已按证据改正），故不含 dot/cut。
+   ★ 放顶层：Store 白名单、basicPattern、Presets UI、Editor 下拉都要读它，
+     而「白名单只此一份」是本仓库既定纪律（同 VALID_T / VALID_METER 上移的由来）。 */
+/** @type {Record<string, number[][]>} */
+const RHY_STEPS = {
+  quarter:    [[48]],                            // ① 四分
+  duplet8:    [[24],[24]],                       // ② 两个八分
+  triplet8:   [[16],[16],[16]],                  // ③ 八分三连音
+  triplet8_m: [[16],[16,1],[16]],                // ④ 三连音·中抜き（响-休-响）
+  quad16:     [[12],[12],[12],[12]],             // ⑤ 四个十六分
+  quad16_m:   [[12],[12,1],[12,1],[12]],         // ⑥ 十六分·中抜き（响-休-休-响）
+  quad16_r34: [[12],[12],[24,1]],                // ⑦ 十六分·后二休（响-响-休-休）
+  a8_216:     [[24],[12],[12]],                  // ⑧ 前八后十六
+  a216_8:     [[12],[12],[24]],                  // ⑨ 前十六后八
+};
+/* 合法节奏类型 id 白名单（顺序即 UI 顺序；显式列出而不是 Object.keys ——
+   白名单要能被人一眼读懂，且键的增删必须是一次显式的改动） */
+const VALID_RHY = ["quarter", "duplet8", "triplet8", "triplet8_m", "quad16", "quad16_m", "quad16_r34", "a8_216", "a216_8"];
+/* 显示名（图标下的悬浮提示 / 读屏 / 态文案 / 草稿名后缀） */
+/** @type {Record<string, string>} */
+const RHY_NAME = {
+  quarter: "四分", duplet8: "二八", triplet8: "三连音", triplet8_m: "三连音·空二",
+  quad16: "四十六", quad16_m: "四十六·空二三", quad16_r34: "四十六·后二休",
+  a8_216: "前八后十六", a216_8: "前十六后八",
+};
+/* 基础节奏区的**拍数档**（v3.33.0）：
+   · 0 = 每拍均等、**不分重拍**（实体节拍器的 BEAT 0）——它不是拍号，state 里由
+     S.noAccent 承载（S.sig 仍保持一个合法拍号，见 Store 的 sig 加载与 basicPattern）；
+   · 无 6/8：它「每拍」是八分音符，把上述 9 种一拍细分套上去会密得失真（要 6/8 用
+     库里的「摇曳 6/8」型）；拍号分母恒为 4 的约定见 basicPattern 的注释。 */
+const RHY_SIG_CHOICES = [0, 2, 3, 4, 5, 7];
+/* 合法拍号白名单（原在 Store 模块内，v3.33.0 上移到顶层）：**加载白名单、导入校验、
+   编辑器拍数下拉**三处共用同一份——第三处是本轮新增（编辑器要能改拍数），
+   若各写一份，"下拉里选得出来"与"能通过校验存进去"迟早会漂移（同 VALID_T / VALID_METER
+   最初上移到 S 之前的那条理由）。检查见 Store 的加载分支与 validatePreset。 */
+const VALID_METER = [2, 3, 4, 5, 6, 7];
 /* Swing 档位：八分对后半拍在拍内的落点百分比（50=直）；67≈三连音感 2:1，75=重 Swing */
 const SWINGS = [50, 67, 75];
 /* 同屏行数档位（v2.8.0 req3；v2.10.2 起**两种模式都生效**）：扫弦网格窗口与歌词轨**共用**的
@@ -4076,7 +4177,9 @@ const Store = (() => {
        · customs 在本路径零校验，而 importPresets 走严格 validatePreset —— 同一份数据两套信任级别。
      回归测试：tests/run.js T23 / T23b / T23c */
   const VALID_T = [192, 96, 72, 48, 36, 24, 16, 12, 8, 6];   // 合法时值（tick）——导入与加载共用同一份
-  const VALID_METER = [2, 3, 4, 5, 6, 7];                     // 合法拍号——导入与加载共用同一份
+  /* v3.33.0：VALID_METER 已进一步上移到**顶层**（见「细分节奏表」段）——现在它的使用者
+     除了本模块（加载白名单 + 导入校验），还有 Editor 的拍数下拉（三处必须同一份，
+     否则"能选出来的拍号"与"能存进去的拍号"会漂移）。 */
   const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
   const VALID_ZONE = [0, 1, 2];   // 合法弦区：0=低 / 2=高 / 1=全扫别名（v2.29.0 起语义，老数据零迁移）
   /** @param {any} v @returns {boolean} */
@@ -4176,6 +4279,10 @@ const Store = (() => {
     beat: foldOwn("beat") ? foldSrc.beat === true : true,
     strum: foldOwn("strum") ? foldSrc.strum === true : false,
     custom: foldOwn("custom") ? foldSrc.custom === true : true,
+    /* v3.33.0：预设库新增的「基础节奏 · 拍数与细分」区（静态在 #presetList 之前的兄弟节点，
+       不参与 applyFold 的三区切段）——它自己的开合记忆。缺省**展开**（首次打开就能看见
+       新功能，与三区的缺省口径不同：那三区是"内容列表"，本区是"新功能入口"）。 */
+    basic: foldOwn("basic") ? foldSrc.basic === true : true,
   };
 
   /* ---- 曲式库（v2.0.0，冷键 beatsight.arranges）----
@@ -4759,6 +4866,8 @@ const Store = (() => {
      注意：这是**类型声明**，不是运行时校验——脏值的钳制仍由上面那些 numOr/clamp01 负责 */
   /** @type {{
    *   bpm: number, vol: number, accentVol: number, strumVol: number, mute: boolean, sig: number,
+   *   rhy: string,   // v3.33.0：基础节奏模式的一拍细分（RHY_STEPS 的键）
+   *   noAccent: boolean,   // v3.33.0：「0 · 均等」= 每拍一样响、不打重拍（不动 sig）
    *   muteCfg: { period: number, count: number, random: boolean },
    *   sel: { type: string, idx?: number, id?: string },
    *   swing: number, accentGrp: Record<string, number>, timbre: string,
@@ -4770,7 +4879,7 @@ const Store = (() => {
    *   vizRows: number,
    *   scrollMode: boolean, scrollRows: (1|3),   // v3.0.0（PLAN-v9）：连续滚动模式 + 它的窗口行数档位
    *   vizLegend: boolean,   // v3.1.0（A1）：首用图例条开关（默认显示；关一次永不再出）
-   *   fold: { beat: boolean, strum: boolean, custom: boolean },
+   *   fold: { beat: boolean, strum: boolean, custom: boolean, basic: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   playMode: string,
    *   arrangeSel: { id: string, from: number, to: number, loop: boolean, byLyric: boolean },   // v2.10.7：from/to = 线性小节号（0-based 含端点，可落在段中间）
@@ -4805,6 +4914,15 @@ const Store = (() => {
       return { period, count, random: raw.random === true };
     })(),
     sig: VALID_METER.includes(+saved.sig) ? +saved.sig : 4,
+    /* v3.33.0「拍数 × 节奏类型」的两个状态字段（基础节奏模式专用）：
+       · rhy = 一拍之内的细分（RHY_STEPS 的键，白名单加载）。**旧存档无此键 ⇒ "quarter"**，
+         而 quarter 与改造前的产物逐位相同 —— 这就是零迁移保证。
+       · noAccent = 每拍均等不分重拍（「0 · 均等」档）。它**不动拍号**：S.sig 始终是合法
+         拍号（渲染/调度按 `S.sig * spb()` 算小节长），noAccent 只让 basicPattern 产出
+         accents=[]。不让 S.sig 取 0 的原因：0 会让调度与网格退化为零长，而「0」在实体
+         节拍器上表达的是"不打重拍"，不是"没有拍"。 */
+    rhy: VALID_RHY.indexOf(saved.rhy) >= 0 ? saved.rhy : "quarter",
+    noAccent: saved.noAccent === true,
     sel: saved.sel || {type:"builtin", idx:0},
     swing: SWINGS.includes(saved.swing) ? saved.swing : 50,          // v0.7.0
     accentGrp: accentGrpSaved,                                       // v0.7.0
@@ -5032,6 +5150,8 @@ const Store = (() => {
   }
   function hotPayload(){
     return { v:3, bpm:S.bpm, vol:S.vol, accentVol:S.accentVol, mute:S.mute, sig:S.sig, sel:S.sel,
+      rhy:S.rhy,                                 // v3.33.0：基础节奏的细分（练习偏好，跟热键走）
+      noAccent:S.noAccent,                       // v3.33.0：「0 · 均等」（不分重拍）档
       muteCfg:S.muteCfg,                         // v2.71.0：静音拍参数（练习偏好，跟热键走）
       strumVol:S.strumVol,                        // v2.5.0：扫弦声部音量（与 vol 并列的热键显示偏好）
       swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
@@ -5041,7 +5161,7 @@ const Store = (() => {
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
       scrollMode:S.scrollMode, scrollRows:S.scrollRows, // v3.0.0：连续滚动模式 + 窗口行数（显示偏好，跟热键走）
       vizLegend:S.vizLegend,                      // v3.1.0：图例条开关（显示偏好，跟热键走）
-      fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）
+      fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom, basic:S.fold.basic }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）；v3.33.0：+ basic（基础节奏区）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint,
       /* v2.10.12：原 `limit:{ mode:S.limit.mode, n:S.limit.n }` 随练习量删除（不再写这个键） */
@@ -5809,6 +5929,22 @@ const REDUCE_MOTION = (typeof matchMedia === "function") && matchMedia("(prefers
 const spb = () => 60 / S.bpm;                          // 秒/拍
 /** @param {number} m */
 const meterName = m => (/** @type {Record<number,string>} */ ({6:"6/8",5:"5/4",7:"7/4"}))[m] || (m + "/4");
+/* ---- 拍数下拉的两件共用件（v3.33.0）：预设库基础节奏区与编辑器各有一个 <select>，
+   档位表不同（前者含 0「均等」无 6/8；后者 = VALID_METER 无 0），但"怎么填/怎么显示"
+   必须同一套，否则两处文案迟早漂移。放顶层：两个使用者分属 Presets / Editor 两个模块。 */
+/** @param {number} v @returns {string} 拍数档的显示文（0 = 均等） */
+const sigLabel = v => (v === 0 ? "0 · 均等（不分重拍）" : meterName(v));
+/** @param {HTMLSelectElement} sel @param {number[]} choices @param {any} [cur] */
+function fillSigSelect(sel, choices, cur){
+  clear(sel);
+  choices.forEach(v => {
+    const o = document.createElement("option");
+    o.value = String(v);
+    o.textContent = sigLabel(v);
+    sel.appendChild(o);
+  });
+  if (cur !== undefined) sel.value = String(cur);
+}
 /** @param {number} t */
 const fmtBeat = t => { const b = t / TPB; return Number.isInteger(b) ? String(b) : String(+b.toFixed(2)); };
 let ctx = /** @type {AudioContext|null} */ (null), masterGain = /** @type {GainNode|null} */ (null);
@@ -6031,10 +6167,28 @@ let loopWrapped = false;
    原先两处各写一遍（basicPattern 与 Editor），将来改分组规则必然漏一处 */
 /** @param {number} meter */
 const defaultAccents = meter => ACC_GROUPS[meter] ? ACC_GROUPS[meter][S.accentGrp[meter] || 0] : [0];
-/** @param {number} meter */
-const basicPattern = meter => ({name:"基础节奏 · 每拍一下", desc:"当前拍号的默认节奏", meter,
-  accents: defaultAccents(meter),
-  bars:[Array.from({length:meter},()=>D(TPB))]});   // v2.73.0：单小节型（meter 个四分音符装进唯一一小节）
+/* 「基础节奏」生成器（v3.33.0 起为**双参**）：把一拍细分平铺 meter 次，得单小节型。
+   · rhy 缺省/非法 → "quarter"，其产物与 v3.33.0 之前**逐位相同**（bars=[[D(48)×meter]]、
+     accents=defaultAccents(meter)、name="基础节奏 · 每拍一下"）——**这是零迁移的地基**：
+     全部老调用点（此前是单参）一行未改，t185a 用逐位断言钉死。
+   · accents：S.noAccent 为真 ⇒ `[]`（每拍均等，控件上的「0 · 均等」档；只有基础节奏
+     模式才可能置位，故不干扰错配回退路径）。
+   · 拍号分母约定：一拍恒 = 一个四分音符（TPB=48），与实体节拍器一致（TERENCE DM1 /
+     KORG MA-2 的 BEAT 档都是一个数字）⇒ 拍数 4 就是 4/4；6/8 是本应用唯一「以八分为
+     一拍」的档，不走本生成器（见 RHY_SIG_CHOICES）。 */
+/** @param {number} meter @param {string} [rhy] */
+const basicPattern = (meter, rhy) => {
+  const key = VALID_RHY.indexOf(String(rhy)) >= 0 ? String(rhy) : "quarter";
+  const unit = RHY_STEPS[key] || RHY_STEPS.quarter;
+  /** @type {any[]} */
+  const steps = [];
+  for (let i = 0; i < meter; i++){
+    for (const st of unit) steps.push(D(st[0], st[1] === 1));
+  }
+  return { name: "基础节奏 · " + (key === "quarter" ? "每拍一下" : RHY_NAME[key]), desc: "当前拍号的默认节奏", meter,
+    accents: S.noAccent ? [] : defaultAccents(meter),
+    bars: [steps] };   // v2.73.0：单小节型（meter 拍装进唯一一小节）
+};
 /* 把「预设引用」解析成节奏型对象（v2.0.0 抽取）：ref 形状与 S.sel 相同
    （{type:"builtin", idx} / {type:"custom", id}），解析不到（引用已被删）返回 undefined。
    为什么抽出来：曲式编排要解析**任意** ref——段里引用的不是"当前选中的预设"。
@@ -6058,7 +6212,10 @@ const curPattern = () => {
   if (S.preview && previewRef) return previewRef;
   const p = selectedPreset();
   if (p && p.meter === S.sig) return p;
-  return basicPattern(S.sig);
+  /* v3.33.0：回退节奏带上**细分**与「均等（不分重拍）」两项基础节奏参数。
+     S.sel 的第三形态 {type:"basic"} 走的就是这条路——resolveRef 对未知 type 返回
+     undefined（见其注释），于是「基础节奏模式」不需要在 curPattern 里加分支。 */
+  return basicPattern(S.sig, S.rhy);
 };
 /* 曲式里"需要解析才能判"的两项检查（v2.0.0）：引用是否存在、各块拍号是否一致。
    返回问题字符串数组（空 = 通过）。
@@ -11180,6 +11337,24 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     S.sig = n;
   }
 
+  /* 基础节奏的两项参数（v3.33.0）——与 setSig 并列的三个「基础节奏模式」写入点。
+     为什么写在这层而不是 UI 事件里：本仓库对"状态字段找得到唯一写入点"有既定纪律
+     （见 setSig / setSwing / setTimbre 同一手法），且**白名单校验只在这一处**：
+     脏值（外部注入 / 手改损坏）一律被挡在状态之外，UI 拿不到非法 rhy。
+     rhy：一拍之内的细分（RHY_STEPS 的键）；均等：每拍一样响（accents=[]，控件上的「0」档）。
+     两者都**不动 S.sig**——拍号由 setSig 单独管，见 Store 里 noAccent 的注释。 */
+  /** @param {string} v @param {any} [save] */
+  function setRhy(v, save){
+    if (VALID_RHY.indexOf(String(v)) < 0) return;      // 白名单：非法值静默忽略（不改状态）
+    S.rhy = String(v);
+    if (save !== false) Store.persist();
+  }
+  /** @param {boolean} on @param {any} [save] */
+  function setEven(on, save){
+    S.noAccent = !!on;
+    if (save !== false) Store.persist();
+  }
+
   /* Swing（v0.7.0）：演奏参数，只影响发声时机与播放头——音符块宽度始终按记谱时值，
      否则块宽随 swing 扭动会破坏「时值=长度」的核心认知翻译 */
   /** @param {number} v @param {any} [save] */
@@ -11426,7 +11601,7 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   /* 同屏行数档位（v2.8.0 req3）：装配即生成档位按钮（初始选中态来自已加载的 S.vizRows） */
   syncRowsUI();
 
-  return { start, stop, setBpm, setSig, setSwing, setTimbre, syncBpmUI,
+  return { start, stop, setBpm, setSig, setRhy, setEven, setSwing, setTimbre, syncBpmUI,
     onLimitPulse: limitPulse, syncRowsUI };
 })();
 
@@ -12366,6 +12541,171 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       }
     });
   }
+  /* ================= v3.33.0：基础节奏区（「节奏类型 × 拍数」）=================
+     复刻实体节拍器的 RHY / BEAT 两个**互相独立**的选项（参照 TERENCE DM1 说明书截图；
+     9 种细分的成分另有 KORG MA-2 官方规格交叉验证，见顶层 RHY_STEPS 的注释）。
+
+     位置 = 预设库列表的「第 0 区」：标记里静态挂在 #presetList **之前**。
+     ★ 不能放进列表里：buildPresetList 每次重建都 clear(list)（innerHTML=""），
+       静态节点会被连坐销毁（v3.1.0 的 #migHint 就是栽在这里）。
+     ★ 因此开合**不走 applyFold**——那只认 #presetList.children 的三区切段，
+       本区自理（applyBasicFold + S.fold.basic）。搜索过滤同理不受影响
+       （它是"设置区"不是条目，不参与按名过滤）。
+
+     与「选中预设型」的关系是**互斥**：点任一图标/拍数 ⇒ 进入基础节奏模式
+     （S.sel = {type:"basic"}）；点库中任意型 ⇒ 离开该模式（既有路径一行未改）。
+     ★ 为什么 {type:"basic"} 不需要在解析链上加分支：resolveRef 对**未知 type**
+       返回 undefined（见其注释），于是 selectedPreset() 为 undefined，
+       curPattern 自然落到 basicPattern(S.sig, S.rhy)。 */
+
+  /* 9 枚记谱图标：**用 DOM 搭**（createElement + appendChild）——不拼 innerHTML（lint 的
+     no-innerhtml 硬禁拼串：注入面 + 让测试桩失真），也不用 createElementNS（测试沙箱
+     没有该 API，那条路会让整块接线在桩里抛错）。
+     ⇒ 图标 = 一组绝对定位的 <span>（符头/符干/符杠/休止斜杠/旗点/三连音数字），几何全部
+       由 RHY_STEPS 行数算出的确定数值；颜色走 CSS currentColor ⇒ 深色/观测台自动跟随。 */
+  /** @param {number[][]} unit @param {boolean} triplet @returns {HTMLElement} */
+  function rhyIcon(unit, triplet){
+    const SP = 15, X0 = 2, CY = 15, SH = 14;      // 步间距 / 容器内左留白 / 符头中线 / 符干高
+    const top = CY - SH;
+    const box = document.createElement("span");
+    box.className = "rh";
+    /* 小工具：放一个绝对定位的块（位置与尺寸都是数值，无字符串拼接） */
+    /** @param {string} cls @param {number} x @param {number} y @param {number} w @param {number} h @returns {HTMLElement} */
+    const put = (cls, x, y, w, h) => {
+      const d = document.createElement("span");
+      d.className = cls;
+      d.style.left = x + "px"; d.style.top = y + "px";
+      d.style.width = w + "px"; d.style.height = h + "px";
+      box.appendChild(d);
+      return d;
+    };
+    /** @type {number[]} */ const xsNote = [];
+    /** @type {number[]} */ const xsAll = [];
+    unit.forEach((st, i) => {
+      const x = X0 + i * SP;
+      xsAll.push(x);
+      if (st[1] === 1){
+        /* 休止符：斜杠 + 旗点。十六分休止 = 双旗点、八分休止 = 单旗点（照说明书截图的画法） */
+        if (st[0] === 12){ put("rh-rd", x - 1, CY - 10, 3, 3); put("rh-rd", x - 4, CY - 4, 3, 3); }
+        else { put("rh-rd", x - 2, CY - 7, 3, 3); }
+        put("rh-r", x - 2, CY - 6, 2, 12);
+        return;
+      }
+      xsNote.push(x);
+      put("rh-h", x, CY - 3, 7, 5);                // 符头
+      put("rh-s", x + 5, top, 2, SH);              // 符干
+    });
+    if (xsNote.length > 1){
+      /* 一级符杠（八分）：跨首末**音符**——休止不断杠（照截图：休止处在杠下方） */
+      const a = xsNote[0] + 5;
+      put("rh-b", a, top, xsNote[xsNote.length - 1] + 7 - a, 3);
+      /* 二级符杠（十六分）：跨首末十六分音符；只有一个时出一小段钩（照截图） */
+      const n16 = unit.map((st, i) => (st[1] === 1 || st[0] !== 12) ? -1 : X0 + i * SP + 5).filter(v => v >= 0);
+      if (n16.length > 1) put("rh-b", n16[0], top + 4, n16[n16.length - 1] - n16[0] + 2, 2);
+      else if (n16.length === 1) put("rh-b", n16[0], top + 4, 6, 2);
+    }
+    if (triplet){                                  // 三连音：杠上的「3」（照截图，斜体衬线）
+      const t = document.createElement("span");
+      t.className = "rh-3";
+      t.textContent = "3";
+      t.style.left = ((xsAll[0] + xsAll[xsAll.length - 1]) / 2 - 2) + "px";
+      t.style.top = (top - 10) + "px";
+      box.appendChild(t);
+    }
+    box.style.width = (X0 + (unit.length - 1) * SP + 8) + "px";
+    return box;
+  }
+  /* 基础节奏模式下**最后用过的拍号**（模块内记忆，不落盘）：
+     用途只有一个——离开曲式时把被曲式对齐掉的拍数还回来（见 enterBasic）。
+     为什么不放进 S：它是"上一次的显示记忆"，不是需要跨会话恢复的状态；放 S 要多一条
+     持久化字段与一条加载校验，而它丢了只会退回 4/4（无害）。 */
+  /** @type {null | number} */
+  let lastBasicSig = null;
+
+  /* 折叠（本区自理，不进 applyFold） */
+  function applyBasicFold(){
+    const box = $("rhyBeatBox"), head = $("basicSecHead");
+    const on = !!S.fold.basic;
+    if (box) box.hidden = !on;
+    if (head) head.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
+  /* 把「当前是不是基础节奏模式」刷到控件上：选中态 / 下拉值 / 折叠。
+     **唯一刷新点**（由 refreshAfterPatternChange 与各点击路径调用）——
+     分散写必然漂移，这是 setPressed 那一族的老教训。 */
+  function syncBasicUI(){
+    const basic = S.sel.type === "basic";
+    /* 曲式播放中不下高亮——与预设条目同一条口径（v2.6.4：曲式由节目单唯一决定，
+       任何"正在练这个"的高亮都在说谎，用户实拍过） */
+    const hi = basic && S.playMode !== "arrange";
+    if (basic && RHY_SIG_CHOICES.indexOf(S.sig) >= 0) lastBasicSig = S.sig;   // 记忆（见 enterBasic）
+    const sel = /** @type {HTMLSelectElement|null} */ ($("sigSel"));
+    /* 下拉值：基础节奏模式下显示本模式的档位（0 = 均等）；
+       非基础模式显示当前拍号（"内容以选型为准"）。
+       ★ 「均等」是**记住的设置**：它只在本模式下显示与生效——所以离开模式后
+         显示的是选型的拍号，而下次进本模式时看到的还是你上次的设置。 */
+    if (sel) sel.value = String(basic && S.noAccent ? 0 : S.sig);
+    setPressed("#rhyPillRow", p => hi && p.dataset.rhy === S.rhy);
+    applyBasicFold();
+  }
+
+  /* 进入基础节奏模式：从曲式回单型练习（共用既有出口）→ 换 sel 形态。
+     ★ 曲式拍号残留：曲式整首同拍号，进出会把 S.sig 对齐掉；普通选型各自重设拍号，
+       而"点图标"这条不设——于是基础节奏会跑在曲式的拍号上，若它不是本模式的合法档
+       （如 6/8）下拉会显示空白。故离开曲式时把拍数还原成上次在本模式下的值
+       （无记忆回落 4/4，保证下拉恒有有效选中项）。 */
+  function enterBasic(){
+    const leftArrange = exitArrangeForPreset();
+    if (leftArrange && RHY_SIG_CHOICES.indexOf(S.sig) < 0)
+      Controls.setSig(lastBasicSig === null ? 4 : lastBasicSig);
+    S.sel = { type: "basic" };
+  }
+  /** @param {string} k 节奏类型 id */
+  function pickRhy(k){
+    enterBasic();
+    Controls.setRhy(k);
+    refreshAfterPatternChange();
+    Store.persist();
+  }
+  /** @param {number} v 拍数档（0 = 均等） */
+  function pickSig(v){
+    enterBasic();
+    /* 0 档 = 每拍均等、不打重拍：**不动拍号**（小节长仍是当前 S.sig，见 Store 的字段注释）；
+       非 0 档 = 拍号即该值，并清掉「均等」 */
+    if (v === 0) Controls.setEven(true);
+    else { Controls.setEven(false); if (S.sig !== v) Controls.setSig(v); }
+    refreshAfterPatternChange();
+    Store.persist();
+  }
+
+  /* 一次性构建（装配区调）。建成后随抽屉常驻，**不参与 buildPresetList 的重建**。 */
+  function buildBasicSection(){
+    fillSigSelect(/** @type {HTMLSelectElement} */ ($("sigSel")), RHY_SIG_CHOICES, S.sig);
+    const btns = buildPillRow($("rhyPillRow"), VALID_RHY, {
+      key: "rhy",
+      text: () => "",                       // 图标 pill：文案走 innerHTML（见下）与 title/aria-label
+      label: k => RHY_NAME[k] + "（节奏类型，一拍之内的细分）",
+      isOn: k => S.sel.type === "basic" && S.rhy === k,
+      onPick: k => pickRhy(k),
+    });
+    /* 图标与悬浮名：buildPillRow 只写 textContent，故图标在这一轮补上（同一批 button，
+       一一对应；数量由 VALID_RHY 保证）。图标是 DOM 块、`aria-hidden` 对读屏隐藏。
+       ★ title 是**桌面端**的名称来源（用户拍板：图标下不写文案）；触屏无 hover，
+         靠通用记谱符号本身 + 读屏名（aria-label 由 buildPillRow 写入）。 */
+    btns.forEach((b, i) => {
+      const k = VALID_RHY[i];
+      const icon = rhyIcon(RHY_STEPS[k] || RHY_STEPS.quarter, k.indexOf("triplet") === 0);
+      icon.setAttribute("aria-hidden", "true");
+      b.appendChild(icon);
+      b.title = RHY_NAME[k];
+    });
+    $("sigSel").addEventListener("change", (/** @type {Event} */ e) => pickSig(+evTarget(e).value));
+    const head = $("basicSecHead");
+    const act = () => { S.fold.basic = !S.fold.basic; applyBasicFold(); Store.persist(); };
+    head.addEventListener("click", act);
+    head.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
+    syncBasicUI();
+  }
   /* v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区堆叠。
      v2.10.0：三区标题改为**可折叠**（默认全部收起，开合记忆在 S.fold / 热键），
      折叠只置 hidden、不删节点，收尾由 applyFold 统一套用。
@@ -12430,6 +12770,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     syncDemoRange();
     syncAuditionBtns();                // v3.1.0：▶ 按钮态也是"由列表承载的状态"——重建后必须重刷
     applyFold();                       // v2.10.0：折叠态也是"由列表承载的状态"——新建的条目默认 hidden=false，必须重新套用
+    syncBasicUI();                     // v3.33.0：基础节奏区（列表之外的第 0 区）同属"由列表承载的状态"——选中态/下拉值一并重刷
   }
   /* 一个**自定义型**条目（含删除按钮 + 选中态 + 键盘契约）。v2.4.1 抽出：
      示例组与"我的预设"组共用。删除按**对象身份**定位（indexOf）而非过滤序位——
@@ -12552,6 +12893,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       sigChgPending = (S.sig !== appliedSig);
       buildPresetList();
       syncAuditionBtns();
+      syncBasicUI();                   // v3.33.0：挂起分支也要刷（本条路径下面的 applyPatternChange 里也有一次）
       return;
     }
     applyPatternChange();
@@ -12584,6 +12926,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     /* v3.12.0：原此处调 updateFallbackNote()（拍号回退提示条 + 搭车刷 ▶ 按钮态）——
        提示条随拍号控件退役，只剩按钮态同步。 */
     syncAuditionBtns();
+    syncBasicUI();                                   // v3.33.0：基础节奏区的选中态/下拉值随之刷新
     Viz.buildViz();
   }
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
@@ -12855,7 +13198,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
 
   return { buildPresetList, syncAuditionBtns, stopAudition, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
-    syncDemoRange, applyFold, alignSigToPattern };   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一
+    syncDemoRange, applyFold, alignSigToPattern, buildBasicSection, syncBasicUI };   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一；v3.33.0：buildBasicSection 供装配区一次性构建基础节奏区（其后由 syncBasicUI 维护）
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -12874,6 +13217,37 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
      与音符编辑的丢弃保护不一致（用户以为已改）。 */
   $("presetNameInput").addEventListener("input", () => { dirty = true; });
   $("patLabelInput").addEventListener("input", () => { dirty = true; });
+  /* 拍数下拉（v3.33.0）：选项来自 VALID_METER（导入校验用的同一份白名单——
+     "选得出来"与"存得进去"必须同一份，否则迟早漂移）。工作方式：
+       · 只改**容器**（每小节须占满几拍），内容由用户接着逐格摆；
+       · 换拍数时旧内容必然与新容器对不上（每小节和 = 拍数×TPB），故按新拍数重建骨架；
+       · 重建作为**一步**进撤销栈（Ctrl+Z 能退回换之前的完整草稿，见 pushUndo 的注释）；
+       · 草稿已改动（dirty）时先确认——与 tryClose 的"丢弃保护"同一口径。 */
+  fillSigSelect(/** @type {HTMLSelectElement} */ ($("editorMeterSel")), VALID_METER, 4);
+  $("editorMeterSel").addEventListener("change", (/** @type {Event} */ e) => {
+    const m = +evTarget(e).value;
+    const d = draft;
+    if (!d || !VALID_METER.includes(m) || d.meter === m) return;
+    /* 先把下拉**显示**拨回草稿真实拍号**再**问——uiModal 没有 onCancel 回调，
+       若先显示新值又取消，界面就会停在"显示新拍数、实际还是旧拍数"的假态。
+       点确认后 applyMeter 会重渲染并把下拉设成新值。 */
+    evTarget(e).value = String(d.meter);
+    if (dirty) Modal.uiConfirm("换拍数会按新拍数重建草稿骨架（当前内容将被替换），确定继续？", () => applyMeter(m));
+    else applyMeter(m);
+  });
+  /** 把草稿换成另一个拍数：重建骨架（新拍数 × 每拍一个四分音符）+ 该拍数的默认重拍分组
+      @param {number} m */
+  function applyMeter(m){
+    const d = draft;
+    if (!d) return;
+    pushUndo();                                   // 先快照（含旧 meter）——Ctrl+Z 一步退回
+    d.meter = m;
+    d.accents = defaultAccents(m);
+    d.bars = d.bars.map(() => Array.from({ length: m }, () => D(TPB)));
+    edSel = null;
+    dirty = true;
+    editorRender();
+  }
   function open(){
     /* v3.31.x（审计 P0-4）：预设试听中打开编辑器 → 经唯一出口停试听并还原拍号。 */
     if (S.preview) Presets.stopAudition();
@@ -12893,7 +13267,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     edRowCache.clear();                  // v3.31.x（审计 P2-3）：换草稿 = 换内容，旧行缓存全部作废
     $("presetNameInput").value = draft.name;
     $("patLabelInput").value = draft.label;
-    $("editorMeter").textContent = draft.meter;
+    /* v3.33.0：原 `$("editorMeter").textContent = draft.meter` 一行移进 editorRender()
+       （拍数可改了，规则文案必须随渲染同步，不能只在打开时写一次） */
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
     $("editorTitle").textContent = "基于「" + src.name + "」创建 · " + meterName(draft.meter) + " 拍";
     /* v2.37.0（c）：源型引用信息——把「引用不追踪」的真相在最易误解的场景讲清：
@@ -13107,6 +13482,11 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     /* 标题要跟着**小节数**走（v2.6.1）：型不再恒 4 小节，写死会说谎。
        源型名存在模块变量里（open() 时记下），不往 DOM 上挂 dataset——那是给样式/测试用的通道 */
     $("editorTitle").textContent = "基于「" + srcName + "」创建 · " + meterName(d.meter) + " 拍 · " + nBars + " 小节";
+    /* v3.33.0：拍数下拉与规则文案的**唯一写入点**（原先 #editorMeter 只在 openWith 写一次，
+       换拍数后会停在旧值）。两者都在这里随渲染同步，任何改草稿拍号的路径都不必各自记得刷。 */
+    const msel = /** @type {HTMLSelectElement|null} */ ($("editorMeterSel"));
+    if (msel) msel.value = String(d.meter);
+    $("editorMeter").textContent = d.meter;
     $("paletteTitle").textContent = edSel
       ? "音符块库 · 点击替换选中的「" + Viz.stepLabel(d.bars[edSel.bar][edSel.idx]) + "」"
       : "音符块库 · 点击追加到「小节 " + (editBar + 1) + "」";
@@ -13165,11 +13545,15 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     });
     $("palette").appendChild(el);
   });
-  /* 撤销栈：任何草稿变更前先快照，Ctrl+Z / 撤销按钮回退 */
+  /* 撤销栈：任何草稿变更前先快照，Ctrl+Z / 撤销按钮回退。
+     ★ v3.33.0：快照从「只有 bars」扩成 **{m, b}（拍号 + 小节）**——换拍数（applyMeter）也
+       是草稿变更，只存 bars 的话撤销会把旧内容塞回新拍数的容器里（每小节和与新拍数对不上 →
+       满屏"存在时值不完整的小节"且无法保存）。栈在每次 openWith 时清空，故格式变更不涉及
+       跨会话兼容；undo() 对旧格式（纯数组）做了兜底读取，纯属纵深防御。 */
   function pushUndo(){
     const d = draft;
     if (!d) return;
-    undoStack.push(JSON.stringify(d.bars));
+    undoStack.push(JSON.stringify({ m: d.meter, b: d.bars }));
     if (undoStack.length > 50) undoStack.shift();
     dirty = true;
   }
@@ -13177,7 +13561,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const d = draft;
     const snap = undoStack.pop();
     if (!d || snap === undefined) return;
-    d.bars = JSON.parse(snap);
+    const st = JSON.parse(snap);
+    if (Array.isArray(st)){ d.bars = st; }                  // 兜底：旧格式（只有小节）
+    else { d.meter = st.m; d.bars = st.b; }
     edSel = null;
     editorRender();
   }
@@ -17499,6 +17885,10 @@ syncVizLabelToggles();
 /* v3.12.0：拍号归一必须在首次 buildViz 之前——旧存档里"手动切过的拍号"要在这里
    对齐回当前型的拍号，否则首屏会按错误拍号切谱面（且界面上已无手动切回的入口）。 */
 Presets.alignSigToPattern();
+/* v3.33.0：基础节奏区（预设库第 0 区）**一次性构建**——选项/pill/接线都在这里落位。
+   放在 alignSigToPattern 之后：它的 syncBasicUI 要把归一的拍号读作下拉初值。
+   此后该区不参与 buildPresetList 的重建，状态由 syncBasicUI 维护。 */
+Presets.buildBasicSection();
 Presets.refreshAfterPatternChange();
 /* v3.1.0：maybeShowMigHint 的开机调用退役——迁移提示改为「自定义区空态」按需现身
    （挂载在 buildPresetList，显隐由 applyFold 按自定义区折叠态接管），不再开机打扰新用户 */
@@ -18250,6 +18640,8 @@ const EXPOSE_INTERNALS = Diagnostics.diagOn
 if (EXPOSE_INTERNALS){
   /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Settings, Ear, KeepAlive,
     CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
+    VALID_RHY, RHY_STEPS, RHY_NAME, RHY_SIG_CHOICES,   // v3.33.0：细分节奏表（测试直断言生成器与档位表同源）
+    sigLabel, fillSigSelect,                           // v3.33.0：拍数档的两件共用件
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
