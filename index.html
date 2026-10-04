@@ -2160,7 +2160,10 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
   .play-bar .pb-ctx{grid-area:ctx;justify-self:start;min-width:0;max-width:100%;overflow:hidden}
   /* id 级覆盖：旧窄屏规则是 #argJump{grid-column:1 / -1;justify-self:center}（1,0,0），
      类级压不过它 ⇒ 这里必须同样用 id，并显式 grid-column:auto 撤销跨列。 */
-  .play-bar #argJump{grid-area:trans;grid-column:auto;justify-self:end}
+  /* v3.33.12（用户实拍）：这块内部是 1fr auto 1fr 三列，左侧 1fr 空出 50px（键组偏右）；
+     而进度条按整块铺满 ⇒ 比"看得见的键组"长 50px（实测 248 vs 198）。窄屏改成 auto auto auto：
+     键组位置一个像素不动（176-374），块宽收到 198 ⇒ 进度条等长。 */
+  .play-bar #argJump{grid-area:trans;grid-column:auto;justify-self:end;grid-template-columns:auto auto auto}
   .play-bar .pb-right{display:contents}
   .play-bar .pb-sub{grid-area:stat;justify-self:start;min-width:0;overflow:hidden}
   .play-bar .pb-progress{grid-area:prog;justify-self:end;width:100%}
@@ -3452,23 +3455,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3484  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4169  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5901  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6863  Modal         应用内弹窗
-     L7008  Viz           时值可视化渲染与每帧动画
-     L10384 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11065 Trainer       变速训练器
-     L11275 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11923 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13514 Editor        自定义节奏型编辑器
-     L14058 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14105 Ear           听辨训练（v1.10.0）
-     L14333 Arrange       曲式编排（v2.0.0）
-     L17262 Help          使用方法（v2.0.1）
-     L17391 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17465 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17708 初始化（装配） 各模块 hook 接线与启动
+     L3487  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4172  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5904  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6866  Modal         应用内弹窗
+     L7011  Viz           时值可视化渲染与每帧动画
+     L10387 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11068 Trainer       变速训练器
+     L11278 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11926 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13517 Editor        自定义节奏型编辑器
+     L14061 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14108 Ear           听辨训练（v1.10.0）
+     L14336 Arrange       曲式编排（v2.0.0）
+     L17265 Help          使用方法（v2.0.1）
+     L17394 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17468 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17711 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
