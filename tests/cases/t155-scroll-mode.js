@@ -245,20 +245,7 @@ section("T155d 歌词 · scroll 下恒 follow 且随槽同组 (dx,dy)");
   const lane = els["lyricLane"];
   ok(lane.classList.contains("overlay"), "歌词轨切覆盖层定位");
   ok(lane.classList.contains("scroll-clip"), "★ 歌词覆盖层加 .scroll-clip（它是 #viz 的兄弟节点，不吃 #viz 的裁剪）");
-  /* ★★ v3.33.3 口径变更（**这不是回归**）：原断言要求两者**逐位相等**，而"相等"正是缺陷本身——
-     滚动下两轨都带横向 mask，`mask-clip` 缺省 `border-box` ⇒ **mask 把盒子之外的渲染一并裁掉**
-     （这才是"上下裁到盒子"的真正实现）。歌词行的锚点是「行盒底 + 2」⇒ 若盒高只到行盒底，
-     **最下那条可见跑道**的歌词（盒底 +2 ~ +2+行高）整行被裁——用户实拍「那条跑道的歌词看不到，
-     等它开始播放才恢复」。现改为关系式：歌词轨盒高 = #viz 高 + 末行歌词所需；
-     不写死像素（行高随档位/主题变），只钉"大于"与"差值来源"。 */
-  ok(parseFloat(lane.style.height) > parseFloat(els["viz"].style.height),
-    "★★ 歌词轨盒高**大于** #viz 裁剪高度（v3.33.3：含最下那条可见跑道的歌词——"
-    + "此前两者相等，那条歌词被 mask 的 border-box 裁掉）");
-  const laneRowEl = (lane.children || []).filter(c => /(^| )lyric-row( |$)/.test(c.className))[0];
-  ok(!!laneRowEl, "前提：歌词轨下有 lyric-row 子节点（防选择符写坏后静默通过）");
-  eq(parseFloat(lane.style.height) - parseFloat(els["viz"].style.height),
-    2 + ((laneRowEl && laneRowEl.offsetHeight) || 28) + 6,
-    "★ 差值 == 锚点偏移 2 + 该行实测行高 + 6px 余量（与实现同一来源，不写死具体像素）");
+  eq(lane.style.height, els["viz"].style.height, "★ 歌词轨裁剪高度与 #viz 同源（同一行数与槽距算出来的）");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   driveFrames(ac, beat, 1.2);
