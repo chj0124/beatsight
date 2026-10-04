@@ -9,6 +9,56 @@
 
 ---
 
+## v3.31.8 · 落地他方审计复核批：P1-1 额度串台 + 自验效率三项 + 孤儿扫描器去噪（2026-10-04）
+
+### 根因（他方 v3.31.7 审计报告，逐条本地复现确认后落地）
+
+- **P1-1（唯一硬发现）**：`onQuotaDone` 是单例注入槽，`limitPulse` 触发后**不清回调**，
+  而逐段试听（段行 ▶）只设 `playQuota` 不设回调 → 此前若做过候选试听，段试听到点会执行
+  上一任的 `stopCandPreview(false)`：「候选试听结束，未改动曲式」错播报 + ref 被回退，
+  且试听段里那个块的 ref 仍是候选型（段试听听错型）。
+  ★ 排查中还发现同链路第二处：`previewCandidate` 里「设额度 → `Controls.stop()`（清额度）
+  → start」次序颠倒——候选试听的额度被自己的 stop 清零，「到量自动停」实际靠范围末尾兜底，
+  其 `onQuotaDone` 闭包因此**零执行**（覆盖率「从未执行的函数」在册）。
+
+### 修法
+
+- ① `limitPulse` 回调改**一次性**：先摘再调（`const done = onQuotaDone; onQuotaDone = null; done();`）。
+- ② 段行 ▶ 入口先 `stopCandPreview(true)` 收口候选试听（还原内存换型、摘回调、静默），
+  并显式 `onQuotaDone = null` 兜住未挂候选时 stopCandPreview 早退的路径。
+- ③ `previewCandidate` 修序：`Controls.stop()` 挪到设额度**之前**，额度真实生效，
+  「放该型的小节数一遍，到量自动停」从注释变成行为，onQuotaDone 路径从此可测。
+- 共享状态区注释写明「额度到点回调一次性」契约。
+
+### 自验效率四项（他方报告二·①，守约束）
+
+- **孤儿扫描器去噪**：`check-orphan-css.js` 抽取选择器前先剥 CSS 注释——旧口径把注释里的
+  `el.style.transform` / `cell.style.setProperty` / 版本号 `v3.8.x` / `smoke.js` / `y1..y1+7`
+  全抓成疑似孤儿。实测 68 → **22**（46 个纯注释假阳性、零字节）；并清掉实测唯一的真死规则
+  `.help-dl`（标记里已无此类）。
+- **未执行函数进汇总**：`check-coverage.js` 的清单行加 ⚠ 前缀，第 18 步接 warnScan——
+  「有 N 个函数从未执行」从此在总览可见，不再打印即忘。
+- **模块规模观察期**：`check-module-order.js` 增软阈值（≥3000 行打 ⚠、不判红），
+  第 2 步接 warnScan。当前仅 Viz（约 3249 行）触发。
+- **手动发布唯一入口**：`npm run publish:check`（--quick → build → 部署对账），
+  AGENTS.md §3 收口为一条命令。
+
+### 测试与反向验证
+
+- 新增 `tests/cases/t184-quota-one-shot.js`（27 断言，3 组）：
+  T184a 候选试听挂起 → 点段行 ▶ → 候选收口 / ref 还原 / 无串台播报；
+  T184b limitPulse 一次性（Ear 路径——候选回调自清测不出①，Ear 回调不清）；
+  T184c 候选试听额度修序后真实到点（自动停 + 到点播报 + ref 还原）。
+- **反向验证（3 组变异，全部具名红）**：M-A 回退①一次性摘除 → T184b hasDone 红（1 条）；
+  M-B 删除②两行 → T184a 4 条红；M-C 回退③修序 → T184c 5 条红。
+- 自验：`node tools/check-all.js` 18/18 全绿（**5701 PASS / 0 FAIL**、行覆盖率 97.8%、
+  冒烟 272 断言；汇总 ⚠ 3 条观察期：孤儿 22 / 模块规模 Viz / 未执行函数 3 个——
+  onQuotaDone 已随 T184c 从「从未执行」名单消失）；体积预算随本轮上调至 1509KB
+  （余量 1.1KB，论证见 check-size-budget.js）；
+  `npm run build` + `node tools/check-deploy-parity.js` 通过。
+
+---
+
 ## v3.31.7 · 部署对账工具 CI 实崩修复：线上核对分支引用未定义变量（2026-10-04）
 
 ### 根因

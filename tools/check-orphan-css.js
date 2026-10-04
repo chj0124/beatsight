@@ -26,12 +26,18 @@ const STRICT = process.argv.includes("--strict");
 if (!fs.existsSync(HTML)){ console.error("未找到主文件：" + HTML); process.exit(4); }
 const src = fs.readFileSync(HTML, "utf8");
 
-/* ---- 1) 抽取 CSS 里的类选择器 ---- */
+/* ---- 1) 抽取 CSS 里的类选择器 ----
+   ★ v3.31.8：抽取前先剥掉 CSS 注释——旧口径对整段 <style> 抽 token，注释里的
+   `el.style.transform` / `cell.style.setProperty("--f")` / 版本号 `v3.8.x` /
+   `tools/smoke.js` / `y1..y1+7` 都会被抓成"疑似孤儿"（实测 68 个里 46 个纯注释
+   假阳性、零字节）。剥注释后剩下的才是真选择器（其中动态拼接的仍会进差集，
+   这是本工具观察期的既定口径）。 */
 const cssText = (src.match(/<style>([\s\S]*?)<\/style>/g) || []).map(b => b.replace(/<\/?style>/g, "")).join("\n");
+const cssNoComment = cssText.replace(/\/\*[\s\S]*?\*\//g, "");
 const cssClasses = new Set();
 const cssRe = /\.([a-zA-Z][\w-]*)/g;
 let m;
-while ((m = cssRe.exec(cssText))){ cssClasses.add(m[1]); }
+while ((m = cssRe.exec(cssNoComment))){ cssClasses.add(m[1]); }
 
 /* ---- 2) 抽取「被用到的」类名 ---- */
 const used = new Set();

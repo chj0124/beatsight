@@ -221,8 +221,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      P0×4（importAll 引用重映射/候选试听落库污染/试听拍号错配/children.find 真机必抛）、
      P1×9、P2×4、P3×8 与 S-2/S-3/S-4 防御补强，净增约 22KB（+371/−71 行，含 __beat 两个
      测试读数钩子）；本轮已先做约 8KB 注释精修，余下为功能代码与必要注释。
-     上调到 1508KB，留约 5KB 余量拦回归（余量口径与既往批次一致，避免逼近 0.1%）。 */
-const BUDGET_BYTES = 1508 * 1024;
+     上调到 1508KB，留约 5KB 余量拦回归（余量口径与既往批次一致，避免逼近 0.1%）。
+   v3.31.8（P1-1 额度串台修复）：净增约 0.4KB——limitPulse 到点回调一次性（先摘再调）+
+     逐段试听入口收口候选试听（还原内存换型、摘回调）+ previewCandidate 额度修序
+     （stop 先于设额度，此前额度被自己的 stop 清零）；附共享状态区一次性契约注释；
+     .help-dl 死规则清理净 -0.1KB。新增注释已两轮压缩至最小；上调到 1509KB，
+     留约 1.1KB 拦回归。 */
+const BUDGET_BYTES = 1509 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

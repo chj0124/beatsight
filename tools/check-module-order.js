@@ -26,6 +26,7 @@
         理由；条目一旦不再被用到也会报错（防止白名单慢慢腐烂成"什么都放行"）。
 
      R4（扇出上限，告警）：一个模块直接引用的**下游模块个数**（扇出）不得超过 MAX_FANOUT。
+     另含「模块规模」观察期 ⚠（v3.31.8）：≥3000 行提示、不判红。
         它是"某模块会不会膨胀成上帝对象"的最直接指标。曾经 Controls（UI 中枢）顶到上限 7；
         v2.18.0 把那四条同形的"叠加层键盘路由"收敛成注册表后降到 2，余量回到 5。
         真顶格时的第一反应应当是"**这几条引用是不是同一件事被抄了多遍**"，而不是抬高常量。
@@ -364,6 +365,24 @@ if (r2Hits.length){
   });
   const totalOut = [...fanout.values()].reduce((s, set) => s + set.size, 0);
   console.log("  └─ 总出度：" + totalOut + "（模块数 " + modules.length + "，平均出度 " + (totalOut / modules.length).toFixed(2) + "）");
+}
+
+/* 模块规模软阈值（v3.31.8，他方审计 P1-3 的守约束落地）：观察期 ⚠ 不判红——
+   单模块 ≥ 3000 行时提示「该考虑切分」，把「该切了」从靠感觉变成有客观触发点。
+   口径：模块跨度 = 到下一模块声明行的行数（含头部锚点注释），末模块到文件尾。
+   若观察下来阈值本身有问题（如注释文化让大模块恒超线），调阈值或改口径，
+   不因假红关掉本输出。 */
+{
+  const rows = modules.map((mod, i) => {
+    const nextStart = (i + 1 < modules.length) ? modules[i + 1].startLine : null;
+    return { name: mod.name, span: (nextStart != null ? nextStart - mod.startLine : SRC.split("\n").length - mod.startLine) };
+  });
+  const over = rows.filter(r => r.span >= 3000).sort((a, b) => b.span - a.span);
+  if (over.length){
+    over.forEach(r => console.log(`  ⚠ 模块规模（观察期）：${r.name} 约 ${r.span} 行（≥3000）——考虑切分或把趋势纳入规划（不判红）`));
+  } else {
+    console.log("  ✓ 模块规模观察期：全部模块 < 3000 行");
+  }
 }
 
 console.log("──────────────────────────────────────────────────────────");

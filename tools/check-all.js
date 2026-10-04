@@ -111,7 +111,8 @@ const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 
 const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
-  { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"] },
+  { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"],
+    warnScan: /^\s*⚠\s*模块规模/ },
   /* v2.8.6（审计 §A1）：装配完整性紧跟架构约束——两者同属"模块边界"这个话题
      （前者管依赖方向，这条管边界处的注入语义），且都极便宜（纯读源码正则，毫秒级） */
   { name: "装配完整性 · 注入槽", cmd: process.execPath, args: ["tools/check-wiring.js"] },
@@ -164,7 +165,8 @@ const STEPS = [
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
   /* v2.8.16（审计 P2-1）：--reuse 复用第 16 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
   { name: "行覆盖率", cmd: process.execPath,
-    args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]) },
+    args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]),
+    warnScan: /^\s*⚠\s*从未执行的函数：/ },
 ];
 
 console.log("══════════════════════════════════════════════════════════");

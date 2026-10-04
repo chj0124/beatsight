@@ -228,7 +228,7 @@ if (nakedBySection.length){
 }
 if (LIST > 0 && deadNames.length){
   const uniq = [...new Set(deadNames)];
-  console.log("\n  从未执行的函数：" + uniq.slice(0, LIST).join(" · ")
+  console.log("\n  ⚠ 从未执行的函数：" + uniq.slice(0, LIST).join(" · ")
     + (uniq.length > LIST ? " …（共 " + uniq.length + " 个）" : ""));
 }
 

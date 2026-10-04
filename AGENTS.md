@@ -33,7 +33,7 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
   ★ **跨 harness 口径唯一**（v3.31.x 落地审计 E11）：`.trae/rules/project_rules.md` 曾自带「直接提交并推送到 main」的口径，与本条冲突——两份规则会让不同 Agent 做出相反动作。现该文件已收敛为指向本文件的指针；任何 harness 的规则都以本节为准。
 - 如被要求代为提交：commit message 按仓库风格写——根因 → 修法 → 取舍（含实测代价）→ 自验数字（PASS/FAIL 数、覆盖率、冒烟断言数），中文，结构化长文。
 - 仓库已接 GitHub Actions（`npm run ci`）：推 `main` 即触发 Cloudflare 自动构建部署，**任何 push 都有线上后果**，须再次确认。
-- **手动发布（WorkBuddy）前后对账**（v3.31.x 落地审计 E18 / v3.31.6 补前置）：该渠道零自动拦截——发布**前**跑 `node tools/check-all.js --quick`、发布**后**跑 `node tools/check-deploy-parity.js`（含线上实际版本核对行，网络可用时自动打印），这是手动通道唯一的闸门。
+- **手动发布（WorkBuddy）前后对账**（v3.31.x 落地审计 E18 / v3.31.6 补前置 / v3.31.8 收口为一条命令）：该渠道零自动拦截——发布前跑 **`npm run publish:check`**（= `--quick` → build → 部署对账，含线上实际版本核对行），这是手动通道唯一的闸门与唯一入口；发布后再跑一次同样命令以核对线上已跟上。
 
 ## 3.5 禁区与敏感区
 
