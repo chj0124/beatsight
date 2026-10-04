@@ -3346,18 +3346,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5790  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6724  Modal         应用内弹窗
      L6869  Viz           时值可视化渲染与每帧动画
-     L10130 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10811 Trainer       变速训练器
-     L11019 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11661 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13257 Editor        自定义节奏型编辑器
-     L13801 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13848 Ear           听辨训练（v1.10.0）
-     L14076 Arrange       曲式编排（v2.0.0）
-     L17005 Help          使用方法（v2.0.1）
-     L17134 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17208 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17451 初始化（装配） 各模块 hook 接线与启动
+     L10237 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10918 Trainer       变速训练器
+     L11126 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11768 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13364 Editor        自定义节奏型编辑器
+     L13908 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13955 Ear           听辨训练（v1.10.0）
+     L14183 Arrange       曲式编排（v2.0.0）
+     L17112 Help          使用方法（v2.0.1）
+     L17241 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17315 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17558 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3383,7 +3383,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.2";
+const VERSION = "3.33.7";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7102,6 +7102,25 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        才变（用户实报：打开连续滚动后，刚开始的画面仍是旧模式那种样子）。
      ★ 同一个函数也服务 Controls.stop：resetForStop 原先把播放头复位成 translateX(0)（行左缘），
        在 scroll 下那是"停止后又退回旧样子"。 */
+  /* ★★ v3.33.4：歌词行的**滚动静止横移**（单一来源）——x = C − left_i − ph_i·W，
+     与帧内（paintFrameBody 滚动块）同一套公式。
+     ★ 为什么必须抽出来：scroll 下歌词行的横向位移只有两条写入路径——**帧循环**与
+       **静止态落位**（applyScrollRest）；而结构层重定位（placeLaneOverlay）只写 translateY
+       ⇒ x 被整条抹掉。播放中这没事（下一帧帧循环就补回来），但**预备拍期间帧循环在
+       paintFrameBody 里提前 return**（`ciBeats > 0 && now < ciEnd`，见那处注释），没人补
+       ⇒ 歌词整轨停在轨道左缘（丢掉一个 dx），一直挂到预备拍结束。
+       用户实拍「侧栏收回后第三跑道歌词错位、持续到第二跑道开始播放才恢复」正是这条路径：
+       侧栏开合会调 Viz.relayout()，其播放分支走 layoutLyricLane → placeLaneOverlay。
+     ⇒ 结构层凡把歌词轨重锚一次，就把它同一条静止 x 一起落下去（placeLaneOverlay 已接）。 */
+  function lyricRestX(/** @type {number} */ i){
+    const g = geoOf(i);
+    const gc = geoOf(scrollCenter) || geoOf(0);
+    if (!g || !gc) return null;
+    const C = gc.left + gc.width / 2;
+    const off = i - scrollCenter;
+    const ph = (scrollRows() === 1) ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
+    return C - g.left - ph * g.width;
+  }
   /** @param {boolean} [keepCountLane] 重建时的复位不撤预备拍道（方案 A） */
   function applyScrollRest(keepCountLane){
     if (!S.scrollMode) return;
@@ -7149,9 +7168,12 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       for (let i = 0; i < lyricRows.length; i++){
         const g = geoOf(i);
         if (!g) continue;
-        const off = i - scrollCenter;
-        const ph = belt ? (0 - off) : Math.min(1, Math.max(0, 0 - off));
-        put(lyricRows[i].el, g, ph, (lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0));
+        /* ★ v3.33.4：x 走 lyricRestX（单一来源）——与 placeLaneOverlay 的重锚逐位同式，
+           免得"结构层写的 x"与"静止态写的 x"各算一份、日后再分叉（同 scrollWrapRange 的纪律）。 */
+        const x = lyricRestX(i);
+        if (x === null) continue;
+        const dy = (lyricRows[i].y || 0) + (belt ? (beltDy0 - g.top) : 0);
+        lyricRows[i].el.style.transform = `translate(${x.toFixed(1)}px, ${dy.toFixed(1)}px)`;
       }
     }
   }
@@ -8436,9 +8458,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (trailGlowEl) trailGlowEl.style.display = "none";
       if (waitEl) waitEl.style.display = "none";
       /* ★ 高度裁剪：建了 rows+1 行，但只让 rows 行可见——进场行平时在裁剪区外。
-         高度 = 首行顶 + (rows−1)×槽距 + 行盒高（末行底），与 slotH 同源，不写死。 */
-      const r0 = geoOf(0);
-      if (r0 && viz) viz.style.height = Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) + "px";
+         高度 = 首行顶 + (rows−1)×槽距 + 行盒高（末行底），与 slotH 同源，不写死。
+         ★★ v3.33.6：计算与写入收进 applyVizClip()（唯一写入点）——下面 buildLyricLane()
+           可能刚挂上 .lyric-inline-on 把行距改掉，届时 setLyricInlineOn 会再落一次。 */
+      applyVizClip();
     } else if (viz){
       viz.style.height = "";                  // 回 paged：交还给内容高度（滚动模式的裁剪不能留下）
     }
@@ -8535,7 +8558,16 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      两者在 1440 下相差 188.5px（212.5 vs 24）。守卫注释里的桩环境约束仍然有效，
      故留档于此：**桩 document 没有 querySelector**，任何新机制都不得假设它存在。 */
   function relayout(){
-    if (S.playing){ cacheGeo(); fitCellAnnotations(); remeasureLyric(); layoutLyricLane(); }
+    if (S.playing){
+      cacheGeo();
+      /* ★★ v3.33.6：播放分支**不重建**，而裁剪盒高度的两个输入（行距 / 行盒高）会被
+         主题、窗口尺寸、座次尺/时值标注、宽屏铺满、以及 layoutLyricLane 里的
+         setLyricInlineOn 改掉 ⇒ 这里必须把高度重落一次，否则留下"裁剪盒比行组矮"的陈旧值
+         （症状：最下一槽的节奏型被裁掉半行；用户实测：什么都不动、直接播放即复现，
+         因为启动双 rAF 重采样在播放中走的正是这个分支）。 */
+      applyVizClip();
+      fitCellAnnotations(); remeasureLyric(); layoutLyricLane();
+    }
     else buildViz();
   }
   /** @type {null | ReturnType<typeof setTimeout>} */
@@ -9167,6 +9199,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (has === on) return;
     viz.classList.toggle("lyric-inline-on", on);
     cacheGeo();
+    /* ★★ v3.33.6：**行距是裁剪盒高度的输入**——挂/摘这个类会把 slotH 从 20/10 档改到 52/48 档，
+       #viz 的裁剪盒必须跟着重落（不重落就矮 2×Δ ⇒ 最下一槽的节奏型被裁掉半行；用户实拍
+       "第三条跑道节奏型没显示全、而它的歌词已经露出来"）。歌词轨的盒高由随后的
+       placeLaneOverlay 按 lyricClipH() 写，同一个来源。 */
+    applyVizClip();
   }
   function layoutLyricLane(){
     const lane = lyricEl;
@@ -9186,6 +9223,62 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     if (!lane.hidden) lyricW = lane.offsetWidth;
   }
+  /* ★★ v3.33.6：**#viz 的裁剪高度**（单一来源）——#viz 与歌词轨的纵向剪刀都来自它。
+     ★ 为什么必须由"改布局的人"重落：这个高度只在 buildViz 里写过一次，而它的两个输入
+       （`scrollSlotH` / `vizRowBoxH`）会被**之后的**动作改掉——最典型的就是歌词 follow
+       模式给 #viz 挂 `.lyric-inline-on`：`.bar-row` 的 margin-bottom 20 → 52，行距
+       106 → 138，裁剪盒却还是按 20 算的、**矮 2×(138−106)=64px** ⇒ 最下面那条可见跑道的
+       **节奏型被裁掉半行**。而这条路径**不需要整页重建**：
+         · 装配层「显示歌词」/「歌词位置」→ 那条"带静止态重落的歌词轨重建"入口（v3.31.1）；
+         · `Viz.relayout()` 的播放分支（主题 / 座次尺 / 时值标注 / 宽屏铺满 / 窗口 resize）；
+         · 首建：buildViz 先 ① cacheGeo（此时类还没挂）再算高度、随后 buildLyricLane 才挂类
+           ⇒ 首建写下的高度天然是旧的；只靠启动双 rAF 重采样兜底，而**播放中**重采样走的是
+           relayout 播放分支、压根不重写高度 ⇒ 兜不住（用户实测：什么都不动、直接播放即复现）。
+       用户实拍症状：第三条跑道的节奏型只显示上半截，而它下面那条歌词却已经露出来
+       （v3.33.5 把歌词轨盒高改成按当前几何算 ⇒ 歌词不再跟着一起被裁，这个矛盾才显形）。 */
+  function vizClipH(){
+    /* ★★ v3.33.7：**按真实行几何**算，不再只信 cacheGeo 的快照标量。
+       缘由：`rowGeo` / `scrollSlotH` / `vizRowBoxH` 都是上一次 cacheGeo 的量测快照，
+       而"布局变了、cacheGeo 还没重采"是常态（窗口跨 960 断点、主题/标注档切换、量测撞在
+       布局过渡帧上、预备拍道替换行 0…）——此时裁剪盒与真实行组不一致。
+       取证：用户 v3.33.6 会话截图里裁剪线落在「行顶 + 72px」，而该行真实盒高 86px
+       （`#viz` 高按 72 算 ⇒ 矮 14px ⇒ 最下一槽的字被裁掉几像素，即用户拍的"右下角跑道"）。
+       行盒底 = 末条**可见槽**自身的 offsetTop + offsetHeight；本函数只在结构层调用，允许读布局。
+       公式仅作**回落**（行元素缺失时，如极端桩环境）。 */
+    const last = rowEls[Math.min(scrollRows(), rowEls.length) - 1];
+    if (last && last.offsetHeight) return Math.round(last.offsetTop + last.offsetHeight);
+    const r0 = rowGeo[0];
+    if (!r0) return 0;
+    return Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH);
+  }
+  /* ★★ v3.33.6：把裁剪高度**落回 DOM**（唯一写入点）。高度真变了要再采一次几何——高度会改
+     页面总高 ⇒ 纵向滚动条可能显隐 ⇒ 行宽差 15px（这笔账见 buildViz 里"设完高度之后再采一次"）。 */
+  function applyVizClip(){
+    const viz = $("viz");
+    if (!viz) return;
+    if (!S.scrollMode){ if (viz.style.height) viz.style.height = ""; return; }
+    const h = vizClipH();
+    if (!h || viz.style.height === h + "px") return;
+    viz.style.height = h + "px";
+    cacheGeo();
+  }
+  /* ★★ v3.33.5：歌词轨的**裁剪盒高**（单一来源 = vizClipH() + 末行歌词所需）。
+     ★ 为什么必须多这一段：歌词行锚在「行盒底 + 2」⇒ 裁剪盒只取到行盒底时，**最下面那条
+       可见跑道的歌词整行落在盒外**：滚动 3 行档丢第 3 槽；滚动 1 行档（传送带）盒高只够
+       一行，**整条歌词线被裁、整档没有词**。
+       加的量 = 锚点偏移 2 + 该行实测行高 + 6px 余量；再下一槽（进场行）的歌词顶远在其下
+       （实测 588 > 456）⇒ 放不出多余一行；只有垂直登场把它带上来时才露头，那正是设计意图。
+     ★ 桩无布局模型时 offsetHeight 回落 28（.lyric-row 桌面高度），只影响桩内断言。 */
+  function lyricClipH(){
+    /* ★★ v3.33.7：同样**按真实几何**收口——末条可见槽的歌词行「锚点 y + 实测行高 + 6px 余量」，
+       并与 #viz 裁剪高取大。锚点 y 由 placeLaneOverlay 逐行实测写死（行几何的函数），
+       比"再推算一遍公式"更稳：既不会各算一份，也不会被陈旧标量带偏。 */
+    const vizH = vizClipH();
+    const lr = lyricRows[Math.min(scrollRows(), lyricRows.length) - 1];
+    const need = (lr && lr.el && lr.el.offsetHeight) ? Math.round(lr.y + lr.el.offsetHeight + 6) : 0;
+    if (!vizH && !need) return 0;
+    return Math.max(vizH, need);
+  }
   /* v2.86.0（PLAN-v7）：覆盖层锚定——#lyricLane 切绝对定位、叠到 #viz 左上与同宽，
      逐行 translateY 到自己小节行正下方（rowGeo 为 #viz 内 bar-row 的 offsetTop，
      覆盖层起点与 #viz 同顶，故直接相加）。getBoundingClientRect 相对 offsetParent 求值，
@@ -9202,18 +9295,31 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          退役跟随条时这套被删，逐行歌词轨退回锚行盒底（+88）→ 空带复用语丢失，歌词上方空 44px。
          现移植回：bothOff ⇒ translateY = 行顶 + (桌面 50 / 窄屏 36)；窄屏标注带仅 32px，行高维持 28 才塞得下。
          普通（标注开着）仍锚行盒底 +2，行为不变。 */
-      const y = g ? (bothOff ? (g.top + (narrow() ? 36 : 50)) : (g.top + vizRowBoxH + 2)) : (i * 32);
+      /* ★★ v3.33.7：锚点也改读**实时行盒高**（rowEls[i].offsetHeight）——cacheGeo 的
+         vizRowBoxH 若与真实 DOM 不一致（见 vizClipH 的注释），歌词会整体错位一个固定量。 */
+      const y = g ? (bothOff ? (g.top + (narrow() ? 36 : 50))
+        : (g.top + ((rowEls[i] && rowEls[i].offsetHeight) || vizRowBoxH) + 2)) : (i * 32);
       /* v3.0.0（批 2）：把 y **记在行对象上**——scroll 下帧内要写 `translate(dx, y+dy)`，
          而帧内绝不许再算一遍 y（那要读 rowGeo 之外的东西且重复一套分支）。 */
       lyricRows[i].y = y;
-      lyricRows[i].el.style.transform = "translateY(" + y + "px)";
+      /* ★★ v3.33.4：scroll 下**必须连横向静止位移一起落**（见 lyricRestX 的注释）。
+         原实现只写 translateY：这条位移要等下一次帧循环才补得回来，而预备拍期间帧循环在
+         paintFrameBody 里提前 return ⇒ 补不回来，歌词整轨停在轨道左缘（丢掉一个 dx）。
+         用户实拍「侧栏收回后第三跑道歌词错位、持续到第二跑道开始播放才恢复」正是这条。
+         分页模式没有槽横移，维持 translateY 逐位不变（桩与真机同理）。 */
+      const rx = S.scrollMode ? lyricRestX(i) : null;
+      lyricRows[i].el.style.transform = (rx === null)
+        ? ("translateY(" + y + "px)")
+        : ("translate(" + rx.toFixed(1) + "px, " + y + "px)");
     }
     /* v3.0.0（批 2）：scroll 下歌词轨也要裁剪 —— 它是 `#viz` 的**兄弟节点**（叠在上面同宽同高），
-       不受 `#viz` 的 overflow 约束，歌词行横滑会直接溢出到可视化区外。故与 #viz 用同一个裁剪高度。 */
+       不受 `#viz` 的 overflow 约束，歌词行横滑会直接溢出到可视化区外。
+       ★★ v3.33.5：裁剪高度**不再是"与 #viz 同高"**，改走 lyricClipH()（末行歌词锚在行盒底 +2，
+       盒高只到行盒底的话它整行落在盒外）。盒高只算一处，末尾 getBoundingClientRect 分支复用同一个数。 */
+    const clipH = S.scrollMode ? lyricClipH() : 0;
     if (S.scrollMode){
       lane.classList.add("scroll-clip");
-      const r0 = rowGeo[0];
-      if (r0) lane.style.height = Math.round(r0.top + (scrollRows() - 1) * scrollSlotH + vizRowBoxH) + "px";
+      if (clipH) lane.style.height = clipH + "px";
     } else { lane.classList.remove("scroll-clip"); lane.style.height = ""; }
     /* 覆盖层自身定位：优先 getBoundingClientRect 像素对齐；环境不支持（如测试桩缺该方法）
        则跳过——由 CSS 兜底（#lyricLane 已是 #viz 兄弟节点，absolute 定位在父容器内），
@@ -9227,7 +9333,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     lane.style.left = (vr.left - pr.left + (parent ? parent.clientLeft : 0)) + "px";
     lane.style.top = (vr.top - pr.top + (parent ? parent.clientTop : 0)) + "px";
     lane.style.width = vr.width + "px";
-    lane.style.height = viz.offsetHeight + "px";
+    /* v3.33.5：scroll 复用上面那次 lyricClipH()（盒高只算一处）；分页维持"与 #viz 同高"的原口径。 */
+    lane.style.height = (clipH || viz.offsetHeight) + "px";
   }
   /* ★★★ v3.31.1：**带静止态重落的歌词轨重建**——外部（Controls / 装配层）改歌词显隐或
      位置时必须走这个，**不要直接 buildLyricLane()**。
@@ -17776,13 +17883,16 @@ function setPresetDrawer(/** @type {boolean} */ open, /** @type {{mask?:boolean,
      ★ v3.14.0：hover 会话跳过焦点搬运（focus:false）。 */
   const focusTarget = open ? (opts.focus === false ? null : $("presetSearch")) : $("presetLibBtn");
   if (focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
-  /* ★ v3.0.0（批 4）：抽屉是**内联**展开的——它把控制卡撑高、`#viz` 整体下移。
-     而歌词轨是 `position:absolute` 叠在 `#viz` 上的**兄弟节点**，它的 top/left 与逐行
-     translateY 只在结构层（buildViz / relayout）算 ⇒ 不重算就会停在旧位置：
-     用户实拍症状是「点开预设库后，歌词压在抽屉上、还和网格错位」。
-     调一次 relayout（它正是"几何/位置重算"的既有入口：未播放走 buildViz、播放中走
-     cacheGeo + 歌词重定位）即可，不必新造一条路径。 */
-  Viz.relayout();
+  /* ★ v3.33.4：此处原本无条件调一次 `Viz.relayout()`（v3.0.0 批 4 加的）。
+     当时理由成立——抽屉是**内联**展开的，会把控制卡撑高、`#viz` 下移，而歌词轨是
+     `position:absolute` 的兄弟节点，不重算就停在旧位置（用户实拍「点开预设库后歌词
+     压在抽屉上、还和网格错位」）。
+     ★ 但 v3.3.0 起抽屉已改成 `position:fixed` 覆盖层（见 .preset-drawer / .pd-mask），
+       开合**不再改变任何布局** ⇒ 那次 relayout 对"抽屉"而言是空转；而在预备拍窗口里
+       它还不是空转：relayout 的播放分支只重写歌词轨的 translateY（不落横向槽位移），
+       而帧循环此时已提前 return，没人补 ⇒ 歌词整轨错位挂到预备拍结束（用户实拍报障）。
+     ★ 治本落在 placeLaneOverlay（结构层重锚时同落 x，见 lyricRestX）；这里把失效的调用
+       摘掉，免得下一个人照着它再写第二处"抽屉要 relayout"的凭据。 */
 }
 /* ★ v3.1.0（用户定稿）：卡片主钮「浏览节奏型 ▾」开合抽屉——v3.0.0 批 5 的「左列三个分区按钮
    定位分区」交互随六颗同貌 pill 一并退役（新用户分不清"开抽屉"与"跳页面"）。

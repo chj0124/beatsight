@@ -245,7 +245,17 @@ section("T155d 歌词 · scroll 下恒 follow 且随槽同组 (dx,dy)");
   const lane = els["lyricLane"];
   ok(lane.classList.contains("overlay"), "歌词轨切覆盖层定位");
   ok(lane.classList.contains("scroll-clip"), "★ 歌词覆盖层加 .scroll-clip（它是 #viz 的兄弟节点，不吃 #viz 的裁剪）");
-  eq(lane.style.height, els["viz"].style.height, "★ 歌词轨裁剪高度与 #viz 同源（同一行数与槽距算出来的）");
+  /* ★★ v3.33.5 口径变更（**这不是回归**）：原先这里钉「歌词轨裁剪高度 == #viz 高」，
+     而那正是缺陷本身——歌词行锚在「行盒底 + 2」，盒高只到行盒底 ⇒ **最下那条可见跑道的
+     歌词整行落在盒外**（传送带档更狠：盒高只够一行，整条歌词线被裁，整档没有词）。
+     改成关系式：盒高 = #viz 裁剪高 + 锚点偏移 2 + 行高 + 6px 余量，且必须严格大于 #viz 高。
+     细节与逐档取证见 t189。 */
+  const vizH = parseInt(els["viz"].style.height, 10);
+  const laneH = parseInt(lane.style.height, 10);
+  const rowH0 = beat.Viz.internals().lyricRows[0].el.offsetHeight || 28;
+  ok(laneH > vizH, "★ v3.33.5：歌词轨裁剪高度**大于** #viz 高（多出末行歌词所需）",
+    "lane=" + laneH + " viz=" + vizH);
+  eq(laneH, vizH + 2 + rowH0 + 6, "★ 差值恰好 = 锚点偏移 2 + 行高 + 6px 余量（关系式，不写死像素）");
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   driveFrames(ac, beat, 1.2);

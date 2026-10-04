@@ -162,6 +162,10 @@ const CASE_FILES = [
   "./cases/t184-quota-one-shot",
   "./cases/t185-rhy-beat-split",
   "./cases/t186-scroll-lyric-entry-row",
+  "./cases/t188-countin-lyric-rest-x",
+  "./cases/t189-lyric-clip-last-row",
+  "./cases/t190-viz-clip-single-source",
+  "./cases/t191-clip-live-geometry",
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
