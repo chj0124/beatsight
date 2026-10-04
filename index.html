@@ -1274,9 +1274,13 @@ input[type=range].vol{width:120px}
    实体态在这里收紧——拍数下拉一行、9 枚纯图标 pill 一行（392px 抽屉里放得下）。
    图标是内联 SVG、fill 走 currentColor ⇒ 自动跟随主题文字色，
    故深色 / 观测台主题**不需要**任何额外规则（与 .hint 同源做法）。 */
-#rhyBeatBox{padding:0 2px 2px}
+/* v3.33.1：区体改**纵向 flex + gap:10px**——v3.33.0 只给了 .bpm-row 的横向 gap，
+   两行之间实测间距 **0px**（贴死）。间距收敛到容器一处：行内 6px / 行间 10px。 */
+#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px 2px}
 #rhyBeatBox .bpm-row{align-items:center;flex-wrap:wrap;gap:6px}
-#rhyBeatBox .hint{margin-top:6px}
+#rhyBeatBox .hint{margin-top:0}       /* 纵向间距已由容器 gap 承担，避免叠加成 16px */
+/* 上限兜底：宽度本由选项文案决定（见 sigLabel），这条只防日后文案变长挤变形。 */
+#rhyBeatBox .loop-sel{max-width:96px}
 /* 图标 pill：用户拍板「图标下不写文案」（名称走 title 悬浮 + aria-label 读屏），
    故水平内边距收紧、行高归零（否则图标块的基线会在胶囊里造成偏移）。
    ★ 刻意**不写 min-height**——全站 40px 触控下限由 .pill 主规则统一把守，本处不得局部下调
@@ -1434,7 +1438,17 @@ input[type=range].vol{width:120px}
 .editor-topbar{height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:24px}
 .editor-topbar .left{display:flex;align-items:center;gap:16px}
 .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
-.editor-title{font-size:16px;font-weight:700}
+/* v3.33.1：标题允许收缩（flex 子项的缺省 min-width:auto 会让长标题撑破容器、
+   顶栏 fixed 64px 又裁掉换行的那几行——实测窄屏 390 下标题已是 3 行 84px、顶边 −10px） */
+.editor-title{font-size:16px;font-weight:700;min-width:0}
+/* 顶栏里的拍数块（标签 + 下拉）：内部 8px、与标题的间隔由 .left 的 16px 承担（两层各司其职） */
+.ed-meter{display:flex;align-items:center;gap:8px;flex:none}
+/* 窄屏：顶栏从**固定 64px** 改成**可生长**，并允许块级换行——拍数块换到标题下方一行。
+   断点取 640px（与全站既有断点同档），手机 390 命中。 */
+@media (max-width:640px){
+  .editor-topbar{height:auto;min-height:64px;flex-wrap:wrap;row-gap:8px;padding:10px 0}
+  .editor-topbar .left{flex-wrap:wrap;row-gap:8px}
+}
 .editor-actions{display:flex;gap:10px}
 /* ---------- 浮层小窗（v2.10.13）：设置弹窗的 Dialog 形态 ----------
    与 .editor（全屏页面式）的区别：**不全屏**、主界面在四周仍可见（backdrop 压暗）、
@@ -2388,7 +2402,8 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <select class="loop-sel" id="sigSel" aria-label="拍数：基础节奏每小节几拍（0 为每拍均等、不分重拍）"></select>
         </div>
         <div class="bpm-row" id="rhyPillRow" role="group" aria-label="节奏类型：一拍之内的细分"></div>
-        <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称</div>
+        <!-- v3.33.1：下拉文案缩短后，「0 · 均等」的完整含义落在这里（见 sigLabel 注释） -->
+        <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称 · 拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
       </div>
       <div id="presetList"></div>
       <!-- 「当前曲式 · 名字」chip（v2.35.0）：它指示跳段键/弹层范围滑块正在服务曲式库里的哪一条，
@@ -2573,6 +2588,13 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           返回练习
         </button>
         <div class="editor-title" id="editorTitle">自定义节奏型</div>
+        <!-- ★ v3.33.1（用户拍板）：拍数放在标题旁——标题本来就在写「· 4/4 拍」，
+             显示它的地方就是改它的地方。选项 = VALID_METER（与导入校验同一份白名单）；
+             换拍数 = 重建草稿骨架 + dirty 先确认 + 一步可撤销。窄屏换行到标题下方。 -->
+        <span class="ed-meter">
+          <span class="lab">拍数</span>
+          <select class="loop-sel" id="editorMeterSel" aria-label="拍数：本型每小节几拍，切换将按新拍数重建草稿"></select>
+        </span>
       </div>
       <!-- v2.37.0（c）：源型的引用信息——把「引用不追踪」的真相在最易误解的场景讲清 -->
       <div class="hint" id="editorRefNote"></div>
@@ -2598,12 +2620,9 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <button class="pill outline" id="delBarBtn">− 删当前小节</button>
         <button class="pill" id="copyBarBtn">复制小节到全部</button>
         <button class="pill outline" id="clearBarBtn">清空当前小节</button>
-        <!-- ★ v3.33.0（用户拍板）：本型的**拍数**可改（下拉框：与基础节奏区同款控件，
-             同一概念不搞两种形态）。换拍数 = 按新拍数重建草稿骨架（见 Editor 的 meter 分支），
-             因为旧小节的时值和与新拍数必然对不上，无法保留内容。
-             选项由 VALID_METER 生成（导入校验用的是同一份白名单，不会出现"选得出来存不进去"）。 -->
-        <span class="lab">拍数</span>
-        <select class="loop-sel" id="editorMeterSel" aria-label="拍数：本型每小节几拍，切换将按新拍数重建草稿"></select>
+        <!-- v3.33.1（用户实拍）：**拍数下拉已搬去顶栏标题旁**（见 .editor-topbar）。
+             此前它在这里，与标题相隔 212px、被 6 个按钮挤到最右缘（用户："太偏僻"）。
+             本行只留规则文案。 -->
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · 一个节奏型 1–<span id="editorMaxBars">64</span> 小节 · Ctrl+Z 撤销</span>
       </div>
       <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时三个按钮禁用
@@ -3029,7 +3048,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
         <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
           <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
-          <li><b>拍数也能改</b>：编辑器里有一个<b>拍数</b>下拉（与基础节奏区同款），
+          <li><b>拍数也能改</b>：编辑器<b>顶栏的标题旁边</b>有一个<b>拍数</b>下拉（与基础节奏区同款），
             改了会按新拍数<b>重建草稿骨架</b>（原来画的音会被替换掉，所以改过草稿时会先跟你确认；
             改错了按 Ctrl+Z 撤回来）——「想要的拍数不在预设库里」就用这一条自己造</li>
           <li><b>一个小节不够用就加</b>：「＋ 在其后加一小节」会在当前小节后面插一节，内容先复制当前小节
@@ -3322,23 +3341,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3354  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4039  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5771  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6701  Modal         应用内弹窗
-     L6846  Viz           时值可视化渲染与每帧动画
-     L10095 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10776 Trainer       变速训练器
-     L10984 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11626 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13222 Editor        自定义节奏型编辑器
-     L13766 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13813 Ear           听辨训练（v1.10.0）
-     L14041 Arrange       曲式编排（v2.0.0）
-     L16970 Help          使用方法（v2.0.1）
-     L17099 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17173 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17416 初始化（装配） 各模块 hook 接线与启动
+     L3373  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4058  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5790  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6724  Modal         应用内弹窗
+     L6869  Viz           时值可视化渲染与每帧动画
+     L10118 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10799 Trainer       变速训练器
+     L11007 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11649 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13245 Editor        自定义节奏型编辑器
+     L13789 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13836 Ear           听辨训练（v1.10.0）
+     L14064 Arrange       曲式编排（v2.0.0）
+     L16993 Help          使用方法（v2.0.1）
+     L17122 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17196 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17439 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3364,7 +3383,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.0";
+const VERSION = "3.33.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5950,8 +5969,12 @@ const meterName = m => (/** @type {Record<number,string>} */ ({6:"6/8",5:"5/4",7
 /* ---- 拍数下拉的两件共用件（v3.33.0）：预设库基础节奏区与编辑器各有一个 <select>，
    档位表不同（前者含 0「均等」无 6/8；后者 = VALID_METER 无 0），但"怎么填/怎么显示"
    必须同一套，否则两处文案迟早漂移。放顶层：两个使用者分属 Presets / Editor 两个模块。 */
-/** @param {number} v @returns {string} 拍数档的显示文（0 = 均等） */
-const sigLabel = v => (v === 0 ? "0 · 均等（不分重拍）" : meterName(v));
+/* v3.33.1：拍数档的显示文。**文案长度直接决定下拉宽度**（原生 <select> 宽度 = 最长选项 +
+   内边距 + 箭头）：v3.33.0 的「0 · 均等（不分重拍）」把下拉撑到 152px，故只留「0 · 均等」，
+   完整语义走区里小字与 `aria-label`。改文案前先读 docs/DEVELOPMENT.md §3.22。
+   ★ 类型标注另起 `/**` 块——写在同一段单星注释里 tsc 不认，报 TS7006。 */
+/** @param {number} v @returns {string} */
+const sigLabel = v => (v === 0 ? "0 · 均等" : meterName(v));
 /** @param {HTMLSelectElement} sel @param {number[]} choices @param {any} [cur] */
 function fillSigSelect(sel, choices, cur){
   clear(sel);

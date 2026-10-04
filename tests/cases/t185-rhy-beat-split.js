@@ -24,7 +24,7 @@
      · pushUndo/undo 退回只存 bars                      → T185g 红
    ================================================================================ */
 "use strict";
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 /* 存档种子助手：只写热键（旧存档形态 = 没有 rhy / noAccent 两个键） */
 const hot = obj => ({ "beatsight.state": JSON.stringify(Object.assign({ v: 3 }, obj)) });
@@ -238,6 +238,49 @@ section("T185g 编辑器换拍数：重建为新拍数的骨架、可选撤销�
   els["modalOk"].fire("click");
   eq(beat.Editor.draft().meter, 6, "★ 确认后按 6/8 重建");
   eq(beat.Editor.draft().bars[0].reduce((a, s) => a + s.t, 0), 6 * 48, "6/8 口径：和 = 6×48");
+}
+
+/* ================= T185j：v3.33.1 三条 UI 修订（用户实拍提出） ================= */
+section("T185j 拍数文案收窄 / 两行留间距 / 编辑器拍数搬到标题旁（v3.33.1）");
+{
+  const { beat } = loadApp();
+  /* ① 下拉宽度由**最长选项文案**决定 → 那条文案必须短。
+     这条断言是"宽度"的**代理指标**：原生 select 的宽度 = 最长选项 + 内边距 + 箭头，
+     文案一长宽度必然回来（v3.33.0 实测 152px，最长项文字就占 117px）。 */
+  eq(beat.sigLabel(0), "0 · 均等", "★ 「均等」档文案缩短（下拉宽度的根因；完整语义在小字与 aria-label）");
+  eq(beat.sigLabel(4), "4/4", "非 0 档仍是完整拍号（与 meterName 同源）");
+  eq(beat.sigLabel(6), "6/8", "6 走 meterName 的特例（编辑器档位用得到）");
+  /* 阈值 7 的来历：当前最长项「0 · 均等」= 6 字（含分隔点与空格），留 1 字余量；
+     v3.33.0 那个把下拉撑到 152px 的坏值「0 · 均等（不分重拍）」= 13 字——写回来必然红。
+     这条是"宽度"的可回归代理：文案长度是原生 select 宽度的唯一输入。 */
+  ok(beat.RHY_SIG_CHOICES.every(v => beat.sigLabel(v).length <= 7),
+     "★ 基础区 6 个选项的文案都 ≤ 7 字（最长项实测 6 字；旧坏值 13 字会红）");
+
+  /* ② 两行之间必须有纵向间距：v3.33.0 只给了行内横向 gap，实测行距为 0px。
+     这是 CSS 文本级断言（桩不做布局），口径与仓库既有 CSS 断言一致。 */
+  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:10px/.test(html),
+     "★★ 基础节奏区是纵向 flex 且 gap:10px（此前两行间距实测 0px，贴在一起）");
+  ok(/#rhyBeatBox \.hint\{margin-top:0\}/.test(html),
+     "小字的 margin-top 归零（纵向间距由容器 gap 单点承担，避免叠加成 16px）");
+  ok(/#rhyBeatBox \.loop-sel\{max-width:96px\}/.test(html),
+     "拍数下拉有 max-width 兜底（防日后选项文案变长又把抽屉挤变形）");
+
+  /* ③ 编辑器拍数必须在**顶栏标题旁**（v3.33.0 落在底部操作行，与标题相隔 212px、被 6 个按钮挤到最右）。
+     位置用**源码顺序**断言：桩不解析 HTML 结构，但"谁在谁前面"足以表达"搬走了"。 */
+  const iTitle = html.indexOf('id="editorTitle"');
+  const iMeter = html.indexOf('id="editorMeterSel"');
+  const iActions = html.indexOf('class="ed-actions"');
+  ok(iTitle > 0 && iMeter > 0 && iActions > 0, "三个锚点都在（防正则/锚点写坏后静默通过）");
+  ok(iTitle < iMeter, "★ 拍数下拉在标题**之后**（同在顶栏）");
+  ok(iMeter < iActions, "★★ 拍数下拉在底部操作行**之前**——即它已不在那一排里（用户说「太偏僻」的就是那里）");
+  ok(iMeter - iTitle < 1200, "★ 与标题的距离在源码上也相邻（不是被别的大块隔开）");
+  ok(/\.ed-meter\{display:flex;align-items:center;gap:8px/.test(html),
+     "拍数块自带 8px 内部间距（标签↔下拉），与标题的 16px 分两层");
+  /* ④ 窄屏：顶栏必须可生长——v3.33.0 的固定 64px + 长标题换行 = 标题溢出（实测 3 行 84px、顶边 −10px） */
+  ok(/@media \(max-width:640px\)\{\s*\.editor-topbar\{height:auto;min-height:64px;flex-wrap:wrap/.test(html),
+     "★★ 窄屏顶栏改 height:auto 且允许换行（修 v3.33.0 已存在的标题溢出，并让拍数块换行到标题下方）");
+  ok(/\.editor-title\{font-size:16px;font-weight:700;min-width:0\}/.test(html),
+     "标题 min-width:0（flex 子项缺省 auto 会撑破容器，是溢出的直接原因）");
 }
 
 /* ================= T185i：曲式拍号残留（离开曲式时把拍数还回来） ================= */
