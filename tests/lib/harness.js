@@ -100,6 +100,13 @@ const HTML_ATTRS = {
      loopToggle 是 <button role=switch>，与 tabToggle 同类。 */
   loopFrom: { tagName: "SELECT" },
   loopTo: { tagName: "SELECT" },
+  /* v3.33.0：新增两个拍数下拉（预设库基础节奏区 #sigSel / 编辑器 #editorMeterSel）——
+     与 loopFrom/loopTo 同款：真标记里是 <select>，桩不解析 HTML，不复刻就丢掉 tagName。 */
+  sigSel: { tagName: "SELECT" },
+  editorMeterSel: { tagName: "SELECT" },
+  /* v3.33.0：基础节奏区折叠头的初值。真标记写死 `aria-expanded="true"`（出厂展开），
+     桩不复刻的话「出厂展开」这条在桩里恒真（读到 null），装配后写对写错都看不出来。 */
+  basicSecHead: { "aria-expanded": "true" },
   loopToggle: { tagName: "BUTTON" },
   /* v2.10.1：六线底纹开关（tabToggle）与 loopToggle 同是 `<button role=switch>`，但它还多一层
      "标记里写死初值"——真实标记是 `class="toggle-pill on"` + `aria-checked="true"`。

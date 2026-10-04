@@ -993,6 +993,56 @@ bullet，回归见 `t89`。
   状态环一律 inset（外环画在透明缝上=视觉断裂）；窄格（dur≤T16）`.sm` 内缩减半。
   回归：`tests/cases/t147-range-fill.js`（T147a–c）、`tests/cases/t148-chip-capsule.js`（T148a–b）。
 
+### 3.22「拍数 × 节奏类型」与基础节奏生成器（改节奏/拍号相关代码前必读）
+
+**一句话**：一拍之内怎么细分（9 种）× 一小节几拍（含「0 · 均等」）是两个**互相独立**的选项，
+点它们即进入「基础节奏模式」；谱面型的「型即拍号」建模**一行未动**。
+
+**数据与出口（唯一一份）**
+- `RHY_STEPS` / `VALID_RHY` / `RHY_NAME` / `RHY_SIG_CHOICES`：**顶层**常量（不放模块内）——
+  Store 加载白名单、生成器、预设库 UI、编辑器下拉四处共用，与 `VALID_T` / `VALID_METER`
+  上移是同一条理由（白名单只此一份）。`VALID_METER` 本轮也跟着上移到顶层。
+- 生成器：`basicPattern(meter, rhy)`。**缺省 / 非法一律 `quarter`，产物与改造前逐位相同**
+  （`bars=[[D(48)×meter]]`、`name="基础节奏 · 每拍一下"`）——这是零迁移的地基，
+  全部老调用点（此前是单参）一行未改。每拍之和恒 48 ⇒ 每小节和 = `meter×TPB`，
+  天然过 `validatePreset` / `barValid` 的整数严格相等。
+- 步形数据 `[dur, rest?]`：`rest` 为 1 即休止步，产物走 `D(dur, true)`——与编辑器手画的休止
+  **同构**，故渲染 / 发声 / 试听零改动。9 种的成分有双重证据（参照设备说明书截图逐个放大核对
+  + 同类主流机型官方规格交叉验证），含 3 种带休止的型。
+
+**状态字段（都在 `S` 的显式 JSDoc 里）**
+```
+sel = { type:"basic" }      // 第三种 sel 形态；**不需要在解析链加分支**——
+                            // resolveRef 对未知 type 返回 undefined ⇒ curPattern 落到 basicPattern
+rhy = "quarter" | …         // 一拍细分（白名单加载；旧存档无此键 ⇒ quarter = 旧行为）
+noAccent = false            // 「0 · 均等」= 每拍一样响。**不动 S.sig**（它参与 S.sig*spb() 乘算，
+                            // 语义上不该承载"不打重拍"）；只让生成器产出 accents=[]
+```
+`S.fold` 增 `basic` 键（预设库「基础节奏」区的开合，缺省展开），既有三键不动。
+
+**UI 落点与红线**
+- 预设库「基础节奏 · 拍数与细分」区 = **列表的第 0 区**，静态挂在 `#presetList` **之前**——
+  放进列表会被 `buildPresetList` 的 `clear(list)` 连坐销毁（v3.1.0 的 `#migHint` 同款坑）。
+  开合**自理**（`applyBasicFold`），**不进 `applyFold` 的三区切段**（那只认 `#presetList.children`）。
+- 9 枚记谱图标是 **DOM 块**（`rhyIcon`：绝对定位的符头 / 符干 / 双级符杠 / 休止斜杠 / 旗点 /
+  三连音「3」）：不用 `innerHTML` 拼串（lint `no-innerhtml` 硬禁），也不用 `createElementNS`
+  （测试沙箱没有该 API，那条路会让接线在桩里直接抛错）。颜色走 CSS `currentColor`。
+- 文字信息走 `title` 悬浮 + `aria-label`（与音量行"常显文字能省就省"同口径）；**触屏无悬浮**
+  ——靠通用记谱符号本身 + 读屏。
+- 互斥：点图标/拍数 ⇒ `enterBasic()`（含"退出曲式回单型"）；点库中任意型 ⇒ 离开本模式
+  （既有路径）。曲式整首同拍号，进出会把 `S.sig` 对齐掉 ⇒ `enterBasic` 在"从曲式进来且
+  当前拍号不在本区档位"时把拍数还原成上次在本模式下的值（模块内记忆，无记忆回落 4/4）。
+
+**编辑器拍数**
+`#editorMeterSel` 的档位 = `VALID_METER`（与导入校验同一份，"选得出来"与"存得进去"不漂移）。
+换拍数 = 按新拍数**重建草稿骨架**（旧小节的时值和与新拍数必然对不上）+ 该拍号默认重拍分组；
+dirty 时先确认；**且作为一步进撤销栈**——`pushUndo` 的快照本轮由 `bars` 扩为 `{meter, bars}`。
+
+**编辑器/基础区的两枚拍数下拉共用** `fillSigSelect` / `sigLabel`（都在共享状态区，跨 Presets
+与 Editor 两个模块）。
+
+**回归**：`tests/cases/t185-rhy-beat-split.js`（T185a–i，含反向验证六刀）+ 看门狗 `rhy_dirty`。
+
 ## 4. 设计规范（视觉 tokens）
 
 | 用途 | 值 |

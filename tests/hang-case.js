@@ -174,6 +174,7 @@ const SPECIAL_LABELS = {
   dirty_misc:"脏重拍分组 / trainer 原型污染",
   arrange_range_dirty:"反向播放范围 from > to（v2.10.4：滑块让这对字段变成连续可写）",
   narrow_range_short_song:"范围短于窗口 + 全曲短于窗口（v2.10.8：新增「小节号↔行号」映射）",
+  rhy_dirty:"脏基础节奏细分 / 脏均等开关（v3.33.0：新增两个进热路径的状态字段）",
 };
 const CASE_LIST = [
   ...Object.keys(SIGS).map(id => [id, SIG_LABELS[id]]),
@@ -181,7 +182,7 @@ const CASE_LIST = [
   ...Object.keys(VOLS).map(id => [id, VOL_LABELS[id]]),
   ...["strum_vol_dirty", "pat_bars_max", "bpm_dirty", "hunger_skip",
       "editor_clear_bar", "normal_path", "dirty_misc", "arrange_range_dirty",
-      "narrow_range_short_song"].map(id => [id, SPECIAL_LABELS[id]]),
+      "narrow_range_short_song", "rhy_dirty"].map(id => [id, SPECIAL_LABELS[id]]),
 ];
 
 /* `--list`：把清单吐给调用方（hang-guard），本模式不加载 index.html、不执行任何探针 */
@@ -370,6 +371,34 @@ if (CASE in SIGS){
     out(beat.Store.S.playing === true, "反向区间播放未中断", "playing=" + beat.Store.S.playing);
     out(FAC.last.hits.length > 0, "反向区间仍在发声（不是静默空转）", FAC.last.hits.length + " 次");
   }
+
+} else if (CASE === "rhy_dirty"){
+  /* v3.33.0：基础节奏模式新增两个状态字段，且都进了**每帧热路径**
+     （`curPattern()` → `basicPattern(S.sig, S.rhy)` 与 `S.noAccent`，播放中每帧被调）：
+       · S.rhy —— 一拍细分的 id。脏值（数字/对象/未知名）不得让生成器产出空小节或抛错，
+         更不得把步数送成天文数字（那会让 buildViz 逐格建节点直到卡死）。
+       · S.noAccent —— 「每拍均等」开关。脏值不得让 accents 变成非数组/含 NaN
+         （发声侧 `accents.indexOf` 与重拍判定都会踩）。
+     ★ 走**真实启动加载路径**（seeded 存档），因为白名单校验就在加载期那两行；
+       绕过它直接赋字段测的是"消费者抗不抗脏"，不是"脏值能不能进状态"——两件事都要，
+       但本条盯的是后者（前者由 t185c 在桩里钉）。
+     ★ 必须让播放真的跑起来：`basicPattern` 只在 `curPattern()` 被调到时才执行，
+       而 stop 态下它每帧也被调（渲染取型），故 start 一下更贴近真实。 */
+  RAMPS = [];
+  const { beat } = loadApp(seed({ v:3, sig:4, sel:{ type:"basic" }, rhy:{ junk:1 }, noAccent:"yes" }));
+  const S = beat.Store.S;
+  out(S.rhy === "quarter", "脏 rhy（对象）收敛为 quarter", "S.rhy=" + JSON.stringify(S.rhy));
+  out(S.noAccent === false, "脏 noAccent（字符串）收敛为 false", "S.noAccent=" + JSON.stringify(S.noAccent));
+  const p = beat.curPattern();
+  const steps = (p && Array.isArray(p.bars) && Array.isArray(p.bars[0])) ? p.bars[0].length : -1;
+  out(steps === S.sig, "生成的小节步数正常（= 拍数，无天文数字/空小节）", "步数 " + steps);
+  out(Array.isArray(p.accents), "accents 仍是数组", Array.isArray(p.accents) ? p.accents.length + " 项" : typeof p.accents);
+  beat.Controls.start();
+  const ac = FAC.last;
+  const err = driveFrames(ac, beat, 1.5);
+  out(!err, "脏基础节奏字段不崩渲染帧", err || "OK");
+  out(S.playing === true, "播放未中断", "playing=" + S.playing);
+  out(ac.hits.length > 0, "仍在发声（不是静默空转）", ac.hits.length + " 次");
 
 } else if (CASE === "narrow_range_short_song"){
   /* v2.10.8：渲染层新增了一层「歌曲小节号 → 窗口行号」映射（Viz.rowOfSongBar /
