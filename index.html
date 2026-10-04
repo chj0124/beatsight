@@ -792,9 +792,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 #lyricPosGroup .pill{font-size:12px;padding:6px 10px}
 /* v3.33.10（用户清单 1）：三块语义小标题——作为整行插进现有 .bpm-row，胶囊在其下自然成组 */
 .bpm-row .group-label{flex:1 1 100%;width:100%;margin-top:20px;margin-bottom:-2px}
-/* v3.33.10（用户实拍）：窄屏底栏的跳段双滑块控件略偏左——实测轨道中心 188.5 vs 视口中心 195
-   （差 6.5px）。这一行把它按回视口中心（只在窄屏生效）。 */
-@media (max-width:640px){.demo-range-track{margin-left:6.5px}}   /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
+   /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
 /* v2.86.0：伴随节奏模式 = 覆盖层（#lyricLane 切绝对定位，叠到 #viz 上，逐行 translateY）。
@@ -2150,6 +2148,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    所以要单独把按钮放回可点。字号比面板正文再小一档，避免抢占视觉重心 */
 .diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px 10px;font:600 10px/1.4 var(--mono)}
 
+/* 用户拍板「读法 2 + 归右」：窄屏底栏改两列两行——
+   左列 = 当前型胶囊 / 状态文字 ｜ 右列 = 传输键组 / 进度条。
+   动机：原先"传输键居中"在窄屏两侧白留对称空白，胶囊只剩 63px、状态只剩 112px 都被截断；
+   归右后宽度让给文字列，播放键也贴近右手拇指。桌面档完全不动（本条在 <=640 内）。
+   实现：.pb-right 用 display:contents 拆开（进度条与状态各自成为父网格项），无需改 DOM。
+   撤回上一版的 6.5px 微调：新布局里进度条右对齐，旧微调已无对象。 */
+@media (max-width:640px){
+  .play-bar{grid-template-columns:minmax(0,1fr) max-content;grid-template-areas:"ctx trans" "stat prog";
+    column-gap:12px;row-gap:2px;align-items:center}
+  .play-bar .pb-ctx{grid-area:ctx;justify-self:start;min-width:0;max-width:100%;overflow:hidden}
+  /* id 级覆盖：旧窄屏规则是 #argJump{grid-column:1 / -1;justify-self:center}（1,0,0），
+     类级压不过它 ⇒ 这里必须同样用 id，并显式 grid-column:auto 撤销跨列。 */
+  .play-bar #argJump{grid-area:trans;grid-column:auto;justify-self:end}
+  .play-bar .pb-right{display:contents}
+  .play-bar .pb-sub{grid-area:stat;justify-self:start;min-width:0;overflow:hidden}
+  .play-bar .pb-progress{grid-area:prog;justify-self:end;width:100%}
+}
 </style>
 </head>
 <body>
@@ -3437,23 +3452,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3469  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4154  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5886  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6848  Modal         应用内弹窗
-     L6993  Viz           时值可视化渲染与每帧动画
-     L10369 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11050 Trainer       变速训练器
-     L11260 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11908 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13499 Editor        自定义节奏型编辑器
-     L14043 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14090 Ear           听辨训练（v1.10.0）
-     L14318 Arrange       曲式编排（v2.0.0）
-     L17247 Help          使用方法（v2.0.1）
-     L17376 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17450 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17693 初始化（装配） 各模块 hook 接线与启动
+     L3484  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4169  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5901  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6863  Modal         应用内弹窗
+     L7008  Viz           时值可视化渲染与每帧动画
+     L10384 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11065 Trainer       变速训练器
+     L11275 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11923 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13514 Editor        自定义节奏型编辑器
+     L14058 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14105 Ear           听辨训练（v1.10.0）
+     L14333 Arrange       曲式编排（v2.0.0）
+     L17262 Help          使用方法（v2.0.1）
+     L17391 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17465 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17708 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3479,7 +3494,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.11";
+const VERSION = "3.33.12";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

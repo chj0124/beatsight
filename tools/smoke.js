@@ -817,9 +817,13 @@ function layoutProbe(){
     const br = round(parseFloat(getComputedStyle(bar).paddingRight));
     const contentCenter = round(bl + (bar.clientWidth - bl - br) / 2);
     const jumpCenter = jr ? round(jr.left + jr.width / 2) : null;
+    /* v3.33.12：窄屏改「归右」契约后，需要右缘而不是中心来判定 */
+    const jumpRight = jr ? round(jr.right) : null;
+    const contentRight = round(bar.getBoundingClientRect().left + bar.clientWidth - br);
     return { keyCenter: round(kr.left + kr.width / 2),
       vpCenter: round(document.documentElement.clientWidth / 2),
       jumpCenter: jumpCenter, contentCenter: contentCenter,
+      jumpRight: jumpRight, contentRight: contentRight,
       gapBottom: round(window.innerHeight - kr.bottom) };
   })();
   /* ★ v3.12.0：底栏右区（#pb-right）的实高 vs 底栏**内容区**实高——
@@ -1967,7 +1971,14 @@ async function main(){
           /* ★ v3.3.1（用户反馈）：播放键必须**水平居中**且不贴底——两条都是真机才看得出的观感，
              也是本轮的实际故障（space-between 下中列被左右不等宽挤偏）。 */
           if (L.center){
-            if (L.center.jumpCenter !== null && L.center.contentCenter !== null){
+            if (String(vp).indexOf("窄屏") >= 0){
+              /* ★ v3.33.12（用户拍板「读法 2 + 归右」）：**窄屏不再要求居中**，改判"右对齐底栏内容列"。
+                 动机（用户实拍）：居中在窄屏两侧白留对称空白，胶囊只剩 63px、状态只剩 112px 都被截断；
+                 归右后宽度让给文字列，播放键也更贴近右手拇指。桌面档契约不变（仍居中，见 else 分支）。 */
+              ok(L.center.jumpRight !== null && Math.abs(L.center.jumpRight - L.center.contentRight) <= 2,
+                p.label + "·" + vp + "：★★★ 窄屏播放键组**右对齐底栏内容列**（v3.33.12 用户拍板「归右」）",
+                "argJump 右缘 " + L.center.jumpRight + " vs 内容列右缘 " + L.center.contentRight);
+            } else if (L.center.jumpCenter !== null && L.center.contentCenter !== null){
               ok(Math.abs(L.center.jumpCenter - L.center.contentCenter) <= 2,
                 p.label + "·" + vp + "：★★★ 播放键组**居中于底栏内容列**（v3.26.0：内容列 = 卡片内容列）",
                 "argJump 中心 " + L.center.jumpCenter + " vs 内容列中心 " + L.center.contentCenter);
