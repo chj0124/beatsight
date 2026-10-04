@@ -3346,18 +3346,18 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      L5790  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L6724  Modal         应用内弹窗
      L6869  Viz           时值可视化渲染与每帧动画
-     L10118 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10799 Trainer       变速训练器
-     L11007 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11649 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13245 Editor        自定义节奏型编辑器
-     L13789 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13836 Ear           听辨训练（v1.10.0）
-     L14064 Arrange       曲式编排（v2.0.0）
-     L16993 Help          使用方法（v2.0.1）
-     L17122 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17196 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17439 初始化（装配） 各模块 hook 接线与启动
+     L10130 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L10811 Trainer       变速训练器
+     L11019 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11661 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13257 Editor        自定义节奏型编辑器
+     L13801 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L13848 Ear           听辨训练（v1.10.0）
+     L14076 Arrange       曲式编排（v2.0.0）
+     L17005 Help          使用方法（v2.0.1）
+     L17134 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17208 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17451 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3383,7 +3383,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.1";
+const VERSION = "3.33.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7066,6 +7066,16 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
      两者语义不同、行数来源也不同，但**占用的是同一个"可见行数"位**（下游一律读本函数）。
      scrollMode 关时逐位返回旧值 S.vizRows，paged 行为零变化。 */
   function arrWinBars(){ return S.scrollMode ? scrollRows() : S.vizRows; }
+  /* ★★ v3.33.2：一行**槽位数**——网格与歌词轨共用的**单一来源**（判据只此一份，同 scrollWrapRange）。
+     多行档的 "+1" 是 D19 的**进场行**：登场期间它从裁剪区外滑进来（只建 rows 行的话
+     登场后半段底部会露空白="闪一下"）。此前这个数在两处各写一份，而歌词那份只照抄了
+     传送带那一支、漏了多行的 +1 ⇒ 3 行档下网格 4 行、歌词 3 行：**进场行没有歌词行**，
+     那条正在滑上来的节奏型在滑入途中没有词，等它滑到应到位置词才出现（用户实拍报障）。
+     细节与取证手法见 docs/DEVELOPMENT.md §3.23。 */
+  function slotRowCount(){
+    if (!S.scrollMode) return arrWinBars();
+    return (scrollRows() === 1) ? 3 : scrollRows() + 1;
+  }
   /* ---- v3.0.0 连续滚动槽状态（PLAN-v9 批 1）----
      scrollCur   = 当前小节的**节目单绝对位置**（曲式 = 歌曲小节号；预设 = 型内片段号，
                    整小节档下即型内小节号）。-1 = 还没锚过（首帧 / 刚复位）。
@@ -8285,11 +8295,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            两边判据若分叉，会出现"调度回卷了、画面还在往下走"的音画分裂。
          ★ v3.0.1：判据收进 scrollWrapRange()（歌词轨 / 和弦胶囊同一来源），本处不再各写一份。 */
       const wrap = scrollWrapRange();
-      /* ★ 批 2（D19）：建 **rows+1** 行——最后一行是进场行，垂直登场期间它从裁剪区外滑进来。
-         若只建 rows 行，登场动画的后半段底部会露出空白（"闪一下"的根源）。
-         ★ 批 6：rows=1（传送带）改建 **3** 行——上一 / 当前 / 下一，相位不 clamp 时相邻槽
-           水平首尾相接，看起来就是一条连续的带（见 paintFrameBody 的 belt 分支）。 */
-      const slotN = (scrollRows() === 1) ? 3 : scrollRows() + 1;
+      /* ★ 批 2（D19）：建 **rows+1** 行是进场行（登场期间从裁剪区外滑进来；只建 rows 行
+         登场后半段底部会露空白）。★ 批 6：rows=1（传送带）改建 3 行（上一/当前/下一）。
+         ★★ v3.33.2：这两个数字**收进 slotRowCount()** —— 此前歌词轨那边漏了多行的 +1。 */
+      const slotN = slotRowCount();
       winPat = arr ? arrWindowPat(arr, winStart, slotN, wrap)
                    : presetWindowPat(ap, winStart, slotN, wrap);
       if (!winPat) winStart = 0;
@@ -9059,8 +9068,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        帧内各随各槽的 dx、y 叠置校正后**水平拼成一条连续的歌词线**（与格子带同构）。
        批 6 曾只建 1 条、锚当前槽：一是"可见小节的词只显当前小节"（用户要求全显），
        二是取字位置用了 winStart（= cur−1）而不是当前槽的位置（= cur），**歌词错后一小节**
-       ——用户实拍：第 0 小节上方本该空，却挂着"我多想"（第 1 小节格子的词）。 */
-    const laneRows = (S.scrollMode && scrollRows() === 1) ? 3 : arrWinBars();
+       ——用户实拍：第 0 小节上方本该空，却挂着"我多想"（第 1 小节格子的词）。
+       ★★ v3.33.2：行数改走 **slotRowCount()**，与网格逐位同源（此前这里另写一份判据、
+         多行档漏了 +1 ⇒ 进场行没有词；详见该函数注释）。t186 直断言两轨行数恒等。 */
+    const laneRows = slotRowCount();
     /* v3.0.1：回卷范围走 scrollWrapRange()——与 buildViz / arrWindowPat 同一来源（批 7 立训：
        判据各写一份必分叉）。取字位置随之改走 foldSeg：范围循环（如 [5,10]）下原先这里按
        **全曲**取模、网格按**范围**折回——同一槽歌词与格子对不上（潜在分叉，本次顺手收口）；
@@ -10108,7 +10119,8 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
          用 **getter** 而不是快照值——这几个都是 let，帧内每帧都在改，快照式暴露会拿到上一次
          调 internals() 那一刻的陈旧值（rowEls / rowGeo 这类数组引用可以快照，标量不行）。 */
       get scroll(){ return { cur: scrollCur, center: scrollCenter, dx: scrollDx, dy: scrollDy,
-        slotH: scrollSlotH, rows: scrollRows(), entry: SCROLL_ENTRY, winStart, winPrevSeg }; },
+        slotH: scrollSlotH, rows: scrollRows(), entry: SCROLL_ENTRY, winStart, winPrevSeg,
+        slotN: slotRowCount() }; },   // v3.33.2：槽位数（网格与歌词轨的共同来源，t186 直断言两轨行数相等）
       /* v3.12.0：预备拍道退场读数（仅供测试断言：session/锚点/镜像） */
       get countLane(){ return { session: countLaneSession, startCur: countLaneStartCur, lastCur: countLaneLastCur }; } }),
     /* v2.15.0：每行几拍的纯决策函数（供测试直测边界） */

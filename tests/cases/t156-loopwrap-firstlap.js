@@ -73,8 +73,13 @@ section("T156a 循环开着但还没回卷过：曲首之上留空（网格 + �
   eq(restCount(beat).join(","), "0,0,2,0",
     "★ 四槽休止数 = [空, bar0=0, bar1=2, 折回bar0=0]：上槽留空而不是折回 bar1（缺陷版此处是 2）");
   eq(int(beat).cellEls[0].length, 0, "★ 上槽无格子（跑道仍在、格子无——与批 7 的 bars.push([]) 同款）");
-  eq(lyricText(beat).join("|"), "|甲|乙",
-    "★ 歌词行 = [空, 甲, 乙]：上方不挂「乙」（用户实拍：循环开着时开头是曲尾那句词）");
+  /* ★★ v3.33.2 口径变更（**这不是回归**）：末槽由「不存在」变成「与网格同槽」。
+     修复前歌词只建 3 行（槽位数判据两份、歌词那份漏了多行档的 +1），而网格建 4 行——
+     本文件下一行早就断言了 `cellEls[3].length > 0`（第 4 槽照常折回 bar0），
+     歌词却没有第 4 槽可比：**同一屏里两轨槽数不同**本身就是那条用户报障的形状
+     （进场行滑进来时没有词）。现两轨同源（slotRowCount），末槽 = 折回 bar0 的「甲」。 */
+  eq(lyricText(beat).join("|"), "|甲|乙|甲",
+    "★ 歌词行 = [空, 甲, 乙, 甲]：上方不挂「乙」（用户实拍：循环开着时开头是曲尾那句词）；末槽与网格同槽 = 折回 bar0");
   /* 对照面：范围末**之后**（下一圈开头）第一圈也照常折回——预告的是几秒后就要发生的未来 */
   ok(int(beat).cellEls[3].length > 0, "★ 第 4 槽（pos=2 = 范围末之后）照常折回 bar0（预告不空白）");
   beat.Controls.stop();
@@ -96,8 +101,8 @@ section("T156b 回卷后：曲首之上 = 真的播过的上一圈末尾（bar1 
   eq(int(beat).scroll.cur, 0, "前置：已回卷，第二圈回到 bar0");
   eq(restCount(beat).join(","), "2,0,2,0",
     "★ 回卷后四槽 = [折回bar1=2, bar0=0, bar1=2, 折回bar0=0]：上槽放出折回内容（loopWrapped 生效）");
-  eq(lyricText(beat).join("|"), "乙|甲|乙",
-    "★ 回卷后歌词行 = [乙, 甲, 乙]：上方这回是真的刚唱过的那句");
+  eq(lyricText(beat).join("|"), "乙|甲|乙|甲",
+    "★ 回卷后歌词行 = [乙, 甲, 乙, 甲]：上方这回是真的刚唱过的那句；末槽折回 bar0（与网格 cellEls[3] 同槽）");
   beat.Controls.stop();
 }
 
@@ -153,6 +158,7 @@ section("T156d 对照：loop=false 时批 7 口径不变（曲首之上/曲尾�
   eq(restCount(beat).join(","), "0,0,2,0",
     "★ loop 关：四槽 = [空, bar0, bar1, **空**]——曲尾之下同样留空（与循环开的折回预告相反）");
   eq(int(beat).cellEls[3].length, 0, "★ loop 关时第 4 槽（pos=2 ≥ 全曲片段数）无格子");
-  eq(lyricText(beat).join("|"), "|甲|乙", "loop 关：歌词行与 T156a 同形（无循环 ⇒ 留空）");
+  eq(lyricText(beat).join("|"), "|甲|乙|",
+    "loop 关：歌词行 [空, 甲, 乙, 空]——首尾都留空（与上面 cellEls[3].length === 0 同判据；v3.33.2 起两轨同槽数）");
   beat.Controls.stop();
 }

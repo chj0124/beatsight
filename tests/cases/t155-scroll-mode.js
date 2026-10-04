@@ -250,7 +250,15 @@ section("T155d 歌词 · scroll 下恒 follow 且随槽同组 (dx,dy)");
   const ac = FakeAudioContext.last;
   driveFrames(ac, beat, 1.2);
   const int = beat.Viz.internals();
-  eq(int.lyricRows.length, 3, "歌词行数 = 可见行数（rows，不含裁剪区外的进场行）");
+  /* ★★ v3.33.2 口径变更（**这不是回归**）：原先这里写 3，注释是"不含裁剪区外的进场行"——
+     那句话描述的是**当时的实现**，而不是需求：网格建的是 rows+1（多出的一行是 D19 的进场行，
+     登场期间从裁剪区外滑进来），歌词轨却只照抄了传送带那一支、漏了多行的 +1。
+     后果是那条滑进来的行**没有词**，等它滑到应到位置（成为第 3 槽）词才出现——用户实拍报障。
+     现两轨行数**逐位同源**（`slotRowCount()` 单一来源，见 index.html 该函数注释），故改为 4。
+     判据仍是"两轨行数相等"，只是那个相等的值跟着网格走（下一条断言直接钉相等，比写死数字稳）。 */
+  eq(int.lyricRows.length, int.rowEls.length,
+    "★★ 歌词行数 == 网格行数（含裁剪区外的进场行——它滑进来时就必须带着词）");
+  eq(int.lyricRows.length, 4, "3 行档下两轨都是 4 个槽（rows+1 = 进场行）");
   /* 逐行核对：歌词行的 X 必须与同序号网格行的 X 完全一致（同一个 C/left/W/off） */
   for (let i = 0; i < int.lyricRows.length; i++){
     eq(dxOf(int.lyricRows[i].el.style.transform), dxOf(int.rowEls[i].style.transform),
