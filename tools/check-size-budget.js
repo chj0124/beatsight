@@ -291,7 +291,9 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
 /* v3.33.10（进度行搬进 BPM 卡 + 随机联动静音拍 + 参数槽一次性提示 + 间距口径）：index.html 1726.1 → 1733.3KB
      （净增 7.2KB）——搬迁/注意态/联动/补偿与清空点，外加成段"为什么"。实测 1,774,888B，故上调到 1739KB
      （约 5.7KB 余量）。 */
-const BUDGET_BYTES = 1739 * 1024;
+/* v3.33.13（日间休止格可辨）：index.html 1733.3 → 1739.2KB（净增 5.9KB）—— --rest-fill 令牌、
+   日间休止格与图例示意块的同源规则、以及两轮注释。实测 1,780,983B ⇒ 上调到 **1744KB**（约 4.9KB 余量）。 */
+const BUDGET_BYTES = 1744 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

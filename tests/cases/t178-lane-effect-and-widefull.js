@@ -71,8 +71,8 @@ section("T178b 休止格：压得轻一档（它的身份主要靠虚线边框�
     "★★ 休止格已弹 = .28（比发声格 .38 轻）——休止格底色本就透明（露壁纸），压太重会在深壁纸上糊成黑洞");
   ok(/background:rgba\(var\(--well\),\.32\)/.test(ruleOf(CSS_CODE, ".cell.rest.active::before")),
     "★★ 休止格正在弹 = .32（同样走 --well，与发声格同族）");
-  ok(/\.cell\.rest\{background:transparent;border:1px dashed var\(--rest-line\)\}/.test(CSS_CODE),
-    "★★ 休止格的虚线边框不受影响（压暗只动 ::before 填充层）");
+  ok(/\.cell\.rest\{background:var\(--rest-fill\);border:1px dashed var\(--rest-line\)\}/.test(CSS_CODE),
+    "★★ 休止格的虚线边框不受影响（压暗只动 ::before 填充层；底色改走 --rest-fill 令牌——经典档取值 transparent 与旧值逐位同值，日间档给专用灰）");
 }
 
 /* ================= T178c：细分线由深转浅 ================= */
