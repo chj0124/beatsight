@@ -784,6 +784,14 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    歌词轨 = 与网格逐行一一对应的若干条 .lyric-row（第 i 行 = 窗口第 i 小节，行数 = 同屏行数档位；
    预告行生效时第 1 行 = 下一小节的歌词），行内按小节内 tick 百分比定位字块；
    当前行带 .cur 底色、走带线只在当前行出现 */
+.lyric-pos-note{font-size:12px;color:var(--t3);align-self:center}
+#bounceToggle,#rulerLabToggle,#durLabelToggle,#tabToggle{min-width:190px;justify-content:space-between}
+/* ★ v3.33.10（用户清单 4）：同列等宽——此前左列四枚宽度不一，右列跟着参差，观感"没对齐"。 */
+/* ★ v3.33.10（用户清单 2）：位置三档是「显示歌词」的**子项** ⇒ 降一级 + 缩进（与仓库"开关+从属参数降一级"同口径）。 */
+#lyricPosGroup{margin-left:14px}
+#lyricPosGroup .pill{font-size:12px;padding:6px 10px}
+/* v3.33.10（用户清单 1）：三块语义小标题——作为整行插进现有 .bpm-row，胶囊在其下自然成组 */
+.bpm-row .group-label{flex:1 1 100%;width:100%;margin-top:20px;margin-bottom:-2px}   /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
 /* v2.86.0：伴随节奏模式 = 覆盖层（#lyricLane 切绝对定位，叠到 #viz 上，逐行 translateY）。
@@ -1159,11 +1167,27 @@ input[type=range].vol{width:120px}
    面板成为 #tgSwitchRow 的流内子节点（DOM 已交错排列，搬块不换 id）。
    ★ 全宽度档（≥760 与 <760）都是同一套纵排流内结构——v3.9/v3.12 时代的
    "同轴网格 / 手风琴网格 / 悬浮槽"三套模型收敛为一份。 */
-.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:14px}   /* ★ v3.30.0：2→14 三组行距（原 v3.24 的 2px 是"行高恒定"压缩配额，该契约已退役）——三行行心 174/224/274 = 与 BPM 三行同线（L1/L2/L3，偏差 <1.2px） */
+.viz-toggles .tg-row{display:flex;flex-direction:column;align-items:flex-start;gap:7px}   /* v3.30.0：三行行心 174/224/274 = 与 BPM 三行同线（L1/L2/L3） */
+/* ★★ v3.33.10（用户拍板）：组内间距 14 → **7**（用户目测"缩小一半"）——让"参数槽"贴近自己的开关。
+   ★ 但 v3.30.0 那条"三个开关行行心与 BPM 三行同线"的契约必须保住，故对**开关行之间的那一段**做补偿：
+     行序 = countin-line · sw-line(静音拍) · muteCfgPanel · sw-line(变速训练) · trainerPanel。
+     把组内一律收到 7px 后，静音拍的参数槽上移 7px（正是用户要的），但它后面的**变速训练开关行**也会跟着上移 7px
+     ⇒ 在"面板紧跟下一个开关行"的那一处补回 7px（选择器只命中 muteCfgPanel→变速训练 sw-line 这一处），
+     两个开关行的行心因此一动不动。 */
+/* ★★ v3.33.10（用户实拍纠正）：补偿必须**两处**——凡是"开关行"之前那一段都补回 7px，
+   否则第一个开关行（静音拍）会单独上移 7px ⇒ 预备拍↔静音拍 43px、静音拍↔变速训练 50px 不等（用户一眼看出）。
+   两处补偿= countin-line→静音拍 sw-line、muteCfgPanel→变速训练 sw-line；
+   结果：三个开关行间距仍是 14px（行心不动），两个参数槽各自贴近自己的开关 7px。 */
+.viz-toggles .countin-line + .sw-line{margin-top:7px}
+.viz-toggles .sw-line + .tr-panel + .sw-line{margin-top:7px}   /* 通用：7 = 该段间距补偿（行心按回 L1/L2/L3）*/
+/* ★★ v3.33.10（用户实拍纠正 3）：不要再按状态分档补偿。上一版给"面板可见"叠加了 14px，
+   与基础的 7px 相加 ⇒ 面板可见时净空 21px、隐藏时 14px，用户一眼看出不等。
+   统一口径（实测两主题 × 两状态全为 14/14）：**开关行之间净空恒为 14px、参数槽距自己的开关 7px**。
+   代价（如实记录）：静音拍开着时，参数槽把它后面的整段上提 7px ⇒ 变速训练行会比 BPM 列第三行
+   高 7px（v3.30.0 的 L1/L2/L3 严格同线在该状态下让位于"间距处处相等"，用户口径优先）。 */
 .viz-toggles .tg-row .tr-panel{width:100%;margin:0}   /* v3.24.0：参数行 padding 清零（压缩配额） */
 .viz-toggles .tg-row .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 .viz-toggles .tg-row .tr-panel .lab{font-size:11px;white-space:nowrap}
-.viz-toggles .tg-row .tr-prog{width:100%;text-align:left}
 .viz-toggles .countin-line,.viz-toggles .sw-line{display:flex;align-items:center;gap:8px;width:100%}   /* v3.22.0：三组统一"开关行 = 开关 + 主参数 inline 右"（预备拍+拍数 / 静音拍+随机 / 变速训练+目标） */
 /* ★★ v3.30.0（用户拍板）：**从属参数统一降级**——每行的视觉主体是主开关（36px 不变），
    紧随其后的从属参数（拍数框 / 随机开关 / 目标框）一律降一级，纠正此前"参数比开关还高大"
@@ -1244,6 +1268,24 @@ input[type=range].vol{width:120px}
 .tr-inp:focus{border-color:var(--border)}
 .tr-prog{width:100%;font-size:12px;font-family:var(--mono);color:var(--t2)}
 .tr-prog.live{color:var(--green)}
+/* v3.33.10（用户拍板 A）：进度行搬进 BPM 卡片后的排布。
+   自然高度（不做 min-height 预留——预留会把两张控制卡一起撑高，见下方就地说明）；左对齐 + 垂直居中；
+   .warn = 闸门原因态（用户反馈原灰字难以注意到）——红字 + 1px inset 描边（本仓用 box-shadow 画描边，
+   不改外几何）；日常进度仍保持安静。 */
+#trainerProg{display:flex;align-items:center;text-align:left}
+/* ★★ v3.33.10（用户拍板 a）：让这行文案与**右侧变速训练参数槽同一条水平线**。
+   实测（1440 宽、打开变速训练）：文案中心经典 309.5 / 日间 342.5，参数槽中心经典 304 / 日间 345
+   ⇒ 经典上移 6px、日间下移 2px（.tg-body 的 8px 间距按此叠加成有效间距）。
+   两主题各一条：面板高了才需要动的是"中心对齐"这一档，窄屏下随卡内流式排布，不做额外补偿。 */
+/* ★★ v3.33.10（用户实拍纠正 2）：上一版用经典 -6px 去够"参数槽中心"，结果把这行**顶到上面的快捷档上**
+   （.tg-body 间距 8px，减 6 只剩 2px，实拍就是"紧贴"）。改为留出呼吸空间：经典 8+4=12px、日间 8+2=10px。
+   ★ 与右列"参数槽"的严格同线另议（见 CHANGELOG：面板行比本行低约 29/50px，真要同线需让左卡长高约 30/50px）。 */
+#trainerProg{margin-top:4px}
+body[data-theme="obs"] #trainerProg{margin-top:2px}
+/* ★ v3.33.10（用户复盘）：**不给 min-height 预留**——初版为满足"与参数槽等高"写了 min-height:54px，
+   结果左列内容变高、同一栅格行的两张控制卡一起长高（用户实拍指出）。改回自然高度：
+   这一行是"注解"，不该反过来决定卡片高度；等高如需再议，用排版而不是硬预留。 */
+#trainerProg.warn{color:var(--red);box-shadow:inset 0 0 0 1px var(--red);border-radius:6px;padding:6px 10px}
 
 /* ---------- 侧栏 ---------- */
 /* v2.10.0：三个分区标题改成**可折叠**（用户要求）。标题自身即点击区（role=button，见 pushSection）。
@@ -2293,6 +2335,15 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
             <button class="pill outline" id="tapBtn">TAP 测速</button>
           </div>
           <div class="bpm-row" id="bpmPresetRow" role="group" aria-label="常用速度快捷档"></div>
+          <!-- ★★ v3.33.10（用户拍板 A）：变速训练的「进度 / 闸门原因」行从右列参数槽**整行搬到这里**
+               （BPM 卡片内、BPM 组下方）：
+               · 语义归位——它讲的都是"当前 BPM"（平时是「当前 96 BPM · 第 1/13 步」，闸门时是
+                 「当前速度 240 已不低于目标 120——先把速度调低，或把目标调高」），而人是在看 BPM 数字时
+                 冒出"为什么不再往上走"这个问题；
+               · 高度对称——变速训练打开时右列多出两个参数槽（步长 / 每级），本行占住左列同高的空档
+                 （min-height 与参数槽等高，见样式区）；
+               · **搬块不换 id**（v2.10.11 纪律）：id 与全部接线零改动，syncParamSlots 的显隐同步照旧生效。 -->
+          <div class="tr-prog" id="trainerProg"></div>
           </div>
         </div>
       </div>
@@ -2359,7 +2410,6 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
           <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
           <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
         </div>
-        <div class="tr-prog" id="trainerProg"></div>
       </div>
           </div>
         </div>
@@ -3183,6 +3233,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
     <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v2.85.0 与「环境」拆成两组） -->
     <h2 class="card-title" style="margin-bottom:8px">画面图层</h2>
     <div class="bpm-row">
+      <div class="group-label">图层元素</div>
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
       <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
       <!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
@@ -3193,7 +3244,11 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <!-- v2.86.0（PLAN-v7）：歌词显示开关 + 显示位置三档。取代 v2.84.0 的「歌词跟随条」。
            「显示歌词」总开关关 ⇒ 任何位置都不画歌词；开 ⇒ 下方「显示位置」三档可选
            （自动 / 贴在每行小节下 / 集中在底部），其中「自动」复用 viz 紧凑断点（≤960px 底部、>960px 贴行）。 -->
+      <div class="group-label">歌词</div>
       <button class="toggle-pill on" id="showLyricToggle" role="switch" aria-checked="true">显示歌词<span class="switch"></span></button>
+      <!-- v3.33.10（用户清单 4）：连续滚动档下三枚位置胶囊都被"恒贴本行"短路，故给出一行说明；
+           它只在该档 + 歌词开着时露面（由 syncAuxVisibility 统一推导） -->
+      <span class="lyric-pos-note" id="lyricPosNote" hidden>连续滚动下歌词恒贴本行（位置档位暂不生效）</span>
       <div class="lyric-pos-group" id="lyricPosGroup" role="group" aria-label="歌词显示位置">
         <button class="pill active" data-pos="auto" aria-pressed="true">自动 · 窄屏底部</button>
         <button class="pill" data-pos="follow" aria-pressed="false">贴在每行小节下</button>
@@ -3204,6 +3259,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            ★ 批 4 起**没有配套的档位控件**：「同屏行数」那一个控件随模式重列档位——
              连续滚动时它是 1 / 3 两档（滚动窗口），关掉时回到 1 / 2 / 3 / 4（翻页页长）。
              这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
+      <div class="group-label">滚动与行数</div>
       <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button>
     </div>
     <!-- ★ v3.12.0（用户拍板）：同屏行数档位从「时值可视化卡顶部」搬进本组——判据同 Swing
@@ -3214,7 +3270,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
       <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
     </div>
-    <div class="hint" style="margin-top:8px"><b>显示歌词</b>是画面图层的总开关：关掉任何位置都不画歌词；开着时下方「显示位置」三档可选——<b>自动</b>按屏宽自适应（窄屏 ≤960px 集中在底部、宽屏贴在每行小节下），<b>贴在每行小节下</b>让每行歌词直接叠在自己那一小节节奏型正下方（眼睛不用在「当前行 ↔ 底部歌词」之间来回跳），<b>集中在底部</b>是底部整块歌词轨的原有行为。<b>弹跳球</b>预告「何时」落拍，关掉就只剩声音（弹跳球<b>仅在分页模式</b>显示，连续滚动模式下不出现）；<b>六线底纹</b>只对<b>带扫弦记谱的型</b>有意义；<b>座次尺</b>是格子下方的「1 e &amp; a」拍内读数；<b>时值标注</b>是音符下方的「四分 / 八分」与「十六 ×n」组标——两个都关掉后，行首和弦标记会<b>自动放大一倍</b>，远看更清楚。<b>连续滚动</b>把「走到行末整页跳变」换成横向连续推移：播放头钉在行中央，内容从右向左滚过；开着时上面的<b>同屏行数</b>换成<b>1 行 / 3 行</b>两档（1 行只画当前小节这一条横带，3 行上下各留一条——上面刚唱过、下面即将播放，最后一拍整组上移、强拍从下方登场）。</div>
+    
 
     <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
     <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
@@ -3235,7 +3291,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
            它当图片用虽然不执行，但"允许上传 SVG"这条口子一开，后面很容易被改成
            innerHTML / <object> 去用；而且 SVG 能靠实体膨胀把体积做到任意大。
            真正把关的是代码里的**魔数校验**（扩展名可以随便改，文件头改不了）。 -->
-    <div class="group" style="margin-top:18px">
+    <div class="group" style="margin-top:24px">
       <div class="group-label">背景壁纸</div>
       <div class="bpm-row">
         <button class="pill outline" id="wallPickBtn">选择图片</button>
@@ -3320,7 +3376,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
       <button class="pill outline" id="exportSelBtn">导出选中数据</button>
     </div>
     <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
-    <div class="bpm-row" style="margin-top:14px">
+    <div class="bpm-row" style="margin-top:8px">
       <button class="pill outline" id="helpBtn">使用方法</button>
       <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。
            v2.69.0 返工（用户拍板）：改**常显**——不可安装环境置灰（原 hidden 方案在
@@ -3378,23 +3434,23 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3410  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4095  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5827  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6761  Modal         应用内弹窗
-     L6906  Viz           时值可视化渲染与每帧动画
-     L10282 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L10963 Trainer       变速训练器
-     L11171 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11813 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13404 Editor        自定义节奏型编辑器
-     L13948 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L13995 Ear           听辨训练（v1.10.0）
-     L14223 Arrange       曲式编排（v2.0.0）
-     L17152 Help          使用方法（v2.0.1）
-     L17281 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17355 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17598 初始化（装配） 各模块 hook 接线与启动
+     L3466  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4151  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L5883  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6845  Modal         应用内弹窗
+     L6990  Viz           时值可视化渲染与每帧动画
+     L10366 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11047 Trainer       变速训练器
+     L11257 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L11905 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13496 Editor        自定义节奏型编辑器
+     L14040 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14087 Ear           听辨训练（v1.10.0）
+     L14315 Arrange       曲式编排（v2.0.0）
+     L17244 Help          使用方法（v2.0.1）
+     L17373 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17447 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17690 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3420,7 +3476,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.9";
+const VERSION = "3.33.10";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5848,6 +5904,34 @@ const $ = id => document.getElementById(id);
 /* "只读展示"：某开关**没开**也要把它的参数摆出来（目前只有一处——点变速训练但目标为空时，
    把槽打开让用户就地填目标；见 trainerToggle 处理器）。值为某一组名时该组强制显示。 */
 let paramSlotForce = "";
+/* ★★ v3.33.10（用户实拍缺陷）：占槽记账原**只在 on[k] 变真时**清空（见 syncParamSlots 内那条），
+   而被"闸门"拒绝的那次点击让 on[k] 永远为假 ⇒ 原因交付完之后槽位常开：
+   复现 = BPM == 目标 → 点变速训练（开关不开、但槽展开给出原因）→ 之后槽再也不会自动收回。
+   修法：把"原因"当**一次性提示**——改目标 / 改 BPM / 在卡片内点别处，任一发生即撤。 */
+function clearSlotForce(){
+  if (!paramSlotForce) return;
+  paramSlotForce = "";
+  const tp = $("trainerProg");
+  if (tp && !S.trainer.on){ tp.textContent = ""; tp.classList.remove("warn"); }
+  syncParamSlots();
+}
+/* 三处清空点：只装一次监听（模块脚本在 body 末尾执行，此处 DOM 已就绪） */
+(function wireSlotForceRetract(){
+  const tg = $("trTarget");
+  if (tg){ tg.addEventListener("change", clearSlotForce); tg.addEventListener("input", clearSlotForce); }
+  const bs = $("bpmSlider"); if (bs) bs.addEventListener("input", clearSlotForce);
+  const bn = $("bpmNum"); if (bn) bn.addEventListener("change", clearSlotForce);
+  /* 特性检测：测试桩的 document 没有 querySelector（桩无布局/无选择器引擎） */
+  const card = (typeof document.querySelector === "function") ? document.querySelector(".viz-head-grid") : null;
+  if (card) card.addEventListener("click", e => {
+    /* ★★ 委托监听必须看 e.target，**不能用 evEl(e)**（它返回 currentTarget=卡片本身）——
+       否则"是不是点在开关上"永远判不出来，点开关打开的原因会被自己的监听当场撤掉（v3.33.10 实拍回归）。 */
+    const t = /** @type {Element|null} */ (e.target);
+    /* 开关本身与原因区不算"别处"（点开关要能刷新原因）；卡片内其余任何点击都撤 */
+    if (t && t.closest && t.closest("#trainerToggle, #trainerPanel, #trainerProg")) return;
+    clearSlotForce();
+  });
+})();
 function syncParamSlots(){
   /* ★ 类型闸门（CI 的 tsc）要求：用字符串变量索引字面量对象必须给索引签名，
      否则报 TS7053（本地 node_modules 缺失时 tsc 是 ⊘，只有 CI 能拦）。 */
@@ -11024,6 +11108,7 @@ const Trainer = (() => {
   function updateProg(){
     const el = $("trainerProg");
     el.classList.toggle("live", S.playing && S.trainer.on);
+    el.classList.remove("warn");
     if (!S.trainer.on){ el.textContent = ""; }
     else el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
     /* 参数行只在训练开着时露面；v3.3.0 起显隐由**槽仲裁**统一决定（不抢槽：本函数只重算） */
@@ -11097,6 +11182,7 @@ const Trainer = (() => {
            ★ 选 A 而不选"自动把速度压下去"：不偷偷改用户的速度，改什么由用户自己决定。
            ★ 只在**开启**方向判；关闭永远允许（否则会把用户锁在训练里）。
            ★ v2.73.0：文案指路右侧参数行（2.3 起目标就在那里改）。 */
+        { const tp0 = $("trainerProg"); if (tp0) tp0.classList.add("warn"); }
         openSlotForTarget(`当前速度 ${S.bpm} 已不低于目标 ${S.trainer.target}——先把速度调低，或把目标调高`);
         return;
       }
@@ -11660,6 +11746,12 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   $("muteRandomToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     S.muteCfg.random = !S.muteCfg.random;
+    /* ★★ v3.33.10（用户口径）：随机是**静音拍的子参数**（muteBarMuted 用它决定"静的区域落在组内哪几拍"），
+       静音拍不开时它一点效果都没有——而本开关既不自动开静音拍也不灰化，于是"开了随机却没反应"。
+       口径：**打开随机而静音拍未开 ⇒ 一并打开静音拍**；关闭方向一律不动（关静音拍不清随机的选择，
+       与本仓"不偷偷改用户参数"的既有裁决一致）。这里走真实 click 复用静音拍自己的 handler——
+       它还要重算静音行 / 通知调度器 / 刷状态栏，直接置 S.mute 会漏掉这些。 */
+    if (S.muteCfg.random && !S.mute){ const mt = $("muteToggle"); if (mt) mt.click(); }
     setToggle("muteRandomToggle", S.muteCfg.random);
     Store.persist();
     Viz.syncMuteBars();
@@ -18159,15 +18251,16 @@ function syncVizLabelToggles(){
   viz.classList.toggle("no-ruler", !S.showRuler);
   viz.classList.toggle("no-durlab", !S.showDurLabel);
   viz.classList.toggle("chord-xl", !S.showRuler && !S.showDurLabel);
-  setToggle("rulerLabToggle", S.showRuler);
-  setToggle("durLabelToggle", S.showDurLabel);
 }
 /* ★ 启动调用点已上移到首次 buildViz 之前（见上方「启动顺序铁律」）——此处只留点击处理器的接线。
    别再在这里补一次调用：两个收敛点会让反向验证哑火（改坏了也测不出来），且第二次调用纯属空转。 */
 syncLyricToggles();   // v2.86.0：收敛歌词显示开关 + 显示位置三档（启动 + 运行时都走这里）
+  setToggle("rulerLabToggle", S.showRuler);
+  setToggle("durLabelToggle", S.showDurLabel);
 $("rulerLabToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   S.showRuler = !S.showRuler;
+    setToggle("rulerLabToggle", S.showRuler);
   syncVizLabelToggles();
   if (S.showLyric && Viz.effectiveLyricPos() === "follow") Viz.relayout();   // v2.86.0：follow 期间 xl 开/关会改变行距与 translateY 锚点（桌面 行顶+88↔行顶+50），rowGeo 必须重采
   Store.persist();
@@ -18175,6 +18268,7 @@ $("rulerLabToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 $("durLabelToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   S.showDurLabel = !S.showDurLabel;
+    setToggle("durLabelToggle", S.showDurLabel);
   syncVizLabelToggles();
   if (S.showLyric && Viz.effectiveLyricPos() === "follow") Viz.relayout();   // 同上（durLabel 开关同路由）
   Store.persist();
@@ -18216,6 +18310,29 @@ pills.forEach(b => {
    ★ 音频不中断（D21）：这里只动网格与窗口状态，不碰 ctx / 调度器。 */
 function syncScrollToggles(){
   setToggle("scrollModeToggle", S.scrollMode);
+/* ★★ v3.33.10（用户清单 1/3/4）：三处"随开关显隐/失效"的同源同步。
+   ① 显示歌词关 ⇒ 位置三胶囊整组收起（此前一直显示，实拍指出）；
+   ② 连续滚动开 ⇒ 歌词恒贴本行（模式裁决里那句 if (S.scrollMode) return "follow" 短路）⇒ 三枚置灰 + 一行说明；
+   ③ 连续滚动开 ⇒ 弹跳球没有球 ⇒ 整个开关藏起来（用户选的方案；状态不丢，关掉连续滚动即恢复）。
+   口径：状态只读 S，UI 全由本函数推导；监听挂在两个驱动开关上（与既有处理器并存、后加后跑，读到的已是最新状态）。 */
+function syncAuxVisibility(){
+  const g = $("lyricPosGroup"), note = $("lyricPosNote");
+  const lyricOn = !!S.showLyric, scrollOn = !!S.scrollMode;
+  if (g){
+    g.hidden = !lyricOn;
+    const kids = g.children;
+    if (kids) for (let i = 0; i < kids.length; i++){
+      const p = kids[i];
+      if (p && p.classList && p.classList.contains("pill")) p.disabled = scrollOn;
+    }
+  }
+  if (note) note.hidden = !(lyricOn && scrollOn);
+  const bt = $("bounceToggle");
+  if (bt) bt.hidden = scrollOn;
+}
+syncAuxVisibility();
+$("showLyricToggle").addEventListener("click", syncAuxVisibility);
+$("scrollModeToggle").addEventListener("click", syncAuxVisibility);
   /* ★ v3.0.0（批 4）：档位控件随模式**重列**（滚动 1/3 ↔ 翻页 1/2/3/4）——
      同一个「同屏行数」控件，不再置灰、也不再有第二个"窗口行数"控件。
      ★ 必须经 Controls 出口面调用：档位控件的生成器长在 Controls 模块里，

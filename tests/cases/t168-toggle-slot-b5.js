@@ -21,8 +21,8 @@ section("T153a v3.19.0 开关列纵排 —— 面板在流内挂各自开关下�
 {
   ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ tg-body = 纵排 flex 列 + width:100%（v3.19.0 新骨架；v3.13 的 display:block+padding 预留口径退役）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:14px\}/.test(CSS_CODE),
-    "★★ v3.30.0：tg-row 纵排 + 行距 14px（三行行心与 BPM 三行横向对齐；原 v3.24 的 2px 压缩"
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE) && /\.viz-toggles \.countin-line \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && /\.viz-toggles \.sw-line \+ \.tr-panel \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && !/#muteCfgPanel:not\(\[hidden\]\)/.test(CSS_CODE),
+    "★★ v3.30.0：tg-row 纵排 + 行距 7px（三行行心与 BPM 三行横向对齐；原 v3.24 的 2px 压缩"
     + "是'行高恒定'方案的配额，该契约随行心对齐一并退役）");
   ok(!/\.viz-toggles \.tg-slot\{position:absolute/.test(CSS_CODE)
      && !/tg-slot\{display:contents\}/.test(CSS_CODE),
@@ -44,8 +44,8 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
   ok(/\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex;align-items:center;gap:8px;width:100%\}/.test(CSS_CODE),
     "★★ 三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧、吃满列宽"
     + "（预备拍+拍数 / 静音拍+随机 / 变速训练+目标——v3.22.0；v3.24.0 gap 10→8 压缩）");
-  ok(/\.viz-toggles \.tg-row \.tr-prog\{width:100%;text-align:left\}/.test(CSS_CODE),
-    "★ 训练进度/拒开原因 = 变速参数末行（流内，v3.16 的 absolute 悬浮口径退役）");
+  ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
+    "★★ v3.33.10：进度/闸门原因行整行搬进 BPM 卡片——v3.22.0 那条「变速参数末行」规则随位退役，改由 #trainerProg 在卡内占自然高度（不预留 min-height，避免撑高两张控制卡）");
   ok(!/grid-area:\d\/\d/.test(CSS_CODE),
     "★★ 全文件不再有 grid-area 钉位（同轴网格整体退役，DOM 顺序即布局）");
   ok(!/#countInPanel\{grid-area/.test(CSS_CODE) && !/id="countInPanel"/.test(html),

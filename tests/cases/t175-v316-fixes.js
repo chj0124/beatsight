@@ -25,18 +25,24 @@ section("T175a v3.19.0 参数面板流内（悬浮槽退役，面板挂各自开
   /* ★ v3.19.0：悬浮槽退役、面板流内挂各自开关下（DOM 交错）——
      本段按新结构重钉：七件套交错顺序 + countin-line 同行 + tr-prog 变速参数末行。 */
   const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "muteRandomToggle",
-                 "muteCfgPanel", "trainerToggle", "trTargetWrap", "trainerPanel", "trainerProg"]
+                 "muteCfgPanel", "trainerToggle", "trTargetWrap", "trainerPanel"]
     .map(id => html.indexOf('id="' + id + '"'));
   ok(ORDER.every(i => i > 0) && ORDER.every((v, i) => i === 0 || v > ORDER[i - 1]),
-    "★★ v3.22.0：九件套交错排列（预备拍提前到最上；每组开关+主参数同行、"
-    + "剩余参数紧跟其下——训练进度紧跟变速参数、不再落到预备拍下面）");
+    "★★ v3.22.0：八件套交错排列（预备拍提前到最上；每组开关+主参数同行、剩余参数紧跟其下）");
+  /* ★ v3.33.10（用户拍板 A）：进度/闸门原因行**整行搬进 BPM 卡片**——它不再排在 trainerPanel 之后，
+     而是落在 BPM 组内（快捷档之下）。id 与全部接线不变（搬块不换 id），故期望随之改为位置钉子。 */
+  const iP = html.indexOf('id="trainerProg"');
+  ok(iP > 0 && iP < ORDER[0], "★★ v3.33.10：trainerProg 搬进 BPM 卡片（DOM 位置早于右侧八件套）");
+  ok(html.indexOf('id="bpmPresetRow"') > 0 && html.indexOf('id="bpmPresetRow"') < iP,
+    "★★ v3.33.10：trainerProg 落在 BPM 快捷档之下（BPM 组内）——不再紧跟变速参数");
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
   ok(/<div class="countin-line">/.test(html)
      && /\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex/.test(CSS_CODE),
     "★★ v3.22.0：三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧（不换行）");
-  ok(/\.viz-toggles \.tg-row \.tr-prog\{width:100%;text-align:left\}/.test(CSS_CODE),
-    "★ 训练进度/拒开原因 = 变速参数末行（流内，v3.16 的 absolute 悬浮口径退役）");
+  ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
+    "★★ v3.33.10：进度行搬走后，v3.22.0 那条「变速参数末行」规则随位退役；"
+    + "改由 #trainerProg 在 BPM 卡片内占自然高度（初版为「与参数槽等高」写的 54px 预留会把两张控制卡一起撑高，用户实拍后撤掉）");
   /* 显隐跟随面板：syncParamSlots 末尾同步 trainerProg.hidden = trainerPanel.hidden */
   const fn = html.slice(html.indexOf("function syncParamSlots"), html.indexOf("function openParamSlot"));
   ok(/trainerProg/.test(fn) && /tpl\.hidden/.test(fn),

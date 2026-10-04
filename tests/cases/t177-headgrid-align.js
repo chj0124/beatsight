@@ -15,7 +15,7 @@
    本组钉住的契约：
      · 音量行盒 40px 高、行距 10px（滑杆**粗细不变**：轨道 4 / 圆钮 16——用户明确要求）；
      · 音量列 tg-body 顶锚定距（flex-start + gap:10），开关列开合时音量行零位移；
-     · 开关列 ≥900 档 padding-top 44px（对齐 BPM 步进行）、行距 14px；
+     · 开关列 ≥900 档 padding-top 44px（对齐 BPM 步进行）、行距 7px；
      · 从属参数统一降级（.tr-inp 与「随机」开关）——作用域钉 .viz-toggles，设置弹窗不受影响；
      · 目标框占位文案「如 120」+ number 框 spin 按钮隐藏（否则占位被箭头挤掉一个字）；
      · ≤900 堆叠档 BPM 内容限宽 520px；
@@ -46,8 +46,8 @@ section("T177a 三列横向对齐体系（音量行盒 / 开关列偏移 / 行�
   ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
     "★★ 音量列顶锚定距（flex-start + gap:10px）——行心 172.8/222.8/272.8，"
     + "且开关列开合时顶锚不动（v3.22 单开零变形的承重墙从 .group 的 space-between 迁到这里）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:14px\}/.test(CSS_CODE),
-    "★★ 开关三行行距 14px（原 2px 是 v3.24「行高恒定」的压缩配额，该契约随行心对齐退役）");
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE),
+    "★★ 开关三行行距 7px（原 2px 是 v3.24「行高恒定」的压缩配额，该契约随行心对齐退役）");
   ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{padding-top:44px;grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
     "★★ ≥900 开关列 padding-top 44px——「预备拍」行心 174 = BPM 步进行 173.8（L1）");
   ok(!/@media \(min-width:900px\)\{[\s\S]{0,400}\.viz-head-grid \.viz-toggles\{padding-top:44px[^}]*\}[\s\S]{0,200}@media \(max-width:899/.test(CSS_CODE)

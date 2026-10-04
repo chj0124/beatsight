@@ -288,7 +288,10 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      ——WALL_DEFAULT 的 base64 由 190,208 字符涨到 365,355 字符（附件流水线交付的归一化副本 268KB / 2516×1667
      直嵌；用户原图 3.4MB 未拿到，见 CHANGELOG v3.33.9）。用户明确要求"空间预算可以放大"，故上调到 **1732KB**
      （实测 1726.1 + 约 5.9KB 余量）。 */
-const BUDGET_BYTES = 1732 * 1024;
+/* v3.33.10（进度行搬进 BPM 卡 + 随机联动静音拍 + 参数槽一次性提示 + 间距口径）：index.html 1726.1 → 1733.3KB
+     （净增 7.2KB）——搬迁/注意态/联动/补偿与清空点，外加成段"为什么"。实测 1,774,888B，故上调到 1739KB
+     （约 5.7KB 余量）。 */
+const BUDGET_BYTES = 1739 * 1024;
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);

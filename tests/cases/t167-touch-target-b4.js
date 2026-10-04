@@ -83,8 +83,8 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
      零跳动契约不变，只是落点从槽高换成轨道高。锚真实选择器（教训沿用旧注释）。 */
   /* v3.19.0：76px 轨道随同轴网格退役（用户拍板：面板打开允许列内下移）——
      触控目标尺寸的连带面（B4）转移到开关/按钮本身的尺寸钉上。 */
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:14px\}/.test(CSS_CODE),
-    "★★ v3.30.0：开关列纵排、行距 14px（三行行心 174/224/274 = 与 BPM 三行横向对齐）；"
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE) && /\.viz-toggles \.countin-line \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && /\.viz-toggles \.sw-line \+ \.tr-panel \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && !/#muteCfgPanel:not\(\[hidden\]\)/.test(CSS_CODE),
+    "★★ v3.30.0：开关列纵排、行距 7px（三行行心 174/224/274 = 与 BPM 三行横向对齐）；"
     + "触控目标 36px 开关仍 ≥ 44 建议值的一半，主操作键 play 48 未缩");
 
   /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏的元素
