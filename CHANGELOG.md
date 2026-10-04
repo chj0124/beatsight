@@ -9,6 +9,44 @@
 
 ---
 
+## v3.31.7 · 部署对账工具 CI 实崩修复：线上核对分支引用未定义变量（2026-10-04）
+
+### 根因
+
+- v3.31.6 给 `tools/check-deploy-parity.js` 加的③「线上实际版本核对」（异步 IIFE）里，
+  比较与文案两处引用了 **`VERSION`**——而本文件里唯一的版本变量叫 `srcVer`（模块作用域）。
+  本地自验几乎总走无网络分支（ℹ ⊘ 跳过），该行从未被执行；CI 有网、进入线上核对分支即
+  `ReferenceError: VERSION is not defined` → 异步 IIFE 死在中途、`process.exit(0)` 永不执行
+  → 退出 1 → `npm run ci` 整体红（2026-10-04 Cloudflare 构建日志实拍）。
+
+### 修法
+
+- 两处 `VERSION` 改为 `srcVer`（含 null 守卫：读不到源码版本时文案显示 `?` 而非 `null`）。
+- 顺带修两处同分支的潜伏问题：① 传输层写死 `require("https")`，注入 `http://` 地址会
+  `ERR_INVALID_PROTOCOL` 同步抛出（同样死在汇总前）→ 改按 URL 协议选 http/https；
+  ② promise executor 内同步抛错没有兜住 → 包 try/catch 收敛为 `REQ_ERR` 跳过行，
+  不再变成 unhandledRejection 崩溃。
+- 新增 `BEATSIGHT_PARITY_URL` 环境注入钩子（头部注释写明用途），让「线上页面」在测试里
+  可由本地 HTTP 服务扮演——该分支从此**有测试执行**，不再是 CI-only 的盲区。
+
+### 测试与反向验证
+
+- 新增 `tests/cases/t183-parity-online-note.js`（11 断言）：独立子进程 HTTP 服务
+  （父进程随后被 execFileSync 阻塞，服务必须住在别的进程）+ 端口文件同步握手；
+  同版 / 异版两条路各断言「ℹ 行文本正确 + 走到汇总行（不崩）」；另加源码级防回潮钉
+  （只认 srcVer、无裸 VERSION、传输层协议随 URL）。
+  ★ 断言口径刻意**不钉退出码**：本地 dist/（gitignored）陈旧时工具按设计会因产物集
+  漂移退出 1，退出码是环境事实；「崩溃」的判据是没走到汇总行。
+- **反向验证**：把 `om[1] === srcVer` 变异回 `=== VERSION` → 子进程复现 CI 同款
+  `ReferenceError: VERSION is not defined`，T183a/b 的「走到汇总行」「ℹ 行报一致」
+  等 6 条具名断言按名变红（含源码级 2 条）；恢复修复后 11/11 全绿。
+- 自验：`node tools/check-all.js` 18/18 全绿（5674 PASS / 0 FAIL，含本批新增 11 断言；
+  行覆盖率 97.8%）；`npm run build` + `node tools/check-deploy-parity.js` 双渠道对账通过
+  （版本六源一致 3.31.7、产物集 9 条目、安全头 6 条；线上核对行本地无网络标 ⊘ 跳过，
+  CI 有网时将真实执行）。
+
+---
+
 ## v3.31.6 · 落地他方审计复核批：2 条 P0 + 3 条 P1 + 一批 P2/P3 收口（2026-10-04）
 
 ### 根因（另一 Agent 对 v3.31.5 的复核报告，逐条本地复现确认后落地）

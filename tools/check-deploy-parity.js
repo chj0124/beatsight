@@ -36,7 +36,9 @@
         「dist/ 未构建，仅做本地版本对账（file:// 渠道）」，退出 0（说明性结论）。
 
    用法：node tools/check-deploy-parity.js
-   无参数（路径固定为仓库根 + dist/）。 */
+   无参数（路径固定为仓库根 + dist/）。
+   环境变量 BEATSIGHT_PARITY_URL 可覆盖③的线上核对地址（默认 Cloudflare Workers；
+   测试用本地 HTTP 服务注入时用它，其余行为不变）。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -148,17 +150,22 @@ if (!fs.existsSync(DIST)){
    是哪一版」从人肉看徽章变成每次对账打印一行。无网络（本地离线）标 ⊘ 跳过。
    CJS 无顶层 await：核对与汇总整体收进 async IIFE。 */
 (async () => {
-  const ONLINE_URL = "https://beatsight.chenhuajian1995.workers.dev/";
+  const ONLINE_URL = process.env.BEATSIGHT_PARITY_URL || "https://beatsight.chenhuajian1995.workers.dev/";
   const online = await new Promise(resolve => {
-    const req = require("https").get(ONLINE_URL, { timeout: 8000 }, res => {
-      if (res.statusCode !== 200){ res.resume(); resolve({ err: "HTTP " + res.statusCode }); return; }
-      let body = "";
-      res.setEncoding("utf8");
-      res.on("data", c => { if (body.length < 3 * 1024 * 1024) body += c; });
-      res.on("end", () => resolve({ body }));
-    });
+    /* 协议随 URL 走：线上默认 https；BEATSIGHT_PARITY_URL 注入本地 HTTP 服务时用 http。 */
+    let req;
+    try {
+      const mod = /^https:/i.test(ONLINE_URL) ? require("https") : require("http");
+      req = mod.get(ONLINE_URL, { timeout: 8000 }, res => {
+        if (res.statusCode !== 200){ res.resume(); resolve({ err: "HTTP " + res.statusCode }); return; }
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", c => { if (body.length < 3 * 1024 * 1024) body += c; });
+        res.on("end", () => resolve({ body }));
+      });
     req.on("timeout", () => { req.destroy(); resolve({ err: "timeout" }); });
     req.on("error", e => resolve({ err: e && e.code ? e.code : String(e) }));
+    } catch (e) { resolve({ err: "REQ_ERR " + (e && e.code ? e.code : String(e)) }); }
   });
   if (online.err){
     notes.push("线上版本核对 ⊘ 跳过（无网络/超时：" + online.err + "）——本地对账结论不受影响");
@@ -167,8 +174,9 @@ if (!fs.existsSync(DIST)){
     if (!om){
       notes.push("线上页面读不到 VERSION（结构与预期不符，可能服务异常或页面改版）");
     } else {
-      const same = om[1] === VERSION;
-      notes.push("线上（Cloudflare）= v" + om[1] + "，" + (same ? "与本地一致" : "与本地 v" + VERSION + " 不一致——部署可能尚未完成（信息性，不判红）"));
+      const same = srcVer != null && om[1] === srcVer;
+      notes.push("线上（Cloudflare）= v" + om[1] + "，" + (same ? "与本地一致" :
+        "与本地 v" + (srcVer || "?") + " 不一致——部署可能尚未完成（信息性，不判红）"));
     }
   }
 
