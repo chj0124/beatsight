@@ -93,13 +93,12 @@ section("T125b 语义变量 · --veil / --well 收口，经典视觉逐位不变
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-block{")), "★ .arg-block 暗槽等值改写（.28）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-map-seg{")), "★ .arg-map-seg 暗槽等值改写（.28）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-lyric-paste{")), "★ .arg-lyric-paste 暗槽等值改写（.28）");
-  /* ★ v3.31.0：已弹格子的分割线**改走 --veil**——原文案"刻意不变量化"的前提（已弹=白填充）
-     已被推翻：已弹格改成压暗后，深色分割线会整条消失，故改为亮纱 .20（与基座 .10 同色系）。
-     观测台的既有覆盖（白 .35）口径相同，两主题就此收敛。 */
-  ok(/rgba\(var\(--veil\),\.20\)/.test(ruleOf(html, ".cell.played .sub,")),
-     "★ 经典基座 .cell.played .sub = 亮纱 .20（v3.31.0：已弹改压暗后，深色分割线会消失）");
-  ok(/border-right-color:rgba\(255,255,255,\.35\)/.test(OBS),
-     "★ obs 下已弹格子的分割线翻成白色（--peak 已翻墨色，深填充上才看得见）");
+  /* ★★ v3.33.26：`.cell.played/.active .sub` 的**两处**（经典档亮纱 .20、观测台白 .35）已随
+     `.sub` 退役一并删除——v3.33.25 起 .sub 只作闪烁目标、不再画线，两条规则都打在不再画线的
+     元素上，是死规则。参考线（.usub）改为**恒定最淡、不参与播放态**（用户拍板：弹奏时不抢视线）。 */
+  ok(!/\.cell\.played \.sub|\.cell\.active \.sub/.test(html)
+     && !/\.cell\.played \.sub|\.cell\.active \.sub/.test(OBS),
+     "★★ 两处「提亮细分线」规则均已删除（经典档 .20 / 观测台 .35）——死规则不留");
   /* 主题无关的硬编码必须**留在原地**（遮罩与阴影本来就该是暗的） */
   ok(/rgba\(0,0,0,\.55\)/.test(ruleOf(html, ".dialog{")), "★ 全屏遮罩仍是暗的（.dialog 未被误改成变量）");
   ok(/rgba\(0,0,0,\.6\)/.test(ruleOf(html, ".modal-mask{")), "★ 弹窗遮罩仍是暗的（未被误改成变量）");

@@ -606,6 +606,10 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
      只是"扫过之后留下的"由白块变成暗块——半程时是半暗，正好对上"正在弹"。
    ★ `.cell.active` 的绿描边不动（状态色仍只留给"正在发声"，v3.4 语义）。 */
 .cell.played::before{background:rgba(var(--well),.38)}
+/* ★★ v3.33.26（用户拍板）：已弹格收平圆角 ⇒ 相邻已弹格**连成一条通栏高亮**。
+   原先逐格各带 border-radius:3px，接缝处两个圆角对顶，光里就显出一条条格边，
+   读起来像"被切割成很多块"。格 = 音符的信息由缝与刻度保留，**光本身连起来**即可。 */
+.cell.played{border-radius:0}
 /* ★★★ v3.31.3（用户报障）：**正在弹的实扫格改用「绿意洗底」，且保留纸面底**。
    用户原话："播放到实扫的格子时，会把这个格子的背景做成和空扫格子的背景一样。"
    ★ 根因（实测六态亮度）：「正在弹·实扫格」原为 `background:transparent` + `--well .38`，
@@ -644,27 +648,32 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    拍内四分段读作不等宽（用户实拍实测：附点八分块内 ±1.1px，两端宽中间窄）。全局已是
    border-box，inset:0 后 flex 均分天然精确，无需逐根绝对定位。 */
 .cell .subs{position:absolute;inset:0;display:flex;z-index:1;pointer-events:none}
-.cell .sub{flex:1;border-right:1px solid rgba(var(--veil),.10)}
-.cell .sub:last-child{border-right:none}
+/* v3.33.25：`.sub` 从此只作闪烁目标（paintBeatFlash 读 subEls[b][t16-1]），不画线。
+   刻度线交给 .usubs 层——它按 tick 绝对定位，故不受「最小单位是否整除十六分」限制
+   （三连音 16 / 附点 36 这类网格也画得出来）。 */
+.cell .sub{flex:1}
 /* ★ v3.31.0：已弹格的细分线**由深转浅**——原来（0,0,0,.18）是为"白色填充"配的，
    在压暗后的暗底上会整条消失。现在用亮纱 .20（与基座 .10 同色系、略强以保分隔感）。
    ★ 观测台的既有覆盖（rgba(255,255,255,.35)，见 body[data-theme="obs"] 块）口径相同、无需改动
      ——两个主题在这一点上就此收敛。 */
-.cell.played .sub,.cell.active .sub{border-right-color:rgba(var(--veil),.20)}
-/* ---------- 十六分刻度线的显隐（v3.33.15，用户拍板「以节奏型的最小单位为准」） ----------
-   两条规则都**只去掉那条线、绝不删元素**：.sub 同时是"每跑完一个十六分闪一次"的动画目标
-   （paintBeatFlash 读 subEls[fb][fk]；动画改的是 boxShadow / backgroundColor，与边框无关），
-   删元素会连带砍掉十六分级播放反馈——那是功能面收缩，不是纯视觉。
-   ★ 判据**只有一条**：该型每个时值都是八分的整数倍 ⇒ 十六分网格描述不了任何东西，不画。
-     判据见数据区 needsT16Ruler()。
-   选择器写到 (0,4,0)：高于上面 `.cell.played .sub` 的 (0,3,0)，不依赖书写顺序。
-
-   ★★ v3.33.24 移除 `.collide`（v3.33.15 的"撞箭头让位"）：那是我自己加的"兜底"，
-     **用户从未提过**——用户的需求自始至终只有上面那一条。而它的代价是**删掉八分格里的那条
-     分界线**，那正是八分格内部两个十六分的分界，是用户要看的东西。
-     "箭头与刻度逐像素同位"不是缺陷；逐像素实测（用户两张截图对比）显示：移除后 8 条线回来，
-     与该规则命中的 8 个格一一对应。 */
-.cell .subs.t16-off .sub{border-right:none}
+/* v3.33.26：原先此处的 `.cell.played/.active .sub{border-right-color:.20}` 已删——v3.33.25 起
+   .sub 只作闪烁目标（不再画线），那条规则打在**不画线的元素**上，是死规则；且用户要的正是
+   "参考线在弹奏时恒定最淡、不要被提亮"。 */
+/* ---------- 格内刻度线：一律以最小单位为据（v3.33.25，用户拍板） ----------
+   U = minUnitOf(型)（共享数据区函数）。每格内部，凡落在 U 的整数倍 上的位置各一条。
+   · U = 十六分 ⇒ 四分格 3 条、八分格 1 条、十六分格 0 条（与旧的十六分尺逐位一致）
+   · U = 八分   ⇒ 四分格 1 条（正中）、八分格 0 条
+   · U = 三连音 ⇒ 48 tick 长格 2 条（三等分）——这类网格旧实现一条都画不出来
+   为什么不再用 .sub 的 border 承担：它是十六分粒度，画不出 16/32 这类非十六分网格；
+   而它同时是闪烁目标，改粒度会把闪烁从每十六分一次变成每最小单位一次。
+   .seams（交界缝）画的是音符起点，与刻度线是两件事，不受影响。 */
+.cell .usubs{position:absolute;inset:0;z-index:1;pointer-events:none}
+/* ★★ v3.33.26（用户拍板）：格内参考线 = 虚线 + 更淡（.06）。
+   为什么：混排型里长音符内部那条（如四分格正中）只是"最小单位网格的参考"——此处并不换音；
+   实线 + 与音符起点相近的亮度会被误读成"这里也要弹"。虚线给出「这是参考、不是边界」的语义，
+   .06 再压一档（改前实测参考线 ≈8-11、拍内起点缝 ≈30、拍边界强缝 ≈73）。
+   ★ 播放态**恒定不提亮**（不参与 .played / .active）——弹奏时不抢视线。 */
+.cell .usub{position:absolute;top:0;bottom:0;width:1px;background:repeating-linear-gradient(180deg,rgba(var(--veil),.06) 0 3px,transparent 3px 7px);transform:translateX(-.5px)}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
@@ -1811,7 +1820,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   --yT1:0px;--yT2:12px;--yB1:18px;--yB2:30px}
 .arg-pat-cell{position:absolute;top:3px;bottom:3px;background-color:rgba(var(--veil),.07);border:1px solid rgba(var(--veil),.22);border-radius:3px;pointer-events:none}
 .arg-pat-cell.rest{border-style:dashed;background-color:transparent}
-.arg-pat-sub{position:absolute;top:0;bottom:0;width:1px;background:rgba(var(--veil),.10);pointer-events:none}   /* 块内十六分刻度（含块左缘，与主界面 .sub 同口径） */
+.arg-pat-sub{position:absolute;top:0;bottom:0;width:1px;background:rgba(var(--veil),.10);pointer-events:none}   /* 块内刻度线（按最小单位，不含块左缘，与主界面 .usub 同口径） */
 .arg-pat-bar .seams{height:100%}   /* 主视图 .seams 写死 44px（网格行高），本处按行高 100% 覆盖 */
 .arg-lyric-chip:focus-visible{box-shadow:inset 0 0 0 2px var(--blue);outline:none}   /* 键盘选中态（v2.46.0） */
 .arg-lyric-chip.sel{box-shadow:inset 0 0 0 2px var(--blue)}   /* 点按选中态（v2.49.0 D2/V5）：与 focus-visible 同色系 */
@@ -2111,7 +2120,8 @@ body[data-theme="obs"] .cell.next{box-shadow:inset 0 0 0 1.5px rgba(37,99,235,.3
 body[data-theme="obs"] .trail-glow{background:linear-gradient(90deg,rgba(37,99,235,.06),rgba(37,99,235,.22) 55%,rgba(37,99,235,.40))}
 body[data-theme="obs"] .bounce-ball{box-shadow:0 0 8px rgba(37,99,235,.30)}
 body[data-theme="obs"] .grid-line{background:rgba(var(--veil),.07)}
-body[data-theme="obs"] .cell.played .sub,body[data-theme="obs"] .cell.active .sub{border-right-color:rgba(255,255,255,.35)}
+/* v3.33.26：`body[data-theme="obs"] .cell.played/.active .sub` 那条也已删——
+   v3.33.25 起 .sub 只作闪烁目标、不再画线，该规则是死规则（与经典档那条同源）。 */
 
 /* ---------- 观测台 · 走带控制 ---------- */
 body[data-theme="obs"] .play-btn{background:var(--green);box-shadow:0 4px 16px rgba(37,99,235,.28)}
@@ -3534,23 +3544,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3566  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4267  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6024  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6986  Modal         应用内弹窗
-     L7131  Viz           时值可视化渲染与每帧动画
-     L10543 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11224 Trainer       变速训练器
-     L11434 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12103 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13702 Editor        自定义节奏型编辑器
-     L14246 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14293 Ear           听辨训练（v1.10.0）
-     L14521 Arrange       曲式编排（v2.0.0）
-     L17709 Help          使用方法（v2.0.1）
-     L17838 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17912 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18179 初始化（装配） 各模块 hook 接线与启动
+     L3576  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4294  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6051  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7013  Modal         应用内弹窗
+     L7158  Viz           时值可视化渲染与每帧动画
+     L10571 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11252 Trainer       变速训练器
+     L11462 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12131 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13730 Editor        自定义节奏型编辑器
+     L14274 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14321 Ear           听辨训练（v1.10.0）
+     L14549 Arrange       曲式编排（v2.0.0）
+     L17735 Help          使用方法（v2.0.1）
+     L17864 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17938 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18205 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3576,7 +3586,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.24";
+const VERSION = "3.33.27";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3704,6 +3714,23 @@ function needsT16Ruler(pat){
   if (!pat || !Array.isArray(pat.bars)) return true;
   return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
     && bar.some((/** @type {any} */ s) => !!s && (s.t % T8 !== 0)));
+}
+
+/** 型内最短时值（tick）= 格内刻度线的**最小单位**。0/脏值忽略；空型回落 TPB（不返回 0）。
+    ★ v3.33.25：从 Viz 内部**提到共享数据区**——Arrange 的 mkPatBar 也要用它（各模块是独立
+      IIFE，跨模块调不到 Viz 的内部函数），而「刻度线以最小单位为据」这条判据必须只有一份。
+    @param {any} pat @returns {number} */
+function minUnitOf(pat){
+  let m = 0;
+  const bars = pat && Array.isArray(pat.bars) ? pat.bars : [];
+  for (const bar of bars){
+    if (!Array.isArray(bar)) continue;
+    for (const s of bar){
+      const t = s && s.t;
+      if (typeof t === "number" && isFinite(t) && t > 0 && (m === 0 || t < m)) m = t;
+    }
+  }
+  return m || TPB;
 }
 /* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2）
    ★ v3.12.0：兄弟表 ACC_LABELS（`{5:["2+3","3+2"], …}`）已删除——它只服务界面上那个
@@ -7251,17 +7278,10 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   }
   /** 型内最短时值（tick）：0/脏值忽略；空型回落 TPB（不返回 0，否则判据恒真）
       @param {any} pat @returns {number} */
+  /** 型内最短时值（tick）——v3.33.25 起**委托**共享区的 minUnitOf（判据只有一份）
+      @param {any} pat @returns {number} */
   function minStepOf(pat){
-    let m = 0;
-    const bars = pat && Array.isArray(pat.bars) ? pat.bars : [];
-    for (const bar of bars){
-      if (!Array.isArray(bar)) continue;
-      for (const s of bar){
-        const t = s && s.t;
-        if (typeof t === "number" && isFinite(t) && t > 0 && (m === 0 || t < m)) m = t;
-      }
-    }
-    return m || TPB;
+    return minUnitOf(pat);
   }
   /** 把一小节的 steps 切出第 sub 片（共 k 片）：返回**重基到片段起点**的 steps。
       · k=1 且 sub=0：**原样返回同一个数组**（K=1 的安全边界，对象身份都保持）；
@@ -8196,7 +8216,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const hasStr = vizHasStrum();
     /* v3.33.15：十六分刻度尺建不建——与 hasStr 同样"在本函数算一次、当参数传下去"，
        保证层/格两处判据逐字同源，不会出现「层按新口径、格按旧口径」的分裂。 */
-    const needT16 = vizNeedT16();
+    const U = minUnitOf(p);        /* v3.33.25：刻度线以最小单位为据（原 vizNeedT16 退役） */
     const K = subsPerBar();
     /* 本行装的是小节的第几片（v2.15.0）：整小节档恒 0；预告行（第 1 行）取预告片段的
        片号——座次尺的拍号要跟着它走（预告的是"下一片段"，拍数从它的位置数起）。 */
@@ -8206,7 +8226,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
     buildRowLayers(b, row, hasStr, sub);
-    const cells = buildRowCells(b, p, barTicks, row, hasStr, needT16);
+    const cells = buildRowCells(b, p, barTicks, row, hasStr, U);
     buildRowAnnotations(b, p, barTicks, row);
     viz.appendChild(row);
     rowEls.push(row); cellEls.push(cells.cells); labelEls.push(cells.labels); strumEls.push(cells.strums);
@@ -8307,10 +8327,10 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
       @param {boolean} hasStr 当前型是否带扫弦记谱（决定逐格要不要画箭头）
-      @param {boolean} needT16 当前型是否需要十六分刻度尺（决定刻度线画不画；元素恒建）
+      @param {number} U 本型的最小单位（minUnitOf）：格内刻度线只画在它的整数倍上
       @returns {{ cells: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
         三个逐格同构数组，由编排者登记进 cellEls / labelEls / strumEls */
-  function buildRowCells(b, p, barTicks, row, hasStr, needT16){
+  function buildRowCells(b, p, barTicks, row, hasStr, U){
     /** @type {HTMLElement[]} */
     const cells = [];
     /** @type {(HTMLElement|null)[]} */
@@ -8363,22 +8383,33 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       /* 块内按十六分切成刻度线；三连音块（t 不整除 12t=十六分）不画——
          十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
       if (s.t % T16 === 0){
+        /* .sub 只作闪烁目标：粒度/数量/键位一字不动 ⇒ 闪烁零影响（刻度线见下方 .usubs 层） */
         const subs = document.createElement("div");
-        /* v3.33.15：`.t16-off` = 本型不需要十六分尺（每个时值都是八分的整数倍）——
-           **只不画线、元素照建**：.sub 还是闪烁目标，一个都不能少
-           （CSS 里那两条规则的注释 + 数据区 needsT16Ruler() 讲清了为什么）。 */
-        subs.className = "subs" + (needT16 ? "" : " t16-off");
+        subs.className = "subs";
         const nSub = s.t / T16;
         for (let u = 0; u < nSub; u++){
           const sub = document.createElement("div");
-          /* v3.33.24：`.collide`（v3.33.15 的撞箭头让位）整体退役，见样式表「十六分刻度线的
-             显隐」注释。刻度显隐**只由 needT16 决定**，与有没有箭头无关——八分格中心那条
-             就是它内部两个十六分的分界，必须画出来。 */
           sub.className = "sub";
           subs.appendChild(sub);
           subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
         }
         c.appendChild(subs);
+      }
+      /* v3.33.25：格内刻度线——只画在最小单位 U 的整数倍上（不含格左缘，那条已由
+         .seams 交界缝承担；与编排页 mkPatBar 同一口径、同一表达式）。 */
+      if (startT % U === 0){
+        const nU = Math.floor((s.t - 1) / U);
+        if (nU > 0){
+          const usubs = document.createElement("div");
+          usubs.className = "usubs";
+          for (let k = 1; k <= nU; k++){
+            const it = document.createElement("i");
+            it.className = "usub";
+            it.style.left = (k * U / s.t * 100) + "%";
+            usubs.appendChild(it);
+          }
+          c.appendChild(usubs);
+        }
       }
       /* 时值标签（v2.15.0：被截断的续接片段**不给**标签——截断后的 t 不是真实时值，
          照打会写成"四分"而那颗其实是"二分"的另一半；宁可无标签 + 虚线续边） */
@@ -8777,9 +8808,6 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      曲式模式问窗口合成型。跟它同源不是为了省事：两者都是"这个型长什么样"的判据，
      取型口径一旦分叉，型长于窗口时一个会随翻页闪、一个不会，画面自相矛盾。
      判据本体在数据区 needsT16Ruler()（与 hasStrum 同处，Viz 与 Arrange 共用一份）。 */
-  function vizNeedT16(){
-    return needsT16Ruler(S.playMode === "arrange" ? vizPattern() : activePattern());
-  }
   /* 六线底纹显隐（v2.4.2）：把 S.showTab / 当前型是否带扫弦记谱两个条件收成 .viz 上的一个类，
      由 CSS `.viz.no-tab .tab{display:none}` 落地。
      为什么不在 buildViz 里"按开关决定要不要创建 .tab"：那样切开关就得重建整棵树
@@ -15547,7 +15575,7 @@ const Arrange = (() => {
     barEl.setAttribute("aria-hidden", "true");
     /* v3.33.15：十六分刻度尺的显隐——**与主视图同一份判据**（数据区 needsT16Ruler，
        与 hasStrum 同处）。两处口径若各写一份，迟早分叉——这正是本仓最防的那类漂移。 */
-    const needT16 = needsT16Ruler(pat);
+    const U = minUnitOf(pat);        /* v3.33.25：与主视图同一口径（共享区函数，跨模块可达） */
     const notes = pat.bars[0];
     let total = 0;
     for (const s of notes) total += s.t;
@@ -15570,15 +15598,13 @@ const Arrange = (() => {
          不能用小节总额 total（写成 total 会让四条刻度全挤在块的头 1/16 上）。
          v3.33.15：显隐并入 needsT16Ruler(pat)（与主视图同一份实现，数据区）——
            本型不需要十六分尺时**整段不建节点**（这里没有闪烁目标，不必像主视图那样留元素）。 */
-      if (needT16 && s.t % T16 === 0){
-        const nSub = s.t / T16;
-        for (let u = 0; u < nSub; u++){
-          /* v3.33.15 撞箭头兜底：格中心那条正压在扫弦箭头上（与主视图同一条判据，让位）。
-             ★ v3.33.24：原先此处有"撞箭头让位"的跳格（`u === nSub / 2`），随 `.collide`
-               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */
+      /* v3.33.25：块内刻度线 = 格内落在最小单位 U 整数倍上的位置，不含块左缘
+         （那条由 .seams 承担）。与主视图 buildRowCells 同一口径、同一表达式。 */
+      if (startT % U === 0){
+        for (let k = 1; k * U < s.t; k++){
           const sub = document.createElement("i");
           sub.className = "arg-pat-sub";
-          sub.style.left = (u * T16 / s.t * 100) + "%";
+          sub.style.left = (k * U / s.t * 100) + "%";
           c.appendChild(sub);
         }
       }

@@ -23,17 +23,31 @@ MUTANTS = [
     ("M31 撤掉「拖回原位(no-op)」路径的 selectChip", lambda s: s.replace(B, B_MUT, 1),
      # ★ 初版这里写的是 T119x 的文案，与 T119y 对不上 ⇒ 误报"未命中"
      ["★★ no-op 路径也要选中"]),
-    # ── v3.33.24：`.collide`（撞箭头让位）整体退役 —— 再把它加回去，断言必须变红 ──
-    ("M32 把主视图的 `.collide` 挂类加回去", lambda s: s.replace(
-        '          sub.className = "sub";',
-        '          sub.className = "sub"\n'
-        '            + ((needT16 && hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) ? " collide" : "");', 1),
-     ["★★ 全行零 .collide"]),
-    ("M33 把编排页的撞箭头跳格加回去", lambda s: s.replace(
-        '               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */',
-        '               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */\n'
-        '          if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2) continue;', 1),
-     ["★★ 带方向也照画"]),
+    # ── v3.33.25：`.collide` / `.t16-off` 两套机制已退役 ──
+    #    原 M32/M33 是「把挂类/跳格加回去」，但那些代码已被删除 ⇒ 变异会因 needT16 未定义而**崩溃**，
+    #    崩溃不算证据。故改为把**CSS 规则**加回去：源码钉（T201f 的 !/t16-off/ 与 !/.sub.collide{/）必须变红。
+    ("M32 把 `.collide` 的 CSS 规则加回去", lambda s: s.replace(
+        ".cell .usubs{",
+        ".cell .subs .sub.collide{border-right:none}\n.cell .usubs{", 1),
+     ["★★ v3.33.25：.t16-off 与 .collide 两套机制"]),
+    ("M33 把 `.t16-off` 的 CSS 规则加回去", lambda s: s.replace(
+        ".cell .usubs{",
+        ".cell .subs.t16-off .sub{border-right:none}\n.cell .usubs{", 1),
+     ["★★ v3.33.25：.t16-off 与 .collide 两套机制"]),
+    # ── v3.33.25：刻度线「以最小单位为据」——退回十六分粒度，断言必须变红 ──
+    ("M34 主视图刻度线退回十六分粒度（U→T16）", lambda s: s.replace(
+        '        const nU = Math.floor((s.t - 1) / U);',
+        '        const nU = Math.floor((s.t - 1) / T16);', 1).replace(
+        '            it.style.left = (k * U / s.t * 100) + "%";',
+        '            it.style.left = (k * T16 / s.t * 100) + "%";', 1),
+     ["★★ 四分格内部**恰 1 条**"]),
+    ("M35 编排页刻度线退回十六分粒度（U→T16）", lambda s: s.replace(
+        '        for (let k = 1; k * U < s.t; k++){',
+        '        for (let k = 1; k * T16 < s.t; k++){', 1).replace(
+        '          sub.style.left = (k * U / s.t * 100) + "%";',
+        '          sub.style.left = (k * T16 / s.t * 100) + "%";', 1),
+     # ★ 初版关键词又写错（写成了 T201e 混排那条；本变异实际红的是 T201e 的**全八分**两条）
+     ["★ 全型都是八分整数倍", "★ 全八分 ⇒ 编排页同样不画块内刻度"]),
 ]
 
 hit_n, miss_n = 0, 0

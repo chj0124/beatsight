@@ -78,7 +78,7 @@ section("T201a needsT16Ruler · 「是否为八分的整数倍」矩阵（含最
 }
 
 /* ============ 场景 T201b：主视图 · 不画线，但元素一个不少 ============ */
-section("T201b 主视图 · 全八分：不画刻度线，.sub 元素恒在（闪烁目标不丢）");
+section("T201b 主视图 · 全八分（最小单位=八分）：格内 0 条刻度线，.sub 元素恒在（闪烁目标不丢）");
 {
   const { els } = selectPattern([rep(8, { t: 24 })], "T201 全八分");
   const cells = allOf(els["viz"], "cell");
@@ -86,11 +86,12 @@ section("T201b 主视图 · 全八分：不画刻度线，.sub 元素恒在（�
   const c0 = cells[0];
   const subsBox = allOf(c0, "subs");
   eq(subsBox.length, 1, "该格恰一个 .subs 容器");
-  ok(cls(subsBox[0], "t16-off"), "★ .subs 带 .t16-off ⇒ 该型不需要十六分尺（不画线）");
+  eq(allOf(c0, "usub").length, 0,
+     "★★ 全八分 ⇒ 最小单位 24 = 格长 ⇒ 格内 0 条（v3.33.25 判据 = minUnitOf，.t16-off 已退役）");
   eq(allOf(c0, "sub").length, 2,
-     "★ 八分格仍有 2 个 .sub 元素——元素恒建，闪烁目标一个不少（显隐只落在 border 上）");
+     "★ 八分格仍有 2 个 .sub 元素——元素恒建，闪烁目标一个不少（.sub 已不画线，只作闪烁目标）");
   eq(allOf(c0, "collide").length, 0, "纯节拍型没有箭头 ⇒ 无 .collide");
-  eq(cells.filter(c => !cls(allOf(c, "subs")[0], "t16-off")).length, 0,
+  eq(cells.filter(c => allOf(c, "usub").length > 0).length, 0,
      "★ 整条网格一致（判据是型级的，不会一行画一行不画）");
 }
 
@@ -102,10 +103,14 @@ section("T201c 主视图 · 八分与十六分混排：照画（无箭头的对�
   const { els } = selectPattern(bars, "T201 混排");
   const subsBox = allOf(els["viz"], "subs");
   ok(subsBox.length > 0, "前提：.subs 容器在");
-  eq(subsBox.filter(s => cls(s, "t16-off")).length, 0, "★ 含十六分 ⇒ 需要尺 ⇒ 一个 .t16-off 都没有");
   const cells = allOf(els["viz"], "cell");
   const eighthCells = cells.filter(c => allOf(c, "sub").length === 2);
+  const sixCellsC = cells.filter(c => allOf(c, "sub").length === 1);
   ok(eighthCells.length > 0, "前提：有 nSub=2 的八分格");
+  eq(eighthCells.filter(c => allOf(c, "usub").length === 1).length, eighthCells.length,
+     "★ 最小单位 12 ⇒ 每个八分格内部恰 1 条（落在 50% = 十六分边界）");
+  ok(sixCellsC.length > 0 && sixCellsC.every(c => allOf(c, "usub").length === 0),
+     "★ 十六分格内部 0 条（它自己就是最小单位）");
   eq(allOf(els["viz"], "collide").length, 0,
      "★ 不带方向 ⇒ hasStr 假 ⇒ 无箭头可撞 ⇒ 中心那条刻度照画");
 }
@@ -173,26 +178,26 @@ section("T201e 编排页块内刻度 · 同一判据（不画 / 画 / 让位，�
     { t: 24, dir: "D" }, { t: 12 }, { t: 12 }, { t: 24, dir: "U" }, { t: 12 }, { t: 12 }]], "T201e 混排带方向");
   ok(allOf(mix, "arg-pat-sub").length > 0, "★ 含十六分 ⇒ 编排页画块内刻度");
   /* 本处节点**摆在边界位置上且含块左缘**（u = 0 起），故每格节点数 = nSub。
-     ★ v3.33.24：撞箭头让位已退役 ⇒ 八分格保留 **2 条**（u=0 左缘 + u=1 中心）。
-       八分格中心那条正是它内部两个十六分的分界——用户要看的就是它。 */
+     ★ v3.33.25：块内刻度线 = 格内落在最小单位整数倍上的位置，**不含块左缘**（那条由
+       .seams 承担）。故八分格 1 条（50%，即它内部两个十六分的分界）、十六分格 0 条。 */
   const cells = allOf(mix, "arg-pat-cell");
   const perCell = cells.map(c => allOf(c, "arg-pat-sub").length);
-  eq(perCell.join(","), "2,1,1,2,1,1,2,1,1,2,1,1",
-     "★★ 带方向也照画：4 个八分格各 2 条（左缘 + 中心），8 个十六分格各 1 条（改前八分格被让位只剩 1 条）");
-  eq(perCell.filter(n => n === 2).length, 4,
-     "★ 恰好 4 个八分格保留 2 条 ⇒ 与主视图同一事实（不是第二处口径）");
+  eq(perCell.join(","), "1,0,0,1,0,0,1,0,0,1,0,0",
+     "★★ 八分格各 1 条（50% = 八分边界）、十六分格 0 条——与主视图同一口径、同一表达式");
+  eq(perCell.filter(n => n === 1).length, 4,
+     "★ 恰好 4 个八分格各 1 条 ⇒ 与主视图同一事实（不再有「下标差 1」这种两处实现）");
   const eighthCells = cells.filter(c => c.style.width === "12.5%");      // 24/192
   const sixCells = cells.filter(c => c.style.width === "6.25%");         // 12/192
   eq(eighthCells.length, 4, "前提：4 个八分格");
   eq(sixCells.length, 8, "前提：8 个十六分格");
-  eq(eighthCells.map(c => allOf(c, "arg-pat-sub")[0].style.left).join(","), "0%,0%,0%,0%",
-     "★ 被让位的是**格中心**那条（50%），左缘那条（u=0）保留——让位不是把整格刻度删掉");
+  eq(eighthCells.map(c => allOf(c, "arg-pat-sub")[0].style.left).join(","), "50%,50%,50%,50%",
+     "★ 那一条落在格中心 50%（八分边界）——**不含块左缘**：左缘已由 .seams 交界缝承担，不重复画");
 
   const barNoStr = arrangePatBar([[{ t: 24 }, { t: 12 }, { t: 12 }, { t: 24 }, { t: 12 }, { t: 12 },
     { t: 24 }, { t: 12 }, { t: 12 }, { t: 24 }, { t: 12 }, { t: 12 }]], "T201e 混排无方向");
   const cellsNS = allOf(barNoStr, "arg-pat-cell");
-  eq(cellsNS.map(c => allOf(c, "arg-pat-sub").length).join(","), "2,1,1,2,1,1,2,1,1,2,1,1",
-     "★ 对照组：同构成但不带方向 ⇒ 无箭头可撞 ⇒ 八分格 2 条全在（让位确由箭头触发，不是无差别砍线）");
+  eq(cellsNS.map(c => allOf(c, "arg-pat-sub").length).join(","), "1,0,0,1,0,0,1,0,0,1,0,0",
+     "★ 对照组（无方向）与带方向**逐位相同** ⇒ 刻度线与有没有扫弦箭头彻底无关");
 }
 
 /* ============ 场景 T201f：编辑器头部结构（源码钉） ============ */
@@ -229,8 +234,86 @@ section("T201f 编辑器头部 · 引用提示移出顶栏（源码钉）+ 两�
      "★ CSS 不变量：.editor-actions 的 flex:none **提为全局**（原先只在 ≤640px 媒体查询里，中宽失效）");
   ok(/#editorRefNote:empty\{display:none\}/.test(src),
      "★ CSS：提示为空时不占位（默认状态就是空——不该因此多吃掉一段高度）");
-  ok(/\.cell \.subs\.t16-off \.sub\{border-right:none\}/.test(src),
-     "★ CSS：只按「型的最小单位」显隐（只去 border-right，元素保留 ⇒ 闪烁目标不丢）");
-  ok(!/\.sub\.collide\{/.test(src) && !/" collide"/.test(src) && !/u === nSub \/ 2\) continue/.test(src),
-     "★★ v3.33.24：collide 三处落点全清（CSS 规则 / 主视图挂类 / 编排页跳格）——非用户需求，且会删掉八分格内的十六分分界线");
+  ok(/\.cell \.usub\{[^}]*repeating-linear-gradient\(180deg,rgba\(var\(--veil\),\.06\)/.test(src),
+     "★ CSS：刻度线由 .usub 承担（虚线、.06——v3.33.26 起）");
+  ok(!/t16-off/.test(src) && !/\.sub\.collide\{/.test(src) && !/" collide"/.test(src),
+     "★★ v3.33.25：.t16-off 与 .collide 两套机制**均已退役**——判据只剩 minUnitOf 一份");
+}
+
+/* ============ 场景 T201i/j/k：刻度线一律「以最小单位为据」（v3.33.25，用户拍板） ============
+   规则：U = minStepOf(型)。每格内部，凡落在 **U 的整数倍** 上的位置画一条刻度线。
+   实现口径：刻度线统一由新增的 `.usubs > .usub` 层承担（绝对定位、按 tick 落位），
+   与「最小单位是否整除十六分」无关——`.sub` 从此**只作闪烁目标，不再画线**。
+   为什么不用 `.sub` 的 border 承担：`.sub` 是十六分粒度，画不出 16/32 tick 这类非十六分网格。
+   断言一律数 `.usub` 个数（桩无 CSS，故只数元素、且不依赖 border 显隐）。 */
+section("T201i 最小单位=八分 · 四分格内部恰 1 条刻度线（八分边界）");
+{
+  const bars = [[{ t: 48 }, { t: 24 }, { t: 24 }, { t: 24 }, { t: 24 }, { t: 24 }, { t: 24 }]];
+  const { els } = selectPattern(bars, "T201f 八分含四分");
+  /* ★ 桩是多行渲染（窗口若干行）⇒ 必须限定到**第一行**，否则每格被数多次 */
+  const row0 = els["viz"].children.find(c => allOf(c, "cell").length > 0);
+  ok(!!row0, "前提：取到第一行");
+  const cells = allOf(row0, "cell");
+  const quarters = cells.filter(c => c.style.width === "25%");        // 48/192
+  const eighths = cells.filter(c => c.style.width === "12.5%");       // 24/192
+  eq(quarters.length, 1, "前提：1 个四分格");
+  eq(eighths.length, 6, "前提：6 个八分格");
+  eq(allOf(quarters[0], "usub").length, 1,
+     "★★ 四分格内部**恰 1 条**（落在 24 tick = 八分边界，即它的正中）");
+  const q1 = allOf(quarters[0], "usub");
+  ok(q1.length === 1 && q1[0].style.left === "50%",
+     "★ 那一条在 50% 处（八分边界）");   /* ★ 先判条数再取 [0]：0 条时直接取会崩，崩溃不算证据 */
+  eq(eighths.filter(c => allOf(c, "usub").length > 0).length, 0,
+     "★ 八分格内部 0 条（它自己就是最小单位，边界由缝承担）");
+}
+section("T201j 最小单位=三连音(16) · 长格内部按三连音网格画线");
+{
+  const bars = [[{ t: 48 }, { t: 16 }, { t: 16 }, { t: 16 }, { t: 48 }, { t: 48 }]];
+  const { els } = selectPattern(bars, "T201g 三连音");
+  const row0 = els["viz"].children.find(c => allOf(c, "cell").length > 0);
+  ok(!!row0, "前提：取到第一行");
+  const cells = allOf(row0, "cell");
+  const long = cells.filter(c => c.style.width === "25%");            // 48/192
+  const tri = cells.filter(c => c.style.width === "8.333333333333332%");
+  eq(long.length, 3, "前提：3 个 48 tick 的长格");
+  eq(tri.length, 3, "前提：3 个三连音格（16 tick）");
+  /* 48 tick、U=16 ⇒ 内部 16 / 32 两处 ⇒ 2 条（三等分） */
+  eq(allOf(long[0], "usub").length, 2,
+     "★★ 48 tick 长格内部 2 条（16 / 32 tick）——三连音网格**首次**有刻度线");
+  eq(allOf(long[0], "usub").map(i => i.style.left).join(","), "33.33333333333333%,66.66666666666666%",
+     "★ 两条落在 1/3 与 2/3 处");
+  eq(tri.filter(c => allOf(c, "usub").length > 0).length, 0,
+     "★ 三连音格内部 0 条（它自己就是最小单位）");
+}
+section("T201k 最小单位=十六分 · 四分格 3 条（回归：原十六分尺必须一字不差）");
+{
+  const bars = [[{ t: 48 }, { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 },
+    { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 }, { t: 12 }]];
+  const { els } = selectPattern(bars, "T201h 十六分");
+  const row0 = els["viz"].children.find(c => allOf(c, "cell").length > 0);
+  ok(!!row0, "前提：取到第一行");
+  const cells = allOf(row0, "cell");
+  const quarter = cells.filter(c => c.style.width === "25%")[0];
+  ok(!!quarter, "前提：四分格在");
+  eq(allOf(quarter, "usub").length, 3,
+     "★ 四分格内部 3 条（12 / 24 / 36 tick）——与改动前的十六分尺逐位一致（回归钉）");
+  const six = cells.filter(c => c.style.width === "6.25%");
+  eq(six.filter(c => allOf(c, "usub").length > 0).length, 0, "★ 十六分格内部 0 条");
+}
+
+/* ============ 场景 T201l/m：参考线档位与「已弹段连成一片」（v3.33.26，用户拍板） ============
+   桩不解析样式表 ⇒ 静态规则只能走源码钉（t101 同口径，与 T201f 那两条不变量一致）。 */
+section("T201l CSS 不变量 · 格内参考线：更淡 + 虚线 + 播放态恒定不提亮");
+{
+  ok(/\.cell \.usub\{[^}]*repeating-linear-gradient[^}]*\.06\)/.test(src),
+     "★★ 参考线 = 虚线 + 更淡（.06）——四分格正中那条不再像「音符起点」");
+  ok(!/\.cell\.(played|active) \.usub/.test(src),
+     "★★ 播放态**不触碰**参考线（恒定最淡 ⇒ 弹奏时不抢视线；那条 .20 死规则已删）");
+  ok(!/\.cell\.played \.sub,\.cell\.active \.sub\{/.test(src),   /* 精确到规则本身：注释里提到它不算 */
+     "★ 已失效的「已弹提亮细分线」规则已删（它打在不再画线的 .sub 上，是死规则）");
+}
+section("T201m CSS 不变量 · 已弹段连成一片（不再是逐格一块）");
+{
+  ok(/\.cell\.played\{border-radius:0\}/.test(src),
+     "★★ 已弹格收平圆角 ⇒ 相邻已弹格连成一条通栏高亮（原先每格圆角在光里顶出格边）");
 }
