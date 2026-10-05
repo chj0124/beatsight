@@ -11,6 +11,8 @@
      · 甲 · 块头行：每个**块**一条（按块计数，不去重型），插在该块第 1 小节之前；
        只在**贴了词**的展开态出现（2026-09-30 定案）；左列「型名 ×N 遍〔· 共N 小节〕」+
        右列该型的第 1 小节（时值块 + 休止虚线 + 十六分刻度 + 骑缝线 + .strumv 箭头）。
+       ★ v3.33.15：十六分刻度**按型级判据显隐**（全型都是八分的整数倍就不画，
+         见 needsT16Ruler）——本文件的夹具恰好全落在"不画"那一侧，正向用例在 t201。
      · 硬约束三：① 块头行的 className 不含 arg-lyric-row（CSS counter 只数元素个数，
        蹭上就让之后所有小节序号集体 +1）；② 歌词行数不变（= secBars，counter 基数）；
        ③ 游标/引导线/ghost/气泡的行级挂载点走显式 rowWrapEls，不再靠 lane.children[row]。
@@ -156,10 +158,13 @@ section("T145c 甲 · 块头内容 · ×N 遍 · 共N小节 / 时值块 / ghost 
     eq(cellsA.length, 4, "时值块数 = bars[0] 的音符数 4");
     eq(cellsA.map(c => c.style.left).join(","), "0%,25%,50%,75%", "时值块左缘 = 起点占比");
     eq(cellsA.map(c => c.style.width).join(","), "25%,25%,25%,25%", "时值块宽度 = 时值占比（贴满）");
-    const subs = kids(cellsA[0], "arg-pat-sub");
-    eq(subs.length, 4, "★ 块内十六分刻度 = 该格的十六分数（四分 = 4 条）");
-    eq(subs.map(s => s.style.left).join(","), "0%,25%,50%,75%",
-       "★ 刻度 left 是**格内**占比（分母 = 本格时值，不是小节总长）");
+    /* ★ v3.33.15（用户拍板「以节奏型的最小单位为准」）：块内十六分刻度改成**型级判据**——
+       全型每颗音的时值都是八分（24t）的整数倍 ⇒ 十六分网格描述不了任何东西 ⇒ 不画。
+       素材A 是四分×4（48t = 2 个八分）⇒ 0 条。
+       正向用例（用到十六分的型 → 刻度在、left 是格内占比；再叠"撞箭头让位"）移到
+       t201-t16-ruler —— 那里能一次覆盖「画 / 不画 / 让位」三种形态，本处只钉"不画"。 */
+    eq(kids(cellsA[0], "arg-pat-sub").length, 0,
+       "★ 全型都是八分整数倍（四分×4）⇒ 不画十六分刻度（v3.33.15 型级判据）");
     const seamA = barA.children.filter(c => /(^| )seams( |$)/.test(c.className));
     eq(seamA.length, 1, "行尾挂一层 .seams 覆盖层");
     ok(String(seamA[0].style.background).indexOf("var(--seam-strong)") >= 0,

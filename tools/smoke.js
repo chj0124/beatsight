@@ -1024,6 +1024,237 @@ function layoutProbe(){
 }
 
 /** 在浏览器里跑一轮：打开 url → 等页面 → 取探针结果 + 控制台错误 */
+/* ★★★ v3.33.15：编辑器头部布局哨兵（用户实拍「编辑节奏型头部被压扁」）。
+   桩测不出布局，只有真机能量——而这条恰恰是纯布局缺陷：.editor-topbar 在 >640px 没有
+   flex-wrap，容器又被 .editor-inner 的 max-width:1080 封顶在 1032px，而顶栏内容
+   （返回练习 + 标题 + 拍数 + 长引用提示 + 两按钮）的 max-content ≈1540px
+   ⇒ 三个子项一起被压缩：标题从词中间断行（「前」/「奏）」）、「返回练习」拆两行、
+   按钮变竖排且最右那颗贴边被裁。
+   触发条件是**引用提示非空**（正在编辑一个被曲式引用的型），而默认编辑一个没人引用的型时
+   它是空串、头部分毫看不出问题——这正是它长期潜伏的原因。故本探针把触发条件直接造出来
+   （写 textContent + 写标题，复刻用户截图那一态），再量真几何。
+   ★ 复刻的是**输入状态**，被断言的是**布局结果**，不是"把答案写进去"。 */
+function editorHeaderProbe(){
+  return `(async function(){
+    var q = function(s){ return document.querySelector(s); };
+    var rd = function(n){ return Math.round(n); };
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var ed = q("#editor"), note = q("#editorRefNote"), top = q(".editor-topbar");
+    if (!ed || !note || !top) return JSON.stringify({ err: "缺 #editor / #editorRefNote / .editor-topbar" });
+    var wasOpen = ed.classList.contains("open");
+    if (!wasOpen) ed.classList.add("open");
+    var savedNote = note.textContent, ttl = q("#editorTitle"), savedTitle = ttl ? ttl.textContent : null;
+    note.textContent = "「十六分满扫（《在他乡》前奏）」被 3 首曲式引用（在他乡（示例）、练习用（示例）、副歌慢练）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型";
+    if (ttl) ttl.textContent = "基于「十六分满扫（《在他乡》前奏）」创建 · 4/4 拍 · 1 小节";
+    await frame();
+    var lines = function(el){
+      try{
+        var rng = document.createRange(); rng.selectNodeContents(el);
+        var rs = rng.getClientRects(), tops = {};
+        for (var i=0;i<rs.length;i++){ if (rs[i].width<1||rs[i].height<1) continue; tops[Math.round(rs[i].top)]=1; }
+        return Object.keys(tops).length;
+      }catch(e){ return 0; }
+    };
+    var tr = top.getBoundingClientRect(), nr = note.getBoundingClientRect();
+    var acts = q(".editor-actions");
+    var bs = acts ? Array.prototype.slice.call(acts.querySelectorAll("button")) : [];
+    var res = {
+      vw: window.innerWidth,
+      inTopbar: top.contains(note),
+      topH: rd(tr.height), topBottom: rd(tr.bottom),
+      noteTop: rd(nr.top), noteH: rd(nr.height),
+      titleLines: ttl ? lines(ttl) : 0,
+      titleW: ttl ? rd(ttl.getBoundingClientRect().width) : 0,
+      btns: bs.map(function(b){
+        return { t: b.textContent.trim(), w: rd(b.getBoundingClientRect().width),
+                 h: rd(b.getBoundingClientRect().height), lines: lines(b) };
+      })
+    };
+    note.textContent = savedNote;
+    if (ttl && savedTitle !== null) ttl.textContent = savedTitle;
+    if (!wasOpen) ed.classList.remove("open");
+    return JSON.stringify(res);
+  })()`;
+}
+/* ★★★ v3.33.21：③ 精修 分组**折叠的真机闸**（用户实报「无法折叠」）。
+   为什么必须真机：桩环境没有 CSS，`m.hidden === true` 在桩里恒绿——而真机上
+   `.arg-mini{display:inline-flex}` 会盖过 UA 给 [hidden] 的 display:none，
+   于是 hidden 设了、按钮照旧显示。故这里**不读 hidden 属性，只量高度**：
+   收起后该组按钮的 getBoundingClientRect().height 之和必须为 0。
+   这条能同时罩住"折叠失效"与将来任何"显隐被样式盖过"的回归。 */
+function refineGroupProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "无 __beat.Arrange" });
+    var res = { vw: window.innerWidth };
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "Arrange.open 失败 " + e.message }); }
+    await frame();
+    var secs = document.getElementById("argSections");
+    if (!secs || !secs.children.length) return JSON.stringify({ err: "无段" });
+    var sum = secs.children[0].querySelector(".arg-lyric-sum");
+    if (!sum) return JSON.stringify({ err: "无歌词摘要行" });
+    sum.click();
+    await frame();
+    var heads = document.querySelectorAll(".arg-lyric-grp");
+    res.heads = heads.length;
+    if (heads.length < 3) return JSON.stringify({ err: "组头不足（" + heads.length + "）" });
+    var head = heads[2];
+    var ly = head.parentNode;
+    var kids = Array.prototype.slice.call(ly.children);
+    var start = kids.indexOf(head);
+    var members = [];
+    for (var i = start + 1; i < kids.length; i++){
+      var el = kids[i];
+      var cn = el.className || "";
+      if (/arg-lyric-grp|arg-lyric-rowsep|arg-lyric-head|arg-lyric-lane/.test(cn)) break;
+      if (/(^| )arg-mini( |$)/.test(cn)) members.push(el);
+    }
+    res.members = members.length;
+    if (!members.length) return JSON.stringify({ err: "该组无成员" });
+    var sumH = function(){ var t = 0; for (var k = 0; k < members.length; k++) t += members[k].getBoundingClientRect().height; return Math.round(t); };
+    res.hBefore = sumH();
+    head.click();
+    await frame();
+    res.expandedAfterCollapse = head.getAttribute("aria-expanded");
+    res.allHidden = members.every(function(m){ return m.hidden === true; });
+    res.hAfterCollapse = sumH();          // ★ 真机证据：必须是 0
+    head.click();
+    await frame();
+    res.hAfterExpand = sumH();
+    try{ B.Arrange.close(); }catch(e){ }
+    return JSON.stringify(res);
+  })()`;
+}
+
+/* [diag3] 把「我」拖到**空扫格**上，量落点是否与节奏型格子对齐（只报告）。
+   用户实报：松手后仍对不上，且**只在空扫格出现**。P1《十六分满扫》的空扫格 = 1/2/5/7/8/9/13。 */
+function lyricGhostAlignProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "no __beat" });
+    try{ B.Arrange.open(); }catch(e){}
+    await frame();
+    var sums = document.querySelectorAll(".arg-lyric-sum");
+    if (!sums.length) return JSON.stringify({ err: "no sum" });
+    sums[0].click();
+    await frame();
+    var barrow = document.querySelector(".arg-lyric-barrow");
+    if (!barrow) return JSON.stringify({ err: "no barrow" });
+    var W = barrow.getBoundingClientRect().width, base = barrow.getBoundingClientRect().left;
+    var barTicks = 192;
+    var out = { W: Math.round(W) };
+    /* 节奏型每一格的左缘（px，相对 barrow）——即"正确的对齐标尺" */
+    var patBar = document.querySelector(".arg-pat-row .arg-pat-bar");
+    out.cellEdges = patBar ? Array.prototype.slice.call(patBar.querySelectorAll(".arg-pat-cell"))
+      .map(function(c){ return Math.round(c.getBoundingClientRect().left - base); }) : null;
+    /* 歌词轨自己画的时值轮廓（.arg-lyric-note）——它是"节奏型的块"在歌词轨的复刻 */
+    out.notes = Array.prototype.slice.call(barrow.querySelectorAll(".arg-lyric-note"))
+      .slice(0, 18).map(function(n){ return n.style.left + "/" + n.style.width + (/(^| )rest( |$)/.test(n.className) ? "(rest)" : ""); });
+    var chip0 = barrow.querySelector(".arg-lyric-chip");
+    var tickFromPx = function(px){ return Math.round(px / W * barTicks); };
+    out.before = { px: Math.round(chip0.getBoundingClientRect().left - base), tick: tickFromPx(chip0.getBoundingClientRect().left - base) };
+    var r = chip0.getBoundingClientRect();
+    var cx = r.left + r.width * 0.3, cy = r.top + r.height / 2;
+    var mk = function(t2, x){ return new PointerEvent(t2, { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, clientX: x, clientY: cy, buttons: 1 }); };
+    chip0.dispatchEvent(mk("pointerdown", cx));
+    var dx = -170, steps = 17;              /* 120 -> ~83 tick：落在空扫格 7/8 一带 */
+    for (var s3 = 1; s3 <= steps; s3++){ window.dispatchEvent(mk("pointermove", cx + dx * s3 / steps)); await frame(); }
+    var r2 = chip0.getBoundingClientRect();
+    window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, clientX: cx + dx, clientY: cy, buttons: 0 }));
+    await frame(); await frame();
+    var chipA = document.querySelector(".arg-lyric-chip");
+    var px = Math.round(chipA.getBoundingClientRect().left - base);
+    var tk = tickFromPx(px);
+    out.after = { px: px, tick: tk, onCell: out.cellEdges ? out.cellEdges.indexOf(px) : null,
+                  pxPerCell: Math.round(W / 16), pxModCell: px % Math.round(W / 16) };
+    out.label = (chipA.getAttribute("aria-label") || "").slice(0, 30);
+    try{ B.Arrange.close(); }catch(e){}
+    return JSON.stringify(out);
+  })()`;
+}
+
+/* ★★★ v3.33.22：歌词拖动**行归属**的真机闸（v3.33.18 的 rowOfY 修复，此前零自动化覆盖）。
+   ★ 为什么必须**自造夹具**：`geo` 只在 lctx.rows > 1 时构建，而示例曲那些段在真机里
+     都是**单行**（上一轮 dump 实测 barrows 恒 [1]）⇒ 那条路径从不执行、覆盖率闸一直把
+     rowOfY 列在「从未执行的函数」。故这里用 __beat.Store 现造一个**3 小节**的段（3 行）。
+   闸的形态：把**第 1 行**的字块向右拖过"邻字半程"——按既有语义这会触发**换位**。
+     · 修好后：row === row0 ⇒ overR 生效 ⇒ 换位 ⇒ **两个字**的时序互换
+     · 行号算偏：sameRowGesture 假 ⇒ overR 归零 ⇒ 只会发生**移动**（一个字变），绝不换位
+   ⇒ 断言 = "恰好 2 个字的 aria-label 变了"（用 label 而非 Store，免取 arrId/secUid）。 */
+function lyricDragGateProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange || !B.Store) return JSON.stringify({ err: "no __beat" });
+    var bar = [], i2;
+    for (i2 = 0; i2 < 8; i2++) bar.push({ t: 24, dir: i2 % 2 ? "U" : "D" });
+    var name = "DRAGGATE";
+    B.Store.importPresets(JSON.stringify({ presets: [{ name: name, meter: 4, bars: [bar, bar, bar] }] }));
+    var customs = B.Store.customs || [];
+    var id = customs.length ? customs[customs.length - 1].id : null;
+    if (!id) return JSON.stringify({ err: "import failed" });
+    B.Store.upsertArrange({ name: "GATE曲式", sections: [
+      { name: "段", blocks: [{ ref: { type: "custom", id: id }, repeats: 1 }] },
+    ] });
+    var arrs = B.Store.arranges || [];
+    var arr = arrs[arrs.length - 1];
+    var uid = arr.sections[0].uid;
+    B.Store.upsertLyric(arr.id, uid, [
+      { t: 0, dur: 24, ch: "一" }, { t: 24, dur: 24, ch: "二" }, { t: 48, dur: 24, ch: "三" }]);
+    var out = { vw: window.innerWidth };
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "open failed" }); }
+    await frame();
+    var cur = document.querySelector(".arg-lyric-sum");
+    /* 找到我们那条段（它是最后一条）：全部收起后逐条点开太慢，直接点最后一条的摘要 */
+    var sums = document.querySelectorAll(".arg-lyric-sum");
+    var target = sums[sums.length - 1];
+    if (!target) return JSON.stringify({ err: "no sum" });
+    target.click();
+    await frame();
+    var lane = null, ls = document.querySelectorAll(".arg-lyric-lane");
+    for (i2 = 0; i2 < ls.length; i2++){
+      if (ls[i2].querySelectorAll(".arg-lyric-barrow").length >= 2){ lane = ls[i2]; break; }
+    }
+    if (!lane){ try{ B.Store.deleteArrange(arr.id); }catch(e){} return JSON.stringify({ err: "still no multi-row lane" }); }
+    var barrows = lane.querySelectorAll(".arg-lyric-barrow");
+    out.rows = barrows.length;
+    var chip = barrows[0].querySelector(".arg-lyric-chip");
+    if (!chip) { try{ B.Store.deleteArrange(arr.id); }catch(e){} return JSON.stringify({ err: "no chip in row0" }); }
+    /* ★ 落库会触发 arrangeRender() **整树重建** ⇒ 拖前抓的 lane 会变成冻结值。
+       必须每次现取（这个坑我在 t201e 里已经踩过一次）。 */
+    var snap = function(){
+      var ls2 = document.querySelectorAll(".arg-lyric-lane"), L = null;
+      for (var q = 0; q < ls2.length; q++){
+        if (ls2[q].querySelectorAll(".arg-lyric-barrow").length >= 2){ L = ls2[q]; break; }
+      }
+      if (!L) return "";
+      return Array.prototype.slice.call(L.querySelectorAll(".arg-lyric-chip"))
+        .map(function(c){ return c.getAttribute("aria-label") || ""; }).join("|");
+    };
+    var before = snap();
+    var r = chip.getBoundingClientRect();
+    var cx = r.left + r.width * 0.3, cy = r.top + r.height / 2;
+    var mk = function(t3, x, btns){ return new PointerEvent(t3, { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, clientX: x, clientY: cy, buttons: btns }); };
+    chip.dispatchEvent(mk("pointerdown", cx, 1));
+    var dx = 150, steps = 15;
+    for (i2 = 1; i2 <= steps; i2++){ window.dispatchEvent(mk("pointermove", cx + dx * i2 / steps, 1)); await frame(); }
+    window.dispatchEvent(mk("pointerup", cx + dx, 0));
+    await frame(); await frame();
+    var after = snap();
+    var a0 = before.split("|"), a1 = after.split("|"), diff = 0;
+    for (i2 = 0; i2 < Math.max(a0.length, a1.length); i2++){ if (a0[i2] !== a1[i2]) diff++; }
+    out.diffCount = diff;
+    out.swapped = diff >= 2;
+    out.before = before;
+    out.after = after;
+    try{ B.Store.deleteArrange(arr.id); }catch(e){}
+    try{ B.Arrange.close(); }catch(e){}
+    return JSON.stringify(out);
+  })()`;
+}
+
 async function runPass(label, url, userDataDir){
   const cdpPort = PORT_BASE;
   const args = [
@@ -1160,6 +1391,23 @@ function wideFullProbe(){
       const laRaw = await cdp.send("Runtime.evaluate",
         { expression: layoutAuditProbe(), awaitPromise: true, returnByValue: true });
       result.layoutAudit = JSON.parse(laRaw.result.value);
+      /* ★★★ v3.33.15：编辑器头部布局哨兵——同样放最后（它会把 #editor 浮层打开量几何） */
+      const ehRaw = await cdp.send("Runtime.evaluate",
+        { expression: editorHeaderProbe(), awaitPromise: true, returnByValue: true });
+      result.editorHeader = JSON.parse(ehRaw.result.value);
+      /* ★★★ v3.33.21：精修分组折叠的真机哨兵 */
+      const rgRaw = await cdp.send("Runtime.evaluate",
+        { expression: refineGroupProbe(), awaitPromise: true, returnByValue: true });
+      result.refineGroups = JSON.parse(rgRaw.result.value);
+      /* ★★★ v3.33.22：歌词拖动行归属的真机闸（自造 3 小节段 ⇒ 多行） */
+      const ldRaw = await cdp.send("Runtime.evaluate",
+        { expression: lyricDragGateProbe(), awaitPromise: true, returnByValue: true });
+      result.lyricDrag = JSON.parse(ldRaw.result.value);
+      try{
+        const gRaw = await cdp.send("Runtime.evaluate",
+          { expression: lyricGhostAlignProbe(), awaitPromise: true, returnByValue: true });
+        console.log("  [diag3] ghost=" + (gRaw.result && gRaw.result.value));
+      }catch(e){ console.log("  [diag3] failed: " + e.message); }
       await cdp.send("Emulation.clearDeviceMetricsOverride");
       await sleep(150);
       result.layout = { wide, narrow };
@@ -1916,6 +2164,63 @@ async function main(){
             });
           } else if (vp === "桌面"){
             ok(false, p.label + "·" + vp + "：版面审计未取到（probe 缺失，属冒烟自身故障）", "");
+          }
+          /* ★★★ v3.33.15：编辑器头部（用户实拍「编辑节奏型头部被压扁」）。
+             触发条件 = 引用提示非空（正在编辑被曲式引用的型），探针已把它造出来。 */
+          if (vp === "桌面"){
+            const EH = r.editorHeader;
+            if (EH && !EH.err){
+              ok(EH.inTopbar === false,
+                p.label + "·" + vp + "：★★★ 引用提示在 .editor-topbar **之外**"
+                + "（它曾是第三个 flex 子项，把顶栏一起挤爆；v3.33.15 移到栏下）", "");
+              ok(EH.noteTop >= EH.topBottom - 1,
+                p.label + "·" + vp + "：★★ 长提示落在顶栏**下方**而非栏内",
+                "提示 top=" + EH.noteTop + " vs 顶栏 bottom=" + EH.topBottom);
+              ok(EH.topH <= 80,
+                p.label + "·" + vp + "：★★★ 长提示在场时顶栏仍是**单行**（高度 " + EH.topH + "px）"
+                + "——被挤爆时会折行/撑高", "");
+              ok(EH.btns.length >= 2 && EH.btns.every(function(b){ return b.lines === 1 && b.w >= 30; }),
+                p.label + "·" + vp + "：★★★ 顶栏按钮文字**单行**且未被压扁（不竖排、不被裁）",
+                EH.btns.map(function(b){ return "「" + b.t + "」 w=" + b.w + " 行数=" + b.lines; }).join(" ／ "));
+              ok(EH.titleLines <= 2,
+                p.label + "·" + vp + "：★★ 长提示在场时标题不超过 2 行",
+                "实测 " + EH.titleLines + " 行 / 宽 " + EH.titleW);
+            } else {
+              ok(false, p.label + "·" + vp + "：编辑器头部探针未取到（探针故障："
+                + ((EH && EH.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.33.21：精修分组折叠——**只量高度，不读 hidden 属性**（见 refineGroupProbe 注释） */
+          if (vp === "桌面"){
+            const RG = r.refineGroups;
+            if (RG && !RG.err){
+              ok(RG.heads >= 5,
+                p.label + "·" + vp + "：★★ ③ 精修 的组头齐备（实测 " + RG.heads + " 个）", "");
+              ok(RG.hBefore > 0, p.label + "·" + vp + "：★ 前提：该组按钮原本可见（高 " + RG.hBefore + "px）", "");
+              ok(RG.allHidden === true,
+                p.label + "·" + vp + "：★★ 点组头后成员确实 hidden", "");
+              ok(RG.hAfterCollapse === 0,
+                p.label + "·" + vp + "：★★★ 点组头后该组**高度真的变成 0**（用户实报「无法折叠」的真机闸；"
+                + "display:inline-flex 盖过 [hidden] 时这里会是 " + RG.hBefore + "px）",
+                "收起后高度 = " + RG.hAfterCollapse + "px（期望 0）");
+              ok(RG.hAfterExpand > 0,
+                p.label + "·" + vp + "：★★ 再点恢复可见（高 " + RG.hAfterExpand + "px）", "");
+            } else {
+              ok(false, p.label + "·" + vp + "：精修分组探针未取到（故障：" + ((RG && RG.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.33.22：拖动行归属——行内右拖过半程必须**换位**（v3.33.18，此前零覆盖） */
+          if (vp === "桌面"){
+            const LD = r.lyricDrag;
+            if (LD && !LD.err){
+              ok(LD.rows >= 2, p.label + "·" + vp + "：★ 前提：自造段落确实跨 " + LD.rows + " 行（geo 才会构建）", "");
+              ok(LD.swapped === true,
+                p.label + "·" + vp + "：★★★ 行内右拖过「邻字半程」发生**换位**（恰 2 个字换时序）——"
+                + "行号算偏时 overR 归零，只会「移动」（1 个字变），绝不换位",
+                "改动字数 = " + LD.diffCount + "（换位需 >= 2）");
+            } else {
+              ok(false, p.label + "·" + vp + "：歌词拖动探针未取到（故障：" + ((LD && LD.err) || "缺失") + "）", "");
+            }
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){
             ok(Math.abs(L.tgBody.volHC - L.tgBody.bpmHC) <= 4,

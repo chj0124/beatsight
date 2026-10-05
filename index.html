@@ -651,6 +651,19 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    ★ 观测台的既有覆盖（rgba(255,255,255,.35)，见 body[data-theme="obs"] 块）口径相同、无需改动
      ——两个主题在这一点上就此收敛。 */
 .cell.played .sub,.cell.active .sub{border-right-color:rgba(var(--veil),.20)}
+/* ---------- 十六分刻度线的显隐（v3.33.15，用户拍板「以节奏型的最小单位为准」） ----------
+   两条规则都**只去掉那条线、绝不删元素**：.sub 同时是"每跑完一个十六分闪一次"的动画目标
+   （paintBeatFlash 读 subEls[fb][fk]；动画改的是 boxShadow / backgroundColor，与边框无关），
+   删元素会连带砍掉十六分级播放反馈——那是功能面收缩，不是纯视觉。
+     ① .t16-off：该型每个时值都是八分的整数倍 ⇒ 十六分网格描述不了任何东西
+        （每格内部刻度都落在同一批位置上，且都压在扫弦箭头上），画了只是噪声。
+        判据见数据区 needsT16Ruler()。
+     ② .collide：该型确实需要十六分尺，但**格中心那一条**正压在扫弦箭头上
+        （箭头按定义落在格中心——见 buildRowCells 里 sm.style.left 的注释），故让位。
+        只有 nSub 为偶数时格中心才落在刻度边界上；只有带箭头的格才需要让位。
+   选择器写到 (0,4,0)：高于上面 `.cell.played .sub` 的 (0,3,0)，不依赖书写顺序。 */
+.cell .subs.t16-off .sub,
+.cell .subs .sub.collide{border-right:none}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
@@ -1294,7 +1307,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      也不能往 textContent 里塞箭头字符（t63 / t84b 都逐字比对标题文案）。
    折叠态由 aria-expanded 驱动（[aria-expanded="false"] 时箭头转 −90°）——状态只有一份真相，
    不给折叠态另加类名（类名空间已被测试逐字占用）。 */
-.preset-section{font-size:11px;color:var(--t3);margin:14px 0 8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+/* v3.33.17（用户实拍「组标题竟然比组内各项内容的标题字体还小」）：预设库三级层次
+   收口成**单调**的一列——区 12px/--t2 < 组 13px/--t1 = 条目名 13px。
+   原先区与组都是 11px，而条目名是 13px ⇒ 容器比内容还小，层级是倒的。 */
+.preset-section{font-size:12px;color:var(--t2);font-weight:600;margin:14px 0 8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
 .preset-section:hover{color:var(--t2)}
 /* v3.1.0（批 3，用户定稿 4a 案）：三区并列消空白——#presetList 改自适应网格。
    ★ 条目仍是 #presetList 的**直接子节点**（扁平契约不动，16 个遍历测试零波及）；
@@ -1310,9 +1326,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v2.22.0（批次④）：区内子分组——组头比分区标题次一级（左缩进 + 绿线示意"归它管"），
    折叠箭头走 ::before（组头右侧的 ✎/× 按钮占了 ::after 的末位，箭头挪到队首，
    与树形控件"展开箭头在最左"的惯例一致）。折叠态同样只有 aria-expanded 一份真相 */
-.preset-group{font-size:11px;color:var(--t2);margin:10px 0 6px 10px;padding-left:8px;
-  border-left:2px solid var(--line);display:flex;align-items:center;gap:6px;
-  cursor:pointer;user-select:none}
+/* ★ v3.33.17（用户实拍）：分组标题原先是 11px/--t2，比它自己管着的**条目名 13px 还小**；
+   且带 margin-left:10px + padding-left:8px + 2px 竖线 = **比条目多缩进 18px** ——
+   容器比内容还深，视觉上读成「标题属于更下一层」。现改：字号 13px（= 条目名）、
+   颜色 --t1（亮于条目）、字重 600（一眼是容器头），并**去掉那 18px 缩进与竖线**，
+   层次改由字号/字重/颜色表达，而不是靠方向反了的缩进。 */
+.preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:10px 0 6px;
+  display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
 .preset-group:hover{color:var(--t1)}
 .preset-group::before{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-group[aria-expanded="false"]::before{transform:rotate(-90deg)}
@@ -1503,7 +1523,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   .editor-topbar{height:auto;min-height:64px;flex-wrap:wrap;row-gap:8px;padding:10px 0}
   .editor-topbar .left{flex-wrap:wrap;row-gap:8px}
 }
-.editor-actions{display:flex;gap:10px}
+/* v3.33.15（用户报障「按钮被压成竖排、最右那颗贴边裁掉」）：flex:none 从 ≤640px 的媒体
+   查询里**提为全局**——工具栏按钮永不该参与收缩。原先它只在窄屏生效，而真正出问题的是
+   641px–1080px 这段中宽：容器被 .editor-inner 封顶 1032px，顶栏内容却要 ≈1540px，
+   顶栏一挤按钮就跟着被压。这是条**不变量**，不该只在某个断点里成立。 */
+.editor-actions{display:flex;gap:10px;flex:none}
 /* ---------- 浮层小窗（v2.10.13）：设置弹窗的 Dialog 形态 ----------
    与 .editor（全屏页面式）的区别：**不全屏**、主界面在四周仍可见（backdrop 压暗）、
    **点窗外即关**（backdrop 就是根元素本身，面板是它唯一的子块——点击命中根 = 命中窗外，
@@ -1651,6 +1675,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    flex-wrap 的候选串里自然换行，串流不中断。当前型 = 绿描边（同 .cell.next 的强调色阶）。 */
 .arg-pick-zone{flex-basis:100%;font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;margin-top:2px}
 .arg-mini.cur{border-color:var(--green);color:var(--green)}
+/* ★★ v3.33.21（用户实报「无法折叠」）：`.arg-mini` 自己设了 `display:inline-flex`，会**盖过**
+   UA 样式表给 `[hidden]` 的 `display:none` ⇒ 点组头切完 hidden，按钮纹丝不动、折叠失效。
+   本仓已有 8 处同类补丁（.preset-item / .lyric-lane / .pd-mask / .fallback-note …），这是第 9 处。
+   ★ 桩环境没有 CSS：T204b 在桩里**是绿的**（hidden 只是个属性），故这条只能靠源码钉 + 真机验收。 */
+.arg-mini[hidden]{display:none}
 /* v2.37.0：候选胶囊的类型徽标（扫弦 ↑↓）与 ✎ 跳编辑器（仅自定义型） */
 .arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:4px;padding:1px 3px;margin-left:2px}
 .arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:2px 3px;border-radius:4px}
@@ -1659,6 +1688,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-pill-play:hover{color:var(--accent);border-color:var(--accent);background:rgba(255,255,255,.1)}
 /* v2.37.0（c）：编辑器源型引用信息行 */
 #editorRefNote{margin:-6px 0 10px}
+/* v3.33.15：提示为空时（编辑一个不被任何曲式引用的型——**默认状态**）整块不占位。
+   它的上下外边距会与 .editor-topbar 的 margin-bottom:24px 折叠，空着也照样吃掉约 28px；
+   display:none 让顶栏与下方卡片的间距回到改动前的样子。 */
+#editorRefNote:empty{display:none}
 .arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 .arg-ops{flex:none;display:flex;gap:4px}
 /* v2.30.0（S1）：段操作 ⋯ 菜单——运行时生成的一行（flex-basis:100% 独占一行），
@@ -1804,6 +1837,18 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v2.52.0（R5）：流水线组头——flex-basis:100% 强制换行分段（不包容器，扁平契约）；
    复用 .arg-pick-zone 的三区标题视觉语言 */
 .arg-lyric-head{flex-basis:100%;font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;margin-top:2px}
+/* v3.33.20（用户拍板「改功能 + 3 行」）：③ 精修 的功能分组。
+   ★ 硬约束：歌词区**必须保持扁平**——组头**不包容器**、按钮仍是 ly 的直接子节点
+     （否则 t60/t108 的定位契约破裂）。故：
+       · .arg-lyric-grp  = **内联**可折叠组头（flex:none，不占整行）；
+       · .arg-lyric-rowsep = flex-basis:100% 的零高元素，唯一作用是把后面的按钮**挤到下一行**。
+     这样"分组 / 3 行 / 可折叠"全部在不新增容器的前提下实现。 */
+.arg-lyric-grp{flex:none;background:none;border:none;padding:2px 4px;margin:0;
+  font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;cursor:pointer}
+.arg-lyric-grp:hover{color:var(--t2)}
+.arg-lyric-grp::before{content:"▾";font-size:9px;opacity:.65;margin-right:3px}
+.arg-lyric-grp[aria-expanded="false"]::before{content:"▸"}
+.arg-lyric-rowsep{flex-basis:100%;height:0;margin:0;padding:0}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
 .arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 /* ★ v3.3.1：`.arg-now` 的 `margin-top:12px` 是它住在卡片里时的纵向留白。播放行搬进底栏后
@@ -2727,13 +2772,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <select class="loop-sel" id="editorMeterSel" aria-label="拍数：本型每小节几拍，切换将按新拍数重建草稿"></select>
         </span>
       </div>
-      <!-- v2.37.0（c）：源型的引用信息——把「引用不追踪」的真相在最易误解的场景讲清 -->
-      <div class="hint" id="editorRefNote"></div>
       <div class="editor-actions">
         <button class="pill outline" id="auditionBtn">试听</button>
         <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
       </div>
     </div>
+    <!-- v2.37.0（c）：源型的引用信息——把「引用不追踪」的真相在最易误解的场景讲清。
+         ★ v3.33.15（用户报障「编辑节奏型头部被压扁」）：原先它是顶栏的**第三个 flex 子项**，
+           而顶栏在 >640px 没有 flex-wrap、容器宽上限恒 1032px（.editor-inner 的
+           max-width:1080 − 左右各 24 padding）。这句提示约 65 个汉字（max-content ≈780px），
+           加上左侧「返回练习 + 标题 + 拍数」≈620px、右侧按钮 ≈142px，合计 ≈1540px
+           ⇒ 三个子项被一起压缩：标题从词中间断行（「前」/「奏）」）、「返回练习」拆成两行、
+           按钮被压成竖排且最右侧那颗贴边裁掉。它本质是**一栏正文说明**、不是工具栏控件，
+           本就该在栏下独立成行——故移到栏下，而不是靠调断点或加省略号去救（那两条都只是
+           把症状压住）。移出后顶栏只剩 .left + .editor-actions（≈762px < 1032px），
+           任何宽度都放得下。它原有的 `margin:-6px 0 10px` 本就是"紧贴栏下"的写法，
+           形态上也印证了它本来就属于这一行。 -->
+    <div class="hint" id="editorRefNote"></div>
 
     <div class="card">
       <div class="card-head">
@@ -3478,23 +3533,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3510  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4195  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5952  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6914  Modal         应用内弹窗
-     L7059  Viz           时值可视化渲染与每帧动画
-     L10454 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11135 Trainer       变速训练器
-     L11345 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12014 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13613 Editor        自定义节奏型编辑器
-     L14157 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14204 Ear           听辨训练（v1.10.0）
-     L14432 Arrange       曲式编排（v2.0.0）
-     L17361 Help          使用方法（v2.0.1）
-     L17490 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17564 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17831 初始化（装配） 各模块 hook 接线与启动
+     L3565  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4266  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6023  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6985  Modal         应用内弹窗
+     L7130  Viz           时值可视化渲染与每帧动画
+     L10544 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11225 Trainer       变速训练器
+     L11435 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12104 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13703 Editor        自定义节奏型编辑器
+     L14247 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14294 Ear           听辨训练（v1.10.0）
+     L14522 Arrange       曲式编排（v2.0.0）
+     L17698 Help          使用方法（v2.0.1）
+     L17827 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17901 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18168 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3520,7 +3575,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.14";
+const VERSION = "3.33.22";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3632,6 +3687,22 @@ function hasStrum(pat){
   if (!pat || !Array.isArray(pat.bars)) return false;
   return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
     && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined)));
+}
+/** 十六分刻度尺的显隐判据（v3.33.15）：这个型**需不需要比八分更细**的参考网格。
+   判据 = 「存在一个时值不是八分（T8 = 24t）的整数倍」。
+   ★ 为什么不用「最小单位 < 八分」：附点八分（36t = 1.5 个八分）的最小单位比八分**大**，
+     可它的音符边界落在奇数十六分位上（36t = 3×T16），八分网格根本描述不了它——
+     "最小单位"口径在「附点八分 + 八分」这类混排上会漏判（最小单位是八分，却需要十六分尺）。
+     「是否为八分的整数倍」没有这个缺口，且与用户的原始意图等价（全八分 → 不画）。
+   ★ 声明在数据区（与 hasStrum 同一处）：只依赖 pat.bars、不依赖任何状态，
+     主视图（Viz 的格内刻度）与编排页（Arrange 的块内刻度）**共用同一份**，
+     不产生第二处口径——两处漂移正是本仓最在意的那类缺陷（见 hasStrum 的注释）。
+   @param {any} pat @returns {boolean} */
+function needsT16Ruler(pat){
+  /* 拿不准（结构坏了 / 空型）时返回 true：宁可多画一条参考线，也不静默少画 */
+  if (!pat || !Array.isArray(pat.bars)) return true;
+  return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
+    && bar.some((/** @type {any} */ s) => !!s && (s.t % T8 !== 0)));
 }
 /* 奇数拍重拍分组选项（拍序号，支持跨拍如 1.5）；默认各取第 0 项（5/4=2+3、7/4=3+2+2）
    ★ v3.12.0：兄弟表 ACC_LABELS（`{5:["2+3","3+2"], …}`）已删除——它只服务界面上那个
@@ -8122,6 +8193,9 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        故在本函数算一次、当参数传下去——比两段各调一次 vizHasStrum() 更省，
        也保证两处判据"逐字同源"，不会出现"层建好了但没有箭头"这类分裂。 */
     const hasStr = vizHasStrum();
+    /* v3.33.15：十六分刻度尺建不建——与 hasStr 同样"在本函数算一次、当参数传下去"，
+       保证层/格两处判据逐字同源，不会出现「层按新口径、格按旧口径」的分裂。 */
+    const needT16 = vizNeedT16();
     const K = subsPerBar();
     /* 本行装的是小节的第几片（v2.15.0）：整小节档恒 0；预告行（第 1 行）取预告片段的
        片号——座次尺的拍号要跟着它走（预告的是"下一片段"，拍数从它的位置数起）。 */
@@ -8131,7 +8205,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const row = document.createElement("div");
     row.className = "bar-row" + (mutedRow(b) ? " muted-bar" : "");   // 静音拍：本行会不会被静（v2.5.2 按乐句位置算）
     buildRowLayers(b, row, hasStr, sub);
-    const cells = buildRowCells(b, p, barTicks, row, hasStr);
+    const cells = buildRowCells(b, p, barTicks, row, hasStr, needT16);
     buildRowAnnotations(b, p, barTicks, row);
     viz.appendChild(row);
     rowEls.push(row); cellEls.push(cells.cells); labelEls.push(cells.labels); strumEls.push(cells.strums);
@@ -8232,9 +8306,10 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       @param {number} b 小节序号 @param {any} p 当前窗口合成型（vizPattern 快照）
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
       @param {boolean} hasStr 当前型是否带扫弦记谱（决定逐格要不要画箭头）
+      @param {boolean} needT16 当前型是否需要十六分刻度尺（决定刻度线画不画；元素恒建）
       @returns {{ cells: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
         三个逐格同构数组，由编排者登记进 cellEls / labelEls / strumEls */
-  function buildRowCells(b, p, barTicks, row, hasStr){
+  function buildRowCells(b, p, barTicks, row, hasStr, needT16){
     /** @type {HTMLElement[]} */
     const cells = [];
     /** @type {(HTMLElement|null)[]} */
@@ -8288,11 +8363,19 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
          十六分网格对三连音无意义，画了只会是误导性的斜对齐竖线 */
       if (s.t % T16 === 0){
         const subs = document.createElement("div");
-        subs.className = "subs";
+        /* v3.33.15：`.t16-off` = 本型不需要十六分尺（每个时值都是八分的整数倍）——
+           **只不画线、元素照建**：.sub 还是闪烁目标，一个都不能少
+           （CSS 里那两条规则的注释 + 数据区 needsT16Ruler() 讲清了为什么）。 */
+        subs.className = "subs" + (needT16 ? "" : " t16-off");
         const nSub = s.t / T16;
         for (let u = 0; u < nSub; u++){
           const sub = document.createElement("div");
-          sub.className = "sub";
+          /* v3.33.15（撞箭头兜底）：格中心那条刻度正压在扫弦箭头上——箭头按定义落在**格中心**
+             （见下方 sm.style.left 的注释），两者逐像素同位，看上去就是"箭头旁边多出一条小竖线"。
+             nSub 为偶数时格中心才落在刻度边界上（八分 nSub=2 → 第 1 条；四分 nSub=4 → 第 2 条）；
+             且只有**带箭头的格**才让位——纯节拍型没有箭头，中心那条本身是有用的刻度参考。 */
+          sub.className = "sub"
+            + ((needT16 && hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) ? " collide" : "");
           subs.appendChild(sub);
           subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
         }
@@ -8690,6 +8773,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            曲式模式仍问窗口合成型（行来自不同的型，只能按可见行判，原行为不变）。 */
   function vizHasStrum(){
     return hasStrum(S.playMode === "arrange" ? vizPattern() : activePattern());
+  }
+  /* 十六分刻度尺的显隐（v3.33.15）：与 vizHasStrum **同一取型口径**——预设模式问型本身、
+     曲式模式问窗口合成型。跟它同源不是为了省事：两者都是"这个型长什么样"的判据，
+     取型口径一旦分叉，型长于窗口时一个会随翻页闪、一个不会，画面自相矛盾。
+     判据本体在数据区 needsT16Ruler()（与 hasStrum 同处，Viz 与 Arrange 共用一份）。 */
+  function vizNeedT16(){
+    return needsT16Ruler(S.playMode === "arrange" ? vizPattern() : activePattern());
   }
   /* 六线底纹显隐（v2.4.2）：把 S.showTab / 当前型是否带扫弦记谱两个条件收成 .viz 上的一个类，
      由 CSS `.viz.no-tab .tab{display:none}` 落地。
@@ -14433,6 +14523,26 @@ const Ear = (() => {
 /* 编排 UI。数据模型与校验在 Store（S2），节目单步进在共享状态区（S3），
    播放接线在 AudioEngine/Controls（S4）——本模块只做"把曲式编出来"这件事。
    声明在 Presets / Controls 之后，所以直接调它们是**向前引用**，不产生方向问题。 */
+/* ================================================================================
+   Arrange · 二级锚点（v3.33.22，按 Viz 的先例划子域——**不是拆分**）
+   ---------------------------------------------------------------------------
+   本模块已越过 3000 行观察线（check-module-order 的「模块规模」软阈值，⚠ 不判红）。
+   按仓库先例：**拆分前先划分子域**，让"该切哪一刀"有据可依；是否真拆属架构级决策，
+   需先出方案（AGENTS.md §3.5）。子域如下（行号见文件头模块索引）：
+
+     ① 曲式库与段块模型 —— 增删改、模板、引用解析（resolveRef / blockAt / secBars）
+     ② 歌词数据层     —— 唯一写入口 lyricCommit / 撤销栈 / 迁移 / 配额
+     ③ 歌词·时间序判据 —— lyricNeighbors / swapChars / shiftLyricChars / lyricDurStep
+                          （v3.33.16–22 五处同源收口；**改这里前先读 lyricNeighbors 的注释**）
+     ④ 歌词轨交互     —— bindDrag / onDragMove / onDragEnd / getDropTarget / 键盘微调
+                          （★ 行归属 rowOfY 只在 lctx.rows > 1 时激活，桩测不到 → 真机闸在 smoke）
+     ⑤ ③精修功能区     —— 五组可折叠按钮（历史/范围/整段平移/换位/时值）
+     ⑥ 编排渲染       —— arrangeRender / mkPatBar / 段卡片 / 歌曲地图
+     ⑦ 播放与预听     —— 跳段 / 范围 / 段试听状态机 / 候选试听
+
+   ★ 拆分建议（若将来要动）：③④ 与 ①② 之间的耦合面最小（前者只依赖 lyricNeighbors 一族
+     纯函数 + Store.findLyric），是**风险最低的第一刀**。
+   ================================================================================ */
 const Arrange = (() => {
   /** @type {string | null} */
   let curId = null;
@@ -14478,6 +14588,37 @@ const Arrange = (() => {
   let lastLyricKey = null;             // Ctrl/⌘+Z 的路由目标（末次触碰段；为空则键盘撤销忽略）
   /** @type {null | { arrId: string, secUid: string, k: number }} */
   let selChip = null;                  // 选中字块（V5：模块态，重渲染按它回挂 .sel；期 4 批量用，期 1 先立态）
+  /* v3.33.20：③ 精修 的分组折叠记忆（键 = 曲式|段|组名，纯浏览态、关浮层即弃，与 lyricOpen 同口径）
+     与「需要先选中一个字块」的成员登记。
+     ★ 为什么不把 disabled 只在渲染期算：本仓既定口径是"点按选中不重渲染"（见 mkDur 注释），
+       渲染期算出来的 disabled 会陈旧。故登记成模块态，在**选中落点**与**渲染末**各刷一次。 */
+  const refineFold = new Set();
+  /** @type {{el:any, arrId:string, secUid:string, title:string}[]} */
+  let refineNeedSel = [];
+  /** v3.33.20：把「需选中态」的成员按当前 selChip 刷新 disabled + 给出原因（组级联动）。
+      无选中时整组置灰并说明"先点按选中一个字块"，而不是让用户点一下才知道。 */
+  function refreshRefineSel(){
+    for (let n = 0; n < refineNeedSel.length; n++){
+      const m = refineNeedSel[n];
+      const ln = Store.findLyric(m.arrId, m.secUid);
+      const has = !!(selChip && selChip.arrId === m.arrId && selChip.secUid === m.secUid &&
+        ln && selChip.k < ln.chars.length);
+      m.el.disabled = !has;
+      m.el.title = has ? m.title : "先点按选中一个字块";
+    }
+    for (let n = 0; n < refineNeedSelHeads.length; n++){
+      const h = refineNeedSelHeads[n];
+      const ln = Store.findLyric(h.arrId, h.secUid);
+      const has = !!(selChip && selChip.arrId === h.arrId && selChip.secUid === h.secUid &&
+        ln && selChip.k < ln.chars.length);
+      /* 名字不能叫 open：模块级有 open()（no-shadow，见本模块既有注释） */
+      const expandedNow = !refineFold.has(h.key);
+      h.el.setAttribute("aria-label", "精修分组「" + h.label + "」" +
+        (expandedNow ? "，点按收起" : "，点按展开") + (has ? "" : "（需先选中一个字块）"));
+    }
+  }
+  /** @type {any[]} */
+  let refineNeedSelHeads = [];
   /* v2.52.0（R2）：批量平移范围（"全部字" / "从选中字"）。会话内存态，跨渲染存活、不落盘。 */
   let shiftScope = "all";
   /** @type {any} */
@@ -14598,6 +14739,20 @@ const Arrange = (() => {
      拖动换算用 lane.offsetWidth（结构层采集一次），不碰 getBoundingClientRect：
      拖动是低频手势，且 px→tick 只需要轨道宽度，不需要元素在屏幕上的坐标。 */
 
+  /** v3.33.18：指针 Y → 行号（按每行**真实矩形**命中；落在行间缝隙时取最近的一行）。
+      取代原先的「(y − lane.top) ÷ 第一个 barrow 的高」——那个除法把块头行与 gap 算漏了。
+      @param {any} geo @param {number} y @returns {number} */
+  function rowOfY(geo, y){
+    const rs = geo.rects || [];
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < rs.length; i++){
+      const r = rs[i];
+      const d = y < r.top ? r.top - y : (y > r.bottom ? y - r.bottom : 0);
+      if (d < bestD){ bestD = d; best = r.i; }
+    }
+    return best;
+  }
+
   /** @param {any} ev */
   function onDragMove(ev){
     /* v2.49.0（D2）：待转正 pend——位移过阈（触屏 8px / 鼠标 5px）才转正为真拖拽；
@@ -14623,13 +14778,12 @@ const Arrange = (() => {
        ★ v2.47.0（F1）：边界读 drag.chars（pointerdown 时的 Store 现值快照），不再读
          lctx.chars——v2.46.0 键盘移动会换掉行对象，闭包里的字表已过期，用它算边界或提交
          会把键盘修改静默回滚 */
-    const prev = drag.k > 0 ? chars[drag.k - 1] : null;
-    const next = drag.k + 1 < chars.length ? chars[drag.k + 1] : null;
+    /* v3.33.16：邻居边界按**时间序**取（同 lyricNeighbors）——原先按下标取，字被移动过后
+       会算出 min > cap 的反转区间并把字块钉死（与键盘微调同源，用户实报「移不回去」） */
     let row = 0;
     if (drag.mode === "move"){
-      const min = prev ? prev.t + prev.dur : 0;
-      const cap = Math.min(span - drag.d0, next ? next.t - drag.d0 : span - drag.d0);
-      const max = Math.max(min, cap);
+      const nb = lyricNeighbors(chars, drag.k, drag.d0, span);
+      const min = nb.min, max = nb.max;
       const tc = drag.t0 + raw;
       /* v2.53（B）：行归属。有几何（真浏览器）→ 目标行由**指针 Y** 决定（纵向换行，
          字块二维跟手），行内偏移保持抓取时的相对量（竖着搬下去不跳位）；
@@ -14638,8 +14792,7 @@ const Arrange = (() => {
          字块就回哪行——钳制是诚实的）。 */
       let tcRow = tc;
       if (drag.geo && ev.clientY !== undefined){
-        row = Math.max(0, Math.min((lctx.rows || 1) - 1,
-          Math.floor((ev.clientY - drag.geo.top) / drag.geo.rowH)));
+        row = rowOfY(drag.geo, ev.clientY);
         const off = Math.max(0, Math.min(barTicks, tc - drag.row0 * barTicks));
         tcRow = row * barTicks + off;
       }
@@ -14679,7 +14832,9 @@ const Arrange = (() => {
         }
       }
     } else {
-      const lim = Math.min(span, next ? next.t : span);
+      /* v3.33.16：时值上限同样按**时间序**右邻取（原先按下标，字被移动过后会卡到错的对象） */
+      const nbD = lyricNeighbors(chars, drag.k, drag.d0, span);
+      const lim = Math.min(span, nbD.nextK >= 0 ? chars[nbD.nextK].t : span);
       drag.d = Math.max(LYRIC_MIN_DUR,
         Math.min(Math.min(CONFIG.lyricMaxDur, lim - drag.t0), drag.d0 + raw));
       drag.t = drag.t0;
@@ -14742,36 +14897,100 @@ const Arrange = (() => {
   function getDropTarget(d){
     const chars = d.chars, me = chars[d.k], span = d.lctx.span;
     if (d.mode === "move"){
-      const prev = d.k > 0 ? chars[d.k - 1] : null;
-      const next = d.k + 1 < chars.length ? chars[d.k + 1] : null;
+      /* v3.33.16：邻居一律按**时间序**取。原先按下标——chars 是粘贴顺序，字被移动过后
+         "后字"可能是左边那个（换位换错对象），钳制还会算出反转区间把字块钉死。 */
+      const nb = lyricNeighbors(chars, d.k, me.dur, span);
+      const prev = nb.prevK >= 0 ? chars[nb.prevK] : null;
+      const next = nb.nextK >= 0 ? chars[nb.nextK] : null;
       /* 换位优先（F4 甲）：顶着邻字推过其「半程」→ 与邻字交换时序；判定先于吸附 */
       if (next && d.overR * 2 >= next.dur) return { t: next.t, dur: next.dur, swap: 1, magnet: -1 };
       if (prev && d.overL * 2 >= prev.dur) return { t: prev.t, dur: prev.dur, swap: -1, magnet: -1 };
       /* 普通移动：磁吸锚点优先，否则吸附到格，再按邻居边界收口 */
-      const min = prev ? prev.t + prev.dur : 0;
-      const cap = Math.min(span - me.dur, next ? next.t - me.dur : span - me.dur);
-      const max = Math.max(min, cap);
+      const min = nb.min, max = nb.max;
       let t = d.magnet >= 0 ? d.magnet : Math.round(d.t / LYRIC_GRID) * LYRIC_GRID;
       t = Math.max(min, Math.min(max, t));
       return { t, dur: me.dur, swap: 0, magnet: d.magnet };
     }
     /* dur 模式：右缘拖动改时值（邻字边界 + 最短时值 + 上限三重钳制） */
-    const next = d.k + 1 < chars.length ? chars[d.k + 1] : null;
-    const lim = Math.min(span, next ? next.t : span);
+    const nbD = lyricNeighbors(chars, d.k, me.dur, span);
+    const lim = Math.min(span, nbD.nextK >= 0 ? chars[nbD.nextK].t : span);
     const dur = Math.round(d.d / LYRIC_GRID) * LYRIC_GRID;
     return { t: me.t, dur: Math.max(LYRIC_MIN_DUR,
       Math.min(Math.min(CONFIG.lyricMaxDur, lim - d.t0), dur)), swap: 0, magnet: -1 };
   }
 
-  /** 显性换位助手（v2.52.0 D5）：k 与 k+1 交换时序（t/dur 互换，字各随索引位）——
-      与拖拽换位（onDragEnd 的 swap 分支）殊途同归**同一函数**，拖拽侧已改为调用它。
-      @param {any[]} chars @param {number} k @returns {any[]|null} 越界返回 null */
+  /** 歌词字块的**时间序**邻居与合法区间（v3.33.16）——本模块唯一一份。
+      ★ 为什么必须有它：`chars` 的顺序是**粘贴顺序**，不是时间序。用户把某个字拖/微调到别的
+        字之后，下标序与时间序就分道扬镳；此时"按下标取邻居"会算出 **min > cap 的反转区间**，
+        钳制 `Math.max(min, Math.min(max, …))` 塌缩成恒等于 min —— 字块被**钉死**。
+        用户实报：「这几块不能移动的字符，都是从前面移动到后面的；但移动到后面之后，
+        就移不回去了」——根因即此，与手感无关。
+      ★ 同一病根在本模块有**五个入口**：键盘微调 moveChipKey / 拖动钳制 onDragMove /
+        落点与换位判定 getDropTarget / ⇄ 显性换位 swapChars / 整段平移 shiftLyricChars。
+        全部共用本函数——各写一份的话只是换个入口复发。
+      @param {any[]} chars @param {number} k @param {number} dur 本字时值 @param {number} span 段长
+      @returns {{min:number, max:number, prevK:number, nextK:number}}
+        min/max = 合法起点区间（不与任何字重叠）；prevK/nextK = **时间序**前后邻居下标（无则 -1） */
+  function lyricNeighbors(chars, k, dur, span){
+    const c = chars[k];
+    if (!c) return { min: 0, max: Math.max(0, span - dur), prevK: -1, nextK: -1 };
+    let min = 0;              // 左界：所有时间上在它左边的字里，**末点**最靠右的那个
+    let nextT = span;         // 右邻起点（无右邻 = 段末）
+    let prevK = -1, nextK = -1;
+    for (let i = 0; i < chars.length; i++){
+      if (i === k) continue;
+      const o = chars[i];
+      if (!o) continue;
+      if (o.t <= c.t){
+        const e = o.t + o.dur;
+        if (e > min){ min = e; prevK = i; }
+      } else if (o.t < nextT){ nextT = o.t; nextK = i; }
+    }
+    const cap = Math.min(span - dur, nextT - dur);
+    return { min: min, max: Math.max(min, cap), prevK: prevK, nextK: nextK };
+  }
+
+  /** 时值 ±1 格的**唯一**计算入口（v3.33.19 抽出为纯函数）。
+      ★ 为什么必须抽出来：原先这段计算**内联在按钮回调里**——既不可单测，又把「后邻」按
+        **下标**取（`cs[k + 1].t`）。字被移动过之后 `cs[k+1]` 可能落在**左边**，于是
+        `lim < c.t` ⇒ `lim - c.t` 为负 ⇒ 钳制链 `Math.max(LYRIC_MIN_DUR, Math.min(maxDur, 负, dur))`
+        塌成 **LYRIC_MIN_DUR** ⇒ **两颗按钮（+1 / −1）都会把时值缩到最短的十六分 12t**，
+        按钮写的和做的是反的。这是**静默改坏数据**，不是"点了没反应"。
+      ★ 同一病根（下标序 ≠ 时间序）的最后一处；口子藏在变量名 `cs` 上——v3.33.17 的源码钉
+        只写了 `chars[...]`，所以从我自己的闸下面漏了过去（本批把断言改成不认变量名）。
+      @param {any[]} chars @param {number} k @param {number} sign @param {number} span
+      @returns {number|null} 新时值；k 越界返回 null */
+  function lyricDurStep(chars, k, sign, span){
+    const c = chars[k];
+    if (!c) return null;
+    const nb = lyricNeighbors(chars, k, c.dur, span);
+    const lim = Math.min(span, nb.nextK >= 0 ? chars[nb.nextK].t : span);
+    const dur = Math.round((c.dur + sign * LYRIC_GRID) / LYRIC_GRID) * LYRIC_GRID;
+    return Math.max(LYRIC_MIN_DUR,
+      Math.min(Math.min(CONFIG.lyricMaxDur, lim - c.t), dur));
+  }
+
+  /** 显性换位助手（v2.52.0 D5；v3.33.16 改按**时间序**取后邻）：
+      与**时间上**紧邻其后的那个字交换时序（t/dur 互换，字各随索引位）——
+      与拖拽换位（onDragEnd 的 swap 分支）殊途同归**同一函数**。
+      ★ 原先按 `k + 1` 取"后字"：chars 是粘贴顺序，字被移动过之后 `k+1` 可能是**左边**那个字，
+        「⇄ 与后字换位」于是换错对象（同一病根的第五个入口）。
+      @param {any[]} chars @param {number} k @returns {any[]|null} 越界 / 已是时间序最后一个 → null */
   function swapChars(chars, k){
-    if (k < 0 || k + 1 >= chars.length) return null;
-    const a = chars[k], b = chars[k + 1];
+    if (k < 0 || k >= chars.length) return null;
+    const a = chars[k];
+    if (!a) return null;
+    let j = -1;
+    for (let i = 0; i < chars.length; i++){
+      if (i === k) continue;
+      const o = chars[i];
+      if (o && o.t > a.t && (j < 0 || o.t < chars[j].t)) j = i;
+    }
+    if (j < 0) return null;                       // 时间序最后一个字：右边没人可换
+    const b = chars[j];
     const out = chars.slice();
     out[k] = { t: b.t, dur: b.dur, ch: a.ch };
-    out[k + 1] = { t: a.t, dur: a.dur, ch: b.ch };
+    out[j] = { t: a.t, dur: a.dur, ch: b.ch };
     return out;
   }
 
@@ -14781,15 +15000,28 @@ const Arrange = (() => {
      @param {any[]} chars @param {number} fromK @param {number} delta @param {number} span @returns {any[]|null} */
   function shiftLyricChars(chars, fromK, delta, span){
     if (!chars.length || !delta) return null;
-    const from = Math.max(0, Math.min(fromK, chars.length - 1));
-    const tail = chars.slice(from);
-    const dMin = -tail[0].t;                                    // 首字不早于 0
-    const last = tail[tail.length - 1];
-    const dMax = span - (last.t + last.dur);                    // 末字 t+dur 不越段长
+    const base = chars[Math.max(0, Math.min(fromK, chars.length - 1))];
+    if (!base) return null;
+    /* v3.33.17：范围按**时间序**取（原先 `chars.slice(fromK)` = 下标序）。
+       chars 是粘贴顺序——字被移动过之后，「从选中字起」会圈进时间上在它**左边**的字、
+       同时漏掉右边本该跟着动的字。这与 lyricNeighbors 是**同一病根**；用户明确要求
+       「同类 bug 不能换个入口复发」，故一并收口。
+       ★ 未被移动过的行两种口径**逐位等价**（粘贴顺序 = 时间顺序）⇒ 正常路径零行为变化。 */
+    const tail = chars.filter((/** @type {any} */ c) => c.t >= base.t);
+    let minT = Infinity, maxEnd = -Infinity;
+    for (const c of tail){
+      if (c.t < minT) minT = c.t;
+      const e = c.t + c.dur;
+      if (e > maxEnd) maxEnd = e;
+    }
+    const dMin = -minT;                                         // 组内首字不早于 0
+    const dMax = span - maxEnd;                                 // 组内末字 t+dur 不越段长
     const d = Math.max(dMin, Math.min(dMax, delta));
     if (d === 0) return null;
-    return chars.slice(0, from).concat(tail.map((/** @type {any} */ c) =>
-      ({ t: c.t + d, dur: c.dur, ch: c.ch })));
+    /* 输出保持**数组原序**（下标位不动），只改时序 */
+    return chars.map((/** @type {any} */ c) => (c.t >= base.t
+      ? { t: c.t + d, dur: c.dur, ch: c.ch }
+      : { t: c.t, dur: c.dur, ch: c.ch }));
   }
 
   function onDragEnd(){
@@ -14808,8 +15040,16 @@ const Arrange = (() => {
     if (!me) return;
     const r = getDropTarget(d);                          // v2.50.0（D1）：提交走唯一事实源
     if (r.swap !== 0){
-      /* v2.52.0（D5）：换位走 swapChars——与「⇄ 与后字换位」按钮同一函数，殊途同归 */
-      const out = swapChars(chars, r.swap === 1 ? d.k : d.k - 1);
+      /* v2.52.0（D5）：换位走 swapChars——与「⇄ 与后字换位」按钮同一函数，殊途同归。
+         ★★ v3.33.17 修（用户「移不回去」的**直接**原因）：swapChars(x, k) 的语义是
+            「把 x 与 **x 的时间后邻** 换」。故向左换时**必须传时间前邻的下标**，
+            让「前邻 ↔ 它的时间后邻(=本人)」成对。原先写 `d.k - 1` —— 那是**下标的**左邻，
+            下标序 ≠ 时间序时它与时间前邻根本不是同一个字：
+            拖 B 向左，本意是 B↔C，却被算成 swapChars(k-1) = A↔(A 的时间后邻) = A↔C，
+            **换掉的是另一对**。用户于是看到"字块位置变了但没回到该去的地方"或"完全没反应"。 */
+      const sp = (d.lctx && d.lctx.span) || 0;
+      const prevIx = lyricNeighbors(chars, d.k, me.dur, sp).prevK;
+      const out = r.swap === 1 ? swapChars(chars, d.k) : swapChars(chars, prevIx);
       if (out) for (let i = 0; i < out.length; i++) chars[i] = out[i];
     } else {
       chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch };
@@ -14860,16 +15100,31 @@ const Arrange = (() => {
        getBoundingClientRect；每次拖动只读这一次，不进热路径。桩无此 API → 纵向换行
        自动退回「t 越过行边界即换行」的横向口径）。 */
     const rowNow = Math.max(0, Math.min((lctx.rows || 1) - 1, Math.floor(c.t / barTicks)));
+    /* ★★ v3.33.18（用户实报「每一行都拖不动，必须先把鼠标上移才可能拖动」）：
+       行归属改成**按每行真实矩形命中**，不再「指针 Y ÷ 固定行高」。
+       旧口径的致命处：`top` 取的是 **lane 的顶**，`rowH` 取的是**第一个 barrow 的高**——
+       可 lane 的第一个孩子未必是 barrow：`.arg-pat-row`（块头节奏型行，那条**只作参考、
+       本就不可拖**的行）与歌词行是**同级兄弟**混排在同一 lane 里，且 `.arg-lyric-lane`
+       还有 `gap:3px` ⇒ 除法少算了一个**常量偏移**（块头行高 + 间隙）。
+       于是**每一行**（不只是下面几行）算出的行号都偏大 ⇒ `row !== row0` ⇒
+       `sameRowGesture` 恒假 ⇒ overR/overL 被强制归零 ⇒「顶着邻字推过半程 = 换位」永不成立；
+       而满铺行里字块只能靠换位移动 ⇒ 表现就是「左右怎么拖都没反应」。
+       把鼠标**上移**恰好补偿掉那个常量偏移 ⇒「上移后才拖得动」，与用户描述逐字吻合。
+       现改为抓取时量下每行的 top/bottom，移动时按 Y 落在哪一行（缝隙取最近行）定行——
+       与 gap、与块头行高低、与行数都无关。 */
     let geo = null;
-    if ((lctx.rows || 1) > 1 && lctx.lane.getBoundingClientRect && lctx.barrow0){
+    if ((lctx.rows || 1) > 1 && lctx.barrowEls && lctx.barrowEls.length &&
+        lctx.lane.getBoundingClientRect){
       try{
-        const lr = lctx.lane.getBoundingClientRect();
-        const rr = lctx.barrow0.getBoundingClientRect
-          ? lctx.barrow0.getBoundingClientRect() : null;
-        if (lr && rr && rr.height > 0 && lr.height >= rr.height){
-          geo = { top: lr.top, rowH: rr.height };
+        const rects = [];
+        for (let i = 0; i < lctx.barrowEls.length; i++){
+          const el = lctx.barrowEls[i];
+          if (!el || !el.getBoundingClientRect) continue;
+          const r = el.getBoundingClientRect();
+          if (r && r.height > 0) rects.push({ i: i, top: r.top, bottom: r.bottom });
         }
-      }catch(_){ /* 桩/旧浏览器：仅横向 */ }
+        if (rects.length) geo = { rects: rects };
+      }catch(_){ /* 桩 / 旧浏览器：无 getBoundingClientRect ⇒ 退回「t 推导行」的横向口径 */ }
     }
     drag = {
       chip: p.chip, lctx: lctx, k: p.k, mode: p.mode,
@@ -14883,11 +15138,13 @@ const Arrange = (() => {
       orig: "",
     };
     drag.orig = JSON.stringify(drag.chars);
-    /* v2.48.0②：磁吸目标 = 段内发声音符起点（secOnsetTicks 现成）；引导线元素此刻建、
+    /* v2.48.0②：磁吸目标 = 段内落点集（v3.33.22 起**含空扫**——手动拖动能停在空扫格上）；
+       引导线元素此刻建、
        命中锚点时挂到其所在小节行、拖完必摘（onDragEnd） */
     const secArr = Store.findArrange(lctx.arr);
     const secObj = secArr ? secArr.sections.find((/** @type {any} */ x) => x && x.uid === lctx.sec) : null;
-    if (secObj) drag.anchors = secOnsetTicks(secObj);
+    /* v3.33.22：手动拖动的磁吸目标集**含空扫**（见 secOnsetTicks 的 includeGhost 注释） */
+    if (secObj) drag.anchors = secOnsetTicks(secObj, true);
     if (drag.anchors.length){
       /* 起点锚排除（v2.48.0②）：起点所在的锚不作为磁吸目标——否则原地起步的小拖动
          会被吸回起点（T116b 首跑即证）。想精确回到起点 = 不动它 */
@@ -14952,6 +15209,7 @@ const Arrange = (() => {
     if (selChipEl && selChipEl.classList) selChipEl.classList.remove("sel");
     selChipEl = p.chip;
     selChipEl.classList.add("sel");
+    refreshRefineSel();                    // v3.33.20：组级联动随选中态即时刷新（渲染期算会陈旧）
     /* 打轴钮文案跟上（chip → barrow → lane → ly 上溯；v2.77.0 起中间多一层行容器
        [和弦格][字块行]——改为向上走到 arg-lyric-lane 为止，不数层级，对桩与真实 DOM 都稳） */
     let up = selChipEl.parentNode;
@@ -15164,7 +15422,9 @@ const Arrange = (() => {
 
   /** 段内发声锚点 tick 列表（升序、去重、限格上）。供「按节奏对齐」与测试使用。
       @param {any} sec @returns {number[]} */
-  function secOnsetTicks(sec){
+  /** @param {any} sec @param {boolean} [includeGhost] v3.33.22：仅**手动拖动的磁吸**传 true
+      @returns {number[]} */
+  function secOnsetTicks(sec, includeGhost){
     const out = [];
     const bars = secBars(sec);
     for (let r = 0; r < bars; r++){
@@ -15175,7 +15435,12 @@ const Arrange = (() => {
       if (hasStrum(pat)){
         let cum = 0;
         for (const s of pat.bars[blk.schedBar]){
-          if (!s.rest && cum % LYRIC_GRID === 0) out.push(barT0 + cum);
+          /* ★ v3.33.22（用户拍板：「空扫 = 手在动、嘴也可以动」⇒ 字就该能停在空扫格上）：
+             旧口径「空扫不作落点」是**按节奏对齐**（自动批量重排）的纪律，它不该顺带管住手动拖动——
+             可磁吸在半个八分内必定命中某个发声锚点，于是手动怎么拖都被拽离空扫格，用户看到的就是
+             "块不在我放的位置上"。故这里只在 includeGhost 时把「休止但带方向」（= 空扫）也作为落点；
+             不传参 ⇒ 自动对齐的行为**逐位不变**（t115/t123 那批断言不动）。 */
+          if ((!s.rest || (includeGhost && !!s.dir)) && cum % LYRIC_GRID === 0) out.push(barT0 + cum);
           cum += s.t;
         }
       } else {
@@ -15220,13 +15485,24 @@ const Arrange = (() => {
     const c = chars[k];
     if (!c) return;
     const span = lctx.span;
-    const prev = k > 0 ? chars[k - 1] : null;
-    const next = k + 1 < chars.length ? chars[k + 1] : null;
-    const min = prev ? prev.t + prev.dur : 0;
-    const cap = Math.min(span - c.dur, next ? next.t - c.dur : span - c.dur);
-    const max = Math.max(min, cap);
-    const t = Math.max(min, Math.min(max, c.t + delta));
-    if (t === c.t) return;
+    /* v3.33.16：边界按**时间序**邻居取。原先按下标取——chars 是**粘贴顺序**，把字移到别的
+       字之后就与时间序分道扬镳，钳制算出 min > cap 的反转区间、塌缩成恒等于 min，字块被钉死。
+       这正是用户实报的「从前面移动到后面之后，就移不回去了」。 */
+    const nb = lyricNeighbors(chars, k, c.dur, span);
+    const t = Math.max(nb.min, Math.min(nb.max, c.t + delta));
+    if (t === c.t){
+      /* ★★ v3.33.17（用户「完全移不动」的第二个原因）：挪不动意味着**紧贴邻字**——
+         而粘贴/均分/按节奏对齐产物是**满铺**的（每字 t 恰好等于前字末点），
+         于是 min === c.t === max，←/→ 在这里**恒为 no-op**：约束没错，但键盘这条路是死的。
+         现退化为与该方向的**时间邻字**换位——与拖拽「顶着邻字推过半程 = 换位」同一语义，
+         只是键盘没有拖拽量，省掉"半程"判定。于是 ←/→ 在满铺行里就能一路把字挪回前面。 */
+      const j = delta < 0 ? nb.prevK : nb.nextK;
+      const swapped = j < 0 ? null : (delta < 0 ? swapChars(chars, j) : swapChars(chars, k));
+      if (!swapped) return;                       // 已是时间序两端：确实无路可走
+      lyricCommit(lctx.arr, lctx.sec, swapped, { cue: true });
+      arrangeRender();                            // 两个下标位都变了，原位更新不够
+      return;
+    }
     /* v2.49.0（R1/V2）：每击键 = 一步撤销（不做时间窗合并，拍板 V2）；v2.51.0（R3）：松手即时音 */
     lyricCommit(lctx.arr, lctx.sec,
       chars.map((/** @type {any} */ x, /** @type {number} */ i) =>
@@ -15256,6 +15532,9 @@ const Arrange = (() => {
     const barEl = document.createElement("div");
     barEl.className = "arg-pat-bar";
     barEl.setAttribute("aria-hidden", "true");
+    /* v3.33.15：十六分刻度尺的显隐——**与主视图同一份判据**（数据区 needsT16Ruler，
+       与 hasStrum 同处）。两处口径若各写一份，迟早分叉——这正是本仓最防的那类漂移。 */
+    const needT16 = needsT16Ruler(pat);
     const notes = pat.bars[0];
     let total = 0;
     for (const s of notes) total += s.t;
@@ -15275,10 +15554,17 @@ const Arrange = (() => {
       if (startT > 0 && !s.rest) seamX.push({ x: startT / total * 100, strong: startT % TPB === 0 });
       /* 块内十六分刻度（三连音块 t 不整除 T16 → 不画，与主界面同口径）。
          ★ left 是**格内**占比：刻度节点挂在 cell 里，分母是这一格自己的时值 s.t，
-         不能用小节总额 total（写成 total 会让四条刻度全挤在块的头 1/16 上）。 */
-      if (s.t % T16 === 0){
+         不能用小节总额 total（写成 total 会让四条刻度全挤在块的头 1/16 上）。
+         v3.33.15：显隐并入 needsT16Ruler(pat)（与主视图同一份实现，数据区）——
+           本型不需要十六分尺时**整段不建节点**（这里没有闪烁目标，不必像主视图那样留元素）。 */
+      if (needT16 && s.t % T16 === 0){
         const nSub = s.t / T16;
         for (let u = 0; u < nSub; u++){
+          /* v3.33.15 撞箭头兜底：格中心那条正压在扫弦箭头上（与主视图同一条判据，让位）。
+             ★ 下标口径与主视图**差 1**，别照抄：主视图的线是 `.sub` 的 border-right，
+               所以"中心那条"属于第 nSub/2−1 个 .sub；本处是**把节点直接摆在边界位置上**
+               （含块左缘 u=0），中心 50% 正好是 u = nSub/2。 */
+          if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2) continue;
           const sub = document.createElement("i");
           sub.className = "arg-pat-sub";
           sub.style.left = (u * T16 / s.t * 100) + "%";
@@ -15831,7 +16117,52 @@ const Arrange = (() => {
     ly.appendChild(tapBtn);
 
     /* ③ 精修：撤销/重做 + 批量平移 + 显性换位 + 时值微调 */
+    /* v3.33.20（用户拍板「改功能 + 3 行」）：③ 精修的 13 颗按钮按功能分五组、排 3 行：
+         行1 历史 ↩↪ ｜ 范围 全部字/从选中字
+         行2 整段平移 ◀1拍 ◀半拍 ◀1格 1格▶ 半拍▶ 1拍▶
+         行3 换位 ⇄ ｜ 时值 时值−1格 时值+1格
+       组头**内联且可折叠**；成员仍是 ly 的直接子节点（扁平硬约束）。 */
+    refineNeedSel = []; refineNeedSelHeads = [];
+    /** @param {string} label @param {boolean} [needSel] @returns {any} */
+    const grp = (label, needSel) => {
+      const g = document.createElement("button");
+      g.type = "button";
+      g.className = "arg-lyric-grp";
+      const key = a.id + "|" + uid + "|" + label;
+      const expandedNow = !refineFold.has(key);       // 不叫 open：模块级有 open()（no-shadow）
+      g.setAttribute("aria-expanded", expandedNow ? "true" : "false");
+      g.textContent = label;
+      const entry = { el: g, members: [], key: key, arrId: a.id, secUid: uid, label: label, needSel: !!needSel };
+      refineNeedSelHeads.push(entry);
+      Modal.bindOverlay("arrangeOverlay", g, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        if (refineFold.has(key)) refineFold.delete(key); else refineFold.add(key);
+        const nowOpen = !refineFold.has(key);
+        g.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        entry.members.forEach((/** @type {any} */ m) => { m.hidden = !nowOpen; });
+        refreshRefineSel();
+      });
+      ly.appendChild(g);
+      return entry;
+    };
+    /** @param {any} entry @param {any} el @returns {any} */
+    const addTo = (entry, el) => {
+      entry.members.push(el);
+      if (entry.needSel) refineNeedSel.push({ el: el, arrId: entry.arrId, secUid: entry.secUid, title: el.title });
+      ly.appendChild(el);
+      if (entry.needSel) el.title = "先点按选中一个字块";
+      return el;
+    };
+    /** @returns {void} */
+    const rowsep = () => {
+      const sp = document.createElement("span");
+      sp.className = "arg-lyric-rowsep";
+      sp.setAttribute("aria-hidden", "true");
+      ly.appendChild(sp);
+    };
     ly.appendChild(head("③ 精修"));
+    const gHist = grp("历史");
+    const gScope = grp("范围");
 
     /* 撤销/重做（v2.49.0 R1）：作用域 = 本段歌词。置灰由栈长决定；undo/redo 内部
        applyLyricSnap 自带 arrangeRender，无需再调 */
@@ -15845,7 +16176,7 @@ const Arrange = (() => {
       evEl(e).blur();
       lyricUndo(a.id, uid);
     });
-    ly.appendChild(undoBtn);
+    addTo(gHist, undoBtn);
     const redoBtn = document.createElement("button");
     redoBtn.className = "arg-mini";
     redoBtn.textContent = "↪ 重做";
@@ -15855,7 +16186,7 @@ const Arrange = (() => {
       evEl(e).blur();
       lyricRedo(a.id, uid);
     });
-    ly.appendChild(redoBtn);
+    addTo(gHist, redoBtn);
 
     /* 批量平移（v2.52.0 R2）：六颗 arg-mini（∓1拍 / ∓半拍 / ∓1格）+ 范围二选一。
        一次点击 = shiftLyricChars 整组平移 = 一步撤销（R2 核心断言）；
@@ -15866,6 +16197,7 @@ const Arrange = (() => {
       const b = document.createElement("button");
       b.className = "arg-mini" + ((shiftScope === "all") === isAll ? " cur" : "");
       b.textContent = ((shiftScope === "all") === isAll ? "✓ " : "") + label;
+      b.setAttribute("aria-pressed", (shiftScope === "all") === isAll ? "true" : "false");
       b.setAttribute("aria-label", "批量平移范围：" + label + (shiftScope === "all" === isAll ? "（当前）" : ""));
       Modal.bindOverlay("arrangeOverlay", b, "click", (/** @type {any} */ e) => {
         evEl(e).blur();
@@ -15874,8 +16206,10 @@ const Arrange = (() => {
       });
       return b;
     };
-    ly.appendChild(mkScope("全部字", true));
-    ly.appendChild(mkScope("从选中字", false));
+    addTo(gScope, mkScope("全部字", true));
+    addTo(gScope, mkScope("从选中字", false));
+    rowsep();                                             // → 第 2 行
+    const gShift = grp("整段平移");
     /** @param {string} label @param {number} delta @param {string} aria @returns {any} */
     const mkShift = (label, delta, aria) => {
       const b = document.createElement("button");
@@ -15897,12 +16231,12 @@ const Arrange = (() => {
       });
       return b;
     };
-    ly.appendChild(mkShift("◀1拍", -TPB, "整段左移一拍"));
-    ly.appendChild(mkShift("◀半拍", -LYRIC_BASE, "整段左移半拍"));
-    ly.appendChild(mkShift("◀1格", -LYRIC_GRID, "整段左移一格（十六分）"));
-    ly.appendChild(mkShift("1格▶", LYRIC_GRID, "整段右移一格（十六分）"));
-    ly.appendChild(mkShift("半拍▶", LYRIC_BASE, "整段右移半拍"));
-    ly.appendChild(mkShift("1拍▶", TPB, "整段右移一拍"));
+    addTo(gShift, mkShift("◀1拍", -TPB, "整段左移一拍"));
+    addTo(gShift, mkShift("◀半拍", -LYRIC_BASE, "整段左移半拍"));
+    addTo(gShift, mkShift("◀1格", -LYRIC_GRID, "整段左移一格（十六分）"));
+    addTo(gShift, mkShift("1格▶", LYRIC_GRID, "整段右移一格（十六分）"));
+    addTo(gShift, mkShift("半拍▶", LYRIC_BASE, "整段右移半拍"));
+    addTo(gShift, mkShift("1拍▶", TPB, "整段右移一拍"));
 
     /* 显性换位（v2.52.0 D5）：选中字与后字交换时序——与拖拽换位走同一 swapChars，
        殊途同归。可用性点击时现判（点按选中不重渲染，disabled 会陈旧）。 */
@@ -15922,7 +16256,10 @@ const Arrange = (() => {
       lyricCommit(a.id, uid, out);
       arrangeRender();
     });
-    ly.appendChild(swapBtn);
+    rowsep();                                             // → 第 3 行
+    const gSwap = grp("换位", true);                       // 需选中态：无选中时整组置灰
+    const gDur = grp("时值", true);
+    addTo(gSwap, swapBtn);
 
     /* 窄块时值微调（v2.52.0 D5）：dur < 30（2.5 格）的窄块不渲染 grip，拖不了右缘——
        两颗按钮补上这条路径（dur 钳制与拖右缘同一口径）。常驻渲染、点击时校验选中
@@ -15942,19 +16279,19 @@ const Arrange = (() => {
           fresh && selChip.k < fresh.chars.length ? selChip.k : -1;
         if (k < 0){ announce("先点按选中一个字块，再调它的时值"); return; }
         const cs = fresh.chars, c = cs[k];
-        const lim = Math.min(span, k + 1 < cs.length ? cs[k + 1].t : span);
-        const dur = Math.round((c.dur + sign * LYRIC_GRID) / LYRIC_GRID) * LYRIC_GRID;
+        /* v3.33.19：计算收进纯函数 lyricDurStep（原先内联且按下标取后邻——见该函数注释） */
+        const dur = lyricDurStep(cs, k, sign, span);
+        if (dur === null) return;
         const out = cs.map((/** @type {any} */ x, /** @type {number} */ idx) =>
-          idx === k ? { t: c.t,
-            dur: Math.max(LYRIC_MIN_DUR, Math.min(Math.min(CONFIG.lyricMaxDur, lim - c.t), dur)),
-            ch: c.ch } : { t: x.t, dur: x.dur, ch: x.ch });
+          idx === k ? { t: c.t, dur: dur, ch: c.ch } : { t: x.t, dur: x.dur, ch: x.ch });
         lyricCommit(a.id, uid, out, { cue: true });
         arrangeRender();
       });
       return b;
     };
-    ly.appendChild(mkDur("时值−1格", -1, "选中字的时值缩一格（十六分）"));
-    ly.appendChild(mkDur("时值+1格", 1, "选中字的时值延一格（十六分）"));
+    addTo(gDur, mkDur("时值−1格", -1, "选中字的时值缩一格（十六分）"));
+    addTo(gDur, mkDur("时值+1格", 1, "选中字的时值延一格（十六分）"));
+    refreshRefineSel();                                    // 渲染末刷一次（此刻 selChip 可能已失效）
 
     const lane = document.createElement("div");
     lane.className = "arg-lyric-lane";
@@ -17355,7 +17692,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, lyricNeighbors, lyricDurStep, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
@@ -19158,6 +19495,7 @@ if (EXPOSE_INTERNALS){
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
+    needsT16Ruler,                                 // v3.33.15：十六分刻度尺的型级显隐判据（纯函数，供测试直断言）
     muteBarMuted,                                  // v2.71.0：静音拍唯一判据（线性小节号 → 是否被静；纯函数供测试直断言）
     muteCacheSize: () => MUTE_RND_CACHE.size,      // v3.31.x（审计 P2-1）：随机静音缓存尺寸（封顶断言用）
     ciState: () => ({ left: ciLeft, next: ciNext, start: ciStart, end: ciEnd, loop: loopStart }),  // v3.31.x（审计 S-4）：预备拍改速重排断言用
