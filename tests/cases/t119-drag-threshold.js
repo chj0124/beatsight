@@ -136,3 +136,44 @@ section("T119e CSS 契约 · touch-action:pan-y / .sel 选中态 / 窄屏行高 
   ok(/@media \(max-width: 640px\)\{[\s\S]*?\.arg-lyric-barrow\{height:36px\}/.test(html),
      "★ 窄屏（≤640px）字块行高 36px（D4 触屏可达性）");
 }
+
+/* ================= 场景 T119x：拖动结束也应选中该块（v3.33.23） ================= */
+section("T119x 拖动结束 · 该块也应进入选中态（用户实报：拖完没选中）");
+{
+  const { beat, els, fireWin, id, uid } = setup();
+  const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
+  const chips = chipsOf(lane);
+  const before = JSON.stringify(chars(beat, id, uid));
+  /* 过阈（鼠标 5px）→ 转正 → 右拖 30 tick → 松手提交 */
+  chips[0].fire("pointerdown", { clientX: 100, clientY: 10, pointerId: 1, pointerType: "mouse" });
+  fireWin("pointermove", { clientX: 100 + px(30), clientY: 10, pointerId: 1, pointerType: "mouse" });
+  fireWin("pointerup", { clientX: 100 + px(30), clientY: 10, pointerId: 1, pointerType: "mouse" });
+  ok(JSON.stringify(chars(beat, id, uid)) !== before,
+     "前提：这次确实是**拖动提交**（Store 有变化），不是点按");
+  /* ★ 提交会 arrangeRender 整树重建 ⇒ 必须重取节点 */
+  const lane2 = byCls(lyOf(els, 0), "arg-lyric-lane");
+  const chips2 = chipsOf(lane2);
+  const sel = chips2.filter(c => /(^| )sel( |$)/.test(c.className));
+  eq(sel.length, 1, "★★ 拖动结束后**恰好一个**块处于选中态（改前为 0）");
+  ok(sel.length === 1 && /第 1 个字/.test(sel[0].getAttribute("aria-label") || ""),
+     "★ 选中的正是刚被拖动的那一块");
+}
+
+/* ============ 场景 T119y：拖回原位（no-op）也要选中（v3.33.23 的第二条路径） ============ */
+section("T119y 拖回原位 · 不动库，但该块仍应进入选中态");
+{
+  const { beat, els, fireWin, id, uid } = setup();
+  const lane = byCls(lyOf(els, 0), "arg-lyric-lane");
+  const chips = chipsOf(lane);
+  const before = JSON.stringify(chars(beat, id, uid));
+  /* 过阈转正 → 拖出去 → **再拖回原位** → 松手：应走 no-op 分支（不动库、不重绘） */
+  chips[0].fire("pointerdown", { clientX: 100, clientY: 10, pointerId: 1, pointerType: "mouse" });
+  fireWin("pointermove", { clientX: 100 + px(30), clientY: 10, pointerId: 1, pointerType: "mouse" });
+  fireWin("pointermove", { clientX: 100, clientY: 10, pointerId: 1, pointerType: "mouse" });
+  fireWin("pointerup", { clientX: 100, clientY: 10, pointerId: 1, pointerType: "mouse" });
+  eq(JSON.stringify(chars(beat, id, uid)), before,
+     "前提：拖回原位 = no-op，Store 零变化（否则这条测的就不是 no-op 路径）");
+  /* no-op 不重渲染 ⇒ 原节点仍在，直接查它 */
+  ok(/(^| )sel( |$)/.test(chips[0].className),
+     "★★ no-op 路径也要选中（原先该分支直接 return，正好漏掉选中）");
+}
