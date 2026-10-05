@@ -226,3 +226,30 @@ section("T56i 诊断 · 保存失败弹窗指出占用最多的本地键（审�
   ok(/占用最多的本地数据/.test(msg), "失败弹窗点出「占用最多的本地数据」：" + String(msg).slice(0, 50));
   ok(/beatsight\.customs/.test(msg), "指出了最大键 beatsight.customs（约 8 KB）：" + String(msg).slice(0, 90));
 }
+
+/* ================= 场景 T56j：诊断报告带渠道读数（v3.33.14，审计 §2.5） ================= */
+section("T56j ★ 诊断报告写清「这份产物从哪条渠道来」（双渠道报障可定位）");
+{
+  /* 由来：同一份代码两条对外渠道（Cloudflare 自动 / WorkBuddy 手动，后者滞后是常态）。
+     此前报告只有 URL 与 UA，用户报障时说不清"我看到的是哪一站的哪一版"。
+     ★ 顺带说明：两条渠道 localStorage 不共享，所以"渠道"同时决定了"数据在哪台机器上"。 */
+  const fileApp = loadApp({}, { location: { protocol: "file:", href: "file:///Users/x/beatsight/index.html" } });
+  const chFile = fileApp.beat.Diagnostics.diagChannel();
+  ok(/file:\/\//.test(chFile), "★ file:// 直开 ⇒ 渠道写明「file:// 直开」（" + chFile + "）");
+  ok(/不互通/.test(chFile), "并点明数据与在线版不互通（这正是用户最容易困惑的一点）");
+  ok(fileApp.beat.Diagnostics.diagReport().indexOf("渠道:") >= 0, "★ 渠道行进了诊断报告");
+
+  const cf = loadApp({}, { location: { protocol: "https:", host: "beatsight.chenhuajian1995.workers.dev",
+    href: "https://beatsight.chenhuajian1995.workers.dev/" } });
+  const chCf = cf.beat.Diagnostics.diagChannel();
+  ok(/在线版/.test(chCf) && /workers\.dev/.test(chCf), "★ https 在线版 ⇒ 渠道写明 host（" + chCf + "）");
+  ok(chCf !== chFile, "两条渠道读数不同（能据此分辨报障来自哪一站）");
+
+  const httpApp = loadApp({}, { location: { protocol: "http:", host: "local.test", href: "http://local.test/" } });
+  ok(/非安全上下文/.test(httpApp.beat.Diagnostics.diagChannel()),
+    "http（非安全上下文）会被标出来（PWA 装不了的原因之一）");
+
+  /* 桩环境 / location 缺席：如实写未知，不猜 */
+  const bare = loadApp();
+  eq(bare.beat.Diagnostics.diagChannel(), "(未知)", "★ location 缺席 ⇒ 写「（未知）」，不猜成某个渠道");
+}

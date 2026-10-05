@@ -214,7 +214,9 @@ loopStart = ctx.currentTime（循环起点的音频时钟时间）
   - 改这里的相位换算务必跑 T21 全组合扫描（9×9 节奏型对切 × 3 相位），单点用例覆盖不到稀疏↔密集、奇数拍↔4/4、小节末这些边界
 - **停止时落定挂起**：`Controls.stop()` 调 `Presets.flushPending()`。档位高亮在点击时就切了，若挂起的切换不被消费，就会出现「档位已换、标题与网格还是旧的」半切换残留
 - **静音拍**：`S.mute && schedBar === 3` 时跳过发声（视觉照常）
-- **变速训练（v0.5.0）**：小节边界调 `trainerOnBarBoundary()`——每练满 `everyN` 小节经 `setBpm(v,false)` 升一级（时钟重映射不打断播放），到目标并练满一级自动 `stop()` 并提示；返回 true 时 scheduler 立即退出本次调度。爬坡会覆盖播放中的手动调速（下一级边界生效）
+- **变速训练（v0.5.0）**：小节边界调 `Trainer.onBarBoundary()`（★ v3.33.14 订正：本文原先写
+  `trainerOnBarBoundary()`，那是 v1.0 模块化**之前**的名字，此后无人同步——由 `check-docs.js`
+  第 12 项「活文档点名的函数必须在代码里还在」抓出）——每练满 `everyN` 小节经 `setBpm(v,false)` 升一级（时钟重映射不打断播放），到目标并练满一级自动 `stop()` 并提示；返回 true 时 scheduler 立即退出本次调度。爬坡会覆盖播放中的手动调速（下一级边界生效）
 - **会话额度（原练习量，v2.10.12 删档位留内核）**：入口仍在 `scheduler()` 最前面，`if (onLimitPulse && onLimitPulse()) return;`
   每个 25ms 周期问一次「该不该停」；**计数在 `schedBar` 前进的两处**（正常小节边界 + 空小节跳过分支）
   各 `limitBars++`，保持「计数 = 小节边界数」这条不变式
@@ -648,14 +650,16 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 - **时钟回落**（`audioPosAt` 返回 null 时）按 `vizPatLen` 折再换算成行；曲式那条仍按 `vizBars` 折。
 
 **v2.7.0 预告行（页内第 4 小节 → 第 1 行换成下一小节内容，用户拍板的方案）**：
-扫弦练习到页末需要提前看到下一小节的型（翻页后就位太晚）。做法：`previewBarFor(k)`
+扫弦练习到页末需要提前看到下一小节的型（翻页后就位太晚）。做法：`previewSegFor(k)`
+（★ v3.33.14 订正：本文原先通篇写 `previewBarFor`，v3.0 连续滚动重构后函数已改名，
+  文档跟着旧名走了 30+ 个版本——由 `check-docs.js` 第 12 项抓出，现全文改为现名）
 只在 `k = 页内最后一行` 时解析**节目单**的下一小节（走 `arrNextBar`，与发声同源——
 范围末尾不循环则没有预告、范围循环则预告 = 范围起点，绝不按歌曲 k+1 瞎猜）；
 `buildViz` 时把 `winPat.bars[0]` 换成预告内容、第 1 行挂 `.preview-row`（降透明）
 + `.preview-badge` 徽标「下一小节 · 型名」。四条铁律：
 ① **前提 N ≥ 2**（v2.10.3 补）——见下；
 ② 预告行是**未来**——`setCell` 对它豁免"已弹"态（格子恒 upcoming）；
-③ `paintFrameBody` 重建条件除盯 `winAnchor(k)` 外再盯 `previewBarFor(k).bar`
+③ `paintFrameBody` 重建条件除盯 `winAnchor(k)` 外再盯 `previewSegFor(k).bar`
    （进页末预告生效 / 翻页预告随窗口换，两处各重建一次）；
 ④ 待命球跨页接力：`paintBall` 里 `rowNext` 在"页末 + 有预告"时取 **0**（预告行）
    而不是 `bar+1` 钳制——待命球落预告行首音上，翻页瞬间内容原地转正、主球同点接管。
@@ -675,7 +679,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
    （`.cell .fill` 本身是 `background:transparent`），于是帧内每帧写入的 `scaleX(进度)`
    全部不可见。**典型症状 = 球正常滚动、格子不填白**（`paintBall` 走 `onsetBuf`/`onsetNext`
    自己的端点表，与"格子 class + CSS"这条链完全独立 → 只有半边坏）。
-修法：`previewBarFor` 开头一行守卫 `if (arrWinBars() < 2) return { bar: -1 };`。
+修法：`previewSegFor` 开头一行守卫 `if (arrWinBars() < 2) return { bar: -1 };`。
 1 行档下预告**没有任何信息量**（"下一小节"就在下一小节），关掉即可；窗口照常按每小节
 翻页、格子回到正常态。★ 只关 N=1，**N ≥ 2 逐位不变**。
 回归：`t79` 场景 **T79h**（曲式 + 1 行档，12 条断言；含一个 N=2 的**对照组**，防止
@@ -696,7 +700,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 | `arrWindowPat` / `presetWindowPat` | 两种模式的合成型构造（曲式：每行取自不同的型；预设：每行取自同一型的不同小节） |
 | `winAnchor(k)` | **手感档位就这一行**：= `floor(k/N)*N`（每 N 小节翻页，N = 档位，默认 4）；`k` = 跟播放头滚动（v2.5.2 旧档，已下线） |
 | `audibleSongBar` / `audiblePatBar` | 两种模式各自的"现在**听到**的是第几小节"——都用 onset 表里已落地的那一条，绝不用早一个前瞻窗口的调度游标 |
-| `previewBarFor(k)` / `winPrevBar/Steps/Name` | 页末预告行：只在页内最后一行解析节目单的下一小节（走 `arrNextBar`）；三件套同生同灭 |
+| `previewSegFor(k)` / `winPrevBar/Steps/Name` | 页末预告行：只在页内最后一行解析节目单的下一小节（走 `arrNextBar`）；三件套同生同灭 |
 | `vizPattern()` | 渲染层该画哪个型：曲式模式 = 窗口合成型，预设模式 = 当前型 |
 | `audibleSongBar(now)` | 现在**听到**的是歌曲第几小节。按 onset 表里已落地的端点算，绝不按调度游标 |
 | `rowOfOnset(e)` | 端点 → **窗口行**（见下） |
@@ -740,7 +744,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 - **预设模式不做「页末预告行」**（v2.10.2 刻意不搬曲式那一套）：预设窗口的内容全部来自
   同一个型，`nextRowOf()` 算术即可得出"下一行是谁"；待命球的落点本来就取自
   `activePattern().bars[下一小节]`，位置在翻页前就是对的。搬过来只会把 `setCell` 的
-  `isPreview`、`buildViz` 的第 1 行替换、`previewBarFor` 全部染上模式分支——收益不抵风险。
+  `isPreview`、`buildViz` 的第 1 行替换、`previewSegFor` 全部染上模式分支——收益不抵风险。
 - **档位 ≠ 4（`MUTE_PERIOD`）时不静态标"哪一行会被静音"**（一页只覆盖乐句的一段，
   落点随翻页轮转），到点那一刻由状态栏说明。档位 = 4 时**能标且标得准**，与型长无关
   ——窗口锚恒为 N 的整数倍，故「行号 == 乐句相位」，且第 3 行的内容恰好就是会被静音的
@@ -1267,8 +1271,8 @@ getComputedStyle）。
 ```bash
 # 0) 一条命令跑完全部检查（v1.3.2 起；本地自检的唯一入口，仓库内 CI 跑的也是同一条 `npm run ci`）
 node tools/check-all.js          # 顺序：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性
-                                 #       → _headers 结构 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描
-                                 #       → ESLint(可选) → 类型检查(可选) → DOM 引用 → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 18 步）
+                                 #       → _headers 结构 → 过期副本检测 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描
+                                 #       → ESLint(可选) → 类型检查(可选) → DOM 引用 → 浏览器冒烟(环境可选) → 全量测试 → 看门狗 → 覆盖率（共 19 步）
                                  # 先便宜后贵，前面失败就停（后面的检查建立在前面是对的之上）
                                  # 耗时看末尾汇总——不在文档里抄数字，tools/check-docs.js 会拦
 node tools/check-all.js --quick  # 跳过 T21 全量组合扫描，改代码时用
@@ -1400,7 +1404,7 @@ ESLint / tsc 会被标 ⊘ **跳过**——而 ⊘ 是"没查"、不是"查了�
 - headless=new 有 ~500px 最小窗口宽度：`--window-size=390` 实际 innerWidth=500，截图按 390 裁会"假性溢出"。诊断响应式先 dump-dom 验证真实 innerWidth，或用 `--force-device-scale-factor=2` + 双倍窗口尺寸折算
 - 含持续 rAF/AudioContext 的页面用 `--virtual-time-budget` 截不到播放态，用 `--timeout=9000`（也只能抓加载态）
 - 播放/发声验证必须真人点击（浏览器音频手势策略）
-- 想截图特定预设/编辑器：临时复制一份文件，改 `sel` 默认值或末尾追加 `openEditor()`，截完删除临时文件
+- 想截图特定预设/编辑器：临时复制一份文件，改 `sel` 默认值或末尾追加 `Editor.open()`（★ v3.33.14 订正：此处原写的名字已不存在，由 `check-docs.js` 第 12 项抓出），截完删除临时文件
 - **量布局不要靠眼睛**：在 `</body>` 前插一段**同步**探针（不要套 `load`/`setTimeout`，`--dump-dom` 在 load 后立刻吐出，异步探针赶不上），把 `getBoundingClientRect()` 结果塞进一个 `div` 再用正则抠出来。`--dump-dom` 输出的是被探测页面自身的 DOM，所以字符串只出现在注入的 `div` 里，不会撞上源码注释里的同名字面量（v1.0.1 踩过正则误匹配源码）
 - **`<datalist>` 给 range 做刻度在 Chrome 里不渲染**：实测不加 `appearance:none` 也一样，属浏览器未实现（非样式冲突）。要刻度只能自己画绝对定位层（v1.1 踩）
 

@@ -53,6 +53,9 @@
     10) docs/ 第一层只许活文档白名单（DEVELOPMENT.md / README.md）：方案 / 审计 / 快照一律进
         docs/archive/。由来与第 9 项同源——分类约定写在 docs/README.md 里只能靠自觉，
         而 vibe coding 的 Agent 不读那份索引就等于没有约定；落错位置直接红，不需要谁记得。
+    11) AGENTS.md / .trae 规则不得引用**高于** VERSION 的版本号（v3.33.14，审计 §2.3）：
+        与第 8 项同源（"给 AI 看的活规则"此前无人把守），判据与 check-version.js 第 3 项
+        同口径——只拦高于当前的，指向过去的历史引文一律放行。
 
    刻意不做的事：不去校验正文里引用的**代码行号**（如"未覆盖的 L2964"）——它更适合由产出方
    （check-coverage）直接打印，让文档指过去而不是抄一遍；也不去比对"实测值"本身
@@ -554,6 +557,123 @@ const DOCS_LIVING_WHITELIST = ["DEVELOPMENT.md", "README.md"];
   }
 }
 
+/* ---- 11) AGENTS.md / .trae 规则不得引用**高于**当前 VERSION 的版本号（v3.33.14，审计 §2.3）----
+   由来：第 8 项只管"体积"，而**版本号**这类现状数字在 `AGENTS.md` 里同样无人核对
+   ——它连 check-version.js 的管辖范围都不在（那份只查 index.html / package.json /
+     package-lock.json / CHANGELOG / README）。于是"给 AI 看的活规则"里写着的版本号会静默烂掉，
+     而下一次接手的 Agent 会把它当成现状。
+   ★ 判据与 check-version.js 第 3 项**同口径**：只拦"高于 VERSION"，不拦低于的。
+     理由同样是"历史引文要放行"——AGENTS.md 里大量出现「v3.31.x 落地审计 E11」「见 CHANGELOG
+     v2.17.0」这类**指向过去**的叙述，那是应当保留的记录；只有**指向未来**（高于当前版本）
+     才说明要么代码已含该版改动却没 bump，要么文档跑到了代码前面。两种都是真漂移。
+   ★ 实测碰巧验证过这条的有效性：本批改动在 index.html 注释里写了 v3.33.14 而 VERSION 仍是
+     3.33.13，check-version 当场报「L5354 引用了 v3.33.14，高于当前 VERSION」——
+     同一条判据挪到这两份 AI 规则文件上，成本几乎为零。 */
+const RULE_FILES = ["AGENTS.md", ".trae/rules/project_rules.md"];
+{
+  const srcVer = (() => {
+    try{
+      const m = /const\s+VERSION\s*=\s*"(\d+\.\d+\.\d+)"/.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"));
+      return m ? m[1] : null;
+    }catch(e){ return null; }
+  })();
+  if (!srcVer){
+    report.push("ℹ 版本号前瞻：读不到 index.html 的 VERSION，跳过（不猜）");
+  } else {
+    const cmp = (a, b) => {
+      const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+      for (let i = 0; i < 3; i++){ if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1; }
+      return 0;
+    };
+    const hits = [];
+    RULE_FILES.forEach(rel => {
+      const full = path.join(ROOT, rel);
+      if (!fs.existsSync(full)) return;
+      fs.readFileSync(full, "utf8").split("\n").forEach((ln, i) => {
+        for (const m of ln.matchAll(/v(\d+\.\d+\.\d+)/g)){
+          /* 只拦完整三段式且**高于**当前版本：`v3.31.x` 这种带 x 的形状本就不匹配，
+             指向过去的完整版本号由 cmp < 0 放行 */
+          if (cmp(m[1], srcVer) > 0) hits.push(rel + ":" + (i + 1) + " 引用 v" + m[1] + "（当前 v" + srcVer + "）");
+        }
+      });
+    });
+    if (hits.length){
+      report.push("✗ 规则文件版本号前瞻：" + hits.length + " 处引用了高于 VERSION 的版本号");
+      hits.forEach(h => problems.push("规则文件版本号前瞻 —— " + h
+        + "：要么把 VERSION bump 到该版本，要么改回指向过去的写法"));
+    } else {
+      report.push("✓ 规则文件版本号：AGENTS.md / .trae 无高于 VERSION 的引用（历史引文放行）");
+    }
+  }
+}
+
+/* ---- 12) 活文档点名的函数必须在代码里还在（v3.33.14，审计 §2.4）----
+   由来：`docs/DEVELOPMENT.md` 的 §3（架构，27 个子节）是**随代码更新**的活文档，
+   里面大量点名具体函数（`previewBarFor` / `openEditor` / `trainerOnBarBoundary` …）。
+   但"随代码更新"此前**只靠人记得**——函数改名之后文档照旧，下一次接手的人按文档去找，
+   找到的是一堆已经不存在的名字。实测（本条落地当天）DEVELOPMENT.md 里就有 **3 处**这类漂移：
+     · `trainerOnBarBoundary()` → 现名 `Trainer.onBarBoundary()`（v1.0 模块化）
+     · `previewBarFor(k)`       → 现名 `previewSegFor`（v3.0 连续滚动重构）
+     · `openEditor()`           → 现名 `Editor.open()` / `Editor.openWith()`
+   三处都是"改代码时没人会想到去翻那份 1490 行的文档"的必然结果 ⇒ 交给机器。
+
+   ★ 判据（刻意保守，先观察后判红）：
+     · 只认**小驼峰 + 紧跟 `(`**（项目函数命名形状），且**前面不是 `.`**（排除 `Math.round` 这类调用）；
+     · 内建/浏览器 API 走 BUILTIN 白名单放行；
+     · **同一行里提到 `tools/` `tests/` `.js` 的一律跳过**——那是"别处文件里的函数"
+       （`tools/smoke.js 的 layoutProbe()`、`tests/lib/harness.js 的 loadApp()`、`blankNonCode()`），
+       它们本来就不在 index.html 里，拦下就是假红（实测 6 个候选里 3 个属于这一类）；
+     · 判定"还在"用**全文包含**（含注释里出现），只要名字还活着就算——本条管的是
+       "名字整个消失"，不是"定义位置变了"（后者由 gen-index 的模块索引管）。
+   ★ 观察期：打 ⚠ 不判红（exit 0）——先读一段时间确认无误报，再与第 11 项一样转正。 */
+const LIVING_DOC_FN = ["docs/DEVELOPMENT.md"];
+const FN_BUILTIN = new Set(["Math", "JSON", "Date", "Object", "Array", "String", "Number", "Boolean",
+  "Set", "Map", "Promise", "console", "window", "document", "localStorage", "sessionStorage",
+  "parseInt", "parseFloat", "isFinite", "isNaN", "encodeURIComponent", "decodeURIComponent",
+  "require", "setTimeout", "setInterval", "clearTimeout", "clearInterval", "requestAnimationFrame",
+  "cancelAnimationFrame", "prompt", "alert", "confirm", "Error", "RegExp", "Symbol", "Intl",
+  "performance", "navigator", "module", "exports", "trim", "slice", "split", "join", "push", "pop",
+  "filter", "map", "forEach", "find", "some", "every", "sort", "concat", "indexOf", "includes",
+  "replace", "match", "matchAll", "test", "exec", "then", "catch", "finally", "resolve", "reject",
+  "stringify", "parse", "now", "round", "floor", "ceil", "abs", "min", "max", "random", "sqrt",
+  "getItem", "setItem", "removeItem", "addEventListener", "removeEventListener", "querySelector",
+  "querySelectorAll", "getElementById", "createElement", "appendChild", "removeChild", "setAttribute",
+  "getAttribute", "focus", "blur", "click", "warn", "log", "error", "info", "debug"]);
+{
+  const srcHtml = (() => { try{ return fs.readFileSync(path.join(ROOT, "index.html"), "utf8"); } catch(e){ return null; } })();
+  if (!srcHtml){
+    report.push("ℹ 活文档函数漂移：读不到 index.html，跳过（不猜）");
+  } else {
+    const hits = [];
+    LIVING_DOC_FN.forEach(rel => {
+      const full = path.join(ROOT, rel);
+      if (!fs.existsSync(full)) return;
+      fs.readFileSync(full, "utf8").split("\n").forEach((ln, i) => {
+        /* 同一行点名了别处文件 ⇒ 那个函数不属于 index.html，跳过。
+           ★ 用**词级**而不是 `tools/` 这种带斜杠的形状：实测 `docs/DEVELOPMENT.md:166`
+           写的是「回归：tests T176（…）」——没有斜杠也没带 .js，但 `loadApp()` 明明是
+           tests/lib/harness.js 里的桩函数。窄形状被绕开一次，故放宽到词级。 */
+        if (/\b(tools|tests)\b/.test(ln) || /\.js\b/.test(ln)) return;
+        for (const m of ln.matchAll(/(^|[^\w.$])([a-z][\w$]{3,})\s*\(/g)){
+          const n = m[2];
+          if (FN_BUILTIN.has(n)) continue;
+          if (srcHtml.includes(n)) continue;            // 名字还活着（含出现在注释里）
+          hits.push(rel + ":" + (i + 1) + " 点名了 " + n + "()，但 index.html 里已无此名");
+        }
+      });
+    });
+    /* 去重（同一个名字在文档里可能出现多次） */
+    const uniq = [...new Set(hits)];
+    if (uniq.length){
+      report.push("⚠ 活文档函数漂移（观察期，不判红）：" + uniq.length + " 处");
+      uniq.forEach(h => console.log("      · " + h
+        + " —— 函数改名/移除后请同步改文档，下一批接手的人是按文档找代码的"));
+    } else {
+      report.push("✓ 活文档函数漂移：DEVELOPMENT.md 点名的函数在 index.html 里都还在");
+    }
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
@@ -566,9 +686,11 @@ if (problems.length){
     + "README 版本号 → 与 index.html 的 VERSION 对齐；"
     + "自验步数 → 与 tools/check-all.js 的 STEPS 条目数对齐；"
     + "CHANGELOG 分卷 → 大版本翻页时把旧线整段挪进 docs/archive/CHANGELOG-v<旧大号>.md；"
-    + "docs 第一层 → 快照/方案/审计挪进 docs/archive/，活文档加 DOCS_LIVING_WHITELIST 并登记索引。");
+    + "docs 第一层 → 快照/方案/审计挪进 docs/archive/，活文档加 DOCS_LIVING_WHITELIST 并登记索引；"
+    + "规则文件版本号 → 高于 VERSION 的引用要 bump 版本或改回指向过去的写法（历史引文不受影响）。");
   process.exit(1);
 }
 console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"
-  + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / CHANGELOG 分卷 / docs 第一层白名单）");
+  + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / 规则文件版本号 /"
+  + " CHANGELOG 分卷 / docs 第一层白名单）");
 process.exit(0);

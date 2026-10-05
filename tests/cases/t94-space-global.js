@@ -7,15 +7,29 @@
    播放范围）与**侧栏预设项**点完焦点留在原地（按钮们各自 blur() 自救，它们没有），
    空格于是要么被排除、要么被项自己的 itemKeys 抢去当"重新选中"。
    本文件钉新契约：
-     · 主界面任何焦点下空格都切播放——唯一例外是「正在输入文字」（isTextEntry）；
+     · 主界面任何焦点下空格都切播放——唯一例外是「该焦点自己要用键盘」（ownsKeyboard，
+       v3.33.14 前叫 isTextEntry）；
      · 主界面 role=button 项改 Enter-only（空格不再被消费）；
      · 面板（overlay）打开时维持"空格不误触播放"（各自用例已有，这里留一条设置面板的）；
      · 顺带收口：修饰键（Ctrl/Cmd/Alt+Space）与长按 repeat 不抢。
+   ★★★ v3.33.14（审计 P1-1，T94h–T94k）：**例外名单补 `<select>`**。
+     原判据只认"输入文字"，下拉框被当成"可以抢键"的普通焦点，实测三条后果：
+       · 空格 → 切播放，下拉打不开；
+       · ↑↓  → 走 setBpm，**速度被静默改写**，选项不切（最严重：用户没要求改速）；
+       · e/h/? → 弹出曲式编排 / 使用方法 / 键位表。
+     键盘用户因此无法用键盘操作 9 个下拉框（#sigSel / #loopFrom / #loopTo /
+     #muteEvery / #muteCount / #editorMeterSel / #latProfileSel …）——**阻断级**。
+     根因形状记在这里：v2.13.1 为修"点过滑杆后空格哑了"把排除名单收窄成"仅文本输入"，
+     **顺手把 SELECT 从旧名单里一起删了**——修一个契约时删掉了另一个契约的例外。
+   ★ 结构要点：三条规则（空格 / 方向键 / 单键）共用**同一个守卫**，故改一处即全覆盖；
+     T94k 钉住"三条都走同一个函数"，防止日后有人给某条规则单独写一份判据。
    桩没有真实焦点模型：activeElement 是个普通对象（harness 默认 {tagName:"DIV"}），
-   本文件把焦点摆成**真实形状**（input[type=range] / button / role=button 的 div）——
-   与 t86 同一条教训的反面用法：形状必须显式摆出来，否则"排除名单里都有谁"根本测不到。 */
+   本文件把焦点摆成**真实形状**（input[type=range] / button / role=button 的 div /
+   **SELECT**）——与 t86 同一条教训的反面用法：形状必须显式摆出来，
+   否则"排除名单里都有谁"根本测不到（SELECT 就是这样漏掉的：151 个用例文件里
+   只有本文件提到它，而且还只是描述旧规则的注释）。 */
 "use strict";
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 /* 发一次空格键。返回 preventDefault 是否被调用（真实浏览器里它决定
    "按钮的原生空格激活会不会同时发生"——不拦就是双动作）。 */
@@ -150,4 +164,101 @@ section("T94g 设置面板打开时空格不误触播放（键盘归面板管，
   beat.Settings.close();
   fireSpace(app);
   ok(!beat.Store.S.playing, "关闭面板后空格恢复可用（切回停止）");
+}
+
+/* ================= 场景 T94h：下拉框让位（v3.33.14，审计 P1-1） ================= */
+section("T94h ★★★ 下拉框 <select> 独占键盘：空格归下拉（展开/收起），不切播放");
+{
+  const app = loadApp();
+  const { beat, sandbox } = app;
+  const S = beat.Store.S;
+  sandbox.document.activeElement = { tagName: "SELECT" };
+  const prevented = fireSpace(app);
+  ok(!S.playing, "★★ 焦点在下拉框时空格不切播放（空格归下拉自己用）");
+  ok(!prevented, "且不拦截（原生展开动作照常发生）");
+  /* 反例对照：焦点挪回页面后空格必须恢复——防「收紧到什么都不响应」的反向回归 */
+  sandbox.document.activeElement = { tagName: "DIV" };
+  fireSpace(app);
+  ok(S.playing, "★ 对照组：焦点离开下拉后空格恢复切播放（只让位给下拉，不是废掉空格）");
+}
+
+/* ================= 场景 T94i：下拉框聚焦时 ↑↓ 切选项而不是改 BPM（主症） ================= */
+section("T94i ★★★ 下拉框聚焦时 ↑↓ 改的是选项，不是 BPM（审计 P1-1 的主症）");
+{
+  /* ★ 每个方向各起**一份新 app**：反向验证时踩过坑——若在同一份 app 上先按 ↑ 再按 ↓，
+     变异副本里 ↑ 已把 BPM 推到 97，↓ 又把它拉回 96，恰好等于起始值 ⇒ **↓ 那条断言假绿**
+     （实测变异结果：8 条红里没有它）。断言之间互相抵消是比"没写断言"更隐蔽的失效，
+     故两条方向各自独立取样。 */
+  const withSelect = key => {
+    const app = loadApp();
+    const { beat, sandbox } = app;
+    const bpm0 = beat.Store.S.bpm;
+    sandbox.document.activeElement = { tagName: "SELECT" };
+    app.fireWin("keydown", key);
+    return { app, bpm0, after: beat.Store.S.bpm };
+  };
+  {
+    const r = withSelect({ key: "ArrowUp" });
+    ok(r.bpm0 > 0, "前提：拿到一个有效起始 BPM（" + r.bpm0 + "）");
+    eq(r.after, r.bpm0, "★★ ↑ 不改 BPM（修复前：静默 +1）");
+  }
+  {
+    const r = withSelect({ key: "ArrowDown" });
+    eq(r.after, r.bpm0, "★★ ↓ 不改 BPM（修复前：静默 −1）");
+  }
+  {
+    const r = withSelect({ key: "ArrowUp", shiftKey: true });
+    eq(r.after, r.bpm0, "Shift+↑ 同样不改 BPM（防只堵了不带修饰键那条）");
+  }
+  /* 对照组：焦点不在下拉时 ↑↓ 必须照常改 BPM——防「把方向键整体废掉」 */
+  {
+    const app = loadApp();
+    const { beat, sandbox } = app;
+    const bpm0 = beat.Store.S.bpm;
+    sandbox.document.activeElement = { tagName: "DIV" };
+    app.fireWin("keydown", { key: "ArrowUp" });
+    eq(beat.Store.S.bpm, bpm0 + 1, "★ 对照组：焦点在页面时 ↑ 照常 +1 BPM（v2.64.0 契约未受影响）");
+    const b1 = beat.Store.S.bpm;
+    app.fireWin("keydown", { key: "ArrowDown" });
+    eq(beat.Store.S.bpm, b1 - 1, "★ 对照组：焦点在页面时 ↓ 照常 −1 BPM");
+  }
+}
+
+/* ================= 场景 T94j：下拉框聚焦时单键快捷键不开面板 ================= */
+section("T94j ★ 下拉框聚焦时 e / h / ? 不开面板（同一守卫覆盖第三条规则）");
+{
+  const app = loadApp();
+  const { beat, sandbox } = app;
+  sandbox.document.activeElement = { tagName: "SELECT" };
+  app.fireWin("keydown", { key: "e" });
+  eq(beat.Arrange.isOpen(), false, "★ e 不开曲式编排");
+  app.fireWin("keydown", { key: "h" });
+  eq(beat.Help.isOpen(), false, "★ h 不开使用方法");
+  const more0 = beat.Help.more();
+  app.fireWin("keydown", { key: "?" });
+  eq(beat.Help.isOpen(), false, "★ ? 不开使用方法（键位表）");
+  eq(beat.Help.more(), more0, "? 也不改「完整说明」展开态");
+  /* 对照组：焦点回到页面后 e 照常开编排 */
+  sandbox.document.activeElement = { tagName: "DIV" };
+  app.fireWin("keydown", { key: "e" });
+  eq(beat.Arrange.isOpen(), true, "★ 对照组：焦点在页面时 e 照常开曲式编排");
+}
+
+/* ================= 场景 T94k：源码钉 —— 判据在位 + 三条规则同一守卫 ================= */
+section("T94k 源码钉：ownsKeyboard 含 SELECT，三条规则共用同一守卫");
+{
+  const src = html;
+  const fn = /const ownsKeyboard = el => \{([\s\S]{0,600}?)\n  \};/.exec(src);
+  ok(!!fn, "★ 判定函数在位（v3.33.14 由 isTextEntry 改名而来）");
+  if (fn){
+    ok(fn[1].indexOf('el.tagName === "SELECT"') >= 0,
+      "★★ 判据含 SELECT（撤掉这一行 = 下拉框键盘重新被抢，T94h/T94i/T94j 全红）");
+    ok(fn[1].indexOf('el.tagName === "TEXTAREA"') >= 0, "文本域判据仍在（改名不许顺手删判据）");
+    ok(fn[1].indexOf("isContentEditable === true") >= 0, "可编辑区判据仍在");
+  }
+  /* 三条规则（空格 / 方向键+单键）必须走**同一个**守卫——本次修复的结构性保证 */
+  ok(src.indexOf("&& !ownsKeyboard(ae))") >= 0, "★ 空格分支用 ownsKeyboard 守卫");
+  ok(src.indexOf("if (!ownsKeyboard(ae) && !e.ctrlKey") >= 0, "★ 方向键 / 单键分支用同一守卫");
+  /* 旧名只许出现在"改名说明"的注释里，不许还有调用点 */
+  ok(src.indexOf("isTextEntry(") < 0, "★ 旧名 isTextEntry 已无调用点残留（改名要改干净）");
 }

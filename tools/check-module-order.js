@@ -312,6 +312,63 @@ if (r2Hits.length){
   r2Hits.forEach(h => fail(`R2 每帧热路径反向引用：${h.from}(L${h.line}) → ${h.to}  「${h.code}」`));
 } else pass("R2 每帧热路径（" + HOT.join("/") + "）体内零反向引用");
 
+/* ---- R2b（v3.33.14，审计 P1-2）：把 R2 的覆盖面**自动**扩到热路径的调用闭包 ----
+   由来（本文件第 250 行那条注释已经写明了风险，但一直靠人记得）：
+     "往帧路径上抽 helper 时，helper 的名字必须进这份名单" —— 否则拆分会**静默缩小 R2 的
+      覆盖面**（检查器只认这个名单里的函数体）。
+   即：R2 原本只扫 HOT 五个函数的**函数体**，而它们每帧会调用 30+ 个顶层 helper；
+   那些 helper 里若出现"后方模块 ."，R2 一条也抓不到——**每帧一次**的反向依赖就这样漏网。
+   ★ 为什么不是"要求这些 helper 都进 HOT 名单"：实测热路径调用闭包有 **36 个**顶层函数，
+     全塞进名单等于把名单变成"全文件函数表"，R2 也就失去了"这几个是每帧"的语义。
+     正确做法是**沿用同一条规则**（不在函数体内引用后方模块），只是把扫描范围扩到闭包。
+   ★ 实测落地时闭包 36 个函数、**0 违反** ⇒ 零假红，可以直接判红（不必走观察期）。
+   ★ 只做**一层**闭包：再深会让"哪些算热路径"变得不可读，且实测一层已覆盖全部实际调用。 */
+{
+  /* 顶层 function 声明（缩进 0–2：装配区是 0，模块内是 2） */
+  const topFns = [];
+  const fre = /^ {0,2}function\s+(\w+)\s*\(/gm;
+  let fmm;
+  while ((fmm = fre.exec(SRC))){
+    const end = matchBrace(SRC, fmm.index);
+    if (end < 0) continue;
+    topFns.push({ name: fmm[1], from: lineOf(SRC, fmm.index), to: lineOf(SRC, end) });
+  }
+  const fnByName = new Map(topFns.map(f => [f.name, f]));
+  /* 热路径体内调用到的顶层函数（不含 HOT 自身） */
+  const called = new Set();
+  hotRanges.forEach(hr => {
+    for (let ln = hr.from; ln <= hr.to; ln++){
+      const t = clean[ln - 1] || "";
+      topFns.forEach(f => {
+        if (HOT.includes(f.name)) return;
+        if (new RegExp("\\b" + f.name + "\\s*\\(").test(t)) called.add(f.name);
+      });
+    }
+  });
+  /* 对闭包内每个函数体套用同一条 R2 规则 */
+  const r2bHits = [];
+  called.forEach(n => {
+    const fn = fnByName.get(n);
+    if (!fn) return;
+    const home = modules.find(m => fn.from >= m.startLine && fn.from <= m.endLine);
+    for (let ln = fn.from; ln <= fn.to; ln++){
+      const t = clean[ln - 1] || "";
+      modules.forEach((other, oi) => {
+        if (home && oi <= order[home.name]) return;          // 只查"后方"
+        if (new RegExp("\\b" + other.name + "\\s*\\.").test(t)){
+          r2bHits.push({ fn: n, line: ln, to: other.name, code: (lines[ln - 1] || "").trim() });
+        }
+      });
+    }
+  });
+  if (r2bHits.length){
+    r2bHits.forEach(h => fail(`R2b 每帧热路径→helper(${h.fn})(L${h.line}) 反向引用 ${h.to}  「${h.code}」`));
+  } else {
+    pass(`R2b 热路径调用闭包（${called.size} 个 helper）体内同样零反向引用`
+      + `——往帧路径抽 helper 不必再手动登记 HOT`);
+  }
+}
+
 {
   const used = new Map();
   const unexpected = [];
@@ -383,6 +440,33 @@ if (r2Hits.length){
   } else {
     console.log("  ✓ 模块规模观察期：全部模块 < 3000 行");
   }
+}
+
+/* 装配区规模观察（v3.33.14，审计 P1-3）：补上**最后一块没有规模阈值的地方**。
+   由来：DEVELOPMENT.md §3.0 写着"装配区只应做组合根，不出现第四个独立子系统"，
+   但模块规模阈值只管 14 个模块，**装配区是盲区**——壁纸与延迟补偿这两个完整业务子系统
+   就是在没有机器提醒的情况下堆进去的（文档里也是事后补记的）。
+   现在把"该看一眼"变成有客观触发点：
+     · 行数（末模块声明 → 脚本末尾）
+     · 顶层 function 声明数 ← **主判据**：每个业务子系统都会带来一批顶层函数，
+       而"组合根"只该有接线代码。实测基线 25；一个子系统量级约 +9 ⇒ 阈值取 34。
+     · 顶层 const/let 声明数（辅助读数）
+   ★ 观察期 ⚠ 不判红，与模块规模那条同口径：先读趋势，别一上来就堵。 */
+{
+  const last = modules[modules.length - 1];
+  const asmFrom = last ? last.startLine : 1;
+  const asm = SRC.split("\n").slice(asmFrom - 1);
+  const topFn = asm.filter(l => /^function\s+\w+/.test(l)).length;
+  const topVar = asm.filter(l => /^(const|let)\s+\w+/.test(l)).length;
+  const ASM_FN_WARN = 34, ASM_LINE_WARN = 2000;
+  const bad = [];
+  if (asm.length >= ASM_LINE_WARN) bad.push(`行数 ${asm.length} ≥ ${ASM_LINE_WARN}`);
+  if (topFn >= ASM_FN_WARN) bad.push(`顶层 function ${topFn} ≥ ${ASM_FN_WARN}`);
+  const line = `  · 装配区规模观察期：${asm.length} 行 · 顶层 function ${topFn} 个 · 顶层 const/let ${topVar} 个`
+    + `（告警线 ${ASM_LINE_WARN} 行 / ${ASM_FN_WARN} 个 function）`;
+  if (bad.length) console.log("  ⚠" + line + "\n    ⇒ " + bad.join("、")
+    + " —— 装配区只该做组合根，新增同量级子系统应抽成模块纳入 EXPECTED_ORDER");
+  else console.log("  ✓" + line);
 }
 
 console.log("──────────────────────────────────────────────────────────");

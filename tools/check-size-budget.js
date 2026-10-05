@@ -293,7 +293,35 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      （约 5.7KB 余量）。 */
 /* v3.33.13（日间休止格可辨）：index.html 1733.3 → 1739.2KB（净增 5.9KB）—— --rest-fill 令牌、
    日间休止格与图例示意块的同源规则、以及两轮注释。实测 1,780,983B ⇒ 上调到 **1744KB**（约 4.9KB 余量）。 */
-const BUDGET_BYTES = 1744 * 1024;
+/* ★★ v3.33.14（审计 §2.1）：改**双阈值**。
+   为什么改：到 v3.33.13 为止，这条闸门已经失去它自己的设计意图。文件头口径写的是
+   "当前体积 + 约 5% 余量"，而实测余量只剩 **4.8KB / 0.275%** —— 于是每次改动都必然
+   撞线，做法变成"抬一次常数 + 手写一段为什么"（本文件里已累积 53 处"上调/预算"记录）。
+   它现在既拦不住回归（余量太小，任何正常增长都撞），也提供不了预警（只在**已经超了**
+   之后才说话），只剩纯成本。
+   改法：
+     · BUDGET_BYTES —— 硬红线，超了 exit 1（判据不变）；
+     · WARN_BYTES  —— 软观察线（红线的 98%），越过即打 ⚠ "该规划瘦身了"，不判红。
+   ★ 关键取舍：软线设在红线**之下一个缓冲带**，而不是"红线的某个百分比 + 当前已超标"。
+     这样"什么时候该动手"是一个**稳定的刻度**（离红线还有多少 KB），
+     而不是随当前体积漂移的水位——后者会让软线在抬红线的当天就自己响，等于没有。
+   ★ 抬红线仍需 git diff 证据 + 写明理由（往下看本批的记录），这条纪律不变；
+     变的是"抬"这件事从**每次改动的默认动作**降级为**攒够一批才做一次**。 */
+/* v3.33.14（本批：只读审计落地）上调到 **1820KB**。按本文件既定纪律给出 git diff 证据：
+     · 基线：v3.33.13 实测 1,780,983 B（1739.2 KB）；本批实测 **1,792,923 B（1750.9 KB）**；
+     · 净增 **11,940 B（+11.7 KB）**；`git diff --stat` = **193 增 / 51 删**（净 +142 行）。
+     · 增量构成（均为功能本体 + "为什么"注释，非冗余）：
+       - 键盘契约修复（ownsKeyboard 判据 + 改名说明）约 2 KB；
+       - 写失败口径（writeTheme + 三处调用点说明）约 1.5 KB；
+       - 冷键写前判重约 1.5 KB；
+       - 壁纸降采样纯函数 wallRecompress + six 回落说明约 2.5 KB；
+       - 诊断渠道读数 diagChannel 约 1.5 KB；
+       - Viz 四个二级锚点注释约 2 KB；余为散点。
+   ★ 留 69KB（约 6 个本批量级）：**刻意**比"刚好装下"宽——旧口径的问题是余量只剩 0.275%，
+     逼着每次改动都来抬一次常数，抬常数这件事本身就消耗注意力且掩盖真实趋势。
+     现在抬一次能覆盖若干批，趋势交给观察线看。 */
+const BUDGET_BYTES = 1820 * 1024;
+const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){
   const p = path.join(ROOT, rel);
@@ -307,7 +335,8 @@ const main = fs.statSync(HTML).size;
 console.log("══════════════════════════════════════════════");
 console.log("  资源体积预算（index.html 单文件 PWA）");
 console.log("══════════════════════════════════════════════");
-console.log("  · 主文件 " + path.basename(HTML) + "：" + kb(main) + " / 预算 " + kb(BUDGET_BYTES));
+console.log("  · 主文件 " + path.basename(HTML) + "：" + kb(main) + " / 红线 " + kb(BUDGET_BYTES)
+  + " · 观察线 " + kb(WARN_BYTES));
 const sw = sizeOf("sw.js");
 if (sw >= 0) console.log("  · sw.js：" + kb(sw) + "（参考，不判红）");
 const mf = sizeOf("manifest.webmanifest");
@@ -317,6 +346,12 @@ if (main > BUDGET_BYTES){
   console.log("  ✗ 主文件超预算 " + kb(main - BUDGET_BYTES) + "（" + main + " > " + BUDGET_BYTES + "）");
   console.log("  处置：先 git diff 看这多出来的体积从哪来；确认是必要的再上调 BUDGET_BYTES 并写明理由。");
   process.exit(1);
+}
+if (main > WARN_BYTES){
+  console.log("  ⚠ 已进入观察带：距红线只剩 " + kb(BUDGET_BYTES - main)
+    + "（观察线 " + kb(WARN_BYTES) + "）——该规划一次瘦身或归档了，别等撞线才动手。");
+  console.log("    瘦身首选：docs/archive/ 的旧方案与 CHANGELOG 分卷（已在库外，不占产物）；"
+    + "产物内的先看 WALL_DEFAULT 那张出厂壁纸（v3.33.9 一条 data URI 就是 ~365K 字符）。");
 }
 console.log("  ✓ 主文件在预算内（余量 " + kb(BUDGET_BYTES - main) + "）");
 process.exit(0);

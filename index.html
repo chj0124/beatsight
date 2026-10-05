@@ -3480,21 +3480,21 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L3510  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L4195  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L5927  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6889  Modal         应用内弹窗
-     L7034  Viz           时值可视化渲染与每帧动画
-     L10410 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11091 Trainer       变速训练器
-     L11301 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L11949 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13540 Editor        自定义节奏型编辑器
-     L14084 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14131 Ear           听辨训练（v1.10.0）
-     L14359 Arrange       曲式编排（v2.0.0）
-     L17288 Help          使用方法（v2.0.1）
-     L17417 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17491 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L17734 初始化（装配） 各模块 hook 接线与启动
+     L5952  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6914  Modal         应用内弹窗
+     L7059  Viz           时值可视化渲染与每帧动画
+     L10454 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11135 Trainer       变速训练器
+     L11345 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12014 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13613 Editor        自定义节奏型编辑器
+     L14157 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14204 Ear           听辨训练（v1.10.0）
+     L14432 Arrange       曲式编排（v2.0.0）
+     L17361 Help          使用方法（v2.0.1）
+     L17490 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17564 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L17831 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3520,7 +3520,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.13";
+const VERSION = "3.33.14";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5350,9 +5350,34 @@ const Store = (() => {
     try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); onPersistOk(); }
     catch(e){ onPersistFail(e); }
   }
-  /* 冷数据：预设库增删改时立即落盘，不做防抖（丢掉一个用户手写的节奏型代价太大） */
+  /* 冷数据：预设库增删改时立即落盘。
+     ★ **不**做防抖（v3.33.14 复核后明确写下结论，免得下次又被当成待办）：
+       防抖只治"突发连写"，而冷键的 6 个调用点（改名 / 迁移 / 导入 / 全量导入 / 删除 / 编辑器保存）
+       **每一个都是单次用户动作**，中间没有连发 —— 实测不存在需要合并的突发。
+       加防抖不但零收益，还会让"内存 → 落盘 → 重载"这类断言（t126 的三连）在防抖窗口内读不到
+       刚写的值，是纯粹的回归风险。故维持"立即写"。
+     ★ v3.33.14（审计 P2-2 修正）：补**写前判重**——序列化后与"上次**成功**写入"的串比对，
+       相同则整段跳过。与隔离区 KEY_QUAR 那处同一手法（那里也是"内容没变就不重写"）。
+       它省不掉"内容真变了"那一次大写入（那是单次成本，只能靠改数据模型治，见下），
+       但能消掉"内容没变却整包重写"这一类纯浪费。
+     ★ 只在写**成功**后才记 lastCold：写失败时若也记，下次内容相同时会被跳过，
+       于是"存不下"会变成永久存不下（比现在更糟）——这个顺序不能反。 */
+  /* ★ 类型必须显式标注（noImplicitAny 已开）：写 `let lastCold = null` 会让 tsc 报
+     TS7034/TS7005（初始值 null 推不出"后面会存字符串"）。用 `null | string` 而不是
+     初始化成 ""：空串是**合法载荷**（空 customs 序列化出来是 `{"v":1,"customs":[]}`，
+     不可能是 ""，但用 null 表达"还没写过"语义更直白，且不至于与"写过空串"混淆）。 */
+  /** @type {null | string} */
+  let lastCold = null;
   function persistCold(){
-    try{ localStorage.setItem(KEY_COLD, JSON.stringify({ v:1, customs })); onPersistOk(); }
+    let payload = null;
+    try{ payload = JSON.stringify({ v:1, customs }); }
+    catch(e){ onPersistFail(e); return; }
+    if (payload === lastCold) return;                 // 内容未变：整段跳过（含序列化后的零写入）
+    try{
+      localStorage.setItem(KEY_COLD, payload);
+      lastCold = payload;
+      onPersistOk();
+    }
     catch(e){ onPersistFail(e); }
   }
   /* 热数据：尾部防抖。高频交互（TAP 连点 / ±1 长按连发 / 滑杆）只落盘一次。
@@ -8414,6 +8439,12 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }).observe(vizEl);
   }
 
+  /* ───────── Viz 子域 1/4 · 网格构建与几何（buildViz / relayout / cacheGeo） ─────────
+     ★ v3.33.14：Viz 已 3376 行（越过自设的 3000 行观察线，见 check-module-order 的
+       模块规模观察项）。在真正拆分之前，先按子域**划界**，让"我要改的是哪一块"不必靠
+       全文搜索——下面 2/3/4 同理。
+     ★ 本子域的铁律：几何只能在**所有会改页面高度的动作之后**采集（cacheGeo 收口在
+       buildViz 最末尾），否则纵向滚动条的有无会让视口宽差 15px、行宽跟着偏。 */
   function buildViz(){
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
@@ -8963,6 +8994,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
 
   /** @param {number} now @param {number} bar @param {number} tib
       @param {any} [a] 已取到的 arrangeCur() 快照（见 audibleSongBar 同名参数；省掉每个 onsetBuf 元素的重复线性查） */
+  /* ───────── Viz 子域 2/4 · 弹跳球（paintBall + 落点/行位换算） ─────────
+     ★ 落点由 onset 表驱动，**不接调度器前瞻窗口**（接了就会提前跳）。
+     ★ 本子域内的 helper 属"每帧热路径"：R2b（check-module-order）已把后方模块引用的
+       检查自动扩到热路径的调用闭包，往这里抽新 helper 不必再手动登记 HOT 名单。 */
   function paintBall(now, bar, tib, a){
     if (!ballEl || !shadowEl) return;
     /* ★★ v3.1.3（用户拍板）：滚动模式**全程不画球**（主球/影子/待命球三样）——
@@ -9237,6 +9272,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      「逐字 karaoke 文字语义」完整移植到歌词行（buildLyricLane / paintLyric 同一套着色）；
      伴随节奏模式改走「重定位覆盖层」（见 layoutLyricLane / placeLaneOverlay），底部模式 = 现状行为。
      #viz 的 DOM 与网格不变量零改动（R1 不破）。 */
+  /* ───────── Viz 子域 3/4 · 歌词轨（buildLyricLane / paintLyric） ─────────
+     ★ 与网格**共享同一根时间轴**，但裁剪盒高**不能**等于 #viz 高（见 DEVELOPMENT §3.25）。
+     ★ 网格重建时必须同步重建歌词轨（v2.1.0 F1）；但**不要**在 reloadScroll 里再调一次
+       buildLyricLane —— 那会丢掉静止态的横向位移（v3.31.1 用户报障的根因）。 */
   function buildLyricLane(){
     const lane = $("lyricLane");
     if (!lane) return;
@@ -10322,6 +10361,11 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
      否则症状会是"画面卡住、声音还在响、控制台一片安静"，无从下手。
      恢复动作各自包 try：万一异常源头就在这些 DOM 写入里（例如状态栏元素本身出问题），
      不能让它把"告诉用户"这一步也一起带走。 */
+  /* ───────── Viz 子域 4/4 · 每帧渲染循环（paintFrame → paintFrameBody / repaintCells
+     / paintBeatFlash） ─────────
+     ★ 帧外壳必须 try/catch：一次异常不能让整条 rAF 链断掉（断了就是"画面卡住、声音还在"）。
+     ★ 增量重绘的前提（同一套 cellEls、同一个小节）一旦不成立，必须走全量（resetTracking）。
+     ★ 这五个函数的**函数体与其调用闭包**都在 R2/R2b 的管辖内：体内不得出现「后方模块 .」。 */
   function paintFrame(){
     if (!S.playing) return;
     try{
@@ -11488,18 +11532,36 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     Store.persist();
   }
   $("playBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); S.playing ? stop() : start(); });
-  /* 判定「正在输入文字」（v2.13.1）：全局空格规则里**唯一**的例外——只有这类焦点
-     才需要独享空格键（那里空格必须是空格）。判据是反向白名单：非文本的控件类型
-     （滑杆/勾选/单选/各种按钮）不算——滑杆正是本次修复的主角（旧规则把它排除在外，
-     点过滑杆后空格就哑了）。
-     ★ type 缺失按「非文本输入」处理：真实浏览器里 input.type 永不缺失（缺省即 "text"），
+  /* 判定「这个焦点该独占键盘」（v2.13.1 立，原名 isTextEntry；**v3.33.14 改名**——见下）：
+     全局空格 / ↑↓ / 单键快捷键规则里**唯一**的例外——只有这类焦点才需要独享按键
+     （那里空格必须是空格、↑↓ 必须切选项）。判据是反向白名单：滑杆 / 勾选 / 单选 /
+     各种按钮不算——滑杆正是 v2.13.1 修复的主角（旧规则把它排除在外，点过滑杆后空格就哑了）。
+
+     ★ v3.33.14（审计 P1-1）：补 **SELECT**。原判据只认"输入文字"，于是**下拉框被当成
+       "可以抢键"的普通焦点**——实测后果（9 个 <select>：#sigSel 拍数 / #loopFrom /
+       #loopTo 循环区间 / #muteEvery / #muteCount 静音拍 / #editorMeterSel 编辑器拍号 /
+       #latProfileSel 延迟档 …）：
+         · 焦点在下拉按 **↑↓** → 走 `setBpm(S.bpm ∓ 1)`，**速度被静默改写**，选项不切；
+         · 按 **空格** → 切播放，下拉打不开（原生展开被 preventDefault 吃掉）；
+         · 按 **e / h / ?** → 弹出曲式编排 / 使用方法 / 键位表。
+       键盘用户因此**无法用键盘操作任何下拉框**（阻断）；鼠标用户点完下拉再按方向键会
+       得到一次没要求的改速。根因是 v2.13.1 为修"点过滑杆后空格哑了"把排除名单收窄成
+       "仅文本输入"，顺手把 SELECT 放进了"一律切播放"那一侧——**修一个契约时把另一个
+       契约的例外一起删了**，是这类全局键盘规则最典型的回归形状。
+     ★ 改名理由：加了 SELECT 之后"正在输入文字"这个名已经**不真**（下拉框不输入文字），
+       与仓库"命名要准"同口径（参考 v3.3.0 把「编辑节奏型」改「新建节奏型」）。
+       该函数现在回答的是"这个元素自己要用键盘吗"，故名 ownsKeyboard。
+     ★ type 缺失按「不独占」处理：真实浏览器里 input.type 永不缺失（缺省即 "text"），
      这个分支只服务测试桩——桩里想测「文本输入不让位」必须把 type 显式摆出来，
      正是要的失败形态（对比 t86 的教训：桩的初值与标记不同形会让整条断言被架空）。 */
-  /** @param {any} el @returns {boolean} */
-  const isTextEntry = el => {
+  /** @param {any} el @returns {boolean} 该焦点是否独占键盘（全局快捷键应让位） */
+  const ownsKeyboard = el => {
     if (!el || !el.tagName) return false;
     if (el.tagName === "TEXTAREA") return true;
     if (el.isContentEditable === true) return true;
+    /* 下拉框（v3.33.14）：空格 = 展开 / 收起，↑↓ = 切选项，Enter = 选定 —— 全被原生占用，
+       全局规则一律不得抢。放在 INPUT 之前：SELECT 不看 type。 */
+    if (el.tagName === "SELECT") return true;
     if (el.tagName === "INPUT"){
       const t = String(el.type || "").toLowerCase();
       return t !== "" && !["range", "checkbox", "radio", "button", "submit", "reset", "color", "file"].includes(t);
@@ -11517,17 +11579,17 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
        旧规则按焦点元素排除（INPUT/BUTTON/SELECT/TEXTAREA + role=button），初衷是
        "不抢控件自己的键盘契约"——但它挡不住**留焦点的控件**：滑杆（BPM / 音量 / 播放范围）
        与侧栏预设项点完焦点留在原地（按钮们各自 blur() 自救，它们没有），于是
-       "点过什么之后空格就哑了"（用户实报）。现在唯一例外是**正在输入文字**
-       （文本类 input / textarea / contenteditable）；其余一律 preventDefault 后切播放，
-       连按钮的原生"空格激活"也让位——按钮仍可用 **Enter** 激活
-       （主界面各处 itemKeys 已改为 enterOnly，见那边的注释）。
+       "点过什么之后空格就哑了"（用户实报）。现在唯一例外是**该焦点自己要用键盘**
+       （文本类 input / textarea / contenteditable；**v3.33.14 起 + 下拉框 select**）；
+       其余一律 preventDefault 后切播放，连按钮的原生"空格激活"也让位——按钮仍可用
+       **Enter** 激活（主界面各处 itemKeys 已改为 enterOnly，见那边的注释）。
        ★ 面板（overlay）打开时前面几个分支已早退（空格归面板、不误触播放）；
        本规则只作用于主界面。
        ★ 两处顺带收口：`e.repeat`（按住不放不再来回切）与修饰键
        （Ctrl/Cmd/Alt+Space 有系统语义，不抢）。 */
     const ae = /** @type {any} */ (document.activeElement);
     if (e.code === "Space" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey
-        && !isTextEntry(ae)){
+        && !ownsKeyboard(ae)){
       e.preventDefault();
       if (S.playing){
         stop();
@@ -11536,11 +11598,14 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
       } else start();
     }
     /* v2.64.0（X2）：练习键盘快捷键——本段在「无叠加层打开」（KEY_LAYERS 循环已早退）
-       且非文本输入的语境下执行。↑↓ 调 BPM；←→ 曲式模式跳段；E/H/? 开编排/帮助/键位表。
+       且"焦点不独占键盘"的语境下执行。↑↓ 调 BPM；←→ 曲式模式跳段；E/H/? 开编排/帮助/键位表。
        ★ 与空格同守卫：文本输入中（BPM 框等）这些键归输入框，不抢；修饰键屏蔽系统语义。
+       ★ v3.33.14（审计 P1-1）：本段**原本就是**"↑↓ 改 BPM"漏到下拉框上的那条路径——
+         焦点在 <select> 时按 ↑↓ 会改速度而不是切选项（ownsKeyboard 补 SELECT 后即止）。
+         这是同一条守卫覆盖三条规则（空格 / 方向键 / 单键）的结构性好处：改一处即全覆盖。
        ★ 跨模块动作（开 Arrange/Help、跳段）经共享助手 practiceSeek/openArrange/openHelp/openKeymap
        转一道——Controls 在模块顺序里位于 Arrange/Help 之前，不得前向引用（R1）。 */
-    if (!isTextEntry(ae) && !e.ctrlKey && !e.metaKey && !e.altKey){
+    if (!ownsKeyboard(ae) && !e.ctrlKey && !e.metaKey && !e.altKey){
       const ke = /** @type {any} */ (e);
       if (ke.key === "ArrowUp"){ e.preventDefault(); setBpm(S.bpm + (e.shiftKey ? 5 : 1)); return; }
       if (ke.key === "ArrowDown"){ e.preventDefault(); setBpm(S.bpm - (e.shiftKey ? 5 : 1)); return; }
@@ -13094,7 +13159,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        ★ 摘回/挂载配对见本函数开头那段注释（单例节点不能留在会被 clear 的容器里） */
     if (mig && !S.migHint && !customs.length) list.appendChild(mig);
     else if (mig) mig.hidden = true;
-    $("exportBtn").disabled = !customs.length;
+    /* v3.33.14（审计 P3-1）：置灰**必须带原因**，与同弹窗 `#helpInstallBtn` 同口径——
+       那个按钮置灰时 title 写明"当前环境不可安装"（v2.69.0 专门修过"hidden 让用户找不到
+       按钮"，口径是"宁可置灰可见 + 给原因，也不要隐藏"）。此前这里只 `disabled = true`
+       不给任何线索，新用户想导出迁移时会以为是功能坏了。 */
+    {
+      const eb = $("exportBtn");
+      eb.disabled = !customs.length;
+      eb.title = customs.length ? "" : "还没有自定义预设可导出（内置节奏型不必导出）";
+    }
     syncLoopUI();                      // v2.4.3：循环面板与列表同源刷新（改区间/开播都经这里兜住）
     /* v2.5.0：范围滑块也一样——它随列表重建而重建，新造的 input 默认 value=1、
        填充条默认贴左、读数为空，必须在这里补一次。
@@ -17624,12 +17697,35 @@ const Diagnostics = (() => {
       : "  （无）";
     return [
       "BeatSight v" + VERSION + " 诊断信息",
+      /* ★ v3.33.14（审计 §2.5）：补一行**渠道**。
+         同一份代码有两条对外渠道（Cloudflare 自动部署 / WorkBuddy 手动发布），
+         后者"滞后是常态"（README 明写）。此前报告里只有 URL 与 UA，用户报障时
+         往往说不清"我看到的是哪一站的哪一版"，而我方也无从判断——
+         现在这一行直接回答"这份产物从哪来"，与版本号并排，一眼可对。
+         ★ 两条渠道的 localStorage **不共享**（不同 origin），所以"渠道"不只是溯源信息，
+           它同时决定了"这份数据是哪一台机器上的"。 */
+      "渠道: " + diagChannel(),
       "URL: " + url,
       "UA: " + ua,
       "计数: " + JSON.stringify(diag),
       "本地存储: " + diagStorageUsage(),
       "最近错误（仅内存，刷新即清）:" + last,
     ].join("\n");
+  }
+  /* 当前这份产物是从哪条渠道打开的（v3.33.14）。只读 location，无副作用。
+     · file://  → 双击直开的本地单文件副本（PWA 装不了，数据与在线版不互通）
+     · https:// → 在线版（host 即渠道；两个 host 分别对应自动 / 手动发布）
+     · 其余（桩 / 未知环境）→ 如实写"（未知）"，不猜。 */
+  function diagChannel(){
+    try{
+      const p = (typeof location !== "undefined" && location.protocol) ? location.protocol : "";
+      if (p === "file:") return "file:// 直开（本地单文件副本 · 数据与在线版不互通 · 不可安装 PWA）";
+      if (p === "https:" || p === "http:"){
+        const h = location.host || "(无 host)";
+        return "在线版 " + h + (p === "http:" ? "（非安全上下文）" : "");
+      }
+      return "(未知)";
+    }catch(e){ return "(未知)"; }
   }
   /** 复制诊断信息（v2.0.6，审计 P1-9）：优先写剪贴板；剪贴板不可用（file:// 非安全上下文、
    *  或用户拒绝授权）就退回弹窗——**至少让信息可见可选**，而不是"点了没反应"。
@@ -17728,6 +17824,7 @@ const Diagnostics = (() => {
   }
   if (diagOn) diagBuild();
   return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagExport, diagBuild,
+    diagChannel,                                // v3.33.14（审计 §2.5）：渠道读数（双渠道报障可定位）
     diagStorageTop, stampCheck, diagOn, diagLast, DIAG_LAST_MAX };
 })();
 
@@ -18462,11 +18559,27 @@ const applyTheme = t => {
 let themeNow = "classic";
 try{ if (localStorage.getItem(THEME_KEY) === "obs") themeNow = "obs"; }catch(e){}
 applyTheme(themeNow);
+/* 主题落盘（v3.33.14，审计 P2-2）：返回 false = 写失败，调用方**必须提示**。
+   ★ 与 `wallWrite` / `latWrite` 同一口径（见它们各自的注释）：这三个都是"用户刚点了一下"
+     的偏好写入，静默失败的表现是"改了、刷新又变回去、且毫无解释"，用户只会认为是功能坏了。
+     本处此前是 `try{ setItem }catch(e2){}`——**同一份文件里三种口径并存**，是本次修的对象。
+   ★ 反过来，迁移期与加载期的备份写（如 `KEY_BAK`）**保持静默**是对的：那不是用户动作，
+     不该占用「保存失败」那一次性提示的名额（见 Store 内 KEY_QUAR 处的注释）。 */
+/** @param {string} t @returns {boolean} */
+function writeTheme(t){
+  try{ localStorage.setItem(THEME_KEY, t); return true; }
+  catch(e){ return false; }
+}
 $("themeToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
   themeNow = themeNow === "obs" ? "classic" : "obs";
   applyTheme(themeNow);
-  try{ localStorage.setItem(THEME_KEY, themeNow); }catch(e2){}
+  /* ★ 先画再问：主题已经切过去了，落盘失败只影响"下次打开还是不是它"——
+     此时若因为写失败就不切，用户会看到"点了没反应"，比"切了但没记住"更糟 */
+  if (!writeTheme(themeNow)){
+    Modal.uiAlert("存不下主题设置：本机给浏览器的空间（约 5 MB）已经不够了。"
+      + "先删掉几个不用的预设，或在「使用方法 → 数据与隐私」里清理后再试。");
+  }
   /* 遮罩颜色随主题走（经典压 #121212 系、日间压 #F2F4F8 系，见 WALL_TINT），换主题要重画壁纸层。
      ★ 不能把这句挪进 applyTheme：后者在 `wallNow` 初始化**之前**就会被首屏调用一次，
        那时读 wallNow 会撞 TDZ（let 的暂时性死区）——首屏直接白屏。 */
@@ -18683,6 +18796,41 @@ $("wallPickBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   const f = $("wallFile");
   if (f) f.click();
 });
+/* ★ v3.33.14（审计 P1-4）：壁纸降采样抽成**纯决策**，宿主能力全部由参数注入。
+   为什么抽：原来这 6 处回落（无尺寸 / 无 canvas / 绘制失败 / 压不出 / 仍超限再压 / 全失败回落原图）
+   全写在 `new Image()` 的 onload 回调里，而 FileReader / Image / canvas **测试桩一样都拿不到**
+   ⇒ 覆盖率报告点名 `im.onload` / `im.onerror` 为"从未执行的函数"，
+   也就是说「用户换自己照片当背景」这条唯一入口**零覆盖**——任何一处回落写错都没人知道。
+   抽出来之后，桩里传一个假 im（只有 naturalWidth/Height）与假 canvas 就能跑通全部四态。
+   ★ 返回值语义（调用方按 why 分支，别只看 ok）：
+       · {ok:true,  out}              —— 用 out（仍可能为空串，调用方回落原图）
+       · {ok:false, why:"size"}       —— 读不出尺寸 ⇒ 该提示用户换一张
+       · {ok:false, why:"nocanvas"}   —— 宿主没有 canvas ⇒ **直接用原图**（不是错误）
+       · {ok:false, why:"draw"}       —— 绘制失败 ⇒ 同"没有 canvas"，直接用原图
+   后两者刻意与"size"分开：前者的正确处置是**降级**，后者才是**告知用户**。 */
+/** @param {any} im @param {null | (() => any)} makeCanvas
+ *  @returns {{ ok: boolean, why: string, out: string | null }} */
+function wallRecompress(im, makeCanvas){
+  const w = (im && im.naturalWidth) || 0, h = (im && im.naturalHeight) || 0;
+  if (!w || !h) return { ok:false, why:"size", out:null };
+  const k = Math.min(1, WALL_MAX_EDGE / Math.max(w, h));
+  const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+  let cv = null, cx = null;
+  try{ cv = makeCanvas ? makeCanvas() : null; cx = (cv && cv.getContext) ? cv.getContext("2d") : null; }
+  catch(err){ cv = null; cx = null; }
+  if (!cv || !cx) return { ok:false, why:"nocanvas", out:null };
+  cv.width = tw; cv.height = th;
+  try{ cx.drawImage(im, 0, 0, tw, th); }
+  catch(err){ return { ok:false, why:"draw", out:null }; }
+  /* 0.82 是"看不出明显压缩痕迹"与"体积够小"的折中；先按它压，压完仍超限就降到 0.7 再压一次 */
+  let out = "";
+  try{ out = cv.toDataURL("image/jpeg", 0.82); }catch(err){ out = ""; }
+  if (!out || out.length > WALL_MAX_BYTES){
+    try{ const again = cv.toDataURL("image/jpeg", 0.7); if (again) out = again; }catch(err){}
+  }
+  return { ok:true, why:"", out: out || null };
+}
+
 $("wallFile").addEventListener("change", (/** @type {Event} */ e) => {
   const inp = /** @type {any} */ (evTarget(e));
   const file = inp && inp.files ? inp.files[0] : null;
@@ -18712,28 +18860,21 @@ $("wallFile").addEventListener("change", (/** @type {Event} */ e) => {
       wallPaintDim();
       announce("背景壁纸已更换");
     };
-    /* 解码 → 拿到真实尺寸 → 缩到长边 WALL_MAX_EDGE → 重新压成 JPEG */
+    /* 解码 → 拿到真实尺寸 → 缩到长边 WALL_MAX_EDGE → 重新压成 JPEG。
+       ★ v3.33.14：这段决策已抽成 wallRecompress()（纯函数，见其定义处注释）——
+         这里只保留"取宿主能力 + 按 why 分支处置"两件事，桩测不了的部分缩到最小。 */
     let im = null;
     try{ im = new Image(); }catch(err){ im = null; }
     if (!im){ done(src); return; }
     im.onload = () => {
-      const w = im.naturalWidth || 0, h = im.naturalHeight || 0;
-      if (!w || !h){ Modal.uiAlert("读不出这张图的尺寸，换一张试试。"); return; }
-      const k = Math.min(1, WALL_MAX_EDGE / Math.max(w, h));
-      const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
-      let cv = null, cx = null;
-      try{ cv = document.createElement("canvas"); cx = cv.getContext ? cv.getContext("2d") : null; }
-      catch(err){ cv = null; cx = null; }
-      if (!cv || !cx){ done(src); return; }            // 没有 canvas：直接用原图（也过校验）
-      cv.width = tw; cv.height = th;
-      try{ cx.drawImage(im, 0, 0, tw, th); }catch(err){ done(src); return; }
-      /* 0.82 是"看不出明显压缩痕迹"与"体积够小"的折中；先按它压，压完仍超限就降到 0.7 再压一次 */
-      let out = "";
-      try{ out = cv.toDataURL("image/jpeg", 0.82); }catch(err){ out = ""; }
-      if (!out || out.length > WALL_MAX_BYTES){
-        try{ const again = cv.toDataURL("image/jpeg", 0.7); if (again) out = again; }catch(err){}
+      const r = wallRecompress(im, () => document.createElement("canvas"));
+      if (!r.ok){
+        /* size = 该告诉用户换一张；nocanvas / draw = **降级用原图**（不是错误，不弹窗） */
+        if (r.why === "size") Modal.uiAlert("读不出这张图的尺寸，换一张试试。");
+        else done(src);
+        return;
       }
-      done(out || src);
+      done(r.out || src);
     };
     im.onerror = () => { Modal.uiAlert("这张图读不出来（文件可能已损坏），换一张试试。"); };
     im.src = src;
@@ -19038,6 +19179,7 @@ if (EXPOSE_INTERNALS){
     /* v2.12.0：背景壁纸。暴露的是**纯逻辑**（校验 / 读档 / 落盘 / 应用到 DOM），
        canvas 降采样那几行是宿主能力，桩里拿不到 2d 上下文 → 走"直接用原图"分支。 */
     wallCheck, wallRead, wallWrite, wallClear, wallApply,
+    wallRecompress,                                 // v3.33.14（审计 P1-4）：降采样纯决策（宿主能力由参数注入，桩可测）
     WALL_KEY, WALL_MAX_BYTES, WALL_MAX_EDGE, WALL_DIM_MAX, WALL_DIM_DEF, WALL_SRC_MAX_BYTES,
     WALL_DEFAULT, WALL_TOKEN_DEFAULT,             // v2.13.0：出厂默认壁纸（常量）与它在存档里的记号
     wallState: () => wallNow,

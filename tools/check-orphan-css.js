@@ -8,13 +8,21 @@
        className = / +=、setAttribute("class", ...) 的参数；
      · 差集即「疑似孤儿」。
 
-   ★ 口径铁律：**先警告不阻断（exit 0）**。原因：本项目大量 class 是 JS 运行时拼出来的
-   （如 `"arg-pill-" + kind`、模板字符串里的条件 class），静态扫描必然漏判 → 直接判红会
-   制造大量假红（见 check-node-budget.js 头注释对假红的零容忍态度）。所以默认只打 ⚠，
-   --strict 才按失败处理（exit 1）——等扫描器成熟、确认无误报后再升严格。
+   ★ 口径铁律（v2.58.0 立）：先警告不阻断（exit 0）。原因：本项目大量 class 是 JS 运行时
+     拼出来的（如 `"arg-pill-" + kind`、模板字符串里的条件 class），静态扫描必然漏判 →
+     直接判红会制造大量假红（见 check-node-budget.js 头注释对假红的零容忍态度）。
+
+   ★★ **观察期已结束（v3.33.14，审计 P3-4）**：`check-all.js` 现以 `--strict` 接入。
+     结束的依据是实测而非感觉：v3.33.14 把"被用到"的来源扩到**动态拼接的字符串字面量**
+     （详见第 2 步那段注释）后，孤儿数由 **26 → 0**；而这 26 条在扩口径前已逐个核实过，
+     **全部**是 `.rest` / `.ghost` / `.kB` / `.rh-b` 这类拼接产物的假阳性。
+     含义要说清：这条闸门自 v2.58.0 落地起一直是**零有效信号**——26 条噪音里没有一条真死样式，
+     于是 T3 审计想解决的"样式静默膨胀"实际无人把守。现在它才第一次真正长牙。
+     ★ 残余的假阴（真死样式但名字恰好出现在某段字符串里）**仍会漏**，这是静态扫描的固有上限；
+       漏判只会让死样式继续躺着，不会制造假红——与设计取舍一致。
 
    用法：node tools/check-orphan-css.js [html路径] [--strict]
-   退出码 0 = 对账完成（或观察期内的 ⚠）；1 = --strict 下仍有孤儿；4 = 工具故障。 */
+   退出码 0 = 对账完成（无孤儿，或观察期内的 ⚠）；1 = --strict 下仍有孤儿；4 = 工具故障。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -49,6 +57,34 @@ for (const mm of src.matchAll(/\bclass\s*=\s*["']([^"']*)["']/g)){
 for (const mm of src.matchAll(/\bclassList\.(?:add|remove|toggle|contains)\(\s*["']([^"']+)["']/g)){ mm[1].split(/\s+/).forEach(c => used.add(c)); }
 for (const mm of src.matchAll(/\bclassName\s*(\+=|\=)\s*["']([^"']*)["']/g)){ mm[2].split(/\s+/).forEach(c => used.add(c)); }
 for (const mm of src.matchAll(/setAttribute\(\s*["']class["']\s*,\s*["']([^"']*)["']/g)){ mm[1].split(/\s+/).forEach(c => used.add(c)); }
+/* ★ v3.33.14（审计 P3-4）：补「动态拼出来的类名」这个主要来源。
+   上面三条只认**字面量直接给**的写法，而本项目 class 大量走拼接 / 三元 / helper 传参：
+     · `cls += " rest"`                        （L6823 休止格）
+     · `+ (s.rest ? " ghost" : "")`            （L4838 空扫虚影）
+     · `const kz = z === 0 ? "kB" : …`         （L8306 弦区箭头，随后拼进 className）
+     · `put("rh-b", …)`                        （L12937 记谱符号，helper 内部再拼进类名）
+   结果是：26 条"疑似孤儿"**逐条核实后全是假阳性**，真死样式混在里面没人清——
+   这条闸门自 v2.58.0 落地起就**零有效信号**（T3 审计想解决的"样式静默膨胀"实际无人把守）。
+   做法：把内联脚本**剥注释后**扫所有字符串字面量，切成 token，**只收下本来就在 CSS 类集合里
+   的那些**——即"疑似命中的才记账"，不把无关词灌进 used（否则这个集合本身也没意义了）。
+   ★ 先剥注释（stripComments）：注释里写着的 `.cell.rest` 之类若被算作"在用"，
+     死样式就永远查不出来了——与 check-module-order 的 R1 判据踩过的是同一个坑。 */
+{
+  const { stripComments } = require("./scan-util");
+  const sm = src.match(/<script>([\s\S]*?)<\/script>/);
+  const jsSrc = sm ? stripComments(sm[1].split("\n")).join("\n") : "";
+  /* 只取同行、不含引号的短片段：类名不会跨行，也不会含引号；80 上限防止误吞长文本。
+     ★ 内容长度必须允许 **0**：这个扫描靠"两两配对"切字面量，而代码里到处是 `""` 空串
+       （`(ok ? "" : " bad")`）。第一版写了 {1,80}，于是遇到 `""` 时配对**整体错位一格**，
+       后面真正的类名反而取不到——实测 .sq-r / .editing 就是这样漏下来的（26 → 2 → 0）。
+       允许 0 长度即可让空串自己吃掉一次配对，对齐保持正确。 */
+  for (const mm of jsSrc.matchAll(/["'`]([^"'`\n]{0,80})["'`]/g)){
+    for (const tok of mm[1].split(/\s+/)){
+      const c = tok.replace(/[^A-Za-z0-9_-]/g, "");
+      if (c && cssClasses.has(c)) used.add(c);
+    }
+  }
+}
 
 /* ---- 3) 差集 = 疑似孤儿 ---- */
 const orphans = [...cssClasses].filter(c => !used.has(c)).sort();

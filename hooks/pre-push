@@ -1,0 +1,9 @@
+#!/bin/sh
+# BeatSight 推送前门禁（v3.33.14）：推 main 即触发线上部署，故推送前必须过一遍发布自验。
+# 想绕过（不该是常态）：git push --no-verify
+# ★ 命令内容在 package.json 的 publish:check，本文件不抄第二份。
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[BeatSight] ⚠ 找不到 npm，跳过 pre-push 自验——请手动跑：npm run publish:check"
+  exit 0
+fi
+exec npm run publish:check
