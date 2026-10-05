@@ -30,7 +30,7 @@ const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }),
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 /* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
 const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
 /* stub 的 textContent 不聚合子节点（真实 DOM 会），找条目要递归取 */
 const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
 const itemByName = (els, name) => els["presetList"].children

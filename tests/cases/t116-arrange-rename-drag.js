@@ -191,3 +191,35 @@ section("T116d 时值抓手 · 顶住红边 / 松手吸附 / 小抖动不动库"
   eq(beat.Store.findLyric(id, uid) === lineBefore, false, "有变更 → 行对象更新");
   beat.Arrange.close();
 }
+
+/* ============ T116x：复制段（v3.33.29，用户需求「一段会重复多遍」） ============ */
+section("T116x 复制段 · 新 uid / 连歌词 / 名字加序号 / 插在原段之后");
+{
+  const { beat } = loadApp();
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "复制素材", meter: 4,
+    bars: [[{ t: 48, dir: "D" }, { t: 48, dir: "U" }, { t: 48, dir: "D" }, { t: 48, dir: "U" }]] }] })), "素材导入");
+  const pid = beat.Store.customs[beat.Store.customs.length - 1].id;
+  ok(beat.Store.upsertArrange({ name: "复制曲式", sections: [
+    { name: "主歌", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
+    { name: "副歌", blocks: [{ ref: { type: "custom", id: pid }, repeats: 1 }] },
+  ] }), "曲式落库");
+  const arr = beat.Store.arranges[beat.Store.arranges.length - 1];
+  const s0 = arr.sections[0];
+  beat.Store.upsertLyric(arr.id, s0.uid, [{ t: 0, dur: 24, ch: "甲" }, { t: 48, dur: 24, ch: "乙" }]);
+  const before = arr.sections.length;
+  const r = beat.Store.duplicateSection(arr.id, s0.uid);
+  ok(!!r, "复制返回结果");
+  const a2 = beat.Store.findArrange(arr.id);
+  eq(a2.sections.length, before + 1, "段数 +1");
+  eq(a2.sections[1].uid, r.uid, "★★ 副本插在**原段之后**");
+  ok(a2.sections[1].uid !== s0.uid, "★★ 副本换了**新 uid**（身份不能与原段共用）");
+  eq(a2.sections[1].name, "主歌 (2)", "★ 名字自动加序号");
+  eq(a2.sections[1].blocks.length, s0.blocks.length, "★ 块结构一并复制");
+  const l1 = beat.Store.findLyric(arr.id, r.uid);
+  ok(!!l1 && l1.chars.length === 2 && l1.chars[0].ch === "甲",
+     "★★ **歌词一起复制**（新 uid 下同一份词）");
+  const l0 = beat.Store.findLyric(arr.id, s0.uid);
+  ok(!!l0 && l0.chars !== l1.chars, "★ 是深拷贝（不是同一个数组引用）");
+  beat.Store.duplicateSection(arr.id, s0.uid);
+  eq(beat.Store.findArrange(arr.id).sections[1].name, "主歌 (3)", "★ 再次复制 ⇒ 序号递增到 (3)");
+}

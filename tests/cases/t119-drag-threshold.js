@@ -177,3 +177,22 @@ section("T119y 拖回原位 · 不动库，但该块仍应进入选中态");
   ok(/(^| )sel( |$)/.test(chips[0].className),
      "★★ no-op 路径也要选中（原先该分支直接 return，正好漏掉选中）");
 }
+
+/* ============ 场景 T119z：跨行落点区间（v3.33.28，用户实报「同行后面有块就拖不到别的行」） ============
+   `lyricMoveBounds` 是纯函数 ⇒ 单元断言即可钉住；跨行闸本身在真机（drag.geo 需要真实布局）。 */
+section("T119z lyricMoveBounds · 同行用邻居区间；跨行用目标行区间");
+{
+  const { beat } = loadApp();
+  const lctx = { span: 576, barTicks: 192 };                       // 3 小节段
+  const same = beat.Arrange.lyricMoveBounds({ lctx: lctx, geo: {}, row: 1, row0: 1 }, 24, 100, 200);
+  eq(same.lo, 100, "同行：下界 = 邻居下界（原口径不变）");
+  eq(same.hi, 200, "同行：上界 = 邻居上界");
+  const noGeo = beat.Arrange.lyricMoveBounds({ lctx: lctx, geo: null, row: 5, row0: 0 }, 24, 100, 200);
+  eq(noGeo.lo, 100, "★ 无 geo（桩/降级路径）⇒ 一律按同行口径");
+  eq(noGeo.hi, 200, "★ 同上（否则桩里行为会变）");
+  const cross = beat.Arrange.lyricMoveBounds({ lctx: lctx, geo: {}, row: 1, row0: 0 }, 24, 0, 0);
+  eq(cross.lo, 192, "★★ 跨行：下界 = 目标行行首 192——不再被同行邻居的 max=0 钳回原行");
+  eq(cross.hi, 192 + 192 - 24, "★★ 跨行：上界 = 目标行行末 − 时值");
+  const last = beat.Arrange.lyricMoveBounds({ lctx: lctx, geo: {}, row: 2, row0: 0 }, 48, 0, 0);
+  eq(last.hi, 576 - 48, "★ 末行仍夹在段长内（span − dur）");
+}

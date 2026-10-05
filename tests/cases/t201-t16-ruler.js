@@ -317,3 +317,18 @@ section("T201m CSS 不变量 · 已弹段连成一片（不再是逐格一块）
   ok(/\.cell\.played\{border-radius:0\}/.test(src),
      "★★ 已弹格收平圆角 ⇒ 相邻已弹格连成一条通栏高亮（原先每格圆角在光里顶出格边）");
 }
+
+/* ============ 场景 T201o：收起卡片的歌词预览要加亮加大（v3.33.30，用户需求） ============ */
+section("T201o CSS 不变量 · 编排页摘要行的歌词预览：加亮 + 加大（只放大歌词本身）");
+{
+  const rule = /\.arg-lyric-preview\{[^}]*\}/.exec(src);
+  ok(!!rule, "★ .arg-lyric-preview 规则在");
+  ok(/font-size:1[4-9]px/.test(rule[0]),
+     "★★ 歌词预览放大到 14px 以上（改前继承整行的 12px ⇒ 长曲式里不好定位）");
+  ok(/color:var\(--t1\)/.test(rule[0]),
+     "★★ 歌词预览提到最亮一档 --t1（改前继承 --t3）");
+  ok(/max-width:7[0-9]%|max-width:8[0-9]%/.test(rule[0]),
+     "★ 可视宽度放宽（原 60%）——同一行能看到更多词");
+  ok(/\.arg-lyric-sum\{[^}]*font-size:12px/.test(src),
+     "★ 整行仍是 12px（徽章 / 和弦 / 流水线提示保持 subdued ⇒ 歌词才显得突出）");
+}

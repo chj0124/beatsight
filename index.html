@@ -1343,6 +1343,16 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    层次改由字号/字重/颜色表达，而不是靠方向反了的缩进。 */
 .preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:10px 0 6px;
   display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+/* ★★ v3.33.32（用户实报「扫弦区收起后，区内分组行没收起」）：补上 [hidden] 补丁。
+   根因：上面这条规则带了 display:flex，**作者样式的特异性高于 UA 的 [hidden]{display:none}**
+   ⇒ JS 里 `head.hidden = true`（applyFold 按区折叠设的）**在渲染上被压过**，组头照旧可见。
+   ★ 这是本仓反复踩过的一类坑（同一族补丁已有一整排：.preset-drawer / .pd-mask /
+     .lyric-lane / .toggle-pill / .demo-range-head …）；`.preset-arrange-group[hidden]` 也早有，
+     **唯独 `.preset-group` 漏了**——曲式分组收得掉、区内分组收不掉，就是这个差别。
+   ★ 同类排查提醒：凡是 JS 里写 `el.hidden = true`、而作者 CSS 又给了 `display` 的元素，
+     都必须显式补一条 `[hidden]{display:none}`；`.preset-section` 也有 display:flex，
+     但它按契约"区头永远可见"（从不设 hidden），故无需补。 */
+.preset-group[hidden]{display:none}
 .preset-group:hover{color:var(--t1)}
 .preset-group::before{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-group[aria-expanded="false"]::before{transform:rotate(-90deg)}
@@ -1758,7 +1768,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-lyric-sum:hover{color:var(--t2)}
 .arg-lyric-tag{flex:none;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--t3)}
 .arg-lyric-tag.ok{color:var(--green);border-color:rgba(30,215,96,.4);background:rgba(30,215,96,.1)}
-.arg-lyric-preview{min-width:0;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ★★ v3.33.30（用户需求）：收起卡片里的**歌词预览要加亮加大**——长曲式里靠歌词定位时，
+   12px/--t3 的继承档太小太暗。
+   ★ 只放大**歌词本身**：徽章「歌词 ✓ N 字」/「和弦 X」/ 流水线提示保持整行的 12px + --t3，
+     否则整行一起变大，定位性反而下降（对比度靠"唯一突出的那一档"建立）。
+   ★ max-width 60% → 72%：同一行能看到更多词（超长仍省略号收口）。 */
+.arg-lyric-preview{min-width:0;max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;font-weight:600;color:var(--t1)}
 .arg-lyric-arrow{flex:none;font-size:11px}
 .arg-lyric-paste{flex:1;min-width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
 /* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
@@ -2398,7 +2413,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <div class="tg-body">
             <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
             <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
-            <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="100" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">100%</span></div>
+            <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="0" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">0%</span></div>
             </div>
           </div>
         </div>
@@ -3182,7 +3197,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <rect x="114" y="28" width="44" height="14" rx="3" fill="#232323"/>
             <rect x="8" y="56" width="544" height="32" rx="8" fill="none" stroke="#2c2c2c"/>
             <rect x="18" y="63" width="140" height="18" rx="9" fill="#1f1f1f" stroke="#1ED760" stroke-opacity=".7"/>
-            <text x="26" y="75" font-size="9" fill="#fff">在他乡（示例）</text>
+            <text x="26" y="75" font-size="9" fill="#fff">《在他乡》（示例）</text>
             <text x="180" y="75" font-size="10" fill="#6a6a6a">＋</text>
             <text x="210" y="75" font-size="9" fill="#6a6a6a">曲式库：点 chip 切换 · ＋ 新建 · 选中后有 ✕ 删除</text>
             <rect x="8" y="96" width="544" height="46" rx="8" fill="none" stroke="#2c2c2c"/>
@@ -3544,23 +3559,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3576  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4294  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6051  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7013  Modal         应用内弹窗
-     L7158  Viz           时值可视化渲染与每帧动画
-     L10571 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11252 Trainer       变速训练器
-     L11462 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12131 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13730 Editor        自定义节奏型编辑器
-     L14274 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14321 Ear           听辨训练（v1.10.0）
-     L14549 Arrange       曲式编排（v2.0.0）
-     L17735 Help          使用方法（v2.0.1）
-     L17864 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17938 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18205 初始化（装配） 各模块 hook 接线与启动
+     L3591  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4332  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6122  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7084  Modal         应用内弹窗
+     L7229  Viz           时值可视化渲染与每帧动画
+     L10642 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11323 Trainer       变速训练器
+     L11533 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12202 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13801 Editor        自定义节奏型编辑器
+     L14345 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14392 Ear           听辨训练（v1.10.0）
+     L14620 Arrange       曲式编排（v2.0.0）
+     L17844 Help          使用方法（v2.0.1）
+     L17973 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L18047 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18314 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3586,7 +3601,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.27";
+const VERSION = "3.34.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3824,7 +3839,9 @@ const LYRIC_MIN_DUR = LYRIC_GRID;   // 最短时值：1 格（再短就没有可
        （桥段「夜」落在小节首并延至下一个「那」，正是这条的活样本）。
      · 段长补齐：本工具节奏型 = 4 小节循环、段长必为 4 的倍数；词行不足 4 小节时
        按该行**最后一个节奏型**补扫（手不停、嘴休息）——歌词与扫弦数据本身一格不增删。 */
-const DEMO_ID = "demo-ztx", DEMO_SONG_NAME = "在他乡（示例）";
+const DEMO_ID = "demo-ztx", DEMO_SONG_NAME = "《在他乡》（示例）";
+/** v3.33.31：改名前的**旧显示名**。只用于「认旧数据」（迁移 + 按名查找的兜底），别处不要用。 */
+const DEMO_SONG_NAME_LEGACY = "在他乡（示例）";
 const DEMO_STRUMS = {
   P1: [[0,"D"],[1,"U",null,1],[2,"D",null,1],[3,"U",2],[4,"D",2],[5,"U",null,1],[6,"D",0],[7,"U",null,1],
        [8,"D",null,1],[9,"U",null,1],[10,"D",2],[11,"U",2],[12,"D",2],[13,"U",null,1],[14,"D",2],[15,"U",2]],
@@ -4118,6 +4135,23 @@ function demoCustomAt(customs, i){
    ★ 幂等：收走后 customs 不再含示例型，二次启动四级兜底全落空、零改动零写盘。
    返回 { removed, remapped, idToIdx }：removed = 收走的型数、remapped = 重映射的块数、
    idToIdx = custom id → 示例下标 0..4（调用方用它重映射 S.sel），零改动时 removed = 0。 */
+/** 示例曲**改名**的一次性迁移（v3.33.31）。
+    ★ 为什么需要：改名只改了代码常量，而**曲式记录里存着名字**（预设库的「曲式分组」标题就是它）
+      ⇒ 存量用户的界面照旧显示旧名；更糟的是 `ensureDemo` 按**新名**找旧记录会找不到，
+      **重复建一份示例曲**。
+    ★ 只改「id 是示例曲、且名字确实等于旧名」的那一条——用户自己改过名的示例曲不动。
+    ★ 幂等：改完不再命中旧名 ⇒ 二次启动返回 0、零写盘。
+    @param {any[]} arranges @returns {number} 改了几条 */
+function migrateDemoSongName(arranges){
+  if (!Array.isArray(arranges)) return 0;
+  let n = 0;
+  for (const a of arranges){
+    if (!a || a.id !== DEMO_ID || a.name !== DEMO_SONG_NAME_LEGACY) continue;
+    a.name = DEMO_SONG_NAME;
+    n++;
+  }
+  return n;
+}
 /** @param {any[]} customs @param {any[]} arranges @returns {any} */
 function migrateDemoToBuiltins(customs, arranges){
   const idToIdx = /** @type {Map<string, number>} */ (new Map());
@@ -4198,8 +4232,12 @@ const CONFIG = {
      取传统节拍器 12 递增阶梯（60/72/84/96/108/120）的子集，含默认 96 与常用目标 120 */
   speedPresets:[60, 72, 84, 96, 120],
   /* 音量层级：正拍/细分固定档；重拍 = accentMin + (accentMax-accentMin) × 重拍增强量
-     保证重拍恒 ≥ 正拍（accentMin 即正拍档），默认增强量 100% 时重拍 = accentMax */
-  levelBeat:0.8, levelSub:0.5, accentMin:0.8, accentMax:1,
+     保证重拍恒 ≥ 正拍（accentMin 即正拍档），增强量 100% 时重拍 = accentMax。
+     ★★ v3.33.33（用户实报「重拍增强从 0 到 100% 变化不明显」）：原档位 0.8 → 1.0，
+       整个行程只有 20·log10(1/0.8) = **1.94 dB** —— 同一音色连续听，这个量级基本听不出来。
+       修法 = **把基础档压低，给重拍让开量程**（accentMax 封在 1.0 不动 ⇒ 峰值仍 ≤ 1，不削波）：
+       0.55 → 1.0 = **5.2 dB**（原来的 2.7 倍）。层级相对关系与"0% = 与正拍齐平"的契约都不变。 */
+  levelBeat:0.55, levelSub:0.35, accentMin:0.55, accentMax:1,
   /* v0.8.0 三套程序合成音色（零采样文件，噪声 buffer 程序生成）
      v1.4.1 响度修复（用户实拍：木鱼调到最大仍听不清）：**滤波噪声路径缺 makeup gain**。
      定量根因——白噪声 RMS≈0.577，经带通后只剩 sqrt(BW/奈奎斯特) 倍：
@@ -5095,6 +5133,34 @@ const Store = (() => {
     if (!(opt && opt.deferPersist)) persistLyrics();
     return v;
   }
+  /** 复制一段（v3.33.29，用户需求：一段会重复多遍）。
+      · 深拷贝段（块 + repeats）并**换新 uid**——uid 是稳定身份，绝不能与原段共用；
+      · **连歌词一起复制**（用户明确要求）——在新 uid 下写入同一份 chars 的**深拷贝**；
+      · 名字**自动加序号**：`主歌` → `主歌 (2)`，被占用则递增到下一个空位；
+      · 插在**原段之后**（位置随时可用 ⋯ 菜单里的 5 种移动改）。
+      @param {string} arrangeId @param {string} secUid
+      @returns {{ uid: string, name: string, index: number } | null} */
+  function duplicateSection(arrangeId, secUid){
+    const a = findArrange(arrangeId);
+    if (!a) return null;
+    const i = a.sections.findIndex((/** @type {any} */ s) => s && s.uid === secUid);
+    if (i < 0) return null;
+    const src = a.sections[i];
+    const uid = mintSecUid();
+    const base = String(src.name || "段").replace(/\s*\(\d+\)\s*$/, "").trim() || "段";
+    const used = new Set(a.sections.map((/** @type {any} */ s) => s && s.name));
+    let n = 2, name = base + " (" + n + ")";
+    while (used.has(name) && n < 999){ n++; name = base + " (" + n + ")"; }
+    const copy = { uid, name, blocks: JSON.parse(JSON.stringify(src.blocks || [])) };
+    const line = findLyric(arrangeId, secUid);
+    if (line && Array.isArray(line.chars) && line.chars.length){
+      upsertLyric(arrangeId, uid, JSON.parse(JSON.stringify(line.chars)));
+    }
+    a.sections.splice(i + 1, 0, copy);
+    persistArranges();
+    return { uid: uid, name: name, index: i + 1 };
+  }
+
   /** @param {string} arrangeId @param {string} secUid @returns {boolean} */
   function deleteLyric(arrangeId, secUid){
     const i = lyrics.findIndex(x => x && x.arrangeId === arrangeId && x.secUid === secUid);
@@ -5167,7 +5233,9 @@ const Store = (() => {
        故本条是纵深防御而非在修的 bug——但"能读到的 S 永远是合法值"这条性质不该依赖调用顺序 */
     bpm: clampRange(numOr(saved.bpm, 96), BPM_RANGE[0], BPM_RANGE[1]),
     vol: clamp01(numOr(saved.vol, 0.8)),
-    accentVol: clamp01(numOr(saved.accentVol, 1)),
+    /* v3.33.33（用户要求）：**默认 0%**——新用户首开时重拍与正拍齐平，不会被突然的重音"吓一跳"。
+       想要强调的人自己往上拉（0% = 齐平，100% = 最大强调）。 */
+    accentVol: clamp01(numOr(saved.accentVol, 0)),
     /* v2.5.0 扫弦声部音量：与 vol **并列**（不是它的下级倍率）——两条声部各调各的，
        把「节拍」拉到 0 不会连扫弦一起静音，反之亦然。
        默认 1（100%）：老用户升级后扫弦声的响度逐位不变（vol 默认仍是 0.8，
@@ -5505,6 +5573,9 @@ const Store = (() => {
      幂等：二次启动 customs 无示例型、迁移 0 改动、不写盘（removed=0 短路） */
   {
     const mig = migrateDemoToBuiltins(customs, arranges);
+    /* v3.33.31：示例曲改名迁移——特意放在 `if (mig.removed)` **之外**：老用户早已迁完
+       （removed=0 短路），可改名仍然需要发生。 */
+    if (migrateDemoSongName(arranges)) persistArranges();
     if (mig.removed){
       if (S.sel.type === "custom" && mig.idToIdx.has(S.sel.id))
         S.sel = { type: "builtin", idx: DEMO_BUILTIN_BASE + mig.idToIdx.get(S.sel.id) };
@@ -6023,7 +6094,7 @@ const Store = (() => {
        （练习记录的四个出口）随练习统计一起删除 —— 现在没有任何调用方 */
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
-    arranges, findArrange, upsertArrange, deleteArrange, persistArranges,
+    arranges, findArrange, upsertArrange, duplicateSection, deleteArrange, persistArranges,
     /* v2.10.7：旧格式播放范围（段下标）的一次性迁移出口。加载期把旧值暂存进 arrangeMig，
        装配层在 patLenOf 注入后取走（取走即清空——迁移只发生一次）并换算写回 S.arrangeSel。
        **为什么不在加载期直接换**：换算要走 secBars → 型长解析（patLenOf），而加载期它还没注入，
@@ -13308,7 +13379,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （`check-all.js` 的 tsc 是全量扫描，改成内联标注同样有效，但 @param 更可读）。
      @param {any} c 自定义节奏型（Store.customs 的元素）
      @param {string} [shownName] 可选显示名。示例组传**短名**（剥掉"在他乡 · "前缀）：
-       分组头已经写了"示例曲 · 在他乡（示例）"，7 条再各带一遍前缀就是纯噪声，
+       分组头已经写了"示例曲 · 《在他乡》（示例）"，7 条再各带一遍前缀就是纯噪声，
        而且条目名会长到换行、把"哪条是节奏型几"这个真正要扫读的信息挤没 */
   /** @param {any} c @param {string} [shownName] @returns {HTMLElement} */
   function buildPresetItem(c, shownName){
@@ -14603,7 +14674,7 @@ const Arrange = (() => {
      v2.48.0② 增：anchors = 段内发声锚点（磁吸目标集）、magnet = 命中的锚点（-1 无）、
      a0 = 起点锚（拖动起点所在锚，磁吸排除——否则原地小拖会被吸回起点）、
      guide/guideRow = 吸附引导线元素与其所在行（拖完即摘） */
-  /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number, overR: number, overL: number, chars: any[], orig: string, anchors: number[], magnet: number, a0: number, guide: any, guideRow: number, ghost: any, ghostRow: number, bubble: any, bubbleRow: number, hintEl: any, row0: number, chipRow: number, geo: any }} */
+  /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number, overR: number, overL: number, chars: any[], orig: string, anchors: number[], magnet: number, a0: number, guide: any, guideRow: number, ghost: any, ghostRow: number, bubble: any, bubbleRow: number, hintEl: any, row0: number, row: number, chipRow: number, geo: any }} */
   let drag = null;
   /* v2.49.0（R1）：歌词撤销/重做。键 = arrangeId|secUid；**会话内存栈**（V1 拍板），
      关浮层/切段不清、刷新页面清空，不落盘——与 Editor undoStack 同纪律（L10008 同口径）。
@@ -14820,10 +14891,12 @@ const Arrange = (() => {
       let tcRow = tc;
       if (drag.geo && ev.clientY !== undefined){
         row = rowOfY(drag.geo, ev.clientY);
+        drag.row = row;                                   // v3.33.28：落点区间要用它判"是否跨行"
         const off = Math.max(0, Math.min(barTicks, tc - drag.row0 * barTicks));
         tcRow = row * barTicks + off;
       }
-      drag.t = Math.max(min, Math.min(max, tcRow));
+      const bnd = lyricMoveBounds(drag, drag.chars[drag.k].dur, min, max);   // v3.33.28：跨行 ⇒ 目标行区间
+      drag.t = Math.max(bnd.lo, Math.min(bnd.hi, tcRow));
       drag.d = drag.d0;
       /* v2.47.0（F4 甲）：被钳住还在推 → 记录越过量（松手按邻字「半程」判换位）；
         （F2）同时给可见反馈：红边 = 「顶住了」，不再静默。取末态而非累计——
@@ -14916,6 +14989,24 @@ const Arrange = (() => {
     }
   }
 
+  /** 移动模式的落点区间（v3.33.28，用户实报）。
+      · 同行：前后邻居之间（原口径，不变）
+      · 跨行：**目标行的行内区间**——允许越过同行邻居、真正落到另一行
+      ★ 为什么必须共用一份：`onDragMove` 与 `getDropTarget` 各有一次钳制，口径不一致时
+        前者放行的位置会被后者钳回原行——这正是"拖不到别的行"的直接成因。
+      @param {any} d @param {number} dur @param {number} min @param {number} max
+      @returns {{lo:number, hi:number}} */
+  function lyricMoveBounds(d, dur, min, max){
+    const span = d.lctx.span;
+    if (d.geo && typeof d.row === "number" && typeof d.row0 === "number" && d.row !== d.row0){
+      const bt = d.lctx.barTicks || span;
+      const rowStart = d.row * bt;
+      return { lo: Math.max(0, Math.min(rowStart, span - dur)),
+               hi: Math.max(0, Math.min(span - dur, rowStart + bt - dur)) };
+    }
+    return { lo: min, hi: max };
+  }
+
   /** 落点唯一事实源（v2.50.0 D1）：拖动预览（ghost）、松手提交、显性换位按钮（期 4）
      三处共用。从 onDragEnd 的提交计算体**原样提取**（v2.47.0 F4 甲换位判据、
      v2.48.0② 磁吸优先/格吸附/邻居收口逐位不变）——预览与提交永远同一套数学。
@@ -14935,7 +15026,8 @@ const Arrange = (() => {
       /* 普通移动：磁吸锚点优先，否则吸附到格，再按邻居边界收口 */
       const min = nb.min, max = nb.max;
       let t = d.magnet >= 0 ? d.magnet : Math.round(d.t / LYRIC_GRID) * LYRIC_GRID;
-      t = Math.max(min, Math.min(max, t));
+      const bnd = lyricMoveBounds(d, me.dur, min, max);      // v3.33.28：与 onDragMove 同一份区间
+      t = Math.max(bnd.lo, Math.min(bnd.hi, t));
       return { t, dur: me.dur, swap: 0, magnet: d.magnet };
     }
     /* dur 模式：右缘拖动改时值（邻字边界 + 最短时值 + 上限三重钳制） */
@@ -15174,7 +15266,7 @@ const Arrange = (() => {
       overR: 0, overL: 0,
       anchors: [], magnet: -1, a0: -1, guide: null, guideRow: -1,
       ghost: null, ghostRow: -1, bubble: null, bubbleRow: -1, hintEl: null,
-      row0: rowNow, chipRow: rowNow, geo: geo,
+      row0: rowNow, row: rowNow, chipRow: rowNow, geo: geo,
       chars: list.map((/** @type {any} */ x) => ({ t: x.t, dur: x.dur, ch: x.ch })),
       orig: "",
     };
@@ -16664,6 +16756,21 @@ const Arrange = (() => {
       Modal.uiConfirm("删除第 " + (i + 1) + " 段？", () => { secMenuOpen = null; const d = snapshot(); d.sections.splice(i, 1); save(d); }, { danger: true, okText: "删除" });
     });
     menu.appendChild(mkTryRange());
+    /* 复制段（v3.33.29，用户需求：一段会重复多遍）：连歌词一起复制、插在原段之后、名字自动加序号。
+       放在菜单首位区（紧随「练这段」）——「练这段」是最高频，复制次之。 */
+    const dup = document.createElement("button");
+    dup.className = "arg-mini";
+    dup.textContent = "复制段";
+    dup.setAttribute("aria-label", "复制第 " + (i + 1) + " 段（连歌词，插在它之后）");
+    Modal.bindOverlay("arrangeOverlay", dup, "click", () => {
+      secMenuOpen = null;
+      const r = Store.duplicateSection(a.id, a.sections[i].uid);
+      if (!r){ announce("复制失败"); return; }
+      arrangeRender();
+      announce("已复制第 " + (i + 1) + " 段为「" + r.name + "」，插在它之后");
+    });
+    menu.appendChild(dup);
+
     menu.appendChild(mkMove(-1, "上移第 " + (i + 1) + " 段", i === 0));
     menu.appendChild(mkMove(+1, "下移第 " + (i + 1) + " 段", i === a.sections.length - 1));
     menu.appendChild(mkEnd("first", "移到最前", "把第 " + (i + 1) + " 段移到最前", i === 0));
@@ -17522,7 +17629,8 @@ const Arrange = (() => {
        不负责"复活"（复活走侧栏「恢复示例曲」的手动入口，那才是"我要它回来"的明确意图） */
   function demoStale(){
     const spec = demoBuildSpec();
-    const ar = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
+    const ar = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME
+      || x.name === DEMO_SONG_NAME_LEGACY);   /* v3.33.31：改名过渡期两条都认 */
     if (!ar) return false;
     /* ① 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓） */
     if (ar.sections.length !== spec.arrange.sections.length) return true;
@@ -17535,7 +17643,8 @@ const Arrange = (() => {
   }
   /** 手动载入：确保数据 + 选中该曲式 + 播报。幂等命中时给一句"已在库里"的提示 */
   function loadDemo(){
-    const already = Store.arranges.some(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME);
+    const already = Store.arranges.some(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME
+      || x.name === DEMO_SONG_NAME_LEGACY);   /* v3.33.31：同上 */
     const r = ensureDemo();
     if (!r.ok){ Modal.uiAlert("示例《在他乡》载入失败：" + r.error); return; }
     curId = r.id;
@@ -17729,7 +17838,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, lyricNeighbors, lyricDurStep, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, lyricNeighbors, lyricMoveBounds, lyricDurStep, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */

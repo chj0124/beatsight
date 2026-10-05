@@ -62,7 +62,7 @@ const kPart = v => { const m = /([-0-9.]+) \* var\(--thumb-w\)/.exec(String(v));
 const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
 /* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
 const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
 
 /* 单拇指拖动：走完 input（拖动中，只刷视觉）+ change（松手提交，跑重活并通知 Arrange）两级。
    真实浏览器就是这个顺序。commit=false 可只发 input，用于钉住"只拖不提交不生效" */

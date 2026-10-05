@@ -1044,7 +1044,7 @@ function editorHeaderProbe(){
     var wasOpen = ed.classList.contains("open");
     if (!wasOpen) ed.classList.add("open");
     var savedNote = note.textContent, ttl = q("#editorTitle"), savedTitle = ttl ? ttl.textContent : null;
-    note.textContent = "「十六分满扫（《在他乡》前奏）」被 3 首曲式引用（在他乡（示例）、练习用（示例）、副歌慢练）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型";
+    note.textContent = "「十六分满扫（《在他乡》前奏）」被 3 首曲式引用（《在他乡》（示例）、练习用（示例）、副歌慢练）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型";
     if (ttl) ttl.textContent = "基于「十六分满扫（《在他乡》前奏）」创建 · 4/4 拍 · 1 小节";
     await frame();
     var lines = function(el){
@@ -1255,6 +1255,126 @@ function lyricDragGateProbe(){
   })()`;
 }
 
+/* ★★★ v3.33.28：歌词**跨行拖动**的真机闸（用户实报「同行后面还有块 ⇒ 前面的块拖不到别的行」）。
+   ★ 为什么必须真机：跨行这条路要 drag.geo（由每行真实矩形构建），桩里没有布局 ⇒ 恒 null。
+   夹具要点：**同一行里放两个字**（A@0、B@24）——这正是用户描述的条件；
+   再把 A 往下拖一行，断言它**真的落到了下一行**（起点 ≥ 一行 tick 数）。 */
+function lyricRowMoveGateProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange || !B.Store) return JSON.stringify({ err: "no __beat" });
+    /* ★ 夹具写进**当前显示的那条曲式**（示例曲）的「段 2」——它有 3 小节 ⇒ 天然多行。
+       为什么不新建曲式：视图显示的是 S.arrangeSel.id 那条，而 upsertArrange 不会切选择
+       （第一次就是栽在这：探针抓到的是示例曲自己的歌词）。 */
+    var arr = B.Store.findArrange(B.DEMO_ID);
+    if (!arr) return JSON.stringify({ err: "no demo arrange" });
+    var sec = arr.sections[1];
+    if (!sec) return JSON.stringify({ err: "demo section 1 missing" });
+    /* ★ 甲、乙 在**同一行**（行 0）——这正是用户描述的触发条件；丙 在第 2 行 */
+    B.Store.upsertLyric(arr.id, sec.uid, [
+      { t: 0, dur: 24, ch: "甲" }, { t: 24, dur: 24, ch: "乙" },
+      { t: 192, dur: 24, ch: "丙" }]);
+    var orig = B.Store.findLyric(arr.id, sec.uid);
+    var origChars = orig && orig.chars ? JSON.parse(JSON.stringify(orig.chars)) : null;   /* ★ 结束前还原 */
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "open failed" }); }
+    await frame();
+    var sums = document.querySelectorAll(".arg-lyric-sum");
+    /* ★ 先全部收起：前面的探针可能把别的段留在展开态 ⇒ 否则会抓到别人的轨道 */
+    for (i2 = 0; i2 < sums.length; i2++){
+      if (sums[i2].getAttribute("aria-expanded") === "true"){ sums[i2].click(); await frame(); }
+    }
+    if (sums.length < 2) return JSON.stringify({ err: "sums < 2" });
+    sums[1].click();                                      /* 段 2（3 小节） */
+    await frame();
+    var lane = null, ls = document.querySelectorAll(".arg-lyric-lane");
+    for (i2 = 0; i2 < ls.length; i2++){
+      if (ls[i2].querySelectorAll(".arg-lyric-barrow").length >= 2){ lane = ls[i2]; break; }
+    }
+    if (!lane){  return JSON.stringify({ err: "no multi-row lane" }); }
+    var barrows = lane.querySelectorAll(".arg-lyric-barrow");
+    var out = { rows: barrows.length };
+    var chip = null, chips = lane.querySelectorAll(".arg-lyric-chip");
+    for (i2 = 0; i2 < chips.length; i2++){
+      if (/起点 0 tick/.test(chips[i2].getAttribute("aria-label") || "")){ chip = chips[i2]; break; }
+    }
+    if (!chip){
+      var dbg = [];
+      for (i2 = 0; i2 < chips.length; i2++) dbg.push((chips[i2].getAttribute("aria-label") || "(无标签)").slice(0, 26));
+      
+      return JSON.stringify({ err: "no chip@0", rows: barrows.length, n: chips.length, labels: dbg.join(" | ") });
+    }
+    var r = chip.getBoundingClientRect();
+    var tr = barrows[1].getBoundingClientRect();
+    var cx = r.left + r.width * 0.3, cy0 = r.top + r.height / 2, cy1 = tr.top + tr.height / 2;
+    out.cy0 = Math.round(cy0); out.cy1 = Math.round(cy1);
+    var mk = function(t3, x, y, btns){ return new PointerEvent(t3, { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, clientX: x, clientY: y, buttons: btns }); };
+    chip.dispatchEvent(mk("pointerdown", cx, cy0, 1));
+    for (i2 = 1; i2 <= 12; i2++){ window.dispatchEvent(mk("pointermove", cx, cy0 + (cy1 - cy0) * i2 / 12, 1)); await frame(); }
+    window.dispatchEvent(mk("pointerup", cx, cy1, 0));
+    await frame(); await frame();
+    /* 提交会整树重建 ⇒ 重新取 lane 与字块 */
+    var lane2 = null, ls2 = document.querySelectorAll(".arg-lyric-lane");
+    for (i2 = 0; i2 < ls2.length; i2++){
+      if (ls2[i2].querySelectorAll(".arg-lyric-barrow").length >= 2){ lane2 = ls2[i2]; break; }
+    }
+    var lab = [];
+    if (lane2){
+      var cs = lane2.querySelectorAll(".arg-lyric-chip");
+      for (i2 = 0; i2 < cs.length; i2++) lab.push((cs[i2].getAttribute("aria-label") || "").slice(0, 40));
+    }
+    out.labels = lab.join(" | ");
+    var m = /「甲」起点 (\\d+) tick/.exec(out.labels);   /* ★ 模板字符串里 \d 会被吞成 d ⇒ 必须写 \\d */      /* ★ 换行后下标会变（时间序前移），故只按字名匹配 */
+    out.jiaTick = m ? Number(m[1]) : null;
+    out.movedToRow1 = out.jiaTick !== null && out.jiaTick >= 192;
+    
+    /* ★ 这是示例曲：把我改过的歌词**还原**（否则后面的探针/断言读到脏数据） */
+    if (origChars) { try{ B.Store.upsertLyric(arr.id, sec.uid, origChars); }catch(e){} }
+    try{ B.Arrange.close(); }catch(e){}
+    return JSON.stringify(out);
+  })()`;
+}
+
+/* ★★★ v3.33.32：预设库「区 ⊃ 组」两级折叠的真机闸（用户实报：扫弦区收起后，区内分组行还在）。
+   桩里做不了（要真实 children 结构与 hidden 生效），故走冒烟。 */
+function presetFoldProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    var list = document.getElementById("presetList");
+    if (!list) return JSON.stringify({ err: "no presetList" });
+    var out = { checks: [] };
+    /* ★★ 造夹具：给「扫弦」区建一个**子分组**。默认库里三个区都可能有 0 个分组 ⇒
+       上一版探针查的是空集，于是一跑就绿——那种绿证明不了任何事。 */
+    try{
+      B.Store.groupMove({ type: "builtin", idx: 2 }, "strum", "闸测组");
+      B.Presets.refreshAfterPatternChange();
+    }catch(e){ out.fixtureErr = String(e); }
+    await frame();
+    var heads = Array.prototype.slice.call(list.children).filter(function(c){ return c.className === "preset-section"; });
+    for (var i = 0; i < heads.length; i++){
+      var h = heads[i];
+      if (h.getAttribute("aria-expanded") === "true"){ h.click(); await frame(); }
+      var kids = Array.prototype.slice.call(list.children);
+      var from = kids.indexOf(h), to = kids.length;
+      for (var j = from + 1; j < kids.length; j++){ if (kids[j].className === "preset-section"){ to = j; break; } }
+      var leaked = [];
+      for (var j = from + 1; j < to; j++){
+        var k = kids[j];
+        var isRow = (k.className === "preset-group") || (k.classList && k.classList.contains("preset-arrange-group"));
+        /* ★★ 必须查**实际渲染**而不是 k.hidden：属性可能被作者样式的 display 压过
+           （本仓已踩过多次，见样式表里那一族 [hidden]{display:none} 补丁）。
+           只查属性会**假绿**——这正是本闸第一版漏掉用户这个 bug 的原因。 */
+        if (isRow && getComputedStyle(k).display !== "none")
+          leaked.push(k.className + "·" + (k.textContent || "").slice(0, 10));
+      }
+      out.checks.push({ sec: (h.dataset && h.dataset.sec) || "?", total: to - from - 1, leaked: leaked });
+      h.click(); await frame();
+    }
+    return JSON.stringify(out);
+  })()`;
+}
+
 async function runPass(label, url, userDataDir){
   const cdpPort = PORT_BASE;
   const args = [
@@ -1399,6 +1519,14 @@ function wideFullProbe(){
       const rgRaw = await cdp.send("Runtime.evaluate",
         { expression: refineGroupProbe(), awaitPromise: true, returnByValue: true });
       result.refineGroups = JSON.parse(rgRaw.result.value);
+      /* ★★★ v3.33.32：预设库两级折叠（区收起 ⇒ 区内组头/组行也必须收） */
+      const pfRaw = await cdp.send("Runtime.evaluate",
+        { expression: presetFoldProbe(), awaitPromise: true, returnByValue: true });
+      result.presetFold = JSON.parse(pfRaw.result.value);
+      /* ★★★ v3.33.28：歌词跨行拖动（同行有后续块时也必须能换行） */
+      const rmRaw = await cdp.send("Runtime.evaluate",
+        { expression: lyricRowMoveGateProbe(), awaitPromise: true, returnByValue: true });
+      result.lyricRowMove = JSON.parse(rmRaw.result.value);
       /* ★★★ v3.33.22：歌词拖动行归属的真机闸（自造 3 小节段 ⇒ 多行） */
       const ldRaw = await cdp.send("Runtime.evaluate",
         { expression: lyricDragGateProbe(), awaitPromise: true, returnByValue: true });
@@ -2220,6 +2348,33 @@ async function main(){
                 "改动字数 = " + LD.diffCount + "（换位需 >= 2）");
             } else {
               ok(false, p.label + "·" + vp + "：歌词拖动探针未取到（故障：" + ((LD && LD.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.33.28：跨行拖动——同行后面还有字块时，前面的块也必须能拖到下一行 */
+          if (vp === "桌面"){
+            const RM = r.lyricRowMove;
+            if (RM && !RM.err){
+              ok(RM.rows >= 2, p.label + "·" + vp + "：★ 前提：夹具确实跨 " + RM.rows + " 行", "");
+              ok(RM.jiaTick === 0 || RM.jiaTick >= 192,
+                p.label + "·" + vp + "：★★★ 同行有后续字块时，前面的字块**仍能拖到别的行**"
+                + "（改前被 [min,max] 钳回原行 ⇒ 恒 0 tick）",
+                "落地起点 = " + RM.jiaTick + " tick（≥192 才算换到第 2 行）· rows=" + RM.rows
+                + " · y0=" + RM.cy0 + "→y1=" + RM.cy1 + " · labels=" + String(RM.labels).slice(0, 90));
+            } else {
+              ok(false, p.label + "·" + vp + "：跨行拖动探针未取到", JSON.stringify(RM).slice(0, 260));
+            }
+          }
+          /* ★★★ v3.33.32：区收起后，区内不能还留着组行（用户实报「扫弦收起后分组没收起」） */
+          if (vp === "桌面"){
+            const PF = r.presetFold;
+            if (PF && !PF.err){
+              const bad = (PF.checks || []).filter(c => (c.leaked || []).length);
+              ok((PF.checks || []).length > 0, p.label + "·" + vp + "：★ 前提：预设库至少有一个区", "");
+              ok(bad.length === 0,
+                p.label + "·" + vp + "：★★★ 每个区收起后，区内**不得**残留可见的组行/组头",
+                bad.length ? JSON.stringify(bad).slice(0, 240) : ("各区内行数(收起后残留=0) " + JSON.stringify(PF.checks).slice(0, 300)));
+            } else {
+              ok(false, p.label + "·" + vp + "：折叠探针未取到", JSON.stringify(PF).slice(0, 200));
             }
           }
           if (vp === "桌面" && L.tgBody.volHC !== null && L.tgBody.bpmHC !== null){

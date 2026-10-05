@@ -191,13 +191,16 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
   const DM = { snare: 5, hat: 2.5 };// 读 CONFIG 算期望值会让「改错 CONFIG」两边一起变（自指，反向验证会漏）
 
   near(noiseGain("wood", 2000), 0.8 * MK, 1e-6, "木鱼重拍 = 0.8 × makeup（补偿后）");
-  near(noiseGain("wood", 1500), 0.64 * MK, 1e-6, "木鱼正拍 = 0.64 × makeup");
-  near(noiseGain("wood", 1100), 0.4 * MK, 1e-6, "木鱼细分 = 0.4 × makeup");
+  near(noiseGain("wood", 1500), 0.44 * MK, 1e-6,
+    "木鱼正拍 = 0.44 × makeup（= vol 0.8 × levelBeat 0.55；v3.33.33 由 0.64 降来 ⇒ 给重拍让开量程）");
+  near(noiseGain("wood", 1100), 0.28 * MK, 1e-6,
+    "木鱼细分 = 0.28 × makeup（= vol 0.8 × levelSub 0.35；v3.33.33 由 0.4 降来）");
   ok(noiseGain("wood", 2000) > noiseGain("wood", 1500)
      && noiseGain("wood", 1500) > noiseGain("wood", 1100), "木鱼层级保持：重拍 > 正拍 > 细分");
 
-  near(noiseGain("drum", 1800), 0.64 * DM.snare, 1e-6, "军鼓 = 0.64 × snareMakeup");
-  near(noiseGain("drum", 8000), 0.28 * DM.hat, 1e-6, "踩镲 = 0.28（含 hatGain 0.7）× hatMakeup");
+  near(noiseGain("drum", 1800), 0.44 * DM.snare, 1e-6, "军鼓 = 0.44 × snareMakeup（= vol 0.8 × levelBeat 0.55）");
+  near(noiseGain("drum", 8000), 0.196 * DM.hat, 1e-6,
+    "踩镲 = 0.196（= vol 0.8 × levelSub 0.35 × hatGain 0.7）× hatMakeup");
   /* 底鼓是振荡器（sine 扫频，sweepTo=50），不得被 makeup 波及 */
   {
     const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "drum", sel: { type: "builtin", idx: 2 } }) });

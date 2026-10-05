@@ -100,14 +100,15 @@ section("T76b 双声部打通 · 鼓组音色不再绕过扫弦声部");
   const kicks0 = A.hits.filter(h => h.kind === "osc" && h.sweepTo === 50 && Math.abs(h.t - 0.08) < 1e-6);
   eq(kicks0.length, 2, "鼓组下拍 0 = 扫弦底鼓 + 网格底鼓同刻叠加（双声部并列）");
   const gains = kicks0.map(h => h.gain).sort((a, b) => a - b);
-  near(gains[0], 0.8, 1e-6, "网格拍点底鼓 = vol(0.8) × accentGain(1)");
-  near(gains[1], 1, 1e-6, "★ 扫弦底鼓 = strumVol(1) × accentGain(1)——鼓组下扫弦格走 strumVol");
+  near(gains[0], 0.44, 1e-6, "网格拍点底鼓 = vol(0.8) × levelBeat(0.55)（v3.33.33 由 0.8 降来）");
+  near(gains[1], 0.55, 1e-6, "★ 扫弦底鼓 = strumVol(1) × levelBeat(0.55)——鼓组下扫弦格走 strumVol");
 
   /* 用户的实拍场景：鼓组下把「节拍」拉 0 */
   const Z = run(0, 1);
   const zk0 = Z.hits.filter(h => h.kind === "osc" && h.sweepTo === 50 && Math.abs(h.t - 0.08) < 1e-6);
   eq(zk0.length, 2, "节拍=0：拍 0 仍有两声底鼓（声部结构不变）");
-  ok(zk0.some(h => h.gain > 0.9), "★ 节拍=0 时鼓组下的扫弦照响（v2.7.1 前：全静默）");
+  ok(zk0.some(h => h.gain > 0.5),
+     "★ 节拍=0 时鼓组下的扫弦照响（v2.7.1 前：全静默；v3.33.33 后该声部 = strumVol × levelBeat 0.55）");
   ok(Z.hits.filter(h => Math.abs(h.t - 0.705) < 1e-6).every(h => h.gain < 0.01),
      "节拍=0 → 网格拍点（拍 2 军鼓）静音");
 

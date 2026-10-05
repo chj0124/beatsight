@@ -114,7 +114,7 @@ section("T14b 拍数输入框 · boot 同步存档值，显示与实际一致");
   /* 端到端：曲式模式（《在他乡》）+ 4 拍预备 → 真数出 4 声（用户路径，T14 只覆盖预设模式） */
   beat.Store.S.playMode = "arrange";
   if (!beat.Store.findArrange("demo-ztx")){
-    beat.Store.upsertArrange({ id: "demo-ztx", name: "在他乡（示例）", sections: [
+    beat.Store.upsertArrange({ id: "demo-ztx", name: "《在他乡》（示例）", sections: [
       { name: "A", blocks: [{ ref: { type: "builtin", idx: 16 }, repeats: 30 }] },
     ] });
   }
@@ -230,6 +230,27 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
 /* ================= 场景 T18：层级增益不变量（v1.0.1） ================= */
 /* v1.0.0 缺陷：重拍直接以 S.accentVol 作倍率，而正拍固定 ×0.8，
    于是「重拍增强量」低于 80% 时重拍反而轻于正拍，听觉强调层级倒挂。 */
+/* ============ T18b：重拍增强的行程与默认值（v3.33.33，用户实报） ============
+   用户原话：「重拍增强，从 0 到 100% 之间变化不明显」+「默认值设为 0%，避免刚开始使用时受到惊吓」。
+   改前：accentMin 0.8 → accentMax 1.0 ⇒ 整个行程只有 20·log10(1/0.8) = **1.94 dB**，听不出来。 */
+section("T18b 重拍增强：行程 ≥5 dB，且默认 0%");
+{
+  const { beat, els } = loadApp();
+  const C = beat.CONFIG;
+  const db = 20 * Math.log10(C.accentMax / C.accentMin);
+  ok(db >= 5,
+     "★★ 0% → 100% 的增益行程 ≥ 5 dB（改前 1.94 dB ⇒ 用户听不出差别）",
+     "实际 " + db.toFixed(2) + " dB");
+  near(C.accentMin, C.levelBeat, 1e-9,
+     "★ accentMin 必须 = levelBeat：0% = 与正拍齐平（v1.0.0 的层级倒挂防线，不能破）");
+  ok(C.levelSub < C.levelBeat && C.levelBeat < C.accentMax,
+     "★ 层级单调：细分 < 正拍 < 重拍（accentMax 仍封在 1.0 ⇒ 不削波）");
+  /* ---- 默认值 ---- */
+  eq(beat.Store.S.accentVol, 0, "★★ 重拍增强**默认 0%**（新用户首开与正拍齐平，不被「吓一跳」）");
+  eq(String(els["volAccent"].value), "0", "★ 滑块初值 0（markup 也得改，否则首帧闪 100%）");
+  eq(String(els["volAccentPct"].textContent), "0%", "★ 百分比读数 0%");
+}
+
 section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
 {
   const { beat: probe } = loadApp();

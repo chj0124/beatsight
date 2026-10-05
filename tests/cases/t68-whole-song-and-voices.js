@@ -83,7 +83,7 @@ const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/
    点示例曲条目——语义一位不差，交互路径换成产品里唯一剩下的那个入口 */
 /* 曲式条目挂在**曲式分组容器**里（v2.25.0 起不是 presetList 的直接子节点），从 boxOf 里找 */
 const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "在他乡（示例）");
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
 const noteOf = els => playRowOf(els).children[0];                  // 行内唯一子节点 = 状态说明
 /* 「播放范围」双滑块（v2.10.4 取代原段序条那 10 颗段号胶囊）。
    结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
@@ -216,16 +216,16 @@ section("T68e 双声部 · 节拍音量与扫弦音量互不缩放（并列，�
   const B = run(0.8, 0.4);    // 只压扫弦
   const C = run(0.3, 1);      // 只压节拍
 
-  near(A.click, 0.8, 1e-6, "默认：节拍峰值 = S.vol(0.8) × tier(1)");
-  near(A.strum, 8, 1e-6, "默认：扫弦峰值 = S.strumVol(1) × tier(1) × makeup(8)");
-  near(B.strum, 3.2, 1e-6, "★ 扫弦条拉到 40%：扫弦峰值随之 = 0.4 × 8");
+  near(A.click, 0.44, 1e-6, "默认：节拍峰值 = S.vol(0.8) × levelBeat(0.55)");
+  near(A.strum, 4.4, 1e-6, "默认：扫弦峰值 = S.strumVol(1) × levelBeat(0.55) × makeup(8)");
+  near(B.strum, 1.76, 1e-6, "★ 扫弦条拉到 40%：扫弦峰值随之 = 0.4 × 8 × 0.55");
   eq(B.click.toFixed(6), A.click.toFixed(6), "★ 动「扫弦」条**不影响**节拍音量");
-  near(C.click, 0.3, 1e-6, "★ 节拍条拉到 30%：节拍峰值随之 = 0.3");
+  near(C.click, 0.165, 1e-6, "★ 节拍条拉到 30%：节拍峰值随之 = 0.3 × 0.55");
   eq(C.strum.toFixed(6), A.strum.toFixed(6), "★ 动「节拍」条**不影响**扫弦音量");
   /* "并列"的定义就是任一条归零只静音自己那条声部 */
   const Z = run(0, 1);
   near(Z.click, 0.0001, 1e-6, "节拍归零：节拍声部静音（走包络的静音兜底值）");
-  near(Z.strum, 8, 1e-6, "★ 节拍归零时扫弦照响（若是串联的总闸，这里会是 0.0001）");
+  near(Z.strum, 4.4, 1e-6, "★ 节拍归零时扫弦照响（若是串联的总闸，这里会是 0.0001）");
 }
 
 /* ================= 场景 T68f：S.strumVol 加载校验 / 持久化 / UI 同步 ================= */
