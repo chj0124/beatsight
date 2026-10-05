@@ -65,6 +65,11 @@ MUTANTS = [
         'if (parts.length === 1 && parts[0].indexOf("@") < 0) return [{ frac: 0, text: parts[0] }];',
         'return [{ frac: 0, text: parts[0] }];', 1),
      ["★★ 一小节两个和弦 ⇒ 展开成 2 颗"]),
+    # ── v3.34.4：歌词轨播放头 ──
+    ("M39 无词行也上播放头（退回被钉行尾）", lambda s: s.replace(
+        'if (!row || !(row.chipEls && row.chipEls.length)) return { show: false, x: 0 };',
+        'if (!row || !(row.chipEls)) return { show: false, x: 0 };', 1),
+     ["★★ 无词行 ⇒ **不上播放头**"]),
 ]
 
 hit_n, miss_n = 0, 0

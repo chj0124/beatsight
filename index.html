@@ -3564,18 +3564,18 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L6122  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L7084  Modal         应用内弹窗
      L7229  Viz           时值可视化渲染与每帧动画
-     L10672 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11353 Trainer       变速训练器
-     L11563 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12232 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13831 Editor        自定义节奏型编辑器
-     L14375 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14422 Ear           听辨训练（v1.10.0）
-     L14650 Arrange       曲式编排（v2.0.0）
-     L17944 Help          使用方法（v2.0.1）
-     L18073 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L18147 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18414 初始化（装配） 各模块 hook 接线与启动
+     L10694 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11375 Trainer       变速训练器
+     L11585 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12254 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13853 Editor        自定义节奏型编辑器
+     L14397 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14444 Ear           听辨训练（v1.10.0）
+     L14672 Arrange       曲式编排（v2.0.0）
+     L17966 Help          使用方法（v2.0.1）
+     L18095 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L18169 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18436 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3601,7 +3601,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.34.3";
+const VERSION = "3.34.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9861,7 +9861,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
            行里一个 chip 都没有，底纹却照画 ⇒ 看起来像"凭空多出一条歌词带"。
            底纹只表"这一行是当前正在唱的那行"，没有词就无从谈起，故空行不画（见样式区）。 */
         row.el.classList.toggle("lyr-empty", !(row.chipEls && row.chipEls.length));
-        row.head.style.display = ri === curIdx ? "" : "none";
+        /* v3.34.4：**无词的行不上播放头**——与上面 .lyr-empty 同一口径（没有词就无从谈起） */
+        row.head.style.display = (ri === curIdx && lyricHeadAt(row, tib, lyricW).show) ? "" : "none";
       });
       for (const s of states){
         s.row.chipEls[s.i].className = "lyric-chip" + (s.st === "p" ? " played" : (s.st === "o" ? " on" : ""));
@@ -9877,10 +9878,31 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     }
     if (curIdx >= 0){
       const cur = lyricRows[curIdx];
-      if (cur && cur.barTicks > 0)
-        cur.head.style.transform = `translateX(${(lyricW * Math.min(1, tib / cur.barTicks)).toFixed(1)}px)`;
+      /* v3.34.4：走同一个判据（无词不显示）；位置已归一到行内 ⇒ 不会再被钉在行尾 */
+      const hd = lyricHeadAt(cur, tib, lyricW);
+      if (hd.show) cur.head.style.transform = `translateX(${hd.x.toFixed(1)}px)`;
     }
     // v2.86.0：旧的 paintFollow（歌词跟随条）已退役——伴随节奏模式改由 layoutLyricLane / placeLaneOverlay 在结构层定位，帧层只做逐字着色（本函数上方）。
+  }
+
+  /** 歌词轨播放头**该不该显示、显示在哪**（v3.34.4）。
+      ★ 用户实报：播放到**没有歌词的段**时，行尾突然出现一条绿线。
+        根因：位置式 `min(1, tib / row.barTicks)` 在 `tib`（**段内** tick）大于 `barTicks`
+        （**一小节**长）时把播放头**钉死在行尾**；而无词的行没有"按词归一"那一步，
+        `tib` 就停在大数值上 ⇒ 行尾一条绿线。
+      两条修法（双保险）：
+        ① **无词的行不显示播放头**——与 v3.33.8「空歌词行不画底纹」同一口径：
+           播放头表示"正在唱到哪"，**没有词就无从谈起**；
+        ② 位置**先归一**到"当前行的小节内"（`tib % barTicks`）⇒ 即使 `tib` 来自段内坐标系
+           也不会再被钉到行尾；有词行本来就是行内 tick，同余为**无操作**（回归安全）。
+      @param {{barTicks:number, chipEls?:any[]}} row @param {number} tib @param {number} laneW
+      @returns {{show:boolean, x:number}} */
+  function lyricHeadAt(row, tib, laneW){
+    if (!row || !(row.chipEls && row.chipEls.length)) return { show: false, x: 0 };
+    const bt = row.barTicks > 0 ? row.barTicks : 0;
+    if (!bt) return { show: false, x: 0 };
+    const inBar = ((tib % bt) + bt) % bt;
+    return { show: true, x: laneW * Math.min(1, inBar / bt) };
   }
 
   /* 每帧主体：只做便宜事。rafId 的续期统一交给外层 paintFrame()，
@@ -10616,7 +10638,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     resetWindow();
     buildViz();          // 内部已重建歌词轨 + （scroll 下）重落静止态
   }
-  return { stepLabel, seamGradient, barChordChips, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
+  return { stepLabel, seamGradient, lyricHeadAt, barChordChips, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
     /* ★ v3.31.1：外部（Controls）重建歌词轨的唯一入口——见 rebuildLyricLane 的注释。
        直接 buildLyricLane() 会让 scroll 静止态下的歌词丢横向位移（用户报障的那个错位）。 */
     winStartState: () => ({ start: winStart, pat: !!winPat }),   // v3.31.6（审计 S-1）：反向变异/回归断言用
