@@ -655,15 +655,16 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    两条规则都**只去掉那条线、绝不删元素**：.sub 同时是"每跑完一个十六分闪一次"的动画目标
    （paintBeatFlash 读 subEls[fb][fk]；动画改的是 boxShadow / backgroundColor，与边框无关），
    删元素会连带砍掉十六分级播放反馈——那是功能面收缩，不是纯视觉。
-     ① .t16-off：该型每个时值都是八分的整数倍 ⇒ 十六分网格描述不了任何东西
-        （每格内部刻度都落在同一批位置上，且都压在扫弦箭头上），画了只是噪声。
-        判据见数据区 needsT16Ruler()。
-     ② .collide：该型确实需要十六分尺，但**格中心那一条**正压在扫弦箭头上
-        （箭头按定义落在格中心——见 buildRowCells 里 sm.style.left 的注释），故让位。
-        只有 nSub 为偶数时格中心才落在刻度边界上；只有带箭头的格才需要让位。
-   选择器写到 (0,4,0)：高于上面 `.cell.played .sub` 的 (0,3,0)，不依赖书写顺序。 */
-.cell .subs.t16-off .sub,
-.cell .subs .sub.collide{border-right:none}
+   ★ 判据**只有一条**：该型每个时值都是八分的整数倍 ⇒ 十六分网格描述不了任何东西，不画。
+     判据见数据区 needsT16Ruler()。
+   选择器写到 (0,4,0)：高于上面 `.cell.played .sub` 的 (0,3,0)，不依赖书写顺序。
+
+   ★★ v3.33.24 移除 `.collide`（v3.33.15 的"撞箭头让位"）：那是我自己加的"兜底"，
+     **用户从未提过**——用户的需求自始至终只有上面那一条。而它的代价是**删掉八分格里的那条
+     分界线**，那正是八分格内部两个十六分的分界，是用户要看的东西。
+     "箭头与刻度逐像素同位"不是缺陷；逐像素实测（用户两张截图对比）显示：移除后 8 条线回来，
+     与该规则命中的 8 个格一一对应。 */
+.cell .subs.t16-off .sub{border-right:none}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
@@ -3533,23 +3534,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3565  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4266  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6023  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L6985  Modal         应用内弹窗
-     L7130  Viz           时值可视化渲染与每帧动画
-     L10544 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11225 Trainer       变速训练器
-     L11435 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12104 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13703 Editor        自定义节奏型编辑器
-     L14247 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14294 Ear           听辨训练（v1.10.0）
-     L14522 Arrange       曲式编排（v2.0.0）
-     L17712 Help          使用方法（v2.0.1）
-     L17841 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L17915 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18182 初始化（装配） 各模块 hook 接线与启动
+     L3566  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4267  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6024  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L6986  Modal         应用内弹窗
+     L7131  Viz           时值可视化渲染与每帧动画
+     L10543 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11224 Trainer       变速训练器
+     L11434 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12103 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13702 Editor        自定义节奏型编辑器
+     L14246 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14293 Ear           听辨训练（v1.10.0）
+     L14521 Arrange       曲式编排（v2.0.0）
+     L17709 Help          使用方法（v2.0.1）
+     L17838 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L17912 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18179 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3575,7 +3576,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.33.23";
+const VERSION = "3.33.24";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8370,12 +8371,10 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         const nSub = s.t / T16;
         for (let u = 0; u < nSub; u++){
           const sub = document.createElement("div");
-          /* v3.33.15（撞箭头兜底）：格中心那条刻度正压在扫弦箭头上——箭头按定义落在**格中心**
-             （见下方 sm.style.left 的注释），两者逐像素同位，看上去就是"箭头旁边多出一条小竖线"。
-             nSub 为偶数时格中心才落在刻度边界上（八分 nSub=2 → 第 1 条；四分 nSub=4 → 第 2 条）；
-             且只有**带箭头的格**才让位——纯节拍型没有箭头，中心那条本身是有用的刻度参考。 */
-          sub.className = "sub"
-            + ((needT16 && hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) ? " collide" : "");
+          /* v3.33.24：`.collide`（v3.33.15 的撞箭头让位）整体退役，见样式表「十六分刻度线的
+             显隐」注释。刻度显隐**只由 needT16 决定**，与有没有箭头无关——八分格中心那条
+             就是它内部两个十六分的分界，必须画出来。 */
+          sub.className = "sub";
           subs.appendChild(sub);
           subEls[b][startT / T16 + u] = sub;     // 以十六分位置为键，供经过动效查找
         }
@@ -15575,10 +15574,8 @@ const Arrange = (() => {
         const nSub = s.t / T16;
         for (let u = 0; u < nSub; u++){
           /* v3.33.15 撞箭头兜底：格中心那条正压在扫弦箭头上（与主视图同一条判据，让位）。
-             ★ 下标口径与主视图**差 1**，别照抄：主视图的线是 `.sub` 的 border-right，
-               所以"中心那条"属于第 nSub/2−1 个 .sub；本处是**把节点直接摆在边界位置上**
-               （含块左缘 u=0），中心 50% 正好是 u = nSub/2。 */
-          if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2) continue;
+             ★ v3.33.24：原先此处有"撞箭头让位"的跳格（`u === nSub / 2`），随 `.collide`
+               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */
           const sub = document.createElement("i");
           sub.className = "arg-pat-sub";
           sub.style.left = (u * T16 / s.t * 100) + "%";

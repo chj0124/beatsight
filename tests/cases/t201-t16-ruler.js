@@ -16,7 +16,8 @@
      （paintBeatFlash 读 subEls[fb][fk]，动画改的是 boxShadow / backgroundColor，与边框无关），
      删节点 = 砍掉十六分级播放反馈——那是功能面收缩，不是纯视觉。显隐只落在 border 那一条线上。
 
-   ★ 撞箭头让位（T201d）：扫弦箭头按定义钉在**格中心**，而 nSub 为偶数时刻度边界也在格中心，
+   ★ v3.33.24「撞箭头让位」已整体退役（T201d/T201e 由"钉让位"改为"钉照画"）：刻度线只按
+     型的最小单位显隐，与有没有箭头无关。原让位说明留档：扫弦箭头按定义钉在**格中心**，而 nSub 为偶数时刻度边界也在格中心，
      两者逐像素同位——正是用户报的「八分音符中间多出一条小竖线，与扫弦箭头部分重合」。
      ★ 主视图与编排页的**下标口径差 1**（主视图线是 .sub 的 border-right ⇒ 中心属第 nSub/2−1 个；
        编排页把节点直接摆在边界位置上且含左缘 ⇒ 中心是 u = nSub/2），T201d/T201e 各钉一侧。
@@ -109,29 +110,24 @@ section("T201c 主视图 · 八分与十六分混排：照画（无箭头的对�
      "★ 不带方向 ⇒ hasStr 假 ⇒ 无箭头可撞 ⇒ 中心那条刻度照画");
 }
 
-/* ============ 场景 T201d：主视图 · 撞箭头让位（下标口径 = nSub/2 − 1） ============ */
-section("T201d 主视图 · 带方向的八分格：格中心那条刻度让位给扫弦箭头");
+/* ============ 场景 T201d：带方向的格也必须画中心刻度（v3.33.24 归因更正） ============ */
+section("T201d 主视图 · 带方向的八分格：中心那条刻度**照画**（不因扫弦箭头让位）");
 {
+  /* ★★ 归因更正（用户澄清）：需求从头到尾只有一条——「十六分刻度线不要出现在**最小单位为八分**
+     的节奏型里」。`collide`（撞箭头让位）是我自己加的"兜底"，用户从未要求，且它的代价是
+     **删掉八分格里的那条分界线**（那正是八分格内部两个十六分的分界，用户要看的就是它）。
+     故本场景由"钉让位"改为"钉照画"。 */
   const bars = [[{ t: 24, dir: "D" }, { t: 12 }, { t: 12 }, { t: 24, dir: "U" }, { t: 12 }, { t: 12 },
     { t: 24, dir: "D" }, { t: 12 }, { t: 12 }, { t: 24, dir: "U" }, { t: 12 }, { t: 12 }]];
   const { beat, els } = selectPattern(bars, "T201 混排带方向");
-  eq(beat.needsT16Ruler(beat.curPattern()), true, "前提：该型需要十六分尺");
+  eq(beat.needsT16Ruler(beat.curPattern()), true, "前提：该型需要十六分尺（含十六分 ⇒ 不 t16-off）");
   const cells = allOf(els["viz"], "cell");
   const eighthCells = cells.filter(c => allOf(c, "sub").length === 2);
-  const sixCells = cells.filter(c => allOf(c, "sub").length === 1);
   ok(eighthCells.length > 0, "前提：有 nSub=2 的八分格");
-  ok(sixCells.length > 0, "前提：有 nSub=1 的十六分格");
-  eq(eighthCells.filter(c => cls(allOf(c, "sub")[0], "collide")).length, eighthCells.length,
-     "★ 每个带方向的八分格，中心那条刻度都让位（下标 nSub/2−1 = 0，即 border-right 落在 50% 的那个）");
-  eq(sixCells.filter(c => allOf(c, "collide").length > 0).length, 0,
-     "★ 十六分格 nSub=1：格中心不是刻度边界（唯一一条在 100%），不该让位");
-
-  /* 对照组：同样的时值构成、只是不带方向 ⇒ 没有箭头，中心刻度照画 */
-  const noDir = [[{ t: 24 }, { t: 12 }, { t: 12 }, { t: 24 }, { t: 12 }, { t: 12 },
-    { t: 24 }, { t: 12 }, { t: 12 }, { t: 24 }, { t: 12 }, { t: 12 }]];
-  const { els: els2 } = selectPattern(noDir, "T201 混排无方向");
-  eq(allOf(els2["viz"], "collide").length, 0,
-     "★ 对照组：时值构成相同但不带方向 ⇒ 无箭头 ⇒ 中心刻度照画（不无谓让位）");
+  eq(allOf(els["viz"], "collide").length, 0,
+     "★★ 全行零 .collide：带方向的八分格，中心那条刻度**必须照画**（改前为 8 个让位 ⇒ 红线）");
+  eq(eighthCells.every(c => allOf(c, "sub").length === 2), true,
+     "★ 八分格的 .sub 元素一个不少（只谈线的显隐，绝不删元素——闪烁目标不能丢）");
 }
 
 /* ============ 场景 T201e：编排页 · 与主视图共用同一份判据 ============ */
@@ -176,14 +172,15 @@ section("T201e 编排页块内刻度 · 同一判据（不画 / 画 / 让位，�
   const mix = arrangePatBar([[{ t: 24, dir: "D" }, { t: 12 }, { t: 12 }, { t: 24, dir: "U" }, { t: 12 }, { t: 12 },
     { t: 24, dir: "D" }, { t: 12 }, { t: 12 }, { t: 24, dir: "U" }, { t: 12 }, { t: 12 }]], "T201e 混排带方向");
   ok(allOf(mix, "arg-pat-sub").length > 0, "★ 含十六分 ⇒ 编排页画块内刻度");
-  /* 本处节点**摆在边界位置上且含块左缘**（u = 0 起），故每格节点数 = nSub；
-     八分格 nSub=2 的中心是 u=nSub/2=1（**不是**主视图的 nSub/2−1），让位后剩 u=0（左缘）那一条。 */
+  /* 本处节点**摆在边界位置上且含块左缘**（u = 0 起），故每格节点数 = nSub。
+     ★ v3.33.24：撞箭头让位已退役 ⇒ 八分格保留 **2 条**（u=0 左缘 + u=1 中心）。
+       八分格中心那条正是它内部两个十六分的分界——用户要看的就是它。 */
   const cells = allOf(mix, "arg-pat-cell");
   const perCell = cells.map(c => allOf(c, "arg-pat-sub").length);
-  eq(perCell.join(","), "1,1,1,1,1,1,1,1,1,1,1,1",
-     "★ 带方向：4 个八分格各让位掉 1 条（2→1），8 个十六分格本就 1 条 ⇒ 全体恰 1 条");
-  eq(perCell.filter(n => n === 2).length, 0,
-     "★ 没有八分格残留 2 条——残留即证明让位下标写错（本处口径 nSub/2，主视图是 nSub/2−1）");
+  eq(perCell.join(","), "2,1,1,2,1,1,2,1,1,2,1,1",
+     "★★ 带方向也照画：4 个八分格各 2 条（左缘 + 中心），8 个十六分格各 1 条（改前八分格被让位只剩 1 条）");
+  eq(perCell.filter(n => n === 2).length, 4,
+     "★ 恰好 4 个八分格保留 2 条 ⇒ 与主视图同一事实（不是第二处口径）");
   const eighthCells = cells.filter(c => c.style.width === "12.5%");      // 24/192
   const sixCells = cells.filter(c => c.style.width === "6.25%");         // 12/192
   eq(eighthCells.length, 4, "前提：4 个八分格");
@@ -232,6 +229,8 @@ section("T201f 编辑器头部 · 引用提示移出顶栏（源码钉）+ 两�
      "★ CSS 不变量：.editor-actions 的 flex:none **提为全局**（原先只在 ≤640px 媒体查询里，中宽失效）");
   ok(/#editorRefNote:empty\{display:none\}/.test(src),
      "★ CSS：提示为空时不占位（默认状态就是空——不该因此多吃掉一段高度）");
-  ok(/\.cell \.subs\.t16-off \.sub,/.test(src) && /\.cell \.subs \.sub\.collide\{border-right:none\}/.test(src),
-     "★ CSS：两条显隐规则都只去掉 border-right（元素保留 ⇒ 闪烁目标不丢）");
+  ok(/\.cell \.subs\.t16-off \.sub\{border-right:none\}/.test(src),
+     "★ CSS：只按「型的最小单位」显隐（只去 border-right，元素保留 ⇒ 闪烁目标不丢）");
+  ok(!/\.sub\.collide\{/.test(src) && !/" collide"/.test(src) && !/u === nSub \/ 2\) continue/.test(src),
+     "★★ v3.33.24：collide 三处落点全清（CSS 规则 / 主视图挂类 / 编排页跳格）——非用户需求，且会删掉八分格内的十六分分界线");
 }

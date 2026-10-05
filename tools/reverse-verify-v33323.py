@@ -23,6 +23,17 @@ MUTANTS = [
     ("M31 撤掉「拖回原位(no-op)」路径的 selectChip", lambda s: s.replace(B, B_MUT, 1),
      # ★ 初版这里写的是 T119x 的文案，与 T119y 对不上 ⇒ 误报"未命中"
      ["★★ no-op 路径也要选中"]),
+    # ── v3.33.24：`.collide`（撞箭头让位）整体退役 —— 再把它加回去，断言必须变红 ──
+    ("M32 把主视图的 `.collide` 挂类加回去", lambda s: s.replace(
+        '          sub.className = "sub";',
+        '          sub.className = "sub"\n'
+        '            + ((needT16 && hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) ? " collide" : "");', 1),
+     ["★★ 全行零 .collide"]),
+    ("M33 把编排页的撞箭头跳格加回去", lambda s: s.replace(
+        '               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */',
+        '               一并退役——块内刻度线**只按 needT16 显隐**，与有没有箭头无关。 */\n'
+        '          if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2) continue;', 1),
+     ["★★ 带方向也照画"]),
 ]
 
 hit_n, miss_n = 0, 0
