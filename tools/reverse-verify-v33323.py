@@ -55,6 +55,16 @@ MUTANTS = [
      # ★ 关键词必须取自**单元套件里真实变红的那条**：跨行闸在冒烟里，单元套件抓的是导出纯函数的
      #   T119z 断言（这已是我第三次把关键词写成别处的文案）
      ["★★ 跨行：下界 = 目标行行首 192", "★★ 跨行：上界 = 目标行行末"]),
+    # ── v3.34.1：贴词保位 ──
+    ("M37 贴词退回全量重建（不看旧位置）", lambda s: s.replace(
+        "    if (!prev.length) return next.map(",
+        "    if (true) return next.map(", 1),
+     ["★★ 改字：换掉的那个字"]),
+    # ── v3.34.2：一小节多和弦 ──
+    ("M38 多和弦展开退回单颗", lambda s: s.replace(
+        'if (parts.length === 1 && parts[0].indexOf("@") < 0) return [{ frac: 0, text: parts[0] }];',
+        'return [{ frac: 0, text: parts[0] }];', 1),
+     ["★★ 一小节两个和弦 ⇒ 展开成 2 颗"]),
 ]
 
 hit_n, miss_n = 0, 0

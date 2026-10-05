@@ -136,3 +136,26 @@ section("T141e-2 分段 4 段 · 每行 4 颗按序；无「|」逐位不变");
   const chips2 = chordsIn(c.els);
   ok(chips2.length === 4 && chips2.every(t => t === "C"), "无「|」单段 ⇒ 每行单颗行首（批 D 行为不变）");
 }
+
+/* ============ T141x：一小节多和弦的展开（v3.34.2，用户需求「一小节里有俩和弦怎么显示」） ============
+   规则：**空格分隔 N 份 ⇒ 对本小节均分**；**`名字@N` ⇒ 显式落在第 N 拍**（1 基）；
+        **无空格（旧数据）⇒ 单颗 frac 0**（向后兼容）。 */
+section("T141x barChordChips · 一小节多和弦的展开规则");
+{
+  const { beat } = loadApp();
+  const F = beat.Viz.barChordChips;
+  ok(typeof F === "function", "前提：barChordChips 已导出（供测试与排查）");
+  const one = F("C", 192);
+  eq(one.length, 1, "★ 单个和弦 ⇒ 1 颗（旧数据逐位不变）");
+  eq(one[0].frac, 0, "★ 单颗落在行首 frac=0");
+  const two = F("C Am", 192);
+  eq(two.length, 2, "★★ 一小节两个和弦 ⇒ 展开成 2 颗");
+  eq(two.map(c => c.frac).join(","), "0,0.5",
+     "★★ 均分：0% / 50%（4/4 里 = 第 1 拍、第 3 拍）");
+  eq(two.map(c => c.text).join(","), "C,Am", "★ 名字按序对应");
+  eq(F("C Am@2", 192).map(c => c.frac).join(","), "0,0.25",
+     "★★ `@N` 显式落拍：Am@2 ⇒ 第 2 拍 = 25%（均分本会给 50%）");
+  eq(F("C G Am F", 192).map(c => c.frac).join(","), "0,0.25,0.5,0.75", "★ 四颗 ⇒ 每拍一个");
+  eq(F("C@3", 192)[0].frac, 0.5, "★ 单颗也能带 @（C@3 = 第 3 拍）");
+  eq(F("", 192).length, 0, "★ 空串 ⇒ 不挂胶囊");
+}

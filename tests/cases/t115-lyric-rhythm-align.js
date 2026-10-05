@@ -211,3 +211,55 @@ section("T115e 参考层 · 拍线数 / 时值轮廓数与几何 / 纯节拍与�
   eq(notesR.filter(n => /(^| )rest( |$)/.test(n.className)).length, 1, "★ 休止画虚线空框（.rest）");
   beat.Arrange.close();
 }
+
+/* ============ T115x 贴词保位：改字 / 插字 / 删字都不得重置已排好的位置 ============
+   用户实报：「我已经把歌词排好位置，但之后如果改动歌词，又会导致已排好的位置恢复原样」。
+   根因：贴词框的 change 直接调 distribute，而 distribute **不读旧数据**，一律
+   `t = k × LYRIC_BASE` 全量重建 ⇒ 改一个字就把整句位置冲掉。
+   本组钉住三种情形（用户拍板「三种都按上表处理」）。 */
+section("T115x 贴词保位 · 改字/插字/删字都不重置位置");
+{
+  const { beat, els } = loadApp();
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "保位素材", meter: 4, bars: [[
+    { t: 24, dir: "D" }, { t: 24, dir: "U" }, { t: 24, dir: "D" }, { t: 24, dir: "U" },
+    { t: 24, dir: "D" }, { t: 24, dir: "U" }, { t: 24, dir: "D" }, { t: 24, dir: "U" }]] }] })), "素材导入");
+  const pid = beat.Store.customs[beat.Store.customs.length - 1].id;
+  ok(beat.Store.upsertArrange({ name: "保位曲式", sections: [
+    { name: "段", blocks: [{ ref: { type: "custom", id: pid }, repeats: 2 }] }] }), "曲式落库");
+  const arr = beat.Store.arranges[beat.Store.arranges.length - 1];
+  const uid = arr.sections[0].uid;
+  beat.Store.deleteArrange(beat.DEMO_ID);
+
+  /* ★ 手工"排好"的位置：0 / 72 / 120（**不是**均分的 0 / 24 / 48）——保位与否一眼可辨 */
+  const seed = () => beat.Store.upsertLyric(arr.id, uid, [
+    { t: 0, dur: 24, ch: "一" }, { t: 72, dur: 24, ch: "二" }, { t: 120, dur: 48, ch: "三" }]);
+  const chars = () => (beat.Store.findLyric(arr.id, uid) || { chars: [] }).chars;
+  const at = (ch) => { const c = chars().find(x => x.ch === ch); return c ? c.t : null; };
+  const runCase = (text) => {
+    seed();
+    beat.Arrange.close(); beat.Arrange.open();                      // 重渲染（贴词框初值来自库）
+    const ly = els["argSections"].children[0].children
+      .find(c => /(^| )arg-lyric( |$)/.test(c.className));
+    ly.children.find(c => /(^| )arg-lyric-sum( |$)/.test(c.className)).fire("click");
+    const ly2 = els["argSections"].children[0].children
+      .find(c => /(^| )arg-lyric( |$)/.test(c.className));
+    const box = ly2.children.find(c => /(^| )arg-lyric-paste( |$)/.test(c.className));
+    box.value = text;
+    box.fire("change");
+    return chars().map(c => c.ch + "@" + c.t).join(" ");
+  };
+
+  /* ① 改字：二 → 四（同位置换字）⇒ 位置必须原地不动 */
+  eq(runCase("一四三"), "一@0 四@72 三@120",
+     "★★ 改字：换掉的那个字**保留原位置**（改前被重置成 0/24/48）");
+  /* ② 插字：在二、三之间插入五 ⇒ 一/二/三 位置不动，新字落在空隙里 */
+  const ins = runCase("一二五三");
+  ok(ins.indexOf("一@0") === 0 && ins.includes("二@72") && ins.includes("三@120"),
+     "★★ 插字：原有三个字位置不动（改前全被重置）", "实际 " + ins);
+  const t5 = at("五");
+  ok(t5 !== null && t5 > 72 && t5 < 120,
+     "★ 插入的新字落在左右两字的**空隙**里（72 < t < 120）", "实际 t=" + t5);
+  /* ③ 删字：删掉二 ⇒ 一、三 位置不动 */
+  eq(runCase("一三"), "一@0 三@120",
+     "★★ 删字：剩下的字位置不动（改前被重置成 0/24）");
+}

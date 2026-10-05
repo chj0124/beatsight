@@ -77,3 +77,28 @@ section("T138d 源码级 · 隐藏带 !important（压 fitCellAnnotations 的内
   ok(/\.viz\.chord-xl \.bar-chord\{font-size:22px;line-height:1;padding:0 16px;top:-36px\}/.test(html),
     "★ 放大 = 字号/内边距 ×2 + top 抬高（不用 transform:scale，防边框发虚）");
 }
+
+/* ============ T138x 层级：球与播放杆都要在**和弦胶囊之上** ============
+   用户实报：播放杆和小球都在和弦标记**下面**（被行首胶囊挡住）。
+   实测契约（改前）：.bar-chord z=8 / .bounce-ball z=7 / .playhead z=6。
+   用户拍板（简化版）：**两者都抬到和弦之上**，不做"只当前行"的分段。 */
+section("T138x 层级 · 弹跳球与播放杆都在和弦胶囊之上");
+{
+  /** 从源码里取某选择器的 z-index（只取该规则第一条） @param {string} sel */
+  const zi = (sel) => {
+    const re = new RegExp("\\" + sel.replace(/[.*+?^${}()|[\]\\]/g, m => m === "." ? "." : "\\" + m)
+      + "\\{[^}]*z-index:(\\d+)");
+    const m = re.exec(html);
+    return m ? Number(m[1]) : null;
+  };
+  const chord = zi(".bar-chord"), ball = zi(".bounce-ball"), head = zi(".playhead");
+  eq(chord, 8, "前提：和弦胶囊 z-index = 8（层叠基准）");
+  ok(ball !== null && ball > chord,
+     "★★ 弹跳球在**和弦之上**（改前 7 < 8 ⇒ 被行首胶囊挡住）",
+     "ball=" + ball + " / chord=" + chord);
+  ok(head !== null && head > chord,
+     "★★ 播放杆在**和弦之上**（改前 6 < 8 ⇒ 被行首胶囊挡住）",
+     "playhead=" + head + " / chord=" + chord);
+  ok(/z-index:9/.test(html) || (ball > chord && head > chord),
+     "★ 两处都确实抬过和弦（允许将来同步上调，只要仍压在它上面）");
+}

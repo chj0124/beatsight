@@ -789,7 +789,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    .edcell 作用域的 .strumv 竖箭头表达（64px 行高等比：kT 0→25.6 / kB 38.4→64 / kF 0→64） */
 .edcell{--yT1:0px;--yT2:25.6px;--yB1:38.4px;--yB2:64px}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
-.playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:6;will-change:transform}
+.playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:9;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
 /* 尾迹（v2.0.2 transform 化）：宽度在换行时按行宽定死（行的 10%），帧内只写
    translateX + scaleX（origin 右缘 = 贴在播放头身后）——每帧改 left/width% 会触发
@@ -872,7 +872,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* 弹跳球（v1.2）：预判式运动——球在相邻发声点之间跳抛物线，落点 = 真实发声时刻（含 Swing）。
    跑道管「何时」，时值块管「多长」，跳距与时值成正比。不做滚动旋转：纯色球旋转不可见，
    按弧起算的角度会在接缝回卷（demo 实测伪影）。跨弧状态量必须连续 */
-.bounce-ball{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);pointer-events:none;z-index:7;transform-origin:50% 100%}
+.bounce-ball{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);pointer-events:none;z-index:10;transform-origin:50% 100%}
 .bounce-ball.breath{animation:ball-breath 1.2s ease-in-out infinite}   /* v2.42.6：待命呼吸（C）——只动亮度不动 transform，与逐帧定位不冲突 */
 /* 预备拍道（v3.2.0 定稿，用户指出"跑道消失只剩虚线框、虚线框大小还不对"）：
    scroll 预备拍专用的第一道——**实体跑道**（与真实跑道同款观感：行底 + 拍格盒子），
@@ -881,7 +881,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    不再是虚线空框——跑道本体可见、长度即预备拍拍数。 */
 @keyframes ball-breath{0%,100%{filter:brightness(1)}50%{filter:brightness(1.55)}}
 .bounce-wait{opacity:.45;box-shadow:none}   /* 接力待命球：半透明，下一小节交接时转正式 */
-.bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:6;transform-origin:50% 50%}
+.bounce-shadow{position:absolute;left:0;top:0;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;pointer-events:none;z-index:9;transform-origin:50% 50%}
 
 /* ---------- 走带控制 ---------- */
 /* v2.10.14：`.card.transport` 整卡删除——BPM/Swing（v2.10.13 去时值卡）、音色/音量（v2.10.11
@@ -3564,18 +3564,18 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L6122  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L7084  Modal         应用内弹窗
      L7229  Viz           时值可视化渲染与每帧动画
-     L10642 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11323 Trainer       变速训练器
-     L11533 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12202 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13801 Editor        自定义节奏型编辑器
-     L14345 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14392 Ear           听辨训练（v1.10.0）
-     L14620 Arrange       曲式编排（v2.0.0）
-     L17844 Help          使用方法（v2.0.1）
-     L17973 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L18047 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18314 初始化（装配） 各模块 hook 接线与启动
+     L10672 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11353 Trainer       变速训练器
+     L11563 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12232 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L13831 Editor        自定义节奏型编辑器
+     L14375 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14422 Ear           听辨训练（v1.10.0）
+     L14650 Arrange       曲式编排（v2.0.0）
+     L17944 Help          使用方法（v2.0.1）
+     L18073 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L18147 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18414 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3601,7 +3601,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.34.0";
+const VERSION = "3.34.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8143,6 +8143,27 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       ? muteBarMuted(Math.floor((winStart + b) / K))
       : muteBarMuted(winStart + b);
   }
+  /** 把**一小节的和弦串**展开成胶囊列表（v3.34.2，用户需求：一小节里有两个和弦该怎么显示）。
+      · **空格分隔 N 份 ⇒ 对本小节均分**（`C Am` → 0% / 50%，4/4 里就是第 1、3 拍）；
+      · **`名字@N` ⇒ 显式落在第 N 拍**（1 基；`C Am@2` → 0% / 25% = 第 1、2 拍）；
+      · **无空格（旧数据）⇒ 单颗 frac 0** ⇒ 与本批之前**逐位相同**（向后兼容）。
+      ★ 为什么小节内用**空格**而不是 `|`：`|` 在段级数据里已被"分小节"占用
+        （`"C|Am|Dm"` = 3 小节），小节内再用 `|` 分不出层级；型级标注能用 `|` 是因为它只有一层。
+        **语义不变，只是这一层的分隔符换了。**
+      @param {string} raw 该小节的和弦串（来自块级 chords 的第 barIn 段）
+      @param {number} barTicks 本小节 tick 数
+      @returns {{frac:number, text:string}[]} */
+  function barChordChips(raw, barTicks){
+    const parts = String(raw || "").split(/\s+/).map(x => x.trim()).filter(Boolean);
+    if (!parts.length) return [];
+    if (parts.length === 1 && parts[0].indexOf("@") < 0) return [{ frac: 0, text: parts[0] }];
+    return parts.map((p, i) => {
+      const m = /^(.+?)@(\d+)$/.exec(p);
+      const t = m ? (Math.max(1, Number(m[2])) - 1) * TPB : Math.round(i * barTicks / parts.length);
+      return { frac: barTicks ? Math.max(0, Math.min(1, t / barTicks)) : 0, text: m ? m[1] : p };
+    });
+  }
+
   /* 本行（窗口第 b 行）对应的**小节和弦名**（v2.7.4）。一行 = 一小节（v2.15.0 起 = 一小节的
      一片，故只在"小节的第一片"那几行上挂）。小节号口径与 arrWindowPat / buildLyricLane
      完全同源：预告行（第 1 行）取预告片段（winPrevSeg，它的格子内容也已被换成那一片），
@@ -8589,13 +8610,22 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* v2.72.1（1.3 增强，方案丙）：预设模式标注优先——支持「|」分段，同行按比例定位。
        barChordEls 保持「逐行一位」的既有对齐契约（pvMark 依赖 [0]）：一行多颗时
        只把**第一颗**登记进位，其余颗只挂 DOM（纯展示）。 */
+    /* v3.34.2：**预设**走 labelChipsAtRow（「|」分段）；**曲式**走 barChordChips（空格均分 / @拍）。
+       两者语义相同（按位置摊开），只是数据层级不同、分隔符不同。 */
+    const arrChips = (S.playMode === "arrange" && chord) ? barChordChips(chord, barTicks) : [];
     const labChips = labelChipsAtRow(b);
-    if (labChips.length){
-      let first = null;
-      for (const chip of labChips){
+    const useChips = labChips.length ? labChips : arrChips;
+    const arrMode = !labChips.length && arrChips.length > 0;
+    if (useChips.length){
+      let first = null, ci = 0;
+      for (const chip of useChips){
         const cc = document.createElement("div");
         cc.className = "bar-chord";
-        cc.textContent = chip.text;
+        /* ★ 曲式模式：**第一颗**沿用原来的整段文案（含「（下一小节 · 型名）」预告后缀）
+           ⇒ 单颗和弦时与改动前**逐字相同**；第 2 颗起只写自己的名字。 */
+        cc.textContent = (arrMode && ci === 0 && pvName)
+          ? chip.text + "（下一小节 · " + pvName + "）" : chip.text;
+        ci++;
         cc.style.left = "calc(" + (chip.frac * 100).toFixed(2) + "% + 6px)";
         row.appendChild(cc);
         if (!first) first = cc;
@@ -10586,7 +10616,7 @@ const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
     resetWindow();
     buildViz();          // 内部已重建歌词轨 + （scroll 下）重落静止态
   }
-  return { stepLabel, seamGradient, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
+  return { stepLabel, seamGradient, barChordChips, buildViz, paintFrame, resetTracking, resetForStop, syncMuteBars, relayout, resetWindow,
     /* ★ v3.31.1：外部（Controls）重建歌词轨的唯一入口——见 rebuildLyricLane 的注释。
        直接 buildLyricLane() 会让 scroll 静止态下的歌词丢横向位移（用户报障的那个错位）。 */
     winStartState: () => ({ start: winStart, pat: !!winPat }),   // v3.31.6（审计 S-1）：反向变异/回归断言用
@@ -15523,6 +15553,70 @@ const Arrange = (() => {
   /* 粘贴 → 按字均分落库。默认值 = 每字一个基准单位（八分 = 2 格）自段首顺排。
      段落 tick 放不下整句时只落库放得下的部分：越界字在播放侧是**静默忽略**，
      若照单全收，用户看到字块却听不到锚点，反而更难排查。 */
+  /** 贴词的**保位重建**（v3.34.1，用户实报「排好位置后改歌词，位置会被重置」）。
+      旧实现不读旧数据，一律 `t = k × LYRIC_BASE` ⇒ **改一个字就把整句位置冲掉**。
+      现在先把「新文本」与「旧 chars」按**编辑距离**对齐：
+        · 替换（同位置换字）⇒ **保留**旧 t/dur，只换 ch
+        · 删除             ⇒ 该字消失，其余位置不动
+        · 插入             ⇒ 新字在「左右两个已定位字」的空隙里按基准单位落位
+      整句重贴（与旧文对不上）⇒ 退化为旧行为（全部均分）——本来就该重排。
+      ★ 回溯**优先对角线**：同位置换字按"替换"处理 ⇒ 位置保留（用户拍板的语义）。
+      @param {any[]} prev @param {string[]} next @param {number} span @returns {any[]} */
+  function lyricMergeText(prev, next, span){
+    if (!prev.length) return next.map((/** @type {string} */ ch, /** @type {number} */ k) =>
+      ({ t: k * LYRIC_BASE, dur: LYRIC_BASE, ch: ch }));
+    const m = prev.length, n = next.length;
+    /** @type {number[][]} */
+    const dp = [];
+    for (let i = 0; i <= m; i++){ const row = new Array(n + 1).fill(0); row[0] = i; dp.push(row); }
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++){
+      for (let j = 1; j <= n; j++){
+        const sub = dp[i - 1][j - 1] + (prev[i - 1].ch === next[j - 1] ? 0 : 1);
+        dp[i][j] = Math.min(sub, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
+      }
+    }
+    /** @type {(any | null)[]} */
+    const out = new Array(n).fill(null);
+    let same = 0;                     // **完全相同**的字数（替换不算）——它才是"旧对齐还有没有参考价值"的判据
+    let i = m, j = n;
+    while (i > 0 || j > 0){
+      const diag = i > 0 && j > 0
+        && dp[i][j] === dp[i - 1][j - 1] + (prev[i - 1].ch === next[j - 1] ? 0 : 1);
+      if (diag){
+        if (prev[i - 1].ch === next[j - 1]) same++;
+        out[j - 1] = { t: prev[i - 1].t, dur: prev[i - 1].dur, ch: next[j - 1] };
+        i--; j--;
+      } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1){
+        i--;                                    // 旧字被删：它的位置随之消失，其余不动
+      } else {
+        out[j - 1] = null; j--;                 // 新字（插入）：待下面定位
+      }
+    }
+    /* ★ 整句重贴的**退化**：对齐后仍保留的字不足一半 ⇒ 当作用户重贴了一段全新歌词，
+       退回旧口径（按基准单位均分）。没有这一步，长文本会被拆成许多小插入段、
+       各自在小空隙里挤成一堆（t60 的"超出段长不录"当场抓到）。
+       ★ 判据用**完全相同**的字数（替换不算），不是编辑距离、也不是"保留下来的字数"：
+         编辑距离对长文本天然很大；而"保留"会把替换算进去——32 个「字」对「你好」总能
+         用两次替换"配上"，于是永远退不回去（第一版就是这么错的，t60 当场抓到）。 */
+    if (same * 2 < n) return next.map((/** @type {string} */ ch, /** @type {number} */ q2) =>
+      ({ t: q2 * LYRIC_BASE, dur: LYRIC_BASE, ch: ch }));
+    /* 插入字定位：落在左右两个**已定位**字的空隙里（右侧无字则到段末） */
+    let k = 0;
+    while (k < n){
+      if (out[k]){ k++; continue; }
+      let e = k; while (e < n && !out[e]) e++;
+      const lo = (k > 0 && out[k - 1]) ? out[k - 1].t + out[k - 1].dur : 0;
+      const hi = (e < n && out[e]) ? out[e].t : span;
+      for (let q = k; q < e; q++){
+        const t = Math.min(lo + (q - k) * LYRIC_BASE, Math.max(lo, hi - LYRIC_BASE));
+        out[q] = { t: t, dur: Math.max(LYRIC_GRID, Math.min(LYRIC_BASE, hi - t)), ch: next[q] };
+      }
+      k = e;
+    }
+    return /** @type {any[]} */ (out);
+  }
+
   /** @param {any} a @param {string} secUid @param {string} text */
   function distribute(a, secUid, text){
     const chars = String(text || "").replace(/\s+/g, "").split("");
@@ -15534,9 +15628,15 @@ const Arrange = (() => {
        整体出现；现在 span=0 与「短到放不下一字」同走「先选节奏型」弹窗。 */
     const fit = span > 0 ? Math.floor(span / LYRIC_BASE) : 0;
     if (!fit){ Modal.uiAlert("这一段还没有可用的小节数——先给块选一个节奏型，再录歌词。"); arrangeRender(); return; }
-    const n = Math.min(chars.length, fit);
-    lyricCommit(a.id, secUid, chars.slice(0, n).map((/** @type {string} */ ch, /** @type {number} */ k) =>
-      ({ t: k * LYRIC_BASE, dur: LYRIC_BASE, ch: ch })));
+    /* ★ v3.34.1：有旧词 ⇒ **保位重建**（改字/插字/删字都不动已排好的位置）；无旧词 ⇒ 旧口径均分 */
+    const prevLine = Store.findLyric(a.id, secUid);
+    const built = lyricMergeText(
+      (prevLine && Array.isArray(prevLine.chars)) ? prevLine.chars : [], chars, span);
+    const n = Math.min(built.length, fit);
+    /* 落库口径不变：放不下的不落（越界字在播放侧是静默忽略，照单全收反而更难排查） */
+    lyricCommit(a.id, secUid, built.slice(0, n)
+      .filter(c => c && c.t >= 0 && c.t < span)
+      .map(c => ({ t: c.t, dur: c.dur, ch: c.ch })));
     arrangeRender();
   }
 
@@ -16082,7 +16182,7 @@ const Arrange = (() => {
   /** @param {any} a @param {any} sec @param {number} r @param {number} i @returns {any} */
   function mkChordCell(a, sec, r, i){
     const cell = document.createElement("input");
-    cell.className = "arg-chd-cell"; cell.type = "text"; cell.maxLength = 12;
+    cell.className = "arg-chd-cell"; cell.type = "text"; cell.maxLength = 24;   // v3.34.2：一格可写多颗（空格分隔，可带 @拍）
     cell.placeholder = "和弦";
     cell.title = "这一小节的和弦（留空 = 该小节不贴和弦）";
     cell.setAttribute("aria-label", `第 ${i + 1} 段第 ${r + 1} 小节的和弦（可留空）`);
