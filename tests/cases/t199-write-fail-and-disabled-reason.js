@@ -89,6 +89,28 @@ section("T199e 反向不变量：迁移/备份类写入**保持静默**（不占
     "★ 加载期的备份/迁移写入失败不弹提示（与主题那处是**刻意**不同的口径）");
 }
 
+/* ================= T199d2：主题**正常路径必须持久化**（2026-10-05 订正后补） ================= */
+section("T199d2 ★★ 正常路径：切主题必须真的持久化（重新加载后仍是新值）");
+{
+  /* ★ 为什么补这条：审计原文把主题那处静默 catch 写成"刷新又变回深色"，
+     被质疑后复核——**未复现**，且正常路径主题是会持久的。本条把"会持久"钉成不变量：
+     上面 T199c/T199d 盯的是**写失败**那条极窄的路径，若只留它们，
+     读者会把"有个静默 catch"读成"主题存不住"，那是对这条用例组的误读。
+     ⇒ 一组用例必须同时钉住「正常路径成立」与「失败路径有反馈」，缺一半就会误导。 */
+  const app = loadApp();
+  app.els["themeToggle"].fire("click");
+  const v = app.storage.get("beatsight.theme");
+  eq(v, "obs", "★ 点一次 ⇒ 主题键落盘为 obs（正常路径写成功）");
+  /* 用同一份存档重新加载 = 等价「刷新」 */
+  const seed = {};
+  for (const [k, val] of app.storage) seed[k] = val;
+  const again = loadApp(seed);
+  eq(again.storage.get("beatsight.theme"), "obs", "★★「刷新」后主题仍是 obs（用户实际依赖的行为）");
+  eq(again.beat.Modal.isOpen(), false, "且刷新后不弹任何东西");
+  again.els["themeToggle"].fire("click");
+  eq(again.storage.get("beatsight.theme"), "classic", "★ 再点一次 ⇒ 切回 classic 并落盘（两个方向都通）");
+}
+
 /* ================= T199g：冷键写前判重（审计 P2-2 的修正后落地） ================= */
 section("T199g ★ 冷键写前判重：内容未变不重写，内容变了才写");
 {
