@@ -74,7 +74,7 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 ## 功能一览
 
-当前 `v3.36.4`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.36.5`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|
@@ -135,11 +135,11 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 Node ≥ 22，**核心闸门零安装**——不装任何东西也能跑完整套自验：
 
 ```bash
-node tools/check-all.js          # 共 20 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → 过期副本检测 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 无障碍 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js          # 共 21 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → 过期副本检测 → 远端漂移核对 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 无障碍 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
 node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时用）
 ```
 
-- 20 步里有 3 步可能标 ⊘（**未执行**，不等于通过）：ESLint / 类型检查缺 `node_modules`、浏览器冒烟缺本机浏览器。它们绝不会因为「没装开发依赖」堵住部署；`npm install` 后自动启用。耗时刻意不写进文档（`tools/check-docs.js` 强制），命令末尾会自己打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
+- 21 步里有 4 步可能标 ⊘（**未执行**，不等于通过）：ESLint / 类型检查缺 `node_modules`、浏览器冒烟缺本机浏览器、远端漂移核对缺 `gh`。它们绝不会因为「没装开发依赖」堵住部署；`npm install` 后自动启用。耗时刻意不写进文档（`tools/check-docs.js` 强制），命令末尾会自己打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
 - CI 在 `.github/workflows/ci.yml`：push 与 PR 都跑 `npm run ci`，并另开一个 job 跑真实浏览器冒烟——它是对所有分支生效的**补位**，Cloudflare 那条路只拦推到 main 的那次构建。
 - 发版纪律：`index.html` 的 `const VERSION` 是唯一真相源，**每次发版必 bump**（`package.json` / `package-lock.json` / `CHANGELOG.md` 首条由 `check-version.js` 强制一致）；发布前跑一次全量 `node tools/check-all.js`；视觉/手感类改动另需人眼验收，冒烟看不出「好不好用」。
 - 可选但推荐：`sh tools/install-hooks.sh` 装 pre-commit 钩子，每次提交自动跑 `--quick`。

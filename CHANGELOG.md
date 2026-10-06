@@ -15,6 +15,32 @@
 
 ---
 
+## v3.36.5 · 审计报告落地（AUDIT-2026-10-07）：新用户首路径文案 / 写前判重 / 远端对齐闸门
+
+### 根因（只读审计 v3.36.4 的三类结论）
+- **A-1 / P3-1**：帮助浮层首路径仍指「右侧「节奏型预设库」」「编辑节奏型」「侧栏」等已退役入口（右侧竖栏 v3.0.0 取消、按钮 v3.3.0 改名「新建节奏型」），新用户第一步就找不到入口。
+- **A-3**：预设库唯一入口 `#presetLibBtn` 主标签是「当前 <型名> ▾」，语义像状态读数不像入口。
+- **P2-1 / P2-2**：`persistHotNow` 没有 `persistCold` 那份写前判重；冷键那一次真的大写入（`persistCold`，注释自记 500 预设 715KB / 阻塞 5–20ms / 触发掉音）**完全不可观测**。
+- **§二①**：20 步闸门无任何一步核对「GitHub main 是否前进」，浅克隆下在旧基线开工会全绿通过而结论作废（本仓真实发生过副本落后 30+ 版被当基线）。
+
+### 修法
+- **① 帮助首路径**：L3228/L3233/L3282 三处退役措辞改正（"右侧预设库"→左下胶囊+"新建节奏型"、"侧栏"→预设库）；`#presetLibBtn` 胶囊补「浏览节奏型」动作提示（pb-caret 前内联 `pb-ctx-cta` span）；壁纸拒图文案改引 `WALL_MAX_EDGE` 常量；`syncBpmUI` 补锁 `bpmMinus/bpmPlus`（变速训练 ±1 不再漏锁）。
+- **② 写前判重 + 可观测**：`persistHotNow` 加与 `persistCold` 同构的写前判重（`lastHot`，**只在写成功后记**）；`persistCold` 前后各打 `performance.now()`，耗时与载荷字节经 `Diagnostics.diagColdWrite` 进账（诊断面板与"复制诊断信息"可见）。`Diagnostics` 出口增 `diagColdWrite` 计数键。
+- **③ 远端对齐闸门**：新增 `tools/check-remote-drift.js`（`gh api` 比对 HEAD；0 一致 / 1 不一致判红 / 3 无 gh 标 ⊘ / 4 网络不可达标 ⚠ 未验证），接入 `check-all.js` STEPS 第 9 项 ⇒ 步数 20→21。同步 4 处步数声明（README 共 21 步 + "21 步里有 4 步可能标 ⊘"、docs/DEVELOPMENT.md、check-all.js 头注释编号列表、check-docs 第 6 项自动对账），汇总补"下一个可用用例编号 / 钩子状态"。
+
+### 取舍
+- 版本号**推迟到 fetch 后再定**（避免与另一台机器撞号）：本批注释用中性「审计 Px-y」标签，未写死版本。
+- `lastHot` 仅写成功后记——顺序写反会"存不下"变"永久存不下"（比现状更糟），已用反向验证盯住。
+- `Store → Diagnostics` 是 EXPECTED_ORDER 第 1→末的反向引用，在 `check-module-order.js` R3 白名单登记（运行时回调，R3 正例；R4 扇出 Store×1 远低于 7）。
+- 冷键数据模型**未动**：先量化（diagColdWrite 实测）再决定是否重型重构，避免为没测过的假设买单。
+
+### 自验
+- `node tools/check-all.js` 全量 **21/21 全部通过**（实跑 21/21，111.9s；⚠ 1 条为模块规模观察期警告，不判红）。
+- 新增 `tests/cases/t215-help-entry-wording.js`（含"帮助正文不含 右侧/侧栏/节奏型预设库"反向验证）、`tests/cases/t216-persist-dedup.js`（含"写失败 lastHot 不更新 → 恢复后可写"反向验证）；回退修复后目标断言均确变红。
+- `persistCold` 实测打点已进 `Diagnostics`。
+
+---
+
 ## v3.36.4 · 更正 v3.36.3 的"另发现"：那是**测试样本缺迁移戳**的假象；顺带修掉真身（arrmig73 的 ×4）
 
 ### ① 更正：v3.36.3 记的"示例曲 2 每次启动都被重建"**不是产品行为**

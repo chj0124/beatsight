@@ -379,6 +379,11 @@ body.wide-full .main{max-width:none}
 .pb-ctx:hover{border-color:var(--border)}
 .pb-ctx:focus-visible{border-color:var(--green)}
 .pb-ctx .pb-ctx-lab{color:var(--t3);font-size:11px;flex:none}
+/* ★ （审计 A-3）：胶囊尾部的动作提示。此前整枚钮的可见文字只有「当前 <型名> ▾」——
+   它读起来是**状态读数**而不是"在这里换型"的入口，新用户找不到预设库在哪。
+   补一枚动词提示（不加 aria：它的文字已是可访问名的一部分，加 aria-label 反而会与可见
+   文字不一致）。flex:none + 绿色与 ▾ 同族：视觉上"这是可以点的那个动作"。 */
+.pb-ctx .pb-ctx-cta{color:var(--green);font-size:11px;flex:none;white-space:nowrap}
 .pb-ctx b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pb-caret{color:var(--green);font-size:11px;flex:none}
 /* 面板动作区：三件事竖排（图标位留给后续批次，本批先文字 + 说明）。
@@ -2884,7 +2889,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
   <!-- v3.3.0：左区 = 上下文入口胶囊（预设模式显示当前型名 / 曲式模式显示当前段名）。
        ★ v3.4.1（P3 去重）：#plbCurName 退役，#patternName 从顶栏原样搬进这里（不换 id）——
          从此「当前型名」全页面只有这一处，且常驻底栏，正是这个读数该待的位置。 -->
-  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false"><span class="pb-ctx-lab">当前</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b><span class="pb-caret" aria-hidden="true">▾</span></button>
+  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false" title="打开预设库：浏览/搜索节奏型，或新建自己的型"><span class="pb-ctx-lab">当前</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b><span class="pb-ctx-cta">浏览节奏型</span><span class="pb-caret" aria-hidden="true">▾</span></button>
       <!-- 跳段 + 播放（v2.0.2 立；v2.10.14 大改）：贴在时值可视化正下方——播放中对着球与格子调段，
            视线不离开演奏区。
            ★ v2.10.14（用户要求③）：播放键从走带卡搬进本行、居「上一段 / 下一段」中间——
@@ -3225,11 +3230,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
 
       <h2 class="card-title" style="margin-bottom:4px">三步上手</h2>
       <ol class="help-list">
-        <li>右侧「节奏型预设库」里选一个（或点「编辑节奏型」自己画一个）</li>
+        <!-- ★ （审计 A-1 / P3-1）：本条原先把预设库指到**右侧竖栏**里的旧区名，
+             而右侧竖栏 v3.0.0 已取消（CSS 注释原文见样式区），入口名也在 v3.3.0 改过一次。
+             这是新用户看到的第一条指路文字，指错路等于第一步就卡住。
+             ★ 注释里刻意**不抄旧文案原句**：t215 按"帮助正文不得出现退役方位词/区名"扫这一片，
+               抄在这里会让它误判（历史引文只该出现在 CHANGELOG，不该出现在会被机器扫的正文里）。 -->
+        <li>点<b>左下</b>「浏览节奏型 ▾」打开预设库选一个（或点库里的「<b>新建节奏型</b>」自己画一个）</li>
         <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
         <li>按播放（或空格键）开始——浏览器的首次点击是在解锁音频，属正常现象</li>
       </ol>
-      <div class="help-tip">这个应用的核心是「把节奏<b>画出来</b>」——不只看拍子，还看每个音有多长。预设卡片上并排的「<b>编辑节奏型</b>」与「<b>编排曲式</b>」分工，见展开完整说明第一条（<!-- v2.25.3（用户需求） -->两个编辑入口的区别是最高频的混淆点）。</div>
+      <div class="help-tip">这个应用的核心是「把节奏<b>画出来</b>」——不只看拍子，还看每个音有多长。预设库里的「<b>新建节奏型</b>」与「<b>编排曲式</b>」分工，见展开完整说明第一条（<!-- v2.25.3（用户需求） -->两个编辑入口的区别是最高频的混淆点）。</div>
 
       <h2 class="card-title" style="margin:22px 0 4px">画面怎么看</h2>
       <ul class="help-list">
@@ -3277,9 +3287,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                （dt+dd）会被说明文字的体量顶爆；ul 每条一个节点，粗体引导词读感等价 -->
         <h2 class="card-title" style="margin:22px 0 4px">先分清两个编辑入口：编辑节奏型 vs 编排曲式</h2>
         <ul class="help-list">
-          <li><b>编辑节奏型</b>：定义一个节奏型——一小节（或几小节）里每个位置弹什么、每个音多长。产物可以<b>单独循环</b>（侧栏点它就反复练它）；改了它，所有用到它的地方（包括曲式里的段）<b>同步变化</b></li>
+          <li><b>编辑节奏型</b>：定义一个节奏型——一小节（或几小节）里每个位置弹什么、每个音多长。产物可以<b>单独循环</b>（预设库里选中它就反复练它；入口是库里的「<b>新建节奏型</b>」）；改了它，所有用到它的地方（包括曲式里的段）<b>同步变化</b></li>
           <li><b>编排曲式</b>：把若干节奏型串成一首歌——一首歌 = 若干段，每段 = 一个节奏型 × N 遍。它管顺序、遍数、播放范围，不管每一拍怎么弹；段落里放的是节奏型的<b>引用</b>，不是拷贝</li>
-          <li><b>一句话记：</b>节奏型是<b>零件</b>、曲式是<b>装配单</b>——<b>什么时候用哪个</b>：某个型弹不顺、想改音型 → 「编辑节奏型」；按歌的顺序练、只循环副歌、练段落衔接 → 「编排曲式」（或曲式区的「整首连播」）</li>
+          <li><b>一句话记：</b>节奏型是<b>零件</b>、曲式是<b>装配单</b>——<b>什么时候用哪个</b>：某个型弹不顺、想改音型 → 预设库里的「新建节奏型」；按歌的顺序练、只循环副歌、练段落衔接 → 「编排曲式」（或曲式区的「整首连播」）</li>
         </ul>
         <!-- v2.25.2（用户实拍"内容重复、排版混乱"）：本节收窄为**主界面**的三条控制项——
              v2.25.1 新增「设置里的每一项」时没有同步清掉这里与它重复的五个词条
@@ -3388,8 +3398,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             （磨"老是弹不顺的那一小节"），想循环一整段就拖出该段的起止小节。
             它和编排页顶部「开练」走带条的双滑块是<b>同一份范围</b>，两边改哪边都同步。
             注意：滑块表示的是<b>范围</b>不是播放位置——"现在在第几小节"看上面那行说明</li>
-          <li>想单练某一个节奏型，直接点侧栏里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
-          <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与侧栏同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
+          <li>想单练某一个节奏型，直接点预设库里那个型即可退回单型循环——「整首连播」与「点某个型」是两个对等的入口</li>
+          <li>想<b>换某一段用哪个节奏型</b>：进「编排曲式」，在该段那一行点「换」——候选按<b>节拍 / 扫弦 / 自定义</b>三区分组（与预设库同构），<b>当前正在用的型置顶</b>带 ✓（<!-- v2.27.0 -->再点它一次 = 不改，收起候选点别处即可）</li>
           <li><b>建新曲式</b>有四种模板（<!-- v2.27.0 -->点曲式库行尾的「<b>＋</b>」选一个）：<b>空白</b>从一段开始；<b>主副歌骨架</b> / <b>完整流行曲式</b>按你当前选中的型自动折算每段遍数；<b>复制当前曲式</b>整个拷一份改名（词不跟着复制）。<!-- v2.36.0 -->复制只有这一个入口；删除 = 选中曲式 chip 右侧的「<b>✕</b>」（会弹确认）。段的重排与删除收在段行右侧的「<b>⋯</b>」菜单里（全文字按钮）：上移 / 下移逐位挪，<b>移到最前 / 移到最后</b>一步到首尾；段行上的「▶」<b>只试听这一段一遍</b>（放完自动停）</li>
           <li>一首歌 = 若干<b>段</b>，每段 = 若干<b>块</b>，一块 = 一个节奏型 × N 遍；每段下方的<b>歌词</b><!-- v2.32.0 -->默认收成一行摘要（状态签 + 前几个字），点「▸ 展开编辑」才出粘贴框和字块轨（<!-- v2.35.0 -->字块按<b>每小节一行</b>排，与主界面歌词轨一致；<!-- v2.46.0 -->行内有<b>拍线与音符起点刻度</b>做参照）；<b>按节奏对齐</b>一键把字逐一对到发声点上（空扫与三连音位不作落点，纯节拍型对到拍点，覆盖手动位置前会先确认）；选中字块后 <b>←/→</b> 微调一格、<b>Shift+←/→</b> 移一拍；拖动中<b>跟手不吸附</b>、松手落到格上或最近的<b>音符锚点</b>（蓝线指引），被邻字顶住会红边提示，<b>顶着邻字推过半程松手 = 与它换位</b>（拖动中有<b>绿框预览</b>落点、邻字脉冲提示换位，另有读数气泡报<b>小节 / 拍 / 相对原位格数</b>）；点按字块 = <b>选中</b>（蓝描边，重渲染不丢）；粘贴 / 拖动 / 微调 / 对齐 / 清除的每一步都可反悔——行内 <b>↩ 撤销 / ↪ 重做</b>，或 <b>Ctrl/⌘+Z</b> / <b>Ctrl/⌘+Shift+Z</b>（整段打轴算一步，会话内有效、刷新即清）；<b>跟播打轴</b> = 播放本段（单段循环），每听到一个字按一次<b>空格</b>落时刻（<b>↓</b> 跳过，Esc 结束）——唱/弹一遍的节奏感比拖拽准得多；悬浮条实时显示<b>当前字上下文</b>，选中字块后可<b>从第 k 字开打</b>（播放仍从段首起）；<b>▶ 试听本段</b> = 原速循环播放本段（不动变速训练），游标随播放走、当前字亮描边，对完位置马上听效果，另有<b>▶ 从选中字</b>从选中字所在小节起播；精修行还有<b>整段平移</b>（◀1拍 … 1格▶，范围可选「全部字」或「从选中字」）、<b>⇄ 与后字换位</b>、<b>时值±1格</b>（窄块没有右缘抓手，用按钮改时值）；字块拖动<b>二维跟手</b>——拖到别的行 = 换小节，行首有小节序号；拖动/微调<b>松手即响</b>一声锚点音（可随锚点提示音开关关闭）；<b>锚点提示音</b>开关在顶部「开练」走带条里（全书一个，不再每段重复）；曲式在库里的 <b>✎</b> 可改名（示例曲除外）</li>
           <li><!-- v2.35.0 -->页面顶部有「<b>开练</b>」走带条（滚动时吸顶常驻）：<b>歌曲地图</b>点某段 = 只循环练这一段，
@@ -3788,23 +3798,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3820  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4722  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6620  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7616  Modal         应用内弹窗
-     L7761  Viz           时值可视化渲染与每帧动画
-     L11226 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11907 Trainer       变速训练器
-     L12117 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12798 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14718 Editor        自定义节奏型编辑器
-     L15298 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15345 Ear           听辨训练（v1.10.0）
-     L15573 Arrange       曲式编排（v2.0.0）
-     L19096 Help          使用方法（v2.0.1）
-     L19225 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19299 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19566 初始化（装配） 各模块 hook 接线与启动
+     L3830  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4732  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6671  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7667  Modal         应用内弹窗
+     L7812  Viz           时值可视化渲染与每帧动画
+     L11277 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11958 Trainer       变速训练器
+     L12168 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12855 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14775 Editor        自定义节奏型编辑器
+     L15355 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15402 Ear           听辨训练（v1.10.0）
+     L15630 Arrange       曲式编排（v2.0.0）
+     L19153 Help          使用方法（v2.0.1）
+     L19282 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19356 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19645 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3830,7 +3840,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.4";
+const VERSION = "3.36.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6008,7 +6018,22 @@ const Store = (() => {
          旧值（段下标）会暂存进 arrangeMig，由装配层经 migrateSecRangeToBars 一次性换算 */
   }
   function persistHotNow(){
-    try{ localStorage.setItem(KEY_HOT, JSON.stringify(hotPayload())); onPersistOk(); }
+    /* ★ （审计 P2-2）：补**写前判重**——与 `persistCold` 同一套写法（那里 v3.33.14 就
+       有了）。此前只有冷键那侧有：热键每个 250ms 防抖窗口都无条件 `setItem`，而 `persist()`
+       挂在几乎每次交互上（调速 / 每个开关 / TAP / 拖滑杆的 change），其中绝大多数窗口里
+       `hotPayload()` 一个字节都没变——那是纯粹的同步写盘浪费（判重只多一次 stringify，
+       而 stringify 比 setItem 便宜一个量级）。
+       ★★ 只在写**成功**后才记 lastHot（与 lastCold 同一条纪律，理由见那里）：写失败时若也记，
+       下次内容相同会被跳过 ⇒ "存不下"会变成**永久**存不下，比现在更糟。 */
+    let payload = null;
+    try{ payload = JSON.stringify(hotPayload()); }
+    catch(e){ onPersistFail(e); return; }
+    if (payload === lastHot) return;                  // 内容未变：整段跳过（含零写入）
+    try{
+      localStorage.setItem(KEY_HOT, payload);
+      lastHot = payload;                              // ★ 只记写成功的那次（顺序不能反）
+      onPersistOk();
+    }
     catch(e){ onPersistFail(e); }
   }
   /* 冷数据：预设库增删改时立即落盘。
@@ -6029,7 +6054,16 @@ const Store = (() => {
      不可能是 ""，但用 null 表达"还没写过"语义更直白，且不至于与"写过空串"混淆）。 */
   /** @type {null | string} */
   let lastCold = null;
+  /* ★ （审计 P2-2）：热键侧的同一个"上次成功写入"记忆（语义与 lastCold 逐字相同：
+     只记成功的那次，故写失败不会被判重永久吞掉）。放在这里而不是函数体内，是因为它是
+     **模块级的事实**（"盘上现在是什么"），不是一次调用的局部状态。 */
+  /** @type {null | string} */
+  let lastHot = null;
   function persistCold(){
+    /* ★ （审计 P2-1）：给"这一包有多大、写了多久"留两个读数。
+       它回答的是本仓自己提出的那个疑问（Store 头部注释：500 预设 715 KB / 阻塞 5–20ms /
+       "正好会触发音频掉音"）——此前全靠猜。★ 先量化再决定改不改数据模型。 */
+    const t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : 0;
     let payload = null;
     try{ payload = JSON.stringify({ v:1, customs }); }
     catch(e){ onPersistFail(e); return; }
@@ -6038,6 +6072,12 @@ const Store = (() => {
       localStorage.setItem(KEY_COLD, payload);
       lastCold = payload;
       onPersistOk();
+      /* ★ （审计 P2-1）：只在**真写了**之后记读数：跳过的那些次没有耗时可谈，
+         记 0 会把真实值稀释成假象。
+         ★ Diagnostics 声明在 Store 之后，但这里是**运行时**调用（与 Controls 里调 Modal
+         同一条 R3 口径），IIFE 求值期不碰它 ⇒ 不构成反向引用。 */
+      const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : 0;
+      Diagnostics.diagColdWrite(t1 - t0, payload.length);
     }
     catch(e){ onPersistFail(e); }
   }
@@ -6047,9 +6087,17 @@ const Store = (() => {
     if (persistTimer !== null) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => { persistTimer = null; persistHotNow(); }, CONFIG.persistDebounce);
   }
-  /* 立即落盘（防抖窗口内未落盘的改动不能在切走/关闭时丢失） */
+  /* 立即落盘（防抖窗口内未落盘的改动不能在切走/关闭时丢失）
+     ★ （审计 P2-2）：`flush()` **必须无条件写**，不参与判重。
+       理由：它是"现在就给我落盘"这个语义（visibilitychange / pagehide / 停机各条生命周期
+       路径都靠它收尾），调用方要的是"盘上一定是当前状态"这个**保证**，不是"省一次写"。
+       而 `lastHot` 只记 `persistHotNow` 自己写成功那次——加载期的迁移等路径可能已经
+       改写过热键，那时"我以为盘上是什么"与"盘上实际是什么"并不一致，让 flush 走判重
+       会把"该写的一次"吞掉（实测：t24「flush() 立即落盘热键」当场红）。
+       故这里先把判重记忆作废再写——代价是一次小写入，换来的是 flush 的语义不再有二义。 */
   function flush(){
     if (persistTimer !== null){ clearTimeout(persistTimer); persistTimer = null; }
+    lastHot = null;
     persistHotNow();
   }
   window.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
@@ -6584,7 +6632,10 @@ const Store = (() => {
     const m = arrangeMig; arrangeMig = null; return m;
   }
 
-  return { S, customs, persist, persistCold, flush, setPersistFailHandler, setPersistRecoverHandler,
+  return { S, customs, persist, persistCold,
+    /* （审计 P2-2）：`persistHotNow` 供测试直调——判重是**同步**发生的，而 `persist()`
+       隔着 250ms 防抖窗口（桩里没有可推进的定时器），不暴露它就只能靠副作用间接断言。 */
+    persistHotNow, flush, setPersistFailHandler, setPersistRecoverHandler,
     downloadJSON,
     serializePresets, exportPresets, importPresets,
     serializeAll, exportAll, exportAllSel, importAll, previewImport,  // v2.8.8 全量数据包；v2.65.0（X1）选择性导出 + 导入冲突预览
@@ -12157,6 +12208,12 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     });
     $("bpmMinus5").disabled = locked;
     $("bpmPlus5").disabled = locked;
+    /* ★ （审计 A-2 / P3-5）：±1 补进同一个锁定口径。
+       此前只锁 ±5 / 滑杆 / 快捷档，`bpmMinus` / `bpmPlus` 从不设 disabled —— 而它们与 ±5
+       的后果**逐字相同**（点完数字会变，下一小节边界被 Trainer 的阶梯值覆盖 = "点了等于白点"，
+       理由见本函数上方注释）。同一条理由只覆盖一半控件，是最容易被当成"应用坏了"的那种不一致。 */
+    $("bpmMinus").disabled = locked;
+    $("bpmPlus").disabled = locked;
     /* v3.31.x（审计 S-3）：滑杆与 ±5 同口径锁定（此前漏锁：拖滑杆临时生效、到边界被阶梯
        静默覆盖）。锁定时值仍随阶梯同步显示。 */
     $("bpmSlider").disabled = locked;
@@ -19330,6 +19387,21 @@ const Diagnostics = (() => {
   const diag = { frameErr: 0, schedErr: 0, persistFail: 0, persistRecover: 0, limitPulse: 0,
     reanchorStarved: 0, reanchorOverflow: 0, winErr: 0, rejection: 0, noStamp: 0, stampMismatch: 0,
     keepAliveFail: 0 };
+  /* ★ （审计 P2-1）：冷键写入的**实测读数**（不是计数）。
+     为什么要有它：`persistCold` 每次改动都整包 `JSON.stringify` + 同步 `setItem`，Store 头部
+     注释自己记着"500 预设 715 KB、主线程阻塞 5–20ms、正好会触发音频掉音"。而"掉音"这件事
+     此前**没有任何数字可核对**——用户说"保存时卡了一下"，我方只能猜。
+     先把它变成两个标量（耗时 / 载荷），再决定要不要动数据模型：数字不超标就不重构。
+     ★ 只记**最后一次**（不是累加、不是求平均）：要的是"这次有多大"，累加会把它变成
+       另一个看不懂的总数；且它绝不能进 `diag` 那个计数对象——那是"次数"语义。 */
+  let coldWriteMs = -1;         // -1 = 还没写过（>0 才是有意义的一次实测）
+  let coldWriteChars = -1;
+  /** @param {number} ms 序列化 + 写盘的总耗时（毫秒，一位小数） @param {number} chars 载荷字符数 */
+  function diagColdWrite(ms, chars){
+    if (!(isFinite(ms) && ms >= 0)) return;          // 宿主没有 performance 时由调用方兜底为 0
+    coldWriteMs = Math.round(ms * 10) / 10;
+    coldWriteChars = Math.max(0, Math.round(chars));
+  }
   /** @type {null | { box: HTMLElement, line: HTMLElement }} */
   let diagPanel = null;
   function diagPaint(){
@@ -19443,6 +19515,11 @@ const Diagnostics = (() => {
       "URL: " + url,
       "UA: " + ua,
       "计数: " + JSON.stringify(diag),
+      /* ★ （审计 P2-1）：冷键写入实测。报障时"保存/改名/导入那一刻卡了一下"的
+         第一手证据——有了它，"是不是冷键太大"从猜测变成一个能读的数字。 */
+      "冷键写入: " + (coldWriteMs >= 0
+        ? coldWriteMs + " ms · " + coldWriteChars + " 字符"
+        : "（本次会话还没有冷键写入）"),
       "本地存储: " + diagStorageUsage(),
       "最近错误（仅内存，刷新即清）:" + last,
     ].join("\n");
@@ -19559,6 +19636,8 @@ const Diagnostics = (() => {
   }
   if (diagOn) diagBuild();
   return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagExport, diagBuild,
+    diagColdWrite,                               // （审计 P2-1）：冷键写入实测进账（耗时 / 载荷）
+    coldWrite: () => ({ ms: coldWriteMs, chars: coldWriteChars }),   // 同上：读数口（测试与面板共用）
     diagChannel,                                // v3.33.14（审计 §2.5）：渠道读数（双渠道报障可定位）
     diagStorageTop, stampCheck, diagOn, diagLast, DIAG_LAST_MAX };
 })();
@@ -20644,9 +20723,12 @@ $("wallFile").addEventListener("change", (/** @type {Event} */ e) => {
   if (inp) inp.value = "";
   if (!file) return;
   if (file.size && file.size > WALL_SRC_MAX_BYTES){
+    /* ★ （审计 P3-2）：原文案把「1600」写死在字符串里，而同一份策略的常量是
+       WALL_MAX_EDGE（L20408 附近，降采样目标长边）——常量一改文案就漂移，与 check-docs
+       禁"手写体积/耗时"是同一类问题。改引常量：文案与策略恒定同源。 */
     Modal.uiAlert("这张图有 " + Math.round(file.size / 1024 / 1024)
       + " MB，太大了（上限 " + Math.round(WALL_SRC_MAX_BYTES / 1024 / 1024)
-      + " MB）。先把它缩到长边 1600 像素左右再来。");
+      + " MB）。先把它缩到长边 " + WALL_MAX_EDGE + " 像素左右再来。");
     return;
   }
   const rd = new FileReader();
@@ -20981,6 +21063,8 @@ if (EXPOSE_INTERNALS){
     Help,                                           // v2.0.1：使用方法
     Diagnostics,                                    // v2.63.0：诊断模块（X4 diagExport 等需经 __beat 断言）
     diag: Diagnostics.diag,                         // v2.0.4：诊断计数器（面板 DOM 仅在 ?debug=1 时存在）
+    /* （审计 P2-1）：冷键写入实测读数（供测试断言"记到了"） */
+    coldWrite: Diagnostics.coldWrite,
     /* v2.11.3：最近错误原文的环形缓冲（仅内存）/ 报告生成。★ 键名**刻意不跟着模块改名**——
        改成 `Diagnostics.xxx` 会让既有断言整片改写，而"纯结构调整"的证据恰恰是它们一条未动。 */
     diagLast: Diagnostics.diagLast, diagNote: Diagnostics.diagNote,

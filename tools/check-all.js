@@ -23,21 +23,23 @@
                            （v2.8.7 新增；它是唯一"写错了不报错、只会静默失效"的配置文件）
       8) 过期副本检测      本机其它位置的 BeatSight 副本版本比对（v3.33.14 新增；恒不判红，
                            只提示——副本可能是有意保留的历史对照）
-      9) DOM 节点账本       body 内节点数与标记结构平衡（零判红权账本，观察预算趋势）
-      10) 测试桩能力对账     harness ↔ hang-case 能力键集合 + 差异白名单（--strict 判红，v3.31.x 升级）
-     11) 资源体积预算       index.html ≤ 预算字节数（硬线，越界即红）
-     12) CSS 孤儿扫描      死 class 清单（**v3.33.14 起 --strict 判红**：修完口径后实测 0 孤儿，
+     9) 远端漂移核对      本机 HEAD ↔ GitHub main（v3.36.5 新增；一致 ✓ / 不一致判红 /
+                           无 gh = ⊘ 环境缺失 / 网络不可达 = ⚠ 未被验证。它守的是"别在旧基线上开工"）
+     10) DOM 节点账本      body 内节点数与标记结构平衡（零判红权账本，观察预算趋势）
+     11) 测试桩能力对账    harness ↔ hang-case 能力键集合 + 差异白名单（--strict 判红，v3.31.x 升级）
+     12) 资源体积预算       index.html ≤ 预算字节数（硬线，越界即红）
+     13) CSS 孤儿扫描      死 class 清单（**v3.33.14 起 --strict 判红**：修完口径后实测 0 孤儿，
                            观察期结束；此前 26 条全是动态拼接造成的假阳性）
-     13) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
-     14) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
-     15) DOM 引用完整性    $("x") 不得悬空
-     16) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
+     14) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
+     15) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
+     16) DOM 引用完整性    $("x") 不得悬空
+     17) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
                            aria-checked / img 缺 alt / 可交互元素无可访问名 / aria-hidden 藏可聚焦项。
                            ★ 认「JS 运行期赋名」，免得误报 applyTheme 那类写法）
-     17) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
-     18) 自动化测试        FULL_SCAN=1 全量组合扫描
-     19) 死循环看门狗      每用例独立子进程 + 超时强杀
-     20) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     18) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
+     19) 自动化测试        FULL_SCAN=1 全量组合扫描
+     20) 死循环看门狗      每用例独立子进程 + 超时强杀
+     21) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
    ★ 三种"没跑到"必须分清（v2.0.6 起为两类，v2.8.6 补第三类）：
      · 第 13、14 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
@@ -143,6 +145,18 @@ const STEPS = [
        它只负责把"旁边还有一份 vX.Y.Z"这件事摆到眼前。 */
   { name: "过期副本检测", cmd: process.execPath, args: ["tools/check-stale-copies.js"],
     warnScan: /^\s*⚠\s*发现/ },
+  /* v3.36.5（审计 第二部分①）：远端漂移核对。
+     ★ 与上面这条（过期副本检测）是同一个问题的两端：那条管**本机别处**有没有更旧/更新的副本，
+       这条管**远端**有没有前进。两者都在最便宜的阶段回答"我读的是不是当前这份"。
+     ★ 放在这里而不是更后面：它是唯一会为"在旧基线上开工"这件事报警的一步，
+       必须在任何昂贵检查之前给出答案——否则 20 步全绿的代价是 90 秒。
+     ★ 退出码约定（详见工具文件头）：0 一致 / 1 不一致（判红）/ 3 本机没有 gh（⊘ 环境缺失）
+       / 4 网络不可达等工具故障（⚠ 未被验证）。
+       ★★ 3 与 4 都不判红是刻意的：CI 构建镜像里没有 gh 是常态，网络抖动也不是代码问题；
+          把"查不了"算成失败，等于因为尺子不在手就宣布测量结果不合格。 */
+  { name: "远端漂移核对", cmd: process.execPath, args: ["tools/check-remote-drift.js"],
+    skipCode: 3, skipNote: "本机没有 gh（无法核对远端）",
+    faultRetry: 1 },
   /* v2.42.2（审计第一批）：两个静态账本/对账步。与上面三步同属"极便宜纯读文件"家族——
      节点账本给「DOM 预算只剩多少、大头在哪」提供数据（v2.26.1"先瘦身不放宽"纪律的依据），
      并把守 body 标记结构平衡（落地当天就抓到一处游离 </template>）；
@@ -376,4 +390,22 @@ if (failed){
 } else if (skippedOpt && STRICT_ENV){
   console.log("  处置：--strict-env 已把缺依赖的 ⊘ 升级为报错，见上文。");
 }
+/* v3.36.5（审计 第二部分①）：汇总补两条「开工前须知」——下一个可用用例编号、以及钩子状态。
+   这两条都是多 Agent 共用工作区的**冲突高发点**（见工作区记忆「后动工一方必须现查的值」）：
+   用例编号撞车会让两份克隆各写 t217、钩子没生效则 commit 不跑 check-all --quick。
+   全部 try 包裹：本条纯信息，任何异常都不许拖垮上面已经跑完的自验结论。 */
+try{
+  const fsCases = fs.readdirSync(path.join(ROOT, "tests/cases"));
+  const maxN = fsCases.reduce((m, f) => {
+    const mm = /^t(\d+)-/.exec(f); return mm ? Math.max(m, +mm[1]) : m;
+  }, 0);
+  const hooksPath = (() => {
+    const r = require("child_process").spawnSync("git", ["config", "core.hooksPath"], { cwd: ROOT, encoding: "utf8" });
+    return r.status === 0 ? String(r.stdout || "").trim() : "";
+  })();
+  console.log("  " + "─".repeat(52));
+  console.log("  下一个可用用例编号：t" + (maxN + 1) + "-（新增用例请勿撞号）");
+  console.log("  钩子状态：core.hooksPath = " + (hooksPath || "（未设置 → 走默认 .git/hooks，本地提交不会自动跑闸门）"));
+}catch(e){ /* 纯信息，忽略 */ }
+
 process.exit(failed || (toolErr && STRICT_ENV) ? 1 : 0);

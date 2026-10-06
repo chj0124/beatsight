@@ -85,6 +85,12 @@ const WHITELIST = [
      登记**，Controls 只 `for (const layer of KEY_LAYERS) if (layer.handles(e)) return;` 一次 ——
      它读的是共享状态、不再引用后方模块，故这五条白名单随之失效（闸门会自己报"应删除"，已删）。 */
   { from: "Controls", to: "KeepAlive", reason: "v1.4：start()/stop() 末尾调 KeepAlive.sync() 同步保活——播放状态迁移时执行" },
+  /* ★ v3.36.5（审计 第二部分②）：Store → Diagnostics 登记。
+     `persistCold()` 只在状态变更 / `flush()` 时（运行时，绝非模块求值期）调
+     `Diagnostics.diagColdWrite(t, bytes)` 上报冷键写盘耗时与字节数——彼时 Diagnostics
+     早已初始化完毕（它排在 EXPECTED_ORDER 最末）。这是"运行时才走到、可安全向后引用"的
+     R3 正例，故登记放行；它让冷键写盘从"看不见的黑箱"变成可观测（量化后再决定是否重构数据模型）。 */
+  { from: "Store", to: "Diagnostics", reason: "persistCold() 在状态变更/flush 时（运行时）调 Diagnostics.diagColdWrite() 上报冷键写盘耗时/字节——Diagnostics 早已初始化" },
   /* ★ v2.10.12：**没有** `Settings → Help` 这一条——设置弹窗里的「使用方法」按钮，
      其点击 handler 仍在 `Help` 模块里（按 id `#helpBtn` 绑定，元素搬进设置弹窗后照旧生效）。
      搬家式改动**只搬元素、不搬接线**，就不会产生新的反向引用（教训见 T90 的注释） */
