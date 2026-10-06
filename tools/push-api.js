@@ -172,7 +172,11 @@ const api = async (method, path, body) => {
        · **GitHub 回读 message 会去掉尾换行**，而对象里通常带一个 —— 两种都试，命中为止。
      重建失败（编码又有新花样）时退回旧行为：打印手工对齐命令，不假装成功。 */
   if (c.sha === head){
-    ok("远端 sha 与本地相同 —— 无需对齐");
+    ok("远端 sha 与本地相同 —— 内容与图都已一致");
+    /* ★ 这条路径也要更新本地跟踪引用与 upstream：否则 `git status` 会误报 "ahead 1"
+       （远端明明就是本地这个提交）—— 实测踩到过。 */
+    try{ execFileSync("git", ["update-ref", "refs/remotes/origin/" + BRANCH, c.sha]); }catch(e){}
+    try{ execFileSync("git", ["branch", "--set-upstream-to=origin/" + BRANCH, BRANCH], { stdio: "ignore" }); }catch(e){}
     return;
   }
   const meta2 = await api("GET", "/repos/" + REPO + "/git/commits/" + c.sha);
