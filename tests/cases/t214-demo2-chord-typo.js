@@ -24,10 +24,18 @@ const faithfulDemo2 = () => {
   const a = beat.Store.arranges.find(r => r.id === "demo-wmbbf");
   return JSON.parse(JSON.stringify(a));
 };
+/* ★★ 样本必须带上**真机上早已置位的迁移戳**：
+   · arrmig73 —— 内置型 4→1 小节的历史迁移，会把 builtin 块的 repeats ×4；
+   · bnmig35 —— 删内置「民谣扫弦」后的下标 −1；
+   · chdmig   —— 和弦从段名剥离。
+   少了它们，桩里每轮 loadApp 都会重跑这些迁移 ⇒ 样本被就地改动 ⇒ 示例曲被判"对不上谱面"⇒
+   启动收敛把整段重建。**我第一版就是这么误判成"示例曲每次启动都被重建"的**（假象，不是产品行为；
+   真机上这些戳早已置位，迁移只跑过一次）。 */
+const MODERN_STAMPS = { "beatsight.arrmig73": "1", "beatsight.bnmig35": "1", "beatsight.chdmig": "1" };
 const seedWith = (arrange, extra) => Object.assign({
   "beatsight.demoSeeded": "1",
   "beatsight.arranges": JSON.stringify({ v: 1, arranges: [arrange] }),
-}, extra || {});
+}, MODERN_STAMPS, extra || {});
 /** 把序列化样本改回"存量用户落盘的样子"：① 那一处和弦用旧写法；② 段名动过（用户编辑）。
    ② 是**关键**：它让"这是用户的曲式、不是刚被重建的"变成可断言的事实 —— 启动期那条
    `else if (Arrange.demoStale())` 收敛分支若命中会整段重建，样本里改的段名就会消失；
@@ -60,12 +68,41 @@ section("T214b 一次性迁移：已落盘的旧字面量就地改对（不改�
   eq(stored(app, "beatsight.chdsp36"), "1", "★ 迁移戳已置（幂等的依据）");
 }
 
-/* ★ 为什么这里**没有**"戳已置 ⇒ 保持原样"那条断言：
-   写它时发现，本环境下示例曲 2 的曲式**每次启动都会被启动期那条「结构与谱面对不上就收敛」分支重建**
-   （实测 `secBars` 逐段 4,28,4,12… vs 谱面 1,7,1,3…，块 `repeats:4`、引用 `idx 15`）——
-   于是"只让迁移生效、别的路径都不动它"这个场景在桩里构造不出来，硬写只会得到一条**假绿**。
-   戳键本身的行为由 T214b 的"戳已置"断言把守（那是迁移唯一的幂等依据）；
-   上面这件事已作为**独立发现**记进 CHANGELOG，不在本组假装验过。 */
+section("T214c 幂等：戳已在 ⇒ 不再扫（第二次启动零改动）");
+{
+  const app = loadApp(seedWith(withBadChord(), { "beatsight.chdsp36": "1" }), { seedDemo: true });
+  eq(chordOf(app.beat.Store), BAD, "★★★ 戳已置时一字不动 —— 迁移只跑一次，不会每次启动都改写用户数据");
+}
+
+section("T214e 不重建：示例曲结构忠实 ⇒ 启动收敛不介入（用户编辑保留）");
+{
+  const app = loadApp(seedWith(withBadChord()), { seedDemo: true });
+  const a = demo2(app.beat.Store);
+  eq(a.sections[0].name, "我改的段名（用户编辑）",
+     "★★ 用户的段名还在 ⇒ 没有被「示例曲收敛」整段重建（那会按谱面重写段名与全部块）");
+  eq(a.sections[0].blocks.length, 1, "★ 且块的形状没被换成谱面的样子");
+  eq(chordOf(app.beat.Store), GOOD, "★★ 而那一处和弦仍然被本迁移改对了 —— 两条路径互不干扰");
+}
+
+section("T214f arrmig73 护栏：内置块的 ×4 不落在示例曲上，别的曲式照旧");
+{
+  /* 不带 arrmig73 戳（= 历史迁移尚未跑过的存量现场），曲式里既有示例曲也有用户曲式 */
+  /* ★ 观察量用"用户改过的段名"，不用 repeats：×4 会把示例曲判成"对不上谱面"⇒ 启动收敛立刻
+     整段重建（repeats 又被摆回 1）—— 只看 repeats 的话，有没有护栏都长一样（第一次就栽在这）。
+     段名是重建唯一的可见痕迹：护栏在 ⇒ 改名保留；护栏没了 ⇒ 段名被按谱面重写。 */
+  const demo = faithfulDemo2();
+  demo.sections[0].name = "我改的段名（用户编辑）";
+  const own = { id: "my-own", name: "我的练习",
+    sections: [{ name: "段 1", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 }] }] };
+  const app = loadApp({ "beatsight.demoSeeded": "1", "beatsight.bnmig35": "1", "beatsight.chdmig": "1",
+    "beatsight.arranges": JSON.stringify({ v: 1, arranges: [demo, own] }) }, { seedDemo: true });
+  const d = demo2(app.beat.Store), m = app.beat.Store.arranges.find(r => r.id === "my-own");
+  eq(d.sections[0].name, "我改的段名（用户编辑）",
+     "★★★ 示例曲的块不被 ×4 ⇒ 段长仍对得上谱面 ⇒ 启动收敛不介入，用户的改名保留");
+  eq(d.sections[0].blocks[0].repeats, 1, "★★ 且 repeats 仍是 1（它本来就在「按小节」这个口径上）");
+  eq(m.sections[0].blocks[0].repeats, 4,
+     "★★ 非空跑前提：同一次迁移里，用户曲式的内置块**照旧 ×4**（这条迁移对它的目标数据仍然生效）");
+}
 
 section("T214d 不越界：用户自己曲式里的同样写法不动");
 {

@@ -3790,21 +3790,21 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L3820  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L4722  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6613  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7609  Modal         应用内弹窗
-     L7754  Viz           时值可视化渲染与每帧动画
-     L11219 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11900 Trainer       变速训练器
-     L12110 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12791 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14711 Editor        自定义节奏型编辑器
-     L15291 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15338 Ear           听辨训练（v1.10.0）
-     L15566 Arrange       曲式编排（v2.0.0）
-     L19080 Help          使用方法（v2.0.1）
-     L19209 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19283 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19550 初始化（装配） 各模块 hook 接线与启动
+     L6620  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7616  Modal         应用内弹窗
+     L7761  Viz           时值可视化渲染与每帧动画
+     L11226 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11907 Trainer       变速训练器
+     L12117 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12798 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14718 Editor        自定义节奏型编辑器
+     L15298 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15345 Ear           听辨训练（v1.10.0）
+     L15573 Arrange       曲式编排（v2.0.0）
+     L19096 Help          使用方法（v2.0.1）
+     L19225 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19299 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19566 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3830,7 +3830,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.3";
+const VERSION = "3.36.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5203,6 +5203,13 @@ const Store = (() => {
       if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
         arrIn.arranges.forEach(r => {
           if (!r || !Array.isArray(r.sections)) return;
+          /* ★★ v3.36.4：**示例曲的曲式跳过这一步**。本条迁移的前提是"旧数据的 repeats 记的是
+             4 小节的型遍数"，而示例曲的块从一开始就是**按小节**记的（自带的 demo 型恒为 1 小节，
+             见 buildDemoArrange 的「块小节数 = repeats」），×4 只会把它放大 4 倍 ⇒ 段长翻两番、
+             oneStale 判它"对不上谱面"、下次启动被整段重建（用户对示例曲的改动随之丢失）。
+             认领口径与 oneStale / chdsp36 迁移一致：id 命中为主、名字兜底。 */
+          if (r.id === "demo-wmbbf" || r.id === "demo-ta" || r.name === "《我们能不能不分手》（示例）"
+            || r.name === "《在他乡》（示例）") return;
           r.sections.forEach(s => {
             if (!s || !Array.isArray(s.blocks)) return;
             s.blocks.forEach(b => {
@@ -18815,8 +18822,17 @@ const Arrange = (() => {
          这条判据（段数不等）就是那条自动收敛路径：命中即亮「恢复示例曲」，重建后即为新版。 */
     if (ar.sections.length !== spec.arrange.sections.length) return true;
     if (ar.sections.length !== spec.arrange.sections.length) return true;
-    if (ar.sections.some(/** @param {any} s @param {number} i */ (s, i) =>
-      secBars(s) !== spec.arrange.sections[i].blocks.reduce(/** @param {number} n @param {any} b */ (n, b) => n + b.repeats, 0))) return true;
+    /* ★ v3.36.4：**两边都要是"小节"**。`secBars` 的口径是 Σ(repeats × 引用型的小节数) = 小节，
+       而谱面侧原先只累加 `b.repeats`（= 型遍数）—— 对"demo 型恒 1 小节"的现状两者恰好相等，
+       所以一直没暴露；一旦某个示例曲用上多小节的型，这里就会**永远判"对不上谱面"**（每启动重建一次）。
+       故谱面侧也乘上该 refIdx 对应 preset 的小节数。 */
+    /** @param {any} s @param {number} i */
+    const specBars = (s, i) => (spec.arrange.sections[i].blocks || []).reduce(
+      /** @param {number} n @param {any} b */ (n, b) => {
+        const pre = spec.presets[b.refIdx];
+        return n + b.repeats * ((pre && Array.isArray(pre.bars) && pre.bars.length) || 1);
+      }, 0);
+    if (ar.sections.some(/** @param {any} s @param {number} i */ (s, i) => secBars(s) !== specBars(s, i))) return true;
     /* ② 坏引用：解析不到的 custom id（resolveRef 对 builtin 下标恒有值，custom 才可能落空；
        内置下标越界 = 谱面/版本错位，同样按坏算——BUILTINS[idx] 为 undefined） */
     return ar.sections.some(/** @param {any} s */ s => (s.blocks || []).some(/** @param {any} b */ b =>
