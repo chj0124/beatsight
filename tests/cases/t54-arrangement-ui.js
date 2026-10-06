@@ -26,8 +26,10 @@ const SEC = (name, ...blocks) => ({ name, blocks });
 
 /* 无曲式 / 有一条两段的曲式 */
 const bare = () => loadApp();
-const seeded = () => loadApp({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
-  A("a1", "练习曲", [SEC("主歌", BL(0, 2)), SEC("副歌", BL(2, 1), BL(4, 1))]),
+/* ★ v3.35.5：夹具下标一律按**新表**，并带 bnmig35 戳避免「删民谣扫弦」位移迁移二次作用。
+   副歌首块 = 八分摇滚（新 idx1，8 格）、次块 = 切分节奏型（新 idx3）。 */
+const seeded = () => loadApp({ "beatsight.bnmig35": "1", "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
+  A("a1", "练习曲", [SEC("主歌", BL(0, 2)), SEC("副歌", BL(1, 1), BL(3, 1))]),
 ]}) });
 /* 下标速查（改 UI 时对照）：
      .arg-ops   = [▶0, ⋯1]（v2.31.0 S2 起；练这段/↑/↓/移到首尾/删除 在 ⋯ 菜单里，按 aria 找）
@@ -186,9 +188,12 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
   eq(secRows(els).length, 3, "★ 出现了一行候选预设（不是弹窗、不切走）");
   const pickRow = secRows(els)[2];
   ok(pickRow.children[1].children.length >= 12, "候选里含 12 个内置预设（实际 " + pickRow.children[1].children.length + "）");
+  /* ★ v3.35.5：删民谣扫弦后候选串里的分区/置顶胶囊条数变了，写死 children[3] 不再稳定命中
+     「第 4 个内置预设」——改为按名字取那一颗候选胶囊，断言意图不变。 */
   const target = beat.BUILTINS[3].name;
-  pickRow.children[1].children[3].fire("click");
-  eq(beat.Store.arranges[0].sections[1].blocks[0].ref.idx, 3, "换成了第 4 个内置预设");
+  pickRow.children[1].children.find(c => /(^| )arg-mini( |$)/.test(c.className)
+    && String(c.textContent).includes(target)).fire("click");
+  eq(beat.Store.arranges[0].sections[1].blocks[0].ref.idx, 3, "换成了第 4 个内置预设（新表 idx3 = 切分节奏型）");
   eq(secRows(els).length, 2, "选完候选行消失");
   eq(secRows(els)[1].children[2].children[0].children[0].textContent, target, "块上显示新预设名");
 
@@ -301,8 +306,8 @@ section("T54g 曲式 UI · 跳段即时生效 / 单段置灰跳段键");
   /* v2.0.2：停止时定位不只是文字——网格与标题立即换成目标段的型（用户实拍困惑：
      「定位到第 3 段了，小球还在第一小节跳」）。副歌首块 = 八分摇滚（8 格/行） */
   const cells0 = els["viz"].children[0].children.filter(c => /(^| )cell( |$)/.test(c.className)).length;
-  eq(cells0, beat.BUILTINS[2].bars[0].length, "★ 定位后网格立即换成副歌的型（8 格，不再是主歌的 6 格）");
-  eq(els["patternName"].textContent, beat.BUILTINS[2].name, "标题同步成副歌首块的型");
+  eq(cells0, beat.BUILTINS[1].bars[0].length, "★ 定位后网格立即换成副歌的型（八分摇滚 8 格，不再是主歌 4 格）");
+  eq(els["patternName"].textContent, beat.BUILTINS[1].name, "标题同步成副歌首块的型（八分摇滚）");
 
   /* 单段曲式：两个跳段按钮置灰（v2.10.14：常显 + disabled；原「隐藏 > 置灰」的口径随播放键进本行作废） */
   const solo = bare();

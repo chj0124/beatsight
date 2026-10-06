@@ -58,9 +58,9 @@ section("T110a 候选胶囊 · 扫弦徽标 / ✎ 仅自定义 / 点击跳编辑
   ok(/去编辑器/.test(ed.getAttribute("aria-label") || ""), "✎ aria 写明跳转语义");
   const tag = pillChild(customPill, /arg-pill-tag/);
   ok(!!tag && tag.textContent === "↑↓", "★ 扫弦型候选带「↑↓」类型徽标（可见性补齐）");
-  /* 内置型 pill：无 ✎（内容恒定），有扫弦型示例（BUILTINS[0] 民谣扫弦带 dir） */
-  const builtinStrum = pillBy(pick, /民谣扫弦/);
-  ok(!!builtinStrum, "前提：候选里有内置扫弦型");
+  /* 内置型 pill：无 ✎（内容恒定），有扫弦型示例（内置示例 P1「十六分满扫（《在他乡》前奏）」，带 dir） */
+  const builtinStrum = pillBy(pick, /十六分满扫（《在他乡》前奏）/);
+  ok(!!builtinStrum, "前提：候选里有内置扫弦型（示例 P1；v3.35.5 取代已删的民谣扫弦）");
   ok(!builtinStrum.children.find(c => /arg-pill-edit/.test(c.className)),
     "★ 内置型不带 ✎（内容恒定，无副本可造）");
   beat.Arrange.close();

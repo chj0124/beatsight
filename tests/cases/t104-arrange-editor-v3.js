@@ -74,7 +74,10 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   const pick = rows(els)[1];                           // 候选行插在触发段行的**正下方**
   ok(/(^| )arg-pick( |$)/.test(pick.className), "★ 候选就在触点正下方（就地选择，v2.4.1 的既定结论）");
   const zones = pick.children[1].children.filter(c => /(^| )arg-pick-zone( |$)/.test(c.className)).map(z => z.textContent);
-  eq(zones.join(","), "节拍,扫弦", "★ 分区标题出现（库里没有自定义型 → 空区不摆空标题，与「空动作不摆出来」同纪律）");
+  /* ★ v3.35.7：候选串新增「本歌」置顶区（归属这首歌的自定义型 ∪ 这条曲式引用到的型）——
+     A 段用四分基础，它属于本歌 ⇒ 出现在本歌区、不再重复出现在「节拍」区。 */
+  eq(zones.join(","), "本归属 · 三段歌,节拍,扫弦",
+     "★ 分区标题出现（本歌置顶 + 非空区才有标题；库里没有自定义型 → 不摆空的「自定义」标题）");
 
   const pills = pick.children[1].children.filter(c => /(^| )arg-mini( |$)/.test(c.className));
   const cur = pills.find(p => /✓/.test(p.textContent || ""));
@@ -93,7 +96,7 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   }
   beat.Arrange.close();
 
-  /* 有自定义型时三区齐；扫弦型（BUILTINS[0] 民谣扫弦，带 dir 记谱）进「扫弦」区 */
+  /* 有自定义型时三区齐；扫弦型（内置示例 P1「十六分满扫（《在他乡》前奏）」，带 dir 记谱）进「扫弦」区 */
   const app2 = loadApp(seed3());
   app2.beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "我的型", meter: 4, bars: [[{ t: 192 }]] }] }));
@@ -101,12 +104,13 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   rows(app2.els)[0].children[2].children[0].children[3].fire("click")  // v2.77.0：和弦输入框退役，下标 -1;
   const pick2 = rows(app2.els)[1];
   const zones2 = pick2.children[1].children.filter(c => /(^| )arg-pick-zone( |$)/.test(c.className)).map(z => z.textContent);
-  eq(zones2.join(","), "节拍,扫弦,自定义", "★ 库里有自定义型 → 三区齐（与侧栏三区同构）");
+  eq(zones2.join(","), "本归属 · 三段歌,节拍,扫弦,自定义",
+     "★ 本歌置顶 + 库里有自定义型 ⇒ 四区齐（本歌 / 节拍 / 扫弦 / 自定义）");
   const all2 = pick2.children[1].children.filter(c => /(^| )arg-mini( |$)/.test(c.className));
-  const folk = all2.find(p => /民谣扫弦/.test(p.textContent || ""));
-  ok(!!folk, "前提：候选里能找到民谣扫弦（带 dir 记谱的内置型）");
+  const folk = all2.find(p => /十六分满扫（《在他乡》前奏）/.test(p.textContent || ""));
+  ok(!!folk, "前提：候选里能找到内置扫弦型示例 P1（带 dir 记谱；v3.35.5 取代已删的民谣扫弦）");
   folk.fire("click");
-  eq(app2.beat.Store.findArrange("t104").sections[0].blocks[0].ref.idx, 0, "换型落库（引用换成 BUILTINS[0]）");
+  eq(app2.beat.Store.findArrange("t104").sections[0].blocks[0].ref.idx, 11, "换型落库（引用换成 BUILTINS[11]）");
   app2.beat.Arrange.close();
 }
 

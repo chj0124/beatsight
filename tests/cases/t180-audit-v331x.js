@@ -8,10 +8,24 @@
 const { loadApp, FakeAudioContext, ok, eq, section, drive } = require("../lib/harness");
 
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
-const presetItems = els => els["presetList"].children.filter(c => /(^| )preset-item( |$)/.test(c.className));
+/* ★ v3.35.7：型可能挂在歌行/「未归属」行下（不在 presetList 直接子节点）⇒ 按名字取条目要走整棵子树 */
+const presetItems = els => {
+  const out = [];
+  const walk = n => Array.from(n.children || []).forEach(c => {
+    if (/(^| )preset-item( |$)/.test(c.className)) out.push(c);
+    walk(c);
+  });
+  walk(els["presetList"]);
+  return out;
+};
 const audBtnOf = item => item.children.find(c => (c.className || "").split(/\s+/).indexOf("aud") >= 0);
 const itemByName = (els, name) => presetItems(els).find(p => p.children[0] && p.children[0].children[0]
   && p.children[0].children[0].textContent === name);
+/* ★ v3.35.7：无归属的自定义型挂在「未归属」行下、默认收起；取型前先展开它。 */
+const expandOrphanRow = els => {
+  const orph = presetItems(els).find(c => /(^| )song-only( |$)/.test(c.className));
+  if (orph && orph.getAttribute("aria-expanded") === "false") orph.fire("click");
+};
 const lyOf = (els, i) => els["argSections"].children[i].children
   .find(c => /(^| )arg-lyric( |$)/.test(c.className));
 const chipsOf = lane => Array.prototype.concat.apply([], Array.prototype.map.call(lane.children,
@@ -28,6 +42,7 @@ section("T180a 预设试听 · 换对象后停止，拍号还原到选中型（�
     { name: "五拍试听乙", meter: 5, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] },
   ] }));
   beat.Presets.buildPresetList();
+  expandOrphanRow(els);                             // ★ v3.35.7：两条导入型无归属 → 挂在「未归属」行下，先展开
   const mSel = beat.curPattern().meter;             // builtin/1 = 四分基础 4/4
   const a = itemByName(els, "三拍试听甲"), b = itemByName(els, "五拍试听乙");
   ok(!!a && !!b, "前提：两条不同拍号的导入型已在列表");
@@ -145,7 +160,9 @@ section("T180e 听辨 · 改名内置型不破坏题组（此前按显示名匹�
 /* ================= 场景 T180f：P1-5 srcRefs 主入口提示生效 ================= */
 section("T180f 编辑器 · 「被 N 首曲式引用」提示在主入口生效（此前恒空）");
 {
-  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, sel: { type: "builtin", idx: 1 } }) });
+  /* ★ v3.35.5：带 bnmig35 戳——sel 与下面曲式块的 idx1 必须同为新表下标，提示才验得到 */
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, sel: { type: "builtin", idx: 1 } }),
+    "beatsight.bnmig35": "1" });
   ok(beat.Store.upsertArrange({ id: "a-src", name: "引用四分基础", sections: [
     { name: "A", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 2 }] },
   ] }), "曲式引用 builtin idx1");

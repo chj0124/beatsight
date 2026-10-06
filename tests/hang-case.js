@@ -82,6 +82,7 @@ function makeEl(id){
     },
     setAttribute(k,v){this[k]=v;},
     getAttribute(k){return this[k]===undefined?null:this[k];},
+    removeAttribute(k){delete this[k];},   /* v3.35.9：与 harness 同步（产品代码撤 aria-invalid 会用到） */
     remove(){},blur(){},focus(){},animate(){},closest(){return makeEl("p");},
     fire(t,ev){(this._h[t]||[]).forEach(f=>f(Object.assign({currentTarget:el,target:el,
       preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}},ev)));},

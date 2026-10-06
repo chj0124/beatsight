@@ -76,35 +76,42 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
   const BUILTINS = beat.BUILTINS;
   const Store = beat.Store;
 
-  /* ---- ① 内置民谣扫弦：方向字段与其名称逐字对应（v2.1.0 的翻转只在渲染层，数据一字未动） ---- */
-  const folk = BUILTINS[0];
-  eq(folk.name, "民谣扫弦 · 下-下上-上下上", "idx 0 仍是民谣扫弦");
+  /* ---- ① 方向字段 = **手部动作**（不是画出来的箭头） ----
+     ★ v3.35.5：内置「民谣扫弦」（BUILTINS[0]，DDUUDU）已按用户要求删除，
+       这条原有断言失去被测对象。但它守的契约（"名字里的方向序列 = 数据里的方向序列"、
+       "带 dir 的步仍保留 t/rest 原字段"）仍然有效，故改用一个同形的自定义谱承载。 */
+  Store.importPresets(JSON.stringify({ presets: [{ name: "方向样本 · 下下上上下上", meter: 4,
+    bars: [["D","D","U","U","D","U"].map((d, i) => ({ t: [48,24,24,36,12,48][i], dir: d }))] }] }));
+  const folk = Store.customs[Store.customs.length - 1];
   eq(folk.bars[0].map(s => s.dir).join(""), "DDUUDU",
      "字段 = 下 下 上 上 下 上 —— 记的是**手部动作**，不是画出来的箭头");
-  ok(folk.bars.every(b => b.map(s => s.dir).join("") === "DDUUDU"), "rep4 展开后 4 小节方向全同");
   ok(folk.bars[0].every(s => s.t !== undefined && s.rest === false), "带 dir 的步仍保留 t / rest 原字段（未破坏结构）");
 
-  /* ---- ② 其余 11 个**节拍类**内置预设一个 dir 都不带（防止误加）；
-          v2.20.0 起示例曲 5 型并入内置库尾部（idx 12–16），它们**都**带方向标注 ---- */
-  eq(BUILTINS.slice(1, 12).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
-     "只有民谣扫弦 + 示例 5 型带方向标注，其余 11 个内置预设零 dir");
-  eq(BUILTINS.slice(12).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 9,
+  /* ---- ② 前 11 个内置预设是**节拍类**、一个 dir 都不带（防止误加）；
+          其后示例曲 9 型**都**带方向标注（v2.20.0 起并入内置库尾部） ----
+     ★ v3.35.5：内置库 21 → 20（删了民谣扫弦）⇒ 边界从 12 变成 11 */
+  eq(BUILTINS.slice(0, 11).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
+     "前 11 个节拍类内置预设零 dir");
+  eq(BUILTINS.slice(11).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 9,
      "示例曲 9 型全部带方向标注（《在他乡》5 + 《我们能不能不分手》4，住在 BUILTINS 尾部）");
 
-  /* ---- ③ 渲染：字形按**手部动作**翻转（v2.1.0 全局翻转：下扫=↑、上扫=↓） ---- */
+  /* ---- ③ 渲染：字形按**手部动作**翻转（v2.1.0 全局翻转：下扫=↑、上扫=↓） ----
+     ★ v3.35.5：渲染主体改用示例型「十六分满扫（《在他乡》前奏）」（唯一还在库里的纯方向谱，
+       16 个 12t 格）——原主体民谣扫弦已删。它第 1 格 dir="D"、第 4 格 dir="U"（第 2/3 格是空扫）。 */
+  Store.S.sel = { type: "builtin", idx: 11 };           // 十六分满扫（《在他乡》前奏）
+  beat.Presets.refreshAfterPatternChange();
   beat.Viz.buildViz();
-  ok(!!strumOf(els, 0, 0), "idx0 第 1 格渲染出 .strumv 竖箭头");
+  ok(!!strumOf(els, 0, 0), "第 1 格渲染出 .strumv 竖箭头");
   eq(JSON.stringify(strumInfo(els, 0, 0)), JSON.stringify({ up:false, dn:true, zone:"full", air:false }),
      "第 1 格 dir=\"D\"（下扫）→ 箭头画在顶端（.dn），贯穿六线（.kF）");
-  eq(JSON.stringify(strumInfo(els, 0, 2)), JSON.stringify({ up:true, dn:false, zone:"full", air:false }),
-     "第 3 格 dir=\"U\"（上扫）→ 箭头画在底端（.up）");
+  eq(JSON.stringify(strumInfo(els, 0, 3)), JSON.stringify({ up:true, dn:false, zone:"treble", air:false }),
+     "第 4 格 dir=\"U\"（上扫，高弦区）→ 箭头画在底端（.up）");
   eq(strumLayerOf(els, 0).children.length, strumLayerOf(els, 0).children.filter(c => /(^| )strumv( |$)/.test(c.className)).length,
      "每格最多一个箭头（不重复挂）——层里第 i 个就是第 i 格的那一支");
   /* 12t 十六分格也有箭头——**这正是「箭头必须画在格内」的原因**：
-     时值标签行只给 t≥24 的格发标签，若把箭头挂在标签行，切分位上的这颗下扫就丢了，
-     而它恰恰是民谣扫弦里最需要提示的一颗（其宽度 6.25%，窄格隐藏逻辑会管它） */
-  eq((strumInfo(els, 0, 4) || {}).dn, true, "12t 十六分格同样带箭头（不因无时值标签而丢失）");
-  Store.S.sel = { type: "builtin", idx: 1 };            // 四分基础：无 dir
+     时值标签行只给 t≥24 的格发标签，若把箭头挂在标签行，12t 格上的那颗扫弦就丢了 */
+  eq((strumInfo(els, 0, 0) || {}).dn, true, "12t 十六分格同样带箭头（不因无时值标签而丢失）");
+  Store.S.sel = { type: "builtin", idx: 0 };            // 四分基础：无 dir
   beat.Presets.refreshAfterPatternChange();
   eq([0,1,2,3].reduce((n, b) => { const l = strumLayerOf(els, b); return n + (l ? l.children.length : 0); }, 0), 0,
      "切到无 dir 的预设 → 全图零箭头（老数据零迁移的直接体现）");
@@ -249,12 +256,19 @@ section("T47b 扫弦方向 · 窄格自动隐藏（不裁半支箭头）/ 六线
 section("T47c 扫弦方向 · 编辑器三档可用性与写入");
 {
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
+  /* ★ v3.35.5：内置「民谣扫弦」已删（原默认型）——本段原先靠"默认 = 民谣扫弦（48t/dir=D）"
+     当载体；改用同形自定义型承载同一契约（48t 非休止、首格 dir="D"）。 */
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "编辑器方向载体", meter: 4,
+    bars: [0,1,2,3].map(() => [{ t:48, dir:"D" }, { t:48 }, { t:48 }, { t:48 }]) }] })).ok,
+     "编辑器方向载体导入成功（48t 非休止、首格 dir=D）");
+  beat.Store.S.sel = { type:"custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
   eq(els["dirRow"].children.length, 3, "方向三档（↓ / ↑ / 不标注）");
   ok(els["dirRow"].children.every(b => b.disabled), "未选中音符 → 三档全部禁用");
   eq(els["dirHint"].textContent, "先在上方选中一个音符", "未选中时提示如何操作");
 
-  /* 选中第 1 小节第 1 格（民谣扫弦 48t，dir="D"）。
+  /* 选中第 1 小节第 1 格（载体 48t，dir="D"）。
      注意 editorRender() 会重建编辑器 DOM，选中后必须重新取元素，不能复用点击前的引用 */
   edCellsOf(els, 0)[0].fire("click");
   ok(els["dirRow"].children.every(b => !b.disabled), "选中非休止音符 → 三档启用");
@@ -293,7 +307,7 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
 section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
 {
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
-  beat.Store.S.sel = { type:"builtin", idx: 5 };       // Funk 十六分：idx 3 / 6 / 11 为休止符
+  beat.Store.S.sel = { type:"builtin", idx: 4 };       // Funk 十六分（v3.35.5 删民谣扫弦后 idx 5→4）：idx 3 / 6 / 11 为休止符
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
   edCellsOf(els, 0)[3].fire("click");                  // idx 3 是休止符
@@ -324,7 +338,14 @@ section("T47e 扫弦方向 · dir-only 谱归扫弦声部 + 只改声部不动�
   const bars = [0,1,2,3].map(() => [{ t:48 }, { t:24 }, { t:24 }, { t:36 }, { t:12 }, { t:48 }]);
   /* dir-only 谱 = 民谣扫弦形状。v2.7.1 后每小节 = 6 声扫弦 + 4 声拍点网格，
      与无 dir 孪生（无网格、6 声节拍音）对比：原 6 颗音的时刻必须原样含在其中 */
-  const strumWithDir = playSeq(null, 3);                   // 默认即民谣扫弦（带 dir，hasStrum）
+  /* ★ v3.35.5：内置「民谣扫弦」（原默认型、dir-only）已删——自造同形夹具：
+     有方向孪生 = 同 bars 逐位加 dir，无方向孪生 = 原 bars。契约（时刻不因 dir 改变）不变。 */
+  const barsDir = bars.map(b => b.map((s, i) =>
+    Object.assign({}, s, { dir: ["D","D","U","U","D","U"][i] })));
+  const strumWithDir = playSeq(beat => {
+    beat.Store.customs.push({ id:"c-twin1", name:"有方向孪生", meter:4, bars: barsDir });
+    beat.Store.S.sel = { type:"custom", id:"c-twin1" };
+  }, 3);
   const strumWithout = playSeq(beat => {
     beat.Store.customs.push({ id:"c-twin2", name:"无方向孪生2", meter:4, bars });
     beat.Store.S.sel = { type:"custom", id:"c-twin2" };

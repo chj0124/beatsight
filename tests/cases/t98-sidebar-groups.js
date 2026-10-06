@@ -39,17 +39,19 @@ section("T98a 无组回归 · ★ 零组时无任何新节点混入（条目直�
 {
   const { beat, els } = loadApp(undefined, { seedDemo: false });
   ok(groupHeads(els).length === 0, "★ 无组时侧栏零个 .preset-group 节点");
+  /* ★ v3.35.3：「扫弦」区退役 ⇒ 只剩两区；带扫弦记谱的示例型挂在「自定义」区歌曲行下，
+     不再计入任何一区的条目数 */
   eq(JSON.stringify(els["presetList"].children.filter(x => x.className === "preset-section").map(x => x.textContent)),
-    JSON.stringify(["节拍 · 11 个", "扫弦 · 10 个", "自定义 · 2 首"]),
-    "★ 三区标题逐字不变（计数口径 = 区内全部条目数，分组不改总数）");
-  /* 条目顺序：节拍区 = BUILTINS[1..11] 原序（组缺席 → 散员流原样） */
-  const beatKids = zoneSlice(els, "节拍 · 11 个", "扫弦 · 10 个");
+    JSON.stringify(["节拍 · 11 个", "自定义 · 2 个"]),
+    "★ 两区标题逐字不变（计数口径 = 区内全部条目数，分组不改总数）");
+  /* 条目顺序：节拍区 = BUILTINS 里不带扫弦记谱的那些，原序（组缺席 → 散员流原样） */
+  const beatKids = zoneSlice(els, "节拍 · 11 个", "自定义 · 2 个");
   eq(beatKids.length, 11, "节拍区孩子 = 11 个条目（不多不少，无组头混入）");
   ok(beatKids.every(x => /(^| )preset-item( |$)/.test(x.className)), "节拍区全是 preset-item（扁平结构）");
-  ok(deepText(beatKids[0]).includes("四分基础"), "节拍区第一条仍是四分基础（BUILTINS[1]，顺序未动）");
+  ok(deepText(beatKids[0]).includes("四分基础"), "节拍区第一条仍是四分基础（BUILTINS[0]，顺序未动）");
   /* 选中照常：分组基础设施没碰 pick 路径 */
   itemByName(els, "四分基础").fire("click");
-  eq(JSON.stringify(beat.Store.S.sel), JSON.stringify({ type:"builtin", idx:1 }), "选中路径原样");
+  eq(JSON.stringify(beat.Store.S.sel), JSON.stringify({ type:"builtin", idx:0 }), "选中路径原样（四分基础 = 新 idx0）");
   beat.Controls.stop();
 }
 
@@ -68,13 +70,13 @@ section("T98b 建组移入 · ★ 📁 → 输组名 → 组头出现/条目归�
   ok(deepText(heads[0]).includes("热身") && deepText(heads[0]).includes("· 1 个"),
     "组头文案 = 组名 + 可见成员数（计数不撒谎）");
   /* 条目归位：节拍区内，组头在前、成员条目随其后、散员在最后 */
-  const beatKids = zoneSlice(first.els, "节拍", "扫弦");
+  const beatKids = zoneSlice(first.els, "节拍", "自定义");
   eq(beatKids[0].className, "preset-group", "★ 组头在区头之后第一个（组在前、散员在后）");
   ok(deepText(beatKids[1]).includes("四分基础"), "★ 成员条目紧跟组头（原序从散员流消失）");
   eq(beatKids.length, 12, "★ 区孩子总数守恒 = 组头 1 + 成员 1 + 散员 10（11 个内置，1 个进组）");
   eq(JSON.stringify(groupsOf(first.storage)),
     JSON.stringify({ v:1, groups:[{ id: heads[0].dataset.gid, name:"热身", zone:"beat",
-      members:[{ type:"builtin", idx:1 }], open:true }] }),
+      members:[{ type:"builtin", idx:0 }], open:true }] }),
     "★ 冷键 beatsight.groups 落盘（ref = builtin idx 协议；组头 data-gid 与之同源）");
   /* 重启：组结构原样回来 */
   const seed = {}; first.storage.forEach((v, k) => { seed[k] = v; });
@@ -82,13 +84,13 @@ section("T98b 建组移入 · ★ 📁 → 输组名 → 组头出现/条目归�
   const h2 = groupHeads(second.els);
   eq(h2.length, 1, "★ 重启后组还在");
   ok(deepText(h2[0]).includes("热身"), "组名保持");
-  const beatKids2 = zoneSlice(second.els, "节拍", "扫弦");
+  const beatKids2 = zoneSlice(second.els, "节拍", "自定义");
   ok(deepText(beatKids2[1]).includes("四分基础"), "成员归位保持");
   eq(second.beat.Store.groups[0].id, groupsOf(first.storage).groups[0].id, "组 id 稳定（改名/删组靠它定位）");
 }
 
 /* ================= 场景 T98c：移入语义三合一（同名并入 / 跨类型同组 / 空名移出） ================= */
-section("T98c 移入语义 · ★ 同名组并入不新建 / 内置+自定义同组 / 清空 = 移出 / 预填当前组名");
+section("T98c 移入语义 · ★ 同名组并入不新建 / 清空 = 移出 / 预填当前组名（v3.35.7：自定义型不再有 📁）");
 {
   const first = loadApp(undefined, { seedDemo: false });
   first.beat.Store.importPresets(JSON.stringify([{ name: "练习型A", meter: 4,
@@ -98,16 +100,30 @@ section("T98c 移入语义 · ★ 同名组并入不新建 / 内置+自定义同
   groupBtnOf(itemByName(first.els, "四分基础")).fire("click");
   first.els["modalInput"].value = "热身";
   first.els["modalOk"].fire("click");
-  /* 自定义型移入**同名**组 → 并入不新建 */
-  const customItem = itemByName(first.els, "练习型A");
-  ok(!!groupBtnOf(customItem), "★ 自定义条目也带 📁（内置/自定义同构挂载）");
-  groupBtnOf(customItem).fire("click");
+  /* 同区**同名**组并入：第二个内置型移入同名组 → 并入不新建 */
+  groupBtnOf(itemByName(first.els, "八分摇滚")).fire("click");
   first.els["modalInput"].value = "热身";
   first.els["modalOk"].fire("click");
   const heads = groupHeads(first.els);
   eq(heads.length, 1, "★ 同名组（同区）只有一个——并入而非新建");
-  ok(deepText(heads[0]).includes("· 2 个"), "组内两个成员（内置 + 自定义跨类型同组）");
+  ok(deepText(heads[0]).includes("· 2 个"), "组内两个成员（两个内置同组）");
   eq(first.beat.Store.groups[0].members.length, 2, "冷键成员数同步");
+  /* ★ v3.35.7：自定义型改挂「自定义」区歌行/未归属行下，appendSongPattern 刻意摘掉 📁
+     （它属于这首歌，归到哪个组不是它自己的问题，见 t211f）。原先这条「自定义条目也带 📁、
+     与内置跨类型同组」的 UI 路径已不存在、被测对象消失，故移除该段断言并在此注明；
+     改钉新展示口径：型在「未归属」行内渲染、且不带 📁。 */
+  const deepItems = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+    walk(first.els["presetList"]);
+    return out;
+  };
+  const orph = deepItems().find(c => /(^| )song-only( |$)/.test(c.className));
+  if (orph && orph.getAttribute("aria-expanded") === "false") orph.fire("click");
+  const customItem = deepItems().find(it => /(^| )preset-item( |$)/.test(it.className)
+    && deepText(it).includes("练习型A"));
+  ok(!!customItem, "★ 自定义型在「未归属」行内渲染（v3.35.7 挂歌行）");
+  ok(!groupBtnOf(customItem), "★ 歌行下的自定义型不带 📁（跨类型同组入口已随展示口径退役）");
   /* 再点内置条目的 📁：预填当前组名 */
   groupBtnOf(itemByName(first.els, "四分基础")).fire("click");
   eq(first.els["modalInput"].value, "热身", "★ 在组内时预填当前组名（清空确定 = 移出的出口可见）");
@@ -116,10 +132,10 @@ section("T98c 移入语义 · ★ 同名组并入不新建 / 内置+自定义同
   const heads2 = groupHeads(first.els);
   eq(heads2.length, 1, "移出一个成员后组还在（空组保留，架子不拆）");
   ok(deepText(heads2[0]).includes("· 1 个"), "成员数回到 1");
-  const beatKids = zoneSlice(first.els, "节拍", "扫弦");
+  const beatKids = zoneSlice(first.els, "节拍", "自定义");
   ok(deepText(beatKids[2]).includes("四分基础"),
     "★ 移出的条目回到散员流开头（散员按 BUILTINS 原序，四分基础是节拍区第一个内置）");
-  eq(first.beat.Store.groups[0].members.length, 1, "冷键同步：只剩自定义成员");
+  eq(first.beat.Store.groups[0].members.length, 1, "冷键同步：只剩八分摇滚成员");
 }
 
 /* ================= 场景 T98d：组折叠（含"分区折叠盖组"的两级真值表） ================= */
@@ -133,7 +149,7 @@ section("T98d 组折叠 · ★ 组头点击收放 / 区收着时组跟着收 / �
   eq(head.getAttribute("aria-expanded"), "true", "默认展开");
   head.fire("click");
   eq(head.getAttribute("aria-expanded"), "false", "★ 点击组头 → 收起");
-  const beatKids = zoneSlice(first.els, "节拍", "扫弦");
+  const beatKids = zoneSlice(first.els, "节拍", "自定义");
   ok(beatKids[1].hidden === true, "★ 成员条目被 hidden（折叠只置 hidden、不删节点——分区同款契约）");
   eq(beatKids.length, 12, "节点一个不少（hidden 不删）");
   /* 两级真值表：区收着 → 组头跟收、组内组外全收；区再展开 → 散员出来、**组成员仍收** */
@@ -186,8 +202,8 @@ section("T98f 删组 · × → uiConfirm → 组消失/成员全部散回/条目
   eq(groupHeads(first.els).length, 0, "★ 组头消失");
   ok(!!itemByName(first.els, "四分基础"), "条目本身健在");
   itemByName(first.els, "四分基础").fire("click");
-  eq(JSON.stringify(first.beat.Store.S.sel), JSON.stringify({ type:"builtin", idx:1 }),
-    "★ 散员照常可选可播（删组没有碰条目本体）");
+  eq(JSON.stringify(first.beat.Store.S.sel), JSON.stringify({ type:"builtin", idx:0 }),
+    "★ 散员照常可选可播（删组没有碰条目本体；四分基础 = 新 idx0）");
   first.beat.Controls.stop();
   eq(first.beat.Store.groups.length, 0, "冷键同步清空");
 }
@@ -198,12 +214,24 @@ section("T98g 联动清理 · ★ 删组内 custom → groupPruneCustom 摘引�
   const first = loadApp(undefined, { seedDemo: false });
   first.beat.Store.importPresets(JSON.stringify([{ name: "练习型A", meter: 4,
     bars: [Array.from({ length: 4 }, () => ({ t: 48 }))] }]));
+  /* ★ v3.35.7：自定义型不再有 📁（挂在歌行下），跨类型归组的 UI 入口退役。
+     本节被测对象是「删自定义型 → groupPruneCustom 摘引用」这条清理：组数据仍可能从
+     旧冷键/旧版本带入 custom 引用，故改用数据层 groupMove 造前置，删除仍走真实 UI。 */
+  const c = first.beat.Store.customs[0];
+  first.beat.Store.groupMove({ type: "custom", id: c.id }, "beat", "热身");
   first.beat.Presets.refreshAfterPatternChange();
-  groupBtnOf(itemByName(first.els, "练习型A")).fire("click");
-  first.els["modalInput"].value = "热身";
-  first.els["modalOk"].fire("click");
   eq(first.beat.Store.groups[0].members.length, 1, "前提：custom 已在组内");
-  itemByName(first.els, "练习型A").children.find(c => /(^| )del( |$)/.test(c.className)).fire("click");
+  const deepItems = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(ch => { out.push(ch); walk(ch); });
+    walk(first.els["presetList"]);
+    return out;
+  };
+  const orph = deepItems().find(x => /(^| )song-only( |$)/.test(x.className));
+  if (orph && orph.getAttribute("aria-expanded") === "false") orph.fire("click");
+  const customItem = deepItems().find(it => /(^| )preset-item( |$)/.test(it.className)
+    && deepText(it).includes("练习型A"));
+  customItem.children.find(ch => /(^| )del( |$)/.test(ch.className)).fire("click");
   first.els["modalOk"].fire("click");                 // 删除预设确认
   eq(first.beat.Store.groups[0].members.length, 0, "★ 组引用同步摘除");
   eq(JSON.stringify(groupsOf(first.storage).groups[0].members), JSON.stringify([]),
@@ -229,8 +257,10 @@ section("T98h 校验边界 · ★ 非法组整组丢弃 / 非法 ref 逐条丢�
   eq(dirty.beat.Store.groups[0].name, "好组");
   eq(dirty.beat.Store.groups[0].members.length, 1, "合法成员照常应用");
   eq(dirty.beat.Store.groups[0].open, false, "open 字段照常应用");
-  eq(groupHeads(dirty.els).length, 4, "侧栏渲染 4 个组头（含空组——架子在，还能再移入）");
-  const beatKids = zoneSlice(dirty.els, "节拍", "扫弦");
+  /* ★ v3.35.3：「扫弦」区退役 ⇒ 该区的组不再渲染（数据仍按白名单活着，只是没有落脚的区），
+     侧栏只剩 beat 区那两个组头 */
+  eq(groupHeads(dirty.els).length, 2, "侧栏渲染 2 个组头（beat 区的好组 + 坏类型——空组架子仍在，还能再移入）");
+  const beatKids = zoneSlice(dirty.els, "节拍", "自定义");
   ok(deepText(beatKids[0]).includes("热身") === false && beatKids[0].className === "preset-group",
     "好组渲染在节拍区（组头第一个孩子）");
 }
@@ -253,7 +283,8 @@ section("T98i 边界 · ★ 曲式条目有 📁（三区全开放）；预设�
   first.beat.Store.importPresets(JSON.stringify([{ name: "练习型B", meter: 4,
     bars: [Array.from({ length: 4 }, () => ({ t: 48 }))] }]));
   first.beat.Presets.refreshAfterPatternChange();       // importPresets 不刷 UI：与真实调用点同口径补一次
-  groupBtnOf(itemByName(first.els, "练习型B")).fire("click");
+  /* ★ v3.35.7：自定义型挂在歌行下、不再有 📁（跨类型归组入口退役），故改用内置型造一个组 */
+  groupBtnOf(itemByName(first.els, "四分基础")).fire("click");
   first.els["modalInput"].value = "热身";
   first.els["modalOk"].fire("click");
   const exp = JSON.parse(first.beat.Store.serializePresets());

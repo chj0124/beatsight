@@ -11,7 +11,9 @@ const nameOf = item => item.children[0].children[0].textContent;
 
 section("T158 试听 · 进/出/换/互斥/拍号恢复");
 {
-  const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
+  /* ★ v3.35.5：带 bnmig35 戳——夹具按下标新表写，避免删民谣扫弦的位移迁移改写 S.sel */
+  const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ sel: { type: "builtin", idx: 1 } }),
+    "beatsight.bnmig35": "1" });
   let items = presetItems(els);
   ok(items.length > 2, "前提：预设列表已渲染（内置型 ≥ 3 条）");
   const aud0 = audBtnOf(items[0]), aud1 = audBtnOf(items[1]);
@@ -55,9 +57,19 @@ section("T158 试听 · 进/出/换/互斥/拍号恢复");
   ] }));
   beat.Presets.refreshAfterPatternChange();   /* 导入后刷新列表（新自定义条目入列） */
   eq(beat.Store.S.sig, 4, "前提：当前拍号 4/4");
-  items = presetItems(els);
-  const item34 = items.find(it => nameOf(it) === "三拍试听载体");
-  ok(!!item34, "前提：3/4 条目已渲染");
+  /* ★ v3.35.7：无归属的自定义型挂在「未归属」行下（默认收起），不在 presetList 直接子节点里。
+     先展开那一行，再在**所有层级**里按名字取条目（与 t30 同写法）。 */
+  const deepItems = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+    walk(els["presetList"]);
+    return out;
+  };
+  const orph = deepItems().find(c => /(^| )song-only( |$)/.test(c.className));
+  if (orph && orph.getAttribute("aria-expanded") === "false") orph.fire("click");
+  const item34 = deepItems().find(it =>
+    /(^| )preset-item( |$)/.test(it.className) && nameOf(it) === "三拍试听载体");
+  ok(!!item34, "前提：3/4 条目已渲染（展开「未归属」行之后）");
   const aud34 = audBtnOf(item34);
   aud34.fire("click");
   eq(beat.Store.S.sig, 3, "★ 试听 3/4 型 → 拍号临时对齐");

@@ -184,7 +184,9 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
       if (isFinite(yy) && yy < minY) minY = yy;             // 记录整段时间里的最高点（y 越小越高）
     }
     const sos = [...sOnsets.values()].filter(e => e.bar === 0).sort((a, b) => a.t - b.t);
-    ok(sos.length >= 5, `慢速下仍采集到第 1 小节的 ${sos.length} 个发声点`);
+    /* ★ v3.35.5：出厂默认型从「民谣扫弦」（6 声/小节）变成「四分基础」（4 声/小节）⇒
+       阈值随默认型声部数改；意图不变——慢速下也要采齐第 1 小节的每一声。 */
+    ok(sos.length >= 4, `慢速下仍采集到第 1 小节的 ${sos.length} 个发声点`);
     const T2 = sos[1].t - sos[0].t;
     const rawH = Math.min(CB.max, Math.max(CB.min, CB.k * T2 * T2));
     ok(rawH > cap + 1, `弧够长：未钳制跳高 ${rawH.toFixed(1)}px 高于上界 ${cap}px（T=${T2.toFixed(2)}s）`);
@@ -301,7 +303,10 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
      故一律按**名字**定位，不按显示序位取项 */
   const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
   const itemByName = nm => listItems().find(c => deepText(c).includes(nm));
-  ok(listItems().length >= beat.BUILTINS.length, `预设列表渲染出 ${listItems().length} 个可点项`);
+  /* ★ v3.35.3：「扫弦」区退役后，示例型不再单独成区（挂在「自定义」区歌曲行下、
+     不是 #presetList 的直接子节点）⇒ 这一层只剩 2 个分区标题 + 11 个节拍内置型。
+     原先拿 BUILTINS.length（21）当下限的口径随架构失效，改按实际形状断言。 */
+  ok(listItems().length >= 13, `预设列表渲染出 ${listItems().length} 个可点项（2 个分区标题 + 11 个节拍型）`);
   itemByName(beat.BUILTINS[3].name).fire("click");
   eq(S.sel.idx, 3, "点内置预设项 → 选中它");
   eq(els["patternName"].textContent, beat.BUILTINS[3].name, "标题同步为该预设名");
@@ -309,14 +314,17 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   /* 键盘可达（v2.0.2）：预设项不再是纯 div——role/tabindex/aria-current + Enter 激活。
      ★ v2.13.1：主界面项不再消费 Space（用户要求「空格键始终 = 播放/暂停」）——
        这里断言"按下空格**不**改变选中"，空格现在归全局播放规则管（见 t94） */
-  const it5 = itemByName(beat.BUILTINS[5].name);
-  eq(it5.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
-  eq(it5.tabIndex, 0, "预设项可 Tab 聚焦");
-  it5.fire("keydown", { key: "Enter" });
-  eq(S.sel.idx, 5, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
-  eq(itemByName(beat.BUILTINS[5].name).getAttribute("aria-current"), "true", "当前项带 aria-current");
-  itemByName(beat.BUILTINS[4].name).fire("keydown", { key: " ", code: "Space" });
-  eq(S.sel.idx, 5, "★ Space 不再激活预设项（v2.13.1：空格让给播放/暂停，Enter 仍是激活键）");
+  /* ★ v3.35.5：内置库删了「民谣扫弦」⇒ 下标整体 −1，原先写死的 [5] 从「Funk 十六分」（4/4）
+     变成「华尔兹分解」（3/4）——选中它会顺手把拍号切成 3/4，下面编辑器那一段（载体是 4/4）
+     就全歪了。故改用 [4]（Funk 十六分，仍是 4/4）：本段的意图是"键盘契约"，与是哪一条无关。 */
+  const it4 = itemByName(beat.BUILTINS[4].name);
+  eq(it4.getAttribute("role"), "button", "预设项带 role=button（读屏能报到）");
+  eq(it4.tabIndex, 0, "预设项可 Tab 聚焦");
+  it4.fire("keydown", { key: "Enter" });
+  eq(S.sel.idx, 4, "★ Enter 选中预设（键盘用户不再选不了节奏型）");
+  eq(itemByName(beat.BUILTINS[4].name).getAttribute("aria-current"), "true", "当前项带 aria-current");
+  itemByName(beat.BUILTINS[3].name).fire("keydown", { key: " ", code: "Space" });
+  eq(S.sel.idx, 4, "★ Space 不再激活预设项（v2.13.1：空格让给播放/暂停，Enter 仍是激活键）");
 
   /* 导入：走 FileReader 接线（桩的 FileReader 会把 FILE_TEXT 交给 onload） */
   app.setFileText(JSON.stringify({ presets: [{ name: "接线导入", meter: 4,
@@ -329,8 +337,19 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   /* 导出：Blob + <a download> 接线不应抛错 */
   ok(beat.Store.exportPresets(), "导出预设接线跑通（有预设时返回 true）");
 
-  /* 自定义预设项的删除按钮（stopPropagation 后走 uiConfirm） */
-  const customItem = listItems().find(c => c.children.some(x => /(^| )del( |$)/.test(x.className)));
+  /* 自定义预设项的删除按钮（stopPropagation 后走 uiConfirm）
+     ★ v3.35.7：自定义型不再散落在「节拍」区——无归属的挂在「未归属」行下（深一层、要展开）。
+       故先展开那一行，再在**所有层级**里按同一判据（有 .del 按钮）找。 */
+  const deepItems = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+    walk(els["presetList"]);
+    return out;
+  };
+  const orphRow = deepItems().find(c => /(^| )song-only( |$)/.test(c.className));
+  ok(!!orphRow, "★ 无归属的自定义型有「未归属」行可进（v3.35.7 绑歌名）");
+  if (orphRow && orphRow.getAttribute("aria-expanded") === "false") orphRow.fire("click");
+  const customItem = deepItems().find(c => Array.from(c.children || []).some(x => /(^| )del( |$)/.test(x.className)));
   const delBtn = customItem.children.find(x => /(^| )del( |$)/.test(x.className));
   delBtn.fire("click");
   eq(els["modalMask"].hidden, false, "点删除 → 弹确认框");
@@ -357,6 +376,10 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   eq(beat.Editor.draft().bars[0].length, n0 + 3, "点三连音组块 → 一次追加 3 枚");
   els["undoBtn"].fire("click");
   eq(beat.Editor.draft().bars[0].length, n0, "撤销 → 回到点击前的音符数");
+  /* ★ v3.35.7：歌名成了保存的前置条件 ⇒ 先填上，下面"空小节 → 禁用 / 撤销 → 恢复"
+     两条才只反映拍面（否则无论怎么撤销都因缺歌名而禁用，这条断言就失效了）。 */
+  els["songNameInput"].value = "T30 的测试歌";
+  els["songNameInput"].fire("input");
   els["copyBarBtn"].fire("click"); els["modalOk"].fire("click");
   eq(beat.Editor.draft().bars[3].length, n0, "复制到全部 → 第 4 小节与第 1 小节一致");
   els["clearBarBtn"].fire("click"); els["modalOk"].fire("click");
@@ -533,8 +556,18 @@ section("T33 Presets 接线补完 · 自定义项 / 一键切回 / 导入失败�
   els["importFile"].fire("change", { target: { files: [{}], value: "" } });
   els["modalOk"].fire("click");
   eq(beat.Store.customs.length, 1, "5/4 自定义预设导入成功（小节和 = 5×48 = 240）");
-  const customItem = byName("五拍自定义");
-  ok(!!customItem, "自定义预设项已渲染（按名称定位）");
+  /* ★ v3.35.7：无归属的自定义型挂在「未归属」行下（深一层、要展开）⇒ 先展开再深挖。
+     本文件上面那处测试同一个形状，两处都按"先展开、再全层级找"写。 */
+  const deepItems2 = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+    walk(els["presetList"]);
+    return out;
+  };
+  const orph2 = deepItems2().find(c => /(^| )song-only( |$)/.test(c.className));
+  if (orph2 && orph2.getAttribute("aria-expanded") === "false") orph2.fire("click");
+  const customItem = deepItems2().find(c => c._h && c._h.click && textOf(c).includes("五拍自定义"));
+  ok(!!customItem, "自定义预设项已渲染（按名称定位，展开「未归属」行之后）");
   customItem.fire("click");
   eq(S.sel.id, beat.Store.customs[0].id, "点自定义项 → 选中它");
   eq(S.sig, 5, "★★ 选 5/4 的自定义型 → 拍号自动对齐到 5/4（v3.12.0 起这是唯一入口）");
@@ -717,7 +750,7 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
      这条同时守 P1-4 的一个真实风险——增量重绘可能漏掉组标签这类"非格子"元素 */
   {
     const b2 = loadApp();
-    b2.beat.Store.S.sel = { type: "builtin", idx: 8 };        // 三连音基础：12 个连续 16t 短音符 → 生成组标签
+    b2.beat.Store.S.sel = { type: "builtin", idx: 7 };        // 三连音基础：12 个连续 16t 短音符 → 生成组标签（v3.35.5：下标 −1）
     b2.beat.Presets.refreshAfterPatternChange();
     b2.beat.Controls.start();
     const ac2 = FakeAudioContext.last;
@@ -812,9 +845,17 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
       `游标停在 ${t0.toFixed(0)}t（旧节奏型起点，且晚于新节奏型的末颗起点 96t）`);
     /* 切到新预设：本小节无接续点 → 顺延到下一小节 */
     const textOf = el => (el.textContent || "") + (el.children || []).map(textOf).join("|");
-    const custom = app3.els["presetList"].children.filter(c => c._h && c._h.click)
-      .find(c => textOf(c).includes("两颗二分"));
-    ok(!!custom, "自定义预设项已在列表中");
+    /* ★ v3.35.7：无归属的自定义型挂在「未归属」行下 ⇒ 先展开、再全层级找 */
+    const deep3 = () => {
+      const out = [];
+      const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+      walk(app3.els["presetList"]);
+      return out;
+    };
+    const orph3 = deep3().find(c => /(^| )song-only( |$)/.test(c.className));
+    if (orph3 && orph3.getAttribute("aria-expanded") === "false") orph3.fire("click");
+    const custom = deep3().find(c => c._h && c._h.click && textOf(c).includes("两颗二分"));
+    ok(!!custom, "自定义预设项已在列表中（展开「未归属」行之后）");
     custom.fire("click");
     eq(b5.Store.S.sel.id, b5.Store.customs[0].id, "已切到新预设");
     const c = b5.clock();

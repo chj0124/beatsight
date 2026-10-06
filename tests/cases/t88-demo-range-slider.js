@@ -60,9 +60,13 @@ const pctPart = v => { const m = /calc\((-?[0-9.]+)%/.exec(String(v)); return m 
 const kPart = v => { const m = /([-0-9.]+) \* var\(--thumb-w\)/.exec(String(v)); return m ? parseFloat(m[1]) : NaN; };
 /* 整首连播那一行的状态说明（它兼着"现在播到第几小节"的职责，见 syncDemoRange） */
 const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
-/* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
-const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
+/* ★ v3.35.3：歌曲行的点击语义改成了**展开/收起**，整首连播挪到行尾的 ▶。
+   故 playAllOf 返回那颗 ▶（而不是歌曲行本身）——语义与 v2.28.0 的"唯一点击入口"一致。 */
+const playAllOf = els => {
+  const row = boxOf(els).children.find(x =>
+    /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
+  return row && row.children.find(x => /(^| )aud( |$)/.test(x.className));
+};
 
 /* 单拇指拖动：走完 input（拖动中，只刷视觉）+ change（松手提交，跑重活并通知 Arrange）两级。
    真实浏览器就是这个顺序。commit=false 可只发 input，用于钉住"只拖不提交不生效" */

@@ -150,7 +150,9 @@ section("T51d 曲式模型 · 冷键加载（坏条目丢弃）/ 落盘 / 写失
   eq(JSON.stringify(mig.sections[0].blocks.map(b => b.repeats)), JSON.stringify([8, 4]),
      "★ 往返 + 一次性迁移：builtin 块 ×4（2/1 → 8/4），两块的段完整保留");
   const b5b = loadApp({ "beatsight.arranges": b5.storage.get("beatsight.arranges"),
-    "beatsight.arrmig73": "1" });   // 带戳：跳过迁移（幂等的对象是被迁移一次后的形状）
+    /* v3.35.5：删「民谣扫弦」的内置下标位移迁移（beatsight.bnmig35）同样必须带戳，
+       否则这一轮会把上一轮已迁移过的块再造一次位移（idx1→idx0，幂等断言当场红） */
+    "beatsight.arrmig73": "1", "beatsight.bnmig35": "1" });   // 带戳：跳过迁移（幂等的对象是被迁移一次后的形状）
   eq(JSON.stringify(b5b.beat.Store.arranges[0]), JSON.stringify(b5.beat.Store.arranges[0]),
      "★ 迁移幂等：迁移后再次加载，repeats 不再 ×4");
 

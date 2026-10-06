@@ -33,14 +33,29 @@ const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }),
   { seedDemo: false });
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-/* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），改点示例曲条目 */
-const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
+/* ★ v3.35.3：歌曲行的点击语义改成了**展开/收起**，整首连播挪到行尾的 ▶。
+   故 playAllOf 返回那颗 ▶（而不是歌曲行本身）——语义与 v2.28.0 的"唯一点击入口"一致。 */
+const playAllOf = els => {
+  const row = boxOf(els).children.find(x =>
+    /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
+  return row && row.children.find(x => /(^| )aud( |$)/.test(x.className));
+};
 const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
-const itemByName = (els, name) => els["presetList"].children
-  .filter(x => /(^| )preset-item( |$)/.test(x.className)).find(x => deepText(x).includes(name));
-const activeItems = els => els["presetList"].children.filter(x =>
-  /(^| )preset-item( |$)/.test(x.className) && /(^| )active( |$)/.test(x.className));
+/* ★ v3.35.3：示例型挂在「自定义」区歌曲行下（.preset-arrange-group 里面），
+   不再是 #presetList 的直接子节点 ⇒ 按名/按态取条目要走整棵子树。 */
+const deepItems = el => {
+  const o = [];
+  (el.children || []).forEach(c => {
+    if (/(^| )preset-item( |$)/.test(c.className)) o.push(c);
+    o.push.apply(o, deepItems(c));
+  });
+  return o;
+};
+const itemByName = (els, name) => deepItems(els["presetList"]).find(x => deepText(x).includes(name));
+/* ★ 只数**节奏型**条目：歌曲行也带 active（它标的是"当前在编哪首"），语义不同，
+   混进来会让"连播中不得有任何节奏型高亮"那几条断言误报。 */
+const activeItems = els => deepItems(els["presetList"]).filter(x =>
+  /(^| )active( |$)/.test(x.className) && !/(^| )song( |$)/.test(x.className));
 const snapshot = storage => { const s = {}; storage.forEach((v, k) => { s[k] = v; }); return s; };
 
 /* 把一台"新机器"手工倒退回 v2.19.x 的数据形状（内置化迁移的唯一输入）：
@@ -54,7 +69,7 @@ const makeLegacy = (beat, opts) => {
   eq(r.ok, true, "前提：老形状 customs 灌入成功");
   const ids = beat.Store.customs.slice(-5).map(c => c.id);
   beat.Store.findArrange(beat.DEMO_ID).sections.forEach(s => s.blocks.forEach(b => {
-    if (b.ref.type === "builtin") b.ref = { type: "custom", id: ids[b.ref.idx - 12] };
+    if (b.ref.type === "builtin") b.ref = { type: "custom", id: ids[b.ref.idx - 11] };
   }));
   if (opts && opts.legacyName !== undefined) beat.Store.customs.slice(-5)[3].name = opts.legacyName;
   beat.Store.persistCold();               // customs 落盘
@@ -83,10 +98,10 @@ section("T74a 曲式播放中 · ★ 侧栏无假高亮（曲式不读 S.sel）�
     "★ 列表里**没有**任何条目被高亮——不制造'已选中'的假象（高亮语义 = 正在练这个型）");
   ok(String(els["patternName"].textContent).length > 0, "标题有内容（跟节目单）");
 
-  /* 出口仍是对等入口：点任一节奏型 = 退回单练它（BUILTINS[1] = 四分基础） */
+  /* 出口仍是对等入口：点任一节奏型 = 退回单练它（BUILTINS[0] = 四分基础，v3.35.5 下标 −1） */
   itemByName(els, "四分基础").fire("click");
   eq(beat.Store.S.playMode, "preset", "点预设退回预设模式");
-  eq(JSON.stringify(beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 1 }), "S.sel 落到被点的型");
+  eq(JSON.stringify(beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 0 }), "S.sel 落到被点的型");
   eq(els["patternName"].textContent, "四分基础", "标题跟上");
   eq(activeItems(els).length, 1, "退回预设模式后选中高亮恢复（高亮语义与模式一致）");
   beat.Controls.stop();
@@ -124,17 +139,17 @@ section("T74c 内置化迁移 · ★ v2.19.x 形状落盘 → 再启动自动收
   eq(second.beat.Store.customs.length, 0, "★ 启动迁移收走 5 个示例 custom（自定义库转空）");
   const a = second.beat.Store.findArrange(second.beat.DEMO_ID);
   ok(a.sections.every(s => s.blocks.every(b =>
-    b.ref.type === "builtin" && b.ref.idx >= 12 && b.ref.idx <= 16)),
-    "★ 曲式块引用已重映射为内置下标 12–16（DEMO_BUILTIN_BASE=12 + refIdx）");
+    b.ref.type === "builtin" && b.ref.idx >= 11 && b.ref.idx <= 15)),
+    "★ 曲式块引用已重映射为内置下标 11–15（DEMO_BUILTIN_BASE=11 + refIdx；v3.35.5 删民谣扫弦后基址 −1）");
   eq(second.beat.songBars(a), 64, "★ 全曲 64 小节分毫未变");
   eq(second.beat.Store.lyrics.filter(l => l.arrangeId === second.beat.DEMO_ID).length, 9,
     "歌词 9 行完好（迁移不动歌词之外的用户数据）");
   eq(JSON.stringify(second.beat.arrangeProblems(a)), "[]", "★ 重映射后曲式零问题（整首可播）");
   /* 逐块对齐规范谱：重映射的下标序 = demoBuildSpec 的 refIdx 序 */
-  const gotIdx = a.sections.flatMap(s => s.blocks.map(b => b.ref.idx - 12)).join(",");
+  const gotIdx = a.sections.flatMap(s => s.blocks.map(b => b.ref.idx - 11)).join(",");
   const wantIdx = second.beat.demoBuildSpec().arrange.sections
     .flatMap(s => s.blocks.map(b => b.refIdx)).join(",");
-  eq(gotIdx, wantIdx, "★ 每个块的内置下标 - 12 = 规范谱 refIdx（映射无错位）");
+  eq(gotIdx, wantIdx, "★ 每个块的内置下标 - 11 = 规范谱 refIdx（映射无错位）");
 
   /* 幂等：第三次启动零改动（customs 仍空、曲式引用原样） */
   const third = loadApp(snapshot(second.storage));
@@ -155,8 +170,8 @@ section("T74d 内置化迁移 · ★ S.sel 重映射 + 旧名认回 + 坏引用�
   const f1 = loadApp(undefined, { seedDemo: false });
   makeLegacy(f1.beat, { selIdx: 2 });                       // 正选中 P3
   const s1 = loadApp(snapshot(f1.storage));
-  eq(JSON.stringify(s1.beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 14 }),
-    "★ 正选中的示例 custom（P3）迁移成内置下标 12+2=14（选择不丢）");
+  eq(JSON.stringify(s1.beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 13 }),
+    "★ 正选中的示例 custom（P3）迁移成内置下标 11+2=13（选择不丢；v3.35.5 基址 −1）");
 
   /* ② 旧名世代认回 */
   const f2 = loadApp(undefined, { seedDemo: false });
@@ -219,10 +234,13 @@ section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器�
     "★ 草稿 = 基于内置型的新副本（-副本），内置本体不被直接改");
   eq(beat.Store.customs.length, 0, "★ 打开编辑器不动库（保存才落）");
   els["presetNameInput"].value = "我的副歌变体";
+  /* ★ v3.35.7：歌名是保存的前置条件（没有"单独创建一条节奏型"这回事） */
+  els["songNameInput"].value = "他乡的副歌变体";
+  els["songNameInput"].fire("input");
   els["savePresetBtn"].fire("click");
   eq(beat.Store.customs.length, 1, "★ 另存成功：自定义库恰好 1 条（与内置隔离）");
   eq(beat.Store.customs[0].name, "我的副歌变体", "★ 新条目名来自草稿名输入框");
   eq(beat.Store.S.sel.type, "custom", "★ 保存后选中的是新的自定义型");
-  eq(beat.BUILTINS.length, 21, "★ 内置库纹丝不动（21 = 12 + 示例 5 + 示例 4）");
+  eq(beat.BUILTINS.length, 20, "★ 内置库纹丝不动（20 = 11 + 示例 5 + 示例 4；v3.35.5 删民谣扫弦）");
   beat.Controls.stop();
 }

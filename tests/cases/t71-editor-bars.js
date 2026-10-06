@@ -25,6 +25,10 @@ function openOn(n){
     beat.Presets.refreshAfterPatternChange();
   }
   beat.Editor.open();
+  /* ★ v3.35.7：歌名成了保存的前置条件 ⇒ 本套件只关心"小节数/时值"，统一在这里填上，
+     免得每条与保存键有关的断言都被"还没填歌名"这条新规则带偏。 */
+  els["songNameInput"].value = "T71 的测试歌";
+  els["songNameInput"].fire("input");
   return { beat, els };
 }
 /* 把"当前小节"切到第 b 行（点行内的轨道 → 列 track 处于 click 目标即换行） */

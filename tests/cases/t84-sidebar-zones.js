@@ -35,16 +35,17 @@ const isItem = el => /(^| )preset-item( |$)/.test(el.className);
 const isSection = el => /(^| )preset-section( |$)/.test(el.className);
 /* 条目显示名：presetItemEl 的结构是 item > box > .name（叶子，textContent 直接可读） */
 const nameOf = it => it.children[0].children[0].textContent;
-/* 三区边界：以三个 .preset-section 为界把列表孩子切成三段的条目 */
+/* 区边界：以 .preset-section 为界把列表孩子切开。
+   ★ v3.35.3：「扫弦」区退役、与「自定义」合并 ⇒ 只剩 节拍 / 自定义 两区；
+   带扫弦记谱的示例型改挂在「自定义」区各自的歌曲行下（曲式容器的孩子，不在这一层）。 */
 const zoneItems = els => {
   const kids = els["presetList"].children;
   const secs = kids.filter(isSection);
-  const [a, b, c] = secs.map(s => kids.indexOf(s));
+  const [a, b] = secs.map(s => kids.indexOf(s));
   return {
     secs,
     beat: kids.slice(a + 1, b).filter(isItem),
-    strum: kids.slice(b + 1, c).filter(isItem),
-    customs: kids.slice(c + 1).filter(isItem),
+    arrangeBox: kids.slice(b + 1).find(x => /(^| )preset-arrange-group( |$)/.test(x.className)),
   };
 };
 
@@ -68,42 +69,38 @@ section("T84a 三区分类 · hasStrum 判据：dir 或 zone 任一存在即为�
      "空/坏结构一律 false（不抛——它跑在列表渲染路径上）");
   /* ★ 分界线（v2.20.0 起 6 处）：内置 17 个型里民谣扫弦 + 示例 5 型带 dir（1+5=6），
      其余 11 个节拍型零 dir——分区判据 hasStrum 的内置域就此锁定 */
-  eq(beat.BUILTINS.filter(H).length, 10, "内置型中 10 个带扫弦记谱（民谣扫弦 + 示例 9 型）");
+  eq(beat.BUILTINS.filter(H).length, 9, "内置型中 9 个带扫弦记谱（示例 9 型；v3.35.5 删掉唯一带记谱的非示例内置型「民谣扫弦」）");
 }
 
 /* ================= 场景 T84b：三区分类（标题 / 顺序 / 判据 / 原始下标） ================= */
-section("T84b 三区分类 · 标题顺序 / 按内容分区 / 分区不改内置下标");
+section("T84b 两区分类 · 标题顺序 / 按内容分区 / 分区不改内置下标");
 {
   const { beat, els } = loadApp();
   const H = beat.hasStrum;
   /* 分类判据是**内容**（hasStrum），不是任何运行期状态——不再先切轨再断言列表 */
-  const beatN = beat.BUILTINS.filter(p => !H(p)).length
-    + beat.Store.customs.filter(c => !H(c)).length;
-  const strumN = beat.BUILTINS.filter(p => H(p)).length
-    + beat.Store.customs.filter(c => H(c)).length;
+  const beatN = beat.BUILTINS.filter(p => !H(p)).length + beat.Store.customs.length;
   const z = zoneItems(els);
-  eq(z.secs.length, 3, "恰好三个分区标题（节拍 / 扫弦 / 自定义）");
+  eq(z.secs.length, 2, "恰好两个分区标题（节拍 / 自定义）——「扫弦」区已退役（v3.35.3）");
   eq(JSON.stringify(z.secs.map(s => s.textContent)),
-     JSON.stringify([`节拍 · ${beatN} 个`, `扫弦 · ${strumN} 个`, `自定义 · ${beat.Store.arranges.length} 首`]),
-     "★ 三区标题按序常显（节拍 / 扫弦 / 自定义），第一区在列表头部");
+     JSON.stringify([`节拍 · ${beatN} 个`, `自定义 · ${beat.Store.arranges.length} 个`]),
+     "★ 两区标题按序常显（节拍 / 自定义），第一区在列表头部");
 
-  /* 内置项按内容落区：唯一带 dir 的「民谣扫弦」进扫弦区，其余 11 个进节拍区 */
+  /* 内置项按内容落区：11 个不带扫弦记谱的进节拍区；带记谱的 9 个示例型不再单独成区 */
   eq(JSON.stringify(z.beat.map(nameOf)),
      JSON.stringify(beat.BUILTINS.filter(p => !H(p)).map(p => p.name)),
      "★ 节拍区 = 全部不带扫弦记谱的内置型（顺序 = BUILTINS 原序）");
-  eq(JSON.stringify(z.strum.map(nameOf)),
-     JSON.stringify(beat.BUILTINS.filter(p => H(p)).map(p => p.name)),
-     "★ 扫弦区 = 带扫弦记谱的内置型（民谣扫弦）");
   const builtinByName = nm => beat.BUILTINS.find(p => p.name === nm);
   ok(z.beat.every(it => { const p = builtinByName(nameOf(it)); return !!p && !H(p); }),
      "节拍区每一项都是 hasStrum=false 的型（分区判据与内容同源）");
-  ok(z.strum.every(it => { const p = builtinByName(nameOf(it)); return !!p && H(p); }),
-     "扫弦区每一项都是 hasStrum=true 的型");
+  /* 带记谱的示例型挂到「自定义」区歌曲行下这件事，由 t63 在**带出示例曲**的机器上钉
+     （本用例的 loadApp() 不载入示例曲，曲式容器是空的——在这里断言等于空跑） */
 
   /* ★ 下标安全：分区只重排显示，S.sel.idx 仍指回 BUILTINS 原始下标。
      分区后「节拍区第 k 项」在 BUILTINS 里的下标已被跳过项前后错位——
      若拿分区序位当 idx，点任何一项都会选错型 */
-  const rendered = () => zoneItems(els).beat.concat(zoneItems(els).strum);
+  /* 节拍区（本用例里只有 11 个内置型、无自定义）按 BUILTINS 原序渲染，
+     逐项点过去必须逐项选中对的那一个 */
+  const rendered = () => zoneItems(els).beat;
   rendered().forEach((_, k) => {
     const it = rendered()[k];
     const nm = nameOf(it);
@@ -114,12 +111,12 @@ section("T84b 三区分类 · 标题顺序 / 按内容分区 / 分区不改内�
 }
 
 /* ================= 场景 T84c：分区下删除自定义型按对象身份定位（不按分区序位） ================= */
-section("T84c 三区分类 · 分区渲染下删除自定义型按对象身份定位（不按分区序位）");
+section("T84c 两区分类 · 分区渲染下删除自定义型按对象身份定位（不按分区序位）");
 {
   const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
-  /* 三个自定义型：第 1 个带 zone（落扫弦区），后两个普通（落节拍区）。
-     于是"显示序位"与"customs 下标"必然错位：扫弦区的「甲-扫弦」是 customs[0]，
-     节拍区的「乙」是 customs[1]、「丙」是 customs[2] */
+  /* 三个自定义型都没有归属（老数据形状）⇒ v3.35.7 起全进「自定义」区的「未归属」行，
+     展开后按 customs 原序渲染：行内第 1 项「甲-扫弦」是 customs[0]，「乙」是 customs[1]、
+     「丙」是 customs[2]。于是"渲染序位"与"customs 下标"仍必然错位——删除必须按对象身份定位。 */
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "甲-扫弦", meter: 4, bars: mkZoneOnly() },
     { name: "乙", meter: 4, bars: mkPlain() },
@@ -129,22 +126,33 @@ section("T84c 三区分类 · 分区渲染下删除自定义型按对象身份�
   /* 导入只落数据（Store 不该知道列表怎么画），要看到分区后的列表必须走一次刷新——
      与"列表渲染只有一个触发点"的分工一致：导入/删除/换型都经 refreshAfterPatternChange */
   beat.Presets.refreshAfterPatternChange();
-  const z = zoneItems(els);
-  /* ★ 分区里**同时**有内置型与自定义型（这是分区判据=内容的必然结果）：
-     扫弦区 = 内置「民谣扫弦」+ 自定义「甲-扫弦」；节拍区 = 11 个内置型 + 自定义「乙」「丙」。
-     故只筛出自定义名来断言它们的落区，不能拿整区与自定义集比 */
+  /* ★ v3.35.7：自定义型改挂歌行/未归属行，节拍区只剩内置型。
+     无归属的自定义型不散落「节拍」区，而是挂在「自定义」区一行的「未归属」下，
+     该行默认收起（aria-expanded=false）；点一下展开后型才按 customs 原序渲染。
+     故先展开那一行，再在**所有层级**里按名字取条目（不能只看 presetList 直接子节点）。 */
+  const deepItems = () => {
+    const out = [];
+    const walk = n => Array.from(n.children || []).forEach(c => { out.push(c); walk(c); });
+    walk(els["presetList"]);
+    return out;
+  };
+  const deepItemEls = () => deepItems().filter(isItem);
   const customNames = ["甲-扫弦", "乙", "丙"];
-  eq(JSON.stringify(z.strum.map(nameOf).filter(n => customNames.includes(n))),
-     JSON.stringify(["甲-扫弦"]),
-     "带 zone 的自定义型落扫弦区（与内置「民谣扫弦」同区）");
-  eq(JSON.stringify(z.beat.map(nameOf).filter(n => customNames.includes(n))),
-     JSON.stringify(["乙", "丙"]),
-     "无记谱的自定义型落节拍区（混在 11 个内置型之后）");
+  const z = zoneItems(els);
+  ok(z.beat.every(it => !customNames.includes(nameOf(it))),
+     "★ 自定义型不再散落在节拍区（v3.35.7 起节拍区只剩内置型）");
+  const orphRow = deepItems().find(c => /(^| )song-only( |$)/.test(c.className));
+  ok(!!orphRow, "★ 无归属的自定义型有「未归属」行可进（v3.35.7 绑歌名）");
+  eq(orphRow.getAttribute("aria-expanded"), "false", "未归属行默认收起（点一下才展开）");
+  orphRow.fire("click");
+  eq(JSON.stringify(deepItemEls().map(nameOf).filter(n => customNames.includes(n))),
+     JSON.stringify(["甲-扫弦", "乙", "丙"]),
+     "展开未归属行后，三个自定义型按 customs 原序出现在那里（带 zone 的也不例外）");
 
-  /* 删「乙」：它在列表里是节拍区第 1 项，但在 customs 里下标是 1。
-     若按分区序位删，会删掉 customs[0]（甲-扫弦）——这条断言就是防线。
+  /* 删「乙」：它在未归属行里是第 2 项，但在 customs 里下标是 1。
+     若按渲染序位删，会删掉 customs[0]（甲-扫弦）——这条断言就是防线。
      删除走 Modal.uiConfirm，需先确认弹窗再执行回调 */
-  const target = els["presetList"].children.filter(isItem).find(it => nameOf(it) === "乙");
+  const target = deepItemEls().find(it => nameOf(it) === "乙");
   const delBtn = target.children.find(c => /(^| )del( |$)/.test(c.className));
   ok(!!delBtn, "「乙」项有删除按钮");
   delBtn.fire("click", { stopPropagation(){} });

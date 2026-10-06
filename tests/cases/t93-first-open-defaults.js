@@ -112,7 +112,9 @@ section("T93c 首开默认 ② · 闩已落（老用户）→ 不自动选中，
     "示例曲**还在库里**（不选中 ≠ 删掉——它仍可由用户自己点选）");
 
   /* 老用户显式选了"单练某个节奏型"，更不该被首开逻辑碰 */
-  const picked = loadApp({ "beatsight.state": JSON.stringify({ sel: { type: "builtin", idx: 1 } }) });
+  /* ★ v3.35.5：带 bnmig35 戳，钉住"新表 idx1"不被「删民谣扫弦」的位移迁移改写 */
+  const picked = loadApp({ "beatsight.bnmig35": "1",
+    "beatsight.state": JSON.stringify({ sel: { type: "builtin", idx: 1 } }) });
   eq(picked.beat.Store.S.playMode, "preset", "老用户点过预设 → 仍是预设模式");
   eq(JSON.stringify(picked.beat.Store.S.sel), JSON.stringify({ type: "builtin", idx: 1 }),
     "★ 他自己的选择一位不动");
@@ -147,10 +149,11 @@ section("T93d 首开默认 ③ · 同屏行数 2 行、拍号 4/4（状态与控
 section("T93e 首开默认 ①③④ · 分区展开态 / 行数拍号 / 默认壁纸 一屏之内同时成立");
 {
   const { beat, els, storage } = firstOpen();
-  /* ① 折叠：节拍展开、扫弦收起、自定义展开（机制与脏值口径在 T85） */
+  /* ① 折叠：两区（节拍 / 自定义）出厂都展开（机制与脏值口径在 T85）——
+     v3.35.3「扫弦」区退役后不再有"出厂收起的那一区" */
   const secs = els["presetList"].children.filter(el => /(^| )preset-section( |$)/.test(el.className));
-  eq(JSON.stringify(secs.map(h => h.getAttribute("aria-expanded"))), JSON.stringify(["true", "false", "true"]),
-    "★ ① 分区：节拍+自定义展开、扫弦收起");
+  eq(JSON.stringify(secs.map(h => h.getAttribute("aria-expanded"))), JSON.stringify(["true", "true"]),
+    "★ ① 分区：节拍 + 自定义都展开（扫弦区已退役）");
   /* ③ 行数 / 拍号（机制在 T79 / T13） */
   eq(beat.Store.S.vizRows + "/" + beat.Store.S.sig, "2/4", "★ ③ 同屏行数 2 / 拍号 4/4");
   /* ④ 默认壁纸（机制与三态在 T92）：出厂就有，但**不占** localStorage */

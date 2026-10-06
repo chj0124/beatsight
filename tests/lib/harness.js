@@ -270,6 +270,10 @@ function makeEl(id){
     },
     setAttribute(k, v){ this[k] = v; },          // v1.1：aria-label 等属性设置
     getAttribute(k){ return this[k] === undefined ? null : this[k]; },
+    /* ★ v3.35.9：补 removeAttribute——真实 DOM 里"撤掉一个属性"是 `delete`，
+       桩此前没有这个方法，产品代码用它时直接 TypeError（本轮 index.html 的 aria-invalid 撤除）。
+       className 那份 Set 与 this.className 的双视图不受影响：属性是普通自由字段。 */
+    removeAttribute(k){ delete this[k]; },
     remove(){}, blur(){}, focus(){}, animate(){},
     /* 真实 DOM 的 click() 会触发自身 click 处理器（导出预设里的 <a download> 就是靠它） */
     click(){ this.fire("click", {}); },

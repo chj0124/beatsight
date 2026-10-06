@@ -472,9 +472,13 @@ function drawerProbe(){
      歌词轨依赖曲式模式（arrangeCur()），不还原就整轨隐藏。纯 UI 复原：点示例曲条目
      回到曲式（playArrange 会开播）、再点播放键停住——回到「曲式选中示例曲、未播放」
      的出厂态，探针之间互不污染 */
+  /* ★ v3.35.3：歌曲行的点击语义改成了「展开/收起」，整首连播挪到行尾的 ▶ ——
+     这里要的是"回到曲式模式"，所以点的入口随之换成那颗 ▶（点行只会展开，模式不变，
+     后续滚动探针的歌词轨就整轨隐藏——这正是本次实测到的那 12 条红）。 */
   const demoItem = q("#presetList .preset-arrange-group .preset-item");
-  if (demoItem){
-    demoItem.click();
+  const demoPlay = demoItem && demoItem.querySelector(".aud");
+  if (demoPlay){
+    demoPlay.click();
     const stTxt = q("#statusText");
     if (stTxt && /播放中/.test(stTxt.textContent)){
       const pb = q("#playBtn");
@@ -1344,10 +1348,44 @@ function presetFoldProbe(){
     var list = document.getElementById("presetList");
     if (!list) return JSON.stringify({ err: "no presetList" });
     var out = { checks: [] };
-    /* ★★ 造夹具：给「扫弦」区建一个**子分组**。默认库里三个区都可能有 0 个分组 ⇒
-       上一版探针查的是空集，于是一跑就绿——那种绿证明不了任何事。 */
+    /* ★★ v3.35.8：本探针量的是**几何与开合**，抽屉收起时所有 rect 都是 0 —— 那种"绿"是
+       零矩形假绿（本仓老教训），上一版那条折叠断言在这里其实半空跑。故先确保抽屉是开的，
+       并把"抽屉确实开着"回传给断言侧（不然断言自己也不知道自己在量空气）。 */
+    var libBtn = document.getElementById("presetLibBtn"), drawer = document.getElementById("presetDrawer");
+    if (drawer && drawer.hidden && libBtn){ libBtn.click(); await frame(); }
+    out.drawerOpen = !!(drawer && !drawer.hidden);
+    /* ★★★ v3.35.11（用户需求）：**真机**验"快速双击 = 播放/暂停"与"第 2 击不改开合"。
+       这条**只能**在真机验：区分靠的是浏览器自己的 MouseEvent.detail 计数（第 2 击 = 2），
+       桩里 fire("click") 不带 detail，验不出系统阈值那套语义。 */
     try{
-      B.Store.groupMove({ type: "builtin", idx: 2 }, "strum", "闸测组");
+      var rows0 = Array.prototype.slice.call(document.querySelectorAll(".preset-item.song"));
+      if (rows0.length){
+        var fire = function(el, type, d){ el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, detail: d })); };
+        var fold0 = rows0[0].getAttribute("aria-expanded");
+        /* ★★★ v3.35.12（用户反馈「双击时第 1 击会先折叠/展开，干扰」）：第 1 击**不得**改开合。
+           真手势的折叠被排到 DBLCLICK_MS 之后，且 dblclick 会把它取消 ⇒ 这里先单独验第 1 击。 */
+        fire(rows0[0], "click", 1);
+        await frame();
+        out.dblFirst = { foldAfterFirst: document.querySelectorAll(".preset-item.song")[0].getAttribute("aria-expanded") };
+        fire(document.querySelectorAll(".preset-item.song")[0], "click", 2);
+        fire(document.querySelectorAll(".preset-item.song")[0], "dblclick", 2);
+        await frame();
+        out.dbl = { playing: !!B.Store.S.playing, mode: B.Store.S.playMode,
+          foldBefore: fold0,
+          foldAfter: document.querySelectorAll(".preset-item.song")[0].getAttribute("aria-expanded") };
+        fire(document.querySelectorAll(".preset-item.song")[0], "click", 1);
+        fire(document.querySelectorAll(".preset-item.song")[0], "click", 2);
+        fire(document.querySelectorAll(".preset-item.song")[0], "dblclick", 2);
+        await frame();
+        out.dbl.stopped = !B.Store.S.playing;
+      }
+    }catch(e){ out.dblErr = String(e && e.message); }
+    /* ★★ 造夹具：给「节拍」区建一个**子分组**。默认库里各区的分组数都可能是 0 ⇒
+       上一版探针查的是空集，于是一跑就绿——那种绿证明不了任何事。
+       ★ v3.35.3：「扫弦」区退役（不再渲染），夹具改用节拍区——否则这个夹具落在
+       一个没有落脚的区里，闸门又变成空跑。 */
+    try{
+      B.Store.groupMove({ type: "builtin", idx: 2 }, "beat", "闸测组");
       B.Presets.refreshAfterPatternChange();
     }catch(e){ out.fixtureErr = String(e); }
     await frame();
@@ -1370,6 +1408,73 @@ function presetFoldProbe(){
       }
       out.checks.push({ sec: (h.dataset && h.dataset.sec) || "?", total: to - from - 1, leaked: leaked });
       h.click(); await frame();
+    }
+    /* ★ v3.35.6（用户实拍「点了也不会折叠」）：**基础节奏区**的开合自理（applyBasicFold），
+       不进 applyFold 的区切段。判据必须看**实际渲染**—— #rhyBeatBox 自己写着 display:flex，
+       会把 [hidden] 的 display:none 盖掉，只查 hidden 属性会假绿（那个 bug 正是这个形状）。 */
+    var bh = document.getElementById("basicSecHead"), bb = document.getElementById("rhyBeatBox");
+    if (bh && bb){
+      var d0 = getComputedStyle(bb).display;
+      var hBefore = Math.round(bb.getBoundingClientRect().height);
+      bh.click(); await frame();
+      var d1 = getComputedStyle(bb).display;
+      out.basic = { before: d0, collapsed: d1, aria: bh.getAttribute("aria-expanded"),
+        hBefore: hBefore, h: Math.round(bb.getBoundingClientRect().height) };
+      bh.click(); await frame();
+      out.basic.restored = getComputedStyle(bb).display;
+      /* ★ v3.35.8（用户实拍两处）：① 基础节奏区与下面两栏的间距要**统一**——本区在 #presetList
+         之外，靠父容器 flex gap 吃间距，容易与网格内两区差几像素；判据取"本区行 → 下区头"
+         与"网格内两区头之间"这两个实测量，必须相等。② 拍数参数槽要在区头**右边同一行**、
+         且不在区体里（嵌在 role=button 内就是嵌套交互控件）。 */
+      var row = document.querySelector(".basic-head-row");
+      var list = document.getElementById("presetList");
+      var secs = Array.prototype.filter.call(list.children, function(c){ return c.className === "preset-section"; });
+      if (row && secs.length >= 2){
+        var slot = row.querySelector("#sigSel");
+        /* ★★★ v3.35.10：本区的三个间距必须与**网格自己的两个基准**逐像素相同 ——
+           它们分别是"区头→首条目"（12）与"末条目→下区头"（18）。先把网格的这两个基准量出来
+           （需要节拍区是展开的，才有条目可量），再量本区对应的两个。
+           为什么值得三条等式：本区在 #presetList 之外，父容器 flex gap(10) 与网格 row-gap(4)
+           的 6px 差全落在这条边界上，历史上连着两版都在这里"补丁叠补丁"（用户实拍三次）。 */
+        var needOpen = secs[0].getAttribute("aria-expanded") !== "true";
+        if (needOpen){ secs[0].click(); await frame(); }
+        var its = Array.prototype.filter.call(list.children, function(c){
+          return /(^| )preset-item( |$)/.test(c.className); });
+        /* ★ 本探针早些时候往**节拍区**塞了夹具分组（闸测组）⇒ 那里的"头→首条目"已被污染，
+           改量**自定义区**同构的那一段（区头 → 紧随其后的块，同样是 8 + 4 = 12）。 */
+        var kids0 = Array.prototype.slice.call(list.children);
+        var after = function(el){ var i = kids0.indexOf(el); return (i >= 0 && i + 1 < kids0.length) ? kids0[i + 1] : null; };
+        var czNext = after(secs[1]);
+        var gridHeadToFirst = czNext ? Math.round(czNext.getBoundingClientRect().top - secs[1].getBoundingClientRect().bottom) : null;
+        var gridLastToNext = its.length ? Math.round(secs[1].getBoundingClientRect().top - its[its.length - 1].getBoundingClientRect().bottom) : null;
+        if (bh.getAttribute("aria-expanded") !== "true"){ bh.click(); await frame(); }
+        var expandedRowToBox = bb.hidden ? null : Math.round(bb.getBoundingClientRect().top - row.getBoundingClientRect().bottom);
+        var expandedBoxToSec = bb.hidden ? null : Math.round(secs[0].getBoundingClientRect().top - bb.getBoundingClientRect().bottom);
+        out.basicGeom = {
+          slotInRow: !!slot,
+          slotInBox: !!(bb.querySelector && bb.querySelector("#sigSel")),
+          slotToRowRight: slot ? Math.round(row.getBoundingClientRect().right - slot.getBoundingClientRect().right) : null,
+          headText: bh.textContent,
+          rowToBox: expandedRowToBox,
+          boxToSec: expandedBoxToSec,
+          gridHeadToFirst: gridHeadToFirst,
+          gridLastToNext: gridLastToNext
+        };
+        /* ② 折叠本区后再量"本区 → 下区头"——这才是与"网格内两区之间"可比的量。
+           ★ 从**容器**（#basicZone）底量，不从区头行底量：区头那 8px 下边距现在被容器吃住
+             （flow-root），从行底量会把这 8px 算重（实测 34 而不是 26）。 */
+        bh.click(); await frame();
+        /* ★★★ v3.35.12：从**区头元素**量（与网格那边的参考点同类），不再从容器底量 ——
+           容器底含了区头的 8px 下边距，量出来是 18，看着"相等"其实是我又犯了苹果比橘子的错
+           （用户第二次追问「你确定间距改好了吗」正是这么暴露的）。 */
+        out.basicGeom.gapHere = Math.round(secs[0].getBoundingClientRect().top - bh.getBoundingClientRect().bottom);
+        /* ③ 参照：收起节拍区，量"节拍头 → 自定义头"（网格内两区的真实间距） */
+        secs[0].click(); await frame();
+        var secs2 = Array.prototype.filter.call(list.children, function(c){ return c.className === "preset-section"; });
+        out.basicGeom.refGap = Math.round(secs2[1].getBoundingClientRect().top - secs2[0].getBoundingClientRect().bottom);
+        secs[0].click(); await frame();
+        bh.click(); await frame();   /* 还原本区为展开（探针不留状态） */
+      }
     }
     return JSON.stringify(out);
   })()`;
@@ -1788,7 +1893,65 @@ function layoutAuditProbe(){
       await settle();
       var drawer = sweep();
       if(dr) dr.hidden=true;
-      res[th] = { main:main, dlg:dlg, drawer:drawer };
+      /* ★★★ v3.35.2：**曲式编排左栏**（用户实拍：选中曲式的绿底缺一角、段树歌词被硬切没有省略号、
+         侧栏还冒出一条横向滚动条；连段树的「缩小版节奏型」都整条不见了）。
+         根因：容器 .arg-list 还是 v3.35.0 之前的横排 flex（改纵向行时漏改），横排下条目带
+         min-width:auto 被内容撑到 294px / 段树 400px，双双超过侧栏列宽 273px，
+         再被 .arg-outline 的 overflow:auto **静默裁掉**。判据三条：
+         ① 侧栏自身不许横向溢出；② #argList 每个直接子项都不越过内容右边界（含选中行整块绿底）；
+         ③ 歌词行的 scrollWidth > clientWidth —— 元素自己比文字窄，ellipsis 才会真的画出来
+         （否则文字是被外层容器硬切的，用户看到的就是"没有省略号的一刀切"）。 */
+      var ao = document.getElementById("arrangeOverlay");
+      var arg = null;
+      try{
+        if (!ao || !/(^| )open( |$)/.test(ao.className)){
+          var aoBtn = document.getElementById("argOpen");
+          if (aoBtn){ aoBtn.click(); await settle(); }
+        }
+        var argList = document.getElementById("argList"), argSide = document.getElementById("argSide");
+        if (argList && argSide){
+          var argItems = [];
+          for (var ai=0; ai<argList.children.length; ai++){
+            if (/(^| )arg-item( |$)/.test(argList.children[ai].className)) argItems.push(argList.children[ai]);
+          }
+          /* 选第 2 首：名字最长、且选中态才带 ✕ —— 用户实拍被裁的就是这一行。
+             ★ 先记下原选中项：本探针会改「当前在编哪首」，量完必须切回去，
+               否则后面依赖视图的探针（歌词跨行拖动，它把夹具写进**示例曲**的段 2）
+               会抓到另一首的轨道，报出与本题无关的假红。 */
+          var selIdx = -1;
+          for (var si=0; si<argItems.length; si++){ if (/(^| )sel( |$)/.test(argItems[si].className)) selIdx = si; }
+          if (argItems.length > 1 && !/(^| )sel( |$)/.test(argItems[1].className)){ argItems[1].click(); await settle(); }
+          var sr = argSide.getBoundingClientRect();
+          var padR = parseFloat(getComputedStyle(argSide).paddingRight) || 0;
+          var contentRight = sr.left + argSide.clientWidth - padR;
+          var over = 0, worst = "";
+          for (var ci=0; ci<argList.children.length; ci++){
+            var cb = argList.children[ci].getBoundingClientRect();
+            var dd = Math.round((cb.right - contentRight) * 10) / 10;
+            if (dd > over){ over = dd; worst = String(argList.children[ci].className || "").slice(0, 24); }
+          }
+          var lys = argList.querySelectorAll(".arg-ol-lyr"), lyr = null;
+          for (var li=0; li<lys.length; li++){ if (!lyr || lys[li].scrollWidth > lyr.scrollWidth) lyr = lys[li]; }
+          arg = { listClientW: argList.clientWidth, listScrollW: argList.scrollWidth,
+                  sideClientW: argSide.clientWidth, sideScrollW: argSide.scrollWidth,
+                  over: over, worst: worst, selIdx: selIdx,
+                  lyrText: lyr ? lyr.textContent.slice(0, 8) : "",
+                  lyrClientW: lyr ? lyr.clientWidth : 0, lyrScrollW: lyr ? lyr.scrollWidth : 0,
+                  lyrOverflow: lyr ? getComputedStyle(lyr).textOverflow : "" };
+        }
+      }catch(e){ arg = { err: String((e && e.message) || e) }; }
+      /* ★ 还原「当前在编哪首」——见上面 selIdx 的说明（否则会污染后面的歌词拖动探针） */
+      if (arg && !arg.err && arg.selIdx >= 0 && arg.selIdx !== 1){
+        try{
+          var argList2 = document.getElementById("argList"), items2 = [];
+          if (argList2){ for (var ri2=0; ri2<argList2.children.length; ri2++){ if (/(^| )arg-item( |$)/.test(argList2.children[ri2].className)) items2.push(argList2.children[ri2]); } }
+          if (items2[arg.selIdx] && !/(^| )sel( |$)/.test(items2[arg.selIdx].className)){ items2[arg.selIdx].click(); await settle(); }
+        }catch(e2){ /* 还原失败不影响本次量到的几何 */ }
+      }
+      var aoClose = document.getElementById("argClose");
+      if (aoClose && ao && /(^| )open( |$)/.test(ao.className)) aoClose.click();
+      else if (ao) ao.classList.remove("open");
+      res[th] = { main:main, dlg:dlg, drawer:drawer, arr:arg };
     }
     if((document.body.dataset.theme||"classic")!==before){ tt.click(); await frame(); await settle(); }
     return JSON.stringify(res);
@@ -2276,6 +2439,25 @@ async function main(){
               ok(sqz.length === 0,
                 p.label + "·" + vp + "：★★ " + pair[1] + "主题下 .sec-tag 没有把同行兄弟挤到 <40px（设置弹窗头部那条）",
                 sqz.slice(0, 3).map(function(x){ return x.parent + " 角标 " + x.tagW + "/" + x.parentW + " 兄弟仅 " + x.sibW + "px"; }).join(" ／ "));
+              /* ★★★ v3.35.2：曲式编排左栏（用户实拍：选中曲式的绿底缺一角、段树歌词硬切无省略号、
+                 缩略带整条不见、侧栏冒出横向滚动条）。见 layoutAuditProbe 里 ④ 的注释。 */
+              if (D.arr && !D.arr.err){
+                ok(D.arr.sideScrollW <= D.arr.sideClientW + 1,
+                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下曲式编排左栏**没有横向溢出**"
+                  + "（溢出会被 overflow:auto 静默裁掉：绿底缺角、段树缩略带整条不见）",
+                  "侧栏 scrollWidth=" + D.arr.sideScrollW + " vs clientWidth=" + D.arr.sideClientW);
+                ok(D.arr.over <= 1,
+                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下 #argList 的子项都在侧栏内容宽内（选中曲式那整块绿底不被裁）",
+                  "最宽越界 " + D.arr.over + "px（" + D.arr.worst + "）");
+                ok(D.arr.lyrScrollW > D.arr.lyrClientW && /ellipsis/.test(D.arr.lyrOverflow),
+                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下段树歌词在**自己的盒子**里溢出 ⇒ 省略号真的画出来"
+                  + "（元素比文字宽时是外层容器硬切，用户看到的是一刀切、没有 …）",
+                  "「" + D.arr.lyrText + "」 clientW=" + D.arr.lyrClientW + " scrollW=" + D.arr.lyrScrollW
+                  + " text-overflow=" + D.arr.lyrOverflow);
+              } else if (vp === "桌面"){
+                ok(false, p.label + "·" + vp + "：曲式编排左栏版面未取到（探针故障）",
+                  D.arr ? String(D.arr.err) : "layoutAudit.arr 缺失");
+              }
               if (D.dlg.title){
                 ok(D.dlg.title.lines === 1 && D.dlg.title.w >= 20,
                   p.label + "·" + vp + "：★★ 设置弹窗标题「" + D.dlg.title.text + "」单行且未被挤（实测宽 " + D.dlg.title.w + " / " + D.dlg.title.lines + " 行）", "");
@@ -2373,6 +2555,45 @@ async function main(){
               ok(bad.length === 0,
                 p.label + "·" + vp + "：★★★ 每个区收起后，区内**不得**残留可见的组行/组头",
                 bad.length ? JSON.stringify(bad).slice(0, 240) : ("各区内行数(收起后残留=0) " + JSON.stringify(PF.checks).slice(0, 300)));
+              /* ★★★ v3.35.6：基础节奏区点标题必须**真的折叠**（display 变 none、高度归零、aria 同步），
+                 再点要能展开回来。桩测不到这条——CSS 只有真机解析。 */
+              ok(PF.drawerOpen === true && PF.basic && PF.basic.collapsed === "none" && PF.basic.h === 0
+                 && PF.basic.hBefore > 0 && PF.basic.aria === "false" && PF.basic.restored !== "none",
+                p.label + "·" + vp + "：★★★ 基础节奏区点标题真的折叠/展开（v3.35.6 用户实拍：display:flex 盖掉了 [hidden]）",
+                JSON.stringify(PF.basic));
+              /* ★★★ v3.35.8（用户实拍）：本区与下面两栏的间距必须与"网格内两区之间"**实测相等**。
+                 桩测不到这条（CSS 只有真机解析），且它是"差几像素"的视觉不统一——只能量。 */
+              ok(PF.drawerOpen === true && PF.basicGeom && PF.basicGeom.gapHere > 0
+                 && PF.basicGeom.refGap > 0 && PF.basicGeom.gapHere === PF.basicGeom.refGap,
+                p.label + "·" + vp + "：★★★ 基础节奏区与下面两栏的间距**统一**（v3.35.8：本区行→下区头 == 网格内区间距）",
+                JSON.stringify(PF.basicGeom));
+              /* ★★★ v3.35.10：本区的两个"体-头间距"与网格基准逐像素相同（防"下次又漂"） */
+              ok(PF.basicGeom && PF.basicGeom.rowToBox > 0 && PF.basicGeom.rowToBox === PF.basicGeom.gridHeadToFirst,
+                p.label + "·" + vp + "：★★★ 本区「头 → 细分」= 网格「区头 → 首条目」（v3.35.10）",
+                JSON.stringify(PF.basicGeom));
+              ok(PF.basicGeom && PF.basicGeom.boxToSec > 0 && PF.basicGeom.boxToSec === PF.basicGeom.gridLastToNext,
+                p.label + "·" + vp + "：★★★ 本区「细分 → 下区头」= 网格「末条目 → 下区头」（v3.35.10）",
+                JSON.stringify(PF.basicGeom));
+              ok(PF.basicGeom && PF.basicGeom.slotInRow && !PF.basicGeom.slotInBox
+                 && Math.abs(PF.basicGeom.slotToRowRight) <= 2,
+                p.label + "·" + vp + "：★★ 拍数参数槽在区头**右边同一行**、不在区体里（v3.35.8 用户需求）",
+                JSON.stringify(PF.basicGeom));
+              /* ★★★ v3.35.11：真机双击语义（detail 计数只有浏览器给得出） */
+              ok(PF.dbl && PF.dbl.playing === true && PF.dbl.mode === "arrange",
+                p.label + "·" + vp + "：★★★ 真机双击歌曲行 = 整首连播（v3.35.11 用户需求）",
+                JSON.stringify(PF.dbl) + " " + String(PF.dblErr || ""));
+              ok(PF.dblFirst && PF.dblFirst.foldAfterFirst === PF.dbl.foldBefore,
+                p.label + "·" + vp + "：★★★ 真手势双击的**第 1 击不改开合**（v3.35.12 用户反馈：折叠延迟一个双击窗口）",
+                JSON.stringify(PF.dblFirst) + JSON.stringify(PF.dbl));
+              ok(PF.dbl && PF.dbl.foldAfter === PF.dbl.foldBefore,
+                p.label + "·" + vp + "：★★★ 快速双击**不改开合态**（第 2 击 detail=2 跳过单击语义）",
+                JSON.stringify(PF.dbl));
+              ok(PF.dbl && PF.dbl.stopped === true,
+                p.label + "·" + vp + "：★★ 再双击一次 = 停（播放/暂停两态）",
+                JSON.stringify(PF.dbl));
+              ok(PF.basicGeom && PF.basicGeom.headText === "基础节奏",
+                p.label + "·" + vp + "：★★ 区头文案 =「基础节奏」（「· 拍数与细分」已去掉）",
+                JSON.stringify(PF.basicGeom));
             } else {
               ok(false, p.label + "·" + vp + "：折叠探针未取到", JSON.stringify(PF).slice(0, 200));
             }

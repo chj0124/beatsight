@@ -60,10 +60,12 @@ section("T210a 大纲 · 一段一行，行内三样");
   ok(/class="arg-lib-h"[\s\S]{0,120}<b>曲式<\/b>/.test(src), "★ 左栏顶部是「曲式」区表头（曲式库已并入）");
   ok(/id="argLibCount"/.test(src), "表头有首数读数位");
   eq(els["argLibCount"].textContent, "2 首", "表头报曲式首数（运行期写入）");
-  const head = secTreeOf(els).children[0];
-  eq(head.className, "arg-outline-h", "段树首节点 = 读数行");
-  ok(/9 段/.test(head.children[0].textContent) && /64 小节/.test(head.children[0].textContent),
-     "段树报段数与全曲小节数（实际「" + head.children[0].textContent + "」）");
+  /* ★ v3.35.2：段树自带的「N 段 · M 小节」读数行整块退役——曲式行就在它正上方、读数逐字相同
+     （用户实拍图里同一串数字紧挨着出现两遍，且把段树又推下去一截）。树的首节点现在直接是第一段。 */
+  eq(secTreeOf(els).children[0].className, "arg-ol-row",
+     "★ 段树首节点 = 第一段（读数行已删，不再与曲式行重复）");
+  ok(!/\.arg-outline-h\{/.test(src), "★ 样式侧：.arg-outline-h 规则已退役");
+  ok(!/className = "arg-outline-h"/.test(src), "★ 结构侧：不再生成读数行元素（连同它的两处数字一起删）");
 }
 
 section("T210b 缩略带 · 取特征小节，且三态可辨（密度即签名）");
@@ -325,4 +327,19 @@ section("T210l 样式 · 绿底与歌词之间留出间隔（用户实报「靠�
   ok(!!m, "★★ 歌词行改为正向 margin-top:5px（原为 -3px 的负边距）");
   ok(!/\.arg-ol-lyr\{[^}]*margin-top:-/.test(html), "★ 不再有负边距（负边距是把歌词往上贴，方向相反）");
   ok(/\.arg-ol-row\{[^}]*padding:6px 8px/.test(html), "★ 段行下内边距收到 6px（绿底不向下多占）");
+}
+section("T210m 左栏不许被内容撑宽（v3.35.2 用户实拍：绿底缺角 / 歌词被硬切）");
+{
+  const { html } = require("../lib/harness");
+  /* 根因：v3.35.0 把曲式条目从「横向胶囊」改成「纵向行」，容器 .arg-list 却还是 flex 横排 + wrap。
+     横排下每个条目带 min-width:auto（= 内容最小宽度）：选中行（名字 + 段数 + ✕ + ✎）撑到 294px、
+     段树（内含 white-space:nowrap 的歌词）更是 400px，双双超过侧栏列宽 273px，
+     被 .arg-outline 的 overflow:auto **静默裁掉**——绿底丢掉右侧圆角、歌词的 ellipsis 从不触发。
+     ★ 这里只钉"源码级的布局契约"；真实几何（行宽 / 溢出 / 省略号）由 tools/smoke.js 的版面审计量，
+       桩给不出布局，写在桩里就是橡皮图章。 */
+  const rule = /\.arg-list\{([^}]*)\}/.exec(html);
+  ok(!!rule, "找到 .arg-list 规则");
+  ok(rule && /flex-direction:column/.test(rule[1]), "★★ 曲式库容器是纵向（不再是 v3.35.0 漏改的横排）");
+  ok(rule && !/flex-wrap/.test(rule[1]), "★★ 不再横排折行——横排会给条目 min-width:auto，把侧栏撑宽后被裁");
+  ok(/\.arg-ol-lyr\{[^}]*text-overflow:ellipsis/.test(html), "歌词行保留省略号（在列宽内才生效）");
 }

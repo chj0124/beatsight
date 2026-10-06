@@ -16,7 +16,7 @@ section("T20 播放中切节奏型 · 点下即生效（不再等小节边界）
   const { beat, els, sandbox } = loadApp();
   const S = beat.Store.S;
   const statusEl = sandbox.document.getElementById("statusText");
-  S.sel = { type: "builtin", idx: 8 };              // 三连音基础：12 × 16t = 一小节
+  S.sel = { type: "builtin", idx: 7 };              // 三连音基础：12 × 16t = 一小节（v3.35.5：删民谣扫弦后下标 −1）
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -61,7 +61,7 @@ section("T20 播放中切节奏型 · 点下即生效（不再等小节边界）
   ok(!statusEl.textContent.includes("第 5 小节"), "读数未脱轨");
 
   /* 停止兜底：切换后立刻停止，标题必须与选中节奏型一致（半切换残留回归） */
-  S.sel = { type: "builtin", idx: 2 };              // 八分摇滚
+  S.sel = { type: "builtin", idx: 1 };              // 八分摇滚（v3.35.5：删民谣扫弦后下标 −1）
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.stop();
   eq(els["patternName"].textContent, beat.curPattern().name, "停止后标题与选中节奏型一致（无半切换残留）");
@@ -85,6 +85,10 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
      抽样取自同一批代表值（稀疏 / 密集 / 奇数拍 / 三连音），守的是同一组不变量，只是覆盖面小。
      下面的组合数断言按实际跑的组数校验，所以「抽样模式被静默改成全量」或反过来都能被发现。 */
   const FULL = process.env.FULL_SCAN === "1";
+  /* ★ v3.35.5：内置库删了「民谣扫弦」（旧 idx 0）⇒ 这组下标整体 −1。原表选的是
+     "稀疏 / 密集 / 奇数拍 / 三连音 / 扫弦" 的代表值，位移后仍是同一批角色的覆盖：
+     0 四分 · 1 八分 · 2 附点 · 5 摇曳6/8 · 6 三连音 · 8 TakeFive(5/4) · 9 Money(7/4) ·
+     10 特雷斯略 · 11 十六分满扫（示例曲的扫弦谱，接替原 idx 0 的扫弦覆盖）。 */
   const IDXS_ALL = [0, 1, 2, 5, 6, 8, 9, 10, 11];
   const WAITS_ALL = [0.35, 1.7, 3.1];
   /* 抽样：4 个节奏型（扫弦/四分/切分/三连音）× 点击相位取「中段」——最易出破例的小节末相位留给全量 */
@@ -134,7 +138,7 @@ section("T22 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / �
      渲染层（paintBall 的抛物线/挤压拉伸）是纯函数映射，由人工截图验收。 */
   const { beat } = loadApp();
   const S = beat.Store.S;
-  S.sel = { type: "builtin", idx: 1 };            // 四分基础
+  S.sel = { type: "builtin", idx: 0 };            // 四分基础（v3.35.5：下标 −1）
   beat.Presets.refreshAfterPatternChange();
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -155,7 +159,7 @@ section("T22 弹跳球 onset 表：端点=真实发声时刻 / 静音照记 / �
   /* Swing：后半八分落点后移 (67-50)/50×24t = 8.16t ≈ 0.10625s → 相邻间距一长一短交替 */
   const w = loadApp();
   const S2 = w.beat.Store.S;
-  S2.sel = { type: "builtin", idx: 2 };           // 八分摇滚
+  S2.sel = { type: "builtin", idx: 1 };           // 八分摇滚（v3.35.5：下标 −1）
   w.beat.Presets.refreshAfterPatternChange();
   S2.swing = 67;
   w.beat.Controls.start();

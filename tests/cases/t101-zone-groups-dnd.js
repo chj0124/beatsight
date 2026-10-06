@@ -27,7 +27,7 @@ const sectionEl = (els, prefix) => els["presetList"].children
   .find(x => x.className === "preset-section" && String(x.textContent).startsWith(prefix));
 /* ★ v3.33.8：区标题的「＋ 新建分组」按钮已下线。测试里造**空组**改用最短真实路径：
    Store.groupCreate（按钮当初就是调它）+ 区标题折叠/展开一次（走真实的 toggleFold 重渲染）。 */
-const SECTION_KEY = { 节拍: "beat", 扫弦: "strum", 自定义: "custom" };
+const SECTION_KEY = { 节拍: "beat", 自定义: "custom" };   // v3.35.3：扫弦区退役
 const addEmptyGroup = (app, prefix, name) => {
   app.beat.Store.groupCreate(SECTION_KEY[prefix], name);
   app.beat.Presets.refreshAfterPatternChange();      // 按钮当初就是走这条重渲染
@@ -46,10 +46,10 @@ section("T101a 区标题「＋ 新建分组」已下线 · 建组只走条目 �
 {
   const first = loadApp(undefined, { seedDemo: false });
   eq(groupHeadsCount(first.els), 0, "前提：初始无组");
-  const secs = ["节拍", "扫弦", "自定义"].map(p => sectionEl(first.els, p));
-  ok(secs.every(s => !!s), "前提：三个区标题都在");
+  const secs = ["节拍", "自定义"].map(p => sectionEl(first.els, p));
+  ok(secs.every(s => !!s), "前提：两个区标题都在（「扫弦」区已退役）");
   ok(secs.every(s => !s.children.some(c => /(^| )sec-add( |$)/.test(c.className))),
-     "★★ 三个区标题都不再挂「新建分组」＋ 按钮（DOM 级下线，不是 CSS 藏起来）");
+     "★★ 两个区标题都不再挂「新建分组」＋ 按钮（DOM 级下线，不是 CSS 藏起来）");
   ok(secs.every(s => !/新建分组/.test(String(s.textContent)) && !/＋/.test(String(s.textContent))),
      "★ 标题 textContent 无残留（t63/t84b 的逐字契约从「按钮不污染」变成「本就没有按钮」）");
   /* 建组功能仍在：条目 📁 → 输入一个不存在的组名（同名直接移入，新名即建组） */
@@ -92,7 +92,7 @@ section("T101b 拖拽归组 · ★ 条目拖到组头松手 = 移入（data-grp 
   ok(deepText(els["presetList"].children.find(x => x.className === "preset-group")).includes("· 1 个"),
      "★ 组头计数跟随（组名 · 1 个）");
   const g = (groupsOf(storage) || { groups: [] }).groups[0];
-  ok(g.members.length === 1 && g.members[0].type === "builtin" && g.members[0].idx === 1,
+  ok(g.members.length === 1 && g.members[0].type === "builtin" && g.members[0].idx === 0,
      "★ 冷键落盘：成员 = builtin 引用（组是视图组织，条目本体从未搬家）");
   /* 拖到**组成员**上 = 归入同组（组头窄、成员行宽，都是该组的领地） */
   const member = itemByName(els, "四分基础");
@@ -117,16 +117,17 @@ section("T101c 移出与跨区 · ★ 条目拖到区标题松手 = 移出回散
      "★ 拖回区标题松手 = 移出分组（条目回散员流；空组架子保留）");
   const item = itemByName(els, "四分基础");
   ok(!item.dataset.grp, "★ 移出后 data-grp 摘除（applyFold 不再把它当组成员）");
-  /* 跨区拖放忽略：beat 条目拖到扫弦区的组头/标题上，什么也不该发生。
-     先给扫弦区建一个组作落点；组头必须取**扫弦区**那个——beat 区的热身组空组
-     也在列表里，无脑 find 第一个 .preset-group 会拿到它（那是一次合法落点） */
-  addEmptyGroup(app, "扫弦", "扫弦组");
-  const strumHead = els["presetList"].children
-    .filter(x => x.className === "preset-group")[1];   // [0]=节拍·热身组，[1]=扫弦·扫弦组
-  dragTo(itemByName(els, "四分基础"), strumHead);
+  /* 跨区拖放忽略：beat 条目拖到**别的区**的组头上，什么也不该发生。
+     ★ v3.35.3：扫弦区退役后，这里改用「自定义」区作那个"别的区"——它的组头住在
+     .preset-arrange-group wrapper **内部**（不在 #presetList 的直接子节点上）。 */
+  addEmptyGroup(app, "自定义", "别的区组");
+  const foreignHead = els["presetList"].children
+    .find(x => /(^| )preset-arrange-group( |$)/.test(x.className)).children
+    .find(x => x.className === "preset-group");
+  dragTo(itemByName(els, "四分基础"), foreignHead);
   const gs = (groupsOf(storage) || { groups: [] }).groups;
-  eq(gs.find(g => g.name === "扫弦组").members.length, 0,
-     "★ 跨区拖放忽略：beat 条目拖到扫弦组头 = 无操作（组是区内子分组）");
+  eq(gs.find(g => g.name === "别的区组").members.length, 0,
+     "★ 跨区拖放忽略：beat 条目拖到自定义区组头 = 无操作（组是区内子分组）");
   eq(gs.find(g => g.name === "热身组").members.length, 0, "源组也没被误摘（zone 校验在 groupMove 之前）");
 }
 

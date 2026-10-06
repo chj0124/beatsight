@@ -79,11 +79,16 @@ const inWindow = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 
    **每次现取**：点击会触发列表重建，旧引用随即失效 */
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
-/* v2.28.0：「整首连播」按钮已删（条目点击 = 同一 playArrange 出口），本助手改为
-   点示例曲条目——语义一位不差，交互路径换成产品里唯一剩下的那个入口 */
-/* 曲式条目挂在**曲式分组容器**里（v2.25.0 起不是 presetList 的直接子节点），从 boxOf 里找 */
-const playAllOf = els => boxOf(els).children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
+/* 示例曲**歌曲行**（在曲式分组容器里，v2.25.0 起不是 presetList 的直接子节点）。
+   ★ v3.35.3：歌曲行的**点击语义改成了"展开/收起"**，整首连播挪到行尾的 ▶。
+   所以下面两个助手分开：songRowOf = 那一行本身（点它 = 展开），
+   playAllOf = 行尾的 ▶（点它 = 整首连播，v2.28.0 删按钮后那个"唯一点击入口"的接棒者）。 */
+const songRowOf = (els, name) => boxOf(els).children.find(x =>
+  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === name);
+const playAllOf = els => {
+  const row = songRowOf(els, "《在他乡》（示例）");
+  return row && row.children.find(x => /(^| )aud( |$)/.test(x.className));
+};
 const noteOf = els => playRowOf(els).children[0];                  // 行内唯一子节点 = 状态说明
 /* 「播放范围」双滑块（v2.10.4 取代原段序条那 10 颗段号胶囊）。
    结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
@@ -109,10 +114,20 @@ const dragRange = (els, from, to) => {
   f.fire("input"); t.fire("input");
   f.fire("change"); t.fire("change");
 };
-/* 全列表按**显示名**取条目（v2.9.0 示例型已并入扫弦区，不再挂在曲式分组里）。
-   条目是 presetList 的直接子节点（夹在分区标题之间），显示名 = item.children[0].children[0] */
-const itemByName = (els, name) => els["presetList"].children.find(x =>
-  /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === name);
+/* 全列表按**显示名**取条目，显示名 = item.children[0].children[0]。
+   ★ v3.35.3：示例型不再单独成区（「扫弦」区退役），改为挂在「自定义」区各自**歌曲行**
+   下面（展开时渲染）⇒ 它们在 .preset-arrange-group **里面**，不再是 presetList 的直接
+   子节点。故这里改成**整棵子树**遍历——只看直接子节点会找不到示例型。 */
+const allPresetItems = el => {
+  const out = [];
+  (el.children || []).forEach(c => {
+    if (/(^| )preset-item( |$)/.test(c.className)) out.push(c);
+    out.push.apply(out, allPresetItems(c));
+  });
+  return out;
+};
+const itemByName = (els, name) => allPresetItems(els["presetList"]).find(x =>
+  x.children[0].children[0].textContent === name);
 
 /* ================= 场景 T68a：扫弦谱每一拍都出节拍音 ================= */
 section("T68a 双声部 · 扫弦谱下每一拍都出节拍音（含空扫与纯休止所在的拍）");
@@ -324,7 +339,7 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   eq(beat.Store.S.playMode, "arrange", "前提：已在整首连播中");
 
   const target = itemByName(els, "下上扫 · 密（《在他乡》副歌）");
-  ok(!!target, "前提：扫弦区里有「下上扫 · 密（《在他乡》副歌）」条目（v2.9.0 示例 5 型并入扫弦区；v2.19.1 改特征名）");
+  ok(!!target, "前提：示例型「下上扫 · 密（《在他乡》副歌）」在库中可见（v3.35.3 起挂在「自定义」区歌曲行下）");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
   eq(beat.Store.S.sel.type, "builtin", "选中的是内置型（v2.20.0 起示例 5 型住 BUILTINS 尾部）");

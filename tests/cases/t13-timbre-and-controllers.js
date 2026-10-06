@@ -206,16 +206,42 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
 
   const palette = els["palette"].children;
   eq(palette.length, 11, "音符块库 11 项（含两个三连音组块）");
+  /* ★ v3.35.7：歌名成了保存的**前置条件**之一 ⇒ 先把它填上，下面两条"拍面校验"断言
+     才只反映拍面（否则两种原因都让按钮禁用，断言就测不出拍面那条了）。 */
+  els["songNameInput"].value = "T17 的测试歌";
+  els["songNameInput"].fire("input");
   palette[10].fire("click");                       // 追加休止符（48t）→ 小节 1 超限
   eq(els["savePresetBtn"].disabled, true, "小节时值超限 → 保存禁用");
   ok(els["editorStatus"].textContent.includes("不完整"), "校验状态提示时值不完整");
   beat.Editor.undo();
   eq(els["savePresetBtn"].disabled, false, "撤销后校验恢复通过");
 
+  /* ★ v3.35.7（用户需求）：**没有"单独创建一条节奏型"这回事**——清空歌名 ⇒ 保存必须被拦下，
+     并在状态栏说清差的是哪一步（禁用而不是点了才报错，与拍面校验同一口径）。 */
+  els["songNameInput"].value = "";
+  els["songNameInput"].fire("input");
+  eq(els["savePresetBtn"].disabled, true, "★ 清空歌名 → 保存被拦下");
+  /* ★ v3.35.9（用户拍板）：状态**拆两处**——缺「归属」的提示改在**字段旁**（红框 + 红字），
+     卡片头那行只报整份草稿的问题（它贴在音符网格上方）。 */
+  ok(els["songHint"].textContent.includes("还差一步") && els["songNameInput"].classList.contains("bad"),
+     "★ 缺归属的提示在字段旁：提示转红 + 输入框标红（实际「" + els["songHint"].textContent + "」）");
+  ok(els["songNameInput"].getAttribute("aria-invalid") === "true", "★ 输入框同时标了 aria-invalid");
+  ok(!/归属|哪首歌/.test(els["editorStatus"].textContent),
+     "★ 卡片头那行不再挤「缺字段」（只报草稿级问题）");
+  ok(els["songHint"].classList.contains("bad-hint"), "前提：此刻正是缺归属态（红字提示）");
+  els["songNameInput"].value = "T17 的测试歌";
+  els["songNameInput"].fire("input");
+  ok(!els["songNameInput"].classList.contains("bad") && !els["songHint"].classList.contains("bad-hint"),
+     "★ 填上归属 ⇒ 红框与红字一起消失（提示回到正向说明）");
+  ok(els["songHint"].textContent.includes("自动建一条同名曲式"), "★ 提示换回正向说明");
+
   els["presetNameInput"].value = "测试预设T17";
   els["savePresetBtn"].fire("click");
   eq(beat.Store.customs.length, 1, "保存后 customs +1");
   eq(beat.Store.customs[0].name, "测试预设T17", "预设名正确");
+  eq(beat.Store.customs[0].song, "T17 的测试歌", "★ 归属歌名随预设落库（customs[].song）");
+  ok(!!beat.Store.arranges.find(a => a.name === "T17 的测试歌"),
+     "★ 没有同名曲式 ⇒ 自动建了一条（含 1 段 1 块 = 刚保存的这个型）");
   eq(beat.Store.S.sel.id, beat.Store.customs[0].id, "S.sel 指向新预设 id");
   ok(!els["editor"].classList.contains("open"), "保存后编辑器关闭");
   /* v1.3.0 契约更新：预设库落在冷键 beatsight.customs（立即写，不防抖）。

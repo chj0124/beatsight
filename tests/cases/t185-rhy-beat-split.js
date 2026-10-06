@@ -164,7 +164,7 @@ section("T185e sel={type:\"basic\"} 经 resolveRef→undefined 落到 basicPatte
   eq(beat.Store.S.sig, 3, "★ basic 模式下 alignSigToPattern 不覆盖拍数（错配回退无从发生）");
   /* 对照组：选中一个内置型时，归一照旧把它对齐到型的拍号（既有行为不许被本次改动削弱） */
   beat.Controls.setSig(4);                              // 先人为掰到 4/4（模拟"非本模式"的拍号）
-  beat.Store.S.sel = { type: "builtin", idx: 6 };       // 华尔兹分解 = 3/4
+  beat.Store.S.sel = { type: "builtin", idx: 5 };       // 华尔兹分解 = 3/4（v3.35.5 删民谣扫弦后 idx 6→5）
   beat.Store.S.rhy = "quarter";
   beat.Presets.alignSigToPattern();
   eq(beat.Store.S.sig, 3, "★ 普通选型路径仍按型的拍号归一（3/4 的华尔兹）——本次改动没削弱它");
@@ -264,6 +264,41 @@ section("T185j 拍数文案收窄 / 两行留间距 / 编辑器拍数搬到标�
      "小字的 margin-top 归零（纵向间距由容器 gap 单点承担，避免叠加成 16px）");
   ok(/#rhyBeatBox \.loop-sel\{max-width:96px\}/.test(html),
      "拍数下拉有 max-width 兜底（防日后选项文案变长又把抽屉挤变形）");
+  /* ★ v3.35.8（用户需求）：① 区头文案 =「基础节奏」（「· 拍数与细分」去掉）；
+     ② **拍数参数槽挪到区头右边同一行**——它在 .basic-head-row 里、不在 #rhyBeatBox 里
+     （旧形态：整行在区体第一行）；③ 区头自己不再带上下边距，间距归头行管。
+     几何类判据（26px == 26px）桩测不到，由冒烟的 presetFold 探针实测把守。 */
+  ok(/id="basicSecHead"[^>]*>基础节奏</.test(html),
+     "★★ 区头文案 =「基础节奏」（不再写「· 拍数与细分」）");
+  ok(!/基础节奏 · 拍数与细分/.test(html), "★ 旧文案在产物里一处不剩");
+  const iRow = html.indexOf('class="basic-head-row"');
+  const iSlot = html.indexOf('class="basic-slot"');
+  const iSel = html.indexOf('id="sigSel"');
+  const iBox = html.indexOf('id="rhyBeatBox"');
+  const iHead = html.indexOf('id="basicSecHead"');
+  ok(iRow > 0 && iHead > iRow && iSlot > iHead && iSel > iSlot && iBox > iSel,
+     "★★ 拍数槽挂在区头**同一行**里（basic-head-row → basicSecHead → basic-slot → sigSel），且在 #rhyBeatBox **之前**");
+  ok(html.indexOf('id="rhyBeatBox"') < html.indexOf('id="rhyPillRow"'),
+     "细分区体仍在自己那一块里（区体只剩细分）");
+  /* ★★★ v3.35.10（用户第三次实拍「基础节奏与下面两项的间距又开始不统一」）：前两版都在补丁上
+     打补丁，因为没碰到那 6px 的真来源——父容器 .preset-drawer 是 flex gap:10px，而 #presetList
+     网格的行距是 4px。本版把本区收成**一个**孩子（.basic-zone）、并一次性吃掉差值：
+       · display:flow-root —— **必须**：否则区头的 8px 下边距会与容器的负下边距塌陷（实测 18≠26）；
+       · margin-bottom:-6px（**一个数同时管两个状态**：槽移出文档流后行高 = 文字高）；
+       · 区体 margin-top:12px（= 网格「区头 8 + 行距 4」）。
+      ★ v3.35.12：`.folded{margin-bottom:2px}` 那条特例**删了** —— 它当初存在的唯一理由是
+        "行高被 40px 的下拉框撑高、折叠/展开两个状态的收尾元素不同"；槽改绝对定位后前提消失。
+     几何由冒烟实测三条等式把守（桩不做布局，这里只钉"写的是哪套数"）。 */
+  ok(/\.basic-zone\{display:flow-root;margin-bottom:-6px\}/.test(html),
+     "★★★ 本区收成一个容器且 flow-root + 下边距 −6px（吃掉 flex gap 10 与网格 row-gap 4 的差）");
+  ok(!/\.basic-zone\.folded/.test(html),
+     "★★★ 折叠态特例已删（槽移出文档流后两个状态算法一致；它消失本身就是这次修好了的标志）");
+  ok(/\.basic-head-row\{position:relative;display:flex[^}]*margin:14px 0 8px\}/.test(html),
+     "★★ 头行是定位上下文（槽绝对定位挂它）+ 下边距 8px（与网格区头同款）");
+  ok(/\.basic-slot\{position:absolute;right:0;top:50%;transform:translateY\(-50%\)/.test(html),
+     "★★★ 拍数槽**移出文档流**（贴行右端、垂直居中）：它不再撑高那一行 —— 这是让区头与下两栏真正对齐的关键");
+  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:12px\}/.test(html),
+     "★★ 区体上边距 = 12px（= 网格「区头 8 + 行距 4」）");
 
   /* ③ 编辑器拍数必须在**顶栏标题旁**（v3.33.0 落在底部操作行，与标题相隔 212px、被 6 个按钮挤到最右）。
      位置用**源码顺序**断言：桩不解析 HTML 结构，但"谁在谁前面"足以表达"搬走了"。 */

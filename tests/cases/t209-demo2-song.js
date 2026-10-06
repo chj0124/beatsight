@@ -38,11 +38,11 @@ section("T209a 第二首示例曲 · 带出 / 段长 / 与第一首共存");
 section("T209b 它的 4 个型必须是**内置**的（否则别人机器上播不了）");
 {
   const { beat } = firstRun();
-  eq(beat.BUILTINS.length, 21, "★ 内置库 12 + 《在他乡》5 + 《我们能不能不分手》4 = 21");
+  eq(beat.BUILTINS.length, 20, "★ 内置库 11 + 《在他乡》5 + 《我们能不能不分手》4 = 20（v3.35.5 删民谣扫弦）");
   eq(beat.Store.customs.length, 0,
      "★★ 自定义库保持空 —— 第二首的 4 个型**不是**用户自定义条目（原先是，本版内置化）");
 
-  const base = 17;   // DEMO2_BUILTIN_BASE = 12 + 5
+  const base = 16;   // DEMO2_BUILTIN_BASE = 11 + 5（v3.35.5 删民谣扫弦后基址整体 −1）
   const names = beat.BUILTINS.slice(base).map(p => p.name);
   eq(names.length, 4, "尾部恰好 4 个型");
   ok(names.every(n => n.includes("《我们能不能不分手》")),
@@ -64,8 +64,8 @@ section("T209c 块引用落在第二首的型基址区间，且解析得到那 4
     idxs.push(b.ref.idx);
   }));
   const uniq = [...new Set(idxs)].sort((a, b) => a - b);
-  eq(JSON.stringify(uniq), JSON.stringify([17, 18, 19, 20]),
-     "★★ 用到的型下标恰好 = DEMO2_BUILTIN_BASE(17) … +3 —— 与挂载顺序是同序契约");
+  eq(JSON.stringify(uniq), JSON.stringify([16, 17, 18, 19]),
+     "★★ 用到的型下标恰好 = DEMO2_BUILTIN_BASE(16) … +3 —— 与挂载顺序是同序契约");
   ok(idxs.every(i => beat.resolveRef({ type: "builtin", idx: i }) !== undefined),
      "★ 每个下标都解析得到型（无坏引用）");
   eq(JSON.stringify(beat.arrangeProblems(d2)), "[]", "曲式无引用/拍号问题");

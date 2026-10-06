@@ -1333,7 +1333,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    ★ 不用 CSS 多列（columns）：分栏点按高度算，区头会被劈在栏底；不拆 wrapper（那是 4b 独立批）。 */
 #presetList{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:4px 24px;align-items:start}
 #presetList .preset-section,#presetList .preset-group,#presetList .preset-arrange-group{grid-column:1 / -1}
-.preset-section:first-child{margin-top:0}
+/* ★ v3.35.4（用户实拍「节拍区上面的文案与节拍区距离太近」）：
+   基础节奏区是 #presetList **之外**的第 0 区，它只留 2px 内边距；而首区的 margin-top
+   被 :first-child 归零 ⇒ 两块贴在一起。这里只给**列表内**的首区补回正常的区间距
+   （#basicSecHead 不在列表里，不受这条影响）。 */
+#presetList>.preset-section:first-child{margin-top:14px}
 .preset-section::after{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-section[aria-expanded="false"]::after{transform:rotate(-90deg)}
 /* v2.22.0（批次④）：区内子分组——组头比分区标题次一级（左缩进 + 绿线示意"归它管"），
@@ -1373,11 +1377,46 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    故深色 / 观测台主题**不需要**任何额外规则（与 .hint 同源做法）。 */
 /* v3.33.1：区体改**纵向 flex + gap:10px**——v3.33.0 只给了 .bpm-row 的横向 gap，
    两行之间实测间距 **0px**（贴死）。间距收敛到容器一处：行内 6px / 行间 10px。 */
-#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px 2px}
+#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:12px}   /* 12 = 网格「区头→首条目」的 8+4（本区自己模拟网格纵向节奏，见 .basic-zone 注释） */
+/* ★ v3.35.6（用户实拍「点了也不会折叠」）：这里 display:flex 会**盖掉** [hidden] 的 display:none，
+   于是 applyBasicFold 里 `box.hidden = true` 设了属性、画面纹丝不动。
+   与 .vol-row[hidden] / .tr-panel[hidden] / .preset-item[hidden] 是同一个坑，必须显式补一条。 */
+#rhyBeatBox[hidden]{display:none}
 #rhyBeatBox .bpm-row{align-items:center;flex-wrap:wrap;gap:6px}
 #rhyBeatBox .hint{margin-top:0}       /* 纵向间距已由容器 gap 承担，避免叠加成 16px */
 /* 上限兜底：宽度本由选项文案决定（见 sigLabel），这条只防日后文案变长挤变形。 */
 #rhyBeatBox .loop-sel{max-width:96px}
+/* ★★★ v3.35.10（用户第三次实拍「基础节奏与下面两项的间距又开始不统一」）：**把根因一次吃掉**。
+   前两版都是在补丁上打补丁（v3.35.4 给列表首区补 margin-top；v3.35.8 把头行下边距 8→2 去凑 26），
+   都没碰到那 6px 的真正来源：
+     · 父容器 `.preset-drawer` 是 `flex; gap:**10px**`；
+     · 而 `#presetList` 是网格，纵向节奏是 `row-gap:**4px**` + 区头 `margin:14px 0 8px`。
+   本区在列表**之外** ⇒ 它与列表之间那条边界走 10px，列表内部走 4px ⇒ **永远差 6px**；
+   调哪一边都只是把差挪个地方（所以每次改完看着好了、下一版又不对）。
+   本版：① 把「头行 + 区体」收成父容器的**一个**孩子（.basic-zone），边界只剩一条；
+           ② 该孩子下边距 **−6px** 把差值吃掉 ⇒ 边界净间距回到 4px（= 网格行距）。
+   于是本区三个间距全部**与网格同源**，不再有只在一边生效的魔数：
+     头 → 细分     = 8 + 4      = 12   （= 其它区「头 → 首条目」）
+     细分 → 下区头 = 0 + 4 + 14 = 18   （= 其它区「末条目 → 下区头」）
+     折叠 头 → 下区头 = 8 + 4 + 14 = 26  （= 网格内两区之间）
+   ⇒ 以后改网格行距或区头 margin，本区**自动跟着走**。冒烟里有三条实测等式把守（含"非空跑"前提）。 */
+/* ★ flow-root 是**必须**的：本区收成一个块容器后，区头的 8px 下边距会与容器的 −6px 下边距
+   **塌陷**（父子外边距合并），折叠态实测变成 18 而不是 26（第一次改就是这么翻的）。
+   `display:flow-root` 建立 BFC 关掉父子合并 ⇒ 区头的 8px 留在容器内，边界只剩容器自己的 −6px，
+   两个状态的算法才一致（折叠 8−6+10+14 / 展开 0−6+10+14）。 */
+.basic-zone{display:flow-root;margin-bottom:-6px}   /* 一个 −6 同时管两个状态：见上方推导 */
+.basic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 8px}
+/* ★ v3.35.12：`.folded` 那条特例**删掉了** —— 槽移出文档流后行高 = 文字高，
+   折叠/展开两个状态的算法自动一致（折叠 8−6+10+14=26 / 展开 0−6+10+14=18）。 */
+.basic-head-row>.preset-section{margin:0;flex:1 1 auto}   /* 头自己不带上下边距，间距归本行管（8px 仍由本行给，与网格区头同款） */
+/* ★★★ v3.35.12（用户第二次追问「你确定间距改好了吗」）：参数槽**移出文档流**。
+   上一版把槽当普通 flex 子项 ⇒ 那一行的行高被 40px 的下拉框撑到 40px，而区头文字在其中
+   **垂直居中** ⇒ 文字下方凭空多出约 11px。量"容器底→下区头"是 26（对上网格的 26），
+   可**文字到文字**是 ~34 —— 我上一版的断言取的是**容器底**、网格那边取的是**区头元素底**，
+   **参考点不是同一类元素**（容器底里含着区头的 8px 下边距），属于苹果比橘子 ⇒ 断言绿了、用户仍看得出不对。
+   绝对定位后：行高 = 区头文字高（18px），槽浮在行的右端、垂直居中；间距回到与网格同源的一套数，
+   连"折叠态另给 2px"的特例都不再需要（见 .basic-zone 注释）。 */
+.basic-slot{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px}
 /* 图标 pill：用户拍板「图标下不写文案」（名称走 title 悬浮 + aria-label 读屏），
    故水平内边距收紧、行高归零（否则图标块的基线会在胶囊里造成偏移）。
    ★ 刻意**不写 min-height**——全站 40px 触控下限由 .pill 主规则统一把守，本处不得局部下调
@@ -1425,6 +1464,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   .preset-item.active .aud,
   .preset-item.active .del{opacity:1;pointer-events:auto}
   .preset-item .aud.aud-on{opacity:1;pointer-events:auto;color:var(--green)}
+  /* ★ v3.35.3：歌曲行的 ▶ 是"整首连播"——行上唯一的主操作，不能等 hover 才现身 */
+  .preset-item.song .aud{opacity:1;pointer-events:auto}
 }
 /* ▶/■ 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
 .preset-item .aud{flex:none;background:none;border:none;cursor:pointer;
@@ -1454,6 +1495,17 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .loop-panel .hint{margin-top:6px}
 .loop-panel .hint:empty{display:none}
 .preset-item{padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+/* ★ v3.35.4（用户实拍：两首示例曲的「▶ 与 📁 间距」不一致）：条目是 space-between，
+   剩余空间被摊到两处缝隙上 ⇒ 名字短的那行缝隙大、名字长的那行缝隙小，**按钮位置随内容漂移**。
+   让文字块吃掉全部剩余宽度（flex:1），按钮就固定成右端的一簇、行行对齐。
+   min-width:0 是让长名字仍能省略/换行而不是把行撑开。 */
+.preset-item>div:first-child{flex:1;min-width:0}
+/* ★ v3.35.3：可展开的**歌曲行**（自定义区）与其下的节奏型。
+   箭头走 .name 的 ::before——伪元素不进 textContent，按名字取文本的测试与读屏都不受影响。 */
+.preset-item.song .name::before{content:"▸";display:inline-block;width:12px;color:var(--t3);font-size:10px}
+.preset-item.song[aria-expanded="true"] .name::before{content:"▾"}
+/* 展开出来的型缩进一格：左侧一道细竖线表达"它属于上面那首歌" */
+.preset-item.in-song{margin-left:18px;box-shadow:inset 2px 0 0 rgba(var(--veil),.10)}
 /* v2.10.0：折叠分区靠 hidden 隐藏条目——上面这条 display:flex 会盖掉 [hidden] 的 display:none
    （同 .vol-row[hidden] / .tr-panel[hidden] 的坑），必须显式写一条 */
 .preset-item[hidden]{display:none}
@@ -1602,6 +1654,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .pal-item .du{font-size:11px;color:var(--t3)}
 .name-input{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;padding:10px 14px;width:280px;font-family:inherit;outline:none}
 .name-input:focus{border-color:var(--border)}
+/* ★ v3.35.9（用户拍板）：字段级报错——缺「归属」时输入框标红、提示转红字。
+   与卡片头那行「存在时值不完整的小节」（报整份草稿）分成两处：各指向能改它的地方。 */
+.name-input.bad{border-color:var(--red)}
+.name-input.bad:focus{border-color:var(--red)}
+.hint.bad-hint{color:var(--red)}
 
 /* ---------- 应用内弹窗（替代原生 confirm/prompt：沙盒 iframe 会静默拦截原生弹窗） ---------- */
 .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;animation:modalIn .12s ease-out}
@@ -1649,7 +1706,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    DOM 顺序**一个不动**（[段号, 段名, 块, 操作, 歌词]）——t54/t60 按裸下标定位、
    歌词轨钉在 children[4]，全部靠 order 在视觉层重排，测试定位零迁移。 */
 /* v2.33.0：曲式库行容器（chips + 行尾「＋」+ 展开时的模板菜单同住一行流） */
-.arg-list{display:flex;flex-wrap:wrap;gap:8px}
+/* ★ v3.35.2（用户实拍：选中曲式的绿底缺右侧圆角、段树歌词被硬切、侧栏还冒出一条横向滚动条）：
+   本行是 v3.35.0「横向胶囊 → 纵向行」改造**漏改的容器**——条目早已是整行，容器还是横排 + wrap。
+   横排 flex 给每个条目 min-width:auto（= 内容最小宽度）：「名字 + 段数 + ✕ + ✎」撑到 294px，
+   段树（内含 white-space:nowrap 的歌词）更是 400px，双双超过侧栏列宽 273px；
+   而 .arg-outline 是 overflow:auto 的滚动容器 ⇒ 超出部分被**静默裁掉**（绿底缺角、歌词没有省略号）。
+   改纵向：条目宽度由 stretch 决定（= 列宽），内容超了走各自的 text-overflow，不再溢出被裁。 */
+.arg-list{display:flex;flex-direction:column;gap:4px}
 .arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
 .arg-item.sel{box-shadow:inset 0 0 0 1.5px var(--green)}
@@ -1840,9 +1903,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-shell{display:grid;grid-template-columns:288px minmax(0,1fr);gap:20px;align-items:start}
 .arg-outline{position:sticky;top:64px;max-height:calc(100vh - 88px);overflow-y:auto;
   border-right:1px solid var(--line);padding-right:14px}
-.arg-outline-h{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--t3);
-  padding:8px 6px 9px;border-bottom:1px solid var(--line);margin-bottom:4px}
-.arg-outline-h b{font-size:14px;color:var(--t1);font-weight:500}
+/* ★ v3.35.2：段树自带的读数行（.arg-outline-h）整块退役——见 mkOutlineTree 处的说明 */
 /* 一段 = 两行：上行「序号 · 段名 · 缩略带」，下行「歌词」。行距给足，利于扫视 */
 .arg-ol-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
   padding:6px 8px;border-radius:6px;border:0;background:transparent;color:var(--t2);font-size:13px}
@@ -2697,15 +2758,27 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            控件形态：拍数 = 下拉框（省占位）、节奏类型 = 纯图标 + 悬浮/读屏名称
            （用户拍板：图标下不写文案）。两者都由 JS 从 RHY_STEPS / VALID_RHY 生成——
            9 个 SVG 图标若写死在标记里，既不省体积也没法保证与数据表同源。 -->
-      <div class="preset-section" id="basicSecHead" role="button" tabindex="0" aria-expanded="true">基础节奏 · 拍数与细分</div>
-      <div id="rhyBeatBox">
-        <div class="bpm-row">
-          <span class="lab">拍数</span>
-          <select class="loop-sel" id="sigSel" aria-label="拍数：基础节奏每小节几拍（0 为每拍均等、不分重拍）"></select>
+      <!-- ★ v3.35.8（用户需求）：区头与「拍数」参数槽**同一行**——槽贴右端。
+           槽**不在** role=button 里：下拉框嵌在按钮角色内是嵌套交互控件，键盘/读屏都会打架
+           （旧版整块在下拉行里，这一版把它提到头上，两者的语义都更干净）。
+           折叠只收「细分」那一块——拍数是最常用的一个参数，始终在手边。 -->
+      <!-- ★ v3.35.10（用户第三次实拍「间距又开始不统一」）：本区原先以**两个**孩子的身份挂在
+           .preset-drawer 下（头行 + 区体），于是它与 #presetList 之间、以及它内部都被父容器的
+           flex gap 掺和进来。收成一个孩子（.basic-zone）后，边界只剩一条，差值可以一次吃掉 ——
+           详见下方 .basic-zone 的注释。 -->
+      <div class="basic-zone" id="basicZone">
+        <div class="basic-head-row">
+          <div class="preset-section" id="basicSecHead" role="button" tabindex="0" aria-expanded="true">基础节奏</div>
+          <span class="basic-slot">
+            <span class="lab">拍数</span>
+            <select class="loop-sel" id="sigSel" aria-label="拍数：基础节奏每小节几拍（0 为每拍均等、不分重拍）"></select>
+          </span>
         </div>
+        <div id="rhyBeatBox">
         <div class="bpm-row" id="rhyPillRow" role="group" aria-label="节奏类型：一拍之内的细分"></div>
         <!-- v3.33.1：下拉文案缩短后，「0 · 均等」的完整含义落在这里（见 sigLabel 注释） -->
-        <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称 · 拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
+          <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称 · 拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
+        </div>
       </div>
       <div id="presetList"></div>
       <!-- 「当前曲式 · 名字」chip（v2.35.0）：它指示跳段键/弹层范围滑块正在服务曲式库里的哪一条，
@@ -2990,6 +3063,17 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <span style="font-size:12px;color:var(--t2)">标注</span>
         <input class="name-input" id="patLabelInput" placeholder="和弦名或备忘（可留空）" aria-label="节奏型标注：和弦名或自由备注，可留空" maxlength="40">
         <span class="hint">用「|」分段会按片段均分：C | Am = 前半 C 后半 Am（半小节换和弦需分片档 ≥2）</span>
+      </div>
+      <!-- ★ v3.35.7（用户需求）：**节奏型必须有一个归属**——没有"单独创建一条节奏型"这回事。
+           归属写进 customs[].song，不是新的数据容器：型仍住在自定义预设里。
+           没有同名曲式时保存会顺手建一条同名曲式（含 1 段 1 块 = 刚保存的这个型），
+           用户接着去「编排曲式」排段落即可。
+           ★ v3.35.9（用户实拍）：文案从「属于哪首歌」改成「**归属**」——用户会拿它把若干相关节奏型
+             归到一起练，**不一定是歌**（"组"这个词已被 📁 分组占用，不能用）。占位符写清取值形态。 -->
+      <div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--t2)">归属</span>
+        <input class="name-input" id="songNameInput" placeholder="歌名或练习名（必填）" aria-label="归属：这个名字是「自定义」区里那一行，也是自动建出的曲式的名字；没填不能保存" aria-describedby="songHint" maxlength="40">
+        <span class="hint" id="songHint">没有同名曲式 → 自动建一条同名曲式，去「编排曲式」继续排段落</span>
       </div>
     </div>
   </div>
@@ -3378,11 +3462,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <div id="mountFigsArrange"></div>
         <h2 class="card-title" style="margin:22px 0 4px">基础节奏：拍数 × 节奏类型</h2>
         <ul class="help-list">
-          <li>预设库<b>最上面一区</b>是「基础节奏 · 拍数与细分」——两个<b>互相独立</b>的下拉/图标选项，
+          <li>预设库<b>最上面一区</b>是「基础节奏」——区头右边就是<b>拍数</b>参数槽，展开后是<b>节奏类型</b>图标；两个<b>互相独立</b>的选项，
             和实体节拍器上的<b>拍数</b>与<b>节奏类型</b>两个旋钮是同一回事：<b>拍数</b>选一小节几拍
             （含「0 · 均等」＝每拍一样响、不打重拍），<b>节奏类型</b>选一拍之内怎么细分
             （四分 / 两个八分 / 三连音 / 四个十六分 / 前八后十六 / 前十六后八，以及三种带休止的变体，
             共 9 种）。两个选项<b>随点随用</b>，不必先想好再选</li>
+          <li><b>快速双击 = 开始练 / 暂停</b>：预设列表里的<b>节奏型条目</b>双击＝选中它并起播
+            （再双击＝停）；<b>歌曲行</b>双击＝整首连播 / 暂停（与它行尾的 ▶ 同权）；基础节奏区的
+            <b>细分图标</b>双击＝用这个细分起播。<b>单击语义一字未改</b>（选中 / 展开收起）——
+            两种手势交给系统自己的双击判定，所以"快速双击"与"两次慢单击"不会互相打架</li>
           <li><b>节奏类型只有图标、图标下不写字</b>：把鼠标停在图标上会显示名称
             （图标本身就是记谱符号，与实体节拍器上印的那四个一样；读屏用户会听到名称）</li>
           <li>它与下方预设列表是<b>二选一</b>的关系：点这里的任一档 = 开始用「基础节奏」；
@@ -3700,23 +3788,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3732  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4630  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6420  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7388  Modal         应用内弹窗
-     L7533  Viz           时值可视化渲染与每帧动画
-     L10998 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11679 Trainer       变速训练器
-     L11889 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12569 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14168 Editor        自定义节奏型编辑器
-     L14712 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14759 Ear           听辨训练（v1.10.0）
-     L14987 Arrange       曲式编排（v2.0.0）
-     L18489 Help          使用方法（v2.0.1）
-     L18618 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L18692 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18959 初始化（装配） 各模块 hook 接线与启动
+     L3820  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4722  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6578  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7574  Modal         应用内弹窗
+     L7719  Viz           时值可视化渲染与每帧动画
+     L11184 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11865 Trainer       变速训练器
+     L12075 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12756 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14676 Editor        自定义节奏型编辑器
+     L15256 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15303 Ear           听辨训练（v1.10.0）
+     L15531 Arrange       曲式编排（v2.0.0）
+     L19044 Help          使用方法（v2.0.1）
+     L19173 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19247 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19514 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3742,7 +3830,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.35.1";
+const VERSION = "3.36.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3776,9 +3864,13 @@ const D = (t, rest, dir) => ({t, rest: !!rest, ...(dir ? {dir} : {})});         
    编辑器 draft/JSON 往返继续承担，无需替代品。 */
 /* 唯一带扫弦方向标注（v1.9.0）的内置预设：方向逐字对应它自己的名字「下-下上-上下上」
    （下 下 上 上 下 上 = D D U U D U）。此前这个名字只存在于标题字符串里，界面完全表达不出来 */
+/* ★ v3.35.5（用户拍板）：**内置「民谣扫弦」删除**——它是 BUILTINS[0]，删掉后其后每个内置下标
+   整体 −1。已存数据里四处按 idx 引用内置型（曲式块 / 分组归属 / 当前选中 / 改名覆盖）由
+   Store.load 里的一次性迁移（戳键 beatsight.bnmig35）同步 −1；指向它本身的引用没有等价物，
+   按"淘汰项不静默丢弃"的口径改指新 idx 0（四分基础）并 console.warn 计数。
+   ★ 出厂默认型随之从「民谣扫弦」变成「四分基础」（S.sel 的缺省 idx 0）。
+   ★ EAR_GROUPS / DEMO_BUILTIN_BASE / BUILTIN_SRC_NAMES 全部按名字或 .length 派生，自动跟上。 */
 const BUILTINS = [
-  {name:"民谣扫弦 · 下-下上-上下上", desc:"4/4 · 扫弦 · 弹唱", meter:4,
-   bars:[[D(48,0,"D"),D(24,0,"D"),D(24,0,"U"),D(36,0,"U"),D(12,0,"D"),D(48,0,"U")]]},
   {name:"四分基础", desc:"4/4 · 新手入门 · 最简节奏型", meter:4,
    bars:[[D(48),D(48),D(48),D(48)]]},
   {name:"八分摇滚", desc:"4/4 · 八分均分 · 驱动感", meter:4,
@@ -4685,6 +4777,68 @@ const Store = (() => {
      注：原型为 null 不影响后续所有读取（这里只用 own 属性，且 S 的每个字段都显式取值） */
   const saved = hotIn && typeof hotIn === "object"
     ? Object.assign(Object.create(null), legacy, hotIn) : legacy;
+  /* ★ v3.35.5：内置「民谣扫弦」（旧 BUILTINS[0]）删除 ⇒ 其后每个内置下标整体 −1。
+     已存数据里有**四处**按 idx 引用内置型，各扫一遍（互不重叠）：
+       ① 当前选中（热键里的 sel）—— 只改内存副本，热键由随后的 persist 重写；
+       ② 曲式块引用（冷键 beatsight.arranges）；③ 分组归属（beatsight.groups）；
+       ④ 改名覆盖（beatsight.builtinNames，键 = 十进制下标；被删那条的覆盖随之作废）。
+     ★ 指向**被删那一条**（旧 idx 0）的引用没有等价物：按仓库"淘汰项不静默丢弃"的口径
+       改指新 idx 0（四分基础）并 console.warn 计数——曲式照旧能播，用户可自行改回。
+     ★ 幂等靠戳键 beatsight.bnmig35；三只冷键都回写成功才置戳（写失败 ⇒ 下次启动重试），
+       与 arrmig73 / chdmig 同一套纪律。 */
+  {
+    const BN_MIG_KEY = "beatsight.bnmig35";
+    let stamped = false;
+    try{ stamped = localStorage.getItem(BN_MIG_KEY) === "1"; }catch(e){}
+    if (!stamped){
+      /** @param {any} r @returns {void} */
+      const shift = r => { if (r && r.type === "builtin" && Number.isInteger(r.idx) && r.idx > 0) r.idx -= 1; };
+      let replaced = 0, wrote = true;
+      if (saved.sel && typeof saved.sel === "object") shift(saved.sel);
+      const aIn = readJSON(KEY_ARRANGES);
+      if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+        aIn.arranges.forEach(/** @param {any} r */ r => {
+          if (!r || !Array.isArray(r.sections)) return;
+          r.sections.forEach(/** @param {any} s */ s => {
+            if (!s || !Array.isArray(s.blocks)) return;
+            s.blocks.forEach(/** @param {any} b */ b => {
+              if (!b || !b.ref) return;
+              if (b.ref.type === "builtin" && b.ref.idx === 0) replaced++;   // 指向被删那一条
+              shift(b.ref);
+            });
+          });
+        });
+        try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); }catch(e){ wrote = false; }
+      }
+      const gIn = readJSON(KEY_GROUPS);
+      if (gIn && Array.isArray(gIn.groups) && gIn.groups.length){
+        gIn.groups.forEach(/** @param {any} g */ g => {
+          if (g && Array.isArray(g.members)) g.members.forEach(/** @param {any} m */ m => {
+            if (m && m.type === "builtin" && m.idx === 0) replaced++;
+            shift(m);
+          });
+        });
+        try{ localStorage.setItem(KEY_GROUPS, JSON.stringify(gIn)); }catch(e){ wrote = false; }
+      }
+      const bIn = readJSON(KEY_BNAMES);
+      if (bIn && bIn.names && typeof bIn.names === "object"){
+        /** @type {Record<string, any>} */
+        const next = {};
+        Object.keys(bIn.names).forEach(/** @param {string} k */ k => {
+          const i = +k;
+          if (!Number.isInteger(i) || i < 0) { next[k] = bIn.names[k]; return; }
+          if (i === 0) return;                    // 被删那条的改名覆盖随之作废
+          next[String(i - 1)] = bIn.names[k];
+        });
+        bIn.names = next;
+        try{ localStorage.setItem(KEY_BNAMES, JSON.stringify(bIn)); }catch(e){ wrote = false; }
+      }
+      if (replaced){
+        try{ console.warn("[BeatSight] 有 " + replaced + " 处原使用内置「民谣扫弦」（已删除），已改指「四分基础」"); }catch(e){}
+      }
+      if (wrote){ try{ localStorage.setItem(BN_MIG_KEY, "1"); }catch(e){} }
+    }
+  }
   /** @type {any[]} */
   const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
                      : (Array.isArray(legacy.customs) ? legacy.customs : []);
@@ -4888,7 +5042,7 @@ const Store = (() => {
     beat: foldOwn("beat") ? foldSrc.beat === true : true,
     strum: foldOwn("strum") ? foldSrc.strum === true : false,
     custom: foldOwn("custom") ? foldSrc.custom === true : true,
-    /* v3.33.0：预设库新增的「基础节奏 · 拍数与细分」区（静态在 #presetList 之前的兄弟节点，
+    /* v3.33.0：预设库新增的「基础节奏」区（静态在 #presetList 之前的兄弟节点，
        不参与 applyFold 的三区切段）——它自己的开合记忆。缺省**展开**（首次打开就能看见
        新功能，与三区的缺省口径不同：那三区是"内容列表"，本区是"新功能入口"）。 */
     basic: foldOwn("basic") ? foldSrc.basic === true : true,
@@ -5669,7 +5823,7 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
-  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string }[]} */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], song?: string, label?: string }[]} */
   const customs = [];
   customsRef = customs;    // v3.31.x（审计 P1-9）：patLenOf 的运行期路径接上 live 数组（见其定义处注释）
   /** @type {any[]} */
@@ -5896,7 +6050,7 @@ const Store = (() => {
   function serializePresets(){
     return JSON.stringify({
       app:"beatsight", kind:"presets", v:2, exportedAt:new Date().toISOString(),
-      presets: customs.map(c => ({name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars, ...(c.label ? {label:c.label} : {})})) // v2.72.0：label 随导出往返（留空不写字段）
+      presets: customs.map(c => ({name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars, ...(c.song ? {song:c.song} : {}), ...(c.label ? {label:c.label} : {})})) // v2.72.0：label 随导出往返（留空不写字段）
     }, null, 2);
   }
 
@@ -5973,7 +6127,11 @@ const Store = (() => {
     /* v2.72.0（1.3）：标注（可选）——和弦名或自由备忘，一小节一条纯展示文本。
        脏值静默降级为省略（同 dir/zone 口径：丢了不牵连整条预设）；导入/导出经本白名单自然往返。 */
     const label = (typeof p.label === "string" && p.label.trim()) ? p.label.trim().slice(0, 40) : undefined;
-    return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars, ...(label ? {label} : {})};
+    /* ★ v3.35.7：歌名（归属）——可选字段，脏值静默降级为省略（同 label 口径：丢了不牵连整条预设）。
+       进白名单意味着它**随导出/导入往返**：备份换台机器后，型仍挂在同一首歌名下。 */
+    const song = (typeof p.song === "string" && p.song.trim()) ? p.song.trim().slice(0, 40) : undefined;
+    return {name: p.name.trim().slice(0, 40), meter, ...(accents ? {accents} : {}), bars,
+      ...(label ? {label} : {}), ...(song ? {song} : {})};
   }
 
   /* 返回 {ok:true, count} 或 {ok:false, error}；错误文案供弹窗展示（一律 textContent） */
@@ -6599,7 +6757,7 @@ function setPressed(sel, on){
    v2.4.0 补：items 也可能是**对象**（{key,text,label,tip}），此时 String(it) 会写出
    "[object Object]"——一个能生成、能高亮、却读不出名字的按钮。故取值必须能显式给：
    凡带 key 的调用方，若 items 非原始值就必须同时给 value（"取值从哪来"不能靠猜）。 */
-/** @param {any} host @param {any[]} items @param {{ key?: string, text: (it: any, i: number) => string, label: (it: any, i: number) => string, value?: (it: any, i: number) => string, isOn?: (it: any, i: number) => any, onPick: (it: any, i: number, ev: any) => void }} opt @returns {any[]} */
+/** @param {any} host @param {any[]} items @param {{ key?: string, text: (it: any, i: number) => string, label: (it: any, i: number) => string, value?: (it: any, i: number) => string, isOn?: (it: any, i: number) => any, onPick: (it: any, i: number, ev: any) => void, onDblClick?: (it: any, i: number, ev: any) => void }} opt @returns {any[]} */
 function buildPillRow(host, items, opt){
   clear(host);
   return items.map((it, i) => {
@@ -6610,11 +6768,39 @@ function buildPillRow(host, items, opt){
     b.textContent = opt.text(it, i);
     b.setAttribute("aria-label", opt.label(it, i));
     if (opt.key) b.dataset[opt.key] = opt.value ? opt.value(it, i) : String(it);
-    b.addEventListener("click", ev => { evEl(ev).blur(); opt.onPick(it, i, ev); });
+    b.addEventListener("click", ev => {
+      evEl(ev).blur();
+      /* ★ v3.35.11：带双击语义的 pill 行（目前只有基础节奏区的细分）——第 2 击跳过单击语义。
+         其余 pill 行（Swing / 音色 / 方向 / 弦区 / 发声）不传 onDblClick ⇒ 行为一字不变。 */
+      if (opt.onDblClick && isSecondClick(ev)) return;
+      opt.onPick(it, i, ev);
+    });
+    const onDbl = opt.onDblClick;      // 取局部再闭包：可选属性直接进箭头函数 TS 收窄不到
+    if (onDbl) b.addEventListener("dblclick", ev => onDbl(it, i, ev));
     host.appendChild(b);
     return b;
   });
 }
+/** ★ v3.35.11（用户需求）：**快速双击 = 播放/暂停**，且要与"单击两次"区分开。
+   判据用浏览器**自己的连击计数** MouseEvent.detail（第 1 击 = 1，双击的第 2 击 = 2）：
+     · 第 1 击照旧执行单击语义（选中 / 展开 / 换细分）；
+     · 第 2 击（detail≥2）**跳过**单击语义 ⇒ 快速双击不会"展开又收起"；
+     · 紧随其后的 dblclick 事件切播放/暂停。
+   两次**慢**单击每次都拿 detail=1 ⇒ 照旧"展开 → 收起"，正是用户要的语义。
+   ★ 为什么不加计时器 / 不延迟单击：那会让每次单击都慢 200ms 量级（手感立刻变差），
+     而双击阈值本来就该由系统定（用户可在系统里调）。
+   ★ 桩环境：fire("click") 不带 detail ⇒ undefined ⇒ 视为单击（既有测试语义不变）。
+   @param {any} e @returns {boolean} true = 这一击属于双击，调用方应跳过单击语义 */
+const isSecondClick = e => !!(e && e.detail >= 2);
+/* ★★ v3.35.12（用户反馈）：**双击歌曲行时，第 1 击会先把行折叠/展开**，干扰"双击=播放/暂停"。
+   上一版是在 dblclick 里"翻回去"，但那一翻**看得见**（两次渲染之间浏览器已经画了一帧）⇒ 用户仍觉得干扰。
+   本版改成**真手势的折叠延迟一拍**：单击后不立刻折叠，等一个双击窗口（DBLCLICK_MS）；
+     · 窗口内来了 dblclick ⇒ **取消那次折叠**、只切播放/暂停（全程不动开合）；
+     · 窗口过了没有第二击 ⇒ 折叠照常执行。
+   ★ 判据只看 `e.detail`：真实指针手势 detail ≥ 1；**合成点击 / 程序化 .click() / 测试桩不带 detail**
+     ⇒ 走"立即折叠"的旧路径。这一条是 7000 条同步测试不被拖下水的关键（它们大多是 `fire("click")`）。
+   ★ 代价：真手势的单击折叠晚 DBLCLICK_MS 出现 —— 与"双击不干扰"是一对取舍，用户选了后者。 */
+const DBLCLICK_MS = 250;
 /* 动效降级（审计 P2-11）：本应用是重动效设计，但前庭功能敏感用户会不适。
    不做整体关闭——弹跳球的**位置**是功能性的「何时落拍」提示，去掉等于砍掉核心功能；
    这里只把形变（触地挤压 / 空中拉伸）置为无形变，装饰性动画交给 CSS 的
@@ -7183,7 +7369,7 @@ function arrNextBar(a, sel, sec, bar){
    S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
 /** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let previewRef = null;
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string, song?: string }} */
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
 /** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
@@ -12031,6 +12217,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     timer = setInterval(AudioEngine.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
+    Presets.syncSongPlayBtns();                          // v3.35.6：空格/主播放键起播时，歌曲行的 ▶ 也要变 ■
     $("statusDot").classList.add("live");
     Viz.resetTracking();
     rafId = requestAnimationFrame(Viz.paintFrame);
@@ -12643,6 +12830,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   let prevSigBeforeAud = /** @type {number|null} */ (null);
   /** @type {{btn: HTMLElement, pat: any}[]} */
   let audBtns = [];                          // 随列表重建而重建（buildPresetList 开头清空）
+  /* ★ v3.35.6：歌曲行的 ▶（整首连播 / 暂停）同属"由列表承载的状态"——重建即作废，开头清空。
+     记 id 与名字：刷新时要判"播的是不是这一首"、并写回 aria-label。 */
+  /** @type {Array<{btn: HTMLElement, id: string, name: string}>} */
+  let songPlayBtns = [];
   /* v3.31.x（审计 P0-4）：「停止试听」唯一出口——换对象/Editor/Ear/空格停播一律经它还原
      拍号。此前还原只在「再点同一条」分支，换对象时旧拍号被覆盖 → 停止后错配回退 basicPattern。 */
   function stopAudition(){
@@ -12916,16 +13107,68 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        （那里本来就有内联候选行）。另注：它与本轮新加的**范围滑块语义相冲**——
        applyDemoSeg 收尾会把 S.arrangeSel 收窄成 from === to，拖好的范围会被一次换型清掉。
      ★ 范围滑块是本区**唯一**能表达"练第 3 段到第 7 段"的控件；跳到单段 = 两个 thumb 重合。 */
-  /* 一个**曲式条目**（v2.25.0 从 buildArrangeGroup 的内联循环抽出）：
-     与节奏型条目同权——可 ✎（无）、📁（触屏移入分组）、拖拽（桌面归组）。
-     点一条 = 选中并立即播放整首（含示例曲，即旧的「整首连播」语义） */
-  /** @param {any} a @returns {HTMLElement} */
+  /** ★ v3.35.3：**歌曲 → 它用到的节奏型**（按首次出现去重、保序）。
+     ★ 为什么从曲式的**块引用**反推，而不是另存一份清单：块引用是唯一真相
+       （示例曲重建、段复制、换型都只改它），另存一份必然漂移。
+     ★ 块首必须是 `/**`——写成 `/*` 时 tsc 不把它当 JSDoc，@param 全部失效（隐式 any）。
+     @param {any} a @returns {Array<{ref:any, p:any}>} */
+  function songPatterns(a){
+    /** @type {Array<{ref:any, p:any}>} */
+    const out = [];
+    const seen = new Set();
+    (a.sections || []).forEach(/** @param {any} sec */ sec =>
+      (sec.blocks || []).forEach(/** @param {any} blk */ blk => {
+      const r = blk && blk.ref;
+      if (!r) return;
+      const key = r.type === "builtin" ? "b" + r.idx : "c" + r.id;
+      if (seen.has(key)) return;
+      const p = resolveRef(r);
+      if (!p) return;                 // 坏引用：跳过（与渲染层对坏引用的一贯容忍口径一致）
+      seen.add(key);
+      out.push({ ref: r, p });
+    }));
+    return out;
+  }
+  /* 歌曲的展开态是**纯浏览态**：会话内记忆、不落盘（与编排页的歌词折叠同一口径）。
+     默认展开**当前正在编排的那首**——与编排页大纲树"手风琴式只展开当前"同一条约定。 */
+  const songOpen = new Set();
+  /* ★ v3.35.11 曾在这里放一个模块级 foldSnap（"双击后把第 1 击翻掉的开合还原"）。
+     v3.35.12 改成"第 1 击压根不折叠"（延迟一个双击窗口）⇒ 那个快照连同还原逻辑一并删除。 */
+  let songOpenSeeded = false;
+  /** @param {string} id @returns {boolean} */
+  function songIsOpen(id){
+    /* ★ 只在**确实有一首歌**时才落种子：库为空时先落种子，会把"默认展开哪首"永久钉成空集
+       （示例曲/用户的曲式是**后**带出的，那之后所有歌曲都会停在折叠态）。 */
+    if (!songOpenSeeded){
+      const cur = Store.findArrange(S.arrangeSel.id) || Store.arranges[0];
+      if (cur){ songOpenSeeded = true; songOpen.add(cur.id); }
+    }
+    return songOpen.has(id);
+  }
+  /** 一个**曲式条目**（v2.25.0 抽出；v3.35.3 改成**可展开的歌曲行**）：
+     与节奏型条目同权——可 📁（触屏移入分组）、拖拽（桌面归组）。
+     ★ 点行 = 展开/收起该歌的节奏型；**整首连播**挪到行尾的 ▶ ——
+       v2.28.0 删掉「整首连播」按钮的前提是"点条目就是连播"，本版把点条目让给展开，
+       那个前提不复存在，连播必须重新有个看得见的落点（与其它条目的 ▶ 同位置同形）。
+     @param {any} a @returns {HTMLElement} */
   function buildArrangeItem(a){
     const isActive = S.arrangeSel.id === a.id;
-    const item = presetItemEl(a.name, `${a.sections.length} 段 · 曲式`, isActive);
-    const pick = () => playArrange(a);
-    item.addEventListener("click", pick);
-    item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
+    const open = songIsOpen(a.id);
+    const pats = songEntries(a);            // v3.35.7：曲式引用到的 ∪ 归属这首歌的
+    const item = presetItemEl(a.name, `${a.sections.length} 段 · ${pats.length} 个型`, isActive);
+    item.classList.add("song");
+    item.setAttribute("aria-expanded", open ? "true" : "false");
+    const play = document.createElement("button");
+    play.className = "aud";
+    play.title = "整首连播";
+    play.setAttribute("aria-label", "整首连播「" + a.name + "」");
+    play.textContent = "▶";
+    play.addEventListener("mousedown", (/** @type {any} */ e) => e.preventDefault());
+    /* ★ v3.35.6（用户实拍）：▶ 做成**播放 / 暂停两态**——正在播的就是这首歌时点它 = 停（回到 ▶），
+       否则 = 整首连播。两态的刷新收口在 syncSongPlayBtns() 一处（与 .aud 试听按钮同一套写法）。 */
+    play.addEventListener("click", (/** @type {any} */ e) => { e.stopPropagation(); toggleArrangePlay(a); });
+    songPlayBtns.push({ btn: play, id: a.id, name: a.name });
+    item.appendChild(play);
     /* v2.22.0 曾把自定义区排除在分组外（v1 边界）；v2.25.0 经用户拍板三区全开放 */
     pushGroupBtn(item, () => {
       Modal.uiPrompt(`将「${a.name}」移入分组（输入组名；同名组直接移入；清空并确定 = 移出分组）`,
@@ -12933,14 +13176,164 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
           if (Store.groupMove({ type:"arrange", id:a.id }, "custom", v)) refreshAfterPatternChange();
         });
     });
+    const act = () => {
+      if (songOpen.has(a.id)) songOpen.delete(a.id); else songOpen.add(a.id);
+      refreshAfterPatternChange();
+    };
+    /* ★ v3.35.11（用户需求）：歌曲行**双击 = 整首连播 / 暂停**（与该行 ▶ 完全同权，
+       复用 toggleArrangePlay 一处门面）。单击仍是展开/收起；双击的第 2 击跳过单击语义，
+       所以快速双击**不会**"展开又收起"（net 效果等于没动开合态）。 */
+    /* ★★★ v3.35.12（用户反馈「双击时第 1 击会先折叠/展开，干扰」）：折叠**延迟一个双击窗口**
+       再执行（见 DBLCLICK_MS 的注释）。于是双击的第 1 击**根本不会**折叠 —— 用户看不到任何开合变化
+       （上一版是"先翻再翻回来"，那一翻看得见）。合成点击（不带 detail）仍走立即折叠的旧路径，
+       既有同步测试与键盘/程序化调用语义不变。 */
+    /** @type {any} */
+    let foldTimer = null;
+    const cancelFold = () => { if (foldTimer !== null){ clearTimeout(foldTimer); foldTimer = null; } };
+    item.addEventListener("click", e => {
+      if (isSecondClick(e)) return;                       // 第 2 击：不排折叠（dblclick 马上到）
+      cancelFold();
+      const real = !!(e && typeof e.detail === "number" && e.detail >= 1);
+      if (!real){ act(); return; }                        // 合成点击 / 键盘：立即折叠（旧路径）
+      foldTimer = setTimeout(() => { foldTimer = null; act(); }, DBLCLICK_MS);
+    });
+    item.addEventListener("dblclick", () => {
+      cancelFold();                                       // ★ 第 1 击排的那次折叠作废 ⇒ 全程不动开合
+      toggleArrangePlay(a);
+    });
+    item.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
     makeDraggable(item, { type:"arrange", id:a.id }, "custom");
     return item;
+  }
+  /** 歌曲下的一个节奏型条目。
+      ★ 刻意**复用库里两条既有构造器**（pushBuiltinItem / buildPresetItem）而不是另写一份：
+        选中 / ▶ 试听 / ✎ 改名 / × 删除这四件事的语义与别处**逐字同一份实现**，
+        将来改哪一处都不会出现"库里的条目和歌里的条目行为不一样"这种漂移。
+      ★ 唯一摘掉的是 📁 **分组**：它属于这首歌，"归到哪一区/哪个组"不再是它自己的问题
+        （v3.35.3 起书库按"歌 → 型"组织）。
+      @param {HTMLElement} host @param {any} a @param {{ref:any, p:any}} ent @returns {void} */
+  function appendSongPattern(host, a, ent){
+    const r = ent.ref;
+    const item = r.type === "builtin"
+      ? pushBuiltinItem(host, ent.p, r.idx)
+      : host.appendChild(buildPresetItem(ent.p));
+    item.classList.add("in-song");
+    item.dataset.song = a.id;
+    /* 摘 📁：用 Array.from 而不是 children.findIndex —— 真机 children 是 HTMLCollection，
+       没有数组方法（冒烟有专门一条哨兵钉这个分叉，桩里却是数组）。 */
+    let grpBtn = null;
+    Array.from(item.children || []).forEach(c => { if (/(^| )grp( |$)/.test(c.className)) grpBtn = c; });
+    if (grpBtn && item.removeChild) item.removeChild(grpBtn);
+  }
+  /** 归属某个歌名、但**当前没有同名曲式**的自定义型（导入备份 / 曲式被改名或删除后会落到这里）。
+     不渲染它们，型就无处可去——这是"有归属、缺曲式"的中间态。
+     也用于"这首歌的型"：编辑器保存时写入的就是这个字段。
+     注意排除 `song === name` 里 name 为空串的情形（那是"未归属"，另走一桶）。
+     返回的是**数组**（调用方常要 .length / .map，返回迭代器容易踩坑）。
+     @param {string} name @returns {any[]} */
+  function customsOfSong(name){ return customs.filter(c => !!c && !!c.song && c.song === name); }
+  /** 歌名 → 该歌名下的全部型 = 曲式**实际引用**的 ∪ **归属**它的自定义型（引用在前、按 key 去重）。
+     @param {any} a @returns {Array<{ref:any, p:any}>} */
+  function songEntries(a){
+    const out = songPatterns(a);
+    const seen = new Set(out.map(/** @param {any} e */ e => e.ref.type === "builtin" ? "b" + e.ref.idx : "c" + e.ref.id));
+    customsOfSong(a.name).forEach(/** @param {any} c */ c => {
+      const k = "c" + c.id;
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push({ ref: { type: "custom", id: c.id }, p: c });
+    });
+    return out;
+  }
+  /** 「歌名有、曲式没了」的桶（每组 = 一个歌名 + 它的型）。@returns {Array<[string, any[]]>} */
+  function songNameRows(){
+    const have = new Set(Store.arranges.map(/** @param {any} a */ a => a && a.name));
+    /** @type {Map<string, any[]>} */
+    const m = new Map();
+    customs.forEach(/** @param {any} c */ c => {
+      if (!c || !c.song || have.has(c.song)) return;
+      if (!m.has(c.song)) m.set(c.song, []);
+      const arr = m.get(c.song); if (arr) arr.push(c);
+    });
+    return [...m.entries()];
+  }
+  /** 没有任何归属、也没被曲式引用、也不在任何组里的老自定义型（v3.35.7 之前建的）。
+     ★ 三样都要排除，否则同一个型会渲染两次：
+       · 被曲式引用 → 已在某首歌的展开内容里（appendSongPatterns）；
+       · **是某个区的组员** → 已在那个区的组头下（renderZone 渲染组员）；
+          用户如果见过它两遍，会以为库里有两条同名的型。
+     @returns {any[]} */
+  function orphanCustoms(){
+    const used = new Set();
+    Store.arranges.forEach(/** @param {any} a */ a => (a.sections || []).forEach(/** @param {any} s */ s =>
+      (s.blocks || []).forEach(/** @param {any} b */ b => {
+        if (b && b.ref && b.ref.type === "custom") used.add(b.ref.id);
+      })));
+    Store.groups.forEach(/** @param {any} g */ g => (g.members || []).forEach(/** @param {any} m */ m => {
+      if (m && m.type === "custom") used.add(m.id);
+    }));
+    return customs.filter(/** @param {any} c */ c => !!c && !c.song && !used.has(c.id));
+  }
+  /** 一行"只有归属、没有曲式"的歌名（或「未归属」桶）：可展开、**没有 ▶**（没曲式可播）。
+     key 进同一个展开集合 songOpen（"name:<歌名>" / "orphan"），与曲式行互不干扰。
+     @param {string} key @param {string} label @param {any[]} list @returns {HTMLElement} */
+  function buildSongOnlyRow(key, label, list){
+    const open = songOpen.has(key);
+    /** @type {any} */
+    const item = presetItemEl(label, list.length + " 个型 · 还没排进曲式", false);
+    item.classList.add("song", "song-only");
+    item.setAttribute("aria-expanded", open ? "true" : "false");
+    const act = () => {
+      if (songOpen.has(key)) songOpen.delete(key); else songOpen.add(key);
+      refreshAfterPatternChange();
+    };
+    item.addEventListener("click", act);
+    item.addEventListener("keydown", itemKeys(act, {enterOnly:true}));
+    return item;
+  }
+  /** 歌名行下的一串型（曲式行与"只有归属"的行共用）。
+     ★ 多个 @param 必须**各占一行**——挤在一行时只有第一个能被 TS 认到，其余参数退回隐式 any（tsc 当场拦下）。
+     @param {HTMLElement} host @param {string} id @param {string} name @param {Array<{ref:any,p:any}>} ents
+     @returns {void} */
+  function appendEntries(host, id, name, ents){
+    ents.forEach(ent => appendSongPattern(host, { id, name }, ent));
+  }
+  /** 歌曲展开时，把它的节奏型跟在歌曲行**后面**（同一容器、扁平挂法）。
+     ★ v3.35.7：内容是 songEntries（引用 ∪ 归属），不再只是块引用那一份。
+     @param {HTMLElement} host @param {any} a @returns {void} */
+  function appendSongPatterns(host, a){
+    if (!songIsOpen(a.id)) return;
+    appendEntries(host, a.id, a.name, songEntries(a));
   }
   /** @param {HTMLElement} list */
   function buildArrangeGroup(list){
     const group = document.createElement("div");
     group.className = "preset-arrange-group";
     const ars = Store.arranges;
+    /* ★ v3.35.7：两类"没有对应曲式"的归属行——它们的型必须看得见、点得动：
+       ① 歌名还在、曲式没了（导入备份 / 曲式被改名或删除）；
+       ② 完全没有归属的老自定义型（v3.35.7 之前建的，含刚导入的备份）。
+       两行都只有展开、**没有 ▶**（没有曲式可播）。
+       ★ 抽成函数而不是内联在末尾：**空库分支也要摆**——否则"曲式删光了 + 手里还有自定义型"
+         这个状态里，型会一条都看不见（本轮踩到：t30 的夹具正是"有型无曲式"）。 */
+    const appendExtraSongRows = () => {
+      songNameRows().forEach(/** @param {any} e */ e => {
+        const nm = e[0], list2 = e[1];
+        group.appendChild(buildSongOnlyRow("name:" + nm, nm, list2));
+        if (songOpen.has("name:" + nm)){
+          appendEntries(group, "name:" + nm, nm,
+            list2.map(/** @param {any} c */ c => ({ ref: { type: "custom", id: c.id }, p: c })));
+        }
+      });
+      const orph = orphanCustoms();
+      if (orph.length){
+        group.appendChild(buildSongOnlyRow("orphan", "未归属", orph));
+        if (songOpen.has("orphan")){
+          appendEntries(group, "orphan", "未归属",
+            orph.map(/** @param {any} c */ c => ({ ref: { type: "custom", id: c.id }, p: c })));
+        }
+      }
+    };
     if (!ars.length){
       /* v3.31.x（审计 P3-3）：曲式库清空时把底栏范围控件的 DOM 一并清掉——此前的清理只存在于
          buildDemoSongRow（空库分支不进它），删光曲式后 #pbProgress/#pbSub 滞留一套指向已删
@@ -12952,6 +13345,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       h.className = "hint";
       h.textContent = "还没有曲式——点下方「编排曲式」从头编一首。";
       group.appendChild(h);
+      appendExtraSongRows();            // v3.35.7：空库也摆「未归属」/只有归属的行
       list.appendChild(group);
       return;
     }
@@ -12989,6 +13383,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
           if (Store.groupMove(ref, "custom", g.name)) refreshAfterPatternChange();
         });
         group.appendChild(el);
+        appendSongPatterns(group, a);      // ★ v3.35.3：展开时把这首歌的型跟在行后
       });
     });
     ars.forEach(a => {
@@ -12998,7 +13393,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
         if (Store.groupMove(ref, "custom", "")) refreshAfterPatternChange();   // 散员 = 移出
       });
       group.appendChild(el);
+      appendSongPatterns(group, a);        // ★ v3.35.3：同上
     });
+    appendExtraSongRows();
     list.appendChild(group);
   }
   /* ---- 整首连播 + 段序条（v2.5.0）----
@@ -13240,6 +13637,25 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     syncDemoRange();
     announce("整首连播：《" + a.name + "》共 " + a.sections.length + " 段");
   }
+  /** ★ v3.35.6（用户实拍）：歌曲行的 ▶ = **播放 / 暂停**两态。
+     判据就是"现在播的是不是这一首"（播放中 + 曲式模式 + 范围指向它）——是则按暂停（Controls.stop），
+     否则从头整首连播。两者都只走既有门面，没有第二套播放状态。
+     @param {any} a @returns {void} */
+  function toggleArrangePlay(a){
+    if (S.playing && S.playMode === "arrange" && S.arrangeSel.id === a.id){ Controls.stop(); return; }
+    playArrange(a);
+  }
+  /* ▶ 两态的**唯一刷新点**：列表重建 / 起播 / 停机 / 换曲都经过这里（与 syncAuditionBtns 同构）。
+     ★ 不刷新会怎样：点一下 ▶ 图标不变，用户看不出"到底播没播"——正是这次实拍要修的那类假读数。 */
+  function syncSongPlayBtns(){
+    songPlayBtns.forEach(rec => {
+      const on = !!S.playing && S.playMode === "arrange" && S.arrangeSel.id === rec.id;
+      rec.btn.textContent = on ? "■" : "▶";
+      rec.btn.title = on ? "暂停" : "整首连播";
+      rec.btn.setAttribute("aria-label", (on ? "暂停整首连播「" : "整首连播「") + rec.name + "」");
+      rec.btn.classList.toggle("aud-on", on);
+    });
+  }
   /* 范围滑块 + 整首连播按钮 + 状态说明的呈现。**单一渲染入口**：段落切换（每小节）、
      拖动、跳段、启停、列表重建都调它，不在多处各写一遍"更新哪个 thumb"——
      那种写法漏一处就是界面对不上状态。
@@ -13329,6 +13745,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
         ? (whole ? `整首连播 · 播放中 · 第 ${cur + 1}/${n} 小节` : `播放中 · 第 ${cur + 1}/${n} 小节`)
         : (whole ? `整首连播 · 已就绪 · 共 ${n} 小节` : "");
     }
+    syncSongPlayBtns();   // v3.35.6：歌曲行 ▶ 的两态与读数同一处收口
   }
   /* 从曲式模式回到"单练当前节奏型"（v2.5.0）。
      ★ 为什么必须补这一步：曲式模式一旦进入，此前**主界面没有任何出口**——
@@ -13343,6 +13760,56 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     S.arrangeSel.loop = false;       // 范围循环是曲式的语义，退回单型后不该留着它下次突然生效
     S.arrangeSel.byLyric = false;    // 同理，爬坡粒度意图也复位（审计 P1-4）
     return true;
+  }
+  /** ★ v3.35.11（用户需求）：**双击条目 = 选中并起播**这条型；正在练的就是它 ⇒ 停。
+      · 与单击的关系：单击仍是"选中"（一字未动）；双击的第 2 击由 isSecondClick 拦掉单击语义，
+        所以连点两下不会重复跑两次选中路径；
+      · 为什么走"起播"而不是"试听"：条目上已经有一颗 ▶ 专管试听（不动选中态、拍号临时借还）；
+        双击若也做试听，只是把同一件事的命中区放大，等于没加东西。双击的增量价值正是
+        "跳过底栏那颗播放键，直接开练这一条"。
+      · 判据与**选中态**同源（正在播 + 非试听 + S.sel 就是它），不新增播放状态。
+     @param {{type:string, idx?:number, id?:string}} ref @returns {void} */
+  /* ★★ v3.35.11 的**关键一处**："正在练的是不是它"必须在**第 1 击之前**拍快照，不能到 dblclick 时再看。
+     原因：双击的第 1 击本身就会把它**选中**（单击语义照跑），等 dblclick 到达时 `S.sel` 已经是它了 ——
+     于是"双击另一条"会被误判成"双击正在练的那条"、当场被停掉（实测踩到，T213b 直接红）。
+     快照 + 判据：`wasPlayingRef` 在第 1 击前记下"那时正在练谁"（曲式模式/试听都算没在练单型），
+     dblclick 只据此决定"停"还是"起播"。
+     重置：每次 detail=1 的点击都重拍，dblclick 用完即清（合成事件不带前置点击时按"没在练"处理）。 */
+  /** @type {null | {type:string, idx?:number, id?:string, rhy?:string}} */
+  let wasPlayingRef = null;
+  /** 此刻"正在练的"是哪一条（试听/曲式连播都不算单型练习）。@returns {any} */
+  function currentPlayingRef(){
+    if (!S.playing || S.preview || S.playMode === "arrange") return null;
+    if (S.sel.type === "builtin") return { type: "builtin", idx: S.sel.idx };
+    if (S.sel.type === "custom") return { type: "custom", id: S.sel.id };
+    if (S.sel.type === "basic") return { type: "basic", rhy: S.rhy };
+    return null;
+  }
+  /** @param {any} a @param {any} b @returns {boolean} */
+  function sameRef(a, b){
+    if (!a || !b || a.type !== b.type) return false;
+    if (a.type === "builtin") return a.idx === b.idx;
+    if (a.type === "custom") return a.id === b.id;
+    return a.rhy === b.rhy;
+  }
+  /** @param {{type:string, idx?:number, id?:string}} ref @returns {void} */
+  function togglePatternPlay(ref){
+    const wasThis = sameRef(wasPlayingRef, ref);
+    wasPlayingRef = null;                    // 用掉即清：下一次双击必须重新拍快照
+    if (wasThis && S.playing){ Controls.stop(); return; }
+    const same = S.playMode !== "arrange" && (ref.type === "builtin"
+      ? (S.sel.type === "builtin" && S.sel.idx === ref.idx)
+      : (S.sel.type === "custom" && S.sel.id === ref.id));
+    if (S.preview) stopAudition();          // 试听中双击 = 收掉试听再起播（与选中路径同一出口）
+    if (!same){
+      exitArrangeForPreset();               // 曲式模式下点条目 = 回单练它（既有出口，见该函数注释）
+      S.sel = ref.type === "builtin" ? { type: "builtin", idx: ref.idx } : { type: "custom", id: ref.id };
+      const p = selectedPreset();
+      if (p && p.meter !== S.sig) Controls.setSig(p.meter);
+      refreshAfterPatternChange();
+      Store.persist();
+    }
+    if (!S.playing) Controls.start();        // 已在播 ⇒ 选中的切换会按小节边界接续，不必重起
   }
   /** 一个内置型条目。v2.9.0 从 buildPresetList 内联循环里抽出——节拍区与扫弦区都要渲染
      内置型，两处内联等于两条会漂移的渲染路径（选中态判据、键盘契约各写一遍）。
@@ -13384,7 +13851,14 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
             refreshAfterPatternChange();
         });
     });
-    item.addEventListener("click", pick);
+    /* ★ v3.35.11（用户需求）：单击 = 选中（原样）；**双击 = 选中并起播 / 停**。
+       第 2 击由 isSecondClick 拦掉单击语义（连点两下不会跑两次选中路径）。 */
+    item.addEventListener("click", e => {
+      if (isSecondClick(e)) return;
+      wasPlayingRef = currentPlayingRef();   // ★ 第 1 击前拍快照（见 togglePatternPlay 注释）
+      pick();
+    });
+    item.addEventListener("dblclick", () => togglePatternPlay({ type: "builtin", idx: i }));
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     /* v2.25.0：桌面端拖拽归组（触屏走上面的 📁 按钮，CSS 媒体查询分流） */
     makeDraggable(item, { type:"builtin", idx:i }, hasStrum(p) ? "strum" : "beat");
@@ -13455,8 +13929,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function applyFold(){
     const list = $("presetList");
     const kids = Array.from(list.children);
-    /** @type {Array<"beat"|"strum"|"custom">} */
-    const ZONES = ["beat", "strum", "custom"];
+    /* ★ v3.35.3：「扫弦」区退役后只剩两区。S.fold.strum 作为历史键继续留在热键里
+       （不在 ZONES 里，谁也读不到它——旧存档回读也不炸）。 */
+    /** @type {Array<"beat"|"custom">} */
+    const ZONES = ["beat", "custom"];
     let zi = -1;                     // 当前所在分区的序号（-1：首区头之前，现状无此位置的节点）
     let grpId = /** @type {string|null} */ (null);   // 最近一个组头的 id（组成员的 data-grp 与它比对）
     let grpOpen = true;              // 最近一个组是否展开
@@ -13584,6 +14060,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     const on = !!S.fold.basic;
     if (box) box.hidden = !on;
     if (head) head.setAttribute("aria-expanded", on ? "true" : "false");
+    /* ★ v3.35.12：原先这里还给容器切 `.folded`（让下边距按"最后一行是谁"取值）。把拍数槽
+       移出文档流之后行高 = 文字高，两个状态的算法自动一致 ⇒ 那个特例连同它的 CSS 一起删了。 */
   }
 
   /* 把「当前是不是基础节奏模式」刷到控件上：选中态 / 下拉值 / 折叠。
@@ -13642,7 +14120,16 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       text: () => "",                       // 图标 pill：文案走 innerHTML（见下）与 title/aria-label
       label: k => RHY_NAME[k] + "（节奏类型，一拍之内的细分）",
       isOn: k => S.sel.type === "basic" && S.rhy === k,
-      onPick: k => pickRhy(k),
+      onPick: k => { wasPlayingRef = currentPlayingRef(); pickRhy(k); },   // ★ 第 1 击前拍快照
+      /* ★ v3.35.11（用户需求）：双击细分图标 = **用这个细分起播**；正在练的就是它 ⇒ 停。
+         ★ 判据同样用**第 1 击前的快照**（第 1 击已经把细分换成它了，事后判"是不是它"必然为真）。 */
+      onDblClick: k => {
+        const wasThis = sameRef(wasPlayingRef, { type: "basic", rhy: k });
+        wasPlayingRef = null;
+        if (wasThis && S.playing){ Controls.stop(); return; }
+        if (!(S.sel.type === "basic" && S.rhy === k)) pickRhy(k);
+        if (!S.playing) Controls.start();
+      },
     });
     /* 图标与悬浮名：buildPillRow 只写 textContent，故图标在这一轮补上（同一批 button，
        一一对应；数量由 VALID_RHY 保证）。图标是 DOM 块、`aria-hidden` 对读屏隐藏。
@@ -13685,6 +14172,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       list.parentNode.insertBefore(mig, list);
     clear(list);
     audBtns = [];                          // v3.1.0：▶ 按钮随列表重建（旧引用一律作废）
+    songPlayBtns = [];                     // v3.35.6：歌曲行的 ▶ 同上（旧引用指向已脱离文档的节点）
     /* v2.5.0：整首连播 / 范围滑块的元素引用随列表重建而失效——每次重建先清空。
        不清的话，切到「自定义」区不渲染（无曲式）后 syncDemoRange 仍认为"有得可刷"，
        会往已脱离文档的旧节点上写：界面看不出问题，但状态读数是假的（测试也读它）。
@@ -13693,17 +14181,30 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     demoSongNote = null;
     demoRangeWrapEl = null; demoRangeNoteEl = null; demoRangeFillEl = null;
     demoRangeFromEl = null; demoRangeToEl = null; demoArrId = null;
-    const beatBuiltins = /** @type {any[]} */ ([]), strumBuiltins = /** @type {any[]} */ ([]);
-    BUILTINS.forEach((p, i) => (hasStrum(p) ? strumBuiltins : beatBuiltins).push({ p, i }));
-    const beatCustoms = customs.filter(c => !hasStrum(c));
-    const strumCustoms = customs.filter(c => hasStrum(c));
+    const beatBuiltins = /** @type {any[]} */ ([]);
+    BUILTINS.forEach((p, i) => { if (!hasStrum(p)) beatBuiltins.push({ p, i }); });
+    /* 不属于任何歌曲的型一律留在「节拍」区（**含带扫弦记谱的自定义型**）——扫弦区已退役；
+       保持 customs 原序，不再按 hasStrum 重排（重排会让同一个型在编辑改谱后跳位置）。 */
+    /* ★ v3.35.7（绑歌名）：自定义型**不再散落在「节拍」区**——有归属的挂到它那首歌下面
+       （appendSongPatterns），没归属的进「未归属」一行（buildSongOnlyRow）。
+       原先这里 `customs.slice()` 把全部自定义型塞进节拍区，会让同一个型出现两次
+       （节拍区一个 + 歌行下一个）。放不进任何组的型由上面的两处兜住，不会丢。 */
+    /** @type {any[]} */
+    const looseCustoms = [];
     /* v2.22.0：区内条目流改经 renderZone（组在前、散员在后）——无组时与旧的
        两条 forEach 循环逐字节一致（该函数的注释与回归红线见其定义处） */
-    pushSection(list, `节拍 · ${beatBuiltins.length + beatCustoms.length} 个`, "beat");
-    renderZone(list, "beat", beatBuiltins, beatCustoms);
-    pushSection(list, `扫弦 · ${strumBuiltins.length + strumCustoms.length} 个`, "strum");
-    renderZone(list, "strum", strumBuiltins, strumCustoms);
-    pushSection(list, `自定义 · ${Store.arranges.length} 首`, "custom");
+    /* ★ v3.35.3（用户需求）：**「扫弦」区退役，与「自定义」合并**。
+       带扫弦记谱的型不再单独成区：示例曲那些型改在「自定义」区各自的**歌曲**下展示
+       （点歌曲行展开，见 appendSongPatterns）；不属于任何歌曲的散装型（含用户自建的
+       扫弦型）留在「节拍」区——条目上的方向箭头与弦区已经表达了扫弦属性，
+       区名不必再暗示声部。★ 内置型一条没动（曲式块仍按 idx 引用），改的只是**显示位置**。 */
+    pushSection(list, `节拍 · ${beatBuiltins.length + looseCustoms.length} 个`, "beat");
+    renderZone(list, "beat", beatBuiltins, looseCustoms);
+    /* ★ v3.35.7：本区的行不再只是曲式——还有"歌名在、曲式没了"的桶与「未归属」桶 ⇒
+       计数跟**实际摆出来的行**走（v2.10.x「读数与实际不一致」那类教训）。 */
+    const extraSongs = songNameRows().length, nOrphan = orphanCustoms().length;
+    pushSection(list, `自定义 · ${Store.arranges.length + extraSongs} 个`
+      + (nOrphan ? ` + 未归属 ${nOrphan} 个` : ""), "custom");
     buildArrangeGroup(list);
     buildDemoNoteIfNeeded(list);
     $("presetCount").textContent = `${BUILTINS.length} 内置`
@@ -13796,7 +14297,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       refreshAfterPatternChange();
       Store.persist();
     };
-    item.addEventListener("click", pick);
+    /* ★ v3.35.11：同上——单击选中 / 双击选中并起播（自定义型按 id 定位） */
+    item.addEventListener("click", e => {
+      if (isSecondClick(e)) return;
+      wasPlayingRef = currentPlayingRef();   // ★ 同上（自定义型按 id）
+      pick();
+    });
+    item.addEventListener("dblclick", () => togglePatternPlay({ type: "custom", id: c.id }));
     item.addEventListener("keydown", itemKeys(pick, {enterOnly:true}));
     /* v2.25.0：桌面端拖拽归组（触屏走上面的 📁 按钮） */
     makeDraggable(item, { type:"custom", id:c.id }, hasStrum(c) ? "strum" : "beat");
@@ -14162,7 +14669,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
 
   return { buildPresetList, syncAuditionBtns, stopAudition, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
-    syncDemoRange, applyFold, alignSigToPattern, buildBasicSection, syncBasicUI };   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一；v3.33.0：buildBasicSection 供装配区一次性构建基础节奏区（其后由 syncBasicUI 维护）
+    syncDemoRange, syncSongPlayBtns, applyFold, alignSigToPattern, buildBasicSection, syncBasicUI,
+    songPatterns };   // v3.35.7：编排页候选按歌名过滤要复用「曲式引用到哪些型」这一条口径   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一；v3.33.0：buildBasicSection 供装配区一次性构建基础节奏区（其后由 syncBasicUI 维护）
 })();
 
 /* ================= Editor · 自定义节奏型编辑器 ================= */
@@ -14181,6 +14689,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
      与音符编辑的丢弃保护不一致（用户以为已改）。 */
   $("presetNameInput").addEventListener("input", () => { dirty = true; });
   $("patLabelInput").addEventListener("input", () => { dirty = true; });
+  /* ★ v3.35.7：歌名也是保存的必填项 ⇒ 改动要能即时反映到保存按钮的可用性 */
+  $("songNameInput").addEventListener("input", () => { dirty = true; editorRender(); });
   /* 拍数下拉（v3.33.0）：选项来自 VALID_METER（导入校验用的同一份白名单——
      "选得出来"与"存得进去"必须同一份，否则迟早漂移）。工作方式：
        · 只改**容器**（每小节须占满几拍），内容由用户接着逐格摆；
@@ -14223,7 +14733,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   function openWith(src){
     if (S.playing) Controls.stop();
     srcName = src.name;
-    draft = { name: src.name + "-副本", meter: src.meter, label: src.label || "",
+    draft = { name: src.name + "-副本", meter: src.meter, label: src.label || "", song: src.song || "",
       accents: (src.accents || defaultAccents(src.meter)).slice(),
       bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
     edSel = null; editBar = 0;
@@ -14231,6 +14741,8 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     edRowCache.clear();                  // v3.31.x（审计 P2-3）：换草稿 = 换内容，旧行缓存全部作废
     $("presetNameInput").value = draft.name;
     $("patLabelInput").value = draft.label;
+    /* ★ v3.35.7：歌名预填——从某首歌的型进编辑器时带着它；从内置型/空白进则空着（必填）。 */
+    $("songNameInput").value = draft.song || "";
     /* v3.33.0：原 `$("editorMeter").textContent = draft.meter` 一行移进 editorRender()
        （拍数可改了，规则文案必须随渲染同步，不能只在打开时写一次） */
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
@@ -14432,10 +14944,32 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       frag.appendChild(row);
     }
     wrap.appendChild(frag);               // 一次插入（DocumentFragment 语义：子节点整体搬家）
-    $("editorStatus").textContent = allValid ? "校验通过 · 可以保存" : "存在时值不完整的小节";
+    /* ★ v3.35.9（用户拍板）：状态**拆两处**——各自指向能改它的地方。
+       ① 卡片头那行只报**整份草稿**的问题（「存在时值不完整的小节」），它就贴在音符网格上方，
+          说的正是下面那片网格；
+       ② 「缺归属」是**某一个字段**的问题 ⇒ 改在字段旁：输入框标红（+ aria-invalid）并在它下面
+          把那句提示切成"还差一步…"。原先两者挤在卡片头一行，离保存键与归属框**都远**，
+          用户看到"点不动"却不知道去哪改（用户实拍）。 */
+    const songOk = !!String($("songNameInput").value || "").trim();
+    const canSave = allValid && songOk;
+    $("editorStatus").textContent = allValid ? "校验通过" : "存在时值不完整的小节";
     $("editorStatusWrap").className = "status " + (allValid ? "ok" : "bad");
-    $("savePresetBtn").disabled = !allValid;
-    $("savePresetBtn").className = "pill" + (allValid ? " active" : "");
+    const songEl = /** @type {HTMLInputElement} */ ($("songNameInput"));
+    songEl.classList.toggle("bad", !songOk);
+    if (songOk) songEl.removeAttribute("aria-invalid"); else songEl.setAttribute("aria-invalid", "true");
+    const songHint = $("songHint");
+    songHint.className = songOk ? "hint" : "hint bad-hint";
+    songHint.textContent = songOk
+      ? "没有同名曲式 → 自动建一条同名曲式，去「编排曲式」继续排段落"
+      : "还差一步：填个归属名字才能保存（它同时是「自定义」区里那一行）";
+    /* 保存键在顶栏、名字框在卡片底部：给按钮挂上"为什么点不动"的说明，
+       键盘与读屏用户 Tab 到它时听得到（title 只是给鼠标用户的补充） */
+    const saveBtn = $("savePresetBtn");
+    saveBtn.disabled = !canSave;
+    saveBtn.className = "pill" + (canSave ? " active" : "");
+    if (canSave) saveBtn.removeAttribute("title");
+    else saveBtn.setAttribute("title", !allValid ? "还有小节没填满" : "还没填「归属」");
+    saveBtn.setAttribute("aria-describedby", canSave ? "" : "songHint");
     $("undoBtn").disabled = !undoStack.length;
     /* 增删小节的可用性（v2.6.1）：下限 1（"0 小节的型"没有任何合法解释：渲染/发声/段长全要除以它）、
        上限 MAX_PAT_BARS。**禁用而不是点了才报错**——与方向/弦区行的口径一致 */
@@ -14683,9 +15217,19 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const name = ($("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1))).slice(0, 40);
     /* v2.72.0（1.3）：标注（可选）——留空不写字段（与老存档对象形状一致，零迁移） */
     const label = $("patLabelInput").value.trim().slice(0, 40);
+    /* ★ v3.35.7（用户需求）：歌名是**必填归属**——保存按钮在它为空时本就点不动，这里再兜一道。 */
+    const song = String($("songNameInput").value || "").trim().slice(0, 40);
+    if (!song) return;
     const id = "c" + Date.now();
-    customs.push({ id, name, meter: d.meter, accents: (d.accents || []).slice(),
+    customs.push({ id, name, song, meter: d.meter, accents: (d.accents || []).slice(),
       bars: d.bars.map(bar => bar.map(s => ({...s}))), ...(label ? {label} : {}) });
+    /* 没有同名曲式 ⇒ 顺手建一条（1 段 1 块 = 刚保存的这个型）：用户去「编排曲式」就有起点，
+       而不是一条"有问题、播不了"的空曲式。已有同名曲式则**不动它**——只把型挂到它名下。 */
+    if (!Store.arranges.some(x => x && x.name === song)){
+      Store.upsertArrange({ name: song,
+        sections: [{ name: "第一段", blocks: [{ ref: { type: "custom", id }, repeats: 1 }] }] });
+      announce("已新建曲式《" + song + "》——去「编排曲式」继续排段落");
+    }
     S.sel = {type:"custom", id};
     dirty = false;
     if (S.preview) stopAudition();
@@ -17490,23 +18034,39 @@ const Arrange = (() => {
       const zoneOf = (/** @type {any} */ p) => hasStrum(p) ? "strum" : "beat";
       /** @type {{ key: string, name: string, pills: HTMLElement[] }[]} */
       const zones = [
+        /* ★ v3.35.7（用户需求）：**本歌的型置顶**——编排页候选按歌名过滤，
+           这首歌用到的/归属它的型排最前，其余仍按节拍/扫弦/自定义分区跟在后面。 */
+        { key: "song", name: "本归属 · " + (a.name || ""), pills: [] },
         { key: "beat", name: "节拍", pills: [] },
         { key: "strum", name: "扫弦", pills: [] },
         { key: "custom", name: "自定义", pills: [] },
       ];
+      const Z_SONG = 0, Z_BEAT = 1, Z_STRUM = 2, Z_CUSTOM = 3;
+      /* 本歌的型 = 归属它的自定义型 ∪ 这条曲式引用到的型（去重后进置顶区；
+         其余分区不再重复列出它们——同一颗胶囊出现两次只会让人犹豫点哪个） */
+      const inSong = new Set();
+      Store.customs.forEach(/** @param {any} c */ c => {
+        if (c && c.song && c.song === a.name) inSong.add("c" + c.id);
+      });
+      Presets.songPatterns(a).forEach(/** @param {any} ent */ ent => inSong.add(refKey(ent.ref)));
+      /** @param {any} p @param {any} ref @returns {void} */
+      const songPill = (p, ref) => { zones[Z_SONG].pills.push(pickPill(p ? p.name : "?", ref, false, p)); };
       if (curRef){
         const cp = refKey(curRef).charAt(0) === "b" ? BUILTINS[curRef.idx] : Store.customs.find((/** @type {any} */ c) => c && c.id === curRef.id);
-        zones[zoneOf(cp) === "strum" ? 1 : 0].pills.push(pickPill(cp ? cp.name : "?", curRef, true, cp));
+        /* 正在用的这一颗也进「本歌」区（它本来就在这首歌里）——置顶 + ✓ 标记 */
+        zones[Z_SONG].pills.push(pickPill(cp ? cp.name : "?", curRef, true, cp));
       }
       BUILTINS.forEach((p, idx) => {
         const ref = { type: "builtin", idx };
         if (curRef && refKey(curRef) === refKey(ref)) return;   // 当前型已置顶，原位不再重复
-        zones[zoneOf(p) === "strum" ? 1 : 0].pills.push(pickPill(p.name, ref, false, p));
+        if (inSong.has(refKey(ref))){ songPill(p, ref); return; }   // ★ 本歌用到的内置型 → 置顶
+        zones[zoneOf(p) === "strum" ? Z_STRUM : Z_BEAT].pills.push(pickPill(p.name, ref, false, p));
       });
       Store.customs.forEach(c => {
         const ref = { type: "custom", id: c.id };
         if (curRef && refKey(curRef) === refKey(ref)) return;
-        zones[2].pills.push(pickPill(c.name, ref, false, c));
+        if (inSong.has(refKey(ref))){ songPill(c, ref); return; }   // ★ 归属本歌的自定义型 → 置顶
+        zones[Z_CUSTOM].pills.push(pickPill(c.name, ref, false, c));
       });
       zones.forEach(z => {
         if (!z.pills.length) return;
@@ -17572,14 +18132,9 @@ const Arrange = (() => {
   function mkOutlineTree(a){
     const box = document.createElement("div");
     box.className = "arg-ol-secs";
-    /* 表头：首行报本首的段数与小节数 —— 曲式行已经有同名读数，这里不再重复一遍，
-       只留一句"共多少段"当树的分隔说明，避免两处数字打架时不知道信哪个。 */
-    const head = document.createElement("div");
-    head.className = "arg-outline-h";
-    const cnt = document.createElement("span");
-    cnt.textContent = a.sections.length + " 段 · " + songBars(a) + " 小节";
-    head.appendChild(cnt);
-    box.appendChild(head);
+    /* ★ v3.35.2：原先这里有一行「N 段 · M 小节」读数。它的注释本意是"曲式行已经有同名读数，
+       这里不再重复"，实现的却正是那串重复的字符串——用户实拍图里这两行紧挨着出现两遍；
+       段树本该紧跟曲式行，被这一行又推下去一截。整块删除（读数在正上方的曲式行里）。 */
 
     /* ★ v3.35.1：逐段高亮的两个前置条件（缺一都会产生"莫名高亮"）：
        ① 范围必须**属于本首**（arrangeSel 带 id；否则是别的曲式的残留，小节号指别处）；
@@ -19415,7 +19970,16 @@ $("presetSearch").addEventListener("input", (/** @type {Event} */ e) => {
     if (k.className === "preset-section" || k.className === "preset-group") return;
     if (k.classList && k.classList.contains("preset-arrange-group")){
       let any = false;
+      /* ★ v3.35.7：自定义型都住在歌曲行下面（展开才渲染）⇒ 型名命中时**把它的歌曲行一起留下**，
+         否则搜"我的前奏型"屏幕上一片空白、用户以为型没了。行的展开仍由用户点（不在搜索里动手）。 */
+      /** @type {any} */ let owner = null;
       Array.from(k.children).forEach(c => {
+        if (c.classList && c.classList.contains("in-song")){
+          const h = nameOf(c).indexOf(q) >= 0;
+          hit.set(c, h);
+          if (h){ any = true; if (owner) hit.set(owner, true); }
+          return;
+        }
         if (c.className === "preset-group"){
           let gAny = false;
           Array.from(c.children ? c.children : []).forEach(m => {
@@ -19427,6 +19991,7 @@ $("presetSearch").addEventListener("input", (/** @type {Event} */ e) => {
         }
         const h = nameOf(c).indexOf(q) >= 0;
         hit.set(c, h); if (h) any = true;
+        owner = c;                      // 记住最近一行"宿主"（歌曲行 / 只有归属的行）
       });
       wrapperHas.set(k, any);
       return;

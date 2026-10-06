@@ -49,11 +49,15 @@ function startWith(beat, name, bars, opts){
 /* ================= 场景 T76a：dir-only 谱的「扫弦」滑条真的管用 ================= */
 section("T76a 双声部打通 · 纯方向谱（民谣扫弦形状）归扫弦声部");
 {
-  /* 默认开局就是用户实拍的那条路径：默认型 = 民谣扫弦（dir-only）+ 电子音色 */
+  /* ★ v3.35.5：默认型从「民谣扫弦」（已删除）变成四分基础（节拍型）——本场景要的是
+     dir-only 纯方向谱，改用 t68 同形对照谱承载（每拍一记全扫实扫、无 zone）。 */
   const { beat } = loadApp();
-  eq(beat.Store.S.sel.type, "builtin", "前提：默认选中的是内置型");
-  eq(beat.curPattern().name, "民谣扫弦 · 下-下上-上下上",
-    "前提：默认型 = 民谣扫弦（dir-only，与实拍同谱；v2.9.0 起不再有「扫弦轨」这回事）");
+  beat.Store.importPresets(JSON.stringify({ presets: [{ name: "方向谱", meter: 4, bars: mkDirNoZone() }] }));
+  beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+  beat.Presets.refreshAfterPatternChange();
+  eq(beat.Store.S.sel.type, "custom", "前提：选中的是 dir-only 自定义载体");
+  eq(beat.curPattern().name, "方向谱",
+    "前提：载体 = 纯方向谱（dir-only，与实拍同谱；v2.9.0 起不再有「扫弦轨」这回事）");
   beat.Store.S.vol = 0;                               // 「节拍」拉到 0
   beat.Controls.start();
   const ac = FakeAudioContext.last;

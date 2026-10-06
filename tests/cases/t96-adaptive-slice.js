@@ -58,7 +58,7 @@ section("T96b 同一十六分型 · 600px 整小节 vs 300px 半小节（格数 
 {
   /* 宽屏：整小节（K=1）——与分片之前逐位相同 */
   const wide = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
-  pickBuiltin(wide, 5);                                  // 内置 5 = Funk 十六分（16 格 × 4 小节）
+  pickBuiltin(wide, 4);                                  // 内置 4 = Funk 十六分（16 格 × 4 小节；v3.35.5 下标 −1）
   {
     const rs = rowsOf(wide.els);
     eq(wide.beat.Viz.internals().vizRowBeats, 4, "600px：每行 4 拍（整小节）");
@@ -70,7 +70,7 @@ section("T96b 同一十六分型 · 600px 整小节 vs 300px 半小节（格数 
   }
   /* 窄屏：半小节（K=2）——同一份数据，只因为宽度就换了粒度 */
   const narrow = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
-  pickBuiltin(narrow, 5);
+  pickBuiltin(narrow, 4);
   {
     const rs = rowsOf(narrow.els);
     eq(narrow.beat.Viz.internals().vizRowBeats, 2, "★ 300px：每行 2 拍（半小节）");
@@ -139,7 +139,7 @@ section("T96d 帧路径 · 播过第 2 拍翻到第 2 行；状态栏仍报「�
 {
   const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
   const { beat, els } = app;
-  pickBuiltin(app, 5);                                   // Funk 十六分
+  pickBuiltin(app, 4);                                   // Funk 十六分（v3.35.5 下标 −1）
   beat.Controls.setBpm(120);                             // 1 拍 = 0.5s → 第 2 片从 0.5s 起
   beat.Controls.start();
   const ac = FakeAudioContext.last;
@@ -204,7 +204,7 @@ section("T96f 贴满几何 · 格子/跑道零留白；交界统一「切开」�
 {
   const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
   const seamsOf = r => r.children.filter(el => /(^| )seams( |$)/.test(el.className));
-  pickBuiltin(app, 1);                                   // 内置 1 = 四分基础（4 颗四分音，无休止；BUILTINS[0] 是民谣扫弦）
+  pickBuiltin(app, 0);                                   // 内置 0 = 四分基础（4 颗四分音，无休止；v3.35.5 新表）
   {
     const rs = rowsOf(app.els);
     const cs = cellsOf(rs[0]);
@@ -224,7 +224,7 @@ section("T96f 贴满几何 · 格子/跑道零留白；交界统一「切开」�
     eq(zs[0].style.left + " / " + zs[0].style.width, "0% / 25%", "★ 跑道同样贴满（与格子同口径）");
     eq(zs[1].style.left, "25%", "跑道第 2 段左缘 25%（无 +2px）");
   }
-  pickBuiltin(app, 2);                                   // 内置 2 = 八分摇滚（8 颗八分音，无休止）
+  pickBuiltin(app, 1);                                   // 内置 1 = 八分摇滚（8 颗八分音，无休止；v3.35.5 下标 −1）
   {
     const row = rowsOf(app.els)[0];
     const cs = cellsOf(row);
@@ -249,7 +249,7 @@ section("T96f 贴满几何 · 格子/跑道零留白；交界统一「切开」�
     eq(cs[1].style.width, "12.5%", "八分格宽 = 12.5%（不再 −4px）");
   }
   /* 四分型对照：首/末格保行端圆角，中间格两侧全平方角（拍边界凹槽退役） */
-  pickBuiltin(app, 1);
+  pickBuiltin(app, 0);
   {
     const cs = cellsOf(rowsOf(app.els)[0]);
     const sqls4 = cs.map(c => /(^| )sq-l( |$)/.test(cls(c)) ? "1" : "0").join("");

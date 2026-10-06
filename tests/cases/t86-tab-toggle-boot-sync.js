@@ -45,6 +45,10 @@ const isOff = el => el.className === "toggle-pill off";
 section("T86a 六线底纹 · 默认打开时 pill 为开且底纹真的可见");
 {
   const { beat, els } = loadApp();
+  /* ★ v3.35.5：出厂默认型从「民谣扫弦」（已删除）变成四分基础（节拍型）——本场景要的是
+     "有底纹"的扫弦谱，显式切到内置示例型（dir-only、带记谱）承载同一契约。 */
+  beat.Store.S.sel = { type: "builtin", idx: 11 };     // 十六分满扫（《在他乡》前奏）
+  beat.Presets.applyPatternChange();
   eq(beat.Store.S.showTab, true, "S.showTab 默认 true");
   ok(isOn(els["tabToggle"]),
      "★ 默认 pill 视觉为开（className 恰好 toggle-pill on——applyToggle 整串覆写，不叠类）");
@@ -53,7 +57,7 @@ section("T86a 六线底纹 · 默认打开时 pill 为开且底纹真的可见")
 
   const tabs = tabsOf(els);
   ok(tabs.length > 0 && tabs.every(Boolean),
-     "★ 默认型（民谣扫弦）带扫弦记谱 ⇒ 每行都建了 .tab（下面看得到线是「真有东西」，不是空跑）");
+     "★ 当前扫弦型（示例 P1）带记谱 ⇒ 每行都建了 .tab（下面看得到线是「真有东西」，不是空跑）");
   /* v2.26.1：弦线改由 CSS 渐变画（DOM 瘦身），这里仍要证明"看得见"不是空跑——
      只是客体从"6 个 <i>"换成"容器存在 + 层没被 no-tab 藏 + 渐变规则在"。 */
   ok(tabs.every(t => t.children.length === 0),
@@ -61,13 +65,15 @@ section("T86a 六线底纹 · 默认打开时 pill 为开且底纹真的可见")
   ok(/\.tab\{[^}]*repeating-linear-gradient/.test(html),
      "★ .tab 的规则里确有渐变（线由它画出来，「看得见」有客体）");
   ok(!els["tabToggle"].hidden,
-     "★ v2.10.6 默认型（民谣扫弦）带记谱 ⇒ 开关本体可见（扫弦型下它才该出现）");
+     "★ v2.10.6 扫弦型带记谱 ⇒ 开关本体可见（扫弦型下它才该出现）");
 }
 
 /* ================= 场景 T86b：记住"关"时，开关必须跟着关，而不是显示开却藏底纹 ================= */
 section("T86b 六线底纹 · 上次关掉后重载：pill 与底纹一起关（本缺陷的核心回归）");
 {
   const app = loadApp(seedState({ showTab: false }));
+  app.beat.Store.S.sel = { type: "builtin", idx: 11 };   // v3.35.5：默认型已非扫弦型，显式切到示例 P1
+  app.beat.Presets.applyPatternChange();
   eq(app.beat.Store.S.showTab, false, "种入 showTab:false ⇒ S.showTab=false");
   ok(isOff(app.els["tabToggle"]),
      "★ pill 视觉为关（修复前这里恒为 on —— 实拍反馈「开关默认已开」的根因）");
@@ -85,6 +91,8 @@ section("T86b 六线底纹 · 上次关掉后重载：pill 与底纹一起关（
 section("T86c 六线底纹 · 点击即时生效 / 偏好落热键 / 重载后仍收敛");
 {
   const { beat, els, storage } = loadApp();
+  beat.Store.S.sel = { type: "builtin", idx: 11 };       // v3.35.5：默认型已非扫弦型，显式切到示例 P1
+  beat.Presets.applyPatternChange();
   els["tabToggle"].fire("click");
   eq(beat.Store.S.showTab, false, "点击 ⇒ S.showTab 翻转为 false");
   ok(isOff(els["tabToggle"]) && els["tabToggle"].getAttribute("aria-checked") === "false",
@@ -95,7 +103,9 @@ section("T86c 六线底纹 · 点击即时生效 / 偏好落热键 / 重载后�
   eq(JSON.parse(storage.get("beatsight.state")).showTab, false,
      "关掉后热键载荷 showTab=false（显示偏好跟热键走）");
 
-  const r = loadApp({ "beatsight.state": storage.get("beatsight.state") });
+  const r = loadApp({ "beatsight.state": storage.get("beatsight.state"), "beatsight.bnmig35": "1" });
+  r.beat.Store.S.sel = { type: "builtin", idx: 11 };     // 保持当前型是扫弦型（本段要验底纹往返）
+  r.beat.Presets.applyPatternChange();
   eq(r.beat.Store.S.showTab, false, "重载后 S.showTab 仍 false（偏好没丢）");
   ok(isOff(r.els["tabToggle"]), "★ 重载后 pill 仍为关（启动收敛——修复前这里会显示开，全是谎话）");
   ok(hasNoTab(r.els), "重载后 .viz 仍带 no-tab（视觉与偏好一致）");
@@ -112,7 +122,7 @@ section("T86c 六线底纹 · 点击即时生效 / 偏好落热键 / 重载后�
 section("T86d 六线底纹 · 偏好开但不带扫弦记谱 ⇒ 仍不铺，且开关本体隐藏（v2.10.6）");
 {
   const { beat, els } = loadApp();
-  beat.Store.S.sel = { type: "builtin", idx: 1 };      // 四分基础（BUILTINS 原序 [1]；[0] 是民谣扫弦）
+  beat.Store.S.sel = { type: "builtin", idx: 0 };      // 四分基础（v3.35.5 新表 idx0；出厂默认即它）
   beat.Presets.applyPatternChange();                   // 正规换型入口（内含 buildViz）
   ok(isOn(els["tabToggle"]), "开关（偏好）仍是开——它不代表当前型有没有底纹");
   ok(!tabsOf(els).some(Boolean), "该型不带扫弦记谱 ⇒ 不创建任何 .tab");
@@ -142,15 +152,19 @@ section("T86e 同族开关 · keepAwakeToggle 也在启动时收敛（L812 写�
    显隐与 no-tab 同源（都在 buildViz 末尾的 syncTabLayer 收敛），不会出现半收敛态。 */
 section("T86f v2.10.6 · 开关本体跟随型显隐（节拍型藏、扫弦型现身，双向可逆）");
 {
-  const { beat, els } = loadApp();                     // 默认型 = 民谣扫弦（BUILTINS 原序 [0]，默认选中）
+  const { beat, els } = loadApp();
+  /* ★ v3.35.5：出厂默认型已改成四分基础（节拍型）⇒ 先显式切到内置示例型（dir-only 扫弦谱）作起点，
+     再走"扫弦型 ↔ 节拍型"的双向切换，契约一字未改。 */
+  beat.Store.S.sel = { type: "builtin", idx: 11 };     // 十六分满扫（《在他乡》前奏）
+  beat.Presets.applyPatternChange();
   ok(!els["tabToggle"].hidden, "前提：扫弦型下开关可见");
 
-  beat.Store.S.sel = { type: "builtin", idx: 1 };      // 四分基础（节拍型，用户实报）
+  beat.Store.S.sel = { type: "builtin", idx: 0 };      // 四分基础（节拍型，用户实报）
   beat.Presets.applyPatternChange();
   ok(els["tabToggle"].hidden, "★ 切到节拍型 ⇒ 开关隐藏（syncTabLayer 收尾，与 no-tab 同一调用点）");
   ok(hasNoTab(els), "同一时刻底纹也藏（两个显隐同源，不会各走各的）");
 
-  beat.Store.S.sel = { type: "builtin", idx: 0 };      // 民谣扫弦
+  beat.Store.S.sel = { type: "builtin", idx: 11 };     // 切回扫弦型
   beat.Presets.applyPatternChange();
   ok(!els["tabToggle"].hidden, "★ 切回扫弦型 ⇒ 开关现身（双向可逆）");
   ok(!hasNoTab(els), "底纹同步恢复可见（偏好 S.showTab 未被动过）");

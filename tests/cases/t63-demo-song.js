@@ -34,7 +34,7 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   /* ★ v2.4.1：init 期就自动带出——不点任何按钮，示例已经在库里
      ★ v2.20.0：示例 5 型并入内置库（BUILTINS 12→17），自定义库（customs）保持空——
        "自动带出"不再往用户的自定义库里塞 5 条可删数据 */
-  eq(beat.BUILTINS.length, 21, "★ 内置库 12 + 《在他乡》5 + 《我们能不能不分手》4 = 21（示例型全部并入 BUILTINS）");
+  eq(beat.BUILTINS.length, 20, "★ 内置库 11 + 《在他乡》5 + 《我们能不能不分手》4 = 20（示例型全部并入 BUILTINS；v3.35.5 删民谣扫弦）");
   eq(beat.Store.customs.length, 0, "★ 自定义库保持空——示例型不再是可删的自定义条目");
   ok(!!beat.Store.findArrange(beat.DEMO_ID), "★ 曲式也自动落库");
   eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 9, "★ 歌词行一并带出（9 行 = 9 段；合并后行数即段数）");
@@ -42,7 +42,7 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   const r = bringDemo(beat);
   ok(r && r.ok === true, "★ 再次确保时幂等通过（ok=true，曲式/歌词原样在库）");
   ok(beat.Store.demoSeeded(), "★ 带出后闩已落（下次启动不会再来一遍）");
-  eq(beat.BUILTINS.length, 21, "示例 9 型在内置库（《在他乡》5 + 《我们能不能不分手》4）");
+  eq(beat.BUILTINS.length, 20, "示例 9 型在内置库（《在他乡》5 + 《我们能不能不分手》4），共 11 + 9 = 20");
   const a = beat.Store.findArrange(beat.DEMO_ID);
   ok(!!a, "曲式落库（固定 id）");
   eq(a.sections.length, 9, "全曲 9 段（按节奏型合并后的形态：引子/副歌×3/主歌一×2/主歌二×2/桥段）");
@@ -60,23 +60,27 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   const deepText = el => (el.textContent || "") +
     (el.children || []).map(deepText).join(" ");
   const kids = els["presetList"].children;
-  /* ★ 三区分类判据是**内容**（hasStrum），不是运行期"当前轨"——不再先切轨再断言列表 */
-  const beatN = beat.BUILTINS.filter(p => !beat.hasStrum(p)).length
-    + beat.Store.customs.filter(c => !beat.hasStrum(c)).length;
-  const strumN = beat.BUILTINS.filter(p => beat.hasStrum(p)).length
-    + beat.Store.customs.filter(c => beat.hasStrum(c)).length;
+  /* ★ v3.35.3（用户需求）：「扫弦」区**退役**、与「自定义」合并 ⇒ 侧栏只剩两区。
+     11 个不带扫弦记谱的内置型留在「节拍」；带扫弦记谱的型不再单独成区——示例曲那些型
+     挂在「自定义」区各自的**歌曲行**下（展开时渲染），散装的自定义型（含自建扫弦型）
+     落在「节拍」区。分类判据仍是**内容**（hasStrum），只是不再体现为"多一栏"。 */
+  const beatN = beat.BUILTINS.filter(p => !beat.hasStrum(p)).length + beat.Store.customs.length;
   eq(JSON.stringify(kids.filter(x => x.className === "preset-section").map(x => x.textContent)),
-     JSON.stringify([`节拍 · ${beatN} 个`, `扫弦 · ${strumN} 个`, `自定义 · ${beat.Store.arranges.length} 首`]),
-     "★ 侧栏三区标题常显（节拍 / 扫弦 / 自定义），第一区在列表头部");
-  /* 示例 5 型并入扫弦区：扫弦区至少含内置「民谣扫弦」+ 示例 5 型 */
+     JSON.stringify([`节拍 · ${beatN} 个`, `自定义 · ${beat.Store.arranges.length} 个`]),
+     "★ 侧栏两区标题常显（节拍 / 自定义），「扫弦」区已退役");
+  /* 示例 5 型改挂歌曲行下：整棵子树里仍取得到（能看到才切得动） */
   ok(deepText(els["presetList"]).includes("十六分满扫（《在他乡》前奏）"),
-     "★ 示例型「十六分满扫（《在他乡》前奏）」在扫弦区可见（能看到才切得动）");
+     "★ 示例型「十六分满扫（《在他乡》前奏）」在歌曲行下可见（能看到才切得动）");
   ok(!deepText(els["presetList"]).includes("在他乡 · 节奏型"),
      "★ 示例型已改通用名（十六分满扫（《在他乡》前奏） 等），不再带「在他乡 · 节奏型N」旧前缀");
   const demoBox = kids.find(x => x.className === "preset-arrange-group");
   ok(!!demoBox, "★ 「自定义」区里的曲式容器已渲染");
-  eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 2,
-     "自定义区里 1 条曲式条目（示例曲《在他乡》——v2.9.0 起 5 个型不再单独成组）");
+  /* ★ v3.35.3：曲式区里现在有**歌曲行**与它们展开出来的**型**两种 preset-item，按类名分开数 */
+  const songRows = demoBox.children.filter(x =>
+    /(^| )preset-item( |$)/.test(x.className) && /(^| )song( |$)/.test(x.className));
+  eq(songRows.length, 2, "★ 自定义区里 2 条歌曲行（两首示例曲）");
+  const inSong = demoBox.children.filter(x => /(^| )in-song( |$)/.test(x.className));
+  eq(inSong.length, 5, "★ 默认展开的那首（《在他乡》）下挂着它的 5 个型");
   /* v2.5.0：整首连播入口；v2.10.4：段序条那 10 颗段号胶囊换成了「播放范围」双滑块。
      两者都挂在「自定义」区容器下（扁平挂法，见 buildDemoSongRow 的注释），
      按钮在「整首连播」那一行内部，两个滑块在 .demo-range 里 */
@@ -179,7 +183,7 @@ section("T63c 示例载入 · 重复调不重复建 / 预设残留可复用");
   eq(r2.ok, true, "★ 第二次调幂等通过（不是静默重复建）");
   eq(r3.ok, true, "第三次同理");
   eq(beat.Store.customs.length, 0, "★ 自定义库保持空（示例型已内置，没有可翻倍的东西）");
-  eq(beat.BUILTINS.length, 21, "内置库仍是 21（内置型不可能被翻倍）");
+  eq(beat.BUILTINS.length, 20, "内置库仍是 20（内置型不可能被翻倍）");
   eq(beat.Store.arranges.length, 2, "曲式没翻倍（两首示例曲各一条）");
   eq(beat.Store.lyrics.length, 17, "歌词行没翻倍（9 + 8：第二首有两段无词）");
   /* 用户删了曲式：再带出时按固定 id 重建，引用直接落内置下标 */

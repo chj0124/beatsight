@@ -32,7 +32,7 @@ function startArrange(raw, sel){
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
       vizRows: 4,   /* v3.1.0：出厂默认 2 → 本文件的窗口断言按 4 行档写，显式钉住 */
       arrangeSel: Object.assign({ id: "t1", from: 0, to: 0, loop: false }, sel) }),
-    "beatsight.arrmig73": "1" });   /* v2.73.0：BL 已按新语义 ×4，迁移戳置位防二次作用 */
+    "beatsight.bnmig35": "1", "beatsight.arrmig73": "1" });   /* v3.35.5：BL 下标按新表写，两枚迁移戳都置位防二次作用 */
   app.beat.Controls.start();
   return { app, beat: app.beat, els: app.els, ac: FakeAudioContext.last };
 }
@@ -40,7 +40,7 @@ function startArrange(raw, sel){
 /* ================= 场景 T53：跨段切换 ================= */
 section("T53 曲式播放 · 跨段换型（无缝 / schedBar 归零 / 不跳针）");
 {
-  /* 两段各 4 小节：A = 民谣扫弦（6 颗/小节），B = 八分摇滚（8 颗/小节） */
+  /* 两段各 4 小节：A = 四分基础（新 idx0），B = 附点布鲁斯（新 idx2） */
   const two = A("两段", [
     { name: "A", blocks: [BL(0, 1)] },
     { name: "B", blocks: [BL(2, 1)] },
@@ -78,16 +78,17 @@ section("T53b 曲式播放 · 落点预测走节目单（新块的第 1 拍是�
     "beatsight.state": JSON.stringify({ vizRows: 4 }),
     "beatsight.customs": JSON.stringify({ v: 1, customs: [Object.assign({ id: "cx" }, OFFBEAT)] }),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "t2", name: "跨块",
-      sections: [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 4 }, { ref: { type: "custom", id: "cx" }, repeats: 1 }] }] }] }),
-    /* v2.73.0：四分基础 1 小节化 → 块 1 用 repeats 4 凑 4 小节；迁移戳置位防二次 ×4 */
-    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
+      sections: [{ name: "s", blocks: [{ ref: { type: "builtin", idx: 0 }, repeats: 4 }, { ref: { type: "custom", id: "cx" }, repeats: 1 }] }] }] }),
+    /* v2.73.0：四分基础 1 小节化 → 块 1 用 repeats 4 凑 4 小节；两枚迁移戳置位防二次作用
+       （v3.35.5：夹具按下标新表写，四分基础 = idx0） */
+    "beatsight.bnmig35": "1", "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
       arrangeSel: { id: "t2", from: 0, to: 0, loop: false } }) });
   const b2 = app2.beat;
   eq(b2.Store.customs.length, 1, "自定义预设已就位（引用不是死的）");
   eq(JSON.stringify(b2.arrangeProblems(b2.Store.arranges[0])), "[]", "这条曲式没有问题");
-  eq(JSON.stringify(b2.Store.arranges[0].sections[0].blocks[0].ref), JSON.stringify({ type: "builtin", idx: 1 }),
-     "第 1 块是四分基础（与第 2 块的音符位置集合只在 0 处重合）");
+  eq(JSON.stringify(b2.Store.arranges[0].sections[0].blocks[0].ref), JSON.stringify({ type: "builtin", idx: 0 }),
+     "第 1 块是四分基础（新 idx0；与第 2 块的音符位置集合只在 0 处重合）");
   b2.Controls.start();
   /* ★ FakeAudioContext.last 是跨实例保留的静态值，**必须在 start() 之后取**——
      在 start 之前取会拿到上一个用例遗留的旧上下文，于是驱动的是别人的时钟、
@@ -204,7 +205,7 @@ section("T53g 曲式播放 · 中间夹一个全休止的块（预测与待命�
       ] }] }] }),
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
       arrangeSel: { id: "t3", from: 0, to: 0, loop: false } }),
-    "beatsight.arrmig73": "1" });   /* v2.73.0：迁移戳置位——本组的块遍数已按新语义手写 */
+    "beatsight.bnmig35": "1", "beatsight.arrmig73": "1" });   /* v3.35.5：两枚迁移戳置位——块遍数与下标均按新语义手写 */
   const b = app.beat;
   b.Controls.start();
   const ac = FakeAudioContext.last;                        // ★ 必须在 start() 之后取
@@ -259,14 +260,16 @@ section("T53h 曲式播放 · viz 网格 = 曲式的型，不是选中预设（v
      根因：buildViz 用了 curPattern() 而非 activePattern()。用「选中预设 ≠ 曲式首块的型」
      的场景钉死它：默认选中民谣扫弦（6 格/行），曲式首块是四分基础（4 格/行）——
      渲染错了立刻能数出来 */
-  const one = A("一段", [{ name: "A", blocks: [BL(1, 1)] }]);
+  const one = A("一段", [{ name: "A", blocks: [BL(0, 1)] }]);   // 首块 = 四分基础（新 idx0，4 格）
   const { beat, els, ac } = startArrange(one, { from: 0, to: 0 });
   const countCells = row => row.children.filter(c => /(^| )cell( |$)/.test(c.className)).length;
-  eq(beat.curPattern().name, beat.BUILTINS[0].name, "前提：当前选中民谣扫弦（与曲式的型不同）");
-  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
-     "★ 网格 = 曲式首块的型（四分基础 4 格），不是选中预设（6 格）");
+  /* 选中预设刻意 ≠ 曲式的型：用内置示例型（新 idx11，16 格）钉死"渲染走 activePattern 而非 curPattern" */
+  beat.Store.S.sel = { type: "builtin", idx: 11 };
+  eq(beat.curPattern().name, beat.BUILTINS[11].name, "前提：当前选中示例型（与曲式的型不同）");
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[0].bars[0].length,
+     "★ 网格 = 曲式首块的型（四分基础 4 格），不是选中预设（16 格）");
   drive(ac, beat, 1.2);
-  eq(countCells(els["viz"].children[0]), beat.BUILTINS[1].bars[0].length,
+  eq(countCells(els["viz"].children[0]), beat.BUILTINS[0].bars[0].length,
      "播放中越过小节边界后网格仍是曲式的型");
   beat.Controls.stop();
 }
@@ -295,7 +298,7 @@ section("T53j 曲式播放 · 曲式拍号（6/8）≠ 当前拍号时同步 S.s
 {
   /* 曲式整首同拍号，但可能与当前 S.sig 不同；不同步的话 vizSig / loopStart 重映射 /
      predictNextArrange 的 barDur 全按错的拍号算——球与播放头错位的另一半根因 */
-  const sway = A("摇曳曲", [{ name: "A", blocks: [BL(7, 1)] }]);   // 摇曳 6/8
+  const sway = A("摇曳曲", [{ name: "A", blocks: [BL(6, 1)] }]);   // 摇曳 6/8（v3.35.5 删民谣扫弦后 idx 7→6）
   const { beat, els, ac } = startArrange(sway, { from: 0, to: 0, loop: true });
   eq(beat.Store.S.sig, 6, "★ 进入曲式播放时 S.sig 切到曲式拍号（6/8）");
   /* v2.10.16：原「viz 标题跟着变 6/8」断言随标题删除退役——拍号生效的观察面 = S.sig（上一条）*/

@@ -194,7 +194,7 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
      但标记数不同 —— P1=16、P2=14、P3=14、P4=10、P5=16。于是"箭头数"就是型的指纹。 */
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { seedDemo: false });   /* v3.1.0：四行断言显式钉 4 行档（出厂默认已改 2） */
   /* ★ v2.20.0：示例 5 型已内置化（customs 恒空）——带出与否改判内置库尾部 */
-  eq(beat.BUILTINS.length, 21, "前提：示例曲 9 个单小节型已内置（BUILTINS 12+5+4=21）");
+  eq(beat.BUILTINS.length, 20, "前提：示例曲 9 个单小节型已内置（BUILTINS 11+5+4=20；v3.35.5 删民谣扫弦）");
   const arrowsOf = () => els["viz"].children
     .filter(el => /(^| )bar-row( |$)/.test(el.className))
     .map(r => {

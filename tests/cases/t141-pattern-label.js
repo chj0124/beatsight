@@ -70,6 +70,9 @@ section("T141c 编辑器 · 标注输入框：回填、留空不写字段、副�
   els["editBtn"].fire("click");                              // 打开编辑器（副本流程）
   eq(els["patLabelInput"].value, "Am7", "★ 副本继承源型标注（输入框回填 Am7）");
   els["patLabelInput"].value = "Dm7";
+  /* ★ v3.35.7：歌名是保存的前置条件（没有"单独创建一条节奏型"这回事） */
+  els["songNameInput"].value = "标注测试歌";
+  els["songNameInput"].fire("input");
   els["savePresetBtn"].fire("click");
   const last = JSON.parse(beat.Store.serializePresets()).presets.pop();
   eq(last.label, "Dm7", "★ 保存写入标注（导出面可见）");
@@ -78,6 +81,9 @@ section("T141c 编辑器 · 标注输入框：回填、留空不写字段、副�
   /* 留空不写字段：形状与老对象一致 */
   els["editBtn"].fire("click");
   els["patLabelInput"].value = "   ";
+  /* 歌名会从源型（刚保存的那条）预填回来；这里再显式写一次，避免"靠预填"这种隐式前提 */
+  els["songNameInput"].value = "标注测试歌";
+  els["songNameInput"].fire("input");
   els["savePresetBtn"].fire("click");
   const last2 = JSON.parse(beat.Store.serializePresets()).presets.pop();
   ok(!("label" in last2), "★ 留空（纯空白）⇒ 对象上不写 label 字段（零迁移形状）");
