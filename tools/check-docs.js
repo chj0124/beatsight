@@ -299,7 +299,13 @@ console.log("══════════════════════�
    主文件仍会随版本条目线性膨胀——过阈值只打提醒不判红，让分卷成为持续动作而非一次性大手术。 */
 {
   const cl = fs.readFileSync(path.join(ROOT, "CHANGELOG.md"), "utf8");
-  const entries = (cl.match(/^## v/g) || []).length;
+  /* ★ m 标志（v3.34.5，2026-10-06 审计）：此前写作 /^## v/g —— 缺 m 时 `^` 只匹配**字符串开头**，
+     而 CHANGELOG.md 首行是 `# 变更记录`（一级标题，非 `## v` 开头）⇒ 匹配结果恒为 null
+     ⇒ `entries` 恒为 **0**，于是「条数 > 80」这条判据**从来没有被验证过**（假阴性）。
+     实测本仓真实条目数早已越过 80（改前 `grep -c "^## v" CHANGELOG.md` 见真值），
+     提醒之所以还在出现，只是因为**字节数**那条碰巧也超了阈——条数这条一直在给假信号。
+     修法是补 `m`（多行模式，让 `^` 匹配每行行首），不是改阈值。 */
+  const entries = (cl.match(/^## v/gm) || []).length;
   const bytes = Buffer.byteLength(cl);
   if (entries > 80 || bytes > 240 * 1024){
     report.push("ℹ CHANGELOG 软阈值提醒：" + entries + " 条 / " + Math.round(bytes / 1024) + " KB"

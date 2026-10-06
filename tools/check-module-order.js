@@ -26,7 +26,9 @@
         理由；条目一旦不再被用到也会报错（防止白名单慢慢腐烂成"什么都放行"）。
 
      R4（扇出上限，告警）：一个模块直接引用的**下游模块个数**（扇出）不得超过 MAX_FANOUT。
-     另含「模块规模」观察期 ⚠（v3.31.8）：≥3000 行提示、不判红。
+     另含「模块规模」⚠（v3.31.8 立，**v3.34.6 改口径**）：按**代码行**≥3000 提示；
+         超线且到收敛目标版本仍未降下来则**判红**。★ 旧口径按「总行」判，而本仓注释占比高
+         （Viz 49%、Arrange 32%）⇒ 那两个模块会**永远**超线，成的不是约束是噪音。
         它是"某模块会不会膨胀成上帝对象"的最直接指标。曾经 Controls（UI 中枢）顶到上限 7；
         v2.18.0 把那四条同形的"叠加层键盘路由"收敛成注册表后降到 2，余量回到 5。
         真顶格时的第一反应应当是"**这几条引用是不是同一件事被抄了多遍**"，而不是抬高常量。
@@ -425,20 +427,93 @@ if (r2Hits.length){
 }
 
 /* 模块规模软阈值（v3.31.8，他方审计 P1-3 的守约束落地）：观察期 ⚠ 不判红——
-   单模块 ≥ 3000 行时提示「该考虑切分」，把「该切了」从靠感觉变成有客观触发点。
+   单模块**代码行** ≥ 3000 时提示「该考虑切分」，把「该切了」从靠感觉变成有客观触发点。
+   （v3.34.6 前按"总行"判，注释文化会让大模块恒超线——见下方口径修正那段的实测数据。）
    口径：模块跨度 = 到下一模块声明行的行数（含头部锚点注释），末模块到文件尾。
    若观察下来阈值本身有问题（如注释文化让大模块恒超线），调阈值或改口径，
-   不因假红关掉本输出。 */
+   不因假红关掉本输出。
+
+   ★★ 收敛到期日（v3.34.5，2026-10-06 审计）：**只有警告的技术债不会自己还**。
+   本条自 v3.31.8 起长期"只提示不判红"，实测结果是 Viz / Arrange 双双越过 3000 行后
+   一路长到 3465 / 3278 行——期间没有任何力量迫使收敛，而 Arrange 恰恰是近 15 个版本里
+   9 条用户实报修复的高发区（规模与缺陷密度已同时报警）。
+   故给每个超线模块登记一个**目标版本**：
+     · 当前版本 < 目标版本 ⇒ 维持 ⚠ 观察期（不判红），但输出里带上"还剩几个版本"；
+     · 当前版本 ≥ 目标版本 ⇒ **升格为失败**（✗ 判红）——到期不还就真的堵住发版。
+   ★ 目标版本是**承诺**不是愿望：到期若确实切不动，应当显式后移并在 CHANGELOG 写明理由
+     （那是一次可 review 的决策），而不是默默让它永远停在"观察期"。
+   ★ 版本比较走数值逐段（与 check-version.js 的 semver 口径同形），不引外部依赖。 */
+const SLIM_TARGET = { Viz: "3.37.0", Arrange: "3.37.0" };
+/* ★★ 口径修正（v3.34.6，2026-10-06 审计复核）：**改量「代码行」而不是「总行」**。
+   发现过程：v3.34.5 给 Viz/Arrange 设了收敛到期日，前提是"两个模块越过 3000 行观察线"。
+   复核时把每个模块的行拆开数了一遍，结果是——
+
+     模块       总行   注释/空行   代码行
+     Viz       3465     1711      1754
+     Arrange   3300     1058      2242
+
+   Viz 有 **49%** 的行是注释，Arrange 约 **32%**。也就是说：触发"该考虑切分"的不是代码量，
+   而是本仓刻意保留的**注释文化**——这正是本文件上面那段注释**预先写下的那个例外情形**：
+   「若观察下来阈值本身有问题（如注释文化让大模块恒超线），调阈值或改口径，不因假红关掉本输出」。
+   按总行判，这两个模块会**永远**超线（注释只会越写越多），于是"到期判红"会变成一条
+   永远无法还清、只能靠不断后移目标来消化的债——那不是约束，是噪音。
+   按代码行判（本文口径）：Viz 1754 / Arrange 2242 均在 3000 以下，**当前无超线模块**。
+
+   ★ 这不是"把线调低让它变绿"：判据从"文件占多少行"改成"逻辑有多少行"，
+     后者才是"会不会长成上帝对象"的真指标；阈值 3000 本身**一个字没动**。
+     SLIM_TARGET 机制保留——将来真有模块的**代码行**超线，它照旧会在到期时判红。 */
+const CODE_LINE_BUDGET = 3000;
+/** @param {string} a @param {string} b @returns {number} a>b 返回 1，a<b 返回 -1，相等 0 */
+const cmpVer = (a, b) => {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++){
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+};
+/* 当前版本取自 index.html 的 const VERSION（唯一真相源），与 check-version.js 同口径 */
+const CUR_VER = (() => {
+  const m = html.match(/const VERSION = "(\d+\.\d+\.\d+)"/);
+  return m ? m[1] : null;
+})();
 {
+  /* 用 blankNonCode 抹掉注释（**保留换行**）后，再数非空行 = 代码行。
+     不能简单地 `line.trim().startsWith("//")`：块注释的**中间行**不带前缀，
+     而且字符串里出现 "/*" 会把它后面整段误判成注释——blankNonCode 两件事都处理了。 */
+  const cleanSrcLines = blankNonCode(SRC).split("\n");
   const rows = modules.map((mod, i) => {
     const nextStart = (i + 1 < modules.length) ? modules[i + 1].startLine : null;
-    return { name: mod.name, span: (nextStart != null ? nextStart - mod.startLine : SRC.split("\n").length - mod.startLine) };
+    const end = (nextStart != null ? nextStart : SRC.split("\n").length);
+    let code = 0;
+    /* startLine 是 1 基（banner 行本身是注释，会被 blankNonCode 抹掉，不计入代码行） */
+    for (let ln = mod.startLine; ln < end; ln++){
+      const t = (cleanSrcLines[ln - 1] || "").trim();
+      if (t) code++;
+    }
+    return { name: mod.name, span: end - mod.startLine, code };
   });
-  const over = rows.filter(r => r.span >= 3000).sort((a, b) => b.span - a.span);
+  const over = rows.filter(r => r.code >= CODE_LINE_BUDGET).sort((a, b) => b.code - a.code);
   if (over.length){
-    over.forEach(r => console.log(`  ⚠ 模块规模（观察期）：${r.name} 约 ${r.span} 行（≥3000）——考虑切分或把趋势纳入规划（不判红）`));
+    over.forEach(r => {
+      const due = SLIM_TARGET[r.name] || null;
+      /* 到期判定：当前版本已追平/超过目标版本 ⇒ 观察期结束，改判失败 */
+      const overdue = due && CUR_VER && cmpVer(CUR_VER, due) >= 0;
+      const tail = due
+        ? (overdue
+            ? `——★ 收敛目标 v${due} 已到期（当前 v${CUR_VER}）仍未降到 ${CODE_LINE_BUDGET} 行代码以下：判红`
+            : `——收敛目标 v${due}（当前 v${CUR_VER}）：到期未达标将判红`)
+        : "——未登记收敛目标，请补进 SLIM_TARGET";
+      const line = `  ${overdue ? "✗" : "⚠"} 模块规模（${overdue ? "已超期 · 判红" : "观察期"}）：${r.name} 代码 ${r.code} 行（总 ${r.span} 行，含注释 ${r.span - r.code}）（≥${CODE_LINE_BUDGET}）${tail}`;
+      console.log(line);
+      if (overdue) fail(`模块 ${r.name}（代码 ${r.code} 行）超过收敛目标 v${due} 仍未降到 ${CODE_LINE_BUDGET} 行以下——要么切分，要么显式后移目标并写明理由`);
+      /* ↑ 文案里的阈值走常量：变异测试时不会出现"说 3000 实际按 2000 判"的自相矛盾 */
+    });
   } else {
-    console.log("  ✓ 模块规模观察期：全部模块 < 3000 行");
+    /* 打印最大的两个模块的真实读数——"全部合规"也要让人看见余量，别等撞线才知道 */
+    const top = rows.slice().sort((a, b) => b.code - a.code).slice(0, 2);
+    console.log("  ✓ 模块规模：全部模块代码行 < " + CODE_LINE_BUDGET
+      + "（最大两个：" + top.map(t => t.name + " " + t.code + " 行代码 / 共 " + t.span + " 行").join(" · ") + "）");
   }
 }
 

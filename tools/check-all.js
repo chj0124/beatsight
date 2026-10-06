@@ -31,10 +31,13 @@
      13) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
      14) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
      15) DOM 引用完整性    $("x") 不得悬空
-     16) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
-     17) 自动化测试        FULL_SCAN=1 全量组合扫描
-     18) 死循环看门狗      每用例独立子进程 + 超时强杀
-     19) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     16) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
+                           aria-checked / img 缺 alt / 可交互元素无可访问名 / aria-hidden 藏可聚焦项。
+                           ★ 认「JS 运行期赋名」，免得误报 applyTheme 那类写法）
+     17) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
+     18) 自动化测试        FULL_SCAN=1 全量组合扫描
+     19) 死循环看门狗      每用例独立子进程 + 超时强杀
+     20) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
    ★ 三种"没跑到"必须分清（v2.0.6 起为两类，v2.8.6 补第三类）：
      · 第 13、14 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
@@ -167,6 +170,10 @@ const STEPS = [
   { name: "类型检查 · tsc（加强）", cmd: process.execPath, args: ["tools/check-tsc.js"],
     optional: "node_modules/typescript" },
   { name: "DOM 引用完整性", cmd: process.execPath, args: ["tools/check-dom-ids.js"] },
+  /* v3.34.6（审计 第二部分①）：无障碍静态闸门。放在 DOM 引用之后、冒烟之前——
+     与它同类（都是只看标记/静态结构的零依赖检查），且先于需要浏览器的步骤，
+     这样"标记层面的 a11y 违规"能在最便宜的阶段就被拦住。 */
+  { name: "无障碍 · 标记级", cmd: process.execPath, args: ["tools/check-a11y.js"] },
   /* 环境可选步骤（v2.0.6，审计 P1-10）：真实浏览器冒烟。它需要的不是"开发依赖"而是
      **环境能力**（本机得装 Chrome/Edge）——Cloudflare 的构建镜像里必然没有，所以
      --strict-env 也不该把它升级成错误，否则每次部署都会被无谓地堵住。

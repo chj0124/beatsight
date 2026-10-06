@@ -180,6 +180,47 @@ if (!fs.existsSync(DIST)){
     }
   }
 
+  /* ---- ④ GitHub 远端漂移（v3.34.6，审计 ⑤）：本仓最后一块「没有机器盯」的盲区。
+     由来：`check-stale-copies.js` 只扫本地副本、本工具 ①–③ 只看本地与线上部署，
+     **没有任何一步会告诉你 origin/main 已经前进**——而另一台电脑也在推 main。
+     与 ③ 同口径：**信息性、不判红**（本地落后于远端是正常协作状态，不是错误），
+     只把「本地 HEAD 与 origin/main 是否同一提交」变成每次对账打印一行。
+     实现走 `git ls-remote`：不需要 API token，也不引外部依赖；沙箱里 https 被拦时
+     自动退化为 ⊘ 跳过（与本文件既有降级口径一致）。 */
+  const drift = (() => {
+    const cp = require("child_process");
+    /* ★★ 必须带 timeout（本步初版漏了，被 t183 当场抓出）：`git ls-remote` 走网络，
+       在没有网络或隧道被拦的环境里会**挂着不走**——它是同步调用，一挂就把整个工具卡在
+       汇总行之前，表现为"对账没有任何输出"。实测在预提交钩子里触发了 t183a/b 的两条失败
+       （"走到汇总行" 与 "ℹ 行报出本地版本"），而在另一次运行里网络恰好快速失败、又能通过
+       ⇒ **典型的不确定挂起**，正是最该设上限的那种调用。
+       超时按「连不上」处理（⊘ 跳过），与无网络同一条降级路径。 */
+    const GIT_TIMEOUT_MS = 5000;
+    const run = (args) => {
+      try{
+        return { out: String(cp.execFileSync("git", args,
+          { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"], timeout: GIT_TIMEOUT_MS }) || "").trim() };
+      }
+      catch(e){ return { err: true }; }
+    };
+    const local = run(["rev-parse", "HEAD"]);
+    if (local.err || !local.out) return { skip: "读不到本地 HEAD（不是 git 仓库？）" };
+    const remote = run(["ls-remote", "origin", "main"]);
+    if (remote.err) return { skip: "连不上 origin（无网络/隧道拦截）" };
+    const m = /^([0-9a-f]{40})\s/.exec(remote.out || "");
+    if (!m) return { skip: "origin/main 未返回可解析的提交" };
+    return { local: local.out, remote: m[1] };
+  })();
+  if (drift.skip){
+    notes.push("GitHub 远端漂移核对 ⊘ 跳过（" + drift.skip + "）——本地对账结论不受影响");
+  } else if (drift.local === drift.remote){
+    okLines.push("  ✓ GitHub origin/main = 本地 HEAD（" + drift.local.slice(0, 7) + "）—— 无远端漂移");
+  } else {
+    notes.push("★ GitHub origin/main = " + drift.remote.slice(0, 7) + "，本地 HEAD = " + drift.local.slice(0, 7)
+      + " —— **远端已前进**（另一台电脑推过？）。push 前必须先 `git fetch` + 整合，"
+      + "且**版本号要在 fetch 之后再定**（见 AGENTS.md §5.1）。信息性，不判红");
+  }
+
   /* ---- 汇总 ---- */
   console.log("──────────────────────────────────────────────────────────");
   for (const n of notes) console.log("  ℹ " + n);
