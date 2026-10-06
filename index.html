@@ -3790,21 +3790,21 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L3820  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L4722  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6578  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7574  Modal         应用内弹窗
-     L7719  Viz           时值可视化渲染与每帧动画
-     L11184 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11865 Trainer       变速训练器
-     L12075 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12756 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14676 Editor        自定义节奏型编辑器
-     L15256 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15303 Ear           听辨训练（v1.10.0）
-     L15531 Arrange       曲式编排（v2.0.0）
-     L19044 Help          使用方法（v2.0.1）
-     L19173 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19247 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19514 初始化（装配） 各模块 hook 接线与启动
+     L6613  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7609  Modal         应用内弹窗
+     L7754  Viz           时值可视化渲染与每帧动画
+     L11219 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11900 Trainer       变速训练器
+     L12110 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12791 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14711 Editor        自定义节奏型编辑器
+     L15291 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15338 Ear           听辨训练（v1.10.0）
+     L15566 Arrange       曲式编排（v2.0.0）
+     L19080 Help          使用方法（v2.0.1）
+     L19209 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19283 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19550 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3830,7 +3830,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.2";
+const VERSION = "3.36.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4232,7 +4232,7 @@ const DEMO2_PRESETS = [
 /** 段 = 词行（行=段的契约）。strums 是**逐小节**的型代号序列，长度即段长。
     和弦与歌词同《在他乡》口径：chords 逐小节、words 逐小节的 [tick/16, dur/16, 字]。 */
 const DEMO2_SONG = [
-  { name: "副歌 · 我们（第一遍）", chords: ["C 琶音"], strums: ["Q1"], words: [
+  { name: "副歌 · 我们（第一遍）", chords: ["C琶音"], strums: ["Q1"], words: [
       [[12,2,"我"],[14,2,"们"]]] },
   { name: "副歌 · 能不能（第一遍）", chords: ["F G","Em Am","F G","C","F E","Am","F G"], strums: ["Q2","Q2","Q2","Q2","Q2","Q2","Q2"], words: [
       [[0,4,"能"],[4,2,"不"],[6,2,"能"]],
@@ -4837,6 +4837,41 @@ const Store = (() => {
         try{ console.warn("[BeatSight] 有 " + replaced + " 处原使用内置「民谣扫弦」（已删除），已改指「四分基础」"); }catch(e){}
       }
       if (wrote){ try{ localStorage.setItem(BN_MIG_KEY, "1"); }catch(e){} }
+    }
+  }
+  /* ★ v3.36.3（用户实报）：示例曲《我们能不能不分手》第 1 段的和弦写成了「C 琶音」（多一个空格），
+     与全仓其它和弦标记的写法（「C」「Am」「F G」「Em Am」…：音名紧贴修饰语）不一致 ⇒ 统一成「C琶音」。
+     ★ 为什么要迁移：块级 per-bar 和弦是**随曲式落进冷键**的 —— 用户那份早就落了盘，只改代码里的字面量，
+       存量用户（含报这个错的本人）看到的仍是错的。
+     ★ 只扫**这一首示例曲**的曲式（id 命中为主、名字兜底，与 oneStale 的认领口径一致）：
+       用户自己存的型里若有同样写法，那是他自己的数据，不动。
+     ★ 幂等靠戳键 beatsight.chdsp36；回写成功才置戳（写失败 ⇒ 下次启动重试），
+       与 arrmig73 / chdmig / bnmig35 同一套纪律。 */
+  {
+    const CHD_MIG_KEY = "beatsight.chdsp36";
+    const CHD_BAD = "C 琶音", CHD_GOOD = "C琶音";
+    let stamped = false;
+    try{ stamped = localStorage.getItem(CHD_MIG_KEY) === "1"; }catch(e){}
+    if (!stamped){
+      let hits = 0, wrote = true;
+      const aIn = readJSON(KEY_ARRANGES);
+      if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+        aIn.arranges.forEach(/** @param {any} r */ r => {
+          if (!r || (r.id !== "demo-wmbbf" && r.name !== "《我们能不能不分手》（示例）")) return;
+          if (!Array.isArray(r.sections)) return;
+          r.sections.forEach(/** @param {any} s */ s => {
+            if (!s || !Array.isArray(s.blocks)) return;
+            s.blocks.forEach(/** @param {any} b */ b => {
+              if (b && typeof b.chords === "string" && b.chords.indexOf(CHD_BAD) >= 0){
+                b.chords = b.chords.split(CHD_BAD).join(CHD_GOOD);
+                hits++;
+              }
+            });
+          });
+        });
+        if (hits){ try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); }catch(e){ wrote = false; } }
+      }
+      if (wrote){ try{ localStorage.setItem(CHD_MIG_KEY, "1"); }catch(e){} }
     }
   }
   /** @type {any[]} */
@@ -18778,6 +18813,7 @@ const Arrange = (() => {
     /* ① 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓）
        ★ v3.34.7：《在他乡》由 21 段并为 9 段后，**存量用户手里是旧的 21 段** ——
          这条判据（段数不等）就是那条自动收敛路径：命中即亮「恢复示例曲」，重建后即为新版。 */
+    if (ar.sections.length !== spec.arrange.sections.length) return true;
     if (ar.sections.length !== spec.arrange.sections.length) return true;
     if (ar.sections.some(/** @param {any} s @param {number} i */ (s, i) =>
       secBars(s) !== spec.arrange.sections[i].blocks.reduce(/** @param {number} n @param {any} b */ (n, b) => n + b.repeats, 0))) return true;

@@ -186,6 +186,7 @@ const CASE_FILES = [
   "./cases/t211-preset-song-tree",
   "./cases/t212-song-binding",
   "./cases/t213-dblclick-play",
+  "./cases/t214-demo2-chord-typo",
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
