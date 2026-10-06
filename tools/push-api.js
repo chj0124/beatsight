@@ -165,8 +165,38 @@ const api = async (method, path, body) => {
   /* ---- ⑦ 更新 ref（非 force） ---- */
   const r = await api("PATCH", "/repos/" + REPO + "/git/refs/heads/" + BRANCH, { sha: c.sha, force: false });
   ok("已推送：refs/heads/" + BRANCH + " → " + r.object.sha);
-  if (c.sha !== head){
-    console.log("\n★ 本地对齐（内容不变，只是把本地分支指到远端那个提交）：");
+  /* ---- ⑧ **自动对齐本地**（v3.36.2）：把远端刚建的那个提交对象按同样的字节在本地重建，
+     再把本地分支与 origin/<branch> 都指过去 ⇒ 本地/远端永远同一条线，不再留分叉。
+     重建要点（都是实测踩出来的）：
+       · epoch 是**瞬间**（不做时区加减），时区后缀照原样写 +0800；
+       · **GitHub 回读 message 会去掉尾换行**，而对象里通常带一个 —— 两种都试，命中为止。
+     重建失败（编码又有新花样）时退回旧行为：打印手工对齐命令，不假装成功。 */
+  if (c.sha === head){
+    ok("远端 sha 与本地相同 —— 无需对齐");
+    return;
+  }
+  const meta2 = await api("GET", "/repos/" + REPO + "/git/commits/" + c.sha);
+  const baseLines = ["tree " + meta2.tree.sha,
+    ...meta2.parents.map(p => "parent " + p.sha),
+    "author " + meta2.author.name + " <" + meta2.author.email + "> " + Math.floor(Date.parse(meta2.author.date) / 1000) + " +0800",
+    "committer " + meta2.committer.name + " <" + meta2.committer.email + "> " + Math.floor(Date.parse(meta2.committer.date) / 1000) + " +0800",
+    ""];
+  let rebuilt = null;
+  for (const msg of [meta2.message, meta2.message + "\n"]){
+    const body = baseLines.concat([msg]).join("\n");
+    const sha = execFileSync("git", ["hash-object", "-t", "commit", "--stdin"], { input: body }).toString().trim();
+    if (sha === c.sha){
+      rebuilt = execFileSync("git", ["hash-object", "-t", "commit", "-w", "--stdin"], { input: body }).toString().trim();
+      break;
+    }
+  }
+  if (rebuilt === c.sha){
+    execFileSync("git", ["update-ref", "refs/heads/" + BRANCH, c.sha]);
+    try{ execFileSync("git", ["update-ref", "refs/remotes/origin/" + BRANCH, c.sha]); }catch(e){}
+    try{ execFileSync("git", ["branch", "--set-upstream-to=origin/" + BRANCH, BRANCH], { stdio: "ignore" }); }catch(e){}
+    ok("★ 本地已自动对齐到远端提交 " + c.sha.slice(0, 8) + "（工作区内容不变）—— 本地/远端同一条线，无分叉");
+  } else {
+    console.log("\n⚠ 本地未能重建远端提交对象（编码与预期不符）—— 请手工对齐（内容不变）：");
     console.log("    git fetch origin && git reset --hard origin/" + BRANCH);
   }
 })().catch(e => die(e.message));
