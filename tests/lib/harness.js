@@ -63,6 +63,11 @@ const HTML_ATTRS = {
      整块从标记里删除——桩里同步摘掉，否则"标记里没有了"这件事没人拦。 */
   countInBeatsWrap: { hidden: true },
   trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
+  /* v3.34.8：窄屏大纲抽屉与它的遮罩——标记里都写了 `hidden`（宽屏恒不可见）。
+     不复刻的话桩里读到 hidden=false（"开着"），与真机**相反** ⇒ 初始态断言会假红。
+     ★ 注意：应用侧的开关态走**显式变量** tocShown，不读 el.hidden ——
+       那才是唯一真相源；本表只是让桩与真机同样"初始隐藏"。 */
+  argTocDrawer: { hidden: true }, argTocMask: { hidden: true },
   /* v3.1.1：countInBeats 的 value="4" 是标记里写死的默认值（真实浏览器 boot 后显示 4，
      无论存档是什么）。不复刻的话，桩里读 value 得 ""，"boot 同步存档值"的回归断言
      会恒真（输入框显示什么都没人验）——那正是预备拍拍数显示/实际脱节的假绿温床 */

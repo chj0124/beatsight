@@ -15,6 +15,11 @@
      触发 arrangeRender 重建，故操作后必须重新按 id 取 argSections.children。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
+/* v3.35.0：曲式库并入左栏后，#argList 里除曲式条之外还夹着
+   「当前曲式的段树」与「两首之间的分隔线」两个兄弟节点 ⇒
+   按位置取 children[N] 会取到它们（断言可能"碰巧通过"= 假绿）。
+   一律经本函数只取曲式条。 */
+const songItems = els => els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
 
 const byCls = (root, cls) => root.children.find(c => new RegExp("(^| )" + cls + "( |$)").test(c.className));
 const secRows = els => Array.prototype.filter.call(els["argSections"].children,
@@ -180,13 +185,13 @@ section("T128h 历史按曲式隔离 · 切曲式不串栈");
   eq(beat.Store.findArrange(甲).sections[0].blocks.length, 1, "★ 甲删块后剩 1 块");
   eq(els["argUndo"].disabled, false, "★ 甲有撤销历史");
   /* 切到乙（点击曲式库 chip，按 Store.arranges 顺序 = 第 2 个） */
-  els["argList"].children[1].fire("click");
+  songItems(els)[1].fire("click");
   eq(els["argUndo"].disabled, true, "★ 切到乙：乙无历史 → 按钮禁用");
   els["argUndo"].fire("click");   // 对乙空撤销
   eq(beat.Store.findArrange(甲).sections[0].blocks.length, 1, "★ 乙的空撤销不波及甲（甲仍 1 块）");
   eq(beat.Store.findArrange(乙).sections[0].blocks.length, 1, "乙结构不变");
   /* 切回甲并撤销 */
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   els["argUndo"].fire("click");
   eq(beat.Store.findArrange(甲).sections[0].blocks.length, 2, "★ 切回甲撤销 → 块复原为 2");
   beat.Arrange.close();

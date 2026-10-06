@@ -81,7 +81,7 @@ section("T93b 首开默认 ② · 选中状态立刻落盘：开着没动就关�
   /* 第二次打开：同一份存档 + 闩 → 选中被恢复（这是"记忆"，不是"又自动选了一次"） */
   const second = loadApp({
     "beatsight.state": first.storage.get("beatsight.state"),
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.arranges": first.storage.get("beatsight.arranges"),
     "beatsight.customs": first.storage.get("beatsight.customs"),
     "beatsight.lyrics": first.storage.get("beatsight.lyrics"),
@@ -101,7 +101,7 @@ section("T93c 首开默认 ② · 闩已落（老用户）→ 不自动选中，
   const seed = firstOpen();
   const old = loadApp({
     "beatsight.state": JSON.stringify({ v: 3, bpm: 96, sel: { type: "builtin", idx: 0 } }),
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.arranges": seed.storage.get("beatsight.arranges"),
     "beatsight.customs": seed.storage.get("beatsight.customs"),
     "beatsight.lyrics": seed.storage.get("beatsight.lyrics"),

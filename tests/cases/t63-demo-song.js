@@ -34,22 +34,22 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   /* ★ v2.4.1：init 期就自动带出——不点任何按钮，示例已经在库里
      ★ v2.20.0：示例 5 型并入内置库（BUILTINS 12→17），自定义库（customs）保持空——
        "自动带出"不再往用户的自定义库里塞 5 条可删数据 */
-  eq(beat.BUILTINS.length, 17, "★ 内置库 12 + 示例 5 = 17（示例型已并入 BUILTINS）");
+  eq(beat.BUILTINS.length, 21, "★ 内置库 12 + 《在他乡》5 + 《我们能不能不分手》4 = 21（示例型全部并入 BUILTINS）");
   eq(beat.Store.customs.length, 0, "★ 自定义库保持空——示例型不再是可删的自定义条目");
   ok(!!beat.Store.findArrange(beat.DEMO_ID), "★ 曲式也自动落库");
-  eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 10, "★ 歌词行一并带出（10 行）");
+  eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 9, "★ 歌词行一并带出（9 行 = 9 段；合并后行数即段数）");
   beat.Arrange.open();
   const r = bringDemo(beat);
   ok(r && r.ok === true, "★ 再次确保时幂等通过（ok=true，曲式/歌词原样在库）");
   ok(beat.Store.demoSeeded(), "★ 带出后闩已落（下次启动不会再来一遍）");
-  eq(beat.BUILTINS.length, 17, "示例 5 型在内置库（《在他乡》的 5 个单小节扫弦型）");
+  eq(beat.BUILTINS.length, 21, "示例 9 型在内置库（《在他乡》5 + 《我们能不能不分手》4）");
   const a = beat.Store.findArrange(beat.DEMO_ID);
   ok(!!a, "曲式落库（固定 id）");
-  eq(a.sections.length, 10, "全曲 10 段（行=段）");
+  eq(a.sections.length, 9, "全曲 9 段（按节奏型合并后的形态：引子/副歌×3/主歌一×2/主歌二×2/桥段）");
   /* v2.77.0：段名猜和弦退役——和弦进块级 per-bar chords（一小节一格），段名剥后缀 */
-  eq(a.sections[1].name, "副歌 · 上", "★ 段名剥后缀（和弦不再寄生在段名里）");
-  eq(a.sections[1].blocks[0].chords, "C|Am|Dm", "★ 和弦进块级 per-bar（一小节一格）");
-  eq(a.sections[8].blocks[0].chords, "Am|Em|F|C|Am|Em", "六和弦行完整进块级 chords");
+  eq(a.sections[1].name, "副歌（第一遍）", "★ 段名＝结构名 +（第N遍）；「第N遍」表示歌曲唱到第几遍，不是多余的副本");
+  eq(a.sections[1].blocks[0].chords, "C|Am|Dm|G|C|Am|Dm|G", "★ 合并后副歌段首块 = 下上扫·密 ×8，逐小节和弦 8 格");
+  eq(a.sections[8].blocks[0].chords, "G|C|Dm|C|Csus4", "桥段五行（含新增的 Csus4）完整进块级 chords");
   eq(JSON.stringify(beat.arrangeProblems(a)), "[]", "曲式无引用/拍号问题");
   /* ★ v2.9.0：侧栏预设库重分类为「节拍 / 扫弦 / 自定义」三区（常显，两态切换条已删）。
      示例曲的 5 个型按**内容**（hasStrum）落进「扫弦」区，与内置「民谣扫弦」并列；
@@ -75,7 +75,7 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
      "★ 示例型已改通用名（十六分满扫（《在他乡》前奏） 等），不再带「在他乡 · 节奏型N」旧前缀");
   const demoBox = kids.find(x => x.className === "preset-arrange-group");
   ok(!!demoBox, "★ 「自定义」区里的曲式容器已渲染");
-  eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 1,
+  eq(demoBox.children.filter(x => /(^| )preset-item( |$)/.test(x.className)).length, 2,
      "自定义区里 1 条曲式条目（示例曲《在他乡》——v2.9.0 起 5 个型不再单独成组）");
   /* v2.5.0：整首连播入口；v2.10.4：段序条那 10 颗段号胶囊换成了「播放范围」双滑块。
      两者都挂在「自定义」区容器下（扁平挂法，见 buildDemoSongRow 的注释），
@@ -115,9 +115,9 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   eq(rFrom.type, "range", "起点是原生 range（自带键盘与读屏语义）");
   eq(rTo.type, "range", "终点也是原生 range");
   /* 数值域用 1-based 小节号：《在他乡》30 小节 → min=1 / max=30（v2.10.7 小节口径） */
-  eq([rFrom.min, rFrom.max].join(), "1,30", "★ 起点滑块按 1-based 小节号取值域（第 1 小节 ↔ value=1）");
-  eq([rTo.min, rTo.max].join(), "1,30", "★ 终点滑块同域");
-  ok(String(rFrom.getAttribute("aria-label")).includes("共 30 小节"),
+  eq([rFrom.min, rFrom.max].join(), "1,64", "★ 起点滑块按 1-based 小节号取值域（全曲 65 小节）");
+  eq([rTo.min, rTo.max].join(), "1,64", "★ 终点滑块同域");
+  ok(String(rFrom.getAttribute("aria-label")).includes("共 64 小节"),
      "读屏名带上总小节数（实际「" + rFrom.getAttribute("aria-label") + "」）");
   eq(rTrack.getAttribute("role"), "group", "轨道是控件组（与其余控件组同契约）");
 
@@ -126,10 +126,12 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   eq([xiang.t, xiang.dur].join(), "72,48", "「乡」= 第 4 字带延音（t=72, dur=48＝两个八分）");
   eq(charAt(beat, 1, "慰").t, 552, "副歌上末字「慰」= 第 3 小节第 14 格");
   eq(charAt(beat, 0, "我").t, 120, "★ 开头「我」从第 3 拍后半进（t=120，不是段首）");
-  eq(charAt(beat, 3, "﹣").dur, 192, "收束的延音占位「﹣」独占一整小节");
-  eq(beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, 8)).length, 28, "人静的雨夜 28 字全录");
-  eq(beat.lyricSpanTicks(beat.DEMO_ID, secUid(beat, 8)), 1152, "★ 六小节的行 = 6 小节 × 192（v2.6.0 起不再垫到 8）");
-  eq(charAt(beat, 8, "庞").t, 1032, "「庞」= 段内第 6 小节第 6 格（1032 tick）");
+  /* v3.34.7：合并后段 3 已是「主歌二（第一遍）」（8 小节）；「收束」并入副歌段，
+     且用户数据里不再有「﹣」占位符（改为空小节）——故这条改成钉合并本身。 */
+  eq(beat.secBars(a.sections[1]), 9, "★ 合并后副歌段 = 9 小节（下上扫·密 ×8 + 十六分满扫 ×1）");
+  eq(beat.lyricCharsAt(beat.DEMO_ID, secUid(beat, 3)).length, 40, "★ 合并后段 3 = 雨夜 28 字 + 你忍不住的 12 字 = 40 字全录（不丢字）");
+  eq(beat.lyricSpanTicks(beat.DEMO_ID, secUid(beat, 3)), 1536, "★ 合并后主歌二 = 8 小节 × 192（雨夜 6 + 你忍不住的 2）");
+  eq(charAt(beat, 3, "庞").t, 1032, "「庞」= 合并段内第 6 小节第 6 格（1032 tick，位置未变）");
   beat.Arrange.close();
 }
 
@@ -156,11 +158,11 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   /* 收束不再是"组合型"：它是**两小节、两块**（v2.6.0 第 Ⅳ 期的核心改动）。
      原先那个 4 小节的「收束」型就是"把 4 小节循环硬套到逐小节谱上"的产物 */
   const a4 = beat.Store.findArrange(beat.DEMO_ID);
-  eq(JSON.stringify(a4.sections[3].blocks.map(b => b.repeats)), JSON.stringify([1, 1]),
-     "★ 「收束」段 = 2 个块、各 1 遍（不再是型里的 4 小节补齐）");
-  eq(JSON.stringify(a4.sections[9].blocks.map(b => b.repeats)), JSON.stringify([1, 1]),
-     "★ 「你忍不住的」段同理 = 2 块各 1 遍");
-  eq(beat.secBars(a4.sections[3]), 2, "收束段长 = 2 小节（原先垫成 4）");
+  eq(JSON.stringify(a4.sections[3].blocks.map(b => b.repeats)), JSON.stringify([7, 1]),
+     "★ 「主歌二（第一遍）」= 2 个块 [7,1]（前密后疏 ×7 + 十六分满扫 ×1，即相邻同型的跨段合并）");
+  eq(JSON.stringify(a4.sections[8].blocks.map(b => b.repeats)), JSON.stringify([5]),
+     "★ 「桥段」= 单块 ×5 遍（切音满扫跑满 5 小节）");
+  eq(beat.secBars(a4.sections[3]), 8, "主歌二（第一遍）段长 = 8 小节");
   eq(beat.BUILTINS.some(c => c.name.includes("收束")), false,
      "★ 「收束」不再是独立型（它本就是两个相邻小节各用一个型）");
   beat.Arrange.close();
@@ -177,15 +179,15 @@ section("T63c 示例载入 · 重复调不重复建 / 预设残留可复用");
   eq(r2.ok, true, "★ 第二次调幂等通过（不是静默重复建）");
   eq(r3.ok, true, "第三次同理");
   eq(beat.Store.customs.length, 0, "★ 自定义库保持空（示例型已内置，没有可翻倍的东西）");
-  eq(beat.BUILTINS.length, 17, "内置库仍是 17（内置型不可能被翻倍）");
-  eq(beat.Store.arranges.length, 1, "曲式没翻倍");
-  eq(beat.Store.lyrics.length, 10, "歌词行没翻倍");
+  eq(beat.BUILTINS.length, 21, "内置库仍是 21（内置型不可能被翻倍）");
+  eq(beat.Store.arranges.length, 2, "曲式没翻倍（两首示例曲各一条）");
+  eq(beat.Store.lyrics.length, 17, "歌词行没翻倍（9 + 8：第二首有两段无词）");
   /* 用户删了曲式：再带出时按固定 id 重建，引用直接落内置下标 */
   beat.Store.deleteArrange(beat.DEMO_ID);
   bringDemo(beat);
   eq(beat.Store.customs.length, 0, "★ 重建不往自定义库塞东西（v2.20.0 起示例型恒内置）");
   ok(!!beat.Store.findArrange(beat.DEMO_ID), "曲式重建");
-  eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 10, "歌词随曲式重建");
+  eq(beat.Store.lyrics.filter(l => l.arrangeId === beat.DEMO_ID).length, 9, "歌词随曲式重建（9 段 = 9 行）");
   beat.Arrange.close();
 }
 
@@ -211,36 +213,45 @@ section("T63d 示例载入 · 播放锚点 / 循环本行落点");
   near(inBar1[2].t, 2.2675, 1e-6, "「想」= 格14 × 0.15625s + 0.08s 起点");
   eq(beat.Store.S.playing, true, "示例曲正常播放中");
   beat.Controls.stop();
-  /* 循环本行：直接落到桥段段（跨小节延音「夜」所在行）。v2.10.7 小节口径：
-     桥段 = 第 7 段（行 6）= 歌曲小节 16..19（0-based 含端点） */
-  beat.Arrange.loopLyricSection(beat.DEMO_ID, secUid(beat, 6));   // v2.26.0：收段 uid
-  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[16,19]",
+  /* 循环本行：直接落到桥段段（跨小节延音「夜」所在行）。v2.10.7 小节口径。
+     ★ v3.34.7：合并后桥段是**第 9 段（下标 8）**，起止小节 60..64（0-based 含端点）——
+       段序 = 引子 / 副歌① / 主歌一① / 主歌二① / 副歌② / 主歌一② / 主歌二② / 副歌③ / 桥段。
+       段长 1+9+8+8+9+8+8+9 = 60 ⇒ 桥段从第 61 小节起（0-based 60）。 */
+  beat.Arrange.loopLyricSection(beat.DEMO_ID, secUid(beat, 8));   // v2.26.0：收段 uid
+  eq(JSON.stringify([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to]), "[59,63]",
      "★ 循环本行落到桥段（与 F2 同一套机制；小节口径 = 桥段起止小节）");
-  const ye = charAt(beat, 6, "夜");
-  eq([ye.t, ye.dur].join(), "192,144", "跨小节的「夜」：t=192（次小节首）dur=144 延至下一个「那」");
+  const ye = charAt(beat, 8, "夜");
+  eq([ye.t, ye.dur].join(), "192,48", "桥段的「夜」：t=192（第 2 小节首）dur=48（一个八分）");
 }
 
 /* ================= 场景 T63e：逐小节谱（v2.6.0 第 Ⅳ 期） ================= */
-section("T63e 示例载入 · 《在他乡》= 30 小节逐小节谱（段长 1/3/4/2/4/2/4/2/6/2）");
+section("T63e 示例载入 · 《在他乡》= 64 小节逐小节谱（段长 1/9/8/8/9/8/8/8/5）");
 {
   const { beat } = firstRun();
   const a = beat.Store.findArrange(beat.DEMO_ID);
   /* ★ v2.6.0 的核心：全曲 30 小节（此前把段长垫到 4 的倍数 → 44 小节）。
      逐小节数据来自参考页的 `var BARS`（每小节带自己的 strum 字段） */
-  eq(beat.songBars(a), 30, "★ 全曲 30 小节（v2.6.0 前是被垫出来的 44 小节）");
+  eq(beat.songBars(a), 64, "★ 全曲 64 小节（副歌 ×3 + 主歌 ×2；★ 第三遍副歌无收束小节——用户指出原本多了一个十六分满扫）");
   eq(JSON.stringify(a.sections.map(s => beat.secBars(s))),
-     JSON.stringify([1, 3, 4, 2, 4, 2, 4, 2, 6, 2]),
-     "★ 段长 = 真实小节数（不再是 4 的倍数）");
+     JSON.stringify([1, 9, 8, 8, 9, 8, 8, 8, 5]),
+     "★ 段长 = 按节奏型合并后的真实小节数（相邻同型的连续段已并成一段）");
 
   /* ★ 逐小节谱 → 块的映射：相邻同型合并成一块（块 = 型 × N 遍）。
      这一串就是整首歌的骨架，任何一处错位都会在这里现形 */
   const runs = a.sections.flatMap(s => s.blocks.map(b =>
     b.repeats + "×" + String(beat.resolveRef(b.ref).name))).join(" | ");
   eq(runs,
-     "1×十六分满扫（《在他乡》前奏） | 3×下上扫 · 密（《在他乡》副歌） | 4×下上扫 · 密（《在他乡》副歌） | 1×下上扫 · 密（《在他乡》副歌） | 1×十六分满扫（《在他乡》前奏）"
-     + " | 4×下上扫 · 疏（《在他乡》主歌一） | 2×下上扫 · 疏（《在他乡》主歌一） | 4×切音满扫（《在他乡》桥段） | 2×下上扫 · 疏（《在他乡》主歌一）"
-     + " | 6×前密后疏扫（《在他乡》主歌二） | 1×前密后疏扫（《在他乡》主歌二） | 1×十六分满扫（《在他乡》前奏）",
-     "★ 全曲 12 个块，逐段逐块与参考页的 30 小节表对齐（v2.19.1 型名改为特征名）");
+     "1×十六分满扫（《在他乡》前奏）"
+     + " | 8×下上扫 · 密（《在他乡》副歌） | 1×十六分满扫（《在他乡》前奏）"
+     + " | 8×下上扫 · 疏（《在他乡》主歌一）"
+     + " | 7×前密后疏扫（《在他乡》主歌二） | 1×十六分满扫（《在他乡》前奏）"
+     + " | 8×下上扫 · 密（《在他乡》副歌） | 1×十六分满扫（《在他乡》前奏）"
+     + " | 8×下上扫 · 疏（《在他乡》主歌一）"
+     + " | 7×前密后疏扫（《在他乡》主歌二） | 1×十六分满扫（《在他乡》前奏）"
+     + " | 8×下上扫 · 密（《在他乡》副歌）"
+     + " | 5×切音满扫（《在他乡》桥段）",
+     "★ 全曲 13 个块；★ 合并的判据：原本散在多段的同型小节合成同一个 repeats:N 块（如 8×副歌型）；"
+     + "★ 第三遍副歌**没有**收束后的十六分满扫块（用户指出原数据此处多了一块）");
 
   /* ★★ 最要紧的一条：**段长与词行逐小节对齐**。
      以前段长被垫过（1→4、2→4、6→8），多出来的小节"手不停嘴休息"；
@@ -259,6 +270,6 @@ section("T63e 示例载入 · 《在他乡》= 30 小节逐小节谱（段长 1/
     if (!chars.length) return -1;
     const barTicks = 192;               // 4/4 一小节 = 4 拍 × 48 tick（与 beat.TPB 同值）
     return Math.floor(Math.max.apply(null, chars.map(c => c.t)) / barTicks);
-  })), JSON.stringify([0, 2, 3, 1, 3, 1, 3, 1, 5, 1]),
+  })), JSON.stringify([0, 7, 7, 7, 7, 7, 7, 7, 3]),
      "★ 每段最后一行落在该段最后一小节（行=小节的直接判据）");
 }

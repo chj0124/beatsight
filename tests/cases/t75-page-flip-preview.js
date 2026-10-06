@@ -82,8 +82,8 @@ const playAllOf = () => boxOf().children.find(x =>
   setRange(3, 3);                                  // 范围滑块定位第 3 小节（两个 thumb 重合；0-based from=2，落在段 1 内）
   eq(beat.Store.S.arrangeSel.from, 2, "前提：已定位到第 3 小节（v2.10.7 小节口径）");
   els["argJumpNext"].fire("click");
-  eq(beat.Store.S.arrangeSel.from, 4,
-    "★ 停止时点「下一段」→ 跳到下一段的起点（小节 2 在段 1 内 → 下一段 = 段 2 起点 = 小节 4；不再是零反馈）");
+  eq(beat.Store.S.arrangeSel.from, 10,
+    "★ 停止时点「下一段」→ 跳到下一段的起点（小节 2 在段 1 内 → 下一段 = 段 2 起点 = 0 基第 10 小节；合并后段 1 是 9 小节）");
   els["argJumpPrev"].fire("click");
   eq(beat.Store.S.arrangeSel.from, 1, "★ 再点「上一段」→ 回到上一段起点（段 2 → 段 1 起点 = 小节 1）");
   /* v2.10.14：原这里还有一条 argNowMeta 定位文案断言——说明文字已按用户要求删除，

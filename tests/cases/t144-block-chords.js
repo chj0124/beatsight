@@ -24,7 +24,7 @@ const seedT144 = (blocks, secName, extra) => Object.assign({
     sections: [{ name: secName, blocks }] }] }),
   "beatsight.arrmig73": "1",        // 迁移戳：本组只测块级 chords，不受曲式 ×4 迁移干扰
   "beatsight.chdmig": "1",          // 迁移戳：隔离段名和弦迁移（迁移本身在 T144f/g 单测）
-  "beatsight.demoSeeded": "1",      // demo 闩：防止 start() 首开带出演示曲把选中切走
+  "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",      // demo 闩：防止 start() 首开带出演示曲把选中切走
   "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange", vizRows: 4,
     arrangeSel: { id: "t144", from: 0, to: 0, loop: false } }),
 }, extra || {});
@@ -155,7 +155,7 @@ section("T144g 幂等 · 迁移后的冷键再进（无戳）不再二次加工"
     "beatsight.customs": seedT144([], "主歌")["beatsight.customs"],
     "beatsight.arranges": String(first.storage.get("beatsight.arranges")),
     "beatsight.arrmig73": "1",
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, playMode: "arrange", vizRows: 4,
       arrangeSel: { id: "t144", from: 0, to: 0, loop: false } }),
   });
@@ -183,10 +183,10 @@ section("T144i 演示曲 · 段名无后缀，逐小节和弦进块级 chords");
 {
   const { beat } = loadApp(seedT144([], "主歌"));
   const spec = beat.demoBuildSpec();
-  const chorus = spec.arrange.sections[2];   // 副歌 · 下（P2×4 = 1 块 4 小节）
-  eq(chorus.name, "副歌 · 下", "★ demo 段名剥后缀");
-  eq(chorus.blocks[0].chords, "G|C|Am|Dm", "★ demo 和弦进块级 per-bar（四小节四格）");
-  const bridge = spec.arrange.sections[3];   // 收束（P2 + P1 = 两块各 1 小节）
-  eq(bridge.blocks.map(b => b.chords || "").join(","), "G,G",
-    "★ 多块段按块区间切分（每块一格）");
+  const chorus = spec.arrange.sections[1];   // 副歌（第一遍）：下上扫·密 ×8 + 十六分满扫 ×1
+  eq(chorus.name, "副歌（第一遍）", "★ demo 段名＝结构名 +（第N遍），无和弦后缀");
+  eq(chorus.blocks[0].chords, "C|Am|Dm|G|C|Am|Dm|G", "★ 首块 8 小节、逐小节一格和弦");
+  const v2 = spec.arrange.sections[3];   // 主歌二（第一遍）：前密后疏 ×7 + 十六分满扫 ×1
+  eq(v2.blocks.map(b => b.chords || "").join(","), "Am|Em|F|C|Am|Em|F,G",
+    "★ 多块段按块区间切分（前块 7 格 + 尾块 1 格）");
 }

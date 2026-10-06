@@ -122,7 +122,7 @@ section("T97d 校验边界 · 空名拒绝 / 40 字截断 / 非法下标 / 脏�
     JSON.stringify({ v: 1, names: { "0": "合法覆盖", "99": "越界", "abc": "非数字", "1": "   " } }) });
   eq(dirty.beat.BUILTINS[0].name, "合法覆盖", "★ 合法条目照常应用");
   eq(dirty.beat.BUILTINS[1].name, "四分基础", "★ 空白覆盖被丢弃（不污染源名）");
-  eq(dirty.beat.BUILTINS.length, 17, "越界/非数字条目不影响库结构");
+  eq(dirty.beat.BUILTINS.length, 21, "越界/非数字条目不影响库结构");
 }
 
 /* ================= 场景 T97e：改名与内置化迁移共存（v2.20.0 语义不受影响） ================= */

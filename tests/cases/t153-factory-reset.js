@@ -15,7 +15,7 @@ const { loadApp, ok, eq, section } = require("../lib/harness");
 /* 预置一组有代表性的本机数据 */
 function seed(){
   return {
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 120, showLyric: true, lyricPos: "auto" }),
     "beatsight.customs": JSON.stringify([{ id: "c1", name: "我的型", bars: [[{ t: 12 }]] }]),
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [{ id: "a1", name: "我的曲", sections: [] }] }),

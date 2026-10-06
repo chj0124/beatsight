@@ -48,9 +48,10 @@ section("T116a 曲式改名 · ✎ → uiPrompt → 落盘 / 空名拒绝 / 示�
   const { beat, els, arr, id, storage } = setup(true);
   beat.Arrange.open();
   const items = els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
-  eq(items.length, 2, "曲式库两行（示例曲 + 素材）");
+  eq(items.length, 3, "曲式库三行（两首示例曲 + 素材）");
   const penDemo = items[0].children.find(c => /arg-item-ren/.test(c.className));
-  const penMine = items[1].children.find(c => /arg-item-ren/.test(c.className));
+  /* v3.34.7：示例曲变两首，用户自建的那条排在其后 → 下标 2（原 1） */
+  const penMine = items[2].children.find(c => /arg-item-ren/.test(c.className));
   ok(!!penDemo && !!penMine, "每行都有 ✎");
   eq(penDemo.getAttribute("aria-disabled"), "true", "★ 示例曲 ✎ 禁用（aria-disabled）");
   ok(penDemo.title.includes("复制"), "禁用也讲清出路（title 指向「复制一份」）");

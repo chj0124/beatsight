@@ -12,6 +12,11 @@
      · 段 uid 跨曲式允许重复（唯一性判据是**同曲式内**）——副本带着原 uid 不是错。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
+/* v3.35.0：曲式库并入左栏后，#argList 里除曲式条之外还夹着
+   「当前曲式的段树」与「两首之间的分隔线」两个兄弟节点 ⇒
+   按位置取 children[N] 会取到它们（断言可能"碰巧通过"= 假绿）。
+   一律经本函数只取曲式条。 */
+const songItems = els => els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
 
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 
@@ -123,7 +128,7 @@ section("T105b 复制曲式 · 副本独立 / 重名递增 / 歌词行不跟着�
 
   /* 重名递增：原件现在叫「原曲」，库里已有「原曲 副本」→ 再复制得「原曲 副本2」 */
   beat.Store.S.arrangeSel.id = "src";
-  els["argList"].children[0].fire("click");            // 选中原件
+  songItems(els)[0].fire("click");            // 选中原件
   const cp2 = libCopyBtn(beat, els);
   cp2.fire("click");
   eq(beat.Store.arranges[2].name, "原曲 副本2", "★ 重名自动递增（副本 / 副本2 / 副本3 …）");

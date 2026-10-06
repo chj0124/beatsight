@@ -28,7 +28,7 @@ function startArrange(raw, sel){
       { id: "t53k4", name: "t53k 四小节载体", meter: 4,
         bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }),
     /* demoSeeded 闩预置：防止 start() 走首开带出演示曲分支把选中切走 */
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
       vizRows: 4,   /* v3.1.0：出厂默认 2 → 本文件的窗口断言按 4 行档写，显式钉住 */
       arrangeSel: Object.assign({ id: "t1", from: 0, to: 0, loop: false }, sel) }),

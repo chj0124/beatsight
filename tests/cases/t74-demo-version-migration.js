@@ -126,9 +126,9 @@ section("T74c 内置化迁移 · ★ v2.19.x 形状落盘 → 再启动自动收
   ok(a.sections.every(s => s.blocks.every(b =>
     b.ref.type === "builtin" && b.ref.idx >= 12 && b.ref.idx <= 16)),
     "★ 曲式块引用已重映射为内置下标 12–16（DEMO_BUILTIN_BASE=12 + refIdx）");
-  eq(second.beat.songBars(a), 30, "★ 全曲 30 小节分毫未变");
-  eq(second.beat.Store.lyrics.filter(l => l.arrangeId === second.beat.DEMO_ID).length, 10,
-    "歌词 10 行完好（迁移不动歌词之外的用户数据）");
+  eq(second.beat.songBars(a), 64, "★ 全曲 64 小节分毫未变");
+  eq(second.beat.Store.lyrics.filter(l => l.arrangeId === second.beat.DEMO_ID).length, 9,
+    "歌词 9 行完好（迁移不动歌词之外的用户数据）");
   eq(JSON.stringify(second.beat.arrangeProblems(a)), "[]", "★ 重映射后曲式零问题（整首可播）");
   /* 逐块对齐规范谱：重映射的下标序 = demoBuildSpec 的 refIdx 序 */
   const gotIdx = a.sections.flatMap(s => s.blocks.map(b => b.ref.idx - 12)).join(",");
@@ -178,7 +178,7 @@ section("T74d 内置化迁移 · ★ S.sel 重映射 + 旧名认回 + 坏引用�
   const a3 = s3.beat.Store.findArrange(s3.beat.DEMO_ID);
   ok(a3 && a3.sections.every(s => s.blocks.every(b => b.ref.type === "builtin")),
     "★ 曲式已治愈：所有块引用内置下标（demoStale 抓到坏引用 → 启动层 ensureDemo 重建）");
-  eq(s3.beat.songBars(a3), 30, "★ 治愈后全曲回到 30 小节");
+  eq(s3.beat.songBars(a3), 64, "★ 治愈后全曲回到 64 小节");
 }
 
 /* ================= 场景 T74e：用户删掉曲式 → 绝不复活（只收敛，不复活） ================= */
@@ -223,6 +223,6 @@ section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器�
   eq(beat.Store.customs.length, 1, "★ 另存成功：自定义库恰好 1 条（与内置隔离）");
   eq(beat.Store.customs[0].name, "我的副歌变体", "★ 新条目名来自草稿名输入框");
   eq(beat.Store.S.sel.type, "custom", "★ 保存后选中的是新的自定义型");
-  eq(beat.BUILTINS.length, 17, "★ 内置库纹丝不动（17 = 12 + 示例 5）");
+  eq(beat.BUILTINS.length, 21, "★ 内置库纹丝不动（21 = 12 + 示例 5 + 示例 4）");
   beat.Controls.stop();
 }

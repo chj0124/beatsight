@@ -11,6 +11,11 @@
      · 菜单与换型候选（picking）互斥：开一方先关另一方（同一时间至多一处）。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
+/* v3.35.0：曲式库并入左栏后，#argList 里除曲式条之外还夹着
+   「当前曲式的段树」与「两首之间的分隔线」两个兄弟节点 ⇒
+   按位置取 children[N] 会取到它们（断言可能"碰巧通过"= 假绿）。
+   一律经本函数只取曲式条。 */
+const songItems = els => els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
 
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 const seed3 = () => ({ "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
@@ -97,8 +102,8 @@ section("T106c 删除就近化 · chip ✕ / 确认流 / 单曲式隐藏「当�
   eq(els["argNowRow"].classList.contains("single"), false, "★ ≥2 条 → chip 显示（防「编辑 A 播着 B」错位）");
 
   /* 选中 chip 的 ✕：aria 到位、确认流删除 */
-  els["argList"].children[1].fire("click");            // 选中新建的那条
-  const delSpot = els["argList"].children[1].children[2];
+  songItems(els)[1].fire("click");            // 选中新建的那条
+  const delSpot = songItems(els)[1].children[2];
   /* ★ 守卫先行：变异删掉 ✕ 时 children[2] 是 undefined——必须表现为本条具名失败，
      而不是下一行读 className 时崩溃（崩溃不是证据，DEVELOPMENT 反向验证纪律） */
   ok(!!delSpot && /arg-item-del/.test(delSpot.className), "★ 选中 chip 右侧出现删除点（v2.35.0 就近化）");
@@ -120,7 +125,7 @@ section("T106d 残影防御 · 重渲染后 argLibRow 里不留死菜单");
   /* 任何触发 arrangeRender 的操作（这里用曲式库重选）都该把菜单摘掉——
      菜单按钮的监听已被 unbindOverlay 全量解绑，残影 = "点了没反应"的死 UI。
      v2.35.0：曲式级 ⋯ 退役，宿主只剩 argLibRow 一个 */
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   ok(!els["argLibRow"].children.find(c => /(^| )arg-new-menu( |$)/.test(c.className)),
     "★ 重渲染后 argLibRow 里没有菜单残影");
   beat.Arrange.close();

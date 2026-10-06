@@ -26,6 +26,9 @@
                             覆盖不读 meta 的场景）；本页永远深色，声明如实 */
   --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525; --seam-strong:#8a8b90;
   --thumb-w:16px;        /* range 拇指宽（v2.82.0 立变量）：填充条端点要对齐拇指中心，px 校正项必须与它同源 */
+  /* v3.35.0：曲式条目的图标（乐谱/段轨形）。用 mask + currentColor ⇒ 与文字同色，
+     选中变绿时自动跟随；做成变量便于将来换图标只改一处 */
+  --ico-arrange:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 16 16'><path d='M2 4h12M2 8h8M2 12h11' stroke='black' stroke-width='1.8' stroke-linecap='round' fill='none'/></svg>");
   --line:#2A2A2A; --border:#4D4D4D;
   /* v3.4.0（B1 语义分色）：单选「选中态」专用色。选中是**静态选择**，与「正在发声」是两件事，
      此前两者共用 --green（一色六用：选中/发声/和弦/开关/播放键/聚焦环），用户分不清
@@ -950,7 +953,7 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
 .pb-sub{justify-content:space-between}
 .pb-sub .demo-range-note{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 「整首」时读数由 JS 置 visibility:hidden（占位隐藏、布局零跳动）——
-   整首范围（第 1–3 节 · 共 30 小节）在默认态没有信息量，拖动端点变局部范围时才显示。 */
+   整首范围（第 1–9 节 · 共 64 小节）在默认态没有信息量，拖动端点变局部范围时才显示。 */
 .pb-sub .demo-range-note[hidden]{display:none}
 .pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
@@ -1623,7 +1626,6 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .stat-num{font-size:28px;font-weight:700;font-family:var(--mono)}
 .stat-lab{font-size:12px;color:var(--t3);margin-top:4px}
 /* ---------- 练习分布（v1.11.0） ---------- */
-.stats-head{font-size:12px;color:var(--t3);margin:22px 0 4px}
 
 /* ---------- 听辨训练（v1.10.0） ---------- */
 /* 候选卡片：只画记谱、不给名字——给名字就变成「读名字猜」，练不到耳朵。
@@ -1647,7 +1649,6 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    DOM 顺序**一个不动**（[段号, 段名, 块, 操作, 歌词]）——t54/t60 按裸下标定位、
    歌词轨钉在 children[4]，全部靠 order 在视觉层重排，测试定位零迁移。 */
 /* v2.33.0：曲式库行容器（chips + 行尾「＋」+ 展开时的模板菜单同住一行流） */
-.arg-lib-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:18px}
 .arg-list{display:flex;flex-wrap:wrap;gap:8px}
 .arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
@@ -1821,6 +1822,105 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 时值轮廓：全部走 --veil 三元组（v2.54.0 收口），日间/夜间主题自动翻转，零 obs 特判 */
 .arg-lyric-note{position:absolute;top:0;bottom:0;border:1px solid rgba(var(--veil),.18);background:rgba(var(--veil),.05);border-radius:3px;pointer-events:none}
 .arg-lyric-note.rest{border-style:dashed;background:transparent}   /* 休止：虚线空框（与块头行、主界面同语汇） */
+/* —— 侧栏大纲（v3.34.8）——
+   为什么是侧栏而不是顶部展开：认段落靠的是「节奏型密度 + 歌词首句」两样信息，
+   而这两种信息**竖向并列**才便于扫视（横向排开的段卡片反而要来回看）。
+   侧栏 sticky 吸附、自己滚动 —— 段数上限 24，长起来也不挤走正文。
+   ★ 缩略带复用 .arg-pat-bar 的渲染（mkPatBar），不另写一套迷你节奏型；
+     本行的 .arg-pat-bar 由侧栏自己克隆一副（不复用卡片里的 DOM，避免两处共用同一节点）。
+   ★ 窄屏（≤960px）整体收进抽屉：主场景是手机，196px 侧栏在那里放不下。 */
+/* ★ v3.34.9（用户反馈「大纲区域太小、歌词没显示出来」）两处改动：
+   ① 侧栏 196 → **288px**、行高与字号上调、缩略带 44 → 64px —— 原来太挤，看不清。
+   ② 歌词改为**每段都显示**（原来只在"范围内恰好一段"时展开 ⇒ 首开范围是整首，
+      结果一条歌词都不显示，与"看得到缩小版歌词"的需求正相反）。 */
+/* 编排页单独放宽容器上限：1080 − 288(侧栏) − 20(间隙) 只剩 772px，段落卡片会被压扁。
+   ★ 为什么敢放宽：那条 1080 的上限是为**编辑器页**的工具栏立的（`editor-actions` 需要
+     ≈1540px，见 .editor-actions 处注释）；编排页顶栏只有「返回 + 标题」，没有这个约束。 */
+#arrangeOverlay .editor-inner{max-width:1360px}
+.arg-shell{display:grid;grid-template-columns:288px minmax(0,1fr);gap:20px;align-items:start}
+.arg-outline{position:sticky;top:64px;max-height:calc(100vh - 88px);overflow-y:auto;
+  border-right:1px solid var(--line);padding-right:14px}
+.arg-outline-h{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--t3);
+  padding:8px 6px 9px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.arg-outline-h b{font-size:14px;color:var(--t1);font-weight:500}
+/* 一段 = 两行：上行「序号 · 段名 · 缩略带」，下行「歌词」。行距给足，利于扫视 */
+.arg-ol-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:6px 8px;border-radius:6px;border:0;background:transparent;color:var(--t2);font-size:13px}
+.arg-ol-row:hover{background:rgba(var(--veil),.06)}
+.arg-ol-row.sel{background:rgba(30,215,96,.13);color:var(--green)}
+.arg-ol-no{flex:none;width:18px;text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--t3)}
+.arg-ol-row.sel .arg-ol-no{color:var(--green)}
+.arg-ol-nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arg-ol-strip{flex:none;width:64px;height:10px;display:flex;gap:1px}
+.arg-ol-strip i{flex:1;background:var(--green);border-radius:1px}
+.arg-ol-strip i.sub{background:rgba(30,215,96,.30)}                    /* 空扫 = 淡 */
+.arg-ol-strip i.rest{background:transparent;border:1px dashed var(--line)}  /* 休止 = 虚线框 */
+/* 歌词行：贴着上行（负上边距抵消上行的下 padding），左侧与段名对齐 */
+/* ★ v3.35.1（用户实报「绿底贴着歌词、靠得太近」）：原先这里写 margin-top:-3px，
+   是**往回收**的负边距（贴着段行的下内边距压上去）——方向刚好相反。
+   现在改成明确的正向间隔：绿底（选中态）与歌词之间留 ~11px（行下内边距 6 + 上 5）。 */
+.arg-ol-lyr{font-size:12px;color:var(--t3);padding:0 8px 9px 36px;margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arg-ol-lyr.cur{color:var(--t2)}                                       /* 当前段：字色提亮 */
+
+/* ===================== v3.35.0：曲式库并入左栏（两级树） =====================
+   左栏从"一层段列表"变成"曲式 → 该曲式的段"两级树：
+     顶层 = 曲式（点 = 切歌，展开它就看到它的段）
+     子级 = 段（点 = 跳段）
+   层级由**缩进 + 字重 + 图标**表达，不再靠"左右分居两栏"暗示（那样歧义：
+   两侧看着对称、点了却一个换段一个换曲）。
+   ★ 展开哪一首 = 当前在编的 curId —— 手风琴式只展开当前，不需要新增任何状态。
+   ★ 窄屏抽屉搬的是 #argSide（曲式库与段树同属一条侧栏），不是单独的 #argOutline。 */
+.arg-lib-wrap{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+.arg-lib-h{display:flex;align-items:baseline;gap:8px;padding:2px 6px 8px}
+.arg-lib-h b{font-size:14px;color:var(--t1);font-weight:500}
+.arg-lib-h span{font-size:12px;color:var(--t3)}
+.arg-lib-h .arg-add{margin-left:auto}
+/* 曲式条目由横向胶囊改为**纵向行**（288px 里胶囊放不下名字+段数+✎+✕） */
+.arg-item{display:flex;align-items:center;gap:8px;background:transparent;border-radius:6px;
+  padding:7px 8px;cursor:pointer;text-align:left;box-shadow:none;color:var(--t2);font-size:13px}
+.arg-item:hover{background:rgba(var(--veil),.06)}
+.arg-item.sel{background:rgba(30,215,96,.13);color:var(--green);font-weight:500}
+/* ★ 图标用 ::before 而不是真实子节点：曲式条的 children 下标被多处测试按位置取用
+   （children[2] = 删除钮 等），加一个真实子节点会把它们全体错位。装饰性图形也不该占 DOM。 */
+.arg-item::before{content:"";flex:none;width:13px;height:13px;background:currentColor;
+  -webkit-mask:var(--ico-arrange) center/13px no-repeat;mask:var(--ico-arrange) center/13px no-repeat;opacity:.75}
+.arg-item .arg-item-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arg-item .arg-item-meta{flex:none;font-size:11px;font-family:var(--mono);color:var(--t3)}
+.arg-item.sel .arg-item-meta{color:var(--green);opacity:.8}
+/* 两首之间的分隔线（v3.35.0 用户要求）：只在"前一首之后"出现，末首不画 */
+.arg-ol-sep{border:0;border-top:1px solid var(--line);margin:10px 2px 8px}
+/* 段树：缩进在曲式行之下，与顶层明显区分 */
+.arg-ol-secs{padding-left:14px}
+.arg-ol-secs .arg-ol-row{font-size:12.5px;padding:5px 7px}
+.arg-ol-secs .arg-ol-lyr{font-size:11.5px;padding:0 7px 6px 34px}
+
+/* 目录按钮（窄屏才出现，见下方断点） */
+.arg-toc-btn{display:none}
+
+@media (max-width:960px){
+  .arg-shell{display:block}
+  .arg-outline{display:none}
+  .arg-toc-btn{display:inline-flex}
+  /* 窄屏：大纲走**抽屉**复用（v3.34.8）。做法是把侧栏节点在打开时移进抽屉容器，
+     关掉再移回 —— 而不是把大纲"再渲染一份"：两处 DOM 会让选中态/滚动位置各说各话。
+     抽屉样式照 .preset-drawer 先例（同一套视觉语言），但更窄：大纲一行只有三样东西。 */
+  .arg-toc-drawer{position:fixed;left:0;top:0;bottom:0;z-index:110;width:min(280px,86vw);
+    background:var(--card);border-right:1px solid var(--line);padding:14px;
+    padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    overflow-y:auto;box-shadow:8px 0 32px rgba(0,0,0,.5)}
+  .arg-toc-drawer[hidden]{display:none}
+  .arg-toc-mask{position:fixed;inset:0;z-index:105;background:rgba(0,0,0,.45)}
+  .arg-toc-mask[hidden]{display:none}
+  /* 抽屉里不再是"侧栏列"：去掉 sticky/右边线/限高，改为整块随抽屉滚动 */
+  .arg-toc-drawer .arg-outline{display:block;position:static;max-height:none;border-right:0;padding-right:0}
+  .arg-toc-drawer .arg-lib-wrap{border-bottom:0}
+}
+/* 宽屏不该看到抽屉与遮罩（窄屏内联样式可覆盖 hidden 时由 JS 控制显隐） */
+@media (min-width:961px){
+  .arg-toc-drawer,.arg-toc-mask{display:none !important}
+}
+
 /* —— 块头节奏型行（v2.80.0 · 甲）——
    乙的行内轮廓是**逐小节**的局部参照，块头行回答的是"这一段整体在打什么节奏"：
    型名 + ×N 遍 + 一遍长什么样（含扫弦箭头与骑缝线）。每个块一条（A×3 → B×2 → A×1 = 三条）。
@@ -2956,9 +3056,36 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          右栏 320px 把歌曲地图压到每段 ~30px（10 段示例曲段号都放不下）；全宽后每段 ~90px。
          条内三行：地图（全宽）→ 双滑块 + 读数 → 控件（循环/全部/锚点/播放，播放钮靠右）。
          ≤640px 仍变底部固定条（内容同前）。双栏 grid 与 960 中间档随之删除。 -->
+    <!-- v3.34.8：侧栏大纲 + 正文两列。★ 两列包住的是**走带条与曲式库及以下全部内容**，
+         不含顶栏（顶栏要横贯全宽，标题与返回钮不该被侧栏挤窄）。 -->
+    <div class="arg-shell" id="argShell">
+    <!-- v3.35.0：左栏 = 「曲式库 + 该曲式的段」两级树（原曲式库在主列那张卡片里）。
+         ★ 拆成两层容器是有原因的：**#argOutline 每次渲染都被 clear 重建**，
+           曲式库（#argList）要活下来，就不能是它的子节点。#argSide 是这两块共同的外壳，
+           也是窄屏抽屉搬运的**唯一**节点（搬外壳 = 曲式库与段树一起走）。 -->
+    <aside class="arg-outline" id="argSide">
+    <div class="arg-lib-wrap" id="argLibRow">
+      <div class="arg-lib-h">
+        <b>曲式</b><span id="argLibCount"></span>
+        <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
+      </div>
+      <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
+    </div>
+    <nav class="arg-outline-tree" id="argOutline" aria-label="段落大纲（点一段 = 跳到该段）"></nav>
+    </aside>
+    <!-- v3.34.8：窄屏抽屉宿主（宽屏恒 display:none，见 CSS 断点）。
+         打开时把 #argOutline **搬进来**、关闭时搬回侧栏原位——不另渲染一份，
+         否则选中态与滚动位置会有两个真相源。 -->
+    <div class="arg-toc-mask" id="argTocMask" hidden></div>
+    <div class="arg-toc-drawer" id="argTocDrawer" hidden>
+      <div class="hint" style="margin-bottom:8px">点一段即可跳过去</div>
+    </div>
+    <div class="arg-main">
     <div class="arg-transport" id="argPanel" role="group" aria-label="开练面板">
       <div class="arg-t-row">
         <div class="arg-map" id="argMap" role="group" aria-label="歌曲地图（点某段 = 只练这一段）"></div>
+        <!-- v3.34.8：窄屏（≤960px）侧栏收起，改由本钮开抽屉（宽屏恒隐藏） -->
+        <button class="pill outline arg-toc-btn" id="argTocBtn" aria-label="打开段落目录">目录</button>
         <div class="hint" id="argRangeRead"></div>
       </div>
       <div class="arg-range-track">
@@ -2980,15 +3107,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     </div>
     <div class="card">
       <span class="sec-tag"><b>06</b><i>Arrangement</i></span>
-      <h2 class="card-title" style="margin-bottom:4px">曲式库</h2>
-      <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。</div>
-      <!-- v2.33.0：chips 行尾「＋」＝ 新建入口（argNew 搬家至此）；模板菜单也挂在本行内
-           （argLibRow 是菜单宿主，测试按它定位），点窗外即关（装配区 pointerdown）。 -->
-      <div class="arg-lib-row" id="argLibRow">
-        <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
-        <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
-      </div>
-      <div class="stats-head">段落结构</div>
+      <!-- v3.35.0：标题由「曲式库」改为「段落结构」——曲式库已搬到左栏，
+           本卡片如今只装段落结构（原本卡内还有个同名的 stats-head，两者合并成一个标题） -->
+      <h2 class="card-title" style="margin-bottom:4px">段落结构</h2>
+      <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。左栏「曲式」用来切换/新建歌曲。</div>
       <div id="argSections"></div>
       <div class="bpm-row">
         <button class="pill" id="argAddSec">+ 加一段</button>
@@ -2996,6 +3118,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <button class="pill outline" id="argRedo" disabled aria-label="重做上一步曲式结构修改（Ctrl+Shift+Z）">↪ 重做</button>
         <span class="hint" id="argHint"></span>
       </div>
+    </div>
+    </div>
     </div>
   </div>
 </div>
@@ -3171,7 +3295,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <div id="mountFigsSettings"></div>
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排</h2>
         <ul class="help-list">
-          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序播完整首（示例曲《在他乡》共 10 段），放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
+          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序播完整首（示例曲《在他乡》共 9 段），放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
             整首播放中说明会带「<b>整首连播 · 播放中</b>」前缀，停机时显示「整首连播 · 已就绪」</li>
           <li><b>播放范围滑块</b>（在曲式条目上方）：<b>按小节拖两个滑块自由选范围</b>
             （刻度就是小节，轨道上的细刻度线是段边界）——范围可以从段中间开始/结束，比如
@@ -3223,7 +3347,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
 
         <div class="help-fig">
           <svg viewBox="0 0 560 104" role="img" aria-label="播放范围双滑块示意：两个滑块之间为练习范围，重合 = 只练一小节">
-            <text x="8" y="16" font-size="10" fill="#b3b3b3">第 4–13 小节 · 副歌 → 间奏（共 30 小节）</text>
+            <text x="8" y="16" font-size="10" fill="#b3b3b3">第 4–13 小节 · 副歌 → 间奏（共 64 小节）</text>
             <rect x="30" y="44" width="500" height="6" rx="3" fill="#232323"/>
             <rect x="110" y="44" width="180" height="6" rx="3" fill="#1ED760"/>
             <circle cx="110" cy="47" r="11" fill="#fff"/>
@@ -3576,23 +3700,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3608  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4349  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6139  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7107  Modal         应用内弹窗
-     L7252  Viz           时值可视化渲染与每帧动画
-     L10717 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11398 Trainer       变速训练器
-     L11608 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12288 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L13887 Editor        自定义节奏型编辑器
-     L14431 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L14478 Ear           听辨训练（v1.10.0）
-     L14706 Arrange       曲式编排（v2.0.0）
-     L18006 Help          使用方法（v2.0.1）
-     L18135 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L18209 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L18476 初始化（装配） 各模块 hook 接线与启动
+     L3732  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4630  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6420  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7388  Modal         应用内弹窗
+     L7533  Viz           时值可视化渲染与每帧动画
+     L10998 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L11679 Trainer       变速训练器
+     L11889 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L12569 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14168 Editor        自定义节奏型编辑器
+     L14712 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L14759 Ear           听辨训练（v1.10.0）
+     L14987 Arrange       曲式编排（v2.0.0）
+     L18489 Help          使用方法（v2.0.1）
+     L18618 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L18692 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L18959 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3618,7 +3742,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.34.6";
+const VERSION = "3.35.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -3916,55 +4040,214 @@ const DEMO_PRESETS = [
       全曲 30 小节，段长依次 1 / 3 / 4 / 2 / 4 / 2 / 4 / 2 / 6 / 2。
       相邻同型的连续小节在 demoBuildSpec 里会被合成一个块（块 = 型 × N 遍）。 */
 const DEMO_SONG = [
-  { name: "开头 · 我多想", chords: ["C"], strums: ["P1"], words: [
-    [[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
-  { name: "副歌 · 上", chords: ["C","Am","Dm"], strums: ["P2","P2","P2"], words: [
-    [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
-    [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
-    [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
-  { name: "副歌 · 下", chords: ["G","C","Am","Dm"], strums: ["P2","P2","P2","P2"], words: [
-    [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
-    [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
-    [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
-    [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]]] },
-  /* 收束 = 第 9 小节用 P2、第 10 小节用 P1（参考页原文："节奏型 2 前四格 + 节奏型 1"）。
-     这一段就是"逐小节不同"的活样本：窗口滚到这里时，四行会同时出现两种型 */
-  { name: "收束 · 我的心伤", chords: ["G","G"], strums: ["P2","P1"], words: [
-    [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,10,"伤"]],
-    [[0,16,"﹣"]]] },
-  { name: "主歌一 · 那年你踏上", chords: ["C","Dm","F","C"], strums: ["P3","P3","P3","P3"], words: [
-    [[0,2,"那"],[2,1,"年"],[3,1,"你"],[4,2,"踏"],[6,4,"上"],[10,2,"暮"],[12,2,"色"],[14,2,"他"]],
-    [[0,16,"乡"]],
-    [[0,2,"你"],[2,1,"以"],[3,1,"为"],[4,2,"那"],[6,4,"里"],[10,2,"有"],[12,2,"你"],[14,2,"的"]],
-    [[0,2,"理"],[2,14,"想"]]] },
-  { name: "主歌一 · 你看着周围", chords: ["C","Dm"], strums: ["P3","P3"], words: [
-    [[0,2,"你"],[2,1,"看"],[3,1,"着"],[4,2,"周"],[6,4,"围"],[10,2,"陌"],[12,2,"生"],[14,2,"目"]],
-    [[0,16,"光"]]] },
-  { name: "桥段 · 那一夜", chords: ["G","C","Dm","C"], strums: ["P5","P5","P5","P5"], words: [
-    [[12,2,"那"],[14,2,"一"]],
-    [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
-    [[0,12,"夜"],[12,2,"那"],[14,2,"一"]],
-    [[0,16,"夜"]]] },
-  { name: "主歌二 · 清晨醒来", chords: ["F","C"], strums: ["P3","P3"], words: [
-    [[0,2,"清"],[2,1,"晨"],[3,1,"醒"],[4,2,"来"],[6,4,"却"],[10,2,"没"],[12,2,"人"],[14,2,"在"]],
-    [[0,2,"身"],[2,14,"旁"]]] },
-  { name: "主歌二 · 人静的雨夜", chords: ["Am","Em","F","C","Am","Em"], strums: ["P4","P4","P4","P4","P4","P4"], words: [
-    [[2,2,"人"],[4,2,"静"],[6,2,"的"],[8,2,"雨"],[10,6,"夜"]],
-    [[0,2,"想"],[2,2,"起"],[4,2,"了"],[6,10,"她"]],
-    [[2,2,"她"],[4,2,"的"],[6,2,"挽"],[8,2,"留"],[10,6,"还"]],
-    [[0,2,"萦"],[2,2,"绕"],[4,2,"耳"],[6,10,"旁"]],
-    [[2,2,"想"],[4,2,"起"],[6,2,"离"],[8,2,"别"],[10,6,"她"]],
-    [[0,2,"带"],[2,1,"泪"],[3,1,"的"],[4,2,"脸"],[6,10,"庞"]]] },
-  /* 收尾 = 第 29 小节 P4、第 30 小节 P1（原先那个 4 小节的「收尾」型同理取消） */
-  { name: "主歌二 · 你忍不住的", chords: ["F","G"], strums: ["P4","P1"], words: [
-    [[2,2,"你"],[4,2,"忍"],[6,2,"不"],[8,2,"住"],[10,6,"的"]],
-    [[0,2,"哭"],[2,2,"出"],[4,2,"声"],[6,4,"响"],[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+  { name: "引子 · 我多想", chords: ["C"], strums: ["P1"], words: [
+      [[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+  { name: "副歌（第一遍）", chords: ["C","Am","Dm","G","C","Am","Dm","G","G"], strums: ["P2","P2","P2","P2","P2","P2","P2","P2","P1"], words: [
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"]],
+      []] },
+  { name: "主歌一（第一遍）", chords: ["C","Dm","F","C","C","Dm","F","C"], strums: ["P3","P3","P3","P3","P3","P3","P3","P3"], words: [
+      [[0,2,"那"],[2,1,"年"],[3,1,"你"],[4,2,"踏"],[6,4,"上"],[10,2,"暮"],[12,2,"色"],[14,2,"他"]],
+      [[0,4,"乡"]],
+      [[0,2,"你"],[2,1,"以"],[3,1,"为"],[4,2,"那"],[6,4,"里"],[10,2,"有"],[12,2,"你"],[14,2,"的"]],
+      [[0,2,"理"],[2,4,"想"]],
+      [[0,2,"你"],[2,1,"看"],[3,1,"着"],[4,2,"周"],[6,4,"围"],[10,2,"陌"],[12,2,"生"],[14,2,"目"]],
+      [[0,4,"光"]],
+      [[0,2,"清"],[2,1,"晨"],[3,1,"醒"],[4,2,"来"],[6,4,"却"],[10,2,"没"],[12,2,"人"],[14,2,"在"]],
+      [[0,2,"身"],[2,4,"旁"]]] },
+  { name: "主歌二（第一遍）", chords: ["Am","Em","F","C","Am","Em","F","G"], strums: ["P4","P4","P4","P4","P4","P4","P4","P1"], words: [
+      [[2,2,"人"],[4,2,"静"],[6,2,"的"],[8,4,"雨"],[12,4,"夜"]],
+      [[0,2,"想"],[2,2,"起"],[4,2,"了"],[6,4,"她"]],
+      [[2,2,"她"],[4,2,"的"],[6,2,"挽"],[8,4,"留"],[12,4,"还"]],
+      [[0,2,"萦"],[2,2,"绕"],[4,2,"耳"],[6,4,"旁"]],
+      [[2,2,"想"],[4,2,"起"],[6,2,"离"],[8,4,"别"],[12,4,"她"]],
+      [[0,2,"带"],[2,1,"泪"],[3,1,"的"],[4,2,"脸"],[6,4,"庞"]],
+      [[2,2,"你"],[4,2,"忍"],[6,2,"不"],[8,4,"住"],[12,4,"的"]],
+      [[0,2,"哭"],[2,2,"出"],[4,2,"声"],[6,4,"响"],[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+  { name: "副歌（第二遍）", chords: ["C","Am","Dm","G","C","Am","Dm","G","G"], strums: ["P2","P2","P2","P2","P2","P2","P2","P2","P1"], words: [
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"]],
+      []] },
+  { name: "主歌一（第二遍）", chords: ["C","Dm","F","C","C","Dm","F","C"], strums: ["P3","P3","P3","P3","P3","P3","P3","P3"], words: [
+      [[0,2,"那"],[2,1,"年"],[3,1,"你"],[4,2,"一"],[6,4,"人"],[10,2,"迷"],[12,2,"失"],[14,2,"他"]],
+      [[0,4,"乡"]],
+      [[0,2,"你"],[2,1,"想"],[3,1,"的"],[4,2,"未"],[6,4,"来"],[10,2,"还"],[12,2,"不"],[14,2,"见"]],
+      [[0,2,"模"],[2,2,"样"]],
+      [[0,2,"你"],[2,1,"看"],[3,1,"着"],[4,2,"那"],[6,4,"些"],[10,2,"冷"],[12,2,"漠"],[14,2,"目"]],
+      [[0,4,"光"]],
+      [[0,2,"不"],[2,1,"知"],[3,1,"道"],[4,2,"这"],[6,4,"条"],[10,2,"路"],[12,2,"还"],[14,2,"有"]],
+      [[0,2,"多"],[2,4,"长"]]] },
+  { name: "主歌二（第二遍）", chords: ["Am","Em","F","C","Am","Em","F","G"], strums: ["P4","P4","P4","P4","P4","P4","P4","P1"], words: [
+      [[2,2,"人"],[4,2,"静"],[6,2,"的"],[8,4,"雨"],[12,4,"夜"]],
+      [[0,2,"想"],[2,2,"起"],[4,2,"了"],[6,4,"她"]],
+      [[2,2,"她"],[4,2,"的"],[6,2,"挽"],[8,4,"留"],[12,4,"还"]],
+      [[0,2,"萦"],[2,2,"绕"],[4,2,"耳"],[6,4,"旁"]],
+      [[2,2,"想"],[4,2,"起"],[6,2,"离"],[8,4,"别"],[12,4,"她"]],
+      [[0,2,"带"],[2,1,"泪"],[3,1,"的"],[4,2,"脸"],[6,4,"庞"]],
+      [[2,2,"你"],[4,2,"忍"],[6,2,"不"],[8,4,"住"],[12,4,"的"]],
+      [[0,2,"哭"],[2,2,"出"],[4,2,"声"],[6,4,"响"],[10,2,"我"],[12,2,"多"],[14,2,"想"]]] },
+  { name: "副歌（第三遍）", chords: ["C","Am","Dm","G","C","Am","Dm","G"], strums: ["P2","P2","P2","P2","P2","P2","P2","P2"], words: [
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"看"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"],[10,2,"就"],[12,2,"让"],[14,2,"我"]],
+      [[0,2,"回"],[2,2,"到"],[4,2,"家"],[6,4,"乡"],[10,2,"再"],[12,2,"回"],[14,2,"到"]],
+      [[0,2,"她"],[2,2,"的"],[4,2,"身"],[6,4,"旁"],[10,2,"让"],[12,2,"她"],[14,2,"的"]],
+      [[0,2,"温"],[2,2,"柔"],[4,2,"善"],[6,4,"良"],[10,2,"来"],[12,2,"抚"],[14,2,"慰"]],
+      [[0,2,"我"],[2,2,"的"],[4,2,"心"],[6,4,"伤"]]] },
+  { name: "桥段 · 那一夜", chords: ["G","C","Dm","C","Csus4"], strums: ["P5","P5","P5","P5","P5"], words: [
+      [[12,2,"那"],[14,2,"一"]],
+      [[0,4,"夜"],[12,2,"那"],[14,2,"一"]],
+      [[0,4,"夜"],[12,2,"那"],[14,2,"一"]],
+      [[0,4,"夜"]],
+      []] },
+
 ];
+/* ============================================================================
+   第二首示例曲《我们能不能不分手》（v3.34.7）
+   ---------------------------------------------------------------------------
+   ★ 与《在他乡》的差别：它的 4 个型**不是你手写的规范谱**，而是用户自己用编辑器
+     做的自定义型（数据来自用户导出的全量 JSON）。内置示例曲不能依赖用户数据——
+     用户一删型，整首就播不了（这正是《在他乡》在 v2.20.0 走过的路）。
+     故这里把 4 个型的 bars **原样固化**进代码，挂进 BUILTINS（见 DEMO2_BUILTIN_BASE），
+     与《在他乡》的 5 个型同属"内置只读素材"。
+   ★ 段名沿用仓库惯例「结构名 · 特征」：结构名走编曲通用词（引子/主歌/副歌/间奏/桥段），
+     重复遍次用「（第N遍）」标出——它表示**歌曲唱到第几遍**，不是"多余的副本"。
+   ★ 型名沿用「特征名（《歌名》段落）」，与《在他乡》5 型同构。
+   ============================================================================ */
+const DEMO2_ID = "demo-wmbbf", DEMO2_SONG_NAME = "《我们能不能不分手》（示例）";
+/** 4 个型（按在曲中的角色命名；bars 即用户编排的原始形态，一字未改）。
+    `strum` 是**段引用用的代号**（Q1..Q4），与《在他乡》的 P1..P5 同职——
+      demoIdxOf 靠它把「逐小节型序列」映射成块引用的下标。 */
+const DEMO2_PRESETS = [
+  { name: "八分满扫（《我们能不能不分手》副歌）", strum: "Q1", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "八分下上扫（《我们能不能不分手》主歌）", strum: "Q2", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "八分切音扫（《我们能不能不分手》副歌 · 动）", strum: "Q3", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":true,"dir":"D","zone":2},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+  { name: "八分下上扫 · 变（《我们能不能不分手》间奏）", strum: "Q4", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+];
+/** 段 = 词行（行=段的契约）。strums 是**逐小节**的型代号序列，长度即段长。
+    和弦与歌词同《在他乡》口径：chords 逐小节、words 逐小节的 [tick/16, dur/16, 字]。 */
+const DEMO2_SONG = [
+  { name: "副歌 · 我们（第一遍）", chords: ["C 琶音"], strums: ["Q1"], words: [
+      [[12,2,"我"],[14,2,"们"]]] },
+  { name: "副歌 · 能不能（第一遍）", chords: ["F G","Em Am","F G","C","F E","Am","F G"], strums: ["Q2","Q2","Q2","Q2","Q2","Q2","Q2"], words: [
+      [[0,4,"能"],[4,2,"不"],[6,2,"能"]],
+      [[0,4,"不"],[4,2,"分"],[6,2,"手"]],
+      [[0,4,"亲"],[4,2,"爱"],[6,4,"的"],[10,4,"别"],[14,2,"走"]],
+      [],
+      [[0,4,"全"],[4,2,"世"],[6,2,"界"],[8,4,"都"],[12,4,"让"]],
+      [[0,4,"你"],[4,2,"要"],[6,2,"爱"],[8,6,"我"],[14,2,"难"]],
+      [[0,2,"道"],[2,2,"你"],[4,2,"就"],[6,2,"不"],[8,4,"会"],[12,4,"心"]]] },
+  { name: "副歌 · 动（第一遍）", chords: ["C"], strums: ["Q3"], words: [
+      [[0,4,"动"]]] },
+  { name: "间奏 · 一", chords: ["C F","Em Am","F G"], strums: ["Q2","Q2","Q2"], words: [
+      [],
+      [],
+      []] },
+  { name: "间奏 · 二", chords: ["C"], strums: ["Q4"], words: [
+      []] },
+  { name: "主歌 · 曾为你", chords: ["F G","Em Am","F G","C","F G","Em Am","F G"], strums: ["Q2","Q2","Q2","Q2","Q2","Q2","Q2"], words: [
+      [[0,2,"曾"],[2,2,"为"],[4,2,"你"],[6,6,"冷"],[12,2,"风"],[14,2,"中"]],
+      [[4,2,"颤"],[6,6,"抖"]],
+      [[0,2,"曾"],[2,2,"为"],[4,2,"你"],[6,4,"泪"],[10,2,"水"],[12,2,"狂"],[14,2,"流"]],
+      [],
+      [[0,2,"曾"],[2,2,"为"],[4,2,"你"],[6,6,"万"],[12,2,"事"],[14,2,"都"]],
+      [[4,2,"低"],[6,8,"头"],[14,2,"你"]],
+      [[0,2,"怎"],[2,2,"么"],[4,2,"舍"],[6,6,"得"],[12,2,"开"],[14,2,"口"]]] },
+  { name: "副歌 · 我们（第二遍）", chords: ["C"], strums: ["Q1"], words: [
+      [[12,2,"我"],[14,2,"们"]]] },
+  { name: "副歌 · 能不能（第二遍）", chords: ["F G","Em Am","F G","C","F E","Am","F G"], strums: ["Q2","Q2","Q2","Q2","Q2","Q2","Q2"], words: [
+      [[0,4,"能"],[4,2,"不"],[6,2,"能"]],
+      [[0,4,"不"],[4,2,"分"],[6,2,"手"]],
+      [[0,4,"亲"],[4,2,"爱"],[6,4,"的"],[10,4,"别"],[14,2,"走"]],
+      [],
+      [[0,4,"全"],[4,2,"世"],[6,2,"界"],[8,4,"都"],[12,4,"让"]],
+      [[0,4,"你"],[4,2,"要"],[6,2,"爱"],[8,6,"我"],[14,2,"难"]],
+      [[0,2,"道"],[2,2,"你"],[4,2,"就"],[6,2,"不"],[8,4,"会"],[12,4,"心"]]] },
+  { name: "副歌 · 动（第二遍）", chords: ["C"], strums: ["Q3"], words: [
+      [[0,4,"动"]]] },
+  { name: "副歌 · 收尾", chords: ["F E","Am","F G","C"], strums: ["Q2","Q2","Q2","Q2"], words: [
+      [[0,4,"全"],[4,2,"世"],[6,2,"界"],[8,4,"都"],[12,4,"让"]],
+      [[0,4,"你"],[4,2,"要"],[6,2,"爱"],[8,6,"我"],[14,2,"难"]],
+      [[0,2,"道"],[2,2,"你"],[4,2,"就"],[6,2,"不"],[8,4,"会"],[12,4,"心"]],
+      [[0,4,"动"]]] },
+];
+
 /* 谱面 → 本工具数据模型（纯函数，不碰 Store/DOM；测试经 __beat 直接断言）。
    返回 { presets, arrange, lyrics }：presets 供 importPresets，arrange 供 upsertArrange
    （块的引用记的是**在 presets 里的下标** refIdx，载入时由 ensureDemo 解成落在库里的 custom id
    ——v2.9.0 起不再按名字解：名字已改成通用名，与用户自建型可能重名，下标才是稳定引用），
    lyrics[i] = 第 i 段的 chars（段内绝对 tick） */
+/* ★ v3.34.7：抽出**两首示例曲共用**的编译核（段 → 块 → 曲式 + 歌词）。
+   为什么抽：第二首《我们能不能不分手》的段/和弦/歌词形状与《在他乡》**逐字同构**
+   （都是「逐小节型序列 + 逐小节和弦 + 逐小节词」），差异只在型怎么来——
+   他乡的型由 DEMO_STRUMS 生成，第二首的型是用户编排的原始 bars。
+   各写一遍必然漂移（本仓反复的教训），故把会漂移的部分参数化，其余共用。 */
+/** @param {any[]} song @param {Record<string, number>} idxOf @param {string} id @param {string} name */
+function buildDemoArrange(song, idxOf, id, name){
+  /* 逐小节的型 id → 块：**相邻同型合成一块**（块 = 型 × N 遍）。
+     这样"段 4 = P2 一小节 + P1 一小节"自然落成两块，不需要再为它造一个组合型。
+     顺序与相邻关系都保持不变，所以块的展开结果与逐小节序列逐一对应 */
+  /** @param {string[]} seq @returns {{ refIdx: number, repeats: number, chords?: string }[]} */
+  const toBlocks = seq => {
+    /** @type {{ refIdx: number, repeats: number, chords?: string }[]} */
+    const out = [];
+      /* v2.73.0 复核：示例曲引用的是**自带的 1 小节 demo 型**，与内置型长度无关——
+         条目 = 1 小节，toBlocks 保持 repeats:1 不变。
+         ★ v3.34.7：合并后的《在他乡》也靠这条 —— 副歌段 = 下上扫·密 ×8 + 十六分满扫 ×1
+           落成**两块**（9 小节 = 8 + 1），正是「相邻同型合成一块」的产物，
+           不是手写上去的。它同时是"段落合并"这件事的实现方式：
+           **把用同一节奏型的连续段并成一段 → 这里自然合成一个 repeats:N 的块。** */
+      seq.forEach(pid => {
+        const last = out[out.length - 1];
+        if (last && last.refIdx === idxOf[pid]) last.repeats++;
+        else out.push({ refIdx: idxOf[pid], repeats: 1 });
+      });
+    return out;
+  };
+  const arrange = { id, name,
+    sections: song.map(s => {
+      const blocks = toBlocks(s.strums);
+      /* v2.77.0：段名寄生时代结束——逐小节和弦进 s.chords 数组，这里按块的小节区间
+         切成块的 per-bar chords（「|」连接，一格一小节）。demo 型全是 1 小节，
+         块小节数 = repeats；切分与 chordAtRow 的旧 floor 口径逐位一致（零显示变化） */
+      const chords = s.chords || [];
+      let acc = 0;
+      blocks.forEach(b => {
+        const slice = chords.slice(acc, acc + b.repeats);
+        if (slice.some(/** @param {any} t */ t => t)) b.chords = slice.join("|");
+        acc += b.repeats;
+      });
+      return { name: s.name, blocks };
+    }) };
+  const lyrics = song.map(s => {
+    /** @type {any[]} */
+    const out = [];
+    s.words.forEach(/** @param {any[]} bar @param {number} bi */ (bar, bi) => bar.forEach((/** @type {any[]} */ w) =>
+      out.push({ t: bi * 4 * TPB + w[0] * T16, dur: w[1] * T16, ch: w[2] })));
+    return out;
+  });
+  return { arrange, lyrics };
+}
+/** 型代号表：demo 型 id（P1..P5 / Q1..Q4）→ 在各自 presets 里的下标 */
+/** @param {any[]} presets @param {string} key @returns {Record<string, number>} */
+function demoIdxOf(presets, key){
+  const m = /** @type {Record<string, number>} */ ({});
+  presets.forEach((p, i) => { m[p[key]] = i; });
+  return m;
+}
 function demoBuildSpec(){
   /** @param {string} patId @returns {any[]} */
   const demoBar = patId => {
@@ -3986,50 +4269,14 @@ function demoBuildSpec(){
   };
   /* 每个型 = **1 小节**（原子单元），型长自由是 v2.5.1 放开的能力 */
   const presets = DEMO_PRESETS.map(p => ({ name: p.name, meter: 4, bars: [demoBar(p.strum)] }));
-  /* 型 id（P1..P5）→ 在 presets 里的下标。块按**下标**引用（v2.9.0）：名字已改成通用名，
-     不再是这批数据的命名空间；下标与 DEMO_PRESETS 一一对应，载入时解成 custom id */
-  const idxOf = /** @type {Record<string, number>} */ ({});
-  DEMO_PRESETS.forEach((p, i) => { idxOf[p.strum] = i; });
-  /* 逐小节的型 id → 块：**相邻同型合成一块**（块 = 型 × N 遍）。
-     这样"段 4 = P2 一小节 + P1 一小节"自然落成两块，不需要再为它造一个组合型。
-     顺序与相邻关系都保持不变，所以块的展开结果与逐小节序列逐一对应 */
-  /** @param {string[]} seq @returns {{ refIdx: number, repeats: number, chords?: string }[]} */
-  const toBlocks = seq => {
-    /** @type {{ refIdx: number, repeats: number, chords?: string }[]} */
-    const out = [];
-      /* v2.73.0 复核：示例曲引用的是**自带的 5 个 1 小节 demo 型**（DEMO_PRESETS），
-         与内置型长度无关——条目 = 1 小节，toBlocks 保持 repeats:1 不变。
-         需要迁移的只有用户已存曲式里 ref.type==="builtin" 的块（见加载期迁移）。 */
-      seq.forEach(id => {
-        const last = out[out.length - 1];
-        if (last && last.refIdx === idxOf[id]) last.repeats++;
-        else out.push({ refIdx: idxOf[id], repeats: 1 });
-      });
-    return out;
-  };
-  const arrange = { id: DEMO_ID, name: DEMO_SONG_NAME,
-    sections: DEMO_SONG.map(s => {
-      const blocks = toBlocks(s.strums);
-      /* v2.77.0：段名寄生时代结束——逐小节和弦进 s.chords 数组，这里按块的小节区间
-         切成块的 per-bar chords（「|」连接，一格一小节）。demo 型全是 1 小节，
-         块小节数 = repeats；切分与 chordAtRow 的旧 floor 口径逐位一致（零显示变化） */
-      const chords = s.chords || [];
-      let acc = 0;
-      blocks.forEach(b => {
-        const slice = chords.slice(acc, acc + b.repeats);
-        if (slice.some(t => t)) b.chords = slice.join("|");
-        acc += b.repeats;
-      });
-      return { name: s.name, blocks };
-    }) };
-  const lyrics = DEMO_SONG.map(s => {
-    /** @type {any[]} */
-    const out = [];
-    s.words.forEach((bar, bi) => bar.forEach((/** @type {any[]} */ w) =>
-      out.push({ t: bi * 4 * TPB + w[0] * T16, dur: w[1] * T16, ch: w[2] })));
-    return out;
-  });
-  return { presets, arrange, lyrics };
+  return Object.assign({ presets }, buildDemoArrange(DEMO_SONG, demoIdxOf(DEMO_PRESETS, "strum"), DEMO_ID, DEMO_SONG_NAME));
+}
+/** 第二首《我们能不能不分手》的规范谱（v3.34.7）。
+    ★ 与 demoBuildSpec 的唯一差别：presets 直接取 DEMO2_PRESETS 的 bars（用户编排原样），
+      不经 demoBar 生成。其余（段→块、和弦切分、歌词换算）逐字共用同一份实现。 */
+function demoBuildSpec2(){
+  const presets = DEMO2_PRESETS.map(p => ({ name: p.name, meter: p.meter, bars: JSON.parse(JSON.stringify(p.bars)) }));
+  return Object.assign({ presets }, buildDemoArrange(DEMO2_SONG, demoIdxOf(DEMO2_PRESETS, "strum"), DEMO2_ID, DEMO2_SONG_NAME));
 }
 /* 示例型内容级一致判定（v2.6.4）：按名查重**不够**——示例型的名字从 v2.4.4 起没变过，
    内容却从「4 小节型」换成过「1 小节型」（v2.6.0 逐小节谱）。于是"旧型 + 新曲式"
@@ -4054,6 +4301,13 @@ function demoSpec(){
   if (!_demoSpec) _demoSpec = demoBuildSpec();
   return _demoSpec;
 }
+/* v3.34.7：第二首的规范谱缓存，与上面同构（demoBuildSpec2 也是纯函数，结果恒定） */
+/** @type {null | ReturnType<typeof demoBuildSpec2>} */
+let _demoSpec2 = null;
+function demoSpec2(){
+  if (!_demoSpec2) _demoSpec2 = demoBuildSpec2();
+  return _demoSpec2;
+}
 /* v2.20.0：示例曲 5 型**并入内置库**（下标 DEMO_BUILTIN_BASE … +4）——
    ★ 为什么收进 BUILTINS：示例型此前落库为 customs（自定义），于是自带删除按钮——
      用户随手一删，示例曲式的引用就断了（曲式块按 custom id 引用，id 没了即坏引用，
@@ -4075,12 +4329,37 @@ DEMO_PRESETS.forEach((p, i) => {
   BUILTINS.push({ name: p.name, desc: "4/4 · 《在他乡》示例 · 单小节", meter: sp.meter,
     bars: JSON.parse(JSON.stringify(sp.bars)) });
 });
+/* v3.34.7：第二首示例曲的 4 个型同样并入 BUILTINS（下标 DEMO2_BUILTIN_BASE … +3）。
+   ★ 与上面同一条理由：它们原本是**用户用编辑器做的自定义型**——内置示例曲一旦引用
+     用户数据，用户删掉型整首就播不了。收进内置库后删不掉、内容恒对。
+   ★ 声明位置同上面那批：必须在 BUILTIN_SRC_NAMES 快照**之前**（快照要含这 4 项），
+     且在任何运行期读 BUILTINS 的模块之前。 */
+const DEMO2_BUILTIN_BASE = BUILTINS.length;
+DEMO2_PRESETS.forEach((p, i) => {
+  const sp = demoSpec2().presets[i];
+  BUILTINS.push({ name: p.name, desc: "4/4 · 《我们能不能不分手》示例 · 单小节", meter: sp.meter,
+    bars: JSON.parse(JSON.stringify(sp.bars)) });
+});
 /* v2.21.0：内置型**源名**快照（17 项定稿后取，此后不再变）。
    内置型允许用户改名（编辑图标），但改名是**覆盖**不是改源——覆盖名写进冷键
    beatsight.builtinNames、启动时套到 BUILTINS[i].name 上（显示层全链路自动生效），
    「恢复原名」就以这份快照为还原基准。快照必须在 Store 应用覆盖**之前**取——
    数据区先跑，Store 在后，顺序天然成立。 */
 const BUILTIN_SRC_NAMES = BUILTINS.map(p => p.name);
+/* ★ v3.34.7 示例曲**登记表**：把"只有一首示例曲"推广成"若干首"。
+   为什么用表而不是再写一遍 if：带出 / 过期检测 / 恢复三处都要按"每首"处理，
+   各自硬编码两首必然漂移（本仓反复的教训：见 Controls→五个叠加层那段注释）。
+   ★ 每首自带 base（它在 BUILTINS 里的型基址）——块引用靠 base + refIdx，
+     与挂载顺序是同序契约（挂载处注释）。加第三首时只补一行。
+   ★ legacy = **改名**过渡期的旧名（v3.33.31 那类）。改名后存量用户的记录还是旧名，
+     不带旧名就找不到它、会再建一份重复的。没有旧名的留空数组。 */
+/** @type {{ id: string, name: string, legacy: string[], base: number, spec: () => any }[]} */
+const DEMO_SONGS = [
+  { id: DEMO_ID, name: DEMO_SONG_NAME, legacy: [DEMO_SONG_NAME_LEGACY],
+    base: DEMO_BUILTIN_BASE, spec: () => demoSpec() },
+  { id: DEMO2_ID, name: DEMO2_SONG_NAME, legacy: [],
+    base: DEMO2_BUILTIN_BASE, spec: () => demoSpec2() },
+];
 /* 内容认型（v2.9.0）：返回该自定义型对应示例规范谱的下标，认不出 -1。
    ★ 取代旧的"名字前缀"判据——名字已改成通用名（十六分满扫 等），与用户自建型可能重名，
      内容才是稳定标识（demoPresetEq 比 meter + 逐步规范化的 [t,rest,dir,zone]）
@@ -4163,9 +4442,11 @@ function migrateDemoSongName(arranges){
   if (!Array.isArray(arranges)) return 0;
   let n = 0;
   for (const a of arranges){
-    if (!a || a.id !== DEMO_ID || a.name !== DEMO_SONG_NAME_LEGACY) continue;
-    a.name = DEMO_SONG_NAME;
-    n++;
+    if (!a) continue;
+    /* v3.34.7：按登记表逐首比对——旧名不再是一对常量，而是每首各自的 legacy 列表 */
+    for (const song of DEMO_SONGS){
+      if (a.id === song.id && song.legacy.indexOf(a.name) >= 0){ a.name = song.name; n++; break; }
+    }
   }
   return n;
 }
@@ -17061,9 +17342,37 @@ const Arrange = (() => {
         }
         b.appendChild(pen);
       }
-      Modal.bindOverlay("arrangeOverlay", b, "click", () => { curId = x.id; stopCandPreview(true); picking = null; arrangeRender(); refreshBar(); });
+      Modal.bindOverlay("arrangeOverlay", b, "click", () => {
+        /* v3.35.1（用户实报「点第二首示例曲时自动选中三个段落」）：
+           ★ 根因：`S.arrangeSel` 是**曲式作用域**的（带 id 字段），存的是**小节号**。
+             切歌只改 curId、不动范围，于是第一首的小节范围（如 0..63）被套到第二首
+             （33 小节）上，落进它前几段 ⇒ 那几段被高亮，看着像"自动选中了若干段"。
+             范围离开它所属的曲式就没有意义（同一串小节号在另一首里指别的地方）。
+           ★ 修法：重指到新曲式，语义取**整首**（与首次打开一致）。
+             只切 id 而不重置，会把"练某段"的范围关系带到另一首上，仍是错的。 */
+        if (S.arrangeSel.id !== x.id){
+          S.arrangeSel = { id: x.id, from: 0, to: Math.max(0, songBars(x) - 1),
+            loop: S.arrangeSel.loop, byLyric: false };
+        }
+        curId = x.id; stopCandPreview(true); picking = null; arrangeRender(); refreshBar();
+      });
       list.appendChild(b);
+      /* ---- v3.35.0：手风琴式段树 —— 只展开**当前这首**（curId），其余折叠成一行 ----
+         ★ 展开判据就是 curId（"当前在编的曲式"），因此**不需要新增任何状态**。
+         ★ 段树作为曲式条的**兄弟节点**追加在 #argList 里，而不是塞进曲式条内部——
+           曲式条是 <button>，段行也是 <button>，嵌套 button 是非法 HTML。
+         ★ 代价：#argList.children 的下标在"展开的那首之后"会整体 +1，
+           故按位置取子节点的测试要改按类名过滤（本轮已同步改）。
+         ★ 两首之间画分隔线（用户要求）：末首之后不画。 */
+      if (x.id === curId) list.appendChild(mkOutlineTree(x));
+      if (x !== Store.arranges[Store.arranges.length - 1]) {
+        const sep = document.createElement("hr");
+        sep.className = "arg-ol-sep";
+        list.appendChild(sep);
+      }
     });
+    /* 表头的首数读数（"2 首"）——与曲式条同一次渲染里更新，避免两处各算一遍 */
+    { const lc = $("argLibCount"); if (lc) lc.textContent = Store.arranges.length + " 首"; }
 
     const a = cur();
     const wrap = $("argSections");
@@ -17246,6 +17555,109 @@ const Arrange = (() => {
      ★ syncPanelRead 刻意**只改**文本/样式/类名，不增删节点——它会在拖动中高频触发，
        而 renderPanel（整体重建 + bindOverlay 登记）只准从 arrangeRender 里调，否则
        监听会成倍叠加（v2.0.4 的 overlay 登记纪律）。 */
+  /** @param {any} a @returns {void} */
+  /** 侧栏大纲（v3.34.8）：每段一行 = 序号 + 段名 + 节奏型缩略带；
+      当前段在下一行展开歌词首句（★ 只对当前段展开——24 段全带词会变成一条长河，
+      大纲的价值恰在"一眼扫完"）。
+      ★ 缩略带**整段压成一条**：每小节一个小块，块内按该型逐格上色
+        （实心 = 发声 / 淡 = 空扫 / 虚线框 = 休止）⇒ **格子密度本身就是节奏型签名**，
+        密扫看着密、疏扫看着疏、切音看着有断口，不读文字也能分出段落类型。
+      ★ 渲染复用 mkPatBar 的**同一份数据口径**（resolveRef + bars + rest/dir/zone），
+        但刻意**不克隆卡片里的 .arg-pat-bar 节点**：那会让两处共用同一个 DOM，
+        以后任一处改样式/加类都会互相影响。这里只按同一套语义重新生成轻量小块。
+      ★ 段数上限 24（CONFIG.arrMaxSections）⇒ 最多约 24×9 = 216 个小块节点；
+        窄屏 ≤960px 时侧栏 display:none（收进抽屉），故这块开销只在宽屏发生。 */
+  /** @param {any} a @returns {void} */
+  /** @param {any} a @returns {HTMLElement} */
+  function mkOutlineTree(a){
+    const box = document.createElement("div");
+    box.className = "arg-ol-secs";
+    /* 表头：首行报本首的段数与小节数 —— 曲式行已经有同名读数，这里不再重复一遍，
+       只留一句"共多少段"当树的分隔说明，避免两处数字打架时不知道信哪个。 */
+    const head = document.createElement("div");
+    head.className = "arg-outline-h";
+    const cnt = document.createElement("span");
+    cnt.textContent = a.sections.length + " 段 · " + songBars(a) + " 小节";
+    head.appendChild(cnt);
+    box.appendChild(head);
+
+    /* ★ v3.35.1：逐段高亮的两个前置条件（缺一都会产生"莫名高亮"）：
+       ① 范围必须**属于本首**（arrangeSel 带 id；否则是别的曲式的残留，小节号指别处）；
+       ② 范围**不是整首** —— 「全都在范围内」逐段染绿没有信息量，与侧栏那条既有原则同源
+          （见 .demo-range-note 处注释：整首范围在默认态不显示）。
+          反过来，一旦收窄成局部范围，绿底就成了"我练的是这几段"的有效读数。 */
+    const mine = S.arrangeSel.id === a.id;
+    const whole = mine && S.arrangeSel.from <= 0 && S.arrangeSel.to >= songBars(a) - 1;
+    const showRange = mine && !whole;
+    a.sections.forEach(/** @param {any} sec @param {number} i */ (sec, i) => {
+      const start = songBarBefore(a, i), end = start + secBars(sec) - 1;
+      const inRange = showRange && S.arrangeSel.from <= end && S.arrangeSel.to >= start;
+      const row = document.createElement("button");
+      row.className = "arg-ol-row" + (inRange ? " sel" : "");
+      row.setAttribute("aria-label",
+        "第 " + (i + 1) + " 段" + (sec.name ? " " + sec.name : "") +
+        "（" + secBars(sec) + " 小节）· 点按跳到这一段");
+      const no = document.createElement("span");
+      no.className = "arg-ol-no";
+      no.textContent = String(i + 1);
+      row.appendChild(no);
+      const nm = document.createElement("span");
+      nm.className = "arg-ol-nm";
+      nm.textContent = sec.name || "（未命名）";
+      row.appendChild(nm);
+      row.appendChild(mkOutlineStrip(sec));
+      Modal.bindOverlay("arrangeOverlay", row, "click", (/** @type {any} */ e) => {
+        evEl(e).blur();
+        setRange(start, end);
+        /* 同步滚到该段卡片：大纲的用处是"找到它"，只选中不滚过去等于还得自己翻 */
+        const card = $("argSections") && $("argSections").children[i];
+        if (card && card.scrollIntoView) { try{ card.scrollIntoView({ block: "start" }); }catch(err){} }
+        arrangeRender();
+        announce("已跳到第 " + (i + 1) + " 段" + (sec.name ? " " + sec.name : "") + "，共 " + secBars(sec) + " 小节");
+      });
+      /* 先挂行、再挂它的歌词行（顺序即 append 顺序，成对出现）。 */
+      box.appendChild(row);
+      /* 歌词行（★ v3.34.9 改为**每段都显示**）。
+         v3.34.8 初版只在"范围内恰好一段"时展开，理由是怕长河；但实测首开范围是**整首**
+         ⇒ 一条歌词都不显示，与用户"看得到缩小版歌词"的需求正相反（用户实拍反馈）。
+         现在每段都显示、**单行截断**（超长靠 CSS ellipsis）：9 段 ≈ 18 行，
+         侧栏本就自己滚动，长曲也只是多滚几下——比"看不见"好得多。 */
+      const ly = document.createElement("div");
+      ly.className = "arg-ol-lyr" + (inRange ? " cur" : "");
+      const chars = lyricCharsAt(a.id, sec.uid);
+      ly.textContent = chars.length ? chars.map(/** @param {any} c */ c => c.ch).join("") : "（无歌词）";
+      box.appendChild(ly);
+    });
+    return box;
+  }
+  /** 缩略带：**取该段的特征小节**（第一个块的第一小节）压成一条固定宽度的带子。
+      ★★ 为什么是"一个小节"而不是"整段铺开"（这里推翻了初稿）：
+        初稿想"整段压成一条、每格一个小块"，实测**副歌一段就出 32 个小块**（8 格 + 16 格），
+        塞进 44px 的带子里每块 1.25px、连 `gap:1px` 的空隙都比块宽 ⇒ 糊成一片，什么也读不出。
+        段长本来就有独立的「N 节」读数承担，带子不必再表达"多长"；
+        它要表达的是**这一段在打什么**——那恰好是**一个小节**的信息量。
+      ★ 宽度固定 ⇒ 每行带子等宽，**上下能对齐扫视**，比整段铺开更容易比出"哪几段像"。
+      格宽 ∝ 该格时值 ⇒ 密度即签名（八分 8 格 vs 十六分 16 格 vs 带休止的疏型，一眼可分）。 */
+  /** @param {any} sec @returns {HTMLElement} */
+  function mkOutlineStrip(sec){
+    const strip = document.createElement("span");
+    strip.className = "arg-ol-strip";
+    strip.setAttribute("aria-hidden", "true");
+    const blk = (sec.blocks || [])[0];
+    const pat = blk && resolveRef(blk.ref);
+    const cells = (pat && pat.bars && pat.bars[0]) ? pat.bars[0] : null;
+    if (!cells){ const d = document.createElement("i"); strip.appendChild(d); return strip; }
+    const tot = cells.reduce(/** @param {number} s @param {any} c */ (s, c) => s + c.t, 0) || 1;
+    cells.forEach(/** @param {any} c */ c => {
+      const seg = document.createElement("i");
+      /* 空扫 = rest 但带 dir；纯休止 = rest 无 dir —— 两者视觉上必须区分
+         （与主视图 .arg-pat-cell.rest 与扫弦箭头的口径同源） */
+      if (c.rest) seg.className = (c.dir !== undefined) ? "sub" : "rest";
+      seg.style.flexGrow = String(Math.max(1, Math.round(c.t / tot * 1000)));
+      strip.appendChild(seg);
+    });
+    return strip;
+  }
   /** @param {any} a @returns {void} */
   function renderPanel(a){
     const map = $("argMap");
@@ -17744,35 +18156,53 @@ const Arrange = (() => {
        对 {type:"builtin", idx} 的支持是既有的，解析链路零改动）。
      ★ 返回 {ok, id}（v2.20.0 起去掉 created/updated：它们描述的是"落库预设"的增减，
        那件事已不存在；幂等与否由曲式库现状直接可见） */
-  function ensureDemo(){
-    const spec = demoBuildSpec();
+  /* ★ v3.34.7：单例 → **按登记表逐首**（DEMO_SONGS，见数据区）。
+     ★ 返回 {ok, id} 保留（单首语义）；多首版本见 ensureAllDemos ——
+       装配层的自动带出与侧栏「恢复示例曲」都走后者，避免"只带出一首"。 */
+  /** @param {any} song @returns {{ ok: boolean, error?: string, id: string }} */
+  function ensureOneDemo(song){
+    const spec = song.spec();
     /* v2.6.0（第 Ⅳ 期）：**逐块**映射，不再只取 blocks[0]。
-       示例曲改成逐小节谱之后，「收束」「收尾」两段各有 **2 个块**（P2×1 + P1×1），
+       示例曲改成逐小节谱之后，「收束」「收尾」两段各有 **2 个块**（前者 P2×1 + P1×1），
        只映射第一块会把第二块整块丢掉——段长从 2 小节缩成 1 小节，而歌词还是 2 行，
        表现为"最后一句没声音/对不上"。
-       块引用 = DEMO_BUILTIN_BASE + refIdx：refIdx 是规范谱 presets 的下标（0..4），
-       与内置库挂载顺序一一对应（挂载处注释），下标加法是两条常量数组的同序契约 */
-    const v = Store.upsertArrange({ id: DEMO_ID, name: DEMO_SONG_NAME,
-      sections: spec.arrange.sections.map(s => ({ name: s.name,
-        blocks: s.blocks.map(b => ({ ref: { type: "builtin", idx: DEMO_BUILTIN_BASE + b.refIdx },
+       ★ v3.34.7：合并后的《在他乡》副歌段是 **9 小节 = 8 + 1**，正是靠这条逐块映射带出的。
+       块引用 = song.base + refIdx：refIdx 是规范谱 presets 的下标，与内置库挂载顺序
+       一一对应（挂载处注释），下标加法是两条常量数组的同序契约 */
+    const v = Store.upsertArrange({ id: song.id, name: song.name,
+      sections: spec.arrange.sections.map(/** @param {any} s */ s => ({ name: s.name,
+        blocks: s.blocks.map(/** @param {any} b */ b => ({ ref: { type: "builtin", idx: song.base + b.refIdx },
           repeats: b.repeats,
-          /* v2.77.0：块级 per-bar 和弦随谱面带出（demoBuildSpec 已按块切分） */
+          /* v2.77.0：块级 per-bar 和弦随谱面带出（规范谱已按块切分） */
           ...(b.chords ? { chords: b.chords } : {}) })) })) });
     if (!v) return { ok: false, error: "示例曲式未通过结构校验。", id: "" };
     /* v2.26.0：歌词按段 uid 挂（原来挂段下标，段挪一次位置整首词就串段） */
     /* v3.31.6（审计 P2-C）：批量带出与 importAll 同口径——先入数组、最后一次 persistLyrics。
        此前逐行 upsertLyric 每次全量 stringify 落盘（N 行 = N 次整键写）。 */
-    spec.lyrics.forEach((chars, i) => {
+    spec.lyrics.forEach(/** @param {any} chars @param {number} i */ (chars, i) => {
       if (v.sections[i]) Store.upsertLyric(v.id, v.sections[i].uid, chars, { deferPersist: true });
     });
-    Store.persistLyrics();
+    /* ★ v3.34.7：**不在这里** persistLyrics()——多首时每首各写一次冷键（实测两首 = 两次全量
+       stringify），正是 v3.31.6「批量写、别逐行写」要消灭的形状。落盘上移到 ensureAllDemos
+       的循环外，无论几首都只写一次。 */
+    return { ok: true, id: v.id };
+  }
+  /** 带出**全部**示例曲（v3.34.7）。单首与多首的差别只在循环与收尾刷新的次数：
+      刷新与落盘放在循环**外**——N 首歌刷 N+1 次列表纯属浪费，且中途刷新会让列表闪。 */
+  function ensureAllDemos(){
+    /** @type {{ ok: boolean, error?: string, id: string }[]} */
+    const out = [];
+    DEMO_SONGS.forEach(song => out.push(ensureOneDemo(song)));
+    Store.persistLyrics();   // v3.34.7：全部带出后**统一**落一次（N 首也只用一次冷键全量写）
     Store.persist();
     /* 曲式新建 / 歌词补齐都会改变「自定义」区内容与选中态/计数——统一刷一次列表，
        不分支（分支正是漏刷的来源，v2.4.1 的教训）。
        Presets 是顶层 const（本模块声明顺序在其后，运行时已初始化），直接按名引用 */
     Presets.refreshAfterPatternChange();
-    return { ok: true, id: v.id };
+    return out;
   }
+  /** 兼容旧调用点：单首（第一首示例曲）。装配层已改走 ensureAllDemos。 */
+  function ensureDemo(){ return ensureAllDemos()[0] || { ok: false, error: "示例曲登记表为空", id: "" }; }
   /* 示例曲式「还在，但结构对不上谱面」检测（v2.6.4；v2.20.0 改口径）。
      ★ 为什么需要它：带出闩 beatsight.demoSeeded 记的是"建没建过"，不是"内容对不对"。
        旧版要抓"型内容落后"（44 / 120 小节混杂态）；v2.20.0 示例型进内置库后型内容
@@ -17783,35 +18213,45 @@ const Arrange = (() => {
           「恢复示例曲」入口（ensureDemo 重建后引用全为内置下标，坏块一并治愈）。
      ★ 曲式被删返回 false：那是用户**主动不要它**——本函数只负责"收敛"，
        不负责"复活"（复活走侧栏「恢复示例曲」的手动入口，那才是"我要它回来"的明确意图） */
-  function demoStale(){
-    const spec = demoBuildSpec();
-    const ar = Store.arranges.find(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME
-      || x.name === DEMO_SONG_NAME_LEGACY);   /* v3.33.31：改名过渡期两条都认 */
+  /** 某一首示例曲是否「还在，但结构对不上谱面」（v3.34.7 由单例改为一首一份） */
+  /** @param {any} song @returns {boolean} */
+  function oneStale(song){
+    const spec = song.spec();
+    const ar = Store.arranges.find(x => x.id === song.id || x.name === song.name
+      || song.legacy.indexOf(x.name) >= 0);   /* v3.33.31：改名过渡期的旧名也认 */
     if (!ar) return false;
-    /* ① 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓） */
+    /* ① 曲式结构：逐段的块跨度总小节数与谱面不符（44 / 120 都归这条抓）
+       ★ v3.34.7：《在他乡》由 21 段并为 9 段后，**存量用户手里是旧的 21 段** ——
+         这条判据（段数不等）就是那条自动收敛路径：命中即亮「恢复示例曲」，重建后即为新版。 */
     if (ar.sections.length !== spec.arrange.sections.length) return true;
-    if (ar.sections.some((s, i) =>
-      secBars(s) !== spec.arrange.sections[i].blocks.reduce((n, b) => n + b.repeats, 0))) return true;
+    if (ar.sections.some(/** @param {any} s @param {number} i */ (s, i) =>
+      secBars(s) !== spec.arrange.sections[i].blocks.reduce(/** @param {number} n @param {any} b */ (n, b) => n + b.repeats, 0))) return true;
     /* ② 坏引用：解析不到的 custom id（resolveRef 对 builtin 下标恒有值，custom 才可能落空；
        内置下标越界 = 谱面/版本错位，同样按坏算——BUILTINS[idx] 为 undefined） */
-    return ar.sections.some(s => (s.blocks || []).some(b =>
+    return ar.sections.some(/** @param {any} s */ s => (s.blocks || []).some(/** @param {any} b */ b =>
       b && b.ref && resolveRef(b.ref) === undefined));
   }
-  /** 手动载入：确保数据 + 选中该曲式 + 播报。幂等命中时给一句"已在库里"的提示 */
+  /** 任一示例曲过期即算过期（侧栏只据此决定"要不要亮恢复入口"，不必知道是哪一首） */
+  function demoStale(){ return DEMO_SONGS.some(oneStale); }
+  /** 手动载入：确保数据 + 选中**第一首**示例曲 + 播报。幂等命中时给一句"已在库里"的提示。
+      ★ 恢复入口是"把示例曲带回来"的明确意图 → 带出全部；但**选中**只选第一首
+        （用户点的是"恢复示例曲"，不是"打开某一首"——两首同时选中没有意义）。 */
   function loadDemo(){
-    const already = Store.arranges.some(x => x.id === DEMO_ID || x.name === DEMO_SONG_NAME
-      || x.name === DEMO_SONG_NAME_LEGACY);   /* v3.33.31：同上 */
-    const r = ensureDemo();
-    if (!r.ok){ Modal.uiAlert("示例《在他乡》载入失败：" + r.error); return; }
+    const already = Store.arranges.some(x => DEMO_SONGS.some(s => x.id === s.id || x.name === s.name
+      || s.legacy.indexOf(x.name) >= 0));
+    const rs = ensureAllDemos();
+    const bad = rs.find(r => !r.ok);
+    if (bad){ Modal.uiAlert("示例曲载入失败：" + bad.error); return; }
+    const r = rs[0];
     curId = r.id;
     const sel = Store.findArrange(r.id);
     S.arrangeSel = { id: r.id, from: 0, to: sel ? songBars(sel) - 1 : 0, loop: false, byLyric: false };
     Store.persist();
     arrangeRender(); refreshBar();
     if (already){
-      Modal.uiAlert("示例《在他乡》已在曲式库里——已在左侧列表为你选中它。");
+      Modal.uiAlert("示例曲已在曲式库里——已在左侧列表为你选中《在他乡》。");
     } else {
-      announce("已载入示例《在他乡》：全曲 10 段 + 逐字歌词（节奏型为内置，无需另装）");
+      announce("已载入 " + DEMO_SONGS.length + " 首示例曲（节奏型为内置，无需另装）");
     }
   }
   /* v2.4.1：「载入示例」按钮已删除——示例改为启动时自动带出（见装配层的 Arrange.ensureDemo()），
@@ -17820,6 +18260,49 @@ const Arrange = (() => {
 
   $("argOpen").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("argClose").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); close(); });
+  /* ---- 窄屏大纲抽屉（v3.34.8）----
+     ★ 做法是**搬迁节点**而不是再渲染一份：#argOutline 在窄屏 `.arg-outline{display:none}`
+       之下本来就不可见，打开时把它移进抽屉、关掉再移回侧栏原位。
+       为什么不用"再渲染一份"：两份 DOM 会让选中态、键盘 Tab 序、滚动位置各说各话
+       （本仓反复的教训——同一个事实只该有一个真相源）。 */
+  /** @type {HTMLElement | null} */
+  let tocHome = null;                       // #argOutline 在侧栏里的原位置（它自己是 nav，取 parentNode 用）
+  /* ★★ 展开态用**显式变量**，不读 `el.hidden`。
+     为什么：`hidden` 是"标记里的初值 + JS 改过没有"两件事的混合，而测试桩不解析静态属性
+     ⇒ 桩里新元素的 `hidden` 默认 false（"看得见"），与真机（标记写了 hidden ⇒ 真值 true）**相反**。
+     读它就会让键盘层以为抽屉一直开着，Esc/空格被它吞掉（实测打翻了 35 条其余 overlay 断言）。
+     显式变量只有一个真相源，桩与真机同形——与本仓"同一个事实只留一处"的纪律一致。 */
+  let tocShown = false;
+  function openToc(){
+    const ol = $("argSide"), dr = $("argTocDrawer"), mk = $("argTocMask");
+    if (!ol || !dr) return;
+    /* ★ 家固定为 #argShell（#argOutline 就是它的直接子节点）——不靠 ol.parentNode 现取：
+       测试桩里静态元素是**孤儿**（没有 parentNode），现取会得到 null，
+       于是"搬回去"变成 no-op、节点永远留在抽屉里（桩与真机行为分叉）。
+       显式指向 shell 让两边同形；若 shell 不可得再退回现取。 */
+    tocHome = /** @type {any} */ ($("argShell") || ol.parentNode || null);
+    dr.appendChild(ol);
+    tocShown = true;
+    dr.hidden = false;
+    if (mk) mk.hidden = false;
+  }
+  function closeToc(){
+    const ol = $("argSide"), dr = $("argTocDrawer"), mk = $("argTocMask");
+    if (!ol || !dr) return;
+    const home = tocHome || /** @type {any} */ ($("argShell"));
+    if (home && home.appendChild) home.appendChild(ol);   // 搬回侧栏原位（保持 DOM 序不变）
+    tocShown = false;
+    dr.hidden = true;
+    if (mk) mk.hidden = true;
+  }
+  function tocOpen(){ return tocShown; }
+  $("argTocBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    tocOpen() ? closeToc() : openToc();
+  });
+  $("argTocMask").addEventListener("click", () => closeToc());
+  /* 登记进叠加层键盘层：抽屉开着时空格/方向键归它（Esc 关），与其余 overlay 同契约 */
+  registerKeyLayer(overlayKeyLayer({ isOpen: tocOpen, close: closeToc }));
   /* v2.27.0：「新建曲式」从一键直建改成**先选模板再建**（四选一，见 buildTemplateArrange）。
      ★ 交互代价（写进 CHANGELOG）：多一步选择。换来的是"完整流行曲式"这类常用结构一键带出；
        「空白」模板的产物与旧版一键直建**逐位相同**，老用户点空白 = 原路径。 */
@@ -17994,7 +18477,7 @@ const Arrange = (() => {
     if (e.key === "Escape") close();
     return true;
   } });
-  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, lyricNeighbors, lyricMoveBounds, lyricDurStep,
+  return { open, close, isOpen, refreshBar, refreshNow, jumpTo, setRange, loopLyricSection, loadDemo, ensureDemo, ensureAllDemos, demoStale, secOnsetTicks, alignLyricToRhythm, getDropTarget, tapStart: startTap, tapNow, tapSkip, tapEnd: endTap, tapState: () => tap, tapPosTicks, lyricUndo, lyricRedo, arrUndo, arrRedo, previewSection, previewStop, previewCandidate, stopCandPreview, candPreviewState: () => candPreview, previewState: () => preview, sectionPosTicks, syncPreviewCursor, swapChars, shiftLyricChars, lyricNeighbors, lyricMoveBounds, lyricDurStep,
   /* v3.34.5（审计 P3-2）：rowOfY 导出供测试。
      它是歌词**跨行拖动**的行归属判据（指针 Y → 行号），而覆盖率报告显示它
      「从未执行」——真机拖拽手势在桩里跑不起来（需要真实行矩形），于是这条路径
@@ -18756,8 +19239,11 @@ Controls.setTimbre(S.timbre, false);
      不落闩，下次启动仍会重试——这比"闩落上了但库里空的、只能走手动入口"体验好。
      失败不落闩不会造成"反复骚扰"：失败本身就是罕见路径，而它下一次也可能成功 */
 if (!Store.demoSeeded()){
-  const r = Arrange.ensureDemo();
-  if (r && r.ok){
+  /* v3.34.7：带出**全部**示例曲（现为 2 首）。仍按"建成功才落闩"——
+     任一首失败就不落闩，下次启动重试（两首各自幂等，已建好的那首不会被重复写）。 */
+  const rs = Arrange.ensureAllDemos();
+  const r = rs.length ? rs[0] : null;
+  if (r && rs.every(x => x && x.ok)){
     Store.setDemoSeeded(true);
     /* ★ v2.13.0：首次打开**默认选中**示例曲《在他乡》——但**绝不自动播放**。
        与上面那条"只带出一次"的闩共用同一个门：首次带出成功才顺手选中，老用户（闩已落）
@@ -18783,7 +19269,7 @@ if (!Store.demoSeeded()){
      而示例型名字从 v2.4.4 起没变，按名查重发现不了旧内容（旧型 + 新曲式 =
      整首连播 120 小节，用户实拍核对参考页抓到）。这里只做"收敛回参考谱"，
      不做"复活"：曲式被用户删掉的，demoStale 恒为 false，绝不补回来 */
-  Arrange.ensureDemo();
+  Arrange.ensureAllDemos();
 }
 /* ★★ 启动顺序铁律（v2.87.0 修冷启动重叠 bug 时立）：**凡是会被 buildViz / cacheGeo 读到的
    状态或类，必须在首次 buildViz 之前收敛完**。本处两开关收敛出的 .chord-xl 就是 placeLaneOverlay

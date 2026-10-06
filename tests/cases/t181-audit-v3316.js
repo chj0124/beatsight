@@ -76,7 +76,7 @@ section("T181d 窗口合成 · 引用失效时保留页锚（此前写回 -1 →
       { id: "t1", name: "S1", sections: [{ name: "A", blocks: [{ ref: { type: "custom", id: "s1c" }, repeats: 8 }] }] }] }),
     "beatsight.customs": JSON.stringify({ v: 1, customs: [
       { id: "s1c", name: "S1载体", meter: 4, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] }] }),
-    "beatsight.demoSeeded": "1",
+    "beatsight.arrmig73": "1", "beatsight.demoSeeded": "1",
     "beatsight.arrmig73": "1",
     "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange", vizRows: 4,
       arrangeSel: { id: "t1", from: 0, to: 7, loop: false } }),

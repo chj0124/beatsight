@@ -14,6 +14,11 @@
    「沙箱不支持 <select>」是这套"小按钮直接设在段行上"的原因之一，别改成下拉。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
+/* v3.35.0：曲式库并入左栏后，#argList 里除曲式条之外还夹着
+   「当前曲式的段树」与「两首之间的分隔线」两个兄弟节点 ⇒
+   按位置取 children[N] 会取到它们（断言可能"碰巧通过"= 假绿）。
+   一律经本函数只取曲式条。 */
+const songItems = els => els["argList"].children.filter(c => /(^| )arg-item( |$)/.test(c.className));
 
 const BL = (idx, reps) => ({ ref: { type: "builtin", idx }, repeats: reps });
 const A = (id, name, sections) => ({ id, name, sections });
@@ -70,8 +75,8 @@ section("T54b 曲式 UI · 曲式库列表 / 选中 / 新建");
 {
   const { beat, els } = bare();
   beat.Arrange.open();
-  eq(els["argList"].children.length, 1, "空库时只有一句提示（不是空列表）");
-  ok((els["argList"].children[0].textContent || "").includes("还没有曲式"), "提示文案到位");
+  eq(els["argList"].children.length, 1, "空库时只有一句提示（不是空列表）");  // 空库无曲式 ⇒ 也无段树/分隔线，raw children 即真相
+  ok((els["argList"].children[0].textContent || "").includes("还没有曲式"), "提示文案到位");  // 空库提示不是曲式条 ⇒ raw children[0]
 
   /* v2.27.0：「新建曲式」改成**先选模板再建**（四选一菜单）。「空白」的产物与旧一键直建逐位相同。
      菜单是运行时生成的节点（v2.33.0 起挂在曲式库行 #argLibRow 里，与「＋」同宿），
@@ -84,19 +89,19 @@ section("T54b 曲式 UI · 曲式库列表 / 选中 / 新建");
   eq(beat.Store.arranges.length, 1, "新建出一条曲式");
   eq(beat.Store.arranges[0].name, "新曲式", "默认名（空白模板 = 旧一键直建的同款产物）");
   eq(secRows(els).length, 1, "新建的曲式默认有 1 段");
-  ok(els["argList"].children[0].className.includes("sel"), "新建后自动选中");
+  ok(songItems(els)[0].className.includes("sel"), "新建后自动选中");
 
   els["argNew"].fire("click");
   menuPills()[1].fire("click");                        // 「主副歌骨架」
   eq(beat.Store.arranges.length, 2, "再建一条");
   eq(beat.Store.arranges[1].name, "主副歌骨架", "★ 模板名进库名");
-  eq(els["argList"].children.length, 2, "列表有两条");
+  eq(songItems(els).length, 2, "列表有两条");
   ok(Array.prototype.every.call(els["argLibRow"].children,
     c => !/(^| )arg-new-menu( |$)/.test(c.className)), "★ 选中模板后菜单收起");
   /* 点第 1 条切回去 */
-  els["argList"].children[0].fire("click");
-  ok(els["argList"].children[0].className.includes("sel"), "点选切换选中态");
-  ok(!els["argList"].children[1].className.includes("sel"), "另一条取消选中");
+  songItems(els)[0].fire("click");
+  ok(songItems(els)[0].className.includes("sel"), "点选切换选中态");
+  ok(!songItems(els)[1].className.includes("sel"), "另一条取消选中");
   beat.Arrange.close();
 }
 
@@ -215,7 +220,7 @@ section("T54e 曲式 UI · 播放范围：起/终 / 循环 / 全部");
   beat.Arrange.open();
   const S = beat.Store.S;
   /* 点列表 = 切"正在编辑哪条曲式"（不写播放选择） */
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   /* v2.31.0（S2）：段行「起 / 终」退役，接棒的是 ⋯ 菜单「练这段」= setRange(段起止小节)。
      断言口径变更说明：入口从"两颗钮分设 from/to"收敛为"一键整段范围 + loop 恒开"，
      覆盖"只练副歌"这个最高频意图；精确到小节的范围由开练面板双滑块承担（t107 守）。
@@ -247,7 +252,7 @@ section("T54f 曲式 UI · 播放入口 / 主界面显示 / 跳段");
   const { beat, els } = seeded();
   const S = beat.Store.S;
   beat.Arrange.open();
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
 
   /* 主界面：非曲式模式下跳段键置灰（v2.10.14：行常显——播放键住进了这一行，收口改置灰） */
   eq(els["argJumpPrev"].disabled, true, "非曲式模式下「上一段」置灰");
@@ -287,7 +292,7 @@ section("T54g 曲式 UI · 跳段即时生效 / 单段置灰跳段键");
      即时反馈 = 侧栏范围滑块 thumb 移动 + 网格/标题立即换型（下面的断言就是它） */
   const { beat, els } = seeded();
   beat.Arrange.open();
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   els["argPlay"].fire("click");
   beat.Controls.stop();                                   // 停止状态下点跳段
   els["argJumpNext"].fire("click");
@@ -315,7 +320,7 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
 {
   const { beat, els } = seeded();
   beat.Arrange.open();
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   els["argNew"].fire("click");                        // 再建一条，curId 指向新条
   els["argLibRow"].children.find(c => /arg-new-menu/.test(c.className)).children[0].fire("click");
   eq(beat.Store.arranges.length, 2, "两条曲式");
@@ -324,7 +329,7 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   /* v2.35.0：「删除」就近化为**选中 chip 上的 ✕**（顶栏 ⋯ 整个退役；确认弹窗不变）。
      断言口径变更说明见 T54c——入口从按钮/菜单变为 chip 内删除点，语义与确认流不变。
      新建的那条是选中态 → 它的 chip 是 children[1]，✕ 在 children[2] */
-  els["argList"].children[1].children[2].fire("click");
+  songItems(els)[1].children[2].fire("click");
   eq(beat.Modal.isOpen(), true, "★ 删整条曲式要确认（不是点了就没）");
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 1, "确认后删掉一条");
@@ -336,13 +341,13 @@ section("T54h 曲式 UI · 删除整条曲式 / 删正在播的那条后回落�
   const { beat, els } = seeded();
   const S = beat.Store.S;
   beat.Arrange.open();
-  els["argList"].children[0].fire("click");
+  songItems(els)[0].fire("click");
   els["argPlay"].fire("click");                       // 进入曲式播放（overlay 自动关）
   eq(S.playMode, "arrange", "先进入曲式播放");
   beat.Controls.stop();                               // 停下但 playMode 仍是 arrange
   beat.Arrange.open();
-  els["argList"].children[0].fire("click");
-  els["argList"].children[0].children[2].fire("click");   // 选中 chip 的 ✕（v2.35.0）
+  songItems(els)[0].fire("click");
+  songItems(els)[0].children[2].fire("click");   // 选中 chip 的 ✕（v2.35.0）
   els["modalOk"].fire("click");
   eq(beat.Store.arranges.length, 0, "库已空");
   eq(S.playMode, "preset", "★ 删掉正在播的曲式 → 回落预设模式（不会对着空 id 播）");

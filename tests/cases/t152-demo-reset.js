@@ -22,15 +22,15 @@ section("T152a 恢复示例曲 · 正向：按钮→确认→示例曲仍在库�
   const a = loadApp(undefined, { seedDemo: false });
   const beat = a.beat;
   ok(!!demoArr(beat), "★ boot 期示例曲已落库（数据组读者能点）");
-  eq(demoLyricCount(beat), 10, "示例曲 10 行歌词齐备（重建前基线）");
+  eq(demoLyricCount(beat), 9, "示例曲 9 行歌词齐备（重建前基线）");
   eq(beat.Store.customs.length, 0, "自定义库为空（示例型已内置，不在此占条目）");
 
   clickRebuild(a);                          // 用户点「恢复示例曲」并确认
 
   ok(!!demoArr(beat), "★ 重建后示例曲仍在库（id 固定，按规格覆盖）");
-  eq(demoLyricCount(beat), 10, "★ 重建后仍 10 行歌词（出厂规格未被改坏）");
+  eq(demoLyricCount(beat), 9, "★ 重建后仍 9 行歌词（出厂规格未被改坏）");
   eq(beat.Store.customs.length, 0, "★ 重建不向自定义库塞东西（无泄漏条目）");
-  eq(beat.Store.arranges.length, 1, "曲式没被重建翻倍");
+  eq(beat.Store.arranges.length, 2, "曲式没被重建翻倍（两首示例曲）");
 }
 
 section("T152b 恢复示例曲 · 幂等：用户删了示例曲 → 一键重建回来");
@@ -45,14 +45,14 @@ section("T152b 恢复示例曲 · 幂等：用户删了示例曲 → 一键重�
   clickRebuild(a);                          // 一键重建
 
   ok(!!demoArr(beat), "★ 删除后点「恢复示例曲」→ 示例曲重建回来");
-  eq(demoLyricCount(beat), 10, "★ 重建后 10 行歌词随曲式一并回来");
-  eq(beat.Store.arranges.length, 1, "重建只补回 1 首，没叠加");
+  eq(demoLyricCount(beat), 9, "★ 重建后 9 行歌词随曲式一并回来");
+  eq(beat.Store.arranges.length, 2, "重建只补回 2 首，没叠加");
   eq(beat.Store.customs.length, 0, "重建仍不污染自定义库");
 
   /* 第二次点：已存在 → 仍幂等通过，不翻倍 */
   clickRebuild(a);
-  eq(beat.Store.arranges.length, 1, "★ 第二次重建不翻倍（loadDemo 幂等）");
-  eq(demoLyricCount(beat), 10, "第二次重建后歌词仍是 10 行");
+  eq(beat.Store.arranges.length, 2, "★ 第二次重建不翻倍（loadDemo 幂等）");
+  eq(demoLyricCount(beat), 9, "第二次重建后歌词仍是 9 行");
 }
 
 /* ============ T152x：示例曲改名的一次性迁移（v3.33.31） ============ */

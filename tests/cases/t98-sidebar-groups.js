@@ -40,10 +40,10 @@ section("T98a 无组回归 · ★ 零组时无任何新节点混入（条目直�
   const { beat, els } = loadApp(undefined, { seedDemo: false });
   ok(groupHeads(els).length === 0, "★ 无组时侧栏零个 .preset-group 节点");
   eq(JSON.stringify(els["presetList"].children.filter(x => x.className === "preset-section").map(x => x.textContent)),
-    JSON.stringify(["节拍 · 11 个", "扫弦 · 6 个", "自定义 · 1 首"]),
+    JSON.stringify(["节拍 · 11 个", "扫弦 · 10 个", "自定义 · 2 首"]),
     "★ 三区标题逐字不变（计数口径 = 区内全部条目数，分组不改总数）");
   /* 条目顺序：节拍区 = BUILTINS[1..11] 原序（组缺席 → 散员流原样） */
-  const beatKids = zoneSlice(els, "节拍 · 11 个", "扫弦 · 6 个");
+  const beatKids = zoneSlice(els, "节拍 · 11 个", "扫弦 · 10 个");
   eq(beatKids.length, 11, "节拍区孩子 = 11 个条目（不多不少，无组头混入）");
   ok(beatKids.every(x => /(^| )preset-item( |$)/.test(x.className)), "节拍区全是 preset-item（扁平结构）");
   ok(deepText(beatKids[0]).includes("四分基础"), "节拍区第一条仍是四分基础（BUILTINS[1]，顺序未动）");

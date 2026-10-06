@@ -38,8 +38,10 @@ const newMenuOf = els => els["argLibRow"].children.find(c => /(^| )arg-new-menu(
 section("T109a 入口搬家 · ＋ 在曲式库行内 / 顶栏不再有新建 / 触发态样式存在");
 {
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  const libRow = /<div class="arg-lib-row" id="argLibRow">[\s\S]*?<\/div>\s*<div class="stats-head">/.exec(src);
-  ok(!!libRow && libRow[0].includes('id="argNew"'), "★ argNew 在 argLibRow 行内（chips 行尾）");
+  /* v3.35.0：曲式库搬进左栏后，argLibRow 里多了 .arg-lib-h 表头行（＋ 就住那儿），
+     其后接的是段树 #argOutline 而不再是主列的 .stats-head ⇒ 取边界改为「到 argLibRow 闭合」。 */
+  const libRow = /<div class="arg-lib-wrap" id="argLibRow">[\s\S]*?<\/div>\s*<nav class="arg-outline-tree"/.exec(src);
+  ok(!!libRow && libRow[0].includes('id="argNew"'), "★ argNew 在 argLibRow 行内（曲式表头行尾）");
   ok(!src.includes('id="argLibMore"'), "★ 顶栏 ⋯ 已退役（v2.35.0：复制收敛 + 删除就近化）");
   ok(src.includes(".arg-add{"), "＋ 的虚线胶囊样式存在");
   ok(src.includes(".arg-add.open{"), "★ 展开高亮样式存在（触发态可见）");
