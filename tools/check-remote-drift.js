@@ -9,8 +9,8 @@
    （本仓真实发生过：工作区里一份副本落后 30+ 个版本被当成基线）。
 
    本工具把"这份代码是不是远端当前那份"变成一步可执行的检查：
-     0  = HEAD == 远端 main（一致）
-     1  = 不一致（远端已前进 / 本地领先 / 分叉）——**判红**：此时任何"基于当前的结论"都不可信
+     0  = HEAD == 远端 main（一致）；或「本地领先」（刚 fetch+rebase 后、尚未推送的合法工作）
+     1  = 远端已前进 / 分叉（本地在陈旧基线上）——**判红**：此时任何"基于当前的结论"都不可信
      3  = 本机没有 `gh`（环境能力缺失）→ 按 ⊘ 记账（与浏览器冒烟同一口径，不阻断构建）
      4  = 工具故障（网络不可达 / git 不可用 / 输出不是 sha）→ 按 ⚠ 记账（未被验证）
    ★ 3 与 4 必须分开：3 是"这台机器没有这个能力"，4 是"想查但没查成"——
@@ -77,11 +77,36 @@ if (sha === head){
   process.exit(0);
 }
 
-/* 不一致：**判红**。它不只是"提示"——在旧基线上跑出来的任何结论都不成立，
-   而自验其余 20 步会照样全绿，这是唯一会说话的那一步。 */
-console.log("  ✗ 本机 HEAD 与远端 main 不一致");
+/* 不一致：先判方向——只有「远端已前进 / 分叉（本地在陈旧基线上）」才判红；
+   「本地领先」（刚 fetch+rebase 后自己提交的未推送工作）是**正常状态，放行不判红**。
+   ★ 为什么不能一刀切把「本地领先」也判红：本工具同时挂在 pre-commit 与 pre-push 钩子里，
+     而 push 前本地**必然**领先远端（这正是要推的内容）——若「领先」也红，会在每次合法
+     push 前的 pre-push 钩子里误拦，让项目无法正常上站。真正的危险是「远端领先于本地」
+     （在陈旧基线上开工），用 merge-base 对本地对象库做 ancestry 判定即可区分。 */
+const dir = (() => {
+  /* 远端 sha 的提交对象须在本地对象库（刚 fetch 过就有），才能做 ancestry 判定 */
+  if (run("git", ["cat-file", "-e", sha]).status !== 0) return "unknown";
+  if (run("git", ["merge-base", "--is-ancestor", head, sha]).status === 0) return "behind";  // 远端领先：陈旧基线
+  if (run("git", ["merge-base", "--is-ancestor", sha, head]).status === 0) return "ahead";   // 本地领先：正常未推送
+  return "diverged";                                                                          // 分叉
+})();
+
+if (dir === "ahead"){
+  console.log("  ✓ 本地领先远端（未推送的合法工作，非陈旧基线）——可直接推送");
+  console.log("     本机：" + head);
+  console.log("     远端：" + sha);
+  process.exit(0);
+}
+if (dir === "unknown"){
+  /* 远端提交对象不在本地对象库（多半是没 fetch）——无法判定方向，按「未验证」处理：
+     本地非 --strict 不堵部署；并提示先 fetch 再核对（既不放行陈旧基线、也不误拦合法推送）。 */
+  console.log("  ⚠ 远端提交对象不在本地对象库，无法判定方向——请先 `git fetch` 再核对（未被验证）");
+  process.exit(TOOL_FAIL_CODE);
+}
+/* behind / diverged：在陈旧基线上开工，判红 */
+console.log("  ✗ 本机 HEAD 与远端 main 不一致（" + (dir === "behind" ? "远端已前进 · 本地在陈旧基线上" : "分叉") + "）");
 console.log("     本机：" + head);
 console.log("     远端：" + sha);
-console.log("     → 先整合（fetch / rebase 或按 AGENTS.md §5.1 对齐）再动笔；");
+console.log("     → 先整合（fetch / rebase 或按 AGENTS.md §5.1 对齐）再动笔 / 再推送；");
 console.log("       此刻跑出来的自验结果不能当作「当前代码是健康的」的证据。");
 process.exit(1);
