@@ -96,6 +96,9 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 2. **开工前先对齐**：`git status --porcelain` 必须为空；`gh api repos/chj0124/beatsight/commits/main --jq .sha`
    与本地 `HEAD` 比一遍。不一致 → **先整合再动笔**，绝不在旧基线上开工。
    （`git ls-remote` 走 https 可能被隧道拦下，此时用 `gh api` 兜底。）
+   ★ 若**连 `git push` 都被拦**（本机实测：github.com:443 超时、SSH 端口通但无可用密钥），
+     用 `node tools/push-api.js`（干跑）/ `npm run push:api`（真推）—— 见 DEVELOPMENT §5.6；
+     它带"树 sha 必须与本地相等"的硬断言，只接受快进。
 3. **★ 版本号在 `fetch` 之后再定**：另一台电脑也在 bump 同一个 `VERSION`，
    一开工就写死版本号极易两边撞成同一个号（结果出现两个语义不同的 `vX.Y.Z`）。
    正确顺序：**先做代码与测试 → 推送前 `git fetch` 看清 origin/main 当时的版本号 → 再定下一个号**。
