@@ -1777,6 +1777,37 @@ function wideFullProbe(){
     return JSON.stringify(res);
   })()`;
 }
+
+/* ★★★ v3.36.21：**竖屏四修**的真机闸（用户竖屏实报四条）。
+   为什么必须真机 + 必须在 390 那一遍量：四条全是 ≤640 的媒体查询，1440 下量不到；
+   而"每段 2px""播放键离上缘 3px""滑条盒高 0 与下一行重叠 12px""状态灯差 11px"
+   全是**布局几何**，桩里没有。探针自己开编排浮层（地图与滑条只在浮层里）。
+   ★ 用"最窄那一段"而不是首段：地图每段宽度是 **JS 写的比例**
+     （renderPanel 里 seg.style.flexGrow = 该段小节数），1 小节的段天然最窄——
+     那正是修复前被压成 2px 的那一段；只看首段会随曲式数据变化而假绿/假红。 */
+function portraitFixProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "无 __beat.Arrange" });
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "Arrange.open 失败 " + e.message }); }
+    await frame(); await frame();
+    var q = function(s){ return document.querySelector(s); };
+    var W = function(e){ return e ? Math.round(e.getBoundingClientRect().width) : null; };
+    var map = q("#argMap"), kids = map ? [].slice.call(map.children) : [];
+    var bar = q("#playBar"), btn = q("#playBtn"), prog = q(".pb-progress");
+    var dot = q("#statusDot"), dir = q(".pb-ctx .pb-ctx-dir");
+    var track = q(".arg-range-track"), acts = q(".arg-t-actions");
+    var res = { vw: window.innerWidth, mapW: W(map), segN: kids.length,
+      segMin: kids.length ? Math.min.apply(null, kids.map(W)) : null,
+      trackH: track ? Math.round(track.getBoundingClientRect().height) : null,
+      trackActionsGap: (track && acts) ? Math.round(acts.getBoundingClientRect().top - track.getBoundingClientRect().bottom) : null,
+      btnTopGap: (bar && btn) ? Math.round(btn.getBoundingClientRect().top - bar.getBoundingClientRect().top) : null,
+      statusDelta: (dot && dir) ? Math.round(dot.getBoundingClientRect().left - dir.getBoundingClientRect().left) : null };
+    try{ B.Arrange.close(); }catch(e){ }
+    return JSON.stringify(res);
+  })()`;
+}
     try{
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
@@ -1793,6 +1824,10 @@ function wideFullProbe(){
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const narrow = JSON.parse(await evaluate(cdp, layoutProbe()));
+      /* ★★★ v3.36.21：竖屏四修（地图/滑条/播放键间距/状态灯对齐）——就在这档 390 量 */
+      const pfixRaw = await cdp.send("Runtime.evaluate",
+        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+      result.portraitFix = JSON.parse(pfixRaw.result.value);
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
@@ -2425,6 +2460,32 @@ async function main(){
       [[lay.wide, "桌面", 96], [lay.narrow, "窄屏390", 96]].forEach(function(pair){
         const L = pair[0], vp = pair[1], want = pair[2];
         if (!L) return;
+        /* ★★★ v3.36.21：竖屏四修（用户实报）——只在这一档量（范围条件） */
+      if (vp === "窄屏390"){
+        const PF = r.portraitFix;
+        if (PF && !PF.err){
+          ok(PF.segMin !== null && PF.segMin >= 28,
+            p.label + "·" + vp + "：★★★ 歌曲地图**每段都 ≥28px 可点**（最窄 " + PF.segMin + "px / 共 "
+            + PF.segN + " 段，整图 " + PF.mapW + "px）——修复前每段只有 2px、完全没法点（地图 flex:1+min-width:0 "
+            + "一路被压到 0，而同行读数是 flex:none;white-space:nowrap 一格不让）",
+            "最窄段 " + PF.segMin + "px / 整图 " + PF.mapW + "px");
+          ok(PF.trackH >= 20 && PF.trackActionsGap >= 6,
+            p.label + "·" + vp + "：★★★ 滑条与下一行不再重叠（滑条盒高 " + PF.trackH + "px、间距 "
+            + PF.trackActionsGap + "px）——修复前滑条盒高 0（那条 flex:1 1 100% 是按横向写的，"
+            + "在 column 容器里把高度压成 0）、与「循环段/全部/锚点提示音」那行重叠 12px",
+            "滑条高 " + PF.trackH + " / 间距 " + PF.trackActionsGap);
+          ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
+            p.label + "·" + vp + "：★★ 播放键不再贴底栏上缘（离上缘 " + PF.btnTopGap
+            + "px）——修复前实测只有 3px（内容在固定高度里不居中，上 3px 下 16px）",
+            "上间距 " + PF.btnTopGap + "px");
+          ok(PF.statusDelta !== null && Math.abs(PF.statusDelta) <= 3,
+            p.label + "·" + vp + "：★★ 状态灯与上方胶囊的首元素对齐（差 " + PF.statusDelta
+            + "px）——修复前差 11px（圆点贴容器左缘 x=16，上面胶囊的 ‹ 被 padding-left:10px 推到 x=27）",
+            "差 " + PF.statusDelta + "px");
+        } else {
+          ok(false, p.label + "·" + vp + "：竖屏四修探针未取到（故障：" + ((PF && PF.err) || "缺失") + "）", "");
+        }
+      }
         if (!L.playBar){
           ok(false, p.label + "·" + vp + "：底栏 #playBar 未取到（搬块未生效？）", "");
           return;

@@ -1057,8 +1057,18 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
      溢出视口 66px 被裁（实测 390：pb-right w=6 / pbProgress right=456）——底栏改
      **两行**：行 1 = 胶囊｜播放键｜循环；行 2 = pb-right 跨三列（进度条 flex:1 +
      状态灯右侧）。高度核算：40 + 4 + 22 = 66 < 内容区 82 ✓。 */
-  .play-bar{grid-template-rows:auto auto;row-gap:4px;
+  /* ★★★ v3.36.20 补3（用户竖屏实报两条）：
+     ③ 播放键**贴在底栏上缘**：真机实测窄屏下 #playBtn 上缘离底栏上缘只有 **3px**，
+        而下方还空着 16px（内容整体偏下）。根因是两行网格在固定高度里按 stretch 分配，
+        内容不居中。改 align-content:center + 顶部 6px ⇒ 实测上 9px / 下 16px，两端都有呼吸。
+     ④ 状态灯与**上方胶囊的首元素不对齐**：状态灯圆点贴它容器的左缘（x=16），
+        而上面胶囊里的 ‹ 被 capsual 的 padding-left:10px 推进去（x=27）——差 11px。
+        给状态行同样 10px 左内边距 ⇒ 实测差 1px（对齐）。
+        ★ 只加内边距、不动宽度：状态灯在窄屏是定宽 96px + 省略号，
+          它的**可用宽**必须保持不变，否则长文案的截断位置会跟着变。 */
+  .play-bar{grid-template-rows:auto auto;row-gap:4px;align-content:center;padding-top:6px;
     grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.3fr)}
+  .play-bar .status{padding-left:10px}
   /* ★ v3.18.0（用户截图 2 例）：行 1 = 播放键组跨三列居中（play 72→48、跳段/循环
      44→40——三行塞不进 82px 内容区，按钮让位）；行 2 = 型名胶囊（col 1，占满列宽 +
      省略号——旧 30vw 上限在自己的列里溢出、被 ⏮ 压住的根因）+ 右区（col 2-3）。
@@ -1905,7 +1915,22 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    现在走带条在弹层内 sticky 吸顶（基样式），只压紧内边距以省高度。 */
 @media (max-width:640px){
   .arg-transport{padding:10px 12px}
-  .arg-range-track{flex:1 1 100%}
+  /* ★★★ v3.36.20 补3（用户竖屏实报四条）：
+     ① 歌曲地图被压到「每段 2px」⇒ 完全失去功能。根因：地图 flex:1 + min-width:0（能一路压到 0），
+        而同行的读数是 flex:none;white-space:nowrap（一格不让）⇒ 挤的时候被牺牲的永远是地图。
+        ★ 每段宽度是 JS 写的**比例**（renderPanel 里 seg.style.flexGrow = 该段小节数，有断言盯着），
+          33 小节挤进 372px ⇒ 每小节约 11px，1 小节的段只剩 7px。故**保住比例**、只加一条最小可点宽度，
+          放不下就让地图自己横滑（与"按小节数成比例"的语义不冲突）。
+     ② 「循环段/全部/锚点提示音/从头播」那行与滑条**重叠 12px**。根因：下面这条 flex:1 1 100% 是
+        按**横向**容器写的（想让 track 独占一行），而 .arg-transport 是 flex-direction:column
+        ⇒ flex-basis:100% 在这里被解释成**高度 100%**，把 track 的高度压成 0；两个滑块是绝对定位、
+        22px 从 track 顶部往下画，就溢出了盒子的下边界，而下一行只按 0 高排。
+        改 flex:none ⇒ track 回到 22px 高，两行不再重叠（真机实测重叠 12px → 间距 10px）。 */
+  .arg-t-row{flex-wrap:wrap}
+  .arg-transport .arg-map{flex:1 1 100%}
+  .arg-map{overflow-x:auto}
+  .arg-map-seg{min-width:30px}
+  .arg-range-track{flex:none}
   #argRangeRead{flex:1 1 auto;min-width:0}
 }
 /* 歌词编辑轨（v2.1.0 F1）：每个段行下方一条。头部 = 锚点提示音开关 + 粘贴框 + 清除，
@@ -3906,23 +3931,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3938  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4840  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6883  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7895  Modal         应用内弹窗
-     L8040  Viz           时值可视化渲染与每帧动画
-     L11505 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12186 Trainer       变速训练器
-     L12396 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13103 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15081 Editor        自定义节奏型编辑器
-     L15661 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15708 Ear           听辨训练（v1.10.0）
-     L15936 Arrange       曲式编排（v2.0.0）
-     L19508 Help          使用方法（v2.0.1）
-     L19663 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19737 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20026 初始化（装配） 各模块 hook 接线与启动
+     L3963  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4865  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6908  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7920  Modal         应用内弹窗
+     L8065  Viz           时值可视化渲染与每帧动画
+     L11530 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12211 Trainer       变速训练器
+     L12421 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13128 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15106 Editor        自定义节奏型编辑器
+     L15686 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15733 Ear           听辨训练（v1.10.0）
+     L15961 Arrange       曲式编排（v2.0.0）
+     L19533 Help          使用方法（v2.0.1）
+     L19688 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19762 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20051 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
