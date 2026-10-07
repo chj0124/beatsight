@@ -1165,6 +1165,94 @@ function refineGroupProbe(){
      · 容器是否转为**可横向滚动**（overflow-x:auto 真的接住了）；
      · 「+ 块」是否被 stretch 拉成整行高。
    三条合起来与视口宽度无关，1440px 下也测得出。 */
+/* ★★★ v3.36.20：段卡片「放不下就横滑」的真机闸（用户拍板：精修按钮不换行 + 歌词区横滑）。
+   为什么必须真机：overflow / min-width / 换行全是 CSS 行为，桩里根本不存在；而本冒烟跑在
+   1440×1000（卡片 956px、装得下）——症状不出现。故探针**主动把卡片压窄到 360px**，
+   造出"放不下"的条件，量三件事：
+     · 精修控件的**视觉行数**是否与宽屏一致（不许多折行）——按"垂直中心"分组，
+       同行按钮高度不同，按 top 分会误判成多行；
+     · .arg-lyric 是否保住了最小宽度（窄屏改为横滑，而不是把格压小）；
+     · 卡片是否真的成为横向滚动容器（内容收进卡片内，不再画到边框外）。
+   与视口宽度无关，1440px 下也测得出。 */
+function lyricScrollProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "无 __beat.Arrange" });
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "Arrange.open 失败 " + e.message }); }
+    await frame();
+    /* 冒烟默认状态下没有展开的歌词网格（编辑区是点摘要行才展开的）⇒ 探针自己点开一节。
+       ★ 点摘要会**整树重建** #argSections ⇒ 每轮都必须**重新查询**，不能沿用旧引用
+         （沿用旧引用会一直读到已脱离文档的旧节点——这正是本仓反复踩过的"桩比真机宽松"同类坑）。 */
+    var pick = function(){
+      var cs = [].slice.call(document.querySelectorAll(".arg-sec"));
+      for (var i = 0; i < cs.length; i++){ if (cs[i].querySelectorAll(".arg-lyric-row").length >= 3) return cs[i]; }
+      return null;
+    };
+    var card = pick();
+    for (var k = 0; k < 8 && !card; k++){
+      var sums = [].slice.call(document.querySelectorAll(".arg-lyric-sum"));
+      if (k >= sums.length) break;
+      sums[k].click();
+      await frame(); await frame();
+      card = pick();
+    }
+    if (!card) return JSON.stringify({ err: "点开后仍没有多行歌词网格" });
+    var ly = card.querySelector(".arg-lyric");
+    var lane = card.querySelector(".arg-lyric-lane");
+    var barrow = lane.querySelector(".arg-lyric-barrow");
+    var rowsOf = function(){
+      var els = [].slice.call(ly.children).filter(function(c){
+        if (c.hidden) return false;
+        if (!/arg-mini|arg-lyric-grp/.test(c.className)) return false;
+        return c.getBoundingClientRect().width > 0;
+      });
+      var seen = {};
+      els.forEach(function(e){ var r = e.getBoundingClientRect(); seen[Math.round(r.top + r.height / 2)] = 1; });
+      return Object.keys(seen).length;
+    };
+    var res = { wideRows: rowsOf(), wideLyW: Math.round(ly.getBoundingClientRect().width),
+                wideBarrowW: Math.round(barrow.getBoundingClientRect().width) };
+    card.style.width = "360px";
+    /* ★★ 必须先**中和"摘要行文字碰巧够长"这个偶然因素**——这是本闸门第一版栽过的坑：
+       1440px 下那段歌词预览文字自己就能把 .arg-lyric 的 min-content 顶到 ~488px，
+       于是"行数不变""格没被压小"在**没写任何 min-width 的版本**上也是绿的（假绿）。
+       加一条临时样式把摘要行的最小宽度按掉，量到的才是**真正由 .arg-lyric:has(...) 那条规则**
+       决定的宽度。（变异 M2 = 删掉那条规则：此时下面 narrowLyW 会掉到卡片宽，
+       与 strippedLyW 相等 ⇒ ruleEffective 变 false ⇒ 具名变红。） */
+    /* ★ 中和的对象必须是**那两个 white-space:nowrap 的预览**，不是 .arg-lyric-sum 的 min-width:
+       给摘要行设 min-width:0 只是允许它在 flex 算法里收缩，**并不改变它对 .arg-lyric 的
+       min-content 贡献**（它的 min-content = 预览那串不断行文字 ≈ 488px）。
+       实测过这条路：只设 .arg-lyric-sum{min-width:0} 时，撤掉规则的变异体仍量到 488px、
+       闸门照样全绿。display:none 才是真正把这份贡献拿掉。 */
+    var st = document.createElement("style");
+    st.textContent = ".arg-lyric-preview{display:none}.arg-lyric-sum{min-width:0}";
+    document.head.appendChild(st);
+    await frame();
+    res.narrowRows = rowsOf();
+    res.narrowLyW = Math.round(ly.getBoundingClientRect().width);
+    res.narrowBarrowW = Math.round(barrow.getBoundingClientRect().width);
+    res.scrollable = card.scrollWidth > card.clientWidth;
+    res.overflowX = getComputedStyle(card).overflowX;
+    res.cardPaintedW = Math.round(card.getBoundingClientRect().width);
+    /* 自证式反证：在这同一条件下再把 .arg-lyric 的最小宽度就地摘掉，量"规则缺席"的基线 */
+    ly.style.minWidth = "0";
+    await frame();
+    res.strippedLyW = Math.round(ly.getBoundingClientRect().width);
+    res.strippedRows = rowsOf();
+    ly.style.minWidth = "";
+    st.remove();
+    card.style.width = "";
+    await frame();
+    res.ruleEffective = res.narrowLyW > res.strippedLyW + 20;
+    res.keptRows = res.narrowRows === res.wideRows;
+    /* 无量纲判据：压窄后歌词格**比卡片还宽**（⇒ 必须横滑），而不是被压到卡片宽。
+       若哪天有人撤掉 min-width，这里会变成 narrowBarrowW < cardPaintedW 立刻红。 */
+    res.keptScale = res.narrowBarrowW > res.cardPaintedW;
+    try{ B.Arrange.close(); }catch(e){ }
+    return JSON.stringify(res);
+  })()`;
+}
 function blockRowProbe(){
   return `(async function(){
     var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
@@ -1697,6 +1785,10 @@ function wideFullProbe(){
       const brRaw = await cdp.send("Runtime.evaluate",
         { expression: blockRowProbe(), awaitPromise: true, returnByValue: true });
       result.blockRow = JSON.parse(brRaw.result.value);
+      /* ★★★ v3.36.20：段卡片"放不下就横滑"的真机闸（精修按钮不换行 + 歌词区横滑） */
+      const lsRaw = await cdp.send("Runtime.evaluate",
+        { expression: lyricScrollProbe(), awaitPromise: true, returnByValue: true });
+      result.lyricScroll = JSON.parse(lsRaw.result.value);
       /* ★★★ v3.33.28：歌词跨行拖动（同行有后续块时也必须能换行） */
       const rmRaw = await cdp.send("Runtime.evaluate",
         { expression: lyricRowMoveGateProbe(), awaitPromise: true, returnByValue: true });
@@ -2567,6 +2659,32 @@ async function main(){
             } else {
               ok(false, p.label + "·" + vp + "：编辑器头部探针未取到（探针故障："
                 + ((EH && EH.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.36.20：段卡片「放不下就横滑」——把卡片压窄到 360px，精修行数不许变、格不许被压小 */
+          if (vp === "桌面"){
+            const LS = r.lyricScroll;
+            if (LS && !LS.err){
+              ok(LS.wideRows >= 4, p.label + "·" + vp + "：★ 前提：宽屏下精修控件有 " + LS.wideRows + " 个视觉行", "");
+              ok(LS.keptRows === true,
+                p.label + "·" + vp + "：★★★ 卡片压窄到 360px 后**精修控件的视觉行数不变**（" + LS.narrowRows
+                + " 行，宽屏 " + LS.wideRows + " 行）——「按钮不换行」的真机闸；"
+                + "撤掉 .arg-lyric 的最小宽度时这里会多折行",
+                "窄屏 " + LS.narrowRows + " 行 / 宽屏 " + LS.wideRows + " 行");
+              ok(LS.scrollable === true && LS.overflowX === "auto",
+                p.label + "·" + vp + "：★★ 放不下时由**卡片自己横滑**接住（不再画到卡片边框外）",
+                "overflow-x=" + LS.overflowX + " / scrollable=" + LS.scrollable);
+              ok(LS.ruleEffective === true,
+                p.label + "·" + vp + "：★★★ 最小宽度**确实在起作用**（摘掉后歌词区从 " + LS.narrowLyW
+                + "px 掉到 " + LS.strippedLyW + "px、行数 " + LS.narrowRows + " → " + LS.strippedRows
+                + "）——这条是防「假绿」的自证：1440px 下摘要文字碰巧也够长时，前两条会一起骗过",
+                "带规则 " + LS.narrowLyW + "px / 摘掉 " + LS.strippedLyW + "px");
+              ok(LS.keptScale === true,
+                p.label + "·" + vp + "：★★★ 歌词格**保持原尺度**（压窄后 " + LS.narrowBarrowW
+                + "px > 卡片 " + LS.cardPaintedW + "px ⇒ 横滑，而不是被压到卡片宽）",
+                "窄屏格宽 " + LS.narrowBarrowW + " / 卡片 " + LS.cardPaintedW);
+            } else {
+              ok(false, p.label + "·" + vp + "：卡片横滑探针未取到（故障：" + ((LS && LS.err) || "缺失") + "）", "");
             }
           }
           /* ★★★ v3.36.19：段行块列表——把块行压窄到 280px，块**不该跟着缩**
