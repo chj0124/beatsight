@@ -253,9 +253,13 @@ section("T49g 听辨训练 · 入口在预设库卡片上（v3.0.0 批 5：预�
      ★ 判据改成「在动作区内」，不再绑某一行/某个容器——位置再挪一次也不必重写这条。 */
   const acts = html.slice(html.indexOf('id="pdActions"'), html.indexOf('id="presetList"'));
   ok(/id="earBtn"/.test(acts), "★ 「听辨训练」入口在面板动作区内");
-  ok(acts.indexOf('id="argOpen"') < acts.indexOf('id="earBtn"')
-     && acts.indexOf('id="earBtn"') < acts.indexOf('id="editBtn"'),
-    "★ 顺序 = 编排曲式 → 听辨训练 → 新建节奏型（两个「跳转」同类相邻在前，创建类在后）");
+  /* ★ v3.36.17（用户要求）：顺序改为 听辨训练 → 编排曲式 → 新建节奏型——把听辨训练提到
+     编排曲式之上。旧顺序（编排曲式 → 听辨训练 → 新建节奏型）此前正由本条钉着 ⇒ 这次是
+     **改闸门本身**而不是绕过它：用户明确指定了新顺序，旧理由「两个跳转相邻在前」随之不再
+     成立；「创建类（新建节奏型）殿后」这条仍然保留，故 editBtn 依旧在最后。 */
+  ok(acts.indexOf('id="earBtn"') < acts.indexOf('id="argOpen"')
+     && acts.indexOf('id="argOpen"') < acts.indexOf('id="editBtn"'),
+    "★ 顺序 = 听辨训练 → 编排曲式 → 新建节奏型（用户 v3.36.17 指定；创建类仍殿后）");
   ok(!/id="earMini"/.test(html), "★ 入口旁的正确率小字已取消（正确率在听辨 overlay 里看）");
   ok(!/id="earBtn"/.test(html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"))),
     "★ 顶栏不再有听辨训练入口（顶栏只留延迟读数/设置/主题钮）");

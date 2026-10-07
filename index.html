@@ -1803,7 +1803,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    它的上下外边距会与 .editor-topbar 的 margin-bottom:24px 折叠，空着也照样吃掉约 28px；
    display:none 让顶栏与下方卡片的间距回到改动前的样子。 */
 #editorRefNote:empty{display:none}
-.arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
+/* v3.36.17：菜单上移到表头行正下方（见 toggleNewMenu 的说明）——表头自带 8px 下内边距，
+   故上内边距收掉；下边留 6px，别和曲式列表贴在一起。
+   ★ 那个 flex-basis 是 v2.33.0 横排行的遗留（当时宿主是 flex 行容器、靠它独占一行）；
+     现在宿主 .arg-lib-wrap 是普通块容器，它**不生效**——保留无害，但别再据此推断布局。 */
+.arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding:0 0 6px}
 .arg-ops{flex:none;display:flex;gap:4px}
 /* v2.30.0（S1）：段操作 ⋯ 菜单——运行时生成的一行（flex-basis:100% 独占一行），
    挂在段行末尾（歌词轨之后，t60 的 children[4] 不挪位）。
@@ -2744,13 +2748,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <span class="pd-title">节奏型预设库</span>
         <button class="pill outline" id="presetDrawerClose">收起</button>
       </div>
-      <!-- v3.3.0：动作区（竖排三行：编排曲式 / 新建节奏型 / 听辨训练）——三件事性质一致
-           （"去做别的事"，不是"选一个型"），从控制行第 4 块整组搬来；id 与接线一个不改。
+      <!-- v3.3.0：动作区（竖排三行）——三件事性质一致（"去做别的事"，不是"选一个型"），
+           从控制行第 4 块整组搬来；id 与接线一个不改。
            「编辑」文案改「新建节奏型」：它的真实行为是以当前型为底稿新建（见编辑器标题
-           「基于…创建」），旧名让想改现有型的用户点错。窄屏只显名称，>640 带一句说明。 -->
+           「基于…创建」），旧名让想改现有型的用户点错。窄屏只显名称，>640 带一句说明。
+           ★ v3.36.17（用户要求）：顺序改为 **听辨训练 → 编排曲式 → 新建节奏型**——把听辨训练
+             提到编排曲式之上。（本条注释原先写的顺序与代码本就不一致，一并更正；
+             旧顺序有机器闸门钉着，见 t49-ear-training 的对应断言，已同步改写。） -->
       <div class="pd-actions" id="pdActions">
-        <button class="pd-act" id="argOpen"><span class="pd-act-t">编排曲式</span><span class="pd-act-d">按段落排整首曲子</span></button>
         <button class="pd-act" id="earBtn"><span class="pd-act-t">听辨训练</span><span class="pd-act-d">听拍子默写节奏型</span></button>
+        <button class="pd-act" id="argOpen"><span class="pd-act-t">编排曲式</span><span class="pd-act-d">按段落排整首曲子</span></button>
         <button class="pd-act" id="editBtn"><span class="pd-act-t">新建节奏型</span><span class="pd-act-d">从空白小节开始画</span></button>
       </div>
       <span class="chip sr-only" id="presetCount"></span>
@@ -3827,23 +3834,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3859  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4761  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6804  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7800  Modal         应用内弹窗
-     L7945  Viz           时值可视化渲染与每帧动画
-     L11410 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12091 Trainer       变速训练器
-     L12301 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13002 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14932 Editor        自定义节奏型编辑器
-     L15512 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15559 Ear           听辨训练（v1.10.0）
-     L15787 Arrange       曲式编排（v2.0.0）
-     L19310 Help          使用方法（v2.0.1）
-     L19465 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19539 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19828 初始化（装配） 各模块 hook 接线与启动
+     L3866  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4768  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6811  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7807  Modal         应用内弹窗
+     L7952  Viz           时值可视化渲染与每帧动画
+     L11417 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12098 Trainer       变速训练器
+     L12308 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13009 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14939 Editor        自定义节奏型编辑器
+     L15519 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15566 Ear           听辨训练（v1.10.0）
+     L15794 Arrange       曲式编排（v2.0.0）
+     L19327 Help          使用方法（v2.0.1）
+     L19482 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19556 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19845 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3869,7 +3876,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.16";
+const VERSION = "3.36.17";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -18915,7 +18922,17 @@ const Arrange = (() => {
        而测试桩从标记惰性建元素、不建静态父子关系（argNew.parentNode 为 null），
        insertAdjacentElement 依赖兄弟位置，在桩里会静默落空——appendChild 到
        #argLibRow 上则两条环境行为一致。 */
-    $("argLibRow").appendChild(menu);
+    /* ★ v3.36.17（用户实报「点了 ＋，出现的选项离得太远」）：
+       v2.33.0 落地时曲式库是**横排行**，所以"挂在行尾"= 紧挨着胶囊；v3.35.0 把它改成
+       **纵向列表**之后，同一个 appendChild 的含义就变了——变成"挂在**全部曲式条目的下面**"。
+       于是 ＋（在表头右上角）与被它打开的选项之间隔着一整列曲式条目，曲式越多离得越远。
+       改为插在**表头行之后、曲式列表之前**：菜单紧跟 ＋ 那一行出现，仍在 #argLibRow 内
+       （菜单依旧是它的直接子节点，closeNewMenu 的查找口径不变）。
+       ★ 桩环境说明（老实说）：测试桩从标记惰性建元素、不建静态父子关系 ⇒ #argList 不在
+         #argLibRow.children 里，桩的 insertBefore 找不到参照物会退化成 append。
+         故这条"位置"在桩里**测不出来**（t106/t109/t54/t105 只 find 不判序）；
+         由 t109 的**源码钉**兜住，见该用例的对应断言。 */
+    $("argLibRow").insertBefore(menu, $("argList"));
     newMenuOpen = true;
     $("argNew").classList.add("open");
     $("argNew").setAttribute("aria-expanded", "true");

@@ -46,6 +46,18 @@ section("T109a 入口搬家 · ＋ 在曲式库行内 / 顶栏不再有新建 / 
   ok(src.includes(".arg-add{"), "＋ 的虚线胶囊样式存在");
   ok(src.includes(".arg-add.open{"), "★ 展开高亮样式存在（触发态可见）");
 
+  /* ★★ v3.36.17（用户实报「点了 ＋，出现的选项离得太远」）：菜单此前是 appendChild 到
+     #argLibRow **末尾** ⇒ 排在**曲式列表之后**。v2.33.0 落地时曲式库还是横排行，"行尾"紧挨着
+     胶囊；v3.35.0 改成纵向列表后，同一个 appendChild 就变成"掉到全部曲式条目下面"——
+     ＋ 在表头右上角、选项在最底下，曲式越多离得越远。已改为插在**表头行之后、曲式列表之前**。
+     ★ 这条只能源码钉：桩从标记惰性建元素、不建静态父子关系 ⇒ #argList 不在
+       #argLibRow.children 里，桩的 insertBefore 找不到参照物会退化成 append，**位置在桩里
+       测不出来**（t106/t54/t105 都只 find 不判序）。故用源码文本兜住，退回旧写法立刻红。 */
+  ok(/insertBefore\(menu,\s*\$\(["']argList["']\)\)/.test(src),
+    "★★ 模板菜单插在表头行之后、曲式列表之前（紧跟 ＋，不再掉到列表最底下）");
+  ok(!/\$\(["']argLibRow["']\)\.appendChild\(menu\)/.test(src),
+    "★ 回归闸门：不得退回「appendChild 到 #argLibRow 末尾」（那正是「离 ＋ 太远」的成因）");
+
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
   /* （桩的静态元素 className 恒为空，arg-add 样式族由上面的源码文本断言覆盖） */
