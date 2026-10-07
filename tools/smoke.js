@@ -1823,6 +1823,11 @@ function portraitFixProbe(){
          但不能把 v3.33.12「状态行被切掉约 3 字」那个老毛病带回来）。 */
       /* ★ v3.36.20 补6：胶囊宽度 + 胶囊与传输键组的**重叠量**（>0 = 压在一起） */
       ctxW: q(".pb-ctx") ? Math.round(q(".pb-ctx").getBoundingClientRect().width) : null,
+      /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
+      gapTop: (function(){ var c=q(".pb-ctx"), j=q("#argJump"); return (c&&j)? Math.round(j.getBoundingClientRect().left-c.getBoundingClientRect().right):null; })(),
+      gapBottom: (function(){ var n=q(".pb-sub .demo-range-note"), s=q("#pbSub .status"), p=q("#pbProgress"); if(!p) return null;
+        var e=-1; [n,s].forEach(function(x){ if(!x) return; var r=x.getBoundingClientRect(); if(r.width>0 && r.right>e) e=r.right; });
+        return e>=0? Math.round(p.getBoundingClientRect().left-e):null; })(),
       overlapCtxJump: (function(){
         var c = q(".pb-ctx"), j = q("#argJump");
         if (!c || !j) return null;
@@ -2564,9 +2569,14 @@ async function main(){
             p.label + "·740档：★★★ 这一档的进度条也吃到了富余（" + M6.progressW
             + "px）——修复前被 1fr 列卡在 181px",
             "progressW=" + M6.progressW);
-          ok(M6.ctxW !== null && M6.ctxW <= 300,
-            p.label + "·740档：★★ 胶囊按内容收（" + M6.ctxW + "px）——修复前它是定宽 320 溢出到键组上",
-            "ctxW=" + M6.ctxW);
+          ok(M6.gapTop !== null && M6.gapBottom !== null && Math.abs(M6.gapTop - M6.gapBottom) <= 4,
+            p.label + "·740档：★★★ 上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距**相等**（"
+            + M6.gapTop + " vs " + M6.gapBottom + "px）",
+            "gapTop=" + M6.gapTop + " gapBottom=" + M6.gapBottom);
+          ok(M6.btnTopGap !== null && M6.btnTopGap >= 8,
+            p.label + "·740档：★★★ 播放键**不贴上缘**（上缘 " + M6.btnTopGap
+            + "px）——修复前这一档只有 **1px**（那条「居中 + 顶部内边距」的修复被圈在 ≤640 里没跟过来）",
+            "btnTopGap=" + M6.btnTopGap);
         } else {
           ok(false, p.label + "：641–960 中间档探针未取到（故障：" + ((M6 && M6.err) || "缺失") + "）", "");
         }
@@ -2584,6 +2594,11 @@ async function main(){
            故用 640×360 单独量的那一份数据；挂在这一档只是为了让整块只跑一次）。 */
         const P5 = r.playBarLandscape;
         if (P5 && !P5.err){
+          /* ★ 下排左半（读数/状态）与进度条**不许重叠** —— 状态列一旦被写成定宽，
+             390 竖屏下它会越过自己的列压到进度条上（实测右缘 172 > 进度条左缘 164，gapBottom = −8）。 */
+          ok(P5.gapBottom !== null && P5.gapBottom >= 0,
+            p.label + "·" + vp + "：★★★ 下排左半与进度条**不重叠**（间距 " + P5.gapBottom + "px）",
+            "gapBottom=" + P5.gapBottom);
           ok(P5.statusW !== null && P5.statusW >= 100 && P5.statusW <= 170,
             p.label + "·横屏640：★★★ 状态区宽度**有上限**（" + P5.statusW + "px）——修复前它被网格列拉成 398px、"
             + "文案只占 33px、空出 365px",
@@ -2595,10 +2610,13 @@ async function main(){
             p.label + "·横屏640：★★ 最长那条状态文案（「播放中 · 第 64 小节 · 8&」）在上限内**不被截断**"
             + "（防 v3.33.12「状态行被切掉约 3 字」那个老毛病回来）",
             "longTextOverflow=" + P5.longTextOverflow);
-          ok(P5.ctxW !== null && P5.ctxW <= 300,
-            p.label + "·横屏640：★★ 胶囊按内容收（" + P5.ctxW + "px）——修复前它被跨列拉成 398px，"
-            + "内容实需约 247px，文字后面那一截全是空的（用户实报「胶囊有必要留那么长吗」）",
-            "ctxW=" + P5.ctxW);
+          ok(P5.gapTop !== null && P5.gapBottom !== null && Math.abs(P5.gapTop - P5.gapBottom) <= 4,
+            p.label + "·横屏640：★★★ 上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距**相等**（"
+            + P5.gapTop + " vs " + P5.gapBottom + "px）——用户实报：上排那个空当太长不美观",
+            "gapTop=" + P5.gapTop + " gapBottom=" + P5.gapBottom);
+          ok(P5.btnTopGap !== null && P5.btnTopGap >= 8,
+            p.label + "·横屏640：★★★ 播放键**不贴上缘**（上缘 " + P5.btnTopGap + "px）",
+            "btnTopGap=" + P5.btnTopGap);
           ok(P5.jumpW !== null && Math.abs(P5.jumpW - 198) <= 6,
             p.label + "·横屏640：★★ 传输键组宽度**没动**（" + P5.jumpW
             + "px）——三列网格把键组挪到第 3 列，位置与宽度都不该受影响",
@@ -2611,6 +2629,20 @@ async function main(){
       if (vp === "窄屏390"){
         const PF = r.portraitFix;
         if (PF && !PF.err){
+          /* ★★★ v3.36.20 补7：**390 竖屏**下排左半（状态）与进度条**不许重叠**。
+             状态列一旦被写成定宽 156，它会越过自己的列压到进度条上（实测右缘 172 > 进度条左缘 164，
+             gapBottom 12 → **−8**）。这条断言是首轮 M19 变异**没被抓住**之后按危害现补的。 */
+          ok(PF.gapBottom !== null && PF.gapBottom >= 0,
+            p.label + "·" + vp + "：★★★ 下排状态与进度条**不重叠**（间距 " + PF.gapBottom
+            + "px）——状态列用 min(156px,30vw) 而不是定宽，靠的就是这条",
+            "gapBottom=" + PF.gapBottom);
+          ok(PF.gapTop !== null && PF.gapBottom !== null && Math.abs(PF.gapTop - PF.gapBottom) <= 4,
+            p.label + "·" + vp + "：★★★ 上排「胶囊↔键组」与下排「状态↔进度条」两个间距**相等**（"
+            + PF.gapTop + " vs " + PF.gapBottom + "px）",
+            "gapTop=" + PF.gapTop + " gapBottom=" + PF.gapBottom);
+          ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
+            p.label + "·" + vp + "：★★★ 播放键**不贴上缘**（上缘 " + PF.btnTopGap + "px）",
+            "btnTopGap=" + PF.btnTopGap);
           ok(PF.segMin !== null && PF.segMin >= 28,
             p.label + "·" + vp + "：★★★ 歌曲地图**每段都 ≥28px 可点**（最窄 " + PF.segMin + "px / 共 "
             + PF.segN + " 段，整图 " + PF.mapW + "px）——修复前每段只有 2px、完全没法点（地图 flex:1+min-width:0 "

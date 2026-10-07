@@ -2517,16 +2517,25 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
    所以要单独把按钮放回可点。字号比面板正文再小一档，避免抢占视觉重心 */
 .diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px 10px;font:600 10px/1.4 var(--mono)}
 
-/* 用户拍板「读法 2 + 归右」：窄屏底栏改两列两行——
-   左列 = 当前型胶囊 / 状态文字 ｜ 右列 = 传输键组 / 进度条。
-   动机：原先"传输键居中"在窄屏两侧白留对称空白，胶囊只剩 63px、状态只剩 112px 都被截断；
-   归右后宽度让给文字列，播放键也贴近右手拇指。桌面档完全不动（本条在 <=640 内）。
-   实现：.pb-right 用 display:contents 拆开（进度条与状态各自成为父网格项），无需改 DOM。
-   撤回上一版的 6.5px 微调：新布局里进度条右对齐，旧微调已无对象。 */
-@media (max-width:640px){
-  .play-bar{grid-template-columns:minmax(0,1fr) max-content;grid-template-areas:"ctx trans" "stat prog";
-    column-gap:12px;row-gap:2px;align-items:center}
-  .play-bar .pb-ctx{grid-area:ctx;justify-self:start;min-width:0;max-width:100%;width:100%;overflow:hidden}
+/* ★★★ v3.36.20 补7：底栏在 **≤960px 统一成一套「三列两行」**（原先散在 ≤640 两列两行、
+   641–960 两列、≤640 横屏三列**三处**，同一种布局三份定义、彼此打架）。
+   用户拍板的「归右」不变：传输键组仍在第 3 列、贴右手拇指。
+   三列 = [状态列 minmax(0,max-content)] [弹性列 minmax(0,1fr)] [键组 max-content]
+     行1 = 胶囊跨 col1-2（宽度 100% + 内容 space-between）⇒ 与键组只隔一个 12px 列间距
+     行2 = 状态 col1 ｜ 进度条跨 col2-3 ⇒ 吃满富余
+   .pb-right 仍用 display:contents 拆开（进度条与状态各自成为父网格项），无需改 DOM。 */
+@media (max-width:960px){
+  /* ★ 下面这组「行定义 / 居中 / 顶部内边距 / 按钮尺寸」**必须与"两行布局"同域** ——
+     这正是"播放键贴上缘"反复出现的机理：那条修复一直只写在 ≤640 里，而两行布局早已铺到 641–960，
+     每次布局作用范围一变、或新开一档，修复都不会跟过去（本次实测：641–960 档上缘仅 **1px**）。 */
+  .play-bar{grid-template-columns:minmax(0,max-content) minmax(0,1fr) max-content;
+    grid-template-areas:"ctx ctx trans" "stat prog prog";
+    grid-template-rows:auto auto;row-gap:2px;align-content:center;padding-top:6px;
+    column-gap:12px;align-items:center}
+  .play-btn{width:48px;height:48px}
+  .jump-btn{width:40px;height:40px}
+  .play-bar .pb-ctx{grid-area:ctx;justify-self:start;min-width:0;max-width:100%;width:100%;overflow:hidden;
+    justify-content:space-between}
   /* id 级覆盖：旧窄屏规则是 #argJump{grid-column:1 / -1;justify-self:center}（1,0,0），
      类级压不过它 ⇒ 这里必须同样用 id，并显式 grid-column:auto 撤销跨列。 */
   /* v3.33.12（用户实拍）：这块内部是 1fr auto 1fr 三列，左侧 1fr 空出 50px（键组偏右）；
@@ -2544,62 +2553,17 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      钉着（.pb-right .status{width:96px;flex:none}）⇒ 文字只剩 82px，而文案需要 112px，被切掉约 3 字。
      这里把内层解开、撑满所在块：块宽与右列（198）都不动 ⇒ 每列上下两块仍然等长。 */
   .play-bar .pb-sub{flex:1 1 auto}
-  .play-bar .pb-sub .status{width:auto;flex:1 1 auto;min-width:0}
+  /* ★ 状态列给**上限**而不是定宽：定宽 156 在 390 竖屏（总宽 358）会让三列压爆
+     （156+198+24 = 378 > 358 ⇒ 上次就是这么红的）。min(156px,30vw) 在 ≥520 恒为 156
+     （进度条长度恒定那条口径保住），窄到 390 时自动缩到 117 ⇒ 三列塞得下。 */
+  .play-bar .pb-sub .status{width:min(156px,30vw);flex:none;min-width:0}
   .play-bar .pb-sub #statusText{min-width:0}
+  /* ★ 读数（「第 1–33 小节 · 引子 → 副歌…」）在 641–960 档是可见的（≤640 才 display:none），
+     而它按 max-content 会把左列撑到 **365px**（实测）⇒ 进度条被挤掉 100+px。
+     给它上限：左列 = 读数 120 + 间距 + 状态 156 ⇒ 进度条回到该有的长度（它本来就有省略号）。 */
+  .play-bar .pb-sub .demo-range-note{max-width:120px}
   .play-bar .pb-ctx .pat-now{flex:1 1 auto;min-width:0}
   .play-bar .pb-progress{grid-area:prog;justify-self:end;width:100%}
-}
-/* ★★★ v3.36.20 补6（用户实报「胶囊与上一段按钮重叠」+「进度条没变长」）：
-   **641–960px 这一档**（大屏手机竖屏 / 手机横屏 / 小平板）此前落进**桌面三列网格**
-   `minmax(0,1fr) auto minmax(0,1fr)`——而底栏胶囊是**定宽 320px**（--pb-side-w），
-   740px 宽时左列只有 181px ⇒ **胶囊溢出、压到传输键组上**（真机实测重叠 82px；820/700 两档同样重叠）。
-   同时右列也只有 181px ⇒ 进度条被卡在 181px 长不起来。
-   修法：把仓库**已有的"两行"底栏布局**覆盖到这一档（它本来只作用于 ≤640），
-   并把左右两列改成**内容驱动**：左列=胶囊/状态按内容，右列=传输键组/进度条吃满富余。
-   实测（740×1804）：重叠 82px → **−199px（不再重叠）**；进度条 181 → **435px**；状态区 156px。
-   ★ 为什么不在 ≤640 也这么改：那里总宽只有 358px，胶囊内容 237 + 键组 198 + 间距已经放不下
-     ⇒ 内容驱动列会让键组反过来压到胶囊上（实测 390 竖屏重叠 +79px、进度条掉到 107px）。
-     故 ≤640 保持原状（1fr + max-content），本档只在"有富余"的宽度生效。 */
-@media (min-width:641px) and (max-width:960px){
-  .play-bar{grid-template-columns:max-content minmax(0,1fr);grid-template-areas:"ctx trans" "stat prog";
-    column-gap:12px;row-gap:2px;align-items:center}
-  .play-bar .pb-ctx{grid-area:ctx;justify-self:start;min-width:0;max-width:100%;width:100%;overflow:hidden}
-  .play-bar #argJump{grid-area:trans;grid-column:auto;justify-self:end;grid-template-columns:auto auto;justify-content:space-between}
-  .play-bar #argJump .trio{grid-column:1}
-  .play-bar #argJump > .loop-btn{grid-column:2}
-  .play-bar .pb-right{display:contents}
-  .play-bar .pb-sub{grid-area:stat;justify-self:start;min-width:0;width:100%;overflow:hidden;flex:1 1 auto}
-  .play-bar .pb-sub .status{width:min(156px,100%);flex:none;min-width:0}
-  .play-bar .pb-sub #statusText{min-width:0}
-  .play-bar .pb-ctx .pat-now{flex:1 1 auto;min-width:0}
-  .play-bar .pb-progress{grid-area:prog;justify-self:end;width:100%}
-}
-/* ★★★ v3.36.20 补5（用户**横屏**实报）：状态文字那块富余太多——实测状态盒 398px、「已停止」只占 33px，
-   空出 365px，而进度条只有 198px。用户要「上限之外空出来的区域让给进度条」。
-   ★ 为什么只作用于**横屏**：竖屏 390 下照搬三列会把两条既有口径打坏（实测「窄屏播放键组右对齐底栏内容列」
-     与「窄屏底栏零视口溢出」当场变红）——那两条都是 v3.33.12 / v3.15.0 的既有验收项。
-   ★ 为什么**不能**简单恢复那条 `width:96px`：它是被 v3.33.12 **明确压掉**的
-     （注释原文：「状态行缩略太多…文字只剩 82px，而文案需要 112px，被切掉约 3 字」）⇒ 截断会原样回来。
-   修法：两列改**三列**，状态列按内容（定宽），中间那列让给进度条；传输键组挪到第 3 列、仍按自身宽度
-   ⇒ 键组的位置与宽度**一个像素不动**（v3.33.12 的 B 方案口径保住）。
-     行1 = 胶囊跨 1-2 列 ｜ 键组 col3
-     行2 = 状态 col1      ｜ 进度条跨 col2-3（吃掉原来空在状态盒里的那截）
-   ★ 状态定宽 156px（真机量的）：最长那条状态文案「播放中 · 第 64 小节 · 8&」文字**实需 127px**，
-     定宽 150 时差 3px（会截断）⇒ 150 + 3 + 3 余量 = 156。
-   ★ 用**定宽**而不是 max-width（如实记录实测）：在三列布局里 `max-width` **其实撑得住**
-     （列按 max-content 会跟着长，不截断，而且短文案时进度条还能到 537px）。**仍然选定宽**，
-     是因为只有定宽能保证「进度条长度**恒定**」（v3.18.0 口径）：`max-width` 下状态文案在
-     「已停止」(33px) 与「播放中 · 第 64 小节 · 8&」(127px) 之间切换时，进度条会**跳约 60px**。
-   实测（640×360 横屏）：状态区 398 → **156px**、进度条 198 → **440px**、键组仍 426..624（198px 不动）。 */
-@media (max-width:640px) and (orientation:landscape){
-  .play-bar{grid-template-columns:max-content minmax(0,1fr) max-content;
-    grid-template-areas:"ctx ctx trans" "stat prog prog"}
-  .play-bar .pb-sub .status{width:156px;flex:none;min-width:0}
-  /* ★ 用户实报「播放按钮左边的胶囊有必要留那么长吗」：这只胶囊原来写 width:100%，
-     被网格跨列拉成 **398px**，而内容实需约 247px（最后一个 child 的 flex:1 还把型名撑开、
-     文字后面那一截全是空的）⇒ 改成按内容收缩。实测 398 → **265px**，键组位置与进度条都不受影响
-     （进度条在下一行、已经吃满富余 = 440px，缩短胶囊并不会让它更长）。 */
-  .play-bar .pb-ctx{width:auto}
 }
 /* 日间档：休止格专用填充 + 虚线强度。
    ★ 用户实拍：日间看不出灰格——根因是 body[data-theme="obs"] .cell{background:var(--cell)} 给所有格子
@@ -3991,23 +3955,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4023  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4925  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6968  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7980  Modal         应用内弹窗
-     L8125  Viz           时值可视化渲染与每帧动画
-     L11590 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12271 Trainer       变速训练器
-     L12481 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13188 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15166 Editor        自定义节奏型编辑器
-     L15746 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15793 Ear           听辨训练（v1.10.0）
-     L16021 Arrange       曲式编排（v2.0.0）
-     L19593 Help          使用方法（v2.0.1）
-     L19748 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19822 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20111 初始化（装配） 各模块 hook 接线与启动
+     L3987  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4889  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6932  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7944  Modal         应用内弹窗
+     L8089  Viz           时值可视化渲染与每帧动画
+     L11554 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12235 Trainer       变速训练器
+     L12445 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13152 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15130 Editor        自定义节奏型编辑器
+     L15710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15757 Ear           听辨训练（v1.10.0）
+     L15985 Arrange       曲式编排（v2.0.0）
+     L19557 Help          使用方法（v2.0.1）
+     L19712 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19786 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20075 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
