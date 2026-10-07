@@ -2619,9 +2619,16 @@ async function main(){
             p.label + "·横屏640：★★ 最长那条状态文案（「播放中 · 第 64 小节 · 8&」）在上限内**不被截断**"
             + "（防 v3.33.12「状态行被切掉约 3 字」那个老毛病回来）",
             "longTextOverflow=" + P5.longTextOverflow);
-          ok(P5.gapTop !== null && P5.gapBottom !== null && Math.abs(P5.gapTop - P5.gapBottom) <= 4,
-            p.label + "·横屏640：★★★ 上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距**相等**（"
-            + P5.gapTop + " vs " + P5.gapBottom + "px）——用户实报：上排那个空当太长不美观",
+          /* ★ v3.36.20 补10（用户拍板 (甲)）：窄档**横屏**也吃 28 ⇒ 上 28 / 下 12，
+             不再满足"上=下"（用户在弄清"窄档/宽档"与"朝向"是两个轴之后明确接受这个代价）。
+             判据与竖屏两档统一：组外 > 组内 + 上 ≥26 + 下 ≤14。 */
+          ok(P5.gapTop !== null && P5.gapBtns !== null && P5.gapTop > P5.gapBtns,
+            p.label + "·横屏640：★★★ 「胶囊↔键组」组外间距（" + P5.gapTop
+            + "px）**大于**键组内部间距（" + P5.gapBtns + "px）",
+            "gapTop=" + P5.gapTop + " gapBtns=" + P5.gapBtns);
+          ok(P5.gapTop !== null && P5.gapTop >= 26 && P5.gapBottom !== null && P5.gapBottom <= 14,
+            p.label + "·横屏640：★★★ 横屏也上 28 / 下 12（实测 " + P5.gapTop + " / " + P5.gapBottom
+            + "）——只动上排：进度条长度不受影响",
             "gapTop=" + P5.gapTop + " gapBottom=" + P5.gapBottom);
           ok(P5.btnTopGap !== null && P5.btnTopGap >= 8,
             p.label + "·横屏640：★★★ 播放键**不贴上缘**（上缘 " + P5.btnTopGap + "px）",
