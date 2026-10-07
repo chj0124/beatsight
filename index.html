@@ -1771,7 +1771,16 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    （硬约束——约 20 个用例用 ly.children.find(...) 取它们；且 .arg-lyric 被钉在段行 children[4]）
    ⇒ 内外都不能再套一层滚动容器。容器要比卡片宽，就只能让卡片自己滚。
    配合 .arg-lyric:has(.arg-lyric-lane) 的最小宽度（见该处注释）使用。 */
-.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+/* ★★ v3.36.20 补：横滑的**留白**。滚动容器的可视区（scrollport）就是 padding box —— 内容会
+   **一直排到边框**，所以只加 overflow-x:auto 时歌词行照样画到卡片边框上（真机实测：430px 视口下
+   行右缘越过外框 201px，390px 下 241px；只有卡片 > ~535px 时才有那 15px 内边距当留白）。
+   修法：把这份留白从**内边距**挪到**透明的右边框**上 —— 边框在 padding box 之外，
+   于是内容被裁在"离卡片可见边缘 15px"处，那 15px 由卡片底色透过透明边框露出来；
+   右边框那条线用背景渐变补回来（背景默认裁剪到 border-box，会铺到透明边框下面）。
+   实测卡片外宽不变（366→366：padding-right 14 与 border-right 15 刚好对掉），非滚动内容位置不变。
+   ★ 为什么不在卡片里外再加一层真容器：外侧撞 .arg-lyric 的 children[4] 位置契约，
+     内侧撞约 20 个用例依赖的"扁平直接子节点"契约——这条 CSS 路零结构改动。 */
+.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0 12px 14px;background-color:var(--card2);background-image:linear-gradient(to left,var(--line) 0 1px,transparent 1px);border:1px solid var(--line);border-right:15px solid transparent;border-radius:12px;overflow-x:auto}
 .arg-sec:not(:last-child){margin-bottom:10px}
 /* v2.33.0：段卡片 ↔ 播放范围联动（设计原稿视觉层次 L3）——范围覆盖段绿左条，
    未覆盖段整体降透明（dim 0.55）；类由 buildSecRow 初挂、syncPanelRead 拖动中实时切 */
@@ -3887,23 +3896,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3919  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4821  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6864  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7876  Modal         应用内弹窗
-     L8021  Viz           时值可视化渲染与每帧动画
-     L11486 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12167 Trainer       变速训练器
-     L12377 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13084 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15062 Editor        自定义节奏型编辑器
-     L15642 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15689 Ear           听辨训练（v1.10.0）
-     L15917 Arrange       曲式编排（v2.0.0）
-     L19489 Help          使用方法（v2.0.1）
-     L19644 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19718 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20007 初始化（装配） 各模块 hook 接线与启动
+     L3928  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4830  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6873  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7885  Modal         应用内弹窗
+     L8030  Viz           时值可视化渲染与每帧动画
+     L11495 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12176 Trainer       变速训练器
+     L12386 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13093 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15071 Editor        自定义节奏型编辑器
+     L15651 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15698 Ear           听辨训练（v1.10.0）
+     L15926 Arrange       曲式编排（v2.0.0）
+     L19498 Help          使用方法（v2.0.1）
+     L19653 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19727 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20016 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

@@ -1174,6 +1174,52 @@ function refineGroupProbe(){
      · .arg-lyric 是否保住了最小宽度（窄屏改为横滑，而不是把格压小）；
      · 卡片是否真的成为横向滚动容器（内容收进卡片内，不再画到边框外）。
    与视口宽度无关，1440px 下也测得出。 */
+/* ★★★ v3.36.20 补：卡片右缘**留白**的真机闸（用户实报「歌词行依然压在边缘上」）。
+   为什么必须真机、且必须**量几何**：滚动容器的可视区就是 padding box ⇒ 内容会一直排到边框。
+   所以"有没有留白"完全取决于**卡片可见边缘与 padding box 右缘之间的距离**，
+   这是布局几何、桩里没有；而把它做成"内容有没有画进留白"得逐像素读屏，噪声大且易 flaky。
+   留白 = cardRect.right − (cardRect.left + borderLeft + card.clientWidth)。
+   补这条 CSS 之前：padding-right:14 + border-right:1 ⇒ 留白 **1px**（内容一直画到边框上）；
+   补之后：那 14px 从内边距挪到透明右边框 ⇒ 留白 **15px**。故阈值取 ≥14，两端都量。 */
+function cardGutterProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "无 __beat.Arrange" });
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "Arrange.open 失败 " + e.message }); }
+    await frame();
+    var pick = function(){
+      var cs = [].slice.call(document.querySelectorAll(".arg-sec"));
+      for (var i = 0; i < cs.length; i++){ if (cs[i].querySelectorAll(".arg-lyric-row").length >= 3) return cs[i]; }
+      return null;
+    };
+    var card = pick();
+    for (var k = 0; k < 8 && !card; k++){
+      var sums = [].slice.call(document.querySelectorAll(".arg-lyric-sum"));
+      if (k >= sums.length) break;
+      sums[k].click();
+      await frame(); await frame();
+      card = pick();
+    }
+    if (!card) return JSON.stringify({ err: "点开后仍没有多行歌词网格" });
+    var gutterOf = function(){
+      var cr = card.getBoundingClientRect(), k = getComputedStyle(card);
+      var bl = parseFloat(k.borderLeftWidth);
+      var spRight = cr.left + bl + card.clientWidth;   /* 滚动可视区右缘 = 内容能画到的最远处 */
+      return Math.round(cr.right - spRight);
+    };
+    var res = { wideGutter: gutterOf(), wideScrollable: card.scrollWidth > card.clientWidth };
+    card.style.width = "360px";
+    await frame();
+    res.narrowGutter = gutterOf();
+    res.narrowScrollable = card.scrollWidth > card.clientWidth;
+    res.narrowCardW = Math.round(card.getBoundingClientRect().width);
+    card.style.width = "";
+    await frame();
+    try{ B.Arrange.close(); }catch(e){ }
+    return JSON.stringify(res);
+  })()`;
+}
 function lyricScrollProbe(){
   return `(async function(){
     var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
@@ -1789,6 +1835,10 @@ function wideFullProbe(){
       const lsRaw = await cdp.send("Runtime.evaluate",
         { expression: lyricScrollProbe(), awaitPromise: true, returnByValue: true });
       result.lyricScroll = JSON.parse(lsRaw.result.value);
+      /* ★★★ v3.36.20 补：卡片右缘留白 */
+      const cgRaw = await cdp.send("Runtime.evaluate",
+        { expression: cardGutterProbe(), awaitPromise: true, returnByValue: true });
+      result.cardGutter = JSON.parse(cgRaw.result.value);
       /* ★★★ v3.33.28：歌词跨行拖动（同行有后续块时也必须能换行） */
       const rmRaw = await cdp.send("Runtime.evaluate",
         { expression: lyricRowMoveGateProbe(), awaitPromise: true, returnByValue: true });
@@ -2659,6 +2709,20 @@ async function main(){
             } else {
               ok(false, p.label + "·" + vp + "：编辑器头部探针未取到（探针故障："
                 + ((EH && EH.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.36.20 补：卡片右缘**留白**——压窄后内容必须被裁在离卡片可见边缘 ≥14px 处 */
+          if (vp === "桌面"){
+            const G = r.cardGutter;
+            if (G && !G.err){
+              ok(G.wideGutter >= 14,
+                p.label + "·" + vp + "：★★ 宽屏下卡片右缘留白 ≥14px（实测 " + G.wideGutter + "px）", "");
+              ok(G.narrowScrollable === true && G.narrowGutter >= 14,
+                p.label + "·" + vp + "：★★★ 卡片压窄到 " + G.narrowCardW + "px 后**右侧留白仍在**（" + G.narrowGutter
+                + "px）——内容被裁在离卡片可见边缘 15px 处，不再画到边框上（用户实报「歌词行依然压在边缘上」）",
+                "留白 " + G.narrowGutter + "px / 可横滑 " + G.narrowScrollable);
+            } else {
+              ok(false, p.label + "·" + vp + "：卡片留白探针未取到（故障：" + ((G && G.err) || "缺失") + "）", "");
             }
           }
           /* ★★★ v3.36.20：段卡片「放不下就横滑」——把卡片压窄到 360px，精修行数不许变、格不许被压小 */
