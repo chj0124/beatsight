@@ -2579,6 +2579,12 @@ async function main(){
           ok(M6.gapTop !== null && M6.gapTop >= 26 && M6.gapBottom !== null && M6.gapBottom <= 14,
             p.label + "·740档：★★★ 竖屏上 28 / 下 12（实测 " + M6.gapTop + " / " + M6.gapBottom + "）",
             "gapTop=" + M6.gapTop + " gapBottom=" + M6.gapBottom);
+          /* ★★★ v3.36.20 补11：641–960 档状态灯与上方胶囊首元素的**对齐**。
+             根因：读数（可见，占 120px）排在状态灯前面，把圆点推到 x=146 ⇒ 与 ‹(29) 差 117px。 */
+          ok(M6.statusDelta !== null && Math.abs(M6.statusDelta) <= 3,
+            p.label + "·740档：★★★ 状态灯与上方胶囊的 ‹ 对齐（差 " + M6.statusDelta
+            + "px）——修复前读数排在状态灯前面、把圆点推后 117px",
+            "statusDelta=" + M6.statusDelta);
           ok(M6.progressW !== null && M6.progressW >= 400,
             p.label + "·740档：★★★ 只动上排 ⇒ 进度条长度不受影响（" + M6.progressW + "px）",
             "progressW=" + M6.progressW);
