@@ -1827,8 +1827,17 @@ function portraitFixProbe(){
       /* ★ v3.36.20 补6：胶囊宽度 + 胶囊与传输键组的**重叠量**（>0 = 压在一起） */
       ctxW: q(".pb-ctx") ? Math.round(q(".pb-ctx").getBoundingClientRect().width) : null,
       /* ★ v3.36.20 补14：竖屏下「音量区右缘」应落在 BPM 滑杆右缘上（用户实报音量条占满全宽） */
-      volBpmDelta: (function(){ var v=q(".card-head-left .vol-row"), b=q(".slider-row input[type=range]");
-        return (v&&b)? Math.round(v.getBoundingClientRect().right-b.getBoundingClientRect().right):null; })(),
+      /* ★ v3.36.20 补15：窄屏控制卡**默认收起**的实证（卡片高 + 练习网格顶部） */
+      ctlCardH: (function(){ var c=q(".card-head"); c = c && c.closest("section.card,div.card"); return c? Math.round(c.getBoundingClientRect().height):null; })(),
+      vizTop: q("#viz") ? Math.round(q("#viz").getBoundingClientRect().top) : null,
+      /* ★ 补15：窄屏**默认收起**音量组 ⇒ 这里临时展开再量（量的是"展开态"的右缘对齐），量完还原。
+         与仓库既有探针「造出条件 → 量 → 还原（探针不留状态）」同一纪律。 */
+      volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen"); var keep = cb? cb.checked : null;
+        if (cb){ cb.checked = true; void document.body.offsetWidth; }
+        var v=q(".card-head-left .vol-row"), b=q(".slider-row input[type=range]");
+        var d = (v&&b)? Math.round(v.getBoundingClientRect().right-b.getBoundingClientRect().right):null;
+        if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
+        return d; })(),
       /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
       gapTop: (function(){ var c=q(".pb-ctx"), j=q("#argJump"); return (c&&j)? Math.round(j.getBoundingClientRect().left-c.getBoundingClientRect().right):null; })(),
       /* ★ v3.36.20 补8：键组**内部**间距（trio 右缘 → 循环键左缘）——用户要求组外间距必须大于它 */
@@ -2689,6 +2698,12 @@ async function main(){
             p.label + "·" + vp + "：★★★ 竖屏上 28 / 下 12（实测 " + PF.gapTop + " / " + PF.gapBottom
             + "）——只动上排：进度条长度不受影响",
             "gapTop=" + PF.gapTop + " gapBottom=" + PF.gapBottom);
+          /* ★★★ v3.36.20 补15（用户拍板 ①）：窄屏**默认收起控制区** —— 练习网格必须回到首屏内。
+             修复前实测：390×844 控制卡 624px = 首屏 74%、#viz 顶部 855px（首屏 844 之外）✗。 */
+          ok(PF.ctlCardH !== null && PF.ctlCardH <= 520 && PF.vizTop !== null && PF.vizTop <= 760,
+            p.label + "·" + vp + "：★★★ 窄屏控制卡**默认收起**、练习网格回到首屏内（卡片高 " + PF.ctlCardH
+            + "px / #viz 顶 " + PF.vizTop + "px / 视口 844px）——修复前 624px / 855px（#viz 在首屏之外）",
+            "cardH=" + PF.ctlCardH + " vizTop=" + PF.vizTop);
           ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 4,
             p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
             + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 56px（390 档）",
