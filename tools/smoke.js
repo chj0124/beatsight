@@ -1338,7 +1338,10 @@ function blockRowProbe(){
     var W = function(e){ return Math.round(e.getBoundingClientRect().width); };
     var H = function(e){ return Math.round(e.getBoundingClientRect().height); };
     var res = { blkW: W(blk), blockH: H(blk), nameW: W(blk.firstChild), nameH: H(blk.firstChild), addH: H(add) };
-    blocks.style.maxWidth = "280px";        /* 造出「放不下」的条件 */
+    /* ★ v3.36.20 补12：造「放不下」的条件改成**相对 chip 自身**（原写死 280px）。
+       写死像素自带的坑：chip 自然宽是**字体相关**的（本机 macOS 353px、GitHub CI 的 Linux 字体 292px），
+       若某天渲染到 <280px，这个"压窄"就变成空转——测不出任何东西却仍然绿。 */
+    blocks.style.maxWidth = Math.max(140, Math.round(res.blkW * 0.8)) + "px";
     await frame();
     res.narrowBlkW = W(blk);
     res.narrowNameH = H(blk.firstChild);
@@ -3048,14 +3051,20 @@ async function main(){
           if (vp === "桌面"){
             const BR = r.blockRow;
             if (BR && !BR.err){
-              ok(BR.blkW >= 300, p.label + "·" + vp + "：★ 前提：块拿到自然宽度（实测 " + BR.blkW + "px）", "");
+              /* ★ v3.36.20 补12：**前提**只用"有没有拿到一段真实宽度"作判据（≥150px），
+                 不再钉具体像素——原写死 ≥300 是 macOS 上量的（实测 353），GitHub CI 的 Linux 字体
+                 下 chip 自然宽只有 292 ⇒ 在那边**稳定判红**（同一提交两条通道都红）。
+                 前置条件的职责是"测量有意义"，不是"字体必须和开发机一样"。 */
+              ok(BR.blkW >= 150, p.label + "·" + vp + "：★ 前提：块拿到自然宽度（实测 " + BR.blkW + "px）", "");
               ok(BR.kept === true,
-                p.label + "·" + vp + "：★★★ 块行压窄到 280px 后块**不跟着缩**（" + BR.narrowBlkW
+                p.label + "·" + vp + "：★★★ 块行压窄到自身 80% 后块**不跟着缩**（" + BR.narrowBlkW
                 + "px，原 " + BR.blkW + "px）——flex:none 在位的真机闸；缺它时块被压到 1–2 字宽、"
                 + "型名竖排（用户实报的竖屏症状）",
                 "压窄后 " + BR.narrowBlkW + "px（期望 ≥ " + BR.blkW + "）／型名高 " + BR.narrowNameH + "px");
+              /* ★ v3.36.20 补4 起：块行**不再自己滚**（overflow-x:visible），改为与卡片同一条横滑轴
+                 ——故这里钉的是"内容**溢出**容器本身"（溢出交由卡片统一接住），而不是"容器自己能滚"。 */
               ok(BR.scrollable === true,
-                p.label + "·" + vp + "：★★ 放不下时由容器**横向滚动**接住（overflow-x:auto 真的生效）", "");
+                p.label + "·" + vp + "：★★ 放不下时内容**溢出**块行（块行自己不滚，溢出交卡片统一横滑——补4）", "");
               ok(BR.narrowAddH <= BR.blockH,
                 p.label + "·" + vp + "：★ 「+ 块」不被 stretch 拉成整行高（align-items:center）",
                 "加块钮高 " + BR.narrowAddH + "px / 块高 " + BR.blockH + "px");
