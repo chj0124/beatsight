@@ -291,7 +291,13 @@ body.wide-full .main{max-width:none}
   .viz-head-grid .card-head-left .group{gap:8px;flex:none}
   /* ★ v3.36.20 补24：上面那条 -2px 补偿**过量**了（实测胶囊→首行 6px，而 BPM 那边是 8）
      —— 因为 补23 的 .group{flex:none} 同时改了组内几何。撤掉补偿后实测回到 8 = 8。 */
-  .viz-head-grid .card-head-left .ctl-hit{margin-bottom:0}
+  /* ★★★ v3.36.20 补25（用户拍板 a）：**按可见边缘**对齐两组"胶囊→首行"的间距。
+     实测（盒子口径都是 8）：音量行盒 40px 而滑杆/文字**居中** ⇒ 可见内容离盒顶约 11px
+     ⇒ 胶囊到可见内容 = 8+11 = **19px**；而 BPM 首行是按钮**自身即可见胶囊**、盒顶即视觉顶
+     ⇒ 8px。故肉眼差 11px（用户实报「音量胶囊到节拍条明显大于 BPM 到按钮」）。
+     修法：音量组盒子间距 8 → 3（可见 ≈14）；BPM 内容区补 6px 顶部内边距（可见 ≈14）⇒ 两侧相等。 */
+  .viz-head-grid .card-head-left .ctl-hit{margin-bottom:-5px}
+  .viz-head-grid .viz-head > .group .tg-body{padding-top:6px}
   .viz-head-grid .card-head-left .group .tg-body{gap:8px}
 }
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
@@ -4078,23 +4084,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4110  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5012  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7055  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8067  Modal         应用内弹窗
-     L8212  Viz           时值可视化渲染与每帧动画
-     L11677 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12358 Trainer       变速训练器
-     L12568 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13275 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15253 Editor        自定义节奏型编辑器
-     L15833 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15880 Ear           听辨训练（v1.10.0）
-     L16108 Arrange       曲式编排（v2.0.0）
-     L19680 Help          使用方法（v2.0.1）
-     L19835 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19909 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20198 初始化（装配） 各模块 hook 接线与启动
+     L4116  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5018  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7061  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8073  Modal         应用内弹窗
+     L8218  Viz           时值可视化渲染与每帧动画
+     L11683 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12364 Trainer       变速训练器
+     L12574 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13281 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15259 Editor        自定义节奏型编辑器
+     L15839 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15886 Ear           听辨训练（v1.10.0）
+     L16114 Arrange       曲式编排（v2.0.0）
+     L19686 Help          使用方法（v2.0.1）
+     L19841 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19915 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20204 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
