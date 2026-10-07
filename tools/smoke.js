@@ -1156,6 +1156,46 @@ function refineGroupProbe(){
   })()`;
 }
 
+/* ★★★ v3.36.19：段行「块」列表的横向滚动真机闸（用户实报「竖屏下新增块那一带比例不对」）。
+   为什么必须真机：桩环境没有 CSS，flex:none / white-space / align-items 在桩里根本不存在——
+   两个块被压扁、型名竖排、overflow-x:auto 永不触发，全是**只有浏览器能看见**的行为。
+   为什么不能只靠"1440px 下量一量"：本冒烟跑在 1440×1000，主列 1004px，两个块放得下、症状不出现。
+   故探针**主动把块行压窄到 280px** 造出"放不下"的条件，再量三件事：
+     · 块宽是否**跟着缩**（有 flex:none 就不缩——这是「被压扁」的直接否定式）；
+     · 容器是否转为**可横向滚动**（overflow-x:auto 真的接住了）；
+     · 「+ 块」是否被 stretch 拉成整行高。
+   三条合起来与视口宽度无关，1440px 下也测得出。 */
+function blockRowProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Arrange) return JSON.stringify({ err: "无 __beat.Arrange" });
+    try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "Arrange.open 失败 " + e.message }); }
+    await frame();
+    var secs = [].slice.call(document.querySelectorAll(".arg-sec"));
+    var sec = null;
+    for (var i = 0; i < secs.length; i++){ if (secs[i].querySelectorAll(".arg-block").length >= 2){ sec = secs[i]; break; } }
+    if (!sec) return JSON.stringify({ err: "没有含 2 个及以上块的段" });
+    var blocks = sec.querySelector(".arg-blocks");
+    var blk = blocks.querySelector(".arg-block");
+    var add = blocks.children[blocks.children.length - 1];
+    var W = function(e){ return Math.round(e.getBoundingClientRect().width); };
+    var H = function(e){ return Math.round(e.getBoundingClientRect().height); };
+    var res = { blkW: W(blk), blockH: H(blk), nameW: W(blk.firstChild), nameH: H(blk.firstChild), addH: H(add) };
+    blocks.style.maxWidth = "280px";        /* 造出「放不下」的条件 */
+    await frame();
+    res.narrowBlkW = W(blk);
+    res.narrowNameH = H(blk.firstChild);
+    res.scrollable = blocks.scrollWidth > blocks.clientWidth;
+    res.narrowAddH = H(add);
+    blocks.style.maxWidth = "";             /* 还原（探针不留状态） */
+    await frame();
+    res.kept = res.narrowBlkW >= res.blkW - 2;
+    try{ B.Arrange.close(); }catch(e){ }
+    return JSON.stringify(res);
+  })()`;
+}
+
 /* [diag3] 把「我」拖到**空扫格**上，量落点是否与节奏型格子对齐（只报告）。
    用户实报：松手后仍对不上，且**只在空扫格出现**。P1《十六分满扫》的空扫格 = 1/2/5/7/8/9/13。 */
 function lyricGhostAlignProbe(){
@@ -1653,6 +1693,10 @@ function wideFullProbe(){
       const pfRaw = await cdp.send("Runtime.evaluate",
         { expression: presetFoldProbe(), awaitPromise: true, returnByValue: true });
       result.presetFold = JSON.parse(pfRaw.result.value);
+      /* ★★★ v3.36.19：段行块列表的横向滚动真机闸 */
+      const brRaw = await cdp.send("Runtime.evaluate",
+        { expression: blockRowProbe(), awaitPromise: true, returnByValue: true });
+      result.blockRow = JSON.parse(brRaw.result.value);
       /* ★★★ v3.33.28：歌词跨行拖动（同行有后续块时也必须能换行） */
       const rmRaw = await cdp.send("Runtime.evaluate",
         { expression: lyricRowMoveGateProbe(), awaitPromise: true, returnByValue: true });
@@ -2523,6 +2567,26 @@ async function main(){
             } else {
               ok(false, p.label + "·" + vp + "：编辑器头部探针未取到（探针故障："
                 + ((EH && EH.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.36.19：段行块列表——把块行压窄到 280px，块**不该跟着缩**
+             （桩测不到：没有 CSS；1440px 下也测不到：主列够宽、症状不出现。故探针主动造窄条件） */
+          if (vp === "桌面"){
+            const BR = r.blockRow;
+            if (BR && !BR.err){
+              ok(BR.blkW >= 300, p.label + "·" + vp + "：★ 前提：块拿到自然宽度（实测 " + BR.blkW + "px）", "");
+              ok(BR.kept === true,
+                p.label + "·" + vp + "：★★★ 块行压窄到 280px 后块**不跟着缩**（" + BR.narrowBlkW
+                + "px，原 " + BR.blkW + "px）——flex:none 在位的真机闸；缺它时块被压到 1–2 字宽、"
+                + "型名竖排（用户实报的竖屏症状）",
+                "压窄后 " + BR.narrowBlkW + "px（期望 ≥ " + BR.blkW + "）／型名高 " + BR.narrowNameH + "px");
+              ok(BR.scrollable === true,
+                p.label + "·" + vp + "：★★ 放不下时由容器**横向滚动**接住（overflow-x:auto 真的生效）", "");
+              ok(BR.narrowAddH <= BR.blockH,
+                p.label + "·" + vp + "：★ 「+ 块」不被 stretch 拉成整行高（align-items:center）",
+                "加块钮高 " + BR.narrowAddH + "px / 块高 " + BR.blockH + "px");
+            } else {
+              ok(false, p.label + "·" + vp + "：段行块列表探针未取到（故障：" + ((BR && BR.err) || "缺失") + "）", "");
             }
           }
           /* ★★★ v3.33.21：精修分组折叠——**只量高度，不读 hidden 属性**（见 refineGroupProbe 注释） */
