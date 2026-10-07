@@ -1825,6 +1825,9 @@ function portraitFixProbe(){
       ctxW: q(".pb-ctx") ? Math.round(q(".pb-ctx").getBoundingClientRect().width) : null,
       /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
       gapTop: (function(){ var c=q(".pb-ctx"), j=q("#argJump"); return (c&&j)? Math.round(j.getBoundingClientRect().left-c.getBoundingClientRect().right):null; })(),
+      /* ★ v3.36.20 补8：键组**内部**间距（trio 右缘 → 循环键左缘）——用户要求组外间距必须大于它 */
+      gapBtns: (function(){ var t=q("#argJump .trio"), l=q("#argJump > .loop-btn");
+        return (t&&l)? Math.round(l.getBoundingClientRect().left-t.getBoundingClientRect().right):null; })(),
       gapBottom: (function(){ var n=q(".pb-sub .demo-range-note"), s=q("#pbSub .status"), p=q("#pbProgress"); if(!p) return null;
         var e=-1; [n,s].forEach(function(x){ if(!x) return; var r=x.getBoundingClientRect(); if(r.width>0 && r.right>e) e=r.right; });
         return e>=0? Math.round(p.getBoundingClientRect().left-e):null; })(),
@@ -2569,10 +2572,13 @@ async function main(){
             p.label + "·740档：★★★ 这一档的进度条也吃到了富余（" + M6.progressW
             + "px）——修复前被 1fr 列卡在 181px",
             "progressW=" + M6.progressW);
-          ok(M6.gapTop !== null && M6.gapBottom !== null && Math.abs(M6.gapTop - M6.gapBottom) <= 4,
-            p.label + "·740档：★★★ 上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距**相等**（"
-            + M6.gapTop + " vs " + M6.gapBottom + "px）",
-            "gapTop=" + M6.gapTop + " gapBottom=" + M6.gapBottom);
+          ok(M6.gapTop !== null && M6.gapBtns !== null && M6.gapTop > M6.gapBtns,
+            p.label + "·740档：★★★ 竖屏「胶囊↔键组」组外间距（" + M6.gapTop
+            + "px）**大于**键组内部间距（" + M6.gapBtns + "px）",
+            "gapTop=" + M6.gapTop + " gapBtns=" + M6.gapBtns);
+          ok(M6.progressW !== null && M6.progressW >= 400,
+            p.label + "·740档：★★★ 只动上排 ⇒ 进度条长度不受影响（" + M6.progressW + "px）",
+            "progressW=" + M6.progressW);
           ok(M6.btnTopGap !== null && M6.btnTopGap >= 8,
             p.label + "·740档：★★★ 播放键**不贴上缘**（上缘 " + M6.btnTopGap
             + "px）——修复前这一档只有 **1px**（那条「居中 + 顶部内边距」的修复被圈在 ≤640 里没跟过来）",
@@ -2636,9 +2642,15 @@ async function main(){
             p.label + "·" + vp + "：★★★ 下排状态与进度条**不重叠**（间距 " + PF.gapBottom
             + "px）——状态列用 min(156px,30vw) 而不是定宽，靠的就是这条",
             "gapBottom=" + PF.gapBottom);
-          ok(PF.gapTop !== null && PF.gapBottom !== null && Math.abs(PF.gapTop - PF.gapBottom) <= 4,
-            p.label + "·" + vp + "：★★★ 上排「胶囊↔键组」与下排「状态↔进度条」两个间距**相等**（"
-            + PF.gapTop + " vs " + PF.gapBottom + "px）",
+          /* ★ v3.36.20 补8（用户口径）：竖屏下「胶囊 ↔ 键组」这个**组外**间距必须**大于**键组内部的间距，
+             否则两者读作同一级、胶囊像是贴着键组。竖屏定为 上 20 / 下 12（用户拍板）。 */
+          ok(PF.gapTop !== null && PF.gapBtns !== null && PF.gapTop > PF.gapBtns,
+            p.label + "·" + vp + "：★★★ 竖屏「胶囊↔键组」组外间距（" + PF.gapTop
+            + "px）**大于**键组内部间距（" + PF.gapBtns + "px）",
+            "gapTop=" + PF.gapTop + " gapBtns=" + PF.gapBtns);
+          ok(PF.gapTop !== null && PF.gapTop >= 18 && PF.gapBottom !== null && PF.gapBottom <= 14,
+            p.label + "·" + vp + "：★★★ 竖屏上 20 / 下 12（实测 " + PF.gapTop + " / " + PF.gapBottom
+            + "）——只动上排：进度条长度不受影响",
             "gapTop=" + PF.gapTop + " gapBottom=" + PF.gapBottom);
           ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
             p.label + "·" + vp + "：★★★ 播放键**不贴上缘**（上缘 " + PF.btnTopGap + "px）",
