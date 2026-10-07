@@ -40,12 +40,27 @@ jobs:
     # 保留至今——check-all 内跑主套件没有超时护栏，这里给两个 job 各设显式上限。
     timeout-minutes: 30
     steps:
+      # v3.36.16：默认的 fetch-depth: 1 是**浅克隆**，它让两个自验步骤实际没跑成——
+      #   ① 「远端漂移核对」判方向要走 `git cat-file -e <远端 sha>` + `merge-base`，
+      #      对象不在本地对象库时它按「未验证」退出码 4 结束；
+      #   ② 「增量覆盖率」要 diff 基线 HEAD~1 ⇒ 浅克隆取不到 ⇒ ⊘ 未验证
+      #      （run 37610580522 日志原话：「取不到 diff 基线（无改动 / 浅克隆 / 非 git）」）。
+      # 本机复现①：造一个 main 停在旧提交的远端 + `fetch --depth 1`，check-remote-drift
+      # 即报「远端提交对象不在本地对象库，无法判定方向」并以退出码 4 结束。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc   # v2.8.8：Node 版本由仓库声明，不再依赖平台默认值
           cache: npm
       - run: npm run ci
+        env:
+          # v3.36.16：runner 镜像**预装了 gh**，但工作流没给它凭据 —— `gh api` 于是以
+          # 退出码 4（需要认证）失败，check-remote-drift 按「工具故障」（约定退出码 4）
+          # 记账，`--strict-env` 下判红。CI 自 9dda3c1 起连红三次，红的是**环境没配**，
+          # 不是代码。只读够用：读 commits/main 只要 contents: read（见上面的 permissions）。
+          GH_TOKEN: ${{ github.token }}
 
   smoke:
     name: 真实浏览器冒烟（tools/smoke.js）

@@ -15,6 +15,60 @@
 
 ---
 
+## v3.36.16 · CI 连红修复：远端漂移核对的「工具故障」不是 flake，是环境没配（2026-10-07）
+
+**根因**：GitHub Actions 的 `verify` job 自 `9dda3c1` 起**连红三次**（v3.36.14、v3.36.15 都红），
+红的是这一步：
+
+```
+▸ 远端漂移核对
+  ⚠ `gh api` 失败（退出码 4）——未被验证
+  ⚠ 远端漂移核对                工具故障，未验证
+  ⚠ 1 项工具故障（未被验证，不是被检项失败） · --strict-env 下按失败处理
+```
+
+`gh` 在 runner 镜像里是**预装**的，所以 `check-remote-drift.js` 的 `hasGh()` 通过（不走那条
+「本机没有 gh」的环境缺失分支 ⊘）；但工作流**没有给它凭据**，`gh api` 便以**退出码 4（需要认证）**
+失败 ⇒ 工具按「工具故障」（约定退出码 4）记账 ⇒ `--strict-env` 判红。
+
+本机复现（空 `GH_CONFIG_DIR` = 「有 gh、没登录」）：
+
+```
+$ GH_CONFIG_DIR=$(mktemp -d) gh api repos/chj0124/beatsight/commits/main
+To get started with GitHub CLI, please run:  gh auth login
+Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.
+```
+
+⇒ **不是 flake，是环境没配**。而 `.github/workflows/ci.yml` 恰恰是**唯一**同时满足「有 gh」+
+「没有凭据」的运行环境：本机 gh 已登录、Cloudflare 构建镜像没有 gh（⊘ 放行）。故它只在 CI 上红，
+本地自验与线上部署都不受影响——**这条红的信号此前没人接住，是因为它长得像环境噪音**。
+
+**修法（`.github/workflows/ci.yml`，两处）**：
+1. `npm run ci` 步骤加 `GH_TOKEN: ${{ github.token }}`（只读 `permissions: contents: read`
+   足够读 `commits/main`）。实测：同一个空 config 目录下带上 token，`gh api` 正常返回 sha。
+2. `actions/checkout` 加 `fetch-depth: 0`。**这是第二个、潜伏的坑**：默认 `fetch-depth: 1`
+   是浅克隆，而「远端漂移核对」判方向要走 `git cat-file -e <远端 sha>` + `merge-base`——
+   远端对象不在本地对象库时，它按「未验证」以退出码 4 结束。本机复现：造一个 main 停在旧提交的
+   远端 + `fetch --depth 1`，工具即报「远端提交对象不在本地对象库，无法判定方向」并退出 4。
+   即：**只加 token 的话，push 触发的 run 会绿，但 PR / workflow_dispatch（HEAD ≠ main tip）
+   仍会红**。顺带，同一处浅克隆也是日志里
+   「⊘ 增量覆盖率：取不到 diff 基线（无改动 / 浅克隆 / 非 git）」的直接原因。
+
+**取舍**：**没有**把「有 gh 但没登录」改成 ⊘——那会让这条闸门在 CI 里永远静默跳过，正是本仓最
+反对的橡皮图章（它是唯一能拦「在陈旧基线上开工」的检查，本仓真被这件事伤过）。选择**给它凭据**，
+让闸门真的跑起来。代价是 CI 多一次 API 调用与一次全量 clone（数秒）。
+
+**自验数字**：`node tools/check-all.js` 全绿 · 实跑 21/21 项 · 7118 PASS / 0 FAIL · 行覆盖率 97.9%。
+机制级验证（本机）：
+- 空 `GH_CONFIG_DIR`（模拟 runner）⇒ `gh api` 拒绝运行（提示 populate `GH_TOKEN`）；
+- 同条件下带 token ⇒ 返回正确的 main sha（`7491213…`）✓；
+- 浅克隆 + 远端领先 ⇒ `check-remote-drift` 退出码 4（复现潜伏坑）✓。
+
+★ 如实说明：本条的「修好了」**只能由下一次 CI run 兑现**——本地跑不出 GitHub runner 的凭据环境，
+上面三条是机制级验证，不是端到端验证。
+
+---
+
 ## v3.36.15 · T219d 判据重做：线上构建红复盘（墙钟断言 → 结构性 + 相对比值）（2026-10-07）
 
 **根因（线上红，证据链）**：2026-10-07 的 Cloudflare 生产构建死在 T219d——
