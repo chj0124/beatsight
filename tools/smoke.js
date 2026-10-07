@@ -2707,9 +2707,13 @@ async function main(){
             p.label + "·" + vp + "：★★★ 窄屏控制卡**默认收起**、练习网格回到首屏内（卡片高 " + PF.ctlCardH
             + "px / #viz 顶 " + PF.vizTop + "px / 视口 844px）——修复前 624px / 855px（#viz 在首屏之外）",
             "cardH=" + PF.ctlCardH + " vizTop=" + PF.vizTop);
-          ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 4,
+          /* ★ v3.36.20 补24：容差 4 → 14。**又是字体敏感阈值**（与 补12 同类错误）：
+             本机 macOS 实测差 0px，而 GitHub CI 的 Linux 字体下是 −9px（读数/标签的文本宽度不同），
+             于是"对齐"这条在 CI 上稳定判红。14px 足够容纳字体差，且仍拦得住真错位
+             （修复前是 +104px、修好后本机 0px）。 */
+          ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 14,
             p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
-            + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 56px（390 档）",
+            + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 104px（390 档）；容差 14 容纳字体差异",
             "volBpmDelta=" + PF.volBpmDelta);
           ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
             p.label + "·" + vp + "：★★★ 播放键**不贴上缘**（上缘 " + PF.btnTopGap + "px）",
