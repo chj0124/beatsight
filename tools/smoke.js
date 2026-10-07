@@ -1217,7 +1217,20 @@ function cardGutterProbe(){
     var res = { wideGutter: gutterOf(), wideScrollable: card.scrollWidth > card.clientWidth,
                 bgImage: (ck.backgroundImage || "none").slice(0, 60),
                 insetShadow: (ck.boxShadow || "none").indexOf("inset") >= 0,
-                outlineW: parseFloat(ck.outlineWidth) || 0 };
+                outlineW: parseFloat(ck.outlineWidth) || 0,
+                outlineOff: ck.outlineOffset,
+                /* ★ v3.36.20 补4：块行必须与卡片**共用同一条横滑轴** */
+                blocksOverflowX: (function(){ var b = card.querySelector(".arg-blocks"); return b ? getComputedStyle(b).overflowX : null; })(),
+                blocksOwnScroller: (function(){ var b = card.querySelector(".arg-blocks"); return b ? (b.scrollWidth > b.clientWidth + 1) : null; })() };
+    /* 卡片滚到最右时，**最后一颗块**必须能进到卡片可视区内（证明它跟着卡片滚、没被自己那层裁掉） */
+    var blk = card.querySelector(".arg-blocks");
+    var chips = blk ? [].slice.call(blk.children) : [];
+    if (chips.length){
+      var padBoxR = card.getBoundingClientRect().left + parseFloat(ck.borderLeftWidth) + card.clientWidth;
+      card.scrollLeft = card.scrollWidth;
+      res.lastChipReachable = chips[chips.length - 1].getBoundingClientRect().right <= padBoxR + 1;
+      card.scrollLeft = 0;
+    } else { res.lastChipReachable = null; }
     card.style.width = "360px";
     await frame();
     res.narrowGutter = gutterOf();
@@ -1813,6 +1826,11 @@ function portraitFixProbe(){
         { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
+      /* ★★★ v3.36.20 补4：**宽屏**下也要量一次歌曲地图的"每段最小宽度"——
+         原来那条 min-width 只在 ≤640 生效，结果宽屏下短段一样很窄（1440 实测首段 13px）。 */
+      const mwRaw = await cdp.send("Runtime.evaluate",
+        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+      result.mapWide = JSON.parse(mwRaw.result.value);
       /* v3.0.0：抽屉探针在桌面宽度（≥1280 栅格生效）跑一遍，量收起/展开两态的真几何 */
       const drawer = JSON.parse(await evaluate(cdp, drawerProbe()));
       /* v3.1.0：drawerProbe 末尾 location.reload()——等页面重新起完再跑滚动探针
@@ -2460,7 +2478,34 @@ async function main(){
       [[lay.wide, "桌面", 96], [lay.narrow, "窄屏390", 96]].forEach(function(pair){
         const L = pair[0], vp = pair[1], want = pair[2];
         if (!L) return;
-        /* ★★★ v3.36.21：竖屏四修（用户实报）——只在这一档量（范围条件） */
+        /* ★★★ v3.36.20 补4：右缘框线画在真边缘（不许再用背景画）+「块行与卡片共用一条横滑轴」+ 宽屏地图下限 */
+      if (vp === "桌面"){
+        const G4 = r.cardGutter;
+        if (G4 && !G4.err){
+          ok(G4.bgImage === "none" && G4.outlineW >= 1 && parseFloat(G4.outlineOff) < 0,
+            p.label + "·" + vp + "：★★★ 卡片右缘的框线画在**真正的可见边缘**上（不再用 background 画："
+            + "background-origin 默认是 padding-box，会把那条 1px 线画到离边缘 15px 处、在卡片内部留下一条"
+            + "贯穿上下的灰竖线，所有内部横线都终结在它上面——用户实报「顶部和底部的边缘与内部线条接触」）",
+            "bgImage=" + G4.bgImage + " / outline " + G4.outlineW + "px " + G4.outlineOff);
+          ok(G4.blocksOverflowX === "visible" && G4.blocksOwnScroller === false,
+            p.label + "·" + vp + "：★★★ 块行**不再有自己的滚动容器**（overflow-x=" + G4.blocksOverflowX
+            + "、自身溢出=" + G4.blocksOwnScroller + "）——与卡片共用同一条横滑轴",
+            "overflow-x=" + G4.blocksOverflowX + " / ownScroller=" + G4.blocksOwnScroller);
+          ok(G4.lastChipReachable === true,
+            p.label + "·" + vp + "：★★ 卡片滚到最右时**最后一颗块可达**（它跟着卡片滚，不被自己那层裁掉）",
+            "lastChipReachable=" + G4.lastChipReachable);
+        }
+        const MW = r.mapWide;
+        if (MW && !MW.err){
+          ok(MW.segMin !== null && MW.segMin >= 28,
+            p.label + "·" + vp + "：★★★ **宽屏**下歌曲地图每段也有下限（最窄 " + MW.segMin
+            + "px / 整图 " + MW.mapW + "px）——修复前 1440 下首段只有 13px（64 小节摊在 723px 上，1 小节的段最窄）",
+            "最窄段 " + MW.segMin + "px");
+        } else {
+          ok(false, p.label + "·" + vp + "：宽屏地图探针未取到（故障：" + ((MW && MW.err) || "缺失") + "）", "");
+        }
+      }
+      /* ★★★ v3.36.21：竖屏四修（用户实报）——只在这一档量（范围条件） */
       if (vp === "窄屏390"){
         const PF = r.portraitFix;
         if (PF && !PF.err){
@@ -2787,11 +2832,16 @@ async function main(){
             if (G && !G.err){
               ok(G.wideGutter >= 14,
                 p.label + "·" + vp + "：★★ 宽屏下卡片右缘留白 ≥14px（实测 " + G.wideGutter + "px）", "");
-              ok(G.bgImage !== "none",
-                p.label + "·" + vp + "：★★★ 当前段**真正的卡片边缘有边线**（实测 background-image = "
-                + G.bgImage + "）——.cur-sec 原来的 background 简写会把它重置成 none，"
-                + "于是 15px 留白外侧一片空、看不出卡片边界",
-                "background-image = " + G.bgImage);
+              /* ★ v3.36.20 补4 改判据（不变量不变：当前段**真正的卡片边缘必须有边线**）：
+                 补2/补3 用 background-image 渐变补那条线，但它会被 background-origin:padding-box 画到
+                 离边缘 15px 处（反而在卡片内部留一条灰竖线）；补4 改用 outline（画在边框盒内侧）。
+                 故这里从"背景里有渐变"改成"有 outline 且带负偏移"，并额外要求 background 里
+                 **不许**再有那条渐变（它会画错位置）。 */
+              ok(G.outlineW >= 1 && parseFloat(G.outlineOff) < 0 && G.bgImage === "none",
+                p.label + "·" + vp + "：★★★ 当前段**真正的卡片边缘有边线**（outline " + G.outlineW + "px "
+                + G.outlineOff + " · background-image = " + G.bgImage + "）——用 background 画会被 "
+                + "background-origin:padding-box 画到离边缘 15px 处、在卡片内部留下贯穿上下的灰竖线",
+                "outline " + G.outlineW + "px " + G.outlineOff + " / bgImage=" + G.bgImage);
               ok(G.insetShadow === false && G.outlineW > 0,
                 p.label + "·" + vp + "：★★★ 当前段的内环画在**真正的可见边缘**上（outline " + G.outlineW
                 + "px / inset 阴影 = " + G.insetShadow + "）——inset 阴影画在 padding box 上，"

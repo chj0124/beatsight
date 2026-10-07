@@ -1790,7 +1790,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    实测卡片外宽不变（366→366：padding-right 14 与 border-right 15 刚好对掉），非滚动内容位置不变。
    ★ 为什么不在卡片里外再加一层真容器：外侧撞 .arg-lyric 的 children[4] 位置契约，
      内侧撞约 20 个用例依赖的"扁平直接子节点"契约——这条 CSS 路零结构改动。 */
-.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0 12px 14px;background-color:var(--card2);background-image:linear-gradient(to left,var(--line) 0 1px,transparent 1px);border:1px solid var(--line);border-right:15px solid transparent;border-radius:12px;overflow-x:auto}
+.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0 12px 14px;background-color:var(--card2);border:1px solid var(--line);border-right:15px solid transparent;border-radius:12px;overflow-x:auto;outline:1px solid var(--line);outline-offset:-1px}
 .arg-sec:not(:last-child){margin-bottom:10px}
 /* v2.33.0：段卡片 ↔ 播放范围联动（设计原稿视觉层次 L3）——范围覆盖段绿左条，
    未覆盖段整体降透明（dim 0.55）；类由 buildSecRow 初挂、syncPanelRead 拖动中实时切 */
@@ -1822,7 +1822,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-sec.arg-pick{background:transparent;border:none;padding:9px 0;margin:0}
 .arg-sec.arg-pick>.arg-blocks{flex:1;flex-basis:auto;flex-wrap:wrap;overflow:visible}
 .arg-name{background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-size:12px;padding:6px 8px}
-.arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;align-items:center}
+.arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow:visible;gap:8px;align-items:center}
 /* ★★ v3.36.19（用户实报「竖屏下段里新增块那一带的比例不对」）：放不下时**横向滚动**，不再把块压扁。
    根因是两个默认值叠加，不是谁写错了：
      · .arg-block 与「+ 块」都是 .arg-blocks（nowrap 滚动容器）的 flex 子项，计算值 flex:0 1 auto
@@ -1898,8 +1898,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 #argRangeRead{flex:none;white-space:nowrap}
 .arg-t-actions{flex-wrap:wrap}
 .arg-t-actions #argPlay{margin-left:auto}
-.arg-map{display:flex;gap:2px;height:34px;border-radius:8px;overflow:hidden}
-.arg-map-seg{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--well),.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
+.arg-map{display:flex;gap:2px;height:34px;border-radius:8px;overflow-x:auto;overflow-y:hidden}
+/* ★★★ v3.36.20 补4：每段**最小可点宽度**提到基础规则（全档生效）。
+   原来只在 ≤640 加，结果**宽屏下短段一样很窄**（1440 实测首段只有 13px：64 小节摊在 723px 上
+   ⇒ 每小节约 11px，1 小节的段就只有 13px）。段宽是 JS 写的**比例**（renderPanel 的
+   seg.style.flexGrow = 该段小节数，有断言盯着这个内联值），故保住比例、只加下限；放不下就横滑。 */
+.arg-map-seg{flex:1 1 0;min-width:30px;display:flex;align-items:center;justify-content:center;background:rgba(var(--well),.28);border:none;border-right:2px solid var(--bg);color:var(--t3);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;overflow:hidden}
 .arg-map-seg:last-child{border-right:none}
 .arg-map-seg.in-range{background:rgba(30,215,96,.15);box-shadow:inset 0 0 0 1px var(--green);color:var(--t1)}
 .arg-range-track{position:relative;height:22px}
@@ -1928,8 +1932,6 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
         改 flex:none ⇒ track 回到 22px 高，两行不再重叠（真机实测重叠 12px → 间距 10px）。 */
   .arg-t-row{flex-wrap:wrap}
   .arg-transport .arg-map{flex:1 1 100%}
-  .arg-map{overflow-x:auto}
-  .arg-map-seg{min-width:30px}
   .arg-range-track{flex:none}
   #argRangeRead{flex:1 1 auto;min-width:0}
 }
@@ -3931,23 +3933,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3963  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4865  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6908  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7920  Modal         应用内弹窗
-     L8065  Viz           时值可视化渲染与每帧动画
-     L11530 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12211 Trainer       变速训练器
-     L12421 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13128 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15106 Editor        自定义节奏型编辑器
-     L15686 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15733 Ear           听辨训练（v1.10.0）
-     L15961 Arrange       曲式编排（v2.0.0）
-     L19533 Help          使用方法（v2.0.1）
-     L19688 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19762 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20051 初始化（装配） 各模块 hook 接线与启动
+     L3965  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4867  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6910  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7922  Modal         应用内弹窗
+     L8067  Viz           时值可视化渲染与每帧动画
+     L11532 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12213 Trainer       变速训练器
+     L12423 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13130 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15108 Editor        自定义节奏型编辑器
+     L15688 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15735 Ear           听辨训练（v1.10.0）
+     L15963 Arrange       曲式编排（v2.0.0）
+     L19535 Help          使用方法（v2.0.1）
+     L19690 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19764 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20053 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
