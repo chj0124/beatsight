@@ -87,19 +87,26 @@ section("T106b 互斥 · 开候选先收菜单 / 开菜单先收候选");
   beat.Arrange.close();
 }
 
-/* ================= 场景 T106c：删除就近化 · chip ✕ / 确认流 / 单曲式隐藏「当前曲式」chip ================= */
-section("T106c 删除就近化 · chip ✕ / 确认流 / 单曲式隐藏「当前曲式」chip");
+/* ================= 场景 T106c：删除就近化 · chip ✕ / 确认流 / 段名位与曲式条数无关 =================
+   ★ v3.36.18：v2.35.0 的「单曲式隐藏当前曲式 chip（.single）」整体退役——那段 chip 已从抽屉
+     搬进**底栏胶囊**，职责也从"指示跳段键服务哪一条曲式"变成"我在第几段"（单曲式同样有信息量）。
+     它现在的显隐只由**模式**决定（曲式模式显示 / 预设模式收起），与曲式条数脱钩。
+     故本组的判据改为"与条数无关"：建第二条前后显隐状态不变。 */
+section("T106c 删除就近化 · chip ✕ / 确认流 / 段名位显隐与曲式条数无关");
 {
   const { beat, els } = loadApp(seed3());
   beat.Arrange.open();
   ok(!els["argCopy"] && !els["argDel"] && !els["argLibMore"],
     "★ 顶栏「复制 / 删除 / ⋯」全部退役（v2.35.0：复制只留模板菜单、删除就近化）");
-  /* 单曲式 → 「当前曲式」chip 隐藏（.single；内容写入点不动，v2.35.0 用户提问④） */
-  eq(els["argNowRow"].classList.contains("single"), true, "★ 单曲式 → 「当前曲式」chip 隐藏");
-  /* 再建一条 → ≥2 条 → chip 显示 */
+  /* ★ v3.36.18：显隐不再与曲式条数挂钩（.single 机制退役，见段头注释）。
+     本例跑在**预设模式**下 ⇒ 段名位收起；再建一条之后**仍然**收起——若哪天又有人把它做成
+     "按条数显示"，第二条断言会立刻红。 */
+  const chipHidden = () => els["argNowName"].getAttribute("hidden");
+  eq(chipHidden(), "hidden", "★ 预设模式下段名位收起（不再由曲式条数决定）");
+  /* 再建一条 → 曲式条数变成 2 ⇒ 旧实现此刻会显示 chip，新实现不该有任何变化 */
   els["argNew"].fire("click");
   els["argLibRow"].children.find(c => /arg-new-menu/.test(c.className)).children[0].fire("click");
-  eq(els["argNowRow"].classList.contains("single"), false, "★ ≥2 条 → chip 显示（防「编辑 A 播着 B」错位）");
+  eq(chipHidden(), "hidden", "★★ 建成第二条后仍收起——显隐只跟模式走，与曲式条数无关（.single 已退役）");
 
   /* 选中 chip 的 ✕：aria 到位、确认流删除 */
   songItems(els)[1].fire("click");            // 选中新建的那条

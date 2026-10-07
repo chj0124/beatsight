@@ -75,8 +75,12 @@ section("T73b 曲式播放中 · ★ 标题/网格只跟节目单游标，与 S.
   const ac = FakeAudioContext.last;
   drive(ac, beat, 3.5);                            // 走进第 2 段（段长 1/3/4/…，3.5s ≈ 第 4 小节）
   const homeName = els["patternName"].textContent;
-  eq(homeName, (beat.arrangePlayPattern() || {}).name || "",
-    "前提：连播中标题 = 节目单游标处的型（实际「" + homeName + "」）");
+  /* ★ v3.36.18：底栏在**曲式模式**下显示的是短名——剥掉尾部「（《歌名》段落）」出处标注
+     （见 index.html 的 stripSongTag；胶囊只剩 176px 给段名+型名，长形态 409px 塞不下）。
+     契约本身没变（标题 = 节目单游标处的型），只是显示形态短了。换算走**实现导出的同一函数**
+     （beat.stripSongTag），不在这抄一份正则——抄了就会与实现各走各的，正是本仓禁的手抄副本。 */
+  eq(homeName, beat.stripSongTag((beat.arrangePlayPattern() || {}).name || ""),
+    "前提：连播中标题 = 节目单游标处的型（曲式模式显示短名）（实际「" + homeName + "」）");
 
   /* v2.9.0：轨模型（含 ensureValidForTrack 回退）已删，没法再从 UI 切轨把 S.sel 改写。
      但旧缺陷的触发条件——"S.sel 指向别的型"——仍可由外力制造：直接改写 S.sel，
@@ -86,7 +90,7 @@ section("T73b 曲式播放中 · ★ 标题/网格只跟节目单游标，与 S.
   beat.Presets.refreshAfterPatternChange();
   eq(beat.Store.S.playMode, "arrange", "刷新不动播放模式（S.sel 只是「退回单练后选谁」的数据）");
   const afterName = els["patternName"].textContent;
-  eq(afterName, (beat.arrangePlayPattern() || {}).name || "",
+  eq(afterName, beat.stripSongTag((beat.arrangePlayPattern() || {}).name || ""),
     `★ S.sel 被改写后标题仍是节目单的型（实际「${afterName}」）——旧实现这里变成「四分基础」`);
   ok(afterName !== "四分基础", "★ 画面没有被 S.sel 拽走");
   /* v2.10.16：原「网格仍是曲式窗口口径」的 vizTitle 断言随标题删除退役——
@@ -98,7 +102,7 @@ section("T73b 曲式播放中 · ★ 标题/网格只跟节目单游标，与 S.
     drive(ac, beat, 0.5);
     const nm = els["patternName"].textContent;
     if (nm !== afterName) sawOther = true;
-    eq(nm, (beat.arrangePlayPattern() || {}).name || "",
+    eq(nm, beat.stripSongTag((beat.arrangePlayPattern() || {}).name || ""),
       `推进中标题始终 = 节目单游标处的型（第 ${k + 1} 步，实际「${nm}」）`);
   }
   ok(sawOther, "★ 节目单继续推进到了别的段/型（没有被 S.sel 改写卡死或拽回）");

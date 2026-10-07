@@ -64,8 +64,10 @@ section("T150c 型名 JS 写点恰好一处");
 {
   const writes = (html.match(/\$\("patternName"\)\.textContent/g) || []).length;
   ok(writes === 1, `★★ 型名写点恰好 1 处（实测 ${writes}）——去重不是"两处显示一样"，是"只写一次"`);
-  ok(/\$\("patternName"\)\.textContent = p\.name;/.test(html),
-    "★ 唯一写点仍取 p.name（与改前同源，不是新引的数据来源）");
+  /* ★ v3.36.18：写点仍是那一处，取的数据源仍是**本型自己的名字**（不是新引的数据源），
+     只是显示形态按模式分岔：曲式模式下剥掉尾部出处标注（stripSongTag），预设模式原样。 */
+  ok(/\$\("patternName"\)\.textContent = S\.playMode === "arrange" \? stripSongTag\(nm\) : nm;/.test(html),
+    "★ 唯一写点仍取本型名（曲式模式剥出处后缀 / 预设模式原样）——同源，不新引数据来源");
 }
 
 /* ================= T150d：CSS 宿主换到胶囊，旧规则不留死样式 ================= */

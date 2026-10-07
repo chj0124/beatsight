@@ -397,7 +397,10 @@ section("T53m 曲式播放 · 主界面实时刷新（刷新后直接播放，cu
   drive(ac, beat, 1.2);                        // 越过第 1/2 小节边界（240BPM：1 小节 = 1s）
   const st1 = beat.arrangeState();
   eq(JSON.stringify([st1.sec, st1.bar]), JSON.stringify([0, 1]), "前提：调度游标已过第 1 个边界");
-  eq(els["argNowName"].textContent, "两段 · A", "★ curId 为 null 时主界面行仍刷新（旧实现用 cur() 会永远空白）");
+  /* ★ v3.36.18：底栏段名位只放**段名**——曲式名改由胶囊 title 承担（320px 胶囊扣掉固定件
+     只剩 176px 给「段名 + 型名」，塞不下曲式名，见 index.html 的 setNowChip 与 CSS 宽度账）。
+     本条原有意图（curId 为 null 时写入点不空转）不变，故断言段名本身。 */
+  eq(els["argNowName"].textContent, "A", "★ curId 为 null 时主界面行仍刷新（旧实现用 cur() 会永远空白）");
 
   drive(ac, beat, 4);                          // 继续走到第 2 段
   eq(beat.arrangeState().sec, 1, "前提：已进入第 2 段");

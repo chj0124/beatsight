@@ -118,8 +118,11 @@ section("T74b 曲式停止态 · S.sel 不变 + 无假高亮 + 画面是待命�
   const selBefore = JSON.stringify(beat.Store.S.sel);
   eq(JSON.stringify(beat.Store.S.sel), selBefore, "★ 停止态 S.sel 不变（曲式播放不动它）");
   eq(activeItems(els).length, 0, "★ 停止 + 曲式 = 依旧无选中高亮");
-  eq(els["patternName"].textContent, beat.demoBuildSpec().presets[0].name,
-    "停止 + 曲式 = 显示待命型（播放范围起点，这里是 P1），与画面其它部分一致");
+  /* ★ v3.36.18：曲式模式下底栏显示**短名**（剥掉尾部出处标注，见 stripSongTag）——
+     本条的意图是"待命型 = 播放范围起点那个型"（不是 S.sel），形态短了但语义不变。
+     换算走实现导出的同一函数，不在测试里抄第二份正则。 */
+  eq(els["patternName"].textContent, beat.stripSongTag(beat.demoBuildSpec().presets[0].name),
+    "停止 + 曲式 = 显示待命型（播放范围起点，这里是 P1；曲式模式显示短名），与画面其它部分一致");
 }
 
 /* ================= 场景 T74c：内置化迁移端到端（v2.20.0） =================

@@ -395,24 +395,26 @@ section("T90e 回归护栏 · 搬家只动位置，id / 初始态 / 接线契约
   eq(beat.Store.S.swing, 67, "★ Swing 档位点击仍生效");
 }
 
-/* ================= 场景 T90z：v2.25.4 当前曲式名 chip 化（用户实拍"裸文本像 bug"） =================
-   #argNowName 是「整首连播 / 范围滑块」当前服务的曲式名（四个状态写入点共用），
-   此前是裸文本跟在两个按钮后面——看着像多出来的文案。修法是纯 CSS：chip 描边 +
-   「当前曲式 · 」前缀（::before，四个写入点零改动），无曲式时 :empty 整枚藏起。 */
-section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏、单曲式隐藏（CSS 契约，写入点零改动）");
+/* ================= 场景 T90z：段名位 · v2.25.4 chip 化 → v3.36.18 搬进底栏胶囊 =================
+   #argNowName 的四个状态写入点不变；变的是**它的形态与位置**：
+     · v2.25.4 给它加了 chip 描边 + 「当前曲式 · 」前缀（纯 CSS ::before，写入点零改动）；
+     · v3.36.18 它从抽屉**搬进底栏胶囊**（与型名并列）——外壳交还胶囊本体，前缀退役
+       （胶囊只有 176px 给两个名字，每 px 都算数，语义改由胶囊 title 承担），
+       空值收显从 :empty 改成 [hidden]（空壳在 flex 胶囊里会吃掉一个 gap），
+       而 v2.35.0 的「单曲式隐藏」整条退役——职责已从"服务哪一条曲式"变成"我在第几段"。 */
+section("T90z 段名位 · ★ 底栏胶囊内、CSS 出分隔符、[hidden] 收显（写入点仍零改动）");
 {
   const css = slice("css");
-  ok(css.includes('.arg-now-name::before{content:"当前曲式 · "'),
-     "★ 「当前曲式 · 」前缀由 CSS ::before 提供——四个 textContent 写入点一行不改");
-  ok(css.includes(".arg-now-name:empty{display:none}"),
-     "★ 无曲式时 :empty 整枚 chip 藏起（不留空壳）");
-  ok(css.includes(".arg-now-name{") && css.includes("border-radius:999px"),
-     "★ chip 描边胶囊样式（与 pill 家族同一视觉语言）");
-  ok(/\.arg-now-name\{[^}]*max-width:100%[^}]*\}/.test(css),
-     "★★ v2.36.0：chip 内容上限 + 省略号——「当前段 → 下段」变长后不再捅出卡片（用户实拍）");
-  ok(css.includes(".arg-now.single .arg-now-name{display:none}"),
-     "★★ v2.35.0：单曲式时整行 .single → chip 隐藏——它只在多条曲式时才有"
-     + "「防编辑/播放错位」的信息量（用户提问④；内容写入点仍零改动）");
+  ok(css.includes(".pb-ctx .arg-now-name:not([hidden]):not(:empty)::after"),
+     "★ 段名与型名之间的「 · 」由 CSS ::after 提供——四个 textContent 写入点一行不改");
+  ok(css.includes(".pb-ctx .arg-now-name[hidden]{display:none}"),
+     "★ 无段名时整枚位收起（[hidden]；不用 :empty——空壳会吃掉 flex gap）");
+  ok(!css.includes('.arg-now-name::before{content:"当前曲式 · "'),
+     "★★ v3.36.18：「当前曲式 · 」前缀退役（窄胶囊放不下，语义改由胶囊 title 承担）");
+  ok(!css.includes(".arg-now.single .arg-now-name{display:none}"),
+     "★★ v2.35.0 的「单曲式隐藏」退役——它现在的职责是「我在第几段」，单曲式同样有信息量");
+  ok(/\.arg-now-name\{[^}]*text-overflow:ellipsis/.test(css),
+     "★★ 截断仍在：窄胶囊里段名过长走省略号，不把型名挤出胶囊");
 }
 
 /* ================= 场景 T90aa：音量说明行的触屏可达（v3.36.10，批次② D3） =================

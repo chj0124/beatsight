@@ -1538,6 +1538,23 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-item[hidden]{display:none}
 .preset-item:hover{background:var(--card2)}
 .preset-item.active{background:var(--card2)}
+/* ★ v3.36.18（用户拍板）：**正在发声**的型 —— 呼吸点。
+   为什么需要它：曲式播放中列表**一条标记都没有**（pushBuiltinItem / buildPresetItem 的
+   isActive 都带 S.playMode !== "arrange" 守卫，注释写明"曲式模式不下选中高亮"），于是
+   "现在响的是哪条"在库里完全读不出来。而"正在响的型"与"选中的型"在曲式播放中是**两个
+   不同的东西**（真机实测：响「下上扫 · 密（副歌）」、选中「四分基础」）。
+   ⇒ 本标记绑的是"正在发声"（appliedPat），与 .active（选中）**刻意用两种视觉**：
+     .active = 整条底色 + 绿色 meta（你选的）；呼吸点 = 左侧一颗绿点（正在响的）。
+     两者含义不同，绝不合并——否则用户会把呼吸点读成"选中"，点一下发现改的是别的东西。
+   为什么不做成常驻 ::before 占位：那会给**每一条**加 14px 左侧空槽、整列文字右移；
+   用绝对定位让点不参与布局，只有正在响的那条多一颗点，其余行纹丝不动。 */
+.preset-item.playing{position:relative}
+.preset-item.playing::before{content:"";position:absolute;left:3px;top:50%;width:6px;height:6px;
+  margin-top:-6px;border-radius:50%;background:var(--green);animation:nowBreath 1.6s ease-in-out infinite}
+.preset-item.playing.in-song::before{left:-11px}
+@keyframes nowBreath{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+/* 动效可关：呼吸是**信息**不是装饰，prefers-reduced-motion 下退化为静态实心点 */
+@media (prefers-reduced-motion: reduce){.preset-item.playing::before{animation:none;opacity:1;transform:none}}
 .preset-item .name{font-size:13px;font-weight:500}
 .preset-item .meta{font-size:11px;color:var(--t3);margin-top:3px}
 .preset-item.active .meta{color:var(--green)}
@@ -2083,13 +2100,22 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v2.25.4：当前曲式名做成 chip 并带「当前曲式」前缀——裸文本跟在两个按钮后面，
    用户实拍"像是多出来的 bug 文案"；它其实是「整首连播 / 范围滑块」当前服务的曲式名。
    无曲式时（:empty）整枚 chip 藏起，不留一个空壳 */
-.arg-now-name{font-size:12px;color:var(--t2);border:1px solid var(--line);border-radius:999px;
-  padding:4px 10px;background:var(--card2);white-space:nowrap;
-  max-width:100%;overflow:hidden;text-overflow:ellipsis}   /* v2.36.0：内容含「当前段 → 下段」后变得很长（用户实拍超出卡片）——超出即省略号，完整信息在编排页开练面板 */
-.arg-now-name:empty{display:none}
-/* v2.35.0：单曲式时整行 .single → chip 隐藏（多条曲式时它才有"防错位"的信息量） */
-.arg-now.single .arg-now-name{display:none}
-.arg-now-name::before{content:"当前曲式 · ";color:var(--t3)}
+/* ★ v3.36.18：「当前曲式」chip 从抽屉搬进**底栏胶囊**（标记处见 #presetLibBtn）。
+   进底栏后它不再是"住在卡片里的独立胶囊"，而是与型名并列的一段小字——外壳
+   （边框 / 底色 / 内边距）全部交还胶囊本体，这里只留文字与截断。
+   ★ 宽度账（真机实测，1440px）：.pb-ctx 宽 320px，扣掉 ‹ /「浏览节奏型」/ 边距后，
+     留给「段名 + 型名」的槽只有 **176px**；实测「段名 · 型名短」=173px 放得下，
+     而带曲式名 + 带出处后缀的长形态 =409px，塞不进去。故曲式模式下：段名不带曲式名
+     （完整上下文进胶囊 title）、型名剥掉尾部出处标注（见 stripSongTag）。
+   ★ 原来的「当前曲式 · 」前缀一并退役：胶囊里每 px 都算数，语义改由 title 承担。 */
+.arg-now-name{font-size:12px;color:var(--t2);white-space:nowrap;min-width:0;
+  overflow:hidden;text-overflow:ellipsis}
+/* 段名与型名之间的分隔符挂在段名上：它一 hidden，分隔符跟着消失（不必再加一枚空壳元素） */
+.pb-ctx .arg-now-name:not([hidden]):not(:empty)::after{content:" · ";color:var(--t3)}
+/* ★ [hidden] 显式补一条：本仓在 .preset-item / .vol-row / .tr-panel 一族上踩过
+   "作者样式的 display 盖掉 UA 的 [hidden]{display:none}"的坑（共 11 处同类补丁）。
+   这里本来没设 display（作为 flex 子项会被块化），写明是为了改这条时不会顺手加 display。 */
+.pb-ctx .arg-now-name[hidden]{display:none}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
 .arg-jump{justify-content:center;margin-top:14px}
 
@@ -2818,14 +2844,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         </div>
       </div>
       <div id="presetList"></div>
-      <!-- 「当前曲式 · 名字」chip（v2.35.0）：它指示跳段键/弹层范围滑块正在服务曲式库里的哪一条，
-           只在**多条曲式**时才有信息量（单曲式恒是它，显得多余）；单曲式时整行加 .single
-           由 CSS 隐藏 chip（内容写入点不动，id=argNowName 不变）。
-           ★ v3.0.0 批 5：原先同在这行的三个入口（听辨训练/编辑节奏型/编排曲式）
-             已搬进上方的预设库卡片（id 未动）；循环本段同理搬走。此处只留曲式名。 -->
-      <div class="arg-now" id="argNowRow">
-        <span class="arg-now-name" id="argNowName"></span>
-      </div>
+      <!-- ★ v3.36.18（用户拍板）：原先住这里的「当前曲式 · 名字」chip（#argNowRow / #argNowName）
+           已**搬进底栏常驻胶囊**（#presetLibBtn 内、与型名并列）。理由：它是"我现在走到哪一段"
+           的播放进度读数，而本抽屉默认是关着的 —— 曲式播放中它根本看不见（真机实测
+           chipVisible=false），真正常驻的反而是"零件从哪来"。搬走后**原位置不留第二份**
+           （v3.4.1 立的判据：去重不是"两处显示一样"，而是"只写一次"）。
+           v2.35.0 的「单曲式时整行 .single 隐藏 chip」机制随之退役：它的职责已从
+           "指示跳段键服务哪一条曲式"变成"我在第几段"，单曲式下同样有信息量。 -->
     </div>
     <!-- ★ v3.12.0（用户拍板）：本行整块退役——它曾住两块：
          ① 「同屏行数 · 扫弦与歌词共用」档位（#vizRowsRow）→ 搬进**设置弹窗「画面图层」组**
@@ -2921,7 +2946,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
   <!-- v3.3.0：左区 = 上下文入口胶囊（预设模式显示当前型名 / 曲式模式显示当前段名）。
        ★ v3.4.1（P3 去重）：#plbCurName 退役，#patternName 从顶栏原样搬进这里（不换 id）——
          从此「当前型名」全页面只有这一处，且常驻底栏，正是这个读数该待的位置。 -->
-  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false" title="打开预设库：浏览/搜索节奏型，或新建自己的型"><span class="pb-ctx-dir" aria-hidden="true">‹</span><span class="pb-ctx-cta">浏览节奏型</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b></button>
+  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false" title="打开预设库：浏览/搜索节奏型，或新建自己的型"><span class="pb-ctx-dir" aria-hidden="true">‹</span><span class="pb-ctx-cta">浏览节奏型</span><b class="arg-now-name" id="argNowName" hidden></b><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b></button>
       <!-- 跳段 + 播放（v2.0.2 立；v2.10.14 大改）：贴在时值可视化正下方——播放中对着球与格子调段，
            视线不离开演奏区。
            ★ v2.10.14（用户要求③）：播放键从走带卡搬进本行、居「上一段 / 下一段」中间——
@@ -3834,23 +3859,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3866  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4768  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6811  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7807  Modal         应用内弹窗
-     L7952  Viz           时值可视化渲染与每帧动画
-     L11417 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12098 Trainer       变速训练器
-     L12308 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13009 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14939 Editor        自定义节奏型编辑器
-     L15519 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15566 Ear           听辨训练（v1.10.0）
-     L15794 Arrange       曲式编排（v2.0.0）
-     L19327 Help          使用方法（v2.0.1）
-     L19482 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19556 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19845 初始化（装配） 各模块 hook 接线与启动
+     L3891  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4793  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6836  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7848  Modal         应用内弹窗
+     L7993  Viz           时值可视化渲染与每帧动画
+     L11458 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12139 Trainer       变速训练器
+     L12349 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13056 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15034 Editor        自定义节奏型编辑器
+     L15614 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15661 Ear           听辨训练（v1.10.0）
+     L15889 Arrange       曲式编排（v2.0.0）
+     L19461 Help          使用方法（v2.0.1）
+     L19616 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19690 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19979 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3876,7 +3901,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.17";
+const VERSION = "3.36.18";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7323,6 +7348,16 @@ const resolveRef = ref => (!ref ? undefined
    （取解析到的型/曲式名，解析不到回「（已删除）」），原在 Arrange 里重复定义一次，归位后全仓唯一 */
 /** @param {any} ref */
 const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已删除）"; };
+/* ★ v3.36.18：内置型的名字按仓库惯例写成「特征名（《歌名》段落）」——那个后缀是**作谱时的
+   出处标注**（这型是从原曲哪一段扒出来的），静态不变、永不随播放变化。
+   曲式模式下底栏胶囊要把它与**段名**并排显示，而胶囊只剩 176px 给两个名字（真机实测），
+   两者都含"《歌名》+ 段落"时既超宽、读起来又是同一件事说两遍 ⇒ 在**显示层**剥掉后缀。
+   ★ 保守匹配：只剥**结尾整段**「（《…》…）」。用户自定义型里别的括号、中间出现的括号
+     一律不动——宁可显示得长一点，也不误删用户自己起的名字。
+   ★ 数据层不动：BUILTINS[i].name 原样保留（它是引用与备份的载荷），只影响底栏那一处显示。 */
+const SONG_TAG_RE = /（《[^》]*》[^）]*）$/;
+/** @param {string} nm @returns {string} */
+const stripSongTag = nm => String(nm || "").replace(SONG_TAG_RE, "");
 /* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
    fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处 */
 const selectedPreset = () => resolveRef(S.sel);
@@ -7393,6 +7428,12 @@ function patLenNotInjected(){
 let patLenOf = patLenNotInjected;
 /** @param {(ref: any) => number} fn */
 function setPatLenOf(fn){ patLenOf = (typeof fn === "function") ? fn : patLenNotInjected; }
+/* ★ v3.36.18：装配层**先**调 Arrange.refreshBar()（见装配区的调用点）、**后**才注入 patLenOf，
+   于是任何"按小节算段号"的读取放在 refreshBar 里都会在启动期撞上 patLenNotInjected 抛错。
+   本仓对同一坑的既定处置是不把该依赖放进启动路径（见 applyWideFull 那条注释，v3.31.0 踩过）。
+   这里给出一个可判据的出口，让调用方**显式**表达"此刻算不了"而不是靠 try/catch 兜。
+   @returns {boolean} */
+const patLenReady = () => patLenOf !== patLenNotInjected;
 
 /* 一段的总小节数 = Σ(块的遍数 × **该块所引用型的实际小节数**)。刻意**每次都算**而不存字段：
    存了就会与 blocks 不同步。（v2.5.1 前是 ×LOOP_BARS——那正是"段长必为 4 的倍数"的来源，
@@ -12457,6 +12498,9 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
     Presets.syncSongPlayBtns();                          // v3.35.6：空格/主播放键起播时，歌曲行的 ▶ 也要变 ■
+    /* ★ v3.36.18：起播 = 有型在发声 ⇒ 预设库那颗呼吸点此刻就该亮（与停机侧对称）。
+       放在 setMode("playing", true) 之后——判据读的是 S.playing。 */
+    Presets.syncPlayingDot();
     $("statusDot").classList.add("live");
     Viz.resetTracking();
     rafId = requestAnimationFrame(Viz.paintFrame);
@@ -12495,6 +12539,9 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     $("statusText").textContent = "已停止";
     announce("已停止");
     Presets.flushPending();               // 落定挂起的节奏型切换，杜绝「档位已换、标题未换」的半切换残留
+    /* ★ v3.36.18：停机 = "没有正在发声的型" ⇒ 预设库那颗呼吸点必须熄灭。停机不重建预设列表
+       （重建整表代价大且会打断刚断开的播放链路），故走轻量刷新——判据与列表构造时同一份。 */
+    Presets.syncPlayingDot();
     Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 arrangeSel.from）
     Viz.resetForStop();
     Trainer.updateProg();
@@ -13022,10 +13069,15 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      历史：v0.7.0 修复播放中切换越界（tests T12）；v1.0.0 为消除 Viz→Presets 反向依赖而上移 */
 
   /* 用户可控字符串一律 textContent 赋值，杜绝 innerHTML 注入 */
-  /** @param {string} name @param {string} metaText @param {any} isActive */
-  function presetItemEl(name, metaText, isActive){
+  /** @param {string} name @param {string} metaText @param {any} isActive
+      @param {boolean} [isPlaying] v3.36.18：这条是不是**正在发声**的那个型（呼吸点） */
+  function presetItemEl(name, metaText, isActive, isPlaying){
     const item = document.createElement("div");
-    item.className = "preset-item" + (isActive ? " active" : "");
+    /* ★ v3.36.18：.playing（正在发声）与 .active（选中）是**两个不同的状态**，
+       曲式播放中必然分裂（真机实测：响「下上扫 · 密（副歌）」、选中「四分基础」），
+       故用两种视觉、不合并。点由 CSS 的 ::before 画（不进 DOM、不影响条目子节点序，
+       免得踩到按裸下标定位的断言）；aria 侧不额外播报——信息已在底栏读数里。 */
+    item.className = "preset-item" + (isActive ? " active" : "") + (isPlaying ? " playing" : "");
     /* 键盘/读屏可达（v2.0.2）：原先是纯 div + click，键盘与读屏用户选不了节奏型。
        项内可能嵌删除按钮，不能整体做成 <button>（按钮套按钮非法），故用 role+tabindex+keydown */
     item.setAttribute("role", "button");
@@ -14087,7 +14139,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        四分基础、画面在他乡）。在播什么的真相由段序条/整首连播按钮表达 */
     const isActive = S.playMode !== "arrange" && S.sel.type === "builtin" && S.sel.idx === i && p.meter === S.sig;
     const meta = p.desc + (p.meter !== S.sig ? "（点击切到 " + meterName(p.meter) + "）" : "");
-    const item = presetItemEl(p.name, meta, isActive);
+    /* isPlaying：正在**发声**的那个型（S.playing 才作数——停机时 appliedPat 仍指着"待命型"，
+       那会儿点它没有"正在播放"可言）。与 isActive 相互独立，见 presetItemEl 的说明。 */
+    const item = presetItemEl(p.name, meta, isActive, S.playing && appliedPat === p);
+    /** @type {any} */ (item).__pat = p;   // v3.36.18：供 syncPlayingDot 在起停时轻量刷新呼吸点（不重建整表）
     const pick = () => {
       exitArrangeForPreset();                    // v2.5.0：点内置型 = 回到单练它（见该函数注释）
       S.sel = {type:"builtin", idx:i};
@@ -14515,7 +14570,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   /** @param {any} c @param {string} [shownName] @returns {HTMLElement} */
   function buildPresetItem(c, shownName){
     const isActive = S.playMode !== "arrange" && S.sel.type === "custom" && S.sel.id === c.id && c.meter === S.sig;   // v2.6.4：曲式模式不下选中高亮（同上）
-    const item = presetItemEl(shownName || c.name, meterName(c.meter) + " · 自定义", isActive);
+    const item = presetItemEl(shownName || c.name, meterName(c.meter) + " · 自定义", isActive,
+      S.playing && appliedPat === c);      // v3.36.18：同上，绑"正在发声"而不是"选中"
+    /** @type {any} */ (item).__pat = c;    // v3.36.18：同上，供 syncPlayingDot 使用
     const del = document.createElement("button");
     del.className = "del"; del.title = "删除"; del.textContent = "×";
     del.addEventListener("click", e => {
@@ -14637,6 +14694,44 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function flushPending(){
     if (pendingPattern) applyPatternChange();
   }
+  /** 起停时**轻量**刷新"正在播放"呼吸点（v3.36.18）。
+      为什么不重建整表：起停走的是 Controls.start/stop，那里 rebuild 一整张列表代价大、
+      且 start 路径上重建会打断刚起的播放；而呼吸点只依赖 S.playing 一个位。
+      条目在构造时把自己的型对象存在 item.__pat 上（见 pushBuiltinItem / buildPresetItem），
+      这里只遍历一次切类名——判据与构造时**逐字同一条**（S.playing && appliedPat === pat），
+      不会长出第二套口径。列表重建时（applyPatternChange）由构造函数直接给初值，本函数无需参与。
+      @returns {void} */
+  function syncPlayingDot(){
+    const list = $("presetList");
+    if (!list) return;
+    /* 迭代而不是递归：递归版在 tsc 下要额外标注返回类型（TS7023/7024），迭代版一眼看得完。
+       ★ 真机 children 是 HTMLCollection（没有数组方法），必须 Array.prototype.*.call —— 本仓踩过这个分叉 */
+    /** @type {any[]} */
+    const stack = [list];
+    while (stack.length){
+      const el = stack.pop();
+      const pat = /** @type {any} */ (el).__pat;
+      if (pat){                                          // 歌曲行 / 曲式行没有型，不参与
+        const on = S.playing && appliedPat === pat;
+        if (on && !el.classList.contains("playing")) el.classList.add("playing");
+        if (!on && el.classList.contains("playing")) el.classList.remove("playing");
+      }
+      Array.prototype.forEach.call(el.children || [], (/** @type {any} */ c) => { stack.push(c); });
+    }
+  }
+  /** 底栏胶囊里的型名（v3.36.18）。**唯一写点**——applyPatternChange 与 Arrange.refreshBar
+      都调它（后者覆盖"切了模式但型没变"那条路），形态因此只有一份实现、不会漂移。
+      ★ 曲式模式下剥掉尾部出处标注（stripSongTag）：胶囊里它与**段名**并排，那个
+        「（《歌名》段落）」后缀既是重复信息、又装不下（真机实测长形态 409px vs 可用槽 176px）。
+        预设模式保留全名——那时没有段名作对照，"这型从原曲哪一段来"是唯一的出处线索。
+      @param {any} [p] 显式传入的型（applyPatternChange 已解析好，避免二次解析拿到别的对象）
+      @returns {void} */
+  function syncPatternName(p){
+    const pat = p || activePattern();
+    const nm = pat ? pat.name : "";
+    $("patternName").textContent = S.playMode === "arrange" ? stripSongTag(nm) : nm;
+  }
+  /** @returns {void} */
   function applyPatternChange(){
     pendingPattern = false; sigChgPending = false;
     appliedSig = S.sig;
@@ -14653,7 +14748,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       || curPattern();
     pendingRef = null;                                  // 一次性消费
     appliedPat = p;
-    $("patternName").textContent = p.name;
+    syncPatternName(p);                 // v3.36.18：形态（曲式模式剥出处后缀）收进该函数
     /* v3.4.1：v3.1.0 那条同源同帧的第二写点（#plbCurName）随 P3 去重删除——型名全页面只剩
        底栏胶囊里这一处，本写点即权威 */
     buildPresetList();
@@ -14931,7 +15026,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     if (p && p.meter !== S.sig) Controls.setSig(p.meter);
   }
 
-  return { buildPresetList, syncAuditionBtns, stopAudition, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
+  return { buildPresetList, syncPatternName, syncPlayingDot, syncAuditionBtns, stopAudition, refreshAfterPatternChange, applyPatternChange, consumePending, flushPending, scheduleRef, syncLoopUI, setLoopRange,
     syncDemoRange, syncSongPlayBtns, applyFold, alignSigToPattern, buildBasicSection, syncBasicUI,
     songPatterns };   // v3.35.7：编排页候选按歌名过滤要复用「曲式引用到哪些型」这一条口径   // v2.10.4：范围滑块呈现（由 Arrange 的 refreshBar/refreshNow 与 Controls.stop 调）；v3.1.0：applyFold 供装配区搜索过滤复用（清空时交还折叠语义）；v3.12.0：alignSigToPattern 供装配区启动归一；v3.33.0：buildBasicSection 供装配区一次性构建基础节奏区（其后由 syncBasicUI 维护）
 })();
@@ -18593,18 +18688,53 @@ const Arrange = (() => {
     if (commit){ setRange(f - 1, t - 1); arrangeRender(); }
   }
 
-  /* 主界面那一行：曲式名 + 当前段 + 上/下段跳转 */
+  /* ★ v3.36.18：底栏胶囊 title 的出厂原文（从**标记里现读一次**，不手抄第二份——
+     本仓对"手抄副本会漂移"有专门教训，见 tests/cases 里的桩-标记漂移闸门） */
+  /** @type {string | null} */
+  let pbTitleDefault = null;
+  /** 段名写点（v3.36.18 收成一处：原先四个写点各拼一份「曲式名 · 段名」字符串）。
+     底栏胶囊只放**段名**——曲式名进胶囊 title（320px 胶囊扣掉固定件只剩 176px 给两个名字，
+     装不下两者，见 CSS 处的宽度账），而"第几段"才是随播放推进、值得常显的那个量。
+     @param {string} secName 段名（空 = 未知 / 非曲式模式）
+     @param {any} a 曲式（空 = 无曲式） */
+  function setNowChip(secName, a){
+    const el = $("argNowName");
+    const on = S.playMode === "arrange" && !!a;
+    const txt = on ? String(secName || "") : "";
+    el.textContent = txt;
+    /* 用 hidden（而不是 :empty）收显：胶囊里的空壳仍会吃掉一个 flex gap */
+    if (txt) el.removeAttribute("hidden"); else el.setAttribute("hidden", "hidden");
+    /* 完整上下文进 title：原 chip 的职责是"指示跳段键 / 范围滑块正在服务库里哪一条曲式"，
+       这条信息不能因为在窄胶囊里放不下就丢掉（悬浮可读，读屏经按钮可访问名之外仍可取 title） */
+    const cap = $("presetLibBtn");
+    if (!cap) return;
+    if (pbTitleDefault === null) pbTitleDefault = cap.getAttribute("title") || "";
+    cap.setAttribute("title", on
+      ? pbTitleDefault + " ｜ 当前曲式：" + a.name + (txt ? " · " + txt : "")
+      : pbTitleDefault);
+  }
+  /* 主界面那一行：当前段 + 上/下段跳转（v3.36.18：曲式名改由底栏胶囊 title 承担） */
   function refreshBar(){
     const a = cur();
-    $("argNowName").textContent = a ? a.name : "";
-    /* v2.35.0（用户提问）：「当前曲式」chip 只在**多条曲式**时显示——它指示跳段键/侧栏滑块
-       正在服务库里哪一条，单曲式时恒是那一条、信息量为零（显得多余）。内容写入点（上面那行
-       与本文件另外三处）不动，只切整行的 .single 由 CSS 隐藏 chip——t53/t54/t73 的内容断言
-       零迁移。★ 桩不支持 classList.toggle 双参，用显式 add/remove（同 syncPanelRead 口径） */
-    const single = Store.arranges.length <= 1;
-    const nowRow = $("argNowRow");
-    if (single && !nowRow.classList.contains("single")) nowRow.classList.add("single");
-    if (!single && nowRow.classList.contains("single")) nowRow.classList.remove("single");
+    /* ★ v3.36.18：段名取「**正在播的曲式**」优先（arrangeCur() || a）——与 refreshNow 同一口径。
+       不这样写的话，编辑器从未打开过时 curId 恒为 null（cur() 落空）⇒ 启动即曲式模式、
+       或按了 ▶ 之后，段名位会一直空到第一个小节边界（refreshNow 才接手）——
+       真机/桩实测都踩到（t221b 抓的正是这条）。 */
+    const an = arrangeCur() || a;
+    /* 停止/编辑态没有"可听段"，就报**播放范围起点所在段**——那正是"下一次播放从哪儿开始"，
+       与侧栏滑块的可见反馈同源（同下面 setRange 的 songBarAt 口径）。 */
+    const fst = (an && patLenReady()) ? songBarAt(an, S.arrangeSel.from) : null;
+    setNowChip(an && fst && an.sections[fst.sec] ? an.sections[fst.sec].name : "", an);
+    /* 型名在曲式模式下要剥掉出处后缀，而本函数正是**模式切换**的必经点
+       （onPlayModeChange → refreshBar）；不刷的话切回预设模式后底栏会停在剥过的旧形态。
+       写点仍只有一个（Presets.syncPatternName），不是第二份实现。
+       ★ 同样要过 patLenReady 守卫：syncPatternName 无参时会走 activePattern()，
+         而停机 + 曲式模式下它经 arrangeHomePattern → arrNextBar → secBars 要读型长——
+         装配层那次 refreshBar 正跑在注入之前（t53 实测这里直接抛 patLenNotInjected）。
+         装配完成后的那次补刷（见装配区）会把形态补正。 */
+    if (patLenReady()) Presets.syncPatternName();
+    /* v2.35.0 那条「单曲式时整行 .single 隐藏 chip」随 chip 搬进底栏一并退役：
+       它的职责已从"指示跳段键服务哪一条曲式"变成"我在第几段"，单曲式下同样有信息量。 */
     /* v2.10.14（用户要求⑤）：跳段行**常显**——上/下段键不可用（非曲式模式 / 单段曲式）改**置灰**
        而不是隐藏。v2.0.2 那条「直接隐藏而不是禁用置灰」的判据作废：理由变了——播放键住进了
        本行，整行隐藏会把它一起藏掉；而 v2.0.2 嫌"禁用按钮是视觉噪音"的前提（藏起来只留中间的
@@ -18669,7 +18799,8 @@ const Arrange = (() => {
        播放位置的可见反馈只剩侧栏滑块读数（syncDemoRange，同样走可听位置）；
        原 totalBars/done 累加只为拼那段文字，随之一并删除 */
     const sec = a.sections[curSec];
-    $("argNowName").textContent = a.name + (sec && sec.name ? " · " + sec.name : "");
+    /* v3.36.18：只写段名（曲式名走胶囊 title，见 setNowChip） */
+    setNowChip(sec && sec.name ? sec.name : "", a);
   }
   /* 跳段：把范围设成"只播这一段并循环"，下一个小节边界即生效（S4 的拉回机制）。
      出口 = 跳段行的「范围循环」开关（v2.7.3）——关掉即解除锁定、放行到曲末，见其绑定注释 */
@@ -18694,7 +18825,8 @@ const Arrange = (() => {
        v2.10.14：#argNowMeta（「→ 第 N 段 · 本小节结束后进入」等文字）按用户要求删除——
        可见反馈改为侧栏范围滑块的即时移动（refreshBar → syncDemoRange，同源刷新）+ 段名 */
     const nm = a.sections[k] && a.sections[k].name;
-    $("argNowName").textContent = a.name + (nm ? " · " + nm : "");
+    /* v3.36.18：把目标段名写进底栏（曲式名走胶囊 title）；下一小节边界 refreshNow 会覆盖它 */
+    setNowChip(nm || "", a);
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（v2.0.2）。
        否则只有文字变、画面原地不动——用户无法确认定位生效（实拍困惑：「球还在第一小节」） */
     if (!S.playing){
@@ -18756,10 +18888,12 @@ const Arrange = (() => {
     const fst = songBarAt(a, f), tst = songBarAt(a, t);
     const nf = (fst && a.sections[fst.sec]) ? a.sections[fst.sec].name : "";
     const nt = (tst && a.sections[tst.sec]) ? a.sections[tst.sec].name : "";
+    /* v3.36.18：这里只再拼"段"的那一半（曲式名由 setNowChip 走 title）——
+       f === t 报单段名，否则报"起点段 → 终点段"（拖动中的区间回显） */
     const span = (f === t)
-      ? (nf ? " · " + nf : "")
-      : ((nf || nt) ? " · " + (nf || "") + " → " + (nt || "") : "");
-    $("argNowName").textContent = a.name + span;
+      ? nf
+      : ((nf || nt) ? (nf || "") + " → " + (nt || "") : "");
+    setNowChip(span, a);
     /* v2.10.14：#argNowMeta（「→ 第 N–M 小节 · 本小节结束后进入」回显）按用户要求删除——
        拖动/提交的可见反馈由侧栏滑块本体承担（thumb 即时移动） */
     /* 停止时定位 = 改下一次播放的起点：拍号与网格立即跟上（同 jumpTo） */
@@ -20026,6 +20160,10 @@ setPatLenOf(ref => patBars(resolveRef(ref)));
     }
   }
 }
+/* ★ v3.36.18：此刻 patLenOf 已注入（上一行）⇒ 底栏段名这才算得出来。装配层在上面那次
+   Arrange.refreshBar() 跑在注入之前，只能报空段名（见 patLenReady 守卫与 refreshBar 注释）；
+   这里补一次，让"启动就落在曲式模式"的用户一进来也看得到自己在第几段。 */
+Arrange.refreshBar();
 /* 侧栏「恢复示例曲」按钮的回调（v2.4.1）：Presets 声明在 Arrange 之前，
    直接调 Arrange.loadDemo() 是反向引用 → 经钩子注入（同 onArrangeBar 那套） */
 onDemoRestore = () => Arrange.loadDemo();
@@ -21243,6 +21381,9 @@ if (EXPOSE_INTERNALS){
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
+    stripSongTag,                                  // v3.36.18：底栏在曲式模式下显示的型名 = 剥掉尾部出处标注。
+                                                   //   导出给测试直断言（t73 钉"标题 = 节目单游标处的型"）——
+                                                   //   测试若自抄一份正则，就会与实现各走各的（本仓禁手抄副本）
     needsT16Ruler,                                 // v3.33.15：十六分刻度尺的型级显隐判据（纯函数，供测试直断言）
     muteBarMuted,                                  // v2.71.0：静音拍唯一判据（线性小节号 → 是否被静；纯函数供测试直断言）
     schedPlayBar: () => schedPlayBar,              // v3.36.7（本轮审计 P1-4）：静音拍/「每 N 小节」的**唯一相位源**。
