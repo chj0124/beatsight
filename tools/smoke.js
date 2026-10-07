@@ -2576,6 +2576,9 @@ async function main(){
             p.label + "·740档：★★★ 竖屏「胶囊↔键组」组外间距（" + M6.gapTop
             + "px）**大于**键组内部间距（" + M6.gapBtns + "px）",
             "gapTop=" + M6.gapTop + " gapBtns=" + M6.gapBtns);
+          ok(M6.gapTop !== null && M6.gapTop >= 26 && M6.gapBottom !== null && M6.gapBottom <= 14,
+            p.label + "·740档：★★★ 竖屏上 28 / 下 12（实测 " + M6.gapTop + " / " + M6.gapBottom + "）",
+            "gapTop=" + M6.gapTop + " gapBottom=" + M6.gapBottom);
           ok(M6.progressW !== null && M6.progressW >= 400,
             p.label + "·740档：★★★ 只动上排 ⇒ 进度条长度不受影响（" + M6.progressW + "px）",
             "progressW=" + M6.progressW);
@@ -2648,8 +2651,8 @@ async function main(){
             p.label + "·" + vp + "：★★★ 竖屏「胶囊↔键组」组外间距（" + PF.gapTop
             + "px）**大于**键组内部间距（" + PF.gapBtns + "px）",
             "gapTop=" + PF.gapTop + " gapBtns=" + PF.gapBtns);
-          ok(PF.gapTop !== null && PF.gapTop >= 18 && PF.gapBottom !== null && PF.gapBottom <= 14,
-            p.label + "·" + vp + "：★★★ 竖屏上 20 / 下 12（实测 " + PF.gapTop + " / " + PF.gapBottom
+          ok(PF.gapTop !== null && PF.gapTop >= 26 && PF.gapBottom !== null && PF.gapBottom <= 14,
+            p.label + "·" + vp + "：★★★ 竖屏上 28 / 下 12（实测 " + PF.gapTop + " / " + PF.gapBottom
             + "）——只动上排：进度条长度不受影响",
             "gapTop=" + PF.gapTop + " gapBottom=" + PF.gapBottom);
           ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
