@@ -151,6 +151,41 @@
 
 **本补丁的自验数字**：`node tools/check-all.js` 全绿 · 实跑 21/21 项 · **7148 PASS / 0 FAIL**；
 `node tools/smoke.js` 通过 · **387 项断言**（本补丁新增 3 条留白断言，file:// 与 http:// 各跑一遍）。
+
+### 补2 · 「切在留白」实现废了：当前段的蓝内环被 15px 透明边框一起推进来（同一未发布版本）
+
+**由来（用户复查）**：「卡片横滑、切在留白这个方案本身没问题，问题在于你实现后效果跟卡片横滑、切在边框一样」。
+用户判断准确——**方案对，是实现里有覆盖 bug**。
+
+**根因（`.arg-sec.cur-sec`，两条叠在一起）**：
+1. 它的内环是 **`box-shadow: inset 0 0 0 1.5px var(--blue)`** —— **inset 阴影画在 padding box 上**。
+   补丁①加的 15px 透明右边框把 padding box 往内推了 15px ⇒ **蓝环跟着内移 15px**，而内容正好被裁在
+   蓝环那一列 ⇒ 视觉上「蓝环就是卡片边框」，那 15px 留白全在蓝环**外面**、根本看不见。
+2. 它的 `background:var(--cell)` 是**简写**（权重 (0,2,0) 高于 `.arg-sec` 的 (0,1,0)），把补丁①用来
+   补右边框线的那条 `background-image` **重置成 none** ⇒ 真正的卡片边缘连一条线都没有。
+   ⇒ 两条合起来：**「切在留白」看起来跟「切在边框」一模一样**。
+
+**为什么只有「正在编辑的那一段」坏**：`cur-sec` 是单例（t146 钉着「同一时刻至多一段」）——
+漏掉的正是这个状态。**我当初复现时用的那段不是 cur-sec，所以验证全绿却毫无用处。**
+
+**修法**：内环改用 `outline` + 负偏移（画在**边框盒内侧 = 真正的可见边缘**，且 `outline` 不受 `background` 简写
+影响）；`background` 简写改成 `background-color` 长写，不再吃掉那条渐变。
+
+```css
+.arg-sec.cur-sec{ background-color:var(--cell);
+                  outline:1.5px solid var(--blue); outline-offset:-1.5px; }
+```
+
+★ 一处已知的细微差别：Chrome 会把 `outline-width` 取整，1.5px 实算 **1px**（原来是 1.5px 的 inset 阴影）。
+观感几乎无差；若觉得细了，改成 2px 即可。
+
+**实测（430px 视口，当前段）**：留白 15px · `background-image` 恢复成渐变 · `box-shadow: none` ·
+蓝环落在真正的可见边缘（实拍：绿块 → 15px 干净留白 → 一条连续蓝竖线）。
+
+**闸门同步改口径**：`cardGutterProbe` 现在**先把卡标成 `cur-sec` 再量**（原来漏了这个状态），并新增两条断言：
+当前段真正的边缘必须有边线（`background-image !== none`）、内环必须画在真边缘上（不得用 inset 阴影 且 `outlineWidth > 0`）。
+
+**反向验证**：M4（把 `.cur-sec` 改回 inset 阴影 + `background` 简写）⇒ 两条新断言**具名变红**（见下表）。
 ---
 
 ## v3.36.19 · 段行的「块」放不下时改为横向滚动（不再被压扁）（2026-10-07）

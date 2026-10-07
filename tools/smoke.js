@@ -1202,13 +1202,22 @@ function cardGutterProbe(){
       card = pick();
     }
     if (!card) return JSON.stringify({ err: "点开后仍没有多行歌词网格" });
+    /* ★ 必须把这张卡标成 **当前段**再量 —— 这正是本闸门第一版漏掉的状态：
+       cur-sec 是单例（t146 钉着"同一时刻至多一段"），而"留白看不见"的 bug 只在这一段暴露
+       （那条蓝内环是 .cur-sec 专有）。不标的话量的是"别人家的段"，永远绿。 */
+    card.classList.add("cur-sec");
+    await frame();
     var gutterOf = function(){
       var cr = card.getBoundingClientRect(), k = getComputedStyle(card);
       var bl = parseFloat(k.borderLeftWidth);
       var spRight = cr.left + bl + card.clientWidth;   /* 滚动可视区右缘 = 内容能画到的最远处 */
       return Math.round(cr.right - spRight);
     };
-    var res = { wideGutter: gutterOf(), wideScrollable: card.scrollWidth > card.clientWidth };
+    var ck = getComputedStyle(card);
+    var res = { wideGutter: gutterOf(), wideScrollable: card.scrollWidth > card.clientWidth,
+                bgImage: (ck.backgroundImage || "none").slice(0, 60),
+                insetShadow: (ck.boxShadow || "none").indexOf("inset") >= 0,
+                outlineW: parseFloat(ck.outlineWidth) || 0 };
     card.style.width = "360px";
     await frame();
     res.narrowGutter = gutterOf();
@@ -2717,6 +2726,16 @@ async function main(){
             if (G && !G.err){
               ok(G.wideGutter >= 14,
                 p.label + "·" + vp + "：★★ 宽屏下卡片右缘留白 ≥14px（实测 " + G.wideGutter + "px）", "");
+              ok(G.bgImage !== "none",
+                p.label + "·" + vp + "：★★★ 当前段**真正的卡片边缘有边线**（实测 background-image = "
+                + G.bgImage + "）——.cur-sec 原来的 background 简写会把它重置成 none，"
+                + "于是 15px 留白外侧一片空、看不出卡片边界",
+                "background-image = " + G.bgImage);
+              ok(G.insetShadow === false && G.outlineW > 0,
+                p.label + "·" + vp + "：★★★ 当前段的内环画在**真正的可见边缘**上（outline " + G.outlineW
+                + "px / inset 阴影 = " + G.insetShadow + "）——inset 阴影画在 padding box 上，"
+                + "会被 15px 透明边框一起推进来 15px，蓝环就成了「假边框」（用户实报：效果跟切在边框一样）",
+                "insetShadow=" + G.insetShadow + " / outlineWidth=" + G.outlineW);
               ok(G.narrowScrollable === true && G.narrowGutter >= 14,
                 p.label + "·" + vp + "：★★★ 卡片压窄到 " + G.narrowCardW + "px 后**右侧留白仍在**（" + G.narrowGutter
                 + "px）——内容被裁在离卡片可见边缘 15px 处，不再画到边框上（用户实报「歌词行依然压在边缘上」）",
