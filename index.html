@@ -378,14 +378,21 @@ body.wide-full .main{max-width:none}
   border-radius:12px;padding:8px 12px;color:var(--t1);font-size:13px;max-width:38vw;cursor:pointer}
 .pb-ctx:hover{border-color:var(--border)}
 .pb-ctx:focus-visible{border-color:var(--green)}
-.pb-ctx .pb-ctx-lab{color:var(--t3);font-size:11px;flex:none}
+/* ★ v3.36.8（用户拍板）：「有面板可以展开」这件事此前只由**尾部 7px 的 ▾** 承担——
+   太小，且落在视线终点（扫完整条胶囊才看到）。现改为**前置**表达：
+   ◧ = 面板、‹ = 往左展开（抽屉 .preset-drawer 是 position:fixed;left:0 从左贴边滑出）。
+   同时去掉「当前」前缀与尾部 ▾：两端都说"可展开"是重复；「当前」读起来像状态读数不像入口
+   （审计 A-3 的原话）。窄屏**不隐藏**（用户拍板"窄屏保留"）。颜色随绿——胶囊原来的 ▾ 与
+   「浏览节奏型」本来就是绿的，同一套语汇（详见 DEVELOPMENT 的"强调规则"一行）。 */
+.pb-ctx .pb-ctx-dir{color:var(--green);font-size:14px;flex:none}
 /* ★ （审计 A-3）：胶囊尾部的动作提示。此前整枚钮的可见文字只有「当前 <型名> ▾」——
    它读起来是**状态读数**而不是"在这里换型"的入口，新用户找不到预设库在哪。
    补一枚动词提示（不加 aria：它的文字已是可访问名的一部分，加 aria-label 反而会与可见
    文字不一致）。flex:none + 绿色与 ▾ 同族：视觉上"这是可以点的那个动作"。 */
 .pb-ctx .pb-ctx-cta{color:var(--green);font-size:11px;flex:none;white-space:nowrap}
 .pb-ctx b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.pb-caret{color:var(--green);font-size:11px;flex:none}
+/* v3.36.8：原来的尾部 caret（▾，7px）随用户拍板「右侧不留」退役——
+   它的「可展开」语义由左端 ‹ 承接，不留死规则。 */
 /* 面板动作区：三件事竖排（图标位留给后续批次，本批先文字 + 说明）。
    ★ >640 显示说明行、≤640 只留名称——与"窄屏不折行、不缩字号"的口径一致。 */
 .pd-actions{display:flex;flex-direction:column;gap:6px}
@@ -1071,7 +1078,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
   .play-btn{width:48px;height:48px}
   .jump-btn{width:40px;height:40px}
   .pb-ctx{max-width:30vw}
-  .pb-ctx .pb-ctx-lab{display:none}   /* 窄屏省掉「当前」前缀，把宽度让给进度条 */
+  /* v3.36.8：「当前」前缀已去掉，原窄屏隐藏规则随之退役；左端双图标按用户拍板**保留** */
   /* ★ 必须抬特异性到 `body .main`：窄屏档里另有一条 `.main{grid-template-columns:1fr;padding:16px}`
      （简写）在本文之后，同特异性下它会把 padding-bottom 重置回 16px——让位静默失效、
      最后一小节被底栏压住（真机冒烟抓到的实际缺陷，桩里完全测不出）。 */
@@ -1167,6 +1174,16 @@ input[type=range].vol{width:120px}
    （最难查的那种"看着对"）。v2.9.0 起「扫弦」条改为常显、不再按轨收放，但这条规则
    作为 .vol-row 的通用显隐兜底保留 */
 .vol-row[hidden]{display:none}
+/* ★ v3.36.10（批次② D3，本轮审计 C-8）：三条音量条的说明此前**只有** title（悬停）与
+   aria-label（读屏）——触屏明眼用户拿不到（没有悬停）。这里不改 v2.10.0 的取舍
+   （"不塞常显文字"）：说明**默认（触屏）显出来**，桌面用既有的 hover 分档收掉
+   （先例见 .preset-item 那块的 hover 分档媒体查询）——桌面悬停本就能看到，常显才是冗余；
+   触屏那边"常显"不是冗余，而是唯一通道。
+   ★ 注释里**刻意不写全那条媒体查询的原文**：t101 用 indexOf 找它并按"行首 }"截块，
+     抄在注释里会让它先命中注释、截出一块无关文本（本轮实测：4 条断言当场红）。
+     与帮助正文不抄旧文案原句是同一条纪律——**会被机器扫的字符串不要出现在注释里**。
+   文案由 Controls 接线时从滑杆的 aria-label 抄一次（单一来源，不写第二份）。 */
+.vol-note{font-size:11px;color:var(--t3);padding-left:52px;margin-top:2px}
 /* 视听辅助开关行（v2.6.2）：时值可视化卡片顶部、网格之上。
    与 .config 同一套排布，只是换了个家（它们不是训练功能，见 HTML 侧注释） */
 .viz-toggles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}   /* v2.10.17：12→16，与卡片头下边距统一 */
@@ -1471,6 +1488,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   .preset-item .aud.aud-on{opacity:1;pointer-events:auto;color:var(--green)}
   /* ★ v3.35.3：歌曲行的 ▶ 是"整首连播"——行上唯一的主操作，不能等 hover 才现身 */
   .preset-item.song .aud{opacity:1;pointer-events:auto}
+  /* ★ v3.36.10（批次② D3，本轮审计 C-8）：音量说明行在**有悬停**的设备上收起——那里 title
+     悬停就能看到。触屏（无 hover）不受本块影响，常显（见 .vol-note 的基础规则）。
+     ★ 写进**同一个**媒体查询而不是另起一块：另起会让"第一个 @media (hover: hover)"的断言
+       （t101）读到错的那一块——本轮实测踩到（4 条红）。 */
+  .vol-note{display:none}
 }
 /* ▶/■ 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
 .preset-item .aud{flex:none;background:none;border:none;cursor:pointer;
@@ -2578,8 +2600,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                  11px、与「速度 BPM」错线；状态行迁顶栏后左卡头部消失，失准显形 -->
             <div class="tg-body">
             <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
+            <div class="vol-note" id="volMasterNote" aria-hidden="true"></div>
             <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+            <div class="vol-note" id="volStrumNote" aria-hidden="true"></div>
             <div class="vol-row" title="重拍增强：重拍比正拍响多少（0% 与正拍齐平，100% 最大强调；两条声部都受影响）"><span>重拍增强</span><input type="range" class="vol" id="volAccent" min="0" max="100" value="0" aria-label="重拍增强量，0% 与正拍齐平、100% 最大强调"><span class="pct" id="volAccentPct">0%</span></div>
+            <div class="vol-note" id="volAccentNote" aria-hidden="true"></div>
             </div>
           </div>
         </div>
@@ -2889,7 +2914,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
   <!-- v3.3.0：左区 = 上下文入口胶囊（预设模式显示当前型名 / 曲式模式显示当前段名）。
        ★ v3.4.1（P3 去重）：#plbCurName 退役，#patternName 从顶栏原样搬进这里（不换 id）——
          从此「当前型名」全页面只有这一处，且常驻底栏，正是这个读数该待的位置。 -->
-  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false" title="打开预设库：浏览/搜索节奏型，或新建自己的型"><span class="pb-ctx-lab">当前</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b><span class="pb-ctx-cta">浏览节奏型</span><span class="pb-caret" aria-hidden="true">▾</span></button>
+  <button class="pb-ctx" id="presetLibBtn" aria-expanded="false" title="打开预设库：浏览/搜索节奏型，或新建自己的型"><span class="pb-ctx-dir" aria-hidden="true">‹</span><span class="pb-ctx-cta">浏览节奏型</span><b class="pat-now" id="patternName">民谣扫弦 · 下-下上-上下上</b></button>
       <!-- 跳段 + 播放（v2.0.2 立；v2.10.14 大改）：贴在时值可视化正下方——播放中对着球与格子调段，
            视线不离开演奏区。
            ★ v2.10.14（用户要求③）：播放键从走带卡搬进本行、居「上一段 / 下一段」中间——
@@ -3235,7 +3260,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              这是新用户看到的第一条指路文字，指错路等于第一步就卡住。
              ★ 注释里刻意**不抄旧文案原句**：t215 按"帮助正文不得出现退役方位词/区名"扫这一片，
                抄在这里会让它误判（历史引文只该出现在 CHANGELOG，不该出现在会被机器扫的正文里）。 -->
-        <li>点<b>左下</b>「浏览节奏型 ▾」打开预设库选一个（或点库里的「<b>新建节奏型</b>」自己画一个）</li>
+        <li>点<b>左下</b>「‹ <b>浏览节奏型</b>」打开预设库选一个（或点库里的「<b>新建节奏型</b>」自己画一个）</li>
         <li>设速度：BPM 数字可以点开直接输入，也可以连点「TAP 测速」凭手感敲出来</li>
         <li>按播放（或空格键）开始——浏览器的首次点击是在解锁音频，属正常现象</li>
       </ol>
@@ -3285,9 +3310,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <!-- v2.25.3（用户需求）：两个编辑入口的分工放在展开版第一条——这是最高频的混淆点。
              ★ 版式用 ul 而不是 dl：DOM 节点预算 ≤1300（smoke 门禁），dl 每词条两节点
                （dt+dd）会被说明文字的体量顶爆；ul 每条一个节点，粗体引导词读感等价 -->
-        <h2 class="card-title" style="margin:22px 0 4px">先分清两个编辑入口：编辑节奏型 vs 编排曲式</h2>
+        <h2 class="card-title" style="margin:22px 0 4px">先分清两个编辑入口：新建节奏型 vs 编排曲式</h2>
         <ul class="help-list">
-          <li><b>编辑节奏型</b>：定义一个节奏型——一小节（或几小节）里每个位置弹什么、每个音多长。产物可以<b>单独循环</b>（预设库里选中它就反复练它；入口是库里的「<b>新建节奏型</b>」）；改了它，所有用到它的地方（包括曲式里的段）<b>同步变化</b></li>
+          <li><b>新建节奏型</b>：定义一个节奏型——一小节（或几小节）里每个位置弹什么、每个音多长。产物可以<b>单独循环</b>（预设库里选中它就反复练它）；改了它，所有用到它的地方（包括曲式里的段）<b>同步变化</b></li>
           <li><b>编排曲式</b>：把若干节奏型串成一首歌——一首歌 = 若干段，每段 = 一个节奏型 × N 遍。它管顺序、遍数、播放范围，不管每一拍怎么弹；段落里放的是节奏型的<b>引用</b>，不是拷贝</li>
           <li><b>一句话记：</b>节奏型是<b>零件</b>、曲式是<b>装配单</b>——<b>什么时候用哪个</b>：某个型弹不顺、想改音型 → 预设库里的「新建节奏型」；按歌的顺序练、只循环副歌、练段落衔接 → 「编排曲式」（或曲式区的「整首连播」）</li>
         </ul>
@@ -3302,7 +3327,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>拍号。</b>不用自己设——每个节奏型自带拍号（2/4 到 7/4），选中它就自动切过去；奇数拍（5/4、7/4）按内置的重拍分组数（5/4 = 2+3，7/4 = 3+2+2）</li>
           <li><b>预备拍。</b>在底部播放条右侧：打开开关后点播放，先数几拍再进正拍；旁边的数字框填几拍（1–8）</li>
           <li><b>音量（三条滑杆）。</b>状态灯下方三条<b>各管各的</b>：<b>节拍</b> = 节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）；<b>扫弦</b> = 弦区扫弦声（只作用于带扫弦记谱的节奏型）——把「节拍」拉到 0，扫弦照样响；<b>重拍增强</b> = 重拍比正拍响多少（两条声部都受影响）</li>
-          <li><b>其余低频项都收在顶栏「设置」小窗里</b>（壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断 / 安装）；<b>顶栏常驻的只有三样</b>：延迟补偿读数（裸文案，点击直达设置）、「设置」按钮、主题切换（月亮 / 太阳图标钮）；「听辨训练」在预设卡的「编辑节奏型 / 编排曲式」行最左。逐条详解见下面<b>「设置里的每一项」</b></li>
+          <li><b>其余低频项都收在顶栏「设置」小窗里</b>（壁纸 / 音色 / <b>Swing</b> / <b>延迟补偿</b> / <b>后台保活</b> / 导入导出 / 诊断 / 安装）；<b>顶栏常驻的只有三样</b>：延迟补偿读数（裸文案，点击直达设置）、「设置」按钮、主题切换（月亮 / 太阳图标钮）；「听辨训练」在预设卡的「新建节奏型 / 编排曲式」行最左。逐条详解见下面<b>「设置里的每一项」</b></li>
         </ul>
 
         <template id="helpFigsMain">
@@ -3317,7 +3342,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <text x="332" y="46" font-size="14" fill="#fff" font-weight="700">-5　-1　96　+1　+5</text>
             <text x="332" y="64" font-size="9" fill="#6a6a6a">滑杆 · TAP 测速 · 快捷档</text>
             <rect x="8" y="84" width="544" height="26" rx="8" fill="none" stroke="#2c2c2c"/>
-            <text x="20" y="101" font-size="9" fill="#b3b3b3">编辑节奏型｜编排曲式｜当前曲式 chip（多条曲式才显示）</text>
+            <text x="20" y="101" font-size="9" fill="#b3b3b3">新建节奏型｜编排曲式｜当前曲式 chip（多条曲式才显示）</text>
           </svg>
           <figcaption>主界面：左列状态灯 + 音量三条（练习中随时调），右侧 BPM 组，下方编辑/编排入口行</figcaption>
         </div>
@@ -3491,7 +3516,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
 
         <h2 class="card-title" style="margin:22px 0 4px">自己画节奏型</h2>
         <ul class="help-list">
-          <li>「编辑节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
+          <li>「新建节奏型」里点小节选中、点下面的时值按钮加音符；每小节的时值必须<b>刚好填满</b>才能保存</li>
           <li><b>拍数也能改</b>：编辑器<b>顶栏的标题旁边</b>有一个<b>拍数</b>下拉（与基础节奏区同款），
             改了会按新拍数<b>重建草稿骨架</b>（原来画的音会被替换掉，所以改过草稿时会先跟你确认；
             改错了按 Ctrl+Z 撤回来）——「想要的拍数不在预设库里」就用这一条自己造</li>
@@ -3532,12 +3557,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li>清除站点数据会一并删掉自定义节奏型和曲式——重要的用「导出全部数据」存一份 JSON 备份（「导出预设」只带走节奏型）</li>
           <li>若自定义预设曾因<b>结构损坏</b>被隔离（<code>beatsight.quarantine</code>），它们会一直占着本地配额；
             这里可以查看条数并清理（清理不可撤销，介意的话先导出备份）</li>
+          <li>早期格式升级留下的一次性<b>整包备份</b>（<code>beatsight.m2.bak</code>）同样长期占着配额——
+            它只在早期那次格式升级时写过，之后<b>不再被读取</b>；介意配额的话可以删掉它</li>
         </ul>
         <!-- v2.0.6（审计 P1-5）：隔离区原先只有写入、没有出口。默认隐藏，helpRender() 按实际条数显隐 -->
         <!-- ★ v2.10.5：这里原写的是裸 render()——Help 模块的渲染函数已改名为 helpRender
              （全文件曾有 5 个同名 render，检索时无法区分是哪一个）。注释跟着改名走，
              否则它会指向一个不再存在的标识符。 -->
         <button class="pill outline" id="helpClearQuar" hidden aria-label="清理被隔离的损坏预设">清理隔离数据</button>
+        <!-- v3.36.13（审计 C-4）：旧整包备份的清理出口。与隔离区同一条口径——有才显示、带占用大小 -->
+        <button class="pill outline" id="helpClearBak" hidden aria-label="删除早期的整包备份">删除旧整包备份</button>
 
         <!-- v2.69.0（2.2）：「安装到本机」「导出诊断信息」两枚按钮移入 设置（数据与说明 / 诊断与自验）。
              这里只留指路、不保留按钮——同一功能两处入口必然漂移（当年顶栏重复状态元素的教训）。
@@ -3798,23 +3827,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3830  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4732  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6671  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7667  Modal         应用内弹窗
-     L7812  Viz           时值可视化渲染与每帧动画
-     L11277 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L11958 Trainer       变速训练器
-     L12168 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L12855 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L14775 Editor        自定义节奏型编辑器
-     L15355 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15402 Ear           听辨训练（v1.10.0）
-     L15630 Arrange       曲式编排（v2.0.0）
-     L19153 Help          使用方法（v2.0.1）
-     L19282 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19356 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L19645 初始化（装配） 各模块 hook 接线与启动
+     L3859  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4761  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6804  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7800  Modal         应用内弹窗
+     L7945  Viz           时值可视化渲染与每帧动画
+     L11410 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12091 Trainer       变速训练器
+     L12301 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13002 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L14932 Editor        自定义节奏型编辑器
+     L15512 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15559 Ear           听辨训练（v1.10.0）
+     L15787 Arrange       曲式编排（v2.0.0）
+     L19310 Help          使用方法（v2.0.1）
+     L19465 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19539 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L19828 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -3840,7 +3869,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.36.5";
+const VERSION = "3.36.14";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4787,6 +4816,61 @@ const Store = (() => {
      注：原型为 null 不影响后续所有读取（这里只用 own 属性，且 S 的每个字段都显式取值） */
   const saved = hotIn && typeof hotIn === "object"
     ? Object.assign(Object.create(null), legacy, hotIn) : legacy;
+  /* ---- 一次性迁移的幂等戳（v3.36.6，本轮审计 A2/A3）--------------------------------
+     此前每个迁移块只落**一枚**"完成"戳，且"写数据"与"写戳"是两个独立 try/catch：
+     「数据写成功、戳没写进去」（配额恰在两次 setItem 之间耗尽 / 隐私模式）会让下次启动
+     **重放**整条迁移。桩实测代价：arrmig73 的块 repeats 4→16（段长翻两番）、bnmig35 的
+     内置下标 4→3（型指错）；而 4 处读戳又都是空 catch ⇒ 全程静默。
+     现在改成**两段式**，并让每一步的失败都有出口：
+       · ""（从没开始过）→ 先落 "p"（进行中）再改数据；全部写成功升级为 "1"（完成）。
+       · "1" → 跳过（正常路径）。
+       · 其它值 / 读不到（"?"）→ **不重放**，只上报。宁可少迁一个键并让人知道，
+         也不能二次位移把数据改坏——重放造成的损坏是**不可逆**的，少迁是可诊断的。
+       · 一个字都没写进去（wroteAny=false）→ 清戳，下次启动干净重试（这条是安全的：
+         盘上没动过，重跑等于第一次跑）。
+       · 连"进行中"都写不进去 → 本次不迁（记不了完成就不能改数据）。
+     兼容：v3.36.5 及以前落的**老戳**（一枚覆盖该迁移）继续认作"1"——否则老用户会被重放。 */
+  const MIG_PREFIX = "beatsight.mig.";
+  /** 老戳（v3.36.5 及以前）：读到 "1" 视为该迁移已完成
+      @type {Record<string, string>} */
+  const MIG_LEGACY = { bnmig35:"beatsight.bnmig35", chdsp36:"beatsight.chdsp36",
+    arrmig73:"beatsight.arrmig73", chdmig:"beatsight.chdmig" };
+  /** 迁移"需要关注"计数（本次会话）：测试与诊断可读，>0 表示有迁移没走完 */
+  let migAttention = 0;
+  /** @param {string} id @param {string} why */
+  function migStuck(id, why){
+    migAttention++;
+    try{ console.warn("[BeatSight] 一次性迁移 " + id + " 未走完（" + why + "）——本次不重放"
+      + "（重放会二次位移把数据改坏）；盘上数据保持现状，请检查存储空间 / 隐私模式"); }catch(e){}
+  }
+  /** @param {string} id @returns {string} ""（未开始）| "1"（完成）| "?"（读不到，按需关注处理）| 其它 */
+  function migState(id){
+    try{
+      const v = localStorage.getItem(MIG_PREFIX + id);
+      if (v !== null) return v;
+      return localStorage.getItem(MIG_LEGACY[id]) === "1" ? "1" : "";
+    }catch(e){
+      /* ★ A3：读戳失败**不能**按"未迁移"处理——若写戳也失败（隐私模式），那正好是
+         重放→二次位移的入口（本轮实测的数据损坏路径）。按"需关注"处理：本次不迁、上报。 */
+      migStuck(id, "戳读取失败");
+      return "?";
+    }
+  }
+  /** 落"进行中"；失败 ⇒ 本次不迁（返回 false） @param {string} id @returns {boolean} */
+  function migBegin(id){
+    try{ localStorage.setItem(MIG_PREFIX + id, "p"); return true; }
+    catch(e){ migStuck(id, "记不了『进行中』戳"); return false; }
+  }
+  /** 完成：新戳 + **老戳一起落**。老戳是给"降级回 v3.36.5 及以前"那一侧读的——
+      只落新戳的话，降级后的旧代码看不到老戳会**重放**迁移（正是本批要消灭的事故）。
+      代价是一次多余的 setItem（一个字节）。 @param {string} id */
+  function migFinish(id){
+    try{ localStorage.setItem(MIG_PREFIX + id, "1"); }
+    catch(e){ migStuck(id, "『完成』戳没落上"); return; }
+    try{ localStorage.setItem(MIG_LEGACY[id], "1"); }catch(e){ /* 老戳是兼容面，落不上不影响本版本（新戳才是真相源） */ }
+  }
+  /** @param {string} id */
+  function migAbort(id){ try{ localStorage.removeItem(MIG_PREFIX + id); }catch(e){} }
   /* ★ v3.35.5：内置「民谣扫弦」（旧 BUILTINS[0]）删除 ⇒ 其后每个内置下标整体 −1。
      已存数据里有**四处**按 idx 引用内置型，各扫一遍（互不重叠）：
        ① 当前选中（热键里的 sel）—— 只改内存副本，热键由随后的 persist 重写；
@@ -4794,60 +4878,64 @@ const Store = (() => {
        ④ 改名覆盖（beatsight.builtinNames，键 = 十进制下标；被删那条的覆盖随之作废）。
      ★ 指向**被删那一条**（旧 idx 0）的引用没有等价物：按仓库"淘汰项不静默丢弃"的口径
        改指新 idx 0（四分基础）并 console.warn 计数——曲式照旧能播，用户可自行改回。
-     ★ 幂等靠戳键 beatsight.bnmig35；三只冷键都回写成功才置戳（写失败 ⇒ 下次启动重试），
-       与 arrmig73 / chdmig 同一套纪律。 */
+     ★ v3.36.6（本轮审计 A2）：幂等改走两段式戳 beatsight.mig.bnmig35（见上方 migState）。
+       旧口径是"三只冷键都回写成功才置**一枚**戳"——任一处失败都会让整条重跑，
+       已成功那几只被二次位移（桩实测内置下标 4→3）。现在"部分写入"⇒ 留"进行中"戳、
+       下次**跳过并上报**，绝不重放。 */
   {
-    const BN_MIG_KEY = "beatsight.bnmig35";
-    let stamped = false;
-    try{ stamped = localStorage.getItem(BN_MIG_KEY) === "1"; }catch(e){}
-    if (!stamped){
-      /** @param {any} r @returns {void} */
-      const shift = r => { if (r && r.type === "builtin" && Number.isInteger(r.idx) && r.idx > 0) r.idx -= 1; };
-      let replaced = 0, wrote = true;
-      if (saved.sel && typeof saved.sel === "object") shift(saved.sel);
-      const aIn = readJSON(KEY_ARRANGES);
-      if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
-        aIn.arranges.forEach(/** @param {any} r */ r => {
-          if (!r || !Array.isArray(r.sections)) return;
-          r.sections.forEach(/** @param {any} s */ s => {
-            if (!s || !Array.isArray(s.blocks)) return;
-            s.blocks.forEach(/** @param {any} b */ b => {
-              if (!b || !b.ref) return;
-              if (b.ref.type === "builtin" && b.ref.idx === 0) replaced++;   // 指向被删那一条
-              shift(b.ref);
+    const st = migState("bnmig35");
+    if (st === ""){
+      if (migBegin("bnmig35")){
+        /** @param {any} r @returns {void} */
+        const shift = r => { if (r && r.type === "builtin" && Number.isInteger(r.idx) && r.idx > 0) r.idx -= 1; };
+        let replaced = 0, wroteAny = false, failed = false;
+        if (saved.sel && typeof saved.sel === "object") shift(saved.sel);
+        const aIn = readJSON(KEY_ARRANGES);
+        if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+          aIn.arranges.forEach(/** @param {any} r */ r => {
+            if (!r || !Array.isArray(r.sections)) return;
+            r.sections.forEach(/** @param {any} s */ s => {
+              if (!s || !Array.isArray(s.blocks)) return;
+              s.blocks.forEach(/** @param {any} b */ b => {
+                if (!b || !b.ref) return;
+                if (b.ref.type === "builtin" && b.ref.idx === 0) replaced++;   // 指向被删那一条
+                shift(b.ref);
+              });
             });
           });
-        });
-        try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); }catch(e){ wrote = false; }
-      }
-      const gIn = readJSON(KEY_GROUPS);
-      if (gIn && Array.isArray(gIn.groups) && gIn.groups.length){
-        gIn.groups.forEach(/** @param {any} g */ g => {
-          if (g && Array.isArray(g.members)) g.members.forEach(/** @param {any} m */ m => {
-            if (m && m.type === "builtin" && m.idx === 0) replaced++;
-            shift(m);
+          try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); wroteAny = true; }catch(e){ failed = true; }
+        }
+        const gIn = readJSON(KEY_GROUPS);
+        if (gIn && Array.isArray(gIn.groups) && gIn.groups.length){
+          gIn.groups.forEach(/** @param {any} g */ g => {
+            if (g && Array.isArray(g.members)) g.members.forEach(/** @param {any} m */ m => {
+              if (m && m.type === "builtin" && m.idx === 0) replaced++;
+              shift(m);
+            });
           });
-        });
-        try{ localStorage.setItem(KEY_GROUPS, JSON.stringify(gIn)); }catch(e){ wrote = false; }
+          try{ localStorage.setItem(KEY_GROUPS, JSON.stringify(gIn)); wroteAny = true; }catch(e){ failed = true; }
+        }
+        const bIn = readJSON(KEY_BNAMES);
+        if (bIn && bIn.names && typeof bIn.names === "object"){
+          /** @type {Record<string, any>} */
+          const next = {};
+          Object.keys(bIn.names).forEach(/** @param {string} k */ k => {
+            const i = +k;
+            if (!Number.isInteger(i) || i < 0) { next[k] = bIn.names[k]; return; }
+            if (i === 0) return;                    // 被删那条的改名覆盖随之作废
+            next[String(i - 1)] = bIn.names[k];
+          });
+          bIn.names = next;
+          try{ localStorage.setItem(KEY_BNAMES, JSON.stringify(bIn)); wroteAny = true; }catch(e){ failed = true; }
+        }
+        if (replaced){
+          try{ console.warn("[BeatSight] 有 " + replaced + " 处原使用内置「民谣扫弦」（已删除），已改指「四分基础」"); }catch(e){}
+        }
+        /* 部分写入 ⇒ 留"进行中"戳（下次跳过并上报，不重放）；一个字都没写进去 ⇒ 清戳干净重试 */
+        if (failed){ if (wroteAny) migStuck("bnmig35", "部分冷键没写进去"); else migAbort("bnmig35"); }
+        else migFinish("bnmig35");
       }
-      const bIn = readJSON(KEY_BNAMES);
-      if (bIn && bIn.names && typeof bIn.names === "object"){
-        /** @type {Record<string, any>} */
-        const next = {};
-        Object.keys(bIn.names).forEach(/** @param {string} k */ k => {
-          const i = +k;
-          if (!Number.isInteger(i) || i < 0) { next[k] = bIn.names[k]; return; }
-          if (i === 0) return;                    // 被删那条的改名覆盖随之作废
-          next[String(i - 1)] = bIn.names[k];
-        });
-        bIn.names = next;
-        try{ localStorage.setItem(KEY_BNAMES, JSON.stringify(bIn)); }catch(e){ wrote = false; }
-      }
-      if (replaced){
-        try{ console.warn("[BeatSight] 有 " + replaced + " 处原使用内置「民谣扫弦」（已删除），已改指「四分基础」"); }catch(e){}
-      }
-      if (wrote){ try{ localStorage.setItem(BN_MIG_KEY, "1"); }catch(e){} }
-    }
+    } else if (st !== "1" && st !== "?"){ migStuck("bnmig35", "戳记状态=" + st); }
   }
   /* ★ v3.36.3（用户实报）：示例曲《我们能不能不分手》第 1 段的和弦写成了「C 琶音」（多一个空格），
      与全仓其它和弦标记的写法（「C」「Am」「F G」「Em Am」…：音名紧贴修饰语）不一致 ⇒ 统一成「C琶音」。
@@ -4855,34 +4943,34 @@ const Store = (() => {
        存量用户（含报这个错的本人）看到的仍是错的。
      ★ 只扫**这一首示例曲**的曲式（id 命中为主、名字兜底，与 oneStale 的认领口径一致）：
        用户自己存的型里若有同样写法，那是他自己的数据，不动。
-     ★ 幂等靠戳键 beatsight.chdsp36；回写成功才置戳（写失败 ⇒ 下次启动重试），
-       与 arrmig73 / chdmig / bnmig35 同一套纪律。 */
+     ★ v3.36.6（本轮审计 A2）：幂等改走两段式戳 beatsight.mig.chdsp36（口径同 bnmig35，见上方）。 */
   {
-    const CHD_MIG_KEY = "beatsight.chdsp36";
     const CHD_BAD = "C 琶音", CHD_GOOD = "C琶音";
-    let stamped = false;
-    try{ stamped = localStorage.getItem(CHD_MIG_KEY) === "1"; }catch(e){}
-    if (!stamped){
-      let hits = 0, wrote = true;
-      const aIn = readJSON(KEY_ARRANGES);
-      if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
-        aIn.arranges.forEach(/** @param {any} r */ r => {
-          if (!r || (r.id !== "demo-wmbbf" && r.name !== "《我们能不能不分手》（示例）")) return;
-          if (!Array.isArray(r.sections)) return;
-          r.sections.forEach(/** @param {any} s */ s => {
-            if (!s || !Array.isArray(s.blocks)) return;
-            s.blocks.forEach(/** @param {any} b */ b => {
-              if (b && typeof b.chords === "string" && b.chords.indexOf(CHD_BAD) >= 0){
-                b.chords = b.chords.split(CHD_BAD).join(CHD_GOOD);
-                hits++;
-              }
+    const st = migState("chdsp36");
+    if (st === ""){
+      if (migBegin("chdsp36")){
+        let hits = 0, wroteAny = false, failed = false;
+        const aIn = readJSON(KEY_ARRANGES);
+        if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+          aIn.arranges.forEach(/** @param {any} r */ r => {
+            if (!r || (r.id !== "demo-wmbbf" && r.name !== "《我们能不能不分手》（示例）")) return;
+            if (!Array.isArray(r.sections)) return;
+            r.sections.forEach(/** @param {any} s */ s => {
+              if (!s || !Array.isArray(s.blocks)) return;
+              s.blocks.forEach(/** @param {any} b */ b => {
+                if (b && typeof b.chords === "string" && b.chords.indexOf(CHD_BAD) >= 0){
+                  b.chords = b.chords.split(CHD_BAD).join(CHD_GOOD);
+                  hits++;
+                }
+              });
             });
           });
-        });
-        if (hits){ try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); }catch(e){ wrote = false; } }
+          if (hits){ try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); wroteAny = true; }catch(e){ failed = true; } }
+        }
+        if (failed){ if (wroteAny) migStuck("chdsp36", "冷键没写进去"); else migAbort("chdsp36"); }
+        else migFinish("chdsp36");
       }
-      if (wrote){ try{ localStorage.setItem(CHD_MIG_KEY, "1"); }catch(e){} }
-    }
+    } else if (st !== "1" && st !== "?"){ migStuck("chdsp36", "戳记状态=" + st); }
   }
   /** @type {any[]} */
   const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
@@ -5199,87 +5287,91 @@ const Store = (() => {
   const arrIn = readJSON(KEY_ARRANGES);
   /* v2.73.0（2.5）一次性迁移：内置型从 4 小节改为 1 小节 ⇒ 所有已存曲式里
      ref.type==="builtin" 的块 repeats ×4，段长 = Σ repeats × 型长 **逐小节不变**。
-     · 幂等靠戳键 beatsight.arrmig73：置位后不再执行（否则二次启动会 ×16）。
-     · 冷键回写成功才置戳（写失败 ⇒ 下次启动重试；本会话内存里已是迁移后的值，
-       与盘上暂不一致但下次启动会收敛——两态都不会产生错误段长）。
+     · ★ v3.36.6（本轮审计 A2）：幂等改走两段式戳 beatsight.mig.arrmig73（见上方 migState）。
+       旧写法把"数据写"与"写戳"放进两个独立 try/catch —— 「数据写成功、戳没写进去」会让下次
+       启动**重放**：桩实测 repeats 4→16（段长翻两番）。评论原文曾断言"两态都不会产生错误段长"，
+       那个断言只覆盖了"数据没写成功"那一半，不成立。现在"进行中"戳在数据写之前落，
+       重入见非 "1" 的戳一律**跳过并上报**，绝不重放。
      · 只动 builtin 块：custom 型的长度不随本批变化，×4 会改错。
      · 上限：旧数据 reps ≤ 16（旧 arrMaxRepeats）⇒ ×4 ≤ 64 = 新上限，不触 rejection。 */
   {
-    const ARR_MIG_KEY = "beatsight.arrmig73";
-    let stamped = false;
-    try{ stamped = localStorage.getItem(ARR_MIG_KEY) === "1"; }catch(e){}
-    if (!stamped){
-      let wrote = true;
-      if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
-        arrIn.arranges.forEach(r => {
-          if (!r || !Array.isArray(r.sections)) return;
-          /* ★★ v3.36.4：**示例曲的曲式跳过这一步**。本条迁移的前提是"旧数据的 repeats 记的是
-             4 小节的型遍数"，而示例曲的块从一开始就是**按小节**记的（自带的 demo 型恒为 1 小节，
-             见 buildDemoArrange 的「块小节数 = repeats」），×4 只会把它放大 4 倍 ⇒ 段长翻两番、
-             oneStale 判它"对不上谱面"、下次启动被整段重建（用户对示例曲的改动随之丢失）。
-             认领口径与 oneStale / chdsp36 迁移一致：id 命中为主、名字兜底。 */
-          if (r.id === "demo-wmbbf" || r.id === "demo-ta" || r.name === "《我们能不能不分手》（示例）"
-            || r.name === "《在他乡》（示例）") return;
-          r.sections.forEach(s => {
-            if (!s || !Array.isArray(s.blocks)) return;
-            s.blocks.forEach(b => {
-              if (b && b.ref && b.ref.type === "builtin" && Number.isFinite(+b.repeats) && +b.repeats > 0){
-                b.repeats = Math.round(+b.repeats) * 4;
-              }
+    const st = migState("arrmig73");
+    if (st === ""){
+      if (migBegin("arrmig73")){
+        let wroteAny = false, failed = false;
+        if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
+          arrIn.arranges.forEach(r => {
+            if (!r || !Array.isArray(r.sections)) return;
+            /* ★★ v3.36.4：**示例曲的曲式跳过这一步**。本条迁移的前提是"旧数据的 repeats 记的是
+               4 小节的型遍数"，而示例曲的块从一开始就是**按小节**记的（自带的 demo 型恒为 1 小节，
+               见 buildDemoArrange 的「块小节数 = repeats」），×4 只会把它放大 4 倍 ⇒ 段长翻两番、
+               oneStale 判它"对不上谱面"、下次启动被整段重建（用户对示例曲的改动随之丢失）。
+               认领口径与 oneStale / chdsp36 迁移一致：id 命中为主、名字兜底。 */
+            if (r.id === "demo-wmbbf" || r.id === "demo-ta" || r.name === "《我们能不能不分手》（示例）"
+              || r.name === "《在他乡》（示例）") return;
+            r.sections.forEach(s => {
+              if (!s || !Array.isArray(s.blocks)) return;
+              s.blocks.forEach(b => {
+                if (b && b.ref && b.ref.type === "builtin" && Number.isFinite(+b.repeats) && +b.repeats > 0){
+                  b.repeats = Math.round(+b.repeats) * 4;
+                }
+              });
             });
           });
-        });
-        try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); }catch(e){ wrote = false; }
+          try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); wroteAny = true; }catch(e){ failed = true; }
+        }
+        if (failed){ if (wroteAny) migStuck("arrmig73", "冷键没写进去"); else migAbort("arrmig73"); }
+        else migFinish("arrmig73");
       }
-      if (wrote){ try{ localStorage.setItem(ARR_MIG_KEY, "1"); }catch(e){} }
-    }
+    } else if (st !== "1" && st !== "?"){ migStuck("arrmig73", "戳记状态=" + st); }
   }
   /* v2.77.0（3.1）一次性迁移：「段名猜和弦」退役——段名末尾的和弦序列（v2.7.4 契约
      「<结构名> · <歌词首句> <和弦1>·…」）按一小节一个搬进各块的 per-bar chords，
      再把后缀从段名剥掉。**必须在 arrmig73 之后**（块的 repeats 已校正，块跨度才对）。
-     · 幂等靠戳键 beatsight.chdmig：置位后不再执行；冷键回写成功才置戳（同上纪律）。
+     · ★ v3.36.6（本轮审计 A2）：幂等改走两段式戳 beatsight.mig.chdmig（口径同 arrmig73）。
      · 只填**没有** chords 的块（用户已显式填的块不覆盖——旧显示口径里块级本来就更优先）。
      · 后缀判定与 secChords 同一正则（A–G 开头、· 分隔），但**剥名**要求整段记号
        全部是和弦——「歌词 尾字·标点」之类的名字不误伤。
      · 段名剥空（理论上不可能：有后缀必有前缀空格）时保原名，normArrange 兜底。 */
   {
-    const CHD_MIG_KEY = "beatsight.chdmig";
-    let stamped = false;
-    try{ stamped = localStorage.getItem(CHD_MIG_KEY) === "1"; }catch(e){}
-    if (!stamped){
-      let wrote = true;
-      const nameChords = (/** @type {Section} */ s) => {
-        if (!s || typeof s.name !== "string") return null;
-        const sp = s.name.lastIndexOf(" ");
-        if (sp < 0) return null;
-        const parts = s.name.slice(sp + 1).split("·").map(t => t.trim()).filter(Boolean);
-        if (!parts.length || !parts.every(t => /^[A-G][#b]?/.test(t))) return null;
-        return parts;
-      };
-      if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
-        arrIn.arranges.forEach(r => {
-          if (!r || !Array.isArray(r.sections)) return;
-          r.sections.forEach(s => {
-            const chords = nameChords(s);
-            if (!chords || !Array.isArray(s.blocks)) return;
-            let acc = 0;
-            s.blocks.forEach(b => {
-              if (!b || !b.ref || typeof b.repeats !== "number" || !(+b.repeats > 0)) return;
-              const len = Math.max(1, Math.round(+b.repeats)) * (patLenOf(b.ref) || 0);
-              if (!(len > 0)) return;
-              if (!(typeof b.chords === "string" && b.chords.trim())){
-                const slice = chords.slice(acc, acc + len);
-                if (slice.some(t => t)) b.chords = slice.join("|");
-              }
-              acc += len;
+    const st = migState("chdmig");
+    if (st === ""){
+      if (migBegin("chdmig")){
+        let wroteAny = false, failed = false;
+        const nameChords = (/** @type {Section} */ s) => {
+          if (!s || typeof s.name !== "string") return null;
+          const sp = s.name.lastIndexOf(" ");
+          if (sp < 0) return null;
+          const parts = s.name.slice(sp + 1).split("·").map(t => t.trim()).filter(Boolean);
+          if (!parts.length || !parts.every(t => /^[A-G][#b]?/.test(t))) return null;
+          return parts;
+        };
+        if (arrIn && Array.isArray(arrIn.arranges) && arrIn.arranges.length){
+          arrIn.arranges.forEach(r => {
+            if (!r || !Array.isArray(r.sections)) return;
+            r.sections.forEach(s => {
+              const chords = nameChords(s);
+              if (!chords || !Array.isArray(s.blocks)) return;
+              let acc = 0;
+              s.blocks.forEach(b => {
+                if (!b || !b.ref || typeof b.repeats !== "number" || !(+b.repeats > 0)) return;
+                const len = Math.max(1, Math.round(+b.repeats)) * (patLenOf(b.ref) || 0);
+                if (!(len > 0)) return;
+                if (!(typeof b.chords === "string" && b.chords.trim())){
+                  const slice = chords.slice(acc, acc + len);
+                  if (slice.some(t => t)) b.chords = slice.join("|");
+                }
+                acc += len;
+              });
+              s.name = s.name.slice(0, s.name.lastIndexOf(" ")).trim() || s.name;
             });
-            s.name = s.name.slice(0, s.name.lastIndexOf(" ")).trim() || s.name;
           });
-        });
-        try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); }catch(e){ wrote = false; }
+          try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(arrIn)); wroteAny = true; }catch(e){ failed = true; }
+        }
+        if (failed){ if (wroteAny) migStuck("chdmig", "冷键没写进去"); else migAbort("chdmig"); }
+        else migFinish("chdmig");
       }
-      if (wrote){ try{ localStorage.setItem(CHD_MIG_KEY, "1"); }catch(e){} }
-    }
+    } else if (st !== "1" && st !== "?"){ migStuck("chdmig", "戳记状态=" + st); }
   }
   /** @type {ArrangeData[]} */
   const arranges = [];
@@ -5919,6 +6011,22 @@ const Store = (() => {
     try{ localStorage.removeItem(KEY_QUAR); }catch(e){}
     return n;
   }
+  /* ★ v3.36.13（本轮审计 C-4）：**旧整包备份**（beatsight.m2.bak）的读 / 清出口。
+     由来：它是 v0.7.0 冷热拆分之前**整包**的原文（最大可达 700+ KB），写完就再没人读过，
+     也**从不清理**——"占着配额、且没有任何出口"（诊断面板能列出占用最多的键，却没有清理动作）。
+     ★ 刻意**不动**「删旧键前必有备份」那条保证（加载期那处 removeItem 的前置条件）：这里只是
+       给用户一个出口，不做任何自动清理——删不删由用户决定（不可撤销，介意就先导出）。 */
+  /** @returns {{chars: number} | null} 旧备份存在时给出字符数，否则 null */
+  function bakInfo(){
+    try{
+      const v = localStorage.getItem(KEY_BAK);
+      return v === null ? null : { chars: v.length };
+    }catch(e){ return null; }
+  }
+  /** @returns {boolean} 删掉了才 true */
+  function clearBak(){
+    try{ localStorage.removeItem(KEY_BAK); return true; }catch(e){ return false; }
+  }
   /* v0.4.0 迁移：旧数据用数组下标引用自定义预设，加载时升级为 id 引用。
      越界的废引用（下标处的型已不存在）→ 回退到内置第 0 个（idx:0）。 */
   if (S.sel.type === "custom" && typeof S.sel.idx === "number"){
@@ -6072,14 +6180,22 @@ const Store = (() => {
       localStorage.setItem(KEY_COLD, payload);
       lastCold = payload;
       onPersistOk();
-      /* ★ （审计 P2-1）：只在**真写了**之后记读数：跳过的那些次没有耗时可谈，
-         记 0 会把真实值稀释成假象。
-         ★ Diagnostics 声明在 Store 之后，但这里是**运行时**调用（与 Controls 里调 Modal
-         同一条 R3 口径），IIFE 求值期不碰它 ⇒ 不构成反向引用。 */
+    }
+    catch(e){ onPersistFail(e); return; }
+    /* ★ （审计 P2-1）：只在**真写了**之后记读数：跳过的那些次没有耗时可谈，
+       记 0 会把真实值稀释成假象。
+       ★★ 这一段必须**自带 try**（v3.36.6 修，本轮审计新发现）：Diagnostics 是声明在
+       Store 之后的 const，而加载期的示例型内置化迁移会走到这里（persistCold() 在
+       Store IIFE 求值期被调）—— 那时 Diagnostics 仍在 TDZ，读它抛 ReferenceError。
+       原实现把这行放在**存储写入的 try 里**，异常被同一个 catch 当成「保存失败」，实测打印：
+         [BeatSight] 本地保存失败（存储空间已满或处于隐私模式）： Cannot access Diagnostics before initialization
+       写其实成功了 —— 是**假告警**；且 onPersistFail 把 persistFailNotified 置位，
+       紧接着的一次真实写失败会**没有一次性提示**。拆开后：读数拿不到只缺这一次读数，
+       绝不影响写入结论。（R3 口径不变：Store→Diagnostics 仍是运行时调用。） */
+    try{
       const t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : 0;
       Diagnostics.diagColdWrite(t1 - t0, payload.length);
-    }
-    catch(e){ onPersistFail(e); }
+    }catch(e){ /* 加载期迁移路径：Diagnostics 未就绪，本次读数缺省（保持 -1） */ }
   }
   /* 热数据：尾部防抖。高频交互（TAP 连点 / ±1 长按连发 / 滑杆）只落盘一次。
      载荷已 <1 KB，防抖省下的是重复的**同步写盘**而不是序列化 */
@@ -6137,10 +6253,22 @@ const Store = (() => {
      v1.2.4：VALID_T / VALID_METER 已上移到 S 创建之前，加载路径复用同一份校验 */
   let idSeq = 0;   // 导入 id 会话内单调序号（见 importPresets）
 
+  /* ★★ 节奏型的**导出字段清单只此一处**（本轮审计：serializeAll 丢 song）。
+     此前 serializePresets 与 serializeAll 各写一份手写字段清单，v3.35.7 新增 customs[].song
+     时只补进了前者 ⇒ 走「导出全部数据」换机的用户，**所有归属静默丢失**（全落进「未归属」）。
+     两处的一致性由 tests/cases/t217 的"字段集一致"断言守着；导入侧的对应白名单是
+     validatePreset（上方，song/label 同走"脏值静默降级为省略"口径）。**新增字段只改这里一处**。
+     v2.72.0：label 随导出往返（留空不写字段）。v3.31.x（审计 P1-3）：label 曾只随预设包走、
+     全量包静默丢失——那次是给 serializeAll 单补一项；根因（两份清单）到本轮才收掉。 */
+  /** @param {any} c @returns {any} */
+  function packPreset(c){
+    return { name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars,
+      ...(c.song ? {song:c.song} : {}), ...(c.label ? {label:c.label} : {}) };
+  }
   function serializePresets(){
     return JSON.stringify({
       app:"beatsight", kind:"presets", v:2, exportedAt:new Date().toISOString(),
-      presets: customs.map(c => ({name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars, ...(c.song ? {song:c.song} : {}), ...(c.label ? {label:c.label} : {})})) // v2.72.0：label 随导出往返（留空不写字段）
+      presets: customs.map(packPreset)
     }, null, 2);
   }
 
@@ -6335,9 +6463,9 @@ const Store = (() => {
       exportedAt:new Date().toISOString() };
     /** @type {string[]} */
     const included = [];
-    if (want("presets")){ obj.presets = customs.map(c => ({ name:c.name, meter:c.meter,
-      ...(c.accents ? {accents:c.accents} : {}), bars:c.bars,
-      ...(c.label ? {label:c.label} : {}),    // v3.31.x（审计 P1-3）：label 随全量包往返——此前只有预设包带、全量包静默丢失
+    /* v3.36.6（本轮审计）：presets 的字段清单改走 packPreset 这**唯一一处**
+       （此前是第二份手写清单，漏了 song ⇒ 换机丢归属；见 packPreset 的注释）。 */
+    if (want("presets")){ obj.presets = customs.map(c => ({ ...packPreset(c),
       id:c.id })); included.push("presets"); }   // v3.31.x（审计 P0-2）：带原 id 供包内引用重映射（导入恒换新 id，旧 id 只作对账键，不进落库结果）
     if (want("arranges")){ obj.arranges = arranges; included.push("arranges"); }
     if (want("lyrics")){ obj.lines = lyrics; included.push("lyrics"); }
@@ -6636,6 +6764,10 @@ const Store = (() => {
     /* （审计 P2-2）：`persistHotNow` 供测试直调——判重是**同步**发生的，而 `persist()`
        隔着 250ms 防抖窗口（桩里没有可推进的定时器），不暴露它就只能靠副作用间接断言。 */
     persistHotNow, flush, setPersistFailHandler, setPersistRecoverHandler,
+    /* v3.36.6（本轮审计 A2/A3）：本次会话里"没走完"的一次性迁移计数。
+       >0 表示有迁移被跳过（戳记进行中/读不到/写不进去）——加载期不能碰 Diagnostics
+       （它在 Store 之后声明，见 persistCold 里的 TDZ 注释），故由这里读数口暴露。 */
+    migAttention: () => migAttention,
     downloadJSON,
     serializePresets, exportPresets, importPresets,
     serializeAll, exportAll, exportAllSel, importAll, previewImport,  // v2.8.8 全量数据包；v2.65.0（X1）选择性导出 + 导入冲突预览
@@ -6643,6 +6775,7 @@ const Store = (() => {
        （练习记录的四个出口）随练习统计一起删除 —— 现在没有任何调用方 */
     earStats: ear, recordEar, resetEar,
     quarantine, clearQuarantine,                    // v2.0.6（审计 P1-5）：隔离区的读/清出口
+    bakInfo, clearBak,                              // v3.36.13（审计 C-4）：旧整包备份的读/清出口
     arranges, findArrange, upsertArrange, duplicateSection, deleteArrange, persistArranges,
     /* v2.10.7：旧格式播放范围（段下标）的一次性迁移出口。加载期把旧值暂存进 arrangeMig，
        装配层在 patLenOf 注入后取走（取走即清空——迁移只发生一次）并换算写回 S.arrangeSel。
@@ -12621,6 +12754,20 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   $("volMaster").addEventListener("change", Store.persist);
   $("volStrum").addEventListener("change", Store.persist);
   $("volAccent").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
+  /* ★ v3.36.10（批次② D3，本轮审计 C-8）：把音量说明的文案从各行的 title 抄进 .vol-note
+     （触屏可见、桌面被 hover 媒体查询收起；见 .vol-note 的注释）。
+     ★ 用 parentNode 找行、**刻意不用 closest()**：测试桩的 closest 只返回一个空代理
+       （拿不到真实祖先），用它这段会在桩里静默失效——正是本仓反复踩过的"桩比真机宽松"。
+     ★ 抄一次即可：title 是静态标记（单一来源，避免两处文案漂移）。 */
+  [["volMaster", "volMasterNote"], ["volStrum", "volStrumNote"], ["volAccent", "volAccentNote"]]
+    .forEach(/** @param {string[]} pair */ pair => {
+      const inp = $(pair[0]), note = $(pair[1]);
+      if (!note || !inp || !inp.getAttribute) return;
+      /* ★ 来源是 input 的 **aria-label**，不是行的 title：桩里 el.parentNode 恒为 null
+         （harness 只给显式 appendChild 过的节点接链），走 parentNode 会让这段在测试里空转。
+         aria-label 本来就在同一个元素上、文案也是给用户看的，取它**单一来源**且可断言。 */
+      note.textContent = inp.getAttribute("aria-label") || "";
+    });
 
   /* 开关处理器工厂（v2.4.4）：mute/bounce/showTab/countIn 四个开关处理器曾是同构的
      复制粘贴（blur → 翻转 → setToggle → persist），差异只在翻转的字段与收尾动作。
@@ -13431,6 +13578,16 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
           appendEntries(group, "orphan", "未归属",
             orph.map(/** @param {any} c */ c => ({ ref: { type: "custom", id: c.id }, p: c })));
         }
+      }
+      /* ★ v3.36.10（批次② D2，本轮审计 C-10）：自定义库为空时给一条**去新建**的引导。
+         此前这个状态在界面上一声不响——审计问的正是"清空预设库后界面长什么样"，实测：
+         清空后只剩内置「节拍」区，没有任何提示（新用户首开也是这个状态，因为出厂只有内置型）。
+         只在**一个自定义型都没有**时出现，有型的用户永远看不到它。 */
+      if (!customs.length){
+        const h2 = document.createElement("div");
+        h2.className = "hint";
+        h2.textContent = "还没有自己的节奏型——点左下「浏览节奏型」，用里面的「新建节奏型」画一个。";
+        group.appendChild(h2);
       }
     };
     if (!ars.length){
@@ -19205,6 +19362,15 @@ const Help = (() => {
       b.textContent = "清理隔离数据（" + n + " 条）";
       if (!quarWired){ b.addEventListener("click", onQuarClick); quarWired = true; }
     }
+    /* ★ v3.36.13（审计 C-4）：旧整包备份的出口。同一条口径——**有才显示**，
+       并把占用大小写进按钮（用户要判断的是"值不值得删"）。 */
+    const bak = Store.bakInfo();
+    const bb = $("helpClearBak");
+    if (bb){
+      bb.hidden = !bak;
+      if (bak) bb.textContent = "删除旧整包备份（" + Math.round(bak.chars / 1024) + " KB）";
+      if (!bakWired){ bb.addEventListener("click", onBakClick); bakWired = true; }
+    }
     /* v2.69.0（2.2）：安装/导出两枚按钮移入设置弹窗（静态元素，常驻 DOM，不再随 helpMoreTpl
        惰性挂载）。· 安装：deferredPrompt 仍由本模块捕获；置灰态刷新走 refreshInstall()
        （装配层在 Settings.open 时调用），点击接线移到本模块 init。· 导出：接线移到装配层
@@ -19261,7 +19427,24 @@ const Help = (() => {
       announce("已清理 " + n + " 条隔离数据");
     });
   }
+  /* ★ v3.36.13（审计 C-4）：删掉旧整包备份。确认文案里写清"它是什么、删了会失去什么"——
+     那是 v0.7.0 冷热拆分之前的**唯一一份原文**，平时不读，但"万一"的时候是最后的退路。 */
+  function onBakClick(/** @type {MouseEvent} */ e){
+    evEl(e).blur();
+    const info = Store.bakInfo();
+    if (!info) return;
+    const kb = Math.round(info.chars / 1024);
+    Modal.uiConfirm("确定删除早期的整包备份（" + kb + " KB）？此操作不可撤销。"
+      + "它只在 v0.7.0 格式升级时写过、之后不再被读取；想留一份就先「导出全部数据」。", () => {
+      Store.clearBak();
+      helpRender();
+      $("statusText").textContent = "已删除旧整包备份";
+      announce("已删除旧整包备份");
+    });
+  }
   let quarWired = false;
+  /** @type {boolean} */
+  let bakWired = false;
   /* 安装按钮接线（v2.69.0）：按钮迁入设置后是静态元素，init 期一次绑定即可（不再需要
      installWired 防重复——那是惰性挂载时代的产物）。点击主动 prompt()；用户抉择后清空并隐藏 */
   $("helpInstallBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -21045,6 +21228,8 @@ if (EXPOSE_INTERNALS){
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
     needsT16Ruler,                                 // v3.33.15：十六分刻度尺的型级显隐判据（纯函数，供测试直断言）
     muteBarMuted,                                  // v2.71.0：静音拍唯一判据（线性小节号 → 是否被静；纯函数供测试直断言）
+    schedPlayBar: () => schedPlayBar,              // v3.36.7（本轮审计 P1-4）：静音拍/「每 N 小节」的**唯一相位源**。
+                                                   //   起播与每次重锚都归零 ⇒ 语义是"重新起一轮"；t220 把这条钉成契约
     muteCacheSize: () => MUTE_RND_CACHE.size,      // v3.31.x（审计 P2-1）：随机静音缓存尺寸（封顶断言用）
     ciState: () => ({ left: ciLeft, next: ciNext, start: ciStart, end: ciEnd, loop: loopStart }),  // v3.31.x（审计 S-4）：预备拍改速重排断言用
     setMode, modeTrailView,                        // v2.4.4：模式字段契约（值域白名单 + 迁移轨迹）

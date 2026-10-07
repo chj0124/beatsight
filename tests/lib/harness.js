@@ -378,6 +378,9 @@ class FakeAudioContext {
 
 /* 以指定 localStorage 预置数据加载应用，返回 {beat, els, sandbox, storage, fireDoc, fireWin, docHidden}
    opts.throwOnWrite：模拟隐私模式/配额超限——setItem 一律抛错（v0.9.1 T16）
+   opts.throwOnWriteFor：v3.36.6。**只让指定键**的 setItem 抛错（字符串或数组）。
+     throwOnWrite 是一律抛，测不出"戳写成功、数据写失败"这类**部分失败**的组合——
+     而一次性迁移的"清戳、下次干净重试"分支正需要这个组合才能走到（见 t218f）。
    opts.throwOnRead ：模拟沙盒 iframe / "站点数据被禁用"——getItem 一律抛 SecurityError（v2.0.5 T58）。
      与 throwOnWrite 同一类注入：这类**容器策略**在桩里本来无法复现，而它恰恰是"整页白屏"
      这类最严重症状的触发条件（Store 里任何一处漏了 try 都会被它照出来），必须可注入才能断言
@@ -397,6 +400,9 @@ class FakeAudioContext {
 function loadApp(seed, opts){
   const o = opts || {};
   const throwOnWrite = !!o.throwOnWrite;
+  /** @type {Set<string> | null} */   // v3.36.6：按键注入写失败（见 opts.throwOnWriteFor）
+  const throwKeys = o.throwOnWriteFor
+    ? new Set(Array.isArray(o.throwOnWriteFor) ? o.throwOnWriteFor : [o.throwOnWriteFor]) : null;
   const throwOnRead = !!o.throwOnRead;
   /* v2.4.2：行宽可覆盖（默认 600）。见 ROW_W 的说明——窄格隐藏的临界点随
      STRUM_MIN_W 变化后，只有压缩行宽才能把那条分支重新走到 */
@@ -451,7 +457,11 @@ function loadApp(seed, opts){
         if (throwOnRead) throw new DOMException("denied", "SecurityError");
         return store.has(k) ? store.get(k) : null;
       },
-      setItem: (k, v) => { if (throwOnWrite) throw new DOMException("quota", "QuotaExceededError"); store.set(k, String(v)); },
+      setItem: (k, v) => {
+        if (throwOnWrite || (throwKeys && throwKeys.has(k)))
+          throw new DOMException("quota", "QuotaExceededError");
+        store.set(k, String(v));
+      },
       removeItem: k => store.delete(k),
       /* v2.0.6（审计 P1-9）：诊断面板要枚举"哪个键在膨胀"（配额是按 origin 总量算的），
          所以桩必须补上 length / key() —— 只实现 get/set/remove 的桩会让那条枚举路径

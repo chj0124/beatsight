@@ -123,7 +123,10 @@ const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
   { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"],
-    warnScan: /^\s*⚠\s*模块规模/ },
+    warnScan: /^\s*⚠\s*模块规模/,
+    /* ★ v3.36.12（审计 C-6）：观察期项必须**登记到期日**——否则"暂时只警告"会变成永久状态，
+       而长期不判红的警告会被习惯性忽略（审计原话：「最终变成噪音」）。 */
+    observe: { until: "2026-11-06", why: "装配区规模告警线（2000 行 / 34 个 function）尚未越线，先观察" } },
   /* v2.8.6（审计 §A1）：装配完整性紧跟架构约束——两者同属"模块边界"这个话题
      （前者管依赖方向，这条管边界处的注入语义），且都极便宜（纯读源码正则，毫秒级） */
   { name: "装配完整性 · 注入槽", cmd: process.execPath, args: ["tools/check-wiring.js"] },
@@ -215,7 +218,8 @@ const STEPS = [
   /* v2.8.16（审计 P2-1）：--reuse 复用第 16 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
   { name: "行覆盖率", cmd: process.execPath,
     args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]),
-    warnScan: /^\s*⚠\s*从未执行的函数：/ },
+    warnScan: /^\s*⚠\s*(从未执行的函数|增量覆盖率)/,
+    observe: { until: "2026-11-06", why: "48 个未执行函数里绝大多数是桩不可达的防御分支；先观察是否稳定" } },
 ];
 
 console.log("══════════════════════════════════════════════════════════");
@@ -368,6 +372,16 @@ const failed     = results.filter(r => !r.ok && !r.env && !r.toolError).length;
 const ran        = results.filter(r => !r.skipped && !r.toolError).length;
 const notRun     = STEPS.length - results.length;          // 前面有真失败 → 后面的根本没轮到
 const warnCount  = results.reduce((s, r) => s + (r.warnCount || 0), 0);   // 观察期 ⚠（v3.31.x，审计 E2）
+/* ★ v3.36.12（审计 C-6）：观察期项**到期**单列计数。
+   为什么需要它：观察期本意是"先看一段时间再决定转正"，但"一段时间"没有机器盯着 ⇒
+   警告会一直响，人会对它脱敏（审计原话：「长期不判红的警告会被习惯性忽略，最终变成噪音」）。
+   现在每个观察期步骤必须登记 observe.until；到期后单列一行 ⏰，与"普通 ⚠"分开数——
+   普通 ⚠ 是"还在观察中"，⏰ 是"该拍板了"。 */
+const today = new Date().toISOString().slice(0, 10);
+const observeSteps = STEPS.filter(s => s.observe);
+const missingUntil = STEPS.filter(s => s.warnScan && !s.observe)
+  .filter(s => !/过期副本检测|CSS 孤儿扫描/.test(s.name));   // 这两步的 warnScan 是"计数机制"不是"观察期"，见各自注释
+const expiredObs = observeSteps.filter(s => s.observe.until && today > s.observe.until);
 const parts = [];
 /* 有工具故障时**不再说「全部通过」**：本次确实有 N 项没被验证，说"全部通过"就是在撒谎 */
 parts.push(failed ? "✗ " + failed + " 项失败"
@@ -376,6 +390,7 @@ if (skippedOpt) parts.push("⊘ " + skippedOpt + " 项未执行（可选加强�
 if (skippedEnv) parts.push("⊘ " + skippedEnv + " 项环境缺失未执行");
 if (toolErr)    parts.push("⚠ " + toolErr + " 项工具故障（未被验证，不是被检项失败）");
 if (warnCount)  parts.push("⚠ " + warnCount + " 条观察期警告（不判红，见对应步骤）");
+if (expiredObs.length) parts.push("⏰ " + expiredObs.length + " 项观察期已到期（须转正或续期）");
 if (notRun)     parts.push("— " + notRun + " 项因前面失败未执行");
 parts.push("实跑 " + ran + "/" + STEPS.length + " 项");
 parts.push("用时 " + elapsed + "s");
@@ -406,6 +421,36 @@ try{
   console.log("  " + "─".repeat(52));
   console.log("  下一个可用用例编号：t" + (maxN + 1) + "-（新增用例请勿撞号）");
   console.log("  钩子状态：core.hooksPath = " + (hooksPath || "（未设置 → 走默认 .git/hooks，本地提交不会自动跑闸门）"));
+  /* v3.36.12（审计 C-11）：单文件写锁状态。它是"现在有没有人在写 index.html"的唯一可查出口——
+     本仓最危险的失败（两个会话同时改、后写的静默覆盖）没有任何机器会拦，只能靠这一刻的可见性。 */
+  try{
+    const lockRaw = fs.readFileSync(path.join(ROOT, ".write-lock.json"), "utf8");
+    const lock = JSON.parse(lockRaw);
+    const h = (Date.now() - Date.parse(lock.at)) / 3600000;
+    console.log("  写锁：" + (lock.by || "(未署名)") + " · " + h.toFixed(1) + " 小时前"
+      + (h > 8 ? " ⇒ ⚠ 已过期未释放，确认对方收工后 --force 抢锁" : " ⇒ 另一个会话可能正在写 index.html"));
+  }catch(e){ console.log("  写锁：未持有（可以开工；开工前请 node tools/write-lock.js --acquire \"会话名\"）"); }
+  /* ★ v3.36.12（审计 C-6）：观察期到期 / 登记不完整的**明细**。两条都放在这里（而不是汇总行里），
+     因为汇总行只报数，而"哪一项到期了、该找谁拍板"必须看得见。 */
+  if (expiredObs.length){
+    console.log("  " + "─".repeat(52));
+    console.log("  ⏰ 观察期已到期（" + today + "）：");
+    expiredObs.forEach(s => console.log("      · " + s.name + " —— 到期日 " + s.observe.until
+      + "（" + s.observe.why + "）⇒ 转正（改 --strict / 去掉 warnScan）或**重新登记**一个新的到期日"));
+  }
 }catch(e){ /* 纯信息，忽略 */ }
 
-process.exit(failed || (toolErr && STRICT_ENV) ? 1 : 0);
+/* ★ v3.36.12（审计 C-6）：观察期步骤**登记不完整**判红。
+   为什么要判红而不是只警告：这是"机制本身漏了一行"，补一次就完事；放它过去，
+   下一个新增观察期步骤照样不写到期日，C-6 就等于没装。 */
+const badObserve = missingUntil.map(s => s.name + "（有 warnScan 但没登记 observe.until/why）")
+  .concat(observeSteps.filter(s => !s.observe.until).map(s => s.name + "（observe 缺 until）"));
+if (badObserve.length){
+  console.log("  " + "─".repeat(52));
+  console.log("  ✗ 观察期登记不完整：" + badObserve.length + " 项");
+  badObserve.forEach(b => console.log("      · " + b));
+  console.log("  修法：在 tools/check-all.js 的 STEPS 里给该步补 observe: { until: \"YYYY-MM-DD\", why: \"…\" }"
+    + "——观察期必须有尽头，否则「暂时只警告」会永久化。");
+}
+
+process.exit(failed || (toolErr && STRICT_ENV) || badObserve.length ? 1 : 0);

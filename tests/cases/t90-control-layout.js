@@ -414,3 +414,32 @@ section("T90z 当前曲式 chip · ★ 带前缀的胶囊 chip、空值隐藏、
      "★★ v2.35.0：单曲式时整行 .single → chip 隐藏——它只在多条曲式时才有"
      + "「防编辑/播放错位」的信息量（用户提问④；内容写入点仍零改动）");
 }
+
+/* ================= 场景 T90aa：音量说明行的触屏可达（v3.36.10，批次② D3） =================
+   审计 C-8：三条音量条的说明此前**只有** title（悬停）与 aria-label（读屏）——触屏明眼用户
+   拿不到（没有悬停）。口径按本仓既有的 hover 分档：**默认（触屏）显出来**，桌面由同一块
+   媒体查询收起（与 .preset-item 的图标同一条分档，故写进同一块而不是另起一块）。 */
+section("T90aa 音量说明行 · ★★ 触屏常显、桌面随 hover 分档收起（审计 C-8）");
+{
+  const css = slice("css");
+  ok(/\.vol-note\{[^}]*font-size:11px/.test(css), "★ .vol-note 有基础样式（触屏常显的那一半）");
+  /* ★ 块提取口径与 t101 一致（行首 } 收尾）。两条断言必须落在**同一块**文本上——
+     若有人把 .vol-note 挪进另一块媒体查询，t101 的 indexOf 会先命中别处，两条会一起红。 */
+  const mi = html.indexOf("@media (hover: hover) and (pointer: fine)");
+  const block = html.slice(mi, html.indexOf("\n}", mi) + 2);
+  ok(block.includes(".vol-note{display:none}"),
+     "★★ 桌面（可 hover）收起音量说明——与 .preset-item 图标同一条分档口径，写在同一块里");
+  /* ★★ 文案链路的断言走**标记 + 源码**，不走 DOM 属性：桩是孤立静态桩（本文件头部第 18-19 行
+     已写明"桩不解析 HTML，静态元素 parentNode 恒 null"），而 `HTML_ATTRS` 只登记了
+     bpmSlider / wallDim / latMs 三个 id —— `#volMaster` 的 aria-label 在桩里读不到（恒 null）。
+     真实 DOM 里这一链路由真机探针验（见本轮 CHANGELOG 的实测记录）。 */
+  eq((html.match(/class="vol-note"/g) || []).length, 3,
+    "★ 三条音量条各挂一枚 .vol-note（说明行的容器）");
+  eq((html.match(/class="vol-note" id="\w+Note" aria-hidden="true"/g) || []).length, 3,
+    "★★ 说明行对读屏隐藏（aria-label 已表达同一件事，避免被读两遍）");
+  ok(/note\.textContent = inp\.getAttribute\("aria-label"\)/.test(html),
+    "★★ 文案从滑杆自己的 aria-label 抄——**单一来源**（不写第二份文案，改一处即两处同步）");
+  ok(/const inp = \$\(pair\[0\]\), note = \$\(pair\[1\]\);/.test(html) && !/pair\[0\]\]\)\.parentNode/.test(html),
+    "★ 接线**不用 closest()/parentNode**——桩的 closest 只返回空代理、parentNode 恒 null，"
+    + "用它们这段会在桩里静默失效（本仓反复踩过的「桩比真机宽松」）");
+}

@@ -335,4 +335,18 @@ section("T180l 预设库 · 删光曲式后底栏范围控件清空（此前滞�
   eq(pbKids, 0, "★ 空库 → pbProgress 清空（此前滞留一套死滑块）");
   eq(psKids, 0, "★ 空库 → pbSub 清空");
   /* 反向验证锚点：删掉 buildArrangeGroup 空库分支的两行 innerHTML 清理 → 上面两条变红。 */
+
+  /* ★★ v3.36.10（批次② D2，本轮审计 C-10）：自定义库为空时要给一条**去新建**的引导。
+     此前这个状态在界面上一声不响——审计问的正是"清空预设库后界面长什么样"，实测：
+     只剩内置「节拍」区，没有任何提示（新用户首开也是这个状态）。 */
+  const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
+  ok(deepText(els["presetList"]).includes("还没有自己的节奏型"),
+    "★★ 空自定义库 → 有「去新建一个」的引导（此前一片空白）");
+  /* 反向：有型时不该出现——引导只在**真的一个自定义型都没有**时给，不打扰有型的人 */
+  const b2 = loadApp();
+  b2.beat.Store.importPresets(JSON.stringify({ presets: [
+    { name: "有型的用户", meter: 4, song: "歌", bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] }] }));
+  b2.beat.Presets.buildPresetList();
+  ok(!deepText(b2.els["presetList"]).includes("还没有自己的节奏型"),
+    "★ 有自定义型时不出现该引导（不打扰有型的人）");
 }

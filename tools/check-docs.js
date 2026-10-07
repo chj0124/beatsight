@@ -11,7 +11,8 @@
         （PLAN-v1.9 / PLAN-v2-arrangement / PLAN-v2-impl 三份都缺）——读者按表点进去，
         看到的是还在写"确认后开工"的方案，无从判断该不该信。
 
-   十项都改成机器可判的规则，而不是再手写一遍数值：
+   各项都改成机器可判的规则，而不是再手写一遍数值（条数以本文件的实际条目为准，
+   **刻意不在这里写死数字**——本文件自己就在管"手写数字注定要烂"这件事）：
 
      1) 模块索引行号 = index.html 实际 banner 行号（复用 gen-index.js 的解析，口径唯一）
      2) 不许手写耗时：这四个文件的正文里不得出现「约 N 秒」。
@@ -56,6 +57,11 @@
     11) AGENTS.md / .trae 规则不得引用**高于** VERSION 的版本号（v3.33.14，审计 §2.3）：
         与第 8 项同源（"给 AI 看的活规则"此前无人把守），判据与 check-version.js 第 3 项
         同口径——只拦高于当前的，指向过去的历史引文一律放行。
+    12) 活文档点名的**函数**必须在 index.html 里还在（v3.33.14，审计 §2.4）。
+    13) 活文档点名的**控件名**必须真实存在（v3.36.11，审计 C-14）：第 12 项管函数，
+       这一项管「帮助正文里点名的按钮 / 开关」——登记制（同 R3 白名单纪律），见条目处注释。
+    14) 每个 harness 的 rules 目录下的 .md 必须**指向 AGENTS.md**（v3.36.11，审计 §二③）：
+       规则唯一真相源不能靠人手收敛（新增 harness 自带一份口径时无人拦）。
 
    刻意不做的事：不去校验正文里引用的**代码行号**（如"未覆盖的 L2964"）——它更适合由产出方
    （check-coverage）直接打印，让文档指过去而不是抄一遍；也不去比对"实测值"本身
@@ -680,6 +686,90 @@ const FN_BUILTIN = new Set(["Math", "JSON", "Date", "Object", "Array", "String",
   }
 }
 
+/* ---- 13) 活文档漂移 · 控件名（v3.36.11，本轮审计 C-14）----
+   由来：v3.36.5 把帮助正文的「编辑节奏型」改成「新建节奏型」时只改了 1 句，**剩 5 处静默残留**，
+   而当时的 t215 只钉方位词与区名、没钉控件名 ⇒ 闸门全绿。这一条把「控件名」纳入管辖。
+   ★ 为什么走**登记制**而不是「扫帮助里所有「」词条」：实测 70 个词条里绝大多数是描述性短语
+     （「边弹边唱」「零件工坊」「把节奏画出来」…），全自动判据会报 20+ 条假红。登记制与
+     check-module-order 的 R3 白名单 / check-wiring 的 REINJECT_OK 是同一纪律：
+     **多出者要么解释、要么报错**。
+   ★ 「应用表面」必须**剥掉 JS 注释**：否则「编辑节奏型」会在代码注释里被「找到」，本闸门白装
+     （实测：不剥注释时 surface.includes 恒为 true，等于没装）。 */
+{
+  const RETIRED_TERMS = [
+    { term: "编辑节奏型", now: "新建节奏型", why: "v3.3.0 改的名；帮助按旧名指路会找不到那个按钮" },
+    { term: "节奏型预设库", now: "浏览节奏型 / 预设库", why: "右侧竖栏 v3.0.0 取消，入口是底栏胶囊" },
+  ];
+  /* 在用的关键控件名（新用户第一路径上的入口与开关）。**两侧都必须有**：
+     只在帮助 ⇒ 应用里没这个控件（帮助在指路到不存在的东西）；
+     只在应用 ⇒ 帮助没跟上改名。 */
+  const LIVE_TERMS = ["浏览节奏型", "新建节奏型", "编排曲式", "听辨训练", "静音拍", "预备拍",
+    "变速训练", "TAP 测速", "同屏行数", "重拍增强", "延迟补偿", "后台保活", "数据与隐私",
+    "导出全部数据", "导入全部数据", "使用方法", "整首连播", "循环段", "画面图层", "基础节奏", "民谣扫弦"];
+  const rawHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const h0 = rawHtml.indexOf('id="helpOverlay"'), h1 = rawHtml.indexOf('id="settingsOverlay"');
+  if (h0 < 0 || h1 <= h0){
+    report.push("⊘ 活文档控件名：定位不到帮助浮层区间，本条跳过");
+  } else {
+    const stripHtml = s => s.replace(/<!--[\s\S]*?-->/g, "");
+    const helpBody = stripHtml(rawHtml.slice(h0, h1));
+    /* 应用表面 = 全文 − 帮助浮层 − HTML 注释 − JS 注释（块注释 + 行尾注释；
+       (^|[^:]) 让 https:// 这类不被误剥） */
+    const appSurface = stripHtml(rawHtml.slice(0, h0) + rawHtml.slice(h1))
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    const hits13 = [];
+    RETIRED_TERMS.forEach(r => {
+      if (helpBody.includes(r.term))
+        hits13.push("帮助正文仍写着退役控件名「" + r.term + "」（现名：" + r.now + "）——" + r.why);
+    });
+    LIVE_TERMS.forEach(t => {
+      const inHelp = helpBody.includes(t), inApp = appSurface.includes(t);
+      if (inHelp && !inApp) hits13.push("帮助正文点名「" + t + "」，但应用表面里找不到它（改名只改了一侧？）");
+      if (!inHelp && inApp) hits13.push("关键控件「" + t + "」在应用里存在，但帮助正文没提到（帮助没跟上？）");
+    });
+    if (hits13.length){
+      report.push("✗ 活文档控件名漂移：" + hits13.length + " 处");
+      hits13.forEach(h => problems.push("活文档控件名 —— " + h
+        + "；退役名请从帮助正文清掉，在用名请让两侧对齐"));
+    } else {
+      report.push("✓ 活文档控件名：" + LIVE_TERMS.length + " 个在用控件两侧均在 · "
+        + RETIRED_TERMS.length + " 个退役名已从帮助正文清干净");
+    }
+  }
+}
+
+/* ---- 14) 规则文件必须指向 AGENTS.md（v3.36.11，本轮审计 §二③）----
+   由来：.trae 的规则文件曾自带「直接提交并推送到 main」，与 AGENTS.md §3
+   「默认不 push、改动留本地」**直接冲突**——两个 harness 读两份互相矛盾的规则会做出相反动作
+   （v3.31.x E11 已收敛）。但那次收敛是**人手动作**，没有机器盯着：新增一个 harness
+   （WorkBuddy / 其他 IDE）时，它自带一份口径照样无人拦。这一条把它变成判红。 */
+{
+  const ruleFiles = [];
+  const walkRules = (dir, depth) => {
+    if (depth > 3 || !fs.existsSync(dir)) return;
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
+      if (e.name === "node_modules" || e.name === ".git") return;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walkRules(full, depth + 1);
+      else ruleFiles.push(full);
+    });
+  };
+  walkRules(ROOT, 0);
+  const relOf = f => path.relative(ROOT, f).split(path.sep).join("/");
+  const inRulesDir = f => /(^|\/)rules\/[^\/]*\.md$/.test(relOf(f));
+  const targets = ruleFiles.filter(inRulesDir);
+  const bad = targets.filter(f => !/AGENTS\.md/.test(fs.readFileSync(f, "utf8")));
+  if (bad.length){
+    report.push("✗ 规则文件指针：" + bad.length + " 份未指向 AGENTS.md");
+    bad.forEach(f => problems.push("规则文件 —— " + relOf(f)
+      + "：harness 的项目规则文件必须是**指向 AGENTS.md 的指针**，不得自带口径"
+      + "（两份规则会让不同 harness 做出相反动作）"));
+  } else {
+    report.push("✓ 规则文件指针：" + targets.length + " 份 rules 目录下的 .md 均指向 AGENTS.md（口径唯一真相源）");
+  }
+}
+
 report.forEach(l => console.log("  · " + l));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
@@ -698,5 +788,6 @@ if (problems.length){
 }
 console.log("  ✓ 文档一致（索引行号 / 无手写耗时 / 归档状态 / 审计快照 /"
   + " README 版本号 / 自验步数 / 无手写覆盖率现状 / 无手写体积声明 / 规则文件版本号 /"
-  + " CHANGELOG 分卷 / docs 第一层白名单）");
+  + " CHANGELOG 分卷 / docs 第一层白名单 /"
+  + " 活文档函数与**控件名**都有实体 / 规则文件指向 AGENTS.md）");
 process.exit(0);

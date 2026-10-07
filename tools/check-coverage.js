@@ -104,8 +104,21 @@ if (REUSE){
     process.exit(4);
   }
   if (run.status !== 0){
+    /* ★ v3.36.13：把「插桩把进程压垮」与「测试真的没过」分开（本轮实测踩到）。
+       插桩内存：本脚本单独跑给 4096MB，check-all 第 12 步给 6144MB 再让本脚本 --reuse——
+       故本机单独跑 node tools/check-coverage.js 会 134（Abort trap）。此前一律报「先修测试」，
+       还把过滤正则 /^  ✗|结果/ 命中的**通过**断言（「…重绘结果一致」）印成失败清单，
+       把人送去查一个不存在的失败用例。 */
+    const oom = run.status === 134 || /heap out of memory|Abort trap/i.test(run.stderr || "");
+    if (oom){
+      console.error("⊘ 测试子进程被插桩压垮（exit " + run.status + "）：**不是测试失败**，是覆盖率插桩自身的内存开销。");
+      console.error("  工具故障，本次未被验证（退出码 4）。两条可行路径：");
+      console.error("    · node tools/check-all.js（第 12 步给 6144MB，再用 --reuse 喂给本脚本）；");
+      console.error("    · 或抬高上限：NODE_OPTIONS=--max-old-space-size=6144 node tools/check-coverage.js");
+      process.exit(4);
+    }
     console.error("测试套件未通过，覆盖率无意义。先修测试：");
-    console.error((run.stdout || "").split("\n").filter(l => /^  ✗|结果/.test(l)).join("\n"));
+    console.error((run.stdout || "").split("\n").filter(l => /^\s*✗/.test(l)).join("\n"));
     process.exit(1);
   }
 }
@@ -113,7 +126,9 @@ if (REUSE){
 /* ---- 汇总所有 coverage-*.json 里 index.inline.js 的区间 ---- */
 const ranges = [];
 let fnTotal = 0, fnDead = 0;
-const deadNames = [];
+/* v3.36.11（审计 C-9）：存 {名字, 定义偏移} 而不是只存名字——行号要等 lineStart 建好才能算，
+   而采集发生在那之前，故先记偏移、到打印时再映射。 */
+const deadFns = [];
 for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
   let j;
   try { j = JSON.parse(fs.readFileSync(path.join(covDir, f), "utf8")); } catch(e){ continue; }
@@ -124,7 +139,7 @@ for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
       const outer = fn.ranges[0];
       if (outer && outer.count === 0){
         fnDead++;
-        deadNames.push(fn.functionName || "(匿名)");
+        deadFns.push({ name: fn.functionName || "(匿名)", off: outer.startOffset });
       }
       for (const r of fn.ranges) ranges.push(r);
     }
@@ -213,6 +228,40 @@ console.log();
 console.log("  函数：" + (fnTotal - fnDead) + "/" + fnTotal + " 个至少执行过一次"
   + (fnDead ? "（" + fnDead + " 个从未执行）" : ""));
 
+/* ★ v3.36.12（本轮审计 C-8）：**增量覆盖率读数**（观察期，不判红）。
+   由来：审计建议在「总体 97%」之外再加一条「新增代码行覆盖 ≥ 90%」——理由是存量已经干净，
+   真正会掉的是新增代码。但直接判红有风险：防御性分支常常**刻意不覆盖**（本文件头部已论证过
+   那两类不可达兜底），一刀切会把好代码拦住。故先**只读不判**，与冷键写入那条
+   「先量化再决定要不要动」同一路径；到期日登记在 tools/check-all.js 的 STEPS 里（C-6）。
+   ★ 基线怎么取：优先**工作区 vs HEAD**（未提交时最有用）；工作区干净则退到 HEAD~1 → HEAD
+     （刚提交完也能看到自己那一版）。两条都拿不到（非 git / 浅克隆无父提交）⇒ 打印 ⊘ 不猜。
+   ★ 行号换算：git diff 给的是 **index.html 绝对行号**，而覆盖率数组是**脚本行**，
+     两者只差一个平移量 scriptStartLine（已有），故 i = 绝对行 − scriptStartLine。 */
+{
+  const diffAdded = base => {
+    const r = spawnSync("git", ["diff", "--unified=0", base, "--", "index.html"], { cwd: ROOT, encoding: "utf8" });
+    if (r.status !== 0 || !r.stdout) return null;
+    const out = [];
+    for (const m of r.stdout.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)){
+      const start = +m[1], cnt = m[2] === undefined ? 1 : +m[2];
+      for (let k = 0; k < cnt; k++) out.push(start + k);
+    }
+    return out.length ? { base: base, lines: out } : null;
+  };
+  const inc = diffAdded("HEAD") || diffAdded("HEAD~1");
+  if (!inc){
+    console.log("  ⊘ 增量覆盖率：取不到 diff 基线（无改动 / 浅克隆 / 非 git）——本条未验证");
+  } else {
+    const idxs = inc.lines.map(al => al - scriptStartLine).filter(i => i >= 0 && i < covered.length);
+    const known = idxs.filter(i => covered[i] !== null);
+    const hit = known.filter(i => covered[i]).length;
+    const pct = known.length ? (hit / known.length * 100) : null;
+    console.log("  ⚠ 增量覆盖率（基线 " + inc.base + "）：" + hit + "/" + known.length + " 行"
+      + (pct === null ? "（无可判定行）" : " = " + pct.toFixed(1) + "%")
+      + "  ← 观察期：只读不判（若将来定 90% 门槛，低于它才值得处置）");
+  }
+}
+
 /* 未覆盖的行按分区归类，便于定位 */
 const nakedBySection = sections
   .map(s => {
@@ -226,8 +275,32 @@ if (nakedBySection.length){
   console.log("\n  未覆盖行分布（行号 = index.html 绝对行号，按数量降序）：");
   nakedBySection.forEach(s => console.log("      " + String(s.n).padStart(4) + " 行  " + s.name + "（如 L" + s.first.join(" / L") + "）"));
 }
-if (LIST > 0 && deadNames.length){
-  const uniq = [...new Set(deadNames)];
+if (LIST > 0 && deadFns.length){
+  /* ★ v3.36.11（审计 C-9）：补上**定义行号**。此前只印函数名，而"哪个该补断言、哪个是桩不可达的
+     死路"全靠人猜（审计原话：「列表没有行号，无法定位」）。行号 = index.html **绝对**行号，
+     与上面「未覆盖行分布」同一口径，可以直接跳过去。 */
+  const lineAtOffset = off => {
+    let lo = 0, hi = lineStart.length - 1, ans = 0;
+    while (lo <= hi){
+      const mid = (lo + hi) >> 1;
+      if (lineStart[mid] <= off){ ans = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    return ans;
+  };
+  /* 按**名字**归组（不是按 名字@偏移）：匿名函数有几十个，各占一条会把有名字的挤出前 N 条——
+     实测退化成了 12 条清一色「(匿名)」，比不补行号还难读。归组后每个名字给前几个行号。
+     ★ 排序：**有名字的在前**（那才是"该补断言还是该删"能一眼判断的），匿名的收尾。 */
+  const byName = new Map();
+  deadFns.forEach(d => {
+    if (!byName.has(d.name)) byName.set(d.name, []);
+    byName.get(d.name).push(d.off);
+  });
+  const uniq = [...byName.entries()]
+    .sort((a, b) => (a[0] === "(匿名)" ? 1 : 0) - (b[0] === "(匿名)" ? 1 : 0))
+    .map(([name, offs]) => {
+      const ls = offs.map(o => "L" + fileLine(lineAtOffset(o) + 1));
+      return name + "（" + ls.slice(0, 3).join(" / ") + (ls.length > 3 ? " …共 " + ls.length + " 处" : "") + "）";
+    });
   console.log("\n  ⚠ 从未执行的函数：" + uniq.slice(0, LIST).join(" · ")
     + (uniq.length > LIST ? " …（共 " + uniq.length + " 个）" : ""));
 }

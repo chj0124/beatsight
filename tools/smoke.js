@@ -635,6 +635,31 @@ function layoutProbe(){
   const boxLeft = el => { const r = el && el.getBoundingClientRect(); return r ? round(r.left) : null; };
   const q = s => document.querySelector(s);
   const out = { w: window.innerWidth, h: window.innerHeight };   // v3.3.0：h 供固定底栏「贴底」断言用
+  /* ★★★ v3.36.7（本轮审计 C-2）：**窄屏格宽**。桩里 cellEls 没有布局宽度（几何是伪造的），
+     所以「手机竖屏 + 十六分型时单格多少 px、点不点得中」只能在真浏览器量。
+     ★ 必须切到**最挤的那一档**（十六分型）：默认型是八分，格子宽得多，量出来是空转的假绿
+       （与宽屏铺满探针同一个坑）。本探针自己选型、量完**还原**，不留副作用。
+     ★ 量的是 .cell（一个时值格）：应用是**拆行**而不是缩格子——所以格宽不随同屏行数下降。 */
+  out.cell = (() => {
+    const b = window.__beat;
+    if (!b) return null;
+    const S = b.Store.S;
+    const savedSel = JSON.stringify(S.sel);
+    const i16 = b.BUILTINS.findIndex(x => /十六分/.test(x.name));
+    if (i16 >= 0) S.sel = { type: "builtin", idx: i16 };
+    b.Viz.buildViz();
+    const cells = [...document.querySelectorAll(".cell")];
+    const ws = cells.map(c => c.getBoundingClientRect().width).filter(w => w > 0);
+    const rows = [...document.querySelectorAll(".bar-row")];
+    const res = {
+      pattern: i16 >= 0 ? b.BUILTINS[i16].name : null,
+      count: cells.length,
+      minW: ws.length ? round(Math.min.apply(null, ws)) : null,
+      perRow: rows.map(r => r.querySelectorAll(".cell").length),
+    };
+    try { S.sel = JSON.parse(savedSel); b.Viz.buildViz(); }catch(e){}
+    return res;
+  })();
   out.scrollW = document.documentElement.scrollWidth;
   const vizEl = q("#viz");
   /* v3.0.0：#viz 已随 #vizBand 迁出卡片（可视化区不带卡片背景）——基准卡片改为**控制卡**
@@ -2713,6 +2738,19 @@ async function main(){
            && lay.narrow.vizRight <= lay.narrow.mainRight + 1,
           p.label + "：窄屏390 #viz 网格不溢出主列内容区（无内部横向溢出）",
           "vizRight " + lay.narrow.vizRight + " vs mainRight " + lay.narrow.mainRight);
+        /* ★★★ v3.36.7（本轮审计 C-2）：窄屏单格宽度 ≥ 44px（移动端触控目标的通用下界）。
+           桩量不出这条（cellEls 无布局宽度），故它是**真浏览器专属**的几何契约。
+           本机实测：390px + 十六分型，1–4 行档恒为 44.75px（应用靠拆行保格宽）。 */
+        if (lay.narrow.cell && lay.narrow.cell.minW !== null){
+          ok(lay.narrow.cell.minW >= 44,
+            p.label + "：★★★ 窄屏390 十六分型单格 ≥ 44px（触控目标下界）——"
+            + "应用靠**拆行**保格宽，不是缩格子，故 1–4 行档实测同一宽度",
+            "型「" + lay.narrow.cell.pattern + "」最窄格 " + lay.narrow.cell.minW
+            + "px · 每行格数 " + JSON.stringify(lay.narrow.cell.perRow));
+        } else {
+          ok(false, p.label + "：窄屏格宽未验证——探针没取到 __beat（?debug=1 掉了？）",
+            "cell=" + JSON.stringify(lay.narrow.cell));
+        }
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }

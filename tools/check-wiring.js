@@ -96,6 +96,36 @@ maskedLines.forEach((ln, i) => {
   }
 });
 
+/* ★ v3.36.7（本轮审计 P1-2）：**重复注入**此前完全在闸门管辖外——旧实现找到第一处赋值就
+   `break`，后面的赋值连看都不看。重复注入的典型症状与"漏装配"同类：后一处把前一处**覆盖**，
+   先接的那个功能静默失效（而且比漏装配更难查——盘上明明有赋值）。
+   静态只看得见"被赋过几次"，看不见"是不是同时"，所以允许登记的槽放行（理由必填，同 R3 白名单纪律）。 */
+const REINJECT_OK = {
+  onQuotaDone: "听辨额度与候选试听**按场景二选一**注入（前者作答到点、后者试听结束），同一时刻只有一个生效；"
+    + "index.html:12930 触发时先摘再调，不留悬挂",
+};
+/** 收集某个槽的**全部**非 null 赋值行号（脚本内 1-based）。
+    ★ RHS 读**原文**（等长遮蔽只用于找位置）：`onX = "字符串"` 这种右值不能被误判成空/复位。 */
+function assignLines(name, declIdx){
+  const assignRe = new RegExp("(?:^|[^.\\w$])" + name + "\\s*=\\s*(?!=)(.*)$");
+  const out = [];
+  for (let i = 0; i < lines.length; i++){
+    if (i === declIdx) continue;
+    const m = assignRe.exec(maskedLines[i]);
+    if (!m) continue;
+    const base = m.index + m[0].length - m[1].length;
+    const rhs = lines[i].slice(base).trim();
+    /* 复位成 null = 摘钩子，不算装配。
+       ★ 判据必须是 `^null` **词边界**而不是整串相等：本仓有
+       `if (onQuotaDone){ const done = onQuotaDone; onQuotaDone = null; done(); }` 这种
+       **同一行还有后续语句**的复位（index.html:12930）——整串相等的旧写法会把它当成一次
+       "重复注入"，在收集全部赋值之后立刻变成**假红**（旧版找到第一处就 break，所以从没暴露）。 */
+    if (!rhs || /^null(?![\w$])/.test(rhs)) continue;
+    out.push(i + 1);
+  }
+  return out;
+}
+
 /* v3.31.6（审计 P1-C）：命名约定收列的补充——onXxx 之外还有两个**同构注入槽**，
    名字刻意不叫 on*（见 index.html 各自注释），此前完全在闸门管辖外。
    登记表与 R3 白名单同一条纪律：条目必须真实存在（声明 + 装配齐全），腐烂即报。 */
@@ -108,40 +138,30 @@ EXTRA_SLOTS.forEach(name => {
       + " = null` 声明——源码已变，请更新或删除本条目");
     return;
   }
-  const assignRe = new RegExp("(?:^|[^.\\w$])" + name + "\\s*=\\s*(?!=)(.*)$");
-  let assigned = false;
-  for (let i = 0; i < lines.length; i++){
-    if (i === declIdx) continue;
-    if (assignRe.test(maskedLines[i])){ assigned = true; break; }
-  }
-  if (assigned) wiring.push(name + " 注入于 L" + fileLine(declIdx + 1) + "（EXTRA_SLOTS 登记槽）");
+  const at = assignLines(name, declIdx);
+  if (at.length) wiring.push(name + " 注入于 L" + fileLine(declIdx + 1) + "（EXTRA_SLOTS 登记槽）");
   else problems.push("EXTRA_SLOTS 登记槽「" + name + "」只有声明、从未被赋值——与 on* 钩子同一故障模式（漏装配 = 静默失效）");
 });
 
-/* ---- 规则 1：每个钩子必须被赋过非 null 值 ---- */
+/* ---- 规则 1：每个钩子必须被赋过非 null 值；被赋多次必须登记理由 ---- */
 slots.forEach(slot => {
   /* 左侧不能是标识符/属性的一部分（防 `xonAudibleBar` / `obj.onAudibleBar` 误命中）；
-     `(?!=)` 防把 `onXxx == y` / `onXxx === y` 当成赋值 */
-  const assignRe = new RegExp("(?:^|[^.\\w$])" + slot.name + "\\s*=\\s*(?!=)(.*)$");
-  let at = 0;
-  for (let i = 0; i < lines.length; i++){
-    if (i + 1 === slot.declLine) continue;                 // 声明行本身不算装配
-    /* 在**遮蔽后**的行上找赋值目标（字符串里的 `onX = fn` 不算装配）；
-       RHS 却要读**原文**（等长偏移对齐）——这样 `onX = "str"` 这种字符串右值不会被误判成空/复位 */
-    const m = assignRe.exec(maskedLines[i]);
-    if (!m) continue;
-    const base = m.index + m[0].length - m[1].length;
-    const rhs = lines[i].slice(base).trim();
-    /* 复位成 null 不算装配（onQuotaDone 在 stopAudio 里就是这么做的——那是**摘钩子**） */
-    if (!rhs || rhs === "null" || rhs === "null;") continue;
-    at = i + 1;
-    break;
-  }
-  if (!at){
+     `(?!=)` 防把 `onXxx == y` / `onXxx === y` 当成赋值。
+     ★ v3.36.7：定位逻辑抽到 assignLines()，且**不再 break** —— 取全部赋值行，
+       重复注入才有判据（旧实现只认第一处，第 2 处起完全没人看）。 */
+  const at = assignLines(slot.name, slot.declLine - 1);
+  if (!at.length){
     problems.push("钩子 " + slot.name + "（声明于 L" + fileLine(slot.declLine) + "）全文从未被赋过非 null 值"
       + "——装配层漏了它，对应功能会静默失效（点了没反应 / 不刷新），且不报任何错");
   } else {
-    wiring.push(slot.name + " L" + fileLine(slot.declLine) + " → 接于 L" + fileLine(at));
+    wiring.push(slot.name + " L" + fileLine(slot.declLine) + " → 接于 L" + fileLine(at[0]));
+    if (at.length > 1){
+      const why = REINJECT_OK[slot.name];
+      if (why) wiring.push("    ↳ 被注入 " + at.length + " 次（已登记：" + why + "）");
+      else problems.push("钩子 " + slot.name + " 被**重复注入** " + at.length + " 次（L"
+        + at.map(n => fileLine(n)).join(" / L") + "）——后一次会覆盖前一次，先接的那个功能静默失效。"
+        + "若确为按场景二选一注入，请登记进本文件顶部的 REINJECT_OK 并写明理由");
+    }
   }
 });
 
@@ -173,9 +193,13 @@ console.log("  · 自动收列 " + slots.length + " 个钩子注入槽（约定�
 wiring.forEach(w => console.log("      ✓ " + w));
 console.log("──────────────────────────────────────────────────────────");
 if (problems.length){
-  console.log("  ✗ " + problems.length + " 个注入槽未装配：");
+  console.log("  ✗ " + problems.length + " 个注入槽有问题：");
   problems.forEach(p => console.log("      · " + p));
-  console.log("  修法：在 index.html 末尾「初始化（装配）」段给该槽补一次赋值"
+  /* 两类问题的修法完全不同，混成一条会把人引向错误的动作（重复注入去"再补一次赋值"只会更糟） */
+  const dup = problems.filter(p => p.indexOf("重复注入") >= 0);
+  if (dup.length) console.log("  修法（重复注入）：删掉多余的那次赋值；**只有**「同一槽按场景二选一注入」"
+    + "才登记进 REINJECT_OK，并写明为什么不是并发覆盖。");
+  if (dup.length < problems.length) console.log("  修法（未装配）：在 index.html 末尾「初始化（装配）」段给该槽补一次赋值"
     + "（例：`onAudibleBar = Arrange.refreshNow;` / `setPatLenOf(ref => patBars(resolveRef(ref)));`）。");
   process.exit(1);
 }

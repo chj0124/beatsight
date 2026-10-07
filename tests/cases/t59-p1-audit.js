@@ -125,6 +125,30 @@ section("T59g P1-9 · 诊断面板「复制诊断信息」（剪贴板可用 / �
   eq(clip.beat.Modal.isOpen(), false, "走剪贴板时不弹窗");
 }
 
+/* ================= 场景 T59i：旧整包备份有出口（v3.36.13，审计 C-4） =================
+   审计判据原话：「诊断面板能列出占用最多的键，却没有清理动作」。
+   这一条把"有出口"钉住：读得到占用、有按钮、按钮带大小、二次确认、清完自动隐藏。 */
+section("T59i C-4 · 旧整包备份（beatsight.m2.bak）可读可清（原先只写不读、从不清理）");
+{
+  const { beat, els } = loadApp({ "beatsight.m2.bak": "x".repeat(3072) });
+  const info = beat.Store.bakInfo();
+  ok(info && info.chars === 3072, "★ 旧备份的占用可读回（此前写完就再没有出口）");
+  eq(els["helpClearBak"].hidden, false, "有旧备份时「数据与隐私」露出清理入口");
+  ok(/3 KB/.test(els["helpClearBak"].textContent), "按钮文案带占用大小：" + els["helpClearBak"].textContent);
+  els["helpClearBak"].fire("click");
+  eq(beat.Modal.isOpen(), true, "点击先弹二次确认（不可撤销的操作都要拦一下）");
+  els["modalCancel"].fire("click");
+  eq(beat.Store.bakInfo() !== null, true, "取消后旧备份还在");
+  els["helpClearBak"].fire("click");
+  els["modalOk"].fire("click");
+  eq(beat.Store.bakInfo(), null, "确认后旧备份被删除");
+  eq(els["helpClearBak"].hidden, true, "清完入口自动隐藏");
+  eq(els["statusText"].textContent, "已删除旧整包备份", "状态栏给出反馈（不是「点完什么都没发生」）");
+  const clean = loadApp();
+  eq(clean.beat.Store.bakInfo(), null, "没有旧备份时读作 null");
+  eq(clean.els["helpClearBak"].hidden, true, "没有旧备份时不显示入口（不给用户造成「我丢了什么」的错觉）");
+}
+
 /* ================= 场景 T59h：清理隔离数据的完整交互 ================= */
 section("T59h P1-5 · 清理隔离数据的交互闭环（二次确认 → 清空 → 状态提示）");
 {

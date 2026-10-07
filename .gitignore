@@ -28,6 +28,11 @@ NVIDIA Corporation/
 dist/
 .verify-report.json
 
+# v3.36.12（审计 C-11）：单文件写锁。它是**本机运行态**（谁在写 index.html、什么时候拿的），
+# 不是仓库内容——入库只会让每次拿锁/放锁都产生 diff 噪音。
+# 工具与用法见 tools/write-lock.js；check-all 汇总每次都会打印它的状态。
+.write-lock.json
+
 # 开发期自验工具链的依赖树（只跑本地，不进上站产物）
 # 上站产物清单由 tools/build-dist.js 决定：5 个拷贝条目（index.html / sw.js / manifest.webmanifest / icon.svg / _headers）
 # + 4 个构建期生成的 PNG 图标 = 共 9 条目

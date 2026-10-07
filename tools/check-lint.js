@@ -66,6 +66,7 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");     // v3.36.12（审计 C-7）：读 eslint.config.js 对账"两份 lint 不重叠"
 const {
   extractScript, stripComments, lineStarts, maskStrings, collectDeclarations, lineOf,
 } = require("./scan-util");
@@ -321,6 +322,55 @@ if (errors.length){
 } else {
   console.log("\n  ✓ 八条规则全部通过（no-var / eqeqeq / no-redeclare / no-unused-vars / no-undef / no-eval / no-innerhtml / no-children-array-method）");
 }
+/* ★ v3.36.12（本轮审计 C-7）：**「本工具与 ESLint 不重叠」是设计，但此前无人检查它**。
+   eslint.config.js 的文件头第 7-14 行把分工写得很清楚：「重叠的部分一律只由 check-lint.js
+   负责，这里全部关闭」——那是一条**文档纪律**。谁往 eslint.config.js 里加一行
+   "no-var": "error"（很自然的动作，因为 ESLint 文档里就有），两份实现就开始漂移：
+   同一处问题报两遍只是噪音，真正危险的是两份判据**语义不一致**时，人不知道该信哪份。
+   这里把它变成受检不变量：ESLint 的 rules 块**不得**开启本工具负责的那几条。
+   ★ 判据只看 rules 块、且**先剥注释**——eslint.config.js 的注释里反复提到 no-undef
+     （解释"为什么不按常规开它"），不剥注释会当场假红。 */
+{
+  const LINT_OWNED = ["no-var", "eqeqeq", "no-redeclare", "no-unused-vars", "no-undef"];
+  const cfgPath = path.join(__dirname, "..", "eslint.config.js");
+  let cfg = null;
+  try { cfg = fs.readFileSync(cfgPath, "utf8"); }catch(e){ cfg = null; }
+  if (!cfg){
+    console.log("  ⊘ 与 ESLint 的分工：读不到 eslint.config.js，本条跳过");
+  } else {
+    /* ★★ 抽取方式：**逐行**找 rules 块，块内只剥行尾注释。
+       为什么不用 scan-util 的 maskStrings + stripComments（本轮实测两次踩坑）：
+         ① ignores 里的通配串含「斜杠 + 星号」，块注释正则会把它当成注释开头，
+            一路吞掉 languageOptions / linterOptions / rules: 整段；
+         ② 改用 maskStrings 遮蔽字符串后，**规则键名本身也是字符串**，会被一起遮成空白 ⇒
+            抽取器再也看不到 no-var 这类键（本轮实测：变异加了 no-var，闸门仍是绿的）。
+       rules 块在本文件里形状固定（`rules: {` 起、`    }` 止，块内注释都是整行或行尾的），
+       逐行处理既准又不会误伤键名。 */
+    const cfgLines = cfg.split("\n");
+    const rulesAt = cfgLines.findIndex(l => /^\s*rules\s*:\s*\{/.test(l));
+    let rulesEnd = -1;
+    if (rulesAt >= 0){
+      for (let i = rulesAt + 1; i < cfgLines.length; i++){
+        if (/^\s*\},?\s*$/.test(cfgLines[i])){ rulesEnd = i; break; }
+      }
+    }
+    if (rulesAt < 0 || rulesEnd < 0){
+      console.log("  ⚠ 与 ESLint 的分工：在 eslint.config.js 里定位不到 rules 块（抽取器失明，未验证）");
+    } else {
+      const body = cfgLines.slice(rulesAt + 1, rulesEnd)
+        .map(l => l.replace(/(^|[^:])\/\/.*$/, "$1")).join("\n");
+      const dup = LINT_OWNED.filter(k => new RegExp("[\"\']" + k + "[\"\']\\s*:").test(body));
+      if (dup.length){
+        console.log("\n  ✗ 规则重复定义：" + dup.length + " 条（本工具已经在管，ESLint 那边不得再开）：");
+        dup.forEach(k => console.log("      · " + k + " —— 两份判据会漂移；eslint.config.js 里请关掉它"));
+        errors.push({ ln: 0, rule: "no-duplicate-rules", msg: "ESLint 开启了 check-lint 负责的规则：" + dup.join(" / ") });
+      } else {
+        console.log("\n  ✓ 与 ESLint 的分工：rules 块未开启本工具负责的五条（不重叠是受检的不变量，不只是文档纪律）");
+      }
+    }
+  }
+}
+
 console.log("──────────────────────────────────────────────────────────");
 console.log(errors.length ? "  代码卫生检查：失败" : "  代码卫生检查：通过");
 process.exit(errors.length ? 1 : 0);
