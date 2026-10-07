@@ -222,6 +222,16 @@ body.wide-full .main{max-width:none}
    （开参数面板顶破 BPM 列高）时音量行顶锚不动、死空间沉底，保住 v3.22/3.23 的
    「单开零变形」契约（smoke 有断言）。故 v3.24「末行钉底」被更强的「行心对齐」取代。 */
 .viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}
+/* ★★★ v3.36.20 补14（用户实报）：**竖屏下音量条不加节制地占满全宽**（852 档实测 646px，
+   而下面的 BPM 滑杆只有 416px）⇒ 右缘参差、观感差。用户要求「音量区域与 BPM 区域一样调整宽度」。
+   ★ 为什么不是给滑杆贴一条 max-width：两者**列宽不同**（音量组 756 / BPM 组受 L1291 的
+     max-width:520px 约束）⇒ 贴固定值只会在某一个宽度上凑巧对齐，换宽度又不齐。
+   ⇒ 正解是**把两组的列宽口径统一**，再让音量行让出 BPM 那条「TAP 测速 + 间距」的宽度：
+     ① 音量组 tg-body 与 BPM 组同一个上限 520px（L1291 那条的同口径落地）；
+     ② 音量行宽 = 列宽 − 104px（TAP 90 + 间距 14）⇒ 音量滑杆的**右缘**恰好落在 BPM 滑杆的右缘上。
+   实测右缘（绝对坐标）：852 档 音量 464 = BPM 464 ✓（原 756 vs 464）；390 档 238 = 238 ✓（原 294 vs 238）。 */
+.viz-head-grid .card-head-left .group .tg-body{max-width:520px}
+.viz-head-grid .card-head-left .vol-row{max-width:calc(100% - 104px)}
 /* v3.30.0：音量行盒 18px → 40px（滑杆在行内垂直居中）——行距由 43px 收紧到 10px，
    **滑杆粗细不变**（轨道 4px / 圆钮 16px 一律不动），变高的只是行盒（点击热区顺带变大）。
    独立新增规则，不改既有 `.card-head-left .vol-row{width:100%}`（t90 有源码钉）。 */
@@ -3986,23 +3996,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4018  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4920  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6963  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7975  Modal         应用内弹窗
-     L8120  Viz           时值可视化渲染与每帧动画
-     L11585 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12266 Trainer       变速训练器
-     L12476 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13183 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15161 Editor        自定义节奏型编辑器
-     L15741 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15788 Ear           听辨训练（v1.10.0）
-     L16016 Arrange       曲式编排（v2.0.0）
-     L19588 Help          使用方法（v2.0.1）
-     L19743 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19817 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20106 初始化（装配） 各模块 hook 接线与启动
+     L4028  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4930  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6973  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7985  Modal         应用内弹窗
+     L8130  Viz           时值可视化渲染与每帧动画
+     L11595 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12276 Trainer       变速训练器
+     L12486 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13193 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15171 Editor        自定义节奏型编辑器
+     L15751 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15798 Ear           听辨训练（v1.10.0）
+     L16026 Arrange       曲式编排（v2.0.0）
+     L19598 Help          使用方法（v2.0.1）
+     L19753 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19827 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20116 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

@@ -1826,6 +1826,9 @@ function portraitFixProbe(){
          但不能把 v3.33.12「状态行被切掉约 3 字」那个老毛病带回来）。 */
       /* ★ v3.36.20 补6：胶囊宽度 + 胶囊与传输键组的**重叠量**（>0 = 压在一起） */
       ctxW: q(".pb-ctx") ? Math.round(q(".pb-ctx").getBoundingClientRect().width) : null,
+      /* ★ v3.36.20 补14：竖屏下「音量区右缘」应落在 BPM 滑杆右缘上（用户实报音量条占满全宽） */
+      volBpmDelta: (function(){ var v=q(".card-head-left .vol-row"), b=q(".slider-row input[type=range]");
+        return (v&&b)? Math.round(v.getBoundingClientRect().right-b.getBoundingClientRect().right):null; })(),
       /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
       gapTop: (function(){ var c=q(".pb-ctx"), j=q("#argJump"); return (c&&j)? Math.round(j.getBoundingClientRect().left-c.getBoundingClientRect().right):null; })(),
       /* ★ v3.36.20 补8：键组**内部**间距（trio 右缘 → 循环键左缘）——用户要求组外间距必须大于它 */
@@ -2686,6 +2689,10 @@ async function main(){
             p.label + "·" + vp + "：★★★ 竖屏上 28 / 下 12（实测 " + PF.gapTop + " / " + PF.gapBottom
             + "）——只动上排：进度条长度不受影响",
             "gapTop=" + PF.gapTop + " gapBottom=" + PF.gapBottom);
+          ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 4,
+            p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
+            + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 56px（390 档）",
+            "volBpmDelta=" + PF.volBpmDelta);
           ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
             p.label + "·" + vp + "：★★★ 播放键**不贴上缘**（上缘 " + PF.btnTopGap + "px）",
             "btnTopGap=" + PF.btnTopGap);
