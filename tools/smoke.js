@@ -2418,6 +2418,21 @@ async function main(){
           : "  · 重测落入预算，以重测结果为准");
       }
       r = r2;
+      /* ★★★ v3.36.20 补13（修 CI 判红）：传输层自愈之后的那一轮**也要过预算检查**。
+         原实现的预算是 `!transport && isBudgetFlake(r)` —— 首次是传输层故障时短路成 false，
+         重测结果的预算**从未被检查**，直接进断言 ⇒ 慢 runner 上必然判红。
+         CI 实测（f05d340..ee06b34）：smoke 作业先撞传输层故障 → 自愈重测通过，而那次重测恰逢
+         一台很慢的机器（首屏 4866ms、播放态 30fps；同提交另一作业 464ms / 61fps）⇒ 30fps 未再自愈就判红。
+         这里补一轮：自愈后若仍越预算，再自愈一次；连续三轮都越预算才真判红（不再是抖动）。 */
+      if (!isTransport(r) && isBudgetFlake(r)){
+        const p1 = (r.probe && r.probe.perf) || {};
+        console.log('  · 自愈后仍越预算（首屏 ' + Math.round(p1.bootMs || 0) + 'ms / fps ' + (p1.fps || '?')
+          + '）—— 再自愈一轮（补13）');
+        const r3 = await runPass(p.label, p.url, profileOf('-retry2'));
+        console.log(isBudgetFlake(r3) ? '  · 第二轮重测仍越预算 —— 连续三轮，判红'
+          : '  · 第二轮重测落入预算，以它为准');
+        r = r3;
+      }
     }
     const d = r.probe;
     ok(!!d && d.booted, p.label + "：应用启动成功（window.__beatBoot 就位、没有白屏）",
