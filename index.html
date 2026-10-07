@@ -243,18 +243,29 @@ body.wide-full .main{max-width:none}
    ★ 为什么用 checkbox 而不是 JS + localStorage：折叠是**纯呈现**，不需要持久化也能用；
      一旦引入 JS 就要碰 Controls 的初始化顺序、还要处理页面重建后的状态恢复（本仓反复踩过这类坑）。 */
 .ctl-open{display:none}
-.ctl-toggle{display:none}
 @media (max-width:640px){
-  .ctl-toggle{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:12px;
-    color:var(--t2);padding:2px 2px 0;cursor:pointer;user-select:none;-webkit-user-select:none}
-  .ctl-toggle::after{content:"▸";font-size:10px;color:var(--t3);transition:transform .15s}
-  .ctl-open:checked ~ .ctl-toggle::after{transform:rotate(90deg)}
+  /* ★ 点**标签本身**折叠 / 展开（用户要求：不再用「控制区」总开关）。
+     用户第 3 条：**必须一眼看出可点** ⇒ 标签在窄屏变成可点胶囊：浅底 + 描边 + 圆角 +
+     右端箭头（▸ 收起 / ▾ 展开）+ 手型光标；整行都是热区（手机上 ≥40px 高）。
+     用户第 2 条：**开关组跟着「速度 BPM」标签一起收**（两者同属"练习设置"）。 */
+  .ctl-hit{cursor:pointer;user-select:none;-webkit-user-select:none;
+    display:flex;align-items:center;gap:8px;margin:0 -8px;padding:6px 8px;min-height:40px;
+    background:rgba(var(--well),.34);border-radius:10px}
+  /* ★ 用 outline 而不是 border：border 会把标签文字右移 1px ⇒ 当场打破两条既有对齐断言
+     （标题即控制列内容边缘：48 vs 49；开关行与标题同左缘：49 vs 48）。outline 不参与布局。 */
+  .ctl-hit{outline:1px solid var(--line);outline-offset:-1px}
+  .ctl-hit::after{content:"▸";margin-left:auto;font-size:11px;color:var(--t2);transition:transform .15s}
+  #volOpen:checked ~ .card-head .card-head-left .ctl-hit::after,
+  #bpmOpen:checked ~ .card-head .viz-head > .group .ctl-hit::after{content:"▾"}
   /* ★ 只收**三条音量滑杆**（.group 内的 .tg-body）——不整块收：
      · 「音量」**标签**（.group-label）在 .group 里，是既有两条断言的基准（标题即控制列内容边缘、
        开关行与标题同左缘），整块收或收到 .group 都会把它们打破（实测各红两条）；
      · 开关组（.viz-toggles）同理保留——它也在被量之列。
      收起后卡片只剩：卡头 + 音量标签 + BPM 组 + 开关组（实测 390×844：307 → 约 5xx，见闸门实测值）。 */
-  .ctl-open:not(:checked) ~ .card-head .card-head-left .tg-body{display:none}
+  #volOpen:not(:checked) ~ .card-head .card-head-left .tg-body{display:none}
+  #bpmOpen:not(:checked) ~ .card-head .viz-head > .group .tg-body{display:none}
+  /* 开关组跟着 BPM 标签一起收（用户第 2 条） */
+  #bpmOpen:not(:checked) ~ .viz-toggles{display:none}
 }
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
 /* ★ v3.22.0：① 作用域收窄到 .viz-head 内（BPM 内容区）——裸 .tg-body 会命中开关列的
@@ -2758,8 +2769,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          收起时保留 .card-head > .group（**速度 BPM 组**）——它是「打开就能动手」的最小集
          （播放键已在常驻底栏），收起的只有音量组与开关组。
          实测：390×844 下控制卡 624px（首屏 74%）⇒ 收起后练习网格从 855px 提到首屏内。 -->
-    <input type="checkbox" id="ctlOpen" class="ctl-open" hidden>
-    <label class="ctl-toggle" for="ctlOpen" title="展开 / 收起控制区（音量与开关组）">控制区</label>
+    <input type="checkbox" id="volOpen" class="ctl-open" hidden>
+    <input type="checkbox" id="bpmOpen" class="ctl-open" checked hidden>
     <div class="card-head viz-head">
         <!-- v2.10.16：左列改三行——角标 → 状态灯 → 音量组。
              ★ 标题（原 #vizTitle「时值可视化 · 4/4 · 歌曲第…」）整块删除：播放位置与状态灯
@@ -2772,7 +2783,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <!-- v2.76.3：状态灯行（#statusDot/#statusText/#patternName）整行搬进顶栏（与补偿读数
                同行）——左列自此只剩角标（经典主题 display:none）+ 音量组，内容从卡顶起步 -->
           <div class="group">
-            <div class="group-label">音量</div>
+            <label class="group-label ctl-hit" for="volOpen" title="点这里折叠 / 展开音量条">音量</label>
             <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
                  （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
                  音量——于是"节拍器响不响"与"扫弦响不响"没法分开调（用户反馈：扫弦谱一放起来
@@ -2805,7 +2816,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <!-- 速度 BPM：标签 + 步进行 + 滑杆 + TAP + 快捷档，四层一个不少。
              #bpmTicks 是滑杆的刻度层，必须与滑块同处 .slider-wrap（绝对定位对齐圆钮行程） -->
         <div class="group">
-          <div class="group-label">速度 BPM · 范围 30–240</div>
+          <label class="group-label ctl-hit" for="bpmOpen" title="点这里折叠 / 展开 BPM 控制">速度 BPM · 范围 30–240</label>
           <!-- v2.76.0：标签之下的内容包进 .tg-body（flex:1 + space-evenly）——
                标签行固定在卡顶，内容随卡高均布；三卡骨架统一（音量卡同款：
                前置[角标+状态行] + 组[flex:1 space-evenly]），标签水平对齐且
@@ -4023,23 +4034,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4055  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4957  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7000  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8012  Modal         应用内弹窗
-     L8157  Viz           时值可视化渲染与每帧动画
-     L11622 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12303 Trainer       变速训练器
-     L12513 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13220 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15198 Editor        自定义节奏型编辑器
-     L15778 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15825 Ear           听辨训练（v1.10.0）
-     L16053 Arrange       曲式编排（v2.0.0）
-     L19625 Help          使用方法（v2.0.1）
-     L19780 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19854 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20143 初始化（装配） 各模块 hook 接线与启动
+     L4066  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4968  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7011  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8023  Modal         应用内弹窗
+     L8168  Viz           时值可视化渲染与每帧动画
+     L11633 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12314 Trainer       变速训练器
+     L12524 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13231 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15209 Editor        自定义节奏型编辑器
+     L15789 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15836 Ear           听辨训练（v1.10.0）
+     L16064 Arrange       曲式编排（v2.0.0）
+     L19636 Help          使用方法（v2.0.1）
+     L19791 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19865 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20154 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

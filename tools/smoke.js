@@ -1832,11 +1832,14 @@ function portraitFixProbe(){
       vizTop: q("#viz") ? Math.round(q("#viz").getBoundingClientRect().top) : null,
       /* ★ 补15：窄屏**默认收起**音量组 ⇒ 这里临时展开再量（量的是"展开态"的右缘对齐），量完还原。
          与仓库既有探针「造出条件 → 量 → 还原（探针不留状态）」同一纪律。 */
-      volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen"); var keep = cb? cb.checked : null;
-        if (cb){ cb.checked = true; void document.body.offsetWidth; }
+      volBpmDelta: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
+        var keep = cb? cb.checked : null, keep2 = cb2? cb2.checked : null;
+        if (cb){ cb.checked = true; } if (cb2){ cb2.checked = true; }
+        if (cb||cb2){ void document.body.offsetWidth; }
         var v=q(".card-head-left .vol-row"), b=q(".slider-row input[type=range]");
         var d = (v&&b)? Math.round(v.getBoundingClientRect().right-b.getBoundingClientRect().right):null;
-        if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
+        if (cb && keep !== null){ cb.checked = keep; } if (cb2 && keep2 !== null){ cb2.checked = keep2; }
+        if (cb||cb2){ void document.body.offsetWidth; }
         return d; })(),
       /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
       gapTop: (function(){ var c=q(".pb-ctx"), j=q("#argJump"); return (c&&j)? Math.round(j.getBoundingClientRect().left-c.getBoundingClientRect().right):null; })(),
