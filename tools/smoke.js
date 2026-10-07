@@ -1821,6 +1821,13 @@ function portraitFixProbe(){
       /* ★ v3.36.20 补5：窄屏底栏「状态区让位给进度条」——量状态盒宽、进度条宽，
          并把状态文案换成**最长那条**确认不被截断（用户诉求：上限之外的富余给进度条，
          但不能把 v3.33.12「状态行被切掉约 3 字」那个老毛病带回来）。 */
+      /* ★ v3.36.20 补6：胶囊宽度 + 胶囊与传输键组的**重叠量**（>0 = 压在一起） */
+      ctxW: q(".pb-ctx") ? Math.round(q(".pb-ctx").getBoundingClientRect().width) : null,
+      overlapCtxJump: (function(){
+        var c = q(".pb-ctx"), j = q("#argJump");
+        if (!c || !j) return null;
+        return Math.round(c.getBoundingClientRect().right - j.getBoundingClientRect().left);
+      })(),
       statusW: st ? Math.round(st.getBoundingClientRect().width) : null,
       progressW: prog ? Math.round(prog.getBoundingClientRect().width) : null,
       jumpW: q("#argJump") ? Math.round(q("#argJump").getBoundingClientRect().width) : null,
@@ -1871,6 +1878,23 @@ function portraitFixProbe(){
       const landRaw = await cdp.send("Runtime.evaluate",
         { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
       result.playBarLandscape = JSON.parse(landRaw.result.value);
+      /* ★★★ v3.36.20 补6：**641–960 中间档**（大屏手机竖屏/手机横屏）——这一档此前没有任何断言，
+         正是"胶囊压到键组上"能长期存在的原因。取用户实报的 740×1804。 */
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 740, height: 1804, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
+      const midRaw = await cdp.send("Runtime.evaluate",
+        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+      result.barMid = JSON.parse(midRaw.result.value);
+      /* ★★★ v3.36.20 补6：**961–1000 桌面档**也要罩住——那一档左右各 1fr（970 时约 291px）
+         装不下定宽 320px 的胶囊，重叠是被 `.pb-ctx{max-width:100%}` 单独特修掉的，
+         而 1440/1920 两档量不出来（那里 1fr 足够宽）。取 970×600。 */
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 970, height: 600, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);
+      const edgeRaw = await cdp.send("Runtime.evaluate",
+        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+      result.barEdge = JSON.parse(edgeRaw.result.value);
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
@@ -2529,6 +2553,33 @@ async function main(){
         } else {
           ok(false, p.label + "·" + vp + "：宽屏地图探针未取到（故障：" + ((MW && MW.err) || "缺失") + "）", "");
         }
+        /* ★★★ v3.36.20 补6：641–960 中间档（用户实报机型 740×1804）——胶囊不许压到键组、进度条要吃到富余 */
+        const M6 = r.barMid;
+        if (M6 && !M6.err){
+          ok(M6.overlapCtxJump !== null && M6.overlapCtxJump <= 0,
+            p.label + "·740档：★★★ 胶囊**不再压到传输键组上**（胶囊右缘 − 键组左缘 = " + M6.overlapCtxJump
+            + "px）——修复前实测 **+82px 重叠**（胶囊定宽 320 塞进 181px 的列里溢出去了）",
+            "overlap=" + M6.overlapCtxJump);
+          ok(M6.progressW !== null && M6.progressW >= 400,
+            p.label + "·740档：★★★ 这一档的进度条也吃到了富余（" + M6.progressW
+            + "px）——修复前被 1fr 列卡在 181px",
+            "progressW=" + M6.progressW);
+          ok(M6.ctxW !== null && M6.ctxW <= 300,
+            p.label + "·740档：★★ 胶囊按内容收（" + M6.ctxW + "px）——修复前它是定宽 320 溢出到键组上",
+            "ctxW=" + M6.ctxW);
+        } else {
+          ok(false, p.label + "：641–960 中间档探针未取到（故障：" + ((M6 && M6.err) || "缺失") + "）", "");
+        }
+        /* ★★★ v3.36.20 补6：961–1000 桌面档 —— 胶囊不许压到键组（靠 .pb-ctx{max-width:100%}） */
+        const E6 = r.barEdge;
+        if (E6 && !E6.err){
+          ok(E6.overlapCtxJump !== null && E6.overlapCtxJump <= 0,
+            p.label + "·970档：★★★ 胶囊**不压传输键组**（右缘 − 键组左缘 = " + E6.overlapCtxJump
+            + "px）——这一档左右各 1fr（约 291px）装不下定宽 320 的胶囊，靠 .pb-ctx{max-width:100%} 收住",
+            "overlap=" + E6.overlapCtxJump);
+        } else {
+          ok(false, p.label + "：970 档探针未取到（故障：" + ((E6 && E6.err) || "缺失") + "）", "");
+        }
         /* ★★★ v3.36.20 补5：**横屏**底栏——状态区让位给进度条（只在 landscape 生效，
            故用 640×360 单独量的那一份数据；挂在这一档只是为了让整块只跑一次）。 */
         const P5 = r.playBarLandscape;
@@ -2544,6 +2595,10 @@ async function main(){
             p.label + "·横屏640：★★ 最长那条状态文案（「播放中 · 第 64 小节 · 8&」）在上限内**不被截断**"
             + "（防 v3.33.12「状态行被切掉约 3 字」那个老毛病回来）",
             "longTextOverflow=" + P5.longTextOverflow);
+          ok(P5.ctxW !== null && P5.ctxW <= 300,
+            p.label + "·横屏640：★★ 胶囊按内容收（" + P5.ctxW + "px）——修复前它被跨列拉成 398px，"
+            + "内容实需约 247px，文字后面那一截全是空的（用户实报「胶囊有必要留那么长吗」）",
+            "ctxW=" + P5.ctxW);
           ok(P5.jumpW !== null && Math.abs(P5.jumpW - 198) <= 6,
             p.label + "·横屏640：★★ 传输键组宽度**没动**（" + P5.jumpW
             + "px）——三列网格把键组挪到第 3 列，位置与宽度都不该受影响",
