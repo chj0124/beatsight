@@ -2543,6 +2543,28 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
   .play-bar .pb-ctx .pat-now{flex:1 1 auto;min-width:0}
   .play-bar .pb-progress{grid-area:prog;justify-self:end;width:100%}
 }
+/* ★★★ v3.36.20 补5（用户**横屏**实报）：状态文字那块富余太多——实测状态盒 398px、「已停止」只占 33px，
+   空出 365px，而进度条只有 198px。用户要「上限之外空出来的区域让给进度条」。
+   ★ 为什么只作用于**横屏**：竖屏 390 下照搬三列会把两条既有口径打坏（实测「窄屏播放键组右对齐底栏内容列」
+     与「窄屏底栏零视口溢出」当场变红）——那两条都是 v3.33.12 / v3.15.0 的既有验收项。
+   ★ 为什么**不能**简单恢复那条 `width:96px`：它是被 v3.33.12 **明确压掉**的
+     （注释原文：「状态行缩略太多…文字只剩 82px，而文案需要 112px，被切掉约 3 字」）⇒ 截断会原样回来。
+   修法：两列改**三列**，状态列按内容（定宽），中间那列让给进度条；传输键组挪到第 3 列、仍按自身宽度
+   ⇒ 键组的位置与宽度**一个像素不动**（v3.33.12 的 B 方案口径保住）。
+     行1 = 胶囊跨 1-2 列 ｜ 键组 col3
+     行2 = 状态 col1      ｜ 进度条跨 col2-3（吃掉原来空在状态盒里的那截）
+   ★ 状态定宽 156px（真机量的）：最长那条状态文案「播放中 · 第 64 小节 · 8&」文字**实需 127px**，
+     定宽 150 时差 3px（会截断）⇒ 150 + 3 + 3 余量 = 156。
+   ★ 用**定宽**而不是 max-width（如实记录实测）：在三列布局里 `max-width` **其实撑得住**
+     （列按 max-content 会跟着长，不截断，而且短文案时进度条还能到 537px）。**仍然选定宽**，
+     是因为只有定宽能保证「进度条长度**恒定**」（v3.18.0 口径）：`max-width` 下状态文案在
+     「已停止」(33px) 与「播放中 · 第 64 小节 · 8&」(127px) 之间切换时，进度条会**跳约 60px**。
+   实测（640×360 横屏）：状态区 398 → **156px**、进度条 198 → **440px**、键组仍 426..624（198px 不动）。 */
+@media (max-width:640px) and (orientation:landscape){
+  .play-bar{grid-template-columns:max-content minmax(0,1fr) max-content;
+    grid-template-areas:"ctx ctx trans" "stat prog prog"}
+  .play-bar .pb-sub .status{width:156px;flex:none;min-width:0}
+}
 /* 日间档：休止格专用填充 + 虚线强度。
    ★ 用户实拍：日间看不出灰格——根因是 body[data-theme="obs"] .cell{background:var(--cell)} 给所有格子
      （含休止格）铺了同一种实底 ⇒ 休止格与普通格填充完全相同（实测都是 rgb(227,232,240)，明度比 1.00:1），
@@ -3933,23 +3955,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L3965  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L4867  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L6910  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L7922  Modal         应用内弹窗
-     L8067  Viz           时值可视化渲染与每帧动画
-     L11532 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12213 Trainer       变速训练器
-     L12423 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13130 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15108 Editor        自定义节奏型编辑器
-     L15688 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15735 Ear           听辨训练（v1.10.0）
-     L15963 Arrange       曲式编排（v2.0.0）
-     L19535 Help          使用方法（v2.0.1）
-     L19690 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19764 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20053 初始化（装配） 各模块 hook 接线与启动
+     L3987  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L4889  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L6932  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L7944  Modal         应用内弹窗
+     L8089  Viz           时值可视化渲染与每帧动画
+     L11554 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12235 Trainer       变速训练器
+     L12445 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13152 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15130 Editor        自定义节奏型编辑器
+     L15710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15757 Ear           听辨训练（v1.10.0）
+     L15985 Arrange       曲式编排（v2.0.0）
+     L19557 Help          使用方法（v2.0.1）
+     L19712 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19786 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20075 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

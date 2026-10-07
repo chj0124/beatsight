@@ -1810,13 +1810,30 @@ function portraitFixProbe(){
     var map = q("#argMap"), kids = map ? [].slice.call(map.children) : [];
     var bar = q("#playBar"), btn = q("#playBtn"), prog = q(".pb-progress");
     var dot = q("#statusDot"), dir = q(".pb-ctx .pb-ctx-dir");
+    var st = q("#pbSub .status");
     var track = q(".arg-range-track"), acts = q(".arg-t-actions");
     var res = { vw: window.innerWidth, mapW: W(map), segN: kids.length,
       segMin: kids.length ? Math.min.apply(null, kids.map(W)) : null,
       trackH: track ? Math.round(track.getBoundingClientRect().height) : null,
       trackActionsGap: (track && acts) ? Math.round(acts.getBoundingClientRect().top - track.getBoundingClientRect().bottom) : null,
       btnTopGap: (bar && btn) ? Math.round(btn.getBoundingClientRect().top - bar.getBoundingClientRect().top) : null,
-      statusDelta: (dot && dir) ? Math.round(dot.getBoundingClientRect().left - dir.getBoundingClientRect().left) : null };
+      statusDelta: (dot && dir) ? Math.round(dot.getBoundingClientRect().left - dir.getBoundingClientRect().left) : null,
+      /* ★ v3.36.20 补5：窄屏底栏「状态区让位给进度条」——量状态盒宽、进度条宽，
+         并把状态文案换成**最长那条**确认不被截断（用户诉求：上限之外的富余给进度条，
+         但不能把 v3.33.12「状态行被切掉约 3 字」那个老毛病带回来）。 */
+      statusW: st ? Math.round(st.getBoundingClientRect().width) : null,
+      progressW: prog ? Math.round(prog.getBoundingClientRect().width) : null,
+      jumpW: q("#argJump") ? Math.round(q("#argJump").getBoundingClientRect().width) : null,
+      longTextOverflow: (function(){
+        var t = q("#statusText");
+        if (!t) return null;
+        var keep = t.textContent;
+        t.textContent = "播放中 · 第 64 小节 · 8&";
+        void t.offsetWidth;
+        var bad = t.scrollWidth > t.clientWidth + 1;
+        t.textContent = keep;
+        return bad;
+      })() };
     try{ B.Arrange.close(); }catch(e){ }
     return JSON.stringify(res);
   })()`;
@@ -1846,6 +1863,14 @@ function portraitFixProbe(){
       const pfixRaw = await cdp.send("Runtime.evaluate",
         { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
       result.portraitFix = JSON.parse(pfixRaw.result.value);
+      /* ★★★ v3.36.20 补5：**横屏**（640×360）单独量一次底栏 —— 那条改动只在
+         `@media (max-width:640px) and (orientation:landscape)` 内，竖屏 390 量不到。 */
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 640, height: 360, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
+      const landRaw = await cdp.send("Runtime.evaluate",
+        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+      result.playBarLandscape = JSON.parse(landRaw.result.value);
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
@@ -2503,6 +2528,28 @@ async function main(){
             "最窄段 " + MW.segMin + "px");
         } else {
           ok(false, p.label + "·" + vp + "：宽屏地图探针未取到（故障：" + ((MW && MW.err) || "缺失") + "）", "");
+        }
+        /* ★★★ v3.36.20 补5：**横屏**底栏——状态区让位给进度条（只在 landscape 生效，
+           故用 640×360 单独量的那一份数据；挂在这一档只是为了让整块只跑一次）。 */
+        const P5 = r.playBarLandscape;
+        if (P5 && !P5.err){
+          ok(P5.statusW !== null && P5.statusW >= 100 && P5.statusW <= 170,
+            p.label + "·横屏640：★★★ 状态区宽度**有上限**（" + P5.statusW + "px）——修复前它被网格列拉成 398px、"
+            + "文案只占 33px、空出 365px",
+            "statusW=" + P5.statusW);
+          ok(P5.progressW !== null && P5.progressW >= 400,
+            p.label + "·横屏640：★★★ 富余**让给了进度条**（" + P5.progressW + "px）——修复前只有 198px",
+            "progressW=" + P5.progressW);
+          ok(P5.longTextOverflow === false,
+            p.label + "·横屏640：★★ 最长那条状态文案（「播放中 · 第 64 小节 · 8&」）在上限内**不被截断**"
+            + "（防 v3.33.12「状态行被切掉约 3 字」那个老毛病回来）",
+            "longTextOverflow=" + P5.longTextOverflow);
+          ok(P5.jumpW !== null && Math.abs(P5.jumpW - 198) <= 6,
+            p.label + "·横屏640：★★ 传输键组宽度**没动**（" + P5.jumpW
+            + "px）——三列网格把键组挪到第 3 列，位置与宽度都不该受影响",
+            "jumpW=" + P5.jumpW);
+        } else {
+          ok(false, p.label + "：横屏底栏探针未取到（故障：" + ((P5 && P5.err) || "缺失") + "）", "");
         }
       }
       /* ★★★ v3.36.21：竖屏四修（用户实报）——只在这一档量（范围条件） */
