@@ -135,6 +135,11 @@ const HTML_CHILDREN = {
      children 空、querySelectorAll 命中 0），装配层那段三档点击接线整块零覆盖
      （t149 只断言数据层、走 seed 与直接赋值）。登记后点击链路可测。 */
   lyricPosGroup: ["auto", "follow", "bottom"].map(p => ({ className: "pill", dataset: { pos: p } })),
+  /* v3.37.0（旋律谱 A 期）：音高标注三态组——同 lyricPosGroup 的登记理由：
+     标记里写死的 pill 组，桩不解析 HTML ⇒ 不登记则点击接线整块零覆盖。
+     第一档 .active 与标记里 data-pn="off" 的 aria-pressed="true" 对应（默认关）。 */
+  pitchNotationGroup: ["off", "jp", "nm"].map((n, i) =>
+    ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { pn: n } })),
   swingRow:  [50, 67, 75].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { swing: String(n) } })),
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
   /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */

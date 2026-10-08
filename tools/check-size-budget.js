@@ -320,7 +320,18 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
    ★ 留 69KB（约 6 个本批量级）：**刻意**比"刚好装下"宽——旧口径的问题是余量只剩 0.275%，
      逼着每次改动都来抬一次常数，抬常数这件事本身就消耗注意力且掩盖真实趋势。
      现在抬一次能覆盖若干批，趋势交给观察线看。 */
-const BUDGET_BYTES = 1820 * 1024;
+/* v3.37.0（旋律谱 A 期）上调到 **1900KB**。按本文件既定纪律给出 git diff 证据：
+     · 基线：v3.33.14 实测 1,792,923 B（1750.9 KB）；本批实测 **1,876,787 B（1832.8 KB）**；
+     · 净增 **83,864 B（+81.9 KB）**；`git diff --stat` = **372 增 / 65 删（index.html）**。
+     · 增量构成（均为功能本体 + "为什么"注释，非冗余）：
+       - 音高纯函数族（KEY_SEMIS / DEG_SEMIS / REL2DEG / keySemiOf / jianpuOf / pitchNameOf /
+         parseLyricTextPitch，含 C 调八度折算与 token 后缀解析护栏）约 8 KB；
+       - 双渲染层（简谱 / 音名两条渲染路径 + 设置项 pitchNotation 三档 + 持久化）约 18 KB；
+       - 精修 UI（音高步进按钮 / 键盘联动 / 选中态）约 15 KB；
+       - p 字段全链路携带（12 处歌词操作函数显式保留音高 + typedef / 载荷 / 迁移兼容）约 12 KB；
+       - 测试与注释（t222 用例 + harness 扩充 + 契约锚点注释）约 29 KB。
+   ★ 留 67KB 余量：与 v3.33.14 同口径——抬一次覆盖若干批，趋势交观察线（WARN 1822KB）看。 */
+const BUDGET_BYTES = 1900 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

@@ -42,14 +42,16 @@ function fixture(){
   return { beat, ly: ly2 };
 }
 
-section("T204a 3 行 / 5 组 · 组头与行分隔的数量与顺序");
+section("T204a 行 / 组 · 组头与行分隔的数量与顺序");
 {
   const { ly } = fixture();
   const heads = kids(ly, "arg-lyric-grp").map(h => h.textContent);
-  eq(heads.join(" / "), "历史 / 范围 / 整段平移 / 换位 / 时值",
-     "★ 五个功能组的组头按顺序齐备");
-  eq(kids(ly, "arg-lyric-rowsep").length, 2,
-     "★★ 恰好 2 条行分隔 ⇒ 精修按钮排成 **3 行**（用户指定）");
+  /* v3.37.0（旋律谱 A 期）：五组三行 → 六组四行——新增「音高」组（音高− / 音高+ / 无音高），
+     与「时值」同款"需先选中字块"的组级联动（T204d 同步覆盖） */
+  eq(heads.join(" / "), "历史 / 范围 / 整段平移 / 换位 / 时值 / 音高",
+     "★ 六个功能组的组头按顺序齐备（v3.37.0 增音高组）");
+  eq(kids(ly, "arg-lyric-rowsep").length, 3,
+     "★★ 恰好 3 条行分隔 ⇒ 精修按钮排成 **4 行**（v3.37.0 音高组入列）");
 }
 
 section("T204b 可折叠 · 组头切 hidden，aria-expanded 单一真相");

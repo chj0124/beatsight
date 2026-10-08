@@ -177,8 +177,8 @@ section("T178g 切滚动模式：歌词轨的静止态落位（用户报障「�
   /* 两处外部调用（歌词总开关 / 歌词位置）必须走新入口——它们原先直接 buildLyricLane() */
   ok(!/Viz\.buildLyricLane\(\)/.test(html),
     "★★★ 外部不再有任何 `Viz.buildLyricLane()` 直调（那是丢位移的写法）");
-  eq((html.match(/Viz\.rebuildLyricLane\(\)/g) || []).length, 2,
-    "★★ 两处外部调用点（显示歌词开关 / 歌词位置组）都改用 rebuildLyricLane");
+  eq((html.match(/Viz\.rebuildLyricLane\(\)/g) || []).length, 3,
+    "★★ 三处外部调用点（显示歌词开关 / 歌词位置组 / v3.37.0 音高标注三态组）都改用 rebuildLyricLane");
 }
 
 /* ================= T178h：拍点闪烁的亮度档不得再按类名猜（v3.31.1） ================= */
