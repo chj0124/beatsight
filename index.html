@@ -18294,9 +18294,9 @@ const Arrange = (() => {
     Modal.bindOverlay("arrangeOverlay", mel, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
       const keyName = (typeof a.key === "string") ? a.key : "";
-      const cur = (line && line.notes) ? melodySerialize(line.notes, keyName) : "";
+      const curMel = (line && line.notes) ? melodySerialize(line.notes, keyName) : "";
       Modal.uiPrompt("贴旋律谱（简谱，空格分隔；每档 = 八分；- 延长前音、0 休止。清空并确定 = 清除本段旋律）",
-        cur, (/** @type {string} */ v) => {
+        curMel, (/** @type {string} */ v) => {
           const r = parseMelodyTokens(v, keySemiOf(keyName));
           if (r.bad){
             Modal.uiAlert("「" + r.bad + "」不是有效的简谱 token（1–7 度数；' , 八度；# b 半音；- 延长；0 休止）——本段旋律未作修改。");
@@ -18546,8 +18546,8 @@ const Arrange = (() => {
        提交口径：chars 原样、notes 显式提交，lyricCommit 一步可撤销。 */
     rowsep();                                             // → 第 4 行（音高组）
     const gPitch = grp("音高", true);
-    /** @param {string} label @param {number} sign @param {boolean} clear @param {string} aria @returns {any} */
-    const mkPitch = (label, sign, clear, aria) => {
+    /** @param {string} label @param {number} sign @param {boolean} isClear @param {string} aria @returns {any} */
+    const mkPitch = (label, sign, isClear, aria) => {
       const b = document.createElement("button");
       b.className = "arg-mini";
       b.textContent = label;
@@ -18565,7 +18565,7 @@ const Arrange = (() => {
         const t1 = c.t + c.dur;
         const hit = notes.filter((/** @type {any} */ n) => n.t < t1 && n.t + n.dur > c.t);
         const keyName = typeof a.key === "string" ? a.key : "";
-        if (clear){
+        if (isClear){
           if (!hit.length){ announce("这个字本来就没有音高"); return; }
           lyricCommit(a.id, uid, cs, { notes: notes.filter((/** @type {any} */ n) => hit.indexOf(n) < 0) });
           arrangeRender();
