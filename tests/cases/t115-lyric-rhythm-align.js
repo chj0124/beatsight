@@ -150,7 +150,7 @@ section("T115d 键盘 · ←/→ 一格 / Shift 一拍 / 邻居边界钳制 / �
   eq(chips.length, 3, "第一小节行：3 个字块");
   const chip1 = chips[1];                                  // 「眠」t=48，两侧有空隙
   chip1.fire("keydown", { key: "ArrowRight" });
-  eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 60, "→ 移一格（+12t）并已落库");
+  eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 54, "→ 移一格（+6t）并已落库");
   chip1.fire("keydown", { key: "ArrowRight", shiftKey: true });
   eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 72, "Shift+→ 请求 +48 但被上限钳住（后字 t − dur = 96−24 = 72）");
   chip1.fire("keydown", { key: "ArrowLeft", shiftKey: true });

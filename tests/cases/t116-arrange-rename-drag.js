@@ -98,23 +98,23 @@ section("T116b 拖动现值 · 键盘移动后拖动提交不回滚 / 小拖动�
   sumOf(lyOf(els, 0)).fire("click");
   const chips = chipsOf(byCls(lyOf(els, 0), "arg-lyric-lane"));
 
-  /* 键盘把「眠」从 48 移到 60（v2.46.0 通道，原位更新不重渲染） */
+  /* 键盘把「眠」从 48 移到 54（v2.46.0 通道，原位更新不重渲染） */
   chips[1].fire("keydown", { key: "ArrowRight" });
-  eq(beat.Store.findLyric(id, uid).chars[1].t, 60, "键盘移动落库（60）");
+  eq(beat.Store.findLyric(id, uid).chars[1].t, 54, "键盘移动落库（54）");
 
-  /* 再拖「春」（t=0）+12tick：提交若读过期闭包字表，会把「眠」的 60 回滚成 48 */
+  /* 再拖「春」（t=0）+12tick：提交若读过期闭包字表，会把「眠」的 54 回滚成 48 */
   chips[0].fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 + px(12) });
   fireWin("pointerup", {});
   const after = beat.Store.findLyric(id, uid).chars;
   eq(after[0].t, 12, "拖动正常落库（春 → 12）");
-  eq(after[1].t, 60, "★ 键盘修改保留（不再被过期字表回滚——F1）");
+  eq(after[1].t, 54, "★ 键盘修改保留（不再被过期字表回滚——F1）");
 
-  /* 小拖动（< 半格）→ 吸附回原位 → 不动库不重绘 */
+  /* 小拖动（< 1 格 = 6t）→ 吸附回原位 → 不动库不重绘 */
   const lineBefore = beat.Store.findLyric(id, uid);
   const chips2 = chipsOf(byCls(lyOf(els, 0), "arg-lyric-lane"));
   chips2[2].fire("pointerdown", { clientX: 200 });
-  fireWin("pointermove", { clientX: 200 + px(3) });
+  fireWin("pointermove", { clientX: 200 + px(2) });
   fireWin("pointerup", {});
   ok(beat.Store.findLyric(id, uid) === lineBefore, "★ 小拖动吸附回原值 → 行对象不变（v2.1.0 同口径）");
   beat.Arrange.close();
@@ -186,9 +186,9 @@ section("T116d 时值抓手 · 顶住红边 / 松手吸附 / 小抖动不动库"
 
   const lineBefore = beat.Store.findLyric(id, uid);
   grip0.fire("pointerdown", { clientX: 300 });
-  fireWin("pointermove", { clientX: 300 - px(48) });       // 向左收 48t → 期望 0 → 钳在最短 12t
+  fireWin("pointermove", { clientX: 300 - px(48) });       // 向左收 48t → 期望 0 → 钳在最短 6t
   fireWin("pointerup", {});
-  eq(beat.Store.findLyric(id, uid).chars[0].dur, 12, "★ 向左收到下限 12t 落库");
+  eq(beat.Store.findLyric(id, uid).chars[0].dur, 6, "★ 向左收到下限 6t 落库");
   eq(beat.Store.findLyric(id, uid) === lineBefore, false, "有变更 → 行对象更新");
   beat.Arrange.close();
 }

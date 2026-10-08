@@ -219,10 +219,9 @@ section("T222e 谱保真 · 字的位置路径都不动谱 / 行级快照 {chars
   const chip0 = chipsOf(byCls(lyOf(els, 0), "arg-lyric-lane"))[0];
   ok(chip0.getAttribute("aria-label").indexOf("音高 1") > 0,
     "★★ 字块 aria-label 恒带「音高」（60 在 C 调派生为简谱 1；读屏不依赖视觉开关）");
-  const txt0 = chip0.children.find(c => /arg-lyric-char/.test(c.className));
-  const pit0 = (txt0.children || []).find(c => /arg-lyric-pit/.test(c.className));
+  const pit0 = (chip0.children || []).find(c => /arg-lyric-pit/.test(c.className));
   ok(!!pit0 && pit0.textContent === "1",
-    "★ 编辑轨音高上标恒显（默认 off 档也按简谱显示——编辑面看得到数据）");
+    "★ 编辑轨音高标注恒显（默认 off 档也按简谱显示；落字块左上角，用户口径①）");
 
   /* ① swapChars：时序互换（下标位各留原字、t/dur 互换）——纯函数产物不带 p、谱不动 */
   const sw = beat.Arrange.swapChars(chars(beat, id, uid), 0);
@@ -392,10 +391,8 @@ section("T222h 练习视图三态 · 字 span 内上标随开关换写法 / off 
     return Array.prototype.concat.apply([], rows.map(r =>
       (r.children || []).filter(c => /(^| )lyric-chip( |$)/.test(c.className))));
   };
-  const pitOf = chip => {
-    const label = (chip.children || []).find(c => /lyric-char/.test(c.className));
-    return label ? (label.children || []).find(c => /lyric-pit/.test(c.className)) : null;
-  };
+  /* v3.38.0：音高标注是 chip 直接子节点（落字块左上角，不再嵌在字里） */
+  const pitOf = chip => (chip.children || []).find(c => /lyric-pit/.test(c.className)) || null;
 
   beat.Store.S.pitchNotation = "jp";
   beat.Viz.buildLyricLane();

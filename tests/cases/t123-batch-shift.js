@@ -84,7 +84,7 @@ section("T123b 批量按钮 · 一次点击 = 一步撤销 / 范围切换 / 到�
   ok(beat.Arrange.lyricUndo(id, uid) === false, "★ 到头那次没有产生撤销步");
 
   miniByText(lyOf(els, 0), "1格▶").fire("click");         // 全部字 +1 格
-  eq(ts(chars(beat, id, uid)), "12,60,108", "★ 全部字 +1 格：三组字同时动");
+  eq(ts(chars(beat, id, uid)), "6,54,102", "★ 全部字 +1 格（6t）：三组字同时动");
   ok(beat.Arrange.lyricUndo(id, uid) === true, "undo 一步");
   eq(JSON.stringify(chars(beat, id, uid)), before, "★ 一次批量 = 一步撤销（整组一次提交）");
   beat.Arrange.lyricRedo(id, uid);
@@ -95,10 +95,10 @@ section("T123b 批量按钮 · 一次点击 = 一步撤销 / 范围切换 / 到�
   fireWin("pointerup", {});
   miniByText(lyOf(els, 0), "从选中字").fire("click");     // 切范围（触发重渲染）
   miniByText(lyOf(els, 0), "1格▶").fire("click");
-  eq(ts(chars(beat, id, uid)), "12,72,120", "★ 从选中字起平移：前面的字不动");
+  eq(ts(chars(beat, id, uid)), "6,60,108", "★ 从选中字起平移：前面的字不动");
   ok(beat.Arrange.shiftScopeGet() === "sel", "范围态 = 从选中字");
   ok(beat.Arrange.lyricUndo(id, uid) === true, "批量撤销仍是一步");
-  eq(ts(chars(beat, id, uid)), "12,60,108", "回到平移前");
+  eq(ts(chars(beat, id, uid)), "6,54,102", "回到平移前");
   beat.Arrange.close();
 }
 
@@ -139,11 +139,11 @@ section("T123c 显性换位 · ⇄ 按钮 = 拖拽换位同一函数 / 无选中
   chipsOf(lane3)[1].fire("pointerdown", { clientX: 100 });
   fireWin("pointerup", {});
   miniByText(lyOf(els, 0), "时值+1格").fire("click");
-  eq(chars(beat, id, uid)[1].dur, 36, "★ 时值+1格：24 → 36");
+  eq(chars(beat, id, uid)[1].dur, 30, "★ 时值+1格（6t）：24 → 30");
   miniByText(lyOf(els, 0), "时值+1格").fire("click");
-  eq(chars(beat, id, uid)[1].dur, 48, "再 +1 格：36 → 48");
+  eq(chars(beat, id, uid)[1].dur, 36, "再 +1 格：30 → 36");
   miniByText(lyOf(els, 0), "时值−1格").fire("click");
   miniByText(lyOf(els, 0), "时值−1格").fire("click");
-  eq(chars(beat, id, uid)[1].dur, 24, "★ 时值−1格：48 → 36 → 24（连续两下）");
+  eq(chars(beat, id, uid)[1].dur, 24, "★ 时值−1格：36 → 30 → 24（连续两下）");
   beat.Arrange.close();
 }

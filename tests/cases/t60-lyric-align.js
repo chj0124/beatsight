@@ -37,10 +37,10 @@ section("T60a 歌词数据层 · upsert/find/delete + 吸附/重叠/截断/上�
   const St = beat.Store;
   eq(St.lyrics.length, 0, "初始无歌词行");
 
-  /* 写入即归一化：t/dur 吸附到 12tick 格、ch trim */
+  /* 写入即归一化：t/dur 吸附到 6tick 格（三十二分）、ch trim */
   const v = St.upsertLyric("a1", "s1", [{ t: 26, dur: 30, ch: " 你 " }]);
-  eq(v.chars[0].t, 24, "t=26 吸附到十六分格 24");
-  eq(v.chars[0].dur, 36, "dur=30 吸附到 36（12 的整数倍）");
+  eq(v.chars[0].t, 24, "t=26 吸附到三十二分格 24");
+  eq(v.chars[0].dur, 30, "dur=30 吸附到 30（6 的整数倍）");
   eq(v.chars[0].ch, "你", "ch 被 trim");
   ok(St.findLyric("a1", "s1") === v, "findLyric 按 (曲式, 段 uid) 命中且是同一行对象");
   eq(St.findLyric("a1", "s2"), null, "段 uid 不同不命中");
@@ -397,7 +397,7 @@ section("T60f 歌词编辑轨 · 行结构 / 粘贴均分 / 拖拽边界 / 清�
   grip0.fire("pointerdown", { clientX: 300 });
   fireWin("pointermove", { clientX: 150 });         // −48tick → 期望 0，被最短时值（12t）钳住
   fireWin("pointerup", {});
-  eq(St.findLyric("t1", "s1").chars[0].dur, 12, "★ 时值收到下限 12t 落库（连续跟手 + 松手吸附）");
+  eq(St.findLyric("t1", "s1").chars[0].dur, 6, "★ 时值收到下限 6t 落库（连续跟手 + 松手吸附）");
 
   /* 最后一个字没有右邻：时值真改 */
   chips = chipsOf(laneOf());                        // 提交后重渲染，现取

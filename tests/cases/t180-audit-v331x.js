@@ -197,11 +197,11 @@ section("T180g 歌词 · 键盘 ←/→ 跨小节移动就地搬行（此前字�
   const parentBefore = chip.parentNode;
   chip.fire("pointerdown", { clientX: 100 });        // 点按选中
   fireWin("pointerup", {});
-  chip.fire("keydown", { key: "ArrowLeft" });        // t=192 → 180：跨回第 1 行
+  chip.fire("keydown", { key: "ArrowLeft" });        // t=192 → 186：跨回第 1 行
   ok(chip.parentNode !== parentBefore,
      "★ 跨行后字块已搬进新行容器（此前留在旧行按新坐标定位 → 错位一整行）");
   const ch = beat.Store.findLyric(id, uid);
-  eq(ch.chars[0].t, 180, "数据按网格粒度移动（192 − 12）");
+  eq(ch.chars[0].t, 186, "数据按网格粒度移动（192 − 6）");
   beat.Arrange.close();
   /* 反向验证锚点：删掉 moveChipKey 的 appendChild 搬行 → parentNode 不变、断言变红。 */
 }

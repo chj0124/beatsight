@@ -165,19 +165,19 @@ section("T202h lyricDurStep · 时值±1格按时间后邻钳制（旧实现会�
   const { beat } = loadApp();
   /* 「不」(下标 2, t=144)：下标后邻 cs[3] 是「分」(t=72)，时间上在它**左边** */
   const plus = beat.Arrange.lyricDurStep(USER, 2, 1, SPAN);
-  eq(plus, 36, "★ 时值+1格：八分(24) → 36（= 24 + 一格 12），**变长**");
+  eq(plus, 30, "★ 时值+1格：八分(24) → 30（= 24 + 一格 6），**变长**");
   /* 旧实现：lim = cs[k+1].t = 72 ⇒ lim - c.t = 72 − 144 = −72 ⇒ 钳制链塌成 LYRIC_MIN_DUR */
   const oldLim = USER[3].t;                       // 72
   const oldDur = Math.max(12, Math.min(Math.min(128 * 48, oldLim - USER[2].t), 24 + 12));
   eq(oldDur, 12, "★★ 前提：旧实现算出 12 —— 即「时值+1格」反把时值**缩到最短的十六分**（改坏数据）");
   ok(plus !== oldDur, "★★ 新实现（" + plus + "）≠ 旧实现（" + oldDur + "）⇒ 改坏数据已消除");
-  eq(beat.Arrange.lyricDurStep(USER, 2, -1, SPAN), 12, "时值−1格：24 → 12（正常缩短，下限 LYRIC_MIN_DUR）");
+  eq(beat.Arrange.lyricDurStep(USER, 2, -1, SPAN), 18, "时值−1格：24 → 18（正常缩短，下限 LYRIC_MIN_DUR）");
   /* 未被移动过的行：与旧口径逐位一致（正常路径零行为变化） */
   const tiled = [C(0, "a"), C(24, "b"), C(48, "c")];
   eq(beat.Arrange.lyricDurStep(tiled, 1, 1, SPAN), 24,
      "★ 满铺行里 +1格 仍为 24（紧贴后邻、无处可长）——与旧口径逐位一致，正常路径零行为变化");
-  eq(beat.Arrange.lyricDurStep([C(0, "a"), C(96, "b")], 0, 1, SPAN), 36,
-     "★ 有间隙的行：首字 24 → 36（后邻在 96，上限 96）");
+  eq(beat.Arrange.lyricDurStep([C(0, "a"), C(96, "b")], 0, 1, SPAN), 30,
+     "★ 有间隙的行：首字 24 → 30（后邻在 96，上限 96）");
   eq(beat.Arrange.lyricDurStep(USER, 99, 1, SPAN), null, "越界 ⇒ null");
 }
 

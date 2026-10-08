@@ -82,10 +82,10 @@ section("T118b 拖动撤销 · 原地松手（吸附回原位）不入栈 / 拖�
   const chip0 = chipsOf(lane)[0];
   const before = JSON.stringify(chars(beat, id, uid));
 
-  /* no-op：拖 +5 tick（15.6px 过阈），吸附 round(5/12)=0 → 原位 → 不压栈。
+  /* no-op：拖 +2 tick（6.25px 过阈），吸附 round(2/6)=0 → 原位 → 不压栈。
      此时栈为空，undo 返回 false 即证明 no-op 没有入栈 */
   chip0.fire("pointerdown", { clientX: 100 });
-  fireWin("pointermove", { clientX: 100 + 5 * (600 / 192) });
+  fireWin("pointermove", { clientX: 100 + 2 * (600 / 192) });
   fireWin("pointerup", {});
   eq(chars(beat, id, uid)[0].t, 0, "no-op 拖动：t 不变");
   ok(beat.Arrange.lyricUndo(id, uid) === false, "★ no-op（原地松手）不压栈：undo 空栈返回 false");
@@ -113,14 +113,14 @@ section("T118c 键盘粒度 · 每击键 = 一步（连按 3 次撤 3 次，逐�
   chip0.fire("keydown", { key: "ArrowLeft" });
   chip0.fire("keydown", { key: "ArrowLeft" });
   chip0.fire("keydown", { key: "ArrowLeft" });
-  eq(chars(beat, id, uid)[0].t, 60, "←×3：96 → 60（每击 -1 格，原位更新不重渲染）");
+  eq(chars(beat, id, uid)[0].t, 78, "←×3：96 → 78（每击 -1 格 = 6t，原位更新不重渲染）");
 
   ok(beat.Arrange.lyricUndo(id, uid) === true, "第 1 次 undo");
-  eq(chars(beat, id, uid)[0].t, 72, "★ 逐步回退：60 → 72");
+  eq(chars(beat, id, uid)[0].t, 84, "★ 逐步回退：78 → 84");
   ok(beat.Arrange.lyricUndo(id, uid) === true, "第 2 次 undo");
-  eq(chars(beat, id, uid)[0].t, 84, "★ 72 → 84");
+  eq(chars(beat, id, uid)[0].t, 90, "★ 84 → 90");
   ok(beat.Arrange.lyricUndo(id, uid) === true, "第 3 次 undo");
-  eq(chars(beat, id, uid)[0].t, 96, "★ 84 → 96（回到起点）");
+  eq(chars(beat, id, uid)[0].t, 96, "★ 90 → 96（回到起点）");
   ok(beat.Arrange.lyricUndo(id, uid) === false, "栈空返回 false");
   beat.Arrange.close();
 }

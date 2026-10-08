@@ -82,8 +82,10 @@ section("T223b melodySerialize · 与解析器一进一出 / dur 补「-」/ 离
     "★ dur 三档 = 音符 + 两个「-」");
   eq(beat.melodySerialize([{ t: 24, dur: 24, p: 60 }], ""), "0 1",
     "空档 = 「0」休止补位");
-  eq(beat.melodySerialize([{ t: 12, dur: 24, p: 60 }], ""), "",
-    "★ 不在基准格（八分）的音符跳过——回填是再编辑的起点，不是全量备份");
+  eq(beat.melodySerialize([{ t: 12, dur: 24, p: 60 }], ""), "0_ 1",
+    "★ 十六分偏移（t=12）可无损表达：空档 12t = 「0_」，音符本体「1」（v3.38.0 细分后不再跳过）");
+  eq(beat.melodySerialize([{ t: 7, dur: 24, p: 60 }], ""), "",
+    "离格（非 6t 倍数）的脏值仍跳过——防御位，回填是再编辑的起点");
   eq(beat.melodySerialize([], ""), "", "空谱 → 空串");
   eq(beat.melodySerialize([{ t: 0, dur: 24, p: 67 }], "G"), "1",
     "★ 序列化按调主（G 调的 67 = 1）——与解析同键可逆");
@@ -222,7 +224,7 @@ section("T223f 独立音符块 · 主视图 notechip / 编辑轨 aria / 纯谱�
   const notes = rows.flatMap(r => chipsOfRow(r).filter(c => /(^| )notechip( |$)/.test(c.className)));
   const noteText = chip => (chip.children || []).find(c => /lyric-char/.test(c.className));
   eq(notes.length, 1, "★★ 主视图只画独立音符块（与字重叠的走字上标，不重复画）");
-  eq(noteText(notes[0]).textContent, "6", "★ off 档独立音符也显示（默认按简谱——这是「数据有没有」的谱面）");
+  eq(notes[0] ? noteText(notes[0]).textContent : "(无)", "6", "★ off 档独立音符也显示（默认按简谱——这是「数据有没有」的谱面）");
   ok(rows.some(r => chipsOfRow(r).length > 0 && !/(^| )lyr-empty( |$)/.test(r.className) &&
       chipsOfRow(r).every(c => /notechip/.test(c.className))),
     "★ 只有音符块的行不是空行（.lyr-empty 不挂——间奏不画幽灵底纹）");
@@ -243,10 +245,10 @@ section("T223f 独立音符块 · 主视图 notechip / 编辑轨 aria / 纯谱�
     return out;
   })(lane2);
   eq(allNote.length, 2, "★ 编辑轨纯谱行画满独立音符块");
-  ok(allNote[0].getAttribute("aria-label").indexOf("第 1 颗独立音符") === 0,
+  ok(!!allNote[0] && allNote[0].getAttribute("aria-label").indexOf("第 1 颗独立音符") === 0,
     "★ 独立音符块 aria 逐颗报读（读屏可数）");
   const edTxt = c => (c.children || []).find(x => /arg-lyric-char/.test(x.className));
-  eq(edTxt(allNote[0]).textContent, "1", "编辑轨 off 档按简谱显示（恒显口径同字上标）");
+  eq(allNote[0] ? edTxt(allNote[0]).textContent : "(无)", "1", "编辑轨 off 档按简谱显示（恒显口径同字上标）");
   b2.Arrange.close();
 }
 

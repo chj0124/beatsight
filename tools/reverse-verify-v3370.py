@@ -73,9 +73,15 @@ MUTANTS = [
    "  const kept = [];",
    ["间奏谱原样保留", "既有谱原样"]),
 
-  ("M9 v3.37.0 B 期回退：melodySerialize 丢「-」补档（长音回填变短音）",
-   "    for (let q = 0; q < steps; q++) out.push(\"-\");",
-   "    for (let q = 0; q < 0; q++) out.push(\"-\");",
+  ("M9 v3.37.0/v3.38.0 B 期回退：melodySerialize 丢延音补档（长音回填变短音）",
+   """    if (parts.length){
+      out.push(pitchTextOf(n.p, "jp", keyName) + sub(parts[0]));
+      for (let q = 1; q < parts.length; q++) out.push("-" + sub(parts[q]));
+    }""",
+   """    if (parts.length){
+      out.push(pitchTextOf(n.p, "jp", keyName) + sub(parts[0]));
+      for (let q = 1; q < 1; q++) out.push("-" + sub(parts[q]));
+    }""",
    ["幂等", "dur 三档"]),
 ]
 

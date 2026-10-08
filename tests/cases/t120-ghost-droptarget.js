@@ -63,8 +63,8 @@ section("T120a 单一事实源 · 格吸附 / 磁吸命中 / 邻界钳住 / 换�
   const { beat } = setup();
   const gdt = beat.Arrange.getDropTarget;
   ok(!!gdt, "getDropTarget 已导出");
-  let r = gdt(dOf("move", { t: 41 }));                     // 吸附 round(41/12)=3 → 36
-  eq(r.t, 36, "★ 格吸附：41 → 36");
+  let r = gdt(dOf("move", { t: 41 }));                     // 吸附 round(41/6)=7 → 42
+  eq(r.t, 42, "★ 格吸附：41 → 42");
   eq(r.swap, 0, "格吸附不换位");
   r = gdt(dOf("move", { t: 41, magnet: 48 }));             // 磁吸优先于格吸附
   eq(r.t, 48, "★ 磁吸命中：48 压过格吸附 36");
@@ -135,8 +135,8 @@ section("T120d 气泡格式 · 小节/拍/相对原位格数；swap-hint 脉冲�
   chips[0].fire("pointerdown", { clientX: 100 });
   fireWin("pointermove", { clientX: 100 + 41 * PER_TICK });
   const bubble = inLane(lane, "arg-lyric-bubble")[0];
-  eq(bubble.textContent, "第 1 小节 · 第 2 拍（相对原位 +4 格）",
-     "★ 气泡文本：48t = 第 1 小节 · 第 2 拍，+48t = +4 格");
+  eq(bubble.textContent, "第 1 小节 · 第 2 拍（相对原位 +8 格）",
+     "★ 气泡文本：48t = 第 1 小节 · 第 2 拍，+48t = +8 格（6t/格）");
   fireWin("pointerup", {});
 
   /* 顶着「眠」推过半程 → swap-hint 挂邻字；松手换位提交 + hint 摘除 */

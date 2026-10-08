@@ -61,6 +61,10 @@ const WHITE_LIST = {
      判据与上条一致：能力一旦被用例触达，就该进桩，而不是继续登记豁免。 */
   insertAdjacentElement: "同 insertBefore，兄弟插入家族（afterend 语义）；hang-case 用例不触达",
   click: "真实 DOM 的 click() 会触发 click 处理器（导出预设 <a download> 靠它）；hang-case 用例不触达",
+  /* ★ v3.38.0（P12）：harness 的 textContent 由孤立字段改为**聚合 children**（真实 DOM 语义），
+     `_text` 是它的 backing 字段（getter 拼 children、setter 只写这一份）。hang-case 不看
+     派生上标的显示，无需复刻这层聚合——登记豁免而非复制语义。 */
+  _text: "v3.38.0：harness textContent 聚合 children 的 backing 字段；hang-case 用例不触达显示派生",
 };
 
 /* ---- 抽取器：定位 makeEl 内 `const el = {` 的对象字面量，收集**顶层键** ----

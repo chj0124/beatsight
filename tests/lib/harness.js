@@ -203,7 +203,19 @@ function makeEl(id){
        （`if (el.parentNode) el.parentNode.removeChild(el)`）在桩里恒不执行 → 节点悄悄堆积。 */
     get firstChild(){ return el.children.length ? el.children[0] : null; },
     get lastChild(){ return el.children.length ? el.children[el.children.length - 1] : null; },
-    textContent: "", value: "", title: "",
+    /* ★ v3.38.0：textContent 与 children 同步（真实 DOM 的 textContent = 后代文本的拼接）。
+       桩此前是孤立字段——`appendChild(子节点)` 后读父节点 textContent 恒为 ""，与浏览器不符。
+       简谱正字法（P12）把音高拆成「八度点 + 数码」子节点后，这条差异会让"显示成什么"
+       无法断言（t222/t223/t226 的显示断言）。getter 聚合 children；setter 仍为整字段赋值、
+       **不清 children**（产品有依赖此口径的 removeChild 清空路径，见 index.html 预备拍道重建）。 */
+    _text: "",
+    get textContent(){
+      let s = el._text;
+      for (const c of el.children){ if (c) s += c.textContent; }
+      return s;
+    },
+    set textContent(v){ el._text = (v === null || v === undefined) ? "" : v; },
+    value: "", title: "",
     hidden: false, disabled: false, inert: false,
     /* 布局属性做成**计数的 getter**：这里要断言的是"读了几次"，不是读到了多少；
        但值本身也要有代表性（见上方 ROW_TOP0 的说明），否则物理类的断言会算错 */

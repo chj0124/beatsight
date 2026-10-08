@@ -104,14 +104,14 @@ section("T117b 打轴 · 起播即单段循环 / 空格落字 / ↓ 跳过 / 打
   let chars = beat.Store.findLyric(id, uid).chars;
   eq(chars.length, 3, "★ 敲击不丢字（归一化的「重叠丢弃」被顺移 + dur 收口挡住）");
   ok(chars[0].t > 0, "第 1 字 t = 敲击时刻（>0，不再是均分占位）");
-  eq(chars[0].t % 12, 0, "落点吸附 12t（格）");
+  eq(chars[0].t % 6, 0, "落点吸附 6t（格）");
   eq(els["tapPos"].textContent, "2", "悬浮条进度同步");
 
   fireWin("keydown", { key: "ArrowDown" });               // 跳过「眠」
   st = beat.Arrange.tapState();
   eq(st && st.k, 2, "↓ 跳过：游标进到第 3 字（眠 未被赋新时刻）");
-  ok(beat.Store.findLyric(id, uid).chars[1].t >= beat.Store.findLyric(id, uid).chars[0].t + 12,
-     "被跳过的字不与前字重叠（≥ 前字 + 1 格），不丢");
+  ok(beat.Store.findLyric(id, uid).chars[1].t >= beat.Store.findLyric(id, uid).chars[0].t + 6,
+     "被跳过的字不与前字重叠（≥ 前字 + 1 格 = 6t），不丢");
 
   drive(ac, beat, 0.5);
   fireWin("keydown", { key: " ", code: "Space" });        // 敲第 3 字
@@ -119,7 +119,7 @@ section("T117b 打轴 · 起播即单段循环 / 空格落字 / ↓ 跳过 / 打
   eq(els["tapBar"].hidden, true, "悬浮条收起");
   chars = beat.Store.findLyric(id, uid).chars;
   eq(chars.length, 3, "打轴全程零丢字");
-  ok(chars.every(c => c.dur >= 12), "全部 dur ≥ 12（最短时值下限）");
+  ok(chars.every(c => c.dur >= 6), "全部 dur ≥ 6（最短时值下限）");
   ok(chars[2].t >= chars[0].t, "字序与敲击序一致（后敲不早于先敲）");
 
   /* 重新进入 = 从头重打（无损重做语义） */
