@@ -1,17 +1,22 @@
-/* BeatSight 自动化测试 · 旋律谱 A 期：歌词字块的音高标注（v3.37.0）
+/* BeatSight 自动化测试 · 旋律谱（v3.37.0；B 期契约）
    T222 系列。
    ---------------------------------------------------------------------------
-   由来（用户需求 + 三项拍板）：可视化区增加「与段落对应的旋律谱」——
-     · 形态 = 方案 A：音高并入**歌词字块**（LyricChar 加可选 p = 整数半音，60=C4），
-       纯记谱层（调度器一行不读，与扫弦 dir 同一纪律）；
-     · 记谱 = 双渲染可切换（设置三态：off 关 / jp 简谱 / nm 音名；存储始终是半音整数）；
-     · 第一期纯显示（不做旋律提示音）。
-   契约锚点（与 index.html「旋律音高标注」头注释同源）：
-     · 简谱首调：度数换算按调主（ArrangeData.key，缺省 C）；音名是绝对音高、不读调主；
-     · 贴词后缀必须「紧跟字 + 止于空白/串尾」——否则数字歌词（999朵玫瑰）会被吃成音高；
-     · p 全链路保真：拖动/换位/平移/时值/对齐/打轴/保位重建——所有重建 chars 的路径
-       都必须把 p 原样带过去（本文件的 T222e 逐路径钉死）；
-     · 显示开关只管练习画面：编排页编辑轨**恒显**（off 时按简谱），aria-label 恒带音高。 */
+   由来（用户需求 + 三项拍板）：可视化区增加「与段落对应的旋律谱」。
+   ★ v3.37.0 B 期（模型迁移）：音高的锚点从「字」挪到「格子」——
+     · 行级 notes 姊妹轨（LyricLine.notes = [{t, dur, p}]，与 chars 同网格同坐标系）；
+     · A 期字级 p 在 normLyricLine **一次性迁移**为 notes（t/dur 照抄、p 照搬），
+       此后字对象回到纯 {t, dur, ch}；
+     · 谱锚在格上**不随字移动**：换位/平移/对齐/打轴改的是字的位置，谱留在原地；
+     · 字身上的上标由「谱 × 字区间」**派生**（charPitchMark：恰一颗 = 度数/音名、
+       延音 =「-」、一字多音 =「·」串显）；不与字重叠的谱渲染成独立音符块（前奏/间奏/尾奏）。
+   B 期纯函数与贴谱流/纯谱行的用例在 t223-melody-notes.js；本文件钉：
+     · 纯函数折算与贴词后缀解析（T222a/b——B 期未动，照旧）；
+     · A→B 迁移与字对象纯形（T222c）；
+     · 贴词全链路（T222d：后缀音高落 notes、纯文字重贴不清谱、保位重建）；
+     · 「字动谱不动」各路径 + 行级撤销快照（T222e）；
+     · 设置三态（T222f——B 期未动，照旧）；
+     · 音高组按钮的行级谱语义（T222g）；
+     · 练习视图三态派生渲染（T222h）。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -129,101 +134,139 @@ section("T222b parseLyricTextPitch · 后缀紧跟字 + 止于空白/串尾");
     "1'' = +2 八度 = 84，仍在域内");
 }
 
-/* ============ T222c：normLyricLine 的 p 域校验（脏值静默降级） ============ */
-section("T222c normLyricLine · p 域校验：合法保留 / 越界与非整数剥离 / 旧数据零变化");
+/* ============ T222c：A→B 迁移（char.p 一次性并入 notes，字对象回纯形） ============ */
+section("T222c normLyricLine · A 期 p 迁移为 notes / 脏值剥离 / 显式 notes 为准");
 {
   const app = fixture();
   const { beat, id, uid } = app;
   beat.Store.upsertLyric(id, uid, [
     { t: 0, dur: 24, ch: "一", p: 60 }, { t: 24, dur: 24, ch: "二", p: 999 },
     { t: 48, dur: 24, ch: "三", p: 60.5 }, { t: 72, dur: 24, ch: "四" }]);
-  const cs = chars(beat, id, uid);
-  eq(cs[0].p, 60, "★ 合法 p 保留");
-  ok(cs[1].p === undefined, "★ 越界（999 > PITCH_MAX）静默剥离——字还在、谱没了（同 dir 口径）");
-  ok(cs[2].p === undefined, "★ 非整数（60.5）剥离");
-  ok(cs[3].p === undefined, "无 p 字段照旧（旧数据零迁移）");
-  eq(JSON.stringify(cs[3]), '{"t":72,"dur":24,"ch":"四"}',
-    "★★ 无 p 的字序列化形状与旧格式逐位一致（localStorage 存量零 churn）");
+  const l = beat.Store.findLyric(id, uid);
+  eq(JSON.stringify(l.notes), '[{"t":0,"dur":24,"p":60}]',
+    "★★ 合法 p 迁入 notes（t/dur 照抄、p 照搬）；越界 999 与非整数 60.5 剥离");
+  ok(l.chars.every(c => !("p" in c)),
+    "★★ 字对象回到纯 {t,dur,ch}（两套真相源不并存——B 期起 p 不随字走）");
+  eq(JSON.stringify(l.chars[3]), '{"t":72,"dur":24,"ch":"四"}',
+    "无 p 的字序列化形状与旧格式逐位一致（localStorage 存量零 churn）");
+  /* 显式提交谱 = 本次真相：残留 char.p 静默丢弃（手改脏值不产生第二真相源） */
+  beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "一", p: 60 }],
+    { notes: [{ t: 0, dur: 24, p: 67 }] });
+  const l2 = beat.Store.findLyric(id, uid);
+  eq(JSON.stringify(l2.notes), '[{"t":0,"dur":24,"p":67}]',
+    "★ 显式 notes 为准——行里已有谱时残留 char.p 不迁移（B 期形状优先）");
+  ok(l2.chars.every(c => !("p" in c)), "字对象仍纯形");
   beat.Arrange.close();
 }
 
-/* ============ T222d：贴词全链路（distribute → 落库 → 回填 round-trip） ============ */
-section("T222d distribute 全链路 · 带后缀落库带 p / 纯文字零变化 / 回填一进一出");
+/* ============ T222d：贴词全链路（distribute → 拆双轨落库 → 回填 round-trip） ============ */
+section("T222d distribute 全链路 · 后缀音高落 notes / 纯文字重贴不清谱 / 回填一进一出");
 {
   const app = fixture();
   const { beat, els, id, uid } = app;
   paste(els, "我5 多6 想1' 去");
   const cs = chars(beat, id, uid);
+  const line = () => beat.Store.findLyric(id, uid);
   eq(cs.length, 4, "四个字落库（后缀被吃、不是八颗）");
-  eq(cs[0].ch + ":" + cs[0].p, "我:67", "★ 我5 → p=67");
-  eq(cs[2].ch + ":" + cs[2].p, "想:72", "★ 想1' → p=72（高八度）");
-  ok(cs[3].p === undefined, "「去」不带后缀 → 无 p（两法混用自由）");
-  /* 回填 round-trip：prefill 用 jianpuOf 序列化、空格分隔（任一字带 p 即整句空格分隔） */
+  eq(JSON.stringify(cs[0]), '{"t":0,"dur":24,"ch":"我"}',
+    "★ 字块纯形——后缀音高不落 chars（拆双轨：字归字、谱归谱）");
+  eq(JSON.stringify(line().notes),
+    '[{"t":0,"dur":24,"p":67},{"t":24,"dur":24,"p":69},{"t":48,"dur":24,"p":72}]',
+    "★★ 我5 → 67、多6 → 69、想1' → 72（高八度）三颗音符 1:1 落在字位上");
+  ok(!line().notes.some(n => n.t === 72), "「去」不带后缀 → 无音符（两法混用自由）");
+  /* 回填 round-trip：prefill 从行级谱派生（1:1 形才带后缀）、空格分隔 */
   eq(byCls(lyOf(els, 0), "arg-lyric-paste").value, "我5 多6 想1' 去",
     "★★ 回填 = 字 + 简谱后缀、空格分隔（与解析器一进一出同一套写法）");
+  const before = JSON.stringify(line());
   paste(els, byCls(lyOf(els, 0), "arg-lyric-paste").value);   // 回填原样再贴一遍
-  eq(JSON.stringify(chars(beat, id, uid)), JSON.stringify(cs),
-    "★★ round-trip 逐位幂等（回填文本再贴一遍 = 原数据）");
-  /* 纯文字口径：无 p 时回填不空格分隔（与 v2 时代逐位一致） */
+  eq(JSON.stringify(line()), before,
+    "★★ round-trip 逐位幂等（回填文本再贴一遍 = 原数据，字与谱都不动）");
+  /* ★ B 期语义：纯文字重贴 = 字是内容权威，**谱不是**——谱锚在格上原样保留 */
   paste(els, "我多想去");
-  const cs2 = chars(beat, id, uid);
-  eq(byCls(lyOf(els, 0), "arg-lyric-paste").value, "我多想去", "无音高的回填不加空格（旧行为不变）");
-  ok(cs2.every(c => c.p === undefined), "纯文字重贴 → p 全部消失（新文本是内容权威）");
-  /* 保位重建带音高：改一个字，位置保留、p 保留 */
-  paste(els, "我5 多6 想1' 去");
+  ok(chars(beat, id, uid).every(c => !("p" in c)), "纯文字重贴 → 字块仍纯形");
+  eq(line().notes.length, 3, "★★ 纯文字重贴不清谱（谱锚在格上——间奏谱不被贴词误删）");
+  /* 纯词口径：从未有谱的行，回填不空格分隔（与 v2 时代逐位一致） */
+  const app2 = fixture();
+  paste(app2.els, "我多想去");
+  eq(byCls(lyOf(app2.els, 0), "arg-lyric-paste").value, "我多想去",
+    "无音高的回填不加空格（旧行为不变）");
+  ok(!app2.beat.Store.findLyric(app2.id, app2.uid).notes, "无谱行不写 notes 键（落盘形状与旧格式逐位一致）");
+  app2.beat.Arrange.close();
+  /* 保位重建：改一个字，位置保留；后缀谱覆盖重叠段（新为准）、间奏谱保留 */
+  beat.Store.upsertLyric(id, uid, chars(beat, id, uid).slice(),
+    { notes: line().notes.concat([{ t: 144, dur: 24, p: 64 }]) });  // 造一颗「间奏谱」（词原样）
   paste(els, "我5 多6 想1' 啊");
   const cs3 = chars(beat, id, uid);
   eq(cs3[3].ch, "啊", "末字替换成功");
-  eq(cs3[0].t + "/" + cs3[0].p, "0/67", "★★ 保位重建：换字不动已排位置，前字 p 原样保留");
+  eq(cs3[0].t, 0, "保位重建：换字不动已排位置");
+  ok(line().notes.some(n => n.t === 144 && n.p === 64),
+    "★★ 间奏谱原样保留（重贴词只覆盖它谱到的那几个音）");
+  ok(line().notes.some(n => n.t === 48 && n.p === 72), "前字位的谱照旧（mergeLineNotes 不误伤）");
   beat.Arrange.close();
 }
 
-/* ============ T222e：p 全链路保真（换位/平移/对齐/打轴/拖动快照/编辑轨渲染） ============ */
-section("T222e p 保真 · 重建 chars 的各条路径都把音高原样带过去");
+/* ============ T222e：字动谱不动（换位/平移/对齐/打轴）+ 行级撤销快照 + 编辑轨渲染 ============ */
+section("T222e 谱保真 · 字的位置路径都不动谱 / 行级快照 {chars, notes} 整行回放");
 {
   const app = fixture();
   const { beat, els, id, uid, arr } = app;
   beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "一", p: 60 }, { t: 48, dur: 24, ch: "二", p: 64 }]);
+  const notes0 = () => JSON.stringify(beat.Store.findLyric(id, uid).notes);
+  eq(notes0(), '[{"t":0,"dur":24,"p":60},{"t":48,"dur":24,"p":64}]', "前提：A 期 p 已迁移为两颗音符");
 
-  /* ⑦ 编辑轨渲染恒显 + aria 恒带音高（先于打轴做：startTap 会关浮层回主视图） */
+  /* ⑦ 编辑轨渲染恒显 + aria 恒带音高（派生：谱 × 字区间。先于打轴做：startTap 会关浮层回主视图） */
   sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");   // 收起再展开：按新词重渲染
   const chip0 = chipsOf(byCls(lyOf(els, 0), "arg-lyric-lane"))[0];
-  ok(chip0.getAttribute("aria-label").indexOf("音高") > 0, "★★ 字块 aria-label 恒带「音高」（读屏不依赖视觉开关）");
+  ok(chip0.getAttribute("aria-label").indexOf("音高 1") > 0,
+    "★★ 字块 aria-label 恒带「音高」（60 在 C 调派生为简谱 1；读屏不依赖视觉开关）");
   const txt0 = chip0.children.find(c => /arg-lyric-char/.test(c.className));
-  ok(!!(txt0.children || []).find(c => /arg-lyric-pit/.test(c.className)),
-    "★ 编辑轨音高上标恒显（默认 off 档也显示——编辑面看得到数据）");
+  const pit0 = (txt0.children || []).find(c => /arg-lyric-pit/.test(c.className));
+  ok(!!pit0 && pit0.textContent === "1",
+    "★ 编辑轨音高上标恒显（默认 off 档也按简谱显示——编辑面看得到数据）");
 
-  /* ① swapChars：时序互换（下标位各留原字、t/dur 互换），p 跟字不跟时序位 */
+  /* ① swapChars：时序互换（下标位各留原字、t/dur 互换）——纯函数产物不带 p、谱不动 */
   const sw = beat.Arrange.swapChars(chars(beat, id, uid), 0);
-  eq(sw[0].ch + "@" + sw[0].t + ":" + sw[0].p, "一@48:60", "★ 换位①：「一」留在下标 0、拿走后字时序");
-  eq(sw[1].ch + "@" + sw[1].t + ":" + sw[1].p, "二@0:64", "★ 换位②：p 跟字走（一仍带 60、二仍带 64）");
+  eq(JSON.stringify(sw), '[{"t":48,"dur":24,"ch":"一"},{"t":0,"dur":24,"ch":"二"}]',
+    "★ 换位：字块纯形（换的是「哪个字占哪段旋律」，不是旋律本身）");
+  eq(notes0(), '[{"t":0,"dur":24,"p":60},{"t":48,"dur":24,"p":64}]',
+    "★★ 换位后行级谱纹丝不动（谱锚在格上，不随字换位）");
 
-  /* ② shiftLyricChars：平移只动 t */
+  /* ② shiftLyricChars：平移只动 t——谱留在原地（词被挪离音符时上标如实消失） */
   const sh = beat.Arrange.shiftLyricChars(chars(beat, id, uid), 0, 24, 192);
   eq(sh[0].t, 24, "平移 +1 格");
-  eq(sh[0].p, 60, "★ 平移后 p 原样");
+  ok(!("p" in sh[0]), "★ 平移产物纯形（p 不再随字走）");
+  eq(notes0(), '[{"t":0,"dur":24,"p":60},{"t":48,"dur":24,"p":64}]', "★★ 平移后谱纹丝不动");
 
-  /* ③ alignLyricToRhythm：对齐只重排位置 */
+  /* ③ alignLyricToRhythm：对齐只重排字的位置——谱全员保留 */
   const sec = arr.sections[0];
   beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 48, ch: "一", p: 60 }, { t: 96, dur: 48, ch: "二", p: 67 }]);
+  const beforeAlign = notes0();
   beat.Arrange.alignLyricToRhythm(arr, sec, beat.Store.findLyric(id, uid));
-  const al = chars(beat, id, uid);
-  ok(al.every(c => c.p === 60 || c.p === 67), "★ 对齐后 p 全员保留（位置被重排、谱没丢）");
+  ok(chars(beat, id, uid).every(c => !("p" in c)), "对齐产物纯形");
+  eq(notes0(), beforeAlign, "★★ 对齐后谱全员原样（位置被重排、谱没丢）");
 
-  /* ④ 打轴快照（startTap）：漏带 p = 打一遍轴丢一遍谱 */
+  /* ⑤ 行级撤销快照：一步 = 整行 {chars, notes}——不存在「字回去了谱没回去」的半态
+     （先于打轴做：startTap 会关浮层回主视图） */
+  paste(els, "一1 二2");                       // lyricCommit 第 1 步（两字两音）
+  const snap1 = JSON.stringify(beat.Store.findLyric(id, uid));
+  paste(els, "一1 二2 三3");                    // 第 2 步
+  ok(beat.Arrange.lyricUndo(id, uid) === true, "undo 成功");
+  eq(JSON.stringify(beat.Store.findLyric(id, uid)), snap1,
+    "★★ undo 回放整行快照（字与谱同时回到提交前）");
+  ok(beat.Arrange.lyricRedo(id, uid) === true, "redo 成功");
+  eq(beat.Store.findLyric(id, uid).chars.length, 3, "redo 回到第 2 步（三字）");
+  eq(beat.Store.findLyric(id, uid).notes.length, 3, "★ redo 的谱也同步（三颗音）");
+  ok(beat.Arrange.lyricUndo(id, uid) === true, "再 undo 一步（回到贴词前）");
+
+  /* ④ 打轴快照（startTap）：字快照纯形；打轴只改 t/dur，谱天然保留 */
   beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "一", p: 60 }, { t: 48, dur: 24, ch: "二", p: 64 }]);
+  const beforeTap = notes0();
   beat.Arrange.tapStart(arr, sec, beat.Store.findLyric(id, uid));
   const t1 = beat.Arrange.tapState();
   ok(!!t1, "前提：进入打轴态");
-  ok(t1.chars[0].p === 60 && t1.chars[1].p === 64, "★★ 打轴快照带 p");
+  ok(t1.chars.every(c => !("p" in c)), "★ 打轴快照纯形（v3.37.0 B 期：谱不在字身上）");
   beat.Arrange.tapEnd();
-
-  /* ⑤ 拖动快照（activateDrag 的工作集）：源码钉——真拖拽的松手提交就是这份 map */
-  ok(/chars: list\.map\([^;]*typeof x\.p === "number"/.test(html),
-    "★ 拖动快照（activateDrag chars.map）显式带 p——源码钉（真拖拽路径由 smoke/人工验收）");
-  /* ⑥ 键盘微调的提交 map 同理 */
-  ok(/i === k \? \{ t, dur: c\.dur, ch: x\.ch, \.\.\.\(typeof c\.p === "number" \? \{ p: c\.p \} : \{\}\)/.test(html),
-    "★ 键盘微调提交 map 显式带 p（moveChipKey）");
+  eq(notes0(), beforeTap, "★★ 打轴入口/出口谱原样（upsertLyric 缺省「保留现谱」）");
   beat.Arrange.close();
 }
 
@@ -251,12 +294,15 @@ section("T222f 设置三态 · 默认 off / 点按切换 / 进热键载荷 / 歌
   eq(grp.hidden, true, "★★ 显示歌词关 ⇒ 音高三态组整组收起");
 }
 
-/* ============ T222g：精修「音高」组按钮（±半音 / Shift 八度 / 清除 / 守卫） ============ */
-section("T222g 音高按钮 · 无 p 从调主起 / ±半音 / Shift=八度 / 清除 / 无选中守卫");
+/* ============ T222g：精修「音高」组按钮（行级谱语义：± 作用于交叠音符 / 清除摘净） ============ */
+section("T222g 音高按钮 · 无音符从调主起 / ±半音 / Shift=八度 / 清除摘净 / 无选中守卫");
 {
   const app = fixture();
   const { beat, els, fireWin, id, uid } = app;
+  /* 一（无音符）@0 + 二（p 60 迁移为一颗音符）@48 */
   beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "一" }, { t: 48, dur: 24, ch: "二", p: 60 }]);
+  const line = () => beat.Store.findLyric(id, uid);
+  const notesOf = () => JSON.stringify(line().notes);
   sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");   // 收起再展开：按新词重渲染
   const upBtn = () => miniByAria(lyOf(els, 0), "音高升半音");
   const dnBtn = () => miniByAria(lyOf(els, 0), "音高降半音");
@@ -264,42 +310,63 @@ section("T222g 音高按钮 · 无 p 从调主起 / ±半音 / Shift=八度 / �
   ok(!!upBtn() && !!dnBtn() && !!clrBtn(), "三颗音高按钮在（升/降/清除）");
 
   /* 无选中：announce 指路、不落库 */
-  const before = JSON.stringify(chars(beat, id, uid));
+  const before = JSON.stringify(line());
   upBtn().fire("click");
-  eq(JSON.stringify(chars(beat, id, uid)), before, "无选中：数据不动");
+  eq(JSON.stringify(line()), before, "无选中：数据不动");
   ok((els["srAnnounce"].textContent || "").indexOf("先点按选中") === 0, "无选中：announce 指路");
 
-  /* 选中第一颗（无 p）：+ 从调主起（C=60） */
+  /* 选中第一颗（身上无音符）：+ = 新建一颗（t/dur = 字的区间，从调主 C4=60 起，本步 ± 不生效） */
   const sel0 = () => { const c = chipsOf(byCls(lyOf(els, 0), "arg-lyric-lane"))[0];
     c.fire("pointerdown", { clientX: 100 }); fireWin("pointerup", {}); };
   sel0();
   upBtn().fire("click");
-  eq(chars(beat, id, uid)[0].p, 60, "★ 无音高的字 + 从调主起（C4=60）");
-  eq(chars(beat, id, uid)[1].p, 60, "★ 邻字 p 不受影响（整行保真）");
+  eq(notesOf(), '[{"t":0,"dur":24,"p":60},{"t":48,"dur":24,"p":60}]',
+    "★ 无音符的字 + 从调主起（C4=60；新建音符 = 字的区间，输出按 t 升序）");
+  ok(line().chars.every(c => !("p" in c)), "★ 字对象纯形不动（谱只进 notes）");
   ok((els["srAnnounce"].textContent || "").indexOf("「一」音高 1") >= 0, "announce 报简谱结果");
 
-  /* ± 半音；Shift = ±12 */
+  /* ± 半音；Shift = ±12——作用于「与选中字交叠」的那颗音符，邻字音符不动 */
   upBtn().fire("click");
-  eq(chars(beat, id, uid)[0].p, 61, "再 + 半音 → 61");
+  ok(line().notes.some(n => n.t === 0 && n.p === 61), "再 + 半音 → 61");
+  ok(line().notes.some(n => n.t === 48 && n.p === 60), "★ 邻字音符不受影响（整行保真）");
   upBtn().fire("click", { shiftKey: true });
-  eq(chars(beat, id, uid)[0].p, 73, "★ Shift 点按 = +12（八度）");
+  ok(line().notes.some(n => n.t === 0 && n.p === 73), "★ Shift 点按 = +12（八度）");
   dnBtn().fire("click");
-  eq(chars(beat, id, uid)[0].p, 72, "− 半音 → 72");
+  ok(line().notes.some(n => n.t === 0 && n.p === 72), "− 半音 → 72");
 
-  /* 越界守卫：把音高顶到 PITCH_MAX 再 + ⇒ 不落库、announce 报到头 */
-  beat.Store.upsertLyric(id, uid, [{ t: 0, dur: 24, ch: "一", p: 96 }, { t: 48, dur: 24, ch: "二", p: 60 }]);
+  /* 目标回退：字身上没有「覆盖字首」的音符时，± 作用于字内起音的首颗（一字多音的编辑入口） */
+  beat.Store.upsertLyric(id, uid,
+    [{ t: 0, dur: 48, ch: "一" }, { t: 48, dur: 24, ch: "二", p: 60 }],
+    { notes: [{ t: 24, dur: 24, p: 62 }, { t: 48, dur: 24, p: 64 }] });
   sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");
   sel0();
-  const beforeEdge = JSON.stringify(chars(beat, id, uid));
+  upBtn().fire("click");
+  ok(line().notes.some(n => n.t === 24 && n.p === 63),
+    "★ 字内起音回退：字首无覆盖音符 ⇒ ± 落到字内首颗（t24 的 62→63）");
+  ok(line().notes.some(n => n.t === 48 && n.p === 64), "邻段音符不受回退路径影响");
+
+  /* 越界守卫：把交叠音符顶到 PITCH_MAX 再 + ⇒ 不落库、announce 报到头 */
+  beat.Store.upsertLyric(id, uid,
+    [{ t: 0, dur: 24, ch: "一" }, { t: 48, dur: 24, ch: "二", p: 60 }],
+    { notes: [{ t: 0, dur: 24, p: 96 }, { t: 48, dur: 24, p: 60 }] });
+  sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");
+  sel0();
+  const beforeEdge = JSON.stringify(line());
   upBtn().fire("click", { shiftKey: true });
-  eq(JSON.stringify(chars(beat, id, uid)), beforeEdge, "★ 越出 PITCH_MAX：不落库");
+  eq(JSON.stringify(line()), beforeEdge, "★ 越出 PITCH_MAX：不落库");
   ok((els["srAnnounce"].textContent || "").indexOf("到头") > 0, "越界：announce 报到头");
 
-  /* 清除：回到纯词；再次清除 → announce 说明本来就没有 */
+  /* 清除：摘掉与该字重叠的**全部**音符（一字多音一次摘净）；邻字音符保留 */
+  beat.Store.upsertLyric(id, uid,
+    [{ t: 0, dur: 48, ch: "一" }, { t: 48, dur: 24, ch: "二", p: 60 }],
+    { notes: [{ t: 0, dur: 24, p: 60 }, { t: 24, dur: 24, p: 62 }, { t: 48, dur: 24, p: 64 }] });
+  sumOf(lyOf(els, 0)).fire("click"); sumOf(lyOf(els, 0)).fire("click");
+  sel0();
   clrBtn().fire("click");
-  ok(chars(beat, id, uid)[0].p === undefined, "★ 清除 → p 摘除（序列化回到纯词形状）");
-  eq(JSON.stringify(chars(beat, id, uid)[0]), '{"t":0,"dur":24,"ch":"一"}',
-    "★ 清除后的序列化形状 = 旧格式（存量数据零 churn）");
+  eq(notesOf(), '[{"t":48,"dur":24,"p":64}]',
+    "★★ 清除摘净与字重叠的全部音符（t0/t24 两颗一次摘掉），邻字音符保留");
+  eq(JSON.stringify(line().chars[0]), '{"t":0,"dur":48,"ch":"一"}',
+    "★ 清除后的字序列化形状 = 旧格式（谱删干净、字零 churn）");
   clrBtn().fire("click");
   ok((els["srAnnounce"].textContent || "").indexOf("本来就没有") > 0, "再清除：announce 说明无变化");
   beat.Arrange.close();
@@ -317,7 +384,9 @@ section("T222h 练习视图三态 · 字 span 内上标随开关换写法 / off 
       arrangeSel: { id: "t1", from: 0, to: 0, loop: true } }),
   });
   const { beat, els } = app;
-  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 96, ch: "一", p: 67 }]);
+  /* B 期：谱在行级 notes——字「一」(0–96t) 与音符 p=67 交叠 ⇒ 上标由 charPitchMark 派生 */
+  beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 96, ch: "一" }],
+    { notes: [{ t: 0, dur: 96, p: 67 }] });
   const laneChips = () => {
     const rows = els["lyricLane"].children.filter(c => /(^| )lyric-row( |$)/.test(c.className));
     return Array.prototype.concat.apply([], rows.map(r =>

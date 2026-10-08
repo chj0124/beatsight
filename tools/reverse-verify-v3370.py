@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""反向变异验证（v3.37.0 旋律谱 A 期）——用定向变异证明「歌词字块带音高 + 简谱/音名双渲染」
-   这批功能有具名断言守着。
+"""反向变异验证（v3.37.0 旋律谱 A+B 期）——用定向变异证明「歌词带旋律谱：字级 p → 行级 notes
+   姊妹轨 + 简谱/音名双渲染 + 求交派生 + 独立音符块」这批功能有具名断言守着。
    纪律（reverse-verify-tests-by-mutation skill）：
      1. 只改 /tmp 副本，仓库文件一个字节不动（BEATSIGHT_HTML 注入）；
      2. 变异后必须出现**具名 ✗**（退出码/崩溃不算证据）；
@@ -9,13 +9,16 @@
      4. 「崩溃型被拦」与「需真机」的变异单独标注，不计入 N/N。
    用法：python3 tools/reverse-verify-v3370.py
 
-   判定点清单（一个判定点 = 一个变异；对照见 tests/cases/t222-melody-pitch.js）：
-     M1 jianpuOf 八度点丢弃（1' 退化为 1）        → T222a「高八度/低八度」两条红
-     M2 keySemiOf 非法调回落 0（换调基准漂移）     → T222a「非法调名回落 C」红
-     M3 token 完整匹配护栏删掉（部分后缀也吃）     → T222b「数字歌词保护 / 我5多6」红
-     M4 pitchNotation 默认档翻成 jp（老用户画面被动）→ T222g「默认 off」红
-     M5 组内平移丢 p（谱随位置变动而丢）           → T222f「平移后 p 原样」红
-     M6 off 档守卫删掉（off 也画上标）             → T222h「off 档：不画上标」红"""
+   判定点清单（一个判定点 = 一个变异；对照见 t222-melody-pitch.js / t223-melody-notes.js）：
+     M1 jianpuOf 八度点丢弃（1' 退化为 1）          → T222a「高八度/低八度」两条红
+     M2 keySemiOf 非法调回落 0（换调基准漂移）       → T222a「非法调名回落 C」红
+     M3 token 完整匹配护栏删掉（部分后缀也吃）       → T222b「数字歌词保护 / 我5多6」红
+     M4 pitchNotation 默认档翻成 jp（老用户画面被动）→ T222f「默认 off」红
+     M5 upsertLyric 缺省清谱（迁移与「保留现谱」双破）→ T222c「迁入 notes」+ T222e「谱纹丝不动」红
+     M6 off 档守卫删掉（off 也画派生上标）          → T222h「off 档：不画上标」红
+     M7 charPitchMark 延音单元退化为普通音（B 期）   → T223c「延音线 / -·2」红
+     M8 mergeLineNotes 无条件丢旧谱（B 期）          → T222d「间奏谱原样保留」+ T223d「既有谱原样」红
+     M9 melodySerialize 丢「-」补档（B 期）          → T223b「幂等 / dur 三档」红"""
 import io, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,17 +50,33 @@ MUTANTS = [
    "    pitchNotation: [\"off\", \"jp\", \"nm\"].indexOf(saved.pitchNotation) >= 0 ? saved.pitchNotation : \"jp\",",
    ["默认 off"]),
 
-  ("M5 v3.37.0 回退：组内平移丢 p（位置一动画高就没）",
-   """      ? { t: c.t + d, dur: c.dur, ch: c.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }
-      : { t: c.t, dur: c.dur, ch: c.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }));""",
-   """      ? { t: c.t + d, dur: c.dur, ch: c.ch }
-      : { t: c.t, dur: c.dur, ch: c.ch }));""",
-   ["平移后 p 原样"]),
+  ("M5 v3.37.0 B 期回退：upsertLyric 缺省清谱（A 期 p 运行期迁移被堵 + 只改字的提交丢现谱）",
+   """    const passNotes = (opt && Array.isArray(opt.notes)) ? opt.notes
+      : ((prev && prev.notes) || null);""",
+   """    const passNotes = (opt && Array.isArray(opt.notes)) ? opt.notes
+      : [];""",
+   ["迁入 notes", "谱纹丝不动"]),
 
-  ("M6 v3.37.0 回退：off 档守卫删掉（off 也画上标）",
-   "            if (typeof c.p === \"number\" && S.pitchNotation !== \"off\"){",
-   "            if (typeof c.p === \"number\"){",
+  ("M6 v3.37.0 B 期回退：off 档守卫删掉（off 也画派生上标）",
+   "            if (S.pitchNotation !== \"off\"){",
+   "            if (true){",
    ["off 档：不画上标"]),
+
+  ("M7 v3.37.0 B 期回退：charPitchMark 延音单元退化为普通音（一音多字不再出延音线）",
+   "    if (n.t <= t0) seq.push(n.t < t0 ? { tie: true } : { p: n.p });",
+   "    if (n.t <= t0) seq.push(n.t < t0 ? { p: n.p } : { p: n.p });",
+   ["延音线", "-·2"]),
+
+  ("M8 v3.37.0 B 期回退：mergeLineNotes 无条件丢旧谱（重贴一词清全段）",
+   """  const kept = existing.filter((/** @type {any} */ e) => !incoming.some((/** @type {any} */ n) =>
+    n.t < e.t + e.dur && n.t + n.dur > e.t));""",
+   "  const kept = [];",
+   ["间奏谱原样保留", "既有谱原样"]),
+
+  ("M9 v3.37.0 B 期回退：melodySerialize 丢「-」补档（长音回填变短音）",
+   "    for (let q = 0; q < steps; q++) out.push(\"-\");",
+   "    for (let q = 0; q < 0; q++) out.push(\"-\");",
+   ["幂等", "dur 三档"]),
 ]
 
 total_hit, total_miss, crashed = 0, 0, []

@@ -1008,6 +1008,11 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .lyric-chip.on .lfill{background:var(--peak)}
 .lyric-char{position:absolute;left:clamp(10px,25%,32px);top:50%;transform:translate(-50%,-50%);z-index:1;font-size:min(calc(16px * var(--cs, 1)), 24px);font-weight:700;color:var(--t2);white-space:nowrap}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
 .lyric-char .lyric-pit{font-size:.62em;font-weight:800;line-height:1;vertical-align:super;letter-spacing:0;margin-left:1px}   /* v3.37.0（旋律谱 A）：音高上标随字色（.on/.played 的变色由父 span 继承），不新增定位元素——字块 overflow:hidden，窄格裁掉上标与裁字同口径 */
+/* v3.37.0 B 期：独立音符块（前奏/间奏/尾奏的谱——不与任何字重叠，standaloneNotes 派生）。
+   视觉与字块分家：虚线描边 + 斜体谱字——一眼可分「这里没有词、只有音」；
+   不进 chipEls/fillEls（无 .on/.played 跟随，B 期纯显示），outline 不占布局、不裁谱字 */
+.lyric-chip.notechip{background:rgba(var(--veil),.06);outline:1.5px dashed rgba(var(--veil),.45);outline-offset:-3px}
+.lyric-chip.notechip .lyric-char{font-style:italic;font-weight:800;color:var(--t3)}
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 /* v2.86.0 移植 v2.84.0 双关放大：两标注都关（座次尺/时值标注）⇒ .lyric-row 进释放出的行内标注带、
@@ -2139,6 +2144,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    `.sm` = 窄格降级（dur ≤ T16）：内缩降为 1px，不然十六分格放不下字。 */
 .arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border:2px solid transparent;background-clip:padding-box;border-radius:6px;color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none;box-sizing:border-box}
 .arg-lyric-chip.sm{border-width:1px}
+/* v3.37.0 B 期：独立音符块（编辑轨语境——不与字重叠的谱：间奏/前奏尾奏；纯谱行则全部）。
+   与主视图 .lyric-chip.notechip 同一视觉语言：虚线描边（currentColor 随 obs 主题反色）、
+   底透明——绿底实心是「词块」的专利。显示-only：不可拖、无 grip（编辑走「贴谱」+音高组） */
+.arg-lyric-chip.notechip{background:transparent;border:1.5px dashed currentColor;color:var(--green);cursor:default;font-style:italic;opacity:.9}
 .arg-lyric-chip.dragging{cursor:grabbing;box-shadow:inset 0 0 0 2px var(--green)}
 /* v2.53（C）：上浮 -22px 仅触屏（防指腹遮挡，iOS 拖拽范式）——鼠标拖动字块贴指针，
    不再恒定悬空（用户实测「字块偏离鼠标」的观感成分） */
@@ -2635,6 +2644,9 @@ body[data-theme="obs"] .name-input:focus{border-color:var(--green)}
 /* 歌词字块：chip 底是 var(--green)（浅主题下为深蓝 #2563EB），而字色在经典基座里写死
    #0B0B0B——深蓝底上的黑字几乎糊成一片。同样不动经典写法，只在 obs 下翻成 on-green */
 body[data-theme="obs"] .arg-lyric-chip{color:var(--on-green)}
+/* v3.37.0 B 期：音符块底透明、描边靠 currentColor——obs 的字色覆盖若沿用 on-green（近黑），
+   虚线在深底上不可见；音符块的描边/谱字一律用主题绿（不读 on-green） */
+body[data-theme="obs"] .arg-lyric-chip.notechip{color:var(--green)}
 
 /* ---------- 观测台 · 练习统计 ---------- */
 body[data-theme="obs"] .stat-card{background:var(--card2);border:1px solid var(--line);border-radius:8px}
@@ -4168,23 +4180,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4200  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5200  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7256  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8268  Modal         应用内弹窗
-     L8413  Viz           时值可视化渲染与每帧动画
-     L11888 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12569 Trainer       变速训练器
-     L12779 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13490 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15468 Editor        自定义节奏型编辑器
-     L16048 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16095 Ear           听辨训练（v1.10.0）
-     L16323 Arrange       曲式编排（v2.0.0）
-     L19989 Help          使用方法（v2.0.1）
-     L20144 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L20218 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20507 初始化（装配） 各模块 hook 接线与启动
+     L4212  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5324  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7439  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8473  Modal         应用内弹窗
+     L8618  Viz           时值可视化渲染与每帧动画
+     L12124 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12805 Trainer       变速训练器
+     L13015 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13726 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15704 Editor        自定义节奏型编辑器
+     L16284 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16331 Ear           听辨训练（v1.10.0）
+     L16559 Arrange       曲式编排（v2.0.0）
+     L20317 Help          使用方法（v2.0.1）
+     L20472 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L20546 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20835 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4538,6 +4550,114 @@ function parseLyricTextPitch(text, keySemi){
     i = j;
   }
   return out;
+}
+/* ================= 旋律轨 B 期（v3.37.0）：notes 姊妹轨的纯函数层 =================
+   模型（用户拍板「歌词与旋律合在一条」）：音高的锚点从「字」挪到「格子」——
+   音符 = {t, dur, p}，与 chars 同网格（LYRIC_GRID）、同坐标系（段内绝对 tick）、
+   同一行对象（姊妹轨：删行同走、undo 同栈、没有孤儿谱）。字↔音非 1:1 的三种情形
+   由此全部有解：
+     · 一音多字（音符跨字界）→ 后续字上标显示延音线（charPitchMark 的 tie 单元）
+     · 一字多音（字内多颗音符）→ 上标串显「5·6·1'」（seq 多单元，kind "multi"）
+     · 无词段（前奏/间奏/尾奏）→ chars 空数组 + notes 非空 = 纯谱行，音符渲染成独立块
+   ★ 语义变化（与 A 期「p 随字走」的分野，拍板口径）：音符锚在格上、**不随字移动**——
+     平移/换位/对齐改的是字的位置，谱留在原地（把词挪离它的音符，上标会如实消失，
+     那颗音符转为独立块显示——所见即所得）。存量字级 p 在加载时由 normLyricLine
+     一次性迁移为 notes（1:1：t/dur 照抄、p 照搬），此后字对象回到纯 {t, dur, ch}。 */
+/** 贴谱文本 → notes。token 模型与简谱习惯一致，**每档 = 基准单位（八分 = 2 格）**：
+    ·「5 6 1'」每 token 一颗音符，自段首顺排；
+    ·「-」延长前一颗音符一档（前一事件是休止/尚无音符 = 顺延休止一档）；
+    ·「0」休止一档（只占位不产音符）；
+    · 非法 token ⇒ 返回 {notes:null, bad:该token}——调用方提示后**整句不落**，
+      半句谱比没有谱更难排查（与 distribute 的「放不下就不落」同一条纪律）。
+    @param {string} text @param {number} keySemi
+    @returns {{notes:any[]|null, bad:string|null}} */
+function parseMelodyTokens(text, keySemi){
+  const toks = String(text || "").trim().split(/\s+/).filter(Boolean);
+  const notes = [];
+  let cursor = 0, lastNote = null;
+  for (const tk of toks){
+    if (tk === "-"){
+      if (lastNote) lastNote.dur += LYRIC_BASE;    // 延长前音（"-" 跟在休止后 = 再休一档）
+    } else if (tk === "0"){
+      lastNote = null;
+    } else {
+      const m = matchPitchSuffix(tk, 0, keySemi);
+      if (!m || m.len !== tk.length) return { notes: null, bad: tk };
+      const n = { t: cursor, dur: LYRIC_BASE, p: m.p };
+      notes.push(n);
+      lastNote = n;
+    }
+    cursor += LYRIC_BASE;
+  }
+  return { notes: notes, bad: null };
+}
+/** notes → 贴谱回填文本（与 parseMelodyTokens 一进一出同一套写法）：
+    空档 = 0 休止、dur 超一档 = "-" 补足、音符 = jianpuOf 形。起点/时值不在
+    基准格（八分）上的音符跳过——回填是给「再编辑」当起点的，尽力而为
+    （拖动微调过的谱以数据为准，回填丢的细节重新贴就回来了）。
+    @param {any[]} notes @param {string} keyName @returns {string} */
+function melodySerialize(notes, keyName){
+  if (!notes || !notes.length) return "";
+  const out = [];
+  let cursor = 0;
+  for (const n of notes){
+    if (n.t < cursor || (n.t - cursor) % LYRIC_BASE !== 0) continue;   // 不在基准格：跳过
+    while (cursor < n.t){ out.push("0"); cursor += LYRIC_BASE; }
+    out.push(pitchTextOf(n.p, "jp", keyName));
+    const steps = Math.max(0, Math.floor(n.dur / LYRIC_BASE) - 1);
+    for (let q = 0; q < steps; q++) out.push("-");
+    cursor = n.t + steps * LYRIC_BASE + LYRIC_BASE;
+  }
+  return out.join(" ");
+}
+/** 字 ↔ 音符求交派生（渲染层唯一来源——字块上标不再存 p，改由本函数推导）。
+    返回 null = 无标注；否则 {kind, seq}：seq = 有序「显示单元」——
+      {tie:true} = 覆盖字首的音符起于字前（延音线，显示「-」）
+      {p:number} = 一颗音符（显示 pitchTextOf(p)）
+    kind = "pitch"（恰一颗音符自字首覆盖）| "tie"（仅延音）| "multi"（≥2 单元，串显）。
+    显示文本由 pitchMarkText 按 mode/key 现算——数据层不掺显示偏好。
+    ★ notes 互不重叠（normLyricLine 保证）⇒ 覆盖字首的音符至多一颗、
+      且必然是 seq 的首个（其余都起于字内）。
+    @param {any[]} notes 全行音符（升序） @param {{t:number, dur:number}} c 字
+    @returns {{kind:string, seq:({tie?:boolean, p?:number})[]}|null} */
+function charPitchMark(notes, c){
+  if (!notes || !notes.length) return null;
+  const t0 = c.t, t1 = c.t + c.dur;
+  const seq = [];
+  for (const n of notes){
+    if (n.t >= t1) break;
+    if (n.t + n.dur <= t0) continue;
+    if (n.t <= t0) seq.push(n.t < t0 ? { tie: true } : { p: n.p });
+    else seq.push({ p: n.p });
+  }
+  if (!seq.length) return null;
+  return { kind: seq.length > 1 ? "multi" : (seq[0].tie ? "tie" : "pitch"), seq: seq };
+}
+/** mark → 显示文本（tie =「-」、多单元用「·」连接）。@param {any} mark @param {string} mode
+    @param {string} keyName @returns {string} */
+function pitchMarkText(mark, mode, keyName){
+  if (!mark) return "";
+  return mark.seq.map((/** @type {any} */ u) =>
+    u.tie ? "-" : pitchTextOf(/** @type {number} */ (u.p), mode, keyName)).join("·");
+}
+/** 不与任何字重叠的音符（前奏/间奏/尾奏，或被挪离的字背后的谱）——渲染为独立音符块。
+    chars 空 = 纯谱行 ⇒ 全部音符独立。
+    @param {any[]} chars @param {any[]} notes @returns {any[]} */
+function standaloneNotes(chars, notes){
+  if (!notes || !notes.length) return [];
+  if (!chars || !chars.length) return notes.slice();
+  return notes.filter((/** @type {any} */ n) => !chars.some((/** @type {any} */ c) =>
+    c.t < n.t + n.dur && c.t + c.dur > n.t));
+}
+/** 贴词后缀产生的音符并入既有谱：与新音符重叠的旧音符让位（重贴改谱，新为准），
+    其余旧音符（如间奏谱）原样保留。输出按 t 升序。
+    @param {any[]} existing @param {any[]} incoming @returns {any[]} */
+function mergeLineNotes(existing, incoming){
+  if (!incoming || !incoming.length) return (existing || []).slice();
+  if (!existing || !existing.length) return incoming.slice();
+  const kept = existing.filter((/** @type {any} */ e) => !incoming.some((/** @type {any} */ n) =>
+    n.t < e.t + e.dur && n.t + n.dur > e.t));
+  return kept.concat(incoming).sort((/** @type {any} */ x, /** @type {any} */ y) => x.t - y.t);
 }
 /* ================= 示例曲《在他乡》谱面数据（v2.3.0）=================
    数据逐格来自参考谱面（用户填写的十六分格表），不再自行推定：
@@ -5054,8 +5174,9 @@ function migrateDemoToBuiltins(customs, arranges){
    歌词行 / 曲式 / 预设 / 听辨战绩这些高频数据形状全靠内联 @type 或裸 any，tsc 守不住结构漂移。
    这里收口成可复用的命名类型，供 Store 归一化出口、import/export、共享区 tick/字查询函数共用。
    ★ 纯类型声明，零运行时影响；R1 不受影响（typedef 不产生模块间引用）。 */
-/** @typedef {{ t: number, dur: number, ch: string, p?: number }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断）；p=可选音高（整数半音，60=C4，纯记谱层——见 LYRIC 常量区的「旋律音高标注」头注释） */
-/** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid） */
+/** @typedef {{ t: number, dur: number, ch: string }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断）。v3.37.0 B 期起**不再携带 p**——音高全部迁入行级 notes（姊妹轨），存量 p 由 normLyricLine 加载时一次性迁移 */
+/** @typedef {{ t: number, dur: number, p: number }} LyricNote 一颗音符：t/dur 与字同一网格同一坐标系（段内绝对 tick，dur 必为 LYRIC_GRID 整数倍），p=整数半音（60=C4，域 [PITCH_MIN, PITCH_MAX]）。互不重叠（normLyricLine 跳过靠后的重叠音符，同字的重叠口径） */
+/** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[], notes?: LyricNote[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid）；v3.37.0 B 期：可选 notes = 旋律姊妹轨（**notes 非空才写键**——无旋律的行落盘形状与旧格式逐位一致）。chars 与 notes 可各自为空：双空 = 行不存在；chars 空而 notes 有 = 纯谱行（前奏/间奏/尾奏） */
 /** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number }} Step 一小节的单步（时值槽；dir/zone 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]） */
 /** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][], label?: string }} Preset 归一化后的节奏型（id 在落库时补） */
 /** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number, chords?: string }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
@@ -5126,6 +5247,9 @@ const CONFIG = {
   /* F1 歌词对齐轨（v2.1.0）：容量与域上限。吸附/基准粒度见数据区的 LYRIC_GRID / LYRIC_BASE。
      上限的作用是让"脏数据"在加载时就有界可钳——不依赖段落长度解析（那条边界在共享状态区） */
   lyricMaxLines: 256, lyricMaxChars: 256, lyricMaxChLen: 8, lyricMaxDur: 128 * TPB,
+  /* v3.37.0 B 期：旋律姊妹轨的容量上限——一段 16 小节按十六分铺满也只有 256 颗，
+     512 给脏数据留一倍钳制余量（与 lyricMaxChars 同口径：加载时有界可钳） */
+  lyricMaxNotes: 512,
   /* 扫弦弦区音色（v2.2.0，v2.29.0 两频段化）：低/高弦区各一个带通中心频率（低闷高亮，
      频率比 1:4——比 1:1.4:2 更易盲听区分）。全扫（zone 缺省，或老数据里的 1）=
      低+高两频段**同时**发声：六根弦全响，理应比只扫三根的单区更满，故两颗脉冲
@@ -6051,7 +6175,7 @@ const Store = (() => {
   }
 
   /* ---- 歌词对齐轨（v2.1.0 F1，冷键 beatsight.lyrics）----
-     形状：{ arrangeId, secUid, chars: [ { t, dur, ch } ] }
+     形状：{ arrangeId, secUid, chars: [ { t, dur, ch } ], notes?: [ { t, dur, p } ] }
        · **一行歌词绑定一个曲式段落**：arrangeId = 曲式 id、secUid = 段的稳定身份（v2.26.0）。
          同一曲式可给多个段落各挂一行，故身份 = (arrangeId, secUid) 二元组（契约里的
          「曲式id#段下标」在内存里拆成两个字段，免得每条读写路径都去 split 字符串）。
@@ -6063,6 +6187,12 @@ const Store = (() => {
        · dur = 该字的**时值**，单位 tick，必为 LYRIC_GRID 的整数倍。延音字 dur > LYRIC_BASE，
          播放时高亮铺满整个 dur、且其间**不产生新锚点**（验收断言 5）。
        · ch  = 字（trim 后非空；上限 lyricMaxChLen，容忍词/连字）。
+       · ★ v3.37.0 B 期 notes = **旋律姊妹轨**：[ { t, dur, p } ] 与字同网格同坐标系，
+         p = 整数半音（60=C4，域 [PITCH_MIN, PITCH_MAX]），互不重叠；
+         **notes 非空才写键**（无旋律的行落盘形状与旧格式逐位一致）。
+         chars 空而 notes 有 = 纯谱行（前奏/间奏/尾奏）；双空 = 行不存在。
+         音符锚在格上、不随字移动（渲染层由 charPitchMark/standaloneNotes 派生）——
+         模型与迁移口径见数据区「旋律轨 B 期」头注释。
 
      ★ 本模块**只做结构校验**（类型/域/吸附/排序/重叠/上限），**不做"越界"校验**——
      越界要先知道段落有多长，而段落长度 = Σ (blocks.repeats × 所引用型的小节数) × 拍号 × TPB，
@@ -6104,13 +6234,21 @@ const Store = (() => {
     if (!raw || typeof raw !== "object") return null;
     if (typeof raw.arrangeId !== "string" || !raw.arrangeId) return null;
     if (typeof raw.secUid !== "string" || !raw.secUid) return null;   // v2.26.0：寻址键是段 uid
-    if (!Array.isArray(raw.chars) || !raw.chars.length
-        || raw.chars.length > CONFIG.lyricMaxChars) return null;
+    /* v3.37.0 B 期：chars 允许为空**当且仅当** notes 非空（纯谱行：前奏/间奏/尾奏）——
+       双空 = 行不存在，照旧判 null。上限照钳。 */
+    const rawChars = Array.isArray(raw.chars) ? raw.chars : [];
+    const rawNotes = Array.isArray(raw.notes) ? raw.notes : null;     // null = 没带 notes 键（≠ 带了空数组）
+    if ((!rawChars.length && !(rawNotes && rawNotes.length))
+        || rawChars.length > CONFIG.lyricMaxChars) return null;
     /* 先按 t 升序：重叠判定只在有序序列上才有意义（乱序输入不该被判成"重叠"而被丢） */
-    const src = raw.chars.slice().sort((/** @type {any} */ a, /** @type {any} */ b) =>
+    const src = rawChars.slice().sort((/** @type {any} */ a, /** @type {any} */ b) =>
       numOr(a && a.t, 0) - numOr(b && b.t, 0));
     const chars = [];
     let bad = 0, lastEnd = 0;
+    /* v3.37.0 B 期：A 期的字级 p 在这里**一次性迁移**为 notes——t/dur 照抄、p 照搬。
+       迁移只在行里没有 notes 时发生（有 notes = 已是 B 期形状，残留的 char.p 属于
+       手改脏值，静默丢弃并计入 bad——两套真相源并存才是更大的坑）。 */
+    const migrated = [];
     for (const c of src){
       if (!c || typeof c !== "object"){ bad++; continue; }
       const ch = (typeof c.ch === "string") ? c.ch.trim().slice(0, CONFIG.lyricMaxChLen) : "";
@@ -6120,18 +6258,46 @@ const Store = (() => {
       if (t < lastEnd){ bad++; continue; }                      // 重叠：跳过靠后的那个字
       let dur = isNum(c.dur) ? Math.round(c.dur / LYRIC_GRID) * LYRIC_GRID : LYRIC_BASE;
       dur = Math.min(CONFIG.lyricMaxDur, Math.max(LYRIC_MIN_DUR, dur));
-      /* v3.37.0：可选音高 p——整数半音且落在 [PITCH_MIN, PITCH_MAX] 才保留，
-         脏值静默降级省略（同 dir/zone 口径：坏数据不带进内存，也不拖垮整行） */
+      /* A 期音高 p（整数半音且落 [PITCH_MIN, PITCH_MAX]）——迁移期兼容读入 */
       const pOk = Number.isInteger(c.p) && c.p >= PITCH_MIN && c.p <= PITCH_MAX;
-      chars.push(pOk ? { t: t, dur: dur, ch: ch, p: /** @type {number} */ (c.p) } : { t: t, dur: dur, ch: ch });
+      if (pOk) migrated.push({ t: t, dur: dur, p: /** @type {number} */ (c.p) });
+      chars.push({ t: t, dur: dur, ch: ch });
       lastEnd = t + dur;
     }
-    if (!chars.length) return null;
+    /* ---- notes 姊妹轨（v3.37.0 B 期）：结构与字同一套纪律 ----
+       吸附十六分格 / 排序 / 重叠跳过靠后者 / p 域钳 / 上限钳 / 脏条目跳过计数 warn。
+       rawNotes 为 null（未带键）⇒ 用迁移产物；带了（哪怕空数组）⇒ 以它为准。 */
+    let notes = [];
+    {
+      const srcNotes = rawNotes !== null ? rawNotes : migrated;
+      const sorted = srcNotes.slice().sort((/** @type {any} */ a, /** @type {any} */ b) =>
+        numOr(a && a.t, 0) - numOr(b && b.t, 0));
+      let badN = 0, lastEndN = 0;
+      for (const n of sorted){
+        if (!n || typeof n !== "object" || !isNum(n.t) || n.t < 0
+            || !Number.isInteger(n.p) || n.p < PITCH_MIN || n.p > PITCH_MAX){ badN++; continue; }
+        const t = Math.round(n.t / LYRIC_GRID) * LYRIC_GRID;
+        if (t < lastEndN){ badN++; continue; }                  // 重叠：跳过靠后的那颗（与字同口径）
+        let dur = isNum(n.dur) ? Math.round(n.dur / LYRIC_GRID) * LYRIC_GRID : LYRIC_BASE;
+        dur = Math.min(CONFIG.lyricMaxDur, Math.max(LYRIC_MIN_DUR, dur));
+        if (notes.length >= CONFIG.lyricMaxNotes){ badN++; continue; }
+        notes.push({ t: t, dur: dur, p: /** @type {number} */ (n.p) });
+        lastEndN = t + dur;
+      }
+      if (badN){
+        try{ console.warn("[BeatSight] 歌词行 " + raw.arrangeId + "#" + raw.secUid
+          + " 跳过 " + badN + " 颗坏音符（越界/重叠/音高域外）"); }catch(e){}
+      }
+    }
+    if (!chars.length && !notes.length) return null;
     if (bad){
       try{ console.warn("[BeatSight] 歌词行 " + raw.arrangeId + "#" + raw.secUid
         + " 跳过 " + bad + " 个坏字（越界/重叠/空字）"); }catch(e){}
     }
-    return { arrangeId: raw.arrangeId, secUid: raw.secUid, chars };
+    /* notes 非空才写键：无旋律的行落盘形状与 v3.37.0 A 期之前的旧格式逐位一致 */
+    const out = { arrangeId: raw.arrangeId, secUid: raw.secUid, chars: chars };
+    if (notes.length) out.notes = notes;
+    return out;
   }
   const lyrIn = readJSON(KEY_LYRICS);
   /** @type {LyricLine[]} */
@@ -6163,12 +6329,23 @@ const Store = (() => {
   const findLyric = (arrangeId, secUid) => lyrics.find(x => x && x.arrangeId === arrangeId && x.secUid === secUid) || null;
   /* 新增或更新（按 (arrangeId, secUid) 判定）。返回规范化后的行；结构不合法返回 null，
      调用方（UI）要把 null 当成"这份录入还不能存" */
-  /** @param {string} arrangeId @param {string} secUid @param {any} chars @returns {any} */
   /** @param {string} arrangeId @param {string} secUid @param {any} chars
-      @param {{deferPersist?: boolean}} [opt] deferPersist=true 时不落盘——批量带出（示例曲）
-      由调用方收口一次 persistLyrics，与 importAll 同口径（v3.31.6 审计 P2-C）。 */
+      @param {{deferPersist?: boolean, notes?: any[]}} [opt]
+      deferPersist=true 时不落盘——批量带出（示例曲）由调用方收口一次 persistLyrics，
+      与 importAll 同口径（v3.31.6 审计 P2-C）。
+      v3.37.0 B 期：opt.notes **显式传入**（数组，可为空）= 本次提交的旋律谱；
+      缺省 = **保留现谱不动**（只改字的入口——平移/换位/对齐/时值——都走这条默认，
+      谱锚在格上不随字走，见纯函数层头注释）。 */
   function upsertLyric(arrangeId, secUid, chars, opt){
-    const v = normLyricLine({ arrangeId, secUid, chars });
+    const prev = findLyric(arrangeId, secUid);
+    /* ★ 无现谱、也没显式提交 ⇒ **不传 notes 键**（而不是传空数组）——
+       normLyricLine 的「无键 = 迁移期」判定靠键的缺省区分「清谱」与「没有谱」，
+       无条件塞 [] 会把 A 期存量字级 p 的运行期迁移也堵死（迁移只在加载期发生）。 */
+    const passNotes = (opt && Array.isArray(opt.notes)) ? opt.notes
+      : ((prev && prev.notes) || null);
+    const v = passNotes !== null
+      ? normLyricLine({ arrangeId, secUid, chars, notes: passNotes })
+      : normLyricLine({ arrangeId, secUid, chars });
     if (!v) return null;
     const i = lyrics.findIndex(x => x && x.arrangeId === v.arrangeId && x.secUid === v.secUid);
     if (i >= 0) lyrics[i] = v; else lyrics.push(v);
@@ -6195,11 +6372,17 @@ const Store = (() => {
     while (used.has(name) && n < 999){ n++; name = base + " (" + n + ")"; }
     const copy = { uid, name, blocks: JSON.parse(JSON.stringify(src.blocks || [])) };
     const line = findLyric(arrangeId, secUid);
-    if (line && Array.isArray(line.chars) && line.chars.length){
-      upsertLyric(arrangeId, uid, JSON.parse(JSON.stringify(line.chars)));
+    /* v3.37.0 B 期：谱随行拷（姊妹轨语义——复制段 = 复制整行内容，含旋律）；
+       纯谱行（chars 空、notes 有）也照复制 */
+    if (line && ((Array.isArray(line.chars) && line.chars.length)
+        || (line.notes && line.notes.length))){
+      upsertLyric(arrangeId, uid,
+        line.chars && line.chars.length ? JSON.parse(JSON.stringify(line.chars)) : [],
+        { notes: line.notes ? JSON.parse(JSON.stringify(line.notes)) : [], deferPersist: true });
     }
     a.sections.splice(i + 1, 0, copy);
     persistArranges();
+    persistLyrics();          // 上面的 deferPersist 在这里收口（段与行同一次事务）
     return { uid: uid, name: name, index: i + 1 };
   }
 
@@ -8219,16 +8402,20 @@ function lyricSpanTicks(arrangeId, secUid){
   }
   return meter ? secBars(sec) * meter * TPB : 0;
 }
-/* 该段落可用于渲染/发声的字表（已按 t 升序、已剔除越界字）。无行 → LYRIC_NONE */
+/* 该段落可用于渲染/发声的字表（已按 t 升序、已剔除越界字）。无行 → LYRIC_NONE。
+   v3.37.0 B 期：纯谱行（chars 空、notes 有）**不**提前返回——缓存条目两条轨共用，
+   lyricNotesAt 靠它填充（见下）。 */
 /** @param {string} arrangeId @param {string} secUid @returns {any[]} */
 function lyricCharsAt(arrangeId, secUid){
   const line = Store.findLyric(arrangeId, secUid);
-  if (!line || !line.chars.length) return LYRIC_NONE;
+  const notes0 = (line && line.notes) || [];
+  if (!line || (!line.chars.length && !notes0.length)) return LYRIC_NONE;
   const key = arrangeId + "#" + secUid;
   const hit = lyricFit.get(key);
   if (hit && hit.line === line) return hit.chars;
   const span = lyricSpanTicks(arrangeId, secUid);
   let chars = line.chars;
+  let notes = notes0;
   if (span > 0){
     const kept = line.chars.filter((/** @type {any} */ c) => c.t < span);
     if (kept.length !== line.chars.length){
@@ -8236,12 +8423,30 @@ function lyricCharsAt(arrangeId, secUid){
       try{ console.warn("[BeatSight] 歌词行 " + key + " 有 " + (line.chars.length - kept.length)
         + " 个字超出段落范围，已忽略"); }catch(e){}
     }
+    /* v3.37.0 B 期：音符的越界剔除与字同口径同缓存（姊妹轨——一次查行，两条轨都 clipped） */
+    const keptN = notes.filter((/** @type {any} */ n) => n.t < span);
+    if (keptN.length !== notes.length){
+      notes = keptN;
+      try{ console.warn("[BeatSight] 歌词行 " + key + " 有 " + (line.notes.length - keptN.length)
+        + " 颗音符超出段落范围，已忽略"); }catch(e){}
+    }
   }
   /* v3.31.6（审计 P2-A）：无上限缓存 + 失效只覆盖「改」（行对象替换），删曲式/删段留死条目。
      封顶 512 条溢出清空（同 MUTE_RND_CACHE 口径）——反复删建曲式不再累积。 */
   if (lyricFit.size > 512) lyricFit.clear();
-  lyricFit.set(key, { line, chars });
+  lyricFit.set(key, { line, chars, notes });
   return chars;
+}
+/* 该段落可用于渲染的音符表（v3.37.0 B 期，已按 t 升序、已剔除越界音符）。
+   与 lyricCharsAt 共用同一份缓存条目（行对象身份失效一次管两条轨）。
+   纯显示轨：调度/发声侧**不读它**（B 期不做旋律提示音）。无谱 → LYRIC_NONE */
+/** @param {string} arrangeId @param {string} secUid @returns {any[]} */
+function lyricNotesAt(arrangeId, secUid){
+  const line = Store.findLyric(arrangeId, secUid);
+  if (!line || !line.notes || !line.notes.length) return LYRIC_NONE;
+  lyricCharsAt(arrangeId, secUid);               // 先踩一遍缓存（含越界剔除），再取同一条目
+  const hit = lyricFit.get(arrangeId + "#" + secUid);
+  return (hit && hit.line === line && hit.notes) || LYRIC_NONE;
 }
 
 /* ================= 共享纯函数：播放范围落盘（审计 Q3，v2.61.0） =================
@@ -10734,14 +10939,17 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       rowEl.className = "lyric-row" + (r === 0 && winPrevSeg >= 0 ? " preview" : "");
       /** @type {any} */
       /* y：覆盖层下本行的 translateY 锚点（placeLaneOverlay 写；v3.0.0 批 2 帧内要复用它叠加 dy） */
-      const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [], y: 0 };
+      const row = { el: rowEl, head: null, bar: k, barTicks: 1, chars: [], chipEls: [], fillEls: [], noteN: 0, y: 0 };
       const at = empty ? null : songBarAt(a, ((k % total) + total) % total);
       if (at){
         /* v2.26.0：歌词按**段 uid**取（at.sec 只是位置，段挪过位置后它就指错段了） */
         const secUid = a.sections[at.sec] ? a.sections[at.sec].uid : "";
         const span = lyricSpanTicks(a.id, secUid);
         const chars = lyricCharsAt(a.id, secUid);
-        if (span > 0 && chars.length){
+        /* v3.37.0 B 期：行级谱（姊妹轨）——纯谱行（chars 空）也走这里；
+           上标由「谱 × 字区间」派生，独立音符块由 standaloneNotes 给出 */
+        const notes = lyricNotesAt(a.id, secUid);
+        if (span > 0 && (chars.length || notes.length)){
           /* 段内一小节的 tick 用 span / 段小节数**反解**，不另取拍号：与 span 必然同源，
              拍号取错时也不会出现轨道溢出错位 */
           const bt = span / (secBars(a.sections[at.sec]) || DEF_BARS);
@@ -10753,9 +10961,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             .filter(c => Math.max(0, c.t || 0) >= lo && Math.max(0, c.t || 0) < lo + slice)
             .map(c => {
               const t = Math.max(0, c.t || 0), d = c.dur || LYRIC_BASE;
-              return { lt: t - lo, ld: Math.max(0, Math.min(d, lo + slice - t)), ch: c.ch,
-                p: (typeof c.p === "number") ? c.p : undefined };   // v3.37.0：音高随字行透传（渲染层只读）
+              return { lt: t - lo, ld: Math.max(0, Math.min(d, lo + slice - t)), ch: c.ch, t0: t, dur0: d };
             });
+          const keyName = (typeof a.key === "string") ? a.key : "";
           for (const c of row.chars){
             const chip = document.createElement("div");
             chip.className = "lyric-chip";
@@ -10766,19 +10974,44 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             const label = document.createElement("span");
             label.className = "lyric-char";
             label.textContent = c.ch;            // 边界规则 3：用户可控字符串只走 textContent
-            /* v3.37.0（旋律谱 A）：音高上标（简谱/音名由 S.pitchNotation 定，调主随曲式 key、
-               缺省 C）。上标挂在字 span 内——字色随 .on/.played 变时上标跟着变，零新增定位元素。 */
-            if (typeof c.p === "number" && S.pitchNotation !== "off"){
-              const pit = document.createElement("span");
-              pit.className = "lyric-pit";
-              pit.textContent = pitchTextOf(c.p, S.pitchNotation,
-                typeof a.key === "string" ? a.key : "");
-              label.appendChild(pit);
+            /* v3.37.0（旋律谱 A 期上标；B 期改**派生**）：音高标注（简谱/音名由
+               S.pitchNotation 定，调主随曲式 key、缺省 C）挂在字 span 内——字色随
+               .on/.played 变时标注跟着变，零新增定位元素。B 期由行级谱 × 字区间现算：
+               恰一颗 = 度数/音名；延音 =「-」；一字多音 =「·」串显（charPitchMark）。 */
+            if (S.pitchNotation !== "off"){
+              const markTxt = pitchMarkText(charPitchMark(notes, { t: c.t0, dur: c.dur0 }),
+                S.pitchNotation, keyName);
+              if (markTxt){
+                const pit = document.createElement("span");
+                pit.className = "lyric-pit";
+                pit.textContent = markTxt;
+                label.appendChild(pit);
+              }
             }
             chip.appendChild(fill); chip.appendChild(label);
             rowEl.appendChild(chip);
             row.chipEls.push(chip); row.fillEls.push(fill);
             lyricChipEls.push(chip); lyricFillEls.push(fill);
+          }
+          /* v3.37.0 B 期：独立音符块（间奏/前奏尾奏；纯谱行则全部）。
+             静态显示：不进 chipEls/fillEls（那与 row.chars 下标严格对齐，paintLyric
+             逐下标刷高亮，掺入会错位）——B 期先纯显示，播放跟随留待拍板。
+             off 档也显示：这是「数据有没有」的谱面（同编辑轨恒显口径），开关只管
+             「字身上的标注」那一层。 */
+          for (const n of standaloneNotes(chars, notes)){
+            const t = Math.max(0, n.t || 0);
+            if (t < lo || t >= lo + slice) continue;
+            const nchip = document.createElement("div");
+            nchip.className = "lyric-chip notechip";
+            nchip.style.left = ((t - lo) / slice * 100) + "%";
+            const d = Math.max(0, Math.min(n.dur || LYRIC_BASE, lo + slice - t));
+            nchip.style.width = (d / slice * 100) + "%";
+            const nlabel = document.createElement("span");
+            nlabel.className = "lyric-char";
+            nlabel.textContent = pitchTextOf(n.p, S.pitchNotation === "off" ? "jp" : S.pitchNotation, keyName);
+            nchip.appendChild(nlabel);
+            rowEl.appendChild(nchip);
+            row.noteN++;
           }
         }
       }
@@ -10790,12 +11023,14 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       lane.appendChild(rowEl);
       lyricRows.push(row);
       /* ★★ v3.33.8：**建行时就标出"没有歌词"**（无 chip）——不依赖帧内的状态同步
-         （那条在 sig 未变时会跳过），保证空行在任何时刻都带 .empty ⇒ 底纹不画。 */
-      row.el.classList.toggle("lyr-empty", !(row.chipEls && row.chipEls.length));
+         （那条在 sig 未变时会跳过），保证空行在任何时刻都带 .empty ⇒ 底纹不画。
+         v3.37.0 B 期：独立音符块也算内容（纯谱行/间奏不是空行）。 */
+      row.el.classList.toggle("lyr-empty", !((row.chipEls && row.chipEls.length) || row.noteN));
     }
     /* 窗口里一个小节的歌词都没有 → 整轨收起不占位（与旧版"当前段无歌词行即收起"同义）。
-       窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来 */
-    if (!lyricRows.some(r => r.chars.length)){ lane.hidden = true; lane.classList.remove("overlay"); return; }
+       窗口翻转会经 buildViz 重新走到这里，播到有歌词的小节时轨道自己会回来。
+       v3.37.0 B 期：纯谱行/间奏也算有内容（noteN）。 */
+    if (!lyricRows.some(r => r.chars.length || r.noteN)){ lane.hidden = true; lane.classList.remove("overlay"); return; }
     lane.hidden = false;
     lyricRunSig = a.id + "@" + W + "/" + K + "#" + winPrevSeg;
     layoutLyricLane();                          // ★ v2.86.0：按 effectiveLyricPos 定位（底部流式 / 伴随覆盖层）
@@ -11053,8 +11288,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
         /* ★★ v3.33.8：标出**没有歌词**的行。用户实拍："没有歌词的情形下，跑道下面依然渲染"——
            底下那条浅色空条就是当前槽的 .lyric-row.cur 底纹（rgba(--veil,.05)）；该槽没有词时
            行里一个 chip 都没有，底纹却照画 ⇒ 看起来像"凭空多出一条歌词带"。
-           底纹只表"这一行是当前正在唱的那行"，没有词就无从谈起，故空行不画（见样式区）。 */
-        row.el.classList.toggle("lyr-empty", !(row.chipEls && row.chipEls.length));
+           底纹只表"这一行是当前正在唱的那行"，没有词就无从谈起，故空行不画（见样式区）。
+           v3.37.0 B 期：独立音符块也算内容（与 buildLyricLane 建行时同一口径）。 */
+        row.el.classList.toggle("lyr-empty", !((row.chipEls && row.chipEls.length) || row.noteN));
         /* v3.34.4：**无词的行不上播放头**——与上面 .lyr-empty 同一口径（没有词就无从谈起） */
         row.head.style.display = (ri === curIdx && lyricHeadAt(row, tib, lyricW).show) ? "" : "none";
       });
@@ -16811,9 +17047,10 @@ const Arrange = (() => {
     if (j < 0) return null;                       // 时间序最后一个字：右边没人可换
     const b = chars[j];
     const out = chars.slice();
-    /* v3.37.0：换位 = 时序互换，字各随索引位——音高随字走（p 跟 ch 同侧不跟 t） */
-    out[k] = { t: b.t, dur: b.dur, ch: a.ch, ...(typeof a.p === "number" ? { p: a.p } : {}) };
-    out[j] = { t: a.t, dur: a.dur, ch: b.ch, ...(typeof b.p === "number" ? { p: b.p } : {}) };
+    /* v3.37.0 B 期：换位 = 时序互换，字各随索引位。谱锚在格上**不随字换**（见纯函数层
+       头注释）——换的是「哪个字占哪段旋律」，不是旋律本身 */
+    out[k] = { t: b.t, dur: b.dur, ch: a.ch };
+    out[j] = { t: a.t, dur: a.dur, ch: b.ch };
     return out;
   }
 
@@ -16841,10 +17078,11 @@ const Arrange = (() => {
     const dMax = span - maxEnd;                                 // 组内末字 t+dur 不越段长
     const d = Math.max(dMin, Math.min(dMax, delta));
     if (d === 0) return null;
-    /* 输出保持**数组原序**（下标位不动），只改时序。v3.37.0：p 原样随行（平移不动音高） */
+    /* 输出保持**数组原序**（下标位不动），只改时序。v3.37.0 B 期：谱锚在格上，
+       平移**不动谱**（词被挪离它的音符时，上标会如实转为独立音符块——所见即所得） */
     return chars.map((/** @type {any} */ c) => (c.t >= base.t
-      ? { t: c.t + d, dur: c.dur, ch: c.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }
-      : { t: c.t, dur: c.dur, ch: c.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }));
+      ? { t: c.t + d, dur: c.dur, ch: c.ch }
+      : { t: c.t, dur: c.dur, ch: c.ch }));
   }
 
   function onDragEnd(){
@@ -16875,9 +17113,8 @@ const Arrange = (() => {
       const out = r.swap === 1 ? swapChars(chars, d.k) : swapChars(chars, prevIx);
       if (out) for (let i = 0; i < out.length; i++) chars[i] = out[i];
     } else {
-      /* v3.37.0：普通移动只改 t/dur——p 随字原样带回（快照在 activateDrag 丢了它的话，
-         每拖一次就把整行音高抹掉一次） */
-      chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch, ...(typeof me.p === "number" ? { p: me.p } : {}) };
+      /* v3.37.0 B 期：普通移动只改 t/dur——音高在行级 notes，本处天然不带、天然不丢 */
+      chars[d.k] = { t: r.t, dur: r.dur, ch: me.ch };
     }
     /* 只是点了一下 / 吸附回原位：不动库、不重绘（v2.1.0 同口径；改用快照全量对比——
        换位/移动后「看起来没动」的形态不再只有一种） */
@@ -16973,8 +17210,7 @@ const Arrange = (() => {
       anchors: [], magnet: -1, a0: -1, guide: null, guideRow: -1,
       ghost: null, ghostRow: -1, bubble: null, bubbleRow: -1, hintEl: null,
       row0: rowNow, row: rowNow, chipRow: rowNow, geo: geo,
-      chars: list.map((/** @type {any} */ x) => ({ t: x.t, dur: x.dur, ch: x.ch,
-        ...(typeof x.p === "number" ? { p: x.p } : {}) })),   /* v3.37.0：快照带上 p——松手提交的就是这份工作集，漏了它 = 拖一次抹一次音高 */
+      chars: list.map((/** @type {any} */ x) => ({ t: x.t, dur: x.dur, ch: x.ch })),   /* v3.37.0 B 期：谱在行级 notes，工作集纯 {t,dur,ch}；提交走 lyricCommit 默认「保留现谱」 */
       orig: "",
     };
     drag.orig = JSON.stringify(drag.chars);
@@ -17076,26 +17312,34 @@ const Arrange = (() => {
     return h;
   }
 
-  /** @param {string} arrId @param {string} secUid @returns {string} */
+  /** 行级快照（v3.37.0 B 期：字与谱**同一份**快照——撤销一步 = 整行回到提交前，
+      不存在「字回去了谱没回去」的半态）。无行 = 双空。
+      @param {string} arrId @param {string} secUid @returns {string} */
   function lyricSnap(arrId, secUid){
     const l = Store.findLyric(arrId, secUid);
-    return l ? JSON.stringify(l.chars) : "[]";
+    return l ? JSON.stringify({ chars: l.chars, notes: l.notes || [] }) : '{"chars":[],"notes":[]}';
   }
 
-  /** 歌词唯一写入口（拖动提交 / 键盘微调 / 按节奏对齐 / 粘贴 / 清除共用）。
+  /** 歌词唯一写入口（拖动提交 / 键盘微调 / 按节奏对齐 / 粘贴 / 清除 / 贴谱共用）。
       v2.51.0（R3）：opts.cue = 松手即时音（拖动/键盘来源传 true；粘贴/清除不响）——
       取提交后末字的段内 tick 补一声锚点音（AudioEngine.lyricCueNow，复用锚点提示音发声体）。
-      @param {string} arrId @param {string} secUid @param {any[]} chars @param {{cue?: boolean}} [opts] */
+      v3.37.0 B 期：opts.notes **显式传入**（数组，可为空）= 本次提交的旋律谱；
+      缺省 = 保留现谱（只改字的入口都走这条默认——谱锚在格上不随字走）。
+      @param {string} arrId @param {string} secUid @param {any[]} chars
+      @param {{cue?: boolean, notes?: any[]}} [opts] */
   function lyricCommit(arrId, secUid, chars, opts){
+    const prev = Store.findLyric(arrId, secUid);
+    const notes = (opts && Array.isArray(opts.notes)) ? opts.notes
+      : ((prev && prev.notes) || []);
     const snap = lyricSnap(arrId, secUid);
-    if (snap === JSON.stringify(chars)) return;      // no-op：不压栈、不落库（内层双保险）
+    if (snap === JSON.stringify({ chars: chars, notes: notes })) return;   // no-op：不压栈、不落库
     const h = histGet(arrId, secUid);
     h.undo.push(snap);
     if (h.undo.length > HIST_MAX) h.undo.shift();
     h.redo.length = 0;
     lastLyricKey = { arrId: arrId, secUid: secUid };
-    if (chars.length) Store.upsertLyric(arrId, secUid, chars);
-    else Store.deleteLyric(arrId, secUid);           // 清除与删除走同一门
+    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
+    else Store.deleteLyric(arrId, secUid);           // 字与谱都清空才删行（清除与删除走同一门）
     if (opts && opts.cue && chars.length) AudioEngine.lyricCueNow(chars[chars.length - 1].t);
   }
 
@@ -17111,8 +17355,11 @@ const Arrange = (() => {
 
   /** @param {string} arrId @param {string} secUid @param {string} snap */
   function applyLyricSnap(arrId, secUid, snap){
-    const chars = JSON.parse(snap);
-    if (chars.length) Store.upsertLyric(arrId, secUid, chars);
+    const s = JSON.parse(snap);
+    /* 快照恒为行级 {chars, notes}（lyricSnap 出品）；裸数组兜底只防手改栈的极端脏值 */
+    const chars = Array.isArray(s) ? s : (s && s.chars) || [];
+    const notes = (s && !Array.isArray(s) && Array.isArray(s.notes)) ? s.notes : [];
+    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
     else Store.deleteLyric(arrId, secUid);
     arrangeRender();
   }
@@ -17189,19 +17436,22 @@ const Arrange = (() => {
     const txt = document.createElement("span");
     txt.className = "arg-lyric-char";                // 不复用主视图 .lyric-char：那边是灰字 16px 加粗，压在绿底字块上没法看
     txt.textContent = c.ch;                          // 边界规则 3：用户可控字符串只走 textContent
-    /* v3.37.0（旋律谱 A）：编辑轨**恒显**音高上标（练习视图的开关只管练习画面）——
-       开关「关」时也按简谱显示（jp 是记谱默认），编辑面看得到自己正在编辑的数据。
+    /* v3.37.0（旋律谱 A 期恒显；B 期改**派生**）：编辑轨**恒显**音高上标（练习视图的
+       开关只管练习画面）——开关「关」时也按简谱显示（jp 是记谱默认），编辑面看得到
+       自己正在编辑的数据。B 期起上标不再存 p，由「行级谱 × 字区间」现算
+       （charPitchMark：恰一颗 = 音名/度数；延音 =「-」；一字多音 =「·」串显）。
        aria-label 同步带上音高：读屏不依赖视觉开关。 */
     const pnMode = S.pitchNotation === "nm" ? "nm" : "jp";
-    if (typeof c.p === "number"){
+    const markTxt = pitchMarkText(charPitchMark(lctx.notes, c), pnMode, lctx.key);
+    if (markTxt){
       const pit = document.createElement("span");
       pit.className = "arg-lyric-pit";
-      pit.textContent = pitchTextOf(c.p, pnMode, lctx.key);
+      pit.textContent = markTxt;
       txt.appendChild(pit);
     }
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick` +
-      (typeof c.p === "number" ? `，音高 ${pitchTextOf(c.p, pnMode, lctx.key)}` : ""));
+      (markTxt ? `，音高 ${markTxt}` : ""));
     bindDrag(chip, chip, lctx, k, "move");           // 拖本体 = 改起点 t
     /* 键盘微调（v2.46.0）：←/→ 移一格，Shift 移一拍。字块可聚焦（tabIndex），
        焦点态 = .arg-lyric-chip:focus-visible 蓝描边；原位更新不重渲染（见 moveChipKey） */
@@ -17315,9 +17565,11 @@ const Arrange = (() => {
   function distribute(a, secUid, text){
     /* v3.37.0：先过音高后缀解析（「我5 多6 想1'」→ 每字带可选 p）。纯文字（无后缀）
        的产物与旧口径逐位一致：空白丢弃、每非空白字符一字、无 p 字段。 */
-    const chars = parseLyricTextPitch(text, keySemiOf(typeof a.key === "string" ? a.key : ""));
-    /* v2.49.0（R1）：落库走 lyricCommit 唯一写入口（空数组 = 删除分支，撤销栈同步） */
-    if (!chars.length){ lyricCommit(a.id, secUid, []); arrangeRender(); return; }
+    const toks = parseLyricTextPitch(text, keySemiOf(typeof a.key === "string" ? a.key : ""));
+    /* v2.49.0（R1）：落库走 lyricCommit 唯一写入口（空数组 = 删除分支，撤销栈同步）。
+       v3.37.0 B 期：空文本只清**词**——谱在姊妹轨上，缺省保留（清词留谱 = 纯谱行；
+       词谱全空才删行，门在 lyricCommit）。要连谱一起清，用「贴谱」清空确定。 */
+    if (!toks.length){ lyricCommit(a.id, secUid, []); arrangeRender(); return; }
     const span = lyricSpanTicks(a.id, secUid);
     /* v3.31.x（审计 P2-4）：span=0（段内块引用已失效）时 fit 必须为 0——此前取
        chars.length 绕过紧随其后的 !fit 提示分支，词被静默存进不可见轨道，换型后才突然
@@ -17327,13 +17579,18 @@ const Arrange = (() => {
     /* ★ v3.34.1：有旧词 ⇒ **保位重建**（改字/插字/删字都不动已排好的位置）；无旧词 ⇒ 旧口径均分 */
     const prevLine = Store.findLyric(a.id, secUid);
     const built = lyricMergeText(
-      (prevLine && Array.isArray(prevLine.chars)) ? prevLine.chars : [], chars, span);
+      (prevLine && Array.isArray(prevLine.chars)) ? prevLine.chars : [], toks, span);
     const n = Math.min(built.length, fit);
     /* 落库口径不变：放不下的不落（越界字在播放侧是静默忽略，照单全收反而更难排查）。
-       v3.37.0：p 随字落库（parseLyricTextPitch 产物 → merge 产物，一路带着走） */
-    lyricCommit(a.id, secUid, built.slice(0, n)
-      .filter(c => c && c.t >= 0 && c.t < span)
-      .map(c => ({ t: c.t, dur: c.dur, ch: c.ch, ...(c.p !== undefined ? { p: c.p } : {}) })));
+       v3.37.0 B 期：合并产物在门口**拆双轨**——字归 chars（纯 {t,dur,ch}），
+       后缀音高归 notes（1:1 落在字的位置上），再与既有谱 mergeLineNotes：
+       新贴的覆盖重叠段、间奏谱原样保留（重贴词只改它谱到的那几个音）。 */
+    const kept = built.slice(0, n).filter(c => c && c.t >= 0 && c.t < span);
+    const chars = kept.map((/** @type {any} */ c) => ({ t: c.t, dur: c.dur, ch: c.ch }));
+    const sfx = kept.filter((/** @type {any} */ c) => typeof c.p === "number")
+      .map((/** @type {any} */ c) => ({ t: c.t, dur: c.dur, p: c.p }));
+    const notes = mergeLineNotes((prevLine && prevLine.notes) || [], sfx);
+    lyricCommit(a.id, secUid, chars, { notes: notes });
     arrangeRender();
   }
 
@@ -17397,9 +17654,9 @@ const Arrange = (() => {
     const chars = pos.map((/** @type {number} */ t, /** @type {number} */ k) => {
       const nextT = k + 1 < pos.length ? pos[k + 1] : t + LYRIC_BASE;
       const dur = Math.min(CONFIG.lyricMaxDur, Math.max(LYRIC_MIN_DUR, nextT - t));
-      /* v3.37.0：对齐只重排位置——音高跟字走（与「按节奏对齐不动 ch」同一口径） */
+      /* v3.37.0 B 期：对齐只重排字的位置——谱锚在格上不动（提交默认「保留现谱」） */
       const src = line.chars[k];
-      return { t, dur, ch: src.ch, ...(typeof src.p === "number" ? { p: src.p } : {}) };
+      return { t, dur, ch: src.ch };
     });
     lyricCommit(a.id, sec.uid, chars);          // v2.49.0（R1）：撤销栈同步
   }
@@ -17436,11 +17693,11 @@ const Arrange = (() => {
       return;
     }
     /* v2.49.0（R1/V2）：每击键 = 一步撤销（不做时间窗合并，拍板 V2）；v2.51.0（R3）：松手即时音
-       v3.37.0：p 随行保真（键盘微调不动音高） */
+       v3.37.0 B 期：谱锚在格上——键盘微调只改 t/dur，提交走默认「保留现谱」 */
     lyricCommit(lctx.arr, lctx.sec,
       chars.map((/** @type {any} */ x, /** @type {number} */ i) =>
-        i === k ? { t, dur: c.dur, ch: x.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }
-          : { t: x.t, dur: x.dur, ch: x.ch, ...(typeof x.p === "number" ? { p: x.p } : {}) }),
+        i === k ? { t, dur: c.dur, ch: x.ch }
+          : { t: x.t, dur: x.dur, ch: x.ch }),
       { cue: true });
     const barTicks = lctx.barTicks || span;
     const row = Math.min((lctx.rows || 1) - 1, Math.floor(t / barTicks));
@@ -17451,8 +17708,12 @@ const Arrange = (() => {
     if (host && chip.parentNode !== host) host.appendChild(chip);
     chip.style.left = ((t - rowStart) / barTicks * 100) + "%";
     chip.style.width = (Math.min(c.dur, span - t, (row + 1) * barTicks - t) / barTicks * 100) + "%";
+    /* v3.37.0 B 期：原位更新的 aria 与 mkLyricChip 同口径——音高由「行级谱 × 新位置」现算
+       （字挪了，上标随之换：所见即所得） */
+    const markTxt = pitchMarkText(charPitchMark(lctx.notes, { t: t, dur: c.dur }),
+      S.pitchNotation === "nm" ? "nm" : "jp", lctx.key);
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${t} tick，时值 ${c.dur} tick` +
-      (typeof c.p === "number" ? `，音高 ${pitchTextOf(c.p, S.pitchNotation === "nm" ? "nm" : "jp", lctx.key)}` : ""));   // v3.37.0：原位更新的 aria 与 mkLyricChip 同口径（含音高）
+      (markTxt ? `，音高 ${markTxt}` : ""));
   }
 
   /** 块头节律条（v2.80.0 甲）：把一个**型**的第 1 小节画成一条独立小轨——块的"节奏书签"。
@@ -17625,9 +17886,9 @@ const Arrange = (() => {
     const start = typeof k0 === "number" && k0 > 0 ? Math.min(k0, line.chars.length - 1) : 0;
     tap = { arrId: a.id, secUid: sec.uid, k: start,
       n: line.chars.length,
-      /* v3.37.0：快照带上 p——打轴只改 t/dur，音高必须原样随行（漏了它 = 打一遍轴丢一遍谱） */
-      chars: line.chars.map((/** @type {any} */ x) => ({ t: x.t, dur: x.dur, ch: x.ch,
-        ...(typeof x.p === "number" ? { p: x.p } : {}) })) };
+      /* v3.37.0 B 期：打轴只改 t/dur——谱在行级 notes，快照纯 {t,dur,ch}，
+         提交（Store.upsertLyric 缺省）天然「保留现谱」 */
+      chars: line.chars.map((/** @type {any} */ x) => ({ t: x.t, dur: x.dur, ch: x.ch })) };
     lyricHistPush(a.id, sec.uid);               // v2.49.0（V3）：整段打轴 = 一步撤销（事务压栈）
     close();                                  // 回主视图（顺带恢复进浮层前的拍号）
     setMode("playMode", "arrange", "跟播打轴");
@@ -17661,16 +17922,14 @@ const Arrange = (() => {
     let t = Math.max(T.k > 0 ? T.chars[T.k - 1].t + LYRIC_GRID : 0,
       Math.round(pos / LYRIC_GRID) * LYRIC_GRID);
     t = Math.min(t, Math.max(0, span - LYRIC_GRID));
-    T.chars[T.k] = { t, dur: T.chars[T.k].dur, ch: T.chars[T.k].ch,
-      ...(typeof T.chars[T.k].p === "number" ? { p: T.chars[T.k].p } : {}) };   // v3.37.0：p 随行
+    T.chars[T.k] = { t, dur: T.chars[T.k].dur, ch: T.chars[T.k].ch };   // v3.37.0 B 期：谱在行级 notes，逐敲只改 t
     /* 重排（打轴语义）：未打的字整体顺移让位（保持相对间隔 ≥ 1 格）、全部 dur 收到
        不越过下一字——任何一次提交都不产生重叠，归一化零丢字（首跑实证：新 t 撞上
        未打字的旧位置时，归一化的「重叠丢弃」真的会吃字）。未打字后面还会被重打，
        顺移只是临时占位 */
     for (let j = T.k; j < T.n - 1; j++){
       if (T.chars[j + 1].t < T.chars[j].t + LYRIC_GRID){
-        T.chars[j + 1] = { t: T.chars[j].t + LYRIC_GRID, dur: T.chars[j + 1].dur, ch: T.chars[j + 1].ch,
-          ...(typeof T.chars[j + 1].p === "number" ? { p: T.chars[j + 1].p } : {}) };   // v3.37.0：p 随行
+        T.chars[j + 1] = { t: T.chars[j].t + LYRIC_GRID, dur: T.chars[j + 1].dur, ch: T.chars[j + 1].ch };
       }
     }
     for (let j = 0; j < T.n - 1; j++){
@@ -17991,12 +18250,19 @@ const Arrange = (() => {
     const box = document.createElement("input");
     box.className = "arg-lyric-paste";
     box.type = "text";
-    /* v3.37.0：回填带上音高后缀（jianpuOf 的序列化形式，与解析器一进一出同一套写法）。
-       只要任一字带 p 就整句以空格分隔——解析器要求后缀「止于空白/串尾」，
+    /* v3.37.0 B 期：回填从**行级谱派生**——只给「恰有一颗音符自字首起」的字（1:1 形）
+       带后缀；延音/一字多音/独立音符不在贴词框回填（那是「贴谱」框的地盘，见下）。
+       只要任一字带后缀就整句以空格分隔——解析器要求后缀「止于空白/串尾」，
        不空格分隔会把后一个字的谱子吃错（见 parseLyricTextPitch 头注释）。 */
-    const anyP = !!(line && line.chars.some((/** @type {any} */ c) => typeof c.p === "number"));
-    box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch +
-      (typeof c.p === "number" ? pitchTextOf(c.p, "jp", typeof a.key === "string" ? a.key : "") : ""))
+    const rowNotes = (line && line.notes) || [];
+    const rowKey = (typeof a.key === "string") ? a.key : "";
+    const suffixOf = (/** @type {any} */ c) => {
+      const mk = charPitchMark(rowNotes, c);
+      if (!mk || mk.kind !== "pitch") return "";       // 延音/一字多音：不在贴词框表达
+      return pitchTextOf(/** @type {number} */ (mk.seq[0].p), "jp", rowKey);
+    };
+    const anyP = !!(line && line.chars.some((/** @type {any} */ c) => suffixOf(c)));
+    box.value = line ? line.chars.map((/** @type {any} */ c) => c.ch + suffixOf(c))
       .join(anyP ? " " : "") : "";
     box.title = "可带简谱后缀标注音高（用空格分隔）：如「我5 多6 想1'」；1-7 为度数，' 升八度、, 降八度，# / b 升降半音";
     box.setAttribute("aria-label", "第 " + (i + 1) + " 段歌词：粘贴后回车按字均分；字后可带简谱音高后缀（空格分隔，如 我5 多6 想1'）");
@@ -18009,10 +18275,41 @@ const Arrange = (() => {
     clr.setAttribute("aria-label", "清除第 " + (i + 1) + " 段的歌词");
     Modal.bindOverlay("arrangeOverlay", clr, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
+      /* v3.37.0 B 期：清除只清**词**（谱在姊妹轨，缺省保留）——清词留谱 = 纯谱行；
+         词谱全空才删行（门在 lyricCommit）。要连谱一起清：用「贴谱」清空并确定 */
       lyricCommit(a.id, uid, []);               // v2.49.0（R1）：清除 = 空数组提交（可撤销）
       arrangeRender();
     });
     ly.appendChild(clr);
+
+    /* v3.37.0 B 期：贴谱——本段旋律的独立入口（纯谱行/间奏谱的唯一写入口）。
+       弹 uiPrompt 而非常驻输入框：贴词是高频操作（每段都贴），贴谱是低频精修，
+       常驻框会把三键一框的头部挤爆（v3.36.20 刚为窄屏横滑修过一轮）。
+       口径：整段**全量替换**（可撤销）——「0/-」能表达一切基准格谱；微调走
+       音高组按钮。清空并确定 = 只清谱（词不动；词谱全空才删行）。 */
+    const mel = document.createElement("button");
+    mel.className = "arg-mini"; mel.textContent = "贴谱";
+    mel.title = "本段旋律谱：简谱 token 空格分隔（如「5 6 1' 5 - 0 3」）；每档一个八分，- 延长前音，0 休止";
+    mel.setAttribute("aria-label", "第 " + (i + 1) + " 段：贴旋律谱（简谱 token；清空并确定 = 清除本段旋律）");
+    Modal.bindOverlay("arrangeOverlay", mel, "click", (/** @type {any} */ e) => {
+      evEl(e).blur();
+      const keyName = (typeof a.key === "string") ? a.key : "";
+      const cur = (line && line.notes) ? melodySerialize(line.notes, keyName) : "";
+      Modal.uiPrompt("贴旋律谱（简谱，空格分隔；每档 = 八分；- 延长前音、0 休止。清空并确定 = 清除本段旋律）",
+        cur, (/** @type {string} */ v) => {
+          const r = parseMelodyTokens(v, keySemiOf(keyName));
+          if (r.bad){
+            Modal.uiAlert("「" + r.bad + "」不是有效的简谱 token（1–7 度数；' , 八度；# b 半音；- 延长；0 休止）——本段旋律未作修改。");
+            return;
+          }
+          const fresh = Store.findLyric(a.id, uid);
+          /* 词原样（可为空——空段直接贴谱 = 创建纯谱行），谱显式全量提交 */
+          lyricCommit(a.id, uid, fresh ? fresh.chars : [], { notes: r.notes || [] });
+          arrangeRender();
+          announce((r.notes && r.notes.length) ? "已写入 " + r.notes.length + " 颗音符" : "已清除本段旋律");
+        });
+    });
+    ly.appendChild(mel);
 
     /* ② 粗对齐：按节奏对齐 + 跟播打轴 */
     ly.appendChild(head("② 粗对齐"));
@@ -18226,9 +18523,9 @@ const Arrange = (() => {
         /* v3.33.19：计算收进纯函数 lyricDurStep（原先内联且按下标取后邻——见该函数注释） */
         const dur = lyricDurStep(cs, k, sign, span);
         if (dur === null) return;
+        /* v3.37.0 B 期：时值微调只改 dur——谱在行级 notes，提交默认保留现谱 */
         const out = cs.map((/** @type {any} */ x, /** @type {number} */ idx) =>
-          idx === k ? { t: c.t, dur: dur, ch: c.ch, ...(typeof c.p === "number" ? { p: c.p } : {}) }
-            : { t: x.t, dur: x.dur, ch: x.ch, ...(typeof x.p === "number" ? { p: x.p } : {}) });
+          idx === k ? { t: c.t, dur: dur, ch: c.ch } : { t: x.t, dur: x.dur, ch: x.ch });
         lyricCommit(a.id, uid, out, { cue: true });
         arrangeRender();
       });
@@ -18237,10 +18534,16 @@ const Arrange = (() => {
     addTo(gDur, mkDur("时值−1格", -1, "选中字的时值缩一格（十六分）"));
     addTo(gDur, mkDur("时值+1格", 1, "选中字的时值延一格（十六分）"));
 
-    /* v3.37.0（旋律谱 A 期）：音高组——三颗按钮对选中字半音级微调（Shift 点按 = 八度），
-       「无音高」摘掉标注回到纯词。无 p 的字 ± 从**调主**起（C 调 = C4=60），
-       每步 announce 报结果文案（编辑轨的视觉随设置开关，声音反馈不依赖它）。
-       提交口径与 mkDur 同款：整行 map、p 全行保真、lyricCommit 一步可撤销。 */
+    /* v3.37.0（旋律谱 A 期音高组；B 期改写为**行级谱操作**）：三颗按钮对选中字
+       半音级微调（Shift 点按 = 八度），「无音高」摘掉该字身上的音符。
+       B 期语义（谱锚在格上）：
+       · ± 作用于**与选中字相关的第一颗音符**——优先「覆盖字首」的（含延音：它跨字，
+         调它 = 调整条延音线），其次「字内起音」的（一字多音的首个）；
+       · 字上没有任何音符 ⇒ 新建一颗（t/dur = 字的区间，**从调主起**，本步 ± 不生效——
+         「从调主起」字面成立：第一次点 + 得到的是 do，不是 do♯）；
+       · 「无音高」= 摘掉与该字重叠的**全部**音符（一字多音时一次摘净；
+         延音线整颗摘掉，跨字的后续延音显示随之消失）。
+       提交口径：chars 原样、notes 显式提交，lyricCommit 一步可撤销。 */
     rowsep();                                             // → 第 4 行（音高组）
     const gPitch = grp("音高", true);
     /** @param {string} label @param {number} sign @param {boolean} clear @param {string} aria @returns {any} */
@@ -18258,27 +18561,28 @@ const Arrange = (() => {
           fresh && selChip.k < fresh.chars.length ? selChip.k : -1;
         if (k < 0){ announce("先点按选中一个字块，再调它的音高"); return; }
         const cs = fresh.chars, c = cs[k];
+        const notes = (fresh && fresh.notes) || [];
+        const t1 = c.t + c.dur;
+        const hit = notes.filter((/** @type {any} */ n) => n.t < t1 && n.t + n.dur > c.t);
         const keyName = typeof a.key === "string" ? a.key : "";
         if (clear){
-          if (typeof c.p !== "number"){ announce("这个字本来就没有音高"); return; }
-          const out = cs.map((/** @type {any} */ x, /** @type {number} */ idx) =>
-            idx === k ? { t: c.t, dur: c.dur, ch: c.ch }
-              : { t: x.t, dur: x.dur, ch: x.ch, ...(typeof x.p === "number" ? { p: x.p } : {}) });
-          lyricCommit(a.id, uid, out);
+          if (!hit.length){ announce("这个字本来就没有音高"); return; }
+          lyricCommit(a.id, uid, cs, { notes: notes.filter((/** @type {any} */ n) => hit.indexOf(n) < 0) });
           arrangeRender();
           announce("已清除「" + c.ch + "」的音高");
           return;
         }
-        /* ★ 无 p 的字第一次点 ± 一律**落到调主**（本步 ± 不生效）——「从调主起」字面成立：
-           第一次点 + 得到的是 do（C 调 = 60），不是 do♯；再按才逐半音。
-           （若初值 = 调主 ± 步长，第一次点 + 会落在 #1 上——用户第一颗音就唱偏半音。） */
+        /* 目标音符：覆盖字首的（延音也算它）优先，否则字内起音的首颗 */
+        const target = hit.find((/** @type {any} */ n) => n.t <= c.t) ||
+          hit.find((/** @type {any} */ n) => n.t > c.t);
         const step = (e.shiftKey ? 12 : 1) * sign;
-        const p = (typeof c.p === "number" ? c.p + step : keySemiOf(keyName));
+        const p = target ? target.p + step : keySemiOf(keyName);
         if (p < PITCH_MIN || p > PITCH_MAX){ announce("音高到头了（C2–C7）"); return; }
-        const out = cs.map((/** @type {any} */ x, /** @type {number} */ idx) =>
-          idx === k ? { t: c.t, dur: c.dur, ch: c.ch, p: p }
-            : { t: x.t, dur: x.dur, ch: x.ch, ...(typeof x.p === "number" ? { p: x.p } : {}) });
-        lyricCommit(a.id, uid, out);
+        const outNotes = target
+          ? notes.map((/** @type {any} */ n) => n === target ? { t: n.t, dur: n.dur, p: p } : n)
+          : notes.concat([{ t: c.t, dur: c.dur, p: p }])
+              .sort((/** @type {any} */ x, /** @type {any} */ y) => x.t - y.t);
+        lyricCommit(a.id, uid, cs, { notes: outNotes });
         arrangeRender();
         announce("「" + c.ch + "」音高 " + pitchTextOf(p, S.pitchNotation === "nm" ? "nm" : "jp", keyName));
       });
@@ -18296,7 +18600,7 @@ const Arrange = (() => {
        （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
        字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
        拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], span: span, barTicks: span, rows: 1, chipEls: [], barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]), rowWrapEls: /** @type {HTMLElement[]} */ ([]), key: (typeof a.key === "string") ? a.key : "" };   /* v3.37.0：key = 曲式调主（简谱度数的换算基准，缺省 "" ⇒ pitchTextOf 兜 C） */
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], notes: (line && line.notes) || [], span: span, barTicks: span, rows: 1, chipEls: [], noteEls: /** @type {HTMLElement[]} */ ([]), barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]), rowWrapEls: /** @type {HTMLElement[]} */ ([]), key: (typeof a.key === "string") ? a.key : "" };   /* v3.37.0：key = 曲式调主（简谱度数的换算基准，缺省 "" ⇒ pitchTextOf 兜 C）；B 期：notes = 行级谱（上标派生 + 独立音符块两用的唯一数据源） */
     if (span > 0){
       const barTicks = Math.max(1, Math.round(span / secBars(sec)));
       lctx.barTicks = barTicks;
@@ -18340,6 +18644,30 @@ const Arrange = (() => {
       for (let k = 0; k < lctx.chars.length; k++){
         if (lctx.chars[k].t >= span) continue;
         mkLyricChip(lctx, k, rowEls);
+      }
+      /* v3.37.0 B 期：独立音符块（不与任何字重叠的谱——间奏/前奏尾奏，纯谱行则全部）。
+         显示-only：不进 chipEls（那与字块下标严格对齐，掺入会错位换位/拖拽定位），
+         不带拖拽/键盘（编辑走「贴谱」+ 音高组按钮）。aria 逐颗报读。 */
+      const stN = standaloneNotes(lctx.chars, lctx.notes);
+      const pnEd = S.pitchNotation === "nm" ? "nm" : "jp";
+      for (let q = 0; q < stN.length; q++){
+        const n = stN[q];
+        if (n.t >= span) continue;
+        const row = Math.min(lctx.rows - 1, Math.floor(n.t / barTicks));
+        const rowStart = row * barTicks;
+        const nchip = document.createElement("div");
+        nchip.className = "arg-lyric-chip notechip" + (n.dur <= T16 ? " sm" : "");
+        nchip.style.left = ((n.t - rowStart) / barTicks * 100) + "%";
+        nchip.style.width = (Math.min(n.dur, span - n.t, (row + 1) * barTicks - n.t) / barTicks * 100) + "%";
+        const ntxt = document.createElement("span");
+        ntxt.className = "arg-lyric-char";
+        const label = pitchTextOf(n.p, pnEd, lctx.key);   // 纯函数产物（简谱/音名），非用户可控串
+        ntxt.textContent = label;
+        nchip.appendChild(ntxt);
+        nchip.setAttribute("role", "img");
+        nchip.setAttribute("aria-label", `第 ${q + 1} 颗独立音符「${label}」起点 ${n.t} tick，时值 ${n.dur} tick`);
+        rowEls[row].appendChild(nchip);
+        lctx.noteEls.push(nchip);
       }
     }
     ly.appendChild(lane);
@@ -21946,10 +22274,12 @@ if (EXPOSE_INTERNALS){
     secChords,                                    // v2.7.4：段名尾部的和弦序列（每小节一颗，纯函数）
     patBars, setPatLenOf, loopRangeFor,           // v2.5.1：型长查询（唯一真相源）/ 注入点 / 循环区间按型收窄
     DEF_BARS, MAX_PAT_BARS,                       // v2.5.1：型的默认与上限小节数
-    lyricSpanTicks, lyricCharsAt,                 // v2.1.0 F1：段内 tick 长度 / 校验后的字表（越界已剔除）
+    lyricSpanTicks, lyricCharsAt, lyricNotesAt,   // v2.1.0 F1：段内 tick 长度 / 校验后的字表 / 音符表（越界已剔除；v3.37.0 B 期增 notes）
     /* v3.37.0（旋律谱 A 期）：音高纯函数全套——测试直断言（禁手抄副本，口径同 stripSongTag）。
-       pitchTextOf 依赖运行期 S.pitchNotation 的两处（字块渲染）不在此列：那两处走真机/桩 DOM 断言。 */
+       pitchTextOf 依赖运行期 S.pitchNotation 的两处（字块渲染）不在此列：那两处走真机/桩 DOM 断言。
+       v3.37.0 B 期补：姊妹轨纯函数（贴谱解析/回填、求交派生、独立音符、谱合并）——t223 直断言。 */
     keySemiOf, pitchNameOf, jianpuOf, pitchTextOf, parseLyricTextPitch, matchPitchSuffix,
+    parseMelodyTokens, melodySerialize, charPitchMark, pitchMarkText, standaloneNotes, mergeLineNotes,
     PITCH_MIN, PITCH_MAX, KEY_SEMIS, DEG_SEMIS,
     lyricFitSize: () => lyricFit.size,             // v3.31.6（审计 P2-A）：歌词缓存尺寸（封顶断言用）
     LYRIC_GRID, LYRIC_BASE, LYRIC_MIN_DUR,        // v2.1.0 F1：吸附粒度（十六分）与基准单位（八分）
