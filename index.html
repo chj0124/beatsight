@@ -317,7 +317,8 @@ body.wide-full .main{max-width:none}
      · 组容器与内容**一个都不动** ⇒ 内容自然落在胶囊行下方（音量在上、BPM 在下）；
      · 宽屏完全不涉及（.ctl-pills 默认 display:none）。 */
   @media (max-width:640px){
-    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-left:16px;margin-bottom:4px}
+    /* gap 24：胶囊自身有 margin:0 -8px（负外边距保持文字贴内容缘），两侧各吃 8 ⇒ 可见间距 = 24-16 = 8 */
+    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px}
     .card-head.viz-head .card-head-left > .group > .group-label,
     .card-head.viz-head > .group > .group-label{display:none}
     #volOpen:checked ~ .ctl-pills .ctl-hit[for=volOpen]::after,
@@ -567,7 +568,12 @@ body.wide-full .main{max-width:none}
    的底色。用 :has() 精确选中（该卡无 id），不改 .card 本体（其它卡片仍在用这层底）。
    ★ 只去底色、**保留内边距**：内边距在没有底色时不可见，去掉它反而会让整块内容左移 24px
      （既有"标签左缘 = 控制列内容边缘"两条断言会跟着漂）——不制造无谓的位移。 */
-.card:has(> .card-head.viz-head){background:none;border-radius:0}
+/* ★ 补32：抬特异性到 body 层 —— 主题分支 body[data-theme="obs"] .card 是 (0,2,1)，
+   光靠 :has() 的 (0,3,0) 在观测台主题下仍被它压过（用户实拍"还是有黑底"）⇒ 加 body 前缀到 (0,3,1)。 */
+/* ★ 补32 修正：.card-head.viz-head 的**父元素是 .viz-head-grid**（不是我原以为的 .card）
+   ⇒ 原来用子选择器 :has(> …) 永远不匹配、规则静默失效（用户实拍"还是有黑底"）。
+   改成后代式 :has(…) 后命中（实测卡片底色 rgba(0,0,0,0)）。 */
+body .card:has(.card-head.viz-head){background:none;border:0;border-radius:0}
 /* ★ v3.30.0（用户拍板）：**控制卡片盒收窄**——卡片盒原与跑道同宽（`.main` 内容缘），
    而卡内控制区限宽 1000px 居中 → 盒内两侧死空间随窗口变宽（1920 实测 ~172px/侧）。
    收窄到 1048（= 控制区 1000 + 两侧 24 内边距）抱住控制区，死空间消除。
@@ -4123,23 +4129,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4155  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5057  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7100  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8112  Modal         应用内弹窗
-     L8257  Viz           时值可视化渲染与每帧动画
-     L11722 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12403 Trainer       变速训练器
-     L12613 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13326 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15304 Editor        自定义节奏型编辑器
-     L15884 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15931 Ear           听辨训练（v1.10.0）
-     L16159 Arrange       曲式编排（v2.0.0）
-     L19731 Help          使用方法（v2.0.1）
-     L19886 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19960 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20249 初始化（装配） 各模块 hook 接线与启动
+     L4161  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5063  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7106  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8118  Modal         应用内弹窗
+     L8263  Viz           时值可视化渲染与每帧动画
+     L11728 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12409 Trainer       变速训练器
+     L12619 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13332 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15310 Editor        自定义节奏型编辑器
+     L15890 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15937 Ear           听辨训练（v1.10.0）
+     L16165 Arrange       曲式编排（v2.0.0）
+     L19737 Help          使用方法（v2.0.1）
+     L19892 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19966 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20255 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
