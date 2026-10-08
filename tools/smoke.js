@@ -1851,6 +1851,25 @@ function portraitFixProbe(){
         var d = (p&&t)? Math.round(t.getBoundingClientRect().top-p.getBoundingClientRect().bottom):null;
         if(cb&&k!==null)cb.checked=k; if(cb2&&k2!==null)cb2.checked=k2; void document.body.offsetWidth;
         return d; })(),
+      /* ★★★ v3.36.20 补33：本轮新增行为的真机闸 —— 胶囊同行 / 实时值跟随 / 无卡底。
+         · pillsSameRow：两枚窄屏胶囊的 top 相同（A1 的核心承诺）；
+         · pillLive：**真的派发事件**（改音量 input、点 BPM +1）后读胶囊文本，读完还原；
+         · ctlCardBg：控制卡底色必须透明（补28/32 的"任何时候无卡底"）。 */
+      pillGap: (function(){ var a=q(".ctl-pills .ctl-hit[for=volOpen]"), b=q(".ctl-pills .ctl-hit[for=bpmOpen]");
+        if(!a||!b) return null; return Math.round(b.getBoundingClientRect().left-a.getBoundingClientRect().right); })(),
+      pillsSameRow: (function(){ var a=q(".ctl-pills .ctl-hit[for=volOpen]"), b=q(".ctl-pills .ctl-hit[for=bpmOpen]");
+        if(!a||!b) return null; return Math.abs(a.getBoundingClientRect().top-b.getBoundingClientRect().top) <= 1; })(),
+      pillLive: (function(){
+        var out={};
+        var s=q("#volMaster");
+        if (s){ var keep=s.value; s.value="42"; s.dispatchEvent(new Event("input",{bubbles:true}));
+          out.vol = (q("#volPillPctN")||{}).textContent || (q("#volPillPct")||{}).textContent || null;
+          s.value=keep; s.dispatchEvent(new Event("input",{bubbles:true})); }
+        var up=q("#bpmPlus"), dn=q("#bpmMinus");
+        if (up && dn){ up.click(); out.bpm = (q("#bpmPillNumN")||{}).textContent || (q("#bpmPillNum")||{}).textContent || null; dn.click(); }
+        return out; })(),
+      ctlCardBg: (function(){ var c=q(".card-head.viz-head"); c = c? c.closest("section.card,div.card") : null;
+        return c? getComputedStyle(c).backgroundColor : null; })(),
       volBodyTop: (function(){ var b=q(".card-head-left .group .tg-body")||q(".card-head-left .tg-body"); return b? Math.round(b.getBoundingClientRect().top) : null; })(),
       bpmBodyTop: (function(){ var b=q(".card-head.viz-head > .group > .tg-body")||q(".viz-head > .group .tg-body"); return b? Math.round(b.getBoundingClientRect().top) : null; })(),
       bpmPillInk: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
@@ -2749,6 +2768,20 @@ async function main(){
             p.label + "·" + vp + "：★★★ 胶囊行 → 首个内容块的**可见**间距落在 4~30px（实测 " + PF.volPillInk
             + "px）——可见边缘口径",
             "volPillInk=" + PF.volPillInk);
+          /* ★ 用户实拍"两枚胶囊部分重叠"：胶囊自身带 margin:0 -8px（保文字贴缘）⇒ 行距必须 ≥24 才不重叠 */
+          ok(PF.pillGap !== null && PF.pillGap >= 4,
+            p.label + "·" + vp + "：★★★ 两枚胶囊**不重叠**、间隙 ≥4px（实测 " + PF.pillGap
+            + "px）——行距 8px 时负外边距会把它们叠在一起（用户实拍）",
+            "pillGap=" + PF.pillGap);
+          ok(PF.pillsSameRow === true,
+            p.label + "·" + vp + "：★★★ 窄屏两枚胶囊**同一行**（A1 的核心承诺）", "pillsSameRow=" + PF.pillsSameRow);
+          ok(PF.pillLive && PF.pillLive.vol === "42%" && PF.pillLive.bpm === "97",
+            p.label + "·" + vp + "：★★★ 胶囊实时值跟随（真机派发 input/click 后：音量 " + (PF.pillLive && PF.pillLive.vol)
+            + " / BPM " + (PF.pillLive && PF.pillLive.bpm) + "）——拖音量应显示 42%、点 +1 应显示 97",
+            JSON.stringify(PF.pillLive));
+          ok(PF.ctlCardBg === "rgba(0, 0, 0, 0)" || PF.ctlCardBg === "transparent",
+            p.label + "·" + vp + "：★★★ 控制卡**无底色**（实测 " + PF.ctlCardBg + "）——用户拍板「任何时候都没有卡底」",
+            "bg=" + PF.ctlCardBg);
           ok(PF.volBodyTop !== null && PF.bpmBodyTop !== null && PF.bpmBodyTop > PF.volBodyTop + 20,
             p.label + "·" + vp + "：★★★ A1 排列：BPM 内容块在音量内容块**下方**（" + PF.volBodyTop
             + " → " + PF.bpmBodyTop + "）",
