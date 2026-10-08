@@ -1832,6 +1832,28 @@ function portraitFixProbe(){
       vizTop: q("#viz") ? Math.round(q("#viz").getBoundingClientRect().top) : null,
       /* ★ 补15：窄屏**默认收起**音量组 ⇒ 这里临时展开再量（量的是"展开态"的右缘对齐），量完还原。
          与仓库既有探针「造出条件 → 量 → 还原（探针不留状态）」同一纪律。 */
+      /* ★★★ v3.36.20 补26（用户要求"先做这一项"）：闸门改量**可见边缘**，不再量盒子边缘。
+         前几轮我三次栽在"盒子间距绿、肉眼不齐"：盒子边缘是布局量，眼睛比较的是**可见内容**。
+         · 音量侧：胶囊底 → 该行内容区第一个**可见**元素（标签文字）的 top；
+         · BPM 侧：胶囊底 → 内容区第一个子元素（步进按钮，自身即可见）的 top。
+         两者应相等（±3px）。 */
+      /* ★ 量之前必须**临时展开两组**（窄屏默认收起 ⇒ 隐藏元素的 rect 是 0，量出来是假值 —— 我第一版就踩了：
+         音量侧量到 −181px）。量完还原，与仓库探针"造条件→量→还原、不留状态"同一纪律。 */
+      volPillInk: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
+        var k=cb?cb.checked:null, k2=cb2?cb2.checked:null;
+        if(cb)cb.checked=true; if(cb2)cb2.checked=true; void document.body.offsetWidth;
+        var p=q("label[for=volOpen]"), r=q(".card-head-left .vol-row"), t=r? r.querySelector("span") : null;
+        var d = (p&&t)? Math.round(t.getBoundingClientRect().top-p.getBoundingClientRect().bottom):null;
+        if(cb&&k!==null)cb.checked=k; if(cb2&&k2!==null)cb2.checked=k2; void document.body.offsetWidth;
+        return d; })(),
+      bpmPillInk: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
+        var k=cb?cb.checked:null, k2=cb2?cb2.checked:null;
+        if(cb)cb.checked=true; if(cb2)cb2.checked=true; void document.body.offsetWidth;
+        var p=q("label[for=bpmOpen]"), b=q(".viz-head > .group .tg-body");
+        var c = b? b.firstElementChild : null;
+        var d = (p&&c)? Math.round(c.getBoundingClientRect().top-p.getBoundingClientRect().bottom):null;
+        if(cb&&k!==null)cb.checked=k; if(cb2&&k2!==null)cb2.checked=k2; void document.body.offsetWidth;
+        return d; })(),
       volBpmDelta: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
         var keep = cb? cb.checked : null, keep2 = cb2? cb2.checked : null;
         if (cb){ cb.checked = true; } if (cb2){ cb2.checked = true; }
@@ -2711,6 +2733,13 @@ async function main(){
              本机 macOS 实测差 0px，而 GitHub CI 的 Linux 字体下是 −9px（读数/标签的文本宽度不同），
              于是"对齐"这条在 CI 上稳定判红。14px 足够容纳字体差，且仍拦得住真错位
              （修复前是 +104px、修好后本机 0px）。 */
+          /* ★★★ v3.36.20 补26：**可见边缘**口径的断言 —— 两组"胶囊→首行可见内容"的间距必须相等。
+             修复前实测：音量 19px（行盒 40、内容居中 ⇒ 可见内容离盒顶 11）vs BPM 8px ⇒ 差 11px，
+             而**盒子**口径两边都是 8（这就是"看着绿、肉眼不齐"的根源）。 */
+          ok(PF.volPillInk !== null && PF.bpmPillInk !== null && Math.abs(PF.volPillInk - PF.bpmPillInk) <= 3,
+            p.label + "·" + vp + "：★★★ 两组「胶囊→首行可见内容」间距相等（音量 " + PF.volPillInk
+            + "px vs BPM " + PF.bpmPillInk + "px）——可见边缘口径，不是盒子边缘",
+            "volPillInk=" + PF.volPillInk + " bpmPillInk=" + PF.bpmPillInk);
           ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 14,
             p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
             + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 104px（390 档）；容差 14 容纳字体差异",
