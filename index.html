@@ -4181,22 +4181,22 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L4212  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5324  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7439  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8473  Modal         应用内弹窗
-     L8618  Viz           时值可视化渲染与每帧动画
-     L12124 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12805 Trainer       变速训练器
-     L13015 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13726 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15704 Editor        自定义节奏型编辑器
-     L16284 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16331 Ear           听辨训练（v1.10.0）
-     L16559 Arrange       曲式编排（v2.0.0）
-     L20317 Help          使用方法（v2.0.1）
-     L20472 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L20546 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20835 初始化（装配） 各模块 hook 接线与启动
+     L5328  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7443  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8477  Modal         应用内弹窗
+     L8622  Viz           时值可视化渲染与每帧动画
+     L12128 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12809 Trainer       变速训练器
+     L13019 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13730 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15708 Editor        自定义节奏型编辑器
+     L16288 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16335 Ear           听辨训练（v1.10.0）
+     L16563 Arrange       曲式编排（v2.0.0）
+     L20321 Help          使用方法（v2.0.1）
+     L20476 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L20550 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20839 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4469,15 +4469,18 @@ const KEY_SEMIS = { C:0, "C#":1, Db:1, D:2, "D#":3, Eb:3, E:4, F:5, "F#":6, Gb:6
 /** 大调音阶七级的半音位（1=0 … 7=11），简谱度数 → 半音的唯一真相源。 */
 const DEG_SEMIS = [0, 2, 4, 5, 7, 9, 11];
 /** 半音差(0-11) → [度数, 升降记号]。升号制（#1/#2/#4/#5/#6）——b7/b3 等
-    同音异名输入会被解析成同一半音、显示时统一升号写法（确定性优先）。 */
+    同音异名输入会被解析成同一半音、显示时统一升号写法（确定性优先）。
+    @type {[number, string][]} */
 const REL2DEG = [[1,""],[1,"#"],[2,""],[2,"#"],[3,""],[4,""],[4,"#"],[5,""],[5,"#"],[6,""],[6,"#"],[7,""]];
 const PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-/** 调主 MIDI（C4=60 基准）。@param {string} keyName @returns {number} */
+/** 调主 MIDI（C4=60 基准）。
+    @param {string} keyName @returns {number} */
 function keySemiOf(keyName){
-  const k = (keyName !== null && keyName !== undefined) ? KEY_SEMIS[keyName] : undefined;
+  const k = (keyName !== null && keyName !== undefined) ? KEY_SEMIS[/** @type {keyof typeof KEY_SEMIS} */ (keyName)] : undefined;
   return typeof k === "number" ? 60 + k : 60;
 }
-/** midi → 音名+八度（C4 形，如 D#4）。@param {number} p @returns {string} */
+/** midi → 音名+八度（C4 形，如 D#4）。
+    @param {number} p @returns {string} */
 function pitchNameOf(p){
   return PITCH_NAMES[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
 }
@@ -4633,7 +4636,8 @@ function charPitchMark(notes, c){
   if (!seq.length) return null;
   return { kind: seq.length > 1 ? "multi" : (seq[0].tie ? "tie" : "pitch"), seq: seq };
 }
-/** mark → 显示文本（tie =「-」、多单元用「·」连接）。@param {any} mark @param {string} mode
+/** mark → 显示文本（tie =「-」、多单元用「·」连接）。
+    @param {any} mark @param {string} mode
     @param {string} keyName @returns {string} */
 function pitchMarkText(mark, mode, keyName){
   if (!mark) return "";
@@ -6295,7 +6299,7 @@ const Store = (() => {
         + " 跳过 " + bad + " 个坏字（越界/重叠/空字）"); }catch(e){}
     }
     /* notes 非空才写键：无旋律的行落盘形状与 v3.37.0 A 期之前的旧格式逐位一致 */
-    const out = { arrangeId: raw.arrangeId, secUid: raw.secUid, chars: chars };
+    const out = /** @type {LyricLine} */ ({ arrangeId: raw.arrangeId, secUid: raw.secUid, chars: chars });
     if (notes.length) out.notes = notes;
     return out;
   }
@@ -8383,7 +8387,7 @@ const activePattern = () => {
    不需要另设失效逻辑，也不会出现"第二份会过期的数据"。 */
 /** @type {any[]} */
 const LYRIC_NONE = [];
-/** @type {Map<string, { line: any, chars: any[] }>} */
+/** @type {Map<string, { line: any, chars: any[], notes: any[] }>} */
 const lyricFit = new Map();
 /* 一段的 tick 长度。解析不出拍号（引用被删）返回 0 → 调用方不判越界，
    交给 arrangeProblems 去报"引用不存在"（那才是这类坏数据的正确出口） */
@@ -9634,7 +9638,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   let lyricEl = /** @type {HTMLElement|null} */ (null);
   let lyricChipEls = /** @type {HTMLElement[]} */ ([]), lyricFillEls = /** @type {HTMLElement[]} */ ([]);
   /* v3.0.0（批 2）：y = 覆盖层下本行的 translateY 锚点（placeLaneOverlay 写，帧内叠加 dy 时复用） */
-  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number, ch: string }[], chipEls: HTMLElement[], fillEls: HTMLElement[], y: number }[]} */
+  /** @type {{ el: HTMLElement, head: HTMLElement, bar: number, barTicks: number, chars: { lt: number, ld: number, ch: string }[], chipEls: HTMLElement[], fillEls: HTMLElement[], noteN: number, y: number }[]} */
   let lyricRows = [];
   let lyricRunSig = /** @type {string} */ ("");
   let lyricW = 0;
@@ -21507,7 +21511,8 @@ pills.forEach(b => {
 /* v3.37.0（旋律谱 A 期）：音高标注三态（关 / 简谱 / 音名）——与位置三档同构。
    只换渲染、不动数据：重画一次歌词轨即可（音高上标建在字 span 内，重建即生效）；
    编排页编辑轨不受此开关管（那边恒显），下次 arrangeRender 自然跟上。 */
-[...document.querySelectorAll("#pitchNotationGroup .pill")].forEach(b => {
+const pitchPills = /** @type {HTMLElement[]} */ ([...document.querySelectorAll("#pitchNotationGroup .pill")]);
+pitchPills.forEach(b => {
   b.addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (!S.showLyric) return;                 // 与位置组同口径：歌词关时整组已收起
