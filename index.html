@@ -333,7 +333,10 @@ body.wide-full .main{max-width:none}
        我新增的 .ctl-pills 是它的第一个孩子 ⇒ 被塞进**第一列**（约 300px）⇒ 放不下就换行。
        修法：折叠方案生效时让外层退回**单列块** —— 与 A1「胶囊行在上、内容在下」的排布一致，
        也顺手避免 .card-head 被挤进某一列。 */
-    .viz-head-grid{display:block}
+    /* ★★ 必须抬特异性：@media (min-width:900px) 里那条 .viz-head-grid{display:grid} 在**文件更后面**，
+       同特异性下后者胜 ⇒ 光写 .viz-head-grid 会被它覆盖（宽度扫描实测 900/939 档胶囊仍竖堆、gap=-154）。
+       加 .card 前缀提到 (0,2,0) 后与顺序无关。 */
+    .card .viz-head-grid{display:block}
     /* align-self:flex-start —— 实测 1000x1400 下本行被外层 flex 拉伸到 200px 高，
        多出的空白反而吃掉纵向空间（与"压缩面积"的初衷相反）；贴合内容后回到 36px。 */
     .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px;
@@ -4147,23 +4150,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4179  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5081  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7124  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8136  Modal         应用内弹窗
-     L8281  Viz           时值可视化渲染与每帧动画
-     L11746 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12427 Trainer       变速训练器
-     L12637 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13348 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15326 Editor        自定义节奏型编辑器
-     L15906 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15953 Ear           听辨训练（v1.10.0）
-     L16181 Arrange       曲式编排（v2.0.0）
-     L19753 Help          使用方法（v2.0.1）
-     L19908 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19982 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20271 初始化（装配） 各模块 hook 接线与启动
+     L4182  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5084  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7127  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8139  Modal         应用内弹窗
+     L8284  Viz           时值可视化渲染与每帧动画
+     L11749 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12430 Trainer       变速训练器
+     L12640 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13351 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15329 Editor        自定义节奏型编辑器
+     L15909 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15956 Ear           听辨训练（v1.10.0）
+     L16184 Arrange       曲式编排（v2.0.0）
+     L19756 Help          使用方法（v2.0.1）
+     L19911 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19985 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20274 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

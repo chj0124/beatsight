@@ -1858,7 +1858,14 @@ function portraitFixProbe(){
       pillGap: (function(){ var a=q(".ctl-pills .ctl-hit[for=volOpen]"), b=q(".ctl-pills .ctl-hit[for=bpmOpen]");
         if(!a||!b) return null; return Math.round(b.getBoundingClientRect().left-a.getBoundingClientRect().right); })(),
       pillsSameRow: (function(){ var a=q(".ctl-pills .ctl-hit[for=volOpen]"), b=q(".ctl-pills .ctl-hit[for=bpmOpen]");
-        if(!a||!b) return null; return Math.abs(a.getBoundingClientRect().top-b.getBoundingClientRect().top) <= 1; })(),
+        if(!a||!b) return null;
+        var ra=a.getBoundingClientRect(), rb=b.getBoundingClientRect();
+        /* ★ 补38：胶囊行**隐藏**时（宽屏档）两个 rect 都是 0 ⇒ 旧写法会误报 true。
+           必须先判"有没有盒子"，否则宽屏档会拿到假绿。 */
+        if (ra.height <= 0 || rb.height <= 0) return false;
+        return Math.abs(ra.top-rb.top) <= 1; })(),
+      pillsVisible: (function(){ var a=q(".ctl-pills .ctl-hit[for=volOpen]");
+        return a ? a.getBoundingClientRect().height > 0 : null; })(),
       pillLive: (function(){
         var out={};
         var s=q("#volMaster");
@@ -1969,6 +1976,30 @@ function portraitFixProbe(){
       const edgeRaw = await cdp.send("Runtime.evaluate",
         { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
       result.barEdge = JSON.parse(edgeRaw.result.value);
+      /* ★★★ v3.36.20 补38：折叠方案的**新作用域**必须有自己的档位 ——
+         此前 补35/36/37 三次改动都只有手工实测、没有闸门，用户实拍才发现漏（939 胶囊换行）。
+         三档：1000×1400 竖屏（宽 > 640）/ 939×406 矮屏（横屏但矮）/ 1440×900 宽裕横屏（= 典型 PC，应不折叠）。 */
+      for (const sc of [["barPortrait", 1000, 1400, 2, true], ["barShort", 939, 406, 2, true], ["barPC", 1440, 900, 1, false]]){
+        await cdp.send("Emulation.setDeviceMetricsOverride",
+          { width: sc[1], height: sc[2], deviceScaleFactor: sc[3], mobile: sc[4] });
+        await sleep(400);
+        const scRaw = await cdp.send("Runtime.evaluate",
+          { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+        result[sc[0]] = JSON.parse(scRaw.result.value);
+      }
+      /* ★★★ v3.36.20 补38b：**宽度扫描** —— 矮屏档（高 420）下从 660 到 1440 逐档量"两枚胶囊是否同行"。
+         起因：M32 变异（去掉 .viz-head-grid{display:block}）在 939 单点**没被抓到**（那一档三列装得下），
+         说明单点取样不够；扫描能把"某一段宽度下列太窄导致换行"整段罩住。 */
+      result.pillSweep = [];
+      for (const w of [660, 700, 760, 820, 880, 900, 939, 1000, 1100, 1280, 1440]){
+        await cdp.send("Emulation.setDeviceMetricsOverride",
+          { width: w, height: 420, deviceScaleFactor: 1, mobile: false });
+        await sleep(320);
+        const swRaw = await cdp.send("Runtime.evaluate",
+          { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
+        const s = JSON.parse(swRaw.result.value);
+        result.pillSweep.push({ w: w, vis: s.pillsVisible, row: s.pillsSameRow, gap: s.pillGap });
+      }
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
@@ -2643,6 +2674,27 @@ async function main(){
           ok(false, p.label + "·" + vp + "：宽屏地图探针未取到（故障：" + ((MW && MW.err) || "缺失") + "）", "");
         }
         /* ★★★ v3.36.20 补6：641–960 中间档（用户实报机型 740×1804）——胶囊不许压到键组、进度条要吃到富余 */
+        /* ★★★ v3.36.20 补38b：宽度扫描断言 —— 矮屏档下 660~1440 每一档都必须"胶囊行可见 + 两枚同行 + 不重叠" */
+        {
+          const sw = r.pillSweep || [];
+          const bad = sw.filter(function(x){ return !(x.vis === true && x.row === true && typeof x.gap === "number" && x.gap >= 4); });
+          ok(sw.length >= 11 && bad.length === 0,
+            p.label + "·宽度扫描：矮屏档下 660→1440 全部『胶囊行可见 + 两枚同行 + 不重叠』（" + sw.length + " 档）",
+            bad.length ? ("换行/隐藏/重叠的档：" + JSON.stringify(bad)) : ("各档 gap=" + sw.map(function(x){return x.gap;}).join(",")));
+        }
+        /* ★★★ v3.36.20 补38：折叠方案作用域的三档闸门（窄屏 ∪ 竖屏 ∪ 矮屏；宽裕横屏不得折叠） */
+        for (const [nm, m, want, bg] of [["竖屏1000x1400", r.barPortrait, true, "rgba(0, 0, 0, 0)"],
+                                          ["矮屏939x406", r.barShort, true, "rgba(0, 0, 0, 0)"],
+                                          ["PC 1440x900", r.barPC, false, "rgb(24, 24, 24)"]]){
+          if (!m){ ok(false, p.label + "·" + nm + "：折叠作用域档位探针未取到", ""); continue; }
+          ok(m.pillsVisible === want && m.pillsSameRow === want,
+            p.label + "·" + nm + "：紧凑折叠方案" + (want ? "**应生效**（胶囊行可见且两枚同行）" : "**不应生效**（胶囊行隐藏）")
+            + "（pillsVisible=" + m.pillsVisible + " pillsSameRow=" + m.pillsSameRow + "）",
+            JSON.stringify({ pillsVisible: m.pillsVisible, pillsSameRow: m.pillsSameRow }));
+          ok(m.ctlCardBg === bg,
+            p.label + "·" + nm + "：控制卡底色应为 " + bg + "（实测 " + m.ctlCardBg + "）",
+            "bg=" + m.ctlCardBg);
+        }
         const M6 = r.barMid;
         if (M6 && !M6.err){
           ok(M6.overlapCtxJump !== null && M6.overlapCtxJump <= 0,
