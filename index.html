@@ -253,7 +253,7 @@ body.wide-full .main{max-width:none}
      横屏（含 1440×900 的 PC）天然落在"不压"一侧，所以只按**几何**判定即可。
    ★ 这一段（含嵌套块）里**只有折叠方案**（胶囊样式/收起规则/间距/A1/无卡底），
      不含底栏等其它窄屏布局 ⇒ 扩作用域不会连带影响它们。 */
-@media (max-width:640px), (orientation: portrait){
+@media (max-width:640px), (orientation: portrait), (max-height: 700px){
   /* ★ 点**标签本身**折叠 / 展开（用户要求：不再用「控制区」总开关）。
      用户第 3 条：**必须一眼看出可点** ⇒ 标签在窄屏变成可点胶囊：浅底 + 描边 + 圆角 +
      右端箭头（▸ 收起 / ▾ 展开）+ 手型光标；整行都是热区（手机上 ≥40px 高）。
@@ -324,11 +324,14 @@ body.wide-full .main{max-width:none}
      · 组容器与内容**一个都不动** ⇒ 内容自然落在胶囊行下方（音量在上、BPM 在下）；
      · 宽屏完全不涉及（.ctl-pills 默认 display:none）。 */
   /* ★ 补35：嵌套这层与父层同条件（父层已含竖屏）；写成同一条以免漏掉竖屏分支 */
-  @media (max-width:640px), (orientation: portrait){
-    /* ★ 补34/补35：无卡底 —— 窄屏**与竖屏**（用户指正 PC 横屏不该变） */
+  @media (max-width:640px), (orientation: portrait), (max-height: 700px){
+    /* ★ 补34/35/36：无卡底 —— 窄屏 / 竖屏 / 矮屏（PC 横屏既非竖屏也不矮 ⇒ 不受影响） */
     body .card:has(.card-head.viz-head){background:none;border:0;border-radius:0}
     /* gap 24：胶囊自身有 margin:0 -8px（负外边距保持文字贴内容缘），两侧各吃 8 ⇒ 可见间距 = 24-16 = 8 */
-    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px}
+    /* align-self:flex-start —— 实测 1000x1400 下本行被外层 flex 拉伸到 200px 高，
+       多出的空白反而吃掉纵向空间（与"压缩面积"的初衷相反）；贴合内容后回到 36px。 */
+    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px;
+      align-self:flex-start}
     .card-head.viz-head .card-head-left > .group > .group-label,
     .card-head.viz-head > .group > .group-label{display:none}
     #volOpen:checked ~ .ctl-pills .ctl-hit[for=volOpen]::after,
@@ -4138,23 +4141,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4170  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5072  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7115  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8127  Modal         应用内弹窗
-     L8272  Viz           时值可视化渲染与每帧动画
-     L11737 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12418 Trainer       变速训练器
-     L12628 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13339 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15317 Editor        自定义节奏型编辑器
-     L15897 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15944 Ear           听辨训练（v1.10.0）
-     L16172 Arrange       曲式编排（v2.0.0）
-     L19744 Help          使用方法（v2.0.1）
-     L19899 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19973 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20262 初始化（装配） 各模块 hook 接线与启动
+     L4173  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5075  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7118  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8130  Modal         应用内弹窗
+     L8275  Viz           时值可视化渲染与每帧动画
+     L11740 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12421 Trainer       变速训练器
+     L12631 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13342 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15320 Editor        自定义节奏型编辑器
+     L15900 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15947 Ear           听辨训练（v1.10.0）
+     L16175 Arrange       曲式编排（v2.0.0）
+     L19747 Help          使用方法（v2.0.1）
+     L19902 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19976 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20265 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
