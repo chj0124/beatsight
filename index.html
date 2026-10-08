@@ -243,6 +243,9 @@ body.wide-full .main{max-width:none}
    ★ 为什么用 checkbox 而不是 JS + localStorage：折叠是**纯呈现**，不需要持久化也能用；
      一旦引入 JS 就要碰 Controls 的初始化顺序、还要处理页面重建后的状态恢复（本仓反复踩过这类坑）。 */
 .ctl-open{display:none}
+/* ★ 补31：窄屏专用胶囊行**默认隐藏** —— 这条必须落在全局（我第一版误放进 ≤640 块内 ⇒ 宽屏漏出一行，
+   当场打坏两条桌面几何断言）。窄屏由下面的 @media 打开。 */
+.ctl-pills{display:none}
 @media (max-width:640px){
   /* ★ 点**标签本身**折叠 / 展开（用户要求：不再用「控制区」总开关）。
      用户第 3 条：**必须一眼看出可点** ⇒ 标签在窄屏变成可点胶囊：浅底 + 描边 + 圆角 +
@@ -309,9 +312,17 @@ body.wide-full .main{max-width:none}
      ⇒ 胶囊到可见内容 = 8+11 = **19px**；而 BPM 首行是按钮**自身即可见胶囊**、盒顶即视觉顶
      ⇒ 8px。故肉眼差 11px（用户实报「音量胶囊到节拍条明显大于 BPM 到按钮」）。
      修法：音量组盒子间距 8 → 3（可见 ≈14）；BPM 内容区补 6px 顶部内边距（可见 ≈14）⇒ 两侧相等。 */
-  .viz-head-grid .card-head-left .ctl-hit{margin-bottom:-5px}
-  .viz-head-grid .viz-head > .group .tg-body{padding-top:2px}
-  .viz-head-grid .viz-head > .group > .ctl-hit{margin-top:-16px}
+  /* ★★★ v3.36.20 补31（A1，零容器改动版）：
+     · 窄屏显示 .ctl-pills（两枚胶囊并排一行）、隐藏两个组内的原标签；
+     · 组容器与内容**一个都不动** ⇒ 内容自然落在胶囊行下方（音量在上、BPM 在下）；
+     · 宽屏完全不涉及（.ctl-pills 默认 display:none）。 */
+  @media (max-width:640px){
+    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-left:16px;margin-bottom:4px}
+    .card-head.viz-head .card-head-left > .group > .group-label,
+    .card-head.viz-head > .group > .group-label{display:none}
+    #volOpen:checked ~ .ctl-pills .ctl-hit[for=volOpen]::after,
+    #bpmOpen:checked ~ .ctl-pills .ctl-hit[for=bpmOpen]::after{content:"▾"}
+  }
   .viz-head-grid .card-head-left .group .tg-body{gap:6px}
 }
 .viz-head-grid .viz-head .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
@@ -2840,6 +2851,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          实测：390×844 下控制卡 624px（首屏 74%）⇒ 收起后练习网格从 855px 提到首屏内。 -->
     <input type="checkbox" id="volOpen" class="ctl-open" hidden>
     <input type="checkbox" id="bpmOpen" class="ctl-open" checked hidden>
+    <!-- ★★★ v3.36.20 补31（用户要求 A1）：**窄屏专用胶囊行** —— 两枚胶囊并排在同一行，
+         两组内容仍留在各自组容器里（因此天然落在这一行下方），**不动任何容器层级**。
+         上一版用 display:contents 拆容器（胶囊确实同行了）但把探针依赖的容器盒子抹掉、
+         内容块宽度也塌了 ⇒ 三次尝试三次回退；本方案零容器改动，宽屏一像素不动。
+         原标签在窄屏由 CSS 隐藏（宽屏仍是它们）。 -->
+    <div class="ctl-pills">
+      <label class="group-label ctl-hit" for="volOpen" title="点这里折叠 / 展开音量条">音量<span class="ctl-ico"><svg class="ctl-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="ctl-val">节拍：<span id="volPillPctN">80%</span></span></label>
+      <label class="group-label ctl-hit" for="bpmOpen" title="点这里折叠 / 展开 BPM 控制">BPM<span class="ctl-ico"><svg class="ctl-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span><span class="ctl-val" id="bpmPillNumN">96</span></label>
+    </div>
     <div class="card-head viz-head">
         <!-- v2.10.16：左列改三行——角标 → 状态灯 → 音量组。
              ★ 标题（原 #vizTitle「时值可视化 · 4/4 · 歌曲第…」）整块删除：播放位置与状态灯
@@ -4103,23 +4123,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4135  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5037  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7080  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8092  Modal         应用内弹窗
-     L8237  Viz           时值可视化渲染与每帧动画
-     L11702 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12383 Trainer       变速训练器
-     L12593 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13304 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15282 Editor        自定义节奏型编辑器
-     L15862 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15909 Ear           听辨训练（v1.10.0）
-     L16137 Arrange       曲式编排（v2.0.0）
-     L19709 Help          使用方法（v2.0.1）
-     L19864 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19938 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20227 初始化（装配） 各模块 hook 接线与启动
+     L4155  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5057  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7100  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8112  Modal         应用内弹窗
+     L8257  Viz           时值可视化渲染与每帧动画
+     L11722 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12403 Trainer       变速训练器
+     L12613 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13326 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15304 Editor        自定义节奏型编辑器
+     L15884 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15931 Ear           听辨训练（v1.10.0）
+     L16159 Arrange       曲式编排（v2.0.0）
+     L19731 Help          使用方法（v2.0.1）
+     L19886 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19960 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20249 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -12918,6 +12938,7 @@ let taps = /** @type {number[]} */ ([]), tapResetT = /** @type {null | ReturnTyp
     $("bpmNum").textContent = v;
     /* v3.36.20 补29：折叠态的「BPM」胶囊显示当前速度（±/TAP/快捷档/滑杆/训练器改速都经这里） */
     const bpn = $("bpmPillNum"); if (bpn) bpn.textContent = String(v);
+    const bpnN = $("bpmPillNumN"); if (bpnN) bpnN.textContent = String(v);
     $("bpmSlider").value = v;
     paintRange($("bpmSlider"));   // v2.41.0：程序化改速（±/档位/TAP/训练阶梯）也要重画绿色填充（用户拖动走装配区的 input 委托；函数声明提升，全脚本可见）
     Trainer.updateProg();
@@ -13050,7 +13071,8 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
 
   $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100; $("volMasterPct").textContent = evTarget(e).value + "%";
     /* v3.36.20 补29：折叠态的「音量」胶囊要显示**实时**节拍音量（用户要求） */
-    const pp = $("volPillPct"); if (pp) pp.textContent = evTarget(e).value + "%"; });
+    const pp = $("volPillPct"); if (pp) pp.textContent = evTarget(e).value + "%";
+    const ppN = $("volPillPctN"); if (ppN) ppN.textContent = evTarget(e).value + "%"; });
   $("volStrum").addEventListener("input", (/** @type {InputEvent} */ e) => { S.strumVol = evTarget(e).value / 100; $("volStrumPct").textContent = evTarget(e).value + "%"; });
   $("volAccent").addEventListener("input", (/** @type {InputEvent} */ e) => { S.accentVol = evTarget(e).value / 100; $("volAccentPct").textContent = evTarget(e).value + "%"; });
   $("volMaster").addEventListener("change", Store.persist);
@@ -20429,6 +20451,7 @@ Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并�
 $("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
 /* v3.36.20 补29：启动时把折叠态胶囊的实时值补上（音量这条不经 setBpm） */
 if ($("volPillPct")) $("volPillPct").textContent = Math.round(S.vol * 100) + "%";
+if ($("volPillPctN")) $("volPillPctN").textContent = Math.round(S.vol * 100) + "%";
 $("volStrum").value = S.strumVol * 100; $("volStrumPct").textContent = Math.round(S.strumVol * 100) + "%";
 $("volAccent").value = S.accentVol * 100; $("volAccentPct").textContent = Math.round(S.accentVol * 100) + "%";
 /* v2.41.0：滑杆绿色填充——统一由 paintRange 写 --vfill（CSS gradient 按 0–100% 分段）。

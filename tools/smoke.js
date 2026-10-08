@@ -967,7 +967,12 @@ function layoutProbe(){
   })();
   /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
-  out.title = textLeft(q(".card-head-left .group-label"));
+  /* ★ 补31：窄屏 A1 下原标签被隐藏、胶囊行改为 .ctl-pills ⇒ 取第一个**可见**的当基准 */
+  out.title = (() => {
+    const cands = [q(".ctl-pills .ctl-hit"), q(".card-head-left .group-label")];
+    for (const el of cands){ if (el && el.getBoundingClientRect().width > 0) return textLeft(el); }
+    return textLeft(cands[1]);
+  })();
   out.toggle = textLeft(q(".viz-toggles .tg-row .toggle-pill"));   // v2.76.0：开关移入 .tg-row 行容器
   /* ★ v3.12.0：「同屏行数 + 拍号」并排行整块退役——
      行数档位搬进**设置弹窗**（隐藏态，无几何可言）；拍号控件直接删除。
@@ -1846,6 +1851,8 @@ function portraitFixProbe(){
         var d = (p&&t)? Math.round(t.getBoundingClientRect().top-p.getBoundingClientRect().bottom):null;
         if(cb&&k!==null)cb.checked=k; if(cb2&&k2!==null)cb2.checked=k2; void document.body.offsetWidth;
         return d; })(),
+      volBodyTop: (function(){ var b=q(".card-head-left .group .tg-body")||q(".card-head-left .tg-body"); return b? Math.round(b.getBoundingClientRect().top) : null; })(),
+      bpmBodyTop: (function(){ var b=q(".card-head.viz-head > .group > .tg-body")||q(".viz-head > .group .tg-body"); return b? Math.round(b.getBoundingClientRect().top) : null; })(),
       bpmPillInk: (function(){ var cb=document.getElementById("volOpen"), cb2=document.getElementById("bpmOpen");
         var k=cb?cb.checked:null, k2=cb2?cb2.checked:null;
         if(cb)cb.checked=true; if(cb2)cb2.checked=true; void document.body.offsetWidth;
@@ -2736,10 +2743,16 @@ async function main(){
           /* ★★★ v3.36.20 补26：**可见边缘**口径的断言 —— 两组"胶囊→首行可见内容"的间距必须相等。
              修复前实测：音量 19px（行盒 40、内容居中 ⇒ 可见内容离盒顶 11）vs BPM 8px ⇒ 差 11px，
              而**盒子**口径两边都是 8（这就是"看着绿、肉眼不齐"的根源）。 */
-          ok(PF.volPillInk !== null && PF.bpmPillInk !== null && Math.abs(PF.volPillInk - PF.bpmPillInk) <= 3,
-            p.label + "·" + vp + "：★★★ 两组「胶囊→首行可见内容」间距相等（音量 " + PF.volPillInk
-            + "px vs BPM " + PF.bpmPillInk + "px）——可见边缘口径，不是盒子边缘",
-            "volPillInk=" + PF.volPillInk + " bpmPillInk=" + PF.bpmPillInk);
+          /* ★ 补31：窄屏 A1 下两枚胶囊同一行、两个内容块依次落在其下方 ⇒「两侧相等」的前提已不成立。
+             改为：① 胶囊行 → **首个内容块**的可见间距落在合理带内；② BPM 内容块在音量块**下方**。 */
+          ok(PF.volPillInk !== null && PF.volPillInk >= 4 && PF.volPillInk <= 30,
+            p.label + "·" + vp + "：★★★ 胶囊行 → 首个内容块的**可见**间距落在 4~30px（实测 " + PF.volPillInk
+            + "px）——可见边缘口径",
+            "volPillInk=" + PF.volPillInk);
+          ok(PF.volBodyTop !== null && PF.bpmBodyTop !== null && PF.bpmBodyTop > PF.volBodyTop + 20,
+            p.label + "·" + vp + "：★★★ A1 排列：BPM 内容块在音量内容块**下方**（" + PF.volBodyTop
+            + " → " + PF.bpmBodyTop + "）",
+            "volBodyTop=" + PF.volBodyTop + " bpmBodyTop=" + PF.bpmBodyTop);
           ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 14,
             p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
             + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 104px（390 档）；容差 14 容纳字体差异",
