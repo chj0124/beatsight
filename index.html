@@ -547,6 +547,11 @@ body.wide-full .main{max-width:none}
        （正好是滚动条宽的一半）。**布局高度里没有可以忽略的 1px。** */
   min-height:calc(100vh - 65px - var(--bar-h) - 72px)}
 .card{background:var(--card);border-radius:12px;padding:24px}
+/* ★★★ v3.36.20 补28（用户拍板）：「任何时候都没有卡底」——只去掉**控制卡**（带 .card-head.viz-head 那张）
+   的底色。用 :has() 精确选中（该卡无 id），不改 .card 本体（其它卡片仍在用这层底）。
+   ★ 只去底色、**保留内边距**：内边距在没有底色时不可见，去掉它反而会让整块内容左移 24px
+     （既有"标签左缘 = 控制列内容边缘"两条断言会跟着漂）——不制造无谓的位移。 */
+.card:has(> .card-head.viz-head){background:none;border-radius:0}
 /* ★ v3.30.0（用户拍板）：**控制卡片盒收窄**——卡片盒原与跑道同宽（`.main` 内容缘），
    而卡内控制区限宽 1000px 居中 → 盒内两侧死空间随窗口变宽（1920 实测 ~172px/侧）。
    收窄到 1048（= 控制区 1000 + 两侧 24 内边距）抱住控制区，死空间消除。
@@ -4093,23 +4098,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4125  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5027  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7070  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8082  Modal         应用内弹窗
-     L8227  Viz           时值可视化渲染与每帧动画
-     L11692 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L12373 Trainer       变速训练器
-     L12583 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13290 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15268 Editor        自定义节奏型编辑器
-     L15848 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L15895 Ear           听辨训练（v1.10.0）
-     L16123 Arrange       曲式编排（v2.0.0）
-     L19695 Help          使用方法（v2.0.1）
-     L19850 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L19924 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L20213 初始化（装配） 各模块 hook 接线与启动
+     L4130  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5032  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7075  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8087  Modal         应用内弹窗
+     L8232  Viz           时值可视化渲染与每帧动画
+     L11697 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L12378 Trainer       变速训练器
+     L12588 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L13295 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L15273 Editor        自定义节奏型编辑器
+     L15853 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L15900 Ear           听辨训练（v1.10.0）
+     L16128 Arrange       曲式编排（v2.0.0）
+     L19700 Help          使用方法（v2.0.1）
+     L19855 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L19929 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L20218 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
