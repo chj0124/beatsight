@@ -2,14 +2,17 @@
    T231
    ---------------------------------------------------------------------------
    【钉什么】控制芯重排（批 2/3）的承重契约：
-     ① 芯形态：≥1280 单列 + 芯容器 402px 居中（52 标签槽 + 10 间距 + 340 滑杆），
+     ① 芯形态：≥1280 单列 + 芯容器 402px **全档居中**（52 标签槽 + 10 间距 + 340 滑杆），
         三根滑杆等长的**结构前提**与音量/BPM 互比口径同源；
      ② 胶囊行：三枚开关（预备/静音/变速）住 .core-pills，id 与 role="switch" 接线不变；
      ③ 浮层壳：显隐镜像面板（syncParamSlots），openParamSlot 强制路径 + 收回路径；
      ④ 拒开原因仍落在芯底 #trainerProg（t142 口径的浮层版延伸）。
    【几何口径】真几何（左右缘差 ≤2 / 浮层锚定 / 收起塔高）归 tools/smoke.js 的
      layoutProbe（桩无布局引擎）；本文件钉**源码结构 + 桩内行为**，
-     与 t90 头部声明的"标记字符串断言"同一分工。 */
+     与 t90 头部声明的"标记字符串断言"同一分工。
+   【v3.40.0 居中补正】用户实测发现芯只在 1280–1439.9 居中：窄/堆叠档（<1280）落在
+     「全宽块 + 内容左贴」、≥1440 回退 312 左贴（基础 .card-head-left 的旧 2×2 列宽未覆盖）。
+     修法 = 居中规则上移基础层 + ≥1280 放开 .card-head-left 宽度；T231a 新增两条钉死这两点。 */
 "use strict";
 const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
@@ -21,8 +24,14 @@ section("T231a 芯形态 · ≥1280 单列 + 402 居中 + 三滑杆等长的结�
   /* 单列居中芯（批 2）：块布局 + 芯容器 402 居中（两处都在 ≥1280 媒体块内） */
   ok(/html body \.card \.viz-head-grid\{display:block;max-width:none;margin:0 auto\}/.test(CSS_CODE),
     "★★ ≥1280：两列网格退役 → display:block（单列）");
-  ok(/\.viz-head-grid \.card-head-left \.group\{max-width:402px;margin:0 auto\}/.test(CSS_CODE),
-    "★★ 芯容器 402px 居中（中轴 = 跑道中轴；左右缘差 ≤2 的几何验收归 smoke）");
+  /* ★★★ v3.40.0 居中补正：居中规则必须在**基础层**（早于 ≥1280 媒体块）——
+     原先只在 ≥1280 块内 ⇒ 窄/堆叠档与 ≥1440 都不居中（用户实测复现）。 */
+  const iGroupCenter = CSS_CODE.indexOf(".viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}");
+  const iBlock1280 = CSS_CODE.indexOf("@media (min-width:1280px)");
+  ok(iGroupCenter >= 0 && iBlock1280 >= 0 && iGroupCenter < iBlock1280,
+    "★★ 芯容器 402px 居中在**基础层**（全档生效；退回 ≥1280 块内 ⇒ 窄档与 ≥1440 不居中）");
+  ok(/@media \(min-width:1280px\)\{[\s\S]*?\.viz-head-grid \.card-head-left\{width:100%\}/.test(CSS_CODE),
+    "★★ ≥1280 放开 .card-head-left 宽度（覆盖基础 width:min(312px,100%)，防 ≥1440 回退 312 左贴）");
   /* 402 的算术：标签槽 52 + 行内间距 10 + 滑杆 340。滑杆长度不是写死的数字——
      它 = tg-body 上限 402 − 槽位 52 − 间距 10，故钉这三个来源而非 340 本身。 */
   ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{max-width:402px\}/.test(CSS_CODE),

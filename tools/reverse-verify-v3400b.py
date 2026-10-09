@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""反向变异验证（v3.40.0 批 2/4 · 控制芯）——证明芯形态三件套都有具名断言守着。
+"""反向变异验证（v3.40.0 批 2/4 + 居中补正 · 控制芯）——证明芯形态三件套都有具名断言守着。
    用法：python3 tools/reverse-verify-v3400b.py
-   M42 删芯容器 402 居中规则 → T231a 红（芯形态）
+   M42 删芯容器 402 居中规则（已上移基础层）→ T231a 红（全档居中的来源）
    M43 删芯顶胶囊行三枚开关 → T231b 红（胶囊行接线）
    M44 浮层壳显隐反转（sh.hidden = show）→ T231c 红（镜像契约）
+   M45 删 ≥1280 的 .card-head-left 宽度放开 → T231a 红（≥1440 回退 312 左贴的防回归钉）
 """
 import io, os, re, subprocess, sys
 
@@ -14,8 +15,8 @@ orig = io.open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
 MUTANTS = [
     ("M42 删芯容器 max-width:402 居中规则",
      lambda s: s.replace(
-         "  .viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}   /* position:relative 已在浮层 CSS 段全档给出 */",
-         "  /* M42: 芯容器居中规则被删 */", 1),
+         ".viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}",
+         "/* M42: 芯容器居中规则被删 */", 1),
      ["芯容器 402px 居中"]),
     ("M43 删芯顶胶囊行三枚开关",
      lambda s: s.replace(
@@ -34,6 +35,11 @@ MUTANTS = [
          "    const sh = $(shellMap[k]);\n    if (sh) sh.hidden = !show;",
          "    const sh = $(shellMap[k]);\n    if (sh) sh.hidden = show;", 1),
      ["浮层壳镜像面板", "壳随之隐藏", "强制路径下浮层壳同步可见", "填目标即收浮层"]),
+    ("M45 删 ≥1280 的 .card-head-left 宽度放开",
+     lambda s: s.replace(
+         ".viz-head-grid .card-head-left{width:100%}\n",
+         "/* M45: 宽度放开被删 */\n", 1),
+     ["放开 .card-head-left 宽度"]),
 ]
 
 hit_n, miss_n = 0, 0

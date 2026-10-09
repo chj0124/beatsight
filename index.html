@@ -222,6 +222,13 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    space-between 在恒定行高下精确底对齐 BPM（v3.21 等高诉求回归且更稳：位置恒定，
    不再随面板开合重新分布）。v3.22 的固定 gap 顶对齐（估算误差 51px）退役。 */
 .viz-head-grid .card-head-left .group{flex:1;justify-content:space-between}
+/* ★★★ v3.40.0 居中补正（用户实测反馈）：芯容器 402 居中**提升为全档口径**。
+   根因：该属性原先只写在 ≥1280 媒体块内，窄/堆叠档（<1280）因此落在「全宽块 + 内容左贴」
+   （560–1279 实测内容 402 贴左、右侧大留白），与方案示意图（芯居中，示意 .core{margin:0 auto}）
+   不符；≥1440 更因基础 `.card-head-left{width:min(312px,100%)}` 未被覆盖而回退成 312 左贴。
+   放到基础层后：<1280 的 .card-head-left 已是 width:100%（≤1439.9 档），
+   ≥1440 的宽度由下面 ≥1280 块一并放开；三档同吃这一条居中。 */
+.viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}
 /* ★★ v3.24.0 修正（用户反馈"音量并没有跟 BPM 相同高度"）：音量滑杆住在
    .card-head-left > .group > .tg-body（v2.76.3 设计：滑杆进 tg-body 靠 flex:1+
    space-evenly 铺满列高）——v3.23 把 L201 的宽作用域收窄到 .viz-head 时把音量列的
@@ -451,7 +458,13 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   /* 芯容器：.group 收成 402 内容盒居中；.viz-head 壳在本档回归普通块（display:contents 退役），
      卡头基底的 margin-bottom:16px 一并清零（壳溶解时代本档没有这条下边距，几何不回退） */
   html body .card .viz-head-grid .viz-head{display:block;margin-bottom:0}
-  .viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}   /* position:relative 已在浮层 CSS 段全档给出 */
+  /* ★★★ v3.40.0 居中补正（用户实测反馈）：基础 `.card-head-left{width:min(312px,100%)}`
+     是 v2.10.18 的旧 2×2 栅格首列宽，只被 ≤1439.9 档的 width:100% 覆盖——
+     ≥1440 档没有任何覆盖 ⇒ 列回落 312（内容盒 280）、芯回退左贴。
+     批 2 把本档从 display:grid 改 display:block 后，栅格轨道顺手给的宽度没了，这条基础宽就露了出来。
+     本档放开为全宽，芯盒居中交基础层 `.group{max-width:402px;margin:0 auto}`。 */
+  .viz-head-grid .card-head-left{width:100%}
+  /* 芯容器 402 居中规则已上移到基础层（v3.40.0 居中补正）：全档生效，不再只在本档。 */
   /* v3.13.0 的 1000 限宽 / 两列 1fr / v3.19.0 开关列落位等历史口径随网格一并退役。 */
 }
 /* v2.40.0：宽屏铺满——行 2 并入行 1，四块一行并 space-between 拉开（贴左右缘、
@@ -4274,23 +4287,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4306  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5728  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7847  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8893  Modal         应用内弹窗
-     L9038  Viz           时值可视化渲染与每帧动画
-     L12562 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13245 Trainer       变速训练器
-     L13455 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14139 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16117 Editor        自定义节奏型编辑器
-     L16697 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16744 Ear           听辨训练（v1.10.0）
-     L16972 Arrange       曲式编排（v2.0.0）
-     L21037 Help          使用方法（v2.0.1）
-     L21192 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21266 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21555 初始化（装配） 各模块 hook 接线与启动
+     L4319  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5741  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7860  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8906  Modal         应用内弹窗
+     L9051  Viz           时值可视化渲染与每帧动画
+     L12575 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13258 Trainer       变速训练器
+     L13468 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14152 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16130 Editor        自定义节奏型编辑器
+     L16710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16757 Ear           听辨训练（v1.10.0）
+     L16985 Arrange       曲式编排（v2.0.0）
+     L21050 Help          使用方法（v2.0.1）
+     L21205 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21279 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21568 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
