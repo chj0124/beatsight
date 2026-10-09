@@ -230,11 +230,12 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   beat.Controls.setSig(4);
 
   /* 音量滑杆：input 只改状态（拖动过程不落盘），change 才落盘。
-     ★ v3.39.1：行内 % 文案退役——数值读数只剩收起态胶囊（实时跟随）。 */
+     ★ v3.39.1：行内 % 文案退役。
+     ★ 控制芯批 3（PLAN-v9）：折叠态 % 读数 #volPillPctN 也退役——input 只写状态。 */
   els["volMaster"].value = "45"; els["volMaster"].fire("input");
   eq(S.vol, 0.45, "总音量 input → 状态更新");
   ok(els["volMasterPct"] === undefined, "★ 行内 % 文案 #volMasterPct 已随定宽槽退役（v3.39.1）");
-  eq(els["volPillPctN"].textContent, "45%", "收起态胶囊 % 实时跟随（音量的唯一数值读数）");
+  ok(els["volPillPctN"] === undefined, "★ 折叠态 % 读数 #volPillPctN 已退役（控制芯批 3；input 只写状态）");
   /* v3.39.0：重拍增强滑杆退役——接线与状态一并除名（桩上取不到即接线已消失） */
   ok(els["volAccent"] === undefined && S.accentVol === undefined, "重拍增强滑杆与 accentVol 状态已除名");
 

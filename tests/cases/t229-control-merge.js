@@ -15,40 +15,39 @@ const SURFACE = html
   .replace(/<!--[\s\S]*?-->/g, "")
   .replace(/\/\*[\s\S]*?\*\//g, "");
 
-section("T229a 折叠钮合一：#ctlOpen 单开关 + 一枚胶囊双实时值");
+section("T229a 折叠钮合一：#ctlOpen 单开关 + 「BPM 96 ▾」读数钮（控制芯批 3 重写）");
 {
   const { els } = loadApp();
   ok(html.indexOf('id="ctlOpen"') > 0, "★ 合并折叠开关 #ctlOpen 在标记里");
   ok(html.indexOf('id="volOpen"') < 0 && html.indexOf('id="bpmOpen"') < 0,
     "★★ 原「音量 / BPM」两枚折叠开关（volOpen/bpmOpen）已从标记除名");
-  /* 胶囊行只剩一枚，且两枚实时值（节拍 % · BPM）都住进同一枚胶囊 */
+  /* 控制芯批 3：折叠胶囊收窄为「BPM 96 ▾」读数钮（#volPillPctN 退役） */
   const pills = html.match(/class="ctl-pills">[\s\S]*?<\/div>/) || [""];
   eq((pills[0].match(/<label/g) || []).length, 1, "★★ 窄屏胶囊行只剩一枚（两枚合一）");
-  ok(/class="ctl-pills">[\s\S]*?for="ctlOpen"[\s\S]*?id="volPillPctN"[\s\S]*?id="bpmPillNumN"[\s\S]*?<\/div>/.test(html),
-    "★★ 合并胶囊同时携带节拍音量 %（#volPillPctN）与当前 BPM（#bpmPillNumN）——收起时读数不丢");
-  /* 组标签也挂同一个开关（宽屏点标签 = 窄屏点胶囊，同一件事） */
-  ok(/<label class="group-label ctl-hit" for="ctlOpen"/.test(html),
-    "★ 合并组标签挂 #ctlOpen（原 for=volOpen 随两开关合一改挂）");
-  /* 实时值接线：改 BPM / 拖节拍音量，胶囊两枚值各自跟随 */
-  ok(typeof els["bpmPillNumN"] !== "undefined" && typeof els["volPillPctN"] !== "undefined",
-    "★ 两枚实时值 span 在桩上可取到（接线对象存在）");
+  ok(/class="ctl-pills">[\s\S]*?for="ctlOpen"[\s\S]*?id="bpmPillNumN"[\s\S]*?<\/div>/.test(html),
+    "★★ 折叠读数钮携带当前 BPM（#bpmPillNumN）；音量 % 读数 #volPillPctN 随批 3 退役");
+  ok(!/id="volPillPctN"/.test(SURFACE),
+    "★★ #volPillPctN 从标记与接线除名（% 无信息量口径的延伸；收起态读 BPM 就够）");
+  /* 实时值接线：BPM 写点仍在（setBpm / 启动收敛） */
+  ok(typeof els["bpmPillNumN"] !== "undefined",
+    "★ BPM 实时值 span 在桩上可取到（接线对象存在）");
 }
 
-section("T229b 折叠语义：一枚开关管整块（音量 + BPM + 开关组）");
+section("T229b 折叠语义：收起 = 只藏滑杆塔（胶囊行常驻；控制芯批 3）");
 {
   const { els } = loadApp();
   els["bpmPlus5"].fire("pointerdown");
-  eq(els["bpmPillNumN"].textContent, "101", "★ setBpm 路径 → 胶囊 BPM 值实时跟随（±5 生效）");
-  els["volMaster"].value = "39";
-  els["volMaster"].fire("input");
-  eq(els["volPillPctN"].textContent, "39%", "★ 音量 input 路径 → 胶囊节拍 % 实时跟随");
-  /* CSS 侧：收起规则全部改挂 #ctlOpen，且开关组随它一起收 */
-  ok(/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left\{display:none\}/.test(html)
-     && /#ctlOpen:not\(:checked\) ~ \.viz-toggles\{display:none\}/.test(html),
-    "★★ 收起 = 合并组整块 + 开关组一起不参与排布（原 volOpen/bpmOpen 分治规则退役）");
+  eq(els["bpmPillNumN"].textContent, "101", "★ setBpm 路径 → 读数钮 BPM 值实时跟随（±5 生效）");
+  /* CSS 侧：收起 = 藏滑杆塔（.tg-body）+ 藏浮层壳；胶囊行与读数钮常驻 */
+  ok(/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left \.tg-body\{display:none\}/.test(html)
+     && /#ctlOpen:not\(:checked\) ~ \.card-head \.tg-flyout\{display:none\}/.test(html)
+     && !/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left\{display:none\}/.test(SURFACE)
+     && !/#ctlOpen:not\(:checked\) ~ \.viz-toggles\{display:none\}/.test(SURFACE),
+    "★★ 收起 = 只藏滑杆塔与浮层（芯顶胶囊行常驻、开关收起后仍可点；"
+    + "旧「合并组整块 + 开关组」分治规则随批 3 退役）");
   ok(/#ctlOpen:checked ~ \.ctl-pills \.ctl-hit\[for=ctlOpen\]::after\{content:"▾"\}/.test(html),
     "★ 展开态箭头 ▾ 随合并开关翻转（收起 ▸ / 展开 ▾）");
-  ok(!/volOpen|bpmOpen/.test(html.replace(/<!--[\s\S]*?-->/g, "").replace(/\/\*[\s\S]*?\*\//g, "")),
+  ok(!/volOpen|bpmOpen/.test(SURFACE),
     "★★ 净表面（剥注释）不再有 volOpen/bpmOpen 残留——收起/箭头选择器无一漏改");
 }
 

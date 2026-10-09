@@ -970,12 +970,10 @@ function layoutProbe(){
      会读到 0 盒（left=0 + padding=16），基准失真、窄屏 390 当场判红（实测 16 vs 48）。
      改成"取第一个**可见**的控制列块"——三者 padding-left 同源（都是 12px 16px），
      谁是第一个可见的都能当基准。
-     ★★★ v3.39.0：volOpen/bpmOpen 合并为 #ctlOpen 一枚，窄屏**默认收起 = 整块控制区
-     display:none**（旧默认 bpmOpen 展开、BPM 组常在，量得到；新默认下两个候选全不可见）。
-     而「标题/开关行左缘」两条对齐断言量的是**展开态**的左缘——收起只是 display:none，
-     盒子几何不动，故这里造条件：收起态下临时翻 #ctlOpen 展开量完即还原（探针不留状态）。 */
+     ★★★ 控制芯批 3（PLAN-v9）：窄屏默认收起 = **只藏滑杆塔**（.tg-body）——探针据此判收起态；
+     量「标题/开关行左缘」前造条件：收起态下临时翻 #ctlOpen 展开量完即还原（探针不留状态）。 */
   const ctlExpand = (() => {
-    const cb = document.getElementById("ctlOpen"), tw = q(".viz-toggles");
+    const cb = document.getElementById("ctlOpen"), tw = q(".card-head-left .group .tg-body");
     if (cb && !cb.checked && tw && getComputedStyle(tw).display === "none"){
       cb.checked = true; void document.body.offsetWidth;
       return true;
@@ -983,7 +981,7 @@ function layoutProbe(){
     return false;
   })();
   out.headContentLeft = (() => {
-    const cands = [q(".card-head-left"), q(".viz-toggles")];
+    const cands = [q(".card-head-left")];
     for (const el of cands){
       if (!el) continue;
       const cs = getComputedStyle(el);
@@ -996,13 +994,14 @@ function layoutProbe(){
   })();
   /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
-  /* ★ 补31：窄屏 A1 下原标签被隐藏、胶囊行改为 .ctl-pills ⇒ 取第一个**可见**的当基准 */
+  /* ★ 补31 → 控制芯批 3：窄屏收起档的左缘基准取第一个**可见**的——
+     「BPM 96 ▾」读数钮（.ctl-pills）或芯顶胶囊行（.core-pills），两者同在内容边缘上 */
   out.title = (() => {
-    const cands = [q(".ctl-pills .ctl-hit"), q(".card-head-left .group-label")];
+    const cands = [q(".ctl-pills .ctl-hit"), q(".core-pills .toggle-pill")];
     for (const el of cands){ if (el && el.getBoundingClientRect().width > 0) return textLeft(el); }
     return textLeft(cands[1]);
   })();
-  out.toggle = textLeft(q(".viz-toggles .tg-row .toggle-pill"));   // v2.76.0：开关移入 .tg-row 行容器
+  out.toggle = textLeft(q(".core-pills .toggle-pill"));   // 控制芯批 3：开关移入 .core-pills 胶囊行
   /* ★ v3.39.0：上面的临时展开到此还原（后续 blockRects / grpWidths 等量**默认收起态**，
      不受污染——两套口径各量各的，与 portraitFixProbe「量完还原」同一纪律）。 */
   if (ctlExpand){ const cb = document.getElementById("ctlOpen"); if (cb) cb.checked = false; void document.body.offsetWidth; }
@@ -2234,17 +2233,13 @@ function portraitFixProbe(){
         if(cb&&k!==null)cb.checked=k; void document.body.offsetWidth;
         return d; })(),
       /* ★★★ v3.36.20 补33：本轮新增行为的真机闸 —— 胶囊可见 / 实时值跟随 / 无卡底。
-         · pillsVisible：合并胶囊在收起档可见（宽屏档 .ctl-pills 整行 display:none）；
-         · pillLive：**真的派发事件**（改音量 input、点 BPM +1）后读胶囊文本，读完还原；
-         · ctlCardBg：控制卡底色必须透明（补28/32 的"任何时候无卡底"）。 */
+         · pillsVisible：折叠读数钮在收起档可见（宽屏档 .ctl-pills 整行 display:none）；
+         · pillLive：**真的派发事件**（点 BPM +1）后读胶囊文本，读完还原；
+           控制芯批 3：音量 % 读数（#volPillPctN）退役 ⇒ pillLive 只量 BPM。 */
       pillsVisible: (function(){ var a=q(".ctl-pills .ctl-hit[for=ctlOpen]");
         return a ? a.getBoundingClientRect().height > 0 : null; })(),
       pillLive: (function(){
         var out={};
-        var s=q("#volMaster");
-        if (s){ var keep=s.value; s.value="42"; s.dispatchEvent(new Event("input",{bubbles:true}));
-          out.vol = (q("#volPillPctN")||{}).textContent || (q("#volPillPct")||{}).textContent || null;
-          s.value=keep; s.dispatchEvent(new Event("input",{bubbles:true})); }
         var up=q("#bpmPlus"), dn=q("#bpmMinus");
         if (up && dn){ up.click(); out.bpm = (q("#bpmPillNumN")||{}).textContent || (q("#bpmPillNum")||{}).textContent || null; dn.click(); }
         return out; })(),
@@ -3236,9 +3231,9 @@ async function main(){
             p.label + "·" + vp + "：★★★ 胶囊行 → 首个内容块的**可见**间距落在 4~30px（实测 " + PF.volPillInk
             + "px）——可见边缘口径",
             "volPillInk=" + PF.volPillInk);
-          ok(PF.pillLive && PF.pillLive.vol === "42%" && PF.pillLive.bpm === "97",
-            p.label + "·" + vp + "：★★★ 合并胶囊双实时值跟随（真机派发 input/click 后：音量 " + (PF.pillLive && PF.pillLive.vol)
-            + " / BPM " + (PF.pillLive && PF.pillLive.bpm) + "）——拖音量应显示 42%、点 +1 应显示 97",
+          ok(PF.pillLive && PF.pillLive.bpm === "97",
+            p.label + "·" + vp + "：★★★ 折叠读数钮实时值跟随（点 +1 应显示 97；"
+            + "控制芯批 3 起音量 % 读数退役，只量 BPM）",
             JSON.stringify(PF.pillLive));
           ok(PF.ctlCardBg === "rgba(0, 0, 0, 0)" || PF.ctlCardBg === "transparent",
             p.label + "·" + vp + "：★★★ 控制卡**无底色**（实测 " + PF.ctlCardBg + "）——用户拍板「任何时候都没有卡底」",

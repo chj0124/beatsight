@@ -65,8 +65,12 @@ section("T230d 音量 % 退役：行内文案与接线除名，收起态胶囊�
     "★★★ 行内 % 文案 #volMasterPct/#volStrumPct 已从标记除名（v3.39.1 用户拍板：% 无信息量，滑杆绿色填充 + 圆钮足够）");
   ok(!/\$\("volMasterPct"\)/.test(SURFACE) && !/\$\("volStrumPct"\)/.test(SURFACE),
     "★★★ 接线除名：净表面不再向已删元素写 textContent（残留引用会在启动即抛 null 崩）");
-  ok(/id="volPillPctN"/.test(SURFACE) && /\$\("volPillPctN"\)/.test(SURFACE),
-    "★★ 收起态胶囊 % 保留（收起时滑杆不可见，胶囊是音量的唯一数值读数——input 实时跟随）");
+  /* 控制芯批 3（PLAN-v9）：折叠态胶囊收窄为「BPM 96 ▾」——#volPillPctN 退役，
+     BPM 读数 #bpmPillNumN 保留（setBpm 写点不动） */
+  ok(!/id="volPillPctN"/.test(SURFACE)
+     && /id="bpmPillNumN"/.test(SURFACE) && /\$\("bpmPillNumN"\)/.test(SURFACE),
+    "★★ 收起态读数钮只带 BPM（#bpmPillNumN 实时跟随）；音量 % 读数 #volPillPctN 退役"
+    + "（% 无信息量口径的延伸——收起时看 BPM，音量回展开档看滑杆填充）");
   /* 基础规则 .vol-row .pct 保留给设置弹窗的两条活值行（遮罩深浅 / 延迟补偿）——退役不越界 */
   ok(/\.vol-row \.pct\{font-family:var\(--mono\);min-width:38px;text-align:right\}/.test(html)
     && /id="wallDimPct"/.test(html) && /id="latMsPct"/.test(html),

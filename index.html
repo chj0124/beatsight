@@ -284,29 +284,20 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   .ctl-hit{outline:1px solid var(--line);outline-offset:-1px}
   /* ★ v3.36.20 补29（用户要求）：折叠态胶囊内部 = [名称][图标][实时值][箭头]
      —— 图标与数值都跟随文字基线；数值用等宽数字，避免跳动时宽度抖动。 */
-  .ctl-hit .ctl-ico{display:inline-flex;align-items:center;color:var(--t2);opacity:.9}
-  .ctl-hit .ctl-svg{display:block}
-  .ctl-hit .ctl-val{color:var(--t1);font-variant-numeric:tabular-nums;white-space:nowrap}
   .ctl-hit::after{content:"▸";font-size:11px;color:var(--t2);transition:transform .15s}
-  #ctlOpen:checked ~ .card-head .card-head-left .ctl-hit::after{content:"▾"}
+  /* 控制芯批 3：旧胶囊内部的 [名称][图标][实时值] 三件套（.ctl-ico/.ctl-svg/.ctl-val）
+     随「BPM 96 ▾」读数钮收窄一并除名；箭头翻面只归 .ctl-pills 的读数钮（下面 L357 那条） */
   /* ★ 选择器修正（用户实报「点了速度 BPM 却没收起、箭头仍朝 ▸」）：
      「.card-head」与「.viz-head」是**同一个元素**（class 写在一起），
      所以后代式写法永远不匹配、规则**静默失效**（CSS 不报错）。
      改成同元素双 class（.card-head.viz-head）—— 收起与箭头两条都已按此修正。 */
-  /* ★ 只收**三条音量滑杆**（.group 内的 .tg-body）——不整块收：
-     · 「音量」**标签**（.group-label）在 .group 里，是既有两条断言的基准（标题即控制列内容边缘、
-       开关行与标题同左缘），整块收或收到 .group 都会把它们打破（实测各红两条）；
-     · 开关组（.viz-toggles）同理保留——它也在被量之列。
-     收起后卡片只剩：卡头 + 音量标签 + BPM 组 + 开关组（实测 390×844：307 → 约 5xx，见闸门实测值）。 */
+  /* ★★ 控制芯重排批 3（PLAN-v9）：收起 = **只藏滑杆塔**（.tg-body，含音量三行/BPM 塔/
+     训练进度行）——芯顶胶囊行（三枚开关）与「BPM 96 ▾」读数钮常驻，开关收起后仍可点。
+     浮层壳一并藏（拒开路径 openSlotForTarget 只在展开态可达，收起时不漏浮层）。 */
   #ctlOpen:not(:checked) ~ .card-head .card-head-left .tg-body{display:none}
-    /* ★★★ v3.38.1 补7：收起的控制列**整块不占排布**。原来只隐藏 .tg-body，而壳溶解后
-       .card-head-left 是 flex 里的一个独立项 ⇒ 收起时它仍占着一整列（900/760/600 档
-       左侧那一大片空白就是这么来的）。与「开关组收起时不参与排布」同一口径。
-       ★ v3.39.0：两枚折叠钮（volOpen/bpmOpen）合并为 #ctlOpen 一枚，收起 = 音量 + BPM
-       + 开关组整块不参与排布（胶囊上的实时值兜底读数）。 */
-    #ctlOpen:not(:checked) ~ .card-head .card-head-left{display:none}
-  /* 控制芯重排（PLAN-v9 批 2）：`#ctlOpen:not(:checked) ~ .viz-toggles{display:none}`
-     随开关列退役；收起口径的精细化（胶囊行常驻、只藏滑杆塔）在批 3 落地。 */
+  #ctlOpen:not(:checked) ~ .card-head .tg-flyout{display:none}
+  /* v3.38.1 补7 的「收起列整块不占排布」（#ctlOpen:not(:checked) ~ … .card-head-left{display:none}）
+     随批 3 退役：胶囊行常驻后收起列仍有内容，不再整块消失。 */
   /* ★ v3.36.20 补18（用户拍板 a）：**窄屏堆叠档里两组组内行距统一 8px**。
      实测前：音量组行距 10px、BPM 组 8px（同一张卡两个值）；胶囊↔首行同样 10 vs 8。
      ★ 只改**堆叠档**：这两个 gap 是 v3.30.0「三列横向对齐」体系的一部分（≥1280 四块一行那套），
@@ -3022,13 +3013,12 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            合并后收起 = 整块控制区（音量 + BPM + 开关组）都收，胶囊上的两枚实时值兜底读数。
            实测口径（390×844）随之只保留历史意义，新几何以真机复测为准。 -->
     <input type="checkbox" id="ctlOpen" class="ctl-open" hidden>
-    <!-- ★★★ v3.39.0（用户拍板）：窄屏折叠胶囊**合并为一枚**。v3.36.20 补31 起是
-         「音量」「BPM」两枚各管一组；本批 BPM 条/步进/训练进度整块并入音量组（移动需求①②③），
-         两组变一组 ⇒ 折叠钮随之合一：一枚胶囊管整块控制区，开关组也随它一起收放
-         （取代 v3.36.20 的「开关组跟 BPM 标签一起收」）。胶囊里同时给两枚实时值
-         （节拍音量 % · 当前 BPM），收起时读数不丢。 -->
+    <!-- ★★★ 控制芯重排批 3（PLAN-v9）：折叠胶囊**统一为「BPM 96 ▾」读数钮**——
+         收起态 = 芯顶胶囊行常驻（三枚开关仍可见可点）+ 本读数钮，展开 = 胶囊行 + 滑杆塔；
+         音量 % 读数（#volPillPctN）随本批退役（v3.39.1 口径：% 无信息量；收起时看 BPM 读数，
+         音量回展开档看滑杆绿色填充）。#bpmPillNumN 保留（setBpm / 启动收敛写点不动）。 -->
     <div class="ctl-pills">
-      <label class="group-label ctl-hit" for="ctlOpen" title="点这里折叠 / 展开音量与 BPM 控制">音量<span class="ctl-ico"><svg class="ctl-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="ctl-val">节拍：<span id="volPillPctN">80%</span> · BPM <span id="bpmPillNumN">96</span></span></label>
+      <label class="group-label ctl-hit" for="ctlOpen" title="点这里折叠 / 展开滑杆塔">BPM <span id="bpmPillNumN">96</span></label>
     </div>
     <div class="card-head viz-head">
         <!-- v2.10.16：左列改三行——角标 → 状态灯 → 音量组。
@@ -4284,23 +4274,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4316  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5738  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7857  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8903  Modal         应用内弹窗
-     L9048  Viz           时值可视化渲染与每帧动画
-     L12572 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13255 Trainer       变速训练器
-     L13465 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14148 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16126 Editor        自定义节奏型编辑器
-     L16706 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16753 Ear           听辨训练（v1.10.0）
-     L16981 Arrange       曲式编排（v2.0.0）
-     L21046 Help          使用方法（v2.0.1）
-     L21201 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21275 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21564 初始化（装配） 各模块 hook 接线与启动
+     L4306  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5728  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7847  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8893  Modal         应用内弹窗
+     L9038  Viz           时值可视化渲染与每帧动画
+     L12562 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13245 Trainer       变速训练器
+     L13455 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14139 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16117 Editor        自定义节奏型编辑器
+     L16697 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16744 Ear           听辨训练（v1.10.0）
+     L16972 Arrange       曲式编排（v2.0.0）
+     L21037 Help          使用方法（v2.0.1）
+     L21192 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21266 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21555 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -13892,9 +13882,10 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   });
 
   /* ★ v3.39.1（用户拍板）：音量行 % 文案退役（#volMasterPct/#volStrumPct 随右侧定宽槽
-     一并除名）——input 只写状态；折叠胶囊的实时 % 是唯一读数、保留（v3.36.20 补29）。 */
-  $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100;
-    const ppN = $("volPillPctN"); if (ppN) ppN.textContent = evTarget(e).value + "%"; });
+     一并除名）——input 只写状态。
+     ★ 控制芯重排批 3（PLAN-v9）：折叠胶囊收窄为「BPM 96 ▾」读数钮，
+     音量 % 读数 #volPillPctN 随之退役——本监听不再写胶囊。 */
+  $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100; });
   $("volStrum").addEventListener("input", (/** @type {InputEvent} */ e) => { S.strumVol = evTarget(e).value / 100; });
   $("volMaster").addEventListener("change", Store.persist);
   $("volStrum").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
@@ -21764,9 +21755,8 @@ onDemoRange = Arrange.setRange;
 window.addEventListener("pagehide", () => { if (S.playing) Controls.stop(); });
 Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
 $("volMaster").value = S.vol * 100;
-/* v3.36.20 补29：启动时把折叠态胶囊的实时值补上（音量这条不经 setBpm）。
-   ★ v3.39.1：行内 % 文案退役后，这里（收起态胶囊）是音量的唯一数值读数 */
-if ($("volPillPctN")) $("volPillPctN").textContent = Math.round(S.vol * 100) + "%";
+/* 控制芯重排批 3（PLAN-v9）：折叠态音量 % 读数（#volPillPctN）退役，启动回填一并除名
+   （v3.36.20 补29 的启动补值只服务那一枚读数）。 */
 $("volStrum").value = S.strumVol * 100;
 /* v3.39.0：volAccent 的启动回填随重拍增强滑杆退役删除（音量只剩节拍 / 扫弦两条）。 */
 /* v2.41.0：滑杆绿色填充——统一由 paintRange 写 --vfill（CSS gradient 按 0–100% 分段）。
