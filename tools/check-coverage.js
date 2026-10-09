@@ -158,7 +158,6 @@ for (const [key, count] of fnSeen){
     deadFns.push({ name: key.slice(0, i), off: +key.slice(i + 1) });
   }
 }
-if (!REUSE) fs.rmSync(covDir, { recursive: true, force: true });
 if (!ranges.length){
   console.error("没有采集到 index.inline.js 的覆盖率——检查 tests/run.js 是否仍经 vm.Script 加载内联脚本");
   console.error("  这是**工具故障，不是覆盖率不达标**——本次未被验证（退出码 4 = 未能执行）。");
@@ -197,6 +196,14 @@ const entryVerdicts = [];   // 每个条目一个 off => bool
     });
   }
 }
+/* ★ v3.40.1：临时目录的清理必须排在**所有读取之后**。
+   原先这行在「第一次汇总」之后、上面那段逐条目 readdirSync 之前——独立运行时
+   （不带 --reuse）先删掉自己下一秒要读的目录，于是必现
+   `ENOENT ... scandir .../beatsight-cov-XXXX`（栈指向那次 readdirSync）、退出码 1，
+   而且它发生在整个插桩套件跑完之后，表现为「白等几分钟后被判覆盖率失败」。
+   check-all 第 21 步恒传 --reuse=<第 12 步落盘>，走不到 !REUSE 分支，故长期未暴露。
+   反向验证：tools/reverse-verify-v3401.py。--reuse 模式的 covDir 是上游落盘，绝不删。 */
+if (!REUSE) fs.rmSync(covDir, { recursive: true, force: true });
 const coveredAt = off => entryVerdicts.some(v => v(off));
 
 /* ---- 逐行判定 ---- */

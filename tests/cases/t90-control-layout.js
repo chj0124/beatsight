@@ -259,8 +259,10 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   const css = slice("css");
   /* 控制芯重排（PLAN-v9 批 2）：`.viz-toggles .toggle-pill{padding-left:0}`（③选丙）随开关列退役；
      新胶囊行带自己的规格钉（36px 高 = 上下 8px 内边距），作用域同样收在芯内 */
-  ok(/\.core-pills \.toggle-pill\{padding-top:8px;padding-bottom:8px\}/.test(css),
-    "★★ 控制芯：`.core-pills .toggle-pill` 上下 8px（36px 胶囊规格，v3.24.0 压缩配额口径延续）");
+  /* ★ v3.41.0（按《整体布局方案示意图》对账）：胶囊规格从「上下 8px 内边距」改为**显式 height:36px**
+     + 方案的中性描边——同一件事（36px 胶囊）换写法，因为方案图的胶囊是「描边胶囊 + 16px 圆点」。 */
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:12\.5px;/.test(css),
+    "★★ 控制芯：36px 胶囊改为显式 height（v3.41.0 描边胶囊 + 16px 圆点，按方案图）");
   /* ★ 作用域必须限定在 .viz-toggles 内：改成全局 .toggle-pill 会是全站开关的观感变更 */
   ok(!/^\.toggle-pill\{[^}]*padding-left:0/m.test(css),
     "★ 且没顺手把全局 `.toggle-pill` 也改掉（那是全站开关，不在本次范围）");
@@ -302,9 +304,11 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
      && /\.tg-flyout\{position:absolute/.test(css)
      && /\.tg-flyout\[hidden\]\{display:none\}/.test(css),
     "★★ 控制芯：参数浮层壳 = 芯内绝对定位（.group 为包含块），[hidden] 显式收显（类选择器盖 UA 的坑）");
-  ok(/#muteFlyout\{left:auto;right:calc\(100% \+ 14px\)/.test(css)
-     && /#trainerFlyout\{left:calc\(100% \+ 14px\)/.test(css),
-    "★ ≥1280：静音浮层出芯左、变速浮层出芯右（方案图口径，不盖滑杆塔）");
+  /* ★ v3.41.0（乙案重设计）：面板改为挂在**自己那枚胶囊正下方**的下拉面板——包含块 = .core-pill-hold（≥1280）
+     或芯（<1280），顶部带指向胶囊的小箭头；旧的「出芯两侧」口径退役。 */
+  ok(/\.core-pill-hold\{position:relative;display:flex\}/.test(css)
+     && /\.tg-flyout::before\{content:""/.test(css),
+    "★ v3.41.0：参数面板 = 胶囊下方的下拉（holder 提供包含块 + 顶部指向箭头）");
   ok(/\.viz-head\{[^}]*justify-content:flex-start[^}]*column-gap:48px/.test(css),
     "★ v2.10.17：卡片头紧凑排列——BPM 组紧随音量列 48px（原 space-between 中间空 239px）");
   ok(/\.status\{display:inline-flex;align-items:center;gap:8px/.test(css)

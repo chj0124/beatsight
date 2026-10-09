@@ -63,7 +63,7 @@ MUTANTS = [
    ["nm 档歌词字"]),
 
   ("M27 v3.38.1 回退：歌词字占地常量归零（窄格不再隐藏音名 ⇒ 名字压到字上）",
-   "const NM_CHAR_RESERVE = 46;",
+   "const NM_CHAR_RESERVE = 48;",
    "const NM_CHAR_RESERVE = 0;",
    ["43px 格"]),
 

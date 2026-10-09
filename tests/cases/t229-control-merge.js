@@ -38,13 +38,15 @@ section("T229b 折叠语义：收起 = 只藏滑杆塔（胶囊行常驻；控�
   const { els } = loadApp();
   els["bpmPlus5"].fire("pointerdown");
   eq(els["bpmPillNumN"].textContent, "101", "★ setBpm 路径 → 读数钮 BPM 值实时跟随（±5 生效）");
-  /* CSS 侧：收起 = 藏滑杆塔（.tg-body）+ 藏浮层壳；胶囊行与读数钮常驻 */
-  ok(/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left \.tg-body\{display:none\}/.test(html)
-     && /#ctlOpen:not\(:checked\) ~ \.card-head \.tg-flyout\{display:none\}/.test(html)
+  /* CSS 侧（v3.42.0 第六轮补③ · 用户拍板甲案）：收起 = 塔**只藏内容、留拒开原因行**（#trainerProg）；
+     **浮层不再被 CSS 藏**——否则"开关能点、参数槽弹不出来"（用户实拍）。浮层显隐一律交 syncParamSlots 仲裁。
+     胶囊行与读数钮仍常驻（收起态开关照样可点）。 */
+  ok(/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left \.tg-body\{display:block;flex:0 0 auto;padding-bottom:0\}/.test(html)
+     && /#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left \.tg-body > \*:not\(\.tr-prog\)\{display:none\}/.test(html)
+     && !/#ctlOpen:not\(:checked\) ~ \.card-head \.tg-flyout\{display:none\}/.test(html)
      && !/#ctlOpen:not\(:checked\) ~ \.card-head \.card-head-left\{display:none\}/.test(SURFACE)
      && !/#ctlOpen:not\(:checked\) ~ \.viz-toggles\{display:none\}/.test(SURFACE),
-    "★★ 收起 = 只藏滑杆塔与浮层（芯顶胶囊行常驻、开关收起后仍可点；"
-    + "旧「合并组整块 + 开关组」分治规则随批 3 退役）");
+    "★★ v3.42.0 甲案：收起态塔只藏内容、**留拒开原因行**；浮层**不再被 CSS 藏**（开关可点 ⇒ 参数必须可达）");
   ok(/#ctlOpen:checked ~ \.ctl-pills \.ctl-hit\[for=ctlOpen\]::after\{content:"▾"\}/.test(html),
     "★ 展开态箭头 ▾ 随合并开关翻转（收起 ▸ / 展开 ▾）");
   ok(!/volOpen|bpmOpen/.test(SURFACE),

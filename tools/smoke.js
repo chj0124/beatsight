@@ -737,9 +737,15 @@ function layoutProbe(){
     const vol1R = () => (vol1 ? JSON.stringify([round(vol1.getBoundingClientRect().left), round(vol1.getBoundingClientRect().top)]) : null);
     const bpmR = () => (bpmNum ? JSON.stringify([round(bpmNum.getBoundingClientRect().left), round(bpmNum.getBoundingClientRect().top)]) : null);
     const wrapRow = () => { if (!wrapEl || !ct) return null;
+      /* ★ v3.41.0：拍数输入改为**就地长出**（预备关着时 hidden、零尺寸 ⇒ 直接量会读到 0×0 的假错位）
+         ⇒ 量之前先把它打开、量完还原（沿用本文件"造条件→量→还原"的既有纪律，同 volPillInk 一族）。 */
+      const prep = q("#countInToggle"), wasHidden = !!wrapEl.hidden;
+      if (prep && wasHidden) prep.click();
       const a = ct.getBoundingClientRect(), b = wrapEl.getBoundingClientRect();
       const cyOK = Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) <= 2;   /* 垂直中轴对齐（align-items:center） */
-      return JSON.stringify([cyOK, round(b.left) > round(a.right - 4)]); };
+      const rightOK = round(b.left) > round(a.right - 4);
+      if (prep && wasHidden) prep.click();
+      return JSON.stringify([cyOK, rightOK]); };
     /* v3.16.0：面板收容口径放宽到**卡片底缘**——预留 50px 是记账线，真正的视觉边界
        是卡片底（预留 50 + 卡片内边距 24 = 行下 74px）；两行化后最满内容允许用内边距
        的空白（用户确认过：预留空间足够，不需要调高度）。 */
@@ -762,14 +768,16 @@ function layoutProbe(){
     const rowEl = q(".core-pills");   /* 控制芯批 6：开关行 = 芯顶胶囊行（.viz-toggles .tg-row 随列退役） */
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
+    /* ★ v3.42.0：右侧参数槽的宽度——开关关着应为 0（不占位），打开应 > 0（长在胶囊壳里） */
+    const slotW = () => { const s = q("#muteSlot"); return s ? round(s.getBoundingClientRect().width) : null; };
     const ctxEl = q(".pb-ctx");
     const ctxL = ctxEl ? round(ctxEl.getBoundingClientRect().left) : null;
-    const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), rowWC = wrapRow();
+    const closed = h(), mxC = mx(), txC = tx(), colLC = colLR(), rowWC = wrapRow(), slotWC = slotW();
     const vol1C = vol1R(), bpmC = bpmR();
     const volHC = colLH();
     const cardHC = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     if (mt) mt.click();
-    const muteOnly = h(), mxM = mx(), txM = tx(), colLM = colLR(), rowWM = wrapRow();
+    const muteOnly = h(), mxM = mx(), txM = tx(), colLM = colLR(), rowWM = wrapRow(), slotWM = slotW();
     const vol1M = vol1R(), bpmM = bpmR();
     const cardHM = (() => { const c = cardEl || (q(".viz-head-grid") && q(".viz-head-grid").closest(".card")); return c ? round(c.getBoundingClientRect().height) : null; })();
     /* 悬浮面板收容：打开的面板底缘不得越过 .tg-body 底缘（56px 预留装得下最满面板） */
@@ -810,6 +818,8 @@ function layoutProbe(){
       vol1C: vol1C, vol1M: vol1M, vol1B: vol1B,
       bpmC: bpmC, bpmM: bpmM, bpmB: bpmB,
       rowWC: rowWC, rowWM: rowWM, rowWB: rowWB,
+      slotWC: slotWC, slotWM: slotWM,
+      prepWrapHidden: (function(){ var w=q("#countInBeatsWrap"); return w ? !!w.hidden : null; })(),
       mxC: mxC, mxM: mxM, mxB: mxB, mxR: mx(),
       txC: txC, txM: txM, txB: txB, txR: tx(),
       muteBottom: muteBottom, trainerBottom: trainerBottom };
@@ -1008,6 +1018,31 @@ function layoutProbe(){
      .tg-body display:none，getBoundingClientRect 归零，量出来是假错位）。 */
   out.corePillsL = boxLeft(q(".core-pills"));
   out.towerL = boxLeft(q(".card-head-left .group .tg-body"));
+  /* ★★★ v3.41.0（按《整体布局方案示意图》对账）：胶囊行**单行 + 居中**与**芯底读数行常显**。
+     为什么必须新量：原来的「同左缘」量的是 .core-pills **容器**左缘，而容器恒满芯宽 ⇒
+     对"是否折成两行""胶囊是否居中"完全无感——v3.41.0 之前全档折成两行（行高 82）也照样绿。 */
+  out.pillGeom = (() => {
+    const core = q(".card-head-left .group"), row = q(".core-pills");
+    /* ★ v3.42.0 补：展开态的折叠小箭头在**非折叠档**是 display:none（rect 全 0）——它现在是胶囊行的
+       行内 flex 项，不滤掉会把"单行/居中"判红（实测 tops=[124,124,124,0]、ctrOff 被拉偏 294px）。 */
+    const kids = Array.from(document.querySelectorAll(".core-pills > *"))
+      .filter(el => el.getBoundingClientRect().width > 0);
+    if (!core || !row || !kids.length) return null;
+    const c = core.getBoundingClientRect(), r = row.getBoundingClientRect();
+    const rects = kids.map(el => el.getBoundingClientRect());
+    const tops = rects.map(x => Math.round(x.top * 10) / 10);
+    const l = Math.min.apply(null, rects.map(x => x.left));
+    const rr = Math.max.apply(null, rects.map(x => x.right));
+    return { rowH: Math.round(r.height * 10) / 10, singleLine: new Set(tops).size === 1,
+      tops: tops, count: kids.length,
+      ctrOff: Math.round(((l + rr) / 2 - (c.left + c.right) / 2) * 10) / 10 };
+  })();
+  out.progGeom = (() => {
+    const el = document.getElementById("trainerProg");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { h: Math.round(r.height * 10) / 10, text: (el.textContent || "").trim() };
+  })();
   /* ★ v3.39.0：上面的临时展开到此还原（后续 blockRects / grpWidths 等量**默认收起态**，
      不受污染——两套口径各量各的，与 portraitFixProbe「量完还原」同一纪律）。 */
   if (ctlExpand){ const cb = document.getElementById("ctlOpen"); if (cb) cb.checked = false; void document.body.offsetWidth; }
@@ -2281,8 +2316,9 @@ function portraitFixProbe(){
          ① volBpmDelta 改为**两根滑杆互比右端**（原口径是音量行盒 vs BPM 输入——塔式后
             行盒右缘恒比滑杆宽出右侧空槽 48px，原口径会把对齐判成错位）；
          ② volBpmLeftDelta 左端互比——与 ① 同时为 0 ⇔ 等长且两端对齐；
-         ③ bpmClusterAxis 步进群轴心 vs 滑杆轴心（居中参照滑杆，非整行：左槽 52px ⇒
-            整行轴会差 31px）；bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
+         ③ bpmClusterAxis 步进群轴心 vs **BPM 行（芯）轴**——★ v3.41.0（方案对账 G9）按方案图
+            改为参照芯轴；v3.39.1 的「参照滑杆轴」会让它偏右 31px（左槽 52px 把滑杆顶开）；
+            bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
       volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
@@ -2300,7 +2336,7 @@ function portraitFixProbe(){
       bpmClusterAxis: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
-        var s=q(".slider-row input[type=range]"), g=q(".slider-row .bpm-row");
+        var s=q(".bpm-slider-row"), g=q(".slider-row .bpm-row");
         var d=null;
         if (s&&g){ var sr=s.getBoundingClientRect(), gr=g.getBoundingClientRect();
           d=Math.round((gr.left+gr.right)/2-(sr.left+sr.right)/2); }
@@ -3005,6 +3041,22 @@ async function main(){
         ok(sameLine(m.corePillsL, m.towerL),
           p.label + "·" + label + "：★★ 芯顶胶囊行与滑杆塔**同左缘**（同住居中芯，左缘差 ≤0.5）",
           "胶囊行 " + m.corePillsL + " vs 滑杆塔 " + m.towerL);
+        /* ★★★ v3.41.0（方案对账）：胶囊行**单行**、**居中**，芯底读数行**常显**——方案的核心形态，
+           此前无机器看守（折成两行 / 左贴 / 读数行隐身都能溜过去）。 */
+        const pg = m.pillGeom;
+        ok(!!pg && pg.singleLine === true && pg.rowH <= 40,
+          p.label + "·" + label + "：★★★ 芯顶胶囊行**单行**（行高 " + (pg ? pg.rowH : "?")
+          + " ≤ 40 = 一枚 36px 胶囊；方案：一行三枚）",
+          "pillGeom=" + JSON.stringify(pg));
+        ok(!!pg && Math.abs(pg.ctrOff) <= 2,
+          p.label + "·" + label + "：★★ 胶囊行**居中**（胶囊束中心 − 芯中心 = " + (pg ? pg.ctrOff : "?")
+          + "px，容差 2；v3.41.0 起按方案图的 justify-content:center）",
+          "pillGeom=" + JSON.stringify(pg));
+        const prg = m.progGeom;
+        ok(!!prg && prg.h === 0 && prg.text === "",
+          p.label + "·" + label + "：★★ 芯底读数行**随变速训练生死**（训练器未开 ⇒ 空文本零高度；实测高 "
+          + (prg ? prg.h : "?") + "px、文本「" + (prg ? prg.text : "") + "」；v3.41.0 撤回 G4）",
+          "progGeom=" + JSON.stringify(prg));
         /* v2.38.0（用户反馈）：卡片头改居中分布——桌面（≥1280px）走 grid 居中（三块各归其列，
            不再左贴）；窄屏（<1280px）回退现状左贴（同一套断言保留）。两种口径按 label 分派。
            v2.39.0：竖跨执行错误已修——r1 = 音量｜BPM｜三开关并列，r2 = 行数拍号 1/4 占满整行，
@@ -3112,14 +3164,14 @@ async function main(){
         /* ★★★ v3.36.20 补38：折叠方案作用域的三档闸门（窄屏 ∪ 竖屏 ∪ 矮屏；宽裕横屏不得折叠） */
         for (const [nm, m, want, bg] of [["竖屏1000x1400", r.barPortrait, true, "rgba(0, 0, 0, 0)"],
                                           ["矮屏939x406", r.barShort, true, "rgba(0, 0, 0, 0)"],
-                                          ["PC 1440x900", r.barPC, false, "rgb(24, 24, 24)"]]){
+                                          ["PC 1440x900", r.barPC, false, "rgba(0, 0, 0, 0)"]]){
           if (!m){ ok(false, p.label + "·" + nm + "：折叠作用域档位探针未取到", ""); continue; }
           ok(m.pillsVisible === want,
             p.label + "·" + nm + "：紧凑折叠方案" + (want ? "**应生效**（合并胶囊行可见）" : "**不应生效**（胶囊行隐藏）")
             + "（pillsVisible=" + m.pillsVisible + "）",
             JSON.stringify({ pillsVisible: m.pillsVisible }));
           ok(m.ctlCardBg === bg,
-            p.label + "·" + nm + "：控制卡底色应为 " + bg + "（实测 " + m.ctlCardBg + "）",
+            p.label + "·" + nm + "：控制卡底色应为 " + bg + "（v3.41.0 起**全档无卡底**；实测 " + m.ctlCardBg + "）",
             "bg=" + m.ctlCardBg);
         }
         const M6 = r.barMid;
@@ -3268,8 +3320,8 @@ async function main(){
               + "px）——与右端判据同时为 0 ⇔ 两杆等长且两端一一对齐",
             "volBpmLeftDelta=" + PF.volBpmLeftDelta);
           ok(PF.bpmClusterAxis !== null && Math.abs(PF.bpmClusterAxis) <= 2,
-            p.label + "·" + vp + "：★★★ v3.39.1 步进群轴心落在滑杆轴心上（偏 " + PF.bpmClusterAxis
-              + "px）——居中参照滑杆（左槽 52px，若错成整行轴会偏 31px）",
+            p.label + "·" + vp + "：★★★ v3.41.0 步进群轴心落在**芯轴**（BPM 行轴）上（偏 " + PF.bpmClusterAxis
+              + "px）——方案图口径；v3.39.1 的「参照滑杆」会偏右 31px",
             "bpmClusterAxis=" + PF.bpmClusterAxis);
           ok(PF.bpmStackedDown !== null && PF.bpmStackedDown >= 0,
             p.label + "·" + vp + "：★★★ v3.39.1 步进群在滑杆**下方**（间隙 " + PF.bpmStackedDown
@@ -3740,20 +3792,20 @@ async function main(){
                 p.label + "·" + vp + "：★★★ 记谱体系切换生效（升号制 " + (sharpEnt ? sharpEnt.txt : "(无)")
                 + " / 降号制 " + (flatEnt ? flatEnt.txt : "(无)") + "，同一个半音）",
                 "flat 探针：" + ((PM.flatErr) || "ok"));
-              /* ★★★ v3.38.1 补5（用户口径）：**nm 档音名与歌词字不相交**——名靠右、字靠左，
-                 判据是「名左缘 ≥ 字右缘」（实测 +35/+44/+37px）。
-                 为什么必须真机：两者都是绝对定位、字号随 --cs；桩里没有布局，这条在桩里恒绿。 */
-              const WN = (PM.wideNm || []).filter(x => x.nameL !== null && x.charR !== null);
+              /* ★★★ v3.42.0 第九轮（用户口径：**音名像简谱一样落在歌词块左上角**）：名在**左**、字在**右**，
+                 判据改为「字左缘 ≥ 名右缘」（名占左侧那个 26px 音符槽，与简谱同一槽位）。
+                 旧口径（名靠右、判「名左缘 ≥ 字右缘」）随实现退役——它是 v3.38.1 未缩字号时代的补丁。 */
+              const WN = (PM.wideNm || []).filter(x => x.nameR !== null && x.charL !== null);
               ok(WN.length > 0,
                 p.label + "·" + vp + "：★ 前提：nm 档宽格量到音名（" + WN.length + " 颗）", "");
               if (WN.length){
-                const gaps = WN.map(x => Math.round((x.nameL - x.charR) * 10) / 10);
-                const badW = WN.filter(x => !(x.nameL >= x.charR));
+                const gaps = WN.map(x => Math.round((x.charL - x.nameR) * 10) / 10);
+                const badW = WN.filter(x => !(x.charL >= x.nameR));
                 ok(badW.length === 0,
-                  p.label + "·" + vp + "：★★★ nm 档**音名与歌词字不相交**（名左缘 − 字右缘 最小 "
+                  p.label + "·" + vp + "：★★★ nm 档**音名在左、歌词字在右且不相交**（字左缘 − 名右缘 最小 "
                   + Math.min.apply(null, gaps) + "px；各颗 " + gaps.join(" / ") + "）",
-                  badW.length ? ("越界：" + badW.map(x => x.charTxt + "/" + x.txt + " 名左 " + x.nameL
-                    + " < 字右 " + x.charR).join("；")) : "");
+                  badW.length ? ("越界：" + badW.map(x => x.charTxt + "/" + x.txt + " 字左 " + x.charL
+                    + " < 名右 " + x.nameR).join("；")) : "");
               }
               /* ★ v3.38.1：nm 档窄格**整枚不画**（用户拍板）——有 chip、但一个标记都不画 */
               const NM = PM.nmNarrow || {};
@@ -4016,14 +4068,26 @@ async function main(){
           }
           /* （退役）v3.21 的「音量列与 BPM 列等高」断言随 v3.39.0 BPM 并入音量组失去对象——
              两列变一列（合并组），等高承诺由"合并组内部 flex 布局"天然成立，不再需要跨列断言。 */
-          ok(xEq([L.tgBody.mxC, L.tgBody.mxM, L.tgBody.mxB, L.tgBody.mxR])
-             && xEq([L.tgBody.txC, L.tgBody.txM, L.tgBody.txB, L.tgBody.txR]),
-            p.label + "·" + vp + "：★★★ 开关/面板 x **逐像素不动**（列内零横移）",
-            "静音拍 " + L.tgBody.mxC + "/" + L.tgBody.mxM + "/" + L.tgBody.mxB + "/" + L.tgBody.mxR
-            + " 变速 " + L.tgBody.txC + "/" + L.tgBody.txM + "/" + L.tgBody.txB + "/" + L.tgBody.txR);
+          /* ★★★ v3.42.0（口径变更 · 用户拍板）：参数槽"长在胶囊里"（同预备的拍数）⇒ 开关一开胶囊行变宽、
+             居中的三枚胶囊**整体重新居中**（实测静音 x 689.5 → 651.8）——旧的「开关/面板 x 逐像素不动」
+             前提随之作废（那是"开关列固定、参数进浮层"时代的契约，且与"胶囊行居中 + 槽内联"互斥）。
+             新契约：① 参数槽随开关生死（关着宽 0、打开有宽）；② 胶囊行保持**居中**（下面的 pillGeom）。
+             面板"锚在自己胶囊下方"由 t231a 源码钉 + 面板几何把守。 */
+          if (L.tgBody.slotWC !== null && L.tgBody.slotWM !== null){
+            ok(L.tgBody.slotWC === 0 && L.tgBody.slotWM > 0,
+              p.label + "·" + vp + "：★★ v3.42.0 参数槽随开关生死（关 " + L.tgBody.slotWC
+              + "px → 开 " + L.tgBody.slotWM + "px；长在胶囊壳里，同预备的拍数）",
+              "slotW=" + L.tgBody.slotWC + "/" + L.tgBody.slotWM);
+          }
+          /* ★ v3.41.0：拍数**就地长出**——关着时零尺寸（下条），打开时仍在开关右侧同行（上条造条件量）。 */
+          if (L.tgBody.prepWrapHidden !== null && L.tgBody.prepWrapHidden !== undefined){
+            ok(L.tgBody.prepWrapHidden === true,
+              p.label + "·" + vp + "：★★ 预备关着 ⇒ 拍数输入**不占位**（就地长出：关着只显示「预备」两个字）",
+              "prepWrapHidden=" + L.tgBody.prepWrapHidden);
+          }
           if (L.tgBody.rowWC !== null && L.tgBody.rowWC !== "hidden"){
             ok(L.tgBody.rowWC === "[true,true]" || L.tgBody.rowWM === "[true,true]" || L.tgBody.rowWB === "[true,true]",
-              p.label + "·" + vp + "：★★ 预备拍行 = 开关 + 拍数输入**同行右侧**（打开时 y 同行、x 在开关右）",
+              p.label + "·" + vp + "：★★ 打开预备后 = 开关 + 拍数输入**同行右侧**（y 同行、x 在开关右）",
               "三态 " + L.tgBody.rowWC + "/" + L.tgBody.rowWM + "/" + L.tgBody.rowWB);
           }
         } else {

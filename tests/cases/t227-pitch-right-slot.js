@@ -178,7 +178,11 @@ section("T227f 源码钉 · 数码居中 / 左内缩 / 降级两条 / --oct 不�
     "★ 但 --oct 仍写入：它是 t226 钉住的读数口，删了会让那条断言变成假绿");
   ok(/function pitchFitClass\(cellPx, parts\)\{[^}]*if \(!\(cellPx > 0\) \|\| !parts\) return ""/.test(src),
     "★★ 降级判据仍是纯函数、显式放行「量不到宽 / 无部件」（v3.38.1 补3：旧两档退役，函数保留）");
-  ok(/^\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*bottom:1px[^}]*text-align:left/m.test(src),
+  /* ★ v3.42.0 补（用户实报：桌面歌词贴格顶、竖屏不居中）：落点从 bottom:1px（行盒随 1.5 倍字号溢出格高、
+     宽屏被 overflow 裁 5.4px）改成上下拉直 + flex 居中；横向锚定口径不变（left 26cs / right auto / text-align left）。 */
+  /* ★ v3.42.0 第六轮：左内缩由"固定 px × 网格缩放"改成**字块宽度的百分比**（clamp 上下限保底），
+     修掉 555px 这类格数与 960 基准不同时"字贴格左缘、与音符格对不齐"。 */
+  ok(/^\.lyric-char\{[^}]*left:clamp\(4px,25%,28px\)[^}]*right:auto[^}]*top:0[^}]*bottom:0[^}]*align-items:center[^}]*text-align:left/m.test(src),
     "★★ 基础 .lyric-char = 歌词字**靠左**（v3.38.1 补9：left 26px·--cs / right:auto / bottom 1px / text-align:left）——与音名档统一；字锚在音符区之后、右边整段留给时值。旧「字心 clamp」随补6 退役，t149/t154/t178 钉着。\n       行首锚定是必须的：notechip 的覆写选择器里也含 .lyric-char{，不锚会把覆写当成基础规则（假绿）");
 
 /* ============ T227g：新几何源码钉（点位置 / 点字号 / 字右下 / nm 名右字左 / nm 隐藏判据） ============ */
@@ -204,8 +208,8 @@ section("T227g 新几何源码钉 · 点贴头右/脚左 · 点字号 .4em · �
     "★★★ nm 档歌词字**靠左**（right:auto）——本轮的「字右下」把它推到右端后与右对齐的音名逐像素重叠，这条正是修法落点");
   ok(/\.lyric-chip:has\(\.pit-nm\) \.lyric-pit\{left:auto;right:calc\(6px \* var\(--cs,1\)\)\}/.test(src),
     "★★ nm 档音名**靠右**（与靠左的字各占一侧）");
-  ok(/const NM_CHAR_RESERVE = 46;/.test(src),
-    "★★ 歌词字占地常量 = 46（左内缩 26cs + 字身 14cs + 间隙；旧值 30 属「字心居中 25%」时代）");
+  ok(/const NM_CHAR_RESERVE = 48;/.test(src),
+    "★★ 歌词字占地常量 = 48（左内缩 28cs + 字身 14cs + 间隙；旧值 30 属「字心居中 25%」时代）");
   ok(/return cellPx < need \+ \(reserve \|\| 0\);/.test(src),
     "★★★ nm 不相交判据是**加法**（名字宽 + 字占地 ≤ 格宽）——不再用 0.75·W 那个字心模型");
   const { beat } = loadApp();

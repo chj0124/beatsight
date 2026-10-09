@@ -85,7 +85,7 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
      触控目标尺寸的连带面（B4）转移到开关/按钮本身的尺寸钉上。 */
   /* 控制芯重排（PLAN-v9 批 2）：`.viz-toggles .tg-row` 纵排 + 7px 行距随开关列退役——
      触控目标尺寸契约转移到胶囊行规格钉上（.core-pills .toggle-pill 上下 8px = 36px 高）。 */
-  ok(/\.core-pills \.toggle-pill\{padding-top:8px;padding-bottom:8px\}/.test(CSS_CODE)
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;/.test(CSS_CODE)
      && !/#muteCfgPanel:not\(\[hidden\]\)/.test(CSS_CODE),
     "★★ 控制芯：开关 = 胶囊行 36px 规格（触控目标 36px 开关仍 ≥ 44 建议值的一半，主操作键 play 48 未缩）；"
     + "v3.30.0 的纵排行距 7px 契约随开关列退役");

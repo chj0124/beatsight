@@ -52,7 +52,7 @@ ok(/function syncParamSlots\(\)/.test(src), "★ syncParamSlots 存在（无参�
 ok(!/let paramSlotActive|paramSlotActive\s*=/.test(src),
   "★★ 「最后激活占槽」的记账变量（paramSlotActive）已随仲裁一并退役——留着没人写它就是死状态"
   + "（断言钉变量声明与赋值，注释里的历史名不判红）");
-ok(/const show = !!\(on\[k\] \|\| paramSlotForce === k\)/.test(src)
+ok(/const show = !!\(\(on\[k\] && !slotDismissed\[k\]\) \|\| paramSlotForce === k\)/.test(src)
    && /el\.hidden = !show/.test(src)
    && /sh\.hidden = !show/.test(src),
   "★★ 每组参数的显隐 = 自己的开关（+force 例外）——组与组零干扰；浮层壳镜像面板 hidden（PLAN-v9 批 2）");

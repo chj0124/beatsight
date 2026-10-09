@@ -95,10 +95,10 @@ section("T154d auto 模式 · 窄屏解析为 bottom / 宽屏解析为 follow（
   eq(b.beat.Viz.effectiveLyricPos(), "bottom", "显式 bottom + 宽屏 → 仍 bottom（不强制 follow）");
 }
 
-section("T154e 歌词字靠左（v3.38.1 补9 口径：left:26px·--cs / right:auto / bottom:1px / text-align:left）");
+section("T154e 歌词字靠左（v3.38.1 补9 口径：left: clamp(4px,25%,28px) / right:auto / bottom:1px / text-align:left）");
 {
-  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(SRC),
-    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径");
+  ok(/\.lyric-char\{[^}]*left:clamp\(4px,25%,28px\)[^}]*right:auto[^}]*text-align:left/.test(SRC),
+    "★ CSS：歌词字**靠左**（left: clamp(4px,25%,28px) / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径");
 }
 
 section("T154f 无词小节 · 空行位（有 row 元素、无字块、行高不跳）");

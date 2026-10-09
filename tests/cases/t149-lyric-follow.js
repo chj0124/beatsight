@@ -96,8 +96,8 @@ section("T149e 文字对齐 · 字在各自节奏 chip 内靠左（D2）");
 {
   const fs = require("fs"), path = require("path");
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(src),
-    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
+  ok(/\.lyric-char\{[^}]*left:clamp\(4px,25%,28px\)[^}]*right:auto[^}]*text-align:left/.test(src),
+    "★ CSS：歌词字**靠左**（left: clamp(4px,25%,28px) / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
 }
 
 section("T149f 旧跟随条已退役 · 无 lyric-follow 元素 / 无 .lyric-follow-on 行距类 / 双关放大清理");
@@ -141,8 +141,8 @@ section("T149g 行距补偿 · follow 挂 .lyric-inline-on / bottom·off 摘类�
     "★ CSS：窄屏 xl 联动规则同 48px");
   ok(/@media[\s\S]*#viz\.no-ruler\.no-durlab \.lyric-row\{height:28px\}/.test(src),
     "★ CSS：窄屏 xl 行高回落 28px（窄屏标注带仅 32px，与 translateY(+36) 配套）");
-  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(src),
-    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
+  ok(/\.lyric-char\{[^}]*left:clamp\(4px,25%,28px\)[^}]*right:auto[^}]*text-align:left/.test(src),
+    "★ CSS：歌词字**靠左**（left: clamp(4px,25%,28px) / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
   ok(/S\.showLyric && Viz\.effectiveLyricPos\(\) === "follow"\) Viz\.relayout\(\)/.test(src),
     "★ JS：follow 期间切座次尺/时值标注（xl 开/关改行距）→ Viz.relayout() 重采 rowGeo");
   // JS：follow → 挂类（腾出歌词带）；切 bottom / 关总开关 → 摘类

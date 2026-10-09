@@ -33,7 +33,8 @@ section("T195b 改目标 ⇒ 槽必须收回（缺陷：此前永不收回）");
   const app = arm();
   app.els["trTarget"].fire("change");
   eq(app.els["trainerPanel"].hidden, true, "★★ 改目标后参数槽收回");
-  eq(app.els["trainerProg"].textContent, "", "★★ 原因文案同时撤掉");
+  /* ★ v3.41.0（用户纠正 · 撤回 G4）：读数行随变速训练生死——撤掉原因后回到**空串** */
+  eq(app.els["trainerProg"].textContent, "", "★★ 原因文案撤掉、读数行回到空（撤回 G4）");
   ok(!/\bwarn\b/.test(app.els["trainerProg"].className), "★★ 注意态一并摘除");
 }
 

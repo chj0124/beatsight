@@ -38,21 +38,29 @@ section("T230a 上行 .bpm-slider-row：与音量行同构的两段槽位（等�
     "★★ .slider-row 基础规则为列向塔式 + 塔内间距 13px（v3.40.0 间距修正②：6→13，BPM↔步进群可见 30px）；v3.39.0 同行形状退役");
 }
 
-section("T230b 下一步进群：居中轴参照滑杆（margin-left:62 = 52+10）");
+section("T230b 下一步进群：居中轴 = 芯轴（v3.41.0 G9 按方案图；v3.39.1 曾参照滑杆）");
 {
-  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin-left:62px\}/.test(html),
-    "★★★ 步进群居中且左缩 62px 与滑杆左端同源（居中轴=滑杆轴；改槽位宽不同步 ⇒ 本条变红）");
+  /* ★★★ v3.41.0（方案对账 G9）：居中轴 从「滑杆轴」改为「芯轴 = 跑道轴」——
+     方案图 .steps{justify-content:center} 直接住在 402 芯里，v3.39.1 的 margin-left:62px 已除名。 */
+  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center\}/.test(html)
+     && !/slider-row \.bpm-row\{[^}]*margin-left/.test(SURFACE),
+    "★★★ 步进群以**芯轴**居中（margin-left:62px 已除名；96 不再偏右 31px，按方案图）");
   ok(!/\.viz-head \.group \.slider-row\{flex-wrap:nowrap\}/.test(SURFACE)
     && !/\.slider-row \.bpm-row\{flex:1 1 100%\}/.test(SURFACE),
     "★★ v3.39.0 同行/折行旧规则已除名（净表面无残留——同行形状的回潮会连带旧规则复活）");
-  ok(/@media \(max-width:640px\)\{[^}]*\.viz-head \.group \.slider-row \.bpm-row \.step-btn\{min-width:0;padding:6px 2px\}/.test(html),
-    "★ 窄屏只放宽步进钮收缩（结构天生两行，不再需要折行规则）");
+  /* ★ v3.41.0（方案移动档）：窄屏步进群 = 群高 40 + 钮 30×30 + 数值框 54×36（实测原 30×40 / 64×40） */
+  const narrow640 = /@media \(max-width:640px\)\{([\s\S]*?)\n\}/.exec(html);
+  ok(!!narrow640
+     && /\.slider-row \.bpm-row\{min-height:40px\}/.test(narrow640[1])
+     && /\.step-btn\{min-width:0;padding:6px 2px;width:30px;height:30px\}/.test(narrow640[1])
+     && /\.bpm-num\{min-width:72px;height:40px;font-size:28px\}/.test(narrow640[1]),   /* v3.42.0：14→20→28（字形高 ≈20px，与 30px 圆钮视觉相当） */
+    "★★ 窄屏步进群按方案移动档：群高 40 / 钮 30×30 / 数值框 54×36（v3.41.0）");
 }
 
-section("T230c 读数行 #trainerProg 与数值行同轴居中");
+section("T230c 读数行 #trainerProg 与数值行同轴居中（同一根芯轴）");
 {
-  ok(/\.viz-head \.group \.tr-prog\{width:auto;margin-left:62px;text-align:center\}/.test(html),
-    "★★★ 读数行同 62px 左缩 + 文本居中（与步进群同轴；width:auto 盖掉基础规则 100%，防 margin 叠加溢出）");
+  ok(/\.viz-head \.group \.tr-prog\{width:auto;text-align:center\}/.test(html),
+    "★★★ 读数行与步进群**同一根芯轴**居中（v3.41.0 G9：62px 左缩除名；width:auto 盖掉基础规则 100%）");
   const seg = html.slice(html.indexOf('id="trainerProg"') - 40, html.indexOf('id="trainerProg"') + 40);
   ok(/class="tr-prog"/.test(seg), "★ #trainerProg 仍是 .tr-prog（搬块不换 id，接线不动）");
   ok(html.indexOf('class="slider-row"') < html.indexOf('id="trainerProg"'),

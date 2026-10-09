@@ -90,8 +90,10 @@ section("T173c 参数面板显隐行为（搬块不换 id：syncParamSlots 收�
   els["trTarget"].fire("change");
   els["trainerToggle"].fire("click");
   eq(els["trainerPanel"].hidden, false, "★ 开变速训练（目标已填）→ 面板显形");
-  ok(els["muteCfgPanel"].hidden === false && els["trainerPanel"].hidden === false,
-    "★★ 两面板**同开并排**（通栏悬浮的落位前提——旧逐列模型下两者分属两列）");
+  /* ★★★ v3.42.0 第七轮（用户拍板）：**窄档只允许开一块**——桩的视口宽默认 600（<1280）⇒ 后开的变速会把
+     静音那块收掉；宽档"并排"改由冒烟的真实几何复核（1440 实测两块 [541..791]/[801..1051]，相隔 10px、零重叠）。 */
+  ok(els["trainerPanel"].hidden === false && els["muteCfgPanel"].hidden === true,
+    "★★ v3.42.0 窄档口径：窄档只留**最后打开**的那块参数面板（静音被变速收掉）；宽档并排由冒烟几何钉着");
   els["trainerToggle"].fire("click");
   els["muteToggle"].fire("click");
   eq(els["muteCfgPanel"].hidden, true, "★ 全关 → 静音面板隐藏（复原无残留）");
@@ -99,15 +101,18 @@ section("T173c 参数面板显隐行为（搬块不换 id：syncParamSlots 收�
   void beat;
 }
 
-section("T173d 拍数输入常显（v3.22.0：显隐翻转退役，值同步保留）");
+section("T173d 拍数输入**就地长出**（v3.41.0 用户拍板：关闭时只显示「预备」，打开才长出 [4 拍]）");
 {
   const { beat, els, html } = loadApp({
     "beatsight.state": JSON.stringify({ countIn: { on: false, beats: 2 } }),
   }, { seedDemo: false });
-  ok(!/countInBeatsWrap"\)\.hidden/.test(html),
-    "★★ v3.22.0：处理器不再翻转拍数输入显隐（常显契约，用户需求）");
+  /* ★★★ v3.41.0：**行为面**断言——就地长出 = 关着不显示、打开才出现（源码头在 t175b 钉） */
+  eq(els["countInBeatsWrap"].hidden, true, "★★ 预备关着 → 拍数输入 hidden（只显示「预备」两个字）");
   els["countInToggle"].fire("click");
-  eq(beat.Store.S.countIn.on, true, "★ 打开预备拍 → 状态开（拍数输入本来就显示着）");
+  eq(beat.Store.S.countIn.on, true, "★ 打开预备拍 → 状态开");
+  eq(els["countInBeatsWrap"].hidden, false, "★★ 打开 → 拍数在同一个胶囊壳里**就地长出**");
   els["countInToggle"].fire("click");
-  eq(beat.Store.S.countIn.on, false, "★ 关闭预备拍 → 状态关（拍数输入仍显示上次值）");
+  eq(beat.Store.S.countIn.on, false, "★ 关闭预备拍 → 状态关");
+  eq(els["countInBeatsWrap"].hidden, true, "★★ 再关 → 拍数收回（值仍留着，下次打开即见）");
+  void html;
 }

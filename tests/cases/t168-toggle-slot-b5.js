@@ -19,9 +19,10 @@ const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 /* ================= T153a：控制芯骨架（流内参数的骨架，PLAN-v9 批 2 重写） ================= */
 section("T153a 控制芯 —— 开关住胶囊行、面板住浮层壳（开关列退役）");
 {
-  ok(/\.core-pills\{display:flex;align-items:center;gap:10px;flex-wrap:wrap\}/.test(CSS_CODE)
+  ok(/\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap\}/.test(CSS_CODE)
      && /\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
-    "★★ 控制芯骨架：胶囊行横排（.core-pills gap 10）+ 滑杆塔纵列（tg-body flex-start gap 10，"
+    "★★ 控制芯骨架：胶囊行横排**且居中**（.core-pills gap 10 + justify-content:center，v3.41.0 按方案图）"
+    + " + 滑杆塔纵列（tg-body flex-start gap 10，"
     + "v3.19.0 纵排流内骨架在芯上延续）");
   ok(/\.tg-flyout\{position:absolute/.test(CSS_CODE) && /\.tg-flyout\[hidden\]\{display:none\}/.test(CSS_CODE),
     "★★ v3.30.0 纵排行距 7px 契约随开关列退役 → 面板住浮层壳（absolute + [hidden] 配套）");
@@ -37,9 +38,11 @@ section("T153a 控制芯 —— 开关住胶囊行、面板住浮层壳（开关
 /* ================= T153b：胶囊行/浮层的 CSS 契约 ================= */
 section("T153b 控制芯 —— 浮层壳样式与芯的排布口径");
 {
-  ok(/\.tg-flyout \.tr-panel\{margin-top:0;flex-wrap:wrap\}/.test(CSS_CODE),
-    "★★ 浮层内面板 margin-top:0 + 可折行（v3.24.0 参数行 padding 清零口径的浮层版）");
-  ok(/\.core-pills \.toggle-pill\{padding-top:8px;padding-bottom:8px\}/.test(CSS_CODE),
+  ok(/\.tg-flyout \.tr-panel\{display:block;margin-top:0\}/.test(CSS_CODE)
+     && /\.tg-flyout \.f-title\{[^}]*color:var\(--green\)/.test(CSS_CODE)
+     && /\.tg-flyout \.f-row\{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px\}/.test(CSS_CODE),
+    "★★ v3.41.0（乙案）：面板内 = 绿色小标题 + 若干参数行（.f-row 等高 28px），不再是可折行的 flex 条");
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:12\.5px;/.test(CSS_CODE),
     "★★ 三枚开关 = 胶囊行 36px 规格（v3.22.0 开关行 = 开关+主参数同行的 countin-line/sw-line 退役；"
     + "拍数输入贴预备胶囊、随机/目标进浮层）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),

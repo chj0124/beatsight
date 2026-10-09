@@ -291,7 +291,12 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   .ctl-hit{outline:1px solid var(--line);outline-offset:-1px}
   /* ★ v3.36.20 补29（用户要求）：折叠态胶囊内部 = [名称][图标][实时值][箭头]
      —— 图标与数值都跟随文字基线；数值用等宽数字，避免跳动时宽度抖动。 */
-  .ctl-hit::after{content:"▸";font-size:11px;color:var(--t2);transition:transform .15s}
+  /* ★ v3.42.0 第八轮（用户实拍：读数钮里的三角没居中）：内联伪元素按**基线**落位，三角字形的墨迹
+     天然偏下 ⇒ 补 vertical-align:middle + line-height:1 + inline-block，与「BPM 118」文字同轴。 */
+  .ctl-hit::after{content:"▸";font-size:11px;color:var(--t2);transition:transform .15s;
+    display:inline-block;vertical-align:middle;line-height:1;
+    /* ★ 第八轮实机像素实测：三角墨迹中心比「BPM 118」低 1.1 CSS px（比胶囊中心低 0.56px）⇒ 上移 1px 对齐文字 */
+    transform:translateY(-1px)}
   /* 控制芯批 3：旧胶囊内部的 [名称][图标][实时值] 三件套（.ctl-ico/.ctl-svg/.ctl-val）
      随「BPM 96 ▾」读数钮收窄一并除名；箭头翻面只归 .ctl-pills 的读数钮（下面 L357 那条） */
   /* ★ 选择器修正（用户实报「点了速度 BPM 却没收起、箭头仍朝 ▸」）：
@@ -301,8 +306,12 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   /* ★★ 控制芯重排批 3（PLAN-v9）：收起 = **只藏滑杆塔**（.tg-body，含音量三行/BPM 塔/
      训练进度行）——芯顶胶囊行（三枚开关）与「BPM 96 ▾」读数钮常驻，开关收起后仍可点。
      浮层壳一并藏（拒开路径 openSlotForTarget 只在展开态可达，收起时不漏浮层）。 */
-  #ctlOpen:not(:checked) ~ .card-head .card-head-left .tg-body{display:none}
-  #ctlOpen:not(:checked) ~ .card-head .tg-flyout{display:none}
+  /* ★★★ v3.42.0 第六轮补③（用户实拍：收起态下开关能点、参数槽弹不出来 ⇒ 选甲案）：
+     ① 收起态**不再无条件藏参数面板**——面板是自包含浮层，显隐一律交 `syncParamSlots`（开关 ∧ 未手动收起）仲裁；
+     ② 塔改为**只藏内容、留拒开原因行**（#trainerProg 是芯底一行文字），否则变速被闸门拒绝时
+        表现为"点了没反应"（原因行跟着塔一起被藏）。 */
+  #ctlOpen:not(:checked) ~ .card-head .card-head-left .tg-body{display:block;flex:0 0 auto;padding-bottom:0}
+  #ctlOpen:not(:checked) ~ .card-head .card-head-left .tg-body > *:not(.tr-prog){display:none}
   /* v3.38.1 补7 的「收起列整块不占排布」（#ctlOpen:not(:checked) ~ … .card-head-left{display:none}）
      随批 3 退役：胶囊行常驻后收起列仍有内容，不再整块消失。 */
   /* ★ v3.36.20 补18（用户拍板 a）：**窄屏堆叠档里两组组内行距统一 8px**。
@@ -324,7 +333,10 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
      组间 24：BPM 胶囊上移 16px 抵消（既有 40 − 16 = 24），不改动别的来源。 */
   .viz-head-grid .card-head-left .group{gap:6px;flex:none}
   .viz-head-grid .card-head-left .vol-row{min-height:36px}
-  .bpm-slider-row{min-height:36px}
+  /* ★ v3.41.0（方案对账 · G3）：原选择器 (0,1,0) 且位于本块（更早）⇒ 被 L384 的基础规则
+     .bpm-slider-row{min-height:40px} 同特异性+更靠后盖掉，移动端实测恒 40px。
+     提高特异性把「≤640 行盒 36」真正落地（方案移动档三行同律 36 = 与 .vol-row 一致）。 */
+  .viz-head-grid .card-head-left .bpm-slider-row{min-height:36px}
   .ctl-hit{min-height:36px;padding:5px 8px}
   /* ★ v3.36.20 补24：上面那条 -2px 补偿**过量**了（实测胶囊→首行 6px，而 BPM 那边是 8）
      —— 因为 补23 的 .group{flex:none} 同时改了组内几何。撤掉补偿后实测回到 8 = 8。 */
@@ -340,7 +352,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   /* ★ 补35：嵌套这层与父层同条件（父层已含竖屏）；写成同一条以免漏掉竖屏分支 */
   @media (max-width:640px), (orientation: portrait), (max-height: 700px){
     /* ★ 补34/35/36：无卡底 —— 窄屏 / 竖屏 / 矮屏（PC 横屏既非竖屏也不矮 ⇒ 不受影响） */
-    body .card:has(.card-head.viz-head){background:none;border:0;border-radius:0}
+    /* ★ v3.41.0：本档不再单独去卡底——已提升为**全局**规则（见 .card 下方那条）。 */
     /* gap 24：胶囊自身有 margin:0 -8px（负外边距保持文字贴内容缘），两侧各吃 8 ⇒ 可见间距 = 24-16 = 8 */
     /* ★★★ v3.36.20 补37（用户实拍 939x406：两枚胶囊**没在同一行**）：
        根因 —— @media (min-width:900px) 会把 .viz-head-grid 变成**三列网格**（音量｜BPM｜开关），
@@ -359,9 +371,16 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
        group-label 的窄屏隐藏规则（.group-label{display:none}）也随组标签行退役除名。 */
     /* align-self:flex-start —— 实测 1000x1400 下本行被外层 flex 拉伸到 200px 高，
        多出的空白反而吃掉纵向空间（与"压缩面积"的初衷相反）；贴合内容后回到 36px。 */
-    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px;
-      align-self:flex-start}
+    /* ★★★ v3.42.0（用户拍板）：读数钮**居中**（原先贴左，与下面居中的三枚胶囊不齐） */
+    .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:24px;margin-bottom:4px}
+    /* ★★★ v3.42.0 补（用户拍板）：展开态的折叠入口**整体搬去顶栏**（#foldBtn）——本行小箭头退役。
+       退役理由链：绝对定位会压到开关/参数槽（误点）→ 改行内 flex 项后又会在"两个槽都开"时把整行挤折
+       → 最终放到顶栏，两难全消。收起态入口不变（卡内居中的「BPM 96 ▾」读数钮）。
+       ★ 这一条规则仍保留：展开态把读数钮那行隐藏（滑杆就在眼前）。 */
     #ctlOpen:checked ~ .ctl-pills .ctl-hit[for=ctlOpen]::after{content:"▾"}
+    /* ★ v3.41.0（方案对账 · G8）：**展开态只剩胶囊行 + 滑杆塔**——读数钮是收起态的替代读数，
+       展开后滑杆就在眼前，再挂一枚读数钮是重复（方案移动图的展开态里没有这一行）。 */
+    #ctlOpen:checked ~ .ctl-pills{display:none}
   }
   .viz-head-grid .card-head-left .group .tg-body{gap:6px}
 }
@@ -383,20 +402,32 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    滑杆粗细不动，变高的只是行盒；≤640 档 36px 见下方移动断点同批位 */
 .bpm-slider-row{display:flex;align-items:center;gap:10px;min-height:40px;font-size:12px;color:var(--t2)}
 .bpm-slider-row>span:first-child{min-width:52px}
-/* 下行步进群：居中轴**参照滑杆**——margin-left:62 = 52+10 即滑杆左端到行左缘的余量，
-   内容盒与滑杆同宽 ⇒ justify-content:center 的轴就是滑杆轴（左槽 52px ⇒ 滑杆轴比
-   整行轴偏右 31px，这正是用户要「参照滑杆」而非「参照整行」的原因）。
-   步进群过宽（窄屏）时以滑杆轴为心**对称外溢**——右缘外是列外空白，无害。 */
-.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin-left:62px}
+/* ★★★ v3.41.0（按《整体布局方案示意图》对账 · G9，**反转 v3.39.1 的拍板**）：步进群居中轴改为
+   **芯轴 = 跑道轴**——方案图的 .steps{justify-content:center} 直接住在 402 芯里。
+   原口径(v3.39.1)是「参照滑杆本身」：margin-left:62(=52 标签槽+10 间距) 让居中盒从滑杆左端起，
+   于是 96 落在滑杆轴上——而滑杆轴被左槽顶开、比芯轴偏右 31px（实测 1920/1440 两档：
+   96 中心 991/751 vs 芯中心 960/720）。两条口径互斥（滑杆本身不居中），现按方案取「居中」。
+   代价：96 不再正对滑杆中轴；步进群过宽（窄屏）时以芯轴为心对称外溢——右缘外是列外空白。 */
+.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center}
 .viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
-/* 读数行与数值行同轴（用户拍板）：同样的左缩 62 + 文本居中。
-   width:auto 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按「容器宽 −
-   自身 margin」收边；留着 100% 会在加 margin 后溢出组盒 62px */
-.viz-head .group .tr-prog{width:auto;margin-left:62px;text-align:center}
+/* 读数行与数值行**同一根芯轴**（v3.41.0 G9：62px 左缩除名；方案图的 .prog-row 也是居中口径）。
+   width:auto 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按容器宽收边 */
+.viz-head .group .tr-prog{width:auto;text-align:center}
 /* 窄屏：结构天生两行，无需再折行；步进钮放宽收缩（min-width:0），过宽时由上面的
    对称外溢兜着，不出组盒。只按宽度判（竖屏平板 ≥640 内容宽装得下整组）。 */
 @media (max-width:640px){
-  .viz-head .group .slider-row .bpm-row .step-btn{min-width:0;padding:6px 2px}
+  /* ★ v3.41.0（方案移动档）：步进钮 30×30、数值框 54×36（实测原为 30×40 / 64×40） */
+  .viz-head .group .slider-row .bpm-row{min-height:40px}
+  .viz-head .group .slider-row .bpm-row .step-btn{min-width:0;padding:6px 2px;width:30px;height:30px}
+  /* ★★★ v3.42.0（用户实报）：竖屏数值**不许小于 ± 按钮的数字**——原先照抄方案图的移动档 14px，
+     而方案图里 ± 按钮是 12px、app 里是 14px（.step-btn）⇒ 抄过来"大数字"就没了层级。提到 20px。 */
+  /* ★★★ v3.42.0 补（用户实报）：20px 仍偏小 ⇒ 28px、盒子 72×40（字形高约 20px，与 30px 圆钮视觉相当） */
+  .viz-head .group .bpm-num{min-width:72px;height:40px;font-size:28px}
+  /* ★ v3.41.0（方案对账 · G6）：芯铺满卡内容宽（326；原 294 是 .card-head-left 的 16px 内边距所致），
+     滑杆塔在芯内两侧各留 16px ⇒ 滑杆仍精确 232。方案「全宽芯 326 内容宽」与
+     「滑杆 232 不变」两条由此**同时成立**（326 − 32 = 294 = 52 标签槽 + 10 间距 + 232 滑杆）。 */
+  .viz-head-grid .card-head-left{padding-left:0;padding-right:0}
+  .viz-head-grid .card-head-left .tg-body{padding-left:16px;padding-right:16px}
 }
 /* v2.74.0（2.8）：段落列表 ↔ 按钮行的间距收口——按钮行显式 margin-top:16px
    （与卡片内行距同档），末段底距清零（间距单一来源，不再随段数漂移） */
@@ -624,6 +655,14 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
        （正好是滚动条宽的一半）。**布局高度里没有可以忽略的 1px。** */
   min-height:calc(100vh - 65px - var(--bar-h) - 72px)}
 .card{background:var(--card);border-radius:12px;padding:24px}
+/* ★★★ v3.41.0（用户第三轮拍板）：**任何时候都没有卡底**——只去掉控制卡（带 .card-head.viz-head 那张）。
+   由来：v3.36.20 补28 拍板全局去底 → 补34 用户指正「你把 PC 端也改成这样了」收回成只窄屏 →
+   本轮（v3.41.0）用户再次要求「删掉控制区域背景的那块长方形，像移动端那样」⇒ 恢复全局。
+   ★ 只去底色、**保留内边距**：内边距没有底色时不可见，去掉反而让整块内容左移 24px
+     （"标签左缘 = 控制列内容边缘"两条断言会跟着漂）——不制造无谓位移。
+   ★ 抬特异性到 body 层：主题分支 body[data-theme="obs"] .card 是 (0,2,1)，
+     光靠 :has() 的 (0,3,0) 在观测台主题下会被压过（用户实拍"还是有黑底"）。 */
+body .card:has(.card-head.viz-head){background:none;border:0;border-radius:0}
 /* ★★★ v3.36.20 补28（用户拍板）：「任何时候都没有卡底」——只去掉**控制卡**（带 .card-head.viz-head 那张）
    的底色。用 :has() 精确选中（该卡无 id），不改 .card 本体（其它卡片仍在用这层底）。
    ★ 只去底色、**保留内边距**：内边距在没有底色时不可见，去掉它反而会让整块内容左移 24px
@@ -1012,11 +1051,23 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 #bounceToggle,#rulerLabToggle,#durLabelToggle,#tabToggle,#vizLegendToggle{min-width:190px;justify-content:space-between}
 /* ★ v3.33.10（用户清单 4）：同列等宽——此前左列四枚宽度不一，右列跟着参差，观感"没对齐"。 */
 /* ★ v3.33.10（用户清单 2）：位置三档是「显示歌词」的**子项** ⇒ 降一级 + 缩进（与仓库"开关+从属参数降一级"同口径）。 */
+/* ★★★ v3.42.0 补（用户实拍"歌词一栏下多个按钮的间距有问题"）：实测两组胶囊规格不一致——
+   位置组走 `#lyricPosGroup .pill{padding:6px 10px}`（(1,1,0) 盖过我给贴字换行写的 padding），
+   音高组走 `.lyric-pos-group .pill{padding:0 12px}` ⇒ 同栏两行胶囊的**内边距与左缘都不一样**
+   （位置组还带 14px 缩进、音高组没有）。统一为：两组同 padding、同 gap、同缩进（"子项降一级"的口径
+   对两组都成立），横向空白只在 wrap 后自然收敛。 */
 #lyricPosGroup{margin-left:14px}
-#lyricPosGroup .pill{font-size:12px;padding:6px 10px}
+#pitchNotationGroup{margin-left:14px}
+#lyricPosGroup .pill{font-size:12px;padding:0 12px}
 /* v3.33.10（用户清单 1）：三块语义小标题——作为整行插进现有 .bpm-row，胶囊在其下自然成组 */
 .bpm-row .group-label{flex:1 1 100%;width:100%;margin-top:20px;margin-bottom:-2px}
    /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
+/* ★★★ v3.42.0 第十一轮：音名不可用时的提示条（与首次进入的图例条同族观感）+ 置灰胶囊 */
+.pitch-notice{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:8px;padding:8px 14px;
+  font-size:12.5px;color:var(--t2);border:1px dashed var(--line);border-radius:10px}
+.pitch-notice[hidden]{display:none}
+.pitch-notice .pill{margin-left:auto;padding:4px 12px;font-size:12px;min-height:0}
+.pill:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
 .lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
 /* v2.86.0：伴随节奏模式 = 覆盖层（#lyricLane 切绝对定位，叠到 #viz 上，逐行 translateY）。
@@ -1044,7 +1095,18 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:absolute;left:calc(26px * var(--cs,1));right:auto;top:auto;bottom:1px;transform:none;text-align:left;font-size:min(calc(14px * var(--cs,1)),21px);font-weight:700;color:var(--t3)}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
+/* ★★★ v3.42.0 补（用户实报：桌面歌词贴格顶、竖屏不居中）：原先是 `top:auto;bottom:1px` + 继承
+   line-height:1.5 ⇒ 行盒随字号走（14×1.5=21，宽屏 20.3×1.5=30.4）而**格高恒 26px**，宽屏档行盒比格高
+   4.4px 且锚在格底 ⇒ 多出来的全往上顶（真机实测字盒 [654.6..685] 上限越出格顶 5.4px，被 overflow:hidden 裁），
+   字心比格心高 3.2px；窄屏反过来低 1.5px——两头都不居中。
+   修法：改成上下拉直 + flex 居中（行盒不再决定落点），横向前缀（left/text-align）不动。 */
+/* ★ v3.42.0 补②（用户二次反馈"依然偏上"）：flex 居中后墨迹中心实测仍比格心高 0.44px——中文字面在
+   em 盒里天然偏上，故补 2px 上内边距（= 把内容盒中心下移 1px）做**光学居中**。 */
+/* ★★★ v3.42.0 第六轮（用户实拍 555px 尺寸下歌词与音符格对不齐）：左内缩从 `calc(26px * var(--cs))`——
+   而 `--cs = 网格宽/960`，跟的是**整块网格**、不是**格宽**，格数与基准不同时字就贴到格左缘（实测 555px 下
+   内缩仅 ≈ 格宽 16%，960 基准下 ≈ 54%）——改成**字块宽度的百分比**（= 一格宽的比例，回到 v2.86.0 的
+   clamp 口径，并对长音封顶，避免多格字块把字推远）。 */
+.lyric-char{position:absolute;left:clamp(4px,25%,28px);right:auto;top:0;bottom:0;display:flex;align-items:center;transform:none;text-align:left;font-size:min(calc(14px * var(--cs,1)),21px);font-weight:700;color:var(--t3);padding-top:2px}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
 /* v3.38.1（用户口径①②）：音高标注落字块左上角；**三档槽位**改由音区定——高音贴顶、
    中音居中、低音贴底（v3.38.0 是所有音区一律 top:0，中音与低音因此完全同位）。
    槽位用 :has() 读内层八度色类（.jp-g.oct-* / .pit-nm.oct-*），JS 照旧只挂色类，不新增编排口。
@@ -1102,7 +1164,12 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* v3.38.1 补3：独立音符块与词块**同一套**音高标注口径——数码整枚居中、八度点在正上/正下。
    横向锚点仍是与词块同口径的**左内缩**（字心 clamp 只服务词块里的汉字，t149/t154/t178 钉着）。 */
 /* v3.38.1 补4（用户二次实报）：nm 档「音名靠左 + 歌词字靠右」。字心本来居中在格宽 25% 处、随格宽右移，与左侧音名在 W<140px 时必然重叠（真机实测）——所以是布局问题，不是阈值问题。两者各占一侧后，不重叠的条件变成与格宽无关的加法：名字宽 + 字宽 + 两侧内缩 ≤ 格宽。 */
-.lyric-chip:has(.pit-nm) .lyric-pit{left:auto;right:calc(6px * var(--cs,1))}   /* v3.38.1 补4（用户口径：歌词靠左不动）⇒ 改让**音名靠右**；两者各占一侧后不再重叠 */
+/* ★★★ v3.42.0 第九轮（用户口径：**音名应当像简谱一样显示在歌词块左上角**）：
+   原先 v3.38.1 补4 把音名改到**右侧**（left:auto;right:6px·--cs），理由是没有缩小字号时
+   音名（A4 / C#4 等 2~4 字符，14px 宽可达 26px）会顶到歌词字上。但音名现已改为**上标 0.72em**
+   （4 字符仅 ~19px）⇒ 装得进左槽（.lyric-char 从 left:26px·--cs 起，左侧 26px 本就是音符区），
+   故**删除右对齐覆写**，让音名与简谱共用同一左上槽位（left:2px·--cs / top:0）。 */
+/* （退役）.lyric-chip:has(.pit-nm) .lyric-pit{left:auto;right:calc(6px * var(--cs,1))} */
 /* v3.38.1 补5（真机闸抓到的回归）：补4 只把「音名靠右」写上了，但本轮的「歌词字右下」
    （.lyric-char 曾被改成 left:26cs + right:6cs + text-align:right）把**字也推到了右端**——
    于是名与字逐像素重叠（真机实测：名 [142.2,163.5]、字 [143.5,163.5]，「C5」正压在「高」上）。
@@ -1111,6 +1178,9 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    名字宽 + 字宽 + 两侧内缩 ≤ 格宽（与格宽的关系是减法，不再随 25% 字心漂移）。
    判据由 smoke 的 nm 几何探针钉住（nameL >= charR）。 */
 .lyric-chip:not(.notechip):has(.pit-nm) .lyric-char{right:auto;text-align:left}
+/* ★ v3.42.0 第七轮（丙）：歌词块里的音名 = **上标小字**（0.72em、贴块顶），与歌词字各占一侧不抢位；
+   独立音符块（无歌词）保持正常字号。 */
+.lyric-chip:not(.notechip) .pit-nm{font-size:calc(1em * var(--nm-scale, .82));line-height:1;top:1px}
 .lyric-chip.notechip .lyric-char{left:calc(6px * var(--cs,1));right:auto;bottom:auto;top:50%;transform:translateY(-50%);text-align:left}   /* 无词块：谱字居中靠左（不受词块"字右下"影响） */
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
@@ -1307,9 +1377,11 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
   .pb-right .status{font-size:11px}
   /* ★★ v3.17.0（用户截图 bug）：显示位置三档胶囊在窄面板换行参差（2+1 不对齐）——
      改两列等宽网格（第三枚与上行同宽，格感规整）；字号 11.5、缩 padding。 */
-  .lyric-pos-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%}   /* 占满整行：.bpm-row 是 flex-wrap，缺省按 max-content 收缩（实测 202.8px，两列各 98 放不下 nowrap 文案） */
-  .lyric-pos-group .pill{justify-content:center;text-align:center;padding:8px;font-size:11.5px;
-    white-space:nowrap;min-width:0}
+  /* ★★★ v3.42.0 补（用户实报"按钮空白太多"）：原先 1fr 1fr 等宽网格把每枚胶囊拉到**半行宽**、文案居中
+     ⇒ 左右各空一大截。改为**贴字的 flex 换行**（宽度随文案）+ gap 6→4；40px 触控下限保留（t167 钉着，纵向省不动）。 */
+  .lyric-pos-group{display:flex;flex-wrap:wrap;gap:4px;flex:1 1 100%}
+  .lyric-pos-group .pill{justify-content:center;text-align:center;padding:0 12px;font-size:11.5px;
+    white-space:nowrap;min-width:0;flex:0 0 auto}
   .pb-progress{min-width:96px}
   /* ★ v3.30.0：读数行已挪进 .pb-sub（行 2）——窄屏隐藏规则同步改作用域，
      否则它在手机上会跑出来跟状态灯挤同一行（旧规则锚在 .pb-progress 下，已失对象）。 */
@@ -1371,12 +1443,20 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
 .slider-wrap>input[type=range]{width:100%;flex:1}
 .bpm-ticks{position:absolute;left:var(--thumb-r);right:var(--thumb-r);top:0;bottom:0;pointer-events:none}
 .bpm-ticks i{position:absolute;top:50%;width:2px;height:12px;border-radius:1px;background:var(--border);transform:translate(-50%,-50%)}
-input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}   /* ★ v3.42.0：条改由 ::-webkit-slider-runnable-track 画（见下）——元素自身不再铺色 */
 /* v2.41.0：滑杆已走过段绿色填充（用户要求，含主界面音量三条 / BPM / 设置弹窗壁纸遮罩与
    延迟补偿）——--vfill 由装配区 paintRange 统一写入（拖动走 document 级 input 委托、
    程序化改值在各自同步点补一发）。★ 编排页播放范围双滑块排除：两根滑轨叠成一根视觉
    轨道、语义是 from–to 区间，各自左起填充会读错范围 */
-input[type=range]:not(.arg-range-input){background:linear-gradient(to right,var(--green) var(--vfill,0%),var(--line) var(--vfill,0%))}
+/* v2.41.0 / v3.42.0 第六轮回退：滑杆已走过段绿色填充（--vfill 分段渐变，paintRange 统一写入）。
+   ★ 五轮「圆头挂出」尝试**整体回退**（用户口径：原样更耐看）——条回到**元素自身背景**、无内缩；
+   根因留档：Chrome 让拇指跑在**轨道盒**里，内缩轨道造不出挂出（见 CHANGELOG v3.42.0 第五/六轮）。
+   编排页双滑块 :not 排除（双轨叠一轨、区间语义，各自左起填充会读错范围） */
+input[type=range]:not(.arg-range-input){background:linear-gradient(to right,var(--green) var(--vfill,0%),var(--line) var(--vfill,0%))}/* ★★★ v3.42.0（用户实报"圆头错位"）：条改成伪元素后，钮改为**相对轨道**定位 ⇒ 默认 margin-top:0
+   会让钮顶贴轨道顶（竖屏 22px 钮偏低 8px、桌面 16px 钮偏低 5px）。补回居中的负边距，随 --thumb-w/--trk-h 两档自动走。
+   ★★ 补（用户追问"圆头挂出"时逐个体检抓出）：这条**只许给单钮滑杆**——编排页/侧栏那两组双滑块的
+   输入盒是 22px 高（轨道是自绘的 ::before，top:8px/6px），套 6px 轨道的算法会把钮顶高 2.6px
+   （实测：钮心 83.5 vs 条心 104；置 0 后 107.5 ✓）。故下面另起一条 :not 作用域。 */
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--thumb);box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
 /* 滑杆键盘焦点（v2.0.2 补）：全局重置抹掉了默认 outline，给圆钮补光晕——
    :focus-visible 的 outline 画在轨道条上不显眼，焦点态必须在 thumb 上 */
@@ -1411,6 +1491,13 @@ input[type=range].vol{width:120px}
 /* v2.75.0：顶栏两钮统一高度——文字钮的行高（≈18px）与图标钮的 16px 图标差 2px
    （用户截图：月亮钮比设置钮矮一截）；显式同高 + 垂直居中一次性根治 */
 .topbar .pill, .topbar .icon-btn, .topbar .lat-btn{height:40px;box-sizing:border-box;display:inline-flex;align-items:center}   /* v2.76.3：等高带 ★ v3.6.0（B4）：36→40 与全站触控下限对齐——本条是**显式 height，会盖住 .pill 的 min-height**，不改则顶栏元素仍 36px（漏项，由 t167 T152c 抓出）。顶栏容器 64px，实测抬高后容器高与 main 起点不变、零横向溢出，top 收敛为单值 [12]（等高带反而更齐） ★ v3.10.0：.status 移出等高带（状态灯已随用户要求搬去底栏右区，见 .pb-right） */
+/* ★★★ v3.42.0 补（用户拍板）：顶栏折叠钮——与设置/主题同规格圆钮；▾ 用 18px 字形（用户点名不能太小）。
+   [hidden] 必须显式兜底：.topbar .pill 的 display:inline-flex 会盖掉 UA 的 [hidden]（同 .switch 那一族）。 */
+#foldBtn[hidden]{display:none}
+#foldBtn{width:40px;padding:0}   /* ★ 定宽：▾ 推进宽 ~12px，靠 padding 撑会成 34×40 椭圆（用户实拍） */
+/* ★ v3.42.0 第八轮（用户口径：换一个样式）：▾ 文本字形换成**与设置/主题同一族的 SVG 描边雪佛龙**
+   （16px / stroke 1.8 / round，自带垂直居中，不再受字形基线影响）。 */
+#foldBtn .fold-ico{display:block}
 .topbar .icon-btn{justify-content:center;padding:0 11px}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
@@ -1464,39 +1551,101 @@ input[type=range].vol{width:120px}
    胶囊 36px 高（上下内边距 10→8，v3.24.0 压缩配额的同一口径）；自带 --card 底——
    旧开关列的"胶囊透明化"规则随列退役，芯内胶囊有可见底、即所见热区。 */
 .viz-head-grid .card-head-left .group{position:relative}   /* 芯 = .tg-flyout 的定位包含块 */
-.core-pills{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.core-pills .toggle-pill{padding-top:8px;padding-bottom:8px}
-.core-pill-grp{display:flex;align-items:center;gap:6px}
+.core-pills{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+/* ★★★ v3.41.0（按《整体布局方案示意图》逐条对账）：胶囊行三枚**居中、单行**。
+   实测原状：三枚 102 + 拍数框 74 + 组内 6 + 行内 20 = **406 > 芯 402** ⇒ 折成两行（高 82，
+   桌面/移动全档一样）。方案图的胶囊是「16px 圆点 + 文字」、且「4拍」画在**同一个**胶囊框里，
+   一枚 ≈ 77~130px ⇒ 三枚 + 间距 ≈ 302，桌面 402 / 移动 326 都单行放得下。
+   故此处按方案改：指示器降为 16px 圆点（order:-1 提到文字左侧）、组内拍数并入胶囊壳。 */
+.core-pills .toggle-pill{height:36px;padding:0 14px;gap:7px;font-size:12.5px;
+  border:1.5px solid var(--line);background:var(--card)}
+.core-pills .toggle-pill.on{border-color:var(--green)}
+/* 指示器 = 方案的 16px 圆点：关闭=空心环 / 打开=实心绿 ⇒ 形状+颜色双通道（不只靠颜色） */
+.core-pills .toggle-pill .switch{order:-1;width:16px;height:16px;border-radius:50%;
+  background:transparent;border:2px solid var(--border);transition:background .15s,border-color .15s}
+.core-pills .toggle-pill .switch::after{display:none}
+.core-pills .toggle-pill.on .switch{background:var(--green);border-color:var(--green)}
+/* 预备 = 方案里的**一个胶囊框**：[圆点 预备 4 拍]（方案把「4拍」画在胶囊内）。
+   拍数仍是真 <input>：方案画的是静态文本，但去掉输入等于拆掉唯一的编辑入口，故保留可编辑。 */
+.core-pill-grp{display:flex;align-items:center;gap:7px;height:36px;padding:0 12px 0 14px;
+  border:1.5px solid var(--line);border-radius:9999px;background:var(--card)}
+.core-pill-grp:has(.toggle-pill.on){border-color:var(--green)}
+.core-pills .core-pill-grp .toggle-pill{border:0;background:none;padding:0}
+/* ★★★ v3.42.0（用户拍板）：开关打开后，胶囊壳里**右侧长出参数槽**（与预备的「4 拍」同族）——
+   一行只读摘要（静音「每4·静1」/ 变速「→200」），点它开合完整参数面板；关掉开关槽即消失。
+   它是 <button> 而不是 span：可聚焦、可键盘触发，aria-expanded 报开合态（面板本体仍由 syncParamSlots 仲裁）。 */
+/* ★ v3.42.0 补（用户拍板）：**去掉细线框**（图3 里那条）并收紧内边距省面积——"
+   可点/能开合"改由 hover / 聚焦的浅底承担。 */
+.core-slot{display:flex;align-items:center;gap:3px;height:24px;padding:0 4px;
+  border:0;border-radius:9999px;background:transparent;color:var(--t2);
+  font-size:11px;font-family:var(--mono);white-space:nowrap;cursor:pointer}
+.core-slot:hover,.core-slot:focus-visible{background:rgba(var(--veil),.07);color:var(--t1)}
+.core-slot[hidden]{display:none}   /* 同 .switch / .tg-flyout 那一族的坑：类选择器的 display 会盖掉 UA 的 [hidden] */
+.core-slot[aria-expanded="true"]{color:var(--green)}
+.core-slot .slot-car{font-size:9px;color:var(--t3)}
+.core-slot[aria-expanded="true"] .slot-car{color:var(--green)}
+/* 展开态的折叠小箭头（只在折叠方案生效的档位出现，规则本体见下面的媒体块） */
 /* 从属参数降级（v3.30.0 口径延续，作用域从 .viz-toggles 换到 .core-pills）：拍数框比开关低一级 */
-.core-pills .tr-inp{padding:4px 8px;font-size:12px}
+.core-pills .inp-with-unit{gap:4px}
+.core-pills .hint{font-size:10.5px}
+/* ★★★ v3.42.0 补（用户拍板）：**去掉细线框**（图3 里那条）并收紧内边距省面积——改由
+   hover / 聚焦的浅底承担"这里能点/能改"的可发现性（否则真 <input> 看起来就是纯文本）。 */
+/* ★ v3.42.0 第六轮补（用户实拍）：拍数框 32px 太宽——取值域 min=1/max=8 **永远一位数**（数字约 7px），
+   收到 20px（含 2px 内边距 ⇒ 内容 16px），hover/聚焦的浅底仍看得出是个可编辑槽。 */
+/* ★★★ v3.42.0 第六轮补②（用户实拍"还是跟原来一样宽"）：基类 `.tr-inp{width:56px;min-width:44px}` 会把
+   本条的 width 顶住——**该槽实测一直渲染成 44px**，上一版 32→20 的改动完全没生效。本条必须同时压 min-width。 */
+.core-pills .tr-inp{width:20px;min-width:0;padding:1px 2px;font-size:12px;text-align:center;background:transparent;border:0;border-radius:5px}
+.core-pills .tr-inp:hover,.core-pills .tr-inp:focus{background:rgba(var(--veil),.07)}
 .core-pills .tr-inp::-webkit-outer-spin-button,
 .core-pills .tr-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .core-pills .tr-inp[type=number]{-moz-appearance:textfield;appearance:textfield}
-/* 参数浮层：静音/变速面板从开关列搬进来的壳（#muteFlyout/#trainerFlyout > .tr-panel）。
-   显隐 = syncParamSlots 镜像面板 hidden（面板 hidden 语义不变，壳跟着关）。
-   定位 = 芯内绝对定位：窄屏贴芯顶（盖住滑杆塔上部），≥1280 出芯两侧（见芯规则块）。
-   z-index 46：高于卡内内容，低于 preset-drawer(50)；不配遮罩（轻量浮层，点外即收）。 */
-.tg-flyout{position:absolute;top:52px;left:0;right:0;z-index:46;background:var(--card);
-  border:1px solid var(--line);border-radius:10px;padding:10px 12px;
-  box-shadow:0 6px 20px rgba(0,0,0,.14)}
+/* ★★★ v3.41.0（乙案 · 用户拍板：**参数面板重新设计为「胶囊下方的下拉面板」，全档统一**）。
+   原实现是「≥1280 出芯两侧 + <1280 芯内贴顶」两套规则，实测三个问题：
+     ① 桌面侧浮层**探出卡片 43.8px**（1440 实测：卡左缘 196 / 静音浮层左缘 152.2）——
+        桌面每侧只有 299px 可用（卡 1048 − 内边距 48 − 芯 402，再 ÷2），而浮层宽 352.8 / 368.3；
+     ② 两块不同构（352.8×54 vs 368.3×46）、内容各挤成一行；
+     ③ 归属不明：无标题、无指向标记，top:0 与芯顶齐平、比胶囊行底边多出 18 / 10px。
+   新形态：面板挂在**自己那枚胶囊**正下方（top = 胶囊下沿 + 10px、左对齐、顶部一枚小箭头指向它），
+   宽度贴内容（250–340），两块同构（标题 + 参数行 + 子开关行）；窄档退化为「锚芯、占满芯宽」。
+   z-index 46：高于卡内内容，低于 preset-drawer(50)；不配遮罩（轻量下拉，点外即收）。 */
+.core-pill-hold{position:relative;display:flex}
+.tg-flyout{position:absolute;top:calc(100% + 10px);left:0;z-index:46;
+  min-width:250px;max-width:min(340px,100vw);
+  background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px 13px;
+  box-shadow:0 10px 26px rgba(0,0,0,.45)}
+/* 指向胶囊的小箭头：与壳同底同描边的 45° 方块，压在壳顶边上——归属"一眼可见"的关键 */
+.tg-flyout::before{content:"";position:absolute;top:-5px;left:16px;width:8px;height:8px;
+  background:var(--card2);border-left:1px solid var(--line);border-top:1px solid var(--line);
+  transform:rotate(45deg)}
 .tg-flyout[hidden]{display:none}   /* 同 .tr-panel[hidden] 的坑：类选择器的 display 会盖掉 UA 的 [hidden] */
-.tg-flyout .tr-panel{margin-top:0;flex-wrap:wrap}
+/* 面板内排版：绿色小标题 → 参数行 → 子开关行（两块同构，行距 7px） */
+.tg-flyout .f-title{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.03em;margin-bottom:9px}
+.tg-flyout .tr-panel{display:block;margin-top:0}
+.tg-flyout .f-row{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px}   /* 等高：两块面板高度一致 */
+.tg-flyout .f-row + .f-row{margin-top:7px}
+.tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap;color:var(--t2)}
 .tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
-.tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap}
-.tg-flyout .tr-inp{padding:4px 8px;font-size:12px}
-.tg-flyout #muteRandomToggle{padding:6px 10px;font-size:12px}
+.tg-flyout .tr-inp{width:46px;padding:3px 6px;font-size:12px;text-align:center}
+.tg-flyout #muteRandomToggle{padding:4px 10px;font-size:12px}
 .tg-flyout .tr-inp::-webkit-outer-spin-button,
 .tg-flyout .tr-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .tg-flyout .tr-inp[type=number]{-moz-appearance:textfield;appearance:textfield}
+/* ≥1280（芯两侧各约 299px 余量）：两块面板**向外扇开**——静音面板右对齐到自己那枚胶囊（向左长）、
+   变速面板左对齐（向右长）⇒ 两块同时开着也**互不重叠**，且都留在卡片内
+   （实测 1440：静音面板 508..758 / 变速面板 776..1026，卡 196..1244；修复前侧浮层探出卡 43.8px）。 */
 @media (min-width:1280px){
-  /* 桌面芯两侧弹出：静音浮层出芯左、变速浮层出芯右（方案图口径），不再盖滑杆塔 */
-  /* ★★★ 控制芯批 6（用户实测 · 冒烟闸抓到）：**必须 width:max-content**。
-     根因：浮层定位在**包含块（.group）之外**（left/right = calc(100% ± 14px)）——
-     只给 left 时 width:auto 走 shrink-to-fit，可用宽 = 包含块宽 − left < 0 ⇒ 宽度塌到
-     min-content（实测 110~116px）⇒ .tr-panel 的 flex-wrap 把参数挤成一行一项、竖排 3~5 行。
-     white-space:nowrap 治不了 flex 子项换行。显式 max-content 让浮层按内容一行铺开。 */
-  #muteFlyout{left:auto;right:calc(100% + 14px);top:0;white-space:nowrap;width:max-content}
-  #trainerFlyout{left:calc(100% + 14px);right:auto;top:0;white-space:nowrap;width:max-content}
+  #muteFlyout{left:auto;right:0}
+  #muteFlyout::before{left:auto;right:16px}
+}
+/* <1280（芯只有 326/402 宽）：面板改为**锚芯**（左对齐芯左缘）、宽度贴内容但不超过芯宽——
+   即"胶囊 + 250px 面板"横向放不下时的退化形态。小箭头在本档**隐藏**（面板已不是挂在某一枚胶囊底下，
+   箭头没有指向对象，留着会指到别的胶囊上去）。
+   ★ 已知代价：此时两块同时开着会互相盖住（同一位置，变速的 DOM 在后）。窄档同时开两个功能不是常态，
+     且点任一枚胶囊都能收起它自己那块；要不要在窄档做"只留一块"另议。 */
+@media (max-width:1279.9px){
+  .core-pill-hold{position:static}
+  .tg-flyout{left:0;right:auto;top:calc(var(--row-h, 36px) + 10px);min-width:0;max-width:100%}
+  .tg-flyout::before{display:none}
 }
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
    均分宽度）——开关列作为第 3 列与音量/BPM 同行顶部对齐；<900 保持纵向堆叠。 */
@@ -1843,7 +1992,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      thumb 整个吃掉（两个 thumb 重合时更明显：只剩最上面那个抓得住）。代价是"点轨道跳转"
      不可用，由拖动与键盘（方向键）补齐。 */
 .demo-range-track{position:relative;height:22px}
-.demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}
+.demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}   /* ★ v3.42.0：与单钮滑杆同口径——条两端各内缩半个钮径，圆头挂出（填充 rangeFillStyle 本就以钮心为端点，天然对齐） */
 .demo-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
 /* 段边界刻度线（v2.10.7）：滑块改按小节刻度后，每段**起点**的小节位置画一条小竖线，
    让"第 X 小节落在哪一段"一眼可见。z-index 1 = 与填充条同层（画在其上）、thumb (2/3) 之下；
@@ -2144,7 +2293,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-map-seg:last-child{border-right:none}
 .arg-map-seg.in-range{background:rgba(30,215,96,.15);box-shadow:inset 0 0 0 1px var(--green);color:var(--t1)}
 .arg-range-track{position:relative;height:22px}
-.arg-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}
+.arg-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}   /* ★ v3.42.0：同 .demo-range-track（条内缩、圆头挂出） */
 .arg-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
 .arg-range-track input[type=range].arg-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
 .arg-range-track input[type=range].arg-range-input::-webkit-slider-thumb{pointer-events:auto}
@@ -2709,7 +2858,8 @@ body[data-theme="obs"] .step-btn{border-radius:6px;background:var(--card2);borde
 body[data-theme="obs"] .jump-btn{border-radius:50%;background:var(--card2);border:1px solid var(--line);transition:border-color .12s,opacity .12s}
 body[data-theme="obs"] .step-btn:hover{border-color:var(--border)}
 body[data-theme="obs"] .bpm-num{font-size:48px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-body[data-theme="obs"] input[type=range]{background:rgba(var(--well),.18);height:4px}   /* 墨色轨道：白圆点才浮得出来 */
+body[data-theme="obs"] input[type=range]{background:rgba(var(--well),.18);height:4px}   /* 墨色轨道：白圆点才浮得出来；★ v3.42.0 轨道高进变量，钮的垂直校正跟着走 */
+/* ★ v3.42.0：条搬到伪元素后，主题色也跟过去（并保持"墨色轨道、不做绿填充"的既有观感） */
 body[data-theme="obs"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(37,99,235,.28), inset 0 0 0 1px rgba(15,23,42,.28)}
 body[data-theme="obs"] .bpm-ticks i{background:rgba(var(--well),.16)}
 
@@ -2958,6 +3108,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          数值（延迟域 0–500 最多三位；11px 等宽 tabular-nums，三位 ~20px 恰好占满
          min-width 40 的内容区不溢出）；完整语义进 title/aria-label 随值同步。
          id 与两个同步调用点（latApply / latMs input）、点击接线一行不动。 -->
+    <!-- ★★★ v3.42.0 补（用户拍板）：**展开态的折叠入口在顶栏**，位置在**延迟钮左边**（用户指定）——
+         与设置/主题同规格圆钮，圆内一枚 **18px** 的 ▾（点名"不能太小"）。★ 必须给**定宽 40px**：
+         ▾ 的字形推进宽只有 ~12px，靠 padding 撑出来的盒子是 34×40 的**椭圆**（用户实拍指出）。
+         收起态它自己 hidden（入口回到控制卡里那枚居中的「BPM 96 ▾」读数钮），显隐由 wireFoldBtn 跟 #ctlOpen 同步。 -->
+    <button class="pill outline icon-btn" id="foldBtn" aria-label="收起控制区" title="收起控制区" hidden>
+      <!-- ★ v3.42.0 第八轮（用户从 A–F 六个候选里选 B）：**双雪佛龙向下**（chevrons-down = 收起），
+           与设置/主题同族：16px、stroke 1.8、圆头。原 ▾ 文本字形退役（受基线影响、不居中）。 -->
+      <svg class="fold-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5.5l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 13.5l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <button class="pill outline lat-btn" id="latChip" aria-label="音频延迟补偿 0ms，点击打开设置" title="音频延迟补偿 0ms"><span class="lat-num" id="latChipVal">0</span></button>
     <!-- v3.14.0：圆钮化（用户需求）——与主题钮同规格（40px 高胶囊圆 + 16px 图标），
          齿轮图标走 Feather settings 同款描边；id 与点击接线一行不动，"设置"文案进
@@ -3059,10 +3218,47 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <div class="core-pills">
               <span class="core-pill-grp">
                 <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备<span class="switch"></span></button>
-                <span class="inp-with-unit" id="countInBeatsWrap"><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍数"><span class="hint">拍</span></span>   <!-- 常显（v3.22.0 用户需求：关闭预备也显示上次设置的拍数） -->
+                <!-- ★ v3.41.0（用户拍板）：拍数**就地长出**——预备关着时只显示「预备」两个字，开着才在同一个
+                     胶囊壳里长出 [4 拍]（v3.22.0 的"常显"随之退役）。显隐由 bindToggle("countInToggle")
+                     的 after 回调写 hidden，启动由装配段 syncCountInBeats() 收敛（防"开关说谎"）。 -->
+                <span class="inp-with-unit" id="countInBeatsWrap" hidden><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍数"><span class="hint">拍</span></span>
               </span>
-              <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音<span class="switch"></span></button>
-              <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速<span class="switch"></span></button>
+              <!-- ★★★ v3.41.0（乙案 · 用户拍板）：参数面板改为**挂在各自胶囊正下方**的下拉面板——
+                   .core-pill-hold 提供定位包含块，面板就在自己那枚胶囊底下（顶部小箭头指向它）。
+                   搬块不换 id（#muteFlyout / #trainerFlyout / #muteCfgPanel / #trainerPanel 全部不动）。 -->
+              <span class="core-pill-hold">
+                <span class="core-pill-grp">
+                  <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音<span class="switch"></span></button>
+                  <!-- ★★★ v3.42.0（用户拍板）：开关打开后，胶囊**右侧长出参数槽**（与预备的「4 拍」同族）——
+                       一行摘要、只读，点它展开/收起下面的完整参数面板。关掉开关槽即消失。 -->
+                  <button class="core-slot" id="muteSlot" type="button" hidden aria-expanded="false" aria-controls="muteFlyout" title="展开 / 收起静音参数"><span id="muteSlotTxt">每4·静1</span><span class="slot-car">▾</span></button>
+                </span>
+                <div class="tg-flyout" id="muteFlyout" hidden>
+                  <div class="f-title">静音规则</div>
+                  <div class="tr-panel" id="muteCfgPanel" hidden>
+                    <!-- v2.71.0（1.5）：每 [N] 小节 · 静 [M] 小节——M 的选项随 N 联动重建（1 ≤ M ≤ N−1）；
+                         random = 组内随机挑 M 位（种子=组号 ⇒ 确定性：发声/视觉/状态栏三处问同一判据函数）。 -->
+                    <div class="f-row"><span class="lab">每</span><select class="loop-sel" id="muteEvery" aria-label="每几小节一组"></select><span class="lab">小节 · 静</span><select class="loop-sel" id="muteCount" aria-label="静几小节"></select><span class="lab">小节</span></div>
+                    <div class="f-row"><button class="toggle-pill off" id="muteRandomToggle" role="switch" aria-checked="false">随机<span class="switch"></span></button></div>
+                  </div>
+                </div>
+              </span>
+              <span class="core-pill-hold">
+                <span class="core-pill-grp">
+                  <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速<span class="switch"></span></button>
+                  <!-- ★★★ v3.42.0：同上——变速的右侧参数槽（摘要显示目标 BPM），点它展开/收起完整面板 -->
+                  <button class="core-slot" id="trainerSlot" type="button" hidden aria-expanded="false" aria-controls="trainerFlyout" title="展开 / 收起变速参数"><span id="trainerSlotTxt">→200</span><span class="slot-car">▾</span></button>
+                </span>
+                <div class="tg-flyout" id="trainerFlyout" hidden>
+                  <div class="f-title">变速规则</div>
+                  <div class="tr-panel" id="trainerPanel" hidden>
+                    <!-- 「目标」框随整组参数走（id 与接线不动）；空目标时由开关处理器就地给出原因
+                         （openSlotForTarget：开面板 + 焦点送进目标框 + 原因写芯底 #trainerProg） -->
+                    <div class="f-row"><span class="inp-with-unit" id="trTargetWrap"><span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="如 120" aria-label="目标 BPM，可留空表示不设目标"></span><span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM"></div>
+                    <div class="f-row"><span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span></div>
+                  </div>
+                </div>
+              </span>
             </div>
             <!-- v2.5.0：原来只有「总音量 / 重拍增强」两条。「总音量」实际管的是**节拍器**那一下
                  （每拍的拍点、预备拍、歌词锚点提示音），名字比职责大；而扫弦声完全没有自己的
@@ -3098,9 +3294,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                  BPM 行改**上下两行塔式**——上行 .bpm-slider-row 复刻音量行两段槽位
                  （「BPM」标签 52px 定宽 | 滑杆到行尾），滑杆与音量条**严格等长、两端对齐**
                  （音量 % 文案与右侧 38px 定宽槽退役后，三行统一两段式，滑杆右端同抵列右缘）；
-                 下行 -5/-1/数值/+1/+5 整组**居中，居中轴参照滑杆本身**（左槽 52px ⇒ 滑杆轴
-                 比整行轴偏右 31px，CSS 的 margin-left:62px 即由槽位宽算出）；
-                 「当前 X BPM · 第 N/M 步」读数行与数值行同轴居中。
+                 下行 -5/-1/数值/+1/+5 整组居中；★ v3.41.0（方案对账 G9）**居中轴由「滑杆轴」
+                 改为「芯轴 = 跑道轴」**——v3.39.1 的 margin-left:62px（=52 标签槽 + 10 间距，
+                 让 96 落在被左槽顶开 31px 的滑杆轴上）已除名，按方案图 .steps{justify-content:center}；
+                 「当前 X BPM · 第 N/M 步」读数行与数值行同吃这一根轴。
                  v3.39.0 的「数值与增减钮紧跟滑杆同行」随塔式退役——同行会把滑杆挤短，
                  「与音量条等长」无从谈起。
                  v3.39.0 拍板仍有效：#tapBtn（TAP 测速）与 #bpmPresetRow（固定档位行）整块
@@ -3113,6 +3310,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                 <span>BPM</span>
                 <div class="slider-wrap">
                   <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
+                  
                   <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
                 </div>
               </div>
@@ -3133,32 +3331,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                  闸门时是拒开原因）；v3.39.0 随数值搬进合并组、紧跟步进行下方。
                  搬块不换 id，syncParamSlots 的显隐同步照旧生效。 -->
             <div class="tr-prog" id="trainerProg"></div>
-            <!-- ★★ 控制芯重排（PLAN-v9 批 2）：参数浮层壳 —— 静音/变速的参数面板从开关列（已退役）
-                 搬进浮层，搬块不换 id：#muteCfgPanel / #trainerPanel 的 hidden 语义不变
-                 （syncParamSlots 照旧仲裁），浮层壳显隐镜像面板 hidden。
-                 浮层是 .group（芯）的子节点：定位包含块 = 芯（position:relative 见浮层 CSS 段），
-                 收起档 .card-head-left 隐藏时浮层随之隐藏（不漏浮层）；
-                 点外收回沿用 clearSlotForce 的委托监听，Esc 走注册表（只认 Escape，不吞其它键）。 -->
-            <div class="tg-flyout" id="muteFlyout" hidden>
-              <div class="tr-panel" id="muteCfgPanel" hidden>
-                <!-- v2.71.0（1.5）：每 [N] 小节 · 静 [M] 小节——M 的选项随 N 联动重建（1 ≤ M ≤ N−1）；
-                     random = 组内随机挑 M 位（种子=组号 ⇒ 确定性：发声/视觉/状态栏三处问同一判据函数）。
-                     「随机」子开关随面板进浮层（v3.22.0 的"开关行 inline 右侧"随开关行退役）。 -->
-                <span class="lab">每</span><select class="loop-sel" id="muteEvery" aria-label="每几小节一组"></select>
-                <span class="lab">小节 · 静</span><select class="loop-sel" id="muteCount" aria-label="静几小节"></select>
-                <span class="lab">小节</span>
-                <button class="toggle-pill off" id="muteRandomToggle" role="switch" aria-checked="false">随机<span class="switch"></span></button>
-              </div>
-            </div>
-            <div class="tg-flyout" id="trainerFlyout" hidden>
-              <div class="tr-panel" id="trainerPanel" hidden>
-                <!-- 「目标」框随整组参数走（id 与接线不动）；空目标时由开关处理器就地给出原因
-                     （openSlotForTarget：开浮层 + 焦点送进目标框 + 原因写芯底 #trainerProg） -->
-                <span class="inp-with-unit" id="trTargetWrap"><span class="lab">目标</span><input class="tr-inp" id="trTarget" type="number" min="31" max="240" placeholder="如 120" aria-label="目标 BPM，可留空表示不设目标"></span>
-                <span class="lab">步长 ±</span><input class="tr-inp" id="trStepInp" type="number" min="1" max="20" value="4" aria-label="每级步长 BPM">
-                <span class="lab">每级</span><input class="tr-inp" id="trEvery" type="number" min="1" max="8" value="4" aria-label="每级持续小节数"><span class="lab">小节</span>
-              </div>
-            </div>
+            <!-- ★★★ v3.41.0（乙案）：两个参数面板已搬进各自胶囊的 .core-pill-hold（见上面的 .core-pills 段）——
+                 面板从此锚在**自己那枚胶囊正下方**。这里不再有浮层节点；芯底仍是 #trainerProg（拒开原因的就地通道）。 -->
             </div>
           </div>
         </div>
@@ -3315,6 +3489,12 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          铺开，跨小节延音在小节边界截断、下一行续显；首行在播放中可显示上一小节（preview，
          半透明）作回看。行走带线只出现在可听域当前行。无歌词行时整块 hidden，不占位。
          aria-hidden：纯视觉轨，字块是不可点、无键盘契约的 div，语义由 #statusText 承担 -->
+    <!-- ★★★ v3.42.0 第十一轮（用户口径）：音名一个都画不出来时的说明条——显隐由
+         syncPitchAvailability 控制（点「知道了」本次不再弹；情形消失再出现时会再弹）。 -->
+    <div class="pitch-notice" id="pitchNotice" role="status" hidden>
+      <span>当前格宽放不下音名——已保持简谱显示；放大窗口，或把「同屏行数」调小后即可用。</span>
+      <button class="pill" id="pitchNoticeOk" type="button">知道了</button>
+    </div>
     <div class="lyric-lane" id="lyricLane" hidden aria-hidden="true"></div>
     <!-- ★ v3.20.0（用户拍板方案 A）：雾化条退役——毛玻璃的 blur 拖影（smear）观感粗糙，
          改为**内容自身渐隐**：滚动模式下给 .viz / .lyric-lane 加线性渐变 mask（见样式表
@@ -4292,23 +4472,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4324  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5746  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7865  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8911  Modal         应用内弹窗
-     L9056  Viz           时值可视化渲染与每帧动画
-     L12580 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13263 Trainer       变速训练器
-     L13473 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14157 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16135 Editor        自定义节奏型编辑器
-     L16715 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16762 Ear           听辨训练（v1.10.0）
-     L16990 Arrange       曲式编排（v2.0.0）
-     L21055 Help          使用方法（v2.0.1）
-     L21210 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21284 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21573 初始化（装配） 各模块 hook 接线与启动
+     L4504  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5946  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8065  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9273  Modal         应用内弹窗
+     L9418  Viz           时值可视化渲染与每帧动画
+     L12942 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13625 Trainer       变速训练器
+     L13838 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14522 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16500 Editor        自定义节奏型编辑器
+     L17080 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17127 Ear           听辨训练（v1.10.0）
+     L17355 Arrange       曲式编排（v2.0.0）
+     L21420 Help          使用方法（v2.0.1）
+     L21575 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21649 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21938 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4334,7 +4514,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.40.0";
+const VERSION = "3.42.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4873,9 +5053,14 @@ function octClassOf(p, keySemi, sys){
    ★ 这组数是**字体度量**，会随字体/字号漂移 ⇒ 由真机探针（smoke 的音高几何探针）守着
      「任何格宽下都不裁字」，漂移了它会红。 */
 const PITCH_MARK_BASE = 14;            /* 常量表的基准字号（主视图记号） */
-const NM_CHAR_RESERVE = 46;      /* 词块里「歌词字」占地（**左内缩 26cs + 字身 14cs + 间隙**；cs>=1、字身封顶 ⇒ 常量与 --cs 无关）：nm 判据必须把它算进来 */   /* v3.38.1 补5：30 → 46——字从「格宽 25% 的字心」改成**靠左的实占宽**，旧值按 0.75·W 的模型定的，已不适用 */
+const NM_CHAR_RESERVE = 48;      /* 词块里「歌词字」占地（**左内缩 26cs + 字身 14cs + 间隙**；cs>=1、字身封顶 ⇒ 常量与 --cs 无关）：nm 判据必须把它算进来 */   /* v3.38.1 补5：30 → 46——字从「格宽 25% 的字心」改成**靠左的实占宽**，旧值按 0.75·W 的模型定的，已不适用 */
 const PITCH_MARK_ARRANGE_FS = 12;      /* 编排页记号的字号（CSS 同源）——判定前先折算到 14 基准 */
 const PITCH_MARK = { inset: 6, insetAcc: 4, digit: 8.4, acc: 4.8, gap: 1.3, dot: 5.9, nmChar: 6.9 };
+/* ★★★ v3.42.0 第十轮（用户口径：音名字母增大一号 + **同源化**）：音名在歌词块里的字号系数。
+   **单一事实源**在这里——装配时写进 CSS 变量 `--nm-scale`（见 observeRowH 那个 IIFE），
+   CSS 用 `font-size:calc(1em * var(--nm-scale))`；判据用它折算名字宽。这样"改字号忘了改判据"
+   这个坑结构上消失（上一轮就是两处各写 0.72 才差点又踩）。0.72 → 0.82 = 增大一号。 */
+const NM_SCALE = 0.82;
 /** 把「某字号下的格宽」折算到 PITCH_MARK_BASE（14px）基准——常量表只有一份，编排页记号 12px
     时用它换算（等价于把该处需求按 12/14 缩小；否则会因字号小而误判成宽格）。
     ★ 为什么不给 pitchFitClass 加字号参数：折算点只有两处（编排页），放调用端接线更少。
@@ -4976,7 +5161,17 @@ function mkPitchMarkEl(mark, mode, keyName, cls, cellPx, sys){
   if (!jp){
     const chars = mark.seq.reduce((/** @type {number} */ m2, /** @type {any} */ u) =>
       m2 + (u.tie ? 1 : pitchNameOf(/** @type {number} */ (u.p), sys).length) + (m2 ? 1 : 0), 0);
-    if (nmMarkHidden(/** @type {number} */ (cellPx), chars, sys, NM_CHAR_RESERVE)) return null;
+    /* ★★★ v3.42.0 第九轮（用户口径 + 实拍）：歌词块的音名已改**上标小字**（CSS
+       `.lyric-chip:not(.notechip) .pit-nm{font-size:.72em}`）⇒ 判据里的**名字宽**按 0.72 折算，
+       而"字占地"（NM_CHAR_RESERVE）照旧——否则窄档会比必要更早"整枚不画"，用户看到的就是"音名消失"
+       （名字宽仍按 14px 基准算 ⇒ 判据偏保守约 1.39 倍）。 */
+    const cpx = /** @type {number} */ (cellPx);
+    if (cpx > 0){
+      const nmNeed = pitchMarkNeeds({ nmChars: chars }).nm;
+      if (cpx < nmNeed * NM_SCALE + NM_CHAR_RESERVE){ nmHiddenN++; schedulePitchAvailabilitySync(); return null; }
+    }
+    nmDrawnN++;
+    schedulePitchAvailabilitySync();
   }
   const el = document.createElement("span");
   el.className = cls || "pit-seq";
@@ -5016,6 +5211,11 @@ function mkPitchLabel(p, mode, keyName, cellPx, sys){
   if (mode === "nm"){
     const s = document.createElement("span");
     const nm = pitchNameOf(p, sys);
+    /* ★★★ v3.42.0 第七轮（丙）的**待办**：窄格判据要按"歌词块 / 独立块"分开算——
+       第一版把 cellPx 全局放宽 ×1.35，被既有钉当场拦下（C#4 在 20px 独立格里本就该隐藏，
+       放宽后会画出被 overflow 裁掉的坏字）。正解：歌词块（CSS 已是上标 0.72em）按 ×1.39 放宽、
+       独立块保持原判据；这需要调用侧把"是否歌词块"传进来（函数目前拿不到），故下一步改。
+       同时还要先量清"音名档歌词块不显示"的**真实成因**（可能不在 nmMarkHidden，而在定位/裁切）。 */
     if (nmMarkHidden(/** @type {number} */ (cellPx), nm.length)) return s;   // 空壳：不画名
     s.className = "pit-nm " + octClassOf(p, keySemiOf(keyName), sys);
     s.textContent = nm;
@@ -7886,10 +8086,28 @@ const $ = id => document.getElementById(id);
 /* "只读展示"：某开关**没开**也要把它的参数摆出来（目前只有一处——点变速训练但目标为空时，
    把槽打开让用户就地填目标；见 trainerToggle 处理器）。值为某一组名时该组强制显示。 */
 let paramSlotForce = "";
+/* ★★★ v3.42.0（用户报障：开关开着的面板"点空白也收不回"）：面板显隐从"只跟开关"扩成**三态**——
+   `on[k] && !slotDismissed[k]` ⇒ 显示；`paramSlotForce === k`（拒开强开）⇒ 强制显示。
+   点空白 / Esc 置 slotDismissed[k] = true（**开关不动**）；开关**关→开**时清掉它（新开的这次要看得到面板）；
+   胶囊右侧的参数槽 = 手动开合（见 wireCoreSlots）。slotOnPrev 只用于边沿检测。 */
+/** @type {Record<string, boolean>} */
+const slotDismissed = { mute: false, trainer: false };
+/** @type {Record<string, boolean>} */
+const slotOnPrev = { mute: false, trainer: false };
 /* ★★ v3.33.10（用户实拍缺陷）：占槽记账原**只在 on[k] 变真时**清空（见 syncParamSlots 内那条），
    而被"闸门"拒绝的那次点击让 on[k] 永远为假 ⇒ 原因交付完之后槽位常开：
    复现 = BPM == 目标 → 点变速训练（开关不开、但槽展开给出原因）→ 之后槽再也不会自动收回。
    修法：把"原因"当**一次性提示**——改目标 / 改 BPM / 在卡片内点别处，任一发生即撤。 */
+/* ★★★ v3.41.0（用户纠正）：芯底读数行**不是常显基线**——方案图那行写的是「当前 96 BPM · 第 1/7 步」,
+   那是**变速训练开着**的状态；我上一轮（G4）误读成"常驻行"，让训练器没开时也显示「当前 X BPM」。
+   现恢复 v3.40.0 批 2 的口径：空文本 ⇒ 零高度隐身；开着才显示「· 第 N/M 步」；拒开原因照旧就地红框。 */
+/* ★ v3.41.0（用户拍板）：预备拍数**就地长出**——关闭态只显示「预备」两个字，打开态才在同一个胶囊壳里
+   显示 [4 拍]。单点收口：bindToggle("countInToggle") 的 after 回调与装配段启动收敛都调它
+   （启动不收敛就会"开关说谎"：上次开着预备、重载后开关显示开、拍数却不见——同 v2.10.1 那一族）。 */
+function syncCountInBeats(){
+  const w = $("countInBeatsWrap");
+  if (w) w.hidden = !S.countIn.on;
+}
 function clearSlotForce(){
   if (!paramSlotForce) return;
   paramSlotForce = "";
@@ -7924,19 +8142,38 @@ function syncParamSlots(){
   /* 控制芯重排（PLAN-v9 批 2）：面板搬进浮层壳——壳显隐镜像面板 hidden，面板语义不变 */
   /** @type {Record<string, string>} */
   const shellMap = { mute: "muteFlyout", trainer: "trainerFlyout" };
+  /** @type {Record<string, string>} */
+  const slotMap = { mute: "muteSlot", trainer: "trainerSlot" };
+  /* ★★★ v3.42.0 第七轮补（实机量出漏修）：**ON 边沿必须先整体跑一遍**——`dismissOtherSlot` 改的是
+     **另一块**的 slotDismissed，而同一次循环里那一块的 `show` 已经算完并写过 hidden 了（单遍必漏：
+     390 实测两块仍同时可见、重叠 22 214 px²）。故拆成"先处理边沿、再统一算 show"两段。 */
+  for (const k of Object.keys(map)){
+    if (on[k] && !slotOnPrev[k]){ slotDismissed[k] = false; dismissOtherSlot(k); }
+    slotOnPrev[k] = on[k];
+  }
   for (const k of Object.keys(map)){
     if (on[k] && paramSlotForce === k) paramSlotForce = "";
-    const show = !!(on[k] || paramSlotForce === k);
+    /* ★ v3.42.0：面板 = 开关开着**且没被手动收起**，或拒开强开 */
+    const show = !!((on[k] && !slotDismissed[k]) || paramSlotForce === k);
     const el = $(map[k]);
     if (el) el.hidden = !show;
     const sh = $(shellMap[k]);
     if (sh) sh.hidden = !show;
+    /* 右侧参数槽：开关开着才在；aria-expanded + 箭头跟随面板开合 */
+    const sl = $(slotMap[k]);
+    if (sl){ sl.hidden = !on[k]; sl.setAttribute("aria-expanded", show ? "true" : "false"); }
   }
+  syncSlotText();
   /* 控制芯重排（PLAN-v9 批 2）：#trainerProg 留芯底，显隐**不再跟随参数面板**——
      空文本时零高度自然隐身；拒开原因就地写在芯底（openSlotForTarget 函数体不动）。 */
 }
 /* 把某一组的参数摆出来（不依赖它的开关是否开着）——空目标拒开的替代路径 */
 function openParamSlot(/** @type {string} */ name){
+  /* ★★★ v3.41.0（用户报障：BPM ≥ 目标 时"参数槽无反应"）：同组**再次**开槽 = 收起。
+     根因：该情形下开关被闸门拒绝，S.trainer.on 恒 false，槽只靠 paramSlotForce 强开 ⇒
+     再点一次仍是"拒绝 + 强开"，槽纹丝不动；而 BPM < 目标 时开关能真开真关、面板跟随开关，
+     第二次点击自然收起——两种情形必须一致。改成 toggle 即可（原因文案由 clearSlotForce 一并撤掉）。 */
+  if (paramSlotForce === name){ clearSlotForce(); return; }
   paramSlotForce = name; syncParamSlots();
 }
 
@@ -7976,9 +8213,134 @@ function overlayKeyLayer(mod){
    （paramSlotForce）——开关开着的浮层跟随开关状态，不归键盘层管。
    ★ 不吞其它键：强制浮层的存在意义就是让用户往 #trTarget 里填数，
      这里若学 overlayKeyLayer 整层吞键，目标框就打不了字（注册表消费端不做输入框豁免）。 */
+/* 参数槽的一行摘要（只读）：静音「每N·静M」（随机开着再挂「·随」）、变速「→目标」 */
+function syncSlotText(){
+  const m = $("muteSlotTxt");
+  if (m){
+    const c = S.muteCfg || {};
+    const period = typeof c.period === "number" ? c.period : "—";
+    const count = typeof c.count === "number" ? c.count : "—";
+    m.textContent = "每" + period + "·静" + count + (c.random ? "·随" : "");
+  }
+  const t = $("trainerSlotTxt");
+  if (t){
+    const tg = S.trainer ? S.trainer.target : null;
+    t.textContent = "→" + (typeof tg === "number" ? tg : "—");
+  }
+}
+/** @param {string} k @returns {boolean} */
+function slotKeyOn(k){ return k === "mute" ? !!S.mute : !!S.trainer.on; }
+/** 有没有任何面板正开着（开关驱动或强开） */
+function anySlotOpen(){
+  for (const k of Object.keys(slotDismissed)) if (slotKeyOn(k) && !slotDismissed[k]) return true;
+  return !!paramSlotForce;
+}
+/* 收起所有面板：开关驱动的置"手动收起"（**开关不动**），强开的连原因一并撤（一次性提示语义） */
+function dismissSlots(){
+  for (const k of Object.keys(slotDismissed)) if (slotKeyOn(k)) slotDismissed[k] = true;
+  clearSlotForce();
+  syncParamSlots();
+}
+/* ★★★ v3.42.0（用户拍板）：胶囊右侧的参数槽 = **手动开合**完整面板（不动开关） */
+(function wireCoreSlots(){
+  /** @type {[string, string][]} */
+  const pairs = [["muteSlot", "mute"], ["trainerSlot", "trainer"]];
+  for (const [id, k] of pairs){
+    const b = $(id);
+    if (!b) continue;
+    b.addEventListener("click", () => {
+      if (paramSlotForce === k){ slotDismissed[k] = true; clearSlotForce(); return; }
+      slotDismissed[k] = !slotDismissed[k];
+      if (!slotDismissed[k]) dismissOtherSlot(k);
+      syncParamSlots();
+    });
+  }
+})();
+/* ★★★ v3.42.0 第七轮（用户拍板）：**窄档只允许开一块参数面板**——窄档两块共用同一锚点（left:0），
+   同时开会整个叠住（390 实测重叠 22 214 px²）。开一块即收另一块；宽档维持左右扇开不动。 */
+function dismissOtherSlot(/** @type {string} */ k){
+  if (!(typeof innerWidth === "number" && innerWidth < 1280)) return;
+  const other = k === "mute" ? "trainer" : "mute";
+  if (slotKeyOn(other) && !slotDismissed[other]) slotDismissed[other] = true;
+}
+/* --row-h：胶囊行**实际**高度（窄档面板锚"行底 +10px"；槽长出来/行折行都会变高） */
+/* ★★★ v3.42.0 第十一轮（用户口径）：音名档下"**一个音名都画不出来**"时——
+   设置里那枚「音名 C D E」胶囊**置灰不可选**，并弹出「知道了」式说明（与首次进入的图例条同族）。
+   判定用渲染计数：nmDrawn 0 且 nmHidden > 0（"全都没有"才算；不是"有一颗没有"，否则几乎恒置灰）。
+   ★ 只在**上升沿**显示：点掉后不复现；情形消失再出现时会再次弹出（用户要的正是这个语义）。
+   ★ 自适应：同步在每帧末跑一次（由渲染计数触发），所以缩放窗口/换曲/换档后都会自动重算。 */
+let nmDrawnN = 0, nmHiddenN = 0, nmSyncQueued = false, pitchNoticeArmed = true;
+function schedulePitchAvailabilitySync(){
+  if (nmSyncQueued || typeof requestAnimationFrame !== "function") return;
+  nmSyncQueued = true;
+  requestAnimationFrame(() => { nmSyncQueued = false; syncPitchAvailability(); });
+}
+function syncPitchAvailability(){
+  const triggered = (nmDrawnN === 0 && nmHiddenN > 0);
+  nmDrawnN = 0; nmHiddenN = 0;
+  if (!triggered) pitchNoticeArmed = true;
+  const grp = $("pitchNotationGroup");
+  const nmPill = grp ? /** @type {HTMLButtonElement|null} */ (grp.querySelector('[data-pn="nm"]')) : null;
+  if (nmPill) nmPill.disabled = triggered;
+  if (triggered && S.pitchNotation === "nm"){
+    S.pitchNotation = "jp";
+    if (grp) grp.querySelectorAll(".pill").forEach(/** @param {any} p */ p => {
+      const on = p.dataset.pn === "jp";
+      p.classList.toggle("active", on); p.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  const box = $("pitchNotice");
+  if (box) box.hidden = !(triggered && pitchNoticeArmed);
+}
+/* 提示条：JS 自建（不动标记层），挂在歌词轨之后——与图例条同族观感 */
+(function wirePitchNotice(){
+  /* ★ 提示条本体是**静态标记**（#pitchNotice / #pitchNoticeOk）——第一版用 JS 建元素，被
+     「DOM 引用完整性」闸门当场拦下（静态 id 账本看不见动态元素 ⇒ 报悬空引用）。这里只接线。 */
+  const ok = $("pitchNoticeOk");
+  if (ok) ok.addEventListener("click", () => { const b = $("pitchNotice"); if (b) b.hidden = true; pitchNoticeArmed = false; });
+})();
+(function observeRowH(){
+  if (typeof document.querySelector !== "function" || typeof ResizeObserver === "undefined") return;
+  const row = /** @type {HTMLElement|null} */ (document.querySelector(".core-pills"));
+  const core = /** @type {HTMLElement|null} */ (document.querySelector(".card-head-left .group"));
+  if (!row || !core) return;
+  /* ★ v3.42.0 第十轮：把音名字号系数（单一事实源 NM_SCALE）写进 CSS 变量 `--nm-scale`——
+     CSS 与判据从此同源，改字号不会再忘记改判据。 */
+  document.documentElement.style.setProperty("--nm-scale", String(NM_SCALE));
+  const apply = () => { core.style.setProperty("--row-h", Math.round(row.getBoundingClientRect().height) + "px"); };
+  new ResizeObserver(apply).observe(row);
+  apply();
+})();
+/* ★★★ v3.42.0 补（用户拍板）：**展开态的折叠入口在顶栏**（#foldBtn）——显隐跟着 #ctlOpen 走，
+   点它就把 checkbox 置回未选中（折叠本体仍是纯 CSS，这里只翻那一格）。收起态它 hidden，
+   入口回到控制卡里那枚居中的「BPM 96 ▾」读数钮。 */
+(function wireFoldBtn(){
+  const c = $("ctlOpen"), b = $("foldBtn");
+  if (!c || !b) return;
+  const sync = () => { b.hidden = !c.checked; };
+  c.addEventListener("change", sync);
+  b.addEventListener("click", () => { c.checked = false; sync(); });
+  sync();
+})();
+/* ★★★ v3.42.0（用户报障）：**点面板外任何地方**都收起开关驱动的面板（顺带撤一次性拒开原因）。
+   原先的监听只挂在 .viz-head-grid 卡片上、且只撤"强开槽"⇒ 开关开着的面板点哪儿都不收。 */
+(function wireSlotDismiss(){
+  if (typeof document.addEventListener !== "function") return;
+  document.addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const t = /** @type {Element|null} */ (evTarget(e));
+    if (!t || typeof t.closest !== "function") return;
+    /* 面板自身 / 胶囊行（开关与参数槽都在里面）/ 收起态读数钮 / 拒开原因区 / 各种叠加层 —— 都不算"别处" */
+    if (t.closest("#muteFlyout, #trainerFlyout, .core-pills, .ctl-pills, #trainerProg, .modal-mask, .preset-drawer, .pd-mask, #editor, #settingsOverlay, #arrangeOverlay, #helpOverlay, #earOverlay")) return;
+    dismissSlots();
+  });
+})();
 registerKeyLayer({ handles(/** @type {any} */ e){
-  if (e.key !== "Escape" || !paramSlotForce) return false;
-  clearSlotForce(); return true;
+  if (e.key !== "Escape") return false;
+  /* ★ v3.42.0：Esc 成为"点空白"的键盘等价物——强开槽照旧一并撤；开关驱动的面板也收。
+     仍只认 Escape、不吞其它键（强制浮层的意义就是让用户往 #trTarget 里填数，整层吞键会打不了字）。 */
+  if (paramSlotForce){ clearSlotForce(); return true; }
+  if (anySlotOpen()){ dismissSlots(); return true; }
+  return false;
 } });
 
 /* 事件处理器里读「当前元素 / 事件目标」（v1.10.0 类型闸门收口）：
@@ -13325,6 +13687,7 @@ const Trainer = (() => {
     const el = $("trainerProg");
     el.classList.toggle("live", S.playing && S.trainer.on);
     el.classList.remove("warn");
+    /* ★ v3.41.0（用户纠正 · 撤回 G4）：读数行随**变速训练**生死——没开就空文本零高度 */
     if (!S.trainer.on){ el.textContent = ""; }
     else el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
     /* 参数行只在训练开着时露面；v3.3.0 起显隐由**槽仲裁**统一决定（不抢槽：本函数只重算） */
@@ -13380,12 +13743,15 @@ const Trainer = (() => {
          ——点开关没反应、而目标输入框又躲在槽里看不见。改成：**把槽打开 + 焦点送进目标框 +
          就地给出原因**（写在 #trainerProg 那一行），开关仍不开（爬坡语义不变），填好后再点一次。
          ★ 只影响"开启方向"；关闭永远放行（否则会把用户锁在训练里）。 */
-      const openSlotForTarget = (/** @type {string} */ why) => {
+      const openSlotForTarget = (/** @type {string} */ why, /** @type {boolean} */ warn = false) => {
+        /* ★★★ v3.41.0（用户报障）：第二次点击 = openParamSlot 的 toggle 收起 —— 此时**原因与注意态
+           都不许再写**，否则会出现"面板关了、红条还挂着"的矛盾态（红条还在叫人去填一个已经收起来的输入框）。 */
         openParamSlot("trainer");
+        if (!paramSlotForce) return;
         const t = $("trTarget");
         if (t && typeof t.focus === "function") t.focus();
         const prog = $("trainerProg");
-        if (prog) prog.textContent = why;
+        if (prog){ prog.textContent = why; if (warn) prog.classList.add("warn"); }
       };
       if (S.trainer.target === null){
         openSlotForTarget("先填一个大于当前速度的目标 BPM（留空 = 只循环不爬坡）");
@@ -13398,8 +13764,7 @@ const Trainer = (() => {
            ★ 选 A 而不选"自动把速度压下去"：不偷偷改用户的速度，改什么由用户自己决定。
            ★ 只在**开启**方向判；关闭永远允许（否则会把用户锁在训练里）。
            ★ v2.73.0：文案指路右侧参数行（2.3 起目标就在那里改）。 */
-        { const tp0 = $("trainerProg"); if (tp0) tp0.classList.add("warn"); }
-        openSlotForTarget(`当前速度 ${S.bpm} 已不低于目标 ${S.trainer.target}——先把速度调低，或把目标调高`);
+        openSlotForTarget(`当前速度 ${S.bpm} 已不低于目标 ${S.trainer.target}——先把速度调低，或把目标调高`, true);
         return;
       }
     }
@@ -14082,10 +14447,10 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
   /* 预备拍（v0.9.0）：开关 + 拍数输入（1–8，脏输入回退原值）；播放中改动下次播放生效 */
   bindToggle("countInToggle", () => (S.countIn.on = !S.countIn.on),
     () => {
-      /* v3.12.0：拍数输入仍在底栏（同组），显隐仍随本开关；它已不在参数槽里，
-         故不再调 syncParamSlots（那一族的对象只剩静音拍/变速训练两组） */
-      /* ★ v3.22.0：拍数输入**常显**（用户需求：关闭预备拍也显示上次设置的拍数）——
-         显隐翻转移除；输入框的值同步与钳制路径不变 */
+      /* v3.12.0：拍数输入仍在同一组，显隐随本开关；它不在参数槽里，故不调 syncParamSlots。
+         ★★★ v3.41.0（用户拍板）：**就地长出** —— 关闭时只显示「预备」，打开才在同一个胶囊壳里
+         长出 [4 拍]（v3.22.0 的"常显"随之退役：用户口径变了）。显隐逻辑单点在 syncCountInBeats()。 */
+      syncCountInBeats();
     });
   $("countInBeats").addEventListener("change", (/** @type {Event} */ e) => {
     let v = Math.round(+evTarget(e).value);
@@ -21784,6 +22149,7 @@ $("volStrum").value = S.strumVol * 100;
 function paintRange(/** @type {HTMLInputElement} */ el){
   if (!el || el.type !== "range") return;
   const min = +el.min || 0, max = +el.max || 100;
+  /* ★ 第五轮（乙案）：条是外层真实元素 .range-bar ⇒ --vfill 写到**父层**，条才能继承到（写在 input 上条读不到） */
   el.style.setProperty("--vfill", Math.round((+el.value - min) / ((max - min) || 1) * 1000) / 10 + "%");
 }
 document.addEventListener("input", (/** @type {InputEvent} */ e) => paintRange(evTarget(e)));
@@ -21800,6 +22166,7 @@ setToggle("bounceToggle", S.bounce);
 setToggle("vizLegendToggle", S.vizLegend);
 setToggle("trainerToggle", S.trainer.on);
 setToggle("countInToggle", S.countIn.on);
+syncCountInBeats();   // v3.41.0：拍数输入的显隐随 S.countIn.on 收敛（开关与内容不许说谎）
 /* 六线底纹开关（v2.4.2；v2.10.1 补启动同步）：标记里写死 `on`/`true` 只是"默认值提示"，
    真实开合态存在 S.showTab（点击会改写并持久化）。启动若不收敛，用户上次关掉后重载，
    pill 仍显示"开"、aria 仍是 true，而 .viz 已带 no-tab —— 六线底纹不见了，开关却说它在，

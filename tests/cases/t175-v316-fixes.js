@@ -24,15 +24,16 @@ section("T175a 控制芯（PLAN-v9 批 2 重写）：胶囊行 + 浮层壳的源
 {
   /* ★ 控制芯重排：开关列退役、面板进浮层——本段按新结构重钉：
      胶囊行四件（三开关 + 拍数）在前，面板/随机/目标按浮层壳内序在后。 */
-  const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "trainerToggle",
-                 "muteCfgPanel", "muteRandomToggle", "trainerPanel", "trTargetWrap"]
+  /* v3.41.0（乙案）：两个面板搬进各自胶囊的 .core-pill-hold ⇒ 面板内容与自己的开关相邻 */
+  const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "muteCfgPanel",
+                 "muteRandomToggle", "trainerToggle", "trainerPanel", "trTargetWrap"]
     .map(id => html.indexOf('id="' + id + '"'));
   ok(ORDER.every(i => i > 0) && ORDER.every((v, i) => i === 0 || v > ORDER[i - 1]),
-    "★★ 控制芯源码序：胶囊行（预备+拍数 → 静音 → 变速）在前，浮层内容（静音面板+随机 → 目标+面板）在后");
-  /* ★ trainerProg 留芯底（PLAN-v9 批 2）：在胶囊行之后、浮层壳之前（拒开原因就地反馈通道） */
+    "★★ 控制芯源码序（v3.41.0 乙案）：拍数 → 静音（面板→随机）→ 变速（面板→目标）依次排列");
+  /* ★ trainerProg 留芯底：整条胶囊行（含两个面板）之后（拒开原因就地反馈通道） */
   const iP = html.indexOf('id="trainerProg"');
-  ok(iP > html.indexOf('id="trainerToggle"') && iP > 0 && iP < html.indexOf('id="muteFlyout"'),
-    "★★ trainerProg 留芯底（胶囊行之后、浮层壳之前；显隐不再跟随面板）");
+  ok(iP > html.indexOf('id="trainerFlyout"') && iP > 0,
+    "★★ trainerProg 留芯底（整条胶囊行之后；显隐不跟随面板）");
   ok(html.indexOf('id="bpmPresetRow"') < 0,
     "★ v3.39.0：#bpmPresetRow 快捷档行已从标记除名（trainerProg 的旧上邻不复存在）");
   ok(html.indexOf('id="bpmSlider"') < iP,
@@ -40,7 +41,7 @@ section("T175a 控制芯（PLAN-v9 批 2 重写）：胶囊行 + 浮层壳的源
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
   ok(/<div class="core-pills">/.test(html)
-     && /\.core-pills\{display:flex;align-items:center;gap:10px/.test(CSS_CODE),
+     && /\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px/.test(CSS_CODE),
     "★★ 控制芯：三枚开关 = 芯顶胶囊行（.core-pills 横排；v3.22.0 的 countin-line/sw-line 开关行退役）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
     "★★ v3.33.10：进度行搬走后，v3.22.0 那条「变速参数末行」规则随位退役；"
@@ -55,13 +56,13 @@ section("T175a 控制芯（PLAN-v9 批 2 重写）：胶囊行 + 浮层壳的源
 section("T175b [hidden] 配套修复（v3.15.0 搬块漏项，用户反馈'预备拍关闭参数槽仍显示'）");
 {
   ok(/\.inp-with-unit\[hidden\]\{display:none\}/.test(CSS_CODE) && !/\.tg-slot/.test(CSS_CODE),
-    "★ .inp-with-unit[hidden] 全局配套保留（通用显隐兜底；v3.22.0 起拍数输入常显，"
-    + "不再依赖该链做开关联动）");
-  /* ★ v3.22.0：拍数输入**常显**——预备拍关也显示上次设置的拍数（用户需求），
-     处理器不再翻显隐；标记层亦无 hidden（变异抓手：恢复 hidden 翻转会破坏常显） */
-  ok(!/countInBeatsWrap"\)\.hidden/.test(html)
-     && !/<span class="inp-with-unit" id="countInBeatsWrap" hidden/.test(html),
-    "★★ 拍数输入常显：标记层无 hidden、处理器无显隐翻转");
+    "★ .inp-with-unit[hidden] 全局配套保留（v3.41.0 拍数「就地长出」正是靠这条链兜底）");
+  /* ★ v3.41.0（用户拍板）：拍数**就地长出**——预备关着时标记层带 hidden、处理器翻显隐
+     （变异抓手：去掉 hidden 初值或去掉处理器里的翻转，都会让"关着也显示 4 拍"回潮） */
+  ok(/<span class="inp-with-unit" id="countInBeatsWrap" hidden>/.test(html)
+     && /function syncCountInBeats\(\)\{[\s\S]{0,120}if \(w\) w\.hidden = !S\.countIn\.on;/.test(html)
+     && /syncCountInBeats\(\);/.test(html),
+    "★★ 拍数就地长出：标记层带 hidden 初值 + syncCountInBeats() 单点翻显隐（点击与启动收敛共用）");
 }
 
 section("T175c boot 后布局就绪重采样（用户反馈'刚打开歌词错位、播放后恢复'）");
@@ -94,7 +95,9 @@ section("T175d ≤640 移动端修正（用户截图两例）");
     + "进度条长度不随文案变化（用户需求）；按钮缩小（play 48 / jump 40）");
   /* 显示位置三档两列网格（390 实测旧 flex-wrap 换行参差 2+1；组缺省按 max-content
      收缩到 202.8px——flex:1 1 100% 占满整行后两列各 ~151 放得下 nowrap 文案） */
-  ok(/@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group\{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%\}/.test(CSS_CODE)
-     && /@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group \.pill\{justify-content:center;text-align:center/.test(CSS_CODE),
-    "★★ ≤640：显示位置三档改两列等宽网格（flex:1 1 100% 占满整行——max-content 收缩坑实测堵上）");
+  /* ★ v3.42.0 补（用户实报「按钮空白太多」）：两列等宽网格退役——每枚胶囊被拉到半行宽、文案居中 ⇒
+     左右各空一大截。改为**贴字的 flex 换行**（宽度随文案）+ gap 6→4；40px 触控下限不动（t167 钉着）。 */
+  ok(/@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group\{display:flex;flex-wrap:wrap;gap:4px;flex:1 1 100%\}/.test(CSS_CODE)
+     && /@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group \.pill\{justify-content:center;text-align:center;padding:0 12px/.test(CSS_CODE),
+    "★★ ≤640：显示位置三档改**贴字 flex 换行**（宽度随文案、gap 4、占满整行——空白不再被网格摊开）");
 }

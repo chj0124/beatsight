@@ -106,7 +106,7 @@ section("T178d 宽屏铺满必须触发重排（歌词轨的 inline 落位不会
 /* ================= T178e：歌词字号上限（含「不得改小正常档」的不变量） ================= */
 section("T178e 歌词字号上限：放得下 + 不改动正常档观感");
 {
-  const charRule = ruleOf(CSS_CODE, ".lyric-char{position:absolute;left:calc(26px");
+  const charRule = ruleOf(CSS_CODE, ".lyric-char{position:absolute;left:clamp(4px,25%,28px)");
   const m = /font-size:min\(calc\(14px \* var\(--cs,\s*1\)\),\s*(\d+)px\)/.exec(charRule);
   ok(!!m, "★★ 歌词字号 = min(calc(14px * var(--cs,1)), Npx)——v3.38.1 口径：基准 16→14、上限 24→21");
   const cap = m ? Number(m[1]) : NaN;
