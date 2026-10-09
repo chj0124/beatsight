@@ -51,12 +51,14 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
   ok(/max-width:1000px/.test(CSS_CODE),
     "★ 控制区限宽 1000 居中（丁方案的限宽口径保留）");
   /* ★★★ v3.38.1 补6：三列均分改由 flex-wrap + --min-w 承担（同排均分这件事没变）。
-     为什么值得保留这条：它是"三块同排"的唯一源码钉，删了会让"退回纵向堆叠"变成无人拦的回归。 */
+     v3.39.0：BPM 组并入音量组 ⇒ 三块变两块（合并组 | 开关列），--min-w-bpm 除名。
+     为什么值得保留这条：它是"同排"的唯一源码钉，删了会让"退回纵向堆叠"变成无人拦的回归。 */
   ok(CSS_CODE.indexOf("display:flex;flex-wrap:wrap;gap:var(--col-gap)") >= 0
-     && CSS_CODE.indexOf("flex:1 1 var(--min-w-bpm);min-width:var(--min-w-bpm);max-width:var(--max-w)") >= 0
-     && CSS_CODE.indexOf("flex:1 1 var(--min-w-sw);min-width:var(--min-w-sw);max-width:var(--max-w)") >= 0,
-    "★★ v3.19.0：三列取代两列（音量 | BPM | 开关列，用户需求同排）——v3.38.1 补7 起由"
-    + "每块各自下限 + flex-wrap 装箱实现（列数门槛 800，比硬编断点更早并排）");
+     && CSS_CODE.indexOf("flex:1 1 var(--min-w-vol);min-width:var(--min-w-vol);max-width:var(--max-w)") >= 0
+     && CSS_CODE.indexOf("flex:1 1 var(--min-w-sw);min-width:var(--min-w-sw);max-width:var(--max-w)") >= 0
+     && !CSS_CODE.includes("var(--min-w-bpm)"),
+    "★★ v3.39.0：控制区两块同排（合并组 | 开关列）——flex-wrap + 各自下限装箱"
+    + "（v3.19 三列口径随 BPM 组并入音量组退役，两块并排门槛 280+216+列距）");
   /* ★ v3.22.0：音量组固定间距顶对齐（零变形机制源码钉）——行高随开关列生长时滑杆
      纹丝不动；回退 space-between/evenly 会重新引入内容重分布（变异 M18 实证）。 */
   /* ★ v3.30.0：音量列的零变形承重墙从 `.group` 的 space-between 换成**其内 tg-body

@@ -216,7 +216,7 @@ section("T68d 双声部 · 静音拍（第 4 小节）连节拍网格也不出�
 section("T68e 双声部 · 节拍音量与扫弦音量互不缩放（并列，不是串联的总闸）");
 {
   /* 三种配置各跑一小节，读实际送到增益节点的包络峰值。
-     首音落在重拍（accents 默认 [0]）→ tier = accentGain = accentMin + (accentMax−accentMin)×accentVol = 1.0 */
+     首音落在重拍（accents 默认 [0]）→ tier = accentGain；v3.39.0 重拍增强退役后恒 = levelBeat(0.55) */
   const run = (vol, strumVol) => {
     const { beat } = loadStrum();
     const ac = startWith(beat, "稀疏扫弦", mkSparseStrum(), { vol, strumVol });

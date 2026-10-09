@@ -233,13 +233,13 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   els["volMaster"].value = "45"; els["volMaster"].fire("input");
   eq(S.vol, 0.45, "总音量 input → 状态更新");
   eq(els["volMasterPct"].textContent, "45%", "百分比文案同步");
-  els["volAccent"].value = "20"; els["volAccent"].fire("input");
-  eq(S.accentVol, 0.2, "重拍增强量 input → 状态更新");
+  /* v3.39.0：重拍增强滑杆退役——接线与状态一并除名（桩上取不到即接线已消失） */
+  ok(els["volAccent"] === undefined && S.accentVol === undefined, "重拍增强滑杆与 accentVol 状态已除名");
 
-  /* 快捷速度档（按钮在 Controls 初始化时生成） */
-  const presetBtn = els["bpmPresetRow"].children.find(b => b.textContent === "120");
-  presetBtn.fire("click");
-  eq(S.bpm, 120, "点快捷档 120 → BPM 生效");
+  /* v3.39.0：快捷速度档行退役——BPM 只剩 ± 步进 / 滑杆 / 数字直输 / 训练器四个入口 */
+  ok(els["bpmPresetRow"] === undefined, "快捷档行已从 DOM 除名");
+  beat.Controls.setBpm(120);
+  eq(S.bpm, 120, "统一入口 setBpm(120) 生效（快捷档的旧职责由它接管）");
 
   /* 播放键与空格键 */
   els["playBtn"].fire("click");
@@ -265,14 +265,9 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   els["modalOk"].fire("click");
   eq(S.bpm, 88, "确认后 BPM 应用");
 
-  /* TAP 测速：两次点击间隔 600ms → 100 BPM */
-  let clock = 1000; app.setNow(clock);
-  els["tapBtn"].fire("click");
-  eq(els["tapBtn"].textContent, "TAP · 再点一次", "第一次点击提示再点");
-  clock += 600; app.setNow(clock);
-  els["tapBtn"].fire("click");
-  eq(S.bpm, 100, "两次点击间隔 600ms → 100 BPM");
-  ok(/TAP · 100 BPM/.test(els["tapBtn"].textContent), "按钮回显测得的 BPM");
+  /* v3.39.0：TAP 测速退役——按钮、模块级 taps/tapResetT 与监听整块除名 */
+  ok(els["tapBtn"] === undefined, "TAP 按钮已从 DOM 除名");
+  ok(!/\$\("tapBtn"\)/.test(html), "源码里不再有 tapBtn 接线");
 
   /* 预备拍拍数输入：脏值回退原值，越界钳制 */
   els["countInBeats"].value = "99"; els["countInBeats"].fire("change");

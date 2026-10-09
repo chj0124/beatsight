@@ -78,7 +78,7 @@ section("T172a 会话期间跨换型重建：row0 恒 hidden · 道宽恒 2 拍 
     }
   };
   drive3(beat, ac, 0.9, sample);
-  eq(els["statusText"].textContent.indexOf("预备拍") >= 0, false, "前提：已越过预备拍");
+  eq(els["statusText"].textContent.indexOf("预备 ·") >= 0, false, "前提：已越过预备");
   eq(beat.Viz.internals().countLane.session, true, "前提：会话开启");
   ok(sessionFrames > 10, "前提：逐帧采样已覆盖会话窗口", "sessionFrames=" + sessionFrames);
   eq(row0BornVisible, 0, "★★ 会话期间（预备拍结束→换型重建前）row0 恒 hidden");

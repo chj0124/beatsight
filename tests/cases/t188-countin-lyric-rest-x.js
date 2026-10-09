@@ -52,7 +52,7 @@ const intOf = beat => beat.Viz.internals();
 /* translate(Xpx, ...) 解析：注意 `translateY(242px)` **不匹配** ⇒ 返回 NaN，
    这正是缺陷版要触发的形状（具名断言失败，而不是崩在 undefined 上） */
 const dxOf = s => { const m = /translate\((-?[\d.]+)px,/.exec(s || ""); return m ? +m[1] : NaN; };
-const inCountIn = els => els["statusText"].textContent.indexOf("预备拍") >= 0;
+const inCountIn = els => els["statusText"].textContent.indexOf("预备 ·") >= 0;
 
 /* 推进 n 帧（音频时钟 + scheduler + paintFrame）；返回最后一帧是否仍在预备拍窗口 */
 function step(app, ac, n, dt){

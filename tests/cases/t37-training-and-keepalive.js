@@ -173,13 +173,13 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
   /* 用户实拍：木鱼调到最大仍听不清。根因：滤波噪声路径缺 makeup gain——
      带通 Q=8 后噪声幅度只剩 ~1/14（≈−23dB），包络峰值却与振荡器路径同值。
      修复：noiseHit 按 min(makeup, peak × makeup) 送增益；上限=makeup 本身
-     （= 满音量重拍应达到的增益，天然天花板；削波看信号幅度不看增益值，滤波噪声安全）。
-     参照（vol=0.8, accentVol=1）：accent peak=0.8 / beat=0.64 / sub=0.4 */
+     （= 满音量应达到的增益，天然天花板；削波看信号幅度不看增益值，滤波噪声安全）。
+     参照（vol=0.8；v3.39.0 重拍增强退役）：accent = beat = 0.44 / sub = 0.28（× makeup） */
   const noiseGain = (timbre, filterFreq, extra) => {
     /* sel idx 2（八分摇滚，无扫弦记谱）：v2.7.1 起带扫弦记谱的谱（如民谣扫弦）归扫弦声部，
        测全局音色的层级增益必须用无扫弦记谱的型 */
     const { beat } = loadApp({ "beatsight.state": JSON.stringify(Object.assign(
-      { v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre, sel: { type: "builtin", idx: 2 } }, extra || {})) });
+      { v: 3, vol: 0.8, bpm: 120, timbre, sel: { type: "builtin", idx: 2 } }, extra || {})) });
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);
@@ -190,49 +190,51 @@ section("T44 音色响度 · 木鱼/军鼓/踩镲 makeup 补偿，振荡器路�
   const MK = 14;                    // wood.makeup 的规格值：硬编码，不读 CONFIG——
   const DM = { snare: 5, hat: 2.5 };// 读 CONFIG 算期望值会让「改错 CONFIG」两边一起变（自指，反向验证会漏）
 
-  near(noiseGain("wood", 2000), 0.8 * MK, 1e-6, "木鱼重拍 = 0.8 × makeup（补偿后）");
+  near(noiseGain("wood", 2000), 0.44 * MK, 1e-6,
+    "木鱼重拍 = 0.44 × makeup（v3.39.0 重拍与正拍恒同档 = vol 0.8 × levelBeat 0.55）");
   near(noiseGain("wood", 1500), 0.44 * MK, 1e-6,
-    "木鱼正拍 = 0.44 × makeup（= vol 0.8 × levelBeat 0.55；v3.33.33 由 0.64 降来 ⇒ 给重拍让开量程）");
+    "木鱼正拍 = 0.44 × makeup（= vol 0.8 × levelBeat 0.55；v3.33.33 由 0.64 降来）");
   near(noiseGain("wood", 1100), 0.28 * MK, 1e-6,
     "木鱼细分 = 0.28 × makeup（= vol 0.8 × levelSub 0.35；v3.33.33 由 0.4 降来）");
-  ok(noiseGain("wood", 2000) > noiseGain("wood", 1500)
-     && noiseGain("wood", 1500) > noiseGain("wood", 1100), "木鱼层级保持：重拍 > 正拍 > 细分");
+  ok(Math.abs(noiseGain("wood", 2000) - noiseGain("wood", 1500)) < 1e-9
+     && noiseGain("wood", 1500) > noiseGain("wood", 1100),
+    "木鱼层级保持：重拍 = 正拍 > 细分（v3.39.0 起响度齐平，层级差只剩 正拍 vs 细分）");
 
   near(noiseGain("drum", 1800), 0.44 * DM.snare, 1e-6, "军鼓 = 0.44 × snareMakeup（= vol 0.8 × levelBeat 0.55）");
   near(noiseGain("drum", 8000), 0.196 * DM.hat, 1e-6,
     "踩镲 = 0.196（= vol 0.8 × levelSub 0.35 × hatGain 0.7）× hatMakeup");
   /* 底鼓是振荡器（sine 扫频，sweepTo=50），不得被 makeup 波及 */
   {
-    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "drum", sel: { type: "builtin", idx: 2 } }) });
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, bpm: 120, timbre: "drum", sel: { type: "builtin", idx: 2 } }) });
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);
     beat.Controls.stop();
     const kick = ac.hits.find(x => x.kind === "osc" && x.sweepTo === 50);
-    ok(kick && Math.abs(kick.gain - 0.8) < 1e-6, "底鼓（振荡器路径）增益不变 = 0.8");
+    ok(kick && Math.abs(kick.gain - 0.44) < 1e-6, "底鼓（振荡器路径）增益 = 0.44（v3.39.0 重拍同档 levelBeat）");
   }
-  /* click 路径完全不受影响（T18 已全量程覆盖，此处补一条噪声开关存在时的对照） */
+  /* click 路径完全不受影响（T18 已覆盖，此处补一条噪声开关存在时的对照） */
   {
-    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "click" }) });
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, bpm: 120, timbre: "click" }) });
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);
     beat.Controls.stop();
     const h = ac.hits.find(x => x.kind === "osc" && x.freq === 1568);
-    ok(h && Math.abs(h.gain - 0.8) < 1e-6, "click 重拍增益不变 = 0.8");
+    ok(h && Math.abs(h.gain - 0.44) < 1e-6, "click 重拍增益 = 0.44（v3.39.0 重拍同档 levelBeat）");
   }
   /* 上限 = makeup 本身：满音量重拍恰好顶到天花板，不会越界 */
-  near(noiseGain("wood", 2000, { vol: 1 }), MK, 1e-6, "满音量时木鱼重拍 = makeup（天花板），不越界");
+  near(noiseGain("wood", 2000, { vol: 1 }), 0.55 * MK, 1e-6, "满音量时木鱼重拍 = 0.55 × makeup（v3.39.0 同档后的天花板），不越界");
   /* 脏 makeup 回退 1（不补偿也不炸） */
   {
-    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1, bpm: 120, timbre: "wood" }) });
+    const { beat } = loadApp({ "beatsight.state": JSON.stringify({ v: 3, vol: 0.8, bpm: 120, timbre: "wood" }) });
     beat.CONFIG.timbres.wood.makeup = "x";          // 直接污染配置（模拟未来改坏）
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);
     beat.Controls.stop();
     const h = ac.hits.find(x => x.kind === "noise" && x.filterFreq === 2000);
-    ok(h && Math.abs(h.gain - 0.8) < 1e-6, "脏 makeup → 回退不补偿（0.8），不产 NaN");
+    ok(h && Math.abs(h.gain - 0.44) < 1e-6, "脏 makeup → 回退不补偿（0.44），不产 NaN");
   }
 }
 

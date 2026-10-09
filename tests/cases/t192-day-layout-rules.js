@@ -29,13 +29,16 @@ section("T192a 日间弹窗头部：角标不独占整行（「设置」不再�
 
 section("T192b 日间两走道对齐：右列内边距必须大于左列角标占位（否则对齐到标题行）");
 {
-  const both = (html.match(/body\[data-theme="obs"\] \.viz-head-grid \.viz-head > \.group\{padding-top:(\d+)px\}/) || [])[1];
-  /* ★ v3.38.1 补7：日间那个 79px 从"开关列自己的 padding"收进 --tg-align-top 变量
-     （经典 44 / 日间 79 是同一个补偿在两个主题下的标定值，原来分写两处、还会被后加的同名规则盖掉）。 */
+  /* ★ v3.39.0：BPM 组并入音量组后，日间 44px 占位改挂合并组（选择器从 .viz-head > .group
+     换成 .card-head-left > .group）——角标占位不变；开关列对齐基准随参照物从「+5」换成
+     「合并组第 1 行（节拍行）」重标定（79 → 117，量法见下）。 */
+  const both = (html.match(/body\[data-theme="obs"\] \.viz-head-grid \.card-head-left > \.group\{padding-top:(\d+)px\}/) || [])[1];
+  /* ★ v3.38.1 补7：日间补偿从"开关列自己的 padding"收进 --tg-align-top 变量
+     （经典 44 / 日间 117 是同一个补偿在两个主题下的标定值，原来分写两处、还会被后加的同名规则盖掉）。 */
   const right = (html.match(/body\[data-theme="obs"\] \.viz-head-grid\{--tg-align-top:(\d+)px\}/) || [])[1];
-  ok(both === "44", "★ 左列（角标列）保留 44px 占位让角标有位（实测 " + both + "）");
+  ok(both === "44", "★ 合并组（角标列）保留 44px 占位让角标有位（实测 " + both + "）");
   ok(right !== undefined && parseInt(right, 10) > 44,
-    "★★★ 右列（开关列）内边距 > 44px（实测 " + right + "）：46 就与左列角标行同高 ⇒ 预备拍会对齐到 BPM 标题");
-  ok(parseInt(right, 10) >= 70 && parseInt(right, 10) <= 90,
-    "★★ 右列内边距落在实测标定区间 70~90px（1440 实测 +5 相对列顶 79px）");
+    "★★★ 右列（开关列）内边距 > 44px（实测 " + right + "）：46 就与左列角标行同高 ⇒ 预备会对齐到标题行");
+  ok(parseInt(right, 10) >= 110 && parseInt(right, 10) <= 130,
+    "★★ 右列内边距落在重标定区间 110~130px（v3.39.0：对齐参照从 +5 换成节拍行，真机 1440 实测 79 差 −38px ⇒ 117）");
 }

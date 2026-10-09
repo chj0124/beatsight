@@ -4,7 +4,7 @@
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。
    用例按场景组切分，新增用例请进对应文件，避免回到「一个文件塞下全部场景」。 */
 "use strict";
-const { loadApp, FakeAudioContext, ok, eq, near, section, drive } = require("../lib/harness");
+const { loadApp, FakeAudioContext, ok, eq, near, section, drive, html } = require("../lib/harness");
 
 /* ================= 场景 T13：音色扩展（v0.8.0） ================= */
 section("T13 音色 · 三套合成音色与持久化");
@@ -58,7 +58,7 @@ section("T14 预备拍 · 计数发声 + 训练器不受污染");
   const ac = FakeAudioContext.last;
   drive(ac, beat, 0.5);
   beat.Viz.paintFrame();   // rAF 置空，手动补一帧
-  eq(els["statusText"].textContent, "预备拍 · 1 / 3", "预备拍期间状态栏显示计数");
+  eq(els["statusText"].textContent, "预备 · 1 / 3", "预备期间状态栏显示计数（v3.39.0 开关文案「预备拍」→「预备」）");
   drive(ac, beat, 3);
   const hits = ac.hits;
   near(hits[0].t, 0.08, 1e-6, "预备拍第 1 声 t=0.08");
@@ -256,28 +256,27 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
 /* ================= 场景 T18：层级增益不变量（v1.0.1） ================= */
 /* v1.0.0 缺陷：重拍直接以 S.accentVol 作倍率，而正拍固定 ×0.8，
    于是「重拍增强量」低于 80% 时重拍反而轻于正拍，听觉强调层级倒挂。 */
-/* ============ T18b：重拍增强的行程与默认值（v3.33.33，用户实报） ============
-   用户原话：「重拍增强，从 0 到 100% 之间变化不明显」+「默认值设为 0%，避免刚开始使用时受到惊吓」。
-   改前：accentMin 0.8 → accentMax 1.0 ⇒ 整个行程只有 20·log10(1/0.8) = **1.94 dB**，听不出来。 */
-section("T18b 重拍增强：行程 ≥5 dB，且默认 0%");
+/* ============ T18b：重拍增强退役验收（v3.39.0，用户拍板删除） ============
+   v3.33.33 曾把行程修到 ≥5 dB；v3.39.0 整块退役：滑杆 / S.accentVol /
+   CONFIG.accentMin·accentMax 全部除名，重拍与正拍**恒同档**（levelBeat），
+   重拍身份改由音色层区分（click 三角波更高频 / 木鱼 freqAccent / 鼓组底鼓）。 */
+section("T18b 重拍增强退役：状态与控件全除名，重拍恒与正拍齐平");
 {
   const { beat, els } = loadApp();
   const C = beat.CONFIG;
-  const db = 20 * Math.log10(C.accentMax / C.accentMin);
-  ok(db >= 5,
-     "★★ 0% → 100% 的增益行程 ≥ 5 dB（改前 1.94 dB ⇒ 用户听不出差别）",
-     "实际 " + db.toFixed(2) + " dB");
-  near(C.accentMin, C.levelBeat, 1e-9,
-     "★ accentMin 必须 = levelBeat：0% = 与正拍齐平（v1.0.0 的层级倒挂防线，不能破）");
-  ok(C.levelSub < C.levelBeat && C.levelBeat < C.accentMax,
-     "★ 层级单调：细分 < 正拍 < 重拍（accentMax 仍封在 1.0 ⇒ 不削波）");
-  /* ---- 默认值 ---- */
-  eq(beat.Store.S.accentVol, 0, "★★ 重拍增强**默认 0%**（新用户首开与正拍齐平，不被「吓一跳」）");
-  eq(String(els["volAccent"].value), "0", "★ 滑块初值 0（markup 也得改，否则首帧闪 100%）");
-  eq(String(els["volAccentPct"].textContent), "0%", "★ 百分比读数 0%");
+  ok(C.accentMin === undefined && C.accentMax === undefined,
+     "★ CONFIG 不再有 accentMin/accentMax 两档");
+  ok(beat.Store.S.accentVol === undefined, "★ S 不再有 accentVol 字段（不留恒 0 空壳）");
+  ok(!/id="volAccent"/.test(html) && !/id="volAccentPct"/.test(html) && !/id="volAccentNote"/.test(html),
+     "★★ 滑杆 / 读数 / 说明行三件 DOM 全除名（标记级）");
+  ok(els["volAccent"] === undefined, "★ 桩上也取不到 volAccent（接线随 DOM 一并消失）");
+  /* 老存档带 accentVol 键：加载静默忽略、不炸（白名单零迁移口径） */
+  const old = loadApp({ "beatsight.state": JSON.stringify({ v: 3, accentVol: 0.7, bpm: 120 }) });
+  ok(old.beat.Store.S.accentVol === undefined, "★ 老存档的 accentVol 键被静默忽略（零迁移）");
+  ok(C.levelSub < C.levelBeat, "★ 层级单调保留的一半：细分 < 正拍（重拍恒 = 正拍）");
 }
 
-section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
+section("T18 音量 · 重拍与正拍恒同档（重拍增强退役后的新不变量）");
 {
   const { beat: probe } = loadApp();
   const C = probe.CONFIG;
@@ -285,8 +284,8 @@ section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
   /* click 音色三档频率互异，按频率区分层级，返回各层级的包络峰值。
      sel idx 2（八分摇滚，无扫弦记谱）：重拍/正拍/细分三层俱全且全是节拍声部——
      v2.7.1 起带扫弦记谱的谱（如民谣扫弦）归扫弦声部，它的拍内位置不再出 click 三档频率 */
-  const levels = (accentVol) => {
-    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, accentVol, bpm: 120, sel: { type: "builtin", idx: 2 } }) });
+  const levels = () => {
+    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, bpm: 120, sel: { type: "builtin", idx: 2 } }) });
     beat.Controls.start();
     const ac = FakeAudioContext.last;
     drive(ac, beat, 3);
@@ -294,35 +293,26 @@ section("T18 音量 · 重拍恒 ≥ 正拍（修复增强量倒挂）");
     return { accent: pick(C.freqAccent), beat: pick(C.freqBeat), sub: pick(C.freqSub) };
   };
 
-  const L = levels(0.56);
-  near(L.accent, 0.8 * (C.accentMin + (C.accentMax - C.accentMin) * 0.56), 1e-6, "重拍增益 = 总音量 ×（accentMin + 增量 × 增强量）");
+  const L = levels();
+  near(L.accent, 0.8 * C.levelBeat, 1e-6, "★★ 重拍增益 = 总音量 × levelBeat（恒与正拍齐平，无增强量可调）");
   near(L.beat, 0.8 * C.levelBeat, 1e-6, "正拍增益 = 总音量 × levelBeat");
-  ok(L.accent > L.beat, "增强量 56% 时重拍高于正拍（v1.0.0 此处倒挂）");
-  ok(L.beat > L.sub, "正拍高于细分");
-
-  /* 全量程：任何增强量都必须保持 重拍 ≥ 正拍 > 细分 */
-  const broken = [0, 0.1, 0.25, 0.5, 0.56, 0.79, 0.8, 0.99, 1]
-    .filter(v => { const l = levels(v); return !(l.accent >= l.beat && l.beat > l.sub); });
-  eq(broken.length, 0, "增强量 0–100% 全程维持 重拍 ≥ 正拍 > 细分");
-
-  /* 边界语义 + 向后兼容：默认 100% 的听感必须与 v1.0.0 完全一致 */
-  near(levels(0).accent, 0.8 * C.levelBeat, 1e-6, "增强量 0% → 重拍与正拍齐平");
-  near(levels(1).accent, 0.8 * 1, 1e-6, "增强量 100% → 重拍 1.0，与 v1.0.0 默认听感一致");
+  ok(L.accent > L.sub && L.beat > L.sub, "细分低于正拍/重拍（层级差的另一半仍在）");
+  ok(L.accent === L.beat, "★ 重拍包络 = 正拍包络（响度齐平，重拍靠音色区分）");
 }
 
-/* ================= 场景 T19：常用速度快捷档 + ±5 步进（v1.1） ================= */
-section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰");
+/* ================= 场景 T19：速度控制（v1.1；v3.39.0 快捷档行/TAP 退役） ================= */
+section("T19 速度 · 刻度同源生成 / ±5 步进 / 训练模式置灰");
 {
   const { beat, els } = loadApp();
   const S = beat.Store.S;
-  eq(JSON.stringify(beat.CONFIG.speedPresets), JSON.stringify([60, 72, 84, 96, 120]), "快捷档值 = 60/72/84/96/120");
+  eq(JSON.stringify(beat.CONFIG.speedPresets), JSON.stringify([60, 72, 84, 96, 120]), "刻度源值 = 60/72/84/96/120");
 
-  /* 快捷档与滑杆刻度同源生成（单一数据源 CONFIG.speedPresets） */
-  const pills = els["bpmPresetRow"].children;
-  eq(pills.length, 5, "生成 5 个快捷档按钮");
-  eq(pills.map(b => +b.dataset.bpm).join(","), "60,72,84,96,120", "dataset.bpm 与常量一致");
-  eq(pills.map(b => +b.textContent).join(","), "60,72,84,96,120", "按钮文案与常量一致");
-  /* 滑杆刻度：与档位同源，且必须是手绘 <i> —— 回归守卫。
+  /* v3.39.0：快捷档按钮行与 TAP 按钮 DOM 级退役（刻度层保留） */
+  ok(!/id="bpmPresetRow"/.test(html), "★ #bpmPresetRow 已从标记除名（DOM 级，非 CSS 隐藏）");
+  ok(!/id="tapBtn"/.test(html), "★ #tapBtn（TAP 测速）已从标记除名");
+  ok(els["bpmPresetRow"] === undefined && els["tapBtn"] === undefined, "★ 桩上也取不到两个退役控件");
+
+  /* 滑杆刻度：仍由 CONFIG.speedPresets 同源生成，且必须是手绘 <i> —— 回归守卫。
      Chrome 不渲染 range 的 datalist 刻度（已实测），若有人改回 <option>，tagName 断言会立刻红。 */
   const ticks = els["bpmTicks"].children;
   eq(ticks.length, 5, "滑杆刻度同源生成 5 项");
@@ -331,19 +321,6 @@ section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰")
   ok(Math.abs(lefts[1] - 20) < 1e-9, "72 BPM 刻度落在 20%（(72−30)/(240−30)）");
   ok(lefts.every((p, i) => i === 0 || p > lefts[i - 1]), "刻度从左到右严格递增");
   ok(lefts.every(p => p > 0 && p < 100), "刻度均落在滑杆行程内部");
-  eq(pills[0].getAttribute("aria-label"), "跳到 60 BPM", "快捷档带无障碍标签");
-
-  /* 点击档位 → 直达该 BPM，并同步数字 / 滑杆 / 高亮 */
-  pills[4].fire("click");
-  eq(S.bpm, 120, "点击 120 档 → S.bpm = 120");
-  eq(+els["bpmNum"].textContent, 120, "大数字同步");
-  eq(+els["bpmSlider"].value, 120, "滑杆位置同步");
-  ok(pills[4].classList.contains("active"), "命中档位高亮");
-  ok(!pills[0].classList.contains("active"), "未命中档位不高亮");
-
-  /* 非档位值（滑杆 / ±1 调出来的）→ 全部不高亮 */
-  beat.Controls.setBpm(97);
-  ok(pills.every(b => !b.classList.contains("active")), "BPM 不等于任何档位时全部不高亮");
 
   /* ±5 粗调：单击一步（长按连发依赖 setTimeout，测试环境不真跑） */
   beat.Controls.setBpm(100);
@@ -375,23 +352,24 @@ section("T19 速度 · 常用速度快捷档 / ±5 步进 / 训练模式置灰")
   els["bpmPlus5"].fire("click", { detail: 1 });
   eq(S.bpm, 101, "★ 指针路径 pointerdown 步进一次，随后的兼容 click 被抑制（96 → 101，不是 106）");
 
-  /* 播放中点击档位：不打断播放（setBpm 内部做 loopStart 重映射） */
+  /* 播放中改速：不打断播放（setBpm 内部做 loopStart 重映射） */
   beat.Controls.start();
   drive(FakeAudioContext.last, beat, 1);
   ok(S.playing, "已进入播放态");
-  pills[0].fire("click");
-  eq(S.bpm, 60, "播放中点 60 档生效");
+  beat.Controls.setBpm(60);
+  eq(S.bpm, 60, "播放中 setBpm(60) 生效");
   ok(S.playing, "播放未被打断");
 
-  /* 训练模式：BPM 归训练器阶梯管，快捷档与 ±5 置灰；关闭后恢复
+  /* 训练模式：BPM 归训练器阶梯管，±5 置灰；关闭后恢复
      v2.73.0：目标可空（null 默认不给开）——先置一个合法目标再开 */
   S.trainer.target = 200;
   els["trainerToggle"].fire("click");
   ok(S.trainer.on, "训练已开启");
-  ok(pills.every(b => b.disabled), "训练开启 → 快捷档全部置灰");
   ok(els["bpmPlus5"].disabled && els["bpmMinus5"].disabled, "训练开启 → ±5 置灰");
+  ok(els["bpmPlus"].disabled && els["bpmMinus"].disabled, "训练开启 → ±1 同口径置灰（审计 A-2）");
+  ok(els["bpmSlider"].disabled, "训练开启 → 滑杆同口径锁定（审计 S-3）");
   els["trainerToggle"].fire("click");
   ok(!S.trainer.on, "训练已关闭");
-  ok(pills.every(b => !b.disabled) && !els["bpmPlus5"].disabled, "训练关闭 → 快捷档与 ±5 恢复可用");
+  ok(!els["bpmPlus5"].disabled && !els["bpmSlider"].disabled, "训练关闭 → ±5 与滑杆恢复可用");
 }
 

@@ -88,8 +88,8 @@ section("T140d 参数行 · 开关开着才露面；N 变 M 重建并钳制；�
 {
   const { beat, els, storage } = loadApp();
   eq(els["muteCfgPanel"].hidden, true, "默认（静音拍关）参数行隐藏");
-  ok(/>静音拍<span class="switch">/.test(html) && html.indexOf("静音拍 · 每 4 小节") === -1,
-    "★ 开关文案已去掉写死的「· 每 4 小节」（源码级：桩 textContent 不吃混排文本节点）");
+  ok(/>静音<span class="switch">/.test(html) && html.indexOf("静音拍 · 每 4 小节") === -1,
+    "★ 开关文案已去掉写死的「· 每 4 小节」（源码级：桩 textContent 不吃混排文本节点）；v3.39.0 文案「静音拍」→「静音」");
   els["muteToggle"].fire("click");
   eq(els["muteCfgPanel"].hidden, false, "★ 开启 ⇒ 参数行露面（照 trainerPanel 模式）");
   eq(els["muteEvery"].children.length, 7, "N 下拉 = 2–8 共 7 档");

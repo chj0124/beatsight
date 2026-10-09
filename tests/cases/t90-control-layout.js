@@ -180,15 +180,21 @@ section("T90g 跳段行 · 播放键居三键中间、圆形键常显置灰、�
 }
 
 /* ================= 场景 T90f：BPM 在卡片头；Swing 进同屏行数行 ================= */
-section("T90f v2.10.14/16 · BPM 组占卡片头右列；Swing 与同屏行数平齐（排拍号右侧）");
+section("T90f v3.39.0 · BPM 并入音量组（卡片头单列）；Swing 与同屏行数平齐（排拍号右侧）");
 {
   const h = slice("vizHead");
-  ok(/id="bpmNum"/.test(h) && /id="bpmSlider"/.test(h) && /id="tapBtn"/.test(h)
-     && /id="bpmPresetRow"/.test(h) && /id="bpmTicks"/.test(h),
-    "★ BPM 整组四层（步进行/滑杆/TAP/快捷档 + 刻度层）都在卡片头行内");
-  ok(h.indexOf('id="volMaster"') < h.indexOf('id="bpmNum"'),
-    "★ 头行两个孩子：左列（角标/状态灯/音量）在前、BPM 在后（源码序即左右序）");
-  ok(/class="card-head-left"/.test(h), "左块包 .card-head-left（v2.10.16 起头行只有两个孩子）");
+  /* ★ v3.39.0（用户拍板 · 移动需求①②）：BPM 滑杆与音量条并进同一组——
+     数值与左右增减钮紧跟滑杆同行（.slider-row 内），TAP 与快捷档行整块退役。 */
+  ok(/id="bpmNum"/.test(h) && /id="bpmSlider"/.test(h) && /id="bpmTicks"/.test(h),
+    "★ BPM 三件（滑杆/数值步进/刻度层）都在卡片头行内");
+  ok(!/id="tapBtn"/.test(h) && !/id="bpmPresetRow"/.test(h),
+    "★★ TAP 测速与快捷档行已从标记除名（v3.39.0 删除项）");
+  ok(h.indexOf('id="volMaster"') < h.indexOf('id="bpmSlider"'),
+    "★ 源码序即读序：音量条在前、BPM 行在后（同一 .tg-body 内的纵排）");
+  const row = h.slice(h.indexOf('id="bpmSlider"'), h.indexOf('id="trainerProg"'));
+  ok(/id="bpmMinus5"/.test(row) && /id="bpmNum"/.test(row) && /id="bpmPlus5"/.test(row),
+    "★★ 数值与 ± 增减钮与滑杆同住 .slider-row（移动需求②：跟随 bpm 条）");
+  ok(/class="card-head-left"/.test(h), "左块包 .card-head-left（v3.39.0 起头行只有这一个孩子）");
   ok(!/id="swingRow"/.test(h), "Swing 不在头行（已下移）");
   /* v3.12.0：原「行数 + 拍号」并排行整块退役——头行之外不再有那个容器 */
   ok(!/class="viz-rows-row"/.test(html) && !/id="sigRow"/.test(html),
@@ -304,8 +310,8 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.loop-btn, \.loop-btn:hover, \.loop-btn\[aria-checked="true"\]\{background:transparent;border:none\}/.test(css),
     "★★ v2.11.0（v3.12.0 补 border:none）：循环钮零背景图层（含 hover 与开启态）——"
     + "图标直接浮在页面背景上；基座 .jump-btn 补 1px 描边后这里必须显式去掉，否则循环钮会长出圆框");
-  ok(/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),
-    "★★ v2.11.0：BPM 组两行按钮两端对齐（-5↔60 左缘、+5↔120 右缘）");
+  ok(!/\.viz-head \.bpm-row\{justify-content:space-between\}/.test(css),
+    "★★ v3.39.0：`.viz-head .bpm-row` 两端对齐规则随快捷档行退役删除（步进群按内容宽住滑杆右侧，无行宽可摊）");
   ok(/\.card-head-left\{[^}]*width:min\(312px,100%\)/.test(css),
     "★★ v2.10.18：左列固定宽——宽度原先由内容（含节奏型名）驱动，名字变短列变窄、BPM 组跟着左移"
     + "（v2.39.0：320→352；v2.75.1 音量条缩 40px 让给 BPM 卡，组容器底吃掉 32px 内边距后型名可读宽度分毫不变）");
@@ -316,9 +322,8 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
     "★ Q5（v2.62.0）：`.tr-dock` 死样式随训练组壳重构一并清理（本文件已无元素挂此类，规则无使用者）；"
     + "此前这条断言是「保护」死样式的，清理后改为反向断言防回潮");
   ok(/\.bpm-num\{font-size:40px[^}]*min-width:80px/.test(css) && /\.step-btn\{width:40px;height:40px/.test(css)
-     && /#bpmPresetRow \.pill\{padding:7px 14px;font-size:12px\}/.test(css),
-    "★★ v2.10.19：BPM 组降一档（大数字 40px/80、步进键 40px、快捷档 32px）——"
-    + "头行变矮，左列剩余空间（状态灯↔音量空隙）同步收紧");
+     && !/#bpmPresetRow \.pill\{padding/.test(css),
+    "★★ v2.10.19：大数字 40px/80、步进键 40px 仍在；v3.39.0 快捷档 32px 收窄规则随该行退役删除");
   ok(/\.dialog\{[^}]*backdrop-filter:blur\(8px\)/.test(css),
     "★ v2.10.17：设置浮层 backdrop 加毛玻璃模糊（压暗 + 模糊）");
   ok(/\.arg-jump\{display:grid;grid-template-columns:1fr auto 1fr/.test(css)
@@ -435,9 +440,9 @@ section("T90aa 音量说明行 · ★★ 触屏常显、桌面随 hover 分档�
      已写明"桩不解析 HTML，静态元素 parentNode 恒 null"），而 `HTML_ATTRS` 只登记了
      bpmSlider / wallDim / latMs 三个 id —— `#volMaster` 的 aria-label 在桩里读不到（恒 null）。
      真实 DOM 里这一链路由真机探针验（见本轮 CHANGELOG 的实测记录）。 */
-  eq((html.match(/class="vol-note"/g) || []).length, 3,
-    "★ 三条音量条各挂一枚 .vol-note（说明行的容器）");
-  eq((html.match(/class="vol-note" id="\w+Note" aria-hidden="true"/g) || []).length, 3,
+  eq((html.match(/class="vol-note"/g) || []).length, 2,
+    "★ 两条音量条各挂一枚 .vol-note（说明行的容器；v3.39.0 重拍增强条退役后 3→2）");
+  eq((html.match(/class="vol-note" id="\w+Note" aria-hidden="true"/g) || []).length, 2,
     "★★ 说明行对读屏隐藏（aria-label 已表达同一件事，避免被读两遍）");
   ok(/note\.textContent = inp\.getAttribute\("aria-label"\)/.test(html),
     "★★ 文案从滑杆自己的 aria-label 抄——**单一来源**（不写第二份文案，改一处即两处同步）");

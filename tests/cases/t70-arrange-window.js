@@ -155,15 +155,15 @@ section("T70f 滚动窗口 · 静音拍按乐句位置（每 4 小节静第 4 �
     ac.currentTime += 0.02;
     beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
-    if (/静音拍/.test(els["statusText"].textContent)) muteStatus = els["statusText"].textContent;
+    if (/静音 ·/.test(els["statusText"].textContent)) muteStatus = els["statusText"].textContent;
   }
   eq(inWin0(ac, 0.08, 2.58), 4, "第 1 遍（第 1 小节）4 声——旧判据下这里会是 0");
   eq(inWin0(ac, 2.58, 5.08), 4, "第 2 遍 4 声");
   eq(inWin0(ac, 5.08, 7.58), 4, "第 3 遍 4 声");
   eq(inWin0(ac, 7.58, 10.08), 0, "★ 第 4 遍被静音（每 4 小节静一次）——乐句相位判据生效");
   beat.Controls.stop();
-  ok(/静音拍/.test(muteStatus),
-     "★ 走到被静音的那一遍时状态栏写「静音拍 · 心中默数」（实测「" + (muteStatus || "未采样到") + "」）");
+  ok(/静音 ·/.test(muteStatus),
+     "★ 走到被静音的那一遍时状态栏写「静音 · …心中默数」（实测「" + (muteStatus || "未采样到") + "」）");
 }
 /* ================= 场景 T70d：窗口合成不出来时回落画当前型 ================= */
 section("T70d 滚动窗口 · 窗口里的小节解析不出来时回落画当前型（不崩、不画半屏错内容）");

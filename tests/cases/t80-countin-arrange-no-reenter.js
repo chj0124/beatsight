@@ -52,7 +52,7 @@ function run(app, seconds){
     beat.AudioEngine.scheduler();
     beat.Viz.paintFrame();
     const st = els["statusText"].textContent;
-    const isCi = st.indexOf("预备拍") >= 0;
+    const isCi = st.indexOf("预备 ·") >= 0;
     if (isCi){
       sawCi = true;
       if (leftCi && reenter === null) reenter = { t: +ac.currentTime.toFixed(3), st };

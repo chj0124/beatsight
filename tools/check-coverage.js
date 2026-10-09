@@ -129,20 +129,33 @@ let fnTotal = 0, fnDead = 0;
 /* v3.36.11（审计 C-9）：存 {名字, 定义偏移} 而不是只存名字——行号要等 lineStart 建好才能算，
    而采集发生在那之前，故先记偏移、到打印时再映射。 */
 const deadFns = [];
+/* ★ v3.39.0（分块采集适配）：tests/run.js 在插桩模式下分块跑后，同一脚本会有**多条**
+   覆盖条目（每块一条，编译缓存把块内多次 loadApp 累计进同一条）。此后两处口径要变：
+   ① 函数「从未执行」= **所有块都为 0**（任一块执行过就算覆盖）——按 名字+偏移 记最大
+     外层 count，否则块 5 实测过的 jianpuOf 会被块 1~4 的 0 条目冒名顶替进「从未执行」清单；
+   ② 行覆盖 = **按条目隔离判定、跨条目取或**——见下面 coveredAt 前的条目隔离段。
+   单进程时代每脚本只有一条条目，这两处都是恒等变换——老口径零变化。
+   （这里的 ranges 只剩一个职责：作为「有没有采集到 inline 覆盖」的判据喂给下面的工具故障分支。） */
+const fnSeen = new Map();   // key: name + ":" + startOffset → 最大外层 count
 for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
   let j;
   try { j = JSON.parse(fs.readFileSync(path.join(covDir, f), "utf8")); } catch(e){ continue; }
   for (const res of (j.result || [])){
     if (!/inline/.test(res.url || "")) continue;
     for (const fn of res.functions){
-      fnTotal++;
       const outer = fn.ranges[0];
-      if (outer && outer.count === 0){
-        fnDead++;
-        deadFns.push({ name: fn.functionName || "(匿名)", off: outer.startOffset });
-      }
+      const key = (fn.functionName || "(匿名)") + ":" + (outer ? outer.startOffset : -1);
+      if (!fnSeen.has(key) || (outer ? outer.count : 0) > fnSeen.get(key)) fnSeen.set(key, outer ? outer.count : 0);
       for (const r of fn.ranges) ranges.push(r);
     }
+  }
+}
+for (const [key, count] of fnSeen){
+  fnTotal++;
+  if (count === 0){
+    fnDead++;
+    const i = key.lastIndexOf(":");
+    deadFns.push({ name: key.slice(0, i), off: +key.slice(i + 1) });
   }
 }
 if (!REUSE) fs.rmSync(covDir, { recursive: true, force: true });
@@ -151,17 +164,40 @@ if (!ranges.length){
   console.error("  这是**工具故障，不是覆盖率不达标**——本次未被验证（退出码 4 = 未能执行）。");
   process.exit(4);
 }
-/* 按 startOffset 排序，便于用「start ≤ off < end 中 start 最大者」取最内层区间 */
-ranges.sort((a, b) => a.startOffset - b.startOffset);
-
-const coveredAt = off => {
-  let best = null;
-  for (const r of ranges){
-    if (r.startOffset > off) break;
-    if (off < r.endOffset) best = r;          // 排序后仍在推进 → 最后命中的就是 start 最大者
+/* ★ v3.39.0（分块采集适配）：同一脚本的区间现在来自多个块进程。第一版修法把所有区间
+   倒进一个数组按 (start,end) 去重再「排序后最后命中者胜」——实测**仍然丢覆盖**：
+   V8 对同一逻辑区间在不同进程里给出的端点有细微漂移（实测 diagPaint 的语句区间在
+   块 1 是 [825170,825961]、块 4/5 是 [825170,825982]），"精确同键"合并不了它们，
+   平局时 count=0 的近重复若排在后面照样把块 1 实测 count=11 的行判死。
+   正确口径：**按条目隔离判定、跨条目取或**——每个（文件 × inline 条目）独立做
+   「start ≤ off < end 中 start 最大者」的最内层判定（条目内部区间自洽、无混排），
+   行覆盖 = 任一条目判真。单条目时代 = 只有一个条目，与老口径逐位等价。 */
+const entryVerdicts = [];   // 每个条目一个 off => bool
+{
+  const byEntry = new Map();   // 文件名 + 条目序 → 该条目的区间数组
+  for (const f of fs.readdirSync(covDir).filter(x => x.endsWith(".json"))){
+    let j;
+    try { j = JSON.parse(fs.readFileSync(path.join(covDir, f), "utf8")); } catch(e){ continue; }
+    (j.result || []).forEach((res, ri) => {
+      if (!/inline/.test(res.url || "")) return;
+      const rs = [];
+      for (const fn of res.functions) for (const r of fn.ranges) rs.push(r);
+      rs.sort((a, b) => a.startOffset - b.startOffset);
+      byEntry.set(f + "#" + ri, rs);
+    });
   }
-  return best ? best.count > 0 : false;
-};
+  for (const rs of byEntry.values()){
+    entryVerdicts.push(off => {
+      let best = null;
+      for (const r of rs){
+        if (r.startOffset > off) break;
+        if (off < r.endOffset) best = r;      // 排序后仍在推进 → 最后命中的就是 start 最大者
+      }
+      return best ? best.count > 0 : false;
+    });
+  }
+}
+const coveredAt = off => entryVerdicts.some(v => v(off));
 
 /* ---- 逐行判定 ---- */
 const lineStart = [];

@@ -32,9 +32,13 @@ section("T175a v3.19.0 参数面板流内（悬浮槽退役，面板挂各自开
   /* ★ v3.33.10（用户拍板 A）：进度/闸门原因行**整行搬进 BPM 卡片**——它不再排在 trainerPanel 之后，
      而是落在 BPM 组内（快捷档之下）。id 与全部接线不变（搬块不换 id），故期望随之改为位置钉子。 */
   const iP = html.indexOf('id="trainerProg"');
-  ok(iP > 0 && iP < ORDER[0], "★★ v3.33.10：trainerProg 搬进 BPM 卡片（DOM 位置早于右侧八件套）");
-  ok(html.indexOf('id="bpmPresetRow"') > 0 && html.indexOf('id="bpmPresetRow"') < iP,
-    "★★ v3.33.10：trainerProg 落在 BPM 快捷档之下（BPM 组内）——不再紧跟变速参数");
+  ok(iP > 0 && iP < ORDER[0], "★★ v3.33.10：trainerProg 搬进控制卡片（DOM 位置早于右侧八件套）");
+  /* ★ v3.39.0：trainerProg 随 BPM 块并入音量组、紧跟步进行下方；快捷档行退役后
+     「落在快捷档之下」的旧钉子随之改为「落在 BPM 滑杆行之下、且早于八件套」。 */
+  ok(html.indexOf('id="bpmPresetRow"') < 0,
+    "★ v3.39.0：#bpmPresetRow 快捷档行已从标记除名（trainerProg 的旧上邻不复存在）");
+  ok(html.indexOf('id="bpmSlider"') < iP,
+    "★★ v3.39.0：trainerProg 落在合并组内 BPM 滑杆行之下（移动需求③：文案紧跟数值）");
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
   ok(/<div class="countin-line">/.test(html)

@@ -65,7 +65,7 @@ section("T23c 音量越界 · 必须钳制到 [0,1]，增益不得超 0 dBFS");
     /* sel idx 1（四分基础，无扫弦记谱）：本场景守的是**节拍声部**的 0 dBFS 上限。
        v2.7.1 起带扫弦记谱的谱（如民谣扫弦）归扫弦声部——那条路径有 makeup 增益
        （峰值 ≤ makeup=8，安全性论证见 CONFIG.timbres 注释），混进来会误报 */
-    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: v, accentVol: 1, bpm: 120, sel: { type: "builtin", idx: 1 } }) });
+    const { beat } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: v, bpm: 120, sel: { type: "builtin", idx: 1 } }) });
     const vol = beat.Store.S.vol;
     ok(vol >= 0 && vol <= 1, `vol=${JSON.stringify(v)}（${desc}）钳制到 [0,1]（实际 ${vol}）`);
     beat.Controls.start();
@@ -75,9 +75,9 @@ section("T23c 音量越界 · 必须钳制到 [0,1]，增益不得超 0 dBFS");
     ok(peaks.length > 0, `vol=${JSON.stringify(v)}：有发声包络可测`);
     ok(peaks.every(p => p <= 1), `vol=${JSON.stringify(v)}：送达增益峰值 ≤ 1.0（实测 ${Math.max(...peaks).toFixed(3)}）`);
   });
-  /* accentVol 同样越界 */
+  /* v3.39.0：accentVol（重拍增强）字段已除名——老存档带越界 accentVol 键应被静默忽略而非进入状态 */
   const { beat: bAcc } = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, vol: 0.8, accentVol: 1e9 }) });
-  ok(bAcc.Store.S.accentVol <= 1, `accentVol=1e9 钳制到 [0,1]（实际 ${bAcc.Store.S.accentVol}）`);
+  ok(bAcc.Store.S.accentVol === undefined, `accentVol=1e9 的老存档键被静默忽略（实际 ${bAcc.Store.S.accentVol}）`);
 }
 
 section("T23d 脏 BPM · 不得让位置换算变 NaN");

@@ -70,7 +70,7 @@ section("T171a 范围播放起点在中段（曲式 from=5）：不立即撤 · 
     const t = beat.Viz.internals().countLaneEl;
     if (t.style.display === "block" && t.style.width) widths.push(parseFloat(t.style.width));
   });
-  eq(els["statusText"].textContent.indexOf("预备拍") >= 0, false, "前提：已越过预备拍");
+  eq(els["statusText"].textContent.indexOf("预备 ·") >= 0, false, "前提：已越过预备");
   let st = laneState(beat);
   eq(st.session, true, "前提：会话开启");
   eq(st.startCur, 5, "★ 锚点 = 首个可听小节（5，真实镜像锚定），与起点位置无关");
@@ -114,7 +114,7 @@ section("T171b 完整播放（预设，从 0 起）：第一小节后退场 · �
     const t = beat.Viz.internals().countLaneEl;
     if (t.style.display === "block" && t.style.width) widths.push(parseFloat(t.style.width));
   });
-  eq(els["statusText"].textContent.indexOf("预备拍") >= 0, false, "前提：已越过预备拍");
+  eq(els["statusText"].textContent.indexOf("预备 ·") >= 0, false, "前提：已越过预备");
   let st = laneState(beat);
   eq(st.startCur, 0, "★ 锚点 = 0（完整播放的首个可听片段）");
   eq(st.disp, "block", "★ 首个可听片段内道显示");
@@ -135,7 +135,7 @@ section("T171c 单小节循环（from==to=3）：cur 恒不变，靠 loopWrapped
 {
   const { beat, els, ac } = arrangeSetup(3, 3);
   drive3(beat, ac, 0.9);
-  eq(els["statusText"].textContent.indexOf("预备拍") >= 0, false, "前提：已越过预备拍");
+  eq(els["statusText"].textContent.indexOf("预备 ·") >= 0, false, "前提：已越过预备");
   let st = laneState(beat);
   eq(st.session, true, "前提：会话开启");
   eq(st.startCur, 3, "★ 锚点 = 3（唯一循环小节）");
@@ -153,7 +153,7 @@ section("T171d 停止清理：会话中停止 → 道撤 + row0 复位 + 锚点�
 {
   const { beat, els, ac } = arrangeSetup(5, 7);
   drive3(beat, ac, 0.9);
-  eq(els["statusText"].textContent.indexOf("预备拍") >= 0, false, "前提：已越过预备拍");
+  eq(els["statusText"].textContent.indexOf("预备 ·") >= 0, false, "前提：已越过预备");
   eq(laneState(beat).session, true, "前提：会话进行中");
   beat.Controls.stop();
   const st = laneState(beat);

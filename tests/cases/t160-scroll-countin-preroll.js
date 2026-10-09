@@ -81,7 +81,7 @@ section("T160 滚动预备拍（4 拍）· 同构预备拍道 + 内容道钉播�
   drive(ac, beat, 1.8, () => {
     beat.Viz.paintFrame();
     const iv3 = beat.Viz.internals();
-    const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
+    const counting = els["statusText"].textContent.indexOf("预备 ·") >= 0;
     if (!counting && !handoverSeen){
       handoverSeen = true;
       laneAfterHandover = iv3.countLaneEl.style.display;
@@ -138,7 +138,7 @@ section("T160c 预备拍拍数自适应 · 拍区/拍号/道长随拍数变");
     drive(ac, beat, beats * 0.625 + 0.4, () => {
       beat.Viz.paintFrame();
       const iv2 = beat.Viz.internals();
-      const counting = els["statusText"].textContent.indexOf("预备拍") >= 0;
+      const counting = els["statusText"].textContent.indexOf("预备 ·") >= 0;
       if (counting){
         const t = iv2.countLaneEl;
         if (t.style.display === "block") widthSeen = t.style.width;

@@ -201,6 +201,7 @@ const CASE_FILES = [
   "./cases/t225-note-edit",
   "./cases/t227-pitch-right-slot",
   "./cases/t228-accidental-system",
+  "./cases/t229-control-merge",
 ];
 /* v2.8.16（审计 P2-2）：CASE_FILES 是手工维护的执行顺序清单，而 tests/cases/ 目录才是真相源。
    新增一个用例文件却忘了登记进 CASE_FILES，它会**静默地不被执行**——PASS 数照旧好看却少了整组
@@ -219,8 +220,54 @@ const CASE_FILES = [
     process.exit(1);
   }
 }
-for (const f of CASE_FILES) require(f);
+/* ── 分块执行（v3.39.0）：只在覆盖率插桩在场时启用 ──────────────────────────────
+   【根因】NODE_V8_COVERAGE 开启时 V8 为**每个评估过的脚本**保留块级计数且不复用：
+   182 个用例文件、每个至少 loadApp 一次（整份 index.html 重新进 vm），插桩数据随装载
+   次数线性累积（实测 ~36MB/文件），单进程峰值超 4GB——本沙箱 cgroup memory.max=4GiB，
+   实测爬到 3.6GB 即被 SIGKILL（spawnSync 退出码 null），check-all 把它记成「自动化测试 ✗」。
+   --max-old-space-size 抬不动这颗雷：cgroup 在 V8 上限之前动手（抬上限只改死法）。
+   【修法】切成每块 40 个文件的连续切片、每块一个子进程**顺序**跑：插桩内存只随本块
+   装载次数增长，单块峰值 ~1.7GB（对 4GiB cgroup 留 2 倍余量）。子进程各写各的
+   coverage-<pid>-*.json，check-coverage --reuse 本来就汇总目录下全部 JSON，合并口径零改动。
+   【取舍】不开覆盖率时走原单进程路径——reverse-verify / 本地开发 / hang-guard 的口径
+   全部不变；共享模块级态（PROBE / ROW_W / SCROLL_W / rowSeq）已逐一核实为「每次
+   loadApp 重置」或「增量断言」，无跨块依赖——若有暗依赖，分块跑对不上单进程的
+   PASS 总数，现象会自己暴露。块内顺序 = 清单顺序切片，「顺序敏感、禁止重排」不破。
+   每用例一个子进程的先例：tests/hang-guard.js。BS_TEST_CHUNK_SIZE 可覆盖块大小（排障用）。 */
+const CHUNK_SIZE = +(process.env.BS_TEST_CHUNK_SIZE || 40);
+if (process.env.NODE_V8_COVERAGE && process.env.BS_TEST_CHUNK === undefined){
+  const { spawnSync } = require("child_process");
+  const os = require("os");
+  const count = Math.ceil(CASE_FILES.length / CHUNK_SIZE);
+  console.log(`▸ 插桩分块：${CASE_FILES.length} 个用例 → ${count} 块（每块 ≤ ${CHUNK_SIZE} 个）顺序执行`);
+  let pass = 0, fail = 0; const bad = [];
+  for (let ci = 0; ci < count; ci++){
+    const resFile = path.join(os.tmpdir(), `bs-chunk-${process.pid}-${ci}.json`);
+    const r = spawnSync(process.execPath, process.execArgv.concat([__filename]), {
+      stdio: "inherit",
+      env: Object.assign({}, process.env, {
+        BS_TEST_CHUNK: String(ci), BS_TEST_CHUNK_RESULT: resFile,
+      }),
+    });
+    let j = null;
+    try { j = JSON.parse(fs.readFileSync(resFile, "utf8")); } catch(e){}
+    fs.rmSync(resFile, { force: true });
+    if (j){ pass += j.pass; fail += j.fail; }
+    if (!j || r.status !== 0) bad.push(`第 ${ci + 1}/${count} 块（退出码 `
+      + (r.status === null ? "null = 被信号杀" : r.status) + (j ? "" : "；未写回结果文件") + "）");
+  }
+  console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL（${count} 块聚合）`);
+  if (bad.length){ console.log("失败块：\n - " + bad.join("\n - ")); process.exit(1); }
+  process.exit(0);
+}
+const SLICE = process.env.BS_TEST_CHUNK === undefined ? null : +process.env.BS_TEST_CHUNK;
+for (const f of (SLICE === null ? CASE_FILES
+  : CASE_FILES.slice(SLICE * CHUNK_SIZE, (SLICE + 1) * CHUNK_SIZE))) require(f);
 
 const { pass, fail, failNames } = h.stats();
+/* 子进程（分块）把本块计数写回结果文件，由父进程聚合（stdio 是 inherit，父进程读不到 stdout） */
+if (process.env.BS_TEST_CHUNK_RESULT){
+  try { fs.writeFileSync(process.env.BS_TEST_CHUNK_RESULT, JSON.stringify({ pass, fail })); } catch(e){}
+}
 console.log(`\n========================================\n结果：${pass} PASS / ${fail} FAIL`);
 if (fail){ console.log("失败项：\n - " + failNames.join("\n - ")); process.exit(1); }
