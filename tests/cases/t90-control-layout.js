@@ -364,7 +364,8 @@ section("T90e 回归护栏 · 搬家只动位置，id / 初始态 / 接线契约
   ok(!!els["timbreRow"] && !!els["volMaster"] && !!els["vizRowsRow"],
     "三个容器的 id 仍能取到（未被改名；#vizRowsRow 换了位置但 id 未换）");
   eq(String(els["volMaster"].value), "80", "节拍音量初始 80%（桩里初值是数字，故并成字符串比对）");
-  eq(els["volMasterPct"].textContent, "80%", "百分比文案与滑杆一致");
+  ok(els["volMasterPct"] === undefined && els["volStrumPct"] === undefined,
+    "★ v3.39.1：音量行 % 文案已退役（读数只在收起态胶囊 #volPillPctN 上）");
   eq(els["timbreRow"].children[0].getAttribute("aria-pressed"), "true", "音色初始仍是电子");
   /* 接线仍在（handler 绑在容器上，随容器一起走）——这是搬家最容易踩坏、又最难发现的一类 */
   els["timbreRow"].fire("click", { target: pill({ timbre: "drum" }) });

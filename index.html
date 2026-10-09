@@ -377,22 +377,22 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    同行把滑杆挤短，「与音量条等长」无从谈起（列向基础形状在 .slider-row 基础规则里）。
    v2.75.0 的「整行 flex:1 均分压缩」口径随独立步进行退役（那是给整行按钮带设计的）；
    按钮保持 .step-btn 基础规格（40px 圆钮，触控目标不打折）。#bpmPresetRow（快捷档行）已删。 */
-/* 上行：复刻 .vol-row 三段槽位——52px 标签 | 弹性滑杆 | 38px pct；等长与两端对齐
-   全靠这两个定宽值与 10px 间距**与 .vol-row 同源**，改动必须两处同步
-   （smoke 的 volBpmDelta/volBpmLeftDelta 量真 DOM 把守）。空 pct 槽只占位不装文案。 */
+/* 上行：与 .vol-row 同构的两段槽位——52px 标签 | 弹性滑杆到行尾（v3.39.1 同批：
+   音量 % 文案与右侧 38px 定宽槽整体退役，BPM 行的镜像空槽同步除名，三行两段式、
+   滑杆右端同抵列右缘；等长全靠 52px 定宽与 10px 间距**与 .vol-row 同源**，
+   改动必须两处同步——smoke 的 volBpmDelta/volBpmLeftDelta 量真 DOM 把守）。 */
 .bpm-slider-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}
 .bpm-slider-row>span:first-child{min-width:52px}
-.bpm-slider-row .pct{min-width:38px}
-/* 下行步进群：居中轴**参照滑杆**——margin 62=52+10、48=38+10 即滑杆左右余量，
-   内容盒与滑杆同宽 ⇒ justify-content:center 的轴就是滑杆轴（左右槽 52≠38，它比
-   整行轴偏右 7px，这正是用户要「参照滑杆」而非「参照整行」的原因）。
-   步进群过宽（窄屏）时以滑杆轴为心**对称外溢**进两侧空槽——槽内无文案，压住无害。 */
-.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin:0 48px 0 62px}
+/* 下行步进群：居中轴**参照滑杆**——margin-left:62 = 52+10 即滑杆左端到行左缘的余量，
+   内容盒与滑杆同宽 ⇒ justify-content:center 的轴就是滑杆轴（左槽 52px ⇒ 滑杆轴比
+   整行轴偏右 31px，这正是用户要「参照滑杆」而非「参照整行」的原因）。
+   步进群过宽（窄屏）时以滑杆轴为心**对称外溢**——右缘外是列外空白，无害。 */
+.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin-left:62px}
 .viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
-/* 读数行与数值行同轴（用户拍板）：同样的 62/48 内缩 + 文本居中。
+/* 读数行与数值行同轴（用户拍板）：同样的左缩 62 + 文本居中。
    width:auto 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按「容器宽 −
-   自身 margin」收边；留着 100% 会在加 margin 后溢出组盒 110px */
-.viz-head .group .tr-prog{width:auto;margin:0 48px 0 62px;text-align:center}
+   自身 margin」收边；留着 100% 会在加 margin 后溢出组盒 62px */
+.viz-head .group .tr-prog{width:auto;margin-left:62px;text-align:center}
 /* 窄屏：结构天生两行，无需再折行；步进钮放宽收缩（min-width:0），过宽时由上面的
    对称外溢兜着，不出组盒。只按宽度判（竖屏平板 ≥640 内容宽装得下整组）。 */
 @media (max-width:640px){
@@ -3118,38 +3118,44 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                  v2.10.12：兄弟块「音色」搬进设置弹窗，本块留在原位（判据见上）
                  v2.10.15：本块搬进时值可视化卡卡片头左列、标题正下方（用户要求①） -->
             <!-- v2.10.0：三条音量条补「说明」——按用户选择走**仅悬浮 / 读屏提示**，不塞常显文字。
-                 title 挂在整行（悬停标签 / 滑杆 / 百分比任意处都能看到），aria-label 留在 input 上
+                 title 挂在整行（悬停标签 / 滑杆任意处都能看到），aria-label 留在 input 上
                  供读屏；两者文案同源，口径取自帮助页「音色 / 音量」条（见 help-doc 的 help-dl）。
                  ★ 本行文字缩短成「音量」后，这三条的区分**全靠**这里的 title / aria-label 与行内标签 -->
             <!-- v2.76.3：音量卡补齐三卡统一骨架——标签钉卡顶，三条滑杆进 .tg-body（flex:1
                  space-evenly）。此前标签在均布组内部，均布的首项前空隙把「音量」标签压低
                  11px、与「速度 BPM」错线；状态行迁顶栏后左卡头部消失，失准显形 -->
             <div class="tg-body">
-            <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"><span class="pct" id="volMasterPct">80%</span></div>
+            <!-- ★★ v3.39.1（用户拍板）：音量行**百分比文案退役**——音量是耳朵调的参数，
+                 「80% 还是 83%」对练琴无信息量；滑杆有绿色填充 + 圆钮位置，视觉反馈足够。
+                 读屏不受损：range 输入原生播报数值，可见 % 本来就是冗余。收起态胶囊上的
+                 「节拍 N%」**保留**（收起时滑杆不可见，胶囊是唯一读数，见 #volPillPctN）。
+                 右侧 38px 定宽槽随文案一并退役——BPM 行为等长而镜像的空白槽同步除名，
+                 三行统一成「标签 + 滑杆」两段式，滑杆集体加长 48px。 -->
+            <div class="vol-row" title="节拍：节拍器那一下（每拍拍点 / 预备拍 / 歌词提示音）"><span>节拍</span><input type="range" class="vol" id="volMaster" min="0" max="100" value="80" aria-label="节拍音量：节拍器每拍的拍点、预备拍与歌词提示音"></div>
             <div class="vol-note" id="volMasterNote" aria-hidden="true"></div>
-            <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
+            <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"></div>
             <div class="vol-note" id="volStrumNote" aria-hidden="true"></div>
-            <!-- ★★ v3.39.1（用户澄清 · v3.39.0「同行」口径修订）：BPM 行改**上下两行塔式**——
-                 上行 .bpm-slider-row 复刻音量行三段槽位（「BPM」标签 52px 定宽 | 滑杆 | 空 pct 槽
-                 38px），滑杆与音量条**严格等长、两端对齐**；下行 -5/-1/数值/+1/+5 整组
-                 **居中，居中轴参照滑杆本身**（不含两侧槽位——左右槽 52≠38，滑杆轴比整行轴
-                 偏右 7px，CSS 里的 margin 62/48 即由槽位宽算出）；「当前 X BPM · 第 N/M 步」
-                 读数行与数值行同轴居中。v3.39.0 的「数值与增减钮紧跟滑杆同行」随本条退役——
-                 同行会把滑杆挤短，「与音量条等长」无从谈起。
+            <!-- ★★ v3.39.1（用户澄清 · v3.39.0「同行」口径修订；同批追加：百分比槽整体退役）：
+                 BPM 行改**上下两行塔式**——上行 .bpm-slider-row 复刻音量行两段槽位
+                 （「BPM」标签 52px 定宽 | 滑杆到行尾），滑杆与音量条**严格等长、两端对齐**
+                 （音量 % 文案与右侧 38px 定宽槽退役后，三行统一两段式，滑杆右端同抵列右缘）；
+                 下行 -5/-1/数值/+1/+5 整组**居中，居中轴参照滑杆本身**（左槽 52px ⇒ 滑杆轴
+                 比整行轴偏右 31px，CSS 的 margin-left:62px 即由槽位宽算出）；
+                 「当前 X BPM · 第 N/M 步」读数行与数值行同轴居中。
+                 v3.39.0 的「数值与增减钮紧跟滑杆同行」随塔式退役——同行会把滑杆挤短，
+                 「与音量条等长」无从谈起。
                  v3.39.0 拍板仍有效：#tapBtn（TAP 测速）与 #bpmPresetRow（固定档位行）整块
                  退役；#bpmTicks 刻度层保留（刻度仍由 CONFIG.speedPresets 生成）；#trainerProg
                  搬块不换 id，Trainer.updateProg 的接线一行不动。 -->
             <div class="slider-row">
               <div class="bpm-slider-row">
                 <!-- 「BPM」标签与「节拍/扫弦」同款 12px、同 52px 定宽槽（用户口径：大小相近、
-                     不影响滑杆等长）；右侧 pct 槽**保留槽位、文案空置**（BPM 没有 80% 那样的
-                     读数，空槽只为与音量条右端对齐；min-width 见 CSS） -->
+                     不影响滑杆等长）；音量 % 退役后本行不再需要右侧空槽镜像，两段式与音量行同构 -->
                 <span>BPM</span>
                 <div class="slider-wrap">
                   <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
                   <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
                 </div>
-                <span class="pct" aria-hidden="true"></span>
               </div>
               <div class="bpm-row">
                 <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
@@ -4367,23 +4373,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4399  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5821  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7940  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8974  Modal         应用内弹窗
-     L9119  Viz           时值可视化渲染与每帧动画
-     L12643 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13326 Trainer       变速训练器
-     L13536 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14218 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16196 Editor        自定义节奏型编辑器
-     L16776 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16823 Ear           听辨训练（v1.10.0）
-     L17051 Arrange       曲式编排（v2.0.0）
-     L21116 Help          使用方法（v2.0.1）
-     L21271 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21345 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21634 初始化（装配） 各模块 hook 接线与启动
+     L4405  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5827  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7946  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8980  Modal         应用内弹窗
+     L9125  Viz           时值可视化渲染与每帧动画
+     L12649 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13332 Trainer       变速训练器
+     L13542 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14225 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16203 Editor        自定义节奏型编辑器
+     L16783 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16830 Ear           听辨训练（v1.10.0）
+     L17058 Arrange       曲式编排（v2.0.0）
+     L21123 Help          使用方法（v2.0.1）
+     L21278 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21352 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21641 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4409,7 +4415,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.39.1";
+const VERSION = "3.39.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -13962,10 +13968,11 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     setTimbre(btn.dataset.timbre);
   });
 
-  $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100; $("volMasterPct").textContent = evTarget(e).value + "%";
-    /* v3.36.20 补29：折叠态的「音量」胶囊要显示**实时**节拍音量（用户要求） */
+  /* ★ v3.39.1（用户拍板）：音量行 % 文案退役（#volMasterPct/#volStrumPct 随右侧定宽槽
+     一并除名）——input 只写状态；折叠胶囊的实时 % 是唯一读数、保留（v3.36.20 补29）。 */
+  $("volMaster").addEventListener("input", (/** @type {InputEvent} */ e) => { S.vol = evTarget(e).value / 100;
     const ppN = $("volPillPctN"); if (ppN) ppN.textContent = evTarget(e).value + "%"; });
-  $("volStrum").addEventListener("input", (/** @type {InputEvent} */ e) => { S.strumVol = evTarget(e).value / 100; $("volStrumPct").textContent = evTarget(e).value + "%"; });
+  $("volStrum").addEventListener("input", (/** @type {InputEvent} */ e) => { S.strumVol = evTarget(e).value / 100; });
   $("volMaster").addEventListener("change", Store.persist);
   $("volStrum").addEventListener("change", Store.persist);   // 拖动过程只更新 UI，松手才写 localStorage
   /* v3.39.0：#volAccent（重拍增强）的三条接线随滑杆退役删除（用户拍板）。
@@ -21833,10 +21840,11 @@ onDemoRange = Arrange.setRange;
    Controls.stop() 会构成反向引用（tools/check-module-order.js 会拦下来） */
 window.addEventListener("pagehide", () => { if (S.playing) Controls.stop(); });
 Controls.setBpm(S.bpm);   // 初始化即走统一入口：钳制 30–240 并同步 UI
-$("volMaster").value = S.vol * 100; $("volMasterPct").textContent = Math.round(S.vol * 100) + "%";
-/* v3.36.20 补29：启动时把折叠态胶囊的实时值补上（音量这条不经 setBpm） */
+$("volMaster").value = S.vol * 100;
+/* v3.36.20 补29：启动时把折叠态胶囊的实时值补上（音量这条不经 setBpm）。
+   ★ v3.39.1：行内 % 文案退役后，这里（收起态胶囊）是音量的唯一数值读数 */
 if ($("volPillPctN")) $("volPillPctN").textContent = Math.round(S.vol * 100) + "%";
-$("volStrum").value = S.strumVol * 100; $("volStrumPct").textContent = Math.round(S.strumVol * 100) + "%";
+$("volStrum").value = S.strumVol * 100;
 /* v3.39.0：volAccent 的启动回填随重拍增强滑杆退役删除（音量只剩节拍 / 扫弦两条）。 */
 /* v2.41.0：滑杆绿色填充——统一由 paintRange 写 --vfill（CSS gradient 按 0–100% 分段）。
    用户拖动走 document 级 input 委托（覆盖全部滑杆，含设置弹窗；测试桩无冒泡，桩上不触发、

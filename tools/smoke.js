@@ -2263,12 +2263,13 @@ function portraitFixProbe(){
         if(cb&&!cb.checked)cb.checked=true; void document.body.offsetWidth;
         var b=q(".card-head-left .slider-row"); var t=b?Math.round(b.getBoundingClientRect().top):null;
         if(cb&&k===false)cb.checked=k; void document.body.offsetWidth; return t; })(),
-      /* ★ v3.39.1：BPM 塔式两行后的「等长 / 对齐 / 居中」三组读数（用户澄清的三点口径）：
+      /* ★ v3.39.1：BPM 塔式两行后的「等长 / 对齐 / 居中」三组读数（用户澄清的三点口径；
+         同批追加：音量 % 文案与右侧定宽槽退役，三行统一两段式、右端同抵列右缘）：
          ① volBpmDelta 改为**两根滑杆互比右端**（原口径是音量行盒 vs BPM 输入——塔式后
             行盒右缘恒比滑杆宽出右侧空槽 48px，原口径会把对齐判成错位）；
          ② volBpmLeftDelta 左端互比——与 ① 同时为 0 ⇔ 等长且两端对齐；
-         ③ bpmClusterAxis 步进群轴心 vs 滑杆轴心（居中参照滑杆，非整行：左右槽 52≠38，
-            整行轴会差 7px）；bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
+         ③ bpmClusterAxis 步进群轴心 vs 滑杆轴心（居中参照滑杆，非整行：左槽 52px ⇒
+            整行轴会差 31px）；bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
       volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
@@ -3256,7 +3257,7 @@ async function main(){
             "volBpmLeftDelta=" + PF.volBpmLeftDelta);
           ok(PF.bpmClusterAxis !== null && Math.abs(PF.bpmClusterAxis) <= 2,
             p.label + "·" + vp + "：★★★ v3.39.1 步进群轴心落在滑杆轴心上（偏 " + PF.bpmClusterAxis
-              + "px）——居中参照滑杆（左右槽 52≠38，若错成整行轴会偏 7px）",
+              + "px）——居中参照滑杆（左槽 52px，若错成整行轴会偏 31px）",
             "bpmClusterAxis=" + PF.bpmClusterAxis);
           ok(PF.bpmStackedDown !== null && PF.bpmStackedDown >= 0,
             p.label + "·" + vp + "：★★★ v3.39.1 步进群在滑杆**下方**（间隙 " + PF.bpmStackedDown

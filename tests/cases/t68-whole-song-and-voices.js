@@ -257,7 +257,7 @@ section("T68f 双声部 · strumVol 脏值钳制 / 热键持久化 / 扫弦条�
   els["volStrum"].value = "40";
   els["volStrum"].fire("input");
   eq(beat.Store.S.strumVol, 0.4, "拖动即生效（input 事件写入 S）");
-  eq(els["volStrumPct"].textContent, "40%", "百分比读数同步");
+  ok(els["volStrumPct"] === undefined, "扫弦行 % 文案已退役（v3.39.1：input 只写状态，无数值读数）");
   els["volStrum"].fire("change");
   beat.Store.flush();                 // 热键写入是 250ms 防抖的，断言落盘内容前必须显式冲刷
   ok(String(storage.get("beatsight.state")).indexOf('"strumVol":0.4') >= 0,
