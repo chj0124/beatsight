@@ -6,7 +6,7 @@
      · 位置 S.lyricPos（auto / follow / bottom）：auto 按窄屏（≤960px）解析为 bottom，
        否则 follow；follow = 歌词轨切覆盖层叠到 #viz 上、逐行 translateY 贴自己小节行下缘；
        bottom = 底部整块歌词轨（现状）。
-     · 两种位置模式共用同一套 .lyric-chip 字块着色；字以绝对定位落 clamp(10px,25%,32px)（落法B）。
+     · 两种位置模式共用同一套 .lyric-chip 字块着色；字以绝对定位落**右下**（v3.38.1 口径：left 26px·--cs / right 6px·--cs / bottom 1px）。
      · #viz 的 DOM 与网格不变量零改动（R1）：歌词行都在 #lyricLane（#viz 兄弟），从不插进 #viz。
    基准段落：BUILTINS[1]（四分基础，4/4）× 1 遍 = 4 小节。 */
 "use strict";
@@ -96,8 +96,8 @@ section("T149e 文字对齐 · 字在各自节奏 chip 内靠左（D2）");
 {
   const fs = require("fs"), path = require("path");
   const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
-  ok(/\.lyric-char\{[^}]*left:clamp\(10px,\s*25%,\s*32px\)/.test(src),
-    "★ CSS：字心落 clamp(10px,25%,32px)（落法B：短音按比例、长音封顶32px、极短格不裁字）");
+  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(src),
+    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
 }
 
 section("T149f 旧跟随条已退役 · 无 lyric-follow 元素 / 无 .lyric-follow-on 行距类 / 双关放大清理");
@@ -141,8 +141,8 @@ section("T149g 行距补偿 · follow 挂 .lyric-inline-on / bottom·off 摘类�
     "★ CSS：窄屏 xl 联动规则同 48px");
   ok(/@media[\s\S]*#viz\.no-ruler\.no-durlab \.lyric-row\{height:28px\}/.test(src),
     "★ CSS：窄屏 xl 行高回落 28px（窄屏标注带仅 32px，与 translateY(+36) 配套）");
-  ok(/\.lyric-char\{[^}]*left:clamp\(10px,\s*25%,\s*32px\)/.test(src),
-    "★ CSS：字心落 clamp(10px,25%,32px)（落法B：短音按比例、长音封顶32px、极短格不裁字）");
+  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(src),
+    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径（与音名档统一）");
   ok(/S\.showLyric && Viz\.effectiveLyricPos\(\) === "follow"\) Viz\.relayout\(\)/.test(src),
     "★ JS：follow 期间切座次尺/时值标注（xl 开/关改行距）→ Viz.relayout() 重采 rowGeo");
   // JS：follow → 挂类（腾出歌词带）；切 bottom / 关总开关 → 摘类

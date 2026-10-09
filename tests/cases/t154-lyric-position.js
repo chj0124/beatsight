@@ -4,7 +4,7 @@
    六场景对应 PLAN-v7 §6 的 T154a–f：
      a 显示歌词关 ⇒ 两种位置模式都不画；b follow ⇒ 逐行 translateY 贴自己小节；
      c bottom ⇒ 底部流式（回归护栏）；d auto ⇒ 窄→bottom / 宽→follow（响应式默认）；
-     e 文字居左；f 无词小节 ⇒ 空行位（有 row 元素、无字块、行高不跳）。
+     e 文字靠左（v3.38.1 补9 口径）；f 无词小节 ⇒ 空行位（有 row 元素、无字块、行高不跳）。
    基准：BUILTINS[1]（四分基础，4/4）× 1 遍 = 4 小节。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -95,10 +95,10 @@ section("T154d auto 模式 · 窄屏解析为 bottom / 宽屏解析为 follow（
   eq(b.beat.Viz.effectiveLyricPos(), "bottom", "显式 bottom + 宽屏 → 仍 bottom（不强制 follow）");
 }
 
-section("T154e 字心 clamp(10px,25%,32px)（落法B：短音按比例、长音封顶32px、极短格不裁字）");
+section("T154e 歌词字靠左（v3.38.1 补9 口径：left:26px·--cs / right:auto / bottom:1px / text-align:left）");
 {
-  ok(/\.lyric-char\{[^}]*left:clamp\(10px,\s*25%,\s*32px\)/.test(SRC),
-    "★ CSS：字心落 clamp(10px,25%,32px)（取代旧 justify-content:flex-start + padding-left:8px）");
+  ok(/\.lyric-char\{[^}]*left:calc\(26px \* var\(--cs,1\)\)[^}]*right:auto[^}]*text-align:left/.test(SRC),
+    "★ CSS：歌词字**靠左**（left: 26px·--cs / right:auto / bottom: 1px / text-align:left）——v3.38.1 补9 用户口径");
 }
 
 section("T154f 无词小节 · 空行位（有 row 元素、无字块、行高不跳）");

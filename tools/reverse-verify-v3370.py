@@ -27,9 +27,9 @@ orig = io.open(SRC, encoding="utf-8").read()
 
 MUTANTS = [
   ("M1 v3.37.0 回退：jianpuOf 丢八度点（高/低八度与 1 同形）",
-   """  const m = REL2DEG[rel];
+   """  const m = relTable(sys)[rel];
   return m[1] + m[0] + (oct > 0 ? "'".repeat(oct) : oct < 0 ? ",".repeat(-oct) : "");""",
-   """  const m = REL2DEG[rel];
+   """  const m = relTable(sys)[rel];
   return m[1] + m[0];""",
    ["高八度", "低八度"]),
 

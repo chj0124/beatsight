@@ -50,12 +50,21 @@ section("T153b v3.19.0 面板在流内——交错顺序即视觉顺序");
     "★★ 全文件不再有 grid-area 钉位（同轴网格整体退役，DOM 顺序即布局）");
   ok(!/#countInPanel\{grid-area/.test(CSS_CODE) && !/id="countInPanel"/.test(html),
     "★ 空参数面板 #countInPanel 仍不存在");
-  /* ≥900：控制卡片三列均分（用户需求：音量 | BPM | 三开关同排） */
-  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(CSS_CODE),
-    "★★ ≥900：控制卡片三列均分（音量 | BPM | 开关列，各 ~1fr）");
-  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{padding-top:44px;grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
-    "★ 开关列 = 第 3 列、与音量/BPM 同行；v3.30.0 起 padding-top 44px 让「预备拍」行心"
-    + "与 BPM 步进行同线（L1，实测 174 vs 173.8）");
+  /* ≥900：控制卡片三列均分（用户需求：音量 | BPM | 三开关同排）。
+     ★★★ v3.38.1 补6：机制由 grid 换成 **flex-wrap + --min-w** —— 判据仍是"三块同排均分"，
+     实现变成"列数 = floor((可用宽+列距)/(--min-w+列距))"（12 档真机闸在 tools/smoke.js，除列数
+     公式外还钉行内空白率 ≤15% / 相邻间距 ≤24px / 无横向溢出 / 展开参数槽后列数不变）。 */
+  /* ★★★ v3.38.1 补7：三块用**各自**的下限（共用一个 280 会把三列门槛从 800 抬到 864 ⇒
+     "明明能并排却换行"）。列数 = 按三个下限做 flex 装箱的结果，12 档真机闸在 tools/smoke.js。 */
+  ok(CSS_CODE.indexOf("display:flex;flex-wrap:wrap;gap:var(--col-gap)") >= 0
+     && CSS_CODE.indexOf("flex:1 1 var(--min-w-vol);min-width:var(--min-w-vol);max-width:var(--max-w)") >= 0
+     && CSS_CODE.indexOf("flex:1 1 var(--min-w-bpm);min-width:var(--min-w-bpm);max-width:var(--max-w)") >= 0
+     && CSS_CODE.indexOf("flex:1 1 var(--min-w-sw);min-width:var(--min-w-sw);max-width:var(--max-w)") >= 0
+     && /--min-w-vol:280px;--min-w-bpm:280px;--min-w-sw:216px/.test(CSS_CODE),
+    "★★ ≥900：控制卡片三块并排（音量 | BPM | 开关列，各用自己的下限 280 / 280 / 216）");
+  ok(/@container \(min-width:496px\)\{[\s\S]*?\.viz-toggles\{padding-top:calc\(var\(--tg-align-top\) \+ var\(--tg-align-shift\)\)\}/.test(CSS_CODE),
+    "★ 开关列与 BPM 同行时由容器查询给补偿 ⇒「预备拍」行心与 BPM 步进行同线"
+    + "（L1；阈值 496 = BPM 280 + 开关 216 + 列距 12——只覆盖三列不够，用户图四点名的正是两列形态）");
   ok(!/@media \(max-width:759\.9px\)\{[^}]*tg-body\{grid-template/.test(CSS_CODE.replace(/\n/g, "")),
     "★ ≤759.9 手风琴网格特化退役（全宽度统一纵排流内，无网格可特化）");
 }

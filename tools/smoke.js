@@ -40,6 +40,13 @@ const net = require("net");
 const { spawn } = require("child_process");
 
 const ROOT = path.join(__dirname, "..");
+/* ★★★ v3.38.1 补10：允许把**被测 HTML** 指到 /tmp 副本（BEATSIGHT_HTML）——
+   反向验证的纪律是「变异只改 /tmp 副本、绝不动工作区文件」（AGENTS §2 +
+   reverse-verify-tests-by-mutation skill）。tests/run.js 早就有这个注入口，冒烟以前没有，
+   于是"证明某条真机闸会红"只能靠换工作区文件——那本身就是违规操作（本次修 bug 时踩过）。
+   补上同一口子：file:// 通道直开该路径、http 通道把 /index.html 映射到它，其余静态文件仍走 ROOT。 */
+const HTML_PATH = process.env.BEATSIGHT_HTML
+  ? path.resolve(process.env.BEATSIGHT_HTML) : path.join(ROOT, "index.html");
 const FILE_ONLY = process.argv.includes("--file-only");
 /* CDP 端口；HTTP 服务端口取 PORT_BASE+1。允许用 BEATSIGHT_SMOKE_PORT 覆盖默认基号：
    端口是**环境资源**，机器上已有别的调试实例时不该要求开发者去改源码。 */
@@ -90,7 +97,7 @@ console.log("  · 浏览器 " + browser);
 
 /* 取自 index.html 的 VERSION，用来断言"页面里显示的版本号与代码一致"（真实 DOM 里的读法，
    比在桩里断言 textContent 更接近用户看到的东西） */
-const VERSION = (/const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")) || [])[1] || "";
+const VERSION = (/const\s+VERSION\s*=\s*"([^"]+)"/.exec(fs.readFileSync(HTML_PATH, "utf8")) || [])[1] || "";
 
 /* ---------------------------------------------------------------------------
    性能预算（v2.8.7，审计 §F11）：把"能跑"升级为"跑得好"。
@@ -163,12 +170,14 @@ function startServer(){
     ".webmanifest":"application/manifest+json", ".svg":"image/svg+xml", ".md":"text/plain; charset=utf-8" };
   const srv = http.createServer((req, res) => {
     const rel = decodeURIComponent(String(req.url || "/").split("?")[0]).replace(/^\/+/, "") || "index.html";
-    const file = path.join(ROOT, rel);
+    /* BEATSIGHT_HTML 注入：/index.html 服务那份 /tmp 副本（其余文件照旧走 ROOT） */
+    const injected = HTML_PATH !== path.join(ROOT, "index.html");
+    const file = (injected && rel === "index.html") ? HTML_PATH : path.join(ROOT, rel);
     /* ★ 目录边界必须按「路径分隔符」判，不能裸 startsWith(ROOT)：
        裸判会把同前缀的**兄弟目录**放进来——ROOT=/a/beatsight 时，/a/beatsight2/x 也以
        "/a/beatsight" 开头，于是仓库外的文件被当仓库内文件服务出去（本地工具，风险低，
        但语义是错的）。补上分隔符即 `file === ROOT || file.startsWith(ROOT + sep)`。 */
-    const inRoot = file === ROOT || file.startsWith(ROOT + path.sep);
+    const inRoot = file === ROOT || file.startsWith(ROOT + path.sep) || file === HTML_PATH;
     if (!inRoot || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
       res.writeHead(404); res.end("not found"); return;
     }
@@ -959,11 +968,21 @@ function layoutProbe(){
   out.vizRight = (() => { const v = q("#viz"); const r = v && v.getBoundingClientRect(); return r ? round(r.right) : null; })();
   /* v2.39.0：组容器底上线——控制列有了 16px 内边距，左缘基准改为「组容器内容边缘」
      （卡片内容边缘 + padding）。旧口径 cardTextLeft 保留，容器缺失时回退 */
-  const headLeft = q(".card-head-left");
+  /* ★ v3.38.1 补7：音量组**收起时整块 display:none**（不再占列）⇒ 原来只取 .card-head-left
+     会读到 0 盒（left=0 + padding=16），基准失真、窄屏 390 当场判红（实测 16 vs 48）。
+     改成"取第一个**可见**的控制列块"——三者 padding-left 同源（都是 12px 16px），
+     谁是第一个可见的都能当基准。 */
   out.headContentLeft = (() => {
-    if (!headLeft) return null;
-    const hr = headLeft.getBoundingClientRect();
-    return hr ? round(hr.left + parseFloat(getComputedStyle(headLeft).paddingLeft)) : null;
+    const cands = [q(".card-head-left"), q(".viz-head > .group"), q(".viz-toggles")];
+    for (const el of cands){
+      if (!el) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === "none") continue;
+      const hr = el.getBoundingClientRect();
+      if (hr.width <= 0) continue;
+      return round(hr.left + parseFloat(cs.paddingLeft));
+    }
+    return null;
   })();
   /* v2.10.16：标题 #vizTitle 已删，左边缘基准改用左列「音量」组标签
      （角标在经典主题是 display:none，不能当基准；音量标签同在卡片内容边缘上） */
@@ -1324,6 +1343,366 @@ function lyricScrollProbe(){
     res.keptScale = res.narrowBarrowW > res.cardPaintedW;
     try{ B.Arrange.close(); }catch(e){ }
     return JSON.stringify(res);
+  })()`;
+}
+/* ★★★ v3.38.1：音高标注的真机几何闸——三档槽位（高贴顶 / 中居中 / 低贴底）、点挂数码**右侧**、
+   以及窄格三级降级的真机形态（把歌词轨压到 200px 强制走窄格 ⇒ 点必须被隐藏）。
+   为什么必须真机：槽位是 :has() + 绝对定位、点在右侧是 flex 行 + align-self、降级靠 CSS 显隐——
+   桩里没有布局，这三条在桩里一条都测不到（t227 只能钉类名与源码）。
+   探针自带还原：量完把原歌词行写回并重建，不给后续断言留副作用。 */
+/* ★★★ v3.38.1 补6（用户拍板）：**顶部三块的 12 档真机闸**。
+   判据（用户给的五条，逐条对应下面断言块里的一条）：
+     ① 列数 = floor((可用宽 + 列距) / (min_w + 列距)) —— 列数由 min-content 与列距**算出来**，不硬编；
+     ② 行内空白率 ≤ 15%（块撑不满那一行就等于白留一条）；
+     ③ 相邻块间距 ≤ 24px（目标 12–16px）；
+     ④ 无横向溢出（容器与文档都不许出现滚动）；
+     ⑤ 展开任一参数槽后**列数不变**（音量 / BPM / 变速训练三处，展开即重排是最刺眼的抖动）。
+   为什么先建闸再改代码：auto-fit 网格与 flex-wrap 直改两条老路都是"改完才发现既有几何冒烟红"，
+   来回两轮。这次把判据先落成会红的闸。
+   ★ 探针只量**一个视口**（驱动侧按 12 档循环改 deviceMetrics）——重排必须在真实视口变化之后发生。 */
+function topBlocksProbe(){
+  return `(function(){
+    var g = document.querySelector(".viz-head-grid");
+    if (!g) return JSON.stringify({ err: "无 .viz-head-grid" });
+    var cs = getComputedStyle(g);
+    var gr = g.getBoundingClientRect();
+    var avail = Math.round((gr.width - (parseFloat(cs.paddingLeft) || 0)
+      - (parseFloat(cs.paddingRight) || 0)) * 10) / 10;
+    var collect = function(){
+      var items = [];
+      var push = function(el){
+        var pos = getComputedStyle(el).position;
+        if (pos === "absolute" || pos === "fixed") return;   /* 脱离文档流 ⇒ 不占轨道 */
+        var r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) return;
+        var cls = String(el.className || el.id || "?").split(" ").filter(function(x){
+          return x && x !== "card-head" && x !== "viz-head"; }).slice(0, 2).join(".");
+        /* min-content：定 --min-w 的**唯一依据**（用户口径：先量三块再定数）。
+           量法：临时 width:min-content + flex:none，读完立刻还原（不留副作用）。 */
+        var ow = el.style.width, of = el.style.flex, omin = el.style.minWidth;
+        el.style.width = "min-content"; el.style.flex = "none"; el.style.minWidth = "0";
+        var minC = el.offsetWidth;
+        el.style.width = ow; el.style.flex = of; el.style.minWidth = omin;
+        items.push({ cls: cls, left: Math.round(r.left - gr.left), right: Math.round(r.right - gr.left),
+          top: Math.round(r.top), bottom: Math.round(r.bottom),
+          w: Math.round(r.width * 10) / 10, minC: minC });
+      };
+      [].slice.call(g.children).forEach(function(c){
+        var d = getComputedStyle(c).display;
+        if (d === "contents" || d === "none"){ if (d === "contents") [].slice.call(c.children).forEach(push); }
+        else push(c);
+      });
+      items.sort(function(a, b){ return a.top - b.top || a.left - b.left; });
+      /* 行 = **纵向有重叠**的一组，不是"top 相等"的一组：
+         align-self:end / stretch 都会让同一行的块 top 不同（开关列贴底对齐时差几十像素），
+         按 top 相等分行会把它算成"两个单块行"——列数直接判成 1、空白率 51%（本闸第一版就这么误报过）。
+         行内空白率 = 1 − (块宽和 + 列距×(n−1)) / 可用宽。 */
+      var rows = [];
+      items.forEach(function(it){
+        var row = rows[rows.length - 1];
+        if (row && it.top < row.bottom - 1){
+          row.items.push(it);
+          if (it.bottom > row.bottom) row.bottom = it.bottom;
+        } else rows.push({ top: it.top, bottom: it.bottom, items: [it] });
+      });
+      var gap = parseFloat(cs.columnGap);
+      if (!(gap >= 0)) gap = parseFloat(cs.gap) || 0;
+      var content = rows.filter(function(r){
+        return !(r.items.length === 1 && /ctl-pills/.test(r.items[0].cls)); });
+      content.forEach(function(r){
+        var used = r.items.reduce(function(a, x){ return a + x.w; }, 0) + gap * (r.items.length - 1);
+        r.n = r.items.length;
+        r.blankPct = avail > 0 ? Math.round((1 - used / avail) * 1000) / 10 : null;
+        r.gapPx = [];
+        for (var i = 1; i < r.items.length; i++) r.gapPx.push(Math.round((r.items[i].left - r.items[i - 1].right) * 10) / 10);
+      });
+      return { items: items, rows: content, cols: content.length ? Math.max.apply(null, content.map(function(r){ return r.n; })) : 0 };
+    };
+    var base = collect();
+    /* 溢出读数在**基准态**取（展开动作可能有残留面板，别拿它当"正常态无溢出"） */
+    var ovf0 = { x: Math.round((g.scrollWidth - g.clientWidth) * 10) / 10,
+      doc: document.documentElement.scrollWidth - innerWidth };
+    /* ⑤ 展开任一参数槽后列数不变：把三个槽**都切到展开态**，各量一次列数，最后还原。
+       ★ 不能沿用 click 的"翻转"语义：volOpen / bpmOpen 是**收起**开关（bpmOpen 出厂就是展开），
+         翻转等于去收起 —— 那量到的是"收起会改列数"（当然会），不是本判据要问的事。
+       ★ trainerToggle 走的是 openParamSlot("trainer")（就地开参数槽，不弹窗），正是"展开参数槽"。 */
+    /* ★ 样本选**静音拍参数槽**（#muteToggle → #muteCfgPanel）：它是真正的"面板展开"，
+       而且能干净地开→关（开关再点一次即收回）。不能用 volOpen/bpmOpen —— 那是**收起开关**，
+       音量整块现在会随它 display:none（补7），可见块数一变列数当然变，那是设计不是回归。 */
+    var flipped = {};
+    var mt = document.getElementById("muteToggle");
+    var mtWas = mt ? mt.getAttribute("aria-checked") === "true" : null;
+    var setMute = function(want){
+      var el = document.getElementById("muteToggle");
+      if (!el || (el.getAttribute("aria-checked") === "true") === want) return collect().cols;
+      try{ el.click(); }catch(e){ return -1; }
+      void g.offsetWidth;
+      return collect().cols;
+    };
+    flipped.mute = setMute(true);
+    flipped.muteBack = setMute(mtWas === true);
+    void g.offsetWidth;
+    var cols2 = collect().cols;
+    return JSON.stringify({
+      vw: innerWidth, vh: innerHeight, display: cs.display, wrap: cs.flexWrap,
+      gridW: Math.round(gr.width * 10) / 10, avail: avail,
+      gap: (function(){ var v = parseFloat(cs.columnGap); return v >= 0 ? v : (parseFloat(cs.gap) || 0); })(),
+      minW: (cs.getPropertyValue("--min-w") || "").trim(),
+      maxW: (cs.getPropertyValue("--max-w") || "").trim(),
+      colGapVar: (cs.getPropertyValue("--col-gap") || "").trim(),
+      /* v3.38.1 补7：三块**各自**的下限（补6 是一个 --min-w=280 通吃，那会把三列门槛
+         从 776 抬到 864 ⇒ 明明挤得下却换行）。判据要用它们做装箱模拟。 */
+      bases: ["--min-w-vol", "--min-w-bpm", "--min-w-sw"].map(function(k){
+        return parseFloat(cs.getPropertyValue(k)); }),
+      /* 三块**当前是否参与排布**：收起方案（≤640/竖屏/矮屏）里音量默认整块 display:none，
+         离开可见性子集去做装箱模拟会得出"应该三列"的错误期望（真机 899 档实测过）。 */
+      vis: (function(){
+        var see = function(sel){ var e = g.querySelector(sel); if (!e) return false;
+          if (getComputedStyle(e).display === "none") return false;
+          var r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+        return { vol: see(".card-head-left"), bpm: see(".viz-head > .group"),
+          sw: see(".viz-toggles") };
+      })(),
+      /* "预备拍行心 = BPM 步进行行心"（PC 档一直是 padding 硬补偿）：两处中心 y 都取绝对值，
+         在同一页里可直接比。只在两列同行时有意义（列数由断言侧判）。 */
+      align: (function(){
+        var num = document.getElementById("bpmNum");
+        var bpmRow = num ? num.parentElement : null;
+        var swRow = document.querySelector(".viz-toggles .countin-line")
+          || document.getElementById("countInToggle");
+        var c = function(e){ if (!e) return null; var r = e.getBoundingClientRect();
+          return Math.round((r.top + r.height / 2) * 10) / 10; };
+        var a = c(bpmRow), b = c(swRow);
+        return { bpmC: a, swC: b, delta: (a === null || b === null) ? null : Math.round((b - a) * 10) / 10 };
+      })(),
+      cols: base.cols, rows: base.rows, items: base.items,
+      colsAfter: cols2, colsExpanded: flipped,
+      overflowX: ovf0.x,
+      docOverflow: ovf0.doc
+    });
+  })()`;
+}
+/* ★★★ v3.38.1 补10：**格子带底板闸**——"贴格子带的层"必须与格子同高、且不越出格子下缘。
+   为什么值得单独一条真机闸：这一族漏过三次（v2.79.0 的 .seams/.beat-zone、v3.33.8 新增的
+   .bar-row.current::before 又写死 44px）——每次都是"窄屏格子 34px、某层仍 44px ⇒ 多 10px
+   落进歌词/标注带"（用户实拍："绿色遮罩主要盖扫弦区，但有一部分进了歌词行"）。
+   量法：给首行临时挂 .current（那条底纹只在当前行存在），读 ::before 的计算高度与 .cell 的
+   盒高/下缘，再还原 class（不污染播放中的 .current）。
+   ★ 两档必须都量：桌面 44px / 窄屏(≤960) 34px —— 只量一档测不出"层没跟着缩"。 */
+function bandProbe(){
+  return `(function(){
+    var row = document.querySelector("#viz .bar-row");
+    if (!row) return JSON.stringify({ err: "无 .bar-row" });
+    var cell = row.querySelector(".cell");
+    if (!cell) return JSON.stringify({ err: "无 .cell" });
+    var had = row.classList.contains("current");
+    row.classList.add("current");
+    void row.offsetWidth;                         /* 强制重排后再读计算样式 */
+    var cs = getComputedStyle(row, "::before");
+    var beforeH = parseFloat(cs.height);
+    var beforeTop = parseFloat(cs.top);
+    var out = {
+      vw: innerWidth,
+      cellH: Math.round(cell.offsetHeight * 10) / 10,
+      cellBottom: Math.round((cell.offsetTop + cell.offsetHeight) * 10) / 10,
+      beforeH: beforeH,
+      beforeTop: beforeTop,
+      beforeBottom: Math.round((beforeTop + beforeH) * 10) / 10,
+      cellHVar: getComputedStyle(document.documentElement).getPropertyValue("--cell-h").trim(),
+      yB2: getComputedStyle(document.documentElement).getPropertyValue("--yB2").trim()
+    };
+    var lr = document.querySelector("#lyricLane .lyric-row");
+    out.lyricTop = lr ? Math.round(lr.getBoundingClientRect().top - row.getBoundingClientRect().top) : null;
+    if (!had) row.classList.remove("current");
+    void row.offsetWidth;
+    return JSON.stringify(out);
+  })()`;
+}
+function pitchMarkProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat;
+    if (!B || !B.Viz || !B.Store) return JSON.stringify({ err: "无 __beat.Viz/Store" });
+    try{
+      var arrs = B.Store.arranges;   /* Store.arranges 是**数组**（不是取值函数） */
+      var a = arrs && arrs[0];
+      if (!a || !a.sections || !a.sections.length) return JSON.stringify({ err: "无曲式（示例曲未带出）" });
+      var sec = a.sections[0];
+      var before = null;
+      try{ before = B.Store.findLyric(a.id, sec.uid); }catch(e){ before = null; }
+      /* 三颗三十二分音符：高八度 / 本位 / 低两个八度（2 颗点 = 最宽的标记） */
+      B.Store.upsertLyric(a.id, sec.uid,
+        [{ t: 0, dur: 24, ch: "高" }, { t: 24, dur: 24, ch: "中" }, { t: 48, dur: 24, ch: "低" }, { t: 72, dur: 24, ch: "记" }],
+        { notes: [{ t: 0, dur: 24, p: 72 }, { t: 24, dur: 24, p: 60 }, { t: 48, dur: 24, p: 36 }, { t: 72, dur: 24, p: 66 }] });
+      (function(){var g=document.getElementById("pitchNotationGroup");if(g)g.querySelectorAll(".pill")[1].click();})();
+      B.Store.S.playMode = "arrange";
+      B.Store.S.arrangeSel = { id: a.id, from: 0, to: 0, loop: true };
+      var lane = document.getElementById("lyricLane");
+      if (!lane) return JSON.stringify({ err: "无 #lyricLane" });
+      var measure = function(){
+        var out = [];
+        var chips = [].slice.call(lane.querySelectorAll(".lyric-chip"));
+        chips.forEach(function(ch){
+          if (/notechip/.test(ch.className)) return;
+          var g = ch.querySelector(".lyric-pit .jp-g");
+          if (!g) return;
+          var body = g.querySelector(".jp-body");
+          var dots = g.querySelector(".jp-dots");
+          var cr = ch.getBoundingClientRect();
+          var br = body ? body.getBoundingClientRect() : g.getBoundingClientRect();
+          var shown = dots ? (getComputedStyle(dots).display !== "none") : false;
+          var gr = g.getBoundingClientRect();
+          var ccEl = ch.querySelector(".lyric-char");
+          var ccr = ccEl ? ccEl.getBoundingClientRect() : null;
+          var dr = (dots && shown) ? dots.getBoundingClientRect() : null;
+          var accEl = g.querySelector(".jp-acc");
+          var ar = accEl ? accEl.getBoundingClientRect() : null;
+          out.push({
+            oct: /oct-hi/.test(g.className) ? "hi" : (/oct-lo/.test(g.className) ? "lo" : "mid"),
+            txt: g.textContent,
+            accTxt: accEl ? accEl.textContent : null,
+            accX: ar ? Math.round((ar.left - cr.left) * 10) / 10 : null,
+            w: Math.round(cr.width * 10) / 10,
+            numTop: Math.round((br.top - cr.top) * 10) / 10,
+            dotGap: dr ? Math.round((dr.left - br.right) * 10) / 10 : null,
+            clipRight: dr ? Math.round((cr.right - dr.right) * 10) / 10 : null,
+            hasDots: !!dots,
+            dotsShown: shown,
+            fit: /pitch-num-only/.test(g.className) ? "num" : (/pitch-col/.test(g.className) ? "col" : "row"),
+            chipH: Math.round(cr.height * 10) / 10,
+            dotTop: dr ? Math.round((dr.top - br.top) * 10) / 10 : null,
+            dotTop2: dr ? Math.round((dr.top - br.bottom) * 10) / 10 : null,
+            dotBottom: dr ? Math.round((dr.bottom - br.top) * 10) / 10 : null,
+            dotTopC: dr ? Math.round((dr.top - cr.top) * 10) / 10 : null,
+            dotBottomC: dr ? Math.round((dr.bottom - cr.top) * 10) / 10 : null,
+            bodyTop: Math.round(br.top - cr.top) * 10 / 10,
+            bodyBottom: Math.round(br.bottom - cr.top) * 10 / 10,
+            dx: dr ? Math.round((dr.left + dr.width / 2 - (br.left + br.width / 2)) * 10) / 10 : null,
+            centered: Math.round((br.top + br.height / 2 - (cr.top + cr.height / 2)) * 10) / 10,
+            gTop: Math.round((gr.top - cr.top) * 10) / 10,
+            gBot: Math.round((gr.bottom - cr.top) * 10) / 10,
+            bodyL: Math.round((br.left - cr.left) * 10) / 10,
+            bodyR: Math.round((br.right - cr.left) * 10) / 10,
+            bodyB: Math.round((br.bottom - cr.top) * 10) / 10,
+            dotL: dr ? Math.round((dr.left - cr.left) * 10) / 10 : null,
+            dotR: dr ? Math.round((dr.right - cr.left) * 10) / 10 : null,
+            dotB: dr ? Math.round((dr.bottom - cr.top) * 10) / 10 : null,
+            charL: ccr ? Math.round((ccr.left - cr.left) * 10) / 10 : null,
+            charR: ccr ? Math.round((ccr.right - cr.left) * 10) / 10 : null,
+            /* ★ 补9：字形（Range）左右缘——元素盒横跨整格时恒等于左内缩，"靠左还是靠右"量不出来 */
+            charGlyphL: (function(){ try{ if (!ccEl) return null; var rg = document.createRange();
+              rg.selectNodeContents(ccEl); var gb = rg.getBoundingClientRect();
+              return Math.round((gb.left - cr.left) * 10) / 10; }catch(e){ return null; } })(),
+            charGlyphR: (function(){ try{ if (!ccEl) return null; var rg2 = document.createRange();
+              rg2.selectNodeContents(ccEl); var gb2 = rg2.getBoundingClientRect();
+              return Math.round((gb2.right - cr.left) * 10) / 10; }catch(e){ return null; } })(),
+            charB: ccr ? Math.round((ccr.bottom - cr.top) * 10) / 10 : null
+          });
+        });
+        return out;
+      };
+      /* ★ v3.38.1：**nm 档的宽格几何**——「音名 vs 歌词字」不相交判据在这里量。
+         为什么单独量一遍：measure() 只认 .jp-g（简谱 glyph），nm 档里根本没有它；
+         而 nm 档的「字」与「名」是**两条绝对定位**（一个靠左、一个靠右），是否相交
+         只有真机 rect 说得清（桩里没有布局）。 */
+      var measureNm = function(){
+        var out = [];
+        var chips = [].slice.call(lane.querySelectorAll(".lyric-chip"));
+        chips.forEach(function(ch){
+          var nmEl = ch.querySelector(".lyric-pit .pit-nm");
+          if (!nmEl) return;
+          var cr = ch.getBoundingClientRect();
+          var cc = ch.querySelector(".lyric-char");
+          var ccr = cc ? cc.getBoundingClientRect() : null;
+          var nr = nmEl.getBoundingClientRect();
+          out.push({
+            txt: nmEl.textContent,
+            chipW: Math.round(cr.width * 10) / 10,
+            chipH: Math.round(cr.height * 10) / 10,
+            nameL: Math.round((nr.left - cr.left) * 10) / 10,
+            nameR: Math.round((nr.right - cr.left) * 10) / 10,
+            charL: ccr ? Math.round((ccr.left - cr.left) * 10) / 10 : null,
+            charR: ccr ? Math.round((ccr.right - cr.left) * 10) / 10 : null,
+            /* ★ 补9：字形（Range）左右缘——元素盒横跨整格时恒等于左内缩，"靠左还是靠右"量不出来 */
+            charGlyphL: (function(){ try{ if (!ccEl) return null; var rg = document.createRange();
+              rg.selectNodeContents(ccEl); var gb = rg.getBoundingClientRect();
+              return Math.round((gb.left - cr.left) * 10) / 10; }catch(e){ return null; } })(),
+            charGlyphR: (function(){ try{ if (!ccEl) return null; var rg2 = document.createRange();
+              rg2.selectNodeContents(ccEl); var gb2 = rg2.getBoundingClientRect();
+              return Math.round((gb2.right - cr.left) * 10) / 10; }catch(e){ return null; } })(),
+            charTxt: cc ? cc.textContent : null
+          });
+        });
+        return out;
+      };
+      B.Viz.buildViz();
+      await frame(); await frame();
+      var res = { wide: measure(), wideLaneW: Math.round(lane.getBoundingClientRect().width) };
+      /* ★ v3.38.1：切到 nm 档量一遍**宽格**几何，再切回简谱。
+         为什么要单独这一趟：本探针的四颗种子是 24t（格约 172px），nm 档才有位置同时放下
+         「字（靠左）+ 名（靠右）」；窄格里音名会被 nmMarkHidden 整枚隐掉 ⇒ 量不到不可相交这件事。 */
+      (function(){var g=document.getElementById("pitchNotationGroup");if(g)g.querySelectorAll(".pill")[2].click();})();
+      B.Viz.buildViz();
+      await frame(); await frame();
+      res.wideNm = measureNm();
+      (function(){var g=document.getElementById("pitchNotationGroup");if(g)g.querySelectorAll(".pill")[1].click();})();
+      B.Viz.buildViz();
+      await frame(); await frame();
+      /* 强制窄格：压到 200px 再重建——降级档在**构建时**算，故必须重建才生效 */
+      /* ★ 压窄的必须是**主列**（#viz 与 lane 一起变窄）——v3.38.1 的实现按 #viz 宽判档，
+         而 overlay 模式下 lane 自己的 width 是之后被 placeLaneOverlay 写上的：
+         只改 lane.style.width 会被覆写回全宽（实测 1392px），那不构成"真窄格"。 */
+      var col = document.querySelector(".col");
+      var oldColW = col ? col.style.width : "";
+      if (col) col.style.width = "260px";
+      B.Viz.buildViz();
+      await frame(); await frame();
+      res.narrow = measure();
+      res.narrowLaneW = Math.round(lane.getBoundingClientRect().width);
+      /* ★ nm 档在同样窄的格里：**整枚不画**（v3.38.1 用户拍板）——有 chip、但无 .pit-nm 标记 */
+      (function(){var g=document.getElementById("pitchNotationGroup");if(g)g.querySelectorAll(".pill")[2].click();})();
+      /* ★ 注意：主列 260px 时实测最窄格是 16.3px（lane 有最小宽，不是线性的 260/32），
+         刚好在 nm 两字符需求 15.8px **之上** ⇒ 必须再压一档才构成真窄格。 */
+      if (col) col.style.width = "80px";
+      B.Viz.buildViz();
+      await frame(); await frame();
+      /* ★ 只认**本探针自己种的那四颗**（按字认，不按宽度猜）：它们都是 6t 的格子，
+         而曲式的拆行下限护的是"型内最短时值"，6t 只有它的一半 ⇒ 这几格才可能真窄。 */
+      var nmChips = lane.querySelectorAll(".lyric-chip");
+      var nmSeed = 0, nmSeedMarked = 0, nmSeedW = 999;
+      for (var ci = 0; ci < nmChips.length; ci++){
+        var chTxt = nmChips[ci].querySelector(".lyric-char");
+        var t2 = chTxt ? (chTxt.textContent || "") : "";
+        if (["高", "中", "低", "记"].indexOf(t2) < 0) continue;
+        nmSeed++;
+        nmSeedW = Math.min(nmSeedW, Math.round(nmChips[ci].getBoundingClientRect().width * 10) / 10);
+        var pmk = nmChips[ci].querySelector(".lyric-pit .pit-nm");
+        if (pmk && pmk.textContent) nmSeedMarked++;
+      }
+      res.nmNarrow = { chips: nmChips.length, narrowN: nmSeed, narrowMarked: nmSeedMarked, seedW: nmSeedW };
+      B.Store.S.pitchNotation = "jp";
+      if (col) col.style.width = oldColW;
+      B.Viz.buildViz();
+      await frame(); await frame();
+      /* ★ 降号体系：同一个半音换写法（#4 → b5）；量完还原（不写 accSys ⇒ 回到按调名推导） */
+      var saveA = { id: a.id, name: a.name, sections: a.sections };
+      if (typeof a.key === "string") saveA.key = a.key;
+      try{
+        B.Store.upsertArrange(Object.assign({}, saveA, { accSys: "flat" }));
+        B.Viz.buildViz();
+        await frame(); await frame();
+        res.flat = measure();
+      }catch(e){ res.flatErr = String((e && e.message) || e); }
+      try{ B.Store.upsertArrange(saveA); }catch(e){ }
+      /* 还原原歌词行 + 重建：不留副作用 */
+      try{
+        if (before && before.chars && before.chars.length) B.Store.upsertLyric(a.id, sec.uid, before.chars, { notes: before.notes || [] });
+        else B.Store.deleteLyric(a.id, sec.uid);
+      }catch(e){ }
+      B.Viz.buildViz();
+      await frame();
+      return JSON.stringify(res);
+    }catch(e){ return JSON.stringify({ err: String((e && e.message) || e) }); }
   })()`;
 }
 function blockRowProbe(){
@@ -1926,56 +2305,72 @@ function portraitFixProbe(){
     return JSON.stringify(res);
   })()`;
 }
+  /* ★★★ v3.38.1：**每个探针都要报出自己的名字**。
+     本轮踩过的坑（诊断实录）：pitchMarkProbe 的对象字面量少了一个逗号 ⇒ 注入页面的那段是
+     SyntaxError ⇒ Runtime.evaluate 回 undefined ⇒ JSON.parse(undefined) 抛「"undefined" is not valid JSON」。
+     而 catch 只把这句原样转达：12 条断言一起变红，看的人把它误判成「http 那一遍没跑起来」——
+     实际两条通道逐条相同，根因就在本文件里。故：探针名 + 页面原话一并抛出，且 undefined 单独报。
+     @param {string} name @param {string} expression @param {boolean} [awaitPromise] */
+  const probeJson = async (name, expression, awaitPromise) => {
+    const r = await cdp.send("Runtime.evaluate",
+      { expression: expression, awaitPromise: !!awaitPromise, returnByValue: true });
+    if (r.exceptionDetails){
+      const d = r.exceptionDetails;
+      throw new Error("探针 " + name + " 在页面里抛错：" + ((d.exception && d.exception.description) || d.text));
+    }
+    if (!r.result || r.result.value === undefined){
+      throw new Error("探针 " + name + " 没有返回值（求值结果 undefined——先查该探针表达式有没有语法错）");
+    }
+    /* 探针约定：表达式**必须**是 JSON.stringify(...) 的字符串。返回到这里的是别的类型
+       （对象 / 数字 / 布尔）时 JSON.parse 会先把它转成 "[object Object]" 再报一句看不懂的
+       「"[object Object]" is not valid JSON」——所以这里把**探针名与真实类型**一并带上。 */
+    try{
+      return JSON.parse(r.result.value);
+    }catch(e){
+      throw new Error("探针 " + name + " 的返回值不是 JSON 字符串（实际是 " + (typeof r.result.value)
+        + "：" + String(r.result.value).slice(0, 60) + "）");
+    }
+  };
     try{
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
-      const wide = JSON.parse(await evaluate(cdp, layoutProbe()));
+      const wide = await probeJson("layoutProbe", layoutProbe(), true);
       /* ★★★ v3.36.20 补4：**宽屏**下也要量一次歌曲地图的"每段最小宽度"——
          原来那条 min-width 只在 ≤640 生效，结果宽屏下短段一样很窄（1440 实测首段 13px）。 */
-      const mwRaw = await cdp.send("Runtime.evaluate",
-        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-      result.mapWide = JSON.parse(mwRaw.result.value);
+      result.mapWide = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* v3.0.0：抽屉探针在桌面宽度（≥1280 栅格生效）跑一遍，量收起/展开两态的真几何 */
-      const drawer = JSON.parse(await evaluate(cdp, drawerProbe()));
+      const drawer = await probeJson("drawerProbe", drawerProbe(), true);
       /* v3.1.0：drawerProbe 末尾 location.reload()——等页面重新起完再跑滚动探针
          （playMode 已被本探针复原为曲式；重载顺带把"就地接续"的播放位置归零） */
       await sleep(1500);
       /* v3.0.0：连续滚动探针（同上，桌面宽度、真实 UI 路径、约 3.3s 采样） */
-      const scroll = JSON.parse(await evaluate(cdp, scrollProbe()));
+      const scroll = await probeJson("scrollProbe", scrollProbe(), true);
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
-      const narrow = JSON.parse(await evaluate(cdp, layoutProbe()));
+      const narrow = await probeJson("layoutProbe", layoutProbe(), true);
       /* ★★★ v3.36.21：竖屏四修（地图/滑条/播放键间距/状态灯对齐）——就在这档 390 量 */
-      const pfixRaw = await cdp.send("Runtime.evaluate",
-        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-      result.portraitFix = JSON.parse(pfixRaw.result.value);
+      result.portraitFix = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* ★★★ v3.36.20 补5：**横屏**（640×360）单独量一次底栏 —— 那条改动只在
          `@media (max-width:640px) and (orientation:landscape)` 内，竖屏 390 量不到。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 640, height: 360, deviceScaleFactor: 2, mobile: true });
       await sleep(400);
-      const landRaw = await cdp.send("Runtime.evaluate",
-        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-      result.playBarLandscape = JSON.parse(landRaw.result.value);
+      result.playBarLandscape = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* ★★★ v3.36.20 补6：**641–960 中间档**（大屏手机竖屏/手机横屏）——这一档此前没有任何断言，
          正是"胶囊压到键组上"能长期存在的原因。取用户实报的 740×1804。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 740, height: 1804, deviceScaleFactor: 2, mobile: true });
       await sleep(400);
-      const midRaw = await cdp.send("Runtime.evaluate",
-        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-      result.barMid = JSON.parse(midRaw.result.value);
+      result.barMid = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* ★★★ v3.36.20 补6：**961–1000 桌面档**也要罩住——那一档左右各 1fr（970 时约 291px）
          装不下定宽 320px 的胶囊，重叠是被 `.pb-ctx{max-width:100%}` 单独特修掉的，
          而 1440/1920 两档量不出来（那里 1fr 足够宽）。取 970×600。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 970, height: 600, deviceScaleFactor: 1, mobile: false });
       await sleep(400);
-      const edgeRaw = await cdp.send("Runtime.evaluate",
-        { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-      result.barEdge = JSON.parse(edgeRaw.result.value);
+      result.barEdge = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* ★★★ v3.36.20 补38：折叠方案的**新作用域**必须有自己的档位 ——
          此前 补35/36/37 三次改动都只有手工实测、没有闸门，用户实拍才发现漏（939 胶囊换行）。
          三档：1000×1400 竖屏（宽 > 640）/ 939×406 矮屏（横屏但矮）/ 1440×900 宽裕横屏（= 典型 PC，应不折叠）。 */
@@ -1995,9 +2390,7 @@ function portraitFixProbe(){
         await cdp.send("Emulation.setDeviceMetricsOverride",
           { width: w, height: 420, deviceScaleFactor: 1, mobile: false });
         await sleep(320);
-        const swRaw = await cdp.send("Runtime.evaluate",
-          { expression: portraitFixProbe(), awaitPromise: true, returnByValue: true });
-        const s = JSON.parse(swRaw.result.value);
+        const s = await probeJson("portraitFixProbe", portraitFixProbe(), true);
         result.pillSweep.push({ w: w, vis: s.pillsVisible, row: s.pillsSameRow, gap: s.pillGap });
       }
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
@@ -2005,69 +2398,63 @@ function portraitFixProbe(){
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
       await sleep(400);
       /* 探针是 async（要等 ResizeObserver 写 --cs），故用 awaitPromise */
-      const wfRaw = await cdp.send("Runtime.evaluate",
-        { expression: wideFullProbe(), awaitPromise: true, returnByValue: true });
-      const wideFull = JSON.parse(wfRaw.result.value);
+      const wideFull = await probeJson("wideFullProbe", wideFullProbe(), true);
       /* ★★★ v3.31.3：格子四档亮度分离度（与视口无关，在 1920 顺带量） */
-      const lvRaw = await cdp.send("Runtime.evaluate",
-        { expression: cellLevelsProbe(), returnByValue: true });
-      result.cellLevels = JSON.parse(lvRaw.result.value);
+      result.cellLevels = await probeJson("cellLevelsProbe", cellLevelsProbe(), false);
       /* v3.31.x（落地审计 P0-1）：children 形状哨兵——真机 children 是 HTMLCollection、
          没有数组方法，而测试桩把它实现成数组；产品代码一旦直接调 .find/.map 之类，
          桩里恒绿、真机必抛。这条把「桩与真机的分叉」钉成一条会红的断言。 */
-      const csRaw = await cdp.send("Runtime.evaluate",
-        { expression: childrenShapeProbe(), returnByValue: true });
-      result.childrenShape = JSON.parse(csRaw.result.value);
+      result.childrenShape = await probeJson("childrenShapeProbe", childrenShapeProbe(), false);
       /* ★★★ v3.31.1：连续滚动的静止态落位（与视口无关，在 1920 顺带量） */
-      const srRaw = await cdp.send("Runtime.evaluate",
-        { expression: scrollRestProbe(), awaitPromise: true, returnByValue: true });
-      const scrollRest = JSON.parse(srRaw.result.value);
+      const scrollRest = await probeJson("scrollRestProbe", scrollRestProbe(), true);
       /* ★★★ v3.33.8：文字对比度审计（两主题各一遍）。放在最后——它会把所有 [hidden] 面板
          展开再收起，属于"改页面状态"的重探针，跑在布局/滚动/铺满等几何探针之后才不会互相污染。 */
-      const ctRaw = await cdp.send("Runtime.evaluate",
-        { expression: contrastProbe(), awaitPromise: true, returnByValue: true });
-      result.contrast = JSON.parse(ctRaw.result.value);
+      result.contrast = await probeJson("contrastProbe", contrastProbe(), true);
       /* ★★★ v3.33.8：版面审计（折行/挤压/两走道对齐）——同样放在最后（会开关浮层） */
-      const laRaw = await cdp.send("Runtime.evaluate",
-        { expression: layoutAuditProbe(), awaitPromise: true, returnByValue: true });
-      result.layoutAudit = JSON.parse(laRaw.result.value);
+      result.layoutAudit = await probeJson("layoutAuditProbe", layoutAuditProbe(), true);
       /* ★★★ v3.33.15：编辑器头部布局哨兵——同样放最后（它会把 #editor 浮层打开量几何） */
-      const ehRaw = await cdp.send("Runtime.evaluate",
-        { expression: editorHeaderProbe(), awaitPromise: true, returnByValue: true });
-      result.editorHeader = JSON.parse(ehRaw.result.value);
+      result.editorHeader = await probeJson("editorHeaderProbe", editorHeaderProbe(), true);
       /* ★★★ v3.33.21：精修分组折叠的真机哨兵 */
-      const rgRaw = await cdp.send("Runtime.evaluate",
-        { expression: refineGroupProbe(), awaitPromise: true, returnByValue: true });
-      result.refineGroups = JSON.parse(rgRaw.result.value);
+      result.refineGroups = await probeJson("refineGroupProbe", refineGroupProbe(), true);
       /* ★★★ v3.33.32：预设库两级折叠（区收起 ⇒ 区内组头/组行也必须收） */
-      const pfRaw = await cdp.send("Runtime.evaluate",
-        { expression: presetFoldProbe(), awaitPromise: true, returnByValue: true });
-      result.presetFold = JSON.parse(pfRaw.result.value);
+      result.presetFold = await probeJson("presetFoldProbe", presetFoldProbe(), true);
       /* ★★★ v3.36.19：段行块列表的横向滚动真机闸 */
-      const brRaw = await cdp.send("Runtime.evaluate",
-        { expression: blockRowProbe(), awaitPromise: true, returnByValue: true });
-      result.blockRow = JSON.parse(brRaw.result.value);
+      result.blockRow = await probeJson("blockRowProbe", blockRowProbe(), true);
       /* ★★★ v3.36.20：段卡片"放不下就横滑"的真机闸（精修按钮不换行 + 歌词区横滑） */
-      const lsRaw = await cdp.send("Runtime.evaluate",
-        { expression: lyricScrollProbe(), awaitPromise: true, returnByValue: true });
-      result.lyricScroll = JSON.parse(lsRaw.result.value);
+      result.lyricScroll = await probeJson("lyricScrollProbe", lyricScrollProbe(), true);
       /* ★★★ v3.36.20 补：卡片右缘留白 */
-      const cgRaw = await cdp.send("Runtime.evaluate",
-        { expression: cardGutterProbe(), awaitPromise: true, returnByValue: true });
-      result.cardGutter = JSON.parse(cgRaw.result.value);
+      result.cardGutter = await probeJson("cardGutterProbe", cardGutterProbe(), true);
       /* ★★★ v3.33.28：歌词跨行拖动（同行有后续块时也必须能换行） */
-      const rmRaw = await cdp.send("Runtime.evaluate",
-        { expression: lyricRowMoveGateProbe(), awaitPromise: true, returnByValue: true });
-      result.lyricRowMove = JSON.parse(rmRaw.result.value);
+      result.lyricRowMove = await probeJson("lyricRowMoveGateProbe", lyricRowMoveGateProbe(), true);
       /* ★★★ v3.33.22：歌词拖动行归属的真机闸（自造 3 小节段 ⇒ 多行） */
-      const ldRaw = await cdp.send("Runtime.evaluate",
-        { expression: lyricDragGateProbe(), awaitPromise: true, returnByValue: true });
-      result.lyricDrag = JSON.parse(ldRaw.result.value);
+      result.lyricDrag = await probeJson("lyricDragGateProbe", lyricDragGateProbe(), true);
+      /* ★★★ v3.38.1：音高标注真机几何（三档槽位 / 点在数码右侧 / 窄格降级）——**排在最后**：
+         它会改 S.pitchNotation / playMode 并临时改写一行歌词（量完已还原并重建），
+         放在任何依赖曲式状态的探针之后最稳。 */
+      result.pitchMark = await probeJson("pitchMarkProbe", pitchMarkProbe(), true);
       try{
         const gRaw = await cdp.send("Runtime.evaluate",
           { expression: lyricGhostAlignProbe(), awaitPromise: true, returnByValue: true });
         console.log("  [diag3] ghost=" + (gRaw.result && gRaw.result.value));
       }catch(e){ console.log("  [diag3] failed: " + e.message); }
+      /* ★★★ v3.38.1 补6：顶部三块 12 档真机闸——逐档改视口、等重排、量一次。
+         取 12 档的用意：既覆盖三块各自的「刚好放下 / 刚好放不下」临界，也覆盖既有的
+         560–899 与 ≥900 两个老断点边界（列数必须在**任意**宽度上都等于那个 floor 公式）。 */
+      /* ★ v3.38.1 补10：格子带底板——桌面档(44px) 与窄屏档(34px) 各量一次 */
+      result.band = [];
+      for (const bw of [1440, 900]){
+        await cdp.send("Emulation.setDeviceMetricsOverride",
+          { width: bw, height: 900, deviceScaleFactor: 1, mobile: false });
+        await sleep(360);
+        result.band.push(await probeJson("bandProbe@" + bw, bandProbe(), false));
+      }
+      result.topBlocks = [];
+      for (const w of [390, 480, 560, 640, 700, 760, 824, 846, 899, 960, 1024, 1440]){
+        await cdp.send("Emulation.setDeviceMetricsOverride",
+          { width: w, height: 900, deviceScaleFactor: 1, mobile: false });
+        await sleep(340);
+        result.topBlocks.push(await probeJson("topBlocksProbe@" + w, topBlocksProbe(), false));
+      }
       await cdp.send("Emulation.clearDeviceMetricsOverride");
       await sleep(150);
       result.layout = { wide, narrow };
@@ -2465,7 +2852,7 @@ async function main(){
      ★ 启动探针用的是 window.__beatBoot（无条件挂载），所以"有没有白屏"这条
        仍然是在**与生产完全一致**的条件下验的，没被 debug 开关污染。 */
   const DEBUG_Q = "?debug=1";
-  const passes = [{ label: "file://", url: "file:///" + path.join(ROOT, "index.html").replace(/\\/g, "/") + DEBUG_Q }];
+  const passes = [{ label: "file://", url: "file:///" + HTML_PATH.replace(/\\/g, "/") + DEBUG_Q }];
   if (!FILE_ONLY){
     try{
       server = await startServer();
@@ -3215,6 +3602,263 @@ async function main(){
                 "窄屏格宽 " + LS.narrowBarrowW + " / 卡片 " + LS.cardPaintedW);
             } else {
               ok(false, p.label + "·" + vp + "：卡片横滑探针未取到（故障：" + ((LS && LS.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.38.1 补5：音高标注真机几何（**现行口径**）——
+             ① 数码整枚垂直居中、② 高音点贴数码头部右侧 / 低音点贴数码脚部左侧且不越出数码高度带、
+             ③ 歌词字在右下、④ nm 档音名与歌词字不相交、⑤ nm 窄格整枚不画。
+             桩里一条都测不到（没有布局）。旧口径（三档槽位 / 点在数码右侧一律 / 窄格三级降级 /
+             字心 clamp）已随实现退役，对应断言在本轮**删净**，不留 ok(true) 占位。 */
+          if (vp === "桌面"){
+            const PM = r.pitchMark;
+            if (PM && !PM.err){
+              const pick = o => (PM.wide || []).filter(x => x.oct === o)[0] || null;
+              const hi = pick("hi"), mid = pick("mid"), lo = pick("lo");
+              ok(!!hi && !!mid && !!lo, p.label + "·" + vp + "：★ 前提：高/中/低三颗谱字都量到", "");
+              if (hi && mid && lo){
+                /* ★★★ v3.38.1 补8（用户口径变更）：音符**左上锚定**——低音点改为挂在数码正下方，
+                   整枚 glyph 向下生长（0.85f + 0.4f×点数），竖向居中会让 2 颗点顶破 26px 格底
+                   （补3 的「数码居中」与这一条互斥，以用户最新口径为准）。
+                   判据：三个音区的**数码顶都在格顶附近**（同一水平线），且都 ≤ 3px。 */
+                /* 容差 1.5px：低音 2 颗点时整枚缩一档字号（补8 的格高约束），数码行盒随之小 1px
+                   ——这是"缩一档"的固有副作用，不是槽位漂移。 */
+                ok(hi.bodyTop <= 3 && mid.bodyTop <= 3 && lo.bodyTop <= 3
+                  && Math.abs(hi.bodyTop - mid.bodyTop) <= 0.5 && Math.abs(hi.bodyTop - lo.bodyTop) <= 1.5,
+                  p.label + "·" + vp + "：★★★ 三个音区的数码**同一水平线且贴格顶**（左上锚定；数码顶 "
+                  + hi.bodyTop + " / " + mid.bodyTop + " / " + lo.bodyTop + " px ≤ 3）",
+                  "hi=" + hi.bodyTop + " mid=" + mid.bodyTop + " lo=" + lo.bodyTop);
+              }
+              const withDots = (PM.wide || []).filter(x => x.dotGap !== null);
+              if (withDots.length){
+                const minClip = Math.min.apply(null, withDots.map(x => x.clipRight));
+                const hiD = (PM.wide || []).filter(x => x.oct === "hi" && x.dotTop !== null)[0] || null;
+                const loD = (PM.wide || []).filter(x => x.oct === "lo" && x.dotTop !== null)[0] || null;
+                /* ★ 坐标系必须同框：dotTopC/dotBottom 与 bodyTop/bodyBottom 都是**相对 chip** 的。
+                   此前这条拿 body 相对的 dotTop 去比 chip 相对的 bodyTop，两边原点不同 ⇒ 恒判红
+                   （v3.38.1 补5 修：不是实现不对，是断言自己写错了框）。 */
+                /* ★★★ v3.38.1 补8（用户口径）：高音点 = 数码头部的**右边**（不向顶部多要空间 ⇒ 竖向仍在
+                   数码高度带内）；低音点 = 数码**正下方偏左**（从数码底往下长，且不越出格底）。 */
+                const hiOk = !!hiD && hiD.dotTopC >= hiD.bodyTop - 0.5 && hiD.dotBottomC <= hiD.bodyBottom + 0.5;
+                const loOk = !!loD && loD.dotTopC >= loD.bodyBottom - 0.5 && loD.dotBottomC <= loD.chipH + 0.5;
+                ok(hiOk && loOk,
+                  p.label + "·" + vp + "：★★★ 高音点在数码**头部右侧**（竖向不越出数码高度带）、"
+                  + "低音点在数码**正下方**（从数码底向下长、不越出格底；"
+                  + "高 " + (hiD ? hiD.dotTopC + "…" + hiD.dotBottomC + " ⊂ " + hiD.bodyTop + "…" + hiD.bodyBottom : "?")
+                  + "，低 " + (loD ? loD.dotTopC + "…" + loD.dotBottomC + " ⊂ 数码底 " + loD.bodyBottom + " … 格底 " + loD.chipH : "?")
+                  + "）",
+                  (hiD && loD) ? ("高音点 " + hiD.dotTopC + "…" + hiD.dotBottomC + " vs 数码 " + hiD.bodyTop + "…" + hiD.bodyBottom
+                    + "／低音点 " + loD.dotTopC + "…" + loD.dotBottomC + " vs 数码底 " + loD.bodyBottom + " / 格底 " + loD.chipH) : "");
+                /* 低音点改为"数码正下方偏左"：横向**不离开数码的宽度**（left:0 ⇒ dotL≈bodyL、dotR ≤ bodyR），
+                   纵向在数码底之下（由上面那条判）。原来那条 dotR ≤ bodyL（贴脚部左侧）随之退役。 */
+                ok(hiD && loD && hiD.dotL >= hiD.bodyR - 1.5
+                  && loD.dotL >= loD.bodyL - 0.5 && loD.dotR <= loD.bodyR + 0.5,
+                  p.label + "·" + vp + "：★★★ 高音点贴数码**头部右侧**（" + (hiD ? hiD.dotL + " ≥ " + hiD.bodyR : "?")
+                  + "）、低音点在数码**正下方且不离开数码宽度**（" + (loD ? loD.dotL + "…" + loD.dotR
+                    + " ⊂ " + loD.bodyL + "…" + loD.bodyR : "?") + "）", "");
+                const inChip = (PM.wide || []).filter(x => x.gTop !== null);
+                ok(inChip.length > 0 && inChip.every(x => x.gTop >= -0.5 && x.gBot <= x.chipH + 0.5),
+                  p.label + "·" + vp + "：★★★ 整枚（含 2 颗点）都在格内不顶边", "");
+                ok(minClip >= 0, p.label + "·" + vp + "：★★★ 宽格下**不裁字**（chip 右缘 − 点右缘 最小 " + minClip + "px）", "");
+              } else {
+                ok(false, p.label + "·" + vp + "：★ 前提：至少一颗带点的谱字（否则上面两条是空判据）", "");
+              }
+              /* ★★★ v3.38.1 补9（用户口径变更）：**歌词字靠左** + 贴格底。
+                 左缘落在那条左内缩上（≥24px = "音符区之后"，既不贴格左、也不被推到格右）；
+                 底缘贴格底（bottom:1px）。横向对齐必须用**字形**的左右缘判：元素盒横跨整格，
+                 它恒等于左内缩，"靠左还是靠右"量不出来 —— 旧判据名字叫「右下」却从没判过右缘，
+                 所以补5 那次把字推到右端、它照样全绿（这就是判据名说谎的代价）。 */
+              const charGeom = (PM.wide || []).filter(x => x.charL !== null && x.charB !== null);
+              const charLMin = charGeom.length ? Math.min.apply(null, charGeom.map(x => x.charL)) : null;
+              const charBGap = charGeom.length
+                ? Math.max.apply(null, charGeom.map(x => Math.round(Math.abs(x.charB - x.chipH) * 10) / 10)) : null;
+              const hug = charGeom.filter(x => x.charGlyphL !== null && Math.abs(x.charGlyphL - x.charL) <= 3);
+              ok(charGeom.length > 0 && hug.length === charGeom.length
+                 && charGeom.every(x => x.charL >= 24 && Math.abs(x.charB - x.chipH) <= 2),
+                p.label + "·" + vp + "：★★★ 歌词字**靠左**（字形左缘贴住字盒左缘 ≤3px："
+                + (charGeom.length ? charGeom.map(x => Math.round((x.charGlyphL - x.charL) * 10) / 10).join(" / ") : "?")
+                + "）且贴格底（左内缩最小 " + charLMin + "px ≥ 24；底缘与格底差 " + charBGap + "px ≤ 2）",
+                charGeom.length ? ("字形 " + charGeom.map(x => x.charGlyphL + "…" + x.charGlyphR).join(" / ")
+                  + " vs 字盒左 " + charGeom.map(x => x.charL).join(" / ")) : "");
+              /* ★ v3.38.1：带记号格**整枚左让一档**（真机 acc.x 应落在 ~3–6px；没让则 ~7–10px） */
+              const accEnt = (PM.wide || []).filter(x => x.accTxt !== null)[0] || null;
+              ok(!!accEnt, p.label + "·" + vp + "：★ 前提：量到一颗带记号的谱字（否则下一条是空判据）", "");
+              if (accEnt){
+                ok(accEnt.accX >= 0 && accEnt.accX <= 7,
+                  p.label + "·" + vp + "：★★ 带记号格整枚左让一档（记号左缘 " + accEnt.accX + "px ≤ 7；不让时在 8.7px 以上）",
+                  "accX=" + accEnt.accX);
+              }
+              /* ★ v3.38.1：记谱体系切换真机生效——同一个半音，升号制写 #、降号制写 b */
+              const sharpEnt = (PM.wide || []).filter(x => x.accTxt === "#")[0] || null;
+              const flatEnt = (PM.flat || []).filter(x => x.accTxt === "b")[0] || null;
+              ok(!!sharpEnt && !!flatEnt,
+                p.label + "·" + vp + "：★★★ 记谱体系切换生效（升号制 " + (sharpEnt ? sharpEnt.txt : "(无)")
+                + " / 降号制 " + (flatEnt ? flatEnt.txt : "(无)") + "，同一个半音）",
+                "flat 探针：" + ((PM.flatErr) || "ok"));
+              /* ★★★ v3.38.1 补5（用户口径）：**nm 档音名与歌词字不相交**——名靠右、字靠左，
+                 判据是「名左缘 ≥ 字右缘」（实测 +35/+44/+37px）。
+                 为什么必须真机：两者都是绝对定位、字号随 --cs；桩里没有布局，这条在桩里恒绿。 */
+              const WN = (PM.wideNm || []).filter(x => x.nameL !== null && x.charR !== null);
+              ok(WN.length > 0,
+                p.label + "·" + vp + "：★ 前提：nm 档宽格量到音名（" + WN.length + " 颗）", "");
+              if (WN.length){
+                const gaps = WN.map(x => Math.round((x.nameL - x.charR) * 10) / 10);
+                const badW = WN.filter(x => !(x.nameL >= x.charR));
+                ok(badW.length === 0,
+                  p.label + "·" + vp + "：★★★ nm 档**音名与歌词字不相交**（名左缘 − 字右缘 最小 "
+                  + Math.min.apply(null, gaps) + "px；各颗 " + gaps.join(" / ") + "）",
+                  badW.length ? ("越界：" + badW.map(x => x.charTxt + "/" + x.txt + " 名左 " + x.nameL
+                    + " < 字右 " + x.charR).join("；")) : "");
+              }
+              /* ★ v3.38.1：nm 档窄格**整枚不画**（用户拍板）——有 chip、但一个标记都不画 */
+              const NM = PM.nmNarrow || {};
+              ok(NM.narrowN > 0 && NM.narrowMarked === 0,
+                p.label + "·" + vp + "：★★★ nm 档窄格整枚不画（本探针种的 " + NM.narrowN + " 颗、格宽 "
+                + NM.seedW + "px，其中画了音名的 " + NM.narrowMarked + " 颗）",
+                "画了音名的 " + NM.narrowMarked + " 颗（期望 0）");
+            } else {
+              ok(false, p.label + "·" + vp + "：音高标注探针未取到（故障：" + ((PM && PM.err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.38.1 补6（用户拍板）：顶部三块 12 档真机闸——五条判据逐档检。
+             为什么每档都检而不抽样：列数是个**关于宽度的阶跃函数**，抽样正好跳过临界点，
+             就会放出一个"这段宽度下多出一列/少了一列"的回归（pillSweep 当初就是为此加的）。 */
+          if (vp === "桌面"){
+            const TB = r.topBlocks || [];
+            if (TB.length && !TB.some(x => x && x.err)){
+              /* v3.38.1 补7：前提改成"**三块各自**的下限都在"（补6 只有一个 --min-w 通吃）。 */
+              const bases0 = TB[0].bases || [];
+              const gapDef = parseFloat(TB[0].colGapVar);
+              const basesOk = bases0.length === 3 && bases0.every(b => b > 0);
+              ok(basesOk && gapDef > 0,
+                p.label + "·" + vp + "：★ 前提：三块各自的 --min-w-vol/--min-w-bpm/--min-w-sw 与 --col-gap"
+                + "都已定义（音量 " + bases0[0] + " / BPM " + bases0[1] + " / 开关 " + bases0[2]
+                + "、--col-gap=" + TB[0].colGapVar + "）——闸没有可判的数就是空转",
+                "12 档实测：" + TB.map(x => x.vw + ":" + x.display + "/gap" + x.gap).join(" "));
+              if (basesOk && gapDef > 0){
+                ok(gapDef >= 12 && gapDef <= 24,
+                  p.label + "·" + vp + "：★★ 列距落在 12–24px（用户口径 12–16px；24 是「相邻块间距」闸的上限）",
+                  "实测 --col-gap=" + gapDef + "px");
+                const flexBad = TB.filter(x => x.display === "flex"
+                  && Math.abs(x.gap - gapDef) > 0.51);
+                ok(flexBad.length === 0, p.label + "·" + vp + "：★★ flex 档的实测列距 = --col-gap",
+                  flexBad.length ? flexBad.map(x => x.vw + "px：实测 " + x.gap + " ≠ " + gapDef).join("；") : "");
+                /* ① **排法阶梯**（v3.38.1 补7 换掉了补6 的"单 min_w 除一除"）：
+                     补6 那条判据是**自我实现**的——不管 min_w 取多大，只要 CSS 跟着它走就永远绿，
+                     它量不出"这个 min_w 定得合不合理"（正是它绿灯、用户截图不合格的原因）。
+                     现在的判据：按三块的**各自下限**做 flex 装箱模拟（flex 换行就是按 hypothetical
+                     main size = flex-basis 断行），逐档比对"每行几块"，并把"三块并排门槛"单独钉出来。 */
+                const packRows = function(bases, gap2, avail){
+                  var rows = [], cur = 0, n = 0;
+                  bases.forEach(function(b){
+                    var need = n ? gap2 + b : b;
+                    if (cur + need <= avail + 0.5){ cur += need; n++; }
+                    else { rows.push(n); cur = b; n = 1; }
+                  });
+                  if (n) rows.push(n);
+                  return rows;
+                };
+                /* 只拿**可见**的块做装箱（收起方案里音量默认不可见） */
+                const visBases = x => x.bases.filter((b, i) =>
+                  [x.vis.vol, x.vis.bpm, x.vis.sw][i]);
+                const wantRows = x => packRows(visBases(x), x.gap, x.avail);
+                /* 实测行里的块数也要对齐到"可见子集"：.card-head-left 隐藏时它不出现在 items 里 */
+                const gotRows = x => (x.rows || []).map(r2 => r2.n);
+                /* ★ display:block 档（<560，壳未溶解）实际是"壳 + 开关"两块竖排 ⇒ 模拟不适用，
+                   改用"列数=1"判据（那种档位本来就该单列）。只在 flex 档做装箱比对。 */
+                const rowBad = TB.filter(x => x.display === "flex"
+                  && JSON.stringify(wantRows(x)) !== JSON.stringify(gotRows(x)));
+                const blockBad = TB.filter(x => x.display !== "flex" && x.cols !== 1);
+                ok(blockBad.length === 0,
+                  p.label + "·" + vp + "：★★ 未切 flex 的档位（<560px 纵向堆叠）必须单列",
+                  blockBad.length ? blockBad.map(x => x.vw + "px：" + x.display + " / 实测 " + x.cols + " 列").join("；") : "");
+                ok(rowBad.length === 0,
+                  p.label + "·" + vp + "：★★★ 12 档「每行几块」都 = 按三块各自下限装箱的结果"
+                  + "（音量 " + (TB[0].bases[0] || "?") + " / BPM " + (TB[0].bases[1] || "?")
+                  + " / 开关 " + (TB[0].bases[2] || "?") + "，列距 " + gapDef + "）",
+                  rowBad.length ? rowBad.map(x => x.vw + "px：实测 [" + gotRows(x) + "] / 应为 ["
+                    + wantRows(x) + "]（可用 " + x.avail + "）").join("；") : "");
+                /* ①b 用户口径的直接翻译：够宽就必须**三块并排** */
+                const gate3 = (TB[0].bases[0] || 0) + (TB[0].bases[1] || 0) + (TB[0].bases[2] || 0) + 2 * gapDef;
+                const threeBad = TB.filter(x => x.display === "flex" && x.vis.vol && x.vis.bpm && x.vis.sw
+                  && x.avail >= gate3 && x.cols < 3);
+                ok(threeBad.length === 0,
+                  p.label + "·" + vp + "：★★★ 三块都在场且可用宽 ≥ " + Math.round(gate3) + "px 时必须**三块并排**"
+                  + "（= 三块下限之和 + 2×列距；这就是「能并排却换行」的判据）",
+                  threeBad.length ? threeBad.map(x => x.vw + "px：可用 " + x.avail + " ≥ " + Math.round(gate3)
+                    + " 却只有 " + x.cols + " 列").join("；") : "");
+                /* ② 行内空白率 ≤15%：块撑不满自己那一行 ⇒ 那条留白就是纯浪费 */
+                const blankBad = TB.filter(x => (x.rows || []).some(rw => rw.blankPct !== null && rw.blankPct > 15));
+                ok(blankBad.length === 0,
+                  p.label + "·" + vp + "：★★★ 12 档行内空白率 ≤15%（块要撑满自己那一行）",
+                  blankBad.length ? blankBad.map(x => x.vw + "px：" + x.rows.filter(rw => rw.blankPct > 15)
+                    .map(rw => rw.n + "块空 " + rw.blankPct + "%").join(",")).join("；") : "");
+                /* ③ 相邻块间距 ≤24px（列距那一档的实测复核：flex gap 之外还可能叠 margin） */
+                const gapBad = TB.filter(x => (x.rows || []).some(rw => (rw.gapPx || []).some(g2 => g2 > 24)));
+                ok(gapBad.length === 0,
+                  p.label + "·" + vp + "：★★ 12 档相邻块间距 ≤24px",
+                  gapBad.length ? gapBad.map(x => x.vw + "px：最大 " + Math.max.apply(null,
+                    x.rows.filter(rw => rw.gapPx.some(g2 => g2 > 24)).map(rw => Math.max.apply(null, rw.gapPx)))
+                    + "px").join("；") : "");
+                /* ④ 无横向溢出（容器与文档两个口径都查——容器溢出会被裁、文档溢出会出现横向滚动条） */
+                const ovfBad = TB.filter(x => x.overflowX > 1 || x.docOverflow > 1);
+                ok(ovfBad.length === 0, p.label + "·" + vp + "：★★★ 12 档都无横向溢出（容器与文档）",
+                  ovfBad.length ? ovfBad.map(x => x.vw + "px：容器 +" + x.overflowX
+                    + " / 文档 +" + x.docOverflow).join("；") : "");
+                /* ⑥ 开关列的"预备拍行心 = BPM 步进行行心"（用户口径③：参考 PC 端做法）。
+                    只在**开关与 BPM 同行**时成立；独占一行时不该有那个补偿（加 44px 就是空气）。 */
+                /* 判据：**开关与 BPM 同行**就要求对齐（不只是三列时——用户图四点名的正是两列形态）。
+                   行内共现由探针的 items/rows 直接判：同一行里既有 group（BPM）又有 viz-toggles。 */
+                const sameRowAsBpm = x => (x.rows || []).some(r2 => {
+                  const cs2 = r2.items.map(i2 => i2.cls);
+                  return cs2.some(c2 => /(^|\.)group$/.test(c2))
+                    && cs2.some(c2 => /viz-toggles/.test(c2));
+                });
+                const alignRows = TB.filter(x => sameRowAsBpm(x) && x.align && x.align.delta !== null);
+                /* 容差 4px：补偿是在 PC 档标定的，而标题行高随 --cs（= #viz 宽/960）有 ±2px 级差异
+                   （真机实测 960 档偏 3.2px）——4px 仍远低于人眼可辨的对齐差。 */
+                const alignBad = alignRows.filter(x => Math.abs(x.align.delta) > 4);
+                const needAlign = TB.filter(x => sameRowAsBpm(x)).length;
+                ok(needAlign > 0 && alignRows.length === needAlign && alignBad.length === 0,
+                  p.label + "·" + vp + "：★★★ 开关列与 BPM 同行时「预备拍行心 = BPM 步进行行心」"
+                  + "（同行的每一档都对过；实测偏差 " + (alignRows.length
+                    ? Math.max.apply(null, alignRows.map(x => Math.abs(x.align.delta))) : "?") + "px ≤ 4）",
+                  alignBad.length ? alignBad.map(x => x.vw + "px：偏差 " + x.align.delta + "px（步进行心 "
+                    + x.align.bpmC + " / 开关行心 " + x.align.swC + "）").join("；") : "");
+                /* ⑤ 展开任一参数槽后列数不变（音量 / BPM / 变速训练三处逐个展开→强制重排→再收列数） */
+                const expBad = TB.filter(x => x.colsAfter !== x.cols
+                  || Object.keys(x.colsExpanded || {}).some(k => x.colsExpanded[k] !== x.cols));
+                ok(expBad.length === 0,
+                  p.label + "·" + vp + "：★★★ 12 档「展开任一参数槽后列数不变」（三个槽逐个展开再量）",
+                  expBad.length ? expBad.map(x => x.vw + "px：基准 " + x.cols + " → 展开后 "
+                    + JSON.stringify(x.colsExpanded) + " / 复位 " + x.colsAfter).join("；") : "");
+              }
+            } else {
+              ok(false, p.label + "·" + vp + "：顶部三块探针未取到（故障：" + ((TB[0] && TB[0].err) || "缺失") + "）", "");
+            }
+          }
+          /* ★★★ v3.38.1 补10（用户实拍）：**贴格子带的层必须与格子同高**——
+             窄屏格子 34px、底纹仍 44px 的那条漏网 bug（多出的 10px 落进歌词带）。
+             判据两条：① 底纹高 == 格子高；② 底纹下缘不越出格子带下缘。 */
+          if (vp === "桌面"){
+            const BD = r.band || [];
+            if (BD.length >= 2 && !BD.some(x => x && x.err)){
+              ok(BD[0].cellH !== BD[1].cellH,
+                p.label + "·" + vp + "：★ 前提：两档量到**不同的**格子高（桌面 " + BD[0].cellH
+                + "px / 窄屏 " + BD[1].cellH + "px）——两档同高就测不出「层没跟着缩」",
+                "实测：" + BD.map(x => x.vw + "px→格 " + x.cellH + "/底纹 " + x.beforeH).join(" "));
+              const hBad = BD.filter(x => Math.abs(x.beforeH - x.cellH) > 0.5);
+              ok(hBad.length === 0,
+                p.label + "·" + vp + "：★★★ 「当前小节底纹」的高度 == 格子带高（共用 --cell-h）",
+                hBad.length ? hBad.map(x => x.vw + "px：底纹 " + x.beforeH + " ≠ 格子 " + x.cellH
+                  + "（--cell-h=" + x.cellHVar + "）").join("；") : "");
+              const bleed = BD.filter(x => x.beforeBottom > x.cellBottom + 0.5);
+              ok(bleed.length === 0,
+                p.label + "·" + vp + "：★★★ 底纹**不越出格子带下缘**（越出就是当年那 10px：落进歌词/标注带）",
+                bleed.length ? bleed.map(x => x.vw + "px：底纹下缘 " + x.beforeBottom
+                  + " > 格子下缘 " + x.cellBottom).join("；") : "");
+            } else {
+              ok(false, p.label + "·" + vp + "：格子带底板探针未取到（故障："
+                + ((BD[0] && BD[0].err) || "缺失") + "）", "");
             }
           }
           /* ★★★ v3.36.19：段行块列表——把块行压窄到 280px，块**不该跟着缩**

@@ -87,8 +87,11 @@ section("T151c .bar-row.current 只留底纹 .10（v3.33.8：挂在 ::before 的
     "★★ 不得直接取 .12——v3.8.0 已明确否决过（压住未弹格子的扫弦箭头与六线底纹，读谱优先）");
   /* 反向不变量：行首短标不得复活。三条通道（伪元素 / 背景图 / inset 阴影）在 v3.33.8 **精确化**：
      伪元素不再一律禁止，而是必须是**整条格子带**（left/right:0 + height:44px）。 */
-  ok(/left:0;right:0/.test(pseudo) && /height:44px/.test(pseudo) && !/(?:^|[;{])\s*(?:width|max-width|min-width):/.test(pseudo),
-    "★★ 行首绿条不得复活：伪元素只能是**整条格子带**（left:0;right:0 + height:44px，不得声明窄宽）。"
+  /* ★★★ v3.38.1 补10：高度从写死 44px 改成**与格子带共用一个来源**（--cell-h）。
+     写死 44px 正是"窄屏格子 34px、底纹仍 44px"那条漏网 bug 的成因（用户实拍：绿色遮罩
+     多出 10px 落进歌词带）。意图不变：仍必须是**整条格子带**、不得声明窄宽。 */
+  ok(/left:0;right:0/.test(pseudo) && /height:var\(--cell-h\)/.test(pseudo) && !/(?:^|[;{])\s*(?:width|max-width|min-width):/.test(pseudo),
+    "★★ 行首绿条不得复活：伪元素只能是**整条格子带**（left:0;right:0 + height:var(--cell-h)，不得声明窄宽）"
     + "播放中真正的锚是 .cell.active 的绿描边；历史那条 5.67:1 的行首短标仍被本条拦下");
   ok(!/linear-gradient|background-image/.test(band),
     "★★ 不得扛背景图：本行 radius(8px) 大于任何贴边小段的宽度，背景图必被圆角"
@@ -109,10 +112,27 @@ section("T151d 行高 86px / 格高 44px 保持固定（本次最大的回归风
   ok(/^\.bar-row\{position:relative;height:86px/m.test(CSS),
     "★★ .bar-row 仍是 height:86px 固定值——B3 最大的风险就是手滑把它改成自适应，"
     + "实测四档行高恒 86px，说明固定值本来就是对的");
-  ok(/\.cell\{position:absolute;top:0;height:44px/.test(CSS),
-    "★★ .cell 仍是 height:44px（格高 44 与弦距 --gt:8.6px 六线几何是一套，改了线就出格）");
+  ok(/\.cell\{position:absolute;top:0;height:var\(--cell-h\)/.test(CSS),
+    "★★ .cell 的高度来自 --cell-h（格高与弦距 --gt 是同一档几何：桌面 44/8.6、窄屏 34/6.6）");
   ok(/--gt:8\.6px/.test(CSS),
     "★ 弦距 --gt 仍按 44px 格高派生（(44−1)/5），未与格高脱钩");
+  /* ★★★ v3.38.1 补10：**"贴格子带的四层"必须共用一个来源**。
+     这一族已漏过三次（v2.79.0 的 .seams/.beat-zone、v3.33.8 新增的 ::before 又写死一遍）——
+     所以这条不是「钉某个值」，而是钉「四个选择器都引用 --cell-h」：新加第五层时若再写死，
+     这里当场变红。真机侧另由冒烟的 bandProbe 钉"底纹高 == 格子高、且不越出格子下缘"。 */
+  ok(/--cell-h:44px/.test(CSS), "★★★ 格子带高 --cell-h 定义在基础档（44px）");
+  ok(/@media \(max-width:960px\)\{[\s\S]*?--cell-h:34px/.test(CSS),
+    "★★★ 窄屏档只改 --cell-h:34px 一处（不再逐条补，杜绝「加了新层就漏」）");
+  const layers = [
+    [/\.cell\{[^}]*height:var\(--cell-h\)/, ".cell"],
+    [/\.beat-zone\{[^}]*height:var\(--cell-h\)/, ".beat-zone"],
+    [/\.seams\{[^}]*height:var\(--cell-h\)/, ".seams"],
+    [/\.bar-row\.current::before\{[^}]*height:var\(--cell-h\)/, ".bar-row.current::before"],
+  ];
+  const missing = layers.filter(x => !x[0].test(CSS)).map(x => x[1]);
+  ok(missing.length === 0,
+    "★★★ 「贴格子带的四层」全部引用 --cell-h（缺：" + (missing.join(" / ") || "无") + "）——"
+    + "这一族漏过三次，本条是防「第五层再写死」的那道闸");
 }
 
 /* ================= T151e：固定行高下"格子被拉长"确实不存在 ================= */
@@ -121,6 +141,6 @@ section("T151e 格子宽高比与行数无关（为「不改行高」这一决�
   /* 这条断言钉的是**决策依据**而非渲染结果：实测四档格宽高比恒 ≈1.98:1（1440 视口），
      说明用户报的"1 行被纵向拉长"来自别处（或来自早期版本），不是当前行高策略的锅。
      匹配不用 ^ 锚：样式表里部分规则并非顶格书写，顶格锚会静默判红（教训已记）。 */
-  ok(/\.bar-row\{[^}]*height:86px/.test(CSS) && /\.cell\{[^}]*height:44px/.test(CSS),
+  ok(/\.bar-row\{[^}]*height:86px/.test(CSS) && /\.cell\{[^}]*height:var\(--cell-h\)/.test(CSS),
     "★ 现状即证据：行高 86 / 格高 44 与行数无关，四档实测比值恒定 → 无纵向拉长问题");
 }

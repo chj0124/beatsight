@@ -48,8 +48,15 @@ section("T177a 三列横向对齐体系（音量行盒 / 开关列偏移 / 行�
     + "且开关列开合时顶锚不动（v3.22 单开零变形的承重墙从 .group 的 space-between 迁到这里）");
   ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE),
     "★★ 开关三行行距 7px（原 2px 是 v3.24「行高恒定」的压缩配额，该契约随行心对齐退役）");
-  ok(/@media \(min-width:900px\)\{[\s\S]*?\.viz-head-grid \.viz-toggles\{padding-top:44px;grid-column:3;grid-row:1;align-self:start\}/.test(CSS_CODE),
-    "★★ ≥900 开关列 padding-top 44px——「预备拍」行心 174 = BPM 步进行 173.8（L1）");
+  /* ★★★ v3.38.1 补7：44px 从"写死在 ≥900 的 padding"改成**容器查询 + 变量**：
+     它其实是"开关与 BPM 同行"才需要的补偿，而同行的门槛是 776（三块下限之和 + 2×列距），
+     比 900 早 —— 写死在 900 会让 776–899 这一段的开关既不对齐、也说不清基准。
+     同时拆出 --tg-align-shift：收起方案那几档 BPM 标题行是 display:none，步进行上移，
+     补偿要减掉它（否则实测低 30px）。 */
+  ok(/@container \(min-width:496px\)\{[\s\S]*?\.viz-toggles\{padding-top:calc\(var\(--tg-align-top\) \+ var\(--tg-align-shift\)\)\}/.test(CSS_CODE)
+     && CSS_CODE.indexOf("--tg-align-top:44px") >= 0 && CSS_CODE.indexOf("--tg-align-shift:0px") >= 0,
+    "★★ 开关与 BPM 同行（可用宽 ≥496 = BPM 280 + 开关 216 + 列距 12）时吃 --tg-align-top:44px——「预备拍」行心 174 = "
+    + "BPM 步进行 173.8（L1）；阈值 496 与 BPM / 开关两个下限同源");
   ok(!/@media \(min-width:900px\)\{[\s\S]{0,400}\.viz-head-grid \.viz-toggles\{padding-top:44px[^}]*\}[\s\S]{0,200}@media \(max-width:899/.test(CSS_CODE)
      || /@media \(max-width:899\.9px\)\{[\s\S]*?\.viz-head-grid \.viz-head > \.group \.tg-body\{max-width:520px\}/.test(CSS_CODE),
     "★★ ≤900 堆叠档：BPM 卡内容限宽 520px（否则步进钮/快捷档被拉成 ~150px/颗，平板实拍）");

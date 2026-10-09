@@ -88,7 +88,7 @@ section("T125b 语义变量 · --veil / --well 收口，经典视觉逐位不变
   const bz = ruleOf(html, ".beat-zone{");
   ok(/background:rgba\(var\(--veil\),\.06\)/.test(bz) && !/box-shadow/.test(bz),
      "★ .beat-zone 的白纱等值改写（.06 垫色保留；v2.79.0 ring 退役，无 box-shadow）");
-  const cell = ruleOf(html, ".cell{position:absolute;top:0;height:44px");
+  const cell = ruleOf(html, ".cell{position:absolute;top:0;height:var(--cell-h)");
   ok(/background:rgba\(var\(--veil\),\.14\)/.test(cell), "★ .cell 的底色等值改写（.14）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-block{")), "★ .arg-block 暗槽等值改写（.28）");
   ok(/--well\),\.28\)/.test(ruleOf(html, ".arg-map-seg{")), "★ .arg-map-seg 暗槽等值改写（.28）");

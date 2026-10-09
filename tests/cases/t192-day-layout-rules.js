@@ -30,7 +30,9 @@ section("T192a 日间弹窗头部：角标不独占整行（「设置」不再�
 section("T192b 日间两走道对齐：右列内边距必须大于左列角标占位（否则对齐到标题行）");
 {
   const both = (html.match(/body\[data-theme="obs"\] \.viz-head-grid \.viz-head > \.group\{padding-top:(\d+)px\}/) || [])[1];
-  const right = (html.match(/body\[data-theme="obs"\] \.viz-head-grid \.viz-toggles\{padding-top:(\d+)px\}/) || [])[1];
+  /* ★ v3.38.1 补7：日间那个 79px 从"开关列自己的 padding"收进 --tg-align-top 变量
+     （经典 44 / 日间 79 是同一个补偿在两个主题下的标定值，原来分写两处、还会被后加的同名规则盖掉）。 */
+  const right = (html.match(/body\[data-theme="obs"\] \.viz-head-grid\{--tg-align-top:(\d+)px\}/) || [])[1];
   ok(both === "44", "★ 左列（角标列）保留 44px 占位让角标有位（实测 " + both + "）");
   ok(right !== undefined && parseInt(right, 10) > 44,
     "★★★ 右列（开关列）内边距 > 44px（实测 " + right + "）：46 就与左列角标行同高 ⇒ 预备拍会对齐到 BPM 标题");

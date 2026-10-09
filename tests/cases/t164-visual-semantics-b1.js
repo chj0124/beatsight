@@ -64,7 +64,7 @@ section("T149d 日间主题（obs）的 pill.active 同步改中性");
 }
 
 /* ========== T149e：当前行高亮（v3.8.0 裁决；v3.31.4 取消短标、底纹提 .10） ========== */
-section("T149e .bar-row.current 只留 .10 淡底（v3.33.8 起挂在 ::before 的 44px 格子带上），行首短标仍不得复活");
+section("T149e .bar-row.current 只留 .10 淡底（v3.33.8 起挂在 ::before 的格子带上；v3.38.1 补10 起高度随 --cell-h 走，不再写死 44px），行首短标仍不得复活");
 {
   const base = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
   const pseudo = (html.match(/^\.bar-row\.current::before\{[^}]*\}/m) || [""])[0];
@@ -75,10 +75,11 @@ section("T149e .bar-row.current 只留 .10 淡底（v3.33.8 起挂在 ::before �
   ok(!/rgba\(30,215,96,\.12\)/.test(band),
     "★★ 也不取 .12——v3.8.0 用户实拍已否决（.12 亮带压住未弹格子的扫弦箭头/六线底纹，读谱优先）");
   /* ★★ v3.33.8：本条从"禁止任何 ::before"**精确化**为"禁止**行首窄短标**"——
-     用户裁决 A：底纹可以走伪元素，但必须是**整条格子带**（left/right:0 + height:44px = .cell 同高）；
+     用户裁决 A：底纹可以走伪元素，但必须是**整条格子带**（left/right:0 + height:var(--cell-h) = 与 .cell 同高，
+     v3.38.1 补10 起共用一个来源）；
      任何窄宽/贴边形态（width/max-width/min-width 收窄）仍被拦下，历史教训一字不丢。 */
-  ok(/left:0;right:0/.test(pseudo) && /height:44px/.test(pseudo),
-    "★★ 伪元素必须是整条格子带（left:0;right:0 + height:44px = 格子高），不是行首窄短标");
+  ok(/left:0;right:0/.test(pseudo) && /height:var\(--cell-h\)/.test(pseudo),
+    "★★ 伪元素必须是整条格子带（left:0;right:0 + height:var(--cell-h) = 格子高），不是行首窄短标");
   ok(!/(?:^|[;{])\s*(?:width|max-width|min-width):/.test(pseudo),
     "★★ 伪元素不得声明窄宽——行首短标正是靠 width 收窄贴边复活的唯一通道");
   ok(!/box-shadow/.test(band),

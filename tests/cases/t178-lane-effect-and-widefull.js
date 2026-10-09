@@ -24,7 +24,7 @@
       · `--cs` 随 #viz 宽无界增长，而歌词行/块高固定（28/26）→ 字被裁。
       · 非铺满档 #viz 被主列 max-width:1440 封顶（实测 1392 ⇒ --cs 封顶 1.45），
         所以平时看不见——这是**铺满档独有**的缺陷。
-      · 上限硬约束：**必须 ≥ 正常档的 23.2px**，否则会把已认可的非铺满观感改小；
+      · 上限硬约束：**必须 ≥ 正常档的 20.3px**，否则会把已认可的非铺满观感改小；
         又必须 ≤ 字块高 26px 才放得下。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
@@ -106,14 +106,14 @@ section("T178d 宽屏铺满必须触发重排（歌词轨的 inline 落位不会
 /* ================= T178e：歌词字号上限（含「不得改小正常档」的不变量） ================= */
 section("T178e 歌词字号上限：放得下 + 不改动正常档观感");
 {
-  const charRule = ruleOf(CSS_CODE, ".lyric-char{position:absolute;left:clamp(10px,25%,32px)");
-  const m = /font-size:min\(calc\(16px \* var\(--cs, 1\)\), (\d+)px\)/.exec(charRule);
-  ok(!!m, "★★ 歌词字号 = min(calc(16px * var(--cs,1)), Npx)（原来无上限）");
+  const charRule = ruleOf(CSS_CODE, ".lyric-char{position:absolute;left:calc(26px");
+  const m = /font-size:min\(calc\(14px \* var\(--cs,\s*1\)\),\s*(\d+)px\)/.exec(charRule);
+  ok(!!m, "★★ 歌词字号 = min(calc(14px * var(--cs,1)), Npx)——v3.38.1 口径：基准 16→14、上限 24→21");
   const cap = m ? Number(m[1]) : NaN;
-  /* 不变量一：上限必须 ≥ 非铺满档的字号上限（#viz 封顶 1392 ⇒ --cs = 1.45 ⇒ 16×1.45 = 23.2px），
+  /* 不变量一：上限必须 ≥ 非铺满档的字号上限（#viz 封顶 1392 ⇒ --cs = 1.45 ⇒ 16×1.45 = 20.3px），
      否则铺满开关一开一关之间，正常档的字会莫名其妙变小（用户已认可的观感不许被改小）。 */
-  ok(cap >= 16 * 1.45,
-    "★★★ 上限 " + cap + "px ≥ 正常档字号上限 23.2px（16 × 1392/960）——"
+  ok(cap >= 14 * 1.45,
+    "★★★ 上限 " + cap + "px ≥ 正常档字号上限 20.3px（14 × 1392/960）——"
     + "低于它会把**非铺满**的观感也改小（那正是用户已认可的样子）");
   /* 不变量二：上限必须 ≤ 字块高 26px，否则裁字问题没解决 */
   const chipH = Number(/\.lyric-chip\{position:absolute;top:1px;height:(\d+)px/.exec(CSS_CODE)[1]);

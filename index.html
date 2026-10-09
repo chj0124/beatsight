@@ -54,7 +54,7 @@
      音符（简谱/音名）脱离字色，单列一套「八度三色」——高音暖（玫红）、中音中性（琥珀，
      沿用本仓乐谱标记色）、低音冷（蓝）。三色相 ≈330° / 45° / 210° 互不接近，也与
      绿（进行中）、歌词灰明确分开；日间档在 obs 块压深（白底对比）。 */
-  --pitch-hi:#E85C7A; --pitch-mid:#E3B341; --pitch-lo:#4FA3E3;
+  --pitch-hi:#FF9E7A; --pitch-mid:#D9C078; --pitch-lo:#8FC0F0;   /* v3.38.1 补3（用户拍板丙）：暖橙 / 沙金 / 雾蓝——降饱和提明度，去掉荧光感；三档相对亮度 0.47/0.53/0.48（配平，低音不抢高音） */
   /* 强调色 token（v2.0.2 收口）：「最高强调用近白」是规范，此前 #FFFFFF/#4D4D4D/#fff 散落多处 */
   --peak:#FFFFFF;        /* 已弹/正在弹的填充、扫弦徽标字形 */
   --peak-rest:#4D4D4D;   /* 休止格的已弹填充：降一档，不抢发声格 */
@@ -88,6 +88,15 @@
                             退回 auto 叠在同一处，观感就是"六线底纹不见了"（v2.8.0 回归点） */
   --yT1:0px;  --yT2:17.2px; /* 上三线（高音区 1-3 弦）首/末（= 2×--gt，随 v2.79.1 弦距走） */
   --yB1:25.8px; --yB2:43px; /* 下三线（低音区 4-6 弦）首/末（= 3×--gt / 5×--gt） */
+  /* ★★★ v3.38.1 补10：**格子带高**——"贴格子带的那几层"的唯一来源。
+     为什么必须抽变量：这一族已经漏过三次，每次都是"格子缩了、某层没跟着缩"：
+       · v2.79.0 修过 .seams / .beat-zone：窄屏格子 34px、线层仍 44px ⇒ 缝线超出格下缘 10px；
+       · v3.33.8 新增的「当前小节底纹」(.bar-row.current::before) 又把 44px 写死了一遍 ⇒
+         同一处漏网：窄屏底纹比格子带高 10px，多出来的那 10px 正好落进歌词/标注带
+         （用户实拍："绿色遮罩主要盖扫奏区，但有一部分进了歌词行"）。
+     故这里定一个 --cell-h：窄屏档只改它一处，四条（.cell / .beat-zone / .seams / ::before）
+     自动跟着走；真机闸（冒烟 bandProbe）另钉"底纹高 == 格子高、且不越出格子下缘"。 */
+  --cell-h:44px;
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
      「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
@@ -163,7 +172,7 @@ body.wide-full .main{max-width:none}
    宽屏铺满（新）：行 2 并入行 1——四块一行（音量｜BPM｜三开关｜行数拍号）+
    space-between 拉开与下方铺满网格同宽呼应；非宽屏（≥1280）维持 2×2 居中。
    组底/窄窗回退等 v2.39 语义不变。壳内元素 id/接线一行不碰。 */
-.viz-head-grid{display:block}
+.viz-head-grid{display:block;--min-w-vol:280px;--min-w-bpm:280px;--min-w-sw:216px;--max-w:850px;--col-gap:12px;--tg-align-top:44px;--tg-align-shift:0px;container-type:inline-size}
 .viz-head-grid .card-head-left,
 .viz-head-grid .viz-head > .group,
 .viz-head-grid .viz-toggles{
@@ -177,6 +186,12 @@ body.wide-full .main{max-width:none}
    交还给同一个栅格，那 4px 的差也随之消失（见下方 margin 收口）。
    ★ v3.12.0：该块整体退役（同屏行数 → 设置弹窗、拍号 → 删除），本条规则随之无对象。 */
 .viz-head-grid .viz-toggles .toggle-pill{background:transparent;border:0}   /* v2.40.0：开关胶囊去自带底色——组内只留一层组底（观测台主题的描边一并去） */
+/* ★★ v3.38.1 补3（用户实报 · 真机复现）：播放底栏是 position:fixed，**所有宽度**都必须让位。
+   原来这条只在媒体查询内层生效 ⇒ 641–960px 一档落空，实测 .main 的 padding-bottom 只剩 16px，
+   内容底部被底栏压住 **80px** 且滚到底也看不到（846×869 窗口实拍＝用户截图）。
+   放在基础样式里（body .main 特异性高于窄屏档的 .main{padding:16px} 简写，不会被重置）。 */
+body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom, 0px))}
+/* v3.38.1 补三（已回退）：窄屏档的开关组在卡下方的悬浮槽里（v3.15.0 搬出），不在 .viz-head-grid 网格内；“并排”方案待拍板（见 CHANGELOG 补三）。 */
 @media (max-width:1439.9px){
   /* v2.42.7（用户截图报障）：窄屏（纵向堆叠布局）四张组容器卡统一撑满列宽——
      此前三种宽度策略并存：音量卡钉死 352px（v2.10.18 为宽屏防抖设计）、BPM 卡
@@ -294,6 +309,11 @@ body.wide-full .main{max-width:none}
      · 开关组（.viz-toggles）同理保留——它也在被量之列。
      收起后卡片只剩：卡头 + 音量标签 + BPM 组 + 开关组（实测 390×844：307 → 约 5xx，见闸门实测值）。 */
   #volOpen:not(:checked) ~ .card-head .card-head-left .tg-body{display:none}
+    /* ★★★ v3.38.1 补7：收起的音量组**整块不占列**。原来只隐藏 .tg-body，而壳溶解后
+       .card-head-left 是 flex 里的一个独立项 ⇒ 收起时它仍占着一整列（900/760/600 档
+       左侧那一大片空白就是这么来的）。与「开关组收起时 #bpmOpen:not(:checked) ~ .viz-toggles
+       {display:none}」同一口径：收起 = 不参与排布。 */
+    #volOpen:not(:checked) ~ .card-head .card-head-left{display:none}
   #bpmOpen:not(:checked) ~ .card-head.viz-head > .group .tg-body{display:none}
   /* 开关组跟着 BPM 标签一起收（用户第 2 条） */
   #bpmOpen:not(:checked) ~ .viz-toggles{display:none}
@@ -342,6 +362,11 @@ body.wide-full .main{max-width:none}
        同特异性下后者胜 ⇒ 光写 .viz-head-grid 会被它覆盖（宽度扫描实测 900/939 档胶囊仍竖堆、gap=-154）。
        加 .card 前缀提到 (0,2,0) 后与顺序无关。 */
     .card .viz-head-grid{display:block}
+    /* ★ v3.38.1 补7：本档把 BPM 的 group-label 隐藏了（下面那条 display:none）⇒ BPM 步进行整体
+       上移「标题行高 + 组内间隙」= 实测 30px。开关列的对齐补偿必须同步减掉它，否则开关行心
+       比 BPM 步进行低 30px（真机 899 档实测偏差 30.0px）。用**修正量**而不是第二个写死的
+       padding：主题基准（经典 44 / 日间 79）继续由 --tg-align-top 承担，这一档只加 -30。 */
+    body .card .viz-head-grid{--tg-align-shift:-30px}
     /* align-self:flex-start —— 实测 1000x1400 下本行被外层 flex 拉伸到 200px 高，
        多出的空白反而吃掉纵向空间（与"压缩面积"的初衷相反）；贴合内容后回到 36px。 */
     .ctl-pills{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding-left:16px;margin-bottom:4px;
@@ -688,7 +713,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
      三条历史不变量（行首短标不得复活 / 不得扛背景图 / 不得用 inset 阴影画盒差集）**原意不变**，
      但判据从"禁止任何 ::before"精确化为"**禁止行首窄短标**"：伪元素必须 left/right:0、
      height:44px（整条格子带），任何窄宽/贴边/背景图形态仍被拦下。 */
-.bar-row.current::before{content:"";position:absolute;left:0;right:0;top:0;height:44px;border-radius:8px;
+.bar-row.current::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--cell-h);border-radius:8px;
   background:rgba(30,215,96,.10);pointer-events:none}
 .bar-row.muted-bar .cell{opacity:.5}
 .bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
@@ -713,7 +738,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    语汇，线更强）；自画描边 + 圆角凹槽读作"两片板材相叠"，正是「前拍压后拍」错觉的
    残留源。背景垫色（跑道）保留。pulseZone 的运行时脉冲与本静态样式解耦（动画自带
    boxShadow 关键帧，结束落回无环态）。 */
-.beat-zone{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.06);pointer-events:none}
+.beat-zone{position:absolute;top:0;height:var(--cell-h);border-radius:3px;background:rgba(var(--veil),.06);pointer-events:none}
 /* v3.14.0：滚动预备拍特效——预备拍道逐拍点亮（已数的拍格 = 已弹格同款 peak 语言）。
    lit 由 count-in 分支幂等重挂（0..idx 亮）；transition 让点亮有 0.15s 渐入不突兀。 */
 .count-lane .beat-zone{transition:background .15s ease-out,opacity .15s ease-out}
@@ -725,7 +750,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* 下一颗音符预亮 */
 .cell.next{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.45);animation:nextGlow .7s ease-in-out infinite}
 @keyframes nextGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.15)}}
-.cell{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(var(--veil),.14);overflow:hidden}
+.cell{position:absolute;top:0;height:var(--cell-h);border-radius:3px;background:rgba(var(--veil),.14);overflow:hidden}
 /* 交界线层（v2.78.2 立，v2.79.0 两级线）：贴满几何后相邻音的分界由这层的骑缝竖线
    表达——线**骑在边界上**，两格对称各让半像素，谁也不压谁。为什么不在格子里画
    （v2.78.0/2.78.1 的 .sep::after 已退役）：.cell 有 overflow:hidden，伪元素跨不出
@@ -735,7 +760,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    v2.79.0 两级线：拍内缝 1px 墨色 rgba(var(--veil),.18)；拍边界缝 2px 提一档灰
    var(--seam-strong)——交界统一「切开」语汇，层级用线的强度表达（beat-zone 自画
    描边 + 圆角凹槽的「叠板」语汇退役）。 */
-.seams{position:absolute;left:0;right:0;top:0;height:44px;pointer-events:none;z-index:2}
+.seams{position:absolute;left:0;right:0;top:0;height:var(--cell-h);pointer-events:none;z-index:2}
 /* 接缝直角（v2.78.1 立口径；v2.79.0 扩到全部内缘）：贴满后两格各带圆角会在接缝上下
    咬出凹槽缺口，读作"两片板材相叠"。交界两侧一律收平为直角（行两端保留圆角——
    行级圆角条的语义）；拍分组层级由 2px 强缝表达，不再靠凹槽 */
@@ -1011,22 +1036,47 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .lyric-chip.played .lfill{background:var(--peak)}
 .lyric-chip.on{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(30,215,96,.9), 0 0 24px rgba(30,215,96,.35)}
 .lyric-chip.on .lfill{background:var(--peak)}
-.lyric-char{position:absolute;left:clamp(10px,25%,32px);top:50%;transform:translate(-50%,-50%);z-index:1;font-size:min(calc(16px * var(--cs, 1)), 24px);font-weight:700;color:var(--t2);white-space:nowrap}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
-/* v3.38.0（用户口径①）：音高标注从「字右上上标」移到**字块左上角**——独立绝对定位、字仍在原位居中；
-   字号随 --cs 走（11→15px），点号改实心更清（见 .jp-dots），颜色按八度走（.jp-g.oct-*，不再随字色）。 */
-.lyric-chip .lyric-pit{position:absolute;left:2px;top:0;z-index:2;font-size:min(calc(11px * var(--cs,1)),15px);font-weight:800;line-height:1;letter-spacing:0;pointer-events:none}
-/* v3.38.0（P12）：简谱正字法 glyph——八度 = 数码上/下的点（竖排堆叠），时值不画线（块宽已表达）。
-   数字与点同在一个 inline-flex 列里，供 .lyric-pit / .arg-lyric-pit 共用（那两条只管字号与上标定位）。 */
-.jp-g{display:inline-flex;flex-direction:column;align-items:center;line-height:1;vertical-align:baseline}
-.jp-dots{font-size:.55em;line-height:.85;font-weight:400;letter-spacing:0}
-/* v3.38.0（用户反馈「高/低音的点太贴近数字」）：点与数码之间加**显式间距**——
-   实心「●」几乎填满字身、line-height .85 又紧，加上数码朝点侧微移，两条叠加会把间隙吃光；
-   这里补回一段可读间隙（em 随点号字号缩放）。 */
-.jp-dots.top{margin-bottom:.5em}
-.jp-dots.bot{margin-top:.5em}
-/* 数码升降幅度 0.18em → 0.08em：它本就朝点号侧移动、与上面的间距相抵，减小后间距才留得住 */
-.jp-body{display:inline-flex;align-items:baseline;line-height:1;transform:translateY(calc(var(--oct,0) * -0.08em))}
-.jp-acc{margin-right:.5px}
+.lyric-char{position:absolute;left:calc(26px * var(--cs,1));right:auto;top:auto;bottom:1px;transform:none;text-align:left;font-size:min(calc(14px * var(--cs,1)),21px);font-weight:700;color:var(--t3)}   /* v2.86.0（落法B）：字心落 clamp(10px,25%,32px)——短音按比例、长音封顶32px、极短格不裁字；25% = 半格的一半（以50%为居中）。★ v3.31.0：字号加 **24px 上限**，见下条注释 */
+/* v3.38.1（用户口径①②）：音高标注落字块左上角；**三档槽位**改由音区定——高音贴顶、
+   中音居中、低音贴底（v3.38.0 是所有音区一律 top:0，中音与低音因此完全同位）。
+   槽位用 :has() 读内层八度色类（.jp-g.oct-* / .pit-nm.oct-*），JS 照旧只挂色类，不新增编排口。
+   左内缩 5px（编排页同口径，见 .arg-lyric-pit 的注释），随 --cs 缩放——字号也是这么缩的。 */
+.lyric-chip .lyric-pit{position:absolute;left:calc(2px * var(--cs,1));top:0;transform:none;z-index:2;font-size:min(calc(14px * var(--cs,1)),16px);font-weight:800;line-height:1;letter-spacing:0;pointer-events:none}   /* 行盒 .85：字号抬到 14（宽屏封顶 20px）后，26px 格装不下「20px 字身 + 三档分居」——收行高不动字身，行程 6→9px（真机闸抓的） */   /* v3.38.1 补：字号 11→14px（用户实报「看不清」，口径 = 只比歌词字 16px 小一号）、左内缩按 0.43em 同步 5→6px */
+/* v3.38.1（用户口径）：带记号的格**整枚往左让一档**——记号（# / b）会把数码往右挤（真机实测
+   15px 字号下 9.5px，数码几乎贴住歌词字）；普通格保持 5px 不动，只动带记号的那些。
+   ★ 井号与 b 共用 .jp-acc 一个元素 ⇒ 这一条两个记号自动通吃（降号体系零额外改动）。 */
+.lyric-pit:has(.jp-acc){left:calc(4px * var(--cs,1))}
+/* v3.38.1 补3：**2 颗点**（跨两个八度）时整枚缩到 16px 档——纵向占位 = 0.85em 字身 + 2×0.35em 点
+   = 1.55em；20px 档要 31px，26px 的格装不下（真机会顶边被裁），16px 档 = 24.8px ✓。 */
+/* 2 颗点：0.425f + 2×0.35f ≤ 13 ⇒ f ≤ 11.5 ⇒ 11px（数字仍在同一条中线上） */
+/* v3.38.1（用户口径②·拍板）：八度点从「数码上/下」移到**数码右侧**——高音点贴数码右上角、
+   低音点贴数码右下角（保留「上=高、下=低」的方向语义）。
+   ★ 为什么必须挪：竖向点栈占 8.2px（点行盒 5.14 + 间距 3.03）会把数码顶离槽位——
+     v3.38.0 实测「中音与低音数码同在 0px、高音被顶到 8.17px」，三档槽位形同虚设；
+     挪到右侧后竖向全部让给数码（格高 26px、数码 11px ⇒ 三档可落在 0 / 7.5 / 15px）。
+   ★ v3.38.1 补3（用户口径「数码居中、点在正上/正下」）：点回到纵向 ⇒ 点**不再加宽**，
+     标记宽度恒为「内缩 + 数码 + 记号」⇒ 旧的「三级降级」（点横排 → 竖排 → 只画数码）**整个退役**：
+     收点既救不了宽度、又会丢掉音区信息。pitchFitClass 保留（判据与类名仍在断言/样式中引用），
+     但它一律放行 ⇒ .jp-g 上不会再出现降级类。
+   ★ 与 v3.38.0 的关系：那一版按用户要求做的是「点写在数码上/下」的正字法；本版改右侧，
+     属**用户口径变更**（非缺陷修复），CHANGELOG 按变更记，不写成 bugfix。
+   ★ .jp-body 的 --oct 位移（0.08em）随本条删除：它当初是「数码朝点侧微移」的补偿，
+     现在点不在上/下了，那位移只会把数码推离槽位；--oct 变量仍由 JS 写入（t226 拿它当读数口）。 */
+.jp-g{display:inline-flex;align-items:center;line-height:1;vertical-align:baseline;position:relative}   /* v3.38.1 补3（用户澄清）：**数字居中** ⇒ 高/低音的数字落在同一条中线上；八度点绝对定位在数字正上/正下 */
+/* ★★ 用户口径澄清（v3.38.1 补3）：居中的是**数字**，不是"数字+点"的整块——否则高音数字会被点顶上抬 8px、
+   低音数字被点下拉 5.6px（真机闸实测），高低音的数字就不在同一条线上了。做法：点用 position:absolute
+   脱离布局 ⇒ glyph 的高度 = 数字字身 ⇒ 居中即"数字坐中线"；点则精确溢出在数字正上/正下。 */
+.jp-dots{position:absolute;display:inline-flex;flex-direction:column;align-items:center;font-size:.4em;line-height:1;font-weight:400;letter-spacing:0}   /* .4em（14px 基准 ⇒ 5.6px）：点贴在数码头/脚的两侧，放大就越出 26px 格的高度带（真机闸钉着） */
+.jp-dots i{font-style:normal;display:block}          /* 每颗点一个元素：竖排降级才排得起来（纯文本节点排不动） */
+/* ★★★ v3.38.1 补8（用户口径）：低音点挂到**数码正下方偏左**之后，整枚 glyph 的高度变成了
+   0.85f（数码）+ 0.4f×低音点数（点向下生长）——2 颗点 = 1.65f，16px 档就是 26.4px > 26px 格高，
+   真机实测点底 28.4 越出格底 2.4px。故**只在 2 颗及以上低音点**时把整枚缩一档（16→13px ⇒ 21.5px）。
+   高音点不吃竖向（贴在头部右侧，top:0），故不受这条影响——这也是"高音点一个像素没动"的原因。 */
+.lyric-chip .lyric-pit:has(.jp-dots.lo i + i){font-size:min(calc(12px * var(--cs,1)),13px)}
+.jp-dots.hi{left:100%;top:0}                             /* 高音：贴在数字**正上方** */
+.jp-dots.lo{left:0;top:100%}                             /* 低音：挂在数字**正下方偏左**（left:0 = 与数字左缘齐；绝不再往左伸——right:100% 会伸进左侧邻居、压住小节竖线，用户实拍点名） */
+.jp-body{display:inline-flex;align-items:baseline;line-height:.85}
+.jp-acc{margin-right:.5px;font-size:.85em}   /* v3.38.1：记号小一号（与数码的主次关系一致，也省 1.3px 横向） */
 /* v3.38.0：八度三色（高暖 / 中中性 / 低冷）——音符脱离字色按八度着色（用户口径③）；nm 档同套 */
 .jp-g.oct-hi,.pit-nm.oct-hi{color:var(--pitch-hi)}
 .jp-g.oct-mid,.pit-nm.oct-mid{color:var(--pitch-mid)}
@@ -1035,14 +1085,25 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* v3.37.0 B 期：独立音符块（前奏/间奏/尾奏的谱——不与任何字重叠，standaloneNotes 派生）。
    视觉与字块分家：虚线描边 + 斜体谱字——一眼可分「这里没有词、只有音」；
    不进 chipEls/fillEls（无 .on/.played 跟随，B 期纯显示），outline 不占布局、不裁谱字 */
-.lyric-chip.notechip{background:rgba(var(--veil),.06);outline:1.5px dashed rgba(var(--veil),.45);outline-offset:-3px}
-.lyric-chip.notechip .lyric-char{font-style:italic;font-weight:800;color:var(--t3);font-size:11px}
-/* v3.38.0（用户报障「带高/低音标记的音符装不进格子」）：独立音符块的**整枚 glyph**（上下八度点 +
-   数码）要完整落进格内——主视图块高固定 26px，字号若随 --cs 涨必溢出，故这里**固定**收紧字号，
-   并把点距压紧（点号行高与点-数间距都比正文档更小）。 */
-.lyric-chip.notechip .jp-dots{font-size:.5em;line-height:.7}
-.lyric-chip.notechip .jp-dots.top{margin-bottom:.25em}
-.lyric-chip.notechip .jp-dots.bot{margin-top:.25em}
+/* v3.38.1 补（用户实报「无词音符块不美观」，拍板选乙）：**实心浅底 + 无描边 + 正体字**。
+   为什么撤虚线：虚线是"注释"语汇、小尺寸发毛，且背景换成照片壁纸时几乎看不见；
+   实心底在任何背景上都稳，而「没有词、只有音」仍由**八度三色 + 无汉字**表达，信息不减。
+   底色取 .085（比词块的 .14 暗一档 ⇒ 一眼分家，又不与背景争）。 */
+.lyric-chip.notechip{background:rgba(var(--veil),.085)}
+.lyric-chip.notechip .lyric-char{font-weight:800;color:var(--t3);font-size:min(calc(14px * var(--cs,1)),16px);line-height:.85}
+/* v3.38.1 补3：独立音符块与词块**同一套**音高标注口径——数码整枚居中、八度点在正上/正下。
+   横向锚点仍是与词块同口径的**左内缩**（字心 clamp 只服务词块里的汉字，t149/t154/t178 钉着）。 */
+/* v3.38.1 补4（用户二次实报）：nm 档「音名靠左 + 歌词字靠右」。字心本来居中在格宽 25% 处、随格宽右移，与左侧音名在 W<140px 时必然重叠（真机实测）——所以是布局问题，不是阈值问题。两者各占一侧后，不重叠的条件变成与格宽无关的加法：名字宽 + 字宽 + 两侧内缩 ≤ 格宽。 */
+.lyric-chip:has(.pit-nm) .lyric-pit{left:auto;right:calc(6px * var(--cs,1))}   /* v3.38.1 补4（用户口径：歌词靠左不动）⇒ 改让**音名靠右**；两者各占一侧后不再重叠 */
+/* v3.38.1 补5（真机闸抓到的回归）：补4 只把「音名靠右」写上了，但本轮的「歌词字右下」
+   （.lyric-char 曾被改成 left:26cs + right:6cs + text-align:right）把**字也推到了右端**——
+   于是名与字逐像素重叠（真机实测：名 [142.2,163.5]、字 [143.5,163.5]，「C5」正压在「高」上）。
+   修法：nm 档把字的**右锚去掉**（right:auto）⇒ 宽度退回字身宽、落在左内缩处，
+   与「名靠右」各占一侧——不相交条件这才成为补4 注释里写的那个**加法**：
+   名字宽 + 字宽 + 两侧内缩 ≤ 格宽（与格宽的关系是减法，不再随 25% 字心漂移）。
+   判据由 smoke 的 nm 几何探针钉住（nameL >= charR）。 */
+.lyric-chip:not(.notechip):has(.pit-nm) .lyric-char{right:auto;text-align:left}
+.lyric-chip.notechip .lyric-char{left:calc(6px * var(--cs,1));right:auto;bottom:auto;top:50%;transform:translateY(-50%);text-align:left}   /* 无词块：谱字居中靠左（不受词块"字右下"影响） */
 .lyric-chip.played .lyric-char{color:var(--on-green);font-weight:800}
 .lyric-chip.on .lyric-char{color:var(--green);font-weight:800}
 /* v2.86.0 移植 v2.84.0 双关放大：两标注都关（座次尺/时值标注）⇒ .lyric-row 进释放出的行内标注带、
@@ -1452,8 +1513,6 @@ input[type=range].vol{width:120px}
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
    均分宽度）——开关列作为第 3 列与音量/BPM 同行顶部对齐；<900 保持纵向堆叠。 */
 @media (min-width:900px){
-  .viz-head-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));justify-content:center;
-    align-items:stretch;column-gap:32px;row-gap:12px;margin:0 auto;max-width:1000px}
   /* ★ v3.21.0（用户需求）：align-items 恢复 stretch——三列等高（音量列与 BPM 列高度一致，
      音量组 space-between 把三根滑杆均匀铺满列高）；开关列 align-self:start 例外——
      面板打开时开关列向下生长（列内下移契约），不拉伸音量/BPM 的内容分布 */
@@ -1462,10 +1521,12 @@ input[type=range].vol{width:120px}
      三列均分就被打破。压到 0 后轨道恒 1fr、列内内容自行换行。 */
   /* display:contents 的 .viz-head 让 .group 成为真正的 grid item（孙级）——两条都要压 */
   .viz-head-grid > *, .viz-head-grid .viz-head > *{min-width:0}
-  /* ★★ v3.30.0（用户拍板）：开关列 padding-top 8 → **44px** ——「预备拍」行心
-     138 → 174，与 BPM 步进行（-5 -1 96 +1 +5）行心 173.8 同线（L1）。
-     只在本档生效：<900 纵向堆叠无 BPM 列可对，不加偏移。 */
-  .viz-head-grid .viz-toggles{padding-top:44px;grid-column:3;grid-row:1;align-self:start}
+  /* ★★ v3.30.0（用户拍板）：开关列 padding-top 8 → 44px ——「预备拍」行心 138 → 174，
+     与 BPM 步进行（-5 -1 96 +1 +5）行心 173.8 同线（L1）。
+     ★ v3.38.1 补7：这条补偿**搬走了**——它原来写死在 ≥900，而"开关与 BPM 同行"在
+       ≥776px 就成立（补7 的每块下限 280/280/192 ⇒ 三列门槛 776，比 900 早）。
+       现在由样式表末尾的**容器查询**按网格自身列数给：容器 = .viz-head-grid，
+       阈值 776 与三个 --min-w-* 同源，列数一变自动跟着走。 */
   .viz-head-grid .viz-head{display:contents}
 }
 /* ★ v3.30.0：≤900 纵向堆叠档——BPM 卡内容区限宽 **520px** 居左（与音量卡左缘同线）。
@@ -2177,22 +2238,32 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v3.37.0 B 期：独立音符块（编辑轨语境——不与字重叠的谱：间奏/前奏尾奏；纯谱行则全部）。
    与主视图 .lyric-chip.notechip 同一视觉语言：虚线描边（currentColor 随 obs 主题反色）、
    底透明——绿底实心是「词块」的专利。显示-only：不可拖、无 grip（编辑走「贴谱」+音高组） */
-.arg-lyric-chip.notechip{background:transparent;border:1.5px dashed currentColor;color:var(--green);cursor:default;font-style:italic;opacity:.9}
-/* v3.38.0（用户报障）：编排块高 24px（chip 内高约 20px），独立音符板的 glyph 同样**固定**收字号 + 压点距，
-   否则上下八度点装不进格。 */
-.arg-lyric-chip.notechip .arg-lyric-char{font-size:10px}
-.arg-lyric-chip.notechip .jp-dots{font-size:.5em;line-height:.7}
-.arg-lyric-chip.notechip .jp-dots.top{margin-bottom:.25em}
-.arg-lyric-chip.notechip .jp-dots.bot{margin-top:.25em}
+/* v3.38.1 补：编排页与主视图同一版「乙」——实心浅底、无虚线、正体（opacity 也撤了：
+   谱字现在是主要读数，不该再被整体压暗）。 */
+.arg-lyric-chip.notechip{background:rgba(var(--veil),.085);color:var(--green);cursor:default}
+/* v3.38.1：编排页与主视图**同一套**音高标注口径（三档槽位 + 右侧点 + 三级降级）。
+   v3.38.0 的「点距压紧」覆写随「点不再占竖向」退役；字号仍固定 10px（本块高固定约 20px）。
+   独立音符块的谱字是 chip 的 flex 项（chip 是 display:flex + align-items:center）——
+   纵向三档直接走 align-self，不另做绝对定位（少一条定位口径就少一处漂移）。 */
+.arg-lyric-chip.notechip .arg-lyric-char{font-size:12px;line-height:.85}
 .arg-lyric-chip.dragging{cursor:grabbing;box-shadow:inset 0 0 0 2px var(--green)}
 /* v2.53（C）：上浮 -22px 仅触屏（防指腹遮挡，iOS 拖拽范式）——鼠标拖动字块贴指针，
    不再恒定悬空（用户实测「字块偏离鼠标」的观感成分） */
 .arg-lyric-chip.dragging.touch{transform:translateY(-22px) scale(1.06)}
 .arg-lyric-chip.blocked{box-shadow:inset 0 0 0 2px var(--red)}   /* v2.47.0（F2）：被邻居钳住还在推 → 红边可见反馈，不再静默 */
 .arg-lyric-char{position:relative;pointer-events:none;white-space:nowrap;overflow:hidden;max-width:100%}   /* v2.52.0（V9）：跨小节长字的裁剪职责自 chip 移来 */
-/* v3.38.0（用户口径①）：音高标注落**字块左上角**（编辑轨恒显——开关「关」时也按简谱显示）；
-   八度三色见上（.jp-g.oct-*）；文字仍居中（.arg-lyric-char 不动），故不再随 chip 文色继承。 */
-.arg-lyric-chip .arg-lyric-pit{position:absolute;left:3px;top:0;z-index:2;font-size:11px;font-weight:800;line-height:1;letter-spacing:0;pointer-events:none}
+/* v3.38.1（用户口径①②）：音高标注落**字块左上角**（编辑轨恒显——开关「关」时也按简谱显示）；
+   三档槽位同主视图（高贴顶 / 中居中 / 低贴底）。左内缩 3px：本块有 2px 透明边框，绝对定位的
+   包含块是**内边距盒** ⇒ 视觉内缩 = 2 + 3 = 5px，与主视图的 5px 逐位对齐。
+   文字仍居中（.arg-lyric-char 不动），故不再随 chip 文色继承。 */
+.arg-lyric-chip .arg-lyric-pit{position:absolute;left:3px;top:0;transform:none;z-index:2;font-size:12px;font-weight:800;line-height:1;letter-spacing:0;pointer-events:none}   /* v3.38.1 补：编排页记号 11→12px（比主视图 14 小一档：本格只有约 20px 高，再大三档槽位就挤在一起） */
+/* v3.38.1：同上——编排页 3px 含 2px 透明边框，故带记号格写 1px（视觉 3px，与主视图对齐）。 */
+.arg-lyric-pit:has(.jp-acc){left:1px}
+/* ★ v3.38.1 补8：编排页与主视图**同一条口径**——低音点改挂数码正下方后整枚向下生长，
+   故锚点也从"竖向居中"改成"左上锚定"（居中会让点底越出本格约 20px 的高）；
+   --tg-align 与 .jp-dots.lo 都是两页共用的，改一处必须两处一起对。 */
+/* v3.38.1 补3：编排页同口径——2 颗点缩到 10px 档（1.55×10 = 15.5px ≤ 本格约 20px 高） */
+.arg-lyric-pit:has(.jp-dots i + i), .arg-lyric-chip.notechip .arg-lyric-char:has(.jp-dots i + i){font-size:9px}   /* 编排格约 20px 高：2 颗点 ⇒ 0.425f+0.7f ≤ 10 ⇒ f ≤ 8.9 */
 /* v3.38.0：编排**词块**是实心色（经典=绿 / 日间=深蓝），八度三色字号小、易与底色糊——
    给彩色谱字加同底色墨色的 1px 描边保证可读；音符块（透明底）不需要描边。 */
 body:not([data-theme="obs"]) .arg-lyric-chip:not(.notechip) .jp-g,
@@ -2461,9 +2532,10 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   #viz.no-ruler.no-durlab .lyric-row{height:28px}   /* 窄屏标注带仅 32px：回落 28，与 translateY(+36) 配套 */
   #viz.no-ruler.no-durlab .lyric-row .lyric-chip{height:26px}
   .viz{padding-top:50px}              /* 窄屏球域略降：跳高上限仍 48px，贴边但不裁切 */
-  .cell{height:34px}
-  .beat-zone{height:34px}
-  .seams{height:34px}   /* v2.79.0 连带修正（v2.78.x 遗留）：格子窄屏缩到 34px，线层仍 44px——缝线超出格子下缘 10px */
+  /* ★★★ v3.38.1 补10：窄屏格子带 = 34px —— **只改 --cell-h 这一处**，
+     .cell / .beat-zone / .seams / .bar-row.current::before 四条自动跟随
+     （v2.79.0 当年逐条补 34px 的做法就是这族 bug 的来源：新层一加就漏）。 */
+  :root{--cell-h:34px}
   .ruler-lab{top:52px;font-size:9px}
   .cell-label{top:38px;font-size:10px}
   /* 六线谱几何缩到窄屏版：格子 34px 高。★ v2.10.16 修复「窄屏底纹铺不满」（用户实报）：
@@ -2564,7 +2636,7 @@ body[data-theme="obs"]{
   --amber:#8A5A00;
   /* v3.38.0：八度三色日间压深版（白底 ≥4.5:1；色相与经典一致，只降明度）——
      低音沿用 --blue 日间口径，中音沿用 --amber 日间口径，高音新压深。 */
-  --pitch-hi:#B0183E; --pitch-mid:#8A5A00; --pitch-lo:#1D4ED8;
+  --pitch-hi:#B84A1E; --pitch-mid:#8A6A12; --pitch-lo:#2A5FA0;   /* v3.38.1 补3：日间档同族加深（白底对比 5.2 / 5.1 / 6.5） */
   --teal:#0D9488; --accent-hi:#1D4ED8;  /* 4.5:1 / 6.2:1 */
   /* P-c（v2.54.0）：--blue 此前只在 :root 定义、obs 从未覆盖（暗底上够用）。
      浅底上原值 #4FA3E3 只有 ≈2.5:1，而它的职责在 PLAN-v5 后变重了——字块选中框、
@@ -2625,7 +2697,7 @@ body[data-theme="obs"] .dialog-title{white-space:nowrap;flex:none}
    实测（1440 视口）：经典 标题 124 / +5 154 / 开关 156（开关对控制行 ✓）；
    日间 标题 147 / +5 182 ⇒ 开关须落 182 ⇒ 右列内边距 = 182 − 列顶 103 = **79px**（左列保留 44 让角标有位）。 */
 body[data-theme="obs"] .viz-head-grid .viz-head > .group{padding-top:44px}
-body[data-theme="obs"] .viz-head-grid .viz-toggles{padding-top:79px}
+body[data-theme="obs"] .viz-head-grid{--tg-align-top:79px}   /* 日间档的开关列补偿与经典档不同（44→79，日间给 BPM 组加了 44 的内边距）——收进同一个变量 */
 
 /* ---------- 观测台 · 当前节奏型头部（独立信息带） ---------- */
 
@@ -2816,7 +2888,81 @@ body[data-theme="obs"]{--rest-fill:#BBC2CD;--rest-line:rgba(15,23,42,.45)}
 /* ★ 必须**同级**覆盖：日间那条 body[data-theme="obs"] .cell{background:var(--cell)} 是 (1,1,0)，
    而 .cell.rest 只有 (0,2,0) ⇒ 不加这一条的话，休止格仍被铺成与普通格相同的实底（实测 1.000）。 */
 body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
-</style>
+/* ★★★ v3.38.1 补6（用户拍板）：顶部三块改 **flex-wrap** —— 列数由
+   floor((可用宽 + 列距) / (min_w + 列距)) **算出来**，不再按断点硬编列数。
+   · --min-w = 三块 min-content 的上界（真机 12 档实测 271 / 280 / 191 ⇒ 取 280，BPM 组最宽）；
+   · --col-gap = 12px（用户口径 12–16px；"相邻块间距 ≤24px"那条闸以它为准）；
+   · --max-w = 850px（= 限宽盒 1000 × 0.85——末行只剩一块时撑到 850 即止：
+     "行内空白率 ≤15%" 那条闸恰好卡在这个数上，再小末行就会留白超线）。
+   ★ 两条老路都没走：① auto-fit 网格（卡片收起 + 跨列项时会留幽灵空列，已回退）；
+     ② 直接改 flex（未过既有几何冒烟，已回退）。本版**先把 12 档真机闸建好再改**，
+     五条判据（列数公式 / 行内空白率 / 相邻间距 / 无横向溢出 / 展开不改列数）见 tools/smoke.js
+     的 topBlocksProbe 与对应断言；量得的原始 min-content 值见 CHANGELOG v3.38.1 补6。
+   ★ 必须放样式表末尾 + html body 抬特异性：窄屏档里还有 .card .viz-head-grid{display:block}
+     （收起方案）与 .viz-head-grid .card-head-left{width:100%} 这类同对象规则。 */
+@media (min-width:560px){
+  html body .card .viz-head-grid{
+    display:flex;flex-wrap:wrap;gap:var(--col-gap);justify-content:center;
+    max-width:1000px;margin:0 auto}
+  /* ★★★ v3.38.1 补7：**壳全档溶解**。补6 只把它写在 ≥900 里 ⇒ 900 以下永远是
+     "音量+BPM"一整块参与排布，用户四张实拍里"音量 | BPM | 开关"三列**结构上不可能出现**
+     （那不是间距问题）。溶解后三块各自成为可排项，DOM 顺序即视觉顺序。
+     ★ 收起方案（≤640 / 竖屏 / 矮屏）里那几条 [volOpen:not(:checked) ~ .card-head …]
+       选择器走的是**后代关系**：display:contents 只去掉盒子、不去掉层级，故照旧生效。 */
+  html body .card .viz-head-grid .viz-head{display:contents}
+  /* 三块（音量组 / BPM 组 / 开关组）各自的**基准宽 = --min-w**（不是内容尺寸）——
+     这一条正是"展开任一参数槽后列数不变"的实现：flex-basis 是常量，
+     面板展开只改块内布局，不改轨道数。
+     ★ 选择器**逐个点名**，不用通配符：.viz-head-grid 里还住着 #presetMask / #presetDrawer /
+       #drawerHotzone 这些 position:fixed 的子节点——通配会把 max-width:850px 糊到遮罩上，
+       实拍"遮罩只盖住 850px、右侧露出播放底栏"（本地真机闸抓到的）。 */
+  /* ★★★ v3.38.1 补7：**每块用自己的下限**（真机实测 min-content：音量 271 / BPM 280 / 开关 191）。
+     补6 三块共用一个 280 —— 那是"取三块里最大的"最保守取法，等于要求开关也长到 280、
+     音量也长到 280，凭空多要 (280−191)+(280−271)=98px：三列门槛被抬到 864（实际只需 776）、
+     两列门槛被抬到 572（音量+BPM 实际只需 563）⇒ 用户看到的"明明能并排却换行"就是这么来的。
+     ★ BPM 内部不允许折行（用户口径）⇒ 280 就是它的**物理下限**，不能再压。
+     ★ flex-basis 是常量 ⇒ 面板展开只改块内布局、不改轨道数（"展开不重排"的实现）。 */
+  html body .card .viz-head-grid > .card-head.viz-head,
+  html body .card .viz-head-grid .viz-head > .card-head-left{
+    flex:1 1 var(--min-w-vol);min-width:var(--min-w-vol);max-width:var(--max-w)}
+  html body .card .viz-head-grid .viz-head > .group{
+    flex:1 1 var(--min-w-bpm);min-width:var(--min-w-bpm);max-width:var(--max-w)}
+  html body .card .viz-head-grid > .viz-toggles{
+    flex:1 1 var(--min-w-sw);min-width:var(--min-w-sw);max-width:var(--max-w)}
+  /* 胶囊行只在收起档出现——它必须**独占一行**，否则会挤进第一行去抢列 */
+  html body .card .viz-head-grid > .ctl-pills{flex:0 0 100%;min-width:0;max-width:none}
+  /* ★★★ v3.38.1 补7：开关列的"与 BPM 步进行同线"补偿（PC 档一直是 padding-top:44px 硬补偿）。
+     补6 在 <900 用的 align-self:end 是**错基准**——它贴的是"音量+BPM 整块"的底，
+     于是开关既不对齐 BPM 步进行、也不像故意贴底（用户图四点名的就是这条）。
+     改成**容器查询**：容器 = .viz-head-grid 自己（container-type:inline-size 在基础规则里），
+     阈值 776 = 280+280+192+2×12 —— 与三个 --min-w-* **同源**，改了下限它自动跟着走；
+     而且它问的是"网格的可用宽"而非视口宽，不再依赖任何视口断点。
+     ★ 开关**独占一行**时（<776）不加补偿：那时没有 BPM 列可对，加了就是 44px 空气。 */
+  /* 从 496（= BPM 280 + 开关 216 + 列距 12）起就可能与 BPM 同行 ⇒ 补偿从这一档开始给。
+     ★ 为什么不用 776（三列门槛）：用户图四点名的正是"BPM 与开关并排却没对齐"那种两列形态，
+       只覆盖三列等于没修。阈值 496 与两个下限同源。 */
+  @container (min-width:496px){
+    html body .card .viz-head-grid > .viz-toggles{padding-top:calc(var(--tg-align-top) + var(--tg-align-shift))}
+  }
+  /* ★★★ v3.38.1 补7：**开关列的下限是分两段的**——这是"能并排"与"参数行不折行"两件事的折中：
+     · 断行判据用 --min-w-sw:216px（开关块本身很窄）⇒ 三块并排门槛 800，图一/图二/图三都能并排；
+     · 但"展开的变速/静音参数行不许折行"要更宽的列，实测（真机逐档量面板折行分界）：
+         经典主题：面板 ≥248 ⇒ 开关列 ≥280（270→238 折、280→248 不折）
+         日间主题：面板 ≥288 ⇒ 开关列 ≥320（日间给 .tr-panel 多 32px 内边距/边框）
+     · 若把下限直接提到 320，三列门槛就变成 904，图一图二又并排不了 —— 所以按"这一行供不供得起"
+       分三段抬升，阈值全部与三个下限同源（供得起 = 三块下限 + 该档开关列 + 2×列距）：
+         可用宽 ≥864 → 开关列 280（经典档参数行不折）
+         可用宽 ≥904 → 开关列 320（日间档也不折）
+     · 904 落在审计线（viewport 961）之下：≥961 的所有档都拿到 320 ⇒ 两主题参数行都不折。
+       剩余代价写清楚：可用宽 776–863（viewport ≈840–930）里展开参数行仍会折成 2 行——
+       那是"三列更早出现"的直接代价；要消掉它只能把下限提到 320（门槛回 904，图一图二就并排不了）。 */
+  @container (min-width:864px){
+    html body .card .viz-head-grid > .viz-toggles{min-width:280px}
+  }
+  @container (min-width:904px){
+    html body .card .viz-head-grid > .viz-toggles{min-width:320px}
+  }
+}</style>
 </head>
 <body>
 <!-- 背景壁纸层（v2.12.0）：常驻一个空 div，由装配层按本地存档往它身上写 background-image。
@@ -3565,6 +3711,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="arg-lib-wrap" id="argLibRow">
       <div class="arg-lib-h">
         <b>曲式</b><span id="argLibCount"></span>
+        <!-- v3.38.1（用户口径）：本曲式的**记谱体系**——「一个谱子里只能都是降号，或者都是升号」，
+             故只有两态、没有"混合"选项。缺省不写字段、由调名推导（今天没有调主 UI ⇒ 恒为升号制）。 -->
+        <button class="pill outline arg-acc-sys" id="argAccSys" aria-pressed="false" aria-label="本曲式记谱体系：升号">记谱 升号</button>
         <button class="arg-add" id="argNew" aria-expanded="false" aria-label="新建曲式（选模板）">＋</button>
       </div>
       <div class="arg-list" id="argList" role="group" aria-label="曲式列表"></div>
@@ -4227,23 +4376,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4259  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5550  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7666  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8700  Modal         应用内弹窗
-     L8845  Viz           时值可视化渲染与每帧动画
-     L12349 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13030 Trainer       变速训练器
-     L13240 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L13951 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L15929 Editor        自定义节奏型编辑器
-     L16509 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16556 Ear           听辨训练（v1.10.0）
-     L16784 Arrange       曲式编排（v2.0.0）
-     L20808 Help          使用方法（v2.0.1）
-     L20963 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21037 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21326 初始化（装配） 各模块 hook 接线与启动
+     L4408  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5832  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7952  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8986  Modal         应用内弹窗
+     L9131  Viz           时值可视化渲染与每帧动画
+     L12655 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13336 Trainer       变速训练器
+     L13546 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14257 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16235 Editor        自定义节奏型编辑器
+     L16815 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16862 Ear           听辨训练（v1.10.0）
+     L17090 Arrange       曲式编排（v2.0.0）
+     L21155 Help          使用方法（v2.0.1）
+     L21310 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21384 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21673 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4269,7 +4418,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.38.0";
+const VERSION = "3.38.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4520,55 +4669,97 @@ const KEY_SEMIS = { C:0, "C#":1, Db:1, D:2, "D#":3, Eb:3, E:4, F:5, "F#":6, Gb:6
   G:7, "G#":8, Ab:8, A:9, "A#":10, Bb:10, B:11 };
 /** 大调音阶七级的半音位（1=0 … 7=11），简谱度数 → 半音的唯一真相源。 */
 const DEG_SEMIS = [0, 2, 4, 5, 7, 9, 11];
-/** 半音差(0-11) → [度数, 升降记号]。升号制（#1/#2/#4/#5/#6）——b7/b3 等
-    同音异名输入会被解析成同一半音、显示时统一升号写法（确定性优先）。
+/** 半音差(0-11) → [度数, 升降记号]。**两套体系**（v3.38.1 用户拍板：
+    「一个谱子里只能都是降号，或者都是升号」）——体系是**曲式级**的唯一来源（ArrangeData.accSys），
+    音符本身仍只存半音整数，故同一个音不可能出现两种写法混排（这是"规则层面的限制"）。
+     · 升号制（默认）：1 #1 2 #2 3 4 #4 5 #5 6 #6 7
+     · 降号制        ：1 b2 2 b3 3 4 b5 5 b6 6 b7 7
+    ★ 调内七级（0/2/4/5/7/9/11）两表**完全相同** ⇒ 自然度数永远不带记号，只有 5 个变化音
+      按体系选升/降；这也是简谱的读法（调号已含的升降不再重复写记号）。
     @type {[number, string][]} */
-const REL2DEG = [[1,""],[1,"#"],[2,""],[2,"#"],[3,""],[4,""],[4,"#"],[5,""],[5,"#"],[6,""],[6,"#"],[7,""]];
-const PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const REL2DEG_SHARP = [[1,""],[1,"#"],[2,""],[2,"#"],[3,""],[4,""],[4,"#"],[5,""],[5,"#"],[6,""],[6,"#"],[7,""]];
+/** @type {[number, string][]} */
+const REL2DEG_FLAT  = [[1,""],[2,"b"],[2,""],[3,"b"],[3,""],[4,""],[5,"b"],[5,""],[6,"b"],[6,""],[7,"b"],[7,""]];
+/** 体系名 → 简谱表（白名单；脏值回落升号制——与加载校验同一口径）。
+    @type {Record<string, [number, string][]>} */
+const ACC_TABLES = { sharp: REL2DEG_SHARP, flat: REL2DEG_FLAT };
+/** @param {string} [sys] @returns {[number, string][]} */
+function relTable(sys){ return ACC_TABLES[/** @type {string} */ (sys)] || REL2DEG_SHARP; }
+/** 体系名 → 十二音名（nm 档用；与简谱同一套体系选择）。
+    @type {Record<string, string[]>} */
+const PITCH_NAMES_OF = {
+  sharp: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
+  flat:  ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"],
+};
 /** 调主 MIDI（C4=60 基准）。
     @param {string} keyName @returns {number} */
 function keySemiOf(keyName){
   const k = (keyName !== null && keyName !== undefined) ? KEY_SEMIS[/** @type {keyof typeof KEY_SEMIS} */ (keyName)] : undefined;
   return typeof k === "number" ? 60 + k : 60;
 }
-/** midi → 音名+八度（C4 形，如 D#4）。
-    @param {number} p @returns {string} */
-function pitchNameOf(p){
-  return PITCH_NAMES[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
+/** 调号含降号的六个大调名（F 1 个 / Bb 2 / Eb 3 / Ab 4 / Db 5 / Gb 6）——**按调号判**，
+    不能只看调名里有没有字母 b：F 调的调号里就有降号，而名字里没有 b（这条被 t228c 当场抓到：
+    我第一版写 indexOf("b")，F 被判成升号制）。C 调两个体系都不占，按用户口径归升号制。
+    @type {string[]} */
+const FLAT_KEYS = ["F", "Bb", "Eb", "Ab", "Db", "Gb"];
+/** 调名 → 缺省体系（按调号）。★ 现实校验（v3.38.1）：本仓**还没有调主 UI**——全仓没有一处写
+    arrange.key，帮助文案写「曲式默认 C 调」⇒ 这条今天恒等于 sharp，老数据与既有断言逐位不变；
+    等将来有调主 UI，它会自动接管「没显式选过体系」的那些曲式。
+    @param {string} keyName @returns {string} */
+function accSysOfKey(keyName){
+  return FLAT_KEYS.indexOf(String(keyName === null || keyName === undefined ? "" : keyName)) >= 0
+    ? "flat" : "sharp";
 }
-/** midi → 简谱（度数 + 升降号 + 八度点），按调主折算：1'=高八度、6,=低八度、#4=升四级。
-    超出 ±1 个八度仍如实堆点（1'' = 高两个八度）。也是贴词后缀的**序列化形式**——
-    prefill 回填用它、解析器认它，一进一出同一套写法。
-    @param {number} p @param {number} keySemi @returns {string} */
-function jianpuOf(p, keySemi){
+/** 曲式 → 生效体系：显式 accSys 优先（白名单），缺省/脏值回落「按调名推导」。
+    @param {any} a @returns {string} */
+function accSysOf(a){
+  const v = a && a.accSys;
+  if (v === "flat" || v === "sharp") return v;
+  return accSysOfKey(a && typeof a.key === "string" ? a.key : "");
+}
+/** midi → 音名+八度（C4 形，如 D#4 / Bb3）。sys 缺省升号制。
+    @param {number} p @param {string} [sys] @returns {string} */
+function pitchNameOf(p, sys){
+  const names = PITCH_NAMES_OF[/** @type {string} */ (sys)] || PITCH_NAMES_OF.sharp;
+  return names[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
+}
+/** midi → 简谱（度数 + 升降号 + 八度点），按调主与**体系**折算：1'=高八度、6,=低八度、
+    升号制写 #4、降号制写 b5（同一个半音，两种体系两种写法）。超出 ±1 个八度仍如实堆点
+    （1'' = 高两个八度）。也是贴词后缀的**序列化形式**——prefill 回填用它、解析器认它，
+    一进一出同一套写法（同一体系下 serialize∘parse 逐位还原）。
+    @param {number} p @param {number} keySemi @param {string} [sys] @returns {string} */
+function jianpuOf(p, keySemi, sys){
   const d = p - keySemi;
   const rel = ((d % 12) + 12) % 12;
   const oct = Math.floor(d / 12);
-  const m = REL2DEG[rel];
+  const m = relTable(sys)[rel];
   return m[1] + m[0] + (oct > 0 ? "'".repeat(oct) : oct < 0 ? ",".repeat(-oct) : "");
 }
-/** 显示文案：nm=音名，其余按简谱。调主缺省 C。
-    @param {number} p @param {string} mode @param {string} keyName @returns {string} */
-function pitchTextOf(p, mode, keyName){
-  return mode === "nm" ? pitchNameOf(p) : jianpuOf(p, keySemiOf(keyName));
+/** 显示文案：nm=音名，其余按简谱。调主缺省 C、体系缺省升号。
+    @param {number} p @param {string} mode @param {string} keyName @param {string} [sys] @returns {string} */
+function pitchTextOf(p, mode, keyName, sys){
+  return mode === "nm" ? pitchNameOf(p, sys) : jianpuOf(p, keySemiOf(keyName), sys);
 }
-/** 从 s 的 j 位起吃一个音高后缀 → midi。两种写法都认：`1'`、`5`、`1#'` 与 `#1'`（标准
-    写法：记号在数前）。返回 null = 不是合法后缀（一个字节都不吃）。
+/** 从 s 的 j 位起吃一个音高后缀 → midi。写法都认：1'、5、1#'、#1'（记号可前可后），
+    记号认井号 / b 与 Unicode 的 ♯(U+266F) / ♭(U+266D)——同一含义四种字形（v3.38.1 补后两者）。
+    ★ 输入只决定**半音**，显示一律按本谱体系：在降号谱里写 #4 会显示成 b5（同一个音），
+      不报错、不改数据——这正是用户要的「一个谱子只能全升或全降」。
+    返回 null = 不是合法后缀（一个字节都不吃）。
     @param {string} s @param {number} j @param {number} keySemi
     @returns {{len:number, p:number}|null} */
 function matchPitchSuffix(s, j, keySemi){
+  /** 记号字形 → ±1（不是记号 = 0） @param {string} ch @returns {number} */
+  const accAt = ch => (ch === "#" || ch === "♯") ? 1 : ((ch === "b" || ch === "♭") ? -1 : 0);
   let acc = 0, i = j;
-  const c0 = s.charCodeAt(i);
-  if (c0 === 35){ acc = 1; i++; }          /* # */
-  else if (c0 === 98){ acc = -1; i++; }    /* b */
+  const a0 = accAt(s.charAt(i));
+  if (a0){ acc = a0; i++; }
   if (i >= s.length) return null;
   const deg = s.charCodeAt(i) - 48;
   if (deg < 1 || deg > 7) return null;
   i++;
-  if (acc === 0 && i < s.length){           /* 后置记号：5# / 5b（与 #5 / b5 等价） */
-    const c = s.charCodeAt(i);
-    if (c === 35){ acc = 1; i++; }
-    else if (c === 98){ acc = -1; i++; }
+  if (acc === 0 && i < s.length){           /* 后置记号：5# / 5b / 5♭（与 #5 / b5 等价） */
+    const a1 = accAt(s.charAt(i));
+    if (a1){ acc = a1; i++; }
   }
   let oct = 0;
   while (i < s.length && (s[i] === "'" || s[i] === ",")){
@@ -4664,8 +4855,10 @@ function parseMelodyTokens(text, keySemi){
     · 空档 = 细档休止序列：gap 18 →「0_ 0__」。
     非 6t 对齐或乱序的脏值跳过（norm 后不出现，防御位）；回填是「再编辑」的起点。
     旧行为回归：纯 24t 对齐的谱输出与 v3.37.0 逐位一致（不无故掺 `_`）。
-    @param {any[]} notes @param {string} keyName @returns {string} */
-function melodySerialize(notes, keyName){
+    ★ v3.38.1：多一个 sys（体系）——回填文本按本谱体系写（降号谱回填出 b7 而不是 #6）；
+      同一体系下 serialize∘parse 仍逐位还原。
+    @param {any[]} notes @param {string} keyName @param {string} [sys] @returns {string} */
+function melodySerialize(notes, keyName, sys){
   if (!notes || !notes.length) return "";
   const out = [];
   let cursor = 0;
@@ -4687,7 +4880,7 @@ function melodySerialize(notes, keyName){
     cursor = n.t;
     const parts = chunk(n.dur);                                     // 本体 = 首档，其余 = 延音
     if (parts.length){
-      out.push(pitchTextOf(n.p, "jp", keyName) + sub(parts[0]));
+      out.push(pitchTextOf(n.p, "jp", keyName, sys) + sub(parts[0]));
       for (let q = 1; q < parts.length; q++) out.push("-" + sub(parts[q]));
     }
     cursor = n.t + n.dur;
@@ -4719,11 +4912,11 @@ function charPitchMark(notes, c){
 }
 /** mark → 显示文本（tie =「-」、多单元用「·」连接）。
     @param {any} mark @param {string} mode
-    @param {string} keyName @returns {string} */
-function pitchMarkText(mark, mode, keyName){
+    @param {string} keyName @param {string} [sys] @returns {string} */
+function pitchMarkText(mark, mode, keyName, sys){
   if (!mark) return "";
   return mark.seq.map((/** @type {any} */ u) =>
-    u.tie ? "-" : pitchTextOf(/** @type {number} */ (u.p), mode, keyName)).join("·");
+    u.tie ? "-" : pitchTextOf(/** @type {number} */ (u.p), mode, keyName, sys)).join("·");
 }
 /* ---------- v3.38.0（P12）：简谱正字法显示——文本形态之外的第二形态 ----------
    文本形态（jianpuOf 的 `1'` / `6,` / `#4`）继续服务 serialize 回填 / aria / announce；
@@ -4732,37 +4925,109 @@ function pitchMarkText(mark, mode, keyName){
    且小字号必糊）；nm 档直接用音名文本形态（音名体系的八度就是数字 C5，无点号传统）。 */
 /** midi → 简谱结构（正字法用）：{acc, deg, octUp, octDown}。与 jianpuOf 同口径
     （同一 d → 同一 rel/oct），只是把「度数 / 升号 / 八度点」拆成可建的字段。
-    @param {number} p @param {number} keySemi
+    ★ v3.38.1：多一个体系参数（"sharp" / "flat"，缺省升号）——同一个半音在两个体系下
+      给出不同写法（#4 / b5），这是"一个谱子只能全升或全降"的落点。
+    @param {number} p @param {number} keySemi @param {string} [sys]
     @returns {{acc:string, deg:number, octUp:number, octDown:number}} */
-function jianpuParts(p, keySemi){
+function jianpuParts(p, keySemi, sys){
   const d = p - keySemi;
   const rel = ((d % 12) + 12) % 12;
   const oct = Math.floor(d / 12);
-  const m = REL2DEG[rel];
+  const m = relTable(sys)[rel];
   return { acc: m[1], deg: m[0], octUp: oct > 0 ? oct : 0, octDown: oct < 0 ? -oct : 0 };
 }
 /** 八度净量 → 配色类名（v3.38.0 用户口径③：高暖 / 中中性 / 低冷）。glyph 与 nm 文本档共用同一套类。
-    @param {number} p @param {number} keySemi @returns {string} */
-function octClassOf(p, keySemi){
-  const u = jianpuParts(p, keySemi);
+    @param {number} p @param {number} keySemi @param {string} [sys] @returns {string} */
+function octClassOf(p, keySemi, sys){
+  const u = jianpuParts(p, keySemi, sys);
   const net = u.octUp - u.octDown;
   return net > 0 ? "oct-hi" : (net < 0 ? "oct-lo" : "oct-mid");
 }
+/* ★ v3.38.1：谱字宽度需求（px，按音高标注的**基准字号 11px** 实测）+ 窄格三级降级判据。
+   为什么可以写死「基准字号」而不随 --cs 变：--cs = 行宽/960 与格宽**同比例** ⇒ 「格宽 ÷ 字号」
+   是不变量；且 --cs 封顶 1.45、字号封顶 15px 之后字号不再长而格继续变宽 ⇒ 只会更宽裕。
+   ★★ v3.38.1 补（字号 11 → 14px，用户口径"只比歌词小一号"）：整张表按 14/11 重算，
+     并以 **PITCH_MARK_BASE = 14** 为基准；编排页记号只有 12px ⇒ 用 pitchFitCellPx 把格宽折算到
+     14 基准再比（等价于把需求缩小，避免"编排页因为字号小而误判成宽格"）。
+   数值来源（14px 基准）：数码 8.4、记号加 4.8（.85em 的 # / b）、左内缩 6（与 CSS 同源）、
+   点与数码间距 1.3、每颗点 5.9（.42em × 14px，实心「●」的字身宽度）。
+   ★ v3.38.1（用户口径）：**带记号格的左内缩更小**（insetAcc = 3，CSS 侧 :has(.jp-acc) 同步）——
+     记号会把数码往右挤（真机实测 15px 字号下 9.5px），故整枚往左让一档。
+   ★ nm 档（音名）没有点可降级，按**字符数**估宽（nmChar ≈ 5.4px/字符 @11px，实测 C4=10.8、C#4=15.6）。
+   ★ 这组数是**字体度量**，会随字体/字号漂移 ⇒ 由真机探针（smoke 的音高几何探针）守着
+     「任何格宽下都不裁字」，漂移了它会红。 */
+const PITCH_MARK_BASE = 14;            /* 常量表的基准字号（主视图记号） */
+const NM_CHAR_RESERVE = 46;      /* 词块里「歌词字」占地（**左内缩 26cs + 字身 14cs + 间隙**；cs>=1、字身封顶 ⇒ 常量与 --cs 无关）：nm 判据必须把它算进来 */   /* v3.38.1 补5：30 → 46——字从「格宽 25% 的字心」改成**靠左的实占宽**，旧值按 0.75·W 的模型定的，已不适用 */
+const PITCH_MARK_ARRANGE_FS = 12;      /* 编排页记号的字号（CSS 同源）——判定前先折算到 14 基准 */
+const PITCH_MARK = { inset: 6, insetAcc: 4, digit: 8.4, acc: 4.8, gap: 1.3, dot: 5.9, nmChar: 6.9 };
+/** 把「某字号下的格宽」折算到 PITCH_MARK_BASE（14px）基准——常量表只有一份，编排页记号 12px
+    时用它换算（等价于把该处需求按 12/14 缩小；否则会因字号小而误判成宽格）。
+    ★ 为什么不给 pitchFitClass 加字号参数：折算点只有两处（编排页），放调用端接线更少。
+    @param {number} cellPx @param {number} fontPx @returns {number} */
+function pitchFitCellPx(cellPx, fontPx){
+  return (fontPx > 0 ? cellPx * PITCH_MARK_BASE / fontPx : cellPx);
+}
+/** 三档需求（px，按 PITCH_MARK_BASE 基准字号）。入参格宽须先经 pitchFitCellPx 折算。
+    @param {{acc?:string, dots?:number, nmChars?:number}} parts
+    @returns {{row:number, col:number, num:number, nm:number}} */
+function pitchMarkNeeds(parts){
+  const hasAcc = !!(parts && parts.acc);
+  const inset = hasAcc ? PITCH_MARK.insetAcc : PITCH_MARK.inset;
+  /* ★ v3.38.1 补3（用户口径「数码居中、点在正上/正下」）：点回到纵向 ⇒ **不再加宽**，
+     标记宽度恒为「内缩 + 数码 + 记号」⇒ row = col = num（三值相等），旧的「窄格收点 /
+     只画数码」两档**自然退役**（判据保留但永不触发——收点既救不了宽度，又会丢掉音区信息；
+     .jp-g 的 pitch-col / pitch-num-only 类名仍被样式与断言引用，故不删这些函数）。 */
+  const w = inset + PITCH_MARK.digit + (hasAcc ? PITCH_MARK.acc : 0);
+  return { row: w, col: w, num: w,
+    nm: inset + (parts && parts.nmChars ? parts.nmChars * PITCH_MARK.nmChar : 0) };
+}
+/** nm（音名）档的窄格判据：窄到装不下音名文本 ⇒ **整枚不画**（aria / 编辑轨读数不受影响）。
+    与 jp 档「只画数码」同一精神：宁可少画一层，也不画坏的（v3.38.1 用户拍板）。
+    @param {number} cellPx @param {number} chars @param {string} [sys] @param {number} [reserve] 词块里歌词字占地（px） @returns {boolean} 是否应当隐藏 */
+function nmMarkHidden(cellPx, chars, sys, reserve){
+  if (!(cellPx > 0)) return false;                       // 量不到宽 ⇒ 不隐藏（与 pitchFitClass 同纪律）
+  const need = pitchMarkNeeds({ nmChars: chars }).nm;
+  /* 词块：不重叠 = 名字宽(need 已含左内缩) + 字占地(reserve) ≤ 格宽；窄于这个加法就**整枚不画**。
+     独立音符块（无 reserve）保持原口径：窄到装不下名字才隐藏。
+     ★ v3.38.1 补5：原来是 0.75·W < need + 12 —— 那是「字心居中在格宽 25%」时代的模型
+       （0.75W = 字心右侧剩多少），字改成靠左实占后它不再成立（0.75 这个系数没有依据了）。 */
+  return cellPx < need + (reserve || 0);
+}
+/** 窄格降级档 —— ★ v3.38.1 补3（用户口径「数码居中、点在正上/正下」）后**永不触发**：
+    点回到纵向 ⇒ 标记宽度恒为「内缩 + 数码 + 记号」（pitchMarkNeeds 的 row/col/num 三值相等），
+    而「窄格收点 / 只画数码」既救不了宽度、又会丢掉音区信息 ⇒ 两档退役。
+    ★ 函数与类名保留：.jp-g 的 pitch-col / pitch-num-only 样式与 t227 的断言仍引用它们。
+    @param {number} cellPx @param {{acc?:string, dots?:number}} parts @returns {string} */
+function pitchFitClass(cellPx, parts){
+  if (!(cellPx > 0) || !parts) return "";
+  return "";
+}
+/** 八度点（v3.38.1：排在数码**右侧**；每颗一个 i 子元素——竖排降级靠 flex-direction 排队，
+    单个文本节点排不动）。side = "hi" 贴数码上缘（右上角）/ "lo" 贴下缘（右下角）。
+    @param {number} n @param {string} side @returns {HTMLElement} */
+function mkDots(n, side){
+  const el = document.createElement("span");
+  el.className = "jp-dots " + side;
+  for (let i = 0; i < n; i++){
+    const d = document.createElement("i");
+    d.textContent = "●";
+    el.appendChild(d);
+  }
+  return el;
+}
 /** jianpuParts → 正字法 glyph 节点（只建点号与数码，**无时值线**）。
-    @param {{acc:string, deg:number, octUp:number, octDown:number}} parts @returns {HTMLElement} */
-function mkJianpuGlyph(parts){
+    ★ v3.38.1：点改挂**数码右侧**（体例见 CSS 注释），故子节点顺序 = [body, 点]：
+      低音原本就是「数码 + 点」，聚合文本逐位不变；高音从「点 + 数码」变成「数码 + 点」。
+    @param {{acc:string, deg:number, octUp:number, octDown:number}} parts
+    @param {string} [fit] 窄格降级档（pitchFitClass 给出；空 = 点横排） @returns {HTMLElement} */
+function mkJianpuGlyph(parts, fit){
   const g = document.createElement("span");
   const net = parts.octUp - parts.octDown;
-  /* v3.38.0：八度净量 → (a) 配色类 oct-hi/mid/lo（用户口径③）；(b) CSS 变量 --oct 供 .jp-body
-     的 translateY 做「数码随八度升降」（用户口径②，与点号双重表达）。 */
-  g.className = "jp-g " + (net > 0 ? "oct-hi" : (net < 0 ? "oct-lo" : "oct-mid"));
+  /* 八度净量 → (a) 配色类 oct-hi/mid/lo（用户口径③；CSS 的槽位选择器 :has() 也读它）；
+     (b) CSS 变量 --oct：v3.38.1 起**不再参与定位**（.jp-body 的位移已删），保留写入只因
+         它是 t226 钉住的读数口。 */
+  g.className = "jp-g " + (net > 0 ? "oct-hi" : (net < 0 ? "oct-lo" : "oct-mid")) + (fit ? " " + fit : "");
   g.style.setProperty("--oct", String(net));
-  if (parts.octUp > 0){
-    const up = document.createElement("span");
-    up.className = "jp-dots top";
-    up.textContent = "●".repeat(parts.octUp);
-    g.appendChild(up);
-  }
   const body = document.createElement("span");
   body.className = "jp-body";
   if (parts.acc){
@@ -4776,23 +5041,29 @@ function mkJianpuGlyph(parts){
   deg.textContent = String(parts.deg);
   body.appendChild(deg);
   g.appendChild(body);
-  if (parts.octDown > 0){
-    const dn = document.createElement("span");
-    dn.className = "jp-dots bot";
-    dn.textContent = "●".repeat(parts.octDown);
-    g.appendChild(dn);
-  }
+  if (parts.octUp > 0) g.appendChild(mkDots(parts.octUp, "hi"));
+  if (parts.octDown > 0) g.appendChild(mkDots(parts.octDown, "lo"));
   return g;
 }
-/** mark → 显示节点（P12）：tie 单元 = 文本「-」；pitch 单元 = 简谱档走上/下点 glyph、
+/** mark → 显示节点（P12）：tie 单元 = 文本「-」；pitch 单元 = 简谱档走正字法 glyph、
     音名档走文本；多单元用「·」文本分隔。null ⇒ null（不画）。
+    ★ v3.38.1：多一个 cellPx（该格像素宽）——**每个** glyph 各按自己的需求判窄格降级档，
+      串显里宽的那颗先降级，不会因为同伴窄就一起丢点。
+    ★ v3.38.1：多一个 sys（记谱体系 sharp/flat）——同一个半音在两套体系下写法不同。
     @param {any} mark @param {string} mode @param {string} keyName
-    @param {string} [cls] @returns {HTMLElement|null} */
-function mkPitchMarkEl(mark, mode, keyName, cls){
+    @param {string} [cls] @param {number} [cellPx] @param {string} [sys] @returns {HTMLElement|null} */
+function mkPitchMarkEl(mark, mode, keyName, cls, cellPx, sys){
   if (!mark) return null;
+  const jp = mode !== "nm";
+  /* ★ v3.38.1（用户拍板）：nm 档窄到装不下音名整串时**整枚不画**（aria 与编辑轨读数照旧）——
+     与 jp 档「只画数码」同一精神：宁可少画一层，也不画坏的（真机实测 C#4 在 32 分格里超缘 7.5px）。 */
+  if (!jp){
+    const chars = mark.seq.reduce((/** @type {number} */ m2, /** @type {any} */ u) =>
+      m2 + (u.tie ? 1 : pitchNameOf(/** @type {number} */ (u.p), sys).length) + (m2 ? 1 : 0), 0);
+    if (nmMarkHidden(/** @type {number} */ (cellPx), chars, sys, NM_CHAR_RESERVE)) return null;
+  }
   const el = document.createElement("span");
   el.className = cls || "pit-seq";
-  const jp = mode !== "nm";
   mark.seq.forEach((/** @type {any} */ u, /** @type {number} */ i) => {
     if (i){
       const sep = document.createElement("span");
@@ -4806,26 +5077,37 @@ function mkPitchMarkEl(mark, mode, keyName, cls){
       t.textContent = "-";
       el.appendChild(t);
     } else if (jp){
-      el.appendChild(mkJianpuGlyph(jianpuParts(/** @type {number} */ (u.p), keySemiOf(keyName))));
+      const parts = jianpuParts(/** @type {number} */ (u.p), keySemiOf(keyName), sys);
+      /* 该单元的点号数 = octUp + octDown（净量符号已由 oct 类表达，颗数由两者之和给出） */
+      const dots = parts.octUp + parts.octDown;
+      el.appendChild(mkJianpuGlyph(parts,
+        pitchFitClass(/** @type {number} */ (cellPx), { acc: parts.acc, dots: dots })));
     } else {
       const n = document.createElement("span");
-      n.className = "pit-nm " + octClassOf(/** @type {number} */ (u.p), keySemiOf(keyName));
-      n.textContent = pitchNameOf(/** @type {number} */ (u.p));
+      n.className = "pit-nm " + octClassOf(/** @type {number} */ (u.p), keySemiOf(keyName), sys);
+      n.textContent = pitchNameOf(/** @type {number} */ (u.p), sys);
       el.appendChild(n);
     }
   });
   return el;
 }
-/** 单颗音符 → 标签内容节点（P12）：简谱档建上下点 glyph、音名档建音名文本。
-    @param {number} p @param {string} mode @param {string} keyName @returns {HTMLElement} */
-function mkPitchLabel(p, mode, keyName){
+/** 单颗音符 → 标签内容节点（P12）：简谱档建正字法 glyph、音名档建音名文本。
+    ★ v3.38.1：cellPx（该格像素宽）用于窄格降级；nm 档没有点号可降级，改为**窄到装不下就整枚不画**
+      （返回空 span：独立音符块的虚线框仍在，表示"这里有一颗音"，只是名字读不下）。
+    @param {number} p @param {string} mode @param {string} keyName @param {number} [cellPx]
+    @param {string} [sys] @returns {HTMLElement} */
+function mkPitchLabel(p, mode, keyName, cellPx, sys){
   if (mode === "nm"){
     const s = document.createElement("span");
-    s.className = "pit-nm " + octClassOf(p, keySemiOf(keyName));
-    s.textContent = pitchNameOf(p);
+    const nm = pitchNameOf(p, sys);
+    if (nmMarkHidden(/** @type {number} */ (cellPx), nm.length)) return s;   // 空壳：不画名
+    s.className = "pit-nm " + octClassOf(p, keySemiOf(keyName), sys);
+    s.textContent = nm;
     return s;
   }
-  return mkJianpuGlyph(jianpuParts(p, keySemiOf(keyName)));
+  const parts = jianpuParts(p, keySemiOf(keyName), sys);
+  return mkJianpuGlyph(parts,
+    pitchFitClass(/** @type {number} */ (cellPx), { acc: parts.acc, dots: parts.octUp + parts.octDown }));
 }
 /** 不与任何字重叠的音符（前奏/间奏/尾奏，或被挪离的字背后的谱）——渲染为独立音符块。
     chars 空 = 纯谱行 ⇒ 全部音符独立。
@@ -6073,8 +6355,12 @@ const Store = (() => {
     /* v3.37.0：调主（可选）——简谱首调度数的换算基准（音名渲染不读它）。
        白名单 /^[A-G](#|b)?$/（15 个大调名，同音异名都收）；脏值静默省略（同 chords 口径） */
     const keyOk = typeof raw.key === "string" && /^[A-G](#|b)?$/.test(raw.key);
+    /* v3.38.1：记谱体系（升号 / 降号）——白名单两值。缺省**不写字段**，由 accSysOf 按调名推导
+       （今天没有调主 UI ⇒ 恒为升号制 ⇒ 老数据零迁移、显示逐位不变）。 */
+    const accOk = raw.accSys === "sharp" || raw.accSys === "flat";
     return { id, name: raw.name.trim().slice(0, 40), sections,
-      ...(keyOk ? { key: raw.key } : {}) };
+      ...(keyOk ? { key: raw.key } : {}),
+      ...(accOk ? { accSys: raw.accSys } : {}) };
   }
   /** @type {{ arranges: ArrangeData[] } | null} */
   const arrIn = readJSON(KEY_ARRANGES);
@@ -11142,6 +11428,24 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★★ v3.33.2：行数改走 **slotRowCount()**，与网格逐位同源（此前这里另写一份判据、
          多行档漏了 +1 ⇒ 进场行没有词；详见该函数注释）。t186 直断言两轨行数恒等。 */
     const laneRows = slotRowCount();
+    /* ★ v3.38.1：本轨行宽（px）——供音高标记的**窄格三级降级**判据用。只在这里量一次
+       （buildLyricLane 是重建路径，不是帧内热路径；与 chooseRowBeats 一样是"构建时现算、不持久化"）。
+       量不到（隐藏态 / 测试桩无布局 / 未布局）⇒ 0 ⇒ pitchFitClass 回落默认宽档，不误判成窄格。
+       ★ 与网格的关系：网格与歌词轨同在 .viz-band 里、同宽，故两者用同一个行宽口径。
+       ★ 已知边界（与 chooseRowBeats 同款、写进契约）：resize 播放中"只重采几何、不重建 DOM"，
+         故降级档最迟在下一次翻页/换型时按新宽度生效。 */
+    /* ★★ v3.38.1 修正（真机闸抓到的顺序缺陷）：宽度基准取 **#viz 的宽**，不取 lane 自己的。
+       根因：伴随节奏（overlay）模式下 lane 的宽度是**之后**才由 placeLaneOverlay 写上的
+       （lane.style.width = vr.width），buildLyricLane 跑在它之前 ⇒ 读 lane.offsetWidth 会读到
+       上一帧/空值：首帧读到 0（不降级），此后读到的是旧宽 —— 降级档与真实格宽不一致。
+       而 #viz 的宽正是网格自己拆行用的那个数（chooseRowBeats 的 wpx 同源），两轨本就同宽。
+       量不到（隐藏态 / 桩无布局）⇒ 0 ⇒ pitchFitClass 回落默认宽档，不误判成窄格。
+       ★ 已知边界（与 chooseRowBeats 同款）：resize 播放中"只重采几何、不重建 DOM"，
+         故降级档最迟在下一次翻页/换型时按新宽度生效。 */
+    /* ★ 必须显式 $("viz")：真机上 id 会变成 window 全局（window.viz 恰好在），**桩里没有**——
+       写裸 `viz` 会真机绿、桩里 ReferenceError（本版真被这个坑绊了一次）。 */
+    const vizEl = $("viz");
+    const laneW = (vizEl && vizEl.offsetWidth) || lane.offsetWidth || 0;
     /* v3.0.1：回卷范围走 scrollWrapRange()——与 buildViz / arrWindowPat 同一来源（批 7 立训：
        判据各写一份必分叉）。取字位置随之改走 foldSeg：范围循环（如 [5,10]）下原先这里按
        **全曲**取模、网格按**范围**折回——同一槽歌词与格子对不上（潜在分叉，本次顺手收口）；
@@ -11191,6 +11495,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
               return { lt: t - lo, ld: Math.max(0, Math.min(d, lo + slice - t)), ch: c.ch, t0: t, dur0: d };
             });
           const keyName = (typeof a.key === "string") ? a.key : "";
+          /* v3.38.1：本曲式的记谱体系（升号 / 降号）——显示层唯一来源（一个谱子只能全升或全降） */
+          const accSys = accSysOf(a);
           for (const c of row.chars){
             const chip = document.createElement("div");
             chip.className = "lyric-chip";
@@ -11211,7 +11517,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
               /* v3.38.0（P12 + 用户口径①）：可视走正字法 glyph（八度点），但落**字块左上角**
                  ——独立于字（字仍居中），文本形态留给 aria / serialize */
               const pit = mkPitchMarkEl(charPitchMark(notes, { t: c.t0, dur: c.dur0 }),
-                S.pitchNotation, keyName, "lyric-pit");
+                S.pitchNotation, keyName, "lyric-pit", laneW * c.ld / slice, accSys);
               if (pit) chip.appendChild(pit);
             }
             rowEl.appendChild(chip);
@@ -11233,7 +11539,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
             nchip.style.width = (d / slice * 100) + "%";
             const nlabel = document.createElement("span");
             nlabel.className = "lyric-char";
-            nlabel.appendChild(mkPitchLabel(n.p, S.pitchNotation === "off" ? "jp" : S.pitchNotation, keyName));
+            nlabel.appendChild(mkPitchLabel(n.p, S.pitchNotation === "off" ? "jp" : S.pitchNotation, keyName, laneW * d / slice, accSys));
             nchip.appendChild(nlabel);
             rowEl.appendChild(nchip);
             row.noteN++;
@@ -17873,7 +18179,10 @@ const Arrange = (() => {
     chip.className = "arg-lyric-chip" + (c.dur <= T16 ? " sm" : "");   // v2.82.0：窄格（≤十六分）内缩降为 1px，不然格子里放不下字
     chip.style.left = ((c.t - rowStart) / barTicks * 100) + "%";
     /* 视觉不越出本行（跨小节长字截断），数据仍原样交回 Store */
-    chip.style.width = (Math.min(c.dur, span - c.t, (row + 1) * barTicks - c.t) / barTicks * 100) + "%";
+    /* ★ v3.38.1：截断后的 tick 数单拎成 wTicks —— chip 的像素宽就是它换算来的，
+       音高标记的窄格降级（pitchFitClass）要的正是这个数；两处同源，不各写一遍 min(...)。 */
+    const wTicks = Math.min(c.dur, span - c.t, (row + 1) * barTicks - c.t);
+    chip.style.width = (wTicks / barTicks * 100) + "%";
     /* v2.49.0（V5）：选中态是模块态——重渲染时按 (arr, sec, k) 回挂 .sel，
        批量按钮/撤销触发的重建不丢选中；元素句柄换新（点按选中就地摘/挂用） */
     if (selChip && selChip.arrId === lctx.arr && selChip.secUid === lctx.sec && selChip.k === k){
@@ -17890,8 +18199,12 @@ const Arrange = (() => {
        aria-label 同步带上音高：读屏不依赖视觉开关。 */
     const pnMode = S.pitchNotation === "nm" ? "nm" : "jp";
     const mkP = charPitchMark(lctx.notes, c);
-    const markTxt = pitchMarkText(mkP, pnMode, lctx.key);           // 文本形态：aria 读数
-    const pit = mkPitchMarkEl(mkP, pnMode, lctx.key, "arg-lyric-pit");   // 可视：正字法 glyph（P12）
+    const markTxt = pitchMarkText(mkP, pnMode, lctx.key, lctx.accSys);   // 文本形态：aria 读数
+    /* ★ v3.38.1：本格的像素宽 = 行宽 × 本格 tick 占比。行宽由 arrangeRender 量一次挂在 lctx.rowW
+       （与拖拽那条 rowW 同口径；量不到 ⇒ 0 ⇒ 不降级）。音高标记的窄格三级降级按它判。 */
+    const cellPx = (lctx.rowW || 0) * wTicks / barTicks;
+    const pit = mkPitchMarkEl(mkP, pnMode, lctx.key, "arg-lyric-pit",
+      pitchFitCellPx(cellPx, PITCH_MARK_ARRANGE_FS), lctx.accSys);   // 可视：正字法 glyph（P12）
     /* v3.38.0（用户口径①）：pit 不再挂进字（.arg-lyric-char），改挂字块左上角——见下方 appendChild */
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-label", `第 ${k + 1} 个字「${c.ch}」起点 ${c.t} tick，时值 ${c.dur} tick` +
@@ -18739,7 +19052,7 @@ const Arrange = (() => {
     Modal.bindOverlay("arrangeOverlay", mel, "click", (/** @type {any} */ e) => {
       evEl(e).blur();
       const keyName = (typeof a.key === "string") ? a.key : "";
-      const curMel = (line && line.notes) ? melodySerialize(line.notes, keyName) : "";
+      const curMel = (line && line.notes) ? melodySerialize(line.notes, keyName, accSysOf(a)) : "";
       Modal.uiPrompt("贴旋律谱（简谱，空格分隔；每档 = 八分，尾部 _ = 十六分、__ = 三十二分；- 延长前音、0 休止。清空并确定 = 清除本段旋律）",
         curMel, (/** @type {string} */ v) => {
           const r = parseMelodyTokens(v, keySemiOf(keyName));
@@ -19049,7 +19362,7 @@ const Arrange = (() => {
               .sort((/** @type {any} */ x, /** @type {any} */ y) => x.t - y.t);
         lyricCommit(a.id, uid, cs, { notes: outNotes });
         arrangeRender();
-        announce("「" + c.ch + "」音高 " + pitchTextOf(p, S.pitchNotation === "nm" ? "nm" : "jp", keyName));
+        announce("「" + c.ch + "」音高 " + pitchTextOf(p, S.pitchNotation === "nm" ? "nm" : "jp", keyName, accSysOf(a)));
       });
       return b;
     };
@@ -19065,7 +19378,7 @@ const Arrange = (() => {
        （每行等宽 = 旧单行宽，lane.offsetWidth 不变），拖 1px 的 tick 增量与单行时代逐位一致；
        字块按起点 t 落到所属小节行、行内百分比定位；跨小节长字在本行内截断显示（数据完整）。
        拖动中字块越出行尾时视觉停在行尾、松手归位到正确行（重渲染即按新 t 分行）。 */
-    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], notes: (line && line.notes) || [], span: span, barTicks: span, rows: 1, chipEls: [], noteEls: /** @type {HTMLElement[]} */ ([]), barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]), rowWrapEls: /** @type {HTMLElement[]} */ ([]), key: (typeof a.key === "string") ? a.key : "" };   /* v3.37.0：key = 曲式调主（简谱度数的换算基准，缺省 "" ⇒ pitchTextOf 兜 C）；B 期：notes = 行级谱（上标派生 + 独立音符块两用的唯一数据源） */
+    const lctx = { lane: lane, arr: a.id, sec: uid, chars: line ? line.chars : [], notes: (line && line.notes) || [], span: span, barTicks: span, rows: 1, chipEls: [], noteEls: /** @type {HTMLElement[]} */ ([]), barrow0: /** @type {HTMLElement | null} */ (null), barrowEls: /** @type {HTMLElement[]} */ ([]), rowWrapEls: /** @type {HTMLElement[]} */ ([]), rowW: 0, accSys: accSysOf(a), key: (typeof a.key === "string") ? a.key : "" };   /* v3.38.1：rowW = 本行像素宽（音高标记窄格降级用；arrangeRender 量一次写入） */   /* v3.37.0：key = 曲式调主（简谱度数的换算基准，缺省 "" ⇒ pitchTextOf 兜 C）；B 期：notes = 行级谱（上标派生 + 独立音符块两用的唯一数据源） */
     if (span > 0){
       const barTicks = Math.max(1, Math.round(span / secBars(sec)));
       lctx.barTicks = barTicks;
@@ -19097,6 +19410,10 @@ const Arrange = (() => {
         mkLyricRefs(bar, sec, r, lctx.barTicks);   // v2.46.0：参考层先画（DOM 顺序 = 字块压在刻度之上）
       }
       lctx.barrow0 = rowEls[0] || null;   // v2.77.0：拖拽 perTick/行高的行宽基准改指 barrow（行容器含和弦格，宽 ≠ 行宽）
+      /* ★ v3.38.1：行宽量一次挂上 lctx.rowW —— 音高标记的窄格三级降级要用「本格像素宽」。
+         取法与拖拽那条 rowW（L17419）**逐字同源**：barrow 优先、回落 lane；
+         量不到（隐藏态 / 测试桩无布局）⇒ 0 ⇒ pitchFitClass 不降级（宁可默认宽档，不凭零值误判窄格）。 */
+      lctx.rowW = (lctx.barrow0 && lctx.barrow0.offsetWidth) || lctx.lane.offsetWidth || 0;
       lctx.barrowEls = rowEls;            // v2.77.0：跨行搬迁的挂载点也改指 barrow（原 lane.children[row] 是行容器）
       lctx.rowWrapEls = wrapEls;          // v2.80.0：见下方「★ 行级挂载点一律走 rowWrapEls」
       /* ★ v2.80.0：行级挂载点（游标 / 磁吸引导线 / 落点 ghost / 读数气泡）一律改走 rowWrapEls。
@@ -19124,11 +19441,15 @@ const Arrange = (() => {
         const nchip = document.createElement("div");
         nchip.className = "arg-lyric-chip notechip" + (n.dur <= T16 ? " sm" : "");
         nchip.style.left = ((n.t - rowStart) / barTicks * 100) + "%";
-        nchip.style.width = (Math.min(n.dur, span - n.t, (row + 1) * barTicks - n.t) / barTicks * 100) + "%";
+        /* ★ v3.38.1：与字块同一条口径——截断后的 tick 数单拎出来，chip 的像素宽由它换算，
+           音高标记的窄格降级要的正是这个数。 */
+        const nwTicks = Math.min(n.dur, span - n.t, (row + 1) * barTicks - n.t);
+        nchip.style.width = (nwTicks / barTicks * 100) + "%";
         const ntxt = document.createElement("span");
         ntxt.className = "arg-lyric-char";
-        const label = pitchTextOf(n.p, pnEd, lctx.key);   // 文本形态：aria 读数（P12：可视走正字法 glyph）
-        ntxt.appendChild(mkPitchLabel(n.p, pnEd, lctx.key));
+        const label = pitchTextOf(n.p, pnEd, lctx.key, lctx.accSys);   // 文本形态：aria 读数（P12：可视走正字法 glyph）
+        ntxt.appendChild(mkPitchLabel(n.p, pnEd, lctx.key,
+          pitchFitCellPx((lctx.rowW || 0) * nwTicks / barTicks, PITCH_MARK_ARRANGE_FS), lctx.accSys));
         nchip.appendChild(ntxt);
         /* v3.38.0 批 2：按模块态 selNote 回挂选中（重渲染不丢选中；元素句柄换新） */
         if (selNote && selNote.arrId === lctx.arr && selNote.secUid === lctx.sec && selNote.q === q){
@@ -19619,6 +19940,15 @@ const Arrange = (() => {
     { const lc = $("argLibCount"); if (lc) lc.textContent = Store.arranges.length + " 首"; }
 
     const a = cur();
+    /* v3.38.1：记谱体系胶囊随渲染同步（曲式级状态，与曲式库同一次渲染，避免两处各算一遍） */
+    { const ab = $("argAccSys");
+      if (ab){
+        const flatNow = accSysOf(a) === "flat";
+        ab.textContent = flatNow ? "记谱 降号" : "记谱 升号";
+        ab.setAttribute("aria-pressed", flatNow ? "true" : "false");
+        ab.setAttribute("aria-label", "本曲式记谱体系：" + (flatNow ? "降号" : "升号") + "——点一下切换（一个曲式只能全升或全降）");
+        ab.title = "本曲式记谱体系：" + (flatNow ? "降号 b3/b6/b7" : "升号 #1/#2/#4/#5/#6") + "——点一下切换（一个曲式只能全升或全降）";
+      } }
     const wrap = $("argSections");
     clear(wrap);
     /* 重渲染会 unbind 掉菜单按钮的监听（Modal.unbindOverlay 全量解绑）——菜单残影留着就是
@@ -20623,6 +20953,23 @@ const Arrange = (() => {
   $("argNew").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     toggleNewMenu();
+  });
+  /* v3.38.1（用户拍板）：记谱体系切换——**曲式级**两态（升号 / 降号）。
+     用户口径是「一个谱子里只能都是降号，或者都是升号」⇒ 只有两态、没有"混合"；
+     缺省（没点过）按调名推导（今天没有调主 UI ⇒ 恒升号）。
+     落库走 upsertArrange（经 normArrange 白名单 + persistArranges），随后**两处重渲染**：
+     编排页（含胶囊自身状态）与主视图（练习画面立刻换写法）。 */
+  $("argAccSys").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const cur0 = Store.findArrange(S.arrangeSel && S.arrangeSel.id);
+    if (!cur0){ announce("先选一份曲式，再切换记谱体系"); return; }
+    const next = accSysOf(cur0) === "flat" ? "sharp" : "flat";
+    const saved = Store.upsertArrange({ id: cur0.id, name: cur0.name, sections: cur0.sections,
+      ...(typeof cur0.key === "string" ? { key: cur0.key } : {}), accSys: next });
+    if (!saved){ announce("记谱体系没存下去（曲式数据异常）"); return; }
+    announce("本曲式记谱体系：" + (next === "flat" ? "降号" : "升号"));
+    Arrange.refreshNow();
+    Viz.buildViz();
   });
   /* v2.33.0：模板菜单「点窗外即关」——挂在 overlay 根上（真实点击会冒泡上来；
      桩没有冒泡，测试直接在根上 fire、target=根 → 沿 parentNode 上溯不命中菜单/触发钮 → 关）。
@@ -22773,6 +23120,11 @@ if (EXPOSE_INTERNALS){
     keySemiOf, pitchNameOf, jianpuOf, pitchTextOf, parseLyricTextPitch, matchPitchSuffix,
     parseMelodyTokens, melodySerialize, charPitchMark, pitchMarkText, standaloneNotes, mergeLineNotes,
     jianpuParts, mkJianpuGlyph, mkPitchMarkEl, mkPitchLabel,   // v3.38.0（P12）：简谱正字法（t226 直断言结构）
+    /* v3.38.1：右侧点 + 三档槽位 + 窄格三级降级。判据抽成纯函数就是为了**能在桩里直测**
+       （桩没有布局，"多宽算窄"这件事只能靠纯函数 + 真机探针两头夹）。 */
+    pitchMarkNeeds, pitchFitClass, pitchFitCellPx, mkDots, nmMarkHidden,
+    /* v3.38.1：记谱体系（升号 / 降号）——纯函数层，t228 直断言 */
+    accSysOf, accSysOfKey, relTable, PITCH_MARK,
     noteDropTarget,                                             // v3.38.0 批 2：音符拖拽落点（纯函数，t225 直断言）
     PITCH_MIN, PITCH_MAX, KEY_SEMIS, DEG_SEMIS,
     lyricFitSize: () => lyricFit.size,             // v3.31.6（审计 P2-A）：歌词缓存尺寸（封顶断言用）
