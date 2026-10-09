@@ -32,16 +32,16 @@ section("T230a 上行 .bpm-slider-row：与音量行同构的两段槽位（等�
   /* 左槽宽必须与 .vol-row 同源（52），这是「严格等长」的数字面——右端两侧都抵行尾，等号只剩左槽 */
   ok(/\.vol-row>span:first-child\{min-width:52px\}/.test(html) && /\.bpm-slider-row>span:first-child\{min-width:52px\}/.test(html),
     "★★★ 左槽定宽 52px 与 .vol-row 同值（改一处不改另一处 ⇒ 等长断裂，本条变红）");
-  ok(/\.bpm-slider-row\{display:flex;align-items:center;gap:10px;font-size:12px;color:var\(--t2\)\}/.test(html),
-    "★ 行距 10px / 字号 12px 与 .vol-row 同款（「BPM」与「节拍」大小相近的口径）");
+  ok(/\.bpm-slider-row\{display:flex;align-items:center;gap:10px;min-height:40px;font-size:12px;color:var\(--t2\)\}/.test(html),
+    "★ 行距 10px / 行盒 40px / 字号 12px 与 .vol-row 同款（v3.40.0 间距修正①：行盒同律 40px）");
+  ok(/\.slider-row\{display:flex;flex-direction:column;align-items:stretch;gap:13px\}/.test(html),
+    "★★ .slider-row 基础规则为列向塔式 + 塔内间距 13px（v3.40.0 间距修正②：6→13，BPM↔步进群可见 30px）；v3.39.0 同行形状退役");
 }
 
 section("T230b 下一步进群：居中轴参照滑杆（margin-left:62 = 52+10）");
 {
   ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin-left:62px\}/.test(html),
     "★★★ 步进群居中且左缩 62px 与滑杆左端同源（居中轴=滑杆轴；改槽位宽不同步 ⇒ 本条变红）");
-  ok(/\.slider-row\{display:flex;flex-direction:column;align-items:stretch;gap:6px\}/.test(html),
-    "★★ .slider-row 基础规则为列向塔式（v3.39.0 同行形状退役）");
   ok(!/\.viz-head \.group \.slider-row\{flex-wrap:nowrap\}/.test(SURFACE)
     && !/\.slider-row \.bpm-row\{flex:1 1 100%\}/.test(SURFACE),
     "★★ v3.39.0 同行/折行旧规则已除名（净表面无残留——同行形状的回潮会连带旧规则复活）");

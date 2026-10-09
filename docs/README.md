@@ -39,6 +39,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v6-ux-and-viz-rework.md](archive/PLAN-v6-ux-and-viz-rework.md) | 顶栏/设置收口 · 可视化标注 · 静音拍参数化 · 段标注（2026-09-28 方案，2026-10-08 自 `trae/agent-CI9dZv` 分支取回归档） | 历史快照 · 已落地（v2.69.0–v2.74.0 分批交付） |
 | [PLAN-v7-lyric-inline.md](archive/PLAN-v7-lyric-inline.md) | 歌词显示位置重设计（显示歌词开关 + 自动/伴随节奏/底部三态；伴随节奏走覆盖层+逐行 translateY，文字格内居左，退役旧浮动跟随条） | 已落地（v2.86.0 交付） |
 | [PLAN-v8-melody-subdiv.md](archive/PLAN-v8-melody-subdiv.md) | 旋律谱细分级编辑（16/32 分音符）：网格 T32 + 文本 `_`/`__` 时值后缀 + 简谱正字法（八度点）显示 + 音符块交互 | 已落地（v3.38.0 交付，两批全部完成） |
+| [PLAN-v9-control-core.md](archive/PLAN-v9-control-core.md) | 控制区重构 · 居中控制芯（开关胶囊化 + 参数浮层 + 滑杆 340 + 桌面/移动同构）实施方案 | 历史快照 · 拍板待实施（基线 v3.39.2，落地状态见 CHANGELOG） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
 
