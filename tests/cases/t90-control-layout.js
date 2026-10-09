@@ -183,8 +183,9 @@ section("T90g 跳段行 · 播放键居三键中间、圆形键常显置灰、�
 section("T90f v3.39.0 · BPM 并入音量组（卡片头单列）；Swing 与同屏行数平齐（排拍号右侧）");
 {
   const h = slice("vizHead");
-  /* ★ v3.39.0（用户拍板 · 移动需求①②）：BPM 滑杆与音量条并进同一组——
-     数值与左右增减钮紧跟滑杆同行（.slider-row 内），TAP 与快捷档行整块退役。 */
+  /* ★ v3.39.1（用户澄清）：BPM 行改上下两行塔式——上行 .bpm-slider-row 复刻音量行
+     三段槽位（滑杆与音量条严格等长），下定居中步进群（居中轴参照滑杆）。
+     v3.39.0 的「数值与增减钮紧跟滑杆同行」口径退役；TAP 与快捷档行退役不变。 */
   ok(/id="bpmNum"/.test(h) && /id="bpmSlider"/.test(h) && /id="bpmTicks"/.test(h),
     "★ BPM 三件（滑杆/数值步进/刻度层）都在卡片头行内");
   ok(!/id="tapBtn"/.test(h) && !/id="bpmPresetRow"/.test(h),
@@ -193,7 +194,7 @@ section("T90f v3.39.0 · BPM 并入音量组（卡片头单列）；Swing 与同
     "★ 源码序即读序：音量条在前、BPM 行在后（同一 .tg-body 内的纵排）");
   const row = h.slice(h.indexOf('id="bpmSlider"'), h.indexOf('id="trainerProg"'));
   ok(/id="bpmMinus5"/.test(row) && /id="bpmNum"/.test(row) && /id="bpmPlus5"/.test(row),
-    "★★ 数值与 ± 增减钮与滑杆同住 .slider-row（移动需求②：跟随 bpm 条）");
+    "★★ 数值与 ± 增减钮与滑杆同住 .slider-row（v3.39.1 起为上下两行塔式，细钉见 T230）");
   ok(/class="card-head-left"/.test(h), "左块包 .card-head-left（v3.39.0 起头行只有这一个孩子）");
   ok(!/id="swingRow"/.test(h), "Swing 不在头行（已下移）");
   /* v3.12.0：原「行数 + 拍号」并排行整块退役——头行之外不再有那个容器 */

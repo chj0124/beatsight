@@ -373,20 +373,30 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 /* v2.76.0 溢出防护（上次 v2.75.1 的教训）：参数行允许折行——min-content 降到
    最宽单元素，开关卡的列宽才不会被不折行的参数行撑爆（网格溢出的根因） */
 .viz-head-grid .viz-toggles .tr-panel{flex-wrap:wrap}
-/* ★★ v3.39.0：BPM 步进行并进 .slider-row（滑杆 + 数值/增减钮同行）。v2.75.0 的
-   「整行 flex:1 均分压缩」口径随独立步进行退役——那是给整行按钮带设计的；新形态里
-   步进群只是滑杆右侧的一枚固定宽集群（滑杆 flex:1 吃剩余），按钮回到 .step-btn
-   基础规格（40px 圆钮，触控目标不打折）。#bpmPresetRow（快捷档行）已删，无规则。 */
-.viz-head .group .slider-row{flex-wrap:nowrap}
-.viz-head .group .slider-row .bpm-row{flex:0 0 auto;gap:6px}
+/* ★★ v3.39.1（用户澄清）：BPM 行改上下两行塔式，v3.39.0「滑杆 + 步进群同行」口径退役——
+   同行把滑杆挤短，「与音量条等长」无从谈起（列向基础形状在 .slider-row 基础规则里）。
+   v2.75.0 的「整行 flex:1 均分压缩」口径随独立步进行退役（那是给整行按钮带设计的）；
+   按钮保持 .step-btn 基础规格（40px 圆钮，触控目标不打折）。#bpmPresetRow（快捷档行）已删。 */
+/* 上行：复刻 .vol-row 三段槽位——52px 标签 | 弹性滑杆 | 38px pct；等长与两端对齐
+   全靠这两个定宽值与 10px 间距**与 .vol-row 同源**，改动必须两处同步
+   （smoke 的 volBpmDelta/volBpmLeftDelta 量真 DOM 把守）。空 pct 槽只占位不装文案。 */
+.bpm-slider-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}
+.bpm-slider-row>span:first-child{min-width:52px}
+.bpm-slider-row .pct{min-width:38px}
+/* 下行步进群：居中轴**参照滑杆**——margin 62=52+10、48=38+10 即滑杆左右余量，
+   内容盒与滑杆同宽 ⇒ justify-content:center 的轴就是滑杆轴（左右槽 52≠38，它比
+   整行轴偏右 7px，这正是用户要「参照滑杆」而非「参照整行」的原因）。
+   步进群过宽（窄屏）时以滑杆轴为心**对称外溢**进两侧空槽——槽内无文案，压住无害。 */
+.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;margin:0 48px 0 62px}
 .viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
-/* 窄屏：步进群整组折到滑杆下方占满一行（此时恢复 v2.75 的均分压缩口径——
-   390px 内容宽装不下「滑杆 + 五枚按钮」并排，折叠比挤压可读。
-   只按宽度判：竖屏平板 ≥640 内容宽装得下并排，不必折） */
+/* 读数行与数值行同轴（用户拍板）：同样的 62/48 内缩 + 文本居中。
+   width:auto 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按「容器宽 −
+   自身 margin」收边；留着 100% 会在加 margin 后溢出组盒 110px */
+.viz-head .group .tr-prog{width:auto;margin:0 48px 0 62px;text-align:center}
+/* 窄屏：结构天生两行，无需再折行；步进钮放宽收缩（min-width:0），过宽时由上面的
+   对称外溢兜着，不出组盒。只按宽度判（竖屏平板 ≥640 内容宽装得下整组）。 */
 @media (max-width:640px){
-  .viz-head .group .slider-row{flex-wrap:wrap}
-  .viz-head .group .slider-row .bpm-row{flex:1 1 100%}
-  .viz-head .group .slider-row .bpm-row .step-btn{flex:1 1 0;min-width:0;padding:6px 2px}
+  .viz-head .group .slider-row .bpm-row .step-btn{min-width:0;padding:6px 2px}
 }
 /* v2.74.0（2.8）：段落列表 ↔ 按钮行的间距收口——按钮行显式 margin-top:16px
    （与卡片内行距同档），末段底距清零（间距单一来源，不再随段数漂移） */
@@ -1343,7 +1353,10 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
 /* v2.10.19 的 #bpmPresetRow .pill 收窄规则随快捷档行退役（v3.39.0 删除）。 */
 .bpm-num{font-size:40px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:80px;text-align:center;cursor:pointer;border-radius:8px}   /* v2.10.19：46→40（用户要求 40px 方案）——BPM 组降一档高度，左列剩余空间（状态灯↔音量空隙）同步收紧 */
 .bpm-num:hover{background:var(--card2)}
-.slider-row{display:flex;align-items:center;gap:14px}
+/* v3.39.1：BPM 块改上下两行塔式（上行三段槽位滑杆行 + 下定居中步进群）——
+   基础规则即列向；本类只有主界面 BPM 一处使用（此前 v3.39.0 的「滑杆+步进群同行」
+   横向形状随用户澄清退役）。viz-head 作用域里的居中 margin 见上方 v3.39.1 块 */
+.slider-row{display:flex;flex-direction:column;align-items:stretch;gap:6px}
 /* 滑杆刻度层（v1.1）：datalist 在 Chrome 下即使不加 appearance:none 也不渲染刻度，
    改为绝对定位的刻度条；左右内缩 = 圆钮半径，使刻度与圆钮行程对齐 */
 .slider-wrap{position:relative;flex:1;min-width:0;display:flex;align-items:center;--thumb-r:8px}
@@ -3116,17 +3129,27 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <div class="vol-note" id="volMasterNote" aria-hidden="true"></div>
             <div class="vol-row" id="volStrumRow" title="扫弦：弦区扫弦声（只作用于带扫弦记谱的节奏型；把「节拍」拉到 0，扫弦照样响）"><span>扫弦</span><input type="range" class="vol" id="volStrum" min="0" max="100" value="100" aria-label="扫弦音量：弦区扫弦声（只作用于带扫弦记谱的节奏型）"><span class="pct" id="volStrumPct">100%</span></div>
             <div class="vol-note" id="volStrumNote" aria-hidden="true"></div>
-            <!-- ★★ v3.39.0（用户拍板 · 移动需求②③）：BPM 滑杆与音量条同住一组；**数值与
-                 左右增减按钮紧跟滑杆同行**（原独立步进行整行并入 .slider-row），
-                 「当前 X BPM · 第 N/M 步」训练读数行**紧跟数值**落在下一行（#trainerProg
-                 搬块不换 id，Trainer.updateProg 的接线一行不动）。
-                 删除项（同一批拍板）：#tapBtn（TAP 测速）与 #bpmPresetRow（固定档位行）
-                 整块退役；#bpmTicks 刻度层保留（刻度仍由 CONFIG.speedPresets 生成，
-                 快捷档按钮没了、刻度作为滑杆的地标还在）。 -->
+            <!-- ★★ v3.39.1（用户澄清 · v3.39.0「同行」口径修订）：BPM 行改**上下两行塔式**——
+                 上行 .bpm-slider-row 复刻音量行三段槽位（「BPM」标签 52px 定宽 | 滑杆 | 空 pct 槽
+                 38px），滑杆与音量条**严格等长、两端对齐**；下行 -5/-1/数值/+1/+5 整组
+                 **居中，居中轴参照滑杆本身**（不含两侧槽位——左右槽 52≠38，滑杆轴比整行轴
+                 偏右 7px，CSS 里的 margin 62/48 即由槽位宽算出）；「当前 X BPM · 第 N/M 步」
+                 读数行与数值行同轴居中。v3.39.0 的「数值与增减钮紧跟滑杆同行」随本条退役——
+                 同行会把滑杆挤短，「与音量条等长」无从谈起。
+                 v3.39.0 拍板仍有效：#tapBtn（TAP 测速）与 #bpmPresetRow（固定档位行）整块
+                 退役；#bpmTicks 刻度层保留（刻度仍由 CONFIG.speedPresets 生成）；#trainerProg
+                 搬块不换 id，Trainer.updateProg 的接线一行不动。 -->
             <div class="slider-row">
-              <div class="slider-wrap">
-                <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
-                <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
+              <div class="bpm-slider-row">
+                <!-- 「BPM」标签与「节拍/扫弦」同款 12px、同 52px 定宽槽（用户口径：大小相近、
+                     不影响滑杆等长）；右侧 pct 槽**保留槽位、文案空置**（BPM 没有 80% 那样的
+                     读数，空槽只为与音量条右端对齐；min-width 见 CSS） -->
+                <span>BPM</span>
+                <div class="slider-wrap">
+                  <div class="bpm-ticks" id="bpmTicks" aria-hidden="true"></div>
+                  <input type="range" id="bpmSlider" min="30" max="240" value="96" aria-label="速度 BPM">
+                </div>
+                <span class="pct" aria-hidden="true"></span>
               </div>
               <div class="bpm-row">
                 <button class="step-btn" id="bpmMinus5" aria-label="减 5 BPM">-5</button>
@@ -3134,8 +3157,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                 <!-- v2.0.5（审计 P0-8）：#bpmNum 原为 <div> 只绑 click——键盘完全够不着它
                      （全局 Space 分支只认 INPUT/BUTTON/SELECT/TEXTAREA 与 role=button），
                      读屏也报不出"这是可以点的"。改真按钮即自动获得 Tab 可达 / Enter·Space 激活 /
-                     读屏报"按钮"；:focus-visible 绿色焦点环正是那次改动的目的。v3.39.0 随步进行
-                     搬进 .slider-row，按钮语义与接线一字不动。 -->
+                     读屏报"按钮"；:focus-visible 绿色焦点环正是那次改动的目的。v3.39.1 随步进群
+                     移到滑杆正下方，按钮语义与接线一字不动。 -->
                 <button class="bpm-num" id="bpmNum" type="button" title="点击直接输入 BPM">96</button>
                 <button class="step-btn" id="bpmPlus" aria-label="加 1 BPM">+1</button>
                 <button class="step-btn" id="bpmPlus5" aria-label="加 5 BPM">+5</button>
@@ -4344,23 +4367,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4376  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5798  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7917  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8951  Modal         应用内弹窗
-     L9096  Viz           时值可视化渲染与每帧动画
-     L12620 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13303 Trainer       变速训练器
-     L13513 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14195 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16173 Editor        自定义节奏型编辑器
-     L16753 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16800 Ear           听辨训练（v1.10.0）
-     L17028 Arrange       曲式编排（v2.0.0）
-     L21093 Help          使用方法（v2.0.1）
-     L21248 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21322 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21611 初始化（装配） 各模块 hook 接线与启动
+     L4399  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5821  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7940  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8974  Modal         应用内弹窗
+     L9119  Viz           时值可视化渲染与每帧动画
+     L12643 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13326 Trainer       变速训练器
+     L13536 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14218 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16196 Editor        自定义节奏型编辑器
+     L16776 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16823 Ear           听辨训练（v1.10.0）
+     L17051 Arrange       曲式编排（v2.0.0）
+     L21116 Help          使用方法（v2.0.1）
+     L21271 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21345 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21634 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4386,7 +4409,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.39.0";
+const VERSION = "3.39.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

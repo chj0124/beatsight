@@ -2263,11 +2263,41 @@ function portraitFixProbe(){
         if(cb&&!cb.checked)cb.checked=true; void document.body.offsetWidth;
         var b=q(".card-head-left .slider-row"); var t=b?Math.round(b.getBoundingClientRect().top):null;
         if(cb&&k===false)cb.checked=k; void document.body.offsetWidth; return t; })(),
+      /* ★ v3.39.1：BPM 塔式两行后的「等长 / 对齐 / 居中」三组读数（用户澄清的三点口径）：
+         ① volBpmDelta 改为**两根滑杆互比右端**（原口径是音量行盒 vs BPM 输入——塔式后
+            行盒右缘恒比滑杆宽出右侧空槽 48px，原口径会把对齐判成错位）；
+         ② volBpmLeftDelta 左端互比——与 ① 同时为 0 ⇔ 等长且两端对齐；
+         ③ bpmClusterAxis 步进群轴心 vs 滑杆轴心（居中参照滑杆，非整行：左右槽 52≠38，
+            整行轴会差 7px）；bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
       volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
-        var v=q(".card-head-left .vol-row"), b=q(".slider-row input[type=range]");
+        var v=q(".card-head-left .vol-row input[type=range]"), b=q(".slider-row input[type=range]");
         var d = (v&&b)? Math.round(v.getBoundingClientRect().right-b.getBoundingClientRect().right):null;
+        if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
+        return d; })(),
+      volBpmLeftDelta: (function(){ var cb=document.getElementById("ctlOpen");
+        var keep = cb? cb.checked : null;
+        if (cb){ cb.checked = true; void document.body.offsetWidth; }
+        var v=q(".card-head-left .vol-row input[type=range]"), b=q(".slider-row input[type=range]");
+        var d = (v&&b)? Math.round(v.getBoundingClientRect().left-b.getBoundingClientRect().left):null;
+        if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
+        return d; })(),
+      bpmClusterAxis: (function(){ var cb=document.getElementById("ctlOpen");
+        var keep = cb? cb.checked : null;
+        if (cb){ cb.checked = true; void document.body.offsetWidth; }
+        var s=q(".slider-row input[type=range]"), g=q(".slider-row .bpm-row");
+        var d=null;
+        if (s&&g){ var sr=s.getBoundingClientRect(), gr=g.getBoundingClientRect();
+          d=Math.round((gr.left+gr.right)/2-(sr.left+sr.right)/2); }
+        if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
+        return d; })(),
+      bpmStackedDown: (function(){ var cb=document.getElementById("ctlOpen");
+        var keep = cb? cb.checked : null;
+        if (cb){ cb.checked = true; void document.body.offsetWidth; }
+        var s=q(".slider-row input[type=range]"), g=q(".slider-row .bpm-row");
+        var d=null;
+        if (s&&g) d=Math.round(g.getBoundingClientRect().top-s.getBoundingClientRect().bottom);
         if (cb && keep !== null){ cb.checked = keep; void document.body.offsetWidth; }
         return d; })(),
       /* ★ v3.36.20 补7：上排「胶囊↔键组」与下排「读数/状态↔进度条」两个间距（用户要求二者相等） */
@@ -3216,10 +3246,22 @@ async function main(){
             p.label + "·" + vp + "：★★★ A1 排列：BPM 内容块在音量内容块**下方**（" + PF.volBodyTop
             + " → " + PF.bpmBodyTop + "）",
             "volBodyTop=" + PF.volBodyTop + " bpmBodyTop=" + PF.bpmBodyTop);
-          ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 14,
-            p.label + "·" + vp + "：★★★ 音量区右缘落在 BPM 滑杆右缘上（差 " + PF.volBpmDelta
-            + "px）——修复前音量条占满全宽、右缘比 BPM 滑杆多出 104px（390 档）；容差 14 容纳字体差异",
+          ok(PF.volBpmDelta !== null && Math.abs(PF.volBpmDelta) <= 2,
+            p.label + "·" + vp + "：★★★ v3.39.1 BPM 滑杆右端与音量滑杆右端对齐（差 " + PF.volBpmDelta
+              + "px）——等长的右端判据；容差 2 容纳取整",
             "volBpmDelta=" + PF.volBpmDelta);
+          ok(PF.volBpmLeftDelta !== null && Math.abs(PF.volBpmLeftDelta) <= 2,
+            p.label + "·" + vp + "：★★★ v3.39.1 BPM 滑杆左端与音量滑杆左端对齐（差 " + PF.volBpmLeftDelta
+              + "px）——与右端判据同时为 0 ⇔ 两杆等长且两端一一对齐",
+            "volBpmLeftDelta=" + PF.volBpmLeftDelta);
+          ok(PF.bpmClusterAxis !== null && Math.abs(PF.bpmClusterAxis) <= 2,
+            p.label + "·" + vp + "：★★★ v3.39.1 步进群轴心落在滑杆轴心上（偏 " + PF.bpmClusterAxis
+              + "px）——居中参照滑杆（左右槽 52≠38，若错成整行轴会偏 7px）",
+            "bpmClusterAxis=" + PF.bpmClusterAxis);
+          ok(PF.bpmStackedDown !== null && PF.bpmStackedDown >= 0,
+            p.label + "·" + vp + "：★★★ v3.39.1 步进群在滑杆**下方**（间隙 " + PF.bpmStackedDown
+              + "px）——塔式形状本体，回潮到同行会变负",
+            "bpmStackedDown=" + PF.bpmStackedDown);
           ok(PF.btnTopGap !== null && PF.btnTopGap >= 8,
             p.label + "·" + vp + "：★★★ 播放键**不贴上缘**（上缘 " + PF.btnTopGap + "px）",
             "btnTopGap=" + PF.btnTopGap);
