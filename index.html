@@ -1490,8 +1490,13 @@ input[type=range].vol{width:120px}
 .tg-flyout .tr-inp[type=number]{-moz-appearance:textfield;appearance:textfield}
 @media (min-width:1280px){
   /* 桌面芯两侧弹出：静音浮层出芯左、变速浮层出芯右（方案图口径），不再盖滑杆塔 */
-  #muteFlyout{left:auto;right:calc(100% + 14px);top:0;white-space:nowrap}
-  #trainerFlyout{left:calc(100% + 14px);right:auto;top:0;white-space:nowrap}
+  /* ★★★ 控制芯批 6（用户实测 · 冒烟闸抓到）：**必须 width:max-content**。
+     根因：浮层定位在**包含块（.group）之外**（left/right = calc(100% ± 14px)）——
+     只给 left 时 width:auto 走 shrink-to-fit，可用宽 = 包含块宽 − left < 0 ⇒ 宽度塌到
+     min-content（实测 110~116px）⇒ .tr-panel 的 flex-wrap 把参数挤成一行一项、竖排 3~5 行。
+     white-space:nowrap 治不了 flex 子项换行。显式 max-content 让浮层按内容一行铺开。 */
+  #muteFlyout{left:auto;right:calc(100% + 14px);top:0;white-space:nowrap;width:max-content}
+  #trainerFlyout{left:calc(100% + 14px);right:auto;top:0;white-space:nowrap;width:max-content}
 }
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
    均分宽度）——开关列作为第 3 列与音量/BPM 同行顶部对齐；<900 保持纵向堆叠。 */
@@ -4287,23 +4292,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4319  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5741  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L7860  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L8906  Modal         应用内弹窗
-     L9051  Viz           时值可视化渲染与每帧动画
-     L12575 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13258 Trainer       变速训练器
-     L13468 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14152 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16130 Editor        自定义节奏型编辑器
-     L16710 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L16757 Ear           听辨训练（v1.10.0）
-     L16985 Arrange       曲式编排（v2.0.0）
-     L21050 Help          使用方法（v2.0.1）
-     L21205 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21279 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21568 初始化（装配） 各模块 hook 接线与启动
+     L4324  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L5746  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L7865  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L8911  Modal         应用内弹窗
+     L9056  Viz           时值可视化渲染与每帧动画
+     L12580 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13263 Trainer       变速训练器
+     L13473 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14157 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16135 Editor        自定义节奏型编辑器
+     L16715 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L16762 Ear           听辨训练（v1.10.0）
+     L16990 Arrange       曲式编排（v2.0.0）
+     L21055 Help          使用方法（v2.0.1）
+     L21210 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21284 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L21573 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

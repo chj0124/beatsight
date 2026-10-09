@@ -6,6 +6,7 @@
    M43 删芯顶胶囊行三枚开关 → T231b 红（胶囊行接线）
    M44 浮层壳显隐反转（sh.hidden = show）→ T231c 红（镜像契约）
    M45 删 ≥1280 的 .card-head-left 宽度放开 → T231a 红（≥1440 回退 312 左贴的防回归钉）
+   M46 删 ≥1280 静音浮层 width:max-content → T231a 红（侧浮层塌成 min-content 的防回归钉）
 """
 import io, os, re, subprocess, sys
 
@@ -40,6 +41,11 @@ MUTANTS = [
          ".viz-head-grid .card-head-left{width:100%}\n",
          "/* M45: 宽度放开被删 */\n", 1),
      ["放开 .card-head-left 宽度"]),
+    ("M46 删 ≥1280 静音浮层 width:max-content",
+     lambda s: s.replace(
+         "white-space:nowrap;width:max-content}",
+         "white-space:nowrap}", 1),
+     ["两侧浮层 width:max-content"]),
 ]
 
 hit_n, miss_n = 0, 0

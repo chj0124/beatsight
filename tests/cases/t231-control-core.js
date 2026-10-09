@@ -32,6 +32,12 @@ section("T231a 芯形态 · ≥1280 单列 + 402 居中 + 三滑杆等长的结�
     "★★ 芯容器 402px 居中在**基础层**（全档生效；退回 ≥1280 块内 ⇒ 窄档与 ≥1440 不居中）");
   ok(/@media \(min-width:1280px\)\{[\s\S]*?\.viz-head-grid \.card-head-left\{width:100%\}/.test(CSS_CODE),
     "★★ ≥1280 放开 .card-head-left 宽度（覆盖基础 width:min(312px,100%)，防 ≥1440 回退 312 左贴）");
+  /* ★★★ 控制芯批 6（用户实测 · 冒烟闸抓到）：≥1280 两侧浮层必须 width:max-content——
+     浮层定位在包含块（.group）之外 ⇒ shrink-to-fit 可用宽为负 ⇒ 宽度塌到 min-content、
+     参数被 flex-wrap 竖排 3~5 行；white-space:nowrap 治不了 flex 子项换行。 */
+  ok(/#muteFlyout\{[^}]*width:max-content/.test(CSS_CODE)
+     && /#trainerFlyout\{[^}]*width:max-content/.test(CSS_CODE),
+    "★★★ ≥1280 两侧浮层 width:max-content（防 shrink-to-fit 塌成 min-content、参数竖排）");
   /* 402 的算术：标签槽 52 + 行内间距 10 + 滑杆 340。滑杆长度不是写死的数字——
      它 = tg-body 上限 402 − 槽位 52 − 间距 10，故钉这三个来源而非 340 本身。 */
   ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{max-width:402px\}/.test(CSS_CODE),

@@ -715,7 +715,9 @@ function layoutProbe(){
      量法：全关 → 点开两枚开关 → 全开，两次高度必须相等（这就是"卡片不变形"的定义）。
      ★ 量完立刻点回去复原（探针之间不污染）。 */
   out.tgBody = (() => {
-    const body = q(".viz-toggles .tg-body");
+    /* ★ 控制芯批 6（PLAN-v9）：开关列 .viz-toggles 退役——开关进芯顶胶囊行、参数面板进浮层；
+       tg-body 现住合并组内（.card-head-left .group .tg-body）。锚点随之改指新芯。 */
+    const body = q(".card-head-left .group .tg-body") || q(".card-head-left .tg-body");
     if (!body) return null;
     /* ★ v3.19.0 探针（三列均分 + 开关列流内）：开合只让**开关列**纵向生长——
        音量/BPM 两列 rect 逐像素不动；开关/面板 x 恒定（列内零横移）；
@@ -757,7 +759,7 @@ function layoutProbe(){
     const pad = () => round(parseFloat(getComputedStyle(body).paddingBottom));
     const row2 = () => { const t = getComputedStyle(body).gridTemplateRows.split(" ");
       return round(parseFloat(t[1]) || 0); };
-    const rowEl = q(".viz-toggles .tg-row");
+    const rowEl = q(".core-pills");   /* 控制芯批 6：开关行 = 芯顶胶囊行（.viz-toggles .tg-row 随列退役） */
     const rowCx = () => { const r = rowEl && rowEl.getBoundingClientRect();
       return r ? round(r.left + r.width / 2) : null; };
     const ctxEl = q(".pb-ctx");
@@ -1002,6 +1004,10 @@ function layoutProbe(){
     return textLeft(cands[1]);
   })();
   out.toggle = textLeft(q(".core-pills .toggle-pill"));   // 控制芯批 3：开关移入 .core-pills 胶囊行
+  /* ★★★ 控制芯批 6：芯顶胶囊行与滑杆塔同左缘——**必须在展开态量**（窄屏默认收起时
+     .tg-body display:none，getBoundingClientRect 归零，量出来是假错位）。 */
+  out.corePillsL = boxLeft(q(".core-pills"));
+  out.towerL = boxLeft(q(".card-head-left .group .tg-body"));
   /* ★ v3.39.0：上面的临时展开到此还原（后续 blockRects / grpWidths 等量**默认收起态**，
      不受污染——两套口径各量各的，与 portraitFixProbe「量完还原」同一纪律）。 */
   if (ctlExpand){ const cb = document.getElementById("ctlOpen"); if (cb) cb.checked = false; void document.body.offsetWidth; }
@@ -1036,8 +1042,18 @@ function layoutProbe(){
      "不得再有第 4 块"能被断言正面表达。
      ★ v3.39.0：BPM 组并入音量组 → 剩两块；保留第 3 位为 null 以便
      "BPM 独立块与行数拍号行都不得复活"能被断言正面表达。 */
-  out.blockRects = [q(".card-head-left"), q(".viz-toggles"), q(".viz-rows-row")]
+  out.blockRects = [q(".card-head-left")]
     .map(el => { const r = el && el.getBoundingClientRect(); return r ? { l: round(r.left), w: round(r.width) } : null; });
+  /* ★ 控制芯批 6（PLAN-v9）：开关列/行数拍号行已退役——正面钉"确已不在" */
+  out.retiredBlocksGone = !q(".viz-toggles") && !q(".viz-rows-row");
+  /* ★★★ 控制芯批 6（PLAN-v9）：**芯居中**几何读数（取代 v2.38/v2.39 的"左贴/左缘对齐"口径）——
+     芯盒（.group）横向中心相对控制栅格中心的偏移（0 = 居中）。 */
+  out.coreCtr = (() => {
+    const g = q(".viz-head-grid .card-head-left .group"), grid = q(".viz-head-grid");
+    if (!g || !grid) return null;
+    const a = g.getBoundingClientRect(), b = grid.getBoundingClientRect();
+    return { off: round((a.left + a.width / 2) - (b.left + b.width / 2)), w: round(a.width) };
+  })();
   /* v3.13.0（丁方案）：控制区**限宽 1000 居中**的几何读数——
      gridW ≤ 1000；网格盒在卡片内容区内水平居中（两侧空白对称）。
      空白 = (容器−1000)/2，随窗口变大是**设计内**行为（恒定的是"盒宽"与"对称性"）。
@@ -1076,7 +1092,7 @@ function layoutProbe(){
      ★ v3.39.0：BPM 组并入音量组 → 两块（合并组 | 开关）；grpGaps（三卡等距）随块数 3→2
      失去"等距"判据退役，间距单一来源由 v2.42.7 的 row-gap:16 收口断言在别处把守。 */
   out.grpWidths = (() => {
-    const els = [q(".card-head-left"), q(".viz-toggles")];
+    const els = [q(".card-head-left")];   /* 控制芯批 6（PLAN-v9）：开关列退役 ⇒ 只剩一张组容器卡 */
     return els.map(el => { const r = el && el.getBoundingClientRect(); return r ? round(r.width) : null; });
   })();
   return JSON.stringify(out);
@@ -1460,7 +1476,9 @@ function topBlocksProbe(){
       /* v3.38.1 补7：各块**各自**的下限（补6 是一个 --min-w=280 通吃，那会把三列门槛
          从 776 抬到 864 ⇒ 明明挤得下却换行）。判据要用它们做装箱模拟。
          ★ v3.39.0：BPM 组并入音量组 → 下限只剩两块（--min-w-bpm 随独立组除名）。 */
-      bases: ["--min-w-vol", "--min-w-sw"].map(function(k){
+      /* ★ 控制芯批 6（PLAN-v9）：开关列退役 ⇒ 可见块只剩**一块**（合并组），
+         下限变量只剩 --min-w-vol（--min-w-sw 随之除名）。 */
+      bases: ["--min-w-vol"].map(function(k){
         return parseFloat(cs.getPropertyValue(k)); }),
       /* 两块**当前是否参与排布**：收起方案（≤640/竖屏/矮屏）里音量 + BPM 整块默认
          display:none（v3.39.0 合并后 .card-head-left 一枚开关管整块），
@@ -1469,7 +1487,7 @@ function topBlocksProbe(){
         var see = function(sel){ var e = g.querySelector(sel); if (!e) return false;
           if (getComputedStyle(e).display === "none") return false;
           var r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-        return { vol: see(".card-head-left"), sw: see(".viz-toggles") };
+        return { vol: see(".card-head-left"), sw: false };   /* 控制芯批 6（PLAN-v9）：开关列退役 */
       })(),
       /* ★ v3.39.0：原 align 字段（"预备拍行心 = BPM 步进行行心"）随 BPM 组并入音量组退役——
          BPM 步进行住进合并组左列、不再与开关列同行，行心对齐失去前提；新口径
@@ -2228,7 +2246,7 @@ function portraitFixProbe(){
       volPillInk: (function(){ var cb=document.getElementById("ctlOpen");
         var k=cb?cb.checked:null;
         if(cb)cb.checked=true; void document.body.offsetWidth;
-        var p=q(".ctl-pills .ctl-hit[for=ctlOpen]"), r=q(".card-head-left .vol-row"), t=r? r.querySelector("span") : null;
+        var p=q(".core-pills"), r=q(".card-head-left .vol-row"), t=r? r.querySelector("span") : null;
         var d = (p&&t)? Math.round(t.getBoundingClientRect().top-p.getBoundingClientRect().bottom):null;
         if(cb&&k!==null)cb.checked=k; void document.body.offsetWidth;
         return d; })(),
@@ -2977,13 +2995,16 @@ async function main(){
           ok(false, p.label + "：" + label + " 布局探针未取到（本项未验证）", "见上方的探针提示");
           continue;
         }
-        const base = m.title;
-        /* v2.39.0：组容器底上线——控制列有了 16px 内边距，基准从「卡片内容边缘」
-           改为「组容器内容边缘」（恒差一个 padding；容器缺失时回退旧口径） */
-        const baseEdge = (typeof m.headContentLeft === "number") ? m.headContentLeft : m.cardTextLeft;
-        ok(sameLine(baseEdge, base),
-          p.label + "·" + label + "：前提——标题文字就在控制列内容边缘上（基准可信）",
-          "内容边缘 " + baseEdge + " vs 标题 " + base + "（视口 " + m.w + "）");
+        /* ★★★ 控制芯批 6（PLAN-v9，居中补正）：控制芯改为**水平居中**——取代 v2.38/v2.39
+           「桌面栅格居中 / 窄屏左贴」与「标题文字在控制列内容边缘」的旧口径。
+           新契约：芯盒（.group）中心 ≈ 控制栅格中心（容差 2）；且芯顶胶囊行与滑杆塔同左缘。 */
+        ok(m.coreCtr && typeof m.coreCtr.off === "number" && Math.abs(m.coreCtr.off) <= 2,
+          p.label + "·" + label + "：★★★ 控制芯水平居中（芯中心 − 栅格中心 = "
+          + (m.coreCtr && m.coreCtr.off) + "px，容差 2）",
+          "coreCtr=" + JSON.stringify(m.coreCtr) + "（视口 " + m.w + "）");
+        ok(sameLine(m.corePillsL, m.towerL),
+          p.label + "·" + label + "：★★ 芯顶胶囊行与滑杆塔**同左缘**（同住居中芯，左缘差 ≤0.5）",
+          "胶囊行 " + m.corePillsL + " vs 滑杆塔 " + m.towerL);
         /* v2.38.0（用户反馈）：卡片头改居中分布——桌面（≥1280px）走 grid 居中（三块各归其列，
            不再左贴）；窄屏（<1280px）回退现状左贴（同一套断言保留）。两种口径按 label 分派。
            v2.39.0：竖跨执行错误已修——r1 = 音量｜BPM｜三开关并列，r2 = 行数拍号 1/4 占满整行，
@@ -3008,9 +3029,6 @@ async function main(){
             p.label + "·" + label + "：★★ 预备拍开关与拍数输入都在**控制卡片开关行/悬浮槽**内（v3.15.0 搬回）",
             "toggle=" + m.countInInCard + " wrap=" + m.countInWrapInCard);
         } else {
-          ok(sameLine(m.toggle, base),
-            p.label + "·" + label + "：窄屏回退左贴——开关行与标题同一条左边缘",
-            "标题 " + base + " vs 开关 " + m.toggle);
           ok(m.rowsHome === "settings",
             p.label + "·" + label + "：★ 窄屏下同屏行数同样只住设置弹窗（搬移与断点无关）",
             "归属 " + m.rowsHome);
@@ -3022,16 +3040,15 @@ async function main(){
            ★ v3.12.0：两块均不在控制行了 → 改为"控制行恰三块、第 4 轨确已空出" +
            行数档位住在设置弹窗（防"搬了一半、旧槽位还留着"）。 */
         const br = lay.wide.blockRects || [];
-        ok(!!br[0] && !!br[1] && !br[2],
-          p.label + "：★★ 控制行恰**两块**（合并组｜开关），BPM 独立块与行数拍号行确已退役"
-          + "（v3.39.0：BPM 并入音量组）",
-          "块矩形 " + JSON.stringify(br));
+        ok(br.length === 1 && !!br[0] && lay.wide.retiredBlocksGone,
+          p.label + "：★★ 控制行恰**1 块**（合并组）；开关列与行数拍号行确已退役（PLAN-v9 批 2）",
+          "块矩形 " + JSON.stringify(br) + " · retiredGone=" + lay.wide.retiredBlocksGone);
         ok(lay.wide.rowsHome === "settings",
           p.label + "：★★ 同屏行数档位在设置弹窗内（且不在控制行），拍号控件已删除",
           "归属 " + lay.wide.rowsHome + " · sigGroup=" + lay.wide.sigGroup);
-        ok(sameLine(lay.wide.volGroup, lay.wide.title),
-          p.label + "：★★ 音量组在标题正下方（卡片头左列，左缘 = 卡片内容边缘）（v2.10.15）",
-          "标题 " + lay.wide.title + " vs 音量组 " + lay.wide.volGroup);
+        ok(lay.wide.coreCtr && Math.abs(lay.wide.coreCtr.w - 402) <= 1,
+          p.label + "：★★ 控制芯盒宽 = 402px（芯口径：52 标签槽 + 10 间距 + 340 滑杆）",
+          "芯宽 " + (lay.wide.coreCtr && lay.wide.coreCtr.w));
         /* ★★ v3.13.0（丁方案）：控制区限宽 1000 居中 + 两列 1fr——
            盒宽 ≤1000、两块等宽、两侧空白对称（空白 =(容器−1000)/2，随窗口变大是设计内行为，
            钉的是"盒宽"与"对称性"两个不变量，不是具体像素）。 */
@@ -3540,11 +3557,12 @@ async function main(){
                   p.label + "·" + vp + "：★★ 设置弹窗标题「" + D.dlg.title.text + "」单行且未被挤（实测宽 " + D.dlg.title.w + " / " + D.dlg.title.lines + " 行）", "");
               }
               if (D.main.align){
-                ok(Math.abs(D.main.align.delta) <= 3,
-                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下「预备开关首行」与合并组第 1 行（节拍行）同高"
-                  + "（v3.39.0 合并后口径；原「与 +5 同高」随 BPM 步进行住进左列退役）",
-                  "预备 top=" + D.main.align.countInTop + " vs 节拍行 top=" + D.main.align.volTop
-                  + "（差 " + D.main.align.delta + "px）");
+                /* ★★★ 控制芯批 6（PLAN-v9）：开关列退役为**芯顶胶囊行** ⇒ v3.30.0「开关首行
+                   与节拍行同线」口径失效（开关不再与滑杆同行）。新契约 = 胶囊行在滑杆塔**上方**。 */
+                ok(D.main.align.countInTop < D.main.align.volTop,
+                  p.label + "·" + vp + "：★★★ " + pair[1] + "主题下芯顶胶囊行（预备）在滑杆塔第 1 行（节拍）**上方**"
+                  + "（PLAN-v9 取代 v3.30.0「开关首行↔节拍行同线」——开关列退役为顶部胶囊行）",
+                  "预备 top=" + D.main.align.countInTop + " vs 节拍行 top=" + D.main.align.volTop);
               } else {
                 ok(false, p.label + "·" + vp + "：" + pair[1] + "主题下两走道对齐未取到（探针故障）", "");
               }
@@ -3748,8 +3766,9 @@ async function main(){
             }
           }
           /* ★★★ v3.38.1 补6（用户拍板）：顶部块 12 档真机闸——判据逐档检。
-             ★ v3.39.0：BPM 组并入音量组 ⇒ 顶部三块变**两块**（合并组 | 开关列），
-             --min-w-bpm 随独立组除名，装箱模拟与并排门槛同步降到两块口径。
+             ★ v3.39.0：BPM 组并入音量组 ⇒ 顶部三块变两块（合并组 | 开关列）。
+             ★ 控制芯批 6（PLAN-v9）：开关列退役 ⇒ 顶部**只剩一块**（合并组）；
+             --min-w-sw 除名，装箱模拟与"并排门槛"同步降到单块口径（后者失去对象退役）。
              为什么每档都检而不抽样：列数是个**关于宽度的阶跃函数**，抽样正好跳过临界点，
              就会放出一个"这段宽度下多出一列/少了一列"的回归（pillSweep 当初就是为此加的）。 */
           if (vp === "桌面"){
@@ -3758,11 +3777,11 @@ async function main(){
               /* v3.38.1 补7：前提改成"**各块各自**的下限都在"（补6 只有一个 --min-w 通吃）。 */
               const bases0 = TB[0].bases || [];
               const gapDef = parseFloat(TB[0].colGapVar);
-              const basesOk = bases0.length === 2 && bases0.every(b => b > 0);
+              const basesOk = bases0.length === 1 && bases0.every(b => b > 0);
               ok(basesOk && gapDef > 0,
-                p.label + "·" + vp + "：★ 前提：两块各自的 --min-w-vol/--min-w-sw 与 --col-gap"
-                + "都已定义（合并组 " + bases0[0] + " / 开关 " + bases0[1]
-                + "、--col-gap=" + TB[0].colGapVar + "）——闸没有可判的数就是空转",
+                p.label + "·" + vp + "：★ 前提：--min-w-vol 与 --col-gap 都已定义"
+                + "（合并组 " + bases0[0] + "、--col-gap=" + TB[0].colGapVar
+                + "）——闸没有可判的数就是空转（控制芯批 6：开关列退役 ⇒ 只剩一块）",
                 "12 档实测：" + TB.map(x => x.vw + ":" + x.display + "/gap" + x.gap).join(" "));
               if (basesOk && gapDef > 0){
                 ok(gapDef >= 12 && gapDef <= 24,
@@ -3806,21 +3825,12 @@ async function main(){
                   + "（收起态 0 块不算列数）",
                   blockBad.length ? blockBad.map(x => x.vw + "px：" + x.display + " / 实测 " + x.cols + " 列").join("；") : "");
                 ok(rowBad.length === 0,
-                  p.label + "·" + vp + "：★★★ 12 档「每行几块」都 = 按两块各自下限装箱的结果"
-                  + "（合并组 " + (TB[0].bases[0] || "?")
-                  + " / 开关 " + (TB[0].bases[1] || "?") + "，列距 " + gapDef + "）",
+                  p.label + "·" + vp + "：★★★ 12 档「每行几块」都 = 按合并组下限装箱的结果"
+                  + "（合并组 " + (TB[0].bases[0] || "?") + "，列距 " + gapDef + "）",
                   rowBad.length ? rowBad.map(x => x.vw + "px：实测 [" + gotRows(x) + "] / 应为 ["
                     + wantRows(x) + "]（可用 " + x.avail + "）").join("；") : "");
-                /* ①b 用户口径的直接翻译：够宽就必须**两块并排**
-                   （★ v3.39.0：BPM 并入后块数 3→2，门槛 = 两块下限之和 + 1×列距） */
-                const gate2 = (TB[0].bases[0] || 0) + (TB[0].bases[1] || 0) + gapDef;
-                const twoBad = TB.filter(x => x.display === "flex" && x.vis.vol && x.vis.sw
-                  && x.avail >= gate2 && x.cols < 2);
-                ok(twoBad.length === 0,
-                  p.label + "·" + vp + "：★★★ 两块都在场且可用宽 ≥ " + Math.round(gate2) + "px 时必须**两块并排**"
-                  + "（= 两块下限之和 + 1×列距；这就是「能并排却换行」的判据）",
-                  twoBad.length ? twoBad.map(x => x.vw + "px：可用 " + x.avail + " ≥ " + Math.round(gate2)
-                    + " 却只有 " + x.cols + " 列").join("；") : "");
+                /* ①b（退役 · 控制芯批 6 PLAN-v9）：原「两块并排门槛」判据随开关列退役失去对象——
+                   顶部可见块只剩合并组一块，"能并排却换行"在单块下不成立。 */
                 /* ② 行内空白率 ≤15%：块撑不满自己那一行 ⇒ 那条留白就是纯浪费 */
                 const blankBad = TB.filter(x => (x.rows || []).some(rw => rw.blankPct !== null && rw.blankPct > 15));
                 ok(blankBad.length === 0,
@@ -4132,16 +4142,14 @@ async function main(){
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }
       /* v2.42.7：窄屏组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
-         BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差；宽屏有自己的列宽设计，
-         本断言只认窄屏）。
-         ★ v3.12.0：块数 4 → 3（行数拍号行退役）；★ v3.39.0：BPM 并入音量组 → **2 块**
-         （合并组 | 开关，窄屏都是 width:100%）——门槛与文案同步，否则断言因长度不符被
-         静默跳过（假绿）。grpGaps（四卡等距）随块数 2 失去"等距"判据退役。 */
-      if (lay.narrow && Array.isArray(lay.narrow.grpWidths) && lay.narrow.grpWidths.length === 2){
-        const gws = lay.narrow.grpWidths;
-        ok(Math.max(...gws) - Math.min(...gws) <= 1,
-          "窄屏：★ 两张组容器卡等宽（宽度策略分裂回归闸门）",
-          "宽度 " + JSON.stringify(gws));
+         BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差）。
+         ★ PLAN-v9 批 2（控制芯批 6 收口）：开关列退役 ⇒ 窄屏只剩**一张**组容器卡
+         （合并组，width:100%）——"等宽分裂"判据失去对象，改钉"恰一张卡、存在、且开关列确已不在"。
+         ★ 长度变了必须改门槛：旧写法 `length===2` 在新结构下会**静默跳过**（假绿）。 */
+      if (lay.narrow && Array.isArray(lay.narrow.grpWidths)){
+        ok(lay.narrow.grpWidths.length === 1 && lay.narrow.grpWidths[0] > 0 && lay.narrow.retiredBlocksGone,
+          "窄屏：★ 恰**一张**组容器卡（合并组，width:100%）——开关列已退役（PLAN-v9 批 2）",
+          "宽度 " + JSON.stringify(lay.narrow.grpWidths) + " · retiredGone=" + lay.narrow.retiredBlocksGone);
       }
       /* ---- v3.0.0（PLAN-v9 批 0）：可视化带去卡片 + 预设库抽屉（真几何，桩测不到）---- */
       const dw = r.drawer;
