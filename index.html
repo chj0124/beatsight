@@ -4474,21 +4474,21 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L4504  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L5946  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8065  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9273  Modal         应用内弹窗
-     L9418  Viz           时值可视化渲染与每帧动画
-     L12942 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13625 Trainer       变速训练器
-     L13838 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14522 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16500 Editor        自定义节奏型编辑器
-     L17080 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17127 Ear           听辨训练（v1.10.0）
-     L17355 Arrange       曲式编排（v2.0.0）
-     L21420 Help          使用方法（v2.0.1）
-     L21575 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21649 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L21938 初始化（装配） 各模块 hook 接线与启动
+     L8070  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9278  Modal         应用内弹窗
+     L9423  Viz           时值可视化渲染与每帧动画
+     L12970 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13668 Trainer       变速训练器
+     L13881 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14565 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16554 Editor        自定义节奏型编辑器
+     L17134 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17181 Ear           听辨训练（v1.10.0）
+     L17409 Arrange       曲式编排（v2.0.0）
+     L21474 Help          使用方法（v2.0.1）
+     L21629 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21711 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22007 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4514,7 +4514,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.42.0";
+const VERSION = "3.42.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7116,6 +7116,11 @@ const Store = (() => {
          节拍器上表达的是"不打重拍"，不是"没有拍"。 */
     rhy: VALID_RHY.indexOf(saved.rhy) >= 0 ? saved.rhy : "quarter",
     noAccent: saved.noAccent === true,
+    /* ★ v3.42.1 审计备注（P2-5 撤回）：sel 此前被审计标记为「全 S 唯一无校验字段」，
+       但核实后**原样透传是刻意设计**，有三条测试钉住——T01/T6：越界/失效引用保留原值、
+       由 resolveRef 落空统一回退基础节奏；T30：v0.4 老数据 {custom, idx} 必须原样进入
+       迁移升级为 id 引用；T185：{type:"basic"} 是基础节奏模式的合法第三形态。
+       加载期加形状白名单会同时打断这三条，故不加。 */
     sel: saved.sel || {type:"builtin", idx:0},
     swing: SWINGS.includes(saved.swing) ? saved.swing : 50,          // v0.7.0
     accentGrp: accentGrpSaved,                                       // v0.7.0
@@ -12289,6 +12294,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   lastPainted = { bar, active, nb, ni, len: cellEls[bar].length };
   }
 
+  /* 进度填充用的 cum 前缀和缓存（v3.42.1，审计 P2-6；用法与失效口径见 paintFrameBody 内注释） */
+  /** @type {any|null} */
+  let cumCacheSteps = null;
+  const cumCache = [];
+  /** 预备拍计数行（静态 DOM，首次用到时取一次；见 paintFrameBody 内 v3.42.1 注释） */
+  let ciStatusEl = /** @type {HTMLElement|null} */ (null);
+
   function paintFrameBody(){
     cumBump();                               // v3.31.x（审计 P2-2）：帧首使累计前缀缓存失效（帧纪律见 cumTable 注释）
     /* ---- 窗口先同步，再取元素别名（v2.5.2 第 Ⅱ 期；v2.10.2 补预设模式那条同构分支）----
@@ -12430,7 +12442,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
           ], { duration: 420, easing: "ease-out" });
         }
       }
-      $("statusText").textContent = `预备 · ${idx + 1} / ${ciBeats}`;   /* v3.39.0：随开关文案「预备拍」→「预备」（用户拍板） */
+      /* v3.39.0：随开关文案「预备拍」→「预备」（用户拍板）。
+         ★ v3.42.1（审计 P3-7）：本行在预备拍期间每帧执行——改为「状态翻转才写」
+         （与 countLaneLitIdx / lastCi 同一纪律），省掉每帧一次 getElementById + 文本写。
+         元素身份是静态 DOM，缓存安全；比对读 textContent 不触发布局。 */
+      if (!ciStatusEl) ciStatusEl = $("statusText");
+      const ciTxt = `预备 · ${idx + 1} / ${ciBeats}`;
+      if (ciStatusEl.textContent !== ciTxt) ciStatusEl.textContent = ciTxt;
       /* ★ v2.42.6（用户需求）：预备拍 = 一支“幽灵小节”，球按正式弹跳的方式走第一窗口的
          拍位——每声预备拍“哒”落地一个拍位（pos 的整数部分），拍间是空中弧线（与正式弹跳
          同形的抛物线）；数完 ciEnd 回卷，正式弹跳路径无缝接管（onset 端点已就位，落点 =
@@ -12747,8 +12765,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        这条路径**不需要损坏数据就能触发**：编辑器「清空当前小节」时若正在试听，curPattern() 返回
        的草稿就有空小节，画面照常重建、下一帧即崩 */
     if (!steps.length) return;
-const cum = /** @type {number[]} */ ([]); let acc = /** @type {number} */ (0);
-    steps.forEach((/** @type {any} */ s) => { cum.push(acc); acc += s.t; });
+    /* ★ v3.42.1（审计 P2-6）：cum 前缀和按 steps 数组**身份**缓存——同一小节的 steps 在
+       连续帧之间是同一个数组对象（appliedPat 快照），逐帧重建数组 + forEach 闭包纯属
+       每帧常量的 GC churn（与 P1-4「帧内零布局读取」修的是同一类中低端机掉帧诱因）。
+       S.preview（编辑器试听）下草稿可能被**就地改写**（数组身份不变、内容变了）→
+       该路径保持逐帧重建，不进缓存。 */
+    if (!S.preview && cumCacheSteps !== steps){
+      cumCache.length = 0;
+      let cacc = 0;
+      for (let i = 0; i < steps.length; i++){ cumCache.push(cacc); cacc += steps[i].t; }
+      cumCacheSteps = steps;
+    }
+    const cum = cumCache;
     let active = 0;
     for (let i = 0; i < steps.length; i++){ if (tib >= cum[i]) active = i; }
     // 换拍瞬间：拍点容器（跑道）脉冲
@@ -13559,16 +13587,23 @@ const AudioEngine = (() => {
   /** @param {any} newPat */
   function resyncToNow(newPat){
     if (!S.playing) return false;
+    const c = ctx;
+    if (!c) return false;
     const oldSteps = activePattern().bars[schedBar];
     if (!oldSteps || !oldSteps.length) return false;
-    /* 已走过的 tick：nextNoteTime 恒等于「本小节 tick 0 时刻 + 该小节累计 tick」，可反推 */
-    let walked = 0;
-    for (let i = 0; i < schedStep && i < oldSteps.length; i++) walked += oldSteps[i].t;
     const nB = patBars(newPat);                    // v2.5.1：模数 = 新型的小节数（原为恒 LOOP_BARS）
     const barTicks = newPat.meter * TPB, loopTicks = barTicks * nB;
-    /* 以 loopStart 为原点、按新拍号重新解释当前绝对位置（同拍号时落回原位置） */
-    let posT = (nextNoteTime - loopStart) / spb() * TPB % loopTicks;
+    /* 以 loopStart 为原点、按新拍号重新解释当前绝对位置（同拍号时落回原位置）。
+       ★ v3.42.1（审计 P0-1）：绝对位置**不折叠圈数**——播放中 nextNoteTime 跨圈单调增长，
+       而 loopStart 从不重锚（回绕只动游标，见 scheduler 两处边界），旧实现按
+       「位置恒小于一圈」折叠（% loopTicks）重建，播过一圈后（1 小节型 @96BPM 仅 2.5s）
+       必然把 nextNoteTime 放到过去 → 下一调度周期被饥饿守卫劫持成 reanchor("starved")：
+       相位重置（新型从循环起点重开而非接续）、弹跳球端点清空、reanchorStarved 误计、
+       「切走后声音断了」解释条对从未切过后台的用户误弹。 */
+    const posTicks = (nextNoteTime - loopStart) / spb() * TPB;
+    let posT = posTicks % loopTicks;
     if (posT < 0) posT += loopTicks;
+    const laps = Math.floor((posTicks - posT) / loopTicks);   // 已完整走过的圈数
     let b = Math.floor(posT / barTicks);
     const tib = posT - b * barTicks;                    // 小节内位置（tick）
     /* 新节奏型该小节内第一个「起始 tick ≥ tib」的音符；本小节已无起点则推到下一小节 */
@@ -13587,14 +13622,22 @@ const AudioEngine = (() => {
        而循环回绕只在"越过 to"时才回头——从区间外回绕会跳过区间起点、甚至永远回不去。
        处理：落在区间外就统一拽回区间起点。**代价明说**：这一次接续会丢掉"时间轴相位"
        （不再从原位置继续，而是从循环起点重来）——但那正是循环语义本身要求的。 */
+    let snapped = false;
     if (S.playMode !== "arrange" && S.loopRange.on){
       /* v2.5.1：区间要按**新**型的小节数收窄后再判（存下来的 to 可能指到新型没有的小节上） */
       const LR = loopRangeFor(nB);
-      if (b < LR.from || b > LR.to){ b = LR.from; acc = 0; j = 0; }
+      if (b < LR.from || b > LR.to){ b = LR.from; acc = 0; j = 0; snapped = true; }
     }
     schedBar = b; schedStep = j;
-    /* 只向前推进：acc ≥ tib 保证新时刻不早于原 nextNoteTime（不会把音符排到过去） */
-    nextNoteTime = loopStart + (b * barTicks + acc) * spb() / TPB;
+    /* 只向前推进。★ v3.42.1（审计 P0-1）：重建**带圈数**——圈内 acc ≥ tib 恒成立（选点条件），
+       故非拽回路径 nextTicks ≥ posTicks（差 ≤1e-6 tick 为圈界浮点噪声，不推圈）；
+       拽回路径的起点可能已在本圈走过（b>to），此时推到下一圈的区间起点。 */
+    let nextTicks = laps * loopTicks + b * barTicks + acc;
+    if (nextTicks < posTicks - 1e-6) nextTicks += loopTicks;
+    nextNoteTime = loopStart + nextTicks * spb() / TPB;
+    /* 拽回且区间起点已在本圈走过时，对齐到「现在稍后」**立即**开始（与 rescheduleLoop 的
+       "时间轴对齐"同一口径），而不是落进过去（→ 被饥饿守卫劫持）或干等一整圈（→ 长静音）。 */
+    if (snapped && nextNoteTime < c.currentTime + 0.05) nextNoteTime = c.currentTime + 0.05;
     return true;
   }
   /* 循环区间变更后**立刻**重排（v2.4.3）。
@@ -16226,12 +16269,18 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   }
   /* scheduler 小节边界调用：有待应用的节奏型变更则在本边界无缝生效。
      返回 {applied:true, resetBar} 表示已应用（调用方需重映射 loopStart）；
-     拍号变化时等到循环起点（schedBar === 0）才应用。 */
+     拍号变化时等到循环起点才应用。 */
   /** @param {number} schedBarNow @returns {{applied: false} | {applied: true, resetBar: number}} */
   function consumePending(schedBarNow){
     if (!pendingPattern) return {applied:false};
-    if (sigChgPending && schedBarNow !== 0) return {applied:false};
-    const resetBar = sigChgPending ? 0 : schedBarNow;
+    /* ★ v3.42.1（审计 P2-4）：循环起点改用 loopStartBar——v2.4.3 引入循环区间后，
+       循环开着时游标在 [from,to] 回绕、**永不经过 0**，旧判据（schedBar === 0）会让
+       拍号变化的挂起被无限推迟（侧栏高亮已切、标题/网格停旧型，直到停止才由
+       flushPending 兜底）。loopStartBar：循环开 = 区间起点；循环关 / 曲式 = 0——
+       无循环 / 曲式 / 从第 0 小节循环三条既有路径行为一字不变。 */
+    const startBar = loopStartBar(patBars(activePattern()));
+    if (sigChgPending && schedBarNow !== startBar) return {applied:false};
+    const resetBar = sigChgPending ? startBar : schedBarNow;
     applyPatternChange();
     return {applied:true, resetBar};
   }
@@ -16322,7 +16371,12 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       list.appendChild(li);
     });
     list.hidden = false;
-    Modal.uiConfirm("即将导入以下数据（按「合并」语义写回，不会删除本机已有内容）：", () => {
+    /* ★ v3.42.1（审计 P1-1）：总述不再承诺一刀切的「合并、不会删除」——分组是**整包替换**
+       （其上方的注释有据），旧文案与实际行为直接矛盾，用户信任总述直接确认就会静默丢掉
+       本机手工搭的分组结构。文案改为「语义以清单为准」并点名替换项的后果。 */
+    Modal.uiConfirm("即将导入以下数据。各项写回语义以清单为准：标「替换」的会整包覆盖本机"
+      + "对应内容（本机现有分组将被包内分组取代，且不可恢复）；标「新增 / 合并 / 跳过」的"
+      + "不会删除本机已有内容：", () => {
       list.hidden = true;
       const res = Store.importAll(text);
       if (!res.ok){ Modal.uiAlert("导入失败：" + res.error); return; }
@@ -21582,6 +21636,12 @@ const Help = (() => {
    本模块只读共享状态 S，不引用任何模块；start/stop 由 Controls 经 sync() 通知（白名单 R3）。 */
 const KeepAlive = (() => {
 let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null} */ (null);
+/* ★ v3.42.1（审计 P2-1）：request 的「在途」标志。仅拦"已持有"（lock/audioEl）拦不住
+   落定前的重入——快速 stop/start 往返、或起播后立即触发 visibilitychange 的 sync
+   落在 request 落定窗口（数十 ms）内时，会发出第二个请求：两个 .then 都执行 lock = l，
+   先落定的那枚被覆盖且永不 release（静默耗电到页面隐藏被系统回收）。v2.8.13 只修了
+   「落定时已过期」，这一半由本标志补上。 */
+let lockReq = false;
   /* 程序生成 0.5s 静音 WAV（8kHz / 8-bit / 单声道：PCM 静音电平是 128 不是 0） */
   function silentWav(){
     if (typeof btoa !== "function") return "";
@@ -21617,10 +21677,12 @@ let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null
     }catch(e){ keepAliveFail("抛错"); }
   }
   function acquire(){
-    if (lock || audioEl) return;
+    if (lock || audioEl || lockReq) return;   // ★ v3.42.1：lockReq 拦「在途」重入（见上方标志声明处）
     if (typeof navigator !== "undefined" && navigator.wakeLock && typeof navigator.wakeLock.request === "function"){
+      lockReq = true;
       try{
         navigator.wakeLock.request("screen").then(l => {
+          lockReq = false;
           /* v2.8.13（审计 P1-1）：request 是异步的——落定前用户可能已停止播放 / 关掉开关，
              此时 release() 看到 lock 还是 null、空操作收场；若这里再无条件 lock = l，
              唤醒锁就**永久持有**到页面隐藏被系统回收（"关了但没关"，静默耗电）。
@@ -21630,8 +21692,8 @@ let lock = /** @type {any} */ (null), audioEl = /** @type {HTMLAudioElement|null
           if (lock && typeof lock.addEventListener === "function"){
             lock.addEventListener("release", () => { lock = null; });
           }
-        }).catch(() => { if (S.keepAwake && S.playing) useAudioFallback(); });   // 申请被拒（如低电量模式）→ 降级；被拒的落定同样可能已过期
-      }catch(e){ useAudioFallback(); }
+        }).catch(() => { lockReq = false; if (S.keepAwake && S.playing) useAudioFallback(); });   // 申请被拒（如低电量模式）→ 降级；被拒的落定同样可能已过期
+      }catch(e){ lockReq = false; useAudioFallback(); }
     } else useAudioFallback();
   }
   function release(){
@@ -21714,9 +21776,11 @@ const Diagnostics = (() => {
       /* v2.4.4：戳记计数只在出事时才占地方（正常部署恒为 0，一行读数不该为两个 0 买单） */
       + (diag.noStamp || diag.stampMismatch
         ? " · ⚠戳记 " + (diag.stampMismatch ? "版本不符" : "缺失") : "")
-      /* v2.8.8：保活兜底失败同理——它恒 0 才是正常的（有 Wake Lock 时根本不走兜底），
-         但**一旦非 0 就是"后台播放没保住"的确证**，必须占地方。放在最后一行是刻意的：
-         它是"功能级"告警，优先级高于前面那些"计数级"读数 */
+      /* v3.42.1（审计 P2-2）：迁移「需关注」计数此前只有 console.warn（Store.migStuck），
+         任何 UI 都不消费——半迁移状态对用户与开发者完全不可见，且永不自动补迁。
+         非零才占地方（与戳记/保活同口径）；读 Store 的导出 getter（Diagnostics 在
+         Store 之后声明，此处为后模块读前模块，非反向引用）。 */
+      + (Store.migAttention() ? " · ⚠迁移未完成 ×" + Store.migAttention() : "")
       + (diag.keepAliveFail ? " · ⚠保活兜底失败 ×" + diag.keepAliveFail : "");
   }
   /** @param {string} k */
@@ -21813,6 +21877,11 @@ const Diagnostics = (() => {
       "冷键写入: " + (coldWriteMs >= 0
         ? coldWriteMs + " ms · " + coldWriteChars + " 字符"
         : "（本次会话还没有冷键写入）"),
+      /* v3.42.1（审计 P2-2）：迁移未完成随报告带走——报障时"行为怪异但说不出原因"
+         有一半是半迁移态，此前这个信号只存在于控制台 warn 里。 */
+      "迁移: " + (Store.migAttention()
+        ? "⚠ " + Store.migAttention() + " 个一次性迁移未走完（本次未重放，详见控制台 warn）"
+        : "全部完成"),
       "本地存储: " + diagStorageUsage(),
       "最近错误（仅内存，刷新即清）:" + last,
     ].join("\n");
