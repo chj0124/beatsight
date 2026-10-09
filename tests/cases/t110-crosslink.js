@@ -128,12 +128,14 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   /* v3.0.0 批 5：第 2 轨（BPM）从 `1fr` 改成 `minmax(min-content,312px)`、末轨 168 → 413px——
      用户要求"BPM 卡宽度与音量卡一致，腾出的空间给预设库（它要放 6 个入口按钮）"。
      两条刚性轨都保留 min-content 下限（v2.76.2 的 Windows 度量结论不变）。 */
-  ok(src.includes(".viz-head-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(min-content,1fr);justify-content:center;justify-content:safe center;"),
-    "★★ v3.13.0（用户拍板丁）：控制行两行 —— 第一行两块（音量｜BPM）**1fr 拉满、限宽 1000 居中**，"
-    + "第二行 = 开关 + 悬浮参数槽；断点 1280；两侧空白恒定 ≈(容器−1000)/2（真机实测旧三轨口径下"
-    + "空白 336/368px 且随窗口变大，固定内容居中无解）；safe center 溢出回退 start");
+  /* 控制芯重排（PLAN-v9 批 2）：v3.13.0 丁方案两列网格退役 → 单列居中芯（402）。
+     断言改为钉新形态：块布局 + 芯容器居中 + 402 上限。 */
+  ok(src.includes("html body .card .viz-head-grid{display:block;max-width:none;margin:0 auto}")
+     && src.includes(".viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}"),
+    "★★ 控制芯（PLAN-v9 批 2，取代 v3.13.0 丁）：两列网格退役 → ≥1280 单列、芯 402px 居中"
+    + "（内容宽 = 标签槽 52 + 间距 10 + 滑杆 340，中轴 = 跑道中轴）");
   ok(src.includes("max-width:1000px"),
-    "★★ v3.13.0：控制区限宽 1000px（1440 实测两块各 ~484、两侧各 ~165 恒定）");
+    "★★ v3.13.0：控制区限宽 1000px（1440 实测两块各 ~484、两侧各 ~165 恒定）——现役于 560–1279.9 堆叠档");
   ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
     "★ v3.3.0：行数拍号行的单独去底补丁已删（四块统一无底后它成了死规则）");
   ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
@@ -142,8 +144,8 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
   ok(!src.includes("grid-column:1 / 4;grid-row:2"),
     "★★ v3.3.0：行数拍号行不再显式占 r2——自动落第 4 轨（与音量/BPM/开关同一行），跨列与行号特化全部退役");
-  ok(src.includes(".viz-head-grid .card-head-left,"),
-    "★★ v2.39.0 遗留：各块的共用选择器仍在（v3.3.0 起背景改 transparent，圆角/内边距口径不变）");
+  ok(src.includes(".viz-head-grid .card-head-left{"),
+    "★★ 控制芯重排（PLAN-v9 批 2）：共用选择器只剩 .card-head-left（.viz-toggles 分支随开关列退役）");
   /* ★ v3.12.0：`.viz-rows-row .group{flex-direction:row…}` 随并排行整块退役——
      那条规则服务的是"同屏行数面板 + 拍号面板并列"，两者一搬一删后已无对象；
      同屏行数在设置里改用 `.group` 默认 column 骨架（标签在上、档位在下，与 Swing 组同款）。

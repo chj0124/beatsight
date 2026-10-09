@@ -25,23 +25,26 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..", "..");
 const src = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
-section("T163a 结构 · 开关一行 + 参数行两列网格");
+section("T163a 结构 · 开关 = 芯顶胶囊行；参数面板进浮层壳（PLAN-v9 批 2 重写）");
 
-const rowStart = src.indexOf('<div class="tg-row" id="tgSwitchRow">');
-const rowEnd = src.indexOf("id=\"vizBand\"");
-ok(rowStart > 0 && rowEnd > rowStart, "★★ 存在开关行容器 #tgSwitchRow");
-const row = src.slice(rowStart, rowEnd);
+/* 控制芯重排：#tgSwitchRow / .viz-toggles 退役——三枚开关住芯顶 .core-pills，
+   参数面板整块搬进浮层壳（#muteFlyout / #trainerFlyout），id 与接线不换。 */
+const pillsStart = src.indexOf('<div class="core-pills">');
+const pillsEnd = src.indexOf("<!-- v2.5.0：原来只有「总音量");
+ok(pillsStart > 0 && pillsEnd > pillsStart, "★★ 存在芯顶胶囊行 .core-pills");
+const pills = src.slice(pillsStart, pillsEnd);
 ["muteToggle", "trainerToggle", "countInToggle"].forEach(id => {
-  ok(row.includes('id="' + id + '"'), "★ 三枚开关都在开关列（#tgSwitchRow）内：" + id);
+  ok(pills.includes('id="' + id + '"'), "★ 三枚开关都在胶囊行（.core-pills）内：" + id);
 });
-/* 网格钉在 .viz-toggles 作用域内——.tg-body 这个类名在音量组与 BPM 组里也在用
-   （各自的行包装层），宽选择器会把音量三条滑杆排成三列（实拍翻过车）。 */
-ok(/.viz-head-grid \.viz-toggles \.tg-body\{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;width:100%\}/.test(src),
-  "★★ v3.19.0：tg-body 纵排流内 + width:100%（悬浮槽/同轴网格时代的两列网格 + 76px 轨道 + 手风琴特化全部退役）");
-/* 显式 grid-area 钉位随同轴网格整体退役：面板是 #tgSwitchRow 的流内子节点，
-   DOM 交错顺序即视觉顺序（顺序钉见下方 v3.19.0 段）。 */
+ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(src)
+   && /\.viz-head-grid \.card-head-left \.group \.tg-body\{max-width:402px\}/.test(src),
+  "★★ v3.19.0 纵排流内骨架延续（gap 10）+ 控制芯内容上限 402（PLAN-v9 批 2）");
+/* 显式 grid-area 钉位随同轴网格整体退役：面板是浮层壳的流内子节点。 */
 ok(!/grid-area:\d\/\d/.test(src),
   "★★ v3.19.0：全文件不再有 grid-area 钉位（DOM 顺序即布局）");
+ok(/<div class="tg-flyout" id="muteFlyout" hidden>[\s\S]*?<div class="tr-panel" id="muteCfgPanel" hidden>/.test(src)
+   && /<div class="tg-flyout" id="trainerFlyout" hidden>[\s\S]*?<div class="tr-panel" id="trainerPanel" hidden>/.test(src),
+  "★★ 参数面板整块住浮层壳（#muteFlyout > #muteCfgPanel / #trainerFlyout > #trainerPanel，默认 hidden）");
 
 section("T163b 显隐 · 各管各（共槽仲裁退役，不互斥纪律保留）");
 
@@ -49,8 +52,10 @@ ok(/function syncParamSlots\(\)/.test(src), "★ syncParamSlots 存在（无参�
 ok(!/let paramSlotActive|paramSlotActive\s*=/.test(src),
   "★★ 「最后激活占槽」的记账变量（paramSlotActive）已随仲裁一并退役——留着没人写它就是死状态"
   + "（断言钉变量声明与赋值，注释里的历史名不判红）");
-ok(/el\.hidden = !\(on\[k\] \|\| paramSlotForce === k\)/.test(src),
-  "★★ 每组参数的显隐 = 自己的开关（+force 例外）——组与组零干扰，同时可看任意几组");
+ok(/const show = !!\(on\[k\] \|\| paramSlotForce === k\)/.test(src)
+   && /el\.hidden = !show/.test(src)
+   && /sh\.hidden = !show/.test(src),
+  "★★ 每组参数的显隐 = 自己的开关（+force 例外）——组与组零干扰；浮层壳镜像面板 hidden（PLAN-v9 批 2）");
 ok(/const on = \{ mute: !!S\.mute, trainer: !!S\.trainer\.on \}/.test(src),
   "★★ on 逐项来自真实开关状态（!!S.mute / !!S.trainer.on）——"
   + "出现任何常量 true/false 都是互斥退化；countIn 项已随参数搬移退役");

@@ -20,37 +20,36 @@ const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 const slotAt = html.indexOf('<div class="tg-slot" id="tgSlot">');
 const SLOT = slotAt > 0 ? html.slice(slotAt, html.indexOf("<!-- v3.0.0：预设库从 360px")) : "";
 
-section("T175a v3.19.0 参数面板流内（悬浮槽退役，面板挂各自开关下）");
+section("T175a 控制芯（PLAN-v9 批 2 重写）：胶囊行 + 浮层壳的源码序与显隐契约");
 {
-  /* ★ v3.19.0：悬浮槽退役、面板流内挂各自开关下（DOM 交错）——
-     本段按新结构重钉：七件套交错顺序 + countin-line 同行 + tr-prog 变速参数末行。 */
-  const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "muteRandomToggle",
-                 "muteCfgPanel", "trainerToggle", "trTargetWrap", "trainerPanel"]
+  /* ★ 控制芯重排：开关列退役、面板进浮层——本段按新结构重钉：
+     胶囊行四件（三开关 + 拍数）在前，面板/随机/目标按浮层壳内序在后。 */
+  const ORDER = ["countInToggle", "countInBeatsWrap", "muteToggle", "trainerToggle",
+                 "muteCfgPanel", "muteRandomToggle", "trainerPanel", "trTargetWrap"]
     .map(id => html.indexOf('id="' + id + '"'));
   ok(ORDER.every(i => i > 0) && ORDER.every((v, i) => i === 0 || v > ORDER[i - 1]),
-    "★★ v3.22.0：八件套交错排列（预备拍提前到最上；每组开关+主参数同行、剩余参数紧跟其下）");
-  /* ★ v3.33.10（用户拍板 A）：进度/闸门原因行**整行搬进 BPM 卡片**——它不再排在 trainerPanel 之后，
-     而是落在 BPM 组内（快捷档之下）。id 与全部接线不变（搬块不换 id），故期望随之改为位置钉子。 */
+    "★★ 控制芯源码序：胶囊行（预备+拍数 → 静音 → 变速）在前，浮层内容（静音面板+随机 → 目标+面板）在后");
+  /* ★ trainerProg 留芯底（PLAN-v9 批 2）：在胶囊行之后、浮层壳之前（拒开原因就地反馈通道） */
   const iP = html.indexOf('id="trainerProg"');
-  ok(iP > 0 && iP < ORDER[0], "★★ v3.33.10：trainerProg 搬进控制卡片（DOM 位置早于右侧八件套）");
-  /* ★ v3.39.0：trainerProg 随 BPM 块并入音量组、紧跟步进行下方；快捷档行退役后
-     「落在快捷档之下」的旧钉子随之改为「落在 BPM 滑杆行之下、且早于八件套」。 */
+  ok(iP > html.indexOf('id="trainerToggle"') && iP > 0 && iP < html.indexOf('id="muteFlyout"'),
+    "★★ trainerProg 留芯底（胶囊行之后、浮层壳之前；显隐不再跟随面板）");
   ok(html.indexOf('id="bpmPresetRow"') < 0,
     "★ v3.39.0：#bpmPresetRow 快捷档行已从标记除名（trainerProg 的旧上邻不复存在）");
   ok(html.indexOf('id="bpmSlider"') < iP,
     "★★ v3.39.0：trainerProg 落在合并组内 BPM 滑杆行之下（移动需求③：文案紧跟数值）");
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
-  ok(/<div class="countin-line">/.test(html)
-     && /\.viz-toggles \.countin-line,\.viz-toggles \.sw-line\{display:flex/.test(CSS_CODE),
-    "★★ v3.22.0：三组统一开关行（countin-line / sw-line）= 开关 + 主参数同行右侧（不换行）");
+  ok(/<div class="core-pills">/.test(html)
+     && /\.core-pills\{display:flex;align-items:center;gap:10px/.test(CSS_CODE),
+    "★★ 控制芯：三枚开关 = 芯顶胶囊行（.core-pills 横排；v3.22.0 的 countin-line/sw-line 开关行退役）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
     "★★ v3.33.10：进度行搬走后，v3.22.0 那条「变速参数末行」规则随位退役；"
     + "改由 #trainerProg 在 BPM 卡片内占自然高度（初版为「与参数槽等高」写的 54px 预留会把两张控制卡一起撑高，用户实拍后撤掉）");
-  /* 显隐跟随面板：syncParamSlots 末尾同步 trainerProg.hidden = trainerPanel.hidden */
+  /* ★ 控制芯重排：训练进度行显隐不再跟随面板（空文本零高度自然隐身）——
+     syncParamSlots 函数体里不应再有对它的显隐赋值 */
   const fn = html.slice(html.indexOf("function syncParamSlots"), html.indexOf("function openParamSlot"));
-  ok(/trainerProg/.test(fn) && /tpl\.hidden/.test(fn),
-    "★ syncParamSlots 末尾同步文字行显隐（含空目标拒开路径——面板强制可见时原因文字随行）");
+  ok(!/tp\.hidden|tpl\.hidden/.test(fn),
+    "★ syncParamSlots 不再翻训练进度行显隐（留芯底；PLAN-v9 批 2 拍板：显隐改挂芯）");
 }
 
 section("T175b [hidden] 配套修复（v3.15.0 搬块漏项，用户反馈'预备拍关闭参数槽仍显示'）");

@@ -16,7 +16,8 @@ const { loadApp, FakeAudioContext, ok, eq, section, html } = require("../lib/har
 
 const CSS = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
 const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");   // 剥块注释（防注释里的字面量骗过断言）
-const TOGGLES_AT = html.indexOf('<div class="viz-toggles">');
+/* 控制芯重排（PLAN-v9 批 2）：.viz-toggles 开关列退役——切片改取芯顶胶囊行起的芯段 */
+const TOGGLES_AT = html.indexOf('<div class="core-pills">');
 const TOGGLES = html.slice(TOGGLES_AT, html.indexOf("<!-- v3.0.0：预设库从 360px"));
 const PLAYBAR = html.slice(html.indexOf('<div class="play-bar" id="playBar"'),
                            html.indexOf("<!-- ================= 自定义节奏型编辑器"));
@@ -50,15 +51,14 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
 {
   ok(/max-width:1000px/.test(CSS_CODE),
     "★ 控制区限宽 1000 居中（丁方案的限宽口径保留）");
-  /* ★★★ v3.38.1 补6：三列均分改由 flex-wrap + --min-w 承担（同排均分这件事没变）。
-     v3.39.0：BPM 组并入音量组 ⇒ 三块变两块（合并组 | 开关列），--min-w-bpm 除名。
-     为什么值得保留这条：它是"同排"的唯一源码钉，删了会让"退回纵向堆叠"变成无人拦的回归。 */
-  ok(CSS_CODE.indexOf("display:flex;flex-wrap:wrap;gap:var(--col-gap)") >= 0
+  /* ★ 控制芯重排（PLAN-v9 批 2）：两块并排的 flex 装箱退役 → ≥1280 单列居中芯。
+     同排契约的源码钉换成：芯容器 402 居中 + 560–1279.9 堆叠档 flex 装箱（仅合并组一块）。 */
+  ok(CSS_CODE.indexOf("html body .card .viz-head-grid{display:block;max-width:none;margin:0 auto}") >= 0
+     && CSS_CODE.indexOf(".viz-head-grid .card-head-left .group{max-width:402px;margin:0 auto}") >= 0
      && CSS_CODE.indexOf("flex:1 1 var(--min-w-vol);min-width:var(--min-w-vol);max-width:var(--max-w)") >= 0
-     && CSS_CODE.indexOf("flex:1 1 var(--min-w-sw);min-width:var(--min-w-sw);max-width:var(--max-w)") >= 0
-     && !CSS_CODE.includes("var(--min-w-bpm)"),
-    "★★ v3.39.0：控制区两块同排（合并组 | 开关列）——flex-wrap + 各自下限装箱"
-    + "（v3.19 三列口径随 BPM 组并入音量组退役，两块并排门槛 280+216+列距）");
+     && !CSS_CODE.includes("var(--min-w-sw)") && !CSS_CODE.includes("var(--min-w-bpm)"),
+    "★★ 控制芯（PLAN-v9 批 2）：≥1280 单列、芯 402 居中；堆叠档 flex 装箱只剩合并组"
+    + "（开关列的 --min-w-sw 下限随列退役）");
   /* ★ v3.22.0：音量组固定间距顶对齐（零变形机制源码钉）——行高随开关列生长时滑杆
      纹丝不动；回退 space-between/evenly 会重新引入内容重分布（变异 M18 实证）。 */
   /* ★ v3.30.0：音量列的零变形承重墙从 `.group` 的 space-between 换成**其内 tg-body

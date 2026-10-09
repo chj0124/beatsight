@@ -28,8 +28,11 @@ const { loadApp, ok, eq, section, pill, html } = require("../lib/harness");
    的超长片段，让那些"不该包含 X"的断言侥幸通过（比失败更危险）。 */
 const M = {
   topbar: ['<header class="topbar">', '<!-- 分级播报', "顶栏（品牌 + 状态行 + 补偿 + 设置/主题）"],
-  vizHead: ['<div class="card-head viz-head">', '<!-- 视听辅助开关', "时值卡头行（音量+BPM）"],
-  togglesRow: ['<div class="viz-toggles">', '<!-- ★ v3.12.0（用户拍板）：本行整块退役', "静音拍 + 变速训练开关行（预备拍已搬底栏）"],
+  /* 控制芯重排（PLAN-v9 批 2）：头行止标记从「<!-- 视听辅助开关」（随开关列退役）改为
+     「<!-- v3.0.0：预设库」——vizHead 切片现在含芯（胶囊行 + 滑杆塔 + 浮层壳）全部内容 */
+  vizHead: ['<div class="card-head viz-head">', '<!-- v3.0.0：预设库', "时值卡头行（控制芯：胶囊行+滑杆塔+浮层）"],
+  /* 控制芯重排（PLAN-v9 批 2）：`.viz-toggles` 开关列退役 → 芯顶胶囊行切片 */
+  corePills: ['<div class="core-pills">', '<!-- v2.5.0：原来只有「总音量', "芯顶胶囊行（预备/静音/变速）"],
   /* v3.12.0：`rowsRow` 切片随原并排行整块退役删除——那一行不再存在，
      遗留切片标记会让 indexOf 恒 -1、切片静默变成"到文件末尾"（比失败更危险）。 */
   /* v3.3.0：跳段行整组搬进页面底部的固定播放条 #playBar（在 </main> 之后），
@@ -197,6 +200,8 @@ section("T90f v3.39.0 · BPM 并入音量组（卡片头单列）；Swing 与同
     "★★ 数值与 ± 增减钮与滑杆同住 .slider-row（v3.39.1 起为上下两行塔式，细钉见 T230）");
   ok(/class="card-head-left"/.test(h), "左块包 .card-head-left（v3.39.0 起头行只有这一个孩子）");
   ok(!/id="swingRow"/.test(h), "Swing 不在头行（已下移）");
+  ok(!/<div class="viz-toggles">/.test(html) && !/id="tgSwitchRow"/.test(html),
+    "★★ 控制芯重排（PLAN-v9 批 2）：开关列容器与 #tgSwitchRow 已整列退役");
   /* v3.12.0：原「行数 + 拍号」并排行整块退役——头行之外不再有那个容器 */
   ok(!/class="viz-rows-row"/.test(html) && !/id="sigRow"/.test(html),
     "★ 原「同屏行数 + 拍号」并排行已整块退役（行数去设置弹窗、拍号删除）");
@@ -204,18 +209,17 @@ section("T90f v3.39.0 · BPM 并入音量组（卡片头单列）；Swing 与同
     "★ BPM 组已上移卡片头（并排行里没有它）");
 }
 
-/* ================= 场景 T90h（v3.15.0 修订）：开关行三枚；预备拍搬回、拍数输入走悬浮槽 ================= */
-section("T90h v3.15.0 · 开关行 = 静音拍 + 变速训练 + 预备拍；拍数输入与两组参数同走悬浮槽");
+/* ================= 场景 T90h（PLAN-v9 批 2 重写）：开关 = 芯顶胶囊行三枚；参数进浮层 ================= */
+section("T90h 控制芯 · 胶囊行三枚（预备/静音/变速）；拍数输入贴预备胶囊；参数面板进浮层壳");
 {
-  const s = slice("togglesRow");
+  const s = slice("corePills");
   for (const id of ["muteToggle", "trainerToggle", "countInToggle"]){
-    ok(new RegExp('id="' + id + '"').test(s), "★ 开关行的三件之一：#" + id);
+    ok(new RegExp('id="' + id + '"').test(s), "★ 胶囊行的三件之一：#" + id);
   }
   ok(!/id="countInPanel"/.test(s), "★★ 空参数面板 #countInPanel 仍不存在（拍数输入走 #countInBeatsWrap，不再造面板壳）");
   ok(s.indexOf('id="countInToggle"') < s.indexOf('id="muteToggle"')
      && s.indexOf('id="muteToggle"') < s.indexOf('id="trainerToggle"'),
-    "★ v3.22.0 列内顺序：预备拍 → 静音拍 → 变速训练（用户需求：预备拍提前，"
-    + "让训练进度文字紧跟变速参数、不再落到预备拍下面）");
+    "★ v3.22.0 列内顺序 → 胶囊行顺序：预备拍 → 静音拍 → 变速训练（历史列序在胶囊行上延续）");
   /* 预备拍已离开底栏（v3.15.0 搬回卡片） */
   {
     const pb = slice("playBar");
@@ -223,24 +227,26 @@ section("T90h v3.15.0 · 开关行 = 静音拍 + 变速训练 + 预备拍；拍�
       "★★ 预备拍开关与拍数输入都已离开底栏（v3.15.0 搬回卡片开关行/悬浮槽）");
     ok(!/class="pb-countin"/.test(pb), "★ .pb-countin 承载层已退役（.pb-sub 只剩状态灯）");
   }
-  /* 拍数输入在 .viz-toggles 段内、位于预备拍开关之后（悬浮槽第三项） */
-  {
-    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizBand"'));
-    ok(seg.indexOf('id="countInToggle"') >= 0 && seg.indexOf('id="countInBeatsWrap"') >= 0
-       && seg.indexOf('id="countInToggle"') < seg.indexOf('id="countInBeatsWrap"'),
-      "★ 拍数输入在 .viz-toggles 段内、位于预备拍开关之后（悬浮槽第三项，顺序「开关 → 拍数」不变）");
-  }
+  /* 拍数输入在胶囊行内、位于预备拍开关之后（顺序「开关 → 拍数」不变） */
+  ok(s.indexOf('id="countInToggle"') >= 0 && s.indexOf('id="countInBeatsWrap"') >= 0
+     && s.indexOf('id="countInToggle"') < s.indexOf('id="countInBeatsWrap"'),
+    "★ 拍数输入在胶囊行内、位于预备拍开关之后（顺序「开关 → 拍数」不变）");
   /* v2.11.2：训练模式区整块删除——面板搬进本行、接续按钮与 7 天计划下线 */
   ok(!/<i>Training<\/i>/.test(html), "★ 「02 Training 训练模式」标题行已删（v2.10.16）");
   ok(!/id="trResumeBtn"/.test(html) && !/id="trStart"/.test(html) && !/id="planGenBtn"/.test(html),
     "★ v2.11.2：继续上次按钮 / 起始输入框 / 7 天计划入口均已删除");
-  /* ★ 参数与自己的开关同处 .viz-toggles 段、面板在后 */
+  /* ★ 参数面板进浮层壳（搬块不换 id）：面板仍在、且在自己的胶囊之后（同芯内源码序） */
   ok(/id="trainerPanel"/.test(html), "★ 变速训练面板仍在（id 未换）");
   {
-    const seg = html.slice(html.indexOf('class="viz-toggles"'), html.indexOf('id="vizBand"'));
-    ok(seg.indexOf('id="trainerToggle"') >= 0 && seg.indexOf('id="trainerPanel"') >= 0
-       && seg.indexOf('id="trainerToggle"') < seg.indexOf('id="trainerPanel"'),
-      "★ 参数行在开关**右侧**：两者同属 .viz-toggles 段且面板在后");
+    const h = slice("vizHead");
+    ok(h.indexOf('id="trainerToggle"') >= 0 && h.indexOf('id="trainerPanel"') >= 0
+       && h.indexOf('id="trainerToggle"') < h.indexOf('id="trainerPanel"'),
+      "★ 参数面板在开关之后（同芯内源码序；壳 #trainerFlyout > .tr-panel#trainerPanel）");
+    ok(/<div class="tg-flyout" id="muteFlyout" hidden>/.test(h)
+       && /<div class="tg-flyout" id="trainerFlyout" hidden>/.test(h),
+      "★ 两个浮层壳在位且默认 hidden（显隐由 syncParamSlots 镜像面板）");
+    ok(!/class="countin-line"/.test(h) && !/class="sw-line"/.test(h),
+      "★ 开关行容器 .countin-line / .sw-line 随开关列退役（预备拍数输入直接贴胶囊）");
   }
   eq((html.match(/id="muteToggle"/g) || []).length, 1,
     "静音拍开关全文件恰此一处（训练区已无副本）");
@@ -251,8 +257,10 @@ section("T90h v3.15.0 · 开关行 = 静音拍 + 变速训练 + 预备拍；拍�
 section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；跳段键 52px；页底提示行；窄屏六线铺满");
 {
   const css = slice("css");
-  ok(/\.viz-toggles \.toggle-pill\{padding-left:0\}/.test(css),
-    "★★ ③选丙：`.viz-toggles .toggle-pill` 左内边距归零（开关文字落到卡片内容边缘）");
+  /* 控制芯重排（PLAN-v9 批 2）：`.viz-toggles .toggle-pill{padding-left:0}`（③选丙）随开关列退役；
+     新胶囊行带自己的规格钉（36px 高 = 上下 8px 内边距），作用域同样收在芯内 */
+  ok(/\.core-pills \.toggle-pill\{padding-top:8px;padding-bottom:8px\}/.test(css),
+    "★★ 控制芯：`.core-pills .toggle-pill` 上下 8px（36px 胶囊规格，v3.24.0 压缩配额口径延续）");
   /* ★ 作用域必须限定在 .viz-toggles 内：改成全局 .toggle-pill 会是全站开关的观感变更 */
   ok(!/^\.toggle-pill\{[^}]*padding-left:0/m.test(css),
     "★ 且没顺手把全局 `.toggle-pill` 也改掉（那是全站开关，不在本次范围）");
@@ -287,9 +295,16 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(!/\.viz-rows-panel/.test(cssNoCmt),
     "★★ v3.12.0：`.viz-rows-panel` 旧面板壳已随并排行整块退役（设置里用 .group 骨架）；"
     + "v2.38.0 那条「标签与按钮同行自适应」的 flex-wrap 口径由 .group 承担，本断言改为防回潮");
-  ok(/\.viz-toggles\{[^}]*margin-bottom:16px/.test(css),
-    "★★ v2.10.17：块间纵向间隔 16px（开关行下边距仍在；行内折行行距随旧容器退役，"
-    + "设置里的同屏行数块由 .group 的 gap 承担）；横向 28 保留在旧容器上已无对象");
+  ok(/\.viz-head-grid\.viz-head-grid\{display:block[^}]*\}|html body \.card \.viz-head-grid\{display:block/.test(css)
+     && /\.viz-head-grid \.card-head-left \.group\{max-width:402px;margin:0 auto\}/.test(css),
+    "★★ 控制芯（PLAN-v9 批 2）：两列网格退役 → 单列居中芯（402 = 标签 52 + 间距 10 + 滑杆 340，中轴=跑道中轴）");
+  ok(/\.viz-head-grid \.card-head-left \.group\{position:relative\}/.test(css)
+     && /\.tg-flyout\{position:absolute/.test(css)
+     && /\.tg-flyout\[hidden\]\{display:none\}/.test(css),
+    "★★ 控制芯：参数浮层壳 = 芯内绝对定位（.group 为包含块），[hidden] 显式收显（类选择器盖 UA 的坑）");
+  ok(/#muteFlyout\{left:auto;right:calc\(100% \+ 14px\)/.test(css)
+     && /#trainerFlyout\{left:calc\(100% \+ 14px\)/.test(css),
+    "★ ≥1280：静音浮层出芯左、变速浮层出芯右（方案图口径，不盖滑杆塔）");
   ok(/\.viz-head\{[^}]*justify-content:flex-start[^}]*column-gap:48px/.test(css),
     "★ v2.10.17：卡片头紧凑排列——BPM 组紧随音量列 48px（原 space-between 中间空 239px）");
   ok(/\.status\{display:inline-flex;align-items:center;gap:8px/.test(css)

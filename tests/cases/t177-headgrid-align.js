@@ -46,17 +46,12 @@ section("T177a 三列横向对齐体系（音量行盒 / 开关列偏移 / 行�
   ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
     "★★ 音量列顶锚定距（flex-start + gap:10px）——行心 172.8/222.8/272.8，"
     + "且开关列开合时顶锚不动（v3.22 单开零变形的承重墙从 .group 的 space-between 迁到这里）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE),
-    "★★ 开关三行行距 7px（原 2px 是 v3.24「行高恒定」的压缩配额，该契约随行心对齐退役）");
-  /* ★★★ v3.38.1 补7：44px 从"写死在 ≥900 的 padding"改成**容器查询 + 变量**：
-     它其实是"开关与 BPM 同行"才需要的补偿，而同行的门槛是 776（三块下限之和 + 2×列距），
-     比 900 早 —— 写死在 900 会让 776–899 这一段的开关既不对齐、也说不清基准。
-     同时拆出 --tg-align-shift：收起方案那几档 BPM 标题行是 display:none，步进行上移，
-     补偿要减掉它（否则实测低 30px）。 */
-  ok(/@container \(min-width:496px\)\{[\s\S]*?\.viz-toggles\{padding-top:calc\(var\(--tg-align-top\) \+ var\(--tg-align-shift\)\)\}/.test(CSS_CODE)
-     && CSS_CODE.indexOf("--tg-align-top:44px") >= 0 && CSS_CODE.indexOf("--tg-align-shift:0px") >= 0,
-    "★★ 开关与 BPM 同行（可用宽 ≥496 = BPM 280 + 开关 216 + 列距 12）时吃 --tg-align-top:44px——「预备拍」行心 174 = "
-    + "BPM 步进行 173.8（L1）；阈值 496 与 BPM / 开关两个下限同源");
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}|\.core-pills\{display:flex;align-items:center;gap:10px/.test(CSS_CODE),
+    "★★ 控制芯（PLAN-v9 批 2）：开关 = 芯顶胶囊行（.core-pills 横排 gap 10）；v3.30.0 的纵排行距 7px 契约随开关列退役");
+  /* ★ 控制芯重排：--tg-align-top/--tg-align-shift 补偿体系随开关列整列退役——
+     胶囊行住芯顶、与滑杆塔同芯同轴，不再需要跨列对齐补偿。 */
+  ok(!/--tg-align-top/.test(CSS_CODE) && !/--tg-align-shift/.test(CSS_CODE) && !/@container \(min-width:496px\)/.test(CSS_CODE),
+    "★★ 控制芯：--tg-align-top/--tg-align-shift 补偿体系与 496 容器查询整列退役（胶囊行与滑杆塔同芯同轴，无跨列可补偿）");
   ok(!/@media \(min-width:900px\)\{[\s\S]{0,400}\.viz-head-grid \.viz-toggles\{padding-top:44px[^}]*\}[\s\S]{0,200}@media \(max-width:899/.test(CSS_CODE)
      || /@media \(max-width:899\.9px\)\{[\s\S]*?\.viz-head-grid \.viz-head > \.group \.tg-body\{max-width:520px\}/.test(CSS_CODE),
     "★★ ≤900 堆叠档：BPM 卡内容限宽 520px（否则步进钮/快捷档被拉成 ~150px/颗，平板实拍）");
@@ -69,15 +64,18 @@ section("T177a 三列横向对齐体系（音量行盒 / 开关列偏移 / 行�
 /* ================= T177b：从属参数统一降级（层级：主开关 > 参数） ================= */
 section("T177b 从属参数统一降级（拍数框 / 随机开关 / 目标框）");
 {
-  ok(/\.viz-toggles \.tr-inp\{padding:4px 8px;font-size:12px\}/.test(CSS_CODE),
-    "★★ 拍数框/目标框降级（padding 8×10→4×8、字号 13→12）——原比主开关还高，层级倒挂（用户实拍指出）");
-  ok(/\.viz-toggles #muteRandomToggle\{padding:6px 10px;font-size:12px\}/.test(CSS_CODE),
+  ok(/\.core-pills \.tr-inp\{padding:4px 8px;font-size:12px\}/.test(CSS_CODE)
+     && /\.tg-flyout \.tr-inp\{padding:4px 8px;font-size:12px\}/.test(CSS_CODE),
+    "★★ 拍数框/目标框降级（padding 8×10→4×8、字号 13→12）——原比主开关还高，层级倒挂（用户实拍指出）；"
+    + "作用域从 .viz-toggles 换到 .core-pills / .tg-flyout（PLAN-v9 批 2）");
+  ok(/\.tg-flyout #muteRandomToggle\{padding:6px 10px;font-size:12px\}/.test(CSS_CODE),
     "★★「随机」作为从属子开关同步降一级（与拍数框/目标框同一套规格，不是只降它一个）");
   /* 作用域纪律：设置弹窗里的同款 .tr-inp（壁纸遮罩 / 延迟补偿）不得被牵连 */
   ok(!/^\.tr-inp\{padding:4px/.test(CSS_CODE.replace(/\n/g, "")) && !/\}\.tr-inp\{padding:4px/.test(CSS_CODE.replace(/\n/g, "")),
-    "★★ 降级作用域钉在 .viz-toggles 内——设置弹窗的同名控件（壁纸遮罩/延迟补偿）保持原规格");
-  ok(/\.viz-toggles \.tr-inp::-webkit-inner-spin-button\{-webkit-appearance:none;margin:0\}/.test(CSS_CODE),
-    "★★ number 框 spin 按钮在开关列内隐藏——桌面 Chrome 为它预留 ~14px，"
+    "★★ 降级作用域钉在芯内（.core-pills / .tg-flyout）——设置弹窗的同名控件（壁纸遮罩/延迟补偿）保持原规格");
+  ok(/\.core-pills \.tr-inp::-webkit-inner-spin-button\{-webkit-appearance:none;margin:0\}/.test(CSS_CODE)
+     && /\.tg-flyout \.tr-inp::-webkit-inner-spin-button\{-webkit-appearance:none;margin:0\}/.test(CSS_CODE),
+    "★★ number 框 spin 按钮在芯内隐藏——桌面 Chrome 为它预留 ~14px，"
     + "占位「如 120」会被挤成「如 12」（实拍实证；方向键步进不受影响）");
 }
 

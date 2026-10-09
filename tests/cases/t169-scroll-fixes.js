@@ -96,12 +96,12 @@ section("T169d 头部聚拢与参数区列对齐（源码级契约，真几何�
   /* ★ v3.13.0（用户拍板丁）：三轨 max-content 口径退役（第 3 块 v3.12.0 已退、行 1 内容
      624px 居中出 336/368px 空白且随窗口变大）——改两列 1fr + 限宽 1000 居中，真几何由
      smoke 的 row1 断言（盒宽/等宽/对称）钉死。 */
-  ok(/\.viz-head-grid\{display:grid;grid-template-columns:minmax\(280px,1fr\) minmax\(min-content,1fr\);justify-content:center/.test(CSS_CODE),
-    "★★ 行 1 两列 1fr 拉满（丁方案：空白不再随窗口稀释内容，滑杆/按钮自然跟长）");
+  /* ★ 控制芯重排（PLAN-v9 批 2）：两列网格退役 → ≥1280 单列居中芯；1fr/32px 列距口径
+     随网格退役（芯内行距由 .tg-body gap 与行盒承担）。 */
+  ok(/\.viz-head-grid \.card-head-left \.group\{max-width:402px;margin:0 auto\}/.test(CSS_CODE),
+    "★★ 控制芯：≥1280 单列、芯 402px 居中（取代丁方案的两列 1fr）");
   ok(/max-width:1000px/.test(CSS_CODE),
-    "★★ 控制区限宽 1000px 居中（两侧空白恒定 ≈(容器−1000)/2）");
-  ok(/column-gap:32px/.test(CSS_CODE),
-    "★ 列距 32px（v3.9.0 拍板的聚拢间距，口径不变）");
+    "★★ 控制区限宽 1000px 居中（两侧空白恒定 ≈(容器−1000)/2）——现役于 560–1279.9 堆叠档");
   /* ★ v3.19.0：同轴居中钉退役（三列均分后开关列 = col 3，钉移 t168）。 */
   ok(!/grid-column:1 \/ -1;grid-row:2;justify-self:center;width:fit-content/.test(CSS_CODE),
     "★★ v3.19.0：开关块同轴居中落位退役（三列均分）");

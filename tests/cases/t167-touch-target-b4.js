@@ -83,9 +83,12 @@ section("T152c 底栏 --bar-h 与参数行 76px 不受本批影响");
      零跳动契约不变，只是落点从槽高换成轨道高。锚真实选择器（教训沿用旧注释）。 */
   /* v3.19.0：76px 轨道随同轴网格退役（用户拍板：面板打开允许列内下移）——
      触控目标尺寸的连带面（B4）转移到开关/按钮本身的尺寸钉上。 */
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}/.test(CSS_CODE) && /\.viz-toggles \.countin-line \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && /\.viz-toggles \.sw-line \+ \.tr-panel \+ \.sw-line\{margin-top:7px\}/.test(CSS_CODE) && !/#muteCfgPanel:not\(\[hidden\]\)/.test(CSS_CODE),
-    "★★ v3.30.0：开关列纵排、行距 7px（三行行心 174/224/274 = 与 BPM 三行横向对齐）；"
-    + "触控目标 36px 开关仍 ≥ 44 建议值的一半，主操作键 play 48 未缩");
+  /* 控制芯重排（PLAN-v9 批 2）：`.viz-toggles .tg-row` 纵排 + 7px 行距随开关列退役——
+     触控目标尺寸契约转移到胶囊行规格钉上（.core-pills .toggle-pill 上下 8px = 36px 高）。 */
+  ok(/\.core-pills \.toggle-pill\{padding-top:8px;padding-bottom:8px\}/.test(CSS_CODE)
+     && !/#muteCfgPanel:not\(\[hidden\]\)/.test(CSS_CODE),
+    "★★ 控制芯：开关 = 胶囊行 36px 规格（触控目标 36px 开关仍 ≥ 44 建议值的一半，主操作键 play 48 未缩）；"
+    + "v3.30.0 的纵排行距 7px 契约随开关列退役");
 
   /* 顶栏等高带：这条显式 height 会**盖住** .pill 的 min-height——不改它，顶栏的元素
      （补偿读数 / 设置钮 / 主题钮）就仍是 36px，B4 等于漏了顶栏。

@@ -53,7 +53,7 @@ section("T195d 源码钉：三处清空点齐备，且卡片点击是委托监�
   ok(/bs\.addEventListener\("input", clearSlotForce\)/.test(html) && /bn\.addEventListener\("change", clearSlotForce\)/.test(html),
     "★★ 清空点②：BPM 滑杆/数字");
   ok(/card\.addEventListener\("click", e => \{/.test(html)
-     && /closest\("#trainerToggle, #trainerPanel, #trainerProg"\)/.test(html),
+     && /closest\("#trainerToggle, #trainerPanel, #trainerFlyout, #trainerProg"\)/.test(html),
     "★★ 清空点③：卡片内委托点击（开关本身与原因区被排除，点开关仍能刷新原因）");
   /* ★★ 回归钉：委托监听里若用 evEl(e)（= currentTarget = 卡片本身），
      "是不是点在开关上"永远判不出来 ⇒ 点开关打开的原因会被当场撤掉（v3.33.10 实拍）。 */
