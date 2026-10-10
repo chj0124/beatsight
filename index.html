@@ -3500,7 +3500,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="viz-legend" id="vizLegend">
       <span class="vl-item"><i class="vl-swatch" aria-hidden="true"></i>格宽 = 时值</span>
       <span class="vl-item">↑↓ = 扫弦方向</span>
-      <span class="vl-item"><i class="vl-swatch vl-rest" aria-hidden="true"></i>灰格 = 休止</span>
+      <!-- ★ v3.44.0（用户拍板）：「灰格 = 休止」→「灰格 = 空拍（不拨弦）」。理由：休止是记谱
+           术语、自带「静音」含义，但灰格表达的是手部动作维度（这一格不触发新音）——真实吉他上
+           前音可延音、可闷音，弦上有没有声音由演奏决定，应用刻意不建持续音模型。
+           （旁证：休止格 + 扫弦方向 = 空扫，本就是「手在动、弦不出声」的动作描述。） -->
+      <span class="vl-item"><i class="vl-swatch vl-rest" aria-hidden="true"></i>灰格 = 空拍（不拨弦）</span>
       <button class="pill outline" id="vizLegendClose" aria-label="关闭图例">知道了</button>
     </div>
     <!-- v3.34.5（审计 B-1）：后台被节流后的**解释条**。
@@ -3944,8 +3948,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
-          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 灰格 = 休止），
-          点「知道了」收起后就不再出现</li>
+          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 灰格 = 空拍（不拨弦）），
+          点「知道了」收起后就不再出现。<b>空拍只表示这一格不拨弦</b>：它占满自己的时值，但弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -4550,23 +4554,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4582  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6024  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8148  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9356  Modal         应用内弹窗
-     L9501  Viz           时值可视化渲染与每帧动画
-     L13050 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13748 Trainer       变速训练器
-     L13961 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14645 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16634 Editor        自定义节奏型编辑器
-     L17214 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17261 Ear           听辨训练（v1.10.0）
-     L17489 Arrange       曲式编排（v2.0.0）
-     L21554 Help          使用方法（v2.0.1）
-     L21709 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21791 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22087 初始化（装配） 各模块 hook 接线与启动
+     L4586  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6028  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8152  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9360  Modal         应用内弹窗
+     L9505  Viz           时值可视化渲染与每帧动画
+     L13054 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13752 Trainer       变速训练器
+     L13965 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14649 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16638 Editor        自定义节奏型编辑器
+     L17218 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17265 Ear           听辨训练（v1.10.0）
+     L17493 Arrange       曲式编排（v2.0.0）
+     L21558 Help          使用方法（v2.0.1）
+     L21713 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21795 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22091 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
