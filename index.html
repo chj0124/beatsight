@@ -4477,18 +4477,18 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L8070  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L9278  Modal         应用内弹窗
      L9423  Viz           时值可视化渲染与每帧动画
-     L12970 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13668 Trainer       变速训练器
-     L13881 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14565 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16554 Editor        自定义节奏型编辑器
-     L17134 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17181 Ear           听辨训练（v1.10.0）
-     L17409 Arrange       曲式编排（v2.0.0）
-     L21474 Help          使用方法（v2.0.1）
-     L21629 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21711 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22007 初始化（装配） 各模块 hook 接线与启动
+     L12972 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13670 Trainer       变速训练器
+     L13883 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14567 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16556 Editor        自定义节奏型编辑器
+     L17136 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17183 Ear           听辨训练（v1.10.0）
+     L17411 Arrange       曲式编排（v2.0.0）
+     L21476 Help          使用方法（v2.0.1）
+     L21631 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21713 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22009 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4514,7 +4514,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.42.1";
+const VERSION = "3.42.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -12297,6 +12297,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 进度填充用的 cum 前缀和缓存（v3.42.1，审计 P2-6；用法与失效口径见 paintFrameBody 内注释） */
   /** @type {any|null} */
   let cumCacheSteps = null;
+  /** @type {number[]} */
   const cumCache = [];
   /** 预备拍计数行（静态 DOM，首次用到时取一次；见 paintFrameBody 内 v3.42.1 注释） */
   let ciStatusEl = /** @type {HTMLElement|null} */ (null);
@@ -12447,8 +12448,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          （与 countLaneLitIdx / lastCi 同一纪律），省掉每帧一次 getElementById + 文本写。
          元素身份是静态 DOM，缓存安全；比对读 textContent 不触发布局。 */
       if (!ciStatusEl) ciStatusEl = $("statusText");
+      const ciEl = ciStatusEl || $("statusText");
       const ciTxt = `预备 · ${idx + 1} / ${ciBeats}`;
-      if (ciStatusEl.textContent !== ciTxt) ciStatusEl.textContent = ciTxt;
+      if (ciEl && ciEl.textContent !== ciTxt) ciEl.textContent = ciTxt;
       /* ★ v2.42.6（用户需求）：预备拍 = 一支“幽灵小节”，球按正式弹跳的方式走第一窗口的
          拍位——每声预备拍“哒”落地一个拍位（pos 的整数部分），拍间是空中弧线（与正式弹跳
          同形的抛物线）；数完 ciEnd 回卷，正式弹跳路径无缝接管（onset 端点已就位，落点 =

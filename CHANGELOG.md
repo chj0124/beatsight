@@ -15,6 +15,28 @@
 
 ---
 
+## v3.42.2 · 工程版：闭合 CI 类型闸门——cum 缓存与 statusText 别名的 4 条 TS 报错（2026-10-10）
+
+**由来**：v3.42.1 推 main 后 CI「自验 + 构建（npm run ci）」红（run 37981023813，22s 即败，
+浏览器冒烟 job 绿）——本地自验一直标 ⊘ 的 **tsc（加强）** 在 CI（有 node_modules）实跑，
+抓出 4 条类型错误。这是本轮审计修复批里唯一两处带类型的改动，恰好都漏了类型标注：
+「本地 ⊘ 三项与 CI 口径差」（审计效率①的另一半）以最直接的方式演示了一遍。
+
+**根因 → 修法**（4 条，两处同源）：
+- `Viz` 模块级 `const cumCache = [];` 无 `@type` → TS7034（声明处）/ TS7005（paintFrameBody
+  使用处 L12779）隐式 `any[]`。修：补 `/** @type {number[]} */`。
+- `ciStatusEl`（`HTMLElement|null`）在 `if (!ciStatusEl) ciStatusEl = $("statusText")` 之后
+  直接使用 → TS18047 ×2（`$` 返回可空，赋值后 narrowing 不保）。修：取本地别名
+  `const ciEl = ciStatusEl || $("statusText")` + 使用点判空守卫（与 §6「取本地别名 + 判空守卫」
+  同一套惯例，零 cast）。
+
+**取舍**：修法只动类型面，运行时行为一字不变（ciEl 与 ciStatusEl 同一元素；判空守卫在
+dom-ids 闸门保证 id 存在的前提下恒真路径）。
+
+**自验**（数字全部来自命令输出）：本地 `npm install --no-save typescript` 后首次实跑
+**check-tsc：0 错误 · check-eslint：0 错误**；全量 check-all 实跑 19/21 全绿（⊘ 仅剩
+浏览器冒烟缺本机浏览器）；套件 7785 PASS / 0 FAIL 不变。
+
 ## v3.42.1 · 只读审计修复批：resyncToNow 跨圈接续 · 循环起点挂起 · 导入文案如实化 · 诊断补口 · 保活在途竞态（2026-10-10）
 
 **由来**：用户委托的完整只读审计（基线 v3.42.0 · HEAD 3d65f72 与远端一致）产出 P0–P3 分级清单，
