@@ -87,6 +87,23 @@ section("T235b favicon 同源坐标（icon.svg ÷ 8 = 64 网格）");
   ok(!html.includes("M9 3h10"), "旧摆锤标志 path 已从 index.html 清除");
 }
 
+section("T235e 顶栏锁定字标（v3.43.0 第二批：字标 + i 字点节拍球）");
+{
+  const mWm = /<svg class="wm" viewBox="1 114 461 112" aria-hidden="true"><path d="([^"]+)" fill="currentColor"\/><circle cx="288\.69" cy="128\.91" r="10\.5" fill="var\(--green\)"\/><\/svg>/.exec(html);
+  ok(!!mWm, "顶栏锁定字标在位（viewBox 461:112 + currentColor + 节拍球 var(--green)）");
+  if (mWm){
+    const man = fs.readFileSync(path.join(ROOT, "docs", "archive", "beatsight-vi-manual.html"), "utf8");
+    const mMan = /<path d="(M38\.09 200[^"]+)" fill="currentColor"/.exec(man);
+    ok(!!mMan, "VI 手册登记的锁定字标可读取");
+    if (mMan) ok(mWm[1] === mMan[1],
+      "字标 path 与 VI 手册登记版逐字节一致（" + mWm[1].length + " 字符）——描摹 path 压缩小数位即失配");
+  }
+  ok(/<span class="sr-only">BeatSight<\/span>时值节拍器/.test(html),
+    "h1 可访问名保住：sr-only「BeatSight」+ 可见「时值节拍器」（文本变图形后读屏不受损）");
+  ok(!/\.brand svg (?:path|line|circle)\{/.test(html),
+    "旧摆锤的三条日间重着色规则已退役（留着会把字标整体染蓝、把球抹成背景色）");
+}
+
 section("T235c gen-icons.js 光栅化同源（PNG 回退不能是另一个牌）");
 {
   ok(genIcons.includes("[[80, 72], [184, 144], [360, 72]]"), "三块 512 坐标与 icon.svg 一致");
