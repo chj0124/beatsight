@@ -88,18 +88,26 @@ section("T25 版本号单一真相源 + 重复逻辑抽取（审计 P2-9 / P2-10
      故 chip 不再带版本号。这条断言钉住"不重复"——否则将来谁把版本号加回 chip，
      两处又会一起显示，而"版本号由 VERSION 派生"那两条断言仍然全绿、拦不住 */
   eq(els["brandChip"].textContent.indexOf("v" + beat.VERSION), -1,
-    "★★ 顶栏 chip 不重复版本号（版本号只出现在品牌区徽章与 <title> 两处）");
+    "★★ 状态文案不重复版本号（版本号只出现在设置页徽章与 <title> 两处）");
   eq(els["brandChip"].textContent, "稳定版", "chip 只报保存状态");
-  /* ★ v2.10.10（用户要求）：状态点从顶栏最右的 chip **移进左边那个版本徽章**，且"只保留绿点
-     （文案退成 sr-only、视觉上不可见）"。用标记字符串断言而不是 DOM 父子——桩不解析 HTML，
-     静态元素都是孤立桩（parentNode 恒 null），走路树断言不出来 */
+  /* ★ v2.10.10（用户要求）：状态点并进版本徽章、文案退成 sr-only。
+     ★ v3.44.0（用户拍板）：整组徽章（点 + 版本号 + sr-only 文案）自顶栏迁往**设置页顶部**
+       （.set-ver）——顶栏收敛成纯品牌锁版。id 一个不改，本组断言改为钉设置页里的新位置：
+       点仍排在版本号之前、aria-hidden + title 两道无障碍线索不丢；另加一条「顶栏 h1 不再
+       含徽章」防将来搬回去。用标记字符串断言而不是 DOM 父子——桩不解析 HTML，
+       静态元素都是孤立桩（parentNode 恒 null），走路树断言不出来 */
   const topbarBlock = html.slice(html.indexOf('<header class="topbar"'), html.indexOf("</header>"));
+  const setVerBlock = html.slice(html.indexOf('<div class="set-ver"'), html.indexOf("<!-- 组①"));
   const brandBlock = topbarBlock.slice(topbarBlock.indexOf('<h1 class="brand"'), topbarBlock.indexOf("</h1>"));
-  const dotTag = (brandBlock.match(/<span[^>]*id="persistDot"[^>]*>/) || [""])[0];
-  const chipTag = (topbarBlock.match(/<span[^>]*id="brandChip"[^>]*>/) || [""])[0];
-  const dotAt = brandBlock.indexOf('id="persistDot"'), verAt = brandBlock.indexOf('id="brandVer"');
+  const dotTag = (setVerBlock.match(/<span[^>]*id="persistDot"[^>]*>/) || [""])[0];
+  const chipTag = (setVerBlock.match(/<span[^>]*id="brandChip"[^>]*>/) || [""])[0];
+  const dotAt = setVerBlock.indexOf('id="persistDot"'), verAt = setVerBlock.indexOf('id="brandVer"');
   ok(dotAt >= 0 && verAt >= 0 && dotAt < verAt,
-    "★★ 状态点已并进品牌区徽章、且排在版本号**之前**（读作「● vX.Y.Z」）");
+    "★★ 状态点在版本徽章里、且排在版本号**之前**（读作「● vX.Y.Z」；v3.44.0 起徽章住设置页顶部）");
+  ok(brandBlock.indexOf('id="persistDot"') < 0 && brandBlock.indexOf('id="brandVer"') < 0,
+    "★★ 版本徽章已离开顶栏（.brand 只剩锁版 + sr-only 可访问名）");
+  ok(/<span class="sr-only">BeatSight 时值节拍器<\/span>/.test(brandBlock),
+    "★★ 顶栏纯图形后 h1 可访问名完整（sr-only「BeatSight 时值节拍器」）");
   ok(/aria-hidden="true"/.test(dotTag),
     "★ 点 aria-hidden：颜色不是唯一线索（状态另由 sr-only 文案承载）——实际「" + dotTag + "」");
   ok(/title="[^"]+"/.test(dotTag), "★ 点带 title（分不出红绿的鼠标用户悬停仍有字可看）");

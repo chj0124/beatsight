@@ -73,6 +73,8 @@ section("T162e 日间主题面板头：角标不吃整行（标题逐字竖排�
     + "否则 width:100% 吃掉整行、标题逐字竖排");
   ok(/body\[data-theme="obs"\] \.sec-tag\{display:flex;align-items:baseline;gap:10px;width:100%/.test(src),
     "★ 卡片角标整行规则原样在位（它服务卡片头部，不许动；只在 .pd-head 作用域收宽）");
-  ok(/<span class="sec-tag"><b>02<\/b><i>Library<\/i><\/span>\s*<span class="pd-title">节奏型预设库<\/span>/.test(src.replace(/\n\s*/g, " ")),
-    "★ 面板头结构前提：角标与标题同处一行容器（.pd-head）");
+  /* v3.44.0（用户拍板②）：角标与标题之间插入了音符图标（.pd-ico），仍同处 .pd-head 一行容器——
+     防竖排的前提是「三者同行 flex」，中间多一枚 inline svg 不破坏它，断言放行图标节点 */
+  ok(/<span class="sec-tag"><b>02<\/b><i>Library<\/i><\/span>(?:\s*<svg[^>]*class="pd-ico"[^>]*>[\s\S]*?<\/svg>)?\s*<span class="pd-title">节奏型预设库<\/span>/.test(src.replace(/<!--[\s\S]*?-->/g, "").replace(/\n\s*/g, " ")),
+    "★ 面板头结构前提：角标（+ v3.44.0 图标）与标题同处一行容器（.pd-head）");
 }

@@ -98,8 +98,8 @@ section("T235e 顶栏锁定字标（v3.43.0 第二批：字标 + i 字点节拍�
     if (mMan) ok(mWm[1] === mMan[1],
       "字标 path 与 VI 手册登记版逐字节一致（" + mWm[1].length + " 字符）——描摹 path 压缩小数位即失配");
   }
-  ok(/<span class="sr-only">BeatSight<\/span>时值节拍器/.test(html),
-    "h1 可访问名保住：sr-only「BeatSight」+ 可见「时值节拍器」（文本变图形后读屏不受损）");
+  ok(/<span class="sr-only">BeatSight 时值节拍器<\/span>/.test(html),
+    "h1 可访问名保住：sr-only「BeatSight 时值节拍器」（v3.44.0 起顶栏纯锁版，可见文案移除）");
   ok(!/\.brand svg (?:path|line|circle)\{/.test(html),
     "旧摆锤的三条日间重着色规则已退役（留着会把字标整体染蓝、把球抹成背景色）");
 }

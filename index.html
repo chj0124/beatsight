@@ -137,7 +137,30 @@ button:disabled{cursor:not-allowed}
 /* 锁定字标（v3.43.0）：只钉高度、宽由 viewBox 461:112 自动等比——textLength 锁宽的 path
    不能被拉伸，正圆球也不能压扁；flex:none 防被顶栏挤压变形 */
 .brand .wm{height:20px;width:auto;flex:none}
-.brand .ver{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
+/* 版本徽章（v3.44.0 自顶栏迁入设置页顶部）：字号 11px 档位不变（t165 钉装饰性微标阶梯），
+   仅容器从 .brand 换成 .set-ver；.set-ver-lab 是给鼠标用户的语义补充（读屏走 brandChip） */
+.set-ver{display:flex;align-items:center;gap:8px;margin:2px 0 4px;color:var(--t3)}
+.set-ver .ver{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
+.set-ver .set-ver-lab{font-size:11px;color:var(--t3)}
+/* 设置页折叠组（v3.44.0 ③A）：六大组改原生 <details>——默认收起、首屏只见组头；
+   summary 里保留 <h2 class="card-title">（t30 钉「卡片标题全部进 h2」；heading 也是
+   summary 的合法内容）。▾ 指示符与 .preset-group 折叠头同款（rotate 表开合） */
+.set-sec{border:1px solid var(--line);border-radius:10px;padding:0 14px;margin-top:10px}
+.set-sec>summary{display:flex;align-items:center;cursor:pointer;list-style:none;user-select:none}
+.set-sec>summary::-webkit-details-marker{display:none}
+.set-sec>summary::after{content:"▾";font-size:9px;color:var(--t3);opacity:.65;transition:transform .15s;flex:none}
+.set-sec[open]>summary::after{transform:rotate(180deg)}
+.set-sec>summary .card-title{flex:1;margin:0;font-size:15px;padding:12px 0}
+.set-sec[open]>summary{border-bottom:1px solid var(--line)}
+.set-sec>.set-sec-body{padding:12px 0 14px}
+/* 组内长说明收进 ⓘ（v3.44.0 ③A）：默认只露一行「ⓘ 说明」，展开才见全文 */
+.hint-d{margin-top:8px}
+.hint-d>summary{cursor:pointer;list-style:none;font-size:11px;color:var(--t3);display:inline-flex;align-items:center;gap:5px;user-select:none}
+.hint-d>summary::-webkit-details-marker{display:none}
+.hint-d>summary::before{content:"ⓘ";font-size:11px}
+.hint-d>summary:hover{color:var(--t2)}
+.hint-d[open]>summary{color:var(--t2)}
+.hint-d .hint{margin:6px 0 0}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
 .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(30,215,96,.6);animation:pulse 1s infinite}
@@ -587,12 +610,15 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 .pb-ctx b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 /* v3.36.8：原来的尾部 caret（▾，7px）随用户拍板「右侧不留」退役——
    它的「可展开」语义由左端 ‹ 承接，不留死规则。 */
-/* 面板动作区：三件事竖排（图标位留给后续批次，本批先文字 + 说明）。
+/* 面板动作区：三件事竖排。v3.44.0（用户拍板②）补图标——grid 两列（图标跨两行，
+   名称/说明右排）；≤640 只留名称时图标与名称同行（单行 grid 自适应）。
    ★ >640 显示说明行、≤640 只留名称——与"窄屏不折行、不缩字号"的口径一致。 */
 .pd-actions{display:flex;flex-direction:column;gap:6px}
-.pd-act{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
-  background:var(--cell);border:1px solid transparent;border-radius:8px;padding:8px 10px;
+.pd-act{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:2px;align-items:center;
+  width:100%;background:var(--cell);border:1px solid transparent;border-radius:8px;padding:8px 10px;
   color:var(--t1);font-size:13px;text-align:left;cursor:pointer}
+.pd-act .pd-ico{grid-row:1/3;grid-column:1;color:var(--t2)}
+.pd-head .pd-ico{color:var(--t1)}
 .pd-act:hover{border-color:var(--border)}
 .pd-act-t{font-weight:500}
 .pd-act-d{font-size:11px;color:var(--t3)}
@@ -2799,7 +2825,7 @@ body[data-theme="obs"] .brand{font-weight:600;letter-spacing:.02em}
    锁定字标 currentColor 随 .brand 文字色自动取墨色；节拍球 fill:var(--green)
    在日间档自动取 #2563EB（VI「日间环境球色」规则）——留着这三条反而会把字标
    整体染蓝、把球抹成背景色（标记换成 path/circle 后它们会真的命中）。 */
-body[data-theme="obs"] .brand .ver{background:transparent;border:1px solid var(--line);border-radius:6px;font-variant-numeric:tabular-nums}
+body[data-theme="obs"] .set-ver .ver{background:transparent;border:1px solid var(--line);border-radius:6px;font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .chip{background:transparent;border:1px solid var(--line);border-radius:6px}
 /* 四枚返回箭头（编辑器 / 听辨 / 编排 / 帮助）的 stroke 在标记里写死 #B3B3B3：
    浅底上它只有 ≈2.2:1。遵守「经典一行不改」的纪律——不动标记，用 CSS 覆盖表现属性 */
@@ -3081,22 +3107,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
          · path 与 docs/archive/beatsight-vi-manual.html 登记的锁定字标逐字节一致（t235b 钉住）；
          · 球色 var(--green)：经典 #1ED760 / 日间档自动 #2563EB（VI「日间环境球色」规则）；
          · 字标主体 currentColor 随 .brand 文字色（深底白 / 浅底墨）；
-         · h1 可访问名：sr-only「BeatSight」+ 可见「时值节拍器」——文本变图形后读屏不受损。 -->
+         · h1 可访问名：sr-only「BeatSight 时值节拍器」——v3.44.0 起顶栏只留锁版
+           （副题文案与版本徽章迁往设置页，见 .set-ver），读屏名称不受损。 -->
     <svg class="wm" viewBox="1 114 461 112" aria-hidden="true"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" fill="var(--green)"/></svg>
-    <span class="sr-only">BeatSight</span>时值节拍器
-    <!-- 版本徽章（左）：内含**保存状态点** + 版本号 → 读作「● v2.10.10」。
-         点的语义：绿 = 本地保存正常，红 = 保存失败（v1.3.0 起的"保存失灵可观测"入口）。
-         ★ v2.10.10（用户要求）：点原先在顶栏最右那个 chip 里，旁边还带一份版本号文案（与徽章
-           重复）。现按用户要求「只保留绿点表示稳定版、并把它并进左边的徽章」：chip 整块取消，
-           点移进徽章。**徽章里点在前、版本号在后**，且 `#brandVer` 必须只装版本号文本——
-           装配层用 `textContent` 写它，点若是它的子节点会被一并抹掉。
-         ★ 点 `aria-hidden="true"`：**纯颜色对读屏用户是零信息**，状态由紧随其后的 sr-only
-           文案承载；`title` 兼作鼠标用户的文字线索（分不出红绿的人悬停仍有字可看） -->
-    <span class="ver"><span class="dot" id="persistDot" aria-hidden="true" title="本地保存正常"></span><span id="brandVer"></span></span>
+    <span class="sr-only">BeatSight 时值节拍器</span>
   </h1>
-  <!-- 保存状态的无障碍文案（视觉上不可见；位置紧随徽章，与那颗点同处一段）：
-       装配层写「稳定版」/「保存失败」。★ 别删——删了那颗点对读屏用户就彻底消失了 -->
-  <span class="sr-only" id="brandChip"></span>
+  <!-- ★ v3.44.0（用户拍板）：版本徽章（保存状态点 + 版本号）与 sr-only 状态文案整组**迁往
+       设置页顶部**（.set-ver，id 一个不改）——顶栏从「四块」收敛成纯品牌锁版。
+       迁移的取舍：主界面失去「保存失败」的常驻红点信号，由保存失败弹窗（含清理指引）
+       接住主动提示；「更新是否生效」的凭据由 <title>（恒带 vX.Y.Z）继续承担。 -->
   <div style="display:flex;align-items:center;gap:10px">
     <!-- v2.10.12（用户要求）：顶栏收口成三个高频入口 —— 「设置」/「听辨训练」/「后台保活」。
          低频的全局项（使用方法 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出）
@@ -3371,6 +3390,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <div class="pd-head">
         <!-- 角标 02 随预设库一起搬（角标连续性契约：01–07 恰好各一次、无空号无重号） -->
         <span class="sec-tag"><b>02</b><i>Library</i></span>
+        <!-- v3.44.0（用户拍板②）：四块配图标——音符 / 耳朵（新绘）/ 曲式编排 / 时值块，
+             全部走「16 网格 · 1.8 描边 · 圆头 · currentColor」体系（视觉系统提案 §05，
+             docs/archive/beatsight-brand-board.html），随文字变色、零额外资源 -->
+        <svg class="pd-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5.5" cy="11.5" r="2.6" stroke="currentColor" stroke-width="1.8"/><path d="M8.1 11.5V3.2l5.2 1.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="pd-title">节奏型预设库</span>
         <button class="pill outline" id="presetDrawerClose">收起</button>
       </div>
@@ -3382,9 +3405,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              提到编排曲式之上。（本条注释原先写的顺序与代码本就不一致，一并更正；
              旧顺序有机器闸门钉着，见 t49-ear-training 的对应断言，已同步改写。） -->
       <div class="pd-actions" id="pdActions">
-        <button class="pd-act" id="earBtn"><span class="pd-act-t">听辨训练</span><span class="pd-act-d">听拍子默写节奏型</span></button>
-        <button class="pd-act" id="argOpen"><span class="pd-act-t">编排曲式</span><span class="pd-act-d">按段落排整首曲子</span></button>
-        <button class="pd-act" id="editBtn"><span class="pd-act-t">新建节奏型</span><span class="pd-act-d">从空白小节开始画</span></button>
+        <!-- v3.44.0（用户拍板②）：三枚动作图标。耳朵为本批新绘（16 网格 · 1.8 描边 · 圆头）；
+             曲式编排 / 时值块复用视觉系统提案 §05 现成字形（用户拍板「新建节奏型用时值块」） -->
+        <button class="pd-act" id="earBtn"><svg class="pd-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.2 7.3C3.2 4.4 5.3 2.4 8 2.4s4.8 2 4.8 4.9c0 1.7-.9 2.6-1.9 3.4-.9.7-1.4 1.3-1.4 2.4a2.3 2.3 0 0 1-4.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 7.1c0-1.2.9-2 2-2s2 .8 2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="pd-act-t">听辨训练</span><span class="pd-act-d">听拍子默写节奏型</span></button>
+        <button class="pd-act" id="argOpen"><svg class="pd-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4h12M2 8h8M2 12h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="pd-act-t">编排曲式</span><span class="pd-act-d">按段落排整首曲子</span></button>
+        <button class="pd-act" id="editBtn"><svg class="pd-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.8" y="5" width="3.2" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="5" width="7.2" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/></svg><span class="pd-act-t">新建节奏型</span><span class="pd-act-d">从空白小节开始画</span></button>
       </div>
       <span class="chip sr-only" id="presetCount"></span>
       <!-- v3.3.0：循环小节整块随当前型一起住进面板（它作用的对象是"当前选中的那个型"） -->
@@ -4263,9 +4288,20 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
+    <!-- ★ v3.44.0：版本徽章自顶栏整组迁入（v3.43.0 前它在 .brand 里，读作「● vX.Y.Z」）。
+         三个 id（persistDot / brandVer / brandChip）一个不改——装配层写 brandVer、
+         保存失败钩子点红 persistDot、t24/t30 按 id 断言，全部照旧。
+         语义：读作「● v3.44.0 · 稳定版」，版本 + 保存状态在设置页一眼可查；
+         常驻红点从主界面退场由保存失败弹窗接住（取舍见顶栏 h1 旁注释）。 -->
+    <div class="set-ver">
+      <span class="dot" id="persistDot" aria-hidden="true" title="本地保存正常"></span><span class="ver" id="brandVer"></span>
+      <span class="sr-only" id="brandChip"></span>
+      <span class="set-ver-lab" aria-hidden="true">版本 · 本地保存状态</span>
+    </div>
 
-    <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v2.85.0 与「环境」拆成两组） -->
-    <h2 class="card-title" style="margin-bottom:8px">画面图层</h2>
+    <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v2.85.0 与「环境」拆成两组；
+         v3.44.0 ③A 六大组折叠化——<details> 默认收起，组头仍由 h2.card-title 承载） -->
+    <details class="set-sec"><summary><h2 class="card-title">画面图层</h2></summary><div class="set-sec-body">
     <div class="bpm-row">
       <div class="group-label">图层元素</div>
       <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
@@ -4320,10 +4356,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
       <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
     </div>
-    
+    </div></details>
 
-    <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关） -->
-    <h2 class="card-title" style="margin:24px 0 8px">环境</h2>
+    <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关；v3.44.0 折叠化） -->
+    <details class="set-sec"><summary><h2 class="card-title">环境</h2></summary><div class="set-sec-body">
     <div class="bpm-row">
       <!-- v2.69.0 返工（用户拍板）：后台保活从顶栏迁入本组——环境开关归环境组。搬块不换 id，
            wakeLock/静音循环接线（KeepAlive 模块）与 t86e 启动收敛断言按 id 取，搬家不影响 -->
@@ -4331,7 +4367,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
       <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
     </div>
-    <div class="hint" style="margin-top:8px"><b>后台保活</b>让屏幕不自动熄灭、手机切后台时也不断声（代价是耗电，默认关）；<b>宽屏铺满</b>去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。主题切换已上<b>顶栏</b>月亮/太阳图标钮，本组不再有主题项。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint"><b>后台保活</b>让屏幕不自动熄灭、手机切后台时也不断声（代价是耗电，默认关）；<b>宽屏铺满</b>去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。主题切换已上<b>顶栏</b>月亮/太阳图标钮，本组不再有主题项。</div>
+    </details>
 
     <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
          v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
@@ -4355,17 +4393,24 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                aria-label="壁纸遮罩深浅，0% 为不压暗、80% 为最暗">
         <span class="pct" id="wallDimPct">55%</span>
       </div>
-      <div class="hint" style="margin-top:8px">出厂自带一张默认背景图（可商用素材）。支持换成自己的 JPG / PNG / WebP：图片会<b>缩到长边 1600 像素</b>后存在本机（原图不保留、不上传、不联网）；铺满屏幕不变形，只在卡片外的留白里露出来。点「移除」后默认图也<b>不会自己回来</b>，想找回来用「恢复默认」；存不下时（浏览器给的本机空间约 5 MB，与预设共用）会明确提示，不会默默失败。</div>
+      <details class="hint-d"><summary>说明</summary>
+      <div class="hint">出厂自带一张默认背景图（可商用素材）。支持换成自己的 JPG / PNG / WebP：图片会<b>缩到长边 1600 像素</b>后存在本机（原图不保留、不上传、不联网）；铺满屏幕不变形，只在卡片外的留白里露出来。点「移除」后默认图也<b>不会自己回来</b>，想找回来用「恢复默认」；存不下时（浏览器给的本机空间约 5 MB，与预设共用）会明确提示，不会默默失败。</div>
+      </details>
     </div>
 
-    <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调） -->
-    <h2 class="card-title" style="margin:24px 0 8px">发声</h2>
+    </div></details>
+
+    <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调；
+         v3.44.0 折叠化） -->
+    <details class="set-sec"><summary><h2 class="card-title">发声</h2></summary><div class="set-sec-body">
     <div class="bpm-row" id="timbreRow">
       <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
       <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
       <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
     </div>
-    <div class="hint" style="margin-top:8px">三套音色都是<b>程序合成</b>（不占体积、没有采样文件）。<b>音量不在这里</b>：节拍 / 扫弦两条滑杆与 BPM 同组，留在主界面的状态灯下方——练习中会随时调，属高频控件。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">三套音色都是<b>程序合成</b>（不占体积、没有采样文件）。<b>音量不在这里</b>：节拍 / 扫弦两条滑杆与 BPM 同组，留在主界面的状态灯下方——练习中会随时调，属高频控件。</div>
+    </details>
     <!-- Swing（v2.10.17 从时值卡的「同屏行数」行搬进来）：设定型参数，与音色同一判据。
          #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
     <div class="group" style="margin-top:24px">
@@ -4395,11 +4440,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                aria-label="音频延迟补偿毫秒数，0 为不补偿">
         <span class="pct" id="latMsPct">0 ms</span>
       </div>
-      <div class="hint" style="margin-top:8px">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。手动校准参考起步值：真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机与外放保持 <b>0</b>。定好起步值后边放节拍边对：声音比画面<b>晚</b>就把值调大、比画面<b>早</b>就调小，每次 ±20ms 微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重调）。</div>
+      <details class="hint-d"><summary>说明</summary>
+      <div class="hint">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。手动校准参考起步值：真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机与外放保持 <b>0</b>。定好起步值后边放节拍边对：声音比画面<b>晚</b>就把值调大、比画面<b>早</b>就调小，每次 ±20ms 微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重调）。</div>
+      </details>
     </div>
 
-    <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来） -->
-    <h2 class="card-title" style="margin:24px 0 8px">数据与说明</h2>
+    </div></details>
+
+    <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来；
+         v3.44.0 折叠化） -->
+    <details class="set-sec"><summary><h2 class="card-title">数据与说明</h2></summary><div class="set-sec-body">
     <div class="bpm-row">
       <button class="pill outline" id="exportBtn" disabled>导出预设</button>
       <button class="pill outline" id="importBtn">导入预设</button>
@@ -4413,7 +4463,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="bpm-row" style="margin-top:10px">
       <button class="pill outline" id="demoRebuildBtn">恢复示例曲（重建《在他乡》）</button>
     </div>
-    <div class="hint" style="margin-top:8px">示例曲《在他乡》是内置练习样板——哪怕你改过它的曲式或歌词、或它已不在库里，点这里都会按出厂规格<b>重建并选中</b>它（不会删你自己的其他曲式）。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">示例曲《在他乡》是内置练习样板——哪怕你改过它的曲式或歌词、或它已不在库里，点这里都会按出厂规格<b>重建并选中</b>它（不会删你自己的其他曲式）。</div>
+    </details>
     <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
     <div class="exp-parts" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 14px">
       <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
@@ -4425,7 +4477,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="bpm-row" style="margin-top:8px">
       <button class="pill outline" id="exportSelBtn">导出选中数据</button>
     </div>
-    <div class="hint" style="margin-top:8px">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
+    </details>
     <div class="bpm-row" style="margin-top:8px">
       <button class="pill outline" id="helpBtn">使用方法</button>
       <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。
@@ -4434,28 +4488,40 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            置灰态由 Help.refreshInstall() 在设置打开时刷新 -->
       <button class="pill outline" id="helpInstallBtn" disabled>安装到本机</button>
     </div>
-    <div class="hint" style="margin-top:8px">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
+    </details>
 
-    <!-- 危险区（v2.85.0 ③b）：恢复出厂设置——清掉本机全部 beatsight.* 数据后重载 -->
-    <h2 class="card-title" style="margin:24px 0 8px">危险区</h2>
+    </div></details>
+
+    <!-- 危险区（v2.85.0 ③b）：恢复出厂设置——清掉本机全部 beatsight.* 数据后重载；
+         v3.44.0 折叠化 -->
+    <details class="set-sec"><summary><h2 class="card-title">危险区</h2></summary><div class="set-sec-body">
     <div class="bpm-row">
       <button class="pill danger" id="factoryResetBtn">恢复出厂设置</button>
     </div>
-    <div class="hint" style="margin-top:8px">⚠️ 这会<b>永久删除本机全部数据</b>：节奏型、曲式编排、歌词对齐、听辨战绩与所有设置，且<b>不可恢复</b>。建议先用上方「导出全部数据」备份。操作需两次确认，确认后会停止播放并重新载入应用。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">⚠️ 这会<b>永久删除本机全部数据</b>：节奏型、曲式编排、歌词对齐、听辨战绩与所有设置，且<b>不可恢复</b>。建议先用上方「导出全部数据」备份。操作需两次确认，确认后会停止播放并重新载入应用。</div>
+    </details>
+
+    </div></details>
 
     <!-- 组④ 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
          为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
          一个 URL 参数后面 —— 真出问题时没人想得起加 ?debug=1。
          ★ 它**不上传任何东西**：只是把本机读数写进剪贴板（写不进去就弹窗显示），
-           与本项目"无账号、无上传"的承诺同源。 -->
-    <h2 class="card-title" style="margin:24px 0 8px">诊断与自验</h2>
+           与本项目"无账号、无上传"的承诺同源。v3.44.0 折叠化。 -->
+    <details class="set-sec"><summary><h2 class="card-title">诊断与自验</h2></summary><div class="set-sec-body">
     <div class="bpm-row">
       <button class="pill outline" id="diagCopyBtn">复制诊断信息</button>
       <!-- v2.69.0（2.2）：从「使用方法」迁入。与「复制」同源报告、不同投递（这份落成 .txt 文件，
            下载能力缺失时自动退回复制）；接线在装配层，与 diagCopyBtn 同一先例 -->
       <button class="pill outline" id="helpDiagExport" aria-label="导出诊断信息为本地文件">导出诊断信息</button>
     </div>
-    <div class="hint" style="margin-top:8px">把本机读数（版本号 · 各条异常计数 · 最近几条错误原文 · 本地存储占用）做成一段报障文本：<b>复制</b>成剪贴板，或<b>导出</b>成 .txt 文件（下载不可用时自动退回复制），贴给开发者。<b>不上传、不联网</b>；剪贴板不可用时改为弹窗显示，内容一样能选中复制。</div>
+    <details class="hint-d"><summary>说明</summary>
+    <div class="hint">把本机读数（版本号 · 各条异常计数 · 最近几条错误原文 · 本地存储占用）做成一段报障文本：<b>复制</b>成剪贴板，或<b>导出</b>成 .txt 文件（下载不可用时自动退回复制），贴给开发者。<b>不上传、不联网</b>；剪贴板不可用时改为弹窗显示，内容一样能选中复制。</div>
+    </details>
+    </div></details>
   </div>
 </div>
 
@@ -4484,23 +4550,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4516  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L5958  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8082  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9290  Modal         应用内弹窗
-     L9435  Viz           时值可视化渲染与每帧动画
-     L12984 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13682 Trainer       变速训练器
-     L13895 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14579 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16568 Editor        自定义节奏型编辑器
-     L17148 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17195 Ear           听辨训练（v1.10.0）
-     L17423 Arrange       曲式编排（v2.0.0）
-     L21488 Help          使用方法（v2.0.1）
-     L21643 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21725 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22021 初始化（装配） 各模块 hook 接线与启动
+     L4582  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6024  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8148  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9356  Modal         应用内弹窗
+     L9501  Viz           时值可视化渲染与每帧动画
+     L13050 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13748 Trainer       变速训练器
+     L13961 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14645 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16634 Editor        自定义节奏型编辑器
+     L17214 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17261 Ear           听辨训练（v1.10.0）
+     L17489 Arrange       曲式编排（v2.0.0）
+     L21554 Help          使用方法（v2.0.1）
+     L21709 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21791 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22087 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4526,7 +4592,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.43.0";
+const VERSION = "3.44.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
