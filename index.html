@@ -139,20 +139,34 @@ button:disabled{cursor:not-allowed}
 .brand .wm{height:20px;width:auto;flex:none}
 /* 版本徽章（v3.44.0 自顶栏迁入设置页顶部）：字号 11px 档位不变（t165 钉装饰性微标阶梯），
    仅容器从 .brand 换成 .set-ver；.set-ver-lab 是给鼠标用户的语义补充（读屏走 brandChip） */
-.set-ver{display:flex;align-items:center;gap:8px;margin:2px 0 4px;color:var(--t3)}
+.set-ver{display:flex;align-items:center;gap:8px;margin:12px 0 0;color:var(--t3)}   /* v3.45.3：间距规范 4px 网格——标题/版本/tab 间距统一 12 */
 .set-ver .ver{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
 .set-ver .set-ver-lab{font-size:11px;color:var(--t3)}
-/* 设置页折叠组（v3.44.0 ③A）：六大组改原生 <details>——默认收起、首屏只见组头；
-   summary 里保留 <h2 class="card-title">（t30 钉「卡片标题全部进 h2」；heading 也是
-   summary 的合法内容）。▾ 指示符与 .preset-group 折叠头同款（rotate 表开合） */
-.set-sec{border:1px solid var(--line);border-radius:10px;padding:0 14px;margin-top:10px}
-.set-sec>summary{display:flex;align-items:center;cursor:pointer;list-style:none;user-select:none}
-.set-sec>summary::-webkit-details-marker{display:none}
-.set-sec>summary::after{content:"▾";font-size:9px;color:var(--t3);opacity:.65;transition:transform .15s;flex:none}
-.set-sec[open]>summary::after{transform:rotate(180deg)}
-.set-sec>summary .card-title{flex:1;margin:0;font-size:15px;padding:12px 0}
-.set-sec[open]>summary{border-bottom:1px solid var(--line)}
-.set-sec>.set-sec-body{padding:12px 0 14px}
+/* 设置页 header 色带（v3.45.0 → v3.45.3 视觉收尾）：
+   · 满血分隔（用户实拍①）：标题栏 + 版本行 + tab 栏合成一条通栏色带（--card 底 + 底部
+     发丝线，左右出血到面板内缘），整块是「弹窗 chrome」、下方才是设置项内容；
+   · 位置恒定（用户实拍②）：#settingsPanel 定高（见下），切页不再改变弹窗尺寸——
+     弹窗垂直居中，尺寸一变 tab 栏就会从鼠标下挪走；
+   · 整条吸顶：sticky 在容器层——长页滚动时 × / 版本 / tab 一起钉住；
+   · 贴顶写法（v3.45.3 实测修正）：负 margin-top 拉 sticky 元素会被 Chrome 钳回
+     滚动口原点（色带顶部漏出 24px 面板底色），改用「面板去顶 padding + 色带自带
+     内边距」；间距规范统一 4px 网格——带内顶 16 / 版本行距 tab 12 / 带底 12 / 内容起 16。 */
+#settingsPanel{height:min(84vh,760px);padding-top:0}   /* v3.45.1 定高 ⇒ 切页零位移；v3.45.3 去顶 padding 让色带真贴顶 */
+.set-top{position:sticky;top:0;z-index:2;margin:0 -24px;padding:16px 24px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+.set-tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
+.set-tabs::-webkit-scrollbar{display:none}
+.set-tab{flex:none;padding:6px 18px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--t2);font-size:13px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s}
+.set-tab:hover{color:var(--t1)}
+.set-tab.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--sel-fg);font-weight:600}
+.set-pane{padding:16px 0 2px}
+/* v3.45.4 间距规范（用户拍板）：垂直节奏只用两个 4px 网格令牌——块间 16 / 块内 8；
+   页标题零边距（标题→第一块的间距由块的 margin-top 承担，全链节奏唯一）；
+   四页内的内联 margin-top（原 24/16/10/8 四种值）已全部退役、收口到这三条。 */
+.set-pane>.card-title{margin:0;font-size:15px}
+.set-pane>*+*{margin-top:16px}
+.set-pane>*+.hint-d{margin-top:8px}     /* ⓘ 说明紧跟所属块 = 块内间距 */
+.set-pane .group>*+*{margin-top:8px}    /* 组内：组标签→控件行、控件行→ⓘ */
+.set-pane[hidden]{display:none}
 /* 组内长说明收进 ⓘ（v3.44.0 ③A）：默认只露一行「ⓘ 说明」，展开才见全文 */
 .hint-d{margin-top:8px}
 .hint-d>summary{cursor:pointer;list-style:none;font-size:11px;color:var(--t3);display:inline-flex;align-items:center;gap:5px;user-select:none}
@@ -3940,7 +3954,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <ul class="help-list">
         <li><b>一行 = 一小节</b>（手机竖屏等窄屏下会<b>自动拆细</b>：一行只画半小节、甚至每拍一段——
           格子更宽更好读，拆分的边界仍落在整拍上；跨行的长音会画成两段、断开的那侧是虚线边）；
-          <b>同屏画几行由「同屏行数」档位决定（1–4 行；在设置小窗的「画面图层」里）</b>。
+          <b>同屏画几行由「同屏行数」档位决定（1–4 行；在设置弹窗的「画面」页里）</b>。
           曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
           （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行），
           读到页末还会把第 1 行临时换成「下一小节 · 型名」提前备型——<b>预告行只在 2 行及以上出现</b>，
@@ -4050,35 +4064,37 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>主题（经典 / 日间）。</b>两套配色，只换外观、功能完全一样：<b>经典</b> = 功能绿的练习舱（默认，深色底）；<b>日间</b> = 浅色仪表盘，白天或亮处练琴看得清。切换钮在<b>顶栏</b>（月亮 = 当前经典、太阳 = 当前日间，点一下就换），挑顺眼的用</li>
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
-          <li><b>弹跳球 / 六线底纹。</b>两个画面图层开关：<b>弹跳球</b> = 落拍预判（「静音」训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
+          <li><b>弹跳球 / 六线底纹。</b>两个画面开关：<b>弹跳球</b> = 落拍预判（「静音」训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
           <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时本节下方的「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍 / 扫弦两条滑杆与 BPM 同组，在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
-          <li><b>后台保活（设置 · 环境里的开关，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 复制诊断信息里能看到具体原因）</li>
+          <li><b>后台保活（设置 · 声音页，默认关）。</b>手机锁屏、或切到别的应用/标签页时，系统会<b>暂停网页的声音</b>——练到一半断了。保活做两件事：让屏幕<b>不自动熄灭</b>（安卓 / 桌面浏览器的标准能力），系统不给这个权限时（iOS）则循环播放一段<b>静音音频</b>，让系统以为「正在放媒体」而放行。<b>代价是耗电</b>（屏幕常亮），所以默认关——只有「手机立着练、屏幕老自己黑」的场景才需要开。失败会记进诊断（设置 → 关于页「复制诊断信息」里能看到具体原因）</li>
           <li><b>导出 / 导入预设；导出 / 导入全部数据。</b>「预设」只带走节奏型；「全部数据」整包带走预设 + 曲式编排 + 歌词对齐 + 听辨战绩（详见下面「数据与隐私」）</li>
           <li><b>复制 / 导出诊断信息。</b>报障用：把本机读数（版本号 · 异常计数 · 最近错误 · 存储占用）做成一段文本贴给开发者——复制成剪贴板，或导出成 .txt 文件（下载不可用时自动退回复制）。不上传、不联网</li>
         </ul>
 
         <template id="helpFigsSettings">
         <div class="help-fig">
-          <svg viewBox="0 0 744 96" role="img" aria-label="设置弹窗分组示意：画面图层、环境、发声、数据与说明">
+          <svg viewBox="0 0 744 96" role="img" aria-label="设置弹窗 tab 示意：画面、声音、数据、关于">
             <rect x="8" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="22" y="28" font-size="10" fill="#fff">画面图层</text>
-            <text x="22" y="48" font-size="9" fill="#6a6a6a">弹跳球 · 六线 · 标注</text>
-            <text x="22" y="64" font-size="9" fill="#6a6a6a">显示歌词 · 位置</text>
+            <text x="22" y="28" font-size="10" fill="#fff">画面</text>
+            <text x="22" y="48" font-size="9" fill="#6a6a6a">图层开关 · 歌词 · 滚动</text>
+            <text x="22" y="64" font-size="9" fill="#6a6a6a">壁纸 · 宽屏铺满</text>
             <rect x="196" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="210" y="28" font-size="10" fill="#fff">环境</text>
-            <text x="210" y="48" font-size="9" fill="#6a6a6a">后台保活 · 宽屏铺满</text>
+            <text x="210" y="28" font-size="10" fill="#fff">声音</text>
+            <text x="210" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <text x="210" y="64" font-size="9" fill="#6a6a6a">后台保活</text>
             <rect x="384" y="6" width="168" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="398" y="28" font-size="10" fill="#fff">发声</text>
-            <text x="398" y="48" font-size="9" fill="#6a6a6a">音色 · Swing · 延迟补偿</text>
+            <text x="398" y="28" font-size="10" fill="#fff">数据</text>
+            <text x="398" y="48" font-size="9" fill="#6a6a6a">导入导出 · 恢复示例曲</text>
+            <text x="398" y="64" font-size="9" fill="#6a6a6a">恢复出厂（危险区）</text>
             <rect x="572" y="6" width="164" height="70" rx="10" fill="none" stroke="#2c2c2c"/>
-            <text x="586" y="28" font-size="10" fill="#fff">数据与说明</text>
-            <text x="586" y="48" font-size="9" fill="#6a6a6a">导入导出 · 诊断</text>
-            <text x="586" y="64" font-size="9" fill="#6a6a6a">使用方法入口</text>
+            <text x="586" y="28" font-size="10" fill="#fff">关于</text>
+            <text x="586" y="48" font-size="9" fill="#6a6a6a">使用方法 · 安装到本机</text>
+            <text x="586" y="64" font-size="9" fill="#6a6a6a">诊断与自验</text>
           </svg>
-          <figcaption>设置弹窗分组（画面图层 / 环境 / 发声 / 数据与说明）：低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
+          <figcaption>设置弹窗四页（画面 / 声音 / 数据 / 关于）：顶部 tab 切换，低频全局项都收在这里（练习中要动的都在主界面）</figcaption>
         </div>
         </template>
         <div id="mountFigsSettings"></div>
@@ -4251,8 +4267,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              诊断导出接线归装配层（与 diagCopyBtn 同一先例）。 -->
         <h2 class="card-title" style="margin:22px 0 4px">安装到本机 · 诊断导出</h2>
         <ul class="help-list">
-          <li><b>安装到本机</b>：按钮在 设置 → 数据与说明，仅 <b>https 部署地址</b>（如 Cloudflare Workers 托管，可安装的安全上下文）下出现；用 <code>file://</code> 双击直开的单文件副本<b>无法安装</b>——PWA 要求安全上下文 + 线上托管。</li>
-          <li><b>导出诊断信息</b>：按钮在 设置 → 诊断与自验。遇到异常（卡顿、没声音、后台断音）时点它，生成一份现场诊断 .txt 文件，连同「右下角 ?debug=1 实时计数」一并贴给开发者，能省掉一整轮隔空猜。</li>
+          <li><b>安装到本机</b>：按钮在 设置 → 关于，仅 <b>https 部署地址</b>（如 Cloudflare Workers 托管，可安装的安全上下文）下出现；用 <code>file://</code> 双击直开的单文件副本<b>无法安装</b>——PWA 要求安全上下文 + 线上托管。</li>
+          <li><b>导出诊断信息</b>：按钮在 设置 → 关于（诊断与自验）。遇到异常（卡顿、没声音、后台断音）时点它，生成一份现场诊断 .txt 文件，连同「右下角 ?debug=1 实时计数」一并贴给开发者，能省掉一整轮隔空猜。</li>
         </ul>
 
         <h2 class="card-title" id="helpKeysSec" style="margin:22px 0 4px">键盘快捷键</h2>
@@ -4283,6 +4299,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      ★ 角标用 **04**：v2.10.16「训练模式」标题行删除后再次全体上移一位（本卡原为 05）。 -->
 <div class="dialog" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="设置" tabindex="-1">
   <div class="dialog-panel" id="settingsPanel">
+    <!-- v3.45.2（用户拍板）：标题栏 + 版本行 + tab 栏合成一条通栏 header 色带（.set-top）——
+         三者都是「关于这个弹窗」的 chrome，与下方设置项内容区彻底分面；整条吸顶。 -->
+    <div class="set-top">
     <div class="dialog-head">
       <div style="display:flex;align-items:center;gap:12px">
         <span class="sec-tag"><b>04</b><i>Settings</i></span>
@@ -4303,229 +4322,260 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <span class="set-ver-lab" aria-hidden="true">版本 · 本地保存状态</span>
     </div>
 
-    <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v2.85.0 与「环境」拆成两组；
-         v3.44.0 ③A 六大组折叠化——<details> 默认收起，组头仍由 h2.card-title 承载） -->
-    <details class="set-sec"><summary><h2 class="card-title">画面图层</h2></summary><div class="set-sec-body">
-    <div class="bpm-row">
-      <div class="group-label">图层元素</div>
-      <button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
-      <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
-      <!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
-           显隐走 #viz 上的 CSS 类（.no-ruler / .no-durlab），DOM 照建；
-           两开关都关 ⇒ 加 .chord-xl，行首和弦胶囊放大一倍（2.1，用户拍板） -->
-      <button class="toggle-pill on" id="rulerLabToggle" role="switch" aria-checked="true">座次尺 · 1 e &amp; a<span class="switch"></span></button>
-      <button class="toggle-pill on" id="durLabelToggle" role="switch" aria-checked="true">时值标注 · 四分/八分/×n<span class="switch"></span></button>
-      <!-- v3.34.5（审计 A-1）：图例条的**恢复入口**。
-           v3.1.0 只留了「知道了」这一个单向出口（置 false 后全文件再无处置回 true）——
-           文案是低承诺的「知道了」，后果却是永久移除唯一的首屏读法锚点。
-           这里补一枚同款开关与 `S.vizLegend` 双向绑定：关 = 等同「知道了」；开 = 图例重新出现。
-           ★ 同其余图层开关的纪律：显隐改变布局高度 ⇒ 收尾必须 Viz.relayout()
-             （v3.9.0 实拍：图例高度一消失，跑道 cacheGeo 的旧 top 会让定位错位）。 -->
-      <button class="toggle-pill on" id="vizLegendToggle" role="switch" aria-checked="true">图例 · 格宽=时值读法<span class="switch"></span></button>
-      <!-- v2.86.0（PLAN-v7）：歌词显示开关 + 显示位置三档。取代 v2.84.0 的「歌词跟随条」。
-           「显示歌词」总开关关 ⇒ 任何位置都不画歌词；开 ⇒ 下方「显示位置」三档可选
-           （自动 / 贴在每行小节下 / 集中在底部），其中「自动」复用 viz 紧凑断点（≤960px 底部、>960px 贴行）。 -->
-      <div class="group-label">歌词</div>
-      <button class="toggle-pill on" id="showLyricToggle" role="switch" aria-checked="true">显示歌词<span class="switch"></span></button>
-      <!-- v3.33.10（用户清单 4）：连续滚动档下三枚位置胶囊都被"恒贴本行"短路，故给出一行说明；
-           它只在该档 + 歌词开着时露面（由 syncAuxVisibility 统一推导） -->
-      <span class="lyric-pos-note" id="lyricPosNote" hidden>连续滚动下歌词恒贴本行（位置档位暂不生效）</span>
-      <div class="lyric-pos-group" id="lyricPosGroup" role="group" aria-label="歌词显示位置">
-        <button class="pill active" data-pos="auto" aria-pressed="true">自动 · 窄屏底部</button>
-        <button class="pill" data-pos="follow" aria-pressed="false">贴在每行小节下</button>
-        <button class="pill" data-pos="bottom" aria-pressed="false">集中在底部</button>
-      </div>
-      <!-- v3.37.0（旋律谱 A 期）：音高标注三态——歌词字块可带音高（LyricChar.p，贴词时
-           「我5 多6」式后缀录入，或精修区「音高±」微调），这里管它的**显示法**。
-           数据与显示分离：开关只影响练习画面，编排页编辑轨恒显（编辑面看得到数据）。
-           默认「关」：不带音高的老用户画面逐位不变。 -->
-      <div class="lyric-pos-group" id="pitchNotationGroup" role="group" aria-label="歌词音高标注显示方式">
-        <button class="pill active" data-pn="off" aria-pressed="true">音高关</button>
-        <button class="pill" data-pn="jp" aria-pressed="false">简谱 1 2 3</button>
-        <button class="pill" data-pn="nm" aria-pressed="false">音名 C D E</button>
-      </div>
-      <!-- v3.0.0（PLAN-v9）：连续滚动——行槽横向连续推移，替代"整页翻页"。
-           播放头钉在行中央，内容从右向左连续滚过（不再"走到行末整页跳变"）。
-           ★ 批 4 起**没有配套的档位控件**：「同屏行数」那一个控件随模式重列档位——
-             连续滚动时它是 1 / 3 两档（滚动窗口），关掉时回到 1 / 2 / 3 / 4（翻页页长）。
-             这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
-      <div class="group-label">滚动与行数</div>
-      <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button>
+    <!-- v3.45.0（用户拍板）：设置页 tab 化——六组 <details> 折叠 → 顶部横排 4 tab（画面/声音/数据/关于）。
+         形态取舍：① PC 与移动端同一形态，tab 栏窄屏横向滑动（overflow-x:auto），弹窗宽度不变；
+         ② 状态不持久——每次打开恒回「画面」，不引入「记忆上次页」的恢复路径；
+         ③ 版本行保持常显于 tab 栏上方（「更新是否生效」的凭据不该藏进 tab）。
+         搬块不换 id：装配层与全部测试按 id 取元素，六大组内容只换容器不换归属控件。
+         ARIA：tablist/tab/tabpanel 标准模式，方向键 ←→↑↓ 循环、Home/End 跳首尾（见 Settings 模块）。 -->
+    <div class="set-tabs" id="setTabsBar" role="tablist" aria-label="设置分类">
+      <button class="set-tab active" role="tab" id="setTabVisual" aria-selected="true" aria-controls="setPaneVisual">画面</button>
+      <button class="set-tab" role="tab" id="setTabAudio" aria-selected="false" aria-controls="setPaneAudio" tabindex="-1">声音</button>
+      <button class="set-tab" role="tab" id="setTabData" aria-selected="false" aria-controls="setPaneData" tabindex="-1">数据</button>
+      <button class="set-tab" role="tab" id="setTabAbout" aria-selected="false" aria-controls="setPaneAbout" tabindex="-1">关于</button>
     </div>
-    <!-- ★ v3.12.0（用户拍板）：同屏行数档位从「时值可视化卡顶部」搬进本组——判据同 Swing
-         （「练习过程中会不会去点它」的低频判据）：它是显示偏好，定了就不动；且它与紧邻的
-         「连续滚动」共用同一个档位语义（滚动时 1/3 两档、翻页时 1/2/3/4），放一起最好懂。
-         #vizRowsRow 的 id 与档位生成/接线一行不动（搬块不换 id）。 -->
-    <div class="group" style="margin-top:16px">
-      <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
-      <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
     </div>
-    </div></details>
 
-    <!-- 组①b 环境（v2.85.0 从「外观与辅助」拆出：两枚环境/显示类开关；v3.44.0 折叠化） -->
-    <details class="set-sec"><summary><h2 class="card-title">环境</h2></summary><div class="set-sec-body">
-    <div class="bpm-row">
-      <!-- v2.69.0 返工（用户拍板）：后台保活从顶栏迁入本组——环境开关归环境组。搬块不换 id，
-           wakeLock/静音循环接线（KeepAlive 模块）与 t86e 启动收敛断言按 id 取，搬家不影响 -->
-      <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
-      <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏 -->
-      <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint"><b>后台保活</b>让屏幕不自动熄灭、手机切后台时也不断声（代价是耗电，默认关）；<b>宽屏铺满</b>去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。主题切换已上<b>顶栏</b>月亮/太阳图标钮，本组不再有主题项。</div>
-    </details>
-
-    <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
-         v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
-         内置默认壁纸（Pexels 可商用图，已随文件内联），所以「移除」「遮罩深浅」首屏就在；
-         只有「恢复默认」是**按需出现**——它只在"当前不是默认图"时有意义（已移除 / 用了自定义图）。
-         ★ `accept` 只列三种位图且**不含 svg**：SVG 是 XML，能内嵌脚本与外部引用，
-           它当图片用虽然不执行，但"允许上传 SVG"这条口子一开，后面很容易被改成
-           innerHTML / <object> 去用；而且 SVG 能靠实体膨胀把体积做到任意大。
-           真正把关的是代码里的**魔数校验**（扩展名可以随便改，文件头改不了）。 -->
-    <div class="group" style="margin-top:24px">
-      <div class="group-label">背景壁纸</div>
+    <!-- ================= 页① 画面（原「画面图层」整组 + 「环境」的视觉项：宽屏铺满 / 壁纸） ================= -->
+    <section class="set-pane" role="tabpanel" id="setPaneVisual" aria-labelledby="setTabVisual">
+      <h2 class="card-title">画面</h2>
+      <!-- 组① 画面图层（v2.10.12 从顶栏与 .viz-toggles 收进来；v3.45.0 折叠组退役、内容并入本页；
+           v3.45.4 拆为三个规范块：原三子标题挤在一个 flex 行容器里、纵向节奏靠换行间隙，
+           现每子标题一个 .group，间距收口到 4px 网格令牌） -->
+            <div class="group"><div class="group-label">图层元素</div>
+        <div class="bpm-row"><button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
+          <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
+          <!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
+               显隐走 #viz 上的 CSS 类（.no-ruler / .no-durlab），DOM 照建；
+               两开关都关 ⇒ 加 .chord-xl，行首和弦胶囊放大一倍（2.1，用户拍板） -->
+          <button class="toggle-pill on" id="rulerLabToggle" role="switch" aria-checked="true">座次尺 · 1 e &amp; a<span class="switch"></span></button>
+          <button class="toggle-pill on" id="durLabelToggle" role="switch" aria-checked="true">时值标注 · 四分/八分/×n<span class="switch"></span></button>
+          <!-- v3.34.5（审计 A-1）：图例条的**恢复入口**。
+               v3.1.0 只留了「知道了」这一个单向出口（置 false 后全文件再无处置回 true）——
+               文案是低承诺的「知道了」，后果却是永久移除唯一的首屏读法锚点。
+               这里补一枚同款开关与 `S.vizLegend` 双向绑定：关 = 等同「知道了」；开 = 图例重新出现。
+               ★ 同其余图层开关的纪律：显隐改变布局高度 ⇒ 收尾必须 Viz.relayout()
+                 （v3.9.0 实拍：图例高度一消失，跑道 cacheGeo 的旧 top 会让定位错位）。 -->
+          <button class="toggle-pill on" id="vizLegendToggle" role="switch" aria-checked="true">图例 · 格宽=时值读法<span class="switch"></span></button></div></div>
+            <div class="group"><div class="group-label">歌词</div>
+        <div class="bpm-row"><!-- v2.86.0（PLAN-v7）：歌词显示开关 + 显示位置三档。取代 v2.84.0 的「歌词跟随条」。
+               「显示歌词」总开关关 ⇒ 任何位置都不画歌词；开 ⇒ 下方「显示位置」三档可选
+               （自动 / 贴在每行小节下 / 集中在底部），其中「自动」复用 viz 紧凑断点（≤960px 底部、>960px 贴行）。 -->
+          <button class="toggle-pill on" id="showLyricToggle" role="switch" aria-checked="true">显示歌词<span class="switch"></span></button>
+          <!-- v3.33.10（用户清单 4）：连续滚动档下三枚位置胶囊都被"恒贴本行"短路，故给出一行说明；
+               它只在该档 + 歌词开着时露面（由 syncAuxVisibility 统一推导） -->
+          <span class="lyric-pos-note" id="lyricPosNote" hidden>连续滚动下歌词恒贴本行（位置档位暂不生效）</span>
+          <div class="lyric-pos-group" id="lyricPosGroup" role="group" aria-label="歌词显示位置">
+            <button class="pill active" data-pos="auto" aria-pressed="true">自动 · 窄屏底部</button>
+            <button class="pill" data-pos="follow" aria-pressed="false">贴在每行小节下</button>
+            <button class="pill" data-pos="bottom" aria-pressed="false">集中在底部</button>
+          </div>
+          <!-- v3.37.0（旋律谱 A 期）：音高标注三态——歌词字块可带音高（LyricChar.p，贴词时
+               「我5 多6」式后缀录入，或精修区「音高±」微调），这里管它的**显示法**。
+               数据与显示分离：开关只影响练习画面，编排页编辑轨恒显（编辑面看得到数据）。
+               默认「关」：不带音高的老用户画面逐位不变。 -->
+          <div class="lyric-pos-group" id="pitchNotationGroup" role="group" aria-label="歌词音高标注显示方式">
+            <button class="pill active" data-pn="off" aria-pressed="true">音高关</button>
+            <button class="pill" data-pn="jp" aria-pressed="false">简谱 1 2 3</button>
+            <button class="pill" data-pn="nm" aria-pressed="false">音名 C D E</button>
+          </div></div></div>
+            <div class="group"><div class="group-label">滚动与行数</div>
+        <div class="bpm-row"><!-- v3.0.0（PLAN-v9）：连续滚动——行槽横向连续推移，替代"整页翻页"。
+               播放头钉在行中央，内容从右向左连续滚过（不再"走到行末整页跳变"）。
+               ★ 批 4 起**没有配套的档位控件**：「同屏行数」那一个控件随模式重列档位——
+                 连续滚动时它是 1 / 3 两档（滚动窗口），关掉时回到 1 / 2 / 3 / 4（翻页页长）。
+                 这样与参考页一致（那边这个控件就叫「同屏行数」，两档 1 / 3），不必多记一个名字。 -->
+          <button class="toggle-pill off" id="scrollModeToggle" role="switch" aria-checked="false">连续滚动<span class="switch"></span></button></div></div>
+      <!-- ★ v3.12.0（用户拍板）：同屏行数档位从「时值可视化卡顶部」搬进设置——判据同 Swing
+           （「练习过程中会不会去点它」的低频判据）：它是显示偏好，定了就不动；且它与紧邻的
+           「连续滚动」共用同一个档位语义（滚动时 1/3 两档、翻页时 1/2/3/4），放一起最好懂。
+           #vizRowsRow 的 id 与档位生成/接线一行不动（搬块不换 id）。 -->
+      <div class="group">
+        <div class="group-label">同屏行数 · 扫弦与歌词共用</div>
+        <div class="viz-rows" id="vizRowsRow" role="group" aria-label="同屏行数档位"></div>
+      </div>
+      <!-- v2.36.0（用户反馈）：宽屏铺满——默认关（1440 居中），开启后主列拉伸铺满超宽屏。
+           v3.45.0 随「环境」组解组迁入本页（宽屏/壁纸都是视觉项；「后台保活」去了「声音」页） -->
       <div class="bpm-row">
-        <button class="pill outline" id="wallPickBtn">选择图片</button>
-        <input type="file" id="wallFile" accept="image/jpeg,image/png,image/webp" hidden>
-        <button class="pill outline" id="wallClearBtn" hidden>移除</button>
-        <button class="pill outline" id="wallDefaultBtn" hidden>恢复默认</button>
-      </div>
-      <div class="vol-row" id="wallDimRow" hidden title="壁纸遮罩深浅：压暗背景，让文字与时间网格更清楚">
-        <span>遮罩深浅</span>
-        <input type="range" class="vol" id="wallDim" min="0" max="80" step="5" value="55"
-               aria-label="壁纸遮罩深浅，0% 为不压暗、80% 为最暗">
-        <span class="pct" id="wallDimPct">55%</span>
+        <button class="toggle-pill off" id="wideToggle" role="switch" aria-checked="false">宽屏铺满<span class="switch"></span></button>
       </div>
       <details class="hint-d"><summary>说明</summary>
-      <div class="hint">出厂自带一张默认背景图（可商用素材）。支持换成自己的 JPG / PNG / WebP：图片会<b>缩到长边 1600 像素</b>后存在本机（原图不保留、不上传、不联网）；铺满屏幕不变形，只在卡片外的留白里露出来。点「移除」后默认图也<b>不会自己回来</b>，想找回来用「恢复默认」；存不下时（浏览器给的本机空间约 5 MB，与预设共用）会明确提示，不会默默失败。</div>
+      <div class="hint"><b>宽屏铺满</b>去掉主页面的 1440px 宽度上限（超宽屏上两侧不再留白，视线跨度会变大，按习惯开）。主题切换在顶栏的月亮 / 太阳图标钮，本页不再有主题项。</div>
       </details>
-    </div>
 
-    </div></details>
-
-    <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调；
-         v3.44.0 折叠化） -->
-    <details class="set-sec"><summary><h2 class="card-title">发声</h2></summary><div class="set-sec-body">
-    <div class="bpm-row" id="timbreRow">
-      <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
-      <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
-      <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">三套音色都是<b>程序合成</b>（不占体积、没有采样文件）。<b>音量不在这里</b>：节拍 / 扫弦两条滑杆与 BPM 同组，留在主界面的状态灯下方——练习中会随时调，属高频控件。</div>
-    </details>
-    <!-- Swing（v2.10.17 从时值卡的「同屏行数」行搬进来）：设定型参数，与音色同一判据。
-         #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
-    <div class="group" style="margin-top:24px">
-      <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
-      <div class="bpm-row" id="swingRow">
-        <button class="pill active" data-swing="50" aria-pressed="true">直</button>
-        <button class="pill" data-swing="67" aria-pressed="false">Swing</button>
-        <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
+      <!-- 背景壁纸（v2.12.0；v2.13.0 起自带一张默认图）：
+           v2.12.0 时三个控件都**默认隐藏**，装上壁纸才露面。v2.13.0 起首次打开就有一张
+           内置默认壁纸（Pexels 可商用图，已随文件内联），所以「移除」「遮罩深浅」首屏就在；
+           只有「恢复默认」是**按需出现**——它只在"当前不是默认图"时有意义（已移除 / 用了自定义图）。
+           ★ `accept` 只列三种位图且**不含 svg**：SVG 是 XML，能内嵌脚本与外部引用，
+             它当图片用虽然不执行，但"允许上传 SVG"这条口子一开，后面很容易被改成
+             innerHTML / <object> 去用；而且 SVG 能靠实体膨胀把体积做到任意大。
+             真正把关的是代码里的**魔数校验**（扩展名可以随便改，文件头改不了）。 -->
+      <div class="group">
+        <div class="group-label">背景壁纸</div>
+        <div class="bpm-row">
+          <button class="pill outline" id="wallPickBtn">选择图片</button>
+          <input type="file" id="wallFile" accept="image/jpeg,image/png,image/webp" hidden>
+          <button class="pill outline" id="wallClearBtn" hidden>移除</button>
+          <button class="pill outline" id="wallDefaultBtn" hidden>恢复默认</button>
+        </div>
+        <div class="vol-row" id="wallDimRow" hidden title="壁纸遮罩深浅：压暗背景，让文字与时间网格更清楚">
+          <span>遮罩深浅</span>
+          <input type="range" class="vol" id="wallDim" min="0" max="80" step="5" value="55"
+                 aria-label="壁纸遮罩深浅，0% 为不压暗、80% 为最暗">
+          <span class="pct" id="wallDimPct">55%</span>
+        </div>
+        <details class="hint-d"><summary>说明</summary>
+        <div class="hint">出厂自带一张默认背景图（可商用素材）。支持换成自己的 JPG / PNG / WebP：图片会<b>缩到长边 1600 像素</b>后存在本机（原图不保留、不上传、不联网）；铺满屏幕不变形，只在卡片外的留白里露出来。点「移除」后默认图也<b>不会自己回来</b>，想找回来用「恢复默认」；存不下时（浏览器给的本机空间约 5 MB，与预设共用）会明确提示，不会默默失败。</div>
+        </details>
       </div>
-    </div>
+    </section>
 
-    <!-- 音频延迟补偿（v2.14.0）：蓝牙耳机等无线输出有 100–300ms 链路延迟——声音比画面晚到。
-         补偿 = 把每一颗音**提前**相应毫秒发出（发声侧见 AudioEngine.latOff），让"耳机里
-         听到的"与"屏幕上的落点"对齐。数据是独立键 beatsight.latency（不进热键、不进导出包，
-         理由见 DEVELOPMENT.md §3.18）；多套"设备配置"= 换耳机时在这里选一下，上次选的会被记住。 -->
-    <div class="group" id="latGroup" style="margin-top:24px">
-      <div class="group-label">音频延迟补偿（蓝牙耳机 / 无线音箱）</div>
-      <div class="bpm-row">
-        <select class="loop-sel" id="latProfileSel" style="min-width:130px" aria-label="按设备选择的延迟补偿配置"></select>
-        <button class="pill outline" id="latNewBtn">新建配置</button>
-        <button class="pill outline" id="latRenameBtn">改名</button>
-        <button class="pill outline" id="latDelBtn">删除</button>
-      </div>
-      <div class="vol-row" title="补偿值：把所有声音统一提前这么多毫秒发出，让耳机里听到的与画面落点对齐">
-        <span>补偿</span>
-        <input type="range" class="vol" id="latMs" min="0" max="500" step="5" value="0"
-               aria-label="音频延迟补偿毫秒数，0 为不补偿">
-        <span class="pct" id="latMsPct">0 ms</span>
+    <!-- ================= 页② 声音（原「发声」整组 + 「环境」的后台保活） ================= -->
+    <section class="set-pane" role="tabpanel" id="setPaneAudio" aria-labelledby="setTabAudio" hidden>
+      <h2 class="card-title">声音</h2>
+      <!-- 组② 发声（v2.10.12 从当前节奏型行收进来；**音量没跟着进来**——它练习中会实时调；
+           v3.45.0 折叠组退役、内容并入本页） -->
+      <div class="bpm-row" id="timbreRow">
+        <button class="pill active" data-timbre="click" aria-pressed="true">电子</button>
+        <button class="pill" data-timbre="wood" aria-pressed="false">木鱼</button>
+        <button class="pill" data-timbre="drum" aria-pressed="false">鼓组</button>
       </div>
       <details class="hint-d"><summary>说明</summary>
-      <div class="hint">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。手动校准参考起步值：真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机与外放保持 <b>0</b>。定好起步值后边放节拍边对：声音比画面<b>晚</b>就把值调大、比画面<b>早</b>就调小，每次 ±20ms 微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重调）。</div>
+      <div class="hint">三套音色都是<b>程序合成</b>（不占体积、没有采样文件）。<b>音量不在这里</b>：节拍 / 扫弦两条滑杆与 BPM 同组，留在主界面——练习中会随时调，属高频控件。</div>
       </details>
-    </div>
+      <!-- Swing（v2.10.17 从时值卡的「同屏行数」行搬进来）：设定型参数，与音色同一判据。
+           #swingRow 的 id 与档位点击接线不动（搬块不换 id） -->
+      <div class="group">
+        <div class="group-label">Swing · 八分对摇摆（只影响发声时机）</div>
+        <div class="bpm-row" id="swingRow">
+          <button class="pill active" data-swing="50" aria-pressed="true">直</button>
+          <button class="pill" data-swing="67" aria-pressed="false">Swing</button>
+          <button class="pill" data-swing="75" aria-pressed="false">重 Swing</button>
+        </div>
+      </div>
 
-    </div></details>
+      <!-- 音频延迟补偿（v2.14.0）：蓝牙耳机等无线输出有 100–300ms 链路延迟——声音比画面晚到。
+           补偿 = 把每一颗音**提前**相应毫秒发出（发声侧见 AudioEngine.latOff），让"耳机里
+           听到的"与"屏幕上的落点"对齐。数据是独立键 beatsight.latency（不进热键、不进导出包，
+           理由见 DEVELOPMENT.md §3.18）；多套"设备配置"= 换耳机时在这里选一下，上次选的会被记住。 -->
+      <div class="group" id="latGroup">
+        <div class="group-label">音频延迟补偿（蓝牙耳机 / 无线音箱）</div>
+        <div class="bpm-row">
+          <select class="loop-sel" id="latProfileSel" style="min-width:130px" aria-label="按设备选择的延迟补偿配置"></select>
+          <button class="pill outline" id="latNewBtn">新建配置</button>
+          <button class="pill outline" id="latRenameBtn">改名</button>
+          <button class="pill outline" id="latDelBtn">删除</button>
+        </div>
+        <div class="vol-row" title="补偿值：把所有声音统一提前这么多毫秒发出，让耳机里听到的与画面落点对齐">
+          <span>补偿</span>
+          <input type="range" class="vol" id="latMs" min="0" max="500" step="5" value="0"
+                 aria-label="音频延迟补偿毫秒数，0 为不补偿">
+          <span class="pct" id="latMsPct">0 ms</span>
+        </div>
+        <details class="hint-d"><summary>说明</summary>
+        <div class="hint">蓝牙耳机通常有 <b>100–300ms</b> 延迟：画面上的落点到了，耳朵里还要等一会儿才听到咔嗒。补偿就是把每一颗音<b>提前</b>这么多毫秒发出去，让「听到的」与「看到的」重新对上（不动节奏与曲序，只改发声时刻）。手动校准参考起步值：真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机与外放保持 <b>0</b>。定好起步值后边放节拍边对：声音比画面<b>晚</b>就把值调大、比画面<b>早</b>就调小，每次 ±20ms 微调到声画重合。配置只存在本机、不联网，也<b>不进「导出全部数据」</b>（换设备本来就该重调）。</div>
+        </details>
+      </div>
 
-    <!-- 组③ 数据与说明（v2.10.12 从侧栏 .preset-io 收进来；「使用方法」从顶栏收进来；
-         v3.44.0 折叠化） -->
-    <details class="set-sec"><summary><h2 class="card-title">数据与说明</h2></summary><div class="set-sec-body">
-    <div class="bpm-row">
-      <button class="pill outline" id="exportBtn" disabled>导出预设</button>
-      <button class="pill outline" id="importBtn">导入预设</button>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
-      <button class="pill outline" id="exportAllBtn">导出全部数据</button>
-      <button class="pill outline" id="importAllBtn">导入全部数据</button>
-      <input type="file" id="importAllFile" accept="application/json,.json" hidden>
-    </div>
-    <!-- v2.85.0（③a）：恢复示例曲——设置里常显入口。哪怕示例曲被改过/已删，点这里都按出厂规格重建并选中。
-         复用 Arrange.loadDemo()（与侧栏「恢复示例曲」同一出口）。先确认，避免误触覆盖用户改过的示例。 -->
-    <div class="bpm-row" style="margin-top:10px">
-      <button class="pill outline" id="demoRebuildBtn">恢复示例曲（重建《在他乡》）</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">示例曲《在他乡》是内置练习样板——哪怕你改过它的曲式或歌词、或它已不在库里，点这里都会按出厂规格<b>重建并选中</b>它（不会删你自己的其他曲式）。</div>
-    </details>
-    <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
-    <div class="exp-parts" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 14px">
-      <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
-      <label class="exp-chk"><input type="checkbox" id="expArranges" checked> 曲式</label>
-      <label class="exp-chk"><input type="checkbox" id="expLyrics" checked> 歌词</label>
-      <label class="exp-chk"><input type="checkbox" id="expEar" checked> 听辨战绩</label>
-      <label class="exp-chk"><input type="checkbox" id="expSettings" checked> 设置(分组/改名)</label>
-    </div>
-    <div class="bpm-row" style="margin-top:8px">
-      <button class="pill outline" id="exportSelBtn">导出选中数据</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
-    </details>
-    <div class="bpm-row" style="margin-top:8px">
-      <button class="pill outline" id="helpBtn">使用方法</button>
-      <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。
-           v2.69.0 返工（用户拍板）：改**常显**——不可安装环境置灰（原 hidden 方案在
-           file:// 下永远不可见，用户实报"找不到按钮"）；置灰原因写进 title 悬停可见。
-           置灰态由 Help.refreshInstall() 在设置打开时刷新 -->
-      <button class="pill outline" id="helpInstallBtn" disabled>安装到本机</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
-    </details>
+      <!-- v2.69.0 返工（用户拍板）：后台保活——让屏幕不自动熄灭、切后台不断声。
+           v3.45.0 随「环境」组解组迁入本页：它的存在意义是「声音在后台继续响」，与发声
+           设置同主题；接线（KeepAlive 模块 wakeLock/静音循环）与 t86e 启动收敛断言按 id 取，
+           搬家不影响。 -->
+      <div class="bpm-row">
+        <button class="toggle-pill off" id="keepAwakeToggle" role="switch" aria-checked="false">后台保活<span class="switch"></span></button>
+      </div>
+      <details class="hint-d"><summary>说明</summary>
+      <div class="hint"><b>后台保活</b>让屏幕不自动熄灭、手机切后台时也不断声（代价是耗电，默认关）。</div>
+      </details>
+    </section>
 
-    </div></details>
+    <!-- ================= 页③ 数据（原「数据与说明」的数据项 + 「危险区」降为页内子节） ================= -->
+    <section class="set-pane" role="tabpanel" id="setPaneData" aria-labelledby="setTabData" hidden>
+      <h2 class="card-title">数据</h2>
+      <!-- 组③ 数据（v2.10.12 从侧栏 .preset-io 收进来；v3.45.0 折叠组退役、并入本页——
+           「使用方法 / 安装」说明类入口挪去「关于」页） -->
+      <div class="bpm-row">
+        <button class="pill outline" id="exportBtn" disabled>导出预设</button>
+        <button class="pill outline" id="importBtn">导入预设</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button class="pill outline" id="exportAllBtn">导出全部数据</button>
+        <button class="pill outline" id="importAllBtn">导入全部数据</button>
+        <input type="file" id="importAllFile" accept="application/json,.json" hidden>
+      </div>
+      <!-- v2.85.0（③a）：恢复示例曲——设置里常显入口。哪怕示例曲被改过/已删，点这里都按出厂规格重建并选中。
+           复用 Arrange.loadDemo()（与侧栏「恢复示例曲」同一出口）。先确认，避免误触覆盖用户改过的示例。 -->
+      <div class="bpm-row">
+        <button class="pill outline" id="demoRebuildBtn">恢复示例曲（重建《在他乡》）</button>
+      </div>
+      <details class="hint-d"><summary>说明</summary>
+      <div class="hint">示例曲《在他乡》是内置练习样板——哪怕你改过它的曲式或歌词、或它已不在库里，点这里都会按出厂规格<b>重建并选中</b>它（不会删你自己的其他曲式）。</div>
+      </details>
+      <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
+      <div class="group">
+        <div class="exp-parts" style="display:flex; flex-wrap:wrap; gap:6px 14px">
+        <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
+        <label class="exp-chk"><input type="checkbox" id="expArranges" checked> 曲式</label>
+        <label class="exp-chk"><input type="checkbox" id="expLyrics" checked> 歌词</label>
+        <label class="exp-chk"><input type="checkbox" id="expEar" checked> 听辨战绩</label>
+        <label class="exp-chk"><input type="checkbox" id="expSettings" checked> 设置(分组/改名)</label>
+      </div>
+        <div class="bpm-row">
+        <button class="pill outline" id="exportSelBtn">导出选中数据</button>
+      </div>
+        <details class="hint-d"><summary>说明</summary>
+      <div class="hint">全部数据都存在本机浏览器里（无账号、无上传）。换设备或换通道（<code>file://</code> 与 <code>https://</code> 数据不互通）之前，用「导出全部数据」带走整包，或用「导出选中数据」只带勾选的类别：预设 + 曲式编排 + 歌词对齐 + 听辨战绩 + 设置（分组 / 内置型改名）。导入会先弹出预览、按<b>合并</b>语义写回，不会删掉本机已有的。</div>
+      </details>
+      </div>
 
-    <!-- 危险区（v2.85.0 ③b）：恢复出厂设置——清掉本机全部 beatsight.* 数据后重载；
-         v3.44.0 折叠化 -->
-    <details class="set-sec"><summary><h2 class="card-title">危险区</h2></summary><div class="set-sec-body">
-    <div class="bpm-row">
-      <button class="pill danger" id="factoryResetBtn">恢复出厂设置</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">⚠️ 这会<b>永久删除本机全部数据</b>：节奏型、曲式编排、歌词对齐、听辨战绩与所有设置，且<b>不可恢复</b>。建议先用上方「导出全部数据」备份。操作需两次确认，确认后会停止播放并重新载入应用。</div>
-    </details>
+      <!-- 危险区（v2.85.0 ③b）：恢复出厂设置——清掉本机全部 beatsight.* 数据后重载。
+           v3.45.0 自独立折叠组降为「数据」页的页内子节（1 按钮独占一组太空，
+           放数据页与「导出备份」形成自然的先后关系：先导出 → 再重置）。 -->
+      <div class="group">
+        <div class="group-label">危险区</div>
+        <div class="bpm-row">
+          <button class="pill danger" id="factoryResetBtn">恢复出厂设置</button>
+        </div>
+        <details class="hint-d"><summary>说明</summary>
+        <div class="hint">⚠️ 这会<b>永久删除本机全部数据</b>：节奏型、曲式编排、歌词对齐、听辨战绩与所有设置，且<b>不可恢复</b>。建议先用上方「导出全部数据」备份。操作需两次确认，确认后会停止播放并重新载入应用。</div>
+        </details>
+      </div>
+    </section>
 
-    </div></details>
-
-    <!-- 组④ 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
-         为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
-         一个 URL 参数后面 —— 真出问题时没人想得起加 ?debug=1。
-         ★ 它**不上传任何东西**：只是把本机读数写进剪贴板（写不进去就弹窗显示），
-           与本项目"无账号、无上传"的承诺同源。v3.44.0 折叠化。 -->
-    <details class="set-sec"><summary><h2 class="card-title">诊断与自验</h2></summary><div class="set-sec-body">
-    <div class="bpm-row">
-      <button class="pill outline" id="diagCopyBtn">复制诊断信息</button>
-      <!-- v2.69.0（2.2）：从「使用方法」迁入。与「复制」同源报告、不同投递（这份落成 .txt 文件，
-           下载能力缺失时自动退回复制）；接线在装配层，与 diagCopyBtn 同一先例 -->
-      <button class="pill outline" id="helpDiagExport" aria-label="导出诊断信息为本地文件">导出诊断信息</button>
-    </div>
-    <details class="hint-d"><summary>说明</summary>
-    <div class="hint">把本机读数（版本号 · 各条异常计数 · 最近几条错误原文 · 本地存储占用）做成一段报障文本：<b>复制</b>成剪贴板，或<b>导出</b>成 .txt 文件（下载不可用时自动退回复制），贴给开发者。<b>不上传、不联网</b>；剪贴板不可用时改为弹窗显示，内容一样能选中复制。</div>
-    </details>
-    </div></details>
+    <!-- ================= 页④ 关于（「使用方法 / 安装」说明类入口 + 原「诊断与自验」） ================= -->
+    <section class="set-pane" role="tabpanel" id="setPaneAbout" aria-labelledby="setTabAbout" hidden>
+      <h2 class="card-title">关于</h2>
+      <!-- 使用方法（v2.10.12 从顶栏收进来；v3.45.0 挪入本页——与数据操作无关，属说明类入口） -->
+      <div class="bpm-row">
+        <button class="pill outline" id="helpBtn">使用方法</button>
+        <!-- v2.69.0（2.2）：从「使用方法」页迁入（搬块不换 id）。
+             v2.69.0 返工（用户拍板）：改**常显**——不可安装环境置灰（原 hidden 方案在
+             file:// 下永远不可见，用户实报"找不到按钮"）；置灰原因写进 title 悬停可见。
+             置灰态由 Help.refreshInstall() 在设置打开时刷新 -->
+        <button class="pill outline" id="helpInstallBtn" disabled>安装到本机</button>
+      </div>
+      <details class="hint-d"><summary>说明</summary>
+      <div class="hint">完整操作说明：主界面控制项 · 训练模式 · 设置里的每一项 · 曲式编排 · 自己画节奏型 · 数据与隐私 · 键盘。<b>安装到本机</b>仅在 https 部署地址（可安装的安全上下文）下可点；<code>file://</code> 双击直开的单文件副本装不了（PWA 要求安全上下文 + 线上托管），按钮置灰、悬停可见原因。</div>
+      </details>
+      <!-- 诊断与自验（v2.11.3）：把原先只有 ?debug=1 才能碰到的「复制诊断信息」放进设置。
+           为什么值得占一席之地：报障时用户能给的唯一硬证据就是这段文本，而它此前藏在
+           一个 URL 参数后面 —— 真出问题时没人想得起加 ?debug=1。
+           ★ 它**不上传任何东西**：只是把本机读数写进剪贴板（写不进去就弹窗显示），
+             与本项目"无账号、无上传"的承诺同源。v3.45.0 自独立折叠组降为页内子节
+           （诊断是"关于这个应用"的元信息，与使用方法同页）。 -->
+      <div class="group">
+        <div class="group-label">诊断与自验</div>
+        <div class="bpm-row">
+          <button class="pill outline" id="diagCopyBtn">复制诊断信息</button>
+          <!-- v2.69.0（2.2）：从「使用方法」迁入。与「复制」同源报告、不同投递（这份落成 .txt 文件，
+               下载能力缺失时自动退回复制）；接线在装配层，与 diagCopyBtn 同一先例 -->
+          <button class="pill outline" id="helpDiagExport" aria-label="导出诊断信息为本地文件">导出诊断信息</button>
+        </div>
+        <details class="hint-d"><summary>说明</summary>
+        <div class="hint">把本机读数（版本号 · 各条异常计数 · 最近几条错误原文 · 本地存储占用）做成一段报障文本：<b>复制</b>成剪贴板，或<b>导出</b>成 .txt 文件（下载不可用时自动退回复制），贴给开发者。<b>不上传、不联网</b>；剪贴板不可用时改为弹窗显示，内容一样能选中复制。</div>
+        </details>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -4554,23 +4604,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4586  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6028  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8152  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9360  Modal         应用内弹窗
-     L9505  Viz           时值可视化渲染与每帧动画
-     L13054 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13752 Trainer       变速训练器
-     L13965 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14649 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16638 Editor        自定义节奏型编辑器
-     L17218 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17265 Ear           听辨训练（v1.10.0）
-     L17493 Arrange       曲式编排（v2.0.0）
-     L21558 Help          使用方法（v2.0.1）
-     L21713 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21795 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22091 初始化（装配） 各模块 hook 接线与启动
+     L4636  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6078  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8202  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9410  Modal         应用内弹窗
+     L9555  Viz           时值可视化渲染与每帧动画
+     L13104 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13802 Trainer       变速训练器
+     L14015 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14699 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16688 Editor        自定义节奏型编辑器
+     L17268 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17361 Ear           听辨训练（v1.10.0）
+     L17589 Arrange       曲式编排（v2.0.0）
+     L21654 Help          使用方法（v2.0.1）
+     L21809 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21891 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22187 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4596,7 +4646,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.44.0";
+const VERSION = "3.45.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -17228,10 +17278,56 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       四个导入导出在 Presets、使用方法在 `Help` 模块里）——搬的是**元素**，不是**接线**，
       所以不会产生任何新的反向引用，本模块也只需要负责开合。 */
 const Settings = (() => {
+  /* ---- tab 控制器（v3.45.0）----
+     四页静态配对表——桩不解析 HTML，配对表让 activate 在桩与浏览器里同构、可断言；
+     「记忆上次页」刻意不做（见 open 内注释）。 */
+  const TABS = [
+    { tab: "setTabVisual", pane: "setPaneVisual" },
+    { tab: "setTabAudio",  pane: "setPaneAudio" },
+    { tab: "setTabData",   pane: "setPaneData" },
+    { tab: "setTabAbout",  pane: "setPaneAbout" },
+  ];
+  /** 激活某 tab：aria-selected / tabindex 漫游 / 面板 hidden 三件套一次同步（ARIA tab 模式）。
+   *  @param {string} tabId @param {boolean} focus 是否把焦点移到该 tab（键盘切换时 true） */
+  function activate(tabId, focus){
+    for (const p of TABS){
+      const on = p.tab === tabId;
+      const t = $(p.tab);
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      $(p.pane).hidden = !on;
+    }
+    if (focus){ const el = $(tabId); if (el.focus) el.focus(); }
+  }
+  for (const [i, p] of TABS.entries()){
+    /* 点击切页（焦点留在被点的 tab 上，原生行为，无需干预） */
+    $(p.tab).addEventListener("click", () => activate(p.tab, false));
+    $(p.tab).addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+      /* ARIA tab 键盘协议：←→↑↓ 循环移动、Home/End 跳首尾；其余键放行。
+         preventDefault 是防方向键在弹窗里滚动面板；桩事件对象可能缺它，守卫。 */
+      const k = e.key;
+      const i2 = k === "Home" ? 0 : k === "End" ? TABS.length - 1
+        : (k === "ArrowLeft" || k === "ArrowUp") ? (i + TABS.length - 1) % TABS.length
+        : (k === "ArrowRight" || k === "ArrowDown") ? (i + 1) % TABS.length : -1;
+      if (i2 < 0) return;
+      if (e.preventDefault) e.preventDefault();
+      activate(TABS[i2].tab, true);
+    });
+  }
+  /* 直达锚点 → 所在 tab（静态小表）。桩无 parentElement/contains，不走 DOM 回溯；
+     当前唯一直达入口是装配层 Settings.open("latGroup")（顶栏延迟读数 → 声音页），
+     新增直达入口时在此登记一行。 */
+  /** @type {Record<string, string>} */
+  const ANCHOR_TAB = { latGroup: "setTabAudio" };
+
   /** @param {string} [anchor] 可选：打开后把面板滚到该 id 所在组（v2.69.0 顶栏延迟读数直达入口）。
    *  用 scrollTop 增量定位而非 scrollIntoView——后者可能连带滚动底层页面。
-   *  面板用 id 取（桩环境 document 无 querySelector）；几何守卫跳过桩（无 getBoundingClientRect）。 */
+   *  面板用 id 取（桩环境 document 无 querySelector）；几何守卫跳过桩（无 getBoundingClientRect）。
+   *  v3.45.0：tab 化后带锚点须**先激活所在页**（目标页 hidden 时滚动会落空）；
+   *  无锚点恒回「画面」——tab 状态刻意不持久，关闭重开总是干净首页。 */
   function open(anchor){
+    activate(anchor && ANCHOR_TAB[anchor] ? ANCHOR_TAB[anchor] : TABS[0].tab, false);
     Modal.openOverlay("settingsOverlay");   // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
     if (anchor){
       const panel = $("settingsPanel");

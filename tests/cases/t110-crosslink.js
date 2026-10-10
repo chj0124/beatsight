@@ -153,9 +153,9 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
   const srcNoCmt = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
   ok(!srcNoCmt.includes(".viz-rows-row"),
     "★★ v3.12.0：`.viz-rows-row` 相关规则全部退役（搬块之后不留死规则）");
-  ok(src.includes('<div class="group" style="margin-top:16px">')
-     && /class="viz-rows" id="vizRowsRow"/.test(src),
-    "★★ v3.12.0：同屏行数住进设置弹窗的 .group 骨架（与 Swing 组同款：标签在上、档位在下）");
+  ok(/<div class="group">\s*<div class="group-label">同屏行数 · 扫弦与歌词共用<\/div>\s*<div class="viz-rows" id="vizRowsRow"/.test(src),
+    "★★ v3.12.0：同屏行数住进设置弹窗的 .group 骨架（与 Swing 组同款：标签在上、档位在下）"
+    + "——v3.45.4 起 .group 不再带内联 margin-top（间距令牌 16/8 收口，见 index.html .set-pane 规范注释）");
   ok(/\.pb-ctx \.pat-now\{[^}]*white-space:nowrap/.test(src),
     "★ 型名单行省略——无 nowrap 时省略号失效、长型名折两行撑破底栏胶囊（同 v2.40.0 原意，"
     + "v3.4.1 起宿主为底栏胶囊 .pb-ctx）");

@@ -85,6 +85,9 @@ const HTML_ATTRS = {
   /* v2.14.0 音频延迟补偿：滑杆取值域与读数在标记里写死（同 wallDim 的手法）。
      不复刻的话，"滑杆域是 0–500"这条在桩里恒真、测不到。 */
   latMs: { min: "0", max: "500", step: "5", value: "0" },
+  /* v3.45.0 设置页四 tab：除「画面」外的三个面板在标记里写死 `hidden`（tab 化初始只显首页）。
+     不复刻的话桩里 hidden=false——「打开设置恒回首页」的初值断言会读到错误的初始态。 */
+  setPaneAudio: { hidden: true }, setPaneData: { hidden: true }, setPaneAbout: { hidden: true },
   modalMask: { hidden: true }, modalInput: { hidden: true },
   /* v2.11.2：「继续上次训练」按钮（v1.4）与「7 天计划今日卡」（v1.5）整条下线，
      这两个 id 在标记里已不存在——桩里也要同步摘掉，否则"标记里没有了"这件事没人拦。 */

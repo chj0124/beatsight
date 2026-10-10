@@ -59,13 +59,15 @@ section("T205 图例恢复入口 · 设置开关与「知道了」双向同步")
   eq(old.beat.Store.S.vizLegend, false, "再点一次 → 关回去");
   eq(old.els["vizLegend"].hidden, true, "图例随之隐藏");
 
-  /* ⑥ 源码钉：开关确实落在「设置 → 画面图层」里（防搬块时把它挪丢）。
+  /* ⑥ 源码钉：开关确实落在「设置 → 画面」页里（防搬块时把它挪丢）。
      ★ 用**位置区间**而不是"往前截 N 字符"：开关上方有一段长注释（说明为什么加它），
-       截固定长度会被注释吃掉 ⇒ 断言假阴性（我第一版就踩了）。区间判据与注释长短无关。 */
+       截固定长度会被注释吃掉 ⇒ 断言假阴性（我第一版就踩了）。区间判据与注释长短无关。
+     v3.45.0：边界从「画面图层组头 ↔ 环境组头」换成「画面页 ↔ 声音页」——
+       六组折叠退役后组头没了，页面 section 边界是同强度的新锚。 */
   ok(html.includes('id="vizLegendToggle"'), "标记含 vizLegendToggle");
   const iTog = html.indexOf('id="vizLegendToggle"');
-  const iLayer = html.indexOf("画面图层");
-  const iEnv = html.indexOf("组①b 环境");
-  ok(iLayer >= 0 && iEnv > iLayer, "设置面板的「画面图层」与「环境」两组边界都在");
-  ok(iTog > iLayer && iTog < iEnv, "★ 它位于「画面图层」组内（与其余图层开关同组）");
+  const iPaneV = html.indexOf('id="setPaneVisual"');
+  const iPaneA = html.indexOf('id="setPaneAudio"');
+  ok(iPaneV >= 0 && iPaneA > iPaneV, "设置页的「画面」与「声音」两页边界都在");
+  ok(iTog > iPaneV && iTog < iPaneA, "★ 它位于「画面」页内（与其余图层开关同页）");
 }
