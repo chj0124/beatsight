@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatSight 品牌 VI 手册 · Visual Identity</title>
+<style>
+:root{
+  --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
+  --line:#2A2A2A; --border:#4D4D4D;
+  --green:#1ED760; --red:#F3727F; --amber:#E3B341; --blue:#4FA3E3;
+  --pitch-hi:#FF9E7A; --pitch-mid:#D9C078; --pitch-lo:#8FC0F0;
+  --t1:#FFFFFF; --t2:#B3B3B3; --t3:#9E9E9E; --on-green:#0A0A0A;
+  --d-bg:#F2F4F8; --d-card:#FFFFFF; --d-green:#2563EB; --d-t1:#0F172A; --d-t2:#475569;
+  --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --maxw:1120px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(30,215,96,.28)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+section{padding:60px 0 8px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.sec-no{font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:.12em;font-weight:600}
+.sec-title{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.sec-sub{color:var(--t2);font-size:14px;max-width:740px;margin-bottom:30px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px}
+.panel+.panel{margin-top:16px}
+.sub-label{font-size:12px;font-weight:650;color:var(--t3);letter-spacing:.1em;font-family:var(--mono);margin:0 0 16px;text-transform:uppercase}
+.sub-label.mt{margin-top:30px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){.grid2,.grid3{grid-template-columns:1fr}.panel{padding:20px}.sec-title{font-size:21px}}
+@media(max-width:760px){section{padding:44px 0 4px}}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(18,18,18,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:var(--maxw);margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:20px}
+.tb-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;white-space:nowrap}
+.tb-brand small{color:var(--t3);font-weight:400;font-size:12px}
+.tb-nav{display:flex;gap:2px;margin-left:auto;overflow-x:auto;white-space:nowrap}
+.tb-nav a{font-size:12.5px;color:var(--t2);padding:6px 12px;border-radius:999px;transition:.15s}
+.tb-nav a:hover{color:var(--t1);background:var(--card2)}
+@media(max-width:860px){.tb-nav{display:none}}
+
+/* Hero */
+.hero{padding:84px 0 40px;position:relative;overflow:hidden}
+.hero-pattern{position:absolute;inset:0;opacity:.5;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);
+  mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent)}
+.hero-in{position:relative}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--t2);margin-bottom:34px}
+.hero-eyebrow .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
+.hero-lockup{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.hero-lockup .wm{font-size:clamp(44px,7.5vw,80px);font-weight:800;letter-spacing:-.03em;line-height:1}
+.hero-lockup .wm em{font-style:normal;color:var(--green)}
+.hero-desc{margin-top:22px;font-size:clamp(15px,2.2vw,19px);color:var(--t2);max-width:660px}
+.hero-desc b{color:var(--t1);font-weight:600}
+.hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.badge{font-family:var(--mono);font-size:11.5px;color:var(--t3);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+.badge b{color:var(--green);font-weight:600}
+
+/* 理念 */
+.kv-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:760px){.kv-row{grid-template-columns:1fr}}
+.kv{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+.kv .k{font-size:13px;font-family:var(--mono);color:var(--green);letter-spacing:.08em;margin-bottom:8px}
+.kv h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.kv p{font-size:12.5px;color:var(--t2);line-height:1.7}
+
+/* 标志展示卡 */
+.logo-stage{border-radius:14px;display:flex;align-items:center;justify-content:center;padding:44px 24px;position:relative;overflow:hidden}
+.logo-stage.dark{background:#0C0C0C;border:1px solid var(--line)}
+.logo-stage.light{background:#F2F4F8;border:1px solid rgba(15,23,42,.1)}
+.logo-stage.green{background:var(--green)}
+.logo-stage .tag{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:10.5px;opacity:.55;letter-spacing:.06em}
+.lockup{display:flex;align-items:center;gap:16px}
+.lockup .wt{font-weight:800;letter-spacing:-.03em;line-height:1}
+.lockup.v-col{flex-direction:column;gap:14px;text-align:center}
+.wt-sub{font-family:var(--mono);font-size:11px;letter-spacing:.42em;margin-top:8px;font-weight:500}
+/* 定制字标：SVG 锁定宽度，球位按实测字体度量焊死；--ball 控制球色（默认品牌绿） */
+.wm-svg{height:1.09em;width:auto;vertical-align:-0.24em;display:inline-block}
+
+/* 制图 */
+.blueprint{background:#0E1420;border:1px solid #1E2A3D;border-radius:14px;padding:30px;display:flex;justify-content:center}
+.bp-note{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.bp-item{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.bp-item .n{font-family:var(--mono);font-size:11px;color:var(--green);margin-bottom:5px}
+.bp-item .t{font-size:12.5px;color:var(--t2);line-height:1.6}
+.bp-item .t b{color:var(--t1);font-weight:600;font-family:var(--mono);font-size:12px}
+
+/* 最小尺寸 */
+.minsize-row{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap}
+.minsize{display:flex;flex-direction:column;align-items:center;gap:10px}
+.minsize .lbl{font-family:var(--mono);font-size:10.5px;color:var(--t3);text-align:center;line-height:1.5}
+
+/* 禁用 */
+.misuse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.misuse{background:#0C0C0C;border:1px solid var(--line);border-radius:12px;padding:24px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative}
+.misuse::after{content:"";position:absolute;inset:8px;border:1.5px solid rgba(243,114,127,.65);border-radius:9px;pointer-events:none}
+.misuse::before{content:"";position:absolute;left:14px;right:14px;top:50%;height:1.5px;background:rgba(243,114,127,.65);transform:rotate(-18deg);z-index:2;pointer-events:none}
+.misuse .nm{font-size:11px;color:var(--red);font-family:var(--mono)}
+.misuse .box{opacity:.9}
+
+/* 色板 */
+.sw-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+.sw{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}
+.sw .chip-c{height:78px}
+.sw .meta{padding:10px 12px}
+.sw .nm{font-size:12.5px;font-weight:600}
+.sw .rl{font-size:11px;color:var(--t3);margin-top:1px}
+.sw .hx{font-family:var(--mono);font-size:10.5px;color:var(--t2);margin-top:7px;line-height:1.8;cursor:pointer}
+.sw .hx:hover{color:var(--green)}
+.ratio-bar{display:flex;height:44px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.ratio-bar div{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600}
+.ratio-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--t3)}
+.ratio-legend span{display:flex;align-items:center;gap:6px}
+.ratio-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* 字体 */
+.type-show{border-radius:12px;padding:24px;background:var(--card2);border:1px solid var(--line)}
+.type-show .tl{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.1em;margin-bottom:12px}
+.type-show .big{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.type-show .stack{font-family:var(--mono);font-size:10.5px;color:var(--t3);margin-top:12px;line-height:1.8;word-break:break-all}
+.type-show .use{font-size:12px;color:var(--t2);margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);line-height:1.7}
+.hier-row{display:flex;align-items:baseline;gap:16px;padding:13px 0;border-bottom:1px solid var(--line)}
+.hier-row:last-child{border:none}
+.hier-row .spec{font-family:var(--mono);font-size:10.5px;color:var(--t3);width:150px;flex:none}
+.hier-row .demo{line-height:1.25}
+.hier-row .use{margin-left:auto;font-size:11px;color:var(--t3);flex:none;text-align:right}
+@media(max-width:620px){.hier-row .spec{width:110px}.hier-row .use{display:none}}
+
+/* 辅助图形 */
+.pattern-stage{border-radius:14px;border:1px solid var(--line);overflow:hidden;position:relative;height:190px}
+.pattern-stage .cap{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(12,12,12,.75);color:var(--t2)}
+.motif-card{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:20px}
+.motif-card h4{font-size:13.5px;font-weight:650;margin:14px 0 6px}
+.motif-card p{font-size:12px;color:var(--t2);line-height:1.7}
+.motif-card .mstage{background:#0C0C0C;border-radius:8px;height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+/* 应用 */
+.app-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.app-grid{grid-template-columns:1fr}}
+.app-card{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:20px}
+.app-card .ttl{font-size:12px;font-family:var(--mono);color:var(--t3);margin-bottom:16px;display:flex;justify-content:space-between}
+.app-card .ttl b{color:var(--t2)}
+.icon-sizes{display:flex;align-items:flex-end;gap:26px;justify-content:center;padding:16px 0 8px}
+.icon-sizes .one{display:flex;flex-direction:column;align-items:center;gap:8px}
+.icon-sizes .one span{font-family:var(--mono);font-size:10px;color:var(--t3)}
+.social-mock{border-radius:10px;overflow:hidden;border:1px solid var(--line);position:relative;aspect-ratio:2/1;background:#0C0C0C;display:flex;align-items:center}
+.social-mock .sm-in{position:relative;padding:0 7%;display:flex;align-items:center;gap:4.5%;width:100%}
+.social-mock .sm-txt .t1{font-weight:800;letter-spacing:-.02em;font-size:clamp(16px,3.2vw,30px);line-height:1.1}
+.social-mock .sm-txt .t2{color:var(--t2);font-size:clamp(8px,1.4vw,12px);margin-top:6px}
+.social-mock .sm-pat{position:absolute;right:-4%;top:0;bottom:0;width:38%;opacity:.16;pointer-events:none}
+.readme-mock{border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#0C0C0C;position:relative;aspect-ratio:4.2/1;display:flex;align-items:center;justify-content:center}
+.sticker-stage{display:flex;align-items:center;justify-content:center;gap:26px;padding:14px 0;flex-wrap:wrap}
+.sticker{border-radius:18px;background:#0C0C0C;border:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:12px 20px;box-shadow:0 8px 24px rgba(0,0,0,.45);transform:rotate(-3deg)}
+.sticker.s2{transform:rotate(2.5deg);background:var(--green);border:none}
+.sticker .wt{font-weight:800;font-size:16px;letter-spacing:-.02em}
+
+/* 速查 */
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+@media(max-width:680px){.check-grid{grid-template-columns:1fr}}
+.check-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--t2);line-height:1.6}
+.check-item::before{content:"✓";color:var(--green);font-weight:700;flex:none}
+.check-item b{color:var(--t1);font-weight:600}
+
+footer{margin-top:76px;border-top:1px solid var(--line);padding:36px 0 48px}
+.foot-in{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+.foot-in p{font-size:12px;color:var(--t3)}
+.foot-links{display:flex;gap:18px;font-size:12.5px}
+.foot-links a{color:var(--t2)}.foot-links a:hover{color:var(--green)}
+.toast{position:fixed;bottom:28px;left:50%;transform:translate(-50%,80px);background:var(--green);color:var(--on-green);font-size:12.5px;font-weight:600;border-radius:999px;padding:9px 20px;transition:transform .3s cubic-bezier(.2,.8,.25,1);z-index:99;pointer-events:none}
+.toast.show{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<!-- 归档横幅（AGENTS §2 文档判类：方案/快照入 archive + 状态横幅；登记于 docs/README.md 快照表） -->
+<div style="background:#E3B341;color:#0A0A0A;font:600 13px/1.7 ui-monospace,'SF Mono',Menlo,Consolas,monospace;text-align:center;padding:10px 16px;border-bottom:1px solid rgba(10,10,10,.25)">
+  历史快照 · 已落地 —— 本手册于 v3.43.0 换标时落地为仓库品牌基线（icon.svg / favicon / banner 均按此制图）。
+  此后代码演进以仓库现状为准，正文数字为落盘当日快照、不再随代码更新。
+</div>
+
+<!-- ============ 标志符号定义（全手册复用） ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- 标准符号（定稿⑤）：窄-宽-窄三块，全尺寸通用 -->
+    <symbol id="bs-mark" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#1ED760"/>
+      <rect x="10" y="24" width="9"  height="14" rx="4" fill="#0A0A0A"/>
+      <rect x="23" y="24" width="18" height="14" rx="4" fill="#0A0A0A"/>
+      <rect x="45" y="24" width="9"  height="14" rx="4" fill="#0A0A0A"/>
+    </symbol>
+    <!-- 小尺寸别名（同一版本，无需简化） -->
+    <symbol id="bs-mark-mini" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#1ED760"/>
+      <rect x="10" y="24" width="9"  height="14" rx="4" fill="#0A0A0A"/>
+      <rect x="23" y="24" width="18" height="14" rx="4" fill="#0A0A0A"/>
+      <rect x="45" y="24" width="9"  height="14" rx="4" fill="#0A0A0A"/>
+    </symbol>
+    <!-- 单色版（描色由 currentColor 继承） -->
+    <symbol id="bs-mark-mono" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="currentColor" opacity=".18"/>
+      <rect x="10" y="24" width="9"  height="14" rx="4" fill="currentColor"/>
+      <rect x="23" y="24" width="18" height="14" rx="4" fill="currentColor"/>
+      <rect x="45" y="24" width="9"  height="14" rx="4" fill="currentColor"/>
+    </symbol>
+    <!-- 辅助纹样：时值拼花 -->
+    <pattern id="bs-pattern" width="150" height="42" patternUnits="userSpaceOnUse">
+      <rect x="0"  y="6" width="16" height="12" rx="3.5" fill="#1ED760"/>
+      <rect x="20" y="6" width="32" height="12" rx="3.5" fill="#1ED760" opacity=".55"/>
+      <rect x="56" y="6" width="48" height="12" rx="3.5" fill="#1ED760" opacity=".28"/>
+      <rect x="108" y="6" width="24" height="12" rx="3.5" fill="#1ED760" opacity=".4"/>
+      <rect x="30" y="24" width="48" height="12" rx="3.5" fill="#1ED760" opacity=".2"/>
+      <rect x="82" y="24" width="16" height="12" rx="3.5" fill="#1ED760" opacity=".5"/>
+      <rect x="102" y="24" width="32" height="12" rx="3.5" fill="#1ED760" opacity=".32"/>
+    </pattern>
+  </defs>
+</svg>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="tb-brand">
+      <svg width="24" height="24"><use href="#bs-mark-mini"/></svg>
+      BeatSight <small>品牌 VI 手册</small>
+    </div>
+    <nav class="tb-nav">
+      <a href="#idea">理念</a><a href="#logo">标志</a><a href="#color">色彩</a>
+      <a href="#font">字体</a><a href="#pattern">辅助图形</a><a href="#apps">应用</a><a href="#checklist">速查</a>
+    </nav>
+  </div>
+</div>
+
+<!-- 封面 -->
+<header class="hero">
+  <svg class="hero-pattern" width="100%" height="100%" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#bs-pattern)"/></svg>
+  <div class="wrap hero-in">
+    <span class="hero-eyebrow"><span class="dot"></span>Visual Identity · v1.0 提案 · 2026.10</span>
+    <div class="hero-lockup">
+      <svg width="96" height="96" style="flex:none;filter:drop-shadow(0 12px 32px rgba(30,215,96,.25))"><use href="#bs-mark"/></svg>
+      <div>
+        <div class="wm"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></div>
+        <div class="wt-sub" style="color:var(--t3)">时 值 节 拍 器</div>
+      </div>
+    </div>
+    <p class="hero-desc">一套「<b>看得见的节奏</b>」视觉识别系统——以时值块与弹跳球为核心母题，深色沉浸、语义分色、单文件零依赖的极客气质贯穿线上线下所有触点。</p>
+    <div class="hero-meta">
+      <span class="badge"><b>01</b> 标志与制图规范</span>
+      <span class="badge"><b>02</b> 标准色 / 辅助色</span>
+      <span class="badge"><b>03</b> 标准字体</span>
+      <span class="badge"><b>04</b> 辅助图形</span>
+      <span class="badge"><b>05</b> 应用系统</span>
+    </div>
+  </div>
+</header>
+
+<!-- 00 设计理念 -->
+<section id="idea">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">00</span><h2 class="sec-title">设计理念与风格定位</h2></div>
+    <p class="sec-sub">BeatSight 把抽象的「时值」翻译成看得见的「长度」。VI 系统不做加法做翻译——标志、纹样、色彩全部从产品本体（时值网格 + 弹跳球）中直接生长，品牌即产品界面的延伸。</p>
+    <div class="kv-row">
+      <div class="kv">
+        <div class="k">POSITIONING · 定位</div>
+        <h3>开发者的极简，乐手的直觉</h3>
+        <p>面向吉他自学者与泛音乐练习者：技术上信得过的工程品（单文件、零依赖、本地优先），体验上零门槛的可视化直觉。视觉语言在「极客克制」与「音乐温度」之间取平衡点。</p>
+      </div>
+      <div class="kv">
+        <div class="k">CONCEPT · 概念</div>
+        <h3>块有多宽，音就有多长</h3>
+        <p>时值块（宽度∝时值）是核心图形资产；节拍球是「Beat（节拍）被 Sight（看见）」的落点——它落在字标「i」的字点上，成为整套识别的唯一高光点。二者各司其职，也构成全部辅助图形。</p>
+      </div>
+      <div class="kv">
+        <div class="k">TONE · 调性</div>
+        <h3>深色沉浸 · 一点荧光绿</h3>
+        <p>默认深色练习舱（#121212），大面积中性灰阶承载信息，唯一的高饱和功能绿 #1ED760 只留给「正在进行」——少即是多，颜色即语义。简洁、精确、可复现。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 01 标志 -->
+<section id="logo">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">01</span><h2 class="sec-title">标志系统</h2></div>
+    <p class="sec-sub">标志由「符号 + 字标」构成，二者各司其职：符号是窄-宽-窄三块时值块（切分律动，中心为重拍）；节拍球落在字标「i」的字点上——单色字标中的唯一一点绿，就是「被看见的节拍」。</p>
+
+    <!-- 标准组合 -->
+    <div class="panel">
+      <p class="sub-label">A · 标准组合 —— 横版主标志（首选）</p>
+      <div class="grid2">
+        <div class="logo-stage dark">
+          <span class="tag">深底正稿 · 首选</span>
+          <div class="lockup">
+            <svg width="56" height="56"><use href="#bs-mark"/></svg>
+            <div>
+              <div class="wt" style="font-size:30px"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></div>
+              <div class="wt-sub" style="color:var(--t3);font-size:9.5px">时 值 节 拍 器</div>
+            </div>
+          </div>
+        </div>
+        <div class="logo-stage light">
+          <span class="tag" style="color:#475569">浅底正稿</span>
+          <div class="lockup">
+            <svg width="56" height="56"><use href="#bs-mark"/></svg>
+            <div>
+              <div class="wt" style="font-size:30px;color:#0F172A"><svg class="wm-svg" style="--ball:#2563EB" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></div>
+              <div class="wt-sub" style="color:#64748B;font-size:9.5px">时 值 节 拍 器</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="sub-label mt">B · 竖版组合 与 纯符号（方形场景：头像 / 图标 / 贴纸）</p>
+      <div class="grid3">
+        <div class="logo-stage dark" style="padding:36px 20px">
+          <div class="lockup v-col">
+            <svg width="64" height="64"><use href="#bs-mark"/></svg>
+            <div class="wt" style="font-size:22px"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></div>
+          </div>
+        </div>
+        <div class="logo-stage dark" style="padding:36px 20px"><svg width="72" height="72"><use href="#bs-mark"/></svg></div>
+        <div class="logo-stage green" style="padding:36px 20px">
+          <span class="tag" style="color:rgba(10,10,10,.55)">品牌绿底</span>
+          <svg width="72" height="72" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0A0A0A"/><rect x="10" y="24" width="9" height="14" rx="4" fill="#1ED760"/><rect x="23" y="24" width="18" height="14" rx="4" fill="#1ED760"/><rect x="45" y="24" width="9" height="14" rx="4" fill="#1ED760"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标准制图 -->
+    <div class="panel">
+      <p class="sub-label">C · 标准制图 —— 网格与比例（单位：x = 符号宽度的 1/64）</p>
+      <div class="blueprint">
+        <svg width="360" height="360" viewBox="-40 -40 144 144" fill="none" style="max-width:100%">
+          <!-- 网格 -->
+          <g stroke="#22314A" stroke-width=".4">
+            <path d="M-32 0H96M-32 16H96M-32 32H96M-32 48H96M-32 64H96M0 -32V96M16 -32V96M32 -32V96M48 -32V96M64 -32V96"/>
+          </g>
+          <g stroke="#2E4A6B" stroke-width=".5">
+            <rect x="0" y="0" width="64" height="64"/>
+          </g>
+          <!-- 符号本体（描边版） -->
+          <rect x="0" y="0" width="64" height="64" rx="14" stroke="#1ED760" stroke-width="1"/>
+          <rect x="10" y="24" width="9" height="14" rx="4" stroke="#1ED760" stroke-width=".8"/>
+          <rect x="23" y="24" width="18" height="14" rx="4" stroke="#1ED760" stroke-width=".8"/>
+          <rect x="45" y="24" width="9" height="14" rx="4" stroke="#1ED760" stroke-width=".8"/>
+          <!-- 标注 -->
+          <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="5.5" fill="#7FA8D9">
+            <text x="14.5" y="50" text-anchor="middle">9x</text>
+            <text x="32" y="50" text-anchor="middle">18x</text>
+            <text x="49.5" y="50" text-anchor="middle">9x</text>
+            <text x="32" y="-24" text-anchor="middle">外框 64x × 64x · 圆角 14x</text>
+            <text x="32" y="60" text-anchor="middle">块高 14x · 块圆角 4x · 间距 4x · 左右内边距 10x</text>
+          </g>
+          <g stroke="#3A5C85" stroke-width=".5">
+            <path d="M10 42v4M19 42v4M10 44h9"/>
+            <path d="M23 42v4M41 42v4M23 44h18"/>
+            <path d="M45 42v4M54 42v4M45 44h9"/>
+          </g>
+          <!-- 字标点球规则示意 -->
+          <g transform="translate(70,22)">
+            <rect x="0" y="7" width="2.6" height="9" rx="1.3" fill="#7FA8D9"/>
+            <circle cx="1.3" cy="2" r="2.4" fill="#1ED760"/>
+            <text x="7" y="10" font-family="ui-monospace,monospace" font-size="5" fill="#7FA8D9">「i」字点 = 节拍球</text>
+            <text x="7" y="16" font-family="ui-monospace,monospace" font-size="5" fill="#7FA8D9">Ø 0.21em · 品牌绿</text>
+          </g>
+          <text x="-36" y="10" font-family="ui-monospace,monospace" font-size="5" fill="#4FA3E3">符号无球无弧，全尺寸通用</text>
+          <text x="-36" y="20" font-family="ui-monospace,monospace" font-size="5" fill="#4FA3E3">三块 = 窄-宽-窄 切分律动</text>
+        </svg>
+      </div>
+      <div class="bp-note">
+        <div class="bp-item"><div class="n">比例 RATIO</div><div class="t">三块时值块宽度 <b>9x : 18x : 9x</b>——窄-宽-窄的切分律动，中心长块为重拍；块间距 <b>4x</b>，块高 <b>14x</b>，块圆角 <b>4x</b>。</div></div>
+        <div class="bp-item"><div class="n">外框 FRAME</div><div class="t">外接圆角方块 <b>64x × 64x</b>，圆角 <b>14x</b>（≈22%）；左右内边距各 <b>10x</b>，块带垂直居中（<b>y = 24x–38x</b>）。</div></div>
+        <div class="bp-item"><div class="n">字标点球 DOT</div><div class="t">「i」字点替换为<b>节拍球</b>：直径 <b>0.21em</b>、球心居中于字干、球底距字干顶 <b>0.06em</b>（标准字点间隙）；球色 = 品牌绿 <b>#1ED760</b>（日间环境 <b>#2563EB</b>，品牌绿底反墨 <b>#0A0A0A</b>）。</div></div>
+        <div class="bp-item"><div class="n">字标 WORDMARK</div><div class="t"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg> 为<b>定制锁定字标</b>（textLength 锁宽，球位按字体度量逐像素标定，任何平台渲染一致）：单色使用（深底白 / 浅底墨 #0F172A）、字重 <b>800</b>、字距 <b>-3%</b>；除字标球外不出现第二彩色。中文「时值节拍器」等宽体、字距 42%，仅作描述行。</div></div>
+      </div>
+    </div>
+
+    <!-- 安全区与最小尺寸 -->
+    <div class="panel">
+      <p class="sub-label">D · 安全区 与 最小使用尺寸</p>
+      <div class="grid2">
+        <div class="logo-stage dark" style="padding:40px">
+          <div style="padding:22px;border:1.5px dashed rgba(30,215,96,.55);border-radius:8px;display:inline-flex">
+            <svg width="72" height="72"><use href="#bs-mark"/></svg>
+          </div>
+          <span class="tag" style="top:auto;bottom:12px">安全区 = 四边各留 ≥ 1/4 符号高度（虚线内禁止任何图文进入）</span>
+        </div>
+        <div class="logo-stage dark" style="flex-direction:column;gap:6px;padding:32px">
+          <div class="minsize-row">
+            <div class="minsize"><svg width="64" height="64"><use href="#bs-mark"/></svg><span class="lbl">64px<br>标准展示</span></div>
+            <div class="minsize"><svg width="32" height="32"><use href="#bs-mark"/></svg><span class="lbl">32px<br>应用图标</span></div>
+            <div class="minsize"><svg width="24" height="24"><use href="#bs-mark"/></svg><span class="lbl">24px<br>工具栏</span></div>
+            <div class="minsize"><svg width="16" height="16" style="border-radius:4px"><use href="#bs-mark"/></svg><span class="lbl">16px<br>favicon</span></div>
+          </div>
+          <span class="lbl" style="color:var(--t3);font-family:var(--mono);font-size:10.5px">符号无球无弧、全尺寸同一版本；加粗块面（14x）保证 16px 仍清晰</span>
+        </div>
+      </div>
+      <p class="sub-label mt">E · 单色应用（印刷 / 蚀刻 / 传真等受限场景）</p>
+      <div class="grid4">
+        <div class="logo-stage dark" style="padding:28px"><svg width="52" height="52" style="color:#FFFFFF"><use href="#bs-mark-mono"/></svg></div>
+        <div class="logo-stage light" style="padding:28px"><svg width="52" height="52" style="color:#0F172A"><use href="#bs-mark-mono"/></svg></div>
+        <div class="logo-stage dark" style="padding:28px"><svg width="52" height="52" style="color:#1ED760"><use href="#bs-mark-mono"/></svg></div>
+        <div class="logo-stage green" style="padding:28px"><svg width="52" height="52" style="color:#0A0A0A"><use href="#bs-mark-mono"/></svg></div>
+      </div>
+      <p class="sub-label mt">F · 禁用示例</p>
+      <div class="misuse-grid">
+        <div class="misuse"><div class="box"><svg width="64" height="40" viewBox="0 0 64 64" preserveAspectRatio="none"><use href="#bs-mark"/></svg></div><span class="nm">禁止拉伸变形</span></div>
+        <div class="misuse"><div class="box"><svg width="44" height="44" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#E3B341"/><rect x="10" y="24" width="9" height="14" rx="4" fill="#0A0A0A"/><rect x="23" y="24" width="18" height="14" rx="4" fill="#0A0A0A"/><rect x="45" y="24" width="9" height="14" rx="4" fill="#0A0A0A"/></svg></div><span class="nm">禁止更换品牌色</span></div>
+        <div class="misuse"><div class="box" style="filter:drop-shadow(0 0 10px rgba(30,215,96,.9))"><svg width="44" height="44"><use href="#bs-mark"/></svg></div><span class="nm">禁止外发光/投影</span></div>
+        <div class="misuse"><div class="box" style="transform:rotate(-14deg)"><svg width="44" height="44"><use href="#bs-mark"/></svg></div><span class="nm">禁止旋转倾斜</span></div>
+        <div class="misuse"><div class="box" style="opacity:.35"><svg width="44" height="44"><use href="#bs-mark"/></svg></div><span class="nm">禁止降低透明度</span></div>
+        <div class="misuse"><div class="box" style="background:linear-gradient(45deg,#7c3aed,#db2777);border-radius:10px;padding:2px"><svg width="40" height="40"><use href="#bs-mark"/></svg></div><span class="nm">禁止花哨底色</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 色彩 -->
+<section id="color">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">02</span><h2 class="sec-title">标准色与辅助色</h2></div>
+    <p class="sec-sub">「60 / 25 / 10 / 5」用量纪律：中性深色承担约六成面积，卡片灰阶两成半，功能绿点缀其一，其余语义色合计不超 5%——绿越少，越有力。点击色值可复制。</p>
+    <div class="panel">
+      <div class="ratio-bar">
+        <div style="width:60%;background:#1F1F1F;color:#9E9E9E">60%</div>
+        <div style="width:25%;background:#2E2E2E;color:#B3B3B3">25%</div>
+        <div style="width:10%;background:#1ED760;color:#0A0A0A">10%</div>
+        <div style="width:5%;background:#E3B341;color:#0A0A0A">5%</div>
+      </div>
+      <div class="ratio-legend">
+        <span><i style="background:#1F1F1F"></i>中性底色（bg/card/cell）</span>
+        <span><i style="background:#2E2E2E"></i>交互灰阶（选中/描边/次卡）</span>
+        <span><i style="background:#1ED760"></i>功能绿（进行中/品牌点色）</span>
+        <span><i style="background:#E3B341"></i>语义辅助（琥珀/蓝/红/八度色）</span>
+      </div>
+
+      <p class="sub-label mt">标准色 · Primary</p>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#1ED760"></div><div class="meta"><div class="nm">品牌绿 · Beat Green</div><div class="rl">标志 / 进行中 / 品牌点色</div><div class="hx">HEX #1ED760<br>RGB 30·215·96<br>CMYK ≈ 86·0·55·16</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#0A0A0A;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">品牌墨 · On Green</div><div class="rl">绿底上的文字与图形</div><div class="hx">HEX #0A0A0A<br>RGB 10·10·10<br>CMYK ≈ 0·0·0·96</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#121212;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">练习舱黑 · Deep</div><div class="rl">品牌默认环境底色</div><div class="hx">HEX #121212<br>RGB 18·18·18<br>CMYK ≈ 0·0·0·93</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#FFFFFF"></div><div class="meta"><div class="nm">高光白 · Peak</div><div class="rl">最高强调 / 浅底反白</div><div class="hx">HEX #FFFFFF<br>RGB 255·255·255<br>CMYK 0·0·0·0</div></div></div>
+      </div>
+
+      <p class="sub-label mt">辅助色 · Secondary（语义专用，不作装饰）</p>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#E3B341"></div><div class="meta"><div class="nm">记谱琥珀</div><div class="rl">乐谱标记 · 和弦 / 型名</div><div class="hx">#E3B341<br>RGB 227·179·65</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#4FA3E3"></div><div class="meta"><div class="nm">空扫蓝</div><div class="rl">哑音 / 只动手不出声</div><div class="hx">#4FA3E3<br>RGB 79·163·227</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#F3727F"></div><div class="meta"><div class="nm">警示红</div><div class="rl">校验失败 / 危险操作</div><div class="hx">#F3727F<br>RGB 243·114·127</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:linear-gradient(90deg,#FF9E7A 0 33%,#D9C078 33% 66%,#8FC0F0 66%)"></div><div class="meta"><div class="nm">八度三色</div><div class="rl">旋律音高 高/中/低</div><div class="hx">#FF9E7A · #D9C078<br>#8FC0F0</div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#2563EB"></div><div class="meta"><div class="nm">日间蓝（浅色环境）</div><div class="rl">日间主题主色 · AA 4.9:1</div><div class="hx">#2563EB<br>RGB 37·99·235</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 字体 -->
+<section id="font">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">03</span><h2 class="sec-title">标准字体与辅助字体</h2></div>
+    <p class="sec-sub">坚持「零字体请求」：全部使用系统字栈，任何设备上即开即用——这本身就是品牌承诺（单文件零依赖）在字体上的体现。</p>
+    <div class="grid2">
+      <div class="type-show">
+        <div class="tl">标准字体 · 西文 / 界面</div>
+        <div class="big">BeatSight AaGg 0123<br><span style="font-size:22px;color:var(--t2);font-weight:500">The quick brown fox jumps.</span></div>
+        <div class="stack">Inter → -apple-system → Segoe UI → sans-serif</div>
+        <div class="use">标题、正文、按钮、全部界面文字。标题字重 700–800，正文 400–500；字距 -2%（大标题）~ 0（正文）。</div>
+      </div>
+      <div class="type-show">
+        <div class="tl">标准字体 · 中文</div>
+        <div class="big" style="font-size:28px">时值节拍器<br><span style="font-size:20px;color:var(--t2);font-weight:500">块有多宽，音就有多长。</span></div>
+        <div class="stack">PingFang SC → Hiragino Sans GB → Microsoft YaHei → sans-serif</div>
+        <div class="use">中文标题与正文。与西文混排时基线对齐、字号同梯；不使用楷体/宋体等衬线体承载品牌信息。</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <p class="sub-label">辅助字体 · 等宽（数字与记号专用）</p>
+      <div class="type-show" style="background:none;border:none;padding:0 0 6px">
+        <div class="big" style="font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:30px">120 BPM · 4/4 · 1 e &amp; a</div>
+        <div class="stack">ui-monospace → SF Mono → Menlo → Consolas → Liberation Mono → monospace</div>
+        <div class="use">BPM、座次尺、版本号、色值与参数标注一律等宽 + tabular-nums；<b style="color:var(--t1)">禁止</b>用比例字体渲染数字。</div>
+      </div>
+      <p class="sub-label mt">排版层级 · Hierarchy</p>
+      <div class="hier-row"><span class="spec">H1 · 40/800 · -3%</span><span class="demo" style="font-size:34px;font-weight:800;letter-spacing:-.03em">看得见的节奏</span><span class="use">封面 / 头图主标题</span></div>
+      <div class="hier-row"><span class="spec">H2 · 24/700 · -1%</span><span class="demo" style="font-size:24px;font-weight:700">章节标题</span><span class="use">手册章节 / 面板标题</span></div>
+      <div class="hier-row"><span class="spec">H3 · 15/650</span><span class="demo" style="font-size:15px;font-weight:650">卡片与模块标题</span><span class="use">组件、卡片标题</span></div>
+      <div class="hier-row"><span class="spec">Body · 14/400 · 1.5</span><span class="demo" style="font-size:14px">正文基准字号，长段落保持行高 1.5。</span><span class="use">正文 / 说明</span></div>
+      <div class="hier-row"><span class="spec">Caption · 11–12/400</span><span class="demo" style="font-size:11.5px;color:var(--t3)">辅助说明与标签文字（不低于 10px）</span><span class="use">图注 / 标签</span></div>
+      <div class="hier-row"><span class="spec">Mono · 10–40</span><span class="demo" style="font-size:13px;font-family:var(--mono);color:var(--green)">#1ED760 · 96 BPM · v3.42</span><span class="use">数字 / 参数 / 版本</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 辅助图形 -->
+<section id="pattern">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">04</span><h2 class="sec-title">辅助图形 · 品牌纹样</h2></div>
+    <p class="sec-sub">两款辅助图形均由标志母题派生，使用时透明度压至 5–20%，只作肌理、不抢信息。禁止与标志以外的图形元素混搭。</p>
+    <div class="grid2">
+      <div class="motif-card">
+        <div class="mstage" style="padding:0;align-items:stretch">
+          <svg width="100%" height="100%" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#bs-pattern)"/></svg>
+        </div>
+        <h4>纹样 A · 时值拼花（Duration Weave）</h4>
+        <p>时值块按 1:2:3 等比错落排布的连续纹样，透明度梯度 20–55%。用于头图背景、横幅底纹、包装纸式大面积肌理。单元 150×42px，平铺无缝。</p>
+      </div>
+      <div class="motif-card">
+        <div class="mstage">
+          <svg width="240" height="90" viewBox="0 0 240 90" fill="none">
+            <path d="M10 74 Q 65 -14 120 74 T 230 74" stroke="#1ED760" stroke-width="1.6" stroke-dasharray="1 6" stroke-linecap="round"/>
+            <circle cx="120" cy="74" r="5" fill="#1ED760"/>
+            <circle cx="230" cy="74" r="5" fill="#1ED760" opacity=".45"/>
+          </svg>
+        </div>
+        <h4>纹样 B · 抛物线落点（Bounce Arc）</h4>
+        <p>弹跳球轨迹的虚线弧，可单段作分隔线、可连续作页眉页脚动线。落点圆点即节拍点，常与时值块组合出现在章节起承处。</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <p class="sub-label">应用演示 · 头图底纹</p>
+      <div class="pattern-stage">
+        <svg width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;opacity:.5"><rect width="100%" height="100%" fill="url(#bs-pattern)"/></svg>
+        <div style="position:absolute;inset:0;background:linear-gradient(90deg,#0C0C0C 20%,transparent 70%)"></div>
+        <div style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:14px">
+          <svg width="44" height="44"><use href="#bs-mark"/></svg>
+          <div>
+            <div style="font-weight:800;font-size:20px;letter-spacing:-.02em"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.3em">VISIBLE RHYTHM</div>
+          </div>
+        </div>
+        <span class="cap">纹样透明度 ≤ 50% · 左侧压暗保证字标可读</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 应用 -->
+<section id="apps">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">05</span><h2 class="sec-title">核心应用场景</h2></div>
+    <p class="sec-sub">同一套标志与 token 在线上线下各触点的一致性还原。以下为等比示意，实际输出物均为矢量 / 高分辨率位图。</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="ttl"><b>应用图标 · PWA / favicon</b><span>512 · 192 · 48 · 16</span></div>
+        <div class="icon-sizes">
+          <div class="one"><svg width="88" height="88" style="filter:drop-shadow(0 8px 20px rgba(30,215,96,.22))"><use href="#bs-mark"/></svg><span>512px 主图标</span></div>
+          <div class="one"><svg width="56" height="56"><use href="#bs-mark"/></svg><span>192px</span></div>
+          <div class="one"><svg width="36" height="36"><use href="#bs-mark-mini"/></svg><span>48px</span></div>
+          <div class="one"><svg width="16" height="16" style="border-radius:4px"><use href="#bs-mark-mini"/></svg><span>16px</span></div>
+        </div>
+        <p style="font-size:11.5px;color:var(--t3);line-height:1.7;margin-top:10px">maskable 安全区：核心图形收在中心 80% 圆内；符号全尺寸同一版本，16px favicon 无需简化。iOS 角标直接使用圆角方（系统二次裁切安全）。</p>
+      </div>
+      <div class="app-card">
+        <div class="ttl"><b>GitHub 社交头图</b><span>1280 × 640</span></div>
+        <div class="social-mock">
+          <svg class="sm-pat" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#bs-pattern)"/></svg>
+          <div class="sm-in">
+            <svg width="15%" viewBox="0 0 64 64" style="flex:none;max-width:88px"><use href="#bs-mark"/></svg>
+            <div class="sm-txt">
+              <div class="t1"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg> 时值节拍器</div>
+              <div class="t2">把抽象的时值，翻译成看得见的长度 · 单文件零依赖 · PWA</div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11.5px;color:var(--t3);line-height:1.7;margin-top:10px">左文右纹；纹样压至 16% 透明度；标题 H1 梯，说明文字 Caption 梯 + mono 标签。</p>
+      </div>
+      <div class="app-card" style="grid-column:1/-1">
+        <div class="ttl"><b>README 横幅（深/浅双版，跟随系统主题切换）</b><span>4.2 : 1</span></div>
+        <div class="readme-mock">
+          <svg width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;opacity:.35"><rect width="100%" height="100%" fill="url(#bs-pattern)"/></svg>
+          <div style="position:absolute;inset:0;background:radial-gradient(70% 120% at 50% 50%,transparent,rgba(12,12,12,.8))"></div>
+          <div style="position:relative;display:flex;align-items:center;gap:18px">
+            <svg width="56" height="56"><use href="#bs-mark"/></svg>
+            <div>
+              <div style="font-weight:800;font-size:26px;letter-spacing:-.02em"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg> <span style="font-weight:500;color:var(--t2);font-size:16px">时值节拍器</span></div>
+              <div style="font-size:12px;color:var(--t2);margin-top:3px">把抽象的「时值」翻译成看得见的「长度」——块有多宽，音就有多长</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="ttl"><b>贴纸 / 周边</b><span>模切圆角</span></div>
+        <div class="sticker-stage">
+          <div class="sticker">
+            <svg width="26" height="26"><use href="#bs-mark-mini"/></svg>
+            <span class="wt"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></span>
+          </div>
+          <div class="sticker s2">
+            <svg width="26" height="26" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0A0A0A"/><rect x="10" y="24" width="9" height="14" rx="4" fill="#1ED760"/><rect x="23" y="24" width="18" height="14" rx="4" fill="#1ED760"/><rect x="45" y="24" width="9" height="14" rx="4" fill="#1ED760"/></svg>
+            <span class="wt" style="color:#0A0A0A"><svg class="wm-svg" style="--ball:#0A0A0A" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg></span>
+          </div>
+        </div>
+        <p style="font-size:11.5px;color:var(--t3);line-height:1.7">深色底用正稿；品牌绿底用反墨版，绿底上禁止再出现绿色字标。</p>
+      </div>
+      <div class="app-card">
+        <div class="ttl"><b>文档页脚 · 抛物线分隔</b><span>纹样 B 应用</span></div>
+        <div style="background:#0C0C0C;border:1px solid var(--line);border-radius:10px;padding:26px 22px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <svg width="30" height="30"><use href="#bs-mark-mini"/></svg>
+            <span style="font-weight:700;font-size:14px"><svg class="wm-svg" viewBox="1 114 461 112"><path d="M38.09 200L5.66 200L5.66 127.25L35.84 127.25Q43.95 127.25 49.46 129.59Q54.98 131.93 57.74 136.06Q60.50 140.19 60.50 145.70Q60.50 149.85 58.76 153.10Q57.03 156.35 53.98 158.47Q50.93 160.60 46.97 161.43L46.97 162.21Q51.32 162.35 55.05 164.53Q58.79 166.70 61.06 170.56Q63.33 174.41 63.33 179.69Q63.33 185.55 60.38 190.14Q57.42 194.73 51.81 197.36Q46.19 200 38.09 200M22.90 168.41L22.90 186.08L34.03 186.08Q39.84 186.08 42.60 183.86Q45.36 181.64 45.36 177.73Q45.36 174.90 44.04 172.80Q42.72 170.70 40.26 169.56Q37.79 168.41 34.38 168.41L22.90 168.41M22.90 141.02L22.90 157.23L32.91 157.23Q35.79 157.23 38.06 156.25Q40.33 155.27 41.63 153.44Q42.92 151.61 42.92 148.97Q42.92 145.31 40.28 143.16Q37.65 141.02 33.20 141.02M94.51 201.03Q85.96 201.03 79.76 197.63Q73.56 194.24 70.27 187.94Q66.97 181.64 66.97 172.90Q66.97 164.50 70.27 158.15Q73.56 151.81 79.62 148.27Q85.67 144.73 93.88 144.73Q99.64 144.73 104.45 146.53Q109.26 148.34 112.80 151.88Q116.34 155.42 118.26 160.60Q120.19 165.77 120.19 172.56L120.19 176.86L83.72 176.86Q83.87 180.52 85.13 183.06Q86.50 185.89 88.99 187.28Q91.48 188.67 94.80 188.67Q97.10 188.67 98.98 188.04Q100.86 187.40 102.20 186.13Q103.54 184.86 104.23 183.06L119.41 185.55Q118.04 190.23 114.70 193.73Q111.36 197.22 106.25 199.12Q101.15 201.03 94.51 201.03M83.82 166.94L104.03 166.94Q103.74 164.60 103.01 162.74Q101.83 160.01 99.59 158.54Q97.34 157.08 94.02 157.08Q90.70 157.08 88.41 158.57Q86.11 160.06 84.94 162.70Q84.06 164.60 83.82 166.94M141.41 200.98Q136.19 200.98 132.11 199.19Q128.03 197.41 125.74 193.82Q123.44 190.23 123.44 184.86Q123.44 180.32 125.03 177.20Q126.62 174.07 129.45 172.12Q132.28 170.17 135.94 169.14Q139.61 168.12 143.76 167.77Q148.39 167.38 151.23 166.92Q154.06 166.46 155.38 165.53Q156.70 164.60 156.70 162.94L156.70 162.74Q156.70 160.84 155.82 159.52Q154.94 158.20 153.28 157.52Q151.62 156.84 149.27 156.84Q146.93 156.84 145.10 157.52Q143.27 158.20 142.10 159.47Q140.92 160.74 140.44 162.45L125.01 160.45Q126.08 155.76 129.23 152.22Q132.38 148.68 137.48 146.70Q142.58 144.73 149.42 144.73Q154.50 144.73 158.92 145.92Q163.34 147.12 166.66 149.44Q169.98 151.76 171.83 155.15Q173.69 158.54 173.69 162.94L173.69 200L157.67 200L157.67 192.33L157.23 192.33Q155.77 195.17 153.50 197.07Q151.23 198.97 148.22 199.98Q145.22 200.98 141.41 200.98M146.59 189.70Q149.47 189.70 151.79 188.53Q154.11 187.35 155.47 185.30Q156.84 183.25 156.84 180.57L156.84 175.34Q156.11 175.73 155.01 176.07Q153.91 176.42 152.59 176.68Q151.28 176.95 149.96 177.17Q148.64 177.39 147.42 177.59Q144.93 177.93 143.17 178.76Q141.41 179.59 140.48 180.91Q139.56 182.23 139.56 184.08Q139.56 185.89 140.48 187.13Q141.41 188.38 142.97 189.04Q144.54 189.70 146.59 189.70M201.60 145.41L211.41 145.41L211.41 158.06L201.60 158.06L201.60 183.30Q201.60 185.45 202.62 186.50Q203.65 187.55 205.94 187.55Q206.82 187.55 208.41 187.35Q209.99 187.16 210.68 186.96L212.88 199.37Q209.99 200.20 207.31 200.49Q204.62 200.78 202.23 200.78Q193.54 200.78 189.05 196.70Q184.55 192.63 184.55 184.81L184.55 158.06L177.33 158.06L177.33 145.41L184.55 145.41L184.55 132.42L201.60 132.42M245.28 200.98Q236.19 200.98 229.46 198.24Q222.72 195.51 218.96 189.94Q215.20 184.38 215.05 175.98L231.60 175.98Q231.85 179.49 233.53 181.88Q235.22 184.28 238.17 185.47Q241.13 186.67 245.08 186.67Q248.64 186.67 251.23 185.69Q253.82 184.72 255.21 182.96Q256.60 181.20 256.60 178.86Q256.60 176.76 255.31 175.29Q254.02 173.83 251.43 172.71Q248.84 171.58 244.84 170.70L237.12 168.90Q227.70 166.75 222.33 161.87Q216.96 156.98 216.96 148.78Q216.96 142.04 220.62 136.96Q224.28 131.88 230.65 129.08Q237.02 126.27 245.28 126.27Q253.72 126.27 259.92 129.13Q266.13 131.98 269.54 137.08Q272.96 142.19 273.06 148.93L256.51 148.93Q256.16 144.97 253.28 142.77Q250.40 140.58 245.23 140.58Q241.81 140.58 239.46 141.48Q237.12 142.38 235.95 143.97Q234.78 145.56 234.78 147.61Q234.78 149.85 236.10 151.39Q237.41 152.93 239.86 153.96Q242.30 154.98 245.52 155.71L251.82 157.18Q257.09 158.30 261.22 160.23Q265.34 162.16 268.20 164.84Q271.06 167.53 272.55 171.04Q274.04 174.56 274.04 178.91Q274.04 185.79 270.59 190.75Q267.15 195.70 260.73 198.34Q254.31 200.98 245.28 200.98M297.21 200L280.17 200L280.17 145.41L297.21 145.41M330.63 221.58Q323.50 221.58 318.18 219.78Q312.86 217.97 309.56 214.75Q306.27 211.52 305.29 207.28L320.09 204.25Q320.57 205.71 321.89 206.96Q323.21 208.20 325.36 208.96Q327.51 209.72 330.54 209.72Q335.76 209.72 338.57 207.37Q341.38 205.03 341.38 200.15L341.38 190.48L340.06 190.48Q339.08 192.92 337.15 194.92Q335.22 196.92 332.27 198.10Q329.31 199.27 325.26 199.27Q319.26 199.27 314.30 196.46Q309.34 193.65 306.37 187.77Q303.39 181.88 303.39 172.71Q303.39 163.13 306.46 156.93Q309.54 150.73 314.50 147.73Q319.45 144.73 325.21 144.73Q329.56 144.73 332.66 146.19Q335.76 147.66 337.79 149.98Q339.81 152.29 340.84 154.79L341.33 154.79L341.33 145.41L358.17 145.41L358.17 198.78Q358.17 206.30 354.68 211.38Q351.19 216.46 344.99 219.02Q338.79 221.58 330.63 221.58M331.07 186.77Q334.34 186.77 336.64 185.11Q338.93 183.45 340.15 180.25Q341.38 177.05 341.38 172.66Q341.38 168.16 340.15 164.89Q338.93 161.62 336.66 159.84Q334.39 158.06 331.07 158.06Q327.80 158.06 325.53 159.89Q323.26 161.72 322.09 164.99Q320.92 168.26 320.92 172.66Q320.92 177.05 322.09 180.22Q323.26 183.40 325.53 185.08Q327.80 186.77 331.07 186.77M383.44 168.85L383.44 200L366.40 200L366.40 127.25L383.10 127.25L383.10 156.25Q385.05 151.76 388.33 148.68Q392.57 144.73 399.80 144.73Q405.51 144.73 409.76 147.27Q414.01 149.80 416.35 154.44Q418.70 159.08 418.70 165.23L418.70 200L401.66 200L401.66 168.55Q401.66 163.96 399.31 161.35Q396.97 158.74 392.77 158.74Q390.04 158.74 387.91 159.94Q385.79 161.13 384.62 163.38Q383.44 165.63 383.44 168.85M446.56 145.41L456.37 145.41L456.37 158.06L446.56 158.06L446.56 183.30Q446.56 185.45 447.58 186.50Q448.61 187.55 450.90 187.55Q451.78 187.55 453.37 187.35Q454.96 187.16 455.64 186.96L457.84 199.37Q454.96 200.20 452.27 200.49Q449.58 200.78 447.19 200.78Q438.50 200.78 434.01 196.70Q429.52 192.63 429.52 184.81L429.52 158.06L422.29 158.06L422.29 145.41L429.52 145.41L429.52 132.42L446.56 132.42" fill="currentColor"/><circle cx="288.69" cy="128.91" r="10.5" style="fill:var(--ball,#1ED760)"/></svg> <span style="color:var(--t3);font-weight:400;font-size:11px">· 时值节拍器</span></span>
+            <svg style="flex:1;height:20px" viewBox="0 0 300 20" preserveAspectRatio="none" fill="none"><path d="M0 16 Q 75 -8 150 16 T 300 16" stroke="#2A2A2A" stroke-width="1.2" stroke-dasharray="1 5" stroke-linecap="round"/></svg>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">MIT · 2026</span>
+          </div>
+        </div>
+        <p style="font-size:11.5px;color:var(--t3);line-height:1.7;margin-top:10px">页脚 / 邮件签名 / 文档落款：小尺寸符号 + 中性色抛物线，不使用大面积纹样。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 速查 -->
+<section id="checklist">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">06</span><h2 class="sec-title">使用规范速查</h2></div>
+    <div class="panel">
+      <div class="check-grid">
+        <div class="check-item"><span><b>标志：</b>深底首选横版组合；符号全尺寸同一版本；安全区 ≥ 1/4 符号高</span></div>
+        <div class="check-item"><span><b>字标：</b>单色使用（深底白/浅底墨），「i」字点为节拍球，是字标中唯一彩色</span></div>
+        <div class="check-item"><span><b>色彩：</b>60/25/10/5 用量；功能绿只表「进行中」，不做大面积铺色</span></div>
+        <div class="check-item"><span><b>色值：</b>品牌绿 #1ED760 · 墨 #0A0A0A · 底 #121212 · 琥珀 #E3B341</span></div>
+        <div class="check-item"><span><b>字体：</b>西文 Inter 系 / 中文 PingFang·雅黑系 / 数字一律等宽 tabular-nums</span></div>
+        <div class="check-item"><span><b>字梯：</b>H1 40 · H2 24 · H3 15 · 正文 14 · 图注 ≥10，行高 1.5</span></div>
+        <div class="check-item"><span><b>纹样：</b>时值拼花 / 抛物线两款，透明度 ≤ 50%，不与其他图形混用</span></div>
+        <div class="check-item"><span><b>圆角：</b>内容族 3–12px，控制族 999px / 50%；图标 16 网格 1.8 描边</span></div>
+        <div class="check-item"><span><b>底线：</b>不拉伸、不改色、不加特效、不用外部字体与图片请求</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-in">
+    <p>BeatSight 品牌 VI 手册 v1.0 · 标志与 token 源自产品本体设计 · 单文件零依赖 · MIT License</p>
+    <div class="foot-links">
+      <a href="https://github.com/chj0124/beatsight" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="beatsight-brand-board.html">视觉系统提案展板 →</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">已复制</div>
+<script>
+(function(){
+  var toast=document.getElementById('toast'),tm;
+  document.querySelectorAll('.sw .hx').forEach(function(el){
+    el.addEventListener('click',function(){
+      var hex=(el.textContent.match(/#[0-9A-Fa-f]{6}/)||[''])[0];
+      if(!hex)return;
+      function done(){toast.textContent='已复制 '+hex;toast.classList.add('show');clearTimeout(tm);tm=setTimeout(function(){toast.classList.remove('show')},1500);}
+      if(navigator.clipboard){navigator.clipboard.writeText(hex).then(done,done);}else{
+        var ta=document.createElement('textarea');ta.value=hex;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);done();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

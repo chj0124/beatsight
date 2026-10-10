@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#121212"/>
-  <path d="M196 96h120l48 320H148l48-320z" fill="#1ED760"/>
-  <line x1="244" y1="312" x2="310" y2="116" stroke="#0A0A0A" stroke-width="26" stroke-linecap="round"/>
-  <circle cx="292" cy="158" r="26" fill="#0A0A0A"/>
+  <!-- 品牌标志（v3.43.0 换标，定稿见 docs/archive/beatsight-vi-manual.html）：
+       绿底 + 窄-宽-窄三块时值块（9x:18x:9x 切分律动，中心为重拍）。
+       坐标 = 64 网格制图 × 8（外框 64x、圆角 14x、块高 14x、块圆角 4x、左右内边距 10x、块间距 4x），
+       与 tools/gen-icons.js 的手写光栅化同一组坐标；PNG 回退由构建期现场生成。 -->
+  <rect width="512" height="512" rx="112" fill="#1ED760"/>
+  <rect x="80" y="192" width="72" height="112" rx="32" fill="#0A0A0A"/>
+  <rect x="184" y="192" width="144" height="112" rx="32" fill="#0A0A0A"/>
+  <rect x="360" y="192" width="72" height="112" rx="32" fill="#0A0A0A"/>
 </svg>

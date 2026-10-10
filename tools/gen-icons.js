@@ -5,7 +5,8 @@
    不入库"（音色程序合成、零采样文件同 philosophy）——图标同理：
    **仓库里只存这份生成器，PNG 由 build-dist.js 在装配时现场生成**。
 
-   实现：手写光栅化（圆角矩形底 + 梯形 + 圆头斜线 + 圆点，与 icon.svg 同一组坐标）
+   实现：手写光栅化（绿底圆角方 + 窄-宽-窄三块时值块，与 icon.svg 同一组坐标；
+   v3.43.0 换标，定稿见 docs/archive/beatsight-vi-manual.html）
    + 手写 PNG 编码（zlib 是 Node 内置，不算依赖）。2× 超采样抗锯齿。
 
    用法：node tools/gen-icons.js [输出目录]   # 缺省输出到仓库根（本地开发/PWA 调试用）
@@ -51,7 +52,9 @@ function encodePng(size, px){
   return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))]);
 }
 
-/* ---- 光栅化：与 icon.svg 同坐标（512 视口）。2× 超采样 ---- */
+/* ---- 光栅化：与 icon.svg 同坐标（512 视口）。2× 超采样 ----
+   v3.43.0 换标：绿底 #1ED760 圆角方（rx 112）+ 墨色三块 #0A0A0A。
+   坐标 = 64 网格制图 × 8：块 (80,192,72,112) (184,192,144,112) (360,192,72,112)，块圆角 32。 */
 function drawIcon(outSize, maskable){
   const SS = 2, W = outSize * SS;
   const px = Buffer.alloc(W * W * 4);           // 初始全透明
@@ -59,45 +62,32 @@ function drawIcon(outSize, maskable){
   const off = maskable ? (W - 512 * sc) / 2 : 0;
   const X = v => v * sc + off, Y = v => v * sc + off;
 
-  const BG = [18, 18, 18], GREEN = [30, 215, 96], INK = [10, 10, 10];
+  const GREEN = [30, 215, 96], INK = [10, 10, 10];
   const setPx = (x, y, rgb, a) => {
     const i = (y * W + x) * 4;
     px[i] = rgb[0]; px[i + 1] = rgb[1]; px[i + 2] = rgb[2]; px[i + 3] = a;
   };
-  const inRoundedRect = (x, y, r) => {
-    if (x < 0 || y < 0 || x >= W || y >= W) return false;
-    const cx = Math.max(r, Math.min(x, W - r)), cy = Math.max(r, Math.min(y, W - r));
-    return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r || (x >= r && x < W - r) || (y >= r && y < W - r);
+  /* 任意圆角矩形包含测试（左上角 x0,y0 + 宽高 + 圆角 r，坐标已按 sc 缩放） */
+  const inRR = (x, y, x0, y0, w, h, r) => {
+    if (x < x0 || y < y0 || x >= x0 + w || y >= y0 + h) return false;
+    const dx = Math.max(x0 + r - x, x - (x0 + w - r), 0);
+    const dy = Math.max(y0 + r - y, y - (y0 + h - r), 0);
+    return dx * dx + dy * dy <= r * r;
   };
-  /* 点在多边形内（梯形 4 顶点，射线法） */
-  const poly = [[196, 96], [316, 96], [364, 416], [148, 416]].map(([a, b]) => [X(a), Y(b)]);
-  const inPoly = (x, y) => {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){
-      const [xi, yi] = poly[i], [xj, yj] = poly[j];
-      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
-  };
-  /* 点到线段距离（圆头斜线：244,312 → 310,116，宽 26） */
-  const ax = X(244), ay = Y(312), bx = X(310), by = Y(116), halfW = 13 * sc;
-  const lx = bx - ax, ly = by - ay, ll = lx * lx + ly * ly;
-  const nearLine = (x, y) => {
-    const t = Math.max(0, Math.min(1, ((x - ax) * lx + (y - ay) * ly) / ll));
-    const dx = x - (ax + t * lx), dy = y - (ay + t * ly);
-    return dx * dx + dy * dy <= halfW * halfW;
-  };
-  const cxr = X(292), cyr = Y(158), cr = 26 * sc;
-  const inCircle = (x, y) => (x - cxr) * (x - cxr) + (y - cyr) * (y - cyr) <= cr * cr;
+  /* 三块时值块（icon.svg 同坐标）：窄 9 / 宽 18 / 窄 9（64 网格 × 8），中心为重拍 */
+  const BLOCKS = [[80, 72], [184, 144], [360, 72]]
+    .map(([bx, bw]) => [X(bx), Y(192), bw * sc, 112 * sc, 32 * sc]);
 
-  const r = 96 * sc;
+  const r = 112 * sc;
   for (let y = 0; y < W; y++){
     for (let x = 0; x < W; x++){
-      const bg = maskable ? (x >= 0 && y >= 0) : inRoundedRect(x, y, r);
-      if (!bg) continue;
-      let rgb = BG;
-      if (inPoly(x, y)) rgb = GREEN;
-      if (nearLine(x, y) || inCircle(x, y)) rgb = INK;
+      /* maskable：整幅铺满（安全圈外也全是绿底，系统二次裁切安全）；否则圆角方形底 */
+      const onBg = maskable || inRR(x, y, off, off, 512 * sc, 512 * sc, r);
+      if (!onBg) continue;
+      let rgb = GREEN;
+      for (const [bx, by, bw, bh, br] of BLOCKS){
+        if (inRR(x, y, bx, by, bw, bh, br)){ rgb = INK; break; }
+      }
       setPx(x, y, rgb, 255);
     }
   }

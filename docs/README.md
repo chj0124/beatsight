@@ -42,6 +42,8 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v9-control-core.md](archive/PLAN-v9-control-core.md) | 控制区重构 · 居中控制芯（开关胶囊化 + 参数浮层 + 滑杆 340 + 桌面/移动同构）实施方案 | 已落地（v3.40.0 交付，四批一次完成） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
+| [beatsight-brand-board.html](archive/beatsight-brand-board.html) | 视觉系统提案展板：设计 token / 字体 / 组件 / 图标规范整理（源自 index.html 真实值） | 历史快照 · 已落地（v3.43.0 入库时逐项核对一致） |
+| [beatsight-vi-manual.html](archive/beatsight-vi-manual.html) | 品牌 VI 手册：标志制图 / 字标 / 标准色 / 辅助纹样 / 应用物料（2026-10 定稿） | 历史快照 · 已落地（v3.43.0 换标按此落地） |
 
 > 约定：新增一份文档时，**先想清楚它是活文档还是快照**——活文档进上面那张表、快照进下面那张表
 > 并带上对应状态横幅，别让「哪份算数」再次变成要靠猜的事（这正是本索引要消除的盲区）。

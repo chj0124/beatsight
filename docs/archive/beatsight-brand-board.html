@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatSight 视觉系统提案 · Brand Board</title>
+<style>
+/* ============ 展板自身 token（取自 BeatSight index.html 真实值） ============ */
+:root{
+  --bg:#121212; --card:#181818; --card2:#1F1F1F; --cell:#252525;
+  --line:#2A2A2A; --border:#4D4D4D;
+  --green:#1ED760; --red:#F3727F; --amber:#E3B341; --blue:#4FA3E3;
+  --pitch-hi:#FF9E7A; --pitch-mid:#D9C078; --pitch-lo:#8FC0F0;
+  --t1:#FFFFFF; --t2:#B3B3B3; --t3:#9E9E9E; --on-green:#0A0A0A;
+  --sel-bg:#2E2E2E; --sel-line:#6A6A6A;
+  /* 日间档 */
+  --d-bg:#F2F4F8; --d-card:#FFFFFF; --d-green:#2563EB; --d-t1:#0F172A; --d-t2:#475569;
+  --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --maxw:1120px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(30,215,96,.28)}
+a{color:inherit;text-decoration:none}
+
+/* ============ 骨架 ============ */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+section{padding:56px 0 8px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.sec-no{font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:.12em;font-weight:600}
+.sec-title{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.sec-sub{color:var(--t2);font-size:14px;max-width:720px;margin-bottom:28px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px}
+.grid{display:grid;gap:16px}
+@media(max-width:760px){ section{padding:40px 0 4px} .panel{padding:20px} .sec-title{font-size:20px} }
+
+/* ============ 顶栏 ============ */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(18,18,18,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:var(--maxw);margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:20px;overflow-x:auto}
+.tb-logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;white-space:nowrap}
+.tb-logo .mark{width:22px;height:22px;border-radius:6px;background:var(--green);display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:4px 3px}
+.tb-logo .mark i{display:block;width:3px;background:var(--on-green);border-radius:1.5px}
+.tb-nav{display:flex;gap:4px;margin-left:auto;white-space:nowrap}
+.tb-nav a{font-size:12.5px;color:var(--t2);padding:6px 12px;border-radius:999px;transition:.15s}
+.tb-nav a:hover{color:var(--t1);background:var(--card2)}
+@media(max-width:760px){ .tb-nav{display:none} }
+
+/* ============ Hero ============ */
+.hero{padding:88px 0 48px;position:relative;overflow:hidden}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--t2);margin-bottom:26px}
+.hero-tag .dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
+.hero h1{font-size:clamp(40px,7vw,72px);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.hero h1 .sight{color:var(--green)}
+.hero-sub{font-size:clamp(17px,2.6vw,22px);color:var(--t2);margin-top:18px;max-width:640px;font-weight:450}
+.hero-sub b{color:var(--t1);font-weight:600}
+.hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
+.badge{font-family:var(--mono);font-size:11.5px;color:var(--t3);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+.badge b{color:var(--green);font-weight:600}
+/* Hero 时值条 */
+.hero-bars{display:flex;align-items:flex-end;gap:5px;height:96px;margin-top:52px}
+.hero-bars i{display:block;border-radius:4px;background:var(--cell);flex:none}
+.hero-bars i.on{background:var(--green)}
+.hero-bars i.pk{background:var(--t1)}
+@keyframes rise{0%{transform:scaleY(.35)}100%{transform:scaleY(1)}}
+.hero-bars i{transform-origin:bottom;animation:rise .7s cubic-bezier(.2,.8,.25,1) both}
+
+/* ============ 理念 ============ */
+.principles{grid-template-columns:repeat(4,1fr)}
+@media(max-width:960px){.principles{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.principles{grid-template-columns:1fr}}
+.prin{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.prin .ic{width:38px;height:38px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--green)}
+.prin h3{font-size:15px;font-weight:650;margin-bottom:6px}
+.prin p{font-size:12.5px;color:var(--t2);line-height:1.65}
+
+/* ============ 色彩 ============ */
+.sw-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}
+.sw .chip-c{height:74px}
+.sw .meta{padding:10px 12px}
+.sw .nm{font-size:12.5px;font-weight:600}
+.sw .rl{font-size:11px;color:var(--t3);margin-top:1px}
+.sw .hx{font-family:var(--mono);font-size:11px;color:var(--t2);margin-top:6px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.sw .hx:hover .cp{color:var(--green)}
+.cp{font-size:10px;color:var(--t3);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.group-label{font-size:12px;font-weight:650;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin:26px 0 12px;font-family:var(--mono)}
+.group-label:first-child{margin-top:0}
+/* 双主题对照 */
+.theme-duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:700px){.theme-duo{grid-template-columns:1fr}}
+.theme-card{border-radius:14px;padding:22px;border:1px solid var(--line)}
+.theme-card.dark{background:var(--bg)}
+.theme-card.light{background:var(--d-bg);color:var(--d-t1);border-color:rgba(15,23,42,.12)}
+.theme-card h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.theme-card .env{font-size:11.5px;opacity:.65;margin-bottom:16px}
+.mini-pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;margin-right:8px;margin-bottom:8px}
+
+/* ============ 字体 ============ */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.type-grid{grid-template-columns:1fr}}
+.type-card{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:22px}
+.type-card .tc-label{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.1em;margin-bottom:10px}
+.type-card .tc-aa{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.type-card .tc-stack{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:10px;line-height:1.7;word-break:break-all}
+.type-card .tc-use{font-size:12px;color:var(--t2);margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.scale-row{display:flex;align-items:baseline;gap:18px;padding:14px 0;border-bottom:1px solid var(--line)}
+.scale-row:last-child{border-bottom:none}
+.scale-row .sz{font-family:var(--mono);font-size:11px;color:var(--t3);width:88px;flex:none}
+.scale-row .demo{line-height:1.25}
+.scale-row .use{margin-left:auto;font-size:11px;color:var(--t3);flex:none;text-align:right}
+@media(max-width:560px){.scale-row .use{display:none}}
+
+/* ============ 组件 ============ */
+.comp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:760px){.comp-grid{grid-template-columns:1fr}}
+.comp{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:22px;min-height:150px;display:flex;flex-direction:column}
+.comp .c-name{font-size:12px;font-family:var(--mono);color:var(--t3);margin-bottom:16px;display:flex;justify-content:space-between}
+.comp .c-name b{color:var(--t2);font-weight:600}
+.comp .stage{flex:1;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+/* 时值格 */
+.tz-row{position:relative;width:100%;max-width:420px;height:44px}
+.tz-cell{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.tz-cell .fill{position:absolute;inset:0;background:#fff;border-radius:3px}
+.tz-cell.rest .fill{background:#4D4D4D}
+.tz-label{font-family:var(--mono);font-size:10px;color:var(--t3);text-align:center;margin-top:8px}
+/* 播放键 */
+.play-btn{width:62px;height:62px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 20px rgba(30,215,96,.32);cursor:pointer;transition:transform .12s}
+.play-btn:hover{transform:scale(1.05)}
+.play-btn svg{margin-left:3px}
+.step-btn{width:40px;height:40px;border-radius:9999px;background:var(--card);border:1px solid var(--line);color:var(--t1);font-size:13px;font-weight:500;font-family:var(--mono);display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* pill */
+.pill{display:inline-flex;align-items:center;gap:7px;border-radius:9999px;padding:8px 16px;font-size:12.5px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--t2);cursor:pointer;transition:.12s}
+.pill.active{background:var(--sel-bg);border-color:var(--sel-line);color:#fff}
+.pill.go{background:var(--green);border-color:var(--green);color:var(--on-green)}
+/* 和弦胶囊 */
+.chord-cap{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600;color:var(--amber)}
+/* BPM */
+.bpm-show{font-size:44px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.bpm-cap{font-size:11px;color:var(--t3);font-family:var(--mono);text-align:center;margin-top:2px}
+/* 弹跳球 */
+.ball-stage{position:relative;width:100%;max-width:300px;height:90px}
+.ball{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(30,215,96,.45);animation:bounce 1.6s cubic-bezier(.35,0,.65,1) infinite}
+@keyframes bounce{0%,100%{left:4%;top:64px}50%{left:46%;top:8px}75%{left:88%;top:64px}}
+.ball-shadow{position:absolute;width:18px;height:5px;border-radius:50%;background:#000;opacity:.3;top:76px;animation:sh 1.6s cubic-bezier(.35,0,.65,1) infinite}
+@keyframes sh{0%,100%{left:4%;transform:scaleX(1)}50%{left:46%;transform:scaleX(.4);opacity:.12}75%{left:88%;transform:scaleX(1)}}
+.ball-arc{position:absolute;inset:0;pointer-events:none}
+.land-dot{position:absolute;top:70px;width:6px;height:6px;border-radius:99px;background:var(--t3)}
+/* 滑杆 */
+.slider{width:100%;max-width:260px}
+.sl-track{position:relative;height:4px;border-radius:2px;background:var(--border)}
+.sl-fill{position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:2px;background:var(--green)}
+.sl-thumb{position:absolute;left:62%;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 1px 5px rgba(0,0,0,.5)}
+/* 卡片 */
+.demo-card{background:var(--card);border-radius:12px;padding:20px;border:1px solid var(--line);width:100%;max-width:300px}
+.demo-card h5{font-size:14px;font-weight:650;margin-bottom:4px}
+.demo-card p{font-size:12px;color:var(--t2)}
+.demo-card .dc-foot{display:flex;gap:8px;margin-top:14px}
+
+/* ============ 图标 ============ */
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.icon-cell{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--t1)}
+.icon-cell .ic-nm{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.icon-spec{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.spec-chip{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--t2)}
+.spec-chip b{color:var(--green);font-family:var(--mono);font-weight:600;margin-right:6px}
+
+/* ============ 间距/圆角 ============ */
+.space-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.space-grid{grid-template-columns:1fr}}
+.sp-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+.sp-row:last-child{border-bottom:none}
+.sp-row .sp-v{font-family:var(--mono);font-size:11.5px;color:var(--green);width:64px;flex:none}
+.sp-row .sp-bar{height:14px;border-radius:3px;background:var(--green);opacity:.85}
+.sp-row .sp-use{font-size:11.5px;color:var(--t3);margin-left:auto;text-align:right}
+.rd-row{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.rd-item{display:flex;flex-direction:column;align-items:center;gap:8px}
+.rd-item .box{width:56px;height:56px;background:var(--card);border:1.5px solid var(--border)}
+.rd-item .rl{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.rd-item .ru{font-size:10.5px;color:var(--t3)}
+.type-specimen{margin-top:8px}
+
+/* ============ 应用示例 ============ */
+.showcase{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sc-top{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card2)}
+.sc-top .sc-dot{width:9px;height:9px;border-radius:99px}
+.sc-title{font-size:12px;color:var(--t3);font-family:var(--mono);margin-left:6px}
+.sc-body{padding:26px 24px 30px;background:
+  radial-gradient(1200px 300px at 50% -80px, rgba(30,215,96,.06), transparent)}
+.viz-mock{position:relative;margin-top:8px}
+.viz-ruler{display:flex;font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:6px}
+.viz-band{position:relative;height:44px;margin-bottom:22px}
+.viz-beatzone{position:absolute;top:0;height:44px;border-radius:3px;background:rgba(255,255,255,.06)}
+.viz-current{position:absolute;top:0;height:44px;border-radius:8px;background:rgba(30,215,96,.10);border:1px solid rgba(30,215,96,.28)}
+.viz-lyric{display:flex;font-size:12px;color:var(--t2);margin-top:-16px}
+.viz-chord{position:absolute;top:-20px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:11px;font-weight:600;color:var(--amber)}
+.sc-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:34px}
+.sc-note{text-align:center;font-size:11.5px;color:var(--t3);margin-top:18px;font-family:var(--mono)}
+
+/* ============ Do / Don't ============ */
+.dd-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.dd-grid{grid-template-columns:1fr}}
+.dd{border-radius:12px;padding:20px;border:1px solid}
+.dd.do{border-color:rgba(30,215,96,.35);background:rgba(30,215,96,.05)}
+.dd.dont{border-color:rgba(243,114,127,.35);background:rgba(243,114,127,.05)}
+.dd h4{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dd.do h4{color:var(--green)} .dd.dont h4{color:var(--red)}
+.dd ul{list-style:none}
+.dd li{font-size:12.5px;color:var(--t2);padding:5px 0 5px 20px;position:relative;line-height:1.6}
+.dd li::before{content:"";position:absolute;left:2px;top:12px;width:7px;height:7px;border-radius:99px}
+.dd.do li::before{background:var(--green)} .dd.dont li::before{background:var(--red)}
+
+/* ============ 页脚 ============ */
+footer{margin-top:72px;border-top:1px solid var(--line);padding:36px 0 48px}
+.foot-in{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+.foot-in p{font-size:12px;color:var(--t3)}
+.foot-links{display:flex;gap:18px;font-size:12.5px}
+.foot-links a{color:var(--t2)} .foot-links a:hover{color:var(--green)}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translate(-50%,80px);background:var(--green);color:var(--on-green);font-size:12.5px;font-weight:600;border-radius:999px;padding:9px 20px;transition:transform .3s cubic-bezier(.2,.8,.25,1);z-index:99;pointer-events:none}
+.toast.show{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<!-- 归档横幅（AGENTS §2 文档判类：方案/快照入 archive + 状态横幅；登记于 docs/README.md 快照表） -->
+<div style="background:#E3B341;color:#0A0A0A;font:600 13px/1.7 ui-monospace,'SF Mono',Menlo,Consolas,monospace;text-align:center;padding:10px 16px;border-bottom:1px solid rgba(10,10,10,.25)">
+  历史快照 · 已落地 —— 本展板整理自 index.html 真实设计 token（v3.43.0 入库时逐项核对一致）。
+  此后代码演进以仓库现状为准，正文数字为落盘当日快照、不再随代码更新。
+</div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="tb-logo">
+      <svg width="22" height="22" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1ED760"/><rect x="10" y="24" width="9" height="14" rx="4" fill="#0A0A0A"/><rect x="23" y="24" width="18" height="14" rx="4" fill="#0A0A0A"/><rect x="45" y="24" width="9" height="14" rx="4" fill="#0A0A0A"/></svg>
+      BeatSight<span style="color:var(--t3);font-weight:400;font-size:12px;margin-left:2px">视觉系统提案</span>
+    </div>
+    <nav class="tb-nav">
+      <a href="#principles">理念</a><a href="#color">色彩</a><a href="#type">字体</a>
+      <a href="#components">组件</a><a href="#icons">图标</a><a href="#spacing">间距排版</a><a href="#showcase">应用</a>
+    </nav>
+  </div>
+</div>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="wrap">
+    <span class="hero-tag"><span class="dot"></span>Brand Board · v1.0 提案 · 基于 index.html 真实设计 token</span>
+    <h1>Beat<span class="sight">Sight</span><br>时值节拍器</h1>
+    <p class="hero-sub">把抽象的「时值」翻译成看得见的「长度」——<b>块有多宽，音就有多长</b>。一套为吉他练习者而生的深色沉浸视觉系统。</p>
+    <div class="hero-meta">
+      <span class="badge"><b>MIT</b> 开源许可</span>
+      <span class="badge"><b>单文件</b> 零依赖 · 无构建</span>
+      <span class="badge"><b>PWA</b> 离线可用</span>
+      <span class="badge"><b>本地优先</b> localStorage</span>
+      <span class="badge"><b>双主题</b> 经典深色 / 日间浅色</span>
+    </div>
+    <div class="hero-bars" id="heroBars" aria-hidden="true"></div>
+  </div>
+</header>
+
+<!-- 01 品牌理念 -->
+<section id="principles">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">01</span><h2 class="sec-title">设计原则</h2></div>
+    <p class="sec-sub">视觉系统的四条底层约定——它们同时是产品观，也是工程纪律，贯穿于每一处颜色、字号与控件。</p>
+    <div class="grid principles">
+      <div class="prin">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="6" y="5" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>时值即长度</h3>
+        <p>核心视觉隐喻：格子宽度与音符时值严格成正比（1 拍 = 48 tick）。一切图形服务于「眼睛先学会，耳朵就跟上」。</p>
+      </div>
+      <div class="prin">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></div>
+        <h3>语义分色</h3>
+        <p>颜色是信息而非装饰：绿只留给「进行中」，琥珀标记乐谱，选中态与发声态严格分色——一色一义，互不抢戏。</p>
+      </div>
+      <div class="prin">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M2 13V7l6-4.5L14 7v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>本地优先</h3>
+        <p>单文件、零依赖、无账号、无上传。视觉同样克制：无外部字体请求、无重资源，所有图形由内联 SVG/CSS 完成。</p>
+      </div>
+      <div class="prin">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>同源 token</h3>
+        <p>所有尺寸与颜色收敛为 CSS 变量并单一来源——「改一处，跟多处」。自验闸门（node tools/check-all.js）保证系统不漂移，步数以命令末尾自打印的实跑结果为准。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 色彩 -->
+<section id="color">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">02</span><h2 class="sec-title">色彩系统</h2></div>
+    <p class="sec-sub">深色练习舱为默认环境：低亮度中性底色保证长时间练琴不刺眼，唯一的高饱和绿承担「正在进行」的语义。点击色值可复制。</p>
+
+    <div class="panel">
+      <div class="group-label">品牌主色 · Brand</div>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#1ED760"></div><div class="meta"><div class="nm">功能绿</div><div class="rl">进行中 · 播放 · 焦点</div><div class="hx">#1ED760 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#0A0A0A"></div><div class="meta"><div class="nm">绿上墨</div><div class="rl">on-green 文字 / 图形</div><div class="hx">#0A0A0A <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#2563EB"></div><div class="meta"><div class="nm">日间蓝</div><div class="rl">日间主题主色（AA 4.9:1）</div><div class="hx">#2563EB <span class="cp">复制</span></div></div></div>
+      </div>
+
+      <div class="group-label">语义辅助色 · Semantic</div>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#E3B341"></div><div class="meta"><div class="nm">琥珀</div><div class="rl">乐谱标记 · 和弦 / 型名</div><div class="hx">#E3B341 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#4FA3E3"></div><div class="meta"><div class="nm">空扫蓝</div><div class="rl">只动手不出声的标记</div><div class="hx">#4FA3E3 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#F3727F"></div><div class="meta"><div class="nm">警示红</div><div class="rl">校验失败 · 危险操作</div><div class="hx">#F3727F <span class="cp">复制</span></div></div></div>
+      </div>
+
+      <div class="group-label">八度三色 · Pitch</div>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#FF9E7A"></div><div class="meta"><div class="nm">高音 · 暖橙</div><div class="rl">旋律音高 · 高八度</div><div class="hx">#FF9E7A <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#D9C078"></div><div class="meta"><div class="nm">中音 · 沙金</div><div class="rl">旋律音高 · 中八度</div><div class="hx">#D9C078 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#8FC0F0"></div><div class="meta"><div class="nm">低音 · 雾蓝</div><div class="rl">旋律音高 · 低八度</div><div class="hx">#8FC0F0 <span class="cp">复制</span></div></div></div>
+      </div>
+
+      <div class="group-label">中性色阶 · Neutral（经典深色）</div>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#121212;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">页面底</div><div class="rl">--bg</div><div class="hx">#121212 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#181818;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">卡片</div><div class="rl">--card</div><div class="hx">#181818 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#1F1F1F;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">次卡</div><div class="rl">--card2</div><div class="hx">#1F1F1F <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#252525;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">时值格</div><div class="rl">--cell</div><div class="hx">#252525 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#2E2E2E;border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">选中底</div><div class="rl">--sel-bg（≠发声）</div><div class="hx">#2E2E2E <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#4D4D4D"></div><div class="meta"><div class="nm">描边</div><div class="rl">--border</div><div class="hx">#4D4D4D <span class="cp">复制</span></div></div></div>
+      </div>
+
+      <div class="group-label">文字色 · Text</div>
+      <div class="sw-row">
+        <div class="sw"><div class="chip-c" style="background:#FFFFFF"></div><div class="meta"><div class="nm">一级文字</div><div class="rl">--t1 · 标题 / 已弹填充</div><div class="hx">#FFFFFF <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#B3B3B3"></div><div class="meta"><div class="nm">二级文字</div><div class="rl">--t2 · 正文 / 说明</div><div class="hx">#B3B3B3 <span class="cp">复制</span></div></div></div>
+        <div class="sw"><div class="chip-c" style="background:#9E9E9E"></div><div class="meta"><div class="nm">三级文字</div><div class="rl">--t3 · 标签（对比 6.9:1）</div><div class="hx">#9E9E9E <span class="cp">复制</span></div></div></div>
+      </div>
+
+      <div class="group-label">双主题对照 · Themes</div>
+      <div class="theme-duo">
+        <div class="theme-card dark">
+          <h4>经典深色 · 默认</h4>
+          <div class="env">沉浸练习舱 · 低亮度长时练琴场景</div>
+          <span class="mini-pill" style="background:var(--green);color:var(--on-green)">正在播放</span>
+          <span class="mini-pill" style="background:var(--sel-bg);color:#fff;border:1px solid var(--sel-line)">已选中</span>
+          <span class="mini-pill" style="color:var(--amber);border:1px solid var(--line)">Am 和弦</span>
+        </div>
+        <div class="theme-card light">
+          <h4>日间浅色 · 可选</h4>
+          <div class="env">明亮环境 · 全色板白底对比度 AA 达标</div>
+          <span class="mini-pill" style="background:var(--d-green);color:#fff">正在播放</span>
+          <span class="mini-pill" style="background:#1F2937;color:#fff">已选中</span>
+          <span class="mini-pill" style="color:#8A5A00;border:1px solid rgba(15,23,42,.18)">Am 和弦</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 字体 -->
+<section id="type">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">03</span><h2 class="sec-title">字体规范</h2></div>
+    <p class="sec-sub">双字栈策略：界面文字走人文无衬线，一切「数字与记号」走真等宽——BPM、座次尺、版本号的逐位对齐由 tabular-nums 保证。零网络字体请求，全部使用系统字栈。</p>
+    <div class="type-grid">
+      <div class="type-card">
+        <div class="tc-label">--sans · 界面文字</div>
+        <div class="tc-aa">时值节拍 Aa 吉他 123</div>
+        <div class="tc-stack">"Inter", -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif</div>
+        <div class="tc-use">用途：标题、正文、按钮、歌词、设置文案。基准 14px / 行高 1.5。</div>
+      </div>
+      <div class="type-card">
+        <div class="tc-label">--mono · 数字与记号</div>
+        <div class="tc-aa" style="font-family:var(--mono);font-variant-numeric:tabular-nums">120 BPM 4/4</div>
+        <div class="tc-stack">ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace</div>
+        <div class="tc-use">用途：BPM 大数字、拍内座次尺（1 e &amp; a）、版本号、图标悬浮名。禁用 Inter 冒充等宽。</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="group-label">字号阶梯 · Scale</div>
+      <div class="scale-row"><span class="sz">40px / 700</span><span class="demo" style="font-size:40px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums">120</span><span class="use">BPM 大数字（mono · tabular-nums）</span></div>
+      <div class="scale-row"><span class="sz">24px / 700</span><span class="demo" style="font-size:24px;font-weight:700">页面级标题</span><span class="use">面板标题、对话框标题</span></div>
+      <div class="scale-row"><span class="sz">14px / 400</span><span class="demo" style="font-size:14px">正文基准字号，长段落与设置说明。</span><span class="use">body 基准 · 行高 1.5</span></div>
+      <div class="scale-row"><span class="sz">12.5px / 400</span><span class="demo" style="font-size:12.5px;color:var(--t2)">次级说明文字与胶囊控件标签</span><span class="use">辅助说明 · 控件</span></div>
+      <div class="scale-row"><span class="sz">11px / 600</span><span class="demo" style="font-size:11px;font-weight:600;color:var(--amber)">G&nbsp;&nbsp;Em&nbsp;&nbsp;Am&nbsp;&nbsp;D</span><span class="use">和弦 / 型名胶囊</span></div>
+      <div class="scale-row"><span class="sz">10px / 400</span><span class="demo" style="font-size:10px;color:var(--t3);font-family:var(--mono)">1&nbsp;&nbsp;e&nbsp;&nbsp;&amp;&nbsp;&nbsp;a</span><span class="use">座次尺 · 微型标签（下限）</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 组件 -->
+<section id="components">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">04</span><h2 class="sec-title">核心组件</h2></div>
+    <p class="sec-sub">组件全部从「时值可视化」这一母题生长出来：格子是音、球是落点、胶囊是控制。以下为真实样式的等比还原。</p>
+    <div class="comp-grid">
+
+      <div class="comp">
+        <div class="c-name"><b>时值格 · Duration Cell</b><span>44px 高 · r3</span></div>
+        <div class="stage" style="flex-direction:column;align-items:stretch">
+          <div class="tz-row" id="tzRow"></div>
+          <div class="tz-label">附点八分 = 十六分 × 3 —— 块宽与时值严格成正比（白=发声 · 灰=休止）</div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="c-name"><b>弹跳球 · Bounce Ball</b><span>16px · 重力抛物线</span></div>
+        <div class="stage">
+          <div class="ball-stage">
+            <svg class="ball-arc" viewBox="0 0 300 90" fill="none" preserveAspectRatio="none">
+              <path d="M12 72 Q 150 -30 288 72" stroke="#2A2A2A" stroke-width="1.5" stroke-dasharray="4 5"/>
+            </svg>
+            <span class="land-dot" style="left:4%"></span>
+            <span class="land-dot" style="left:88%"></span>
+            <div class="ball-shadow"></div>
+            <div class="ball"></div>
+          </div>
+        </div>
+        <div class="tz-label">落点即下一颗音的真实发声时刻（含 Swing）</div>
+      </div>
+
+      <div class="comp">
+        <div class="c-name"><b>播放控制 · Transport</b><span>圆形家族</span></div>
+        <div class="stage">
+          <button class="step-btn">−5</button>
+          <button class="step-btn">−1</button>
+          <button class="play-btn" aria-label="播放">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 4.8v14.4c0 .9 1 1.5 1.8 1L20 13c.8-.5.8-1.6 0-2.1L8.8 3.9C8 3.4 7 4 7 4.8Z" fill="#0A0A0A"/></svg>
+          </button>
+          <button class="step-btn">+1</button>
+          <button class="step-btn">+5</button>
+        </div>
+        <div class="tz-label">播放键 62px · 步进键 40px · 绿底墨字 + 32% 光晕投影</div>
+      </div>
+
+      <div class="comp">
+        <div class="c-name"><b>BPM 大数字 · Readout</b><span>mono 40px</span></div>
+        <div class="stage">
+          <div>
+            <div class="bpm-show">96</div>
+            <div class="bpm-cap">BPM · 30–240 · tabular-nums</div>
+          </div>
+          <div class="slider">
+            <div class="sl-track"><div class="sl-fill"></div><div class="sl-thumb"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="c-name"><b>胶囊控件 · Pills</b><span>r999 全胶囊</span></div>
+        <div class="stage">
+          <button class="pill go">开始练习</button>
+          <button class="pill active">4/4</button>
+          <button class="pill">三连音</button>
+          <span class="chord-cap">Am</span>
+          <span class="chord-cap">G/B</span>
+        </div>
+        <div class="tz-label">绿=进行中 · 深灰=选中态 · 琥珀=乐谱语义，三者永不混用</div>
+      </div>
+
+      <div class="comp">
+        <div class="c-name"><b>卡片 · Card</b><span>r12 · padding 24</span></div>
+        <div class="stage">
+          <div class="demo-card">
+            <h5>附点布鲁斯</h5>
+            <p>4/4 · 96 BPM · 12 小节 · 扫弦 ↑↓↑</p>
+            <div class="dc-foot">
+              <button class="pill go" style="padding:6px 14px;font-size:12px">▶ 开练</button>
+              <button class="pill" style="padding:6px 14px;font-size:12px">编排曲式</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 05 图标 -->
+<section id="icons">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">05</span><h2 class="sec-title">图标风格</h2></div>
+    <p class="sec-sub">线性图标一族：16×16 网格、1.8px 描边、圆头端点、无填充；以 mask + currentColor 实现，颜色永远跟随所在文字——选中变绿、禁用变灰，零额外资源。</p>
+    <div class="panel">
+      <div class="icon-grid">
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="ic-nm">曲式编排</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><path d="M4 2.5v11l9-5.5-9-5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="ic-nm">播放</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><path d="M8 13V3M4.5 6.5 8 3l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ic-nm">下扫 ↑</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M4.5 9.5 8 13l3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ic-nm">上扫 ↓</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="11" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M11 11V3.5L14 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="ic-nm">音符</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="5" width="7" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/></svg><span class="ic-nm">时值块</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="ic-nm">设置</span></div>
+        <div class="icon-cell"><svg width="26" height="26" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M3 8l3.5-3.5M3 8l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 8 8)"/></svg><span class="ic-nm">返回</span></div>
+      </div>
+      <div class="icon-spec">
+        <div class="spec-chip"><b>16×16</b>网格基准</div>
+        <div class="spec-chip"><b>1.8px</b>描边宽度</div>
+        <div class="spec-chip"><b>round</b>端点与转角</div>
+        <div class="spec-chip"><b>currentColor</b>随文字变色</div>
+        <div class="spec-chip"><b>0</b>填充 / 外部资源</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 间距与排版 -->
+<section id="spacing">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">06</span><h2 class="sec-title">间距 · 圆角 · 排版</h2></div>
+    <p class="sec-sub">4px 基准栅格向上倍增；圆角分「内容族（3–12px 递进）」与「控制族（999px 全胶囊 / 50% 正圆）」两条线——内容克制、控制亲和。</p>
+    <div class="space-grid">
+      <div class="panel">
+        <div class="group-label">间距阶梯 · Spacing（4px 基准）</div>
+        <div class="sp-row"><span class="sp-v">4px</span><div class="sp-bar" style="width:4px"></div><span class="sp-use">图标内距 · 极紧凑分组</span></div>
+        <div class="sp-row"><span class="sp-v">8px</span><div class="sp-bar" style="width:8px"></div><span class="sp-use">控件内聚 · chip 内距</span></div>
+        <div class="sp-row"><span class="sp-v">12px</span><div class="sp-bar" style="width:12px"></div><span class="sp-use">栅格列距（--col-gap）</span></div>
+        <div class="sp-row"><span class="sp-v">16px</span><div class="sp-bar" style="width:16px"></div><span class="sp-use">组件间常规间隔</span></div>
+        <div class="sp-row"><span class="sp-v">24px</span><div class="sp-bar" style="width:24px"></div><span class="sp-use">卡片内边距（--card padding）</span></div>
+        <div class="sp-row"><span class="sp-v">48px+</span><div class="sp-bar" style="width:48px"></div><span class="sp-use">区块分段 · 页面呼吸</span></div>
+      </div>
+      <div class="panel">
+        <div class="group-label">圆角阶梯 · Radius</div>
+        <div class="rd-row">
+          <div class="rd-item"><div class="box" style="border-radius:3px"></div><span class="rl">3px</span><span class="ru">时值格 / 拍区</span></div>
+          <div class="rd-item"><div class="box" style="border-radius:6px"></div><span class="rl">6px</span><span class="ru">歌词字块</span></div>
+          <div class="rd-item"><div class="box" style="border-radius:8px"></div><span class="rl">8px</span><span class="ru">输入 / 当前小节</span></div>
+          <div class="rd-item"><div class="box" style="border-radius:12px"></div><span class="rl">12px</span><span class="ru">卡片 / 浮层</span></div>
+          <div class="rd-item"><div class="box" style="border-radius:999px;height:36px;width:72px"></div><span class="rl">999px</span><span class="ru">胶囊控件</span></div>
+          <div class="rd-item"><div class="box" style="border-radius:50%;width:52px;height:52px"></div><span class="rl">50%</span><span class="ru">播放 / 跳段键</span></div>
+        </div>
+        <div class="group-label" style="margin-top:26px">排版要点 · Rules</div>
+        <div class="dd" style="border:none;background:none;padding:0">
+          <ul style="list-style:none">
+            <li style="font-size:12.5px;color:var(--t2);padding:5px 0">· 内容最大行宽 850px（--max-w），窄屏自动分片</li>
+            <li style="font-size:12.5px;color:var(--t2);padding:5px 0">· 正文行高恒 1.5；标签类收紧到 1.1–1.25</li>
+            <li style="font-size:12.5px;color:var(--t2);padding:5px 0">· 数字一律 mono + tabular-nums，禁止比例数字抖动</li>
+            <li style="font-size:12.5px;color:var(--t2);padding:5px 0">· 滚动条槽恒定预留，面板开合不引发布局横移</li>
+            <li style="font-size:12.5px;color:var(--t2);padding:5px 0">· 焦点环 2px 功能绿 + 2px 偏移，键盘可达</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 应用示例 -->
+<section id="showcase">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-no">07</span><h2 class="sec-title">应用示例 · 主界面一瞥</h2></div>
+    <p class="sec-sub">把上述 token 装回产品原型：时值网格、座次尺、和弦胶囊、当前小节高亮与走带控制——一次看完系统的协同效果。</p>
+    <div class="showcase">
+      <div class="sc-top">
+        <span class="sc-dot" style="background:var(--red)"></span>
+        <span class="sc-dot" style="background:var(--amber)"></span>
+        <span class="sc-dot" style="background:var(--green)"></span>
+        <span class="sc-title">beatsight · index.html — 附点布鲁斯 · 4/4 · 96 BPM</span>
+      </div>
+      <div class="sc-body">
+        <div class="viz-mock">
+          <div class="viz-ruler" id="ruler1"></div>
+          <div class="viz-band" id="band1"><div class="viz-chord" style="left:6px">E7</div></div>
+          <div class="viz-ruler" id="ruler2"></div>
+          <div class="viz-band" id="band2"><div class="viz-chord" style="left:6px">A7</div></div>
+          <div class="viz-lyric" id="lyric"></div>
+        </div>
+        <div class="sc-controls">
+          <button class="step-btn">−1</button>
+          <button class="play-btn" style="width:52px;height:52px" aria-label="暂停">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="4" height="16" rx="1.2" fill="#0A0A0A"/><rect x="14" y="4" width="4" height="16" rx="1.2" fill="#0A0A0A"/></svg>
+          </button>
+          <button class="step-btn">+1</button>
+        </div>
+        <div class="sc-note">同屏 2 行窗口 · 白=已弹 / 正在弹 · 琥珀=和弦标记 · 绿色底纹=当前小节</div>
+      </div>
+    </div>
+
+    <!-- Do / Don't -->
+    <div class="dd-grid" style="margin-top:24px">
+      <div class="dd do">
+        <h4>✓ 推荐</h4>
+        <ul>
+          <li>「正在发声」只用功能绿；乐谱标记只用琥珀；两者同框互不借用</li>
+          <li>选中态用中性深灰家族（--sel-*），与发声态明确区分</li>
+          <li>深色场景下强调色用近白（--peak），层级靠明度而非新增色相</li>
+          <li>新增尺寸先进 CSS 变量，保证「改一处、跟多处」</li>
+          <li>小字（10–11px）保持 --t3 以上明度，守住 AA 对比底线</li>
+        </ul>
+      </div>
+      <div class="dd dont">
+        <h4>✕ 避免</h4>
+        <ul>
+          <li>不要给「选中但未播放」的控件上绿色——用户会以为它在响</li>
+          <li>不要引入第七种强调色；八度三色已占用暖/中/冷三席</li>
+          <li>不要用 Inter 渲染 BPM 等数字——非等宽会逐位漂移</li>
+          <li>不要给内容容器用全胶囊圆角；999px 是控制族专属</li>
+          <li>不要在物料上放外部字体 / 图片请求——违背零依赖承诺</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-in">
+    <p>BeatSight 视觉系统提案 · 基于仓库真实设计 token 提炼 · 单文件零依赖 · MIT License</p>
+    <div class="foot-links">
+      <a href="https://github.com/chj0124/beatsight" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://beatsight.chenhuajian1995.workers.dev/" target="_blank" rel="noopener">在线体验 ↗</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">色值已复制</div>
+
+<script>
+/* Hero 时值条：宽度∝时值（八分/附点/十六分混合节奏） */
+(function(){
+  var pat=[2,3,1,2,3,1,2,2,3,1,3,2,1,2,3,1,2,2,1,3,2,1,2,3];
+  var host=document.getElementById('heroBars');
+  pat.forEach(function(t,i){
+    var b=document.createElement('i');
+    var h=18+t*22;
+    b.style.width=(t*14)+'px';
+    b.style.height=h+'px';
+    b.style.animationDelay=(i*0.035)+'s';
+    if(i%8===0)b.className='pk';else if(t===3)b.className='on';
+    host.appendChild(b);
+  });
+})();
+
+/* 组件演示：时值格行（附点布鲁斯一小节：3+3+2+2+3+3 = 16 十六分） */
+(function(){
+  var units=[3,3,2,2,3,3], gaps=3, total=16;
+  var row=document.getElementById('tzRow');
+  var x=0, w=rowWidth();
+  function rowWidth(){ return 100; }
+  units.forEach(function(u,i){
+    var c=document.createElement('div');
+    var widthPct=u/total*100;
+    c.className='tz-cell'+(i===3?' rest':'');
+    c.style.left=x+'%';
+    c.style.width='calc('+widthPct+'% - '+gaps+'px)';
+    var f=document.createElement('div'); f.className='fill';
+    f.style.width=(i<2?'100%':'0%');
+    c.appendChild(f);
+    row.appendChild(c);
+    x+=widthPct;
+  });
+})();
+
+/* 应用示例：两行可视化带（每行 1 小节 = 4 拍 = 16 格） */
+(function(){
+  function buildBand(band,ruler,offset){
+    var total=16;
+    for(var b=0;b<4;b++){
+      var z=document.createElement('div');
+      z.className='viz-beatzone';
+      z.style.left=(b*25)+'%'; z.style.width='calc(25% - 4px)';
+      band.appendChild(z);
+    }
+    /* 当前小节底纹 */
+    if(offset===0){
+      var cur=document.createElement('div');
+      cur.className='viz-current';
+      cur.style.left='0%'; cur.style.width='calc(50% - 4px)';
+      band.appendChild(cur);
+    }
+    /* 时值格：附点型 3,3,2 / 3,3,2 ... */
+    var pat=[3,3,2,3,3,2], x=0;
+    pat.forEach(function(u,i){
+      var c=document.createElement('div');
+      c.className='tz-cell'+((i+offset)%5===4?' rest':'');
+      var wp=u/total*100;
+      c.style.left=x+'%'; c.style.width='calc('+wp+'% - 3px)';
+      var f=document.createElement('div'); f.className='fill';
+      var played=(offset===0 && i<3);
+      f.style.width=played?'100%':'0%';
+      c.appendChild(f);
+      band.appendChild(c);
+      x+=wp;
+    });
+    /* 座次尺 */
+    var marks=['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
+    marks.forEach(function(m,i){
+      var s=document.createElement('span');
+      s.style.width=(100/16)+'%';
+      s.style.textAlign='center';
+      s.textContent=m;
+      if(i%4===0)s.style.color='var(--t2)';
+      ruler.appendChild(s);
+    });
+  }
+  buildBand(document.getElementById('band1'),document.getElementById('ruler1'),0);
+  buildBand(document.getElementById('band2'),document.getElementById('ruler2'),1);
+  /* 歌词 */
+  var words=['在','他','乡','的','路','上'];
+  var ly=document.getElementById('lyric');
+  words.forEach(function(w){
+    var s=document.createElement('span');
+    s.style.width=(100/16*2.66)+'%';
+    s.style.textAlign='center';
+    s.textContent=w;
+    ly.appendChild(s);
+  });
+})();
+
+/* 色值复制 */
+(function(){
+  var toast=document.getElementById('toast'),tm;
+  document.querySelectorAll('.sw .hx').forEach(function(el){
+    el.addEventListener('click',function(){
+      var hex=el.childNodes[0].textContent.trim();
+      (navigator.clipboard?navigator.clipboard.writeText(hex):Promise.reject()).then(function(){},function(){
+        var ta=document.createElement('textarea');ta.value=hex;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy')}catch(e){} document.body.removeChild(ta);
+      }).finally(function(){
+        toast.textContent='已复制 '+hex;
+        toast.classList.add('show');
+        clearTimeout(tm); tm=setTimeout(function(){toast.classList.remove('show')},1600);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
