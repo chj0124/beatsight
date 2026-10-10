@@ -251,9 +251,15 @@ function probe(){
                   title: document.title, const: boot.version };
   /* v2.10.10（用户要求：把状态点移进品牌区徽章）：点是否真的画在徽章的矩形里 —— **木桩测不出来**
      的那一类（桩不解析 HTML、也给不出真实布局）。取两者的 getBoundingClientRect 比包络，
-     顺带取计算样式确认它真被画出来（尺寸 > 0 且底色非透明） */
+     顺带取计算样式确认它真被画出来（尺寸 > 0 且底色非透明）。
+     ★ v3.44.0：版本徽章 + 保存状态点自顶栏整组迁入设置弹窗（常驻红点从主界面退场），
+     弹窗默认关闭 ⇒ 直接量必得 0×0。为保住本条「点真的被画出来（真布局）」的原意，
+     先按真实用户路径打开设置（#settingsBtn.click()）、量完再关回去——不改动后续探针读数。 */
   const pdEl = document.getElementById("persistDot"), bvEl = document.getElementById("brandVer");
-  if (pdEl && bvEl && bvEl.parentNode){
+  const setBtn = document.getElementById("settingsBtn"), setClose = document.getElementById("settingsClose");
+  if (pdEl && bvEl && bvEl.parentNode && setBtn){
+    setBtn.click();
+    await new Promise(r => setTimeout(r, 50));
     const a = pdEl.getBoundingClientRect();
     const b = bvEl.parentNode.getBoundingClientRect();
     out.badgeDot = {
@@ -261,6 +267,7 @@ function probe(){
               && a.top >= b.top - 1 && a.bottom <= b.bottom + 1,
       w: Math.round(a.width), h: Math.round(a.height),
       bg: getComputedStyle(pdEl).backgroundColor };
+    if (setClose) setClose.click();
   }
   const el = document.getElementById("bpmNum");
   if (el){
