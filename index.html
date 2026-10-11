@@ -575,7 +575,17 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 .viz-legend .vl-item{display:inline-flex;align-items:center;gap:6px}
 .viz-legend .vl-swatch{display:inline-block;width:18px;height:12px;border-radius:3px;
   background:var(--peak)}
-.viz-legend .vl-swatch.vl-rest{background:var(--rest-fill);border:1px dashed var(--rest-line)}
+/* 本轮：`.vl-swatch.vl-rest` 随图例里那条灰格说明一并退役（原规则 = 淡灰底 + 1px 虚线边框）；
+   同轮新增 `.vl-air` —— 空扫项的小示意块，与主视图 `.strumv.ghost` **同形同色**（蓝虚线杆身 +
+   蓝色三角头，取同一个 `--blue` 令牌）⇒ 图例里看到的就是网格里那支箭头（v3.33.13 同源口径）。 */
+.viz-legend .vl-swatch.vl-air{position:relative;height:18px;background:none;border-radius:0}
+/* 杆身用固定节奏的短划线（3px 实 / 3px 空）而非 `border-left:2px dashed`：网格里的箭头杆身有
+   44px 长、dashed 的节奏够看，而这里只有 10px——默认虚线节奏下会糊成一根实线，与「蓝虚线」矛盾 */
+.viz-legend .vl-swatch.vl-air::before{content:"";position:absolute;left:50%;top:7px;bottom:1px;
+  width:2px;margin-left:-1px;
+  background:repeating-linear-gradient(to bottom,var(--blue) 0 3px,transparent 3px 6px)}
+.viz-legend .vl-swatch.vl-air::after{content:"";position:absolute;left:50%;top:1px;margin-left:-4px;
+  border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:6px solid var(--blue)}
 .viz-legend .pill{margin-left:auto;padding:4px 12px;font-size:12px}
 .viz-legend[hidden]{display:none}
 /* v3.0.0 批 4（用户要求）：行带 / 歌词行**不再有底色**。
@@ -3514,11 +3524,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="viz-legend" id="vizLegend">
       <span class="vl-item"><i class="vl-swatch" aria-hidden="true"></i>格宽 = 时值</span>
       <span class="vl-item">↑↓ = 扫弦方向</span>
-      <!-- ★ v3.44.0（用户拍板）：「灰格 = 休止」→「灰格 = 空拍（不拨弦）」。理由：休止是记谱
-           术语、自带「静音」含义，但灰格表达的是手部动作维度（这一格不触发新音）——真实吉他上
-           前音可延音、可闷音，弦上有没有声音由演奏决定，应用刻意不建持续音模型。
-           （旁证：休止格 + 扫弦方向 = 空扫，本就是「手在动、弦不出声」的动作描述。） -->
-      <span class="vl-item"><i class="vl-swatch vl-rest" aria-hidden="true"></i>灰格 = 空拍（不拨弦）</span>
+      <!-- ★ 本轮（用户拍板）：撤掉「灰格 = 空拍（不拨弦）」一项，改为说明**空扫图标**（蓝虚线箭头
+           .strumv.ghost）：它是全页唯一没有文字解释、又最容易被误读成实扫的记号。历史留痕：v3.44.0
+           曾把「灰格 = 休止」写成「灰格 = 空拍（不拨弦）」（休止是记谱术语、自带「静音」含义，而灰格
+           表达的是动作维度）。已知代价：图例自此不再解释灰格（纯休止）——那层语义由「使用方法」承担。 -->
+      <span class="vl-item"><i class="vl-swatch vl-air" aria-hidden="true"></i>蓝虚线箭头 = 空扫（假装在扫弦，但不触弦）</span>
       <button class="pill outline" id="vizLegendClose" aria-label="关闭图例">知道了</button>
     </div>
     <!-- v3.34.5（审计 B-1）：后台被节流后的**解释条**。
@@ -3962,8 +3972,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
-          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 灰格 = 空拍（不拨弦）），
-          点「知道了」收起后就不再出现。<b>空拍只表示这一格不拨弦</b>：它占满自己的时值，但弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
+          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 蓝虚线箭头 = 空扫），
+          点「知道了」收起后就不再出现。图例里的<b>空扫（蓝虚线箭头）</b> = 「假装在扫弦、但不触弦」：那一格占满自己的时值、不触发新音；<b>灰格（纯休止）</b>同样不触发新音。弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -4217,7 +4227,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             （再点音符块库改成你要的）；「− 删当前小节」删掉它，<b>最少留 1 小节</b>
             ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
-          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色括号</b>画出来。
+          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色虚线箭头</b>画出来。
             选中音符后用「发声」开关可直接翻转<b>发声 ↔ 休止</b>：已有方向的音符翻过去即成空扫，再点一次翻回来；开关不改动方向与弦区，时长（占位）也不变</li>
           <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
                v2.25.4 补"低/高弦区各代表哪几根弦"；
@@ -4604,23 +4614,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4636  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6078  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8202  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9410  Modal         应用内弹窗
-     L9555  Viz           时值可视化渲染与每帧动画
-     L13104 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13802 Trainer       变速训练器
-     L14015 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14699 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16688 Editor        自定义节奏型编辑器
-     L17268 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17361 Ear           听辨训练（v1.10.0）
-     L17589 Arrange       曲式编排（v2.0.0）
-     L21654 Help          使用方法（v2.0.1）
-     L21809 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21891 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22187 初始化（装配） 各模块 hook 接线与启动
+     L4646  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6088  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8212  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9420  Modal         应用内弹窗
+     L9565  Viz           时值可视化渲染与每帧动画
+     L13114 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13812 Trainer       变速训练器
+     L14025 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14709 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16698 Editor        自定义节奏型编辑器
+     L17278 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17371 Ear           听辨训练（v1.10.0）
+     L17599 Arrange       曲式编排（v2.0.0）
+     L21664 Help          使用方法（v2.0.1）
+     L21819 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21901 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22197 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4646,7 +4656,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.45.4";
+const VERSION = "3.45.5";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
