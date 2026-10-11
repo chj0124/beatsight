@@ -630,6 +630,60 @@ function scrollProbe(){
   return JSON.stringify(out);
 })()`;
 }
+/* ★★★ 2026-10-11（用户实报「连续滚动下底栏显示不全 / 缩小页面后顶栏只占屏幕 70%」）：
+   连续滚动的行槽横向伸出视口 ⇒ **文档**横向溢出。桌面档由 body 的 overflow-x:hidden 兜住
+   （不出现滚动条、也不能横拖，既有断言在守），但**移动端**不同：手机浏览器遇到横向溢出会
+   **撑大布局视口**（真机实测：390 的屏 → innerWidth/scrollWidth 553），而 `position:fixed`
+   的底栏按被撑大的**初始包含块**排布 ⇒ 底栏宽 553（比屏幕宽 163px），右侧播放/跳段/循环控件
+   跑到屏幕外 —— 用户看到的「底栏没显示完全」；为了看全它把页面**缩小**之后，只占布局视口宽
+   （390）的**顶栏**就只剩屏幕的 70% —— 用户看到的「顶栏没占满顶部」。
+   ⇒ 修法 = 根元素上 `html{overflow-x:clip}`（`clip` 只有写在 html 上才传播到视口；body 版实测
+     零效果），落在 index.html 的 **≤960 档**——桌面档保持既有像素几何（`clip` 会动滚动条槽：
+     1440 下顶栏/主列 1440 → 1425，会让用户拍板的「底栏右块右缘 = 跑道右缘」差 15px）。
+   本探针走真实 UI 路径（设置 → 点「连续滚动」），在窄屏档量四个口径，量完复原。 */
+function scrollOverflowProbe(){
+  return `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const round = v => Math.round(v * 10) / 10;
+  const out = {};
+  const viz = document.getElementById("viz");
+  const st = document.getElementById("settingsBtn");
+  const tg = document.getElementById("scrollModeToggle");
+  if (!viz || !st || !tg) return JSON.stringify({ err: "缺 #viz / #settingsBtn / #scrollModeToggle" });
+  out.beforeScroll = viz.classList.contains("scroll-mode");
+  st.click(); tg.click();
+  const sc = document.getElementById("settingsClose"); if (sc) sc.click();
+  await sleep(250);
+  out.scrollOn = viz.classList.contains("scroll-mode");
+  out.ariaOn = tg.getAttribute("aria-checked");
+  const de = document.documentElement;
+  out.docClientW = de.clientWidth;
+  out.docScrollW = de.scrollWidth;
+  out.docOverflowX = round(de.scrollWidth - de.clientWidth);
+  out.winW = window.innerWidth;
+  const pb = document.getElementById("playBar");
+  if (pb){
+    const r = pb.getBoundingClientRect();
+    out.barW = round(r.width);
+    out.barRight = round(r.right);
+  }
+  const rights = [];
+  ["presetLibBtn", "argJumpPrev", "playBtn", "argJumpNext", "argJumpLoopBtn"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) rights.push(round(r.right));
+  });
+  out.ctrlRightCount = rights.length;
+  out.ctrlMaxRight = rights.length ? Math.max.apply(null, rights) : null;
+  /* 复原：再点一次开关（与 scrollProbe 同款"量完还原"，不改用户存档） */
+  st.click(); tg.click();
+  const sc2 = document.getElementById("settingsClose"); if (sc2) sc2.click();
+  await sleep(200);
+  out.restored = !viz.classList.contains("scroll-mode");
+  return JSON.stringify(out);
+})()`;
+}
 function layoutProbe(){
   return `(() => {
   const round = v => Math.round(v * 10) / 10;
@@ -2434,6 +2488,9 @@ function portraitFixProbe(){
       const narrow = await probeJson("layoutProbe", layoutProbe(), true);
       /* ★★★ v3.36.21：竖屏四修（地图/滑条/播放键间距/状态灯对齐）——就在这档 390 量 */
       result.portraitFix = await probeJson("portraitFixProbe", portraitFixProbe(), true);
+      /* ★★★ 2026-10-11（用户实报）：窄屏 + 连续滚动 —— 文档/底栏不得横向溢出
+         （背景、实测数字与"为什么只在窄屏档立"见 scrollOverflowProbe 头注释） */
+      result.scrollOverflow = await probeJson("scrollOverflowProbe", scrollOverflowProbe(), true);
       /* ★★★ v3.36.20 补5：**横屏**（640×360）单独量一次底栏 —— 那条改动只在
          `@media (max-width:640px) and (orientation:landscape)` 内，竖屏 390 量不到。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
@@ -4338,6 +4395,30 @@ async function main(){
         ok(sr.offCssH === "", p.label + "：★ 回到分页后 #viz 的裁剪高度已交还内容", "实际 " + JSON.stringify(sr.offCssH));
       } else {
         ok(false, p.label + "：v3.0.0 连续滚动探针未取到（本项未验证）", JSON.stringify(sr || {}));
+      }
+      /* ★★★ 2026-10-11（用户实报，本轮修）：**窄屏 + 连续滚动**下，文档不得横向溢出、
+         fixed 底栏不得超视口宽、底栏内可见控件必须全在屏内。
+         靶子 = index.html ≤960 档的 `html{overflow-x:clip}`（撤掉它 ⇒ 下面三条必具名转红）。
+         ★ 只在窄屏立：桌面档的溢出由 body 的 hidden 兜住（上一条在守），且那里不会撑大 ICB。 */
+      const so = r.scrollOverflow;
+      if (so && !so.err){
+        ok(so.scrollOn === true && so.docClientW <= 960,
+          p.label + "：★★ 连续滚动溢出探针在**窄屏档**量到（客户区 " + so.docClientW + "px）",
+          "scrollOn=" + so.scrollOn + " / clientW=" + so.docClientW);
+        ok(typeof so.docOverflowX === "number" && Math.abs(so.docOverflowX) <= 1,
+          p.label + "：★★★ 窄屏连续滚动下**文档无横向溢出**（=0 才不会被手机浏览器撑大布局视口）",
+          "scrollWidth " + so.docScrollW + " − clientWidth " + so.docClientW + " = " + so.docOverflowX);
+        ok(typeof so.barW === "number" && typeof so.barRight === "number"
+           && so.barW <= so.docClientW + 1 && so.barRight <= so.docClientW + 1,
+          p.label + "：★★★ 底栏（fixed）不超视口宽——宽 = 客户区宽、右缘不越界",
+          "底栏宽 " + so.barW + " / 右缘 " + so.barRight + " vs 客户区 " + so.docClientW);
+        ok(so.ctrlRightCount >= 4 && typeof so.ctrlMaxRight === "number"
+           && so.ctrlMaxRight <= so.docClientW + 1,
+          p.label + "：★★★ 底栏内所有可见控件都在屏内（" + so.ctrlRightCount + " 个，最右缘 ≤ 客户区宽）",
+          "最右缘 " + so.ctrlMaxRight + " vs 客户区 " + so.docClientW);
+        ok(so.restored === true, p.label + "：★ 探针量完已复原为分页（不留副作用）", "restored=" + so.restored);
+      } else {
+        ok(false, p.label + "：连续滚动溢出探针未取到（故障：" + ((so && so.err) || "缺失") + "）", "");
       }
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");

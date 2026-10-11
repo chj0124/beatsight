@@ -108,7 +108,10 @@
    transform 造成的溢出会计入滚动区域、冒出横向滚动条（可以左右拖，非常难受）。
    裁在 body 上，效果正好是"内容一直延伸到屏幕边缘、由屏幕自己切断"，也就没有"带子的边界"了。
    ★ 必须用 `hidden` 而不是 `clip`：`clip` 的 overflow **不会从 body 传播到视口**（实测桌面上
-     仍能横向拖动 300px），而 `hidden` 会——窄屏档本来就是 `overflow-x:hidden`，这里与它统一。 */
+     仍能横向拖动 300px），而 `hidden` 会——窄屏档本来就是 `overflow-x:hidden`，这里与它统一。
+   ★ 2026-10-11 补充（用户实报）：这套兜底**在移动端不够**——横向溢出会让手机浏览器**撑大布局
+     视口**（fixed 底栏按被撑大的初始包含块排布 ⇒ 比屏幕宽、右侧控件跑到屏外）。正解是**根元素**上
+     的 `overflow-x:clip`，落在 ≤960 档那条（含实测数字，以及"为什么不能只裁 body"）。 */
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-y:scroll;scrollbar-gutter:stable}   /* ★ v3.19.0：滚动条槽恒定预留——面板打开 → 卡片变高 → 页面出滚动条 → 视口窄 15px → 居中网格整体平移 7.5px（实测音量列 220→212.5，也是历届"boot 歌词错位"的深层因素之一）。恒定预留后开关列零横移；overflow-y:scroll 兜底不支持 scrollbar-gutter 的老浏览器 */
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 button:disabled{cursor:not-allowed}
@@ -2707,6 +2710,21 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   .arg-pat-bar{height:36px;--yT2:14.4px;--yB1:21.6px;--yB2:36px}
 }
 @media (max-width:960px){
+  /* ★★★ 2026-10-11（用户实报「连续滚动下底栏显示不全 / 缩小页面后顶栏只占屏幕 70%」）：
+     根因 = 连续滚动的**行槽横向伸出视口** ⇒ 文档横向溢出（真机实测：390 的屏 → scrollWidth 553）。
+     移动端浏览器遇到横向溢出会**撑大布局视口**（innerWidth 实测 390 → 553），而 fixed 的底栏按
+     被撑大的初始包含块排布 ⇒ 底栏宽 553（比屏幕宽 163px），右侧控件（播放/跳段/循环）跑到屏外
+     —— 用户看到的就是「底栏没显示完全」；为了看全它把页面**缩小**之后，只占布局视口宽（390）的
+     **顶栏**就只剩屏幕的 70% —— 用户看到的「顶栏没占满顶部」。
+     ⇒ 在**根元素**上裁掉横向溢出：文档不再有溢出 ⇒ 布局视口不被撑大、底栏宽 == 视口宽、也就不可能
+     再被"缩小去看"；行槽照旧画到屏幕边缘由屏幕自己切断（视觉零变化）。
+     ★ 为什么是 html 而不是 body：L106-111 那条注释是对的——`clip` 放 **body** 上不会传播到视口
+       （本轮实测：body 版 docScrollW 仍 553、底栏仍 553，零效果），只有放**根元素**上才会。
+       body 那条 `hidden` 原样保留（它管住桌面档的"可拖动"）。
+     ★ 为什么收在 ≤960 档：桌面档被 body 那条兜住（无滚动条、不可拖），而 `clip` 会改变滚动条槽
+       的几何——1440 下顶栏/主列宽 1440 → 1425，会打破用户拍板的「底栏右块右缘 = 跑道右缘」契约
+       （smoke ★★★ 实测差 15px）。手机档才是这条 bug 的受害面，故只在窄屏档生效。 */
+  html{overflow-x:clip}
   body{overflow-x:hidden}
   .topbar{padding:0 16px}
   .brand{font-size:15px}
@@ -4614,23 +4632,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4646  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6088  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8212  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9420  Modal         应用内弹窗
-     L9565  Viz           时值可视化渲染与每帧动画
-     L13114 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13812 Trainer       变速训练器
-     L14025 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14709 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16698 Editor        自定义节奏型编辑器
-     L17278 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17371 Ear           听辨训练（v1.10.0）
-     L17599 Arrange       曲式编排（v2.0.0）
-     L21664 Help          使用方法（v2.0.1）
-     L21819 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21901 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22197 初始化（装配） 各模块 hook 接线与启动
+     L4664  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6106  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8230  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9438  Modal         应用内弹窗
+     L9583  Viz           时值可视化渲染与每帧动画
+     L13132 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13830 Trainer       变速训练器
+     L14043 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14727 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16716 Editor        自定义节奏型编辑器
+     L17296 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17389 Ear           听辨训练（v1.10.0）
+     L17617 Arrange       曲式编排（v2.0.0）
+     L21682 Help          使用方法（v2.0.1）
+     L21837 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21919 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22215 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4656,7 +4674,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.45.5";
+const VERSION = "3.45.6";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
