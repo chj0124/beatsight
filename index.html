@@ -1691,6 +1691,21 @@ input[type=range].vol{width:120px}
 .tg-flyout .f-row + .f-row{margin-top:7px}
 .tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap;color:var(--t2)}
 .tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
+/* ★★★ 本轮（用户实拍「'步长' 的步 与 '小节' 的小 为什么没对齐」）：实测两行第二列标签
+   左缘差 **2.00px**（390 与 1440 都是 2px）。根因是**两行结构不同**：
+     行 1 = [#trTargetWrap(.inp-with-unit) 6px 外距][步长 ±][输入]，
+   而那枚壳在浮层内被 **`.core-pills .inp-with-unit{gap:4px}`**（L1646，给胶囊行「预备 [4 拍]」
+   那种紧凑排布写的）命中 ⇒ 行 1 第一段只隔 4px，其余相邻项走行距 6px ⇒ 短 2px，
+   **行 1 之后所有东西整体左移 2px**（行 2 没有这枚壳，故其第二列标签落在正位）。
+   ⇒ 修法不是"补偿数值"，而是**消掉结构差异**：让壳不产生盒子（`display:contents`），
+   它的子元素直接参与 `.f-row` 的 flex 排布 ⇒ 四个槽位全按 6px 同构（实测 diff 0）。
+   ★ 为什么不用 `.tg-flyout .inp-with-unit{gap:6px}` 补偿：那只把数值对回去，两行结构仍不同；
+     且 `.core-pills .inp-with-unit` 与 `.tg-flyout …` 特异性同为 (0,2,0)，要靠源序决胜负。
+   ★ 用 id 选择器提高特异性，不依赖源序；副作用面只有浮层内容宽 +2px（192.33 → 194.33），
+     面板宽随之 +2px（现有闸门没有钉浮层宽度的断言，真机断言由 smoke 的 slotGeomProbe 承担）。
+   ★ `#trTargetWrap` 的 id 保留 ⇒ t175 的 id 清单断言不受影响；它从不 hidden，
+     故 `.inp-with-unit[hidden]` 那条兜底不受牵连。 */
+#trainerFlyout .inp-with-unit{display:contents}
 .tg-flyout .tr-inp{width:46px;padding:3px 6px;font-size:12px;text-align:center}
 .tg-flyout #muteRandomToggle{padding:4px 10px;font-size:12px}
 .tg-flyout .tr-inp::-webkit-outer-spin-button,
@@ -4656,23 +4671,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4688  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6130  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8254  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9482  Modal         应用内弹窗
-     L9627  Viz           时值可视化渲染与每帧动画
-     L13176 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13874 Trainer       变速训练器
-     L14091 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14765 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16754 Editor        自定义节奏型编辑器
-     L17334 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17427 Ear           听辨训练（v1.10.0）
-     L17655 Arrange       曲式编排（v2.0.0）
-     L21720 Help          使用方法（v2.0.1）
-     L21875 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21957 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22253 初始化（装配） 各模块 hook 接线与启动
+     L4703  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6145  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8269  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9497  Modal         应用内弹窗
+     L9642  Viz           时值可视化渲染与每帧动画
+     L13191 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13889 Trainer       变速训练器
+     L14106 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14780 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16769 Editor        自定义节奏型编辑器
+     L17349 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17442 Ear           听辨训练（v1.10.0）
+     L17670 Arrange       曲式编排（v2.0.0）
+     L21735 Help          使用方法（v2.0.1）
+     L21890 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21972 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22268 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4698,7 +4713,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.45.8";
+const VERSION = "3.45.9";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

@@ -754,6 +754,25 @@ function slotGeomProbe(){
   out.trainerFlyoutInsideVp = tf ? (tf.l >= -1 && tf.r <= out.clientW + 1) : null;
   out.noteVisible = !note.hidden && nr !== null && nr.w > 0 && nr.h > 0;
   out.noteWarn = note.classList.contains("warn");
+  /* ★★★ 本轮（用户实拍「'步长' 的步 与 '小节' 的小 为什么没对齐」）：变速面板两行**第二列标签**
+     必须同 x。根因曾是两行结构不同——行 1 的「目标+输入」包在 .inp-with-unit 里，而它在浮层内
+     被 .core-pills .inp-with-unit{gap:4px}（给胶囊行紧凑排布写的那条）命中 ⇒ 第一段少 2px、
+     行 1 之后整体左移 2px。修法 = #trainerFlyout .inp-with-unit{display:contents}
+     （壳不产生盒子 ⇒ 四槽同构；★ 本探针是模板字符串，注释里不能出现反引号——首版踩过，
+       页面源码当场 SyntaxError）。
+     这里就在**面板开着**的这一刻量两条左缘（此刻正是拒开态，面板已强制打开）。 */
+  (() => {
+    const panel = document.getElementById("trainerPanel");
+    if (!panel) { out.twoColDiff = null; return; }
+    const rows = [...panel.children].filter(e => e.classList && e.classList.contains("f-row"));
+    if (rows.length < 2) { out.twoColDiff = null; return; }
+    const labAt = row => { const ls = row.querySelectorAll(".lab"); return ls.length >= 2 ? ls[1] : null; };
+    const a = labAt(rows[0]), b = labAt(rows[1]);
+    if (!a || !b) { out.twoColDiff = null; return; }
+    out.row1Col2Left = round(a.getBoundingClientRect().left);
+    out.row2Col2Left = round(b.getBoundingClientRect().left);
+    out.twoColDiff = round(out.row2Col2Left - out.row1Col2Left);
+  })();
   /* 复位：点面板**外**（body）收起强制打开的面板——刻意不走"再点一次开关"那条路：
      那条会顺带写 slotDismissed[trainer]=true，给后续探针留下"面板被手动收起过"的残留状态。
      点 body 命中文档级"点别处即收起"监听 ⇒ clearSlotForce()（原因与面板一起清）。 */
@@ -4538,6 +4557,9 @@ async function main(){
           p.label + "：★★ 面板内原因出现时芯底那行**视觉隐藏**（文字保留 ⇒ 两处同文案；收起后复原）",
           "拒开时 " + sg.progVisibility + " / 收起后 " + sg.progVisibilityAfter
           + " / 芯底文本 " + JSON.stringify(sg.progText));
+        ok(typeof sg.twoColDiff === "number" && Math.abs(sg.twoColDiff) <= 1,
+          p.label + "：★★★ 变速面板两行**第二列标签同 x**（「步长 ±」与「小节」对齐，容差 1px）",
+          "步长 ± left " + sg.row1Col2Left + " vs 小节 left " + sg.row2Col2Left + "（差 " + sg.twoColDiff + "px）");
         ok(sg.noteVisible === true && sg.noteInsideFlyout === true && sg.noteInsideVp === true,
           p.label + "：★★★ 面板内原因**没被裁**（完整落在面板与视口之内）",
           "note " + JSON.stringify(sg.note) + " / flyout " + JSON.stringify(sg.trainerFlyout));
