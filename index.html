@@ -1674,6 +1674,15 @@ input[type=range].vol{width:120px}
   background:var(--card2);border-left:1px solid var(--line);border-top:1px solid var(--line);
   transform:rotate(45deg)}
 .tg-flyout[hidden]{display:none}   /* 同 .tr-panel[hidden] 的坑：类选择器的 display 会盖掉 UA 的 [hidden] */
+/* ★★★ 2026-10-11（用户报障「原因文案被参数槽挡住」）：拒开原因此前只写芯底 #trainerProg，
+   而强制打开的面板正好压在那行上（实测 390 档：原因行 294px 里左 176px 被面板盖住，只剩右半句）。
+   现在同一段原因**同时写进面板内**的 #trainerWarn —— 原因与它要改的那个输入框（目标 BPM）
+   同框，天然不会被面板自己挡住；芯底那行照旧保留（折叠态与其它路径的就地通道）。
+   两态与芯底那行逐字同构：普通态 = 浅底提示，`.warn` = 红框（目标 ≤ 当前速度那种硬阻断）。 */
+.tg-flyout .f-note{font-size:11px;line-height:1.35;color:var(--t2);background:rgba(var(--veil),.06);
+  border-radius:6px;padding:6px 10px;margin-bottom:9px}
+.tg-flyout .f-note.warn{color:var(--red);background:none;box-shadow:inset 0 0 0 1px var(--red)}
+.tg-flyout .f-note[hidden]{display:none}   /* 同族兜底：将来若给 .f-note 加 display，[hidden] 仍生效 */
 /* 面板内排版：绿色小标题 → 参数行 → 子开关行（两块同构，行距 7px） */
 .tg-flyout .f-title{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.03em;margin-bottom:9px}
 .tg-flyout .tr-panel{display:block;margin-top:0}
@@ -1700,7 +1709,15 @@ input[type=range].vol{width:120px}
      且点任一枚胶囊都能收起它自己那块；要不要在窄档做"只留一块"另议。 */
 @media (max-width:1279.9px){
   .core-pill-hold{position:static}
-  .tg-flyout{left:0;right:auto;top:calc(var(--row-h, 36px) + 10px);min-width:0;max-width:100%}
+  /* ★★★ 2026-10-11（用户报障「参数槽偏左，为什么不居中」）：本档浮层锚的是**芯**（.group），
+     上一版写的是 `left:0` ⇒ 面板永远贴芯左缘。实测 390 档：芯 32→358（326 宽）、静音面板
+     只有 221 宽 ⇒ 右侧空出 105px，看着就是"偏左"。改成 `left:50% + translateX(-50%)`：
+     面板在芯内水平居中，`max-width:100%` 继续托底（面板绝不可能宽过芯、也就不会越出视口）。
+     ★ 为什么不用"居中于它自己那枚胶囊"：面板最宽 340px，而芯只有 326/296px——挂到贴边那枚
+       胶囊底下会横向越出视口，还得再加一层夹取逻辑；本档的既定形态就是"锚芯"，居中是它的正体。
+     ★ transform 会成为新的包含块：本档 `::before` 箭头本就 `display:none`，面板内也没有
+       绝对定位的子节点 ⇒ 无副作用。≥1280 档不受影响（那条 `#muteFlyout{right:0}` 仍在）。 */
+  .tg-flyout{left:50%;transform:translateX(-50%);right:auto;top:calc(var(--row-h, 36px) + 10px);min-width:0;max-width:100%}
   .tg-flyout::before{display:none}
 }
 /* ★ v3.19.0：≥900 控制卡片**三列均分**（用户需求：音量 | BPM | 三开关同排、
@@ -1783,6 +1800,15 @@ input[type=range].vol{width:120px}
    ★ 与右列"参数槽"的严格同线另议（见 CHANGELOG：面板行比本行低约 29/50px，真要同线需让左卡长高约 30/50px）。 */
 #trainerProg{margin-top:4px}
 body[data-theme="obs"] #trainerProg{margin-top:2px}
+/* ★★★ 2026-10-11（用户要求）：拒开原因**也在面板内**写了之后，芯底这行就重复了——而且它被居中的
+   面板从中间盖住，两侧各漏半句（用户实拍："先填一个…" / "只循环不爬坡)" 夹着面板，很碎）。
+   故面板内那份出现时给这行加 .prog-dup：**只做视觉隐藏、文字原样保留**（DOM 与无障碍之外的
+   一切断言都不受影响），面板内那份承担可读性。
+   ★ 用 visibility 而不是 display:none：后者会把芯高缩掉这一行的 36px ⇒ 面板是 absolute 锚在芯上的，
+     那一下会看见整条可视化带上移；visibility 不参与布局 ⇒ 高度不变、零跳动。
+   ★ 必须显式兜 [hidden] 同族坑不适用于本条，但**这条兜的是"#trainerProg 的 display:flex 会盖掉
+     任何隐藏手段"** —— visibility 不受 display 影响，故这条本身就是完整实现。 */
+#trainerProg.prog-dup{visibility:hidden}
 /* ★ v3.33.10（用户复盘）：**不给 min-height 预留**——初版为满足"与参数槽等高"写了 min-height:54px，
    结果左列内容变高、同一栅格行的两张控制卡一起长高（用户实拍指出）。改回自然高度：
    这一行是"注解"，不该反过来决定卡片高度；等高如需再议，用排版而不是硬预留。 */
@@ -3324,6 +3350,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                 </span>
                 <div class="tg-flyout" id="trainerFlyout" hidden>
                   <div class="f-title">变速规则</div>
+                  <!-- ★★★ 2026-10-11（用户报障「点击变速后的原因文案被参数槽挡住、看不见」）：
+                       拒开原因（目标为空 / 目标 ≤ 当前速度）**同时**写这里——面板内可见，
+                       而不只是芯底那行（它会被面板自己盖住）。文案由 setTrainerNote 统一写。 -->
+                  <div class="f-note" id="trainerWarn" hidden></div>
                   <div class="tr-panel" id="trainerPanel" hidden>
                     <!-- 「目标」框随整组参数走（id 与接线不动）；空目标时由开关处理器就地给出原因
                          （openSlotForTarget：开面板 + 焦点送进目标框 + 原因写芯底 #trainerProg） -->
@@ -4632,23 +4662,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4664  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6106  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8230  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9438  Modal         应用内弹窗
-     L9583  Viz           时值可视化渲染与每帧动画
-     L13132 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13830 Trainer       变速训练器
-     L14043 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14727 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16716 Editor        自定义节奏型编辑器
-     L17296 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17389 Ear           听辨训练（v1.10.0）
-     L17617 Arrange       曲式编排（v2.0.0）
-     L21682 Help          使用方法（v2.0.1）
-     L21837 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21919 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22215 初始化（装配） 各模块 hook 接线与启动
+     L4694  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6136  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8260  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9488  Modal         应用内弹窗
+     L9633  Viz           时值可视化渲染与每帧动画
+     L13182 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L13880 Trainer       变速训练器
+     L14097 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14781 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16770 Editor        自定义节奏型编辑器
+     L17350 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
+     L17443 Ear           听辨训练（v1.10.0）
+     L17671 Arrange       曲式编排（v2.0.0）
+     L21736 Help          使用方法（v2.0.1）
+     L21891 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L21973 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22269 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4674,7 +4704,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.45.6";
+const VERSION = "3.45.7";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -8273,11 +8303,31 @@ function syncCountInBeats(){
   const w = $("countInBeatsWrap");
   if (w) w.hidden = !S.countIn.on;
 }
+/* ★★★ 2026-10-11（用户报障）：拒开原因**双写**——芯底 #trainerProg（既有就地通道）
+   与面板内 #trainerWarn（新增）。为什么要有面板内那一份：拒开时面板是被**强制打开**的，
+   而它正好压在芯底那行上（实测 390 档：原因行 294px 里左 176px 被面板盖住），用户看不见原因。
+   面板内那份与"要改的那个输入框"同框，且不会被面板自己遮挡。
+   ★ 三个写点一起收敛，避免出现"面板里红条还挂着、原因却已过期"（同 v3.41.0 那条纪律）：
+     · openSlotForTarget —— 拒开时写入；
+     · clearSlotForce —— 撤强制打开（点别处 / 点开关收起 / Esc / 改了目标或 BPM）时清空；
+     · updateProg —— 常规刷新（训练开着）时清空。 */
+function setTrainerNote(/** @type {string} */ text, /** @type {boolean} */ warn = false){
+  const n = $("trainerWarn");
+  if (!n) return;
+  n.textContent = text || "";
+  n.classList.toggle("warn", !!warn);
+  n.hidden = !text;
+  /* 面板内那份出现时，芯底那行**视觉隐藏**（文字保留）——否则两处同文案、且芯底那行被居中面板
+     从中间盖住，两侧各漏半句。见 #trainerProg.prog-dup 那条注释（为什么用 visibility）。 */
+  const p = $("trainerProg");
+  if (p) p.classList.toggle("prog-dup", !!text);
+}
 function clearSlotForce(){
   if (!paramSlotForce) return;
   paramSlotForce = "";
   const tp = $("trainerProg");
   if (tp && !S.trainer.on){ tp.textContent = ""; tp.classList.remove("warn"); }
+  setTrainerNote("");
   syncParamSlots();
 }
 /* 三处清空点：只装一次监听（模块脚本在 body 末尾执行，此处 DOM 已就绪） */
@@ -13892,6 +13942,8 @@ const Trainer = (() => {
     const el = $("trainerProg");
     el.classList.toggle("live", S.playing && S.trainer.on);
     el.classList.remove("warn");
+    /* 常规刷新 = 拒开态结束（训练已开）⇒ 面板内那条原因一并撤掉（见 setTrainerNote 注释） */
+    setTrainerNote("");
     /* ★ v3.41.0（用户纠正 · 撤回 G4）：读数行随**变速训练**生死——没开就空文本零高度 */
     if (!S.trainer.on){ el.textContent = ""; }
     else el.textContent = `当前 ${S.bpm} BPM · 第 ${Math.min(trStepIdx + 1, total())}/${total()} 步`;
@@ -13957,6 +14009,8 @@ const Trainer = (() => {
         if (t && typeof t.focus === "function") t.focus();
         const prog = $("trainerProg");
         if (prog){ prog.textContent = why; if (warn) prog.classList.add("warn"); }
+        /* 同一段原因也写进面板内（面板压在芯底那行上，只写那边用户看不见，见 setTrainerNote 注释） */
+        setTrainerNote(why, warn);
       };
       if (S.trainer.target === null){
         openSlotForTarget("先填一个大于当前速度的目标 BPM（留空 = 只循环不爬坡）");

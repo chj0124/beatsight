@@ -684,6 +684,97 @@ function scrollOverflowProbe(){
   return JSON.stringify(out);
 })()`;
 }
+/* ★★★ 2026-10-11（用户报障两则）：
+   ① 「打开静音/变速后参数槽偏左，为什么不居中」——窄档（<1280）浮层锚的是**芯**（.group），
+      上一版写死 `left:0` ⇒ 面板永远贴芯左缘（实测 390 档：芯 326 宽、静音面板 221 宽 ⇒ 右侧空
+      105px，面板中心偏左 53px）。修法 = `left:50% + translateX(-50%)`。
+   ② 「点击变速后的原因文案被参数槽挡住」——拒开原因原只写芯底 #trainerProg，而强制打开的面板
+      正好压在那行上（实测 390 档：原因行 294px 里左 176px 被盖住，只剩右半句）。修法 = 同一段
+      原因**同时写进面板内** #trainerWarn。
+   本探针在**窄屏档**走真实 UI 路径量这两件事（量完复位），断言在 runPass 里。 */
+function slotGeomProbe(){
+  return `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const round = v => Math.round(v * 10) / 10;
+  const R = el => { if (!el) return null; const r = el.getBoundingClientRect();
+    return { l: round(r.left), t: round(r.top), r: round(r.right), b: round(r.bottom),
+      w: round(r.width), h: round(r.height), cx: round((r.left + r.right) / 2) }; };
+  const out = { vw: window.innerWidth, clientW: document.documentElement.clientWidth };
+  const mute = document.getElementById("muteToggle");
+  const tr = document.getElementById("trainerToggle");
+  const tgt = document.getElementById("trTarget");
+  if (!mute || !tr || !tgt) return JSON.stringify({ err: "缺 #muteToggle / #trainerToggle / #trTarget" });
+  /* ① 静音槽：居中度 + 是否留在芯内 */
+  if (mute.getAttribute("aria-checked") !== "true") mute.click();
+  await sleep(300);
+  const gf = R(document.getElementById("muteFlyout"));
+  const gg = R(document.querySelector(".card-head-left .group"));
+  out.muteFlyout = gf; out.muteGroup = gg;
+  out.muteCenterOff = (gf && gg) ? round(gf.cx - gg.cx) : null;
+  out.muteInsideGroup = (gf && gg) ? (gf.l >= gg.l - 1 && gf.r <= gg.r + 1) : null;
+  out.muteInsideVp = gf ? (gf.l >= -1 && gf.r <= out.clientW + 1) : null;
+  if (mute.getAttribute("aria-checked") === "true") mute.click();
+  await sleep(250);
+  /* ② 变速**硬阻断**路径（目标 = 当前 BPM，即用户截图那一条）：原因必须能在面板内读到。
+     ★ 两个必须踩对的点（首版两条都踩错、断言当场变红——这正是"真机闸门"该有的样子）：
+       1) 先确保开关是**关**的：前面的探针已经把变速开起来了（首版实测芯底写着
+          「当前 96 BPM · 第 1/37 步」）⇒ 不先关掉，这一点只会走"关闭"分支。
+       2) 目标用的是 **change** 事件提交（v2.73.0 起 #trTarget 是专用处理器、绑在 change 上），
+          首版派发 input ⇒ Store 里的目标压根没变，于是变成"把变速打开"而不是"拒开"。 */
+  if (tr.getAttribute("aria-checked") === "true"){ tr.click(); await sleep(250); }
+  out.targetBefore = tgt.value;
+  const bpm0 = parseInt((document.getElementById("bpmNum").textContent || "").trim(), 10) || 96;
+  out.bpmBefore = bpm0;
+  /* 3) 目标框**只收大于当前 BPM** 的值（v2.73.0 的专用处理器：≤ 当前 BPM 直接回退原值）
+     ⇒ 想造出用户截图那个"目标 ≤ 当前"的硬阻断态，必须**先设合法目标、再把当前 BPM 抬到它**。
+     首版直接往目标框填"当前 BPM"⇒ 被处理器回退成原值，于是整条路径退化成"正常开启"，
+     断言当场变红（这条注释就是那次实测的记录）。 */
+  const targetV = Math.min(240, bpm0 + 24);
+  tgt.value = String(targetV);
+  tgt.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(250);
+  const sl = document.getElementById("bpmSlider");
+  sl.value = String(targetV);
+  sl.dispatchEvent(new Event("input", { bubbles: true }));
+  await sleep(350);
+  tr.click();
+  await sleep(400);
+  const tf = R(document.getElementById("trainerFlyout"));
+  const note = document.getElementById("trainerWarn");
+  const nr = R(note);
+  const prog = document.getElementById("trainerProg");
+  out.trainerFlyout = tf; out.note = nr;
+  out.noteHidden = note.hidden;
+  out.noteText = note.textContent;
+  out.progText = prog.textContent;
+  /* 芯底那行此时应**视觉隐藏**（文字保留）——由 #trainerProg.prog-dup 的 visibility 承担 */
+  out.progVisibility = getComputedStyle(prog).visibility;
+  out.noteInsideFlyout = (nr && tf) ? (nr.l >= tf.l - 1 && nr.r <= tf.r + 1 && nr.t >= tf.t - 1 && nr.b <= tf.b + 1) : null;
+  out.noteInsideVp = nr ? (nr.l >= -1 && nr.r <= out.clientW + 1 && nr.b <= window.innerHeight + 1) : null;
+  out.trainerFlyoutInsideVp = tf ? (tf.l >= -1 && tf.r <= out.clientW + 1) : null;
+  out.noteVisible = !note.hidden && nr !== null && nr.w > 0 && nr.h > 0;
+  out.noteWarn = note.classList.contains("warn");
+  /* 复位：点面板**外**（body）收起强制打开的面板——刻意不走"再点一次开关"那条路：
+     那条会顺带写 slotDismissed[trainer]=true，给后续探针留下"面板被手动收起过"的残留状态。
+     点 body 命中文档级"点别处即收起"监听 ⇒ clearSlotForce()（原因与面板一起清）。 */
+  document.body.click();
+  await sleep(250);
+  const nAfter = document.getElementById("trainerWarn");
+  out.noteClearedWithPanel = !!nAfter && nAfter.hidden === true && nAfter.textContent === "";
+  out.restored = document.getElementById("trainerFlyout").hidden === true;
+  out.progVisibilityAfter = getComputedStyle(document.getElementById("trainerProg")).visibility;
+  /* 复原：当前 BPM 与目标框都回到探针进来时的值——不留副作用给后续探针 */
+  const sl2 = document.getElementById("bpmSlider");
+  sl2.value = String(out.bpmBefore);
+  sl2.dispatchEvent(new Event("input", { bubbles: true }));
+  await sleep(200);
+  tgt.value = out.targetBefore;
+  tgt.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(200);
+  out.bpmAfter = parseInt((document.getElementById("bpmNum").textContent || "").trim(), 10) || null;
+  return JSON.stringify(out);
+})()`;
+}
 function layoutProbe(){
   return `(() => {
   const round = v => Math.round(v * 10) / 10;
@@ -2491,6 +2582,8 @@ function portraitFixProbe(){
       /* ★★★ 2026-10-11（用户实报）：窄屏 + 连续滚动 —— 文档/底栏不得横向溢出
          （背景、实测数字与"为什么只在窄屏档立"见 scrollOverflowProbe 头注释） */
       result.scrollOverflow = await probeJson("scrollOverflowProbe", scrollOverflowProbe(), true);
+      /* ★★★ 2026-10-11（用户报障）：窄档参数槽——居中 + 面板内拒开原因（详见 slotGeomProbe 头注释） */
+      result.slotGeom = await probeJson("slotGeomProbe", slotGeomProbe(), true);
       /* ★★★ v3.36.20 补5：**横屏**（640×360）单独量一次底栏 —— 那条改动只在
          `@media (max-width:640px) and (orientation:landscape)` 内，竖屏 390 量不到。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
@@ -4419,6 +4512,40 @@ async function main(){
         ok(so.restored === true, p.label + "：★ 探针量完已复原为分页（不留副作用）", "restored=" + so.restored);
       } else {
         ok(false, p.label + "：连续滚动溢出探针未取到（故障：" + ((so && so.err) || "缺失") + "）", "");
+      }
+      /* ★★★ 2026-10-11（用户报障两则，本轮修）：窄档参数槽
+         ① 面板必须在**芯内居中**（上一版 left:0 ⇒ 实测面板中心偏左 53px）；
+         ② 拒开原因必须能在**面板内**读到（上一版只写芯底 #trainerProg，被面板盖住 176/294px）。
+         靶子 = index.html 窄档的 `left:50%+translateX(-50%)` 与 setTrainerNote 双写——
+         分别撤掉 ⇒ ①② 各具名转红。 */
+      const sg = r.slotGeom;
+      if (sg && !sg.err){
+        ok(typeof sg.muteCenterOff === "number" && Math.abs(sg.muteCenterOff) <= 2,
+          p.label + "：★★★ 窄档参数槽在芯内**水平居中**（面板中心 == 芯中心，容差 2px）",
+          "面板中心 " + (sg.muteFlyout && sg.muteFlyout.cx) + " vs 芯中心 " + (sg.muteGroup && sg.muteGroup.cx)
+          + "（偏 " + sg.muteCenterOff + "px）");
+        ok(sg.muteInsideGroup === true && sg.muteInsideVp === true,
+          p.label + "：★★ 居中后面板仍留在芯内、且不越出视口",
+          "面板 " + JSON.stringify(sg.muteFlyout) + " / 芯 " + JSON.stringify(sg.muteGroup));
+        ok(sg.noteHidden === false && typeof sg.noteText === "string" && sg.noteText.length > 0
+           && sg.noteText === sg.progText,
+          p.label + "：★★★ 拒开原因在**面板内**可见、且与芯底那行同文案（不再只写在被盖住的那一行）",
+          "面板内 " + JSON.stringify(sg.noteText) + " / 芯底 " + JSON.stringify(sg.progText));
+        ok(sg.noteWarn === true, p.label + "：★★ 硬阻断那条（目标 ≤ 当前速度）在面板内是**红框**态",
+          "noteWarn=" + sg.noteWarn);
+        ok(sg.progVisibility === "hidden" && sg.progVisibilityAfter === "visible"
+           && sg.progText === sg.noteText,
+          p.label + "：★★ 面板内原因出现时芯底那行**视觉隐藏**（文字保留 ⇒ 两处同文案；收起后复原）",
+          "拒开时 " + sg.progVisibility + " / 收起后 " + sg.progVisibilityAfter
+          + " / 芯底文本 " + JSON.stringify(sg.progText));
+        ok(sg.noteVisible === true && sg.noteInsideFlyout === true && sg.noteInsideVp === true,
+          p.label + "：★★★ 面板内原因**没被裁**（完整落在面板与视口之内）",
+          "note " + JSON.stringify(sg.note) + " / flyout " + JSON.stringify(sg.trainerFlyout));
+        ok(sg.trainerFlyoutInsideVp === true, p.label + "：★★ 窄档面板不越出视口",
+          "flyout " + JSON.stringify(sg.trainerFlyout) + " / 客户区 " + sg.clientW);
+        ok(sg.restored === true, p.label + "：★ 参数槽探针量完已复位（不留副作用）", "restored=" + sg.restored);
+      } else {
+        ok(false, p.label + "：窄档参数槽探针未取到（故障：" + ((sg && sg.err) || "缺失") + "）", "");
       }
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");
