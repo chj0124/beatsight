@@ -443,31 +443,45 @@ section("T90z 段名位 · ★ 底栏胶囊内、CSS 出分隔符、[hidden] 收
      "★★ 截断仍在：窄胶囊里段名过长走省略号，不把型名挤出胶囊");
 }
 
-/* ================= 场景 T90aa：音量说明行的触屏可达（v3.36.10，批次② D3） =================
-   审计 C-8：三条音量条的说明此前**只有** title（悬停）与 aria-label（读屏）——触屏明眼用户
-   拿不到（没有悬停）。口径按本仓既有的 hover 分档：**默认（触屏）显出来**，桌面由同一块
-   媒体查询收起（与 .preset-item 的图标同一条分档，故写进同一块而不是另起一块）。 */
-section("T90aa 音量说明行 · ★★ 触屏常显、桌面随 hover 分档收起（审计 C-8）");
+/* ================= 场景 T90aa：音量条标签改名（本轮，用户拍板） =================
+   v3.36.10（批次② D3，审计 C-8）曾给两条音量条各挂一枚 .vol-note（触屏常显的说明行，
+   桌面由 hover 媒体查询收起）。本轮用户拍板**删掉说明行、把信息并进标签本体**：
+   「节拍」→「节拍音量」、「扫弦」→「扫弦提示」。
+   ★ 为什么连带改 aria-label / title：WCAG 2.5.3（Label in Name）要求可见文字包含在可访问名里
+     ——否则语音控制用户照着屏幕上的字说"点扫弦提示"会对不上。故可见标签、aria-label、title
+     三处同步到新名字，本节就是这个"三处一致"的闸门。
+   ★ 本节同时钉住"说明行确实退干净"（标记里 0 枚 .vol-note、CSS 无该规则、文案链路不留死代码）。
+   （原 v3.36.10 的 6 条断言随功能退役——它们守的那个实现已经不存在了。） */
+section("T90aa 音量条标签改名 · 可见标签 / aria-label / title 三处同步（本轮）");
 {
   const css = slice("css");
-  ok(/\.vol-note\{[^}]*font-size:11px/.test(css), "★ .vol-note 有基础样式（触屏常显的那一半）");
-  /* ★ 块提取口径与 t101 一致（行首 } 收尾）。两条断言必须落在**同一块**文本上——
-     若有人把 .vol-note 挪进另一块媒体查询，t101 的 indexOf 会先命中别处，两条会一起红。 */
-  const mi = html.indexOf("@media (hover: hover) and (pointer: fine)");
-  const block = html.slice(mi, html.indexOf("\n}", mi) + 2);
-  ok(block.includes(".vol-note{display:none}"),
-     "★★ 桌面（可 hover）收起音量说明——与 .preset-item 图标同一条分档口径，写在同一块里");
-  /* ★★ 文案链路的断言走**标记 + 源码**，不走 DOM 属性：桩是孤立静态桩（本文件头部第 18-19 行
-     已写明"桩不解析 HTML，静态元素 parentNode 恒 null"），而 `HTML_ATTRS` 只登记了
-     bpmSlider / wallDim / latMs 三个 id —— `#volMaster` 的 aria-label 在桩里读不到（恒 null）。
-     真实 DOM 里这一链路由真机探针验（见本轮 CHANGELOG 的实测记录）。 */
-  eq((html.match(/class="vol-note"/g) || []).length, 2,
-    "★ 两条音量条各挂一枚 .vol-note（说明行的容器；v3.39.0 重拍增强条退役后 3→2）");
-  eq((html.match(/class="vol-note" id="\w+Note" aria-hidden="true"/g) || []).length, 2,
-    "★★ 说明行对读屏隐藏（aria-label 已表达同一件事，避免被读两遍）");
-  ok(/note\.textContent = inp\.getAttribute\("aria-label"\)/.test(html),
-    "★★ 文案从滑杆自己的 aria-label 抄——**单一来源**（不写第二份文案，改一处即两处同步）");
-  ok(/const inp = \$\(pair\[0\]\), note = \$\(pair\[1\]\);/.test(html) && !/pair\[0\]\]\)\.parentNode/.test(html),
-    "★ 接线**不用 closest()/parentNode**——桩的 closest 只返回空代理、parentNode 恒 null，"
-    + "用它们这段会在桩里静默失效（本仓反复踩过的「桩比真机宽松」）");
+  /* ① 可见标签 */
+  ok(/<span>节拍音量<\/span><input type="range" class="vol" id="volMaster"/.test(html),
+    "★★ 标签「节拍」→「节拍音量」（可见文字，本轮改名的正体）");
+  ok(/<span>扫弦提示<\/span><input type="range" class="vol" id="volStrum"/.test(html),
+    "★★ 标签「扫弦」→「扫弦提示」");
+  /* ② 可访问名必须以可见标签开头（Label in Name） */
+  ok(/id="volMaster"[^>]*aria-label="节拍音量：/.test(html),
+    "★★ 节拍条 aria-label 以可见标签开头（节拍音量：…）");
+  ok(/id="volStrum"[^>]*aria-label="扫弦提示音量：/.test(html),
+    "★★ 扫弦条 aria-label 以可见标签开头（扫弦提示音量：…）——语音控制按屏幕上的字也点得中");
+  /* ③ 桌面悬停提示（title）同步 */
+  ok(/title="节拍音量：/.test(html) && /title="扫弦提示音量：/.test(html),
+    "★ 两条的 title 同步到新名字（桌面悬停看到的那份文案）");
+  /* ④ 说明行整条退役：标记、样式、文案链路三处都不许留 */
+  eq((html.match(/class="vol-note"/g) || []).length, 0,
+    "★★ v3.36.10 的量说明行已整条退役（标记里 0 枚 .vol-note）");
+  ok(!/\.vol-note\{/.test(css),
+    "★★ .vol-note 的样式规则同时删净（留着就是孤儿样式，check-orphan-css --strict 会判红）");
+  ok(!/volMasterNote|volStrumNote/.test(html),
+    "★★ 文案链路（抄 aria-label 进 .vol-note）随之删除，不留读到 null 的死代码");
+  /* ⑤ 同批文案同步（用户圈定：乙 = 两句"音量不在这里"的复述；戊 = 两处过期型名） */
+  eq((html.match(/节拍音量 \/ 扫弦提示两条滑杆/g) || []).length, 2,
+    "★★ 帮助与设置里那两句「…两条滑杆」同步到新名字（同一句话的两个副本）");
+  ok(html.includes('<b class="pat-now" id="patternName">四分基础</b>'),
+    "★★ 底栏胶囊的型名初值 = 现出厂型「四分基础」（旧初值「民谣扫弦」随 v3.35.5 删除该内置型而失效）");
+  ok(html.includes("基于「四分基础」创建"),
+    "★ 帮助示意图里的型名同步（不再引用已删除的内置「民谣扫弦」）");
+  ok(!/民谣扫弦的常态/.test(html),
+    "★★ 不再把已删除的型名当风格词写进用户可见文案（改为「民谣式扫弦的常态」）");
 }
