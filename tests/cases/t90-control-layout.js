@@ -129,13 +129,16 @@ section("T90b v2.10.16 · .pattern-head 整块删除；#patternName 进跳段行
   /* v2.69.0（1.1）：themeToggle 上顶栏，从设置弹窗 id 清单移除；
      v2.70.0（1.4）：新增座次尺/时值标注两开关（9 → 11 项）；
      v2.86.0（PLAN-v7）：旧的「歌词跟随条」开关退役，改为「显示歌词」开关（同属画面图层组，role=switch 计数仍是 15）；
-     v2.85.0（②）：「外观与辅助」拆为「画面图层」(5) +「环境」(2)，并新增 ③a 恢复示例曲 / ③b 危险区 */
-  for (const id of ["bounceToggle", "tabToggle", "timbreRow", "swingRow",
+     v2.85.0（②）：「外观与辅助」拆为「画面图层」(5) +「环境」(2)，并新增 ③a 恢复示例曲 / ③b 危险区
+     ★ 本版：bounceToggle / tabToggle 随三开关退役移出清单（14 → 12 项，功能恒开不再有设置入口） */
+  for (const id of ["timbreRow", "swingRow",
                     "exportBtn", "importBtn", "exportAllBtn", "importAllBtn", "helpBtn",
                     "rulerLabToggle", "durLabelToggle", "showLyricToggle",
                     "keepAwakeToggle", "wideToggle"]){
-    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 14 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : (id === "showLyricToggle" ? "（v2.86.0 显示歌词·画面图层组，取代歌词跟随条）" : (id === "keepAwakeToggle" || id === "wideToggle" ? "（v2.85.0 环境组·从外观与辅助拆出）" : ""))));
+    ok(new RegExp('id="' + id + '"').test(st), "★ 设置弹窗 12 项之一：#" + id + (id === "swingRow" ? "（v2.10.17 Swing 入发声组）" : (id === "showLyricToggle" ? "（v2.86.0 显示歌词·画面图层组，取代歌词跟随条）" : (id === "keepAwakeToggle" || id === "wideToggle" ? "（v2.85.0 环境组·从外观与辅助拆出）" : ""))));
   }
+  ok(!/id="bounceToggle"/.test(st) && !/id="tabToggle"/.test(st),
+     "★ 本版退役的 bounceToggle / tabToggle 已不在设置弹窗（功能恒开，删入口不是留灰钮）");
   /* v2.85.0（③a/③b）：数据与说明组新增「恢复示例曲」、危险区新增「恢复出厂设置」 */
   ok(/id="demoRebuildBtn"/.test(st), "★ v2.85.0（③a）：恢复示例曲按钮在数据组");
   ok(/id="factoryResetBtn"/.test(st), "★ v2.85.0（③b）：恢复出厂设置按钮在危险区");

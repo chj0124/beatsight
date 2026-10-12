@@ -281,14 +281,14 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
      顺便把它变成新默认值的钉子（比原来那条前提更有信息量）。 */
   eq(beat.Store.S.playMode, "arrange", "★ 前提（v2.13.0）：首次打开默认选中示例曲 = 已在曲式模式");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 63, loop: false, byLyric: false }),
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 64, loop: false, byLyric: false }),
      "★ 且默认范围就是整首 65 小节，**不开循环**（「为你选好了」≠「开始整首连播」）");
   eq(beat.Store.S.playing, false, "★ 前提：初始未播放（**选中不等于起播**——这是首开默认的硬约束）");
 
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "★ 点「整首连播」切到曲式模式");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 63, loop: true, byLyric: false }),
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 64, loop: true, byLyric: false }),
      "★ 范围 = 整首 65 小节 + 开范围循环（放完自动从头再来，这才叫「练」；v2.10.7 小节口径）");
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
@@ -299,11 +299,11 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
      滑块表达的是范围、不是当前位置，所以原来"第 1 段高亮 / 第 10 段不高亮"那两条
      已随段序条一并消失；"现在在第几小节"改由下面那条状态说明承担 */
   eq(rangeFromOf(els).value, "1", "滑块起点拉满到第 1 小节");
-  eq(rangeToOf(els).value, "64", "滑块终点拉满到第 65 小节（v2.10.7：max = 总小节数）");
-  ok(noteOf(els).textContent.includes("第 1/64 小节"),
-     "状态说明给出「播放中 · 第 1/64 小节」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
-  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 十六分满扫（《在他乡》前奏） */
-  ok(String(beat.activePattern().name).indexOf("十六分满扫（《在他乡》前奏）") >= 0,
+  eq(rangeToOf(els).value, "65", "滑块终点拉满到第 65 小节（v2.10.7：max = 总小节数）");
+  ok(noteOf(els).textContent.includes("第 1/65 小节"),
+     "状态说明给出「播放中 · 第 1/65 小节」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
+  /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 节奏型1（本版改编号制） */
+  ok(String(beat.activePattern().name).indexOf("节奏型1（《在他乡》）") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
   beat.Controls.stop();
 }
@@ -326,8 +326,8 @@ section("T68h 整首连播 · 拖范围滑块到重合 = 只循环那一段");
   /* v2.10.14：原 argNowMeta「第 5 小节」即时反馈断言随说明文字删除退役——
      可见反馈 = thumb 即时移动（上面两条）+ 生效型即时切换（下面一条） */
   /* 停止态定位必须把网格换成那一段的型（否则只有字变、画面原地不动）。
-     小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「下上扫 · 密（《在他乡》副歌）」（v2.19.1 旧名「副歌扫弦」） */
-  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
+     小节 5 落在段 2（副歌）→ 生效型 = 段 2 引用的「节奏型2（《在他乡》）」（v2.19.1 旧名「下上扫 · 密（副歌）」→ 本版编号制） */
+  ok(String(beat.activePattern().name).indexOf("节奏型2（《在他乡》）") >= 0,
      "★ 停止时定位：生效的型已换成第 5 小节所在段引用的那个（实际「" + beat.activePattern().name + "」）");
 }
 
@@ -338,12 +338,12 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "前提：已在整首连播中");
 
-  const target = itemByName(els, "下上扫 · 密（《在他乡》副歌）");
-  ok(!!target, "前提：示例型「下上扫 · 密（《在他乡》副歌）」在库中可见（v3.35.3 起挂在「自定义」区歌曲行下）");
+  const target = itemByName(els, "节奏型2（《在他乡》）");
+  ok(!!target, "前提：示例型「节奏型2（《在他乡》）」在库中可见（v3.35.3 起挂在「自定义」区歌曲行下）");
   target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
   eq(beat.Store.S.sel.type, "builtin", "选中的是内置型（v2.20.0 起示例 5 型住 BUILTINS 尾部）");
-  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
+  ok(String(beat.activePattern().name).indexOf("节奏型2（《在他乡》）") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   eq(beat.Store.S.arrangeSel.loop, false, "退回单型后清掉曲式的范围循环（免得下次突然生效）");
   eq(els["loopPanel"].hidden, false, "练习循环面板重新露出（它在曲式模式下是收起的）");
@@ -370,15 +370,15 @@ section("T68j 整首连播 · 位置读数随播放推进（段序条已换成�
   beat.Controls.setBpm(240);
   playAllOf(els).fire("click");
   const ac = FakeAudioContext.last;
-  ok(noteOf(els).textContent.includes("第 1/64 小节"),
+  ok(noteOf(els).textContent.includes("第 1/65 小节"),
      "起播时指向第 1 小节（实际「" + noteOf(els).textContent + "」）");
   driveFrames(ac, beat, 1.4);
-  ok(noteOf(els).textContent.includes("第 2/64 小节"),
+  ok(noteOf(els).textContent.includes("第 2/65 小节"),
      "★ 走完第 1 小节后读数移到第 2 小节（跟着节目单推进，不是钉在第 1 小节）（实际「" + noteOf(els).textContent + "」）");
   /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–30，不随播放跳动
      （"滑块自己会走"是这类控件最常见的实现错误，钉住它） */
   eq(rangeFromOf(els).value, "1", "整首连播期间起点停在 1（滑块不跟播放位置走）");
-  eq(rangeToOf(els).value, "64", "整首连播期间终点停在 65");
+  eq(rangeToOf(els).value, "65", "整首连播期间终点停在 65");
   beat.Controls.stop();
   /* 停机后回到"范围起点"口径（停止时看的不是调度游标——它不表达"下次从哪开始"）：
      范围没变，仍是从头；但读数不再写「播放中」 */

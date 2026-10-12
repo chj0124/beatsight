@@ -88,8 +88,8 @@ section("T221c 底栏型名 · ★★ 曲式模式剥掉尾部出处标注，预
 {
   const { beat, els } = loadDemo();
   /* 先钉纯函数本身（它是显示层剥法的唯一实现，测试直接调它、不抄第二份正则） */
-  eq(beat.stripSongTag("下上扫 · 密（《在他乡》副歌）"), "下上扫 · 密", "★ 剥掉结尾「（《歌名》段落）」");
-  eq(beat.stripSongTag("八分满扫（《我们能不能不分手》副歌）"), "八分满扫", "★ 同上（第二首示例曲的型）");
+  eq(beat.stripSongTag("节奏型2（《在他乡》）"), "节奏型2", "★ 剥掉结尾「（《歌名》）」");
+  eq(beat.stripSongTag("节奏型5（《我们能不能不分手》）"), "节奏型5", "★ 同上（第二首示例曲的型）");
   eq(beat.stripSongTag("民谣扫弦 · 下-下上-上下上"), "民谣扫弦 · 下-下上-上下上", "★ 没有出处标注 ⇒ 原样");
   eq(beat.stripSongTag("我的型（练习用）"), "我的型（练习用）",
     "★★ 非「（《…》…）」形式的括号一律不动——不误删用户自己起的名字");
@@ -104,9 +104,9 @@ section("T221c 底栏型名 · ★★ 曲式模式剥掉尾部出处标注，预
   eq(els["patternName"].textContent, beat.stripSongTag(full), "★★ 曲式模式底栏显示短名");
 
   /* 桩级：退回预设模式后 = 全名（那时没有段名作对照，出处是唯一线索） */
-  itemByName(els, "十六分满扫").fire("click");
+  itemByName(els, "节奏型1（《在他乡》）").fire("click");
   eq(beat.Store.S.playMode, "preset", "前提：点歌下的型 = 退回单练它");
-  eq(els["patternName"].textContent, "十六分满扫（《在他乡》前奏）", "★★ 预设模式保留全名（出处标注不剥）");
+  eq(els["patternName"].textContent, "节奏型1（《在他乡》）", "★★ 预设模式保留全名（出处标注不剥）");
   beat.Controls.stop();
 }
 

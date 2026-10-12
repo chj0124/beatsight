@@ -96,7 +96,8 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   }
   beat.Arrange.close();
 
-  /* 有自定义型时三区齐；扫弦型（内置示例 P1「十六分满扫（《在他乡》前奏）」，带 dir 记谱）进「扫弦」区 */
+  /* 有自定义型时三区齐；扫弦型（内置示例 P1「节奏型1（《在他乡》）」，带 dir 记谱）进「扫弦」区
+     ★ 本版：型名改编号制「节奏型N（《歌名》）」（旧特征名断言内容、断言即有错风险） */
   const app2 = loadApp(seed3());
   app2.beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "我的型", meter: 4, bars: [[{ t: 192 }]] }] }));
@@ -107,7 +108,7 @@ section("T104b 块候选 · 三区组织 / 当前型置顶带勾 / 点当前型�
   eq(zones2.join(","), "本归属 · 三段歌,节拍,扫弦,自定义",
      "★ 本歌置顶 + 库里有自定义型 ⇒ 四区齐（本歌 / 节拍 / 扫弦 / 自定义）");
   const all2 = pick2.children[1].children.filter(c => /(^| )arg-mini( |$)/.test(c.className));
-  const folk = all2.find(p => /十六分满扫（《在他乡》前奏）/.test(p.textContent || ""));
+  const folk = all2.find(p => /节奏型1（《在他乡》）/.test(p.textContent || ""));
   ok(!!folk, "前提：候选里能找到内置扫弦型示例 P1（带 dir 记谱；v3.35.5 取代已删的民谣扫弦）");
   folk.fire("click");
   eq(app2.beat.Store.findArrange("t104").sections[0].blocks[0].ref.idx, 11, "换型落库（引用换成 BUILTINS[11]）");

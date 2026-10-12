@@ -381,8 +381,8 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
   els["muteToggle"].fire("click");
   eq(els["muteToggle"].getAttribute("aria-checked"), "true", "点击后 aria-checked 跟随状态");
   ok(/(^| )on( |$)/.test(els["muteToggle"].className), "视觉（className=on）与语义（aria-checked=true）同步");
-  els["bounceToggle"].fire("click");
-  eq(els["bounceToggle"].getAttribute("aria-checked"), "false", "弹跳球开关关闭 → aria-checked=false");
+  els["muteToggle"].fire("click");                      // 复位静音拍，后续用例零前提
+  /* ★ 本版：弹跳球开关已退役（功能恒开）——原「点击后 aria-checked=false」断言随之删除 */
   els["countInToggle"].fire("click");
   eq(els["countInToggle"].getAttribute("aria-checked"), "true", "预备拍开关 → aria-checked=true");
 
@@ -408,21 +408,16 @@ section("T28 无障碍 · 开关语义 / 选中语义 / 分级播报 / 焦点陷
      因为循环开关与六线开关一样在标记里就写了初值（off/false），故它落在下面那条的**正则之外**
      ——那条只认 mute/bounce/countIn/trainer/keepAwake 这五个 id，不是"所有开关" */
   /* v3.0.0（PLAN-v9 批 1）：＋「连续滚动」→ 16 个（预设库展开钮是 aria-expanded 的 button，不计入） */
-  /* v3.34.5（审计 A-1）：＋「图例」开关 → 17 个。它是首个**非新增功能、纯为补一个恢复入口**
-     而加的开关：v3.1.0 的图例只有单向的「知道了」出口，本开关让"关掉"变成可逆动作。
-     ★ 计数变了就要改这里——这条断言的价值正是逼每个新增开关都显式登记一次来源。 */
-  eq((html.match(/role="switch"/g) || []).length, 17, "标记里 17 个 .toggle-pill 都声明了 role=switch（v1.4 +后台保活 +v2.0.0 曲式范围循环 +v2.4.2 六线底纹 +v2.4.3 练习循环 +v2.7.3 跳段行范围循环 +v2.32.0 面板锚点提示音 +v2.36.0 宽屏铺满 +v2.70.0 座次尺/时值标注 +v2.71.0 静音随机 +v2.86.0 显示歌词（取代 v2.84.0 歌词跟随条） +v3.0.0 连续滚动 +v3.34.5 图例恢复入口）");
-  eq((html.match(/id="(mute|bounce|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 5,
-    "5 个开关在标记里都带初始 aria-checked");
-  /* v2.4.2 新增的开关（六线底纹）单独点名守一遍：
-     它是默认**开**的，故标记里必须是 class="toggle-pill on" + aria-checked="true"——
-     若哪天有人把初值写反，"打开应用先看到纸 vs 先看到箭头"这个观感决定就悄悄丢了。
-     ★ 从整个 <button ...> 标签里取，不写属性顺序：本文件里 tabToggle 的 class 在 id 之前，
-       而 keepAwakeToggle 的 id 在 class 之前——按"id 跟着 class"写正则会对着其中一个永远为假
-       （这里踩过一次：断言红了但标记其实是对的）。 */
-  const tabTag = (html.match(/<button[^>]*id="tabToggle"[^>]*>/) || [""])[0];
-  ok(/class="toggle-pill on"/.test(tabTag), "★ 六线底纹开关默认开（class 含 on）");
-  ok(/aria-checked="true"/.test(tabTag), "★ 六线底纹开关 aria-checked=true（与 S.showTab 默认 true 同口径）");  beat.Controls.start();
+  /* v3.34.5（审计 A-1）：＋「图例」开关 → 17 个。它是首个**非新增功能、纯为补一个恢复入口*/
+  /*   而加的开关：v3.1.0 的图例只有单向的「知道了」出口，本开关让"关掉"变成可逆动作。 */
+  /* ★ 本版：弹跳球 / 六线底纹 / 图例三开关退役（功能恒开，图例改「知道了」+ 版本号维度）
+     → 17 − 3 = 14 个。计数变了就要改这里——这条断言的价值正是逼每个开关增减都显式登记一次。 */
+  eq((html.match(/role="switch"/g) || []).length, 14, "标记里 14 个 .toggle-pill 都声明了 role=switch（v1.4 后台保活 +v2.0.0 曲式范围循环 +v2.4.3 练习循环 +v2.7.3 跳段行范围循环 +v2.32.0 面板锚点提示音 +v2.36.0 宽屏铺满 +v2.70.0 座次尺/时值标注 +v2.71.0 静音随机 +v2.86.0 显示歌词（取代 v2.84.0 歌词跟随条） +v3.0.0 连续滚动；★ 本版 −3：弹跳球/六线底纹/图例）");
+  eq((html.match(/id="(mute|countIn|trainer|keepAwake)Toggle"[^>]*aria-checked=/g) || []).length, 4,
+    "4 个开关在标记里都带初始 aria-checked（★ 本版 −1：bounceToggle 退役）");
+  /* ★ 本版：六线底纹开关（tabToggle）已退役——原「默认开」两条点名断言随之删除，
+     功能恒开由 syncTabLayer 的单条件 + t237 系列守护。 */
+  beat.Controls.start();
   ok(/开始播放/.test(els["srAnnounce"].textContent), `开始播放被播报：「${els["srAnnounce"].textContent}」`);
   beat.Controls.stop();
   eq(els["srAnnounce"].textContent, "已停止", "停止被播报");

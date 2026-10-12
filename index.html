@@ -572,7 +572,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 @media (max-width:640px){
   .viz.scroll-mode,.viz.scroll-mode ~ .lyric-lane{mask-image:none;-webkit-mask-image:none}
 }
-/* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；关闭后由 S.vizLegend 记忆 */
+/* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；★ 本版：关闭改版本号维度记忆（S.vizLegendVsn） */
 .viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
   color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:10px}
 .viz-legend .vl-item{display:inline-flex;align-items:center;gap:6px}
@@ -869,7 +869,9 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    行级圆角条的语义）；拍分组层级由 2px 强缝表达，不再靠凹槽 */
 .cell.sq-l{border-top-left-radius:0;border-bottom-left-radius:0}
 .cell.sq-r{border-top-right-radius:0;border-bottom-right-radius:0}
-.cell-label{position:absolute;top:48px;font-size:calc(12px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
+/* ★ 本版（用户拍板）：时值标注字号 12→10px（窄屏 10→9，见下方 @media）——
+   标签是辅助读层，不该与格子内容抢视觉权重；组标签（.group）同基准缩小。 */
+.cell-label{position:absolute;top:48px;font-size:calc(10px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
 /* v2.70.0（1.4 + 2.1）：拍内座次尺 / 时值标注两个显示开关（设置·外观与辅助）。
@@ -1078,6 +1080,24 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.hit.ghost::before{background:none;border-left-color:var(--blue)}
 .strumv.hit.ghost::after{border-bottom-color:var(--blue)}
 .strumv.hit.ghost.up::after{border-top-color:var(--blue);border-bottom-color:transparent}
+/* ★ 本版（用户实报）：琶音记号（dir:"A" → .strumv.arp）——竖波浪线 + 顶端箭头，
+   与 D/U 的直杆箭头三分支。杆身/箭头由内联 SVG 承担（ARP_SVG，三处渲染点同一份标记）。
+   ★ 直杆伪元素必须显式关掉：::before 是 .strumv 的**基础规则**（对所有 .strumv 生效，
+   不带 .dn/.up 限定），不 content:none 的话屏幕上是「2px 直杆 + 波浪线」两根线并排
+   ——本批首版就是这么画的（用户实报"画错了"）；::after 无 .dn/.up 着色本来就不出墨。
+   染态与直杆同语义：hit = 正在弹（绿 + drop-shadow，filter 在宿主上、svg 全覆盖）；
+   ghost = 空扫（蓝虚线；琶音本身恒发声，此处仅为 rest+dir 组合的纵深防御）。 */
+.strumv.arp::before{content:none}
+.strumv.arp{width:10px}
+.strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block}
+.strumv.arp .arp-wave{stroke:var(--peak);stroke-width:2;fill:none;stroke-linecap:round}
+.strumv.arp .arp-head{fill:var(--peak)}
+.strumv.arp.hit .arp-wave{stroke:var(--green)}
+.strumv.arp.hit .arp-head{fill:var(--green)}
+.strumv.arp.ghost .arp-wave{stroke:var(--blue);stroke-dasharray:3 3}
+.strumv.arp.ghost .arp-head{fill:var(--blue)}
+.strumv.hit.arp.ghost .arp-wave{stroke:var(--blue)}
+.strumv.hit.arp.ghost .arp-head{fill:var(--blue)}
 /* 弦区色带（v2.2.0）已由 v2.4.2 的贯穿式竖箭头取代——弦区表达为"箭头跨哪几条弦"，
    .cell-zone / .cell-zone.z* 两条规则随之删除（不再有任何生成点） */
 /* 编辑器内联徽标（v2.2.0）：与主视图同一套类名语义（ed-* 前缀），字号沿用 .ed-strum */
@@ -1104,7 +1124,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    预告行生效时第 1 行 = 下一小节的歌词），行内按小节内 tick 百分比定位字块；
    当前行带 .cur 底色、走带线只在当前行出现 */
 .lyric-pos-note{font-size:12px;color:var(--t3);align-self:center}
-#bounceToggle,#rulerLabToggle,#durLabelToggle,#tabToggle,#vizLegendToggle{min-width:190px;justify-content:space-between}
+#rulerLabToggle,#durLabelToggle{min-width:190px;justify-content:space-between}
 /* ★ v3.33.10（用户清单 4）：同列等宽——此前左列四枚宽度不一，右列跟着参差，观感"没对齐"。 */
 /* ★ v3.33.10（用户清单 2）：位置三档是「显示歌词」的**子项** ⇒ 降一级 + 缩进（与仓库"开关+从属参数降一级"同口径）。 */
 /* ★★★ v3.42.0 补（用户实拍"歌词一栏下多个按钮的间距有问题"）：实测两组胶囊规格不一致——
@@ -2780,7 +2800,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
      （v2.79.0 当年逐条补 34px 的做法就是这族 bug 的来源：新层一加就漏）。 */
   :root{--cell-h:34px}
   .ruler-lab{top:52px;font-size:9px}
-  .cell-label{top:38px;font-size:10px}
+  .cell-label{top:38px;font-size:9px}   /* 本版：窄屏时值标注 10→9px（随桌面档同比缩小） */
   /* 六线谱几何缩到窄屏版：格子 34px 高。★ v2.10.16 修复「窄屏底纹铺不满」（用户实报）：
      v2.8.0 把六线改成「铺满格子」（一弦贴顶、六弦贴底）时**只改了桌面那一档**（--gtop:0、
      --gt:8.8），本档还留着 v2.4.3「整体在格子内部」的老几何（--gtop:5px → 顶空 5px、
@@ -3576,7 +3596,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="viz-band" id="vizBand">
     <!-- v3.1.0（A1，方案 3.2①b）：首用图例条——一行轻量读法说明，可关闭、记忆。
          「首屏无锚点」的最轻解法：不造浮层、不加引导流程，一行字交代三种视觉编码。
-         开关状态 S.vizLegend（默认显示；关一次永不再出），走 Store 热键全链路（禁裸 localStorage）。
+         ★ 本版（用户拍板）：关闭改**版本号维度**——「知道了」记下关闭时的版本号
+           （S.vizLegendVsn 落热键全链路，禁裸 localStorage），同版本内不再出现、发版回归一次。
          ★ aria-hidden 的例外：这一行是给"看不懂网格"的人读的正文，必须进无障碍树 -->
     <div class="viz-legend" id="vizLegend">
       <span class="vl-item"><i class="vl-swatch" aria-hidden="true"></i>格宽 = 时值</span>
@@ -3599,7 +3620,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <span>刚才切到后台时声音中断过：浏览器会节流后台标签页。需要后台连播请打开「设置 → 环境 → 后台保活」（代价是耗电）。</span>
     </div>
     <!-- v2.0.5（审计 P0-8）：整块对读屏隐藏。里面是纯可视化的节奏网格——每一格都带一个
-         "休止 八分"之类的文本节点，播放时约 360 个，读屏撞进去只会被淹没；
+         "八分"之类的时值文本节点，播放时约 360 个，读屏撞进去只会被淹没；
          语义信息由 #srAnnounce（时间线播报）与 #statusText 承担。
          安全性依据：格子全是 div、鼠标不可点、无 tabindex、无键盘契约——
          本模块除 resize 外不注册任何监听器，故 aria-hidden 不会藏掉可操作元素。
@@ -3788,7 +3809,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <button class="pill" id="delStepBtn">删除选中音符</button>
         <button class="pill outline" id="undoBtn" disabled>撤销</button>
         <!-- v2.6.1（第 Ⅲ 期）：型的小节数自由（1~64）之后，编辑器必须能改**小节数**，
-             否则 1 小节的型（示例曲的节奏型 1~5 就是）在界面上永远只有一行、改不动 -->
+             否则 1 小节的型（示例曲的节奏型 1~6 就是）在界面上永远只有一行、改不动 -->
         <button class="pill outline" id="addBarBtn">＋ 在其后加一小节</button>
         <button class="pill outline" id="delBarBtn">− 删当前小节</button>
         <button class="pill" id="copyBarBtn">复制小节到全部</button>
@@ -3798,13 +3819,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              本行只留规则文案。 -->
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · 一个节奏型 1–<span id="editorMaxBars">64</span> 小节 · Ctrl+Z 撤销</span>
       </div>
-      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时三个按钮禁用
+      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时按钮组禁用
            ——禁用而不是弹窗报错，避免误点即打扰。
-           v2.1.0：休止符同样可标注（＝空扫，只动手不出声）；字形按手部动作翻转（下扫=↑） -->
+           v2.1.0：休止符同样可标注（＝空扫，只动手不出声）；字形按手部动作翻转（下扫=↑）。
+           ★ 本版：补「琶音」第四档（data-dir="A"）——此前示例曲带得出琶音格、编辑器却造不出
+             （用户实报）。接线走既有通用 [data-dir] 路径零 JS 改动；VALID_DIR 已含 "A"。 -->
       <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
         <span class="hint">扫弦标注</span>
         <button class="pill" data-dir="D" aria-pressed="false" disabled>↑ 下扫</button>
         <button class="pill" data-dir="U" aria-pressed="false" disabled>↓ 上扫</button>
+        <button class="pill" data-dir="A" aria-pressed="false" disabled>琶音</button>
         <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
         <span class="hint" id="dirHint">先在上方选中一个音符</span>
       </div>
@@ -4030,7 +4054,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
           <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 蓝虚线箭头 = 空扫），
-          点「知道了」收起后就不再出现。图例里的<b>空扫（蓝虚线箭头）</b> = 「假装在扫弦、但不触弦」：那一格占满自己的时值、不触发新音；<b>灰格（纯休止）</b>同样不触发新音。弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
+          点「知道了」收起后本版本内不再出现，版本更新后会再出现一次。图例里的<b>空扫（蓝虚线箭头）</b> = 「假装在扫弦、但不触弦」：那一格占满自己的时值、不触发新音；<b>灰格（纯休止）</b>同样不触发新音。弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -4131,7 +4155,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>主题（经典 / 日间）。</b>两套配色，只换外观、功能完全一样：<b>经典</b> = 功能绿的练习舱（默认，深色底）；<b>日间</b> = 浅色仪表盘，白天或亮处练琴看得清。切换钮在<b>顶栏</b>（月亮 = 当前经典、太阳 = 当前日间，点一下就换），挑顺眼的用</li>
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
-          <li><b>弹跳球 / 六线底纹。</b>两个画面开关：<b>弹跳球</b> = 落拍预判（「静音」训练时建议留着——静音的那小节里球是唯一的节拍来源）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型生效，不带入的型上这个开关会自动隐藏</li>
+          <li><b>弹跳球 / 六线底纹。</b>两个常驻画面元素（无开关、恒开启）：<b>弹跳球</b> = 落拍预判（「静音」训练时它尤其重要——静音的那小节里球是唯一的节拍来源；连续滚动模式下不画球）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型显示，节拍型上自动不画</li>
           <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时本节下方的「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍音量 / 扫弦提示两条滑杆与 BPM 同组，在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
@@ -4167,7 +4191,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <div id="mountFigsSettings"></div>
         <h2 class="card-title" style="margin:22px 0 4px">曲式编排</h2>
         <ul class="help-list">
-          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序播完整首（示例曲《在他乡》共 9 段），放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
+          <li><b>整首连播</b>：在预设库的曲式分组里<b>点一下那条曲式</b>——按原曲顺序播完整首（示例曲《在他乡》共 10 段），放完自动从头再来，<b>不用打开编排面板</b>。它上方的说明写着<b>现在播到第几小节</b>；
             整首播放中说明会带「<b>整首连播 · 播放中</b>」前缀，停机时显示「整首连播 · 已就绪」</li>
           <li><b>播放范围滑块</b>（在曲式条目上方）：<b>按小节拖两个滑块自由选范围</b>
             （刻度就是小节，轨道上的细刻度线是段边界）——范围可以从段中间开始/结束，比如
@@ -4410,20 +4434,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            v3.45.4 拆为三个规范块：原三子标题挤在一个 flex 行容器里、纵向节奏靠换行间隙，
            现每子标题一个 .group，间距收口到 4px 网格令牌） -->
             <div class="group"><div class="group-label">图层元素</div>
-        <div class="bpm-row"><button class="toggle-pill on" id="bounceToggle" role="switch" aria-checked="true">弹跳球 · 预判提示<span class="switch"></span></button>
-          <button class="toggle-pill on" id="tabToggle" role="switch" aria-checked="true">六线 · 扫弦谱底纹<span class="switch"></span></button>
-          <!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
+        <!-- ★ 本版（用户拍板）：「弹跳球 · 预判提示」「六线 · 扫弦谱底纹」「图例 · 格宽=时值读法」
+             三枚开关随本批退役——功能**恒开**（弹跳球在分页模式恒显、六线底纹对带扫弦记谱的型
+             恒显、图例条受「知道了」与版本号维度管理），不再各配一枚开关。bounce / showTab
+             两字段随之删除（老存档里的旧键被加载白名单自然忽略，零迁移）；图例见 S.vizLegendVsn。 -->
+        <div class="bpm-row"><!-- v2.70.0（1.4）：可视化区域的两组标注文字各配一个显隐开关（用户要求）。
                显隐走 #viz 上的 CSS 类（.no-ruler / .no-durlab），DOM 照建；
                两开关都关 ⇒ 加 .chord-xl，行首和弦胶囊放大一倍（2.1，用户拍板） -->
           <button class="toggle-pill on" id="rulerLabToggle" role="switch" aria-checked="true">座次尺 · 1 e &amp; a<span class="switch"></span></button>
-          <button class="toggle-pill on" id="durLabelToggle" role="switch" aria-checked="true">时值标注 · 四分/八分/×n<span class="switch"></span></button>
-          <!-- v3.34.5（审计 A-1）：图例条的**恢复入口**。
-               v3.1.0 只留了「知道了」这一个单向出口（置 false 后全文件再无处置回 true）——
-               文案是低承诺的「知道了」，后果却是永久移除唯一的首屏读法锚点。
-               这里补一枚同款开关与 `S.vizLegend` 双向绑定：关 = 等同「知道了」；开 = 图例重新出现。
-               ★ 同其余图层开关的纪律：显隐改变布局高度 ⇒ 收尾必须 Viz.relayout()
-                 （v3.9.0 实拍：图例高度一消失，跑道 cacheGeo 的旧 top 会让定位错位）。 -->
-          <button class="toggle-pill on" id="vizLegendToggle" role="switch" aria-checked="true">图例 · 格宽=时值读法<span class="switch"></span></button></div></div>
+          <button class="toggle-pill on" id="durLabelToggle" role="switch" aria-checked="true">时值标注 · 四分/八分/×n<span class="switch"></span></button></div></div>
             <div class="group"><div class="group-label">歌词</div>
         <div class="bpm-row"><!-- v2.86.0（PLAN-v7）：歌词显示开关 + 显示位置三档。取代 v2.84.0 的「歌词跟随条」。
                「显示歌词」总开关关 ⇒ 任何位置都不画歌词；开 ⇒ 下方「显示位置」三档可选
@@ -4671,23 +4690,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4703  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6145  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8269  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9497  Modal         应用内弹窗
-     L9642  Viz           时值可视化渲染与每帧动画
-     L13191 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L13889 Trainer       变速训练器
-     L14106 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14780 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16769 Editor        自定义节奏型编辑器
-     L17349 Settings      设置弹窗（v2.10.12：主题 / 弹跳球 / 六线底纹 / 音色 / 导入导出 / 使用方法入口）
-     L17442 Ear           听辨训练（v1.10.0）
-     L17670 Arrange       曲式编排（v2.0.0）
-     L21735 Help          使用方法（v2.0.1）
-     L21890 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L21972 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22268 初始化（装配） 各模块 hook 接线与启动
+     L4722  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6230  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8459  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9687  Modal         应用内弹窗
+     L9832  Viz           时值可视化渲染与每帧动画
+     L13376 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14074 Trainer       变速训练器
+     L14291 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L14954 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L16943 Editor        自定义节奏型编辑器
+     L17525 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L17620 Ear           听辨训练（v1.10.0）
+     L17848 Arrange       曲式编排（v2.0.0）
+     L21914 Help          使用方法（v2.0.1）
+     L22069 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22151 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22447 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4713,7 +4732,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.45.9";
+const VERSION = "3.46.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5522,25 +5541,31 @@ const DEMO_STRUMS = {
      从"落库的自定义"升格为"内置只读素材"，删不掉、内容恒对；旧数据由
      migrateDemoToBuiltins 一次性收走。 */
 const DEMO_PRESETS = [
-  /* v2.19.1 改名（P1–P5）：旧名是《在他乡》曲内的**场景词**（副歌/主歌/雨夜/桥段），
-     没扫过这首歌的用户无从知道它是什么扫弦。新名 = **可弹特征 + 出处标注**——
-     特征部分照 BUILTINS[0]「民谣扫弦 · 下-下上-上下上」的思路用形态短语（名字即谱面的
-     第一行说明），括号标注它来自示例曲的哪个段落（音乐规范术语：前奏/副歌/主歌一/主歌二/
-     桥段）。P4 的「人静的雨夜」段有完整歌词、不是间奏，音乐上是主歌二（Verse 2），
-     故标「主歌二」与 P3 的「主歌一」区分。5 个型的共同骨架：十六分「下上交替」
-   （偶数格下、奇数格上），差异只在留白与切音：
-       P1 十六分满扫：16 格全发声（无空扫无留白）；曲中主要在前奏与收尾小节；
-       P2 下上扫 · 密：10 发声 + 4 切音，第 1 拍重扫一下、之后稳定"下…上下"律动；副歌；
-       P3 下上扫 · 疏：与 P2 仅差第 3 拍少一记上扫（9 发声）——诚实表达为密度差；主歌一；
-       P4 前密后疏扫：前两拍密 → 第 3 拍整拍休止 → 末拍"下上"收（7 发声）；主歌二；
-       P5 切音满扫：全小节连续下上、切音最多（11 发声 + 5 切音），律动最满的"下上"型；桥段。
-     旧名由一次性内置化迁移认出并收走（migrateDemoToBuiltins 的四级兜底，P1 的旧短名
-     也在表内），见下面那条。 */
-  { name: "十六分满扫（《在他乡》前奏）", strum: "P1" },
-  { name: "下上扫 · 密（《在他乡》副歌）", strum: "P2" },
-  { name: "下上扫 · 疏（《在他乡》主歌一）", strum: "P3" },
-  { name: "前密后疏扫（《在他乡》主歌二）", strum: "P4" },
-  { name: "切音满扫（《在他乡》桥段）", strum: "P5" },
+  /* ★ 本版（用户拍板）：型名改**编号制**——「节奏型N（《歌名》）」。
+     沿革：v2.19.1 曾把场景词（副歌/雨夜…）改成「可弹特征 + 出处标注」（十六分满扫（《在他乡》前奏）…），
+     实践证明特征名很难写准：P1 的「满扫/全发声」实为 9 实扫 + 7 空扫（切音）、「切音最多」
+     的其实不是 P5——**名字一旦断言内容就有断言错误的风险**。编号名不做任何内容断言，
+     也就不会错；型自身长什么样由谱面与扫弦记号自己说，段名管结构（引子/副歌/桥段），
+     型名只做标识。
+     ★ 编号规则（用户拍板）：按**曲中首次出现顺序**——引子先响 = 节奏型1；P6 是全曲末
+       新增的「尾声」琶音小节，首次出现即最后 ⇒ 编 6。定稿后**永不重排**、新增型只续最大号
+       （用户笔记里的编号不能随版本漂移）。
+     ★ 数组顺序 ≠ 编号顺序：本数组顺序 = BUILTINS 挂载顺序（下标被存量曲式引用着，
+       不可动）；型名里的编号才是给用户看的「首次出现序」。
+     旧名由一次性内置化迁移认出并收走（migrateDemoToBuiltins 的四级兜底，两代旧名表都在，
+     见 demoLegacyIndex / demoLegacyV2Names）。 */
+  { name: "节奏型1（《在他乡》）", strum: "P1" },
+  { name: "节奏型2（《在他乡》）", strum: "P2" },
+  { name: "节奏型3（《在他乡》）", strum: "P3" },
+  { name: "节奏型4（《在他乡》）", strum: "P4" },
+  { name: "节奏型5（《在他乡》）", strum: "P5" },
+  /* ★ 本版（用户补充）：全曲末新增「尾声」一小节——第一拍一记 C 琶音、后三拍无动作
+     （延音不另画记号，用户拍板「有琶音标记即可」），无歌词，让余音收束全曲。
+     型 = P6（节奏型6）。bars 直写（DEMO_STRUMS 的紧凑记法表达不了「一记四分琶音」：
+     它只能产十六分格，而这里是 t:48 的四分琶音格 + 三拍无动作），demoBuildSpec 对带
+     bars 的条目直通、不再走 demoBar。数据形状与《我们》引子那小节完全同款。 */
+  { name: "节奏型6（《在他乡》）", strum: "P6",
+    bars: [[{"t":48,"rest":false,"dir":"A"},{"t":48,"rest":true},{"t":48,"rest":true},{"t":48,"rest":true}]] },
 ];
 /* 段 = 词行（行=段的契约）。
    ★ v2.77.0：和弦序列不再写进段名（「段名猜和弦」secChords 回落退役）——
@@ -5626,6 +5651,10 @@ const DEMO_SONG = [
       [[0,4,"夜"],[12,2,"那"],[14,2,"一"]],
       [[0,4,"夜"]],
       []] },
+  /* ★ 本版（用户补充）：全曲末新增「尾声」一小节——一记 C 琶音让余音散尽（P6，节奏型6）。
+     和弦胶囊「C琶音」与《我们》引子同款写法（音名紧贴修饰语，chdsp36 口径）；无歌词。 */
+  { name: "尾声", chords: ["C琶音"], strums: ["P6"], words: [
+      []] },
 
 ];
 /* ============================================================================
@@ -5638,22 +5667,42 @@ const DEMO_SONG = [
      与《在他乡》的 5 个型同属"内置只读素材"。
    ★ 段名沿用仓库惯例「结构名 · 特征」：结构名走编曲通用词（引子/主歌/副歌/间奏/桥段），
      重复遍次用「（第N遍）」标出——它表示**歌曲唱到第几遍**，不是"多余的副本"。
-   ★ 型名沿用「特征名（《歌名》段落）」，与《在他乡》5 型同构。
+   ★ 型名沿革：「特征名（《歌名》段落）」（与《在他乡》5 型同构）→ ★ 本版起两首示例曲
+     一并改**编号制**「节奏型N（《歌名》）」（特征名断言内容、断言即有错风险，见 DEMO_PRESETS 头注释）。
    ============================================================================ */
 const DEMO2_ID = "demo-wmbbf", DEMO2_SONG_NAME = "《我们能不能不分手》（示例）";
-/** 4 个型（按在曲中的角色命名；bars 即用户编排的原始形态，一字未改）。
-    `strum` 是**段引用用的代号**（Q1..Q4），与《在他乡》的 P1..P5 同职——
-      demoIdxOf 靠它把「逐小节型序列」映射成块引用的下标。 */
+/** 5 个型（★ 本版起编号制命名）。Q1–Q4 即用户编排的原始形态，一字未改；
+    Q5 为琶音修正型（见下方）。`strum` 是**段引用用的代号**（Q1..Q5），与《在他乡》的
+    P1..P5 同职——demoIdxOf 靠它把「逐小节型序列」映射成块引用的下标。
+    ★ 命名口径（本版定稿）：型名 = 「节奏型N（《我们能不能不分手》）」，编号按**曲中首次
+    出现顺序**——这首歌琶音开场（引子 · 我们 ⇒ 节奏型1 = 琶音型），随后副歌主干（节奏型2）、
+    「动」段（3）、间奏（4）；第二遍副歌才出现的八分满扫编 5。定稿后**永不重排**。
+    ★ 数组顺序 ≠ 编号顺序：数组顺序 = BUILTINS 挂载顺序（Q1..Q5 ⇒ 下标 17..21，
+    被存量曲式引用着，不可动）；型名里的编号才是给用户看的「首次出现序」——
+    故下方条目按 5,2,3,4,1 的名字排列，勿"顺手整理"。
+    ★ 段名口径（曲式查证定稿，沿用）：这首歌以副歌开场（全曲第一句就是标题句），副歌/主歌
+    的段落定性没错；引子 = 段 1 的琶音小节（琶音全曲仅此一处，第二遍副歌按满扫走），
+    段名「引子 · 我们」与《在他乡》的「引子 · 我多想」口径统一。 */
 const DEMO2_PRESETS = [
-  { name: "八分满扫（《我们能不能不分手》副歌）", strum: "Q1", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
-  { name: "八分下上扫（《我们能不能不分手》主歌）", strum: "Q2", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
-  { name: "八分切音扫（《我们能不能不分手》副歌 · 动）", strum: "Q3", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":true,"dir":"D","zone":2},{"t":24,"rest":true,"dir":"U","zone":2}]] },
-  { name: "八分下上扫 · 变（《我们能不能不分手》间奏）", strum: "Q4", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+  { name: "节奏型5（《我们能不能不分手》）", strum: "Q1", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "节奏型2（《我们能不能不分手》）", strum: "Q2", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "节奏型3（《我们能不能不分手》）", strum: "Q3", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":true,"dir":"D","zone":2},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+  { name: "节奏型4（《我们能不能不分手》）", strum: "Q4", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+  /* ★ 本版修正型（用户实报）：全曲第 1 小节实际是琶音——第 1 拍一记琶音、
+     后三拍休止（不扫弦），不是八分满扫。dir:"A" = 琶音记号（竖波浪线，渲染层与
+     D/U 的直杆箭头三分支），发声走既有扫弦声部（dir !== undefined 即扫弦声）。
+     ★ 数据形状：一记四分（t:48）+ 三拍纯休止（rest、无 dir——「后面几拍都不扫弦」）。
+     ★ 为什么是独立型而不是改 Q1：Q1 仍被段 7「副歌 · 我们（第二遍）」引用（第二遍
+       乐队已进入，按满扫走，谱面不变）——琶音型全曲仅引子这一处使用。 */
+  { name: "节奏型1（《我们能不能不分手》）", strum: "Q5", meter: 4, bars: [[{"t":48,"rest":false,"dir":"A"},{"t":48,"rest":true},{"t":48,"rest":true},{"t":48,"rest":true}]] },
 ];
 /** 段 = 词行（行=段的契约）。strums 是**逐小节**的型代号序列，长度即段长。
     和弦与歌词同《在他乡》口径：chords 逐小节、words 逐小节的 [tick/16, dur/16, 字]。 */
 const DEMO2_SONG = [
-  { name: "副歌 · 我们（第一遍）", chords: ["C琶音"], strums: ["Q1"], words: [
+  /* ★ 本版改段名「副歌 · 我们」→「引子 · 我们」（曲式查证定稿，见 DEMO2_PRESETS 头注释）：
+     「我们」是唱进副歌的弱起，落在引子小节末两格；同结构的小节在《在他乡》叫「引子 · 我多想」。
+     第二遍（段 7）保持「副歌 · 我们」——那一遍乐队已进入，按满扫走，是货真价实的副歌小节。 */
+  { name: "引子 · 我们（第一遍）", chords: ["C琶音"], strums: ["Q5"], words: [
       [[12,2,"我"],[14,2,"们"]]] },
   { name: "副歌 · 能不能（第一遍）", chords: ["F G","Em Am","F G","C","F E","Am","F G"], strums: ["Q2","Q2","Q2","Q2","Q2","Q2","Q2"], words: [
       [[0,4,"能"],[4,2,"不"],[6,2,"能"]],
@@ -5780,8 +5829,10 @@ function demoBuildSpec(){
     }
     return out;
   };
-  /* 每个型 = **1 小节**（原子单元），型长自由是 v2.5.1 放开的能力 */
-  const presets = DEMO_PRESETS.map(p => ({ name: p.name, meter: 4, bars: [demoBar(p.strum)] }));
+  /* 每个型 = **1 小节**（原子单元），型长自由是 v2.5.1 放开的能力
+     ★ 本版：带 bars 的条目直通（P6 尾声琶音型——紧凑记法产不出 t:48 四分琶音格） */
+  const presets = DEMO_PRESETS.map(p => ({ name: p.name, meter: 4,
+    bars: p.bars ? JSON.parse(JSON.stringify(p.bars)) : [demoBar(p.strum)] }));
   return Object.assign({ presets }, buildDemoArrange(DEMO_SONG, demoIdxOf(DEMO_PRESETS, "strum"), DEMO_ID, DEMO_SONG_NAME));
 }
 /** 第二首《我们能不能不分手》的规范谱（v3.34.7）。
@@ -5821,7 +5872,9 @@ function demoSpec2(){
   if (!_demoSpec2) _demoSpec2 = demoBuildSpec2();
   return _demoSpec2;
 }
-/* v2.20.0：示例曲 5 型**并入内置库**（下标 DEMO_BUILTIN_BASE … +4）——
+/* v2.20.0：示例曲 5 型**并入内置库**——★ 本版起为 6 型（下标 DEMO_BUILTIN_BASE … +5：
+   P6 尾声琶音型按同序契约插在本型域末位、全库第 16 项，《我们》五型基址因此 16 → 17，
+   存量引用的 +1 位移由 arpg52 迁移承担，见该处注释）——
    ★ 为什么收进 BUILTINS：示例型此前落库为 customs（自定义），于是自带删除按钮——
      用户随手一删，示例曲式的引用就断了（曲式块按 custom id 引用，id 没了即坏引用，
      表现为"整首不能播"）。这是把**内置素材**误建模成**用户数据**的错：它们和
@@ -5842,7 +5895,8 @@ DEMO_PRESETS.forEach((p, i) => {
   BUILTINS.push({ name: p.name, desc: "4/4 · 《在他乡》示例 · 单小节", meter: sp.meter,
     bars: JSON.parse(JSON.stringify(sp.bars)) });
 });
-/* v3.34.7：第二首示例曲的 4 个型同样并入 BUILTINS（下标 DEMO2_BUILTIN_BASE … +3）。
+/* v3.34.7：第二首示例曲的 4 个型同样并入 BUILTINS（★ 本版为 5 型：下标 DEMO2_BUILTIN_BASE … +4，
+   基址 = 17——P6 插队所致，见上）。
    ★ 与上面同一条理由：它们原本是**用户用编辑器做的自定义型**——内置示例曲一旦引用
      用户数据，用户删掉型整首就播不了。收进内置库后删不掉、内容恒对。
    ★ 声明位置同上面那批：必须在 BUILTIN_SRC_NAMES 快照**之前**（快照要含这 4 项），
@@ -6141,6 +6195,37 @@ const FLASH_THEME = {
 };
 const flashTheme = () => (document.body.getAttribute("data-theme") === "obs" ? FLASH_THEME.obs : FLASH_THEME.classic);
 
+/* ★ 本版（用户实报）：琶音记号（dir:"A"）——示例曲《我们能不能不分手》引子小节的实际弹法。
+   顶层共享件：主视图 / 编辑器 / 编排页三处渲染点必须画**同一个**记号，各写一遍必然漂移
+   （本仓的教训：v2.4.3 的箭头尖端画反即是此类）。
+   arpGlyph：竖波浪线 + 顶端箭头，createElementNS 构建真实 SVG（恒定标记、零拼串——
+   不走 innerHTML，符合代码卫生 lint 的用意）。viewBox 高 44 = 主视图一格满行高；
+   弦区跨距由宿主 .strumv 的 --y1/--y2 变量裁（preserveAspectRatio:none 纵向拉伸）；
+   顶端箭头与 .dn 同向（▲ 在 --y1 端）——琶音由低音弦滚向高音弦，指向与下扫一致。
+   染态（hit/ghost）见 CSS .strumv.arp 区块；数据层零特判（发声走既有
+   dir !== undefined 的扫弦声部入口）。 */
+function arpGlyph(host){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 10 44");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const mk = (cls, d) => {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("class", cls);
+    p.setAttribute("d", d);
+    return p;
+  };
+  svg.appendChild(mk("arp-wave", "M5 44 C8.6 41.4 8.6 38.6 5 36 C1.4 33.4 1.4 30.6 5 28 C8.6 25.4 8.6 22.6 5 20 C1.4 17.4 1.4 14.6 5 12 C8.6 9.4 8.6 8.6 5 8"));
+  svg.appendChild(mk("arp-head", "M1.8 8.4 L8.2 8.4 L5 0.9 Z"));
+  host.appendChild(svg);
+}
+/** dir → .strumv 类名后缀（D=dn / U=up / A=arp）。三处渲染点共用。
+    @param {string} dir @returns {string} */
+function strumDirCls(dir){
+  return dir === "A" ? " arp" : (dir === "D" ? " dn" : " up");
+}
+
 
 /* ================= Store · 持久化 / 状态 / 导入导出 ================= */
 const Store = (() => {
@@ -6251,7 +6336,12 @@ const Store = (() => {
   function migFinish(id){
     try{ localStorage.setItem(MIG_PREFIX + id, "1"); }
     catch(e){ migStuck(id, "『完成』戳没落上"); return; }
-    try{ localStorage.setItem(MIG_LEGACY[id], "1"); }catch(e){ /* 老戳是兼容面，落不上不影响本版本（新戳才是真相源） */ }
+    /* ★ 本版（t237 抓到的实缺陷）：老戳只在 MIG_LEGACY 里**登记过**的迁移才落——
+       新迁移（如 arpg51）不在表里，MIG_LEGACY[id] 是 undefined，旧写法等于
+       setItem(undefined, "1")：真机上落出一个垃圾冷键 "undefined"（桩里则是
+       Map 的 undefined 键，t153 的键枚举当场炸）。老戳本来就是"给降级侧读的
+       兼容面"，新迁移没有降级侧要兼容，跳过正是语义本身。 */
+    if (MIG_LEGACY[id]){ try{ localStorage.setItem(MIG_LEGACY[id], "1"); }catch(e){ /* 老戳是兼容面，落不上不影响本版本（新戳才是真相源） */ } }
   }
   /** @param {string} id */
   function migAbort(id){ try{ localStorage.removeItem(MIG_PREFIX + id); }catch(e){} }
@@ -6355,6 +6445,94 @@ const Store = (() => {
         else migFinish("chdsp36");
       }
     } else if (st !== "1" && st !== "?"){ migStuck("chdsp36", "戳记状态=" + st); }
+  }
+
+  /* ★ 本版（用户实报 + 曲式查证 + 补充）：三件事一并迁移——
+       ① 《我们能不能不分手》第 1 小节实为琶音，且它是全曲**引子**（琶音全曲仅此一处；
+         第二遍副歌按满扫走）：段 1 改名「副歌 · 我们（第一遍）」→「引子 · 我们（第一遍）」、
+         块引用改指琶音型（节奏型1）。
+       ② 《在他乡》全曲末新增「尾声」琶音小节 ⇒ 新型 P6 按**同序契约**插进型域末位
+         （BUILTINS 16，《我们》五型基址随之 16 → 17）——与 v3.35.5 删「民谣扫弦」的
+         bnmig35 完全同构：插入点之后（旧下标 16..19，即《我们》Q1..Q4 的老位置）的
+         **四处**内置下标引用整体 +1（① sel 热键 ② 曲式块 ③ groups 成员 ④ builtinNames 键）。
+       ③ 本批型名同时改编号制——型名不落冷键（改名覆盖另有 builtinNames 承载），零负担。
+     ★ 为什么要迁移：块引用/段名/选中/分组/改名覆盖都随数据落进冷键；oneStale 只查
+       段数/段长/坏引用——+1 位移与段 1 换引用两侧都不触发自动收敛。
+     ★ 两类存量形状都收敛（迁移按**值域**认领，不猜形状）：
+       · 正式版存量（≤ v3.45.9）：段 1 引用 16（Q1 八分满扫），Q5 尚不存在；
+       · 未发布内测形状（本批首版曾把 Q5 挂在 20）：段 1 引用 20。
+       ⇒ 段 1 的块只要 idx ∈ {16, 20} 即改指琶音型；其余引用 idx ∈ [16..19] 一律 +1。
+       （20 只可能是段 1 的琶音引用——正式版存量没有 20，先改段 1 再位移不会误伤。）
+     ★ 保守边界：段 1 块只认领 idx ∈ {16,20}、段名只认旧名（用户改过的是他的数据，不碰）；
+       曲式只认领这一首（id 命中为主、名字兜底，与 chdsp36 一致）。
+     ★ 下标不写死数字：琶音型新下标以 BUILTIN_SRC_NAMES 按名解析（源名快照不受用户
+       改名影响）；解析不到即 migAbort 下次再试，绝不瞎猜写坏引用。位移区间 [16..19]
+       写死是**锚定事实**（= 插入点后、Q5 之前的老位置），不是可调参数。 */
+  {
+    const st = migState("arpg52");
+    if (st === ""){
+      if (migBegin("arpg52")){
+        const ARP_IDX = BUILTIN_SRC_NAMES.indexOf("节奏型1（《我们能不能不分手》）");
+        if (ARP_IDX < 0){
+          migAbort("arpg52");   // 源名失配 = 代码与字面量错位，宁可下次重试也不瞎改
+        } else {
+          let wroteAny = false, failed = false;
+          /* ① 先改《我们》段 1（改名 + 换引用）——先于位移，段 1 的新下标不在位移区间内 */
+          const aIn = readJSON(KEY_ARRANGES);
+          if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+            aIn.arranges.forEach(/** @param {any} r */ r => {
+              if (!r || (r.id !== "demo-wmbbf" && r.name !== "《我们能不能不分手》（示例）")) return;
+              if (!Array.isArray(r.sections) || !r.sections.length) return;
+              const s0 = r.sections[0];
+              if (!s0) return;
+              if (s0.name === "副歌 · 我们（第一遍）"){ s0.name = "引子 · 我们（第一遍）"; }
+              if (Array.isArray(s0.blocks)){
+                s0.blocks.forEach(/** @param {any} b */ b => {
+                  if (b && b.ref && b.ref.type === "builtin" && (b.ref.idx === 16 || b.ref.idx === 20)){
+                    b.ref.idx = ARP_IDX;
+                  }
+                });
+              }
+            });
+          }
+          /* ② 插入点后的下标整体 +1——四表面与 bnmig35 同构（sel 只改内存副本，热键随后重写） */
+          /** @param {any} r @returns {void} */
+          const shift = r => { if (r && r.type === "builtin" && Number.isInteger(r.idx) && r.idx >= 16 && r.idx <= 19) r.idx += 1; };
+          if (saved.sel && typeof saved.sel === "object") shift(saved.sel);
+          if (aIn && Array.isArray(aIn.arranges) && aIn.arranges.length){
+            aIn.arranges.forEach(/** @param {any} r */ r => {
+              if (!r || !Array.isArray(r.sections)) return;
+              r.sections.forEach(/** @param {any} s */ s => {
+                if (!s || !Array.isArray(s.blocks)) return;
+                s.blocks.forEach(/** @param {any} b */ b => { if (b && b.ref) shift(b.ref); });
+              });
+            });
+            try{ localStorage.setItem(KEY_ARRANGES, JSON.stringify(aIn)); wroteAny = true; }catch(e){ failed = true; }
+          }
+          const gIn = readJSON(KEY_GROUPS);
+          if (gIn && Array.isArray(gIn.groups) && gIn.groups.length){
+            gIn.groups.forEach(/** @param {any} g */ g => {
+              if (g && Array.isArray(g.members)) g.members.forEach(/** @param {any} m */ m => shift(m));
+            });
+            try{ localStorage.setItem(KEY_GROUPS, JSON.stringify(gIn)); wroteAny = true; }catch(e){ failed = true; }
+          }
+          const bIn = readJSON(KEY_BNAMES);
+          if (bIn && bIn.names && typeof bIn.names === "object"){
+            /** @type {Record<string, any>} */
+            const next = {};
+            Object.keys(bIn.names).forEach(/** @param {string} k */ k => {
+              const i = +k;
+              if (!Number.isInteger(i) || i < 0) { next[k] = bIn.names[k]; return; }
+              next[String(i >= 16 && i <= 19 ? i + 1 : i)] = bIn.names[k];
+            });
+            bIn.names = next;
+            try{ localStorage.setItem(KEY_BNAMES, JSON.stringify(bIn)); wroteAny = true; }catch(e){ failed = true; }
+          }
+          if (failed){ if (wroteAny) migStuck("arpg52", "部分冷键没写进去"); else migAbort("arpg52"); }
+          else migFinish("arpg52");
+        }
+      }
+    } else if (st !== "1" && st !== "?"){ migStuck("arpg52", "戳记状态=" + st); }
   }
   /** @type {any[]} */
   const savedCustoms = (coldIn && Array.isArray(coldIn.customs)) ? coldIn.customs
@@ -6460,7 +6638,12 @@ const Store = (() => {
   /* v3.33.0：VALID_METER 已进一步上移到**顶层**（见「细分节奏表」段）——现在它的使用者
      除了本模块（加载白名单 + 导入校验），还有 Editor 的拍数下拉（三处必须同一份，
      否则"能选出来的拍号"与"能存进去的拍号"会漂移）。 */
-  const VALID_DIR = ["D", "U"];                               // 合法扫弦方向（v1.9.0）——同上共用一份
+  /* ★ 本版（用户实报）：VALID_DIR 增 "A" = 琶音记号（竖波浪线，示例曲《我们能不能不分手》
+     引子小节的实际弹法）。数据层零特判——serialize/dirty 降级/发声（dir !== undefined
+     即扫弦声部）全走既有 dir 路径；只有**渲染层**分出第三分支（顶层 ARP_SVG/strumDirCls）。
+     ★ 编辑器的方向选择器本版补上「琶音」第四档（data-dir="A"）——首版曾只 D/U 两档，
+     示例曲带得出琶音格、编辑器却造不出（用户实报）；接线走既有通用 [data-dir] 路径。 */
+  const VALID_DIR = ["D", "U", "A"];                           // 合法扫弦方向（v1.9.0；本版 + A=琶音）——同上共用一份
   const VALID_ZONE = [0, 1, 2];   // 合法弦区：0=低 / 2=高 / 1=全扫别名（v2.29.0 起语义，老数据零迁移）
   /** @param {any} v @returns {boolean} */
   const isNum = v => typeof v === "number" && isFinite(v);    // 严格：拒绝 null / 布尔 / 字符串 / NaN / Infinity
@@ -7262,14 +7445,14 @@ const Store = (() => {
    *   sel: { type: string, idx?: number, id?: string },
    *   swing: number, accentGrp: Record<string, number>, timbre: string,
    *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
-   *   bounce: boolean, keepAwake: boolean, migHint: boolean,
+   *   keepAwake: boolean, migHint: boolean,
    *   wideFull: boolean,
-   *   showTab: boolean,
    *   showRuler: boolean, showDurLabel: boolean, showLyric: boolean, lyricPos: ("auto"|"follow"|"bottom"),
    *   pitchNotation: ("off"|"jp"|"nm"),   // v3.37.0：歌词音高标注三态（off 关 / jp 简谱 / nm 音名）
    *   vizRows: number,
    *   scrollMode: boolean, scrollRows: (1|3),   // v3.0.0（PLAN-v9）：连续滚动模式 + 它的窗口行数档位
-   *   vizLegend: boolean,   // v3.1.0（A1）：首用图例条开关（默认显示；关一次永不再出）
+   *   vizLegendVsn: string,  // 本版：图例「知道了」关闭时的版本号（同版本内不再出，发版回归一次）
+   *   vizLegend: boolean,   // 派生值：vizLegendVsn !== VERSION ⇒ 显示（不再单独落盘）
    *   fold: { beat: boolean, strum: boolean, custom: boolean, basic: boolean },
    *   loopRange: { on: boolean, from: number, to: number },
    *   playMode: string,
@@ -7328,12 +7511,11 @@ const Store = (() => {
       beats: Math.min(8, Math.max(1, Math.round(numOr(savedCountIn.beats, 4)))) },
     playing: false,
     preview: false,
-    bounce: saved.bounce !== false,                 // v1.2 弹跳球：默认开，显式存 false 才关
+    /* ★ 本版（用户拍板）：弹跳球 / 六线底纹 / 图例条三开关退役，功能恒开——
+       bounce / showTab 两字段删除（老存档里的旧键被下面的白名单读取自然忽略，零迁移）。
+       弹跳球在连续滚动模式下仍恒不画（v3.1.3 口径，由 S.scrollMode 自行守卫）。 */
     /* v2.36.0 宽屏铺满：默认关（主界面 1440px 居中），显式存 true 才铺满。视图偏好，进热键载荷 */
     wideFull: saved.wideFull === true,
-    /* v2.4.2 六线底纹开关：默认开（六线是扫弦谱的"纸"，第一眼就该在）。
-       它只控制**底纹**显隐，不影响扫弦箭头的绘制——箭头是内容，底纹是参照物。 */
-    showTab: saved.showTab !== false,
     /* v2.70.0（1.4）：拍内座次尺（1 e & a）与时值标注（四分/八分/十六×N）两个显示开关，
        默认开（老用户升级后逐位不变）。显示偏好跟 showTab 同类 → 热键。
        显隐走 CSS 类（.viz.no-ruler / .no-durlab），DOM 照建——文本断言与读屏不受影响。 */
@@ -7365,9 +7547,16 @@ const Store = (() => {
        脏值（含 0/2/"1"/null）一律回落 3——不信存储，与 vizRows 同一条纪律。 */
     scrollMode: saved.scrollMode === true,
     scrollRows: saved.scrollRows === 1 ? 1 : 3,
-    /* v3.1.0（A1）图例条开关：默认**显示**（新用户第一分钟有锚点）；显式 false 尊重用户
-       —— 关一次落盘，之后不再出（与"没存过"和"存过 false"分开判同一条纪律）。 */
-    vizLegend: saved.vizLegend !== false,
+    /* ★ 本版（用户拍板）：图例条改**版本号维度**——「知道了」是唯一关闭入口，关一次记下
+       关闭时的版本号（vizLegendVsn）；**同版本内不再出现，版本更新则回归一次**
+       （新版本可能带来新读法，需要图例再当一次锚点）。设置页的双向开关已随本批退役，
+       恢复入口从"设置开关"换成"发版"。
+       · vizLegend 是**派生值**（vizLegendVsn !== VERSION ⇒ 显示），不单独落盘；
+       · 存量口径：老存档只有布尔 vizLegend（v3.1.0 起的旧键），无 vsn 可比 ⇒ 视同
+         "旧版本关闭的"，本次发版后会再看到一次（"版本更新即回归"的自然推论），
+         再点一次「知道了」即按新记账。 */
+    vizLegendVsn: (typeof saved.vizLegendVsn === "string" && saved.vizLegendVsn) || "",
+    vizLegend: ((typeof saved.vizLegendVsn === "string" && saved.vizLegendVsn) || "") !== VERSION,
     /* v2.10.0 预设库分区折叠：三区标题可点开/收起（true = 展开）。
        ★ v2.13.0 出厂默认 {节拍:展开, 扫弦:收起, 自定义:展开}（见 foldInit 的长注释：
          "没存过"走出厂值、"存过 false"尊重用户——两者必须分开判）。 */
@@ -7571,14 +7760,15 @@ const Store = (() => {
       noAccent:S.noAccent,                       // v3.33.0：「0 · 均等」（不分重拍）档
       muteCfg:S.muteCfg,                         // v2.71.0：静音拍参数（练习偏好，跟热键走）
       strumVol:S.strumVol,                        // v2.5.0：扫弦声部音量（与 vol 并列的热键显示偏好）
-      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer, bounce:S.bounce,
-      showTab:S.showTab,                          // v2.4.2：六线底纹开关（显示偏好，跟热键走）
+      swing:S.swing, accentGrp:S.accentGrp, timbre:S.timbre, countIn:S.countIn, trainer:S.trainer,
+      /* ★ 本版：bounce / showTab / vizLegend 三键随三开关退役，不再写入热键载荷
+         （老存档里的旧键由加载白名单自然忽略）；图例的持久键换成 vizLegendVsn。 */
       showRuler:S.showRuler, showDurLabel:S.showDurLabel, // v2.70.0：座次尺/时值标注（显示偏好，跟热键走）
       showLyric:S.showLyric, lyricPos:S.lyricPos, // v2.86.0：歌词显示开关 + 位置（显示偏好，跟热键走）
       pitchNotation:S.pitchNotation,              // v3.37.0：音高标注三态 off/jp/nm（显示偏好，跟热键走）
       vizRows:S.vizRows,                          // v2.8.0 req3：同屏行数档位（显示偏好，跟热键走）
       scrollMode:S.scrollMode, scrollRows:S.scrollRows, // v3.0.0：连续滚动模式 + 窗口行数（显示偏好，跟热键走）
-      vizLegend:S.vizLegend,                      // v3.1.0：图例条开关（显示偏好，跟热键走）
+      vizLegendVsn:S.vizLegendVsn,                // 本版：图例关闭时的版本号（版本更新 ⇒ 图例回归）
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom, basic:S.fold.basic }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）；v3.33.0：+ basic（基础节奏区）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
       keepAwake:S.keepAwake, migHint:S.migHint,
@@ -10692,7 +10882,11 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
 
   /** @param {any} s */
   function stepLabel(s){
-    return (s.rest ? "休止 " : "") + (DUR_NAME[s.t] || (fmtBeat(s.t) + "拍"));
+    /* ★ 本版（用户实报）：删掉「休止 」前缀——休止与否由格子形状表达（主视图虚线空框 /
+       编辑器 .rest 虚线边），标签只报时值本身；「休止 八分」读起来像另一种时值，是错的。
+       读屏侧的代价一并接受：纯休止格的 aria 只报「八分」（带方向的休止仍有「 · 空扫」、
+       编辑器 restHint 也仍会说「休止中」——休止信息不缺来源，只是不再挤进时值标注）。 */
+    return DUR_NAME[s.t] || (fmtBeat(s.t) + "拍");
   }
 
   /* ---------- ④ 建网格（结构层，只在换型 / 翻页 / resize 时跑） ----------
@@ -10947,7 +11141,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
         const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
-        sm.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
+        sm.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
+        if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（::before/::after 那套直杆对 .arp 不生效）
         /* ★ v2.4.3：把自己对应的**格子下标**写在 data-i 上。
            为什么需要它：层里的孩子是**紧凑**的（无方向的格不产生节点），
            所以「层里第 i 个孩子」≠「第 i 格」——只有全格都有方向时才偶然相等。
@@ -11322,20 +11517,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      曲式模式问窗口合成型。跟它同源不是为了省事：两者都是"这个型长什么样"的判据，
      取型口径一旦分叉，型长于窗口时一个会随翻页闪、一个不会，画面自相矛盾。
      判据本体在数据区 needsT16Ruler()（与 hasStrum 同处，Viz 与 Arrange 共用一份）。 */
-  /* 六线底纹显隐（v2.4.2）：把 S.showTab / 当前型是否带扫弦记谱两个条件收成 .viz 上的一个类，
+  /* 六线底纹显隐（v2.4.2 起；★ 本版收敛为单条件）：.viz 上的一个类，
      由 CSS `.viz.no-tab .tab{display:none}` 落地。
-     为什么不在 buildViz 里"按开关决定要不要创建 .tab"：那样切开关就得重建整棵树
-     （播放中会抖），而且换型本来就会重建——两件事的触发频率差太远。
-     所以 .tab 的**创建**只由 vizHasStrum() 决定（带记谱建、不带不建），**显隐**由这个类决定。
-     buildViz 末尾与开关处理器都调它，保证两个入口收敛到同一结果。
-     v2.10.6：开关本体也跟随型显隐——节拍型下底纹**恒**不显示（合取的另一半恒假），
-     开关留着只会制造「点了没反应」的困惑（用户实报，四分基础下点它毫无变化）；
-     扫弦型下才现身，恢复「手动控制底纹」该有的意义。与 no-tab 同源同收尾，
-     型变化的每条路径（buildViz 末尾）都会走到，无需额外调用点。 */
+     为什么不在 buildViz 里"按需决定要不要创建 .tab"：换型本来就会重建整棵树，
+     .tab 的**创建**只由 vizHasStrum() 决定（带记谱建、不带不建），
+     **显隐**由这个类决定——本版 tabToggle 开关退役后收敛为单条件：
+     带扫弦记谱的型恒显底纹（六线是扫弦谱的"纸"），节拍型恒不显（画了箭头就等于
+     承认"这是扫弦谱"，与入口语义矛盾）。buildViz 末尾会调它，型变化的每条路径都收敛到同一结果。 */
   function syncTabLayer(){
-    const hasStr = vizHasStrum();
-    $("viz").classList.toggle("no-tab", !(S.showTab && hasStr));
-    $("tabToggle").hidden = !hasStr;
+    $("viz").classList.toggle("no-tab", !vizHasStrum());
   }
   /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
      标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
@@ -11635,8 +11825,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        此前的口径是"待命球不画、主球钉行中央"，但用户实拍预备拍 + v3.1.2 预滚后确认：
        滚动模式的落点感由播放头（钉中央）+ 内容滚动 + 声音承担，球在这个模式下
        没有可靠的落点参照（预备拍处是留空槽、播放中随内容滚过），一律取消。
-       ★ S.bounce（弹跳球开关）自此仅对分页模式生效；本守卫必须放在 !S.bounce
-         分支之前——scroll 下即使开关关着也要走同一套隐藏（幂等，写点归一）。
+       ★ 本版：S.bounce 开关退役（弹跳球恒开）——scroll 守卫成为本函数唯一的显隐分支。
        ★ 恢复：切回分页后本函数自然走原路径，display="" 每帧重写，无永久关闭。 */
     if (S.scrollMode){
       /* v3.2.3 方案 A（v3.12.0 收口）：预备拍道会话维持——预备拍开启后，首个可听
@@ -11667,12 +11856,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
       return;
     }
-    if (!S.bounce){
-      ballEl.style.display = "none"; shadowEl.style.display = "none";
-      if (waitEl) waitEl.style.display = "none";
-      if (ballBreathOn){ ballEl.classList.remove("breath"); ballBreathOn = false; }
-      return;
-    }
+    /* 本版：原 !S.bounce 隐藏分支随开关退役删除（分页模式恒画球） */
     ballEl.style.display = ""; shadowEl.style.display = "";
     /* v3.0.0：scroll 整个不画待命球（用户拍板）——它的语义是"在下一行左缘等着接棒"，
        而 scroll 的下一小节是从右缘滚进来的，左缘是刚滚出去的上一小节，落点不存在。
@@ -12678,7 +12862,8 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
          首拍位待命（与既有“降形变保留位置”纪律同向）。 */
       const RBc = rowBeats();
       const pos = Math.max(0, Math.min(ciBeats, (c.currentTime - ciStart) / spb()));
-      if (S.bounce && ballEl && shadowEl){
+      /* 本版：S.bounce 开关退役——分页模式恒画球（scroll 分支在下方自行隐藏） */
+      if (ballEl && shadowEl){
         /* ★★ v3.1.3（用户拍板）：滚动预备拍**不画球**——v3.1.2 的"球钉播放头"方案退役。
            缘由：预滚期间播放头处是第一圈留空的填充槽（没有内容），球钉在那里 = 浮在空地上，
            与右侧正在滑入的节奏型条视觉脱开，观感仍是"错位"（用户实拍第二张截图）。
@@ -14622,23 +14807,12 @@ let t1 = /** @type {null | ReturnType<typeof setTimeout>} */ (null), t2 = /** @t
     Viz.syncMuteBars();
   });
 
-  /* 弹跳球开关（v1.2）：只控显隐，onset 表照常维护（重新打开时球立即就位，无需暖机） */
-  bindToggle("bounceToggle", () => (S.bounce = !S.bounce));
-  /* 图例开关（v3.34.5，审计 A-1）：与「知道了」同一个状态 `S.vizLegend`，只是**双向**的。
-     收尾两件事，缺一不可：
-       ① 立刻翻 `#vizLegend` 的 hidden —— 否则改了状态而画面不动（用户点了没反应）；
-       ② `Viz.relayout()` —— 图例条占的高度一变，跑道 cacheGeo 里的 top 就过期了
-          （v3.9.0 实拍：关掉图例后跑道错位、要等开播才恢复）。
-     bindToggle 自带 blur → setToggle → persist，落盘与无障碍语义都走既有路径。 */
-  bindToggle("vizLegendToggle", () => (S.vizLegend = !S.vizLegend), () => {
-    $("vizLegend").hidden = !S.vizLegend;
-    Viz.relayout();
-  });
-
-  /* 六线底纹开关（v2.4.2）：只切 .viz 上的 no-tab 类，**不重建 DOM**——
-     六线是纯背景层，重建整棵树会让播放中的动画抖一下，而 `.viz.no-tab .tab{display:none}`
-     一条 CSS 规则就够了。箭头不受影响（它是内容，不是底纹）。 */
-  bindToggle("tabToggle", () => (S.showTab = !S.showTab), () => Viz.syncTabLayer());
+  /* ★ 本版（用户拍板）：弹跳球（bounceToggle）/ 图例（vizLegendToggle）/ 六线底纹（tabToggle）
+     三枚开关退役，bindToggle 接线随之删除——功能恒开：
+       · 弹跳球：分页模式恒显（onset 表本就无条件维护，重开无需暖机的性质保留在结构里）；
+       · 六线底纹：显隐只由「当前型是否带扫弦记谱」决定（syncTabLayer 收敛为单条件）；
+       · 图例条：唯一关闭入口 = 「知道了」（版本号维度，见装配区 vizLegendClose），
+         唯一恢复入口 = 版本更新，不再有设置开关。 */
 
   /* v2.36.0（用户反馈④）：宽屏铺满——去掉主页面的 1440px 宽度上限（默认关）。
      只切 body 上的一个类（.wide-full），纯 CSS 重排、不重建 DOM。
@@ -16987,7 +17161,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
         /* v2.74.0（2.7）：方向/弦区进 aria-label（视觉信息不丢给读屏用户——
            弦区从文字徽标改为箭头跨距后，读屏用户的唯一来源就是这里） */
         const zoneName = (!s.rest && s.zone !== undefined) ? " · " + ["低音区", "全扫", "高音区"][s.zone] : "";
-        const dirName = s.dir ? (s.rest ? " · 空扫" : (s.dir === "D" ? " · 下扫" : " · 上扫")) : "";
+        const dirName = s.dir ? (s.rest ? " · 空扫" : (s.dir === "D" ? " · 下扫" : (s.dir === "A" ? " · 琶音" : " · 上扫"))) : "";
         c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}${dirName}${zoneName}`);
         c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
@@ -17002,11 +17176,13 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           if (!s.rest) prevZone = z;
           const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
           const sv = document.createElement("span");
-          sv.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
+          sv.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
+          if (s.dir === "A") arpGlyph(sv);   // 琶音 = 竖波浪线（与主视图同一份标记）
           sv.setAttribute("aria-hidden", "true");
           c.appendChild(sv);
-          /* 非休止：保留 ↑↓ 字形（ed-strum），排在视觉箭头之后（书写顺序=主视图口径） */
-          if (!s.rest){
+          /* 非休止：保留 ↑↓ 字形（ed-strum），排在视觉箭头之后（书写顺序=主视图口径）。
+             琶音（dir:"A"）不带 ↑↓——波浪线本身就是记法，「↓」反而会说错手部动作 */
+          if (!s.rest && s.dir !== "A"){
             const ds = document.createElement("span");
             ds.className = "ed-strum";
             ds.textContent = s.dir === "D" ? "↑" : "↓";
@@ -17349,7 +17525,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
 /* ================= Settings · 设置（v2.10.12 新增） ================= */
 /* 设置弹窗（顶栏「设置」按钮打开）。它收的是**低频的全局项**——判据见设置 overlay
    标记处的注释：「你在练习过程中会不会去点它？」会 → 留主界面。三组：
-     外观与辅助（主题 / 弹跳球 / 六线底纹）、发声（音色）、数据与说明（四个导入导出 + 使用方法）。
+     画面（主题 / 宽屏 / 壁纸 / 座次尺 / 时值标注 / 歌词…；★ 本版：弹跳球 / 六线底纹 / 图例
+       三开关退役删除，功能恒开，设置里不再有它们的入口）、发声（音色）、
+     数据与说明（四个导入导出 + 使用方法）。
    ★ 为什么是一个**模块**而不是装配层的一段（对照诊断面板那条先例）：
      诊断面板只**读**既有注入钩子、不引用任何模块，放装配层不引入新的依赖边；
      设置要打开/关闭 overlay 并被 Controls 的键盘路由查询 `isOpen()` ——
@@ -19105,7 +19283,8 @@ const Arrange = (() => {
         const sm = document.createElement("div");
         const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
-        sm.className = "strumv " + kz + (s.dir === "D" ? " dn" : " up") + (s.rest ? " ghost" : "");
+        sm.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
+        if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（与主视图同一份标记）
         sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
         barEl.appendChild(sm);
         if (!s.rest) prevZone = z;
@@ -22489,23 +22668,14 @@ paintRange($("volMaster")); paintRange($("volStrum"));
 setToggle("muteToggle", S.mute);
 /* ★ v3.22.0：随机开关常显，boot 不再翻显隐（状态同步 setToggle 保留） */
 setToggle("muteRandomToggle", S.muteCfg.random);           // v2.71.0：随机子开关同款启动收敛
-setToggle("bounceToggle", S.bounce);
-/* 图例开关初值收敛（v3.34.5）：标记里写死 `on`/`true` 只是默认值提示，真实状态在 S.vizLegend。
-   不收敛的话，用户关过图例再重载，pill 显示"开"而图例实际是隐藏的——与 v2.10.1 修的
-   tabToggle / keepAwakeToggle 是同一个"开关说谎"形态，别让新开关重犯。 */
-setToggle("vizLegendToggle", S.vizLegend);
+/* ★ 本版：bounceToggle / vizLegendToggle / tabToggle 三行启动收敛随三开关退役删除
+   （功能恒开，标记里已无这三枚 pill 可同步）。 */
 setToggle("trainerToggle", S.trainer.on);
 setToggle("countInToggle", S.countIn.on);
 syncCountInBeats();   // v3.41.0：拍数输入的显隐随 S.countIn.on 收敛（开关与内容不许说谎）
-/* 六线底纹开关（v2.4.2；v2.10.1 补启动同步）：标记里写死 `on`/`true` 只是"默认值提示"，
-   真实开合态存在 S.showTab（点击会改写并持久化）。启动若不收敛，用户上次关掉后重载，
-   pill 仍显示"开"、aria 仍是 true，而 .viz 已带 no-tab —— 六线底纹不见了，开关却说它在，
-   用户无从判断该信谁（实拍反馈：「开关默认已开，却没有显示底纹」）。
-   与上面四个开关同源：视觉与语义都由 setToggle 一次写全，此刻起 pill 永远等于 S.showTab。 */
-setToggle("tabToggle", S.showTab);
 /* 同族漏改的第二个（v2.10.1）：后台保活开关的标记同样写死了 `off`/`false`，而它的 setToggle
    原先只在点击处理器里调（见下方 keepAwakeToggle 的接线）。用户打开保活后重载，
-   pill 与 aria 会退回「关」——开关说它关着，保活却仍是开的。与上面五个开关一并收敛。 */
+   pill 与 aria 会退回「关」——开关说它关着，保活却仍是开的。与上面几个开关一并收敛。 */
 setToggle("keepAwakeToggle", S.keepAwake);
 /* ★ v3.22.0：拍数输入常显，boot 不再翻显隐（值同步保留） */
 /* v3.1.1 修复：拍数输入框的显示值必须来自存档（S.countIn.beats），不能停留在标记里的
@@ -22854,11 +23024,12 @@ $("vizLegend").hidden = !S.vizLegend;
 $("bgHint").hidden = true;
 $("vizLegendClose").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   evEl(e).blur();
+  /* ★ 本版（用户拍板）：版本号维度记账——关闭时记下**当前版本号**（vizLegendVsn），
+     同版本内不再出现；版本更新后 S.vizLegend 在加载期自然回真、图例回归一次。
+     「知道了」是唯一关闭入口（设置开关已随本批退役）。 */
   S.vizLegend = false;
+  S.vizLegendVsn = VERSION;
   $("vizLegend").hidden = true;
-  /* v3.34.5：同步设置里那枚开关的视觉/语义——否则图例已隐藏而开关仍显示"开"，
-     用户去设置里看会以为"开着却不显示"（与上面 setToggle 收敛同源的"开关说谎"）。 */
-  setToggle("vizLegendToggle", false);
   Store.persist();
   /* v3.9.0（用户实拍"关掉图例后跑道错位、开播才恢复"）：图例条占的高度一消失，
      每条跑道的真实 top 都上移了，但逐帧定位读的是 cacheGeo 的**旧 top** —— 不重采就错位。
@@ -22983,8 +23154,8 @@ function syncAuxVisibility(){
   const pg = $("pitchNotationGroup");
   if (pg) pg.hidden = !lyricOn;
   if (note) note.hidden = !(lyricOn && scrollOn);
-  const bt = $("bounceToggle");
-  if (bt) bt.hidden = scrollOn;
+  /* ★ 本版：原「scroll 下隐藏 bounceToggle」随开关退役删除——球本体在该模式下
+     由 paintBall 顶部的 scroll 守卫隐藏，视觉语义不变。 */
 }
 syncAuxVisibility();
 $("showLyricToggle").addEventListener("click", syncAuxVisibility);

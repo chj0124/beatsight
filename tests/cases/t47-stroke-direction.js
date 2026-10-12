@@ -92,13 +92,13 @@ section("T47 扫弦方向 · 数据 / 渲染 / 脏值降级 / 导出往返");
      ★ v3.35.5：内置库 21 → 20（删了民谣扫弦）⇒ 边界从 12 变成 11 */
   eq(BUILTINS.slice(0, 11).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 0,
      "前 11 个节拍类内置预设零 dir");
-  eq(BUILTINS.slice(11).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 9,
-     "示例曲 9 型全部带方向标注（《在他乡》5 + 《我们能不能不分手》4，住在 BUILTINS 尾部）");
+  eq(BUILTINS.slice(11).filter(p => p.bars.some(b => b.some(s => s.dir !== undefined))).length, 11,
+     "示例曲 11 型全部带方向标注（《在他乡》6 + 《我们能不能不分手》5，住在 BUILTINS 尾部；★ 本版 +1：尾声琶音型 dir=\"A\"）");
 
   /* ---- ③ 渲染：字形按**手部动作**翻转（v2.1.0 全局翻转：下扫=↑、上扫=↓） ----
-     ★ v3.35.5：渲染主体改用示例型「十六分满扫（《在他乡》前奏）」（唯一还在库里的纯方向谱，
-       16 个 12t 格）——原主体民谣扫弦已删。它第 1 格 dir="D"、第 4 格 dir="U"（第 2/3 格是空扫）。 */
-  Store.S.sel = { type: "builtin", idx: 11 };           // 十六分满扫（《在他乡》前奏）
+     ★ v3.35.5：渲染主体改用示例型「节奏型1（《在他乡》）」（原「十六分满扫（《在他乡》过门）」，
+       唯一还在库里的纯方向谱，16 个 12t 格）——原主体民谣扫弦已删。它第 1 格 dir="D"、第 4 格 dir="U"（第 2/3 格是空扫）。 */
+  Store.S.sel = { type: "builtin", idx: 11 };           // 节奏型1（《在他乡》）
   beat.Presets.refreshAfterPatternChange();
   beat.Viz.buildViz();
   ok(!!strumOf(els, 0, 0), "第 1 格渲染出 .strumv 竖箭头");

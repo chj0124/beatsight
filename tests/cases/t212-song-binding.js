@@ -111,7 +111,7 @@ section("T212d 库 · 歌行展开 = 引用到的型 ∪ 归属这首歌的型")
   if (row.getAttribute("aria-expanded") === "false") row.fire("click");
   const names = inSongOf(els).map(nameOf);
   ok(names.includes("我加的前奏型"), "★ 归属这首歌的自定义型出现在它的展开内容里（实际 " + names.join("、") + "）");
-  ok(names.includes("十六分满扫（《在他乡》前奏）"), "★ 原有「曲式引用到的型」一条不少");
+  ok(names.includes("节奏型1（《在他乡》）"), "★ 原有「曲式引用到的型」一条不少（★ 本版型名改编号制）");
   eq(names.filter(n => n === "我加的前奏型").length, 1, "★ 只出现一次（引用 ∪ 归属 要去重）");
   ok(rowsOf(els).every(r => nameOf(r) !== "未归属"), "有归属的型不进「未归属」行");
 }
@@ -165,7 +165,7 @@ section("T212f 编排页候选 · 「本归属」置顶且不重复");
     (zone.indexOf("本归属") === 0 ? songZoned : rest).push(String(c.textContent).replace("✓ ", ""));
   });
   ok(songZoned.some(t => t.indexOf("候选置顶型") >= 0), "★ 归属本项的型进了「本归属」区");
-  ok(songZoned.some(t => t.indexOf("十六分满扫") >= 0), "★ 这条曲式引用到的型也进了「本归属」区");
+  ok(songZoned.some(t => t.indexOf("节奏型1（《在他乡》）") >= 0), "★ 这条曲式引用到的型也进了「本归属」区");
   ok(!rest.some(t => t.indexOf("候选置顶型") >= 0), "★ 且不在下面分区里重复出现");
   ok(rest.some(t => t.indexOf("无关型") >= 0), "前提：不属于本项的型仍在「自定义」区（候选没被砍掉）");
 }

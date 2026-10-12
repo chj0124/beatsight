@@ -35,8 +35,13 @@ function paneOf(id){
 
 section("T151a 画面页（原画面图层 + 宽屏/壁纸）应含全部视觉开关");
 {
-  for (const id of ["bounceToggle", "tabToggle", "rulerLabToggle", "durLabelToggle", "vizLegendToggle", "showLyricToggle"]){
+  /* ★ 本版：bounceToggle / tabToggle / vizLegendToggle 三开关退役（功能恒开）——
+     从归属清单移除，并加一条「标记里确实已删干净」的反向断言（防日后悄悄加回）。 */
+  for (const id of ["rulerLabToggle", "durLabelToggle", "showLyricToggle"]){
     eq(paneOf(id), "画面", "★ #" + id + " 落在「画面」页");
+  }
+  for (const id of ["bounceToggle", "tabToggle", "vizLegendToggle"]){
+    eq(paneOf(id), null, "★ #" + id + " 已不在设置标记里（本版三开关退役）");
   }
   /* 歌词位置三档与音高三档（v2.86.0 / v3.37.0）与「显示歌词」同页 */
   eq(paneOf("lyricPosGroup"), "画面", "★ #lyricPosGroup 落在「画面」页（显示位置三档）");

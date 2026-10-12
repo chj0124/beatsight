@@ -127,16 +127,8 @@ section("T30 弹跳球物理 · 逐帧数值断言（v1.3.1）");
     ok(lastWindow.some(s => s.wait), "小节末尾（终端弧）显示待命球——下一小节的第一颗已在待命");
   }
 
-  /* ⑥ 关掉开关：球与影子一起隐藏，且不再写 transform */
-  {
-    beat.Store.S.bounce = false;
-    ac.currentTime += DT;
-    beat.Viz.paintFrame();
-    eq(iv.ballEl.style.display, "none", "S.bounce=false → 球隐藏（只控显隐，onset 表照常维护）");
-    eq(iv.shadowEl.style.display, "none", "影子同步隐藏");
-    eq(iv.waitEl.style.display, "none", "待命球同步隐藏");
-    beat.Store.S.bounce = true;
-  }
+  /* ⑥ ★ 本版：原「S.bounce=false → 球隐藏」场景随 bounceToggle 开关退役删除（弹跳球恒开）。
+     显隐分支只剩「连续滚动模式全程不画球」——那条行为由 t155/t196 系列守护，此处不再重复。 */
 
   /* ⑦ prefers-reduced-motion：保位置、去形变（前庭敏感用户不该被挤压/拉伸打扰） */
   {
@@ -281,9 +273,9 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   /* 拍数输入必须**紧跟**「预备拍」开关（v1.3.3 修的）：
      原先它排在 .config 行最末（弹跳球之后），打开预备拍时行尾凭空冒出一个孤零零的「4」，
      视觉上像是弹跳球的参数（用户实拍反馈）。用标记层 + 运行时两层断言锁住位置。 */
-  const seg = html.slice(html.indexOf('id="countInToggle"'), html.indexOf('id="bounceToggle"'));
+  const seg = html.slice(html.indexOf('id="countInToggle"'), html.indexOf('id="keepAwakeToggle"'));
   ok(/id="countInBeatsWrap"/.test(seg),
-    "拍数输入在标记里夹在「预备拍」与「弹跳球」之间（不再隔着弹跳球）");
+    "拍数输入在标记里紧跟「预备拍」开关（★ 本版：右锚从 bounceToggle 换成 keepAwakeToggle——弹跳球开关已退役）");
   ok(/<span class="hint">拍<\/span>/.test(html), "拍数带可见单位「拍」（原先只有 aria-label，肉眼无从判断）");
   /* ★ v3.22.0（用户需求）：拍数输入**常显**——关闭预备拍也显示上次设置的拍数，
      显隐翻转移除（处理里不再写 #countInBeatsWrap.hidden），值同步与钳制路径保留 */

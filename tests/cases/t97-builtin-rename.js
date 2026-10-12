@@ -42,20 +42,20 @@ const bnamesOf = storage => JSON.parse(storage.get("beatsight.builtinNames") || 
 section("T97a 内置型改名 · ✎ → uiPrompt 覆盖 → 列表/标题/冷键/重启全链路");
 {
   const first = loadApp(undefined, { seedDemo: false });
-  const item = itemByName(first.els, "十六分满扫（《在他乡》前奏）");
+  const item = itemByName(first.els, "节奏型1（《在他乡》）");
   ok(!!item, "前提：扫弦区有内置示例条目 P1");
   const pen = renameBtnOf(item);
   ok(!!pen, "★ 内置条目带 ✎ 改名图标");
   pen.fire("click");
   eq(first.els["modalMsg"].textContent,
-    "重命名内置型「十六分满扫（《在他乡》前奏）」（清空并确定 = 恢复原名）",
+    "重命名内置型「节奏型1（《在他乡》）」（清空并确定 = 恢复原名）",
     "★ 对话框提示带**源名**（覆盖态下用户也能看到原名是什么）");
-  eq(first.els["modalInput"].value, "十六分满扫（《在他乡》前奏）", "输入框预填当前名");
+  eq(first.els["modalInput"].value, "节奏型1（《在他乡》）", "输入框预填当前名");
   /* 确认改名 */
   first.els["modalInput"].value = "我的前奏型";
   first.els["modalOk"].fire("click");
   eq(first.beat.BUILTINS[11].name, "我的前奏型", "★ BUILTINS[11].name 被覆盖（运行期生效；v3.35.5 示例型基址 12→11）");
-  eq(first.beat.Store.builtinSrcName(11), "十六分满扫（《在他乡》前奏）", "★ 源名快照原样保留（还原基准）");
+  eq(first.beat.Store.builtinSrcName(11), "节奏型1（《在他乡》）", "★ 源名快照原样保留（还原基准）");
   ok(deepText(first.els["presetList"]).includes("我的前奏型"), "★ 侧栏条目立即显示新名");
   eq(JSON.stringify(bnamesOf(first.storage)),
     JSON.stringify({ v: 1, names: { "11": "我的前奏型" } }), "★ 冷键 beatsight.builtinNames 落盘");
@@ -68,7 +68,7 @@ section("T97a 内置型改名 · ✎ → uiPrompt 覆盖 → 列表/标题/冷�
   const second = loadApp(seed);
   eq(second.beat.BUILTINS[11].name, "我的前奏型", "★ 重启后覆盖名仍在（加载即套）");
   ok(deepText(second.els["presetList"]).includes("我的前奏型"), "重启后侧栏显示覆盖名");
-  eq(second.beat.Store.builtinSrcName(11), "十六分满扫（《在他乡》前奏）", "源名快照不受重启影响");
+  eq(second.beat.Store.builtinSrcName(11), "节奏型1（《在他乡》）", "源名快照不受重启影响");
 }
 
 /* ================= 场景 T97b：恢复原名（清空并确定） ================= */
@@ -83,12 +83,12 @@ section("T97b 恢复原名 · ★ 清空输入并确定 → 回源名 + 冷键�
   eq(first.els["modalInput"].value, "我的前奏型", "对话框预填的是覆盖名");
   first.els["modalInput"].value = "";                        // 清空 = 恢复原名
   first.els["modalOk"].fire("click");
-  eq(first.beat.BUILTINS[11].name, "十六分满扫（《在他乡》前奏）", "★ 恢复为源名（快照还原）");
+  eq(first.beat.BUILTINS[11].name, "节奏型1（《在他乡》）", "★ 恢复为源名（快照还原）");
   eq(JSON.stringify(bnamesOf(first.storage)), JSON.stringify({ v: 1, names: {} }),
     "★ 冷键覆盖已清除（不留幽灵条目）");
   const seed = {}; first.storage.forEach((v, k) => { seed[k] = v; });
   const second = loadApp(seed);
-  eq(second.beat.BUILTINS[11].name, "十六分满扫（《在他乡》前奏）", "★ 重启后仍是源名");
+  eq(second.beat.BUILTINS[11].name, "节奏型1（《在他乡》）", "★ 重启后仍是源名");
 }
 
 /* ================= 场景 T97c：自定义型改名（直接改 + 曲式按 id 不受影响） ================= */
@@ -146,7 +146,7 @@ section("T97d 校验边界 · 空名拒绝 / 40 字截断 / 非法下标 / 脏�
     JSON.stringify({ v: 1, names: { "0": "合法覆盖", "99": "越界", "abc": "非数字", "1": "   " } }) });
   eq(dirty.beat.BUILTINS[0].name, "合法覆盖", "★ 合法条目照常应用");
   eq(dirty.beat.BUILTINS[1].name, "八分摇滚", "★ 空白覆盖被丢弃（不污染源名；新表 idx1 = 八分摇滚）");
-  eq(dirty.beat.BUILTINS.length, 20, "越界/非数字条目不影响库结构");
+  eq(dirty.beat.BUILTINS.length, 22, "越界/非数字条目不影响库结构（★ 本版 +1：《在他乡》尾声琶音型 P6）");
 }
 
 /* ================= 场景 T97e：改名与内置化迁移共存（v2.20.0 语义不受影响） ================= */
@@ -158,7 +158,7 @@ section("T97e 共存 · 覆盖名不碰内容/识别；迁移照常收走旧 cus
   first.beat.Store.renameBuiltin(14, "前密后疏 · 我惯用的力度");   // P4 新基址 11+3
   const spec = first.beat.demoBuildSpec().presets;
   first.beat.Store.importPresets(JSON.stringify(spec));
-  const ids = first.beat.Store.customs.slice(-5).map(c => c.id);
+  const ids = first.beat.Store.customs.slice(-6).map(c => c.id);
   first.beat.Store.findArrange(first.beat.DEMO_ID).sections.forEach(s => s.blocks.forEach(b => {
     if (b.ref.type === "builtin") b.ref = { type: "custom", id: ids[b.ref.idx - 11] };
   }));
@@ -170,7 +170,7 @@ section("T97e 共存 · 覆盖名不碰内容/识别；迁移照常收走旧 cus
   const second = loadApp(sd);
   eq(second.beat.Store.customs.length, 0, "★ 迁移照常收走示例 custom（改名覆盖不影响认型）");
   ok(second.beat.Store.findArrange(second.beat.DEMO_ID).sections
-    .every(s => s.blocks.every(b => b.ref.type === "builtin" && b.ref.idx >= 11 && b.ref.idx <= 15)),
+    .every(s => s.blocks.every(b => b.ref.type === "builtin" && b.ref.idx >= 11 && b.ref.idx <= 16)),
     "★ 曲式引用照常重映射到内置下标");
   eq(second.beat.BUILTINS[14].name, "前密后疏 · 我惯用的力度", "★ 覆盖名原样保留（两套冷键互不干扰）");
   ok(deepText(second.els["presetList"]).includes("前密后疏 · 我惯用的力度"),

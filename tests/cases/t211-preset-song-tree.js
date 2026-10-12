@@ -40,17 +40,17 @@ section("T211b 歌曲行 · 点行只切展开态，不起播");
   const row = rowOf(els, "《我们能不能不分手》（示例）");
   ok(!!row, "前提：第二首示例曲有歌曲行");
   eq(row.getAttribute("aria-expanded"), "false", "★ 默认只展开当前那首（手风琴式）：第二首是折叠的");
-  eq(inSongOf(els).length, 5, "前提：此时展开的是第一首（《在他乡》5 个型）");
+  eq(inSongOf(els).length, 6, "前提：此时展开的是第一首（《在他乡》6 个型）");
   const modeBefore = beat.Store.S.playMode;      // 首开带出示例曲后本就落在曲式模式，故比"前后不变"
   row.fire("click");
   const row2 = rowOf(els, "《我们能不能不分手》（示例）");
   eq(row2.getAttribute("aria-expanded"), "true", "★ 点行 = 展开");
-  eq(inSongOf(els).length, 5 + 4, "★ 两首都展开时，共 9 个示例型可见（5 + 4）");
+  eq(inSongOf(els).length, 6 + 5, "★ 两首都展开时，共 11 个示例型可见（6 + 5；★ 本版：《在他乡》+尾声琶音型）");
   eq(beat.Store.S.playing, false, "★★ 点行**不起播**（展开/收起是纯视图动作）");
   eq(beat.Store.S.playMode, modeBefore, "★★ 也不切模式（整首连播才切曲式模式）");
   row2.fire("click");
   eq(rowOf(els, "《我们能不能不分手》（示例）").getAttribute("aria-expanded"), "false", "★ 再点 = 收起");
-  eq(inSongOf(els).length, 5, "收起后它的型不再渲染");
+  eq(inSongOf(els).length, 6, "收起后它的型不再渲染");
 }
 
 section("T211c 行尾 ▶ · 整首连播（与 v2.28.0 的条目点击逐位同义）");
@@ -62,7 +62,7 @@ section("T211c 行尾 ▶ · 整首连播（与 v2.28.0 的条目点击逐位同
   eq(beat.Store.S.playMode, "arrange", "★ 点 ▶ = 切曲式模式");
   eq(beat.Store.S.playing, true, "★ 一键即开播");
   eq(JSON.stringify(beat.Store.S.arrangeSel),
-     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 63, loop: true, byLyric: false }),
+     JSON.stringify({ id: beat.DEMO_ID, from: 0, to: 64, loop: true, byLyric: false }),
      "★ 范围 = 整首 + 开循环（与 v2.28.0 的「点条目即整首连播」逐位一致）");
   beat.Controls.stop();
 }
@@ -84,18 +84,18 @@ section("T211d 展开内容 = 该曲式引用到的型（去重保序）");
   }));
   eq(inSongOf(els).map(nameOf).join(" | "), want.join(" | "),
      "★ 展开列出的型 = 曲式块引用到的型，去重保序（不是「库里所有扫弦型」）");
-  eq(inSongOf(els).length, 5, "《在他乡》用到 5 个型（9 段共用）");
+  eq(inSongOf(els).length, 6, "《在他乡》用到 6 个型（10 段共用）");
 }
 
 section("T211e 歌下的型与库里其它条目同权 · 点它 = 退回单练它");
 {
   const { els, beat } = loadDemo();
-  const item = inSongOf(els).find(x => nameOf(x) === "下上扫 · 密（《在他乡》副歌）");
+  const item = inSongOf(els).find(x => nameOf(x) === "节奏型2（《在他乡》）");
   ok(!!item, "前提：歌下能看到这个型");
   beat.Store.S.playMode = "arrange";                     // 造一个"正在连播"的状态
   item.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点它 = 退回预设模式（单练它）");
-  ok(String(beat.activePattern().name).indexOf("下上扫 · 密（《在他乡》副歌）") >= 0,
+  ok(String(beat.activePattern().name).indexOf("节奏型2（《在他乡》）") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   beat.Controls.stop();
 }

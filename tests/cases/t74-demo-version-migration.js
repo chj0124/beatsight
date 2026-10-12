@@ -59,19 +59,19 @@ const activeItems = els => deepItems(els["presetList"]).filter(x =>
 const snapshot = storage => { const s = {}; storage.forEach((v, k) => { s[k] = v; }); return s; };
 
 /* 把一台"新机器"手工倒退回 v2.19.x 的数据形状（内置化迁移的唯一输入）：
-   customs 灌入 5 个示例型（规范谱内容、当前名）、曲式块的内置引用改回 custom id。
+   customs 灌入 6 个示例型（规范谱内容、当前名）、曲式块的内置引用改回 custom id。
    opts.legacyName：把 P4 改回 v2.9.0 旧名（复刻 v2.19.1 之前的名字世代）
    opts.selIdx    ：把 S.sel 指向第 i 个示例 custom（复刻"正选中它"的升级现场）
-   返回 5 个 custom id（下标 = 示例序号 0..4） */
+   返回 6 个 custom id（下标 = 示例序号 0..5） */
 const makeLegacy = (beat, opts) => {
   const spec = beat.demoBuildSpec().presets;
   const r = beat.Store.importPresets(JSON.stringify(spec));
   eq(r.ok, true, "前提：老形状 customs 灌入成功");
-  const ids = beat.Store.customs.slice(-5).map(c => c.id);
+  const ids = beat.Store.customs.slice(-6).map(c => c.id);
   beat.Store.findArrange(beat.DEMO_ID).sections.forEach(s => s.blocks.forEach(b => {
     if (b.ref.type === "builtin") b.ref = { type: "custom", id: ids[b.ref.idx - 11] };
   }));
-  if (opts && opts.legacyName !== undefined) beat.Store.customs.slice(-5)[3].name = opts.legacyName;
+  if (opts && opts.legacyName !== undefined) beat.Store.customs.slice(-6)[3].name = opts.legacyName;
   beat.Store.persistCold();               // customs 落盘
   beat.Store.persistArranges();           // 改过的曲式引用落盘（upsertArrange 之外的手改）
   if (opts && opts.selIdx !== undefined){
@@ -133,18 +133,18 @@ section("T74c 内置化迁移 · ★ v2.19.x 形状落盘 → 再启动自动收
 {
   const first = loadApp(undefined, { seedDemo: false });
   const ids = makeLegacy(first.beat);
-  eq(first.beat.Store.customs.length, 5, "前提：customs 是 v2.19.x 形状（5 个示例 custom）");
+  eq(first.beat.Store.customs.length, 6, "前提：customs 是 v2.19.x 形状（6 个示例 custom）");
   ok(first.beat.Store.findArrange(first.beat.DEMO_ID).sections
     .every(s => s.blocks.every(b => b.ref.type === "custom")),
     "前提：曲式块按 custom id 引用（旧协议）");
 
   const second = loadApp(snapshot(first.storage));
-  eq(second.beat.Store.customs.length, 0, "★ 启动迁移收走 5 个示例 custom（自定义库转空）");
+  eq(second.beat.Store.customs.length, 0, "★ 启动迁移收走 6 个示例 custom（自定义库转空）");
   const a = second.beat.Store.findArrange(second.beat.DEMO_ID);
   ok(a.sections.every(s => s.blocks.every(b =>
-    b.ref.type === "builtin" && b.ref.idx >= 11 && b.ref.idx <= 15)),
-    "★ 曲式块引用已重映射为内置下标 11–15（DEMO_BUILTIN_BASE=11 + refIdx；v3.35.5 删民谣扫弦后基址 −1）");
-  eq(second.beat.songBars(a), 64, "★ 全曲 64 小节分毫未变");
+    b.ref.type === "builtin" && b.ref.idx >= 11 && b.ref.idx <= 16)),
+    "★ 曲式块引用已重映射为内置下标 11–16（DEMO_BUILTIN_BASE=11 + refIdx；★ 本版 +1：尾声琶音型 P6）");
+  eq(second.beat.songBars(a), 65, "★ 全曲 65 小节分毫未变");
   eq(second.beat.Store.lyrics.filter(l => l.arrangeId === second.beat.DEMO_ID).length, 9,
     "歌词 9 行完好（迁移不动歌词之外的用户数据）");
   eq(JSON.stringify(second.beat.arrangeProblems(a)), "[]", "★ 重映射后曲式零问题（整首可播）");
@@ -159,7 +159,7 @@ section("T74c 内置化迁移 · ★ v2.19.x 形状落盘 → 再启动自动收
   eq(third.beat.Store.customs.length, 0, "★ 幂等：三次启动 customs 仍空（零改动）");
   const a3 = third.beat.Store.findArrange(third.beat.DEMO_ID);
   eq(JSON.stringify(a3.sections), JSON.stringify(a.sections), "★ 曲式引用原样（不是每次启动都重写）");
-  eq(ids.length, 5, "（前提自检：5 个 id 已取到）");
+  eq(ids.length, 6, "（前提自检：6 个 id 已取到）");
 }
 
 /* ================= 场景 T74d：S.sel 重映射 + 旧名世代 + 坏引用自动治愈（v2.20.0） =================
@@ -182,21 +182,21 @@ section("T74d 内置化迁移 · ★ S.sel 重映射 + 旧名认回 + 坏引用�
   const s2 = loadApp(snapshot(f2.storage));
   eq(s2.beat.Store.customs.length, 0,
     "★ 旧名「雨夜扫弦」的示例型同样被认回收走（四级兜底覆盖所有名字世代）");
-  ok(s2.beat.BUILTINS.some(p => p.name === "前密后疏扫（《在他乡》主歌二）"),
-    "★ 内置库里 P4 仍是当前特征名（迁移只收旧 custom，不改内置名）");
+  ok(s2.beat.BUILTINS.some(p => p.name === "节奏型4（《在他乡》）"),
+    "★ 内置库里 P4 已是编号制当前名（迁移只收旧 custom，不改内置名）");
 
   /* ③ 坏引用自动治愈 */
   const f3 = loadApp(undefined, { seedDemo: false });
   makeLegacy(f3.beat);
-  const p5 = f3.beat.Store.customs.slice(-5)[4];            // 用户删掉 P5（v2.19.x 可删）
+  const p5 = f3.beat.Store.customs.slice(-6)[4];            // 用户删掉 P5（v2.19.x 可删）
   f3.beat.Store.customs.splice(f3.beat.Store.customs.indexOf(p5), 1);
   f3.beat.Store.persistCold();
   const s3 = loadApp(snapshot(f3.storage));
-  eq(s3.beat.Store.customs.length, 0, "★ 其余 4 个照常收走（不因一个坏引用放弃整批迁移）");
+  eq(s3.beat.Store.customs.length, 0, "★ 其余 5 个照常收走（不因一个坏引用放弃整批迁移）");
   const a3 = s3.beat.Store.findArrange(s3.beat.DEMO_ID);
   ok(a3 && a3.sections.every(s => s.blocks.every(b => b.ref.type === "builtin")),
     "★ 曲式已治愈：所有块引用内置下标（demoStale 抓到坏引用 → 启动层 ensureDemo 重建）");
-  eq(s3.beat.songBars(a3), 64, "★ 治愈后全曲回到 64 小节");
+  eq(s3.beat.songBars(a3), 65, "★ 治愈后全曲回到 65 小节");
 }
 
 /* ================= 场景 T74e：用户删掉曲式 → 绝不复活（只收敛，不复活） ================= */
@@ -221,7 +221,7 @@ section("T74e 删除保护 · ★ 曲式被删 → demoStale 恒 false，启动�
 section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器另存为自定义（-副本）");
 {
   const { beat, els } = loadDemo();
-  const target = itemByName(els, "下上扫 · 密（《在他乡》副歌）");
+  const target = itemByName(els, "节奏型2（《在他乡》）");
   ok(!!target, "前提：扫弦区里有内置示例条目");
   /* 内置条目没有删除按钮（buildPresetItem 才有）——删除路径在 UI 上不存在 */
   ok(!target.children.some(c => /(^| )del( |$)/.test(c.className)),
@@ -232,7 +232,7 @@ section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器�
 
   beat.Editor.open();
   const d = beat.Editor.draft();
-  ok(d && d.name.indexOf("下上扫 · 密（《在他乡》副歌）") === 0
+  ok(d && d.name.indexOf("节奏型2（《在他乡》）") === 0
       && d.name.indexOf("-副本") > 0,
     "★ 草稿 = 基于内置型的新副本（-副本），内置本体不被直接改");
   eq(beat.Store.customs.length, 0, "★ 打开编辑器不动库（保存才落）");
@@ -244,6 +244,6 @@ section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器�
   eq(beat.Store.customs.length, 1, "★ 另存成功：自定义库恰好 1 条（与内置隔离）");
   eq(beat.Store.customs[0].name, "我的副歌变体", "★ 新条目名来自草稿名输入框");
   eq(beat.Store.S.sel.type, "custom", "★ 保存后选中的是新的自定义型");
-  eq(beat.BUILTINS.length, 20, "★ 内置库纹丝不动（20 = 11 + 示例 5 + 示例 4；v3.35.5 删民谣扫弦）");
+  eq(beat.BUILTINS.length, 22, "★ 内置库纹丝不动（22 = 11 + 示例 6 + 示例 5；★ 本版 +1：《在他乡》尾声琶音型 P6）");
   beat.Controls.stop();
 }
