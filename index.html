@@ -4759,22 +4759,22 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L4790  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6415  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8650  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9878  Modal         应用内弹窗
-     L10023 Viz           时值可视化渲染与每帧动画
-     L13606 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14360 Trainer       变速训练器
-     L14577 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15240 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17229 Editor        自定义节奏型编辑器
-     L17982 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18077 Ear           听辨训练（v1.10.0）
-     L18305 Arrange       曲式编排（v2.0.0）
-     L22381 Help          使用方法（v2.0.1）
-     L22536 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22618 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22914 初始化（装配） 各模块 hook 接线与启动
+     L6416  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8651  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9879  Modal         应用内弹窗
+     L10024 Viz           时值可视化渲染与每帧动画
+     L13607 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14361 Trainer       变速训练器
+     L14578 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15241 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17230 Editor        自定义节奏型编辑器
+     L17984 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18079 Ear           听辨训练（v1.10.0）
+     L18307 Arrange       曲式编排（v2.0.0）
+     L22383 Help          使用方法（v2.0.1）
+     L22538 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22620 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22916 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -6354,6 +6354,7 @@ function pickGlyph(host, str){
 const STR_S_MIN = 1, STR_S_MAX = 6, STR_F_MAX = 24;
 const VALID_TECH = ["H", "P", "S", "O"];   // H 击弦 / P 勾弦 / S 滑音 / O 泛音（定稿）
 const STR_CIRC = "①②③④⑤⑥";              // 弦号 → 圈码（aria-label 与面板文案共用）
+/** @type {Record<string, string>} */
 const STR_TECH_NAME = { H: "击弦", P: "勾弦", S: "滑音", O: "泛音" };
 /** 归一化 str 字段：合法 → 按 s 升序去重后的新数组；全脏/空 → undefined（= 没这个字段）。
     逐条静默降级（某条脏只丢那条；f 越界/非整数、tech 脏只丢该子字段），
@@ -6373,7 +6374,7 @@ function normStr(raw, isRest){
     if (typeof s !== "number" || !Number.isInteger(s) || s < STR_S_MIN || s > STR_S_MAX) continue;
     if (seen.has(s)) continue;                       // 重复 s：保留首个
     seen.add(s);
-    const item = { s };
+    const item = /** @type {any} */ ({ s });
     if (e.f !== undefined && e.f !== null &&
         typeof e.f === "number" && Number.isInteger(e.f) && e.f >= 0 && e.f <= STR_F_MAX) item.f = e.f;
     if (!isRest && e.tech !== undefined && e.tech !== null && VALID_TECH.includes(e.tech)) item.tech = e.tech;
@@ -6403,7 +6404,7 @@ function parseStrFill(text){
   for (const w of words){
     const m = re.exec(w);
     if (!m) return { ok: false, why: "「" + w + "」不是合法的弦号（语法 s[:f][tech]，如 5:3 / 3P / 2:0H）" };
-    const item = { s: +m[1] };
+    const item = /** @type {any} */ ({ s: +m[1] });
     if (m[2] !== undefined) item.f = +m[2];
     if (m[3]) item.tech = m[3];
     list.push(item);
@@ -7805,7 +7806,7 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
-  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number, str?: { s: number, f?: number, tech?: string }[] }[], song?: string, label?: string }[]} */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: Step[][], song?: string, label?: string }[]} */
   const customs = [];
   customsRef = customs;    // v3.31.x（审计 P1-9）：patLenOf 的运行期路径接上 live 数组（见其定义处注释）
   /** @type {any[]} */
@@ -9649,11 +9650,11 @@ function arrNextBar(a, sel, sec, bar){
    **仍然只有一个音频引擎**——两处共用同一条预览路径，绝不另起一套调度
    （那会立刻产生双时钟、双热键、双缓存三份麻烦）。
    S.preview 仍是「正在试听」的布尔（Controls.stop 靠它决定要不要记练习），previewRef 是"试听谁"。 */
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: Step[][] }} */
 let previewRef = null;
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], label?: string, song?: string }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: Step[][], label?: string, song?: string }} */
 let draft = null;                    // 编辑器草稿（Editor 写入；试听时经 previewRef 指过来）
-/** @type {null | { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }} */
+/** @type {null | { name: string, meter: number, accents?: number[], bars: Step[][] }} */
 let appliedPat = null;               // 正在发声的节奏型快照（Presets.applyPatternChange 更新）
 /* ★ v2.10.12：原 `sessStartT`（v1.4 练习计时起点，用 ctx.currentTime 而非 Date.now，
    以便时钟挂起时不计时）随练习记录一起删除——它唯一的消费者就是「≥30s 自动入账」 */
@@ -11762,7 +11763,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const w = cellEls[b][i].offsetWidth;
       /* 逐弦点（v3.47.0）：两级降级——第一级藏 svg 里的 text（notxt 类），第二级整体藏 */
       if (/(^| )pick( |$)/.test(sm.className) && sm.firstChild)
-        clsWrites.push([sm.firstChild, w < PICK_TXT_MIN_W]);
+        clsWrites.push([/** @type {Element} */ (sm.firstChild), w < PICK_TXT_MIN_W]);
       writes.push([sm, (w < STRUM_MIN_W) ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
@@ -13766,7 +13767,7 @@ const AudioEngine = (() => {
     const tier = isAccent ? CONFIG.levelBeat : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub);
     return Math.min(1, Math.max(0, S.strumVol * tier));
   }
-  /* 单弦拨弦音（v3.47.0）：分解和弦（step.str 长度 1）的固定音色——**无频率参数**
+  /** 单弦拨弦音（v3.47.0）：分解和弦（step.str 长度 1）的固定音色——**无频率参数**
      （定值，与 click 的频率档常量同待遇）：所有单弦格同一个声音，不随弦号/品号变、
      不随技巧变（声音只回答"这一下是单拨还是齐拨"，音位信息全在显示层——与现行扫弦声
      「zone 只模拟明暗、不当真和弦」同一哲学）。合成：triangle 392→196 快速下沉（拨弦感，
@@ -17831,17 +17832,18 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const hint = $("strFillHint");
     if (!d) return;
     const res = parseStrFill($("strFillIn").value);
-    if (!res.ok){ hint.textContent = res.why || "语法不对"; return; }
+    if (!res.ok || !res.list){ hint.textContent = res.why || "语法不对"; return; }
+    const list = res.list;
     const targets = (d.bars[editBar] || []).filter(s => !s.rest);
-    if (res.list.length !== targets.length){
-      hint.textContent = "本小节有 " + targets.length + " 颗发声格，你给了 " + res.list.length + " 个弦号";
+    if (list.length !== targets.length){
+      hint.textContent = "本小节有 " + targets.length + " 颗发声格，你给了 " + list.length + " 个弦号";
       return;
     }
     pushUndo();
     let k = 0;
     d.bars[editBar].forEach(s => {
       if (s.rest) return;
-      const ns = normStr([res.list[k++]], false);
+      const ns = normStr([list[k++]], false);
       if (ns) s.str = ns; else delete s.str;
     });
     hint.textContent = "已铺 " + targets.length + " 格";
@@ -18084,7 +18086,7 @@ const Settings = (() => {
    它对外部状态的唯一写入是共享状态区的 previewRef / playQuota —— 复用主引擎的试听通道，
    绝不另起一套调度（那会立刻产生双时钟、双热键、双缓存三份麻烦）。 */
 const Ear = (() => {
-  /** @type {null | { group: { name: string, desc: string }, groupIdx: number, cands: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] }[], answerIdx: number, answer: { name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][] } }} */
+  /** @type {null | { group: { name: string, desc: string }, groupIdx: number, cands: { name: string, meter: number, accents?: number[], bars: Step[][] }[], answerIdx: number, answer: { name: string, meter: number, accents?: number[], bars: Step[][] } }} */
   let question = null;        // { group, groupIdx, cands:[pattern…], answerIdx, answer }
   let answered = false, picked = -1;
   let streak = 0;             // 当前连对：会话状态，不持久化（重开页面从 0 起算）
