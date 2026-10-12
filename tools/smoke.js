@@ -2042,16 +2042,28 @@ function lyricDragGateProbe(){
     var out = { vw: window.innerWidth };
     try{ B.Arrange.open(); }catch(e){ return JSON.stringify({ err: "open failed" }); }
     await frame();
-    var cur = document.querySelector(".arg-lyric-sum");
-    /* 找到我们那条段（它是最后一条）：全部收起后逐条点开太慢，直接点最后一条的摘要 */
-    var sums = document.querySelectorAll(".arg-lyric-sum");
-    var target = sums[sums.length - 1];
-    if (!target) return JSON.stringify({ err: "no sum" });
-    target.click();
-    await frame();
-    var lane = null, ls = document.querySelectorAll(".arg-lyric-lane");
-    for (i2 = 0; i2 < ls.length; i2++){
-      if (ls[i2].querySelectorAll(".arg-lyric-barrow").length >= 2){ lane = ls[i2]; break; }
+    /* ★ v3.46.0：不能再用"最后一条摘要"——末段可能是**单小节 / 无词段**（示例曲《在他乡》
+       本版新增的「尾声」= 1 小节无词）⇒ 展开它只有一行轨，探针取不到跨行轨（真机上双双转红）。
+       改为：从末尾往前逐段展开，直到出现**跨 ≥2 行**的歌词轨为止。
+       ★ 每次点摘要都会 arrangeRender() **整树重建**（见 mkLyricRow 的绑定）⇒ 每轮必须现取。 */
+    var findLane = function(){
+      var l2 = document.querySelectorAll(".arg-lyric-lane");
+      for (var q = 0; q < l2.length; q++){
+        if (l2[q].querySelectorAll(".arg-lyric-barrow").length >= 2) return l2[q];
+      }
+      return null;
+    };
+    var lane = null;
+    for (var pass = 0; pass < 16 && !lane; pass++){
+      var ss = document.querySelectorAll(".arg-lyric-sum");
+      var tgt = null;
+      for (var q2 = ss.length - 1; q2 >= 0; q2--){
+        if (ss[q2].getAttribute("aria-expanded") !== "true"){ tgt = ss[q2]; break; }
+      }
+      if (!tgt) break;                        /* 全展开了仍无跨行轨 ⇒ 退出（下面报故障） */
+      tgt.click();
+      await frame();
+      lane = findLane();
     }
     if (!lane){ try{ B.Store.deleteArrange(arr.id); }catch(e){} return JSON.stringify({ err: "still no multi-row lane" }); }
     var barrows = lane.querySelectorAll(".arg-lyric-barrow");
