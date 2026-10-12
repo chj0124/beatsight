@@ -15,6 +15,45 @@
 
 ---
 
+## v3.47.1 · 修复：v3.47.0 的 CI 回归——tsc 类型错误 + 首屏 DOM 节点预算（2026-10-12）
+
+**根因**（推 main 后 GitHub Actions `npm run ci` 23s 红）：两处，都因**本地自验口径弱于 CI**
+而未在提交前暴露。
+
+① **tsc 71 处类型错误（CI `--strict-env` 红的主因）**：v3.47.0 给 `Step` typedef 加了 `str?`，
+但共享状态区 `draft`/`previewRef`/`appliedPat` 与 `Ear.question` 仍写**旧内联 step 形状**
+（`{t,rest,dir?,zone?}`）⇒ Step 不再可赋给它们，编辑器整片 `s.str` 报 TS2339、`pat.bars[i]`
+退化成不可迭代的联合类型；另 `customs` 内联类型改写时**漏了一层 `[]`**，新代码还有 4 处
+（`normStr`/`parseStrFill` 的 `item` 隐式推断、`firstChild` 非 Element、`STR_TECH_NAME` 索引、
+`parseStrFill` 的 `list?` 可选值）。本地未装 node_modules ⇒ check-all 把「类型检查」记为 ⊘
+（可选加强项，`--quick` 与本地全量都不升级）；CI 的 `--strict-env` 把它升级为必过，遂红。
+教训：声称"完成"前应 `npm ci` 后跑一次真实 CI 口径。
+
+② **首屏 DOM 节点预算**：六行逐弦面板以静态标记进 `#editor`（+约 31 节点），而 CI 冒烟的
+`domNodes ≤ 1300` 是**严格判红**项、历史上长期贴线（1164/1300 @v3.34.8，此前多次
+1298→1211 瘦身）。本地无浏览器、无法实测冒烟，按仓库「先瘦身不放宽」纪律主动收口。
+
+**修法**：
+① 五处内联 step 形状统一改用共享 `Step[][]` typedef（顺带消除"内联形状副本"这一类漂移源——
+  未来再加 step 字段只动 typedef 一处）；`customs` 补回 `[][]`；`normStr`/`parseStrFill`
+  的 `item` 标 `any`、`firstChild` 转 `Element`、`STR_TECH_NAME` 标 `Record<string,string>`；
+  `pluckHit` 的前置说明由 `/*` 改 `/**`（此前 `@param` 不在 JSDoc 块内、未被识别 ⇒ 隐式 any）；
+  铺弦号处理器用局部 `list` 收口 `res.list` 的可选性。
+② 六行面板改为 **`Editor.ensureStrPanel()` 首次打开编辑器时按需构建**（带 id 的外壳仍留在
+  标记里——`$()` 引用完整性只认写死的 id）。`#editor` 静态节点 96→71，本功能净静态增量
+  从 +31 降到 **+7**。
+
+**取舍**：无行为面牺牲（两处均非功能性改动）；惰性化把面板构建推迟到首次打开编辑器，
+与 `helpFigs*` 模板惰性化同一口径，构建时即写全 aria 名。
+
+**自验**：`npm run ci` 完整全绿（实跑 20/21，仅浏览器冒烟因环境缺失 ⊘）；tsc 0 错误
+（此前 71）、ESLint 通过、tests 8169 PASS / 0 FAIL（断言数与 v3.47.0 逐位相同）；
+`check-node-budget` 静态合计 1093→1068。
+**★ 如实标注**：本机无浏览器，**冒烟 `domNodes` 实测值无法在此核对**——已按「先瘦身」把
+增量压到最小（+7）；若 CI 冒烟仍报超线，按 v2.14.0 先例复核预算，且须先证明确已瘦身到极限。
+
+---
+
 ## v3.47.0 · 新功能：分解和弦伴奏型（逐弦拨弦 str）——点=弦、数字=品、字母=技巧（2026-10-12）
 
 **根因**（PLAN-v10-str-pick 拍板定稿）：民谣弹唱的分解和弦伴奏（53231323 家族）此前无法记谱——

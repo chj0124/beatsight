@@ -3875,17 +3875,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            开关 = 拨这根弦；品数框留空 = 不标品；技巧钮循环 无→H→P→S→O→无。
            格子带 str 时弦区行进入「逐弦优先」覆盖态，清空全部弦自动恢复可编辑。
            小节级「按序铺弦号」：语法 s[:f][tech] 空格分词（5:3 / 3P / 2:0H 混写合法），
-           按顺序铺到本小节的发声格（rest 格跳过）；颗数不匹配报错不写入（不写半截）。 -->
+           按顺序铺到本小节的发声格（rest 格跳过）；颗数不匹配报错不写入（不写半截）。
+      ★ DOM 预算纪律（smoke domNodes ≤1300，长期贴线）：六行面板（6×4=24 节点）改为
+        **首次打开编辑器时由 Editor.ensureStrPanel() 按需构建**，不进首屏静态 DOM——
+        与 helpFigs* 模板惰性化同一口径。带 id 的外壳（#strRow/#strHint/#strFill*/#zoneHint）
+        仍留在标记里（check-dom-ids 的 $() 引用完整性只认标记里写死的 id）。 -->
       <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（点=弦、数字=品、字母=技巧）">
         <span class="hint">逐弦</span>
-        <div class="str-lines">
-          <div class="str-line" data-s="6"><button class="pill str-tog" data-s="6" aria-pressed="false" disabled>⑥</button><input class="str-fret" data-s="6" inputmode="numeric" maxlength="2" placeholder="品" aria-label="⑥弦品数" disabled><button class="pill str-tech" data-s="6" aria-label="⑥弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-          <div class="str-line" data-s="5"><button class="pill str-tog" data-s="5" aria-pressed="false" disabled>⑤</button><input class="str-fret" data-s="5" inputmode="numeric" maxlength="2" placeholder="品" aria-label="⑤弦品数" disabled><button class="pill str-tech" data-s="5" aria-label="⑤弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-          <div class="str-line" data-s="4"><button class="pill str-tog" data-s="4" aria-pressed="false" disabled>④</button><input class="str-fret" data-s="4" inputmode="numeric" maxlength="2" placeholder="品" aria-label="④弦品数" disabled><button class="pill str-tech" data-s="4" aria-label="④弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-          <div class="str-line" data-s="3"><button class="pill str-tog" data-s="3" aria-pressed="false" disabled>③</button><input class="str-fret" data-s="3" inputmode="numeric" maxlength="2" placeholder="品" aria-label="③弦品数" disabled><button class="pill str-tech" data-s="3" aria-label="③弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-          <div class="str-line" data-s="2"><button class="pill str-tog" data-s="2" aria-pressed="false" disabled>②</button><input class="str-fret" data-s="2" inputmode="numeric" maxlength="2" placeholder="品" aria-label="②弦品数" disabled><button class="pill str-tech" data-s="2" aria-label="②弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-          <div class="str-line" data-s="1"><button class="pill str-tog" data-s="1" aria-pressed="false" disabled>①</button><input class="str-fret" data-s="1" inputmode="numeric" maxlength="2" placeholder="品" aria-label="①弦品数" disabled><button class="pill str-tech" data-s="1" aria-label="①弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
-        </div>
         <span class="hint" id="strHint">先在上方选中一个音符</span>
       </div>
       <div class="ed-dir ed-strfill">
@@ -4758,23 +4754,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4790  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6416  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8651  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9879  Modal         应用内弹窗
-     L10024 Viz           时值可视化渲染与每帧动画
-     L13607 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14361 Trainer       变速训练器
-     L14578 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15241 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17230 Editor        自定义节奏型编辑器
-     L17984 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18079 Ear           听辨训练（v1.10.0）
-     L18307 Arrange       曲式编排（v2.0.0）
-     L22383 Help          使用方法（v2.0.1）
-     L22538 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22620 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22916 初始化（装配） 各模块 hook 接线与启动
+     L4786  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6412  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8647  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9875  Modal         应用内弹窗
+     L10020 Viz           时值可视化渲染与每帧动画
+     L13603 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14357 Trainer       变速训练器
+     L14574 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15237 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17226 Editor        自定义节奏型编辑器
+     L18022 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18117 Ear           听辨训练（v1.10.0）
+     L18345 Arrange       曲式编排（v2.0.0）
+     L22421 Help          使用方法（v2.0.1）
+     L22576 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22658 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22954 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4800,7 +4796,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.47.0";
+const VERSION = "3.47.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -17393,9 +17389,51 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       });
     }
   }
+  /* 逐弦面板按需构建（v3.47.0，DOM 预算纪律）：六行面板（6×4=24 节点）**不进首屏静态
+     DOM**——首次打开编辑器时在这里建一次，之后复用。与 helpFigs* 模板惰性化同一口径；
+     `.str-lines` 已存在（测试桩预构建 / 已建过）则跳过（幂等）。 */
+  let strPanelBuilt = false;
+  function ensureStrPanel(){
+    const host = $("strRow");
+    if (!host || strPanelBuilt) return;
+    if (Array.from(host.children).some(c => c.classList && c.classList.contains("str-lines"))){ strPanelBuilt = true; return; }
+    strPanelBuilt = true;
+    const lines = document.createElement("div");
+    lines.className = "str-lines";
+    for (let s = 6; s >= 1; s--){
+      const row = document.createElement("div");
+      row.className = "str-line";
+      row.dataset.s = String(s);
+      const tog = document.createElement("button");
+      tog.className = "pill str-tog";
+      tog.dataset.s = String(s);
+      tog.setAttribute("aria-pressed", "false");
+      tog.disabled = true;
+      tog.textContent = STR_CIRC[s - 1];
+      const fret = document.createElement("input");
+      fret.className = "str-fret";
+      fret.dataset.s = String(s);
+      fret.setAttribute("inputmode", "numeric");
+      fret.setAttribute("maxlength", "2");
+      fret.setAttribute("placeholder", "品");
+      fret.setAttribute("aria-label", STR_CIRC[s - 1] + "弦品数");
+      fret.disabled = true;
+      const tech = document.createElement("button");
+      tech.className = "pill str-tech";
+      tech.dataset.s = String(s);
+      tech.setAttribute("aria-label", STR_CIRC[s - 1] + "弦技巧（无/击弦/勾弦/滑音/泛音）");
+      tech.disabled = true;
+      tech.textContent = "·";
+      row.appendChild(tog); row.appendChild(fret); row.appendChild(tech);
+      lines.appendChild(row);
+    }
+    const hint = $("strHint");
+    if (hint) host.insertBefore(lines, hint); else host.appendChild(lines);
+  }
   function editorRender(){
     const d = draft;
     if (!d) return;                       // 草稿为空（编辑器未打开）：无可渲染之物
+    ensureStrPanel();                     // v3.47.0：逐弦面板按需构建（DOM 预算纪律，见其注释）
     /* v2.6.1（第 Ⅲ 期）：**小节数会变**了，所以 `editBar` 这个"当前小节"游标必须每次渲染前收进范围。
        在此之前型恒 4 小节、游标不可能越界，故没有这道守卫；现在删小节 / 撤销（撤销只回滚 bars、
        不回滚游标）都可能把它留在数组外，而 `d.bars[editBar].push(...)`（音符块库的追加路径）
