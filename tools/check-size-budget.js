@@ -358,8 +358,21 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        - `.brand .wm` 规则 + 日间档三条旧摆锤重着色规则的退役注释约 0.4 KB（净删 3 条规则）。
    ★ 留 **54KB** 余量（WARN 1969.8KB，当前 1957KB 在观察线下 13KB）：同口径抬一次覆盖
      约 5 个本批量级，趋势交观察线看。抬线而非砍注释的理由与 v3.38.1 同：字标 path 是
-     逐字节锁定的品牌资产，压缩小数位会让它与 VI 手册登记版失配——那正是 t235b 要拦的。 */
-const BUDGET_BYTES = 2010 * 1024;
+     逐字节锁定的品牌资产，压缩小数位会让它与 VI 手册登记版失配——那正是 t235b 要拦的。
+   ★ v3.47.0：2010 → 2028KB。新功能「分解和弦伴奏型（逐弦拨弦 str）」落地，实测
+     2,074,222 B（2025.6 KB），净增 **约 15.6 KB**；增量构成（PLAN-v10-str-pick 拍板范围，
+     均为功能本体 + 判据注释 + 帮助页读法，非冗余）：
+       - 数据层：normStr / parseStrFill / stepHasStrumLike / 常量组 + validatePreset /
+         demoPresetEq / sliceSteps / barFinger 各自的收口改动与注释；
+       - 可视化：pickGlyph（SVG 构建器）+ .strumv.pick CSS 区块 + 三处渲染点分支 +
+         fitCellAnnotations 两级降级；
+       - 编辑器：⑥→① 六行迷你面板标记（18 控件）+ 面板监听（开关/品数/技巧/铺弦号）
+         + editorRender 收口 + zone 覆盖态；
+       - 发声：pluckHit / stepVoiceOf / strumPeak / isBeatPos 收口 + schedOneStep 三分支；
+       - 帮助页：「画面怎么看」与展开说明各一条逐弦读法（方案 §7 批 5）。
+   ★ 留 **约 43KB** 余量（WARN = 2028×0.98 ≈ 1987.4KB——当前 2025.6KB 在观察线上方，
+     观察线警示将常驻直到下一次抬线或瘦身，这是预期行为）。 */
+const BUDGET_BYTES = 2028 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

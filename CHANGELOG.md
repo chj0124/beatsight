@@ -15,6 +15,71 @@
 
 ---
 
+## v3.47.0 · 新功能：分解和弦伴奏型（逐弦拨弦 str）——点=弦、数字=品、字母=技巧（2026-10-12）
+
+**根因**（PLAN-v10-str-pick 拍板定稿）：民谣弹唱的分解和弦伴奏（53231323 家族）此前无法记谱——
+节奏型的最小单位是「一次扫弦手势」（dir/zone 只能表达方向与弦组滤波），表达不了
+「这一格拨第几根弦、按第几品、是不是击/勾/滑/泛音」。本版把最小单位细化为
+「一次拨弦事件，可指定弦与（可选）品/技巧」。
+
+**数据模型**：`step.str?: [{s, f?, tech?}]`——s=弦号 1–6、f=品数 0–24 可省略、
+tech=H 击弦/P 勾弦/S 滑音/O 泛音 可省略；按 s 升序、去重、非空。与 zone 正交、存在即覆盖
+（str 存在时渲染与发声都以它为准，zone 失效）；缺省整字段 = 老数据走 zone 口径，**零迁移**。
+弦号/品号/技巧都是**纯记谱信息**（同 dir 的地位）：声音只回答「这一格拨了几根弦」——
+单弦（str 长度 1）= 新增 `pluckHit` 固定拨弦音（triangle 392→196 快速下沉 + 2600Hz 短噪声
+激励，无频率参数，与 click 同级节点量）；多弦（≥2）= 既有全扫双频段噪声（不按弦组细分）；
+无 str = 既有逻辑逐位不变。onset 仍一步一条（锚 = step 起点），播放头/弹跳球/歌词对齐零改动。
+
+**关键判据扩展**（本次最高危单点）：`hasStrum` 只看 dir/zone——纯分解型（全部格只挂 str）
+在旧判据下六线层不建、扫弦声部不进、歌词锚点退回拍点，三处同时错。收口为共享谓词
+`stepHasStrumLike`（dir/zone/str 任一），hasStrum 与 AudioEngine 的 `stepVoiceOf` 共用一份；
+strumGrid 补拍语义不变（扫弦声——含 str——不算「顶掉」节拍器）。
+
+**修法**：
+- 数据层：共享区新增 `normStr`（归一化唯一入口：升序去重 / f 0–24 / tech 白名单 /
+  rest 格抹 tech）/ `parseStrFill`（按序铺弦号 `s[:f][tech]` 空格分词）/ 常量组；
+  validatePreset 收白名单（脏值静默降级，同 dir/zone 先例）；packPreset 随 bars 透传；
+  demoPresetEq 规范化带上 str；编辑器 barFinger 缓存键补 str；
+  **sliceSteps 切片时 str 跟随起头段**（同 dir/zone 口径——实施中实测抓到：漏了它，
+  K≥2 分片下逐弦点整行消失）。
+- 可视化：`pickGlyph`（createElementNS SVG，viewBox 26×44 = 主视图行高 1:1 像素系，
+  cy(s)=(s−1)×8.6 与 .tab 弦线落点逐位一致；preserveAspectRatio=none 使同一份记号在
+  编辑器 64px/编排页 30px 行高里纵向铺满）；宿主复用 `.strumv` 家族（`.pick`/`.ghost`/`.hit`），
+  水平定位与箭头同公式，染态全继承（hit 绿 / ghost 空心虚线蓝 / setCell 帧内只切 .hit）；
+  CSS 管色（color→currentColor）、SVG 只管形，不新增颜色令牌。三处渲染点同源：
+  主视图 buildRowCells / 编辑器 editorRender / 编排页 mkPatBar（经 Arrange 接口暴露供
+  t240b 直测，手法同 mkJianpuGlyph 先例）；fitCellAnnotations 两级降级（先藏 notxt 文本
+  再走既有 STRUM_MIN_W 整体藏）。
+- 编辑器：⑥→① 六行迷你面板（开关 + 品数框 + 技巧循环钮），zone 行被覆盖时显示
+  「逐弦优先」态、清空全部弦自动恢复；小节级「按序铺弦号」输入框（颗数 ≠ 发声格数
+  报错不写入）；pushUndo 先行、同态重按不推栈、aria-label 拼「⑤弦3品勾弦」。
+- 发声：`pluckHit(t, peak)`（latOff 补偿沿用 playClick 入口口径）+ `strumPeak`（扫弦声部
+  峰值唯一公式，playClick 与 str 分支逐字同源）+ `stepVoiceOf`（声部判定收口）+
+  `isBeatPos`（拍点判定抽出共用）。
+- 文档：帮助页「画面怎么看」与展开说明各补逐弦读法一条（弦区条目的「而非逐弦开关」
+  补指向，方案 §7 的过时文案核对项）；DEVELOPMENT §3.1 数据模型 / §3.5 编辑器；
+  README 功能表。
+
+**取舍**：声音只分单拨/齐拨两种、不还原音高（音位信息全在显示层）——与现行扫弦声
+「zone 只模拟明暗、不当真和弦」同一哲学；`dir:"A"` 的逐弦微延迟可听化、打板/拍弦、
+指型自动推导均不进本期（拍板记录已知边界）；编辑器/编排页行高与主视图不同，
+pick 记号取纵向铺满（pAR=none）而非另写一套几何——圆点轻微纵变可接受；
+图例行（三种视觉编码）保持不动——逐弦点只在带 str 记谱的型里出现，完整读法归帮助页。
+
+**自验**：node tests/run.js = **8169 PASS / 0 FAIL**（新增 t240a 数据层 44 断言：normStr
+矩阵 / validatePreset 收放 / 导出往返 / 老数据字节不变 / demoPresetEq 带 str 比对 /
+hasStrum 扩展钉子 / parseStrFill 混写与报错；t240b 渲染 42 断言：三处渲染点同构 /
+cy 映射 / 文本串格式 / hit/ghost 染态 / 纯 str 型建层钉子 / 窄格两级降级；t240c 编辑器
+31 断言：开关/品数三路径/技巧五态循环/撤销/zone 覆盖态/铺弦号报错不写半截/rest 跳过；
+t240d 发声 19 断言：stepVoiceOf 三案 / 单弦一格一拨且参数恒定（换弦号/品号/技巧逐位
+相同）/ 多弦全扫双频段 / rest+str 无声 / onset 一步一条 / strumGrid 补拍不变 /
+strumVol 挂接）。反向验证 `tools/reverse-verify-v3470.py` **4/4 具名红**（删发声分支 /
+短路渲染分支 / normStr 透传 / 断开面板监听）。check-all 全绿；体积
+2,074,222 B（+15.6 KB，BUDGET_BYTES 2010→2028 KB，增量构成见 check-size-budget.js 注释）。
+遗留人工项：移动端 390px 分页与桌面对照**人眼验收**（视觉/手感类，冒烟看不出来）。
+
+---
+
 ## v3.46.1 · 修复：移动端歌词跑道缺口期滞留前片——进度源从扫弦 onset 口径换绑歌曲时间（用户实拍《在他乡》主歌二）（2026-10-12）
 
 **根因**（用户实拍：移动端分页模式播《在他乡》主歌二，节奏型跑道的播放头已扫入后半片

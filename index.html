@@ -1092,6 +1092,24 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block}
 .strumv.arp .arp-wave{stroke:var(--peak);stroke-width:2;fill:none;stroke-linecap:round}
 .strumv.arp .arp-head{fill:var(--peak)}
+/* ★ 本版（v3.47.0）：逐弦拨弦记号（str）——实心点列 + 点右「品数/技巧字母」文本串。
+   复用 .strumv 家族的宿主与染态链，不新增颜色令牌：色由 color → currentColor 供给
+   （SVG 只管形），常态 --peak 与箭头杆身同源。
+   ::before 杆身必须显式关掉（同 .arp 的教训：基础规则对所有 .strumv 生效，
+   不关会多出一根 2px 直杆）；::after 无 .dn/.up 着色本来就不出墨。
+   svg 高度 100% 跟随宿主行高（主视图 44 / 编辑器 64 / 编排页 30），宽恒 26px；
+   overflow:visible 放行 ⑥ 弦点越出 viewBox 的下缘。 */
+.strumv.pick{width:26px;color:var(--peak)}
+.strumv.pick::before{content:none}
+.strumv.pick svg{position:absolute;left:0;top:0;width:26px;height:100%;overflow:visible;display:block}
+.strumv.pick.ghost{color:var(--blue)}
+/* 空拨（rest+str，手到无声 = 闷音/虚拨记法）：空心虚线点（色仍由 .ghost 的 --blue 供给） */
+.strumv.pick.ghost circle{fill:none;stroke:currentColor;stroke-dasharray:2 2}
+.strumv.pick.hit{color:var(--green);filter:drop-shadow(0 0 4px rgba(30,215,96,.75))}
+/* 空拨不得被 .hit 染成实心（同 .strumv.hit.ghost 的既有语义：无声格不给发声错觉） */
+.strumv.pick.hit.ghost{color:var(--blue);filter:none}
+/* 窄格第一级降级：先藏品数/技巧字母（只留点）；第二级 = 整体 display:none，走既有 STRUM_MIN_W 门 */
+.strumv.pick.notxt text{display:none}
 .strumv.arp.hit .arp-wave{stroke:var(--green)}
 .strumv.arp.hit .arp-head{fill:var(--green)}
 .strumv.arp.ghost .arp-wave{stroke:var(--blue);stroke-dasharray:3 3}
@@ -2198,6 +2216,15 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
 /* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
 .ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+/* 逐弦拨弦面板（v3.47.0）：六行迷你面板（开关 + 品数框 + 技巧钮），复用 .ed-dir 的行容器
+   语义（flex wrap + 底距），行组纵向堆叠；品数框与 .name-input 同族但迷你（参照 ctl-pills
+   折叠先例，窄档下靠 .ed-dir 的 flex-wrap 收纳，不顶破编辑器布局） */
+.ed-str .str-lines{display:flex;flex-direction:column;gap:4px}
+.str-line{display:flex;gap:6px;align-items:center}
+.str-fret{width:48px;background:var(--card2);border:1px solid var(--line);border-radius:8px;
+  color:var(--t1);font-size:12px;padding:6px 8px;font-family:inherit;outline:none;text-align:center}
+.str-fret:disabled{opacity:.45}
+.str-fret:focus{border-color:var(--peak)}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -3841,6 +3868,30 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <button class="pill" data-zone="" aria-pressed="false" disabled>全扫（默认）</button>
         <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区 ④⑤⑥</button>
         <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
+        <span class="hint" id="zoneHint"></span>
+      </div>
+      <!-- 逐弦拨弦（v3.47.0）：分解和弦记谱面板——点=弦、数字=品、字母=技巧
+           （H 击弦 / P 勾弦 / S 滑音 / O 泛音）。六行迷你面板作用于选中的音符：
+           开关 = 拨这根弦；品数框留空 = 不标品；技巧钮循环 无→H→P→S→O→无。
+           格子带 str 时弦区行进入「逐弦优先」覆盖态，清空全部弦自动恢复可编辑。
+           小节级「按序铺弦号」：语法 s[:f][tech] 空格分词（5:3 / 3P / 2:0H 混写合法），
+           按顺序铺到本小节的发声格（rest 格跳过）；颗数不匹配报错不写入（不写半截）。 -->
+      <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（点=弦、数字=品、字母=技巧）">
+        <span class="hint">逐弦</span>
+        <div class="str-lines">
+          <div class="str-line" data-s="6"><button class="pill str-tog" data-s="6" aria-pressed="false" disabled>⑥</button><input class="str-fret" data-s="6" inputmode="numeric" maxlength="2" placeholder="品" aria-label="⑥弦品数" disabled><button class="pill str-tech" data-s="6" aria-label="⑥弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+          <div class="str-line" data-s="5"><button class="pill str-tog" data-s="5" aria-pressed="false" disabled>⑤</button><input class="str-fret" data-s="5" inputmode="numeric" maxlength="2" placeholder="品" aria-label="⑤弦品数" disabled><button class="pill str-tech" data-s="5" aria-label="⑤弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+          <div class="str-line" data-s="4"><button class="pill str-tog" data-s="4" aria-pressed="false" disabled>④</button><input class="str-fret" data-s="4" inputmode="numeric" maxlength="2" placeholder="品" aria-label="④弦品数" disabled><button class="pill str-tech" data-s="4" aria-label="④弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+          <div class="str-line" data-s="3"><button class="pill str-tog" data-s="3" aria-pressed="false" disabled>③</button><input class="str-fret" data-s="3" inputmode="numeric" maxlength="2" placeholder="品" aria-label="③弦品数" disabled><button class="pill str-tech" data-s="3" aria-label="③弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+          <div class="str-line" data-s="2"><button class="pill str-tog" data-s="2" aria-pressed="false" disabled>②</button><input class="str-fret" data-s="2" inputmode="numeric" maxlength="2" placeholder="品" aria-label="②弦品数" disabled><button class="pill str-tech" data-s="2" aria-label="②弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+          <div class="str-line" data-s="1"><button class="pill str-tog" data-s="1" aria-pressed="false" disabled>①</button><input class="str-fret" data-s="1" inputmode="numeric" maxlength="2" placeholder="品" aria-label="①弦品数" disabled><button class="pill str-tech" data-s="1" aria-label="①弦技巧（无/击弦/勾弦/滑音/泛音）" disabled>·</button></div>
+        </div>
+        <span class="hint" id="strHint">先在上方选中一个音符</span>
+      </div>
+      <div class="ed-dir ed-strfill">
+        <input class="name-input" id="strFillIn" style="width:auto;flex:1;min-width:200px" placeholder="按序铺弦号：5:3 3 2 3 1 3 2 3（作用于当前小节）" aria-label="按序铺弦号（作用于当前小节）">
+        <button class="pill" id="strFillBtn">铺到当前小节</button>
+        <span class="hint" id="strFillHint" role="status"></span>
       </div>
       <!-- 发声开关（v2.45.0）：翻转选中音符的 rest（发声 ↔ 休止）。实扫 ↔ 空扫此前没有直达路径：
            调色板替换会破坏小节时值（休止块只有四分一种）且抹掉 dir/zone，非四分时长的互换实际做不到。
@@ -4055,6 +4106,14 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
           <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 蓝虚线箭头 = 空扫），
           点「知道了」收起后本版本内不再出现，版本更新后会再出现一次。图例里的<b>空扫（蓝虚线箭头）</b> = 「假装在扫弦、但不触弦」：那一格占满自己的时值、不触发新音；<b>灰格（纯休止）</b>同样不触发新音。弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
+        <!-- v3.47.0：逐弦拨弦（分解和弦）读法。图例行（三种视觉编码）保持不动——逐弦点只
+             在带 str 记谱的型里出现，完整读法归本节（与 .viz-legend 的注释同一分工口径） -->
+        <li><b>分解和弦（逐弦拨弦）</b>：跑道上的<b>实心点 = 右手拨这根弦</b>（点的纵向位置对准六线谱的弦线，
+          点旁<b>数字 = 左手按的品</b>、<b>字母 = 技巧</b>——H 击弦 / P 勾弦 / S 滑音 / O 泛音，
+          这几下不出自右手但时机提示照常）；一格多点是「同时拨这几根弦」（加花/齐拨，各自标品数）；
+          <b>空心虚线点 = 空拨</b>（手到无声的闷音/虚拨记法）。声音只分<b>单拨/齐拨</b>两种可辨音色、
+          不还原音高——音位信息全在显示层。录入走编辑器选中音符后的「逐弦」面板
+          （开关 + 品数 + 技巧），或小节级<b>按序铺弦号</b>：5:3 3 2 3 1 3 2 3 = 53231323 带根音品数</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -4315,6 +4374,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
                老数据 zone=1（当年谱面映射的"全"）读作全扫，零迁移 -->
           <li><b>弦区（全扫（默认） / 低弦区 ④⑤⑥ / 高弦区 ①②③）</b>：给扫弦选"拨片扫过哪几根弦"。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>全扫</b> = 6 根弦都扫——民谣式扫弦的常态，<b>新增的扫弦默认就是它</b>（不特别标注 = 全扫，导入的 JSON 同理）；<b>低弦区</b> = 只扫 ④⑤⑥ 这三根较粗的低音弦，音闷；<b>高弦区</b> = 只扫 ①②③ 这三根较细的高音弦，音亮。方向（↑↓）与弦区<b>互不约束</b>——下扫、上扫都可以配任一弦区。它是<b>音色档位</b>而非逐弦开关——应用里用低/高两档滤波频率模拟明暗差异（全扫 = 两档一起响），<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
+          <!-- v3.47.0（方案 §7 的过时文案核对项）：上一条的「而非逐弦开关」在新功能落地后
+               需要一句指向，避免读者误以为"应用没有逐弦能力"——逐弦拨弦面板（分解和弦） -->
+          <li><b>逐弦拨弦（分解和弦）</b>：比弦区更细一格的记谱——选中音符后用「逐弦」面板指定
+            <b>拨哪根弦</b>（跑道上的点 = 弦，纵向位置对准六线谱弦线）、可选<b>品数</b>（点旁数字 =
+            左手按的品）与<b>技巧</b>（H 击弦 / P 勾弦 / S 滑音 / O 泛音——这几下不出自右手但
+            时机提示照常）；一格可多点（加花/齐拨）；整小节一次录入用<b>按序铺弦号</b>
+            （5:3 3 2 3 1 3 2 3 = 53231323 带根音品数，颗数须与发声格数相等）。
+            格子带逐弦记谱时弦区被覆盖（面板会提示「逐弦优先」，清空全部弦自动恢复）；
+            声音只分<b>单拨/齐拨</b>两种音色、不还原音高——读法详见「画面怎么看」</li>
         </ul>
 
         <template id="helpFigsEditor">
@@ -4690,23 +4758,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4722  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6232  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8461  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9689  Modal         应用内弹窗
-     L9834  Viz           时值可视化渲染与每帧动画
-     L13391 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14089 Trainer       变速训练器
-     L14306 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L14969 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L16958 Editor        自定义节奏型编辑器
-     L17540 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L17635 Ear           听辨训练（v1.10.0）
-     L17863 Arrange       曲式编排（v2.0.0）
-     L21929 Help          使用方法（v2.0.1）
-     L22084 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22166 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22462 初始化（装配） 各模块 hook 接线与启动
+     L4790  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6415  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8650  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9878  Modal         应用内弹窗
+     L10023 Viz           时值可视化渲染与每帧动画
+     L13606 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14360 Trainer       变速训练器
+     L14577 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15240 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17229 Editor        自定义节奏型编辑器
+     L17982 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18077 Ear           听辨训练（v1.10.0）
+     L18305 Arrange       曲式编排（v2.0.0）
+     L22381 Help          使用方法（v2.0.1）
+     L22536 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22618 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L22914 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4732,7 +4800,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.46.1";
+const VERSION = "3.47.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4837,8 +4905,10 @@ function patBars(pat){
 }
 /* 「这个型带不带扫弦记谱」——决定扫弦记谱层画不画、扫弦声部响不响，
    也决定预设库把它归入「节拍」还是「扫弦」两类中的哪一类。
-   判据：`dir`（扫弦方向）或 `zone`（弦区）任一存在。两者都是**记谱层**字段、
-   与发声时间轴无关，故"有没有它们"就能区分"这是份扫弦谱还是份纯节拍谱"。
+   判据：`dir`（扫弦方向）/ `zone`（弦区）/ `str`（逐弦拨弦，v3.47.0）任一存在。三者都是
+   **记谱层**字段、与发声时间轴无关，故"有没有它们"就能区分"这是份扫弦谱还是份纯节拍谱"。
+   单格判据在 stepHasStrumLike（str 一并收编——纯分解型只挂 str，漏扩展会让六线层 /
+   扫弦声部 / 歌词锚点三处同时退回节拍谱口径）。
 
    ★★ 声明位置在数据区（Store 之前）：Viz / AudioEngine / Presets 运行期
      都要调它，而它**只依赖 pat.bars**、不依赖 S、不依赖 resolveRef，放在数据区最合适。
@@ -4848,7 +4918,7 @@ function patBars(pat){
 function hasStrum(pat){
   if (!pat || !Array.isArray(pat.bars)) return false;
   return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
-    && bar.some((/** @type {any} */ s) => !!s && (s.dir !== undefined || s.zone !== undefined)));
+    && bar.some((/** @type {any} */ s) => stepHasStrumLike(s)));
 }
 /** 十六分刻度尺的显隐判据（v3.33.15）：这个型**需不需要比八分更细**的参考网格。
    判据 = 「存在一个时值不是八分（T8 = 24t）的整数倍」。
@@ -5851,10 +5921,15 @@ function demoBuildSpec2(){
 /** @param {any} stored @param {any} spec @returns {boolean} */
 function demoPresetEq(stored, spec){
   if (!stored || !spec || stored.meter !== spec.meter) return false;
-  const canon = (/** @type {any[]} */ bars) => JSON.stringify((bars || []).map(bar => (bar || []).map(/** @param {any} s */ s =>
+  const canon = (/** @type {any[]} */ bars) => JSON.stringify((bars || []).map(bar => (bar || []).map(/** @param {any} s */ s => {
     /* v3.31.x（审计 P3-7）：zone 把 null 与缺省折叠为同一记号（DEMO_STRUMS 写显式 null、
-       validatePreset 归一为省略），此前两侧 canon 永不相等、内容认型首选腿恒不成立。 */
-    [s.t, s.rest ? 1 : 0, s.dir || "", (s.zone === undefined || s.zone === null) ? "" : s.zone])));
+       validatePreset 归一为省略），此前两侧 canon 永不相等、内容认型首选腿恒不成立。
+       v3.47.0：str 一并规范进 canon——两侧各过一遍 normStr（stored 已归一、spec 是裸 JSON），
+       老数据（无 str）两侧同为 ""，逐位不变。 */
+    const ns = normStr(s.str, s.rest);
+    return [s.t, s.rest ? 1 : 0, s.dir || "", (s.zone === undefined || s.zone === null) ? "" : s.zone,
+      ns ? JSON.stringify(ns) : ""];
+  })));
   return canon(stored.bars) === canon(spec.bars);
 }
 /* 示例曲 5 个型的**规范谱**（缓存：demoBuildSpec 是纯函数，结果恒定）。
@@ -6054,7 +6129,8 @@ function migrateDemoToBuiltins(customs, arranges){
 /** @typedef {{ t: number, dur: number, ch: string }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断）。v3.37.0 B 期起**不再携带 p**——音高全部迁入行级 notes（姊妹轨），存量 p 由 normLyricLine 加载时一次性迁移 */
 /** @typedef {{ t: number, dur: number, p: number }} LyricNote 一颗音符：t/dur 与字同一网格同一坐标系（段内绝对 tick，dur 必为 LYRIC_GRID 整数倍），p=整数半音（60=C4，域 [PITCH_MIN, PITCH_MAX]）。互不重叠（normLyricLine 跳过靠后的重叠音符，同字的重叠口径） */
 /** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[], notes?: LyricNote[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid）；v3.37.0 B 期：可选 notes = 旋律姊妹轨（**notes 非空才写键**——无旋律的行落盘形状与旧格式逐位一致）。chars 与 notes 可各自为空：双空 = 行不存在；chars 空而 notes 有 = 纯谱行（前奏/间奏/尾奏） */
-/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number }} Step 一小节的单步（时值槽；dir/zone 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]） */
+/** @typedef {{ s: number, f?: number, tech?: string }} StrNote 逐弦拨弦的一条：s=弦号 1–6（①=1），f=品数 0–24 可省略（省略=不标），tech=技巧 H/P/S/O 可省略（H 击弦 / P 勾弦 / S 滑音 / O 泛音）。纯记谱信息（告诉右手拨哪根、左手按哪品），不进发声路径——发声只看这一格拨了几根弦 */
+/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number, str?: StrNote[] }} Step 一小节的单步（时值槽；dir/zone/str 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]；str 存在时渲染与发声都以它为准、zone 失效——见 normStr 与 stepHasStrumLike） */
 /** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][], label?: string }} Preset 归一化后的节奏型（id 在落库时补） */
 /** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number, chords?: string }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
 /** @typedef {{ uid: string, name: string, blocks: Block[] }} Section 曲式的一段（uid 是稳定身份，段挪位/被删不改变） */
@@ -6226,6 +6302,113 @@ function arpGlyph(host){
     @param {string} dir @returns {string} */
 function strumDirCls(dir){
   return dir === "A" ? " arp" : (dir === "D" ? " dn" : " up");
+}
+/** 逐弦拨弦记号（v3.47.0）：实心点 = 右手拨这根弦，点右数字 = 品数，字母 = 技巧
+    （H/P/S/O）——六线谱「弦上数字 = 品、点旁字母 = 技巧」的既有记法，不发明新语言。
+    与 arpGlyph 同款模式：createElementNS 构建真实 SVG，恒定标记、零拼串（不走 innerHTML）。
+    几何：viewBox 0 0 26 44 = 主视图一格满行高的 **1:1 像素系**，cy(s) = (s−1)×8.6 与
+    .tab 六线落点（--gtop/--gt：0/8.6/…/43）逐位一致——① 贴顶、⑥ 在 43；
+    preserveAspectRatio="none" + CSS height:100% 使同一份记号在编辑器 64px /
+    编排页 30px 的行高里**纵向铺满**（横纵比轻微变化的取舍见 CHANGELOG v3.47.0）。
+    ⑥ 弦点下缘（43+3.4=46.4）越出 viewBox：CSS overflow:visible 放行
+    （与 kB 箭头尾巴越出行高的既有口径一致）。
+    染态（hit/ghost）由 CSS .strumv.pick 区块管色（color → currentColor）、SVG 只管形。
+    @param {Element} host 承载记号节点的宿主（.strumv.pick 层） @param {any[]} str 已归一的 str 数组 @returns {void} */
+function pickGlyph(host, str){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 26 44");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("aria-hidden", "true");
+  for (const e of str){
+    const cy = (e.s - 1) * 8.6;
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", "5");
+    c.setAttribute("cy", String(cy));
+    c.setAttribute("r", "3.4");
+    c.setAttribute("fill", "currentColor");
+    svg.appendChild(c);
+    const label = (e.f !== undefined && e.f !== null ? String(e.f) : "") + (e.tech || "");
+    if (label){
+      const tx = document.createElementNS(NS, "text");
+      tx.setAttribute("x", "10.5");
+      tx.setAttribute("y", String(cy + 2.6));
+      tx.setAttribute("class", "pick-txt");
+      tx.setAttribute("font-size", "7.5");
+      tx.setAttribute("fill", "currentColor");
+      tx.setAttribute("opacity", ".85");
+      tx.textContent = label;
+      svg.appendChild(tx);
+    }
+  }
+  host.appendChild(svg);
+}
+
+/* ---- 逐弦拨弦（v3.47.0）· 共享常量与归一化 ----
+   分解和弦伴奏（53231323 家族）把最小单位从「一次扫弦手势」细化为「一次拨弦事件，
+   可指定弦与（可选）品/技巧」。step.str = StrNote[]（按 s 升序、去重、非空）。
+   ★ 与 zone 正交、存在即覆盖：str 存在时渲染与发声都以它为准，zone 失效；无 str 一切照旧。
+   ★ 常量与归一化放共享区（strumDirCls / arpGlyph 一带）：Store（validatePreset）、
+     Editor（写入路径）、demoPresetEq（规范化比对）、Viz/AudioEngine（判据）四方共用——
+     「渲染判据与发声判据逐字同源」的铁律靠"只有一份函数"而不是"抄写一致"来守。 */
+const STR_S_MIN = 1, STR_S_MAX = 6, STR_F_MAX = 24;
+const VALID_TECH = ["H", "P", "S", "O"];   // H 击弦 / P 勾弦 / S 滑音 / O 泛音（定稿）
+const STR_CIRC = "①②③④⑤⑥";              // 弦号 → 圈码（aria-label 与面板文案共用）
+const STR_TECH_NAME = { H: "击弦", P: "勾弦", S: "滑音", O: "泛音" };
+/** 归一化 str 字段：合法 → 按 s 升序去重后的新数组；全脏/空 → undefined（= 没这个字段）。
+    逐条静默降级（某条脏只丢那条；f 越界/非整数、tech 脏只丢该子字段），
+    rest 格上的 tech 在这里抹除（与「休止符上的 dir 曾被抹掉」同一先例——无声的技巧无从谈起；
+    dir 后来放开为空扫记法，但技巧的语义是"这时刻右手不拨也有声"，休止格上仍不成立）。
+    不做音乐语义校验（「H 必须有同弦前音」不查，同 dir 不查上下游的先例）。
+    渲染与调度读到的 str 一律是本函数的产出，调用点：validatePreset / 编辑器写入 /
+    demoPresetEq 规范化，不再各自防御。
+    @param {any} raw @param {boolean} isRest @returns {any[] | undefined} */
+function normStr(raw, isRest){
+  if (!Array.isArray(raw)) return undefined;
+  const seen = new Set();
+  const out = [];
+  for (const e of raw){
+    if (!e || typeof e !== "object") continue;
+    const s = e.s;
+    if (typeof s !== "number" || !Number.isInteger(s) || s < STR_S_MIN || s > STR_S_MAX) continue;
+    if (seen.has(s)) continue;                       // 重复 s：保留首个
+    seen.add(s);
+    const item = { s };
+    if (e.f !== undefined && e.f !== null &&
+        typeof e.f === "number" && Number.isInteger(e.f) && e.f >= 0 && e.f <= STR_F_MAX) item.f = e.f;
+    if (!isRest && e.tech !== undefined && e.tech !== null && VALID_TECH.includes(e.tech)) item.tech = e.tech;
+    out.push(item);
+  }
+  out.sort((a, b) => a.s - b.s);
+  return out.length ? out : undefined;
+}
+/** 单格的「带扫弦类记谱」判据（v3.47.0）：dir/zone/str 任一存在。
+    hasStrum（型级）与 AudioEngine 的 stepVoiceOf（格级声部路由）共用这一份——
+    纯分解型（全部格只挂 str）在旧判据下六线层不建、扫弦声部不进、歌词锚点退回拍点，
+    三处同时错，故判据必须只有这一份。 */
+/** @param {any} s @returns {boolean} */
+function stepHasStrumLike(s){
+  return !!s && (s.dir !== undefined || s.zone !== undefined || !!(s.str && s.str.length));
+}
+/** 解析「按序铺弦号」文本（v3.47.0，编辑器小节级输入框）：语法 `s[:f][tech]` 空格分词，
+    混写合法——`5`（裸弦）/ `5:3`（带品）/ `2:0H`（带品带技巧）/ `3P`（无品带技巧）。
+    纯函数、可单测；任一词不匹配即整体失败（不写半截的纪律由调用方守：
+    ok 才逐格写入，失败只报错文案）。
+    @param {string} text @returns {{ok: boolean, list?: any[], why?: string}} */
+function parseStrFill(text){
+  const words = String(text ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return { ok: false, why: "先填弦号，例如：5:3 3 2 3 1 3 2 3" };
+  const re = /^([1-6])(?::([0-9]|1[0-9]|2[0-4]))?([HPSO])?$/;
+  const list = [];
+  for (const w of words){
+    const m = re.exec(w);
+    if (!m) return { ok: false, why: "「" + w + "」不是合法的弦号（语法 s[:f][tech]，如 5:3 / 3P / 2:0H）" };
+    const item = { s: +m[1] };
+    if (m[2] !== undefined) item.f = +m[2];
+    if (m[3]) item.tech = m[3];
+    list.push(item);
+  }
+  return { ok: true, list };
 }
 
 
@@ -7622,7 +7805,7 @@ const Store = (() => {
   function resetEar(){ ear.total = 0; ear.right = 0; ear.best = 0; persistEar(); }
 
   /* customs 走与导入完全相同的校验路径；非法项隔离到 quarantine，不静默丢弃也不放行 */
-  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number }[][], song?: string, label?: string }[]} */
+  /** @type {{ id: string, name: string, meter: number, accents?: number[], bars: { t: number, rest: boolean, dir?: string, zone?: number, str?: { s: number, f?: number, tech?: string }[] }[], song?: string, label?: string }[]} */
   const customs = [];
   customsRef = customs;    // v3.31.x（审计 P1-9）：patLenOf 的运行期路径接上 live 数组（见其定义处注释）
   /** @type {any[]} */
@@ -7919,6 +8102,8 @@ const Store = (() => {
      全量包静默丢失——那次是给 serializeAll 单补一项；根因（两份清单）到本轮才收掉。 */
   /** @param {any} c @returns {any} */
   function packPreset(c){
+    /* v3.47.0：str 随 bars 整体透传（bars 是唯一写点里现成的深字段），导出/导入经
+       validatePreset 白名单自然往返——不需要、也不允许在这里另列一份逐格字段清单。 */
     return { name:c.name, meter:c.meter, ...(c.accents ? {accents:c.accents} : {}), bars:c.bars,
       ...(c.song ? {song:c.song} : {}), ...(c.label ? {label:c.label} : {}) };
   }
@@ -7988,7 +8173,11 @@ const Store = (() => {
         /* 弦区（v2.2.0）：与 dir 同一口径——非法值静默降级为省略（=全扫），不牵连整条预设。
            v2.29.0：1 仍合法保留（全扫别名，老数据零迁移），发声与缺省同走全扫双频段 */
         const zone = VALID_ZONE.includes(s.zone) ? s.zone : undefined;
-        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {})});
+        /* 逐弦拨弦（v3.47.0）：与 dir/zone 同一口径——脏值静默降级，不牵连整条预设。
+           归一化唯一入口 normStr（升序去重 / f 0–24 / tech 白名单 / rest 抹 tech）；
+           老版本应用导入含 str 的导出包时，本白名单整体丢弃 str（既有降级惯例，可接受）。 */
+        const str = normStr(s.str, !!s.rest);
+        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {}), ...(str ? {str} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
       bars.push(steps);
@@ -9988,6 +10177,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       if (!cutL){                                             // 记谱字段只跟起头那段
         if (s.dir !== undefined) copy.dir = s.dir;
         if (s.zone !== undefined) copy.zone = s.zone;
+        if (s.str !== undefined) copy.str = s.str;            // v3.47.0：逐弦记谱同口径（漏了它，K≥2 切片下逐弦点整行消失）
       }
       out.push(copy);
     }
@@ -11138,7 +11328,22 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
          它承诺"只出节拍音与重音"，画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
          ★ 注意 strums 数组必须**同时**推入占位 null：它与格子逐位同构，
            fitCellAnnotations() 按下标对齐做窄格隐藏，少推一项会让隐藏判据整体错位 */
-      if (s.dir && hasStr){
+      /* 逐弦拨弦记号（v3.47.0）：与箭头同一层（.strums）、同一水平定位公式（格中心）、
+         同一套 strums 槽位登记（fitCellAnnotations 窄格降级 / setCell 帧内 .hit 切换全继承）。
+         str 存在时渲染以它为准（zone 失效；dir 也不再画箭头——两者同格时 pick 优先，
+         与发声侧 stepVoiceOf 的「str 优先于 zone」逐字同源）。 */
+      if (s.str && hasStr){
+        const sm = document.createElement("div");
+        sm.className = "strumv pick" + (s.rest ? " ghost" : "");
+        pickGlyph(sm, s.str);
+        sm.dataset.i = String(i);
+        /* 水平定位到**格中心**：与箭头同一套 % 公式（不依赖像素宽度） */
+        const w = s.t / barTicks;
+        sm.style.left = ((startT / barTicks) + w / 2) * 100 + "%";
+        const sl = strumLayers[b];
+        if (sl) sl.appendChild(sm);
+        strums.push(sm);
+      } else if (s.dir && hasStr){
         const sm = document.createElement("div");
         /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
         const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
@@ -11535,21 +11740,30 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      （v1.3.0 P1-4 的性能承诺靠这一点成立，往帧内加读取会立刻破功） */
   /* 竖箭头比旧徽标窄得多（2px vs 14px），但**要留出箭头两侧的读图余量**——
      箭头贴着邻格的箭头时两条线会读成一条，所以阈值不按自身宽度取，按"与邻格至少隔开 10px"取。
-     v2.4.2 由 20（旧 14px 徽标的宽度 + 余量）改为 14 */
-  const STRUM_MIN_W = 14;
+     v2.4.2 由 20（旧 14px 徽标的宽度 + 余量）改为 14。
+     PICK_TXT_MIN_W（v3.47.0）：逐弦点「点右文本串（品数/技巧字母）」的第一级降级阈值——
+     比 26px 记号本体略宽（串最长 "24X" ≈ 20px + 点），更窄先藏串只留点；再窄走 STRUM_MIN_W 整体藏 */
+  const STRUM_MIN_W = 14, PICK_TXT_MIN_W = 24;
   function fitCellAnnotations(){
     /* 两阶段执行（v2.0.2）：先全部量测、再统一写入。原先「读 offsetWidth → 写 display」交错，
        任何样式写都把文档标脏、下一次读取强制同步布局——一次 buildViz 触发几十次重排，
        播放中换型时这笔尖刺会推迟音频调度（掉音诱因）。分离后强制布局只剩 1 次 */
     /** @type {[HTMLElement, string][]} */
     const writes = [];
+    /** @type {[Element, boolean][]} 逐弦点 svg 的 notxt 类写入（同样量测后统一落） */
+    const clsWrites = [];
     labelEls.forEach((labels, b) => labels.forEach((lb, i) => {
       if (lb) writes.push([lb, (cellEls[b][i].offsetWidth < lb.scrollWidth + 10) ? "none" : ""]);
     }));
     /* 徽标是定宽元素（不随文字变宽），故阈值取常量而不是 scrollWidth——
        定宽与实测宽度比较在真浏览器里才是正确判据 */
     strumEls.forEach((strums, b) => strums.forEach((sm, i) => {
-      if (sm) writes.push([sm, (cellEls[b][i].offsetWidth < STRUM_MIN_W) ? "none" : ""]);
+      if (!sm) return;
+      const w = cellEls[b][i].offsetWidth;
+      /* 逐弦点（v3.47.0）：两级降级——第一级藏 svg 里的 text（notxt 类），第二级整体藏 */
+      if (/(^| )pick( |$)/.test(sm.className) && sm.firstChild)
+        clsWrites.push([sm.firstChild, w < PICK_TXT_MIN_W]);
+      writes.push([sm, (w < STRUM_MIN_W) ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
       const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1], el = g.el;
@@ -11558,6 +11772,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       writes.push([el, (w < el.scrollWidth + 8) ? "none" : ""]);
     }));
     writes.forEach(([el, v]) => { el.style.display = v; });
+    clsWrites.forEach(([svg, hide]) => { svg.classList.toggle("notxt", hide); });   // v3.47.0：逐弦点第一级降级
   }
   /* 布局变动后的统一收敛（v2.0.5，审计 P0-3）。这段逻辑原本只长在 resize 里，于是
      「主题切换」这个同样会改变行几何的事件被漏在门外——观测台主题把 .topbar 从 64px 压到 56px、
@@ -13537,10 +13752,49 @@ const AudioEngine = (() => {
     noiseHit(t, "bandpass", Z.LOW, Z.q, peak, Z.decay, Z.makeup);
     noiseHit(t, "bandpass", Z.HIGH, Z.q, peak, Z.decay, Z.makeup);
   }
+  /* 拍点判定（v3.47.0 抽出）：起点落在整拍上（±1e-9 容差）。playClick 与 schedOneStep
+     的 str 分支逐字同源——各写一份迟早漂移（本仓最防的那类分叉） */
+  /** @param {number} stepStartBeat @returns {boolean} */
+  function isBeatPos(stepStartBeat){
+    return Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
+  }
+  /* 扫弦声部的峰值唯一公式（v3.47.0 抽出）：层级（重拍/正拍/细分）× 扫弦音量，钳 [0,1]。
+     playClick 的扫弦分支与 schedOneStep 的 str 分支都调它——「渲染判据与发声判据逐字同源」
+     的铁律在声部音量上同样成立。v3.39.0 起重拍与正拍齐平（accentGain = levelBeat） */
+  /** @param {boolean} isAccent @param {boolean} isBeat @returns {number} */
+  function strumPeak(isAccent, isBeat){
+    const tier = isAccent ? CONFIG.levelBeat : (isBeat ? CONFIG.levelBeat : CONFIG.levelSub);
+    return Math.min(1, Math.max(0, S.strumVol * tier));
+  }
+  /* 单弦拨弦音（v3.47.0）：分解和弦（step.str 长度 1）的固定音色——**无频率参数**
+     （定值，与 click 的频率档常量同待遇）：所有单弦格同一个声音，不随弦号/品号变、
+     不随技巧变（声音只回答"这一下是单拨还是齐拨"，音位信息全在显示层——与现行扫弦声
+     「zone 只模拟明暗、不当真和弦」同一哲学）。合成：triangle 392→196 快速下沉（拨弦感，
+     kickHit 式扫频）+ 2600Hz 短噪声激励（触弦/拨片感）；attack 4ms / decay 180ms；
+     合计 4–5 节点，与 click 同级，命中即建不池化（240BPM 三十二分后台窗测算内）。
+     H/P/S 的音仍按单弦出声：它确实有声，只是不出自右手——时机提示不丢。
+     @param {number} t @param {number} peak */
+  function pluckHit(t, peak){
+    t -= latOff();                            /* 延迟补偿（与 playClick 入口同口径） */
+    const c = ctx, mg = masterGain;          // 仅在有上下文+总线时发声
+    if (!c || !mg) return;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(392, t);
+    osc.frequency.exponentialRampToValueAtTime(196, t + 0.06);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), t + CONFIG.attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    osc.connect(g); g.connect(mg);
+    osc.start(t); osc.stop(t + 0.18 + 0.01);
+    /* 触弦噪声激励：带通 2600Hz、30ms，与体音同刻（拨片感；峰值按体音的 35%） */
+    noiseHit(t, "bandpass", 2600, 2, peak * 0.35, 0.03, 1);
+  }
   /** @param {number} t @param {number} stepStartBeat @param {any} isAccent @param {any} [zone] */
   function playClick(t, stepStartBeat, isAccent, zone){
     t -= latOff();                            /* 延迟补偿（提前发声）；0 时为无操作 */
-    const isBeat = Math.abs(stepStartBeat - Math.round(stepStartBeat)) < 1e-9;
+    const isBeat = isBeatPos(stepStartBeat);   /* v3.47.0：判据抽到 isBeatPos（与 str 分支同源） */
     const level = isAccent ? 2 : (isBeat ? 1 : 0);
     /* ★ v3.39.0：重拍增强（用户可调的重拍响度量）随滑杆退役——重拍回到与正拍**齐平**的
        响度（= 历史默认 accentVol 0% 的听感，重拍仍靠音色/频率区分：click 三角波更高频、
@@ -13571,7 +13825,7 @@ const AudioEngine = (() => {
        扫弦谱里「这颗音扫哪片弦」是对这颗音的描述，比「整首用木鱼还是电子」更具体。
        drum 不叠加：三件套已自带频段分工，zone 在那里只选声部音量（见上） */
     if (zone !== undefined && S.timbre !== "drum"){
-      strumZoneHit(t, Math.min(1, Math.max(0, voiceVol * tier)), zone);
+      strumZoneHit(t, strumPeak(isAccent, isBeat), zone);   /* v3.47.0：峰值走 strumPeak 唯一公式 */
       return;
     }
     /* v1.2.4 最终防线：合法范围内 peak 上限本就是 1（v3.39.0 重拍与正拍同档后 tier 恒 ≤ levelBeat），
@@ -13759,6 +14013,20 @@ const AudioEngine = (() => {
       try{ if (onSchedError) onSchedError(e); }catch(e2){}
     }
   }
+  /** 一格的发声声部判定（v3.47.0）：str 优先于 zone——判据只有一个：「这一格拨了几根弦」。
+      · str 长度 1 → pick1（pluckHit 固定拨弦音）；
+      · str ≥ 2   → pickN（既有 strumZoneHit **全扫口径**双频段，不按弦组细分——成本与弦数无关）；
+      · 无 str    → zone 既有逻辑逐位不变。
+      单格 str 存在性判据 = 数据区 stepHasStrumLike（与 hasStrum / 渲染三点共用——
+      「渲染判据与发声判据逐字同源」铁律）。弦号/品号/技巧都是纯记谱，不进本判定。
+      @param {any} step @returns {{strum: boolean, kind: string, zone: (number|undefined)}} */
+  function stepVoiceOf(step){
+    if (step.str && step.str.length)
+      return { strum: true, kind: step.str.length === 1 ? "pick1" : "pickN", zone: 1 };
+    if (stepHasStrumLike(step))
+      return { strum: true, kind: "zone", zone: step.zone === undefined ? 1 : step.zone };
+    return { strum: false, kind: "zone", zone: undefined };
+  }
   /** 排程一个音符位（schedulerBody 主循环的一步，v2.4.4 由其体内拆出，**纯搬移**）：
       空小节安全跳过 → 歌词锚点提示音 → 发声（Swing/静音拍/弦区门控）→ **节拍器网格** →
       游标前进 → 小节边界四件事（练习量计数 → 变速爬坡 → 曲式推进 → 挂起切换消费）。
@@ -13816,21 +14084,20 @@ const AudioEngine = (() => {
        ★ v2.71.0：判据统一走共享的 muteBarMuted（唯一判据函数）——
          period/count/random 全部由它内部裁决，这里不再出现任何 % 硬编码。 */
     const muted = muteBarMuted(schedPlayBar);
-    /* 扫弦声部入口（v2.7.1 放宽）：判据从「带 zone」放宽到「带扫弦记谱（dir 或 zone）」。
-       纯方向谱（内置「民谣扫弦」只有 dir 没有 zone）此前整谱走节拍声部——
-       「扫弦」滑条对它恒无效、「节拍」拉到 0 全静默（用户实拍）。dir-only 的格
-       补成全扫（沿用旧值 1 = 全扫别名，v2.29.0 起语义定为全扫，时刻一字不动），
-       zone 仍只改声部与频段、不碰时间轴（T62e 守的那条不变量不受影响）。
-       v2.9.0：去掉「只认扫弦轨」的外层门控——是否走扫弦声部**只看这一格自身**是否带记谱，
-       与设哪个分组无关（分组只影响列表展示）；不带记谱的格自然退回全局音色 */
-    const stepZone = (step.zone !== undefined || step.dir !== undefined)
-      ? (step.zone === undefined ? 1 : step.zone) : undefined;
+    /* 声部判定（v3.47.0 收口）：str 优先于 zone——stepVoiceOf 是唯一裁决（见其注释）。
+       旧口径（v2.7.1）：判据从「带 zone」放宽到「带扫弦记谱（dir 或 zone）」——纯方向谱
+       （内置「民谣扫弦」只有 dir 没有 zone）此前整谱走节拍声部（用户实拍「扫弦」滑条恒无效）；
+       dir-only 的格补成全扫（沿用旧值 1 = 全扫别名，v2.29.0 起语义定为全扫，时刻一字不动）。
+       v3.47.0 起 str 一并收编（纯分解型此前同样整谱走节拍声部）；v2.9.0：去掉「只认扫弦轨」
+       的外层门控——是否走扫弦声部**只看这一格自身**是否带记谱，与设哪个分组无关。 */
+    const sv = stepVoiceOf(step);
+    const stepZone = sv.strum ? sv.zone : undefined;
     /* 这一步自身发的是「扫弦声」还是「节拍音」（v2.5.0）？
        判据必须与 playClick 的声部入口**逐字一致**（透传后的 zone !== undefined 即扫弦声部；
        v2.7.1 起 drum 不再除外——鼓组下扫弦格同样走 strumVol，见 playClick 的声部判定）。
        写错这一处的后果很隐蔽：下面补拍点时会把"已经被自身顶掉的那一拍"
        再补一声（或反过来漏掉），而单看每一行代码都是对的 */
-    const stepIsStrum = stepZone !== undefined;
+    const stepIsStrum = sv.strum;
     if (!step.rest){
       const t0 = nextNoteTime + swingShift(pat, step, cumT);
       /* 弹跳球（v1.2）：每个发声点记入 onset 缓冲（静音小节也记——视觉照常原则，
@@ -13839,15 +14106,17 @@ const AudioEngine = (() => {
          算下一行——调度游标比声音早一个前瞻窗口，直接读 arrSec/arrBar 会在终端弧末尾
          提前指到再下一行（待命球错行）。预设模式下这两个字段无人读，恒为快照值 */
       onsetBuf.push({ t: t0, bar: schedBar, cumT, aSec: arrSec, aBar: arrBar, pb: schedPlayBar });
-      /* zone（v2.2.0）：从音符快照透传给 playClick（dir-only 的格已在上面补成全扫）
-         ——空扫（rest）根本走不到这里，「空扫静默」由上面的 !rest 判定天然保证，
-         无需在 zone 分支里再判一次。
-         v2.9.0：门控只看**本格自身**是否带记谱——不带记谱的格 stepZone 为 undefined，
-         playClick 里 `zone !== undefined` 那条分支整体不成立，自动退回全局音色
-         （click/wood/drum），无需在 playClick 里判任何分组：
-         门控只在这一处（发声入口），playClick 保持"只认自己的入参"的纯函数性质。
-         ★ 时刻一字不动：zone 只改频段不改时间轴（T62e 守这条），不传 zone 同样不碰时刻 */
-      if (!muted) playClick(t0, cumT / TPB, accents.includes(cumT / TPB), stepZone);
+      /* 发声（v3.47.0 三分支）：单弦 = pluckHit（固定拨弦音）；多弦 = strumZoneHit 全扫口径
+         （直呼时 latOff 补偿在此补上，playClick 入口同款）；无 str = playClick 既有路径逐位不变。
+         峰值统一走 strumPeak（扫弦声部唯一公式）。★ 一步一条 onset：无论几根弦、带不带
+         技巧，onsetBuf 仍只在上面 push 一次（锚 = step 起点，t115 契约零改动）。
+         时刻一字不动：str 只改音色不改时间轴（T62e 同款不变量），swing/静音拍留在 step 级 */
+      if (!muted){
+        const isAcc = accents.includes(cumT / TPB);
+        if (sv.kind === "pick1") pluckHit(t0, strumPeak(isAcc, isBeatPos(cumT / TPB)));
+        else if (sv.kind === "pickN") strumZoneHit(t0 - latOff(), strumPeak(isAcc, isBeatPos(cumT / TPB)), 1);
+        else playClick(t0, cumT / TPB, isAcc, stepZone);
+      }
     }
     /* ---- 节拍器声部（v2.5.0）：扫弦谱下「每一拍都出节拍音」----
        起因（用户反馈）：示例曲那几种型是逐十六分格的扫弦谱，几乎每一格都带扫弦记谱，
@@ -14083,7 +14352,9 @@ const AudioEngine = (() => {
     onsetBuf.length = 0; onsetNext = null;
     Viz.resetTracking();
   }
-  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop, lyricCueNow };   // v2.51.0：lyricCueNow = 松手即时音（R3）
+  return { ensureCtx, scheduler, resyncToNow, rescheduleLoop, lyricCueNow,
+    /* v3.47.0：声部判定唯一裁决（纯函数）——t240d 直断言「str 优先于 zone」与参数恒定口径 */
+    stepVoiceOf };   // v2.51.0：lyricCueNow = 松手即时音（R3）
 })();
 
 /* ================= Trainer · 变速训练器 ================= */
@@ -17091,10 +17362,18 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const d = draft; if (!d || !Array.isArray(d.bars[b])) return "";
     let s = "";
     d.bars[b].forEach((/** @type {any} */ x) => {
+      /* v3.47.0：键里补 str——漏了它，改弦/品/技巧后指纹不变，行缓存命中脏渲染 */
       s += x.t + "," + (x.rest ? 1 : 0) + "," + (x.dir || "") + ","
-        + ((x.zone === undefined || x.zone === null) ? "" : x.zone) + ";";
+        + ((x.zone === undefined || x.zone === null) ? "" : x.zone) + ","
+        + (x.str ? JSON.stringify(x.str) : "") + ";";
     });
     return s;
+  }
+  /** 逐弦条目的读屏/提示文案（v3.47.0）：⑤弦3品勾弦——aria-label 与 strHint 共用一份。
+      @param {any[]} str @returns {string} */
+  function strNameOf(str){
+    return (str || []).map(e => STR_CIRC[e.s - 1] + "弦"
+      + (e.f !== undefined ? e.f + "品" : "") + (e.tech ? STR_TECH_NAME[e.tech] : "")).join("+");
   }
   /** @param {HTMLElement} row @param {number} b @returns {void} */
   function bindEdRow(row, b){
@@ -17177,7 +17456,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
            弦区从文字徽标改为箭头跨距后，读屏用户的唯一来源就是这里） */
         const zoneName = (!s.rest && s.zone !== undefined) ? " · " + ["低音区", "全扫", "高音区"][s.zone] : "";
         const dirName = s.dir ? (s.rest ? " · 空扫" : (s.dir === "D" ? " · 下扫" : (s.dir === "A" ? " · 琶音" : " · 上扫"))) : "";
-        c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}${dirName}${zoneName}`);
+        /* 逐弦拨弦（v3.47.0）：读屏文案拼「逐弦 ⑤弦3品勾弦+②弦」——弦/品/技巧全量入名 */
+        const strName = (s.str && s.str.length) ? " · 逐弦 " + strNameOf(s.str) : "";
+        c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}${dirName}${zoneName}${strName}`);
         c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
         /* 扫弦方向 + 弦区（v2.74.0，2.7 重写）：主视图同款 .strumv 竖箭头进编辑器——
@@ -17186,7 +17467,15 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
            退役：ed-zone 文字徽标（弦区改由箭头跨距表达）、ed-air 括号字形（改 ghost）。
            非休止保留 .ed-strum 的 ↑↓ 字形（"方向沿用 ed-strum 字形"）。
            prevZone 载负规则与主视图 buildRowCells 逐位一致。 */
-        if (s.dir){
+        /* 逐弦拨弦记号（v3.47.0）：str 存在时渲染以它为准——不再画方向箭头
+           （两者同格时 pick 优先，与主视图/发声侧同口径）；空拨 = .ghost 空心虚线点 */
+        if (s.str){
+          const pv = document.createElement("span");
+          pv.className = "strumv pick" + (s.rest ? " ghost" : "");
+          pickGlyph(pv, s.str);
+          pv.setAttribute("aria-hidden", "true");
+          c.appendChild(pv);
+        } else if (s.dir){
           const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
           if (!s.rest) prevZone = z;
           const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
@@ -17290,7 +17579,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const curZone = dirUsable && selStep.zone !== undefined
       ? (String(selStep.zone) === "1" ? "" : String(selStep.zone)) : "";
     setPressed("#zoneRow", p => (p.dataset.zone || "") === curZone);
-    document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
+    /* 逐弦优先（v3.47.0）：格子带 str 时弦区行进入覆盖态——灰 + hint 说明；清空全部弦自动恢复 */
+    const strCovered = !!(dirUsable && selStep.str && selStep.str.length);
+    document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable || strCovered; });
+    $("zoneHint").textContent = strCovered ? "逐弦优先：清空全部弦后可改弦区" : "";
     /* 发声开关（v2.45.0）：与方向/弦区行同源更新（「开关三件套」同一套纪律——
        高亮、aria-pressed、disabled 三件事收在一处，分散写必然漂移）。
        单 toggle：pressed = 选中音符当前 rest（休止/空扫），不再有第二档可比 */
@@ -17301,6 +17593,40 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       : (selStep.rest
           ? (selStep.dir ? "休止 + 方向 = 空扫 · 点击翻为发声" : "休止中 · 点击翻为发声")
           : (selStep.dir ? "发声中 · 点击翻为休止（已有方向即成空扫）" : "发声中 · 点击翻为休止（方向与弦区保留）"));
+    /* 逐弦拨弦面板（v3.47.0）：与方向/弦区行同源更新——六行开关/品数框/技巧钮 +
+       面板 hint，全部收在这里（开关三件套同一套纪律，分散写必然漂移）。
+       品数框只在非聚焦时回写（别打断正在输入的人）；rest+str 合法（空拨），面板不禁。 */
+    const curStr = (dirUsable && selStep.str) ? selStep.str : [];
+    const linesHost = Array.from($("strRow").children)
+      .find(c => c.classList && c.classList.contains("str-lines")) || $("strRow");
+    Array.from(linesHost.children).forEach(row => {
+      if (!row.classList || !row.classList.contains("str-line")) return;
+      const sN = +row.dataset.s;
+      const entry = curStr.find(x => x.s === sN);
+      const kids = Array.from(row.children);          // HTMLCollection → 数组（真机无 .find）
+      const tog = kids.find(c => c.classList && c.classList.contains("str-tog"));
+      const fret = kids.find(c => c.classList && c.classList.contains("str-fret"));
+      const tech = kids.find(c => c.classList && c.classList.contains("str-tech"));
+      if (tog){
+        tog.disabled = !dirUsable;
+        tog.classList.toggle("active", !!entry);
+        tog.setAttribute("aria-pressed", entry ? "true" : "false");
+      }
+      if (fret){
+        fret.disabled = !dirUsable;
+        if (document.activeElement !== fret)
+          fret.value = (entry && entry.f !== undefined) ? String(entry.f) : "";
+      }
+      if (tech){
+        tech.disabled = !dirUsable;
+        tech.textContent = (entry && entry.tech) ? entry.tech : "·";
+      }
+    });
+    $("strHint").textContent = !selStep
+      ? "先在上方选中一个音符"
+      : (curStr.length
+          ? "逐弦 " + strNameOf(curStr) + (selStep.rest ? " · 空拨（空心点）" : "")
+          : "点弦号启用分解点；填品数=加花，技巧钮循环 无→击→勾→滑→泛");
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -17403,6 +17729,122 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (!s) return;
     pushUndo();
     s.rest = !s.rest;
+    editorRender();
+  });
+  /* 逐弦拨弦面板（v3.47.0）：与方向/弦区行同一套纪律——pushUndo 先行、同态重按不推栈、
+     改完 editorRender 一处刷新。行走事件委托（点击可能落在钮内文本；不使用 closest——
+     面板行是测试桩手工构造的平元素，判据用 classList 直查，两端同构）。
+     · str-tog：切换 {s} 在 step.str 中的存在；摘掉最后一根 → delete step.str（回 zone 口径）；
+     · str-tech：`无 → H → P → S → O → 无` 循环；对未启用的弦点技巧 = 直接启用该弦；
+       循环回「无」时品数保留（摘的只是技巧），无品的条目整条摘掉。
+     rest+str 合法（空拨 = 空心点），面板不因 rest 禁用——只读 walk 见 editorRender 收口 */
+  /** 面板三入口共用的写回器：raw 过 normStr（rest 抹 tech 的口径由此唯一收口）→ 空则删字段。
+      @param {any} s @param {any[]} raw @returns {void} */
+  function strRebuild(s, raw){
+    const ns = normStr(raw, !!s.rest);
+    if (ns) s.str = ns; else delete s.str;
+  }
+  $("strRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const t = evTarget(e);
+    const cls = (t && typeof t.className === "string") ? t.className : "";
+    const isTog = /(^| )str-tog( |$)/.test(cls), isTech = /(^| )str-tech( |$)/.test(cls);
+    if (!isTog && !isTech) return;
+    if (t.blur) t.blur();
+    if (!edSel) return;
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
+    if (!s) return;
+    const sN = +t.dataset.s;
+    if (!(sN >= 1 && sN <= 6)) return;
+    if (isTog){
+      const has = !!(s.str && s.str.some(x => x.s === sN));
+      if (!has){
+        pushUndo();
+        strRebuild(s, [...(s.str || []), { s: sN }]);
+      } else {
+        const rest = (s.str || []).filter(x => x.s !== sN);
+        if (!s.str) return;                               // 同态重按：本就没有 str 字段
+        pushUndo();
+        if (rest.length) s.str = rest; else delete s.str; // 摘最后一根 → 回 zone 口径
+      }
+      editorRender();
+      return;
+    }
+    /* 技巧循环：无 → H → P → S → O → 无。未启用的弦直接启用；已有品数全程保留 */
+    const entry = s.str && s.str.find(x => x.s === sN);
+    const cur = entry && entry.tech ? entry.tech : "";
+    const nxt = { "": "H", H: "P", P: "S", S: "O", O: "" }[cur];
+    if (!entry && !nxt) return;                           // 不可达（无 entry 时 cur=""→H），纵深防御
+    pushUndo();
+    if (nxt){
+      const others = (s.str || []).filter(x => x.s !== sN);
+      strRebuild(s, [...others, { s: sN, ...(entry && entry.f !== undefined ? { f: entry.f } : {}), tech: nxt }]);
+    } else if (entry && entry.f !== undefined){
+      strRebuild(s, [...(s.str || []).filter(x => x.s !== sN), { s: sN, f: entry.f }]);
+    } else {
+      strRebuild(s, (s.str || []).filter(x => x.s !== sN));   // 循环回「无」：纯技巧条目整条摘掉
+    }
+    editorRender();
+  });
+  /* 品数框（v3.47.0）：change 时校验——空串删 f、0–24 整数写入；其余恢复原值 + hint 报错，
+     不落草稿不推栈。品数是纯记谱（发声与它无关），写入只碰 str 条目的 f 子字段 */
+  $("strRow").addEventListener("change", (/** @type {Event} */ e) => {
+    const t = evTarget(e);
+    const cls = (t && typeof t.className === "string") ? t.className : "";
+    if (!/(^| )str-fret( |$)/.test(cls)) return;
+    const hint = $("strHint");
+    if (!edSel) return;
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
+    if (!s) return;
+    const sN = +t.dataset.s;
+    const entry = s.str && s.str.find(x => x.s === sN);
+    const restore = () => { t.value = (entry && entry.f !== undefined) ? String(entry.f) : ""; };
+    const raw = String(t.value ?? "").trim();
+    if (raw === ""){
+      if (!entry || entry.f === undefined){ restore(); return; }   // 同态：本就没品
+      pushUndo();
+      strRebuild(s, [...(s.str || []).filter(x => x.s !== sN),
+        { s: sN, ...(entry.tech ? { tech: entry.tech } : {}) }]);
+      editorRender();
+      return;
+    }
+    if (!/^[0-9]{1,2}$/.test(raw) || +raw > STR_F_MAX){
+      restore();
+      hint.textContent = "品数要填 0–" + STR_F_MAX + " 的整数（留空 = 不标品）";
+      return;
+    }
+    const f = +raw;
+    if (entry && entry.f === f){ restore(); return; }               // 同态不推栈
+    pushUndo();
+    strRebuild(s, [...(s.str || []).filter(x => x.s !== sN),
+      { s: sN, f, ...(entry && entry.tech ? { tech: entry.tech } : {}) }]);
+    editorRender();
+  });
+  /* 按序铺弦号（v3.47.0，小节级）：parseStrFill 解析 → 颗数对发声格数 → 逐格写入。
+     任何不合法都不写入（不写半截）；rest 格跳过（锚点过滤与一键对齐同口径） */
+  $("strFillBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    const d = draft;
+    const hint = $("strFillHint");
+    if (!d) return;
+    const res = parseStrFill($("strFillIn").value);
+    if (!res.ok){ hint.textContent = res.why || "语法不对"; return; }
+    const targets = (d.bars[editBar] || []).filter(s => !s.rest);
+    if (res.list.length !== targets.length){
+      hint.textContent = "本小节有 " + targets.length + " 颗发声格，你给了 " + res.list.length + " 个弦号";
+      return;
+    }
+    pushUndo();
+    let k = 0;
+    d.bars[editBar].forEach(s => {
+      if (s.rest) return;
+      const ns = normStr([res.list[k++]], false);
+      if (ns) s.str = ns; else delete s.str;
+    });
+    hint.textContent = "已铺 " + targets.length + " 格";
     editorRender();
   });
   $("delStepBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -19294,7 +19736,14 @@ const Arrange = (() => {
           c.appendChild(sub);
         }
       }
-      if (s.dir && hasStr){
+      /* 逐弦拨弦记号（v3.47.0）：str 优先于 dir（与主视图/发声侧同口径）；空拨 = .ghost */
+      if (s.str && hasStr){
+        const sm = document.createElement("div");
+        sm.className = "strumv pick" + (s.rest ? " ghost" : "");
+        pickGlyph(sm, s.str);
+        sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
+        barEl.appendChild(sm);
+      } else if (s.dir && hasStr){
         const sm = document.createElement("div");
         const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
@@ -21923,7 +22372,10 @@ const Arrange = (() => {
      「从未执行」——真机拖拽手势在桩里跑不起来（需要真实行矩形），于是这条路径
      长期只靠人工验收，97.9% 的覆盖率数字并不包含它。
      它是纯函数（只吃 geo.rects 与 y），导出后可直接单测：
-     命中行 / 落在行间缝隙取最近 / 越界钳到首末行 / 空 rects 兜 0 四条都能钉死。 */ rowOfY, shiftScopeGet: () => shiftScope };                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
+     命中行 / 落在行间缝隙取最近 / 越界钳到首末行 / 空 rects 兜 0 四条都能钉死。 */
+  rowOfY, shiftScopeGet: () => shiftScope,                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
+  mkPatBar };   /* v3.47.0：块头节奏型行的渲染体（纯构建、无副作用）——t240b 断言
+                   「三处渲染点同构」的编排页一条（直测手法同 mkJianpuGlyph/mkPitchMarkEl 先例） */
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
@@ -23880,6 +24332,8 @@ if (EXPOSE_INTERNALS){
     selectedPreset, defaultAccents, flashTheme,
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
+    /* v3.47.0：逐弦拨弦共享层——归一化/铺设解析/判据（纯函数，t240a 直断言，禁手抄副本） */
+    normStr, parseStrFill, stepHasStrumLike, VALID_TECH, STR_S_MIN, STR_S_MAX, STR_F_MAX,
     stripSongTag,                                  // v3.36.18：底栏在曲式模式下显示的型名 = 剥掉尾部出处标注。
                                                    //   导出给测试直断言（t73 钉"标题 = 节目单游标处的型"）——
                                                    //   测试若自抄一份正则，就会与实现各走各的（本仓禁手抄副本）

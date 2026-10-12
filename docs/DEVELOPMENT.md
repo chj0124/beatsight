@@ -193,6 +193,21 @@ pattern = { name, desc, meter, accents, bars: [[{t, rest}...], ×N] }
     "一律按 rest 抹掉"是更早的口径，`validatePreset` 内注释与 CHANGELOG v2.1.0 为准）；
     这与 v1.2.4「淘汰项不静默丢弃」**不冲突**，因为那条针对的是会让节奏型**不可用**的
     结构性损坏（时值非法、小节不完整）；箭头丢了节奏型依然完整可弹，为它弹窗报错反而更糟
+- **逐弦拨弦 `str`（v3.47.0，可选字段，分解和弦伴奏）**：步对象上可挂 `str: [{s, f?, tech?}]`——
+  s=弦号 1–6（①=1）、f=品数 0–24 可省略、tech=H/P/S/O 可省略；按 s 升序、去重、非空。
+  与 zone 正交、**存在即覆盖**（渲染与发声都以它为准，zone 失效）；缺省整字段 = 老数据零迁移。
+  · **弦号/品号/技巧都是纯记谱**（同 `dir` 的地位）：发声只看「这一格拨了几根弦」——
+    单弦 = `pluckHit` 固定拨弦音（无频率参数，所有单弦格同一个声音）、多弦 = 既有全扫
+    双频段（成本与弦数无关）；声部裁决唯一入口 `stepVoiceOf`（str 优先于 zone）。
+  · **归一化唯一入口 `normStr`**（共享区）：脏值逐条静默降级（同 dir/zone 口径）；
+    rest 格上的 tech 抹除（无声的技巧无从谈起；f 保留）。渲染/调度读到的 str 一律是它的产出。
+  · **判据收口 `stepHasStrumLike`**（dir/zone/str 任一）：`hasStrum` 与 `stepVoiceOf` 共用——
+    纯分解型（全部格只挂 str）漏扩展会让六线层/扫弦声部/歌词锚点/补拍四处同时退回节拍谱。
+  · 编辑器：⑥→① 六行迷你面板（开关/品数框/技巧循环）+ 小节级「按序铺弦号」
+    （`s[:f][tech]` 空格分词，颗数 ≠ 发声格数报错不写入）；`sliceSteps` 切片时 str 跟起头段
+    （同 dir/zone）；`barFinger` 缓存键含 str（漏了 = 缓存命中脏渲染）。
+  · 回归：`tests/cases/t240a-str-pick-data`（数据）/ `t240b-str-pick-viz`（渲染）/
+    `t240c-str-pick-editor`（编辑器）/ `t240d-str-pick-audio`（发声）。
 - **改数据结构时必须同步**：`buildViz`（渲染）、`scheduler`（发声）、`paintFrame`（动画）、编辑器 `draft`、`validatePreset`（加载/导入校验）
 - **用户可控字符串（预设名等）一律 textContent 赋值，禁止 innerHTML 拼接**
 - **★ 曲式的段带稳定身份 `uid`（v2.26.0，改段 / 改歌词寻址前必读）**：
@@ -354,6 +369,14 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 `rest` 是占位字段不是时值：翻转后 barSum 不变，小节校验/保存可用性不受影响。交互与三档行同一套
 纪律（开关三件套同源更新、pushUndo 先行、未选中禁用）；toggle 无「同档重按」分支——单 pill 每次
 点击必然翻转，各占一条撤销快照。回归：`tests/cases/t114-rest-toggle.js`（T114a–e）。
+
+**逐弦拨弦面板（v3.47.0）**：`#strRow`（⑥→① 六行迷你面板：开关 + 品数框 + 技巧循环钮）与
+小节级 `#strFillIn`/`#strFillBtn`（按序铺弦号，语法 `s[:f][tech]` 空格分词）。同一套纪律：
+pushUndo 先行、同态重按不推栈、选中态与 zone 覆盖态收在 `editorRender()` 末尾同一处；
+品数框 change 校验（空串删 f / 0–24 写入 / 其余恢复原值 + hint 报错不落草稿）；
+铺弦号颗数 ≠ 发声格数报错不写入（不写半截）、rest 格跳过。写回统一过 `strRebuild` → `normStr`
+（rest 抹 tech 的口径由此唯一收口）。格子带 str 时 `#zoneRow` 三钮进入「逐弦优先」覆盖态，
+清空全部弦自动恢复。回归：`tests/cases/t240c-str-pick-editor.js`（T240c-1–4）。
 
 ### 3.6 持久化：冷热分离（v1.3.0，审计 P1-5）
 
