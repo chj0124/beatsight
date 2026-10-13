@@ -59,7 +59,7 @@ section("T240c-1 逐弦 · 开关写 str / 摘空删字段 / 撤销 / 未选中�
   const St = beat.Store, Ed = beat.Editor;
   /* 未选中：六行全禁 + hint 引导 */
   ok(togOf(els, 5).disabled, "未选中 → 开关禁用");
-  eq(els["strHint"].textContent, "先在上方选中一个音符", "未选中 → hint 引导");
+  eq(els["strHint"].textContent, "", "未选中 → hint 空串（PLAN-v11 B2：悬浮层未选中即隐藏，占位话术退役）");
   els["editorBars"].children[0].children[1].children[0].fire("click");   // 选中第 1 格
   ok(!togOf(els, 5).disabled, "选中后开关启用");
   eq(togOf(els, 5).getAttribute("aria-pressed"), "false", "未启用 → aria-pressed false");

@@ -41,7 +41,7 @@ section("T114a 发声开关 · 未选中禁用与提示");
   const st = restState(els);
   ok(st.disabled, "未选中音符 → 开关禁用（禁用而不是弹窗报错，与方向/弦区行同一交互约定）");
   eq(st.pressed, "false", "未选中 → aria-pressed=false（不显示「休止中」的假态）");
-  eq(st.hint, "先在上方选中一个音符", "未选中时提示如何操作");
+  eq(st.hint, "", "未选中 → hint 空串（PLAN-v11 B2：悬浮层未选中即隐藏，占位话术退役）");
   eq(els["restRow"].children.length, 1, "单 pill toggle（不是三档行）");
 }
 

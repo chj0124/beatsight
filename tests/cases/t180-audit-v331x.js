@@ -186,9 +186,12 @@ section("T180g 歌词 · 键盘 ←/→ 跨小节移动就地搬行（此前字�
   beat.Arrange.open();
   const ly0 = lyOf(els, 0);
   const sum = byCls(ly0, "arg-lyric-sum");
-  sum.fire("click");                                 // 展开（空词，t118 同序）
+  /* ★ PLAN-v11 B2 批（harness removeEventListener 修真后暴露）：sum 是每次渲染**重建**的元素，
+     不能持旧引用连点——已解绑的游离元素在真机/真桩里点了没反应。每步重新取。 */
+  byCls(lyOf(els, 0), "arg-lyric-sum").fire("click");            // 展开（空词，t118 同序）
   beat.Store.upsertLyric(id, uid, [{ t: 192, dur: 24, ch: "啊" }]);  // t=192 = 第 2 行起点（桩 span=384 / 行 192t 的行边界）
-  sum.fire("click"); sum.fire("click");              // 收起再展开：按新词重渲染（t118 同序）
+  byCls(lyOf(els, 0), "arg-lyric-sum").fire("click");            // 收起：按新词重渲染（t118 同序）
+  byCls(lyOf(els, 0), "arg-lyric-sum").fire("click");            // 再展开
   const ly = lyOf(els, 0);
   const lane = byCls(ly, "arg-lyric-lane");
   const chips = chipsOf(lane);

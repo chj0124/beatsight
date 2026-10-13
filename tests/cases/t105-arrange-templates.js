@@ -126,7 +126,10 @@ section("T105b 复制曲式 · 副本独立 / 重名递增 / 歌词行不跟着�
   eq(beat.Store.findArrange("src").sections[0].blocks[0].repeats, 1, "★ 改副本不动原件（blocks 是拷贝不是引用）");
   beat.Arrange.close();
 
-  /* 重名递增：原件现在叫「原曲」，库里已有「原曲 副本」→ 再复制得「原曲 副本2」 */
+  /* 重名递增：原件现在叫「原曲」，库里已有「原曲 副本」→ 再复制得「原曲 副本2」。
+     ★ PLAN-v11 B2 批：close() 会解绑 overlay 全部监听（removeEventListener 修真后真实生效），
+     重开再操作——关着面板点树里的歌条在真机上本来就点不到 */
+  beat.Arrange.open();
   beat.Store.S.arrangeSel.id = "src";
   songItems(els)[0].fire("click");            // 选中原件
   const cp2 = libCopyBtn(beat, els);

@@ -170,21 +170,23 @@ section("T54d 曲式 UI · 块：遍数 / 换预设 / 加块 / 删块");
 {
   const { beat, els } = seeded();
   beat.Arrange.open();
-  const sec1 = secRows(els)[1];                       // 副歌：2 块
-  eq(sec1.children[2].children.length, 3, "2 个块 + 1 个「+ 块」");
+  eq(secRows(els)[1].children[2].children.length, 3, "2 个块 + 1 个「+ 块」");
 
+  /* ★ PLAN-v11 B2 批（harness 的 removeEventListener 修真后暴露）：本组此前**持有旧元素引用
+     跨渲染 fire**——桩的 removeEventListener 空转让已解绑的游离元素照常响应，假绿。
+     对齐本文件 L40 的既定纪律：每次 fire 都触发 arrangeRender、元素全部重建，
+     「点」与「找」每步重新取当前元素。 */
   /* 遍数：夹到 1..64（v2.73.0 上限随内置型 1 小节化 ×4：16→64，等效小节上限不变） */
-  const reps = sec1.children[2].children[0].children[1];
-  reps.value = "3"; reps.fire("change");
+  const repsEl = () => secRows(els)[1].children[2].children[0].children[1];
+  repsEl().value = "3"; repsEl().fire("change");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, 3, "遍数改为 3");
-  reps.value = "99"; reps.fire("change");
+  repsEl().value = "99"; repsEl().fire("change");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, beat.CONFIG ? 64 : 64, "★ 超上限夹到 64");
-  reps.value = "0"; reps.fire("change");
+  repsEl().value = "0"; repsEl().fire("change");
   eq(beat.Store.arranges[0].sections[1].blocks[0].repeats, 1, "★ 低于下限夹到 1（不会出现 0 遍的段）");
 
   /* 换预设：点「换」→ 下方出现候选 → 点一个 */
-  const pickBtn = sec1.children[2].children[0].children[3];   // 换（v2.77.0：和弦输入框退役，单位 span 后即换钮）
-  pickBtn.fire("click");
+  secRows(els)[1].children[2].children[0].children[3].fire("click");   // 换（v2.77.0：和弦输入框退役，单位 span 后即换钮）
   eq(secRows(els).length, 3, "★ 出现了一行候选预设（不是弹窗、不切走）");
   const pickRow = secRows(els)[2];
   ok(pickRow.children[1].children.length >= 12, "候选里含 12 个内置预设（实际 " + pickRow.children[1].children.length + "）");

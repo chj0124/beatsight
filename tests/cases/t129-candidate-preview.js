@@ -98,7 +98,11 @@ section("T129c 再点同一 ▶ 停止试听 · 内存 ref 复原");
   playBtnOf(cand).fire("click");
   ok(!!beat.Arrange.candPreviewState(), "第一次点 ▶ 进入试听");
   eq(JSON.stringify(refOf(beat, id, 0, 0)), JSON.stringify({ type: "builtin", idx: 1 }), "试听中 ref = 候选 idx1");
-  playBtnOf(cand).fire("click");                    // 再点同一个 ▶（isCandActive → 停止）
+  /* ★ PLAN-v11 B2 批（harness removeEventListener 修真后暴露）：进入试听会 arrangeRender，
+     pickRow/胶囊全部重建——旧引用已解绑，必须重新取「试听中的候选」（✓ 随内存 ref 走到 idx1） */
+  const pickRow2 = els["argSections"].children.find(c => c.className && c.className.includes("arg-pick"));
+  const previewed = pillsOf(pickRow2).find(p => isCur(p));
+  playBtnOf(previewed).fire("click");                    // 再点同一个 ▶（isCandActive → 停止）
   eq(JSON.stringify(beat.Arrange.candPreviewState()), JSON.stringify(null), "★ 再点 ▶ 停止：candPreview 置空");
   eq(JSON.stringify(refOf(beat, id, 0, 0)), JSON.stringify(origRef), "★ 停止后内存 ref 复原为原 idx0");
   beat.Arrange.close();
@@ -110,10 +114,12 @@ section("T129d 点胶囊换型 · 先清试听再提交（候选变永久）");
   const { beat, els, id } = setup();
   const pickRow = openPicker(els, 0, 0);
   const cand = pillsOf(pickRow).find(p => !isCur(p));            // 第一个非当前 = idx1
-  const other = pillsOf(pickRow).find(p => !isCur(p) && p !== cand);  // 第二个非当前 = idx2
   playBtnOf(cand).fire("click");
   ok(!!beat.Arrange.candPreviewState(), "换型前先进入试听态（试听 idx1）");
-  other.fire("click");                                          // 点另一个候选胶囊本体 = 换型到 idx2（提交）
+  /* ★ PLAN-v11 B2 批：同 T129c——试听进入后行已重建，重新取「另一个候选」的当前元素 */
+  const pickRow2 = els["argSections"].children.find(c => c.className && c.className.includes("arg-pick"));
+  const other2 = pillsOf(pickRow2).find(p => !isCur(p));         // ✓ 在 idx1 上，非当前 = idx2
+  other2.fire("click");                                          // 点另一个候选胶囊本体 = 换型到 idx2（提交）
   eq(JSON.stringify(refOf(beat, id, 0, 0)), JSON.stringify({ type: "builtin", idx: 2 }), "★ 换型提交：ref 永久变 idx2（未被误还原成原 idx0）");
   eq(JSON.stringify(beat.Arrange.candPreviewState()), JSON.stringify(null), "★ 换型后候选试听态已清（未残留）");
   eq(els["argUndo"].disabled, false, "★ 换型产生了可撤销的历史（证明是真实提交，不是试听残留）");

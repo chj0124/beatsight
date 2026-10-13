@@ -39,7 +39,7 @@
         用户实拍「日间模式下部分按钮文字与底色几乎融为一体」（BPM 预设选中项 60/96…、弹窗「确定」）。
       ★ 为什么经典主题取 #FFFFFF：与改动前 .pill.active 的 color:var(--t1) 在经典下逐位同值，
         故经典主题零像素变化（日间由 obs 块给 --sel-fg 另一枚值）。 */
-  --green:#1ED760; --red:#F3727F;
+  --green:#1ED760; --green-rgb:30,215,96; --red:#F3727F;   /* --green-rgb（PLAN-v11 A6）：品牌绿的 veil 基色，rgba(var(--green-rgb),x) 单源，硬编码 rgba(30,215,96,…) 退役 */
   --bar-h:96px;          /* v3.3.1：播放底栏高度。**三处消费者必须同源**——
                             .main 的下内边距（内容让位）、.diag 的 bottom（避让）、
                             .col 的最小高度（可视化带居中的计算基准）；
@@ -659,6 +659,14 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 .pd-act-t{font-weight:500}
 .pd-act-d{font-size:11px;color:var(--t3)}
 @media (max-width:640px){ .pd-act-d{display:none} }
+/* ★ PLAN-v11 D（用户拍板）：小屏收敛创作入口——「编排曲式 / 新建节奏型」是桌面密度的功能，
+   过窄 / 竖屏 / 矮窗下直接隐藏两枚入口（编排与节奏型的数据、播放不受影响，只藏编辑）。
+   ★ 查询串与控制芯收窄那条（viz-head 区段）**逐字符一致**——全站对「这算小屏」只有一种答案；
+   快捷键 E 的同串守卫见 Controls keydown（isCompactViewport，openArrange 唯一调用点）。
+   只拦入口不驱逐：已打开的编排 / 编辑器不强制关闭。 */
+@media (max-width:640px), (orientation: portrait), (max-height: 700px){
+  #argOpen,#editBtn{display:none}
+}
 /* 预设库抽屉：全宽内联（非浮层）——不占 z-index、不用管焦点与外点关闭，窄屏天然成立 */
 /* v3.3.0：预设库从「全宽内联抽屉」改为「左侧覆盖面板」——它是**浮层**，不再占栅格行、
    不推挤任何内容（用户要求：压在原页面之上，不改动原页面；选型时不该把可视化区推走）。
@@ -2204,7 +2212,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    但容器上的焦点框没有意义——焦点框留给里面的控件 */
 .editor:focus{outline:none}
 .editor.open{display:block}
-.editor-inner{max-width:1080px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
+.editor-inner{max-width:1080px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px));position:relative}   /* position:relative：#edPop 悬浮层的定位包含块（PLAN-v11 B2）。★ max-width:1080 是对展板「内容行宽 850px」的有意豁免——850 口径属主界面内容带（.viz-head-grid 的 --max-w），编辑器是全屏工作面（docs/archive/PLAN-v11-editor-popover.md §3-A8） */
 .editor-topbar{height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:24px}
 .editor-topbar .left{display:flex;align-items:center;gap:16px}
 .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2)}
@@ -2244,8 +2252,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .edbar-label .n{font-size:12px;font-weight:500;color:var(--t2)}
 .edbar-label .s{font-size:10px;font-family:var(--mono);color:var(--t3);margin-top:2px}
 .edbar-label.bad .n,.edbar-label.bad .s{color:var(--red)}
-.edbar-label.editing .n{color:var(--green)}
-.edbar-label.editing .s::after{content:" · 编辑中";color:var(--green);font-family:var(--sans)}
+/* 「编辑中」= 编辑焦点 → 统一用蓝（PLAN-v11 A7：发声=绿 · 编辑焦点=蓝，与 cur-sec/arg-mini.cur 同一口径） */
+.edbar-label.editing .n{color:var(--blue)}
+.edbar-label.editing .s::after{content:" · 编辑中";color:var(--blue);font-family:var(--sans)}
 .edtrack{position:relative;flex:1;height:64px;border-radius:8px}
 .edtrack.bad{box-shadow:0 0 0 1.5px var(--red)}
 .edcell{position:absolute;top:0;height:100%;border-radius:3px;background:var(--cell);display:flex;align-items:center;padding:0 10px 0 0;overflow:hidden;cursor:pointer}
@@ -2255,7 +2264,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .edcell span{font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;pointer-events:none}
 .edcell.rest{background:transparent;border:1px dashed var(--rest-line)}
 .edcell.rest span{color:var(--t3)}
-.edcell.sel{background:rgba(30,215,96,.15);box-shadow:0 0 0 1.5px var(--green)}
+.edcell.sel{background:rgba(var(--green-rgb),.15);box-shadow:0 0 0 1.5px var(--green)}   /* veil 单源（PLAN-v11 A6） */
 .edcell.sel span{color:var(--green)}
 /* 编辑器里的方向标注（v1.9.0）：与主视图同义，但这里是列表形态，直接用字形内联在文字前，
    不做徽标。选择器必须写成 `.edcell .ed-strum`——`.edcell span` 是 (0,1,1)，
@@ -2275,6 +2284,31 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   color:var(--t1);font-size:12px;padding:6px 8px;font-family:inherit;outline:none;text-align:center}
 .str-fret:disabled{opacity:.45}
 .str-fret:focus{border-color:var(--peak)}
+/* ★ PLAN-v11 B2：音符属性悬浮层（#edPop）——点音符块弹出、锚定该块，✕/ESC/空白/再点当前块收起。
+   定位包含块 = .editor-inner（上方已加 position:relative）；显隐由 .off（opacity+translateY，120ms，
+   reduced-motion 直切）+ hidden 初始；宽 340 上限、窄屏 calc 收缩，位置由 JS 夹取（不写死在 CSS）。 */
+.ed-pop{position:absolute;z-index:5;left:16px;top:0;width:min(340px,calc(100% - 16px));
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);padding:12px 12px 2px}
+.ed-pop[hidden]{display:none}
+.ed-pop.off{opacity:0;visibility:hidden;transform:translateY(6px);pointer-events:none}
+@media (prefers-reduced-motion: no-preference){
+  .ed-pop{transition:opacity .12s ease,transform .12s ease,visibility .12s}
+}
+.ed-pop-head{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ed-pop-meta{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:var(--t1)}
+.ed-pop-x{width:24px;height:24px;margin-left:auto;flex:none;border-radius:999px;background:var(--card2);
+  border:1px solid var(--line);color:var(--t3);font-size:12px;cursor:pointer}
+.ed-pop-x:hover{color:var(--t1)}
+.ed-pop-arr{position:absolute;top:-5px;width:10px;height:10px;background:var(--card);
+  border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+.ed-pop-above .ed-pop-arr{top:auto;bottom:-5px;border-left:none;border-top:none;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ed-pop .ed-dir{margin-bottom:12px}
+/* PLAN-v11 B1：小节级铺弦号输入框定宽——原 inline flex:1 吃满整行，内容（5:3 3 2 3 …）用不上。
+   尺寸进 CSS 变量（展板 Do「新增尺寸先进 CSS 变量」），窄屏 max-width 兜底换行 */
+.ed-strfill{--ed-fill-w:320px}
+.ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -2388,7 +2422,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    ③ 为什么只有"正在编辑的那一段"会坏：cur-sec 是单例（t146 钉着"同一时刻至多一段"），
       所以这个 bug 只在当前段暴露——**验证必须覆盖"当前段"这个状态**。 */
 .arg-sec.cur-sec{background-color:var(--cell);outline:1.5px solid var(--blue);outline-offset:-1.5px}
-.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--green);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--green)}
+/* 「段 N」是常驻静态序号标签 → 中性色（PLAN-v11 A3：绿只留给进行中/发声，静态信息不上绿） */
+.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--t3)}
 .arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
 .arg-sec>.arg-ops{order:2}
 .arg-sec>.arg-blocks{order:3;flex-basis:100%}
@@ -2415,10 +2450,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-sec:not(.arg-pick)>.arg-blocks>.arg-mini{flex:none;white-space:nowrap}
 .arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--red)}
-.arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}
+.arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:3px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}   /* 圆角归并 3px（PLAN-v11 A5，时值格族） */
 /* v2.77.0：块级和弦「按小节一格」——歌词网格每行左端的和弦格（v2.75.0 的块行
    「和弦 | 分段」文本框 .arg-chords 退役删除）。与 .arg-reps 同族的格样式 */
-.arg-chd-cell{flex:none;width:46px;height:24px;box-sizing:border-box;text-align:center;font-size:11px;font-family:var(--mono);background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:4px;color:var(--t1);padding:0 3px}
+.arg-chd-cell{flex:none;width:46px;height:24px;box-sizing:border-box;text-align:center;font-size:11px;font-family:var(--mono);background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:3px;color:var(--t1);padding:0 3px}   /* 圆角归并 3px（PLAN-v11 A5） */
 .arg-chd-cell:focus{border-color:var(--green);outline:none}
 .arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
@@ -2426,18 +2461,22 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    三区标题是纯文字小签（同侧栏分区的视觉语言：小号等宽字 + 分隔间距），不占独立行——
    flex-wrap 的候选串里自然换行，串流不中断。当前型 = 绿描边（同 .cell.next 的强调色阶）。 */
 .arg-pick-zone{flex-basis:100%;font-size:10px;font-family:var(--mono);color:var(--t3);letter-spacing:.08em;margin-top:2px}
-.arg-mini.cur{border-color:var(--green);color:var(--green)}
+.arg-mini.cur{border-color:var(--blue);color:var(--blue)}   /* 编辑焦点=蓝（PLAN-v11 A7，与 cur-sec 同口径；发声才用绿） */
 /* ★★ v3.33.21（用户实报「无法折叠」）：`.arg-mini` 自己设了 `display:inline-flex`，会**盖过**
    UA 样式表给 `[hidden]` 的 `display:none` ⇒ 点组头切完 hidden，按钮纹丝不动、折叠失效。
    本仓已有 8 处同类补丁（.preset-item / .lyric-lane / .pd-mask / .fallback-note …），这是第 9 处。
    ★ 桩环境没有 CSS：T204b 在桩里**是绿的**（hidden 只是个属性），故这条只能靠源码钉 + 真机验收。 */
 .arg-mini[hidden]{display:none}
 /* v2.37.0：候选胶囊的类型徽标（扫弦 ↑↓）与 ✎ 跳编辑器（仅自定义型） */
-.arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:4px;padding:1px 3px;margin-left:2px}
-.arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:2px 3px;border-radius:4px}
-.arg-pill-edit:hover{color:var(--green);background:rgba(30,215,96,.1)}
-.arg-pill-play{flex:none;margin-right:4px;font-size:11px;line-height:1;color:var(--t3);cursor:pointer;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.04)}
-.arg-pill-play:hover{color:var(--accent);border-color:var(--accent);background:rgba(255,255,255,.1)}
+.arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:3px;padding:1px 3px;margin-left:2px}   /* 圆角归并 3px（PLAN-v11 A5） */
+/* ✎ / ▶ 热区 ≥24px（PLAN-v11 A4，WCAG 2.5.8 AA）+ 圆角归并 3px（A5） */
+.arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:4px 6px;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:3px}
+.arg-pill-edit:hover{color:var(--green);background:rgba(var(--green-rgb),.1)}   /* veil 单源（PLAN-v11 A6） */
+.arg-pill-play{flex:none;margin-right:4px;font-size:11px;line-height:1;color:var(--t3);cursor:pointer;padding:4px 6px;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:3px;border:1px solid var(--border);background:rgba(255,255,255,.04)}
+/* ★ A1（PLAN-v11）：原 hover 引用全仓未定义的 var(--accent) —— color/border-color 两档主题下
+   都静默失效（计算值非法 → 回落继承/currentColor），悬停只剩 10% 白底（日间档白底上不可见）。
+   ▶ = 试听（进行中语义）→ 用 --green + --green-rgb veil；t245 钉死，t131 的未定义 var() 扫描防复发 */
+.arg-pill-play:hover{color:var(--green);border-color:var(--green);background:rgba(var(--green-rgb),.12)}
 /* v2.37.0（c）：编辑器源型引用信息行 */
 #editorRefNote{margin:-6px 0 10px}
 /* v3.33.15：提示为空时（编辑一个不被任何曲式引用的型——**默认状态**）整块不占位。
@@ -2455,10 +2494,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    v2.35.0：曲式级 ⋯ 退役，模板菜单独住 argLibRow（见 .arg-lib-row 与「点窗外即关」）。 */
 .arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
 /* v2.35.0：曲式 chip 上的删除点（仅选中 chip 渲染；确认弹窗照旧） */
-.arg-item-del{flex:none;margin-left:2px;width:20px;height:20px;line-height:19px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
-.arg-item-del:hover{color:#f3727f;background:rgba(243,114,127,.12)}
+/* ✕ 热区 20→24px（PLAN-v11 A4，WCAG 2.5.8 AA；有确认弹窗兜底，仍按 AA 补足） */
+.arg-item-del{flex:none;margin-left:2px;width:24px;height:24px;line-height:22px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
+/* ★ A2（PLAN-v11）：原 hover 写死深色档警示红 #f3727f，日间档 --red=#DC2626 时不跟随
+   （#F3727F 落 #F2F4F8 底对比 ≈2.2:1 不达 AA）→ 改 token 跟随主题 */
+.arg-item-del:hover{color:var(--red);background:rgba(243,114,127,.12)}
 /* v2.47.0（1A）：曲式 ✎ 改名——形制与 ✕ 同源（同一 chip 内的两颗动作钮） */
-.arg-item-ren{flex:none;margin-left:2px;width:20px;height:20px;line-height:19px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
+.arg-item-ren{flex:none;margin-left:2px;width:24px;height:24px;line-height:22px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}   /* 热区 20→24px：与 .arg-item-del（PLAN-v11 A4）同 chip 同形制，尺寸必须一致 */
 .arg-item-ren:hover{color:var(--t1);background:rgba(var(--veil),.08)}
 .arg-item-ren[aria-disabled="true"]{opacity:.4;cursor:default}
 .arg-item-ren[aria-disabled="true"]:hover{color:var(--t3);background:none}
@@ -2969,7 +3011,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 body[data-theme="obs"]{
   --bg:#F2F4F8; --card:#FFFFFF; --card2:#EDF0F5; --cell:#E3E8F0; --seam-strong:#8a8b90;
   --line:rgba(15,23,42,.09); --border:rgba(15,23,42,.18);
-  --green:#2563EB; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标） */
+  --green:#2563EB; --green-rgb:37,99,235; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标）；--green-rgb 随主题换基色（veil 单源，PLAN-v11 A6） */
   /* 文字三级按白底重核：16.1:1 / 7.5:1 / 4.8:1——守住上面那条注释立的 AA 线
      （旧注释里的 #5F6B7E / ≈6.3:1 是暗底时代的口径，值已随底色一并换掉） */
   /* ★ v3.33.8：--t3 由 #64748B 改 #556577——旧值只在**纯白**上够 4.8:1，落到浅色分层底上就掉线：
@@ -3115,7 +3157,7 @@ body[data-theme="obs"] .sidebar-note{border-top:1px solid var(--line);padding-to
 
 /* ---------- 观测台 · 编辑器 ---------- */
 body[data-theme="obs"] .edcell{border-radius:2px}
-body[data-theme="obs"] .edcell.sel{background:rgba(37,99,235,.12);box-shadow:0 0 0 1.5px var(--green)}
+body[data-theme="obs"] .edcell.sel{background:rgba(var(--green-rgb),.12);box-shadow:0 0 0 1.5px var(--green)}   /* veil 单源（PLAN-v11 A6）：日间 --green-rgb=37,99,235，无需再写死 */
 body[data-theme="obs"] .edbar-label.editing .n{color:var(--accent-hi)}
 body[data-theme="obs"] .pal-item{border:1px solid var(--line);border-radius:6px}
 body[data-theme="obs"] .name-input{background:var(--card2);border-radius:6px}
@@ -3919,59 +3961,70 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              本行只留规则文案。 -->
         <span class="hint">规则：每小节须恰好占满 <span id="editorMeter">4</span> 拍，超限或不足都无法保存 · 一个节奏型 1–<span id="editorMaxBars">64</span> 小节 · Ctrl+Z 撤销</span>
       </div>
-      <!-- 扫弦方向标注（v1.9.0）：作用于上方选中的音符。未选中任何音符时按钮组禁用
-           ——禁用而不是弹窗报错，避免误点即打扰。
-           v2.1.0：休止符同样可标注（＝空扫，只动手不出声）；字形按手部动作翻转（下扫=↑）。
-           ★ 本版：补「琶音」第四档（data-dir="A"）——此前示例曲带得出琶音格、编辑器却造不出
-             （用户实报）。接线走既有通用 [data-dir] 路径零 JS 改动；VALID_DIR 已含 "A"。 -->
-      <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
-        <span class="hint">扫弦标注</span>
-        <button class="pill" data-dir="D" aria-pressed="false" disabled>↑ 下扫</button>
-        <button class="pill" data-dir="U" aria-pressed="false" disabled>↓ 上扫</button>
-        <button class="pill" data-dir="A" aria-pressed="false" disabled>琶音</button>
-        <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
-        <span class="hint" id="dirHint">先在上方选中一个音符</span>
-      </div>
-      <!-- 弦区（v2.2.0 起，v2.29.0 三档化）：与方向行同套交互（作用于选中音符）。
-           「全扫（默认）」= 不写 zone 字段 = 六根弦全扫——民谣式扫弦的常态，新增扫弦默认就是它。
-           v2.29.0 删「中弦区」档：中弦区没有明确的弦数对应（用户校准：低=④⑤⑥、高=①②③，
-           中=无）。老数据里的 zone=1 一律**读作全扫**（当年谱面映射 1 就是"全"），零迁移 -->
-      <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（全/低/高）">
-        <span class="hint">弦区</span>
-        <button class="pill" data-zone="" aria-pressed="false" disabled>全扫（默认）</button>
-        <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区 ④⑤⑥</button>
-        <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
-        <span class="hint" id="zoneHint"></span>
-      </div>
-      <!-- 逐弦拨弦（v3.47.0）：分解和弦记谱面板——点=弦、数字=品、字母=技巧
-           （H 击弦 / P 勾弦 / S 滑音 / O 泛音）。六行迷你面板作用于选中的音符：
-           开关 = 拨这根弦；品数框留空 = 不标品；技巧钮循环 无→H→P→S→O→无。
-           格子带 str 时弦区行进入「逐弦优先」覆盖态，清空全部弦自动恢复可编辑。
-           小节级「按序铺弦号」：语法 s[:f][tech] 空格分词（5:3 / 3P / 2:0H 混写合法），
-           按顺序铺到本小节的发声格（rest 格跳过）；颗数不匹配报错不写入（不写半截）。
-      ★ DOM 预算纪律（smoke domNodes ≤1300，长期贴线）：六行面板（6×4=24 节点）改为
-        **首次打开编辑器时由 Editor.ensureStrPanel() 按需构建**，不进首屏静态 DOM——
-        与 helpFigs* 模板惰性化同一口径。带 id 的外壳（#strRow/#strHint/#strFill*/#zoneHint）
-        仍留在标记里（check-dom-ids 的 $() 引用完整性只认标记里写死的 id）。 -->
-      <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（点=弦、数字=品、字母=技巧）">
-        <span class="hint">逐弦</span>
-        <span class="hint" id="strHint">先在上方选中一个音符</span>
+      <!-- ★ PLAN-v11 B2（用户拍板）：音符级四组（扫弦标注 / 弦区 / 发声 / 逐弦）收进「音符属性」
+           悬浮层 #edPop——点上方音符块弹出并锚定，未选中不占版面（此前四组常驻 + 置灰禁用，
+           窄屏上占掉整屏）。小节级「按序铺弦号」不属于任何音符块，留在页面上（B1）。
+           四组 id 原样保留：check-dom-ids / harness 静态桩 / setPressed 全按 id 走，只换宿主。 -->
+      <div class="ed-pop" id="edPop" role="dialog" aria-label="音符属性" hidden>
+        <span class="ed-pop-arr" id="edPopArr" aria-hidden="true"></span>
+        <div class="ed-pop-head">
+          <span class="ed-pop-meta" id="edPopMeta"></span>
+          <button class="ed-pop-x" id="edPopClose" aria-label="收起音符属性">✕</button>
+        </div>
+        <!-- 扫弦方向标注（v1.9.0）：作用于选中音符。按钮组禁用态由 editorRender 同源同步
+             （弹出即已选中，实际恒可用）；v2.1.0 休止可标注（＝空扫）；v2.3.0 补「琶音」第四档。 -->
+        <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
+          <span class="hint">扫弦标注</span>
+          <button class="pill" data-dir="D" aria-pressed="false" disabled>↑ 下扫</button>
+          <button class="pill" data-dir="U" aria-pressed="false" disabled>↓ 上扫</button>
+          <button class="pill" data-dir="A" aria-pressed="false" disabled>琶音</button>
+          <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
+          <span class="hint" id="dirHint"></span>
+        </div>
+        <!-- 弦区（v2.2.0 起，v2.29.0 三档化）：与方向行同套交互（作用于选中音符）。
+             「全扫（默认）」= 不写 zone 字段 = 六根弦全扫——民谣式扫弦的常态，新增扫弦默认就是它。
+             v2.29.0 删「中弦区」档：中弦区没有明确的弦数对应（用户校准：低=④⑤⑥、高=①②③，
+             中=无）。老数据里的 zone=1 一律**读作全扫**（当年谱面映射 1 就是"全"），零迁移 -->
+        <div class="ed-dir" id="zoneRow" role="group" aria-label="弦区（全/低/高）">
+          <span class="hint">弦区</span>
+          <button class="pill" data-zone="" aria-pressed="false" disabled>全扫（默认）</button>
+          <button class="pill" data-zone="0" aria-pressed="false" disabled>低弦区 ④⑤⑥</button>
+          <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
+          <span class="hint" id="zoneHint"></span>
+        </div>
+        <!-- 发声开关（v2.45.0）：翻转选中音符的 rest（发声 ↔ 休止）。实扫 ↔ 空扫此前没有直达路径：
+             调色板替换会破坏小节时值（休止块只有四分一种）且抹掉 dir/zone，非四分时长的互换实际做不到。
+             ★ 只翻 rest 一位、dir/zone 原样保留（用户拍板 a 方案：不替用户补默认方向）——
+               已有方向的音符翻过去即成空扫（休止槽带方向 = 空扫，v2.1.0 口径）；
+               无方向的翻过去是普通休止，要空扫再点「扫弦标注」选方向。可逆：再点一次翻回来。
+             rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响 -->
+        <div class="ed-dir" id="restRow" role="group" aria-label="发声开关（发声/休止）">
+          <span class="hint">发声</span>
+          <button class="pill" data-rest="on" aria-pressed="false" disabled>休止</button>
+          <span class="hint" id="restHint"></span>
+        </div>
+        <!-- 逐弦拨弦（v3.47.0）：分解和弦记谱面板——点=弦、数字=品、字母=技巧
+             （H 击弦 / P 勾弦 / S 滑音 / O 泛音）。六行迷你面板作用于选中的音符：
+             开关 = 拨这根弦；品数框留空 = 不标品；技巧钮循环 无→H→P→S→O→无。
+             格子带 str 时弦区行进入「逐弦优先」覆盖态，清空全部弦自动恢复可编辑。
+        ★ DOM 预算纪律（smoke domNodes ≤1300，长期贴线）：六行面板（6×4=24 节点）改为
+          **首次打开编辑器时由 Editor.ensureStrPanel() 按需构建**，不进首屏静态 DOM——
+          与 helpFigs* 模板惰性化同一口径。带 id 的外壳（#strRow/#strHint/#strFill*/#zoneHint）
+          仍留在标记里（check-dom-ids 的 $() 引用完整性只认标记里写死的 id）。
+        ★ PLAN-v11：小节级「按序铺弦号」不进悬浮层（它作用于整小节、不属于任何音符块），
+          留在页面原位（见下方 .ed-strfill）；面板本体随 #edPop 收放。 -->
+        <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（点=弦、数字=品、字母=技巧）">
+          <span class="hint">逐弦</span>
+          <span class="hint" id="strHint"></span>
+        </div>
       </div>
       <div class="ed-dir ed-strfill">
-        <input class="name-input" id="strFillIn" style="width:auto;flex:1;min-width:200px" placeholder="按序铺弦号：5:3 3 2 3 1 3 2 3（作用于当前小节）" aria-label="按序铺弦号（作用于当前小节）">
+        <!-- PLAN-v11 B1：去 inline flex:1（吃满整行，内容用不上）→ 定宽 --ed-fill-w（CSS 侧）；
+             「作用于当前小节」挪到常显 hint，#strFillHint 专用于报错（两槽不互斥） -->
+        <input class="name-input" id="strFillIn" placeholder="按序铺弦号：5:3 3 2 3 1 3 2 3" aria-label="按序铺弦号（作用于当前小节）">
         <button class="pill" id="strFillBtn">铺到当前小节</button>
+        <span class="hint">作用于当前小节</span>
         <span class="hint" id="strFillHint" role="status"></span>
-      </div>
-      <!-- 发声开关（v2.45.0）：翻转选中音符的 rest（发声 ↔ 休止）。实扫 ↔ 空扫此前没有直达路径：
-           调色板替换会破坏小节时值（休止块只有四分一种）且抹掉 dir/zone，非四分时长的互换实际做不到。
-           ★ 只翻 rest 一位、dir/zone 原样保留（用户拍板 a 方案：不替用户补默认方向）——
-             已有方向的音符翻过去即成空扫（休止槽带方向 = 空扫，v2.1.0 口径）；
-             无方向的翻过去是普通休止，要空扫再点「扫弦标注」选方向。可逆：再点一次翻回来。
-           rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响 -->
-      <div class="ed-dir" id="restRow" role="group" aria-label="发声开关（发声/休止）">
-        <span class="hint">发声</span>
-        <button class="pill" data-rest="on" aria-pressed="false" disabled>休止</button>
-        <span class="hint" id="restHint">先在上方选中一个音符</span>
       </div>
       <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
       <div class="palette" id="palette"></div>
@@ -4237,6 +4290,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>编排曲式</b>：把若干节奏型串成一首歌——一首歌 = 若干段，每段 = 一个节奏型 × N 遍。它管顺序、遍数、播放范围，不管每一拍怎么弹；段落里放的是节奏型的<b>引用</b>，不是拷贝</li>
           <li><b>一句话记：</b>节奏型是<b>零件</b>、曲式是<b>装配单</b>——<b>什么时候用哪个</b>：某个型弹不顺、想改音型 → 预设库里的「新建节奏型」；按歌的顺序练、只循环副歌、练段落衔接 → 「编排曲式」（或曲式区的「整首连播」）</li>
         </ul>
+        <!-- PLAN-v11 D（用户拍板）：小屏收敛创作入口——隐藏入口后在这里给归因，
+             避免手机老用户以为功能丢了；播放/练习不受影响这点必须说清 -->
+        <div class="help-tip">这两个入口是桌面密度的创作功能：<b>小屏（窗口过窄 / 竖屏 / 矮窗）下自动隐藏</b>，快捷键 <b>E</b> 同样无效。编排与节奏型的<b>数据与播放、练习完全不受影响</b>——手机上照常练，编辑请回到桌面宽屏。</div>
         <!-- v2.25.2（用户实拍"内容重复、排版混乱"）：本节收窄为**主界面**的三条控制项——
              v2.25.1 新增「设置里的每一项」时没有同步清掉这里与它重复的五个词条
              （Swing / 音色 / 延迟补偿 / 弹跳球 / 后台保活），两份说明背靠背出现。
@@ -4522,7 +4578,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>空格</b>：开始 / 停止播放（页面任何位置都可用；正在输入文字时除外）</li>
           <li><b>↑ / ↓</b>：BPM ±1（按住 <b>Shift</b> 则 ±5）</li>
           <li><b>← / →</b>：曲式模式下跳到上一段 / 下一段（跳段）</li>
-          <li><b>E</b>：打开曲式编排 · <b>H</b>：打开使用方法 · <b>?</b>：展开本节键盘快捷键</li>
+          <li><b>E</b>：打开曲式编排（小屏下编辑入口隐藏，此键无效）· <b>H</b>：打开使用方法 · <b>?</b>：展开本节键盘快捷键</li>
           <li><b>Esc</b>：关闭当前打开的面板；<b>Ctrl / ⌘ + Z</b>：节奏型编辑器里撤销一步</li>
         </ul>
       </template>
@@ -4845,23 +4901,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4877  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6532  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8767  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9995  Modal         应用内弹窗
-     L10140 Viz           时值可视化渲染与每帧动画
-     L13742 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14496 Trainer       变速训练器
-     L14713 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15376 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17365 Editor        自定义节奏型编辑器
-     L18220 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18315 Ear           听辨训练（v1.10.0）
-     L18543 Arrange       曲式编排（v2.0.0）
-     L22620 Help          使用方法（v2.0.1）
-     L22775 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22857 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23153 初始化（装配） 各模块 hook 接线与启动
+     L4933  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6588  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8823  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10051 Modal         应用内弹窗
+     L10196 Viz           时值可视化渲染与每帧动画
+     L13798 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14552 Trainer       变速训练器
+     L14769 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15440 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17429 Editor        自定义节奏型编辑器
+     L18354 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18449 Ear           听辨训练（v1.10.0）
+     L18677 Arrange       曲式编排（v2.0.0）
+     L22754 Help          使用方法（v2.0.1）
+     L22909 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22991 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23287 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -14937,6 +14993,12 @@ const Controls = (() => {
     }
     return false;
   };
+  /* ★ PLAN-v11 D：小屏判据——查询串与 CSS 复合断点**逐字符同源**（复制自 .pd-act 区段那条
+     @media（#argOpen/#editBtn 的 display:none）），两处必须同步改。matchMedia 仍按存在性
+     判断兜底：无 matchMedia 的极老环境视为桌面放行（REDUCE_MOTION 的 L≈9190 先例同口径）。 */
+  const COMPACT_QUERY = "(max-width:640px), (orientation: portrait), (max-height: 700px)";
+  const isCompactViewport = () =>
+    typeof matchMedia === "function" && matchMedia(COMPACT_QUERY).matches;
   window.addEventListener("keydown", e => {
     if (Modal.isOpen()) return;                  // 弹窗打开时键盘归弹窗管（捕获阶段已处理）
     /* 叠加层路由（v2.18.0）：由**注册表**决定归属 —— 谁先认领谁生效。
@@ -14981,7 +15043,9 @@ const Controls = (() => {
       if (ke.key === "ArrowLeft"){ e.preventDefault(); practiceSeek(-1); return; }
       if (ke.key === "ArrowRight"){ e.preventDefault(); practiceSeek(1); return; }
       const lk = (ke.key || "").toLowerCase();
-      if (lk === "e"){ e.preventDefault(); openArrange(); return; }
+      /* ★ PLAN-v11 D：小屏下 E 不再直开编排——与 CSS 隐藏 #argOpen/#editBtn 的复合断点同串
+         同判（isCompactViewport），入口藏了快捷键也藏，口径只有一份；H/? 不属创作入口，不拦 */
+      if (lk === "e"){ e.preventDefault(); if (!isCompactViewport()) openArrange(); return; }
       if (lk === "h"){ e.preventDefault(); openHelp(); return; }
       if (ke.key === "?"){ e.preventDefault(); openKeymap(); }
     }
@@ -17366,6 +17430,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
 const Editor = (() => {
   /* 编辑器草稿 + 撤销栈 */
 let edSel = /** @type {null | { bar: number, idx: number }} */ (null), editBar = /** @type {number} */ (0);   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
+let edPopShown = false;   /* PLAN-v11 B2：音符属性悬浮层显隐（与 edSel 解耦——✕/ESC/再点当前块收起时选中保留；
+                             edSel 被清的路径不必各自记得收层，syncEdPop 中央统一兜底） */
 let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (false);
   /** @type {null | number} */
   let prevSigBeforeAudition = null;
@@ -17568,7 +17634,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const cells = (/** @type {any} */ (row))._edCells || [];
     for (let i = 0; i < cells.length; i++){
       const c = cells[i];
-      Modal.bindOverlay("editor", c, "click", () => { edSel = {bar:b, idx:i}; editBar = b; editorRender(); });
+      /* PLAN-v11 B2：点块 = 选中 + 弹出锚定；**再点当前块 = toggle 收起**（选中保留）；点其他块 = 跟随。
+         显隐不写在这里的分支里——统一交 editorRender 尾部的 syncEdPop（所有渲染路径一个出口） */
+      Modal.bindOverlay("editor", c, "click", () => {
+        const same = !!(edSel && edSel.bar === b && edSel.idx === i);
+        edSel = {bar:b, idx:i}; editBar = b;
+        edPopShown = !same;
+        editorRender();
+      });
     }
     const track = (/** @type {any} */ (row))._edTrack;
     if (track){
@@ -17623,6 +17696,50 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     }
     const hint = $("strHint");
     if (hint) host.insertBefore(lines, hint); else host.appendChild(lines);
+  }
+  /* ★ PLAN-v11 B2：音符属性悬浮层——editorRender 尾部统一同步（所有草稿变更都汇聚到渲染）。
+     显隐口径：edSel 存在且 edPopShown 才显示；edSel 被任何路径清掉（撤销/清空/删格/换模板/
+     编辑器重开）→ 这里中央收层。定位只在真实 DOM 做（桩无几何 API，跳过——t245 只断言
+     显隐与文案，锚定/夹取/翻转由冒烟与人眼验收覆盖）。 */
+  /** @returns {void} */
+  function syncEdPop(){
+    const pop = $("edPop");
+    if (!pop) return;
+    if (!edSel) edPopShown = false;
+    pop.hidden = false;                       /* 首次同步后由 .off 接管显隐（hidden 只管初始流式态） */
+    const show = !!(edSel && edPopShown);
+    pop.classList.toggle("off", !show);
+    if (!show) return;
+    const d = draft;
+    const cell = edCellOf(edSel.bar, edSel.idx);
+    if (!d || !cell){ edPopShown = false; pop.classList.add("off"); return; }
+    $("edPopMeta").textContent = "小节 " + (edSel.bar + 1) + " · 第 " + (edSel.idx + 1) + " 格 · " + Viz.stepLabel(d.bars[edSel.bar][edSel.idx]);
+    const host = pop.offsetParent;
+    if (!host || !host.getBoundingClientRect || typeof cell.getBoundingClientRect !== "function") return;
+    const hr = host.getBoundingClientRect(), cr = cell.getBoundingClientRect();
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    if (!pw || !ph) return;
+    const centerX = cr.left - hr.left + cr.width / 2;
+    const left = Math.min(Math.max(centerX - pw / 2, 8), Math.max(8, hr.width - pw - 8));
+    /* 纵向：默认弹在块下方；下方放不下且上方放得下才翻转（视口口径；.ed-pop-above 换箭头边） */
+    const below = (window.innerHeight - cr.bottom >= ph + 16) || (cr.top < ph + 16);
+    pop.style.left = left + "px";
+    pop.style.top = (below ? cr.bottom - hr.top + 10 : cr.top - hr.top - ph - 10) + "px";
+    pop.classList.toggle("ed-pop-above", !below);
+    $("edPopArr").style.left = Math.min(Math.max(centerX - left - 5, 8), pw - 18) + "px";
+  }
+  /** 编辑器第 b 小节第 i 格（桩与真机同构：editorBars.children[b]._edCells[i]） */
+  function edCellOf(b, i){
+    const wrap = $("editorBars");
+    const row = wrap && wrap.children[b];
+    return (row && row._edCells) ? row._edCells[i] : null;
+  }
+  /** 收层（✕ / ESC / 空白点击共用）：选中保留，焦点回选中块（真 <button>，可聚焦） */
+  function closeEdPop(){
+    edPopShown = false;
+    syncEdPop();
+    const cell = edSel ? edCellOf(edSel.bar, edSel.idx) : null;
+    if (cell && typeof cell.focus === "function") cell.focus();
   }
   function editorRender(){
     const d = draft;
@@ -17807,8 +17924,9 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
     document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
+    /* PLAN-v11 B2：悬浮层只在选中后出现，「先在上方选中一个音符」的占位话术退役（空串即可） */
     $("dirHint").textContent = !selStep
-      ? "先在上方选中一个音符"
+      ? ""
       : (selStep.rest ? "休止符上标注方向 = 空扫（只动手不出声）" : "已选中「" + Viz.stepLabel(selStep) + "」");
     /* 弦区（v2.2.0，v2.29.0 三档化）：与方向行同源更新。「全扫（默认）」= 无 zone 字段，
        高亮判据与方向行同构（dataset 空串 ↔ 字段省略）；老数据 zone=1（全扫别名）
@@ -17826,7 +17944,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     setPressed("#restRow", () => !!(dirUsable && selStep.rest));
     document.querySelectorAll("#restRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     $("restHint").textContent = !selStep
-      ? "先在上方选中一个音符"
+      ? ""
       : (selStep.rest
           ? (selStep.dir ? "休止 + 方向 = 空扫 · 点击翻为发声" : "休止中 · 点击翻为发声")
           : (selStep.dir ? "发声中 · 点击翻为休止（已有方向即成空扫）" : "发声中 · 点击翻为休止（方向与弦区保留）"));
@@ -17860,10 +17978,11 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       }
     });
     $("strHint").textContent = !selStep
-      ? "先在上方选中一个音符"
+      ? ""
       : (curStr.length
           ? "逐弦 " + strNameOf(curStr) + (selStep.rest ? " · 空拨（空心点）" : "")
           : "点弦号启用分解点；填品数=加花，技巧钮循环 无→击→勾→滑→泛");
+    syncEdPop();                          /* PLAN-v11 B2：渲染尾部统一同步悬浮层（显隐/跟随/收起） */
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
   PALETTE.forEach(p => {
@@ -18205,12 +18324,27 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   });
   $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
   $("editorBack").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); tryClose(); });
+  /* PLAN-v11 B2：✕ 收层 + 编辑器空白点击收层（不碰块/弹层/控件才收——点 palette 替换、
+     pill 切档、输入框都不打扰）。#editor 是 fixed 层、永不重建，监听挂一次即可；
+     空白点击收层在桩里测不了（桩 closest 恒返回代理对象），行为由冒烟 + 人眼验收覆盖。 */
+  $("edPopClose").addEventListener("click", () => { closeEdPop(); });
+  $("editor").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const t = /** @type {any} */ (e.target);
+    if (!t || typeof t.closest !== "function") return;
+    if (t.closest("#edPop") || t.closest(".edcell")) return;
+    if (t.closest("button,input,select,label")) return;
+    if (edPopShown) closeEdPop();
+  });
 
   /* v2.18.0：编辑器也登记进键盘层注册表，但它比标准叠加层**多一条 Ctrl+Z**，
      故手写 handles 而不用 overlayKeyLayer 工厂。判据与语义与改造前那段 if 逐位相同。 */
   registerKeyLayer({ handles(/** @type {any} */ e){
     if (!$("editor").classList.contains("open")) return false;
-    if (e.key === "Escape") tryClose();
+    if (e.key === "Escape"){
+      /* PLAN-v11 B2：Escape 逐层退出——悬浮层先收（选中保留、焦点回块），再按才关编辑器 */
+      if (edPopShown){ closeEdPop(); return true; }
+      tryClose();
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
     return true;
   } });

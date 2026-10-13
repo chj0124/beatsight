@@ -103,31 +103,32 @@ section("T144e UI · 块行文本框退役；歌词网格行和弦格 → Store 
   walkCls(els["argSections"], /(^| )arg-lyric-sum( |$)/, sums);
   ok(sums.length >= 1, "前提：段编辑有歌词摘要行");
   sums[0].fire("click");
-  const cells = [];
-  walkCls(els["argSections"], /(^| )arg-chd-cell( |$)/, cells);
-  eq(cells.length, 4, "前提：4 小节段 = 4 颗和弦格（一行一格）");
-  cells[0].value = "Am";
-  cells[0].fire("change");
+  /* ★ PLAN-v11 B2 批（harness removeEventListener 修真后暴露）：chd-cell 每次写回都触发
+     arrangeRender、格子全部重建——不能拿旧引用连写，每步重新走树取当前格子 */
+  const chdCells = () => { const out = []; walkCls(els["argSections"], /(^| )arg-chd-cell( |$)/, out); return out; };
+  eq(chdCells().length, 4, "前提：4 小节段 = 4 颗和弦格（一行一格）");
+  chdCells()[0].value = "Am";
+  chdCells()[0].fire("change");
   eq(beat.Store.findArrange("t144").sections[0].blocks[0].chords, "Am",
     "★ 第 1 格写回 per-bar 串（第 1 段 = Am；尾部空段回收）");
-  cells[2].value = "Bm";
-  cells[2].fire("change");
+  chdCells()[2].value = "Bm";
+  chdCells()[2].fire("change");
   eq(beat.Store.findArrange("t144").sections[0].blocks[0].chords, "Am||Bm",
     "★ 第 3 格写回 → 尾部空段回收（Am||Bm）");
   beat.Store.persistArranges();
   const disk = JSON.parse(String(storage.get("beatsight.arranges")));
   eq(disk.arranges[0].sections[0].blocks[0].chords, "Am||Bm", "★ 落冷键 beatsight.arranges");
-  cells[0].value = "";
-  cells[0].fire("change");
+  chdCells()[0].value = "";
+  chdCells()[0].fire("change");
   eq(beat.Store.findArrange("t144").sections[0].blocks[0].chords, "||Bm",
     "★ 清空 ⇒ 空段占位（其余格对位不变）");
-  cells[2].value = "";
-  cells[2].fire("change");
+  chdCells()[2].value = "";
+  chdCells()[2].fire("change");
   ok(!("chords" in beat.Store.findArrange("t144").sections[0].blocks[0]),
     "★ 全空 ⇒ 字段删除（形状与老数据一致）");
   /* 格内禁「|」——竖线被剥成空格，不产生错位段 */
-  cells[0].value = "C|Am";
-  cells[0].fire("change");
+  chdCells()[0].value = "C|Am";
+  chdCells()[0].fire("change");
   eq(beat.Store.findArrange("t144").sections[0].blocks[0].chords, "C Am",
     "★ 格内「|」剥成空格（一小节一个和弦，不产生错位段）");
 }

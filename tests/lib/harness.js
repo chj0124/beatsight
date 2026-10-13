@@ -240,7 +240,11 @@ function makeEl(id){
     },
     get scrollWidth(){ return SCROLL_W; },   // v3.31.6（审计 B1）：opts.scrollW 可注入（缺省 0 = 旧行为）
     addEventListener(t, f){ (this._h[t] = this._h[t] || []).push(f); },
-    removeEventListener(){},
+    /* PLAN-v11 B2 批：removeEventListener 必须**真做事**。真实 Modal.unbindOverlay 靠它
+       解绑 overlay 登记的监听器；桩原先空转 ⇒ 编辑器行缓存复用（bindEdRow 重绑同一批
+       格子）时监听器**逐渲染堆积**，一个 click 连发 N 个处理器——无状态的「选中」处理器
+       幂等无事，PLAN-v11 的 toggle 处理器连发两次就先开后关，假红。 */
+    removeEventListener(t, f){ if (this._h[t]) this._h[t] = this._h[t].filter(x => x !== f); },
     appendChild(c){
       /* v2.4.4：DocumentFragment 语义——把片段 append 到父节点时，**子节点整体搬家**、
          片段自身清空（真实 DOM 如此）。不做这层摊平，children 里会混进片段壳，
@@ -429,6 +433,10 @@ function loadApp(seed, opts){
      而 #viz 在双栏布局下比视口窄多——桩用 viewportW 单独模拟「视口宽 ≠ 行宽」的错位场景，
      以锁定「视口 961–1392px 时歌词带压格子底」的回归。缺省 = ROW_W（等价旧行为）。 */
   const vw = typeof o.viewportW === "number" && o.viewportW > 0 ? o.viewportW : ROW_W;
+  /* PLAN-v11 D 批：innerHeight 可独立注入——桩原先恒 = vw×0.5625（16:9 假设），而产品的
+     小屏判据含 (max-height:700px) 段：桌面宽 1000 派生高 562 会被误判成「矮窗」。
+     测桌面口径必须能摆 1000×900，测矮窗口径摆 1000×660——宽高解耦是复合断点的 precondition。 */
+  const vh = typeof o.innerHeight === "number" && o.innerHeight > 0 ? o.innerHeight : Math.round(vw * 0.5625);
   const seedObj = { ...(seed || {}) };
   /* 默认置闩（视为已带出）；seedDemo:false 时保持键缺失 → 应用走"首次带出"分支 */
   if (o.seedDemo !== false && seedObj["beatsight.demoSeeded"] === undefined){
@@ -570,7 +578,7 @@ function loadApp(seed, opts){
     },
     /* v3.15.0：窗口几何——依赖 innerWidth 的显隐逻辑（雾化条 ≤640 禁用）在桩里需要
        一个确定值；取可配置的 vw（默认 ROW_W=600，需桌面行为时用 viewportW 覆盖） */
-    innerWidth: vw, innerHeight: Math.round(vw * 0.5625),
+    innerWidth: vw, innerHeight: vh,
     performance: { now: () => Date.now() },
     URL: { createObjectURL: () => "blob:mock", revokeObjectURL(){} },
     Blob,
@@ -579,7 +587,22 @@ function loadApp(seed, opts){
     matchMedia: q => {
       let matches;
       if (/reduce/.test(q)) matches = !!(opts && opts.reduceMotion);
-      else { const m = /max-width:\s*([\d.]+)px/.exec(q); matches = m ? vw <= +m[1] : false; }
+      else {
+        /* PLAN-v11 D 批：复合查询按**逗号 OR**逐段求值——产品的小屏判据 COMPACT_QUERY =
+           "(max-width:640px), (orientation: portrait), (max-height: 700px)" 是三段合取的媒体列表，
+           旧桩只认第一段 max-width，会把竖屏 / 矮窗两段静默丢掉（媒体列表里 any 端命中即命中）。
+           逐段口径：max-width 对 vw；max-height 对 innerHeight（vh，可注入）；
+           portrait = 高≥宽。单段查询行为不变（narrow() 的 max-width:960 判据原样）。 */
+        const H = vh;
+        matches = String(q).split(",").some(raw => {
+          const p = raw.trim();
+          let m = /max-width:\s*([\d.]+)px/.exec(p); if (m) return vw <= +m[1];
+          m = /max-height:\s*([\d.]+)px/.exec(p); if (m) return H <= +m[1];
+          if (/orientation:\s*portrait/.test(p)) return H >= vw;
+          if (/orientation:\s*landscape/.test(p)) return H < vw;
+          return false;
+        });
+      }
       return { matches, media: q, addEventListener(){}, addListener(){} };
     },
     /* FileReader：真实实现至少要能把内容交给 onload，否则「导入预设」的接线永远跑不到

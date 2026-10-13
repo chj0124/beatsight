@@ -50,7 +50,9 @@ section("T133 · X2 跳段快捷键（←→ 经 practiceSeek → Arrange.jumpTo
 
 section("T133 · X2 开面板快捷键（E / H / ? 经共享助手）");
 {
-  const aE = loadApp();
+  /* PLAN-v11 D：E 键在小屏被入口收敛守卫拦截（桩缺省 vw=600 命中复合断点），
+     本组断言的是桌面口径的快捷键路由 → 桌面视口 */
+  const aE = loadApp(undefined, { viewportW: 1000, innerHeight: 900 });
   key(aE, { key: "e" });
   ok(aE.beat.Arrange.isOpen() === true, "★ X2：E → 经 openArrange 打开曲式编排（Arrange.isOpen）");
 

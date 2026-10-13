@@ -227,7 +227,9 @@ section("T94i ★★★ 下拉框聚焦时 ↑↓ 改的是选项，不是 BPM�
 /* ================= 场景 T94j：下拉框聚焦时单键快捷键不开面板 ================= */
 section("T94j ★ 下拉框聚焦时 e / h / ? 不开面板（同一守卫覆盖第三条规则）");
 {
-  const app = loadApp();
+  /* PLAN-v11 D：E 键在小屏（桩缺省 vw=600 ≤640 → 命中复合断点）被入口收敛守卫拦截，
+     本组断言的是「焦点守卫」——用桌面视口排除小屏因素，只测焦点这条规则 */
+  const app = loadApp(undefined, { viewportW: 1000, innerHeight: 900 });
   const { beat, sandbox } = app;
   sandbox.document.activeElement = { tagName: "SELECT" };
   app.fireWin("keydown", { key: "e" });

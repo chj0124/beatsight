@@ -148,17 +148,26 @@ section("T115d 键盘 · ←/→ 一格 / Shift 一拍 / 邻居边界钳制 / �
   const barrow0 = rowOf(lane, 0).children.find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className));
   const chips = barrow0.children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className));
   eq(chips.length, 3, "第一小节行：3 个字块");
-  const chip1 = chips[1];                                  // 「眠」t=48，两侧有空隙
+  /* ★ PLAN-v11 B2 批（harness removeEventListener 修真后暴露）：成功的方向键移动会重渲染、
+     字块全部重建——每次成功移动后重新取「眠」那颗 chip，再 fire 下一键 */
+  const chip1Of = () => rowOf(byCls(lyOf(els, 0), "arg-lyric-lane"), 0).children
+    .find(c => /(^| )arg-lyric-barrow( |$)/.test(c.className))
+    .children.filter(c => /(^| )arg-lyric-chip( |$)/.test(c.className))[1];
+  let chip1 = chips[1];                                    // 「眠」t=48，两侧有空隙
   chip1.fire("keydown", { key: "ArrowRight" });
   eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 54, "→ 移一格（+6t）并已落库");
+  chip1 = chip1Of();
   chip1.fire("keydown", { key: "ArrowRight", shiftKey: true });
   eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 72, "Shift+→ 请求 +48 但被上限钳住（后字 t − dur = 96−24 = 72）");
+  chip1 = chip1Of();
   chip1.fire("keydown", { key: "ArrowLeft", shiftKey: true });
+  chip1 = chip1Of();
   chip1.fire("keydown", { key: "ArrowLeft", shiftKey: true });
   eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 24, "← 两拍回到 24 后被钳住（下限 = 前字 t+dur = 24）");
   const leftPct = chip1.style.left;
-  chip1.fire("keydown", { key: "ArrowLeft" });
+  chip1.fire("keydown", { key: "ArrowLeft" });            // 被钳住：v3.33.17 起退化为与时间邻字换位（会重渲染）或原位不动
   eq(chip1.style.left, leftPct, "★ 被钳住时不重绘不落库，字块原位样式不变（同一节点、焦点未丢）");
+  chip1 = chip1Of();                                      /* ★ PLAN-v11 B2 批：换位路径会 arrangeRender，重取再 fire */
   chip1.fire("keydown", { key: "ArrowRight", shiftKey: true });
   eq(beat.Store.findLyric(arr.id, uid0).chars[1].t, 72, "Shift+→ 到 72（上限 = 后字 t − dur = 96−24）");
   chip1.fire("keydown", { key: "ArrowDown" });            // 无关键：不应产生任何变更

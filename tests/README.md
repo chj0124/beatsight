@@ -75,7 +75,14 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
   - 标记里声明 `hidden` 的元素初始即隐藏（`HTML_ATTRS`）；静态 pill 组（sigRow/swingRow/timbreRow/statsRangeRow/dirRow）按标记复刻（`HTML_CHILDREN`），否则 `querySelectorAll("#sigRow .pill")` 拿到空集合，`setPressed()` 空转
     - `dirRow` 的第三档是 `data-dir=""`（"不标注"）——**空串不是 undefined**，`pill()` 的
       `dataset.dir !== undefined` 判据对它成立，所以「清除方向」这条路测得到（v1.9.0）
+    - PLAN-v11 B2：编辑器四组行（dirRow/zoneRow/restRow/strRow）已收进「音符属性」悬浮层
+      `#edPop`——桩按 id 惰性创建、`querySelectorAll("#id .pill")` 只认 id 不认父级，
+      故**宿主搬移对桩零影响**；断言悬浮层显隐读 `els["edPop"].classList`（.off）
     - `limitRow` **不需要**登记：它由 `buildPillRow` 在运行期 `appendChild` 生成，不是静态标记
+  - `matchMedia` 桩（PLAN-v11 D 批）：复合媒体查询按**逗号 OR**逐段求值
+    （max-width / max-height / orientation），不再只认第一段；`viewportW` 与 `innerHeight`
+    已解耦（opts 各自注入）——产品的复合小屏断点含 `(max-height:700px)` 段，
+    桌面口径必须摆 `1000×900`，矮窗口径摆 `1000×660`，否则宽 1000 派生高 562 会被误判成矮窗
   - **DOM 桩按 id 惰性创建**（v1.9.0 又验一遍的老教训）：若被测代码从没 `$("某id")` 过，
     `els["某id"]` 就是 `undefined`。断言里**别直接解引用** `.textContent`——那会让整套测试
     以 TypeError 告负、后面所有用例一条都跑不到。写个 `const prog = els => (els["limitProg"] || {}).textContent`

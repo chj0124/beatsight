@@ -59,3 +59,26 @@ section("T131 · 正向 sanity — 在用 class 仍存活（防假绿）");
 for (const c of LIVE){
   ok(realRuleClasses.has(c), "★ `. " + c + "` 仍在样式表（在用，未被误删）");
 }
+
+/* ------------------------------------------------------------------
+   PLAN-v11 A6 扩展：var(--x) 引用必须有定义。实锤：.arg-pill-play:hover 引用了
+   全仓未定义的 var(--accent)——「静默失效」类缺陷的典型：计算值非法时浏览器静默回落，
+   页面不报错、测试不崩、闸门全绿，只有人眼能发现。本组把「引用 ⊆ 定义」钉成硬闸门：
+     定义集合 = 全文 `--x:` 声明（:root 两档主题 / 标记内联 style / JS 模板串）
+              + setProperty("--x") 动态写入（--f / --y1 这类逐格推进量没有声明式定义）；
+     引用集合 = 注释剥离后样式表里的 var(--x[,fallback])（**fallback 不豁免**——
+              var(--accent, blue) 这类手滑同样静默失效，一并拦）。 */
+section("T131 · PLAN-v11 A6 — var() 引用必须有定义（未定义即静默失效，硬闸门）");
+{
+  const defined = new Set(
+    [...HTML.matchAll(/--([a-zA-Z][\w-]*)\s*:/g)].map(m => m[1])
+      .concat([...HTML.matchAll(/setProperty\(\s*["'`]--([a-zA-Z][\w-]*)/g)].map(m => m[1]))
+  );
+  const used = [...new Set([...nostyle.matchAll(/var\(\s*--([a-zA-Z][\w-]*)/g)].map(m => m[1]))];
+  const missing = used.filter(n => !defined.has(n));
+  ok(missing.length === 0,
+     "★ 样式表内 " + used.length + " 个 var() 引用全部有定义（未定义 " + missing.length + " 个"
+     + (missing.length ? "：" + missing.slice(0, 8).join(", ") : "") + "）");
+  ok(defined.has("green-rgb") && used.includes("green-rgb"),
+     "★ 正向 sanity：--green-rgb 已定义且被引用（veil 单源，PLAN-v11 A6）");
+}

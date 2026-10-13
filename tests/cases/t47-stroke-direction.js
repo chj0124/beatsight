@@ -266,7 +266,7 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   beat.Editor.open();
   eq(els["dirRow"].children.length, 3, "方向三档（↓ / ↑ / 不标注）");
   ok(els["dirRow"].children.every(b => b.disabled), "未选中音符 → 三档全部禁用");
-  eq(els["dirHint"].textContent, "先在上方选中一个音符", "未选中时提示如何操作");
+  eq(els["dirHint"].textContent, "", "未选中 → hint 空串（PLAN-v11 B2：四组收进悬浮层，未选中整层隐藏，占位话术退役）");
 
   /* 选中第 1 小节第 1 格（载体 48t，dir="D"）。
      注意 editorRender() 会重建编辑器 DOM，选中后必须重新取元素，不能复用点击前的引用 */
