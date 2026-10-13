@@ -112,6 +112,9 @@ const HTML_ATTRS = {
      与 loopFrom/loopTo 同款：真标记里是 <select>，桩不解析 HTML，不复刻就丢掉 tagName。 */
   sigSel: { tagName: "SELECT" },
   editorMeterSel: { tagName: "SELECT" },
+  /* v3.47.x：编辑器模板下拉（内置 + 我的预设载入草稿）——与 editorMeterSel 同款：
+     真标记里是 <select>，桩不复刻 tagName 则 value/options 语义丢失 */
+  editorTplSel: { tagName: "SELECT" },
   /* v3.33.0：基础节奏区折叠头的初值。真标记写死 `aria-expanded="true"`（出厂展开），
      桩不复刻的话「出厂展开」这条在桩里恒真（读到 null），装配后写对写错都看不出来。 */
   basicSecHead: { "aria-expanded": "true" },

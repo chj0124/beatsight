@@ -106,16 +106,26 @@ section("T151c .bar-row.current 只留底纹 .10（v3.33.8：挂在 ::before 的
     "★ obs 的「位置对比」仍是那条 1px inset 环（挂在 ::before 的格子带上，经典主题不跟着提底纹）");
 }
 
-/* ================= T151d：反向不变量——行高与格高一个字都不许动 ================= */
-section("T151d 行高 86px / 格高 44px 保持固定（本次最大的回归风险）");
+/* ================= T151d：行高/格高的唯一来源与分层纪律（v3.48.0 起：基础档 + has-pick 覆盖档） ================= */
+section("T151d 行高 86px / 格高 44px 基础档不动，has-pick 档整组覆盖");
 {
   ok(/^\.bar-row\{position:relative;height:86px/m.test(CSS),
-    "★★ .bar-row 仍是 height:86px 固定值——B3 最大的风险就是手滑把它改成自适应，"
-    + "实测四档行高恒 86px，说明固定值本来就是对的");
+    "★★ .bar-row = height:86px 固定值（基础档 = 格子带 44 + 标注带 42；v3.48.0 把 44→56 "
+    + "收进 has-pick 覆盖档——没有分解记谱的型不调跑道，用户拍板）");
   ok(/\.cell\{position:absolute;top:0;height:var\(--cell-h\)/.test(CSS),
-    "★★ .cell 的高度来自 --cell-h（格高与弦距 --gt 是同一档几何：桌面 44/8.6、窄屏 34/6.6）");
+    "★★ .cell 的高度来自 --cell-h（格高与弦距 --gt 是同一档几何：桌面 44/8.6、窄屏 34/6.6、has-pick 56/11）");
   ok(/--gt:8\.6px/.test(CSS),
     "★ 弦距 --gt 仍按 44px 格高派生（(44−1)/5），未与格高脱钩");
+  /* has-pick 覆盖档（v3.48.0）：含逐弦记谱的型才升 56px，且**整组几何同块覆盖**
+     （漏一项 = 格子 56、线仍 44 的撕裂态） */
+  ok(/#viz\.has-pick\{--cell-h:56px;--pick-h:56px;--pick-sy:1;--gt:11px;--gtop:0px;--yT1:0px;--yT2:22px;--yB1:33px;--yB2:55px\}/.test(CSS),
+    "★★★ has-pick 覆盖档整组在位（--cell-h/--pick-h/--pick-sy/--gt/--yT*/--yB* 一次换全）");
+  ok(/#viz\.has-pick \.bar-row\{height:98px\}/.test(CSS)
+     && /#viz\.has-pick \.ruler-lab\{top:79px\}/.test(CSS)
+     && /#viz\.has-pick \.cell-label\{top:60px\}/.test(CSS),
+     "★★★ has-pick 档行高 98 + 座次尺 79 + 时值标注 60 随行带联动");
+  ok(/@media \(max-width:960px\)\{[\s\S]*?#viz\.has-pick\{--cell-h:34px/.test(CSS),
+    "★★★ 窄屏档把 has-pick 压回 34px（特异性相同、源序靠后——手机上不为不可读的胶囊少看两行）");
   /* ★★★ v3.38.1 补10：**"贴格子带的四层"必须共用一个来源**。
      这一族已漏过三次（v2.79.0 的 .seams/.beat-zone、v3.33.8 新增的 ::before 又写死一遍）——
      所以这条不是「钉某个值」，而是钉「四个选择器都引用 --cell-h」：新加第五层时若再写死，
@@ -142,5 +152,5 @@ section("T151e 格子宽高比与行数无关（为「不改行高」这一决�
      说明用户报的"1 行被纵向拉长"来自别处（或来自早期版本），不是当前行高策略的锅。
      匹配不用 ^ 锚：样式表里部分规则并非顶格书写，顶格锚会静默判红（教训已记）。 */
   ok(/\.bar-row\{[^}]*height:86px/.test(CSS) && /\.cell\{[^}]*height:var\(--cell-h\)/.test(CSS),
-    "★ 现状即证据：行高 86 / 格高 44 与行数无关，四档实测比值恒定 → 无纵向拉长问题");
+    "★ 现状即证据：行高 86 / 格高 44 与行数无关（基础档；has-pick 档 98/56 见 T151d），四档实测比值恒定 → 无纵向拉长问题");
 }

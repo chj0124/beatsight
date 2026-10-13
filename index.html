@@ -72,13 +72,15 @@
      实测三处的底就是它（elementsFromPoint 栈顶 = .bar-row / .lyric-row，bg rgba(0,0,0,.62)）。
      格子自带 rgba(var(--veil),.14) 的淡底仍在，可读性由格子自己承担。 */
   /* 六线谱几何（v2.4.2 立变量，v2.4.3 收进格子，v2.8.0 铺满格子）：六条弦线必须整体
-     落在 44px 的 .cell 高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
+     落在格子带高度内——照搬参考页的 9px×6=53px 会把第 5/6 线顶出格子下缘
      （用户观感"六弦画在格子外面"）。v2.4.3~v2.7.x 用 7px 间距 + 5px 顶端留白
      （线落 5/12/19/26/33/40）。v2.8.0 改为**铺满**（用户要求）：一弦贴格子顶边、
-     六弦贴格子底边。v2.79.1 修正弦距公式：旧口径 --gt = 44/5 = 8.8px 使第六弦的
-     top 恰等于格高 44，1px 线体整条悬在格外——砖底下多出一条全宽「唇线」（用户第三轮
+     六弦贴格子底边。v2.79.1 修正弦距公式：旧口径 --gt = H/5 使第六弦的
+     top 恰等于格高，1px 线体整条悬在格外——砖底下多出一条全宽「唇线」（用户第三轮
      实拍圈出）。现按 (44 − 1px 线宽)/5 = 8.6px，线落 0/8.6/17.2/25.8/34.4/43——
      第六弦 43~44 从内侧贴底边，铺满语义不变、外溢归零。
+     ★ v3.48.0：含逐弦记谱（str）的型由 #viz.has-pick 覆盖档升到 56/11（见 .cell-label 后
+     的覆盖块）——品数底衬胶囊要 11px 弦距才放得下；没有分解记谱的型保持本档不变（用户拍板）。
      抽成变量是因为竖箭头的三种弦区跨距（kF/kB/kT）各要引用其中两个端点，
      写死数字会让"改一处忘三处"。 */
   --gt:8.6px;            /* 弦间距 = (44px 格高 − 1px 线宽) / 5 段（v2.79.1：第六弦线体必须落在格内） */
@@ -97,6 +99,13 @@
      故这里定一个 --cell-h：窄屏档只改它一处，四条（.cell / .beat-zone / .seams / ::before）
      自动跟着走；真机闸（冒烟 bandProbe）另钉"底纹高 == 格子高、且不越出格子下缘"。 */
   --cell-h:44px;
+  --pick-h:44px;         /* 逐弦拨弦记号的实际墨高（恒 = 本档格子带高）——.strums 宿主是整行高，
+                            svg 若 height:100% 会被纵向拉成近两倍（v3.47.0/1「圆点太大」根因）。
+                            has-pick 档 56 / 编排页 .arg-pat-bar 30·36 / 窄屏档 34 各自覆盖；
+                            编辑器 .edcell 不用它（记号在格内居中缩放，见 .edcell 覆盖规则） */
+  --pick-sy:0.786;       /* 记号宽度的等比缩放系数（= 档高/56，v3.48.0 五轮：只缩纵向会把点拉成
+                            椭圆——"圆点并不圆"用户实拍；宽随 --pick-sy 走 ⇒ 点恒圆）。各档与
+                            --pick-h 成对定义，漏一边点又扁 */
   --sans:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
      「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
@@ -792,7 +801,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
-.bar-row{position:relative;height:86px;margin-bottom:20px}   /* 行距 20px：给行顶的「和弦胶囊」条带腾竖向空间（v2.8.0 由 14px 加大） */
+.bar-row{position:relative;height:86px;margin-bottom:20px}   /* 行距 20px：给行顶的「和弦胶囊」条带腾竖向空间（v2.8.0 由 14px 加大）。行高 = 格子带 44（--cell-h）+ 标注带 42；has-pick 档 98（56+42）见覆盖块 */
 .bar-row:last-child{margin-bottom:0}
 /* v3.31.4（用户裁决，取代 v3.8.0 的「底纹 + 行首短标」）：当前行**取消行首短标**，底纹 .07 → .10。
    为什么敢去：短标 v3.5.0 立（补"位置对比"）、v3.31.4 修成真直条后，用户看**播放态实拍**决定整条
@@ -808,14 +817,14 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
      `inset 3px 24px 0 0` 画出的是 L 形；v3.8.0 的渐变背景图被本行 8px 圆角斜切顶部 8px。
      两回都是"断言只比对 CSS 字符串、没人验渲染几何"。凡"贴边的一小段"，别让它做被裁元素的背景。 */
 .bar-row.current{background:none}
-/* ★★ v3.33.8：当前小节行的底纹**只铺格子带（44px）**，不再铺满整行（86px）。
-   ★ 为何：`.cell{height:44px}` 只占行盒顶部，余下约 42px 是歌词/标注带 ⇒ 底纹铺满整行时，
+/* ★★ v3.33.8：当前小节行的底纹**只铺格子带**，不再铺满整行。
+   ★ 为何：`.cell{height:var(--cell-h)}` 只占行盒顶部，余下约 42px 是歌词/标注带 ⇒ 底纹铺满整行时，
      格子下方会露出一条圆角空条——用户实拍"没有歌词的情形下跑道下面依然渲染"说的就是它
      （日间蓝底面白底显眼、经典绿底在暗底上含蓄，故此前只在日间被注意到；与有没有歌词无关）。
-   ★ 用户裁决（v3.33.8）：底纹与 obs 那圈 1px 内环都搬到 ::before，高度锁 44px（= 格子高）。
+   ★ 用户裁决（v3.33.8）：底纹与 obs 那圈 1px 内环都搬到 ::before，高度锁 --cell-h（= 格子高）。
      三条历史不变量（行首短标不得复活 / 不得扛背景图 / 不得用 inset 阴影画盒差集）**原意不变**，
      但判据从"禁止任何 ::before"精确化为"**禁止行首窄短标**"：伪元素必须 left/right:0、
-     height:44px（整条格子带），任何窄宽/贴边/背景图形态仍被拦下。 */
+     height:var(--cell-h)（整条格子带），任何窄宽/贴边/背景图形态仍被拦下。 */
 .bar-row.current::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--cell-h);border-radius:8px;
   background:rgba(30,215,96,.10);pointer-events:none}
 .bar-row.muted-bar .cell{opacity:.5}
@@ -833,7 +842,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    ★ v2.8.1：line-height:1——胶囊默认继承 body 的 1.5 行高（11px 字 → 16.5px 内容高
      + 2px 边框 = 18.5px 盒高），top:-18px 时盒底落在 +0.5px，正好压在格子顶边上
      （用户报"贴在格子上"）。行高收到 1 后盒高 13px，盒底落到 -5px：与格子顶边留 ~5px、
-     与上一行内容底（86px 行高只用到 ~82px，再叠 20px 行距 ⇒ 约 24px 带宽）留 ~6px，
+     与上一行内容底（行高只用到 ~94px，再叠 20px 行距 ⇒ 约 24px 带宽）留 ~6px，
      两侧均衡、不挤上一行座次尺，也不压本行格子。 */
 .bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;line-height:1;font-weight:600;color:var(--amber);pointer-events:none;white-space:nowrap}   /* v3.4.0（B1/P2）：和弦名由 --green 改 --amber——它是乐谱标记不是「正在发声」，继续用绿会与播放头/当前行抢同一语义 */
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
@@ -847,7 +856,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .count-lane .beat-zone{transition:background .15s ease-out,opacity .15s ease-out}
 .count-lane .beat-zone.lit{background:var(--peak);opacity:.3}
 /* 拍内座次尺：1 e & a */
-.ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}
+.ruler-lab{position:absolute;top:67px;font-size:calc(10px * var(--cs, 1));font-family:var(--mono);color:var(--t3);pointer-events:none;z-index:2}   /* 格子带（--cell-h 44）下 23px；has-pick 档 79 */
 .ruler-lab.down{color:var(--t2);font-weight:600}
 .ruler-lab.on{color:var(--green);font-weight:700}
 /* 下一颗音符预亮 */
@@ -871,7 +880,17 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .cell.sq-r{border-top-right-radius:0;border-bottom-right-radius:0}
 /* ★ 本版（用户拍板）：时值标注字号 12→10px（窄屏 10→9，见下方 @media）——
    标签是辅助读层，不该与格子内容抢视觉权重；组标签（.group）同基准缩小。 */
-.cell-label{position:absolute;top:48px;font-size:calc(10px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}
+.cell-label{position:absolute;top:48px;font-size:calc(10px * var(--cs, 1));font-weight:500;color:var(--t3);white-space:nowrap;pointer-events:none;z-index:2}   /* 格子带（--cell-h 44）下 4px；has-pick 档 60 */
+/* ★ v3.48.0：has-pick 覆盖档——当前型含逐弦拨弦（str）记谱时格子带 44→56px。
+   为什么按需：品数底衬胶囊要 11px 弦距才可读，而扫弦箭头/纯节拍在 44px 档活得好好的，
+   没有分解记谱的型不必为之少看两行（用户拍板）。类由 Viz.syncTabLayer 随型切换
+   （与 .no-tab 同一处调用点、同一取型口径）。整组几何（弦距/弦区端点/行高/座次尺/
+   时值标注/记号墨高）必须同块覆盖——漏一项就是"格子 56、线仍 44"的撕裂态。
+   窄屏档（≤960px）在 @media 里把这组**全部压回 34px 档**（特异性相同、源序靠后胜出）。 */
+#viz.has-pick{--cell-h:56px;--pick-h:56px;--pick-sy:1;--gt:11px;--gtop:0px;--yT1:0px;--yT2:22px;--yB1:33px;--yB2:55px}
+#viz.has-pick .bar-row{height:98px}                 /* 56 + 标注带 42 */
+#viz.has-pick .ruler-lab{top:79px}                  /* 格子带下 23px（同基础档相对位） */
+#viz.has-pick .cell-label{top:60px}                 /* 格子带下 4px（同基础档相对位） */
 .cell-label.on{color:var(--green);font-weight:600}
 .cell-label.group{font-weight:600;letter-spacing:.02em}
 /* v2.70.0（1.4 + 2.1）：拍内座次尺 / 时值标注两个显示开关（设置·外观与辅助）。
@@ -975,10 +994,10 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* ---------- 六线谱（v2.4.2 照搬参考页的扫弦视觉） ----------
    参考页把小节区直接做成**迷你六线谱**：六条弦线常驻淡色打底，扫弦写成**竖箭头**，
    箭头跨越的弦数表达弦区（贯穿六线 = 全部弦 / 只跨下面三线 = 低音区 / 只跨上面三线 = 高音区）。
-   几何常量（v2.4.3 起）：--gt 弦间距 8.6px（v2.79.1 前 8.8）、--gtop 顶端留白 0，六线落在
-   0/8.6/17.2/25.8/34.4/43——v2.8.0 起**铺满格子**：一弦贴格子顶边、六弦贴底边
+   几何常量（v2.4.3 起；本版随 --cell-h 44→56 重算）：--gt 弦间距 11px、--gtop 顶端留白 0，六线落在
+   0/11/22/33/44/55——v2.8.0 起**铺满格子**：一弦贴格子顶边、六弦贴底边
    （用户要求；v2.4.3~v2.7.x 为 7px 间距留白 5px 的 5/12/19/26/33/40）。全部收在
-   44px 的格子高度内（参考页的 9px×6=53px 超出格子，v2.4.2 照搬后正是用户报的"六弦画在格子外面"；
+   格子带高度内（参考页的 9px×6=53px 超出当年的 44px 格子，v2.4.2 照搬后正是用户报的"六弦画在格子外面"；
    v2.79.1：弦距改 (格高−1px 线宽)/5——旧 44/5=8.8 使第六弦线体整条悬出格底外，同一类病根）。
    与旧版「14px 方形徽标 + 2px 色带」的关系：**结构不动**（仍挂在各自格子内部，
    仍由 fitCellAnnotations 按格宽整体隐藏），只把字形换成贯穿弦区的竖箭头、并补六线底纹。
@@ -995,7 +1014,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    为什么可以：这六条线是**纯静态装饰**——位置只由 --gtop / --gt 两个变量决定
    （0/8.8/17.6/26.4/35.2/44，铺满格子），从不参与帧内更新，也没有任何测试按它定位。
    ★ 渐变必须**限高**：repeating-linear-gradient 会一路重复到元素底部，而现在 .tab 的高度
-     是"整行"而不是 44px 的格子——不设 background-size 就会多画出第 7、8 条线。
+     是"整行"而不是格子带——不设 background-size 就会多画出第 7、8 条线。
      限高 = --gtop + 5×--gt + 1px（v2.79.1 起恰等于格高，第六弦线体整体落在格内）。
      ★ v2.79.1 修正：旧口径 --gt = H/5 时第六弦 top 恰在格底、1px 线体整条悬在格外——
      砖底下多出一条全宽"唇线"，缝线的脚也因此读作"够不到底"（用户第三轮实拍圈出）。 */
@@ -1010,7 +1029,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .viz.no-tab .tab{display:none}
 /* 扫弦箭头层（v2.4.3）：**必须在格子之外**，这是 v2.4.2 的 bug 修复点。
    ★ 为什么不能挂在 .cell 里（v2.4.2 就是这么写的，错了）：
-     .cell 是 `height:44px` + `overflow:hidden`，而箭头要 `top:8px; height:45px`
+     .cell 是 `height:var(--cell-h)` + `overflow:hidden`，而箭头要 `top:8px; height:45px`
      （8→53 贯穿六线）→ 底部被裁掉 9px；尖端在 `top:-5px` 又超出格子上边界 → 头顶被裁。
      实测 24/24 支箭头全部被裁（见 _cdp-clip.js 的读数），表现正是用户报的
      "第二个箭头缺失头顶尖端"（实为**每支箭头**都缺，只是幅度小的看着像"没缺"）。
@@ -1046,9 +1065,9 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.dn::after{top:var(--y1);border-bottom:7px solid var(--peak)}
 .strumv.up::after{top:calc(var(--y2) - 7px);border-top:7px solid var(--peak)}
 /* 弦区跨距：低音区=下三线(4-6弦)、高音区=上三线(1-3弦)、全部弦=贯穿六线 */
-.strumv.kF{--y1:var(--yT1);--y2:var(--yB2)}   /* 全部弦 0→44 */
-.strumv.kB{--y1:var(--yB1);--y2:var(--yB2)}   /* 低音区 26.4→44（4-6 弦） */
-.strumv.kT{--y1:var(--yT1);--y2:var(--yT2)}   /* 高音区 0→17.6（1-3 弦） */
+.strumv.kF{--y1:var(--yT1);--y2:var(--yB2)}   /* 全部弦 0→43（基础档；has-pick 档 0→55，编辑器 64 几何） */
+.strumv.kB{--y1:var(--yB1);--y2:var(--yB2)}   /* 低音区 25.8→43（4-6 弦） */
+.strumv.kT{--y1:var(--yT1);--y2:var(--yT2)}   /* 高音区 0→17.2（1-3 弦） */
 /* 空扫：蓝色虚线竖箭头（只动手不出声），弦区跟随前一记实扫 */
 .strumv.ghost::before{background:none;border-left:2px dashed var(--blue);width:0}
 .strumv.ghost::after{border-bottom-color:var(--blue)}
@@ -1092,24 +1111,43 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block}
 .strumv.arp .arp-wave{stroke:var(--peak);stroke-width:2;fill:none;stroke-linecap:round}
 .strumv.arp .arp-head{fill:var(--peak)}
-/* ★ 本版（v3.47.0）：逐弦拨弦记号（str）——实心点列 + 点右「品数/技巧字母」文本串。
+/* 逐弦拨弦记号（v3.47.0 立；v3.48.0 几何重排、四轮定稿）：**点恒在**（.pick-dot =
+   "拨这根弦"的底层标记，任何降级都兜底）；品数/技巧 = **描边数字**叠在点的位置上
+   （.pick-txt，无底衬——用户拍板去胶囊；var(--bg) 描边 + paint-order:stroke 把身后
+   弦线掏空，真六线谱"数字断线"画法，不与背景相融；粗体补小字号发色量）。
    复用 .strumv 家族的宿主与染态链，不新增颜色令牌：色由 color → currentColor 供给
    （SVG 只管形），常态 --peak 与箭头杆身同源。
    ::before 杆身必须显式关掉（同 .arp 的教训：基础规则对所有 .strumv 生效，
    不关会多出一根 2px 直杆）；::after 无 .dn/.up 着色本来就不出墨。
-   svg 高度 100% 跟随宿主行高（主视图 44 / 编辑器 64 / 编排页 30），宽恒 26px；
-   overflow:visible 放行 ⑥ 弦点越出 viewBox 的下缘。 */
+   ★ svg 高度钉 **--pick-h**（= 格子带高），不能 100%——.strums 宿主是**整行**高
+   （格子带 + 标注带），100% 会把记号纵向拉成近两倍高的椭圆、点与弦线错位
+   （v3.47.0/1 用户实拍"圆点太大"的根因）。overflow:visible 放行 ①/⑥ 弦数字
+   半颗越出 viewBox（与 ⑥ 弦点越下缘的既有口径一致）。
+   ★ 五轮（用户实拍"圆点并不圆"）：宽随 **--pick-sy**（= 档高/56）等比缩——
+   此前宽恒 26px、只纵向跟随档高 ⇒ pAR=none 把点拉成横椭圆。等比缩后点恒圆、
+   数字不变形；svg 在 26px 宿主内水平居中（left:50% + translateX），列心仍在格中心。 */
 .strumv.pick{width:26px;color:var(--peak)}
 .strumv.pick::before{content:none}
-.strumv.pick svg{position:absolute;left:0;top:0;width:26px;height:100%;overflow:visible;display:block}
+.strumv.pick svg{position:absolute;left:50%;top:0;width:calc(26px * var(--pick-sy, 1));height:var(--pick-h);transform:translateX(-50%);overflow:visible;display:block}
 .strumv.pick.ghost{color:var(--blue)}
-/* 空拨（rest+str，手到无声 = 闷音/虚拨记法）：空心虚线点（色仍由 .ghost 的 --blue 供给） */
-.strumv.pick.ghost circle{fill:none;stroke:currentColor;stroke-dasharray:2 2}
+.strumv.pick .pick-dot{fill:currentColor}
+/* 点与数字的关系（五轮）：数字在 → 点退位（haslab 藏点，数字两侧不露圆点边）；
+   数字被降级藏品（窄格 svg.notxt / 窄屏档见 @media）→ 点回来兜底 */
+.strumv.pick .pick-dot.haslab{display:none}
+.strumv.pick svg.notxt .pick-dot.haslab{display:block}
+.strumv.pick .pick-txt{fill:currentColor;font-weight:700;paint-order:stroke;stroke:var(--bg);stroke-width:2.2px;stroke-linejoin:round}
+/* 空拨（rest+str，手到无声 = 闷音/虚拨记法）：点空心虚线（色仍由 .ghost 的 --blue 供给）；
+   数字无需特殊处理——描边镂空在蓝字上同样成立 */
+.strumv.pick.ghost .pick-dot{fill:none;stroke:currentColor;stroke-dasharray:2 2}
 .strumv.pick.hit{color:var(--green);filter:drop-shadow(0 0 4px rgba(30,215,96,.75))}
 /* 空拨不得被 .hit 染成实心（同 .strumv.hit.ghost 的既有语义：无声格不给发声错觉） */
 .strumv.pick.hit.ghost{color:var(--blue);filter:none}
-/* 窄格第一级降级：先藏品数/技巧字母（只留点）；第二级 = 整体 display:none，走既有 STRUM_MIN_W 门 */
-.strumv.pick.notxt text{display:none}
+/* 窄格/窄屏降级：藏「品数/技巧」数字组（.pick-lab）只留点——点恒在（四轮），
+   降级后格子不再可能全空（三轮"带品弦只画胶囊 + 窄屏藏胶囊 ⇒ 整格全空"的叠加 bug）。
+   notxt 由 fitCellAnnotations 挂在 **svg** 上，选择器必须写成 svg.notxt——
+   v3.47.0 写成 .strumv.pick.notxt text，类挂在 svg 上从不命中，一级降级空转过一整个版本；
+   第二级 = 整体 display:none，走既有 STRUM_MIN_W 门。编排页恒 notxt（总览只留点） */
+.strumv.pick svg.notxt .pick-lab,.strumv.pick.notxt .pick-lab{display:none}
 .strumv.arp.hit .arp-wave{stroke:var(--green)}
 .strumv.arp.hit .arp-head{fill:var(--green)}
 .strumv.arp.ghost .arp-wave{stroke:var(--blue);stroke-dasharray:3 3}
@@ -1122,6 +1160,12 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* v2.74.0（2.7）：ed-zone 文字徽标 / ed-air 括号字形退役——弦区与空扫改由
    .edcell 作用域的 .strumv 竖箭头表达（64px 行高等比：kT 0→25.6 / kB 38.4→64 / kF 0→64） */
 .edcell{--yT1:0px;--yT2:25.6px;--yB1:38.4px;--yB2:64px}
+/* 编辑器里的逐弦记号（v3.48.0）：格内上下各留 6px 内缩、自由缩放——编辑格没有六线，
+   对齐约束不存在，而 .edcell 是 overflow:hidden：①/⑥ 弦数字半颗越出 viewBox，
+   不内缩会被格缘切掉（用户实拍 v3.48.0 首版）。主视图不需要这条（.strums 层不裁切）。
+   --pick-sy 与内缩后的实际高度（64−12=52 / 窄屏 56−12=44）成对，点恒圆 */
+.edcell{--pick-sy:0.929}
+.edcell .strumv.pick svg{top:6px;height:calc(100% - 12px)}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:9;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -2670,11 +2714,11 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-pat-name{flex:none;width:46px;min-width:0;font-size:11px;font-family:var(--mono);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .arg-pat-bar{position:relative;flex:1;min-width:0;height:30px;background:var(--card2);border-radius:5px;
   /* 行内重定义弦区变量（照 .edcell 先例）：kT 0→0.4H / kB 0.6H→H / kF 0→H，H = 本行 30px */
-  --yT1:0px;--yT2:12px;--yB1:18px;--yB2:30px}
+  --yT1:0px;--yT2:12px;--yB1:18px;--yB2:30px;--pick-h:30px;--pick-sy:0.536}
 .arg-pat-cell{position:absolute;top:3px;bottom:3px;background-color:rgba(var(--veil),.07);border:1px solid rgba(var(--veil),.22);border-radius:3px;pointer-events:none}
 .arg-pat-cell.rest{border-style:dashed;background-color:transparent}
 .arg-pat-sub{position:absolute;top:0;bottom:0;width:1px;background:rgba(var(--veil),.10);pointer-events:none}   /* 块内刻度线（按最小单位，不含块左缘，与主界面 .usub 同口径） */
-.arg-pat-bar .seams{height:100%}   /* 主视图 .seams 写死 44px（网格行高），本处按行高 100% 覆盖 */
+.arg-pat-bar .seams{height:100%}   /* 主视图 .seams = var(--cell-h)（网格格子带高），本处按行高 100% 覆盖 */
 .arg-lyric-chip:focus-visible{box-shadow:inset 0 0 0 2px var(--blue);outline:none}   /* 键盘选中态（v2.46.0） */
 .arg-lyric-chip.sel{box-shadow:inset 0 0 0 2px var(--blue)}   /* 点按选中态（v2.49.0 D2/V5）：与 focus-visible 同色系 */
 /* 磁吸引导线（v2.48.0②）：拖动中命中锚点时画在锚点所在小节行内（蓝竖线），指哪落哪 */
@@ -2791,7 +2835,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
      36px 是行距与可达性的折中（字块 top/bottom:2px 随行加高） */
   .arg-lyric-barrow{height:36px}
   /* v2.80.0（甲）：块头行跟随字块行加高一档（36px），弦区变量同比例换算（0.4 / 0.6） */
-  .arg-pat-bar{height:36px;--yT2:14.4px;--yB1:21.6px;--yB2:36px}
+  .arg-pat-bar{height:36px;--yT2:14.4px;--yB1:21.6px;--yB2:36px;--pick-h:36px;--pick-sy:0.643}
 }
 @media (max-width:960px){
   /* ★★★ 2026-10-11（用户实报「连续滚动下底栏显示不全 / 缩小页面后顶栏只占屏幕 70%」）：
@@ -2836,6 +2880,21 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
      线落 0/6.6/13.2/19.8/26.4/33（上下零留白）；扫弦箭头的跨距 calc 引用同一组变量，
      改一处两边同时跟着走。座次尺（52px，在格子外的 .viz 顶部）不受影响。 */
   :root{--gt:6.6px;--gtop:0px;--yT1:0px;--yT2:13.2px;--yB1:19.8px;--yB2:33px}
+  /* 逐弦记号窄屏档（v3.48.0）：--pick-h 随 34px 格子带；34px 跑道放不下带底衬的品数胶囊
+     （等比缩完 ~5px 字不可读），整档藏胶囊组只留点——与窄格 notxt 降级同语义。
+     ★ has-pick 覆盖档在窄屏**整体不生效**（压回 34px 档）：特异性相同、本源序靠后胜出——
+     手机上 56px 跑道换不来可读的胶囊（胶囊本就整档隐藏），只白白少看两行。 */
+  :root{--pick-h:34px;--pick-sy:0.607}
+  #viz.has-pick{--cell-h:34px;--pick-h:34px;--pick-sy:0.607;--gt:6.6px;--gtop:0px;--yT1:0px;--yT2:13.2px;--yB1:19.8px;--yB2:33px}
+  #viz.has-pick .bar-row{height:66px}
+  #viz.has-pick .ruler-lab{top:52px}
+  #viz.has-pick .cell-label{top:38px}
+  .edcell{--pick-sy:0.786}   /* 窄屏 .edtrack 56px → 内缩后 44px → 44/56 */
+  .strumv.pick .pick-lab{display:none}
+  /* 窄屏藏品后点回来兜底（与主档那条 haslab 藏点规则同档同特异性、
+     本源序靠后胜出；窄格 svg.notxt 路径在主档另有一条。
+     ★ 别把规则原文写进本注释——t240b 的反向验证靠"字符串只剩规则本体一处"成立） */
+  .strumv.pick .pick-dot.haslab{display:block}
   /* v2.79.0：.subs 的 inset:0 4px 覆盖删除——刻度线锚定绝对十六分网格（见 .cell .subs 主规则） */
   .edtrack{height:56px}
   input[type=range]{width:100%;flex:1}
@@ -3806,6 +3865,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <span class="lab">拍数</span>
           <select class="loop-sel" id="editorMeterSel" aria-label="拍数：本型每小节几拍，切换将按新拍数重建草稿"></select>
         </span>
+        <!-- 模板（本版新功能）：把内置型/我的预设的**内容**载进当前草稿接着改——
+             只换内容（拍号/重拍/小节），名称/标注/归属保留用户已填；pushUndo 先行、一步可撤销。
+             动作型下拉（选完回占位「选模板…」），选项每次 openWith 重建（自定义列表会变）。 -->
+        <span class="ed-meter">
+          <span class="lab">模板</span>
+          <select class="loop-sel" id="editorTplSel" aria-label="模板：把内置型或我的预设载入编辑区（替换当前内容，可撤销）"></select>
+        </span>
       </div>
       <div class="editor-actions">
         <button class="pill outline" id="auditionBtn">试听</button>
@@ -4754,23 +4820,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4786  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6412  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8647  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9875  Modal         应用内弹窗
-     L10020 Viz           时值可视化渲染与每帧动画
-     L13603 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14357 Trainer       变速训练器
-     L14574 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15237 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17226 Editor        自定义节奏型编辑器
-     L18022 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18117 Ear           听辨训练（v1.10.0）
-     L18345 Arrange       曲式编排（v2.0.0）
-     L22421 Help          使用方法（v2.0.1）
-     L22576 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22658 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L22954 初始化（装配） 各模块 hook 接线与启动
+     L4852  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6504  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8739  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9967  Modal         应用内弹窗
+     L10112 Viz           时值可视化渲染与每帧动画
+     L13712 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14466 Trainer       变速训练器
+     L14683 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15346 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17335 Editor        自定义节奏型编辑器
+     L18183 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18278 Ear           听辨训练（v1.10.0）
+     L18506 Arrange       曲式编排（v2.0.0）
+     L22583 Help          使用方法（v2.0.1）
+     L22738 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22820 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23116 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4796,7 +4862,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.47.1";
+const VERSION = "3.48.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -4915,6 +4981,17 @@ function hasStrum(pat){
   if (!pat || !Array.isArray(pat.bars)) return false;
   return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
     && bar.some((/** @type {any} */ s) => stepHasStrumLike(s)));
+}
+/** 型含逐弦拨弦（str）格 ⇒ 主视图格子带升 56px（#viz.has-pick 覆盖档，v3.48.0）。
+    与 hasStrum 不同：dir/zone 扫弦谱的竖箭头本来就在 44px 档里活得好好的，
+    只有品数底衬胶囊需要 11px 弦距——没有分解记谱的型不为之加高（用户拍板：
+    「没有和弦分解的情形没必要调整跑道」）。声明在数据区：Viz 运行期要调，
+    只依赖 pat.bars，与 hasStrum 同构。 */
+/** @param {any} pat @returns {boolean} */
+function patHasPick(pat){
+  if (!pat || !Array.isArray(pat.bars)) return false;
+  return pat.bars.some((/** @type {any} */ bar) => Array.isArray(bar)
+    && bar.some((/** @type {any} */ s) => !!(s && s.str && s.str.length)));
 }
 /** 十六分刻度尺的显隐判据（v3.33.15）：这个型**需不需要比八分更细**的参考网格。
    判据 = 「存在一个时值不是八分（T8 = 24t）的整数倍」。
@@ -6299,42 +6376,57 @@ function arpGlyph(host){
 function strumDirCls(dir){
   return dir === "A" ? " arp" : (dir === "D" ? " dn" : " up");
 }
-/** 逐弦拨弦记号（v3.47.0）：实心点 = 右手拨这根弦，点右数字 = 品数，字母 = 技巧
-    （H/P/S/O）——六线谱「弦上数字 = 品、点旁字母 = 技巧」的既有记法，不发明新语言。
+/** 逐弦拨弦记号（v3.47.0 立；v3.48.0 几何重排、四轮定稿）：**点恒在**（每根被拨的弦都画，
+    "拨这根弦"的底层标记、任何降级都兜底）；品数/技巧 = **描边数字叠在点的位置上**
+    （.pick-txt：白粗体 + var(--bg) 深色描边，paint-order:stroke 把身后的弦线"掏空"——
+    真六线谱"数字断线"的画法，无底衬、不与背景相融；数字盖住点，有品不见点）。
+    ★ 历史教训（四轮根因）：三轮曾让带品弦只画胶囊不画点，窄屏规则再藏品 ⇒
+    这类格什么都不剩（用户实拍"连小点都没有了"）。点恒在后，结构上不再可能。
     与 arpGlyph 同款模式：createElementNS 构建真实 SVG，恒定标记、零拼串（不走 innerHTML）。
-    几何：viewBox 0 0 26 44 = 主视图一格满行高的 **1:1 像素系**，cy(s) = (s−1)×8.6 与
-    .tab 六线落点（--gtop/--gt：0/8.6/…/43）逐位一致——① 贴顶、⑥ 在 43；
-    preserveAspectRatio="none" + CSS height:100% 使同一份记号在编辑器 64px /
-    编排页 30px 的行高里**纵向铺满**（横纵比轻微变化的取舍见 CHANGELOG v3.47.0）。
-    ⑥ 弦点下缘（43+3.4=46.4）越出 viewBox：CSS overflow:visible 放行
-    （与 kB 箭头尾巴越出行高的既有口径一致）。
+    几何：viewBox 0 0 26 56 = 主视图 has-pick 档格子带（56px）的 **1:1 像素系**，
+    cy(s) = (s−1)×11 与该档 .tab 六线落点（--gt 11px：0/11/…/55）逐位一致；
+    preserveAspectRatio="none" + CSS height:var(--pick-h) 铺到其它档，宽随 --pick-sy 等比缩
+    （五轮：只缩纵向会把点拉成椭圆——"圆点并不圆"用户实拍；等比缩 ⇒ 点恒圆、数字不变形）。
+    （编排页 30/36、窄屏 34 藏数字只留点；编辑器 .edcell 上下内缩 6px 自由缩放——
+    编辑格没有六线，对齐约束不存在）。
+    ①/⑥ 弦数字半颗越出 viewBox：主视图靠 .strums 层不裁切 + svg overflow:visible 放行；
+    编辑器靠 .edcell 那条内缩规则（格有 overflow:hidden）。
     染态（hit/ghost）由 CSS .strumv.pick 区块管色（color → currentColor）、SVG 只管形。
     @param {Element} host 承载记号节点的宿主（.strumv.pick 层） @param {any[]} str 已归一的 str 数组 @returns {void} */
 function pickGlyph(host, str){
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 26 44");
+  svg.setAttribute("viewBox", "0 0 26 56");
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("aria-hidden", "true");
   for (const e of str){
-    const cy = (e.s - 1) * 8.6;
-    const c = document.createElementNS(NS, "circle");
-    c.setAttribute("cx", "5");
-    c.setAttribute("cy", String(cy));
-    c.setAttribute("r", "3.4");
-    c.setAttribute("fill", "currentColor");
-    svg.appendChild(c);
+    const cy = (e.s - 1) * 11;
     const label = (e.f !== undefined && e.f !== null ? String(e.f) : "") + (e.tech || "");
+    /* 点恒在 DOM（拨弦的底层标记）：窄屏/窄格藏数字（notxt / ≤960px 档）时由它兜底，
+       带品的弦也不再可能"整格全空"（四轮根因，见上方注释）。
+       带品 ⇒ 加 haslab 类：数字在时 CSS 藏点（五轮：数字两侧露出的圆点边缘显眼，
+       用户实拍 ⇒ 藏），降级藏品时点回来（见 .strumv.pick 区块的三条规则） */
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("class", label ? "pick-dot haslab" : "pick-dot");
+    c.setAttribute("cx", "13");
+    c.setAttribute("cy", String(cy));
+    c.setAttribute("r", "2.6");
+    svg.appendChild(c);
     if (label){
+      /* 描边数字：叠在点的位置上（盖住点），描边色 = var(--bg) 把弦线在数字身后断开。
+         宽随字数自然伸展、无胶囊宽度约束（"12"/"3P" 都不再撞邻格） */
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "pick-lab");
       const tx = document.createElementNS(NS, "text");
-      tx.setAttribute("x", "10.5");
-      tx.setAttribute("y", String(cy + 2.6));
+      tx.setAttribute("x", "13");
+      tx.setAttribute("y", String(cy));
       tx.setAttribute("class", "pick-txt");
-      tx.setAttribute("font-size", "7.5");
-      tx.setAttribute("fill", "currentColor");
-      tx.setAttribute("opacity", ".85");
+      tx.setAttribute("font-size", "11");
+      tx.setAttribute("text-anchor", "middle");
+      tx.setAttribute("dominant-baseline", "central");
       tx.textContent = label;
-      svg.appendChild(tx);
+      g.appendChild(tx);
+      svg.appendChild(g);
     }
   }
   host.appendChild(svg);
@@ -10071,7 +10163,7 @@ let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
       left: r.offsetLeft, top: r.offsetTop, width: r.offsetWidth,
       height: (cellEls[i] && cellEls[i][0]) ? cellEls[i][0].offsetHeight : 44,
     }));
-    vizRowBoxH = (rowEls[0] && rowEls[0].offsetHeight) ? rowEls[0].offsetHeight : 86;  // 行盒高（含内容，仅 86px 不含行距）
+    vizRowBoxH = (rowEls[0] && rowEls[0].offsetHeight) ? rowEls[0].offsetHeight : 86;  // 行盒高（基础档 86；has-pick 档 98 由 offsetHeight 实测）
     /* v3.0.0（PLAN-v9 批 2）：槽距 = **相邻行矩形 top 差**（不写死 106）。
        ★ 为什么必须现采：行距随歌词行位置模式变（.lyric-inline-on 把 20 抬到 52、xl 放大再抬到 70），
          写死 106 会在 follow + xl 下让"垂直登场一行"只挪了 86/106，进场行与可视区错位。
@@ -11042,7 +11134,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   let lyricRunSig = /** @type {string} */ ("");
   let lyricW = 0;
   let lastLyricStates = "";                   // 行态签名（played/on/cur 集合）：变了才重写 className
-  let vizRowBoxH = 86;                         // 行盒高（.bar-row 86px），cacheGeo 采；覆盖层 Y 用
+  let vizRowBoxH = 86;                         // 行盒高（.bar-row 基础档 86；has-pick 档 98），cacheGeo 采；覆盖层 Y 用
   /* v2.86.0（PLAN-v7）：响应式默认 + 位置解析。
      narrow()：判断是否窄屏——与 CSS @media (max-width:960px) 同口径（视口宽）。
        页面双栏（主列 + 360px 侧栏 + 间距 + 左右 padding）下 #viz 比视口窄得多；
@@ -11159,7 +11251,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       row.appendChild(tab);
     }
     /* 扫弦箭头层（v2.4.3）：**独立一层**，是 .cell 的兄弟节点而不是子节点。
-       理由见 CSS 里 .strums 的注释——格子有 overflow:hidden + 44px 高，
+       理由见 CSS 里 .strums 的注释——格子有 overflow:hidden、高随 --cell-h，
        挂进去必然裁掉箭头的尖端与低音区尾巴（v2.4.2 的 bug，实测 24/24 全被裁）。
        v2.9.0：改按当前型是否带扫弦记谱（hasStr）决定；不带记谱的型没有箭头，空层纯属浪费 */
     if (hasStr){
@@ -11660,6 +11752,11 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        （scrollCenter 恒 = floor(rows/2) = 1 ⇒ row0 恒为 off=−1 槽；会话只在
        非传送带下开启（:9013），两方向均无额外门。） */
     if (countLaneSession && rowEls[0]) rowEls[0].style.visibility = "hidden";
+    /* v3.48.0：syncTabLayer 提前到采几何**之前**——has-pick 类会改行高（86↔98），
+       若在 cacheGeo 之后挂/摘，rowGeo 就是旧档的（弹跳球/播放头按错的行顶画）。
+       no-tab 只动显隐不改行高，当年放末尾没事；has-pick 改行高，必须先来。
+       （类切换本身零量测，提前无副作用；vizPattern/activePattern 此刻均已就绪。） */
+    syncTabLayer();
     /* v1.3.0：几何只在此处与 resize 后采集（此读之前无待生效样式写入）。
        ★★ v3.0.0 批 4：scroll 下**必须采两次**（第二次在设完 #viz 高度之后）。
           缘由是一条隐蔽的耦合：`#viz` 的高度由本函数设（裁到 rows 行），而高度会改变**页面
@@ -11693,7 +11790,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        原 totalBars/wEnd 只为拼标题而算，随之一并删除 */
     resetTracking();
     if (lastRulerEl){ lastRulerEl.classList.remove("on"); lastRulerEl = null; }
-    syncTabLayer();
+    /* syncTabLayer 已提前到 cacheGeo ① 之前（has-pick 改行高，见该处 v3.48.0 注） */
     fitCellAnnotations();
     buildLyricLane();                // v2.1.0 F1：网格重建时同步重建歌词轨（两轨同一份 tick 基准）
     /* ★★ v3.0.0 批 4：scroll 的几何与静止态在**这里**统一收口，不能提前到上面的 cacheGeo。
@@ -11727,9 +11824,15 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
      .tab 的**创建**只由 vizHasStrum() 决定（带记谱建、不带不建），
      **显隐**由这个类决定——本版 tabToggle 开关退役后收敛为单条件：
      带扫弦记谱的型恒显底纹（六线是扫弦谱的"纸"），节拍型恒不显（画了箭头就等于
-     承认"这是扫弦谱"，与入口语义矛盾）。buildViz 末尾会调它，型变化的每条路径都收敛到同一结果。 */
+     承认"这是扫弦谱"，与入口语义矛盾）。buildViz 里采几何之前调它（v3.48.0 起：has-pick
+     会改行高，必须先于 cacheGeo），型变化的每条路径都收敛到同一结果。 */
   function syncTabLayer(){
     $("viz").classList.toggle("no-tab", !vizHasStrum());
+    /* v3.48.0：含逐弦记谱（str）的型格子带升 56px（品数胶囊要 11px 弦距），
+       其余型保持 44px 原档——取型口径与 vizHasStrum 同一份（预设问型本身、
+       曲式问窗口合成型），防止型长于窗口时行高随翻页闪 */
+    const hasPick = S.playMode === "arrange" ? patHasPick(vizPattern()) : patHasPick(activePattern());
+    $("viz").classList.toggle("has-pick", hasPick);
   }
   /* 格子标注自适应（v1.9.0：由 fitCellLabels 扩为 fitCellAnnotations，纳入扫弦徽标）：
      标签/徽标比格子宽时隐藏。三者共用同一处调用点（buildViz 末尾、resize 后），
@@ -12257,6 +12360,12 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
              ①的水平跨距 = 行首到落点、天然不出行；②的起跳跨距封顶行宽 20%（hopSpan）：
              长弧（如慢速 6/8）或窄屏不至于飞出视口 */
           let show = true, gx = g.x, gy = g.y, wx = 0, wy = 0, wsx = 1, wsy = 1;
+          /* 待命球**最多提前 2 拍**现身（用户实拍 v3.47.1：「C琶音」这类整段只有第 1 拍
+             发声的长空档，主球第 1 拍没跳完、下一小节的球就挂上等着——提前近一小节，
+             与它的语义（"下一个落点在这儿"的临阵预告）不符，读作长期占位干扰）。
+             2 拍与预备拍「进入最后一拍起跳」（L13115 一带）同一数量级；
+             落入窗口后按既有三姿态从中间相位接起，动画不缺帧（wx/wy 都是相位 p 的函数）。 */
+          if (b2.t - now > 2 * spb()) show = false;
           if (!REDUCE_MOTION){
             if (cross){
               if (now > boundaryT){
@@ -17259,6 +17368,57 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     if (dirty) Modal.uiConfirm("换拍数会按新拍数重建草稿骨架（当前内容将被替换），确定继续？", () => applyMeter(m));
     else applyMeter(m);
   });
+  /* 模板下拉（本版新功能）：把内置型/我的预设的**内容**载进当前草稿接着改——
+     编辑器里"换个底子重来"此前只能退出重进（预设库 → 编辑），来回一趟丢上下文。
+     口径：
+       · 只换**内容**（meter/accents/bars）——名称/标注/归属保留用户已填（不替用户改名）；
+       · pushUndo 先行 = 一步可撤销（与换拍数同一纪律）；dirty 先确认（丢弃保护同口径）；
+       · 选项每次 openWith 重建（自定义列表会变）；
+       · 动作型下拉：选完拨回占位「选模板…」——它不是状态、是动作（与拍数下拉"先拨回再确认"
+         同一手法：uiConfirm 无 onCancel，留在新值会摆出"显示已换、实际没换"的假态）；
+       · 浅拷贝 {...s} 与 openWith 同口径——str 数组的写入路径全是整体替换（s.str = ns /
+         delete s.str，见面板接线），没有原地改数组的路，共享引用安全。 */
+  /** 重建模板下拉的选项（占位 + 内置 + 我的预设） */
+  function fillTplSelect(){
+    const sel = /** @type {HTMLSelectElement} */ ($("editorTplSel"));
+    clear(sel);
+    const ph = document.createElement("option");
+    ph.value = ""; ph.textContent = "选模板…";
+    sel.appendChild(ph);
+    BUILTINS.forEach((/** @type {any} */ p, i) => {
+      const o = document.createElement("option");
+      o.value = "b" + i; o.textContent = "内置 · " + p.name;
+      sel.appendChild(o);
+    });
+    customs.forEach((/** @type {any} */ c) => {
+      if (!c || !Array.isArray(c.bars)) return;
+      const o = document.createElement("option");
+      o.value = "c" + c.id; o.textContent = "我的 · " + c.name;
+      sel.appendChild(o);
+    });
+    sel.value = "";
+  }
+  $("editorTplSel").addEventListener("change", (/** @type {Event} */ e) => {
+    const v = evTarget(e).value;
+    evTarget(e).value = "";                         // 动作型下拉：选完即回占位（见上方口径）
+    const d = draft;
+    if (!d || !v) return;
+    const tpl = v[0] === "b" ? BUILTINS[+v.slice(1)]
+      : customs.find((/** @type {any} */ c) => c && "c" + c.id === v);
+    if (!tpl || !Array.isArray(tpl.bars) || !tpl.bars.length) return;
+    const applyTpl = () => {
+      pushUndo();                                   // 先快照——Ctrl+Z 一步退回
+      srcName = tpl.name;                           // 标题改挂新底稿（editorRender 唯一拼题点）
+      d.meter = tpl.meter;
+      d.accents = (tpl.accents || defaultAccents(tpl.meter)).slice();
+      d.bars = tpl.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s})));
+      edSel = null; editBar = 0;
+      edRowCache.clear();                           // 换内容 = 旧行缓存全部作废（同 openWith）
+      editorRender();
+    };
+    if (dirty) Modal.uiConfirm("载入模板会替换当前草稿内容（可撤销），确定继续？", applyTpl);
+    else applyTpl();
+  });
   /** 把草稿换成另一个拍数：重建骨架（新拍数 × 每拍一个四分音符）+ 该拍数的默认重拍分组
       @param {number} m */
   function applyMeter(m){
@@ -17304,6 +17464,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
       ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型"
       : "";
     editorRender();
+    fillTplSelect();                     // 模板下拉：选项每次打开重建（自定义列表会变）
     Modal.openOverlay("editor");          // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
   }
   /** v2.37.0（c）：统计某型被多少首曲式的段块引用（内置按 idx、自定义按 id；去重按曲式名） */
@@ -19776,10 +19937,11 @@ const Arrange = (() => {
           c.appendChild(sub);
         }
       }
-      /* 逐弦拨弦记号（v3.47.0）：str 优先于 dir（与主视图/发声侧同口径）；空拨 = .ghost */
+      /* 逐弦拨弦记号（v3.47.0）：str 优先于 dir（与主视图/发声侧同口径）；空拨 = .ghost。
+         恒带 notxt（v3.47.x）：30/36px 的块头行放不下带底衬的品数胶囊，编排页是总览、只留点 */
       if (s.str && hasStr){
         const sm = document.createElement("div");
-        sm.className = "strumv pick" + (s.rest ? " ghost" : "");
+        sm.className = "strumv pick notxt" + (s.rest ? " ghost" : "");
         pickGlyph(sm, s.str);
         sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
         barEl.appendChild(sm);

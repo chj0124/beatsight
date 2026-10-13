@@ -40,7 +40,9 @@ section("T238b 琶音型实弹 · 每格标签都是「四分」，无一个带�
 section("T238c 字号 · 桌面 12→10px、窄屏 10→9px（CSS 源钉）");
 {
   ok(/\.cell-label\{position:absolute;top:48px;font-size:calc\(10px \* var\(--cs, 1\)\)/.test(html),
-     "★★★ 桌面档 .cell-label 字号 = 10px（calc 乘缩放系数，随 --cs 走）");
+     "★★★ 桌面档 .cell-label 字号 = 10px（calc 乘缩放系数，随 --cs 走；top 48 = 基础档格子带下 4px）");
+  ok(/#viz\.has-pick \.cell-label\{top:60px\}/.test(html),
+     "★ has-pick 档 .cell-label 随 56px 格子带移到 60px（v3.48.0 覆盖块）");
   ok(!/\.cell-label\{position:absolute;top:48px;font-size:calc\(12px/.test(html),
      "★ 旧 12px 已退役");
   ok(/\.cell-label\{top:38px;font-size:9px\}/.test(html),

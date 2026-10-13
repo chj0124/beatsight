@@ -372,7 +372,17 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        - 帮助页：「画面怎么看」与展开说明各一条逐弦读法（方案 §7 批 5）。
    ★ 留 **约 43KB** 余量（WARN = 2028×0.98 ≈ 1987.4KB——当前 2025.6KB 在观察线上方，
      观察线警示将常驻直到下一次抬线或瘦身，这是预期行为）。 */
-const BUDGET_BYTES = 2028 * 1024;
+/* ★ v3.48.0：2028 → **2080KB**。按既定纪律给出证据：
+     · 基线：v3.47.1 实测 2,074,179 B（2025.4 KB）；本批实测 **2,082,066 B（2033.3 KB）**；
+     · 净增 **7,887 B（+7.7 KB）**；`git diff --stat`（index.html）约 330 增 / 135 删（含测试）。
+     · 增量构成（两修复 + 一新功能本体 + 判据注释，非冗余）：
+       - 待命球 2 拍上限（paintBall 门 + 根因注释）约 0.6 KB；
+       - 逐弦记号几何重排（pickGlyph 重排 + .strumv.pick CSS 区块改写 + --pick-h 各档
+         覆盖 + 44→56 格子带的连锁注释更新）约 4 KB；
+       - 编辑器模板下拉（标记 + fillTplSelect + change 接线 + 口径注释）约 3 KB。
+   ★ 留 **约 47KB** 余量：与 v3.33.14 起同口径——抬一次覆盖若干批，趋势交观察线
+     （WARN = 2080×0.98 ≈ 2038.4KB）看。 */
+const BUDGET_BYTES = 2080 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){
