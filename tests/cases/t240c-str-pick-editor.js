@@ -133,7 +133,7 @@ section("T240c-2 逐弦 · 品数校验 / 技巧循环五态 / 品数保留");
   eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
      "★ 循环回「无」→ 只摘技巧，品数保留");
   /* rest 格：面板可用（空拨合法），但 tech 被 normStr 抹除（无声的技巧无从谈起） */
-  els["restRow"].fire("click", { target: els["restRow"].children[0] });   // 翻为休止
+  els["restRow"].fire("click", { target: els["restRow"].children[1] });   // 翻为休止（v3.52.0：休止档 data-rest="on"）
   eq(Ed.draft().bars[0][0].rest, true, "翻为休止");
   fireStr(els, techOf(els, 5));            // → H（会被抹）
   eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
@@ -186,7 +186,7 @@ section("T240c-4 逐弦 · 铺弦号写入 / 颗数不匹配不写入 / rest 跳
   eq(JSON.stringify(Ed.draft().bars[0].map(s => s.str || null)), JSON.stringify([null,null,null,null,null,null,null,null]),
      "撤销后回到未铺状态");
   els["editorBars"].children[0].children[1].children[0].fire("click");
-  els["restRow"].fire("click", { target: els["restRow"].children[0] });   // 第 1 格 → rest
+  els["restRow"].fire("click", { target: els["restRow"].children[1] });   // 第 1 格 → rest（v3.52.0 休止档）
   $id(app, "strFillIn").value = "5 3 2 3 1 3 2";
   $id(app, "strFillBtn").fire("click");
   eq(Ed.draft().bars[0][0].str, undefined, "★ rest 格跳过（无 str）");

@@ -357,7 +357,7 @@ section("T31 交互接线 · 事件处理器体（v1.3.1，覆盖率工具指出
   beat.Editor.open();
   eq(els["editor"].classList.contains("open"), true, "点「编辑节奏型」→ 编辑器打开");
   const palette = els["palette"].children;
-  ok(palette.length === 11, "音符块库 11 项");
+  ok(palette.length === 10, "音符块库 10 项（★ v3.52.0 删四分休止符项）");
   /* 用相对数而不是写死 4：草稿来自当前选中的预设，不同预设每小节音符数不同
      （写死期望值是典型的测试脆弱性来源） */
   const n0 = beat.Editor.draft().bars[0].length;
@@ -795,7 +795,12 @@ section("T35 剩余边角接线 · resize / 弹窗键盘 / 老数据引用迁移
     }
     trackOf(0).fire("click", { target: trackOf(0) });
     app2.els["clearBarBtn"].fire("click"); app2.els["modalOk"].fire("click");
-    for (let k = 0; k < 4; k++) app2.els["palette"].children[10].fire("click");   // 休止符（占时 48t）
+    /* v3.52.0：休止符块已退役 ⇒ 走新流「追加音符块（自动软选中）→ 悬浮窗翻休止」造 4 个休止。
+       软选中让「连点块库仍追加」，故 4 个四分音符各占 48t，翻休止后仍占满一小节。 */
+    for (let k = 0; k < 4; k++){
+      app2.els["palette"].children[3].fire("click");                       // 追加四分音符（48t）
+      app2.els["restRow"].fire("click", { target: pill({ rest: "on" }) }); // 翻为休止（占时不变）
+    }
     eq(b4.Editor.draft().bars[0].length, 4, "第 1 小节 = 4 个休止符（占满一小节但不发声）");
 
     app2.els["auditionBtn"].fire("click");

@@ -158,10 +158,17 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { zone: "0" } },
     { className: "pill", dataset: { zone: "2" } },
   ],
-  /* v2.45.0：编辑器「发声开关」。单 pill toggle——dataset.rest 恒 "on"（toggle 不分档，
-     点了就翻转），当前态由 aria-pressed/.active 表达 = 选中音符的 rest；
-     没有 dirRow 第三档那种空串档位，也就没有「dataset 判 undefined」的坑 */
-  restRow: [{ className: "pill", dataset: { rest: "on" } }],
+  /* v3.52.0：编辑器两组开关。restRow 两档 [发声(off) | 休止(on)]；airRow 两档 [实扫(off) | 空扫(on)]。
+     当前态由 aria-pressed/.active 表达，与真标记逐档对齐（dataset 值是 off/on 语义标记，
+     Editor 侧 setPressed 按它判据；不再是 v2.45.0 的单 toggle）。 */
+  restRow: [
+    { className: "pill", dataset: { rest: "off" } },
+    { className: "pill", dataset: { rest: "on" } },
+  ],
+  airRow: [
+    { className: "pill", dataset: { air: "off" } },
+    { className: "pill", dataset: { air: "on" } },
+  ],
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。
@@ -468,6 +475,14 @@ function loadApp(seed, opts){
         c.className = spec.className;
         Object.assign(c.dataset, spec.dataset);
         c.textContent = spec.dataset.sig || spec.dataset.swing || spec.dataset.timbre || spec.dataset.range || "";
+        /* v3.52.0：静态 pill 组补 closest——产品侧处理器普遍 `evTarget(e).closest("[data-x]")`
+           再读 dataset（如 restRow/airRow/dirRow/zoneRow）。桩的默认 closest 返回空代理，
+           于是「把静态 pill 自身当 target 触发」的用例读到的 dataset 恒 undefined（假绿/假红温床）。
+           这里与 pill() 同款：按 [data-*] 反查自身 dataset。 */
+        c.closest = sel => {
+          const m2 = /\[data-(\w+)\]/.exec(sel);
+          return (m2 && c.dataset[m2[1]] !== undefined) ? c : null;
+        };
         els[id].children.push(c);
       });
     }

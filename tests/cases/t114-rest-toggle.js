@@ -15,11 +15,16 @@ const { loadApp, FakeAudioContext, pill, ok, eq, section, drive } = require("../
 function edCellsOf(els, b){
   return els["editorBars"].children[b].children[1].children;
 }
-/* #restRow 的当前态：{ disabled, pressed, hint }。pressed 读 aria-pressed（与 .active 同源，
-   由 setPressed 一处写全——v1.3.0「开关三件套」纪律） */
+/* #restRow 的当前态（v3.52.0 双档 [发声(off)|休止(on)]）：{ disabled, pressed, hint }。
+   pressed 读「休止」档的 aria-pressed（与 .active 同源，由 setPressed 一处写全——「开关三件套」纪律） */
 function restState(els){
-  const p = els["restRow"].children[0];
-  return { disabled: !!p.disabled, pressed: p.getAttribute("aria-pressed"), hint: els["restHint"].textContent };
+  const on = els["restRow"].children[1];
+  return { disabled: !!on.disabled, pressed: on.getAttribute("aria-pressed"), hint: els["restHint"].textContent };
+}
+/* #airRow 的当前态（v3.52.0 新增，双档 [实扫(off)|空扫(on)]）：pressed 读「空扫」档 */
+function airState(els){
+  const on = els["airRow"].children[1];
+  return { disabled: !!on.disabled, pressed: on.getAttribute("aria-pressed"), hint: els["airHint"].textContent };
 }
 /* 播放 seconds 秒，回传 hits（{t, freq}）——用于证明翻转在发声层只减一声、时刻一字不动 */
 function playSeq(setup, seconds){
@@ -40,9 +45,14 @@ section("T114a 发声开关 · 未选中禁用与提示");
   beat.Editor.open();
   const st = restState(els);
   ok(st.disabled, "未选中音符 → 开关禁用（禁用而不是弹窗报错，与方向/弦区行同一交互约定）");
-  eq(st.pressed, "false", "未选中 → aria-pressed=false（不显示「休止中」的假态）");
+  eq(st.pressed, "false", "未选中 → 休止档 aria-pressed=false（不显示「休止中」的假态）");
   eq(st.hint, "", "未选中 → hint 空串（PLAN-v11 B2：悬浮层未选中即隐藏，占位话术退役）");
-  eq(els["restRow"].children.length, 1, "单 pill toggle（不是三档行）");
+  eq(els["restRow"].children.length, 2, "restRow 两档 [发声 | 休止]（v3.52.0，不再是单 toggle）");
+  eq(els["airRow"].children.length, 2, "airRow 两档 [实扫 | 空扫]（v3.52.0 新增）");
+  const ast = airState(els);
+  ok(ast.disabled, "未选中 → airRow 两档同样禁用");
+  eq(ast.pressed, "false", "未选中 → 空扫档 aria-pressed=false");
+  eq(ast.hint, "", "未选中 → airHint 空串");
 }
 
 /* ================= 场景 T114b：发声 → 休止（dir/zone 保留，t 不动） ================= */
@@ -112,7 +122,7 @@ section("T114c 发声开关 · 无方向音符翻过去是普通休止（不自�
   ok(restState(els).hint.includes("空扫"), "提示语随之点明空扫");
 }
 
-/* ================= 场景 T114d：空扫/休止 → 发声（反向翻转） ================= */
+/* ================= 场景 T114d：空扫 → 发声（反向）＋ airRow 空扫档同源 ================= */
 section("T114d 发声开关 · 空扫翻回发声：dir 保留、恢复实心标注");
 {
   const { beat, els } = loadApp();
@@ -124,19 +134,22 @@ section("T114d 发声开关 · 空扫翻回发声：dir 保留、恢复实心标
   beat.Editor.open();
   edCellsOf(els, 0)[0].fire("click");
   let st = restState(els);
-  eq(st.pressed, "true", "选中空扫 → aria-pressed=true");
+  eq(st.pressed, "true", "选中空扫 → 休止档 aria-pressed=true");
   ok(st.hint.includes("空扫"), "提示语点明当前是空扫");
-  els["restRow"].fire("click", { target: pill({ rest: "on" }) });
+  eq(airState(els).pressed, "true", "★ 空扫 → airRow 空扫档 aria-pressed=true（rest && dir）");
+  els["restRow"].fire("click", { target: pill({ rest: "off" }) });   // 点「发声」档
   const s0 = beat.Editor.draft().bars[0][0];
-  eq(s0.rest, false, "点击开关 → rest=false（恢复发声）");
+  eq(s0.rest, false, "点「发声」→ rest=false（恢复发声）");
   eq(s0.dir, "D", "★ dir 原样保留——空扫翻回去就是带方向的实扫");
-  const strums = edCellsOf(els, 0)[0].children.filter(c => c.className === "ed-strum");
-  eq(strums.length, 1, "编辑器内联回实心方向标注（不再是 .ed-air）");
+  const svD = edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className) && /(^| )dn( |$)/.test(c.className));
+  eq(svD.length, 1, "编辑器内联回实心方向箭头（.strumv.dn，v3.52.0 取代 .ed-strum 字形）");
+  ok(svD.every(c => !/(^| )ghost( |$)/.test(c.className)), "恢复发声 → 实心（不带 ghost）");
 
-  /* 连点两次 = 翻转往返：栈里两条，undo 一次回到「休止」那步（每击必变更，无同态分支） */
+  /* 往返：发声+dir → 点「休止」→ 空扫（dir 保留）；undo 一次回到发声 */
   edCellsOf(els, 0)[0].fire("click");
   els["restRow"].fire("click", { target: pill({ rest: "on" }) });
-  eq(beat.Editor.draft().bars[0][0].rest, true, "再翻一次 → 回到休止（toggle 可逆）");
+  eq(beat.Editor.draft().bars[0][0].rest, true, "点「休止」→ 回到休止/空扫");
+  eq(airState(els).pressed, "true", "带方向的休止即空扫 → airRow 空扫档高亮");
   beat.Editor.undo();
   eq(beat.Editor.draft().bars[0][0].rest, false, "undo 一次 → 回到发声（每次点击各占一条快照）");
 }

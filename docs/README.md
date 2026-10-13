@@ -42,6 +42,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v9-control-core.md](archive/PLAN-v9-control-core.md) | 控制区重构 · 居中控制芯（开关胶囊化 + 参数浮层 + 滑杆 340 + 桌面/移动同构）实施方案 | 已落地（v3.40.0 交付，四批一次完成） |
 | [PLAN-v10-str-pick.md](archive/PLAN-v10-str-pick.md) | 分解和弦伴奏型（逐弦拨弦）实施方案：`step.str` 数据模型 / 定点记号 / 逐弦面板与按序铺弦号 / 单弦固定拨弦音 | 已落地（v3.47.0 交付，五批一次完成；仅余移动端 390px 人眼验收） |
 | [PLAN-v11-editor-popover.md](archive/PLAN-v11-editor-popover.md) | 编辑器音符级悬浮窗 + 小屏入口收敛 + 品牌合规修复实施方案（2026-10-13 拍板：四组进悬浮窗 / 复合断点拦入口 / 帮助加提示） | 已落地（v3.50.0 交付，四批 + 三轮追补一次完成） |
+| [PLAN-v12-editor-note-state.md](archive/PLAN-v12-editor-note-state.md) | 编辑器记谱交互改造：发声态两组开关（`air` 无方向空扫）· 块库休止符退役 · 内联 ↑↓ 小箭头清理 + 软选中实施方案（2026-10-14 拍板） | 已落地（v3.52.0 交付；施工后记见文末） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
 | [beatsight-brand-board.html](archive/beatsight-brand-board.html) | 视觉系统提案展板：设计 token / 字体 / 组件 / 图标规范整理（源自 index.html 真实值） | 历史快照 · 已落地（v3.43.0 入库时逐项核对一致） |

@@ -205,12 +205,12 @@ section("T17 Editor · 打开-编辑-校验-撤销-保存全流程");
   ok(els["editor"].classList.contains("open"), "编辑器 overlay 打开");
 
   const palette = els["palette"].children;
-  eq(palette.length, 11, "音符块库 11 项（含两个三连音组块）");
+  eq(palette.length, 10, "音符块库 10 项（含两个三连音组块；★ v3.52.0 删四分休止符项）");
   /* ★ v3.35.7：歌名成了保存的**前置条件**之一 ⇒ 先把它填上，下面两条"拍面校验"断言
      才只反映拍面（否则两种原因都让按钮禁用，断言就测不出拍面那条了）。 */
   els["songNameInput"].value = "T17 的测试歌";
   els["songNameInput"].fire("input");
-  palette[10].fire("click");                       // 追加休止符（48t）→ 小节 1 超限
+  palette[3].fire("click");                        // 追加四分音符（48t）→ 小节 1 超限
   eq(els["savePresetBtn"].disabled, true, "小节时值超限 → 保存禁用");
   ok(els["editorStatus"].textContent.includes("不完整"), "校验状态提示时值不完整");
   beat.Editor.undo();

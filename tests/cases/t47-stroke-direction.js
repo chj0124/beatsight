@@ -280,9 +280,9 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   els["dirRow"].fire("click", { target: pill({ dir: "U" }) });
   eq(beat.Editor.draft().bars[0][0].dir, "U", "点「↓ 上扫」→ 草稿该步 dir 变 U");
   eq(els["dirRow"].children[1].getAttribute("aria-pressed"), "true", "切换后「↓ 上扫」档 aria-pressed=true");
-  const edStrums = edCellsOf(els, 0)[0].children.filter(c => c.className === "ed-strum");
-  eq(edStrums.length, 1, "编辑器格子内联出一个方向标注");
-  eq((edStrums[0] || {}).textContent, "↓", "编辑器内显示 ↓（dir=\"U\" 上扫，与主视图同义同翻转）");
+  const svUp = edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className) && /(^| )up( |$)/.test(c.className));
+  eq(svUp.length, 1, "★ 编辑器格子内联一支 .strumv 上扫竖箭头（up 类）——v3.52.0 .ed-strum 字形退役");
+  ok(svUp.every(c => !/(^| )ghost( |$)/.test(c.className)), "非休止 → 实心箭头（不带 ghost）");
 
   /* 撤销回退方向（pushUndo 已把 dir 一并纳入快照） */
   beat.Editor.undo();
@@ -319,9 +319,10 @@ section("T47d 扫弦方向 · 休止槽 = 空扫（可标注）");
   /* v2.74.0（2.7）：空扫字形从 ed-air 蓝括号改为 .strumv.ghost 蓝虚线（主视图同款） */
   const ghosts = edCellsOf(els, 0)[3].children.filter(c => /(^| )ghost( |$)/.test(c.className));
   eq(ghosts.length, 1, "★ 空扫编辑器内联 .strumv.ghost 蓝虚线（ed-air 括号字形退役）");
-  ok(ghosts.every(c => /(^| )dn( |$)/.test(c.className)), "方向类跟随（dir=D → dn；↑↓ 文字语义移入 aria-label）");
-  eq(edCellsOf(els, 0)[3].children.filter(c => c.className === "ed-strum").length, 0,
-     "空扫格不出现实心徽标（两变体互斥）");
+  ok(ghosts.every(c => /(^| )dn( |$)/.test(c.className)), "方向类跟随（dir=D → dn；方向语义移入 aria-label）");
+  /* v3.52.0：.ed-strum 内联 ↑↓ 字形整块退役（大箭头已表达方向，aria-label 兜底读屏） */
+  eq(edCellsOf(els, 0)[3].children.filter(c => /(^| )ed-strum( |$)/.test(c.className)).length, 0,
+     "★ 编辑器格子内不再出现 .ed-strum 内联字形（v3.52.0 退役）");
   beat.Editor.undo();
   eq(beat.Editor.draft().bars[0][3].dir, undefined, "撤销把空扫标注一并退回（与其它草稿变更同一套纪律）");
 }
