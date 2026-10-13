@@ -1310,6 +1310,7 @@ function layoutProbe(){
    桩测不出布局，只有真机能量——而这条恰恰是纯布局缺陷：.editor-topbar 在 >640px 没有
    flex-wrap，容器又被 .editor-inner 的 max-width:1080 封顶在 1032px，而顶栏内容
    （返回练习 + 标题 + 拍数 + 长引用提示 + 两按钮）的 max-content ≈1540px
+   （★ v3.49.1 起「保存为预设」已移出顶栏，顶栏只剩「试听」一颗——断言判据相应放宽，见其处说明）
    ⇒ 三个子项一起被压缩：标题从词中间断行（「前」/「奏）」）、「返回练习」拆两行、
    按钮变竖排且最右那颗贴边被裁。
    触发条件是**引用提示非空**（正在编辑一个被曲式引用的型），而默认编辑一个没人引用的型时
@@ -3824,7 +3825,10 @@ async function main(){
               ok(EH.topH <= 80,
                 p.label + "·" + vp + "：★★★ 长提示在场时顶栏仍是**单行**（高度 " + EH.topH + "px）"
                 + "——被挤爆时会折行/撑高", "");
-              ok(EH.btns.length >= 2 && EH.btns.every(function(b){ return b.lines === 1 && b.w >= 30; }),
+              /* ★ v3.49.1：「保存为预设」已从顶栏移到卡片底部（用户需求）——顶栏 .editor-actions
+                 只剩「试听」一颗 ⇒ 判据由 `>= 2` 放宽为 `>= 1`；断言**意图不变**：仍要求顶栏里
+                 每颗按钮文字**单行**且未被压扁（不竖排、不被裁）。 */
+              ok(EH.btns.length >= 1 && EH.btns.every(function(b){ return b.lines === 1 && b.w >= 30; }),
                 p.label + "·" + vp + "：★★★ 顶栏按钮文字**单行**且未被压扁（不竖排、不被裁）",
                 EH.btns.map(function(b){ return "「" + b.t + "」 w=" + b.w + " 行数=" + b.lines; }).join(" ／ "));
               ok(EH.titleLines <= 2,
