@@ -1034,12 +1034,13 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
      实测 24/24 支箭头全部被裁（见 _cdp-clip.js 的读数），表现正是用户报的
      "第二个箭头缺失头顶尖端"（实为**每支箭头**都缺，只是幅度小的看着像"没缺"）。
    正解（照搬参考页）：一行内所有箭头放进**独立的一层** .strums，
-   它是 .cell 的兄弟节点、不裁切、高度按行的完整高度给足，箭头用百分比定位到格中心。
+   它是 .cell 的兄弟节点、不裁切、高度按行的完整高度给足，箭头用百分比定位到**格左缘 + clamp 内缩**（起点锚定，见 .strumv 下方定位注释）。
    这样"箭头"与"格子"解耦：格子的 overflow/圆角/宽高都不再影响箭头几何。
    v2.4.3 注：六线收进格子、v2.8.0 进一步铺满（0→44）后 kF 箭头（44px 高）几何上已能塞进格子，
    但行级挂载保留——解耦的边界不因几何变化而回退。 */
 .strums{position:absolute;left:0;right:0;top:0;height:100%;pointer-events:none;z-index:2}
-/* 竖箭头：水平位置由行内百分比定（一格中心），垂直跨距由 --y1/--y2 定。
+/* 竖箭头：水平位置由行内百分比定（**起点锚定**：格左缘 + clamp(4px,25%格宽,28px)，与 .lyric-char 同式；
+   宿主 translateX(-50%) ⇒ 形心落锚点；不再是格中心——起点锚定见 buildRowCells 注释）。
    用变量对承载起点/终点（与参考页同形），三种弦区各一套，避免为每种组合写死 height+top */
 .strumv{position:absolute;top:0;bottom:0;width:2px;border-radius:1px;
   pointer-events:none;transform:translateX(-50%)}
@@ -1125,7 +1126,8 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    半颗越出 viewBox（与 ⑥ 弦点越下缘的既有口径一致）。
    ★ 五轮（用户实拍"圆点并不圆"）：宽随 **--pick-sy**（= 档高/56）等比缩——
    此前宽恒 26px、只纵向跟随档高 ⇒ pAR=none 把点拉成横椭圆。等比缩后点恒圆、
-   数字不变形；svg 在 26px 宿主内水平居中（left:50% + translateX），列心仍在格中心。 */
+   数字不变形；svg 在 26px 宿主内水平居中（left:50% + translateX），列心即宿主中线
+   （宿主落锚点 = 起点 + clamp 内缩，见 .strumv 定位注释）。 */
 .strumv.pick{width:26px;color:var(--peak)}
 .strumv.pick::before{content:none}
 .strumv.pick svg{position:absolute;left:50%;top:0;width:calc(26px * var(--pick-sy, 1));height:var(--pick-h);transform:translateX(-50%);overflow:visible;display:block}
@@ -1166,6 +1168,10 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    --pick-sy 与内缩后的实际高度（64−12=52 / 窄屏 56−12=44）成对，点恒圆 */
 .edcell{--pick-sy:0.929}
 .edcell .strumv.pick svg{top:6px;height:calc(100% - 12px)}
+/* 起点锚定（本版）：与 .lyric-char 同式（4px / 25% / 28px 口径同源，改必同步）；
+   % 对 .edcell 自身宽解析（绝对定位的包含块 = 该格子的内边距盒），基准天然正确；
+   形心落锚点（.strumv 宿主 translateX(-50%) 沿用，与主视图同一条竖线口径） */
+.edcell .strumv{left:clamp(4px,25%,28px)}
 .grid-line{position:absolute;top:12px;bottom:12px;width:1px;background:var(--line);pointer-events:none}
 .playhead{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--green);pointer-events:none;z-index:9;will-change:transform}
 .playhead::before{content:"";position:absolute;top:-4px;left:-6px;border:7px solid transparent;border-top:10px solid var(--green)}
@@ -2242,7 +2248,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .edbar-label.editing .s::after{content:" · 编辑中";color:var(--green);font-family:var(--sans)}
 .edtrack{position:relative;flex:1;height:64px;border-radius:8px}
 .edtrack.bad{box-shadow:0 0 0 1.5px var(--red)}
-.edcell{position:absolute;top:0;height:100%;border-radius:3px;background:var(--cell);display:flex;align-items:center;padding:0 10px;overflow:hidden;cursor:pointer}
+.edcell{position:absolute;top:0;height:100%;border-radius:3px;background:var(--cell);display:flex;align-items:center;padding:0 10px 0 0;overflow:hidden;cursor:pointer}
 .edseams{position:absolute;inset:0;pointer-events:none;z-index:2}   /* v2.78.2：与主视图 .seams 同款交界线层 */
 .edcell.sq-l{border-top-left-radius:0;border-bottom-left-radius:0}   /* v2.78.1：接缝直角，同主视图 */
 .edcell.sq-r{border-top-right-radius:0;border-bottom-right-radius:0}
@@ -3686,6 +3692,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            （S.vizLegendVsn 落热键全链路，禁裸 localStorage），同版本内不再出现、发版回归一次。
          ★ aria-hidden 的例外：这一行是给"看不懂网格"的人读的正文，必须进无障碍树 -->
     <div class="viz-legend" id="vizLegend">
+      <!-- 起点锚定（本版）：补最基础的一条——左缘是时间零点，记号锚在起点近旁（见「画面怎么看」） -->
+      <span class="vl-item">左缘 = 起点</span>
       <span class="vl-item"><i class="vl-swatch" aria-hidden="true"></i>格宽 = 时值</span>
       <span class="vl-item">↑↓ = 扫弦方向</span>
       <!-- ★ 本轮（用户拍板）：撤掉「灰格 = 空拍（不拨弦）」一项，改为说明**空扫图标**（蓝虚线箭头
@@ -4166,8 +4174,20 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
         <li><b>格子的宽度 = 音符的时值</b>：越宽的音符越长。休止符是等长的空白占位（不发声，但占着位置）；
-          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（格宽 = 时值 · ↑↓ = 扫弦方向 · 蓝虚线箭头 = 空扫），
+          <!-- v3.1.0（A1） -->网格上方有一行<b>图例</b>速记这几条读法（左缘 = 起点 · 格宽 = 时值 · ↑↓ = 扫弦方向 · 蓝虚线箭头 = 空扫），
           点「知道了」收起后本版本内不再出现，版本更新后会再出现一次。图例里的<b>空扫（蓝虚线箭头）</b> = 「假装在扫弦、但不触弦」：那一格占满自己的时值、不触发新音；<b>灰格（纯休止）</b>同样不触发新音。弦上的余音是否延续由你的演奏决定（延音、闷音都行）——应用只管「哪一刻该出手」，不模拟琴弦的持续鸣响</li>
+        <!-- 起点锚定（本版）：第一层给心智模型（左缘是钟、记号是标签），第二层给较真用户
+             「不贴边买到了什么」——四约束按说服力排序（骑缝线 / 歌词对位是硬约束，
+             领地 / 遮挡是质量收益）。图例只放「左缘 = 起点」六个字，不在此解释内缩（图例是速记条，
+             放「为什么不是 0px」会把第一层心智模型挤没）。 -->
+        <li><b>左缘 = 那一下的起点</b>：每格的<b>左缘</b>就是这一下出手的时刻，格子里所有记号
+          （扫弦箭头 / 逐弦点 / 品数）都<b>锚在起点近旁</b>——符头跟歌词字一样，标的是「哪一刻」，
+          不是「占了多久」。所以别拿记号的横向位置当秒表：真正的时间锚是<b>左缘</b>
+          （球触底、填充前沿、播放杆过杆都在左缘，声画同步走的也是它）。
+          为什么不干脆贴死左缘：① 贴边会骑在拍分组的缝线上、把两类信息抹成一条；
+          ② 要和下方歌词字<b>对在同一条竖线上</b>（这一下扫弦 = 这个字）；③ 一半墨迹会伸进
+          上一格的时间领地（视觉「提前」）；④ 滚动模式下会被「现在」的播放杆压住。于是它住在
+          「起点 + 一点内缩」处——所有标注某一刻的内容（座次尺、时值名、和弦、歌词字）同一个惯例，不是误差</li>
         <!-- v3.47.0：逐弦拨弦（分解和弦）读法。图例行（三种视觉编码）保持不动——逐弦点只
              在带 str 记谱的型里出现，完整读法归本节（与 .viz-legend 的注释同一分工口径） -->
         <li><b>分解和弦（逐弦拨弦）</b>：跑道上的<b>实心点 = 右手拨这根弦</b>（点的纵向位置对准六线谱的弦线，
@@ -4820,23 +4840,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4852  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6504  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8739  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9967  Modal         应用内弹窗
-     L10112 Viz           时值可视化渲染与每帧动画
-     L13712 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14466 Trainer       变速训练器
-     L14683 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15346 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17335 Editor        自定义节奏型编辑器
-     L18183 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18278 Ear           听辨训练（v1.10.0）
-     L18506 Arrange       曲式编排（v2.0.0）
-     L22583 Help          使用方法（v2.0.1）
-     L22738 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22820 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23116 初始化（装配） 各模块 hook 接线与启动
+     L4872  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6524  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8759  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9987  Modal         应用内弹窗
+     L10132 Viz           时值可视化渲染与每帧动画
+     L13734 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14488 Trainer       变速训练器
+     L14705 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15368 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17357 Editor        自定义节奏型编辑器
+     L18212 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18307 Ear           听辨训练（v1.10.0）
+     L18535 Arrange       曲式编排（v2.0.0）
+     L22612 Help          使用方法（v2.0.1）
+     L22767 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22849 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23145 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -11412,12 +11432,12 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
            而格子的 `overflow:hidden` + `height:44px` 会把箭头裁掉——
            尖端在 top:-5px（超出格子上界）、kB 的尾巴到 53px（超出格子下界 44px）。
            实测 24/24 支箭头全部被裁，这正是"为什么箭头缺了头顶的尖端"的真因。
-           现在挂进**同行的 .strums 层**（不裁切、满行高），水平位置用格中心的百分比。
+           现在挂进**同行的 .strums 层**（不裁切、满行高），水平位置用起点锚定的百分比（格左缘 + clamp 内缩）。
          v2.9.0：门控改按当前型是否带扫弦记谱（hasStr）——不带记谱的型**不画箭头**，
          它承诺"只出节拍音与重音"，画了箭头就等于承认"这是扫弦谱"，与入口语义矛盾。
          ★ 注意 strums 数组必须**同时**推入占位 null：它与格子逐位同构，
            fitCellAnnotations() 按下标对齐做窄格隐藏，少推一项会让隐藏判据整体错位 */
-      /* 逐弦拨弦记号（v3.47.0）：与箭头同一层（.strums）、同一水平定位公式（格中心）、
+      /* 逐弦拨弦记号（v3.47.0）：与箭头同一层（.strums）、同一水平定位公式（起点锚定）、
          同一套 strums 槽位登记（fitCellAnnotations 窄格降级 / setCell 帧内 .hit 切换全继承）。
          str 存在时渲染以它为准（zone 失效；dir 也不再画箭头——两者同格时 pick 优先，
          与发声侧 stepVoiceOf 的「str 优先于 zone」逐字同源）。 */
@@ -11426,9 +11446,9 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         sm.className = "strumv pick" + (s.rest ? " ghost" : "");
         pickGlyph(sm, s.str);
         sm.dataset.i = String(i);
-        /* 水平定位到**格中心**：与箭头同一套 % 公式（不依赖像素宽度） */
-        const w = s.t / barTicks;
-        sm.style.left = ((startT / barTicks) + w / 2) * 100 + "%";
+        /* 起点锚定（本版）：左缘 + clamp 内缩，与 .lyric-char 同式（4px / 25% / 28px 口径同源，
+           改必同步）。形心落锚点（宿主 translateX(-50%) 不动）⇒ 与下方歌词字左缘同一条竖线 */
+        sm.style.left = `calc(${startT / barTicks * 100}% + clamp(4px,${s.t / barTicks * 25}%,28px))`;
         const sl = strumLayers[b];
         if (sl) sl.appendChild(sm);
         strums.push(sm);
@@ -11446,10 +11466,9 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
            不改成"每格都塞占位节点"的理由：那会让一行凭空多出十几个空 div，
            而 .strums 是每帧都可能被重建的节点，白增 DOM 规模与合成开销。 */
         sm.dataset.i = String(i);
-        /* 水平定位到**格中心**：格子左缘 + 格宽的一半，用同一套 % 算，
-           与格子的 `left`/`width` 共口径（都不依赖像素宽度） */
-        const w = s.t / barTicks;
-        sm.style.left = ((startT / barTicks) + w / 2) * 100 + "%";
+        /* 起点锚定（本版）：左缘 + clamp 内缩，与 .lyric-char 同式（口径同源，改必同步）。
+           形心落锚点（宿主 translateX(-50%) 不动）⇒ 与下方歌词字左缘同一条竖线 */
+        sm.style.left = `calc(${startT / barTicks * 100}% + clamp(4px,${s.t / barTicks * 25}%,28px))`;
         const sl = strumLayers[b];
         if (sl) sl.appendChild(sm);
         strums.push(sm);
@@ -11841,6 +11860,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   /* 竖箭头比旧徽标窄得多（2px vs 14px），但**要留出箭头两侧的读图余量**——
      箭头贴着邻格的箭头时两条线会读成一条，所以阈值不按自身宽度取，按"与邻格至少隔开 10px"取。
      v2.4.2 由 20（旧 14px 徽标的宽度 + 余量）改为 14。
+     ★ 起点锚定（本版）：锚点 = 格左缘 + clamp(4px,25%格宽,28px)，不再是格中心。
+     相邻锚点净距 = 格宽 + 内缩差；宽格封顶 28、窄格触底 4 ⇒ 最坏 = 0.75×格宽 + 4 ≥ 16
+     （格宽 ≥ 16 时），格宽 < 16 时内缩恒 4 ⇒ 间距 = 格宽 ≥ 14。「与邻格隔 ≥ 10px」仍成立，14 保持。
      PICK_TXT_MIN_W（v3.47.0）：逐弦点「点右文本串（品数/技巧字母）」的第一级降级阈值——
      比 26px 记号本体略宽（串最长 "24X" ≈ 20px + 点），更窄先藏串只留点；再窄走 STRUM_MIN_W 整体藏 */
   const STRUM_MIN_W = 14, PICK_TXT_MIN_W = 24;
@@ -17561,7 +17583,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     strPanelBuilt = true;
     const lines = document.createElement("div");
     lines.className = "str-lines";
-    for (let s = 6; s >= 1; s--){
+    /* 行序 ①→⑥（本版）：与谱面 / TAB 记谱法 / 全 App 其它弦序面一致（① 在顶）——
+       面板此前是 ⑥ 顶 ① 底，是整个 App 唯一倒置的弦序面（用户在格子里看到 ① 点亮在顶线，
+       却要在面板最底行找它）。DOM 序 = Tab 键序 = 读屏序，翻转后与谱面自上而下同构。 */
+    for (let s = 1; s <= 6; s++){
       const row = document.createElement("div");
       row.className = "str-line";
       row.dataset.s = String(s);
@@ -17652,6 +17677,10 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
           + (s.rest ? " rest" : "") + (isSel ? " sel" : "");
         c.style.left = (acc / (d.meter * TPB) * 100) + "%";
         c.style.width = `${s.t / (d.meter * TPB) * 100}%`;   /* v2.78.0：贴满（−4px 留白退役） */
+        /* 起点锚定（本版）：文字流从锚点起（padding-left = 与 .lyric-char 同式的内缩，
+           % 对 .edtrack 解析 ⇒ 25 × 本格占比% ≡ 25% 的本格宽，与 CSS 规则逐像素相等），
+           保持「记号 → ↑↓ → 时值名」的既有顺序 */
+        c.style.paddingLeft = "clamp(4px," + (s.t / (d.meter * TPB) * 25) + "%,28px)";
         /* v2.74.0（2.7）：方向/弦区进 aria-label（视觉信息不丢给读屏用户——
            弦区从文字徽标改为箭头跨距后，读屏用户的唯一来源就是这里） */
         const zoneName = (!s.rest && s.zone !== undefined) ? " · " + ["低音区", "全扫", "高音区"][s.zone] : "";
@@ -19943,7 +19972,7 @@ const Arrange = (() => {
         const sm = document.createElement("div");
         sm.className = "strumv pick notxt" + (s.rest ? " ghost" : "");
         pickGlyph(sm, s.str);
-        sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
+        sm.style.left = "calc(" + pct(startT) + " + clamp(4px," + (s.t / total * 25) + "%,28px))";        // 起点锚定（与主视图/.lyric-char 同式）
         barEl.appendChild(sm);
       } else if (s.dir && hasStr){
         const sm = document.createElement("div");
@@ -19951,7 +19980,7 @@ const Arrange = (() => {
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
         sm.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
         if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（与主视图同一份标记）
-        sm.style.left = pct(startT + s.t / 2);        // 水平定到格中心（与主界面同一套百分比）
+        sm.style.left = "calc(" + pct(startT) + " + clamp(4px," + (s.t / total * 25) + "%,28px))";        // 起点锚定（与主视图/.lyric-char 同式）
         barEl.appendChild(sm);
         if (!s.rest) prevZone = z;
       }

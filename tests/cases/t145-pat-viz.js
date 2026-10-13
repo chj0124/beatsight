@@ -182,8 +182,11 @@ section("T145c 甲 · 块头内容 · ×N 遍 · 共N小节 / 时值块 / ghost 
     eq(strums.filter(s => /(^| )ghost( |$)/.test(s.className)).length, 1, "★ 空扫 = 蓝虚线 .ghost 箭头");
     eq(strums.filter(s => /(^| )kB( |$)/.test(s.className)).length, 2,
        "★ 空扫沿用前一记实扫的弦区（第 2 支 ghost 沿用 kB，落到 kF 之前）");
-    eq(strums.map(s => s.style.left).join(","), "12.5%,31.25%,43.75%,62.5%,87.5%",
-       "箭头水平 = 各格中心（主界面同一套百分比口径）");
+    eq(strums.map(s => s.style.left).join(","),
+       "calc(0% + clamp(4px,6.25%,28px)),calc(25% + clamp(4px,3.125%,28px)),"
+       + "calc(37.5% + clamp(4px,3.125%,28px)),calc(50% + clamp(4px,6.25%,28px)),"
+       + "calc(75% + clamp(4px,6.25%,28px))",
+       "★ 箭头水平 = 起点 + clamp 内缩（与 .lyric-char 同式，本版起点锚定）");
     const seamB = barB.children.filter(c => /(^| )seams( |$)/.test(c.className))[0];
     ok(String(seamB.style.background).indexOf("rgba(var(--veil),.18)") >= 0,
        "★ 拍内存在 1px 墨色弱缝（强/弱两级都出现 = 拍分组层级可读）");

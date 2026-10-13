@@ -22,7 +22,7 @@ const PAT = () => ({ name: "五三二三", meter: 4,
 function buildStrPanel(els, sandbox){
   const mk = (cls, tag) => { const e = sandbox.document.createElement(tag || "button"); if (cls) e.className = cls; return e; };
   const lines = mk("str-lines", "div");
-  for (let s = 6; s >= 1; s--){
+  for (let s = 1; s <= 6; s++){
     const row = mk("str-line", "div");
     row.dataset.s = String(s);
     const tog = mk("pill str-tog"); tog.dataset.s = String(s);
@@ -196,4 +196,29 @@ section("T240c-4 逐弦 · 铺弦号写入 / 颗数不匹配不写入 / rest 跳
   $id(app, "strFillIn").value = "5 3 2 3 1 3 2 3";
   $id(app, "strFillBtn").fire("click");
   ok(String($id(app, "strFillHint").textContent).includes("7"), "报错文案报出 7 颗");
+}
+
+/* ================= 场景 T240c-5：逐弦面板行序 ① → ⑥（不预建，让 App 自建） ================= */
+section("T240c-5 逐弦 · 面板行序 ① 顶 ⑥ 底（DOM 序 = Tab 序 = 读屏序；真验产品代码）");
+{
+  /* ★ 坑（PLAN §3D/§6）：桩预建 `.str-lines` 后 ensureStrPanel 会跳过自建（幂等守卫）——
+     故本用例**不预建**，开编辑器让 App 自己建面板，才是在验产品代码而非验桩。
+     取行助手（rowOf/togOf…）按 dataset.s 查找、序无关 ⇒ 不翻现有断言也过；正因如此，
+     行序必须**新增断言**钉死（翻转前是 6→1，这些断言会红）。 */
+  const app = loadApp();
+  app.beat.Store.importPresets(JSON.stringify({ presets: [PAT()] }));
+  app.beat.Store.S.sel = { type: "custom", id: app.beat.Store.customs[app.beat.Store.customs.length - 1].id };
+  app.beat.Presets.refreshAfterPatternChange();
+  app.beat.Editor.open();                 // ★ 不预建面板：ensureStrPanel 走自建分支
+  const linesHost = app.els["strRow"].children.find(c => /(^| )str-lines( |$)/.test(c.className));
+  ok(!!linesHost, "编辑器打开后 App 自建了 .str-lines 面板（未预建）");
+  if (linesHost){
+    const rows = linesHost.children.filter(c => /(^| )str-line( |$)/.test(c.className));
+    eq(rows.length, 6, "面板六行");
+    eq(rows.map(r => r.dataset.s).join(","), "1,2,3,4,5,6",
+       "★ 行序 ①→⑥（① 在顶，与谱面 / TAB 记法 / 全 App 其它弦序面同构）");
+    eq(rows[0].dataset.s, "1", "★ 首行 = ① 弦（此前是 ⑥ 顶 ① 底——全 App 唯一倒置的弦序面）");
+    eq(rows[5].dataset.s, "6", "★ 末行 = ⑥ 弦");
+    eq(rows[0].children[0].textContent, "①", "首行开关显示 ①（与 dataset.s 同源）");
+  }
 }

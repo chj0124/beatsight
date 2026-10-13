@@ -129,9 +129,9 @@ section("T240b-1 逐弦 · 纯 str 型建层 / has-pick 升档 / 宿主与 SVG �
      "①②⑤ 的 cy 各对弦线（升序）");
   eq(JSON.stringify(textsOf(svg3).map(t => t.textContent)), JSON.stringify(["0", "2", "3"]),
      "各胶囊各自标品数");
-  /* 水平定位：与箭头同公式（格中心） */
-  eq(pickOf(els, 0, 0).style.left, "12.5%", "第 1 格 left = 格中心 12.5%（与箭头同公式）");
-  eq(pickOf(els, 0, 1).style.left, "37.5%", "第 2 格 left = 37.5%");
+  /* 水平定位：与箭头同公式（起点锚定，与 .lyric-char 同式） */
+  eq(pickOf(els, 0, 0).style.left, "calc(0% + clamp(4px,6.25%,28px))", "第 1 格 left = 起点 + 内缩（与箭头同公式）");
+  eq(pickOf(els, 0, 1).style.left, "calc(25% + clamp(4px,6.25%,28px))", "第 2 格 left = 起点 25% + 内缩");
   /* 帧内纪律的静态面 + 本版几何纪律的 CSS 钉子 */
   ok(html.includes(".strumv.pick.hit{color:var(--green)"), "CSS：pick 命中染绿规则在位");
   ok(html.includes(".strumv.pick.ghost .pick-dot{fill:none;stroke:currentColor;stroke-dasharray:2 2}"),
@@ -242,7 +242,7 @@ section("T240b-4 逐弦 · 编排页块头行同构（恒 notxt 只留点）");
   eq(circlesOf(svg0).length, 1, "SVG 子结构与主视图逐位一致（点兜底）");
   eq(labsOf(svg0).length, 1, "数字在 DOM（CSS 藏，与 notxt 降级同口径）");
   eq(textsOf(svg0)[0].textContent, "3", "文本串同一份");
-  eq(picks[0].style.left, "12.5%", "水平定位同一公式（pct(startT + t/2)）");
+  eq(picks[0].style.left, "calc(0% + clamp(4px,6.25%,28px))", "水平定位同一公式（起点锚定 pct(startT) + clamp）");
   ok(/ ghost/.test(" " + picks[2].className), "空拨 ghost 同口径");
   /* hasStr=false（非扫弦谱）不画 */
   const el2 = beat.Arrange.mkPatBar({ name: "x", meter: 4, bars: BARS() }, false);
