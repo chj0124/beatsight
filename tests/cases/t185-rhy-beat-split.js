@@ -300,22 +300,28 @@ section("T185j 拍数文案收窄 / 两行留间距 / 编辑器拍数搬到标�
   ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:12px\}/.test(html),
      "★★ 区体上边距 = 12px（= 网格「区头 8 + 行距 4」）");
 
-  /* ③ 编辑器拍数必须在**顶栏标题旁**（v3.33.0 落在底部操作行，与标题相隔 212px、被 6 个按钮挤到最右）。
-     位置用**源码顺序**断言：桩不解析 HTML 结构，但"谁在谁前面"足以表达"搬走了"。 */
-  const iTitle = html.indexOf('id="editorTitle"');
+  /* ③ 编辑器拍数必须在**顶栏**（v3.33.0 落在底部操作行，与标题相隔 212px、被 6 个按钮挤到最右）。
+     位置用**源码顺序**断言：桩不解析 HTML 结构，但"谁在谁前面"足以表达"搬走了"。
+     ★ PLAN-v11 追补：editorTitle 已退役（底稿身份常显在模板下拉），顶栏锚点改为 editorTplSel。 */
+  const iTop = html.indexOf('class="editor-topbar"');
   const iMeter = html.indexOf('id="editorMeterSel"');
+  const iTpl = html.indexOf('id="editorTplSel"');
   const iActions = html.indexOf('class="ed-actions"');
-  ok(iTitle > 0 && iMeter > 0 && iActions > 0, "三个锚点都在（防正则/锚点写坏后静默通过）");
-  ok(iTitle < iMeter, "★ 拍数下拉在标题**之后**（同在顶栏）");
+  ok(iTop > 0 && iMeter > 0 && iTpl > 0 && iActions > 0, "三个锚点都在（防正则/锚点写坏后静默通过）");
+  ok(iTop < iMeter && iMeter < iTpl, "★ 拍数、模板同在顶栏（拍数在前，源码顺序）");
   ok(iMeter < iActions, "★★ 拍数下拉在底部操作行**之前**——即它已不在那一排里（用户说「太偏僻」的就是那里）");
-  ok(iMeter - iTitle < 1200, "★ 与标题的距离在源码上也相邻（不是被别的大块隔开）");
+  ok(iTpl - iMeter < 1200, "★ 模板与拍数在源码上也相邻（不是被别的大块隔开）");
   ok(/\.ed-meter\{display:flex;align-items:center;gap:8px/.test(html),
      "拍数块自带 8px 内部间距（标签↔下拉），与标题的 16px 分两层");
   /* ④ 窄屏：顶栏必须可生长——v3.33.0 的固定 64px + 长标题换行 = 标题溢出（实测 3 行 84px、顶边 −10px） */
   ok(/@media \(max-width:640px\)\{\s*\.editor-topbar\{height:auto;min-height:64px;flex-wrap:wrap/.test(html),
      "★★ 窄屏顶栏改 height:auto 且允许换行（修 v3.33.0 已存在的标题溢出，并让拍数块换行到标题下方）");
-  ok(/\.editor-title\{font-size:16px;font-weight:700;min-width:0\}/.test(html),
-     "标题 min-width:0（flex 子项缺省 auto 会撑破容器，是溢出的直接原因）");
+  /* ★ PLAN-v11 追补：溢出的直接原因（长标题）已随 #editorTitle 实例退役消失。
+     注意 .editor-title **类规则保留**——听辨/编排/使用方法弹层的标题仍用它 */
+  ok(html.indexOf('id="editorTitle"') === -1, "#editorTitle 实例退役（底稿身份常显在模板下拉）");
+  ok(/\.editor-title\{font-size:14px\}/.test(html), "共用的 .editor-title 类规则保留（其他弹层在用）");
+  ok(/\.back-btn\{[^}]*flex:none/.test(html) && /\.editor-topbar\{[^}]*gap:16px/.test(html),
+     "★ 顶栏不变量补全：返回钮 flex:none+nowrap、左右两块 gap ≥16px（用户实拍追补）");
 }
 
 /* ================= T185i：曲式拍号残留（离开曲式时把拍数还回来） ================= */

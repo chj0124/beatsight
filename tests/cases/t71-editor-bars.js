@@ -53,8 +53,7 @@ section("T71a 编辑器增删小节 · 「加一小节」复制当前小节并�
   eq(els["savePresetBtn"].disabled, false, "校验通过：保存键可用");
   ok(/校验通过/.test(els["editorStatus"].textContent), "状态栏报校验通过");
   ok(/5 小节/.test(els["editorCardTitle"].textContent),
-     "★ 卡片标题跟着小节数走（实际「" + els["editorCardTitle"].textContent + "」）");
-  ok(/5 小节/.test(els["editorTitle"].textContent), "编辑器标题同理");
+     "★ 卡片标题跟着小节数走（实际「" + els["editorCardTitle"].textContent + "」）；PLAN-v11 追补后小节数只由它承载（editorTitle 已退役）");
 }
 
 /* ================= 场景 T71b：删一小节 ================= */

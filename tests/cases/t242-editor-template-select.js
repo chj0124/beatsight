@@ -1,17 +1,19 @@
-/* BeatSight 自动化测试 · 编辑器模板下拉（v3.48.0 新功能）
+/* BeatSight 自动化测试 · 编辑器模板下拉（v3.48.0 新功能；PLAN-v11 追补改**状态型**）
    T242 系列。
    ---------------------------------------------------------------------------
    契约（编辑器顶栏「模板」下拉，#editorTplSel）：
      · 选项 = 占位「选模板…」+ 内置（value "b{idx}"，文案「内置 · 名」）+ 我的预设
        （value "c{id}"，文案「我的 · 名」）；每次 openWith 重建（自定义列表会变）；
      · 载入 = 只换**内容**（meter/accents/bars）——名称/标注/归属保留用户已填；
-       标题（editorTitle）改挂新底稿名；
-     · pushUndo 先行 = 一步可撤销（与换拍数同一纪律）；dirty 先确认（uiConfirm）；
-     · 动作型下拉：选完拨回占位（value ""）——它是动作不是状态。 */
+     · ★ 状态型（PLAN-v11 追补，用户拍板）：选中项 = 当前底稿（openWith 锁定 srcRef、
+       换模板随选更新），不再「选完回占位」——原标题行「基于「X」创建…」随之退役；
+     · pushUndo 先行 = 一步可撤销（与换拍数同一纪律）；dirty 先确认（uiConfirm），
+       确认前下拉先弹回当前底稿（无 onCancel，不留「显示已换、实际没换」假态）；
+     · 拍数下拉：选完值即生效（change 即应用）。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
 
-section("T242-1 模板下拉 · 选项构成 / 载入替换 / 名称归属保留 / 撤销 / 回占位");
+section("T242-1 模板下拉 · 选项构成 / 状态型常显 / 载入替换 / 名称归属保留 / 撤销");
 {
   const { beat, els } = loadApp();
   const Ed = beat.Editor, St = beat.Store;
@@ -29,8 +31,9 @@ section("T242-1 模板下拉 · 选项构成 / 载入替换 / 名称归属保留
   ok(names.includes("我的 · 我的分解"), "我的预设项在列（「我的 · 」前缀分组）");
   ok(sel.children.every(o => o.value === "" || String(o.value)[0] === "b" || String(o.value)[0] === "c"),
      "value 协议：b{内置下标} / c{自定义 id}");
+  eq(String(sel.value)[0], "b", "★ 状态型：openWith 后选中项 = 当前底稿（主入口 = 内置，不落占位）");
 
-  /* 载入内置 0：内容整体替换、标题改挂、名称/归属保留、回占位 */
+  /* 载入内置 0：内容整体替换、名称/归属保留、选中项停在所载模板（状态型） */
   const tpl = beat.BUILTINS[0];
   const nameBefore = els["presetNameInput"].value;
   const barsBefore = JSON.stringify(Ed.draft().bars);
@@ -38,10 +41,10 @@ section("T242-1 模板下拉 · 选项构成 / 载入替换 / 名称归属保留
   sel.value = "b0"; sel.fire("change");
   eq(JSON.stringify(Ed.draft().bars), JSON.stringify(tpl.bars), "★ 载入模板 → bars 整体替换");
   eq(Ed.draft().meter, tpl.meter, "★ 拍号随模板");
-  eq(sel.value, "", "★ 选完回占位（动作型下拉，不摆假态）");
-  ok(String(els["editorTitle"].textContent).includes("「" + tpl.name + "」"), "标题改挂新底稿名");
+  eq(sel.value, "b0", "★ 状态型：载入后选中项 = 所载模板（不再回占位）");
   eq(els["presetNameInput"].value, nameBefore, "★ 名称保留（不替用户改名）");
   eq(els["songNameInput"].value, "", "★ 归属保留（空仍空）");
+  ok(String(els["editorCardTitle"].textContent).includes("小节"), "小节数由卡片标题承载（标题行已退役）");
   ok(!Ed.draft().bars[0][0] || Ed.draft().bars[0][0] !== tpl.bars[0][0],
      "载入是拷贝不是引用（编辑草稿不回流内置型）");
 
@@ -59,11 +62,13 @@ section("T242-2 模板下拉 · dirty 先确认（丢弃保护与换拍数同口
   Ed.open();
   els["presetNameInput"].fire("input");           // 改名 = dirty（v3.31.x 挂的监听）
   const before = JSON.stringify(Ed.draft().bars);
+  const vBefore = els["editorTplSel"].value;      // 当前底稿（状态型常显）
   els["editorTplSel"].value = "b1"; els["editorTplSel"].fire("change");
   eq(JSON.stringify(Ed.draft().bars), before, "★ dirty 时先确认：未点确定内容不变");
-  eq(els["editorTplSel"].value, "", "未确认也回占位（先拨回再问，同拍数下拉手法）");
+  eq(els["editorTplSel"].value, vBefore, "★ 未确认弹回当前底稿（先拨回再问，不留「显示已换、实际没换」假态）");
   els["modalOk"].fire("click");                   // uiConfirm 确定
   eq(JSON.stringify(Ed.draft().bars), JSON.stringify(beat.BUILTINS[1].bars), "★ 确认后载入");
+  eq(els["editorTplSel"].value, "b1", "★ 确认后选中项停在所载模板（状态型）");
   Ed.tryClose();
 }
 
