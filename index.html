@@ -3883,7 +3883,6 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       </div>
       <div class="editor-actions">
         <button class="pill outline" id="auditionBtn">试听</button>
-        <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
       </div>
     </div>
     <!-- v2.37.0（c）：源型的引用信息——把「引用不追踪」的真相在最易误解的场景讲清。
@@ -3997,6 +3996,12 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <span style="font-size:12px;color:var(--t2)">归属</span>
         <input class="name-input" id="songNameInput" placeholder="歌名或练习名（必填）" aria-label="归属：这个名字是「自定义」区里那一行，也是自动建出的曲式的名字；没填不能保存" aria-describedby="songHint" maxlength="40">
         <span class="hint" id="songHint">没有同名曲式 → 自动建一条同名曲式，去「编排曲式」继续排段落</span>
+      </div>
+      <!-- ★ 用户需求（本版）：**保存为预设**从顶栏移到底部——「归属」行下方单独一行、右对齐。
+           保存是"填完 名称/标注/归属 之后"的收尾动作，从属关系更顺；顶栏只留「试听」（过程动作）。
+           id 不变 ⇒ 保存逻辑与禁用逻辑（editorRender 里那一段）零改动。 -->
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
       </div>
     </div>
   </div>
@@ -4840,23 +4845,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4872  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6527  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8762  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9990  Modal         应用内弹窗
-     L10135 Viz           时值可视化渲染与每帧动画
-     L13737 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14491 Trainer       变速训练器
-     L14708 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15371 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17360 Editor        自定义节奏型编辑器
-     L18215 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18310 Ear           听辨训练（v1.10.0）
-     L18538 Arrange       曲式编排（v2.0.0）
-     L22615 Help          使用方法（v2.0.1）
-     L22770 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22852 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23148 初始化（装配） 各模块 hook 接线与启动
+     L4877  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6532  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8767  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9995  Modal         应用内弹窗
+     L10140 Viz           时值可视化渲染与每帧动画
+     L13742 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14496 Trainer       变速训练器
+     L14713 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15376 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17365 Editor        自定义节奏型编辑器
+     L18220 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18315 Ear           听辨训练（v1.10.0）
+     L18543 Arrange       曲式编排（v2.0.0）
+     L22620 Help          使用方法（v2.0.1）
+     L22775 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22857 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23153 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -17767,7 +17772,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     songHint.textContent = songOk
       ? "没有同名曲式 → 自动建一条同名曲式，去「编排曲式」继续排段落"
       : "还差一步：填个归属名字才能保存（它同时是「自定义」区里那一行）";
-    /* 保存键在顶栏、名字框在卡片底部：给按钮挂上"为什么点不动"的说明，
+    /* 保存键在卡片底部（归属行下方）、名字/归属框也在底部：给按钮挂上"为什么点不动"的说明，
        键盘与读屏用户 Tab 到它时听得到（title 只是给鼠标用户的补充） */
     const saveBtn = $("savePresetBtn");
     saveBtn.disabled = !canSave;
