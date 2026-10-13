@@ -4914,18 +4914,18 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L8832  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L10060 Modal         应用内弹窗
      L10221 Viz           时值可视化渲染与每帧动画
-     L13827 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14581 Trainer       变速训练器
-     L14798 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15469 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17458 Editor        自定义节奏型编辑器
-     L18397 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18492 Ear           听辨训练（v1.10.0）
-     L18720 Arrange       曲式编排（v2.0.0）
-     L22798 Help          使用方法（v2.0.1）
-     L22953 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23035 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23331 初始化（装配） 各模块 hook 接线与启动
+     L13839 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14593 Trainer       变速训练器
+     L14810 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15481 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17470 Editor        自定义节奏型编辑器
+     L18409 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18504 Ear           听辨训练（v1.10.0）
+     L18732 Arrange       曲式编排（v2.0.0）
+     L22810 Help          使用方法（v2.0.1）
+     L22965 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23047 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23343 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4951,7 +4951,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.51.0";
+const VERSION = "3.51.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -11674,6 +11674,18 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   function buildViz(){
     vizSig = S.sig;                     // 锁定渲染拍号：paintFrame 在本帧结构生命周期内只认它
     const viz = $("viz");
+    /* ★★ v3.51.1（用户报障「歌词集中底部时，滚动后按播放 / 播到当前页最后一行 ⇒ 页面回弹」）：
+       **先量行宽，再清空**。根因链：clear(viz) 把整棵树清空 ⇒ 分页模式下 #viz 高度由内容撑开、
+       清空瞬间文档总高骤降；随后若在"树已清空、行未重建"的空窗里读一次布局（原实现是下方
+       chooseRowBeats 前的 wpx = viz.offsetWidth），浏览器就被按"塌缩的文档"强制排版一次，
+       页面滚动位置随之被钳回 / 重锚；行重建后高度恢复，但滚动位置不会自己回来。
+       ★ 为什么"贴在每行小节下"档不受影响：那档 #lyricLane 是**脱流的覆盖层**（absolute），
+         清空它不动文档总高；底部档它是**流内块**，同一机制在 buildLyricLane 里再来一次
+         （那边同样把量宽上提）。
+       修法：把这次量测提到 clear(viz) 之前——行宽由容器宽度决定、与内容无关，清空前读到的
+       值与清空后逐位相同。整个"清空 → 重建"因此对布局成为原子操作，中间塌缩态永远不会被
+       排版（顺带每次重建少一次强制回流，与"帧内零布局读取"同向）。 */
+    const vizW = (viz && typeof viz.offsetWidth === "number") ? viz.offsetWidth : 0;
     clear(viz);
     /* v3.0.0：scroll-mode 只在这里挂摘（随模式切换，与网格重建同一处，不会两处打架）。
        它带来 overflow:hidden —— 横滚的裁剪边界就是 #viz 的盒子 */
@@ -11696,12 +11708,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     const ap = activePattern();
     vizPatLen = patBars(ap);            // 内容模数（型长）：本帧结构生命周期内只认它
     /* v2.15.0：**先定"每行几拍"再合成窗口**——窗口、切片、所有映射都依赖它。
-       行宽取 #viz 的当前宽度（量测只发生在这里与 relayout，不在帧内）；内容密度取
-       正在播放的型的**最短时值**：宽到够读就整小节，挤到读不清才逐级拆。 */
+       内容密度取正在播放的型的**最短时值**：宽到够读就整小节，挤到读不清才逐级拆。
+       ★ v3.51.1：行宽（vizW）已在函数顶部、clear(viz) **之前**量好——此处不再读布局。 */
     {
-      const vizEl = viz;
-      const wpx = (vizEl && typeof vizEl.offsetWidth === "number") ? vizEl.offsetWidth : 0;
-      vizRowBeats = chooseRowBeats(wpx, vizSig, minStepOf(ap));
+      vizRowBeats = chooseRowBeats(vizW, vizSig, minStepOf(ap));
     }
     /* ★ v3.0.0（PLAN-v9 D6）：scroll 下**一行恒等于整小节**——不进 chooseRowBeats。
        理由：横滚的相位是「一小节 = 一格宽度」的连续量，若行被切成半小节／四分之一小节，
@@ -12528,6 +12538,16 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
   function buildLyricLane(){
     const lane = $("lyricLane");
     if (!lane) return;
+    /* ★★ v3.51.1（与 buildViz 顶部同因，用户报障「歌词集中底部时，滚动后按播放 / 播到当前页
+       最后一行 ⇒ 页面回弹」）：**先量宽、再清空**。底部档 #lyricLane 是**流内块**，清空瞬间
+       文档总高塌掉一条歌词轨；若在"已清空、行未重建"的空窗里读一次布局（原实现的位置是下方
+       laneW 那行），浏览器就被按"塌缩的文档"强制排版、把页面滚动位置拽走。行重建后高度恢复，
+       但滚动位置不会自己回来。
+       ★ 基准取 **#viz 的宽**（v3.38.1 口径）——与网格拆行用的 wpx 同源，两轨同在 .viz-band、
+         本就同宽；它不依赖 lane 内容，故清空前读与清空后逐位相同。退路 lane.offsetWidth 只在
+         #viz 量不到时才求值，一并提前，语义不变。宽度供音高标记的窄格三级降级用（见下方）。 */
+    const vizEl = $("viz");
+    const laneW = (vizEl && vizEl.offsetWidth) || lane.offsetWidth || 0;
     lyricEl = lane; lyricChipEls = []; lyricFillEls = []; lyricRows = [];
     lyricRunSig = ""; lyricW = 0; lastLyricStates = "";
     clear(lane);
@@ -12557,24 +12577,16 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
        ★★ v3.33.2：行数改走 **slotRowCount()**，与网格逐位同源（此前这里另写一份判据、
          多行档漏了 +1 ⇒ 进场行没有词；详见该函数注释）。t186 直断言两轨行数恒等。 */
     const laneRows = slotRowCount();
-    /* ★ v3.38.1：本轨行宽（px）——供音高标记的**窄格三级降级**判据用。只在这里量一次
-       （buildLyricLane 是重建路径，不是帧内热路径；与 chooseRowBeats 一样是"构建时现算、不持久化"）。
+    /* ★ v3.38.1：本轨行宽（laneW）——供音高标记的**窄格三级降级**判据用。
+       ★ v3.51.1：该量测已上提到函数顶部、clear(lane) **之前**（见顶部说明）——
+         "已清空、行未重建"的空窗里不得有任何布局读取。
+       基准取 **#viz 的宽**（不取 lane 自己的）：伴随节奏（overlay）模式下 lane 的宽度是**之后**
+       才由 placeLaneOverlay 写上的（lane.style.width = vr.width），若读 lane.offsetWidth 会读到
+       上一帧/空值 —— 降级档与真实格宽不一致。而 #viz 的宽正是网格拆行用的那个数
+       （chooseRowBeats 的 wpx 同源），两轨本就同宽。
        量不到（隐藏态 / 测试桩无布局 / 未布局）⇒ 0 ⇒ pitchFitClass 回落默认宽档，不误判成窄格。
-       ★ 与网格的关系：网格与歌词轨同在 .viz-band 里、同宽，故两者用同一个行宽口径。
-       ★ 已知边界（与 chooseRowBeats 同款、写进契约）：resize 播放中"只重采几何、不重建 DOM"，
-         故降级档最迟在下一次翻页/换型时按新宽度生效。 */
-    /* ★★ v3.38.1 修正（真机闸抓到的顺序缺陷）：宽度基准取 **#viz 的宽**，不取 lane 自己的。
-       根因：伴随节奏（overlay）模式下 lane 的宽度是**之后**才由 placeLaneOverlay 写上的
-       （lane.style.width = vr.width），buildLyricLane 跑在它之前 ⇒ 读 lane.offsetWidth 会读到
-       上一帧/空值：首帧读到 0（不降级），此后读到的是旧宽 —— 降级档与真实格宽不一致。
-       而 #viz 的宽正是网格自己拆行用的那个数（chooseRowBeats 的 wpx 同源），两轨本就同宽。
-       量不到（隐藏态 / 桩无布局）⇒ 0 ⇒ pitchFitClass 回落默认宽档，不误判成窄格。
        ★ 已知边界（与 chooseRowBeats 同款）：resize 播放中"只重采几何、不重建 DOM"，
          故降级档最迟在下一次翻页/换型时按新宽度生效。 */
-    /* ★ 必须显式 $("viz")：真机上 id 会变成 window 全局（window.viz 恰好在），**桩里没有**——
-       写裸 `viz` 会真机绿、桩里 ReferenceError（本版真被这个坑绊了一次）。 */
-    const vizEl = $("viz");
-    const laneW = (vizEl && vizEl.offsetWidth) || lane.offsetWidth || 0;
     /* v3.0.1：回卷范围走 scrollWrapRange()——与 buildViz / arrWindowPat 同一来源（批 7 立训：
        判据各写一份必分叉）。取字位置随之改走 foldSeg：范围循环（如 [5,10]）下原先这里按
        **全曲**取模、网格按**范围**折回——同一槽歌词与格子对不上（潜在分叉，本次顺手收口）；
