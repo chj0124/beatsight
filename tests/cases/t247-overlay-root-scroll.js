@@ -58,7 +58,7 @@ section("T247-2 源码钉 · CSS 规则存在、四个全屏弹层在名单、�
 {
   ok(/html\.bs-overlay-open, html\.bs-overlay-open body\{overflow:hidden\}/.test(html),
      "★ CSS：弹层打开期间根滚动条隐藏（html 与 body 双写，防 body 溢出传播）");
-  const m = /const SCROLL_LOCK_OVERLAYS = \{([^}]*)\}/.exec(html);
+  const m = /const SCROLL_LOCK_OVERLAYS = [^;]*?\(\{([^}]*)\}\)/.exec(html);   /* 兼容 JSDoc 类型 cast 包裹 */
   ok(!!m, "前提：锁名单存在");
   for (const id of ["editor", "arrangeOverlay", "earOverlay", "helpOverlay"]){
     ok(new RegExp(id + ":\\s*1").test(m[1]), "★ 名单含 " + id + "（.editor 家族全屏弹层）");

@@ -4915,13 +4915,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L14789 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
      L15460 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
      L17449 Editor        自定义节奏型编辑器
-     L18386 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18481 Ear           听辨训练（v1.10.0）
-     L18709 Arrange       曲式编排（v2.0.0）
-     L22787 Help          使用方法（v2.0.1）
-     L22942 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23024 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23320 初始化（装配） 各模块 hook 接线与启动
+     L18388 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18483 Ear           听辨训练（v1.10.0）
+     L18711 Arrange       曲式编排（v2.0.0）
+     L22789 Help          使用方法（v2.0.1）
+     L22944 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23026 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23322 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -10138,7 +10138,7 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
      再出一条 → 右侧并排两条。开合经本协议计数收口，四个全屏弹层一处全修。
      settingsOverlay 是 .dialog 浮层小窗（不全屏、自身不滚），**不在锁的范围**——锁了反而让
      弹窗四周可见的主界面因滚动条消失而横移（恰恰破坏 v3.19.0 那条预留的初衷）。 */
-  const SCROLL_LOCK_OVERLAYS = { editor: 1, arrangeOverlay: 1, earOverlay: 1, helpOverlay: 1 };
+  const SCROLL_LOCK_OVERLAYS = /** @type {Record<string, number>} */ ({ editor: 1, arrangeOverlay: 1, earOverlay: 1, helpOverlay: 1 });
   let scrollLockCount = 0;
   function rootScrollLock(/** @type {boolean} */ on){
     const root = document.documentElement;
@@ -17458,7 +17458,7 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
   /* 当前底稿身份 srcRef：模板下拉（状态型）常显「内置 · 名 / 我的 · 名」的依据。
      它在 openWith 时锁定——运行期其他时机（撤销、增删小节）不去问 curPattern()，
      那时用户可能已经改了选中的预设；换模板随选更新（applyTpl）。 */
-let srcRef = null;   /* PLAN-v11 追补：当前底稿身份（{type:"builtin",idx} | {type:"custom",id}）——
+let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (null);   /* PLAN-v11 追补：当前底稿身份（{type:"builtin",idx} | {type:"custom",id}）——
                         模板下拉（状态型）常显用；open() 传 S.sel、编排页 ✎ 传块 ref、换模板随选更新 */
 
   /* v3.31.x（审计 P3-4）：名称/标注输入挂进草稿状态机——此前两输入无任何监听，dirty 只由
@@ -17533,7 +17533,7 @@ let srcRef = null;   /* PLAN-v11 追补：当前底稿身份（{type:"builtin",i
     if (!tpl || !Array.isArray(tpl.bars) || !tpl.bars.length){ sel.value = tplSelValue(srcRef); return; }
     const applyTpl = () => {
       pushUndo();                                   // 先快照——Ctrl+Z 一步退回
-      srcRef = v[0] === "b" ? { type: "builtin", idx: +v.slice(1) } : { type: "custom", id: tpl.id };
+      srcRef = v[0] === "b" ? { type: "builtin", idx: +v.slice(1) } : { type: "custom", id: (/** @type {any} */ (tpl)).id };
       d.meter = tpl.meter;
       d.accents = (tpl.accents || defaultAccents(tpl.meter)).slice();
       d.bars = tpl.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s})));
@@ -17738,15 +17738,17 @@ let srcRef = null;   /* PLAN-v11 追补：当前底稿身份（{type:"builtin",i
   function syncEdPop(){
     const pop = $("edPop");
     if (!pop) return;
-    if (!edSel) edPopShown = false;
+    /* tsc 口径：edSel 是模块级 let，TS 无法跨语句收窄 → 先落成 const 局部再判空 */
+    const sel = edSel;
+    if (!sel) edPopShown = false;
     pop.hidden = false;                       /* 首次同步后由 .off 接管显隐（hidden 只管初始流式态） */
-    const show = !!(edSel && edPopShown);
+    const show = !!(sel && edPopShown);
     pop.classList.toggle("off", !show);
-    if (!show) return;
+    if (!show || !sel) return;
     const d = draft;
-    const cell = edCellOf(edSel.bar, edSel.idx);
+    const cell = edCellOf(sel.bar, sel.idx);
     if (!d || !cell){ edPopShown = false; pop.classList.add("off"); return; }
-    $("edPopMeta").textContent = "小节 " + (edSel.bar + 1) + " · 第 " + (edSel.idx + 1) + " 格 · " + Viz.stepLabel(d.bars[edSel.bar][edSel.idx]);
+    $("edPopMeta").textContent = "小节 " + (sel.bar + 1) + " · 第 " + (sel.idx + 1) + " 格 · " + Viz.stepLabel(d.bars[sel.bar][sel.idx]);
     const host = pop.offsetParent;
     if (!host || !host.getBoundingClientRect || typeof cell.getBoundingClientRect !== "function") return;
     const hr = host.getBoundingClientRect(), cr = cell.getBoundingClientRect();
@@ -17762,7 +17764,7 @@ let srcRef = null;   /* PLAN-v11 追补：当前底稿身份（{type:"builtin",i
     $("edPopArr").style.left = Math.min(Math.max(centerX - left - 5, 8), pw - 18) + "px";
   }
   /** 编辑器第 b 小节第 i 格（桩与真机同构：editorBars.children[b]._edCells[i]） */
-  function edCellOf(b, i){
+  function edCellOf(/** @type {number} */ b, /** @type {number} */ i){
     const wrap = $("editorBars");
     const row = wrap && wrap.children[b];
     return (row && row._edCells) ? row._edCells[i] : null;
