@@ -537,7 +537,10 @@ function loadApp(seed, opts){
         return [];
       },
       addEventListener: (t, f) => addTo(docH, t, f),
-      body: makeEl("body"),
+      /* PLAN-v11 追补：真实 DOM 恒有 documentElement（Modal 的根滚动条锁在 <html> 上挂类），
+       桩缺了它产品代码一开弹层就 TypeError */
+    documentElement: makeEl("html"),
+    body: makeEl("body"),
       head: makeEl("head"),            // v1.4：PWA manifest <link> 的落点
       activeElement: { tagName: "DIV" },
       hidden: false,                 // v1.3.0：前台/后台切换（P1-3 自适应窗口断言用）

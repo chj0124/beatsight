@@ -122,6 +122,9 @@
      视口**（fixed 底栏按被撑大的初始包含块排布 ⇒ 比屏幕宽、右侧控件跑到屏外）。正解是**根元素**上
      的 `overflow-x:clip`，落在 ≤960 档那条（含实测数字，以及"为什么不能只裁 body"）。 */
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-y:scroll;scrollbar-gutter:stable}   /* ★ v3.19.0：滚动条槽恒定预留——面板打开 → 卡片变高 → 页面出滚动条 → 视口窄 15px → 居中网格整体平移 7.5px（实测音量列 220→212.5，也是历届"boot 歌词错位"的深层因素之一）。恒定预留后开关列零横移；overflow-y:scroll 兜底不支持 scrollbar-gutter 的老浏览器 */
+/* ★ PLAN-v11 追补（用户实拍「两条滚动条」）：全屏弹层打开期间隐藏根滚动条，只留弹层自己的那条。
+   主界面全程被弹层盖住，开/关两个瞬间都看不到跳动；uiConfirm 小弹窗与设置浮层不在其列。 */
+html.bs-overlay-open, html.bs-overlay-open body{overflow:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 button:disabled{cursor:not-allowed}
 /* 焦点可见性（v2.0.2）：全局重置抹掉了浏览器默认焦点框，键盘用户 Tab 不到位置——
@@ -4902,23 +4905,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4934  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6589  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8824  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10052 Modal         应用内弹窗
-     L10197 Viz           时值可视化渲染与每帧动画
-     L13799 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14553 Trainer       变速训练器
-     L14770 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15441 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17430 Editor        自定义节奏型编辑器
-     L18367 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18462 Ear           听辨训练（v1.10.0）
-     L18690 Arrange       曲式编排（v2.0.0）
-     L22768 Help          使用方法（v2.0.1）
-     L22923 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23005 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23301 初始化（装配） 各模块 hook 接线与启动
+     L4937  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6592  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8827  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10055 Modal         应用内弹窗
+     L10216 Viz           时值可视化渲染与每帧动画
+     L13818 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14572 Trainer       变速训练器
+     L14789 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15460 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17449 Editor        自定义节奏型编辑器
+     L18386 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18481 Ear           听辨训练（v1.10.0）
+     L18709 Arrange       曲式编排（v2.0.0）
+     L22787 Help          使用方法（v2.0.1）
+     L22942 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23024 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23320 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -10129,15 +10132,28 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
      · openOverlay 幂等：已开则不再重复登记（此前重复 open 会让前一个 untrap 闭包被覆盖后丢失）。
      · closeOverlay 先清监听器再归还焦点，最后重算 inert（顺序与原先逐条写死时一致）。 */
   const overlayScopes = /** @type {Record<string, { untrap: null | (() => void), entries: Array<{ target: any, type: string, fn: any, opts: any }> }>} */ ({});
+  /* ★ PLAN-v11 追补（用户实拍「两条滚动条」）：全屏弹层（.editor 家族：编辑 / 编排 / 听辨 / 使用方法）
+     打开期间隐藏根滚动条——body 的 overflow-y:scroll + scrollbar-gutter:stable 是主界面防横移的
+     **恒定预留**，但 position:fixed inset:0 盖不住窗口边缘那条根滚动条，弹层自身 overflow-y:auto
+     再出一条 → 右侧并排两条。开合经本协议计数收口，四个全屏弹层一处全修。
+     settingsOverlay 是 .dialog 浮层小窗（不全屏、自身不滚），**不在锁的范围**——锁了反而让
+     弹窗四周可见的主界面因滚动条消失而横移（恰恰破坏 v3.19.0 那条预留的初衷）。 */
+  const SCROLL_LOCK_OVERLAYS = { editor: 1, arrangeOverlay: 1, earOverlay: 1, helpOverlay: 1 };
+  let scrollLockCount = 0;
+  function rootScrollLock(/** @type {boolean} */ on){
+    const root = document.documentElement;
+    if (root && root.classList) root.classList.toggle("bs-overlay-open", on);
+  }
   /** @param {string} id */
   function openOverlay(id){
     const el = $(id);
     if (!el) return;
-    el.classList.add("open");
-    refreshInert();
     let sc = overlayScopes[id];
     if (!sc) sc = overlayScopes[id] = { untrap: null, entries: [] };
     if (sc.untrap) return;                 // 幂等：重复打开不重复登记（否则前一个 untrap 被覆盖后永久丢失）
+    el.classList.add("open");
+    refreshInert();
+    if (SCROLL_LOCK_OVERLAYS[id]){ scrollLockCount++; rootScrollLock(true); }
     sc.untrap = trapFocus(el);
   }
   /* 打开期间登记监听器，关闭 / 重建时统一解绑。
@@ -10169,7 +10185,10 @@ let modalOpen = /** @type {boolean} */ (false), modalOkCb = /** @type {null | ((
     const sc = overlayScopes[id];
     if (sc){
       unbindOverlay(id);
-      if (sc.untrap){ sc.untrap(); sc.untrap = null; }
+      if (sc.untrap){
+        sc.untrap(); sc.untrap = null;
+        if (SCROLL_LOCK_OVERLAYS[id]){ scrollLockCount = Math.max(0, scrollLockCount - 1); rootScrollLock(scrollLockCount > 0); }
+      }
     }
     refreshInert();
   }
