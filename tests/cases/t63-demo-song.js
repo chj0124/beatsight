@@ -155,8 +155,8 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
      （undefined 与 false 在 demoPresetEq 的 canon 里同值，语义等价） */
   eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, dir: "D" }),
      "P1 格0 = 全部弦下扫（v2.29.0：全扫缺省不写 zone，谱面 F 当年误映射成 1 已修正）");
-  eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U" }),
-     "P1 格1 = 空扫上扫（蓝括号：rest+dir，不带 zone）");
+  eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U", air: true }),
+     "P1 格1 = 空扫上扫（v3.52.0 两轴独立：rest+dir+air，不带 zone）");
   eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, dir: "D", zone: 0 }),
      "P1 格6 = 低音弦区下扫（B→zone0）");
   const p4 = pByName(beat, "节奏型4（《在他乡》）");   // ★ 本版：P4 特征名改编号名（旧两代名由迁移表认回）

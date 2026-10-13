@@ -55,8 +55,8 @@ section("T114a 发声开关 · 未选中禁用与提示");
   eq(ast.hint, "", "未选中 → airHint 空串");
 }
 
-/* ================= 场景 T114b：发声 → 休止（dir/zone 保留，t 不动） ================= */
-section("T114b 发声开关 · 发声翻休止：dir/zone 保留、时长不动、撤销可逆");
+/* ================= 场景 T114b：restRow 只改 rest（时长/方向/弦区不动） ================= */
+section("T114b 发声开关 · restRow 只改 rest：dir/zone 保留、时长不动、撤销可逆");
 {
   const { beat, els } = loadApp();
   ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "翻转素材", meter: 4,
@@ -69,26 +69,25 @@ section("T114b 发声开关 · 发声翻休止：dir/zone 保留、时长不动�
   edCellsOf(els, 0)[0].fire("click");                 // 选中 {t:48, dir:"D", zone:0}
   let st = restState(els);
   ok(!st.disabled, "选中发声音符 → 开关启用");
-  eq(st.pressed, "false", "发声中 → aria-pressed=false");
-  ok(st.hint.includes("发声中"), "提示语反映当前态");
-  ok(st.hint.includes("空扫"), "已有方向时提示语点明「翻过去即成空扫」");
+  eq(st.pressed, "false", "发声中 → 休止档 false");
+  ok(st.hint.includes("发声中"), "restHint 反映当前态");
 
   els["restRow"].fire("click", { target: pill({ rest: "on" }) });
   const s0 = beat.Editor.draft().bars[0][0];
-  eq(s0.rest, true, "点击开关 → 该步 rest=true");
-  eq(s0.dir, "D", "★ dir 原样保留（翻转不碰标注）");
+  eq(s0.rest, true, "点「休止」→ 该步 rest=true");
+  eq(s0.dir, "D", "★ dir 原样保留（发声行不碰方向）");
   eq(s0.zone, 0, "★ zone 原样保留");
   eq(s0.t, 48, "★ t 一字不动（rest 是占位字段不是时值）");
   eq(beat.Editor.draft().bars[0].reduce((n, s) => n + s.t, 0), 192,
-     "barSum 不变（192）——小节完整性不受翻转影响，保存可用性不受牵连");
+     "barSum 不变（192）——小节完整性不受影响");
+  eq(s0.air, false, "★ 休止 + 方向 → air 落显式 false（= 实扫 + 休止，不是空扫）");
   st = restState(els);
-  eq(st.pressed, "true", "翻转后 aria-pressed=true（与高亮同源）");
-  ok(st.hint.includes("空扫"), "休止 + 方向 → 提示语点明它已是空扫");
-  const cellCls = " " + edCellsOf(els, 0)[0].className + " ";
-  ok(/ rest /.test(cellCls), "编辑器格子挂上 .rest（灰底休止样式）");
-  /* v2.74.0（2.7）：空扫字形改 .strumv.ghost 蓝虚线（ed-air 退役，主视图同款） */
-  const ghosts = edCellsOf(els, 0)[0].children.filter(c => /(^| )ghost( |$)/.test(c.className));
-  eq(ghosts.length, 1, "★ 休止槽带方向 → 内联 .strumv.ghost 蓝虚线，不是 .ed-strum");
+  eq(st.pressed, "true", "翻转后休止档 true（与高亮同源）");
+  ok(/ rest /.test(" " + edCellsOf(els, 0)[0].className + " "), "编辑器格子挂上 .rest（灰底休止样式）");
+  const sv0 = edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className));
+  eq(sv0.length, 1, "实扫 + 休止仍有竖箭头");
+  ok(sv0.every(c => /(^| )dn( |$)/.test(c.className) && !/(^| )ghost( |$)/.test(c.className)),
+     "★ 实扫 + 休止 = 实心箭头（air=false ⇒ 不带 ghost）");
 
   beat.Editor.undo();
   const back = beat.Editor.draft().bars[0][0];
@@ -97,61 +96,83 @@ section("T114b 发声开关 · 发声翻休止：dir/zone 保留、时长不动�
   ok(els["restRow"].children[0].disabled, "撤销清了选中（edSel=null）→ 开关回到禁用");
 }
 
-/* ================= 场景 T114c：无方向的发声 → 普通休止（不补默认方向） =================
-   用户拍板 a 方案：toggle 只翻 rest。「休止」与「空扫」是两个既有合法状态，
-   路径交给用户自己接（再点方向档），不替用户塞 dir:"D" 制造意外。 */
-section("T114c 发声开关 · 无方向音符翻过去是普通休止（不自动补方向）");
+/* ================= 场景 T114c：airRow 只改 air（四组合，rest/dir 不动） ================= */
+section("T114c 空扫开关 · airRow 只改 air：实扫/空扫各配发声 or 休止");
 {
   const { beat, els } = loadApp();
-  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "无方向素材", meter: 4,
-    bars: [0,1,2,3].map(() => [{ t:48 }, { t:48 }, { t:48 }, { t:48 }]) }] })).ok, "纯节拍预设导入成功");
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "两轴素材", meter: 4,
+    bars: [[{ t:48, dir:"D" }, { t:48, rest:true }, { t:48 }, { t:48 }]] }] })).ok, "两轴素材导入成功");
   beat.Store.S.sel = { type:"custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
+
+  /* ① 发声 + 实扫 → 空扫：rest 不动（仍发声），dir 保留 */
   edCellsOf(els, 0)[0].fire("click");
-  els["restRow"].fire("click", { target: pill({ rest: "on" }) });
-  const s0 = beat.Editor.draft().bars[0][0];
-  eq(s0.rest, true, "翻转后 rest=true");
-  eq(s0.dir, undefined, "★ 不自动补默认方向（决策点 a）：它现在是普通休止，不是空扫");
-  ok(restState(els).hint.includes("休止中") && !restState(els).hint.includes("空扫"),
-     "提示语区分「普通休止」与「空扫」两种翻转结果");
-  /* 要空扫：再点方向档即成（两步路径的另一半，走的是既有 dirRow 通道） */
+  eq(airState(els).pressed, "false", "实扫 + 发声 → 空扫档 false");
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });
+  let s0 = beat.Editor.draft().bars[0][0];
+  eq(s0.air, true, "点「空扫」→ air=true");
+  eq(s0.rest, false, "★ rest 不动（空扫 + 发声：这一格仍出声）");
+  eq(s0.dir, "D", "★ dir 保留（有方向空扫 = 带箭头蓝虚线）");
+  ok(/(^| )ghost( |$)/.test((edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className))[0] || {}).className),
+     "空扫 + 发声 → .ghost 蓝虚线");
+
+  /* ② 空扫 + 发声 → 点「实扫」：rest 仍不动（改回实扫但依旧发声） */
+  els["airRow"].fire("click", { target: pill({ air: "off" }) });
+  s0 = beat.Editor.draft().bars[0][0];
+  eq(s0.air, false, "点「实扫」→ air=false");
+  eq(s0.rest, false, "★ rest 仍不动（实扫 + 发声）");
+  eq(s0.dir, "D", "★ dir 不动");
+
+  /* ③ 休止（无方向）→ 空扫：得「无方向空扫 + 休止」= 无头蓝虚线杆 */
+  edCellsOf(els, 0)[1].fire("click");
+  eq(airState(els).hint.includes("空扫"), true, "空扫行提示点出「手过不触弦」");
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });
+  const s1 = beat.Editor.draft().bars[0][1];
+  eq(s1.air, true, "休止格点「空扫」→ air=true");
+  eq(s1.rest, true, "★ rest 不动（空扫 + 休止）");
+  eq(s1.dir, undefined, "无方向 → 无头空扫");
+  const sv1 = edCellsOf(els, 0)[1].children.filter(c => /(^| )strumv( |$)/.test(c.className));
+  eq(sv1.length, 1, "无方向空扫仍生成记号");
+  ok(/(^| )ghost( |$)/.test((sv1[0] || {}).className) && /(^| )air( |$)/.test((sv1[0] || {}).className) && !/(^| )(dn|up|arp)( |$)/.test((sv1[0] || {}).className),
+     "★ 无方向空扫 = .strumv.ghost.air（无头蓝虚线杆）");
+
+  /* ④ 再点「实扫」：air=false，rest 仍休止 → 纯休止 */
+  els["airRow"].fire("click", { target: pill({ air: "off" }) });
+  const s1b = beat.Editor.draft().bars[0][1];
+  eq(s1b.air, false, "点「实扫」→ air=false");
+  eq(s1b.rest, true, "rest 仍休止");
+  eq(edCellsOf(els, 0)[1].children.filter(c => /(^| )strumv( |$)/.test(c.className)).length, 0,
+     "纯休止（无方向、air=false）不生成记号");
+
+  /* 反向：从空扫点「发声」——发声行只改 rest，空扫标记保留 */
   edCellsOf(els, 0)[0].fire("click");
-  els["dirRow"].fire("click", { target: pill({ dir: "D" }) });
-  eq(beat.Editor.draft().bars[0][0].dir, "D", "补方向后同一格升级为空扫（rest+dir）");
-  ok(restState(els).hint.includes("空扫"), "提示语随之点明空扫");
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });     // 空扫
+  els["restRow"].fire("click", { target: pill({ rest: "on" }) });   // 休止
+  let s0c = beat.Editor.draft().bars[0][0];
+  eq(s0c.air, true, "★ 「发声/休止」行不动空扫标记（air 仍 true）");
+  eq(s0c.rest, true, "rest 已改为休止 → 空扫 + 休止");
+  els["restRow"].fire("click", { target: pill({ rest: "off" }) });
+  s0c = beat.Editor.draft().bars[0][0];
+  eq(s0c.air, true, "★ 再点「发声」：air 仍 true（空扫 + 发声）");
+  eq(s0c.rest, false, "rest=false");
 }
 
-/* ================= 场景 T114d：空扫 → 发声（反向）＋ airRow 空扫档同源 ================= */
-section("T114d 发声开关 · 空扫翻回发声：dir 保留、恢复实心标注");
+/* ================= 场景 T114d：撤销往返（两组开关各自入栈） ================= */
+section("T114d 两组开关 · 撤销往返保真");
 {
   const { beat, els } = loadApp();
-  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "空扫素材", meter: 4,
-    bars: [0,1,2,3].map(() => [{ t:48, rest:true, dir:"D" }, { t:48 }, { t:48 }, { t:48 }]) }] })).ok,
-    "空扫预设导入成功（rest+dir 合法记谱）");
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "往返素材", meter: 4,
+    bars: [[{ t:48, dir:"D" }, { t:48 }, { t:48 }, { t:48 }]] }] })).ok, "往返素材导入成功");
   beat.Store.S.sel = { type:"custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
   edCellsOf(els, 0)[0].fire("click");
-  let st = restState(els);
-  eq(st.pressed, "true", "选中空扫 → 休止档 aria-pressed=true");
-  ok(st.hint.includes("空扫"), "提示语点明当前是空扫");
-  eq(airState(els).pressed, "true", "★ 空扫 → airRow 空扫档 aria-pressed=true（rest && dir）");
-  els["restRow"].fire("click", { target: pill({ rest: "off" }) });   // 点「发声」档
-  const s0 = beat.Editor.draft().bars[0][0];
-  eq(s0.rest, false, "点「发声」→ rest=false（恢复发声）");
-  eq(s0.dir, "D", "★ dir 原样保留——空扫翻回去就是带方向的实扫");
-  const svD = edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className) && /(^| )dn( |$)/.test(c.className));
-  eq(svD.length, 1, "编辑器内联回实心方向箭头（.strumv.dn，v3.52.0 取代 .ed-strum 字形）");
-  ok(svD.every(c => !/(^| )ghost( |$)/.test(c.className)), "恢复发声 → 实心（不带 ghost）");
-
-  /* 往返：发声+dir → 点「休止」→ 空扫（dir 保留）；undo 一次回到发声 */
-  edCellsOf(els, 0)[0].fire("click");
-  els["restRow"].fire("click", { target: pill({ rest: "on" }) });
-  eq(beat.Editor.draft().bars[0][0].rest, true, "点「休止」→ 回到休止/空扫");
-  eq(airState(els).pressed, "true", "带方向的休止即空扫 → airRow 空扫档高亮");
+  const before = JSON.stringify(beat.Editor.draft().bars[0][0]);
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });     // 空扫
+  ok(/"air":true/.test(JSON.stringify(beat.Editor.draft().bars[0][0])), "写入 air:true");
   beat.Editor.undo();
-  eq(beat.Editor.draft().bars[0][0].rest, false, "undo 一次 → 回到发声（每次点击各占一条快照）");
+  eq(JSON.stringify(beat.Editor.draft().bars[0][0]), before, "★ 撤销整步 JSON 逐字回到原形（rest/dir/air 全保真）");
 }
 
 /* ================= 场景 T114e：发声层——空扫静默，其余音符时刻一字不动 =================

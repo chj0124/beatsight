@@ -227,6 +227,6 @@ section("T202j secOnsetTicks · 自动对齐仍排除空扫；手动拖动的锚
   ok(manual.length > auto.length, "★ 两者确实不同（否则等于没改）");
   ok(/drag\.anchors = secOnsetTicks\(secObj, true\);/.test(src),
      "★★ 源码钉：拖动的磁吸锚点集走 includeGhost 版本");
-  ok(/if \(\(!s\.rest \|\| \(includeGhost && \(!!s\.dir \|\| s\.air === true\)\)\) && cum % LYRIC_GRID === 0\)/.test(src),
-     "★ 源码钉：空扫（rest && (dir||air)）在 includeGhost 下计入落点");
+  ok(/if \(\(!s\.rest \|\| \(includeGhost && s\.air === true\)\) && cum % LYRIC_GRID === 0\)/.test(src),
+     "★ 源码钉：空扫（air）在 includeGhost 下计入落点");
 }

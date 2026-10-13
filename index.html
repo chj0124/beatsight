@@ -3999,15 +3999,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <button class="pill" data-zone="2" aria-pressed="false" disabled>高弦区 ①②③</button>
           <span class="hint" id="zoneHint"></span>
         </div>
-        <!-- 发声 / 空扫两组开关（v2.45.0 单 toggle → v3.52.0 两组）：restRow 翻 rest（发声/休止），
-             airRow 写 air / 清 dir（实扫/空扫）。两组操作的是**不同字段**、无重叠路径：
-               · 休止 = rest=true（dir/air 原样）；· 发声 = rest=false 且删 air（dir 保留）；
-               · 空扫 = rest=true, air=true（dir 保留：有 dir → 带箭头空扫，无 dir → 无方向空扫）；
-               · 实扫 = 删 air；若 rest 且有 dir → 连 dir 一起删（休止格上的 dir 就是空扫记号，
-                 留箭头就不是实扫）⇒ 结果 = 普通休止。
+        <!-- 发声 / 空扫两组开关（v2.45.0 单 toggle → v3.52.0 两轴独立）：restRow 只翻 rest（发声/休止），
+             airRow 只翻 air（实扫/空扫）。**两组互不决定**——四种组合都合法：
+               · 发声+实扫 = 普通扫弦；· 休止+实扫 = 触弦不出声（切音）；
+               · 发声+空扫 = 手过不触弦但这一格出声；· 休止+空扫 = 手过不触弦且不出声。
              为什么要两组（用户记谱习惯，2026-10-14 拍板）：相邻空扫块往往只给首块标方向，
-             其余空扫块**无方向**——单开关无法表达，且「休止」一词只覆盖真空休止、说不清
-             「不触弦但手在动」。四词（实扫/空扫/发声/休止）= rest 位 × 方向有无的完整命名。
+             其余空扫块**无方向**——单开关无法表达；且「空扫」可能仍有声（余音延续）、
+             「休止」是手也不动。故把它拆成「手部动作（实扫/空扫）」与「出不出声（发声/休止）」两条轴。
              rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响。 -->
         <div class="ed-dir" id="restRow" role="group" aria-label="发声开关（发声/休止）">
           <span class="hint">发声</span>
@@ -4016,7 +4014,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <span class="hint" id="restHint"></span>
         </div>
         <div class="ed-dir" id="airRow" role="group" aria-label="空扫开关（实扫/空扫）">
-          <span class="hint">记法</span>
+          <span class="hint">手部</span>
           <button class="pill" data-air="off" aria-pressed="false" disabled>实扫</button>
           <button class="pill" data-air="on" aria-pressed="false" disabled>空扫</button>
           <span class="hint" id="airHint"></span>
@@ -4528,10 +4526,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             （再点音符块库改成你要的）；「− 删当前小节」删掉它，<b>最少留 1 小节</b>
             ——一个节奏型可以是你需要的任意长度（1–64 小节），不一定非是 4 小节</li>
           <li>扫弦方向 ↑↓ 是可选标注，只影响显示，不影响发声；字形按手部动作走（<b>下扫画 ↑</b>、上扫画 ↓）</li>
-          <li>休止符上也能标方向 = <b>空扫</b>：手在动、弦不出声，用<b>蓝色虚线箭头</b>画出来；
-            相邻空扫块只给首块标方向时，其余块可用「空扫」开关标成<b>无方向空扫</b>（无头蓝虚线杆）。
-            选中音符后有两组开关：<b>发声 / 休止</b>改「发不发声」，<b>实扫 / 空扫</b>改「手部动作记法」。
-            「空扫」保留已有方向为箭头、无方向则记成无方向空扫（一并转为休止）；「实扫」清掉空扫记号（休止格上连同方向一起清，回到普通休止）。时长（占位）始终不变</li>
+          <li>选中音符后有<b>两组独立开关</b>：<b>发声 / 休止</b>（这一格出不出声）与 <b>实扫 / 空扫</b>（手部动作——实扫 = 触弦、空扫 = 手过弦不触弦）。两者<b>互不决定</b>，四种组合都行：实扫可以出声（普通扫弦）也可以不出声（切音）；空扫可以配发声、也可以配休止。
+            <b>空扫</b>画成<b>蓝色虚线</b>：带方向 = 蓝虚线箭头，无方向 = 无头蓝虚线杆（适合「相邻空扫块只给首块标方向」）。时长（占位）始终不变</li>
           <!-- v2.25.3（用户需求）：弦区释义——与编辑器「弦区」行的按钮文案逐字对应；
                v2.25.4 补"低/高弦区各代表哪几根弦"；
                v2.29.0（用户校准）三档化：中弦区没有明确弦数对应，整档退役；
@@ -4921,23 +4917,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4953  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6614  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8850  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10078 Modal         应用内弹窗
-     L10239 Viz           时值可视化渲染与每帧动画
-     L13866 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14620 Trainer       变速训练器
-     L14837 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15508 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17456 Editor        自定义节奏型编辑器
-     L18444 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18539 Ear           听辨训练（v1.10.0）
-     L18767 Arrange       曲式编排（v2.0.0）
-     L22892 Help          使用方法（v2.0.1）
-     L23047 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23129 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23425 初始化（装配） 各模块 hook 接线与启动
+     L4949  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6613  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8853  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10081 Modal         应用内弹窗
+     L10242 Viz           时值可视化渲染与每帧动画
+     L13869 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14623 Trainer       变速训练器
+     L14840 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15511 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17459 Editor        自定义节奏型编辑器
+     L18436 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18531 Ear           听辨训练（v1.10.0）
+     L18759 Arrange       曲式编排（v2.0.0）
+     L22884 Help          使用方法（v2.0.1）
+     L23039 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23121 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23417 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4971,26 +4967,28 @@ const TPB = 48;                                        // ticks per beat（PPQN�
 const T16 = TPB / 4;                                   // 12t 十六分（刻度网格单位）
 const T32 = TPB / 8;                                   // 6t 三十二分（v3.38.0：歌词/旋律轨的量化原子）
 const T8  = TPB / 2;                                   // 24t 八分（短音符/独立标签的判据阈值）
-/* dir（v1.9.0）：扫弦方向标注。字段存的是**手部动作**：'D'=手往下扫 / 'U'=手往上扫。
+/* dir（v1.9.0）：扫弦方向标注。字段存的是**手部动作**：'D'=手往下扫 / 'U'=手往上扫 / 'A'=琶音。
    v2.1.0 全局翻转（用户定稿）：渲染时按「下扫=↑、上扫=↓」画箭头——拨片从低音弦走向
    高音弦，在吉他谱里记作向上的箭头。**翻转只发生在渲染层**（主视图与编辑器的 .strumv
-   竖箭头的 .dn/.up 类），字段值与导出 JSON 一字未动，所以老数据零迁移。
+   竖箭头的 .dn/.up 类），字段值与导出 JSON 一字未动。
    **可选字段，与发声完全无关**——它是记谱层字段，scheduler 一行都不用读它
-   （与 Swing「演奏参数不入时值」同一类先例）。
-   省略即「不标注」，所以老数据零迁移、老 JSON 导入后就是"无箭头"。
-   休止槽携带 dir = **空扫**（v2.1.0）：手在动、弦不出声，渲染成蓝色**虚线**箭头而非实心箭头
-   （v2.4.2 起主视图用 .strumv.ghost）；空扫同样不发声（休止的「不发声」由 scheduler
-   按 rest 判定，与 dir 无关）。
-   ★ v3.52.0：空扫判据统一为 **rest && (dir || air)**——新增可选字段 air:true 表达**无方向空扫**
-   （相邻空扫块只给首块标方向时，其余块即此形态），渲染成「无头蓝虚线杆」（不带 dn/up/arp 类，
-   三角天然不可见；见三处渲染点）；air 纯记谱层、scheduler 不读，老数据零迁移。
-   内置型为单小节定义（v2.73.0 起）；dir 随编辑器 draft/撤销/保存/复制小节全走 {...s} 与
+   （与 Swing「演奏参数不入时值」同一类先例）。省略即「不标注」。
+   ★★ v3.52.0（用户拍板，两轴独立）：`rest`（发声/休止 = 这一格出不出声）与 `air`
+   （实扫/空扫 = 手部动作）是**两条独立轴**，`dir` 只管箭头朝向——四种组合都合法：
+     发声+实扫 = 普通扫弦；休止+实扫 = 触弦不出声（切音）；发声+空扫 = 手过不触弦但这一格出声；
+     休止+空扫 = 手过不触弦且不出声。
+   `air:true` = 空扫：手在动、弦不出声，渲染成蓝色**虚线**（有方向 → ghost 箭头；无方向 →
+   只留杆身、不带 dn/up/arp 类 =「无头蓝虚线杆」）；`air` 缺省 = 实扫（实心箭头）。
+   纯记谱层、scheduler 不读（发声只由 rest 决定）。
+   ★ 老数据兼容：旧模型里「休止 + 方向」= 空扫（无 air 字段），由 validatePreset 一次性推断补
+   `air:true`；模板源数据（示例曲）已显式带 air。
+   内置型为单小节定义（v2.73.0 起）；dir/air 随编辑器 draft/撤销/保存/复制小节全走 {...s} 与
    JSON 往返，同样无需为它加代码。
    zone（v2.2.0 起，v2.29.0 三档化）：弦区 0=低(④⑤⑥) / 2=高(①②③)，**全扫省略不写**。
    与 dir 的关键差别——zone **参与发声**
    （AudioEngine 按 zone 选频段：低弦区闷、高弦区亮，全扫=低+高双频段同时；详见
    CONFIG.strumZones 与 scheduler 的 zone 分支），但**不碰时间轴**（每颗音的时刻逐位不变，
-   T62e 守这条）。空扫（rest && (dir||air)）保持静默——zone 只在发声音符上有听感意义，数据上仍可
+   T62e 守这条）。空扫（air）保持静默——zone 只在发声音符上有听感意义，数据上仍可
    与空扫共存（记的是"这次空扫发生在哪片弦区"）。省略 = 默认全扫；老数据里的 zone=1
    读作全扫（当年谱面映射 1 就是"全"），零迁移。 */
 /** @param {number} t @param {any} [rest] @param {string} [dir] @returns {any} */
@@ -5755,7 +5753,8 @@ function noteDurLimit(notes, me, span){
      · 扫弦格 [格0-15, 方向, 弦区, 空扫?]：方向存**手部动作**（D=下扫/U=上扫，渲染层翻转字形）；
        弦区 0=低/2=高；**全扫省略不写**（v2.29.0：谱面标记 F 的格当年被映射成 zone=1，
        而工具模型把 1 当中弦区——这正是"全扫听着发闷"的根源，v2.29.0 起全扫缺省不写、
-       残留的 1 读作全扫）。空扫 = 休止槽带 dir（v3.52.0 起亦可带 air 表无方向空扫；蓝虚线，不发声），
+       残留的 1 读作全扫）。空扫 = 该格带 `air`（无方向 → 无头蓝虚线杆；带 dir 则画蓝虚线箭头）；
+       与发声独立（本例空扫均配休止），
        格里没标记 = 无动作（纯休止，连手都不动）。
      · 词行 [格, 时值格, 字]：格 × 16 分 = 段内 tick；跨小节延音靠 dur 延长，始终留在同一行内
        （桥段「夜」落在小节首并延至下一个「那」，正是这条的活样本）。
@@ -5933,10 +5932,10 @@ const DEMO2_ID = "demo-wmbbf", DEMO2_SONG_NAME = "《我们能不能不分手》
     的段落定性没错；引子 = 段 1 的琶音小节（琶音全曲仅此一处，第二遍副歌按满扫走），
     段名「引子 · 我们」与《在他乡》的「引子 · 我多想」口径统一。 */
 const DEMO2_PRESETS = [
-  { name: "节奏型5（《我们能不能不分手》）", strum: "Q1", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
-  { name: "节奏型2（《我们能不能不分手》）", strum: "Q2", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
-  { name: "节奏型3（《我们能不能不分手》）", strum: "Q3", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":true,"dir":"D","zone":2},{"t":24,"rest":true,"dir":"U","zone":2}]] },
-  { name: "节奏型4（《我们能不能不分手》）", strum: "Q4", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":2}]] },
+  { name: "节奏型5（《我们能不能不分手》）", strum: "Q1", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "节奏型2（《我们能不能不分手》）", strum: "Q2", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2}]] },
+  { name: "节奏型3（《我们能不能不分手》）", strum: "Q3", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":true,"dir":"D","zone":2,"air":true},{"t":24,"rest":true,"dir":"U","zone":2,"air":true}]] },
+  { name: "节奏型4（《我们能不能不分手》）", strum: "Q4", meter: 4, bars: [[{"t":24,"rest":false,"dir":"D","zone":0},{"t":24,"rest":true,"dir":"U","zone":0,"air":true},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D","zone":2},{"t":24,"rest":false,"dir":"U","zone":2},{"t":24,"rest":false,"dir":"D"},{"t":24,"rest":true,"dir":"U","zone":2,"air":true}]] },
   /* ★ 本版修正型（用户实报）：全曲第 1 小节实际是琶音——第 1 拍一记琶音、
      后三拍休止（不扫弦），不是八分满扫。dir:"A" = 琶音记号（竖波浪线，渲染层与
      D/U 的直杆箭头三分支），发声走既有扫弦声部（dir !== undefined 即扫弦声）。
@@ -6072,7 +6071,7 @@ function demoBuildSpec(){
     for (let c = 0; c < 16; c++){
       const m = marks[c];
       if (!m) out.push({ t: T16, rest: true });                                  // 无动作
-      else if (m[3]) out.push({ t: T16, rest: true, dir: m[1] });                // 空扫：动手不出声
+      else if (m[3]) out.push({ t: T16, rest: true, dir: m[1], air: true });     // 空扫：动手不出声（v3.52.0：air 显式）
       else out.push({ t: T16, dir: m[1],                                         // 实扫：方向 × 弦区
         ...(m[2] !== undefined ? { zone: m[2] } : {}) });                        // 全扫缺省不写 zone
     }
@@ -6309,7 +6308,7 @@ function migrateDemoToBuiltins(customs, arranges){
 /** @typedef {{ t: number, dur: number, p: number }} LyricNote 一颗音符：t/dur 与字同一网格同一坐标系（段内绝对 tick，dur 必为 LYRIC_GRID 整数倍），p=整数半音（60=C4，域 [PITCH_MIN, PITCH_MAX]）。互不重叠（normLyricLine 跳过靠后的重叠音符，同字的重叠口径） */
 /** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[], notes?: LyricNote[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid）；v3.37.0 B 期：可选 notes = 旋律姊妹轨（**notes 非空才写键**——无旋律的行落盘形状与旧格式逐位一致）。chars 与 notes 可各自为空：双空 = 行不存在；chars 空而 notes 有 = 纯谱行（前奏/间奏/尾奏） */
 /** @typedef {{ s: number, f?: number, tech?: string }} StrNote 逐弦拨弦的一条：s=弦号 1–6（①=1），f=品数 0–24 可省略（省略=不标），tech=技巧 H/P/S/O 可省略（H 击弦 / P 勾弦 / S 滑音 / O 泛音）。纯记谱信息（告诉右手拨哪根、左手按哪品），不进发声路径——发声只看这一格拨了几根弦 */
-/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number, str?: StrNote[], air?: boolean }} Step 一小节的单步（时值槽；dir/zone/str/air 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]；str 存在时渲染与发声都以它为准、zone 失效——见 normStr 与 stepHasStrumLike；air 仅在 rest===true 时有意义：无方向的空扫，空扫判据 = rest && (dir || air)） */
+/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number, str?: StrNote[], air?: boolean }} Step 一小节的单步（时值槽；dir/zone/str/air 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]；str 存在时渲染与发声都以它为准、zone 失效——见 normStr 与 stepHasStrumLike；★ v3.52.0：`rest`（发声/休止）与 `air`（实扫/空扫）是**两条独立轴**，`dir`=扫弦方向；四种组合都合法，缺省 air=实扫） */
 /** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][], label?: string }} Preset 归一化后的节奏型（id 在落库时补） */
 /** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number, chords?: string }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
 /** @typedef {{ uid: string, name: string, blocks: Block[] }} Section 曲式的一段（uid 是稳定身份，段挪位/被删不改变） */
@@ -6583,8 +6582,8 @@ function normStr(raw, isRest){
 /** 单格的「带扫弦类记谱」判据（v3.47.0；v3.52.0 纳入 air）：dir/zone/str/air 任一存在。
     hasStrum（型级）与 AudioEngine 的 stepVoiceOf（格级声部路由）共用这一份——
     纯分解型（全部格只挂 str）在旧判据下六线层不建、扫弦声部不进、歌词锚点退回拍点，
-    三处同时错，故判据必须只有这一份。air（无方向空扫，v3.52.0）同属记谱层：纯 air 型
-    也要归入「扫弦」类（六线层 / 扫弦声部 / 歌词锚点），否则无方向空扫会被当纯节拍谱丢掉。 */
+    三处同时错，故判据必须只有这一份。air（空扫，v3.52.0）同属记谱层：含 air 的型
+    也要归入「扫弦」类（六线层 / 扫弦声部 / 歌词锚点），否则空扫格会被当纯节拍谱丢掉。 */
 /** @param {any} s @returns {boolean} */
 function stepHasStrumLike(s){
   return !!s && (s.dir !== undefined || s.zone !== undefined || !!(s.str && s.str.length) || s.air === true);
@@ -8372,12 +8371,16 @@ const Store = (() => {
            归一化唯一入口 normStr（升序去重 / f 0–24 / tech 白名单 / rest 抹 tech）；
            老版本应用导入含 str 的导出包时，本白名单整体丢弃 str（既有降级惯例，可接受）。 */
         const str = normStr(s.str, !!s.rest);
-        /* 无方向空扫（v3.52.0）：与 dir/zone 同一口径——脏值静默降级为省略，不牵连整条预设。
-           air 只在 rest===true 时才有意义（Step typedef）：非休止格上的 air 一律省略；
-           值非 true（字符串/数字等脏值）同样省略。老版本应用导入含 air 的导出包时，
-           本白名单整体丢弃 air（同 str 先例，可接受）。 */
-        const air = (s.rest === true && s.air === true) ? true : undefined;
-        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {}), ...(str ? {str} : {}), ...(air ? {air} : {})});
+        /* 空扫（v3.52.0；两轴独立后的 air 推断）：`air` 与 `rest` 是**两条独立轴**——
+           「实扫/空扫」是手部动作，「发声/休止」是这一格出不出声，四种组合都合法。
+           · air 显式给了布尔值 → 以它为准（编辑器写得出 air:false 表「实扫+休止」）；
+           · air 缺省时对**老数据**做一次推断：旧模型里「休止 + 方向」就是空扫（旧数据没有 air 字段），
+             故补 air=true；
+           · 其余缺省 = 实扫（含发声、含无方向的普通音符）。
+           老版本应用导入含 air 的导出包时整体丢弃 air（同 str 先例，可接受）。 */
+        const air = (typeof s.air === "boolean") ? s.air
+          : ((s.rest === true && s.dir !== undefined) ? true : undefined);
+        steps.push({t, rest: !!s.rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {}), ...(str ? {str} : {}), ...(typeof air === "boolean" ? {air} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
       bars.push(steps);
@@ -11292,9 +11295,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   function stepLabel(s){
     /* ★ 本版（用户实报）：删掉「休止 」前缀——休止与否由格子形状表达（主视图虚线空框 /
        编辑器 .rest 虚线边），标签只报时值本身；「休止 八分」读起来像另一种时值，是错的。
-       读屏侧的代价一并接受：纯休止格的 aria 只报「八分」（带方向的休止与无方向空扫（air，v3.52.0）
-       仍有「 · 空扫」、编辑器 restHint/airHint 也仍会说「休止中 / 空扫中」——休止信息不缺来源，
-       只是不再挤进时值标注）。 */
+       读屏侧的代价一并接受：纯休止格的 aria 只报「八分」（空扫（air，v3.52.0）仍有「 · 空扫」、
+       编辑器 restHint/airHint 也仍会报告发声与手部状态——信息不缺来源，只是不再挤进时值标注）。 */
     return DUR_NAME[s.t] || (fmtBeat(s.t) + "拍");
   }
 
@@ -11533,8 +11535,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
          v2.1.0：字形按手部动作翻转（D→↑ 下扫 / U→↓ 上扫）。
          v2.4.2：由「14px 方形徽标」换成**贯穿弦区的竖箭头**——
            箭头跨越的弦数表达弦区（kF 贯穿六线 / kB 低音下三线 / kT 高音上三线），
-           方向由 .dn/.up 决定箭头画在哪一端；休止槽带 dir = 空扫，换成蓝色**虚线**箭头
-           （v3.52.0：休止槽带 air（无方向空扫）= 只 ghost 杆身、无头蓝虚线杆）。
+           方向由 .dn/.up 决定箭头画在哪一端；空扫（air）= 蓝色**虚线**——有方向 → ghost 箭头，
+           无方向 → 只 ghost 杆身、无头蓝虚线杆。
            弦区取自 zone（0=低音 / 2=高音 / 缺省或旧值 1=全扫）；空扫取前一记实扫的 zone
            （参考页明文："弦区跟随前一记实扫"），没有前一记时落全部弦。
          ★ v2.4.3 修 bug：v2.4.2 把它 appendChild 进格子（c.appendChild(sm)），
@@ -11561,20 +11563,21 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         const sl = strumLayers[b];
         if (sl) sl.appendChild(sm);
         strums.push(sm);
-      } else if ((s.dir || (s.rest && s.air)) && hasStr){
+      } else if ((s.dir !== undefined || s.air) && hasStr){
         const sm = document.createElement("div");
-        /* 弦区类别：空扫沿用前一记实扫的弦区（prevZone），实扫用自身 zone */
-        const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
+        /* 弦区类别：空扫（air）沿用前一记实扫的弦区（prevZone）；实扫用自身 zone */
+        const z = s.air ? prevZone : (s.zone === undefined ? 1 : s.zone);
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
-        /* 有方向：实扫/空扫带箭头（ghost 蓝虚线）；无方向空扫（rest+air，v3.52.0）：只留 ghost
-           杆身、**不带 dn/up/arp 类** → 箭头三角（.strumv::after 的定位着色仅由 .dn/.up 给出）
-           天然不可见，得到「无头蓝虚线杆」。air 类本身无 CSS 职责，仅作测试断言锚点与自文档。 */
-        if (s.dir){
-          sm.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
-          if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（::before/::after 那套直杆对 .arp 不生效）
+        /* 两轴独立后的记号（v3.52.0）：`air`（手部动作轴）决定虚/实，与 `rest`（发声轴）无关。
+           · 空扫（air）：ghost 蓝虚线——有方向 → 带箭头（dn/up/arp），无方向 → 只留 ghost 杆身、
+             不带 dn/up/arp 类（三角天然不可见）=「无头蓝虚线杆」；air 类仅作断言锚点与自文档。
+           · 实扫（!air）：实心箭头（由 dir 决定，无方向时本分支不进入）。 */
+        if (s.air){
+          sm.className = "strumv " + kz + (s.dir !== undefined ? strumDirCls(s.dir) : "") + " ghost" + (s.dir !== undefined ? "" : " air");
         } else {
-          sm.className = "strumv " + kz + " ghost air";
+          sm.className = "strumv " + kz + strumDirCls(s.dir);
         }
+        if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（::before/::after 那套直杆对 .arp 不生效）
         /* ★ v2.4.3：把自己对应的**格子下标**写在 data-i 上。
            为什么需要它：层里的孩子是**紧凑**的（无方向的格不产生节点），
            所以「层里第 i 个孩子」≠「第 i 格」——只有全格都有方向时才偶然相等。
@@ -11588,7 +11591,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         const sl = strumLayers[b];
         if (sl) sl.appendChild(sm);
         strums.push(sm);
-        if (!s.rest) prevZone = z;         // 只有实扫更新"前一记弦区"
+        if (!s.air) prevZone = z;         // 只有实扫更新"前一记弦区"（空扫沿用）
       } else strums.push(null);
       /* 弦区色带（v2.2.0）已由 v2.4.2 的**贯穿式竖箭头**取代——弦区现在直接表达为
          "箭头跨哪几条弦"，比"徽标下方 2px 色带"更贴近参考页的六线谱读法，
@@ -17657,10 +17660,11 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const d = draft; if (!d || !Array.isArray(d.bars[b])) return "";
     let s = "";
     d.bars[b].forEach((/** @type {any} */ x) => {
-      /* v3.47.0：键里补 str——漏了它，改弦/品/技巧后指纹不变，行缓存命中脏渲染 */
+      /* v3.47.0：键里补 str——漏了它，改弦/品/技巧后指纹不变，行缓存命中脏渲染。
+         v3.52.0：键里补 air——同理，漏了它改「实扫/空扫」后指纹不变 → 行缓存命中、虚实不刷新。 */
       s += x.t + "," + (x.rest ? 1 : 0) + "," + (x.dir || "") + ","
         + ((x.zone === undefined || x.zone === null) ? "" : x.zone) + ","
-        + (x.str ? JSON.stringify(x.str) : "") + ";";
+        + (x.str ? JSON.stringify(x.str) : "") + "," + (x.air ? 1 : 0) + ";";
     });
     return s;
   }
@@ -17854,19 +17858,17 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
         /* v2.74.0（2.7）：方向/弦区进 aria-label（视觉信息不丢给读屏用户——
            弦区从文字徽标改为箭头跨距后，读屏用户的唯一来源就是这里） */
         const zoneName = (!s.rest && s.zone !== undefined) ? " · " + ["低音区", "全扫", "高音区"][s.zone] : "";
-        const dirName = (s.dir || (s.rest && s.air)) ? (s.rest ? " · 空扫" : (s.dir === "D" ? " · 下扫" : (s.dir === "A" ? " · 琶音" : " · 上扫"))) : "";
+        const dirName = s.air ? " · 空扫" : (s.dir === "D" ? " · 下扫" : (s.dir === "A" ? " · 琶音" : (s.dir !== undefined ? " · 上扫" : "")));
         /* 逐弦拨弦（v3.47.0）：读屏文案拼「逐弦 ⑤弦3品勾弦+②弦」——弦/品/技巧全量入名 */
         const strName = (s.str && s.str.length) ? " · 逐弦 " + strNameOf(s.str) : "";
         c.setAttribute("aria-label", `小节 ${b + 1} 第 ${i + 1} 个音符：${Viz.stepLabel(s)}${dirName}${zoneName}${strName}`);
         c.setAttribute("aria-pressed", isSel ? "true" : "false");
         acc += s.t;
-        /* 扫弦方向 + 弦区（v2.74.0，2.7 重写；v3.52.0 补无方向空扫）：主视图同款 .strumv 竖箭头
-           进编辑器——跨距 = 弦区（kF/kB/kT，64px 行高等比变量在 .edcell 作用域），方向 = dn/up，
-           空扫 = .ghost 蓝色虚线（弦区跟随前一记实扫，与主视图逐位一致）；无方向空扫（rest+air）
-           = 只 ghost 杆身、不带方向类（三角不可见）＝无头蓝虚线杆。
-           退役：ed-zone 文字徽标（弦区改由箭头跨距表达）、ed-air 括号字形（改 ghost）、
-           .ed-strum 内联 ↑↓ 字形（v3.52.0 删除——大箭头已完整表达方向，aria-label 兜底读屏，
-           小箭头纯冗余）。prevZone 载负规则与主视图 buildRowCells 逐位一致。 */
+        /* 扫弦方向 + 弦区（v2.74.0，2.7 重写；v3.52.0 两轴独立）：主视图同款 .strumv 竖箭头进编辑器。
+           `air`（手部动作轴）决定虚/实，与 `rest`（发声轴）**无关**：
+             · 空扫（air）：.ghost 蓝虚线——有方向带箭头（dn/up/arp）、无方向只留杆身（无头蓝虚线杆）；
+             · 实扫（!air）：实心箭头（由 dir 决定）。弦区跟随前一记实扫（prevZone），与主视图逐位一致。
+           退役：ed-zone 文字徽标、ed-air 括号字形、.ed-strum 内联 ↑↓ 字形（v3.52.0 删除）。 */
         /* 逐弦拨弦记号（v3.47.0）：str 存在时渲染以它为准——不再画方向箭头
            （两者同格时 pick 优先，与主视图/发声侧同口径）；空拨 = .ghost 空心虚线点 */
         if (s.str){
@@ -17875,19 +17877,17 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
           pickGlyph(pv, s.str);
           pv.setAttribute("aria-hidden", "true");
           c.appendChild(pv);
-        } else if (s.dir || (s.rest && s.air)){
-          const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
-          if (!s.rest) prevZone = z;
+        } else if (s.dir !== undefined || s.air){
+          const z = s.air ? prevZone : (s.zone === undefined ? 1 : s.zone);
+          if (!s.air) prevZone = z;
           const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
           const sv = document.createElement("span");
-          /* 有方向 → 带箭头的实扫/空扫；无方向空扫（rest+air，v3.52.0）→ 只 ghost 杆身、不带
-             dn/up/arp 类（三角不可见）＝无头蓝虚线杆，与主视图同口径。 */
-          if (s.dir){
-            sv.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
-            if (s.dir === "A") arpGlyph(sv);   // 琶音 = 竖波浪线（与主视图同一份标记）
+          if (s.air){
+            sv.className = "strumv " + kz + (s.dir !== undefined ? strumDirCls(s.dir) : "") + " ghost" + (s.dir !== undefined ? "" : " air");
           } else {
-            sv.className = "strumv " + kz + " ghost air";
+            sv.className = "strumv " + kz + strumDirCls(s.dir);
           }
+          if (s.dir === "A") arpGlyph(sv);
           sv.setAttribute("aria-hidden", "true");
           c.appendChild(sv);
         }
@@ -17961,16 +17961,15 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     /* 扫弦标注行（v1.9.0）：可用性、高亮、aria-pressed 与选中状态**同源更新**。
        三点全部收在这里——分散写必然漂移（v1.3.0 开关三件套的教训）。
        预设选的 dir 用 "" 表示不标注，与「没有该字段」等价。
-       v2.1.0：休止符放开——休止槽上的方向即**空扫**，三档同样可用，提示语点明语义 */
+       v2.1.0：休止符放开标注（三档同样可用）；v3.52.0 两轴独立后方向与「空扫」解耦——
+       方向只管箭头朝向，「实扫/空扫」由 airRow 单独选。 */
     const selStep = edSel ? d.bars[edSel.bar][edSel.idx] : null;
     const dirUsable = !!selStep;
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
     document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     /* PLAN-v11 B2：悬浮层只在选中后出现，「先在上方选中一个音符」的占位话术退役（空串即可） */
-    $("dirHint").textContent = !selStep
-      ? ""
-      : (selStep.rest ? "休止符上标注方向 = 空扫（只动手不出声）；无方向的空扫用「空扫」开关" : "已选中「" + Viz.stepLabel(selStep) + "」");
+    $("dirHint").textContent = !selStep ? "" : ("已选中「" + Viz.stepLabel(selStep) + "」");
     /* 弦区（v2.2.0，v2.29.0 三档化）：与方向行同源更新。「全扫（默认）」= 无 zone 字段，
        高亮判据与方向行同构（dataset 空串 ↔ 字段省略）；老数据 zone=1（全扫别名）
        同样高亮「全扫」档——编辑器读数据与发声层同口径，不让旧值孤悬在没有任何档位上 */
@@ -17981,33 +17980,25 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const strCovered = !!(dirUsable && selStep.str && selStep.str.length);
     document.querySelectorAll("#zoneRow .pill").forEach(p => { asEl(p).disabled = !dirUsable || strCovered; });
     $("zoneHint").textContent = strCovered ? "逐弦优先：清空全部弦后可改弦区" : "";
-    /* 发声 / 空扫两组开关（v2.45.0 单 toggle → v3.52.0 两组）：与方向/弦区行同源更新
+    /* 发声 / 空扫两组开关（v2.45.0 单 toggle → v3.52.0 两轴独立）：与方向/弦区行同源更新
        （「开关三件套」同一套纪律——高亮、aria-pressed、disabled 三件事收在一处，分散写必然漂移）。
-       · restRow 两档：发声（data-rest="off"）↔ 休止（data-rest="on"），pressed 由 rest 决定；
-       · airRow 两档：实扫（data-air="off"）↔ 空扫（data-air="on"），pressed 由「是否空扫」决定——
-         空扫判据 = rest && (dir || air)（有方向空扫与无方向空扫同档高亮）。
-       格子带 str 时 airRow 禁用（镜像 zoneRow「逐弦优先」口径：空拨由 restRow 表达，air 记谱无从附挂）。 */
+       · restRow 两档：发声（data-rest="off"）↔ 休止（data-rest="on"），只反映 `rest`（这一格出不出声）；
+       · airRow 两档：实扫（data-air="off"）↔ 空扫（data-air="on"），只反映 `air`（手部动作）。
+       两轴**互不决定**：实扫/空扫 各自都能配 发声/休止，四种组合都合法（用户拍板）。
+       格子带 str 时 airRow 禁用（镜像 zoneRow「逐弦优先」口径：逐弦与空扫互斥）。 */
     setPressed("#restRow", p => dirUsable && !!selStep.rest === (p.dataset.rest === "on"));
     document.querySelectorAll("#restRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
     $("restHint").textContent = !selStep
       ? ""
-      : (selStep.rest
-          ? (selStep.dir ? "空扫中 · 点击翻为发声" : "休止中 · 点击翻为发声")
-          : (selStep.dir ? "发声中 · 点击翻为休止（已有方向即成空扫）" : "发声中 · 点击翻为休止（方向与弦区保留）"));
-    const isAir = !!(dirUsable && selStep.rest && (selStep.dir || selStep.air));
+      : (selStep.rest ? "休止中 · 点「发声」让这一格出声" : "发声中 · 点「休止」让这一格不发声");
+    const isAir = !!(dirUsable && selStep.air === true);
     setPressed("#airRow", p => isAir === (p.dataset.air === "on"));
     document.querySelectorAll("#airRow .pill").forEach(p => { asEl(p).disabled = !dirUsable || strCovered; });
     $("airHint").textContent = !selStep
       ? ""
       : (strCovered
           ? "逐弦优先：清空全部弦后可改空扫"
-          : (isAir
-              ? "空扫中（手过不触弦）· 点「实扫」转为普通休止"
-              : (selStep.rest
-                  ? "休止中 · 点「空扫」标记手部虚扫（不出声、不触弦）"
-                  : (selStep.dir
-                      ? "实扫中 · 点「空扫」翻为空扫（方向保留为箭头）"
-                      : "实扫中 · 点「空扫」即成无方向空扫（一并转为休止）"))));
+          : (isAir ? "空扫中（手过不触弦）· 点「实扫」改为触弦" : "实扫中（触弦）· 点「空扫」改为手过不触弦"));
     /* 逐弦拨弦面板（v3.47.0）：与方向/弦区行同源更新——六行开关/品数框/技巧钮 +
        面板 hint，全部收在这里（开关三件套同一套纪律，分散写必然漂移）。
        品数框只在非聚焦时回写（别打断正在输入的人）；rest+str 合法（空拨），面板不禁。 */
@@ -18099,6 +18090,13 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     editorRender();
   }
   $("undoBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); undo(); });
+  /* 两轴独立（v3.52.0）后：`air` 缺省 = 实扫，但**老数据推断**会把「休止 + 方向」且无 air 读成空扫。
+     故编辑器一旦造出「休止 + 方向」这种状态，就把 air 落成**显式布尔**（默认 false = 实扫），
+     免得导出/再导入时被当成空扫。空扫由 airRow 显式写 air=true，不受影响。 */
+  /** @param {any} s */
+  function materializeAir(s){
+    if (s.rest === true && s.dir !== undefined && typeof s.air !== "boolean") s.air = false;
+  }
   /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
      保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈 */
   $("dirRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
@@ -18114,6 +18112,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if ((s.dir || "") === want) return;
     pushUndo();
     if (want) s.dir = want; else delete s.dir;
+    materializeAir(s);
     editorRender();
   });
   /* 弦区（v2.2.0，v2.29.0 三档化）：与方向行同一套纪律——pushUndo 先行、同档重按不推栈、
@@ -18134,9 +18133,9 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (want === "") delete s.zone; else s.zone = +want;
     editorRender();
   });
-  /* 发声开关（v2.45.0；v3.52.0 双 pill）：restRow 两档——「发声」= rest=false 且删 air（dir 保留）；
-     「休止」= rest=true（dir/air 原样）。与方向/弦区行同一套纪律：pushUndo 先行、未选中/无草稿直接返回、
-     同档重按不推栈、改完 editorRender 一处刷新。rest 是占位字段不是时值：翻转后 barSum 不变。 */
+  /* 发声开关（v2.45.0；v3.52.0 两轴独立）：restRow 两档——「发声」= rest=false、「休止」= rest=true。
+     只改 `rest`，**不碰 air/dir**（空扫是 airRow 的事）。同一套纪律：pushUndo 先行、同档重按不推栈。
+     rest 是占位字段不是时值：改后 barSum 不变。 */
   $("restRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-rest]");
     if (!btn) return;
@@ -18150,12 +18149,11 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (!!s.rest === wantRest) return;                  // 同档重按：不产生变更、不污染撤销栈
     pushUndo();
     s.rest = wantRest;
-    if (!wantRest) delete s.air;                        // 翻回发声：删 air（dir 保留 = 带方向的实扫）
+    materializeAir(s);                                  // 休止 + 方向 → 落显式 air（默认实扫），防老数据推断误读
     editorRender();
   });
-  /* 空扫开关（v3.52.0，新增）：airRow 两档——「空扫」= rest=true, air=true（dir 保留：有 → 带箭头空扫，
-     无 → 无方向空扫）；「实扫」= 删 air；若 rest 且有 dir → 连 dir 一起删（休止格上的 dir 就是空扫记号，
-     留箭头就不是实扫）⇒ 结果 = 普通休止。同一套纪律：pushUndo 先行、同档重按不推栈。 */
+  /* 空扫开关（v3.52.0 两轴独立）：「空扫」= air=true、「实扫」= air=false。**只改 air**，
+     rest 与 dir 一律不动——所以实扫/空扫各自都能配发声或休止（用户拍板）。同一套纪律：同档重按不推栈。 */
   $("airRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-air]");
     if (!btn) return;
@@ -18166,15 +18164,9 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const s = d.bars[edSel.bar][edSel.idx];
     if (!s) return;
     const wantAir = btn.dataset.air === "on";
-    const isAir = !!(s.rest && (s.dir || s.air));
-    if (wantAir === isAir) return;                      // 同档重按：不产生变更、不污染撤销栈
+    if ((s.air === true) === wantAir) return;           // 同档重按：不产生变更、不污染撤销栈
     pushUndo();
-    if (wantAir){
-      s.rest = true; s.air = true;                      // dir 保留（有 → 带箭头；无 → 无方向空扫）
-    } else {
-      delete s.air;                                     // 实扫：删 air
-      if (s.rest && s.dir) delete s.dir;                // 休止格上的 dir 是空扫记号 → 一并删
-    }
+    s.air = wantAir;                                    // 只改 air；显式布尔（false 表实扫，供往返保真）
     editorRender();
   });
   /* 逐弦拨弦面板（v3.47.0）：与方向/弦区行同一套纪律——pushUndo 先行、同态重按不推栈、
@@ -20060,10 +20052,10 @@ const Arrange = (() => {
           /* ★ v3.33.22（用户拍板：「空扫 = 手在动、嘴也可以动」⇒ 字就该能停在空扫格上）：
              旧口径「空扫不作落点」是**按节奏对齐**（自动批量重排）的纪律，它不该顺带管住手动拖动——
              可磁吸在半个八分内必定命中某个发声锚点，于是手动怎么拖都被拽离空扫格，用户看到的就是
-             "块不在我放的位置上"。故这里只在 includeGhost 时把「休止但带方向」（= 空扫）也作为落点；
-             ★ v3.52.0：空扫判据统一为 rest && (dir || air)——带方向的空扫与无方向空扫（air）同为落点；
+             "块不在我放的位置上"。故这里只在 includeGhost 时把「空扫」也作为落点；
+             ★ v3.52.0：空扫判据 = `air`（两轴独立后 `air` 不再要求 rest；空扫+发声本就在 `!rest` 侧）。
              不传参 ⇒ 自动对齐的行为**逐位不变**（t115/t123 那批断言不动）。 */
-          if ((!s.rest || (includeGhost && (!!s.dir || s.air === true))) && cum % LYRIC_GRID === 0) out.push(barT0 + cum);
+          if ((!s.rest || (includeGhost && s.air === true)) && cum % LYRIC_GRID === 0) out.push(barT0 + cum);
           cum += s.t;
         }
       } else {
@@ -20207,19 +20199,19 @@ const Arrange = (() => {
         pickGlyph(sm, s.str);
         sm.style.left = "calc(" + pct(startT) + " + clamp(4px," + (s.t / total * 25) + "%,28px))";        // 起点锚定（与主视图/.lyric-char 同式）
         barEl.appendChild(sm);
-      } else if ((s.dir || (s.rest && s.air)) && hasStr){
+      } else if ((s.dir !== undefined || s.air) && hasStr){
         const sm = document.createElement("div");
-        const z = s.rest ? prevZone : (s.zone === undefined ? 1 : s.zone);
+        const z = s.air ? prevZone : (s.zone === undefined ? 1 : s.zone);
         const kz = z === 0 ? "kB" : (z === 2 ? "kT" : "kF");
-        if (s.dir){
-          sm.className = "strumv " + kz + strumDirCls(s.dir) + (s.rest ? " ghost" : "");
-          if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（与主视图同一份标记）
+        if (s.air){
+          sm.className = "strumv " + kz + (s.dir !== undefined ? strumDirCls(s.dir) : "") + " ghost" + (s.dir !== undefined ? "" : " air");
         } else {
-          sm.className = "strumv " + kz + " ghost air";   // 无方向空扫（v3.52.0）：无头蓝虚线杆
+          sm.className = "strumv " + kz + strumDirCls(s.dir);
         }
+        if (s.dir === "A") arpGlyph(sm);   // 琶音 = 竖波浪线（与主视图同一份标记）
         sm.style.left = "calc(" + pct(startT) + " + clamp(4px," + (s.t / total * 25) + "%,28px))";        // 起点锚定（与主视图/.lyric-char 同式）
         barEl.appendChild(sm);
-        if (!s.rest) prevZone = z;
+        if (!s.air) prevZone = z;
       }
       acc += s.t;
     }
