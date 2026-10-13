@@ -4841,22 +4841,22 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
      L4872  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6524  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8759  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9987  Modal         应用内弹窗
-     L10132 Viz           时值可视化渲染与每帧动画
-     L13734 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14488 Trainer       变速训练器
-     L14705 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15368 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17357 Editor        自定义节奏型编辑器
-     L18212 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18307 Ear           听辨训练（v1.10.0）
-     L18535 Arrange       曲式编排（v2.0.0）
-     L22612 Help          使用方法（v2.0.1）
-     L22767 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22849 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23145 初始化（装配） 各模块 hook 接线与启动
+     L6527  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8762  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9990  Modal         应用内弹窗
+     L10135 Viz           时值可视化渲染与每帧动画
+     L13737 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14491 Trainer       变速训练器
+     L14708 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15371 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17360 Editor        自定义节奏型编辑器
+     L18215 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18310 Ear           听辨训练（v1.10.0）
+     L18538 Arrange       曲式编排（v2.0.0）
+     L22615 Help          使用方法（v2.0.1）
+     L22770 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22852 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23148 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -6405,6 +6405,9 @@ function strumDirCls(dir){
     与 arpGlyph 同款模式：createElementNS 构建真实 SVG，恒定标记、零拼串（不走 innerHTML）。
     几何：viewBox 0 0 26 56 = 主视图 has-pick 档格子带（56px）的 **1:1 像素系**，
     cy(s) = (s−1)×11 与该档 .tab 六线落点（--gt 11px：0/11/…/55）逐位一致；
+    ★ 点径 r=3.4 ⇒ 直径 6.8（约弦距 11 的 62%、箭杆 2px 的 3.4 倍——不粘连、也不与箭头混）；
+    窄屏 34 档等比缩后约 4.1px（本档整档藏了品数数字，点即「拨哪根弦」的唯一线索）；
+    用户实拍「点太小」后由 2.6 抬到 3.4（相邻弦点相距 11，到 ~10 才粘连，余量充足）。
     preserveAspectRatio="none" + CSS height:var(--pick-h) 铺到其它档，宽随 --pick-sy 等比缩
     （五轮：只缩纵向会把点拉成椭圆——"圆点并不圆"用户实拍；等比缩 ⇒ 点恒圆、数字不变形）。
     （编排页 30/36、窄屏 34 藏数字只留点；编辑器 .edcell 上下内缩 6px 自由缩放——
@@ -6430,7 +6433,7 @@ function pickGlyph(host, str){
     c.setAttribute("class", label ? "pick-dot haslab" : "pick-dot");
     c.setAttribute("cx", "13");
     c.setAttribute("cy", String(cy));
-    c.setAttribute("r", "2.6");
+    c.setAttribute("r", "3.4");
     svg.appendChild(c);
     if (label){
       /* 描边数字：叠在点的位置上（盖住点），描边色 = var(--bg) 把弦线在数字身后断开。

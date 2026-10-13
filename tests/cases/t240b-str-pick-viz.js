@@ -2,7 +2,7 @@
    T240b 系列（v3.47.0 立；v3.48.0 几何重排后改写）。
    ---------------------------------------------------------------------------
    契约（v3.48.0 口径）：
-     · pickGlyph：**点恒在**（.pick-dot r 2.6 = "拨这根弦"的底层标记，任何降级兜底）；
+     · pickGlyph：**点恒在**（.pick-dot r 3.4 = "拨这根弦"的底层标记，任何降级兜底）；
        品数/技巧 = **描边数字**叠在点的位置上（g.pick-lab > text.pick-txt，11px 粗体 +
        var(--bg) 描边 paint-order:stroke 掏空身后弦线，无底衬——用户拍板去胶囊；
        数字盖住点，有品不见点）。cy(s) = (s−1)×11 与 has-pick 档六线（--gt 11px）逐位一致；
@@ -119,7 +119,7 @@ section("T240b-1 逐弦 · 纯 str 型建层 / has-pick 升档 / 宿主与 SVG �
   eq(cd[0].getAttribute("class"), "pick-dot", "点带 .pick-dot 类（色由 CSS 管）");
   eq(cd[0].cx, "13", "点 cx=13（纵列中线）");
   eq(cd[0].cy, "33", "④弦点 cy=3×11=33");
-  eq(cd[0].r, "2.6", "点 r=2.6（点径 5.2 < 弦距 11）");
+  eq(cd[0].r, "3.4", "点 r=3.4（点径 6.8，约弦距 11 的 62%、箭杆 2px 的 3.4 倍——不粘连）");
   eq(cd[0].getAttribute("fill"), null, "点不带 fill 属性（色全归 CSS currentColor 链）");
   /* 多弦加花：3 点 + 3 数字，各自 cy（点恒在兜底） */
   const svg3 = svgOf(pickOf(els, 0, 3));
