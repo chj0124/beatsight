@@ -45,7 +45,7 @@ const beltLine = (int, i) => int.lyricRows[i].y - (int.rowGeo[i].top - int.rowGe
 /* ================= T189a：滚动 3 行 · 最下一槽歌词整行在盒内 ================= */
 section("T189a 滚动 3 行 + 两标注开：最下一槽歌词整行在裁剪盒内；进场行仍在盒外");
 {
-  const app = loadApp(arrSeed({ scrollMode: true, scrollRows: 3, showLyric: true }));
+  const app = loadApp(arrSeed({ scrollMode: true, scrollRows: 3, showLyric: true, showRuler: true, showDurLabel: true }));   /* PLAN-v11 追补：座次尺默认改关，本组测的是「双标注开」的几何 → 显式开 */
   seedWords(app.beat);
   app.beat.Viz.buildViz();
   const int = intOf(app.beat), S = app.beat.Store.S;

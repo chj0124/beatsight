@@ -24,47 +24,47 @@ const has = (els, cls) => vizOf(els).classList.contains(cls);
 const pillOn = el => el.className === "toggle-pill on";
 const pillOff = el => el.className === "toggle-pill off";
 
-/* ================= 场景 T138a：默认双开 ⇒ 三个类都不在、开关不说谎 ================= */
-section("T138a 默认双开 ⇒ 无 no-ruler / no-durlab / chord-xl，两 pill 为开");
+/* ================= 场景 T138a：座次尺默认关（PLAN-v11 追补）· 时值标注默认开 ================= */
+section("T138a 座次尺默认关 ⇒ .no-ruler 落类、pill 为关；时值标注默认开 ⇒ 无 no-durlab");
 {
   const { beat, els } = loadApp();
-  eq(beat.Store.S.showRuler, true, "S.showRuler 默认 true");
+  eq(beat.Store.S.showRuler, false, "S.showRuler 默认 false（PLAN-v11 追补：显式存 true 才开）");
   eq(beat.Store.S.showDurLabel, true, "S.showDurLabel 默认 true");
-  ok(pillOn(els["rulerLabToggle"]) && pillOn(els["durLabelToggle"]),
-    "★ 默认两 pill 视觉为开（className 整串覆写，不叠类）");
-  eq(els["rulerLabToggle"].getAttribute("aria-checked"), "true", "座次尺 aria 同源");
-  ok(!has(els, "no-ruler") && !has(els, "no-durlab") && !has(els, "chord-xl"),
-    "★ 默认 #viz 上三个类都不在（标注全显示）");
+  ok(pillOff(els["rulerLabToggle"]) && pillOn(els["durLabelToggle"]),
+    "★ pill 视觉同源：座次尺关、时值标注开（className 整串覆写，不叠类）");
+  eq(els["rulerLabToggle"].getAttribute("aria-checked"), "false", "座次尺 aria 同源");
+  ok(has(els, "no-ruler") && !has(els, "no-durlab") && !has(els, "chord-xl"),
+    "★ 出厂 #viz：no-ruler 在、no-durlab 不在、chord-xl 不在（放大条件 = 双关）");
 }
 
-/* ================= 场景 T138b：关座次尺 ⇒ no-ruler 落类 + 偏好持久化 ================= */
-section("T138b 座次尺关 ⇒ .no-ruler 落 #viz、热键载荷带 showRuler:false、重载收敛");
+/* ================= 场景 T138b：座次尺开 ⇒ 摘 .no-ruler + 热键载荷 true + 重载收敛 ================= */
+section("T138b 座次尺开 ⇒ .no-ruler 摘除、热键载荷带 showRuler:true、重载收敛");
 {
   const { beat, els, storage } = loadApp();
   els["rulerLabToggle"].fire("click");
-  eq(beat.Store.S.showRuler, false, "点击 ⇒ S.showRuler 翻转为 false");
-  ok(has(els, "no-ruler") && !has(els, "chord-xl"),
-    "★ .no-ruler 落 #viz；只关其一 ⇒ 不放大（chord-xl 需双关）");
-  ok(pillOff(els["rulerLabToggle"]) && els["rulerLabToggle"].getAttribute("aria-checked") === "false",
-    "pill 视觉与语义同步为关（setToggle 一次写全）");
+  eq(beat.Store.S.showRuler, true, "点击 ⇒ S.showRuler 翻转为 true（默认关 → 开）");
+  ok(!has(els, "no-ruler") && !has(els, "chord-xl"),
+    "★ .no-ruler 摘除；只开其一 ⇒ 不放大（chord-xl 需双关）");
+  ok(pillOn(els["rulerLabToggle"]) && els["rulerLabToggle"].getAttribute("aria-checked") === "true",
+    "pill 视觉与语义同步为开（setToggle 一次写全）");
   beat.Store.flush();
-  eq(JSON.parse(storage.get("beatsight.state")).showRuler, false, "关座次尺进热键载荷");
+  eq(JSON.parse(storage.get("beatsight.state")).showRuler, true, "开座次尺进热键载荷");
   const r = loadApp({ "beatsight.state": storage.get("beatsight.state") });
-  eq(r.beat.Store.S.showRuler, false, "重载后偏好仍在");
-  ok(has(r.els, "no-ruler") && pillOff(r.els["rulerLabToggle"]),
-    "★ 重载后启动收敛：类与 pill 都为关（t86e 同族教训的防回归位）");
+  eq(r.beat.Store.S.showRuler, true, "重载后偏好仍在");
+  ok(!has(r.els, "no-ruler") && pillOn(r.els["rulerLabToggle"]),
+    "★ 重载后启动收敛：类与 pill 都为开（t86e 同族教训的防回归位）");
 }
 
 /* ================= 场景 T138c：双关 ⇒ chord-xl 落类；开回任一 ⇒ 类撤 ================= */
 section("T138c 双关 ⇒ .chord-xl（2.1 胶囊放大）；开回任一开关 ⇒ 类撤");
 {
   const { els } = loadApp();
-  els["rulerLabToggle"].fire("click");
-  ok(!has(els, "chord-xl"), "只关座次尺 ⇒ 不放大");
-  els["durLabelToggle"].fire("click");
+  ok(has(els, "no-ruler") && !has(els, "chord-xl"),
+    "前提：出厂座次尺已关（PLAN-v11 追补）、时值标注开 → 只关其一不放大");
+  els["durLabelToggle"].fire("click");                 // 时值标注 开→关 ⇒ 双关
   ok(has(els, "chord-xl"), "★ 双关 ⇒ .chord-xl 落 #viz（放大条件 = 两偏好同为 false）");
-  els["rulerLabToggle"].fire("click");
-  ok(!has(els, "chord-xl") && has(els, "no-durlab"), "开回座次尺 ⇒ chord-xl 撤、no-durlab 仍在");
+  els["rulerLabToggle"].fire("click");                 // 座次尺 关→开 ⇒ 任一开即撤
+  ok(!has(els, "chord-xl") && has(els, "no-durlab"), "★ 开回座次尺 ⇒ chord-xl 撤、no-durlab 仍在");
 }
 
 /* ================= 场景 T138d：隐藏规则 !important + 放大规则源码级钉死 ================= */

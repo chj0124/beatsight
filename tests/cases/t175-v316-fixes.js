@@ -101,3 +101,12 @@ section("T175d ≤640 移动端修正（用户截图两例）");
      && /@media \(max-width:640px\)[\s\S]*?\.lyric-pos-group \.pill\{justify-content:center;text-align:center;padding:0 12px/.test(CSS_CODE),
     "★★ ≤640：显示位置三档改**贴字 flex 换行**（宽度随文案、gap 4、占满整行——空白不再被网格摊开）");
 }
+
+section("T175e PLAN-v11 追补 · 窄档胶囊 cta 可收缩（残字形防线）");
+{
+  ok(/\.pb-ctx\{[^}]*overflow:hidden/.test(CSS_CODE),
+    "★ 基础规则：.pb-ctx 补 overflow:hidden——任何子项溢出不画出圆角外（残字形防线第一层）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-ctx \.pb-ctx-cta\{min-width:0;overflow:hidden;text-overflow:ellipsis\}/.test(CSS_CODE),
+    "★★ ≤640：cta（浏览节奏型）参与收缩 + ellipsis——30vw 在 390 视口 ≈117px < ‹+cta 的"
+    + "不可收缩下限 ≈127px，原 nowrap+flex:none 被容器拦腰裁出残字形；现截断落在字符边界（用户实拍追补）");
+}

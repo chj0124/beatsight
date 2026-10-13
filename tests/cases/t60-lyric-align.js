@@ -209,10 +209,10 @@ section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 /
   eq(lane.hidden, true, "★ 预设模式 → 整轨收起");
   eq(lane.children.length, 0, "收起时清空字块");
 
-  /* 无歌词行 / 段长不可知 → 同样收起 */
+  /* 无歌词行 → ★ PLAN-v11 追补：不再收轨（跑道恒定）——轨保留 .lyr-empty 空行 */
   const app2 = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState() }));
   app2.beat.Viz.buildLyricLane();
-  eq(app2.els["lyricLane"].hidden, true, "曲式在但无歌词行 → 收起");
+  eq(app2.els["lyricLane"].hidden, false, "曲式在但无歌词行 → 轨保留空行（不再收轨，跑道恒定）");
   const app3 = loadApp({
     "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
       { id: "t9", name: "死引用", sections: [{ uid: "s9", name: "s", blocks: [{ ref: { type: "custom", id: "ghost" }, repeats: 1 }] }] },
@@ -222,7 +222,9 @@ section("T60d 歌词轨渲染 · 分行结构 / 行内几何 / 停机中性态 /
   });
   app3.beat.Store.upsertLyric("t9", "s9", [{ t: 0, dur: 24, ch: "a" }]);
   app3.beat.Viz.buildLyricLane();
-  eq(app3.els["lyricLane"].hidden, true, "★ 段长不可知（死引用）→ 收起而不是画错");
+  /* ★ PLAN-v11 追补：窗口级收轨退役后，死引用与无词段同归——轨保留空行。
+     「画错」并未发生（空带无 chip 无 notes，不显示任何假数据）；稳定性口径优先。 */
+  eq(app3.els["lyricLane"].hidden, false, "★ 段长不可知（死引用）→ 轨保留空行（与无词段同归，不再画错风险由空行消解）");
 }
 
 /* ================= 场景 T60e：音频锚点 lyricCueHit / emitLyricCues ================= */

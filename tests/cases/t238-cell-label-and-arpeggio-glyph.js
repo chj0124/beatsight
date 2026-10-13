@@ -37,16 +37,18 @@ section("T238b 琶音型实弹 · 每格标签都是「四分」，无一个带�
   ok(labels.every(t => t.indexOf("休止") < 0), "★★★ 整行标签无一含「休止」（后三拍纯休止格也只报「四分」）");
 }
 
-section("T238c 字号 · 桌面 12→10px、窄屏 10→9px（CSS 源钉）");
+section("T238c 字号 · PLAN-v11 追补：桌面 9px 封顶 10px、窄屏 8px（CSS 源钉）");
 {
-  ok(/\.cell-label\{position:absolute;top:48px;font-size:calc\(10px \* var\(--cs, 1\)\)/.test(html),
-     "★★★ 桌面档 .cell-label 字号 = 10px（calc 乘缩放系数，随 --cs 走；top 48 = 基础档格子带下 4px）");
+  ok(/\.cell-label\{position:absolute;top:48px;font-size:min\(calc\(9px \* var\(--cs, 1\)\), 10px\)/.test(html),
+     "★★★ 桌面档 .cell-label = min(9px×--cs, 10px)——基准缩到 9px 且 10px 封顶，宽屏放大后恒小于和弦名 12px（top 48 = 基础档格子带下 4px）");
   ok(/#viz\.has-pick \.cell-label\{top:60px\}/.test(html),
      "★ has-pick 档 .cell-label 随 56px 格子带移到 60px（v3.48.0 覆盖块）");
-  ok(!/\.cell-label\{position:absolute;top:48px;font-size:calc\(12px/.test(html),
-     "★ 旧 12px 已退役");
-  ok(/\.cell-label\{top:38px;font-size:9px\}/.test(html),
-     "★★ 窄屏档 .cell-label 字号 = 9px（同比缩小）");
+  ok(!/\.cell-label\{position:absolute;top:48px;font-size:calc\(10px/.test(html),
+     "★ 旧 10px 无封顶版已退役");
+  ok(/\.bar-chord\{[^}]*font-size:12px/.test(html),
+     "★ 和弦名胶囊 11→12px（同批追补：行级锚点更醒目，与缩小的时值标注拉开层级）");
+  ok(/\.cell-label\{top:38px;font-size:8px\}/.test(html),
+     "★★ 窄屏档 .cell-label 字号 = 8px（同比缩小）");
 }
 
 section("T238d 琶音记号 · .strumv.arp + 内挂 SVG（主视图渲染层）");

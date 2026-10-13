@@ -84,12 +84,15 @@ section("T149c 总开关 · 显示歌词关 ⇒ 两种位置模式都不画歌�
   ok(els["lyricLane"].hidden, "bottom 模式 + 显示歌词关 → 同样隐藏（总开关优先级最高）");
 }
 
-section("T149d 无词窗口 · 整轨收起不占位（与旧版同义）");
+section("T149d 无词窗口 · 轨保留空行（PLAN-v11 追补：跑道恒定，不再收轨）");
 {
   const { beat, els } = loadApp(Object.assign(seedArr(), { "beatsight.state": seedState({ showLyric: true, lyricPos: "follow" }) }));
   beat.Viz.buildViz();   // 曲式有词但本用例未 upsert 歌词 → 窗口无词行
-  ok(els["lyricLane"].hidden, "无词窗口 → 歌词轨隐藏（不占位）");
-  ok(!els["lyricLane"].classList.contains("overlay"), "无词窗口 → 不进覆盖层");
+  ok(!els["lyricLane"].hidden, "★ 无词窗口 → 歌词轨保留（行距补偿恒定，跑道不跳）");
+  ok(els["lyricLane"].classList.contains("overlay"), "follow 模式 → 仍进覆盖层");
+  const rows = els["lyricLane"].children;
+  ok(rows.length > 0 && rows.every(r => /(^| )lyr-empty( |$)/.test(r.className)),
+    "★ 无词行全部带 .lyr-empty（空带不画底纹，v3.33.8 口径）");
 }
 
 section("T149e 文字对齐 · 字在各自节奏 chip 内靠左（D2）");
