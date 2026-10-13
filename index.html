@@ -4932,10 +4932,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L18419 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
      L18514 Ear           听辨训练（v1.10.0）
      L18742 Arrange       曲式编排（v2.0.0）
-     L22860 Help          使用方法（v2.0.1）
-     L23015 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23097 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23393 初始化（装配） 各模块 hook 接线与启动
+     L22862 Help          使用方法（v2.0.1）
+     L23017 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23099 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23395 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -11719,10 +11719,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     vizPatLen = patBars(ap);            // 内容模数（型长）：本帧结构生命周期内只认它
     /* v2.15.0：**先定"每行几拍"再合成窗口**——窗口、切片、所有映射都依赖它。
        内容密度取正在播放的型的**最短时值**：宽到够读就整小节，挤到读不清才逐级拆。
-       ★ v3.51.1：行宽（vizW）已在函数顶部、clear(viz) **之前**量好——此处不再读布局。 */
-    {
-      vizRowBeats = chooseRowBeats(vizW, vizSig, minStepOf(ap));
-    }
+       ★ v3.51.1：行宽（vizW）已在函数顶部、clear(viz) **之前**量好——此处不再读布局。
+       ★ v3.51.2：原写法把它包在一个**孤立块** `{ … }` 里，触发 ESLint no-lone-blocks
+         （v3.51.1 起 CI 一直红在此处，本地因 ESLint ⊘ 未装而漏网）；去括号，行为不变。 */
+    vizRowBeats = chooseRowBeats(vizW, vizSig, minStepOf(ap));
     /* ★ v3.0.0（PLAN-v9 D6）：scroll 下**一行恒等于整小节**——不进 chooseRowBeats。
        理由：横滚的相位是「一小节 = 一格宽度」的连续量，若行被切成半小节／四分之一小节，
        行宽与"一小节"就不再是同一个单位，dx 的换算会从"减 p·W"变成"减 p·W·k"（k=每行拍数/拍号），
@@ -22066,6 +22066,7 @@ const Arrange = (() => {
     const cap = $("presetLibBtn");
     if (!cap || typeof cap.getBoundingClientRect !== "function") return;
     const pat = $("patternName"), arg = $("argNowName");
+    /** @param {any} el @returns {boolean} */
     const live = el => !!el && !el.hidden;                 // 模式语义：hidden 才是"不在场"
     /* ★ 先**清两类再量**：被 display:none 的槽盒宽恒为 0，若带着旧 .cramped 去量，会把"已压实"
        误读成"压得更狠"⇒ 宽→窄→宽 往返后**永远醒不过来**。清掉后两槽都按"在场"参与布局，
@@ -22077,6 +22078,7 @@ const Arrange = (() => {
       live(pat) && pbNameCramped(pat.getBoundingClientRect().width, parseFloat(getComputedStyle(pat).fontSize) || 13));
     if (arg) arg.classList.toggle("cramped",
       live(arg) && pbNameCramped(arg.getBoundingClientRect().width, parseFloat(getComputedStyle(arg).fontSize) || 13));
+    /** @param {any} el @returns {boolean} */
     const shown = el => live(el) && !el.classList.contains("cramped");
     cap.classList.toggle("nameless", !(shown(arg) || shown(pat)));
   }

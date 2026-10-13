@@ -3409,19 +3409,23 @@ async function main(){
           ok(viol.length === 0,
             p.label + "·名字槽：★★★ 不变量「可见则必可读」——在场名字槽盒宽恒 ≥ 2em（不再硬剪残笔）",
             viol.length ? ("违规：" + JSON.stringify(viol)) : "五档全过");
-          /* ② 五档落点：危险窗两槽都压实；390 型名让位、段名回流（"引子…"）；740 双不压 */
-          [[355, "both"], [365, "both"], [375, "both"], [390, "patOnly"], [740, "none"]].forEach(function(pair){
+          /* ② 各档落点（**跨环境稳健形**：只钉跨字体度量恒成立的判据）。★ 教训：字体不同会让
+             「型名让位后段名回流到的宽度」变化——把「某档两槽都压实」写死会随字体漂移
+             （CI 首次就栽在 365/375：CI 字体下段名回流到 27/37px ≥ 2em，本应显示、非缺陷）。
+             白点消除的**硬保证**由上面 ① 不变量承担；这里只钉落点结构：窄档型名恒让位、
+             390 段名回流到可读宽、740 双不压。 */
+          [[355, "patCramped"], [365, "patCramped"], [375, "patCramped"], [390, "reflow"], [740, "none"]].forEach(function(pair){
             const x = byW[pair[0]];
             if (!x){ ok(false, p.label + "·名字槽@" + pair[0] + "：探针未取到", ""); return; }
             const two = x.arg && x.pat;
             const desc = "arg=" + (x.arg && (x.arg.cramped + "/" + x.arg.w)) + " pat=" + (x.pat && (x.pat.cramped + "/" + x.pat.w))
               + " capW=" + x.capW + " nameless=" + x.nameless;
-            if (pair[1] === "both"){
-              ok(two && x.arg.cramped === true && x.pat.cramped === true,
-                p.label + "·名字槽@" + pair[0] + "：★★★ 危险窗内两名字槽均被压实（cramped）——白点消除",
+            if (pair[1] === "patCramped"){
+              ok(two && x.pat.cramped === true,
+                p.label + "·名字槽@" + pair[0] + "：★★ 窄档型名（patternName）恒让位（cramped）",
                 desc);
-            } else if (pair[1] === "patOnly"){
-              ok(two && x.arg.cramped === false && x.arg.w >= (x.arg.fs * 2 - 0.5) && x.pat.cramped === true,
+            } else if (pair[1] === "reflow"){
+              ok(two && x.pat.cramped === true && x.arg.cramped === false && x.arg.w >= (x.arg.fs * 2 - 0.5),
                 p.label + "·名字槽@" + pair[0] + "：★★★ 型名让位、段名吃回流空间（" + (x.arg && x.arg.w)
                 + "px ≥ 2em）——由「单字残读」升为「引子…」",
                 desc);
