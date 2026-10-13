@@ -2658,6 +2658,17 @@ function portraitFixProbe(){
         const s = await probeJson("portraitFixProbe", portraitFixProbe(), true);
         result.pillSweep.push({ w: w, vis: s.pillsVisible });
       }
+      /* ★★★ v3.51.2：底栏名字槽空间显隐闸——危险窗 [355,365,375] 与对照 [390,740] 五档。
+         窄档此前只有单点 390，而"硬剪残笔（胶囊内白点）"只出现在 355–375 这个窗口
+         （名字槽被压到 1–4px、ellipsis 放不下省略号 ⇒ Chrome 硬剪字形边缘）。 */
+      result.pbCtxSweep = [];
+      for (const w of [355, 365, 375, 390, 740]){
+        await cdp.send("Emulation.setDeviceMetricsOverride",
+          { width: w, height: 740, deviceScaleFactor: 1, mobile: true });
+        await sleep(360);
+        const s = await probeJson("pbCtxNameProbe@" + w, pbCtxNameProbe(), false);
+        result.pbCtxSweep.push(s);
+      }
       /* ★★★ v3.31.0：宽屏铺满必须在 >1440 的视口量（1440 下主列封顶，开关不改变 #viz） */
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
@@ -2782,6 +2793,32 @@ function scrollRestProbe(){
     }
     if (!wasOn){ tog.click(); await frame(); }
     return JSON.stringify({ wasOn: wasOn, gridN: g.length, lyricN: l.length, pairs: pairs });
+  })()`;
+}
+/* ★★★ v3.51.2：**底栏胶囊名字槽空间显隐闸**的真机几何探针（用户实拍「胶囊内白点」）。
+   量两个名字槽（#argNowName 段名 / #patternName 型名）的「在场(hidden) / 压实(cramped) /
+   盒宽 / 字号」，外加胶囊的 nameless。断言侧两条：① 不变量「可见则必可读」
+   （任何在场且未压实的槽，盒宽 ≥ 2em —— 否则就是会被硬剪的残笔）；② 各档落点。
+   ★ 只读 DOM、不改任何状态（同仓库"探针不留状态"纪律）。 */
+function pbCtxNameProbe(){
+  return `(function(){
+    var q = function(s){ return document.querySelector(s); };
+    var cap = q(".pb-ctx");
+    if (!cap) return JSON.stringify({ err: "缺 .pb-ctx" });
+    var slot = function(id){
+      var el = q("#" + id);
+      if (!el) return null;
+      return { hidden: !!el.hidden, cramped: el.classList.contains("cramped"),
+               w: Math.round(el.getBoundingClientRect().width * 100) / 100,
+               fs: parseFloat(getComputedStyle(el).fontSize) || null,
+               text: (el.textContent || "").slice(0, 10) };
+    };
+    return JSON.stringify({
+      vw: window.innerWidth,
+      capW: Math.round(cap.getBoundingClientRect().width * 100) / 100,
+      nameless: cap.classList.contains("nameless"),
+      arg: slot("argNowName"), pat: slot("patternName")
+    });
   })()`;
 }
 /* ★★★ v3.31.3：**格子四档亮度分离度探针**（用户报障「正在弹的实扫格背景变得和空扫格一样」）。
@@ -3349,6 +3386,51 @@ async function main(){
           ok(sw.length >= 11 && bad.length === 0,
             p.label + "·宽度扫描：矮屏档下 660→1440 全部『合并胶囊行可见』（" + sw.length + " 档）",
             bad.length ? ("不可见的档：" + JSON.stringify(bad)) : ("各档 vis=" + sw.map(function(x){return x.vis;}).join(",")));
+        }
+        /* ★★★ v3.51.2：底栏名字槽空间显隐闸 —— 危险窗（355/365/375）首次进闸门。
+           用户实拍「胶囊内白点」= 名字槽被压到 1–4px 时 ellipsis 放不下省略号、Chrome
+           硬剪字形边缘露出的残笔。本块钉两条：① 不变量「可见则必可读」；② 五档落点。 */
+        {
+          const sa = (r.pbCtxSweep || []).filter(function(x){ return x && !x.err; });
+          const byW = {};
+          sa.forEach(function(x){ byW[x.vw] = x; });
+          ok(sa.length >= 5,
+            p.label + "·名字槽：五档探针（355/365/375/390/740）全部取到",
+            "取到 " + sa.length + "/5 · " + JSON.stringify((r.pbCtxSweep || []).map(function(x){ return x && (x.err || x.vw); })));
+          /* ① 不变量：任何**在场且未压实**的名字槽，盒宽必须 ≥ 2em——否则就是会被硬剪的残笔 */
+          const viol = [];
+          sa.forEach(function(x){
+            ["arg", "pat"].forEach(function(k){
+              const s = x[k];
+              if (!s || s.hidden || s.cramped || !s.fs) return;
+              if (!(s.w >= s.fs * 2 - 0.5)) viol.push(x.vw + "/" + k + " w=" + s.w + " fs=" + s.fs);
+            });
+          });
+          ok(viol.length === 0,
+            p.label + "·名字槽：★★★ 不变量「可见则必可读」——在场名字槽盒宽恒 ≥ 2em（不再硬剪残笔）",
+            viol.length ? ("违规：" + JSON.stringify(viol)) : "五档全过");
+          /* ② 五档落点：危险窗两槽都压实；390 型名让位、段名回流（"引子…"）；740 双不压 */
+          [[355, "both"], [365, "both"], [375, "both"], [390, "patOnly"], [740, "none"]].forEach(function(pair){
+            const x = byW[pair[0]];
+            if (!x){ ok(false, p.label + "·名字槽@" + pair[0] + "：探针未取到", ""); return; }
+            const two = x.arg && x.pat;
+            const desc = "arg=" + (x.arg && (x.arg.cramped + "/" + x.arg.w)) + " pat=" + (x.pat && (x.pat.cramped + "/" + x.pat.w))
+              + " capW=" + x.capW + " nameless=" + x.nameless;
+            if (pair[1] === "both"){
+              ok(two && x.arg.cramped === true && x.pat.cramped === true,
+                p.label + "·名字槽@" + pair[0] + "：★★★ 危险窗内两名字槽均被压实（cramped）——白点消除",
+                desc);
+            } else if (pair[1] === "patOnly"){
+              ok(two && x.arg.cramped === false && x.arg.w >= (x.arg.fs * 2 - 0.5) && x.pat.cramped === true,
+                p.label + "·名字槽@" + pair[0] + "：★★★ 型名让位、段名吃回流空间（" + (x.arg && x.arg.w)
+                + "px ≥ 2em）——由「单字残读」升为「引子…」",
+                desc);
+            } else {
+              ok(two && x.arg.cramped === false && x.pat.cramped === false,
+                p.label + "·名字槽@" + pair[0] + "：★ 宽档名字槽不误压（放得下就显示）",
+                desc);
+            }
+          });
         }
         /* ★★★ v3.36.20 补38：折叠方案作用域的三档闸门（窄屏 ∪ 竖屏 ∪ 矮屏；宽裕横屏不得折叠） */
         for (const [nm, m, want, bg] of [["竖屏1000x1400", r.barPortrait, true, "rgba(0, 0, 0, 0)"],

@@ -110,3 +110,34 @@ section("T175e PLAN-v11 追补 · 窄档胶囊 cta 可收缩（残字形防线�
     "★★ ≤640：cta（浏览节奏型）参与收缩 + ellipsis——30vw 在 390 视口 ≈117px < ‹+cta 的"
     + "不可收缩下限 ≈127px，原 nowrap+flex:none 被容器拦腰裁出残字形；现截断落在字符边界（用户实拍追补）");
 }
+
+section("T175f 名字槽空间显隐闸（v3.51.2 残字形防线补口 · 「胶囊内白点」）");
+{
+  /* 由来：v3.51.0 的「④ 底栏残字形防线」修的是 **cta**（另一条收缩链），而用户实拍的白点
+     其实出在两个**名字槽**（#argNowName / #patternName）：v3.51.0 之后它们仍会在槽宽
+     < 首字+省略号时被 ellipsis 放不下、Chrome 硬剪字形边缘。本闸换路线——低于普适下限 2em
+     整体隐藏，宁缺毋残。 */
+  ok(/\.pb-ctx b\.cramped\{display:none\}/.test(CSS_CODE),
+    "★ 空间语义：槽宽低于可读下限整体隐藏（.pb-ctx b.cramped）——不再硬剪出残笔");
+  ok(/\.pb-ctx\.nameless\{justify-content:flex-start\}/.test(CSS_CODE),
+    "★ 双名都不渲染时取消 space-between（cta 不被推到胶囊右端）");
+  ok(/function pbNameCramped\(w, fontPx\)\{ return !\(w >= fontPx \* 2\); \}/.test(html),
+    "★★ 纯判据 = 与字体无关的普适下限 2em（CJK 首字 1em + 省略号 ≤1em + AA 余量）");
+  ok(/typeof ResizeObserver !== "undefined"[\s\S]{0,260}observe\(capEl\)/.test(html),
+    "★ 挂点①：胶囊 ResizeObserver（视口 resize / 模式切换 / loop 键显隐改列宽均重算；桩守卫跳过）");
+  ok(/Presets\.syncDemoRange\(\);\s*\/\*[\s\S]{0,260}syncPbCtxCramp\(\);/.test(html),
+    "★ 挂点②：refreshBar 尾部兜「胶囊总宽不变、但槽宽分配变」的边角");
+
+  const beat = loadApp().beat;
+  ok(beat && beat.Arrange && typeof beat.Arrange.pbNameCramped === "function",
+    "▸ 前提：pbNameCramped 经 __beat.Arrange 导出（判据可直测，不靠手抄副本）");
+  const cr = beat.Arrange.pbNameCramped;
+  eq(cr(0, 11), true,     "▸ 0px（完全压没）判 cramped");
+  eq(cr(4.25, 11), true,  "▸ 4.25px（真机复现的刀片宽，等效 ~361 视口）判 cramped");
+  eq(cr(21.9, 11), true,  "▸ 21.9px（略低于 2em）判 cramped——可见即可读是硬闸");
+  eq(cr(22, 11), false,   "▸ 22px（恰达 2em）放行——省略号放得下");
+  eq(cr(39, 11), false,   "▸ 39px（390 档型名让位后段名回流宽）放行");
+  eq(cr(0, 13), true,     "▸ 字号 13 时下限同步升到 26（下限随 em 而非固定 px）");
+  eq(cr(26, 13), false,   "▸ 13px 字号下 26px 放行");
+  eq(cr(-1, 11), true,    "▸ 未布局（负宽）判 cramped——宁缺毋残");
+}

@@ -647,6 +647,16 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    文字不一致）。flex:none + 绿色与 ▾ 同族：视觉上"这是可以点的那个动作"。 */
 .pb-ctx .pb-ctx-cta{color:var(--green);font-size:11px;flex:none;white-space:nowrap}
 .pb-ctx b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* ★ v3.51.2（残字形防线补口）：名字槽**空间显隐闸**。v3.51.0 给 .pb-ctx 补了 overflow:hidden、
+   给 cta 补了 ellipsis，但修的是**另一条收缩链**（cta 溢出）——真正露白点的是本行的两个名字槽
+   （#argNowName 段名 / #patternName 型名）。它们虽早已带全套 ellipsis，却在槽宽 < 首字 + 省略号
+   时失效：ellipsis 放不下「…」，Chrome 退化**硬剪字形边缘**（用户实拍：胶囊右部残留灰白竖条
+   +小点 = 「引」「节」的首笔）。修法 = 与字体无关的**普适下限 2em**（CJK 1em 首字 + ≤1em 省略号
+   + AA 余量）：低于它整体隐藏，宁缺毋残。判据在 JS（syncPbCtxCramp），此处只留两条呈现规则。
+   ★ hidden（模式语义，setNowChip 独占）与 .cramped（空间语义，本闸独占）**双渠道，互不覆盖**。 */
+.pb-ctx b.cramped{display:none}
+/* 双名都不渲染时取消 space-between——否则 cta 被推到胶囊右端、「‹　　浏览节奏型」读感断裂。 */
+.pb-ctx.nameless{justify-content:flex-start}
 /* v3.36.8：原来的尾部 caret（▾，7px）随用户拍板「右侧不留」退役——
    它的「可展开」语义由左端 ‹ 承接，不留死规则。 */
 /* 面板动作区：三件事竖排。v3.44.0（用户拍板②）补图标——grid 两列（图标跨两行，
@@ -4909,23 +4919,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4941  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6596  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8832  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10060 Modal         应用内弹窗
-     L10221 Viz           时值可视化渲染与每帧动画
-     L13839 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14593 Trainer       变速训练器
-     L14810 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15481 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17470 Editor        自定义节奏型编辑器
-     L18409 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18504 Ear           听辨训练（v1.10.0）
-     L18732 Arrange       曲式编排（v2.0.0）
-     L22810 Help          使用方法（v2.0.1）
-     L22965 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23047 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23343 初始化（装配） 各模块 hook 接线与启动
+     L4951  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6606  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8842  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10070 Modal         应用内弹窗
+     L10231 Viz           时值可视化渲染与每帧动画
+     L13849 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14603 Trainer       变速训练器
+     L14820 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15491 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17480 Editor        自定义节奏型编辑器
+     L18419 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18514 Ear           听辨训练（v1.10.0）
+     L18742 Arrange       曲式编排（v2.0.0）
+     L22860 Help          使用方法（v2.0.1）
+     L23015 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23097 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23393 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4951,7 +4961,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.51.1";
+const VERSION = "3.51.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -22037,6 +22047,39 @@ const Arrange = (() => {
       ? pbTitleDefault + " ｜ 当前曲式：" + a.name + (txt ? " · " + txt : "")
       : pbTitleDefault);
   }
+  /* ★ v3.51.2（残字形防线补口）：底栏胶囊名字槽的**空间显隐闸**。
+     背景（用户实拍 + 真机复现）：≤960 三列两行布局下胶囊只占 col1-2，再收 16px 后 ~361px 视口
+     仅 ~103px；固定件（‹ + gap + cta 均 flex:none）吃掉 ~98px 后，两个名字槽被压到 1~4px。
+     v3.51.0 的「残字形防线」修的是 **cta**（另一条收缩链），而槽内的 ellipsis 在槽宽 < 首字 +
+     省略号时**放不下「…」**，Chrome 退化硬剪字形边缘 ⇒ 胶囊右部残留白点（「引」「节」首笔）。
+     修法：与字体无关的普适下限 **2em**（CJK 1em + 省略号 ≤1em + AA 余量），低于它整体隐藏。
+     判序**从右往左**（型名先让位 → 段名吃回流空间），单趟两次量测即收敛。
+     与 setNowChip 的分工：hidden = 模式语义（该不该在场）；.cramped = 空间语义（在不在得下），
+     两渠道互不覆盖。 */
+  /** 纯判据（导出给桩直测）：槽宽低于可读下限 ⇒ true。w < 0（未布局）同样判 true——宁缺毋残。
+      @param {number} w 槽实测盒宽(px) @param {number} fontPx 该槽字号(px) @returns {boolean} */
+  function pbNameCramped(w, fontPx){ return !(w >= fontPx * 2); }
+  /** 量两个名字槽的实际盒宽并落 .cramped / 胶囊 .nameless。
+      ★ 桩能力守卫：测试桩无 getBoundingClientRect（同 Viz 拖拽注释），真机才有布局 ⇒ 桩里静默
+        跳过；判据本身走 pbNameCramped 纯函数直测，几何落点走冒烟真机探针（两头夹）。 */
+  function syncPbCtxCramp(){
+    const cap = $("presetLibBtn");
+    if (!cap || typeof cap.getBoundingClientRect !== "function") return;
+    const pat = $("patternName"), arg = $("argNowName");
+    const live = el => !!el && !el.hidden;                 // 模式语义：hidden 才是"不在场"
+    /* ★ 先**清两类再量**：被 display:none 的槽盒宽恒为 0，若带着旧 .cramped 去量，会把"已压实"
+       误读成"压得更狠"⇒ 宽→窄→宽 往返后**永远醒不过来**。清掉后两槽都按"在场"参与布局，
+       量的才是"两者都显示"时的真实压缩宽（同步块内无中间绘制，不会闪）。 */
+    if (pat) pat.classList.remove("cramped");
+    if (arg) arg.classList.remove("cramped");
+    /* 判序**从右往左**：先量型名（此刻量的是"两者都显示"的宽），压实后空间即时回流，再量段名。 */
+    if (pat) pat.classList.toggle("cramped",
+      live(pat) && pbNameCramped(pat.getBoundingClientRect().width, parseFloat(getComputedStyle(pat).fontSize) || 13));
+    if (arg) arg.classList.toggle("cramped",
+      live(arg) && pbNameCramped(arg.getBoundingClientRect().width, parseFloat(getComputedStyle(arg).fontSize) || 13));
+    const shown = el => live(el) && !el.classList.contains("cramped");
+    cap.classList.toggle("nameless", !(shown(arg) || shown(pat)));
+  }
   /* 主界面那一行：当前段 + 上/下段跳转（v3.36.18：曲式名改由底栏胶囊 title 承担） */
   function refreshBar(){
     const a = cur();
@@ -22101,6 +22144,10 @@ const Arrange = (() => {
        （arrangeRender、跳段、切范围循环、删曲式、开关 overlay）——一处收口，不必在五六处各补一次。
        方向是合法的：Arrange 声明在 Presets 之后，调它是向前引用 */
     Presets.syncDemoRange();
+    /* ★ v3.51.2：模式切换（arrange↔preset）会翻转两个名字槽的 hidden ⇒ 改变槽宽分配。
+       本函数正是模式切换的必经点（onPlayModeChange → refreshBar），故在尾部兜一次空间显隐闸——
+       覆盖"胶囊总宽不变、但槽宽分配变了"这条 RO 抓不到的边角。 */
+    syncPbCtxCramp();
   }
   /* 播放中每个小节边界回调（由 AudioEngine 经注入钩子调用，不是反向引用）：
      刷新"现在在第几段"与"全曲进度" */
@@ -22803,8 +22850,11 @@ const Arrange = (() => {
      它是纯函数（只吃 geo.rects 与 y），导出后可直接单测：
      命中行 / 落在行间缝隙取最近 / 越界钳到首末行 / 空 rects 兜 0 四条都能钉死。 */
   rowOfY, shiftScopeGet: () => shiftScope,                              // v2.10.4：setRange = 侧栏范围滑块的入口（经 onDemoRange 注入）；v2.46.0：secOnsetTicks / alignLyricToRhythm 供测试与排查；v2.48.0：tap* 供测试与排查；v2.49.0：lyricUndo/lyricRedo；v2.50.0：getDropTarget（落点单一事实源，供测试与期 4 显性换位）；v2.51.0：试听状态机与位置原语供测试；v2.52.0：swapChars / shiftLyricChars 供测试；v2.56.0：arrUndo/arrRedo（曲式结构撤销/重做，键 = arrangeId 的会话内存栈）；v2.57.0：previewCandidate/stopCandPreview（换型候选就地试听，内存临时换型、不落库不 recall 历史）
-  mkPatBar };   /* v3.47.0：块头节奏型行的渲染体（纯构建、无副作用）——t240b 断言
+  mkPatBar,                                       /* v3.47.0：块头节奏型行的渲染体（纯构建、无副作用）——t240b 断言
                    「三处渲染点同构」的编排页一条（直测手法同 mkJianpuGlyph/mkPitchMarkEl 先例） */
+  /* ★ v3.51.2：底栏名字槽空间显隐闸——pbNameCramped 是纯判据（t175f 直断言），
+     syncPbCtxCramp 供装配区 RO 挂点与调试读取（几何落点由冒烟真机探针断言）。 */
+  pbNameCramped, syncPbCtxCramp };
 })();
 
 /* ================= Help · 使用方法（v2.0.1） ================= */
@@ -23528,6 +23578,15 @@ setPatLenOf(ref => patBars(resolveRef(ref)));
    Arrange.refreshBar() 跑在注入之前，只能报空段名（见 patLenReady 守卫与 refreshBar 注释）；
    这里补一次，让"启动就落在曲式模式"的用户一进来也看得到自己在第几段。 */
 Arrange.refreshBar();
+/* ★ v3.51.2：底栏胶囊名字槽的空间显隐闸要随**胶囊盒宽变化**重算——视口 resize、模式切换
+   （跳段键组显隐改列宽）、loop 键显隐、状态文案长短……全都会改它。ResizeObserver 一网打尽，
+   且首次回调即覆盖启动态（此刻 DOM 已就绪、refreshBar 已跑过一轮）。
+   ★ 桩守卫：测试桩没有 ResizeObserver（同 Viz --cs 那条注释）⇒ 静默跳过；
+     真机几何由冒烟 pbCtxNameProbe 断言，判据本身走 pbNameCramped 纯函数直测（两头夹）。 */
+if (typeof ResizeObserver !== "undefined"){
+  const capEl = $("presetLibBtn");
+  if (capEl) new ResizeObserver(() => Arrange.syncPbCtxCramp()).observe(capEl);
+}
 /* 侧栏「恢复示例曲」按钮的回调（v2.4.1）：Presets 声明在 Arrange 之前，
    直接调 Arrange.loadDemo() 是反向引用 → 经钩子注入（同 onArrangeBar 那套） */
 onDemoRestore = () => Arrange.loadDemo();
