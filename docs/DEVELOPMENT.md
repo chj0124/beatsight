@@ -382,7 +382,7 @@ pushUndo 先行、同态重按不推栈、选中态与 zone 覆盖态收在 `edi
 
 | key | 内容 | 写入时机 |
 |---|---|---|
-| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/keepAwake/migHint/**limit**（**< 1 KB**，实测 328 字节） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写。★ v2.11.2：`trainer.plan`（7 天计划）随功能删除，老存档里的 `plan` 由白名单忽略（零迁移） |
+| `beatsight.state` | bpm/vol/accentVol/mute/sig/sel/swing/accentGrp/timbre/countIn/trainer/bounce/keepAwake/**limit**（**< 1 KB**，实测 328 字节） | 每次交互，**250ms 尾部防抖**；`flush()` 立即写。★ v2.11.2：`trainer.plan`（7 天计划）随功能删除，老存档里的 `plan` 由白名单忽略（零迁移） |
 | `beatsight.customs` | `{v:1, customs}` 预设库 | 只在预设增删改时，**立即写**（不防抖——丢掉一个手写节奏型代价太大） |
 | `beatsight.m2` | **旧键，只读的迁移来源** | 仅首次升级时读取；拆分成功且写后校验通过后**删除**（v1.3.1），备份存 `beatsight.m2.bak` |
 | `beatsight.quarantine` | 未通过结构校验的预设（人工找回用） | 加载时发现淘汰项才写 |
@@ -1062,7 +1062,7 @@ noAccent = false            // 「0 · 均等」= 每拍一样响。**不动 S.s
 
 **UI 落点与红线**
 - 预设库「基础节奏」区 = **列表的第 0 区**，静态挂在 `#presetList` **之前**（区头右端挂着「拍数」参数槽）——
-  放进列表会被 `buildPresetList` 的 `clear(list)` 连坐销毁（v3.1.0 的 `#migHint` 同款坑）。
+  放进列表会被 `buildPresetList` 的 `clear(list)` 连坐销毁（静态单例节点都不能留在会被 clear 的容器里）。
   开合**自理**（`applyBasicFold`），**不进 `applyFold` 的三区切段**（那只认 `#presetList.children`）。
 - 9 枚记谱图标是 **DOM 块**（`rhyIcon`：绝对定位的符头 / 符干 / 双级符杠 / 休止斜杠 / 旗点 /
   三连音「3」）：不用 `innerHTML` 拼串（lint `no-innerhtml` 硬禁），也不用 `createElementNS`

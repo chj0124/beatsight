@@ -815,10 +815,6 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12px}
 .fallback-note[hidden]{display:none}
 .fallback-note span{flex:1;min-width:0}
-/* v3.1.0（A8，用户定稿）：迁移提示降级为**安静的空态提示**——它挂在新用户的自定义区末尾，
-   此刻用户没有任何东西要迁移，琥珀警告只制造焦虑。灰虚线空态 + 常规字号，语气从"警告"回到"说明"；
-   挂载位置仍在自定义区末尾（buildPresetList 挂入，applyFold 按区折叠接管显隐）。 */
-.mig-quiet{background:none;border:1px dashed var(--line);color:var(--t3)}
 
 /* ---------- 时值可视化 ---------- */
 .viz{position:relative;padding-top:58px}   /* 顶部 58px 是弹跳球的空域（跳高上限 48px + 余量） */
@@ -3439,7 +3435,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <!-- ★ v3.12.0：拍号回退提示条（#fallbackNote）整块退役——它服务的是"手动切拍号 → 与选中型
          不匹配 → 已回退为基础节奏"这条路径；拍号控件已删、拍号恒跟随当前型，错配无从发生
          （`updateFallbackNote` 与「切回」按钮一并下线）。提示条的样式类 `.fallback-note`
-         保留——预设库的跨地址迁移提示（#migHint）仍用它。 -->
+         保留——背景图提示条（#bgHint）仍用它。 -->
 
     <!-- 跟播打轴悬浮条（v2.48.0①）：打轴在主视图进行（编排页在 startTap 时关闭），
          空格逐字落时刻、↓ 跳过。进度读数由 Arrange 模块的 updateTapBar 维护 -->
@@ -3684,18 +3680,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <input type="text" id="presetSearch" placeholder="搜索节奏型…" aria-label="搜索节奏型">
       </div>
       <!-- ↓ 以下四块从原侧栏卡整组搬来（v3.0.0），id 与接线未动 -->
-      <!-- 跨 origin 迁移提示（v1.3.0，P2-14）：README 同时推荐「双击 index.html」与在线版，
-           但两者是不同 origin，localStorage 不共享——用户先在本地攒了预设、再打开在线版会看到空的，
-           而且收不到任何提示。预设库为空时提示一次，确认后不再出现 -->
-      <div class="fallback-note mig-quiet" id="migHint" hidden>
-        <span>跨设备 / 跨地址（本地文件 ↔ 在线版）不共享预设，迁移请用「导出预设」。</span>
-        <button class="pill outline" id="migHintBtn">知道了</button>
-      </div>
       <!-- ★★ v3.33.0（用户拍板）：基础节奏区 =「节奏类型 × 拍数」两个独立选项
            （复刻实体节拍器的 RHY / BEAT 双旋钮；参照 TERENCE DM1 说明书截图的形式）。
            位置是预设库列表的**第 0 区**：静态挂在 #presetList **之前**——不能放进列表里，
-           buildPresetList 每次重建都 clear(list)（innerHTML=""），静态节点会被连坐销毁
-           （同 #migHint 在 v3.1.0 踩过的坑）。
+           buildPresetList 每次重建都 clear(list)（innerHTML=""），静态节点会被连坐销毁。
            它不参与 applyFold 的三区切段（那只认 #presetList.children），开合自理（S.fold.basic）。
            控件形态：拍数 = 下拉框（省占位）、节奏类型 = 纯图标 + 悬浮/读屏名称
            （用户拍板：图标下不写文案）。两者都由 JS 从 RHY_STEPS / VALID_RHY 生成——
@@ -3719,7 +3707,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <div id="rhyBeatBox">
         <div class="bpm-row" id="rhyPillRow" role="group" aria-label="节奏类型：一拍之内的细分"></div>
         <!-- v3.33.1：下拉文案缩短后，「0 · 均等」的完整含义落在这里（见 sigLabel 注释） -->
-          <div class="hint">随拧随用 · 与下方预设型二选一 · 悬浮图标看名称 · 拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
+          <div class="hint">拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
         </div>
       </div>
       <div id="presetList"></div>
@@ -3824,7 +3812,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
 
   <!-- v3.0.0（PLAN-v9 批 0）：右侧竖栏（<aside class="col">）整块删除——
        预设库不再占 360px 通高侧栏，改为「控制行第 4 块 + 全宽内联抽屉」（见 .viz-head-grid 内
-       #presetLibBtn / #presetDrawer）。原卡内容（#migHint / #loopPanel / #presetList /
+       #presetLibBtn / #presetDrawer）。原卡内容（#loopPanel / #presetList /
        #argNowRow / #presetCount）**按 id 原样搬入抽屉**，接线一行没动。
        ★ 编排弹层（#arrangeOverlay）里的整首范围滑块与曲式列表不受影响，仍在弹层内 -->
 </main>
@@ -4919,23 +4907,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4951  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6606  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8842  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10070 Modal         应用内弹窗
-     L10231 Viz           时值可视化渲染与每帧动画
-     L13849 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14603 Trainer       变速训练器
-     L14820 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15491 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17480 Editor        自定义节奏型编辑器
-     L18419 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18514 Ear           听辨训练（v1.10.0）
-     L18742 Arrange       曲式编排（v2.0.0）
-     L22862 Help          使用方法（v2.0.1）
-     L23017 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23099 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23395 初始化（装配） 各模块 hook 接线与启动
+     L4939  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6594  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8825  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10053 Modal         应用内弹窗
+     L10214 Viz           时值可视化渲染与每帧动画
+     L13832 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14586 Trainer       变速训练器
+     L14803 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15474 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17422 Editor        自定义节奏型编辑器
+     L18361 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18456 Ear           听辨训练（v1.10.0）
+     L18684 Arrange       曲式编排（v2.0.0）
+     L22804 Help          使用方法（v2.0.1）
+     L22959 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23041 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23337 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -4961,7 +4949,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.51.2";
+const VERSION = "3.51.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -7821,7 +7809,7 @@ const Store = (() => {
    *   sel: { type: string, idx?: number, id?: string },
    *   swing: number, accentGrp: Record<string, number>, timbre: string,
    *   countIn: { on: boolean, beats: number }, playing: boolean, preview: boolean,
-   *   keepAwake: boolean, migHint: boolean,
+   *   keepAwake: boolean,
    *   wideFull: boolean,
    *   showRuler: boolean, showDurLabel: boolean, showLyric: boolean, lyricPos: ("auto"|"follow"|"bottom"),
    *   pitchNotation: ("off"|"jp"|"nm"),   // v3.37.0：歌词音高标注三态（off 关 / jp 简谱 / nm 音名）
@@ -7949,7 +7937,6 @@ const Store = (() => {
        不信存储里的值——localStorage 一律当不可信输入）。 */
     loopRange: clampLoop(saved.loopRange),
     keepAwake: !!saved.keepAwake,                   // v1.4 后台保活：默认关（耗电/系统策略由用户决定）
-    migHint: !!saved.migHint,                       // v1.3.0：跨 origin 迁移提示已确认过
     /* v2.11.2：原 `plan: planSaved`（v1.5 七天爬升计划）随该功能下线一并删除——不留空壳 */
     /* v2.10.12：原 `limit: limitInit`（v1.9.0 练习量）随练习量删除——见 LIMIT_PRESETS 注释 */
     /* v2.0.0 曲式编排：playMode 是"播当前预设 还是 播曲式"的二选一开关。
@@ -8148,7 +8135,7 @@ const Store = (() => {
       vizLegendVsn:S.vizLegendVsn,                // 本版：图例关闭时的版本号（版本更新 ⇒ 图例回归）
       fold:{ beat:S.fold.beat, strum:S.fold.strum, custom:S.fold.custom, basic:S.fold.basic }, // v2.10.0：预设库三区折叠（显示偏好，跟热键走）；v3.33.0：+ basic（基础节奏区）
       loopRange:{ on:S.loopRange.on, from:S.loopRange.from, to:S.loopRange.to }, // v2.4.3：指定小节循环（练习偏好，跟热键走）
-      keepAwake:S.keepAwake, migHint:S.migHint,
+      keepAwake:S.keepAwake,
       /* v2.10.12：原 `limit:{ mode:S.limit.mode, n:S.limit.n }` 随练习量删除（不再写这个键） */
       /* v2.11.2：原 `plan:S.plan`（v1.5 七天计划）随功能下线删除（不再写这个键） */
       playMode:S.playMode,                        // v2.0.0：预设 / 曲式 二选一
@@ -8257,9 +8244,6 @@ const Store = (() => {
      冷键装满——四者齐备，缺一就要出"迁了内存丢半截"的半迁移。
      ★ S.sel 重映射：正选中某个示例自定义型的话同步改成内置下标——否则迁移完选中悬空
        （resolveRef 落空 → 回退基本型，体验是"升个级选择丢了"）。
-     ★ S.migHint 顺手置位：老用户的自定义库从此转空，v1.3.0 那条"库空提示跨地址不共享"
-       会因 customs.length === 0 突然弹给他们看——他们早就在用，不是新手；置位消掉这声噪音。
-       （新用户首开仍照 v1.3.0 口径提示一次——t24 的既有契约。）
      幂等：二次启动 customs 无示例型、迁移 0 改动、不写盘（removed=0 短路） */
   {
     const mig = migrateDemoToBuiltins(customs, arranges);
@@ -8269,10 +8253,9 @@ const Store = (() => {
     if (mig.removed){
       if (S.sel.type === "custom" && mig.idToIdx.has(S.sel.id))
         S.sel = { type: "builtin", idx: DEMO_BUILTIN_BASE + mig.idToIdx.get(S.sel.id) };
-      S.migHint = true;
       persistCold();                     // customs 变更 → 冷键立即落盘（同删除路径的口径）
       persistArranges();                 // 曲式块引用的重映射也在冷键里，一并落盘
-      persistHotNow();                   // S.sel / S.migHint 变了 → 热键立即落（不靠后续交互兜）
+      persistHotNow();                   // S.sel 变了 → 热键立即落（不靠后续交互兜）
     }
   }
 
@@ -16073,16 +16056,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
             orph.map(/** @param {any} c */ c => ({ ref: { type: "custom", id: c.id }, p: c })));
         }
       }
-      /* ★ v3.36.10（批次② D2，本轮审计 C-10）：自定义库为空时给一条**去新建**的引导。
-         此前这个状态在界面上一声不响——审计问的正是"清空预设库后界面长什么样"，实测：
-         清空后只剩内置「节拍」区，没有任何提示（新用户首开也是这个状态，因为出厂只有内置型）。
-         只在**一个自定义型都没有**时出现，有型的用户永远看不到它。 */
-      if (!customs.length){
-        const h2 = document.createElement("div");
-        h2.className = "hint";
-        h2.textContent = "还没有自己的节奏型——点左下「浏览节奏型」，用里面的「新建节奏型」画一个。";
-        group.appendChild(h2);
-      }
     };
     if (!ars.length){
       /* v3.31.x（审计 P3-3）：曲式库清空时把底栏范围控件的 DOM 一并清掉——此前的清理只存在于
@@ -16732,7 +16705,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
 
      位置 = 预设库列表的「第 0 区」：标记里静态挂在 #presetList **之前**。
      ★ 不能放进列表里：buildPresetList 每次重建都 clear(list)（innerHTML=""），
-       静态节点会被连坐销毁（v3.1.0 的 #migHint 就是栽在这里）。
+       静态单例节点会被连坐销毁——本区因此静态挂在列表之前、不进列表。
      ★ 因此开合**不走 applyFold**——那只认 #presetList.children 的三区切段，
        本区自理（applyBasicFold + S.fold.basic）。搜索过滤同理不受影响
        （它是"设置区"不是条目，不参与按名过滤）。
@@ -16913,16 +16886,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
      ★ 示例曲 5 型不再单独挂"示例曲"分组：它们按内容落进扫弦区，与内置扫弦型并列。 */
   function buildPresetList(){
     const list = $("presetList");
-    /* v3.1.0 修复：migHint 是静态单例节点，一旦 append 进列表就随列表生死——
-       下一次重建的 clear(list)（innerHTML=""）会把它连坐销毁，此后 $("migHint")
-       恒为 null、空态提示永久消失（桩的 innerHTML 不真删节点所以测试全绿；
-       真机 fresh load 开机连建两次列表，CDP 实测节点整个不在 DOM）。
-       先摘回标记里的原位（抽屉内 #presetList 之前）再清列表，末尾按条件重新挂载。
-       用 parentNode 不用 parentElement：桩只记 parentNode；list.parentNode 为 null
-       （桩的静态元素是孤儿）时跳过摘回——桩上 clear 不销毁节点，跳过无害 */
-    const mig = $("migHint");
-    if (mig && mig.parentNode === list && list.parentNode)
-      list.parentNode.insertBefore(mig, list);
     clear(list);
     audBtns = [];                          // v3.1.0：▶ 按钮随列表重建（旧引用一律作废）
     songPlayBtns = [];                     // v3.35.6：歌曲行的 ▶ 同上（旧引用指向已脱离文档的节点）
@@ -16962,12 +16925,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     buildDemoNoteIfNeeded(list);
     $("presetCount").textContent = `${BUILTINS.length} 内置`
       + (customs.length ? ` + ${customs.length} 自定义` : "");
-    /* v3.1.0：迁移提示降级为「自定义区空态」——空库且未确认过才挂进列表末尾
-       （applyFold 会按自定义区折叠态接管它的显隐；确认过 / 已有预设就保持游离，
-       摘回静态位时显式收起，防止上一轮的可见态漏到抽屉里）。
-       ★ 摘回/挂载配对见本函数开头那段注释（单例节点不能留在会被 clear 的容器里） */
-    if (mig && !S.migHint && !customs.length) list.appendChild(mig);
-    else if (mig) mig.hidden = true;
     /* v3.33.14（审计 P3-1）：置灰**必须带原因**，与同弹窗 `#helpInstallBtn` 同口径——
        那个按钮置灰时 title 写明"当前环境不可安装"（v2.69.0 专门修过"hidden 让用户找不到
        按钮"，口径是"宁可置灰可见 + 给原因，也不要隐藏"）。此前这里只 `disabled = true`
@@ -17322,21 +17279,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       Modal.uiAlert(msg);
     });
   }
-
-  /* 跨 origin 迁移提示（v1.3.0，审计 P2-14）。
-     ★ v3.1.0 降级（A8，用户定稿）：不再**开机即示**——新用户第一次打开抽屉就收到琥珀警告，
-       此刻他还没有任何自定义预设，警告没有对象，只制造焦虑。改为「自定义区展开且仍为空」
-       时出现在该区末尾：挂载/摘回都在 buildPresetList（节点原在抽屉标记里，append 进列表后
-       由 applyFold 按"自定义区折叠态"接管显隐——区收着它就藏着）。确认一次（S.migHint）
-       后永不再挂出。迁移逻辑本身不需要这里做——导入导出已经够了。
-     ★ v3.1.0 修复：原 maybeShowMigHint()（开机解 hidden）已随"开机即示"退役删除——
-       挂载路径的 clear 连坐销毁问题与摘回修法见 buildPresetList 开头注释。 */
-  $("migHintBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    S.migHint = true;
-    $("migHint").hidden = true;
-    Store.persist();
-  });
 
   /* 把"下一次要应用的型"排进挂起队列（v2.0.0）：曲式编排的块/段切换用它。
      调用方随后由 scheduler 的小节边界统一施加（与用户切预设走的是同一条路）。

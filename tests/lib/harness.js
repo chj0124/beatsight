@@ -57,12 +57,11 @@ const rowW = () => ROW_W;
 const HTML_ATTRS = {
   bpmSlider: { min: "30", max: "240", value: "96" },
   /* 标记里声明了 `hidden` 的元素：真实 DOM 加载后它们就是隐藏的，stub 必须同样如此。
-     不做的话「预设库为空才提示跨地址迁移」这类依赖初始隐藏状态的逻辑会被误判为通过/失败
-     （v1.3.0 P2-14 踩到）。 */
+     不做的话，依赖初始隐藏状态的逻辑会被误判为通过/失败。 */
   /* v3.12.0：`fallbackNote`（拍号回退提示条）与 `accGroup`（重拍分组壳）随拍号控件
      整块从标记里删除——桩里同步摘掉，否则"标记里没有了"这件事没人拦。 */
   countInBeatsWrap: { hidden: true },
-  trainerPanel: { hidden: true }, migHint: { hidden: true }, importFile: { hidden: true },
+  trainerPanel: { hidden: true }, importFile: { hidden: true },
   /* v3.34.8：窄屏大纲抽屉与它的遮罩——标记里都写了 `hidden`（宽屏恒不可见）。
      不复刻的话桩里读到 hidden=false（"开着"），与真机**相反** ⇒ 初始态断言会假红。
      ★ 注意：应用侧的开关态走**显式变量** tocShown，不读 el.hidden ——

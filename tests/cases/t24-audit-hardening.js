@@ -494,22 +494,5 @@ section("T29 音频生命周期 + 跨 origin 迁移提示（审计 P2-13 / P2-14
   ok(app2.beat.Store.S.playing, "pagehide 前在播放");
   app2.firePageHide();
   ok(!app2.beat.Store.S.playing, "pagehide → 自动停播");
-
-  /* 跨 origin 提示（v1.3.0 立；v3.1.0 降级）：不再是抽屉顶部的琥珀警告——
-     挂进自定义区末尾（自定义区出厂默认展开，随折叠显隐），样式降为安静的灰虚线空态；
-     确认一次（S.migHint）后永不再挂出。 */
-  const fresh = loadApp();
-  ok(Array.from(fresh.els["presetList"].children).indexOf(fresh.els["migHint"]) >= 0,
-    "★ 空库：迁移提示挂进列表的自定义区末尾（v3.1.0 位置降级，不再是抽屉顶部）");
-  eq(fresh.els["migHint"].hidden, false, "自定义区出厂展开 + 库为空 → 提示在该区末尾现身");
-  fresh.els["migHintBtn"].fire("click");
-  eq(fresh.els["migHint"].hidden, true, "确认后关闭");
-  ok(fresh.beat.Store.S.migHint, "确认状态记入内存");
-  fresh.beat.Store.flush();
-  eq(JSON.parse(fresh.storage.get("beatsight.state")).migHint, true, "确认状态已持久化（不再重复打扰）");
-  const withPresets = loadApp({ "beatsight.m2": JSON.stringify({ v: 3, customs: [{ id: "x", name: "已有", meter: 4,
-    bars: [0,1,2,3].map(() => [{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]) }] }) });
-  ok(Array.from(withPresets.els["presetList"].children).indexOf(withPresets.els["migHint"]) < 0,
-    "已有预设的用户：提示不再挂入列表");
 }
 
