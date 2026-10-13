@@ -54,10 +54,14 @@ section("T245-1 音符属性悬浮层 · 初始隐藏 / 弹出 / meta / toggle /
   /* 弹出即已选中 → 四组可用（禁用态由 editorRender 同源同步） */
   ok(els["dirRow"].children.every(b => !b.disabled), "弹出态：扫弦标注各档启用（桩复刻三档）");
 
-  /* 再点当前块 → toggle 收起，选中保留 */
+  /* 点当前块 = 相对当前显隐翻转：开→收；**关（✕/ESC/空白收起后）→重开**（用户实报追补） */
   edCellsOf(els, 0)[0].fire("click");
   ok(pop.classList.contains("off"), "★ 再点当前块 → 收起（toggle）");
   ok(edCellsOf(els, 0)[0].classList.contains("sel"), "toggle 收起后选中保留（.sel 不掉）");
+  edCellsOf(els, 0)[0].fire("click");
+  ok(!pop.classList.contains("off"), "★ 关态再点当前块 → 重新展开（相对显隐翻转，无需先点别块）");
+  edCellsOf(els, 0)[0].fire("click");
+  ok(pop.classList.contains("off"), "★ 展开态再点当前块 → 仍可收起");
 
   /* 点其他块 → 跟随重锚定 + meta 换格 */
   edCellsOf(els, 0)[1].fire("click");
@@ -95,6 +99,11 @@ section("T245-2 B1 铺弦号行 + 悬浮层标记（留在页面、占位精简�
      nostyle.includes(".ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}"),
      "★ 铺弦号定宽进 CSS 变量（--ed-fill-w，展板 Do「新增尺寸先进 CSS 变量」）");
   ok(html.includes('placeholder="按序铺弦号：5:3 3 2 3 1 3 2 3"'), "★ 占位精简（「作用于当前小节」移出）");
+  ok(ruleOf(".ed-str .str-lines").includes("grid-template-columns:1fr 1fr") &&
+     ruleOf(".ed-str .str-lines").includes("grid-auto-flow:column"),
+     "★ 逐弦面板两列网格（左 ①②③ / 右 ④⑤⑥，高度约减半；用户实拍追补）");
+  ok(ruleOf(".ed-pop .ed-dir").includes("margin:10px 0 12px"),
+     "★ 悬浮层组间距补 margin-top（修扫弦标注按钮贴 head 分隔线；用户实拍追补）");
   ok((html.match(/<span class="hint">作用于当前小节<\/span>/g) || []).length === 1,
      "★ 「作用于当前小节」常显 hint 恰一条（#strFillHint 仍专用于报错）");
   /* 去注释后检查：源码钉看的是**活代码**，修复说明注释里提到旧话术不算数 */

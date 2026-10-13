@@ -2278,7 +2278,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 逐弦拨弦面板（v3.47.0）：六行迷你面板（开关 + 品数框 + 技巧钮），复用 .ed-dir 的行容器
    语义（flex wrap + 底距），行组纵向堆叠；品数框与 .name-input 同族但迷你（参照 ctl-pills
    折叠先例，窄档下靠 .ed-dir 的 flex-wrap 收纳，不顶破编辑器布局） */
-.ed-str .str-lines{display:flex;flex-direction:column;gap:4px}
+/* ★ 追补（用户实拍）：六行纵向占太高 → 两列网格（左 ①②③ / 右 ④⑤⑥，grid-auto-flow:column
+   保持「① 在顶」的既有弦序口径），面板高度约减半；交互与 DOM 结构零变化 */
+.ed-str .str-lines{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto);grid-auto-flow:column;gap:8px 12px}
 .str-line{display:flex;gap:6px;align-items:center}
 .str-fret{width:48px;background:var(--card2);border:1px solid var(--line);border-radius:8px;
   color:var(--t1);font-size:12px;padding:6px 8px;font-family:inherit;outline:none;text-align:center}
@@ -2304,7 +2306,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
 .ed-pop-above .ed-pop-arr{top:auto;bottom:-5px;border-left:none;border-top:none;
   border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
-.ed-pop .ed-dir{margin-bottom:12px}
+.ed-pop .ed-dir{margin:10px 0 12px}   /* ★ 追补（用户实拍）：首组与 head 分隔线原为零间距（按钮贴线），补 margin-top */
 /* PLAN-v11 B1：小节级铺弦号输入框定宽——原 inline flex:1 吃满整行，内容（5:3 3 2 3 …）用不上。
    尺寸进 CSS 变量（展板 Do「新增尺寸先进 CSS 变量」），窄屏 max-width 兜底换行 */
 .ed-strfill{--ed-fill-w:320px}
@@ -4901,23 +4903,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4933  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6588  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8823  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10051 Modal         应用内弹窗
-     L10196 Viz           时值可视化渲染与每帧动画
-     L13798 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14552 Trainer       变速训练器
-     L14769 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15440 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17429 Editor        自定义节奏型编辑器
-     L18354 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18449 Ear           听辨训练（v1.10.0）
-     L18677 Arrange       曲式编排（v2.0.0）
-     L22754 Help          使用方法（v2.0.1）
-     L22909 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L22991 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23287 初始化（装配） 各模块 hook 接线与启动
+     L4935  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6590  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8825  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10053 Modal         应用内弹窗
+     L10198 Viz           时值可视化渲染与每帧动画
+     L13800 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14554 Trainer       变速训练器
+     L14771 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15442 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17431 Editor        自定义节奏型编辑器
+     L18358 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18453 Ear           听辨训练（v1.10.0）
+     L18681 Arrange       曲式编排（v2.0.0）
+     L22758 Help          使用方法（v2.0.1）
+     L22913 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L22995 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23291 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -17634,12 +17636,14 @@ let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (fa
     const cells = (/** @type {any} */ (row))._edCells || [];
     for (let i = 0; i < cells.length; i++){
       const c = cells[i];
-      /* PLAN-v11 B2：点块 = 选中 + 弹出锚定；**再点当前块 = toggle 收起**（选中保留）；点其他块 = 跟随。
+      /* PLAN-v11 B2：点块 = 选中 + 弹出锚定；点当前块 = **相对当前显隐翻转**——开→收；
+         关（✕/ESC/空白收起后）→重开（★ 追补：原写法 `!same` 把「关态点同块」也判成收起，
+         同一块必须先点别块才能再展开，用户实报）；点其他块 = 跟随。
          显隐不写在这里的分支里——统一交 editorRender 尾部的 syncEdPop（所有渲染路径一个出口） */
       Modal.bindOverlay("editor", c, "click", () => {
         const same = !!(edSel && edSel.bar === b && edSel.idx === i);
         edSel = {bar:b, idx:i}; editBar = b;
-        edPopShown = !same;
+        edPopShown = same ? !edPopShown : true;
         editorRender();
       });
     }
