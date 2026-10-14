@@ -2324,6 +2324,23 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    尺寸进 CSS 变量（展板 Do「新增尺寸先进 CSS 变量」），窄屏 max-width 兜底换行 */
 .ed-strfill{--ed-fill-w:320px}
 .ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}
+/* ★ 节奏型页面改造：音符块库容器——批 1 在原位建壳，块库上移后它成为卡片内
+   「填充入口区」的宿主；空态时由 editorRender 挂 .guide-ring 红框呼吸引导 */
+.pal-zone{margin:18px 0 0}
+/* 空态红框（v3.39.0）：呼吸描边引导两个填充入口（顶栏模板 / 上方块库）。
+   「只教一次」：editorRender 用 edEverFilled 会话级 flag 同源控制——首次脱离空态即置位，
+   之后即便 undo 回到全空也不再回来（引导只教一次，不跟着撤销抖动）。
+   prefers-reduced-motion 用户关动画只留静态描边（动效不作为唯一信息通道）。 */
+.guide-ring{outline:2px solid var(--red);outline-offset:2px;border-radius:6px;
+  animation:guidePulse 1.6s ease-in-out infinite}
+@keyframes guidePulse{0%,100%{outline-color:var(--red)}50%{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.guide-ring{animation:none}}
+/* 空轨道引导层：editorRender 在首个空 bar 的 track 内动态插入（不进首屏静态 DOM——
+   DOM 预算纪律）；pointer-events:none 不挡 track 的「点空白选小节」点击 */
+.ed-guide{position:absolute;inset:0;display:flex;flex-direction:column;gap:2px;
+  align-items:center;justify-content:center;text-align:center;pointer-events:none;
+  font-size:12.5px;line-height:1.8;color:var(--t3);padding:0 12px}
+.ed-guide .ed-guide-t{font-size:13px;font-weight:600;color:var(--t2)}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -3925,7 +3942,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              （「内置 · 名 / 我的 · 名」），换选即载入；原标题行「基于「X」创建 · N 拍 · N 小节」
              随之退役（顶栏溢出的根源），小节数看卡片标题、拍数看拍数下拉。
              选项每次 openWith 重建（自定义列表会变）；dirty 确认取消时下拉弹回当前底稿（不留假态）。 -->
-        <span class="ed-meter">
+        <!-- ★ 节奏型页面改造（空态起步）：ed-tpl 是空态红框的挂点——editorRender 尾部按
+             draftEmpty 同步 .guide-ring（「模板一键载入」是空态两个填充入口之一）；
+             拍数那个 .ed-meter 不带此 class，两格不混淆。 -->
+        <span class="ed-meter ed-tpl" id="edTplWrap">
           <span class="lab">模板</span>
           <select class="loop-sel" id="editorTplSel" aria-label="模板：当前底稿（换选即载入内置型或我的预设，替换当前内容，可撤销）"></select>
         </span>
@@ -4042,8 +4062,13 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <span class="hint">作用于当前小节</span>
         <span class="hint" id="strFillHint" role="status"></span>
       </div>
-      <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
-      <div class="palette" id="palette"></div>
+      <!-- ★ 节奏型页面改造：.pal-zone 容器包住标题+块库——它同时是空态红框（.guide-ring）
+           的挂点（「音符块库逐块摆入」是空态两个填充入口之一）。批 1 先在原位建容器，
+           块库整体上移到 #editorBars 之前随后一批（纯 DOM 移动，id 零变化）。 -->
+      <div class="pal-zone" id="palZone">
+        <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
+        <div class="palette" id="palette"></div>
+      </div>
       <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2)">预设名称</span>
         <input class="name-input" id="presetNameInput" value="我的节奏型" aria-label="节奏型名称">
@@ -4917,23 +4942,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4949  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6613  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8853  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10081 Modal         应用内弹窗
-     L10242 Viz           时值可视化渲染与每帧动画
-     L13869 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14623 Trainer       变速训练器
-     L14840 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15511 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17459 Editor        自定义节奏型编辑器
-     L18436 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18531 Ear           听辨训练（v1.10.0）
-     L18759 Arrange       曲式编排（v2.0.0）
-     L22884 Help          使用方法（v2.0.1）
-     L23039 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23121 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23417 初始化（装配） 各模块 hook 接线与启动
+     L4974  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6638  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8878  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10106 Modal         应用内弹窗
+     L10267 Viz           时值可视化渲染与每帧动画
+     L13894 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14648 Trainer       变速训练器
+     L14865 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15536 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17484 Editor        自定义节奏型编辑器
+     L18536 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18631 Ear           听辨训练（v1.10.0）
+     L18859 Arrange       曲式编排（v2.0.0）
+     L22984 Help          使用方法（v2.0.1）
+     L23139 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23221 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23517 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -17465,6 +17490,10 @@ const Editor = (() => {
 let edSel = /** @type {null | { bar: number, idx: number, auto?: boolean }} */ (null), editBar = /** @type {number} */ (0);   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
 let edPopShown = false;   /* PLAN-v11 B2：音符属性悬浮层显隐（与 edSel 解耦——✕/ESC/再点当前块收起时选中保留；
                              edSel 被清的路径不必各自记得收层，syncEdPop 中央统一兜底） */
+/* ★ 节奏型页面改造（空态起步）：空态红框「只教一次」flag——openBlank 置 false（新草稿重新引导），
+   editorRender 每轮「非空即置位」；此后即便 undo/清空回到全空，红框也不回来
+   （引导只教一次，不跟着撤销抖动）。openWith 带源进入（非空底稿）时直接置 true。 */
+let edEverFilled = false;
 let undoStack = /** @type {string[]} */ ([]), dirty = /** @type {boolean} */ (false);
   /** @type {null | number} */
   let prevSigBeforeAudition = null;
@@ -17578,6 +17607,40 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (S.preview) Presets.stopAudition();
     openWith(curPattern(), S.sel);        /* PLAN-v11 追补：带源身份（模板下拉状态型常显用） */
   }
+  /* ★ 节奏型页面改造（空态起步）：「新建节奏型」专用入口——从**空白底稿**开始画。
+     此前 #editBtn 走 open()，以当前选中型为底稿（「X-副本」），与按钮副文案
+     「从空白小节开始画」不符：想从零开始的用户得手动清空每小节，新手进来看到满屏
+     预填块不知从哪下手。空白口径：
+       · bars = [[]]（1 个空小节起步——BUILTINS 全为单小节型；加小节有 addBarBtn）；
+       · 拍数取 S.sig（当前拍号，与 basicPattern 同源，免一次手动切换）；
+       · srcRef = null（模板下拉落回占位「选模板…」——它正是空态的引导入口之一）；
+       · edEverFilled 置 false（空态红框重新引导）；
+       · dirty = false（直接关闭不弹丢弃确认——空白不算改动）。
+     open()（带源造变体）语义不变：曲式块 ✎ / 预设编辑路径仍走它。 */
+  function openBlank(){
+    if (S.playing) Controls.stop();
+    srcRef = null;
+    draft = { name: "我的节奏型", meter: S.sig, label: "", song: "",
+      accents: defaultAccents(S.sig), bars: [[]] };
+    edSel = null; editBar = 0;
+    edEverFilled = false;
+    undoStack = []; dirty = false;
+    edRowCache.clear();
+    $("presetNameInput").value = draft.name;
+    $("patLabelInput").value = draft.label;
+    $("songNameInput").value = draft.song;
+    $("editorMaxBars").textContent = MAX_PAT_BARS;
+    $("editorRefNote").textContent = "";
+    editorRender();
+    fillTplSelect();
+    Modal.openOverlay("editor");
+  }
+  /* 空态判定（节奏型页面改造）：全部小节都是空数组 = 「还未开始」。
+     注意与 barValid 的口径区分——空是引导问题、不是校验错误，状态灯/红框按它走，
+     保存可用性仍走 allValid（空小节 barSum=0 ≠ meter*TPB，自然禁用）。 */
+  function draftEmpty(d){
+    return !!d && Array.isArray(d.bars) && d.bars.length > 0 && d.bars.every(bar => Array.isArray(bar) && bar.length === 0);
+  }
   /** v2.37.0（b）：以指定型为底稿进编辑器（编排页换型候选 ✎ 的跳转目标；open() = openWith(当前型)）。
       编辑器保存 = 生成**新副本**（不覆盖原版），故跳转语义是"造变体"而非"就地改"。
       @param {any} src @param {any} [ref] 源身份（{type,idx|id}；缺省从 src 上的合并字段推断） */
@@ -17588,6 +17651,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       accents: (src.accents || defaultAccents(src.meter)).slice(),
       bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
     edSel = null; editBar = 0;
+    edEverFilled = true;                  /* 带源进入 = 非空底稿：空态红框不出现（只教一次口径） */
     undoStack = []; dirty = false;
     edRowCache.clear();                  // v3.31.x（审计 P2-3）：换草稿 = 换内容，旧行缓存全部作废
     $("presetNameInput").value = draft.name;
@@ -17806,11 +17870,20 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
        每行触发一次样式/布局失效（编辑器每次按键都全量重建，累积可感知） */
     const frag = document.createDocumentFragment();
     let allValid = true;
+    /* ★ 节奏型页面改造（空态起步）：isEmpty = 全部小节都还没放块——「还未开始」是引导问题、
+       不是校验错误，状态灯/红框/试听禁用按它走；edEverFilled 在此「非空即置位」（只教一次），
+       undo/清空回到全空后红框与引导层都不回来。 */
+    const isEmpty = draftEmpty(d);
+    if (!isEmpty) edEverFilled = true;
+    const showGuide = isEmpty && !edEverFilled;   /* 首次空态才引导（与红框同一判据） */
     for (let b = 0; b < patBars(d); b++){
       const ok = barValid(b);
       if (!ok) allValid = false;
-      /* v3.31.x（审计 P2-3）：命中缓存 → 复用节点、只重绑监听（见 edRowCache 注释） */
-      const ck = editBar + "|" + (edSel && edSel.bar === b ? edSel.idx : -1) + "|" + b + "|" + barFinger(b);
+      /* v3.31.x（审计 P2-3）：命中缓存 → 复用节点、只重绑监听（见 edRowCache 注释）。
+         ★ 引导层信号（|G）编进缓存键：guide 随行重建自然插拔，不命中旧缓存——
+           若不编键，undo 回空会命中"放块前"的缓存行而 guide 残留（红框已摘、引导还在，口径分裂）。 */
+      const ck = editBar + "|" + (edSel && edSel.bar === b ? edSel.idx : -1) + "|" + b + "|" + barFinger(b)
+        + (showGuide && b === 0 ? "|G" : "");
       const cached = edRowCache.get(ck);
       if (cached){
         bindEdRow(cached, b);
@@ -17835,6 +17908,21 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       track.setAttribute("role", "button");
       track.tabIndex = 0;
       track.setAttribute("aria-label", "选中小节 " + (b + 1));
+      /* ★ 空态引导层（节奏型页面改造）：只在首个空小节的 track 内动态插入（不进首屏静态
+         DOM——DOM 预算纪律）；三行文案全用 DOM 搭（lint no-innerhtml 纪律）。
+         aria-hidden：引导是给看得见的人的，读屏用户的路径由两处红框入口的可达性承担。 */
+      if (showGuide && b === 0){
+        const g = document.createElement("div");
+        g.className = "ed-guide"; g.setAttribute("aria-hidden", "true");
+        const gt = document.createElement("span");
+        gt.className = "ed-guide-t"; gt.textContent = "空白小节 · 两步起步";
+        const g1 = document.createElement("span");
+        g1.textContent = "① 顶栏「模板」下拉，一键载入整套节奏型";
+        const g2 = document.createElement("span");
+        g2.textContent = "② 或点「音符块库」，逐块摆入（每小节须恰好占满）";
+        g.appendChild(gt); g.appendChild(g1); g.appendChild(g2);
+        track.appendChild(g);
+      }
       let acc = 0;
       let prevZone = 1;   // v2.74.0：空扫弦区跟随前一记实扫（与主视图 buildRowCells 同口径）
       /** @type {{x:number, strong:boolean}[]} 接缝落点（v2.78.2 骑缝交界线；v2.79.0 加 strong——拍边界 2px 强缝，与主视图同口径） */
@@ -17923,8 +18011,12 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
           用户看到"点不动"却不知道去哪改（用户实拍）。 */
     const songOk = !!String($("songNameInput").value || "").trim();
     const canSave = allValid && songOk;
-    $("editorStatus").textContent = allValid ? "校验通过" : "存在时值不完整的小节";
-    $("editorStatusWrap").className = "status " + (allValid ? "ok" : "bad");
+    /* ★ 空态三态灯（节奏型页面改造）：全空 = 中性「还未开始」（引导问题、非校验错误），
+       放入首块后回落到既有两分支。试听按钮同步禁用（空型无声）；试听中不禁——
+       auditionBtn 是 toggle（开始/停止），试听中禁用会让人无法停止。 */
+    $("editorStatus").textContent = isEmpty ? "还未开始" : (allValid ? "校验通过" : "存在时值不完整的小节");
+    $("editorStatusWrap").className = "status " + (isEmpty ? "" : (allValid ? "ok" : "bad"));
+    $("auditionBtn").disabled = isEmpty && !S.preview;
     const songEl = /** @type {HTMLInputElement} */ ($("songNameInput"));
     songEl.classList.toggle("bad", !songOk);
     if (songOk) songEl.removeAttribute("aria-invalid"); else songEl.setAttribute("aria-invalid", "true");
@@ -18033,6 +18125,14 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       : (curStr.length
           ? "逐弦 " + strNameOf(curStr) + (selStep.rest ? " · 空拨（空心点）" : "")
           : "点弦号启用分解点；填品数=加花，技巧钮循环 无→击→勾→滑→泛");
+    /* ★ 空态红框同步（节奏型页面改造）：两个填充入口——顶栏「模板」（#edTplWrap）与
+       「音符块库」容器（#palZone）。判据与引导层同一份（showGuide = isEmpty && !edEverFilled，
+       只教一次）：非空即摘，undo/清空回到全空也不再回来。同步收在渲染尾部一处，
+       与「开关三件套」同纪律（分散写必然漂移）。 */
+    const tplWrap = $("edTplWrap");
+    if (tplWrap) tplWrap.classList.toggle("guide-ring", showGuide);
+    const palZone = $("palZone");
+    if (palZone) palZone.classList.toggle("guide-ring", showGuide);
     syncEdPop();                          /* PLAN-v11 B2：渲染尾部统一同步悬浮层（显隐/跟随/收起） */
     if (S.preview) Viz.buildViz();        // 试听中实时反映编辑
   }
@@ -18404,7 +18504,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     close();
     Presets.refreshAfterPatternChange();
   });
-  $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); open(); });
+  $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); openBlank(); });
   $("editorBack").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); tryClose(); });
   /* PLAN-v11 B2：✕ 收层 + 编辑器空白点击收层（不碰块/弹层/控件才收——点 palette 替换、
      pill 切档、输入框都不打扰）。#editor 是 fixed 层、永不重建，监听挂一次即可；
@@ -18430,7 +18530,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
     return true;
   } });
-  return { open, openWith, tryClose, undo, draft: () => draft };
+  return { open, openBlank, openWith, tryClose, undo, draft: () => draft };
 })();
 
 /* ================= Settings · 设置（v2.10.12 新增） ================= */

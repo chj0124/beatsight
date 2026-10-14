@@ -26,9 +26,13 @@ const deepItems = els => {
   walk(els["presetList"]);
   return out;
 };
-/** 打开编辑器并填好歌名（本套件只关心「绑定」这一段，拍面一律用当前型的合法副本） */
+/** 打开编辑器并填好歌名（本套件只关心「绑定」这一段）。
+    ★ 节奏型页面改造：#editBtn 改走空白底稿（openBlank）——空稿 allValid=false 保存必被拦，
+    故先经模板下拉载入内置 0 让拍面合法（dirty=false 免确认，正是空稿起步的引导路径），
+    再填歌名；被测契约（归属落库/自动建曲式）一字未变。 */
 const editorWithSong = (els, song) => {
   els["editBtn"].fire("click");
+  els["editorTplSel"].value = "b0"; els["editorTplSel"].fire("change");
   if (song !== undefined){
     els["songNameInput"].value = song;
     els["songNameInput"].fire("input");
@@ -46,9 +50,12 @@ section("T212a 保存必填歌名 · 空着时保存键禁用并说明差在哪�
   ok(!/归属/.test(els["editorStatus"].textContent), "★ 卡片头那行只报草稿级问题");
   els["savePresetBtn"].fire("click");
   eq(beat.Store.customs.length, 0, "★ 且真的存不进去（禁用 + 处理器里再兜一道）");
+  /* ★ 节奏型页面改造：空稿下歌名填了也存不了（allValid=false）——先载模板补拍面
+     （此时 dirty=false 免确认），再填歌名，保存可用性恢复的语义不变 */
+  els["editorTplSel"].value = "b0"; els["editorTplSel"].fire("change");
   els["songNameInput"].value = "绑名测试歌";
   els["songNameInput"].fire("input");
-  eq(els["savePresetBtn"].disabled, false, "填上歌名 ⇒ 保存可用");
+  eq(els["savePresetBtn"].disabled, false, "填上歌名（拍面已满）⇒ 保存可用");
   ok(/校验通过/.test(els["editorStatus"].textContent), "状态栏转为校验通过");
 }
 

@@ -67,7 +67,11 @@ section("T141c 编辑器 · 标注输入框：回填、留空不写字段、副�
 {
   const { beat, els, storage } = loadApp(seedCold([withLabel("Am7")]));
   selCustom(beat, storage, 0);
-  els["editBtn"].fire("click");                              // 打开编辑器（副本流程）
+  /* ★ 节奏型页面改造：#editBtn 改走空白底稿（openBlank）——「副本继承源型」的语义
+     现在只存在于带源进入路径（openWith），故本段改经 Editor.openWith 驱动，
+     被测契约（回填/留空不写/保存新增）一字未变 */
+  const srcC = JSON.parse(storage.get("beatsight.customs")).customs[0];
+  beat.Editor.openWith(beat.Store.customs.find(c => c.id === srcC.id), { type: "custom", id: srcC.id });
   eq(els["patLabelInput"].value, "Am7", "★ 副本继承源型标注（输入框回填 Am7）");
   els["patLabelInput"].value = "Dm7";
   /* ★ v3.35.7：歌名是保存的前置条件（没有"单独创建一条节奏型"这回事） */
@@ -78,8 +82,8 @@ section("T141c 编辑器 · 标注输入框：回填、留空不写字段、副�
   eq(last.label, "Dm7", "★ 保存写入标注（导出面可见）");
   ok(!!JSON.parse(storage.get("beatsight.customs")).customs.find(c => c.label === "Dm7"),
     "★ 标注落冷键 beatsight.customs（编辑器保存即新增的既有口径）");
-  /* 留空不写字段：形状与老对象一致 */
-  els["editBtn"].fire("click");
+  /* 留空不写字段：形状与老对象一致（同样经带源进入——新空稿路径不回填源型标注） */
+  beat.Editor.openWith(beat.Store.customs.find(c => c.id === srcC.id), { type: "custom", id: srcC.id });
   els["patLabelInput"].value = "   ";
   /* 歌名会从源型（刚保存的那条）预填回来；这里再显式写一次，避免"靠预填"这种隐式前提 */
   els["songNameInput"].value = "标注测试歌";
