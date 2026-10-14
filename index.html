@@ -2236,6 +2236,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    底稿身份常显在模板下拉（状态型），小节数看卡片标题、拍数看拍数下拉 */
 /* 顶栏里的拍数块（标签 + 下拉）：内部 8px、与标题的间隔由 .left 的 16px 承担（两层各司其职） */
 .ed-meter{display:flex;align-items:center;gap:8px;flex:none}
+/* ★ PLAN-v14（用户实拍图二）：模板触发框比原生弹层宽——原生 <select> 触发框宽由**最长选项**
+   撑出（「内置 · 十六分满扫（《在他乡》前奏）」≈270px），而展开弹层宽走浏览器自带测量，
+   两条路径不同 ⇒ 观感不一。收窄触发框（200px + 省略号）使「触发框 ≤ 弹层」。
+   只作用模板下拉（.ed-tpl），拍数下拉（无此 class）不动。 */
+.ed-tpl .loop-sel{max-width:200px;text-overflow:ellipsis}
 /* 窄屏：顶栏从**固定 64px** 改成**可生长**，并允许块级换行——拍数块换到标题下方一行。
    断点取 640px（与全站既有断点同档），手机 390 命中。 */
 @media (max-width:640px){
@@ -2285,6 +2290,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    大箭头（.strumv 竖箭头）已完整表达方向，aria-label 兜底读屏，小箭头纯冗余（用户图二反馈）。
    随之原「.edcell span 特异性高于 .ed-strum」的说明一并退休。 */
 .ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
+/* ★ PLAN-v14（用户实拍图二）：撤销钮从顶栏归位到网格下方 .ed-actions——撤销是高频恢复动作，
+   该跟网格走（推翻 v3.53.2「整稿级动作住顶栏」的口径，见 DEVELOPMENT.md 作用域分区）。
+   形态 = 图标 +「撤销」；inline-flex 排布参照 .back-btn（图标与文字水平居中对齐）。 */
+#undoBtn{display:inline-flex;align-items:center;gap:6px}
 /* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
 .ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
 /* ★ 节奏型页面改造批 3：显隐矩阵用 hidden 属性——.ed-dir 有显式 display:flex，
@@ -2322,6 +2331,15 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-pop-above .ed-pop-arr{top:auto;bottom:-5px;border-left:none;border-top:none;
   border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .ed-pop .ed-dir{margin:10px 0 12px}   /* ★ 追补（用户实拍）：首组与 head 分隔线原为零间距（按钮贴线），补 margin-top */
+/* ★ PLAN-v14（用户实拍图三：「弦区的三个选项换行了」）：弹层内容区 ≈314px，而弦区行 =
+   「弦区」hint + 三颗 pill（全局 .pill 是 padding:9px 16px / 13px / min-height:40px）≈ 总计 406px
+   ⇒ 第三颗必然换行（弹法行四颗短 pill ≈297px 恰好放下，故只弦区行破）。
+   只在 #edPop 作用域收紧 pill 内边距/字号 + 行间距 + 隐掉占位的空 hint（不占 gap）——
+   全局 .pill 与按钮文案一字不动（帮助页声明弦区释义与按钮文案逐字对应）。
+   min-height:40px 触控下限不动（DEVELOPMENT.md「触控下限」不变量只作用于可点元素尺寸）。 */
+#edPop .pill{padding:5px 8px;font-size:11.5px}
+#edPop .ed-dir{gap:8px}
+#edPop .hint:empty{display:none}
 /* PLAN-v11 B1：小节级铺弦号输入框定宽——原 inline flex:1 吃满整行，内容（5:3 3 2 3 …）用不上。
    尺寸进 CSS 变量（展板 Do「新增尺寸先进 CSS 变量」），窄屏 max-width 兜底换行 */
 .ed-strfill{--ed-fill-w:320px}
@@ -2343,10 +2361,14 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .pal-zone.guide-ring{border-radius:8px;box-shadow:inset 3px 0 0 rgba(var(--red-rgb),.55);padding:10px 12px}
 /* 空轨道引导层：editorRender 在首个空 bar 的 track 内动态插入（不进首屏静态 DOM——
    DOM 预算纪律）；pointer-events:none 不挡 track 的「点空白选小节」点击 */
+/* ★ PLAN-v14（用户实拍图一：「编辑区的文案贴在上下边缘」）：引导层三行（标题 + 两步说明）
+   在 .edtrack 恒高 64px 内原需 ≈72px，垂直居中使上下各溢 ≈4px ⇒ 文字贴死上下缘。
+   压缩排版本身（行高 1.8→1.5、字号各降半档），三行 → ≈59px，上下各留 ≈2.6px。
+   不增高轨道：draftEmpty 允许多个小节全空，只给首行增高会出现 84/64 混排行高跳变。 */
 .ed-guide{position:absolute;inset:0;display:flex;flex-direction:column;gap:2px;
   align-items:center;justify-content:center;text-align:center;pointer-events:none;
-  font-size:12.5px;line-height:1.8;color:var(--t3);padding:0 12px}
-.ed-guide .ed-guide-t{font-size:13px;font-weight:600;color:var(--t2)}
+  font-size:12px;line-height:1.5;color:var(--t3);padding:0 12px}
+.ed-guide .ed-guide-t{font-size:12.5px;font-weight:600;color:var(--t2)}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -3952,12 +3974,14 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              draftEmpty 同步 .guide-ring（「模板一键载入」是空态两个填充入口之一）；
              拍数那个 .ed-meter 不带此 class，两格不混淆。 -->
         <span class="ed-meter ed-tpl" id="edTplWrap">
-          <span class="lab">模板</span>
+          <!-- ★ PLAN-v14（用户实拍图二）：「模板」标签删除——下拉自带「选模板…」占位与
+               「内置 · 名」选项文案，自描述成立，aria-label 亦完整。 -->
           <select class="loop-sel" id="editorTplSel" aria-label="模板：当前底稿（换选即载入内置型或我的预设，替换当前内容，可撤销）"></select>
         </span>
       </div>
       <div class="editor-actions">
-        <button class="pill outline" id="undoBtn" disabled>撤销</button>
+        <!-- ★ PLAN-v14（用户实拍图二）：撤销钮已归位到网格下方 .ed-actions（「离编辑区太远」）——
+             顶栏只剩过程动作「试听」。 -->
         <button class="pill outline" id="auditionBtn">试听</button>
       </div>
     </div>
@@ -3990,7 +4014,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       </div>
       <div id="editorBars"></div>
       <div class="ed-actions">
-        <!-- 当前小节工具：音符级「删除选中音符」收进 #edPop，整稿级「撤销」移去顶栏。 -->
+        <!-- ★ PLAN-v14（用户实拍图二）：撤销挪回本行**首位**——此前在顶栏（v3.53.2 口径
+             「整稿级动作住顶栏」），用户实拍反馈离编辑区太远 ⇒ 高频恢复动作跟网格走。
+             形态改为图标 +「撤销」；id 不变 ⇒ 禁用态同步（L18075）与 click 接线（L18260）零改动。 -->
+        <button class="pill outline" id="undoBtn" disabled aria-label="撤销上一步草稿修改（Ctrl+Z）"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 14 4 9l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>撤销</button>
+        <!-- 当前小节工具：音符级「删除选中音符」收进 #edPop；整稿级「撤销」见本行行首。 -->
         <!-- v2.6.1（第 Ⅲ 期）：型的小节数自由（1~64）之后，编辑器必须能改**小节数**，
              否则 1 小节的型（示例曲的节奏型 1~6 就是）在界面上永远只有一行、改不动 -->
         <button class="pill outline" id="addBarBtn">＋ 在其后加一小节</button>
@@ -4962,23 +4990,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4994  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6656  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8897  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10125 Modal         应用内弹窗
-     L10286 Viz           时值可视化渲染与每帧动画
-     L13915 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14669 Trainer       变速训练器
-     L14886 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15557 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17505 Editor        自定义节奏型编辑器
-     L18641 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18736 Ear           听辨训练（v1.10.0）
-     L18964 Arrange       曲式编排（v2.0.0）
-     L23090 Help          使用方法（v2.0.1）
-     L23245 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23327 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23623 初始化（装配） 各模块 hook 接线与启动
+     L5022  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6684  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8925  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10153 Modal         应用内弹窗
+     L10314 Viz           时值可视化渲染与每帧动画
+     L13943 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14697 Trainer       变速训练器
+     L14914 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15585 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17533 Editor        自定义节奏型编辑器
+     L18669 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18764 Ear           听辨训练（v1.10.0）
+     L18992 Arrange       曲式编排（v2.0.0）
+     L23118 Help          使用方法（v2.0.1）
+     L23273 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23355 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23651 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5004,7 +5032,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.53.2";
+const VERSION = "3.53.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -17954,7 +17982,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
         const gt = document.createElement("span");
         gt.className = "ed-guide-t"; gt.textContent = "空白小节 · 两步起步";
         const g1 = document.createElement("span");
-        g1.textContent = "① 顶栏「模板」下拉，一键载入整套节奏型";
+        g1.textContent = "① 顶栏「选模板」下拉，一键载入整套节奏型";
         const g2 = document.createElement("span");
         g2.textContent = "② 或点「音符块库」，逐块摆入（每小节须恰好占满）";
         g.appendChild(gt); g.appendChild(g1); g.appendChild(g2);

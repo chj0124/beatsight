@@ -44,7 +44,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v11-editor-popover.md](archive/PLAN-v11-editor-popover.md) | 编辑器音符级悬浮窗 + 小屏入口收敛 + 品牌合规修复实施方案（2026-10-13 拍板：四组进悬浮窗 / 复合断点拦入口 / 帮助加提示） | 已落地（v3.50.0 交付，四批 + 三轮追补一次完成） |
 | [PLAN-v12-editor-note-state.md](archive/PLAN-v12-editor-note-state.md) | 编辑器记谱交互改造：发声态两组开关（`air` 无方向空扫）· 块库休止符退役 · 内联 ↑↓ 小箭头清理 + 软选中实施方案（2026-10-14 拍板） | 已落地（v3.52.0 交付；施工后记见文末） |
 | [PLAN-v13-editor-scope-and-air.md](archive/PLAN-v13-editor-scope-and-air.md) | 空扫语义收口与编辑器作用域重整：无方向空扫补 `air` 且不新增 onset · 弹法/手部联动 · 整稿/小节/音符/输出分区 | 已落地（v3.53.2 工作区；施工后记见文末） |
-| [PLAN-v14-editor-ui-fixes.md](archive/PLAN-v14-editor-ui-fixes.md) | 节奏型编辑界面四项修正：空态引导排版 · 撤销钮归位+图标 · 模板下拉收窄与删标签 · 弹层 pill 收紧（2026-10-14 拍板；另附「型级标注与曲式和弦不冲突」查证结论） | 历史快照 · 待实施 |
+| [PLAN-v14-editor-ui-fixes.md](archive/PLAN-v14-editor-ui-fixes.md) | 节奏型编辑界面四项修正：空态引导排版 · 撤销钮归位+图标 · 模板下拉收窄与删标签 · 弹层 pill 收紧（2026-10-14 拍板；另附「型级标注与曲式和弦不冲突」查证结论） | 已落地（v3.53.3 交付；施工后记见文末） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
 | [beatsight-brand-board.html](archive/beatsight-brand-board.html) | 视觉系统提案展板：设计 token / 字体 / 组件 / 图标规范整理（源自 index.html 真实值） | 历史快照 · 已落地（v3.43.0 入库时逐项核对一致） |

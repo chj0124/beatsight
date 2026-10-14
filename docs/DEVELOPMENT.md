@@ -369,8 +369,10 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 回归：`tests/cases/t114-rest-toggle.js`、`t249-air-toggle.js`、`t250-air-render.js`、
 `t252-air-import.js`、`t256-popover-tech-row.js`、`t257-air-strum-semantics.js`。
 
-**作用域分区**：撤销是整稿级动作，位于顶栏；「删除选中音符」是音符级动作，位于音符属性浮层并按
-选中态禁用；铺弦号、增删 / 复制 / 清空小节是当前小节工具，留在网格下方。回归：`t258-editor-scope-layout.js`。
+**作用域分区**：撤销是整稿级动作、随网格走——住 `.ed-actions` 行首位（v3.53.2 曾置顶栏，
+PLAN-v14 依用户实拍「离编辑区太远」归位，形态图标 +「撤销」）；「删除选中音符」是音符级动作，位于
+音符属性浮层并按选中态禁用；铺弦号、增删 / 复制 / 清空小节是当前小节工具，留在网格下方。
+回归：`t258-editor-scope-layout.js`、`t259-editor-ui-fixes.js`。
 
 **逐弦拨弦面板（v3.47.0）**：`#strRow`（⑥→① 六行迷你面板：开关 + 品数框 + 技巧循环钮）与
 小节级 `#strFillIn`/`#strFillBtn`（按序铺弦号，语法 `s[:f][tech]` 空格分词）。同一套纪律：
