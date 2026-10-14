@@ -15,6 +15,35 @@
 
 ---
 
+## v3.53.4 · 三视角体检落地：帧路径纪律闸门 · 壁纸回调补测 · 覆盖率成因分桶 · 反验脚本退役机制（2026-10-15）
+
+**根因**（一轮**只读**三视角体检，2026-10-15，基线 v3.53.3；按 AGENTS.md §4.1 固定结构出代码分级 / 开发效率 / 用户走查三视角）：**无 P0 缺陷**，但盘出若干「文档承诺与机器闸门脱钩」与「零覆盖盲区」——
+
+① **帧内零布局读取**（v1.3.0 性能硬约束）**只活在文档与注释里**，没有任何机器闸门；`paintBall` 头注释甚至写着「几次 offsetLeft/offsetTop 读取」（实现早已改走 `geoOf()` 缓存，注释没跟上）。下一个改帧路径的人照注释行事就会把 layout thrashing 请回来，而全套自验照旧全绿。
+② **壁纸换图链路的 `im.onload` / `im.onerror` 两个回调零覆盖**——桩环境没有 `Image`，产品的 `try{ new Image() }catch{ im=null }` 一律走"降级原图"分支，两个回调函数体从未执行（覆盖率报告长期点名）。
+③ 覆盖率报告的「从未执行函数」把**回调盲区**（事件 / rAF 未驱动）与**疑似死代码**混成一行，无法一眼判断"该补测还是该删"。
+④ 反向验证统一入口 `tools/reverse-verify.py` 的正则**只认 `v*.py`**，漏掉纯 JS 版（v3421 / v3450 / v3531 / v3532）——盘点时"少算"，比不盘更误导；且**没有脚本退役机制**，名单只增不减。
+
+**修法**（四批 + 一项决策登记，同功能面合并成一条）：
+
+- **批 1 · 帧路径纪律闸门**：`paintBall` 头注释订正（「读 offset*」→「读几何缓存 rowGeo」）；新增 `tests/cases/t260-frame-geometry-discipline.js`——用 `tools/scan-util.js` 的括号配对抽取 `paintFrame` / `paintFrameBody` / `paintBall` 三个函数体，**先遮蔽字符串与注释**再断言体内零布局读取（含"防空抽取守卫"正控）。与 T27（运行期探针实测）互补：一头静态盯源码、一头动态数读取。反向验证 `tools/reverse-verify-t260-frame-geometry.js`（三变异，各往一个帧函数注回一次布局读取）。
+- **批 2 · 覆盖率盲区收口**：`tests/lib/harness.js` 增**可注入 `Image` 桩**；新增 `tests/cases/t261-wallpaper-error-paths.js` 驱动 `im.onerror` / `im.onload` 的 size 分支 / nocanvas 降级落盘三态；`tools/check-coverage.js` 把「从未执行函数」按成因分桶（疑似死代码 / 被引用但未走到 / 匿名），并把定义行从"引用处"里排除。
+- **批 3 · 反验脚本退役机制**：`tools/reverse-verify.py` 认领 `reverse-verify-<后缀>.{py,js}`（`.js` 按扩展名路由到 node）、新增锚点新鲜度巡检与 `--prune-list`；按"是否用 `BEATSIGHT_HTML`"跳过非 index.html 目标以避免误报。DEVELOPMENT.md §5 补「统一入口与脚本退役」口径。
+- **批 4 · 提交前自省清单**：`tools/install-hooks.js` 的 pre-commit 钩子在 `--quick` 前打印三行**机器拦不住**的提醒（CHANGELOG 完整 / DEVELOPMENT.md 同步 / `git add` 清单），纯提示、不造第二个判红门。
+- **★ 决策登记（守约束）**：`index.html` **保持单文件、无构建**，不引入多文件 + 构建拼装——拆分的唯一实质收益是"git 可逐文件合并"（缓解 §5.1 并发覆盖），代价是引入构建链 + 闸门要加"产物等同性对账" + 三条发布渠道重对账；当前单人开发由 `tools/write-lock.js` 写锁兜住即可。登记进 DEVELOPMENT.md §6「已明确不处理」。
+
+**取舍**：
+· `Image` 桩**只在 `opts.image` 给定时**才装——缺省不装，t92 依赖的"`new Image()` 抛错 → 降级原图"路径逐位不变（新增 T261d 对照钉住）。
+· 反验退役是**筛子不是判决**：零命中只提示人工复核、不自动删（删错 = 丢掉历史证据）；已知误报来源（正则模式串 / 工具文件锚点）已在入口注释与 DEVELOPMENT.md 写明，最终判据永远是"单独跑一次看是否以锚点失配退出"。
+· 覆盖率分桶判据刻意**不追求精确**（`.apply(` 会被当成对名为 `apply` 的函数的引用），只为把可疑度最高的"疑似死代码"桶浮出来。
+· 版本号按 §3.36.14 在 `gh api` 确认远端无漂移（`84d849d`）后定为 3.53.4，与本会话未发布的连续工作一一对应。
+
+**工程侧**：无用户数据变化——唯一 index.html 代码行改动是一处注释；新增用例 t260 / t261，下一可用编号 t262-。
+
+**自验**：tests **8684 PASS / 0 FAIL**（新增 t260 / t261，基线 8657）；反向验证 `reverse-verify-t260-frame-geometry.js` **3/3 命中**（三帧函数各注回一次布局读取均具名转红）；`python3 tools/reverse-verify.py --list` 现列 **34 个脚本 / 370 个判定点**（原只列 29 个 .py），`--prune-list` 浮出 1 个真腐烂脚本 `reverse-verify-v3335.py`（单独跑确认以「锚点失配」退出码 2）；`node tools/check-all.js` **全部通过 · 实跑 20/21**（⊘ 浏览器冒烟环境缺失，按仓规记账；ESLint / tsc 因本机 `npm install` 由 ⊘ 转 ✓）；行覆盖率 **97.7%**；体积 **2,139,076 B**（2088.9 KB）在预算 2092KB 内；版本四处一致 3.53.4（工具输出为准）。
+
+---
+
 ## v3.53.3 · 节奏型编辑界面四项修正：撤销随网格 · 模板收窄 · 弹层弦区单行（2026-10-14）
 
 **根因**（用户四张实拍图驱动，逐项见 [`docs/archive/PLAN-v14-editor-ui-fixes.md`](docs/archive/PLAN-v14-editor-ui-fixes.md)）：

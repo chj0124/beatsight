@@ -319,8 +319,7 @@ if (nakedBySection.length){
   nakedBySection.forEach(s => console.log("      " + String(s.n).padStart(4) + " 行  " + s.name + "（如 L" + s.first.join(" / L") + "）"));
 }
 if (LIST > 0 && deadFns.length){
-  /* ★ v3.36.11（审计 C-9）：补上**定义行号**。此前只印函数名，而"哪个该补断言、哪个是桩不可达的
-     死路"全靠人猜（审计原话：「列表没有行号，无法定位」）。行号 = index.html **绝对**行号，
+  /* ★ v3.36.11（审计 C-9）：补上**定义行号**。行号 = index.html **绝对**行号，
      与上面「未覆盖行分布」同一口径，可以直接跳过去。 */
   const lineAtOffset = off => {
     let lo = 0, hi = lineStart.length - 1, ans = 0;
@@ -330,22 +329,66 @@ if (LIST > 0 && deadFns.length){
     }
     return ans;
   };
-  /* 按**名字**归组（不是按 名字@偏移）：匿名函数有几十个，各占一条会把有名字的挤出前 N 条——
-     实测退化成了 12 条清一色「(匿名)」，比不补行号还难读。归组后每个名字给前几个行号。
-     ★ 排序：**有名字的在前**（那才是"该补断言还是该删"能一眼判断的），匿名的收尾。 */
+
+  /* ★ 三视角体检（2026-10-15，C3）：按**成因**分桶，别再把「回调盲区」与「疑似死代码」
+     混成一行。此前只印名字 + 行号，8 个具名 + 49 个匿名挤成一条，"该补断言还是该删"
+     全靠人猜；而这串名单里混过两类性质完全不同的项——rowOfY（真该补测）、im.onload
+     （桩造不出宿主能力，只能靠源码钉）。分桶判据（保守，只看能静态看到的）：
+       · 有名字 + 全文件**仅**在定义处出现 ⇒ 「★ 疑似死代码」——最危险的一桶，顶到最前；
+       · 有名字 + 有引用 ⇒ 「被引用但未走到」，并给首个引用行号（多半是事件 / rAF / 装配
+         路径未被驱动，而非真死代码）；
+       · 匿名 ⇒ 「匿名」（多为内联回调）。
+     判据刻意不追求精确（例如 `.apply(` 会被当成对名为 apply 的函数的引用）——分桶只为把
+     **可疑度最高的那一桶**浮出来，人工复核成本因此从"逐个查"降到"先看第一桶"。 */
+  const defOffs = new Map();               // 名字 → 定义偏移集合
+  for (const d of deadFns){
+    if (d.name === "(匿名)") continue;
+    if (!defOffs.has(d.name)) defOffs.set(d.name, new Set());
+    defOffs.get(d.name).add(d.off);
+  }
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const refLines = name => {               // 定义行之外的出现行（绝对行号，去重）
+    const defs = defOffs.get(name);
+    /* 按**行**排除定义处（而不是按偏移）：V8 给的函数 range 起点未必落在标识符上
+       （如 `function foo(){` 的起点可能取到 `(`），故按偏移排除会把定义行本身漏进来、
+       显示成一条假"引用处"。按行排除干净且对本用途足够。 */
+    const defLines = new Set([...defs].map(o => lineAtOffset(o)));
+    const re = new RegExp("\\b" + esc(name) + "\\b", "g");
+    const out = []; let m;
+    while ((m = re.exec(SRC))){
+      const li = lineAtOffset(m.index);
+      if (defLines.has(li)) continue;
+      out.push(fileLine(li + 1));
+    }
+    return [...new Set(out)];
+  };
   const byName = new Map();
   deadFns.forEach(d => {
     if (!byName.has(d.name)) byName.set(d.name, []);
     byName.get(d.name).push(d.off);
   });
-  const uniq = [...byName.entries()]
-    .sort((a, b) => (a[0] === "(匿名)" ? 1 : 0) - (b[0] === "(匿名)" ? 1 : 0))
-    .map(([name, offs]) => {
-      const ls = offs.map(o => "L" + fileLine(lineAtOffset(o) + 1));
-      return name + "（" + ls.slice(0, 3).join(" / ") + (ls.length > 3 ? " …共 " + ls.length + " 处" : "") + "）";
-    });
-  console.log("\n  ⚠ 从未执行的函数：" + uniq.slice(0, LIST).join(" · ")
-    + (uniq.length > LIST ? " …（共 " + uniq.length + " 个）" : ""));
+  const fmt = offs => {
+    const ls = offs.map(o => "L" + fileLine(lineAtOffset(o) + 1));
+    return ls.slice(0, 3).join(" / ") + (ls.length > 3 ? " …共 " + ls.length + " 处" : "");
+  };
+  const dead = [], refd = [], anon = [];
+  for (const [name, offs] of byName){
+    if (name === "(匿名)"){ anon.push("(匿名)（" + fmt(offs) + "）"); continue; }
+    const refs = refLines(name);
+    if (refs.length) refd.push({ label: name + "（" + fmt(offs) + "）", at: refs.slice(0, 2) });
+    else dead.push(name + "（" + fmt(offs) + "）");
+  }
+  const cap = arr => arr.length
+    ? arr.slice(0, LIST).join(" · ") + (arr.length > LIST ? " …（共 " + arr.length + " 个）" : "")
+    : "（无）";
+  console.log("\n  ⚠ 从未执行的函数（按成因分桶）：");
+  console.log("     ★ 疑似死代码（有名字却全文件无引用——优先复核：该补测还是该删）：" + cap(dead));
+  console.log("     被引用但未走到（事件 / rAF / 装配路径未驱动）："
+    + (refd.length
+      ? refd.slice(0, LIST).map(r => r.label + " ← 引用处 " + r.at.join(" / ")).join(" · ")
+        + (refd.length > LIST ? " …（共 " + refd.length + " 个）" : "")
+      : "（无）"));
+  console.log("     匿名（多为内联回调）：" + cap(anon));
 }
 
 console.log("──────────────────────────────────────────────────────────");

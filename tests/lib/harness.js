@@ -644,6 +644,37 @@ function loadApp(seed, opts){
       };
     },
   };
+  /* ★ 三视角体检（2026-10-15，C4）：可注入的 Image 桩。
+     壁纸换图链路里的 im.onload / im.onerror 两个回调此前**零覆盖**——桩环境没有 Image，
+     产品的 `try{ new Image() }catch{ im=null }` 一律走降级分支，于是两个回调函数行从未执行
+     （覆盖率报告长期点名）。这里**仅在 opts.image 给定时**才装 Image —— 缺省不装，
+     从而老用例行为**逐位不变**（`new Image()` 抛 ReferenceError → im=null → done(src)，
+     正是 t92 依赖的既有降级路径）。
+     opts.image 的取值决定 `src` 赋值后模拟哪种宿主结局：
+       "error" → 触发 onerror（文件损坏 / 解码失败）；
+       "size"  → 触发 onload，但 naturalWidth/Height 保持 0（读不出尺寸）；
+       "load"  → 触发 onload 且给出可用尺寸（走降采样 / 落盘主路径）。
+     opts.imageW / opts.imageH 可指定 "load" 时的尺寸（缺省 800×600）。 */
+  if (o.image){
+    sandbox.Image = function(){
+      const self = this;
+      self.naturalWidth = 0; self.naturalHeight = 0;
+      self.onload = null; self.onerror = null;
+      let _src = "";
+      Object.defineProperty(self, "src", {
+        get(){ return _src; },
+        set(v){
+          _src = String(v);
+          if (o.image === "error"){ if (self.onerror) self.onerror(); return; }
+          if (o.image === "size"){ if (self.onload) self.onload(); return; }
+          self.naturalWidth = o.imageW || 800;
+          self.naturalHeight = o.imageH || 600;
+          if (self.onload) self.onload();
+        },
+        configurable: true,
+      });
+    };
+  }
   /* v2.8.8：`window.__beat`（完整内部句柄）改为**条件挂载**——只有 `?debug=1` 或宿主预置
      `window.BEATSIGHT_TEST` 时才挂。沙箱属于后者：这个标记必须在**脚本执行前**就位，
      它是"启动方声明自己是测试环境"的方式（页面不猜，只认标记）。

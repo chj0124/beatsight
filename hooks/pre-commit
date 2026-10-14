@@ -1,4 +1,13 @@
 #!/bin/sh
 # BeatSight 提交前门禁：快速自验。跳过 T21 全组合扫描（那是发布前全量检查的事）。
 # 想绕过（不该是常态）：git commit --no-verify
+# ── 三视角体检（2026-10-15，E2）：机器拦不住的三件事，提交前先自省 ──────────────
+#    能自动拦的（模块索引行号 / 版本一致性 / 各类闸门）都在下面这条 check-all 里；
+#    下面三样只存在于 AGENTS.md 的文字与人的记忆里，历史上"本地全绿、CI 跑旧断言"的事故
+#    正来自最后一项——钩子是它们唯一自然的落点，故在此打印（纯提示，不设新判红门，避免造第二个门）。
+echo "[BeatSight] 提交前自省（机器拦不住的三件事）："
+echo "  · CHANGELOG：行为/数据/安全改动是否写了 根因 → 修法 → 取舍 → 自验数字？"
+echo "  · DEVELOPMENT.md：改了机制/函数名/数据形状，活文档是否同步？"
+echo "  · git add：多文件批次是否漏 add？（漏了 = 本地全绿、CI 却在跑旧断言）"
+echo "[BeatSight]  收尾请用 git status --porcelain 复核（必须干净）"
 exec node tools/check-all.js --quick
