@@ -382,7 +382,20 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        - 编辑器模板下拉（标记 + fillTplSelect + change 接线 + 口径注释）约 3 KB。
    ★ 留 **约 47KB** 余量：与 v3.33.14 起同口径——抬一次覆盖若干批，趋势交观察线
      （WARN = 2080×0.98 ≈ 2038.4KB）看。 */
-const BUDGET_BYTES = 2080 * 1024;
+/* ★ v3.53.0（节奏型页面改造）：2080 → **2092KB**。按既定纪律给出证据（git cat-file -s 实测）：
+     · 基线：6f6f982（v3.52.0）index.html = **2,120,556 B（2070.9 KB）**；
+       本批实测 **2,135,382 B（2085.3 KB）**；
+     · 净增 **14,826 B（+14.5 KB）**；`git diff --stat`（b817f8a/071f953/4919b3b 三 commit 合计，
+       index.html）= **236 增 / 40 删**。
+     · 增量构成（两新功能本体 + 条件显隐 + 三处 str 判据补 length + "为什么"注释，非冗余）：
+       - 空态起步：openBlank/draftEmpty/edEverFilled + 状态灯三态 + 试听禁用 +
+         .guide-ring/.ed-guide CSS + 引导层 DOM 搭建 + 缓存键 |G 信号；
+       - 弹法四档：#techRow 标记 + stepTechOf + 落库分派 + 显隐矩阵 + techHint +
+         dirRow 收两档 + .ed-dir[hidden]；
+       - 三处 str 渲染判据补 length（编辑器/主视图/编排页）+ 各改动点根因注释。
+   ★ 留 **约 6.7KB** 余量——本批两项新功能一批落地，余量偏紧是如实反映；
+     观察线（2092×0.98 ≈ 2050.2KB）将常驻警示直到下一次抬线或瘦身，这是预期行为。 */
+const BUDGET_BYTES = 2092 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){
