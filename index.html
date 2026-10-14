@@ -39,7 +39,7 @@
         用户实拍「日间模式下部分按钮文字与底色几乎融为一体」（BPM 预设选中项 60/96…、弹窗「确定」）。
       ★ 为什么经典主题取 #FFFFFF：与改动前 .pill.active 的 color:var(--t1) 在经典下逐位同值，
         故经典主题零像素变化（日间由 obs 块给 --sel-fg 另一枚值）。 */
-  --green:#1ED760; --green-rgb:30,215,96; --red:#F3727F;   /* --green-rgb（PLAN-v11 A6）：品牌绿的 veil 基色，rgba(var(--green-rgb),x) 单源，硬编码 rgba(30,215,96,…) 退役 */
+  --green:#1ED760; --green-rgb:30,215,96; --red:#F3727F; --red-rgb:243,114,127;   /* --green-rgb（PLAN-v11 A6）：品牌绿的 veil 基色，rgba(var(--green-rgb),x) 单源，硬编码 rgba(30,215,96,…) 退役；--red-rgb 同款（空态引导微染用，双主题随 --red 换基色） */
   --bar-h:96px;          /* v3.3.1：播放底栏高度。**三处消费者必须同源**——
                             .main 的下内边距（内容让位）、.diag 的 bottom（避让）、
                             .col 的最小高度（可视化带居中的计算基准）；
@@ -2330,14 +2330,18 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* ★ 节奏型页面改造：音符块库容器——批 1 在原位建壳，块库上移后它成为卡片内
    「填充入口区」的宿主；空态时由 editorRender 挂 .guide-ring 红框呼吸引导 */
 .pal-zone{margin:0 0 14px}
-/* 空态红框（v3.39.0）：呼吸描边引导两个填充入口（顶栏模板 / 上方块库）。
+/* 空态引导标记（v3.53.0 追补柔化，用户实拍"红框太突兀"）：**去框改微染**——
+   入口区加极浅红底（rgba(--red-rgb,.06)）+ 左缘 3px 圆角色条（只给块库大容器），
+   呼吸改为底色 .06↔.10 缓变（2.4s，比原描边呼吸轻一档）；prefers-reduced-motion 关动画。
    「只教一次」：editorRender 用 edEverFilled 会话级 flag 同源控制——首次脱离空态即置位，
-   之后即便 undo 回到全空也不再回来（引导只教一次，不跟着撤销抖动）。
-   prefers-reduced-motion 用户关动画只留静态描边（动效不作为唯一信息通道）。 */
-.guide-ring{outline:2px solid var(--red);outline-offset:2px;border-radius:6px;
-  animation:guidePulse 1.6s ease-in-out infinite}
-@keyframes guidePulse{0%,100%{outline-color:var(--red)}50%{outline-color:transparent}}
+   之后即便 undo 回到全空也不再回来（引导只教一次，不跟着撤销抖动）。 */
+.guide-ring{background-color:rgba(var(--red-rgb),.06);
+  animation:guidePulse 2.4s ease-in-out infinite}
+@keyframes guidePulse{0%,100%{background-color:rgba(var(--red-rgb),.06)}50%{background-color:rgba(var(--red-rgb),.1)}}
 @media (prefers-reduced-motion:reduce){.guide-ring{animation:none}}
+/* 块库大容器：加左缘色条与内边距——原红框紧贴标题与块卡片（用户实拍"贴在一起"），
+   padding 给内容留呼吸，色条 = 「当前步骤」的视觉锚点（比四面框轻） */
+.pal-zone.guide-ring{border-radius:8px;box-shadow:inset 3px 0 0 rgba(var(--red-rgb),.55);padding:10px 12px}
 /* 空轨道引导层：editorRender 在首个空 bar 的 track 内动态插入（不进首屏静态 DOM——
    DOM 预算纪律）；pointer-events:none 不挡 track 的「点空白选小节」点击 */
 .ed-guide{position:absolute;inset:0;display:flex;flex-direction:column;gap:2px;
@@ -3045,7 +3049,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 body[data-theme="obs"]{
   --bg:#F2F4F8; --card:#FFFFFF; --card2:#EDF0F5; --cell:#E3E8F0; --seam-strong:#8a8b90;
   --line:rgba(15,23,42,.09); --border:rgba(15,23,42,.18);
-  --green:#2563EB; --green-rgb:37,99,235; --red:#DC2626;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标）；--green-rgb 随主题换基色（veil 单源，PLAN-v11 A6） */
+  --green:#2563EB; --green-rgb:37,99,235; --red:#DC2626; --red-rgb:220,38,38;      /* 白底对比度 4.9:1 / 4.6:1（AA 达标）；--green-rgb 随主题换基色（veil 单源，PLAN-v11 A6）；--red-rgb 同款（空态引导微染） */
   /* 文字三级按白底重核：16.1:1 / 7.5:1 / 4.8:1——守住上面那条注释立的 AA 线
      （旧注释里的 #5F6B7E / ≈6.3:1 是暗底时代的口径，值已随底色一并换掉） */
   /* ★ v3.33.8：--t3 由 #64748B 改 #556577——旧值只在**纯白**上够 4.8:1，落到浅色分层底上就掉线：
@@ -4960,23 +4964,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4992  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6656  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8896  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10124 Modal         应用内弹窗
-     L10285 Viz           时值可视化渲染与每帧动画
-     L13914 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14668 Trainer       变速训练器
-     L14885 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15556 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17504 Editor        自定义节奏型编辑器
-     L18631 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18726 Ear           听辨训练（v1.10.0）
-     L18954 Arrange       曲式编排（v2.0.0）
-     L23080 Help          使用方法（v2.0.1）
-     L23235 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23317 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23613 初始化（装配） 各模块 hook 接线与启动
+     L4996  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6660  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8900  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10128 Modal         应用内弹窗
+     L10289 Viz           时值可视化渲染与每帧动画
+     L13918 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14672 Trainer       变速训练器
+     L14889 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15560 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17508 Editor        自定义节奏型编辑器
+     L18635 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18730 Ear           听辨训练（v1.10.0）
+     L18958 Arrange       曲式编排（v2.0.0）
+     L23084 Help          使用方法（v2.0.1）
+     L23239 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23321 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23617 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
