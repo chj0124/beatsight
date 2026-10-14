@@ -264,8 +264,8 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   beat.Store.S.sel = { type:"custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
-  eq(els["dirRow"].children.length, 3, "方向三档（↓ / ↑ / 不标注）");
-  ok(els["dirRow"].children.every(b => b.disabled), "未选中音符 → 三档全部禁用");
+  eq(els["dirRow"].children.length, 2, "方向两档（↓ / ↑）——批 3 弹法重组：琶音迁弹法行「琶音」档、「不标注」并入「节拍」档");
+  ok(els["dirRow"].children.every(b => b.disabled), "未选中音符 → 两档全部禁用");
   eq(els["dirHint"].textContent, "", "未选中 → hint 空串（PLAN-v11 B2：四组收进悬浮层，未选中整层隐藏，占位话术退役）");
 
   /* 选中第 1 小节第 1 格（载体 48t，dir="D"）。
@@ -289,16 +289,17 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   eq(beat.Editor.draft().bars[0][0].dir, "D", "撤销 → 方向退回下扫");
   ok(els["undoBtn"].disabled, "撤到底后撤销按钮禁用（栈已空，下一条断言才有意义）");
 
-  /* 点「不标注」清除 */
+  /* 点「节拍」清除方向（批 3：原「不标注」档并入弹法行——节拍档删 dir/zone/str/air） */
   edCellsOf(els, 0)[0].fire("click");
-  els["dirRow"].fire("click", { target: pill({ dir: "" }) });
-  eq(beat.Editor.draft().bars[0][0].dir, undefined, "点「不标注」→ 删除 dir 字段");
-  eq(els["dirRow"].children[2].getAttribute("aria-pressed"), "true", "「不标注」档 aria-pressed=true");
+  els["techRow"].fire("click", { target: pill({ tech: "beat" }) });
+  eq(beat.Editor.draft().bars[0][0].dir, undefined, "点「节拍」→ 删除 dir 字段（回纯时值块）");
+  eq(els["techRow"].children.find(p => p.dataset.tech === "beat").getAttribute("aria-pressed"), "true",
+     "「节拍」档 aria-pressed=true（高亮由 stepTechOf 派生）");
 
   /* 重复点当前档位：不产生变更、不污染撤销栈。
      验证手法——若它真的推了栈，撤一次应回到「dir 仍是空」的上一步；
      实际撤一次应回到「点上标注之前」（dir="D"） */
-  els["dirRow"].fire("click", { target: pill({ dir: "" }) });   // 再点一次「不标注」
+  els["techRow"].fire("click", { target: pill({ tech: "beat" }) });   // 再点一次「节拍」（同档重按）
   beat.Editor.undo();
   eq(beat.Editor.draft().bars[0][0].dir, "D", "重复点当前档位不推撤销栈：撤一次回到「回到 D」那步之前");
 }

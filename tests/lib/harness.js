@@ -143,12 +143,20 @@ const HTML_CHILDREN = {
   timbreRow: ["click", "wood", "drum"].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { timbre: n } })),
   /* v1.6：统计 overlay 的 7/30 天切换（静态标记里的 pill 组，同上要复刻） */
   statsRangeRow: [7, 30].map((n, i) => ({ className: "pill" + (i === 0 ? " active" : ""), dataset: { range: String(n) } })),
-  /* v1.9.0：编辑器的扫弦方向三档。第三档 data-dir=""（不标注）——空串**不是** undefined，
-     pill() 的 `dataset.dir !== undefined` 判据对它成立，故「清除方向」这条路测得到 */
+  /* v1.9.0：编辑器的扫弦方向档。★ 节奏型页面改造批 3：四档收两档（D/U）——琶音迁入
+     techRow「琶音」档、「不标注」并入「节拍」档；dirRow 只在弹法 = 扫弦时显示。
+     处理器仍支持 data-dir=""（写 undefined）作为防御分支，但 UI 已无此档。 */
   dirRow: [
     { className: "pill", dataset: { dir: "D" } },
     { className: "pill", dataset: { dir: "U" } },
-    { className: "pill", dataset: { dir: "" } },
+  ],
+  /* ★ 节奏型页面改造批 3：弹法四档（节拍/扫弦/琶音/分解）——悬浮窗属性行的总开关，
+     高亮由 stepTechOf 派生、点档落库分派（t256 钉推导与落库）；与 dirRow 同款复刻理由 */
+  techRow: [
+    { className: "pill", dataset: { tech: "beat" } },
+    { className: "pill", dataset: { tech: "strum" } },
+    { className: "pill", dataset: { tech: "arp" } },
+    { className: "pill", dataset: { tech: "pick" } },
   ],
   /* v2.2.0：扫弦弦区档。v2.29.0 三档化（全扫/低/高，中弦区退役）。第一档 data-zone=""
      （全扫默认）——空串与 dirRow 的「不标注」同构：pill() 的 dataset.zone !== undefined

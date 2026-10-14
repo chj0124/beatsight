@@ -84,9 +84,11 @@ section("T238e 琶音记号 · 三处渲染点共用同一份标记（顶层共�
   eq(calls, 4, "★★ arpGlyph 恰好 4 处（1 定义 + 3 渲染点：主视图/编辑器/编排页）");
   ok(/function strumDirCls\(dir\)/.test(html), "★ dir→类名的三分支映射是顶层共享件（strumDirCls）");
   ok(html.includes('dir === "A" ? " arp"'), "★ 映射里 A → arp 分支在位");
-  /* ★★ 本版（用户实报）：编辑器方向行补「琶音」第四档——此前示例曲带得出琶音格、编辑器却造不出 */
-  ok(/<button class="pill" data-dir="A" aria-pressed="false" disabled>琶音<\/button>/.test(html),
-     "★★★ dirRow 有「琶音」钮（data-dir=\"A\"——手动编辑面的一等公民，接线走既有 [data-dir] 通用路径）");
+  /* ★★ 本版（用户实报）：编辑器补「琶音」造谱能力。★ 批 3 迁移：原 dirRow 第四档
+     data-dir="A" 迁入弹法行「琶音」档（data-tech="arp"，落库仍写 dir="A"）——
+     手动编辑面的一等公民地位不变，入口换到弹法行 */
+  ok(/<button class="pill" data-tech="arp" aria-pressed="false" disabled>琶音<\/button>/.test(html),
+     "★★★ techRow 有「琶音」档（data-tech=\"arp\"——落库写 dir=\"A\"，走弹法分派接线）");
   /* 编辑器：选中琶音型打开 → 第 1 格 aria 报「 · 琶音」，且不带 ↓↑ 直杆字形 */
   const app = loadApp();
   app.beat.Store.S.sel = { type: "builtin", idx: ARP };

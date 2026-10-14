@@ -2288,6 +2288,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
 /* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
 .ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+/* ★ 节奏型页面改造批 3：显隐矩阵用 hidden 属性——.ed-dir 有显式 display:flex，
+   UA 的 [hidden]{display:none} 会被类选择器覆盖（.ed-pop[hidden] 同款先例），补一条恢复 */
+.ed-dir[hidden]{display:none}
 /* 逐弦拨弦面板（v3.47.0）：六行迷你面板（开关 + 品数框 + 技巧钮），复用 .ed-dir 的行容器
    语义（flex wrap + 底距），行组纵向堆叠；品数框与 .name-input 同族但迷你（参照 ctl-pills
    折叠先例，窄档下靠 .ed-dir 的 flex-wrap 收纳，不顶破编辑器布局） */
@@ -4006,14 +4009,28 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <span class="ed-pop-meta" id="edPopMeta"></span>
           <button class="ed-pop-x" id="edPopClose" aria-label="收起音符属性">✕</button>
         </div>
+        <!-- ★ 弹法行（节奏型页面改造批 3）：四档单选 = 悬浮窗属性行的总开关。
+             弹法是**派生态**（stepTechOf：str→分解 / dir=A→琶音 / dir D|U 或 zone 或 air→扫弦 /
+             其余→节拍），数据模型零新增；点档落库 = 写/删这些既有字段（见 techRow 接线注释）。
+             原「扫弦标注」行的四档（D/U/A/不标注）被吸收：D/U 归入扫弦档的方向行、
+             A = 琶音档、「不标注」= 节拍档——「实扫/空扫必选一项」对非扫弦弹法的语义错配
+             在此消解（纯节拍块不再被迫认领扫弦概念）。 -->
+        <div class="ed-dir" id="techRow" role="group" aria-label="弹法（节拍 / 扫弦 / 琶音 / 分解）">
+          <span class="hint">弹法</span>
+          <button class="pill" data-tech="beat" aria-pressed="false" disabled>节拍</button>
+          <button class="pill" data-tech="strum" aria-pressed="false" disabled>扫弦</button>
+          <button class="pill" data-tech="arp" aria-pressed="false" disabled>琶音</button>
+          <button class="pill" data-tech="pick" aria-pressed="false" disabled>分解</button>
+          <span class="hint" id="techHint"></span>
+        </div>
         <!-- 扫弦方向标注（v1.9.0）：作用于选中音符。按钮组禁用态由 editorRender 同源同步
-             （弹出即已选中，实际恒可用）；v2.1.0 休止可标注（＝空扫）；v2.3.0 补「琶音」第四档。 -->
-        <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向标注">
-          <span class="hint">扫弦标注</span>
+             （弹出即已选中，实际恒可用）；v2.1.0 休止可标注（＝空扫）；v2.3.0 补「琶音」第四档。
+             ★ 批 3：四档收两档（D/U）——琶音迁入弹法行、「不标注」并入节拍档；
+             本行只在弹法 = 扫弦时显示（显隐矩阵见 editorRender），无高亮 = 未标方向（合法态）。 -->
+        <div class="ed-dir" id="dirRow" role="group" aria-label="扫弦方向（下扫 / 上扫）">
+          <span class="hint">方向</span>
           <button class="pill" data-dir="D" aria-pressed="false" disabled>↑ 下扫</button>
           <button class="pill" data-dir="U" aria-pressed="false" disabled>↓ 上扫</button>
-          <button class="pill" data-dir="A" aria-pressed="false" disabled>琶音</button>
-          <button class="pill" data-dir="" aria-pressed="false" disabled>不标注</button>
           <span class="hint" id="dirHint"></span>
         </div>
         <!-- 弦区（v2.2.0 起，v2.29.0 三档化）：与方向行同套交互（作用于选中音符）。
@@ -4943,23 +4960,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4975  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6639  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8879  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10107 Modal         应用内弹窗
-     L10268 Viz           时值可视化渲染与每帧动画
-     L13895 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14649 Trainer       变速训练器
-     L14866 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15537 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17485 Editor        自定义节奏型编辑器
-     L18537 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18632 Ear           听辨训练（v1.10.0）
-     L18860 Arrange       曲式编排（v2.0.0）
-     L22985 Help          使用方法（v2.0.1）
-     L23140 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23222 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23518 初始化（装配） 各模块 hook 接线与启动
+     L4992  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6656  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8896  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10124 Modal         应用内弹窗
+     L10285 Viz           时值可视化渲染与每帧动画
+     L13914 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14668 Trainer       变速训练器
+     L14885 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15556 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17504 Editor        自定义节奏型编辑器
+     L18631 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18726 Ear           听辨训练（v1.10.0）
+     L18954 Arrange       曲式编排（v2.0.0）
+     L23080 Help          使用方法（v2.0.1）
+     L23235 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23317 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23613 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -11577,8 +11594,10 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       /* 逐弦拨弦记号（v3.47.0）：与箭头同一层（.strums）、同一水平定位公式（起点锚定）、
          同一套 strums 槽位登记（fitCellAnnotations 窄格降级 / setCell 帧内 .hit 切换全继承）。
          str 存在时渲染以它为准（zone 失效；dir 也不再画箭头——两者同格时 pick 优先，
-         与发声侧 stepVoiceOf 的「str 优先于 zone」逐字同源）。 */
-      if (s.str && hasStr){
+         与发声侧 stepVoiceOf 的「str 优先于 zone」逐字同源）。
+         ★ 批 3：判据补 length——弹法行「分解」档落 str=[]（声明意图、等点弦），
+           空数组 truthy，不补 length 会画空 pick 记号（与编辑器 t256e 同一批修复） */
+      if (s.str && s.str.length && hasStr){
         const sm = document.createElement("div");
         sm.className = "strumv pick" + (s.rest ? " ghost" : "");
         pickGlyph(sm, s.str);
@@ -17642,6 +17661,20 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
   function draftEmpty(d){
     return !!d && Array.isArray(d.bars) && d.bars.length > 0 && d.bars.every(bar => Array.isArray(bar) && bar.length === 0);
   }
+  /* ★ 弹法派生（节奏型页面改造批 3）：四档 = 既有字段的组合投影，数据模型零新增——
+       分解 pick = str 字段存在（含 str=[] 空数组：已声明分解意图、还没点弦）；
+       琶音 arp = dir="A"；扫弦 strum = dir D/U 或 zone 或 air 任一（手要过弦的家族）；
+       节拍 beat = 其余（纯时值块，新块默认档）。
+     悬浮窗属性行按它显隐（见 editorRender 显隐矩阵）——「实扫/空扫」只在扫弦/琶音
+     档出现，纯节拍块不再被迫认领扫弦概念（t256 钉推导与落库）。 */
+  /** @param {any} s @returns {"beat"|"strum"|"arp"|"pick"} */
+  function stepTechOf(s){
+    if (!s) return "beat";
+    if (s.str !== undefined) return "pick";
+    if (s.dir === "A") return "arp";
+    if (s.dir === "D" || s.dir === "U" || s.zone !== undefined || s.air === true) return "strum";
+    return "beat";
+  }
   /** v2.37.0（b）：以指定型为底稿进编辑器（编排页换型候选 ✎ 的跳转目标；open() = openWith(当前型)）。
       编辑器保存 = 生成**新副本**（不覆盖原版），故跳转语义是"造变体"而非"就地改"。
       @param {any} src @param {any} [ref] 源身份（{type,idx|id}；缺省从 src 上的合并字段推断） */
@@ -17959,8 +17992,10 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
              · 实扫（!air）：实心箭头（由 dir 决定）。弦区跟随前一记实扫（prevZone），与主视图逐位一致。
            退役：ed-zone 文字徽标、ed-air 括号字形、.ed-strum 内联 ↑↓ 字形（v3.52.0 删除）。 */
         /* 逐弦拨弦记号（v3.47.0）：str 存在时渲染以它为准——不再画方向箭头
-           （两者同格时 pick 优先，与主视图/发声侧同口径）；空拨 = .ghost 空心虚线点 */
-        if (s.str){
+           （两者同格时 pick 优先，与主视图/发声侧同口径）；空拨 = .ghost 空心虚线点。
+           ★ 批 3：判据补 length——弹法行「分解」档会落 str=[]（声明意图、等点弦），
+           空数组是 truthy，不补 length 会画出一个空 pick 记号（t256e 钉死） */
+        if (s.str && s.str.length){
           const pv = document.createElement("span");
           pv.className = "strumv pick" + (s.rest ? " ghost" : "");
           pickGlyph(pv, s.str);
@@ -18058,6 +18093,29 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
        方向只管箭头朝向，「实扫/空扫」由 airRow 单独选。 */
     const selStep = edSel ? d.bars[edSel.bar][edSel.idx] : null;
     const dirUsable = !!selStep;
+    /* ★ 弹法行（批 3）：高亮由 stepTechOf 派生（派生显示）；可用性与其它行同源（选中即可用）。
+       显隐矩阵：tech 决定 dirRow/zoneRow/airRow/strRow 的 hidden（restRow 恒显）——
+         beat → 方向/弦区/手部/逐弦全收（纯节拍没有"实扫/空扫"的概念，t256 钉四组显隐）；
+         strum → 方向 + 弦区 + 手部（逐弦收——两者互斥的既有口径）；
+         arp   → 弦区 + 手部（方向由弹法行本身承载，方向行收）；
+         pick  → 逐弦（方向/弦区/手部收；zoneRow/airRow 的「逐弦优先」置灰口径保留作为
+                 hidden 之外的第二重保险——t240c/t249d 的既有断言不破）。
+       未选中（悬浮层收起）时全部行 hidden 兜底显隐无意义，照旧只管 disabled。 */
+    const tech = stepTechOf(selStep);
+    setPressed("#techRow", p => dirUsable && p.dataset.tech === tech);
+    document.querySelectorAll("#techRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
+    $("techHint").textContent = !selStep ? ""
+      : (tech === "pick" && (!selStep.str || !selStep.str.length)
+          ? "分解 · 点下方弦号启用分解点"
+          : (tech === "strum" && !selStep.dir ? "扫弦 · 未标方向，点「方向」补 ↑↓" : ""));
+    /* 行显隐（批 3 显隐矩阵；hidden 属性——真 DOM display:none，桩元素同为普通属性可断言） */
+    const rowVisible = {
+      dirRow: dirUsable && tech === "strum",
+      zoneRow: dirUsable && (tech === "strum" || tech === "arp"),
+      airRow: dirUsable && (tech === "strum" || tech === "arp"),
+      strRow: dirUsable && tech === "pick",
+    };
+    ["dirRow", "zoneRow", "airRow", "strRow"].forEach(id => { ($(id)).hidden = !rowVisible[id]; });
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
     document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
@@ -18198,8 +18256,44 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
   function materializeAir(s){
     if (s.rest === true && s.dir !== undefined && typeof s.air !== "boolean") s.air = false;
   }
+  /* ★ 弹法四档（节奏型页面改造批 3）：悬浮窗属性行的总开关。点档 = 对既有字段的
+     一次落库分派（pushUndo 先行 + editorRender；同档重按 = 派生态没变，不推栈）：
+       节拍 beat → 删 dir/zone/str/air（回纯时值块；rest 保留——节拍也有轻重休止）；
+       扫弦 strum → dir 保留已有 D/U、其余来源默认 D；删 str；zone/air 保留；
+       琶音 arp  → dir="A"；删 str；zone/air 保留（琶音也可空划）；
+       分解 pick → str=str||[]（空数组 = 已声明分解意图、等点弦；渲染/发声按 length 判，
+                   对既有行为零影响）；删 dir/zone/air（逐弦与扫弦互斥的既有口径）。
+     高亮永远由 stepTechOf 从数据派生（派生显示、命令落库）——旧数据/导入数据打开
+     悬浮窗时各档自动归位。 */
+  $("techRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const btn = evTarget(e).closest("[data-tech]");
+    if (!btn) return;
+    btn.blur();
+    if (!edSel) return;
+    const d = draft;
+    if (!d) return;
+    const s = d.bars[edSel.bar][edSel.idx];
+    if (!s) return;
+    const want = btn.dataset.tech;
+    if (stepTechOf(s) === want) return;                 // 同档重按：派生态未变，不推撤销栈
+    pushUndo();
+    if (want === "beat"){
+      delete s.dir; delete s.zone; delete s.str; delete s.air;
+    } else if (want === "strum"){
+      if (s.dir !== "U") s.dir = "D";                   // 保留已有上下扫；从琶音/节拍/分解过来默认下扫
+      delete s.str;
+    } else if (want === "arp"){
+      s.dir = "A"; delete s.str;
+    } else if (want === "pick"){
+      if (s.str === undefined) s.str = [];
+      delete s.dir; delete s.zone; delete s.air;
+    }
+    editorRender();
+  });
   /* 扫弦方向标注（v1.9.0）：作用于 edSel 选中的音符。先 pushUndo——与其它草稿变更同一套纪律，
-     保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈 */
+     保证 Ctrl+Z 能回退方向。点当前已选中的档位不产生变更、不污染撤销栈。
+     ★ 批 3：本行只在弹法 = 扫弦时显示（显隐见 editorRender），档位收为 D/U 两档——
+     「不标注」由弹法行「节拍」档承担、琶音由「琶音」档承担；dir=""（无高亮）仍是合法态。 */
   $("dirRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const btn = evTarget(e).closest("[data-dir]");
     if (!btn) return;
@@ -20293,8 +20387,9 @@ const Arrange = (() => {
         }
       }
       /* 逐弦拨弦记号（v3.47.0）：str 优先于 dir（与主视图/发声侧同口径）；空拨 = .ghost。
-         恒带 notxt（v3.47.x）：30/36px 的块头行放不下带底衬的品数胶囊，编排页是总览、只留点 */
-      if (s.str && hasStr){
+         恒带 notxt（v3.47.x）：30/36px 的块头行放不下带底衬的品数胶囊，编排页是总览、只留点。
+         ★ 批 3：判据补 length（str=[] 不画空记号，同主视图/编辑器批 3 修复） */
+      if (s.str && s.str.length && hasStr){
         const sm = document.createElement("div");
         sm.className = "strumv pick notxt" + (s.rest ? " ghost" : "");
         pickGlyph(sm, s.str);
