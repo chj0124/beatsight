@@ -190,17 +190,21 @@ section("T70d 滚动窗口 · 窗口里的小节解析不出来时回落画当�
 /* ================= 场景 T70g：示例曲实拍 —— 跨段处四行真的不同 ================= */
 section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同的型（用户最初报的那个问题）");
 {
-  /* 判据用**每行的扫弦箭头数**（= 该行属于哪个型）：5 个型各是 16 格谱，
-     但标记数不同 —— P1=16、P2=14、P3=14、P4=10、P5=16。于是"箭头数"就是型的指纹。 */
+  /* 判据用**每行的扫弦箭头数**（= 该行属于哪个型）：本版无方向空扫也补了记谱，
+     P1/P2/P3/P4 都是 16 支，P5=14——数量只验证空扫全显示；「同一屏多种型」改看类名指纹。 */
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { seedDemo: false });   /* v3.1.0：四行断言显式钉 4 行档（出厂默认已改 2） */
   /* ★ v2.20.0：示例 5 型已内置化（customs 恒空）——带出与否改判内置库尾部 */
   eq(beat.BUILTINS.length, 22, "前提：示例曲 11 个单小节型已内置（BUILTINS 11+6+5=22；★ 本版 +1：《在他乡》尾声琶音型 P6）");
-  const arrowsOf = () => els["viz"].children
-    .filter(el => /(^| )bar-row( |$)/.test(el.className))
-    .map(r => {
-      const layer = r.children.find(c => /(^| )strums( |$)/.test(c.className));
-      return layer ? layer.children.length : 0;
-    });
+  const rowsOf = () => els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className));
+  const arrowsOf = () => rowsOf().map(r => {
+    const layer = r.children.find(c => /(^| )strums( |$)/.test(c.className));
+    return layer ? layer.children.length : 0;
+  });
+  /* 类名指纹：方向（dn/up/arp）× 虚实（ghost）× 无头 air，P1/P2/P3/P4 数量同为 16 也能区分。 */
+  const sigsOf = () => rowsOf().map(r => {
+    const layer = r.children.find(c => /(^| )strums( |$)/.test(c.className));
+    return layer ? layer.children.map(c => c.className).join("|") : "";
+  });
   beat.Store.S.playMode = "arrange";
   beat.Store.S.arrangeSel = { id: beat.DEMO_ID, from: 0, to: 29, loop: true };
   beat.Controls.setBpm(240);                     // 一小节 1s → 好算
@@ -208,16 +212,17 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
   beat.Controls.start();
   const ac = FakeAudioContext.last;
   /* 0 基歌曲小节 → 型（逐小节谱）：
-     0=P1 | 1-8=P2 | 9=P1 | 10-15=P3 | 16-19=P5 | 20-21=P3 | 22-28=P4 | 29=P1 */
-  eq(JSON.stringify(arrowsOf()), JSON.stringify([16, 14, 14, 14]),
-     "第 1 小节起：四行 = 第 0-3 小节（P1 起头，接着三个 P2）");
+     0=P1 | 1-8=P2 | 9=P1 | 10-15=P3 | 16-19=P5 | 20-21=P3 | 22-28=P4 | 29=P1。
+     ★ 本版：P2/P3/P4 的无方向空扫补 air 后，各有 2/2/6 支无头蓝虚线杆——箭头数从 14 升到 16。 */
+  eq(JSON.stringify(arrowsOf()), JSON.stringify([16, 16, 16, 16]),
+     "第 1 小节起：四行 = 第 0-3 小节（P1 起头，接着三个 P2；空扫记谱全显示）");
 
   /* ★ 取样点一：第 8 小节（第 0 基）—— 这一屏同时装着 P2 与 P1、并跨进 P3：
      这正是 v2.6.0 之前做不到的（那时四行恒是同一个型的四份拷贝，窗口里放不下第二种型） */
   step(beat, ac, 420);                           // 约 8.4s → 进入第 9 个小节（0 基 8）
-  eq(JSON.stringify(arrowsOf()), JSON.stringify([14, 16, 14, 14]),
-     "★ 第 8 小节起：四行 = P2 / P1 / P3 / P3 ——**同一屏里出现了三种型**");
-  ok(new Set(arrowsOf()).size > 1, "★★ 四行不再整齐划一（这就是「4 小节都是同一节奏型」被解决的样子）");
+  eq(JSON.stringify(arrowsOf()), JSON.stringify([16, 16, 16, 16]),
+     "★ 第 8 小节起：四行 = P2 / P1 / P3 / P3 ——**同一屏里出现了三种型**（空扫记谱全显示）");
+  ok(new Set(sigsOf()).size > 1, "★★ 四行类名指纹不再相同（同一屏多种型，不再只是同型拷贝）");
 
   /* ★ 取样点二（v3.34.7 改语义）：第 28 小节 —— 落在**副歌②（8 小节同型）中段**。
      合并后全曲 65 小节，这里不再是曲尾，故本点改钉**新的真实属性**：
@@ -226,8 +231,8 @@ section("T70g 滚动窗口 · 示例曲逐小节谱：同一屏里出现不同�
      ★ 旧的「跨曲尾绕回开头」取样点因此失效（该处已在中段）——**绕回覆盖改由 t75 的
        段跳转与 t63 的曲尾段承担**，本点不再兼测；如将来要补，应另取 0 基第 62 小节。 */
   step(beat, ac, 1000);                          // 约 28.4s → 0 基第 28 小节（副歌② 内）
-  eq(JSON.stringify(arrowsOf()), JSON.stringify([14, 14, 14, 14]),
-     "★ 第 28 小节起：四行都在副歌② 的 8 小节同型段内 ⇒ 四行同为该型（14 支箭头）");
+  eq(JSON.stringify(arrowsOf()), JSON.stringify([16, 16, 16, 16]),
+     "★ 第 28 小节起：四行都在副歌② 的 8 小节同型段内 ⇒ 四行同为该型（16 支箭头，含无头空扫杆）");
   beat.Controls.stop();
 }
 

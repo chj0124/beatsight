@@ -304,39 +304,42 @@ section("T47c 扫弦方向 · 编辑器三档可用性与写入");
   eq(beat.Editor.draft().bars[0][0].dir, "D", "重复点当前档位不推撤销栈：撤一次回到「回到 D」那步之前");
 }
 
-/* ================= 场景 T47d：编辑器 · 休止槽可标注（v3.52.0 两轴独立：方向 ≠ 空扫） ================= */
-section("T47d 扫弦方向 · 休止槽可标注（方向与空扫解耦）");
+/* ================= 场景 T47d：编辑器 · 休止格先切弹法，再写方向 ================= */
+section("T47d 扫弦方向 · 休止格先切「扫弦」恢复发声，再写方向 / 空扫");
 {
   const { beat, els } = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) });
-  beat.Store.S.sel = { type:"builtin", idx: 4 };       // Funk 十六分（v3.35.5 删民谣扫弦后 idx 5→4）：idx 3 / 6 / 11 为休止符
+  beat.Store.S.sel = { type:"builtin", idx: 4 };       // Funk 十六分：idx 3 / 6 / 11 为纯节拍休止符
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
-  edCellsOf(els, 0)[3].fire("click");                  // idx 3 是休止符
-  ok(els["dirRow"].children.every(b => !b.disabled),
-     "选中休止符 → 三档照常启用（v2.1.0 放开标注）");
-  ok(!els["dirHint"].textContent.includes("空扫"),
-     "★ v3.52.0：方向行提示不再把「方向」与「空扫」绑在一起（两轴独立）");
-  ok(els["airHint"].textContent.includes("实扫"), "空扫行提示当前是实扫");
-  els["dirRow"].fire("click", { target: pill({ dir: "D" }) });
+  edCellsOf(els, 0)[3].fire("click");
+  ok(els["dirRow"].hidden === true && els["restRow"].hidden !== true,
+     "★ 纯节拍休止：方向行收、restRow 显示（不能在休止格直接标扫弦方向）");
+  els["techRow"].fire("click", { target: pill({ tech: "strum" }) });
   const s = beat.Editor.draft().bars[0][3];
-  eq(s.dir, "D", "休止槽上写入 dir");
-  eq(s.rest, true, "仍是休止（方向不改发声）");
-  eq(s.air, false, "★ 休止 + 方向 = 实扫 + 休止（air 落显式 false，不再是空扫）");
-  /* 编辑器渲染：实扫+休止（air=false）→ 实心箭头，不是 ghost */
+  eq(s.rest, false, "★ 切「扫弦」先清 rest（三种弹法必须发声）");
+  eq(s.dir, "D", "从节拍切扫弦默认下扫");
+  ok(els["dirRow"].hidden !== true && els["restRow"].hidden === true,
+     "扫弦档：方向行显示、restRow 收");
+  ok(els["airHint"].textContent.includes("实扫"), "空扫行提示当前是实扫");
+  els["dirRow"].fire("click", { target: pill({ dir: "U" }) });
+  eq(beat.Editor.draft().bars[0][3].dir, "U", "发声扫弦格写入上扫");
   let sv = edCellsOf(els, 0)[3].children.filter(c => /(^| )strumv( |$)/.test(c.className));
   eq(sv.length, 1, "编辑器内联一支 .strumv");
-  ok(/(^| )dn( |$)/.test((sv[0] || {}).className) && !/(^| )ghost( |$)/.test((sv[0] || {}).className),
-     "★ 实扫+休止 = 实心箭头（air=false ⇒ 不带 ghost）");
-  /* 点「空扫」→ 变 ghost 蓝虚线 */
+  ok(/(^| )up( |$)/.test((sv[0] || {}).className) && !/(^| )ghost( |$)/.test((sv[0] || {}).className),
+     "发声 + 实扫 = 实心上扫箭头");
   els["airRow"].fire("click", { target: pill({ air: "on" }) });
   sv = edCellsOf(els, 0)[3].children.filter(c => /(^| )strumv( |$)/.test(c.className));
-  ok(/(^| )ghost( |$)/.test((sv[0] || {}).className), "★ 点「空扫」→ 变 .ghost 蓝虚线");
+  ok(/(^| )ghost( |$)/.test((sv[0] || {}).className), "★ 点「空扫」→ 变 .ghost 蓝虚线（不再触发 onset）");
+  eq(beat.Editor.draft().bars[0][3].rest, true, "★ 空扫联动 rest=true（air 记谱、rest 抑 onset）");
   eq(edCellsOf(els, 0)[3].children.filter(c => /(^| )ed-strum( |$)/.test(c.className)).length, 0,
-     "★ 编辑器格子内不出现 .ed-strum 内联字形（v3.52.0 退役）");
+     "★ 编辑器格子内不出现 .ed-strum 内联字形");
   beat.Editor.undo();
-  eq(beat.Editor.draft().bars[0][3].air, false, "撤销把「空扫」退回实扫");
+  ok(beat.Editor.draft().bars[0][3].air !== true, "撤销把「空扫」退回实扫");
   beat.Editor.undo();
-  eq(beat.Editor.draft().bars[0][3].dir, undefined, "再撤销把方向退回未标注");
+  eq(beat.Editor.draft().bars[0][3].dir, "D", "再撤销方向回默认下扫");
+  beat.Editor.undo();
+  eq(beat.Editor.draft().bars[0][3].rest, true, "第三次撤销回到原纯节拍休止格");
+  eq(beat.Editor.draft().bars[0][3].dir, undefined, "且没有扫弦方向残留");
 }
 
 /* ================= 场景 T47e：dir 的声部语义（v2.7.1 改写 / v2.9.0 收口） =================

@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------------
    契约：示例数据逐格来自参考谱面（用户填的十六分格表），载入 = 5 个节奏型预设
    + 整首曲式（10 段，行=段）+ 每段歌词行（段内绝对 tick）。方向存手部动作
-   （D=下扫/U=上扫，渲染层翻转）；弦区 0=低/1=全/2=高；空扫 = rest+dir；
+   （D=下扫/U=上扫，渲染层翻转）；弦区 0=低/1=全/2=高；空扫 = rest+dir/air（air 记谱、rest 抑 onset）；
    逐小节谱：段长 = 该段真实小节数（v2.6.0 起不再垫到 4 的倍数）。
 
    v2.4.1 起入口变了：overlay 里的「载入示例」按钮已删，改由 init 期的
@@ -156,12 +156,12 @@ section("T63b 示例载入 · 扫弦格映射逐格正确");
   eq(JSON.stringify(p1.bars[0][0]), JSON.stringify({ t: 12, dir: "D" }),
      "P1 格0 = 全部弦下扫（v2.29.0：全扫缺省不写 zone，谱面 F 当年误映射成 1 已修正）");
   eq(JSON.stringify(p1.bars[0][1]), JSON.stringify({ t: 12, rest: true, dir: "U", air: true }),
-     "P1 格1 = 空扫上扫（v3.52.0 两轴独立：rest+dir+air，不带 zone）");
+     "P1 格1 = 空扫上扫（rest+dir+air，air 记谱、rest 抑 onset，不带 zone）");
   eq(JSON.stringify(p1.bars[0][6]), JSON.stringify({ t: 12, dir: "D", zone: 0 }),
      "P1 格6 = 低音弦区下扫（B→zone0）");
   const p4 = pByName(beat, "节奏型4（《在他乡》）");   // ★ 本版：P4 特征名改编号名（旧两代名由迁移表认回）
-  eq(JSON.stringify(p4.bars[0][8]), JSON.stringify({ t: 12, rest: true }),
-     "★ 无动作格 = 纯休止（无 dir 无 zone，与空扫区分开）");
+  eq(JSON.stringify(p4.bars[0][8]), JSON.stringify({ t: 12, rest: true, air: true }),
+     "★ 无方向格 = 无头蓝虚线空扫（air=true、无 dir、无 zone），不是纯休止");
   ok(demoBuiltins(beat).every(c => c.bars.length === 1
       && c.bars[0].reduce((s, x) => s + x.t, 0) === 192), "★ 6 个示例型各是**1 小节**、恰好 192 tick（琶音型 = 四分 ×4 同规格）");
   /* 收束不再是"组合型"：它是**两小节、两块**（v2.6.0 第 Ⅳ 期的核心改动）。

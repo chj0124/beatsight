@@ -357,18 +357,20 @@ paintFrame()        ← 外壳：① if (!S.playing) return ② try{ paintFrameB
 校验：`barSum(bar) === draft.meter`（1e-9 容差），任一小节不完整 → 保存按钮禁用 + 该行标红。
 **撤销栈（v0.4.0 起）**：任何草稿变更前先 `pushUndo()` 快照（JSON 序列化 bars，上限 50）；Ctrl+Z / 撤销按钮回退。危险操作（复制到全部/清空/未保存返回）需 confirm。
 试听：`S.preview=true` 后复用主引擎，`curPattern()` 返回 draft；试听前记录 `prevSigBeforeAudition`，停止/保存时还原主界面拍号。
-**扫弦方向三档（v1.9.0）**：`#dirRow` 的「↓ 下扫 / ↑ 上扫 / 不标注」作用于 `edSel` 选中的音符。
-可用性、高亮、`aria-pressed` 与选中状态**同源更新**（三件事全部收在 Editor 的 `editorRender()` 里）——
-分散写必然漂移，这是 v1.3.0 开关三件套的教训。未选中、或选中的是休止符时三档禁用并给出原因
-（禁用而不是弹窗报错，避免误点即打扰）；点击处理器同样再拦一次，两道防线。
-重复点当前档位不产生变更、不污染撤销栈（T47c 有一句专门钉这条）。
+**弹法与方向**：`#techRow` 以既有字段派生「节拍 / 扫弦 / 琶音 / 分解」四档（不加数据字段）；
+点档负责写删 `dir/zone/str/air`，同档重按不推撤销栈。`#dirRow` 只在扫弦档显示，保留下扫 / 上扫两档。
+可用性、高亮、`aria-pressed` 与各行的 `hidden` 全部收在 `editorRender()` 同源更新，避免几处状态漂移。
 
-**发声开关（v2.45.0）**：`#restRow` 的单 pill toggle（在方向/弦区行之后），点击翻转选中音符的
-`rest`（发声 ↔ 休止）。**只翻 `rest` 一位——`dir`/`zone` 原样保留、不补默认方向**（空扫 = 休止槽带
-方向，是「普通休止」之外另一个既有合法状态，两步路径交给用户自己接，不替用户塞 `dir:"D"`）。
-`rest` 是占位字段不是时值：翻转后 barSum 不变，小节校验/保存可用性不受影响。交互与三档行同一套
-纪律（开关三件套同源更新、pushUndo 先行、未选中禁用）；toggle 无「同档重按」分支——单 pill 每次
-点击必然翻转，各占一条撤销快照。回归：`tests/cases/t114-rest-toggle.js`（T114a–e）。
+**发声与空扫**：`#restRow` 双档「发声 / 休止」只在「节拍」档显示并只改 `rest`；真实休止先选「节拍」。
+`#airRow` 只在「扫弦」档显示，一次点击联动 `air` 与 `rest`：空扫 = `air=true + rest=true`
+（有蓝虚线记谱但不触发 onset），实扫 = `air=false + rest=false`。琶音 / 分解强制 `rest=false`；
+从其他弹法切到扫弦默认实扫，已是空扫再点扫弦同档不推栈、不得误清 `rest`。加载/导入统一
+`air=true ⇒ rest=true`，上一版 `air=true, rest=false` 的空扫错误发声组合在此归一。
+回归：`tests/cases/t114-rest-toggle.js`、`t249-air-toggle.js`、`t250-air-render.js`、
+`t252-air-import.js`、`t256-popover-tech-row.js`、`t257-air-strum-semantics.js`。
+
+**作用域分区**：撤销是整稿级动作，位于顶栏；「删除选中音符」是音符级动作，位于音符属性浮层并按
+选中态禁用；铺弦号、增删 / 复制 / 清空小节是当前小节工具，留在网格下方。回归：`t258-editor-scope-layout.js`。
 
 **逐弦拨弦面板（v3.47.0）**：`#strRow`（⑥→① 六行迷你面板：开关 + 品数框 + 技巧循环钮）与
 小节级 `#strFillIn`/`#strFillBtn`（按序铺弦号，语法 `s[:f][tech]` 空格分词）。同一套纪律：

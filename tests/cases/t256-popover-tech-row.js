@@ -1,18 +1,17 @@
 /* BeatSight 自动化测试 · 音符属性悬浮窗「弹法」四档重组（节奏型页面改造批 3）
    T256 系列。
    ---------------------------------------------------------------------------
-   契约（新建节奏型页面改造实施方案 §1.3）：
+   契约：
      · 弹法 = 既有字段的派生（stepTechOf）：str→分解（含 str=[]）、dir=A→琶音、
        dir D/U 或 zone 或 air→扫弦、其余→节拍（纯时值块，新块默认档）；数据模型零新增；
-     · 点档落库分派：节拍→删 dir/zone/str/air（rest 保留）；扫弦→dir 保留已有 D/U、
-       其余来源默认 D、删 str、zone/air 保留；琶音→dir=A、删 str、删 air（批 6：
-       琶音逐弦触弦、无空扫概念）、zone 保留；分解→str=str||[]、删 dir/zone/air；
-     · 行显隐矩阵（hidden）：beat→四行全收；strum→方向+弦区+手部；arp→弦区
-       （手部批 6 起同收——琶音无空扫概念）；pick→逐弦；restRow 四档恒显；
-     · 高亮由派生驱动（旧数据/导入数据打开悬浮窗各档自动归位）；
-     · 同档重按不推撤销栈（派生态没变 = 无变更）；
-     · 「实扫/空扫」只在扫弦档出现（批 6 收窄）——纯节拍/琶音块不再被迫认领扫弦概念
-       （本组的存在理由）。
+     · 点档落库分派：节拍→删 dir/zone/str/air（rest 保留）；从其他弹法切扫弦→默认实扫
+       （rest=false, air=false、删 str、保留或默认 D/U、zone 保留）；琶音/分解→删空扫字段、
+       rest=false；已是扫弦再点扫弦不推栈——空扫/实扫由 airRow 维护；
+     · airRow 一次点击同步两个字段：空扫 = rest=true+air=true（不触发 onset），
+       实扫 = rest=false+air=false（触发 onset）；方向与弦区不动；
+     · 行显隐矩阵：beat→发声；strum→方向+弦区+手部；arp→弦区；pick→逐弦；
+       restRow 只在节拍档出现，真实休止先回节拍；
+     · 高亮由派生驱动；同档重按不推撤销栈，但旧休止琶音/分解同档点击仍负责恢复发声。
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。 */
 "use strict";
 const { loadApp, pill, ok, eq, section } = require("../lib/harness");
@@ -62,8 +61,8 @@ section("T256a 弹法推导 · 七种字段组合的高亮归位 + 未选中禁�
   eq(techPressed(els, "strum"), "false", "琶音格不亮扫弦档");
 }
 
-/* ================= 场景 T256b：点档落库分派 ================= */
-section("T256b 落库分派 · 四档各写/删哪些字段、rest 保留、撤销可回退");
+/* ================= 场景 T256b：弹法切换与空扫联动落库 ================= */
+section("T256b 落库分派 · 默认实扫 / 琶音分解恢复发声 / 撤销可回退");
 {
   const { beat, els } = loadApp();
   openMaterial(beat, els);
@@ -71,28 +70,35 @@ section("T256b 落库分派 · 四档各写/删哪些字段、rest 保留、撤�
   edCellsOf(els, 0)[1].fire("click");
   els["techRow"].fire("click", { target: pill({ tech: "beat" }) });
   eq(norm(S0(beat)[1]), norm({ t: 48 }), "★ 点「节拍」→ dir 删除（回纯时值块）");
-  /* 分解档：节拍格 → str=[]（声明意图）、dir/zone/air 不存在 */
+  /* 分解档：节拍格 → str=[]、删方向/空扫字段、rest=false */
   edCellsOf(els, 0)[0].fire("click");
   els["techRow"].fire("click", { target: pill({ tech: "pick" }) });
-  eq(norm(S0(beat)[0]), norm({ t: 48, str: [] }), "★ 点「分解」→ str=[]（空数组 = 等点弦）");
-  /* 扫弦档：分解格 → 删 str、dir 默认 D；zone/air 保留的验证放在琶音格 */
+  eq(norm(S0(beat)[0]), norm({ t: 48, rest: false, str: [] }), "★ 点「分解」→ str=[] 且恢复发声");
+  /* 扫弦档：分解格 → 删 str、默认下扫；从其他弹法进入时默认实扫（rest=false, air=false） */
   edCellsOf(els, 0)[4].fire("click");
   els["techRow"].fire("click", { target: pill({ tech: "strum" }) });
-  eq(norm(S0(beat)[4]), norm({ t: 48, dir: "D" }), "★ 点「扫弦」→ 删 str、dir 默认下扫");
-  /* 扫弦档：上扫格 → 同档重按（派生态已是 strum）→ 不推栈、dir 原样 */
+  eq(norm(S0(beat)[4]), norm({ t: 48, rest: false, dir: "D", air: false }),
+     "★ 点「扫弦」→ 默认实扫（删 str、dir=D、air 显式 false）");
+  /* 扫弦档：上扫格 → 同档重按（派生态已是 strum）→ 不推栈、dir/air 原样 */
   edCellsOf(els, 0)[2].fire("click");
   els["techRow"].fire("click", { target: pill({ tech: "strum" }) });
   eq(S0(beat)[2].dir, "U", "★ 已是扫弦（U）再点「扫弦」→ 同档不推栈、dir 保留（上扫不被重置）");
-  /* 琶音档：带 zone+air 的扫弦格 → dir=A、zone 保留、str/air 删（批 6：琶音无空扫概念） */
+  /* 空扫联动：airRow 一次点击同时写 rest/air */
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });
+  eq(norm(S0(beat)[2]), norm({ t: 48, rest: true, dir: "U", air: true }),
+     "★ 点「空扫」→ rest=true + air=true（空扫不触发 onset）");
+  /* 琶音档：带 zone+air 的空扫格 → dir=A、zone 保留、删 air、恢复发声 */
   edCellsOf(els, 0)[5].fire("click");
-  els["airRow"].fire("click", { target: pill({ air: "on" }) });   // 先补 air=true（zone+air 组合）
+  els["airRow"].fire("click", { target: pill({ air: "on" }) });   // 先补 zone+air 组合（现为空扫态）
   els["techRow"].fire("click", { target: pill({ tech: "arp" }) });
-  eq(norm(S0(beat)[5]), norm({ t: 48, dir: "A", zone: 2 }), "★ 点「琶音」→ dir=A、zone 保留、air 删（无空扫概念）");
-  /* 撤销：分派是一步（undo 回到点击前） */
+  eq(norm(S0(beat)[5]), norm({ t: 48, rest: false, dir: "A", zone: 2 }),
+     "★ 点「琶音」→ dir=A、zone 保留、air 删除、恢复发声");
+  /* 撤销：弹法分派与 airRow 各是一步 */
   beat.Editor.undo();
-  eq(norm(S0(beat)[5]), norm({ t: 48, zone: 2, air: true }), "★ undo 一步退回点档前（dir/air 删除、air 补写还在）");
+  eq(norm(S0(beat)[5]), norm({ t: 48, rest: true, zone: 2, air: true }),
+     "★ undo 一步退回点琶音前（空扫态保留）");
   beat.Editor.undo();
-  eq(norm(S0(beat)[5]), norm({ t: 48, zone: 2 }), "★ 再撤回 air 补写之前");
+  eq(norm(S0(beat)[5]), norm({ t: 48, rest: false, zone: 2 }), "★ 再撤回 air 补写之前");
 }
 
 /* ================= 场景 T256c：同档重按不推撤销栈 ================= */
@@ -111,28 +117,31 @@ section("T256c 同档重按 · 派生态没变 = 无变更、不污染撤销栈"
 }
 
 /* ================= 场景 T256d：行显隐矩阵 ================= */
-section("T256d 显隐矩阵 · 四档下 方向/弦区/手部/逐弦 的 hidden 与 restRow 恒显");
+section("T256d 显隐矩阵 · 发声只在节拍；方向/弦区/手部/逐弦按弹法显隐");
 {
   const { beat, els } = loadApp();
   openMaterial(beat, els);
   const hiddenOf = id => els[id].hidden === true;
-  /* 节拍格（0）：四行全收——「实扫/空扫必选」对纯节拍块的概念错配在此消解 */
+  /* 节拍格（0）：发声显示，其余四行全收 */
   edCellsOf(els, 0)[0].fire("click");
   ok(hiddenOf("dirRow") && hiddenOf("zoneRow") && hiddenOf("airRow") && hiddenOf("strRow"),
      "★ 节拍档：方向/弦区/手部/逐弦全收（hidden）");
-  ok(els["restRow"].hidden !== true, "★ restRow 四档恒显（纯节拍也有发声/休止）");
-  /* 扫弦格（1）：方向 + 弦区 + 手部；逐弦收 */
+  ok(!hiddenOf("restRow"), "★ 节拍档：发声/休止显示（休止唯一入口）");
+  /* 扫弦格（1）：方向 + 弦区 + 手部；发声/逐弦收 */
   edCellsOf(els, 0)[1].fire("click");
   ok(els["dirRow"].hidden !== true && els["zoneRow"].hidden !== true && els["airRow"].hidden !== true && hiddenOf("strRow"),
      "★ 扫弦档：方向/弦区/手部显示、逐弦收");
-  /* 琶音格（3）：弦区；方向收（由弹法行承载）、手部收（批 6：琶音无空扫概念） */
+  ok(hiddenOf("restRow"), "★ 扫弦档：发声/休止收（扫弦必须发声）");
+  /* 琶音格（3）：弦区；发声/方向/手部/逐弦收 */
   edCellsOf(els, 0)[3].fire("click");
   ok(hiddenOf("dirRow") && els["zoneRow"].hidden !== true && hiddenOf("airRow") && hiddenOf("strRow"),
-     "★ 琶音档：方向/手部收、弦区显示");
-  /* 分解格（4）：逐弦显示；方向/弦区/手部收 */
+     "★ 琶音档：方向/手部/逐弦收、弦区显示");
+  ok(hiddenOf("restRow"), "★ 琶音档：发声/休止收（琶音必须发声）");
+  /* 分解格（4）：逐弦显示；发声/方向/弦区/手部收 */
   edCellsOf(els, 0)[4].fire("click");
   ok(els["strRow"].hidden !== true && hiddenOf("dirRow") && hiddenOf("zoneRow") && hiddenOf("airRow"),
      "★ 分解档：逐弦显示、方向/弦区/手部收");
+  ok(hiddenOf("restRow"), "★ 分解档：发声/休止收（分解必须发声）");
   /* 点弦号启用 → 面板可用（t240c 链路在新显隐下照走） */
   ok(els["strRow"].children.length > 0, "分解档下逐弦面板已构建（ensureStrPanel 照旧）");
 }
@@ -160,4 +169,74 @@ section("T256e str 空数组 · 渲染零 pick 记号 / 声明不落 dir/zone/ai
   } else {
     ok(false, "逐弦面板未构建（异常）");
   }
+}
+
+/* ================= 场景 T256f：实扫默认发声 / 空扫保留 / 旧琶音分解修复 ================= */
+section("T256f 空扫语义 · 从休止进扫弦默认实扫，已有空扫不被同档误改");
+{
+  const FIXTURE = () => ({ name: "空扫语义素材", meter: 6, bars: [[
+    { t: 48, rest: true },
+    { t: 48, rest: true },
+    { t: 48, rest: true },
+    { t: 48, rest: true, dir: "D", air: true },
+    { t: 48, rest: true, dir: "A" },
+    { t: 48, rest: true, str: [{ s: 5, f: 7, tech: "P" }] },
+  ]] });
+  const openFixture = () => {
+    const app = loadApp();
+    const beat = app.beat, els = app.els;
+    ok(beat.Store.importPresets(JSON.stringify({ presets: [FIXTURE()] })).ok, "空扫语义素材导入成功");
+    beat.Store.S.sig = 6;
+    beat.Store.S.sel = { type: "custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
+    beat.Presets.refreshAfterPatternChange();
+    beat.Editor.open();
+    return { beat, els };
+  };
+  /* 第一只 app：纯休止节拍格 → 三种弹法都应恢复发声（扫弦默认实扫）。 */
+  const freshApp = openFixture();
+  const beat = freshApp.beat, els = freshApp.els;
+  const hiddenOf = id => els[id].hidden === true;
+  const clickTech = tech => els["techRow"].fire("click", { target: pill({ tech }) });
+  const select = (appEls, i) => edCellsOf(appEls, 0)[i].fire("click");
+  const fresh = [
+    { i: 0, tech: "strum", want: { t: 48, rest: false, dir: "D", air: false }, label: "扫弦" },
+    { i: 1, tech: "arp", want: { t: 48, rest: false, dir: "A" }, label: "琶音" },
+    { i: 2, tech: "pick", want: { t: 48, rest: false, str: [] }, label: "分解" },
+  ];
+  select(els, 0);
+  ok(!hiddenOf("restRow") && els["restRow"].children.every(p => !p.disabled),
+     "前提：纯节拍格的 restRow 显示且可用");
+  fresh.forEach(({ i, tech, want, label }) => {
+    select(els, i);
+    clickTech(tech);
+    eq(norm(S0(beat)[i]), norm(want), `★ 休止节拍 →「${label}」：恢复发声且字段落库正确`);
+    ok(hiddenOf("restRow") && els["restRow"].children.every(p => p.disabled),
+       `★「${label}」档 restRow 隐藏且禁用（不能退回休止）`);
+  });
+  /* 第二只 app：旧数据兼容性独立验证，撤销栈必须从零开始，才能钉「同档不推栈」。 */
+  const legacyApp = openFixture();
+  const lbeat = legacyApp.beat, lels = legacyApp.els;
+  const lhidden = id => lels[id].hidden === true;
+  const lclickTech = tech => lels["techRow"].fire("click", { target: pill({ tech }) });
+  /* 旧版有方向空扫：rest=true 是语义本体，同档点「扫弦」不得误清；隐藏 restRow 也不能改。 */
+  select(lels, 3);
+  eq(norm(S0(lbeat)[3]), norm({ t: 48, rest: true, dir: "D", air: true }), "前提：旧空扫数据保留 rest=true+air=true");
+  eq(lels["undoBtn"].disabled, true, "前提：尚无撤销记录");
+  lels["restRow"].fire("click", { target: pill({ rest: "off" }) });
+  eq(S0(lbeat)[3].rest, true, "★ 隐藏 restRow 的合成事件不能改空扫格（处理器二道防线）");
+  lclickTech("strum");
+  eq(norm(S0(lbeat)[3]), norm({ t: 48, rest: true, dir: "D", air: true }),
+     "★ 已是空扫再点「扫弦」→ rest/air 原样保留，不被误改为实扫");
+  eq(lels["undoBtn"].disabled, true, "★ 同档空扫重按不推撤销栈");
+  /* 旧休止琶音/分解：这两档没有空扫概念，同档点击负责恢复发声。 */
+  select(lels, 4);
+  lels["restRow"].fire("click", { target: pill({ rest: "off" }) });
+  lclickTech("arp");
+  eq(norm(S0(lbeat)[4]), norm({ t: 48, rest: false, dir: "A" }),
+     "★ 旧「琶音+休止」点同档 → rest=false、air 删除、dir=A 保留");
+  select(lels, 5);
+  lels["restRow"].fire("click", { target: pill({ rest: "off" }) });
+  lclickTech("pick");
+  eq(norm(S0(lbeat)[5]), norm({ t: 48, rest: false, str: [{ s: 5, f: 7 }] }),
+     "★ 旧「分解+休止」点同档 → rest=false，str/品数保留（rest 格上的技巧已按 normStr 抹除）");
 }

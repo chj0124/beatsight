@@ -1,8 +1,9 @@
-/* BeatSight 自动化测试 · 空扫（air）导入白名单 / 老数据推断 / 导出往返（v3.52.0，两轴独立）
+/* BeatSight 自动化测试 · 空扫（air）导入白名单 / 老数据推断 / 归一不变量 / 导出往返
    T252 系列。
    ---------------------------------------------------------------------------
-   `air` 与 `rest` 独立。validatePreset（导入唯一入口）：
-     · `air` 是显式布尔 → 以它为准（真/假都保留：false = 实扫，供「实扫 + 休止」往返保真）；
+   validatePreset（导入唯一入口）：
+     · `air=true` ⇒ 强制 `rest=true`（空扫不触发 onset；上一版 air=true,rest=false 的旧数据在此归一）；
+     · `air=false` 显式保留（旧「实扫 + 休止」往返保真）；
      · `air` 缺省（或非布尔脏值）→ 老数据推断：`rest && dir` 读作空扫（补 air=true）；其余缺省。
    老版本应用导入含 air 的导出包时整体丢弃 air（同 str 先例）。 */
 "use strict";
@@ -14,16 +15,18 @@ function oneStep(step){
 }
 const lastStep = St => St.customs[St.customs.length - 1].bars[0][0];
 
-section("T252a air 白名单 · 显式布尔为准（true/false 都保留）");
+section("T252a air 白名单 · air=true 强制空扫态，air=false 保留旧切音态");
 {
   const { beat } = load();
   const St = beat.Store;
   ok(St.importPresets(JSON.stringify(oneStep({ t:48, rest:true, air:true }))).ok, "rest+air:true 导入成功");
-  eq(lastStep(St).air, true, "air:true → 保留 true（空扫+休止）");
+  eq(lastStep(St).air, true, "air:true → 保留 true（空扫）");
+  eq(lastStep(St).rest, true, "空扫同时 rest=true");
   ok(St.importPresets(JSON.stringify(oneStep({ t:48, rest:true, dir:"D", air:false }))).ok, "rest+dir+air:false 导入成功");
   eq(lastStep(St).air, false, "★ air:false → 保留 false（实扫+休止，不再被误读为空扫）");
-  ok(St.importPresets(JSON.stringify(oneStep({ t:48, air:true }))).ok, "非休止 + air:true 导入成功");
-  eq(lastStep(St).air, true, "★ air 与 rest 独立：非休止上的 air:true 也保留（空扫+发声）");
+  ok(St.importPresets(JSON.stringify(oneStep({ t:48, air:true }))).ok, "旧错误组合 air:true,rest=false 导入成功");
+  eq(lastStep(St).air, true, "★ air:true 保留");
+  eq(lastStep(St).rest, true, "★ 强制归一 rest=true：空扫不再触发 onset");
 }
 
 section("T252b 老数据推断 · 缺省 air 时「休止 + 方向」读作空扫");

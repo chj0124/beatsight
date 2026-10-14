@@ -1,12 +1,11 @@
-/* BeatSight 自动化测试 · 实扫 / 空扫 两轴渲染与分类（v3.52.0，两轴独立）
+/* BeatSight 自动化测试 · 实扫 / 空扫渲染与分类
    T250 系列。
    ---------------------------------------------------------------------------
-   契约：`air`（实扫/空扫）与 `rest`（发声/休止）独立。记号只由 air + dir 决定，与 rest 无关：
+   契约：`air` 只决定空扫记谱的虚/实；`rest` 决定是否触发 onset。加载/导入不变量：
+   `air=true ⇒ rest=true`（空扫不发声），`air=false` 保留给旧「实扫+休止」数据。
      · 空扫（air）：蓝虚线（ghost）——有方向 → 带箭头（dn/up/arp）；无方向 → 无头蓝虚线杆（.air）；
      · 实扫（!air）：实心箭头（由 dir 决定；无方向则不生成记号）。
-   所以「休止 + 实扫」= 实心箭头（静音），「发声 + 空扫」= ghost（出声）。弦区沿用 prevZone（air 不更新）。
-   `air` 仍属记谱层 ⇒ stepHasStrumLike / hasStrum 纳入，纯 air 型归「扫弦」类。
-   老数据「休止 + 方向」由 validatePreset 推断补 air=true（仍渲染带箭头 ghost）。 */
+   弦区沿用 prevZone（air 不更新）。老数据「休止 + 方向」缺省 air 时推断为空扫。 */
 "use strict";
 const { loadApp, ok, eq, section } = require("../lib/harness");
 
@@ -66,21 +65,21 @@ section("T250b 主视图 · 空扫（air）弦区沿用前一记实扫的 zone")
   eq(g && g.ghost && g.air, true, "且仍是 ghost.air（无头杆）");
 }
 
-/* ================= 场景 T250c：两轴组合的虚实 ================= */
-section("T250c 主视图 · 实扫/空扫决定虚实（与 rest 无关）");
+/* ================= 场景 T250c：air 决定虚实、rest 决定 onset ================= */
+section("T250c 主视图 · air 决定虚实，rest 决定 onset");
 {
   const { beat, els } = loadApp();
   selectPreset(beat, els, [[
     { t:48, dir:"D" },                    // 发声 + 实扫 → 实心
     { t:48, rest:true, dir:"D", air:false }, // 休止 + 实扫 → 实心
-    { t:48, air:true },                   // 发声 + 空扫 → ghost
+    { t:48, air:true },                   // 空扫（导入归一 rest=true）→ ghost，不触发 onset
     { t:48, rest:true, dir:"D" },         // 老数据（休止+方向）→ 推断 air → ghost 带箭头
   ]]);
   beat.Viz.buildViz();
   const g0 = glyph(els, 0, 0), g1 = glyph(els, 0, 1), g2 = glyph(els, 0, 2), g3 = glyph(els, 0, 3);
   ok(g0 && g0.dn && !g0.ghost, "发声 + 实扫 → 实心箭头");
   ok(g1 && g1.dn && !g1.ghost, "★ 休止 + 实扫 → 实心箭头（air=false 决定虚实，与 rest 无关）");
-  ok(g2 && g2.ghost && !g2.dn, "★ 发声 + 空扫 → ghost 蓝虚线（出声但手过不触弦）");
+  ok(g2 && g2.ghost && !g2.dn, "★ 空扫 → ghost 蓝虚线（有记谱、不触发 onset）");
   ok(g3 && g3.ghost && g3.dn, "★ 老数据【休止 + 方向】导入后推断为空扫 → ghost 带箭头（零迁移回归）");
 }
 

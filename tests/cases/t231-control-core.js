@@ -194,7 +194,7 @@ section("T231g v3.42.0：滑块条内缩半个钮径 · 右侧参数槽 · 点�
      && /<button class="core-slot" id="trainerSlot" type="button" hidden aria-expanded="false" aria-controls="trainerFlyout"/.test(src),
     "★★ 两个参数槽是 <button>（可聚焦/可键盘触发）且带 aria-expanded + aria-controls、初值 hidden");
   ok(/\.core-slot\{display:flex/.test(CSS_CODE) && /\.core-slot\[hidden\]\{display:none\}/.test(CSS_CODE)
-     && /\.core-slot\{display:flex;align-items:center;gap:3px;height:24px;padding:0 4px;\n  border:0;/.test(CSS_CODE),
+     && /\.core-slot\{display:flex;align-items:center;gap:3px;height:24px;padding:0 4px;\r?\n  border:0;/.test(CSS_CODE),
     "★★ 槽的样式 + [hidden] 显式兜底 + **无描边**（v3.42.0 补：去掉细线框、内边距 8→4 省面积）");
   els["muteToggle"].fire("click");
   ok(els["muteSlot"].hidden === false, "★★★ 静音开 → 胶囊右侧**长出参数槽**（关着时不占位）");

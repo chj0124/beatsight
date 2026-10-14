@@ -26,7 +26,7 @@ const blockFrom = (startPat, endPat) => {
 };
 const ROOT = blockFrom(":root{", "\n}");
 const OBSVARS = blockFrom('body[data-theme="obs"]{', "\n}");
-const OBS = blockFrom('body[data-theme="obs"]{\n', "\n/* ---------- 诊断面板");   // 整个观测台覆盖块（含组件级）
+const OBS = blockFrom('body[data-theme="obs"]{', "\n/* ---------- 诊断面板");   // 整个观测台覆盖块（含组件级；起始不带换行，兼容 CRLF）
 const FLASH = blockFrom("const FLASH_THEME = {", "\n};");
 /* 取一条以 selector 起头的规则文本（到本行的 } 为止） */
 const ruleOf = (where, sel) => {

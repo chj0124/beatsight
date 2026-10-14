@@ -1,12 +1,11 @@
-/* BeatSight 自动化测试 · 编辑器「发声开关」——实扫 ↔ 空扫 ↔ 休止一键翻转（v2.45.0）
+/* BeatSight 自动化测试 · 编辑器「发声 / 空扫」开关
    T114 系列。
    ---------------------------------------------------------------------------
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。
-   背景：空扫 = 休止槽带 dir（v2.1.0 口径），但编辑器此前没有任何直接切换两者的控件——
-   调色板替换会破坏小节时值（休止块只有四分一种）且抹掉 dir/zone，非四分时长的互换实际做不到。
-   v2.45.0 加 #restRow 单 toggle：只翻 rest 一位，dir/zone 一字不动、不补默认方向（用户拍板 a 方案）。
-   本组不变量：翻转不碰 t（时长不动 → barSum 不变 → 保存可用性不受影响）；
-   dir/zone 穿越翻转原样保留；空扫在发声层静默、其余音符时刻一字不动。 */
+   当前契约：restRow 只在「节拍」档出现；琶音/分解必须发声。
+   真实休止先从其他弹法切回「节拍」（清弹法字段、保留 rest），再翻 rest。
+   airRow 联动 air/rest：空扫不触发 onset，实扫触发 onset；数据层旧组合不批量迁移。
+   核心不变量：翻转不碰 t（barSum 不变），空扫/休止只减自己的 onset、其余音符时刻一字不动。 */
 "use strict";
 const { loadApp, FakeAudioContext, pill, ok, eq, section, drive } = require("../lib/harness");
 
@@ -55,8 +54,8 @@ section("T114a 发声开关 · 未选中禁用与提示");
   eq(ast.hint, "", "未选中 → airHint 空串");
 }
 
-/* ================= 场景 T114b：restRow 只改 rest（时长/方向/弦区不动） ================= */
-section("T114b 发声开关 · restRow 只改 rest：dir/zone 保留、时长不动、撤销可逆");
+/* ================= 场景 T114b：扫弦 → 节拍 → 休止（时值不动、撤销可逆） ================= */
+section("T114b 发声开关 · 休止唯一路径：先切「节拍」再翻 rest");
 {
   const { beat, els } = loadApp();
   ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "翻转素材", meter: 4,
@@ -66,96 +65,75 @@ section("T114b 发声开关 · restRow 只改 rest：dir/zone 保留、时长不
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
 
-  edCellsOf(els, 0)[0].fire("click");                 // 选中 {t:48, dir:"D", zone:0}
+  edCellsOf(els, 0)[0].fire("click");                 // 选中扫弦格 {t:48, dir:"D", zone:0}
   let st = restState(els);
-  ok(!st.disabled, "选中发声音符 → 开关启用");
-  eq(st.pressed, "false", "发声中 → 休止档 false");
-  ok(st.hint.includes("发声中"), "restHint 反映当前态");
+  ok(st.disabled && els["restRow"].hidden === true, "★ 扫弦档 restRow 隐藏且禁用（扫弦必须发声）");
+  eq(st.hint, "", "隐藏行不残留发声提示");
+  els["techRow"].fire("click", { target: pill({ tech: "beat" }) });
+  const beat0 = beat.Editor.draft().bars[0][0];
+  eq(beat0.dir, undefined, "先切「节拍」→ dir 删除");
+  eq(beat0.zone, undefined, "先切「节拍」→ zone 删除");
+  eq(beat0.rest, false, "切「节拍」保留当前发声状态（之后可再选休止）");
+  st = restState(els);
+  ok(!st.disabled && els["restRow"].hidden !== true, "节拍档 restRow 恢复显示与可用");
 
   els["restRow"].fire("click", { target: pill({ rest: "on" }) });
   const s0 = beat.Editor.draft().bars[0][0];
-  eq(s0.rest, true, "点「休止」→ 该步 rest=true");
-  eq(s0.dir, "D", "★ dir 原样保留（发声行不碰方向）");
-  eq(s0.zone, 0, "★ zone 原样保留");
+  eq(s0.rest, true, "再点「休止」→ 该步 rest=true");
+  eq(s0.dir, undefined, "★ 纯节拍休止不带方向");
+  eq(s0.zone, undefined, "★ 纯节拍休止不带弦区");
+  eq(s0.air, undefined, "★ 纯节拍休止不带空扫字段");
   eq(s0.t, 48, "★ t 一字不动（rest 是占位字段不是时值）");
   eq(beat.Editor.draft().bars[0].reduce((n, s) => n + s.t, 0), 192,
      "barSum 不变（192）——小节完整性不受影响");
-  eq(s0.air, false, "★ 休止 + 方向 → air 落显式 false（= 实扫 + 休止，不是空扫）");
   st = restState(els);
   eq(st.pressed, "true", "翻转后休止档 true（与高亮同源）");
   ok(/ rest /.test(" " + edCellsOf(els, 0)[0].className + " "), "编辑器格子挂上 .rest（灰底休止样式）");
-  const sv0 = edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className));
-  eq(sv0.length, 1, "实扫 + 休止仍有竖箭头");
-  ok(sv0.every(c => /(^| )dn( |$)/.test(c.className) && !/(^| )ghost( |$)/.test(c.className)),
-     "★ 实扫 + 休止 = 实心箭头（air=false ⇒ 不带 ghost）");
+  eq(edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className)).length, 0,
+     "纯节拍休止不画扫弦记号");
 
   beat.Editor.undo();
   const back = beat.Editor.draft().bars[0][0];
-  eq(back.rest, false, "撤销 → rest 翻回发声");
-  eq(back.dir, "D", "撤销后 dir 仍在（快照是整步 JSON，自然保真）");
+  eq(back.rest, false, "撤销一步 → 回到发声的节拍格");
+  eq(back.dir, undefined, "此时仍是纯节拍（undo 不会跨两步）");
+  beat.Editor.undo();
+  const back2 = beat.Editor.draft().bars[0][0];
+  eq(back2.dir, "D", "再撤一步 → 回到原扫弦方向");
+  eq(back2.zone, 0, "原弦区随快照恢复");
   ok(els["restRow"].children[0].disabled, "撤销清了选中（edSel=null）→ 开关回到禁用");
 }
 
-/* ================= 场景 T114c：airRow 只改 air（四组合，rest/dir 不动） ================= */
-section("T114c 空扫开关 · airRow 只改 air：实扫/空扫各配发声 or 休止");
+/* ================= 场景 T114c：airRow 联动 air/rest（dir 不动） ================= */
+section("T114c 空扫开关 · airRow 联动 air/rest：实扫/空扫往返，dir 不动");
 {
   const { beat, els } = loadApp();
-  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "两轴素材", meter: 4,
-    bars: [[{ t:48, dir:"D" }, { t:48, rest:true }, { t:48 }, { t:48 }]] }] })).ok, "两轴素材导入成功");
+  ok(beat.Store.importPresets(JSON.stringify({ presets: [{ name: "空扫素材", meter: 4,
+    bars: [[{ t:48, dir:"D" }, { t:48, rest:true }, { t:48 }, { t:48 }]] }] })).ok, "空扫素材导入成功");
   beat.Store.S.sel = { type:"custom", id: beat.Store.customs[beat.Store.customs.length - 1].id };
   beat.Presets.refreshAfterPatternChange();
   beat.Editor.open();
 
-  /* ① 发声 + 实扫 → 空扫：rest 不动（仍发声），dir 保留 */
+  /* ① 实扫 → 空扫：air/rest 同步翻转为空扫态（air 记谱，rest 抑 onset），dir 保留 */
   edCellsOf(els, 0)[0].fire("click");
-  eq(airState(els).pressed, "false", "实扫 + 发声 → 空扫档 false");
+  eq(airState(els).pressed, "false", "实扫档初始 false");
   els["airRow"].fire("click", { target: pill({ air: "on" }) });
   let s0 = beat.Editor.draft().bars[0][0];
   eq(s0.air, true, "点「空扫」→ air=true");
-  eq(s0.rest, false, "★ rest 不动（空扫 + 发声：这一格仍出声）");
+  eq(s0.rest, true, "★ rest=true（空扫不触发节拍器 onset，前音由演奏延续）");
   eq(s0.dir, "D", "★ dir 保留（有方向空扫 = 带箭头蓝虚线）");
   ok(/(^| )ghost( |$)/.test((edCellsOf(els, 0)[0].children.filter(c => /(^| )strumv( |$)/.test(c.className))[0] || {}).className),
-     "空扫 + 发声 → .ghost 蓝虚线");
+     "空扫 → .ghost 蓝虚线");
 
-  /* ② 空扫 + 发声 → 点「实扫」：rest 仍不动（改回实扫但依旧发声） */
+  /* ② 空扫 → 实扫：air/rest 同步翻转回发声态 */
   els["airRow"].fire("click", { target: pill({ air: "off" }) });
   s0 = beat.Editor.draft().bars[0][0];
   eq(s0.air, false, "点「实扫」→ air=false");
-  eq(s0.rest, false, "★ rest 仍不动（实扫 + 发声）");
+  eq(s0.rest, false, "★ rest=false（实扫触发节拍器 onset）");
   eq(s0.dir, "D", "★ dir 不动");
 
-  /* ③ 休止（无方向）→ 空扫：得「无方向空扫 + 休止」= 无头蓝虚线杆 */
+  /* 纯节拍休止不提供手部行；旧版 rest+air 的渲染兼容由 T250 守。 */
   edCellsOf(els, 0)[1].fire("click");
-  eq(airState(els).hint.includes("空扫"), true, "空扫行提示点出「手过不触弦」");
-  els["airRow"].fire("click", { target: pill({ air: "on" }) });
-  const s1 = beat.Editor.draft().bars[0][1];
-  eq(s1.air, true, "休止格点「空扫」→ air=true");
-  eq(s1.rest, true, "★ rest 不动（空扫 + 休止）");
-  eq(s1.dir, undefined, "无方向 → 无头空扫");
-  const sv1 = edCellsOf(els, 0)[1].children.filter(c => /(^| )strumv( |$)/.test(c.className));
-  eq(sv1.length, 1, "无方向空扫仍生成记号");
-  ok(/(^| )ghost( |$)/.test((sv1[0] || {}).className) && /(^| )air( |$)/.test((sv1[0] || {}).className) && !/(^| )(dn|up|arp)( |$)/.test((sv1[0] || {}).className),
-     "★ 无方向空扫 = .strumv.ghost.air（无头蓝虚线杆）");
-
-  /* ④ 再点「实扫」：air=false，rest 仍休止 → 纯休止 */
-  els["airRow"].fire("click", { target: pill({ air: "off" }) });
-  const s1b = beat.Editor.draft().bars[0][1];
-  eq(s1b.air, false, "点「实扫」→ air=false");
-  eq(s1b.rest, true, "rest 仍休止");
-  eq(edCellsOf(els, 0)[1].children.filter(c => /(^| )strumv( |$)/.test(c.className)).length, 0,
-     "纯休止（无方向、air=false）不生成记号");
-
-  /* 反向：从空扫点「发声」——发声行只改 rest，空扫标记保留 */
-  edCellsOf(els, 0)[0].fire("click");
-  els["airRow"].fire("click", { target: pill({ air: "on" }) });     // 空扫
-  els["restRow"].fire("click", { target: pill({ rest: "on" }) });   // 休止
-  let s0c = beat.Editor.draft().bars[0][0];
-  eq(s0c.air, true, "★ 「发声/休止」行不动空扫标记（air 仍 true）");
-  eq(s0c.rest, true, "rest 已改为休止 → 空扫 + 休止");
-  els["restRow"].fire("click", { target: pill({ rest: "off" }) });
-  s0c = beat.Editor.draft().bars[0][0];
-  eq(s0c.air, true, "★ 再点「发声」：air 仍 true（空扫 + 发声）");
-  eq(s0c.rest, false, "rest=false");
+  ok(els["airRow"].hidden === true, "★ 节拍休止格：airRow 隐藏（手部动作归扫弦档）");
 }
 
 /* ================= 场景 T114d：撤销往返（两组开关各自入栈） ================= */

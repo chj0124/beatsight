@@ -42,7 +42,7 @@ const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }),
    小节和 = 16 × 12 = 192 = 4 × TPB（不满足会被 validatePreset 静默淘汰进隔离区） */
 const mkSparseStrum = () => [0,1,2,3].map(() => Array.from({ length: 16 }, (_, i) =>
   i === 0 ? { t: 12, dir: "D", zone: 0 }                        // 第 1 拍：实扫（低弦区）
-  : i === 4 ? { t: 12, rest: true, dir: "D" }                    // 第 2 拍：空扫（动手不出声）
+  : i === 4 ? { t: 12, rest: true, dir: "D" }                    // 第 2 拍：空扫（有记谱、不触发 onset）
   : i === 8 ? { t: 12, dir: "U", zone: 2 }                        // 第 3 拍：实扫（高弦区）
   : { t: 12, rest: true }));                                     // 其余：纯休止
 /* 对照：带 dir 但不带 zone（= 内置「民谣扫弦」的形状）——每颗音都落在拍上 */

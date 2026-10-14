@@ -119,5 +119,5 @@ section("T190e 源码钉：高度单一来源（vizClipH 算 / applyVizClip 写�
     "★★ buildViz 里那次直接写高度已消失（改走 applyVizClip）");
   const calls = (html.match(/^\s+applyVizClip\(\);$/gm) || []).length;
   ok(calls >= 3, "★★ " + calls + " 处调用 applyVizClip（buildViz / setLyricInlineOn / relayout）");
-  ok(/\n    applyVizClip\(\);\n/.test(html), "★ setLyricInlineOn 里有重落（4 空格缩进那处）");
+  ok(/\r?\n    applyVizClip\(\);\r?\n/.test(html), "★ setLyricInlineOn 里有重落（4 空格缩进那处；CRLF/LF 同认）");
 }

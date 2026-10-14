@@ -132,12 +132,12 @@ section("T240c-2 逐弦 · 品数校验 / 技巧循环五态 / 品数保留");
   fireStr(els, techOf(els, 5));            // → 无
   eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
      "★ 循环回「无」→ 只摘技巧，品数保留");
-  /* rest 格：面板可用（空拨合法），但 tech 被 normStr 抹除（无声的技巧无从谈起） */
-  els["restRow"].fire("click", { target: els["restRow"].children[1] });   // 翻为休止（v3.52.0：休止档 data-rest="on"）
-  eq(Ed.draft().bars[0][0].rest, true, "翻为休止");
-  fireStr(els, techOf(els, 5));            // → H（会被抹）
+  /* 旧数据 rest+str：v3.53.2 起 UI 不再制造这种组合，但归一化仍须兼容；直接置 rest 模拟旧档。 */
+  Ed.draft().bars[0][0].rest = true;
+  eq(Ed.draft().bars[0][0].rest, true, "旧数据前提：rest+str 格");
+  fireStr(els, techOf(els, 5));            // → H（会被 normStr 抹）
   eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
-     "rest 格 tech 被抹除（normStr 唯一口径）");
+     "旧 rest+str 格 tech 被抹除（normStr 唯一口径）");
 }
 
 /* ================= 场景 T240c-3：zone 行覆盖态与恢复 ================= */
