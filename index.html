@@ -2326,7 +2326,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}
 /* ★ 节奏型页面改造：音符块库容器——批 1 在原位建壳，块库上移后它成为卡片内
    「填充入口区」的宿主；空态时由 editorRender 挂 .guide-ring 红框呼吸引导 */
-.pal-zone{margin:18px 0 0}
+.pal-zone{margin:0 0 14px}
 /* 空态红框（v3.39.0）：呼吸描边引导两个填充入口（顶栏模板 / 上方块库）。
    「只教一次」：editorRender 用 edEverFilled 会话级 flag 同源控制——首次脱离空态即置位，
    之后即便 undo 回到全空也不再回来（引导只教一次，不跟着撤销抖动）。
@@ -3970,8 +3970,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
     <div class="card">
       <div class="card-head">
         <span class="sec-tag"><b>03</b><i>Pattern Editor</i></span>
-        <h2 class="card-title" id="editorCardTitle">编辑区 · 点击音符块选中，从下方音符块库替换或追加</h2>
+        <h2 class="card-title" id="editorCardTitle">编辑区 · 点击音符块选中，从上方音符块库替换或追加</h2>
         <div class="status ok" id="editorStatusWrap"><span class="dot"></span><span id="editorStatus">校验通过</span></div>
+      </div>
+      <!-- ★ 节奏型页面改造（批 2）：音符块库整体上移到编辑区之前——两个"填充入口"
+           （顶栏模板 + 音符块库）集中在卡片上半屏，空态红框引导的视线动线：
+           选材料（上方）→ 放进编辑区（下方）；"点块选中 → 点块库替换"的交互也
+           不再上下横穿整片网格。纯 DOM 移动：id/class 零变化，渲染与接线无感。 -->
+      <div class="pal-zone" id="palZone">
+        <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
+        <div class="palette" id="palette"></div>
       </div>
       <div id="editorBars"></div>
       <div class="ed-actions">
@@ -4061,13 +4069,6 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <button class="pill" id="strFillBtn">铺到当前小节</button>
         <span class="hint">作用于当前小节</span>
         <span class="hint" id="strFillHint" role="status"></span>
-      </div>
-      <!-- ★ 节奏型页面改造：.pal-zone 容器包住标题+块库——它同时是空态红框（.guide-ring）
-           的挂点（「音符块库逐块摆入」是空态两个填充入口之一）。批 1 先在原位建容器，
-           块库整体上移到 #editorBars 之前随后一批（纯 DOM 移动，id 零变化）。 -->
-      <div class="pal-zone" id="palZone">
-        <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
-        <div class="palette" id="palette"></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2)">预设名称</span>
@@ -4942,23 +4943,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4974  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6638  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8878  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10106 Modal         应用内弹窗
-     L10267 Viz           时值可视化渲染与每帧动画
-     L13894 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14648 Trainer       变速训练器
-     L14865 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15536 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17484 Editor        自定义节奏型编辑器
-     L18536 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18631 Ear           听辨训练（v1.10.0）
-     L18859 Arrange       曲式编排（v2.0.0）
-     L22984 Help          使用方法（v2.0.1）
-     L23139 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23221 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23517 初始化（装配） 各模块 hook 接线与启动
+     L4975  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6639  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8879  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10107 Modal         应用内弹窗
+     L10268 Viz           时值可视化渲染与每帧动画
+     L13895 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14649 Trainer       变速训练器
+     L14866 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15537 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17485 Editor        自定义节奏型编辑器
+     L18537 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18632 Ear           听辨训练（v1.10.0）
+     L18860 Arrange       曲式编排（v2.0.0）
+     L22985 Help          使用方法（v2.0.1）
+     L23140 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23222 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23518 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -18039,7 +18040,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const nBars = patBars(d);
     $("addBarBtn").disabled = nBars >= MAX_PAT_BARS;
     $("delBarBtn").disabled = nBars <= 1;
-    $("editorCardTitle").textContent = "编辑区 · " + nBars + " 小节 · 点击音符块选中，从下方音符块库替换或追加";
+    $("editorCardTitle").textContent = "编辑区 · " + nBars + " 小节 · 点击音符块选中，从上方音符块库替换或追加";
     /* editorTitle 已退役（PLAN-v11 追补）：小节数在这里（卡片标题）、拍数在顶栏下拉、
        底稿身份在模板下拉——原「基于「X」创建 · N 拍 · N 小节」整句撤销 */
     /* v3.33.0：拍数下拉与规则文案的**唯一写入点**（原先 #editorMeter 只在 openWith 写一次，

@@ -100,3 +100,25 @@ section("T255e 带源进入 / 重新新建 · edEverFilled 口径");
   eq(beat.Store.customs.length, n0, "★ 空稿/未满稿保存被 disabled 兜底拦住（不写半截）");
   beat.Editor.tryClose();
 }
+
+/* ================= 场景 T255f：块库位置（批 2 提前）与文案 ================= */
+section("T255f 块库上移 · palZone 在编辑区之前 / 卡片标题报「上方」");
+{
+  /* 桩的 $() 按 id 懒建、不编码父子序——位置断言走源码钉（标记里 palZone 在 editorBars 之前），
+     与 t245-2 的 #edPop hidden 源码钉同一口径（桩不解析 HTML，结构契约只能钉源码） */
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+  const noComment = src.replace(/<!--[\s\S]*?-->/g, "");
+  const iPal = noComment.indexOf('id="palZone"');
+  const iBars = noComment.indexOf('id="editorBars"');
+  ok(iPal >= 0 && iBars >= 0 && iPal < iBars, "★ 标记里 #palZone（音符块库）在 #editorBars（编辑区）之前——两个填充入口集中上半屏");
+  ok(noComment.indexOf('id="palZone"', iPal) === -1 || noComment.indexOf('id="palZone"') === iPal,
+     "★ #palZone 恰好一处（旧位置的壳已删，不是两处同名）");
+  ok(/从上方音符块库/.test(noComment) && !/从下方音符块库/.test(noComment), "★ 卡片标题与动态标题都报「上方」（静态 + editorRender 两处同改）");
+
+  const { beat, els } = loadApp();
+  els["editBtn"].fire("click");
+  ok(String(els["editorCardTitle"].textContent).includes("从上方音符块库"), "★ 运行期标题同步为「上方」");
+  ok(/点击追加到/.test(els["paletteTitle"].textContent), "块库标题动态文案照旧（追加/替换两态，t253 口径不破）");
+  beat.Editor.tryClose();
+}
