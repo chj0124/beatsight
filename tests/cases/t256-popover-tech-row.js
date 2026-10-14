@@ -5,13 +5,14 @@
      · 弹法 = 既有字段的派生（stepTechOf）：str→分解（含 str=[]）、dir=A→琶音、
        dir D/U 或 zone 或 air→扫弦、其余→节拍（纯时值块，新块默认档）；数据模型零新增；
      · 点档落库分派：节拍→删 dir/zone/str/air（rest 保留）；扫弦→dir 保留已有 D/U、
-       其余来源默认 D、删 str、zone/air 保留；琶音→dir=A、删 str、zone/air 保留；
-       分解→str=str||[]、删 dir/zone/air；
-     · 行显隐矩阵（hidden）：beat→四行全收；strum→方向+弦区+手部；arp→弦区+手部；
-       pick→逐弦；restRow 四档恒显；
+       其余来源默认 D、删 str、zone/air 保留；琶音→dir=A、删 str、删 air（批 6：
+       琶音逐弦触弦、无空扫概念）、zone 保留；分解→str=str||[]、删 dir/zone/air；
+     · 行显隐矩阵（hidden）：beat→四行全收；strum→方向+弦区+手部；arp→弦区
+       （手部批 6 起同收——琶音无空扫概念）；pick→逐弦；restRow 四档恒显；
      · 高亮由派生驱动（旧数据/导入数据打开悬浮窗各档自动归位）；
      · 同档重按不推撤销栈（派生态没变 = 无变更）；
-     · 「实扫/空扫」只在扫弦/琶音档出现——纯节拍块不再被迫认领扫弦概念（本组的存在理由）。
+     · 「实扫/空扫」只在扫弦档出现（批 6 收窄）——纯节拍/琶音块不再被迫认领扫弦概念
+       （本组的存在理由）。
    由 tests/run.js 装配；沙箱、桩与断言工具见 tests/lib/harness.js。 */
 "use strict";
 const { loadApp, pill, ok, eq, section } = require("../lib/harness");
@@ -82,14 +83,14 @@ section("T256b 落库分派 · 四档各写/删哪些字段、rest 保留、撤�
   edCellsOf(els, 0)[2].fire("click");
   els["techRow"].fire("click", { target: pill({ tech: "strum" }) });
   eq(S0(beat)[2].dir, "U", "★ 已是扫弦（U）再点「扫弦」→ 同档不推栈、dir 保留（上扫不被重置）");
-  /* 琶音档：带 zone+air 的扫弦格 → dir=A、zone/air 保留、str 不存在 */
+  /* 琶音档：带 zone+air 的扫弦格 → dir=A、zone 保留、str/air 删（批 6：琶音无空扫概念） */
   edCellsOf(els, 0)[5].fire("click");
   els["airRow"].fire("click", { target: pill({ air: "on" }) });   // 先补 air=true（zone+air 组合）
   els["techRow"].fire("click", { target: pill({ tech: "arp" }) });
-  eq(norm(S0(beat)[5]), norm({ t: 48, dir: "A", zone: 2, air: true }), "★ 点「琶音」→ dir=A、zone/air 保留");
+  eq(norm(S0(beat)[5]), norm({ t: 48, dir: "A", zone: 2 }), "★ 点「琶音」→ dir=A、zone 保留、air 删（无空扫概念）");
   /* 撤销：分派是一步（undo 回到点击前） */
   beat.Editor.undo();
-  eq(norm(S0(beat)[5]), norm({ t: 48, zone: 2, air: true }), "★ undo 一步退回点档前（dir 删除）");
+  eq(norm(S0(beat)[5]), norm({ t: 48, zone: 2, air: true }), "★ undo 一步退回点档前（dir/air 删除、air 补写还在）");
   beat.Editor.undo();
   eq(norm(S0(beat)[5]), norm({ t: 48, zone: 2 }), "★ 再撤回 air 补写之前");
 }
@@ -124,10 +125,10 @@ section("T256d 显隐矩阵 · 四档下 方向/弦区/手部/逐弦 的 hidden 
   edCellsOf(els, 0)[1].fire("click");
   ok(els["dirRow"].hidden !== true && els["zoneRow"].hidden !== true && els["airRow"].hidden !== true && hiddenOf("strRow"),
      "★ 扫弦档：方向/弦区/手部显示、逐弦收");
-  /* 琶音格（3）：弦区 + 手部；方向收（由弹法行承载） */
+  /* 琶音格（3）：弦区；方向收（由弹法行承载）、手部收（批 6：琶音无空扫概念） */
   edCellsOf(els, 0)[3].fire("click");
-  ok(hiddenOf("dirRow") && els["zoneRow"].hidden !== true && els["airRow"].hidden !== true && hiddenOf("strRow"),
-     "★ 琶音档：方向收、弦区/手部显示");
+  ok(hiddenOf("dirRow") && els["zoneRow"].hidden !== true && hiddenOf("airRow") && hiddenOf("strRow"),
+     "★ 琶音档：方向/手部收、弦区显示");
   /* 分解格（4）：逐弦显示；方向/弦区/手部收 */
   edCellsOf(els, 0)[4].fire("click");
   ok(els["strRow"].hidden !== true && hiddenOf("dirRow") && hiddenOf("zoneRow") && hiddenOf("airRow"),

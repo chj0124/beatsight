@@ -4055,7 +4055,9 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
              为什么要两组（用户记谱习惯，2026-10-14 拍板）：相邻空扫块往往只给首块标方向，
              其余空扫块**无方向**——单开关无法表达；且「空扫」可能仍有声（余音延续）、
              「休止」是手也不动。故把它拆成「手部动作（实扫/空扫）」与「出不出声（发声/休止）」两条轴。
-             rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响。 -->
+             rest 只管"发不发声"，占位（t）不动 → barSum 不变，保存可用性不受影响。
+             ★ 批 6：airRow（手部）只在弹法 = 扫弦档显示——琶音逐弦触弦、每一下必触弦，
+             无扫弦的"手过不触弦"概念，故琶音/节拍/分解档手部行 hidden（restRow 四档恒显）。 -->
         <div class="ed-dir" id="restRow" role="group" aria-label="发声开关（发声/休止）">
           <span class="hint">发声</span>
           <button class="pill" data-rest="off" aria-pressed="false" disabled>发声</button>
@@ -4964,23 +4966,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L4996  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6660  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8900  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10128 Modal         应用内弹窗
-     L10289 Viz           时值可视化渲染与每帧动画
-     L13918 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14672 Trainer       变速训练器
-     L14889 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15560 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17508 Editor        自定义节奏型编辑器
-     L18635 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18730 Ear           听辨训练（v1.10.0）
-     L18958 Arrange       曲式编排（v2.0.0）
-     L23084 Help          使用方法（v2.0.1）
-     L23239 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23321 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23617 初始化（装配） 各模块 hook 接线与启动
+     L4998  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6662  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8902  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10130 Modal         应用内弹窗
+     L10291 Viz           时值可视化渲染与每帧动画
+     L13920 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14674 Trainer       变速训练器
+     L14891 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15562 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17510 Editor        自定义节奏型编辑器
+     L18639 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18734 Ear           听辨训练（v1.10.0）
+     L18962 Arrange       曲式编排（v2.0.0）
+     L23088 Help          使用方法（v2.0.1）
+     L23243 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23325 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23621 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5006,7 +5008,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.53.0";
+const VERSION = "3.53.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -17669,8 +17671,9 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
        分解 pick = str 字段存在（含 str=[] 空数组：已声明分解意图、还没点弦）；
        琶音 arp = dir="A"；扫弦 strum = dir D/U 或 zone 或 air 任一（手要过弦的家族）；
        节拍 beat = 其余（纯时值块，新块默认档）。
-     悬浮窗属性行按它显隐（见 editorRender 显隐矩阵）——「实扫/空扫」只在扫弦/琶音
-     档出现，纯节拍块不再被迫认领扫弦概念（t256 钉推导与落库）。 */
+     悬浮窗属性行按它显隐（见 editorRender 显隐矩阵）——「实扫/空扫」只在扫弦档出现
+     （琶音逐弦触弦、无空扫概念，批 6 起手部行同收），纯节拍块不再被迫认领扫弦概念
+     （t256 钉推导与落库）。 */
   /** @param {any} s @returns {"beat"|"strum"|"arp"|"pick"} */
   function stepTechOf(s){
     if (!s) return "beat";
@@ -18101,7 +18104,8 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
        显隐矩阵：tech 决定 dirRow/zoneRow/airRow/strRow 的 hidden（restRow 恒显）——
          beat → 方向/弦区/手部/逐弦全收（纯节拍没有"实扫/空扫"的概念，t256 钉四组显隐）；
          strum → 方向 + 弦区 + 手部（逐弦收——两者互斥的既有口径）；
-         arp   → 弦区 + 手部（方向由弹法行本身承载，方向行收）；
+         arp   → 弦区（方向由弹法行本身承载、方向行收；手部收——琶音逐弦触弦、每一下
+                 必触弦，没有扫弦的"手过不触弦"概念，删 air 后手部行无意义，批 6）；
          pick  → 逐弦（方向/弦区/手部收；zoneRow/airRow 的「逐弦优先」置灰口径保留作为
                  hidden 之外的第二重保险——t240c/t249d 的既有断言不破）。
        未选中（悬浮层收起）时全部行 hidden 兜底显隐无意义，照旧只管 disabled。 */
@@ -18116,7 +18120,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const rowVisible = {
       dirRow: dirUsable && tech === "strum",
       zoneRow: dirUsable && (tech === "strum" || tech === "arp"),
-      airRow: dirUsable && (tech === "strum" || tech === "arp"),
+      airRow: dirUsable && tech === "strum",
       strRow: dirUsable && tech === "pick",
     };
     ["dirRow", "zoneRow", "airRow", "strRow"].forEach(id => { ($(id)).hidden = !rowVisible[id]; });
@@ -18264,7 +18268,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
      一次落库分派（pushUndo 先行 + editorRender；同档重按 = 派生态没变，不推栈）：
        节拍 beat → 删 dir/zone/str/air（回纯时值块；rest 保留——节拍也有轻重休止）；
        扫弦 strum → dir 保留已有 D/U、其余来源默认 D；删 str；zone/air 保留；
-       琶音 arp  → dir="A"；删 str；zone/air 保留（琶音也可空划）；
+       琶音 arp  → dir="A"；删 str；删 air（琶音逐弦触弦、每一下必触弦，无空扫概念）；zone 保留；
        分解 pick → str=str||[]（空数组 = 已声明分解意图、等点弦；渲染/发声按 length 判，
                    对既有行为零影响）；删 dir/zone/air（逐弦与扫弦互斥的既有口径）。
      高亮永远由 stepTechOf 从数据派生（派生显示、命令落库）——旧数据/导入数据打开
@@ -18287,7 +18291,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       if (s.dir !== "U") s.dir = "D";                   // 保留已有上下扫；从琶音/节拍/分解过来默认下扫
       delete s.str;
     } else if (want === "arp"){
-      s.dir = "A"; delete s.str;
+      s.dir = "A"; delete s.str; delete s.air;          // 琶音逐弦触弦、无空扫概念——对齐分解档删 air
     } else if (want === "pick"){
       if (s.str === undefined) s.str = [];
       delete s.dir; delete s.zone; delete s.air;
