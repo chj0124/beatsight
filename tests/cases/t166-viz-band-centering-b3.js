@@ -79,9 +79,9 @@ section("T151c .bar-row.current 只留底纹 .10（v3.33.8：挂在 ::before 的
   const pseudo = (html.match(/^\.bar-row\.current::before\{[^}]*\}/m) || [""])[0];
   const band = base + pseudo;
   ok(!!base && !!pseudo, "★ .bar-row.current（含 ::before 格子带）规则在位");
-  ok(/rgba\(30,215,96,\.10\)/.test(pseudo),
+  ok(/rgba\(var\(--green-rgb\),\.10\)/.test(pseudo),
     "★★ 底纹提到 .10（v3.31.4 用户裁决）：短标那条 5.67:1 的线索取消后，.07 实测对非当前行只有"
-    + " 1.14:1——不补粗一档，整行级的线索就等于没有");
+    + " 1.14:1——不补粗一档，整行级的线索就等于没有；色值走 --green-rgb，日间随主题翻蓝");
   ok(!/rgba\(30,215,96,\.07\)/.test(band), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
   ok(!/rgba\(30,215,96,\.12\)/.test(band),
     "★★ 不得直接取 .12——v3.8.0 已明确否决过（压住未弹格子的扫弦箭头与六线底纹，读谱优先）");

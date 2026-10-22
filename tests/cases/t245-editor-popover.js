@@ -118,8 +118,8 @@ section("T245-3 品牌合规钉 · A1 var(--accent) 死引用 / A2 写死红 / A
      "★ A1：▶ 试听 hover = --green + --green-rgb veil");
   ok(!nostyle.includes("var(--accent)"), "★ A1：样式表不再引用未定义的 var(--accent)（--accent-hi 不受影响）");
   const delRule = ruleOf(".arg-item-del:hover");
-  ok(delRule.includes("color:var(--red)") && !delRule.includes("#f3727f"),
-     "★ A2：✕ hover 警示红走 var(--red)（日间随主题换 #DC2626）");
+  ok(delRule.includes("color:var(--danger-fg)") && !delRule.includes("#f3727f"),
+     "★ A2：✕ hover 警示文字走 --danger-fg（日间深红 #B91C1C，AA 达标；描边仍随 --red）");
   ok(!nostyle.includes("#f3727f"), "★ A2：小写 #f3727f 全表清零（:root 的 #F3727F 大写定义不受影响）");
   const labelRule = ruleOf(".arg-sec>.arg-sec-label");
   ok(labelRule.includes("var(--border)") && labelRule.includes("var(--t3)") && !labelRule.includes("var(--green)"),

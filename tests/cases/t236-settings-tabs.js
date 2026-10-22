@@ -5,8 +5,8 @@
    · 点击 tab ⇄ 面板 hidden / aria-selected / tabindex 三件套同步
    · 键盘 ←→↑↓ 循环、Home/End 跳首尾（ARIA tab 模式），preventDefault 掐掉面板滚动
    · open() 无锚点恒回「画面」；带锚点（latGroup）先激活所在页再滚动
-   · 每页保留 <h2 class="card-title">（t30 契约）与 tablist/tab/tabpanel 角色齐套
-   配套反向验证：tools/reverse-verify-v3xxx.py（两变异各须命中具名 ✗）。 */
+   · 每页保留 <h2 class="card-title" hidden>（视觉去重：tab 已是页名；t30 的 h2 契约不破）
+   配套反向验证：tools/reverse-verify-t262-design.js（M5 摘帽 hidden 必须命中具名 ✗）。 */
 "use strict";
 const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
@@ -29,7 +29,7 @@ section("T236a 标记结构：tablist / tab / tabpanel 角色齐套，每页有 
     ok(html.includes('id="' + PANES[i] + '" aria-labelledby="' + TABS[i] + '"'), "★ " + PANES[i] + " aria-labelledby → " + TABS[i]);
   }
   for (const name of ["画面", "声音", "数据", "关于"]){
-    ok(html.includes("<h2 class=\"card-title\">" + name + "</h2>"), "★ 「" + name + "」页头进 h2（t30 契约不破）");
+    ok(html.includes("<h2 class=\"card-title\" hidden>" + name + "</h2>"), "★ 「" + name + "」页头进 h2 且视觉隐藏（tab 已承担页名，t30 契约不破）");
   }
   /* 三件套初始态走标记字符串（桩不解析属性；面板 hidden 例外——harness HTML_ATTRS 已复刻，可读回）：
      首页 selected + 可聚焦，其余 tabindex=-1 */

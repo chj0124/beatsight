@@ -69,8 +69,8 @@ section("T149e .bar-row.current 只留 .10 淡底（v3.33.8 起挂在 ::before �
   const base = (html.match(/^\.bar-row\.current\{[^}]*\}/m) || [""])[0];
   const pseudo = (html.match(/^\.bar-row\.current::before\{[^}]*\}/m) || [""])[0];
   const band = base + pseudo;
-  ok(/rgba\(30,215,96,\.10\)/.test(pseudo),
-    "★ 底纹 .10（v3.31.4 用户裁决）：短标那条 5.67:1 的线索取消后，靠底纹补回面积对比");
+  ok(/rgba\(var\(--green-rgb\),\.10\)/.test(pseudo),
+    "★ 底纹 .10（v3.31.4 用户裁决）：短标那条 5.67:1 的线索取消后，靠底纹补回面积对比；色值走 --green-rgb，日间随主题翻蓝");
   ok(!/rgba\(30,215,96,\.07\)/.test(band), "★ 旧值 .07 已退役（真回退，不是被覆盖）");
   ok(!/rgba\(30,215,96,\.12\)/.test(band),
     "★★ 也不取 .12——v3.8.0 用户实拍已否决（.12 亮带压住未弹格子的扫弦箭头/六线底纹，读谱优先）");
