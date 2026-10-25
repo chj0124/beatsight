@@ -3,7 +3,8 @@
    ★ 本版（用户拍板）：关闭改**版本号维度**——「知道了」记下关闭时的版本号（vizLegendVsn），
    同版本内不再出现、版本更新则回归一次；设置页的双向开关已退役，「知道了」是唯一关闭入口。
    钉四条：fresh 显示 / 关闭即隐 + 记版本落盘 / 同版本重载不复活 / 换版本重载回归一次。
-   存量口径：老存档的布尔 vizLegacy:false（无 vsn 可比）视同"旧版本关闭的"→ 回归一次（T157 ③'）。 */
+   存量口径：老存档的布尔 vizLegacy:false（无 vsn 可比）视同"旧版本关闭的"→ 回归一次（T157 ③'）。
+   T157f 另钉三枚符号可见高度同为 12px、蓝色符号共享中心线，与真实浏览器几何复测互补。 */
 const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
@@ -58,4 +59,33 @@ section("T157 图例条 · 显示 / 关闭（版本号记账）/ 同版本记忆
   /* ⑤ 脏值口径：vizLegendVsn 只认字符串（防脏值把比较搞出意外） */
   const dirty = loadApp(seedState({ vizLegendVsn: 123 }));
   eq(dirty.els["vizLegend"].hidden, false, "非字符串脏值 → 当「没存过」 ⇒ 显示");
+}
+
+section("T157f 图例符号几何 · 三枚可见高度一致，蓝色符号共享中心线");
+{
+  const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const ruleOf = sel => {
+    const at = css.indexOf(sel);
+    return at < 0 ? "" : css.slice(at, css.indexOf("}", at) + 1);
+  };
+  const px = (rule, prop) => {
+    const m = rule.match(new RegExp(prop + ":(-?[\\d.]+)px"));
+    return m ? Number(m[1]) : NaN;
+  };
+  const whiteH = px(ruleOf(".viz-legend .vl-swatch{"), "height");
+  const airH = px(ruleOf(".viz-legend .vl-swatch.vl-air{"), "height");
+  const shaft = ruleOf(".viz-legend .vl-swatch.vl-air::before{");
+  const head = ruleOf(".viz-legend .vl-swatch.vl-air::after{");
+  const arrowTop = px(head, "top");
+  const arrowBottom = airH - px(shaft, "bottom");
+  eq(whiteH, 12, "白色格宽块可见高度保持 12px");
+  eq(arrowBottom - arrowTop, 12, "★ 有头蓝箭头可见高度 = 12px（16px 高箭头退役）");
+  eq((arrowTop + arrowBottom) / 2, airH / 2, "★ 有头蓝箭头可见中心 = 容器中心");
+
+  const noHead = ruleOf(".viz-legend .vl-swatch.vl-air.vl-nh::before{");
+  const noHeadTop = px(noHead, "top");
+  const noHeadBottom = airH - px(noHead, "bottom");
+  eq(noHeadBottom - noHeadTop, 12, "★ 无头蓝虚线杆可见高度 = 12px");
+  eq(noHeadTop, arrowTop, "★ 无头蓝虚线杆与有头箭头共享可见区顶缘（不再向下偏 3px）");
+  eq((noHeadTop + noHeadBottom) / 2, airH / 2, "★ 无头蓝虚线杆可见中心 = 容器中心");
 }

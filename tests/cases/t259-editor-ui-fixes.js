@@ -5,7 +5,8 @@
      · 空态引导层三行收进 64px 轨道（行高 1.5，不贴上下缘）；
      · 撤销钮随网格走——住 .ed-actions 行首位、图标 +「撤销」（推翻 v3.53.2「住顶栏」）；
      · 模板触发框收窄（max-width + 省略号）、「模板」标签删除、引导文案改指「选模板」；
-     · 弹层 #edPop 作用域收紧 pill（弦区三档单行），全局 .pill 与按钮文案不动。
+     · 弹层 #edPop 作用域收紧 pill（弦区三档单行），全局 .pill 与按钮文案不动；
+     · 分段说明「 | 」留空，编辑标签列 88px，保住文字与轨道之间的 12px 间隙。
    本组钉源码结构与 CSS 不变量两端，与 T258（作用域分区行为）互补。 */
 "use strict";
 const { loadApp, ok, eq, section, html } = require("../lib/harness");
@@ -60,6 +61,10 @@ section("T259c CSS 钉 · 引导行高 / 模板收窄 / 弹层 pill 收紧");
      "★ 引导层行高收为 1.5（三行 ≈59px ≤ 64px 轨道，不再贴上下缘）");
   ok(/\.pill\{border-radius:9999px;padding:9px 16px;font-size:13px/.test(html),
      "★ 全局 .pill 未被波及（弦区/其它按钮内边距与字号一字未动）");
+  ok(/\.edbar\{display:flex;gap:12px/.test(html) && /\.edbar-label\{width:88px;flex:none\}/.test(html),
+     "★ 编辑标签列 = 88px：容纳 88px 文字行，完整保留与轨道之间的 12px 间隙");
+  ok(html.includes("用「 | 」分段会按片段均分"),
+     "★ 分段竖线在引号内留空（「 | 」），不再与两侧引号粘连");
 }
 
 /* ================= 场景 T259d：行为回归 · 换宿主后撤销仍生效 ================= */

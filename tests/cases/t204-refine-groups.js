@@ -113,3 +113,34 @@ section("T204e 范围组 · 显式按压态");
   eq(scopes.map(b => b.getAttribute("aria-pressed")).join(","), "true,false",
      "★ 默认「全部字」= pressed（显式单选语义，无容器故用 aria-pressed 而非伪造 radiogroup）");
 }
+
+section("T204f 情境化帮助 · 顶部讲移动，时值与换位说明跟随对应分组");
+{
+  const { ly } = fixture();
+  const tip = kids(ly, "arg-lyric-tip")[0];
+  ok(tip.textContent.includes("拖字块改起点，跨行即换小节") && tip.textContent.includes("选中后可在「精修」中调整时值或换位"),
+     "★ 顶部只保留状态、移动说明与精修入口");
+  ok(!/拖右缘|顶着邻字/.test(tip.textContent),
+     "★ 顶部不再重复时值与换位长说明");
+
+  const all = Array.from(ly.children);
+  const notes = kids(ly, "arg-lyric-refine-note");
+  const swapNote = notes.find(n => n.textContent.includes("推过半程"));
+  const durNote = notes.find(n => n.textContent.includes("松手吸附 6 tick"));
+  eq(notes.length, 2, "★ 精修内恰好两条情境说明");
+  ok(swapNote && all.indexOf(swapNote) > all.indexOf(kids(ly, "arg-mini").find(b => /与后字换位/.test(b.textContent))),
+     "★ 换位说明沉在换位按钮之后");
+  ok(durNote && all.indexOf(durNote) > all.indexOf(kids(ly, "arg-mini").find(b => b.textContent === "时值+1格")),
+     "★ 时值说明沉在时值按钮之后（含 6 tick 与窄块替代入口）");
+  ok(notes.every(n => n.parentNode === ly), "★ 两条说明仍为歌词区直接子节点（扁平契约不破）");
+
+  const grpBtn = name => kids(ly, "arg-lyric-grp").find(g => g.textContent === name);
+  if (swapNote){
+    grpBtn("换位").fire("click");
+    eq(swapNote.hidden, true, "★ 换位说明随换位组一起折叠");
+  }
+  if (durNote){
+    grpBtn("时值").fire("click");
+    eq(durNote.hidden, true, "★ 时值说明随时值组一起折叠");
+  }
+}
