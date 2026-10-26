@@ -1958,11 +1958,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      也不能往 textContent 里塞箭头字符（t63 / t84b 都逐字比对标题文案）。
    折叠态由 aria-expanded 驱动（[aria-expanded="false"] 时箭头转 −90°）——状态只有一份真相，
    不给折叠态另加类名（类名空间已被测试逐字占用）。 */
-/* v3.33.17（用户实拍「组标题竟然比组内各项内容的标题字体还小」）：预设库三级层次
-   收口成**单调**的一列——区 12px/--t2 < 组 13px/--t1 = 条目名 13px。
-   原先区与组都是 11px，而条目名是 13px ⇒ 容器比内容还小，层级是倒的。 */
-.preset-section{font-size:12px;color:var(--t2);font-weight:600;margin:14px 0 8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
-.preset-section:hover{color:var(--t2)}
+/* 区 / 分组 / 条目 / 说明 = 14 / 13 / 13 / 11px；区头与首个条目保持一组，
+   不再让更暗、更小的区头读成上一块内容的尾注。 */
+.preset-section{font-size:14px;color:var(--t1);font-weight:600;margin:14px 0 0;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.preset-section:hover{color:var(--t1)}
 /* v3.1.0（批 3，用户定稿 4a 案）：三区并列消空白——#presetList 改自适应网格。
    ★ 条目仍是 #presetList 的**直接子节点**（扁平契约不动，16 个遍历测试零波及）；
    区头/组头/曲式 wrapper 通栏（grid-column:1/-1）保住"区"的层级读感；
@@ -1986,7 +1985,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    容器比内容还深，视觉上读成「标题属于更下一层」。现改：字号 13px（= 条目名）、
    颜色 --t1（亮于条目）、字重 600（一眼是容器头），并**去掉那 18px 缩进与竖线**，
    层次改由字号/字重/颜色表达，而不是靠方向反了的缩进。 */
-.preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:10px 0 6px;
+.preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:10px 0 0;
   display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
 /* ★★ v3.33.32（用户实报「扫弦区收起后，区内分组行没收起」）：补上 [hidden] 补丁。
    根因：上面这条规则带了 display:flex，**作者样式的特异性高于 UA 的 [hidden]{display:none}**
@@ -2015,7 +2014,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    故深色 / 观测台主题**不需要**任何额外规则（与 .hint 同源做法）。 */
 /* v3.33.1：区体改**纵向 flex + gap:10px**——v3.33.0 只给了 .bpm-row 的横向 gap，
    两行之间实测间距 **0px**（贴死）。间距收敛到容器一处：行内 6px / 行间 10px。 */
-#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:12px}   /* 12 = 网格「区头→首条目」的 8+4（本区自己模拟网格纵向节奏，见 .basic-zone 注释） */
+#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:4px}   /* 与网格区头→首条目的容器间距一致 */
 /* ★ v3.35.6（用户实拍「点了也不会折叠」）：这里 display:flex 会**盖掉** [hidden] 的 display:none，
    于是 applyBasicFold 里 `box.hidden = true` 设了属性、画面纹丝不动。
    与 .vol-row[hidden] / .tr-panel[hidden] / .preset-item[hidden] 是同一个坑，必须显式补一条。 */
@@ -2024,37 +2023,16 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 #rhyBeatBox .hint{margin-top:0}       /* 纵向间距已由容器 gap 承担，避免叠加成 16px */
 /* 上限兜底：宽度本由选项文案决定（见 sigLabel），这条只防日后文案变长挤变形。 */
 #rhyBeatBox .loop-sel{max-width:96px}
-/* ★★★ v3.35.10（用户第三次实拍「基础节奏与下面两项的间距又开始不统一」）：**把根因一次吃掉**。
-   前两版都是在补丁上打补丁（v3.35.4 给列表首区补 margin-top；v3.35.8 把头行下边距 8→2 去凑 26），
-   都没碰到那 6px 的真正来源：
-     · 父容器 `.preset-drawer` 是 `flex; gap:**10px**`；
-     · 而 `#presetList` 是网格，纵向节奏是 `row-gap:**4px**` + 区头 `margin:14px 0 8px`。
-   本区在列表**之外** ⇒ 它与列表之间那条边界走 10px，列表内部走 4px ⇒ **永远差 6px**；
-   调哪一边都只是把差挪个地方（所以每次改完看着好了、下一版又不对）。
-   本版：① 把「头行 + 区体」收成父容器的**一个**孩子（.basic-zone），边界只剩一条；
-           ② 该孩子下边距 **−6px** 把差值吃掉 ⇒ 边界净间距回到 4px（= 网格行距）。
-   于是本区三个间距全部**与网格同源**，不再有只在一边生效的魔数：
-     头 → 细分     = 8 + 4      = 12   （= 其它区「头 → 首条目」）
-     细分 → 下区头 = 0 + 4 + 14 = 18   （= 其它区「末条目 → 下区头」）
-     折叠 头 → 下区头 = 8 + 4 + 14 = 26  （= 网格内两区之间）
-   ⇒ 以后改网格行距或区头 margin，本区**自动跟着走**。冒烟里有三条实测等式把守（含"非空跑"前提）。 */
-/* ★ flow-root 是**必须**的：本区收成一个块容器后，区头的 8px 下边距会与容器的 −6px 下边距
-   **塌陷**（父子外边距合并），折叠态实测变成 18 而不是 26（第一次改就是这么翻的）。
-   `display:flow-root` 建立 BFC 关掉父子合并 ⇒ 区头的 8px 留在容器内，边界只剩容器自己的 −6px，
-   两个状态的算法才一致（折叠 8−6+10+14 / 展开 0−6+10+14）。 */
-.basic-zone{display:flow-root;margin-bottom:-6px}   /* 一个 −6 同时管两个状态：见上方推导 */
-.basic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 8px}
-/* ★ v3.35.12：`.folded` 那条特例**删掉了** —— 槽移出文档流后行高 = 文字高，
-   折叠/展开两个状态的算法自动一致（折叠 8−6+10+14=26 / 展开 0−6+10+14=18）。 */
-.basic-head-row>.preset-section{margin:0;flex:1 1 auto}   /* 头自己不带上下边距，间距归本行管（8px 仍由本行给，与网格区头同款） */
-/* ★★★ v3.35.12（用户第二次追问「你确定间距改好了吗」）：参数槽**移出文档流**。
-   上一版把槽当普通 flex 子项 ⇒ 那一行的行高被 40px 的下拉框撑到 40px，而区头文字在其中
-   **垂直居中** ⇒ 文字下方凭空多出约 11px。量"容器底→下区头"是 26（对上网格的 26），
-   可**文字到文字**是 ~34 —— 我上一版的断言取的是**容器底**、网格那边取的是**区头元素底**，
-   **参考点不是同一类元素**（容器底里含着区头的 8px 下边距），属于苹果比橘子 ⇒ 断言绿了、用户仍看得出不对。
-   绝对定位后：行高 = 区头文字高（18px），槽浮在行的右端、垂直居中；间距回到与网格同源的一套数，
-   连"折叠态另给 2px"的特例都不再需要（见 .basic-zone 注释）。 */
-.basic-slot{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px}
+/* 基础节奏区在 #presetList 之外，头行与区体收成 .basic-zone 的一个孩子，避免父 flex
+   与网格行距重复叠加。头→细分、细分→下区头、折叠头→下区头均由冒烟与网格实测对账；
+   当前区头下边距为 0，#rhyBeatBox 的 margin-top 与网格容器间距一致。 */
+/* 基础节奏区保留独立 BFC，折叠/展开不合并外边距；区头下边距与网格同为 0，
+   头→内容和区→区间的距离都由同一组网格间距决定。 */
+.basic-zone{display:flow-root;margin-bottom:-6px}
+.basic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0}
+.basic-head-row>.preset-section{margin:0;flex:1 1 auto}
+/* 拍数位于折叠体第一行，与下方细分和说明共用左缘；与细分一起随 #rhyBeatBox 显隐。 */
+.basic-slot{display:flex;align-items:center;justify-content:flex-start;gap:6px}
 /* 图标 pill：用户拍板「图标下不写文案」（名称走 title 悬浮 + aria-label 读屏），
    故水平内边距收紧、行高归零（否则图标块的基线会在胶囊里造成偏移）。
    ★ 刻意**不写 min-height**——全站 40px 触控下限由 .pill 主规则统一把守，本处不得局部下调
@@ -2130,20 +2108,29 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .loop-sel{background:var(--bg);color:var(--t1);border:1px solid var(--line);border-radius:6px;
   padding:5px 6px;font-size:12px;font-family:inherit;min-width:44px}
 .loop-panel.on .loop-sel{border-color:var(--green)}
-.loop-panel .hint{margin-top:6px}
+.loop-panel .hint{margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .loop-panel .hint:empty{display:none}
-.preset-item{padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
-/* ★ v3.35.4（用户实拍：两首示例曲的「▶ 与 📁 间距」不一致）：条目是 space-between，
-   剩余空间被摊到两处缝隙上 ⇒ 名字短的那行缝隙大、名字长的那行缝隙小，**按钮位置随内容漂移**。
-   让文字块吃掉全部剩余宽度（flex:1），按钮就固定成右端的一簇、行行对齐。
-   min-width:0 是让长名字仍能省略/换行而不是把行撑开。 */
-.preset-item>div:first-child{flex:1;min-width:0}
+.preset-item{position:relative;padding:4px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
+.preset-section+.preset-item,.preset-group+.preset-item,
+.preset-section+.preset-arrange-group>.preset-item:first-child{padding-top:8px}
+.preset-arrange-group>.preset-item.song+.preset-item.in-song{padding-top:8px}
+/* 名称始终保留；只有说明在操作时透明让位，图标接管原说明区域且行高不变。 */
+.preset-item>div:first-child{flex:1 1 100%;min-width:0;display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px}
+.preset-item:hover .meta,.preset-item:focus-within .meta,.preset-item.active .meta{opacity:0}
 /* ★ v3.35.3：可展开的**歌曲行**（自定义区）与其下的节奏型。
    箭头走 .name 的 ::before——伪元素不进 textContent，按名字取文本的测试与读屏都不受影响。 */
-.preset-item.song .name::before{content:"▸";display:inline-block;width:12px;color:var(--t3);font-size:10px}
+.preset-item.song .name::before{content:"▸";display:inline-flex;align-items:center;justify-content:center;
+  width:12px;height:1em;vertical-align:middle;color:var(--t3);font-size:10px}
 .preset-item.song[aria-expanded="true"] .name::before{content:"▾"}
-/* 展开出来的型缩进一格：左侧一道细竖线表达"它属于上面那首歌" */
-.preset-item.in-song{margin-left:18px;box-shadow:inset 2px 0 0 rgba(var(--veil),.10)}
+.preset-item.song>div:first-child{flex-wrap:nowrap}
+.preset-item.song .meta{flex:1 1 0}
+/* 歌曲是分组标题，子节奏型降低一级；嵌套文字间距与普通层级同为 12px。 */
+.preset-item.song{background:var(--card2)}
+.preset-item.song .name{font-weight:600}
+.preset-item.in-song{margin-left:18px;padding:6px 12px}
+.preset-item.in-song .name{font-size:12px;font-weight:500;color:var(--t2)}
+.preset-item.in-song>div:first-child{flex-wrap:nowrap}
+.preset-item.in-song .meta{flex:1 1 0}
 /* v2.10.0：折叠分区靠 hidden 隐藏条目——上面这条 display:flex 会盖掉 [hidden] 的 display:none
    （同 .vol-row[hidden] / .tr-panel[hidden] 的坑），必须显式写一条 */
 .preset-item[hidden]{display:none}
@@ -2161,19 +2148,28 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    用绝对定位让点不参与布局，只有正在响的那条多一颗点，其余行纹丝不动。 */
 .preset-item.playing{position:relative}
 .preset-item.playing::before{content:"";position:absolute;left:3px;top:50%;width:6px;height:6px;
-  margin-top:-6px;border-radius:50%;background:var(--green);animation:nowBreath 1.6s ease-in-out infinite}
+  margin-top:-3px;border-radius:50%;background:var(--green);animation:nowBreath 1.6s ease-in-out infinite}
 .preset-item.playing.in-song::before{left:-11px}
 @keyframes nowBreath{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
 /* 动效可关：呼吸是**信息**不是装饰，prefers-reduced-motion 下退化为静态实心点 */
 @media (prefers-reduced-motion: reduce){.preset-item.playing::before{animation:none;opacity:1;transform:none}}
-.preset-item .name{font-size:13px;font-weight:500}
-.preset-item .meta{font-size:11px;color:var(--t3);margin-top:3px}
+.preset-item .name{font-size:13px;font-weight:500;flex:0 1 auto;max-width:100%;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preset-item .meta{font-size:11px;color:var(--t3);margin-top:0;flex:1 1 120px;min-width:0;text-align:right;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .12s}
 .preset-item.active .meta{color:var(--green)}
 /* v3.1.0（A7）：✕ 与 📁 拉开 10px 间距——误触删除的入口排列风险（有确认弹窗兜底，
    但入口排列不该鼓励误触）；✕ 独占条目右角，✎/📁 成组在左 */
 .preset-item .del,.preset-group .del{margin-left:10px}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:6px;flex:none}
 .preset-item .del:hover{color:var(--danger-fg);background:rgba(243,114,127,.1)}
+/* 实际存在的按钮组成操作组，整体右对齐；无固定槽位，两个或三个图标都不留空位。 */
+.preset-item .preset-actions{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:2;
+  display:flex;align-items:center;gap:4px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s}
+.preset-item:hover .preset-actions,.preset-item:focus-within .preset-actions,.preset-item.active .preset-actions{
+  opacity:1;visibility:visible;pointer-events:auto}
+.preset-item .preset-actions>button{position:static;transform:none;margin-left:0;padding:2px 6px}
+@media (prefers-reduced-motion:reduce){.preset-item .meta,.preset-item .preset-actions{transition:none}}
 /* v2.21.0：改名图标（✎）。定位/内边距与 .del 同族（右侧操作组的一员），hover 用主题强调色
    与删除的红色区分——相邻两个小图标，色相就是"哪个是危险操作"的读法 */
 .preset-item .ren{color:var(--t3);font-size:13px;padding:2px 6px;border-radius:6px;flex:none}
@@ -2182,7 +2178,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    与节拍/扫弦两区用左侧一条绿色竖线区分——"这一组是曲式（整首怎么弹）"比字号更一眼可辨。
    v2.4.1 的"示例曲分组"样式（.preset-section.demo-section / .preset-badge / .preset-demo-group）
    随该分组一并删除：示例曲的 5 个型已按内容并入「扫弦」区，不再单独成组。 */
-.preset-arrange-group{border-left:2px solid rgba(var(--green-rgb),.45);padding-left:8px;margin-bottom:4px}
+.preset-arrange-group{position:relative;padding-left:8px;margin-bottom:4px}
+.preset-arrange-group::before{content:"";position:absolute;left:0;top:28px;bottom:10px;width:2px;
+  border-radius:1px;background:rgba(var(--green-rgb),.45)}
 .preset-arrange-group[hidden]{display:none}
 /* 「播放范围」双滑块（v2.10.4）：取代原「段序条」那 N 颗段号胶囊，也取代了
    v2.4.1 的「切换节奏型」胶囊条（后者的候选与「扫弦」区内容重复，已删除）。
@@ -3745,23 +3743,17 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            控件形态：拍数 = 下拉框（省占位）、节奏类型 = 纯图标 + 悬浮/读屏名称
            （用户拍板：图标下不写文案）。两者都由 JS 从 RHY_STEPS / VALID_RHY 生成——
            9 个 SVG 图标若写死在标记里，既不省体积也没法保证与数据表同源。 -->
-      <!-- ★ v3.35.8（用户需求）：区头与「拍数」参数槽**同一行**——槽贴右端。
-           槽**不在** role=button 里：下拉框嵌在按钮角色内是嵌套交互控件，键盘/读屏都会打架
-           （旧版整块在下拉行里，这一版把它提到头上，两者的语义都更干净）。
-           折叠只收「细分」那一块——拍数是最常用的一个参数，始终在手边。 -->
-      <!-- ★ v3.35.10（用户第三次实拍「间距又开始不统一」）：本区原先以**两个**孩子的身份挂在
-           .preset-drawer 下（头行 + 区体），于是它与 #presetList 之间、以及它内部都被父容器的
-           flex gap 掺和进来。收成一个孩子（.basic-zone）后，边界只剩一条，差值可以一次吃掉 ——
-           详见下方 .basic-zone 的注释。 -->
+      <!-- 拍数与细分同属折叠内容，展开时一起出现、收起时一起隐藏；
+           折叠头只保留区名与箭头，不下拉框嵌进 role=button。 -->
       <div class="basic-zone" id="basicZone">
         <div class="basic-head-row">
           <div class="preset-section" id="basicSecHead" role="button" tabindex="0" aria-expanded="true">基础节奏</div>
+        </div>
+        <div id="rhyBeatBox">
           <span class="basic-slot">
             <span class="lab">拍数</span>
             <select class="loop-sel" id="sigSel" aria-label="拍数：基础节奏每小节几拍（0 为每拍均等、不分重拍）"></select>
           </span>
-        </div>
-        <div id="rhyBeatBox">
         <div class="bpm-row" id="rhyPillRow" role="group" aria-label="节奏类型：一拍之内的细分"></div>
         <!-- v3.33.1：下拉文案缩短后，「0 · 均等」的完整含义落在这里（见 sigLabel 注释） -->
           <div class="hint">拍数选「0 · 均等」＝每拍一样响、不打重拍</div>
@@ -5004,23 +4996,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5036  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6698  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8939  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10167 Modal         应用内弹窗
-     L10328 Viz           时值可视化渲染与每帧动画
-     L14058 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14812 Trainer       变速训练器
-     L15029 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15700 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17648 Editor        自定义节奏型编辑器
-     L18784 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18879 Ear           听辨训练（v1.10.0）
-     L19107 Arrange       曲式编排（v2.0.0）
-     L23244 Help          使用方法（v2.0.1）
-     L23399 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23481 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23777 初始化（装配） 各模块 hook 接线与启动
+     L5028  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6690  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8931  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10159 Modal         应用内弹窗
+     L10320 Viz           时值可视化渲染与每帧动画
+     L14050 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14804 Trainer       变速训练器
+     L15021 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15692 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17646 Editor        自定义节奏型编辑器
+     L18782 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18877 Ear           听辨训练（v1.10.0）
+     L19105 Arrange       曲式编排（v2.0.0）
+     L23242 Help          使用方法（v2.0.1）
+     L23397 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23479 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23775 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5046,7 +5038,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.55.0";
+const VERSION = "3.55.11";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6230,7 +6222,7 @@ function demoSpec2(){
 const DEMO_BUILTIN_BASE = BUILTINS.length;
 DEMO_PRESETS.forEach((p, i) => {
   const sp = demoSpec().presets[i];
-  BUILTINS.push({ name: p.name, desc: "4/4 · 《在他乡》示例 · 单小节", meter: sp.meter,
+  BUILTINS.push({ name: p.name, desc: sp.meter + "/4" + (sp.bars.length > 1 ? " · " + sp.bars.length + " 小节" : ""), meter: sp.meter,
     bars: JSON.parse(JSON.stringify(sp.bars)) });
 });
 /* v3.34.7：第二首示例曲的 4 个型同样并入 BUILTINS（★ 本版为 5 型：下标 DEMO2_BUILTIN_BASE … +4，
@@ -6242,7 +6234,7 @@ DEMO_PRESETS.forEach((p, i) => {
 const DEMO2_BUILTIN_BASE = BUILTINS.length;
 DEMO2_PRESETS.forEach((p, i) => {
   const sp = demoSpec2().presets[i];
-  BUILTINS.push({ name: p.name, desc: "4/4 · 《我们能不能不分手》示例 · 单小节", meter: sp.meter,
+  BUILTINS.push({ name: p.name, desc: sp.meter + "/4" + (sp.bars.length > 1 ? " · " + sp.bars.length + " 小节" : ""), meter: sp.meter,
     bars: JSON.parse(JSON.stringify(sp.bars)) });
 });
 /* v2.21.0：内置型**源名**快照（17 项定稿后取，此后不再变）。
@@ -15728,10 +15720,16 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     item.tabIndex = 0;
     if (isActive) item.setAttribute("aria-current", "true");
     const box = document.createElement("div");
-    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name;
-    const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText;
+    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name; nm.title = name;
+    const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText; mt.title = metaText;
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
+    const actions = document.createElement("div"); actions.className = "preset-actions";
+    item.appendChild(actions);
     return item;
+  }
+  /** @param {HTMLElement} item @returns {HTMLElement} */
+  function presetActionHost(item){
+    return /** @type {HTMLElement} */ (item.lastElementChild || item);
   }
   /* v2.21.0（批次③）：改名入口（✎ 图标）。内置型与自定义型**同构挂载**——
      按钮本体（类名/aria/stopPropagation）只有这一份；改名动作由 onRename 各自带
@@ -15757,7 +15755,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        焦点依旧归位到原触发元素。 */
     pen.addEventListener("mousedown", e => e.preventDefault());
     pen.addEventListener("click", e => { e.stopPropagation(); onRename(); });
-    item.appendChild(pen);
+    presetActionHost(item).appendChild(pen);
   }
   /* v2.22.0（批次④）：移入分组入口（📁 图标）。与 ✎ 同构挂载（同 pushRenameBtn 的分工：
      按钮本体一份、动作调用方带）。对话框文案与预填值由调用方带——
@@ -15768,7 +15766,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.className = "grp"; btn.title = "移入分组"; btn.setAttribute("aria-label", "移入分组");
     btn.textContent = "📁";
     btn.addEventListener("click", e => { e.stopPropagation(); onGroup(); });
-    item.appendChild(btn);
+    presetActionHost(item).appendChild(btn);
   }
   /* v3.1.0（4.3，A11）：条目级 ▶ 试听——复用编辑器/听辨的**同一条预览通道**
      （previewRef / setMode("preview") 是共享状态区既有设施，只有一个音频引擎，绝不另起调度）。
@@ -15821,7 +15819,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.addEventListener("mousedown", e => e.preventDefault());   // 同 ✎：不抢焦点挤走兄弟按钮（v2.44.2）
     btn.addEventListener("click", e => { e.stopPropagation(); toggleAudition(pat); });
     audBtns.push({ btn, pat });
-    item.appendChild(btn);
+    presetActionHost(item).appendChild(btn);
   }
   function syncAuditionBtns(){
     audBtns.forEach((/** @type {{btn: HTMLElement, pat: any}} */ e) => {
@@ -16117,7 +16115,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        否则 = 整首连播。两态的刷新收口在 syncSongPlayBtns() 一处（与 .aud 试听按钮同一套写法）。 */
     play.addEventListener("click", (/** @type {any} */ e) => { e.stopPropagation(); toggleArrangePlay(a); });
     songPlayBtns.push({ btn: play, id: a.id, name: a.name });
-    item.appendChild(play);
+    presetActionHost(item).appendChild(play);
     /* v2.22.0 曾把自定义区排除在分组外（v1 边界）；v2.25.0 经用户拍板三区全开放 */
     pushGroupBtn(item, () => {
       Modal.uiPrompt(`将「${a.name}」移入分组（输入组名；同名组直接移入；清空并确定 = 移出分组）`,
@@ -17227,7 +17225,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
             refreshAfterPatternChange();
         });
     });
-    item.appendChild(del);
+    presetActionHost(item).appendChild(del);
     const pick = () => {
       exitArrangeForPreset();                    // v2.5.0：点示例型/自定义型 = 回到单练它（同上）
       S.sel = {type:"custom", id:c.id};
@@ -17540,12 +17538,11 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function syncLoopUI(){
     const p = $("loopPanel");
     if (!p) return;
-    /* 曲式模式：整个面板收起。曲式的小节推进由节目单唯一决定，一个型内部的区间循环
-       与它语义冲突（会把节目单的推进卡死在某一小节）。**收起而不是灰掉**——
-       这里没有"稍后可用的操作"值得保留位置，留着灰控件只会让人猜什么时候能用 */
+    /* 面板常驻避免预设列表跳动；曲式模式只禁用控件并解释，循环逻辑仍只服务单个节奏型。 */
     const usable = S.playMode !== "arrange";
-    p.hidden = !usable;
-    if (!usable) return;
+    p.hidden = false;
+    const toggle = $("loopToggle");
+    if (toggle) toggle.disabled = !usable;
     /* v2.5.1：下拉的选项数 = **当前型的小节数**（原为恒 LOOP_BARS=4）。
        同时把存下来的区间按这个模数收窄一次（型可能比存下来的区间短）——`loopRangeFor(n)`
        是那件事的唯一出口，网格/调度/UI 三处都走它，不会出现"面板显示 1-2、调度却按 1-4 走" */
@@ -17566,22 +17563,23 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       /* v2.69.0（2.6）：原设计「关着时灰掉（位置稳定，不藏起来）」由用户拍板改为**整段隐藏**
          （下方 loop-range 的 hidden）——关着时它没有可解释的状态，占位让人猜。
          disabled 逻辑保留作兜底：隐藏期间误触发也没有语义 */
-      sel.disabled = !L.on;
+      sel.disabled = !usable || !L.on;
     });
-    setToggle("loopToggle", L.on);
-    p.classList.toggle("on", L.on);
+    setToggle("loopToggle", usable && L.on);
+    p.classList.toggle("on", usable && L.on);
     /* 范围段与分隔点随开关显隐（v2.69.0，2.6）：开 = 「循环本段 · 第 X 到 Y 小节」单行紧凑。
        用 getElementById 而非 querySelector——桩环境元素是孤立桩（无遍历能力） */
     const sep = $("loopSep"), rng = $("loopRange");
-    if (sep) sep.hidden = !L.on;
-    if (rng) rng.hidden = !L.on;
+    if (sep) sep.hidden = !usable || !L.on;
+    if (rng) rng.hidden = !usable || !L.on;
     const hint = $("loopHint");
     if (hint){
-      hint.textContent = L.on
+      hint.textContent = !usable ? "仅单个节奏型练习时可用" : (L.on
         ? (L.from === 0 && L.to === n - 1
             ? `正在循环整个节奏型（${n} 小节）`
             : `正在循环第 ${L.from + 1}-${L.to + 1} 小节（共 ${L.to - L.from + 1} 小节）`)
-        : "";
+        : "循环当前节奏型的指定小节");
+      hint.title = hint.textContent;
     }
   }
 

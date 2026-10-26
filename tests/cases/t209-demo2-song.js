@@ -11,7 +11,7 @@
      ④ 歌词按段挂齐（8 段有词、2 段无词；总字数与数据一致）
    ★ 另有一条"用户删不掉型"的边界：内置型没有删除入口，故引用不会断。
    ============================================================================ */
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 const firstRun = () => loadApp(undefined, { seedDemo: false });
 
@@ -54,6 +54,10 @@ section("T209b 它的 5 个型必须是**内置**的（否则别人机器上播�
   ok(beat.BUILTINS.slice(base).every(p => p.bars.length === 1
       && p.bars[0].reduce((s, x) => s + x.t, 0) === 192),
      "★ 5 个型各是 1 小节、恰好 192 tick（琶音型 = 四分×4，与首曲的 demo 型同规格）");
+  ok(beat.BUILTINS.slice(11).every(p => p.desc === "4/4"),
+    "★ 两首示例曲的子条目默认只显示拍号，不重复曲名、示例或单小节");
+  ok((html.match(/desc: sp\.meter \+ "\/4" \+ \(sp\.bars\.length > 1/g) || []).length === 2,
+    "★ 两批内置型共用多小节才追加小节数的生成公式");
 }
 
 section("T209c 块引用落在第二首的型基址区间，且解析得到那 5 个型");

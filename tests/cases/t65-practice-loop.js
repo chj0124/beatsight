@@ -295,17 +295,20 @@ section("T65f 练习循环 · 写进热键 beatsight.state（练习偏好）");
      JSON.stringify({ on: true, from: 1, to: 2 }), "重载后区间保持");
 }
 
-/* ================= 场景 T65g：曲式模式下整块收起 ================= */
-section("T65g 练习循环 · 曲式模式收起（循环只管型内 4 小节）");
+/* ================= 场景 T65g：曲式模式下面板常驻但禁用 ================= */
+section("T65g 练习循环 · 曲式模式常驻禁用（循环只管单个节奏型）");
 {
   const { beat, els } = loadApp();
   ok(!els["loopPanel"] || els["loopPanel"].hidden === false, "预设模式下循环面板可见");
   beat.Store.S.playMode = "arrange";
   beat.Presets.syncLoopUI();
-  eq(els["loopPanel"].hidden, true, "★ 曲式模式 → 面板收起（与节目单推进不打架）");
+  eq(els["loopPanel"].hidden, false, "★ 曲式模式 → 面板不收起，预设列表不跳动");
+  eq(els["loopToggle"].disabled, true, "★ 曲式模式开关禁用");
+  ok(els["loopHint"].textContent.includes("仅单个节奏型练习时可用"), "★ 禁用原因可读");
   beat.Store.S.playMode = "preset";
   beat.Presets.syncLoopUI();
-  eq(els["loopPanel"].hidden, false, "退回预设模式 → 面板重新露出");
+  eq(els["loopPanel"].hidden, false, "退回预设模式 → 面板位置不变");
+  eq(els["loopToggle"].disabled, false, "退回预设模式 → 循环功能恢复");
 }
 
 /* ================= 场景 T65h：循环开着时换型不炸 ================= */

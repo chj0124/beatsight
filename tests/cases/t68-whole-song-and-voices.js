@@ -346,7 +346,7 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   ok(String(beat.activePattern().name).indexOf("节奏型2（《在他乡》）") >= 0,
      "★ 生效的型跟着换成它（实际「" + beat.activePattern().name + "」）");
   eq(beat.Store.S.arrangeSel.loop, false, "退回单型后清掉曲式的范围循环（免得下次突然生效）");
-  eq(els["loopPanel"].hidden, false, "练习循环面板重新露出（它在曲式模式下是收起的）");
+  eq(els["loopPanel"].hidden, false, "练习循环面板保持可见且位置稳定（曲式下仅禁用）");
   beat.Controls.stop();
 }
 

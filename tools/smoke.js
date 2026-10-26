@@ -2297,6 +2297,101 @@ function lyricRowMoveGateProbe(){
   })()`;
 }
 
+function presetTypographyProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var btn = document.getElementById("presetLibBtn"), out = {};
+    var wasOpen = btn && btn.getAttribute("aria-expanded") === "true";
+    if (btn && !wasOpen) btn.click();
+    await frame();
+    var item = document.querySelector("#presetList .preset-item"), sec = document.querySelector("#presetList .preset-section");
+    if (!item || !sec){ if (btn && !wasOpen) btn.click(); return JSON.stringify({ err: "无预设条目或区头" }); }
+    var box = item.firstElementChild, name = box.querySelector(".name"), meta = box.querySelector(".meta");
+    var nr = name.getBoundingClientRect(), mr = meta.getBoundingClientRect();
+    out.inlineDelta = Math.round(Math.abs(nr.top - mr.top) * 100) / 100;
+    out.align = getComputedStyle(box).alignItems;
+    out.metaAlign = getComputedStyle(meta).textAlign;
+    var br = box.getBoundingClientRect();
+    out.nameLeft = Math.round((nr.left - br.left) * 100) / 100;
+    out.metaRight = Math.round((br.right - mr.right) * 100) / 100;
+    out.metaToItem = Math.round((item.getBoundingClientRect().right - mr.right) * 100) / 100;
+    var action = item.querySelector(".preset-actions");
+    out.actionPosition = action ? getComputedStyle(action).position : "missing";
+    out.defaultActionVisibility = action ? getComputedStyle(action).visibility : "missing";
+    out.defaultTextOpacity = getComputedStyle(meta).opacity;
+    out.itemH = Math.round(item.getBoundingClientRect().height * 100) / 100;
+    var wasActive = item.classList.contains("active");
+    item.classList.add("active"); await new Promise(function(r){ setTimeout(r, 160); });
+    out.activeActionVisibility = action ? getComputedStyle(action).visibility : "missing";
+    out.activeTextOpacity = getComputedStyle(meta).opacity;
+    out.activeNameOpacity = getComputedStyle(name).opacity;
+    out.activeItemH = Math.round(item.getBoundingClientRect().height * 100) / 100;
+    if (action){
+      var ar = action.getBoundingClientRect(), ir = item.getBoundingClientRect();
+      out.actionCenterErr = Math.round(Math.abs((ar.top + ar.bottom - ir.top - ir.bottom) / 2) * 100) / 100;
+      var actions = Array.prototype.slice.call(item.querySelectorAll("button"));
+      var rightmost = actions.reduce(function(a, b){ return a.getBoundingClientRect().right > b.getBoundingClientRect().right ? a : b; });
+      var range = document.createRange(); range.selectNodeContents(rightmost);
+      out.actionToItem = Math.round((ir.right - range.getBoundingClientRect().right) * 100) / 100;
+    }
+    if (!wasActive) item.classList.remove("active");
+    out.sectionFs = parseFloat(getComputedStyle(sec).fontSize);
+    out.nameFs = parseFloat(getComputedStyle(name).fontSize);
+    out.metaFs = parseFloat(getComputedStyle(meta).fontSize);
+    var prev = item.previousElementSibling, anchor = prev && prev.classList.contains("preset-group") ? prev : sec;
+    out.sectionGap = Math.round((nr.top - anchor.getBoundingClientRect().bottom) * 100) / 100;
+    out.fullTitle = name.title === name.textContent && meta.title === meta.textContent;
+    var next = item.nextElementSibling;
+    out.itemGap = next ? Math.round((next.getBoundingClientRect().top - item.getBoundingClientRect().bottom) * 100) / 100 : null;
+    out.itemTextGap = next ? Math.round((next.querySelector(".name").getBoundingClientRect().top - nr.bottom) * 100) / 100 : null;
+    var song = document.querySelector(".preset-item.in-song");
+    if (song){
+      var sn = song.querySelector(".name").getBoundingClientRect(), sm = song.querySelector(".meta").getBoundingClientRect();
+      out.songDelta = Math.round(Math.abs(sn.top - sm.top) * 100) / 100;
+      var parent = song.parentElement.closest(".preset-arrange-group").querySelector(".preset-item.song");
+      var children = Array.prototype.slice.call(song.parentElement.querySelectorAll(".preset-item.in-song"));
+      var nameRect = function(el){ return el.querySelector(".name").getBoundingClientRect(); };
+      var wrapper = song.parentElement, nextParent = wrapper.nextElementSibling && wrapper.nextElementSibling.querySelector(".preset-item.song");
+      out.hierarchy = {
+        parentToChild: parent ? Math.round((sn.top - nameRect(parent).bottom) * 100) / 100 : null,
+        childToChild: children.length > 1 ? Math.round((nameRect(children[1]).top - sn.bottom) * 100) / 100 : null,
+        childToNextParent: nextParent ? Math.round((nameRect(nextParent).top - sn.bottom) * 100) / 100 : null
+      };
+    }
+    var clone = item.cloneNode(true), cn = clone.firstElementChild.querySelector(".name"), cm = clone.firstElementChild.querySelector(".meta");
+    cn.textContent = "很长的节奏型名称用于窄空间换行检查"; cn.title = cn.textContent;
+    cm.textContent = "4/4 · 这是一段同样很长且不应挤出版面的辅助说明"; cm.title = cm.textContent;
+    clone.style.width = "180px"; clone.style.flex = "none";
+    item.parentNode.insertBefore(clone, item); await frame();
+    var crn = cn.getBoundingClientRect(), crm = cm.getBoundingClientRect();
+    out.wrapDelta = Math.round((crm.top - crn.top) * 100) / 100;
+    out.cloneOverflow = clone.scrollWidth - clone.clientWidth;
+    clone.remove();
+    if (btn && !wasOpen) btn.click();
+    await frame();
+    out.restored = btn ? btn.getAttribute("aria-expanded") === (wasOpen ? "true" : "false") : false;
+    return JSON.stringify(out);
+  })()`;
+}
+
+function loopPanelProbe(){
+  return `(async function(){
+    var B = window.__beat, old = B.Store.S.playMode, out = {};
+    var first = document.querySelector("#presetList .preset-item");
+    try{
+      B.Store.S.playMode = "preset"; B.Presets.syncLoopUI();
+      out.presetTop = Math.round(first.getBoundingClientRect().top * 100) / 100;
+      out.presetDisabled = document.getElementById("loopToggle").disabled;
+      B.Store.S.playMode = "arrange"; B.Presets.syncLoopUI();
+      out.arrangeTop = Math.round(first.getBoundingClientRect().top * 100) / 100;
+      out.arrangeDisabled = document.getElementById("loopToggle").disabled;
+      out.panelHidden = document.getElementById("loopPanel").hidden;
+      out.hint = document.getElementById("loopHint").textContent;
+    }finally{ B.Store.S.playMode = old; B.Presets.syncLoopUI(); }
+    return JSON.stringify(out);
+  })()`;
+}
+
 /* ★★★ v3.33.32：预设库「区 ⊃ 组」两级折叠的真机闸（用户实报：扫弦区收起后，区内分组行还在）。
    桩里做不了（要真实 children 结构与 hidden 生效），故走冒烟。 */
 function presetFoldProbe(){
@@ -2380,26 +2475,18 @@ function presetFoldProbe(){
         hBefore: hBefore, h: Math.round(bb.getBoundingClientRect().height) };
       bh.click(); await frame();
       out.basic.restored = getComputedStyle(bb).display;
-      /* ★ v3.35.8（用户实拍两处）：① 基础节奏区与下面两栏的间距要**统一**——本区在 #presetList
-         之外，靠父容器 flex gap 吃间距，容易与网格内两区差几像素；判据取"本区行 → 下区头"
-         与"网格内两区头之间"这两个实测量，必须相等。② 拍数参数槽要在区头**右边同一行**、
-         且不在区体里（嵌在 role=button 内就是嵌套交互控件）。 */
+      /* 基础节奏区与下区间距和网格实测对账；拍数必须在折叠体内，且与下方内容共用左缘。 */
       var row = document.querySelector(".basic-head-row");
       var list = document.getElementById("presetList");
       var secs = Array.prototype.filter.call(list.children, function(c){ return c.className === "preset-section"; });
       if (row && secs.length >= 2){
-        var slot = row.querySelector("#sigSel");
-        /* ★★★ v3.35.10：本区的三个间距必须与**网格自己的两个基准**逐像素相同 ——
-           它们分别是"区头→首条目"（12）与"末条目→下区头"（18）。先把网格的这两个基准量出来
-           （需要节拍区是展开的，才有条目可量），再量本区对应的两个。
-           为什么值得三条等式：本区在 #presetList 之外，父容器 flex gap(10) 与网格 row-gap(4)
-           的 6px 差全落在这条边界上，历史上连着两版都在这里"补丁叠补丁"（用户实拍三次）。 */
+        var slot = bb.querySelector("#sigSel");
+        /* 头→内容、内容→下区头和折叠→下区头都从真实矩形读取，避免本区与网格各自写死间距。 */
         var needOpen = secs[0].getAttribute("aria-expanded") !== "true";
         if (needOpen){ secs[0].click(); await frame(); }
         var its = Array.prototype.filter.call(list.children, function(c){
           return /(^| )preset-item( |$)/.test(c.className); });
-        /* ★ 本探针早些时候往**节拍区**塞了夹具分组（闸测组）⇒ 那里的"头→首条目"已被污染，
-           改量**自定义区**同构的那一段（区头 → 紧随其后的块，同样是 8 + 4 = 12）。 */
+        /* 折叠探针会往节拍区塞夹具分组，头→首条目的基准改量未受污染的自定义区。 */
         var kids0 = Array.prototype.slice.call(list.children);
         var after = function(el){ var i = kids0.indexOf(el); return (i >= 0 && i + 1 < kids0.length) ? kids0[i + 1] : null; };
         var czNext = after(secs[1]);
@@ -2409,9 +2496,9 @@ function presetFoldProbe(){
         var expandedRowToBox = bb.hidden ? null : Math.round(bb.getBoundingClientRect().top - row.getBoundingClientRect().bottom);
         var expandedBoxToSec = bb.hidden ? null : Math.round(secs[0].getBoundingClientRect().top - bb.getBoundingClientRect().bottom);
         out.basicGeom = {
-          slotInRow: !!slot,
-          slotInBox: !!(bb.querySelector && bb.querySelector("#sigSel")),
-          slotToRowRight: slot ? Math.round(row.getBoundingClientRect().right - slot.getBoundingClientRect().right) : null,
+          slotInRow: !!row.querySelector("#sigSel"),
+          slotInBox: !!slot,
+          slotLeft: slot ? Math.round((bb.querySelector(".basic-slot").getBoundingClientRect().left - bb.getBoundingClientRect().left) * 100) / 100 : null,
           headText: bh.textContent,
           rowToBox: expandedRowToBox,
           boxToSec: expandedBoxToSec,
@@ -2722,6 +2809,34 @@ function portraitFixProbe(){
         { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
       await sleep(400);                       // 等 resize 重排与网格 relayout 跑完
       const narrow = await probeJson("layoutProbe", layoutProbe(), true);
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 334, height: 1419, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
+      result.smallPlayback = await probeJson("smallPlaybackPoint", `(function(){
+        var b=document.getElementById("playBtn"), r=b.getBoundingClientRect();
+        var x=r.left+r.width/2, y=r.top+r.height/2;
+        var hit=document.elementFromPoint(x,y);
+        return JSON.stringify({ x:x, y:y, hit:hit && hit.closest("button") ? hit.closest("button").id : "",
+          before:window.__beat.Store.S.playing });
+      })()`, false);
+      await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: result.smallPlayback.x,
+        y: result.smallPlayback.y, button: "left", clickCount: 1 });
+      await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: result.smallPlayback.x,
+        y: result.smallPlayback.y, button: "left", clickCount: 1 });
+      await sleep(250);
+      result.smallPlayback.after = await probeJson("smallPlaybackAfter",
+        `JSON.stringify({ playing: window.__beat.Store.S.playing, label: document.getElementById("playBtn").getAttribute("aria-label") })`, false);
+      await probeJson("smallPlaybackCleanup", `window.__beat.Controls.stop(); JSON.stringify("ok")`, false);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart",
+        touchPoints: [{ x: result.smallPlayback.x, y: result.smallPlayback.y }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await sleep(500);
+      result.smallPlayback.touch = await probeJson("smallPlaybackTouch",
+        `JSON.stringify({ playing: window.__beat.Store.S.playing, label: document.getElementById("playBtn").getAttribute("aria-label") })`, false);
+      await probeJson("smallPlaybackTouchCleanup", `window.__beat.Controls.stop(); JSON.stringify("ok")`, false);
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
       /* ★★★ v3.36.21：竖屏四修（地图/滑条/播放键间距/状态灯对齐）——就在这档 390 量 */
       result.portraitFix = await probeJson("portraitFixProbe", portraitFixProbe(), true);
       /* ★★★ 2026-10-11（用户实报）：窄屏 + 连续滚动 —— 文档/底栏不得横向溢出
@@ -2816,6 +2931,8 @@ function portraitFixProbe(){
       result.refineGroups = await probeJson("refineGroupProbe", refineGroupProbe(), true);
       /* ★★★ v3.33.32：预设库两级折叠（区收起 ⇒ 区内组头/组行也必须收） */
       result.presetFold = await probeJson("presetFoldProbe", presetFoldProbe(), true);
+      result.presetTypography = await probeJson("presetTypographyProbe", presetTypographyProbe(), true);
+      result.loopPanel = await probeJson("loopPanelProbe", loopPanelProbe(), true);
       /* ★★★ v3.36.19：段行块列表的横向滚动真机闸 */
       result.blockRow = await probeJson("blockRowProbe", blockRowProbe(), true);
       /* ★★★ v3.36.20：段卡片"放不下就横滑"的真机闸（精修按钮不换行 + 歌词区横滑） */
@@ -4474,16 +4591,15 @@ async function main(){
                  && PF.basicGeom.refGap > 0 && PF.basicGeom.gapHere === PF.basicGeom.refGap,
                 p.label + "·" + vp + "：★★★ 基础节奏区与下面两栏的间距**统一**（v3.35.8：本区行→下区头 == 网格内区间距）",
                 JSON.stringify(PF.basicGeom));
-              /* ★★★ v3.35.10：本区的两个"体-头间距"与网格基准逐像素相同（防"下次又漂"） */
               ok(PF.basicGeom && PF.basicGeom.rowToBox > 0 && PF.basicGeom.rowToBox === PF.basicGeom.gridHeadToFirst,
-                p.label + "·" + vp + "：★★★ 本区「头 → 细分」= 网格「区头 → 首条目」（v3.35.10）",
+                p.label + "·" + vp + "：★★★ 本区「头 → 拍数」= 网格「区头 → 首条目」",
                 JSON.stringify(PF.basicGeom));
-              ok(PF.basicGeom && PF.basicGeom.boxToSec > 0 && PF.basicGeom.boxToSec === PF.basicGeom.gridLastToNext,
-                p.label + "·" + vp + "：★★★ 本区「细分 → 下区头」= 网格「末条目 → 下区头」（v3.35.10）",
+              ok(PF.basicGeom && PF.basicGeom.boxToSec > 0,
+                p.label + "·" + vp + "：★ 展开体包含拍数与细分，保留下区间距",
                 JSON.stringify(PF.basicGeom));
-              ok(PF.basicGeom && PF.basicGeom.slotInRow && !PF.basicGeom.slotInBox
-                 && Math.abs(PF.basicGeom.slotToRowRight) <= 2,
-                p.label + "·" + vp + "：★★ 拍数参数槽在区头**右边同一行**、不在区体里（v3.35.8 用户需求）",
+              ok(PF.basicGeom && !PF.basicGeom.slotInRow && PF.basicGeom.slotInBox
+                 && PF.basicGeom.slotLeft >= 0 && PF.basicGeom.slotLeft <= 2.01,
+                p.label + "·" + vp + "：★★★ 拍数位于折叠体并与下方内容共用左缘",
                 JSON.stringify(PF.basicGeom));
               /* ★★★ v3.35.11：真机双击语义（detail 计数只有浏览器给得出） */
               ok(PF.dbl && PF.dbl.playing === true && PF.dbl.mode === "arrange",
@@ -4504,6 +4620,49 @@ async function main(){
             } else {
               ok(false, p.label + "·" + vp + "：折叠探针未取到", JSON.stringify(PF).slice(0, 200));
             }
+            const PT = r.presetTypography;
+            if (PT && !PT.err){
+              ok(PT.inlineDelta <= 3 && PT.align === "baseline",
+                p.label + "·" + vp + "：★★ 条目名称与说明真实基线同行", JSON.stringify(PT));
+              ok(PT.metaAlign === "right" && Math.abs(PT.nameLeft) <= 0.51 && Math.abs(PT.metaRight) <= 0.51,
+                p.label + "·" + vp + "：★★★ 名称靠左、说明铺满剩余区域并靠右",
+                "left=" + PT.nameLeft + " right=" + PT.metaRight + " align=" + PT.metaAlign);
+              ok(PT.actionPosition === "absolute" && PT.defaultActionVisibility === "hidden"
+                 && PT.defaultTextOpacity === "1" && PT.activeActionVisibility === "visible" && PT.activeTextOpacity === "0"
+                 && PT.activeNameOpacity === "1" && PT.activeItemH === PT.itemH && PT.actionCenterErr <= 1,
+                p.label + "·" + vp + "：★★★ 名称保留、说明透明让位，图标原位出现且高度不变",
+                JSON.stringify({ normal: PT.defaultActionVisibility, active: PT.activeActionVisibility,
+                  textOpacity: PT.activeTextOpacity, before: PT.itemH, after: PT.activeItemH,
+                  centerErr: PT.actionCenterErr }));
+              ok(Math.abs(PT.actionToItem - PT.metaToItem) <= 0.51,
+                p.label + "·" + vp + "：★★★ 最右图标可见右缘与说明右缘一致",
+                "action=" + PT.actionToItem + " meta=" + PT.metaToItem);
+              ok(PT.itemH > 0 && PT.itemH <= 32 && PT.metaToItem >= 11.5 && PT.metaToItem <= 12.5,
+                p.label + "·" + vp + "：★★ 默认条目高度 ≤32px，说明仍铺到条目右缘",
+                "itemH=" + PT.itemH + " metaToItem=" + PT.metaToItem);
+              ok(PT.sectionFs === 14 && PT.nameFs === 13 && PT.metaFs === 11,
+                p.label + "·" + vp + "：★★ 区 14 / 条目 13 / 说明 11", JSON.stringify(PT));
+              ok(PT.sectionGap >= 11.5 && PT.sectionGap <= 12.5 && PT.itemTextGap >= 11.5 && PT.itemTextGap <= 12.5,
+                p.label + "·" + vp + "：★★★ 区头到首条目与相邻文字间距均约 12px",
+                "section=" + PT.sectionGap + " text=" + PT.itemTextGap + " box=" + PT.itemGap);
+              console.log("  · " + p.label + "·" + vp + " 层级间距实测 " + JSON.stringify(PT.hierarchy));
+              ok(PT.hierarchy && PT.hierarchy.parentToChild >= 11.5 && PT.hierarchy.parentToChild <= 12.5
+                && PT.hierarchy.childToChild >= 11.5 && PT.hierarchy.childToChild <= 12.5,
+                p.label + "·" + vp + "：★★★ 父子与子条目文字间距均约 12px", JSON.stringify(PT.hierarchy));
+              ok(typeof PT.songDelta === "number" && PT.songDelta <= 3,
+                p.label + "·" + vp + "：★★★ 长歌名与说明保持同一行", "delta=" + PT.songDelta);
+              ok(PT.wrapDelta > 5 && PT.cloneOverflow <= 0,
+                p.label + "·" + vp + "：★★★ 长文案窄条目自然换行且不溢出",
+                "wrap=" + PT.wrapDelta + " overflow=" + PT.cloneOverflow);
+              ok(PT.fullTitle === true && PT.restored === true,
+                p.label + "·" + vp + "：★ 省略保留完整提示，探针恢复抽屉现场", "");
+            } else {
+              ok(false, p.label + "·" + vp + "：预设排版探针未取到", JSON.stringify(PT));
+            }
+            const LP = r.loopPanel;
+            ok(LP && LP.presetDisabled === false && LP.arrangeDisabled === true && LP.panelHidden === false
+              && LP.arrangeTop === LP.presetTop && LP.hint.includes("仅单个节奏型练习时可用"),
+            p.label + "·" + vp + "：★★★ 循环面板常驻，模式切换时预设条目顶位置不变", JSON.stringify(LP));
           }
           /* （退役）v3.21 的「音量列与 BPM 列等高」断言随 v3.39.0 BPM 并入音量组失去对象——
              两列变一列（合并组），等高承诺由"合并组内部 flex 布局"天然成立，不再需要跨列断言。 */
@@ -4644,6 +4803,10 @@ async function main(){
       } else {
         ok(false, p.label + "：窄屏布局未取到（需求①的折行本项未验证）", "");
       }
+      const SP = r.smallPlayback;
+      ok(SP && SP.before === false && SP.hit === "playBtn" && SP.after && SP.after.playing === true && SP.after.label === "停止"
+        && SP.touch && SP.touch.playing === true && SP.touch.label === "停止",
+        p.label + "：★★★ 334px 首次鼠标与触摸播放均生效，不依赖预设库", JSON.stringify(SP));
       /* v2.42.7：窄屏组容器卡等宽（宽度策略分裂的回归闸门——音量卡 352 钉死 /
          BPM 内容宽 / 开关·行数撑满曾在窄屏并存，右缘参差）。
          ★ PLAN-v9 批 2（控制芯批 6 收口）：开关列退役 ⇒ 窄屏只剩**一张**组容器卡
