@@ -1753,14 +1753,23 @@ function lyricTabProbe(){
     var before = null;
     try{ var line = B.Store.findLyric(a.id, sec.uid); before = line ? JSON.parse(JSON.stringify(line)) : null; }catch(e){}
     var old = { pos: B.Store.S.lyricPos, pitch: B.Store.S.pitchNotation, show: B.Store.S.showLyric,
-      mode: B.Store.S.playMode, sel: JSON.parse(JSON.stringify(B.Store.S.arrangeSel)) };
+      mode: B.Store.S.playMode, sel: JSON.parse(JSON.stringify(B.Store.S.arrangeSel)),
+      scroll: B.Store.S.scrollMode, scrollRows: B.Store.S.scrollRows };
     function rebuild(){ B.Viz.buildViz(); }
     function measure(){
       var rows = [].slice.call(document.querySelectorAll("#lyricLane .lyric-row"));
-      var grids = [].slice.call(document.querySelectorAll("#viz .bar-row"));
-      var centerErr = 0, overlaps = 0, labelsN = 0;
+      var grids = [].slice.call(document.querySelectorAll("#viz .bar-row")).filter(function(el){
+        return el.getBoundingClientRect().width > 0;
+      });
+      var centerErr = 0, slotErr = 0, overlaps = 0, labelsN = 0, slots = [];
       rows.forEach(function(lr, ri){
         var cell = grids[ri] && grids[ri].querySelector(".cell");
+        if (grids[ri]){
+          var gr = grids[ri].getBoundingClientRect(), lrr = lr.getBoundingClientRect();
+          slotErr = Math.max(slotErr, Math.abs(gr.left - lrr.left));
+          slots.push({ ri: ri, gl: gr.left, ll: lrr.left, gt: gr.top, lt: lrr.top,
+            gx: grids[ri].style.transform, lx: lr.style.transform });
+        }
         if (cell && lr.querySelector(".lyric-char")){
           var cr = cell.getBoundingClientRect(), rr = lr.getBoundingClientRect();
           centerErr = Math.max(centerErr, Math.abs((rr.top + rr.bottom - cr.top - cr.bottom) / 2));
@@ -1783,7 +1792,8 @@ function lyricTabProbe(){
           });
         });
       });
-      return { centerErr: Math.round(centerErr * 100) / 100, overlaps: overlaps, labelsN: labelsN };
+      return { centerErr: Math.round(centerErr * 100) / 100, slotErr: Math.round(slotErr * 100) / 100,
+        overlaps: overlaps, labelsN: labelsN, slots: slots };
     }
     try{
       B.Store.S.playMode = "arrange";
@@ -1821,14 +1831,26 @@ function lyricTabProbe(){
       B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }],
         { notes: [{ t: 144, dur: 24, p: 64 }] });
       rebuild(); await frame(); res.standaloneMode = B.Viz.lyricLayoutState().actual;
+      B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }], { notes: [] });
+      res.scroll = [];
+      [1, 3].forEach(function(rows){
+        B.Store.S.scrollMode = true; B.Store.S.scrollRows = rows;
+        B.Viz.reloadScroll();
+        var ss = B.Viz.lyricLayoutState(), sm = measure();
+        res.scroll.push({ rows: rows, mode: ss.actual, reason: ss.reason,
+          centerErr: sm.centerErr, slotErr: sm.slotErr, overlaps: sm.overlaps, labelsN: sm.labelsN, slots: sm.slots });
+      });
+      B.Store.S.scrollMode = false;
     }catch(e){ res.err = String(e && e.message || e); }
     finally{
       try{
         if (before) B.Store.upsertLyric(a.id, sec.uid, before.chars || [], { notes: before.notes || [] });
         else B.Store.deleteLyric(a.id, sec.uid);
         B.Store.S.lyricPos = old.pos; B.Store.S.pitchNotation = old.pitch; B.Store.S.showLyric = old.show;
-        B.Store.S.playMode = old.mode; B.Store.S.arrangeSel = old.sel; rebuild();
-        res.restored = B.Store.S.lyricPos === old.pos;
+        B.Store.S.playMode = old.mode; B.Store.S.arrangeSel = old.sel;
+        B.Store.S.scrollMode = old.scroll; B.Store.S.scrollRows = old.scrollRows;
+        if (old.scroll) B.Viz.reloadScroll(); else rebuild();
+        res.restored = B.Store.S.lyricPos === old.pos && B.Store.S.scrollMode === old.scroll;
       }catch(e){ res.restoreErr = String(e && e.message || e); }
     }
     return JSON.stringify(res);
@@ -4321,6 +4343,10 @@ async function main(){
               ok(D.pitchMode === "follow" && D.standaloneMode === "follow",
                 p.label + "·" + vp + "：★ 音高与独立旋律两场景都回退 follow",
                 "pitch=" + D.pitchMode + " standalone=" + D.standaloneMode);
+              ok(Array.isArray(D.scroll) && D.scroll.length === 2 && D.scroll.every(x =>
+                x.mode === "tab" && x.centerErr <= 1 && x.slotErr <= 1 && x.overlaps === 0 && x.labelsN > 0),
+              p.label + "·" + vp + "：★★★ 连续滚动 1/3 行谱内居中、逐槽对齐且无重叠",
+              JSON.stringify(D.scroll));
               ok(M.canOffer === false && M.tabHidden === true && M.mode === "follow" && M.reason === "layout",
                 p.label + "·" + vp + "：★★★ 390px 隐藏谱内入口，保存 tab 仍实际贴行",
                 JSON.stringify({ canOffer: M.canOffer, hidden: M.tabHidden, mode: M.mode, reason: M.reason }));

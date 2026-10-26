@@ -4461,8 +4461,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>宽屏铺满（默认关）。</b>主界面默认最宽 1440px 居中，超宽屏两侧留白；开启后主列<b>拉伸铺满</b>整个窗口（右侧预设库宽度不变）。超宽屏上视线跨度会变大，按自己习惯开</li>
           <li><b>背景壁纸。</b>把练习背景换成自己的图（JPG / PNG / WebP，会自动缩到长边 1600 像素后<b>存在本机</b>，不上传）。字看不清就拉「遮罩深浅」把背景压暗；出厂自带一张默认图，点「移除」后它不会自己回来，想找回来用「恢复默认」</li>
           <li><b>弹跳球 / 六线底纹。</b>两个常驻画面元素（无开关、恒开启）：<b>弹跳球</b> = 落拍预判（「静音」训练时它尤其重要——静音的那小节里球是唯一的节拍来源；连续滚动模式下不画球）；<b>六线底纹</b> = 扫弦谱下的六条线，只对带扫弦记谱的型显示，节拍型上自动不画</li>
-          <li><b>显示歌词与显示位置。</b>「自动」维持窄屏底部、宽屏贴行；也可固定「贴在每行小节下」或「集中在底部」。大屏且实际谱面够宽时另有「<b>嵌入六线谱</b>」：歌词直接落在六线区域中央，与演奏位置共用同一视野，不再多看一条独立歌词带。移动端不显示这个选项；桌面选过它后到移动端会自动贴行，选择本身仍保留。谱面或歌词过密、音高标注开启、当前有独立旋律音符时也会临时贴行，不缩字、不删字；连续滚动则固定贴行</li>
-          <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时本节下方的「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词固定在每行小节下方、跟着行一起滑。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
+          <li><b>显示歌词与显示位置。</b>「自动」维持窄屏底部、宽屏贴行；也可固定「贴在每行小节下」或「集中在底部」。大屏且实际谱面够宽时另有「<b>嵌入六线谱</b>」：歌词直接落在六线区域中央，与演奏位置共用同一视野，不再多看一条独立歌词带。移动端不显示这个选项；桌面选过它后到移动端会自动贴行，选择本身仍保留。谱面或歌词过密、当前有独立旋律音符时会临时贴行，不缩字、不删字；音高标注开启时谱内按钮禁用，设置会高亮实际生效的贴行，关闭音高后恢复谱内选择</li>
+          <li><b>连续滚动（默认关）。</b>播放动画的两种走法：<b>关</b> = 现有的「整页翻页」——播放头在行内从左扫到右，走到行末整页换一次；<b>开</b> = 行槽<b>横向连续滚过</b>，播放头钉在行<b>正中央</b>不动，内容从右往左滑过它。开着时本节下方的「<b>同屏行数</b>」换成 <b>1 行 / 3 行</b>两档：<b>1 行</b>只画当前小节那一条横带；<b>3 行</b>上下各留一条——上面是「刚唱过」、下面是「即将播放」，最后一拍里整组平滑上移、强拍从下方登场。歌词可选贴行或嵌入六线谱，都跟着对应行槽一起滑；集中底部在此模式不可用。两种走法看习惯挑：翻页一次看得多，滚动更接近「谱面在自己走」的手感</li>
           <li><b>音色（电子 / 木鱼 / 鼓组）。</b>咔嗒声的"长相"，三套都是程序合成、不占体积，点哪个换哪个。音量不在这里——节拍音量 / 扫弦提示两条滑杆与 BPM 同组，在主界面状态灯下方（练习中会随时调，属高频控件）</li>
           <li><b>Swing（直 / Swing / 重 Swing）。</b>让一拍里的两个八分<b>前长后短</b>，弹出摇摇晃晃的律动——爵士、布鲁斯的灵魂。<b>直</b> = 两个八分均分（正常谱面）；<b>Swing</b> = 前一个占约 2/3 拍；<b>重 Swing</b> = 占 3/4，摇摆最狠。<b>只改耳朵听到的时机，不改画面</b>：格子永远均分画——因为谱面记的是「事实」，摇摆是「奏法」；开着 Swing 时眼睛看均分、耳朵听不均分，正是它在起作用。关掉（直）就回到严格均分</li>
           <li><b>音频延迟补偿（蓝牙耳机 / 无线音箱）。</b>蓝牙传输天生慢 <b>100–300ms</b>：画面上的落点到了，耳机里还要等一下才响。补偿 = 把所有声音<b>提前</b>这么多毫秒发出，让「听到的」和「看到的」重新对上（不动节奏，只改发声时刻）。<b>怎么调</b>：拖「补偿」滑杆，参考起步值——真无线耳机（TWS）<b>约 200ms</b>、蓝牙耳机 / 音箱<b>约 150ms</b>、有线耳机 / 手机外放保持 <b>0</b>；边放节拍边对：声音比画面<b>晚</b>就调大、<b>早</b>就调小，每次 ±20ms 到声画重合。<b>按设备存配置</b>：每副耳机延迟不同，各自新建一套配置、切换时选一下，上次用的会被记住。只存本机、不进「导出全部数据」（换设备本来就要重调）</li>
@@ -4762,9 +4762,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
                「显示歌词」总开关关 ⇒ 任何位置都不画歌词；开 ⇒ 下方「显示位置」四档可选
                （自动 / 贴在每行小节下 / 集中在底部 / 嵌入六线谱），其中「自动」复用 viz 紧凑断点（≤960px 底部、>960px 贴行）。 -->
           <button class="toggle-pill on" id="showLyricToggle" role="switch" aria-checked="true">显示歌词<span class="switch"></span></button>
-          <!-- v3.33.10（用户清单 4）：连续滚动档下四枚位置胶囊都被"恒贴本行"短路，故给出一行说明；
-               它只在该档 + 歌词开着时露面（由 syncAuxVisibility 统一推导） -->
-          <span class="lyric-pos-note" id="lyricPosNote" hidden>连续滚动下歌词恒贴本行（位置档位暂不生效）</span>
+          <!-- 回退原因与禁用说明由 syncAuxVisibility 统一推导；无限制时整行收起。 -->
+          <span class="lyric-pos-note" id="lyricPosNote" hidden></span>
           <div class="lyric-pos-group" id="lyricPosGroup" role="group" aria-label="歌词显示位置">
             <button class="pill active" data-pos="auto" aria-pressed="true">自动 · 窄屏底部</button>
             <button class="pill" data-pos="follow" aria-pressed="false">贴在每行小节下</button>
@@ -5005,23 +5004,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5037  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6699  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8940  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10168 Modal         应用内弹窗
-     L10329 Viz           时值可视化渲染与每帧动画
-     L14059 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14813 Trainer       变速训练器
-     L15030 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15701 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17649 Editor        自定义节奏型编辑器
-     L18785 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18880 Ear           听辨训练（v1.10.0）
-     L19108 Arrange       曲式编排（v2.0.0）
-     L23245 Help          使用方法（v2.0.1）
-     L23400 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23482 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23778 初始化（装配） 各模块 hook 接线与启动
+     L5036  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6698  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8939  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10167 Modal         应用内弹窗
+     L10328 Viz           时值可视化渲染与每帧动画
+     L14058 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14812 Trainer       变速训练器
+     L15029 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15700 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17648 Editor        自定义节奏型编辑器
+     L18784 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18879 Ear           听辨训练（v1.10.0）
+     L19107 Arrange       曲式编排（v2.0.0）
+     L23244 Help          使用方法（v2.0.1）
+     L23399 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23481 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23777 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5047,7 +5046,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.54.2";
+const VERSION = "3.55.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -11366,12 +11365,12 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
   }
   /** @returns {"auto"|"follow"|"bottom"|"tab"} */
   function requestedLyricPos(){
-    if (S.scrollMode) return "follow";
+    if (S.scrollMode) return S.lyricPos === "tab" ? "tab" : "follow";
     if (S.lyricPos === "auto") return narrow() ? "bottom" : "follow";
     return S.lyricPos;
   }
   function canOfferLyricTab(){
-    if (S.scrollMode || narrow()) return false;
+    if (narrow()) return false;
     const v = $("viz"); return !!v && v.offsetWidth >= LYRIC_TAB_MIN_W;
   }
   function effectiveLyricPos(){
@@ -12930,7 +12929,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     if (!lane) return;
     const visible = !lane.hidden && S.showLyric;
     const requested = requestedLyricPos();
-    let actual = /** @type {"follow"|"bottom"|"tab"} */ (effectiveLyricPos()), reason = S.scrollMode && S.lyricPos === "tab" ? "scroll" : "";
+    let actual = /** @type {"follow"|"bottom"|"tab"} */ (effectiveLyricPos()), reason = S.scrollMode && S.lyricPos === "bottom" ? "scroll" : "";
     if (visible && requested === "tab" && !canOfferLyricTab()) reason = "layout";
     if (visible && actual === "tab"){
       if (!vizHasStrum()){ actual = "follow"; reason = "no-tab"; }
@@ -24426,7 +24425,9 @@ $("durLabelToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => {
    layoutLyricLane），故显隐/定位决策收口到 Viz.buildLyricLane，单向调用 */
 function syncLyricToggles(){
   setToggle("showLyricToggle", S.showLyric);
-  setPressed("#lyricPosGroup", p => p.dataset.pos === S.lyricPos);
+  const view = Viz.lyricLayoutState();
+  const shownPos = (S.lyricPos === "tab" || (S.scrollMode && S.lyricPos === "bottom")) ? view.actual : S.lyricPos;
+  setPressed("#lyricPosGroup", p => p.dataset.pos === shownPos);
   const grp = $("lyricPosGroup");
   if (grp) grp.classList.toggle("disabled", !S.showLyric);   // 总开关关时位置组禁用
   /* v3.37.0：音高三态同卡同步（显示偏好，数据无关） */
@@ -24439,11 +24440,11 @@ $("showLyricToggle").addEventListener("click", (/** @type {MouseEvent} */ e) => 
   Viz.rebuildLyricLane();   // 重排歌词轨（显示/隐藏 + 位置都随此重建；★ v3.31.1：走带静止态重落的入口）
   Store.persist();
 });
-const pills = /** @type {HTMLElement[]} */ ([...document.querySelectorAll("#lyricPosGroup .pill")]);
+const pills = /** @type {HTMLButtonElement[]} */ ([...document.querySelectorAll("#lyricPosGroup .pill")]);
 pills.forEach(b => {
   b.addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
-    if (!S.showLyric) return;                 // 位置组禁用态：点击无效
+    if (!S.showLyric || b.disabled) return;   // 总开关或当前模式冲突：点击无效
     S.lyricPos = /** @type {"auto"|"follow"|"bottom"|"tab"} */ (b.dataset.pos || "auto");
     syncLyricToggles();
     Viz.rebuildLyricLane();                   // 重排歌词轨（bottom ↔ follow 切换；★ v3.31.1 同上）
@@ -24473,12 +24474,11 @@ pitchPills.forEach(b => {
    ★ 音频不中断（D21）：这里只动网格与窗口状态，不碰 ctx / 调度器。 */
 function syncScrollToggles(){
   setToggle("scrollModeToggle", S.scrollMode);
-/* ★★ v3.33.10（用户清单 1/3/4）：三处"随开关显隐/失效"的同源同步。
-   ① 显示歌词关 ⇒ 位置四胶囊整组收起（此前一直显示，实拍指出）；
-   ② 连续滚动开 ⇒ 歌词恒贴本行（模式裁决里那句 if (S.scrollMode) return "follow" 短路）⇒ 四枚置灰 + 一行说明；
-   ③ 连续滚动开 ⇒ 弹跳球没有球 ⇒ 整个开关藏起来（用户选的方案；状态不丢，关掉连续滚动即恢复）。
-   口径：状态只读 S，UI 全由本函数推导；监听挂在两个驱动开关上（与既有处理器并存、后加后跑，读到的已是最新状态）。 */
+/* 歌词位置的入口、禁用与实际生效态由同一处同步：
+   scroll 支持 auto/follow/tab，只有 bottom 回退；音高与谱内互斥时禁用 tab。
+   保存偏好不改写，按钮高亮跟随真实布局，避免“选了谱内、实际贴行”的假生效态。 */
 function syncAuxVisibility(){
+  syncLyricToggles();
   const g = $("lyricPosGroup"), note = $("lyricPosNote");
   const lyricOn = !!S.showLyric, scrollOn = !!S.scrollMode;
   if (g){
@@ -24486,8 +24486,16 @@ function syncAuxVisibility(){
     const kids = g.children;
     if (kids) for (let i = 0; i < kids.length; i++){
       const p = kids[i];
-      if (p && p.dataset && p.dataset.pos === "tab") p.hidden = !Viz.canOfferLyricTab();
-      if (p && p.classList && p.classList.contains("pill")) p.disabled = scrollOn;
+      if (!p || !p.dataset) continue;
+      const pos = p.dataset.pos;
+      if (pos === "tab") p.hidden = !Viz.canOfferLyricTab();
+      if (p.classList && p.classList.contains("pill")){
+        const pitchBlocked = pos === "tab" && S.pitchNotation !== "off";
+        const scrollBlocked = scrollOn && pos === "bottom";
+        p.disabled = pitchBlocked || scrollBlocked;
+        p.title = pitchBlocked ? "关闭音高标注后可嵌入六线谱"
+          : (scrollBlocked ? "连续滚动不支持集中底部，当前按贴行显示" : "");
+      }
     }
   }
   const pg = $("pitchNotationGroup");
@@ -24497,18 +24505,20 @@ function syncAuxVisibility(){
   const reasons = {
     layout: "当前布局较窄，暂按贴行显示；仍保留「嵌入六线谱」选择。",
     "no-tab": "当前节奏型没有六线谱，暂按贴行显示。",
-    pitch: "音高标注开启时暂按贴行显示，谱内位置选择仍保留。",
+    pitch: "音高标注开启，当前按贴行显示；关闭音高后自动恢复谱内选择。",
     standalone: "当前窗口含独立旋律音符，暂按贴行显示。",
     dense: "当前谱面过密，暂按贴行显示；仍保留「嵌入六线谱」选择。"
   };
-  const text = lyricOn && scrollOn ? "连续滚动下歌词恒贴本行（位置档位暂不生效）"
-    : (lyricOn && S.lyricPos === "tab" ? (reasons[state.reason] || "") : "");
+  const text = !lyricOn ? ""
+    : (scrollOn && S.lyricPos === "bottom" ? "连续滚动不支持集中底部，当前按贴行显示。"
+      : (S.lyricPos === "tab" ? (reasons[state.reason] || "") : ""));
   if (note){ note.textContent = text; note.hidden = !text; }
 }
 syncAuxVisibility();
 $("showLyricToggle").addEventListener("click", syncAuxVisibility);
 $("scrollModeToggle").addEventListener("click", syncAuxVisibility);
 pills.forEach(b => b.addEventListener("click", syncAuxVisibility));
+pitchPills.forEach(b => b.addEventListener("click", syncAuxVisibility));
 $("settingsBtn").addEventListener("click", syncAuxVisibility);
 window.addEventListener("resize", syncAuxVisibility);
 if (typeof ResizeObserver !== "undefined"){

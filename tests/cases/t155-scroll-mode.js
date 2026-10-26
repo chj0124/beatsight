@@ -11,7 +11,7 @@
        当前点恒在 C = 行宽一半；邻槽被 clamp 冻结在 ±W/2（上一小节露尾、下一小节露头）。
      · 垂直登场：最后一拍（p ∈ [0.75,1)）内整组 smooth 上移一行（rows=3 才有；rows=1 与演示一致不做）。
      · 一行恒等于**整小节**（vizRowBeats = vizSig），不进 chooseRowBeats。
-     · scroll 无预告行 / 无尾迹 / 无待命球；歌词恒 follow 且随槽同组 (dx,dy) 平移。
+     · scroll 无预告行 / 无尾迹 / 无待命球；歌词 follow/tab 均随槽同组 (dx,dy) 平移。
    桩的几何：rowGeo[i].top = 58 + i×86（ROW_TOP0/ROW_H，跨用例累加故只断言**差值**），
    行宽 ROW_W = 600 ⇒ C = 300；vizRowBoxH = offsetHeight = 44。 */
 "use strict";

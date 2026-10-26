@@ -88,4 +88,8 @@ section("T264f 设置说明与回退原因对应");
   eq(app.els["lyricPosNote"].hidden, false, "设置打开时显示回退说明");
   ok(app.els["lyricPosNote"].textContent.includes("音高标注开启"), "说明不静默、不改位置选择");
   eq(app.beat.Store.S.lyricPos, "tab", "提示出现也不改写偏好");
+  const tab = app.els.lyricPosGroup.children.find(p => p.dataset.pos === "tab");
+  const follow = app.els.lyricPosGroup.children.find(p => p.dataset.pos === "follow");
+  eq(tab.disabled, true, "音高开启时禁用谱内入口");
+  eq(follow.classList.contains("active"), true, "实际 follow 而非请求 tab 显示选中");
 }
