@@ -395,7 +395,12 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        - 三处 str 渲染判据补 length（编辑器/主视图/编排页）+ 各改动点根因注释。
    ★ 留 **约 6.7KB** 余量——本批两项新功能一批落地，余量偏紧是如实反映；
      观察线（2092×0.98 ≈ 2050.2KB）将常驻警示直到下一次抬线或瘦身，这是预期行为。 */
-const BUDGET_BYTES = 2092 * 1024;
+/* ★ v3.54.0（PLAN-v15 歌词嵌入六线谱）：2092 → **2100KB**。
+     · 基线 HEAD:index.html = 2,139,946 B；本批 = 2,146,818 B，净增 6,872 B。
+     · 增量为谱内状态/入口、中央几何、横向避让与密度回退、逐字进度样式、真实矩形探针接线及帮助文本；
+       保留 follow/bottom 与全部时间语义，无重复歌词引擎。按新功能本体抬线，不删历史判据注释凑预算。
+     · 留约 3.5KB 余量；余量偏紧如实保留，后续仍需由观察线提示瘦身。 */
+const BUDGET_BYTES = 2100 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

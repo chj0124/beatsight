@@ -97,15 +97,15 @@ section("T181d 窗口合成 · 引用失效时保留页锚（此前写回 -1 →
   /* 反向验证锚点：把 buildViz 回退成 `winStart = -1` → 「页锚保留」变红（start === -1）。 */
 }
 
-/* ================= T181e：B3 歌词位置三档点击接线 ================= */
-section("T181e 歌词位置 · 三档 pill 点击生效（此前桩里三 pill 不存在、接线零覆盖）");
+/* ================= T181e：B3 歌词位置组点击接线 ================= */
+section("T181e 歌词位置 · 四档 pill 点击生效（含谱内模式）");
 {
   const app = loadApp({ "beatsight.state": JSON.stringify({ v: 3, showLyric: true, lyricPos: "auto" }) });
   const { beat, els } = app;
   const grp = els["lyricPosGroup"];
-  ok(grp && grp.children.length === 3, "★ 桩里三 pill 已登记（此前 children 空、querySelectorAll 命中 0）");
+  ok(grp && grp.children.length === 4, "★ 桩里四 pill 已登记（含嵌入六线谱）");
   const pill = pos => grp.children.find(c => c.dataset.pos === pos);
-  ok(!!pill("auto") && !!pill("follow") && !!pill("bottom"), "三档按钮都在");
+  ok(!!pill("auto") && !!pill("follow") && !!pill("bottom") && !!pill("tab"), "四档按钮都在");
   pill("follow").fire("click");
   eq(beat.Store.S.lyricPos, "follow", "★ 点「贴在每行小节下」→ S.lyricPos = follow");
   pill("bottom").fire("click");
@@ -116,7 +116,7 @@ section("T181e 歌词位置 · 三档 pill 点击生效（此前桩里三 pill �
   beat.Store.S.showLyric = false;
   pill("auto").fire("click");
   eq(beat.Store.S.lyricPos, "bottom", "★ showLyric=false 时点击无效（守卫生效）");
-  /* 反向验证锚点：删掉 HTML_CHILDREN 的 lyricPosGroup 登记 → 「三 pill 已登记」变红。 */
+  /* 反向验证锚点：删掉 HTML_CHILDREN 的 lyricPosGroup 登记 → 「四 pill 已登记」变红。 */
 }
 
 /* ================= T181f：B1 scrollWidth 可注入 → 隐藏分支可测 ================= */

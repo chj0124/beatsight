@@ -1743,6 +1743,97 @@ function bandProbe(){
     return JSON.stringify(out);
   })()`;
 }
+function lyricTabProbe(){
+  return `(async function(){
+    var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
+    var B = window.__beat, res = {};
+    if (!B || !B.Viz || !B.Store) return JSON.stringify({ err: "无 __beat.Viz/Store" });
+    var a = B.Store.arranges && B.Store.arranges[0], sec = a && a.sections && a.sections[0];
+    if (!a || !sec) return JSON.stringify({ err: "无示例曲式" });
+    var before = null;
+    try{ var line = B.Store.findLyric(a.id, sec.uid); before = line ? JSON.parse(JSON.stringify(line)) : null; }catch(e){}
+    var old = { pos: B.Store.S.lyricPos, pitch: B.Store.S.pitchNotation, show: B.Store.S.showLyric,
+      mode: B.Store.S.playMode, sel: JSON.parse(JSON.stringify(B.Store.S.arrangeSel)) };
+    function rebuild(){ B.Viz.buildViz(); }
+    function measure(){
+      var rows = [].slice.call(document.querySelectorAll("#lyricLane .lyric-row"));
+      var grids = [].slice.call(document.querySelectorAll("#viz .bar-row"));
+      var centerErr = 0, overlaps = 0, labelsN = 0;
+      rows.forEach(function(lr, ri){
+        var cell = grids[ri] && grids[ri].querySelector(".cell");
+        if (cell && lr.querySelector(".lyric-char")){
+          var cr = cell.getBoundingClientRect(), rr = lr.getBoundingClientRect();
+          centerErr = Math.max(centerErr, Math.abs((rr.top + rr.bottom - cr.top - cr.bottom) / 2));
+        }
+        var labels = [].slice.call(lr.querySelectorAll(".lyric-char")).filter(function(el){
+          return el.getBoundingClientRect().width > 0;
+        });
+        var boxes = labels.map(function(el){ return el.getBoundingClientRect(); });
+        labelsN += boxes.length;
+        for (var i = 0; i < boxes.length; i++) for (var j = i + 1; j < boxes.length; j++){
+          if (boxes[i].left < boxes[j].right && boxes[i].right > boxes[j].left) overlaps++;
+        }
+        var marks = grids[ri] ? [].slice.call(grids[ri].querySelectorAll(".strumv")) : [];
+        marks.forEach(function(mark){
+          if (getComputedStyle(mark).display === "none") return;
+          var mr = mark.getBoundingClientRect();
+          if (!mr.width) return;
+          boxes.forEach(function(br){
+            if (br.left < mr.right && br.right > mr.left && br.top < mr.bottom && br.bottom > mr.top) overlaps++;
+          });
+        });
+      });
+      return { centerErr: Math.round(centerErr * 100) / 100, overlaps: overlaps, labelsN: labelsN };
+    }
+    try{
+      B.Store.S.playMode = "arrange";
+      B.Store.S.arrangeSel = { id: a.id, from: 0, to: 0, loop: true };
+      B.Store.S.showLyric = true; B.Store.S.lyricPos = "tab"; B.Store.S.pitchNotation = "off";
+      B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }], { notes: [] });
+      rebuild(); await frame();
+      var st = B.Viz.lyricLayoutState(); res.mode = st.actual; res.reason = st.reason;
+      res.canOffer = B.Viz.canOfferLyricTab();
+      var tab = document.querySelector('#lyricPosGroup [data-pos="tab"]');
+      res.tabHidden = tab ? !!tab.hidden : null;
+      var geom = measure(); res.centerErr = geom.centerErr; res.overlaps = geom.overlaps; res.labelsN = geom.labelsN;
+      var firstChar = document.querySelector("#lyricLane.in-tab .lyric-char");
+      if (firstChar){ var charCss = getComputedStyle(firstChar);
+        res.textShadow = charCss.textShadow;
+        res.textStroke = charCss.getPropertyValue("-webkit-text-stroke-width"); }
+      B.Viz.paintLyric(12, 0, a, 0);
+      var fill = document.querySelector("#lyricLane .lyric-chip.on .lfill");
+      res.progress = fill ? fill.style.transform : "";
+      res.fillDisplay = fill ? getComputedStyle(fill).display : "";
+      B.Viz.paintLyric(24, 0, a, 0);
+      var stateChips = document.querySelectorAll("#lyricLane.in-tab .lyric-chip");
+      if (stateChips.length > 1){
+        res.playedColor = getComputedStyle(stateChips[0].querySelector(".lyric-char")).color;
+        res.futureColor = getComputedStyle(stateChips[1].querySelector(".lyric-char")).color; }
+      var beforeTops = [].slice.call(document.querySelectorAll("#viz .bar-row")).map(function(el){ return el.getBoundingClientRect().top; });
+      B.Store.S.lyricPos = "follow"; rebuild(); await frame();
+      var afterTops = [].slice.call(document.querySelectorAll("#viz .bar-row")).map(function(el){ return el.getBoundingClientRect().top; });
+      res.rowDelta = beforeTops.length === afterTops.length ? Math.max.apply(null, beforeTops.map(function(v, i){ return Math.abs(v - afterTops[i]); })) : -1;
+      B.Store.S.lyricPos = "tab"; B.Store.S.pitchNotation = "jp";
+      B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }],
+        { notes: [{ t: 0, dur: 24, p: 60 }, { t: 96, dur: 24, p: 62 }] });
+      rebuild(); await frame(); res.pitchMode = B.Viz.lyricLayoutState().actual;
+      B.Store.S.pitchNotation = "off";
+      B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }],
+        { notes: [{ t: 144, dur: 24, p: 64 }] });
+      rebuild(); await frame(); res.standaloneMode = B.Viz.lyricLayoutState().actual;
+    }catch(e){ res.err = String(e && e.message || e); }
+    finally{
+      try{
+        if (before) B.Store.upsertLyric(a.id, sec.uid, before.chars || [], { notes: before.notes || [] });
+        else B.Store.deleteLyric(a.id, sec.uid);
+        B.Store.S.lyricPos = old.pos; B.Store.S.pitchNotation = old.pitch; B.Store.S.showLyric = old.show;
+        B.Store.S.playMode = old.mode; B.Store.S.arrangeSel = old.sel; rebuild();
+        res.restored = B.Store.S.lyricPos === old.pos;
+      }catch(e){ res.restoreErr = String(e && e.message || e); }
+    }
+    return JSON.stringify(res);
+  })()`;
+}
 function pitchMarkProbe(){
   return `(async function(){
     var frame = function(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); }); };
@@ -2683,6 +2774,15 @@ function portraitFixProbe(){
       result.childrenShape = await probeJson("childrenShapeProbe", childrenShapeProbe(), false);
       /* ★★★ v3.31.1：连续滚动的静止态落位（与视口无关，在 1920 顺带量） */
       const scrollRest = await probeJson("scrollRestProbe", scrollRestProbe(), true);
+      /* PLAN-v15：谱内歌词的真实矩形与移动端回退；量完恢复 1920，避免污染后续探针。 */
+      result.lyricTab = [await probeJson("lyricTabProbe@1920", lyricTabProbe(), true)];
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
+      result.lyricTab.push(await probeJson("lyricTabProbe@390", lyricTabProbe(), true));
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);
       /* ★★★ v3.33.8：文字对比度审计（两主题各一遍）。放在最后——它会把所有 [hidden] 面板
          展开再收起，属于"改页面状态"的重探针，跑在布局/滚动/铺满等几何探针之后才不会互相污染。 */
       result.contrast = await probeJson("contrastProbe", contrastProbe(), true);
@@ -4193,6 +4293,41 @@ async function main(){
               }
             } else {
               ok(false, p.label + "·" + vp + "：顶部三块探针未取到（故障：" + ((TB[0] && TB[0].err) || "缺失") + "）", "");
+            }
+          }
+          /* PLAN-v15：谱内歌词必须真的落在格子带中央，且真实排版后字/记号不互压。 */
+          if (vp === "桌面"){
+            const LT = r.lyricTab || [], D = LT[0], M = LT[1];
+            if (D && M && !D.err && !M.err){
+              ok(D.canOffer === true && D.tabHidden === false,
+                p.label + "·" + vp + "：★ 大屏开放谱内入口", "canOffer=" + D.canOffer + " hidden=" + D.tabHidden);
+              ok(D.mode === "tab" && D.labelsN > 0,
+                p.label + "·" + vp + "：★★ 合格示例谱面实际进入 tab（非名义选择、实际回退）",
+                "mode=" + D.mode + " reason=" + D.reason + " labels=" + D.labelsN);
+              ok(typeof D.centerErr === "number" && D.centerErr <= 1,
+                p.label + "·" + vp + "：★★★ 歌词行与六线谱格子带中心误差 ≤1px", "实测 " + D.centerErr + "px");
+              ok(D.overlaps === 0,
+                p.label + "·" + vp + "：★★★ 歌词字与字、字与可见演奏记号矩形均不重叠", "重叠数 " + D.overlaps);
+              ok(typeof D.rowDelta === "number" && D.rowDelta <= 0.51,
+                p.label + "·" + vp + "：★★ tab↔follow 行顶不跳（行高守恒）", "最大差 " + D.rowDelta + "px");
+              ok(/^scaleX\(0\.5(?:0{1,2})?\)$/.test(D.progress),
+                p.label + "·" + vp + "：★ 谱内逐字进度仍按自身 dur 推进", "实际 " + D.progress);
+              ok(D.textShadow === "none" && (D.textStroke === "0px" || D.textStroke === ""),
+                p.label + "·" + vp + "：★★ 谱内歌词为纯色，无深色描边或光晕",
+                "stroke=" + D.textStroke + " shadow=" + D.textShadow);
+              ok(D.fillDisplay === "none" && D.playedColor === D.futureColor,
+                p.label + "·" + vp + "：★★ 唱完恢复普通色，逐字下划线不显示",
+                "fill=" + D.fillDisplay + " played=" + D.playedColor + " future=" + D.futureColor);
+              ok(D.pitchMode === "follow" && D.standaloneMode === "follow",
+                p.label + "·" + vp + "：★ 音高与独立旋律两场景都回退 follow",
+                "pitch=" + D.pitchMode + " standalone=" + D.standaloneMode);
+              ok(M.canOffer === false && M.tabHidden === true && M.mode === "follow" && M.reason === "layout",
+                p.label + "·" + vp + "：★★★ 390px 隐藏谱内入口，保存 tab 仍实际贴行",
+                JSON.stringify({ canOffer: M.canOffer, hidden: M.tabHidden, mode: M.mode, reason: M.reason }));
+              ok(D.restored === true && M.restored === true,
+                p.label + "·" + vp + "：★ 谱内探针量完恢复原偏好与歌词", "");
+            } else {
+              ok(false, p.label + "·" + vp + "：谱内歌词探针未取到", JSON.stringify(LT));
             }
           }
           /* ★★★ v3.38.1 补10（用户实拍）：**贴格子带的层必须与格子同高**——

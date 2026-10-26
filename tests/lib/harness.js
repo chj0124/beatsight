@@ -130,10 +130,10 @@ const HTML_ATTRS = {
    `setPressed()` 变成空转 —— aria-pressed 这类无障碍断言根本跑不起来（v1.3.0 为 P2-11 而加）。
    ★ v3.12.0：`sigRow`（拍号 6 档）已随手动拍号控件从标记里删除，此处同步摘掉。 */
 const HTML_CHILDREN = {
-  /* v3.31.6（审计 B3）：歌词显示位置三档——此前未登记，三个 pill 在桩里不存在（元素在、
-     children 空、querySelectorAll 命中 0），装配层那段三档点击接线整块零覆盖
+  /* v3.31.6（审计 B3）：歌词显示位置组——此前未登记，pill 在桩里不存在（元素在、
+     children 空、querySelectorAll 命中 0），装配层点击接线整块零覆盖
      （t149 只断言数据层、走 seed 与直接赋值）。登记后点击链路可测。 */
-  lyricPosGroup: ["auto", "follow", "bottom"].map(p => ({ className: "pill", dataset: { pos: p } })),
+  lyricPosGroup: ["auto", "follow", "bottom", "tab"].map(p => ({ className: "pill", dataset: { pos: p } })),
   /* v3.37.0（旋律谱 A 期）：音高标注三态组——同 lyricPosGroup 的登记理由：
      标记里写死的 pill 组，桩不解析 HTML ⇒ 不登记则点击接线整块零覆盖。
      第一档 .active 与标记里 data-pn="off" 的 aria-pressed="true" 对应（默认关）。 */
