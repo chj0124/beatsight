@@ -78,3 +78,22 @@ section("T162e 日间主题面板头：角标不吃整行（标题逐字竖排�
   ok(/<span class="sec-tag"><b>02<\/b><i>Library<\/i><\/span>(?:\s*<svg[^>]*class="pd-ico"[^>]*>[\s\S]*?<\/svg>)?\s*<span class="pd-title">节奏型预设库<\/span>/.test(src.replace(/<!--[\s\S]*?-->/g, "").replace(/\n\s*/g, " ")),
     "★ 面板头结构前提：角标（+ v3.44.0 图标）与标题同处一行容器（.pd-head）");
 }
+
+section("T162f 循环面板位置 · 搜索框之下 + 注脚贴控件（用户拍板挪位）");
+{
+  /* 用户需求（附截图）：循环小节面板原夹在动作钮与搜索框之间，把「搜索 → 列表」
+     浏览动线拦腰截断；挪到搜索框之下后动线连贯，且仍贴列表区顶部。
+     配套间距：说明文案（#loopHint）是控件行的注脚而非独立段落——8px → 4px 紧贴；
+     面板自身的 margin-bottom:16px 随旧位置退役（上下间距交给抽屉 10px gap，
+     留着会把列表区顶距从 10 顶到 26）。 */
+  const searchPos = src.indexOf('id="presetSearch"');
+  const panelPos = src.indexOf('id="loopPanel"');
+  ok(searchPos >= 0 && panelPos > searchPos,
+    "★★ 循环面板在搜索框**之后**（源码顺序即 DOM 顺序）——不许再回到搜索框上方截断动线");
+  ok(src.indexOf('id="loopPanel"') < src.indexOf('id="basicZone"'),
+    "★ 循环面板仍在基础节奏区（列表第 0 区）之上——作用于当前选中型，贴列表顶部");
+  ok(/\.loop-panel \.hint\{margin-top:var\(--sp-1\)/.test(src),
+    "★★ 说明文案 4px（--sp-1）紧贴控件行——注脚从属关系（原 8px 像独立段落）");
+  eq(src.includes(".loop-panel{margin-bottom"), false,
+    "★ 旧位置的 margin-bottom 分隔已删——间距交给抽屉 10px gap，列表区顶距不被顶大");
+}
