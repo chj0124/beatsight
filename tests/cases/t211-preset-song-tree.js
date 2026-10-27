@@ -128,15 +128,15 @@ section("T211h 歌曲行 ▶ 的两态（v3.35.6 用户实拍）· 播放中变 
   const rowsNow = () => boxOf(els).children.filter(c => /(^| )song( |$)/.test(c.className));
   const btnNow = i => playBtnOf(rowsNow()[i]);
   ok(!!btnNow(0), "前提：歌曲行有 ▶");
-  /* 桩元素没有 querySelector：v3.56.1 起 ▶/■ 走 ::before mask（零 DOM 节点），
+  /* 桩元素没有 querySelector：v3.56.1 起 ▶/音波柱 走 ::before mask（零 DOM 节点），
      断言改为「按钮挂 mk-ico+mk-aud 类且没有子节点」——若有人把图标改回真实子节点，
      DOM 预算（冒烟 ≤1300）会重新吃紧，这里当场变红 */
   const clsOf = b => String((b.className && b.className.baseVal !== undefined) ? b.className.baseVal : b.className);
   ok(/mk-ico/.test(clsOf(btnNow(0))) && /mk-aud/.test(clsOf(btnNow(0))) && (btnNow(0).children || []).length === 0,
-    "未播放时是 ▶（v3.56.1 起 ▶/■ = ::before mask，态走 .aud-on 类切 mask-image，零子节点）");
+    "未播放时是 ▶（v3.56.1 起 ▶/音波柱 = ::before mask，态走 .aud-on 类切 mask-image，零子节点）");
   btnNow(0).fire("click");
   eq(beat.Store.S.playing, true, "点 ▶ → 起播");
-  ok(btnNow(0).classList.contains("aud-on"), "★ 播放中该行的按钮变成 ■（暂停）");
+  ok(btnNow(0).classList.contains("aud-on"), "★ 播放中该行的按钮变成音波柱（暂停）");
   ok(/暂停/.test(String(btnNow(0).getAttribute("aria-label"))), "★ aria-label 同步成「暂停…」（读屏也读得对）");
   ok(!btnNow(1).classList.contains("aud-on"), "★ 另一首仍是 ▶（只标正在播的那一首）");
   btnNow(0).fire("click");
@@ -144,7 +144,7 @@ section("T211h 歌曲行 ▶ 的两态（v3.35.6 用户实拍）· 播放中变 
   ok(!btnNow(0).classList.contains("aud-on"), "★ 暂停后变回 ▶");
   btnNow(1).fire("click");
   eq(beat.Store.S.playing, true, "点第二首的 ▶ → 起播它");
-  ok(btnNow(1).classList.contains("aud-on"), "★ ■ 跟着换到第二首");
+  ok(btnNow(1).classList.contains("aud-on"), "★ 音波柱跟着换到第二首");
   ok(!btnNow(0).classList.contains("aud-on"), "★ 第一首回到 ▶（同一时刻只有一首在播）");
   beat.Controls.stop();
   ok(!btnNow(0).classList.contains("aud-on"), "★ 从主播放键停机后，歌曲行也回到 ▶（两处状态同源）");
