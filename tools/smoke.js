@@ -3676,6 +3676,17 @@ async function main(){
                 p.label + "·名字槽@" + pair[0] + "：★★★ 型名让位、段名吃回流空间（" + (x.arg && x.arg.w)
                 + "px ≥ 2em）——由「单字残读」升为「引子…」",
                 desc);
+              /* ★★★ v3.56.4：胶囊宽下限——**与字体度量无关的纯网格算术**。段名槽宽 = 胶囊盒宽 −
+                 固定扣减（padding/‹/cta/gaps），扣减项随平台字体浮动（macOS PingFang 宽于
+                 CI Linux）；而胶囊盒宽 = 内容区 358 − 键组 198 − 列距 12 − 组外留白 16 = 132，
+                 逐平台恒等。钉 ≥130：2026-10-28 事故里 v3.56.0 令牌收敛在键组与胶囊上多收 14px
+                 （胶囊 132→126、macOS 段名 37.61px 跌穿 2em 进 nameless），CI Linux 字体窄
+                 ~0.8px 恰好仍在阈上——「reflow」断言字体敏感没抓住，本钉不随字体漂移，
+                 同款 2px 级再收必红。 */
+              ok(x.capW !== null && x.capW >= 130,
+                p.label + "·名字槽@" + pair[0] + "：★★★ 胶囊盒宽 ≥ 130（实测 " + x.capW
+                + "px，纯网格算术、跨字体恒定）——防令牌再收敛悄悄吃掉段名槽（字体敏感断言的盲区补口）",
+                desc);
             } else {
               ok(two && x.arg.cramped === false && x.pat.cramped === false,
                 p.label + "·名字槽@" + pair[0] + "：★ 宽档名字槽不误压（放得下就显示）",

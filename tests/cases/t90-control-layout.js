@@ -350,7 +350,7 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.dialog\{[^}]*backdrop-filter:blur\(8px\)/.test(css),
     "★ v2.10.17：设置浮层 backdrop 加毛玻璃模糊（压暗 + 模糊）");
   ok(/\.arg-jump\{display:grid;grid-template-columns:1fr auto 1fr/.test(css)
-     && /\.trio\{display:flex;gap:var\(--sp-3\);grid-column:2/.test(css)
+     && /\.trio\{display:flex;gap:10px;grid-column:2/.test(css)
      && /\.arg-jump > \.loop-btn\{grid-column:3;justify-self:start\}/.test(css),
     "★★ v2.10.23：跳段行三列 Grid——三键组**精确居中**（中列 auto），循环钮贴着三键组排"
     + "（用户要求：居中不考虑循环钮；循环隐藏时右列空置、三键组仍居中）");

@@ -668,7 +668,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    "合并成一个同屏行数控件"一并退役（档位控件不再有禁用态，它随模式重列档位）。 */
 /* v3.3.0：原「预设库卡片」样式整段退役（卡片已拆：入口→底栏胶囊、内容→左侧面板）。
    取代它的两族样式在下面：底栏上下文胶囊 + 面板动作区。 */
-.pb-ctx{justify-self:start;display:flex;align-items:center;gap:var(--sp-2);background:var(--card2);border:1px solid transparent;
+.pb-ctx{justify-self:start;display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid transparent;   /* gap:6px 非 var(--sp-2)=8：v3.56.4 回吐——胶囊内每枚 gap 多收的 2px 在 390 档全部从段名槽扣（v3.56.0 令牌化，台账留痕） */
   border-radius:var(--radius-card);padding:8px 12px;color:var(--t1);font-size:13px;max-width:38vw;cursor:pointer;overflow:hidden}   /* ★ PLAN-v11 追补（用户实拍「残字形」）：补 overflow:hidden——任何子项溢出不画出圆角外（防线第一层）；收缩链在各子项自身的 min-width:0 + ellipsis */
 .pb-ctx:hover{border-color:var(--border)}
 .pb-ctx:focus-visible{border-color:var(--green)}
@@ -1466,7 +1466,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .jump-btn:active{transform:scale(.94)}
 .jump-btn:disabled{opacity:.35;cursor:default}
 /* v2.10.22：范围循环钮的双态图案切换与点亮态（aria-checked 由 setToggle 驱动） */
-.trio{display:flex;gap:var(--sp-3);grid-column:2;align-items:center}
+.trio{display:flex;gap:10px;grid-column:2;align-items:center}   /* gap:10px 非 var(--sp-3)=12：v3.56.0 令牌化多收的 2px×2 会把 390 档传输键组顶宽 4px——胶囊可用宽随列宽收窄 4px，段名槽被压向 nameless 降级（v3.56.4 回吐，台账留痕） */
 .arg-jump > .loop-btn{grid-column:3;justify-self:start}
 .loop-btn .ico-on{display:none}
 .loop-btn[aria-checked="true"] .ico-on{display:block}
@@ -1614,7 +1614,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
           它的**可用宽**必须保持不变，否则长文案的截断位置会跟着变。 */
   .play-bar{grid-template-rows:auto auto;row-gap:4px;align-content:center;padding-top:var(--sp-2);
     grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.3fr)}
-  .play-bar .status{padding-left:var(--sp-3)}
+  .play-bar .status{padding-left:10px}   /* v3.56.4 回吐到 10px：与下面胶囊 ≤640 档 padding 横向 10px 同源——v3.36.20 补3 的「状态灯与 ‹ 差 1px」对齐不变量两边必须一起动（v3.56.0 曾双双令牌化到 12） */
   /* ★ v3.18.0（用户截图 2 例）：行 1 = 播放键组跨三列居中（play 72→48、跳段/循环
      44→40——三行塞不进 82px 内容区，按钮让位）；行 2 = 型名胶囊（col 1，占满列宽 +
      省略号——旧 30vw 上限在自己的列里溢出、被 ⏮ 压住的根因）+ 右区（col 2-3）。
@@ -1623,7 +1623,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
      位置信息由进度条本身与座次尺承担。 */
   #argJump{grid-column:1 / -1;grid-row:1;justify-self:center}
   .pb-ctx{grid-row:2;grid-column:1;justify-self:stretch;max-width:100%;min-width:0;
-    padding:var(--sp-1) var(--sp-3);font-size:11px}
+    padding:4px 10px;font-size:11px}   /* v3.56.4 回吐：横向 10px（v3.56.0 令牌化成 --sp-3=12 多收 2px×2）——390 档段名槽曾因此跌穿 2em 可读下限进 nameless（macOS PingFang 度量下实测），台账留痕 */
   .pb-ctx .pat-now{font-size:11px}
   .pb-right{grid-column:2 / -1;grid-row:2;flex-direction:row;justify-self:stretch;
     max-width:none;gap:12px;align-items:center}
@@ -2984,7 +2984,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-lyric-grp[aria-expanded="false"]::before{content:"▸"}
 .arg-lyric-rowsep{flex-basis:100%;height:0;margin:0;padding:0}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
-.arg-now{display:flex;align-items:center;gap:var(--sp-3);margin-top:12px;flex-wrap:wrap}
+.arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}   /* gap:10px 非 var(--sp-3)=12：同 .trio 的 v3.56.4 回吐——键组这 2px 直接进 390 档传输列宽、挤胶囊 */
 /* ★ v3.3.1：`.arg-now` 的 `margin-top:12px` 是它住在卡片里时的纵向留白。播放行搬进底栏后
    它仍在（class 同时挂着 arg-now），在 align-items:center 的网格里把整组**压低 9px**——
    真机实测"播放键底缘距视口底 9px（期望 ≥16）"就是这么来的。 */
@@ -5152,7 +5152,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.56.3";
+const VERSION = "3.56.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

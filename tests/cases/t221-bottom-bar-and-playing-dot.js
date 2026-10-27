@@ -22,7 +22,10 @@ const fs = require("fs");
 const path = require("path");
 const { loadApp, FakeAudioContext, drive, ok, eq, section } = require("../lib/harness");
 
-const html = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
+/* ★ v3.56.4：本文件多处源码级断言（T221a/T221e），此前直读工作区 index.html、
+   绕过了 BEATSIGHT_HTML 注入口——变异副本（/tmp）下这些断言恒绿，反向验证测不到它们。
+   与 harness.js 同口径：优先环境变量。 */
+const html = fs.readFileSync(process.env.BEATSIGHT_HTML || path.join(__dirname, "..", "..", "index.html"), "utf8");
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 /* 与 t73 同一口径：seedDemo:false 让它真的把示例曲带出来（5 型 + 曲式 + 歌词） */
 const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }), { seedDemo: false });
@@ -130,4 +133,23 @@ section("T221d 呼吸点 · ★★ 只点亮**正在发声**的那条，与「�
   beat.Controls.stop();
   eq(withClass(els, "playing").length, 0,
     "★★ 停机后呼吸点熄灭（appliedPat 此时仍指着「待命型」，但那不是「正在播放」）");
+}
+
+/* ================= T221e：390 档段名槽回吐（v3.56.4，源码级） =================
+   事故：v3.56.0 令牌收敛在键组（.trio/.arg-now gap 10→12）与胶囊（gap 6→8、≤640 横向
+   padding 10→12）上多收 14px，390 档段名槽跌穿 2em 可读下限进 nameless（macOS PingFang
+   度量下实测 37.61→<24px；CI Linux 窄 ~0.8px 恰好在阈上——真机探针详见 smoke 名字槽 sweep
+   的「胶囊盒宽 ≥130」字体不敏感闸）。以下五枚字面值即回吐本身，逐一钉死防再次"顺手令牌化"。 */
+section("T221e 段名槽回吐 · ★★★ 390 档胶囊几何的五枚回吐字面值（任何一枚再被令牌化 = 回归）");
+{
+  ok(/\.pb-ctx\{justify-self:start;display:flex;align-items:center;gap:6px/.test(html),
+    "★★★ 胶囊基座 gap:6px（非 --sp-2=8：每枚 gap 多收的 2px 在 390 档全从段名槽扣）");
+  ok(/\.trio\{display:flex;gap:10px;grid-column:2/.test(html),
+    "★★★ 键组三键 gap:10px（非 --sp-3=12：键组每宽 1px、胶囊可用宽随列宽窄 1px）");
+  ok(/\.arg-now\{display:flex;align-items:center;gap:10px/.test(html),
+    "★★★ 键组内间距 gap:10px（同上，直接进 390 档传输列宽）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.pb-ctx\{grid-row:2;grid-column:1;[\s\S]*?padding:4px 10px;font-size:11px\}/.test(html),
+    "★★★ ≤640 胶囊横向 padding:10px（非 --sp-3=12：两侧各多收的 2px 同样从段名槽扣）");
+  ok(/@media \(max-width:640px\)[\s\S]*?\.play-bar \.status\{padding-left:10px\}/.test(html),
+    "★★ ≤640 状态灯 padding-left:10px——与上一条**成对**（v3.36.20 补3「灯↔‹ 差 1px」对齐不变量：胶囊改 10 它必须跟着改，单独动任何一边都会错位）");
 }
