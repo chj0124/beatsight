@@ -105,8 +105,10 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
 section("T203f 层级间距、播放绿点居中与歌曲不换行");
 {
   ok(/\.preset-item\{position:relative;padding:4px 12px;/.test(src), "条目上下内边距为 4px");
-  ok(/\.preset-section\+\.preset-arrange-group>\.preset-item:first-child\{margin-top:var\(--sp-2\)\}/.test(src),
-    "分区首条目顶距 8px(sp-2) 在底块外（v3.56.3 padding→margin：选中底块统一 27.5px）+ 网格 4px = 区间距 12px");
+  ok(/\.preset-section\+\.preset-arrange-group>\.preset-item:first-child\{margin-top:var\(--sp-1\)\}/.test(src),
+    "分区首条目顶距 4px(sp-1) 在底块外（v3.56.3 padding→margin：底块统一 27.5px；4 外距 + 4 网格 + 4 内边距 = 文字节奏 12px，CI 冒烟钉的口径）");
+  ok(/\.preset-item\.song\{margin-top:var\(--sp-1\)\}/.test(src),
+    "★ 歌曲行自带 4px 顶距（v3.56.3：block 容器无网格行距，收起态 song↔song 此前 0px、文字节奏 8px ≠ 节拍 12px——补齐归一）");
   ok(/\.preset-item\.in-song\{margin-left:18px;margin-top:var\(--sp-1\)/.test(src),
     "歌曲父级到首子条目的间距改走 4px margin（旧 8px 顶距专用规则随 4/4 同律方案退役）");
   ok(/margin-top:-3px;border-radius:50%/.test(src), "6px 播放绿点向上回退自身一半，真正垂直居中");

@@ -52,10 +52,10 @@ const MUTANTS = [
     ".preset-item .preset-actions{position:absolute;right:6px",
     ".preset-item .preset-actions{position:absolute;right:4px", "M10"),
    ["最右图标与说明共用 12px 内容右缘"]],
-  ["M11 分区首条目间距改为 12px", s => once(s,
-    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-2)}",
-    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-3)}", "M11"),
-   ["分区首条目顶距 8px(sp-2) 在底块外"]],
+  ["M11 分区首条目顶距回退 8px（CI 冒烟拦过的一档）", s => once(s,
+    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-1)}",
+    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-2)}", "M11"),
+   ["分区首条目顶距 4px(sp-1) 在底块外"]],
   ["M12 播放绿点再次偏上", s => once(s,
     "margin-top:-3px;border-radius:50%",
     "margin-top:-6px;border-radius:50%", "M12"),
@@ -90,6 +90,10 @@ const MUTANTS = [
     'color:var(--t3);background:currentColor;transform:translateY(-50%) rotate(-90deg);',
     'color:var(--t3);background:currentColor;transform:rotate(-90deg);', "M19"),
    ["mask 雪佛龙绝对定位行中线"]],
+  ["M20 歌曲行顶距清零（间距回 0px）", s => once(s,
+    ".preset-item.song{margin-top:var(--sp-1)}",
+    ".preset-item.song{margin-top:0}", "M20"),
+   ["歌曲行自带 4px 顶距"]],
 ];
 let hitN = 0, missN = 0;
 const ONLY = process.env.MUT_ONLY || "";

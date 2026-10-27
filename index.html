@@ -2151,14 +2151,18 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .loop-panel .hint:empty{display:none}
 .preset-item{position:relative;padding:4px 12px;border-radius:var(--radius-item);cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
 .preset-section+.preset-item,.preset-group+.preset-item,
-.preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-2)}
+.preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-1)}
 /* ★ v3.56.3（用户实拍两张截图对比发现）：区间距的 8px 顶距从 padding 改 **margin**——
    padding 画在 border-box 里、选中底块连着一起画，三区**首条目**的背景条因此比别行
    高 4px（实测《在他乡》31.5 vs 次行 27.5；节拍区「四分基础」同为 31.5）。改 margin 后
-   间距落在底块外，全库背景条统一 27.5px；区间距合成口径不变（8px 外距 + 4px 网格 = 12px，
-   #presetList 是 grid、margin 不跨轨坍缩；分组内首条目的 margin 会穿透坍缩到
-   .preset-arrange-group 上，间距总值同 12px）。取舍：顶距从可点击区变为纯间距——
-   它本来也只是缝。 */
+   间距落在底块外，全库背景条统一 27.5px。
+   ★★ 修正记录（CI 冒烟拦截）：初版此规则用 var(--sp-2)=8px，区头→首条目**文字**间距
+     从 12px 涨到 16px（4 网格 + 8 margin + 4 padding），撞了 smoke.js 钉的
+     「区头到首条目文字 ≈ 12px」节奏线（v3.35.8 拍板）——本机无 Chrome、冒烟恒 ⊘，
+     只有 CI 抓得住。定稿口径：**4px 外距 + 4px 网格 + 4px 内边距 = 文字节奏 12px**，
+     底块上缘落在区头下 8px（无探针钉它）。#presetList 是 grid、margin 不跨轨坍缩；
+     分组内首条目的 margin 穿透坍缩到 .preset-arrange-group 上，文字节奏同 12px。
+     取舍：顶距从可点击区变为纯间距——它本来也只是缝。 */
 /* 首子条目与歌曲行的 12px 文字间距：song 下 padding 4 + in-song margin-top 4 + 上 padding 4
    合成（旧 8px 顶距专用规则随 margin 方案退役） */
 /* 名称始终保留；只有说明在操作时透明让位，图标接管原说明区域且行高不变。 */
@@ -2181,6 +2185,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-item.song[aria-expanded="true"] .name::before{transform:translateY(-50%)}
 .preset-item.song>div:first-child{flex-wrap:nowrap}
 .preset-item.song .meta{flex:1 1 0}
+/* ★ v3.56.3（用户实拍「节拍/自定义条目间距不同」）：自定义区条目住在 .preset-arrange-group
+   （普通 block 容器）里，享受不到 #presetList 的 4px 网格行距——in-song 自带 margin-top:4px，
+   而 song 行此前裸奔：收起态 song↔song 与「末个 in-song↔下一首 song」都是 0px，
+   文字节奏 8px ≠ 节拍区 12px。补上与 in-song 同档顶距，三区条目间距归一
+   （首行由上面的区头规则以更高特异性覆盖，同值不叠加）。 */
+.preset-item.song{margin-top:var(--sp-1)}
 /* 歌曲是分组标题，子节奏型降低一级；嵌套文字间距与普通层级同为 12px。 */
 /* ★★ 歌曲行的「分组标题常驻底」已退役（2026-10-27 用户复检拍板，含 .preset-arrange-group
    的左缘分组线一并退役）：未选中时两行都顶着 --card2 底块 + 蓝线，读起来像「都处于
@@ -5100,23 +5110,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5132  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6794  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9035  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10271 Modal         应用内弹窗
-     L10432 Viz           时值可视化渲染与每帧动画
-     L14162 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14916 Trainer       变速训练器
-     L15133 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15812 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17768 Editor        自定义节奏型编辑器
-     L18904 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18999 Ear           听辨训练（v1.10.0）
-     L19227 Arrange       曲式编排（v2.0.0）
-     L23363 Help          使用方法（v2.0.1）
-     L23518 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23600 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23896 初始化（装配） 各模块 hook 接线与启动
+     L5142  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6804  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9045  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10281 Modal         应用内弹窗
+     L10442 Viz           时值可视化渲染与每帧动画
+     L14172 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14926 Trainer       变速训练器
+     L15143 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15822 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17778 Editor        自定义节奏型编辑器
+     L18914 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19009 Ear           听辨训练（v1.10.0）
+     L19237 Arrange       曲式编排（v2.0.0）
+     L23373 Help          使用方法（v2.0.1）
+     L23528 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23610 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23906 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

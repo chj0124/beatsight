@@ -433,7 +433,8 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      · --mk-chev 雪佛龙 data URI（~330B）+ 三处根因/修法/取舍注释体量 + 测试断言口径
        文案；减去读数行 DOM/CSS/文案与帮助页句后净 +2.3KB 级。
      · 换来的是箭头跨平台逐像素居中（几何锁死）+ 状态读数行整行退役（三态全删，
-       位置面 = 播放头）+ 三区首条目背景条等高（8px 顶距 padding→margin，间距总值不变）。
+       位置面 = 播放头）+ 三区首条目背景条等高与条目间距归一（顶距 padding→margin sp-1，
+       文字节奏恒 12px；初版 sp-2 被 CI 冒烟拦下，见 CHANGELOG C 修正记录）。
        净增主体是取证注释——本仓取证纪律的成本，按既定先例随批抬线；余量紧，
        下批再超就该动壁纸那张 ~365K data URI 了（观察线会继续催）。 */
 const BUDGET_BYTES = 2116 * 1024;
