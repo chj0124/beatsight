@@ -118,13 +118,13 @@ section("T203f 层级间距、播放绿点居中与歌曲不换行");
     "★★ 歌曲子条目也禁止名称与 4/4 换行，说明只占剩余空间");
   ok(/\.preset-item\.in-song\{margin-left:18px;padding:var\(--sp-2\) var\(--sp-3\)\}/.test(src),
     "★★ 子条目上下内边距为 6px，嵌套文字间距统一为 12px");
-  ok(/\.preset-item\.song\{background:var\(--card2\)\}/.test(src)
+  ok(!/\.preset-item\.song\{background:/.test(src)
     && /\.preset-item\.song \.name\{font-weight:600\}/.test(src),
-    "★★ 歌曲行作为分组标题，具有独立底色与字重");
+    "★★ 歌曲行作为分组标题：字重 600 保留；常驻底色已退役（2026-10-27 用户拍板——底块+分组线让未选中行读作选中，防回潮）");
   ok(/\.preset-item\.in-song \.name\{font-size:12px;font-weight:500;color:var\(--t2\)\}/.test(src),
     "★★ 子节奏型名称比父级小一级、弱一级");
-  ok(/\.preset-arrange-group::before\{content:"";position:absolute;left:0;top:28px;bottom:10px;width:2px;/.test(src),
-    "★★ 左侧引导线贯穿子条目，不再只是独立边框");
+  ok(!/\.preset-arrange-group::before/.test(src),
+    "★★ 左侧分组竖线已退役（2026-10-27 用户拍板：每首歌一条线读作选中条；分组身份靠书名号+字重，防回潮）");
   ok(/\.preset-item\.song \.name::before\{content:"▸";display:inline-flex;align-items:center;justify-content:center;/.test(src)
     && /width:12px;height:1em;vertical-align:middle/.test(src),
     "★★ 折叠箭头有独立居中盒，不再只依赖文字基线");

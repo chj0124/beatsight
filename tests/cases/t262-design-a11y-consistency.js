@@ -76,7 +76,6 @@ section("T262c 主题令牌 · 样式表不再写死经典绿透明色");
     ".cell.next{",
     ".cell.active{",
     ".lyric-chip.on{",
-    "border-radius:1px;background:rgba(var(--green-rgb),.45)",
     ".arg-map-seg.in-range{",
     ".arg-lyric-tag.ok{",
     ".arg-ol-row.sel{",

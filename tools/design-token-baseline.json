@@ -62,7 +62,6 @@
     "padding-left:12px",
     "padding-left:16px",
     "padding-left:20px",
-    "padding-left:8px",
     "padding-left:calc(16px + env(safe-area-inset-left, 0px))",
     "padding-left:calc(24px + env(safe-area-inset-left, 0px))",
     "padding-left:max(calc(24px + env(safe-area-inset-left, 0px)), calc((100% - 1440px) / 2 + 24px))",

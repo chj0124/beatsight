@@ -43,7 +43,7 @@ MUTANTS = [
     ("M5 删掉 .song.active 的背景通道规则（PLAN-v16 追补：左条与分组线相撞，改 --sel-bg 背景通道）",
      lambda s: s.replace(".preset-item.song.active{background:var(--sel-bg);color:var(--sel-fg)}\n", "", 1)
                 .replace('body[data-theme="obs"] .preset-item.song.active{background:var(--sel-bg);border-left-color:transparent;color:var(--sel-fg)}', "", 1),
-     ["song.active 有"]),
+     ["背景通道"]),
 ]
 
 hit_n, miss_n, rot_n = 0, 0, 0

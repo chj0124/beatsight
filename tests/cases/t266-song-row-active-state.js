@@ -157,15 +157,17 @@ section("T266d 播放中拖范围滑块进曲式 · ★ 同一行节点不重建
    与 .active 的选中底撞在同一个 var(--card2) 上，底色通道失明；meta 变绿又被
    选中态图标浮现藏掉。修法 = 默认主题补「左 2px 绿边」（obs 主题既有语言）。
    桩不渲染 CSS，视觉只能按 t101e 的先例做**源码级**断言；观感属人眼验收范围。 */
-section("T266e 歌曲行选中视觉 · ★ 左侧 2px 绿边规则存在（默认主题），obs 主题沿用既有左绿边");
+section("T266e 歌曲行选中视觉 · ★ 背景通道（--sel-bg）· 常驻底与分组线退役");
 {
   ok(html.includes(".preset-item.song.active{background:var(--sel-bg);color:var(--sel-fg)}")
      && html.includes('body[data-theme="obs"] .preset-item.song.active{background:var(--sel-bg);border-left-color:transparent;color:var(--sel-fg)}'),
-    "★★ 默认主题：.song.active 有 inset 绿边规则（选中信号不依赖与 .song 撞车的底色通道）");
-  /* obs 主题的既有语言仍在（song 行经 .preset-item.active 天然继承）——本修不改它 */
+    "★★ 歌曲行选中态走背景通道（--sel-bg 深底白字，与 .pill.active 同语言；v3.55.12 的左条与分组线同通道相撞，已退役）");
+  /* obs 主题通用 .active 左绿边仍在——非 song 行的底色通道没撞车，保留既有语言 */
   ok(/body\[data-theme="obs"\] \.preset-item\.active\{[^}]*border-left-color:var\(--green\)/.test(html),
-    "★ obs 主题：.active 左绿边规则仍在（song 行继承同一条，两主题语言一致）");
-  /* 不许把 .song 的常驻底抹掉来「让位」——那是分组标题的结构样式（v3.35.3 定稿） */
-  ok(html.includes(".preset-item.song{background:var(--card2)}"),
-    "★ .song 结构性常驻底保留（选中信号另开通道，不拆分组标题的层级表达）");
+    "★ obs 主题：非 song 行的 .active 左绿边规则仍在（song 行另有专属规则置透明）");
+  /* ★ 2026-10-27 用户拍板翻转：.song 常驻底从「保留」改为「退役」——未选中时两行都顶着
+     --card2 底块 + 分组线，读作「都处于高亮态」，这是用户反复报的「背景色问题」本体。
+     未选中行透明底 ⇄ 选中行 --sel-bg 深底，才是可辨的对照。负向断言防回潮。 */
+  ok(!/\.preset-item\.song\{background:/.test(html),
+    "★ .song 常驻底已退役（未选中无块 ⇄ 选中深底；旧口径「保留常驻底」随本次拍板作废）");
 }

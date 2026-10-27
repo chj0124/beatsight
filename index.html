@@ -2139,7 +2139,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-item.song>div:first-child{flex-wrap:nowrap}
 .preset-item.song .meta{flex:1 1 0}
 /* 歌曲是分组标题，子节奏型降低一级；嵌套文字间距与普通层级同为 12px。 */
-.preset-item.song{background:var(--card2)}
+/* ★★ 歌曲行的「分组标题常驻底」已退役（2026-10-27 用户复检拍板，含 .preset-arrange-group
+   的左缘分组线一并退役）：未选中时两行都顶着 --card2 底块 + 蓝线，读起来像「都处于
+   某种高亮态」——用户最初的「自定义条目背景色问题」本体就是这个常驻底，而 v3.55.12 与
+   PLAN-v16 追补的两轮修复都以「常驻底保留」为前提在修选中态，前提即病灶。
+   层级改由字重（600）+《书名号》+ ▸ 展开箭头 + 子条目缩进表达；选中态走 --sel-bg
+   深底白字（见下），未选中无块 ⇄ 选中深块，一眼可辨。 */
 .preset-item.song .name{font-weight:600}
 /* ★★ 歌曲行的选中态 = **背景通道**（--sel-bg/--sel-fg，与 .pill.active 同一套选中语言）。
    为什么放弃 v3.55.12 的「左 2px 绿边」修法（用户复检实拍：还是分不清）：
@@ -2200,12 +2205,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-item .ren{color:var(--t3);font-size:13px;padding:2px var(--sp-2);border-radius:var(--radius-ctrl);flex:none}
 .preset-item .ren:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 /* 「自定义」区（v2.9.0）：曲式条目（Store.arranges）+ 当前曲式的「整首连播」行与段序条。
-   与节拍/扫弦两区用左侧一条绿色竖线区分——"这一组是曲式（整首怎么弹）"比字号更一眼可辨。
+   ★ 左侧绿色分组竖线已退役（2026-10-27 用户拍板，与歌曲行常驻底同批）：每首歌各一层
+     分组、各一条线，未选中时读作「每行都有选中条」；分组身份由《书名号》+ 600 字重
+     + 底部 margin 承担。padding-left:8px 是当年给线留的位，一并回收（行左移 8px，
+     与其他区条目的 12px 内边距对齐）。
    v2.4.1 的"示例曲分组"样式（.preset-section.demo-section / .preset-badge / .preset-demo-group）
    随该分组一并删除：示例曲的 5 个型已按内容并入「扫弦」区，不再单独成组。 */
-.preset-arrange-group{position:relative;padding-left:8px;margin-bottom:4px}
-.preset-arrange-group::before{content:"";position:absolute;left:0;top:28px;bottom:10px;width:2px;
-  border-radius:1px;background:rgba(var(--green-rgb),.45)}
+.preset-arrange-group{margin-bottom:4px}
 .preset-arrange-group[hidden]{display:none}
 /* 「播放范围」双滑块（v2.10.4）：取代原「段序条」那 N 颗段号胶囊，也取代了
    v2.4.1 的「切换节奏型」胶囊条（后者的候选与「扫弦」区内容重复，已删除）。
@@ -5028,23 +5034,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5056  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6718  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8959  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10187 Modal         应用内弹窗
-     L10348 Viz           时值可视化渲染与每帧动画
-     L14078 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14832 Trainer       变速训练器
-     L15049 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15724 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17692 Editor        自定义节奏型编辑器
-     L18828 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18923 Ear           听辨训练（v1.10.0）
-     L19151 Arrange       曲式编排（v2.0.0）
-     L23288 Help          使用方法（v2.0.1）
-     L23443 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23525 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23821 初始化（装配） 各模块 hook 接线与启动
+     L5066  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6728  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8969  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10197 Modal         应用内弹窗
+     L10358 Viz           时值可视化渲染与每帧动画
+     L14088 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14842 Trainer       变速训练器
+     L15059 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15734 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17702 Editor        自定义节奏型编辑器
+     L18838 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18933 Ear           听辨训练（v1.10.0）
+     L19161 Arrange       曲式编排（v2.0.0）
+     L23298 Help          使用方法（v2.0.1）
+     L23453 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23535 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23831 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
