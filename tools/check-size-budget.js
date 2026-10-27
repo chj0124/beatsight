@@ -409,8 +409,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      · 2,154,496 → 2,156,022 B，超线 1.5KB：mkActionIcon 共享助手（ACTION_ICON 表 + 工厂）+
        六处调用点改造 + 同批删除的常驻底/分组线/文本字形大致相抵后净增。
      · 换来的是操作组四图标与全站描边 SVG 语言归一（📁 emoji 退役）+ ▶↔■ 零重排。
-       同为基础设施抬线，理由随批写入。 */
-const BUDGET_BYTES = 2106 * 1024;
+       同为基础设施抬线，理由随批写入。
+   ★ PLAN-v16 追补二（双击同权 + 行间间隙）：2106 → **2108KB**。
+     · 2,156,022 → 2,158,561 B，超线 2.0KB：条目 ▶ 主播放两态（syncAuditionBtns 判据扩展 +
+       start/stop 钩子显式挂点 + toggleAudition 停止分支）+ in-song 间隙/等高方案 +
+       本批测试判据改造的同源注释。
+     · 同为基础设施抬线，理由随批写入。 */
+const BUDGET_BYTES = 2108 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

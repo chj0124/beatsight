@@ -107,8 +107,8 @@ section("T203f 层级间距、播放绿点居中与歌曲不换行");
   ok(/\.preset-item\{position:relative;padding:4px 12px;/.test(src), "条目上下内边距为 4px");
   ok(/\.preset-section\+\.preset-arrange-group>\.preset-item:first-child\{padding-top:8px\}/.test(src),
     "分区首条目上内边距 8px + 网格 4px = 区间距 12px");
-  ok(/\.preset-arrange-group>\.preset-item\.song\+\.preset-item\.in-song\{padding-top:8px\}/.test(src),
-    "歌曲父级到首子条目使用专用间距，不把区间距一起放大");
+  ok(/\.preset-item\.in-song\{margin-left:18px;margin-top:var\(--sp-1\)/.test(src),
+    "歌曲父级到首子条目的间距改走 4px margin（旧 8px 顶距专用规则随 4/4 同律方案退役）");
   ok(/margin-top:-3px;border-radius:50%/.test(src), "6px 播放绿点向上回退自身一半，真正垂直居中");
   ok(/\.preset-item\.song>div:first-child\{flex-wrap:nowrap\}/.test(src)
     && /\.preset-item\.song \.meta\{flex:1 1 0\}/.test(src),
@@ -116,8 +116,8 @@ section("T203f 层级间距、播放绿点居中与歌曲不换行");
   ok(/\.preset-item\.in-song>div:first-child\{flex-wrap:nowrap\}/.test(src)
     && /\.preset-item\.in-song \.meta\{flex:1 1 0\}/.test(src),
     "★★ 歌曲子条目也禁止名称与 4/4 换行，说明只占剩余空间");
-  ok(/\.preset-item\.in-song\{margin-left:18px;padding:6px 12px\}/.test(src),
-    "★★ 子条目上下内边距为 6px，嵌套文字间距统一为 12px（PLAN-v16 阶段 3 曾误收敛 6→8 致底块高出节拍区 6.5px，用户实报后回退白名单）");
+  ok(/\.preset-item\.in-song\{margin-left:18px;margin-top:var\(--sp-1\);padding:var\(--sp-1\) var\(--sp-3\)\}/.test(src),
+    "★★ 子条目上下内边距 4px 与节拍区同律（三区底块等高）+ 行间 4px 间隙（底块不粘连）；12px 文字节奏由 margin+padding 合成（2026-10-27 二次拍板）");
   ok(!/\.preset-item\.song\{background:/.test(src)
     && /\.preset-item\.song \.name\{font-weight:600\}/.test(src),
     "★★ 歌曲行作为分组标题：字重 600 保留；常驻底色已退役（2026-10-27 用户拍板——底块+分组线让未选中行读作选中，防回潮）");

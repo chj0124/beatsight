@@ -6,7 +6,8 @@ const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 
 const presetItems = els => els["presetList"].children.filter(c => /(^| )preset-item( |$)/.test(c.className));
 /* 条目子序：[box, ▶(aud), ✎(ren), 📁(grp)]（▶ 在 v3.1.0 插到 ✎ 之前） */
-const audBtnOf = item => item.children.find(c => c.className === "aud");
+/* 匹配须容「aud aud-on」——sync 会把态类并进 className（精确 === 在重建+同步后失灵） */
+const audBtnOf = item => item.children.find(c => /(^| )aud( |$)/.test(c.className));
 const nameOf = item => item.children[0].children[0].textContent;
 
 section("T158 试听 · 进/出/换/互斥/拍号恢复");
@@ -16,40 +17,47 @@ section("T158 试听 · 进/出/换/互斥/拍号恢复");
     "beatsight.bnmig35": "1" });
   let items = presetItems(els);
   ok(items.length > 2, "前提：预设列表已渲染（内置型 ≥ 3 条）");
-  const aud0 = audBtnOf(items[0]), aud1 = audBtnOf(items[1]);
-  ok(!!aud0 && !!aud1, "前提：条目带 ▶ 试听钮");
+  /* ★ PLAN-v16：按钮引用**每次现取**——试听/主播放都会经 applyPatternChange → buildPresetList
+     重建列表，旧引用是脱离文档的冻结值，后续 sync 的类翻转打不到它（t211 同款老坑）。
+     条目序恒定（内置区前两行），按位现取即稳定。 */
+  const aud0 = () => audBtnOf(presetItems(els)[0]);
+  const aud1 = () => audBtnOf(presetItems(els)[1]);
+  ok(!!aud0() && !!aud1(), "前提：条目带 ▶ 试听钮");
   const name0 = nameOf(items[0]), name1 = nameOf(items[1]);
 
   /* ① 点 ▶ → 进预览态：S.preview=true、试听对象 = 该条目的型、正在播 */
-  aud0.fire("click");
+  aud0().fire("click");
   eq(beat.Store.S.preview, true, "★ 点 ▶ → S.preview = true");
   eq(beat.curPattern().name, name0, "★ 试听对象 = 该条目的型");
   eq(beat.Store.S.playing, true, "试听在发声（Controls.start 已走）");
   eq(beat.Store.S.sel.type + "/" + beat.Store.S.sel.idx, "builtin/1", "★ S.sel 纹丝不动（试听 ≠ 选中）");
-  ok(aud0.classList.contains("aud-on"), "按钮态翻转为 ■（PLAN-v16 起 ▶/■ 是同壳双 path 的 SVG，态走 .aud-on 类）");
+  ok(aud0().classList.contains("aud-on"), "按钮态翻转为 ■（PLAN-v16 起 ▶/■ 是同壳双 path 的 SVG，态走 .aud-on 类）");
 
   /* ② 再点同一条 → 停止试听 */
-  aud0.fire("click");
+  aud0().fire("click");
   eq(beat.Store.S.preview, false, "★ 再点同一条 → 预览退出");
   eq(beat.Store.S.playing, false, "播放停止");
-  ok(!aud0.classList.contains("aud-on"), "按钮态翻回 ▶");
+  ok(!aud0().classList.contains("aud-on"), "按钮态翻回 ▶");
 
   /* ③ 换条试听：试听对象跟着走（前一条按钮态同步翻回） */
-  aud0.fire("click");
-  aud1.fire("click");
+  aud0().fire("click");
+  aud1().fire("click");
   eq(beat.curPattern().name, name1, "★ 点别条 → 试听对象切换");
-  ok(!aud0.classList.contains("aud-on"), "前一条按钮态同步翻回 ▶");
-  ok(aud1.classList.contains("aud-on"), "当前条按钮态 ■");
-  aud1.fire("click");
+  ok(!aud0().classList.contains("aud-on"), "前一条按钮态同步翻回 ▶");
+  ok(aud1().classList.contains("aud-on"), "当前条按钮态 ■");
+  aud1().fire("click");
   eq(beat.Store.S.preview, false, "收尾：退出试听");
 
-  /* ④ 与主播放互斥：主播放开着时点 ▶ → 主播放让位给试听 */
-  beat.Controls.start();                      // 主播放（预设模式，选中的 idx 1）
-  eq(beat.Store.S.playing && !beat.Store.S.preview, true, "前提：主播放中");
-  aud0.fire("click");
-  eq(beat.Store.S.preview, true, "★ 主播放中点 ▶ → 进入试听");
-  eq(beat.curPattern().name, name0, "试听对象正确");
-  aud0.fire("click");                         // 收尾退出
+  /* ④ 与主播放的关系（PLAN-v16 语义变更，用户拍板）：**正在主播放的那一行** ▶ 呈 ■，
+     点它 = 停止主播放——与歌曲行「双击与 ▶ 同权」对齐；旧行为「让位给试听」退役。
+     主播放的行 = 选中型（idx 1 = 八分摇滚 = aud1 的行）；aud0（四分基础）仍呈 ▶。 */
+  beat.Controls.start();                      // 主播放（预设模式，选中 idx 1；③ 收尾已退试听）
+  ok(aud1().classList.contains("aud-on"), "★ 主播放的那行 ▶ 呈 ■（双击同权）");
+  ok(!aud0().classList.contains("aud-on"), "★ 别行仍呈 ▶（mainOn 绑正在发声的型，不撒到全表）");
+  aud1().fire("click");
+  eq(beat.Store.S.playing, false, "★ 主播放中点该行 ▶ → 停止主播放");
+  eq(beat.Store.S.preview, false, "★ 不切试听（旧行为退役）");
+  ok(!aud1().classList.contains("aud-on"), "★ 按钮回 ▶");
 
   /* ⑤ 拍号临时对齐并恢复：3/4 的型在 4/4 下试听 → 停止后拍号回到 4/4 */
   beat.Store.importPresets(JSON.stringify({ presets: [
