@@ -857,7 +857,7 @@ demoBuildSpec()                    // 纯函数：谱面 → { presets, arrange,
 | 1 | 取值域 **1-based 小节号** | `min=1` / `max=总小节数`（`songBars(a)`）。内部 `from`/`to` 是 0-based **线性小节号**（v2.10.7，可落在段中间），换算只在 `onRangeInput` 与 `syncDemoRange` 两处。**别把 1-based 值直接写进 S** |
 | 2 | 双向钳制 | 起点越过终点时把终点一起顶走，反之亦然 → 任何时刻 `from <= to`（空区间会让调度器永远到不了 `to`，见 `Store.clampLoop` 注释） |
 | 3 | **`input` / `change` 两级** | `input`（拖动中，每秒几十次）只改 S + 视觉 + 走 250ms 热键防抖；`change`（松手/键盘提交）才调 `onDemoRange`。**合成一级 = 一次拖动跑几十轮 `applyPatternChange`**，会吃掉音频排程窗口（同 `CONFIG.schedWindow` 的教训） |
-| 4 | 滑块 = **范围**，不是位置 | 播放期间两个 thumb 必须纹丝不动。"现在播到第几小节"由 `.demo-play-note` 承担（`demoCurBar()` → 可听位置，v2.10.7 起小节口径），**别把那行说明删掉** |
+| 4 | 滑块 = **范围**，不是位置 | 播放期间两个 thumb 必须纹丝不动。"现在播到第几小节"由轨道上的播放头（`.demo-range-head`，走 `demoCurBar()` 可听位置，停机=范围起点）承担——v3.56.3 状态读数行（`.demo-play-note`）整行退役（用户拍板），**播放头是唯一位置面** |
 | 5 | 重合时的 z-index 翻转 | `from === to` 时上层 input 会挡住下层 thumb；重合在**最左**时让终点在上，其余让起点在上。不做这一步，重合态总有一侧拖不动（而它是最常用的一档） |
 | 6 | 注入而非直调 | `Presets` 声明在 `Arrange` 之前 → 反向调用要登记 R3 白名单。故走共享区钩子 `onDemoRange` = `Arrange.setRange`，装配层接线（与 `onDemoBar` / `onArrangeBar` 同套） |
 

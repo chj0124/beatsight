@@ -24,10 +24,10 @@ const { loadApp, ok, eq, section } = require("../lib/harness");
 const firstOpen = () => loadApp(undefined, { seedDemo: false });
 /* 曲式分组是 #presetList 里的第二个孩子（第一个是「节拍/扫弦」两个分区标题所在的块），
    取法与 t88 同一套：动态生成的节点只能按类名 + children 序位取。
-   整首连播那一行 = 分组[0]，它的第二个孩子是状态读数 */
+   v3.56.3：整首连播状态读数行整行退役——分组里不再有 .demo-play-row，断言其不存在（防回潮） */
 const boxOf = els => els["presetList"].children
   .find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
+const playRowAbsent = els => !boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
 
 /* ================= 场景 T93a：首次打开 = 选中示例曲但不播 ================= */
 section("T93a 首开默认 ② · 默认选中示例曲《在他乡》——但**绝不自动播放**");
@@ -53,11 +53,16 @@ section("T93a 首开默认 ② · 默认选中示例曲《在他乡》——但*
   beat.Controls.stop();
   eq(beat.Store.S.playing, false, "停止后回到未播（首开不是「播了又停」，是压根没播）");
 
-  /* UI 面：侧栏那一行读数必须已经是"整首连播 · 已就绪"，不是"拖滑块改范围" */
-  const note = String(playNoteOf(els).textContent);
-  ok(/整首连播 · 已就绪/.test(note),
-    "★ 侧栏读数首屏就是「整首连播 · 已就绪 · 共 N 小节」（实际「" + note + "」）——"
-    + "内部状态对了但界面没说，等于用户看不到「选好了」");
+  /* UI 面（v3.56.3 口径变更）：状态读数行整行退役（先删停机「已就绪」，复检后播放中两态
+     一并删，行不再进 DOM）——"选好了"的可见反馈 = 示例曲歌曲行挂 .active 高亮。 */
+  ok(playRowAbsent(els),
+    "★ 状态读数行不再进 DOM（v3.56.3 整行退役，防回潮）");
+  /* 类序不保证邻接（"preset-item active song"）：preset-item 与 song 各自独立判定，
+     与 t266 的 songRowOf 同一取法思路（那里按 textContent 定位，这里按类名） */
+  const songRows = boxOf(els).children.filter(c =>
+    /(^| )preset-item( |$)/.test(c.className) && /(^| )song( |$)/.test(c.className));
+  ok(songRows.length > 0 && /(^| )active( |$)/.test(songRows[0].className),
+    "★ 示例曲歌曲行挂 .active（读数行退役后，「选好了」的可见反馈面；实际类「" + (songRows[0] || {}).className + "」）");
 }
 
 /* ================= 场景 T93b：这份"选中"要跨刷新存活 ================= */

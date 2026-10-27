@@ -105,8 +105,8 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
 section("T203f 层级间距、播放绿点居中与歌曲不换行");
 {
   ok(/\.preset-item\{position:relative;padding:4px 12px;/.test(src), "条目上下内边距为 4px");
-  ok(/\.preset-section\+\.preset-arrange-group>\.preset-item:first-child\{padding-top:8px\}/.test(src),
-    "分区首条目上内边距 8px + 网格 4px = 区间距 12px");
+  ok(/\.preset-section\+\.preset-arrange-group>\.preset-item:first-child\{margin-top:var\(--sp-2\)\}/.test(src),
+    "分区首条目顶距 8px(sp-2) 在底块外（v3.56.3 padding→margin：选中底块统一 27.5px）+ 网格 4px = 区间距 12px");
   ok(/\.preset-item\.in-song\{margin-left:18px;margin-top:var\(--sp-1\)/.test(src),
     "歌曲父级到首子条目的间距改走 4px margin（旧 8px 顶距专用规则随 4/4 同律方案退役）");
   ok(/margin-top:-3px;border-radius:50%/.test(src), "6px 播放绿点向上回退自身一半，真正垂直居中");
@@ -125,9 +125,11 @@ section("T203f 层级间距、播放绿点居中与歌曲不换行");
     "★★ 子节奏型名称比父级小一级、弱一级");
   ok(!/\.preset-arrange-group::before/.test(src),
     "★★ 左侧分组竖线已退役（2026-10-27 用户拍板：每首歌一条线读作选中条；分组身份靠书名号+字重，防回潮）");
-  ok(/\.preset-item\.song \.name::before\{content:"▸";display:inline-flex;align-items:center;justify-content:center;/.test(src)
-    && /width:12px;height:1em;vertical-align:middle/.test(src),
-    "★★ 折叠箭头有独立居中盒，不再只依赖文字基线");
+  ok(/\.preset-item\.song \.name::before\{content:"";position:absolute;left:0;top:50%;width:12px;height:12px;/.test(src)
+    && /transform:translateY\(-50%\) rotate\(-90deg\)/.test(src)
+    && /\.preset-item\.song\[aria-expanded="true"\] \.name::before\{transform:translateY\(-50%\)\}/.test(src)
+    && /mask:var\(--mk-chev\) center\/12px no-repeat/.test(src),
+    "★★ 折叠箭头 v3.56.3：mask 雪佛龙绝对定位行中线（旧 ▸/▾ 字形随平台字体浮动、对中文恒偏低 0.75–1px，用户两轮实测拍板退役）；展开只翻旋转不挪位");
   ok(/actions\.className = "preset-actions"/.test(src)
     && /presetActionHost\(item\)\.appendChild\(play\)/.test(src),
     "★★ 操作按钮统一进入动态操作组，而非固定槽位");

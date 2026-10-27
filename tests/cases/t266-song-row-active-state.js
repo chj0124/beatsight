@@ -15,10 +15,11 @@
    本组钉住的契约：
    · 歌曲行 .active = arrangeSel.id 匹配 **∧ 曲式模式**（两处口径逐字一致：
      构造期 isActive 与 syncSongPlayBtns 的运行期翻转）；
-   · 普通节拍/试听播放中：状态行为空、播放头隐藏；
+   · 普通节拍/试听播放中：播放头隐藏（v3.56.3 起状态行已退役）；
    · preset 模式下点 ▶ 整首连播：**不重建列表**（playArrange 不走 buildPresetList），
      高亮必须经运行期路径（syncSongPlayBtns，挂在 syncDemoRange 收口上）当场亮起；
-   · 曲式模式停机：高亮保留（「已就绪」= 你正要操作的对象，v3.3.1 口径）。 */
+   · 曲式模式停机：高亮保留（选中行 = 你正要操作的对象，v3.3.1 口径；「已就绪」读数
+     v3.56.3 删除后，高亮是停机态唯一反馈）。 */
 "use strict";
 const { loadApp, FakeAudioContext, drive, ok, eq, section, html } = require("../lib/harness");
 
@@ -32,8 +33,9 @@ const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-g
 const songRowOf = els => boxOf(els).children.find(x =>
   /(^| )preset-item( |$)/.test(x.className) && x.children[0].children[0].textContent === "《在他乡》（示例）");
 const hasActive = row => !!row && /(^| )active( |$)/.test(String(row.className));
-/* 整首连播状态行（demo-play-note）与范围滑块播放头（demo-range-head） */
-const playNoteOf = els => boxOf(els).children[0].children[0];
+/* ★ v3.56.3：整首连播状态行（.demo-play-row/.demo-play-note）整行退役（用户复检拍板）——
+   「播到哪」的可断言载体只剩范围滑块播放头（demo-range-head）；状态行本身断言"不存在"（防回潮） */
+const playRowAbsent = els => !boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
 const trackOf = els => {
   const host = els["pbProgress"];
   const wrap = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
@@ -75,15 +77,14 @@ section("T266a 普通节拍播放中 · ★ 歌曲行不高亮、状态行不谎
   ok(!!row, "前提：歌曲行已渲染（列表重建后重新定位）");
   ok(beat.Store.S.arrangeSel.id, "前提：arrangeSel.id 仍指向《在他乡》（粘性——这正是旧缺陷的温床）");
   ok(!hasActive(row), "★ 歌曲行不再挂 .active（旧实现：只比 id 不看模式，高亮残留 → 图标恒显）");
-  eq(playNoteOf(els).textContent, "", "★ 状态行不再谎报「播放中 · 第 N 小节」（旧实现：demoCurBar 落到 from=0）");
-  ok(headOf(els).hidden === true, "★ 范围滑块播放头隐藏（旧实现：钉在第 1 小节）");
+  ok(headOf(els).hidden === true, "★ 范围滑块播放头隐藏（旧实现：demoCurBar 落到 from=0，谎钉在第 1 小节——v3.56.3 读数行退役后这是唯一的「播没播这首」位置判据）");
   beat.Controls.stop();
 }
 
 /* ================= 场景 T266b：preset 模式点 ▶ 整首连播 · 高亮当场亮起 =================
    点 ▶ 起播路径经 arrangeStart → flushPending → applyPatternChange 会重建列表，
    高亮由构造期 isActive 给出；T266d 则钉运行期路径（模式翻转不重建的场景）。 */
-section("T266b preset 模式点 ▶ 整首连播 · ★ 高亮当场亮起 + ▶ 翻 ■ + 状态行如实报位");
+section("T266b preset 模式点 ▶ 整首连播 · ★ 高亮当场亮起 + ▶ 翻音波柱 + 播放头如实报位");
 {
   const { beat, els } = loadDemo();
   /* 首次打开是 arrange 选中态——先点预设退回单练（停机），得到"preset 模式 + 歌曲行无高亮"起点 */
@@ -99,15 +100,15 @@ section("T266b preset 模式点 ▶ 整首连播 · ★ 高亮当场亮起 + ▶
 
   const ac = FakeAudioContext.last;
   drive(ac, beat, 3);
-  ok(String(playNoteOf(els).textContent).includes("播放中"),
-    "★ 曲式播放中状态行如实报位（实际「" + playNoteOf(els).textContent + "」）");
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+    "★ 曲式播放中播放头如实报位（v3.56.3 读数行退役后，位置由播放头承担；left「" + headOf(els).style.left + "」）");
   beat.Controls.stop();
 }
 
-/* ================= 场景 T266c：曲式模式停机 · 高亮保留（「已就绪」语义不回退） =================
+/* ================= 场景 T266c：曲式模式停机 · 高亮保留（停机反馈 = 高亮唯一承担） =================
    v3.3.1 口径：选中行 = 你正要操作的对象 ⇒ 曲式模式停机（已选它、下次从头播）高亮保留，
-   修复不得把这条一并修掉。 */
-section("T266c 曲式模式停机 · ★ 高亮保留 + 状态行「已就绪」（既有语义回归）");
+   修复不得把这条一并修掉。v3.56.3 起「已就绪」读数删除，停机反馈由高亮唯一承担。 */
+section("T266c 曲式模式停机 · ★ 高亮保留 + 停机态各面如实（v3.56.3 口径）");
 {
   const { beat, els } = loadDemo();
   playAllOf(els).fire("click");
@@ -118,8 +119,10 @@ section("T266c 曲式模式停机 · ★ 高亮保留 + 状态行「已就绪」
   eq(beat.Store.S.playMode, "arrange", "前提：停机但仍在曲式模式");
   eq(beat.Store.S.playing, false, "前提：已停止");
   ok(hasActive(songRowOf(els)), "★ 停机高亮保留（已选曲式 = 正要操作的对象，v3.3.1 口径）");
-  ok(String(playNoteOf(els).textContent).includes("已就绪"),
-    "★ 状态行显示「整首连播 · 已就绪」（实际「" + playNoteOf(els).textContent + "」）");
+  ok(playRowAbsent(els),
+    "★ 状态读数行不再存在（v3.56.3 整行退役：停机「已就绪」先删、复检后播放中两态一并删，防回潮）");
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+    "★ 停机播放头回范围起点并可见（「下次从哪开始」的唯一位置面；left「" + headOf(els).style.left + "」）");
 
   /* 收尾对照：再点预设退回单练 → 高亮随模式退出摘掉（与 T266a 同判据，钉停机分支） */
   itemByName(els, "四分基础").fire("click");

@@ -78,7 +78,6 @@ const inWindow = (ac, a, b) => ac.hits.filter(h => h.t >= a - 1e-6 && h.t < b - 
 /* 曲式分组（v2.9.0 起类名 = .preset-arrange-group；旧名 .preset-demo-group 已删）。
    **每次现取**：点击会触发列表重建，旧引用随即失效 */
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
-const playRowOf = els => boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
 /* 示例曲**歌曲行**（在曲式分组容器里，v2.25.0 起不是 presetList 的直接子节点）。
    ★ v3.35.3：歌曲行的**点击语义改成了"展开/收起"**，整首连播挪到行尾的 ▶。
    所以下面两个助手分开：songRowOf = 那一行本身（点它 = 展开），
@@ -89,13 +88,16 @@ const playAllOf = els => {
   const row = songRowOf(els, "《在他乡》（示例）");
   return row && row.children.find(x => /(^| )aud( |$)/.test(x.className));
 };
-const noteOf = els => playRowOf(els).children[0];                  // 行内唯一子节点 = 状态说明
+/* ★ v3.56.3（用户复检拍板）：状态读数行（.demo-play-row/.demo-play-note）整行退役——
+   「现在播到第几小节」的可断言载体 = 范围轨道上的播放头（.demo-range-head：
+   播放中 = 可听位置、停机 = 范围起点、非本曲式/普通播放 = hidden） */
+const headOf = els => rangeTrackOf(els).children.find(x => /(^| )demo-range-head( |$)/.test(x.className));
 /* 「播放范围」双滑块（v2.10.4 取代原段序条那 10 颗段号胶囊）。
    结构：.demo-range > [.demo-range-note, .demo-range-track]，轨道里 = 填充条 + 起点 + 终点。
-   测试桩不解析 HTML，只能按 children 序位取，所以这几个 helper 与 buildDemoSongRow 的
+   测试桩不解析 HTML，只能按 children 序位取，所以这几个 helper 与 buildDemoRange 的
    挂法是一对——改挂法就要同步改这里。**每次现取**：点击会触发列表重建，旧引用随即失效 */
 /* v3.3.0：范围滑块已从曲式区搬到**底栏右区**（#pbProgress），故从那里取；
-   取不到再回退曲式区（兜底路径与 buildDemoSongRow 的 pbHost||group 一致）。 */
+   取不到再回退曲式区（兜底路径与 buildDemoRange 的 pbHost||group 一致）。 */
 const rangeWrapOf = els => {
   const host = els["pbProgress"];
   const w = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
@@ -292,16 +294,16 @@ section("T68g 整首连播 · 一键切曲式模式 + 范围=整首 + 开循环 
      "★ 范围 = 整首 65 小节 + 开范围循环（放完自动从头再来，这才叫「练」；v2.10.7 小节口径）");
   eq(beat.Store.S.playing, true, "★ 一键即开播，不必先进编排面板");
   eq(beat.Arrange.isOpen(), false, "整首连播不需要打开编排 overlay（入口就在侧栏）");
-  /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表 */
-  ok(noteOf(els).textContent.indexOf("整首连播 · 播放中") === 0,
-    "★ 读数行接棒状态指示（按钮删了，whole 的呈现面只剩它；实际「" + noteOf(els).textContent + "」）");
+  /* 元素重新取：起播会经 applyPatternChange → buildPresetList 重建整张列表。
+     v3.56.3：读数行退役——播放状态面 = 歌曲行行尾 ▶ 翻音波柱（aud-on） */
+  ok(playAllOf(els).classList.contains("aud-on"),
+    "★ 播放状态面 = 歌曲 ▶ 翻音波柱（v3.56.3 读数行退役，状态指示由它接棒）");
   /* v2.10.4：段序条已换成范围滑块——"整首连播"在滑块上的表现 = **两个 thumb 拉满**。
-     滑块表达的是范围、不是当前位置，所以原来"第 1 段高亮 / 第 10 段不高亮"那两条
-     已随段序条一并消失；"现在在第几小节"改由下面那条状态说明承担 */
+     滑块表达的是范围、不是当前位置；"现在在第几小节"v3.56.3 起由轨道播放头承担 */
   eq(rangeFromOf(els).value, "1", "滑块起点拉满到第 1 小节");
   eq(rangeToOf(els).value, "65", "滑块终点拉满到第 65 小节（v2.10.7：max = 总小节数）");
-  ok(noteOf(els).textContent.includes("第 1/65 小节"),
-     "状态说明给出「播放中 · 第 1/65 小节」（位置读数从段序条高亮挪到了这一行）（实际「" + noteOf(els).textContent + "」）");
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+    "★ 位置面 = 轨道播放头可见且定位（读数行退役后由它独担「播到哪」；left「" + headOf(els).style.left + "」）");
   /* 播的确实是第 1 段引用的型（不是"只会放当前选中的那个"）。v2.9.0：段 1 = P1 = 节奏型1（本版改编号制） */
   ok(String(beat.activePattern().name).indexOf("节奏型1（《在他乡》）") >= 0,
      "★ 起播用第 1 段引用的型（实际「" + beat.activePattern().name + "」）");
@@ -359,30 +361,32 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
      （拖好的范围会被一次换型清掉）。
    ★ "换本段用哪个型"的出口仍然存在：进「编排曲式」→ 该段行 → 换型（那里本来就有内联候选行）。
    ★ 这里**不是**把断言改宽蒙过去，而是被测功能本身不存在了——所以整段移除，不留空壳。 */
-section("T68j 整首连播 · 位置读数随播放推进（段序条已换成范围滑块）");
+section("T68j 整首连播 · 位置指示随播放推进（读数行退役后由播放头独担）");
 {
   const { beat, els } = loadDemo();
   /* 240BPM → 一小节 1s；**第 1 段 = 1 小节**（v2.6.0 起是逐小节谱，不再垫到 4 小节）= 1s。
      v2.7.1 起"现在播到第几小节"跟**可听位置**（demoCurBar → Viz.audibleArrangePos，由渲染帧驱动；v2.10.7 由段号口径改为线性小节号），
      所以这里必须用 driveFrames（scheduler + paintFrame 双时钟）而不是只跑调度。
-     ★ v2.10.4：段序条的逐段高亮没有了（滑块表达的是**范围**，不是当前位置），
-       位置信息只剩 .demo-play-note 这一行——它成了本条唯一可断言的载体。 */
+     ★ v3.56.3：状态读数行整行退役（用户复检拍板）——位置信息只剩轨道上的播放头
+       （.demo-range-head，left 随可听小节走），它成了本条唯一可断言的载体。 */
   beat.Controls.setBpm(240);
   playAllOf(els).fire("click");
   const ac = FakeAudioContext.last;
-  ok(noteOf(els).textContent.includes("第 1/65 小节"),
-     "起播时指向第 1 小节（实际「" + noteOf(els).textContent + "」）");
+  const leftNow = () => String(headOf(els).style.left);
+  ok(!headOf(els).hidden && leftNow().length > 0,
+    "起播时播放头已可见并定位（left「" + leftNow() + "」）");
+  const l1 = leftNow();
   driveFrames(ac, beat, 1.4);
-  ok(noteOf(els).textContent.includes("第 2/65 小节"),
-     "★ 走完第 1 小节后读数移到第 2 小节（跟着节目单推进，不是钉在第 1 小节）（实际「" + noteOf(els).textContent + "」）");
-  /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–30，不随播放跳动
+  ok(leftNow() !== l1 && leftNow().length > 0,
+    "★ 走完第 1 小节后播放头移到第 2 小节（跟着节目单推进，不是钉在第 1 小节）（left「" + l1 + "」→「" + leftNow() + "」）");
+  /* 滑块表达的是**范围**而不是位置：整首连播期间它必须稳定停在 1–65，不随播放跳动
      （"滑块自己会走"是这类控件最常见的实现错误，钉住它） */
   eq(rangeFromOf(els).value, "1", "整首连播期间起点停在 1（滑块不跟播放位置走）");
   eq(rangeToOf(els).value, "65", "整首连播期间终点停在 65");
   beat.Controls.stop();
   /* 停机后回到"范围起点"口径（停止时看的不是调度游标——它不表达"下次从哪开始"）：
-     范围没变，仍是从头；但读数不再写「播放中」 */
-  ok(!/播放中/.test(noteOf(els).textContent),
-     "★ 停机后读数不再写「播放中」（实际「" + noteOf(els).textContent + "」）");
+     范围没变，仍是从头；播放头跳回范围起点（left 与起播时第 1 小节逐字相同） */
+  ok(leftNow() === l1,
+    "★ 停机后播放头回到范围起点第 1 小节（left「" + leftNow() + "」= 起播时「" + l1 + "」）");
   eq(rangeFromOf(els).value, "1", "停机后起点仍在范围起点");
 }

@@ -86,17 +86,12 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
   eq(songRows.length, 2, "★ 自定义区里 2 条歌曲行（两首示例曲）");
   const inSong = demoBox.children.filter(x => /(^| )in-song( |$)/.test(x.className));
   eq(inSong.length, 6, "★ 默认展开的那首（《在他乡》）下挂着它的 6 个型（★ 本版 +1：尾声琶音型）");
-  /* v2.5.0：整首连播入口；v2.10.4：段序条那 10 颗段号胶囊换成了「播放范围」双滑块。
-     两者都挂在「自定义」区容器下（扁平挂法，见 buildDemoSongRow 的注释），
-     按钮在「整首连播」那一行内部，两个滑块在 .demo-range 里 */
-  const playRow = demoBox.children.find(x => /(^| )demo-play-row( |$)/.test(x.className));
-  ok(!!playRow, "★ 自定义区里有「整首连播」那一行");
-  /* v2.28.0：按钮已删——入口=点曲式条目，行内只剩状态读数（whole 的呈现面） */
-  const playAll = playRow && playRow.children[0];
-  ok(!!playAll, "★ 行内只剩状态读数（「整首连播」按钮已删，入口由条目点击承担）");
-  if (playAll){
-    eq(playAll.className, "demo-play-note", "读数行类名不变（t68 按它定位）");
-  }
+  /* v2.5.0：整首连播入口；v2.10.4：段号胶囊换「播放范围」双滑块。
+     ★★ v3.56.3（用户复检拍板）：「整首连播」状态读数行（.demo-play-row/.demo-play-note）
+     **整行退役**——三态文案（停机「已就绪」/ 整首播放中 / 局部播放中）全删后行不再进 DOM
+     （节点 −2）。「现在播到第几小节」看滑块轨道播放头；入口 = 点歌曲行 / 行尾 ▶。 */
+  ok(!demoBox.children.find(x => /(^| )demo-play-row( |$)/.test(x.className)),
+    "★ 「整首连播」读数行已整行退役（v3.56.3：三态文案全删，行不再进 DOM，防回潮）");
   /* ★ v2.10.4：段号胶囊 → 双滑块。断言口径随之从"10 颗胶囊的影子"改成"两个 thumb 的影子" */
   /* v3.3.0：滑块已搬到底栏右区（#pbProgress），不再是曲式区的孩子——
      判据随之改成「在底栏容器内」，位置再挪一次也不必重写。 */

@@ -12,8 +12,8 @@ function once(src, oldText, newText, name){
 }
 const MUTANTS = [
   ["M1 区标题退回 12px 弱色", s => once(s,
-    ".preset-section{font-size:14px;color:var(--t1);font-weight:600;margin:14px 0 0;",
-    ".preset-section{font-size:12px;color:var(--t2);font-weight:600;margin:14px 0 8px;", "M1"),
+    ".preset-section{font-size:14px;color:var(--t1);font-weight:600;margin:var(--sp-4) 0 0;",
+    ".preset-section{font-size:12px;color:var(--t2);font-weight:600;margin:var(--sp-4) 0 var(--sp-2);", "M1"),
    ["区标题 14px", "区标题使用主文字色"]],
   ["M2 名称说明禁止换行", s => once(s,
     "display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px",
@@ -37,8 +37,8 @@ const MUTANTS = [
     return once(moved, '        <div id="rhyBeatBox">', block + '        <div id="rhyBeatBox">', "M6 移位");
    }, ["拍数位于折叠体第一行", "拍数与细分都在 #rhyBeatBox 内"]],
   ["M7 拍数重新孤立贴右", s => once(s,
-    ".basic-slot{display:flex;align-items:center;justify-content:flex-start;gap:6px}",
-    ".basic-slot{display:flex;align-items:center;justify-content:flex-end;gap:6px}", "M7"),
+    ".basic-slot{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-2)}",
+    ".basic-slot{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-2)}", "M7"),
    ["拍数与下方内容共用左缘"]],
   ["M8 操作图标默认可见并压字", s => once(s,
     "opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s",
@@ -53,9 +53,9 @@ const MUTANTS = [
     ".preset-item .preset-actions{position:absolute;right:4px", "M10"),
    ["最右图标与说明共用 12px 内容右缘"]],
   ["M11 分区首条目间距改为 12px", s => once(s,
-    ".preset-section+.preset-arrange-group>.preset-item:first-child{padding-top:8px}",
-    ".preset-section+.preset-arrange-group>.preset-item:first-child{padding-top:12px}", "M11"),
-   ["分区首条目上内边距 8px"]],
+    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-2)}",
+    ".preset-section+.preset-arrange-group>.preset-item:first-child{margin-top:var(--sp-3)}", "M11"),
+   ["分区首条目顶距 8px(sp-2) 在底块外"]],
   ["M12 播放绿点再次偏上", s => once(s,
     "margin-top:-3px;border-radius:50%",
     "margin-top:-6px;border-radius:50%", "M12"),
@@ -86,10 +86,10 @@ const MUTANTS = [
     "display:flex;align-items:center;gap:4px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s",
     "display:block;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s", "M18"),
    ["操作组按实际按钮数量排列"]],
-  ["M19 折叠箭头退回文本基线", s => once(s,
-    'content:"▸";display:inline-flex;align-items:center;justify-content:center;',
-    'content:"▸";display:inline-block;', "M19"),
-   ["折叠箭头有独立居中盒"]],
+  ["M19 折叠箭头退回文字基线", s => once(s,
+    'color:var(--t3);background:currentColor;transform:translateY(-50%) rotate(-90deg);',
+    'color:var(--t3);background:currentColor;transform:rotate(-90deg);', "M19"),
+   ["mask 雪佛龙绝对定位行中线"]],
 ];
 let hitN = 0, missN = 0;
 const ONLY = process.env.MUT_ONLY || "";

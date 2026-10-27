@@ -36,7 +36,7 @@ const loadDemo = () => loadApp(seedState({ sel: { type: "builtin", idx: 1 } }), 
 /* 曲式容器 → 范围控件 → 轨道（每次现取，见文件头） */
 const boxOf = els => els["presetList"].children.find(x => /(^| )preset-arrange-group( |$)/.test(x.className));
 /* v3.3.0：范围滑块已从曲式区搬到**底栏右区**（#pbProgress），故从那里取；
-   取不到再回退曲式区（兜底路径与 buildDemoSongRow 的 pbHost||group 一致）。 */
+   取不到再回退曲式区（兜底路径与 buildDemoRange 的 pbHost||group 一致）。 */
 const wrapOf = els => {
   const host = els["pbProgress"];
   const w = host && host.children.find(x => /(^| )demo-range( |$)/.test(x.className));
@@ -45,7 +45,7 @@ const wrapOf = els => {
 /* ★ v3.30.0（用户拍板 D 案）：读数行从行 1（.demo-range 内）挪到**行 2 .pb-sub（#pbSub）**
    左端——行 1 让给轨道独占全宽。故 wrap 的子节点由 [note, track] 变为 **[track]**，
    读数改经 #pbSub 定位（桩按 id 懒创建元素、无 querySelector，故必须有 id）。
-   noteOf 保留"行 2 首位"的语义（缺 pbSub 时回退 wrap 首位，与 buildDemoSongRow 的兜底一致）。 */
+   noteOf 保留"行 2 首位"的语义（缺 pbSub 时回退 wrap 首位，与 buildDemoRange 的兜底一致）。 */
 const noteOf = els => {
   const sub = els["pbSub"];
   if (sub && sub.children.length) return sub.children[0];
@@ -58,8 +58,10 @@ const toOf = els => trackOf(els).children[2];
 /* v2.82.0：填充条 style 是 calc 字符串，取出其中的百分比项与拇指宽校正系数分别断言 */
 const pctPart = v => { const m = /calc\((-?[0-9.]+)%/.exec(String(v)); return m ? parseFloat(m[1]) : NaN; };
 const kPart = v => { const m = /([-0-9.]+) \* var\(--thumb-w\)/.exec(String(v)); return m ? parseFloat(m[1]) : NaN; };
-/* 整首连播那一行的状态说明（它兼着"现在播到第几小节"的职责，见 syncDemoRange） */
-const playNoteOf = els => boxOf(els).children[0].children[0];   // v2.28.0：按钮已删，读数是行内唯一子节点
+/* ★ v3.56.3（用户复检拍板）：整首连播状态读数行（.demo-play-row）整行退役——三态文案
+   全删后行不再进 DOM。「现在播到第几小节」的可断言载体 = 轨道播放头（.demo-range-head），
+   播放状态面 = 歌曲行 ▶ 的 aud-on。 */
+const headOf = els => trackOf(els).children.find(x => /(^| )demo-range-head( |$)/.test(x.className));
 /* ★ v3.35.3：歌曲行的点击语义改成了**展开/收起**，整首连播挪到行尾的 ▶。
    故 playAllOf 返回那颗 ▶（而不是歌曲行本身）——语义与 v2.28.0 的"唯一点击入口"一致。 */
 const playAllOf = els => {
@@ -287,9 +289,9 @@ section("T88h 滑块表达范围而非位置 · 播放期间两个 thumb 纹丝�
      "★★ 播放推进后滑块位置一位不变（滑块自己会走是这类控件最常见的实现错误）");
   eq([beat.Store.S.arrangeSel.from, beat.Store.S.arrangeSel.to].join(","), "1,8",
      "范围字段也没被播放游标改写");
-  /* 位置信息改由"整首连播"那一行的状态说明承担（段序条高亮没了，只剩它） */
-  ok(/播放中 · 第 \d+\/65 小节/.test(playNoteOf(els).textContent),
-     "★ 位置读数落在状态说明上（实际「" + playNoteOf(els).textContent + "」）");
+  /* v3.56.3：状态读数行整行退役——位置信息由轨道播放头承担（播放中可见且定位） */
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+     "★ 位置指示 = 轨道播放头可见并定位（读数行退役后由它独担；left「" + headOf(els).style.left + "」）");
   beat.Controls.stop();
 }
 
@@ -312,37 +314,35 @@ section("T88i 越界范围 · 呈现时按当前段数收窄（使用期钳制�
   eq(pctPart(fillOf(els).style.width), 0, "填充条宽度不为负（重合 = 零跨度）");
 }
 
-/* ================= 场景 T88j：整首态的读数与滑块范围同源 ================= */
-section("T88j 整首态的读数与滑块范围同源（同一份 arrangeSel 推出来的两个视图）");
+/* ================= 场景 T88j：整首态的三个视图同源（读数行退役后） ================= */
+section("T88j 整首态的视图同源（同一份 arrangeSel 推出来的滑块 / 播放头 / 按钮态）");
 {
   const { beat, els } = loadDemo();
-  /* ★ v2.13.0：首次打开默认选中示例曲的**整首**（选中这条曲式 + 曲式模式 + 范围恰是整首），而
-     "整首"这一态的定义正是这三条——所以进这一节时读数**已经**是「整首连播 · 已就绪」。
-     这不是瑕疵，恰恰是同源的自证：读数文案与滑块范围都从同一份 arrangeSel 推出来。
-     v2.28.0：按钮已删，whole 的呈现面只剩这一行读数。 */
-  /* 守卫：行空壳（读数没建）时 playNoteOf 是 undefined——note() 返回 "" 让下面的
-     内容断言具名变红，而不是让套件崩在 null.textContent（崩溃不是证据） */
-  const note = () => { const el = playNoteOf(els); return el ? el.textContent : ""; };
-  ok(/整首连播 · 已就绪/.test(note()),
-     "前提（v2.13.0）：首开已选中整首 → 读数是「整首连播 · 已就绪」（实际「" + note() + "」）");
-  eq([fromOf(els).value, toOf(els).value].join(","), "1,65", "前提：滑块也是整首（两个视图同源）");
-  playAllOf(els).fire("click");                        // 点示例曲条目 = 整首连播（唯一入口）
-  /* 读数的"播放中"分支要求可听位置已起步（cur >= 0）——刚 start 还没驱动帧时它仍是
-     "已就绪"（原语义，非回归），先推几帧让它进入播放态再读 */
+  /* ★ v2.13.0：首次打开默认选中示例曲的**整首**（选中这条曲式 + 曲式模式 + 范围恰是整首）。
+     ★★ v3.56.3（用户复检拍板）：状态读数行**整行退役**（三态文案全删，行不再进 DOM）——
+     "选好了"的可见反馈 = 歌曲行 .active；"播到哪" = 轨道播放头；"在不在播" = ▶ 的 aud-on。
+     同源自证改为三个视图：滑块范围 / 播放头 / 按钮态都从同一份 arrangeSel + 播放状态推出来。 */
+  ok(!boxOf(els).children.find(x => /(^| )demo-play-row( |$)/.test(x.className)),
+    "前提（v3.56.3）：状态读数行不再进 DOM（整行退役，防回潮）");
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+    "前提：停机+整首 → 播放头可见并停在范围起点（left「" + headOf(els).style.left + "」）");
+  eq([fromOf(els).value, toOf(els).value].join(","), "1,65", "前提：滑块也是整首（范围视图同源）");
+  playAllOf(els).fire("click");                        // 点歌曲行行尾 ▶ = 整首连播（唯一入口）
+  ok(playAllOf(els).classList.contains("aud-on"),
+    "★ 起播 → ▶ 翻音波柱（播放状态视图，与 arrangeSel 同源收口）");
   const ac = FakeAudioContext.last;
   for (let i = 0; i < 10; i++){ ac.currentTime += 0.02; beat.AudioEngine.scheduler(); beat.Viz.paintFrame(); }
-  ok(note().indexOf("整首连播 · 播放中") === 0,
-     "★ 整首播放中 → 读数前缀「整首连播 · 播放中」（实际「" + note() + "」）");
-  eq([fromOf(els).value, toOf(els).value].join(","), "1,65", "★ 滑块同步拉满（范围 = 整首）");
+  ok(!headOf(els).hidden && String(headOf(els).style.left).length > 0,
+    "★ 播放中播放头可见并定位（位置视图同源；left「" + headOf(els).style.left + "」）");
+  eq([fromOf(els).value, toOf(els).value].join(","), "1,65", "★ 滑块保持整首（范围 = 整首）");
   beat.Controls.stop();
-  /* 拖成局部区间 → 读数必须退出整首态（"整首"这一态的定义就是范围恰是整首） */
+  ok(!playAllOf(els).classList.contains("aud-on"),
+    "★ 停机 → ▶ 回到播放形（按钮态与 S.playing 同源）");
+  /* 拖成局部区间 → 范围视图必须退出整首态（"整首"这一态的定义就是范围恰是整首） */
   dragRange(els, 2, 5);
-  /* v2.36.0：「已选第 X–Y 小节 · 拖滑块改范围」教学文案整支删除（与上方滑块读数重复，用户指出）
-     ——断言口径变更说明：这不是回归，是该分支整体退役；范围信息由上方读数行独家承载 */
-  ok(!/整首连播/.test(note()) && note().trim() === "",
-     "★ 范围缩成局部后读数退出整首态，且重复的「已选…」文案已删除（该行留空）");
+  eq([fromOf(els).value, toOf(els).value].join(","), "2,5", "★ 范围缩成局部后滑块跟着退整首（范围视图与 arrangeSel 同源）");
   dragRange(els, 1, 65);
-  ok(/整首连播 · 已就绪/.test(note()), "★ 拖回整首 → 读数回到「整首连播 · 已就绪」");
+  eq([fromOf(els).value, toOf(els).value].join(","), "1,65", "★ 拖回整首 → 滑块回到整首（同一份 arrangeSel 推出来）");
 }
 
 /* ================= 场景 T88k：曲式消失后的悬空引用 ================= */

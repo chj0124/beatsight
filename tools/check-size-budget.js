@@ -428,8 +428,15 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        reduced-motion 静态降级）+ 搜索放大镜从 13px ⌕ 字符换为 16px mask 图标
        （均为用户实拍拍板）。按视觉本体抬线，理由随批写入；抬整三档留 ~6.9KB 余量
        （红线只收整数 KB，2.6KB 超线只能进到 3 档），观察线仍会继续提示瘦身
-       （壁纸那张出厂 data URI 仍是头号目标）。 */
-const BUDGET_BYTES = 2113 * 1024;
+       （壁纸那张出厂 data URI 仍是头号目标）。
+   ★ v3.56.3（箭头居中 + 读数行退役 + 背景条等高）：2113 → **2116KB**。
+     · --mk-chev 雪佛龙 data URI（~330B）+ 三处根因/修法/取舍注释体量 + 测试断言口径
+       文案；减去读数行 DOM/CSS/文案与帮助页句后净 +2.3KB 级。
+     · 换来的是箭头跨平台逐像素居中（几何锁死）+ 状态读数行整行退役（三态全删，
+       位置面 = 播放头）+ 三区首条目背景条等高（8px 顶距 padding→margin，间距总值不变）。
+       净增主体是取证注释——本仓取证纪律的成本，按既定先例随批抬线；余量紧，
+       下批再超就该动壁纸那张 ~365K data URI 了（观察线会继续催）。 */
+const BUDGET_BYTES = 2116 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){
