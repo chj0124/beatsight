@@ -2693,7 +2693,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    一行字不再糊成一条绿带。★ 外几何零改动：left/width 仍是 tick 百分比（拖拽换算契约不动），
    视觉内缩全靠 border-box 内的 padding-box 裁切。圆角 4→6px（胶囊语汇）。
    `.sm` = 窄格降级（dur ≤ T16）：内缩降为 1px，不然十六分格放不下字。 */
-.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border:2px solid transparent;background-clip:padding-box;border-radius:var(--radius-ctrl);color:#0B0B0B;font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none;box-sizing:border-box}
+.arg-lyric-chip{position:absolute;top:2px;bottom:2px;display:flex;align-items:center;justify-content:center;background:var(--green);border:2px solid transparent;background-clip:padding-box;border-radius:var(--radius-ctrl);color:var(--on-green);font-size:15px;font-weight:700;line-height:1;cursor:grab;overflow:visible;touch-action:pan-y;user-select:none;box-sizing:border-box}
 .arg-lyric-chip.sm{border-width:1px}
 /* v3.37.0 B 期：独立音符块（编辑轨语境——不与字重叠的谱：间奏/前奏尾奏；纯谱行则全部）。
    与主视图 .lyric-chip.notechip 同一视觉语言：虚线描边（currentColor 随 obs 主题反色）、
@@ -2727,7 +2727,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v3.38.0：编排**词块**是实心色（经典=绿 / 日间=深蓝），八度三色字号小、易与底色糊——
    给彩色谱字加同底色墨色的 1px 描边保证可读；音符块（透明底）不需要描边。 */
 body:not([data-theme="obs"]) .arg-lyric-chip:not(.notechip) .jp-g,
-body:not([data-theme="obs"]) .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1px #0B0B0B,0 0 1px #0B0B0B}
+body:not([data-theme="obs"]) .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1px var(--on-green),0 0 1px var(--on-green)}
 body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .jp-g,
 body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1px #FFFFFF,0 0 1px #FFFFFF}
 .arg-lyric-grip{position:absolute;top:0;right:0;width:10px;height:100%;cursor:ew-resize}   /* v2.47.0（F3）：6→10px——想移动误抓时值的头号来源就是它太窄 */
@@ -3262,11 +3262,9 @@ body[data-theme="obs"] .edbar-label.editing .n{color:var(--accent-hi)}
 body[data-theme="obs"] .pal-item{border:1px solid var(--line);border-radius:var(--radius-ctrl)}
 body[data-theme="obs"] .name-input{background:var(--card2);border-radius:var(--radius-ctrl)}
 body[data-theme="obs"] .name-input:focus{border-color:var(--green)}
-/* 歌词字块：chip 底是 var(--green)（浅主题下为深蓝 #2563EB），而字色在经典基座里写死
-   #0B0B0B——深蓝底上的黑字几乎糊成一片。同样不动经典写法，只在 obs 下翻成 on-green */
-body[data-theme="obs"] .arg-lyric-chip{color:var(--on-green)}
-/* v3.37.0 B 期：音符块底透明、描边靠 currentColor——obs 的字色覆盖若沿用 on-green（近黑），
-   虚线在深底上不可见；音符块的描边/谱字一律用主题绿（不读 on-green） */
+/* ★ PLAN-v16 阶段 6：词块字色改读 --on-green（经典 = #0A0A0A，与旧写死 #0B0B0B 差 1/255 观感等价；
+   obs = #FFFFFF 自动成立）后，obs 的字色覆盖规则退役。音符块（notechip）仍用主题绿——
+   描边靠 currentColor，若沿用 on-green（近黑）虚线在深底上不可见（v3.37.0 B 期口径不变） */
 body[data-theme="obs"] .arg-lyric-chip.notechip{color:var(--green)}
 
 /* ---------- 观测台 · 练习统计 ---------- */
@@ -5026,23 +5024,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5058  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6720  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8961  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10189 Modal         应用内弹窗
-     L10350 Viz           时值可视化渲染与每帧动画
-     L14080 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14834 Trainer       变速训练器
-     L15051 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15726 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17694 Editor        自定义节奏型编辑器
-     L18830 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18925 Ear           听辨训练（v1.10.0）
-     L19153 Arrange       曲式编排（v2.0.0）
-     L23290 Help          使用方法（v2.0.1）
-     L23445 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23527 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23823 初始化（装配） 各模块 hook 接线与启动
+     L5056  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6718  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8959  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10187 Modal         应用内弹窗
+     L10348 Viz           时值可视化渲染与每帧动画
+     L14078 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14832 Trainer       变速训练器
+     L15049 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15724 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17692 Editor        自定义节奏型编辑器
+     L18828 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18923 Ear           听辨训练（v1.10.0）
+     L19151 Arrange       曲式编排（v2.0.0）
+     L23288 Help          使用方法（v2.0.1）
+     L23443 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23525 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23821 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

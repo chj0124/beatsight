@@ -130,8 +130,8 @@ section("T125c 组件覆盖 · 光晕降档 / 白rgba翻墨 / 新增四条覆盖
   /* 三条新增覆盖：返回箭头 / 歌词字块 / 帮助页示意图 */
   ok(/\.back-btn svg path\{stroke:var\(--t2\)\}/.test(OBS),
      "★ 四枚返回箭头的 #B3B3B3 由 CSS 覆盖成 --t2（标记一行未动）");
-  ok(/\.arg-lyric-chip\{color:var\(--on-green\)\}/.test(OBS),
-     "★ 歌词字块字色在 obs 下翻成 --on-green（深蓝底上的 #0B0B0B 糊成一片）");
+  ok(!/body\[data-theme="obs"\] \.arg-lyric-chip\{color/.test(OBS),
+     "★ 歌词字块字色自 PLAN-v16 阶段 6 起直接读 --on-green（经典 #0A0A0A / obs #FFFFFF），obs 覆盖规则退役；音符块仍走主题绿覆盖");
   ok(/\.help-fig rect\{stroke:var\(--border\)\}/.test(OBS) && /\.help-fig text\{fill:var\(--t2\)\}/.test(OBS),
      "★ T7：帮助页三张示意图由 CSS 覆盖 fill/stroke（SVG 表现属性，不动标记）");
 }

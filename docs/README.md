@@ -46,7 +46,7 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v13-editor-scope-and-air.md](archive/PLAN-v13-editor-scope-and-air.md) | 空扫语义收口与编辑器作用域重整：无方向空扫补 `air` 且不新增 onset · 弹法/手部联动 · 整稿/小节/音符/输出分区 | 已落地（v3.53.2 工作区；施工后记见文末） |
 | [PLAN-v14-editor-ui-fixes.md](archive/PLAN-v14-editor-ui-fixes.md) | 节奏型编辑界面四项修正：空态引导排版 · 撤销钮归位+图标 · 模板下拉收窄与删标签 · 弹层 pill 收紧（2026-10-14 拍板；另附「型级标注与曲式和弦不冲突」查证结论） | 已落地（v3.53.3 交付；施工后记见文末） |
 | [PLAN-v15-lyric-in-tab.md](archive/PLAN-v15-lyric-in-tab.md) | 歌词「嵌入六线谱」新增显示模式：中央定位 · 大屏入口与内容过密回退 · 行高守恒 · 谱内逐字进度实施方案 | 已落地（v3.54.0；真人视觉验收待确认，施工后记见文末） |
-| [PLAN-v16-design-tokens.md](archive/PLAN-v16-design-tokens.md) | 设计令牌体系与对齐结构收敛：间距/居中/双主题/字号/圆角五域治理（2026-10-27 审计后定稿；含 baseline 收缩式闸门与六阶段分批） | 历史快照 · 方案定稿待执行（未开工） |
+| [PLAN-v16-design-tokens.md](archive/PLAN-v16-design-tokens.md) | 设计令牌体系与对齐结构收敛：间距/居中/双主题/字号/圆角五域治理（2026-10-27 审计后定稿并六批交付；阶段 3 存量间距收敛按白名单路线后继分批） | 已落地 · 历史快照（施工后记见文末） |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |
 | [prd.html](archive/prd.html) | 早期产品需求稿 | 历史草稿 · 已归档 |
 | [beatsight-brand-board.html](archive/beatsight-brand-board.html) | 视觉系统提案展板：设计 token / 字体 / 组件 / 图标规范整理（源自 index.html 真实值） | 历史快照 · 已落地（v3.43.0 入库时逐项核对一致） |
