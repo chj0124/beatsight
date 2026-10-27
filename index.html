@@ -2141,17 +2141,17 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 歌曲是分组标题，子节奏型降低一级；嵌套文字间距与普通层级同为 12px。 */
 .preset-item.song{background:var(--card2)}
 .preset-item.song .name{font-weight:600}
-/* ★ 歌曲行的选中态 = 左侧 2px 绿边（对齐 obs 主题 .active 的既有语言）。
-   根因：.song 的结构性常驻底（var(--card2)，v3.35.3 分组标题）与 .active 的选中底
-   （同一个 var(--card2)）撞在同一个变量上——底色通道在数学上区分不了「选没选中」；
-   .active .meta 变绿又被选中态的图标浮现藏掉（opacity:0），选中信号只剩图标恒显一条
-   弱线索（用户实拍：两首示例曲背景色一样，看不出在播哪首）。
-   观测台主题早已用 border-left-color:var(--green) 表达选中（song 行天然继承那条），
-   本条把同一语言补到默认主题——song 行专用（普通条目未选时无底色，底色通道没撞车，不动）。
-   用 inset box-shadow 而不是真 border：默认主题普通条目没有 2px 左边框（obs 才有），
-   只给 song 加真边框会让行内容右移 2px、与同区其他行错位；inset 阴影不参与布局、
-   随 border-radius 圆角走，零几何影响。 */
-.preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}
+/* ★★ 歌曲行的选中态 = **背景通道**（--sel-bg/--sel-fg，与 .pill.active 同一套选中语言）。
+   为什么放弃 v3.55.12 的「左 2px 绿边」修法（用户复检实拍：还是分不清）：
+   ① 自定义区每首歌各包一层 .preset-arrange-group，其 ::before 本来就画着一条 2px
+      rgba(--green,.45) 左缘线（v2.9.0 曲式区标记）——未选中的行也常驻一条同色系左条，
+      选中行的第二条细线（行缘处、相距 6px）在扫视里读不出差异，两个信号同通道相撞；
+   ② 底色通道当初没动的原因是 .song 常驻底与 .active 选中底共用 --card2——现在选中态
+      直接换用 --sel-bg（经典 #2E2E2E / 日间 #1F2937 深底白字），不再与常驻底共用变量，
+      「背景色一样」从根上消掉；obs 的 .active 左边框对 song 行置透明（分组线仍在行外
+      x=0 承担曲式标记，行内不再有第二根条）。
+   经典主题不用真 border：普通条目无左边框，真边框会让行内容右移 2px 与同区错位。 */
+.preset-item.song.active{background:var(--sel-bg);color:var(--sel-fg)}
 .preset-item.in-song{margin-left:18px;padding:var(--sp-2) var(--sp-3)}   /* ★ 白名单：18px 是子条目相对歌曲行的缩进对齐值（= 嵌套文字间距 12 + 6 层级补偿），不参与 4px 收敛 */
 .preset-item.in-song .name{font-size:12px;font-weight:500;color:var(--t2)}
 .preset-item.in-song>div:first-child{flex-wrap:nowrap}
@@ -3246,6 +3246,10 @@ body[data-theme="obs"] .tr-prog.live{color:var(--teal)}
 /* ---------- 观测台 · 预设库侧栏 ---------- */
 body[data-theme="obs"] .preset-item{border-radius:var(--radius-ctrl);border-left:2px solid transparent;padding-left:var(--sp-3)}
 body[data-theme="obs"] .preset-item.active{background:var(--card2);border-left-color:var(--green)}
+/* ★ PLAN-v16 追补（用户复检）：song 行选中态切背景通道（--sel-bg），obs 的 .active 左边框
+   对 song 行置透明——未选中行常驻的分组 ::before 线（x=0）已承担曲式标记，行内左条是
+   与之相撞的第二根；未选中行底色仍是 --card2，选中行深底白字一眼可辨 */
+body[data-theme="obs"] .preset-item.song.active{background:var(--sel-bg);border-left-color:transparent;color:var(--sel-fg)}
 body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
 /* ★ PLAN-v16 阶段 5（D7 §10.2）：preset-section/group 的 mono+宽字距回归 sans——
    仪表盘字体语汇用在区头上让两主题像两个产品；mono 只保留在读数元素（bpm/stat/lat，经典已 mono）。 */

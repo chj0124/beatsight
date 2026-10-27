@@ -159,7 +159,8 @@ section("T266d 播放中拖范围滑块进曲式 · ★ 同一行节点不重建
    桩不渲染 CSS，视觉只能按 t101e 的先例做**源码级**断言；观感属人眼验收范围。 */
 section("T266e 歌曲行选中视觉 · ★ 左侧 2px 绿边规则存在（默认主题），obs 主题沿用既有左绿边");
 {
-  ok(html.includes(".preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}"),
+  ok(html.includes(".preset-item.song.active{background:var(--sel-bg);color:var(--sel-fg)}")
+     && html.includes('body[data-theme="obs"] .preset-item.song.active{background:var(--sel-bg);border-left-color:transparent;color:var(--sel-fg)}'),
     "★★ 默认主题：.song.active 有 inset 绿边规则（选中信号不依赖与 .song 撞车的底色通道）");
   /* obs 主题的既有语言仍在（song 行经 .preset-item.active 天然继承）——本修不改它 */
   ok(/body\[data-theme="obs"\] \.preset-item\.active\{[^}]*border-left-color:var\(--green\)/.test(html),

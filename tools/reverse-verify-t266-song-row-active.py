@@ -40,9 +40,10 @@ MUTANTS = [
     ("M4 start() 撤掉起播期 syncDemoRange（停机态残留）",
      lambda s: s.replace(M4_OLD, "", 1),
      ["播放头隐藏"]),
-    ("M5 删掉 .song.active 的 inset 绿边规则（选中视觉通道回退为底色撞车）",
-     lambda s: s.replace(".preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}\n", "", 1),
-     ["inset 绿边规则"]),
+    ("M5 删掉 .song.active 的背景通道规则（PLAN-v16 追补：左条与分组线相撞，改 --sel-bg 背景通道）",
+     lambda s: s.replace(".preset-item.song.active{background:var(--sel-bg);color:var(--sel-fg)}\n", "", 1)
+                .replace('body[data-theme="obs"] .preset-item.song.active{background:var(--sel-bg);border-left-color:transparent;color:var(--sel-fg)}', "", 1),
+     ["song.active 有"]),
 ]
 
 hit_n, miss_n, rot_n = 0, 0, 0
