@@ -30,21 +30,23 @@
      12) 资源体积预算       index.html ≤ 预算字节数（硬线，越界即红）
      13) CSS 孤儿扫描      死 class 清单（**v3.33.14 起 --strict 判红**：修完口径后实测 0 孤儿，
                            观察期结束；此前 26 条全是动态拼接造成的假阳性）
-     14) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
-     15) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
-     16) DOM 引用完整性    $("x") 不得悬空
-     17) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
+     14) 设计令牌          PLAN-v16：间距/字号/圆角三族令牌契约 + 间距字面值基线冻结
+                           （只减不增）+ 胶囊写法硬红线 + obs 主题布局纪律（2026-10-27 新增）
+     15) 代码卫生 · 加强   ESLint（AST/控制流规则；**可选**：装了才跑，没装标 ⊘ 跳过）
+     16) 类型检查 · 加强   tsc（checkJs：模块接口与数据模型的类型错误；**可选**：同上）
+     17) DOM 引用完整性    $("x") 不得悬空
+     18) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
                            aria-checked / img 缺 alt / 可交互元素无可访问名 / aria-hidden 藏可聚焦项。
                            ★ 认「JS 运行期赋名」，免得误报 applyTheme 那类写法）
-     18) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
-     19) 自动化测试        FULL_SCAN=1 全量组合扫描
-     20) 死循环看门狗      每用例独立子进程 + 超时强杀
-     21) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     19) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
+     20) 自动化测试        FULL_SCAN=1 全量组合扫描
+     21) 死循环看门狗      每用例独立子进程 + 超时强杀
+     22) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
    ★ 三种"没跑到"必须分清（v2.0.6 起为两类，v2.8.6 补第三类）：
-     · 第 13、14 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
+     · 第 15、16 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
        逼 CI 装上而不是假装查过；
-     · 第 16 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
+     · 第 19 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
        把它算失败会无谓地堵住部署，所以 --strict-env 也不升级。它靠退出码 3 表达"本机缺能力"。
      · **工具故障**（任意步骤）——子进程**压根没起来**（spawnSync 报错），
        或子步骤按约定以退出码 4 自报"我未能执行"。它与前两类的区别是：
@@ -114,9 +116,9 @@ const SYNTAX = "const fs=require('fs');const m=fs.readFileSync('index.html','utf
   + "new Function(m[1]);console.log('inline script 编译通过')";
 
 /* v2.8.16（审计 P2-1）：全量模式下最贵的那一遍（FULL_SCAN=1 组合扫描）此前被**跑两次**——
-   第 16 步自己跑一次，第 18 步 check-coverage.js --full 内部又 spawn 一次同一套件。
-   现在第 16 步带着 NODE_V8_COVERAGE 跑（同一遍既出测试结论、又把 V8 区间落盘到本目录），
-   第 18 步 check-coverage 用 `--reuse=<本目录>` 直接分析这份落盘、**跳过重跑**。
+   自动化测试步自己跑一次，行覆盖率步 check-coverage.js --full 内部又 spawn 一次同一套件。
+   现在自动化测试步带着 NODE_V8_COVERAGE 跑（同一遍既出测试结论、又把 V8 区间落盘到本目录），
+   行覆盖率步 check-coverage 用 `--reuse=<本目录>` 直接分析这份落盘、**跳过重跑**。
    目录在整套检查跑完后清理（见循环之后）。 */
 const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 
@@ -181,6 +183,12 @@ const STEPS = [
      与 check-stub-parity.js v3.31.x 由观察期转 --strict 是同一条路径。 */
   { name: "CSS 孤儿扫描", cmd: process.execPath, args: ["tools/check-orphan-css.js", "--strict"],
     warnScan: /^\s*⚠\s*/ },
+  /* PLAN-v16（2026-10-27 设计审计）：设计令牌闸门。与上一步同属"纯读 CSS"家族——
+     R1 钉令牌契约（--sp-* / --fs-* / --radius-* 名值全集）、R2 间距字面值基线冻结
+     （新增判红、迁移后 --update-baseline 收紧，基线只减不增）、R3 胶囊写法硬红线
+     （999px/99px 禁止，唯一写法 var(--radius-full)）、R4 主题纪律（obs 块不得定义
+     布局令牌）。基线台账 tools/design-token-baseline.json 是白名单例外的唯一真相源。 */
+  { name: "设计令牌", cmd: process.execPath, args: ["tools/check-design-tokens.js"] },
   /* optional = 该步骤所需的依赖相对路径；不存在就标 ⊘ 跳过（不调用），不让它伪装成 ✓ */
   { name: "代码卫生 · ESLint（加强）", cmd: process.execPath, args: ["tools/check-eslint.js"],
     optional: "node_modules/eslint" },
@@ -202,7 +210,7 @@ const STEPS = [
     faultRetry: 1 },
   /* v2.8.16（审计 P2-1）：本步同时承担覆盖率采集——FULL_SCAN 下覆盖率插桩的内存开销约 2GB，
      故带头抬高 old-space 上限（V8 按需增长，不预占；只影响这个带插桩的子进程）。
-     第 18 步据此落盘分析，不再重跑套件。
+     行覆盖率步据此落盘分析，不再重跑套件。
      ★ v3.33.0：上限 4096 → 6144，依据是**实测**而非估算——套件已长到 186 个用例文件，
        v3.31.8 基线在 4096 下峰值 RSS 已达 3.727GB（贴着上限跑完，无余量），
        v3.33.0（+12 次 loadApp）峰值 3.754GB 即 OOM（exit 134）。
@@ -215,7 +223,7 @@ const STEPS = [
     args: ["--max-old-space-size=6144", "tests/run.js"],
     env: { FULL_SCAN: QUICK ? "" : "1", NODE_V8_COVERAGE: COV_DIR } },
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
-  /* v2.8.16（审计 P2-1）：--reuse 复用第 16 步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
+  /* v2.8.16（审计 P2-1）：--reuse 复用自动化测试步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
   { name: "行覆盖率", cmd: process.execPath,
     args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]),
     warnScan: /^\s*⚠\s*(从未执行的函数|增量覆盖率)/,

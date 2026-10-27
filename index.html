@@ -111,6 +111,16 @@
   /* --mono 首位放过 Inter（v2.0.2 改）：Inter 不是等宽字体，拍内座次尺/BPM 数字等
      「等宽」语义全部落空、宽度随字形漂移；真等宽栈优先，BPM 数字的逐位对齐另靠 tabular-nums */
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  /* ★★★ PLAN-v16：设计令牌（间距/字号/圆角，4px 网格，角色命名）。
+     口径承接设置页 v3.45.4「块间 16 / 块内 8」并推广全局（审计实测：全局 30 种间距字面值、
+     字号 ≤16px 11 档、圆角 14 种并存——层级间距混乱的根因）。命名按角色不按数值，
+     与 --sel-bg/--veil 的角色令牌文化一致；数值只在定义处出现一次。
+     ★ 主题纪律（D7）：obs 主题只许覆盖颜色族令牌，本族不得在 body[data-theme="obs"] 块出现
+       （tools/check-design-tokens.js R4 把守）。
+     ★ 存量迁移：字面值由基线台账单调收缩（同工具 R2/R3），方案见 docs/archive/PLAN-v16-design-tokens.md。 */
+  --sp-1:4px;  --sp-2:8px;  --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
+  --fs-glyph:9px; --fs-micro:10px; --fs-cap:11px; --fs-body:12px; --fs-lead:13px; --fs-title:14px; --fs-head:16px;
+  --radius-cell:3px; --radius-ctrl:6px; --radius-item:8px; --radius-card:12px; --radius-full:9999px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* ★ v3.0.0（批 5）：横向兜底裁在 **body**（= 视口边缘），而不是每个盒子各裁各的。
@@ -171,7 +181,7 @@ button:disabled{cursor:not-allowed}
 .set-top{position:sticky;top:0;z-index:2;margin:0 -24px;padding:16px 24px 12px;background:var(--card);border-bottom:1px solid var(--line)}
 .set-tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
 .set-tabs::-webkit-scrollbar{display:none}
-.set-tab{flex:none;padding:6px 18px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--t2);font-size:13px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s}
+.set-tab{flex:none;padding:6px 18px;border-radius:var(--radius-full);border:1px solid var(--line);background:var(--bg);color:var(--t2);font-size:13px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s}
 .set-tab:hover{color:var(--t1)}
 .set-tab.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--sel-fg);font-weight:600}
 .set-pane{padding:16px 0 2px}
@@ -192,7 +202,7 @@ button:disabled{cursor:not-allowed}
 .hint-d[open]>summary{color:var(--t2)}
 .hint-d .hint{margin:6px 0 0}
 .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9999px;padding:7px 14px;font-size:12px;color:var(--t2)}
-.dot{width:6px;height:6px;border-radius:99px;background:var(--green)}
+.dot{width:6px;height:6px;border-radius:var(--radius-full);background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(var(--green-rgb),.6);animation:pulse 1s infinite}
 .dot.bad{background:var(--red);animation:none}   /* v1.3.0：本地保存失败（P1-5 可观测） */
 @keyframes pulse{50%{opacity:.4}}
@@ -864,7 +874,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
      （用户报"贴在格子上"）。行高收到 1 后盒高 13px，盒底落到 -5px：与格子顶边留 ~5px、
      与上一行内容底（行高只用到 ~94px，再叠 20px 行距 ⇒ 约 24px 带宽）留 ~6px，
      两侧均衡、不挤上一行座次尺，也不压本行格子。 */
-.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:12px;line-height:1;font-weight:600;color:var(--amber);pointer-events:none;white-space:nowrap}   /* v3.4.0（B1/P2）：和弦名由 --green 改 --amber——它是乐谱标记不是「正在发声」，继续用绿会与播放头/当前行抢同一语义。★ PLAN-v11 追补（用户拍板）：11→12px——和弦名是行级锚点该更醒目，时值标注随之缩小恒小于它 */
+.bar-chord{position:absolute;left:6px;top:-18px;z-index:8;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-full);padding:0 8px;font-size:12px;line-height:1;font-weight:600;color:var(--amber);pointer-events:none;white-space:nowrap}   /* v3.4.0（B1/P2）：和弦名由 --green 改 --amber——它是乐谱标记不是「正在发声」，继续用绿会与播放头/当前行抢同一语义。★ PLAN-v11 追补（用户拍板）：11→12px——和弦名是行级锚点该更醒目，时值标注随之缩小恒小于它 */
 /* 拍点容器（跑道）：垫在音符块下，换拍时脉冲；容器感对齐 demo */
 /* v2.79.0：自画 inset ring 退役——拍分组层级改由 .seams 的 2px 强缝表达（同一「切开」
    语汇，线更强）；自画描边 + 圆角凹槽读作"两片板材相叠"，正是「前拍压后拍」错觉的
@@ -1621,7 +1631,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
 .slider-wrap>input[type=range]{width:100%;flex:1}
 .bpm-ticks{position:absolute;left:var(--thumb-r);right:var(--thumb-r);top:0;bottom:0;pointer-events:none}
 .bpm-ticks i{position:absolute;top:50%;width:2px;height:12px;border-radius:1px;background:var(--border);transform:translate(-50%,-50%)}
-input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:var(--line);outline:none;width:200px}   /* ★ v3.42.0：条改由 ::-webkit-slider-runnable-track 画（见下）——元素自身不再铺色 */
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:var(--radius-full);background:var(--line);outline:none;width:200px}   /* ★ v3.42.0：条改由 ::-webkit-slider-runnable-track 画（见下）——元素自身不再铺色 */
 /* v2.41.0：滑杆已走过段绿色填充（用户要求，含主界面音量三条 / BPM / 设置弹窗壁纸遮罩与
    延迟补偿）——--vfill 由装配区 paintRange 统一写入（拖动走 document 级 input 委托、
    程序化改值在各自同步点补一发）。★ 编排页播放范围双滑块排除：两根滑轨叠成一根视觉
@@ -1896,7 +1906,7 @@ input[type=range].vol{width:120px}
 .toggle-pill[hidden]{display:none}
 .toggle-pill.on{color:var(--t1)}
 .toggle-pill.off{color:var(--t2)}
-.switch{width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;transition:background .15s;flex:none}
+.switch{width:36px;height:20px;border-radius:var(--radius-full);background:var(--border);position:relative;transition:background .15s;flex:none}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--thumb);transition:left .15s}
 .toggle-pill.on .switch{background:var(--green)}
 .toggle-pill.on .switch::after{left:18px}
@@ -2216,8 +2226,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      thumb 整个吃掉（两个 thumb 重合时更明显：只剩最上面那个抓得住）。代价是"点轨道跳转"
      不可用，由拖动与键盘（方向键）补齐。 */
 .demo-range-track{position:relative;height:22px}
-.demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}   /* ★ v3.42.0：与单钮滑杆同口径——条两端各内缩半个钮径，圆头挂出（填充 rangeFillStyle 本就以钮心为端点，天然对齐） */
-.demo-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
+.demo-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:var(--radius-full);background:var(--line);z-index:0}   /* ★ v3.42.0：与单钮滑杆同口径——条两端各内缩半个钮径，圆头挂出（填充 rangeFillStyle 本就以钮心为端点，天然对齐） */
+.demo-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:var(--radius-full);background:var(--green);z-index:1}
 /* 段边界刻度线（v2.10.7）：滑块改按小节刻度后，每段**起点**的小节位置画一条小竖线，
    让"第 X 小节落在哪一段"一眼可见。z-index 1 = 与填充条同层（画在其上）、thumb (2/3) 之下；
    pointer-events:none 让它完全不参与命中——纯装饰，段名在读数与 aria-valuetext 里 */
@@ -2343,7 +2353,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 }
 .ed-pop-head{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .ed-pop-meta{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:var(--t1)}
-.ed-pop-x{width:24px;height:24px;margin-left:auto;flex:none;border-radius:999px;background:var(--card2);
+.ed-pop-x{width:24px;height:24px;margin-left:auto;flex:none;border-radius:var(--radius-full);background:var(--card2);
   border:1px solid var(--line);color:var(--t3);font-size:12px;cursor:pointer}
 .ed-pop-x:hover{color:var(--t1)}
 .ed-pop-arr{position:absolute;top:-5px;width:10px;height:10px;background:var(--card);
@@ -2456,13 +2466,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    而 .arg-outline 是 overflow:auto 的滚动容器 ⇒ 超出部分被**静默裁掉**（绿底缺角、歌词没有省略号）。
    改纵向：条目宽度由 stretch 决定（= 列宽），内容超了走各自的 text-overflow，不再溢出被裁。 */
 .arg-list{display:flex;flex-direction:column;gap:4px}
-.arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+.arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:var(--radius-full);padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
 .arg-item.sel{box-shadow:inset 0 0 0 1.5px var(--green)}
 .arg-item-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-item-meta{flex:none;font-size:11px;font-family:var(--mono);color:var(--t3)}
 /* 行尾「＋」（新建入口）：虚线胶囊；展开模板菜单时切绿（触发态可见——「点了像没点」的教训） */
-.arg-add{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 12px;border:1px dashed var(--border);border-radius:999px;background:none;color:var(--t3);font-size:14px;cursor:pointer}
+.arg-add{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 12px;border:1px dashed var(--border);border-radius:var(--radius-full);background:none;color:var(--t3);font-size:14px;cursor:pointer}
 .arg-add:hover{color:var(--t1);border-color:var(--t3)}
 .arg-add.open{border-style:solid;border-color:var(--green);color:var(--green)}
 /* ★★ v3.36.20（用户拍板）：段卡片**横滑**承载放不下的内容，而不是把内容压扁。
@@ -2502,7 +2512,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
       所以这个 bug 只在当前段暴露——**验证必须覆盖"当前段"这个状态**。 */
 .arg-sec.cur-sec{background-color:var(--cell);outline:1.5px solid var(--blue);outline-offset:-1.5px}
 /* 「段 N」是常驻静态序号标签 → 中性色（PLAN-v11 A3：绿只留给进行中/发声，静态信息不上绿） */
-.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--t3)}
+.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius-full);padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--t3)}
 .arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
 .arg-sec>.arg-ops{order:2}
 .arg-sec>.arg-blocks{order:3;flex-basis:100%}
@@ -2527,7 +2537,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      三区分组当场散架。故这里显式写 :not(.arg-pick)。 */
 .arg-sec:not(.arg-pick)>.arg-blocks>.arg-block,
 .arg-sec:not(.arg-pick)>.arg-blocks>.arg-mini{flex:none;white-space:nowrap}
-.arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
+.arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-full);padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--danger-fg)}
 .arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:3px;color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}   /* 圆角归并 3px（PLAN-v11 A5，时值格族） */
 /* v2.77.0：块级和弦「按小节一格」——歌词网格每行左端的和弦格（v2.75.0 的块行
@@ -2604,8 +2614,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .arg-map-seg:last-child{border-right:none}
 .arg-map-seg.in-range{background:rgba(var(--green-rgb),.15);box-shadow:inset 0 0 0 1px var(--green);color:var(--t1)}
 .arg-range-track{position:relative;height:22px}
-.arg-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:999px;background:var(--line);z-index:0}   /* ★ v3.42.0：同 .demo-range-track（条内缩、圆头挂出） */
-.arg-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:999px;background:var(--green);z-index:1}
+.arg-range-track::before{content:"";position:absolute;left:0;top:8px;width:100%;height:6px;border-radius:var(--radius-full);background:var(--line);z-index:0}   /* ★ v3.42.0：同 .demo-range-track（条内缩、圆头挂出） */
+.arg-range-fill{position:absolute;left:0;top:8px;height:6px;border-radius:var(--radius-full);background:var(--green);z-index:1}
 .arg-range-track input[type=range].arg-range-input{position:absolute;left:0;top:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;z-index:2}
 .arg-range-track input[type=range].arg-range-input::-webkit-slider-thumb{pointer-events:auto}
 .arg-range-track input[type=range].arg-range-input::-moz-range-thumb{pointer-events:auto}
@@ -2649,7 +2659,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v2.32.0（S3）：折叠摘要行——状态签 + 前几字预览 + ▸；展开控件只在展开态渲染 */
 .arg-lyric-sum{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:2px 0;color:var(--t3);font-size:12px;text-align:left}
 .arg-lyric-sum:hover{color:var(--t2)}
-.arg-lyric-tag{flex:none;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--t3)}
+.arg-lyric-tag{flex:none;font-size:11px;border:1px solid var(--border);border-radius:var(--radius-full);padding:2px 8px;color:var(--t3)}
 .arg-lyric-tag.ok{color:var(--green);border-color:rgba(var(--green-rgb),.4);background:rgba(var(--green-rgb),.1)}
 /* ★★ v3.33.30（用户需求）：收起卡片里的**歌词预览要加亮加大**——长曲式里靠歌词定位时，
    12px/--t3 的继承档太小太暗。
@@ -2865,7 +2875,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-lyric-cursor[hidden]{display:none}
 .arg-lyric-chip.cur{box-shadow:inset 0 0 0 2px var(--blue);filter:brightness(1.15)}
 /* 跟播打轴悬浮条（v2.48.0①）：主视图顶部居中，置 hidden 时不占位 */
-.tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-full);padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .tapbar[hidden]{display:none}
 .arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
 .arg-lyric-refine-note{flex:1 0 100%;min-width:0;font-size:11px;line-height:1.5;color:var(--t3)}
@@ -5007,23 +5017,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5039  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6701  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8942  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10170 Modal         应用内弹窗
-     L10331 Viz           时值可视化渲染与每帧动画
-     L14061 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14815 Trainer       变速训练器
-     L15032 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15707 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17675 Editor        自定义节奏型编辑器
-     L18811 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18906 Ear           听辨训练（v1.10.0）
-     L19134 Arrange       曲式编排（v2.0.0）
-     L23271 Help          使用方法（v2.0.1）
-     L23426 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23508 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23804 初始化（装配） 各模块 hook 接线与启动
+     L5049  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6711  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8952  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10180 Modal         应用内弹窗
+     L10341 Viz           时值可视化渲染与每帧动画
+     L14071 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14825 Trainer       变速训练器
+     L15042 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15717 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17685 Editor        自定义节奏型编辑器
+     L18821 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18916 Ear           听辨训练（v1.10.0）
+     L19144 Arrange       曲式编排（v2.0.0）
+     L23281 Help          使用方法（v2.0.1）
+     L23436 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23518 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23814 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
