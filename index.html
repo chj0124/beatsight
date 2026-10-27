@@ -35,9 +35,14 @@
      currentColor（同 --ico-arrange 先例）：**零 DOM 节点**，path 数据逐字节同源、
      同 stroke-width 2、同 14px 盒 ⇒ 视觉逐像素等价；颜色跟随文字（.aud-on 变绿 /
      .del 变红 / 双主题）由 background:currentColor 一处承担。mask 里的 white 只是
-     alpha 载体，颜色无关。 */
+     alpha 载体，颜色无关。
+     ★ v3.56.2（用户实拍两处）：--mk-stop（方块 ■）退役——「播放中」改用音乐播放器惯用的
+     「正在播放」三柱音波（--mk-eq，72×24 三相位雪碧图，播放时逐帧位移，见 .mk-aud.aud-on），
+     三相位各 ~300ms 循环跳变；同批新增 --mk-search（预设库搜索框放大镜，此前是 13px
+     的 ⌕ 字符，跨平台字形不一且偏小）。fill 缺省即黑：mask 只取 alpha，颜色无关。 */
   --mk-play:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M7 5.2v13.6L18.6 12z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  --mk-stop:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M8 8h8v8H8z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --mk-eq:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 72 24'><rect x='4.5' y='4' width='3' height='13' rx='1'/><rect x='10.5' y='11' width='3' height='6' rx='1'/><rect x='16.5' y='7.5' width='3' height='9.5' rx='1'/><rect x='28.5' y='7.5' width='3' height='9.5' rx='1'/><rect x='34.5' y='4' width='3' height='13' rx='1'/><rect x='40.5' y='11' width='3' height='6' rx='1'/><rect x='52.5' y='11' width='3' height='6' rx='1'/><rect x='58.5' y='7.5' width='3' height='9.5' rx='1'/><rect x='64.5' y='4' width='3' height='13' rx='1'/></svg>");
+  --mk-search:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><circle cx='10.5' cy='10.5' r='6.5' fill='none' stroke='white' stroke-width='2'/><path d='M15.1 15.1 20 20' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>");
   --mk-edit:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-folder:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-x:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M18 6 6 18' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><path d='M6 6l12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
@@ -754,7 +759,11 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 .pd-search{display:flex;align-items:center;gap:8px;background:var(--cell);
   border:1px solid var(--line);border-radius:var(--radius-item);padding:var(--sp-2) var(--sp-3);max-width:420px}
 .pd-search:focus-within{border-color:var(--green);outline:2px solid var(--green);outline-offset:2px}
-.pd-search-ico{color:var(--t3);font-size:13px}
+/* v3.56.2：⌕ 字符退役（13px、跨平台字形不一，用户实拍嫌小）——改走 .mk-ico mask 体系
+   的放大镜（--mk-search）。比操作组 14px 大一档（16px）：搜索框里它是唯一前导图形、
+   常驻可见，稍大才压得住框。::before 盒随尺寸放大（0-2-0 特异性稳压基类 .mk-ico 的 14px）。 */
+.pd-search-ico{color:var(--t3)}
+.pd-search-ico.mk-ico::before{width:16px;height:16px;-webkit-mask-size:16px 16px;mask-size:16px 16px}
 .pd-search input{background:transparent;border:0;outline:0;color:var(--t1);
   font-size:13px;flex:1;min-width:0}
 .pd-search input::placeholder{color:var(--t3)}
@@ -2109,7 +2118,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   /* ★ v3.35.3：歌曲行的 ▶ 是"整首连播"——行上唯一的主操作，不能等 hover 才现身 */
   .preset-item.song .aud{opacity:1;pointer-events:auto}
 }
-/* ▶/■ 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
+/* ▶/音波柱 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
 .preset-item .aud{flex:none;background:none;border:none;cursor:pointer;
   color:var(--t2);font-size:13px;line-height:1;padding:var(--sp-1) var(--sp-2);border-radius:var(--radius-ctrl)}
 .preset-item .aud.aud-on{color:var(--green)}
@@ -2217,18 +2226,35 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* ★ PLAN-v16 追补 → v3.56.1 mask 化：操作组图标走 .mk-ico::before 的 CSS mask
    （变量见 :root --mk-*，currentColor 随文字色）。::before 免掉 svg+path 节点
    （同 .arg-item::before 先例：装饰性图形不占 DOM）；display:block 免掉内联基线空隙，
-   几何与原 14px svg 完全同构。▶/■ 双态由按钮上的 .aud-on 切 mask-image，几何恒定零重排 */
+   几何与原 14px svg 完全同构。▶/音波柱 双态由按钮上的 .aud-on 切 mask-image，几何恒定零重排 */
 .mk-ico::before{content:"";display:block;width:14px;height:14px;background:currentColor;
   -webkit-mask-position:center;-webkit-mask-size:14px 14px;-webkit-mask-repeat:no-repeat;
   mask-position:center;mask-size:14px 14px;mask-repeat:no-repeat}
 .mk-edit::before{-webkit-mask-image:var(--mk-edit);mask-image:var(--mk-edit)}
 .mk-folder::before{-webkit-mask-image:var(--mk-folder);mask-image:var(--mk-folder)}
 .mk-x::before{-webkit-mask-image:var(--mk-x);mask-image:var(--mk-x)}
-/* ▶/■ 同钮双态：默认 ▶，.aud-on 翻 ■（类由 syncAuditionBtns / syncSongPlayBtns 切换）。
-   ★ 不设 .mk-play/.mk-stop 独立类规则——▶/■ 图形只经 .mk-aud 双态消费（CSS 孤儿扫描实证
-   无人挂类）；--mk-play/--mk-stop 变量保留，仅在此处被引用 */
+.mk-search::before{-webkit-mask-image:var(--mk-search);mask-image:var(--mk-search)}
+/* ▶/音波柱 同钮双态：默认 ▶，.aud-on 翻成音乐播放器惯用的「正在播放」三柱音波
+   （v3.56.2 起替代方块 ■；类由 syncAuditionBtns / syncSongPlayBtns 切换）。
+   ★ 不设 .mk-play/.mk-eq 独立类规则——两态图形只经 .mk-aud 双态消费（CSS 孤儿扫描
+   实证无人挂类）；--mk-play/--mk-eq 变量仅在此处被引用。
+   ★ 动画：--mk-eq 是 72×24 三相位雪碧图（一次 data URI，省两枚变量），mask-size
+   放大到 42px 后 mask-position 每段左移 14px 走帧；step-end 让位置离散跳变（位置
+   可插值、step-end 不插），0.9s 循环 ⇒ 三相位各 ~300ms，与音乐播放器跳柱同款观感。
+   100% 回 0 与首帧无缝衔接。若某引擎不动 mask-position 动画 → 静停在第一相位，
+   仍是有效的「正在播放」读法（优雅降级）。reduced-motion 停在第一相位（同 v2.4.3
+   以来全站减动口径）。 */
 .mk-aud::before{-webkit-mask-image:var(--mk-play);mask-image:var(--mk-play)}
-.mk-aud.aud-on::before{-webkit-mask-image:var(--mk-stop);mask-image:var(--mk-stop)}
+.mk-aud.aud-on::before{-webkit-mask-image:var(--mk-eq);mask-image:var(--mk-eq);
+  -webkit-mask-size:42px 14px;mask-size:42px 14px;
+  -webkit-mask-position:0 0;mask-position:0 0;animation:mk-eq .9s step-end infinite}
+@keyframes mk-eq{
+  0%{-webkit-mask-position:0 0;mask-position:0 0}
+  33.33%{-webkit-mask-position:-14px 0;mask-position:-14px 0}
+  66.67%{-webkit-mask-position:-28px 0;mask-position:-28px 0}
+  100%{-webkit-mask-position:0 0;mask-position:0 0}
+}
+@media (prefers-reduced-motion:reduce){.mk-aud.aud-on::before{animation:none}}
 /* Arrange 页改名钮（span 圆形热区 24×24）：14px 图标在其中居中（原 svg 走 inline 基线，
    ::before 是块级盒，需 margin 补居中：(24−14)/2 = 5px） */
 .arg-item-ren.mk-ico::before{margin:5px auto}
@@ -3793,7 +3819,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <!-- v3.1.0（A9）：抽屉搜索过滤——21+ 条目（内置 + 曲式 + 自定义）全量滚动不可扫读。
            纯前端 contains；命中区若折叠自动展开（输入即见，不必先找区头）。 -->
       <div class="pd-search">
-        <span class="pd-search-ico" aria-hidden="true">⌕</span>
+        <!-- v3.56.2：⌕ 字符 → mask 放大镜（--mk-search，16px）：13px 字形偏小且跨平台不一（用户实拍） -->
+        <span class="pd-search-ico mk-ico mk-search" aria-hidden="true"></span>
         <input type="text" id="presetSearch" placeholder="搜索节奏型…" aria-label="搜索节奏型">
       </div>
       <!-- ↓ 以下四块从原侧栏卡整组搬来（v3.0.0），id 与接线未动 -->
@@ -5058,23 +5085,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5090  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6752  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8993  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10229 Modal         应用内弹窗
-     L10390 Viz           时值可视化渲染与每帧动画
-     L14120 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14874 Trainer       变速训练器
-     L15091 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15770 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17744 Editor        自定义节奏型编辑器
-     L18880 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18975 Ear           听辨训练（v1.10.0）
-     L19203 Arrange       曲式编排（v2.0.0）
-     L23339 Help          使用方法（v2.0.1）
-     L23494 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23576 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23872 初始化（装配） 各模块 hook 接线与启动
+     L5117  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6779  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9020  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10256 Modal         应用内弹窗
+     L10417 Viz           时值可视化渲染与每帧动画
+     L14147 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14901 Trainer       变速训练器
+     L15118 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15797 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17771 Editor        自定义节奏型编辑器
+     L18907 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19002 Ear           听辨训练（v1.10.0）
+     L19230 Arrange       曲式编排（v2.0.0）
+     L23366 Help          使用方法（v2.0.1）
+     L23521 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23603 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23899 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5100,7 +5127,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.56.1";
+const VERSION = "3.56.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9137,8 +9164,8 @@ const clear = el => { el.innerHTML = ""; };
    居中行为不同，切换瞬间视觉重心横跳。v3.56.0 曾改为 mkActionIcon 建内联 SVG——
    视觉达标但每按钮 +2~3 节点，全页 DOM 顶破 1300 预算（1414 实测）。v3.56.1 改为
    **调用方直接挂 .mk-ico + .mk-{name} 类**，图形走 ::before 的 CSS mask（--mk-*，
-   path 逐字节同源）——零节点、同几何、currentColor 自动跟随主题。▶/■ 双态挂
-   .mk-aud（.aud-on 切 mask-image），不再需要 alt 双 path 壳。 */
+   path 逐字节同源）——零节点、同几何、currentColor 自动跟随主题。▶/音波柱 双态挂
+   .mk-aud（.aud-on 切 mask-image；v3.56.2 起播放中为三柱音波），不再需要 alt 双 path 壳。 */
 
 /* ---------- 叠加层键盘层注册表（v2.18.0）----------
    由来：`Controls` 的 keydown 里原有**五段同形的 if/return**——「某个叠加层开着就吞掉这次按键，
@@ -15226,7 +15253,7 @@ const Controls = (() => {
     timer = setInterval(AudioEngine.scheduler, CONFIG.schedInterval);
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
-    Presets.syncSongPlayBtns();                          // v3.35.6：空格/主播放键起播时，歌曲行的 ▶ 也要变 ■
+    Presets.syncSongPlayBtns();                          // v3.35.6：空格/主播放键起播时，歌曲行的 ▶ 也要变音波柱
     Presets.syncAuditionBtns();                          // PLAN-v16：条目 ▶ 的 on 态含「该型正在主播放」——
                                                          /* 不能埋进 syncDemoRange（preset 模式下它被
                                                             demoArrId 空值守卫提前返回，首版实测按钮不翻转） */
@@ -15279,7 +15306,7 @@ const Controls = (() => {
        （重建整表代价大且会打断刚断开的播放链路），故走轻量刷新——判据与列表构造时同一份。 */
     Presets.syncPlayingDot();
     Presets.syncDemoRange();              // v2.5.0：停机后范围读数要回到"范围起点"（播放中跟可听位置，停机跟 arrangeSel.from）
-    Presets.syncAuditionBtns();           // PLAN-v16：停机把条目 ▶ 从 ■ 还原回 ▶（与上行同为本停机的收口）
+    Presets.syncAuditionBtns();           // PLAN-v16：停机把条目 ▶ 从音波柱还原回 ▶（与上行同为本停机的收口）
     Viz.resetForStop();
     Trainer.updateProg();
     /* v2.10.12：原 `syncLimitProg()`（停止即清空练习量进度文案）随练习量删除 */
@@ -15894,9 +15921,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     btn.addEventListener("mousedown", e => e.preventDefault());   // 同 ✎：不抢焦点挤走兄弟按钮（v2.44.2）
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      /* ★ PLAN-v16（用户拍板）：该型正在**主播放**时 ▶ 呈 ■（判据同呼吸点，排除试听态——
+      /* ★ PLAN-v16（用户拍板）：该型正在**主播放**时 ▶ 呈音波柱（判据同呼吸点，排除试听态——
          试听期间 S.playing 同为 true），此时点它 = 停主播放——与歌曲行「双击与 ▶ 同权」的
-         行为对齐；否则双击起播后按钮纹丝不动（用户实报），而 ■ 点下去会进试听、语义错乱。
+         行为对齐；否则双击起播后按钮纹丝不动（用户实报），而音波柱点下去会进试听、语义错乱。
          其余情形（含他行试听中）仍是试听通道。 */
       if (S.playing && !S.preview && S.playMode !== "arrange" && appliedPat === pat){ Controls.stop(); return; }
       toggleAudition(pat);
@@ -15907,8 +15934,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function syncAuditionBtns(){
     audBtns.forEach((/** @type {{btn: HTMLElement, pat: any}} */ e) => {
       /* ★ PLAN-v16：on = 试听中 **或** 该型正在主播放（判据同呼吸点，**必须排除 S.preview**——
-         试听也走 Controls.start，S.playing 在试听期间同为 true，不排会把别的行误点成 ■）。
-         双击起播后行上 ▶ 也呈 ■（用户实报「双击播放按钮不变」）；aria 区分两种停止语义 */
+         试听也走 Controls.start，S.playing 在试听期间同为 true，不排会把别的行误点成音波柱）。
+         双击起播后行上 ▶ 也呈音波柱（用户实报「双击播放按钮不变」）；aria 区分两种停止语义 */
       const prevOn = S.preview && previewRef === e.pat;
       const mainOn = S.playing && !S.preview && S.playMode !== "arrange" && appliedPat === e.pat;
       e.btn.setAttribute("aria-label", prevOn ? "停止试听" : (mainOn ? "停止播放" : "试听"));
@@ -20897,7 +20924,7 @@ const Arrange = (() => {
     Controls.stop();                              // 从头起播（重复试听同一段从段首/选中小节起）
     Controls.start();
     preview = { arrId: a.id, secUid: sec.uid };
-    arrangeRender();                              // 钮态（▶/■）与游标宿主 lane 重建
+    arrangeRender();                              // 钮态（▶/音波柱）与游标宿主 lane 重建
     syncPreviewCursor();
     announce("试听本段：原速循环。再点一次或关闭浮层停止");
   }
@@ -20949,7 +20976,7 @@ const Arrange = (() => {
     playQuota = patBars(srcPreset);             // 放该型的小节数一遍，到量自动停
     onQuotaDone = () => { stopCandPreview(false); announce("候选试听结束，未改动曲式"); };
     Controls.start();
-    arrangeRender();                            // 段行暂时高亮候选型 + ▶ 切 ■
+    arrangeRender();                            // 段行暂时高亮候选型 + ▶ 切音波柱
     announce("试听候选节奏型：" + (srcPreset ? srcPreset.name : "（未知）") + "，放一遍自动停；再点 ▶ 或关闭停止");
   }
   /** @param {boolean} silent @returns {void} */

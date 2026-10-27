@@ -31,7 +31,7 @@ section("T158 试听 · 进/出/换/互斥/拍号恢复");
   eq(beat.curPattern().name, name0, "★ 试听对象 = 该条目的型");
   eq(beat.Store.S.playing, true, "试听在发声（Controls.start 已走）");
   eq(beat.Store.S.sel.type + "/" + beat.Store.S.sel.idx, "builtin/1", "★ S.sel 纹丝不动（试听 ≠ 选中）");
-  ok(aud0().classList.contains("aud-on"), "按钮态翻转为 ■（PLAN-v16 起 ▶/■ 是同壳双 path 的 SVG，态走 .aud-on 类）");
+  ok(aud0().classList.contains("aud-on"), "按钮态翻转为音波柱（v3.56.2 起 ▶/音波柱 = ::before mask，态走 .aud-on 类）");
 
   /* ② 再点同一条 → 停止试听 */
   aud0().fire("click");
@@ -44,15 +44,15 @@ section("T158 试听 · 进/出/换/互斥/拍号恢复");
   aud1().fire("click");
   eq(beat.curPattern().name, name1, "★ 点别条 → 试听对象切换");
   ok(!aud0().classList.contains("aud-on"), "前一条按钮态同步翻回 ▶");
-  ok(aud1().classList.contains("aud-on"), "当前条按钮态 ■");
+  ok(aud1().classList.contains("aud-on"), "当前条按钮态音波柱");
   aud1().fire("click");
   eq(beat.Store.S.preview, false, "收尾：退出试听");
 
-  /* ④ 与主播放的关系（PLAN-v16 语义变更，用户拍板）：**正在主播放的那一行** ▶ 呈 ■，
+  /* ④ 与主播放的关系（PLAN-v16 语义变更，用户拍板）：**正在主播放的那一行** ▶ 呈音波柱，
      点它 = 停止主播放——与歌曲行「双击与 ▶ 同权」对齐；旧行为「让位给试听」退役。
      主播放的行 = 选中型（idx 1 = 八分摇滚 = aud1 的行）；aud0（四分基础）仍呈 ▶。 */
   beat.Controls.start();                      // 主播放（预设模式，选中 idx 1；③ 收尾已退试听）
-  ok(aud1().classList.contains("aud-on"), "★ 主播放的那行 ▶ 呈 ■（双击同权）");
+  ok(aud1().classList.contains("aud-on"), "★ 主播放的那行 ▶ 呈音波柱（双击同权）");
   ok(!aud0().classList.contains("aud-on"), "★ 别行仍呈 ▶（mainOn 绑正在发声的型，不撒到全表）");
   aud1().fire("click");
   eq(beat.Store.S.playing, false, "★ 主播放中点该行 ▶ → 停止主播放");

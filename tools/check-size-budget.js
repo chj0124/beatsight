@@ -419,8 +419,17 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      · 2,158,561 → 2,160,249 B，超线 1.6KB：5 枚 --mk-* data URI（URL 编码膨胀，每枚 300B 级）
        + mask 壳规则与同源注释，减去 ACTION_ICON 表 + 工厂删除后净增。
      · 换来的是 DOM 节点 −129（1414 → 1285，冒烟实测），svg+path 内联节点归零。
-       同为基础设施抬线，理由随批写入。 */
-const BUDGET_BYTES = 2110 * 1024;
+       同为基础设施抬线，理由随批写入。
+   ★ v3.56.2（预设库双图标改版）：2110 → **2113KB**。
+     · 2,160,249 → 2,163,301 B，超旧线 2.6KB：--mk-eq 音波柱雪碧图（一枚 570B 级 data URI
+       承三相位，省两枚变量）+ --mk-search 放大镜 + mask-position 走帧/尺寸覆盖规则
+       与同源注释，减去 --mk-stop 方块后净增。
+     · 换来的是「正在播放」从方块 ■ 改为音乐播放器惯用的三柱音波（逐帧跳动，
+       reduced-motion 静态降级）+ 搜索放大镜从 13px ⌕ 字符换为 16px mask 图标
+       （均为用户实拍拍板）。按视觉本体抬线，理由随批写入；抬整三档留 ~6.9KB 余量
+       （红线只收整数 KB，2.6KB 超线只能进到 3 档），观察线仍会继续提示瘦身
+       （壁纸那张出厂 data URI 仍是头号目标）。 */
+const BUDGET_BYTES = 2113 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){
