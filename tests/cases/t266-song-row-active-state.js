@@ -20,7 +20,7 @@
      高亮必须经运行期路径（syncSongPlayBtns，挂在 syncDemoRange 收口上）当场亮起；
    · 曲式模式停机：高亮保留（「已就绪」= 你正要操作的对象，v3.3.1 口径）。 */
 "use strict";
-const { loadApp, FakeAudioContext, drive, ok, eq, section } = require("../lib/harness");
+const { loadApp, FakeAudioContext, drive, ok, eq, section, html } = require("../lib/harness");
 
 const seedState = obj => ({ "beatsight.state": JSON.stringify(obj) });
 /* 与 t73 同一口径：seedDemo:false 让示例曲真的带出（含歌曲行与范围滑块） */
@@ -150,4 +150,21 @@ section("T266d 播放中拖范围滑块进曲式 · ★ 同一行节点不重建
   ok(songRowOf(els) === row, "前提：列表未重建（行节点同一引用——运行期路径存在的意义）");
   ok(hasActive(row), "★ 歌曲行高亮当场亮起（syncSongPlayBtns 运行期翻转，非构造期）");
   beat.Controls.stop();
+}
+
+/* ================= 场景 T266e：歌曲行选中态的 CSS 视觉通道（CSS 文本级） =================
+   背景（用户实拍）：两首示例曲背景色一样、看不出在播哪首——.song 的结构性常驻底
+   与 .active 的选中底撞在同一个 var(--card2) 上，底色通道失明；meta 变绿又被
+   选中态图标浮现藏掉。修法 = 默认主题补「左 2px 绿边」（obs 主题既有语言）。
+   桩不渲染 CSS，视觉只能按 t101e 的先例做**源码级**断言；观感属人眼验收范围。 */
+section("T266e 歌曲行选中视觉 · ★ 左侧 2px 绿边规则存在（默认主题），obs 主题沿用既有左绿边");
+{
+  ok(html.includes(".preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}"),
+    "★★ 默认主题：.song.active 有 inset 绿边规则（选中信号不依赖与 .song 撞车的底色通道）");
+  /* obs 主题的既有语言仍在（song 行经 .preset-item.active 天然继承）——本修不改它 */
+  ok(/body\[data-theme="obs"\] \.preset-item\.active\{[^}]*border-left-color:var\(--green\)/.test(html),
+    "★ obs 主题：.active 左绿边规则仍在（song 行继承同一条，两主题语言一致）");
+  /* 不许把 .song 的常驻底抹掉来「让位」——那是分组标题的结构样式（v3.35.3 定稿） */
+  ok(html.includes(".preset-item.song{background:var(--card2)}"),
+    "★ .song 结构性常驻底保留（选中信号另开通道，不拆分组标题的层级表达）");
 }

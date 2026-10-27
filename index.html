@@ -2127,6 +2127,17 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 歌曲是分组标题，子节奏型降低一级；嵌套文字间距与普通层级同为 12px。 */
 .preset-item.song{background:var(--card2)}
 .preset-item.song .name{font-weight:600}
+/* ★ 歌曲行的选中态 = 左侧 2px 绿边（对齐 obs 主题 .active 的既有语言）。
+   根因：.song 的结构性常驻底（var(--card2)，v3.35.3 分组标题）与 .active 的选中底
+   （同一个 var(--card2)）撞在同一个变量上——底色通道在数学上区分不了「选没选中」；
+   .active .meta 变绿又被选中态的图标浮现藏掉（opacity:0），选中信号只剩图标恒显一条
+   弱线索（用户实拍：两首示例曲背景色一样，看不出在播哪首）。
+   观测台主题早已用 border-left-color:var(--green) 表达选中（song 行天然继承那条），
+   本条把同一语言补到默认主题——song 行专用（普通条目未选时无底色，底色通道没撞车，不动）。
+   用 inset box-shadow 而不是真 border：默认主题普通条目没有 2px 左边框（obs 才有），
+   只给 song 加真边框会让行内容右移 2px、与同区其他行错位；inset 阴影不参与布局、
+   随 border-radius 圆角走，零几何影响。 */
+.preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}
 .preset-item.in-song{margin-left:18px;padding:6px 12px}
 .preset-item.in-song .name{font-size:12px;font-weight:500;color:var(--t2)}
 .preset-item.in-song>div:first-child{flex-wrap:nowrap}
@@ -4996,23 +5007,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5028  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6690  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8931  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10159 Modal         应用内弹窗
-     L10320 Viz           时值可视化渲染与每帧动画
-     L14050 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14804 Trainer       变速训练器
-     L15021 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15696 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17664 Editor        自定义节奏型编辑器
-     L18800 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18895 Ear           听辨训练（v1.10.0）
-     L19123 Arrange       曲式编排（v2.0.0）
-     L23260 Help          使用方法（v2.0.1）
-     L23415 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23497 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23793 初始化（装配） 各模块 hook 接线与启动
+     L5039  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6701  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8942  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10170 Modal         应用内弹窗
+     L10331 Viz           时值可视化渲染与每帧动画
+     L14061 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14815 Trainer       变速训练器
+     L15032 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15707 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17675 Editor        自定义节奏型编辑器
+     L18811 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18906 Ear           听辨训练（v1.10.0）
+     L19134 Arrange       曲式编排（v2.0.0）
+     L23271 Help          使用方法（v2.0.1）
+     L23426 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23508 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23804 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
