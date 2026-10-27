@@ -59,8 +59,8 @@ section("T259c CSS 钉 · 引导行高 / 模板收窄 / 弹层 pill 收紧");
   const guideSeg = html.slice(guideAt, html.indexOf("}", guideAt));
   ok(guideAt > 0 && /line-height:1\.5/.test(guideSeg),
      "★ 引导层行高收为 1.5（三行 ≈59px ≤ 64px 轨道，不再贴上下缘）");
-  ok(/\.pill\{border-radius:9999px;padding:9px 16px;font-size:13px/.test(html),
-     "★ 全局 .pill 未被波及（弦区/其它按钮内边距与字号一字未动）");
+  ok(/\.pill\{border-radius:var\(--radius-full\);padding:9px 16px;font-size:13px/.test(html),
+     "★ 全局 .pill 未被波及（弦区/其它按钮内边距与字号一字未动；PLAN-v16 起圆角写 var(--radius-full)=9999px）");
   ok(/\.edbar\{display:flex;gap:12px/.test(html) && /\.edbar-label\{width:88px;flex:none\}/.test(html),
      "★ 编辑标签列 = 88px：容纳 88px 文字行，完整保留与轨道之间的 12px 间隙");
   ok(html.includes("用「 | 」分段会按片段均分"),

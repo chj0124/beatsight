@@ -138,8 +138,8 @@ section("T110d 源码契约 · 走带条密度封顶 / 歌词字号微调 / 示�
     "★★ v3.13.0：控制区限宽 1000px（1440 实测两块各 ~484、两侧各 ~165 恒定）——现役于 560–1279.9 堆叠档");
   ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
     "★ v3.3.0：行数拍号行的单独去底补丁已删（四块统一无底后它成了死规则）");
-  ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
-    "★ v3.3.0：组容器底整条去掉（四块统一 transparent，圆角与 12/16 内边距保留）");
+  ok(src.includes("background:transparent;border-radius:var(--radius-card);padding:12px 16px}"),
+    "★ v3.3.0：组容器底整条去掉（四块统一 transparent，圆角与 12/16 内边距保留；PLAN-v16 起 10px 写 var(--radius-card)=12px）");
   ok(!src.includes(".card-head-left{grid-row"),
     "★★ v2.39.0：竖跨执行错误已修——音量列不再 grid-row 竖跨（否则 BPM 被挤到右侧列）");
   ok(!src.includes("grid-column:1 / 4;grid-row:2"),

@@ -54,7 +54,7 @@ section("T148a 胶囊化 · 内缩边 / 圆角 / box-sizing / 状态环改 inset
      "★ background-clip:padding-box（绿块裁进 padding-box——外几何 left/width 不动的根本）");
   ok(/\.arg-lyric-chip\{[^}]*box-sizing:border-box/.test(html),
      "★ box-sizing:border-box（没有它 border 会把总宽撑大 4px，破坏宽度∝时值）");
-  ok(/\.arg-lyric-chip\{[^}]*border-radius:6px/.test(html), "圆角 4→6px（胶囊语汇）");
+  ok(/\.arg-lyric-chip\{[^}]*border-radius:var\(--radius-ctrl\)/.test(html), "圆角 4→6px（胶囊语汇；PLAN-v16 起写 var(--radius-ctrl)=6px）");
   ok(/\.arg-lyric-chip\.sm\{border-width:1px\}/.test(html), "★ 窄格降级规则存在（.sm → 1px）");
   for (const cls of ["sel", "cur", "dragging", "blocked"]){
     ok(new RegExp("\\.arg-lyric-chip\\." + cls + "\\{[^}]*box-shadow:inset 0 0 0 2px").test(html),

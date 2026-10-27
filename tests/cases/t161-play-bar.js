@@ -100,9 +100,9 @@ section("T161c 去组容器底 · 四块统一无底");
 
 ok(!src.includes(".viz-head-grid .viz-rows-row{background:transparent}"),
   "★ v3.0.0 只给行数拍号行去底的补丁已删（四块统一后它成了死规则）");
-ok(src.includes("background:transparent;border-radius:10px;padding:12px 16px}"),
-  "★★ 四块的共用选择器仍在，背景改为 transparent（圆角/内边距口径不变 → 块内间距不受影响）");
-ok(!src.includes("background:var(--card2);border-radius:10px;padding:12px 16px"),
+ok(src.includes("background:transparent;border-radius:var(--radius-card);padding:12px 16px}"),
+  "★★ 四块的共用选择器仍在，背景改为 transparent（圆角/内边距口径不变 → 块内间距不受影响；PLAN-v16 起 10px 写 var(--radius-card)=12px）");
+ok(!src.includes("background:var(--card2);border-radius:var(--radius-card);padding:12px 16px"),
   "★★ 组容器底（--card2）已从控制行彻底移除（防回潮）");
 
 section("T161d 控制键比例（v3.12.0，用户反馈：播放键过大 / 跳段箭头过小 / 圆存在感弱）");

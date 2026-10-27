@@ -135,8 +135,8 @@ section("T245-4 品牌合规钉 · A4 热区 / A5 圆角归并 / A6 veil 单源 
   }
   for (const sel of [".arg-reps{", ".arg-chd-cell{", ".arg-pill-tag{", ".arg-pill-edit{", ".arg-pill-play{"]){
     const r = ruleOf(sel.replace(/\{$/, ""));
-    ok(r.includes("border-radius:3px") && !r.includes("border-radius:4px"),
-       "★ A5：" + sel + " 圆角归并 3px（时值格族，阶梯外 4px 退役）");
+    ok(r.includes("border-radius:var(--radius-cell)") && !r.includes("border-radius:4px"),
+       "★ A5：" + sel + " 圆角归并 3px（时值格族，PLAN-v16 起写 var(--radius-cell)=3px）");
   }
   ok(html.includes("--green-rgb:30,215,96") && html.includes("--green-rgb:37,99,235"),
      "★ A6：--green-rgb 双主题定义在（深 30,215,96 / 日 37,99,235）");

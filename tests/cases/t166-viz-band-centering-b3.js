@@ -99,7 +99,7 @@ section("T151c .bar-row.current 只留底纹 .10（v3.33.8：挂在 ::before 的
   ok(!/box-shadow/.test(base),
     "★★ 不得在**行盒**上用 inset box-shadow：它画的是盒差集，inset 3px 24px 0 0 实为 L 形通宽带"
     + "（B3 几何 bug，v3.8.0 修）。凡「贴边的一小段」都别走上面这两条路");
-  ok(/border-radius:8px/.test(pseudo), "★ 行圆角 8px 保留（底纹与 obs 描边款都要它）");
+  ok(/border-radius:var\(--radius-item\)/.test(pseudo), "★ 行圆角 8px 保留（底纹与 obs 描边款都要它；PLAN-v16 起写 var(--radius-item)=8px）");
   /* obs 主题：它的位置对比由 1px inset 环承担，故底纹不跟着提到 .10；v3.33.8 起该环挂在 ::before 上 */
   const obs = (html.match(/body\[data-theme="obs"\] \.bar-row\.current::before\{[^}]*\}/) || [""])[0];
   ok(/inset 0 0 0 1px/.test(obs),
