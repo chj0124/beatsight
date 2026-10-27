@@ -26,20 +26,20 @@ section("T158 试听 · 进/出/换/互斥/拍号恢复");
   eq(beat.curPattern().name, name0, "★ 试听对象 = 该条目的型");
   eq(beat.Store.S.playing, true, "试听在发声（Controls.start 已走）");
   eq(beat.Store.S.sel.type + "/" + beat.Store.S.sel.idx, "builtin/1", "★ S.sel 纹丝不动（试听 ≠ 选中）");
-  eq(aud0.textContent, "■", "按钮态翻转为 ■");
+  ok(aud0.classList.contains("aud-on"), "按钮态翻转为 ■（PLAN-v16 起 ▶/■ 是同壳双 path 的 SVG，态走 .aud-on 类）");
 
   /* ② 再点同一条 → 停止试听 */
   aud0.fire("click");
   eq(beat.Store.S.preview, false, "★ 再点同一条 → 预览退出");
   eq(beat.Store.S.playing, false, "播放停止");
-  eq(aud0.textContent, "▶", "按钮态翻回 ▶");
+  ok(!aud0.classList.contains("aud-on"), "按钮态翻回 ▶");
 
   /* ③ 换条试听：试听对象跟着走（前一条按钮态同步翻回） */
   aud0.fire("click");
   aud1.fire("click");
   eq(beat.curPattern().name, name1, "★ 点别条 → 试听对象切换");
-  eq(aud0.textContent, "▶", "前一条按钮态同步翻回 ▶");
-  eq(aud1.textContent, "■", "当前条按钮态 ■");
+  ok(!aud0.classList.contains("aud-on"), "前一条按钮态同步翻回 ▶");
+  ok(aud1.classList.contains("aud-on"), "当前条按钮态 ■");
   aud1.fire("click");
   eq(beat.Store.S.preview, false, "收尾：退出试听");
 

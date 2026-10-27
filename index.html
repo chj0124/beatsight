@@ -2197,6 +2197,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    与删除的红色区分——相邻两个小图标，色相就是"哪个是危险操作"的读法 */
 .preset-item .ren{color:var(--t3);font-size:13px;padding:2px var(--sp-2);border-radius:var(--radius-ctrl);flex:none}
 .preset-item .ren:hover{color:var(--blue);background:rgba(77,171,247,.12)}
+/* ★ PLAN-v16 追补：操作组图标 = 单色描边 SVG（mkActionIcon，currentColor，见 JS 侧注释）。
+   svg display:block 免掉内联基线空隙；▶/■ 同壳双 path 由 .aud-on 切显隐，几何恒定 */
+.preset-item .ren svg,.preset-item .grp svg,.preset-item .del svg,.preset-item .aud svg{display:block}
+.preset-item .aud .ico-stop{display:none}
+.preset-item .aud-on .ico-play{display:none}
+.preset-item .aud-on .ico-stop{display:block}
 /* 「自定义」区（v2.9.0）：曲式条目（Store.arranges）+ 当前曲式的「整首连播」行与段序条。
    ★ 左侧绿色分组竖线已退役（2026-10-27 用户拍板，与歌曲行常驻底同批）：每首歌各一层
      分组、各一条线，未选中时读作「每行都有选中条」；分组身份由《书名号》+ 600 字重
@@ -5023,23 +5029,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5066  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6728  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8969  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10197 Modal         应用内弹窗
-     L10358 Viz           时值可视化渲染与每帧动画
-     L14088 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14842 Trainer       变速训练器
-     L15059 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15734 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17702 Editor        自定义节奏型编辑器
-     L18838 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18933 Ear           听辨训练（v1.10.0）
-     L19161 Arrange       曲式编排（v2.0.0）
-     L23298 Help          使用方法（v2.0.1）
-     L23453 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23535 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23831 初始化（装配） 各模块 hook 接线与启动
+     L5061  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6723  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8964  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10233 Modal         应用内弹窗
+     L10394 Viz           时值可视化渲染与每帧动画
+     L14124 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14878 Trainer       变速训练器
+     L15095 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15770 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17737 Editor        自定义节奏型编辑器
+     L18873 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18968 Ear           听辨训练（v1.10.0）
+     L19196 Arrange       曲式编排（v2.0.0）
+     L23333 Help          使用方法（v2.0.1）
+     L23488 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23570 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23866 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -9096,6 +9102,47 @@ function openParamSlot(/** @type {string} */ name){
    子节点（见 tests/lib/harness.js），换成 replaceChildren / removeChild 循环会让桩与真实行为分叉。 */
 /** @param {any} el @returns {void} */
 const clear = el => { el.innerHTML = ""; };
+/* ★★ 操作组/条目图标 = 单色描边 SVG（2026-10-27 用户拍板，共享助手：Presets 操作组与
+   Arrange 编排页 ✎ 两个模块都在用，故住共享区）。此前 ▶/✎ 是字体字形、📁 是彩色 emoji
+   （黄色、不受 color 控制、跨平台形状不一），三种来源混排与全站「单色描边 SVG
+   （currentColor，顶栏齿轮/月亮、v3.42.0 雪佛龙）」的图标语言相撞；且 .aud 的 ▶↔■
+   字符替换因两字形字面宽/居中行为不同，切换瞬间视觉重心横跳（与 v3.42.0「▸ 三角没居中」
+   同类病、同解法）。▶/■ 同壳双 path：按钮几何恒定，播放态由 .aud-on 类切 path 显隐（CSS），
+   零重排。stroke=currentColor：aud-on 变绿 / danger 红 / 主题切换自动跟随；
+   accessible name 走按钮既有的 aria-label/title（调用点四钮原本就齐），svg 本体 aria-hidden。 */
+const ACTION_ICON = {
+  play: { cls: "ico-play", d: ["M7 5.2v13.6L18.6 12z"] },
+  stop: { cls: "ico-stop", d: ["M8 8h8v8H8z"] },
+  edit: { cls: "ico-edit", d: ["M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"] },
+  folder: { cls: "ico-folder", d: ["M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"] },
+  x: { cls: "ico-x", d: ["M18 6 6 18", "M6 6l12 12"] }
+};
+/** @param {string} name @param {string=} alt 第二组 path（play/stop 双态壳用），类名字面量走各组的 cls */
+function mkActionIcon(name, alt){
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  const add = (/** @type {{cls: string, d: string[]}} */ spec) => {
+    spec.d.forEach(d => {
+      const p = document.createElementNS(ns, "path");
+      p.setAttribute("d", d);
+      p.classList.add(spec.cls);
+      svg.appendChild(p);
+    });
+  };
+  add(ACTION_ICON[name]);
+  if (alt) add(ACTION_ICON[alt]);
+  svg.classList.add(ACTION_ICON[name].cls);
+  return svg;
+}
 
 /* ---------- 叠加层键盘层注册表（v2.18.0）----------
    由来：`Controls` 的 keydown 里原有**五段同形的 if/return**——「某个叠加层开着就吞掉这次按键，
@@ -15774,7 +15821,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function pushRenameBtn(item, onRename){
     const pen = document.createElement("button");
     pen.className = "ren"; pen.title = "重命名"; pen.setAttribute("aria-label", "重命名");
-    pen.textContent = "✎";
+    pen.appendChild(mkActionIcon("edit"));
     /* ★ 为什么掐掉 <button> 的"按下即聚焦"默认行为（v2.44.2 修的 P0）：
        hover 设备上 `.preset-item:focus-within .grp` 会让 📁 在聚焦的**那一刻**从
        display:none 拉成 inline-block，条目整行变宽、✎ 被向左挤走（实测左移 85.7px）。
@@ -15795,7 +15842,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function pushGroupBtn(item, onGroup){
     const btn = document.createElement("button");
     btn.className = "grp"; btn.title = "移入分组"; btn.setAttribute("aria-label", "移入分组");
-    btn.textContent = "📁";
+    btn.appendChild(mkActionIcon("folder"));
     btn.addEventListener("click", e => { e.stopPropagation(); onGroup(); });
     presetActionHost(item).appendChild(btn);
   }
@@ -15846,7 +15893,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function pushAuditionBtn(item, pat){
     const btn = document.createElement("button");
     btn.className = "aud"; btn.title = "试听"; btn.setAttribute("aria-label", "试听");
-    btn.textContent = "▶";
+    btn.appendChild(mkActionIcon("play", "stop"));
     btn.addEventListener("mousedown", e => e.preventDefault());   // 同 ✎：不抢焦点挤走兄弟按钮（v2.44.2）
     btn.addEventListener("click", e => { e.stopPropagation(); toggleAudition(pat); });
     audBtns.push({ btn, pat });
@@ -15855,7 +15902,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function syncAuditionBtns(){
     audBtns.forEach((/** @type {{btn: HTMLElement, pat: any}} */ e) => {
       const on = S.preview && previewRef === e.pat;
-      e.btn.textContent = on ? "■" : "▶";
       e.btn.setAttribute("aria-label", on ? "停止试听" : "试听");
       e.btn.classList.toggle("aud-on", on);
     });
@@ -15947,7 +15993,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     head.appendChild(nm); head.appendChild(cnt);
     const pen = document.createElement("button");
     pen.className = "ren"; pen.title = "重命名分组"; pen.setAttribute("aria-label", "重命名分组");
-    pen.textContent = "✎";
+    pen.appendChild(mkActionIcon("edit"));
     pen.addEventListener("click", e => {
       e.stopPropagation();
       Modal.uiPrompt(`重命名分组「${g.name}」`, g.name, (/** @type {string} */ v) => {
@@ -15957,7 +16003,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     head.appendChild(pen);
     const del = document.createElement("button");
     del.className = "del"; del.title = "删除分组"; del.setAttribute("aria-label", "删除分组");
-    del.textContent = "×";
+    del.appendChild(mkActionIcon("x"));
     del.addEventListener("click", e => {
       e.stopPropagation();
       Modal.uiConfirm(`删除分组「${g.name}」？组内 ${count} 个条目会移回原区，条目本身不受影响。`, () => {
@@ -16144,7 +16190,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     play.className = "aud";
     play.title = "整首连播";
     play.setAttribute("aria-label", "整首连播「" + a.name + "」");
-    play.textContent = "▶";
+    play.appendChild(mkActionIcon("play", "stop"));
     play.addEventListener("mousedown", (/** @type {any} */ e) => e.preventDefault());
     /* ★ v3.35.6（用户实拍）：▶ 做成**播放 / 暂停两态**——正在播的就是这首歌时点它 = 停（回到 ▶），
        否则 = 整首连播。两态的刷新收口在 syncSongPlayBtns() 一处（与 .aud 试听按钮同一套写法）。 */
@@ -16639,7 +16685,6 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   function syncSongPlayBtns(){
     songPlayBtns.forEach(rec => {
       const on = !!S.playing && S.playMode === "arrange" && S.arrangeSel.id === rec.id;
-      rec.btn.textContent = on ? "■" : "▶";
       rec.btn.title = on ? "暂停" : "整首连播";
       rec.btn.setAttribute("aria-label", (on ? "暂停整首连播「" : "整首连播「") + rec.name + "」");
       rec.btn.classList.toggle("aud-on", on);
@@ -17235,7 +17280,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       S.playing && appliedPat === c);      // v3.36.18：同上，绑"正在发声"而不是"选中"
     /** @type {any} */ (item).__pat = c;    // v3.36.18：同上，供 syncPlayingDot 使用
     const del = document.createElement("button");
-    del.className = "del"; del.title = "删除"; del.textContent = "×";
+    del.className = "del"; del.title = "删除"; del.setAttribute("aria-label", "删除");
+    del.appendChild(mkActionIcon("x"));
     del.addEventListener("click", e => {
       e.stopPropagation();
       Modal.uiConfirm(`删除预设「${c.name}」？删除后不可恢复。`, () => {
@@ -21977,7 +22023,7 @@ const Arrange = (() => {
         const pen = document.createElement("span");
         pen.className = "arg-item-ren";
         pen.setAttribute("role", "button");
-        pen.textContent = "✎";
+        pen.appendChild(mkActionIcon("edit"));
         if (x.id === DEMO_ID){
           pen.title = "示例曲不可改名（要改先复制一份）";
           pen.setAttribute("aria-disabled", "true");

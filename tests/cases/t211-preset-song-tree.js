@@ -128,19 +128,22 @@ section("T211h 歌曲行 ▶ 的两态（v3.35.6 用户实拍）· 播放中变 
   const rowsNow = () => boxOf(els).children.filter(c => /(^| )song( |$)/.test(c.className));
   const btnNow = i => playBtnOf(rowsNow()[i]);
   ok(!!btnNow(0), "前提：歌曲行有 ▶");
-  eq(btnNow(0).textContent, "▶", "未播放时是 ▶");
+  /* 桩元素没有 querySelector：用 children 遍历断言「同壳双 path」结构（svg + .ico-play/.ico-stop） */
+  const svgOf = b => (b.children || []).find(c => String(c.tagName).toUpperCase() === "SVG");
+  ok(svgOf(btnNow(0)) && (svgOf(btnNow(0)).children || []).filter(p => /ico-(play|stop)/.test(String(p.className))).length === 2,
+    "未播放时是 ▶（PLAN-v16 起 ▶/■ = 同壳双 path SVG，态走 .aud-on 类）");
   btnNow(0).fire("click");
   eq(beat.Store.S.playing, true, "点 ▶ → 起播");
-  eq(btnNow(0).textContent, "■", "★ 播放中该行的按钮变成 ■（暂停）");
+  ok(btnNow(0).classList.contains("aud-on"), "★ 播放中该行的按钮变成 ■（暂停）");
   ok(/暂停/.test(String(btnNow(0).getAttribute("aria-label"))), "★ aria-label 同步成「暂停…」（读屏也读得对）");
-  eq(btnNow(1).textContent, "▶", "★ 另一首仍是 ▶（只标正在播的那一首）");
+  ok(!btnNow(1).classList.contains("aud-on"), "★ 另一首仍是 ▶（只标正在播的那一首）");
   btnNow(0).fire("click");
   eq(beat.Store.S.playing, false, "★ 再点同一颗 → 暂停");
-  eq(btnNow(0).textContent, "▶", "★ 暂停后变回 ▶");
+  ok(!btnNow(0).classList.contains("aud-on"), "★ 暂停后变回 ▶");
   btnNow(1).fire("click");
   eq(beat.Store.S.playing, true, "点第二首的 ▶ → 起播它");
-  eq(btnNow(1).textContent, "■", "★ ■ 跟着换到第二首");
-  eq(btnNow(0).textContent, "▶", "★ 第一首回到 ▶（同一时刻只有一首在播）");
+  ok(btnNow(1).classList.contains("aud-on"), "★ ■ 跟着换到第二首");
+  ok(!btnNow(0).classList.contains("aud-on"), "★ 第一首回到 ▶（同一时刻只有一首在播）");
   beat.Controls.stop();
-  eq(btnNow(0).textContent, "▶", "★ 从主播放键停机后，歌曲行也回到 ▶（两处状态同源）");
+  ok(!btnNow(0).classList.contains("aud-on"), "★ 从主播放键停机后，歌曲行也回到 ▶（两处状态同源）");
 }
