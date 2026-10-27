@@ -95,7 +95,7 @@ section("T266b preset 模式点 ▶ 整首连播 · ★ 高亮当场亮起 + ▶
   eq(beat.Store.S.playMode, "arrange", "点 ▶ → 曲式模式整首连播");
   eq(beat.Store.S.playing, true, "播放已起");
   ok(hasActive(songRowOf(els)), "★ 歌曲行当场挂 .active（进曲式模式即选中它）");
-  eq(playAllOf(els).textContent, "■", "★ ▶ 同步翻成 ■（两态与高亮同一处收口）");
+  ok(playAllOf(els).classList.contains("aud-on"), "★ ▶ 同步翻成 ■（两态与高亮同一处收口；PLAN-v16 起 SVG 双 path 走 .aud-on 类）");
 
   const ac = FakeAudioContext.last;
   drive(ac, beat, 3);
