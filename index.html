@@ -5004,15 +5004,15 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L14050 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
      L14804 Trainer       变速训练器
      L15021 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15692 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17646 Editor        自定义节奏型编辑器
-     L18782 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18877 Ear           听辨训练（v1.10.0）
-     L19105 Arrange       曲式编排（v2.0.0）
-     L23242 Help          使用方法（v2.0.1）
-     L23397 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23479 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23775 初始化（装配） 各模块 hook 接线与启动
+     L15696 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17664 Editor        自定义节奏型编辑器
+     L18800 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18895 Ear           听辨训练（v1.10.0）
+     L19123 Arrange       曲式编排（v2.0.0）
+     L23260 Help          使用方法（v2.0.1）
+     L23415 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23497 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23793 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -15157,6 +15157,10 @@ const Controls = (() => {
     $("playIcon").outerHTML = SVG_PAUSE.replace("<svg", '<svg id="playIcon"');
     $("playBtn").setAttribute("aria-label", "停止");     // v1.3.0：标签随状态变，不再静态写「播放/停止」
     Presets.syncSongPlayBtns();                          // v3.35.6：空格/主播放键起播时，歌曲行的 ▶ 也要变 ■
+    /* ★ 本修：起播也刷一次范围读数/播放头（与 stop() 尾部那次对称）。此前只在停机/小节边界
+       （onAudibleBar，且仅曲式模式）刷——preset 模式起播后侧栏永远停在停机态：播放头钉在
+       范围起点、状态行留着旧文案，"现在到底播没播"在侧栏读不出来。 */
+    Presets.syncDemoRange();
     /* ★ v3.36.18：起播 = 有型在发声 ⇒ 预设库那颗呼吸点此刻就该亮（与停机侧对称）。
        放在 setMode("playing", true) 之后——判据读的是 S.playing。 */
     Presets.syncPlayingDot();
@@ -15779,7 +15783,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
   let audBtns = [];                          // 随列表重建而重建（buildPresetList 开头清空）
   /* ★ v3.35.6：歌曲行的 ▶（整首连播 / 暂停）同属"由列表承载的状态"——重建即作废，开头清空。
      记 id 与名字：刷新时要判"播的是不是这一首"、并写回 aria-label。 */
-  /** @type {Array<{btn: HTMLElement, id: string, name: string}>} */
+  /** @type {Array<{btn: HTMLElement, row: HTMLElement, id: string, name: string}>} */
   let songPlayBtns = [];
   /* v3.31.x（审计 P0-4）：「停止试听」唯一出口——换对象/Editor/Ear/空格停播一律经它还原
      拍号。此前还原只在「再点同一条」分支，换对象时旧拍号被覆盖 → 停止后错配回退 basicPattern。 */
@@ -16099,7 +16103,11 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
        那个前提不复存在，连播必须重新有个看得见的落点（与其它条目的 ▶ 同位置同形）。
      @param {any} a @returns {HTMLElement} */
   function buildArrangeItem(a){
-    const isActive = S.arrangeSel.id === a.id;
+    /* ★ isActive 必须带 playMode 判据：S.arrangeSel.id 是**粘的**（退出曲式模式的
+       exitArrangeForPreset 只翻 playMode、不清 id），只比 id 的话普通节拍练习时
+       上次碰过的歌曲行会一直挂 .active——图标恒显、meta 被挤隐（用户实拍）。
+       模式切换不重建列表，运行期的高亮翻转由 syncSongPlayBtns 接管（见其注释）。 */
+    const isActive = S.arrangeSel.id === a.id && S.playMode === "arrange";
     const open = songIsOpen(a.id);
     const pats = songEntries(a);            // v3.35.7：曲式引用到的 ∪ 归属这首歌的
     const item = presetItemEl(a.name, `${a.sections.length} 段 · ${pats.length} 个型`, isActive);
@@ -16114,7 +16122,7 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     /* ★ v3.35.6（用户实拍）：▶ 做成**播放 / 暂停两态**——正在播的就是这首歌时点它 = 停（回到 ▶），
        否则 = 整首连播。两态的刷新收口在 syncSongPlayBtns() 一处（与 .aud 试听按钮同一套写法）。 */
     play.addEventListener("click", (/** @type {any} */ e) => { e.stopPropagation(); toggleArrangePlay(a); });
-    songPlayBtns.push({ btn: play, id: a.id, name: a.name });
+    songPlayBtns.push({ btn: play, row: item, id: a.id, name: a.name });
     presetActionHost(item).appendChild(play);
     /* v2.22.0 曾把自定义区排除在分组外（v1 边界）；v2.25.0 经用户拍板三区全开放 */
     pushGroupBtn(item, () => {
@@ -16401,6 +16409,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       const sec = apos ? apos.sec : arrSec, bar = apos ? apos.bar : arrBar;
       return (sec >= 0 && bar >= 0) ? songBarBefore(a, sec) + bar : S.arrangeSel.from;
     }
+    /* ★ 播放中但不是曲式模式（普通节拍/试听）时必须返回 -1 而不是落到 from：
+       调用方（syncDemoRange 的读数与播放头）把返回值当"正在播这首歌"的证据，
+       落到 from=0 会谎报「播放中 · 第 1/33 小节」并把播放头钉在第 1 小节。 */
+    if (S.playing) return -1;
     return S.arrangeSel.from;
   }
   /* 造一个范围滑块 input（v2.10.4；v2.10.7 改小节刻度）。**不能用 $() 取它**——它是运行期
@@ -16593,7 +16605,10 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     playArrange(a);
   }
   /* ▶ 两态的**唯一刷新点**：列表重建 / 起播 / 停机 / 换曲都经过这里（与 syncAuditionBtns 同构）。
-     ★ 不刷新会怎样：点一下 ▶ 图标不变，用户看不出"到底播没播"——正是这次实拍要修的那类假读数。 */
+     ★ 不刷新会怎样：点一下 ▶ 图标不变，用户看不出"到底播没播"——正是这次实拍要修的那类假读数。
+     ★ 歌曲行的 .active 也在这里收口：playMode 变更不重建列表（onPlayModeChange 只走
+       refreshBar → syncDemoRange → 本函数），构造期的 isActive 管不到"preset 模式下点 ▶
+       整首连播"这种起播瞬间——高亮翻转必须有运行期路径，否则切换后一行都不亮。 */
   function syncSongPlayBtns(){
     songPlayBtns.forEach(rec => {
       const on = !!S.playing && S.playMode === "arrange" && S.arrangeSel.id === rec.id;
@@ -16601,6 +16616,9 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       rec.btn.title = on ? "暂停" : "整首连播";
       rec.btn.setAttribute("aria-label", (on ? "暂停整首连播「" : "整首连播「") + rec.name + "」");
       rec.btn.classList.toggle("aud-on", on);
+      /* 与构造期 isActive 同一条判据（arrangeSel.id 匹配 ∧ 曲式模式）——两处口径
+         必须逐字一致，否则"重建时亮、切换后灭"或反之的漂移 */
+      rec.row.classList.toggle("active", S.playMode === "arrange" && S.arrangeSel.id === rec.id);
     });
   }
   /* 范围滑块 + 整首连播按钮 + 状态说明的呈现。**单一渲染入口**：段落切换（每小节）、
