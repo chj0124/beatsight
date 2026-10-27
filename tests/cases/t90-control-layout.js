@@ -264,7 +264,7 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
      新胶囊行带自己的规格钉（36px 高 = 上下 8px 内边距），作用域同样收在芯内 */
   /* ★ v3.41.0（按《整体布局方案示意图》对账）：胶囊规格从「上下 8px 内边距」改为**显式 height:36px**
      + 方案的中性描边——同一件事（36px 胶囊）换写法，因为方案图的胶囊是「描边胶囊 + 16px 圆点」。 */
-  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:12\.5px;/.test(css),
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:13px;/.test(css),
     "★★ 控制芯：36px 胶囊改为显式 height（v3.41.0 描边胶囊 + 16px 圆点，按方案图）");
   /* ★ 作用域必须限定在 .viz-toggles 内：改成全局 .toggle-pill 会是全站开关的观感变更 */
   ok(!/^\.toggle-pill\{[^}]*padding-left:0/m.test(css),

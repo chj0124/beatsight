@@ -50,7 +50,7 @@ section("T259c CSS 钉 · 引导行高 / 模板收窄 / 弹层 pill 收紧");
 {
   ok(/\.ed-tpl \.loop-sel\{max-width:200px;text-overflow:ellipsis\}/.test(html),
      "★ 模板触发框收窄：max-width:200px + 省略号（只作用 .ed-tpl）");
-  ok(/#edPop \.pill\{padding:5px 8px;font-size:11\.5px\}/.test(html),
+  ok(/#edPop \.pill\{padding:5px 8px;font-size:12px\}/.test(html),
      "★ 弹层内 pill 收紧（弦区三档单行）——作用域限定 #edPop");
   ok(/#edPop \.ed-dir\{gap:8px\}/.test(html), "★ 弹层行间距收紧（#edPop .ed-dir）");
   ok(/#edPop \.hint:empty\{display:none\}/.test(html),

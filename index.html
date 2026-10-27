@@ -596,7 +596,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   .viz.scroll-mode,.viz.scroll-mode ~ .lyric-lane{mask-image:none;-webkit-mask-image:none}
 }
 /* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；★ 本版：关闭改版本号维度记忆（S.vizLegendVsn） */
-.viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
+.viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:13px;
   color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:var(--radius-card)}
 .viz-legend .vl-item{display:inline-flex;align-items:center;gap:6px}
 .viz-legend .vl-swatch{display:inline-block;width:18px;height:12px;border-radius:var(--radius-cell);
@@ -1237,7 +1237,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
 /* ★★★ v3.42.0 第十一轮：音名不可用时的提示条（与首次进入的图例条同族观感）+ 置灰胶囊 */
 .pitch-notice{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:8px;padding:8px 14px;
-  font-size:12.5px;color:var(--t2);border:1px dashed var(--line);border-radius:var(--radius-card)}
+  font-size:13px;color:var(--t2);border:1px dashed var(--line);border-radius:var(--radius-card)}
 .pitch-notice[hidden]{display:none}
 .pitch-notice .pill{margin-left:auto;padding:4px 12px;font-size:12px;min-height:0}
 .pill:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
@@ -1418,7 +1418,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* v3.4.1（P4 字体层级）：组标签 11px→12.5px + 字重 500 + .04em 字距。原 11px 与顶栏
    `.brand .ver`、`.ruler-lab` 那类**装饰性微标**同号，层级被抹平——组标签是「这一组是什么」
    的导航锚点，该重一档；12.5px 取自既定阶梯（11/12.5/14/16/40）。装饰性微标一律不动。 */
-.group-label{font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--t3)}
+.group-label{font-size:13px;font-weight:500;letter-spacing:.04em;color:var(--t3)}
 .bpm-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}   /* wrap：编排页/帮助页的按钮行在窄屏换行，而非溢出被裁掉（主界面 BPM 步进群的折行口径 v3.39.0 起在 .slider-row 规则里） */
 /* v2.11.0 的「BPM 组两行按钮带两端对齐」规则（作用域 .viz-head 内的 .bpm-row、
    justify-content 摊到组宽）随快捷档行退役删除——步进群 v3.39.0 起按内容宽
@@ -1564,7 +1564,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
   /* ★★★ v3.42.0 补（用户实报"按钮空白太多"）：原先 1fr 1fr 等宽网格把每枚胶囊拉到**半行宽**、文案居中
      ⇒ 左右各空一大截。改为**贴字的 flex 换行**（宽度随文案）+ gap 6→4；40px 触控下限保留（t167 钉着，纵向省不动）。 */
   .lyric-pos-group{display:flex;flex-wrap:wrap;gap:4px;flex:1 1 100%}
-  .lyric-pos-group .pill{justify-content:center;text-align:center;padding:0 12px;font-size:11.5px;
+  .lyric-pos-group .pill{justify-content:center;text-align:center;padding:0 12px;font-size:12px;
     white-space:nowrap;min-width:0;flex:0 0 auto}
   .pb-progress{min-width:96px}
   /* ★ v3.30.0：读数行已挪进 .pb-sub（行 2）——窄屏隐藏规则同步改作用域，
@@ -1746,7 +1746,7 @@ input[type=range].vol{width:120px}
    桌面/移动全档一样）。方案图的胶囊是「16px 圆点 + 文字」、且「4拍」画在**同一个**胶囊框里，
    一枚 ≈ 77~130px ⇒ 三枚 + 间距 ≈ 302，桌面 402 / 移动 326 都单行放得下。
    故此处按方案改：指示器降为 16px 圆点（order:-1 提到文字左侧）、组内拍数并入胶囊壳。 */
-.core-pills .toggle-pill{height:36px;padding:0 14px;gap:7px;font-size:12.5px;
+.core-pills .toggle-pill{height:36px;padding:0 14px;gap:7px;font-size:13px;
   border:1.5px solid var(--line);background:var(--card)}
 .core-pills .toggle-pill.on{border-color:var(--green)}
 /* 指示器 = 方案的 16px 圆点：关闭=空心环 / 打开=实心绿 ⇒ 形状+颜色双通道（不只靠颜色） */
@@ -1776,7 +1776,7 @@ input[type=range].vol{width:120px}
 /* 展开态的折叠小箭头（只在折叠方案生效的档位出现，规则本体见下面的媒体块） */
 /* 从属参数降级（v3.30.0 口径延续，作用域从 .viz-toggles 换到 .core-pills）：拍数框比开关低一级 */
 .core-pills .inp-with-unit{gap:4px}
-.core-pills .hint{font-size:10.5px}
+.core-pills .hint{font-size:11px}
 /* ★★★ v3.42.0 补（用户拍板）：**去掉细线框**（图3 里那条）并收紧内边距省面积——改由
    hover / 聚焦的浅底承担"这里能点/能改"的可发现性（否则真 <input> 看起来就是纯文本）。 */
 /* ★ v3.42.0 第六轮补（用户实拍）：拍数框 32px 太宽——取值域 min=1/max=8 **永远一位数**（数字约 7px），
@@ -2220,7 +2220,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      `body[data-theme="obs"] input[type=range]`（(0,2,2)）都会命中这两个 input，
      不加这一级会把 height 压回 4px、background 被主题色覆盖（观感就是"滑块变了形"）。 */
 .demo-range{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
-.demo-range-note{font-size:10.5px;color:var(--t3);line-height:1.5}
+.demo-range-note{font-size:11px;color:var(--t3);line-height:1.5}
 /* 轨道容器：两个 input 绝对定位叠在同一处。
    ★ 两个 input 都 pointer-events:none，只让 **thumb** 可抓——否则上层那条通轨会把下层的
      thumb 整个吃掉（两个 thumb 重合时更明显：只剩最上面那个抓得住）。代价是"点轨道跳转"
@@ -2244,7 +2244,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    ★ v2.28.0：它又接过了原按钮的**状态指示**职责——整首播放中带「整首连播 · 播放中」前缀、
      停机且范围为整首时显示「整首连播 · 已就绪」（见 syncDemoRange 的 whole 分支）。 */
 .demo-play-row{display:flex;align-items:center;gap:8px;margin:2px 0 0}
-.demo-play-note{font-size:10.5px;color:var(--t3);line-height:1.4;min-width:0}
+.demo-play-note{font-size:11px;color:var(--t3);line-height:1.4;min-width:0}
 .demo-play-note:empty{display:none}   /* v2.36.0：「已选…」教学文案删除后，停止+局部范围态该行留空——空即藏，不留一行空白 */
 .sidebar-note{font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6}
 .sidebar-note[hidden]{display:none}
@@ -2367,7 +2367,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    只在 #edPop 作用域收紧 pill 内边距/字号 + 行间距 + 隐掉占位的空 hint（不占 gap）——
    全局 .pill 与按钮文案一字不动（帮助页声明弦区释义与按钮文案逐字对应）。
    min-height:40px 触控下限不动（DEVELOPMENT.md「触控下限」不变量只作用于可点元素尺寸）。 */
-#edPop .pill{padding:5px 8px;font-size:11.5px}
+#edPop .pill{padding:5px 8px;font-size:12px}
 #edPop .ed-dir{gap:8px}
 #edPop .hint:empty{display:none}
 /* PLAN-v11 B1：小节级铺弦号输入框定宽——原 inline flex:1 吃满整行，内容（5:3 3 2 3 …）用不上。
@@ -2398,7 +2398,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-guide{position:absolute;inset:0;display:flex;flex-direction:column;gap:2px;
   align-items:center;justify-content:center;text-align:center;pointer-events:none;
   font-size:12px;line-height:1.5;color:var(--t3);padding:0 12px}
-.ed-guide .ed-guide-t{font-size:12.5px;font-weight:600;color:var(--t2)}
+.ed-guide .ed-guide-t{font-size:13px;font-weight:600;color:var(--t2)}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:var(--radius-item);padding:10px;cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
@@ -2767,7 +2767,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   padding:6px 8px;border-radius:var(--radius-ctrl);border:0;background:transparent;color:var(--t2);font-size:13px}
 .arg-ol-row:hover{background:rgba(var(--veil),.06)}
 .arg-ol-row.sel{background:rgba(var(--green-rgb),.13);color:var(--green)}
-.arg-ol-no{flex:none;width:18px;text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--t3)}
+.arg-ol-no{flex:none;width:18px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--t3)}
 .arg-ol-row.sel .arg-ol-no{color:var(--green)}
 .arg-ol-nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-ol-strip{flex:none;width:64px;height:10px;display:flex;gap:1px}
@@ -2811,8 +2811,8 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-ol-sep{border:0;border-top:1px solid var(--line);margin:10px 2px 8px}
 /* 段树：缩进在曲式行之下，与顶层明显区分 */
 .arg-ol-secs{padding-left:14px}
-.arg-ol-secs .arg-ol-row{font-size:12.5px;padding:5px 7px}
-.arg-ol-secs .arg-ol-lyr{font-size:11.5px;padding:0 7px 6px 34px}
+.arg-ol-secs .arg-ol-row{font-size:13px;padding:5px 7px}
+.arg-ol-secs .arg-ol-lyr{font-size:12px;padding:0 7px 6px 34px}
 
 /* 目录按钮（窄屏才出现，见下方断点） */
 .arg-toc-btn{display:none}

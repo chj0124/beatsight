@@ -100,13 +100,13 @@ section("T150e #patternName id 保留，测试锚点不迁移");
 }
 
 /* ================= T150f：组标签升档（P4） ================= */
-section("T150f .group-label 12.5px/500，字号取自既定阶梯");
+section("T150f .group-label 13px/500，字号取自既定阶梯");
 {
   const g = /^\.group-label\{([^}]*)\}/m.exec(CSS);
   ok(!!g, "★ .group-label 规则在位");
   if (g) {
-    ok(/font-size:12\.5px/.test(g[1]),
-      "★★ 组标签 11px→12.5px：与 .brand .ver 等装饰性微标拉开一档，不再同号");
+    ok(/font-size:13px/.test(g[1]),
+      "★★ 组标签 11px→12.5px→13px：与 .brand .ver 等装饰性微标拉开一档，不再同号（PLAN-v16 阶段 2b 半步档 12.5 并入 13，D3 甲案向上归档）");
     ok(/font-weight:500/.test(g[1]), "★ 字重补 500（小字低对比，靠字重回可读性）");
     ok(/letter-spacing:\.04em/.test(g[1]), "★ 微字距 .04em（小字号下字形挤连，疏一点更易扫读）");
     ok(/color:var\(--t3\)/.test(g[1]), "★ 颜色仍走 --t3（只调字号字重，不动色语义）");

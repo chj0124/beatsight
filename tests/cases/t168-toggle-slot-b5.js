@@ -42,7 +42,7 @@ section("T153b 控制芯 —— 浮层壳样式与芯的排布口径");
      && /\.tg-flyout \.f-title\{[^}]*color:var\(--green\)/.test(CSS_CODE)
      && /\.tg-flyout \.f-row\{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px\}/.test(CSS_CODE),
     "★★ v3.41.0（乙案）：面板内 = 绿色小标题 + 若干参数行（.f-row 等高 28px），不再是可折行的 flex 条");
-  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:12\.5px;/.test(CSS_CODE),
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:13px;/.test(CSS_CODE),
     "★★ 三枚开关 = 胶囊行 36px 规格（v3.22.0 开关行 = 开关+主参数同行的 countin-line/sw-line 退役；"
     + "拍数输入贴预备胶囊、随机/目标进浮层）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
