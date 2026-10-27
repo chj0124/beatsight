@@ -113,6 +113,10 @@ function loadApp(seed){
     localStorage:{getItem:k=>(store.has(k)?store.get(k):null),setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)},
     document:{getElementById:id=>{if(!els[id])Object.assign(els[id]=makeEl(id),id==="bpmSlider"?{min:"30",max:"240",value:"96"}:{});return els[id];},
       createElement:t=>Object.assign(makeEl("dyn"),{tagName:String(t||"").toUpperCase()}),
+      /* PLAN-v16 追补：与 harness.js 同口径补 createElementNS——操作组图标 mkActionIcon
+         在**启动期的 buildPresetList** 就会调它（此前只有琶音记号用，且不在脏拍号用例的
+         启动路径上，缺口从未被踩到；首版实测 sig 用例全红「进程异常退出」） */
+      createElementNS:(ns,t)=>Object.assign(makeEl("svg-"+String(t||"dyn")),{tagName:String(t||"").toUpperCase()}),
       /* v2.4.4：DocumentFragment 桩（与 harness.js 同口径；Editor/Arrange 批量插入用） */
       createDocumentFragment:()=>Object.assign(makeEl("frag"),{_isFragment:true,tagName:"#fragment"}),
       querySelectorAll:()=>[],addEventListener(){},body:makeEl("body"),activeElement:{tagName:"DIV"}},

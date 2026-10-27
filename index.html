@@ -2150,7 +2150,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    沿革：v3.55.12 左缘条 → PLAN-v16 追补 --sel-bg 深底，两轮都在「常驻底 --card2 保留」
    的前提下被迫加码；本日常驻底退役后未选中行透明，card2 作为选中底不再撞车，
    song 专属覆盖（左条 / 深底反白）随之全部退役，列表选中语言全库归一。 */
-.preset-item.in-song{margin-left:18px;padding:var(--sp-2) var(--sp-3)}   /* ★ 白名单：18px 是子条目相对歌曲行的缩进对齐值（= 嵌套文字间距 12 + 6 层级补偿），不参与 4px 收敛 */
+.preset-item.in-song{margin-left:18px;padding:6px 12px}   /* ★ 白名单：18px 缩进（= 嵌套文字间距 12 + 6 层级补偿）、6px 上下内边距均为 v3.55.10 调优值，不参与 4px 收敛（阶段 3 曾误收敛到 8px，底块比节拍区条目高出 6.5px，用户实报后回退） */
 .preset-item.in-song .name{font-size:12px;font-weight:500;color:var(--t2)}
 .preset-item.in-song>div:first-child{flex-wrap:nowrap}
 .preset-item.in-song .meta{flex:1 1 0}
@@ -5032,20 +5032,20 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L5061  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L6723  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L8964  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10233 Modal         应用内弹窗
-     L10394 Viz           时值可视化渲染与每帧动画
-     L14124 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14878 Trainer       变速训练器
-     L15095 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15770 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17737 Editor        自定义节奏型编辑器
-     L18873 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18968 Ear           听辨训练（v1.10.0）
-     L19196 Arrange       曲式编排（v2.0.0）
-     L23333 Help          使用方法（v2.0.1）
-     L23488 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23570 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23866 初始化（装配） 各模块 hook 接线与启动
+     L10234 Modal         应用内弹窗
+     L10395 Viz           时值可视化渲染与每帧动画
+     L14125 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14879 Trainer       变速训练器
+     L15096 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15771 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17738 Editor        自定义节奏型编辑器
+     L18874 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18969 Ear           听辨训练（v1.10.0）
+     L19197 Arrange       曲式编排（v2.0.0）
+     L23334 Help          使用方法（v2.0.1）
+     L23489 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23571 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23867 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -9140,7 +9140,8 @@ function mkActionIcon(name, alt){
   };
   add(ACTION_ICON[name]);
   if (alt) add(ACTION_ICON[alt]);
-  svg.classList.add(ACTION_ICON[name].cls);
+  /* ★ svg 壳不挂 ico- 类：显隐规则（.aud-on .ico-play/.ico-stop）必须只命中 path——
+     壳挂了同类会整棵被 display:none 藏掉，按钮变空（首版实测：点试听后按钮消失） */
   return svg;
 }
 
