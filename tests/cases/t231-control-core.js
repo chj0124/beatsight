@@ -43,11 +43,12 @@ section("T231a 芯形态 · ≥1280 单列 + 402 居中 + 三滑杆等长的结�
   ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{max-width:402px\}/.test(CSS_CODE),
     "★★★ 合并组内容上限 = 芯口径 402（滑杆 340 的来源；改芯宽必须同改这里）");
   ok(/\.vol-row>span:first-child\{min-width:52px\}/.test(CSS_CODE)
-     && /\.bpm-slider-row>span:first-child\{min-width:52px\}/.test(CSS_CODE),
-    "★★★ 三滑杆等长前提①：音量/BPM 两行标签槽同 52px（互比口径的数字面）");
+     && /\.viz-head \.group\{--lab-w:52px;--lab-gap:10px\}/.test(CSS_CODE)
+     && /\.bpm-slider-row>span:first-child\{min-width:var\(--lab-w\)\}/.test(CSS_CODE),
+    "★★★ 三滑杆等长前提①：音量/BPM 两行标签槽同 52px（BPM 侧 PLAN-v16 阶段 4 起走 --lab-w 单源，互比口径的数字面）");
   ok(/\.vol-row\{display:flex;align-items:center;gap:10px/.test(CSS_CODE)
-     && /\.bpm-slider-row\{display:flex;align-items:center;gap:10px;min-height:40px/.test(CSS_CODE),
-    "★★★ 三滑杆等长前提②：两行同 gap 10px（滑杆右端都抵行尾，等号只剩左槽）");
+     && /\.bpm-slider-row\{display:flex;align-items:center;gap:var\(--lab-gap\);min-height:40px/.test(CSS_CODE),
+    "★★★ 三滑杆等长前提②：两行同 gap 10px（BPM 侧经 --lab-gap 单源；滑杆右端都抵行尾，等号只剩左槽）");
   ok(/\.card-head-left \.vol-row input\[type=range\]\.vol\{flex:1;width:auto\}/.test(CSS_CODE)
      && /\.slider-wrap>input\[type=range\]\{width:100%;flex:1\}/.test(CSS_CODE),
     "★★★ 三滑杆等长前提③：两类输入都吃满行内剩余宽（volBpm 互比的结构版）");

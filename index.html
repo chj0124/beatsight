@@ -466,19 +466,23 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    改动必须两处同步——smoke 的 volBpmDelta/volBpmLeftDelta 量真 DOM 把守）。 */
 /* 间距修正①：行盒 18→40px（与 .vol-row 桌面档同律——「BPM 行盒 40px」拍板项），
    滑杆粗细不动，变高的只是行盒；≤640 档 36px 见下方移动断点同批位 */
-.bpm-slider-row{display:flex;align-items:center;gap:10px;min-height:40px;font-size:12px;color:var(--t2)}
-.bpm-slider-row>span:first-child{min-width:52px}
-/* ★★★ v3.41.0（按《整体布局方案示意图》对账 · G9，**反转 v3.39.1 的拍板**）：步进群居中轴改为
-   **芯轴 = 跑道轴**——方案图的 .steps{justify-content:center} 直接住在 402 芯里。
-   原口径(v3.39.1)是「参照滑杆本身」：margin-left:62(=52 标签槽+10 间距) 让居中盒从滑杆左端起，
-   于是 96 落在滑杆轴上——而滑杆轴被左槽顶开、比芯轴偏右 31px（实测 1920/1440 两档：
-   96 中心 991/751 vs 芯中心 960/720）。两条口径互斥（滑杆本身不居中），现按方案取「居中」。
-   代价：96 不再正对滑杆中轴；步进群过宽（窄屏）时以芯轴为心对称外溢——右缘外是列外空白。 */
-.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center}
+.bpm-slider-row{display:flex;align-items:center;gap:var(--lab-gap);min-height:40px;font-size:12px;color:var(--t2)}
+.bpm-slider-row>span:first-child{min-width:var(--lab-w)}
+/* ★ D6 复议（PLAN-v16 阶段 4，2026-10-27 用户批准「全按建议执行」）：步进群居中轴由芯轴改回
+   **滑杆轴**——v3.41.0 G9 按方案图取芯轴时自记代价「96 不再正对滑杆中轴」（偏 31px），
+   而本轮设计审计的用户主诉恰是「该居中的地方没居中」，故复议恢复 v3.39.1 语义。
+   ★ 与当年被否的 margin-left:62 字面补偿不同：偏移量与标签槽/行距**同一变量单源**
+   （--lab-w/--lab-gap 定义在 .viz-head .group，.bpm-slider-row 与 .bpm-row/.tr-prog 三处消费），
+   改标签槽宽度时居中自动跟随，不再产生新的魔法数。
+   ★ 过宽行为：justify-content:center 溢出时两侧对称——左侧溢进 62px 标签区（该行无内容），
+   右侧溢向 tg-body 内边距，与 G9 时代的对称外溢同级。 */
+.viz-head .group{--lab-w:52px;--lab-gap:10px}
+.viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;
+  margin-left:calc(var(--lab-w) + var(--lab-gap));width:calc(100% - var(--lab-w) - var(--lab-gap))}
 .viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
-/* 读数行与数值行**同一根芯轴**（v3.41.0 G9：62px 左缩除名；方案图的 .prog-row 也是居中口径）。
-   width:auto 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按容器宽收边 */
-.viz-head .group .tr-prog{width:auto;text-align:center}
+/* 读数行与数值行**同一根滑杆轴**（D6 复议随 .bpm-row 同步：两行必须共轴，否则再造一层错位；
+   width 用 calc 盖掉 .tr-prog 基础规则的 100%——列向 flex 的 stretch 会按容器宽收边） */
+.viz-head .group .tr-prog{width:calc(100% - var(--lab-w) - var(--lab-gap));margin-left:calc(var(--lab-w) + var(--lab-gap));text-align:center}
 /* 窄屏：结构天生两行，无需再折行；步进钮放宽收缩（min-width:0），过宽时由上面的
    对称外溢兜着，不出组盒。只按宽度判（竖屏平板 ≥640 内容宽装得下整组）。 */
 @media (max-width:640px){
@@ -5017,23 +5021,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5049  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6711  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L8952  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10180 Modal         应用内弹窗
-     L10341 Viz           时值可视化渲染与每帧动画
-     L14071 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14825 Trainer       变速训练器
-     L15042 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15717 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17685 Editor        自定义节奏型编辑器
-     L18821 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L18916 Ear           听辨训练（v1.10.0）
-     L19144 Arrange       曲式编排（v2.0.0）
-     L23281 Help          使用方法（v2.0.1）
-     L23436 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23518 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23814 初始化（装配） 各模块 hook 接线与启动
+     L5053  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6715  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L8956  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10184 Modal         应用内弹窗
+     L10345 Viz           时值可视化渲染与每帧动画
+     L14075 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L14829 Trainer       变速训练器
+     L15046 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15721 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17689 Editor        自定义节奏型编辑器
+     L18825 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L18920 Ear           听辨训练（v1.10.0）
+     L19148 Arrange       曲式编排（v2.0.0）
+     L23285 Help          使用方法（v2.0.1）
+     L23440 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23522 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L23818 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：

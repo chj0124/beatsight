@@ -29,22 +29,26 @@ section("T230a 上行 .bpm-slider-row：与音量行同构的两段槽位（等�
     "★★ 源码序即读序：标签 → 滑杆（两段式与 .vol-row 同构）");
   ok(!/class="pct"/.test(seg),
     "★★★ BPM 行无 pct 槽（v3.39.1 同批：音量 % 退役后，为镜像而设的空白右槽同步除名）");
-  /* 左槽宽必须与 .vol-row 同源（52），这是「严格等长」的数字面——右端两侧都抵行尾，等号只剩左槽 */
-  ok(/\.vol-row>span:first-child\{min-width:52px\}/.test(html) && /\.bpm-slider-row>span:first-child\{min-width:52px\}/.test(html),
-    "★★★ 左槽定宽 52px 与 .vol-row 同值（改一处不改另一处 ⇒ 等长断裂，本条变红）");
-  ok(/\.bpm-slider-row\{display:flex;align-items:center;gap:10px;min-height:40px;font-size:12px;color:var\(--t2\)\}/.test(html),
-    "★ 行距 10px / 行盒 40px / 字号 12px 与 .vol-row 同款（v3.40.0 间距修正①：行盒同律 40px）");
+  /* 左槽宽必须与 .vol-row 同值（52）——BPM 侧自 PLAN-v16 阶段 4 起走 --lab-w 单源（见 T230b），
+     这是「严格等长」的数字面——右端两侧都抵行尾，等号只剩左槽 */
+  ok(/\.vol-row>span:first-child\{min-width:52px\}/.test(html) && /\.bpm-slider-row>span:first-child\{min-width:var\(--lab-w\)\}/.test(html)
+     && /\.viz-head \.group\{--lab-w:52px;--lab-gap:10px\}/.test(html),
+    "★★★ 左槽定宽 52px 与 .vol-row 同值（BPM 侧经 --lab-w 单源；改一处不改另一处 ⇒ 等长断裂，本条变红）");
+  ok(/\.bpm-slider-row\{display:flex;align-items:center;gap:var\(--lab-gap\);min-height:40px;font-size:12px;color:var\(--t2\)\}/.test(html),
+    "★ 行距 10px（--lab-gap 单源）/ 行盒 40px / 字号 12px 与 .vol-row 同款（v3.40.0 间距修正①：行盒同律 40px）");
   ok(/\.slider-row\{display:flex;flex-direction:column;align-items:stretch;gap:13px\}/.test(html),
     "★★ .slider-row 基础规则为列向塔式 + 塔内间距 13px（v3.40.0 间距修正②：6→13，BPM↔步进群可见 30px）；v3.39.0 同行形状退役");
 }
 
-section("T230b 下一步进群：居中轴 = 芯轴（v3.41.0 G9 按方案图；v3.39.1 曾参照滑杆）");
+section("T230b 下一步进群：居中轴 = 滑杆轴（PLAN-v16 阶段 4 D6 复议；v3.41.0 G9 曾取芯轴）");
 {
-  /* ★★★ v3.41.0（方案对账 G9）：居中轴 从「滑杆轴」改为「芯轴 = 跑道轴」——
-     方案图 .steps{justify-content:center} 直接住在 402 芯里，v3.39.1 的 margin-left:62px 已除名。 */
-  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center\}/.test(html)
-     && !/slider-row \.bpm-row\{[^}]*margin-left/.test(SURFACE),
-    "★★★ 步进群以**芯轴**居中（margin-left:62px 已除名；96 不再偏右 31px，按方案图）");
+  /* ★★★ PLAN-v16 阶段 4（D6 复议，2026-10-27 用户批准）：G9 的芯轴口径自记代价
+     「96 不再正对滑杆中轴（偏 31px）」，与设计审计的用户主诉「该居中的没居中」正面相撞，
+     故恢复 v3.39.1 的滑杆轴语义——但偏移量不再写字面 62，走 --lab-w/--lab-gap 单源 calc。
+     防回潮守卫随之翻转：禁止字面 margin-left:62px 回潮（那才是当年被否的形态）。 */
+  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;\s*margin-left:calc\(var\(--lab-w\) \+ var\(--lab-gap\)\);width:calc\(100% - var\(--lab-w\) - var\(--lab-gap\)\)\}/.test(SURFACE)
+     && !/slider-row \.bpm-row\{[^}]*margin-left:62px/.test(SURFACE),
+    "★★★ 步进群以**滑杆轴**居中（--lab-w/--lab-gap 单源 calc；96 正对滑杆中轴；字面 62px 禁止回潮）");
   ok(!/\.viz-head \.group \.slider-row\{flex-wrap:nowrap\}/.test(SURFACE)
     && !/\.slider-row \.bpm-row\{flex:1 1 100%\}/.test(SURFACE),
     "★★ v3.39.0 同行/折行旧规则已除名（净表面无残留——同行形状的回潮会连带旧规则复活）");
@@ -57,10 +61,10 @@ section("T230b 下一步进群：居中轴 = 芯轴（v3.41.0 G9 按方案图；
     "★★ 窄屏步进群按方案移动档：群高 40 / 钮 30×30 / 数值框 54×36（v3.41.0）");
 }
 
-section("T230c 读数行 #trainerProg 与数值行同轴居中（同一根芯轴）");
+section("T230c 读数行 #trainerProg 与数值行同轴居中（同一根滑杆轴）");
 {
-  ok(/\.viz-head \.group \.tr-prog\{width:auto;text-align:center\}/.test(html),
-    "★★★ 读数行与步进群**同一根芯轴**居中（v3.41.0 G9：62px 左缩除名；width:auto 盖掉基础规则 100%）");
+  ok(/\.viz-head \.group \.tr-prog\{width:calc\(100% - var\(--lab-w\) - var\(--lab-gap\)\);margin-left:calc\(var\(--lab-w\) \+ var\(--lab-gap\)\);text-align:center\}/.test(html),
+    "★★★ 读数行与步进群**同一根滑杆轴**居中（D6 复议随 .bpm-row 同步；calc 盖掉基础规则 100%）");
   const seg = html.slice(html.indexOf('id="trainerProg"') - 40, html.indexOf('id="trainerProg"') + 40);
   ok(/class="tr-prog"/.test(seg), "★ #trainerProg 仍是 .tr-prog（搬块不换 id，接线不动）");
   ok(html.indexOf('class="slider-row"') < html.indexOf('id="trainerProg"'),
