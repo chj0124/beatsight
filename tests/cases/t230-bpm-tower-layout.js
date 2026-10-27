@@ -36,8 +36,8 @@ section("T230a 上行 .bpm-slider-row：与音量行同构的两段槽位（等�
     "★★★ 左槽定宽 52px 与 .vol-row 同值（BPM 侧经 --lab-w 单源；改一处不改另一处 ⇒ 等长断裂，本条变红）");
   ok(/\.bpm-slider-row\{display:flex;align-items:center;gap:var\(--lab-gap\);min-height:40px;font-size:12px;color:var\(--t2\)\}/.test(html),
     "★ 行距 10px（--lab-gap 单源）/ 行盒 40px / 字号 12px 与 .vol-row 同款（v3.40.0 间距修正①：行盒同律 40px）");
-  ok(/\.slider-row\{display:flex;flex-direction:column;align-items:stretch;gap:13px\}/.test(html),
-    "★★ .slider-row 基础规则为列向塔式 + 塔内间距 13px（v3.40.0 间距修正②：6→13，BPM↔步进群可见 30px）；v3.39.0 同行形状退役");
+  ok(/\.slider-row\{display:flex;flex-direction:column;align-items:stretch;gap:var\(--sp-3\)\}/.test(html),
+    "★★ .slider-row 基础规则为列向塔式 + 塔内间距 var(--sp-3)=12px（v3.40.0 间距修正②曾为 13，PLAN-v16 阶段 3 归档 −1px）；v3.39.0 同行形状退役");
 }
 
 section("T230b 下一步进群：居中轴 = 滑杆轴（PLAN-v16 阶段 4 D6 复议；v3.41.0 G9 曾取芯轴）");
@@ -56,7 +56,7 @@ section("T230b 下一步进群：居中轴 = 滑杆轴（PLAN-v16 阶段 4 D6 �
   const narrow640 = /@media \(max-width:640px\)\{([\s\S]*?)\n\}/.exec(html);
   ok(!!narrow640
      && /\.slider-row \.bpm-row\{min-height:40px\}/.test(narrow640[1])
-     && /\.step-btn\{min-width:0;padding:6px 2px;width:30px;height:30px\}/.test(narrow640[1])
+     && /\.step-btn\{min-width:0;padding:var\(--sp-2\) 2px;width:30px;height:30px\}/.test(narrow640[1])
      && /\.bpm-num\{min-width:72px;height:40px;font-size:28px\}/.test(narrow640[1]),   /* v3.42.0：14→20→28（字形高 ≈20px，与 30px 圆钮视觉相当） */
     "★★ 窄屏步进群按方案移动档：群高 40 / 钮 30×30 / 数值框 54×36（v3.41.0）");
 }

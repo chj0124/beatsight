@@ -137,7 +137,7 @@ section("T231d 拒开原因留芯底 · #trainerProg 就地反馈（t142 口径�
 section("T231e 方案对账（v3.41.0）· 胶囊行单行/居中 · 圆点指示器 · 读数行常显 · 移动端同构");
 {
   /* ① 胶囊行居中（方案 .pillrow{justify-content:center}）——容器仍满芯宽，居中靠 justify */
-  ok(/\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap\}/.test(CSS_CODE),
+  ok(/\.core-pills\{display:flex;align-items:center;justify-content:center;gap:var\(--sp-3\);flex-wrap:wrap\}/.test(CSS_CODE),
     "★★ 胶囊行居中（justify-content:center，方案图口径；原先 flex-start 左贴）");
   /* ② 指示器 = 方案的 16px 圆点（order:-1 提到文字左侧；关闭=空心环 / 打开=实心绿） */
   ok(/\.core-pills \.toggle-pill \.switch\{order:-1;width:16px;height:16px;border-radius:50%/.test(CSS_CODE)
@@ -145,7 +145,7 @@ section("T231e 方案对账（v3.41.0）· 胶囊行单行/居中 · 圆点指�
      && /\.core-pills \.toggle-pill\.on \.switch\{background:var\(--green\);border-color:var\(--green\)\}/.test(CSS_CODE),
     "★★ 指示器 = 16px 圆点（文字左侧；关闭空心环 / 打开实心绿——形状+颜色双通道，不只靠颜色）");
   /* ③ 预备 = 一个胶囊壳（拍数并入壳内；方案把「4拍」画在胶囊里） */
-  ok(/\.core-pill-grp\{display:flex;align-items:center;gap:7px;height:36px;padding:0 12px 0 14px;/.test(CSS_CODE)
+  ok(/\.core-pill-grp\{display:flex;align-items:center;gap:var\(--sp-2\);height:36px;padding:0 var\(--sp-3\) 0 var\(--sp-4\);/.test(CSS_CODE)
      && /\.core-pill-grp:has\(\.toggle-pill\.on\)\{border-color:var\(--green\)\}/.test(CSS_CODE),
     "★★ 预备 = 一个胶囊壳（[圆点 预备 4 拍] 同框；开关态由 :has 镜像到壳描边）");
   /* ④ 移动端同构：芯铺满卡内容宽（326）+ 滑杆塔两侧内缩 16 ⇒ 滑杆仍 232；BPM 行盒回到 36 */

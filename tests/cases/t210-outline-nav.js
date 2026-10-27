@@ -323,10 +323,10 @@ section("T210l 样式 · 绿底与歌词之间留出间隔（用户实报「靠�
   const { html } = require("../lib/harness");
   /* 原先 .arg-ol-lyr 写 margin-top:-3px（负边距**往回收**，方向刚好相反）⇒ 贴住绿底。
      现在必须是正向间隔。 */
-  const m = /\.arg-ol-lyr\{[^}]*margin-top:5px/.exec(html);
-  ok(!!m, "★★ 歌词行改为正向 margin-top:5px（原为 -3px 的负边距）");
+  const m = /\.arg-ol-lyr\{[^}]*margin-top:var\(--sp-1\)/.exec(html);
+  ok(!!m, "★★ 歌词行改为正向 margin-top（PLAN-v16 起写 var(--sp-1)=4px；原为 -3px 的负边距）");
   ok(!/\.arg-ol-lyr\{[^}]*margin-top:-/.test(html), "★ 不再有负边距（负边距是把歌词往上贴，方向相反）");
-  ok(/\.arg-ol-row\{[^}]*padding:6px 8px/.test(html), "★ 段行下内边距收到 6px（绿底不向下多占）");
+  ok(/\.arg-ol-row\{[^}]*padding:var\(--sp-2\) var\(--sp-2\)/.test(html), "★ 段行内边距走 var(--sp-2)=8px（绿底不向下多占）");
 }
 section("T210m 左栏不许被内容撑宽（v3.35.2 用户实拍：绿底缺角 / 歌词被硬切）");
 {

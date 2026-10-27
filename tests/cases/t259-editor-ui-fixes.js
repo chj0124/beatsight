@@ -50,7 +50,7 @@ section("T259c CSS 钉 · 引导行高 / 模板收窄 / 弹层 pill 收紧");
 {
   ok(/\.ed-tpl \.loop-sel\{max-width:200px;text-overflow:ellipsis\}/.test(html),
      "★ 模板触发框收窄：max-width:200px + 省略号（只作用 .ed-tpl）");
-  ok(/#edPop \.pill\{padding:5px 8px;font-size:12px\}/.test(html),
+  ok(/#edPop \.pill\{padding:var\(--sp-1\) var\(--sp-2\);font-size:12px\}/.test(html),
      "★ 弹层内 pill 收紧（弦区三档单行）——作用域限定 #edPop");
   ok(/#edPop \.ed-dir\{gap:8px\}/.test(html), "★ 弹层行间距收紧（#edPop .ed-dir）");
   ok(/#edPop \.hint:empty\{display:none\}/.test(html),
@@ -59,7 +59,7 @@ section("T259c CSS 钉 · 引导行高 / 模板收窄 / 弹层 pill 收紧");
   const guideSeg = html.slice(guideAt, html.indexOf("}", guideAt));
   ok(guideAt > 0 && /line-height:1\.5/.test(guideSeg),
      "★ 引导层行高收为 1.5（三行 ≈59px ≤ 64px 轨道，不再贴上下缘）");
-  ok(/\.pill\{border-radius:var\(--radius-full\);padding:9px 16px;font-size:13px/.test(html),
+  ok(/\.pill\{border-radius:var\(--radius-full\);padding:var\(--sp-2\) var\(--sp-4\);font-size:13px/.test(html),
      "★ 全局 .pill 未被波及（弦区/其它按钮内边距与字号一字未动；PLAN-v16 起圆角写 var(--radius-full)=9999px）");
   ok(/\.edbar\{display:flex;gap:12px/.test(html) && /\.edbar-label\{width:88px;flex:none\}/.test(html),
      "★ 编辑标签列 = 88px：容纳 88px 文字行，完整保留与轨道之间的 12px 间隙");

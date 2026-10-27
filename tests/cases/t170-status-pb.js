@@ -34,10 +34,10 @@ section("T170a 状态灯落户底栏右区（.pb-right）");
   ok(PLAYBAR.indexOf('id="statusDot"') < pbOpen || PLAYBAR.indexOf('id="statusDot"') > pbClose + 6,
     "★★★ 状态灯不是 #pbProgress 的子节点——buildDemoSongRow 挂载前清空该容器，"
     + "静态子节点会被连坐销毁（曲式列表一重建状态灯就消失）");
-  ok(/\.pb-right\{justify-self:end;display:flex;flex-direction:column;gap:5px;width:100%;max-width:640px;min-width:0\}/.test(CSS_CODE),
+  ok(/\.pb-right\{justify-self:end;display:flex;flex-direction:column;gap:var\(--sp-1\);width:100%;max-width:640px;min-width:0\}/.test(CSS_CODE),
     "★★ .pb-right 承接落位与宽度契约（网格第 3 列右对齐 / max-width 640），v3.13.0 起**两行纵排**"
     + "（行 1 进度条独占、行 2 = .pb-sub 状态灯；v3.15.0 预备拍搬回卡片后高度更矮）；");
-  ok(/\.pb-sub\{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0\}/.test(CSS_CODE)
+  ok(/\.pb-sub\{display:flex;justify-content:space-between;align-items:center;gap:var\(--sp-3\);min-width:0\}/.test(CSS_CODE)
      && !/\.pb-countin/.test(CSS_CODE),
     "★★ v3.30.0：.pb-sub 两端对齐——左端接范围读数、右端状态灯（读数从行 1 挪来，"
     + "不再与进度条抢宽；预备拍早已搬回控制卡片开关行，.pb-countin 规则族退役）");

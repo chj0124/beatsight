@@ -41,7 +41,7 @@ section("T175a 控制芯（PLAN-v9 批 2 重写）：胶囊行 + 浮层壳的源
   ok(!/tg-slot" id="tgSlot"/.test(html) && !/\.tg-slot/.test(CSS_CODE),
     "★★ #tgSlot 壳与槽链样式全部退役（v3.13 悬浮槽时代结束）");
   ok(/<div class="core-pills">/.test(html)
-     && /\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px/.test(CSS_CODE),
+     && /\.core-pills\{display:flex;align-items:center;justify-content:center;gap:var\(--sp-3\)/.test(CSS_CODE),
     "★★ 控制芯：三枚开关 = 芯顶胶囊行（.core-pills 横排；v3.22.0 的 countin-line/sw-line 开关行退役）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),
     "★★ v3.33.10：进度行搬走后，v3.22.0 那条「变速参数末行」规则随位退役；"

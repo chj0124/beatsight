@@ -264,7 +264,7 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
      新胶囊行带自己的规格钉（36px 高 = 上下 8px 内边距），作用域同样收在芯内 */
   /* ★ v3.41.0（按《整体布局方案示意图》对账）：胶囊规格从「上下 8px 内边距」改为**显式 height:36px**
      + 方案的中性描边——同一件事（36px 胶囊）换写法，因为方案图的胶囊是「描边胶囊 + 16px 圆点」。 */
-  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:13px;/.test(css),
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:var\(--sp-2\);font-size:13px;/.test(css),
     "★★ 控制芯：36px 胶囊改为显式 height（v3.41.0 描边胶囊 + 16px 圆点，按方案图）");
   /* ★ 作用域必须限定在 .viz-toggles 内：改成全局 .toggle-pill 会是全站开关的观感变更 */
   ok(!/^\.toggle-pill\{[^}]*padding-left:0/m.test(css),
@@ -350,7 +350,7 @@ section("T90d CSS 契约 · 开关行去左内边距（丙）；音量列宽；�
   ok(/\.dialog\{[^}]*backdrop-filter:blur\(8px\)/.test(css),
     "★ v2.10.17：设置浮层 backdrop 加毛玻璃模糊（压暗 + 模糊）");
   ok(/\.arg-jump\{display:grid;grid-template-columns:1fr auto 1fr/.test(css)
-     && /\.trio\{display:flex;gap:10px;grid-column:2/.test(css)
+     && /\.trio\{display:flex;gap:var\(--sp-3\);grid-column:2/.test(css)
      && /\.arg-jump > \.loop-btn\{grid-column:3;justify-self:start\}/.test(css),
     "★★ v2.10.23：跳段行三列 Grid——三键组**精确居中**（中列 auto），循环钮贴着三键组排"
     + "（用户要求：居中不考虑循环钮；循环隐藏时右列空置、三键组仍居中）");

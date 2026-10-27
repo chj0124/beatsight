@@ -36,7 +36,7 @@ const pills = src.slice(pillsStart, pillsEnd);
 ["muteToggle", "trainerToggle", "countInToggle"].forEach(id => {
   ok(pills.includes('id="' + id + '"'), "★ 三枚开关都在胶囊行（.core-pills）内：" + id);
 });
-ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(src)
+ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:var\(--sp-3\)\}/.test(src)
    && /\.viz-head-grid \.card-head-left \.group \.tg-body\{max-width:402px\}/.test(src),
   "★★ v3.19.0 纵排流内骨架延续（gap 10）+ 控制芯内容上限 402（PLAN-v9 批 2）");
 /* 显式 grid-area 钉位随同轴网格整体退役：面板是浮层壳的流内子节点。 */

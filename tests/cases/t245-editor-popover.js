@@ -102,7 +102,7 @@ section("T245-2 B1 铺弦号行 + 悬浮层标记（留在页面、占位精简�
   ok(ruleOf(".ed-str .str-lines").includes("grid-template-columns:1fr 1fr") &&
      ruleOf(".ed-str .str-lines").includes("grid-auto-flow:column"),
      "★ 逐弦面板两列网格（左 ①②③ / 右 ④⑤⑥，高度约减半；用户实拍追补）");
-  ok(ruleOf(".ed-pop .ed-dir").includes("margin:10px 0 12px"),
+  ok(ruleOf(".ed-pop .ed-dir").includes("margin:var(--sp-3) 0 var(--sp-3)"),
      "★ 悬浮层组间距补 margin-top（修扫弦标注按钮贴 head 分隔线；用户实拍追补）");
   ok((html.match(/<span class="hint">作用于当前小节<\/span>/g) || []).length === 1,
      "★ 「作用于当前小节」常显 hint 恰一条（#strFillHint 仍专用于报错）");

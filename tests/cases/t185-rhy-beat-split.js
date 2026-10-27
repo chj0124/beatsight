@@ -258,7 +258,7 @@ section("T185j 拍数文案收窄 / 两行留间距 / 编辑器拍数搬到标�
 
   /* ② 两行之间必须有纵向间距：v3.33.0 只给了行内横向 gap，实测行距为 0px。
      这是 CSS 文本级断言（桩不做布局），口径与仓库既有 CSS 断言一致。 */
-  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:10px/.test(html),
+  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:var\(--sp-3\)/.test(html),
      "★★ 基础节奏区是纵向 flex 且 gap:10px（此前两行间距实测 0px，贴在一起）");
   ok(/#rhyBeatBox \.hint\{margin-top:0\}/.test(html),
      "小字的 margin-top 归零（纵向间距由容器 gap 单点承担，避免叠加成 16px）");
@@ -289,11 +289,11 @@ section("T185j 拍数文案收窄 / 两行留间距 / 编辑器拍数搬到标�
      "★★★ 本区收成一个容器且 flow-root + 下边距 −6px（吃掉 flex gap 10 与网格 row-gap 4 的差）");
   ok(!/\.basic-zone\.folded/.test(html),
      "★★★ 折叠态特例已删（槽移出文档流后两个状态算法一致；它消失本身就是这次修好了的标志）");
-  ok(/\.basic-head-row\{position:relative;display:flex[^}]*margin:14px 0 0\}/.test(html),
+  ok(/\.basic-head-row\{position:relative;display:flex[^}]*margin:var\(--sp-4\) 0 0\}/.test(html),
      "★★ 折叠头下边距为 0（与网格区头同款）");
-  ok(/\.basic-slot\{display:flex;align-items:center;justify-content:flex-start;gap:6px\}/.test(html),
+  ok(/\.basic-slot\{display:flex;align-items:center;justify-content:flex-start;gap:var\(--sp-2\)\}/.test(html),
      "★★★ 拍数与下方内容共用左缘，不再孤立贴右或留在折叠头");
-  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:4px\}/.test(html),
+  ok(/#rhyBeatBox\{display:flex;flex-direction:column;gap:var\(--sp-3\);padding:0 2px;margin-top:4px\}/.test(html),
      "★★ 区体上边距 = 4px（与网格容器间距一致）");
 
   /* ③ 编辑器拍数必须在**顶栏**（v3.33.0 落在底部操作行，与标题相隔 212px、被 6 个按钮挤到最右）。

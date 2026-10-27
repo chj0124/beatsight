@@ -159,14 +159,14 @@ button:disabled{cursor:not-allowed}
 /* ---------- 顶栏 ---------- */
 /* v2.0.2 PWA 安全区：viewport-fit=cover 下页面铺进刘海/圆角区，env() 把内容拉回可视区（v2.0.2 补） */
 .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 calc(24px + env(safe-area-inset-right, 0px)) 0 calc(24px + env(safe-area-inset-left, 0px));border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-size:16px;font-weight:700}
 /* 锁定字标（v3.43.0）：只钉高度、宽由 viewBox 461:112 自动等比——textLength 锁宽的 path
    不能被拉伸，正圆球也不能压扁；flex:none 防被顶栏挤压变形 */
 .brand .wm{height:20px;width:auto;flex:none}
 /* 版本徽章（v3.44.0 自顶栏迁入设置页顶部）：字号 11px 档位不变（t165 钉装饰性微标阶梯），
    仅容器从 .brand 换成 .set-ver；.set-ver-lab 是给鼠标用户的语义补充（读屏走 brandChip） */
 .set-ver{display:flex;align-items:center;gap:8px;margin:12px 0 0;color:var(--t3)}   /* v3.45.3：间距规范 4px 网格——标题/版本/tab 间距统一 12 */
-.set-ver .ver{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px 6px}
+.set-ver .ver{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:11px;color:var(--t3);font-family:var(--mono);font-weight:500;background:var(--card2);border-radius:4px;padding:2px var(--sp-2)}
 .set-ver .set-ver-lab{font-size:11px;color:var(--t3)}
 /* 设置页 header 色带（v3.45.0 → v3.45.3 视觉收尾）：
    · 满血分隔（用户实拍①）：标题栏 + 版本行 + tab 栏合成一条通栏色带（--card 底 + 底部
@@ -181,7 +181,7 @@ button:disabled{cursor:not-allowed}
 .set-top{position:sticky;top:0;z-index:2;margin:0 -24px;padding:16px 24px 12px;background:var(--card);border-bottom:1px solid var(--line)}
 .set-tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
 .set-tabs::-webkit-scrollbar{display:none}
-.set-tab{flex:none;padding:6px 18px;border-radius:var(--radius-full);border:1px solid var(--line);background:var(--bg);color:var(--t2);font-size:13px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s}
+.set-tab{flex:none;padding:var(--sp-2) var(--sp-4);border-radius:var(--radius-full);border:1px solid var(--line);background:var(--bg);color:var(--t2);font-size:13px;cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s}
 .set-tab:hover{color:var(--t1)}
 .set-tab.active{background:var(--sel-bg);border-color:var(--sel-line);color:var(--sel-fg);font-weight:600}
 .set-pane{padding:16px 0 2px}
@@ -195,13 +195,13 @@ button:disabled{cursor:not-allowed}
 .set-pane[hidden]{display:none}
 /* 组内长说明收进 ⓘ（v3.44.0 ③A）：默认只露一行「ⓘ 说明」，展开才见全文 */
 .hint-d{margin-top:8px}
-.hint-d>summary{cursor:pointer;list-style:none;font-size:11px;color:var(--t3);display:inline-flex;align-items:center;gap:5px;user-select:none}
+.hint-d>summary{cursor:pointer;list-style:none;font-size:11px;color:var(--t3);display:inline-flex;align-items:center;gap:var(--sp-1);user-select:none}
 .hint-d>summary::-webkit-details-marker{display:none}
 .hint-d>summary::before{content:"ⓘ";font-size:11px}
 .hint-d>summary:hover{color:var(--t2)}
 .hint-d[open]>summary{color:var(--t2)}
-.hint-d .hint{margin:6px 0 0}
-.chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:var(--radius-full);padding:7px 14px;font-size:12px;color:var(--t2)}
+.hint-d .hint{margin:var(--sp-2) 0 0}
+.chip{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:var(--radius-full);padding:var(--sp-2) var(--sp-4);font-size:12px;color:var(--t2)}
 .dot{width:6px;height:6px;border-radius:var(--radius-full);background:var(--green)}
 .dot.live{box-shadow:0 0 8px rgba(var(--green-rgb),.6);animation:pulse 1s infinite}
 .dot.bad{background:var(--red);animation:none}   /* v1.3.0：本地保存失败（P1-5 可观测） */
@@ -270,7 +270,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
      ★ 只给 <1280（栅格未生效的堆叠档）：≥1280 走 grid，块宽由第 4 轨给、间距由 row-gap 给，
        再叠 margin-bottom 会双计。 */
   /* v2.42.7 追加（用户截图报障"卡片的间距又出问题"）：纵向堆叠的四卡间隙也要统一——
-     此前三处来源各给各的：卡1↔卡2 = flex row-gap（≤560 被 .card-head{gap:6px} 压成 6px、
+     此前三处来源各给各的：卡1↔卡2 = flex row-gap（≤560 被 .card-head{gap:var(--sp-2)} 压成 6px、
      其余 12px），卡2↔卡3 = .card-head 的 margin-bottom:16px，卡3↔卡4 = .viz-toggles 的
      margin-bottom:16px → 首间隙只有其余的一半。统一 row-gap:16px（(0,2,0) 特异性
      盖过 ≤560 的 gap 简写；≥1440 网格模式不受影响——display:contents 下 row-gap 无意义）。 */
@@ -306,7 +306,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    （旧音量列第 1 行与旧 BPM 步进行本就同在 L1），故 --tg-align-top 的补偿口径不变。
    ★ v3.30.0 设计修订（取代 v3.24 的 space-between 末行钉底）：音量列**顶锚定距**
    （flex-start + gap）——开关列生长（开参数面板）时合并组行顶锚不动、死空间沉底。 */
-.viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}
+.viz-head-grid .card-head-left .group .tg-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:var(--sp-3)}
 /* ★★★ v3.36.20 补14：合并组内容统一上限 520px（竖屏下音量条曾不加节制占满全宽，646px）。
    v3.39.0：BPM 并入后同吃这一条；原先「音量行让出 TAP 宽度」的 max-width:calc(100% - 104px)
    随 #tapBtn 退役删除——步进群有自己的宽度，音量条不再迁就对齐。 */
@@ -350,7 +350,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
      修法：把胶囊抬到热区**之上**（z-index 45 > 44）⇒ 指针在胶囊上时事件落在胶囊、热区收不到，
      既不影响贴边热区的既有用途（v3.15.0 用户要求 24→72 扩大），也不必缩小胶囊或改它的位置。 */
   .ctl-hit{cursor:pointer;user-select:none;-webkit-user-select:none;width:fit-content;
-    display:inline-flex;align-items:center;gap:8px;margin:0 -8px;padding:6px 8px;min-height:40px;
+    display:inline-flex;align-items:center;gap:8px;margin:0 -8px;padding:var(--sp-2) var(--sp-2);min-height:40px;
     background:rgba(var(--well),.34);border-radius:var(--radius-card)}
   /* ★ 用 outline 而不是 border：border 会把标签文字右移 1px ⇒ 当场打破两条既有对齐断言
      （标题即控制列内容边缘：48 vs 49；开关行与标题同左缘：49 vs 48）。outline 不参与布局。 */
@@ -397,13 +397,13 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
      行盒从 40 收到 36 后，行内可见内容离盒顶从 11 → 9 ⇒ 音量侧盒子间距取 1（margin -7）得可见 10；
      BPM 侧首元素自身即可见、盒顶即视觉顶 ⇒ 盒子间距取 10（padding-top 2 叠在既有 8 上）。
      组间 24：BPM 胶囊上移 16px 抵消（既有 40 − 16 = 24），不改动别的来源。 */
-  .viz-head-grid .card-head-left .group{gap:6px;flex:none}
+  .viz-head-grid .card-head-left .group{gap:var(--sp-2);flex:none}
   .viz-head-grid .card-head-left .vol-row{min-height:36px}
   /* ★ v3.41.0（方案对账 · G3）：原选择器 (0,1,0) 且位于本块（更早）⇒ 被 L384 的基础规则
      .bpm-slider-row{min-height:40px} 同特异性+更靠后盖掉，移动端实测恒 40px。
      提高特异性把「≤640 行盒 36」真正落地（方案移动档三行同律 36 = 与 .vol-row 一致）。 */
   .viz-head-grid .card-head-left .bpm-slider-row{min-height:36px}
-  .ctl-hit{min-height:36px;padding:5px 8px}
+  .ctl-hit{min-height:36px;padding:var(--sp-1) var(--sp-2)}
   /* ★ v3.36.20 补24：上面那条 -2px 补偿**过量**了（实测胶囊→首行 6px，而 BPM 那边是 8）
      —— 因为 补23 的 .group{flex:none} 同时改了组内几何。撤掉补偿后实测回到 8 = 8。 */
   /* ★★★ v3.36.20 补25（用户拍板 a）：**按可见边缘**对齐两组"胶囊→首行"的间距。
@@ -448,7 +448,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
        展开后滑杆就在眼前，再挂一枚读数钮是重复（方案移动图的展开态里没有这一行）。 */
     #ctlOpen:checked ~ .ctl-pills{display:none}
   }
-  .viz-head-grid .card-head-left .group .tg-body{gap:6px}
+  .viz-head-grid .card-head-left .group .tg-body{gap:var(--sp-2)}
 }
 /* ★ v3.39.0：原 `.viz-head-grid .viz-head .tg-body`（BPM 内容区顶对齐，v3.22.0）随 BPM 组
    并入音量组退役——合并组唯一的 tg-body 由上面的 .card-head-left 规则接管（更高特异性，
@@ -476,7 +476,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    改标签槽宽度时居中自动跟随，不再产生新的魔法数。
    ★ 过宽行为：justify-content:center 溢出时两侧对称——左侧溢进 62px 标签区（该行无内容），
    右侧溢向 tg-body 内边距，与 G9 时代的对称外溢同级。 */
-.viz-head .group{--lab-w:52px;--lab-gap:10px}
+.viz-head .group{--lab-w:52px;--lab-gap:10px}   /* ★ 白名单：--lab-gap=10 是 402 芯算术的组成（52+10+340），随芯口径走，不参与 4px 收敛 */
 .viz-head .group .slider-row .bpm-row{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;
   margin-left:calc(var(--lab-w) + var(--lab-gap));width:calc(100% - var(--lab-w) - var(--lab-gap))}
 .viz-head .group .bpm-num{flex:0 0 auto;min-width:64px}
@@ -488,7 +488,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 @media (max-width:640px){
   /* ★ v3.41.0（方案移动档）：步进钮 30×30、数值框 54×36（实测原为 30×40 / 64×40） */
   .viz-head .group .slider-row .bpm-row{min-height:40px}
-  .viz-head .group .slider-row .bpm-row .step-btn{min-width:0;padding:6px 2px;width:30px;height:30px}
+  .viz-head .group .slider-row .bpm-row .step-btn{min-width:0;padding:var(--sp-2) 2px;width:30px;height:30px}
   /* ★★★ v3.42.0（用户实报）：竖屏数值**不许小于 ± 按钮的数字**——原先照抄方案图的移动档 14px，
      而方案图里 ± 按钮是 12px、app 里是 14px（.step-btn）⇒ 抄过来"大数字"就没了层级。提到 20px。 */
   /* ★★★ v3.42.0 补（用户实报）：20px 仍偏小 ⇒ 28px、盒子 72×40（字形高约 20px，与 30px 圆钮视觉相当） */
@@ -600,9 +600,9 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   .viz.scroll-mode,.viz.scroll-mode ~ .lyric-lane{mask-image:none;-webkit-mask-image:none}
 }
 /* v3.1.0（A1）：首用图例条——低调一行，不与网格抢注意力；★ 本版：关闭改版本号维度记忆（S.vizLegendVsn） */
-.viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;font-size:13px;
-  color:var(--t2);padding:8px 14px;border:1px dashed var(--line);border-radius:var(--radius-card)}
-.viz-legend .vl-item{display:inline-flex;align-items:center;gap:6px}
+.viz-legend{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);font-size:13px;
+  color:var(--t2);padding:var(--sp-2) var(--sp-4);border:1px dashed var(--line);border-radius:var(--radius-card)}
+.viz-legend .vl-item{display:inline-flex;align-items:center;gap:var(--sp-2)}
 .viz-legend .vl-swatch{display:inline-block;width:18px;height:12px;border-radius:var(--radius-cell);
   background:var(--peak)}
 /* 本轮：`.vl-swatch.vl-rest` 随图例里那条灰格说明一并退役（原规则 = 淡灰底 + 1px 虚线边框）；
@@ -647,7 +647,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
    "合并成一个同屏行数控件"一并退役（档位控件不再有禁用态，它随模式重列档位）。 */
 /* v3.3.0：原「预设库卡片」样式整段退役（卡片已拆：入口→底栏胶囊、内容→左侧面板）。
    取代它的两族样式在下面：底栏上下文胶囊 + 面板动作区。 */
-.pb-ctx{justify-self:start;display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid transparent;
+.pb-ctx{justify-self:start;display:flex;align-items:center;gap:var(--sp-2);background:var(--card2);border:1px solid transparent;
   border-radius:var(--radius-card);padding:8px 12px;color:var(--t1);font-size:13px;max-width:38vw;cursor:pointer;overflow:hidden}   /* ★ PLAN-v11 追补（用户实拍「残字形」）：补 overflow:hidden——任何子项溢出不画出圆角外（防线第一层）；收缩链在各子项自身的 min-width:0 + ellipsis */
 .pb-ctx:hover{border-color:var(--border)}
 .pb-ctx:focus-visible{border-color:var(--green)}
@@ -679,9 +679,9 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
 /* 面板动作区：三件事竖排。v3.44.0（用户拍板②）补图标——grid 两列（图标跨两行，
    名称/说明右排）；≤640 只留名称时图标与名称同行（单行 grid 自适应）。
    ★ >640 显示说明行、≤640 只留名称——与"窄屏不折行、不缩字号"的口径一致。 */
-.pd-actions{display:flex;flex-direction:column;gap:6px}
-.pd-act{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:2px;align-items:center;
-  width:100%;background:var(--cell);border:1px solid transparent;border-radius:var(--radius-item);padding:8px 10px;
+.pd-actions{display:flex;flex-direction:column;gap:var(--sp-2)}
+.pd-act{display:grid;grid-template-columns:auto 1fr;column-gap:var(--sp-3);row-gap:2px;align-items:center;
+  width:100%;background:var(--cell);border:1px solid transparent;border-radius:var(--radius-item);padding:var(--sp-2) var(--sp-3);
   color:var(--t1);font-size:13px;text-align:left;cursor:pointer}
 .pd-act .pd-ico{grid-row:1/3;grid-column:1;color:var(--t2)}
 .pd-head .pd-ico{color:var(--t1)}
@@ -706,7 +706,7 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
      搜索框↔主钮归还）。故本次不再新造协议，只换容器语义。
    ★ z-index 50：高于播放底栏(40)与遮罩(45)，低于 TAP/诊断条(60)与模态遮罩(200)。 */
 .preset-drawer{position:fixed;left:0;top:0;bottom:0;z-index:50;width:min(392px,88vw);
-  display:flex;flex-direction:column;gap:10px;background:var(--card);
+  display:flex;flex-direction:column;gap:var(--sp-3);background:var(--card);
   border-right:1px solid var(--line);padding:16px;
   padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y:auto;scrollbar-gutter:stable;box-shadow:8px 0 32px rgba(0,0,0,.5)}
@@ -736,11 +736,11 @@ body .main{padding-bottom:calc(var(--bar-h) + 24px + env(safe-area-inset-bottom,
   .drawer-hotzone{display:none}
 }
 .pd-mask[hidden]{display:none}
-.pd-head{display:flex;align-items:center;gap:10px}
+.pd-head{display:flex;align-items:center;gap:var(--sp-3)}
 .pd-head .pd-title{font-size:13px;font-weight:500;flex:1}
 /* v3.1.0（A9）：抽屉搜索框——与 .search 系控件同款（cell 底 + 细边），≤420px 不抢全宽 */
 .pd-search{display:flex;align-items:center;gap:8px;background:var(--cell);
-  border:1px solid var(--line);border-radius:var(--radius-item);padding:7px 12px;max-width:420px}
+  border:1px solid var(--line);border-radius:var(--radius-item);padding:var(--sp-2) var(--sp-3);max-width:420px}
 .pd-search:focus-within{border-color:var(--green);outline:2px solid var(--green);outline-offset:2px}
 .pd-search-ico{color:var(--t3);font-size:13px}
 .pd-search input{background:transparent;border:0;outline:0;color:var(--t1);
@@ -795,7 +795,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    左列（与角标/音量同列上下分布），列内 gap 统一对齐，不再需要行内微调 */
 /* v2.10.15：左块**竖排**。v2.10.16：上行只剩角标（标题 #vizTitle 删除），
    状态灯成为左列第二行（用户要求：与标题同列上下分布） */
-.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:min(312px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
+.card-head-left{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-3);width:min(312px,100%)}   /* v2.10.18：固定宽——左列宽度原先由内容（含节奏型名）驱动，名字变短列就变窄、BPM 组跟着左移；钉死后名字超长走省略号。v2.39.0：320→352——组容器底吃掉 32px 横向内边距，列宽同步加宽，型名可读宽度分毫不变 */
 .card-head-left .group{width:100%;flex:1;justify-content:space-evenly}   /* v2.10.20：音量组撑满列内剩余高度、三条滑杆行距均摊（v2.10.18 的 margin-top:auto 把剩余空间全堆在状态灯↔音量标签之间——用户反馈仍太大；现在死空间转移进组内，音量条间隙变大、标签紧贴状态灯下方） */
 .card-head-left .vol-row{width:100%}
 .card-title{font-size:14px;font-weight:600}
@@ -829,7 +829,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* v2.11.1：页底文案区（.page-foot）整块删除——图例与快捷键提示移入「使用方法」；
    左缘/极窄屏分档的对齐修正随元素一并退役 */
 /* 拍号回退提示条（v0.4.3 补样式，此前无规则裸奔） */
-.fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:var(--radius-item);padding:10px 14px;font-size:12px}
+.fallback-note{display:flex;align-items:center;gap:12px;background:rgba(227,179,65,.10);border:1px solid rgba(227,179,65,.35);color:var(--amber);border-radius:var(--radius-item);padding:var(--sp-3) var(--sp-4);font-size:12px}
 .fallback-note[hidden]{display:none}
 .fallback-note span{flex:1;min-width:0}
 
@@ -862,7 +862,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .bar-row.current::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--cell-h);border-radius:var(--radius-item);
   background:rgba(var(--green-rgb),.10);pointer-events:none}
 .bar-row.muted-bar .cell{opacity:.5}
-.bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 6px;border-radius:4px;z-index:7}
+.bar-row.muted-bar::after{content:"静音小节";position:absolute;right:4px;top:-18px;font-size:10px;color:var(--t3);background:var(--card);padding:0 var(--sp-2);border-radius:4px;z-index:7}
 /* 预告行（v2.7.0；v2.8.0 预告信息并入和弦胶囊，不再单独挂徽标）：
    曲式翻页窗口页内**最后一行**期间，第 1 行临时换成"下一小节"的内容。
    整行降透明 = 它是"未来"，与在播行/历史行区分开 */
@@ -1229,23 +1229,23 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 /* ★ v3.33.10（用户清单 4）：同列等宽——此前左列四枚宽度不一，右列跟着参差，观感"没对齐"。 */
 /* ★ v3.33.10（用户清单 2）：位置四档是「显示歌词」的**子项** ⇒ 降一级 + 缩进（与仓库"开关+从属参数降一级"同口径）。 */
 /* ★★★ v3.42.0 补（用户实拍"歌词一栏下多个按钮的间距有问题"）：实测两组胶囊规格不一致——
-   位置组走 `#lyricPosGroup .pill{padding:6px 10px}`（(1,1,0) 盖过我给贴字换行写的 padding），
+   位置组走 `#lyricPosGroup .pill{padding:var(--sp-2) var(--sp-3)}`（(1,1,0) 盖过我给贴字换行写的 padding），
    音高组走 `.lyric-pos-group .pill{padding:0 12px}` ⇒ 同栏两行胶囊的**内边距与左缘都不一样**
    （位置组还带 14px 缩进、音高组没有）。统一为：两组同 padding、同 gap、同缩进（"子项降一级"的口径
    对两组都成立），横向空白只在 wrap 后自然收敛。 */
-#lyricPosGroup{margin-left:14px}
-#pitchNotationGroup{margin-left:14px}
+#lyricPosGroup{margin-left:var(--sp-4)}
+#pitchNotationGroup{margin-left:var(--sp-4)}
 #lyricPosGroup .pill{font-size:12px;padding:0 12px}
 /* v3.33.10（用户清单 1）：三块语义小标题——作为整行插进现有 .bpm-row，胶囊在其下自然成组 */
 .bpm-row .group-label{flex:1 1 100%;width:100%;margin-top:20px;margin-bottom:-2px}
    /* -2px：把组内距离压回全站既有的 10px（.bpm-row 行距 12 时，标题离内容 = 10），不这样会与 Swing/延迟补偿等组的 10px 打架（实测两套值 14/10 忽紧忽松） */   /* v3.33.10：小标题作为**整行**——不能绑 .viz-head-grid（设置弹窗不在其内，选择器会空转，标签退化成行内元素挤在上一行末尾，实拍已见） */
 /* ★★★ v3.42.0 第十一轮：音名不可用时的提示条（与首次进入的图例条同族观感）+ 置灰胶囊 */
-.pitch-notice{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:8px;padding:8px 14px;
+.pitch-notice{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin-top:8px;padding:var(--sp-2) var(--sp-4);
   font-size:13px;color:var(--t2);border:1px dashed var(--line);border-radius:var(--radius-card)}
 .pitch-notice[hidden]{display:none}
 .pitch-notice .pill{margin-left:auto;padding:4px 12px;font-size:12px;min-height:0}
 .pill:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
-.lyric-lane{position:relative;margin-top:10px;display:flex;flex-direction:column;gap:4px}
+.lyric-lane{position:relative;margin-top:var(--sp-3);display:flex;flex-direction:column;gap:4px}
 .lyric-lane[hidden]{display:none}
 /* v2.86.0：伴随节奏模式 = 覆盖层（#lyricLane 切绝对定位，叠到 #viz 上，逐行 translateY）。
    走「重定位覆盖层」而非「塞进 #viz」：#viz 的 DOM 与网格不变量零改动（见 PLAN-v7）。 */
@@ -1418,7 +1418,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    （主操作地位不变），但与 52px 跳段键的差距收敛；图标随档 26→24。 */
 .play-btn{width:62px;height:62px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 20px rgba(var(--green-rgb),.32);flex:none}
 .play-btn:active{transform:scale(.96)}
-.group{display:flex;flex-direction:column;gap:10px}
+.group{display:flex;flex-direction:column;gap:var(--sp-3)}
 /* v3.4.1（P4 字体层级）：组标签 11px→12.5px + 字重 500 + .04em 字距。原 11px 与顶栏
    `.brand .ver`、`.ruler-lab` 那类**装饰性微标**同号，层级被抹平——组标签是「这一组是什么」
    的导航锚点，该重一档；12.5px 取自既定阶梯（11/12.5/14/16/40）。装饰性微标一律不动。 */
@@ -1441,7 +1441,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .jump-btn:active{transform:scale(.94)}
 .jump-btn:disabled{opacity:.35;cursor:default}
 /* v2.10.22：范围循环钮的双态图案切换与点亮态（aria-checked 由 setToggle 驱动） */
-.trio{display:flex;gap:10px;grid-column:2;align-items:center}
+.trio{display:flex;gap:var(--sp-3);grid-column:2;align-items:center}
 .arg-jump > .loop-btn{grid-column:3;justify-self:start}
 .loop-btn .ico-on{display:none}
 .loop-btn[aria-checked="true"] .ico-on{display:block}
@@ -1463,9 +1463,9 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
    （预备拍组靠左 + 状态灯靠右，space-between——两个可变源只挤压行 2 中缝）。
    高度核算：22(轨道) + 5(gap) + 33(胶囊) ≈ 60px < 底栏内容区 82px ✓。
    ★ 落位与宽度契约（justify-self:end / max-width:640 / min-width:0）原样保留。 */
-.pb-right{justify-self:end;display:flex;flex-direction:column;gap:5px;width:100%;max-width:640px;min-width:0}
-.pb-progress{display:flex;align-items:center;gap:10px;min-width:0}
-.pb-sub{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
+.pb-right{justify-self:end;display:flex;flex-direction:column;gap:var(--sp-1);width:100%;max-width:640px;min-width:0}
+.pb-progress{display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+.pb-sub{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);min-width:0}
 .pb-right .status{flex:none;white-space:nowrap}
 /* v3.15.0：预备拍搬回控制卡片开关行（底栏右区太容易被忽略）——.pb-countin 规则族
    随之退役；拍数输入 #countInBeatsWrap 走悬浮槽（样式见 .viz-toggles .tg-slot 段）。 */
@@ -1480,7 +1480,7 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
 /* 「整首」时读数由 JS 置 visibility:hidden（占位隐藏、布局零跳动）——
    整首范围（第 1–9 节 · 共 64 小节）在默认态没有信息量，拖动端点变局部范围时才显示。 */
 .pb-sub .demo-range-note[hidden]{display:none}
-.pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0}
+.pb-progress .demo-range{flex:1;flex-direction:row;align-items:center;gap:var(--sp-3);margin:0;min-width:0}
 .pb-progress .demo-range-track{flex:1;min-width:80px}
 /* 播放头（v3.3.0）：纯指示、不可拖 —— 与两个可拖 thumb 是**两种性质**，故用明显不同的形状；
    pointer-events:none 保证它不吃任何拖动。
@@ -1504,7 +1504,7 @@ body[data-theme="obs"] .loop-btn, body[data-theme="obs"] .loop-btn[aria-checked=
 .play-bar{position:fixed;left:0;right:0;bottom:0;z-index:40;height:var(--bar-h);display:grid;
   /* ★ 两侧必须 minmax(0,1fr)：裸 1fr 的最小值是 min-content，左胶囊一宽就把中列推离中心
      （窄屏实测：键中心 259 vs 视口中心 195） */
-  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:18px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.5);padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.5);padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))}
 /* ★★★ v3.30.0（用户拍板）：**底栏内容缘 = 跑道/歌词行盒缘**（= `.main` 内容缘）。
    ★ 本轮把对齐目标从「卡片控制网格缘」（v3.26/v3.28 口径，1440 下 212.5）改回
      **跑道缘**（1440 下 24）——用户多轮标注后确认的红线位置就在跑道左缘那条竖线上
@@ -1552,7 +1552,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
   .pb-right{max-width:var(--pb-side-w);position:relative;top:11.5px}
 }
 @media (max-width:640px){
-  .play-bar{column-gap:10px}
+  .play-bar{column-gap:var(--sp-3)}
   /* 窄屏：读数先让位（条本身是主要信息），条宽压到 26vw 免得把胶囊与控制键挤没 */
   /* ★ 窄屏必须给"确定宽度"而不是 flex:1 + max-width：一行放不下时 flex 会把可收缩项压到 0
      （实测真机 `#pbProgress` 宽度 0 —— 桩测不出，是冒烟的宽度断言抓到的）。
@@ -1583,13 +1583,13 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
         而下方还空着 16px（内容整体偏下）。根因是两行网格在固定高度里按 stretch 分配，
         内容不居中。改 align-content:center + 顶部 6px ⇒ 实测上 9px / 下 16px，两端都有呼吸。
      ④ 状态灯与**上方胶囊的首元素不对齐**：状态灯圆点贴它容器的左缘（x=16），
-        而上面胶囊里的 ‹ 被 capsual 的 padding-left:10px 推进去（x=27）——差 11px。
+        而上面胶囊里的 ‹ 被 capsual 的 padding-left:var(--sp-3) 推进去（x=27）——差 11px。
         给状态行同样 10px 左内边距 ⇒ 实测差 1px（对齐）。
         ★ 只加内边距、不动宽度：状态灯在窄屏是定宽 96px + 省略号，
           它的**可用宽**必须保持不变，否则长文案的截断位置会跟着变。 */
-  .play-bar{grid-template-rows:auto auto;row-gap:4px;align-content:center;padding-top:6px;
+  .play-bar{grid-template-rows:auto auto;row-gap:4px;align-content:center;padding-top:var(--sp-2);
     grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.3fr)}
-  .play-bar .status{padding-left:10px}
+  .play-bar .status{padding-left:var(--sp-3)}
   /* ★ v3.18.0（用户截图 2 例）：行 1 = 播放键组跨三列居中（play 72→48、跳段/循环
      44→40——三行塞不进 82px 内容区，按钮让位）；行 2 = 型名胶囊（col 1，占满列宽 +
      省略号——旧 30vw 上限在自己的列里溢出、被 ⏮ 压住的根因）+ 右区（col 2-3）。
@@ -1598,7 +1598,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
      位置信息由进度条本身与座次尺承担。 */
   #argJump{grid-column:1 / -1;grid-row:1;justify-self:center}
   .pb-ctx{grid-row:2;grid-column:1;justify-self:stretch;max-width:100%;min-width:0;
-    padding:4px 10px;font-size:11px}
+    padding:var(--sp-1) var(--sp-3);font-size:11px}
   .pb-ctx .pat-now{font-size:11px}
   .pb-right{grid-column:2 / -1;grid-row:2;flex-direction:row;justify-self:stretch;
     max-width:none;gap:12px;align-items:center}
@@ -1628,7 +1628,7 @@ body.wide-full .play-bar{padding-left:calc(24px + env(safe-area-inset-left, 0px)
 /* v3.39.1：BPM 块改上下两行塔式（上行三段槽位滑杆行 + 下定居中步进群）——
    基础规则即列向；本类只有主界面 BPM 一处使用（此前 v3.39.0 的「滑杆+步进群同行」
    横向形状随用户澄清退役）。viz-head 作用域里的居中 margin 见上方 v3.39.1 块 */
-.slider-row{display:flex;flex-direction:column;align-items:stretch;gap:13px}   /* 间距修正②：6→13（BPM↔步进群拍板 30px 的来源，两端同律） */
+.slider-row{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-3)}   /* 间距修正②：6→13（BPM↔步进群拍板 30px 的来源，两端同律） */
 /* 滑杆刻度层（v1.1）：datalist 在 Chrome 下即使不加 appearance:none 也不渲染刻度，
    改为绝对定位的刻度条；左右内缩 = 圆钮半径，使刻度与圆钮行程对齐 */
 .slider-wrap{position:relative;flex:1;min-width:0;display:flex;align-items:center;--thumb-r:8px}
@@ -1675,7 +1675,7 @@ input[type=range].vol{width:120px}
    ★ 实测影响面（1440×900 / 390 / 360 / 640 四档，无头 Chrome）：零横向溢出；底栏 --bar-h 96px
      与参数槽 #tgSlot 44px **均不变**（各有契约）；窄屏 .viz-rows-row 166→174px（在 flex-wrap
      余量内，未增折行）。顶栏那条显式 height 会**盖住**本条 min-height，须同步抬（见下）。 */
-.pill{border-radius:var(--radius-full);padding:9px 16px;font-size:13px;font-weight:500;min-height:40px;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
+.pill{border-radius:var(--radius-full);padding:var(--sp-2) var(--sp-4);font-size:13px;font-weight:500;min-height:40px;background:var(--card2);color:var(--t2);transition:background .12s,color .12s}
 /* 顶栏图标钮（v2.69.0 主题切换）：图标走 currentColor 随按钮色，经典/日间两主题自动正确。
    ★ v2.69.0 返工修 bug：显隐由**按钮类 .day** 驱动（经典=月亮、日间=太阳）——
    不用 svg 的 hidden 属性：hidden 是 HTMLElement 的 IDL 属性，SVGElement 没有它，
@@ -1690,7 +1690,7 @@ input[type=range].vol{width:120px}
 /* ★ v3.42.0 第八轮（用户口径：换一个样式）：▾ 文本字形换成**与设置/主题同一族的 SVG 描边雪佛龙**
    （16px / stroke 1.8 / round，自带垂直居中，不再受字形基线影响）。 */
 #foldBtn .fold-ico{display:block}
-.topbar .icon-btn{justify-content:center;padding:0 11px}
+.topbar .icon-btn{justify-content:center;padding:0 var(--sp-3)}
 .topbar .icon-btn .ico-moon,
 .topbar .icon-btn .ico-sun{display:block}
 .topbar .icon-btn.day .ico-moon{display:none}
@@ -1702,7 +1702,7 @@ input[type=range].vol{width:120px}
 /* v3.14.0：延迟读数圆钮化（替代 v2.69.0 的裸文案 .lat-read）——与主题钮同规格
    40px 胶囊圆；圆内 11px 等宽 tabular-nums（三位 ~20px，min-width 40 保证一位数
    也是正圆、三位不溢出）；hover 提亮走 .pill.outline 既有惯例 */
-.lat-btn{min-width:40px;justify-content:center;padding:0 10px}
+.lat-btn{min-width:40px;justify-content:center;padding:0 var(--sp-3)}
 .lat-btn .lat-num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;color:var(--t2)}
 /* v3.15.0：数值字号按位数分档（用户反馈个位/两位数 11px 太小）——1 位 16 / 2 位 13 / 3 位 11 */
 .lat-btn .lat-num.n1{font-size:16px}
@@ -1744,13 +1744,13 @@ input[type=range].vol{width:120px}
    胶囊 36px 高（上下内边距 10→8，v3.24.0 压缩配额的同一口径）；自带 --card 底——
    旧开关列的"胶囊透明化"规则随列退役，芯内胶囊有可见底、即所见热区。 */
 .viz-head-grid .card-head-left .group{position:relative}   /* 芯 = .tg-flyout 的定位包含块 */
-.core-pills{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.core-pills{display:flex;align-items:center;justify-content:center;gap:var(--sp-3);flex-wrap:wrap}
 /* ★★★ v3.41.0（按《整体布局方案示意图》逐条对账）：胶囊行三枚**居中、单行**。
    实测原状：三枚 102 + 拍数框 74 + 组内 6 + 行内 20 = **406 > 芯 402** ⇒ 折成两行（高 82，
    桌面/移动全档一样）。方案图的胶囊是「16px 圆点 + 文字」、且「4拍」画在**同一个**胶囊框里，
    一枚 ≈ 77~130px ⇒ 三枚 + 间距 ≈ 302，桌面 402 / 移动 326 都单行放得下。
    故此处按方案改：指示器降为 16px 圆点（order:-1 提到文字左侧）、组内拍数并入胶囊壳。 */
-.core-pills .toggle-pill{height:36px;padding:0 14px;gap:7px;font-size:13px;
+.core-pills .toggle-pill{height:36px;padding:0 14px;gap:var(--sp-2);font-size:13px;
   border:1.5px solid var(--line);background:var(--card)}
 .core-pills .toggle-pill.on{border-color:var(--green)}
 /* 指示器 = 方案的 16px 圆点：关闭=空心环 / 打开=实心绿 ⇒ 形状+颜色双通道（不只靠颜色） */
@@ -1760,7 +1760,7 @@ input[type=range].vol{width:120px}
 .core-pills .toggle-pill.on .switch{background:var(--green);border-color:var(--green)}
 /* 预备 = 方案里的**一个胶囊框**：[圆点 预备 4 拍]（方案把「4拍」画在胶囊内）。
    拍数仍是真 <input>：方案画的是静态文本，但去掉输入等于拆掉唯一的编辑入口，故保留可编辑。 */
-.core-pill-grp{display:flex;align-items:center;gap:7px;height:36px;padding:0 12px 0 14px;
+.core-pill-grp{display:flex;align-items:center;gap:var(--sp-2);height:36px;padding:0 var(--sp-3) 0 var(--sp-4);
   border:1.5px solid var(--line);border-radius:var(--radius-full);background:var(--card)}
 .core-pill-grp:has(.toggle-pill.on){border-color:var(--green)}
 .core-pills .core-pill-grp .toggle-pill{border:0;background:none;padding:0}
@@ -1804,7 +1804,7 @@ input[type=range].vol{width:120px}
 .core-pill-hold{position:relative;display:flex}
 .tg-flyout{position:absolute;top:calc(100% + 10px);left:0;z-index:46;
   min-width:250px;max-width:min(340px,100vw);
-  background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-card);padding:12px 14px 13px;
+  background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-3) var(--sp-4) var(--sp-3);
   box-shadow:0 10px 26px rgba(0,0,0,.45)}
 /* 指向胶囊的小箭头：与壳同底同描边的 45° 方块，压在壳顶边上——归属"一眼可见"的关键 */
 .tg-flyout::before{content:"";position:absolute;top:-5px;left:16px;width:8px;height:8px;
@@ -1817,14 +1817,14 @@ input[type=range].vol{width:120px}
    同框，天然不会被面板自己挡住；芯底那行照旧保留（折叠态与其它路径的就地通道）。
    两态与芯底那行逐字同构：普通态 = 浅底提示，`.warn` = 红框（目标 ≤ 当前速度那种硬阻断）。 */
 .tg-flyout .f-note{font-size:11px;line-height:1.35;color:var(--t2);background:rgba(var(--veil),.06);
-  border-radius:var(--radius-ctrl);padding:6px 10px;margin-bottom:9px}
+  border-radius:var(--radius-ctrl);padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-2)}
 .tg-flyout .f-note.warn{color:var(--danger-fg);background:none;box-shadow:inset 0 0 0 1px var(--red)}
 .tg-flyout .f-note[hidden]{display:none}   /* 同族兜底：将来若给 .f-note 加 display，[hidden] 仍生效 */
 /* 面板内排版：绿色小标题 → 参数行 → 子开关行（两块同构，行距 7px） */
-.tg-flyout .f-title{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.03em;margin-bottom:9px}
+.tg-flyout .f-title{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.03em;margin-bottom:var(--sp-2)}
 .tg-flyout .tr-panel{display:block;margin-top:0}
-.tg-flyout .f-row{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px}   /* 等高：两块面板高度一致 */
-.tg-flyout .f-row + .f-row{margin-top:7px}
+.tg-flyout .f-row{display:flex;align-items:center;gap:var(--sp-2);white-space:nowrap;min-height:28px}   /* 等高：两块面板高度一致 */
+.tg-flyout .f-row + .f-row{margin-top:var(--sp-2)}
 .tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap;color:var(--t2)}
 .tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
 /* ★★★ 本轮（用户实拍「'步长' 的步 与 '小节' 的小 为什么没对齐」）：实测两行第二列标签
@@ -1835,15 +1835,15 @@ input[type=range].vol{width:120px}
    **行 1 之后所有东西整体左移 2px**（行 2 没有这枚壳，故其第二列标签落在正位）。
    ⇒ 修法不是"补偿数值"，而是**消掉结构差异**：让壳不产生盒子（`display:contents`），
    它的子元素直接参与 `.f-row` 的 flex 排布 ⇒ 四个槽位全按 6px 同构（实测 diff 0）。
-   ★ 为什么不用 `.tg-flyout .inp-with-unit{gap:6px}` 补偿：那只把数值对回去，两行结构仍不同；
+   ★ 为什么不用 `.tg-flyout .inp-with-unit{gap:var(--sp-2)}` 补偿：那只把数值对回去，两行结构仍不同；
      且 `.core-pills .inp-with-unit` 与 `.tg-flyout …` 特异性同为 (0,2,0)，要靠源序决胜负。
    ★ 用 id 选择器提高特异性，不依赖源序；副作用面只有浮层内容宽 +2px（192.33 → 194.33），
      面板宽随之 +2px（现有闸门没有钉浮层宽度的断言，真机断言由 smoke 的 slotGeomProbe 承担）。
    ★ `#trTargetWrap` 的 id 保留 ⇒ t175 的 id 清单断言不受影响；它从不 hidden，
      故 `.inp-with-unit[hidden]` 那条兜底不受牵连。 */
 #trainerFlyout .inp-with-unit{display:contents}
-.tg-flyout .tr-inp{width:46px;padding:3px 6px;font-size:12px;text-align:center}
-.tg-flyout #muteRandomToggle{padding:4px 10px;font-size:12px}
+.tg-flyout .tr-inp{width:46px;padding:3px var(--sp-2);font-size:12px;text-align:center}
+.tg-flyout #muteRandomToggle{padding:var(--sp-1) var(--sp-3);font-size:12px}
 .tg-flyout .tr-inp::-webkit-outer-spin-button,
 .tg-flyout .tr-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .tg-flyout .tr-inp[type=number]{-moz-appearance:textfield;appearance:textfield}
@@ -1900,10 +1900,10 @@ input[type=range].vol{width:120px}
      `.viz-rows-row #accGroup` —— 前者是"标签与按钮同行"的旧面板壳（设置里改由 .group 承担），
      后三条随「行数 + 拍号」并排行整块退役（拍号已删）。 */
 .viz-rows{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-/* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:7px 14px;font-size:12px}` 缩小规则删除——
+/* v2.10.14（用户要求④）：原 `.viz-rows .pill{padding:var(--sp-2) var(--sp-4);font-size:12px}` 缩小规则删除——
    它让「同屏行数」的 pill（实测 31px 高）与旁边「拍号」的默认 .pill（36px 高）大小不一，
    同一行里参差。现在两排都用默认 .pill 规格（36px / 13px / 9×16），量过的一致 */
-.toggle-pill{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:var(--radius-full);padding:10px 14px 10px 16px;font-size:13px}
+.toggle-pill{display:flex;align-items:center;gap:var(--sp-3);background:var(--card);border-radius:var(--radius-full);padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4);font-size:13px}
 /* v2.10.6：六线底纹开关会按当前型显隐（syncTabLayer 置 hidden），而上面这行作者的
    display:flex 特异性高于 UA 的 [hidden]{display:none}——同 .arg-now / .vol-row 那一族，
    不补这条 hidden 就形同虚设（T87f 同一个坑的第十一个成员） */
@@ -1921,14 +1921,14 @@ input[type=range].vol{width:120px}
    贴附关系不变。
    注意 [hidden] 的 display:none 会被类选择器的 display:flex 覆盖（同 .tr-panel[hidden] 的坑），
    必须显式写一条 [hidden] 规则。 */
-.inp-with-unit{display:flex;align-items:center;gap:6px}
+.inp-with-unit{display:flex;align-items:center;gap:var(--sp-2)}
 .inp-with-unit[hidden]{display:none}
 
 /* ---------- 训练模式 · 变速训练器 ---------- */
-.tr-panel{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:12px}
+.tr-panel{display:flex;align-items:center;gap:var(--sp-3) var(--sp-4);flex-wrap:wrap;margin-top:12px}
 .tr-panel[hidden]{display:none}
 .tr-panel .lab{font-size:12px;color:var(--t2)}
-.tr-inp{width:56px;min-width:44px;flex:0 1 auto;background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);color:var(--t1);font-size:13px;font-family:var(--mono);padding:8px 10px}
+.tr-inp{width:56px;min-width:44px;flex:0 1 auto;background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);color:var(--t1);font-size:13px;font-family:var(--mono);padding:var(--sp-2) var(--sp-3)}
 /* ★★ v3.33.8：参数框由 64px 收窄到 56px 并给出 **min-width:44px**——两件事：
    ① 用户实拍「参数框长度偏大，把小节文案顶到下一行」；日间主题还给 .tr-panel 加了
       内边距（14px 16px）+ 边框，行内可用宽再少 32px ⇒ 同一行必然折行（实测 1440：
@@ -1964,7 +1964,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* ★ v3.33.10（用户复盘）：**不给 min-height 预留**——初版为满足"与参数槽等高"写了 min-height:54px，
    结果左列内容变高、同一栅格行的两张控制卡一起长高（用户实拍指出）。改回自然高度：
    这一行是"注解"，不该反过来决定卡片高度；等高如需再议，用排版而不是硬预留。 */
-#trainerProg.warn{color:var(--danger-fg);box-shadow:inset 0 0 0 1px var(--red);border-radius:var(--radius-ctrl);padding:6px 10px}
+#trainerProg.warn{color:var(--danger-fg);box-shadow:inset 0 0 0 1px var(--red);border-radius:var(--radius-ctrl);padding:var(--sp-2) var(--sp-3)}
 
 /* ---------- 侧栏 ---------- */
 /* v2.10.0：三个分区标题改成**可折叠**（用户要求）。标题自身即点击区（role=button，见 pushSection）。
@@ -1974,7 +1974,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    不给折叠态另加类名（类名空间已被测试逐字占用）。 */
 /* 区 / 分组 / 条目 / 说明 = 14 / 13 / 13 / 11px；区头与首个条目保持一组，
    不再让更暗、更小的区头读成上一块内容的尾注。 */
-.preset-section{font-size:14px;color:var(--t1);font-weight:600;margin:14px 0 0;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.preset-section{font-size:14px;color:var(--t1);font-weight:600;margin:var(--sp-4) 0 0;display:flex;align-items:center;gap:var(--sp-2);cursor:pointer;user-select:none}
 .preset-section:hover{color:var(--t1)}
 /* v3.1.0（批 3，用户定稿 4a 案）：三区并列消空白——#presetList 改自适应网格。
    ★ 条目仍是 #presetList 的**直接子节点**（扁平契约不动，16 个遍历测试零波及）；
@@ -1988,19 +1988,19 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    基础节奏区是 #presetList **之外**的第 0 区，它只留 2px 内边距；而首区的 margin-top
    被 :first-child 归零 ⇒ 两块贴在一起。这里只给**列表内**的首区补回正常的区间距
    （#basicSecHead 不在列表里，不受这条影响）。 */
-#presetList>.preset-section:first-child{margin-top:14px}
+#presetList>.preset-section:first-child{margin-top:var(--sp-4)}
 .preset-section::after{content:"▾";font-size:9px;line-height:1;opacity:.65;transition:transform .15s}
 .preset-section[aria-expanded="false"]::after{transform:rotate(-90deg)}
 /* v2.22.0（批次④）：区内子分组——组头比分区标题次一级（左缩进 + 绿线示意"归它管"），
    折叠箭头走 ::before（组头右侧的 ✎/× 按钮占了 ::after 的末位，箭头挪到队首，
    与树形控件"展开箭头在最左"的惯例一致）。折叠态同样只有 aria-expanded 一份真相 */
 /* ★ v3.33.17（用户实拍）：分组标题原先是 11px/--t2，比它自己管着的**条目名 13px 还小**；
-   且带 margin-left:10px + padding-left:8px + 2px 竖线 = **比条目多缩进 18px** ——
+   且带 margin-left:var(--sp-3) + padding-left:8px + 2px 竖线 = **比条目多缩进 18px** ——
    容器比内容还深，视觉上读成「标题属于更下一层」。现改：字号 13px（= 条目名）、
    颜色 --t1（亮于条目）、字重 600（一眼是容器头），并**去掉那 18px 缩进与竖线**，
    层次改由字号/字重/颜色表达，而不是靠方向反了的缩进。 */
-.preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:10px 0 0;
-  display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.preset-group{font-size:13px;color:var(--t1);font-weight:600;margin:var(--sp-3) 0 0;
+  display:flex;align-items:center;gap:var(--sp-2);cursor:pointer;user-select:none}
 /* ★★ v3.33.32（用户实报「扫弦区收起后，区内分组行没收起」）：补上 [hidden] 补丁。
    根因：上面这条规则带了 display:flex，**作者样式的特异性高于 UA 的 [hidden]{display:none}**
    ⇒ JS 里 `head.hidden = true`（applyFold 按区折叠设的）**在渲染上被压过**，组头照旧可见。
@@ -2016,7 +2016,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-group[aria-expanded="false"]::before{transform:rotate(-90deg)}
 .preset-group .gcount{color:var(--t3)}
 .preset-group .ren,.preset-group .del{flex:none}
-.preset-item .grp{color:var(--t3);font-size:12px;padding:2px 6px;border-radius:var(--radius-ctrl);flex:none}
+.preset-item .grp{color:var(--t3);font-size:12px;padding:2px var(--sp-2);border-radius:var(--radius-ctrl);flex:none}
 .preset-item .grp:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 /* v3.33.8：区标题「新建分组」＋ 按钮的样式整段删除（按钮已下线，见列表生成处的注释）。
    留档：该按钮 v2.25.0 引入、v2.69.0 换过字形（半角 + 套圆圈），v3.33.8 按用户要求移除。 */
@@ -2026,14 +2026,14 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    实体态在这里收紧——拍数下拉一行、9 枚纯图标 pill 一行（392px 抽屉里放得下）。
    图标是内联 SVG、fill 走 currentColor ⇒ 自动跟随主题文字色，
    故深色 / 观测台主题**不需要**任何额外规则（与 .hint 同源做法）。 */
-/* v3.33.1：区体改**纵向 flex + gap:10px**——v3.33.0 只给了 .bpm-row 的横向 gap，
+/* v3.33.1：区体改**纵向 flex + gap:var(--sp-3)**——v3.33.0 只给了 .bpm-row 的横向 gap，
    两行之间实测间距 **0px**（贴死）。间距收敛到容器一处：行内 6px / 行间 10px。 */
-#rhyBeatBox{display:flex;flex-direction:column;gap:10px;padding:0 2px;margin-top:4px}   /* 与网格区头→首条目的容器间距一致 */
+#rhyBeatBox{display:flex;flex-direction:column;gap:var(--sp-3);padding:0 2px;margin-top:4px}   /* 与网格区头→首条目的容器间距一致 */
 /* ★ v3.35.6（用户实拍「点了也不会折叠」）：这里 display:flex 会**盖掉** [hidden] 的 display:none，
    于是 applyBasicFold 里 `box.hidden = true` 设了属性、画面纹丝不动。
    与 .vol-row[hidden] / .tr-panel[hidden] / .preset-item[hidden] 是同一个坑，必须显式补一条。 */
 #rhyBeatBox[hidden]{display:none}
-#rhyBeatBox .bpm-row{align-items:center;flex-wrap:wrap;gap:6px}
+#rhyBeatBox .bpm-row{align-items:center;flex-wrap:wrap;gap:var(--sp-2)}
 #rhyBeatBox .hint{margin-top:0}       /* 纵向间距已由容器 gap 承担，避免叠加成 16px */
 /* 上限兜底：宽度本由选项文案决定（见 sigLabel），这条只防日后文案变长挤变形。 */
 #rhyBeatBox .loop-sel{max-width:96px}
@@ -2043,17 +2043,17 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 基础节奏区保留独立 BFC，折叠/展开不合并外边距；区头下边距与网格同为 0，
    头→内容和区→区间的距离都由同一组网格间距决定。 */
 .basic-zone{display:flow-root;margin-bottom:-6px}
-.basic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0}
+.basic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:var(--sp-4) 0 0}
 .basic-head-row>.preset-section{margin:0;flex:1 1 auto}
 /* 拍数位于折叠体第一行，与下方细分和说明共用左缘；与细分一起随 #rhyBeatBox 显隐。 */
-.basic-slot{display:flex;align-items:center;justify-content:flex-start;gap:6px}
+.basic-slot{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-2)}
 /* 图标 pill：用户拍板「图标下不写文案」（名称走 title 悬浮 + aria-label 读屏），
    故水平内边距收紧、行高归零（否则图标块的基线会在胶囊里造成偏移）。
    ★ 刻意**不写 min-height**——全站 40px 触控下限由 .pill 主规则统一把守，本处不得局部下调
      （t167/T152b 是专门盯这条的闸门：任何选择器命中 .pill 的规则都不许出现 <40px 的高度声明）。
    ★ 图标几何规则写在 .rh* 上（选择器不含 .pill），既避开上面那条闸门的误伤，
      也让"字形的形状"与"胶囊的尺寸"两件事分开。 */
-#rhyPillRow .pill{padding:6px 8px;line-height:0;display:inline-flex;align-items:center;justify-content:center}
+#rhyPillRow .pill{padding:var(--sp-2) var(--sp-2);line-height:0;display:inline-flex;align-items:center;justify-content:center}
 /* 记谱图标（v3.33.0）：一组绝对定位的小块拼出符头/符干/符杠/休止/三连音数字
    （DOM 搭建见 Presets.rhyIcon——本仓库禁止 innerHTML 拼串）。
    颜色一律 currentColor ⇒ 深色与观测台主题自动跟随文字色，无需另写规则。 */
@@ -2099,20 +2099,20 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 }
 /* ▶/■ 的基础规格（触屏也常显）：圆钮无边框，与 ✎ 同一视觉重量 */
 .preset-item .aud{flex:none;background:none;border:none;cursor:pointer;
-  color:var(--t2);font-size:13px;line-height:1;padding:4px 6px;border-radius:var(--radius-ctrl)}
+  color:var(--t2);font-size:13px;line-height:1;padding:var(--sp-1) var(--sp-2);border-radius:var(--radius-ctrl)}
 .preset-item .aud.aud-on{color:var(--green)}
 .preset-group .aud{flex:none}
 /* 练习循环面板（v2.4.3）：紧贴在预设列表之上——它是"对当前选中的型"生效的
    常驻控件（写法照抄 .arg-now：flex + gap + 下方留白，两者在卡片里纵向相邻、视觉成组）。
    开启时整块加 .on 描边，让"我现在在循环"这件事在侧栏一眼可见（不必盯着下拉框读数字） */
-.loop-panel{margin-bottom:14px}
+.loop-panel{margin-bottom:var(--sp-4)}
 /* v2.69.0（2.6）：灰度注脚（原「只反复磨这几小节」）连元素带规则一起删除——信息由
    loopHint 承担；
    「循环本段」开关与卡片内容左缘对齐——toggle-pill 自带的内缩在本面板作用域内归零
    （照 .viz-toggles 的既有先例，不动全局） */
 .loop-panel .toggle-pill{padding-left:0}
 .loop-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.loop-row .pill{padding:7px 12px;font-size:12px}
+.loop-row .pill{padding:var(--sp-2) var(--sp-3);font-size:12px}
 /* 分隔点：窄屏换行时它留在上一行末会看着像句号，故随 flex 一起换行即可（不做特殊处理） */
 .loop-sep{color:var(--t3);font-size:12px}
 .loop-row .lab{font-size:12px;color:var(--t3)}
@@ -2120,9 +2120,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    要么整组留在行尾、要么整组落到下一行——「小节」不会孤零零挂在新行开头 */
 .loop-range{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .loop-sel{background:var(--bg);color:var(--t1);border:1px solid var(--line);border-radius:var(--radius-ctrl);
-  padding:5px 6px;font-size:12px;font-family:inherit;min-width:44px}
+  padding:var(--sp-1) var(--sp-2);font-size:12px;font-family:inherit;min-width:44px}
 .loop-panel.on .loop-sel{border-color:var(--green)}
-.loop-panel .hint{margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loop-panel .hint{margin-top:var(--sp-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .loop-panel .hint:empty{display:none}
 .preset-item{position:relative;padding:4px 12px;border-radius:var(--radius-item);cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
 .preset-section+.preset-item,.preset-group+.preset-item,
@@ -2152,7 +2152,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    只给 song 加真边框会让行内容右移 2px、与同区其他行错位；inset 阴影不参与布局、
    随 border-radius 圆角走，零几何影响。 */
 .preset-item.song.active{box-shadow:inset 2px 0 0 var(--green)}
-.preset-item.in-song{margin-left:18px;padding:6px 12px}
+.preset-item.in-song{margin-left:18px;padding:var(--sp-2) var(--sp-3)}   /* ★ 白名单：18px 是子条目相对歌曲行的缩进对齐值（= 嵌套文字间距 12 + 6 层级补偿），不参与 4px 收敛 */
 .preset-item.in-song .name{font-size:12px;font-weight:500;color:var(--t2)}
 .preset-item.in-song>div:first-child{flex-wrap:nowrap}
 .preset-item.in-song .meta{flex:1 1 0}
@@ -2185,7 +2185,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .preset-item.active .meta{color:var(--green)}
 /* v3.1.0（A7）：✕ 与 📁 拉开 10px 间距——误触删除的入口排列风险（有确认弹窗兜底，
    但入口排列不该鼓励误触）；✕ 独占条目右角，✎/📁 成组在左 */
-.preset-item .del,.preset-group .del{margin-left:10px}
+.preset-item .del,.preset-group .del{margin-left:var(--sp-3)}
 .preset-item .del{color:var(--t3);font-size:16px;padding:2px 8px;border-radius:var(--radius-ctrl);flex:none}
 .preset-item .del:hover{color:var(--danger-fg);background:rgba(243,114,127,.1)}
 /* 实际存在的按钮组成操作组，整体右对齐；无固定槽位，两个或三个图标都不留空位。 */
@@ -2193,11 +2193,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   display:flex;align-items:center;gap:4px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s}
 .preset-item:hover .preset-actions,.preset-item:focus-within .preset-actions,.preset-item.active .preset-actions{
   opacity:1;visibility:visible;pointer-events:auto}
-.preset-item .preset-actions>button{position:static;transform:none;margin-left:0;padding:2px 6px}
+.preset-item .preset-actions>button{position:static;transform:none;margin-left:0;padding:2px var(--sp-2)}
 @media (prefers-reduced-motion:reduce){.preset-item .meta,.preset-item .preset-actions{transition:none}}
 /* v2.21.0：改名图标（✎）。定位/内边距与 .del 同族（右侧操作组的一员），hover 用主题强调色
    与删除的红色区分——相邻两个小图标，色相就是"哪个是危险操作"的读法 */
-.preset-item .ren{color:var(--t3);font-size:13px;padding:2px 6px;border-radius:var(--radius-ctrl);flex:none}
+.preset-item .ren{color:var(--t3);font-size:13px;padding:2px var(--sp-2);border-radius:var(--radius-ctrl);flex:none}
 .preset-item .ren:hover{color:var(--blue);background:rgba(77,171,247,.12)}
 /* 「自定义」区（v2.9.0）：曲式条目（Store.arranges）+ 当前曲式的「整首连播」行与段序条。
    与节拍/扫弦两区用左侧一条绿色竖线区分——"这一组是曲式（整首怎么弹）"比字号更一眼可辨。
@@ -2223,7 +2223,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    ★ 类名必须带 .demo-range-input 提高特异性：全局 `input[type=range]` 与观测台主题的
      `body[data-theme="obs"] input[type=range]`（(0,2,2)）都会命中这两个 input，
      不加这一级会把 height 压回 4px、background 被主题色覆盖（观感就是"滑块变了形"）。 */
-.demo-range{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
+.demo-range{display:flex;flex-direction:column;gap:var(--sp-2);margin:8px 0 2px}
 .demo-range-note{font-size:11px;color:var(--t3);line-height:1.5}
 /* 轨道容器：两个 input 绝对定位叠在同一处。
    ★ 两个 input 都 pointer-events:none，只让 **thumb** 可抓——否则上层那条通轨会把下层的
@@ -2264,7 +2264,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .editor-inner{max-width:1080px;margin:0 auto;padding:0 calc(24px + env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px));position:relative}   /* position:relative：#edPop 悬浮层的定位包含块（PLAN-v11 B2）。★ max-width:1080 是对展板「内容行宽 850px」的有意豁免——850 口径属主界面内容带（.viz-head-grid 的 --max-w），编辑器是全屏工作面（docs/archive/PLAN-v11-editor-popover.md §3-A8） */
 .editor-topbar{height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line);margin-bottom:24px}   /* gap:16px：左右两块的兜底最小间距——溢出时 space-between 的余量归零，没有它右侧按钮会贴死左侧内容 */
 .editor-topbar .left{display:flex;align-items:center;gap:16px}
-.back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);flex:none;white-space:nowrap}   /* ★ v3.33.15 同一条不变量补全（PLAN-v11 追补，用户实拍）：返回钮是左侧最软的子项，缺 flex:none/nowrap 会被长内容压到文字竖排 */
+.back-btn{display:flex;align-items:center;gap:var(--sp-2);font-size:13px;color:var(--t2);flex:none;white-space:nowrap}   /* ★ v3.33.15 同一条不变量补全（PLAN-v11 追补，用户实拍）：返回钮是左侧最软的子项，缺 flex:none/nowrap 会被长内容压到文字竖排 */
 /* editor-title 规则保留：听辨 / 编排 / 使用方法等弹层的标题仍用它；
    节奏型编辑器顶栏的 #editorTitle 实例已退役（PLAN-v11 追补，用户拍板）——
    底稿身份常显在模板下拉（状态型），小节数看卡片标题、拍数看拍数下拉 */
@@ -2278,14 +2278,14 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 窄屏：顶栏从**固定 64px** 改成**可生长**，并允许块级换行——拍数块换到标题下方一行。
    断点取 640px（与全站既有断点同档），手机 390 命中。 */
 @media (max-width:640px){
-  .editor-topbar{height:auto;min-height:64px;flex-wrap:wrap;row-gap:8px;padding:10px 0}
+  .editor-topbar{height:auto;min-height:64px;flex-wrap:wrap;row-gap:8px;padding:var(--sp-3) 0}
   .editor-topbar .left{flex-wrap:wrap;row-gap:8px}
 }
 /* v3.33.15（用户报障「按钮被压成竖排、最右那颗贴边裁掉」）：flex:none 从 ≤640px 的媒体
    查询里**提为全局**——工具栏按钮永不该参与收缩。原先它只在窄屏生效，而真正出问题的是
    641px–1080px 这段中宽：容器被 .editor-inner 封顶 1032px，顶栏内容却要 ≈1540px，
    顶栏一挤按钮就跟着被压。这是条**不变量**，不该只在某个断点里成立。 */
-.editor-actions{display:flex;gap:10px;flex:none}
+.editor-actions{display:flex;gap:var(--sp-3);flex:none}
 /* ---------- 浮层小窗（v2.10.13）：设置弹窗的 Dialog 形态 ----------
    与 .editor（全屏页面式）的区别：**不全屏**、主界面在四周仍可见（backdrop 压暗）、
    **点窗外即关**（backdrop 就是根元素本身，面板是它唯一的子块——点击命中根 = 命中窗外，
@@ -2300,7 +2300,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .dialog-title{font-size:16px;font-weight:700}
 .dialog-x{width:32px;height:32px;border-radius:var(--radius-item);display:flex;align-items:center;justify-content:center;color:var(--t2);flex:none}
 .dialog-x:hover{background:var(--card2)}
-.edbar{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.edbar{display:flex;gap:12px;align-items:center;margin-bottom:var(--sp-4)}
 .edbar-label{width:88px;flex:none}
 .edbar-label .s{white-space:nowrap}
 .edbar-label .n{font-size:12px;font-weight:500;color:var(--t2)}
@@ -2311,7 +2311,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .edbar-label.editing .s::after{content:" · 编辑中";color:var(--blue);font-family:var(--sans)}
 .edtrack{position:relative;flex:1;height:64px;border-radius:var(--radius-item)}
 .edtrack.bad{box-shadow:0 0 0 1.5px var(--red)}
-.edcell{position:absolute;top:0;height:100%;border-radius:var(--radius-cell);background:var(--cell);display:flex;align-items:center;padding:0 10px 0 0;overflow:hidden;cursor:pointer}
+.edcell{position:absolute;top:0;height:100%;border-radius:var(--radius-cell);background:var(--cell);display:flex;align-items:center;padding:0 var(--sp-3) 0 0;overflow:hidden;cursor:pointer}
 .edseams{position:absolute;inset:0;pointer-events:none;z-index:2}   /* v2.78.2：与主视图 .seams 同款交界线层 */
 .edcell.sq-l{border-top-left-radius:0;border-bottom-left-radius:0}   /* v2.78.1：接缝直角，同主视图 */
 .edcell.sq-r{border-top-right-radius:0;border-bottom-right-radius:0}
@@ -2323,13 +2323,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* ★ v3.52.0：`.edcell .ed-strum`（v1.9.0 的 ↑↓ 内联字形）两条规则整块删除——
    大箭头（.strumv 竖箭头）已完整表达方向，aria-label 兜底读屏，小箭头纯冗余（用户图二反馈）。
    随之原「.edcell span 特异性高于 .ed-strum」的说明一并退休。 */
-.ed-actions{display:flex;gap:10px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
+.ed-actions{display:flex;gap:var(--sp-3);align-items:center;margin:var(--sp-2) 0 var(--sp-4);flex-wrap:wrap}
 /* ★ PLAN-v14（用户实拍图二）：撤销钮从顶栏归位到网格下方 .ed-actions——撤销是高频恢复动作，
    该跟网格走（推翻 v3.53.2「整稿级动作住顶栏」的口径，见 DEVELOPMENT.md 作用域分区）。
    形态 = 图标 +「撤销」；inline-flex 排布参照 .back-btn（图标与文字水平居中对齐）。 */
-#undoBtn{display:inline-flex;align-items:center;gap:6px}
+#undoBtn{display:inline-flex;align-items:center;gap:var(--sp-2)}
 /* 扫弦标注行（v1.9.0）：与动作行分开一行，配一句「先选中音符」的说明 */
-.ed-dir{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+.ed-dir{display:flex;gap:var(--sp-3);align-items:center;margin:0 0 var(--sp-4);flex-wrap:wrap}
 /* ★ 节奏型页面改造批 3：显隐矩阵用 hidden 属性——.ed-dir 有显式 display:flex，
    UA 的 [hidden]{display:none} 会被类选择器覆盖（.ed-pop[hidden] 同款先例），补一条恢复 */
 .ed-dir[hidden]{display:none}
@@ -2339,9 +2339,9 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* ★ 追补（用户实拍）：六行纵向占太高 → 两列网格（左 ①②③ / 右 ④⑤⑥，grid-auto-flow:column
    保持「① 在顶」的既有弦序口径），面板高度约减半；交互与 DOM 结构零变化 */
 .ed-str .str-lines{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto);grid-auto-flow:column;gap:8px 12px}
-.str-line{display:flex;gap:6px;align-items:center}
+.str-line{display:flex;gap:var(--sp-2);align-items:center}
 .str-fret{width:48px;background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);
-  color:var(--t1);font-size:12px;padding:6px 8px;font-family:inherit;text-align:center}
+  color:var(--t1);font-size:12px;padding:var(--sp-2) var(--sp-2);font-family:inherit;text-align:center}
 .str-fret:disabled{opacity:.45}
 .str-fret:focus{border-color:var(--peak)}
 /* ★ PLAN-v11 B2：音符属性悬浮层（#edPop）——点音符块弹出、锚定该块，✕/ESC/空白/再点当前块收起。
@@ -2364,14 +2364,14 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
 .ed-pop-above .ed-pop-arr{top:auto;bottom:-5px;border-left:none;border-top:none;
   border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
-.ed-pop .ed-dir{margin:10px 0 12px}   /* ★ 追补（用户实拍）：首组与 head 分隔线原为零间距（按钮贴线），补 margin-top */
+.ed-pop .ed-dir{margin:var(--sp-3) 0 var(--sp-3)}   /* ★ 追补（用户实拍）：首组与 head 分隔线原为零间距（按钮贴线），补 margin-top */
 /* ★ PLAN-v14（用户实拍图三：「弦区的三个选项换行了」）：弹层内容区 ≈314px，而弦区行 =
-   「弦区」hint + 三颗 pill（全局 .pill 是 padding:9px 16px / 13px / min-height:40px）≈ 总计 406px
+   「弦区」hint + 三颗 pill（全局 .pill 是 padding:var(--sp-2) var(--sp-4) / 13px / min-height:40px）≈ 总计 406px
    ⇒ 第三颗必然换行（弹法行四颗短 pill ≈297px 恰好放下，故只弦区行破）。
    只在 #edPop 作用域收紧 pill 内边距/字号 + 行间距 + 隐掉占位的空 hint（不占 gap）——
    全局 .pill 与按钮文案一字不动（帮助页声明弦区释义与按钮文案逐字对应）。
    min-height:40px 触控下限不动（DEVELOPMENT.md「触控下限」不变量只作用于可点元素尺寸）。 */
-#edPop .pill{padding:5px 8px;font-size:12px}
+#edPop .pill{padding:var(--sp-1) var(--sp-2);font-size:12px}
 #edPop .ed-dir{gap:8px}
 #edPop .hint:empty{display:none}
 /* PLAN-v11 B1：小节级铺弦号输入框定宽——原 inline flex:1 吃满整行，内容（5:3 3 2 3 …）用不上。
@@ -2380,7 +2380,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}
 /* ★ 节奏型页面改造：音符块库容器——批 1 在原位建壳，块库上移后它成为卡片内
    「填充入口区」的宿主；空态时由 editorRender 挂 .guide-ring 红框呼吸引导 */
-.pal-zone{margin:0 0 14px}
+.pal-zone{margin:0 0 var(--sp-4)}
 /* 空态引导标记（v3.53.0 追补柔化，用户实拍"红框太突兀"）：**去框改微染**——
    入口区加极浅红底（rgba(--red-rgb,.06)）+ 左缘 3px 圆角色条（只给块库大容器），
    呼吸改为底色 .06↔.10 缓变（2.4s，比原描边呼吸轻一档）；prefers-reduced-motion 关动画。
@@ -2392,7 +2392,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 @media (prefers-reduced-motion:reduce){.guide-ring{animation:none}}
 /* 块库大容器：加左缘色条与内边距——原红框紧贴标题与块卡片（用户实拍"贴在一起"），
    padding 给内容留呼吸，色条 = 「当前步骤」的视觉锚点（比四面框轻） */
-.pal-zone.guide-ring{border-radius:var(--radius-item);box-shadow:inset 3px 0 0 rgba(var(--red-rgb),.55);padding:10px 12px}
+.pal-zone.guide-ring{border-radius:var(--radius-item);box-shadow:inset 3px 0 0 rgba(var(--red-rgb),.55);padding:var(--sp-3) var(--sp-3)}
 /* 空轨道引导层：editorRender 在首个空 bar 的 track 内动态插入（不进首屏静态 DOM——
    DOM 预算纪律）；pointer-events:none 不挡 track 的「点空白选小节」点击 */
 /* ★ PLAN-v14（用户实拍图一：「编辑区的文案贴在上下边缘」）：引导层三行（标题 + 两步说明）
@@ -2404,12 +2404,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
   font-size:12px;line-height:1.5;color:var(--t3);padding:0 12px}
 .ed-guide .ed-guide-t{font-size:13px;font-weight:600;color:var(--t2)}
 .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-.pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:var(--radius-item);padding:10px;cursor:pointer;text-align:left}
+.pal-item{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:var(--radius-item);padding:var(--sp-3);cursor:pointer;text-align:left}
 .pal-item:hover{outline:1px solid var(--border)}
 .pal-item .bar{height:14px;border-radius:4px;background:var(--t2);flex:none}
 .pal-item .nm{font-size:12px;font-weight:500}
 .pal-item .du{font-size:11px;color:var(--t3)}
-.name-input{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);color:var(--t1);font-size:13px;padding:10px 14px;width:280px;font-family:inherit}
+.name-input{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);color:var(--t1);font-size:13px;padding:var(--sp-3) var(--sp-4);width:280px;font-family:inherit}
 .name-input:focus{border-color:var(--border)}
 /* ★ v3.35.9（用户拍板）：字段级报错——缺「归属」时输入框标红、提示转红字。
    与卡片头那行「存在时值不完整的小节」（报整份草稿）分成两处：各指向能改它的地方。 */
@@ -2421,12 +2421,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;animation:modalIn .12s ease-out}
 .modal-mask[hidden]{display:none}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:24px;width:340px;max-width:calc(100vw - 48px);animation:modalPop .15s ease-out}
-.modal-msg{font-size:14px;line-height:1.7;margin-bottom:18px}
-.modal-list{margin:0 0 14px;padding-left:18px;max-height:38vh;overflow:auto;text-align:left;font-size:13px;line-height:1.7;color:var(--t1)}
+.modal-msg{font-size:14px;line-height:1.7;margin-bottom:var(--sp-4)}
+.modal-list{margin:0 0 var(--sp-4);padding-left:var(--sp-4);max-height:38vh;overflow:auto;text-align:left;font-size:13px;line-height:1.7;color:var(--t1)}
 .modal-list li{margin:2px 0}
 .exp-chk{display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap;cursor:pointer}
-.modal-input{width:100%;margin:-6px 0 18px}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+.modal-input{width:100%;margin:-6px 0 var(--sp-4)}
+.modal-actions{display:flex;justify-content:flex-end;gap:var(--sp-3)}
 .pill.danger{background:var(--red);color:var(--on-green);font-weight:700}
 @keyframes modalIn{from{opacity:0}to{opacity:1}}
 @keyframes modalPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
@@ -2445,8 +2445,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 候选卡片：只画记谱、不给名字——给名字就变成「读名字猜」，练不到耳朵。
    作答后：✅ 选中的那张描边转绿/红，正确答案那张也描绿（答错时用户才知道错在哪），
    其余淡出。用 <button> 而不是 <div>：键盘用户要能 Tab 到、回车选中 */
-.ear-cands{display:flex;flex-direction:column;gap:12px;margin-top:18px}
-.ear-cand{display:flex;align-items:center;gap:14px;background:var(--card2);border-radius:var(--radius-item);padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+.ear-cands{display:flex;flex-direction:column;gap:12px;margin-top:var(--sp-4)}
+.ear-cand{display:flex;align-items:center;gap:var(--sp-4);background:var(--card2);border-radius:var(--radius-item);padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .ear-cand:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
 .ear-cand:disabled{cursor:default}
 .ear-cand-lab{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t2);flex:none}
@@ -2470,7 +2470,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    而 .arg-outline 是 overflow:auto 的滚动容器 ⇒ 超出部分被**静默裁掉**（绿底缺角、歌词没有省略号）。
    改纵向：条目宽度由 stretch 决定（= 列宽），内容超了走各自的 text-overflow，不再溢出被裁。 */
 .arg-list{display:flex;flex-direction:column;gap:4px}
-.arg-item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:var(--radius-full);padding:8px 14px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
+.arg-item{display:flex;align-items:center;gap:var(--sp-3);background:var(--card2);border-radius:var(--radius-full);padding:var(--sp-2) var(--sp-4);cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
 .arg-item:hover{box-shadow:inset 0 0 0 1px var(--border)}
 .arg-item.sel{box-shadow:inset 0 0 0 1.5px var(--green)}
 .arg-item-name{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2493,8 +2493,8 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    实测卡片外宽不变（366→366：padding-right 14 与 border-right 15 刚好对掉），非滚动内容位置不变。
    ★ 为什么不在卡片里外再加一层真容器：外侧撞 .arg-lyric 的 children[4] 位置契约，
      内侧撞约 20 个用例依赖的"扁平直接子节点"契约——这条 CSS 路零结构改动。 */
-.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0 12px 14px;background-color:var(--card2);border:1px solid var(--line);border-right:15px solid transparent;border-radius:var(--radius-card);overflow-x:auto;outline:1px solid var(--line);outline-offset:-1px}
-.arg-sec:not(:last-child){margin-bottom:10px}
+.arg-sec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:var(--sp-3) 0 var(--sp-3) var(--sp-4);background-color:var(--card2);border:1px solid var(--line);border-right:15px solid transparent;border-radius:var(--radius-card);overflow-x:auto;outline:1px solid var(--line);outline-offset:-1px}
+.arg-sec:not(:last-child){margin-bottom:var(--sp-3)}
 /* v2.33.0：段卡片 ↔ 播放范围联动（设计原稿视觉层次 L3）——范围覆盖段绿左条，
    未覆盖段整体降透明（dim 0.55）；类由 buildSecRow 初挂、syncPanelRead 拖动中实时切 */
 .arg-sec.play-in-range{border-left:3px solid var(--green)}
@@ -2516,16 +2516,16 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
       所以这个 bug 只在当前段暴露——**验证必须覆盖"当前段"这个状态**。 */
 .arg-sec.cur-sec{background-color:var(--cell);outline:1.5px solid var(--blue);outline-offset:-1.5px}
 /* 「段 N」是常驻静态序号标签 → 中性色（PLAN-v11 A3：绿只留给进行中/发声，静态信息不上绿） */
-.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius-full);padding:2px 9px;font-size:11px;font-family:var(--mono);color:var(--t3)}
+.arg-sec>.arg-sec-label{order:0;flex:none;display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius-full);padding:2px var(--sp-2);font-size:11px;font-family:var(--mono);color:var(--t3)}
 .arg-sec>.arg-name{order:1;flex:1;min-width:0;width:auto;background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--t1);font-size:13px;padding:4px 2px}
 .arg-sec>.arg-ops{order:2}
 .arg-sec>.arg-blocks{order:3;flex-basis:100%}
 .arg-sec>.arg-lyric{order:4;flex-basis:100%}
 /* 换型候选行（.arg-sec.arg-pick）不是卡片：保持旧的"标签 + 流式候选串"两栏形态，
    候选串要 flex-wrap（三区标题 flex-basis:100% 靠它换行），别被卡片的新规矩波及 */
-.arg-sec.arg-pick{background:transparent;border:none;padding:9px 0;margin:0}
+.arg-sec.arg-pick{background:transparent;border:none;padding:var(--sp-2) 0;margin:0}
 .arg-sec.arg-pick>.arg-blocks{flex:1;flex-basis:auto;flex-wrap:wrap;overflow:visible}
-.arg-name{background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-item);color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-name{background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-item);color:var(--t1);font-size:12px;padding:var(--sp-2) var(--sp-2)}
 .arg-blocks{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow:visible;gap:8px;align-items:center}
 /* ★★ v3.36.19（用户实报「竖屏下段里新增块那一带的比例不对」）：放不下时**横向滚动**，不再把块压扁。
    根因是两个默认值叠加，不是谁写错了：
@@ -2541,14 +2541,14 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
      三区分组当场散架。故这里显式写 :not(.arg-pick)。 */
 .arg-sec:not(.arg-pick)>.arg-blocks>.arg-block,
 .arg-sec:not(.arg-pick)>.arg-blocks>.arg-mini{flex:none;white-space:nowrap}
-.arg-block{display:flex;align-items:center;gap:6px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-full);padding:6px 12px;font-size:11px;font-family:var(--mono);color:var(--t2)}
+.arg-block{display:flex;align-items:center;gap:var(--sp-2);background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-full);padding:var(--sp-2) var(--sp-3);font-size:11px;font-family:var(--mono);color:var(--t2)}
 .arg-block.dead{color:var(--danger-fg)}
 .arg-reps{width:38px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-cell);color:var(--t1);font-size:11px;font-family:var(--mono);padding:3px 4px;text-align:center}   /* 圆角归并 3px（PLAN-v11 A5，时值格族） */
 /* v2.77.0：块级和弦「按小节一格」——歌词网格每行左端的和弦格（v2.75.0 的块行
    「和弦 | 分段」文本框 .arg-chords 退役删除）。与 .arg-reps 同族的格样式 */
 .arg-chd-cell{flex:none;width:46px;height:24px;box-sizing:border-box;text-align:center;font-size:11px;font-family:var(--mono);background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-cell);color:var(--t1);padding:0 3px}   /* 圆角归并 3px（PLAN-v11 A5） */
 .arg-chd-cell:focus{border-color:var(--green)}
-.arg-mini{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-ctrl);color:var(--t2);font-size:11px;padding:5px 10px;cursor:pointer}
+.arg-mini{display:inline-flex;align-items:center;gap:var(--sp-2);background:transparent;border:1px solid var(--border);border-radius:var(--radius-ctrl);color:var(--t2);font-size:11px;padding:var(--sp-1) var(--sp-3);cursor:pointer}
 .arg-mini:hover{color:var(--t1)}
 /* v2.27.0（G2）：块候选的三区标题 + 当前型置顶高亮 + 「新建曲式」模板菜单。
    三区标题是纯文字小签（同侧栏分区的视觉语言：小号等宽字 + 分隔间距），不占独立行——
@@ -2563,15 +2563,15 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* v2.37.0：候选胶囊的类型徽标（扫弦 ↑↓）与 ✎ 跳编辑器（仅自定义型） */
 .arg-pill-tag{flex:none;font-size:9px;font-family:var(--mono);color:var(--t3);border:1px solid var(--border);border-radius:var(--radius-cell);padding:1px 3px;margin-left:2px}   /* 圆角归并 3px（PLAN-v11 A5） */
 /* ✎ / ▶ 热区 ≥24px（PLAN-v11 A4，WCAG 2.5.8 AA）+ 圆角归并 3px（A5） */
-.arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:4px 6px;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:var(--radius-cell)}
+.arg-pill-edit{flex:none;margin-left:4px;font-size:11px;color:var(--t3);cursor:pointer;padding:var(--sp-1) var(--sp-2);min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:var(--radius-cell)}
 .arg-pill-edit:hover{color:var(--green);background:rgba(var(--green-rgb),.1)}   /* veil 单源（PLAN-v11 A6） */
-.arg-pill-play{flex:none;margin-right:4px;font-size:11px;line-height:1;color:var(--t3);cursor:pointer;padding:4px 6px;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:var(--radius-cell);border:1px solid var(--border);background:rgba(255,255,255,.04)}
+.arg-pill-play{flex:none;margin-right:4px;font-size:11px;line-height:1;color:var(--t3);cursor:pointer;padding:var(--sp-1) var(--sp-2);min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:var(--radius-cell);border:1px solid var(--border);background:rgba(255,255,255,.04)}
 /* ★ A1（PLAN-v11）：原 hover 引用全仓未定义的 var(--accent) —— color/border-color 两档主题下
    都静默失效（计算值非法 → 回落继承/currentColor），悬停只剩 10% 白底（日间档白底上不可见）。
    ▶ = 试听（进行中语义）→ 用 --green + --green-rgb veil；t245 钉死，t131 的未定义 var() 扫描防复发 */
 .arg-pill-play:hover{color:var(--green);border-color:var(--green);background:rgba(var(--green-rgb),.12)}
 /* v2.37.0（c）：编辑器源型引用信息行 */
-#editorRefNote{margin:-6px 0 10px}
+#editorRefNote{margin:-6px 0 var(--sp-3)}
 /* v3.33.15：提示为空时（编辑一个不被任何曲式引用的型——**默认状态**）整块不占位。
    它的上下外边距会与 .editor-topbar 的 margin-bottom:24px 折叠，空着也照样吃掉约 28px；
    display:none 让顶栏与下方卡片的间距回到改动前的样子。 */
@@ -2580,12 +2580,12 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    故上内边距收掉；下边留 6px，别和曲式列表贴在一起。
    ★ 那个 flex-basis 是 v2.33.0 横排行的遗留（当时宿主是 flex 行容器、靠它独占一行）；
      现在宿主 .arg-lib-wrap 是普通块容器，它**不生效**——保留无害，但别再据此推断布局。 */
-.arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding:0 0 6px}
+.arg-new-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:var(--sp-2);padding:0 0 var(--sp-2)}
 .arg-ops{flex:none;display:flex;gap:4px}
 /* v2.30.0（S1）：段操作 ⋯ 菜单——运行时生成的一行（flex-basis:100% 独占一行），
    挂在段行末尾（歌词轨之后，t60 的 children[4] 不挪位）。
    v2.35.0：曲式级 ⋯ 退役，模板菜单独住 argLibRow（见 .arg-lib-row 与「点窗外即关」）。 */
-.arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
+.arg-sec-menu{flex-basis:100%;display:flex;flex-wrap:wrap;gap:var(--sp-2);padding-top:2px}
 /* v2.35.0：曲式 chip 上的删除点（仅选中 chip 渲染；确认弹窗照旧） */
 /* ✕ 热区 20→24px（PLAN-v11 A4，WCAG 2.5.8 AA；有确认弹窗兜底，仍按 AA 补足） */
 .arg-item-del{flex:none;margin-left:2px;width:24px;height:24px;line-height:22px;text-align:center;border-radius:50%;color:var(--t3);font-size:11px;cursor:pointer}
@@ -2601,10 +2601,10 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    每段 ~30px（10 段示例曲段号都放不下），双栏 grid 随之删除；全宽后每段 ~90px。
    三行：地图（全宽）→ 双滑块 + 读数 → 控件行（播放钮 margin-left:auto 靠右）。
    ≤640px 仍变底部固定条（top:auto 必须显式写，理由同 v2.31.0 的教训）。 */
-.arg-transport{position:sticky;top:12px;z-index:4;display:flex;flex-direction:column;gap:10px;
-  background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-card);padding:14px 16px;margin-bottom:20px;
+.arg-transport{position:sticky;top:12px;z-index:4;display:flex;flex-direction:column;gap:var(--sp-3);
+  background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-card);padding:var(--sp-4) var(--sp-4);margin-bottom:20px;
   box-shadow:0 8px 24px rgba(0,0,0,.35)}
-.arg-t-row{display:flex;align-items:center;gap:14px;min-width:0}
+.arg-t-row{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .arg-transport .arg-map{flex:1;min-width:0}
 #argRangeRead{flex:none;white-space:nowrap}
 .arg-t-actions{flex-wrap:wrap}
@@ -2629,7 +2629,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    两条 fixed 底条叠在一起时，下条会吃掉上条的点击区，而播放控制在练习中比开练面板更常按。
    现在走带条在弹层内 sticky 吸顶（基样式），只压紧内边距以省高度。 */
 @media (max-width:640px){
-  .arg-transport{padding:10px 12px}
+  .arg-transport{padding:var(--sp-3) var(--sp-3)}
   /* ★★★ v3.36.20 补3（用户竖屏实报四条）：
      ① 歌曲地图被压到「每段 2px」⇒ 完全失去功能。根因：地图 flex:1 + min-width:0（能一路压到 0），
         而同行的读数是 flex:none;white-space:nowrap（一格不让）⇒ 挤的时候被牺牲的永远是地图。
@@ -2650,7 +2650,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    轨道本体是绝对定位的字块（拖本体改起始 t、拖右缘抓手改时值 dur）。
    与主视图 .lyric-lane 刻意**不同构**：那边是只读放映（百分比定位 + 走带线），
    这边要能抓住字块拖动，所以是 flex 头部 + relative 轨道两条横向带 */
-.arg-lyric{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 10px}
+.arg-lyric{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 var(--sp-3)}
 /* ★★ v3.36.20：**展开态**给歌词区一个最小宽度——让 ③ 精修那些按钮按设计的 3 行排布、不再多折，
    同时保住歌词格的尺度（窄屏改为横滑，而不是把格压小）。
    520 的来源（真机实测）：最宽的**设计行**是「整段平移 + 左1拍/左半拍/左1格/1格右/半拍右/1拍右」≈ 400px；
@@ -2672,7 +2672,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    ★ max-width 60% → 72%：同一行能看到更多词（超长仍省略号收口）。 */
 .arg-lyric-preview{min-width:0;max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;font-weight:600;color:var(--t1)}
 .arg-lyric-arrow{flex:none;font-size:11px}
-.arg-lyric-paste{flex:1;min-width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-item);color:var(--t1);font-size:12px;padding:6px 8px}
+.arg-lyric-paste{flex:1;min-width:120px;background:rgba(var(--well),.28);border:1px solid var(--border);border-radius:var(--radius-item);color:var(--t1);font-size:12px;padding:var(--sp-2) var(--sp-2)}
 /* v2.35.0（用户反馈）：编辑轨**每小节一行**——lane 变行容器（无底色），每小节一条
    .arg-lyric-barrow 底色槽，字块 absolute 行内定位（与主界面歌词轨 v2.7.2 同构）；
    拖动换算 perTick 不随分行改变（每行等宽 = 旧单行宽，见 mkLyricRow 注释） */
@@ -2764,11 +2764,11 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 #arrangeOverlay .editor-inner{max-width:1360px}
 .arg-shell{display:grid;grid-template-columns:288px minmax(0,1fr);gap:20px;align-items:start}
 .arg-outline{position:sticky;top:64px;max-height:calc(100vh - 88px);overflow-y:auto;
-  border-right:1px solid var(--line);padding-right:14px}
+  border-right:1px solid var(--line);padding-right:var(--sp-4)}
 /* ★ v3.35.2：段树自带的读数行（.arg-outline-h）整块退役——见 mkOutlineTree 处的说明 */
 /* 一段 = 两行：上行「序号 · 段名 · 缩略带」，下行「歌词」。行距给足，利于扫视 */
-.arg-ol-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  padding:6px 8px;border-radius:var(--radius-ctrl);border:0;background:transparent;color:var(--t2);font-size:13px}
+.arg-ol-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;text-align:left;
+  padding:var(--sp-2) var(--sp-2);border-radius:var(--radius-ctrl);border:0;background:transparent;color:var(--t2);font-size:13px}
 .arg-ol-row:hover{background:rgba(var(--veil),.06)}
 .arg-ol-row.sel{background:rgba(var(--green-rgb),.13);color:var(--green)}
 .arg-ol-no{flex:none;width:18px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--t3)}
@@ -2782,7 +2782,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 /* ★ v3.35.1（用户实报「绿底贴着歌词、靠得太近」）：原先这里写 margin-top:-3px，
    是**往回收**的负边距（贴着段行的下内边距压上去）——方向刚好相反。
    现在改成明确的正向间隔：绿底（选中态）与歌词之间留 ~11px（行下内边距 6 + 上 5）。 */
-.arg-ol-lyr{font-size:12px;color:var(--t3);padding:0 8px 9px 36px;margin-top:5px;
+.arg-ol-lyr{font-size:12px;color:var(--t3);padding:0 var(--sp-2) var(--sp-2) 36px;margin-top:var(--sp-1);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arg-ol-lyr.cur{color:var(--t2)}                                       /* 当前段：字色提亮 */
 
@@ -2794,14 +2794,14 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
    两侧看着对称、点了却一个换段一个换曲）。
    ★ 展开哪一首 = 当前在编的 curId —— 手风琴式只展开当前，不需要新增任何状态。
    ★ 窄屏抽屉搬的是 #argSide（曲式库与段树同属一条侧栏），不是单独的 #argOutline。 */
-.arg-lib-wrap{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
-.arg-lib-h{display:flex;align-items:baseline;gap:8px;padding:2px 6px 8px}
+.arg-lib-wrap{border-bottom:1px solid var(--line);padding-bottom:var(--sp-3);margin-bottom:var(--sp-3)}
+.arg-lib-h{display:flex;align-items:baseline;gap:8px;padding:2px var(--sp-2) var(--sp-2)}
 .arg-lib-h b{font-size:14px;color:var(--t1);font-weight:500}
 .arg-lib-h span{font-size:12px;color:var(--t3)}
 .arg-lib-h .arg-add{margin-left:auto}
 /* 曲式条目由横向胶囊改为**纵向行**（288px 里胶囊放不下名字+段数+✎+✕） */
 .arg-item{display:flex;align-items:center;gap:8px;background:transparent;border-radius:var(--radius-ctrl);
-  padding:7px 8px;cursor:pointer;text-align:left;box-shadow:none;color:var(--t2);font-size:13px}
+  padding:var(--sp-2) var(--sp-2);cursor:pointer;text-align:left;box-shadow:none;color:var(--t2);font-size:13px}
 .arg-item:hover{background:rgba(var(--veil),.06)}
 .arg-item.sel{background:rgba(var(--green-rgb),.13);color:var(--green);font-weight:500}
 /* ★ 图标用 ::before 而不是真实子节点：曲式条的 children 下标被多处测试按位置取用
@@ -2812,11 +2812,11 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-item .arg-item-meta{flex:none;font-size:11px;font-family:var(--mono);color:var(--t3)}
 .arg-item.sel .arg-item-meta{color:var(--green);opacity:.8}
 /* 两首之间的分隔线（v3.35.0 用户要求）：只在"前一首之后"出现，末首不画 */
-.arg-ol-sep{border:0;border-top:1px solid var(--line);margin:10px 2px 8px}
+.arg-ol-sep{border:0;border-top:1px solid var(--line);margin:var(--sp-3) 2px var(--sp-2)}
 /* 段树：缩进在曲式行之下，与顶层明显区分 */
-.arg-ol-secs{padding-left:14px}
-.arg-ol-secs .arg-ol-row{font-size:13px;padding:5px 7px}
-.arg-ol-secs .arg-ol-lyr{font-size:12px;padding:0 7px 6px 34px}
+.arg-ol-secs{padding-left:var(--sp-4)}
+.arg-ol-secs .arg-ol-row{font-size:13px;padding:var(--sp-1) var(--sp-2)}
+.arg-ol-secs .arg-ol-lyr{font-size:12px;padding:0 var(--sp-2) var(--sp-2) 34px}
 
 /* 目录按钮（窄屏才出现，见下方断点） */
 .arg-toc-btn{display:none}
@@ -2829,8 +2829,8 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
      关掉再移回 —— 而不是把大纲"再渲染一份"：两处 DOM 会让选中态/滚动位置各说各话。
      抽屉样式照 .preset-drawer 先例（同一套视觉语言），但更窄：大纲一行只有三样东西。 */
   .arg-toc-drawer{position:fixed;left:0;top:0;bottom:0;z-index:110;width:min(280px,86vw);
-    background:var(--card);border-right:1px solid var(--line);padding:14px;
-    padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    background:var(--card);border-right:1px solid var(--line);padding:var(--sp-4);
+    padding-bottom:calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
     overflow-y:auto;box-shadow:8px 0 32px rgba(0,0,0,.5)}
   .arg-toc-drawer[hidden]{display:none}
   .arg-toc-mask{position:fixed;inset:0;z-index:105;background:rgba(0,0,0,.45)}
@@ -2879,7 +2879,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-lyric-cursor[hidden]{display:none}
 .arg-lyric-chip.cur{box-shadow:inset 0 0 0 2px var(--blue);filter:brightness(1.15)}
 /* 跟播打轴悬浮条（v2.48.0①）：主视图顶部居中，置 hidden 时不占位 */
-.tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:14px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-full);padding:8px 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.tapbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:var(--sp-4);align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-full);padding:var(--sp-2) var(--sp-4);box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .tapbar[hidden]{display:none}
 .arg-lyric-tip{flex-basis:100%;font-size:11px;color:var(--t3)}
 .arg-lyric-refine-note{flex:1 0 100%;min-width:0;font-size:11px;line-height:1.5;color:var(--t3)}
@@ -2899,7 +2899,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 .arg-lyric-grp[aria-expanded="false"]::before{content:"▸"}
 .arg-lyric-rowsep{flex-basis:100%;height:0;margin:0;padding:0}
 /* 驻留在主界面（预设卡片内）的曲式一行：显示当前段 + 上/下段跳转 */
-.arg-now{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.arg-now{display:flex;align-items:center;gap:var(--sp-3);margin-top:12px;flex-wrap:wrap}
 /* ★ v3.3.1：`.arg-now` 的 `margin-top:12px` 是它住在卡片里时的纵向留白。播放行搬进底栏后
    它仍在（class 同时挂着 arg-now），在 align-items:center 的网格里把整组**压低 9px**——
    真机实测"播放键底缘距视口底 9px（期望 ≥16）"就是这么来的。 */
@@ -2932,13 +2932,13 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
    这里本来没设 display（作为 flex 子项会被块化），写明是为了改这条时不会顺手加 display。 */
 .pb-ctx .arg-now-name[hidden]{display:none}
 /* 跳段行（v2.0.2）：从侧栏挪到可视化正下方并居中——对着球/格子跳段，视线不用离开演奏区 */
-.arg-jump{justify-content:center;margin-top:14px}
+.arg-jump{justify-content:center;margin-top:var(--sp-4)}
 
 /* ---------- 使用方法（v2.0.1） ---------- */
-.help-list{margin:6px 0 0 20px;font-size:13px;color:var(--t2);line-height:1.85}
+.help-list{margin:var(--sp-2) 0 0 20px;font-size:13px;color:var(--t2);line-height:1.85}
 .help-list li{margin-bottom:2px}
 .help-list b{color:var(--t1);font-weight:600}
-.help-tip{margin-top:10px;font-size:12px;color:var(--t3);background:var(--card2);
+.help-tip{margin-top:var(--sp-3);font-size:12px;color:var(--t3);background:var(--card2);
   border-left:2px solid var(--green);border-radius:0 6px 6px 0;padding:8px 12px;line-height:1.6}
 /* 词条式列表（v2.25.2 改版）：单列堆叠——词条一行加粗、说明缩进在下。
    旧版是双列 grid（max-content + dt 右对齐）：词条名一长（"音频延迟补偿（蓝牙耳机 / 无线音箱）"）
@@ -2962,8 +2962,8 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   .editor-topbar{gap:8px}
   .editor-title{font-size:14px}
   .back-btn{flex:none}
-  .editor-actions{flex:none;gap:6px}
-  .editor-actions .pill{padding:7px 12px;font-size:12px}
+  .editor-actions{flex:none;gap:var(--sp-2)}
+  .editor-actions .pill{padding:var(--sp-2) var(--sp-3);font-size:12px}
   .arg-name{flex:1;min-width:0;width:auto}          /* 名字吃满第一行的剩余宽度 */
   /* 曲式列表那两行：名字是 flex 子项，默认 min-width:auto 会撑破容器（实测 390px 下溢出） */
   .arg-item{min-width:0}
@@ -3002,7 +3002,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   .main{grid-template-columns:1fr;padding:16px}
   .card{padding:16px}
   .bpm-num{font-size:34px;min-width:70px}   /* v2.10.19：随桌面档同步下调 */
-  .bar-row{height:66px;margin-bottom:10px}
+  .bar-row{height:66px;margin-bottom:var(--sp-3)}
   #viz.lyric-inline-on .bar-row{margin-bottom:52px}   /* v2.86.0：窄屏行距补偿（10→52），与桌面同值：空带 = 歌词带 + 和弦胶囊带 */
   #viz.lyric-inline-on.chord-xl .bar-row{margin-bottom:48px}   /* xl 胶囊放大时同桌面（v2.84 守恒值） */
   #viz.no-ruler.no-durlab .lyric-row{height:28px}   /* 窄屏标注带仅 32px：回落 28，与 translateY(+36) 配套 */
@@ -3052,8 +3052,8 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
 @media (max-width:560px){
   /* 顶栏换行（v2.0.2）：390px 下品牌区+三个按钮合计溢出约 100px，
      原先被 body{overflow-x:hidden} 静默裁掉，最右侧「使用方法」不可见 */
-  .topbar{flex-wrap:wrap;height:auto;min-height:64px;padding-top:10px;padding-bottom:10px;row-gap:10px}
-  .card-head{flex-direction:column;align-items:flex-start;gap:6px}
+  .topbar{flex-wrap:wrap;height:auto;min-height:64px;padding-top:var(--sp-3);padding-bottom:var(--sp-3);row-gap:var(--sp-3)}
+  .card-head{flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
   .status{white-space:nowrap}
 }
 
@@ -3168,7 +3168,7 @@ body[data-theme="obs"] .status.ok{color:var(--teal)} body[data-theme="obs"] .sta
 body[data-theme="obs"] .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:24px}
 body[data-theme="obs"] .card-head{flex-wrap:wrap;margin-bottom:var(--sp-4)}
 body[data-theme="obs"] .card-title{font-weight:600;letter-spacing:.01em}
-body[data-theme="obs"] .sec-tag{display:flex;align-items:baseline;gap:10px;width:100%;margin-bottom:6px}
+body[data-theme="obs"] .sec-tag{display:flex;align-items:baseline;gap:var(--sp-3);width:100%;margin-bottom:6px}
 body[data-theme="obs"] .sec-tag b{font:600 18px/1 var(--mono);color:var(--green);opacity:.85;letter-spacing:.04em}
 body[data-theme="obs"] .sec-tag i{font:500 10px/1 var(--mono);font-style:normal;letter-spacing:.18em;color:var(--t3);text-transform:uppercase}
 /* 训练模式：角标内联在 group-label 里，不收成整行 */
@@ -3237,14 +3237,14 @@ body[data-theme="obs"] .pill:disabled{background:var(--card2);color:var(--t3)}
 /* ---------- 观测台 · 配置开关与训练面板 ---------- */
 body[data-theme="obs"] .toggle-pill{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-item)}
 body[data-theme="obs"] .switch{background:rgba(var(--well),.22)}
-body[data-theme="obs"] .tr-panel{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);padding:14px 16px}
+body[data-theme="obs"] .tr-panel{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);padding:var(--sp-4) var(--sp-4)}
 body[data-theme="obs"] .tr-inp{background:var(--bg);border-radius:var(--radius-ctrl);font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .tr-inp:focus{border-color:var(--green)}
 body[data-theme="obs"] .tr-prog{font-variant-numeric:tabular-nums}
 body[data-theme="obs"] .tr-prog.live{color:var(--teal)}
 
 /* ---------- 观测台 · 预设库侧栏 ---------- */
-body[data-theme="obs"] .preset-item{border-radius:var(--radius-ctrl);border-left:2px solid transparent;padding-left:10px}
+body[data-theme="obs"] .preset-item{border-radius:var(--radius-ctrl);border-left:2px solid transparent;padding-left:var(--sp-3)}
 body[data-theme="obs"] .preset-item.active{background:var(--card2);border-left-color:var(--green)}
 body[data-theme="obs"] .preset-item.active .meta{color:var(--accent-hi)}
 /* ★ PLAN-v16 阶段 5（D7 §10.2）：preset-section/group 的 mono+宽字距回归 sans——
@@ -3296,7 +3296,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
 .diag .diag-line{white-space:normal;font-variant-numeric:tabular-nums}
 /* 复制按钮（v2.0.6，审计 P1-9）：面板本身 pointer-events:none（不想挡住底下的画面），
    所以要单独把按钮放回可点。字号比面板正文再小一档，避免抢占视觉重心 */
-.diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px 10px;font:600 10px/1.4 var(--mono)}
+.diag .diag-copy{pointer-events:auto;align-self:flex-start;padding:3px var(--sp-3);font:600 10px/1.4 var(--mono)}
 
 /* ★★★ v3.36.20 补7：底栏在 **≤960px 统一成一套「三列两行」**（原先散在 ≤640 两列两行、
    641–960 两列、≤640 横屏三列**三处**，同一种布局三份定义、彼此打架）。
@@ -3311,7 +3311,7 @@ body[data-theme="obs"] .help-fig text[fill="#fff"]{fill:var(--t1)}
      每次布局作用范围一变、或新开一档，修复都不会跟过去（本次实测：641–960 档上缘仅 **1px**）。 */
   .play-bar{grid-template-columns:minmax(0,max-content) minmax(0,1fr) max-content;
     grid-template-areas:"ctx ctx trans" "stat prog prog";
-    grid-template-rows:auto auto;row-gap:2px;align-content:center;padding-top:6px;
+    grid-template-rows:auto auto;row-gap:2px;align-content:center;padding-top:var(--sp-2);
     column-gap:12px;align-items:center}
   .play-btn{width:48px;height:48px}
   .jump-btn{width:40px;height:40px}
@@ -3447,7 +3447,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
        设置页顶部**（.set-ver，id 一个不改）——顶栏从「四块」收敛成纯品牌锁版。
        迁移的取舍：主界面失去「保存失败」的常驻红点信号，由保存失败弹窗（含清理指引）
        接住主动提示；「更新是否生效」的凭据由 <title>（恒带 vX.Y.Z）继续承担。 -->
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="display:flex;align-items:center;gap:var(--sp-3)">
     <!-- v2.10.12（用户要求）：顶栏收口成三个高频入口 —— 「设置」/「听辨训练」/「后台保活」。
          低频的全局项（使用方法 / 弹跳球 / 六线底纹 / 音色 / 四个导入导出）
          全部收进设置弹窗；「练习统计」与「练习量」整块删除。
@@ -4027,7 +4027,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            按钮被压成竖排且最右侧那颗贴边裁掉。它本质是**一栏正文说明**、不是工具栏控件，
            本就该在栏下独立成行——故移到栏下，而不是靠调断点或加省略号去救（那两条都只是
            把症状压住）。移出后顶栏只剩 .left + .editor-actions（≈762px < 1032px），
-           任何宽度都放得下。它原有的 `margin:-6px 0 10px` 本就是"紧贴栏下"的写法，
+           任何宽度都放得下。它原有的 `margin:-6px 0 var(--sp-3)` 本就是"紧贴栏下"的写法，
            形态上也印证了它本来就属于这一行。 -->
     <div class="hint" id="editorRefNote"></div>
 
@@ -4042,7 +4042,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
            选材料（上方）→ 放进编辑区（下方）；"点块选中 → 点块库替换"的交互也
            不再上下横穿整片网格。纯 DOM 移动：id/class 零变化，渲染与接线无感。 -->
       <div class="pal-zone" id="palZone">
-        <h2 class="card-title" id="paletteTitle" style="margin-bottom:10px">音符块库</h2>
+        <h2 class="card-title" id="paletteTitle" style="margin-bottom:var(--sp-3)">音符块库</h2>
         <div class="palette" id="palette"></div>
       </div>
       <div id="editorBars"></div>
@@ -4151,7 +4151,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <span class="hint">作用于当前小节</span>
         <span class="hint" id="strFillHint" role="status"></span>
       </div>
-      <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
+      <div style="display:flex;gap:12px;align-items:center;margin-top:var(--sp-4);flex-wrap:wrap">
         <span style="font-size:12px;color:var(--t2)">预设名称</span>
         <input class="name-input" id="presetNameInput" value="我的节奏型" aria-label="节奏型名称">
         <span class="hint">保存后可在主界面「我的预设」中找到</span>
@@ -4301,7 +4301,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <!-- v3.35.0：标题由「曲式库」改为「段落结构」——曲式库已搬到左栏，
            本卡片如今只装段落结构（原本卡内还有个同名的 stats-head，两者合并成一个标题） -->
       <h2 class="card-title" style="margin-bottom:4px">段落结构</h2>
-      <div class="hint" style="margin-bottom:10px">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。左栏「曲式」用来切换/新建歌曲。</div>
+      <div class="hint" style="margin-bottom:var(--sp-3)">一首歌 = 若干段，每段 = 若干块（块 = 一个节奏型 × N 遍）。编排完选一个范围开练。左栏「曲式」用来切换/新建歌曲。</div>
       <div id="argSections"></div>
       <div class="bpm-row">
         <button class="pill" id="argAddSec">+ 加一段</button>
@@ -4391,7 +4391,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
         <li><b>预备</b>：点播放后先数几拍再进正拍（开关与拍数在底部播放条右侧）</li>
       </ul>
 
-      <div class="bpm-row" style="margin-top:18px">
+      <div class="bpm-row" style="margin-top:var(--sp-4)">
         <button class="pill outline" id="helpMoreBtn" aria-expanded="false" aria-controls="helpMore">展开完整说明</button>
       </div>
 
@@ -4933,7 +4933,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       </details>
       <!-- v2.65.0（X1）：选择性导出——勾选要带走的数据类别，只导这些 -->
       <div class="group">
-        <div class="exp-parts" style="display:flex; flex-wrap:wrap; gap:6px 14px">
+        <div class="exp-parts" style="display:flex; flex-wrap:wrap; gap:var(--sp-2) 14px">
         <label class="exp-chk"><input type="checkbox" id="expPresets" checked> 节奏型</label>
         <label class="exp-chk"><input type="checkbox" id="expArranges" checked> 曲式</label>
         <label class="exp-chk"><input type="checkbox" id="expLyrics" checked> 歌词</label>

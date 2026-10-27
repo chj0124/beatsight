@@ -144,6 +144,6 @@ section("T107d 布局 · v2.35.0 顶部走带条吸顶 / 640 底部固定条 / �
     "★★ ≤640px：走带条**不再**是底部固定条（两条 fixed 底条会互相吃掉点击区；底部归播放底栏）");
   ok(src.includes("#playBar") && src.includes(".play-bar{position:fixed") ,
     "★★ 屏幕底部的 fixed 位由播放底栏独占（v3.3.0）");
-  ok(/@media \(max-width:640px\)\{[\s\S]{0,200}\.arg-transport\{padding:10px 12px\}/.test(src),
+  ok(/@media \(max-width:640px\)\{[\s\S]{0,200}\.arg-transport\{padding:var\(--sp-3\) var\(--sp-3\)\}/.test(src),
     "★ ≤640 的走带条只压紧内边距（在弹层内 sticky 吸顶，靠减少高度换取空间）");
 }

@@ -19,8 +19,8 @@ const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 /* ================= T153a：控制芯骨架（流内参数的骨架，PLAN-v9 批 2 重写） ================= */
 section("T153a 控制芯 —— 开关住胶囊行、面板住浮层壳（开关列退役）");
 {
-  ok(/\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap\}/.test(CSS_CODE)
-     && /\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
+  ok(/\.core-pills\{display:flex;align-items:center;justify-content:center;gap:var\(--sp-3\);flex-wrap:wrap\}/.test(CSS_CODE)
+     && /\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:var\(--sp-3\)\}/.test(CSS_CODE),
     "★★ 控制芯骨架：胶囊行横排**且居中**（.core-pills gap 10 + justify-content:center，v3.41.0 按方案图）"
     + " + 滑杆塔纵列（tg-body flex-start gap 10，"
     + "v3.19.0 纵排流内骨架在芯上延续）");
@@ -40,9 +40,9 @@ section("T153b 控制芯 —— 浮层壳样式与芯的排布口径");
 {
   ok(/\.tg-flyout \.tr-panel\{display:block;margin-top:0\}/.test(CSS_CODE)
      && /\.tg-flyout \.f-title\{[^}]*color:var\(--green\)/.test(CSS_CODE)
-     && /\.tg-flyout \.f-row\{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px\}/.test(CSS_CODE),
+     && /\.tg-flyout \.f-row\{display:flex;align-items:center;gap:var\(--sp-2\);white-space:nowrap;min-height:28px\}/.test(CSS_CODE),
     "★★ v3.41.0（乙案）：面板内 = 绿色小标题 + 若干参数行（.f-row 等高 28px），不再是可折行的 flex 条");
-  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:7px;font-size:13px;/.test(CSS_CODE),
+  ok(/\.core-pills \.toggle-pill\{height:36px;padding:0 14px;gap:var\(--sp-2\);font-size:13px;/.test(CSS_CODE),
     "★★ 三枚开关 = 胶囊行 36px 规格（v3.22.0 开关行 = 开关+主参数同行的 countin-line/sw-line 退役；"
     + "拍数输入贴预备胶囊、随机/目标进浮层）");
   ok(!/\.viz-toggles \.tg-row \.tr-prog/.test(CSS_CODE) && /#trainerProg\{display:flex/.test(CSS_CODE),

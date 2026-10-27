@@ -71,7 +71,7 @@ section("T162e 日间主题面板头：角标不吃整行（标题逐字竖排�
   ok(/body\[data-theme="obs"\] \.pd-head \.sec-tag\{display:inline-flex;width:auto;margin:0;flex:none\}/.test(src),
     "★★ obs 下 .pd-head 的角标收成内容宽（width:auto + flex:none）——"
     + "否则 width:100% 吃掉整行、标题逐字竖排");
-  ok(/body\[data-theme="obs"\] \.sec-tag\{display:flex;align-items:baseline;gap:10px;width:100%/.test(src),
+  ok(/body\[data-theme="obs"\] \.sec-tag\{display:flex;align-items:baseline;gap:var\(--sp-3\);width:100%/.test(src),
     "★ 卡片角标整行规则原样在位（它服务卡片头部，不许动；只在 .pd-head 作用域收宽）");
   /* v3.44.0（用户拍板②）：角标与标题之间插入了音符图标（.pd-ico），仍同处 .pd-head 一行容器——
      防竖排的前提是「三者同行 flex」，中间多一枚 inline svg 不破坏它，断言放行图标节点 */

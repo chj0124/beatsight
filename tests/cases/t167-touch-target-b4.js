@@ -40,8 +40,8 @@ section("T152a .pill 默认规格含 min-height:40px（全站触控下限的唯�
     "★★ .pill 默认规格含 min-height:40px——38 个可点元素里 25 个曾 <40px，这是唯一定义处");
   /* min-height 是**下限**而非替代：padding 仍在，文字多的 pill（预设名等）仍可自然长高，
      不该被这个下限压成固定高度。 */
-  ok(/\.pill\{[^}]*padding:9px 16px[^}]*\}/.test(CSS),
-    "★ min-height 是**下限**而非替代：padding:9px 16px 仍在，文字多的 pill 仍可自然长高");
+  ok(/\.pill\{[^}]*padding:var\(--sp-2\) var\(--sp-4\)[^}]*\}/.test(CSS),
+    "★ min-height 是**下限**而非替代：padding:var(--sp-2) var(--sp-4)=8/16 仍在，文字多的 pill 仍可自然长高");
 }
 
 /* ================= T152b：不得有绕过下限的局部覆盖 ================= */

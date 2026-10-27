@@ -115,7 +115,7 @@ section("T174c 顶栏圆钮化：结构 + 圆内数值载体");
   ok(/<button class="pill outline icon-btn" id="settingsBtn" aria-label="设置" title="设置">/.test(topbar)
      && /aria-hidden="true"><circle cx="12" cy="12" r="3\.1"/.test(topbar),
     "★★ 设置圆钮：icon-btn + 齿轮 SVG（aria-label 承接原文字语义）");
-  ok(/\.lat-btn\{min-width:40px;justify-content:center;padding:0 10px\}/.test(cssNoCmt)
+  ok(/\.lat-btn\{min-width:40px;justify-content:center;padding:0 var\(--sp-3\)\}/.test(cssNoCmt)
      && /\.lat-btn \.lat-num\.n1\{font-size:16px\}/.test(cssNoCmt)
      && /\.lat-btn \.lat-num\.n2\{font-size:13px\}/.test(cssNoCmt)
      && /\.lat-btn \.lat-num\.n3\{font-size:11px\}/.test(cssNoCmt)

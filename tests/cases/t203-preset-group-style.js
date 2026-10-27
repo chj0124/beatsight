@@ -60,7 +60,7 @@ section("T203c 缩进方向 · 分组头不再比它的条目更深");
      "★ 去掉 padding-left:8px（18px 缩进的一半）");
   ok(!/margin:10px 0 6px 10px/.test(grp),
      "★ 去掉 margin-left:10px（另一半）——分组头现在与区头同左缘，层次靠字号/字重/颜色表达");
-  ok(/margin:10px 0 0;/.test(grp), "分组头不额外留下边距，首条目间距由紧凑内边距承担");
+  ok(/margin:var\(--sp-3\) 0 0;/.test(grp), "分组头不额外留下边距，首条目间距由紧凑内边距承担");
 }
 
 section("T203d 源码钉 · 折叠箭头仍在（改样式不许碰行为契约）");
@@ -85,7 +85,7 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
     "★ 说明铺满剩余空间并右对齐，过窄时落到第二行，不额外缩字");
   ok(/nm\.title = name/.test(src) && /mt\.title = metaText/.test(src),
     "★ 省略后仍保留完整名称与说明的悬停提示");
-  ok(/margin:14px 0 0;/.test(ruleBody(".preset-section")), "区头与首条目间距收紧到 10px");
+  ok(/margin:var\(--sp-4\) 0 0;/.test(ruleBody(".preset-section")), "区头与首条目间距收紧到 10px");
   ok(/flex:1 1 100%/.test(box), "名称与说明独占整行，不被操作区切割");
   const actions = ruleBody(".preset-item .preset-actions");
   ok(/position:absolute/.test(actions) && /opacity:0/.test(actions)
@@ -98,7 +98,7 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
   ok(/\.preset-item\.active \.meta\{opacity:0\}/.test(src)
     && !/\.preset-item\.active(?:>div:first-child| \.name)\{opacity:0\}/.test(src),
     "★★ 名称始终显示，只有说明透明让位且仍在无障碍树中");
-  ok(/right:6px/.test(actions) && /padding:2px 6px/.test(ruleBody(".preset-item .preset-actions>button")),
+  ok(/right:6px/.test(actions) && /padding:2px var\(--sp-2\)/.test(ruleBody(".preset-item .preset-actions>button")),
     "★★ 最右图标与说明共用 12px 内容右缘（6px 操作组偏移 + 6px 内边距）");
 }
 
@@ -116,7 +116,7 @@ section("T203f 层级间距、播放绿点居中与歌曲不换行");
   ok(/\.preset-item\.in-song>div:first-child\{flex-wrap:nowrap\}/.test(src)
     && /\.preset-item\.in-song \.meta\{flex:1 1 0\}/.test(src),
     "★★ 歌曲子条目也禁止名称与 4/4 换行，说明只占剩余空间");
-  ok(/\.preset-item\.in-song\{margin-left:18px;padding:6px 12px\}/.test(src),
+  ok(/\.preset-item\.in-song\{margin-left:18px;padding:var\(--sp-2\) var\(--sp-3\)\}/.test(src),
     "★★ 子条目上下内边距为 6px，嵌套文字间距统一为 12px");
   ok(/\.preset-item\.song\{background:var\(--card2\)\}/.test(src)
     && /\.preset-item\.song \.name\{font-weight:600\}/.test(src),

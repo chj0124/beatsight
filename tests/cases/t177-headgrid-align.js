@@ -43,10 +43,10 @@ section("T177a 三列横向对齐体系（音量行盒 / 开关列偏移 / 行�
 {
   ok(/\.viz-head-grid \.card-head-left \.vol-row\{min-height:40px\}/.test(CSS_CODE),
     "★★ 音量行盒 40px（行距由 space-between 的 43px 收到 10px；滑杆自身粗细不变）");
-  ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
+  ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:var\(--sp-3\)\}/.test(CSS_CODE),
     "★★ 音量列顶锚定距（flex-start + gap:10px）——行心 172.8/222.8/272.8，"
     + "且开关列开合时顶锚不动（v3.22 单开零变形的承重墙从 .group 的 space-between 迁到这里）");
-  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}|\.core-pills\{display:flex;align-items:center;justify-content:center;gap:10px/.test(CSS_CODE),
+  ok(/\.viz-toggles \.tg-row\{display:flex;flex-direction:column;align-items:flex-start;gap:7px\}|\.core-pills\{display:flex;align-items:center;justify-content:center;gap:var\(--sp-3\)/.test(CSS_CODE),
     "★★ 控制芯（PLAN-v9 批 2）：开关 = 芯顶胶囊行（.core-pills 横排 gap 10）；v3.30.0 的纵排行距 7px 契约随开关列退役");
   /* ★ 控制芯重排：--tg-align-top/--tg-align-shift 补偿体系随开关列整列退役——
      胶囊行住芯顶、与滑杆塔同芯同轴，不再需要跨列对齐补偿。 */
@@ -67,10 +67,10 @@ section("T177b 从属参数统一降级（拍数框 / 随机开关 / 目标框�
   /* ★ v3.42.0 补（用户拍板）：拍数框**去掉细线框**（改由 hover/聚焦浅底提示可编辑）+ 内边距收紧省面积 */
   ok(/\.core-pills \.tr-inp\{width:20px;min-width:0;padding:1px 2px;font-size:12px;text-align:center;background:transparent;border:0/.test(CSS_CODE)   /* ★ min-width:0 必须跟着——基类 min-width:44px 不压就白改 */
      && /\.core-pills \.tr-inp:hover,\.core-pills \.tr-inp:focus\{background:rgba\(var\(--veil\),\.07\)\}/.test(CSS_CODE)
-     && /\.tg-flyout \.tr-inp\{width:46px;padding:3px 6px;font-size:12px;text-align:center\}/.test(CSS_CODE),
+     && /\.tg-flyout \.tr-inp\{width:46px;padding:3px var\(--sp-2\);font-size:12px;text-align:center\}/.test(CSS_CODE),
     "★★ 拍数框/目标框降级（字号 13→12、拍数框内缩到胶囊内一格）且**拍数框无描边**（可编辑性由 hover/聚焦浅底承担）；"
     + "作用域从 .viz-toggles 换到 .core-pills / .tg-flyout（PLAN-v9 批 2，v3.42.0 去框）");
-  ok(/\.tg-flyout #muteRandomToggle\{padding:4px 10px;font-size:12px\}/.test(CSS_CODE),
+  ok(/\.tg-flyout #muteRandomToggle\{padding:var\(--sp-1\) var\(--sp-3\);font-size:12px\}/.test(CSS_CODE),
     "★★「随机」作为从属子开关同步降一级（与拍数框/目标框同一套规格，不是只降它一个）");
   /* 作用域纪律：设置弹窗里的同款 .tr-inp（壁纸遮罩 / 延迟补偿）不得被牵连 */
   ok(!/^\.tr-inp\{padding:4px/.test(CSS_CODE.replace(/\n/g, "")) && !/\}\.tr-inp\{padding:4px/.test(CSS_CODE.replace(/\n/g, "")),
@@ -248,7 +248,7 @@ section("T177j 进度条轨道中线 = 胶囊中线 = 播放键中心（右块�
   /* ★ 抓取起点必须钉在 ≤640 底栏块**内部**的唯一标记上（`.play-bar{column-gap:10px}`）——
      全局有多个 `@media (max-width:640px){`（可视化渐隐遮罩等），从媒体查询头部起抓会把
      更早的 ≥641 块一起吞进捕获组，于是"≤640 不得含 top:11.5px"这条会**假红**（首跑即踩）。 */
-  const mob = /\n  \.play-bar\{column-gap:10px\}([\s\S]*?)\n  \.play-btn/.exec(CSS_CODE);
+  const mob = /\n  \.play-bar\{column-gap:var\(--sp-3\)\}([\s\S]*?)\n  \.play-btn/.exec(CSS_CODE);
   ok(!!mob, "★ 前提：≤640 底栏块可定位（抓取起点 = 该块内的唯一标记）");
   ok(!mob || !/top:11\.5px/.test(mob[1]),
     "★★★ ≤640 不吃该偏移 —— 手机档右区是 flex-direction:row（轨道与状态并排一行），"

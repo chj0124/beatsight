@@ -65,7 +65,7 @@ section("T173b 控制区限宽 1000（丁）+ 参数槽通栏悬浮（桌面档�
      的顶锚定距**（flex-start + gap:10）——开关列抬高后关闭态即贴近 BPM 列高，开面板会
      顶破行高、若仍用 space-between/evenly 就会重分布（v3.22/3.23 的「单开零变形」契约
      靠顶锚保住）。.group 的 space-between 对单一弹性子项是空操作（保留但不再是机制）。 */
-  ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:10px\}/.test(CSS_CODE),
+  ok(/\.viz-head-grid \.card-head-left \.group \.tg-body\{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:var\(--sp-3\)\}/.test(CSS_CODE),
     "★★ v3.30.0：音量列 tg-body = 顶锚定距（flex-start + gap:10px）——行心对齐 L1/L2/L3，"
     + "且开关列开合时音量行纹丝不动（单开零变形的承重墙）");
   /* 悬浮槽三件套：absolute（脱离布局流 → 零横移/零高度变化）、锚在开关行下方、

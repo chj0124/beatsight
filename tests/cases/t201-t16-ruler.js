@@ -230,7 +230,7 @@ section("T201f 编辑器头部 · 引用提示移出顶栏（源码钉）+ 两�
      "★ 提示落在「顶栏收尾」与「下方卡片」之间 ⇒ 确实搬到栏下独立成行，且没有掉出编辑器");
   ok(iRef > iActions, "★ 顺序：提示排在 .editor-actions（试听 / 保存为预设）之后");
 
-  ok(/\.editor-actions\{display:flex;gap:10px;flex:none\}/.test(src),
+  ok(/\.editor-actions\{display:flex;gap:var\(--sp-3\);flex:none\}/.test(src),
      "★ CSS 不变量：.editor-actions 的 flex:none **提为全局**（原先只在 ≤640px 媒体查询里，中宽失效）");
   ok(/#editorRefNote:empty\{display:none\}/.test(src),
      "★ CSS：提示为空时不占位（默认状态就是空——不该因此多吃掉一段高度）");
