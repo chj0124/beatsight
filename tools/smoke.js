@@ -2331,8 +2331,14 @@ function presetTypographyProbe(){
       out.actionCenterErr = Math.round(Math.abs((ar.top + ar.bottom - ir.top - ir.bottom) / 2) * 100) / 100;
       var actions = Array.prototype.slice.call(item.querySelectorAll("button"));
       var rightmost = actions.reduce(function(a, b){ return a.getBoundingClientRect().right > b.getBoundingClientRect().right ? a : b; });
-      var range = document.createRange(); range.selectNodeContents(rightmost);
-      out.actionToItem = Math.round((ir.right - range.getBoundingClientRect().right) * 100) / 100;
+      /* v3.56.1 mask 化后图标是 ::before（不在 DOM），Range.selectNodeContents 会取到零矩形
+         （实测 actionToItem=360=ir.right）。「可见图标右缘」改为内容盒右缘 =
+         按钮 border-box 右 − padding-right —— ::before(display:block,width:14px) 恰好
+         填满内容盒（14+6+6=26），两者重合；若日后按钮内容盒宽于图标，此口径会失真，
+         届时应改量 ::before 实渲染盒（getBoundingClientRect 无伪元素版，需改走
+         getComputedStyle width 推算或退回真实子节点——后者撞 DOM 预算，不许） */
+      var pr = parseFloat(getComputedStyle(rightmost).paddingRight) || 0;
+      out.actionToItem = Math.round((ir.right - (rightmost.getBoundingClientRect().right - pr)) * 100) / 100;
     }
     if (!wasActive) item.classList.remove("active");
     out.sectionFs = parseFloat(getComputedStyle(sec).fontSize);
@@ -2700,8 +2706,10 @@ function portraitFixProbe(){
          ① volBpmDelta 改为**两根滑杆互比右端**（原口径是音量行盒 vs BPM 输入——塔式后
             行盒右缘恒比滑杆宽出右侧空槽 48px，原口径会把对齐判成错位）；
          ② volBpmLeftDelta 左端互比——与 ① 同时为 0 ⇔ 等长且两端对齐；
-         ③ bpmClusterAxis 步进群轴心 vs **BPM 行（芯）轴**——★ v3.41.0（方案对账 G9）按方案图
-            改为参照芯轴；v3.39.1 的「参照滑杆轴」会让它偏右 31px（左槽 52px 把滑杆顶开）；
+         ③ bpmClusterAxis 步进群轴心 vs **滑杆轴**——★ v3.41.0（方案对账 G9）按方案图
+            曾改参照芯轴（BPM 行轴）；v3.56.0 PLAN-v16 阶段 4 D6 复议（用户主诉「该居中的
+            没居中」）拍板甲案改回**滑杆轴**（slider-wrap 中心）——步进群应正对滑杆中轴，
+            而非含「BPM」标签的整行中轴（芯轴口径会把步进群判偏 31px）；
             bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
       volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
@@ -2720,7 +2728,7 @@ function portraitFixProbe(){
       bpmClusterAxis: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
-        var s=q(".bpm-slider-row"), g=q(".slider-row .bpm-row");
+        var s=q(".bpm-slider-row .slider-wrap"), g=q(".slider-row .bpm-row");   /* v3.56.0 D6 甲案：参照滑杆本体（slider-wrap），不是含标签的整行 */
         var d=null;
         if (s&&g){ var sr=s.getBoundingClientRect(), gr=g.getBoundingClientRect();
           d=Math.round((gr.left+gr.right)/2-(sr.left+sr.right)/2); }
@@ -3834,8 +3842,8 @@ async function main(){
               + "px）——与右端判据同时为 0 ⇔ 两杆等长且两端一一对齐",
             "volBpmLeftDelta=" + PF.volBpmLeftDelta);
           ok(PF.bpmClusterAxis !== null && Math.abs(PF.bpmClusterAxis) <= 2,
-            p.label + "·" + vp + "：★★★ v3.41.0 步进群轴心落在**芯轴**（BPM 行轴）上（偏 " + PF.bpmClusterAxis
-              + "px）——方案图口径；v3.39.1 的「参照滑杆」会偏右 31px",
+            p.label + "·" + vp + "：★★★ v3.56.0 D6 甲案：步进群轴心正对**滑杆轴**（slider-wrap 中轴，偏 "
+              + PF.bpmClusterAxis + "px）——v3.41.0 的芯轴口径已随 D6 复议退役",
             "bpmClusterAxis=" + PF.bpmClusterAxis);
           ok(PF.bpmStackedDown !== null && PF.bpmStackedDown >= 0,
             p.label + "·" + vp + "：★★★ v3.39.1 步进群在滑杆**下方**（间隙 " + PF.bpmStackedDown

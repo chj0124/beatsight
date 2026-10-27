@@ -414,8 +414,13 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
      · 2,156,022 → 2,158,561 B，超线 2.0KB：条目 ▶ 主播放两态（syncAuditionBtns 判据扩展 +
        start/stop 钩子显式挂点 + toggleAudition 停止分支）+ in-song 间隙/等高方案 +
        本批测试判据改造的同源注释。
-     · 同为基础设施抬线，理由随批写入。 */
-const BUDGET_BYTES = 2108 * 1024;
+     · 同为基础设施抬线，理由随批写入。
+   ★ v3.56.1（CI 修复 · 图标 mask 化）：2108 → **2110KB**。
+     · 2,158,561 → 2,160,249 B，超线 1.6KB：5 枚 --mk-* data URI（URL 编码膨胀，每枚 300B 级）
+       + mask 壳规则与同源注释，减去 ACTION_ICON 表 + 工厂删除后净增。
+     · 换来的是 DOM 节点 −129（1414 → 1285，冒烟实测），svg+path 内联节点归零。
+       同为基础设施抬线，理由随批写入。 */
+const BUDGET_BYTES = 2110 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

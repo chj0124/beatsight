@@ -128,10 +128,12 @@ section("T211h 歌曲行 ▶ 的两态（v3.35.6 用户实拍）· 播放中变 
   const rowsNow = () => boxOf(els).children.filter(c => /(^| )song( |$)/.test(c.className));
   const btnNow = i => playBtnOf(rowsNow()[i]);
   ok(!!btnNow(0), "前提：歌曲行有 ▶");
-  /* 桩元素没有 querySelector：用 children 遍历断言「同壳双 path」结构（svg + .ico-play/.ico-stop） */
-  const svgOf = b => (b.children || []).find(c => String(c.tagName).toUpperCase() === "SVG");
-  ok(svgOf(btnNow(0)) && (svgOf(btnNow(0)).children || []).filter(p => /ico-(play|stop)/.test(String(p.className))).length === 2,
-    "未播放时是 ▶（PLAN-v16 起 ▶/■ = 同壳双 path SVG，态走 .aud-on 类）");
+  /* 桩元素没有 querySelector：v3.56.1 起 ▶/■ 走 ::before mask（零 DOM 节点），
+     断言改为「按钮挂 mk-ico+mk-aud 类且没有子节点」——若有人把图标改回真实子节点，
+     DOM 预算（冒烟 ≤1300）会重新吃紧，这里当场变红 */
+  const clsOf = b => String((b.className && b.className.baseVal !== undefined) ? b.className.baseVal : b.className);
+  ok(/mk-ico/.test(clsOf(btnNow(0))) && /mk-aud/.test(clsOf(btnNow(0))) && (btnNow(0).children || []).length === 0,
+    "未播放时是 ▶（v3.56.1 起 ▶/■ = ::before mask，态走 .aud-on 类切 mask-image，零子节点）");
   btnNow(0).fire("click");
   eq(beat.Store.S.playing, true, "点 ▶ → 起播");
   ok(btnNow(0).classList.contains("aud-on"), "★ 播放中该行的按钮变成 ■（暂停）");

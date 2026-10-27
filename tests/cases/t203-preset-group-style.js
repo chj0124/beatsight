@@ -98,8 +98,8 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
   ok(/\.preset-item\.active \.meta\{opacity:0\}/.test(src)
     && !/\.preset-item\.active(?:>div:first-child| \.name)\{opacity:0\}/.test(src),
     "★★ 名称始终显示，只有说明透明让位且仍在无障碍树中");
-  ok(/right:6px/.test(actions) && /padding:2px var\(--sp-2\)/.test(ruleBody(".preset-item .preset-actions>button")),
-    "★★ 最右图标与说明共用 12px 内容右缘（6px 操作组偏移 + 6px 内边距）");
+  ok(/right:6px/.test(actions) && /padding:2px 6px/.test(ruleBody(".preset-item .preset-actions>button")),
+    "★★ 最右图标与说明共用 12px 内容右缘（6px 操作组偏移 + 6px 内边距；v3.56.1 回归——v3.56.0 曾错配 var(--sp-2)=8，图标右缘被推到 14，CI 冒烟 actionToItem 实测）");
 }
 
 section("T203f 层级间距、播放绿点居中与歌曲不换行");

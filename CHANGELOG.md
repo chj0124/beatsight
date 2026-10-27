@@ -15,6 +15,34 @@
 
 ---
 
+## v3.56.1 · CI 双 job 修复：令牌错配回归 + 图标 mask 化（2026-10-27）
+
+**根因**（push v3.56.0 后 CI 两 job 同红——本地沙箱无 node_modules（tsc 恒 ⊘）、无 Chrome（冒烟恒 ⊘），CI 是唯一跑这两道闸的地方，4 类问题全部在此才暴露）：
+① **tsc 2 条 TS7053**：v3.56.0 新增的 `mkActionIcon(name, alt)` 参数 JSDoc 声明为 `string`，去索引字面量表 `ACTION_ICON` 报「Element implicitly has an 'any' type」——本地没装 typescript，这条从未跑过。
+② **冒烟 8 项红 = 4 类**（file:// 与 http 双通道各一份）：
+  · **`.preset-drawer` gap 令牌化错配**：基线 10px 被 v3.56.0 机械改成 `var(--sp-3)`=12px，折叠头→下区头顶隙 22 ≠ 网格 20（gapHere 探针实测；对账链 10−6=4=grid row-gap）；
+  · **三处按钮 padding 错配**：`.grp`/`.preset-actions>button`/`.ren` 的 `padding:2px 6px` 被令牌化成 `var(--sp-2)`=8px，「6px 操作组偏移 + 6px 内边距 = 12px 内容右缘」算术被破坏，图标右缘 14 ≠ 说明右缘 12（actionToItem 探针实测）；
+  · **bpmClusterAxis 偏 31px（仅窄屏 390）**：不是布局缺陷，是**断言口径没跟上 D6 复议**——v3.41.0 G9 按方案图拍的「芯轴」口径还钉在冒烟里，PLAN-v16 阶段 4 已按用户主诉复议回「滑杆轴」（31=(52+10)/2 恰为标签槽半宽）；
+  · **DOM 1414 > 1300 预算**：图标 SVG 化每按钮 +2~3 节点（`--dump-dom` 对比基线：svg +55 / path +74，合计 +129 与增量严丝合缝），预设库满载时全页顶破 Lighthouse「DOM 过大」错误线 1400。
+③ **本地自验缺口本身**：`check-all` 对未装依赖标 ⊘ 是既定口径（环境能力不是失败项），代价是这两道闸只有 CI 能跑——本批即为此付出的学费。
+
+**修法**：
+· **CSS 回归两处**：`.preset-drawer` gap 回 10px（白名单留痕）；三处按钮 padding 回 `2px 6px`（入间距台账，114→115）。
+· **图标 mask 化（DOM +129 → 0）**：5 枚 `--mk-*` data URI（path 逐字节同源、同 stroke-width 2、同 14px 盒）+ `.mk-ico::before`（mask + currentColor，先例 `--ico-arrange`），8 个调用点从 `appendChild(mkActionIcon(...))` 改为直接挂 `.mk-ico .mk-{name}` 类，`ACTION_ICON` 表与工厂整体删除（TS7053 随之根除）；▶/■ 双态走 `.mk-aud.aud-on` 切 mask-image，不再需要 alt 双 path 壳；Arrange 页圆形热区 24×24 用 `margin:5px auto` 补块级居中（原 svg 走 inline 基线，::before 是块级盒）。
+· **冒烟探针口径两处对齐**：`bpmClusterAxis` 参照从 `.bpm-row`（含标签整行）改 `.bpm-row .slider-wrap`（滑杆本体，D6 甲案口径）；`actionToItem` 从 `Range.selectNodeContents`（mask 化后按钮零子节点，Range 取到零矩形 360=ir.right）改「按钮 border-box 右 − padding-right」= 内容盒右缘（::before 14px 恰好填满内容盒，两口径重合）。
+· **t211 断言同步**：▶/■ 断言从「同壳双 path SVG」改为「挂 mk-ico+mk-aud 类且零子节点」——把 DOM 预算纪律钉进单测，谁把图标改回真实子节点谁当场红。
+
+**取舍**：
+· **mask 而非继续内联 SVG**：SVG 视觉达标但节点代价撞预算；CSS mask 零节点、颜色由 `background:currentColor` 一处承担（.aud-on 变绿 / .del 变红 / 双主题同源）。mask 里 `stroke='white'` 只是 alpha 载体与颜色无关——`--mk-x` 首版漏写第二个 path 的 stroke 属性，被 SVG 默认实心填充，已补齐四属性。
+· **6px 不强令牌化**：`--sp-2`=8 会破坏 6+6=12 的对齐算术，按 R2 口径入台账冻结而非改值——台账的意义就是历史调优微距逐条可溯。
+· **actionToItem 内容盒口径有已知局限**：若日后按钮内容盒宽于 14px 图标会失真（注释已写明届时的替代路径）；当前 14+6+6=26 恰好填满，两口径重合。
+· **体积**：`BUDGET_BYTES` 2108→2110KB 基础设施抬线——5 枚 mask data URI（URL 编码膨胀）+ 壳规则注释，减工厂删除后净 +1.6KB；换来 DOM −129（1414→1285），理由随批写入 `check-size-budget.js`。
+· **版本 3.56.1**：v3.56.0 已推送（CI 红的就是它），按已发布逐版口径 bump。
+
+**自验**：`node tests/run.js` **8977 PASS / 0 FAIL**；`node tools/smoke.js`（BEATSIGHT_CHROME 指向 puppeteer 缓存 Chrome 155）**637 项断言全绿**——8 项红全消，DOM **1285**（预算 ≤1300，较 SVG 方案 −129），轴心偏 **0px**，gapHere=refGap=20，actionToItem=metaToItem=12；`check-design-tokens` 台账间距 **115** / 圆角 12 / obs 14；`gen-index` 17 条行号回写；`check-all --strict-env` 全量结果见当次实跑输出。
+
+---
+
 ## v3.56.0 · 设计令牌体系落地与预设库视觉一致性批次（2026-10-27）
 
 > ★ 本条按「未发布的连续工作只占一个版本号」口径合并：origin/main 此前停在 v3.55.13，本日 19 个提交
