@@ -386,10 +386,16 @@ section("T47f 扫弦方向 · CSS 三角形方向回归（dn=▲ border-bottom /
   const dn = (html.match(/\.strumv\.dn::after\{[^}]*\}/) || [""])[0];
   const up = (html.match(/\.strumv\.up::after\{[^}]*\}/) || [""])[0];
   ok(dn !== "" && up !== "", "标记里存在 .strumv.dn::after / .up::after 两条规则（否则本组测的是空集）");
-  ok(/border-bottom:7px solid/.test(dn) && !/border-top:7px solid/.test(dn),
+  ok(/border-bottom:10px solid/.test(dn) && !/border-top:10px solid/.test(dn),
      "dn 三角用 border-bottom（▲ 尖朝上 = D→↑）——v2.4.3 曾误写 border-top 导致整组箭头颠倒");
-  ok(/border-top:7px solid/.test(up) && !/border-bottom:7px solid/.test(up),
+  ok(/border-top:10px solid/.test(up) && !/border-bottom:10px solid/.test(up),
      "up 三角用 border-top（▼ 尖朝下 = U→↓），与 dn 严格配对");
+  const head = (html.match(/\.strumv::after\{[^}]*\}/) || [""])[0];
+  ok(/margin-left:-6px/.test(head) && /border-left:6px solid transparent/.test(head)
+    && /border-right:6px solid transparent/.test(head),
+    "三角体统一为 12px 宽（左右各 6px），比旧 8px 更醒目");
+  ok(/top:var\(--y1\)/.test(dn) && /top:calc\(var\(--y2\) - 10px\)/.test(up),
+    "12×10 三角仍收在弦区跨距内，尖端锚点不外扩");
   /* 染色规则与方向映射的配对也要守住：base 变体染 border-bottom-color（dn 的 ▲）、
      .up 变体染 border-top-color（up 的 ▼）。方向若再翻转而染色不改，ghost/hit 的头会整个消失或失色 */
   ok(/\.strumv\.ghost::after\{border-bottom-color:var\(--blue\)\}/.test(html) &&

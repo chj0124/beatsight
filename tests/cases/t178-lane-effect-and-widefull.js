@@ -60,7 +60,7 @@ section("T178a 已弹格填充与扫弦记号**不同源**（白底白记号的�
   const arrowDn = ruleOf(CSS_CODE, ".strumv.dn::after");
   ok(/background:var\(--peak\)/.test(shaft) || /background:var\(--peak\)/.test(shaftBefore),
     "★★ 扫弦箭杆仍吃 --peak（分离只做在填充侧——这样记号只需一种墨色，不必按格子状态翻转）");
-  ok(/border-bottom:7px solid var\(--peak\)/.test(arrowDn),
+  ok(/border-bottom:10px solid var\(--peak\)/.test(arrowDn),
     "★★ 箭头三角同样仍吃 --peak（杆与头一致，不能只改一头）");
 }
 

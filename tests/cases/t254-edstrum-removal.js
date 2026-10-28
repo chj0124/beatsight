@@ -26,8 +26,8 @@ section("T254 .ed-strum 全仓退役（标记 / JS / CSS 选择器）；主视�
   ok(!/class=["']?[^"'>]*ed-strum/.test(codeOnly), "标记里不再声明 ed-strum 类");
   ok(/\.strumv\.dn::after\{/.test(src) && /\.strumv\.up::after\{/.test(src),
      "★ 主视图 .strumv.dn::after / .up::after 方向规则仍在（删的只是编辑器那份冗余字形）");
-  ok(/\.strumv\.dn::after\{[^}]*border-bottom:7px solid var\(--peak\)\}/.test(src) &&
-     /\.strumv\.up::after\{[^}]*border-top:7px solid var\(--peak\)\}/.test(src),
+  ok(/\.strumv\.dn::after\{[^}]*border-bottom:10px solid var\(--peak\)\}/.test(src) &&
+     /\.strumv\.up::after\{[^}]*border-top:10px solid var\(--peak\)\}/.test(src),
      "方向三角着色规则逐位不变（主视图口径未伤）");
 }
 

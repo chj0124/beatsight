@@ -1078,6 +1078,11 @@ function layoutProbe(){
     const strum = q("#viz .strumv");
     res.strumInk = strum ? getComputedStyle(strum, "::before").backgroundColor : null;
     res.strumHeadInk = strum ? getComputedStyle(strum, "::after").borderBottomColor : null;
+    if (strum){
+      const headCss = getComputedStyle(strum, "::after");
+      res.strumHeadW = parseFloat(headCss.borderLeftWidth) + parseFloat(headCss.borderRightWidth);
+      res.strumHeadH = parseFloat(headCss.borderBottomWidth);
+    }
     res.fillL = lumOf(res.cellFill); res.inkL = lumOf(res.strumInk);
     /* ★ 宽屏铺满那半**不在这里量**：本探针的视口是 1440，而主列 max-width 本就 1440——
        铺满开关在该视口下不改变 #viz 宽，硬写就是空转的假绿。它由 wideFullProbe()
@@ -4043,6 +4048,9 @@ async function main(){
             ok(W.strumHeadInk !== null && /^rgb/.test(W.strumHeadInk),
               p.label + "·" + vp + "：★ 箭头三角也取到实色（杆与头同源，不能只改一头）",
               "箭头 " + W.strumHeadInk);
+            ok(W.strumHeadW === 12 && W.strumHeadH === 10,
+              p.label + "·" + vp + "：★★ 扫弦三角头部 = 12×10px（实扫/空扫共用同一 ::after 几何）",
+              "实测 " + W.strumHeadW + "×" + W.strumHeadH);
           }
           /* ★★★ v3.31.0（用户报障）②：宽屏铺满切换后，歌词轨宽度必须跟随 #viz。
              歌词轨的 inline 宽度由 placeLaneOverlay 写死，不重排就停在旧值
