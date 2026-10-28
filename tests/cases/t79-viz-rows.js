@@ -5,7 +5,7 @@
    设计定调（用户拍板）：
      · **共用一个档位**——两轨是同一根时间轴上的上下两层，共用一个数才能逐行对齐
        （若各设一档，只要两轨行数不一致就立刻错行）；
-     · 值域 1 / 2 / 3 / 4，默认 4（= 旧口径「同屏 4 小节」，老用户升级后逐位不变）。
+     · 当前分页值域 2 / 3 / 4，默认 2；旧存档的 1 回落 2，连续滚动 1 行独立保留。
    契约：
      · 档位 = 网格的**窗口长度**（arrWinBars 的唯一来源 S.vizRows），网格与歌词轨同源；
      · ★ **两种模式都生效**（v2.10.2 行为变更）：N 恒等于网格行数——
@@ -73,13 +73,14 @@ section("T79a 档位即窗口长度 · arrWinBars() 与 S.vizRows 同一真相�
 }
 
 /* ================= 场景 T79b：档位选择器（值表生成的 pill 行） ================= */
-section("T79b 档位选择器 · 一行 pill 由 VIZ_ROW_COUNTS 生成、带 data-rows、选中态跟着 S.vizRows");
+section("T79b 档位选择器 · 分页只保留 2/3/4 行，选中态跟着 S.vizRows");
 {
   const { beat, els } = loadApp(seedState({ sel: { type: "builtin", idx: 1 } }));
   const pills = rowsPills(els);
-  eq(pills.length, 4, "四个档位按钮（值域 1-4 由值表生成，不在标记里写死）");
-  eq(pills.map(p => p.dataset.rows).join(","), "1,2,3,4", "每个按钮带 data-rows=N（测试与样式按档位定位）");
-  eq(pills.map(p => p.textContent).join(","), "1 行,2 行,3 行,4 行", "文案 = 「N 行」（含单位，读写都不歧义）");
+  eq(pills.length, 3, "三个分页档位按钮（1 行已退役，连续滚动 1 行走另一值表）");
+  eq(pills.map(p => p.dataset.rows).join(","), "2,3,4", "每个按钮带 data-rows=N（测试与样式按档位定位）");
+  eq(pills.map(p => p.textContent).join(","), "2 行,3 行,4 行", "文案 = 「N 行」（含单位，读写都不歧义）");
+  eq(rowsPill(els, 1), undefined, "分页不再生成 1 行按钮");
   eq(pills.filter(p => p.classList.contains("active")).map(p => p.dataset.rows).join(","), "2",
      "默认档 2 高亮（初始选中态来自已加载的 S.vizRows）");
   eq(rowsPill(els, 4).getAttribute("aria-pressed"), "false", "未选中档 aria-pressed=false（无障碍）");
@@ -90,13 +91,15 @@ section("T79b 档位选择器 · 一行 pill 由 VIZ_ROW_COUNTS 生成、带 dat
 }
 
 /* ================= 场景 T79c：加载校验（白名单，脏值一律不可信） ================= */
-section("T79c 加载校验 · 脏值 / 越界走白名单回落到默认 2（v3.1.0 起）");
+section("T79c 加载校验 · 脏值 / 越界与旧分页 1 行都回落到默认 2");
 {
   eq(loadApp(seedState({ vizRows: 9 })).beat.Store.S.vizRows, 2, "越界 9 → 2");
   eq(loadApp(seedState({ vizRows: 0 })).beat.Store.S.vizRows, 2, "0（不在白名单）→ 2");
   eq(loadApp(seedState({ vizRows: "x" })).beat.Store.S.vizRows, 2, "非数脏值 → 2");
   eq(loadApp(seedState({ vizRows: 3 })).beat.Store.S.vizRows, 3, "合法非默认档 3 → 3（照读）");
-  eq(loadApp(seedState({ vizRows: 1 })).beat.Store.S.vizRows, 1, "下限档 1 → 1");
+  eq(loadApp(seedState({ vizRows: 1 })).beat.Store.S.vizRows, 2, "旧分页 1 行偏好 → 2");
+  eq(loadApp(seedState({ vizRows: 1, scrollMode: true, scrollRows: 1 })).beat.Store.S.scrollRows, 1,
+    "同一存档里的连续滚动 1 行不受影响");
 }
 
 /* ================= 场景 T79d：预设模式同样受档位控制（v2.10.2 行为变更） ================= */
@@ -111,16 +114,16 @@ section("T79d 预设模式同样受档位控制 · 这就是用户报「行数�
   /* ★ 这就是用户报的原始症状：点档位 → 画面行数真的跟着变（修复前恒为 4 行） */
   rowsPill(els, 4).fire("click");
   eq(rowCells(els).length, 4, "★★ 点「4 行」→ 预设模式网格立刻变 4 行（修复前这里恒为 4，看不出任何变化）");
-  rowsPill(els, 1).fire("click");
-  eq(rowCells(els).length, 1, "★★ 点「1 行」→ 只剩 1 行（档位是网格行数的唯一真相源）");
-  eq(JSON.stringify(rowCells(els)), JSON.stringify([4]), "内容的 4 格不变：换的是窗口，不是型");
+  rowsPill(els, 3).fire("click");
+  eq(rowCells(els).length, 3, "★★ 点「3 行」→ 网格同步变 3 行");
+  eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4]), "内容的 4 格不变：换的是窗口，不是型");
 }
 
 /* ================= 场景 T79e：改档位 → 网格与歌词轨一起重建（两轨共用同源） ================= */
 section("T79e 曲式模式 · 改档位同步重建网格与歌词轨，标题按新窗口长度报区间");
 {
   const { beat, els } = setup();
-  eq(rowsPills(els).length, 4, "前提：档位按钮已生成");
+  eq(rowsPills(els).length, 3, "前提：三个分页档位按钮已生成");
   eq(rowCells(els).length, 4, "起始：曲式窗口默认 4 行");
   eq(beat.Viz.internals().lyricRows.length, 4, "起始：歌词轨同样 4 行（两轨共用档位）");
 
@@ -157,8 +160,8 @@ section("T79g 持久化 · 档位写进热键 beatsight.state（下次打开还�
   eq(app.beat.Store.S.vizRows, 3, "★ 带 vizRows=3 重新加载 → 档位照读（跨会话留存）");
 }
 
-/* ================= 场景 T79h：曲式 + 1 行档 ⇒ 不做预告行（v2.10.3 修） ================= */
-section("T79h 曲式 + 1 行档 · 预告行不成立：行内容 = 当前小节、格子照常有 .active（白填充的前提）");
+/* ================= 场景 T79h：强制旧单行状态 ⇒ 不做预告行（内部防御；分页 1 行档已退役） ================= */
+section("T79h 强制旧单行状态 · 预告行不成立：行内容 = 当前小节、格子照常有 .active");
 {
   /* 用户实拍症状：「播放自定义整首连播时，小球正常滚动，但格子里的白色动画不会自动填满」。
      根因在预告行的判据：`k === winAnchor(k) + N - 1` 在 **N = 1** 时恒成立
@@ -181,6 +184,7 @@ section("T79h 曲式 + 1 行档 · 预告行不成立：行内容 = 当前小节
   const buildSong = rowsN => {
     const app = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: rowsN }));
     const { beat, els } = app;
+    beat.Store.S.vizRows = rowsN;   // 分页 1 行已不对用户开放；这里强制旧状态，只守内部预告防御
     beat.Store.importPresets(JSON.stringify({ presets: [
       { name: "四格", meter: 4, bars: mkBars(1, 4) },
       { name: "八格", meter: 4, bars: mkBars(1, 8) },

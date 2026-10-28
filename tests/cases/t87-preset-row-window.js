@@ -179,8 +179,8 @@ section("T87e 预设窗口 · 点档位 → 画面行数真的变（修复前恒
   const { beat, els, storage } = loadApp(seedState({ sel: { type: "builtin", idx: 1 }, vizRows: 4 }));
   withPattern(beat, 4);
   eq(rowCells(els).length, 4, "对照：默认档 4 与型长 4 恰好相等——所以修复前最难察觉档位没生效");
-  rowsPill(els, 1).fire("click");
-  eq(rowCells(els).length, 1, "★ 「1 行」→ 1 行（修复前仍是 4 行）");
+  rowsPill(els, 2).fire("click");
+  eq(rowCells(els).length, 2, "★ 「2 行」→ 2 行（修复前仍是 4 行）");
   rowsPill(els, 3).fire("click");
   eq(JSON.stringify(rowCells(els)), JSON.stringify([1, 2, 4]),
      "★ 「3 行」→ 3 行，内容 = 第 1-3 小节");

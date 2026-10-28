@@ -34,7 +34,7 @@ const MUTANTS = [
   ["M5 滚动谱内 y 退回行下位置", s => once(s,
     "y = g ? g.top + (tabH - 28) / 2 : (i * 32);",
     "y = g ? g.top + (((rowEls[i] && rowEls[i].offsetHeight) || vizRowBoxH) + 2) : (i * 32);", "M5"),
-   ["槽居中于 44px 格子带"]],
+   ["按实际格高"]],
 ];
 
 let hitN = 0, missN = 0;

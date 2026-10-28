@@ -78,8 +78,11 @@ for (const rows of [1, 3]){
     eq(app.beat.Viz.lyricLayoutState().reason, "", "rows=" + rows + "：不再产生 scroll 回退原因");
     ok(app.els.lyricLane.classList.contains("in-tab"), "rows=" + rows + "：歌词轨保留谱内作用域");
     const int = app.beat.Viz.internals();
-    for (let i = 0; i < int.lyricRows.length; i++)
-      eq(int.lyricRows[i].y, int.rowGeo[i].top + 8, "rows=" + rows + "：第 " + i + " 槽居中于 44px 格子带");
+    for (let i = 0; i < int.lyricRows.length; i++){
+      const tabH = rows === 1 ? ((int.cellEls[i][0] && int.cellEls[i][0].offsetHeight) || 66) : 44;
+      eq(int.lyricRows[i].y, int.rowGeo[i].top + (tabH - 28) / 2,
+        "rows=" + rows + "：第 " + i + " 槽按实际格高 " + tabH + "px 居中");
+    }
     assertSlotsAligned(app, "rows=" + rows + " 静止");
     app.beat.Controls.start();
     const ac = FakeAudioContext.last;

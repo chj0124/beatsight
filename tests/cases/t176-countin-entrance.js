@@ -166,11 +166,12 @@ section("T176c 移动端几何（K=2，用户报障的那个几何）：同一�
 }
 
 /* =========================================================================== */
-section("T176d vizRows 矩阵（1/2/3/4）× 移动几何：落点恒第 0 行行首；**1 行档主球不再飞出右缘**（编舞 B）");
+section("T176d 强制 vizRows 矩阵（含旧 1 行状态）× 移动几何：落点恒第 0 行行首");
 {
   for (const n of [1, 2, 3, 4]){
     const app = loadApp(seedState({ countIn: { on: true, beats: 4 }, vizRows: n }), MOBILE);
     const beat = app.beat;
+    beat.Store.S.vizRows = n; beat.Viz.buildViz();   // 分页 1 行档已退役；保留内部旧状态防御覆盖
     eq(beat.Viz.internals().vizRowBeats, 2, `T176d${n}0 前提：移动几何 K=2（vizRows=${n}）`);
     beat.Controls.setBpm(96);
     beat.Controls.start();
@@ -195,7 +196,7 @@ section("T176d vizRows 矩阵（1/2/3/4）× 移动几何：落点恒第 0 行�
 }
 
 /* =========================================================================== */
-section("T176e 幽灵步行归属：vizRows ≥ 2 时哒 1–3 在第 0 行、哒 4 到第 1 行（v2.42.6 既有，保留）；1 行档在第 0 行走完");
+section("T176e 幽灵步行归属：vizRows ≥ 2 保持原路径；强制旧 1 行状态在第 0 行走完");
 {
   /* 行归属按"离哪一行基线最近"判（行数不定，不能写死 rg[1]） */
   const rowAt = (iv, y) => {
@@ -206,6 +207,7 @@ section("T176e 幽灵步行归属：vizRows ≥ 2 时哒 1–3 在第 0 行、�
   for (const n of [1, 2, 4]){
     const app = loadApp(seedState({ countIn: { on: true, beats: 4 }, vizRows: n }), MOBILE);
     const beat = app.beat;
+    beat.Store.S.vizRows = n; beat.Viz.buildViz();   // 同 T176d：只测内部旧状态，不代表分页仍提供 1 行档
     beat.Controls.setBpm(96);
     beat.Controls.start();
     const ac = FakeAudioContext.last;

@@ -523,7 +523,7 @@ function scrollProbe(){
   if (!viz) return JSON.stringify({ err: "no #viz" });
   out.baseRows = viz.querySelectorAll(".bar-row").length;
   out.baseScroll = viz.classList.contains("scroll-mode");
-  /* v3.0.0 批 4：「同屏行数」档位随模式重列（滚动 1/3 ↔ 翻页 1/2/3/4）——同一个控件，
+  /* 「同屏行数」档位随模式重列（滚动 1/3 ↔ 翻页 2/3/4）——同一个控件，
      不再多一个"窗口行数"、也不再把它置灰（用户拍板）。档位串是这条契约的可观测面。 */
   const rowPills = () => Array.from(document.querySelectorAll("#vizRowsRow .pill")).map(b => b.dataset.rows).join(",");
   const st = document.getElementById("settingsBtn");
@@ -1754,18 +1754,26 @@ function lyricTabProbe(){
     try{ var line = B.Store.findLyric(a.id, sec.uid); before = line ? JSON.parse(JSON.stringify(line)) : null; }catch(e){}
     var old = { pos: B.Store.S.lyricPos, pitch: B.Store.S.pitchNotation, show: B.Store.S.showLyric,
       mode: B.Store.S.playMode, sel: JSON.parse(JSON.stringify(B.Store.S.arrangeSel)),
-      scroll: B.Store.S.scrollMode, scrollRows: B.Store.S.scrollRows };
+      scroll: B.Store.S.scrollMode, scrollRows: B.Store.S.scrollRows,
+      bpm: B.Store.S.bpm, playing: B.Store.S.playing };
     function rebuild(){ B.Viz.buildViz(); }
     function measure(){
       var rows = [].slice.call(document.querySelectorAll("#lyricLane .lyric-row"));
       var grids = [].slice.call(document.querySelectorAll("#viz .bar-row")).filter(function(el){
         return el.getBoundingClientRect().width > 0;
       });
-      var centerErr = 0, slotErr = 0, overlaps = 0, labelsN = 0, slots = [];
+      var centerErr = 0, slotErr = 0, overlaps = 0, labelsN = 0, cellH = 0, rowH = 0, slots = [];
+      grids.forEach(function(grid){
+        rowH = Math.max(rowH, grid.getBoundingClientRect().height);
+        var firstCell = grid.querySelector(".cell");
+        if (firstCell) cellH = Math.max(cellH, firstCell.getBoundingClientRect().height);
+      });
       rows.forEach(function(lr, ri){
         var cell = grids[ri] && grids[ri].querySelector(".cell");
         if (grids[ri]){
           var gr = grids[ri].getBoundingClientRect(), lrr = lr.getBoundingClientRect();
+          rowH = Math.max(rowH, gr.height);
+          if (cell) cellH = Math.max(cellH, cell.getBoundingClientRect().height);
           slotErr = Math.max(slotErr, Math.abs(gr.left - lrr.left));
           slots.push({ ri: ri, gl: gr.left, ll: lrr.left, gt: gr.top, lt: lrr.top,
             gx: grids[ri].style.transform, lx: lr.style.transform });
@@ -1793,7 +1801,7 @@ function lyricTabProbe(){
         });
       });
       return { centerErr: Math.round(centerErr * 100) / 100, slotErr: Math.round(slotErr * 100) / 100,
-        overlaps: overlaps, labelsN: labelsN, slots: slots };
+        overlaps: overlaps, labelsN: labelsN, cellH: cellH, rowH: rowH, slots: slots };
     }
     try{
       B.Store.S.playMode = "arrange";
@@ -1838,19 +1846,49 @@ function lyricTabProbe(){
         B.Viz.reloadScroll();
         var ss = B.Viz.lyricLayoutState(), sm = measure();
         res.scroll.push({ rows: rows, mode: ss.actual, reason: ss.reason,
-          centerErr: sm.centerErr, slotErr: sm.slotErr, overlaps: sm.overlaps, labelsN: sm.labelsN, slots: sm.slots });
+          centerErr: sm.centerErr, slotErr: sm.slotErr, overlaps: sm.overlaps, labelsN: sm.labelsN,
+          cellH: sm.cellH, rowH: sm.rowH, slots: sm.slots });
       });
+      /* 用户实拍样例：《我们能不能不分手》「全世界都让」。同一小节循环 + 跨小节重建，
+         1/3 行都检查；大字档同时核对格高/行高与谱内居中，防止两个改动互相掩盖。 */
+      res.scrollPlayback = [];
+      var a2 = B.Store.arranges.find(function(x){ return x.name.indexOf("我们能不能不分手") >= 0; });
+      if (a2){
+        B.Store.S.playMode = "arrange";
+        B.Store.S.arrangeSel = { id: a2.id, from: 5, to: 5, loop: true };
+        B.Store.S.bpm = 240;
+        for (const rows of [1, 3]){
+          B.Store.S.scrollMode = true; B.Store.S.scrollRows = rows; B.Viz.reloadScroll();
+          B.Controls.start();
+          await new Promise(function(r){ setTimeout(r, 120); });
+          var early = measure();
+          await new Promise(function(r){ setTimeout(r, 1200); });
+          var later = measure();
+          B.Controls.stop();
+          res.scrollPlayback.push({ rows: rows, early: early, later: later });
+        }
+      }
+      B.Store.S.scrollRows = 1; B.Viz.reloadScroll();
+      var vizEl = document.getElementById("viz");
+      vizEl.classList.add("has-pick");
+      var pickGeom = measure();
+      res.pickFocus = { cellH: parseFloat(getComputedStyle(vizEl).getPropertyValue("--cell-h")), rowH: pickGeom.rowH };
+      vizEl.classList.remove("has-pick");
       B.Store.S.scrollMode = false;
     }catch(e){ res.err = String(e && e.message || e); }
     finally{
       try{
+        if (B.Store.S.playing) B.Controls.stop();
         if (before) B.Store.upsertLyric(a.id, sec.uid, before.chars || [], { notes: before.notes || [] });
         else B.Store.deleteLyric(a.id, sec.uid);
         B.Store.S.lyricPos = old.pos; B.Store.S.pitchNotation = old.pitch; B.Store.S.showLyric = old.show;
         B.Store.S.playMode = old.mode; B.Store.S.arrangeSel = old.sel;
         B.Store.S.scrollMode = old.scroll; B.Store.S.scrollRows = old.scrollRows;
+        B.Controls.setBpm(old.bpm);
         if (old.scroll) B.Viz.reloadScroll(); else rebuild();
-        res.restored = B.Store.S.lyricPos === old.pos && B.Store.S.scrollMode === old.scroll;
+        if (old.playing) B.Controls.start();
+        res.restored = B.Store.S.lyricPos === old.pos && B.Store.S.scrollMode === old.scroll
+          && B.Store.S.bpm === old.bpm && B.Store.S.playing === old.playing;
       }catch(e){ res.restoreErr = String(e && e.message || e); }
     }
     return JSON.stringify(res);
@@ -4493,6 +4531,21 @@ async function main(){
                 x.mode === "tab" && x.centerErr <= 1 && x.slotErr <= 1 && x.overlaps === 0 && x.labelsN > 0),
               p.label + "·" + vp + "：★★★ 连续滚动 1/3 行谱内居中、逐槽对齐且无重叠",
               JSON.stringify(D.scroll));
+              ok(Array.isArray(D.scroll) && D.scroll.every(x =>
+                x.cellH === (x.rows === 1 ? 66 : 44) && x.rowH === (x.rows === 1 ? 108 : 86)),
+              p.label + "·" + vp + "：★★★ 单行大号几何 = 66/108，三行保持 44/86",
+              JSON.stringify((D.scroll || []).map(x => ({ rows: x.rows, cellH: x.cellH, rowH: x.rowH }))));
+              ok(Array.isArray(D.scrollPlayback) && D.scrollPlayback.length === 2 && D.scrollPlayback.every(x =>
+                [x.early, x.later].every(m => m.overlaps === 0 && m.centerErr <= 1
+                  && m.cellH === (x.rows === 1 ? 66 : 44) && m.rowH === (x.rows === 1 ? 108 : 86))),
+              p.label + "·" + vp + "：★★★ 「全世界都让」1/3 行在起播与跨小节重建后均无重叠、居中且高度正确",
+              JSON.stringify(D.scrollPlayback));
+              ok(D.pickFocus && D.pickFocus.cellH === 84 && D.pickFocus.rowH === 126,
+                p.label + "·" + vp + "：★★ 单行逐弦大号几何 = 84/126", JSON.stringify(D.pickFocus));
+              ok(Array.isArray(M.scroll) && M.scroll.every(x =>
+                x.cellH === (x.rows === 1 ? 51 : 34) && x.rowH === (x.rows === 1 ? 83 : 66)),
+              p.label + "·" + vp + "：★★ 窄屏单行大号几何 = 51/83，三行保持 34/66",
+              JSON.stringify((M.scroll || []).map(x => ({ rows: x.rows, cellH: x.cellH, rowH: x.rowH }))));
               ok(M.canOffer === false && M.tabHidden === true && M.mode === "follow" && M.reason === "layout",
                 p.label + "·" + vp + "：★★★ 390px 隐藏谱内入口，保存 tab 仍实际贴行",
                 JSON.stringify({ canOffer: M.canOffer, hidden: M.tabHidden, mode: M.mode, reason: M.reason }));
@@ -4922,10 +4975,10 @@ async function main(){
         ok(sr.bodyOx === "hidden",
           p.label + "：★ 横向溢出由 body 的 overflow-x:hidden 兜住（clip 不传播到视口，实测仍能横拖）",
           "实际 body overflow-x=" + sr.bodyOx);
-        ok(sr.rowsPaged === "1,2,3,4" && sr.rowsScroll === "1,3",
-          p.label + "：★★ 「同屏行数」档位随模式重列（分页 1/2/3/4 ↔ 滚动 1/3，同一个控件）",
+        ok(sr.rowsPaged === "2,3,4" && sr.rowsScroll === "1,3",
+          p.label + "：★★ 「同屏行数」档位随模式重列（分页 2/3/4 ↔ 滚动 1/3，同一个控件）",
           "分页 " + sr.rowsPaged + " → 滚动 " + sr.rowsScroll);
-        ok(sr.rowsPagedBack === "1,2,3,4", p.label + "：★ 关掉后档位回到 1/2/3/4", "实际 " + sr.rowsPagedBack);
+        ok(sr.rowsPagedBack === "2,3,4", p.label + "：★ 关掉后档位回到 2/3/4", "实际 " + sr.rowsPagedBack);
         /* 静止态：**不播放**时也该是滚动模式的样子（用户实报：打开后首屏仍是旧样子） */
         /* 静止态的签名：**当前行**右移半行宽（当前点落中央）、**上一行**冻结在左半屏。
            两件事都要，只看一个会漏 —— 比如"所有行都没平移"时，当前行那半句也过不了，
