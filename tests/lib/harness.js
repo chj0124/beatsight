@@ -546,9 +546,9 @@ function loadApp(seed, opts){
       createDocumentFragment(){
         return Object.assign(makeEl("frag"), { _isFragment: true, tagName: "#fragment" });
       },
-      /* 本版：createElementNS 桩（琶音记号 dir:"A" 的内联 SVG——arpGlyph 用 createElementNS
-         构建真实 SVG，恒定标记、零拼串；桩不渲染几何，只给 setAttribute/appendChild
-         一个可落点的元素，测试可断言「宿主里挂了 SVG / path 带 arp-wave 类」）。 */
+      /* 本版：createElementNS 桩（琶音记号 dir:"A" 的波浪杆 SVG——arpGlyph 用 createElementNS
+         构建真实 SVG，恒定标记、零拼串；Chevron 头部走 createElement("span") 与 CSS mask。
+         桩不渲染几何，只给 setAttribute/appendChild 一个可落点的元素）。 */
       createElementNS: (ns, tag) =>
         Object.assign(makeEl("svg-" + String(tag || "dyn")), { tagName: String(tag || "").toUpperCase() }),
       /* 只支持 `#id .pill` 这一种选择器——setPressed() 需要它返回 pill 组；

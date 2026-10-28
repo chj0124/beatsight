@@ -1113,8 +1113,8 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    用变量对承载起点/终点（与参考页同形），三种弦区各一套，避免为每种组合写死 height+top */
 .strumv{position:absolute;top:0;bottom:0;width:2px;border-radius:1px;
   pointer-events:none;transform:translateX(-50%);
-  --chev-up:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16'%3E%3Cpath d='M3 10 L8 5 L13 10' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --chev-down:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16'%3E%3Cpath d='M3 6 L8 11 L13 6' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+  --chev-up:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZD0iTTMgMTAgTDggNSBMMTMgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=");
+  --chev-down:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZD0iTTMgNiBMOCAxMSBMMTMgNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==")}
 /* 杆身：从 --y1 画到 --y2。三类弦区各给一对变量 */
 .strumv::before{content:"";position:absolute;left:0;width:2px;
   top:var(--y1);height:calc(var(--y2) - var(--y1));
@@ -1159,20 +1159,22 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.hit.ghost{filter:none}
 .strumv.hit.ghost::before{background:none;border-left-color:var(--blue)}
 .strumv.hit.ghost::after{background:var(--blue)}
-/* ★ 本版（用户实报）：琶音记号（dir:"A" → .strumv.arp）——竖波浪线 + 顶端箭头，
-   与 D/U 的直杆箭头三分支。杆身/箭头由内联 SVG 承担（ARP_SVG，三处渲染点同一份标记）。
+/* ★ 本版（用户实报）：琶音记号（dir:"A" → .strumv.arp）——竖波浪线 + 顶端 Chevron，
+   与 D/U 的直杆箭头三分支。波浪杆由内联 SVG 承担，头部直接复用扫弦的 --chev-up 资源与 16×16 几何。
    ★ 直杆与折线伪元素都必须显式关掉：::before 是 .strumv 的**基础规则**（对所有 .strumv 生效，
    不带 .dn/.up 限定），不 content:none 的话屏幕上是「2px 直杆 + 波浪线」两根线并排；
-   折线头部同样不能叠到琶音的 SVG 箭头上。
+   通用折线伪元素同样不能叠到琶音自己的 Chevron 上。
    染态与直杆同语义：hit = 正在弹（绿 + drop-shadow，filter 在宿主上、svg 全覆盖）；
    ghost = 空扫（蓝虚线；琶音本身恒发声，此处仅为 rest+dir 组合的纵深防御）。 */
 .strumv.arp::before,.strumv.arp::after{content:none}
 /* 无方向空扫与逐弦拨弦也不得有折线头：前者只留虚线杆，后者只留 SVG 点/品数。 */
 .strumv.air::after,.strumv.pick::after{content:none}
 .strumv.arp{width:10px}
-.strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block}
+.strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block;overflow:visible}
 .strumv.arp .arp-wave{stroke:var(--peak);stroke-width:2;fill:none;stroke-linecap:round}
-.strumv.arp .arp-head{fill:var(--peak)}
+.strumv.arp .arp-head{position:absolute;left:50%;top:calc(var(--y1) - 5px);width:16px;height:16px;margin-left:-8px;
+  background:var(--peak);-webkit-mask-image:var(--chev-up);mask-image:var(--chev-up);
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
 /* 逐弦拨弦记号（v3.47.0 立；v3.48.0 几何重排、四轮定稿）：**点恒在**（.pick-dot =
    "拨这根弦"的底层标记，任何降级都兜底）；品数/技巧 = **描边数字**叠在点的位置上
    （.pick-txt，无底衬——用户拍板去胶囊；var(--bg) 描边 + paint-order:stroke 把身后
@@ -1221,11 +1223,11 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    第二级 = 整体 display:none，走既有 STRUM_MIN_W 门。编排页恒 notxt（总览只留点） */
 .strumv.pick svg.notxt .pick-lab,.strumv.pick.notxt .pick-lab{display:none}
 .strumv.arp.hit .arp-wave{stroke:var(--green)}
-.strumv.arp.hit .arp-head{fill:var(--green)}
+.strumv.arp.hit .arp-head{background:var(--green)}
 .strumv.arp.ghost .arp-wave{stroke:var(--blue);stroke-dasharray:3 3}
-.strumv.arp.ghost .arp-head{fill:var(--blue)}
+.strumv.arp.ghost .arp-head{background:var(--blue)}
 .strumv.hit.arp.ghost .arp-wave{stroke:var(--blue)}
-.strumv.hit.arp.ghost .arp-head{fill:var(--blue)}
+.strumv.hit.arp.ghost .arp-head{background:var(--blue)}
 /* 弦区色带（v2.2.0）已由 v2.4.2 的贯穿式竖箭头取代——弦区表达为"箭头跨哪几条弦"，
    .cell-zone / .cell-zone.z* 两条规则随之删除（不再有任何生成点） */
 /* 编辑器内联徽标（v2.2.0）：与主视图同一套类名语义（ed-* 前缀） */
@@ -5139,23 +5141,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5171  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6934  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9177  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10413 Modal         应用内弹窗
-     L10574 Viz           时值可视化渲染与每帧动画
-     L14320 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15074 Trainer       变速训练器
-     L15291 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15970 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17926 Editor        自定义节奏型编辑器
-     L19138 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19233 Ear           听辨训练（v1.10.0）
-     L19461 Arrange       曲式编排（v2.0.0）
-     L23597 Help          使用方法（v2.0.1）
-     L23752 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23834 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24130 初始化（装配） 各模块 hook 接线与启动
+     L5173  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6939  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9182  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10418 Modal         应用内弹窗
+     L10579 Viz           时值可视化渲染与每帧动画
+     L14325 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15079 Trainer       变速训练器
+     L15296 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15975 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17931 Editor        自定义节奏型编辑器
+     L19143 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19238 Ear           听辨训练（v1.10.0）
+     L19466 Arrange       曲式编排（v2.0.0）
+     L23602 Help          使用方法（v2.0.1）
+     L23757 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23839 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24135 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5181,7 +5183,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.58.2";
+const VERSION = "3.58.3";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6673,10 +6675,10 @@ const flashTheme = () => (document.body.getAttribute("data-theme") === "obs" ? F
 /* ★ 本版（用户实报）：琶音记号（dir:"A"）——示例曲《我们能不能不分手》引子小节的实际弹法。
    顶层共享件：主视图 / 编辑器 / 编排页三处渲染点必须画**同一个**记号，各写一遍必然漂移
    （本仓的教训：v2.4.3 的箭头尖端画反即是此类）。
-   arpGlyph：竖波浪线 + 顶端箭头，createElementNS 构建真实 SVG（恒定标记、零拼串——
-   不走 innerHTML，符合代码卫生 lint 的用意）。viewBox 高 44 = 主视图一格满行高；
-   弦区跨距由宿主 .strumv 的 --y1/--y2 变量裁（preserveAspectRatio:none 纵向拉伸）；
-   顶端箭头与 .dn 同向（▲ 在 --y1 端）——琶音由低音弦滚向高音弦，指向与下扫一致。
+   arpGlyph：竖波浪线 + 顶端 Chevron。波浪杆由 createElementNS 构建真实 SVG（零拼串），
+   头部是与扫弦共用 --chev-up 的 16×16 mask 元素，不再维护另一套实心三角路径。
+   viewBox 高 44 = 主视图一格满行高；弦区跨距由宿主 .strumv 的 --y1/--y2 变量裁
+   （preserveAspectRatio:none 纵向拉伸）；顶端 Chevron 与 .dn 同向，尖端落在 --y1。
    染态（hit/ghost）见 CSS .strumv.arp 区块；数据层零特判（发声走既有
    dir !== undefined 的扫弦声部入口）。 */
 /** @param {Element} host 承载记号节点的宿主（.strumv 层） @returns {void} */
@@ -6693,9 +6695,12 @@ function arpGlyph(host){
     p.setAttribute("d", d);
     return p;
   };
-  svg.appendChild(mk("arp-wave", "M5 44 C8.6 41.4 8.6 38.6 5 36 C1.4 33.4 1.4 30.6 5 28 C8.6 25.4 8.6 22.6 5 20 C1.4 17.4 1.4 14.6 5 12 C8.6 9.4 8.6 8.6 5 8"));
-  svg.appendChild(mk("arp-head", "M1.8 8.4 L8.2 8.4 L5 0.9 Z"));
+  svg.appendChild(mk("arp-wave", "M5 44 C8.6 41.4 8.6 38.6 5 36 C1.4 33.4 1.4 30.6 5 28 C8.6 25.4 8.6 22.6 5 20 C1.4 17.4 1.4 14.6 5 12 C8.6 9.4 8.6 8.6 5 0"));
+  const head = document.createElement("span");
+  head.className = "arp-head";
+  head.setAttribute("aria-hidden", "true");
   host.appendChild(svg);
+  host.appendChild(head);
 }
 /** dir → .strumv 类名后缀（D=dn / U=up / A=arp）。三处渲染点共用。
     @param {string} dir @returns {string} */

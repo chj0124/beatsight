@@ -26,6 +26,12 @@ const MUTANTS = [
     ".strumv.air::after,.strumv.pick::after{content:none}",
     ".strumv.air::after,.strumv.pick::after{content:\"\"}", "M3"),
    ["无方向空扫的 ::after 显式关闭", "逐弦拨弦的 ::after 显式关闭"]],
+  ["M4 矢量路径退化为不带命名空间的裸文本", s => s.replace(/data:image\/svg\+xml;base64/g, "data:image/svg+xml"),
+   ["两条矢量路径都使用带命名空间的 Base64 SVG"]],
+  ["M5 琶音头部不再复用 Chevron", s => once(s,
+    "background:var(--peak);-webkit-mask-image:var(--chev-up);mask-image:var(--chev-up);\n  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}\n/* 逐弦拨弦记号",
+    "background:var(--peak);-webkit-mask-image:none;mask-image:none;\n  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}\n/* 逐弦拨弦记号", "M5"),
+   ["琶音头部复用同一 Chevron"]],
 ];
 let hitN = 0, missN = 0;
 for (const [name, fn, keys] of MUTANTS){

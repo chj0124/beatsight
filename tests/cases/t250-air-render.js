@@ -44,7 +44,7 @@ section("T250a 主视图 · 无方向空扫 = .strumv.ghost.air（无 dn/up/arp�
   ok(!!g, "无方向空扫格渲染出 .strumv 记号（hasStr 生效）");
   eq(g && g.ghost, true, "带 .ghost（蓝虚线杆身）");
   eq(g && g.air, true, "★ 带 .air 类（无方向空扫锚点）");
-  eq(g && g.dn, false, "★ 不带 .dn（无方向 ⇒ 无箭头三角）");
+  eq(g && g.dn, false, "★ 不带 .dn（无方向 ⇒ 无方向箭头头部）");
   eq(g && g.up, false, "★ 不带 .up");
   eq(g && g.arp, false, "★ 不带 .arp");
   ok(/\.strumv\.air::after,\.strumv\.pick::after\{content:none\}/.test(html),

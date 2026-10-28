@@ -63,19 +63,23 @@ section("T238d 琶音记号 · .strumv.arp + 内挂 SVG（主视图渲染层）"
   const sm = layer.children.find(c => c.dataset && c.dataset.i === "0");
   ok(!!sm, "前提：第 1 格有扫弦记号节点");
   ok(/(^| )arp( |$)/.test(" " + sm.className + " "), "★★★ dir:A ⇒ .strumv 带 arp 类（三分支 dn/up/arp 的第三支）");
-  ok(!/(^| )(dn|up)( |$)/.test(" " + sm.className + " "), "★ 不带 dn/up（折线头部由 .arp::after 显式关闭，不叠加到 SVG 琶音上）");
+  ok(!/(^| )(dn|up)( |$)/.test(" " + sm.className + " "), "★ 不带 dn/up（通用折线伪元素由 .arp::after 显式关闭，不叠加到琶音头部）");
   /* ★★ 回归钉（本批实缺陷，用户实报"琶音画错了"）：.strumv::before 是**基础规则**，
      对所有 .strumv 生效（不带 .dn/.up 限定）——首版没关它，屏幕上是「2px 直杆 + 波浪线」
      两根线并排。桩不渲染伪元素，行为断言测不出，只能钉 CSS 源。 */
   ok(/\.strumv\.arp::before,\.strumv\.arp::after\{content:none\}/.test(html),
      "★★★ 直杆与折线伪元素均已对 .arp 显式关闭（content:none）——不会多画直杆或折线头");
   ok(!/(^| )ghost( |$)/.test(" " + sm.className + " "), "★ 琶音本身发声 ⇒ 无 ghost（空扫才蓝虚线）");
-  eq(sm.children.length, 1, "记号节点内恰好挂 1 个 SVG 子节点");
+  eq(sm.children.length, 2, "记号节点内恰好挂 1 个波浪 SVG + 1 个 Chevron 头部");
   const svg = sm.children[0];
-  eq(svg.tagName, "SVG", "★ 子节点是 createElementNS 建的 SVG（零拼串、不走 innerHTML）");
-  eq(svg.children.length, 2, "SVG 内 2 条 path（波浪线 + 顶端箭头）");
-  eq(svg.children[0].getAttribute("class"), "arp-wave", "★★★ path#1 = arp-wave（竖波浪线）");
-  eq(svg.children[1].getAttribute("class"), "arp-head", "★ path#2 = arp-head（顶端箭头，与下扫同向）");
+  eq(svg.tagName, "SVG", "★ 波浪杆是 createElementNS 建的 SVG（零拼串、不走 innerHTML）");
+  eq(svg.children.length, 1, "SVG 内只保留 1 条波浪 path，不再另画实心三角");
+  eq(svg.children[0].getAttribute("class"), "arp-wave", "★★★ path = arp-wave（竖波浪线）");
+  const head = sm.children[1];
+  eq(head.tagName, "SPAN", "★ 琶音头部是独立 mask 元素，与扫弦共用渲染方式");
+  eq(head.className, "arp-head", "★ 头部类名 = arp-head");
+  ok(/\.strumv\.arp \.arp-head\{[^}]*top:calc\(var\(--y1\) - 5px\)[^}]*width:16px;height:16px[^}]*-webkit-mask-image:var\(--chev-up\)/.test(html),
+     "★★★ 琶音头部复用同一 Chevron：16×16、尖端锚 --y1、mask = --chev-up");
 }
 
 section("T238e 琶音记号 · 三处渲染点共用同一份标记（顶层共享件）+ 编辑器 aria");

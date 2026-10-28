@@ -4046,7 +4046,7 @@ async function main(){
               + "亮度差 ≥60 —— 同色即记号被抹平（v3.31.0 改为填充压暗 / 记号仍取 --peak）",
               "填充 L=" + W.fillL + " vs 记号 L=" + W.inkL + "（差 " + Math.abs(W.fillL - W.inkL) + "）");
             ok(W.strumHeadInk !== null && /^rgb/.test(W.strumHeadInk),
-              p.label + "·" + vp + "：★ 箭头三角也取到实色（杆与头同源，不能只改一头）",
+              p.label + "·" + vp + "：★ 箭头头部也取到实色（杆与头同源，不能只改一头）",
               "箭头 " + W.strumHeadInk);
             ok(W.strumHeadW === 16 && W.strumHeadH === 16,
               p.label + "·" + vp + "：★★ 扫弦矢量头部 = 16×16px（实扫/空扫共用同一 ::after 几何）",

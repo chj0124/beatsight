@@ -15,7 +15,7 @@ function cellsOf(els, b){
 }
 /* v2.4.2：方向标注由「14px 方形徽标」换成**贯穿弦区的竖箭头** .strumv。
    断言口径随之改为「读 class 上的语义」，而不是"读字形的 textContent"——
-   箭头是纯 CSS 画的（::before 三角形），DOM 里**没有文字**可读，
+   箭头由杆身伪元素与矢量 mask 头部组成，DOM 里**没有文字**可读，
    方向/弦区/空扫三者全部编码在类名里（.dn/.up、.kF/.kB/.kT、.ghost）。
    这个改口径本身是好事：旧写法把"画了什么字形"当契约，一改字形就得改测试；
    新写法测的是"数据有没有正确翻译成可读的谱面信息"，与像素无关。 */
@@ -386,8 +386,12 @@ section("T47f 扫弦方向 · 矢量 Chevron 尖端锚点（上扫 (8,5) / 下�
   ok(/width:16px;height:16px;margin-left:-8px/.test(head)
     && /background:var\(--peak\)/.test(head) && /-webkit-mask-image:var\(--chev-up\)/.test(head),
     "头部为 16×16 矢量 mask，颜色继续由 --peak 提供");
-  ok(/d='M3 10 L8 5 L13 10'/.test(html) && /d='M3 6 L8 11 L13 6'/.test(html),
-    "上下扫路径的尖端坐标明确，不再依赖旋转后的盒角");
+  const svgSources = (html.match(/data:image\/svg\+xml;base64,([A-Za-z0-9+/=]+)/g) || []);
+  eq(svgSources.length, 2, "两条矢量路径都使用带命名空间的 Base64 SVG，不能退化成不渲染的裸文本路径");
+  const svgBodies = svgSources.map(src => Buffer.from(src.split(",")[1], "base64").toString("utf8"));
+  ok(svgBodies.some(src => src.includes('M3 10 L8 5 L13 10'))
+    && svgBodies.some(src => src.includes('M3 6 L8 11 L13 6')),
+    "解码后的上下扫路径尖端坐标明确，不再依赖旋转后的盒角");
   const ghostDn = (html.match(/\.strumv\.ghost\.dn::after\{[^}]*\}/) || [""])[0];
   const ghostUp = (html.match(/\.strumv\.ghost\.up::after\{[^}]*\}/) || [""])[0];
   ok(/top:calc\(var\(--y1\) - 5px\)/.test(ghostDn), "空扫 dn 尖端 = y1，不做外溢");
