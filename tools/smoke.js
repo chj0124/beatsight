@@ -1080,8 +1080,8 @@ function layoutProbe(){
     res.strumHeadInk = strum ? getComputedStyle(strum, "::after").borderBottomColor : null;
     if (strum){
       const headCss = getComputedStyle(strum, "::after");
-      res.strumHeadW = parseFloat(headCss.borderLeftWidth) + parseFloat(headCss.borderRightWidth);
-      res.strumHeadH = parseFloat(headCss.borderBottomWidth);
+      res.strumHeadW = parseFloat(headCss.width);
+      res.strumHeadH = parseFloat(headCss.height);
     }
     res.fillL = lumOf(res.cellFill); res.inkL = lumOf(res.strumInk);
     /* ★ 宽屏铺满那半**不在这里量**：本探针的视口是 1440，而主列 max-width 本就 1440——
@@ -4048,8 +4048,8 @@ async function main(){
             ok(W.strumHeadInk !== null && /^rgb/.test(W.strumHeadInk),
               p.label + "·" + vp + "：★ 箭头三角也取到实色（杆与头同源，不能只改一头）",
               "箭头 " + W.strumHeadInk);
-            ok(W.strumHeadW === 12 && W.strumHeadH === 10,
-              p.label + "·" + vp + "：★★ 扫弦三角头部 = 12×10px（实扫/空扫共用同一 ::after 几何）",
+            ok(W.strumHeadW === 16 && W.strumHeadH === 16,
+              p.label + "·" + vp + "：★★ 扫弦矢量头部 = 16×16px（实扫/空扫共用同一 ::after 几何）",
               "实测 " + W.strumHeadW + "×" + W.strumHeadH);
           }
           /* ★★★ v3.31.0（用户报障）②：宽屏铺满切换后，歌词轨宽度必须跟随 #viz。

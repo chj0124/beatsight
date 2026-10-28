@@ -372,36 +372,26 @@ section("T47e 扫弦方向 · dir-only 谱归扫弦声部 + 只改声部不动�
   ok(timesWith.length > timesWithout.length, "扫弦轨下网格拍点叠加在扫弦之上（声部并列，不是替代）");
 }
 
-/* ================= 场景 T47f：箭头 CSS 三角形方向与类名语义同源（v2.4.3 回归） ================= */
-section("T47f 扫弦方向 · CSS 三角形方向回归（dn=▲ border-bottom / up=▼ border-top）");
+/* ================= 场景 T47f：矢量 Chevron 的方向与头杆连接 ================= */
+section("T47f 扫弦方向 · 矢量 Chevron 尖端锚点（上扫 (8,5) / 下扫 (8,11)）");
 {
-  /* v2.4.3「尖端收进跨距」的编辑顺手把 .dn::after/.up::after 的 **border 方向写反了**
-     （dn 误用 border-top → ▼、up 误用 border-bottom → ▲）：D/U 渲染整个颠倒
-     （用户截图：全部箭头变"顶端 ▼ + 下垂长杆"），且 ghost/hit 染色全部失配——
-     ghost/hit up 的三角被 border-bottom-color:transparent 整个隐掉（截图中蓝色虚线无头即此）。
-     桩不跑样式引擎，测不了像素；但 border 方向是**源码级契约**：dn 的三角必须用
-     border-bottom（▲ 尖朝上 = D→↑）、up 必须用 border-top（▼ 尖朝下 = U→↓），
-     与 CSS 注释的方向映射、与 ghost/hit 的染色配对三者绑定。直接对标记文本断言，
-     哪天再动这两行，测试当场红。 */
   const dn = (html.match(/\.strumv\.dn::after\{[^}]*\}/) || [""])[0];
   const up = (html.match(/\.strumv\.up::after\{[^}]*\}/) || [""])[0];
   ok(dn !== "" && up !== "", "标记里存在 .strumv.dn::after / .up::after 两条规则（否则本组测的是空集）");
-  ok(/border-bottom:10px solid/.test(dn) && !/border-top:10px solid/.test(dn),
-     "dn 三角用 border-bottom（▲ 尖朝上 = D→↑）——v2.4.3 曾误写 border-top 导致整组箭头颠倒");
-  ok(/border-top:10px solid/.test(up) && !/border-bottom:10px solid/.test(up),
-     "up 三角用 border-top（▼ 尖朝下 = U→↓），与 dn 严格配对");
+  ok(/top:calc\(var\(--y1\) - 5px\)/.test(dn), "dn（下扫 6→1）用路径尖端 (8,5) 对准 y1");
+  ok(/top:calc\(var\(--y2\) - 11px\)/.test(up), "up（上扫 1→6）用路径尖端 (8,11) 对准 y2");
+  ok(!/transform:rotate/.test(dn) && !/transform:rotate/.test(up), "不再用旋转边框盒推算尖端");
+  ok(/-webkit-mask-image:var\(--chev-down\)/.test(up), "下扫使用独立 chev-down 路径");
   const head = (html.match(/\.strumv::after\{[^}]*\}/) || [""])[0];
-  ok(/margin-left:-6px/.test(head) && /border-left:6px solid transparent/.test(head)
-    && /border-right:6px solid transparent/.test(head),
-    "三角体统一为 12px 宽（左右各 6px），比旧 8px 更醒目");
-  ok(/top:var\(--y1\)/.test(dn) && /top:calc\(var\(--y2\) - 10px\)/.test(up),
-    "12×10 三角仍收在弦区跨距内，尖端锚点不外扩");
-  /* 染色规则与方向映射的配对也要守住：base 变体染 border-bottom-color（dn 的 ▲）、
-     .up 变体染 border-top-color（up 的 ▼）。方向若再翻转而染色不改，ghost/hit 的头会整个消失或失色 */
-  ok(/\.strumv\.ghost::after\{border-bottom-color:var\(--blue\)\}/.test(html) &&
-     /\.strumv\.ghost\.up::after\{border-top-color:var\(--blue\);border-bottom-color:transparent\}/.test(html),
-     "ghost 染色与方向映射同源（base 染 ▲ / .up 染 ▼）——失配时空扫的三角整个消失（v2.4.3 实测）");
-  ok(/\.strumv\.hit::after\{border-bottom-color:var\(--green\)\}/.test(html) &&
-     /\.strumv\.hit\.up::after\{border-top-color:var\(--green\);border-bottom-color:transparent\}/.test(html),
-     "hit 染色与方向映射同源（同上）");
+  ok(/width:16px;height:16px;margin-left:-8px/.test(head)
+    && /background:var\(--peak\)/.test(head) && /-webkit-mask-image:var\(--chev-up\)/.test(head),
+    "头部为 16×16 矢量 mask，颜色继续由 --peak 提供");
+  ok(/d='M3 10 L8 5 L13 10'/.test(html) && /d='M3 6 L8 11 L13 6'/.test(html),
+    "上下扫路径的尖端坐标明确，不再依赖旋转后的盒角");
+  const ghostDn = (html.match(/\.strumv\.ghost\.dn::after\{[^}]*\}/) || [""])[0];
+  const ghostUp = (html.match(/\.strumv\.ghost\.up::after\{[^}]*\}/) || [""])[0];
+  ok(/top:calc\(var\(--y1\) - 5px\)/.test(ghostDn), "空扫 dn 尖端 = y1，不做外溢");
+  ok(/top:calc\(var\(--y2\) - 11px\)/.test(ghostUp), "空扫 up 尖端 = y2，不做外溢");
+  ok(/\.strumv\.ghost::after\{background:var\(--blue\)\}/.test(html), "空扫矢量头部为蓝色");
+  ok(/\.strumv\.hit::after\{background:var\(--green\)\}/.test(html), "当前实扫矢量头部为绿色");
 }

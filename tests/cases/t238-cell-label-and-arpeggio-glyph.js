@@ -63,12 +63,12 @@ section("T238d 琶音记号 · .strumv.arp + 内挂 SVG（主视图渲染层）"
   const sm = layer.children.find(c => c.dataset && c.dataset.i === "0");
   ok(!!sm, "前提：第 1 格有扫弦记号节点");
   ok(/(^| )arp( |$)/.test(" " + sm.className + " "), "★★★ dir:A ⇒ .strumv 带 arp 类（三分支 dn/up/arp 的第三支）");
-  ok(!/(^| )(dn|up)( |$)/.test(" " + sm.className + " "), "★ 不带 dn/up（::after 那套直杆三角无 .dn/.up 着色，本来就不出墨）");
+  ok(!/(^| )(dn|up)( |$)/.test(" " + sm.className + " "), "★ 不带 dn/up（折线头部由 .arp::after 显式关闭，不叠加到 SVG 琶音上）");
   /* ★★ 回归钉（本批实缺陷，用户实报"琶音画错了"）：.strumv::before 是**基础规则**，
      对所有 .strumv 生效（不带 .dn/.up 限定）——首版没关它，屏幕上是「2px 直杆 + 波浪线」
      两根线并排。桩不渲染伪元素，行为断言测不出，只能钉 CSS 源。 */
-  ok(/\.strumv\.arp::before\{content:none\}/.test(html),
-     "★★★ 直杆伪元素已对 .arp 显式关闭（content:none）——缺了它琶音格会多画一根直线");
+  ok(/\.strumv\.arp::before,\.strumv\.arp::after\{content:none\}/.test(html),
+     "★★★ 直杆与折线伪元素均已对 .arp 显式关闭（content:none）——不会多画直杆或折线头");
   ok(!/(^| )ghost( |$)/.test(" " + sm.className + " "), "★ 琶音本身发声 ⇒ 无 ghost（空扫才蓝虚线）");
   eq(sm.children.length, 1, "记号节点内恰好挂 1 个 SVG 子节点");
   const svg = sm.children[0];

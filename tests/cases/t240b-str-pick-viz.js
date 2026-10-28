@@ -85,6 +85,8 @@ section("T240b-1 逐弦 · 纯 str 型建层 / has-pick 升档 / 宿主与 SVG �
     eq(svg.viewBox, "0 0 26 56", `第 ${i + 1} 格 SVG viewBox 26×56（has-pick 档格子带 1:1）`);
     eq(svg.preserveAspectRatio, "none", `第 ${i + 1} 格 pAR=none（跨行高等比铺的既有取舍）`);
   }
+  ok(/\.strumv\.air::after,\.strumv\.pick::after\{content:none\}/.test(html),
+    "★ 逐弦拨弦的 ::after 显式关闭——只留 SVG 点与品数，不叠加折线头");
   /* 单弦带品：点在 DOM（haslab 类，数字在时 CSS 藏）+ 描边数字叠在点的位置上 */
   const svg0 = svgOf(pickOf(els, 0, 0));
   const d0 = circlesOf(svg0)[0];

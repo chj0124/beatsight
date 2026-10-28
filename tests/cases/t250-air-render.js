@@ -7,7 +7,7 @@
      · 实扫（!air）：实心箭头（由 dir 决定；无方向则不生成记号）。
    弦区沿用 prevZone（air 不更新）。老数据「休止 + 方向」缺省 air 时推断为空扫。 */
 "use strict";
-const { loadApp, ok, eq, section } = require("../lib/harness");
+const { loadApp, ok, eq, section, html } = require("../lib/harness");
 
 function vizRows(els){ return els["viz"].children.filter(el => /(^| )bar-row( |$)/.test(el.className)); }
 function strumLayerOf(els, b){
@@ -47,6 +47,8 @@ section("T250a 主视图 · 无方向空扫 = .strumv.ghost.air（无 dn/up/arp�
   eq(g && g.dn, false, "★ 不带 .dn（无方向 ⇒ 无箭头三角）");
   eq(g && g.up, false, "★ 不带 .up");
   eq(g && g.arp, false, "★ 不带 .arp");
+  ok(/\.strumv\.air::after,\.strumv\.pick::after\{content:none\}/.test(html),
+    "★ 无方向空扫的 ::after 显式关闭——只留蓝虚线杆，不画折线头");
   eq(g && g.zone, "full", "无前一记实扫 → 弦区落默认全扫");
   const layer = strumLayerOf(els, 0);
   eq(layer ? layer.children.length : -1, 1, "空扫格只有一支记号（不是并列两支）");

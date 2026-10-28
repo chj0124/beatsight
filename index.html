@@ -15,7 +15,7 @@
        按深色渲染。经典主题下仍是 dark，逐位不变。 -->
 <meta id="colorSchemeMeta" name="color-scheme" content="dark">
 <meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象的「时值」翻译成「长度」；单文件零依赖，可离线使用。">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231ED760'/%3E%3Crect x='10' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='23' y='24' width='18' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='45' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231ED760'/%3E%3Crect x='10' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='23' y='24' width='18' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='45' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>BeatSight 时值节拍器</title>
@@ -1112,47 +1112,38 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    宿主 translateX(-50%) ⇒ 形心落锚点；不再是格中心——起点锚定见 buildRowCells 注释）。
    用变量对承载起点/终点（与参考页同形），三种弦区各一套，避免为每种组合写死 height+top */
 .strumv{position:absolute;top:0;bottom:0;width:2px;border-radius:1px;
-  pointer-events:none;transform:translateX(-50%)}
+  pointer-events:none;transform:translateX(-50%);
+  --chev-up:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16'%3E%3Cpath d='M3 10 L8 5 L13 10' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --chev-down:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16'%3E%3Cpath d='M3 6 L8 11 L13 6' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 /* 杆身：从 --y1 画到 --y2。三类弦区各给一对变量 */
 .strumv::before{content:"";position:absolute;left:0;width:2px;
   top:var(--y1);height:calc(var(--y2) - var(--y1));
   background:var(--peak)}
-/* 箭头尖端：CSS 三角形。下扫（数据 'D'）朝上、画在顶端；上扫（'U'）朝下、画在底端。★方向映射（v2.4.3 曾写反、已改回）：border-bottom=▲（尖朝上）配 .dn，border-top=▼（尖朝下）配 .up；下方 .ghost/.hit 染色规则与此一一对应（base 染 border-bottom-color、.up 变体染 border-top-color），再动 border 方向必须同步核对——写反的实测后果：D/U 渲染全颠倒 + ghost up 的三角整个消失（用户截图即此）。
-   ★ v2.4.3 关键几何决策：**尖端画在跨距之内，不外扩**。
-     参考页的写法是"尖端外扩 6-7px"（dn 画在 --y1-6、up 画在 --y2 且向下长 7px），
-     那在 kF（8→53）上看不出问题，但一放到**弦区**上就错：
-       · kT 高音区 = 1-3 弦 = 8→26，up 的尖端从 26 向下长到 33 —— **探到 4 弦（35）边上**；
-       · kB 低音区 = 4-6 弦 = 35→53，dn 的尖端从 35 向上长到 29 —— **探到 3 弦（26）之下**。
-     用户报的"高音区上扫的箭头尖端碰到了 4 弦，但高音区只在 1-3 弦"就是这个。
-     弦区的语义是"我扫了哪几条弦"，**墨迹不得越过所声明弦区的边界**，
-     所以把尖端收进跨距：dn 的尖端贴着 --y1（▲ 顶点在 y1），三角体垂进跨距内（y1..y1+10），
-     up 的尖端贴着 --y2（▼ 顶点在 y2），三角体收进跨距内（y2-10..y2）。这样"箭头覆盖的弦"
-     恒等于所声明的弦区，视觉与语义严格对齐。
-     代价是尖端与杆身重叠 10px——但尖端是不透明实心三角、杆身是 2px 竖条，
-     重叠只表现为"杆身顶端被三角覆盖"，比"箭头越界指向错误的弦"好得多。
-     三角体由 8×7 提至 12×10，提高移动谱面与单行大号档的辨识度；边界锚点不变。 */
-.strumv::after{content:"";position:absolute;left:50%;margin-left:-6px;
-  border-left:6px solid transparent;border-right:6px solid transparent}
-.strumv.dn::after{top:var(--y1);border-bottom:10px solid var(--peak)}
-.strumv.up::after{top:calc(var(--y2) - 10px);border-top:10px solid var(--peak)}
+/* 箭头尖端：16×16 Chevron 矢量路径，不再用旋转边框盒推算锚点。
+   上扫路径尖端 = (8,5)，下扫路径尖端 = (8,11)；top 直接由尖端反算，杆端与尖端相接。 */
+.strumv::after{content:"";position:absolute;left:50%;width:16px;height:16px;margin-left:-8px;
+  background:var(--peak);-webkit-mask-image:var(--chev-up);mask-image:var(--chev-up);
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
+.strumv.dn::after{top:calc(var(--y1) - 5px)}
+.strumv.up::after{top:calc(var(--y2) - 11px);-webkit-mask-image:var(--chev-down);mask-image:var(--chev-down)}
 /* 弦区跨距：低音区=下三线(4-6弦)、高音区=上三线(1-3弦)、全部弦=贯穿六线 */
 .strumv.kF{--y1:var(--yT1);--y2:var(--yB2)}   /* 全部弦 0→43（基础档；has-pick 档 0→55，编辑器 64 几何） */
 .strumv.kB{--y1:var(--yB1);--y2:var(--yB2)}   /* 低音区 25.8→43（4-6 弦） */
 .strumv.kT{--y1:var(--yT1);--y2:var(--yT2)}   /* 高音区 0→17.2（1-3 弦） */
 /* 空扫：蓝色虚线竖箭头（只动手不出声），弦区跟随前一记实扫 */
 .strumv.ghost::before{background:none;border-left:2px dashed var(--blue);width:0}
-.strumv.ghost::after{border-bottom-color:var(--blue)}
-.strumv.ghost.up::after{border-top-color:var(--blue);border-bottom-color:transparent}
+.strumv.ghost::after{background:var(--blue)}
+.strumv.ghost.dn::after{top:calc(var(--y1) - 5px)}
+.strumv.ghost.up::after{top:calc(var(--y2) - 11px)}
 /* 正在弹的箭头高亮：绿色 + 外发光，与格子的 .active 同步。
    v2.4.3：发光从 `box-shadow` 换成 `filter: drop-shadow`——箭头的墨迹由
-   ::before（杆身）与 ::after（三角）拼成，两者都不在 .strumv 自身的盒里
+   ::before（杆身）与 ::after（折线）拼成，两者都不在 .strumv 自身的盒里
    （::before/::after 是子级），box-shadow 只画在 2px 宽的宿主盒上，看着是一条细线在发光；
-   drop-shadow 按**实际像素**投影，杆身与三角各自发光，才是"整支箭头在亮"。
+   drop-shadow 按**实际像素**投影，杆身与折线各自发光，才是"整支箭头在亮"。
    这也是参考页的做法（.strumv.hit{filter:drop-shadow(...)}） */
 .strumv.hit{filter:drop-shadow(0 0 4px rgba(var(--green-rgb),.75))}
 .strumv.hit::before{background:var(--green)}
-.strumv.hit::after{border-bottom-color:var(--green)}
-.strumv.hit.up::after{border-top-color:var(--green);border-bottom-color:transparent}
+.strumv.hit::after{background:var(--green)}
 /* ★★★ v3.31.2（用户报障）：**空扫（.ghost）不得被 .hit 染成实线**。
    根因是一条**特异性打平、靠源序决胜负**的覆盖：
      · `.strumv.ghost::before{background:none;border-left:2px dashed var(--blue)}`（空扫＝蓝虚线）
@@ -1167,16 +1158,17 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    作用域 `.strumv.hit.ghost`（0,3,0）胜过 `.strumv.hit`（0,2,0），不依赖源序。 */
 .strumv.hit.ghost{filter:none}
 .strumv.hit.ghost::before{background:none;border-left-color:var(--blue)}
-.strumv.hit.ghost::after{border-bottom-color:var(--blue)}
-.strumv.hit.ghost.up::after{border-top-color:var(--blue);border-bottom-color:transparent}
+.strumv.hit.ghost::after{background:var(--blue)}
 /* ★ 本版（用户实报）：琶音记号（dir:"A" → .strumv.arp）——竖波浪线 + 顶端箭头，
    与 D/U 的直杆箭头三分支。杆身/箭头由内联 SVG 承担（ARP_SVG，三处渲染点同一份标记）。
-   ★ 直杆伪元素必须显式关掉：::before 是 .strumv 的**基础规则**（对所有 .strumv 生效，
-   不带 .dn/.up 限定），不 content:none 的话屏幕上是「2px 直杆 + 波浪线」两根线并排
-   ——本批首版就是这么画的（用户实报"画错了"）；::after 无 .dn/.up 着色本来就不出墨。
+   ★ 直杆与折线伪元素都必须显式关掉：::before 是 .strumv 的**基础规则**（对所有 .strumv 生效，
+   不带 .dn/.up 限定），不 content:none 的话屏幕上是「2px 直杆 + 波浪线」两根线并排；
+   折线头部同样不能叠到琶音的 SVG 箭头上。
    染态与直杆同语义：hit = 正在弹（绿 + drop-shadow，filter 在宿主上、svg 全覆盖）；
    ghost = 空扫（蓝虚线；琶音本身恒发声，此处仅为 rest+dir 组合的纵深防御）。 */
-.strumv.arp::before{content:none}
+.strumv.arp::before,.strumv.arp::after{content:none}
+/* 无方向空扫与逐弦拨弦也不得有折线头：前者只留虚线杆，后者只留 SVG 点/品数。 */
+.strumv.air::after,.strumv.pick::after{content:none}
 .strumv.arp{width:10px}
 .strumv.arp svg{position:absolute;left:0;top:var(--y1);width:10px;height:calc(var(--y2) - var(--y1));display:block}
 .strumv.arp .arp-wave{stroke:var(--peak);stroke-width:2;fill:none;stroke-linecap:round}
@@ -1188,7 +1180,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    复用 .strumv 家族的宿主与染态链，不新增颜色令牌：色由 color → currentColor 供给
    （SVG 只管形），常态 --peak 与箭头杆身同源。
    ::before 杆身必须显式关掉（同 .arp 的教训：基础规则对所有 .strumv 生效，
-   不关会多出一根 2px 直杆）；::after 无 .dn/.up 着色本来就不出墨。
+   不关会多出一根 2px 直杆）；::after 折线头同样显式关掉，只留 SVG 点与品数。
    ★ svg 高度钉 **--pick-h**（= 格子带高），不能 100%——.strums 宿主是**整行**高
    （格子带 + 标注带），100% 会把记号纵向拉成近两倍高的椭圆、点与弦线错位
    （v3.47.0/1 用户实拍"圆点太大"的根因）。overflow:visible 放行 ①/⑥ 弦数字
@@ -5147,23 +5139,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5179  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6942  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9185  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10421 Modal         应用内弹窗
-     L10582 Viz           时值可视化渲染与每帧动画
-     L14328 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15082 Trainer       变速训练器
-     L15299 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15978 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17934 Editor        自定义节奏型编辑器
-     L19146 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19241 Ear           听辨训练（v1.10.0）
-     L19469 Arrange       曲式编排（v2.0.0）
-     L23605 Help          使用方法（v2.0.1）
-     L23760 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23842 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24138 初始化（装配） 各模块 hook 接线与启动
+     L5171  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6934  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9177  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10413 Modal         应用内弹窗
+     L10574 Viz           时值可视化渲染与每帧动画
+     L14320 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15074 Trainer       变速训练器
+     L15291 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15970 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17926 Editor        自定义节奏型编辑器
+     L19138 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19233 Ear           听辨训练（v1.10.0）
+     L19461 Arrange       曲式编排（v2.0.0）
+     L23597 Help          使用方法（v2.0.1）
+     L23752 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23834 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24130 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5189,7 +5181,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.58.1";
+const VERSION = "3.58.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

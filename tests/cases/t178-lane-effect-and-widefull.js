@@ -57,11 +57,11 @@ section("T178a 已弹格填充与扫弦记号**不同源**（白底白记号的�
      故记号在压暗底上的对比不降反升（实测 Δ 0 → 219）。 */
   const shaft = ruleOf(CSS_CODE, ".strumv{position:absolute;top:0;bottom:0;width:2px");
   const shaftBefore = ruleOf(CSS_CODE, ".strumv::before");
-  const arrowDn = ruleOf(CSS_CODE, ".strumv.dn::after");
+  const arrowDn = ruleOf(CSS_CODE, ".strumv::after");
   ok(/background:var\(--peak\)/.test(shaft) || /background:var\(--peak\)/.test(shaftBefore),
     "★★ 扫弦箭杆仍吃 --peak（分离只做在填充侧——这样记号只需一种墨色，不必按格子状态翻转）");
-  ok(/border-bottom:10px solid var\(--peak\)/.test(arrowDn),
-    "★★ 箭头三角同样仍吃 --peak（杆与头一致，不能只改一头）");
+  ok(/background:var\(--peak\)/.test(arrowDn),
+    "★★ 矢量头部同样仍吃 --peak（杆与头一致，不能只改一边）");
 }
 
 /* ================= T178b：休止格压得更轻 ================= */
@@ -229,14 +229,12 @@ section("T178i 空扫＝蓝虚线，播放中不被染绿（用户报障「虚�
   ok(/\.strumv\.hit\.ghost::before\{background:none;border-left-color:var\(--blue\)\}/.test(css),
     "★★★ 空扫杆身保持 `background:none` + 蓝虚线（作用域 .strumv.hit.ghost 为 (0,3,0)，"
     + "胜过 .strumv.hit 的 (0,2,0)，**不依赖源序**）");
-  ok(/\.strumv\.hit\.ghost::after\{border-bottom-color:var\(--blue\)\}/.test(css)
-     && /\.strumv\.hit\.ghost\.up::after\{border-top-color:var\(--blue\);border-bottom-color:transparent\}/.test(css),
-    "★★★ 空扫的三角头**两个方向都**保持蓝色（下扫染 border-bottom、上扫染 border-top，"
-    + "与既有的 .ghost 两条规则一一对应，不能只改一头）");
+  ok(/\.strumv\.hit\.ghost::after\{background:var\(--blue\)\}/.test(css),
+    "★★★ 空扫矢量头部保持蓝色，不因播放高亮改色");
   /* 反向护栏：实扫必须仍然染绿（别把 .hit 整体改掉） */
   ok(/\.strumv\.hit::before\{background:var\(--green\)\}/.test(css)
-     && /\.strumv\.hit::after\{border-bottom-color:var\(--green\)\}/.test(css),
-    "★★ 实扫（非 ghost）仍按 .hit 染绿——本条只给空扫开例外，不动实扫的「正在发声」提示");
+     && /\.strumv\.hit::after\{background:var\(--green\)\}/.test(css),
+    "★★ 实扫（非 ghost）矢量头部仍按 .hit 染绿——本条只给空扫开例外");
   /* 源序纪律：四条例外必须排在 `.hit` 主规则**之后**（虽然特异性已足够，仍按本仓惯例靠后放便于阅读） */
   ok(css.indexOf(".strumv.hit.ghost") > css.indexOf(".strumv.hit::before"),
     "★★ 例外规则排在 .hit 主规则之后（本仓惯例：作用域收窄的例外放后面）");
