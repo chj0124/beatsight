@@ -177,6 +177,11 @@ const HTML_CHILDREN = {
     { className: "pill", dataset: { air: "off" } },
     { className: "pill", dataset: { air: "on" } },
   ],
+  pmRow: [
+    { className: "pill", dataset: { pm: "start" } },
+    { className: "pill", dataset: { pm: "end" } },
+    { className: "pill", dataset: { pm: "clear" } },
+  ],
 };
 function makeEl(id){
   /* classList 与 className 必须是同一份数据的两个视图（真实 DOM 就是如此）。

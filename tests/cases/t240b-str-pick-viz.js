@@ -104,9 +104,9 @@ section("T240b-1 逐弦 · 纯 str 型建层 / has-pick 升档 / 宿主与 SVG �
   eq(t0.getAttribute("text-anchor"), "middle", "文本水平居中");
   eq(t0.getAttribute("font-size"), "11", "品数 11px 粗体");
   eq(t0.getAttribute("y"), "44", "⑤弦 cy=4×11=44（与 .tab 第五线落点逐位一致）");
-  /* 带品带技巧：0P */
+  /* 带品带孤立旧技巧：单格只画品数，不再拼成 0P */
   const t1 = textsOf(svgOf(pickOf(els, 0, 1)))[0];
-  eq(t1.textContent, "0P", "★ 品+技巧合并为一个文本串「0P」（不另开点上方位置）");
+  eq(t1.textContent, "0", "★ 品数与技巧分离：单格只画「0」，不再拼接「0P」");
   ok(html.includes(".strumv.pick .pick-txt{fill:currentColor;font-weight:700;paint-order:stroke;stroke:var(--bg);stroke-width:2.2px;stroke-linejoin:round}"),
      "★ CSS：品数 = 粗体 + var(--bg) 描边（paint-order:stroke 掏空身后弦线，无底衬也不融背景）");
   eq(t1.getAttribute("y"), "11", "②弦 cy=11");

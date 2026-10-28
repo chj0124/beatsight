@@ -2532,7 +2532,8 @@ function presetFoldProbe(){
 }
 
 async function runPass(label, url, userDataDir){
-  const cdpPort = PORT_BASE;
+  /* 每通道独立 CDP 端口：即使上一实例的浏览器子进程尚未完全退出，也不会误连旧页面。 */
+  const cdpPort = PORT_BASE + (label.startsWith("http") ? 2 : 0);
   const args = [
     "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
     "--disable-extensions", "--window-size=1440,1000",
@@ -2542,6 +2543,7 @@ async function runPass(label, url, userDataDir){
        --no-sandbox 关掉该沙箱；--disable-dev-shm-usage 规避容器里 /dev/shm 过小导致崩溃。
        代价：仅作用于本脚本拉起的这一个一次性无头实例，且只加载自备的本地内容。 */
     "--no-sandbox", "--disable-dev-shm-usage",
+    "--no-proxy-server",   // file/http 都是本地内容；系统代理不能把 127.0.0.1 冒烟页面劫走
     "--remote-debugging-port=" + cdpPort,
     "--user-data-dir=" + userDataDir,
     url,
@@ -3004,7 +3006,15 @@ function portraitFixProbe(){
     result.errors.push(String(e && e.message ? e.message : e));
   }finally{
     if (cdp) cdp.close();
-    try{ child.kill(); }catch(e){}
+    /* 双通道共用 CDP 端口：必须等上一实例退出再开下一通道。否则 Windows 上 kill 尚未完成，
+       新实例 bind 失败，/json/list 连到的仍是上一通道被探针改过的页面（file 被误报成 http）。 */
+    if (child.exitCode === null && child.signalCode === null){
+      await new Promise(resolve => {
+        const timer = setTimeout(resolve, 2000);
+        child.once("exit", () => { clearTimeout(timer); resolve(); });
+        try{ child.kill(); }catch(e){ clearTimeout(timer); resolve(); }
+      });
+    }
   }
   return result;
 }
@@ -3386,7 +3396,7 @@ async function main(){
      而 runPass 里 fetch `/json/list` 却会成功——它连上的是**别人**的实例，页面不是我们的 URL，
      探针白等 4 秒拿不到 __beatBoot，于是整串断言变红。那是"端口是环境资源"被误报成"代码失败"，
      正是 P1-6/冒烟退出码要消除的那类假红。 */
-  if (await portInUse(PORT_BASE)){
+  if (await portInUse(PORT_BASE) || (!FILE_ONLY && await portInUse(PORT_BASE + 2))){
     console.log("  ⊘ 冒烟端口 " + PORT_BASE + " 已被占用 —— 跳过（端口是环境资源，不是失败项）");
     console.log("    想跑的话：设 BEATSIGHT_SMOKE_PORT=<空闲端口基号>（HTTP 取该值 +1）");
     process.exit(3);

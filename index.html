@@ -1196,7 +1196,16 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
 .strumv.pick .pick-dot.haslab{display:none}
 .strumv.pick svg.notxt .pick-dot.haslab{display:block}
 .strumv.pick .pick-txt{fill:currentColor;font-weight:700;paint-order:stroke;stroke:var(--bg);stroke-width:2.2px;stroke-linejoin:round}
-/* 空拨（rest+str，手到无声 = 闷音/虚拨记法）：点空心虚线（色仍由 .ghost 的 --blue 供给）；
+.strumv.pick .pick-dead{font-weight:500}
+/* 行级技巧层：跨格连接与 P.M. 不随单格 hit 变色，避免播放帧内新增 DOM 写入面。 */
+.tech-link{position:absolute;top:0;height:var(--pick-h);color:var(--peak);pointer-events:none;z-index:3}
+.tech-link svg{width:100%;height:100%;display:block;overflow:visible}
+.tech-link .tech-curve,.tech-link .tech-slide{stroke:currentColor;stroke-width:1.5;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.tech-link .tech-txt{fill:currentColor;font-weight:700;paint-order:stroke;stroke:var(--bg);stroke-width:2px;stroke-linejoin:round}
+.pm-range{position:absolute;top:-20px;min-width:30px;height:14px;border-bottom:1px dashed currentColor;color:var(--peak);font-size:9px;font-weight:700;line-height:12px;pointer-events:none;z-index:3}
+.edtrack .tech-link{top:6px;height:calc(100% - 12px)}
+.edtrack .pm-range{top:-2px}
+/* 空拨（rest+str，手到无声 = 空扫/空拨记法）：点空心虚线（色仍由 .ghost 的 --blue 供给）；
    数字无需特殊处理——描边镂空在蓝字上同样成立 */
 .strumv.pick.ghost .pick-dot{fill:none;stroke:currentColor;stroke-dasharray:2 2}
 .strumv.pick.hit{color:var(--green);filter:drop-shadow(0 0 4px rgba(var(--green-rgb),.75))}
@@ -2426,10 +2435,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
    折叠先例，窄档下靠 .ed-dir 的 flex-wrap 收纳，不顶破编辑器布局） */
 /* ★ 追补（用户实拍）：六行纵向占太高 → 两列网格（左 ①②③ / 右 ④⑤⑥，grid-auto-flow:column
    保持「① 在顶」的既有弦序口径），面板高度约减半；交互与 DOM 结构零变化 */
-.ed-str .str-lines{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto);grid-auto-flow:column;gap:8px 12px}
-.str-line{display:flex;gap:var(--sp-2);align-items:center}
-.str-fret{width:48px;background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);
+.ed-str .str-lines{display:grid;width:100%;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,auto);grid-auto-flow:column;gap:8px 12px}
+.str-line{display:flex;gap:var(--sp-2);align-items:center;min-width:0}
+.str-fret{width:48px;min-width:0;flex:0 0 48px;box-sizing:border-box;background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);
   color:var(--t1);font-size:12px;padding:var(--sp-2) var(--sp-2);font-family:inherit;text-align:center}
+.ed-str .str-tech{flex:1 1 auto;width:0;min-width:0;max-width:100%}   /* 原生 select 的最长选项不得顶出第二列 */
 .str-fret:disabled{opacity:.45}
 .str-fret:focus{border-color:var(--peak)}
 /* ★ PLAN-v11 B2：音符属性悬浮层（#edPop）——点音符块弹出、锚定该块，✕/ESC/空白/再点当前块收起。
@@ -2438,7 +2448,7 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 .ed-pop{position:absolute;z-index:5;left:16px;top:0;width:min(340px,calc(100% - 16px));
   background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);
   box-shadow:0 12px 32px rgba(0,0,0,.5);padding:12px 12px 2px}
-.ed-pop[hidden]{display:none}
+.ed-pop[hidden],#saveCopyBtn[hidden]{display:none}
 .ed-pop.off{opacity:0;visibility:hidden;transform:translateY(6px);pointer-events:none}
 @media (prefers-reduced-motion: no-preference){
   .ed-pop{transition:opacity .12s ease,transform .12s ease,visibility .12s}
@@ -3121,6 +3131,7 @@ body[data-theme="obs"] .arg-lyric-chip:not(.notechip) .pit-nm{text-shadow:0 0 1p
   #viz.has-pick .cell-label{top:38px}
   .edcell{--pick-sy:0.786}   /* 窄屏 .edtrack 56px → 内缩后 44px → 44/56 */
   .strumv.pick .pick-lab{display:none}
+  .tech-link,.pm-range{display:none}   /* 窄屏不缩小复杂技巧，沿用圆点降级 */
   /* 窄屏藏品后点回来兜底（与主档那条 haslab 藏点规则同档同特异性、
      本源序靠后胜出；窄格 svg.notxt 路径在主档另有一条。
      ★ 别把规则原文写进本注释——t240b 的反向验证靠"字符串只剩规则本体一处"成立） */
@@ -4215,9 +4226,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <button class="pill" data-air="on" aria-pressed="false" disabled>空扫</button>
           <span class="hint" id="airHint"></span>
         </div>
-        <!-- 逐弦拨弦（v3.47.0）：分解和弦记谱面板——点=弦、数字=品、字母=技巧
-             （H 击弦 / P 勾弦 / S 滑音 / O 泛音）。六行迷你面板作用于选中的音符：
-             开关 = 拨这根弦；品数框留空 = 不标品；技巧钮循环 无→H→P→S→O→无。
+        <!-- 逐弦拨弦：H/P/S 连接前后同弦音，O 为单音泛音，× 为哑音；P.M. 独立设区间。
+             六行迷你面板作用于选中的音符：开关 = 拨这根弦；品数框留空 = 不标品；技巧用下拉选择。
              格子带 str 时弦区行进入「逐弦优先」覆盖态，清空全部弦自动恢复可编辑。
         ★ DOM 预算纪律（smoke domNodes ≤1300，长期贴线）：六行面板（6×4=24 节点）改为
           **首次打开编辑器时由 Editor.ensureStrPanel() 按需构建**，不进首屏静态 DOM——
@@ -4225,9 +4235,16 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           仍留在标记里（check-dom-ids 的 $() 引用完整性只认标记里写死的 id）。
         ★ PLAN-v11：小节级「按序铺弦号」不进悬浮层（它作用于整小节、不属于任何音符块），
           留在页面原位（见下方 .ed-strfill）；面板本体随 #edPop 收放。 -->
-        <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（点=弦、数字=品、字母=技巧）">
+        <div class="ed-dir ed-str" id="strRow" role="group" aria-label="逐弦拨弦（弦号、品数、技巧与哑音）">
           <span class="hint">逐弦</span>
           <span class="hint" id="strHint"></span>
+        </div>
+        <div class="ed-dir" id="pmRow" role="group" aria-label="右手掌闷音区间">
+          <span class="hint">P.M.</span>
+          <button class="pill" data-pm="start" disabled>设起点</button>
+          <button class="pill" data-pm="end" disabled>设终点</button>
+          <button class="pill" data-pm="clear" disabled>清除区间</button>
+          <span class="hint" id="pmHint"></span>
         </div>
         <!-- 音符级操作归位：删除选中音符与属性浮层同属当前音符；无选中时禁用，而不是点了无效。 -->
         <div class="ed-actions">
@@ -4267,7 +4284,8 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       <!-- ★ 用户需求（本版）：**保存为预设**从顶栏移到底部——「归属」行下方单独一行、右对齐。
            保存是"填完 名称/标注/归属 之后"的收尾动作，从属关系更顺；顶栏只留「试听」（过程动作）。
            id 不变 ⇒ 保存逻辑与禁用逻辑（editorRender 里那一段）零改动。 -->
-      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <div style="display:flex;justify-content:flex-end;gap:var(--sp-2);margin-top:16px">
+        <button class="pill outline" id="saveCopyBtn" hidden>另存副本</button>
         <button class="pill" id="savePresetBtn" disabled>保存为预设</button>
       </div>
     </div>
@@ -4462,12 +4480,12 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           「起点 + 一点内缩」处——所有标注某一刻的内容（座次尺、时值名、和弦、歌词字）同一个惯例，不是误差</li>
         <!-- v3.47.0：逐弦拨弦（分解和弦）读法。图例行（三种视觉编码）保持不动——逐弦点只
              在带 str 记谱的型里出现，完整读法归本节（与 .viz-legend 的注释同一分工口径） -->
-        <li><b>分解和弦（逐弦拨弦）</b>：跑道上的<b>实心点 = 右手拨这根弦</b>（点的纵向位置对准六线谱的弦线，
-          点旁<b>数字 = 左手按的品</b>、<b>字母 = 技巧</b>——H 击弦 / P 勾弦 / S 滑音 / O 泛音，
-          这几下不出自右手但时机提示照常）；一格多点是「同时拨这几根弦」（加花/齐拨，各自标品数）；
-          <b>空心虚线点 = 空拨</b>（手到无声的闷音/虚拨记法）。声音只分<b>单拨/齐拨</b>两种可辨音色、
-          不还原音高——音位信息全在显示层。录入走编辑器选中音符后的「逐弦」面板
-          （开关 + 品数 + 技巧），或小节级<b>按序铺弦号</b>：5:3 3 2 3 1 3 2 3 = 53231323 带根音品数</li>
+        <li><b>分解和弦（逐弦拨弦）</b>：跑道上的<b>实心点 = 右手拨这根弦</b>（点的纵向位置对准六线谱的弦线），
+          点旁<b>数字 = 品</b>、<b>× = 哑音</b>；<b>H/P/S = 前后同弦音之间的击弦 / 勾弦 / 滑音连接</b>，
+          O = 单音泛音，P.M. = 右手掌闷音区间；一格多点是「同时拨这几根弦」；
+          <b>空心虚线点 = 空扫/空拨</b>（手到但不触弦，不是闷音）。声音只分<b>单拨/齐拨</b>两种可辨音色、
+          不还原音高。录入走编辑器选中音符后的「逐弦」面板（开关 + 品数 + 技巧下拉），
+          P.M. 用「设起点 / 设终点」；小节级<b>按序铺弦号</b>支持 5:3（品数）与 5:x（哑音）</li>
         <li>底部 <b>1 e &amp; a</b> 是拍内座次，帮你对齐十六分位置；跑道亮边 = 换拍</li>
         <li><b>弹跳球</b>预告「何时」落拍：跳得越高说明离下一颗越久；球会提前起跳落在下一个音上<!-- v3.1.3 -->（<b>仅分页模式</b>显示；连续滚动模式下落拍由播放头与内容滚动承担，不画球）</li>
         <li>播放头扫过的位置就是「现在」，已弹过的格子会亮白</li>
@@ -4733,13 +4751,11 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <li><b>弦区（全扫（默认） / 低弦区 ④⑤⑥ / 高弦区 ①②③）</b>：给扫弦选"拨片扫过哪几根弦"。以标准调弦（⑥E ⑤A ④D ③G ②B ①E，⑥ 最粗）来说：<b>全扫</b> = 6 根弦都扫——民谣式扫弦的常态，<b>新增的扫弦默认就是它</b>（不特别标注 = 全扫，导入的 JSON 同理）；<b>低弦区</b> = 只扫 ④⑤⑥ 这三根较粗的低音弦，音闷；<b>高弦区</b> = 只扫 ①②③ 这三根较细的高音弦，音亮。方向（↑↓）与弦区<b>互不约束</b>——下扫、上扫都可以配任一弦区。它是<b>音色档位</b>而非逐弦开关——应用里用低/高两档滤波频率模拟明暗差异（全扫 = 两档一起响），<b>不改节奏与发声时刻</b>：同一拍换弦区，时间轴分毫不动</li>
           <!-- v3.47.0（方案 §7 的过时文案核对项）：上一条的「而非逐弦开关」在新功能落地后
                需要一句指向，避免读者误以为"应用没有逐弦能力"——逐弦拨弦面板（分解和弦） -->
-          <li><b>逐弦拨弦（分解和弦）</b>：比弦区更细一格的记谱——选中音符后用「逐弦」面板指定
-            <b>拨哪根弦</b>（跑道上的点 = 弦，纵向位置对准六线谱弦线）、可选<b>品数</b>（点旁数字 =
-            左手按的品）与<b>技巧</b>（H 击弦 / P 勾弦 / S 滑音 / O 泛音——这几下不出自右手但
-            时机提示照常）；一格可多点（加花/齐拨）；整小节一次录入用<b>按序铺弦号</b>
-            （5:3 3 2 3 1 3 2 3 = 53231323 带根音品数，颗数须与发声格数相等）。
-            格子带逐弦记谱时弦区被覆盖（面板会提示「逐弦优先」，清空全部弦自动恢复）；
-            声音只分<b>单拨/齐拨</b>两种音色、不还原音高——读法详见「画面怎么看」</li>
+          <li><b>逐弦拨弦（分解和弦）</b>：选中音符后用「逐弦」面板指定弦号、品数与技巧。
+            H/P/S 设在目标音上，自动连接最近的前一同弦带品音；O 是单音泛音，× 是哑音。
+            P.M. 独立用「设起点 / 设终点」标记连续逐弦发声格；空扫/空拨不包含这些演奏技巧。
+            整小节一次录入用<b>按序铺弦号</b>（5:3 = 品数，5:x = 哑音，颗数须与发声格数相等）。
+            格子带逐弦记谱时弦区被覆盖；声音只分<b>单拨/齐拨</b>两种音色、不还原音高</li>
         </ul>
 
         <template id="helpFigsEditor">
@@ -4753,10 +4769,10 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
             <rect x="212" y="32" width="60" height="22" rx="4" fill="#232323"/>
             <text x="290" y="47" font-size="9" fill="#6a6a6a">每小节须恰好占满 N 拍 · Ctrl+Z 撤销</text>
             <rect x="8" y="70" width="544" height="40" rx="8" fill="none" stroke="#2c2c2c"/>
-            <text x="20" y="88" font-size="9" fill="#b3b3b3">试听 → 命名 → 保存为预设（生成新副本，原曲式仍用原版）</text>
+            <text x="20" y="88" font-size="9" fill="#b3b3b3">自定义可保存修改（覆盖原型）或另存副本；内置/示例曲只读</text>
             <text x="20" y="106" font-size="9" fill="#6a6a6a">与编排的关系：这里是「零件工坊」，曲式编排引用这些零件装配成歌</text>
           </svg>
-          <figcaption>节奏型编辑器：画好一个型 → 存为副本 → 回编排页换型使用（零件 ⇄ 装配单）</figcaption>
+          <figcaption>节奏型编辑器：自定义修改后保存即更新原引用；内置/示例曲只能另存副本</figcaption>
         </div>
         </template>
         <div id="mountFigsEditor"></div>
@@ -5115,23 +5131,23 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5147  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6809  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9050  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10286 Modal         应用内弹窗
-     L10447 Viz           时值可视化渲染与每帧动画
-     L14177 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L14931 Trainer       变速训练器
-     L15148 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15827 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17783 Editor        自定义节奏型编辑器
-     L18919 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19014 Ear           听辨训练（v1.10.0）
-     L19242 Arrange       曲式编排（v2.0.0）
-     L23378 Help          使用方法（v2.0.1）
-     L23533 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23615 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L23911 初始化（装配） 各模块 hook 接线与启动
+     L5163  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6925  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9168  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L10404 Modal         应用内弹窗
+     L10565 Viz           时值可视化渲染与每帧动画
+     L14303 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15057 Trainer       变速训练器
+     L15274 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15953 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17909 Editor        自定义节奏型编辑器
+     L19121 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19216 Ear           听辨训练（v1.10.0）
+     L19444 Arrange       曲式编排（v2.0.0）
+     L23580 Help          使用方法（v2.0.1）
+     L23735 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23817 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24113 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5157,7 +5173,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.56.5";
+const VERSION = "3.57.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6503,8 +6519,8 @@ function migrateDemoToBuiltins(customs, arranges){
 /** @typedef {{ t: number, dur: number, ch: string }} LyricChar 单字：t=段内 tick 起点（已吸附十六分格）、dur=时长、ch=字（已 trim+截断）。v3.37.0 B 期起**不再携带 p**——音高全部迁入行级 notes（姊妹轨），存量 p 由 normLyricLine 加载时一次性迁移 */
 /** @typedef {{ t: number, dur: number, p: number }} LyricNote 一颗音符：t/dur 与字同一网格同一坐标系（段内绝对 tick，dur 必为 LYRIC_GRID 整数倍），p=整数半音（60=C4，域 [PITCH_MIN, PITCH_MAX]）。互不重叠（normLyricLine 跳过靠后的重叠音符，同字的重叠口径） */
 /** @typedef {{ arrangeId: string, secUid: string, chars: LyricChar[], notes?: LyricNote[] }} LyricLine 一行歌词绑定一个曲式段落（v2.26.0 起寻址键是段 uid）；v3.37.0 B 期：可选 notes = 旋律姊妹轨（**notes 非空才写键**——无旋律的行落盘形状与旧格式逐位一致）。chars 与 notes 可各自为空：双空 = 行不存在；chars 空而 notes 有 = 纯谱行（前奏/间奏/尾奏） */
-/** @typedef {{ s: number, f?: number, tech?: string }} StrNote 逐弦拨弦的一条：s=弦号 1–6（①=1），f=品数 0–24 可省略（省略=不标），tech=技巧 H/P/S/O 可省略（H 击弦 / P 勾弦 / S 滑音 / O 泛音）。纯记谱信息（告诉右手拨哪根、左手按哪品），不进发声路径——发声只看这一格拨了几根弦 */
-/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number, str?: StrNote[], air?: boolean }} Step 一小节的单步（时值槽；dir/zone/str/air 脏值静默降级省略，zone 取值对应 VALID_ZONE=[0,1,2]；str 存在时渲染与发声都以它为准、zone 失效——见 normStr 与 stepHasStrumLike；rest/air 是独立数据轴，旧组合均可导入；编辑器新写入只让「节拍」格休止） */
+/** @typedef {{ s: number, f?: number, tech?: string, dead?: boolean }} StrNote 逐弦拨弦的一条：s=弦号 1–6（①=1），f=品数 0–24 可省略；tech=H/P/S/O（H/P/S 挂在目标音上，向前连接最近同弦带品音；O 为单音泛音）；dead=true 用 × 代替品数，与 f/tech 互斥。纯记谱信息，不进发声路径 */
+/** @typedef {{ t: number, rest: boolean, dir?: string, zone?: number, str?: StrNote[], air?: boolean, pm?: boolean }} Step 一小节的单步（pm=true 表示右手掌闷音，连续步在谱面合并为 P.M. 区间；其余字段见 normStr 与 stepHasStrumLike） */
 /** @typedef {{ id?: string, name: string, meter: number, accents?: number[], bars: Step[][], label?: string }} Preset 归一化后的节奏型（id 在落库时补） */
 /** @typedef {{ ref: { type: string, idx?: number, id?: string }, repeats: number, chords?: string }} Block 曲式的一段内的一块（遍数 × 型长 = 该块小节数；ref.type 是字符串判别符，与曲式块运行时形状一致） */
 /** @typedef {{ uid: string, name: string, blocks: Block[] }} Section 曲式的一段（uid 是稳定身份，段挪位/被删不改变） */
@@ -6705,35 +6721,86 @@ function pickGlyph(host, str){
   svg.setAttribute("aria-hidden", "true");
   for (const e of str){
     const cy = (e.s - 1) * 11;
-    const label = (e.f !== undefined && e.f !== null ? String(e.f) : "") + (e.tech || "");
-    /* 点恒在 DOM（拨弦的底层标记）：窄屏/窄格藏数字（notxt / ≤960px 档）时由它兜底，
-       带品的弦也不再可能"整格全空"（四轮根因，见上方注释）。
-       带品 ⇒ 加 haslab 类：数字在时 CSS 藏点（五轮：数字两侧露出的圆点边缘显眼，
-       用户实拍 ⇒ 藏），降级藏品时点回来（见 .strumv.pick 区块的三条规则） */
+    /* 单格只画品数或 ×；H/P/S 的关系由 techniqueOverlay 画在相邻音符之间，O 单独置顶。 */
+    const label = e.dead ? "×" : (e.f !== undefined && e.f !== null ? String(e.f) : "");
     const c = document.createElementNS(NS, "circle");
     c.setAttribute("class", label ? "pick-dot haslab" : "pick-dot");
     c.setAttribute("cx", "13");
     c.setAttribute("cy", String(cy));
     c.setAttribute("r", "3.4");
     svg.appendChild(c);
-    if (label){
-      /* 描边数字：叠在点的位置上（盖住点），描边色 = var(--bg) 把弦线在数字身后断开。
-         宽随字数自然伸展、无胶囊宽度约束（"12"/"3P" 都不再撞邻格） */
+    if (label || e.tech === "O"){
       const g = document.createElementNS(NS, "g");
       g.setAttribute("class", "pick-lab");
-      const tx = document.createElementNS(NS, "text");
-      tx.setAttribute("x", "13");
-      tx.setAttribute("y", String(cy));
-      tx.setAttribute("class", "pick-txt");
-      tx.setAttribute("font-size", "11");
-      tx.setAttribute("text-anchor", "middle");
-      tx.setAttribute("dominant-baseline", "central");
-      tx.textContent = label;
-      g.appendChild(tx);
+      if (label){
+        const tx = document.createElementNS(NS, "text");
+        tx.setAttribute("x", "13"); tx.setAttribute("y", String(cy));
+        tx.setAttribute("class", "pick-txt" + (e.dead ? " pick-dead" : ""));
+        tx.setAttribute("font-size", e.dead ? "14" : "11");
+        tx.setAttribute("text-anchor", "middle"); tx.setAttribute("dominant-baseline", "central");
+        tx.textContent = label;
+        g.appendChild(tx);
+      }
+      if (e.tech === "O"){
+        const tx = document.createElementNS(NS, "text");
+        tx.setAttribute("x", "13"); tx.setAttribute("y", String(cy - 9));
+        tx.setAttribute("class", "pick-txt pick-tech");
+        tx.setAttribute("font-size", "8"); tx.setAttribute("text-anchor", "middle");
+        tx.setAttribute("dominant-baseline", "central"); tx.textContent = "O";
+        g.appendChild(tx);
+      }
       svg.appendChild(g);
     }
   }
   host.appendChild(svg);
+}
+/** 行级技巧覆盖层：H/P 弧线、S 斜线、P.M. 区间。水平端点与逐弦点共用一条锚点公式，
+    但不在单格 pickGlyph 内跨格读 DOM；返回值供窄格降级按端点格宽统一隐藏。
+    @param {HTMLElement} host .strums 或 .edtrack @param {any[]} bar 本行完整片段
+    @param {number} barTicks 本行 tick 总数 @returns {{el:HTMLElement,cells:number[]}[]} */
+function techniqueOverlay(host, bar, barTicks){
+  const starts = /** @type {number[]} */ ([]), accByStep = /** @type {number[]} */ ([]);
+  let acc = 0;
+  bar.forEach(s => { starts.push(acc); accByStep.push(s.t); acc += s.t; });
+  const inset = (/** @type {number} */ i) => "clamp(4px," + (accByStep[i] / barTicks * 25) + "%,28px)";
+  const leftOf = (/** @type {number} */ i) => "calc(" + (starts[i] / barTicks * 100) + "% + " + inset(i) + ")";
+  const widthOf = (/** @type {number} */ from, /** @type {number} */ to) => from === to ? "calc(30px * var(--pick-sy, 1))"
+    : "calc(" + ((starts[to] - starts[from]) / barTicks * 100) + "% + " + inset(to) + " - " + inset(from) + ")";
+  const NS = "http://www.w3.org/2000/svg";
+  const marks = [];
+  for (const link of techLinksFor(bar)){
+    const el = document.createElement("div");
+    el.className = "tech-link";
+    el.dataset.from = String(link.from); el.dataset.to = String(link.to); el.dataset.tech = link.tech;
+    el.style.left = leftOf(link.from); el.style.width = widthOf(link.from, link.to);
+    el.setAttribute("aria-hidden", "true");
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 100 56"); svg.setAttribute("preserveAspectRatio", "none");
+    const cy = (link.s - 1) * 11;
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("class", link.tech === "S" ? "tech-slide" : "tech-curve");
+    path.setAttribute("fill", "none");
+    const d = link.tech === "S"
+      ? (link.toF === link.fromF ? `M 8 ${cy} L 92 ${cy}` : `M 8 ${cy + (link.toF > link.fromF ? 4 : -4)} L 92 ${cy + (link.toF > link.fromF ? -4 : 4)}`)
+      : `M 8 ${cy} Q 50 ${cy - 18} 92 ${cy}`;
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+    const tx = document.createElementNS(NS, "text");
+    tx.setAttribute("x", "50"); tx.setAttribute("y", String(cy - (link.tech === "S" ? 9 : 14)));
+    tx.setAttribute("class", "tech-txt"); tx.setAttribute("font-size", "8");
+    tx.setAttribute("text-anchor", "middle"); tx.setAttribute("dominant-baseline", "central");
+    tx.textContent = link.tech; svg.appendChild(tx); el.appendChild(svg); host.appendChild(el);
+    marks.push({ el, cells: [link.from, link.to] });
+  }
+  for (const run of pmRunsFor(bar)){
+    const el = document.createElement("div");
+    el.className = "pm-range"; el.textContent = "P.M.";
+    el.dataset.from = String(run.from); el.dataset.to = String(run.to);
+    el.style.left = leftOf(run.from); el.style.width = widthOf(run.from, run.to);
+    el.setAttribute("aria-hidden", "true"); host.appendChild(el);
+    marks.push({ el, cells: Array.from({ length: run.to - run.from + 1 }, (_, k) => run.from + k) });
+  }
+  return marks;
 }
 
 /* ---- 逐弦拨弦（v3.47.0）· 共享常量与归一化 ----
@@ -6767,6 +6834,13 @@ function normStr(raw, isRest){
     if (seen.has(s)) continue;                       // 重复 s：保留首个
     seen.add(s);
     const item = /** @type {any} */ ({ s });
+    /* 哑音是发声演奏法，空扫/空拨（rest）不成立；与品数、其它技巧互斥。
+       rest+dead+f 的旧/脏组合按 rest+tech+f 同例：只保留品数与拨弦点。 */
+    if (!isRest && e.dead === true){
+      item.dead = true;
+      out.push(item);
+      continue;
+    }
     if (e.f !== undefined && e.f !== null &&
         typeof e.f === "number" && Number.isInteger(e.f) && e.f >= 0 && e.f <= STR_F_MAX) item.f = e.f;
     if (!isRest && e.tech !== undefined && e.tech !== null && VALID_TECH.includes(e.tech)) item.tech = e.tech;
@@ -6774,6 +6848,47 @@ function normStr(raw, isRest){
   }
   out.sort((a, b) => a.s - b.s);
   return out.length ? out : undefined;
+}
+/** 查找目标格左侧最近的同弦带品发声音。
+    @param {any[]} bar @param {number} to @param {number} s @returns {{from:number,fromF:number}|null} */
+function techSourceFor(bar, to, s){
+  for (let j = to - 1; j >= 0; j--){
+    const step = bar[j];
+    if (!step || step.rest || !Array.isArray(step.str)) continue;
+    const prev = step.str.find((/** @type {any} */ x) => x && x.s === s && !x.dead && x.f !== undefined);
+    if (prev) return { from: j, fromF: prev.f };
+  }
+  return null;
+}
+/** 解析一小节内的 H/P/S 连接。技巧挂在目标音；前音 = 左侧最近同弦、非空扫且带品的音。
+    孤立技巧保留在数据里但不产出连接，避免旧数据被静默删除或画成错误的单音后缀。
+    @param {any[]} bar @returns {{from:number,to:number,s:number,tech:string,fromF:number,toF:number}[]} */
+function techLinksFor(bar){
+  const out = /** @type {{from:number,to:number,s:number,tech:string,fromF:number,toF:number}[]} */ ([]);
+  (bar || []).forEach((step, i) => {
+    if (!step || step.rest || !Array.isArray(step.str)) return;
+    for (const e of step.str){
+      if (!e || e.dead || !["H", "P", "S"].includes(e.tech) || e.f === undefined) continue;
+      const found = techSourceFor(bar, i, e.s);
+      if (found) out.push({ from: found.from, to: i, s: e.s, tech: e.tech, fromF: found.fromF, toF: e.f });
+    }
+  });
+  return out;
+}
+/** 连续 pm=true 的逐弦发声步合并为 P.M. 区间；换行时调用方只传本行片段，区间自然截断。
+    @param {any[]} bar @returns {{from:number,to:number}[]} */
+function pmRunsFor(bar){
+  const out = /** @type {{from:number,to:number}[]} */ ([]);
+  let start = -1;
+  (bar || []).forEach((s, i) => {
+    const on = !!(s && s.pm === true && !s.rest && s.str && s.str.length);
+    if (on && start < 0) start = i;
+    if ((!on || i === bar.length - 1) && start >= 0){
+      out.push({ from: start, to: on ? i : i - 1 });
+      start = -1;
+    }
+  });
+  return out;
 }
 /** 单格的「带扫弦类记谱」判据（v3.47.0；v3.52.0 纳入 air）：dir/zone/str/air 任一存在。
     hasStrum（型级）与 AudioEngine 的 stepVoiceOf（格级声部路由）共用这一份——
@@ -6784,21 +6899,22 @@ function normStr(raw, isRest){
 function stepHasStrumLike(s){
   return !!s && (s.dir !== undefined || s.zone !== undefined || !!(s.str && s.str.length) || s.air === true);
 }
-/** 解析「按序铺弦号」文本（v3.47.0，编辑器小节级输入框）：语法 `s[:f][tech]` 空格分词，
-    混写合法——`5`（裸弦）/ `5:3`（带品）/ `2:0H`（带品带技巧）/ `3P`（无品带技巧）。
+/** 解析「按序铺弦号」文本：语法 `s[:f][tech]` 空格分词，
+    混写合法——`5`（裸弦）/ `5:3`（带品）/ `2:0H`（带品带技巧）/ `3P`（无品带技巧）/ `5:x`（哑音）。
     纯函数、可单测；任一词不匹配即整体失败（不写半截的纪律由调用方守：
     ok 才逐格写入，失败只报错文案）。
     @param {string} text @returns {{ok: boolean, list?: any[], why?: string}} */
 function parseStrFill(text){
   const words = String(text ?? "").trim().split(/\s+/).filter(Boolean);
   if (!words.length) return { ok: false, why: "先填弦号，例如：5:3 3 2 3 1 3 2 3" };
-  const re = /^([1-6])(?::([0-9]|1[0-9]|2[0-4]))?([HPSO])?$/;
+  const re = /^([1-6])(?::([0-9]|1[0-9]|2[0-4]|x))?([HPSO])?$/;
   const list = [];
   for (const w of words){
     const m = re.exec(w);
-    if (!m) return { ok: false, why: "「" + w + "」不是合法的弦号（语法 s[:f][tech]，如 5:3 / 3P / 2:0H）" };
+    if (!m || (m[2] === "x" && m[3])) return { ok: false, why: "「" + w + "」不是合法的弦号（语法 s[:f][tech]，如 5:3 / 3P / 2:0H / 5:x）" };
     const item = /** @type {any} */ ({ s: +m[1] });
-    if (m[2] !== undefined) item.f = +m[2];
+    if (m[2] === "x") item.dead = true;
+    else if (m[2] !== undefined) item.f = +m[2];
     if (m[3]) item.tech = m[3];
     list.push(item);
   }
@@ -8577,7 +8693,9 @@ const Store = (() => {
            归一化唯一入口 normStr（升序去重 / f 0–24 / tech 白名单 / rest 抹 tech）；
            老版本应用导入含 str 的导出包时，本白名单整体丢弃 str（既有降级惯例，可接受）。 */
         const str = normStr(s.str, rest);
-        steps.push({t, rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {}), ...(str ? {str} : {}), ...(typeof air === "boolean" ? {air} : {})});
+        /* P.M. 是逐弦发声格的区间演奏法：rest / 无 str 时静默省略；连续 true 由渲染层合并。 */
+        const pm = (s.pm === true && !rest && !!str) ? true : undefined;
+        steps.push({t, rest, ...(dir ? {dir} : {}), ...(zone !== undefined ? {zone} : {}), ...(str ? {str} : {}), ...(typeof air === "boolean" ? {air} : {}), ...(pm ? {pm} : {})});
       }
       if (sum !== meter * TPB) return null;                            // 整数严格相等
       bars.push(steps);
@@ -10475,6 +10593,8 @@ let zoneEls = /** @type {HTMLElement[][]} */ ([]), rulerEls = /** @type {Record<
 /* 扫弦箭头层（v2.4.3）：每小节一行，与 rowEls 逐位同构（无扫弦记谱的小节为 null）。
    箭头挂在这里而不是格子里——格子有 overflow:hidden，挂进去会被裁（见 .strums 注释） */
 let strumLayers = /** @type {(HTMLElement|null)[]} */ ([]);
+  /** @type {{el:HTMLElement,cells:number[]}[][]} 每行的跨格技巧标记，供窄格降级 */
+  let techMarkEls = [];
   /* 小节和弦名胶囊（v2.7.4）：每小节行上方一颗，与 rowEls 逐位同构（无和弦的小节存 null）。
      与 rowEls/cellEls 同一生命周期——由 buildBarRow 逐行 append、buildViz 清空 */
   let barChordEls = /** @type {(HTMLElement|null)[]} */ ([]);
@@ -11565,7 +11685,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
     const cells = buildRowCells(b, p, barTicks, row, hasStr, U);
     buildRowAnnotations(b, p, barTicks, row);
     viz.appendChild(row);
-    rowEls.push(row); cellEls.push(cells.cells); labelEls.push(cells.labels); strumEls.push(cells.strums);
+    rowEls.push(row); cellEls.push(cells.cells); labelEls.push(cells.labels); strumEls.push(cells.strums); techMarkEls.push(cells.techMarks);
   }
 
   /** 第 1 段（定位层）：跑道拍点 → 六线底纹 → 扫弦箭头层 → 拍内座次尺。
@@ -11664,8 +11784,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       @param {number} barTicks 每小节 tick 数 @param {HTMLElement} row 本行容器
       @param {boolean} hasStr 当前型是否带扫弦记谱（决定逐格要不要画箭头）
       @param {number} U 本型的最小单位（minUnitOf）：格内刻度线只画在它的整数倍上
-      @returns {{ cells: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[] }}
-        三个逐格同构数组，由编排者登记进 cellEls / labelEls / strumEls */
+      @returns {{ cells: HTMLElement[], labels: (HTMLElement|null)[], strums: (HTMLElement|null)[], techMarks: {el:HTMLElement,cells:number[]}[] }}
+        三个逐格同构数组 + 行级技巧标记，由编排者登记 */
   function buildRowCells(b, p, barTicks, row, hasStr, U){
     /** @type {HTMLElement[]} */
     const cells = [];
@@ -11828,6 +11948,8 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
            现行的 zoneEls 是拍点容器，由本函数 push 填充，与色带无关。） */
       row.appendChild(c); cells.push(c);
     });
+    /* 跨格技巧在整行音符就位后统一构建：端点仍走同一条锚点公式，窄格由 fit 统一降级。 */
+    const techMarks = (hasStr && strumLayers[b]) ? techniqueOverlay(strumLayers[b], p.bars[b], barTicks) : [];
     /* 交界线层（v2.78.2）：一条 gradient 画出本行全部拍内接缝，线骑缝（左右各 0.5px），
        两格对称各让半像素。层挂在格子之后（DOM 序 + z-index 都在格子之上） */
     if (seamX.length){
@@ -11836,7 +11958,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       sl.style.background = seamGradient(seamX);
       row.appendChild(sl);
     }
-    return { cells: cells, labels: labels, strums: strums };
+    return { cells: cells, labels: labels, strums: strums, techMarks: techMarks };
   }
 
   /** 第 3 段（注释与胶囊）：短音符组合并标注 + 小节和弦名胶囊。
@@ -11951,7 +12073,7 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     /* ★ v3.20.0：雾化条退役（内容自身渐隐 mask，纯 CSS 随 .scroll-mode 类生效）——
        本写点不再需要 JS 同步；≤640 禁用由媒体查询承担。 */
     rowEls = []; cellEls = []; subEls = []; labelEls = []; strumEls = [];
-    zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; barChordEls = [];
+    zoneEls = []; rulerEls = []; glEls = []; strumLayers = []; techMarkEls = []; barChordEls = [];
     pvMarkOn = false; pvMarkName = ""; pvMarkEl = null;   // v2.24.0：行元素全新，轻量标记随之作废（播放中同帧由标记块重挂）
     /* 取型用 activePattern 而不是 curPattern（v2.0.2 修）：曲式模式下正在发声的是
        appliedPat（曲式块的型），curPattern() 仍返回「当前选中的预设」——用后者建网格，
@@ -12243,6 +12365,10 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       if (/(^| )pick( |$)/.test(sm.className) && sm.firstChild)
         clsWrites.push([/** @type {Element} */ (sm.firstChild), w < PICK_TXT_MIN_W]);
       writes.push([sm, (w < STRUM_MIN_W) ? "none" : ""]);
+    }));
+    techMarkEls.forEach((marks, b) => marks.forEach(mark => {
+      const hide = mark.cells.some(i => !cellEls[b][i] || cellEls[b][i].offsetWidth < PICK_TXT_MIN_W);
+      writes.push([mark.el, hide ? "none" : ""]);
     }));
     glEls.forEach((groups, b) => groups.forEach(g => {
       const first = cellEls[b][g.i0], last = cellEls[b][g.i1 - 1], el = g.el;
@@ -17789,6 +17915,8 @@ const Editor = (() => {
 let edSel = /** @type {null | { bar: number, idx: number, auto?: boolean }} */ (null), editBar = /** @type {number} */ (0);   // draft 在共享状态区（v1.0.0 上移，curPattern 试听读取）
 let edPopShown = false;   /* PLAN-v11 B2：音符属性悬浮层显隐（与 edSel 解耦——✕/ESC/再点当前块收起时选中保留；
                              edSel 被清的路径不必各自记得收层，syncEdPop 中央统一兜底） */
+/** @type {null | {bar:number,idx:number}} P.M. 起点是瞬态编辑状态，不进草稿/撤销/导出 */
+let pmAnchor = null;
 /* ★ 节奏型页面改造（空态起步）：空态红框「只教一次」flag——openBlank 置 false（新草稿重新引导），
    editorRender 每轮「非空即置位」；此后即便 undo/清空回到全空，红框也不回来
    （引导只教一次，不跟着撤销抖动）。openWith 带源进入（非空底稿）时直接置 true。 */
@@ -17878,7 +18006,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       d.meter = tpl.meter;
       d.accents = (tpl.accents || defaultAccents(tpl.meter)).slice();
       d.bars = tpl.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s})));
-      edSel = null; editBar = 0;
+      edSel = null; pmAnchor = null; editBar = 0;
       edRowCache.clear();                           // 换内容 = 旧行缓存全部作废（同 openWith）
       editorRender();
       sel.value = tplSelValue(srcRef);              /* 状态型：确认载入后选中项跟到新底稿（dirty 路径先弹回过，这里再对齐） */
@@ -17897,7 +18025,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     d.meter = m;
     d.accents = defaultAccents(m);
     d.bars = d.bars.map(() => Array.from({ length: m }, () => D(TPB)));
-    edSel = null;
+    edSel = null; pmAnchor = null;
     dirty = true;
     editorRender();
   }
@@ -17921,7 +18049,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     srcRef = null;
     draft = { name: "我的节奏型", meter: S.sig, label: "", song: "",
       accents: defaultAccents(S.sig), bars: [[]] };
-    edSel = null; editBar = 0;
+    edSel = null; pmAnchor = null; editBar = 0;
     edEverFilled = false;
     undoStack = []; dirty = false;
     edRowCache.clear();
@@ -17956,16 +18084,17 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (s.dir === "D" || s.dir === "U" || s.zone !== undefined || s.air === true) return "strum";
     return "beat";
   }
-  /** v2.37.0（b）：以指定型为底稿进编辑器（编排页换型候选 ✎ 的跳转目标；open() = openWith(当前型)）。
-      编辑器保存 = 生成**新副本**（不覆盖原版），故跳转语义是"造变体"而非"就地改"。
+  /** 以指定型为底稿进编辑器。自定义型可覆盖保存（保留 id，曲式引用自动跟随）或另存副本；
+      内置/示例曲只读，只能生成新副本。
       @param {any} src @param {any} [ref] 源身份（{type,idx|id}；缺省从 src 上的合并字段推断） */
   function openWith(src, ref){
     if (S.playing) Controls.stop();
     srcRef = ref || (src && src.type ? { type: src.type, id: src.id, idx: src.idx } : null);
-    draft = { name: src.name + "-副本", meter: src.meter, label: src.label || "", song: src.song || "",
+    const editingCustom = !!(srcRef && srcRef.type === "custom");
+    draft = { name: src.name + (editingCustom ? "" : "-副本"), meter: src.meter, label: src.label || "", song: src.song || "",
       accents: (src.accents || defaultAccents(src.meter)).slice(),
       bars: src.bars.map((/** @type {any} */ bar) => bar.map((/** @type {any} */ s) => ({...s}))) };
-    edSel = null; editBar = 0;
+    edSel = null; pmAnchor = null; editBar = 0;
     edEverFilled = true;                  /* 带源进入 = 非空底稿：空态红框不出现（只教一次口径） */
     undoStack = []; dirty = false;
     edRowCache.clear();                  // v3.31.x（审计 P2-3）：换草稿 = 换内容，旧行缓存全部作废
@@ -17976,12 +18105,15 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     /* v3.33.0：原 `$("editorMeter").textContent = draft.meter` 一行移进 editorRender()
        （拍数可改了，规则文案必须随渲染同步，不能只在打开时写一次） */
     $("editorMaxBars").textContent = MAX_PAT_BARS;      // 上限提示与常量同源，不写死
-    /* v2.37.0（c）：源型引用信息——把「引用不追踪」的真相在最易误解的场景讲清：
-       编辑器保存即新增，现有曲式仍指向原版；要替换须回编排页换型 */
+    /* 源型引用与保存权限：自定义覆盖保留 id；内置/示例曲只能造变体。 */
     const info = srcRefs(src);
-    $("editorRefNote").textContent = info.n >= 1
-      ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存会生成新副本，现有曲式仍用原版；要替换请回编排页换型"
-      : "";
+    $("editorRefNote").textContent = editingCustom
+      ? (info.n >= 1
+          ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存修改会覆盖原型并自动更新这些引用；另存副本则保留原版"
+          : "保存修改会覆盖原节奏型；另存副本可保留原版")
+      : (info.n >= 1
+          ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——内置/示例曲只读，保存会生成新副本；要替换请回编排页换型"
+          : "内置/示例曲只读，保存会生成新副本，不修改原内容");
     editorRender();
     fillTplSelect();                     // 模板下拉：选项每次打开重建（自定义列表会变）
     Modal.openOverlay("editor");          // v2.0.4：统一开合协议（挂 .open + 背景 inert + 焦点陷阱）
@@ -18015,6 +18147,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     $("auditionBtn").textContent = "试听";
   }
   function close(){
+    pmAnchor = null;
     if (S.preview) stopAudition();
     if (S.playing) Controls.stop();
     Viz.buildViz();                       // 试听可能改过视图，恢复
@@ -18043,7 +18176,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
          v3.52.0：键里补 air——同理，漏了它改「实扫/空扫」后指纹不变 → 行缓存命中、虚实不刷新。 */
       s += x.t + "," + (x.rest ? 1 : 0) + "," + (x.dir || "") + ","
         + ((x.zone === undefined || x.zone === null) ? "" : x.zone) + ","
-        + (x.str ? JSON.stringify(x.str) : "") + "," + (x.air ? 1 : 0) + ";";
+        + (x.str ? JSON.stringify(x.str) : "") + "," + (x.air ? 1 : 0) + "," + (x.pm ? 1 : 0) + ";";
     });
     return s;
   }
@@ -18051,7 +18184,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       @param {any[]} str @returns {string} */
   function strNameOf(str){
     return (str || []).map(e => STR_CIRC[e.s - 1] + "弦"
-      + (e.f !== undefined ? e.f + "品" : "") + (e.tech ? STR_TECH_NAME[e.tech] : "")).join("+");
+      + (e.dead ? "哑音" : ((e.f !== undefined ? e.f + "品" : "") + (e.tech ? STR_TECH_NAME[e.tech] : "")))).join("+");
   }
   /** @param {HTMLElement} row @param {number} b @returns {void} */
   function bindEdRow(row, b){
@@ -18071,10 +18204,10 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     }
     const track = (/** @type {any} */ (row))._edTrack;
     if (track){
-      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; editorRender(); } });
+      Modal.bindOverlay("editor", track, "click", (/** @type {MouseEvent} */ e) => { if (e.target === track){ editBar = b; edSel = null; pmAnchor = null; editorRender(); } });
       Modal.bindOverlay("editor", track, "keydown", (/** @type {KeyboardEvent} */ e) => {
         if (e.target === track && (e.key === "Enter" || e.key === " " || e.code === "Space")){
-          e.preventDefault(); editBar = b; edSel = null; editorRender();
+          e.preventDefault(); editBar = b; edSel = null; pmAnchor = null; editorRender();
         }
       });
     }
@@ -18111,12 +18244,14 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       fret.setAttribute("placeholder", "品");
       fret.setAttribute("aria-label", STR_CIRC[s - 1] + "弦品数");
       fret.disabled = true;
-      const tech = document.createElement("button");
+      const tech = document.createElement("select");
       tech.className = "pill str-tech";
       tech.dataset.s = String(s);
-      tech.setAttribute("aria-label", STR_CIRC[s - 1] + "弦技巧（无/击弦/勾弦/滑音/泛音）");
+      tech.setAttribute("aria-label", STR_CIRC[s - 1] + "弦技巧（无/击弦/勾弦/滑音/泛音/哑音）");
+      [["", "·"], ["H", "击弦 H"], ["P", "勾弦 P"], ["S", "滑音 S"], ["O", "泛音 O"], ["X", "哑音 ×"]].forEach(([v, name]) => {
+        const op = document.createElement("option"); op.value = v; op.textContent = name; tech.appendChild(op);
+      });
       tech.disabled = true;
-      tech.textContent = "·";
       row.appendChild(tog); row.appendChild(fret); row.appendChild(tech);
       lines.appendChild(row);
     }
@@ -18304,6 +18439,8 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
         rowCells.push(c);                 // v3.31.x（审计 P2-3）：登记进行（绑定移交给 bindEdRow）
         track.appendChild(c);
       });
+      /* 编辑器与主视图共用同一连接解析和覆盖层；格内 pick 仍只负责单音。 */
+      techniqueOverlay(track, d.bars[b], d.meter * TPB);
       /* 交界线层（v2.78.2）：与主视图 .seams 同款——一条渐变画全部接缝，骑缝不压格 */
       if (seamX.length){
         const sl = document.createElement("div");
@@ -18345,6 +18482,12 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     /* 保存键在卡片底部（归属行下方）、名字/归属框也在底部：给按钮挂上"为什么点不动"的说明，
        键盘与读屏用户 Tab 到它时听得到（title 只是给鼠标用户的补充） */
     const saveBtn = $("savePresetBtn");
+    const currentSrcRef = srcRef;
+    const editingCustom = !!(currentSrcRef && currentSrcRef.type === "custom" && customs.some(c => c && c.id === currentSrcRef.id));
+    saveBtn.textContent = editingCustom ? "保存修改" : "保存为预设";
+    const copyBtn = $("saveCopyBtn");
+    copyBtn.hidden = !editingCustom;
+    copyBtn.disabled = !canSave;
     saveBtn.disabled = !canSave;
     saveBtn.className = "pill" + (canSave ? " active" : "");
     if (canSave) saveBtn.removeAttribute("title");
@@ -18402,8 +18545,9 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       zoneRow: dirUsable && (tech === "strum" || tech === "arp"),
       airRow: dirUsable && tech === "strum",
       strRow: dirUsable && tech === "pick",
+      pmRow: dirUsable && tech === "pick",
     };
-    ["restRow", "dirRow", "zoneRow", "airRow", "strRow"].forEach(id => { ($(id)).hidden = !rowVisible[id]; });
+    ["restRow", "dirRow", "zoneRow", "airRow", "strRow", "pmRow"].forEach(id => { ($(id)).hidden = !rowVisible[id]; });
     const curDir = dirUsable && selStep.dir ? selStep.dir : "";
     setPressed("#dirRow", p => (p.dataset.dir || "") === curDir);
     document.querySelectorAll("#dirRow .pill").forEach(p => { asEl(p).disabled = !dirUsable; });
@@ -18457,20 +18601,29 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
         tog.setAttribute("aria-pressed", entry ? "true" : "false");
       }
       if (fret){
-        fret.disabled = !dirUsable;
+        fret.disabled = !dirUsable || !!(entry && entry.dead);
         if (document.activeElement !== fret)
           fret.value = (entry && entry.f !== undefined) ? String(entry.f) : "";
       }
       if (techBtn){
         techBtn.disabled = !dirUsable;
-        techBtn.textContent = (entry && entry.tech) ? entry.tech : "·";
+        techBtn.value = entry && entry.dead ? "X" : ((entry && entry.tech) || "");
       }
     });
     $("strHint").textContent = !selStep
       ? ""
       : (curStr.length
           ? "逐弦 " + strNameOf(curStr) + (selStep.rest ? " · 空拨（空心点）" : "")
-          : "点弦号启用分解点；填品数=加花，技巧钮循环 无→击→勾→滑→泛");
+          : "点弦号启用分解点；填品数=加花；技巧下拉可选击/勾/滑/泛/哑音");
+    const pmUsable = !!(dirUsable && tech === "pick" && !selStep.rest && curStr.length);
+    document.querySelectorAll("#pmRow .pill").forEach(p => {
+      const el = asEl(p);
+      el.disabled = el.dataset.pm === "start" ? !pmUsable
+        : (el.dataset.pm === "end" ? (!pmUsable || !pmAnchor) : !(pmUsable && selStep.pm));
+    });
+    $("pmHint").textContent = pmAnchor
+      ? "起点：小节 " + (pmAnchor.bar + 1) + " 第 " + (pmAnchor.idx + 1) + " 格 · 请选择终点"
+      : (selStep && selStep.pm ? "当前格在掌闷音区间中" : "掌闷音作用于连续逐弦发声格");
     /* ★ 空态红框同步（节奏型页面改造）：两个填充入口——顶栏「模板」（#edTplWrap）与
        「音符块库」容器（#palZone）。判据与引导层同一份（showGuide = isEmpty && !edEverFilled，
        只教一次）：非空即摘，undo/清空回到全空也不再回来。同步收在渲染尾部一处，
@@ -18532,7 +18685,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const st = JSON.parse(snap);
     if (Array.isArray(st)){ d.bars = st; }                  // 兜底：旧格式（只有小节）
     else { d.meter = st.m; d.bars = st.b; }
-    edSel = null;
+    edSel = null; pmAnchor = null;
     editorRender();
   }
   $("undoBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); undo(); });
@@ -18562,15 +18715,15 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (from === want && (want === "beat" || want === "strum" || !s.rest)) return; // 同档不推栈；旧休止琶音/分解仍可修复
     pushUndo();
     if (want === "beat"){
-      delete s.dir; delete s.zone; delete s.str; delete s.air;
+      delete s.dir; delete s.zone; delete s.str; delete s.air; delete s.pm;
     } else if (want === "strum"){
-      delete s.str;
+      delete s.str; delete s.pm;
       if (from !== "strum"){
         if (s.dir !== "U") s.dir = "D";                 // 保留已有上下扫；从琶音/节拍/分解过来默认下扫
         s.rest = false; s.air = false;                  // 默认实扫：节拍器在该格提示何时出手
       }
     } else if (want === "arp"){
-      s.dir = "A"; delete s.str; delete s.air; s.rest = false;
+      s.dir = "A"; delete s.str; delete s.air; delete s.pm; s.rest = false;
     } else if (want === "pick"){
       if (s.str === undefined) s.str = [];
       delete s.dir; delete s.zone; delete s.air; s.rest = false;
@@ -18631,6 +18784,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (!!s.rest === wantRest) return;                  // 同档重按：不产生变更、不污染撤销栈
     pushUndo();
     s.rest = wantRest;
+    if (wantRest) delete s.pm;
     editorRender();
   });
   /* 空扫开关：「空扫」= air=true + rest=true，「实扫」= air=false + rest=false。
@@ -18652,24 +18806,18 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     s.rest = wantAir;
     editorRender();
   });
-  /* 逐弦拨弦面板（v3.47.0）：与方向/弦区行同一套纪律——pushUndo 先行、同态重按不推栈、
-     改完 editorRender 一处刷新。行走事件委托（点击可能落在钮内文本；不使用 closest——
-     面板行是测试桩手工构造的平元素，判据用 classList 直查，两端同构）。
-     · str-tog：切换 {s} 在 step.str 中的存在；摘掉最后一根 → delete step.str（回 zone 口径）；
-     · str-tech：`无 → H → P → S → O → 无` 循环；对未启用的弦点技巧 = 直接启用该弦；
-       循环回「无」时品数保留（摘的只是技巧），无品的条目整条摘掉。
-     rest+str 合法（空拨 = 空心点），面板不因 rest 禁用——只读 walk 见 editorRender 收口 */
-  /** 面板三入口共用的写回器：raw 过 normStr（rest 抹 tech 的口径由此唯一收口）→ 空则删字段。
+  /* 逐弦面板：开关只切弦号存在；技巧由 change 事件中的下拉选择写入，不再循环。 */
+  /** 面板入口共用写回器：raw 过 normStr；无逐弦内容时同步撤销无意义的 P.M.。
       @param {any} s @param {any[]} raw @returns {void} */
   function strRebuild(s, raw){
     const ns = normStr(raw, !!s.rest);
-    if (ns) s.str = ns; else delete s.str;
+    if (ns) s.str = ns;
+    else { delete s.str; delete s.pm; }
   }
   $("strRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     const t = evTarget(e);
     const cls = (t && typeof t.className === "string") ? t.className : "";
-    const isTog = /(^| )str-tog( |$)/.test(cls), isTech = /(^| )str-tech( |$)/.test(cls);
-    if (!isTog && !isTech) return;
+    if (!/(^| )str-tog( |$)/.test(cls)) return;
     if (t.blur) t.blur();
     if (!edSel) return;
     const d = draft;
@@ -18678,34 +18826,10 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (!s) return;
     const sN = +t.dataset.s;
     if (!(sN >= 1 && sN <= 6)) return;
-    if (isTog){
-      const has = !!(s.str && s.str.some(x => x.s === sN));
-      if (!has){
-        pushUndo();
-        strRebuild(s, [...(s.str || []), { s: sN }]);
-      } else {
-        const rest = (s.str || []).filter(x => x.s !== sN);
-        if (!s.str) return;                               // 同态重按：本就没有 str 字段
-        pushUndo();
-        if (rest.length) s.str = rest; else delete s.str; // 摘最后一根 → 回 zone 口径
-      }
-      editorRender();
-      return;
-    }
-    /* 技巧循环：无 → H → P → S → O → 无。未启用的弦直接启用；已有品数全程保留 */
-    const entry = s.str && s.str.find(x => x.s === sN);
-    const cur = entry && entry.tech ? entry.tech : "";
-    const nxt = { "": "H", H: "P", P: "S", S: "O", O: "" }[cur];
-    if (!entry && !nxt) return;                           // 不可达（无 entry 时 cur=""→H），纵深防御
+    const has = !!(s.str && s.str.some(x => x.s === sN));
     pushUndo();
-    if (nxt){
-      const others = (s.str || []).filter(x => x.s !== sN);
-      strRebuild(s, [...others, { s: sN, ...(entry && entry.f !== undefined ? { f: entry.f } : {}), tech: nxt }]);
-    } else if (entry && entry.f !== undefined){
-      strRebuild(s, [...(s.str || []).filter(x => x.s !== sN), { s: sN, f: entry.f }]);
-    } else {
-      strRebuild(s, (s.str || []).filter(x => x.s !== sN));   // 循环回「无」：纯技巧条目整条摘掉
-    }
+    if (!has) strRebuild(s, [...(s.str || []), { s: sN }]);
+    else strRebuild(s, (s.str || []).filter(x => x.s !== sN));
     editorRender();
   });
   /* 品数框（v3.47.0）：change 时校验——空串删 f、0–24 整数写入；其余恢复原值 + hint 报错，
@@ -18713,8 +18837,38 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
   $("strRow").addEventListener("change", (/** @type {Event} */ e) => {
     const t = evTarget(e);
     const cls = (t && typeof t.className === "string") ? t.className : "";
-    if (!/(^| )str-fret( |$)/.test(cls)) return;
     const hint = $("strHint");
+    if (/(^| )str-tech( |$)/.test(cls)){
+      if (!edSel) return;
+      const d = draft;
+      if (!d) return;
+      const s = d.bars[edSel.bar][edSel.idx];
+      const sN = +t.dataset.s;
+      if (!s || !(sN >= 1 && sN <= 6)) return;
+      const entry = s.str && s.str.find(x => x.s === sN);
+      const old = entry && entry.dead ? "X" : ((entry && entry.tech) || "");
+      const want = String(t.value || "");
+      t.value = old;
+      if (!entry && !want) return;
+      if (["H", "P", "S"].includes(want) &&
+          (s.rest || !entry || entry.f === undefined || !techSourceFor(d.bars[edSel.bar], edSel.idx, sN))){
+        hint.textContent = "击/勾/滑需要当前音有品，且前面有同弦带品音";
+        return;
+      }
+      if (s.rest && want){ hint.textContent = "空扫/空拨不含演奏技巧"; return; }
+      if (old === want) return;
+      const item = /** @type {any} */ ({ s: sN });
+      if (want === "X") item.dead = true;
+      else {
+        if (entry && entry.f !== undefined) item.f = entry.f;
+        if (want) item.tech = want;
+      }
+      pushUndo();
+      strRebuild(s, [...(s.str || []).filter(x => x.s !== sN), item]);
+      editorRender();
+      return;
+    }
+    if (!/(^| )str-fret( |$)/.test(cls)) return;
     if (!edSel) return;
     const d = draft;
     if (!d) return;
@@ -18743,6 +18897,50 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     strRebuild(s, [...(s.str || []).filter(x => x.s !== sN),
       { s: sN, f, ...(entry && entry.tech ? { tech: entry.tech } : {}) }]);
     editorRender();
+  });
+  /* P.M. 起终点：起点是瞬态锚；终点一次性写入跨小节的连续 Step，支持一步撤销。 */
+  $("pmRow").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    const btn = evTarget(e).closest("[data-pm]");
+    if (!btn || !edSel) return;
+    const d = draft;
+    if (!d) return;
+    const action = btn.dataset.pm;
+    const sel = { bar: edSel.bar, idx: edSel.idx };
+    const step = d.bars[sel.bar][sel.idx];
+    const usable = !!(step && !step.rest && step.str && step.str.length);
+    if (action === "start"){
+      if (!usable) return;
+      pmAnchor = sel;
+      editorRender();
+      return;
+    }
+    if (action === "end"){
+      const anchor = pmAnchor;
+      if (!anchor || !usable) return;
+      const flat = /** @type {{bar:number,idx:number,s:any}[]} */ ([]);
+      d.bars.forEach((bar, b) => bar.forEach((s, i) => flat.push({ bar: b, idx: i, s })));
+      const a = flat.findIndex(x => x.bar === anchor.bar && x.idx === anchor.idx);
+      const z = flat.findIndex(x => x.bar === sel.bar && x.idx === sel.idx);
+      const lo = Math.min(a, z), hi = Math.max(a, z);
+      if (a < 0 || z < 0 || flat.slice(lo, hi + 1).some(x => x.s.rest || !x.s.str || !x.s.str.length)){
+        $("pmHint").textContent = "区间内每一格都必须是逐弦发声格";
+        return;
+      }
+      pushUndo();
+      flat.slice(lo, hi + 1).forEach(x => { x.s.pm = true; });
+      pmAnchor = null;
+      editorRender();
+      return;
+    }
+    if (action === "clear" && step.pm){
+      const bar = d.bars[sel.bar];
+      let lo = sel.idx, hi = sel.idx;
+      while (lo > 0 && bar[lo - 1].pm) lo--;
+      while (hi + 1 < bar.length && bar[hi + 1].pm) hi++;
+      pushUndo();
+      for (let i = lo; i <= hi; i++) delete bar[i].pm;
+      editorRender();
+    }
   });
   /* 按序铺弦号（v3.47.0，小节级）：parseStrFill 解析 → 颗数对发声格数 → 逐格写入。
      任何不合法都不写入（不写半截）；rest 格跳过（锚点过滤与一键对齐同口径） */
@@ -18776,7 +18974,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (!d) return;
     pushUndo();
     d.bars[edSel.bar].splice(edSel.idx, 1);
-    edSel = null;
+    edSel = null; pmAnchor = null;
     editorRender();
   });
   /* ---- 增删小节（v2.6.1 第 Ⅲ 期）----
@@ -18795,7 +18993,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     pushUndo();
     const at = editBar + 1;
     d.bars.splice(at, 0, (d.bars[editBar] || []).map(s => ({...s})));
-    editBar = at; edSel = null;
+    editBar = at; edSel = null; pmAnchor = null;
     editorRender();
   }
   /** 删除当前小节。下限 1：0 小节的型没有合法解释（渲染 / 发声 / 段长都要除以它） */
@@ -18804,7 +19002,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     if (!d || patBars(d) <= 1) return;              // 按钮已禁用，这里再兜一道
     pushUndo();
     d.bars.splice(editBar, 1);
-    edSel = null;
+    edSel = null; pmAnchor = null;
     editBar = Math.min(editBar, d.bars.length - 1);
     editorRender();
   }
@@ -18825,7 +19023,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       pushUndo();
       const src = d.bars[editBar].map(s => ({...s}));
       d.bars = d.bars.map(() => src.map(s => ({...s})));
-      edSel = null;
+      edSel = null; pmAnchor = null;
       editorRender();
     }, {okText:"复制"});
   });
@@ -18836,7 +19034,7 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       if (!d) return;
       pushUndo();
       d.bars[editBar] = [];
-      edSel = null;
+      edSel = null; pmAnchor = null;
       editorRender();
     }, {danger:true, okText:"清空"});
   });
@@ -18856,23 +19054,25 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
       $("auditionBtn").textContent = "停止试听";
     }
   });
-  $("savePresetBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
-    evEl(e).blur();
-    if ($("savePresetBtn").disabled) return;
+  /** 保存草稿。自定义来源 copy=false 时覆盖原 id；copy=true 与内置/空白来源一律新增。
+      内置/示例曲没有覆盖分支，从入口到写库都保持只读。 @param {boolean} copy */
+  function saveDraft(copy){
+    if (!draft || $(copy ? "saveCopyBtn" : "savePresetBtn").disabled) return;
     const d = draft;
-    if (!d) return;
-    /* v3.31.x（审计 P3-4）：40 字截断与全仓命名口径一致（此前编辑器保存是唯一不限长的入口） */
-    const name = ($("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1))).slice(0, 40);
-    /* v2.72.0（1.3）：标注（可选）——留空不写字段（与老存档对象形状一致，零迁移） */
+    const src = (!copy && srcRef && srcRef.type === "custom") ? srcRef : null;
+    const sourceIndex = src ? customs.findIndex(c => c && c.id === src.id) : -1;
+    if (src && sourceIndex < 0) return;             // 编辑期间原型已被删除：不静默覆盖其它条目
+    const baseName = ($("presetNameInput").value.trim() || ("我的节奏型 " + (customs.length + 1))).slice(0, 40);
+    const name = (copy && srcRef && srcRef.type === "custom" && !/-副本$/.test(baseName))
+      ? (baseName + "-副本").slice(0, 40) : baseName;
     const label = $("patLabelInput").value.trim().slice(0, 40);
-    /* ★ v3.35.7（用户需求）：歌名是**必填归属**——保存按钮在它为空时本就点不动，这里再兜一道。 */
     const song = String($("songNameInput").value || "").trim().slice(0, 40);
     if (!song) return;
-    const id = "c" + Date.now();
-    customs.push({ id, name, song, meter: d.meter, accents: (d.accents || []).slice(),
-      bars: d.bars.map(bar => bar.map(s => ({...s}))), ...(label ? {label} : {}) });
-    /* 没有同名曲式 ⇒ 顺手建一条（1 段 1 块 = 刚保存的这个型）：用户去「编排曲式」就有起点，
-       而不是一条"有问题、播不了"的空曲式。已有同名曲式则**不动它**——只把型挂到它名下。 */
+    const id = (src && typeof src.id === "string") ? src.id : "c" + Date.now();
+    const saved = { id, name, song, meter: d.meter, accents: (d.accents || []).slice(),
+      bars: d.bars.map(bar => bar.map(s => ({...s}))), ...(label ? {label} : {}) };
+    if (src) customs[sourceIndex] = saved;           // 保留 id ⇒ 曲式 ref 自动指向修改后的内容
+    else customs.push(saved);
     if (!Store.arranges.some(x => x && x.name === song)){
       Store.upsertArrange({ name: song,
         sections: [{ name: "第一段", blocks: [{ ref: { type: "custom", id }, repeats: 1 }] }] });
@@ -18882,11 +19082,13 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     dirty = false;
     if (S.preview) stopAudition();
     Controls.setSig(d.meter);
-    Store.persistCold();                 // v1.3.0：新增预设 → 冷键立即落盘
+    Store.persistCold();
     Store.persist();
     close();
     Presets.refreshAfterPatternChange();
-  });
+  }
+  $("savePresetBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); saveDraft(false); });
+  $("saveCopyBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); saveDraft(true); });
   $("editBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); openBlank(); });
   $("editorBack").addEventListener("click", (/** @type {MouseEvent} */ e) => { evEl(e).blur(); tryClose(); });
   /* PLAN-v11 B2：✕ 收层 + 编辑器空白点击收层（不碰块/弹层/控件才收——点 palette 替换、
@@ -22191,7 +22393,7 @@ const Arrange = (() => {
           b.appendChild(tag);
         }
         /* v2.37.0（b）：✎ = 以此型为底稿进编辑器（仅自定义型；内置型内容恒定不给）。
-           编辑器保存 = 生成新副本（不覆盖原版），现有曲式仍用原版——跳转语义如实标注 */
+           自定义可覆盖保存（原 id 不变，引用自动跟随）；内置/示例曲只读，只能生成副本 */
         if (srcPreset && ref.type === "custom"){
           const ed = document.createElement("span");
           ed.className = "arg-pill-edit";
@@ -25365,7 +25567,7 @@ if (EXPOSE_INTERNALS){
     resolveRef,                                    // v2.0.0：把预设引用解析成节奏型（曲式编排共用）
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
     /* v3.47.0：逐弦拨弦共享层——归一化/铺设解析/判据（纯函数，t240a 直断言，禁手抄副本） */
-    normStr, parseStrFill, stepHasStrumLike, VALID_TECH, STR_S_MIN, STR_S_MAX, STR_F_MAX,
+    normStr, parseStrFill, techLinksFor, pmRunsFor, stepHasStrumLike, VALID_TECH, STR_S_MIN, STR_S_MAX, STR_F_MAX,
     stripSongTag,                                  // v3.36.18：底栏在曲式模式下显示的型名 = 剥掉尾部出处标注。
                                                    //   导出给测试直断言（t73 钉"标题 = 节目单游标处的型"）——
                                                    //   测试若自抄一份正则，就会与实现各走各的（本仓禁手抄副本）

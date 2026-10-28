@@ -27,7 +27,8 @@ function buildStrPanel(els, sandbox){
     row.dataset.s = String(s);
     const tog = mk("pill str-tog"); tog.dataset.s = String(s);
     const fret = mk("str-fret", "input"); fret.dataset.s = String(s);
-    const tech = mk("pill str-tech"); tech.dataset.s = String(s); tech.textContent = "·";
+    const tech = mk("pill str-tech", "select"); tech.dataset.s = String(s);
+    ["", "H", "P", "S", "O", "X"].forEach(v => { const op = mk("", "option"); op.value = v; tech.appendChild(op); });
     [tog, fret, tech].forEach(c => row.appendChild(c));
     lines.appendChild(row);
   }
@@ -111,33 +112,34 @@ section("T240c-2 逐弦 · 品数校验 / 技巧循环五态 / 品数保留");
   fretOf(els, 5).value = "";
   fireStr(els, fretOf(els, 5), "change");
   eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5 }]), "清空 → 删 f");
-  /* 技巧循环五态：· → H → P → S → O → ·（无品条目回「无」整条摘掉） */
-  const seq = [];
-  for (let i = 0; i < 5; i++){
-    fireStr(els, techOf(els, 5));
-    seq.push(techOf(els, 5).textContent);
-  }
-  eq(JSON.stringify(seq), JSON.stringify(["H", "P", "S", "O", "·"]), "★ 技巧钮循环 无→H→P→S→O→无");
-  eq(Ed.draft().bars[0][0].str, undefined, "循环回「无」→ 纯技巧条目整条摘掉");
-  /* 带品条目：循环回「无」品数保留 */
+  /* 技巧改下拉选择：无同弦前音时 H 被拒绝；X 与 O 可独立设置。 */
+  techOf(els, 5).value = "H";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5 }]), "无品/无前音的 H 不写入");
+  ok(String(els["strHint"].textContent).includes("同弦"), "拒绝原因指向同弦前音");
+  techOf(els, 5).value = "X";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, dead: true }]), "选择 X 写入哑音");
+  eq(fretOf(els, 5).disabled, true, "哑音格品数框禁用");
+  techOf(els, 5).value = "";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5 }]), "回「无」清除哑音但保留弦号");
   fretOf(els, 5).value = "7";
   fireStr(els, fretOf(els, 5), "change");
-  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]), "直接填品（无需先开弦）");
-  fireStr(els, techOf(els, 5));            // → H
-  fireStr(els, techOf(els, 5));            // → P
-  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7, tech: "P" }]),
-     "品数在技巧循环中保留");
-  fireStr(els, techOf(els, 5));            // → S
-  fireStr(els, techOf(els, 5));            // → O
-  fireStr(els, techOf(els, 5));            // → 无
-  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
-     "★ 循环回「无」→ 只摘技巧，品数保留");
-  /* 旧数据 rest+str：v3.53.2 起 UI 不再制造这种组合，但归一化仍须兼容；直接置 rest 模拟旧档。 */
+  techOf(els, 5).value = "O";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7, tech: "O" }]),
+     "O 是单音技巧，不需要同弦前音且品数保留");
+  techOf(els, 5).value = "P";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7, tech: "O" }]),
+     "无前音的 P 不覆盖现有 O");
+  /* 旧数据 rest+str：UI 不在空扫/空拨上新增技巧。 */
   Ed.draft().bars[0][0].rest = true;
-  eq(Ed.draft().bars[0][0].rest, true, "旧数据前提：rest+str 格");
-  fireStr(els, techOf(els, 5));            // → H（会被 normStr 抹）
-  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7 }]),
-     "旧 rest+str 格 tech 被抹除（normStr 唯一口径）");
+  techOf(els, 5).value = "H";
+  fireStr(els, techOf(els, 5), "change");
+  eq(JSON.stringify(Ed.draft().bars[0][0].str), JSON.stringify([{ s: 5, f: 7, tech: "O" }]),
+     "rest+str 保持旧数据，不新增 H");
 }
 
 /* ================= 场景 T240c-3：zone 行覆盖态与恢复 ================= */
@@ -220,5 +222,6 @@ section("T240c-5 逐弦 · 面板行序 ① 顶 ⑥ 底（DOM 序 = Tab 序 = �
     eq(rows[0].dataset.s, "1", "★ 首行 = ① 弦（此前是 ⑥ 顶 ① 底——全 App 唯一倒置的弦序面）");
     eq(rows[5].dataset.s, "6", "★ 末行 = ⑥ 弦");
     eq(rows[0].children[0].textContent, "①", "首行开关显示 ①（与 dataset.s 同源）");
+    eq(rows[0].children[2].tagName, "SELECT", "技巧控件为分类下拉，不再使用循环按钮");
   }
 }

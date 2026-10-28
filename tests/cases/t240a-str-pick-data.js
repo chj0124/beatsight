@@ -160,8 +160,55 @@ section("T240a-4 逐弦 · parseStrFill 合法混写 / 非法词 / 空输入");
   eq(pf("5:25").ok, false, "品数 25 越界 → 失败");
   eq(pf("7").ok, false, "弦号 7 → 失败");
   eq(pf("0").ok, false, "弦号 0 → 失败");
+  eq(okList(pf("5:x")), JSON.stringify([{ s: 5, dead: true }]), "5:x → ⑤弦哑音");
+  eq(pf("5:xH").ok, false, "哑音不得再叠加连接技巧");
   eq(pf("5x").ok, false, "尾巴带杂字符 → 失败");
   eq(pf("5:3,3").ok, false, "逗号分词 → 失败（只认空格）");
   eq(pf("").ok, false, "空输入 → 失败");
   ok(String(pf("abc").why).length > 0, "失败带可读 why");
+}
+
+/* ================= 场景 T240a-5：连接解析 / 哑音与 P.M. 数据契约 ================= */
+section("T240a-5 技巧连接 · 同弦前音 / 哑音互斥 / P.M. 区间与导入往返");
+{
+  const { beat } = load();
+  eq(JSON.stringify(beat.normStr([{ s: 2, f: 7, tech: "S", dead: true }], false)),
+     JSON.stringify([{ s: 2, dead: true }]), "dead 与 f/tech 互斥，只保留哑音");
+  eq(JSON.stringify(beat.normStr([{ s: 2, f: 7, dead: true }], true)),
+     JSON.stringify([{ s: 2, f: 7 }]), "rest+dead 按空拨处理，不保留哑音技巧");
+  const bar = [
+    { t: 24, str: [{ s: 2, f: 3 }] },
+    { t: 24, str: [{ s: 1, f: 7 }, { s: 2, f: 5, tech: "S" }] },
+    { t: 24, str: [{ s: 2, f: 0, tech: "P" }] },
+    { t: 24, str: [{ s: 2, f: 4, tech: "H" }] },
+    { t: 24, str: [{ s: 3, f: 2, tech: "O" }] },
+    { t: 24, str: [{ s: 4, f: 9, tech: "S", dead: true }] },
+    { t: 48 },
+  ];
+  eq(JSON.stringify(beat.techLinksFor(bar)), JSON.stringify([
+    { from: 0, to: 1, s: 2, tech: "S", fromF: 3, toF: 5 },
+    { from: 1, to: 2, s: 2, tech: "P", fromF: 5, toF: 0 },
+    { from: 2, to: 3, s: 2, tech: "H", fromF: 0, toF: 4 },
+  ]), "H/P/S 只连接最近同弦带品音；O 与 dead 不产连接");
+  eq(beat.techLinksFor([{ t: 48, str: [{ s: 2, f: 5, tech: "H" }] }]).length, 0,
+     "孤立旧技巧不产错误连接也不丢数据");
+  const pmBar = [0, 1, 2, 3, 4].map(i => ({ t: 24, str: [{ s: 2 }], ...(i > 0 && i < 4 ? { pm: true } : {}) }));
+  pmBar.push({ t: 96 });
+  eq(JSON.stringify(beat.pmRunsFor(pmBar)), JSON.stringify([{ from: 1, to: 3 }]), "连续 pm 合并为一个区间");
+  const St = beat.Store;
+  const bars = [0, 1, 2, 3].map(() => [
+    { t: 48, str: [{ s: 2, f: 3 }] },
+    { t: 48, str: [{ s: 2, dead: true }], pm: true },
+    { t: 48, pm: true },
+    { t: 48, rest: true, str: [{ s: 2 }], pm: true },
+  ]);
+  ok(St.importPresets(JSON.stringify({ presets: [{ name: "技巧迁移", meter: 4, bars }] })).ok,
+     "含 dead/pm 的预设导入成功");
+  const p = St.customs[St.customs.length - 1];
+  eq(JSON.stringify(p.bars[0][1].str), JSON.stringify([{ s: 2, dead: true }]), "dead 经导入白名单保留");
+  eq(p.bars[0][1].pm, true, "逐弦发声格的 pm 保留");
+  eq("pm" in p.bars[0][2], false, "无 str 的 pm 静默省略");
+  eq("pm" in p.bars[0][3], false, "rest 空拨的 pm 静默省略");
+  const out = JSON.parse(St.serializePresets()).presets.find(x => x.name === "技巧迁移");
+  eq(out.bars[0][1].pm, true, "dead/pm 随导出往返");
 }

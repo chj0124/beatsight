@@ -99,9 +99,9 @@ section("T245-2 B1 铺弦号行 + 悬浮层标记（留在页面、占位精简�
      nostyle.includes(".ed-strfill .name-input{width:var(--ed-fill-w);max-width:100%;flex:0 1 auto}"),
      "★ 铺弦号定宽进 CSS 变量（--ed-fill-w，展板 Do「新增尺寸先进 CSS 变量」）");
   ok(html.includes('placeholder="按序铺弦号：5:3 3 2 3 1 3 2 3"'), "★ 占位精简（「作用于当前小节」移出）");
-  ok(ruleOf(".ed-str .str-lines").includes("grid-template-columns:1fr 1fr") &&
+  ok(ruleOf(".ed-str .str-lines").includes("grid-template-columns:repeat(2,minmax(0,1fr))") &&
      ruleOf(".ed-str .str-lines").includes("grid-auto-flow:column"),
-     "★ 逐弦面板两列网格（左 ①②③ / 右 ④⑤⑥，高度约减半；用户实拍追补）");
+     "★ 逐弦面板两列可收缩网格（左 ①②③ / 右 ④⑤⑥，不向右溢出）");
   ok(ruleOf(".ed-pop .ed-dir").includes("margin:var(--sp-3) 0 var(--sp-3)"),
      "★ 悬浮层组间距补 margin-top（修扫弦标注按钮贴 head 分隔线；用户实拍追补）");
   ok((html.match(/<span class="hint">作用于当前小节<\/span>/g) || []).length === 1,

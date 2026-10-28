@@ -436,8 +436,12 @@ const HTML = process.argv[2] || path.join(ROOT, "index.html");
        位置面 = 播放头）+ 三区首条目背景条等高与条目间距归一（顶距 padding→margin sp-1，
        文字节奏恒 12px；初版 sp-2 被 CI 冒烟拦下，见 CHANGELOG C 修正记录）。
        净增主体是取证注释——本仓取证纪律的成本，按既定先例随批抬线；余量紧，
-       下批再超就该动壁纸那张 ~365K data URI 了（观察线会继续催）。 */
-const BUDGET_BYTES = 2116 * 1024;
+       下批再超就该动壁纸那张 ~365K data URI 了（观察线会继续催）。
+  ★ v3.57.0（六线谱技巧连接 + 哑音/P.M.）：2116 → **2136KB**。
+    · git diff 确认为功能本体：同弦前音解析、行级 H/P/S 与 P.M. 覆盖层、dead/pm 数据校验、
+      技巧下拉与跨小节区间编辑、缓存/撤销/窄格降级及对应契约注释；旧循环按钮与单音后缀代码同步删除。
+    · 净增不是壁纸或运行时依赖，零依赖单文件架构不变；抬线后仍由观察线提示后续瘦身。 */
+const BUDGET_BYTES = 2136 * 1024;
 const WARN_BYTES = Math.round(BUDGET_BYTES * 0.98);
 
 function sizeOf(rel){

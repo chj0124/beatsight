@@ -20,7 +20,7 @@ const BARS = () => [[
   { t: 48, str: [{ s: 6, f: 5 }] },                     // pick1（beat0 重拍）
   { t: 48, str: [{ s: 1 }, { s: 2 }] },                 // pickN（多弦）
   { t: 48, rest: true, str: [{ s: 5 }] },               // 空拨：无声无 onset
-  { t: 48, str: [{ s: 4, f: 12, tech: "O" }] },         // pick1（技巧+品都不同）
+  { t: 48, str: [{ s: 4, dead: true }], pm: true },      // pick1（哑音+P.M. 也不进发声）
 ]];
 const loadStr = () => {
   const app = loadApp();

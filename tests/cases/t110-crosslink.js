@@ -3,8 +3,8 @@
    ---------------------------------------------------------------------------
    契约锚点：
      · 候选胶囊（pickPill）：扫弦型带「↑↓」类型徽标（编排页此前对型的扫弦属性零可见性）；
-       自定义型带 ✎ → Editor.openWith(该型)——编辑器保存 = 生成新副本（不覆盖原版），
-       故跳转语义是"造变体"而非"就地改"；内置型内容恒定，不给 ✎；
+       自定义型带 ✎ → Editor.openWith(该型)——可覆盖保存或另存副本，
+       可覆盖保存（保留 id，引用自动跟随）或另存副本；内置/示例曲只读；
      · Editor.openWith(src)：open() 的参数化（open() = openWith(curPattern())）；
        源型被引用时编辑器显示「被 N 首曲式引用…保存会生成新副本」提示（引用不追踪的
        真相在最易误解场景讲清）；未被引用 → 提示留空；
@@ -79,7 +79,7 @@ section("T110b ✎ 跳转 · 编辑器打开 / 底稿 = 该型副本 / 编排浮
   ok(els["editor"].classList.contains("open"), "★ ✎ 点击 → 编辑器打开（跳转生效）");
   eq(beat.Arrange.isOpen(), true, "★ 编排浮层保持打开（编辑器叠在其上，同设置→使用方法的层叠）");
   eq(beat.Store.S.playMode === "preview" || !beat.Store.S.playing, true, "进编辑器即停播");
-  ok((beat.Editor.draft().name || "").includes("我的扫弦"), "★ 底稿名含源型名（-副本）");
+  eq(beat.Editor.draft().name, "我的扫弦", "★ 自定义底稿保留原名（准备覆盖修改）");
   eq(beat.Editor.draft().bars.length, 1, "底稿小节 = 源型小节");
   beat.Editor.tryClose();
   eq(beat.Arrange.isOpen(), true, "编辑器关闭后回到编排页（层级还原）");
@@ -96,17 +96,17 @@ section("T110c 引用提示 · 被 N 首曲式引用 / 未引用留空（引用�
   pillChild(customPill, /arg-pill-edit/).fire("click");
   const note = els["editorRefNote"].textContent || "";
   ok(/被 1 首曲式引用/.test(note) && note.includes("引用曲式"), "★ 引用提示给出曲式名与计数");
-  ok(/新副本/.test(note) && /仍用原版/.test(note), "★ 提示讲清「引用不追踪」：保存 = 新副本，原曲式仍用原版");
+  ok(/保存修改/.test(note) && /自动更新/.test(note), "★ 提示讲清：覆盖保存后原曲式引用自动更新");
   beat.Editor.tryClose();
 
-  /* 未被引用的自定义型 → 提示留空 */
+  /* 未被引用的自定义型 → 显示通用覆盖保存说明 */
   beat.Store.importPresets(JSON.stringify({ presets: [
     { name: "无引用型", meter: 4, bars: [[{ t: 192 }]] }] }));
   beat.Arrange.open();
   openPick(els, 0, 0);
   const orphan = pillBy(pickRowOf(els), /无引用型/);
   pillChild(orphan, /arg-pill-edit/).fire("click");
-  eq(els["editorRefNote"].textContent, "", "★ 未被引用 → 提示留空（不制造噪音）");
+  ok(/保存修改会覆盖原节奏型/.test(els["editorRefNote"].textContent), "★ 未被引用也明确保存修改会覆盖原型");
   beat.Editor.tryClose();
   beat.Arrange.close();
 }
