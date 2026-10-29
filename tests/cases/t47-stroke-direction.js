@@ -389,6 +389,8 @@ section("T47f 扫弦方向 · 矢量 Chevron 尖端锚点（上扫 (8,5) / 下�
   const svgSources = (html.match(/data:image\/svg\+xml;base64,([A-Za-z0-9+/=]+)/g) || []);
   eq(svgSources.length, 2, "两条矢量路径都使用带命名空间的 Base64 SVG，不能退化成不渲染的裸文本路径");
   const svgBodies = svgSources.map(src => Buffer.from(src.split(",")[1], "base64").toString("utf8"));
+  ok(svgBodies.every(src => src.includes('xmlns="http://www.w3.org/2000/svg"')),
+    "解码后的两条矢量路径都保留 SVG 命名空间，不能只检查 Base64 外壳");
   ok(svgBodies.some(src => src.includes('M3 10 L8 5 L13 10'))
     && svgBodies.some(src => src.includes('M3 6 L8 11 L13 6')),
     "解码后的上下扫路径尖端坐标明确，不再依赖旋转后的盒角");

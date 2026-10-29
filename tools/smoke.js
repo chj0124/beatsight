@@ -795,7 +795,7 @@ function slotGeomProbe(){
 })()`;
 }
 function layoutProbe(){
-  return `(() => {
+  return `(async () => {
   const round = v => Math.round(v * 10) / 10;
   /* 第一段非空文字的**真实**左边缘（Range 量文本节点，而不是元素盒子）——
      元素盒子在按钮上会含 padding，看不出"文案"到底从哪开始 */
@@ -1077,7 +1077,7 @@ function layoutProbe(){
     viz.removeChild(probe);
     const strum = q("#viz .strumv");
     res.strumInk = strum ? getComputedStyle(strum, "::before").backgroundColor : null;
-    res.strumHeadInk = strum ? getComputedStyle(strum, "::after").borderBottomColor : null;
+    res.strumHeadInk = strum ? getComputedStyle(strum, "::after").backgroundColor : null;
     if (strum){
       const headCss = getComputedStyle(strum, "::after");
       res.strumHeadW = parseFloat(headCss.width);
@@ -1305,6 +1305,40 @@ function layoutProbe(){
   out.grpWidths = (() => {
     const els = [q(".card-head-left")];   /* 控制芯批 6（PLAN-v9）：开关列退役 ⇒ 只剩一张组容器卡 */
     return els.map(el => { const r = el && el.getBoundingClientRect(); return r ? round(r.width) : null; });
+  })();
+  /* CSS 盒尺寸与颜色不能证明 SVG 真的出图：v3.58.2 缺 xmlns 时两项照样全绿。
+     这里直接加载 favicon 与实际 mask URL，再光栅化读 alpha，图像无效或全透明都必须判红。 */
+  out.svgAssets = await (async () => {
+    const load = src => new Promise(resolve => {
+      if (!src) return resolve({ ok: false, w: 0, h: 0, ink: 0, reason: "missing-src" });
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const canvas = document.createElement("canvas");
+          canvas.width = 32; canvas.height = 32;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, 32, 32);
+          const pixels = ctx.getImageData(0, 0, 32, 32).data;
+          let ink = 0;
+          for (let i = 3; i < pixels.length; i += 4){ if (pixels[i] > 0) ink++; }
+          resolve({ ok: true, w: img.naturalWidth, h: img.naturalHeight, ink: ink });
+        }catch(e){ resolve({ ok: false, w: 0, h: 0, ink: 0, reason: "raster-error" }); }
+      };
+      img.onerror = () => resolve({ ok: false, w: 0, h: 0, ink: 0, reason: "load-error", src: String(src).slice(0, 120) });
+      img.src = src;
+    });
+    const urlOf = css => {
+      const m = /data:image\\/svg\\+xml[^"')\\s]+/.exec(css || "");
+      return m ? m[0] : "";
+    };
+    const favicon = q('link[rel~="icon"]');
+    const dn = q("#viz .strumv.dn"), up = q("#viz .strumv.up");
+    const dnCss = dn && getComputedStyle(dn, "::after"), upCss = up && getComputedStyle(up, "::after");
+    return {
+      favicon: await load(favicon ? favicon.href : ""),
+      chevronDn: await load(dnCss ? urlOf(dnCss.maskImage) : ""),
+      chevronUp: await load(upCss ? urlOf(upCss.maskImage) : "")
+    };
   })();
   return JSON.stringify(out);
 })()`;
@@ -1879,6 +1913,28 @@ function lyricTabProbe(){
       var pickGeom = measure();
       res.pickFocus = { cellH: parseFloat(getComputedStyle(vizEl).getPropertyValue("--cell-h")), rowH: pickGeom.rowH };
       vizEl.classList.remove("has-pick");
+      /* 用户实拍路径：单行大号 + 两标注关闭 + 贴行歌词。歌词行必须落在实际格底之下，
+         不能只查谱内 tab 模式而让 follow 的旧固定偏移漏检。 */
+      vizEl.classList.add("chord-xl");
+      B.Store.S.playMode = "arrange";
+      B.Store.S.arrangeSel = { id: a.id, from: 0, to: 0, loop: true };
+      B.Store.S.showLyric = true; B.Store.S.lyricPos = "follow"; B.Store.S.pitchNotation = "off";
+      B.Store.upsertLyric(a.id, sec.uid, [{ t: 0, dur: 24, ch: "测" }, { t: 96, dur: 24, ch: "词" }], { notes: [] });
+      B.Store.S.scrollMode = true; B.Store.S.scrollRows = 1;
+      rebuild(); await frame();
+      var followGeom = measure(), followGap = null;
+      var followGrids = [].slice.call(document.querySelectorAll("#viz .bar-row"));
+      var followRows = [].slice.call(document.querySelectorAll("#lyricLane .lyric-row"));
+      for (var fi = 0; fi < followRows.length; fi++){
+        var fc = followGrids[fi] && followGrids[fi].querySelector(".cell");
+        if (fc && followRows[fi].querySelector(".lyric-char")){
+          followGap = Math.round((followRows[fi].getBoundingClientRect().top - fc.getBoundingClientRect().bottom) * 100) / 100;
+          break;
+        }
+      }
+      res.followFocus = { cellH: followGeom.cellH, rowH: followGeom.rowH,
+        overlaps: followGeom.overlaps, labelsN: followGeom.labelsN, gap: followGap };
+      vizEl.classList.remove("chord-xl");
       B.Store.S.scrollMode = false;
     }catch(e){ res.err = String(e && e.message || e); }
     finally{
@@ -4051,6 +4107,13 @@ async function main(){
             ok(W.strumHeadW === 16 && W.strumHeadH === 16,
               p.label + "·" + vp + "：★★ 扫弦矢量头部 = 16×16px（实扫/空扫共用同一 ::after 几何）",
               "实测 " + W.strumHeadW + "×" + W.strumHeadH);
+            const assets = L.svgAssets || {};
+            [["favicon", "favicon"], ["chevronDn", "下扫 Chevron"], ["chevronUp", "上扫 Chevron"]].forEach(([key, label]) => {
+              const a = assets[key];
+              ok(!!a && a.ok === true && a.ink > 0,
+                p.label + "·" + vp + "：★★★ " + label + " SVG 真实加载并产生非透明像素（不是只读 CSS 盒）",
+                JSON.stringify(a || null));
+            });
           }
           /* ★★★ v3.31.0（用户报障）②：宽屏铺满切换后，歌词轨宽度必须跟随 #viz。
              歌词轨的 inline 宽度由 placeLaneOverlay 写死，不重排就停在旧值
@@ -4550,6 +4613,14 @@ async function main(){
               JSON.stringify(D.scrollPlayback));
               ok(D.pickFocus && D.pickFocus.cellH === 84 && D.pickFocus.rowH === 126,
                 p.label + "·" + vp + "：★★ 单行逐弦大号几何 = 84/126", JSON.stringify(D.pickFocus));
+              ok(D.followFocus && D.followFocus.cellH === 66 && D.followFocus.rowH === 108
+                && D.followFocus.gap === 6 && D.followFocus.overlaps === 0 && D.followFocus.labelsN > 0,
+              p.label + "·" + vp + "：★★★ 单行双关贴行歌词落在 66px 格底下 6px，不与谱面/箭头重叠",
+              JSON.stringify(D.followFocus));
+              ok(M.followFocus && M.followFocus.cellH === 51 && M.followFocus.rowH === 83
+                && M.followFocus.gap === 2 && M.followFocus.overlaps === 0 && M.followFocus.labelsN > 0,
+              p.label + "·" + vp + "：★★★ 窄屏单行双关贴行歌词落在 51px 格底下 2px，不与谱面/箭头重叠",
+              JSON.stringify(M.followFocus));
               ok(Array.isArray(M.scroll) && M.scroll.every(x =>
                 x.cellH === (x.rows === 1 ? 51 : 34) && x.rowH === (x.rows === 1 ? 83 : 66)),
               p.label + "·" + vp + "：★★ 窄屏单行大号几何 = 51/83，三行保持 34/66",

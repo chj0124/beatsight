@@ -26,12 +26,19 @@ const MUTANTS = [
     ".strumv.air::after,.strumv.pick::after{content:none}",
     ".strumv.air::after,.strumv.pick::after{content:\"\"}", "M3"),
    ["无方向空扫的 ::after 显式关闭", "逐弦拨弦的 ::after 显式关闭"]],
-  ["M4 矢量路径退化为不带命名空间的裸文本", s => s.replace(/data:image\/svg\+xml;base64/g, "data:image/svg+xml"),
-   ["两条矢量路径都使用带命名空间的 Base64 SVG"]],
+  ["M4 矢量路径保留 Base64 但删除命名空间", s => s.replace(/data:image\/svg\+xml;base64,([A-Za-z0-9+/=]+)/g,
+    (whole, b64) => "data:image/svg+xml;base64," + Buffer.from(
+      Buffer.from(b64, "base64").toString("utf8").replace(' xmlns="http://www.w3.org/2000/svg"', ""),
+      "utf8").toString("base64")),
+   ["解码后的两条矢量路径都保留 SVG 命名空间"]],
   ["M5 琶音头部不再复用 Chevron", s => once(s,
     "background:var(--peak);-webkit-mask-image:var(--chev-up);mask-image:var(--chev-up);\n  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}\n/* 逐弦拨弦记号",
     "background:var(--peak);-webkit-mask-image:none;mask-image:none;\n  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}\n/* 逐弦拨弦记号", "M5"),
    ["琶音头部复用同一 Chevron"]],
+  ["M6 favicon 删除命名空间", s => once(s,
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' width='28'",
+    "%3Csvg width='28'", "M6"),
+   ["favicon 根 svg 保留 SVG 命名空间"]],
 ];
 let hitN = 0, missN = 0;
 for (const [name, fn, keys] of MUTANTS){

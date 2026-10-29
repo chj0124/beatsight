@@ -15,7 +15,7 @@
        按深色渲染。经典主题下仍是 dark，逐位不变。 -->
 <meta id="colorSchemeMeta" name="color-scheme" content="dark">
 <meta name="description" content="BeatSight 时值节拍器 —— 吉他练习用的节奏可视化节拍器，把抽象的「时值」翻译成「长度」；单文件零依赖，可离线使用。">
-<link rel="icon" href="data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231ED760'/%3E%3Crect x='10' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='23' y='24' width='18' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='45' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231ED760'/%3E%3Crect x='10' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='23' y='24' width='18' height='14' rx='4' fill='%230A0A0A'/%3E%3Crect x='45' y='24' width='9' height='14' rx='4' fill='%230A0A0A'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>BeatSight 时值节拍器</title>
@@ -5146,18 +5146,18 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L9182  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
      L10418 Modal         应用内弹窗
      L10579 Viz           时值可视化渲染与每帧动画
-     L14325 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15079 Trainer       变速训练器
-     L15296 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15975 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17931 Editor        自定义节奏型编辑器
-     L19143 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19238 Ear           听辨训练（v1.10.0）
-     L19466 Arrange       曲式编排（v2.0.0）
-     L23602 Help          使用方法（v2.0.1）
-     L23757 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23839 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24135 初始化（装配） 各模块 hook 接线与启动
+     L14328 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15082 Trainer       变速训练器
+     L15299 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15978 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17934 Editor        自定义节奏型编辑器
+     L19146 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19241 Ear           听辨训练（v1.10.0）
+     L19469 Arrange       曲式编排（v2.0.0）
+     L23605 Help          使用方法（v2.0.1）
+     L23760 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23842 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24138 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5183,7 +5183,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.58.3";
+const VERSION = "3.58.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -13298,19 +13298,22 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       const bothOff = viz.classList.contains("chord-xl");   // 两标注都关（xl 放大）：释放出的行内标注带（约 48–82px）复用
       /* v2.86.0 回归点：v2.84.0 双关时跟随条上移进该空带（位移 行顶+50、行高 32、字 17px/800）；
          退役跟随条时这套被删，逐行歌词轨退回锚行盒底（+88）→ 空带复用语丢失，歌词上方空 44px。
-         现移植回：bothOff ⇒ translateY = 行顶 + (桌面 50 / 窄屏 36)；窄屏标注带仅 32px，行高维持 28 才塞得下。
+         现移植回：bothOff ⇒ 普通档仍锚行顶 + (桌面 50 / 窄屏 36)；单行大号档改锚
+         行顶 + 实际格高 + (桌面 6 / 窄屏 2)，避免歌词侵入放大的谱面。
          普通（标注开着）仍锚行盒底 +2，行为不变。 */
       /* ★★ v3.33.7：锚点也改读**实时行盒高**（rowEls[i].offsetHeight）——cacheGeo 的
          vizRowBoxH 若与真实 DOM 不一致（见 vizClipH 的注释），歌词会整体错位一个固定量。 */
       let y;
+      const cell = cellEls[i] && cellEls[i][0];
       if (lane.classList.contains("in-tab")){
-        const cell = cellEls[i] && cellEls[i][0];
         const tabH = viz.classList.contains("scroll-belt")
           ? ((cell && cell.offsetHeight) || (viz.classList.contains("has-pick") ? 84 : 66))
           : (viz.classList.contains("has-pick") ? 56 : ((cell && cell.offsetHeight) || 44));
         y = g ? g.top + (tabH - 28) / 2 : (i * 32);
       } else {
-        y = g ? (bothOff ? (g.top + (narrow() ? 36 : 50))
+        const followCellH = (cell && cell.offsetHeight) || (narrow() ? 51 : (viz.classList.contains("has-pick") ? 84 : 66));
+        y = g ? (bothOff ? (g.top + (viz.classList.contains("scroll-belt")
+          ? followCellH + (narrow() ? 2 : 6) : (narrow() ? 36 : 50)))
           : (g.top + ((rowEls[i] && rowEls[i].offsetHeight) || vizRowBoxH) + 2)) : (i * 32);
       }
       /* v3.0.0（批 2）：把 y **记在行对象上**——scroll 下帧内要写 `translate(dx, y+dy)`，

@@ -33,6 +33,10 @@ const MUTANTS = [
     "symbols.push({ left: mr.left - gr.left - pad, right: mr.right - gr.left + pad });",
     "symbols.push({ left: mr.left - rr.left - pad, right: mr.right - rr.left + pad });", "M5"),
    ["箭头减网格行 rect", "不得把未同步落位的箭头屏幕坐标"]],
+  ["M6 双关贴行歌词退回旧固定偏移", s => once(s,
+    "bothOff ? (g.top + (viz.classList.contains(\"scroll-belt\")\n          ? followCellH + (narrow() ? 2 : 6) : (narrow() ? 36 : 50)))",
+    "bothOff ? (g.top + (narrow() ? 36 : 50))", "M6"),
+   ["单行双关贴行歌词跟随实际格高", "窄屏单行双关跟随 51"]],
 ];
 
 let hitN = 0, missN = 0;

@@ -69,6 +69,8 @@ section("T235b favicon 同源坐标（icon.svg ÷ 8 = 64 网格）");
   const m = /<link rel="icon" href="data:image\/svg\+xml,([^"]+)">/.exec(html);
   ok(!!m, "index.html 头部存在 favicon data URI");
   const fav = m ? m[1] : "";
+  ok(fav.includes("xmlns='http://www.w3.org/2000/svg'"),
+    "favicon 根 svg 保留 SVG 命名空间，确保 data URI 能被浏览器解析");
   ok(fav.includes("%231ED760"), "favicon 底为品牌绿 #1ED760");
   ok(fav.includes("%230A0A0A"), "favicon 块为品牌墨 #0A0A0A");
   const blocks = rectsOf(iconSvg).filter(r => (r.fill || "").toUpperCase() === "#0A0A0A");

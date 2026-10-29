@@ -45,6 +45,42 @@ section("T273b 单行谱面 ×1.5，标注带不放大，普通 / 逐弦 / 窄�
     "普通逐弦档仍按 56px 居中，不改变旧行为");
 }
 
+section("T273d 双关贴行歌词跟随实际格高，不再滞留旧 +50/+36");
+{
+  function scene(viewportW, cellH){
+    const seed = {
+      "beatsight.arranges": JSON.stringify({ v: 1, arranges: [
+        { id: "t1", name: "歌词曲", sections: [{ uid: "s1", name: "主歌", blocks: [{ ref: { type: "builtin", idx: 1 }, repeats: 1 }] }] },
+      ] }),
+      "beatsight.state": JSON.stringify({ v: 3, bpm: 240, playMode: "arrange",
+        arrangeSel: { id: "t1", from: 0, to: 0, loop: true }, showLyric: true, lyricPos: "follow",
+        showRuler: false, showDurLabel: false, scrollMode: true, scrollRows: 1 }),
+    };
+    const app = loadApp(seed, { viewportW });
+    app.beat.Store.upsertLyric("t1", "s1", [{ t: 0, dur: 24, ch: "我" }]);
+    app.beat.Viz.reloadScroll();
+    const int = app.beat.Viz.internals();
+    const ri = int.cellEls.findIndex(row => row.length);
+    const cell = int.cellEls[ri][0];
+    Object.defineProperty(cell, "offsetHeight", { value: cellH, configurable: true });
+    const top = int.rowGeo[ri].top;
+    app.beat.Viz.buildLyricLane();
+    const lyricY = app.beat.Viz.internals().lyricRows[ri].y;
+    return { app, lyricY, top };
+  }
+  const focus = scene(1200, 66);
+  ok(focus.app.els.viz.classList.contains("chord-xl") && focus.app.els.viz.classList.contains("scroll-belt"),
+    "前提：单行大号 + 两标注关闭 + 贴行歌词");
+  eq(focus.lyricY, focus.top + 72,
+    "单行双关贴行歌词跟随实际格高：66 + 原桌面间距 6 = 行顶 +72");
+  const normal = scene(1200, 44);
+  eq(normal.lyricY, normal.top + 50,
+    "普通桌面双关仍保持 44 + 6 = 行顶 +50，不改旧行为");
+  const narrow = scene(600, 51);
+  eq(narrow.lyricY, narrow.top + 53,
+    "窄屏单行双关跟随 51 + 原间距 2 = 行顶 +53");
+}
+
 section("T273c 歌词与箭头分别消去各自行位移，再比较行内坐标");
 {
   const start = html.indexOf("  function fitLyricTabLayout(");
