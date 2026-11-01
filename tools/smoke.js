@@ -285,13 +285,8 @@ function probe(){
      用 getElementsByTagName("*") 而不是 querySelectorAll("*")：前者是活集合、后者会分配数组，
      这里是每次冒烟跑一次、差异可忽略，但活集合少一次分配也更贴合"只做便宜事"的习惯。 */
   out.domNodes = document.body.getElementsByTagName("*").length;
-  /* v2.13.0：出厂默认壁纸的**真解码**。
-     为什么必须在真机做：桩里拿不到真实解码器，而"样式里挂着 data: URL"**不等于**
-     "浏览器画得出这张图"。v2.13.0 输血时正是把 data: 前缀写重了（base64 多出 15 字节），
-     桩测试全绿、而背景一片空白——只有这一条抓得到。
-     口径：从**实际生效的 background-image** 里取出 url("…") 再交给 Image 解码，
-     验的是"真的能画出来"，而不是"字符串看着像"。没有壁纸时记 present:false（断言只要求
-     "有壁纸就必须解得开"）。
+  /* 壁纸探针：出厂无图时记 present:false；有自定义图时从实际生效的 background-image
+     取出 data URL 并交给浏览器真实解码，避免"样式里有字符串"被误当成"图片能显示"。
      ★ 本段在**模板字符串内**：别用反引号，也别写 $ 加大括号。 */
   try{
     const wl = document.getElementById("wallLayer");
@@ -2802,16 +2797,11 @@ function portraitFixProbe(){
         if(cb&&!cb.checked)cb.checked=true; void document.body.offsetWidth;
         var b=q(".card-head-left .slider-row"); var t=b?Math.round(b.getBoundingClientRect().top):null;
         if(cb&&k===false)cb.checked=k; void document.body.offsetWidth; return t; })(),
-      /* ★ v3.39.1：BPM 塔式两行后的「等长 / 对齐 / 居中」三组读数（用户澄清的三点口径；
-         同批追加：音量 % 文案与右侧定宽槽退役，三行统一两段式、右端同抵列右缘）：
-         ① volBpmDelta 改为**两根滑杆互比右端**（原口径是音量行盒 vs BPM 输入——塔式后
-            行盒右缘恒比滑杆宽出右侧空槽 48px，原口径会把对齐判成错位）；
-         ② volBpmLeftDelta 左端互比——与 ① 同时为 0 ⇔ 等长且两端对齐；
-         ③ bpmClusterAxis 步进群轴心 vs **滑杆轴**——★ v3.41.0（方案对账 G9）按方案图
-            曾改参照芯轴（BPM 行轴）；v3.56.0 PLAN-v16 阶段 4 D6 复议（用户主诉「该居中的
-            没居中」）拍板甲案改回**滑杆轴**（slider-wrap 中心）——步进群应正对滑杆中轴，
-            而非含「BPM」标签的整行中轴（芯轴口径会把步进群判偏 31px）；
-            bpmStackedDown 步进群在滑杆**下方**（塔式形状本体）。 */
+      /* BPM 塔式的三组几何读数：
+         ① volBpmDelta 比较音量与 BPM 滑杆右端；
+         ② volBpmLeftDelta 比较左端，与 ① 同时为 0 即等长且两端对齐；
+         ③ bpmClusterAxis 直接比较芯顶开关组与 BPM 步进组的中心点，二者必须共轴；
+            bpmStackedDown 确认步进组仍在滑杆下方。 */
       volBpmDelta: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
@@ -2829,7 +2819,7 @@ function portraitFixProbe(){
       bpmClusterAxis: (function(){ var cb=document.getElementById("ctlOpen");
         var keep = cb? cb.checked : null;
         if (cb){ cb.checked = true; void document.body.offsetWidth; }
-        var s=q(".bpm-slider-row .slider-wrap"), g=q(".slider-row .bpm-row");   /* v3.56.0 D6 甲案：参照滑杆本体（slider-wrap），不是含标签的整行 */
+        var s=q(".core-pills"), g=q(".slider-row .bpm-row");
         var d=null;
         if (s&&g){ var sr=s.getBoundingClientRect(), gr=g.getBoundingClientRect();
           d=Math.round((gr.left+gr.right)/2-(sr.left+sr.right)/2); }
@@ -3588,12 +3578,9 @@ async function main(){
         p.label + "：顶栏 chip 只报保存状态、不重复版本号",
         "实际 " + (d.version && d.version.chip));
       ok(d.version.const === VERSION, p.label + "：页面内 VERSION 与源码一致");
-      /* v2.13.0：出厂默认壁纸**真的能被浏览器解码**（宽高是数字、不是 ERR）。
-         ★ 这条是"桩测不出、只能真机验"的典型：内联 base64 前缀写重过一次，
-         桩全绿而背景空白。冒烟用的 profile 每次都是全新的 → 必然是首次打开形态。 */
-      ok(!!d.wall && d.wall.present === true && /^\d+x\d+$/.test(String(d.wall.decoded))
-         && d.wall.chars > 1000,
-        p.label + "：出厂默认壁纸能真解码（v2.13.0）",
+      /* 冒烟使用全新 profile，首屏必须是出厂无背景图状态。 */
+      ok(!!d.wall && d.wall.present === false,
+        p.label + "：出厂不显示默认背景图片",
         d.wall ? JSON.stringify(d.wall) : "探针未取到 #wallLayer");
       /* v2.10.10：状态点真的落在品牌区徽章矩形内、且真的被画出来（真布局，桩测不到） */
       ok(!!d.badgeDot && d.badgeDot.inside === true,
@@ -3962,8 +3949,8 @@ async function main(){
               + "px）——与右端判据同时为 0 ⇔ 两杆等长且两端一一对齐",
             "volBpmLeftDelta=" + PF.volBpmLeftDelta);
           ok(PF.bpmClusterAxis !== null && Math.abs(PF.bpmClusterAxis) <= 2,
-            p.label + "·" + vp + "：★★★ v3.56.0 D6 甲案：步进群轴心正对**滑杆轴**（slider-wrap 中轴，偏 "
-              + PF.bpmClusterAxis + "px）——v3.41.0 的芯轴口径已随 D6 复议退役",
+            p.label + "·" + vp + "：★★★ 三枚开关与 BPM 步进群共用**控制芯中轴**（中心差 "
+              + PF.bpmClusterAxis + "px，容差 2）",
             "bpmClusterAxis=" + PF.bpmClusterAxis);
           ok(PF.bpmStackedDown !== null && PF.bpmStackedDown >= 0,
             p.label + "·" + vp + "：★★★ v3.39.1 步进群在滑杆**下方**（间隙 " + PF.bpmStackedDown

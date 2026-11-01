@@ -1,18 +1,10 @@
-/* BeatSight 自动化测试 · v3.39.1 BPM 行上下两行塔式 + 音量 % 退役（用户澄清口径）
+/* BeatSight 自动化测试 · BPM 塔式布局与控制芯统一中轴
    T230
    ---------------------------------------------------------------------------
-   【由来】v3.39.0 把 BPM 滑杆与步进群放进同一行，滑杆被挤短。用户澄清改回塔式：
-     ① BPM 条与音量条**严格等长**——上行复刻 .vol-row 槽位（52px 标签 | 滑杆到行尾），
-        左侧标签显示「BPM」（与「节拍」同 12px、同定宽槽，不挤滑杆）；
-     ② 步进群（-5/-1/数值/+1/+5）移到滑杆**正下方**，居中轴**参照滑杆**（不是整行：
-        左槽 52px ⇒ 滑杆轴比整行轴偏右 31px）；
-     ③ 「当前 X BPM」读数行（#trainerProg）与数值行**同轴**居中。
-   【同批追加 · 音量 % 退役】行内 % 文案（#volMasterPct/#volStrumPct）随右侧 38px
-     定宽槽整体退役——音量是耳朵调的参数，% 无信息量；读数只剩收起态胶囊
-     （#volPillPctN，收起时滑杆不可见、胶囊是唯一读数）。三行统一两段式后，
-     BPM 行原为镜像而设的空白右槽同步除名，滑杆右端同抵列右缘。
-   【本用例钉什么（源码级）】行为面由冒烟闸门把守（volBpmDelta 两端对齐 / 步进群
-     轴心偏差 ≤2px，量真 DOM）；这里钉结构与口径，防回潮。
+   ① BPM 条与音量条严格等长，上行复刻 .vol-row 的标签槽与滑杆结构；
+   ② 步进群组移到滑杆正下方，并与芯顶三枚开关共用控制芯中轴；
+   ③ 「当前 X BPM」读数行与数值行同轴居中。
+   本用例钉源码结构，真实几何由冒烟探针测量，中心轴偏差容差为 2px。
    ================================================================================ */
 "use strict";
 const { ok, section, html } = require("../lib/harness");
@@ -40,31 +32,27 @@ section("T230a 上行 .bpm-slider-row：与音量行同构的两段槽位（等�
     "★★ .slider-row 基础规则为列向塔式 + 塔内间距 var(--sp-3)=12px（v3.40.0 间距修正②曾为 13，PLAN-v16 阶段 3 归档 −1px）；v3.39.0 同行形状退役");
 }
 
-section("T230b 下一步进群：居中轴 = 滑杆轴（PLAN-v16 阶段 4 D6 复议；v3.41.0 G9 曾取芯轴）");
+section("T230b 下一步进群：与芯顶开关共用控制芯中轴");
 {
-  /* ★★★ PLAN-v16 阶段 4（D6 复议，2026-10-27 用户批准）：G9 的芯轴口径自记代价
-     「96 不再正对滑杆中轴（偏 31px）」，与设计审计的用户主诉「该居中的没居中」正面相撞，
-     故恢复 v3.39.1 的滑杆轴语义——但偏移量不再写字面 62，走 --lab-w/--lab-gap 单源 calc。
-     防回潮守卫随之翻转：禁止字面 margin-left:62px 回潮（那才是当年被否的形态）。 */
-  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center;\s*margin-left:calc\(var\(--lab-w\) \+ var\(--lab-gap\)\);width:calc\(100% - var\(--lab-w\) - var\(--lab-gap\)\)\}/.test(SURFACE)
-     && !/slider-row \.bpm-row\{[^}]*margin-left:62px/.test(SURFACE),
-    "★★★ 步进群以**滑杆轴**居中（--lab-w/--lab-gap 单源 calc；96 正对滑杆中轴；字面 62px 禁止回潮）");
+  ok(/\.viz-head \.group \.slider-row \.bpm-row\{flex:0 0 auto;flex-wrap:nowrap;justify-content:center\}/.test(SURFACE)
+     && !/\.viz-head \.group \.slider-row \.bpm-row\{[^}]*(?:margin-left|width:calc)/.test(SURFACE),
+    "★★★ 步进群占满控制芯并居中，不再用标签槽 calc 把自己推向滑杆轴");
   ok(!/\.viz-head \.group \.slider-row\{flex-wrap:nowrap\}/.test(SURFACE)
     && !/\.slider-row \.bpm-row\{flex:1 1 100%\}/.test(SURFACE),
     "★★ v3.39.0 同行/折行旧规则已除名（净表面无残留——同行形状的回潮会连带旧规则复活）");
-  /* ★ v3.41.0（方案移动档）：窄屏步进群 = 群高 40 + 钮 30×30 + 数值框 54×36（实测原 30×40 / 64×40） */
   const narrow640 = /@media \(max-width:640px\)\{([\s\S]*?)\n\}/.exec(html);
   ok(!!narrow640
      && /\.slider-row \.bpm-row\{min-height:40px\}/.test(narrow640[1])
      && /\.step-btn\{min-width:0;padding:var\(--sp-2\) 2px;width:30px;height:30px\}/.test(narrow640[1])
-     && /\.bpm-num\{min-width:72px;height:40px;font-size:28px\}/.test(narrow640[1]),   /* v3.42.0：14→20→28（字形高 ≈20px，与 30px 圆钮视觉相当） */
-    "★★ 窄屏步进群按方案移动档：群高 40 / 钮 30×30 / 数值框 54×36（v3.41.0）");
+     && /\.bpm-num\{min-width:72px;height:40px;font-size:28px\}/.test(narrow640[1]),
+    "★★ 窄屏步进群保持群高 40 / 钮 30×30 / 数值框 72×40");
 }
 
-section("T230c 读数行 #trainerProg 与数值行同轴居中（同一根滑杆轴）");
+section("T230c 读数行 #trainerProg 与数值行同轴居中（同一根控制芯轴）");
 {
-  ok(/\.viz-head \.group \.tr-prog\{width:calc\(100% - var\(--lab-w\) - var\(--lab-gap\)\);margin-left:calc\(var\(--lab-w\) \+ var\(--lab-gap\)\);text-align:center\}/.test(html),
-    "★★★ 读数行与步进群**同一根滑杆轴**居中（D6 复议随 .bpm-row 同步；calc 盖掉基础规则 100%）");
+  ok(/\.viz-head \.group \.tr-prog\{text-align:center\}/.test(html)
+     && !/\.viz-head \.group \.tr-prog\{[^}]*(?:margin-left|width:calc)/.test(html),
+    "★★★ 读数行与步进群共用控制芯中轴，不再附加滑杆标签槽偏移");
   const seg = html.slice(html.indexOf('id="trainerProg"') - 40, html.indexOf('id="trainerProg"') + 40);
   ok(/class="tr-prog"/.test(seg), "★ #trainerProg 仍是 .tr-prog（搬块不换 id，接线不动）");
   ok(html.indexOf('class="slider-row"') < html.indexOf('id="trainerProg"'),

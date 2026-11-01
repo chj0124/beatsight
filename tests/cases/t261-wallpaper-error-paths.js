@@ -37,7 +37,7 @@ section("T261a 图片解码失败 ⇒ 走 im.onerror，提示「这张图读不�
 section("T261b 图能解码但读不出尺寸 ⇒ im.onload 走 why=size 提示（此前零覆盖）");
 {
   const app = loadApp({}, { image: "size" });
-  const before = app.beat.wallState();          // 启动即含出厂默认图（wallRead），不是 null
+  const before = app.beat.wallState();          // 出厂无壁纸，保存引用以验证失败无副作用
   app.setFileText(smallJpeg());
   fireWall(app);
   ok(alertOpen(app), "★ 弹窗打开");

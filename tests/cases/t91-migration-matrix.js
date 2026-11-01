@@ -167,14 +167,11 @@ section("T91e 迁移矩阵 · 脏值矩阵：一批字段同时脏也要照常�
   ok(!("plan" in S.trainer), "★ 老的 plan 字段即使出现在脏包里也不进状态");
   ok(S.loopRange.from <= S.loopRange.to, "★ 循环区间脏 → 仍保证 from ≤ to（空区间会让调度器死循环）");
 
-  /* 壁纸那一键脏了，不该影响别的（它是独立的冷键）。★ v2.13.0：坏了回**出厂默认图**——
-     "读不懂的偏好"应当落回出厂状态，而不是落回"什么都没有"那个只有用户点过「移除」才该有的态 */
+  /* 壁纸键脏了不该影响别的；默认无图，静默回落即可。 */
   const both = loadApp(Object.assign(seedState({ v: 3, bpm: 96 }),
     { "beatsight.wallpaper": "这不是 JSON" }));
-  const wall = both.beat.wallState();
-  ok(wall && wall.img === both.beat.WALL_DEFAULT,
-    "★ 壁纸键坏了 → 回出厂默认图（不弹窗，视觉偏好不值得惊动用户）");
-  eq(wall.dim, both.beat.WALL_DIM_DEF, "  遮罩回默认值");
+  eq(both.beat.wallState(), null,
+    "★ 壁纸键坏了 → 回出厂无图状态（不弹窗，视觉偏好不值得惊动用户）");
   eq(both.beat.Store.S.bpm, 96, "且不影响热键的正常读取");
   ok(!!both.beat.Store && !!both.beat.Controls, "后续模块照常装配");
 }

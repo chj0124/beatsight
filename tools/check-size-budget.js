@@ -472,7 +472,7 @@ if (main > WARN_BYTES){
   console.log("  ⚠ 已进入观察带：距红线只剩 " + kb(BUDGET_BYTES - main)
     + "（观察线 " + kb(WARN_BYTES) + "）——该规划一次瘦身或归档了，别等撞线才动手。");
   console.log("    瘦身首选：docs/archive/ 的旧方案与 CHANGELOG 分卷（已在库外，不占产物）；"
-    + "产物内的先看 WALL_DEFAULT 那张出厂壁纸（v3.33.9 一条 data URI 就是 ~365K 字符）。");
+    + "产物内先检查是否重新引入了大段 base64 位图；出厂默认壁纸已删除，自定义图仍只存本机。");
 }
 console.log("  ✓ 主文件在预算内（余量 " + kb(BUDGET_BYTES - main) + "）");
 process.exit(0);

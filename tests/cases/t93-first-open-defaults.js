@@ -151,41 +151,17 @@ section("T93d 首开默认 ③ · 同屏行数 2 行、拍号 4/4（状态与控
 }
 
 /* ================= 场景 T93e：首开四件套一起看（验收面） ================= */
-section("T93e 首开默认 ①③④ · 分区展开态 / 行数拍号 / 默认壁纸 一屏之内同时成立");
+section("T93e 首开默认 ①③④ · 分区展开态 / 行数拍号 / 无默认壁纸 一屏之内同时成立");
 {
   const { beat, els, storage } = firstOpen();
-  /* ① 折叠：两区（节拍 / 自定义）出厂都展开（机制与脏值口径在 T85）——
-     v3.35.3「扫弦」区退役后不再有"出厂收起的那一区" */
   const secs = els["presetList"].children.filter(el => /(^| )preset-section( |$)/.test(el.className));
   eq(JSON.stringify(secs.map(h => h.getAttribute("aria-expanded"))), JSON.stringify(["true", "true"]),
     "★ ① 分区：节拍 + 自定义都展开（扫弦区已退役）");
-  /* ③ 行数 / 拍号（机制在 T79 / T13） */
   eq(beat.Store.S.vizRows + "/" + beat.Store.S.sig, "2/4", "★ ③ 同屏行数 2 / 拍号 4/4");
-  /* ④ 默认壁纸（机制与三态在 T92）：出厂就有，但**不占** localStorage */
-  ok(beat.wallState() && beat.wallState().img === beat.WALL_DEFAULT, "★ ④ 出厂默认壁纸已应用");
-  eq(storage.get(beat.WALL_KEY), undefined, "★ ④ 且「什么都没做」时它不落盘（用户不该为此付几百 KB）");
-  eq(els["wallLayer"].hidden, false, "④ 壁纸层已现身");
-  /* ★★ 内联常量本身必须是**一张真图**：前缀只许一份、base64 要能解、头 3 字节要是 JPEG 魔数。
-     这条是 v2.13.0 输血时**真机解码断言抓到的真 bug** 的回归钉子——
-     当时把完整 data URL 填进一个已经带了 `data:image/jpeg;base64,` 前缀的占位符里，
-     于是前缀写重、base64 多出 15 个字节，**浏览器根本解不开这张图**（背景一片空白）。
-     桩里之所以当时全绿：从前的断言只看"style 里有没有 data: 前缀"，前缀重了照样有。
-     下面三条在桩里就能拦住它（沙箱补了 atob，见 harness 的说明）。 */
-  const dm = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(beat.WALL_DEFAULT);
-  ok(!!dm, "★★ 默认图是**单份前缀 + 纯 base64** 的 data URL（前缀重了这条就红）");
-  eq(dm && dm[1], "image/jpeg", "  声明类型是 JPEG");
-  /* 用 Node 自己的 Buffer 解，而不是页面里的 atob：两条**不同**的解码路径对同一串 base64
-     得出同一个文件头，才能说明"这串东西本身"是对的（同源解码器有可能一起错）。
-     ★ 取值一律带长度守卫：前缀重了 / 拿到空串时，这里必须产出**具名失败**而不是让套件崩掉 */
-  const bin = Buffer.from(dm ? dm[2] : "", "base64");
-  const head3 = [0, 1, 2].map(i => typeof bin[i] === "number" ? "0x" + bin[i].toString(16) : "—").join(" ");
-  eq(head3, "0xff 0xd8 0xff",
-     "★★ 解出来的头 3 字节就是 JPEG 魔数（不是把 data: 前缀当二进制解出来的垃圾）");
-  const tail2 = bin.length >= 2 ? ((bin[bin.length - 2] << 8) | bin[bin.length - 1]) : -1;
-  eq(tail2, 0xFFD9, "  结尾是 JPEG 的 EOI 标记（ffd9）——说明这串没有被截断");
-  ok(beat.WALL_DEFAULT.length > 1000 && beat.WALL_DEFAULT.length < beat.WALL_MAX_BYTES,
-    "  体积落在（0, 落盘上限）之间：" + beat.WALL_DEFAULT.length + " 字符");
-  /* ② 示例曲（细节在 T93a–c） */
+  eq(beat.wallState(), null, "★ ④ 出厂不应用任何默认壁纸");
+  eq(storage.get(beat.WALL_KEY), undefined, "★ ④ 无图默认态不落盘");
+  eq(els["wallLayer"].hidden, true, "④ 背景层保持隐藏");
+  eq(els["wallLayer"].style.backgroundImage, "", "④ 背景层没有图片或遮罩残留");
   eq(beat.Store.S.arrangeSel.id, beat.DEMO_ID, "★ ② 示例曲已选中");
   eq(beat.Store.S.playing, false, "★ ② 且没有在播");
 }

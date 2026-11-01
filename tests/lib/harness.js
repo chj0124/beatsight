@@ -71,13 +71,8 @@ const HTML_ATTRS = {
      无论存档是什么）。不复刻的话，桩里读 value 得 ""，"boot 同步存档值"的回归断言
      会恒真（输入框显示什么都没人验）——那正是预备拍拍数显示/实际脱节的假绿温床 */
   countInBeats: { value: "4" },
-  /* v2.12.0 背景壁纸：控件在**没有壁纸时**都是隐藏的（标记里写死 `hidden`）。
-     不复刻的话，桩里它们的初值是 false（=显示），于是"装上壁纸才露面"这条
-     在桩里恒真、测不出来。wallDim 的 min/max/value 也是标记里写死的。
-     ★ v2.13.0：出厂自带默认壁纸后，「移除」「遮罩深浅」首屏就是显示的（由 wallApply 打开），
-       但标记里的初值仍必须是 hidden —— 否则"wallApply 会把它们显出来"这条接线
-       在桩里没法被判定（初值本来就对）。「恢复默认」相反：它只在**不是默认图**时出现，
-       初值 hidden 且默认态下由 wallApply 维持 hidden。 */
+  /* 背景壁纸：出厂无图，相关控件初始都隐藏；wallApply 只在自定义图片出现后打开它们。
+     桩必须复刻这些 hidden 初值，才能验证显示/隐藏接线。wallDim 的域与初值也按标记复刻。 */
   wallFile: { hidden: true }, wallClearBtn: { hidden: true }, wallDimRow: { hidden: true },
   wallDefaultBtn: { hidden: true },
   wallDim: { min: "0", max: "80", value: "55" },
