@@ -377,6 +377,8 @@ PLAN-v14 依用户实拍「离编辑区太远」归位，形态图标 +「撤销
 小节级 `#strFillIn`/`#strFillBtn`（语法 `s[:f][tech]`，`5:x` = 哑音）。H/P/S 写入时校验同弦前音；
 `#pmRow` 用瞬态起点 + 终点写连续 `pm`，支持跨小节与撤销。缓存 `barFinger` 同时含 str 与 pm。
 
+**模板下拉展示序**：基础模板保持 `BUILTINS` 原序；各首示例曲按曲式中首次出现顺序排列，选项 `value` 仍保留原始 `b{idx}`，不为展示排序改动数据下标；我的预设保持 `customs` 原序。回归：`t242-editor-template-select` 的 T242-4。
+
 **保存权限**：`saveDraft(copy)` 统一出口。自定义来源显示「保存修改 + 另存副本」：覆盖保存保留原 id，
 曲式引用自动解析到新内容；副本另发新 id。内置/示例曲只读，只显示「保存为预设」并新增副本，
 没有覆盖内置的分支。回归：`t240c-str-pick-editor`、`t270-tech-editor`、`t272-custom-overwrite-save`。

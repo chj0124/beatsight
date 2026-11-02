@@ -91,3 +91,34 @@ section("T242-3 模板下拉 · 自定义型作模板 + 脏项防御");
   eq(JSON.stringify(Ed.draft().bars), now, "脏 value / 占位回火：草稿不动、不抛错");
   Ed.tryClose();
 }
+
+section("T242-4 模板下拉 · 示例曲按编号展示 + 原始下标与自定义顺序不变");
+{
+  const { beat, els } = loadApp();
+  const Ed = beat.Editor, St = beat.Store;
+  St.importPresets(JSON.stringify({ presets: [
+    { name: "我的A", meter: 4, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] },
+    { name: "我的B", meter: 4, bars: [[{ t: 48 }, { t: 48 }, { t: 48 }, { t: 48 }]] }
+  ] }));
+  Ed.openBlank();
+  const sel = els["editorTplSel"];
+  const builtins = sel.children.filter(o => o.value[0] === "b");
+  eq(builtins.slice(0, 11).map(o => o.value).join(","), "b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10",
+     "★ 基础模板保持既有顺序");
+  eq(builtins.slice(11, 17).map(o => o.value).join(","), "b11,b12,b13,b14,b15,b16",
+     "★《在他乡》按节奏型 1–6 展示");
+  eq(builtins.slice(17, 22).map(o => o.value).join(","), "b21,b18,b19,b20,b17",
+     "★《我们能不能不分手》按节奏型 1–5 展示，value 仍是原始下标");
+  eq(builtins.slice(17, 22).map(o => o.textContent).join("|"),
+     "内置 · 节奏型1（《我们能不能不分手》）|内置 · 节奏型2（《我们能不能不分手》）|内置 · 节奏型3（《我们能不能不分手》）|内置 · 节奏型4（《我们能不能不分手》）|内置 · 节奏型5（《我们能不能不分手》）",
+     "★ 第二首示例曲的可见名称同步按 1–5 排列");
+  eq(beat.BUILTINS.slice(17, 22).map(p => p.name).join("|"),
+     "节奏型5（《我们能不能不分手》）|节奏型2（《我们能不能不分手》）|节奏型3（《我们能不能不分手》）|节奏型4（《我们能不能不分手》）|节奏型1（《我们能不能不分手》）",
+     "★ 底层 BUILTINS 挂载顺序未被展示排序改动");
+  sel.value = builtins[17].value; sel.fire("change");
+  eq(JSON.stringify(Ed.draft().bars), JSON.stringify(beat.BUILTINS[21].bars),
+     "★ 移到第二首展示首项的 b21 仍载入原琶音模板，不错位到 b17");
+  eq(sel.children.filter(o => o.value[0] === "c").map(o => o.textContent).join("|"), "我的 · 我的A|我的 · 我的B",
+     "★ 我的预设保持既有先后顺序");
+  Ed.tryClose();
+}
