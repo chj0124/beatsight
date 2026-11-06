@@ -693,7 +693,7 @@ v1.9.0 的注释把「唯一出口」写在常规出口上、靠人工保持一�
 只在 `k = 页内最后一行` 时解析**节目单**的下一小节（走 `arrNextBar`，与发声同源——
 范围末尾不循环则没有预告、范围循环则预告 = 范围起点，绝不按歌曲 k+1 瞎猜）；
 `buildViz` 时把 `winPat.bars[0]` 换成预告内容、第 1 行挂 `.preview-row`（降透明）
-+ `.preview-badge` 徽标「下一小节 · 型名」。四条铁律：
++ `.preview-badge` 徽标「下一小节：型名」。四条铁律：
 ① **前提 N ≥ 2**（v2.10.3 补）——见下；
 ② 预告行是**未来**——`setCell` 对它豁免"已弹"态（格子恒 upcoming）；
 ③ `paintFrameBody` 重建条件除盯 `winAnchor(k)` 外再盯 `previewSegFor(k).bar`

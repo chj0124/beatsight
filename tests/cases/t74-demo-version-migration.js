@@ -221,7 +221,7 @@ section("T74e 删除保护 · ★ 曲式被删 → demoStale 恒 false，启动�
 section("T74f 改编路径 · ★ 内置示例型无删除按钮；经编辑器另存为自定义（-副本）");
 {
   const { beat, els } = loadDemo();
-  const target = itemByName(els, "节奏型2（《在他乡》）");
+  const target = itemByName(els, "节奏型2 《在他乡》");
   ok(!!target, "前提：扫弦区里有内置示例条目");
   /* 内置条目没有删除按钮（buildPresetItem 才有）——删除路径在 UI 上不存在 */
   ok(!target.children.some(c => /(^| )del( |$)/.test(c.className)),

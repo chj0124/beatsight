@@ -340,9 +340,9 @@ section("T68i 整首连播 · 点侧栏节奏型即退回单练它（曲式模�
   playAllOf(els).fire("click");
   eq(beat.Store.S.playMode, "arrange", "前提：已在整首连播中");
 
-  const target = itemByName(els, "节奏型2（《在他乡》）");
-  ok(!!target, "前提：示例型「节奏型2（《在他乡》）」在库中可见（v3.35.3 起挂在「自定义」区歌曲行下）");
-  target.fire("click");
+  const target = itemByName(els, "节奏型2 《在他乡》");
+  ok(!!target, "前提：示例型「节奏型2 《在他乡》」在库中可见（v3.35.3 起挂在「自定义」区歌曲行下）");
+  if (target) target.fire("click");
   eq(beat.Store.S.playMode, "preset", "★ 点节奏型 → 退回预设模式（单练它）");
   eq(beat.Store.S.sel.type, "builtin", "选中的是内置型（v2.20.0 起示例 5 型住 BUILTINS 尾部）");
   ok(String(beat.activePattern().name).indexOf("节奏型2（《在他乡》）") >= 0,

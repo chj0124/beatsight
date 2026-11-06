@@ -119,7 +119,7 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
     const marked = hasPrev(rows[0]) || capsuleOf(rows[0]) !== null;
     if (r === 3){
       sawLast = true;
-      if (marked && capsuleOf(rows[0]) === "下一小节 · 四分四小节" && cellsClean()) onLast++; else bad++;
+      if (marked && capsuleOf(rows[0]) === "下一小节：四分四小节" && cellsClean()) onLast++; else bad++;
     } else if (r >= 0 && r < 3){
       sawElse = true;
       if (!marked) offElsewhere++; else bad++;  // P===W 无绕行淡显：非页末帧第 1 行必须干净
@@ -130,7 +130,7 @@ section("T100b 轻量预告 · 4 小节型 + 4 行档 ⇒ 球在第 4 行期间�
   const rowsAfter = rowEls(els);
   ok(sawLast && sawElse, "前提：球在第 4 行与其余行都驻留过（否则本组是假绿）");
   ok(onLast > 10 && bad === 0,
-     "★★ 球在第 4 行（页末行）期间第 1 行 = 预告行（.preview-row + 「下一小节 · 型名」胶囊），"
+     "★★ 球在第 4 行（页末行）期间第 1 行 = 预告行（.preview-row + 「下一小节：型名」胶囊），"
      + "且格子恒按未弹画（无已弹白填充遮挡底纹）——离开即摘（实际 标记 " + onLast + " 帧 / 违例 " + bad + "）");
   ok(iv1.ballEl === iv2.ballEl && iv1.rowGeo === iv2.rowGeo,
      "★★ 全程零整树重建：轻量挂法不换行元素（T36「取一次 internals() 再驱动」契约保留）");
@@ -161,7 +161,7 @@ section("T100c 轻量预告 · 1 小节型 + 4 行档 ⇒ 球在第 4 行时第 
     const cap = capsuleOf(rows[0]);
     if (r === 3){
       sawLast = true;
-      if (hasPrev(rows[0]) && cap === "下一小节 · 四分一小节" && cellsClean()) capOn++; else bad++;
+      if (hasPrev(rows[0]) && cap === "下一小节：四分一小节" && cellsClean()) capOn++; else bad++;
     } else if (r === 1 || r === 2){
       sawMid = true;
       /* 短型绕行淡显：非在播行全部挂 .preview-row（行 0 也在内），但**没有**胶囊；
@@ -202,7 +202,7 @@ section("T100d 长型回归 · 8 小节型 + 4 行档 ⇒ 页末预告仍走 win
     const cap = capsuleOf(rows[0]);
     if (r === 3){
       sawLast = true;
-      if (hasPrev(rows[0]) && cap === "下一小节 · 四分八小节") pvOnLast++;
+      if (hasPrev(rows[0]) && cap === "下一小节：四分八小节") pvOnLast++;
     } else if (r === 0){
       sawFirst = true;
       if (!hasPrev(rows[0]) && cap === null) cleanFirst++;

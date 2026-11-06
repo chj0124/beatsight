@@ -42,7 +42,7 @@ const bnamesOf = storage => JSON.parse(storage.get("beatsight.builtinNames") || 
 section("T97a 内置型改名 · ✎ → uiPrompt 覆盖 → 列表/标题/冷键/重启全链路");
 {
   const first = loadApp(undefined, { seedDemo: false });
-  const item = itemByName(first.els, "节奏型1（《在他乡》）");
+  const item = itemByName(first.els, "节奏型1 《在他乡》");
   ok(!!item, "前提：扫弦区有内置示例条目 P1");
   const pen = renameBtnOf(item);
   ok(!!pen, "★ 内置条目带 ✎ 改名图标");

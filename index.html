@@ -889,7 +889,7 @@ section.card{width:1048px;max-width:100%;margin-inline:auto}
    段名尾部的和弦序列摊到**每小节行上方**，一行 = 一小节故一行一颗。
    左对齐（left:6px）；整体上移到 top:-18px——原先 -9px 的条带会压住格子顶部 ~6px，
    挡住扫弦标记（用户实拍）。预告行（第 1 行）不再另挂徽标，而是把预告信息并进同一颗胶囊：
-   文本 =「和弦名（下一小节 · 型名）」（该小节无和弦时只剩括号里的预告信息）。
+   文本 =「和弦名 · 下一小节：型名」（该小节无和弦时只显示预告信息）。
    行距已由 14px 加大到 20px，给这条行头条带腾出竖向空间。
    ★ v2.8.1：line-height:1——胶囊默认继承 body 的 1.5 行高（11px 字 → 16.5px 内容高
      + 2px 边框 = 18.5px 盒高），top:-18px 时盒底落在 +0.5px，正好压在格子顶边上
@@ -4454,7 +4454,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
           <b>同屏画几行由「同屏行数」档位决定（分页 2–4 行、连续滚动 1 / 3 行；在设置弹窗的「画面」页里）</b>。
           曲式模式下这几行是「这首歌正在弹的那几小节」，跟着播放整页往前翻
           （会跨段——某一行的型与上一行不同是正常的，那是歌曲自己的进行），
-          读到页末还会把第 1 行临时换成「下一小节 · 型名」提前备型——<b>预告行只在 2 行及以上出现</b>；
+          读到页末还会把第 1 行临时换成「下一小节：型名」提前备型——<b>预告行只在 2 行及以上出现</b>；
           连续滚动的 1 行档使用大号专注视图，谱面核心高度是普通档的 1.5 倍；
           预设模式下这几行是「当前这个型的连续几小节」：<b>型比行数短就绕回重复铺满</b>
           （1 小节的型配 4 行档 = 同一小节铺 4 行），<b>型比行数长就按行数翻页</b></li>
@@ -5127,20 +5127,20 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
      L5156  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
      L6922  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
      L9165  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10401 Modal         应用内弹窗
-     L10562 Viz           时值可视化渲染与每帧动画
-     L14311 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15065 Trainer       变速训练器
-     L15282 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15961 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17917 Editor        自定义节奏型编辑器
-     L19146 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19241 Ear           听辨训练（v1.10.0）
-     L19469 Arrange       曲式编排（v2.0.0）
-     L23605 Help          使用方法（v2.0.1）
-     L23760 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23842 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24138 初始化（装配） 各模块 hook 接线与启动
+     L10404 Modal         应用内弹窗
+     L10565 Viz           时值可视化渲染与每帧动画
+     L14314 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15068 Trainer       变速训练器
+     L15285 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L15964 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17921 Editor        自定义节奏型编辑器
+     L19150 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19245 Ear           听辨训练（v1.10.0）
+     L19473 Arrange       曲式编排（v2.0.0）
+     L23610 Help          使用方法（v2.0.1）
+     L23765 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23847 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24143 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5166,7 +5166,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.58.6";
+const VERSION = "3.58.7";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -9889,6 +9889,9 @@ const refName = ref => { const p = resolveRef(ref); return p ? p.name : "（已�
 const SONG_TAG_RE = /（《[^》]*》[^）]*）$/;
 /** @param {string} nm @returns {string} */
 const stripSongTag = nm => String(nm || "").replace(SONG_TAG_RE, "");
+/* 显示层保留书名号，仅以空格代替出处两侧的括号；原始名称继续供存储、迁移与改名使用。 */
+/** @param {string} nm @returns {string} */
+const displayPatternName = nm => String(nm || "").replace(SONG_TAG_RE, tag => " " + tag.slice(1, -1));
 /* 当前选中的预设（v1.3.0 抽取）：原 lookup 在 Presets 里写了两遍（updateFallbackNote 与
    fallbackBtn），而「选中即回退」是两个入口，改规则必漏一处 */
 const selectedPreset = () => resolveRef(S.sel);
@@ -11162,7 +11165,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
        永远到不了 W−1，旧判据对这两类恒假。
      ★ 实现按"预告内容是否 = 第 1 行现内容"分两档：
        · 相同（P===W；或 P<W 且 W 是 P 的整数倍，如 1 小节型+4 行档）→ **轻量标记**：
-         返回哨兵 seg:-2——不换格子、不整树重建，只挂 .preview-row + 「下一小节 · 型名」
+         返回哨兵 seg:-2——不换格子、不整树重建，只挂 .preview-row + 「下一小节：型名」
          胶囊（applyPresetPvMark）。v2.23.0 排除 P===W 的两大理由（预告零信息量 + 页末
          整树重建打翻"取一次 internals() 再驱动"的整类用例，T36 实测球读数冻结偏差
          186 tick）里，后者由轻量标记**从结构上根治**；前者经用户拍板接受——标记的
@@ -11205,7 +11208,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         if (barChordEls[0] === null) barChordEls[0] = pvMarkEl;
       }
       pvMarkEl.hidden = false;
-      pvMarkEl.textContent = pvMarkName ? `下一小节 · ${pvMarkName}` : "下一小节";
+      pvMarkEl.textContent = pvMarkName ? `下一小节：${pvMarkName}` : "下一小节";
     } else if (pvMarkEl){
       pvMarkEl.hidden = true;
     }
@@ -11990,12 +11993,13 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
     glEls.push(groups.filter(g => g.el));
     /* 小节和弦名（v2.7.4；v2.8.0 并入预告信息）：挂在**行内**（.bar-row 的直接子节点），
        左对齐在行头条带（top:-18px，见 CSS），已移出格子范围、不挡扫弦标记。
-       预告行（第 1 行）把预告信息并进同一颗胶囊：文本 =「和弦名（下一小节 · 型名）」，
-       该小节无和弦时只剩括号里的预告信息。无内容的不挂，保持 null 占位（与行逐位同构） */
+       预告行（第 1 行）把预告信息并进同一颗胶囊：文本 =「和弦名 · 下一小节：型名」，
+       型名内的歌曲出处改用空格分隔，预告自身不另加括号；无和弦时只显示预告信息。
+       无内容的不挂，保持 null 占位（与行逐位同构） */
     const chord = chordAtRow(b);
-    const pvName = (b === 0 && winPrevSeg >= 0 && winPrevName) ? winPrevName : "";
-    const chordText = chord ? (pvName ? `${chord}（下一小节 · ${pvName}）` : chord)
-                            : (pvName ? `下一小节 · ${pvName}` : "");
+    const pvName = (b === 0 && winPrevSeg >= 0 && winPrevName) ? displayPatternName(winPrevName) : "";
+    const chordText = chord ? (pvName ? `${chord} · 下一小节：${pvName}` : chord)
+                            : (pvName ? `下一小节：${pvName}` : "");
     /* v2.72.1（1.3 增强，方案丙）：预设模式标注优先——支持「|」分段，同行按比例定位。
        barChordEls 保持「逐行一位」的既有对齐契约（pvMark 依赖 [0]）：一行多颗时
        只把**第一颗**登记进位，其余颗只挂 DOM（纯展示）。 */
@@ -12010,10 +12014,9 @@ let run = /** @type {null | { i0: number, i1: number, tick: number, nm: string, 
       for (const chip of useChips){
         const cc = document.createElement("div");
         cc.className = "bar-chord";
-        /* ★ 曲式模式：**第一颗**沿用原来的整段文案（含「（下一小节 · 型名）」预告后缀）
-           ⇒ 单颗和弦时与改动前**逐字相同**；第 2 颗起只写自己的名字。 */
+        /* 曲式模式第一颗带完整预告「和弦名 · 下一小节：型名」，第 2 颗起只写和弦名。 */
         cc.textContent = (arrMode && ci === 0 && pvName)
-          ? chip.text + "（下一小节 · " + pvName + "）" : chip.text;
+          ? chip.text + " · 下一小节：" + pvName : chip.text;
         ci++;
         cc.style.left = "calc(" + (chip.frac * 100).toFixed(2) + "% + 6px)";
         row.appendChild(cc);
@@ -15989,7 +15992,8 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
     item.tabIndex = 0;
     if (isActive) item.setAttribute("aria-current", "true");
     const box = document.createElement("div");
-    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = name; nm.title = name;
+    const shown = displayPatternName(name);
+    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = shown; nm.title = shown;
     const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = metaText; mt.title = metaText;
     box.appendChild(nm); box.appendChild(mt); item.appendChild(box);
     const actions = document.createElement("div"); actions.className = "preset-actions";
@@ -17610,13 +17614,13 @@ let pendingPattern = /** @type {boolean} */ (false), sigChgPending = /** @type {
       都调它（后者覆盖"切了模式但型没变"那条路），形态因此只有一份实现、不会漂移。
       ★ 曲式模式下剥掉尾部出处标注（stripSongTag）：胶囊里它与**段名**并排，那个
         「（《歌名》段落）」后缀既是重复信息、又装不下（真机实测长形态 409px vs 可用槽 176px）。
-        预设模式保留全名——那时没有段名作对照，"这型从原曲哪一段来"是唯一的出处线索。
+        预设模式保留完整出处，仅以空格代替其括号——那时没有段名作对照，出处是唯一线索。
       @param {any} [p] 显式传入的型（applyPatternChange 已解析好，避免二次解析拿到别的对象）
       @returns {void} */
   function syncPatternName(p){
     const pat = p || activePattern();
     const nm = pat ? pat.name : "";
-    $("patternName").textContent = S.playMode === "arrange" ? stripSongTag(nm) : nm;
+    $("patternName").textContent = S.playMode === "arrange" ? stripSongTag(nm) : displayPatternName(nm);
   }
   /** @returns {void} */
   function applyPatternChange(){
@@ -18006,13 +18010,13 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     });
     ordered.forEach((/** @type {{ p: any, i: number }} */ ent) => {
       const o = document.createElement("option");
-      o.value = "b" + ent.i; o.textContent = "内置 · " + ent.p.name;
+      o.value = "b" + ent.i; o.textContent = "内置 · " + displayPatternName(ent.p.name);
       sel.appendChild(o);
     });
     customs.forEach((/** @type {any} */ c) => {
       if (!c || !Array.isArray(c.bars)) return;
       const o = document.createElement("option");
-      o.value = "c" + c.id; o.textContent = "我的 · " + c.name;
+      o.value = "c" + c.id; o.textContent = "我的 · " + displayPatternName(c.name);
       sel.appendChild(o);
     });
     sel.value = tplSelValue(srcRef);      /* 常显当前底稿（状态型）；源已不在列表（如被删）→ 自然落回占位 */
@@ -18134,10 +18138,10 @@ let srcRef = /** @type {null | { type: string, id?: string, idx?: number }} */ (
     const info = srcRefs(src);
     $("editorRefNote").textContent = editingCustom
       ? (info.n >= 1
-          ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存修改会覆盖原型并自动更新这些引用；另存副本则保留原版"
+          ? "「" + displayPatternName(src.name) + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——保存修改会覆盖原型并自动更新这些引用；另存副本则保留原版"
           : "保存修改会覆盖原节奏型；另存副本可保留原版")
       : (info.n >= 1
-          ? "「" + src.name + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——内置/示例曲只读，保存会生成新副本；要替换请回编排页换型"
+          ? "「" + displayPatternName(src.name) + "」被 " + info.n + " 首曲式引用（" + info.names.join("、") + "）——内置/示例曲只读，保存会生成新副本；要替换请回编排页换型"
           : "内置/示例曲只读，保存会生成新副本，不修改原内容");
     editorRender();
     fillTplSelect();                     // 模板下拉：选项每次打开重建（自定义列表会变）
@@ -20950,7 +20954,7 @@ const Arrange = (() => {
     const nm = document.createElement("span");
     nm.className = "arg-pat-name";
     const reps = (blk.repeats | 0) || 1;
-    nm.textContent = pat.name + " ×" + reps + " 遍" +
+    nm.textContent = displayPatternName(pat.name) + " ×" + reps + " 遍" +
       (pat.bars.length > 1 ? " · 共" + pat.bars.length + " 小节" : "");
     nm.setAttribute("aria-hidden", "true");
     row.appendChild(nm);
@@ -21968,7 +21972,7 @@ const Arrange = (() => {
     sec.blocks.forEach((/** @type {any} */ b, /** @type {number} */ j) => {
       const chip = document.createElement("div");
       chip.className = "arg-block" + (refDead(b.ref) ? " dead" : "");
-      const nmb = document.createElement("span"); nmb.textContent = refName(b.ref);
+      const nmb = document.createElement("span"); nmb.textContent = displayPatternName(refName(b.ref));
       const reps = document.createElement("input");
       reps.className = "arg-reps"; reps.type = "number"; reps.min = "1"; reps.max = String(CONFIG.arrMaxRepeats);
       reps.value = String(b.repeats);
@@ -22405,10 +22409,11 @@ const Arrange = (() => {
       /* 第三参取名 isCur 而不是 cur：外层作用域已有同名的当前型 pill（no-shadow） */
       /** @param {string} text @param {any} ref @param {boolean} isCur */
       const pickPill = (text, ref, isCur, /** @type {any} */ srcPreset) => {
+        const shown = displayPatternName(text);
         const b = document.createElement("button");
         b.className = "arg-mini" + (isCur ? " cur" : "");
-        b.textContent = isCur ? "✓ " + text : text;
-        b.setAttribute("aria-label", (isCur ? "当前节奏型：" : "") + text);
+        b.textContent = isCur ? "✓ " + shown : shown;
+        b.setAttribute("aria-label", (isCur ? "当前节奏型：" : "") + shown);
         /* v2.37.0：类型徽标——扫弦型标「↑↓」，一眼分清节拍型/扫弦型（编排页此前零可见性） */
         if (srcPreset && hasStrum(srcPreset)){
           const tag = document.createElement("span");
@@ -22424,7 +22429,7 @@ const Arrange = (() => {
           ed.className = "arg-pill-edit";
           ed.textContent = "✎";
           ed.setAttribute("role", "button");
-          ed.setAttribute("aria-label", "去编辑器，以「" + text + "」为底稿创建副本");
+          ed.setAttribute("aria-label", "去编辑器，以「" + shown + "」为底稿创建副本");
           Modal.bindOverlay("arrangeOverlay", ed, "click", (/** @type {any} */ e) => {
             if (e && e.stopPropagation) e.stopPropagation();   // 别触发胶囊自己的"换型"
             stopCandPreview(true); picking = null;
@@ -22439,7 +22444,7 @@ const Arrange = (() => {
         const playBtn = document.createElement("span");
         playBtn.className = "arg-pill-play";
         playBtn.setAttribute("role", "button");
-        playBtn.setAttribute("aria-label", "试听候选节奏型：" + text);
+        playBtn.setAttribute("aria-label", "试听候选节奏型：" + shown);
         const isCandActive = () => {
           const cv = candPreview;
           if (!cv) return false;
@@ -25539,9 +25544,7 @@ if (EXPOSE_INTERNALS){
     hasStrum,                                      // 分类判据（v2.9.0）：带扫弦记谱（dir 或 zone 任一存在）
     /* v3.47.0：逐弦拨弦共享层——归一化/铺设解析/判据（纯函数，t240a 直断言，禁手抄副本） */
     normStr, parseStrFill, techLinksFor, pmRunsFor, stepHasStrumLike, VALID_TECH, STR_S_MIN, STR_S_MAX, STR_F_MAX,
-    stripSongTag,                                  // v3.36.18：底栏在曲式模式下显示的型名 = 剥掉尾部出处标注。
-                                                   //   导出给测试直断言（t73 钉"标题 = 节目单游标处的型"）——
-                                                   //   测试若自抄一份正则，就会与实现各走各的（本仓禁手抄副本）
+    stripSongTag, displayPatternName,              // 底栏短名 / 各界面出处排版；测试直接断言同一实现，不手抄正则。
     needsT16Ruler,                                 // v3.33.15：十六分刻度尺的型级显隐判据（纯函数，供测试直断言）
     muteBarMuted,                                  // v2.71.0：静音拍唯一判据（线性小节号 → 是否被静；纯函数供测试直断言）
     schedPlayBar: () => schedPlayBar,              // v3.36.7（本轮审计 P1-4）：静音拍/「每 N 小节」的**唯一相位源**。

@@ -80,7 +80,7 @@ section("T211d 展开内容 = 该曲式引用到的型（去重保序）");
     if (seen.has(k)) return;
     const p = beat.resolveRef(r);
     if (!p) return;
-    seen.add(k); want.push(p.name);
+    seen.add(k); want.push(beat.displayPatternName(p.name));
   }));
   eq(inSongOf(els).map(nameOf).join(" | "), want.join(" | "),
      "★ 展开列出的型 = 曲式块引用到的型，去重保序（不是「库里所有扫弦型」）");
@@ -90,7 +90,7 @@ section("T211d 展开内容 = 该曲式引用到的型（去重保序）");
 section("T211e 歌下的型与库里其它条目同权 · 点它 = 退回单练它");
 {
   const { els, beat } = loadDemo();
-  const item = inSongOf(els).find(x => nameOf(x) === "节奏型2（《在他乡》）");
+  const item = inSongOf(els).find(x => nameOf(x) === "节奏型2 《在他乡》");
   ok(!!item, "前提：歌下能看到这个型");
   beat.Store.S.playMode = "arrange";                     // 造一个"正在连播"的状态
   item.fire("click");

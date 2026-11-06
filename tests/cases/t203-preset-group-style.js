@@ -83,7 +83,7 @@ section("T203e 名称说明基线同行，窄空间省略或自然换行");
   }
   ok(/flex:1 1 120px/.test(meta) && /margin-top:0/.test(meta) && /text-align:right/.test(meta),
     "★ 说明铺满剩余空间并右对齐，过窄时落到第二行，不额外缩字");
-  ok(/nm\.title = name/.test(src) && /mt\.title = metaText/.test(src),
+  ok(/nm\.title = shown/.test(src) && /mt\.title = metaText/.test(src),
     "★ 省略后仍保留完整名称与说明的悬停提示");
   ok(/margin:var\(--sp-4\) 0 0;/.test(ruleBody(".preset-section")), "区头与首条目间距收紧到 10px");
   ok(/flex:1 1 100%/.test(box), "名称与说明独占整行，不被操作区切割");

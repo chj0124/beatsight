@@ -86,17 +86,22 @@ section("T221b 段名位 · ★ 曲式播放中可见并随段推进；退回预
   eq(els["argNowName"].getAttribute("hidden"), "hidden", "★ 预设模式下段名位收起");
 }
 
-/* ================= T221c：型名剥出处后缀（曲式模式）/ 原样（预设模式） ================= */
-section("T221c 底栏型名 · ★★ 曲式模式剥掉尾部出处标注，预设模式保留全名");
+/* ================= T221c：型名剥出处后缀（曲式模式）/ 空格分隔出处（预设模式） ================= */
+section("T221c 底栏型名 · ★★ 曲式模式剥掉尾部出处标注，预设模式以空格分隔出处");
 {
   const { beat, els } = loadDemo();
-  /* 先钉纯函数本身（它是显示层剥法的唯一实现，测试直接调它、不抄第二份正则） */
+  /* 先钉纯函数本身（显示层规则的唯一实现，测试直接调它、不抄第二份正则） */
   eq(beat.stripSongTag("节奏型2（《在他乡》）"), "节奏型2", "★ 剥掉结尾「（《歌名》）」");
   eq(beat.stripSongTag("节奏型5（《我们能不能不分手》）"), "节奏型5", "★ 同上（第二首示例曲的型）");
   eq(beat.stripSongTag("民谣扫弦 · 下-下上-上下上"), "民谣扫弦 · 下-下上-上下上", "★ 没有出处标注 ⇒ 原样");
   eq(beat.stripSongTag("我的型（练习用）"), "我的型（练习用）",
     "★★ 非「（《…》…）」形式的括号一律不动——不误删用户自己起的名字");
   eq(beat.stripSongTag("前（《歌》段）后（《歌》段）"), "前（《歌》段）后", "★ 只剥**结尾**那一段");
+  eq(beat.displayPatternName("节奏型2（《在他乡》）"), "节奏型2 《在他乡》", "★ 出处括号改空格，书名号保留");
+  eq(beat.displayPatternName("十六分满扫（《在他乡》前奏）"), "十六分满扫 《在他乡》前奏", "★ 出处后的段落名也保留");
+  eq(beat.displayPatternName("我的型（练习用）"), "我的型（练习用）", "★ 普通括号原样保留");
+  eq(beat.displayPatternName("《在他乡》（示例）"), "《在他乡》（示例）", "★ 歌曲的示例标记不属于节奏型出处");
+  eq(beat.displayPatternName("前（《歌》段）后"), "前（《歌》段）后", "★ 仅转换名称结尾的完整出处");
 
   /* 桩级：曲式播放中底栏 = 短名 */
   playAllOf(els).fire("click");
@@ -106,10 +111,13 @@ section("T221c 底栏型名 · ★★ 曲式模式剥掉尾部出处标注，预
   ok(/（《/.test(full), "前提：此刻节目单游标处的型确实带出处标注（否则本条测不到东西）：" + full);
   eq(els["patternName"].textContent, beat.stripSongTag(full), "★★ 曲式模式底栏显示短名");
 
-  /* 桩级：退回预设模式后 = 全名（那时没有段名作对照，出处是唯一线索） */
-  itemByName(els, "节奏型1（《在他乡》）").fire("click");
+  /* 桩级：退回预设模式后保留出处，仅改变显示分隔；底层名称不动 */
+  const presetItem = itemByName(els, "节奏型1 《在他乡》");
+  ok(!!presetItem, "前提：预设库条目以空格分隔歌曲出处");
+  if (presetItem) presetItem.fire("click");
   eq(beat.Store.S.playMode, "preset", "前提：点歌下的型 = 退回单练它");
-  eq(els["patternName"].textContent, "节奏型1（《在他乡》）", "★★ 预设模式保留全名（出处标注不剥）");
+  eq(els["patternName"].textContent, "节奏型1 《在他乡》", "★★ 预设模式保留出处并以空格分隔");
+  eq(beat.BUILTINS[11].name, "节奏型1（《在他乡》）", "★★ 显示格式化不改底层名称");
   beat.Controls.stop();
 }
 

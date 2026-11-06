@@ -112,7 +112,7 @@ section("T21 播放中切节奏型 · 全组合不变量扫描（9×9 组合 × 
     const mt = beat.BUILTINS[to].meter;
     if (mt !== S.sig) beat.Controls.setSig(mt);
     beat.Presets.refreshAfterPatternChange();
-    const toName = beat.curPattern().name;
+    const toName = beat.displayPatternName(beat.curPattern().name);
     drive(ac, beat, 12);
     const seg = ac.hits.slice(n0).map(h => h.t);
     cases++;

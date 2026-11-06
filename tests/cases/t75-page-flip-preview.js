@@ -102,14 +102,14 @@ const playAllOf = () => {
 }
 
 /* ================= 场景 T75b：预告行的内容 / 预告信息胶囊 / 已弹豁免 ================= */
-section("T75b 预告行 · ★ 第 1 行换成下一小节 + 胶囊「下一小节 · 型名」+ 不被已弹刷白");
+section("T75b 预告行 · ★ 第 1 行换成下一小节 + 胶囊「下一小节：型名」+ 不被已弹刷白");
 {
   const { beat, els, ac } = startTwoStages(true);
   step(beat, ac, 160);                             // ≈3.2s → 歌曲第 4 小节（页内最后一行）
   eq(JSON.stringify(rowCells(els)), JSON.stringify([8, 4, 4, 4]),
      "前提：第 1 行已替换成下一小节（八音型 8 格，见 T70a 同点位）");
   ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 第 1 行带预告行标识（.preview-row 降透明）");
-  eq(badgeOf(els), "下一小节 · 八音型", "★ 胶囊文字 =「下一小节 · 型名」（本段无和弦，故只剩预告信息）");
+  eq(badgeOf(els), "下一小节：八音型", "★ 胶囊文字 =「下一小节：型名」（本段无和弦，故只剩预告信息）");
   /* 预告行 = 未来：所有格子必须是 upcoming（绝不出现 played）；
      唯一的亮色可以是 .next 预告格（那正是它该亮的一格） */
   const cls0 = row0(els).children.filter(c => /(^| )cell( |$)/.test(c.className)).map(c => c.className);
@@ -173,7 +173,7 @@ section("T75e 预告行边界 · ★ 只循环 A 段时，页末预告的是范�
   step(beat, ac, 160);                             // ≈3.2s → A 段第 4 小节（页末）
   eq(JSON.stringify(rowCells(els)), JSON.stringify([4, 4, 4, 4]),
      "★ 预告 = 范围起点（四音型）——若按歌曲 k+1 取会是八音型（8 格），立刻露馅");
-  eq(badgeOf(els), "下一小节 · 四音型",
+  eq(badgeOf(els), "下一小节：四音型",
      "★ 胶囊也是范围起点的型名（内容与节目单同源：走 arrNextBar，不走 k+1）");
   beat.Controls.stop();
 }
@@ -210,8 +210,8 @@ section("T75f 预告行 · ★★ 范围短于同屏行数：4 行档 + 只循�
   step(beat, ac, 75);                              // ≈1.5s ⇒ 循环第 2 小节（= 范围末小节）
   ok(/(^| )preview-row( |$)/.test(row0(els).className),
      "★★ 循环第 2 小节（范围末小节）第 1 行必须是预告行（修前：不是——这就是用户实拍的那一帧）");
-  eq(badgeOf(els), "C（下一小节 · 节奏型1（《在他乡》））",
-     "★ 胶囊 =「和弦名（下一小节 · 型名）」；预告的是回卷目标 = 范围起点（不是歌曲 k+1）");
+  eq(badgeOf(els), "C · 下一小节：节奏型1 《在他乡》",
+     "★ 胶囊 =「和弦名 · 下一小节：型名」；预告的是回卷目标 = 范围起点（不是歌曲 k+1）");
   const cls0 = cellCls(row0(els));
   ok(cls0.length > 0 && cls0.every(c => !/(^| )played( |$)/.test(c)),
      "★ 预告行一格都没被「已弹」刷白（未来不是历史）");
@@ -226,7 +226,7 @@ section("T75f 对照 · 同范围 + 2 行档（本来就正常，钉住不许退
   eq(rowEls(els).length, 2, "前提：2 行档渲染 2 行");
   step(beat, ac, 75);
   ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 2 行档同范围：预告行照常出现");
-  eq(badgeOf(els), "C（下一小节 · 节奏型1（《在他乡》））", "胶囊一致");
+  eq(badgeOf(els), "C · 下一小节：节奏型1 《在他乡》", "胶囊一致");
   beat.Controls.stop();
 }
 
@@ -235,7 +235,7 @@ section("T75f 对照 · 4 行档 + 范围 1–4（页末与范围末重合，原
   const { beat, els, ac } = startDemoRange(4, 0, 3);
   step(beat, ac, 175);                             // ≈3.5s ⇒ 循环第 4 小节（页末 = 范围末）
   ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 对齐时预告行照常出现");
-  eq(badgeOf(els), "C（下一小节 · 节奏型1（《在他乡》））", "胶囊一致");
+  eq(badgeOf(els), "C · 下一小节：节奏型1 《在他乡》", "胶囊一致");
   beat.Controls.stop();
 }
 
@@ -266,7 +266,7 @@ section("T75g 跨页 · ★★ 4 行档 + 范围 2–3：预告行只落在循�
   step(beat, ac, 50);                                      // 1.5s ⇒ 循环第 2 小节（= 范围末小节）
   ok(/(^| )preview-row( |$)/.test(row0(els).className),
      "★★ 循环末小节第 1 行 = 预告行（修前：不出现——漏报）");
-  eq(badgeOf(els), "C（下一小节 · 节奏型2（《在他乡》））",
+  eq(badgeOf(els), "C · 下一小节：节奏型2 《在他乡》",
      "★ 胶囊预告的是回卷目标 = 范围起点那一小节（不是歌曲 k+1）");
   ok(cellCls(row0(els)).every(c => !/(^| )played( |$)/.test(c)), "★ 预告行不被已弹刷白");
   step(beat, ac, 50);                                      // 回卷到循环第 1 小节
@@ -282,7 +282,7 @@ section("T75g 跨页 · 2 行档同一对范围（行数与范围长度相等，
   ok(!/(^| )preview-row( |$)/.test(row0(els).className), "★ 循环第 1 小节不预告");
   step(beat, ac, 50);
   ok(/(^| )preview-row( |$)/.test(row0(els).className), "★ 循环末小节第 1 行 = 预告行");
-  eq(badgeOf(els), "C（下一小节 · 节奏型2（《在他乡》））", "胶囊一致");
+  eq(badgeOf(els), "C · 下一小节：节奏型2 《在他乡》", "胶囊一致");
   beat.Controls.stop();
 }
 
@@ -295,8 +295,8 @@ section("T75g 跨页 · 4 行档 + 范围 2–5（范围长于行数且跨页）
   step(beat, ac, 100);                                     // 3.5s ⇒ 循环第 4 小节（= 范围末小节）
   ok(/(^| )preview-row( |$)/.test(row0(els).className),
      "★★ 范围末小节（歌曲第 5 小节）第 1 行 = 预告行（修前：被 seg<=winStart 守卫拦掉，漏报）");
-  eq(badgeOf(els), "C（下一小节 · 节奏型2（《在他乡》））",
-     "★ 胶囊 =「和弦名（下一小节 · 型名）」；和弦名取的是**回卷目标那一小节**的（第 2 小节 = C）");
+  eq(badgeOf(els), "C · 下一小节：节奏型2 《在他乡》",
+     "★ 胶囊 =「和弦名 · 下一小节：型名」；和弦名取的是**回卷目标那一小节**的（第 2 小节 = C）");
   beat.Controls.stop();
 }
 

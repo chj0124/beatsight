@@ -74,12 +74,12 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 </picture>
 
 - **弹跳球预判落点**：球在相邻发声点之间跳重力抛物线，落点即下一颗音的真实发声时刻（含 Swing）——看着球下落提前出手，如同跟指挥棒；跳距与时值成正比，静音小节照跳、休止符长跳跨过
-- **同屏 N 行窗口**（分页 2–4 行可调）：曲式模式下是歌曲正在弹的连续 N 个小节，页末行原地替换为「下一小节 · 型名」预告行，扫弦可提前备型；型短于 N 绕回铺满，型长于 N 按 N 行翻页。连续滚动另有 1 / 3 行档，单行使用 1.5 倍谱面高度
+- **同屏 N 行窗口**（分页 2–4 行可调）：曲式模式下是歌曲正在弹的连续 N 个小节，页末行原地替换为「下一小节：型名」预告行，扫弦可提前备型；型短于 N 绕回铺满，型长于 N 按 N 行翻页。连续滚动另有 1 / 3 行档，单行使用 1.5 倍谱面高度
 - **蓝牙/设备延迟补偿**：把声音按设备延迟统一提前（0–500ms），滑杆手动微调，按设备存多套配置——戴蓝牙耳机练也能对齐
 
 ## 功能一览
 
-当前 `v3.58.6`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.58.7`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
 
 | | |
 |---|---|

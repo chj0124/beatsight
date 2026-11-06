@@ -74,8 +74,8 @@ section("T63a 示例载入 · 预设 / 曲式 / 歌词 / 和弦进段名");
      JSON.stringify([`节拍 · ${beatN} 个`, `自定义 · ${beat.Store.arranges.length} 个`]),
      "★ 侧栏两区标题常显（节拍 / 自定义），「扫弦」区已退役");
   /* 示例型挂歌曲行下：整棵子树里仍取得到（能看到才切得动）。★ 本版：型名改编号制 */
-  ok(deepText(els["presetList"]).includes("节奏型1（《在他乡》）"),
-     "★ 示例型「节奏型1（《在他乡》）」在歌曲行下可见（能看到才切得动）");
+  ok(deepText(els["presetList"]).includes("节奏型1 《在他乡》"),
+     "★ 示例型「节奏型1 《在他乡》」在歌曲行下可见（能看到才切得动）");
   ok(!deepText(els["presetList"]).includes("在他乡 · 节奏型"),
      "★ 示例型已改编号名（节奏型1（《在他乡》） 等），不再带「在他乡 · 节奏型N」旧前缀");
   const demoBox = kids.find(x => x.className === "preset-arrange-group");
