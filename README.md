@@ -42,8 +42,8 @@ BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽
     <td width="50%"><b>曲式模式</b> ·《在他乡》整首连播中</td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png?v=20261010"><img src="docs/assets/shot-main-light.png?v=20261010" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
-    <td><img src="docs/assets/shot-arrange-dark.png?v=20261010" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/shot-main-dark.png?v=20261107"><img src="docs/assets/shot-main-light.png?v=20261107" alt="主界面：时值可视化网格，播放中的当前拍高亮，顶部有弹跳球落点提示"></picture></td>
+    <td><img src="docs/assets/shot-arrange-dark.png?v=20261107" alt="曲式模式：歌曲小节上的滚动窗口，扫弦方向箭头、和弦标记与歌词轨同屏"></td>
   </tr>
   <tr>
     <td><b>曲式编排</b> · 歌曲地图 + 段落卡片 + 歌词对齐</td>
@@ -56,7 +56,7 @@ BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽
 </table>
 
 <p align="center">
-  <img src="docs/assets/shot-mobile-dark.png?v=20261010" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
+  <img src="docs/assets/shot-mobile-dark.png?v=20261107" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
   <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面（应用内「经典」主题）。</sub>
 </p>
 
@@ -73,7 +73,7 @@ BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽
 
 ## 功能一览
 
-当前 `v3.58.8` · [变更记录](CHANGELOG.md) · 完整操作见应用内「使用方法」。
+当前 `v3.58.9` · [变更记录](CHANGELOG.md) · 完整操作见应用内「使用方法」。
 
 - **时值可视化**：音符块宽度即时值，弹跳球预告落点；支持分页、连续滚动和窄屏分片。
 - **节奏库与编辑器**：内置节奏、拍数与细分组合、自定义编辑；支持扫弦、逐弦拨弦、休止和重拍设置。
