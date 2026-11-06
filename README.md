@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <b>吉他练习用的节奏可视化节拍器。</b><br>
-  传统节拍器只给「哒哒哒」；BeatSight 把每颗音画成块——块有多宽，音就有多长。
+  <b>吉他练习与弹唱的节奏可视化工具。</b><br>
+  传统节拍器只给「哒哒哒」；BeatSight 把每个音符画成块——块有多宽，音就有多长。
 </p>
 
 <p align="center">
@@ -23,15 +23,14 @@
   <a href="#它是怎么工作的">它是怎么工作的</a> ·
   <a href="#功能一览">功能一览</a> ·
   <a href="#快速开始">快速开始</a> ·
-  <a href="#开发者">开发者</a> ·
-  <a href="#文档">文档</a>
+  <a href="#开发者">开发者</a>
 </p>
 
 ## 这是什么
 
-BeatSight 是给吉他自学者做的节拍器。练琴时最劝退的不是「跟不上」，而是**听不出**——附点到底长了多少？切分到底错在哪？光靠耳朵，很多人练很久也建立不起这个直觉。
+BeatSight 是辅助吉他练习与弹唱的节奏可视化工具。练习弹唱时，歌词、和弦与旋律可以随谱面一起呈现，帮助你找到弹奏与演唱的配合点。练琴时最劝退的不是「跟不上」，而是**听不出**——附点到底长了多少？切分到底错在哪？光靠耳朵，很多人练很久也建立不起这个直觉。
 
-BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与时值严格成正比；一只弹跳球在发声点之间跳抛物线，落点即下一颗音的真实时刻。眼睛先学会，耳朵就跟上了。
+BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽与时值严格成正比；一只弹跳球在发声点之间跳抛物线，落点即下一个音符的真实时刻。眼睛先学会，耳朵就跟上了。
 
 工程形态上它走另一个极端：**单文件、零运行时依赖、无构建**——全部功能在 `index.html` 一个文件里，双击即开，不装任何东西、不发任何请求；数据只存本机 `localStorage`，无账号、无上传；在线版可安装为 PWA，装完断网照常练习。
 
@@ -57,11 +56,6 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 </table>
 
 <p align="center">
-  <img src="docs/assets/shot-melody-dark.png?v=20261010" width="720" alt="旋律谱特写：歌词字块左上角标出简谱度数（1' 表示高八度），无词段的前奏/间奏直接渲染成独立音符块"><br>
-  <sub><b>旋律谱</b>：给歌词贴上音高——简谱 / 音名两种标注可切换（默认关，练习画面零打扰）；前奏、间奏等无词段直接画成音符块。</sub>
-</p>
-
-<p align="center">
   <img src="docs/assets/shot-mobile-dark.png?v=20261010" width="300" alt="手机端：窄屏下时值网格自动分片，扫弦箭头、歌词与当前拍高亮清晰可见"><br>
   <sub>手机浏览器直开，窄屏自动分片。截图均为真实运行中的页面（应用内「经典」主题）。</sub>
 </p>
@@ -70,25 +64,22 @@ BeatSight 的做法是把节奏**画出来**：每颗音是一个块，块宽与
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-dark.png">
-  <img src="docs/assets/how-light.png" alt="时值到长度：均分八分每块一样宽；附点八分是十六分的三倍宽；跨过拍线的那一块就是切分。底部：弹跳球落点即下一颗音的真实发声时刻" width="100%">
+  <img src="docs/assets/how-light.png" alt="时值到长度：均分八分每块一样宽；附点八分是十六分的三倍宽；跨过拍线的那一块就是切分。底部：弹跳球落点即下一个音符的真实发声时刻" width="100%">
 </picture>
 
-- **弹跳球预判落点**：球在相邻发声点之间跳重力抛物线，落点即下一颗音的真实发声时刻（含 Swing）——看着球下落提前出手，如同跟指挥棒；跳距与时值成正比，静音小节照跳、休止符长跳跨过
+- **弹跳球预判落点**：球在相邻发声点之间跳重力抛物线，落点即下一个音符的真实发声时刻（含 Swing）——看着球下落提前出手，如同跟指挥棒；跳距与时值成正比，静音小节照跳、休止符长跳跨过
 - **同屏 N 行窗口**（分页 2–4 行可调）：曲式模式下是歌曲正在弹的连续 N 个小节，页末行原地替换为「下一小节：型名」预告行，扫弦可提前备型；型短于 N 绕回铺满，型长于 N 按 N 行翻页。连续滚动另有 1 / 3 行档，单行使用 1.5 倍谱面高度
 - **蓝牙/设备延迟补偿**：把声音按设备延迟统一提前（0–500ms），滑杆手动微调，按设备存多套配置——戴蓝牙耳机练也能对齐
 
 ## 功能一览
 
-当前 `v3.58.7`。逐版本变更见 [CHANGELOG.md](CHANGELOG.md)（v0 / v1 / v2 三条老线分卷在 [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md)、[docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) 与 [docs/archive/CHANGELOG-v2.md](docs/archive/CHANGELOG-v2.md)）；完整操作说明在应用内顶栏「使用方法」页。
+当前 `v3.58.8` · [变更记录](CHANGELOG.md) · 完整操作见应用内「使用方法」。
 
-| | |
-|---|---|
-| **节拍内核** | Web Audio 时钟调度，tick 制节奏模型（每拍 48 tick）；时值可视化（格子宽度与音符时值严格成正比）；BPM 30–240（数字输入 / 滑杆 / ±1 ±5 步进）；拍号随节奏型自动切换（2/4–7/4，奇数拍按内置重拍分组）；两条独立音量（节拍 / 扫弦）；音频延迟补偿 |
-| **节奏库与编辑器** | 内置预设（通用型 + 两首示例曲的示例型；各区数量见应用内分区标题，不在文档里写死），按「节拍 / 自定义」两区组织：**「自定义」区里一行一个归属（一首歌 / 一个练习），点它展开就是归到它名下的全部节奏型**（行尾 ▶ = 整首连播）——v3.35.3 起「扫弦」区退役并与「自定义」合并；**v3.35.7 起节奏型必须属于一首歌**：编辑器保存时要填歌名，没有这首歌就自动建一条同名曲式（1 段 1 块 = 刚保存的型），接着去「编排曲式」排段落；老的无归属型集中在「未归属」一行里（下次编辑保存时补名）；**预设库首区是「基础节奏」**——拍数（含「0 · 均等」）与 9 种一拍细分（四分 / 二八 / 三连音 / 四十六 / 前八后十六 / 前十六后八，及三种带休止的变体）两个**互相独立**的选项，随点随用，与库中预设型二选一；抽屉搜索过滤、条目 ▶ 试听；自定义编辑器（时值校验、试听、增删小节 1–64、发声开关、**拍数可改**、本地保存；自定义可覆盖保存并保留 ID，曲式引用自动更新；内置/示例曲只读，只能另存副本）；预设导入导出 JSON |
-| **记谱与训练** | 扫弦方向标注 ↑↓、空扫、弦区三档（全扫 / 低 / 高）；**分解和弦（逐弦拨弦）**：点 = 弦、数字 = 品、× = 哑音；H/P/S = 前后同弦音的击弦 / 勾弦 / 滑音连接，O = 泛音，P.M. = 掌闷音区间；一格可多点（加花/齐拨），编辑器逐弦面板与 P.M. 起终点，或小节级「按序铺弦号」（如 5:3 3 2 3 1 3 2 3，5:x = 哑音）一次录入，声音只分单拨 / 齐拨两种；和弦标注（块级逐小节、型级整段备忘）；**旋律谱**：歌词字块标音高（简谱 / 音名双渲染可切换，默认关），量化到三十二分格、八度点正字法，无词段（前奏 / 间奏）渲染成独立音符块，贴词后缀（`我5 多6`）或整行贴谱录入；预备、静音（N/M 或随机）；三套程序合成音色（电子 / 木鱼 / 鼓组）；Swing 三档 |
-| **可视化** | 弹跳球预判落点、十六分小格 `1 e & a`、当前高亮、分页同屏 2–4 行窗口（出厂 2 行）、连续滚动 1/3 行（单行谱面核心高度 1.5 倍）、首用图例条（可关）、歌词贴行 / 底部 / 大屏可选嵌入六线谱（过密或信息过繁时回退贴行并显示实际生效态）、双主题（经典深色 / 日间浅色）、自选背景壁纸、窄屏自动分片 |
-| **练习与编排** | 变速（从当前速度自动爬坡到目标）、听辨训练（听 2 小节选记谱）；曲式编排（段 = 节奏型 × N 遍）、歌曲地图单点跳段、播放范围双滑块、歌词逐字对齐到格子；内置示例曲两首——《在他乡》（9 段 · 64 小节）与《我们能不能不分手》（10 段 · 33 小节），均为逐小节谱 + 逐字歌词 + 和弦 |
-| **数据与平台** | 全部存本机 `localStorage`，无账号、无上传；「导出全部数据」整包带走（预设 + 曲式编排 + 歌词对齐 + 听辨战绩），导入按合并语义写回；单文件零依赖、PWA 离线安装、后台保活 |
+- **时值可视化**：音符块宽度即时值，弹跳球预告落点；支持分页、连续滚动和窄屏分片。
+- **节奏库与编辑器**：内置节奏、拍数与细分组合、自定义编辑；支持扫弦、逐弦拨弦、休止和重拍设置。
+- **歌曲与编排**：两首示例曲、段落编排与范围循环；支持歌词、和弦与简谱／音名标注。
+- **练习工具**：速度与 Swing、预备与静音、变速和听辨训练，以及音色、音量和设备延迟补偿。
+- **本地与平台**：单文件直开、本地存档与导入导出；支持 PWA 离线、双主题和后台保活。
 
 ## 快速开始
 
@@ -114,40 +105,10 @@ node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时�
 - 22 步里有 4 步可能标 ⊘（**未执行**，不等于通过）：ESLint / 类型检查缺 `node_modules`、浏览器冒烟缺本机浏览器、远端漂移核对缺 `gh`。它们绝不会因为「没装开发依赖」堵住部署；`npm install` 后自动启用。耗时刻意不写进文档（`tools/check-docs.js` 强制），命令末尾会自己打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
 - CI 在 `.github/workflows/ci.yml`：push 与 PR 都跑 `npm run ci`，并另开一个 job 跑真实浏览器冒烟——它是对所有分支生效的**补位**，Cloudflare 那条路只拦推到 main 的那次构建。
 - 发版纪律：`index.html` 的 `const VERSION` 是唯一真相源，**每次发版必 bump**（`package.json` / `package-lock.json` / `CHANGELOG.md` 首条由 `check-version.js` 强制一致）；发布前跑一次全量 `node tools/check-all.js`；视觉/手感类改动另需人眼验收，冒烟看不出「好不好用」。
-- 可选但推荐：`sh tools/install-hooks.sh` 装 pre-commit 钩子，每次提交自动跑 `--quick`。
+- `npm install` 会自动安装提交与推送钩子；也可手动运行 `node tools/install-hooks.js`。
 - 双渠道对账：`node tools/check-deploy-parity.js` 只读核对「线上到底是哪一版」（本地版本对齐 + `dist/` 产物集与安全头）。
 
-渠道强制力差异（WorkBuddy 纯手动零拦截 vs Cloudflare 构建硬闸门）、Dashboard 那行 `npm run ci` 为什么缺一不可、类型闸门的取舍——这些工程的「为什么」全部写在 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)，不在此重复。
-
-## 文档
-
-| 文档 | 说明 |
-|---|---|
-| [README.md](README.md) | 本文件：项目定位、功能现状、发布与自验 |
-| [AGENTS.md](AGENTS.md) | 开发协作约定：改动纪律、任务分流、禁区（面向 AI 编码助手） |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发交接文档：架构、数据模型、设计规范、自验方法、路线图与技术债 |
-| [docs/README.md](docs/README.md) | docs/ 目录索引：活文档与历史快照的分界线 |
-| [CHANGELOG.md](CHANGELOG.md) | 当前大版本线（v3.x）版本记录 |
-| [docs/archive/prd.html](docs/archive/prd.html) | 产品需求文档 v1.0（原始 PRD，**已归档**：现行功能以 CHANGELOG 为准） |
-| [docs/archive/spec.md](docs/archive/spec.md) | 全维度代码审计与迭代规划（2026-09-17 审计，**已归档**：历史快照，按需查节） |
-| [docs/archive/AUDIT-2026-09-21.md](docs/archive/AUDIT-2026-09-21.md) | 2026-09-21 诊断报告（基线 v2.8.9）：P0–P3 分级，P0/P1 已逐条处置 |
-| [docs/archive/PLAN-v1.5.md](docs/archive/PLAN-v1.5.md) | 后续改进方案（v1.4.1→v1.5+，**已归档**：P0–P3 全部落地） |
-| [docs/archive/PLAN-v1.9.md](docs/archive/PLAN-v1.9.md) | 后续开发方案（v1.8.2→v1.10）：工程债、扫弦标注、练习量、听辨训练（**已归档**：条目全部落地） |
-| [docs/archive/PLAN-v2-arrangement.md](docs/archive/PLAN-v2-arrangement.md) | 曲式编排设计探针（18 条假设 / 三档对比 / D1–D8，**已归档 · 历史记录**） |
-| [docs/archive/PLAN-v2-impl.md](docs/archive/PLAN-v2-impl.md) | 曲式编排实施方案（v2.0.0，**已落地**） |
-| [docs/archive/PLAN-v3-arrange-redesign.md](docs/archive/PLAN-v3-arrange-redesign.md) | 编排重设计：G3 / G2 / G1 三阶段（**已全部交付**，本文转为历史记录） |
-| [docs/archive/PLAN-v4-arrange-ui-rework.md](docs/archive/PLAN-v4-arrange-ui-rework.md) | 编排 UI 重设计 S1–S3（**已落地**：全部闭环） |
-| [docs/archive/PLAN-v5-lyric-align-rework.md](docs/archive/PLAN-v5-lyric-align-rework.md) | 歌词对齐交互重设计 + 字块拖拽（**已落地**：四期全部完成；仅剩真机 390px 冒烟 + V9 截图复核两项验收） |
-| [docs/archive/PLAN-v6-pat-viz.md](docs/archive/PLAN-v6-pat-viz.md) | 歌词区节奏型可视化（甲·块头节奏型行 + 乙·行内时值轮廓，**已落地**：v2.80.0 交付） |
-| [docs/archive/PLAN-v6-ux-and-viz-rework.md](docs/archive/PLAN-v6-ux-and-viz-rework.md) | 顶栏/设置收口 · 可视化标注 · 静音拍参数化 · 段标注（2026-09-28 方案，2026-10-08 自 `trae/agent-CI9dZv` 分支取回归档；**已落地**：v2.69.0–v2.74.0 交付） |
-| [docs/archive/PLAN-v7-lyric-inline.md](docs/archive/PLAN-v7-lyric-inline.md) | 歌词显示位置重设计（显示歌词开关 + 自动/伴随节奏/底部三态，**已落地**：v2.86.0 交付） |
-| [docs/archive/PLAN-v8-melody-subdiv.md](docs/archive/PLAN-v8-melody-subdiv.md) | 旋律谱细分级编辑（16/32 分音符）+ 音符块交互（**已落地**：v3.38.0 交付，两批全部完成） |
-| [docs/archive/beatsight-vi-manual.html](docs/archive/beatsight-vi-manual.html) | 品牌 VI 手册：标志制图 / 字标 / 标准色 / 应用物料（v3.43.0 三时值块标志的定稿来源） |
-| [docs/archive/beatsight-brand-board.html](docs/archive/beatsight-brand-board.html) | 视觉系统提案展板：设计 token / 字体 / 组件 / 图标（与 `index.html` 逐项对齐的现状快照） |
-| [docs/archive/CHANGELOG-v0.md](docs/archive/CHANGELOG-v0.md) | 大版本 v0.x 版本记录（分卷，**已归档**） |
-| [docs/archive/CHANGELOG-v1.md](docs/archive/CHANGELOG-v1.md) | 大版本 v1.x 版本记录（分卷，**已归档**） |
-| [docs/archive/tasks.md](docs/archive/tasks.md) | 审计落地任务清单（**历史快照 · 已归档**：耗时 / 步数 / 覆盖率 / 行号均为当时实测值） |
-| [docs/archive/checklist.md](docs/archive/checklist.md) | 审计评审检查清单（**历史快照 · 已归档**） |
+开发约定见 [AGENTS.md](AGENTS.md)；架构与自验详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)，更多文档见 [docs/README.md](docs/README.md)。
 
 ## 设计稿
 
