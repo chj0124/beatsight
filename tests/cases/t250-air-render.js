@@ -131,3 +131,46 @@ section("T250f secOnsetTicks · includeGhost 下空扫（air）计入磁吸落�
   eq(manual.join(","), Array.from({ length: 16 }, (_, i) => i * 12).join(","),
      "★ 传 true（手动拖动磁吸集）含 air 空扫 ⇒ 16 格全在");
 }
+
+/* ================= 场景 T250g：自适应分片保留 air ================= */
+section("T250g 主视图 · 自适应分片保留 air（有方向 / 无方向 / 宽屏高密度）");
+{
+  const narrow = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
+  const bar = Array.from({ length: 16 }, (_, i) => i % 4 === 0 ? { t:12, dir:"D" }
+    : i % 4 === 1 ? { t:12, rest:true, dir:"U", air:true }
+    : i % 4 === 2 ? { t:12, rest:true, air:true }
+    : { t:12, rest:true, dir:"D", air:false });
+  selectPreset(narrow.beat, narrow.els, [bar]);
+  eq(narrow.beat.Viz.internals().vizRowBeats, 2, "前提：300px 十六分型进入半小节分片");
+  const directed = glyph(narrow.els, 0, 1);
+  ok(directed && directed.up && directed.ghost, "★ 分片后有方向空扫保留 ghost（不退成白色实扫）");
+  const undirected = glyph(narrow.els, 0, 2);
+  ok(undirected && undirected.ghost && undirected.air, "★ 分片后无方向空扫保留 ghost.air（不整支消失）");
+  const explicitSolid = glyph(narrow.els, 0, 3);
+  ok(explicitSolid && explicitSolid.dn && !explicitSolid.ghost, "★ 显式 air:false 的休止实扫仍保持实心");
+
+  const wideDense = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 600 });
+  const dense = Array.from({ length: 32 }, (_, i) => i % 3 === 0 ? { t:6, dir:"D" }
+    : i % 3 === 1 ? { t:6, rest:true, dir:"U", air:true } : { t:6, rest:true, air:true });
+  selectPreset(wideDense.beat, wideDense.els, [dense]);
+  eq(wideDense.beat.Viz.internals().vizRowBeats, 2, "前提：600px 三十二分型也因密度进入分片");
+  ok((glyph(wideDense.els, 0, 1) || {}).ghost, "★ 宽屏高密度分片：有方向空扫仍为 ghost");
+  const denseAir = glyph(wideDense.els, 0, 2);
+  ok(denseAir && denseAir.ghost && denseAir.air, "★ 宽屏高密度分片：无方向空扫仍为 ghost.air");
+}
+
+/* ================= 场景 T250h：跨片空扫只跟起头段 ================= */
+section("T250h 主视图 · 跨片空扫只跟起头段，续段不重复动作");
+{
+  const app = loadApp({ "beatsight.state": JSON.stringify({ vizRows: 4 }) }, { rowW: 300 });
+  selectPreset(app.beat, app.els, [[
+    { t:12, rest:true },
+    { t:96, rest:true, dir:"U", air:true },
+    { t:12, rest:true },
+    { t:72, dir:"D" },
+  ]]);
+  eq(app.beat.Viz.internals().vizRowBeats, 2, "前提：最短十二分格触发半小节分片");
+  const head = glyph(app.els, 0, 1);
+  ok(head && head.up && head.ghost, "★ 跨片空扫的起头段保留 ghost 与方向");
+  eq(strumOf(app.els, 1, 0), null, "★ 续接片段不复制 air/dir，不重复生成空扫动作");
+}

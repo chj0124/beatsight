@@ -9,8 +9,8 @@
    ③ 顶栏补偿/设置圆钮化（用户需求）：latChip 圆内只写数值（title/aria 带完整语义）、
       settingsBtn = icon-btn 齿轮；文案/结构钉（文案口径在 t136）。
    ④ 预设库抽屉左缘自动浮出（用户需求）：热区 mouseenter → 无遮罩滑出（不抢焦点）；
-      mouseleave → 400ms 定时收回（**只作用于 hover 会话**）；显式开（胶囊）带遮罩、
-      不被自动收；全屏浮层打开时热区忽略。 */
+      mouseleave → 400ms 定时收回（**只作用于 hover 会话，模态弹窗打开时暂停**）；
+      显式开（胶囊）带遮罩、不被自动收；全屏浮层打开时热区忽略。 */
 "use strict";
 const { loadApp, FakeAudioContext, ok, eq, section, html } = require("../lib/harness");
 
@@ -166,4 +166,33 @@ section("T174d 抽屉左缘自动浮出：hover 无遮罩 / 显式带遮罩 / 40
   hz.fire("mouseenter");
   eq(drawer.hidden, true, "★★ 设置浮层打开时热区忽略（不与全屏浮层抢地盘）");
   els["settingsOverlay"].fire("click"); // 点窗外关闭（Modal 统一协议）
+}
+
+section("T174e 模态弹窗打开时 hover 抽屉暂停自动收回");
+{
+  const app = loadApp(seedState({ countIn: { on: false, beats: 2 } }));
+  const { beat, els } = app;
+  const drawer = els["presetDrawer"], hz = els["drawerHotzone"];
+  const deepText = el => String(el.textContent || "") + (el.children || []).map(deepText).join("");
+  const item = els["presetList"].children.find(x => /(^| )preset-item( |$)/.test(x.className) && deepText(x).includes("附点布鲁斯"));
+  const groupBtn = item && item.children.find(x => /(^| )grp( |$)/.test(x.className));
+
+  hz.fire("mouseenter");
+  drawer.fire("mouseenter");
+  ok(!!groupBtn, "前提：附点布鲁斯的分组按钮存在");
+  if (groupBtn) groupBtn.fire("click");
+  eq(beat.Modal.isOpen(), true, "前提：分组模态弹窗已打开");
+  eq(els["modalInput"].hidden, false, "前提：组名输入框可见");
+  drawer.fire("mouseleave");
+  app.runTimers();
+  eq(drawer.hidden, false, "★ 模态弹窗打开期间，400ms 到期也不收起 hover 抽屉");
+  eq(els["modalMask"].hidden, false, "★ 自动收起暂停不影响模态弹窗自身生命周期");
+
+  els["modalCancel"].fire("click");
+  eq(beat.Modal.isOpen(), false, "关闭弹窗");
+  eq(drawer.hidden, false, "★ 弹窗关闭后抽屉仍可见，焦点不会归还到隐藏按钮");
+  drawer.fire("mouseenter");
+  drawer.fire("mouseleave");
+  app.runTimers();
+  eq(drawer.hidden, true, "★ 弹窗关闭后的下一轮 hover 离开仍按原规则自动收起");
 }

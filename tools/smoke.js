@@ -502,6 +502,70 @@ function drawerProbe(){
   return JSON.stringify(out);
 })()`;
 }
+
+/* 空扫分片 / hover 抽屉模态焦点 / 原生 select 触发框的最终浏览器契约。
+   桌面走真实左缘 hover 路径；窄屏只验 select 与分片（热区在 ≤960 本就禁用）。 */
+function interactionFixesProbe(){
+  return `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const q = s => document.querySelector(s);
+  const out = { w: window.innerWidth };
+  const btn = q("#presetLibBtn"), dr = q("#presetDrawer"), hz = q("#drawerHotzone");
+  if (!btn || !dr || !hz) return JSON.stringify({ err: "drawer controls missing" });
+
+  if (out.w > 960){
+    if (!dr.hidden) q("#presetDrawerClose").click();
+    hz.dispatchEvent(new MouseEvent("mouseenter"));
+    dr.dispatchEvent(new MouseEvent("mouseenter"));
+    const item = Array.from(q("#presetList").querySelectorAll(".preset-item"))
+      .find(el => el.textContent.includes("附点布鲁斯"));
+    const folder = item && item.querySelector(".mk-folder");
+    if (!folder) return JSON.stringify({ err: "group button missing" });
+    folder.focus();
+    folder.click();
+    out.focusAtOpen = document.activeElement && document.activeElement.id;
+    dr.dispatchEvent(new MouseEvent("mouseleave"));
+    await sleep(550);
+    out.drawerKept = !dr.hidden;
+    out.modalKept = !q("#modalMask").hidden;
+    out.focusAfterWait = document.activeElement && document.activeElement.id;
+  } else if (dr.hidden) {
+    btn.click();
+  }
+
+  const sel = q("#sigSel"), cs = getComputedStyle(sel);
+  out.select = {
+    tag: sel.tagName,
+    appearance: cs.appearance,
+    backgroundImage: cs.backgroundImage.slice(0, 80),
+    backgroundSize: cs.backgroundSize,
+    paddingRight: cs.paddingRight,
+  };
+  if (out.w > 960){
+    q("#modalCancel").click();
+    out.drawerAfterCancel = !dr.hidden;
+    out.modalClosedAfterCancel = q("#modalMask").hidden;
+    dr.dispatchEvent(new MouseEvent("mouseenter"));
+    dr.dispatchEvent(new MouseEvent("mouseleave"));
+    await sleep(550);
+    out.hoverClosedAfterCancel = dr.hidden;
+  } else if (!dr.hidden) {
+    q("#presetDrawerClose").click();
+  }
+
+  const ghosts = Array.from(q("#viz").querySelectorAll(".strumv.ghost"))
+    .filter(el => getComputedStyle(el).display !== "none");
+  out.air = {
+    rowBeats: window.__beat.Viz.internals().vizRowBeats,
+    count: ghosts.length,
+    noDirection: ghosts.filter(el => el.classList.contains("air")).length,
+    dashed: ghosts.length ? getComputedStyle(ghosts[0], "::before").borderLeftStyle : "",
+    color: ghosts.length ? getComputedStyle(ghosts[0], "::before").borderLeftColor : "",
+  };
+  return JSON.stringify(out);
+})()`;
+}
+
 /* v3.0.0（PLAN-v9 批 2/3）连续滚动探针：**走真实 UI 路径**（设置弹窗 → 点开关 → 点播放），
    量真几何。桩里 t155 已覆盖数据/结构层，这里补的是桩永远测不到的那半——
    「播放头钉在行中央」在**真实布局**下成立：判据全部来自 getBoundingClientRect，
@@ -3019,6 +3083,14 @@ function portraitFixProbe(){
       await cdp.send("Emulation.setDeviceMetricsOverride",
         { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
       await sleep(400);
+      result.interactionFixes = [await probeJson("interactionFixes@1920", interactionFixesProbe(), true)];
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+      await sleep(400);
+      result.interactionFixes.push(await probeJson("interactionFixes@390", interactionFixesProbe(), true));
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);
       /* ★★★ v3.33.8：文字对比度审计（两主题各一遍）。放在最后——它会把所有 [hidden] 面板
          展开再收起，属于"改页面状态"的重探针，跑在布局/滚动/铺满等几何探针之后才不会互相污染。 */
       result.contrast = await probeJson("contrastProbe", contrastProbe(), true);
@@ -5021,6 +5093,37 @@ async function main(){
           p.label + "：★ 关闭后焦点归还主钮（从哪来回哪去）", "focus=" + dw.focusAfterClose);
       } else {
         ok(false, p.label + "：v3.0.0 抽屉探针未取到（开合两态本项未验证）", JSON.stringify(dw || {}));
+      }
+      const fixes = Array.isArray(r.interactionFixes) ? r.interactionFixes : [];
+      fixes.forEach(fx => {
+        const label = p.label + "·" + fx.w + "px";
+        const sel = fx.select || {};
+        ok(sel.tag === "SELECT" && sel.appearance === "none"
+          && sel.backgroundImage.includes("data:image/svg+xml")
+          && sel.backgroundSize === "14px 14px" && sel.paddingRight === "28px",
+          label + "：★ 原生 select 保留，14px 自定义箭头与 28px 右侧留白生效", JSON.stringify(sel));
+        if (fx.w > 960){
+          ok(fx.focusAtOpen === "modalInput" && fx.focusAfterWait === "modalInput",
+            label + "：★ 分组输入框在打开与等待后都保持焦点",
+            "open=" + fx.focusAtOpen + " wait=" + fx.focusAfterWait);
+          ok(fx.drawerKept === true && fx.modalKept === true,
+            label + "：★★ 模态打开超过 400ms 后，hover 抽屉与弹窗都保持可见",
+            "drawer=" + fx.drawerKept + " modal=" + fx.modalKept);
+          ok(fx.drawerAfterCancel === true && fx.modalClosedAfterCancel === true,
+            label + "：★ 取消后抽屉保持可见，弹窗正常关闭",
+            "drawer=" + fx.drawerAfterCancel + " modalClosed=" + fx.modalClosedAfterCancel);
+          ok(fx.hoverClosedAfterCancel === true,
+            label + "：★ 弹窗关闭后的下一轮 hover 离开仍自动收起");
+        } else {
+          const air = fx.air || {};
+          ok(air.rowBeats === 2 && air.count > 0 && air.dashed === "dashed"
+            && air.color === "rgb(79, 163, 227)",
+            label + "：★★ 半小节分片下空扫仍为蓝色虚线",
+            JSON.stringify(air));
+        }
+      });
+      if (fixes.length !== 2){
+        ok(false, p.label + "：交互修复探针缺少桌面或窄屏结果", JSON.stringify(fixes));
       }
       /* v3.0.0（PLAN-v9）：连续滚动 —— 真实 UI 路径 + 真实几何。
          ★ 核心那条是 headMaxAbsOff：「播放头钉在行中央」此前只有桩断言，

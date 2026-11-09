@@ -47,6 +47,10 @@
      .preset-group 的既有模式）。此前是 ▸/▾ 文字字形：位置随平台字体浮动且对着中文恒偏低
      （实测偏低 0.75–1px，根因见 .preset-item.song .name::before 注释）。 */
   --mk-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  /* 原生 select 的触发框箭头：同一 V 形几何，默认 / 悬停 / 聚焦三态分色；选项弹层仍归浏览器。 */
+  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23B3B3B3' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23FFFFFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%231ED760' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-edit:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-folder:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-x:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M18 6 6 18' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><path d='M6 6l12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
@@ -1858,7 +1862,7 @@ input[type=range].vol{width:120px}
 .tg-flyout .f-row{display:flex;align-items:center;gap:var(--sp-2);white-space:nowrap;min-height:28px}   /* 等高：两块面板高度一致 */
 .tg-flyout .f-row + .f-row{margin-top:var(--sp-2)}
 .tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap;color:var(--t2)}
-.tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;font-size:11px}
+.tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;padding-right:calc(var(--sp-4) + var(--sp-3));font-size:11px}
 /* ★★★ 本轮（用户实拍「'步长' 的步 与 '小节' 的小 为什么没对齐」）：实测两行第二列标签
    左缘差 **2.00px**（390 与 1440 都是 2px）。根因是**两行结构不同**：
      行 1 = [#trTargetWrap(.inp-with-unit) 6px 外距][步长 ±][输入]，
@@ -2152,8 +2156,13 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 「第 X 到 Y 小节」作为一个单元整体折行（v2.6.2）：nowrap + inline-flex，
    要么整组留在行尾、要么整组落到下一行——「小节」不会孤零零挂在新行开头 */
 .loop-range{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-.loop-sel{background:var(--bg);color:var(--t1);border:1px solid var(--line);border-radius:var(--radius-ctrl);
-  padding:var(--sp-1) var(--sp-2);font-size:12px;font-family:inherit;min-width:44px}
+/* 只定制触发框：原生选项弹层、方向键与焦点语义全部保留。右侧 28px 给 14px 箭头与留白。 */
+.loop-sel{-webkit-appearance:none;appearance:none;background-color:var(--bg);background-image:var(--select-chev);
+  background-repeat:no-repeat;background-position:right var(--sp-2) center;background-size:14px 14px;
+  color:var(--t1);border:1px solid var(--line);border-radius:var(--radius-ctrl);
+  padding:var(--sp-1) var(--sp-2);padding-right:calc(var(--sp-4) + var(--sp-3));font-size:12px;font-family:inherit;min-width:44px}
+.loop-sel:hover{background-image:var(--select-chev-hi)}
+.loop-sel:focus-visible{background-image:var(--select-chev-focus);border-color:var(--green)}
 .loop-panel.on .loop-sel{border-color:var(--green)}
 /* 说明文案是上排控件的**注脚**而非独立段落（用户拍板）：4px 紧贴控件行——
    原 8px 的距离让它看着像另一件事，从属关系断了 */
@@ -3224,6 +3233,9 @@ body[data-theme="obs"]{
      新值在同样四处为 5.98 / 5.23 / **4.86** / 5.43:1，全部 ≥4.5:1，且仍比 --t2(#475569) 浅
      ⇒ t1 > t2 > t3 的层级不变。 */
   --t1:#0F172A; --t2:#475569; --t3:#556577; --on-green:#FFFFFF;
+  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%230F172A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%232563EB' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --rest-line:rgba(15,23,42,.25);
   /* ★★ v3.33.8：**选中态三件套**（用户实拍缺陷的根因）——:root 只定义了 --sel-bg/--sel-line，
      本块此前**一枚都没覆盖**，于是日间下选中胶囊仍是暗色底 #2E2E2E，而 .pill.active 的文字
@@ -5131,25 +5143,25 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5165  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6931  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9174  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9183  CoreUI        控制芯 / 参数槽 / 键盘层
-     L10441 Modal         应用内弹窗
-     L10602 Viz           时值可视化渲染与每帧动画
-     L14351 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15113 Trainer       变速训练器
-     L15330 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L16009 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17966 Editor        自定义节奏型编辑器
-     L19195 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19290 Ear           听辨训练（v1.10.0）
-     L19530 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
-     L19617 Arrange       曲式编排（v2.0.0）
-     L23668 Help          使用方法（v2.0.1）
-     L23827 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23909 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24218 初始化（装配） 各模块 hook 接线与启动
+     L5177  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6943  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9186  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9195  CoreUI        控制芯 / 参数槽 / 键盘层
+     L10453 Modal         应用内弹窗
+     L10614 Viz           时值可视化渲染与每帧动画
+     L14364 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15126 Trainer       变速训练器
+     L15343 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L16022 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17979 Editor        自定义节奏型编辑器
+     L19208 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19303 Ear           听辨训练（v1.10.0）
+     L19543 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
+     L19630 Arrange       曲式编排（v2.0.0）
+     L23681 Help          使用方法（v2.0.1）
+     L23840 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23922 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24231 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5175,7 +5187,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.59.1";
+const VERSION = "3.59.2";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -10733,7 +10745,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
       · k=1 且 sub=0：**原样返回同一个数组**（K=1 的安全边界，对象身份都保持）；
       · 跨片的音符在两侧各成一段（t 为片段内的截断时长），带内部标记 `_cutl` / `_cutr`
         （渲染层据此画"续接"虚边、并压制被截断的时值标签——截断后的标签是错的）；
-      · 记谱字段（dir/zone）只跟随**音符起头**的那一段：续段不是一次新的扫弦动作；
+      · 记谱字段（dir/zone/str/air）只跟随**音符起头**的那一段：续段不是一次新的扫弦动作；
       · 休止照样截断（两侧都画虚框）。
       @param {any[]} steps @param {number} barTicks @param {number} k @param {number} sub
       @returns {any[]} */
@@ -10759,6 +10771,7 @@ let ballBreathOn = false;             // v2.42.6：待命呼吸类是否已挂�
         if (s.dir !== undefined) copy.dir = s.dir;
         if (s.zone !== undefined) copy.zone = s.zone;
         if (s.str !== undefined) copy.str = s.str;            // v3.47.0：逐弦记谱同口径（漏了它，K≥2 切片下逐弦点整行消失）
+        if (s.air !== undefined) copy.air = s.air;            // 空扫同口径：漏了它，K≥2 下有方向退成实扫、无方向整支消失
       }
       out.push(copy);
     }
@@ -24610,10 +24623,12 @@ $("presetLibBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
   setPresetDrawer($("presetDrawer").hidden, { mask: true, hover: false, focus: true });
 });
 /* ★★ v3.14.0（用户需求）：左缘热区自动浮出——鼠标移到屏幕左缘 24px 内，抽屉无遮罩滑出；
-   离开抽屉（含热区）~400ms 后自动收回。三条边界：
+   离开抽屉（含热区）~400ms 后自动收回。四条边界：
    ① 自动收回**只作用于 hover 会话**（显式开的要显式关——点胶囊/收起钮/Esc/选中照旧）；
    ② 编辑器/编排/听辨/设置任一全屏浮层打开时热区忽略（不与浮层抢地盘）；
-   ③ 抽屉或热区上 mouseenter 取消挂起的收回定时（在抽屉与热区之间移动不算"离开"）。 */
+   ③ 抽屉或热区上 mouseenter 取消挂起的收回定时（在抽屉与热区之间移动不算"离开"）；
+   ④ 模态弹窗打开时暂停自动收回：否则抽屉消失会把焦点还给主钮、抢走弹窗输入框焦点；
+     弹窗关闭后抽屉保持可见，下一轮 hover 离开仍按本规则收回。 */
 let drawerHoverOpen = false;
 /** @type {number|null} */ let hoverTimer = null;   // v3.14.0：hover 会话的收回定时器句柄
 const OVERLAY_OPEN = () => ["editor", "earOverlay", "arrangeOverlay", "settingsOverlay"]
@@ -24624,7 +24639,7 @@ $("drawerHotzone").addEventListener("mouseenter", () => {
 });
 const hoverClose = () => {
   if (!drawerHoverOpen || hoverTimer !== null) return;
-  hoverTimer = setTimeout(() => { hoverTimer = null; setPresetDrawer(false); }, 400);
+  hoverTimer = setTimeout(() => { hoverTimer = null; if (Modal.isOpen()) return; setPresetDrawer(false); }, 400);
 };
 const hoverKeep = () => { if (hoverTimer !== null){ clearTimeout(hoverTimer); hoverTimer = null; } };
 $("drawerHotzone").addEventListener("mouseleave", hoverClose);
