@@ -21,6 +21,13 @@ const MUTANTS = [
   ["M3 select 恢复浏览器默认箭头", s => once(s,
     ".loop-sel{-webkit-appearance:none;appearance:none;", ".loop-sel{", "M3"),
     "tests/cases/t278-native-select-style.js", "原生默认箭头退役"],
+  ["M4 分组弹窗重新允许 Chrome 自动完成", s => once(s,
+    ' id="modalInput" hidden aria-labelledby="modalMsg" autocomplete="off"',
+    ' id="modalInput" hidden aria-labelledby="modalMsg"', "M4"),
+    "tests/cases/t278-native-select-style.js", "modalInput 显式 autocomplete=off"],
+  ["M5 图标槽退回小箭头", s => once(s,
+    "background-size:24px 24px", "background-size:14px 14px", "M5"),
+    "tests/cases/t278-native-select-style.js", "图标槽 24×24px"],
 ];
 let hits = 0, misses = 0;
 for (const [name, mutate, file, key] of MUTANTS){

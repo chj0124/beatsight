@@ -534,6 +534,7 @@ function interactionFixesProbe(){
   }
 
   const sel = q("#sigSel"), cs = getComputedStyle(sel);
+  out.modalAutocomplete = q("#modalInput").getAttribute("autocomplete");
   out.select = {
     tag: sel.tagName,
     appearance: cs.appearance,
@@ -5100,8 +5101,10 @@ async function main(){
         const sel = fx.select || {};
         ok(sel.tag === "SELECT" && sel.appearance === "none"
           && sel.backgroundImage.includes("data:image/svg+xml")
-          && sel.backgroundSize === "14px 14px" && sel.paddingRight === "28px",
-          label + "：★ 原生 select 保留，14px 自定义箭头与 28px 右侧留白生效", JSON.stringify(sel));
+          && sel.backgroundSize === "24px 24px" && sel.paddingRight === "32px",
+          label + "：★ 原生 select 保留，24px 淡底图标槽与 32px 右侧留白生效", JSON.stringify(sel));
+        ok(fx.modalAutocomplete === "off",
+          label + "：★ 分组输入框关闭 Chrome 自动完成", "autocomplete=" + fx.modalAutocomplete);
         if (fx.w > 960){
           ok(fx.focusAtOpen === "modalInput" && fx.focusAfterWait === "modalInput",
             label + "：★ 分组输入框在打开与等待后都保持焦点",
