@@ -2539,19 +2539,26 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 
 /* ---------- 听辨训练（v1.10.0） ---------- */
 /* 候选卡片：只画记谱、不给名字——给名字就变成「读名字猜」，练不到耳朵。
-   作答后：✅ 选中的那张描边转绿/红，正确答案那张也描绿（答错时用户才知道错在哪），
-   其余淡出。用 <button> 而不是 <div>：键盘用户要能 Tab 到、回车选中 */
+   拍线标出节拍位置，发声点标出非休止块；块宽仍是时值，训练信息不增加名称提示。
+   作答后：选中的那张描边转绿/红，正确答案那张也描绿，其余淡出。
+   用 <button> 而不是 <div>：键盘用户要能 Tab 到、回车选中 */
 .ear-cands{display:flex;flex-direction:column;gap:12px;margin-top:var(--sp-4)}
-.ear-cand{display:flex;align-items:center;gap:var(--sp-4);background:var(--card2);border-radius:var(--radius-item);padding:16px;cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent}
-.ear-cand:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
+.ear-cand{display:flex;align-items:center;gap:var(--sp-4);background:var(--card2);border:1px solid var(--line);border-radius:var(--radius-item);padding:var(--sp-3);cursor:pointer;text-align:left;box-shadow:inset 0 0 0 1px transparent;transition:background .12s,border-color .12s}
+.ear-cand:hover:not(:disabled){background:var(--cell);border-color:var(--t3)}
 .ear-cand:disabled{cursor:default}
-.ear-cand-lab{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t2);flex:none}
-.ear-strip{position:relative;flex:1;height:36px;min-width:0}
-.ear-block{position:absolute;top:0;height:100%;border-radius:var(--radius-ctrl);background:rgba(var(--veil),.16)}
+.ear-cand-lab{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-ctrl);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1)}
+.ear-strip{position:relative;flex:1;height:36px;min-width:0;overflow:hidden}
+.ear-beat{position:absolute;top:0;bottom:0;width:1px;background:var(--line);pointer-events:none}
+.ear-block{position:absolute;top:6px;height:calc(100% - 12px);z-index:1;border:1px solid var(--border);border-radius:var(--radius-ctrl);background:var(--cell)}
+.ear-onset{position:absolute;left:5px;top:50%;width:4px;height:4px;border-radius:50%;background:var(--t1);transform:translateY(-50%);pointer-events:none}
 .ear-block.rest{background:transparent;border:1px dashed var(--rest-line)}
 .ear-cand.right{box-shadow:inset 0 0 0 1.5px var(--green)}
 .ear-cand.wrong{box-shadow:inset 0 0 0 1.5px var(--red)}
 .ear-cand.dim{opacity:.4}
+.ear-cands + .stat-cards{margin-top:var(--sp-6)}
+#earOverlay .stat-card{border:1px solid var(--line)}
+#earOverlay .stat-lab{font-size:var(--fs-lead);color:var(--t2);margin-top:var(--sp-2)}
+#earNote{font-size:var(--fs-lead);color:var(--t2);line-height:1.6}
 
 /* ---------- 曲式编排（v2.0.0） ----------
    ★ v2.30.0（S1 重设计）排版契约：段行 .arg-sec 从"单行 flex + 底部分割线"改成**卡片**
@@ -5124,25 +5131,25 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5158  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6924  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9167  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9176  CoreUI        控制芯 / 参数槽 / 键盘层
-     L10434 Modal         应用内弹窗
-     L10595 Viz           时值可视化渲染与每帧动画
-     L14344 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15106 Trainer       变速训练器
-     L15323 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L16002 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17959 Editor        自定义节奏型编辑器
-     L19188 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19283 Ear           听辨训练（v1.10.0）
-     L19511 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
-     L19598 Arrange       曲式编排（v2.0.0）
-     L23649 Help          使用方法（v2.0.1）
-     L23808 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23890 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24199 初始化（装配） 各模块 hook 接线与启动
+     L5165  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6931  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9174  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9183  CoreUI        控制芯 / 参数槽 / 键盘层
+     L10441 Modal         应用内弹窗
+     L10602 Viz           时值可视化渲染与每帧动画
+     L14351 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15113 Trainer       变速训练器
+     L15330 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L16009 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17966 Editor        自定义节奏型编辑器
+     L19195 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19290 Ear           听辨训练（v1.10.0）
+     L19530 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
+     L19617 Arrange       曲式编排（v2.0.0）
+     L23668 Help          使用方法（v2.0.1）
+     L23827 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23909 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24218 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5168,7 +5175,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.59.0";
+const VERSION = "3.59.1";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -19331,7 +19338,8 @@ const Ear = (() => {
     const answerIdx = Math.floor(rand() * cands.length);
     return { group: g, groupIdx: gIdx, cands, answerIdx, answer: cands[answerIdx] };
   }
-  /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），休止符画虚线框 */
+  /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），
+     拍线标出节拍，非休止块带发声点，休止符只画虚线框。 */
   /* 时值文字等价（v2.0.2）：候选记谱是纯图形，读屏此前只能听到孤零零一个「A」。
      按时值逐个报（与视觉记谱同一信息量），不给名字——「别看名字猜」的规则对读屏同样成立 */
   /** @param {number} t */
@@ -19353,12 +19361,23 @@ const Ear = (() => {
     const strip = document.createElement("div");
     strip.className = "ear-strip";
     const barTicks = pat.meter * TPB;
+    for (let beatAt = TPB; beatAt < barTicks; beatAt += TPB){
+      const line = document.createElement("div");
+      line.className = "ear-beat";
+      line.style.left = (beatAt / barTicks * 100) + "%";
+      strip.appendChild(line);
+    }
     let at = 0;
     pat.bars[0].forEach((/** @type {any} */ s) => {
       const b = document.createElement("div");
       b.className = "ear-block" + (s.rest ? " rest" : "");
       b.style.left = (at / barTicks * 100) + "%";
       b.style.width = `calc(${s.t / barTicks * 100}% - 3px)`;
+      if (!s.rest){
+        const onset = document.createElement("span");
+        onset.className = "ear-onset";
+        b.appendChild(onset);
+      }
       at += s.t;
       strip.appendChild(b);
     });

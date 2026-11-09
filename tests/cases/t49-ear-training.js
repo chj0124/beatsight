@@ -271,3 +271,38 @@ section("T49g 听辨训练 · 入口在预设库卡片上（v3.0.0 批 5：预�
   ok(!("limit" in S), "★ `S.limit` 已随练习量删除（不留永远没人读的空壳字段）");
   ok(typeof app.beat.Store.earStats === "object", "听辨战绩仍在（听辨 overlay 里可看正确率）");
 }
+
+/* ================= 场景 T49h：候选记谱与统计区的可读性 ================= */
+section("T49h 听辨训练 · 拍线 / 发声点 / 选项与统计分区");
+{
+  const app = loadApp();
+  const { beat, els } = app;
+  els["earBtn"].fire("click");
+  const cand = els["earCands"].children[0];
+  const strip = cand.children.find(c => c.className === "ear-strip");
+  const pat = beat.BUILTINS.find(p => p.name === beat.Ear.state().names[0]);
+  const blocks = strip.children.filter(c => /(^| )ear-block( |$)/.test(c.className || ""));
+  ok(blocks.every(b => /^[\d.]+%$/.test(b.style.left) &&
+    /^calc\([\d.]+% - 3px\)$/.test(b.style.width)),
+    "无内框时值块从内容左缘起排，块间仍隔 3px，发声点与拍线不动");
+  eq(strip.children.filter(c => c.className === "ear-beat").length, pat.meter - 1,
+    "候选记谱有拍间分隔线，且不额外画出左右边框线");
+  eq(blocks.filter(b => !b.className.includes("rest")).every(b =>
+    b.children.filter(c => c.className === "ear-onset").length === 1), true,
+    "每个非休止块都有且仅有一个发声点");
+  eq(blocks.filter(b => b.className.includes("rest")).every(b => b.children.length === 0), true,
+    "休止块保持空白，不伪造发声点");
+  ok(/\.ear-cand\{[^}]*border:1px solid var\(--line\)[^}]*padding:var\(--sp-3\)/.test(html),
+    "候选按钮有清晰边界并收紧纵向留白");
+  ok(/\.ear-cand-lab\{[^}]*width:28px;height:28px[^}]*color:var\(--t1\)/.test(html),
+    "A/B/C 使用清晰的 28px 徽章");
+  ok(/\.ear-strip\{position:relative;flex:1;height:36px;min-width:0;overflow:hidden\}/.test(html),
+    "时值块直接位于候选卡内，不再叠一层背景框或收边");
+  ok(/\.ear-cands \+ \.stat-cards\{margin-top:var\(--sp-6\)\}/.test(html),
+    "候选区与统计区之间保留明确的 24px 间距");
+  ok(/#earOverlay \.stat-lab\{font-size:var\(--fs-lead\);color:var\(--t2\);margin-top:var\(--sp-2\)\}/.test(html),
+    "统计标签提亮并靠近对应数字");
+  ok(/#earNote\{font-size:var\(--fs-lead\);color:var\(--t2\);line-height:1\.6\}/.test(html),
+    "底部答题提示提亮且保留舒适行高");
+  beat.Controls.stop();
+}
