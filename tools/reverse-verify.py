@@ -128,7 +128,10 @@ def main():
     only = next((a.split("=", 1)[1] for a in argv if a.startswith("--only=")), None)
     if only:
         key = only.lstrip("v")
-        files = [f for f in files if key in f]
+        def script_key(filename):
+            short = filename[len("reverse-verify-"):].rsplit(".", 1)[0]
+            return short.lstrip("v")
+        files = [f for f in files if script_key(f) == key]
         if not files:
             print("  ✗ --only=" + only + " 没有匹配到任何脚本"); return 4
 
@@ -170,32 +173,37 @@ def main():
         return 0
 
     print("  逐个复跑（每个 = 一整套定向变异）…")
-    bad, rotten, table = [], [], []
+    bad, rotten, errors, table = [], [], [], []
     for f in files:
         path = os.path.join(TOOLS, f)
         p = subprocess.run(runner(path) + [path], cwd=ROOT, capture_output=True, text=True)
         out = p.stdout or ""
         m = re.search(r"(\d+)\s*/\s*(\d+)", out)
         naked = out.count("无具名断言变红") + out.count("无具名红")
+        rotten_out = any(mark in out for mark in ("锚点失配", "变异点未找到", "变异未生效", "锚点非唯一"))
         row = (f, p.returncode, m.group(0) if m else "?", naked)
         table.append(row)
-        if p.returncode == 2:
+        if p.returncode == 2 or rotten_out:
             rotten.append(f)
-        elif p.returncode != 0 or naked:
+        elif p.returncode == 1 or naked:
             bad.append(f)
+        elif p.returncode != 0:
+            errors.append(f)
         print("    %s %-34s 退出码=%s %s" % ("✗" if (p.returncode or naked) else "✓",
               f, p.returncode, ("命中 " + m.group(0)) if m else "（未取到汇总）"))
         if "--stop-on-fail" in argv and (p.returncode or naked):
             break
 
     print("  ─────────────────────────────────────────────")
-    print("  复跑 %d 个脚本：%d 个干净 · %d 个有「无具名断言变红」· %d 个自身腐烂（锚点失配）"
-          % (len(table), len(table) - len(bad) - len(rotten), len(bad) - len(rotten), len(rotten)))
+    print("  复跑 %d 个脚本：%d 个干净 · %d 个有「无具名断言变红」· %d 个自身腐烂（锚点失配）· %d 个执行异常"
+          % (len(table), len(table) - len(bad) - len(rotten) - len(errors), len(bad), len(rotten), len(errors)))
     if rotten:
         print("  ✗ 自身腐烂（源码已变，需同步更新脚本里的逐字锚点）：" + " / ".join(rotten))
     if bad:
         print("  ✗ 有变异没被任何断言守住：" + " / ".join(bad))
-    return 2 if rotten else (1 if bad else 0)
+    if errors:
+        print("  ✗ 脚本执行异常：" + " / ".join(errors))
+    return 2 if rotten else (1 if bad or errors else 0)
 
 
 sys.exit(main())

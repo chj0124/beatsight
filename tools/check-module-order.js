@@ -59,7 +59,7 @@ const lines = SRC.split("\n");
 const clean = stripComments(lines);
 
 /* 模块的**声明顺序**：必须与这份约定一致——顺序本身就是架构约定，不是随便排的 */
-const EXPECTED_ORDER = ["Store", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "Ear", "Arrange", "Help", "KeepAlive", "Diagnostics"];
+const EXPECTED_ORDER = ["Store", "CoreUI", "Modal", "Viz", "AudioEngine", "Trainer", "Controls", "Presets", "Editor", "Settings", "Ear", "LyricHistory", "Arrange", "Help", "KeepAlive", "Diagnostics"];
 
 /* 正则 `^const X = (() => {` 还会命中的**非架构模块** IIFE 的豁免清单。
    第 0 步的「双向 diff」要求：正则命中的每个名字要么属于 EXPECTED_ORDER、要么在此显式登记

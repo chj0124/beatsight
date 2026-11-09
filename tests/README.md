@@ -117,7 +117,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 - **故障注入**：`els` 是按 id 惰性创建的缓存，要注入故障须先 `sandbox.document.getElementById(id)` 把元素实体取出来再改
 
 断言入口：脚本末尾的 `window.__beat` 调试句柄暴露全部模块接口
-（Store / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Settings / Ear / Arrange（v2.0.0）/ Help（v2.0.1）/ KeepAlive / Diagnostics，共 14 个模块，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`；以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
+（Store / CoreUI / Modal / Viz / AudioEngine / Trainer / Controls / Presets / Editor / Settings / Ear / LyricHistory / Arrange（v2.0.0）/ Help（v2.0.1）/ KeepAlive / Diagnostics，共 16 个模块，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`；以及 `VERSION` / `selectedPreset` / `defaultAccents` / `clock()` / `LIMIT_PRESETS` / `limitHit` / `limitState()` / `EAR_GROUPS` / `EAR_BARS` / `previewState()` / `quota()` 等断言入口）。
 
 **注意「原始值 vs 引用」的取法**（v1.9.0 记）：`onsetBuf` / `clock()` 这类是**引用或快照函数**，
 每次调用取最新值；而 `limitState()` 这种必须在 `__beat` 里写成 **getter 函数**
@@ -194,9 +194,8 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | T94 | **空格键全局 = 播放/暂停**（v2.13.1，7 个场景）——用户实报「点过其他功能后空格就哑了」的验收面：★★ 滑杆（`input[type=range]`）焦点下仍切播放（旧规则把它排除在外，本次修复的主角）/ 真按钮焦点下切播放，且 `preventDefault` 拦掉原生空格激活（不拦会双动作）/ 侧栏预设项**不再消费**空格（向**另一项**发空格选中不变）+ 焦点在项上仍切播放 / ★ 「正在输入文字」是唯一例外（text / number / textarea / contenteditable 四种形状 + range 反例对照）/ 修饰键（Ctrl/Cmd/Alt+Space）与长按 `repeat` 不抢 / 面板打开时空格不误触播放（回归钉子）。★ 反向验证两轮定向变异：退回全局规则 → 10 条转红；退回 `itemKeys` → 3 条转红（含一条**第一版写弱、当场加严**的断言） |
 | T95 | **音频延迟补偿**（v2.14.0；v2.42.1 起 4 个场景）——蓝牙耳机延迟的验收面：★★ 读档校验矩阵（无键不落盘 / 坏 JSON / 逐条淘汰 / ms 钳制与步长对齐 / 名字净化 / 条数上限 / currentId 回落）/ ★★ 发声统一提前（前 N 声逐位前移 200ms，且 **onset 表与 loopStart 一字不动**——对照组断言）/ ★★ 前瞻量 = 窗口 + 补偿（单轮就排到"边缘那颗"，退回旧量即红）/ 配置 CRUD（新建起点 = 当前值不突变 / 空名不改 / 删除落到剩下那条 / 两级落盘 / 重载恢复）。★ 原「建议值 / 校准发声不吃补偿 / 向导端到端 / 校准守卫」四场景随 v2.42.1 向导退役一并删除。★ 反向验证三轮变异：4 / 1 / 5 条转红 |
 | T96 | **窄屏自适应分片**（v2.15.0，5 个场景）——「手机上竖屏一行一小节挤得看不清」的验收面：★ 判据边界矩阵（`chooseRowBeats` 纯函数：600/300/140px × 十六分、稀疏型不拆、奇数拍退到每行 1 拍、脏输入兜底）/ ★★ 同一十六分型 **600px 与 300px 的对照**（16 格 vs 8 格、座次尺只报本行拍、拍号从第 3 拍数起、网格线 3 条 → 1 条）/ ★★ 跨行长音 = 续接片段（`.cutl/.cutr` 两侧各一段、宽度按截断后算、**截断片段不打时值标签**、宽屏对照组有标签）/ 帧路径翻行（播过第 2 拍换行、状态栏仍报「第 1 小节 · 3」的小节口径）/ 曲式模式 + 歌词轨的片口径（歌词行跨度 = 96t 而非 192t、跨片字各归各行）。★ 两处重写 className 的路径（`setCell` / `resetForStop`）各有一条"续接标记仍在"的钉子。★ 反向验证三轮变异：35 / 2 / 1 条转红（第三轮复现了实施期真实漏改的 `audioPosAt` 片内折算）|
-> **编号说明**：`section()` 的 T 编号目前有重复——T38 与 T41 各被用两次
-> （`t37-training-and-keepalive.js` 与 `t30-wiring-and-lifetime.js`）。这只是日志标签重复，
-> 不影响执行与断言；但**新增用例请从当前最大值往上取号，别复用**。
+> **编号说明**：历史重复日志标签已清理；新增用例从 `check-all` 末尾打印的下一个可用编号往上取，别复用。
+> 文件名与 `section()` 标签应一一对应，便于失败定位。
 > ★ v2.10.12：**`t48-practice-limit.js` 与 `t50-practice-coverage.js` 整文件删除**
 > （练习量与练习统计两项功能随用户要求删除），`t37-stats-and-training.js` 改名为
 > `t37-training-and-keepalive.js` 并删掉其中 Stats / 练习记录 / 统计增强 / 导出记录四组场景。
@@ -245,7 +244,7 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | 键盘操作（空格 / 方向键 / 单键） | t94 / t133 | 覆盖 | **本批补**：`<select>` 契约（T94h–k） |
 | 后台保活 / 切后台续响 | t37 / t82 | 覆盖 | 真机验收另需人 |
 | PWA（SW / manifest / 离线） | t67 | 覆盖 | |
-| **PWA 安装按钮（点击 → prompt）** | — | **零** | 全仓 grep 不到 `deferredPrompt`；t132 只钉了按钮存在。真机专属能力，桩里造不出 `beforeinstallprompt` ⇒ 标"需真人验收" |
+| **PWA 安装按钮（点击 → prompt）** | t132 / t274 | **部分** | 覆盖事件捕获、点击与拒绝后状态收口；真实安装弹窗仍需真人验收 |
 | 首次点击解锁音频 | t01 / t59 | 覆盖 | `ensureCtx` 有断言 |
 | 设置弹窗（分组 / 开关） | t102 / t151 / t163 | 覆盖 | |
 | 使用方法页 | t55 / t102 | 覆盖 | |
@@ -253,12 +252,11 @@ BEATSIGHT_HTML=/path/to/old/index.html node tests/hang-guard.js 3000
 | 工厂重置 / 恢复示例曲 | t152 / t153 | 覆盖 | |
 | 窄屏响应式与触控尺寸 | t89 / t96 / t167 | 覆盖 | 40px 触控下限见 t167 |
 
-**已知零覆盖 / 需真人验收的两条**（不为了数字去造假绿）：
+**仍需真人验收的宿主能力**（不为了数字去造假绿）：
 
-1. **PWA 安装**：依赖 `beforeinstallprompt` 事件，桩里造不出来。真机步骤：
-   https 地址打开 → 设置 → 「安装到本机」应可点且弹出安装提示；`file://` 下应置灰且 title 写明原因。
-2. **壁纸上传的真机链路**（FileReader → 解码 → 降采样 → 落盘）：决策层已由 t200 覆盖，
-   宿主能力那一段仍要真机走一遍（上传大图 / 损坏图 / 极小图各一次）。
+- **PWA 安装弹窗**：https 地址打开 → 设置 → 「安装到本机」应可点且弹出安装提示；`file://` 下应置灰且 title 写明原因。事件捕获与拒绝路径已由 t132/t274 覆盖。
+- **壁纸上传的真机链路**（FileReader → 解码 → 降采样 → 落盘）：决策层已由 t200 覆盖，
+  宿主能力那一段仍要真机走一遍（上传大图 / 损坏图 / 极小图各一次）。
 
 ## 何时补断言
 

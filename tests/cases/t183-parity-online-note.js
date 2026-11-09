@@ -99,6 +99,6 @@ section("T183c 部署对账 · 源码级：核对分支只认 srcVer，传输层
   ok(!/om\[1\]\s*===\s*VERSION/.test(src), "★ 不再出现 om[1] === VERSION");
   ok(!/"与本地 v" \+ VERSION/.test(src), "★ 不一致文案不再拼接裸 VERSION");
   ok(src.includes("process.env.BEATSIGHT_PARITY_URL"), "★ 注入钩子在（本组测试的前提）");
-  ok(src.includes('/^https:/i.test(ONLINE_URL) ? require("https") : require("http")'),
+  ok(src.includes('/^https:/i.test(channel.url) ? require("https") : require("http")'),
      "★ 传输层协议随 URL 走（http 注入不再 ERR_INVALID_PROTOCOL）");
 }

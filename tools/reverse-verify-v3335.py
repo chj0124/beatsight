@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "index.html")
 orig = io.open(SRC, encoding="utf-8").read()
 
-RET = "    return vizH + 2 + rowH + 6;"
+RET = "    return Math.max(vizH, need);"
 
 MUTANTS = [
   ("M5 v3.33.5 回退：裁剪盒高退回「与 #viz 同高」（缺陷原样）",

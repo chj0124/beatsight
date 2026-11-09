@@ -38,15 +38,17 @@
      18) 无障碍 · 标记级   静态 a11y 高置信规则 A–E（v3.34.6 新增；正 tabindex / switch 缺
                            aria-checked / img 缺 alt / 可交互元素无可访问名 / aria-hidden 藏可聚焦项。
                            ★ 认「JS 运行期赋名」，免得误报 applyTheme 那类写法）
-     19) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
-     20) 自动化测试        FULL_SCAN=1 全量组合扫描
-     21) 死循环看门狗      每用例独立子进程 + 超时强杀
-     22) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
+     19) 反向验证入口      精确匹配 / 失败分类 / 计数夹具回归
+     20) 双渠道对账        两渠道可读性 / 版本漂移 / 严格模式夹具回归
+     21) 浏览器冒烟        真实 DOM/CSS/Service Worker（**环境可选**：没装浏览器标 ⊘，见下）
+     22) 自动化测试        FULL_SCAN=1 全量组合扫描
+     23) 死循环看门狗      每用例独立子进程 + 超时强杀
+     24) 行覆盖率          V8 内置采集，总阈值 97% / 分区 90%
 
    ★ 三种"没跑到"必须分清（v2.0.6 起为两类，v2.8.6 补第三类）：
      · 第 15、16 项是**可选加强项**——缺的是开发依赖（npm ci 能装上），所以 --strict-env 下报错，
        逼 CI 装上而不是假装查过；
-     · 第 19 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
+     · 第 21 项是**环境可选**——缺的是环境能力（本机得有 Chrome/Edge）。构建镜像里必然没有，
        把它算失败会无谓地堵住部署，所以 --strict-env 也不升级。它靠退出码 3 表达"本机缺能力"。
      · **工具故障**（任意步骤）——子进程**压根没起来**（spawnSync 报错），
        或子步骤按约定以退出码 4 自报"我未能执行"。它与前两类的区别是：
@@ -68,10 +70,9 @@
    正文里没有快照横幅，四件都是这么漏掉的。它不做别的，只把"抄进文档的数值"这一类漂移
    变成机器可判。
 
-   第 13、14 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖、
-   Cloudflare 的发布链路不保证跑过 install。所以缺依赖时它们主动 exit 0 并打印"跳过"，
-   绝不因为"没装开发依赖"把上线堵死。规则集与 check-lint.js 刻意不重叠，详见 eslint.config.js
-   与 tools/tsconfig.typecheck.json。
+   第 15、16 项是**可选加强项**：它们依赖 node_modules（npm install 才有），而产物始终零依赖。
+   本地缺依赖标 ⊘；严格发布与 CI 用 --strict-env 把缺依赖判红。规则集与 check-lint.js
+   刻意不重叠，详见 eslint.config.js 与 tools/tsconfig.typecheck.json。
 
    **可选步骤的"跳过"必须显示为 ⊘ 而不是 ✓**（v1.10.0 修）：本文件只认退出码，而可选步骤
    按设计就是 exit 0，于是"没装依赖所以没查"和"查了且通过"在汇总里长得一模一样——
@@ -124,11 +125,7 @@ const COV_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "beatsight-allcov-"));
 
 const STEPS = [
   { name: "语法校验", cmd: process.execPath, args: ["-e", SYNTAX] },
-  { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"],
-    warnScan: /^\s*⚠\s*模块规模/,
-    /* ★ v3.36.12（审计 C-6）：观察期项必须**登记到期日**——否则"暂时只警告"会变成永久状态，
-       而长期不判红的警告会被习惯性忽略（审计原话：「最终变成噪音」）。 */
-    observe: { until: "2026-11-06", why: "装配区规模告警线（2000 行 / 34 个 function）尚未越线，先观察" } },
+  { name: "架构约束 · 模块不得反向引用", cmd: process.execPath, args: ["tools/check-module-order.js"] },
   /* v2.8.6（审计 §A1）：装配完整性紧跟架构约束——两者同属"模块边界"这个话题
      （前者管依赖方向，这条管边界处的注入语义），且都极便宜（纯读源码正则，毫秒级） */
   { name: "装配完整性 · 注入槽", cmd: process.execPath, args: ["tools/check-wiring.js"] },
@@ -199,6 +196,8 @@ const STEPS = [
      与它同类（都是只看标记/静态结构的零依赖检查），且先于需要浏览器的步骤，
      这样"标记层面的 a11y 违规"能在最便宜的阶段就被拦住。 */
   { name: "无障碍 · 标记级", cmd: process.execPath, args: ["tools/check-a11y.js"] },
+  { name: "反向验证入口回归", cmd: process.execPath, args: ["tools/test-reverse-verify-entry.js"] },
+  { name: "双渠道对账回归", cmd: process.execPath, args: ["tools/test-deploy-parity.js"] },
   /* 环境可选步骤（v2.0.6，审计 P1-10）：真实浏览器冒烟。它需要的不是"开发依赖"而是
      **环境能力**（本机得装 Chrome/Edge）——Cloudflare 的构建镜像里必然没有，所以
      --strict-env 也不该把它升级成错误，否则每次部署都会被无谓地堵住。
@@ -225,9 +224,7 @@ const STEPS = [
   { name: "死循环看门狗", cmd: process.execPath, args: ["tests/hang-guard.js", "8000"] },
   /* v2.8.16（审计 P2-1）：--reuse 复用自动化测试步的落盘，跳过 check-coverage 内部的重跑（去重的另一半） */
   { name: "行覆盖率", cmd: process.execPath,
-    args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]),
-    warnScan: /^\s*⚠\s*(从未执行的函数|增量覆盖率)/,
-    observe: { until: "2026-11-06", why: "48 个未执行函数里绝大多数是桩不可达的防御分支；先观察是否稳定" } },
+    args: ["tools/check-coverage.js", "--reuse=" + COV_DIR].concat(QUICK ? [] : ["--full"]) },
 ];
 
 console.log("══════════════════════════════════════════════════════════");

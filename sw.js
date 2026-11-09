@@ -57,18 +57,24 @@ self.addEventListener("fetch", e => {
   if (e.request.mode === "navigate"){
     e.respondWith(
       fetch(e.request).then(r => {
-        if (r.ok){
-          const cp = r.clone();
-          caches.open(CACHE).then(c => c.put(e.request, cp));
-        }
+        if (r.ok) e.waitUntil(putCache(e.request, r.clone()));
         return r;
       }).catch(() => caches.match("./index.html"))
     );
     return;
   }
   if (new URL(e.request.url).origin !== self.location.origin) return;
-  e.respondWith(staleWhileRevalidate(e.request));
+  const swr = staleWhileRevalidate(e.request);
+  /* waitUntil 必须在处理器同步阶段注册；网络落定后再注册会撞上事件已关闭。 */
+  e.waitUntil(swr.write.catch(() => {}));
+  e.respondWith(swr.response);
 });
+
+/* 写缓存纳入 fetch 事件生命周期：响应已发出不代表 Worker 可以继续存活到写盘完成。
+   put 失败只影响缓存更新，不影响已发出的响应；统一在这里吞掉，避免未处理拒绝。 */
+function putCache(req, resp){
+  return caches.open(CACHE).then(c => c.put(req, resp)).catch(() => {});
+}
 
 /* stale-while-revalidate（v2.0.2，审计 D9）：缓存命中就立刻返回，同时后台拉新版本写回；
    未命中则等同 network-first 并顺手入缓存。
@@ -79,18 +85,16 @@ self.addEventListener("fetch", e => {
    顺序上先发起 revalidate 再查缓存：查缓存是异步的，先把网络请求发出去能少一个事件循环的等待。 */
 function staleWhileRevalidate(req){
   const fresh = revalidate(req);
-  return caches.match(req).then(cached => {
+  const response = caches.match(req).then(cached => {
     if (cached){ fresh.catch(() => {}); return cached; }
-    return fresh;
+    return fresh.then(x => x.response);
   });
+  return { response, write: fresh.then(x => x.write) };
 }
 
 function revalidate(req){
-  return fetch(req).then(resp => {
-    if (resp.ok){
-      const cp = resp.clone();
-      caches.open(CACHE).then(c => c.put(req, cp)).catch(() => {});
-    }
-    return resp;
-  });
+  return fetch(req).then(resp => ({
+    response: resp,
+    write: resp.ok ? putCache(req, resp.clone()) : Promise.resolve(),
+  }));
 }

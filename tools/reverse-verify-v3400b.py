@@ -6,7 +6,7 @@
    M43 删芯顶胶囊行三枚开关 → T231b 红（胶囊行接线）
    M44 浮层壳显隐反转（sh.hidden = show）→ T231c 红（镜像契约）
    M45 删 ≥1280 的 .card-head-left 宽度放开 → T231a 红（≥1440 回退 312 左贴的防回归钉）
-   M46 删 ≥1280 静音浮层 width:max-content → T231a 红（侧浮层塌成 min-content 的防回归钉）
+   注：旧 M46「width:max-content」随浮层改为锚芯定位而退役，不再对当前代码做无效变异。
 """
 import io, os, re, subprocess, sys
 
@@ -21,15 +21,11 @@ MUTANTS = [
      ["芯容器 402px 居中"]),
     ("M43 删芯顶胶囊行三枚开关",
      lambda s: s.replace(
-         '''            <div class="core-pills">
-              <span class="core-pill-grp">
-                <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备<span class="switch"></span></button>
-                <span class="inp-with-unit" id="countInBeatsWrap"><input class="tr-inp" id="countInBeats" type="number" min="1" max="8" value="4" aria-label="预备拍数"><span class="hint">拍</span></span>   <!-- 常显（v3.22.0 用户需求：关闭预备也显示上次设置的拍数） -->
-              </span>
-              <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音<span class="switch"></span></button>
-              <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速<span class="switch"></span></button>
-            </div>''',
-         "            <!-- M43: 胶囊行被删 -->", 1),
+         '                <button class="toggle-pill off" id="countInToggle" role="switch" aria-checked="false">预备<span class="switch"></span></button>\n', "", 1
+         ).replace(
+         '                  <button class="toggle-pill off" id="muteToggle" role="switch" aria-checked="false">静音<span class="switch"></span></button>\n', "", 1
+         ).replace(
+         '                  <button class="toggle-pill off" id="trainerToggle" role="switch" aria-checked="false">变速<span class="switch"></span></button>\n', "", 1),
      ["芯顶胶囊行切片取到", "三件之一且带 role=switch"]),
     ("M44 浮层壳显隐反转（sh.hidden = show）",
      lambda s: s.replace(
@@ -41,11 +37,6 @@ MUTANTS = [
          ".viz-head-grid .card-head-left{width:100%}\n",
          "/* M45: 宽度放开被删 */\n", 1),
      ["放开 .card-head-left 宽度"]),
-    ("M46 删 ≥1280 静音浮层 width:max-content",
-     lambda s: s.replace(
-         "white-space:nowrap;width:max-content}",
-         "white-space:nowrap}", 1),
-     ["两侧浮层 width:max-content"]),
 ]
 
 hit_n, miss_n = 0, 0

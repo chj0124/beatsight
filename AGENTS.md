@@ -4,7 +4,7 @@
 
 ## 0. 一句话项目画像
 
-BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` 单文件内聚全部逻辑，14 个 IIFE 模块：Store → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Settings → Ear → Arrange → Help → KeepAlive → Diagnostics，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。★ **体积刻意不写在这里**——以 `wc -c index.html` 现查：本行曾手写一个体积数字，写下时是**准的**，此后文件长了两百多 KB 而这一行没人再动（**漂移 +43%**，具体数字见 CHANGELOG v2.17.0）；当时 `AGENTS.md` 也不在任何闸门的管辖里，属**制度性盲区**——`tools/check-docs.js` 第 8 项现已把守（故这一段刻意**不引那个形状**，免得自己撞上）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
+BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运行时依赖、双击即用的网页应用**（`index.html` 单文件内聚全部逻辑，16 个 IIFE 模块：Store → CoreUI → Modal → Viz → AudioEngine → Trainer → Controls → Presets → Editor → Settings → Ear → LyricHistory → Arrange → Help → KeepAlive → Diagnostics，权威清单见 `tools/check-module-order.js` 的 `EXPECTED_ORDER`）。★ **体积刻意不写在这里**——以 `wc -c index.html` 现查：本行曾手写一个体积数字，写下时是**准的**，此后文件长了两百多 KB 而这一行没人再动（**漂移 +43%**，具体数字见 CHANGELOG v2.17.0）；当时 `AGENTS.md` 也不在任何闸门的管辖里，属**制度性盲区**——`tools/check-docs.js` 第 8 项现已把守（故这一段刻意**不引那个形状**，免得自己撞上）。红线只有一条——**运行时零依赖**：`index.html` 必须能 `file://` 直开，任何引入外部运行时依赖的改动都不可接受（devDependencies 里的 eslint / typescript / wrangler 只服务自验与部署，不进产物）。
 
 ## 1. 动手前必读（按顺序）
 
@@ -59,11 +59,11 @@ BeatSight 是吉他练习用的时值可视化节拍器：**单文件、零运�
 
 ## 3. 提交与推送
 
-- **默认不 push、不建分支、不开 PR**（仓库既定工作流是直提 `main` 由本人执行）；改动留在本地，向本人报告后由其决定提交时机。
+- **默认不 push、不建分支、不开 PR**（仓库既定工作流是直提 `main` 由本人执行）。同一任务仍由本人继续时，改动可留本地并报告；**需要交接给另一会话时**，按 §5.1 先提交并确认工作区干净。是否提交、何时提交由本人决定，Agent 不自作主张。
   ★ **跨 harness 口径唯一**（v3.31.x 落地审计 E11）：`.trae/rules/project_rules.md` 曾自带「直接提交并推送到 main」的口径，与本条冲突——两份规则会让不同 Agent 做出相反动作。现该文件已收敛为指向本文件的指针；任何 harness 的规则都以本节为准。
 - 如被要求代为提交：commit message 按仓库风格写——根因 → 修法 → 取舍（含实测代价）→ 自验数字（PASS/FAIL 数、覆盖率、冒烟断言数），中文，结构化长文。
 - 仓库已接 GitHub Actions（`npm run ci`）：推 `main` 即触发 Cloudflare 自动构建部署，**任何 push 都有线上后果**，须再次确认。
-- **手动发布（WorkBuddy）前后对账**（v3.31.x 落地审计 E18 / v3.31.6 补前置 / v3.31.8 收口为一条命令）：该渠道零自动拦截——发布前跑 **`npm run publish:check`**（= `--quick` → build → 部署对账，含线上实际版本核对行），这是手动通道唯一的闸门与唯一入口；发布后再跑一次同样命令以核对线上已跟上。
+- **手动发布（WorkBuddy）前后对账**：发布前跑 **`npm run publish:check`**（全量 `--strict-env` → build → 本地产物对账），这是手动通道唯一闸门。发布后跑 **`npm run publish:verify`**，要求 Cloudflare 与 WorkBuddy 实际版本都与源码一致；线上未完成部署时不得伪报通过。
 - **★ v3.33.14（审计 §2.5）：`pre-push` 钩子**——上面两条此前都只存在于本文件的文字里。推 `main` **即触发 Cloudflare 自动部署**，而手动通道又是零拦截，合计下来"发布前跑一次自验"没有任何机器强制。现在 `node tools/install-hooks.js`（`npm install` 会自动跑）会装上两张钩子：
   · `pre-commit` → `node tools/check-all.js --quick`；
   · **`pre-push` → `npm run publish:check`**（任何一次 push 都过一遍，不管走哪条渠道）。

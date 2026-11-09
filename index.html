@@ -5124,23 +5124,25 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5156  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6922  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9165  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L10404 Modal         应用内弹窗
-     L10565 Viz           时值可视化渲染与每帧动画
-     L14314 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15068 Trainer       变速训练器
-     L15285 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L15964 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17921 Editor        自定义节奏型编辑器
-     L19150 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19245 Ear           听辨训练（v1.10.0）
-     L19473 Arrange       曲式编排（v2.0.0）
-     L23610 Help          使用方法（v2.0.1）
-     L23765 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23847 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24143 初始化（装配） 各模块 hook 接线与启动
+     L5158  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6924  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9167  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9176  CoreUI        控制芯 / 参数槽 / 键盘层
+     L10434 Modal         应用内弹窗
+     L10595 Viz           时值可视化渲染与每帧动画
+     L14344 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15106 Trainer       变速训练器
+     L15323 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L16002 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17959 Editor        自定义节奏型编辑器
+     L19188 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19283 Ear           听辨训练（v1.10.0）
+     L19511 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
+     L19598 Arrange       曲式编排（v2.0.0）
+     L23649 Help          使用方法（v2.0.1）
+     L23808 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23890 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24199 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5166,7 +5168,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.58.9";
+const VERSION = "3.59.0";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -5839,9 +5841,9 @@ function mkPitchMarkEl(mark, mode, keyName, cls, cellPx, sys){
     const cpx = /** @type {number} */ (cellPx);
     if (cpx > 0){
       const nmNeed = pitchMarkNeeds({ nmChars: chars }).nm;
-      if (cpx < nmNeed * NM_SCALE + NM_CHAR_RESERVE){ nmHiddenN++; schedulePitchAvailabilitySync(); return null; }
+      if (cpx < nmNeed * NM_SCALE + NM_CHAR_RESERVE){ CoreUI.noteNmHidden(); schedulePitchAvailabilitySync(); return null; }
     }
-    nmDrawnN++;
+    CoreUI.noteNmDrawn();
     schedulePitchAvailabilitySync();
   }
   const el = document.createElement("span");
@@ -9171,6 +9173,9 @@ const customs = Store.customs;
 /** @type {(id: string) => any} */
 const $ = id => document.getElementById(id);
 
+/* ================= CoreUI · 控制芯 / 参数槽 / 键盘层 ================= */
+const CoreUI = (() => {
+
 /* v3.3.1 → v3.9.0：开关参数区从「共槽仲裁」改为**固定槽位、各管各**。
    v3.3.1 的形状是三组共用一行槽（#tgSlot）、syncParamSlots 仲裁"谁最后激活谁显示"；
    用户实测裁决退役：想同时看两组参数做不到、切开关时参数跳来跳去，不好用——
@@ -9471,6 +9476,27 @@ registerKeyLayer({ handles(/** @type {any} */ e){
   return false;
 } });
 
+return {
+  clear, KEY_LAYERS, registerKeyLayer, overlayKeyLayer,
+  syncCountInBeats, syncParamSlots, openParamSlot, clearSlotForce, setTrainerNote,
+  schedulePitchAvailabilitySync, syncPitchAvailability,
+  noteNmDrawn(){ nmDrawnN++; },
+  noteNmHidden(){ nmHiddenN++; },
+  paramSlotForce: () => paramSlotForce,
+};
+})();
+const clear = CoreUI.clear;
+const KEY_LAYERS = CoreUI.KEY_LAYERS;
+const registerKeyLayer = CoreUI.registerKeyLayer;
+const overlayKeyLayer = CoreUI.overlayKeyLayer;
+const syncCountInBeats = CoreUI.syncCountInBeats;
+const syncParamSlots = CoreUI.syncParamSlots;
+const openParamSlot = CoreUI.openParamSlot;
+const clearSlotForce = CoreUI.clearSlotForce;
+const setTrainerNote = CoreUI.setTrainerNote;
+const schedulePitchAvailabilitySync = CoreUI.schedulePitchAvailabilitySync;
+const syncPitchAvailability = CoreUI.syncPitchAvailability;
+
 /* 事件处理器里读「当前元素 / 事件目标」（v1.10.0 类型闸门收口）：
    DOM 类型上 EventTarget 并没有 blur / value / files / closest，而本项目的监听器一律绑在元素上、
    处理器体内直接读写这些成员，是全文件统一的写法（40+ 处）。与其在每处各写一次 cast，
@@ -9482,20 +9508,24 @@ const evEl = ev => ev.currentTarget;
 /** @type {(ev: Event) => any} */
 const evTarget = ev => ev.target;
 
-/* v2.63.0（X4）：把诊断导出能力透出给上游模块（Help 等）而不引入「Help → Diagnostics」反向边——
-   Diagnostics 是依赖链末端，上游模块不得直接引用它。这里在共享作用域转一道，调用时 Diagnostics 已就绪。
-   本函数不在 EXPECTED_ORDER 里，故不算模块边；Help 调它也只是引用共享助手。 */
+/* 跨模块动作一律由装配层注入。共享区只声明空槽与转发，不直接引用后方模块。 */
+/** @type {null | ((btn?: HTMLElement) => boolean | void)} */
+let onDiagExport = null;
+/** @type {null | ((dir: number) => void)} */
+let onPracticeSeek = null;
+/** @type {null | (() => void)} */
+let onOpenArrange = null;
+/** @type {null | (() => void)} */
+let onOpenHelp = null;
+/** @type {null | (() => void)} */
+let onOpenKeymap = null;
 /** @param {HTMLElement} [btn] @returns {boolean|void} */
-function exportDiagnostics(btn){ return Diagnostics.diagExport(btn); }
-/* v2.64.0（X2）：练习键盘快捷键的跨模块动作收口——Controls 在模块顺序里位于 Arrange/Help 之前，
-   不得在自身体内前向引用它们（R1 架构约束）；故在共享区转一道，调用时各模块已就绪
-   （与 exportDiagnostics 同约定）。本函数不在 EXPECTED_ORDER 里，不算模块边；
-   Controls 调它们也只是引用共享助手，不引入「Controls → Arrange/Help」反向边。 */
+function exportDiagnostics(btn){ return onDiagExport ? onDiagExport(btn) : false; }
 /** @param {number} dir @returns {void} */
-function practiceSeek(dir){ Arrange.jumpTo(arrSec + dir); }
-function openArrange(){ Arrange.open(); }
-function openHelp(){ Help.open(); }
-function openKeymap(){ Help.openKeys(); }
+function practiceSeek(dir){ if (onPracticeSeek) onPracticeSeek(dir); }
+function openArrange(){ if (onOpenArrange) onOpenArrange(); }
+function openHelp(){ if (onOpenHelp) onOpenHelp(); }
+function openKeymap(){ if (onOpenKeymap) onOpenKeymap(); }
 /* 把 querySelectorAll 拿到的 Element 当 HTMLElement 用（v1.10.0 类型闸门）：
    静态类型上 querySelectorAll 给的是 Element，而 .inert / .disabled 在 lib.dom 上属
    HTMLElement / 表单元素。本项目这两处运行时拿到的确实是 HTMLElement，故收口一次并注明。
@@ -14327,6 +14357,14 @@ const AudioEngine = (() => {
      ★ 只动**发声时刻**：时间轴（loopStart / nextNoteTime）、onset 表、播放头与弹跳球
        一律不碰——它们标的是"节拍器时间轴"，补偿的是"耳朵收到的那一刻"。 */
   const latOff = () => latencyMs / 1000;
+  /* 稳定快照的声部判据按对象身份缓存；试听草稿可能原地改 bars，必须每轮重算。 */
+  /** @type {any} */ let strumGridPat = null;
+  let strumGridCache = false;
+  /** @param {any} pat */
+  function strumGridFor(pat){
+    if (S.preview || strumGridPat !== pat){ strumGridPat = pat; strumGridCache = hasStrum(pat); }
+    return strumGridCache;
+  }
   /* 音频生命周期（v1.3.0，审计 P2-13）：原实现只认 "suspended"，漏了 iOS 的两个关键状态：
      · "interrupted" —— 通话/闹钟/其他 App 抢占音频会话后 Safari 的私有状态，恢复路径与
        suspended 不同。不认它 → 通话结束后可能**永久无声**且界面毫无异常。
@@ -14919,7 +14957,7 @@ const AudioEngine = (() => {
          那是行为变化，不是修复（实测会打翻 T48/T65 那批"发声个数恰好 N"的断言）。
        ★ 判据取共享区的 hasStrum（与 Viz / Presets 同一份语义，不另写一遍）：
          它扫的是 pat.bars 的全部格，每轮 25ms 只算一次，不进每步热路径 */
-    const strumGrid = hasStrum(pat);
+    const strumGrid = strumGridFor(pat);
     /* 重新锚定（v2.0.6，审计 P1-1 / P1-7）：把时间轴与游标对齐到"当前时刻"，即从循环起点起新的一轮。
        两条防线共用它——① 长节流唤醒后的调度饥饿；② 单轮迭代超限（脏数据让游标永不前进）。
        为什么是"起新的一轮"而不是"按整循环/整小节前移"：前移的粒度至少是一小节（慢速 7/4 可达
@@ -15192,7 +15230,7 @@ const Trainer = (() => {
         /* ★★★ v3.41.0（用户报障）：第二次点击 = openParamSlot 的 toggle 收起 —— 此时**原因与注意态
            都不许再写**，否则会出现"面板关了、红条还挂着"的矛盾态（红条还在叫人去填一个已经收起来的输入框）。 */
         openParamSlot("trainer");
-        if (!paramSlotForce) return;
+        if (!CoreUI.paramSlotForce()) return;
         const t = $("trTarget");
         if (t && typeof t.focus === "function") t.focus();
         const prog = $("trainerProg");
@@ -19470,6 +19508,93 @@ const Ear = (() => {
   return { open, close, isOpen, next, play, answer, makeQuestion, state };
 })();
 
+/* ================= LyricHistory · 歌词与音符行级历史 ================= */
+const LyricHistory = (() => {
+  /** @type {Map<string, { undo: string[], redo: string[] }>} */
+  const hist = new Map();
+  const HIST_MAX = 50;
+  /** @type {null | { arrId: string, secUid: string }} */
+  let lastKey = null;
+  /** @type {null | (() => void)} */
+  let onRender = null;
+
+  /** @param {string} arrId @param {string} secUid @returns {string} */
+  function histKey(arrId, secUid){ return arrId + "|" + secUid; }
+  /** @param {string} arrId @param {string} secUid @returns {{ undo: string[], redo: string[] }} */
+  function histGet(arrId, secUid){
+    const k = histKey(arrId, secUid);
+    let h = hist.get(k);
+    if (!h){ h = { undo: [], redo: [] }; hist.set(k, h); }
+    return h;
+  }
+  /** @param {string} arrId @param {string} secUid @returns {string} */
+  function lyricSnap(arrId, secUid){
+    const l = Store.findLyric(arrId, secUid);
+    return l ? JSON.stringify({ chars: l.chars, notes: l.notes || [] }) : '{"chars":[],"notes":[]}';
+  }
+  /** @param {string} arrId @param {string} secUid */
+  function remember(arrId, secUid){ lastKey = { arrId, secUid }; }
+  /** @param {string} arrId @param {string} secUid @param {any[]} chars @param {{cue?: boolean, notes?: any[]}} [opts] */
+  function lyricCommit(arrId, secUid, chars, opts){
+    const prev = Store.findLyric(arrId, secUid);
+    const notes = (opts && Array.isArray(opts.notes)) ? opts.notes : ((prev && prev.notes) || []);
+    const snap = lyricSnap(arrId, secUid);
+    if (snap === JSON.stringify({ chars: chars, notes: notes })) return;
+    const h = histGet(arrId, secUid);
+    h.undo.push(snap);
+    if (h.undo.length > HIST_MAX) h.undo.shift();
+    h.redo.length = 0;
+    remember(arrId, secUid);
+    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
+    else Store.deleteLyric(arrId, secUid);
+    if (opts && opts.cue && chars.length) AudioEngine.lyricCueNow(chars[chars.length - 1].t);
+  }
+  /** @param {string} arrId @param {string} secUid */
+  function lyricHistPush(arrId, secUid){
+    const h = histGet(arrId, secUid);
+    h.undo.push(lyricSnap(arrId, secUid));
+    if (h.undo.length > HIST_MAX) h.undo.shift();
+    remember(arrId, secUid);
+  }
+  /** @param {string} arrId @param {string} secUid @param {string} snap */
+  function applyLyricSnap(arrId, secUid, snap){
+    const s = JSON.parse(snap);
+    const chars = Array.isArray(s) ? s : (s && s.chars) || [];
+    const notes = (s && !Array.isArray(s) && Array.isArray(s.notes)) ? s.notes : [];
+    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
+    else Store.deleteLyric(arrId, secUid);
+    if (onRender) onRender();
+  }
+  /** @param {string|null} arrId @param {string|null} secUid @returns {boolean} */
+  function lyricUndo(arrId, secUid){
+    if (arrId === null || secUid === null) return false;
+    const h = histGet(arrId, secUid);
+    const snap = h.undo.pop();
+    if (snap === undefined) return false;
+    h.redo.push(lyricSnap(arrId, secUid));
+    applyLyricSnap(arrId, secUid, snap);
+    return true;
+  }
+  /** @param {string|null} arrId @param {string|null} secUid @returns {boolean} */
+  function lyricRedo(arrId, secUid){
+    if (arrId === null || secUid === null) return false;
+    const h = histGet(arrId, secUid);
+    const snap = h.redo.pop();
+    if (snap === undefined) return false;
+    h.undo.push(lyricSnap(arrId, secUid));
+    applyLyricSnap(arrId, secUid, snap);
+    return true;
+  }
+  return {
+    hist, HIST_MAX, histKey, histGet, remember, lastKey: () => lastKey,
+    /** @param {null | (() => void)} fn */
+    setRender(fn){ onRender = fn; },
+    snapshot: lyricSnap, commit: lyricCommit, push: lyricHistPush,
+    undo: lyricUndo, redo: lyricRedo,
+    lyricSnap, lyricCommit, lyricHistPush, lyricUndo, lyricRedo,
+  };
+})();
+
 /* ================= Arrange · 曲式编排（v2.0.0） ================= */
 /* 编排 UI。数据模型与校验在 Store（S2），节目单步进在共享状态区（S3），
    播放接线在 AudioEngine/Controls（S4）——本模块只做"把曲式编出来"这件事。
@@ -19529,14 +19654,22 @@ const Arrange = (() => {
      guide/guideRow = 吸附引导线元素与其所在行（拖完即摘） */
   /** @type {null | { chip: any, lctx: any, k: number, mode: string, perTick: number, x0: number, t0: number, d0: number, t: number, d: number, overR: number, overL: number, chars: any[], orig: string, anchors: number[], magnet: number, a0: number, guide: any, guideRow: number, ghost: any, ghostRow: number, bubble: any, bubbleRow: number, hintEl: any, row0: number, row: number, chipRow: number, geo: any }} */
   let drag = null;
-  /* v2.49.0（R1）：歌词撤销/重做。键 = arrangeId|secUid；**会话内存栈**（V1 拍板），
-     关浮层/切段不清、刷新页面清空，不落盘——与 Editor undoStack 同纪律（L10008 同口径）。
-     打轴是事务：startTap 压一次快照（V3），tapNow 的逐敲落库不压栈。 */
-  /** @type {Map<string, { undo: string[], redo: string[] }>} */
-  const lyricHist = new Map();
-  const HIST_MAX = 50;
+  /* 行级历史由 LyricHistory 持有；这里只保留既有调用面的别名。 */
+  const { hist: lyricHist, HIST_MAX, histKey, histGet, lyricSnap,
+    lyricUndo, lyricRedo } = LyricHistory;
   /** @type {null | { arrId: string, secUid: string }} */
-  let lastLyricKey = null;             // Ctrl/⌘+Z 的路由目标（末次触碰段；为空则键盘撤销忽略）
+  let lastLyricKey = null;
+  /** @param {string} arrId @param {string} secUid @param {any[]} chars @param {{cue?: boolean, notes?: any[]}} [opts] */
+  function lyricCommit(arrId, secUid, chars, opts){
+    LyricHistory.commit(arrId, secUid, chars, opts);
+    lastLyricKey = { arrId, secUid };
+  }
+  /** @param {string} arrId @param {string} secUid */
+  function lyricHistPush(arrId, secUid){
+    LyricHistory.push(arrId, secUid);
+    lastLyricKey = { arrId, secUid };
+  }
+  LyricHistory.setRender(() => arrangeRender());
   /** @type {null | { arrId: string, secUid: string, k: number }} */
   let selChip = null;                  // 选中字块（V5：模块态，重渲染按它回挂 .sel；期 4 批量用，期 1 先立态）
   /* v3.38.0 批 2（音符块交互）：选中音符——与 selChip **平行且互斥**（点音符清字选中、
@@ -20419,100 +20552,6 @@ const Arrange = (() => {
     const d = noteDrag; noteDrag = null;
     noteDragTeardown(d);
     arrangeRender();
-  }
-
-  /* ---------- 歌词撤销/重做（v2.49.0 R1）----------
-     唯一写入口 lyricCommit：写库前先把现值快照压 undo 栈。no-op（现值与新值逐位相同）
-     不压栈（Editor「同档重按不推栈」同源纪律）；任何新提交清空 redo（栈分叉即作废）。
-     快照口径：无行 = "[]"——applyLyricSnap 对空数组走 deleteLyric，两态同归宿。 */
-
-  /** @param {string} arrId @param {string} secUid @returns {string} */
-  function histKey(arrId, secUid){ return arrId + "|" + secUid; }
-
-  /** get-or-create：栈体挂在 Map 上；段落删除后残键不清理（会话内存态，
-      量级 = 本会话编辑过的段数，刷新即清）
-      @param {string} arrId @param {string} secUid @returns {{ undo: string[], redo: string[] }} */
-  function histGet(arrId, secUid){
-    const k = histKey(arrId, secUid);
-    let h = lyricHist.get(k);
-    if (!h){ h = { undo: [], redo: [] }; lyricHist.set(k, h); }
-    return h;
-  }
-
-  /** 行级快照（v3.37.0 B 期：字与谱**同一份**快照——撤销一步 = 整行回到提交前，
-      不存在「字回去了谱没回去」的半态）。无行 = 双空。
-      @param {string} arrId @param {string} secUid @returns {string} */
-  function lyricSnap(arrId, secUid){
-    const l = Store.findLyric(arrId, secUid);
-    return l ? JSON.stringify({ chars: l.chars, notes: l.notes || [] }) : '{"chars":[],"notes":[]}';
-  }
-
-  /** 歌词唯一写入口（拖动提交 / 键盘微调 / 按节奏对齐 / 粘贴 / 清除 / 贴谱共用）。
-      v2.51.0（R3）：opts.cue = 松手即时音（拖动/键盘来源传 true；粘贴/清除不响）——
-      取提交后末字的段内 tick 补一声锚点音（AudioEngine.lyricCueNow，复用锚点提示音发声体）。
-      v3.37.0 B 期：opts.notes **显式传入**（数组，可为空）= 本次提交的旋律谱；
-      缺省 = 保留现谱（只改字的入口都走这条默认——谱锚在格上不随字走）。
-      @param {string} arrId @param {string} secUid @param {any[]} chars
-      @param {{cue?: boolean, notes?: any[]}} [opts] */
-  function lyricCommit(arrId, secUid, chars, opts){
-    const prev = Store.findLyric(arrId, secUid);
-    const notes = (opts && Array.isArray(opts.notes)) ? opts.notes
-      : ((prev && prev.notes) || []);
-    const snap = lyricSnap(arrId, secUid);
-    if (snap === JSON.stringify({ chars: chars, notes: notes })) return;   // no-op：不压栈、不落库
-    const h = histGet(arrId, secUid);
-    h.undo.push(snap);
-    if (h.undo.length > HIST_MAX) h.undo.shift();
-    h.redo.length = 0;
-    lastLyricKey = { arrId: arrId, secUid: secUid };
-    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
-    else Store.deleteLyric(arrId, secUid);           // 字与谱都清空才删行（清除与删除走同一门）
-    if (opts && opts.cue && chars.length) AudioEngine.lyricCueNow(chars[chars.length - 1].t);
-  }
-
-  /** 打轴事务入口（V3）：整段打轴 = 一步——startTap 调一次压快照，tapNow 的逐敲落库
-      不经过 lyricCommit（不压栈，50 步额度不被逐敲打空）。只压 undo 不清场。
-      @param {string} arrId @param {string} secUid */
-  function lyricHistPush(arrId, secUid){
-    const h = histGet(arrId, secUid);
-    h.undo.push(lyricSnap(arrId, secUid));
-    if (h.undo.length > HIST_MAX) h.undo.shift();
-    lastLyricKey = { arrId: arrId, secUid: secUid };
-  }
-
-  /** @param {string} arrId @param {string} secUid @param {string} snap */
-  function applyLyricSnap(arrId, secUid, snap){
-    const s = JSON.parse(snap);
-    /* 快照恒为行级 {chars, notes}（lyricSnap 出品）；裸数组兜底只防手改栈的极端脏值 */
-    const chars = Array.isArray(s) ? s : (s && s.chars) || [];
-    const notes = (s && !Array.isArray(s) && Array.isArray(s.notes)) ? s.notes : [];
-    if (chars.length || notes.length) Store.upsertLyric(arrId, secUid, chars, { notes: notes });
-    else Store.deleteLyric(arrId, secUid);
-    arrangeRender();
-  }
-
-  /** 弹栈前先把当前态压入对侧栈（redo/undo），再按快照恢复；空栈返回 false
-      （↩/↪ 按钮置灰判据）。
-      @param {string|null} arrId @param {string|null} secUid @returns {boolean} */
-  function lyricUndo(arrId, secUid){
-    if (arrId === null || secUid === null) return false;
-    const h = histGet(arrId, secUid);
-    const snap = h.undo.pop();
-    if (snap === undefined) return false;
-    h.redo.push(lyricSnap(arrId, secUid));
-    applyLyricSnap(arrId, secUid, snap);
-    return true;
-  }
-
-  /** @param {string|null} arrId @param {string|null} secUid @returns {boolean} */
-  function lyricRedo(arrId, secUid){
-    if (arrId === null || secUid === null) return false;
-    const h = histGet(arrId, secUid);
-    const snap = h.redo.pop();
-    if (snap === undefined) return false;
-    h.undo.push(lyricSnap(arrId, secUid));
-    applyLyricSnap(arrId, secUid, snap);
-    return true;
   }
 
   /* 拖动期间的移动/抬手挂在 window 而不是字块上：指针移出字块（甚至移出浮层）后仍要跟随，
@@ -23751,10 +23790,14 @@ const Help = (() => {
     evEl(e).blur();
     if (!deferredPrompt) return;
     const p = deferredPrompt;
-    try{ if (typeof p.prompt === "function") p.prompt(); }catch(_){}
+    const settle = () => { deferredPrompt = null; refreshInstall(); };
+    try{
+      const req = typeof p.prompt === "function" ? p.prompt() : null;
+      if (req && typeof req.catch === "function") req.catch(settle);
+    }catch(_){ settle(); }
     if (p.userChoice && typeof p.userChoice.then === "function"){
-      p.userChoice.then(() => { deferredPrompt = null; refreshInstall(); }).catch(() => { deferredPrompt = null; });
-    } else { deferredPrompt = null; refreshInstall(); }
+      p.userChoice.then(settle).catch(settle);
+    } else settle();
   });
   /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
   registerKeyLayer(overlayKeyLayer({ isOpen, close }));
@@ -23883,15 +23926,27 @@ const Diagnostics = (() => {
      注释自己记着"500 预设 715 KB、主线程阻塞 5–20ms、正好会触发音频掉音"。而"掉音"这件事
      此前**没有任何数字可核对**——用户说"保存时卡了一下"，我方只能猜。
      先把它变成两个标量（耗时 / 载荷），再决定要不要动数据模型：数字不超标就不重构。
-     ★ 只记**最后一次**（不是累加、不是求平均）：要的是"这次有多大"，累加会把它变成
-       另一个看不懂的总数；且它绝不能进 `diag` 那个计数对象——那是"次数"语义。 */
+     ★ 保留最近 50 次成功写入：最近值看本次，峰值看尖刺，p95 看持续性；
+       失败与判重跳过由 Store 不调用本函数，因而不污染样本。 */
   let coldWriteMs = -1;         // -1 = 还没写过（>0 才是有意义的一次实测）
   let coldWriteChars = -1;
+  /** @type {number[]} */
+  const coldWriteSamples = [];
   /** @param {number} ms 序列化 + 写盘的总耗时（毫秒，一位小数） @param {number} chars 载荷字符数 */
   function diagColdWrite(ms, chars){
     if (!(isFinite(ms) && ms >= 0)) return;          // 宿主没有 performance 时由调用方兜底为 0
     coldWriteMs = Math.round(ms * 10) / 10;
     coldWriteChars = Math.max(0, Math.round(chars));
+    coldWriteSamples.push(coldWriteMs);
+    if (coldWriteSamples.length > 50) coldWriteSamples.shift();
+  }
+  function coldWriteStats(){
+    const sorted = coldWriteSamples.slice().sort((a, b) => a - b);
+    return {
+      ms: coldWriteMs, chars: coldWriteChars, samples: coldWriteSamples.length,
+      maxMs: sorted.length ? sorted[sorted.length - 1] : -1,
+      p95Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.95) - 1] : -1,
+    };
   }
   /** @type {null | { box: HTMLElement, line: HTMLElement }} */
   let diagPanel = null;
@@ -23953,8 +24008,8 @@ const Diagnostics = (() => {
      Workers Builds（Git 集成构建）不读仓库里 wrangler.jsonc 的 build.command——线上那次构建
      跑什么取决于 Dashboard 里仓库外的命令。build-dist.js 装配时把「版本|时间|sha1」以
      <meta name="beatsight-build"> 注入 dist/index.html，这里在启动时核对：
-       · 戳记缺失     → 只记 noStamp 计数（**不告警**：WorkBuddy 手动发布链是目录拷贝、
-         天然无戳记；本机/冒烟通道同理——缺席不是罪证，只是"这条路没过自验链"的读数）；
+       · 戳记缺失     → 只记 noStamp 计数（**不告警**：本机/冒烟通道没有戳记；
+         两条在线渠道的正规产物都来自 build-dist，缺席只说明需要排查发布路径）；
        · 戳记版本不符 → 戳记在、版本却对不上 = 产物被手工拼过或张冠李戴，这才 console.warn。
      file:// 与沙箱（无 location）直接不查。 */
   function stampCheck(){
@@ -24011,7 +24066,8 @@ const Diagnostics = (() => {
       /* ★ （审计 P2-1）：冷键写入实测。报障时"保存/改名/导入那一刻卡了一下"的
          第一手证据——有了它，"是不是冷键太大"从猜测变成一个能读的数字。 */
       "冷键写入: " + (coldWriteMs >= 0
-        ? coldWriteMs + " ms · " + coldWriteChars + " 字符"
+        ? coldWriteMs + " ms · " + coldWriteChars + " 字符 · 峰值 " + coldWriteStats().maxMs
+          + " ms · p95 " + coldWriteStats().p95Ms + " ms · 样本 " + coldWriteSamples.length
         : "（本次会话还没有冷键写入）"),
       /* v3.42.1（审计 P2-2）：迁移未完成随报告带走——报障时"行为怪异但说不出原因"
          有一半是半迁移态，此前这个信号只存在于控制台 warn 里。 */
@@ -24135,7 +24191,7 @@ const Diagnostics = (() => {
   if (diagOn) diagBuild();
   return { diag, diagBump, diagNote, diagPaint, diagStorageUsage, diagReport, diagCopy, diagExport, diagBuild,
     diagColdWrite,                               // （审计 P2-1）：冷键写入实测进账（耗时 / 载荷）
-    coldWrite: () => ({ ms: coldWriteMs, chars: coldWriteChars }),   // 同上：读数口（测试与面板共用）
+    coldWrite: coldWriteStats,                   // 最近 / 峰值 / p95 / 样本数
     diagChannel,                                // v3.33.14（审计 §2.5）：渠道读数（双渠道报障可定位）
     diagStorageTop, stampCheck, diagOn, diagLast, DIAG_LAST_MAX };
 })();
@@ -24149,6 +24205,12 @@ const Diagnostics = (() => {
 document.title = `BeatSight 时值节拍器 v${VERSION}`;
 $("brandVer").textContent = "v" + VERSION;
 $("brandChip").textContent = "稳定版";
+
+onDiagExport = btn => Diagnostics.diagExport(btn);
+onPracticeSeek = dir => Arrange.jumpTo(arrSec + dir);
+onOpenArrange = () => Arrange.open();
+onOpenHelp = () => Help.open();
+onOpenKeymap = () => Help.openKeys();
 
 /* 时间轴重锚计数（v2.0.6，审计 P1-1）：AudioEngine 每执行一次 reanchor 就报一次原因。
    分成两类而不是合成一个总数——两者的处置完全不同：
@@ -25523,7 +25585,7 @@ $("latDelBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 
 /* 测试 / 调试句柄：tests/run.js 经此驱动模块接口做断言。
    ★★ v2.8.8：改为**条件挂载**（此前无条件）。
-     它把 13 个模块与若干内部 getter（含 `Store`、`clock()`、`onsetBuf()`、`arrangeState()`）
+     它把 16 个模块与若干内部 getter（含 `Store`、`clock()`、`onsetBuf()`、`arrangeState()`）
      整个挂到 window 上——任何能在本页面执行脚本的东西（CSP 因单文件架构必须留
      `'unsafe-inline'`，见 `_headers`）都能读写全部状态与 localStorage 全部键。
      收起后，生产环境只剩上面那个只含两个标量的 `__beatBoot`。
@@ -25535,7 +25597,7 @@ $("latDelBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
 const EXPOSE_INTERNALS = Diagnostics.diagOn
   || !!(typeof window !== "undefined" && (/** @type {any} */ (window)).BEATSIGHT_TEST);
 if (EXPOSE_INTERNALS){
-  /** @type {any} */ (window).__beat = { Store, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Settings, Ear, KeepAlive,
+  /** @type {any} */ (window).__beat = { Store, CoreUI, Modal, Viz, AudioEngine, Trainer, Controls, Presets, Editor, Settings, Ear, LyricHistory, KeepAlive,
     CONFIG, BUILTINS, VERSION, curPattern, activePattern, basicPattern,
     VALID_RHY, RHY_STEPS, RHY_NAME, RHY_SIG_CHOICES,   // v3.33.0：细分节奏表（测试直断言生成器与档位表同源）
     sigLabel, fillSigSelect,                           // v3.33.0：拍数档的两件共用件

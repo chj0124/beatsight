@@ -13,14 +13,14 @@ orig = io.open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
 MUTANTS = [
     ("M40 撤掉 .bpm-slider-row 行盒 min-height:40px",
      lambda s: s.replace(
-         ".bpm-slider-row{display:flex;align-items:center;gap:10px;min-height:40px;font-size:12px;color:var(--t2)}",
-         ".bpm-slider-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--t2)}", 1),
+         ".bpm-slider-row{display:flex;align-items:center;gap:var(--lab-gap);min-height:40px;font-size:12px;color:var(--t2)}",
+         ".bpm-slider-row{display:flex;align-items:center;gap:var(--lab-gap);font-size:12px;color:var(--t2)}", 1),
      ["行盒 40px"]),
     ("M41 .slider-row 塔内间距退回 6px",
      lambda s: s.replace(
-         ".slider-row{display:flex;flex-direction:column;align-items:stretch;gap:13px}",
+         ".slider-row{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-3)}",
          ".slider-row{display:flex;flex-direction:column;align-items:stretch;gap:6px}", 1),
-     ["13px"]),
+     ["塔内间距"]),
 ]
 
 hit_n, miss_n = 0, 0

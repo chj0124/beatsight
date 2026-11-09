@@ -73,7 +73,7 @@ BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽
 
 ## 功能一览
 
-当前 `v3.58.9` · [变更记录](CHANGELOG.md) · 完整操作见应用内「使用方法」。
+当前 `v3.59.0` · [变更记录](CHANGELOG.md) · 完整操作见应用内「使用方法」。
 
 - **时值可视化**：音符块宽度即时值，弹跳球预告落点；支持分页、连续滚动和窄屏分片。
 - **节奏库与编辑器**：内置节奏、拍数与细分组合、自定义编辑；支持扫弦、逐弦拨弦、休止和重拍设置。
@@ -98,15 +98,15 @@ BeatSight 的做法是把节奏**画出来**：每个音符是一个块，块宽
 Node ≥ 22，**核心闸门零安装**——不装任何东西也能跑完整套自验：
 
 ```bash
-node tools/check-all.js          # 共 22 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → 过期副本检测 → 远端漂移核对 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描 → 设计令牌 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 无障碍 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
+node tools/check-all.js          # 共 24 步：语法 → 架构约束 → 装配完整性 → 零依赖 lint → 版本一致性 → 文档一致性 → _headers 结构 → 过期副本检测 → 远端漂移核对 → DOM 节点账本 → 测试桩能力对账 → 资源体积预算 → CSS 孤儿扫描 → 设计令牌 → ESLint（可选）→ 类型检查（可选）→ DOM 引用 → 无障碍 → 反向验证入口回归 → 双渠道对账回归 → 浏览器冒烟（环境可选）→ 全量测试 → 死循环看门狗 → 行覆盖率
 node tools/check-all.js --quick  # 跳过 T21 全量组合扫描（改代码时用）
 ```
 
-- 22 步里有 4 步可能标 ⊘（**未执行**，不等于通过）：ESLint / 类型检查缺 `node_modules`、浏览器冒烟缺本机浏览器、远端漂移核对缺 `gh`。它们绝不会因为「没装开发依赖」堵住部署；`npm install` 后自动启用。耗时刻意不写进文档（`tools/check-docs.js` 强制），命令末尾会自己打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
+- 24 步里有 4 步可能标 ⊘（**未执行**，不等于通过）：ESLint / 类型检查缺 `node_modules`、浏览器冒烟缺本机浏览器、远端漂移核对缺 `gh`。它们绝不会因为「没装开发依赖」堵住部署；`npm install` 后自动启用。耗时刻意不写进文档（`tools/check-docs.js` 强制），命令末尾会自己打印「全部通过 · 实跑 N/M 项 · 用时 Xs」。
 - CI 在 `.github/workflows/ci.yml`：push 与 PR 都跑 `npm run ci`，并另开一个 job 跑真实浏览器冒烟——它是对所有分支生效的**补位**，Cloudflare 那条路只拦推到 main 的那次构建。
 - 发版纪律：`index.html` 的 `const VERSION` 是唯一真相源，**每次发版必 bump**（`package.json` / `package-lock.json` / `CHANGELOG.md` 首条由 `check-version.js` 强制一致）；发布前跑一次全量 `node tools/check-all.js`；视觉/手感类改动另需人眼验收，冒烟看不出「好不好用」。
 - `npm install` 会自动安装提交与推送钩子；也可手动运行 `node tools/install-hooks.js`。
-- 双渠道对账：`node tools/check-deploy-parity.js` 只读核对「线上到底是哪一版」（本地版本对齐 + `dist/` 产物集与安全头）。
+- 发布前：`npm run publish:check` 执行全量严格自验、重建 `dist/` 并核对本地产物。WorkBuddy 手动发布后跑 `npm run publish:verify`，要求 Cloudflare 与 WorkBuddy 实际版本都与源码一致；单独运行 `node tools/check-deploy-parity.js` 仍只读报告，不因线上尚未更新判红。
 
 开发约定见 [AGENTS.md](AGENTS.md)；架构与自验详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)，更多文档见 [docs/README.md](docs/README.md)。
 

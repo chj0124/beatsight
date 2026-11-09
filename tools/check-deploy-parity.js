@@ -1,15 +1,15 @@
 /* 双渠道部署对账（v2.68.0，审计「剩余基建·部署对账」收尾）
    ---------------------------------------------------------------------------
-   背景：BeatSight 有两条**对外渠道**，但共用同一份源码真相：
+   背景：本地与两条在线渠道共用同一份源码真相：
      · file:// 直开渠道 —— 仓库根的 index.html（开发版，不带产物戳记）。
-     · Cloudflare Workers 在线渠道 —— `node tools/build-dist.js` 装配出的 dist/，
+     · Cloudflare / WorkBuddy 在线渠道 —— 发布 `node tools/build-dist.js` 装配的 dist/，
        其中 dist/index.html 与根 index.html 是**同一份代码**（build-dist 只注入
        `<meta name="beatsight-build">` 戳记，不改版本语义）。
    两条渠道「到底是不是同一版」此前只能靠人记——这正是本项目一直在消灭的
    「线上到底是哪一版不可知」问题（见 build-dist.js 头注释与产物戳记段）。
 
    本工具做**只读对账**（不构建、不改任何文件），是 T1「先做成只读报告不设阈值、
-   避免假红」同款纪律的具体落地；它**不进** check-all 的 18 步门禁（避免引入新的
+   避免假红」同款纪律的具体落地；它**不进** check-all 的 22 步门禁（避免引入新的
    阻塞阈值），而是作为「build 之后」的独立校验——v3.31.x（落地审计 E1）起接入
    `npm run ci`（= npm ci → check-all --strict-env → build → 本工具）：
    CI 与本地全量流程在构建产物落地后**自动**跑它，无需记得手动；也可单独跑：
@@ -35,10 +35,10 @@
      ③ 优雅降级：dist/ 不存在时跳过 ②，仅跑 ①，并打印明确提示
         「dist/ 未构建，仅做本地版本对账（file:// 渠道）」，退出 0（说明性结论）。
 
-   用法：node tools/check-deploy-parity.js
-   无参数（路径固定为仓库根 + dist/）。
-   环境变量 BEATSIGHT_PARITY_URL 可覆盖③的线上核对地址（默认 Cloudflare Workers；
-   测试用本地 HTTP 服务注入时用它，其余行为不变）。 */
+   用法：node tools/check-deploy-parity.js [--require-online]
+   默认线上漂移只报告；--require-online 用于发布后，要求两渠道可读且同版。
+   BEATSIGHT_PARITY_URL / BEATSIGHT_WORKBUDDY_URL 可分别覆盖 Cloudflare / WorkBuddy 地址，
+   供本地 HTTP 夹具测试，其余行为不变。 */
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -145,39 +145,47 @@ if (!fs.existsSync(DIST)){
   }
 }
 
-/* ---- ③ 线上实际版本（v3.31.6，审计⑤）：信息性核对，**不判红**——CI 里跑在本批 push 的
-   部署完成之前，线上落后属预期（Cloudflare 自动构建要几十秒到几分钟）；它把「线上到底
-   是哪一版」从人肉看徽章变成每次对账打印一行。无网络（本地离线）标 ⊘ 跳过。
-   CJS 无顶层 await：核对与汇总整体收进 async IIFE。 */
+/* ---- ③ 两条线上渠道的实际版本：默认信息性核对，--require-online 时判红。
+   发布前线上落后是正常状态；只有发布后的显式验收才要求两渠道都与源码一致。 */
 (async () => {
-  const ONLINE_URL = process.env.BEATSIGHT_PARITY_URL || "https://beatsight.chenhuajian1995.workers.dev/";
-  const online = await new Promise(resolve => {
-    /* 协议随 URL 走：线上默认 https；BEATSIGHT_PARITY_URL 注入本地 HTTP 服务时用 http。 */
-    let req;
-    try {
-      const mod = /^https:/i.test(ONLINE_URL) ? require("https") : require("http");
-      req = mod.get(ONLINE_URL, { timeout: 8000 }, res => {
-        if (res.statusCode !== 200){ res.resume(); resolve({ err: "HTTP " + res.statusCode }); return; }
-        let body = "";
-        res.setEncoding("utf8");
-        res.on("data", c => { if (body.length < 3 * 1024 * 1024) body += c; });
-        res.on("end", () => resolve({ body }));
-      });
-    req.on("timeout", () => { req.destroy(); resolve({ err: "timeout" }); });
-    req.on("error", e => resolve({ err: e && e.code ? e.code : String(e) }));
-    } catch (e) { resolve({ err: "REQ_ERR " + (e && e.code ? e.code : String(e)) }); }
-  });
-  if (online.err){
-    notes.push("线上版本核对 ⊘ 跳过（无网络/超时：" + online.err + "）——本地对账结论不受影响");
-  } else {
+  const REQUIRE_ONLINE = process.argv.includes("--require-online");
+  const ONLINE_CHANNELS = [
+    { name: "Cloudflare", url: process.env.BEATSIGHT_PARITY_URL || "https://beatsight.chenhuajian1995.workers.dev/" },
+    { name: "WorkBuddy", url: process.env.BEATSIGHT_WORKBUDDY_URL || "https://beatsight.app.workbuddy.host/" },
+  ];
+  for (const channel of ONLINE_CHANNELS){
+    const online = await new Promise(resolve => {
+      let req;
+      try {
+        const mod = /^https:/i.test(channel.url) ? require("https") : require("http");
+        req = mod.get(channel.url, { timeout: 8000 }, res => {
+          if (res.statusCode !== 200){ res.resume(); resolve({ err: "HTTP " + res.statusCode }); return; }
+          let body = "";
+          res.setEncoding("utf8");
+          res.on("data", c => { if (body.length < 3 * 1024 * 1024) body += c; });
+          res.on("end", () => resolve({ body }));
+        });
+        req.on("timeout", () => { req.destroy(); resolve({ err: "timeout" }); });
+        req.on("error", e => resolve({ err: e && e.code ? e.code : String(e) }));
+      } catch (e) { resolve({ err: "REQ_ERR " + (e && e.code ? e.code : String(e)) }); }
+    });
+    if (online.err){
+      const msg = "线上（" + channel.name + "）核对 ⊘ 跳过（无网络/超时：" + online.err + "）";
+      if (REQUIRE_ONLINE) problems.push(msg + "——严格线上验收要求可读");
+      else notes.push(msg + "——本地对账结论不受影响");
+      continue;
+    }
     const om = /const\s+VERSION\s*=\s*"([^"]+)"/.exec(online.body || "");
     if (!om){
-      notes.push("线上页面读不到 VERSION（结构与预期不符，可能服务异常或页面改版）");
-    } else {
-      const same = srcVer != null && om[1] === srcVer;
-      notes.push("线上（Cloudflare）= v" + om[1] + "，" + (same ? "与本地一致" :
-        "与本地 v" + (srcVer || "?") + " 不一致——部署可能尚未完成（信息性，不判红）"));
+      const msg = "线上（" + channel.name + "）页面读不到 VERSION（可能服务异常或页面改版）";
+      if (REQUIRE_ONLINE) problems.push(msg); else notes.push(msg);
+      continue;
     }
+    const same = srcVer != null && om[1] === srcVer;
+    const msg = "线上（" + channel.name + "）= v" + om[1] + "，" + (same ? "与本地一致" :
+      "与本地 v" + (srcVer || "?") + " 不一致");
+    if (!same && REQUIRE_ONLINE) problems.push(msg + "——严格线上验收失败");
+    else notes.push(msg + (same ? "" : "——部署可能尚未完成（信息性，不判红）"));
   }
 
   /* ---- ④ GitHub 远端漂移（v3.34.6，审计 ⑤）：本仓最后一块「没有机器盯」的盲区。
@@ -232,7 +240,9 @@ if (!fs.existsSync(DIST)){
     console.log("  对账失败 · 退出 1");
     process.exit(1);
   }
-  console.log("  对账通过 · 双渠道版本一致" + (notes.length ? "（见上方 ℹ 说明）" : ""));
+  console.log("  对账通过 · " + (process.argv.includes("--require-online")
+    ? "本地 / 构建产物 / 两条线上渠道均一致"
+    : "本地与构建产物一致（线上逐项读数见上方 ℹ 说明）"));
   console.log("══════════════════════════════════════════════════════════");
   process.exit(0);
 })();

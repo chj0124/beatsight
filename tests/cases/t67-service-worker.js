@@ -26,11 +26,21 @@ const { ok, eq, section } = require("../lib/harness");
 
 /* 同步 Promise：then/catch 立即执行（本文件的桩不存在真异步），链式语义与真 Promise 对齐 */
 class SP {
-  constructor(v, rej){ this._v = v; this._rej = !!rej; }
+  constructor(v, rej, pending){ this._v = v; this._rej = !!rej; this._pending = !!pending; this._then = []; }
   static resolve(v){ return v instanceof SP ? v : new SP(v); }
   static reject(e){ return new SP(e, true); }
+  static pending(){ return new SP(undefined, false, true); }
   static all(arr){ return new SP(arr.map(x => (x instanceof SP ? x._v : x))); }
+  resolve(v){
+    this._v = v; this._pending = false;
+    const callbacks = this._then.splice(0);
+    callbacks.forEach(([f, r]) => {
+      if (this._rej){ if (r) r(this._v); return; }
+      if (f) f(this._v);
+    });
+  }
   then(f, r){
+    if (this._pending){ this._then.push([f, r]); return this; }
     if (this._rej){ return r ? SP.resolve(r(this._v)) : this; }
     if (!f) return this;
     try{ return SP.resolve(f(this._v)); }catch(e){ return SP.reject(e); }
@@ -49,6 +59,7 @@ function loadSw(opt){
      所以 put 只登记不执行，由 fire() 在事件处理完后统一 flush——
      这才对齐真实时序：响应用的是事件前的缓存，写回发生在响应之后。 */
   const pendingWrites = [];
+  let deferredPut = null;
 
   const mkResp = (okFlag, tag) => ({
     ok: okFlag, _tag: tag,
@@ -66,6 +77,10 @@ function loadSw(opt){
         put(req, resp){
           log.put.push([typeof req === "string" ? req : req.url, resp._tag]);
           if (opt.putFails) return SP.reject(new Error("quota"));
+          if (opt.deferPut){
+            deferredPut = SP.pending();
+            return deferredPut;
+          }
           pendingWrites.push([name, typeof req === "string" ? req : req.url, resp]);
           return SP.resolve();
         },
@@ -89,19 +104,30 @@ function loadSw(opt){
     clients: { claim(){ log.claim++; return SP.resolve(); } },
   };
 
-  const fetchImpl = opt.fetchImpl || (() => SP.resolve(mkResp(true, "net")));
+  let deferredFetch = null;
+  const fetchImpl = opt.fetchImpl || (() => {
+    if (opt.deferFetch){ deferredFetch = SP.pending(); return deferredFetch; }
+    return SP.resolve(mkResp(true, "net"));
+  });
 
   const sandbox = { self, caches, fetch: fetchImpl, URL, Promise: SP, console };
   vm.createContext(sandbox);
-  const src = fs.readFileSync(path.join(__dirname, "..", "..", "sw.js"), "utf8");
+  const src = fs.readFileSync(process.env.BEATSIGHT_SW || path.join(__dirname, "..", "..", "sw.js"), "utf8");
   vm.runInContext(src, sandbox);
 
   /* 派发事件（全同步）：waitUntil/respondWith 收到的是 SP，立即取最终值；
      事件处理完后统一 flush 写入队列（对齐"写回发生在响应之后"的真实时序） */
   function fire(type, ev){
+    let active = true;
     const e = Object.assign({
-      waitUntil(p){ e._wait = p instanceof SP ? p : SP.resolve(p); },
-      respondWith(p){ e._resp = p instanceof SP ? p : SP.resolve(p); },
+      waitUntil(p){
+        if (ev.strictActive && !active) throw new Error("InvalidStateError: event is not active");
+        e._wait = p instanceof SP ? p : SP.resolve(p);
+      },
+      respondWith(p){
+        e._resp = p instanceof SP ? p : SP.resolve(p);
+        if (ev.strictActive) e._resp.then(() => { active = false; });
+      },
     }, ev);
     listeners[type](e);
     while (pendingWrites.length){
@@ -111,7 +137,9 @@ function loadSw(opt){
     return e;
   }
   const req = (url, o) => Object.assign({ url, method: "GET", mode: "cors" }, o);
-  return { log, listeners, fire, req, store, mkResp };
+  return { log, listeners, fire, req, store, mkResp,
+    resolvePut(){ if (deferredPut) deferredPut.resolve(); },
+    resolveFetch(){ if (deferredFetch) deferredFetch.resolve(mkResp(true, "net")); } };
 }
 
 const BASE = "https://beatsight.example.workers.dev";
@@ -192,4 +220,41 @@ section("T67d Service Worker · 不接管的三类请求");
   const e3 = sw.fire("fetch", { request: sw.req("https://cdn.other.com/x.js") });
   ok(e3._resp === undefined, "跨源静态请求不接管");
   eq(sw.log.put.length, 0, "三类请求都没有写缓存");
+}
+
+
+section("T67e Service Worker · 写缓存纳入 fetch 事件生命周期");
+{
+  const sw = loadSw({ deferPut: true });
+  const e = sw.fire("fetch", { request: sw.req(BASE + "/", { mode: "navigate" }) });
+  ok(!!e._wait, "★ 导航写缓存已注册 waitUntil");
+  eq(e._wait && e._wait._pending, true, "★ 导航 cache.put 未决时事件保持未结束");
+  sw.resolvePut();
+  eq(e._wait && e._wait._pending, false, "★ 导航 cache.put 完成后事件才结束");
+}
+{
+  const store = { "beatsight-pwa-v2": new Map() };
+  const sw = loadSw({ store, deferPut: true });
+  sw.store["beatsight-pwa-v2"].set(BASE + "/icon.svg", sw.mkResp(true, "cached-icon"));
+  const e = sw.fire("fetch", { request: sw.req(BASE + "/icon.svg") });
+  eq(e._resp && e._resp._v && e._resp._v._tag, "cached-icon", "静态资源仍先回旧缓存");
+  ok(!!e._wait, "★ 静态资源后台写缓存已注册 waitUntil");
+  eq(e._wait && e._wait._pending, true, "★ 静态资源 cache.put 未决时事件保持未结束");
+  sw.resolvePut();
+  eq(e._wait && e._wait._pending, false, "★ 静态资源 cache.put 完成后事件才结束");
+}
+
+
+section("T67f Service Worker · 响应落定后不得晚调 waitUntil");
+{
+  const store = { "beatsight-pwa-v2": new Map() };
+  const sw = loadSw({ store, deferPut: true, deferFetch: true });
+  sw.store["beatsight-pwa-v2"].set(BASE + "/icon.svg", sw.mkResp(true, "cached-icon"));
+  let error = null, e = null;
+  try {
+    e = sw.fire("fetch", { strictActive: true, request: sw.req(BASE + "/icon.svg") });
+    sw.resolveFetch();
+  } catch (err){ error = err; }
+  eq(error, null, "★ 缓存命中且网络后到时，waitUntil 仍在响应落定前同步注册（不抛 InvalidStateError）");
+  ok(e && !!e._wait, "严格事件模型下写缓存仍纳入生命周期");
 }

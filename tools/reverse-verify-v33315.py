@@ -10,11 +10,8 @@
      M15 引用提示搬回顶栏内（v3.33.15 前的形状）→ T201f「已不在 .editor-topbar 内」红
      M16 .editor-actions 的 flex:none 退回"只在 ≤640px 生效" → T201f 那条 CSS 不变量红
      M17 撤掉 needsT16Ruler 判据（恒画，= 本批之前的行为）→ T201a/T201b 红、t145c 红
-     M18 撤掉主视图「撞箭头让位」→ T201d 红
-     M19 编排页让位下标写成 nSub/2−1（我第一版真踩过的 off-by-one）→ T201e 红
-        ★ M19 是本批最有价值的一条：它证明断言能区分"对的下标"与"差 1 的下标"，
-          而只数条数是区分不出来的（两种写法都剩 1 条）。
-     M20 撤掉编排页整条 needsT16 判据（恒建节点）→ T201e「全八分不画」红
+     M20 编排页刻度恒退回十六分网格 → T201e「全八分不画」红
+     注：旧 M18/M19 的「撞箭头让位」机制已退役，不再对当前代码做无效变异。
 
    ★ 另有行为面证据（不进本脚本、需真机）：M15 忠实回退后再跑 `node tools/smoke.js`，
      「引用提示在 .editor-topbar 之外」与「长提示落在顶栏下方」两条真机断言变红。
@@ -29,6 +26,8 @@ REF_DIV = '    <div class="hint" id="editorRefNote"></div>\n'
 # 锚点必须唯一：全文件有**两处** .editor-actions（编辑器与编排浮层），
 # 故带上紧随其后的 auditionBtn（只有编辑器那一处有）才唯一。
 ACTIONS_DIV = ('      <div class="editor-actions">\n'
+               '        <!-- ★ PLAN-v14（用户实拍图二）：撤销钮已归位到网格下方 .ed-actions（「离编辑区太远」）——\n'
+               '             顶栏只剩过程动作「试听」。 -->\n'
                '        <button class="pill outline" id="auditionBtn">试听</button>\n')
 
 
@@ -46,27 +45,16 @@ MUTANTS = [
      ["★ 引用提示已**不在** .editor-topbar 内", "★ 提示落在「顶栏收尾」与「下方卡片」之间"]),
 
     ("M16 v3.33.15 回退：.editor-actions 的 flex:none 退回只在 ≤640px 生效",
-     lambda s: s.replace(".editor-actions{display:flex;gap:10px;flex:none}",
-                         ".editor-actions{display:flex;gap:10px}", 1),
+     lambda s: s.replace(".editor-actions{display:flex;gap:var(--sp-3);flex:none}",
+                         ".editor-actions{display:flex;gap:var(--sp-3)}", 1),
      ["★ CSS 不变量：.editor-actions 的 flex:none"]),
 
     ("M17 v3.33.15 回退：撤掉 needsT16Ruler 判据（恒画刻度，= 本批之前的行为）",
      lambda s: s.replace("(s.t % T8 !== 0)", "true", 1),
      ["★ .subs 带 .t16-off", "★ 全八分 ⇒ 不画", "★ 全型都是八分整数倍"]),
 
-    ("M18 v3.33.15 回退：撤掉主视图「格中心那条刻度让位给箭头」",
-     lambda s: s.replace(
-         '+ ((needT16 && hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) ? " collide" : "")',
-         '+ ""', 1),
-     ["★ 每个带方向的八分格，中心那条刻度都让位"]),
-
-    ("M19 让位下标写成 nSub/2−1（编排页口径与主视图不同，差 1 就点错位置）",
-     lambda s: s.replace("if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2) continue;",
-                         "if (hasStr && s.dir && nSub % 2 === 0 && u === nSub / 2 - 1) continue;", 1),
-     ["★ 被让位的是**格中心**那条"]),
-
-    ("M20 v3.33.15 回退：撤掉编排页的 needsT16 判据（恒建块内刻度节点）",
-     lambda s: s.replace("if (needT16 && s.t % T16 === 0){", "if (s.t % T16 === 0){", 1),
+    ("M20 v3.33.15 回退：编排页刻度恒退回十六分网格",
+     lambda s: s.replace("const U = minUnitOf(pat);", "const U = T16;", 1),
      ["★ 全八分 ⇒ 编排页同样不画块内刻度"]),
 ]
 
