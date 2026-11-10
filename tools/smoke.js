@@ -554,6 +554,39 @@ function interactionFixesProbe(){
     q("#presetDrawerClose").click();
   }
 
+  const trainerWasOn = window.__beat.Store.S.trainer.on;
+  if (!trainerWasOn) q("#trainerToggle").click();
+  const canvas = document.createElement("canvas"), textCtx = canvas.getContext("2d");
+  const fitOf = el => {
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    const available = r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+      - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+    textCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+    const text = el.getAttribute("placeholder");
+    return {
+      id: el.id, text,
+      textWidth: +textCtx.measureText(text).width.toFixed(1),
+      available: +available.toFixed(1),
+      visible: r.width > 0 && r.height > 0,
+      fits: textCtx.measureText(text).width <= available + 0.5,
+    };
+  };
+  const targetFit = fitOf(q("#trTarget"));
+  if (dr.hidden) btn.click();
+  q("#editBtn").click();
+  const paletteItem = q(".pal-item");
+  if (paletteItem) paletteItem.click();
+  const firstCell = q(".edcell");
+  if (firstCell) firstCell.click();
+  const pickTech = q('[data-tech="pick"]');
+  if (pickTech) pickTech.click();
+  out.placeholders = [targetFit].concat(Array.from(document.querySelectorAll("[placeholder]:not(#trTarget)")).map(fitOf));
+  q("#editorBack").click();
+  if (!q("#modalMask").hidden && q("#modalMsg").textContent.includes("草稿尚未保存")) q("#modalOk").click();
+  out.editorClosed = !q("#editor").classList.contains("open");
+  if (!dr.hidden) q("#presetDrawerClose").click();
+  if (!trainerWasOn) q("#trainerToggle").click();
+
   const ghosts = Array.from(q("#viz").querySelectorAll(".strumv.ghost"))
     .filter(el => getComputedStyle(el).display !== "none");
   out.air = {
@@ -5101,10 +5134,16 @@ async function main(){
         const sel = fx.select || {};
         ok(sel.tag === "SELECT" && sel.appearance === "none"
           && sel.backgroundImage.includes("data:image/svg+xml")
-          && sel.backgroundSize === "24px 24px" && sel.paddingRight === "32px",
-          label + "：★ 原生 select 保留，24px 淡底图标槽与 32px 右侧留白生效", JSON.stringify(sel));
+          && sel.backgroundSize === "14px 14px" && sel.paddingRight === "28px",
+          label + "：★ 原生 select 保留，14px 线性箭头与 28px 右侧留白生效", JSON.stringify(sel));
         ok(fx.modalAutocomplete === "off",
           label + "：★ 分组输入框关闭 Chrome 自动完成", "autocomplete=" + fx.modalAutocomplete);
+        const placeholders = Array.isArray(fx.placeholders) ? fx.placeholders : [];
+        ok(placeholders.length === 11 && placeholders.every(x => x.visible && x.fits),
+          label + "：★ 全部 11 个 placeholder 均可见且文字空间足够",
+          JSON.stringify(placeholders));
+        ok(fx.editorClosed === true,
+          label + "：★ placeholder 探针确认丢弃测试草稿并关闭编辑器，不污染后续审计");
         if (fx.w > 960){
           ok(fx.focusAtOpen === "modalInput" && fx.focusAfterWait === "modalInput",
             label + "：★ 分组输入框在打开与等待后都保持焦点",

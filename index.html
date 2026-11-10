@@ -47,10 +47,10 @@
      .preset-group 的既有模式）。此前是 ▸/▾ 文字字形：位置随平台字体浮动且对着中文恒偏低
      （实测偏低 0.75–1px，根因见 .preset-item.song .name::before 注释）。 */
   --mk-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  /* 原生 select 的触发框：24px 淡底图标槽 + 16px V 形，三态分色；选项弹层仍归浏览器。 */
-  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='white' fill-opacity='.06'/><path d='M4 8l8 8 8-8' fill='none' stroke='%23B3B3B3' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='white' fill-opacity='.09'/><path d='M4 8l8 8 8-8' fill='none' stroke='%23FFFFFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='%231ED760' fill-opacity='.14'/><path d='M4 8l8 8 8-8' fill='none' stroke='%231ED760' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  /* 原生 select 的触发框箭头：同一 V 形几何，默认 / 悬停 / 聚焦三态分色；选项弹层仍归浏览器。 */
+  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23B3B3B3' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23FFFFFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%231ED760' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-edit:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-folder:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --mk-x:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M18 6 6 18' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><path d='M6 6l12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
@@ -1862,7 +1862,7 @@ input[type=range].vol{width:120px}
 .tg-flyout .f-row{display:flex;align-items:center;gap:var(--sp-2);white-space:nowrap;min-height:28px}   /* 等高：两块面板高度一致 */
 .tg-flyout .f-row + .f-row{margin-top:var(--sp-2)}
 .tg-flyout .tr-panel .lab{font-size:11px;white-space:nowrap;color:var(--t2)}
-.tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;padding-right:var(--sp-8);font-size:11px}
+.tg-flyout .tr-panel .loop-sel{width:auto;min-width:44px;padding:2px 4px;padding-right:calc(var(--sp-4) + var(--sp-3));font-size:11px}
 /* ★★★ 本轮（用户实拍「'步长' 的步 与 '小节' 的小 为什么没对齐」）：实测两行第二列标签
    左缘差 **2.00px**（390 与 1440 都是 2px）。根因是**两行结构不同**：
      行 1 = [#trTargetWrap(.inp-with-unit) 6px 外距][步长 ±][输入]，
@@ -1879,6 +1879,8 @@ input[type=range].vol{width:120px}
      故 `.inp-with-unit[hidden]` 那条兜底不受牵连。 */
 #trainerFlyout .inp-with-unit{display:contents}
 .tg-flyout .tr-inp{width:46px;padding:3px var(--sp-2);font-size:12px;text-align:center}
+.tg-flyout #trTarget{width:64px;min-width:64px;max-width:100%}
+.tg-flyout #trEvery{width:64px;min-width:64px;max-width:100%}
 .tg-flyout #muteRandomToggle{padding:var(--sp-1) var(--sp-3);font-size:12px}
 .tg-flyout .tr-inp::-webkit-outer-spin-button,
 .tg-flyout .tr-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
@@ -2156,11 +2158,11 @@ body[data-theme="obs"] #trainerProg{margin-top:2px}
 /* 「第 X 到 Y 小节」作为一个单元整体折行（v2.6.2）：nowrap + inline-flex，
    要么整组留在行尾、要么整组落到下一行——「小节」不会孤零零挂在新行开头 */
 .loop-range{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-/* 只定制触发框：原生选项弹层、方向键与焦点语义全部保留。右侧 32px 给 24px 淡底图标槽与留白。 */
+/* 只定制触发框：原生选项弹层、方向键与焦点语义全部保留。右侧 28px 给 14px 箭头与留白。 */
 .loop-sel{-webkit-appearance:none;appearance:none;background-color:var(--bg);background-image:var(--select-chev);
-  background-repeat:no-repeat;background-position:right var(--sp-1) center;background-size:24px 24px;
+  background-repeat:no-repeat;background-position:right var(--sp-2) center;background-size:14px 14px;
   color:var(--t1);border:1px solid var(--line);border-radius:var(--radius-ctrl);
-  padding:var(--sp-1) var(--sp-2);padding-right:var(--sp-8);font-size:12px;font-family:inherit;min-width:44px}
+  padding:var(--sp-1) var(--sp-2);padding-right:calc(var(--sp-4) + var(--sp-3));font-size:12px;font-family:inherit;min-width:44px}
 .loop-sel:hover{background-image:var(--select-chev-hi)}
 .loop-sel:focus-visible{background-image:var(--select-chev-focus);border-color:var(--green)}
 .loop-panel.on .loop-sel{border-color:var(--green)}
@@ -3233,9 +3235,9 @@ body[data-theme="obs"]{
      新值在同样四处为 5.98 / 5.23 / **4.86** / 5.43:1，全部 ≥4.5:1，且仍比 --t2(#475569) 浅
      ⇒ t1 > t2 > t3 的层级不变。 */
   --t1:#0F172A; --t2:#475569; --t3:#556577; --on-green:#FFFFFF;
-  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='%230F172A' fill-opacity='.06'/><path d='M4 8l8 8 8-8' fill='none' stroke='%23475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='%230F172A' fill-opacity='.09'/><path d='M4 8l8 8 8-8' fill='none' stroke='%230F172A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><rect x='1' y='1' width='22' height='22' rx='5' fill='%232563EB' fill-opacity='.12'/><path d='M4 8l8 8 8-8' fill='none' stroke='%232563EB' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%23475569' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-hi:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%230F172A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --select-chev-focus:url("data:image/svg+xml;utf8,<svg xmlns='http://www%2Ew3%2Eorg/2000/svg' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6' fill='none' stroke='%232563EB' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --rest-line:rgba(15,23,42,.25);
   /* ★★ v3.33.8：**选中态三件套**（用户实拍缺陷的根因）——:root 只定义了 --sel-bg/--sel-line，
      本块此前**一枚都没覆盖**，于是日间下选中胶囊仍是暗色底 #2E2E2E，而 .pill.active 的文字
@@ -5143,25 +5145,25 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5177  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6943  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9186  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9195  CoreUI        控制芯 / 参数槽 / 键盘层
-     L10453 Modal         应用内弹窗
-     L10614 Viz           时值可视化渲染与每帧动画
-     L14364 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15126 Trainer       变速训练器
-     L15343 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L16022 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17979 Editor        自定义节奏型编辑器
-     L19208 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19303 Ear           听辨训练（v1.10.0）
-     L19543 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
-     L19630 Arrange       曲式编排（v2.0.0）
-     L23681 Help          使用方法（v2.0.1）
-     L23840 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23922 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24231 初始化（装配） 各模块 hook 接线与启动
+     L5179  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6945  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9188  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9197  CoreUI        控制芯 / 参数槽 / 键盘层
+     L10455 Modal         应用内弹窗
+     L10616 Viz           时值可视化渲染与每帧动画
+     L14366 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15128 Trainer       变速训练器
+     L15345 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L16024 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17981 Editor        自定义节奏型编辑器
+     L19210 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19305 Ear           听辨训练（v1.10.0）
+     L19545 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
+     L19632 Arrange       曲式编排（v2.0.0）
+     L23683 Help          使用方法（v2.0.1）
+     L23842 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L23924 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24233 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5187,7 +5189,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.59.3";
+const VERSION = "3.59.4";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。

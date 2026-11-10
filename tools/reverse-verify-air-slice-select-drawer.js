@@ -25,9 +25,17 @@ const MUTANTS = [
     ' id="modalInput" hidden aria-labelledby="modalMsg" autocomplete="off"',
     ' id="modalInput" hidden aria-labelledby="modalMsg"', "M4"),
     "tests/cases/t278-native-select-style.js", "modalInput 显式 autocomplete=off"],
-  ["M5 图标槽退回小箭头", s => once(s,
-    "background-size:24px 24px", "background-size:14px 14px", "M5"),
-    "tests/cases/t278-native-select-style.js", "图标槽 24×24px"],
+  ["M5 线性箭头错改回 24px", s => once(s,
+    "background-size:14px 14px", "background-size:24px 24px", "M5"),
+    "tests/cases/t278-native-select-style.js", "箭头恢复 14×14px"],
+  ["M6 目标 BPM 输入框退回 46px", s => once(s,
+    ".tg-flyout #trTarget{width:64px;min-width:64px;max-width:100%}",
+    ".tg-flyout #trTarget{width:46px;min-width:46px;max-width:100%}", "M6"),
+    "tests/cases/t278-native-select-style.js", "目标 BPM 输入框放宽到 64px"],
+  ["M7 每级输入框退回 46px", s => once(s,
+    ".tg-flyout #trEvery{width:64px;min-width:64px;max-width:100%}",
+    ".tg-flyout #trEvery{width:46px;min-width:46px;max-width:100%}", "M7"),
+    "tests/cases/t278-native-select-style.js", "每级输入框同步放宽"],
 ];
 let hits = 0, misses = 0;
 for (const [name, mutate, file, key] of MUTANTS){
