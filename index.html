@@ -4336,6 +4336,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
       </div>
       <div class="bpm-row">
         <button class="pill active" id="earPlayBtn">出题并播放</button>
+        <button class="pill" id="earNextBtn" hidden>下一题</button>
         <span class="hint">每题自动放 2 小节。候选只给记谱、不给名字——按听到的选，别看名字猜</span>
       </div>
       <!-- 候选按点击顺序无关：渲染顺序在每次出题时打乱（Fisher–Yates，rand 可注入以便断言） -->
@@ -5145,25 +5146,25 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
               → v1.1.1 播放中切节奏型「点下即生效」（相位就地接续，不再等小节边界）
    模块索引（IIFE，按依赖方向排序，禁止反向引用）：
      行号为 index.html 绝对行号，仅作文件内导航；在其之前增删代码后需整体重算。
-     L5179  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
-     L6945  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
-     L9188  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
-     L9197  CoreUI        控制芯 / 参数槽 / 键盘层
-     L10455 Modal         应用内弹窗
-     L10616 Viz           时值可视化渲染与每帧动画
-     L14366 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
-     L15128 Trainer       变速训练器
-     L15345 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
-     L16024 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
-     L17981 Editor        自定义节奏型编辑器
-     L19210 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
-     L19305 Ear           听辨训练（v1.10.0）
-     L19545 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
-     L19632 Arrange       曲式编排（v2.0.0）
-     L23683 Help          使用方法（v2.0.1）
-     L23842 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
-     L23924 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
-     L24233 初始化（装配） 各模块 hook 接线与启动
+     L5180  数据          版本号 / TPB 常量 / CONFIG / 内置节奏型数据
+     L6941  Store         持久化 / 状态创建 / 数据迁移 / 预设导入导出
+     L9184  共享状态      跨模块可变状态（S/customs/draft/appliedPat/activePattern + $ / clear 等助手）
+     L9193  CoreUI        控制芯 / 参数槽 / 键盘层
+     L10456 Modal         应用内弹窗
+     L10617 Viz           时值可视化渲染与每帧动画
+     L14367 AudioEngine         Web Audio 引擎与前瞻调度（含 swing 偏移）
+     L15129 Trainer       变速训练器
+     L15346 Controls      播放控制 / BPM / 拍号 / Swing / 重拍分组 / 音量 / 静音拍
+     L16025 Presets       预设库（节拍 / 扫弦 / 自定义 三区）/ 拍号对齐 / 播放中切换挂起
+     L17982 Editor        自定义节奏型编辑器
+     L19211 Settings      设置弹窗（v2.10.12 起；★ 本版：弹跳球/六线底纹/图例三开关退役 → 主题 / 音色 / 导入导出 / 使用方法入口）
+     L19306 Ear           听辨训练（v1.10.0）
+     L19662 LyricHistory  歌词与音符行级快照 / 提交 / 撤销重做
+     L19749 Arrange       曲式编排（v2.0.0）
+     L23800 Help          使用方法（v2.0.1）
+     L23959 KeepAlive     后台保活（v1.4：wakeLock + 静音循环音频兜底，只读共享状态）
+     L24041 Diagnostics   诊断与产物戳记（v2.0.4 立；v2.19.0 由装配层抽出：计数器 / 错误环形缓冲 / 产物戳记自检）
+     L24350 初始化（装配） 各模块 hook 接线与启动
    边界规则：
      1. 模块间只通过对方暴露的接口通信（如 Trainer.updateProg()），禁止直读内部变量
      2. 跨模块共享的可变状态集中在「共享状态」区（位于 Store 之后、其余模块之前）：
@@ -5189,7 +5190,7 @@ body[data-theme="obs"] .cell.rest{background:var(--rest-fill)}
    发版规则（v1.6.4 起）：每次发版都 bump 这一行，不分功能版与工程版。此前 v1.6.1~v1.6.4 连发
    四版都没动它，线上徽章长期停在 v1.6.0——版本号是用户判断「更新到底生效没有」的唯一凭据，
    跳过它就等于让这个凭据说谎。改这一行即可，两处显示自动跟着走 */
-const VERSION = "3.59.4";
+const VERSION = "3.59.8";
 const TPB = 48;                                        // ticks per beat（PPQN）
 /* 具名时值常量（v1.3.0）：12/24/36 在本文件里既当 tick 时值又当 CSS 像素值出现过几百次，
    靠裸数字读不出语义（`s.t % 12` 是"能否画十六分刻度"、`s.t < 24` 是"是否算短音符"）。
@@ -6640,14 +6641,9 @@ const BPM_RANGE = [30, 240];
    改这里的数值时记得同改 HTML 上那三个 input 的 min/max（它们只是给浏览器看的提示，不是闸门） */
 const TR_RANGE = { target:[31, 240], step:[1, 20], everyN:[1, 8] };
 
-/* 听辨训练（v1.10.0）——出题质量的关键在这张表，不在代码。
-   随机从 12 个内置预设里抽会出两类坏题：「送分题」（八分摇滚 vs 华尔兹分解根本不会听错）
-   与「无解题」（两个候选听感几乎相同，只能靠猜）。所以改为手写**同组候选**：
-   组内成员在听觉上真的容易混，答案永远是其中之一。
-   用**名字**引用内置预设而不是下标——下标会随内置库增删而移位，名字不会（名字重复时取最前一个）。
-   组内拍号允许不同：第 3 组就是靠"数出几拍"来区分的，候选各自按自己的拍号画一小节。
-   表完整性（每个名字都能解析到预设、每组至少 2 个候选）由 tests T49 断言，不在运行期兜底——
-   表写错是开发期错误，应该在测试里立刻炸，而不是让用户遇到一道没有正确答案的题。 */
+/* 听辨训练的手工兜底题组。主路径由 Ear.makeGeneratedQuestion 按全部拍号受约束生成；
+   只有连续生成失败时才回退 makeQuestion 随机抽这些易混组。
+   组内候选保持听觉易混，名字引用避免内置库下标漂移；完整性由 T49 把守。 */
 const EAR_GROUPS = [
   { name:"附点 vs 均分 vs 三连音", desc:"把「听不出附点」练掉",
     keys:["附点布鲁斯", "八分摇滚", "三连音基础"] },
@@ -9253,12 +9249,15 @@ function setTrainerNote(/** @type {string} */ text, /** @type {boolean} */ warn 
   const p = $("trainerProg");
   if (p) p.classList.toggle("prog-dup", !!text);
 }
-function clearSlotForce(){
-  if (!paramSlotForce) return;
+function resetSlotForce(){
   paramSlotForce = "";
   const tp = $("trainerProg");
   if (tp && !S.trainer.on){ tp.textContent = ""; tp.classList.remove("warn"); }
   setTrainerNote("");
+}
+function clearSlotForce(){
+  if (!paramSlotForce) return;
+  resetSlotForce();
   syncParamSlots();
 }
 /* 三处清空点：只装一次监听（模块脚本在 body 末尾执行，此处 DOM 已就绪） */
@@ -9320,6 +9319,7 @@ function openParamSlot(/** @type {string} */ name){
      再点一次仍是"拒绝 + 强开"，槽纹丝不动；而 BPM < 目标 时开关能真开真关、面板跟随开关，
      第二次点击自然收起——两种情形必须一致。改成 toggle 即可（原因文案由 clearSlotForce 一并撤掉）。 */
   if (paramSlotForce === name){ clearSlotForce(); return; }
+  dismissOtherSlot(name);
   paramSlotForce = name; syncParamSlots();
 }
 
@@ -9415,6 +9415,7 @@ function dismissSlots(){
 function dismissOtherSlot(/** @type {string} */ k){
   if (!(typeof innerWidth === "number" && innerWidth < 1280)) return;
   const other = k === "mute" ? "trainer" : "mute";
+  if (paramSlotForce === other) resetSlotForce();
   if (slotKeyOn(other) && !slotDismissed[other]) slotDismissed[other] = true;
 }
 /* --row-h：胶囊行**实际**高度（窄档面板锚"行底 +10px"；槽长出来/行折行都会变高） */
@@ -15417,8 +15418,8 @@ const Controls = (() => {
     Presets.flushPending();                    // 此刻尚未排程，挂起立即落定
     return null;
   }
-  /** 开始播放（幂等：S.playing 时直接返回）。建立音频时钟锚点、预备拍、调度周期与渲染循环。 @returns {void} */
-  function start(){
+  /** 开始播放（幂等：S.playing 时直接返回）。建立音频时钟锚点、预备拍、调度周期与渲染循环。 @param {{skipCountIn?: boolean}} [options] @returns {void} */
+  function start(options = {}){
     /* 重入保护（v2.0.6，审计 P1-3）：start() 会新开一个 setInterval 并覆盖 timer 句柄——
        而旧句柄一旦被覆盖就再也清不掉，两个 25ms 循环同时排程 = 每个音符排两遍（听感是
        "每一拍都成了装饰音"）、且留下一个永远跑着的孤儿 interval。
@@ -15461,8 +15462,8 @@ const Controls = (() => {
        §3.18 原「首声限制」一段随之作废：它预测的表现是"晚一点"，实测是"消失"——
        错误的表现模型导致 v2.14.0 当时的"整体延后"方案被错误否决。 */
     loopStart = c.currentTime + 0.08 + latencyMs / 1000;
-    /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM） */
-    if (S.countIn.on && S.countIn.beats > 0){
+    /* 预备拍：loopStart 顺延 N 拍，预备拍从原起点开始数（按当前/训练起始 BPM）；单次 skipCountIn 时跳过 */
+    if (!options.skipCountIn && S.countIn.on && S.countIn.beats > 0){
       ciBeats = S.countIn.beats; ciLeft = ciBeats;
       ciStart = loopStart; ciNext = ciStart;
       loopStart = ciStart + ciBeats * spb();
@@ -19304,10 +19305,10 @@ const Settings = (() => {
 
 /* ================= Ear · 听辨训练（v1.10.0） ================= */
 /* 把立项时就写着的目标「解决听不出附点/切分」补成闭环：在此之前的版本只让人**看得见**节奏，
-   没有任何练耳朵的入口。玩法：取一个易混组 → 播 2 小节（**不显示题目**）→
+   没有任何练耳朵的入口。玩法：受约束随机生成全拍号题目 → 播 2 小节（**不显示题目与拍号文字**）→
    从 3 张只给记谱、不给名字的候选里选 → 即时反馈 + 战绩。
    为什么只给记谱不给名字：给了名字就变成「读名字猜」（「附点布鲁斯」这个名字直接把答案写在脸上），
-   练不到耳朵。作答后才揭示名字。
+   练不到耳朵。作答后才揭示名字与拍号。
    本模块声明在 Controls / Viz / Store 之后，直接调用它们是**向前引用**，不产生方向问题。
    它对外部状态的唯一写入是共享状态区的 previewRef / playQuota —— 复用主引擎的试听通道，
    绝不另起一套调度（那会立刻产生双时钟、双热键、双缓存三份麻烦）。 */
@@ -19352,6 +19353,116 @@ const Ear = (() => {
     }
     const answerIdx = Math.floor(rand() * cands.length);
     return { group: g, groupIdx: gIdx, cands, answerIdx, answer: cands[answerIdx] };
+  }
+  /** @typedef {{name:string,meter:number,accents?:number[],bars:Step[][]}} GeneratedPattern */
+  const EAR_VALID_T = new Set([6, 8, 12, 16, 24, 36, 48, 72, 96, 192]);
+  /** @type {string[]} */
+  const recentGenerated = [];
+  /** @type {(p:GeneratedPattern)=>string} */
+  const generatedSignature = p => JSON.stringify([p.meter, p.accents || [], p.bars[0].map(s => [s.t, !!s.rest])]);
+  /** @type {(meter:number,rand:()=>number)=>number[]} */
+  const generatedAccent = (meter, rand) => {
+    if (meter === 5) return rand() < 0.5 ? [0, 2] : [0, 3];
+    if (meter === 6) return [0, 3];
+    if (meter === 7) return [[0, 2, 4], [0, 2, 5], [0, 3, 5]][Math.floor(rand() * 3)];
+    return [];
+  };
+  /** @param {number} meter @param {()=>number} rand @returns {GeneratedPattern} */
+  function randomGeneratedPattern(meter, rand){
+    const grid = meter === 6 ? (rand() < 0.5 ? 12 : 24) : [12, 16, 24][Math.floor(rand() * 3)];
+    const pool = [6, 8, 12, 16, 24, 36, 48, 72, 96].filter(t => t % grid === 0 && t <= meter * TPB);
+    /** @type {Step[]} */
+    const steps = [];
+    let left = meter * TPB;
+    while (left > 0){
+      let options = pool.filter(t => t <= left);
+      if (steps.length < 2) options = options.filter(t => t <= left - 2 * grid);
+      else if (steps.length >= 12){
+        const longer = options.filter(t => t >= 48);
+        if (longer.length) options = longer;
+      }
+      if (!options.length) options = [grid];
+      const t = options[Math.floor(rand() * options.length)];
+      steps.push({ t, rest: false });
+      left -= t;
+    }
+    if (rand() < 0.55){
+      const eligible = steps.map((s, i) => i).filter(i => i > 0 && steps[i].t <= 48 && steps.filter(s => !s.rest).length > 3);
+      if (eligible.length) steps[eligible[Math.floor(rand() * eligible.length)]].rest = true;
+    }
+    return { name: "随机节奏 · " + meterName(meter), meter, accents: generatedAccent(meter, rand), bars: [steps] };
+  }
+  /** @param {GeneratedPattern} p @returns {boolean} */
+  function validGeneratedPattern(p){
+    if (!p || !VALID_METER.includes(p.meter) || !Array.isArray(p.bars) || p.bars.length !== 1) return false;
+    const steps = p.bars[0];
+    if (steps.reduce((n, s) => n + s.t, 0) !== p.meter * TPB) return false;
+    if (steps.some(s => !EAR_VALID_T.has(s.t)) || steps.filter(s => !s.rest).length < 3) return false;
+    const rests = steps.map((s, i) => ({ s, i })).filter(x => x.s.rest);
+    if (rests.length > 1 || rests.some(x => x.i === 0 || x.s.t > 48)) return false;
+    return (p.accents || []).every(a => Number.isInteger(a) && a >= 0 && a < p.meter);
+  }
+  /** @param {GeneratedPattern} source @param {()=>number} rand @returns {GeneratedPattern|null} */
+  function mutateGeneratedPattern(source, rand){
+    for (let attempt = 0; attempt < 16; attempt++){
+      const p = { ...source, bars: [source.bars[0].map(s => ({ ...s }))] };
+      const steps = p.bars[0], op = Math.floor(rand() * 4);
+      if (op === 0 && steps.length > 1){
+        const i = Math.floor(rand() * (steps.length - 1));
+        [steps[i], steps[i + 1]] = [steps[i + 1], steps[i]];
+      } else if (op === 1){
+        const eligible = steps.map((s, i) => i).filter(i => !steps[i].rest && EAR_VALID_T.has(steps[i].t / 2));
+        if (!eligible.length) continue;
+        const i = eligible[Math.floor(rand() * eligible.length)], t = steps[i].t / 2;
+        steps.splice(i, 1, { t, rest: false }, { t, rest: false });
+      } else if (op === 2 && steps.length > 1){
+        const eligible = steps.map((s, i) => i).filter(i => i + 1 < steps.length && EAR_VALID_T.has(steps[i].t + steps[i + 1].t));
+        if (!eligible.length) continue;
+        const i = eligible[Math.floor(rand() * eligible.length)];
+        steps.splice(i, 2, { t: steps[i].t + steps[i + 1].t, rest: steps[i].rest && steps[i + 1].rest });
+      } else {
+        const eligible = steps.map((s, i) => i).filter(i => steps[i].rest || (i > 0 && steps[i].t <= 48));
+        if (!eligible.length) continue;
+        const i = eligible[Math.floor(rand() * eligible.length)];
+        steps[i].rest = !steps[i].rest;
+      }
+      if (validGeneratedPattern(p) && generatedSignature(p) !== generatedSignature(source)) return p;
+    }
+    return null;
+  }
+  /** @param {() => number} rand @param {{meter?: number, kind?: string}} [options] */
+  function makeGeneratedQuestion(rand, options = {}){
+    for (let attempt = 0; attempt < 32; attempt++){
+      const meter = options.meter || VALID_METER[Math.floor(rand() * VALID_METER.length)];
+      const kind = options.kind || (rand() < 0.5 ? "same" : "meter");
+      const answerPat = randomGeneratedPattern(meter, rand), answerSig = generatedSignature(answerPat);
+      if (recentGenerated.includes(answerSig)) continue;
+      let cands = [answerPat];
+      if (kind === "same"){
+        for (let n = 0; n < 2; n++){
+          const p = mutateGeneratedPattern(answerPat, rand);
+          if (!p) { cands = []; break; }
+          cands.push(p);
+        }
+      } else {
+        const others = VALID_METER.filter(m => m !== meter);
+        cands.push(randomGeneratedPattern(others[Math.floor(rand() * others.length)], rand));
+        cands.push(randomGeneratedPattern(others[Math.floor(rand() * others.length)], rand));
+      }
+      if (cands.length !== 3 || cands.some(p => !validGeneratedPattern(p))) continue;
+      if (new Set(cands.map(generatedSignature)).size !== 3) continue;
+      for (let i = cands.length - 1; i > 0; i--){
+        const j = Math.floor(rand() * (i + 1));
+        [cands[i], cands[j]] = [cands[j], cands[i]];
+      }
+      const answerIdx = cands.indexOf(answerPat);
+      recentGenerated.push(answerSig); if (recentGenerated.length > 32) recentGenerated.shift();
+      return {
+        group: { name: kind === "same" ? "随机 · 节奏辨认" : "随机 · 拍号辨认", desc: "全拍号程序化出题" },
+        groupIdx: -1, cands, answerIdx, answer: answerPat,
+      };
+    }
+    return null;
   }
   /* 候选记谱：只画一小节，块宽与时值严格成正比（与主视图同一套几何），
      拍线标出节拍，非休止块带发声点，休止符只画虚线框。 */
@@ -19435,7 +19546,9 @@ const Ear = (() => {
       : "请选择你听到的节奏";
     $("earPlayBtn").disabled = isPlaying();
     $("earPlayBtn").className = "pill" + (isPlaying() ? " outline" : (answered ? "" : " active"));
-    $("earPlayBtn").textContent = isPlaying() ? "播放中…" : !question ? "出题并播放" : answered ? "下一题" : "重听";
+    $("earPlayBtn").textContent = isPlaying() ? "播放中…" : !question ? "出题并播放" : answered ? "重听本题" : "重听";
+    const nextBtn = $("earNextBtn");
+    if (nextBtn){ nextBtn.hidden = !answered; nextBtn.disabled = isPlaying(); }
     $("earNote").textContent = !question ? ""
       : answered
         /* 注意：模板字符串里不能用全角空格（U+3000）——ESLint 的 no-irregular-whitespace
@@ -19465,16 +19578,14 @@ const Ear = (() => {
        而额度由调度器在小节边界计数，与 BPM 无关、后台也准 */
     playQuota = EAR_BARS;
     onQuotaDone = () => { earRender(); announce("放完了，请选择"); };
-    Controls.start();
+    Controls.start({ skipCountIn: true });
     earRender();
-    announce("播放题目，共 " + question.answer.meter + " 拍 × " + EAR_BARS + " 小节");
+    announce("播放题目，共 " + EAR_BARS + " 小节");
   }
   function next(){
     stopAudio();
-    let q = null;
-    /* 每组试一次（审计 P1-4 后名副其实：此前注释这么说、实现却是随机抽组重试 N 次）。
-       按组序各试一次：某组凑不够候选就换下一组；表完整性由 T49 断言（开发期错误）。 */
-    for (let k = 0; k < EAR_GROUPS.length && !q; k++) q = makeQuestion(Math.random, k);
+    let q = makeGeneratedQuestion(Math.random);
+    if (!q) q = makeQuestion(Math.random);
     question = q;
     answered = false; picked = -1;
     earRender();
@@ -19517,8 +19628,10 @@ const Ear = (() => {
     hasQuestion: !!question,
     groupIdx: question ? question.groupIdx : -1,
     names: question ? question.cands.map(p => p.name) : [],
+    meters: question ? question.cands.map(p => p.meter) : [],
     answerIdx: question ? question.answerIdx : -1,
     answerName: question ? question.answer.name : "",
+    answerMeter: question ? question.answer.meter : null,
     answered, picked, streak, playing: isPlaying(),
   });
 
@@ -19527,7 +19640,11 @@ const Ear = (() => {
   $("earPlayBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
     if (isPlaying()) return;                          // 播放中不响应（按钮此时也是禁用的，双重保险）
-    if (!question || answered) next(); else play();
+    if (!question) next(); else play();
+  });
+  $("earNextBtn").addEventListener("click", (/** @type {MouseEvent} */ e) => {
+    evEl(e).blur();
+    if (!isPlaying()) next();
   });
   $("earReset").addEventListener("click", (/** @type {MouseEvent} */ e) => {
     evEl(e).blur();
@@ -19539,7 +19656,7 @@ const Ear = (() => {
 
   /* v2.18.0：登记进叠加层键盘层注册表（见共享状态区） */
   registerKeyLayer(overlayKeyLayer({ isOpen, close }));
-  return { open, close, isOpen, next, play, answer, makeQuestion, state };
+  return { open, close, isOpen, next, play, answer, makeQuestion, makeGeneratedQuestion, state };
 })();
 
 /* ================= LyricHistory · 歌词与音符行级历史 ================= */

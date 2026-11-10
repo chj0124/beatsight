@@ -49,6 +49,14 @@ docs/ 第一层只剩活文档，根目录只放对外门面与规约，一眼�
 | [PLAN-v16-design-tokens.md](archive/PLAN-v16-design-tokens.md) | 设计令牌体系与对齐结构收敛：间距/居中/双主题/字号/圆角五域治理（2026-10-27 审计后定稿并六批交付；阶段 3 存量间距收敛按白名单路线后继分批） | 已落地 · 历史快照（施工后记见文末） |
 | [PLAN-v17-audit-hardening-design.md](archive/PLAN-v17-audit-hardening-design.md) | 守约束审计整改设计：异步生命周期、模块边界、性能证据、发布与文档收口 | 历史快照 · 已落地 |
 | [PLAN-v17-audit-hardening.md](archive/PLAN-v17-audit-hardening.md) | 守约束审计整改实施计划：逐任务测试、反向验证、全量自验与发布验收 | 历史快照 · 已落地 |
+| [2026-11-10-param-slot-force-mutex-design.md](archive/2026-11-10-param-slot-force-mutex-design.md) | 参数面板强制打开互斥设计：普通与强制状态统一仲裁 | 历史快照 · 已归档 |
+| [2026-11-10-param-slot-force-mutex-plan.md](archive/2026-11-10-param-slot-force-mutex-plan.md) | 参数面板强制打开互斥实施计划：组合测试、反向验证与真实几何验收 | 历史快照 · 已归档 |
+| [2026-11-10-ear-skip-countin-design.md](archive/2026-11-10-ear-skip-countin-design.md) | 听辨训练跳过预备拍设计：单次播放选项与设置隔离 | 历史快照 · 已归档 |
+| [2026-11-10-ear-skip-countin-plan.md](archive/2026-11-10-ear-skip-countin-plan.md) | 听辨训练跳过预备拍实施计划：首次、重听、下一题与普通播放回归 | 历史快照 · 已归档 |
+| [2026-11-10-ear-procedural-questions-design.md](archive/2026-11-10-ear-procedural-questions-design.md) | 全拍号随机听辨题设计：受约束生成、双辨认与近期去重，布局不变 | 历史快照 · 已归档 |
+| [2026-11-10-ear-procedural-questions-plan.md](archive/2026-11-10-ear-procedural-questions-plan.md) | 全拍号随机听辨题实施计划：生成属性、反向验证与全量布局验收 | 历史快照 · 已归档 |
+| [2026-11-10-ear-replay-after-answer-design.md](archive/2026-11-10-ear-replay-after-answer-design.md) | 听辨作答后重听设计：当前题重播与独立下一题，不增加存储 | 历史快照 · 已归档 |
+| [2026-11-10-ear-replay-after-answer-plan.md](archive/2026-11-10-ear-replay-after-answer-plan.md) | 听辨作答后重听实施计划：对错、重复重听、下一题与布局回归 | 历史快照 · 已归档 |
 | [DEVELOPMENT-history.md](archive/DEVELOPMENT-history.md) | 已完成路线、历史技术债与当时实测 | 历史快照 · 已归档 |
 | [SIZE-BUDGET-history.md](archive/SIZE-BUDGET-history.md) | 资源体积红线历次调整的 diff 证据与取舍 | 历史快照 · 已归档 |
 | [CHANGELOG-v0.md](archive/CHANGELOG-v0.md) / [CHANGELOG-v1.md](archive/CHANGELOG-v1.md) | 旧大版本变更记录分卷 | 已归档（现行记录见根目录 CHANGELOG.md） |

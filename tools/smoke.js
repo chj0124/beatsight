@@ -792,6 +792,13 @@ function slotGeomProbe(){
   const R = el => { if (!el) return null; const r = el.getBoundingClientRect();
     return { l: round(r.left), t: round(r.top), r: round(r.right), b: round(r.bottom),
       w: round(r.width), h: round(r.height), cx: round((r.left + r.right) / 2) }; };
+  const pair = () => {
+    const me = document.getElementById("muteFlyout"), te = document.getElementById("trainerFlyout");
+    const m = me.hidden ? null : R(me), t = te.hidden ? null : R(te);
+    const overlap = (m && t) ? round(Math.max(0, Math.min(m.r, t.r) - Math.max(m.l, t.l))
+      * Math.max(0, Math.min(m.b, t.b) - Math.max(m.t, t.t))) : 0;
+    return { mute: m, trainer: t, visible: (m ? 1 : 0) + (t ? 1 : 0), overlap };
+  };
   const out = { vw: window.innerWidth, clientW: document.documentElement.clientWidth };
   const mute = document.getElementById("muteToggle");
   const tr = document.getElementById("trainerToggle");
@@ -830,9 +837,12 @@ function slotGeomProbe(){
   sl.value = String(targetV);
   sl.dispatchEvent(new Event("input", { bubbles: true }));
   await sleep(350);
+  if (mute.getAttribute("aria-checked") !== "true") mute.click();
+  await sleep(250);
   tr.click();
   await sleep(400);
   const tf = R(document.getElementById("trainerFlyout"));
+  out.forceMutex = pair();
   const note = document.getElementById("trainerWarn");
   const nr = R(note);
   const prog = document.getElementById("trainerProg");
@@ -866,14 +876,20 @@ function slotGeomProbe(){
     out.row2Col2Left = round(b.getBoundingClientRect().left);
     out.twoColDiff = round(out.row2Col2Left - out.row1Col2Left);
   })();
-  /* 复位：点面板**外**（body）收起强制打开的面板——刻意不走"再点一次开关"那条路：
-     那条会顺带写 slotDismissed[trainer]=true，给后续探针留下"面板被手动收起过"的残留状态。
-     点 body 命中文档级"点别处即收起"监听 ⇒ clearSlotForce()（原因与面板一起清）。 */
+  document.getElementById("muteSlot").click();
+  await sleep(300);
+  out.reverseMutex = pair();
+  out.reverseNote = note.textContent;
+  out.reverseProg = prog.textContent;
+  /* 复位：点面板外收起仍可见的面板，再关闭静音；拒开原因在反向切换时已经清空。 */
   document.body.click();
+  await sleep(250);
+  if (mute.getAttribute("aria-checked") === "true") mute.click();
   await sleep(250);
   const nAfter = document.getElementById("trainerWarn");
   out.noteClearedWithPanel = !!nAfter && nAfter.hidden === true && nAfter.textContent === "";
-  out.restored = document.getElementById("trainerFlyout").hidden === true;
+  out.restored = document.getElementById("trainerFlyout").hidden === true
+    && document.getElementById("muteFlyout").hidden === true && mute.getAttribute("aria-checked") !== "true";
   out.progVisibilityAfter = getComputedStyle(document.getElementById("trainerProg")).visibility;
   /* 复原：当前 BPM 与目标框都回到探针进来时的值——不留副作用给后续探针 */
   const sl2 = document.getElementById("bpmSlider");
@@ -884,6 +900,41 @@ function slotGeomProbe(){
   tgt.dispatchEvent(new Event("change", { bubbles: true }));
   await sleep(200);
   out.bpmAfter = parseInt((document.getElementById("bpmNum").textContent || "").trim(), 10) || null;
+  return JSON.stringify(out);
+})()`;
+}
+function slotWideGeomProbe(){
+  return `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const round = v => Math.round(v * 10) / 10;
+  const R = el => { if (!el) return null; const r = el.getBoundingClientRect();
+    return { l: round(r.left), t: round(r.top), r: round(r.right), b: round(r.bottom) }; };
+  const mute = document.getElementById("muteToggle"), tr = document.getElementById("trainerToggle");
+  const tgt = document.getElementById("trTarget");
+  if (!mute || !tr || !tgt) return JSON.stringify({ err: "缺宽档参数面板节点" });
+  if (mute.getAttribute("aria-checked") === "true" || tr.getAttribute("aria-checked") === "true"){
+    return JSON.stringify({ err: "宽档探针要求两个开关初始均关闭" });
+  }
+  const out = { vw: window.innerWidth, targetBefore: tgt.value };
+  const bpm = parseInt((document.getElementById("bpmNum").textContent || "").trim(), 10) || 96;
+  tgt.value = String(Math.min(240, bpm + 24));
+  tgt.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(200);
+  mute.click(); tr.click();
+  await sleep(350);
+  const me = document.getElementById("muteFlyout"), te = document.getElementById("trainerFlyout");
+  const m = me.hidden ? null : R(me), t = te.hidden ? null : R(te);
+  out.mute = m; out.trainer = t;
+  out.visible = (m ? 1 : 0) + (t ? 1 : 0);
+  out.overlap = (m && t) ? round(Math.max(0, Math.min(m.r, t.r) - Math.max(m.l, t.l))
+    * Math.max(0, Math.min(m.b, t.b) - Math.max(m.t, t.t))) : 0;
+  if (tr.getAttribute("aria-checked") === "true") tr.click();
+  if (mute.getAttribute("aria-checked") === "true") mute.click();
+  tgt.value = out.targetBefore;
+  tgt.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(250);
+  out.restored = me.hidden && te.hidden && mute.getAttribute("aria-checked") !== "true"
+    && tr.getAttribute("aria-checked") !== "true";
   return JSON.stringify(out);
 })()`;
 }
@@ -3041,6 +3092,10 @@ function portraitFixProbe(){
       result.scrollOverflow = await probeJson("scrollOverflowProbe", scrollOverflowProbe(), true);
       /* ★★★ 2026-10-11（用户报障）：窄档参数槽——居中 + 面板内拒开原因（详见 slotGeomProbe 头注释） */
       result.slotGeom = await probeJson("slotGeomProbe", slotGeomProbe(), true);
+      await cdp.send("Emulation.setDeviceMetricsOverride",
+        { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+      await sleep(400);
+      result.slotWideGeom = await probeJson("slotWideGeomProbe", slotWideGeomProbe(), true);
       /* ★★★ v3.36.20 补5：**横屏**（640×360）单独量一次底栏 —— 那条改动只在
          `@media (max-width:640px) and (orientation:landscape)` 内，竖屏 390 量不到。 */
       await cdp.send("Emulation.setDeviceMetricsOverride",
@@ -5284,10 +5339,22 @@ async function main(){
           "note " + JSON.stringify(sg.note) + " / flyout " + JSON.stringify(sg.trainerFlyout));
         ok(sg.trainerFlyoutInsideVp === true, p.label + "：★★ 窄档面板不越出视口",
           "flyout " + JSON.stringify(sg.trainerFlyout) + " / 客户区 " + sg.clientW);
+        ok(sg.forceMutex && sg.forceMutex.visible === 1 && sg.forceMutex.overlap === 0
+           && !!sg.forceMutex.trainer && !sg.forceMutex.mute,
+          p.label + "：★★★ 强制打开互斥：静音后强制开变速只剩一块，几何重叠为 0",
+          JSON.stringify(sg.forceMutex));
+        ok(sg.reverseMutex && sg.reverseMutex.visible === 1 && sg.reverseMutex.overlap === 0
+           && !!sg.reverseMutex.mute && !sg.reverseMutex.trainer && sg.reverseNote === "" && sg.reverseProg === "",
+          p.label + "：★★★ 反向切换清理：参数槽重开静音只剩一块，旧提示清空且几何重叠为 0",
+          JSON.stringify({ pair: sg.reverseMutex, note: sg.reverseNote, prog: sg.reverseProg }));
         ok(sg.restored === true, p.label + "：★ 参数槽探针量完已复位（不留副作用）", "restored=" + sg.restored);
       } else {
         ok(false, p.label + "：窄档参数槽探针未取到（故障：" + ((sg && sg.err) || "缺失") + "）", "");
       }
+      const swg = r.slotWideGeom;
+      ok(swg && !swg.err && swg.vw === 1440 && swg.visible === 2 && swg.overlap === 0 && swg.restored === true,
+        p.label + "：★★★ 1440 宽档正常双开仍保留两块向外扇开，几何重叠为 0",
+        JSON.stringify(swg));
       ok(!!d.viz && d.viz.children > 0, p.label + "：可视化网格已渲染（" + (d.viz ? d.viz.children : 0) + " 个顶层节点）");
       ok(!!d.viz && d.viz.ariaHidden === "true", p.label + "：#viz 对读屏隐藏");
       /* v2.10.5：DOM 规模断言（第 5 项性能预算）。放在这里而不是 perf 那一组里，

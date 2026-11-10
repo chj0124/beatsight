@@ -93,7 +93,7 @@ section("T49c 听辨训练 · 进入即停播 + 自动放 2 小节后停");
   const st = beat.Ear.state();
   eq(ps.name, st.answerName, "试听的正是本题答案（不是别的节奏型）");
   eq(beat.quota().bars, beat.EAR_BARS, "会话播放额度 = 2 小节（走练习量同一套到点停，不用定时器）");
-  eq(S.sig, beat.BUILTINS.find(p => p.name === st.answerName).meter, "渲染拍号跟着题目走");
+  eq(S.sig, st.answerMeter, "渲染拍号跟着题目走");
   eq(t.cls("earOverlay").includes("open"), true, "overlay 已打开");
   ok(t.txt("earPlayBtn").includes("播放中"), "播放期间按钮显示「播放中…」（实际「" + t.txt("earPlayBtn") + "」）");
 
@@ -147,10 +147,10 @@ section("T49d 听辨训练 · 判分 / 连对 / 冷键落盘");
 
   /* ② 连对两题 */
   const answerRight = () => cands()[beat.Ear.state().answerIdx].fire("click");
-  els["earPlayBtn"].fire("click");                    // 「下一题」
+  els["earNextBtn"].fire("click");                    // 「下一题」
   answerRight();
   eq(beat.Ear.state().streak, 1, "答对 → 连对 1");
-  els["earPlayBtn"].fire("click");
+  els["earNextBtn"].fire("click");
   answerRight();
   eq(beat.Ear.state().streak, 2, "再答对 → 连对 2");
   eq(beat.Store.earStats.best, 2, "最高连对跟随更新");
@@ -161,7 +161,7 @@ section("T49d 听辨训练 · 判分 / 连对 / 冷键落盘");
   eq(JSON.parse(app.storage.get("beatsight.ear")).best, 2, "落盘的 best 正确");
 
   /* ③ 答错一次 → 连对归零，但 best 不回退 */
-  els["earPlayBtn"].fire("click");                    // 「下一题」——作答后的卡片已无处理器，必须先换题
+  els["earNextBtn"].fire("click");                    // 独立「下一题」——作答后的卡片已无处理器，必须先换题
   const s2 = beat.Ear.state();
   eq(s2.answered, false, "换题后回到未作答状态");
   cands()[(s2.answerIdx + 1) % s2.names.length].fire("click");
@@ -280,7 +280,7 @@ section("T49h 听辨训练 · 拍线 / 发声点 / 选项与统计分区");
   els["earBtn"].fire("click");
   const cand = els["earCands"].children[0];
   const strip = cand.children.find(c => c.className === "ear-strip");
-  const pat = beat.BUILTINS.find(p => p.name === beat.Ear.state().names[0]);
+  const pat = { meter: beat.Ear.state().meters[0] };
   const blocks = strip.children.filter(c => /(^| )ear-block( |$)/.test(c.className || ""));
   ok(blocks.every(b => /^[\d.]+%$/.test(b.style.left) &&
     /^calc\([\d.]+% - 3px\)$/.test(b.style.width)),
@@ -305,4 +305,145 @@ section("T49h 听辨训练 · 拍线 / 发声点 / 选项与统计分区");
   ok(/#earNote\{font-size:var\(--fs-lead\);color:var\(--t2\);line-height:1\.6\}/.test(html),
     "底部答题提示提亮且保留舒适行高");
   beat.Controls.stop();
+}
+
+section("T49i 听辨跳过预备拍 · 用户设置与其他播放不受影响");
+{
+  const app = loadApp({ "beatsight.state": JSON.stringify({ countIn: { on: true, beats: 4 } }) });
+  const { beat, els } = app, S = beat.Store.S;
+  const ac = () => FakeAudioContext.last;
+  const twoBars = hits => {
+    const meter = beat.Ear.state().answerMeter;
+    const barSec = meter * 60 / S.bpm, start = hits[0].t;
+    const one = [], two = [];
+    hits.forEach(h => {
+      if (h.t < start + barSec - 1e-6) one.push(h.freq);
+      else if (h.t < start + 2 * barSec - 1e-6) two.push(h.freq);
+    });
+    return { one, two, same: JSON.stringify(one) === JSON.stringify(two) && one.length > 0 };
+  };
+  els["earBtn"].fire("click");
+  driveFrames(ac(), beat, 15);
+  const firstHits = ac().hits.slice();
+  ok(twoBars(firstHits).same, "★★★ 听辨跳过预备拍：首次出题的两遍都是正式答案且无预备拍");
+  eq(S.playing, false, "★ 首次正式两遍播完仍自动停止");
+  const firstFreqs = firstHits.map(h => h.freq);
+
+  els["earPlayBtn"].fire("click");
+  driveFrames(ac(), beat, 15);
+  const replayHits = ac().hits.slice(firstHits.length);
+  ok(twoBars(replayHits).same, "★★★ 听辨跳过预备拍：重听也不重新插入预备拍");
+  eq(JSON.stringify(replayHits.map(h => h.freq)), JSON.stringify(firstFreqs),
+    "★★ 重听仍播放同一答案的两遍");
+
+  beat.Ear.answer(beat.Ear.state().answerIdx);
+  const beforeNext = ac().hits.length;
+  els["earNextBtn"].fire("click");
+  driveFrames(ac(), beat, 15);
+  ok(twoBars(ac().hits.slice(beforeNext)).same, "★★★ 听辨跳过预备拍：下一题同样直接播放正式答案");
+  eq(S.playing, false, "★ 下一题正式两遍播完仍自动停止");
+  eq(S.countIn.on, true, "★★ 听辨全程不改写预备拍开关");
+  eq(S.countIn.beats, 4, "★★ 听辨全程不改写预备拍拍数");
+
+  beat.Ear.close();
+  const beforeNormal = ac().hits.length;
+  beat.Controls.start();
+  driveFrames(ac(), beat, 4);
+  const normal = ac().hits.slice(beforeNormal);
+  eq(JSON.stringify(normal.slice(0, 4).map(h => h.freq)), JSON.stringify([1568, 1046.5, 1046.5, 1046.5]),
+    "★★★ 退出听辨后普通播放仍保留 4 拍预备");
+  ok(Math.abs((normal[4].t - normal[0].t) - 4 * 60 / S.bpm) < 1e-6,
+    "★★ 普通播放的正式答案仍在 4 拍预备后开始");
+  beat.Controls.stop();
+}
+
+section("T49j 全拍号程序化听辨题 · 合法性、双辨认与近期去重");
+{
+  const { beat, els } = loadApp();
+  ok(typeof beat.Ear.makeGeneratedQuestion === "function", "★★★ 全拍号随机生成器存在");
+  if (typeof beat.Ear.makeGeneratedQuestion === "function"){
+    const validT = new Set([6, 8, 12, 16, 24, 36, 48, 72, 96, 192]);
+    const meterText = m => m === 6 ? "6/8" : m + "/4";
+    const sig = p => JSON.stringify([p.meter, p.accents || [], p.bars[0].map(s => [s.t, !!s.rest])]);
+    let seed = 0x12345678;
+    const rand = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (const meter of [2, 3, 4, 5, 6, 7]) for (const kind of ["same", "meter"]){
+      const bad = [];
+      for (let i = 0; i < 16; i++){
+        const q = beat.Ear.makeGeneratedQuestion(rand, { meter, kind });
+        if (!q){ bad.push("null@" + i); continue; }
+        if (q.answer.meter !== meter) bad.push("答案拍号@" + i);
+        if (q.cands.length !== 3 || !q.cands.includes(q.answer)) bad.push("答案不在三个候选@" + i);
+        if (new Set(q.cands.map(sig)).size !== 3) bad.push("候选签名重复@" + i);
+        if (kind === "same" && q.cands.some(p => p.meter !== meter)) bad.push("同拍号候选混杂@" + i);
+        if (kind === "meter" && new Set(q.cands.map(p => p.meter)).size < 2) bad.push("拍号辨认无差异@" + i);
+        for (const p of q.cands){
+          const steps = p.bars[0], total = steps.reduce((n, s) => n + s.t, 0);
+          if (total !== p.meter * 48) bad.push("总时值@" + i + ":" + p.meter);
+          if (steps.some(s => !validT.has(s.t))) bad.push("非法 tick@" + i);
+          if (steps.filter(s => !s.rest).length < 3) bad.push("发声点不足@" + i);
+          const rests = steps.map((s, idx) => ({ s, idx })).filter(x => x.s.rest);
+          if (rests.length > 1 || rests.some(x => x.idx === 0 || x.s.t > 48)) bad.push("休止越界@" + i);
+        }
+        if (meter === 5 && !([[0, 2], [0, 3]].some(a => JSON.stringify(q.answer.accents) === JSON.stringify(a)))) bad.push("5/4 分组@" + i);
+        if (meter === 6 && JSON.stringify(q.answer.accents) !== JSON.stringify([0, 3])) bad.push("6/8 分组@" + i);
+        if (meter === 7 && !([[0, 2, 4], [0, 2, 5], [0, 3, 5]].some(a => JSON.stringify(q.answer.accents) === JSON.stringify(a)))) bad.push("7/4 分组@" + i);
+      }
+      ok(bad.length === 0, "★★★ 全拍号随机生成：" + meterText(meter) + " · " + kind + "（" + bad.slice(0, 3).join(" / ") + "）");
+    }
+    const recent = [];
+    let dedupBad = 0;
+    for (let i = 0; i < 48; i++){
+      const q = beat.Ear.makeGeneratedQuestion(rand);
+      const s = sig(q.answer);
+      if (recent.includes(s)) dedupBad++;
+      recent.push(s); if (recent.length > 32) recent.shift();
+    }
+    eq(dedupBad, 0, "★★★ 最近 32 个随机答案按完整签名去重");
+  }
+  const meters = new Set();
+  for (let i = 0; i < 60; i++){
+    beat.Ear.next();
+    meters.add(beat.Ear.state().answerMeter);
+  }
+  eq(JSON.stringify([...meters].sort((a, b) => a - b)), JSON.stringify([2, 3, 4, 5, 6, 7]),
+    "★★★ next() 覆盖全部拍号，不再锁定第 0 组");
+  eq(els["srAnnounce"].textContent, "播放题目，共 2 小节", "★★★ 播放前播报不泄露拍号");
+  beat.Ear.close();
+}
+
+section("T49k 作答后重听当前题 · 对错均可且战绩不变");
+{
+  for (const correct of [false, true]){
+    const app = loadApp(), { beat, els } = app;
+    els["earBtn"].fire("click");
+    const ac = FakeAudioContext.last;
+    const first = beat.Ear.state();
+    ok(!els["earNextBtn"] || els["earNextBtn"].hidden === true, "★ 未作答时独立下一题按钮隐藏（correct=" + correct + "）");
+    const idx = correct ? first.answerIdx : (first.answerIdx + 1) % first.names.length;
+    els["earCands"].children[idx].fire("click");
+    const answered = beat.Ear.state(), stats = { ...beat.Store.earStats };
+    ok(els["earNextBtn"] && els["earNextBtn"].hidden === false,
+      "★★★ 作答后独立下一题按钮可见（correct=" + correct + "）");
+    if (!els["earNextBtn"]) continue;
+    eq(els["earPlayBtn"].textContent, "重听本题", "★★★ 作答后原按钮改为重听本题（correct=" + correct + "）");
+    els["earPlayBtn"].fire("click");
+    eq(beat.Ear.state().answerName, answered.answerName, "★★ 重听不换题（correct=" + correct + "）");
+    eq(beat.Ear.state().answered, true, "★★ 重听不撤销作答状态（correct=" + correct + "）");
+    eq(beat.Ear.state().picked, answered.picked, "★★ 重听不改变用户选择（correct=" + correct + "）");
+    eq(beat.Store.earStats.total, stats.total, "★★ 重听不增加累计题数（correct=" + correct + "）");
+    eq(beat.Store.earStats.right, stats.right, "★★ 重听不改变答对数（correct=" + correct + "）");
+    eq(beat.Ear.state().streak, answered.streak, "★★ 重听不改变连对（correct=" + correct + "）");
+    eq(els["earPlayBtn"].disabled, true, "★★ 重听播放中按钮禁用（correct=" + correct + "）");
+    driveFrames(ac, beat, 15);
+    eq(els["earPlayBtn"].textContent, "重听本题", "★★ 重听完后仍可再次重听（correct=" + correct + "）");
+    els["earPlayBtn"].fire("click");
+    eq(beat.Ear.state().answerName, answered.answerName, "★★ 第二次重听仍是同一题（correct=" + correct + "）");
+    eq(beat.Store.earStats.total, stats.total, "★★ 第二次重听仍不重复计分（correct=" + correct + "）");
+    driveFrames(ac, beat, 15);
+    els["earNextBtn"].fire("click");
+    eq(beat.Ear.state().answered, false, "★★★ 只有独立下一题按钮才重置题目（correct=" + correct + "）");
+    eq(beat.Ear.state().picked, -1, "★★ 下一题清空上次选择（correct=" + correct + "）");
+    beat.Ear.close();
+  }
 }

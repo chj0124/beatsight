@@ -244,3 +244,57 @@ section("T231g v3.42.0：滑块条内缩半个钮径 · 右侧参数槽 · 点�
   /* （已随 v3.42.0 第六轮回退删除）「圆钮垂直居中」那条：条回到元素自身背景后，Chrome 默认即居中，
      margin-top 校正项不再需要；--trk-h 令牌一并退役。 */
 }
+
+section("T231h 窄屏普通面板与强制面板的组合互斥");
+{
+  const emptyTarget = loadApp({}, { seedDemo: false, viewportW: 390 });
+  emptyTarget.els["muteToggle"].fire("click");
+  emptyTarget.els["trainerToggle"].fire("click");
+  eq(emptyTarget.beat.Store.S.trainer.on, false, "前提：空目标拒开时变速开关仍关闭");
+  eq(emptyTarget.els["trainerFlyout"].hidden, false, "前提：空目标拒开原因由强制面板交付");
+  eq(emptyTarget.els["muteFlyout"].hidden, true,
+    "★★★ 强制打开互斥：静音已开时再强制开变速，只显示变速面板");
+  eq(emptyTarget.beat.Store.S.mute, true,
+    "★★ 强制打开互斥：收起静音面板不关闭静音功能");
+  ok((emptyTarget.els["trainerWarn"].textContent || "").includes("先填一个大于当前速度的目标 BPM"),
+    "★★ 强制打开互斥后空目标原因仍留在变速面板");
+
+  const bpmBlocked = loadApp({}, { seedDemo: false, viewportW: 390 });
+  bpmBlocked.els["trTarget"].value = "120";
+  bpmBlocked.els["trTarget"].fire("change");
+  bpmBlocked.beat.Controls.setBpm(150);
+  bpmBlocked.els["muteToggle"].fire("click");
+  bpmBlocked.els["trainerToggle"].fire("click");
+  eq(bpmBlocked.beat.Store.S.trainer.on, false, "前提：当前 BPM 不低于目标时变速开关仍关闭");
+  eq(bpmBlocked.els["muteFlyout"].hidden, true,
+    "★★★ 强制打开互斥：BPM 阻断路径同样只显示变速面板");
+  eq(bpmBlocked.els["trainerFlyout"].hidden, false,
+    "★★ BPM 阻断路径的变速面板保持可见");
+  ok((bpmBlocked.els["trainerWarn"].textContent || "").includes("已不低于目标"),
+    "★★ BPM 阻断原因仍留在变速面板");
+
+  const openMute = loadApp({}, { seedDemo: false, viewportW: 390 });
+  openMute.els["trainerToggle"].fire("click");
+  openMute.els["muteToggle"].fire("click");
+  eq(openMute.els["muteFlyout"].hidden, false,
+    "★★★ 反向切换清理：强制变速已开时再开静音，只显示静音面板");
+  eq(openMute.els["trainerFlyout"].hidden, true,
+    "★★★ 反向切换清理：另一块开关打开会撤掉强制变速面板");
+  eq(openMute.els["trainerWarn"].textContent, "",
+    "★★ 反向切换清理：强制面板撤掉后旧拒开原因一并清空");
+  eq(openMute.els["trainerProg"].textContent, "",
+    "★★ 反向切换清理：芯底旧拒开原因一并清空");
+  eq(openMute.beat.Store.S.mute, true, "★★ 反向切换清理后静音功能保持开启");
+
+  const reopenMute = loadApp({}, { seedDemo: false, viewportW: 390 });
+  reopenMute.els["muteToggle"].fire("click");
+  reopenMute.els["muteSlot"].fire("click");
+  reopenMute.els["trainerToggle"].fire("click");
+  reopenMute.els["muteSlot"].fire("click");
+  eq(reopenMute.els["muteFlyout"].hidden, false,
+    "★★★ 反向切换清理：从参数槽重开静音后只显示静音面板");
+  eq(reopenMute.els["trainerFlyout"].hidden, true,
+    "★★★ 反向切换清理：参数槽路径同样撤掉强制变速面板");
+  eq(reopenMute.els["trainerWarn"].textContent, "",
+    "★★ 反向切换清理：参数槽路径不留旧拒开原因");
+}
